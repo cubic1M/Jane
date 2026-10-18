@@ -19,6 +19,13 @@ Finds money users are losing and turns each finding into a yes/no decision card.
 On Vercel, the `vercel-build` script applies pending migrations (`prisma migrate deploy`, using
 `DIRECT_URL`) before production builds only, so preview deployments never change the database.
 
+## Importing your own data
+
+Sign in, then go to `/import`: add an account (with its current balance, which bank exports
+leave out), upload CSV exports and confirm. Supported formats live in
+`src/data-sources/csv/formats.ts`; sample files in `src/data-sources/csv/__fixtures__/` are
+made up. Keep real exports in `private/`, which git ignores.
+
 To make someone an admin, set their role in the database:
 `UPDATE users SET role = 'admin' WHERE email = 'you@example.com';`
 

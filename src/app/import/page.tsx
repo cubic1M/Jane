@@ -1,34 +1,55 @@
 import { Suspense } from "react";
-import { signOutToHome } from "@/lib/auth-actions";
+import { AddAccountForm } from "./add-account-form";
+import { ImportForm } from "./import-form";
+import { AppHeader } from "@/components/app-header";
+import { AccountList } from "@/components/account-list";
+import { listAccountSummaries } from "@/lib/accounts";
+import { scopedDb } from "@/lib/db-scoped";
 import { requireUser } from "@/lib/session";
 
 async function ImportContent() {
   const user = await requireUser();
+  const accounts = await listAccountSummaries(await scopedDb());
+
   return (
     <>
-      <header className="flex items-center justify-between gap-4 text-sm text-zinc-600 dark:text-zinc-400">
-        <span>Signed in as {user.email}</span>
-        <form action={signOutToHome}>
-          <button type="submit" className="font-medium text-emerald-700 hover:underline">
-            Sign out
-          </button>
-        </form>
-      </header>
+      <AppHeader email={user.email} />
 
       <div className="flex flex-col gap-2">
         <h1 className="text-3xl font-semibold tracking-tight">Import your transactions</h1>
         <p className="text-zinc-600 dark:text-zinc-400">
-          CSV upload is on its way. Soon you&apos;ll add your bank and card exports here and see
-          what you could save.
+          Download CSV exports from your bank&apos;s website and upload them here. Files are read
+          once and never stored. Importing the same file twice is safe: we skip rows we already
+          have.
         </p>
       </div>
+
+      <section className="flex flex-col gap-4">
+        <h2 className="text-xl font-semibold">1. Your accounts</h2>
+        <AccountList accounts={accounts} />
+        <AddAccountForm />
+      </section>
+
+      <section className="flex flex-col gap-4">
+        <h2 className="text-xl font-semibold">2. Upload CSV files</h2>
+        {accounts.length === 0 ? (
+          <p className="text-zinc-600 dark:text-zinc-400">Add an account first.</p>
+        ) : (
+          <ImportForm
+            accounts={accounts.map(({ id, name, kindLabel }) => ({ id, name, kindLabel }))}
+          />
+        )}
+        <p className="text-xs text-zinc-500">
+          Supported exports: Chase checking, savings and credit card.
+        </p>
+      </section>
     </>
   );
 }
 
 export default function ImportPage() {
   return (
-    <main className="mx-auto flex w-full max-w-2xl flex-1 flex-col gap-10 px-6 py-12">
+    <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-10 px-6 py-12">
       <Suspense fallback={<p className="text-zinc-500">Loading…</p>}>
         <ImportContent />
       </Suspense>

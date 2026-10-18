@@ -85,6 +85,24 @@ enum MembershipIntentKind {
   @@map("membership_intent_kind")
 }
 
+// Where an account or transaction came from. CSV is the founders' own exports;
+// Plaid arrives in step 7 behind the same DataSource interface.
+enum DataSourceKind {
+  csv
+  plaid
+
+  @@map("data_source")
+}
+
+// Who set a transaction's category: our keyword rules, the LLM, or Plaid itself.
+enum CategorySource {
+  rule
+  llm
+  plaid
+
+  @@map("category_source")
+}
+
 enum ActorType {
   user
   admin
@@ -116,6 +134,7 @@ model User {
   digests           Digest[]
   membershipIntents MembershipIntent[]
   analyticsEvents   AnalyticsEvent[]
+  merchantCategories MerchantCategory[]
 
   @@map("users")
 }
@@ -182,20 +201,24 @@ model PlaidItem {
 
 model Account {
   id                    String   @id @default(cuid())
-  userId                String   @map("user_id")
-  itemId                String   @map("item_id")
-  plaidAccountId        String   @unique @map("plaid_account_id")
+  userId                String         @map("user_id")
+  source                DataSourceKind
+  // Plaid-only; null for CSV accounts.
+  itemId                String?        @map("item_id")
+  plaidAccountId        String?        @unique @map("plaid_account_id")
   name                  String
   mask                  String?
+  // Plaid's account type and subtype, e.g. depository/checking or credit/credit card.
   type                  String
   subtype               String?
-  currentBalanceCents   Int?     @map("current_balance_cents")
-  availableBalanceCents Int?     @map("available_balance_cents")
-  createdAt             DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
-  updatedAt             DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+  // Entered by hand for CSV accounts, which usually lack balances.
+  currentBalanceCents   Int?           @map("current_balance_cents")
+  availableBalanceCents Int?           @map("available_balance_cents")
+  createdAt             DateTime       @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt             DateTime       @updatedAt @map("updated_at") @db.Timestamptz(3)
 
   user             User              @relation(fields: [userId], references: [id], onDelete: Cascade)
-  item             PlaidItem         @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  item             PlaidItem?        @relation(fields: [itemId], references: [id], onDelete: Cascade)
   transactions     Transaction[]
   recurringStreams RecurringStream[]
 
@@ -206,22 +229,30 @@ model Account {
 
 model Transaction {
   id                 String   @id @default(cuid())
-  userId             String   @map("user_id")
-  accountId          String   @map("account_id")
-  plaidTransactionId String   @unique @map("plaid_transaction_id")
-  date               DateTime @db.Date
+  userId             String          @map("user_id")
+  accountId          String          @map("account_id")
+  source             DataSourceKind
+  // Plaid-only; null for CSV transactions.
+  plaidTransactionId String?         @unique @map("plaid_transaction_id")
+  // CSV-only: identifies a row across overlapping uploads (see src/data-sources/dedupe.ts).
+  dedupeKey          String?         @map("dedupe_key")
+  date               DateTime        @db.Date
   // Plaid's sign convention: positive is money out of the account.
-  amountCents        Int      @map("amount_cents")
-  merchantName       String?  @map("merchant_name")
-  pfcPrimary         String?  @map("pfc_primary")
-  pfcDetailed        String?  @map("pfc_detailed")
-  pending            Boolean  @default(false)
-  createdAt          DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
-  updatedAt          DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+  amountCents        Int             @map("amount_cents")
+  description        String
+  merchantName       String?         @map("merchant_name")
+  // Plaid personal finance category, primary and detailed.
+  pfcPrimary         String?         @map("pfc_primary")
+  pfcDetailed        String?         @map("pfc_detailed")
+  categorySource     CategorySource? @map("category_source")
+  pending            Boolean         @default(false)
+  createdAt          DateTime        @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt          DateTime        @updatedAt @map("updated_at") @db.Timestamptz(3)
 
   user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
   account Account @relation(fields: [accountId], references: [id], onDelete: Cascade)
 
+  @@unique([accountId, dedupeKey])
   @@index([userId])
   @@index([accountId])
   @@index([userId, date])
@@ -341,6 +372,24 @@ model MembershipIntent {
 
   @@index([userId])
   @@map("membership_intents")
+}
+
+// The LLM's category for a merchant, so each merchant is classified once per user.
+model MerchantCategory {
+  id          String         @id @default(cuid())
+  userId      String         @map("user_id")
+  merchantKey String         @map("merchant_key")
+  pfcPrimary  String         @map("pfc_primary")
+  pfcDetailed String         @map("pfc_detailed")
+  source      CategorySource
+  createdAt   DateTime       @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt   DateTime       @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, merchantKey])
+  @@index([userId])
+  @@map("merchant_categories")
 }
 
 // Deliberately no foreign keys: the log must outlive the users and rows it describes,
