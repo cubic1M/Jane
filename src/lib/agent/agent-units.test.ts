@@ -17,7 +17,7 @@ describe("agent mail", () => {
 
   it("puts the action's token in the reply-to address and reads it back", () => {
     vi.stubEnv("AGENT_INBOUND_DOMAIN", "reply.jane.app");
-    const token = "0123456789abcdef0123456789abcdef";
+    const token = "0123456789abcdef".repeat(2);
     expect(replyAddress(token)).toBe(`reply+${token}@reply.jane.app`);
     expect(tokenFromAddress(`Jane <reply+${token}@reply.jane.app>`)).toBe(token);
     expect(tokenFromAddress("someone@example.com")).toBeNull();
