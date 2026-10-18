@@ -7,6 +7,10 @@ vi.mock("@/lib/plaid/sync", () => ({ syncItem: vi.fn(), ITEM_STATUS: { active: "
 vi.mock("@/lib/plaid/inactive", () => ({
   runInactiveCleanup: vi.fn(async () => ({ warned: 0, removed: 1, failed: 0 })),
 }));
+vi.mock("@/lib/health", () => ({
+  recordRun: vi.fn((_name: string, run: () => Promise<unknown>) => run()),
+  reportMissedJobs: vi.fn(async () => []),
+}));
 vi.mock("@/lib/jobs", () => ({
   runDueJobs: vi.fn(async () => ({ done: 1, retried: 0, failed: 0 })),
 }));
@@ -76,5 +80,12 @@ describe("GET /api/cron/plaid-sync", () => {
       outcomes: { merchants: 2 },
     });
     expect(syncItem).not.toHaveBeenCalled();
+  });
+
+  it("records the run, and checks the other daily jobs first", async () => {
+    const { recordRun, reportMissedJobs } = await import("@/lib/health");
+    await call("Bearer cron-secret");
+    expect(reportMissedJobs).toHaveBeenCalled();
+    expect(recordRun).toHaveBeenCalledWith("plaid-sync", expect.any(Function));
   });
 });
