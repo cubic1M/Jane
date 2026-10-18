@@ -6,6 +6,11 @@ import {
   PROPOSAL_BUDGET_COUNT,
   PROPOSAL_MIN_BUDGET_CENTS,
 } from "@/config/proposals";
+import {
+  YEARLY_BILLS_GOAL_MONTHS,
+  YEARLY_BILLS_GOAL_NAME,
+  YEARLY_BILLS_GOAL_PATTERN,
+} from "@/config/irregular";
 import { UNCATEGORIZED } from "@/insights/labels";
 
 // What Jane proposes to set up, from the person's own numbers. Pure.
@@ -26,6 +31,8 @@ export type GoalProposal = {
   targetDate: string;
   // Their average monthly spending, the basis of the target.
   monthlySpendingCents: number;
+  // For the "Yearly bills" goal (spec step 70): the monthly set-aside the target is made of.
+  monthlySetAsideCents?: number;
 };
 
 export type CategoryProposal = {
@@ -47,6 +54,8 @@ export type ProposalInput = {
   budgetedCategories: string[];
   goalNames: string[];
   monthlySpendingCents: number;
+  // The monthly set-aside for yearly and irregular bills (spec step 70).
+  yearlyBillsMonthlyCents?: number;
   uncategorized: {
     merchantKey: string;
     merchantName: string;
@@ -89,6 +98,20 @@ export function proposals(input: ProposalInput): Proposal[] {
       targetCents: target,
       targetDate: addMonths(input.asOf, EMERGENCY_FUND_TARGET_MONTHS),
       monthlySpendingCents: input.monthlySpendingCents,
+    });
+  }
+
+  // Spec step 70: a savings goal for the yearly and irregular bills, unless they have one.
+  const setAside = input.yearlyBillsMonthlyCents ?? 0;
+  if (setAside > 0 && !input.goalNames.some((n) => YEARLY_BILLS_GOAL_PATTERN.test(n))) {
+    out.push({
+      kind: "goal",
+      key: "goal:yearly_bills",
+      name: YEARLY_BILLS_GOAL_NAME,
+      targetCents: setAside * YEARLY_BILLS_GOAL_MONTHS,
+      targetDate: addMonths(input.asOf, YEARLY_BILLS_GOAL_MONTHS),
+      monthlySpendingCents: input.monthlySpendingCents,
+      monthlySetAsideCents: setAside,
     });
   }
 
