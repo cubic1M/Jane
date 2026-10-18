@@ -4,6 +4,8 @@ import { ANONYMOUS_ID_COOKIE } from "@/lib/analytics-events";
 import { logAudit } from "@/lib/audit";
 import { db } from "@/lib/db";
 import { isAdminEmail } from "@/lib/invites";
+import { TERMS_COOKIE, acceptTerms } from "@/lib/terms";
+import { TERMS_VERSION } from "@/config/legal";
 
 type SignInEvent = {
   user: { id?: string | null; email?: string | null };
@@ -28,6 +30,10 @@ export async function recordSignIn({ user, account, isNewUser }: SignInEvent): P
     // The anonymous id ties the sign-up back to the visitor's landing-page events.
     const anonymousId = (await cookies()).get(ANONYMOUS_ID_COOKIE)?.value ?? null;
     await track(user.id, "signup_completed", { method, anonymous_id: anonymousId });
+    // Consent given on /signup, if this browser is the one that signed up.
+    if ((await cookies()).get(TERMS_COOKIE)?.value === TERMS_VERSION) {
+      await acceptTerms(user.id, { via: "signup" });
+    }
   }
   await logAudit(actor, "user_signed_in", target, { method });
   // ADMIN_EMAILS makes the founders admins without editing the database by hand.

@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { googleEnabled } from "@/auth";
 import { signInWithEmail, signInWithGoogle } from "@/lib/auth-actions";
 import { invitesRequired } from "@/lib/invites";
@@ -12,14 +13,16 @@ const FIELD =
   "h-12 rounded-lg border border-zinc-300 bg-transparent px-4 text-base focus-visible:outline-2 focus-visible:outline-emerald-700 dark:border-zinc-700";
 
 // One form for both ways in, so the invite code (on /signup) goes with either button.
+// On /signup (signUp) it also asks for an invite code (during the closed beta) and
+// agreement to the Terms.
 export function AuthForm({
   submitLabel,
-  askForInvite = false,
+  signUp = false,
 }: {
   submitLabel: string;
-  askForInvite?: boolean;
+  signUp?: boolean;
 }) {
-  const invite = askForInvite && invitesRequired();
+  const invite = signUp && invitesRequired();
   return (
     <form action={signInWithEmail} className="flex flex-col gap-6">
       <div className="flex flex-col gap-3">
@@ -51,6 +54,22 @@ export function AuthForm({
           placeholder="you@example.com"
           className={FIELD}
         />
+        {signUp && (
+          <label className="flex items-start gap-3 text-sm">
+            <input type="checkbox" name="consent" required className="mt-0.5 h-5 w-5" />
+            <span>
+              I agree to the{" "}
+              <Link href="/terms" className="font-medium text-emerald-700 hover:underline">
+                Terms
+              </Link>{" "}
+              and{" "}
+              <Link href="/privacy" className="font-medium text-emerald-700 hover:underline">
+                Privacy Policy
+              </Link>
+              .
+            </span>
+          </label>
+        )}
         <button type="submit" className={PRIMARY_BUTTON}>
           {submitLabel}
         </button>
