@@ -1,6 +1,8 @@
 import { BUDGET_SUGGESTION_MONTHS } from "@/config/budgets";
+import { YEARLY_BILLS_GOAL_PATTERN } from "@/config/irregular";
 import { HOME_LIST_LIMIT, UPCOMING_DAYS } from "@/config/home";
 import { budgetSummary } from "@/insights/budgets";
+import { irregularCosts } from "@/insights/irregular";
 import { loadInsightTransactions } from "@/insights/load";
 import { loadDetectionInput, moneyFound } from "@/detection/engine";
 import type { PrismaClient } from "@/generated/prisma/client";
@@ -77,6 +79,10 @@ export async function homeSummary(
           asOf,
         );
 
+  // Yearly bills (spec step 70): this month's set-aside is its own line, so a "Yearly
+  // bills" goal isn't counted again under goals.
+  const setAsideCents = irregularCosts(input).monthlyCents;
+
   const updated = [lastSync?.lastSyncedAt, lastImport?.createdAt]
     .filter((d): d is Date => d instanceof Date)
     .sort((a, b) => b.getTime() - a.getTime())[0];
@@ -99,9 +105,15 @@ export async function homeSummary(
             0,
           ),
           goalsCents: goals.reduce(
-            (sum, g) => sum + (g.progress.status === "on_the_way" ? g.progress.monthlyCents : 0),
+            (sum, g) =>
+              sum +
+              (g.progress.status === "on_the_way" &&
+              !(setAsideCents > 0 && YEARLY_BILLS_GOAL_PATTERN.test(g.name))
+                ? g.progress.monthlyCents
+                : 0),
             0,
           ),
+          setAsideCents,
         })
       : null,
     waitingOnYou: waiting.map((a) => ({

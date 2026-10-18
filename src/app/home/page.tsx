@@ -36,6 +36,10 @@ function SafeToSpendCard({ safe }: { safe: SafeToSpend }) {
     ],
     ["Left in this month's budgets", -safe.budgetsLeftCents],
     ["Toward your goals this month", -safe.goalsCents],
+    // Spec step 70: yearly and irregular bills, as this month's share.
+    ...(safe.setAsideCents > 0
+      ? [["Set aside for yearly bills", -safe.setAsideCents] as [string, number]]
+      : []),
   ];
   return (
     <section className="flex flex-col gap-2 rounded-xl border border-zinc-200 p-4 dark:border-zinc-800">
@@ -147,6 +151,9 @@ async function HomeContent() {
           </Link>
           <Link href="/things" className={LINK}>
             Things you own
+          </Link>
+          <Link href="/afford" className={LINK}>
+            Can I afford this?
           </Link>
         </span>
       </div>

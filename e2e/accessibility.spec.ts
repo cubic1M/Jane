@@ -42,6 +42,7 @@ const SIGNED_IN = [
   "/connect",
   "/import",
   "/things",
+  "/afford",
 ];
 const ADMIN = [
   "/admin/queue",
