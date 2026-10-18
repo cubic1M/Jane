@@ -5,9 +5,20 @@ const { update } = vi.hoisted(() => ({ update: vi.fn() }));
 vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
 vi.mock("@/lib/db", () => ({ db: { user: { update } } }));
 vi.mock("@/lib/session", () => ({ requireUser: vi.fn(async () => ({ id: "u1" })) }));
+vi.mock("@/lib/calendar", () => ({
+  createCalendarToken: vi.fn(async () => "tok"),
+  turnOffCalendar: vi.fn(),
+}));
 
 import { DEFAULT_ALERT_DELIVERY } from "@/config/alerts";
-import { saveAlertPreferences, saveEmailPreferences, saveState } from "./actions";
+import { createCalendarToken, turnOffCalendar } from "@/lib/calendar";
+import {
+  createCalendarLink,
+  saveAlertPreferences,
+  saveEmailPreferences,
+  saveState,
+  stopCalendar,
+} from "./actions";
 
 const form = (fields: Record<string, string>) => {
   const data = new FormData();
@@ -87,5 +98,22 @@ describe("saveState", () => {
   it("refuses anything else", async () => {
     expect(await saveState(null, form({ state: "Narnia" }))).toMatchObject({ ok: false });
     expect(update).not.toHaveBeenCalled();
+  });
+});
+
+describe("calendar link", () => {
+  it("creates a link for the signed-in person and shows it once", async () => {
+    vi.stubEnv("APP_URL", "https://app.example.com");
+    expect(await createCalendarLink()).toMatchObject({
+      ok: true,
+      link: "https://app.example.com/api/calendar/tok.ics",
+    });
+    expect(createCalendarToken).toHaveBeenCalledWith("u1");
+    vi.unstubAllEnvs();
+  });
+
+  it("turns it off", async () => {
+    expect(await stopCalendar()).toMatchObject({ ok: true });
+    expect(turnOffCalendar).toHaveBeenCalledWith("u1");
   });
 });

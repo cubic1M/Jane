@@ -20,6 +20,8 @@ export const RATE_LIMITS = {
   export: { limit: 5, windowSeconds: 60 * 60 },
   // Turning phone notifications on or off, per user.
   push: { limit: 20, windowSeconds: 10 * 60 },
+  // Calendar apps fetching the money calendar feed, per IP.
+  calendar: { limit: 120, windowSeconds: 60 * 60 },
   // Ask Jane questions, per user.
   ask: { limit: 30, windowSeconds: 60 * 60 },
   // Admin two-factor codes, per user.

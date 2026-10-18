@@ -47,6 +47,8 @@ export async function exportUserData(
         digestEnabled: true,
         alertPrefs: true,
         state: true,
+        // When the calendar link was made, not the link itself (it works as a key).
+        calendarCreatedAt: true,
         termsVersion: true,
         termsAcceptedAt: true,
       },
