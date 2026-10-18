@@ -14,6 +14,9 @@ export function AppHeader({ email }: { email: string | null | undefined }) {
         <Link href="/actions" className="hover:underline">
           Actions
         </Link>
+        <Link href="/settings" className="hover:underline">
+          Settings
+        </Link>
       </nav>
       <div className="flex min-w-0 flex-wrap items-center gap-x-4 gap-y-1">
         {/* Long emails wrap instead of pushing the page sideways on a phone. */}

@@ -4,6 +4,9 @@ import { Client } from "pg";
 // E2E_DATABASE_URL points at a scratch one. Never the live database.
 export const E2E_DATABASE_URL = process.env.E2E_DATABASE_URL;
 
+// The dev server's AUTH_SECRET in signed-in tests, so tests can sign unsubscribe links.
+export const E2E_AUTH_SECRET = process.env.AUTH_SECRET ?? "e2e-only-auth-secret-not-for-production";
+
 if (E2E_DATABASE_URL && /neon\.tech/.test(E2E_DATABASE_URL)) {
   throw new Error("E2E_DATABASE_URL looks like a hosted database; use a scratch one.");
 }
@@ -39,6 +42,17 @@ export async function deleteUser(userId: string): Promise<void> {
   await client.connect();
   try {
     await client.query(`DELETE FROM users WHERE id = $1`, [userId]);
+  } finally {
+    await client.end();
+  }
+}
+
+export async function digestEnabled(userId: string): Promise<boolean> {
+  const client = new Client({ connectionString: E2E_DATABASE_URL });
+  await client.connect();
+  try {
+    const { rows } = await client.query(`SELECT digest_enabled FROM users WHERE id = $1`, [userId]);
+    return rows[0]?.digest_enabled;
   } finally {
     await client.end();
   }
