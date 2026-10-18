@@ -4,7 +4,7 @@ import { signOutToHome } from "@/lib/auth-actions";
 export function AppHeader({ email }: { email: string | null | undefined }) {
   return (
     <header className="flex flex-wrap items-center justify-between gap-4 text-sm text-zinc-600 dark:text-zinc-400">
-      <nav className="flex gap-4 font-medium">
+      <nav className="flex flex-wrap gap-x-4 gap-y-1 font-medium">
         <Link href="/home" className="hover:underline">
           Home
         </Link>
@@ -13,6 +13,9 @@ export function AppHeader({ email }: { email: string | null | undefined }) {
         </Link>
         <Link href="/report" className="hover:underline">
           Report
+        </Link>
+        <Link href="/insights" className="hover:underline">
+          Insights
         </Link>
         <Link href="/actions" className="hover:underline">
           Actions
