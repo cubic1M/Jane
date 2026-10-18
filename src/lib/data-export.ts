@@ -41,6 +41,7 @@ export async function exportUserData(
     balanceSnapshots,
     checkIns,
     events,
+    deadlines,
   ] = await Promise.all([
     client.user.findUniqueOrThrow({
       where: { id: userId },
@@ -298,6 +299,11 @@ export async function exportUserData(
       select: { name: true, createdAt: true },
       orderBy: { createdAt: "asc" },
     }),
+    // Deadlines they typed in (spec step 71).
+    db.deadlines.findMany({
+      select: { title: true, dueOn: true, kind: true, note: true, doneAt: true, createdAt: true },
+      orderBy: { dueOn: "asc" },
+    }),
   ]);
 
   return {
@@ -330,5 +336,6 @@ export async function exportUserData(
     balanceSnapshots,
     checkIns,
     events,
+    deadlines,
   };
 }

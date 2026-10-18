@@ -221,6 +221,9 @@ describe.runIf(url)("deleting data against a real database", () => {
     await client.planLink.create({
       data: { userId, tokenHash: `hash-link-${suffix}`, items: [], expiresAt: new Date() },
     });
+    await client.deadline.create({
+      data: { userId, title: "FSA deadline", dueOn: new Date("2026-12-31"), kind: "fsa" },
+    });
     const agentAction = await client.action.findFirstOrThrow({ where: { userId } });
     await client.agentMessage.create({
       data: {
@@ -272,6 +275,7 @@ describe.runIf(url)("deleting data against a real database", () => {
       agentMessages: await client.agentMessage.count(where),
       planProposals: await client.planProposal.count(where),
       planLinks: await client.planLink.count(where),
+      deadlines: await client.deadline.count(where),
     };
   }
 

@@ -121,6 +121,9 @@ describe.runIf(url)("data export against a real database", () => {
     await client.session.create({
       data: { userId, sessionToken: `sess-${suffix}`, expires: new Date(Date.now() + 1e9) },
     });
+    await client.deadline.create({
+      data: { userId, title: `${name} FSA deadline`, dueOn: new Date("2026-12-31"), kind: "fsa" },
+    });
     return { userId, suffix };
   }
 
@@ -160,6 +163,7 @@ describe.runIf(url)("data export against a real database", () => {
       "savingsGoals",
       "balanceSnapshots",
       "events",
+      "deadlines",
     ] as const) {
       expect(data[key], key).toHaveLength(1);
     }

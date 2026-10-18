@@ -386,6 +386,26 @@ const ONE_OFF: (Template & { offsets: number[] })[] = [
     amount: 64.2,
     offsets: [-2],
   },
+  // A big recent purchase, for a return window on /deadlines (spec step 71).
+  {
+    key: "apple-store",
+    account: "card",
+    name: "APPLE STORE R102",
+    merchant: "Apple",
+    category: "GENERAL_MERCHANDISE_ELECTRONICS",
+    amount: 1349,
+    offsets: [-2],
+  },
+  // A $0.99 first charge with nothing after it yet: a trial that may end soon.
+  {
+    key: "paramount-trial",
+    account: "card",
+    name: "PARAMOUNT+",
+    merchant: "Paramount+",
+    category: "ENTERTAINMENT_TV_AND_MOVIES",
+    amount: 0.99,
+    offsets: [-6],
+  },
 ];
 
 // How far back the first sync goes, like Plaid's days_requested.

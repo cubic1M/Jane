@@ -169,6 +169,7 @@ enum AlertType {
   over_budget
   bill_due
   renews_soon
+  deadline_soon
 
   @@map("alert_type")
 }
@@ -265,6 +266,7 @@ model User {
   agentMessages       AgentMessage[]
   planProposals       PlanProposal[]
   planLinks           PlanLink[]
+  deadlines           Deadline[]
   sessions            Session[]
   plaidItems          PlaidItem[]
   accounts            Account[]
@@ -1283,4 +1285,34 @@ model PlanLink {
 
   @@index([userId])
   @@map("plan_links")
+}
+
+// What kind of hand-entered deadline it is (spec step 71).
+enum DeadlineKind {
+  fsa
+  card_benefit
+  warranty
+  other
+
+  @@map("deadline_kind")
+}
+
+// Deadlines the person typed in themselves (spec step 71): an FSA deadline, a card benefit
+// to use ("my $200 travel credit by Dec 31"), a warranty, anything else. Shown on
+// /deadlines with the ones Jane works out from transactions, and reminded about.
+model Deadline {
+  id        String       @id @default(cuid())
+  userId    String       @map("user_id")
+  title     String
+  dueOn     DateTime     @map("due_on") @db.Date
+  kind      DeadlineKind @default(other)
+  note      String?
+  doneAt    DateTime?    @map("done_at") @db.Timestamptz(3)
+  createdAt DateTime     @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt DateTime     @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, dueOn])
+  @@map("deadlines")
 }
