@@ -406,6 +406,34 @@ const ONE_OFF: (Template & { offsets: number[] })[] = [
     amount: 0.99,
     offsets: [-6],
   },
+  // Donations and medical bills, so the tax-time pack has something to show (spec step 72).
+  {
+    key: "red-cross",
+    account: "card",
+    name: "AMERICAN RED CROSS DONATION",
+    merchant: "American Red Cross",
+    category: "GOVERNMENT_AND_NON_PROFIT_DONATIONS",
+    amount: 50,
+    offsets: [-150, -40],
+  },
+  {
+    key: "pharmacy",
+    account: "card",
+    name: "CVS/PHARMACY #08812",
+    merchant: "CVS Pharmacy",
+    category: "MEDICAL_PHARMACIES_AND_SUPPLEMENTS",
+    amount: 23.4,
+    offsets: [-75, -18],
+  },
+  {
+    key: "dentist",
+    account: "checking",
+    name: "BRIGHT SMILES DENTAL",
+    merchant: null,
+    category: "MEDICAL_DENTAL_CARE",
+    amount: 180,
+    offsets: [-52],
+  },
   // Spec step 70: the yearly car registration, paid five months ago.
   {
     key: "dmv",

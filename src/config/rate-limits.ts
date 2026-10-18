@@ -30,6 +30,8 @@ export const RATE_LIMITS = {
   mfa: { limit: 5, windowSeconds: 10 * 60 },
   // Uploading documents (each may be read by Claude), per user.
   documents: { limit: 20, windowSeconds: 60 * 60 },
+  // Tax-time pack CSV downloads, per user (spec step 72).
+  taxPack: { limit: 30, windowSeconds: 60 * 60 },
 } satisfies Record<string, Limit>;
 
 export type LimitName = keyof typeof RATE_LIMITS;

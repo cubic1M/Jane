@@ -13,7 +13,10 @@ import {
   LARGE_CHARGE_MIN_HISTORY,
   NON_SPENDING_CATEGORIES,
 } from "@/config/detection";
+import { ESTIMATED_TAX_ALERT_DAYS, SELF_EMPLOYED_INCOME_CATEGORIES } from "@/config/tax-pack";
 import { formatCents } from "@/lib/money";
+import { nextEstimatedTaxDate } from "@/planning/tax-pack";
+import { estimatedTaxAlertCopy } from "@/planning/tax-pack-copy";
 import { byDate, inList, inLookback } from "./helpers";
 import { expectedDates, forecastAccounts, upcomingBills } from "./forecast";
 import { duplicatePairs } from "./rules/duplicate-charge";
@@ -235,6 +238,19 @@ export function renewalAlerts(input: DetectionInput, streams: Stream[]): AlertCa
     );
 }
 
+// The next IRS estimated-payment date, ESTIMATED_TAX_ALERT_DAYS ahead, for people with
+// contracting or gig income in the lookback (spec step 72). Keyed by the date, so it's raised
+// once per date. A reminder only: never an amount.
+export function estimatedTaxAlerts(input: DetectionInput): AlertCandidate[] {
+  const hasIncome = input.transactions.some(
+    (t) => t.amountCents < 0 && inList(t.pfcDetailed, SELF_EMPLOYED_INCOME_CATEGORIES),
+  );
+  if (!hasIncome) return [];
+  const date = nextEstimatedTaxDate(input.asOf);
+  if (date > addDays(input.asOf, ESTIMATED_TAX_ALERT_DAYS)) return [];
+  return [{ type: "estimated_tax", key: date, ...estimatedTaxAlertCopy(shortDate(date)) }];
+}
+
 // Every alert for this scan, in a stable order.
 export function detectAlerts(
   input: DetectionInput,
@@ -251,5 +267,6 @@ export function detectAlerts(
     ...newSubscriptionAlerts(input, candidates, context),
     ...billReminderAlerts(input),
     ...renewalAlerts(input, streams),
+    ...estimatedTaxAlerts(input),
   ];
 }

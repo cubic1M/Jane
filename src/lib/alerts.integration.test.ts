@@ -70,6 +70,24 @@ describe.runIf(url)("raiseAlerts against a real database", () => {
     expect(send).not.toHaveBeenCalled();
   });
 
+  it("raises an estimated-payment reminder once per date, in the app only", async () => {
+    const user = await person();
+    const reminder = alert({ type: "estimated_tax", key: "2027-01-15" });
+    const later = new Date(NOW.getTime() + 24 * HOUR);
+    await raiseAlerts(user.id, [reminder], { client, now: NOW, send });
+    await raiseAlerts(user.id, [reminder], { client, now: later, send });
+    await raiseAlerts(user.id, [alert({ type: "estimated_tax", key: "2027-04-15" })], {
+      client,
+      now: later,
+      send,
+    });
+
+    const rows = await alertsOf(user.id);
+    expect(rows.map((r) => r.key)).toEqual(["2027-01-15", "2027-04-15"]);
+    expect(rows.every((r) => !r.urgent)).toBe(true);
+    expect(send).not.toHaveBeenCalled();
+  });
+
   it("emails an urgent alert right away, with an unsubscribe header", async () => {
     const user = await person();
 

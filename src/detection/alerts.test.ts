@@ -16,6 +16,7 @@ import {
   billReminderAlerts,
   detectAlerts,
   duplicateChargeAlerts,
+  estimatedTaxAlerts,
   feeAlerts,
   largeChargeAlerts,
   lowBalanceAlerts,
@@ -298,5 +299,42 @@ describe("bill_due", () => {
       }),
     );
     expect(november.map((a) => a.key)).toEqual(["Geico:2026-11-17"]);
+  });
+});
+
+describe("estimated_tax", () => {
+  const gig = tx({
+    accountId: CHECKING.id,
+    date: "2026-11-20",
+    amountCents: -80_000,
+    description: "UPWORK ESCROW",
+    pfcPrimary: "INCOME",
+    pfcDetailed: "INCOME_CONTRACTOR",
+  });
+  const on = (asOf: string, transactions = [gig]) =>
+    estimatedTaxAlerts(input({ asOf, transactions }));
+
+  it("reminds 14 days before the next date, for people with contracting or gig income", () => {
+    expect(on("2027-01-01")).toEqual([
+      expect.objectContaining({
+        type: "estimated_tax",
+        key: "2027-01-15",
+        title: "IRS estimated-payment date: Jan 15",
+      }),
+    ]);
+    expect(on("2027-01-01")[0].body).toContain("this is not tax advice.");
+    expect(on("2027-01-01")[0].body).not.toMatch(/\$/);
+  });
+
+  it("uses the date as the key, so each date is raised once", () => {
+    expect(keys(on("2027-01-01"))).toEqual(keys(on("2027-01-15")));
+    expect(keys(on("2027-04-02"))).toEqual(["2027-04-15"]);
+  });
+
+  it("says nothing earlier than 14 days out, or without such income", () => {
+    expect(on("2026-12-31")).toEqual([]);
+    expect(on("2027-01-01", [{ ...gig, pfcDetailed: "INCOME_SALARY" }])).toEqual([]);
+    // Money out in the category (a payment back) isn't income.
+    expect(on("2027-01-01", [{ ...gig, amountCents: 80_000 }])).toEqual([]);
   });
 });

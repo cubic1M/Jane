@@ -71,7 +71,9 @@ export type AuditEvent =
   | "document_read"
   | "document_viewed"
   | "document_facts_saved"
-  | "document_deleted";
+  | "document_deleted"
+  // The tax-time pack downloaded as a CSV (spec step 72).
+  | "tax_pack_downloaded";
 
 export type AuditActor = { type: ActorType; id: string | null };
 

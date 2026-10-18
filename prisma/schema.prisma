@@ -170,6 +170,9 @@ enum AlertType {
   bill_due
   renews_soon
   deadline_soon
+  // The IRS estimated-payment date is coming up, for people with contracting or gig
+  // income (spec step 72).
+  estimated_tax
 
   @@map("alert_type")
 }
@@ -294,6 +297,7 @@ model User {
   balanceSnapshots    BalanceSnapshot[]
   checkIns            CheckIn[]
   documents           Document[]
+  lifeEvents          LifeEvent[]
 
   @@map("users")
 }
@@ -1378,4 +1382,24 @@ model Deadline {
 
   @@index([userId, dueOn])
   @@map("deadlines")
+}
+
+// A life-event checklist (spec step 72): moving, a new job or a new baby. The items live in
+// src/config/life-events.ts; this row keeps which ones the person has ticked.
+model LifeEvent {
+  id           String    @id @default(cuid())
+  userId       String    @map("user_id")
+  // moving, new_job or new_baby (LIFE_EVENT_KINDS).
+  kind         String
+  startedOn    DateTime  @map("started_on") @db.Date
+  // Keys of the items ticked so far.
+  checkedItems String[]  @default([]) @map("checked_items")
+  createdAt    DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt    DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
+  completedAt  DateTime? @map("completed_at") @db.Timestamptz(3)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("life_events")
 }
