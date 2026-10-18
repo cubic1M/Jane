@@ -4,6 +4,7 @@ import { listMerchants } from "@/lib/merchants";
 import { requireAdmin } from "@/lib/session";
 import { AdminNav } from "../admin-nav";
 import { MerchantForm, type MerchantFormValues } from "./merchant-form";
+import { confirmSuggestion } from "./actions";
 
 const CATEGORIES = Object.values(PFC_TAXONOMY).flat().sort();
 
@@ -44,6 +45,58 @@ async function Merchants() {
           <MerchantForm values={EMPTY} categories={CATEGORIES} />
         </div>
       </details>
+
+      {merchants.some((m) => m.suggestedSupportEmail) && (
+        <section className="flex flex-col gap-2 rounded-xl border border-amber-300 p-4 dark:border-amber-800">
+          <h2 className="font-semibold">Support emails Jane found</h2>
+          <p className="text-sm text-zinc-600 dark:text-zinc-400">
+            Found on each company&apos;s own site. The agent only writes to one after you confirm
+            it, then picks up the requests it had passed on.
+          </p>
+          <ul className="flex flex-col divide-y divide-zinc-200 dark:divide-zinc-800">
+            {merchants
+              .filter((m) => m.suggestedSupportEmail)
+              .map((m) => (
+                <li key={m.id} className="flex flex-wrap items-center justify-between gap-2 py-2">
+                  <span className="flex min-w-0 flex-col">
+                    <span className="font-medium [overflow-wrap:anywhere]">
+                      {m.name}: {m.suggestedSupportEmail}
+                    </span>
+                    {m.suggestedSupportSource && (
+                      <a
+                        href={m.suggestedSupportSource}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-xs text-emerald-700 [overflow-wrap:anywhere] hover:underline"
+                      >
+                        Where it was found
+                      </a>
+                    )}
+                  </span>
+                  <form action={confirmSuggestion} className="flex gap-2">
+                    <input type="hidden" name="id" value={m.id} />
+                    <button
+                      type="submit"
+                      name="accept"
+                      value="yes"
+                      className="rounded-full bg-emerald-700 px-3 py-1 text-sm font-semibold text-white hover:bg-emerald-800"
+                    >
+                      Use it<span className="sr-only"> for {m.name}</span>
+                    </button>
+                    <button
+                      type="submit"
+                      name="accept"
+                      value="no"
+                      className="rounded-full border border-zinc-300 px-3 py-1 text-sm font-semibold hover:bg-zinc-100 dark:border-zinc-700 dark:hover:bg-zinc-900"
+                    >
+                      Not right<span className="sr-only"> for {m.name}</span>
+                    </button>
+                  </form>
+                </li>
+              ))}
+          </ul>
+        </section>
+      )}
 
       <ul className="flex flex-col gap-3">
         {merchants.map((m) => (

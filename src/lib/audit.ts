@@ -53,6 +53,8 @@ export type AuditEvent =
   | "standing_rules_saved"
   | "autopilot_set"
   | "plan_link_used"
+  | "support_contact_suggested"
+  | "support_contact_confirmed"
   | "proposal_answered"
   // The action agent (src/lib/agent/run.ts).
   | "agent_message_sent"

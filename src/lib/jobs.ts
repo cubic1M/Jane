@@ -7,7 +7,7 @@ import {
 } from "@/config/jobs";
 import type { PrismaClient } from "@/generated/prisma/client";
 import { db as defaultClient } from "@/lib/db";
-import { agentStep, handleReply } from "@/lib/agent/run";
+import { agentStep, handleReply, lookUpSupportFor } from "@/lib/agent/run";
 import { simulatedReply } from "@/lib/agent/simulated-company";
 import { simulatedCallResult } from "@/lib/voice/calls";
 import { explainFindings } from "@/lib/explanations";
@@ -19,7 +19,11 @@ import { scrub } from "@/lib/scrub";
 // on /admin/jobs. Payloads hold ids only.
 
 export type JobKind =
-  "explain_findings" | "agent_step" | "agent_simulated_reply" | "voice_simulated_result";
+  | "explain_findings"
+  | "agent_step"
+  | "agent_simulated_reply"
+  | "voice_simulated_result"
+  | "find_support_contact";
 export type JobPayload = { userId: string; actionId?: string };
 // Tests pass only the handlers they need; a job with no handler fails like any error.
 export type Handlers = Partial<Record<JobKind, (payload: JobPayload) => Promise<unknown>>>;
@@ -37,6 +41,7 @@ export const HANDLERS: Required<Handlers> = {
       deliver: (toAddress, mail) => handleReply(toAddress, mail),
     }),
   voice_simulated_result: (payload) => simulatedCallResult(payload.userId, actionIdOf(payload)),
+  find_support_contact: (payload) => lookUpSupportFor(payload.userId, actionIdOf(payload)),
 };
 
 type Options = { client?: PrismaClient; now?: Date; handlers?: Handlers };

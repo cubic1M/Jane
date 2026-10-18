@@ -98,14 +98,18 @@ describe("merchants table", () => {
         "reviewedAt",
         // The company's own address (validated: never a personal mail service).
         "supportEmail",
+        // One the agent found on the company's own site, until the team confirms it.
+        "suggestedAt",
+        "suggestedSupportEmail",
+        "suggestedSupportSource",
         "supportPhone",
         "supportUrl",
         "typicalMonthlyCents",
         "updatedAt",
       ].sort(),
     );
-    // Nothing else mentions users or email: only the company support address above.
-    expect(model.replace(/^\s*supportEmail\b.*$/m, "")).not.toMatch(
+    // Nothing else mentions users or email: only the company support addresses above.
+    expect(model.replace(/^\s*(supportEmail|suggestedSupportEmail)\b.*$/gm, "")).not.toMatch(
       /\bUser\b|userId|email|account/i,
     );
   });
