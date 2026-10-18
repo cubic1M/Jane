@@ -7,7 +7,7 @@ export async function TextsSection({ userId }: { userId: string }) {
   const view = await textSettingsFor(userId);
   return (
     <section id="texts" className="flex scroll-mt-8 flex-col gap-3">
-      <h2 className="text-xl font-semibold">Texts</h2>
+      <h3 className="text-lg font-semibold">Texts</h3>
       <p className="text-zinc-600 dark:text-zinc-400">
         Get Jane&apos;s urgent alerts, your weekly plan and things that need you by text (iMessage,
         or SMS). Answer the plan with YES, the numbers you want, or NO.

@@ -68,19 +68,53 @@ describe.runIf(url)("home summary against a real database", () => {
     expect(await homeSummary(emptyId, { client, now: NOW })).toBeNull();
   });
 
-  it("matches the report's numbers and lists what's new and coming up", async () => {
+  it("matches the report's numbers and lists the plan and what's coming up", async () => {
     const home = await homeSummary(userId, { client, now: NOW });
 
     expect(home?.moneyFoundCents).toBe(await moneyFound(userId, { client }));
     expect(home?.savedToDateCents).toBe(0);
-    expect(home?.newestFindings.map((f) => f.title).sort()).toEqual([
-      "$34.00 in fees on Checking in the last 12 months",
-      "Review your Netflix subscription",
-    ]);
-    expect(home?.upcoming).toEqual([
-      { merchant: "Netflix", date: "2026-11-15", amountCents: 1549 },
+    // Spec step 79: the plan card's count and total are /plan's.
+    const open = await client.finding.findMany({
+      where: { userId, status: { in: ["new", "shown"] } },
+      select: { annualSavingsCents: true },
+    });
+    expect(home?.plan).toEqual({
+      items: 2,
+      annualSavingsCents: open.reduce((sum, f) => sum + (f.annualSavingsCents ?? 0), 0),
+    });
+    expect(home?.newToDecide).toBe(2);
+    expect(home?.comingUp).toEqual([
+      {
+        key: "bill:Netflix:2026-11-15",
+        date: "2026-11-15",
+        label: "Netflix",
+        amountCents: 1549,
+        daysLeft: 31,
+        href: "/bills",
+      },
     ]);
     expect(home?.lastUpdated).toBeInstanceOf(Date);
+  });
+
+  it("counts only findings not seen yet as new, and lists the person's own deadlines", async () => {
+    const [first] = await client.finding.findMany({ where: { userId }, orderBy: { id: "asc" } });
+    await client.finding.update({ where: { id: first.id }, data: { status: "shown" } });
+    const deadline = await client.deadline.create({
+      data: { userId, title: "Use FSA money", dueOn: new Date("2026-10-30"), kind: "fsa" },
+    });
+
+    const home = await homeSummary(userId, { client, now: NOW });
+    expect(home?.plan.items).toBe(2);
+    expect(home?.newToDecide).toBe(1);
+    expect(home?.comingUp[0]).toMatchObject({
+      label: "Use FSA money",
+      amountCents: null,
+      daysLeft: 15,
+      href: "/deadlines",
+    });
+
+    await client.finding.update({ where: { id: first.id }, data: { status: "new" } });
+    await client.deadline.delete({ where: { id: deadline.id } });
   });
 
   it("counts unread alerts, leaving out read ones and types turned off", async () => {
@@ -109,12 +143,9 @@ describe.runIf(url)("home summary against a real database", () => {
       data: { userId, name: "Trip", targetCents: 120_000, targetDate: new Date("2027-10-15") },
     });
     const home = await homeSummary(userId, { client, now: NOW });
-    const budgetLeft = (home?.budgets?.progress ?? []).reduce(
-      (sum, p) => sum + Math.max(0, p.leftCents),
-      0,
-    );
+    // $50.00 for entertainment, less October's $15.49 Netflix.
     expect(home?.safeToSpend).toMatchObject({
-      budgetsLeftCents: budgetLeft,
+      budgetsLeftCents: 5_000 - 1_549,
       goalsCents: 10_000,
     });
     const safe = home?.safeToSpend;

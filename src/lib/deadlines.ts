@@ -5,6 +5,7 @@ import {
 } from "@/config/deadlines";
 import { loadDetectionInput } from "@/detection/engine";
 import { buildStreams } from "@/detection/streams";
+import type { DetectionInput } from "@/detection/types";
 import { isoDate } from "@/detection/units";
 import type { PrismaClient } from "@/generated/prisma/client";
 import {
@@ -34,23 +35,27 @@ export type SourceOptions = { client: PrismaClient; now: Date };
 // One place deadlines come from. Each gets the person's id and returns their deadlines.
 export type DeadlineSource = (userId: string, options: SourceOptions) => Promise<Deadline[]>;
 
-// Renewals, trials and return windows, from the transactions.
-export const transactionDeadlines: DeadlineSource = async (userId, { client, now }) => {
-  const [input, confirmed] = await Promise.all([
-    loadDetectionInput(userId, { client, now }),
-    scopedFor(userId, client).subscriptionChecks.findMany({
+// Renewals, trials and return windows, from transactions already loaded (Today has them
+// to hand, spec step 79).
+export const transactionDeadlinesFrom =
+  (loaded: DetectionInput): DeadlineSource =>
+  async (userId, { client }) => {
+    const confirmed = await scopedFor(userId, client).subscriptionChecks.findMany({
       where: { isSubscription: true },
       select: { merchantKey: true },
-    }),
-  ]);
-  input.subscriptionMerchantKeys = confirmed.map((c) => c.merchantKey);
-  const streams = buildStreams(input);
-  return [
-    ...renewalDeadlines(input, streams),
-    ...trialDeadlines(input),
-    ...returnDeadlines(input, streams),
-  ];
-};
+    });
+    const input = { ...loaded, subscriptionMerchantKeys: confirmed.map((c) => c.merchantKey) };
+    const streams = buildStreams(input);
+    return [
+      ...renewalDeadlines(input, streams),
+      ...trialDeadlines(input),
+      ...returnDeadlines(input, streams),
+    ];
+  };
+
+// Renewals, trials and return windows, from the transactions.
+export const transactionDeadlines: DeadlineSource = async (userId, options) =>
+  transactionDeadlinesFrom(await loadDetectionInput(userId, options))(userId, options);
 
 // Card and loan due dates the bank reports (spec step 65).
 export const loanDeadlines: DeadlineSource = async (userId, { client, now }) => {
