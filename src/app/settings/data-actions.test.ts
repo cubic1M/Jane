@@ -1,0 +1,64 @@
+import { beforeEach, describe, expect, it, vi } from "vitest";
+
+vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
+vi.mock("next/navigation", () => ({
+  redirect: vi.fn((path: string) => {
+    throw new Error(`redirect:${path}`);
+  }),
+}));
+vi.mock("@/lib/db", () => ({ db: {} }));
+vi.mock("@/lib/session", () => ({ requireUser: vi.fn(async () => ({ id: "u1" })) }));
+vi.mock("@/detection/engine", () => ({ runDetection: vi.fn() }));
+vi.mock("@/lib/account-deletion", () => ({ deleteAllData: vi.fn() }));
+vi.mock("@/lib/plaid/remove", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/plaid/remove")>()),
+  removePlaidItem: vi.fn(),
+}));
+
+import { runDetection } from "@/detection/engine";
+import { deleteAllData } from "@/lib/account-deletion";
+import { ItemMissingError, removePlaidItem } from "@/lib/plaid/remove";
+import { deleteMyData, disconnectBank } from "./actions";
+
+const form = (fields: Record<string, string>) => {
+  const data = new FormData();
+  for (const [k, v] of Object.entries(fields)) data.set(k, v);
+  return data;
+};
+
+describe("deleteMyData", () => {
+  beforeEach(() => vi.mocked(deleteAllData).mockReset());
+
+  it("needs DELETE typed exactly", async () => {
+    for (const confirm of ["", "delete", "DELETE "]) {
+      expect(await deleteMyData(null, form({ confirm }))).toMatchObject({ ok: false });
+    }
+    expect(deleteAllData).not.toHaveBeenCalled();
+  });
+
+  it("deletes the signed-in person's data and says goodbye", async () => {
+    await expect(deleteMyData(null, form({ confirm: "DELETE" }))).rejects.toThrow(
+      "redirect:/goodbye",
+    );
+    expect(deleteAllData).toHaveBeenCalledWith("u1");
+  });
+});
+
+describe("disconnectBank", () => {
+  beforeEach(() => {
+    vi.mocked(removePlaidItem).mockReset();
+    vi.mocked(runDetection).mockReset();
+  });
+
+  it("removes the bank and refreshes findings", async () => {
+    expect(await disconnectBank(null, form({ itemId: "item1" }))).toMatchObject({ ok: true });
+    expect(removePlaidItem).toHaveBeenCalledWith("u1", "item1", "user_disconnected");
+    expect(runDetection).toHaveBeenCalledWith("u1");
+  });
+
+  it("refuses an item the person doesn't have", async () => {
+    vi.mocked(removePlaidItem).mockRejectedValue(new ItemMissingError());
+    expect(await disconnectBank(null, form({ itemId: "x" }))).toMatchObject({ ok: false });
+    expect(runDetection).not.toHaveBeenCalled();
+  });
+});

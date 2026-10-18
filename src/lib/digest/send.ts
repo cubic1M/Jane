@@ -109,54 +109,60 @@ export async function runDigests({
   };
 
   for (const user of users) {
-    const week = weekStart(now, user.timezone);
-    const db = scopedFor(user.id, client);
-    if (await db.digests.findFirst({ where: { weekStart: week }, select: { id: true } })) {
-      run.alreadySent += 1;
-      continue;
-    }
-    const payload = await payloadFor(user.id, now, client);
-    if (!payload) {
-      run.skipped += 1;
-      continue;
-    }
-
-    if (dryRun) {
-      const email = renderDigest(payload, linksFor("preview", user.id));
-      run.previews.push({ userId: user.id, subject: email.subject, text: email.text });
-      continue;
-    }
-
-    const digest = await db.digests.create({
-      data: { userId: user.id, weekStart: week, payload: payload as DigestPayload },
-      select: { id: true },
-    });
-    const links = linksFor(digest.id, user.id);
-    const email = renderDigest(payload, links);
+    // One person's problem (e.g. their account deleted mid-run) never stops the rest.
     try {
-      await send({
-        to: user.email,
-        ...email,
-        headers: {
-          // One-click unsubscribe from the mail app (RFC 8058).
-          "List-Unsubscribe": `<${appBase()}/api/unsubscribe?token=${unsubscribeToken(user.id)}>`,
-          "List-Unsubscribe-Post": "List-Unsubscribe=One-Click",
-        },
+      const week = weekStart(now, user.timezone);
+      const db = scopedFor(user.id, client);
+      if (await db.digests.findFirst({ where: { weekStart: week }, select: { id: true } })) {
+        run.alreadySent += 1;
+        continue;
+      }
+      const payload = await payloadFor(user.id, now, client);
+      if (!payload) {
+        run.skipped += 1;
+        continue;
+      }
+
+      if (dryRun) {
+        const email = renderDigest(payload, linksFor("preview", user.id));
+        run.previews.push({ userId: user.id, subject: email.subject, text: email.text });
+        continue;
+      }
+
+      const digest = await db.digests.create({
+        data: { userId: user.id, weekStart: week, payload: payload as DigestPayload },
+        select: { id: true },
       });
+      const links = linksFor(digest.id, user.id);
+      const email = renderDigest(payload, links);
+      try {
+        await send({
+          to: user.email,
+          ...email,
+          headers: {
+            // One-click unsubscribe from the mail app (RFC 8058).
+            "List-Unsubscribe": `<${appBase()}/api/unsubscribe?token=${unsubscribeToken(user.id)}>`,
+            "List-Unsubscribe-Post": "List-Unsubscribe=One-Click",
+          },
+        });
+      } catch (error) {
+        // Remove the row so tomorrow's run tries again.
+        await db.digests.deleteMany({ where: { id: digest.id } });
+        console.error("Digest email failed", { userId: user.id, error: String(error) });
+        run.failed += 1;
+        continue;
+      }
+      await db.digests.updateMany({ where: { id: digest.id }, data: { sentAt: now } });
+      await track(user.id, "digest_sent", {
+        saved_this_week_cents: payload.savedThisWeekCents,
+        pending: payload.pending.length,
+        new_findings: payload.newFindings.length,
+      });
+      run.sent += 1;
     } catch (error) {
-      // Remove the row so tomorrow's run tries again.
-      await db.digests.deleteMany({ where: { id: digest.id } });
-      console.error("Digest email failed", { userId: user.id, error: String(error) });
+      console.error("Digest failed", { userId: user.id, error: String(error) });
       run.failed += 1;
-      continue;
     }
-    await db.digests.updateMany({ where: { id: digest.id }, data: { sentAt: now } });
-    await track(user.id, "digest_sent", {
-      saved_this_week_cents: payload.savedThisWeekCents,
-      pending: payload.pending.length,
-      new_findings: payload.newFindings.length,
-    });
-    run.sent += 1;
   }
   return run;
 }

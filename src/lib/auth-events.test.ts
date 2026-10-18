@@ -34,7 +34,7 @@ describe("recordSignIn", () => {
     });
   });
 
-  it("only logs sign-in for a returning user", async () => {
+  it("logs and tracks only the sign-in for a returning user", async () => {
     await recordSignIn({
       user: { id: "user_1" },
       account: { provider: "google" },
@@ -43,7 +43,8 @@ describe("recordSignIn", () => {
 
     expect(logAudit).toHaveBeenCalledOnce();
     expect(logAudit).toHaveBeenCalledWith(USER, "user_signed_in", USER, { method: "google" });
-    expect(track).not.toHaveBeenCalled();
+    expect(track).toHaveBeenCalledOnce();
+    expect(track).toHaveBeenCalledWith("user_1", "signed_in", { method: "google" });
   });
 
   it("tracks sign-up without an anonymous id when the visitor has none", async () => {

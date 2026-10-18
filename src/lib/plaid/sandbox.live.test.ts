@@ -8,7 +8,9 @@ vi.mock("@/lib/session", () => ({ requireUser: vi.fn() }));
 vi.mock("@/lib/analytics", () => ({ track: vi.fn() }));
 vi.mock("@/lib/audit", () => ({ logAudit: vi.fn() }));
 
-import { plaid, plaidCall } from "./client";
+import { deleteAllData } from "@/lib/account-deletion";
+import { decrypt } from "@/lib/crypto";
+import { PlaidRequestError, plaid, plaidCall } from "./client";
 import { exchangePublicToken } from "./link";
 import { syncItem } from "./sync";
 
@@ -81,5 +83,17 @@ describe.runIf(enabled)("Plaid Sandbox, end to end", () => {
     });
     console.log("Sandbox findings", findings);
     expect(findings.map((f) => f.type)).toContain("subscription_review");
+
+    // "Delete all my data": Plaid forgets the item and no rows remain.
+    const stored = await client.plaidItem.findUniqueOrThrow({ where: { id: itemId } });
+    const accessToken = decrypt(stored.accessTokenEncrypted);
+    await deleteAllData(userId, { client });
+    expect(await client.user.count({ where: { id: userId } })).toBe(0);
+    expect(await client.transaction.count({ where: { userId } })).toBe(0);
+    const after = await plaidCall(plaid().transactionsSync({ access_token: accessToken })).catch(
+      (e: unknown) => e,
+    );
+    expect(after).toBeInstanceOf(PlaidRequestError);
+    console.log("Plaid after removal", { code: (after as PlaidRequestError).code });
   }, 120_000);
 });

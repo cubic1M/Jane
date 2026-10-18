@@ -4,6 +4,9 @@ const { findMany } = vi.hoisted(() => ({ findMany: vi.fn() }));
 
 vi.mock("@/lib/db", () => ({ db: { plaidItem: { findMany } } }));
 vi.mock("@/lib/plaid/sync", () => ({ syncItem: vi.fn(), ITEM_STATUS: { active: "active" } }));
+vi.mock("@/lib/plaid/inactive", () => ({
+  runInactiveCleanup: vi.fn(async () => ({ warned: 0, removed: 1, failed: 0 })),
+}));
 
 import { syncItem } from "@/lib/plaid/sync";
 import { GET } from "./route";
@@ -38,7 +41,11 @@ describe("GET /api/cron/plaid-sync", () => {
 
     const response = await call("Bearer cron-secret");
 
-    expect(await response.json()).toEqual({ synced: 1, failed: 1 });
+    expect(await response.json()).toEqual({
+      synced: 1,
+      failed: 1,
+      inactive: { warned: 0, removed: 1, failed: 0 },
+    });
     expect(syncItem).toHaveBeenCalledWith("a");
     expect(syncItem).toHaveBeenCalledWith("b");
     const where = findMany.mock.calls[0][0].where;

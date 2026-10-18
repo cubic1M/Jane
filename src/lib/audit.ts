@@ -17,7 +17,9 @@ export type AuditEvent =
   | "admin_viewed_action"
   | "admin_viewed_metrics"
   | "action_status_changed"
-  | "membership_paid";
+  | "membership_paid"
+  | "item_removed"
+  | "user_data_deleted";
 
 export type AuditActor = { type: ActorType; id: string | null };
 
