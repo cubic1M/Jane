@@ -124,6 +124,9 @@ describe.runIf(url)("deleting data against a real database", () => {
     await client.alert.create({
       data: { userId, type: "fee_charged", key: "tx_1", title: "Fee", body: "b" },
     });
+    await client.pushSubscription.create({
+      data: { userId, endpoint: `https://push.example/${suffix}`, p256dh: "p", auth: "a" },
+    });
     const household = await client.household.create({ select: { id: true } });
     await client.householdMember.create({ data: { householdId: household.id, userId } });
     await client.householdInvite.create({
@@ -172,6 +175,7 @@ describe.runIf(url)("deleting data against a real database", () => {
       askMessages: await client.askMessage.count(where),
       householdMembers: await client.householdMember.count(where),
       householdInvites: await client.householdInvite.count(where),
+      pushSubscriptions: await client.pushSubscription.count(where),
       sessions: await client.session.count(where),
       authAccounts: await client.authAccount.count(where),
     };

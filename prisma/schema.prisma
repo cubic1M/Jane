@@ -194,6 +194,7 @@ model User {
   askMessages        AskMessage[]
   householdMember    HouseholdMember?
   householdInvites   HouseholdInvite[]
+  pushSubscriptions  PushSubscription[]
 
   @@map("users")
 }
@@ -627,6 +628,23 @@ model HouseholdInvite {
   @@index([householdId])
   @@index([userId])
   @@map("household_invites")
+}
+
+// A browser or phone that asked for notifications (Web Push). Only used when VAPID keys
+// are set; urgent alerts then go here instead of email.
+model PushSubscription {
+  id        String   @id @default(cuid())
+  userId    String   @map("user_id")
+  // The push service URL for this device. Works as a credential, so it's never exported.
+  endpoint  String   @unique
+  p256dh    String
+  auth      String
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("push_subscriptions")
 }
 
 // Invite codes keep the beta closed: signing up needs a code with uses left.

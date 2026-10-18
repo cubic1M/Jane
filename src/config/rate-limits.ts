@@ -18,6 +18,8 @@ export const RATE_LIMITS = {
   unsubscribe: { limit: 20, windowSeconds: 10 * 60 },
   // "Download my data", per user.
   export: { limit: 5, windowSeconds: 60 * 60 },
+  // Turning phone notifications on or off, per user.
+  push: { limit: 20, windowSeconds: 10 * 60 },
   // Ask Jane questions, per user.
   ask: { limit: 30, windowSeconds: 60 * 60 },
   // Admin two-factor codes, per user.

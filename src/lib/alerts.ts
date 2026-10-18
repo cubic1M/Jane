@@ -1,5 +1,6 @@
 import {
   ALERT_EMAILS_PER_DAY,
+  ALERT_LABELS,
   ALERT_TYPES,
   ALERTS_PAGE_LIMIT,
   DEFAULT_ALERT_DELIVERY,
@@ -15,6 +16,7 @@ import { scopedFor } from "@/lib/db-scoped";
 import { appBase } from "@/lib/digest/links";
 import { unsubscribeToken } from "@/lib/digest/unsubscribe";
 import { sendEmail } from "@/lib/email";
+import { pushEnabled, sendPush } from "@/lib/push";
 
 // Saving alerts and emailing the urgent ones. Which alerts exist is decided in
 // src/detection/alerts.ts; this module applies the person's preferences, makes sure each
@@ -46,7 +48,12 @@ export function withoutAlertEmails(prefs: AlertPrefs): AlertPrefs {
   ) as AlertPrefs;
 }
 
-type Options = { client?: PrismaClient; now?: Date; send?: typeof sendEmail };
+type Options = {
+  client?: PrismaClient;
+  now?: Date;
+  send?: typeof sendEmail;
+  push?: typeof sendPush;
+};
 
 // Stores the alerts the person hasn't turned off. An event already stored (same type and
 // key) is skipped by the unique index, so rescans never raise it twice. Then emails any
@@ -54,7 +61,7 @@ type Options = { client?: PrismaClient; now?: Date; send?: typeof sendEmail };
 export async function raiseAlerts(
   userId: string,
   alerts: AlertCandidate[],
-  { client = defaultClient, now = new Date(), send = sendEmail }: Options = {},
+  { client = defaultClient, now = new Date(), send = sendEmail, push = sendPush }: Options = {},
 ): Promise<{ raised: number; emailed: number }> {
   const user = await client.user.findUnique({
     where: { id: userId },
@@ -76,16 +83,17 @@ export async function raiseAlerts(
     for (const row of created) byType[row.type] += 1;
     await track(userId, "alerts_raised", { ...byType, total: created.length });
   }
-  const emailed = await emailUrgentAlerts(userId, { client, now, send });
+  const emailed = await emailUrgentAlerts(userId, { client, now, send, push });
   return { raised: created.length, emailed };
 }
 
-// Emails urgent alerts from the last day that haven't gone out, oldest first, while the
-// person is under ALERT_EMAILS_PER_DAY in the last 24 hours. Whatever doesn't fit (or
-// fails to send) appears in the weekly email instead.
+// Sends urgent alerts from the last day that haven't gone out, oldest first, while the
+// person is under ALERT_EMAILS_PER_DAY in the last 24 hours: as a phone notification when
+// push is set up and they turned it on, by email otherwise (and if no device takes it).
+// emailed_at records either. Whatever doesn't fit, or fails, goes in the weekly email.
 export async function emailUrgentAlerts(
   userId: string,
-  { client = defaultClient, now = new Date(), send = sendEmail }: Options = {},
+  { client = defaultClient, now = new Date(), send = sendEmail, push = sendPush }: Options = {},
 ): Promise<number> {
   const user = await client.user.findUnique({
     where: { id: userId },
@@ -121,6 +129,7 @@ export async function emailUrgentAlerts(
     settings: `${appBase()}/settings#alerts`,
     unsubscribe: `${appBase()}/unsubscribe?${query}`,
   };
+  const usePush = pushEnabled() && (await db.pushSubscriptions.count()) > 0;
   let emailed = 0;
   for (const alert of due) {
     // Claim the alert first, so two scans running at once can't both email it.
@@ -129,6 +138,19 @@ export async function emailUrgentAlerts(
       data: { emailedAt: now },
     });
     if (count === 0) continue;
+    if (usePush) {
+      const label = ALERT_LABELS[alert.type].label;
+      const pushed = await push(
+        userId,
+        { title: `${label}: ${alert.title}`, body: alert.body, url: "/alerts" },
+        { client },
+      );
+      if (pushed > 0) {
+        await track(userId, "alert_pushed", { type: alert.type });
+        emailed += 1;
+        continue;
+      }
+    }
     try {
       await send({
         to: user.email,

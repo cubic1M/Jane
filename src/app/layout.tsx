@@ -1,5 +1,6 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
+import { ServiceWorker } from "@/components/service-worker";
 import { SiteFooter } from "@/components/site-footer";
 import "./globals.css";
 
@@ -16,7 +17,11 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "Financial Controller",
   description: "See how much money you're losing, and approve the fixes.",
+  appleWebApp: { capable: true, title: "Jane", statusBarStyle: "default" },
+  icons: { apple: "/icons/192" },
 };
+
+export const viewport: Viewport = { themeColor: "#047857" };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
@@ -24,6 +29,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       <body className="min-h-full flex flex-col">
         {children}
         <SiteFooter />
+        <ServiceWorker />
       </body>
     </html>
   );

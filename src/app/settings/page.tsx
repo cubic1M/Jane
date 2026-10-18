@@ -8,7 +8,9 @@ import { db } from "@/lib/db";
 import { scopedDb } from "@/lib/db-scoped";
 import { requireUser } from "@/lib/session";
 import { formatCents } from "@/lib/money";
+import { vapidPublicKey } from "@/lib/push";
 import { AlertsForm } from "./alerts-form";
+import { NotificationsToggle } from "./notifications";
 import { DeleteDataForm, DisconnectForm, RefreshForm } from "./data-forms";
 import { EmailForm } from "./email-form";
 
@@ -159,6 +161,7 @@ async function SettingsContent() {
             value: alerts[type],
           }))}
         />
+        {vapidPublicKey() && <NotificationsToggle publicKey={vapidPublicKey() ?? ""} />}
       </section>
 
       <section className="flex flex-col gap-3 rounded-xl border border-red-200 p-4 dark:border-red-900">

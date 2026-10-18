@@ -149,4 +149,59 @@ describe.runIf(url)("raiseAlerts against a real database", () => {
       emailed: 0,
     });
   });
+
+  describe("with phone notifications set up", () => {
+    const push = vi.fn();
+    beforeEach(() => {
+      vi.stubEnv("VAPID_PUBLIC_KEY", "pub");
+      vi.stubEnv("VAPID_PRIVATE_KEY", "priv");
+      vi.stubEnv("VAPID_SUBJECT", "mailto:team@example.com");
+      push.mockReset();
+    });
+
+    async function subscribed() {
+      const user = await person();
+      await client.pushSubscription.create({
+        data: {
+          userId: user.id,
+          endpoint: `https://push.example/${user.id}`,
+          p256dh: "p",
+          auth: "a",
+        },
+      });
+      return user;
+    }
+
+    it("sends urgent alerts to the phone instead of email", async () => {
+      push.mockResolvedValue(1);
+      const user = await subscribed();
+
+      expect(await raiseAlerts(user.id, [alert()], { client, now: NOW, send, push })).toEqual({
+        raised: 1,
+        emailed: 1,
+      });
+      expect(push).toHaveBeenCalledWith(
+        user.id,
+        expect.objectContaining({
+          title: "Unusually large charge: $1,200.00 at Best Electronics",
+          url: "/alerts",
+        }),
+        { client },
+      );
+      expect(send).not.toHaveBeenCalled();
+    });
+
+    it("emails when no device takes it, and when the person has no device", async () => {
+      push.mockResolvedValue(0);
+      const user = await subscribed();
+      await raiseAlerts(user.id, [alert()], { client, now: NOW, send, push });
+      expect(send).toHaveBeenCalledTimes(1);
+
+      const plain = await person();
+      push.mockClear();
+      await raiseAlerts(plain.id, [alert()], { client, now: NOW, send, push });
+      expect(push).not.toHaveBeenCalled();
+      expect(send).toHaveBeenCalledTimes(2);
+    });
+  });
 });
