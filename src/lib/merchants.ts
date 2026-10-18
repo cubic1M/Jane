@@ -15,6 +15,7 @@ export type MerchantInput = {
   cancelUrl: string;
   supportUrl: string;
   supportPhone: string;
+  supportEmail: string;
   typicalMonthly: string;
   reviewed: boolean;
 };
@@ -27,14 +28,19 @@ export type MerchantData = {
   cancelUrl: string | null;
   supportUrl: string | null;
   supportPhone: string | null;
+  supportEmail: string | null;
   typicalMonthlyCents: number | null;
 };
 
 const MAX_TEXT = 200;
 const MAX_ALIASES = 20;
-// Anything shaped like an email address: the directory holds no personal data, and a
-// company's support email belongs on its support page, not here.
+// Anything shaped like an email address: the directory holds no personal data. The one
+// exception is the company's support address (where the action agent writes), in its own
+// field, and never at a personal mail service.
 const EMAIL = /\S+@\S+\.\S+/;
+const SUPPORT_EMAIL = /^[^\s@<>"]+@[a-z0-9.-]+\.[a-z]{2,}$/i;
+const PERSONAL_MAIL =
+  /@(gmail|googlemail|yahoo|hotmail|outlook|live|icloud|me|aol|proton|protonmail)\./i;
 const PHONE = /^\+?[\d\s().-]{7,20}$/;
 
 function httpsUrl(value: string): string | null | "invalid" {
@@ -85,6 +91,13 @@ export function validateMerchant(
   if (supportPhone && !PHONE.test(supportPhone)) {
     return { ok: false, message: "That doesn't look like a phone number." };
   }
+  const supportEmail = input.supportEmail.trim().toLowerCase() || null;
+  if (supportEmail && (!SUPPORT_EMAIL.test(supportEmail) || PERSONAL_MAIL.test(supportEmail))) {
+    return {
+      ok: false,
+      message: "Support email must be the company's own address, like support@company.com.",
+    };
+  }
   let typicalMonthlyCents: number | null = null;
   if (input.typicalMonthly.trim()) {
     typicalMonthlyCents = parseMoneyToCents(input.typicalMonthly);
@@ -102,6 +115,7 @@ export function validateMerchant(
       cancelUrl,
       supportUrl,
       supportPhone,
+      supportEmail,
       typicalMonthlyCents,
     },
   };

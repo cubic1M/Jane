@@ -7,6 +7,8 @@ import {
 } from "@/config/jobs";
 import type { PrismaClient } from "@/generated/prisma/client";
 import { db as defaultClient } from "@/lib/db";
+import { agentStep, handleReply } from "@/lib/agent/run";
+import { simulatedReply } from "@/lib/agent/simulated-company";
 import { explainFindings } from "@/lib/explanations";
 import { scrub } from "@/lib/scrub";
 
@@ -15,12 +17,23 @@ import { scrub } from "@/lib/scrub";
 // is retried after a growing wait, and after JOB_MAX_ATTEMPTS it's marked failed and shown
 // on /admin/jobs. Payloads hold ids only.
 
-export type JobKind = "explain_findings";
-export type JobPayload = { userId: string };
-export type Handlers = Record<JobKind, (payload: JobPayload) => Promise<unknown>>;
+export type JobKind = "explain_findings" | "agent_step" | "agent_simulated_reply";
+export type JobPayload = { userId: string; actionId?: string };
+// Tests pass only the handlers they need; a job with no handler fails like any error.
+export type Handlers = Partial<Record<JobKind, (payload: JobPayload) => Promise<unknown>>>;
 
-export const HANDLERS: Handlers = {
+const actionIdOf = (payload: JobPayload) => {
+  if (!payload.actionId) throw new Error("This job needs an actionId");
+  return payload.actionId;
+};
+
+export const HANDLERS: Required<Handlers> = {
   explain_findings: ({ userId }) => explainFindings(userId),
+  agent_step: (payload) => agentStep(payload.userId, actionIdOf(payload)),
+  agent_simulated_reply: (payload) =>
+    simulatedReply(payload.userId, actionIdOf(payload), {
+      deliver: (toAddress, mail) => handleReply(toAddress, mail),
+    }),
 };
 
 type Options = { client?: PrismaClient; now?: Date; handlers?: Handlers };

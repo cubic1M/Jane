@@ -11,3 +11,10 @@ regexes = [
   '''^BNcRdreALRFXTkOO[A-Za-z0-9_-]*$''',
   '''^tBHItJI5svbpez7KI4CCXg$''',
 ]
+
+[[allowlists]]
+description = "A made-up reply token in src/lib/agent/agent-units.test.ts (step 51): the digits 0-9 and a-f twice. Not a real token; later built at runtime."
+regexes = [
+  '''^0123456789abcdef0123456789abcdef$''',
+  '''^0123456789abcdef$''',
+]

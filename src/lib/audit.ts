@@ -50,7 +50,11 @@ export type AuditEvent =
   | "mfa_disabled"
   | "mfa_backup_code_used"
   | "mfa_backup_codes_created"
-  | "standing_rules_saved";
+  | "standing_rules_saved"
+  // The action agent (src/lib/agent/run.ts).
+  | "agent_message_sent"
+  | "agent_reply_received"
+  | "agent_handed_off";
 
 export type AuditActor = { type: ActorType; id: string | null };
 

@@ -215,6 +215,18 @@ describe.runIf(url)("deleting data against a real database", () => {
     await client.standingRule.create({
       data: { userId, key: "recover_bank_fees", monthlyLimit: 3 },
     });
+    const agentAction = await client.action.findFirstOrThrow({ where: { userId } });
+    await client.agentMessage.create({
+      data: {
+        userId,
+        actionId: agentAction.id,
+        direction: "outbound",
+        toAddress: "support@company.example",
+        fromAddress: "agent@jane.test",
+        subject: "Refund",
+        body: "Please refund.",
+      },
+    });
     return { userId, itemId: item.id, accessToken: `access-${suffix}` };
   }
 
@@ -251,6 +263,7 @@ describe.runIf(url)("deleting data against a real database", () => {
       authAccounts: await client.authAccount.count(where),
       mfaBackupCodes: await client.mfaBackupCode.count(where),
       standingRules: await client.standingRule.count(where),
+      agentMessages: await client.agentMessage.count(where),
     };
   }
 

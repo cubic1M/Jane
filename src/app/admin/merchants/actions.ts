@@ -25,6 +25,7 @@ export async function saveMerchant(
     cancelUrl: field(formData, "cancelUrl"),
     supportUrl: field(formData, "supportUrl"),
     supportPhone: field(formData, "supportPhone"),
+    supportEmail: field(formData, "supportEmail"),
     typicalMonthly: field(formData, "typicalMonthly"),
     reviewed: formData.get("reviewed") === "on",
   });

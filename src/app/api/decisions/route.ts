@@ -1,4 +1,5 @@
-import { NextResponse } from "next/server";
+import { NextResponse, after } from "next/server";
+import { runAgentNow } from "@/lib/agent/run";
 import { limitOrNull } from "@/lib/rate-limit";
 import { recordDecision } from "@/lib/decisions";
 import { getCurrentUser } from "@/lib/session";
@@ -34,7 +35,11 @@ export async function POST(request: Request) {
 
   try {
     const result = await recordDecision(user.id, { findingId, choice, cardHash });
-    return NextResponse.json(result, { status: 201 });
+    after(() => runAgentNow([result.agentJobId]));
+    return NextResponse.json(
+      { decisionId: result.decisionId, actionId: result.actionId },
+      { status: 201 },
+    );
   } catch (error) {
     return decisionErrorResponse(error);
   }

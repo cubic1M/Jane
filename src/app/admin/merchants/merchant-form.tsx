@@ -12,6 +12,7 @@ export type MerchantFormValues = {
   cancelUrl: string;
   supportUrl: string;
   supportPhone: string;
+  supportEmail: string;
   typicalMonthly: string;
   reviewed: boolean;
 };
@@ -66,6 +67,7 @@ export function MerchantForm({
       {text("cancelUrl", "Cancel link")}
       {text("supportUrl", "Support link")}
       {text("supportPhone", "Support phone")}
+      {text("supportEmail", "Support email (the agent writes here)")}
       {text("typicalMonthly", "Typical price a month ($)")}
       <label className="flex items-center gap-2 text-sm sm:col-span-2">
         <input

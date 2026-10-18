@@ -17,6 +17,7 @@ import { DraftPanel } from "./draft-panel";
 import { StatusForm } from "./status-form";
 import { savingsPhrase } from "@/lib/savings-text";
 import { describePlanOptions } from "@/lib/plan-options";
+import { AgentTimeline } from "@/components/agent-timeline";
 
 async function ActionDetail({
   params,
@@ -197,6 +198,20 @@ async function ActionDetail({
       )}
 
       {!closed && DRAFTABLE[action.type] && <DraftPanel actionId={action.id} />}
+
+      {(action.agentState || action.agentMessages.length > 0) && (
+        <section className="flex flex-col gap-2 rounded-xl border border-zinc-200 p-4 dark:border-zinc-800">
+          <h2 className="font-semibold">The agent</h2>
+          <p className="text-sm">
+            {action.agentState === "handed_off"
+              ? `Handed to the team: ${action.handoffReason ?? "no reason given"}`
+              : action.agentState === "finished"
+                ? "Finished by the agent."
+                : "The agent is working on this."}
+          </p>
+          <AgentTimeline messages={action.agentMessages} />
+        </section>
+      )}
 
       <section className="flex flex-col gap-2">
         <h2 className="font-semibold">Evidence</h2>

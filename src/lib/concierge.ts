@@ -3,13 +3,9 @@ import {
   MAX_TEAM_TEXT,
   TURNAROUND_BUSINESS_DAYS,
 } from "@/config/concierge";
-import type {
-  ActionStatus,
-  ActionType,
-  FindingStatus,
-  PrismaClient,
-} from "@/generated/prisma/client";
+import type { ActionStatus, ActionType, PrismaClient } from "@/generated/prisma/client";
 import { sendStatusEmail, statusEmail } from "@/lib/action-emails";
+import { FINDING_STATUS } from "@/lib/action-status";
 import { track } from "@/lib/analytics";
 import { logAudit } from "@/lib/audit";
 import { isOverdue } from "@/lib/business-days";
@@ -33,15 +29,6 @@ export const OPEN_ACTION_STATUSES: readonly ActionStatus[] = [
   "waiting_on_user",
 ];
 const CLOSED: readonly ActionStatus[] = ["done", "failed"];
-
-// The finding follows its action, so the report and money-found stay in step.
-const FINDING_STATUS: Record<ActionStatus, FindingStatus> = {
-  queued: "approved",
-  in_progress: "in_progress",
-  waiting_on_user: "in_progress",
-  done: "done",
-  failed: "failed",
-};
 
 const EVENT: Partial<Record<ActionStatus, string>> = {
   in_progress: "action_started",
@@ -207,7 +194,10 @@ export async function loadWorkload({
   now = new Date(),
 }: Pick<Options, "client" | "now"> = {}): Promise<WorkloadRow[]> {
   const open = await client.action.findMany({
-    where: { status: { in: [...OPEN_ACTION_STATUSES] } },
+    where: {
+      status: { in: [...OPEN_ACTION_STATUSES] },
+      OR: [{ agentState: null }, { agentState: "handed_off" }],
+    },
     select: { assignee: true, status: true, createdAt: true },
   });
   return workload(open, now);
@@ -248,6 +238,10 @@ export async function listQueue(
         ? { assignee: filter.assignee === "unassigned" ? null : filter.assignee }
         : {}),
       status: filter.status ? filter.status : { in: [...OPEN_ACTION_STATUSES] },
+      // Open work the agent is still doing isn't the team's; what it hands off is.
+      ...(filter.status === null || OPEN_ACTION_STATUSES.includes(filter.status)
+        ? { OR: [{ agentState: null }, { agentState: "handed_off" as const }] }
+        : {}),
     },
     select: {
       id: true,
@@ -255,6 +249,7 @@ export async function listQueue(
       status: true,
       assignee: true,
       createdAt: true,
+      handoffReason: true,
       user: { select: { email: true } },
       decision: { select: { cardSnapshot: true } },
     },
@@ -285,6 +280,19 @@ export async function getActionForAdmin(
           options: true,
           source: true,
           finding: { select: { evidence: true, type: true } },
+        },
+      },
+      agentMessages: {
+        orderBy: { createdAt: "asc" },
+        select: {
+          id: true,
+          direction: true,
+          toAddress: true,
+          fromAddress: true,
+          subject: true,
+          body: true,
+          summary: true,
+          createdAt: true,
         },
       },
     },
