@@ -356,7 +356,13 @@ export async function agentStep(
           agentState: "confirming",
           agentNextAt: null,
           selfServiceUrl: row.cancelUrl,
-          userTodo: `${action.company} only cancels from your own account. Open their cancel page, cancel, then tap "I've cancelled" on your actions page. Jane then watches for the next charge to make sure.`,
+          // Jane watches for the next charge from now, whether or not the person says
+          // they've cancelled (spec step 61).
+          confirmAfter: confirmDate(
+            action.decision.finding.evidence,
+            new Date(`${isoDay(now)}T00:00:00Z`),
+          ),
+          userTodo: `${action.company} only cancels from your own account. Open their cancel page and cancel. Jane watches for the next charge, so you don't need to tell Jane (you can tap "I've cancelled" if you like).`,
         },
         options,
       );
@@ -817,25 +823,30 @@ export async function confirmCancellations({
   client = defaultClient,
   now = new Date(),
   notify = sendStatusEmail,
-}: Options = {}): Promise<{ confirmed: number; charged: number }> {
+}: Options = {}): Promise<{ confirmed: number; charged: number; reminded: number }> {
   // A system job across users: ids only, and everything after is scoped to the person.
   const due = await client.action.findMany({
     where: {
+      type: "cancel_subscription",
       agentState: "confirming",
-      status: "in_progress",
+      status: { in: ["in_progress", "waiting_on_user"] },
       confirmAfter: { lte: new Date(`${isoDay(now)}T00:00:00Z`) },
     },
     select: { id: true, userId: true },
     take: 200,
   });
-  const counts = { confirmed: 0, charged: 0 };
+  const counts = { confirmed: 0, charged: 0, reminded: 0 };
   for (const { id, userId } of due) {
     const action = await loadAction(userId, id, client);
-    if (!action?.cancelledOn || !action.company) continue;
+    // Watched from the day they said they cancelled, or else from the day Jane gave them
+    // the company's cancel page (spec step 61).
+    const since = action?.cancelledOn ?? action?.startedAt;
+    if (!action || !since || !action.company) continue;
     const want = normalizeMerchant(action.company)?.key;
     const charges = await scopedFor(userId, client).transactions.findMany({
-      where: { amountCents: { gt: 0 }, date: { gt: action.cancelledOn } },
+      where: { amountCents: { gt: 0 }, date: { gt: new Date(`${isoDay(since)}T00:00:00Z`) } },
       select: { date: true, amountCents: true, description: true, merchantName: true },
+      orderBy: { date: "desc" },
     });
     const after = charges.find((c) => {
       const got = normalizeMerchant(c.merchantName ?? c.description)?.key;
@@ -846,13 +857,22 @@ export async function confirmCancellations({
         userId,
         action,
         "done",
-        { agentState: "finished", confirmAfter: null },
+        { agentState: "finished", confirmAfter: null, userTodo: null },
         { client, now, notify },
       );
-      await note(userId, id, `No charge from ${action.company} since you cancelled: done.`, client);
-      await track(userId, "cancellation_confirmed", { by: "missed_charge" });
+      await note(
+        userId,
+        id,
+        action.cancelledOn
+          ? `No charge from ${action.company} since you cancelled: done.`
+          : `No charge from ${action.company} since Jane gave you their cancel page: cancelled.`,
+        client,
+      );
+      await track(userId, "cancellation_confirmed", {
+        by: action.cancelledOn ? "missed_charge" : "missed_charge_untold",
+      });
       counts.confirmed += 1;
-    } else {
+    } else if (action.cancelledOn) {
       await setStatus(
         userId,
         action,
@@ -872,6 +892,29 @@ export async function confirmCancellations({
         client,
       );
       counts.charged += 1;
+    } else {
+      // Not cancelled yet: remind, and watch the next cycle.
+      const evidence = (action.decision.finding.evidence ?? {}) as { frequency?: unknown };
+      await setStatus(
+        userId,
+        action,
+        "waiting_on_user",
+        {
+          confirmAfter: confirmDate(
+            { frequency: evidence.frequency, charges: [{ date: isoDay(after.date) }] },
+            new Date(`${isoDay(now)}T00:00:00Z`),
+          ),
+          userTodo: `${action.company} charged you on ${isoDay(after.date)}, so the subscription looks active. Cancel on their page to stop the next charge; Jane keeps watching.`,
+        },
+        { client, now, notify },
+      );
+      await note(
+        userId,
+        id,
+        `${action.company} charged on ${isoDay(after.date)}: still active, reminded you to cancel.`,
+        client,
+      );
+      counts.reminded += 1;
     }
   }
   return counts;
