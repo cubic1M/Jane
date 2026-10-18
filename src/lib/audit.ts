@@ -8,7 +8,9 @@ export type AuditEvent =
   | "user_signed_in"
   | "import_completed"
   // Finding data was sent to Claude for card text.
-  | "explanations_generated";
+  | "explanations_generated"
+  | "decision_made"
+  | "decision_undone";
 
 export type AuditActor = { type: ActorType; id: string | null };
 

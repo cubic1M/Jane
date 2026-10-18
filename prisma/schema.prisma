@@ -344,6 +344,8 @@ model Decision {
   choice       DecisionChoice
   cardSnapshot Json           @map("card_snapshot")
   createdAt    DateTime       @default(now()) @map("created_at") @db.Timestamptz(3)
+  // Set when the person undid a "no" within the undo window. The row itself is kept.
+  undoneAt     DateTime?      @map("undone_at") @db.Timestamptz(3)
 
   user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
   finding Finding @relation(fields: [findingId], references: [id], onDelete: Cascade)
@@ -362,6 +364,8 @@ model Action {
   status       ActionStatus @default(queued)
   assignee     String?
   notes        String?
+  // For waiting_on_user: exactly what the person needs to do, shown on /actions.
+  userTodo     String?      @map("user_todo")
   minutesSpent Int?         @map("minutes_spent")
   startedAt    DateTime?    @map("started_at") @db.Timestamptz(3)
   completedAt  DateTime?    @map("completed_at") @db.Timestamptz(3)

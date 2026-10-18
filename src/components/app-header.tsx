@@ -11,9 +11,13 @@ export function AppHeader({ email }: { email: string | null | undefined }) {
         <Link href="/report" className="hover:underline">
           Report
         </Link>
+        <Link href="/actions" className="hover:underline">
+          Actions
+        </Link>
       </nav>
-      <div className="flex items-center gap-4">
-        <span>Signed in as {email}</span>
+      <div className="flex min-w-0 flex-wrap items-center gap-x-4 gap-y-1">
+        {/* Long emails wrap instead of pushing the page sideways on a phone. */}
+        <span className="min-w-0 break-all">Signed in as {email}</span>
         <form action={signOutToHome}>
           <button type="submit" className="font-medium text-emerald-700 hover:underline">
             Sign out
