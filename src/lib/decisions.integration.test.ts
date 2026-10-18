@@ -84,7 +84,13 @@ describe.runIf(url)("decisions against a real database", () => {
       { type: "user", id: userId },
       "decision_made",
       { type: "finding", id: f.id },
-      { choice: "yes", decision_id: result.decisionId, action_id: result.actionId },
+      {
+        choice: "yes",
+        source: "card",
+        changed_options: false,
+        decision_id: result.decisionId,
+        action_id: result.actionId,
+      },
     );
     expect(track).toHaveBeenCalledWith(userId, "decision_yes", expect.any(Object));
   });

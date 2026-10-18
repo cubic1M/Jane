@@ -18,6 +18,7 @@ export const TIMEZONES: readonly { id: string; label: string }[] = [
 
 // Pages a digest link may lead to (anything else goes to the report).
 export const DIGEST_LINK_PATHS = [
+  "/plan",
   "/report",
   "/check-in",
   "/actions",

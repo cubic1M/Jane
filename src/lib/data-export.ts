@@ -127,6 +127,8 @@ export async function exportUserData(
         id: true,
         findingId: true,
         choice: true,
+        source: true,
+        options: true,
         cardSnapshot: true,
         createdAt: true,
         undoneAt: true,

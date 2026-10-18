@@ -1,5 +1,6 @@
 import type {
   DecisionChoice,
+  DecisionSource,
   FindingStatus,
   Prisma,
   PrismaClient,
@@ -10,6 +11,7 @@ import { ACTION_FOR_FINDING, CARD_SELECT, buildCard, cardHash } from "@/lib/card
 import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
 import { hasKit } from "@/lib/diy";
+import { PlanOptionsError, parsePlanOptions } from "@/lib/plan-options";
 import { partnerForUser } from "@/lib/referrals";
 
 // Yes, no, or "I'll do it myself" on a decision card. Every answer is kept with the card
@@ -32,7 +34,7 @@ const UNDO_GRACE_SECONDS = 5;
 const DECIDABLE: FindingStatus[] = ["new", "shown"];
 
 export type DecisionErrorCode =
-  "not_found" | "already_decided" | "card_changed" | "cannot_undo" | "no_kit";
+  "not_found" | "already_decided" | "card_changed" | "cannot_undo" | "no_kit" | "bad_options";
 
 export class DecisionError extends Error {
   constructor(
@@ -47,9 +49,18 @@ type Options = { client?: PrismaClient; now?: Date };
 
 export type DecisionResult = { decisionId: string; actionId: string | null };
 
+export type Answer = {
+  findingId: string;
+  choice: DecisionChoice;
+  cardHash: string;
+  // Where it was answered (the card by default), and options changed before a yes.
+  source?: DecisionSource;
+  options?: Record<string, unknown>;
+};
+
 export async function recordDecision(
   userId: string,
-  answer: { findingId: string; choice: DecisionChoice; cardHash: string },
+  answer: Answer,
   { client = defaultClient }: Options = {},
 ): Promise<DecisionResult> {
   const db = scopedFor(userId, client);
@@ -71,6 +82,16 @@ export async function recordDecision(
   if (answer.choice === "diy" && !hasKit(card.actionType)) {
     throw new DecisionError("no_kit", "There's no do-it-yourself kit for this one.");
   }
+  let options = null;
+  if (answer.choice === "yes" && answer.options) {
+    try {
+      options = parsePlanOptions(card.actionType, answer.options);
+    } catch (error) {
+      if (!(error instanceof PlanOptionsError)) throw error;
+      throw new DecisionError("bad_options", error.message);
+    }
+  }
+  const source = answer.source ?? "card";
 
   const result = await db.transaction(async (tx) => {
     // Claims the finding, so two clicks can't both record an answer.
@@ -87,6 +108,8 @@ export async function recordDecision(
         findingId: finding.id,
         choice: answer.choice,
         cardSnapshot: card as unknown as Prisma.InputJsonObject,
+        source,
+        ...(options ? { options } : {}),
       },
       select: { id: true },
     });
@@ -104,13 +127,20 @@ export async function recordDecision(
     { type: "user", id: userId },
     "decision_made",
     { type: "finding", id: finding.id },
-    { choice: answer.choice, decision_id: result.decisionId, action_id: result.actionId },
+    {
+      choice: answer.choice,
+      source,
+      changed_options: options !== null,
+      decision_id: result.decisionId,
+      action_id: result.actionId,
+    },
   );
   const EVENT = { yes: "decision_yes", no: "decision_no", diy: "diy_started" } as const;
   await track(userId, EVENT[answer.choice], {
     finding_type: card.findingType,
     action_type: card.actionType,
     annual_savings_cents: card.annualSavingsCents,
+    source,
   });
   return result;
 }

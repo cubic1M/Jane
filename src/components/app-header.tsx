@@ -8,6 +8,9 @@ export function AppHeader({ email }: { email: string | null | undefined }) {
         <Link href="/home" className="hover:underline">
           Home
         </Link>
+        <Link href="/plan" className="hover:underline">
+          Plan
+        </Link>
         <Link href="/connect" className="hover:underline">
           Accounts
         </Link>

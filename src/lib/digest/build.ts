@@ -49,12 +49,15 @@ export type DigestPayload = {
   budgets?: { category: string; spentCents: number; budgetCents: number; over: boolean }[];
   goals?: { name: string; percent: number; savedChangeCents: number | null }[];
   netWorth?: { nowCents: number; changeCents: number } | null;
+  // Jane's plan: how many open findings wait for a yes or no (none before step 49).
+  plan?: { items: number };
 };
 
 const total = (rows: { annualSavingsCents: number | null }[]) =>
   rows.reduce((sum, r) => sum + (r.annualSavingsCents ?? 0), 0);
 
-// Null when there's nothing new and nothing pending: we never send an empty digest.
+// Null when there's nothing new, nothing pending and nothing on Jane's plan: we never send
+// an empty digest.
 export function buildDigest(input: DigestInput): DigestPayload | null {
   const weekAgo = new Date(input.now.getTime() - WEEK_MS);
   const done = input.actions.filter((a) => a.status === "done");
@@ -79,6 +82,7 @@ export function buildDigest(input: DigestInput): DigestPayload | null {
     pending.length === 0 &&
     newFindings.length === 0 &&
     alerts.length === 0 &&
+    input.findings.length === 0 &&
     budgets.length === 0 &&
     goals.length === 0 &&
     netWorth === null
@@ -108,5 +112,6 @@ export function buildDigest(input: DigestInput): DigestPayload | null {
     budgets,
     goals,
     netWorth,
+    plan: { items: input.findings.length },
   };
 }

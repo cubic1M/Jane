@@ -16,6 +16,7 @@ import { ConversionForm } from "./conversion-form";
 import { DraftPanel } from "./draft-panel";
 import { StatusForm } from "./status-form";
 import { savingsPhrase } from "@/lib/savings-text";
+import { describePlanOptions } from "@/lib/plan-options";
 
 async function ActionDetail({
   params,
@@ -28,6 +29,8 @@ async function ActionDetail({
   if (!action) notFound();
   // The card exactly as the person approved it.
   const card = action.decision.cardSnapshot as unknown as DecisionCard;
+  // What the person changed on Jane's plan before saying yes.
+  const changes = describePlanOptions(card.actionType, action.decision.options);
   const closed = action.status === "done" || action.status === "failed";
   const playbook = PLAYBOOKS[action.type];
   const [team, replies] = await Promise.all([
@@ -81,6 +84,25 @@ async function ActionDetail({
         </p>
         <p>
           <strong>They give up:</strong> {card.giveUp}
+        </p>
+        {changes.length > 0 && (
+          <div className="rounded-lg bg-amber-50 p-3 text-sm dark:bg-amber-950">
+            <strong>They changed how to do it:</strong>
+            <ul className="list-disc pl-5">
+              {changes.map((c) => (
+                <li key={c}>{c}</li>
+              ))}
+            </ul>
+          </div>
+        )}
+        <p className="text-sm text-zinc-600 dark:text-zinc-400">
+          Approved from{" "}
+          {action.decision.source === "plan"
+            ? "Jane's plan"
+            : action.decision.source === "rule"
+              ? "a standing rule"
+              : "the card"}
+          .
         </p>
         {card.referralDisclosure && <p className="text-sm">{card.referralDisclosure}</p>}
         {partner && (

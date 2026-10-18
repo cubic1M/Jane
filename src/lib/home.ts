@@ -62,6 +62,8 @@ export async function homeSummary(
     unreadAlertCount(userId, { client }),
     db.budgets.findMany({ select: { category: true, amountCents: true } }),
   ]);
+  // Jane's plan: every open finding is an item on it.
+  const planItems = await db.findings.count({ where: { status: { in: ["new", "shown"] } } });
   const goals = await listGoals(userId, { client, now });
   const asOf = now.toISOString().slice(0, 10);
   const budget =
@@ -82,6 +84,7 @@ export async function homeSummary(
     savedToDateCents: saved,
     openActions,
     unreadAlerts: alerts,
+    plan: { items: planItems },
     budgets: budget ? { progress: budget.progress, daysLeft: budget.daysLeft } : null,
     goals: goals.map((g) => ({ id: g.id, name: g.name, percent: g.progress.percent })),
     safeToSpend: input.accounts.some(

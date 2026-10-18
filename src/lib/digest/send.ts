@@ -12,6 +12,7 @@ import { budgetSummary } from "@/insights/budgets";
 import { loadInsightTransactions } from "@/insights/load";
 import { netWorth, netWorthOn } from "@/insights/net-worth";
 import { listGoals } from "@/lib/goals";
+import { sendPush } from "@/lib/push";
 import { buildDigest, type DigestPayload, type DigestPlans } from "./build";
 import { appBase, clickLink } from "./links";
 import { renderDigest, type DigestLinks } from "./render";
@@ -160,6 +161,7 @@ async function plansFor(userId: string, now: Date, client: PrismaClient): Promis
 
 function linksFor(digestId: string, userId: string): DigestLinks {
   return {
+    plan: clickLink(digestId, "/plan"),
     report: clickLink(digestId, "/report"),
     actions: clickLink(digestId, "/actions"),
     alerts: clickLink(digestId, "/alerts"),
@@ -237,6 +239,21 @@ export async function runDigests({
         continue;
       }
       await db.digests.updateMany({ where: { id: digest.id }, data: { sentAt: now } });
+      // A phone notification too, for people who turned them on.
+      if (payload.plan && payload.plan.items > 0) {
+        const n = payload.plan.items;
+        await sendPush(
+          user.id,
+          {
+            title: "Jane's plan is ready",
+            body: `${n} ${n === 1 ? "thing" : "things"} to say yes or no to.`,
+            url: "/plan",
+          },
+          { client },
+        ).catch((error) =>
+          console.error("Plan push failed", { userId: user.id, error: String(error) }),
+        );
+      }
       await track(user.id, "digest_sent", {
         saved_this_week_cents: payload.savedThisWeekCents,
         pending: payload.pending.length,

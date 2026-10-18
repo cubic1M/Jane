@@ -282,6 +282,8 @@ export async function getActionForAdmin(
         select: {
           cardSnapshot: true,
           createdAt: true,
+          options: true,
+          source: true,
           finding: { select: { evidence: true, type: true } },
         },
       },

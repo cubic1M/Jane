@@ -55,6 +55,14 @@ enum Confidence {
   @@map("confidence")
 }
 
+enum DecisionSource {
+  card
+  plan
+  rule
+
+  @@map("decision_source")
+}
+
 enum DecisionChoice {
   yes
   no
@@ -426,6 +434,11 @@ model Decision {
   undoneAt     DateTime?      @map("undone_at") @db.Timestamptz(3)
   // For a do-it-yourself decision: when the person said they'd done it.
   diyDoneAt    DateTime?      @map("diy_done_at") @db.Timestamptz(3)
+  // Where the answer came from: the card itself, Jane's plan, or a standing rule.
+  source       DecisionSource @default(card)
+  // What the person changed before saying yes (src/config/plan.ts), e.g. downgrade
+  // instead of cancel. Null means Jane's defaults.
+  options      Json?
 
   user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
   finding Finding @relation(fields: [findingId], references: [id], onDelete: Cascade)

@@ -106,6 +106,19 @@ async function HomeContent() {
 
       {checklist && !checklist.complete && <FirstWeekChecklist items={checklist.items} />}
 
+      {home.plan.items > 0 && (
+        <Link
+          href="/plan"
+          className="flex flex-wrap items-center justify-between gap-2 rounded-xl bg-emerald-700 p-4 font-semibold text-white hover:bg-emerald-800"
+        >
+          <span>
+            Jane&apos;s plan: {home.plan.items} {home.plan.items === 1 ? "thing" : "things"} to say
+            yes or no to
+          </span>
+          <span className="text-sm">Review your plan ›</span>
+        </Link>
+      )}
+
       {home.safeToSpend && <SafeToSpendCard safe={home.safeToSpend} />}
 
       <section className="grid gap-3 sm:grid-cols-3">
