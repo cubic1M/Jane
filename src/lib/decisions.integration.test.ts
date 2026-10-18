@@ -10,7 +10,8 @@ import { track } from "@/lib/analytics";
 import { logAudit } from "@/lib/audit";
 import { findingOfType } from "./__fixtures__/findings";
 import { CARD_SELECT, buildCard, cardHash } from "./cards";
-import { recordDecision, undoDecision } from "./decisions";
+import { markDiyDone, recordDecision, undoDecision } from "./decisions";
+import { savedToDate } from "./membership/service";
 
 // Runs against a real, migrated Postgres (see src/detection/engine.integration.test.ts).
 const url = process.env.TEST_DATABASE_URL;
@@ -172,6 +173,71 @@ describe.runIf(url)("decisions against a real database", () => {
     );
     await expect(undoDecision(userId, their.decisionId, { client })).rejects.toMatchObject({
       code: "not_found",
+    });
+  });
+
+  describe("do it myself", () => {
+    async function diy(type: Parameters<typeof findingOfType>[0] = "bank_fees") {
+      const f = await finding(userId, type);
+      const result = await recordDecision(
+        userId,
+        { findingId: f.id, choice: "diy", cardHash: cardHash(buildCard(f)) },
+        { client },
+      );
+      return { f, result };
+    }
+
+    it("never creates a concierge action", async () => {
+      const { f, result } = await diy();
+
+      expect(result.actionId).toBeNull();
+      expect(await client.action.count({ where: { decision: { findingId: f.id } } })).toBe(0);
+      expect((await client.finding.findUniqueOrThrow({ where: { id: f.id } })).status).toBe(
+        "in_progress",
+      );
+      expect(track).toHaveBeenCalledWith(userId, "diy_started", expect.any(Object));
+    });
+
+    it("counts its savings once in saved-to-date, after it's marked done", async () => {
+      const before = await savedToDate(userId, { client });
+      const { f, result } = await diy();
+      expect(await savedToDate(userId, { client })).toBe(before);
+
+      await markDiyDone(userId, result.decisionId, { client });
+      await markDiyDone(userId, result.decisionId, { client });
+
+      expect(await savedToDate(userId, { client })).toBe(before + (f.annualSavingsCents ?? 0));
+      expect((await client.finding.findUniqueOrThrow({ where: { id: f.id } })).status).toBe("done");
+      expect(track).toHaveBeenCalledWith(userId, "diy_done", {});
+      expect(vi.mocked(track).mock.calls.filter(([, e]) => e === "diy_done")).toHaveLength(1);
+    });
+
+    it("can't be marked done by someone else, or on a team decision", async () => {
+      const { result } = await diy();
+      await expect(markDiyDone(otherUserId, result.decisionId, { client })).rejects.toThrow(
+        "doesn't exist",
+      );
+
+      const f = await finding();
+      const yes = await recordDecision(
+        userId,
+        { findingId: f.id, choice: "yes", cardHash: cardHash(buildCard(f)) },
+        { client },
+      );
+      await expect(markDiyDone(userId, yes.decisionId, { client })).rejects.toThrow(
+        "doesn't exist",
+      );
+    });
+
+    it("isn't offered where there's no kit", async () => {
+      const f = await finding(userId, "idle_cash");
+      await expect(
+        recordDecision(
+          userId,
+          { findingId: f.id, choice: "diy", cardHash: cardHash(buildCard(f)) },
+          { client },
+        ),
+      ).rejects.toMatchObject({ code: "no_kit" });
     });
   });
 });

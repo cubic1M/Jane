@@ -28,7 +28,8 @@ export type AuditEvent =
   | "terms_accepted"
   | "data_exported"
   | "admin_drafted_message"
-  | "merchant_saved";
+  | "merchant_saved"
+  | "diy_done";
 
 export type AuditActor = { type: ActorType; id: string | null };
 

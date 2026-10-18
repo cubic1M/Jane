@@ -75,3 +75,31 @@ test("a no can be undone and puts the card back", async ({ page }) => {
 
   await expect(page.getByRole("button", { name: "Yes, do this for me" })).toBeVisible();
 });
+
+test("do it myself: no action for the team, and marking it done counts it", async ({ page }) => {
+  await page.goto("/import");
+  await page.getByLabel("Name").fill("Test Card");
+  await page.getByLabel("Type").selectOption({ label: "Credit card" });
+  await page.getByRole("button", { name: "Add account" }).click();
+  await page.locator('input[type="file"]').setInputFiles("e2e/fixtures/sample-card.csv");
+  await page.getByRole("button", { name: "Preview" }).click();
+  await page.getByRole("button", { name: /Import \d+ transactions/ }).click();
+  await expect(page).toHaveURL("/report", { timeout: 30_000 });
+
+  await page.getByRole("link", { name: /Netflix went up/ }).click();
+  await page.getByRole("button", { name: /I'll do it myself/ }).click();
+
+  await expect(page.getByRole("heading", { name: "Doing it yourself" })).toBeVisible();
+  await expect(page.getByRole("link", { name: /Write the email/ })).toHaveAttribute(
+    "href",
+    /^mailto:\?subject=/,
+  );
+  await expectNoSidewaysScroll(page);
+  await page.getByRole("button", { name: "I did it" }).click();
+  await expect(page.getByRole("status").filter({ hasText: "You marked this done" })).toBeVisible();
+
+  await page.goto("/actions");
+  await expect(page.getByRole("link", { name: /Netflix went up/ })).toContainText("Done");
+  // Nothing went to the team's queue.
+  await expect(page.getByText("Queued")).toHaveCount(0);
+});

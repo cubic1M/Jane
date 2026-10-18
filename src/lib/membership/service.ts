@@ -96,14 +96,22 @@ export async function recordPaidMembership(
 }
 
 // Yearly savings from finished actions, from the cards people approved.
+// Savings from finished changes: actions the team finished, and do-it-yourself changes the
+// person marked done. A finding has one live decision, so nothing counts twice.
 export async function savedToDate(userId: string, { client = defaultClient }: Options = {}) {
-  const done = await scopedFor(userId, client).actions.findMany({
-    where: { status: "done" },
-    select: { decision: { select: { cardSnapshot: true } } },
-  });
-  return done.reduce((sum, a) => {
-    const cents = (a.decision.cardSnapshot as { annualSavingsCents?: unknown } | null)
-      ?.annualSavingsCents;
+  const db = scopedFor(userId, client);
+  const [done, diy] = await Promise.all([
+    db.actions.findMany({
+      where: { status: "done" },
+      select: { decision: { select: { cardSnapshot: true } } },
+    }),
+    db.decisions.findMany({
+      where: { choice: "diy", diyDoneAt: { not: null }, undoneAt: null },
+      select: { cardSnapshot: true },
+    }),
+  ]);
+  return [...done.map((a) => a.decision), ...diy].reduce((sum, d) => {
+    const cents = (d.cardSnapshot as { annualSavingsCents?: unknown } | null)?.annualSavingsCents;
     return sum + (typeof cents === "number" ? cents : 0);
   }, 0);
 }

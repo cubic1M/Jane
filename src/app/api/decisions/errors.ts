@@ -6,6 +6,7 @@ const STATUS: Record<DecisionErrorCode, number> = {
   already_decided: 409,
   card_changed: 409,
   cannot_undo: 409,
+  no_kit: 409,
 };
 
 // A DecisionError as a JSON response the page can show; anything else is rethrown.

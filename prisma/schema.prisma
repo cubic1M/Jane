@@ -58,6 +58,8 @@ enum Confidence {
 enum DecisionChoice {
   yes
   no
+  // "I'll do it myself": no concierge action; the person follows a kit and marks it done.
+  diy
 
   @@map("decision_choice")
 }
@@ -391,6 +393,8 @@ model Decision {
   createdAt    DateTime       @default(now()) @map("created_at") @db.Timestamptz(3)
   // Set when the person undid a "no" within the undo window. The row itself is kept.
   undoneAt     DateTime?      @map("undone_at") @db.Timestamptz(3)
+  // For a do-it-yourself decision: when the person said they'd done it.
+  diyDoneAt    DateTime?      @map("diy_done_at") @db.Timestamptz(3)
 
   user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
   finding Finding @relation(fields: [findingId], references: [id], onDelete: Cascade)

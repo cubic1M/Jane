@@ -3,6 +3,7 @@ import type {
   ActionStatus,
   ActionType,
   Confidence,
+  DecisionChoice,
   FindingStatus,
   FindingType,
   PrismaClient,
@@ -31,7 +32,7 @@ export type MetricRows = {
     annualSavingsCents: number | null;
   }[];
   cardOpens: { findingType: FindingType; at: Date }[];
-  decisions: { findingType: FindingType; choice: "yes" | "no"; at: Date }[];
+  decisions: { findingType: FindingType; choice: DecisionChoice; at: Date }[];
   actions: {
     userId: string;
     type: ActionType;
@@ -78,9 +79,9 @@ export function computeMetrics(rows: MetricRows, w: Window) {
     linkedInWindow.map((id) => sumMoneyFound(rows.findings.filter((f) => f.userId === id))),
   );
 
-  // Approval rate per finding type: yes answers over cards opened.
+  // Approval rate per finding type: yes answers (ours or do-it-yourself) over cards opened.
   const opens = rows.cardOpens.filter((o) => within(o.at, w));
-  const yeses = rows.decisions.filter((d) => d.choice === "yes" && within(d.at, w));
+  const yeses = rows.decisions.filter((d) => d.choice !== "no" && within(d.at, w));
   const approval = byType([...opens, ...yeses].map((r) => r.findingType)).map((type) => {
     const shown = opens.filter((o) => o.findingType === type).length;
     const approved = yeses.filter((d) => d.findingType === type).length;
