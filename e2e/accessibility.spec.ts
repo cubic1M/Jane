@@ -48,6 +48,9 @@ const SIGNED_IN = [
   "/life-events",
   "/tax-pack",
   "/settings/team-access",
+  "/jane",
+  "/money",
+  "/ahead",
 ];
 const ADMIN = [
   "/admin/queue",
