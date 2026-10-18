@@ -1,4 +1,10 @@
-import { ASSET_KINDS, ASSET_VALUE_STALE_DAYS, MAX_ASSET_CENTS } from "@/config/net-worth";
+import {
+  ASSET_KINDS,
+  ASSET_LOAN_SUBTYPES,
+  ASSET_VALUE_STALE_DAYS,
+  MAX_ASSET_CENTS,
+  MAX_ASSET_NAME_LENGTH,
+} from "@/config/net-worth";
 import type { PrismaClient } from "@/generated/prisma/client";
 import { track } from "@/lib/analytics";
 import { db as defaultClient } from "@/lib/db";
@@ -37,20 +43,24 @@ type Checked = {
 export function checkAsset(input: AssetInput, today: string): Checked {
   if (!isAssetKind(input.kind)) throw new AssetError("Pick what kind of thing it is.");
   const name = input.name.trim();
-  if (!name || name.length > 80) throw new AssetError("Give it a short name, like “Our house”.");
+  if (!name || name.length > MAX_ASSET_NAME_LENGTH)
+    throw new AssetError("Give it a short name, like “Our house”.");
   const valueCents = parseMoneyToCents(input.value);
   if (valueCents === null || valueCents <= 0 || valueCents > MAX_ASSET_CENTS) {
     throw new AssetError("Enter what it's worth, in dollars.");
   }
   const day = input.valuedOn.trim() || today;
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(day) || day > today) {
-    throw new AssetError("The date of the value can't be in the future.");
+  const valuedOn = new Date(`${day}T00:00:00Z`);
+  // A real day: "2026-02-30" would otherwise roll over to March 2.
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(day) || valuedOn.toISOString().slice(0, 10) !== day) {
+    throw new AssetError("Pick the date of the value.");
   }
+  if (day > today) throw new AssetError("The date of the value can't be in the future.");
   return {
     kind: input.kind,
     name,
     valueCents,
-    valuedOn: new Date(`${day}T00:00:00Z`),
+    valuedOn,
     loanAccountId: input.loanAccountId.trim() || null,
   };
 }
@@ -96,7 +106,7 @@ export async function updateAsset(
     data: { ...checked, loanAccountId },
   });
   if (count === 0) throw new AssetError("That isn't one of yours.");
-  await track(userId, "asset_updated", { kind: checked.kind });
+  await track(userId, "asset_updated", { kind: checked.kind, with_loan: loanAccountId !== null });
 }
 
 export async function removeAsset(
@@ -106,6 +116,7 @@ export async function removeAsset(
 ): Promise<void> {
   const { count } = await scopedFor(userId, client).ownedAssets.deleteMany({ where: { id } });
   if (count === 0) throw new AssetError("That isn't one of yours.");
+  await track(userId, "asset_removed");
 }
 
 export type AssetLine = {
@@ -157,3 +168,33 @@ export async function listAssets(
     };
   });
 }
+
+export type AssetPrompt = { loanId: string; loanName: string; kind: AssetKind; text: string };
+
+const PROMPT_TEXT: Record<keyof typeof ASSET_LOAN_SUBTYPES, string> = {
+  home: "Add your home's value to see your equity",
+  vehicle: "Add your car's value to see your equity",
+};
+
+// Pure: a mortgage or car loan with no home or vehicle linked to it gets a prompt to add
+// the value by hand (one less tap: the form opens prefilled). Never added for them.
+export function assetPrompts(
+  loans: { id: string; name: string; type: string; subtype: string | null }[],
+  linkedLoanIds: Iterable<string | null>,
+): AssetPrompt[] {
+  const linked = new Set(linkedLoanIds);
+  const prompts: AssetPrompt[] = [];
+  for (const loan of loans) {
+    if (loan.type !== "loan" || linked.has(loan.id)) continue;
+    for (const [kind, subtype] of Object.entries(ASSET_LOAN_SUBTYPES)) {
+      if (loan.subtype !== subtype) continue;
+      const k = kind as keyof typeof ASSET_LOAN_SUBTYPES;
+      prompts.push({ loanId: loan.id, loanName: loan.name, kind: k, text: PROMPT_TEXT[k] });
+    }
+  }
+  return prompts;
+}
+
+// The link that opens the add form with the kind and loan filled in.
+export const promptHref = (p: Pick<AssetPrompt, "kind" | "loanId">) =>
+  `/things?${new URLSearchParams({ kind: p.kind, loan: p.loanId })}`;

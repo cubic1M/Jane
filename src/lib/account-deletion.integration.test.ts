@@ -233,6 +233,9 @@ describe.runIf(url)("deleting data against a real database", () => {
         body: "Please refund.",
       },
     });
+    await client.ownedAsset.create({
+      data: { userId, kind: "home", name: "House", valueCents: 1, valuedOn: new Date() },
+    });
     return { userId, itemId: item.id, accessToken: `access-${suffix}` };
   }
 
@@ -272,6 +275,7 @@ describe.runIf(url)("deleting data against a real database", () => {
       agentMessages: await client.agentMessage.count(where),
       planProposals: await client.planProposal.count(where),
       planLinks: await client.planLink.count(where),
+      ownedAssets: await client.ownedAsset.count(where),
     };
   }
 
