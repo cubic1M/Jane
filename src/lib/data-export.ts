@@ -172,7 +172,8 @@ export async function exportUserData(
       },
       orderBy: { createdAt: "asc" },
     }),
-    // Their own membership and the invites they sent; never the partner's data.
+    // Their own membership, the invites they sent and their side of shared bills; never the
+    // partner's data.
     client.householdMember.findUnique({
       where: { userId },
       select: {
@@ -182,6 +183,22 @@ export async function exportUserData(
             invites: {
               where: { userId },
               select: { email: true, createdAt: true, acceptedAt: true },
+            },
+            // Charges they paid and split, and settle-ups they were part of.
+            sharedCharges: {
+              where: { payerId: userId },
+              select: {
+                transactionId: true,
+                amountCents: true,
+                partnerShareBps: true,
+                createdAt: true,
+              },
+              orderBy: { createdAt: "asc" },
+            },
+            settlements: {
+              where: { OR: [{ fromUserId: userId }, { toUserId: userId }] },
+              select: { fromUserId: true, toUserId: true, amountCents: true, createdAt: true },
+              orderBy: { createdAt: "asc" },
             },
           },
         },

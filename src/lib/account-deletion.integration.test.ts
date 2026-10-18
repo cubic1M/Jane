@@ -20,6 +20,7 @@ describe.runIf(url)("deleting data against a real database", () => {
   let client: PrismaClient;
   const itemRemove = vi.fn();
   const api = { itemRemove } as unknown as PlaidApi;
+  const partners: string[] = [];
 
   beforeAll(() => {
     vi.stubEnv("TOKEN_ENCRYPTION_KEY", randomBytes(32).toString("base64"));
@@ -27,6 +28,7 @@ describe.runIf(url)("deleting data against a real database", () => {
   });
 
   afterAll(async () => {
+    await client.user.deleteMany({ where: { id: { in: partners } } });
     await client.$disconnect();
     vi.unstubAllEnvs();
   });
@@ -171,6 +173,31 @@ describe.runIf(url)("deleting data against a real database", () => {
         expiresAt: new Date(Date.now() + 1e9),
       },
     });
+    // A partner who stays in the household, and a shared bill between them.
+    const spouse = await client.user.create({ data: { email: `partner-${suffix}@example.org` } });
+    partners.push(spouse.id);
+    await client.householdMember.create({
+      data: { householdId: household.id, userId: spouse.id },
+    });
+    await client.sharedCharge.create({
+      data: {
+        householdId: household.id,
+        transactionId: `tx-${suffix}`,
+        payerId: userId,
+        amountCents: 10_000,
+        partnerShareBps: 5_000,
+        userId,
+      },
+    });
+    await client.settlement.create({
+      data: {
+        householdId: household.id,
+        fromUserId: spouse.id,
+        toUserId: userId,
+        amountCents: 5_000,
+        userId,
+      },
+    });
     await client.askConversation.create({
       data: {
         userId,
@@ -214,6 +241,8 @@ describe.runIf(url)("deleting data against a real database", () => {
       savingsGoals: await client.savingsGoal.count(where),
       balanceSnapshots: await client.balanceSnapshot.count(where),
       checkIns: await client.checkIn.count(where),
+      sharedCharges: await client.sharedCharge.count(where),
+      settlements: await client.settlement.count(where),
       sessions: await client.session.count(where),
       authAccounts: await client.authAccount.count(where),
     };

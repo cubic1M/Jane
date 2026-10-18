@@ -608,8 +608,10 @@ model Household {
   id        String   @id @default(cuid())
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
 
-  members HouseholdMember[]
-  invites HouseholdInvite[]
+  members       HouseholdMember[]
+  invites       HouseholdInvite[]
+  sharedCharges SharedCharge[]
+  settlements   Settlement[]
 
   @@map("households")
 }
@@ -851,6 +853,43 @@ model CheckIn {
 
   @@unique([userId, month])
   @@map("check_ins")
+}
+
+// A charge on a shared account that two partners split. The payer is the account's owner;
+// the other person owes partnerShareBps of the amount. Ends with the household.
+model SharedCharge {
+  id              String   @id @default(cuid())
+  householdId     String   @map("household_id")
+  transactionId   String   @unique @map("transaction_id")
+  payerId         String   @map("payer_id")
+  amountCents     Int      @map("amount_cents")
+  // The other person's share, in basis points (5000 = half).
+  partnerShareBps Int      @map("partner_share_bps")
+  // Who marked it shared.
+  userId          String   @map("user_id")
+  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  household Household @relation(fields: [householdId], references: [id], onDelete: Cascade)
+
+  @@index([householdId])
+  @@map("shared_charges")
+}
+
+// "Settle up": one partner paid the other back.
+model Settlement {
+  id          String   @id @default(cuid())
+  householdId String   @map("household_id")
+  fromUserId  String   @map("from_user_id")
+  toUserId    String   @map("to_user_id")
+  amountCents Int      @map("amount_cents")
+  // Who recorded it.
+  userId      String   @map("user_id")
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  household Household @relation(fields: [householdId], references: [id], onDelete: Cascade)
+
+  @@index([householdId])
+  @@map("settlements")
 }
 
 // Invite codes keep the beta closed: signing up needs a code with uses left.
