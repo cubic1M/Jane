@@ -113,7 +113,7 @@ export async function recordConversion(
     { type: "admin", id: admin.id },
     "referral_conversion_recorded",
     { type: "action", id: action.id },
-    { partner: key, amount_cents: conversion.amountCents },
+    { partner: key, amount_cents: conversion.amountCents, user_id: action.userId },
   );
   revalidatePath(`/admin/actions/${action.id}`);
   return { ok: true, message: "Recorded." };

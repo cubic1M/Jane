@@ -142,6 +142,7 @@ export async function changeActionStatus(
       {
         from: action.assignee,
         to: change.assignee,
+        user_id: action.userId,
       },
     );
   }
@@ -250,21 +251,45 @@ export async function listQueue(
       assignee: true,
       createdAt: true,
       handoffReason: true,
+      userId: true,
       user: { select: { email: true } },
       decision: { select: { cardSnapshot: true } },
     },
     orderBy: [{ createdAt: "asc" }, { id: "asc" }],
   });
-  await logAudit({ type: "admin", id: admin.id }, "admin_viewed_queue", null, {
+  // An action whose person was deleted mid-request comes back without its decision.
+  const shown = actions.filter((a) => a.decision);
+  await logQueueView(admin, filter, shown);
+  return shown.map((a) => ({ ...a, title: titleOf(a.decision.cardSnapshot) }));
+}
+
+// One admin_viewed_queue entry per person whose actions were listed, naming those actions,
+// so each person sees the view on /settings/team-access (spec step 74). An empty queue
+// still logs the view, about no one.
+async function logQueueView(
+  admin: Admin,
+  filter: QueueFilter,
+  shown: { id: string; userId: string }[],
+) {
+  const actor = { type: "admin" as const, id: admin.id };
+  const metadata = {
     type: filter.type,
     status: filter.status,
     assignee: filter.assignee ?? null,
-    count: actions.length,
-  });
-  // An action whose person was deleted mid-request comes back without its decision.
-  return actions
-    .filter((a) => a.decision)
-    .map((a) => ({ ...a, title: titleOf(a.decision.cardSnapshot) }));
+    count: shown.length,
+  };
+  if (shown.length === 0) return logAudit(actor, "admin_viewed_queue", null, metadata);
+  const byPerson = Map.groupBy(shown, (a) => a.userId);
+  await Promise.all(
+    [...byPerson].map(([userId, theirs]) =>
+      logAudit(
+        actor,
+        "admin_viewed_queue",
+        { type: "user", id: userId },
+        { ...metadata, action_ids: theirs.map((a) => a.id).join(",") },
+      ),
+    ),
+  );
 }
 
 export async function getActionForAdmin(

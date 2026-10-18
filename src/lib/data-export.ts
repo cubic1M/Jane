@@ -1,6 +1,7 @@
 import type { PrismaClient } from "@/generated/prisma/client";
 import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
+import { teamAccessFor } from "@/lib/team-access-loader";
 
 // "Download my data": everything the app holds about one person, as JSON. Never another
 // person's rows, never secrets (Plaid access tokens and sync cursors, the two-factor
@@ -45,6 +46,7 @@ export async function exportUserData(
     documents,
     deadlines,
     lifeEvents,
+    teamAccess,
   ] = await Promise.all([
     client.user.findUniqueOrThrow({
       where: { id: userId },
@@ -352,6 +354,9 @@ export async function exportUserData(
         completedAt: true,
       },
     }),
+    // When the team or Jane's agent viewed or acted on their data (spec step 74): every
+    // entry, by role, never a team member's name or id.
+    teamAccessFor(userId, { client, limit: null }),
   ]);
 
   return {
@@ -391,5 +396,12 @@ export async function exportUserData(
     },
     deadlines,
     lifeEvents,
+    teamAccess: teamAccess.map(({ at, who, what, why, actionId }) => ({
+      at,
+      who,
+      what,
+      why,
+      actionId,
+    })),
   };
 }

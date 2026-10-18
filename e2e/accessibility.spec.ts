@@ -47,6 +47,7 @@ const SIGNED_IN = [
   "/deadlines",
   "/life-events",
   "/tax-pack",
+  "/settings/team-access",
 ];
 const ADMIN = [
   "/admin/queue",

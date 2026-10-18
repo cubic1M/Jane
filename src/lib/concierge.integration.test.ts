@@ -173,12 +173,25 @@ describe.runIf(url)("concierge actions against a real database", () => {
     expect(queue.map((a) => a.id)).toContain(actionId);
     const created = queue.map((a) => a.createdAt.getTime());
     expect(created).toEqual([...created].sort((a, b) => a - b));
+    // One entry per person shown, naming their actions (spec step 74).
     expect(logAudit).toHaveBeenCalledWith(
       { type: "admin", id: "admin_1" },
       "admin_viewed_queue",
-      null,
-      expect.any(Object),
+      { type: "user", id: userId },
+      expect.objectContaining({
+        action_ids: queue
+          .filter((a) => a.userId === userId)
+          .map((a) => a.id)
+          .join(","),
+      }),
     );
+    const viewed = vi
+      .mocked(logAudit)
+      .mock.calls.filter(([, event]) => event === "admin_viewed_queue");
+    expect(new Set(viewed.map(([, , target]) => target?.id)).size).toBe(viewed.length);
+    for (const [, , , metadata] of viewed) {
+      expect(String(metadata?.action_ids)).not.toContain(email);
+    }
 
     const detail = await getActionForAdmin(ADMIN, actionId, { client });
     expect(detail?.user.email).toBe(email);
@@ -187,6 +200,22 @@ describe.runIf(url)("concierge actions against a real database", () => {
       "admin_viewed_action",
       { type: "action", id: actionId },
       { user_id: userId },
+    );
+  });
+
+  it("logs an empty queue view about no one", async () => {
+    const queue = await listQueue(
+      ADMIN,
+      { type: null, status: null, assignee: `nobody-${crypto.randomUUID()}@example.com` },
+      { client },
+    );
+    expect(queue).toEqual([]);
+    expect(logAudit).toHaveBeenCalledTimes(1);
+    expect(logAudit).toHaveBeenCalledWith(
+      { type: "admin", id: "admin_1" },
+      "admin_viewed_queue",
+      null,
+      expect.objectContaining({ count: 0 }),
     );
   });
 
@@ -205,7 +234,7 @@ describe.runIf(url)("concierge actions against a real database", () => {
       { type: "admin", id: ADMIN.id },
       "action_assigned",
       { type: "action", id: actionId },
-      { from: null, to: "sam@example.com" },
+      { from: null, to: "sam@example.com", user_id: userId },
     );
 
     vi.mocked(logAudit).mockClear();

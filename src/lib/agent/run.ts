@@ -216,7 +216,12 @@ export async function handOff(
     data: { agentState: "handed_off", handoffReason: reason, agentNextAt: null, status: "queued" },
   });
   await note(userId, action.id, `Passed to our team: ${reason}`, options.client);
-  await logAudit(SYSTEM_ACTOR, "agent_handed_off", { type: "action", id: action.id }, { reason });
+  await logAudit(
+    SYSTEM_ACTOR,
+    "agent_handed_off",
+    { type: "action", id: action.id },
+    { reason, user_id: userId },
+  );
   await track(userId, "agent_handed_off", { action_type: action.type });
 }
 

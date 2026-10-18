@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { LegalPage } from "@/components/legal-page";
 import { COMPANY_NAME, contactEmail } from "@/config/legal";
 import { retentionPolicy } from "@/lib/retention";
@@ -70,6 +71,11 @@ export default function PrivacyPage() {
         <li>Each person&apos;s data is only ever read for that person.</li>
         <li>
           Team access needs a second sign-in factor, and every team view of your data is logged.
+          Signed in, you can see each one under{" "}
+          <Link href="/settings/team-access" className="underline">
+            Who saw my data
+          </Link>
+          .
         </li>
         <li>Error logs have email addresses, card and account numbers, and tokens removed.</li>
       </ul>
