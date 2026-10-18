@@ -6,7 +6,14 @@ vi.mock("@/lib/session", () => ({ requireUser: vi.fn() }));
 vi.mock("@/lib/analytics", () => ({ track: vi.fn() }));
 vi.mock("@/lib/audit", () => ({ logAudit: vi.fn() }));
 
-import { ProposalError, answerProposal, openProposals, refreshProposals } from "./proposals";
+import {
+  ProposalError,
+  acceptAllProposals,
+  answerProposal,
+  openProposals,
+  recentAutoCategories,
+  refreshProposals,
+} from "./proposals";
 
 // Runs against a real, migrated Postgres (see src/detection/engine.integration.test.ts).
 const url = process.env.TEST_DATABASE_URL;
@@ -19,9 +26,11 @@ describe.runIf(url)("set-up proposals against a real database", () => {
 
   // Three months of groceries and a merchant the directory knows but the person's data
   // has no category for.
-  async function person() {
+  // "Ask me first" by default here, so nothing is applied on its own (step 63 is tested
+  // below with another level).
+  async function person(autopilot: "ask" | "safe" = "ask") {
     const user = await client.user.create({
-      data: { email: `proposals-${crypto.randomUUID()}@example.com` },
+      data: { email: `proposals-${crypto.randomUUID()}@example.com`, autopilot },
     });
     created.push(user.id);
     const account = await client.account.create({
@@ -151,5 +160,26 @@ describe.runIf(url)("set-up proposals against a real database", () => {
       answerProposal(userId, "budget:Food and drink", true, { amount: "lots" }, { client }),
     ).rejects.toBeInstanceOf(ProposalError);
     expect((await openProposals(userId, { client })).some((p) => p.kind === "budget")).toBe(true);
+  });
+
+  it("files directory categories on its own unless the person asks first", async () => {
+    const { userId, merchant } = await person("safe");
+    await refreshProposals(userId, { client, now: NOW });
+    expect((await openProposals(userId, { client })).some((p) => p.kind === "category")).toBe(
+      false,
+    );
+    expect(
+      await client.transaction.count({
+        where: { userId, pfcDetailed: "GENERAL_SERVICES_OTHER_GENERAL_SERVICES" },
+      }),
+    ).toBe(2);
+    expect(await recentAutoCategories(userId, { client, now: NOW })).toEqual([
+      { merchantName: merchant, detailed: "GENERAL_SERVICES_OTHER_GENERAL_SERVICES" },
+    ]);
+    // Budgets and the goal still wait, then go in one tap.
+    expect(await client.budget.count({ where: { userId } })).toBe(0);
+    expect(await acceptAllProposals(userId, { client, now: NOW })).toBe(2);
+    expect(await client.budget.count({ where: { userId } })).toBe(1);
+    expect(await client.savingsGoal.count({ where: { userId } })).toBe(1);
   });
 });

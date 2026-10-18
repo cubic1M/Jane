@@ -17,7 +17,7 @@ vi.mock("@/lib/plan", () => ({ answerPlanItem: vi.fn(), yesToAll: vi.fn() }));
 vi.mock("@/lib/standing-rules", () => ({ undoRuleApproval: vi.fn() }));
 vi.mock("@/lib/proposals", () => {
   class ProposalError extends Error {}
-  return { ProposalError, answerProposal: vi.fn() };
+  return { ProposalError, answerProposal: vi.fn(), acceptAllProposals: vi.fn(async () => 2) };
 });
 vi.mock("@/lib/decisions", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/lib/decisions")>()),
@@ -27,8 +27,15 @@ vi.mock("@/lib/decisions", async (importOriginal) => ({
 import { undoDecision } from "@/lib/decisions";
 import { answerPlanItem, yesToAll } from "@/lib/plan";
 import { undoRuleApproval } from "@/lib/standing-rules";
-import { ProposalError, answerProposal } from "@/lib/proposals";
-import { answerAll, answerItem, answerSetup, undoItem, undoRule } from "./actions";
+import { ProposalError, acceptAllProposals, answerProposal } from "@/lib/proposals";
+import {
+  acceptSuggestions,
+  answerAll,
+  answerItem,
+  answerSetup,
+  undoItem,
+  undoRule,
+} from "./actions";
 
 const HASH = "a".repeat(64);
 const form = (fields: Record<string, string | string[]>) => {
@@ -130,5 +137,10 @@ describe("plan actions", () => {
       ok: false,
       message: "Enter a monthly amount.",
     });
+  });
+
+  it("uses all of Jane's suggestions in one tap", async () => {
+    expect(await acceptSuggestions()).toEqual({ ok: true, message: "Set up 2 suggestions." });
+    expect(acceptAllProposals).toHaveBeenCalledWith("u1");
   });
 });
