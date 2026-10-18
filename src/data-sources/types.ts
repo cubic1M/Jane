@@ -1,0 +1,66 @@
+// Every way data enters the app (CSV uploads now, Plaid from step 7) produces these
+// shapes, so storage, categorization and detection never care where data came from.
+
+export type DataSourceKind = "csv" | "plaid";
+
+// The account kinds a person picks on /import, mapped to Plaid's type/subtype values
+// so Plaid accounts and CSV accounts look the same in the database.
+export const ACCOUNT_KINDS = {
+  checking: { label: "Checking", type: "depository", subtype: "checking" },
+  savings: { label: "Savings", type: "depository", subtype: "savings" },
+  credit_card: { label: "Credit card", type: "credit", subtype: "credit card" },
+} as const;
+
+export type AccountKind = keyof typeof ACCOUNT_KINDS;
+
+export function isAccountKind(value: unknown): value is AccountKind {
+  return typeof value === "string" && Object.hasOwn(ACCOUNT_KINDS, value);
+}
+
+export function accountKindOf(type: string, subtype: string | null): AccountKind | null {
+  for (const [kind, plaid] of Object.entries(ACCOUNT_KINDS)) {
+    if (plaid.type === type && plaid.subtype === subtype) return kind as AccountKind;
+  }
+  return null;
+}
+
+export type NormalizedAccount = {
+  // Stable id within the source: the Plaid account id, or our own id for CSV accounts.
+  ref: string;
+  name: string;
+  kind: AccountKind;
+  mask: string | null;
+  currentBalanceCents: number | null;
+};
+
+export type NormalizedTransaction = {
+  accountRef: string;
+  // YYYY-MM-DD, the date the bank posted the transaction.
+  date: string;
+  // Plaid's convention: positive is money out of the account, negative is money in.
+  amountCents: number;
+  description: string;
+  merchantName: string | null;
+  // Plaid personal finance categories, when the source already knows them.
+  categoryPrimary: string | null;
+  categoryDetailed: string | null;
+  pending: boolean;
+  // The source's own transaction id (Plaid), or a dedupe key for sources without one (CSV).
+  externalId: string;
+  // Extra hints from the source (e.g. the bank's own category) for our categorizer.
+  hints: { bankCategory?: string; bankType?: string };
+};
+
+// A row the source could not use, with a reason a person can act on.
+export type SkippedRow = { file: string; line: number; reason: string };
+
+export type SourceBatch = {
+  accounts: NormalizedAccount[];
+  transactions: NormalizedTransaction[];
+  skipped: SkippedRow[];
+};
+
+export interface DataSource {
+  readonly kind: DataSourceKind;
+  load(): Promise<SourceBatch>;
+}

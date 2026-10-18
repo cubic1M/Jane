@@ -18,8 +18,10 @@ test("login page explains an expired magic link", async ({ page }) => {
   await expect(page.getByRole("alert")).toContainText("expired or was already used");
 });
 
-test("signed-out visitors are sent from /import to /login", async ({ page }) => {
-  await page.goto("/import");
+for (const path of ["/import", "/scanning", "/report"]) {
+  test(`signed-out visitors are sent from ${path} to /login`, async ({ page }) => {
+    await page.goto(path);
 
-  await expect(page).toHaveURL("/login");
-});
+    await expect(page).toHaveURL("/login");
+  });
+}

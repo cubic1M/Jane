@@ -1,0 +1,78 @@
+import { describe, expect, it } from "vitest";
+import { categorizeByRules } from "./rules";
+import { ALL_DETAILED, categoryOf } from "./taxonomy";
+
+const out = (description: string, hints = {}) =>
+  categorizeByRules({ description, amountCents: 1000, hints })?.detailed ?? null;
+const into = (description: string, hints = {}) =>
+  categorizeByRules({ description, amountCents: -1000, hints })?.detailed ?? null;
+
+describe("categorizeByRules", () => {
+  it.each([
+    ["NETFLIX.COM NETFLIX.COM CA 10/14", "ENTERTAINMENT_TV_AND_MOVIES"],
+    ["Spotify USA", "ENTERTAINMENT_MUSIC_AND_AUDIO"],
+    ["SQ *BLUE BOTTLE COFFEE #123 OAKLAND CA", "FOOD_AND_DRINK_COFFEE"],
+    ["WHOLEFDS MKT 10234", "FOOD_AND_DRINK_GROCERIES"],
+    ["UBER   *TRIP HELP.UBER.COM CA", "TRANSPORTATION_TAXIS_AND_RIDE_SHARES"],
+    ["UBER EATS 8005928996", "FOOD_AND_DRINK_RESTAURANT"],
+    ["AMZN Mktp US*2K4L91RT0", "GENERAL_MERCHANDISE_ONLINE_MARKETPLACES"],
+    ["GEICO *AUTO 800-841-3000 DC", "GENERAL_SERVICES_INSURANCE"],
+    ["T-MOBILE AUTO PAY", "RENT_AND_UTILITIES_TELEPHONE"],
+    ["MONTHLY SERVICE FEE", "BANK_FEES_OTHER_BANK_FEES"],
+    ["NON-CHASE ATM FEE-WITH", "BANK_FEES_ATM_FEES"],
+    ["OVERDRAFT FEE FOR A $40.00 ITEM", "BANK_FEES_OVERDRAFT_FEES"],
+    ["PURCHASE INTEREST CHARGE", "BANK_FEES_INTEREST_CHARGE"],
+    ["FOREIGN TRANSACTION FEE", "BANK_FEES_FOREIGN_TRANSACTION_FEES"],
+    ["Payment to Chase card ending in 1234 10/07", "LOAN_PAYMENTS_CREDIT_CARD_PAYMENT"],
+    ["Zelle payment to Sam Example JPM99a1b2c3d", "TRANSFER_OUT_ACCOUNT_TRANSFER"],
+  ])("puts outgoing %j in %s", (description, category) => {
+    expect(out(description)).toBe(category);
+  });
+
+  it.each([
+    ["ACME CORP PAYROLL PPD ID: 9876543210", "INCOME_WAGES"],
+    ["INTEREST PAYMENT", "INCOME_INTEREST_EARNED"],
+    ["Zelle payment from Sam Example", "TRANSFER_IN_ACCOUNT_TRANSFER"],
+    ["Payment Thank You-Mobile", "LOAN_PAYMENTS_CREDIT_CARD_PAYMENT"],
+  ])("puts incoming %j in %s", (description, category) => {
+    expect(into(description)).toBe(category);
+  });
+
+  it("respects direction: payroll going out is not income", () => {
+    expect(out("PAYROLL SERVICE CO")).toBeNull();
+  });
+
+  it("matches whole words only", () => {
+    expect(out("TUBER FARMS")).toBeNull();
+    expect(out("TARGETED ADS LLC")).toBeNull();
+  });
+
+  it("falls back to the bank's own labels", () => {
+    expect(out("SOMETHING", { bankType: "FEE_TRANSACTION" })).toBe("BANK_FEES_OTHER_BANK_FEES");
+    expect(out("CORNER MARKET", { bankCategory: "Groceries" })).toBe("FOOD_AND_DRINK_GROCERIES");
+    expect(into("CORNER MARKET", { bankCategory: "Groceries" })).toBeNull();
+  });
+
+  it("leaves unknown merchants for the LLM", () => {
+    expect(out("MYSTERY SHOP 555")).toBeNull();
+  });
+
+  it("returns primary and detailed together", () => {
+    expect(categorizeByRules({ description: "NETFLIX", amountCents: 1549, hints: {} })).toEqual({
+      primary: "ENTERTAINMENT",
+      detailed: "ENTERTAINMENT_TV_AND_MOVIES",
+    });
+  });
+});
+
+describe("taxonomy", () => {
+  it("names every detailed category after its primary", () => {
+    for (const detailed of ALL_DETAILED) {
+      expect(detailed.startsWith(`${categoryOf(detailed)?.primary}_`)).toBe(true);
+    }
+  });
+
+  it("rejects names outside the taxonomy", () => {
+    expect(categoryOf("SUBSCRIPTIONS")).toBeNull();
+  });
+});
