@@ -14,7 +14,7 @@ vi.mock("@/lib/session", () => ({ requireUser: vi.fn() }));
 vi.mock("@/lib/analytics", () => ({ track: vi.fn() }));
 
 import { SYSTEM_ACTOR, logAudit } from "./audit";
-import { changeActionStatus, getActionForAdmin, listQueue } from "./concierge";
+import { NOT_ON_TEAM, changeActionStatus, getActionForAdmin, listQueue } from "./concierge";
 import { exportUserData } from "./data-export";
 import { AGENT, TEAM, UNDONE_WHY } from "./team-access";
 import { teamAccessFor } from "./team-access-loader";
@@ -164,6 +164,10 @@ describe.runIf(url)("team access against a real database", () => {
     expect(views.map((r) => r.event).sort()).toEqual(["admin_viewed_action", "admin_viewed_queue"]);
     // A queue view naming one action is one entry; everything else is one entry per row.
     expect(await teamAccessFor(a, { client })).toHaveLength(rows.length);
+    // The assignment names the team member by user id, never by email.
+    const assigned = rows.find((r) => r.event === "action_assigned");
+    expect(assigned?.metadata).toMatchObject({ from: NOT_ON_TEAM, to: admin.id });
+    expect(JSON.stringify(rows.map((r) => r.metadata))).not.toContain("@");
   });
 
   it("logs a queue view for every person whose action was listed", async () => {
@@ -182,9 +186,8 @@ describe.runIf(url)("team access against a real database", () => {
           .map((q) => q.id)
           .sort(),
       );
-      // Ids only: never the person's email.
-      expect(JSON.stringify(r.metadata)).not.toContain(`alex-${suffix}@`);
-      expect(JSON.stringify(r.metadata)).not.toContain(`blair-${suffix}@`);
+      // Ids only: no one's email, not the person's and not the assignee filter's.
+      expect(JSON.stringify(r.metadata)).not.toContain("@");
     }
   });
 
