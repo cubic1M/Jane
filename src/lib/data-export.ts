@@ -52,6 +52,8 @@ export async function exportUserData(
         calendarCreatedAt: true,
         termsVersion: true,
         termsAcceptedAt: true,
+        checklistProgress: true,
+        checklistDismissedAt: true,
       },
     }),
     db.plaidItems.findMany({
