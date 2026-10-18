@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { PLAN_OPTIONS } from "@/config/plan";
 import { DecisionError, undoDecision } from "@/lib/decisions";
 import { answerPlanItem, yesToAll } from "@/lib/plan";
+import { undoRuleApproval } from "@/lib/standing-rules";
 import { requireUser } from "@/lib/session";
 import type { ActionType } from "@/generated/prisma/client";
 
@@ -68,4 +69,16 @@ export async function answerAll(formData: FormData): Promise<void> {
   redirect(
     `/plan?${new URLSearchParams({ approved: String(approved), skipped: String(results.length - approved) })}`,
   );
+}
+
+// Takes back an approval a standing rule made, within a day and before work starts.
+export async function undoRule(_previous: ItemState, formData: FormData): Promise<ItemState> {
+  const user = await requireUser();
+  try {
+    await undoRuleApproval(user.id, String(formData.get("decisionId") ?? ""));
+  } catch (error) {
+    if (!(error instanceof DecisionError)) throw error;
+    return { kind: "error", message: error.message };
+  }
+  return { kind: "undone" };
 }

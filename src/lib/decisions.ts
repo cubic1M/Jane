@@ -56,6 +56,8 @@ export type Answer = {
   // Where it was answered (the card by default), and options changed before a yes.
   source?: DecisionSource;
   options?: Record<string, unknown>;
+  // For source "rule": which rule (src/config/rules.ts).
+  ruleKey?: string;
 };
 
 export async function recordDecision(
@@ -110,6 +112,7 @@ export async function recordDecision(
         cardSnapshot: card as unknown as Prisma.InputJsonObject,
         source,
         ...(options ? { options } : {}),
+        ...(source === "rule" && answer.ruleKey ? { ruleKey: answer.ruleKey } : {}),
       },
       select: { id: true },
     });

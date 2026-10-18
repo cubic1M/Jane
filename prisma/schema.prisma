@@ -201,6 +201,7 @@ model User {
 
   authAccounts        AuthAccount[]
   mfaBackupCodes      MfaBackupCode[]
+  standingRules       StandingRule[]
   sessions            Session[]
   plaidItems          PlaidItem[]
   accounts            Account[]
@@ -439,6 +440,8 @@ model Decision {
   // What the person changed before saying yes (src/config/plan.ts), e.g. downgrade
   // instead of cancel. Null means Jane's defaults.
   options      Json?
+  // For an answer from a standing rule: which one (src/config/rules.ts).
+  ruleKey      String?        @map("rule_key")
 
   user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
   finding Finding @relation(fields: [findingId], references: [id], onDelete: Cascade)
@@ -1015,4 +1018,25 @@ model MfaBackupCode {
 
   @@unique([userId, codeHash])
   @@map("mfa_backup_codes")
+}
+
+// Standing rules (spec step 50): things the person pre-approved, so Jane's plan items that
+// match are approved without asking. One row per rule the person has set.
+model StandingRule {
+  id             String   @id @default(cuid())
+  userId         String   @map("user_id")
+  // A key from src/config/rules.ts.
+  key            String
+  enabled        Boolean  @default(true)
+  // Approvals this rule may make in a calendar month.
+  monthlyLimit   Int      @map("monthly_limit")
+  // For rules with an amount: only findings worth this much a year or less.
+  maxAnnualCents Int?     @map("max_annual_cents")
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt      DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, key])
+  @@map("standing_rules")
 }

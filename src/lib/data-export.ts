@@ -31,6 +31,7 @@ export async function exportUserData(
     household,
     pushDevices,
     backupCodesLeft,
+    standingRules,
     budgets,
     savingsGoals,
     balanceSnapshots,
@@ -129,6 +130,7 @@ export async function exportUserData(
         choice: true,
         source: true,
         options: true,
+        ruleKey: true,
         cardSnapshot: true,
         createdAt: true,
         undoneAt: true,
@@ -214,6 +216,15 @@ export async function exportUserData(
     db.pushSubscriptions.count(),
     // How many two-factor backup codes are unused; never the codes or their hashes.
     db.mfaBackupCodes.count({ where: { usedAt: null } }),
+    db.standingRules.findMany({
+      select: {
+        key: true,
+        enabled: true,
+        monthlyLimit: true,
+        maxAnnualCents: true,
+        updatedAt: true,
+      },
+    }),
     db.budgets.findMany({ select: { category: true, amountCents: true, createdAt: true } }),
     db.savingsGoals.findMany({
       select: {
@@ -256,6 +267,7 @@ export async function exportUserData(
     household,
     pushDevices,
     backupCodesLeft,
+    standingRules,
     budgets,
     savingsGoals,
     balanceSnapshots,

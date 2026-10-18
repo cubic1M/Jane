@@ -7,6 +7,7 @@ import {
 import type { Finding, FindingStatus, FindingType, PrismaClient } from "@/generated/prisma/client";
 import { track } from "@/lib/analytics";
 import { raiseAlerts } from "@/lib/alerts";
+import { applyStandingRules } from "@/lib/standing-rules";
 import { db as defaultClient } from "@/lib/db";
 import { llmModel } from "@/lib/anthropic";
 import { scopedFor, type ScopedDb } from "@/lib/db-scoped";
@@ -239,6 +240,7 @@ type Options = {
   now?: Date;
   checkSubscriptions?: (merchants: string[]) => Promise<Map<string, boolean>>;
   raiseAlerts?: typeof raiseAlerts;
+  applyStandingRules?: typeof applyStandingRules;
 };
 
 // Merchant keys Claude has called subscriptions. Recurring charges whose category doesn't
@@ -292,6 +294,7 @@ export async function runDetection(
     now = new Date(),
     checkSubscriptions: check = checkSubscriptions,
     raiseAlerts: raise = raiseAlerts,
+    applyStandingRules: applyRules = applyStandingRules,
   }: Options = {},
 ): Promise<DetectionSummary> {
   const db = scopedFor(userId, client);
@@ -359,6 +362,14 @@ export async function runDetection(
     await raise(userId, [...alerts, ...overBudget], { client, now });
   } catch (error) {
     console.error("Alerts failed", { userId, error: String(error) });
+  }
+
+  // The person's standing rules approve matching findings. Like alerts, a failure here
+  // never stops the scan.
+  try {
+    await applyRules(userId, { client, now });
+  } catch (error) {
+    console.error("Standing rules failed", { userId, error: String(error) });
   }
 
   const counts = { ...NO_FINDINGS };
