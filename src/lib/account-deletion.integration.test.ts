@@ -148,6 +148,9 @@ describe.runIf(url)("deleting data against a real database", () => {
         balanceCents: 100,
       },
     });
+    await client.checkIn.create({
+      data: { userId, month: "2026-09", summary: "s", source: "template" },
+    });
     await client.savingsGoal.create({
       data: { userId, name: "Trip", targetCents: 200_000, targetDate: new Date("2027-06-01") },
     });
@@ -210,6 +213,7 @@ describe.runIf(url)("deleting data against a real database", () => {
       budgets: await client.budget.count(where),
       savingsGoals: await client.savingsGoal.count(where),
       balanceSnapshots: await client.balanceSnapshot.count(where),
+      checkIns: await client.checkIn.count(where),
       sessions: await client.session.count(where),
       authAccounts: await client.authAccount.count(where),
     };

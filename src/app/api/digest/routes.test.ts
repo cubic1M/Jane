@@ -26,6 +26,9 @@ vi.mock("@/lib/db-scoped", () => ({
 }));
 vi.mock("@/lib/analytics", () => ({ track: vi.fn() }));
 vi.mock("@/lib/digest/send", () => ({ runDigests: vi.fn() }));
+vi.mock("@/lib/check-in-email", () => ({
+  runMonthlyCheckIns: vi.fn(async () => ({ sent: 0, skipped: 0, failed: 0 })),
+}));
 vi.mock("@/lib/health", () => ({
   recordRun: vi.fn((_name: string, run: () => Promise<unknown>) => run()),
   reportMissedJobs: vi.fn(async () => []),

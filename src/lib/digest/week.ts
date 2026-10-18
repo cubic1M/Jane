@@ -38,3 +38,8 @@ export function weekStart(now: Date, timezone: string | null | undefined): Date 
   const sinceMonday = (weekday + 6) % 7;
   return new Date(date.getTime() - sinceMonday * 24 * 60 * 60 * 1000);
 }
+
+// Today's date in the person's timezone, as YYYY-MM-DD.
+export function localDate(now: Date, timezone: string | null | undefined): string {
+  return localParts(now, validTimezone(timezone)).date.toISOString().slice(0, 10);
+}

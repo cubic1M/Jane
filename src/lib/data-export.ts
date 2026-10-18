@@ -33,6 +33,7 @@ export async function exportUserData(
     budgets,
     savingsGoals,
     balanceSnapshots,
+    checkIns,
     events,
   ] = await Promise.all([
     client.user.findUniqueOrThrow({
@@ -202,6 +203,7 @@ export async function exportUserData(
       select: { accountId: true, date: true, balanceCents: true },
       orderBy: [{ date: "asc" }, { accountId: "asc" }],
     }),
+    db.checkIns.findMany({ select: { month: true, summary: true, emailedAt: true } }),
     client.analyticsEvent.findMany({
       where: { userId },
       select: { name: true, createdAt: true },
@@ -231,6 +233,7 @@ export async function exportUserData(
     budgets,
     savingsGoals,
     balanceSnapshots,
+    checkIns,
     events,
   };
 }
