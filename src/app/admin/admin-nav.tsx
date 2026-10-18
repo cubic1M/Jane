@@ -17,6 +17,9 @@ export function AdminNav({ email }: { email: string | null | undefined }) {
         <Link href="/admin/merchants" className="hover:underline">
           Merchants
         </Link>
+        <Link href="/admin/options" className="hover:underline">
+          Options
+        </Link>
         <Link href="/admin/partners" className="hover:underline">
           Partners
         </Link>

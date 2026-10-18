@@ -2,12 +2,14 @@ import type {
   DecisionChoice,
   DecisionSource,
   FindingStatus,
+  FindingType,
   Prisma,
   PrismaClient,
 } from "@/generated/prisma/client";
 import { track } from "@/lib/analytics";
 import { logAudit } from "@/lib/audit";
 import { ACTION_FOR_FINDING, CARD_SELECT, buildCard, cardHash } from "@/lib/cards";
+import { comparisonFor } from "@/lib/compare";
 import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
 import { isAgentAction, startAgent } from "@/lib/agent/run";
@@ -66,6 +68,44 @@ export type Answer = {
   ruleKey?: string;
 };
 
+// The option picked to switch to (spec step 76), checked against the comparison as it is
+// now and kept as it was shown, since the catalog can change. "keep" (or nothing) keeps
+// what they have.
+async function switchChoice(
+  userId: string,
+  finding: { type: FindingType; evidence: unknown },
+  switchTo: unknown,
+  client: PrismaClient,
+): Promise<Record<string, string | number> | null> {
+  if (switchTo === undefined || switchTo === null || switchTo === "" || switchTo === "keep") {
+    return null;
+  }
+  const comparison = await comparisonFor(finding, { userId, client });
+  const chosen = comparison
+    ? [comparison.pick, ...comparison.runnersUp].find((s) => s.option.id === switchTo)
+    : undefined;
+  if (!comparison || !chosen) {
+    throw new DecisionError("bad_options", "That option isn't available anymore. Look again.");
+  }
+  const { option } = chosen;
+  const { current } = comparison;
+  return {
+    switchTo: option.id,
+    switchKind: option.kind,
+    switchName: option.name,
+    switchProvider: option.provider,
+    switchSavingCents: chosen.savingCents,
+    switchWasPick: option.id === comparison.pick.option.id ? 1 : 0,
+    ...(option.monthlyCents !== null ? { switchMonthlyCents: option.monthlyCents } : {}),
+    ...(option.apyBps !== null ? { switchApyBps: option.apyBps } : {}),
+    ...(option.signUpUrl ? { switchSignUpUrl: option.signUpUrl } : {}),
+    // What they had, so the saving can be counted from the real new charges (step 77).
+    ...(current.kind === "bill"
+      ? { switchFromMonthlyCents: current.monthlyCents }
+      : { switchAmountCents: current.amountCents, switchFromRateBps: current.currentRateBps }),
+  };
+}
+
 export async function recordDecision(
   userId: string,
   answer: Answer,
@@ -90,7 +130,7 @@ export async function recordDecision(
   if (answer.choice === "diy" && !hasKit(card.actionType)) {
     throw new DecisionError("no_kit", "There's no do-it-yourself kit for this one.");
   }
-  let options = null;
+  let options: Record<string, string | number> | null = null;
   if (answer.choice === "yes" && answer.options) {
     try {
       options = parsePlanOptions(card.actionType, answer.options);
@@ -98,6 +138,8 @@ export async function recordDecision(
       if (!(error instanceof PlanOptionsError)) throw error;
       throw new DecisionError("bad_options", error.message);
     }
+    const switched = await switchChoice(userId, finding, answer.options.switchTo, client);
+    if (switched) options = { ...options, ...switched };
   }
   const source = answer.source ?? "card";
 
@@ -147,7 +189,8 @@ export async function recordDecision(
     },
   );
   // The agent works the action itself when it can (src/lib/agent/run.ts).
-  if (result.actionId && isAgentAction(card.actionType)) {
+  // A switch to a picked option is the agent's too, whatever the action (spec step 77).
+  if (result.actionId && (isAgentAction(card.actionType) || options?.switchTo)) {
     result.agentJobId = await startAgent(userId, result.actionId, { client, source });
   }
   const EVENT = { yes: "decision_yes", no: "decision_no", diy: "diy_started" } as const;

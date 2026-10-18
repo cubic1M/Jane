@@ -2,7 +2,13 @@ import { describe, expect, it } from "vitest";
 import { PFC_TAXONOMY } from "@/categorize/taxonomy";
 import { normalizeLiabilities } from "@/data-sources/plaid/liabilities";
 import { normalizeAccount } from "@/data-sources/plaid/plaid-source";
-import { addDays, demoAccounts, demoLiabilities, demoTransactions } from "./demo-bank";
+import {
+  addDays,
+  demoAccounts,
+  demoLiabilities,
+  demoSwitchTransactions,
+  demoTransactions,
+} from "./demo-bank";
 
 const DEMO = { seed: "abc123", anchor: "2026-10-18" };
 const THROUGH = "2026-10-17";
@@ -75,5 +81,68 @@ describe("the demo bank", () => {
       expect(l.aprBps).not.toBeNull();
       expect(l.nextPaymentDueDate! > "2026-10-18").toBe(true);
     }
+  });
+});
+
+describe("the demo bank after a switch", () => {
+  const sw = {
+    actionId: "act1",
+    kind: "plan" as const,
+    provider: "Pine Mobile",
+    company: "Verizon Wireless",
+    category: "phone",
+    monthlyCents: 3_500,
+    amountCents: null,
+    startDay: "2026-10-18",
+  };
+
+  it("sends the new provider's first bill two days later, once", () => {
+    expect(demoSwitchTransactions(DEMO, [sw], "2026-10-18", "2026-10-19")).toEqual([]);
+    const [bill] = demoSwitchTransactions(DEMO, [sw], "2026-10-18", "2026-10-20");
+    expect(bill).toMatchObject({
+      date: "2026-10-20",
+      amount: 35,
+      merchant_name: "Pine Mobile",
+      personal_finance_category: { detailed: "RENT_AND_UTILITIES_TELEPHONE" },
+    });
+    expect(demoSwitchTransactions(DEMO, [sw], "2026-10-20", "2026-10-25")).toEqual([]);
+  });
+
+  it("shows a cheaper tier as the same service, and savings as money moving out", () => {
+    const [tier] = demoSwitchTransactions(
+      DEMO,
+      [
+        {
+          ...sw,
+          kind: "tier",
+          provider: "Netflix",
+          company: "Netflix",
+          category: null,
+          monthlyCents: 799,
+        },
+      ],
+      null,
+      "2026-10-25",
+    );
+    expect(tier).toMatchObject({ merchant_name: "Netflix", amount: 7.99 });
+    const [moved] = demoSwitchTransactions(
+      DEMO,
+      [
+        {
+          ...sw,
+          kind: "savings",
+          provider: "Cobalt Bank",
+          monthlyCents: null,
+          amountCents: 1_500_000,
+        },
+      ],
+      null,
+      "2026-10-25",
+    );
+    expect(moved).toMatchObject({
+      amount: 15_000,
+      account_id: "demo-abc123-savings",
+      personal_finance_category: { primary: "TRANSFER_OUT" },
+    });
   });
 });

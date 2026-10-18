@@ -65,3 +65,11 @@ export const AGENT_HOLD_HOURS: Partial<Record<"rule" | "link" | "auto", number>>
   rule: 24,
   link: 1,
 };
+
+// Switching to a picked option (spec step 77, src/lib/agent/switch.ts).
+// How long Jane watches for the switch before passing it to the team.
+export const SWITCH_WATCH_DAYS = 45;
+// A cheaper tier's charge may be this much above its listed price (tax) and still count.
+export const SWITCH_PRICE_TOLERANCE_CENTS = 150;
+// A transfer out of at least this share of the idle cash counts as the money moved.
+export const SWITCH_MIN_MOVED_SHARE = 0.5;

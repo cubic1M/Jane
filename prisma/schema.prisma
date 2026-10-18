@@ -67,6 +67,9 @@ enum AgentState {
   handed_off
   // Done, by the agent.
   finished
+  // Switching to the option the person picked (spec step 77): they sign up with the link;
+  // Jane watches for the new charge (or the cheaper one, or the transfer).
+  switching
 
   @@map("agent_state")
 }
@@ -694,6 +697,45 @@ model Alert {
 // The merchant directory: shared knowledge about companies (names, aliases, cancel and
 // support links, typical prices). Never personal data, so no user_id. Edited at
 // /admin/merchants; seeded from src/config/merchant-seed.ts.
+// Options Jane can compare a bill, a subscription or idle cash against (spec step 76): a
+// cheaper tier of the same service, another provider's plan, or a savings account. Kept by
+// the team on /admin/options with a source and the day it was checked. Not user data.
+model SwitchOption {
+  id                  String    @id @default(cuid())
+  // plan (another provider), tier (a cheaper tier of the same service) or savings.
+  kind                String
+  // What it replaces: phone or internet_tv for plans (src/config/detection.ts
+  // BILL_BENCHMARKS ids), savings for savings accounts.
+  category            String?
+  // For tiers: the merchant directory key of the service it's a tier of.
+  merchantKey         String?   @map("merchant_key")
+  provider            String
+  name                String
+  monthlyCents        Int?      @map("monthly_cents")
+  // Savings: yearly rate in basis points.
+  apyBps              Int?      @map("apy_bps")
+  contractMonths      Int       @default(0) @map("contract_months")
+  oneTimeFeeCents     Int       @default(0) @map("one_time_fee_cents")
+  minimumBalanceCents Int       @default(0) @map("minimum_balance_cents")
+  // One line each, in plain words: what's included and what's given up.
+  includes            String?
+  givesUp             String?   @map("gives_up")
+  signUpUrl           String?   @map("sign_up_url")
+  // Where the price comes from, and the day someone last checked it.
+  sourceUrl           String    @map("source_url")
+  checkedAt           DateTime  @map("checked_at") @db.Date
+  // When the team confirmed it; production compares only reviewed options.
+  reviewedAt          DateTime? @map("reviewed_at") @db.Timestamptz(3)
+  // Example options for the demo bank, never shown in production.
+  demo                Boolean   @default(false)
+  createdAt           DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt           DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  @@index([kind, category])
+  @@index([merchantKey])
+  @@map("switch_options")
+}
+
 model Merchant {
   id                     String    @id @default(cuid())
   // Normalized merchant key (src/data-sources/merchant.ts), lower case.

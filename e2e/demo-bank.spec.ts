@@ -27,6 +27,15 @@ test("a demo bank fills the report with fake data, labelled as fake, and can be 
   await expect(page.getByRole("link", { name: /Netflix went up/ })).toBeVisible();
   await expect(page.getByRole("note")).toContainText("demo bank with fake data");
 
+  // The best option for this person, picked and ready for one yes (spec steps 76–77).
+  await page.getByRole("link", { name: /Verizon Wireless phone bill/ }).click();
+  const best = page.getByRole("region", { name: "The best option for you" });
+  await expect(best.getByText("Jane's pick")).toBeVisible();
+  await expect(best.getByRole("radio", { name: /Pine Mobile Unlimited/ })).toBeChecked();
+  await page.getByRole("button", { name: "Yes, switch to Pine Mobile Unlimited" }).click();
+  await expect(page).toHaveURL("/actions");
+  await expect(page.getByRole("link", { name: "Sign up for Pine Mobile Unlimited" })).toBeVisible();
+
   await page.goto("/loans");
   await expect(page.getByText("Demo Home Loan ····0004")).toBeVisible();
 

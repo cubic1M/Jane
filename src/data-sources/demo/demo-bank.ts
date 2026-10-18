@@ -601,3 +601,65 @@ export function demoLiabilities({ seed, anchor }: DemoSeed, today: string): Liab
     ],
   } as unknown as LiabilitiesObject;
 }
+
+// A switch the person made on the demo bank (spec step 77), so the demo shows what a real
+// account would: the new provider's first bill, the cheaper tier's charge, or the money
+// moving out, two days after the switch started.
+export type DemoSwitch = {
+  actionId: string;
+  kind: "plan" | "tier" | "savings";
+  provider: string;
+  // The service being replaced, for a tier.
+  company: string | null;
+  category: string | null;
+  monthlyCents: number | null;
+  amountCents: number | null;
+  // YYYY-MM-DD the switch started.
+  startDay: string;
+};
+
+export const DEMO_SWITCH_DELAY_DAYS = 2;
+
+const SWITCH_CATEGORY: Record<string, PfcDetailed> = {
+  phone: "RENT_AND_UTILITIES_TELEPHONE",
+  internet_tv: "RENT_AND_UTILITIES_INTERNET_AND_CABLE",
+};
+
+export function demoSwitchTransactions(
+  demo: DemoSeed,
+  switches: DemoSwitch[],
+  after: string | null,
+  through: string,
+): Transaction[] {
+  return switches.flatMap((sw) => {
+    const day = addDays(sw.startDay, DEMO_SWITCH_DELAY_DAYS);
+    if ((after !== null && day <= after) || day > through) return [];
+    const template: Template | null =
+      sw.kind === "savings"
+        ? sw.amountCents === null
+          ? null
+          : {
+              key: `switch-${sw.actionId}`,
+              account: "savings",
+              name: `TRANSFER TO ${sw.provider.toUpperCase()}`,
+              merchant: null,
+              category: "TRANSFER_OUT_ACCOUNT_TRANSFER",
+              amount: sw.amountCents / 100,
+            }
+        : sw.monthlyCents === null
+          ? null
+          : {
+              key: `switch-${sw.actionId}`,
+              account: sw.kind === "tier" ? "card" : "checking",
+              name: (sw.kind === "tier" ? (sw.company ?? sw.provider) : sw.provider).toUpperCase(),
+              merchant: sw.kind === "tier" ? (sw.company ?? sw.provider) : sw.provider,
+              category:
+                SWITCH_CATEGORY[sw.category ?? ""] ??
+                (sw.kind === "tier"
+                  ? "ENTERTAINMENT_TV_AND_MOVIES"
+                  : "GENERAL_SERVICES_OTHER_GENERAL_SERVICES"),
+              amount: sw.monthlyCents / 100,
+            };
+    return template ? [transaction(template, day, demo)] : [];
+  });
+}

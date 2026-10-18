@@ -13,6 +13,8 @@ import { normalizeAlias } from "@/data-sources/merchant-directory";
 import { buildKit, hasKit } from "@/lib/diy";
 import { outcomeFor } from "@/lib/merchant-outcomes";
 import { merchantFor } from "@/lib/merchants";
+import { comparisonFor } from "@/lib/compare";
+import { BestOption } from "./best-option";
 import { DecisionButtons } from "./decision-buttons";
 import { DiyKit } from "./diy-kit";
 import { savingsLine } from "@/lib/savings-text";
@@ -41,6 +43,8 @@ async function Card({ params }: { params: PageProps<"/report/[findingId]">["para
         where: { findingId: finding.id, choice: "diy", undoneAt: null },
         select: { id: true, diyDoneAt: true },
       });
+  // Options compared for this person, with Jane's pick (spec step 76).
+  const comparison = open ? await comparisonFor(finding, { userId: user.id }) : null;
   const merchantName = (finding.evidence as { merchant?: unknown } | null)?.merchant;
   const outcome =
     hasKit(card.actionType) && (open || diyDecision)
@@ -69,9 +73,20 @@ async function Card({ params }: { params: PageProps<"/report/[findingId]">["para
           <p className="text-zinc-700 dark:text-zinc-300">{card.explanation}</p>
         </header>
 
+        {comparison && (
+          <BestOption
+            comparison={comparison}
+            keepLabel={card.whatChanges}
+            findingId={finding.id}
+            cardHash={cardHash(card)}
+            undoSeconds={UNDO_WINDOW_SECONDS}
+            diy={kit !== null}
+          />
+        )}
+
         <section className="rounded-xl bg-emerald-50 p-4 dark:bg-emerald-950">
           <h2 className="text-sm font-semibold text-emerald-800 dark:text-emerald-300">
-            What changes if you say yes
+            {comparison ? "If you don't switch" : "What changes if you say yes"}
           </h2>
           <p className="mt-1">{card.whatChanges}</p>
           <p className="mt-3 text-lg font-semibold">
@@ -127,7 +142,7 @@ async function Card({ params }: { params: PageProps<"/report/[findingId]">["para
           <p className="text-xs text-zinc-500">{card.referralDisclosure}</p>
         )}
 
-        {open ? (
+        {open && comparison ? null : open ? (
           <DecisionButtons
             findingId={finding.id}
             cardHash={cardHash(card)}
