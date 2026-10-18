@@ -105,8 +105,8 @@ async function MetricsContent() {
       <section className="flex flex-col gap-2">
         <h2 className="text-xl font-semibold">Automate next</h2>
         <p className="text-sm text-zinc-600 dark:text-zinc-400">
-          Action types by the team time they&apos;ve taken so far: approvals times average
-          minutes per finished action, all time.
+          Action types by the team time they&apos;ve taken so far: approvals times average minutes
+          per finished action, all time.
         </p>
         {automateNext.length === 0 ? (
           <p className="text-sm text-zinc-500">No actions yet.</p>
