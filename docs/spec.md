@@ -1121,6 +1121,103 @@ Phase I brings in the rest of a person's money picture without new regulated wor
 > - Each kind of data is removed after its period, and nothing younger is touched
 > - The policy text and the config can't disagree (test)
 
+## Phase K: Jane looks ahead (steps 44–47)
+
+Phase K turns everything Jane knows into a few clear numbers and nudges, still as plain math and the person's own data, never advice.
+
+### Step 44: Safe to spend until payday
+
+> Read CLAUDE.md. One number: what's left once bills and plans are covered.
+>
+> Build:
+> 1. On Home: checking balance today, minus bills expected before the next deposit,
+>    minus what's left in budgets and goal amounts for the period (each shown), equals
+>    "safe to spend until <date>".
+> 2. Every part can be expanded; nothing is hidden in the number.
+>
+> Acceptance criteria:
+> - The number reconciles exactly with the forecast, budgets and goals pages
+> - With no deposit expected, it says so instead of guessing a date
+
+### Step 45: Monthly check-in
+
+> Read CLAUDE.md. Once a month, the whole picture in two minutes.
+>
+> Build:
+> 1. /check-in for the month just ended: spending vs the month before, budgets kept,
+>    goals moved, net worth change, what Jane found and what got done.
+> 2. A short summary written by Claude from those figures only, through the
+>    guardrails, with a template fallback; an email on the first of the month.
+>
+> Acceptance criteria:
+> - Every figure matches its page; the summary uses no figure that isn't in the data
+> - The email respects the digest preference and is never empty
+
+### Step 46: Shared bills in a household
+
+> Read CLAUDE.md. Who paid what, and who owes whom.
+>
+> Build:
+> 1. In a household, mark a charge on a shared account as shared (with a split).
+> 2. A running balance between the two people, and "settle up" to zero it.
+>
+> Acceptance criteria:
+> - Only charges on shared accounts can be split; each person sees the same balance
+> - Leaving the household keeps each person's own history but ends the shared balance
+
+### Step 47: First week with Jane
+
+> Read CLAUDE.md. Help new people get to their first saving.
+>
+> Build:
+> 1. A checklist on Home for the first weeks: link a bank, review three cards, set a
+>    budget or goal, turn on alerts; it disappears when done or dismissed.
+> 2. Funnel events for each item.
+>
+> Acceptance criteria:
+> - Items tick themselves from real state, not clicks on the checklist
+> - Dismissing hides it for good
+
+## Phase L: your account, your control (steps 48–50)
+
+### Step 48: Two-factor for everyone
+
+> Read CLAUDE.md. Optional extra protection for people's accounts.
+>
+> Build:
+> 1. Anyone can turn on an authenticator app (the team's TOTP code), with backup
+>    codes; sign-in asks for it once per session.
+> 2. Turning it off needs a current code.
+>
+> Acceptance criteria:
+> - Backup codes work once each and are stored hashed
+> - The admin rule (two-factor always) is unchanged
+
+### Step 49: Devices and sessions
+
+> Read CLAUDE.md. See where you're signed in, and sign out elsewhere.
+>
+> Build:
+> 1. Settings lists active sessions (device type, approximate time, this one marked).
+> 2. "Sign out other devices" and per-session sign-out.
+>
+> Acceptance criteria:
+> - Signed-out sessions stop working at once
+> - Session tokens never reach the page
+
+### Step 50: Who saw my data
+
+> Read CLAUDE.md. Make the team's access visible to the person.
+>
+> Build:
+> 1. A "Team access" page listing when the concierge team viewed or acted on the
+>    person's data (from the audit log): date, what, and why (the action).
+> 2. Included in "Download my data".
+>
+> Acceptance criteria:
+> - Only the person's own entries; team members shown by role, not name
+> - Every team view of their data appears (test against the audit events)
+
 ## Phase F: regulated capabilities (plan only)
 
 Each of these needs licensing, a regulated partner, or legal review. Don't build until counsel signs off; when they do, each becomes its own phase of steps.
