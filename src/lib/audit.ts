@@ -73,7 +73,13 @@ export type AuditEvent =
   | "document_facts_saved"
   | "document_deleted"
   // The tax-time pack downloaded as a CSV (spec step 72).
-  | "tax_pack_downloaded";
+  | "tax_pack_downloaded"
+  // Texts (spec step 78). Never the number or what a text said.
+  | "text_number_verified"
+  | "text_number_removed"
+  | "text_approval"
+  | "text_opt_out"
+  | "text_opt_in";
 
 export type AuditActor = { type: ActorType; id: string | null };
 

@@ -24,6 +24,7 @@ import { DeleteDataForm, DisconnectForm, RefreshForm } from "./data-forms";
 import { EmailForm } from "./email-form";
 import { TwoFactorOnForms } from "./two-factor-forms";
 import { RulesForm } from "./rules-form";
+import { TextsSection } from "./texts-section";
 
 async function SettingsContent() {
   const user = await requireUser();
@@ -268,6 +269,8 @@ async function SettingsContent() {
           </>
         )}
       </section>
+
+      <TextsSection userId={user.id} />
 
       <section className="flex flex-col gap-3 rounded-xl border border-red-200 p-4 dark:border-red-900">
         <h2 className="text-xl font-semibold">Delete all my data</h2>

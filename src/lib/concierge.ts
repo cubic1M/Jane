@@ -5,6 +5,7 @@ import {
 } from "@/config/concierge";
 import type { ActionStatus, ActionType, PrismaClient } from "@/generated/prisma/client";
 import { sendStatusEmail, statusEmail } from "@/lib/action-emails";
+import { textNeedsYou } from "@/lib/messaging/texts";
 import { FINDING_STATUS } from "@/lib/action-status";
 import { track } from "@/lib/analytics";
 import { logAudit } from "@/lib/audit";
@@ -167,6 +168,15 @@ export async function changeActionStatus(
       // The status change stands; the person still sees it on /actions.
       console.error("Status email failed", { actionId: action.id, error: String(error) });
     }
+  }
+  // A text too, when the person turned them on (spec step 78).
+  if (change.status === "waiting_on_user") {
+    await textNeedsYou(action.userId, titleOf(action.decision.cardSnapshot), {
+      client,
+      now,
+    }).catch((error) =>
+      console.error("Needs-you text failed", { actionId: action.id, error: String(error) }),
+    );
   }
 }
 

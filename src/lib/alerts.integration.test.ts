@@ -1,3 +1,4 @@
+import { randomBytes } from "node:crypto";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { ALERT_EMAILS_PER_DAY } from "@/config/alerts";
@@ -8,6 +9,7 @@ vi.mock("@/lib/analytics", () => ({ track: vi.fn() }));
 vi.mock("@/lib/session", () => ({ requireUser: vi.fn() }));
 
 import { raiseAlerts } from "./alerts";
+import { verifiedNumber } from "./__fixtures__/texts";
 
 // Runs against a real, migrated Postgres (see engine.integration.test.ts).
 const url = process.env.TEST_DATABASE_URL;
@@ -241,6 +243,37 @@ describe.runIf(url)("raiseAlerts against a real database", () => {
       await raiseAlerts(plain.id, [alert()], { client, now: NOW, send, push });
       expect(push).not.toHaveBeenCalled();
       expect(send).toHaveBeenCalledTimes(2);
+    });
+  });
+
+  describe("with texts on (spec step 78)", () => {
+    beforeAll(() => vi.stubEnv("TOKEN_ENCRYPTION_KEY", randomBytes(32).toString("base64")));
+
+    it("texts urgent alerts instead of emailing them, within the same daily cap", async () => {
+      const user = await person();
+      await verifiedNumber(client, user.id);
+      const many = Array.from({ length: ALERT_EMAILS_PER_DAY + 1 }, () => alert());
+      const info = vi.spyOn(console, "info").mockImplementation(() => {});
+
+      expect(await raiseAlerts(user.id, many, { client, now: NOW, send })).toEqual({
+        raised: ALERT_EMAILS_PER_DAY + 1,
+        emailed: ALERT_EMAILS_PER_DAY,
+      });
+      expect(send).not.toHaveBeenCalled();
+      const texts = await client.textMessage.findMany({ where: { userId: user.id } });
+      expect(texts).toHaveLength(ALERT_EMAILS_PER_DAY);
+      expect(texts.every((t) => t.kind === "alert")).toBe(true);
+      expect(texts[0].body).toContain("Unusually large charge: $1,200.00 at Best Electronics");
+      info.mockRestore();
+    });
+
+    it("emails as before when alert texts are turned off", async () => {
+      const user = await person();
+      await verifiedNumber(client, user.id);
+      await client.textSetting.update({ where: { userId: user.id }, data: { alerts: false } });
+      await raiseAlerts(user.id, [alert()], { client, now: NOW, send });
+      expect(send).toHaveBeenCalledTimes(1);
+      expect(await client.textMessage.count({ where: { userId: user.id } })).toBe(0);
     });
   });
 });

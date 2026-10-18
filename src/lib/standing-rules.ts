@@ -229,12 +229,12 @@ export async function undoRuleApproval(
   return undoApproval(userId, decisionId, "rule", RULE_UNDO_HOURS, options);
 }
 
-// Takes back an approval made by a rule or a one-tap link, within its window and before
-// the work starts.
+// Takes back an approval made by a rule, a one-tap link or a plan text (spec step 78),
+// within its window and before the work starts.
 export async function undoApproval(
   userId: string,
   decisionId: string,
-  source: "rule" | "link",
+  source: "rule" | "link" | "text",
   windowHours: number,
   { client = defaultClient, now = new Date() }: Options = {},
 ): Promise<void> {

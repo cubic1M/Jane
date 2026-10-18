@@ -98,6 +98,7 @@ Steps 1–63 are built (24 came before 22, because do-it-yourself kits need its 
 | 75 Demo bank | PR #78 | A stand-in for Plaid until there are keys. "Link a demo bank" on /connect makes an ordinary plaid_items row (ids start with demo-; the encrypted access token names the demo seed and the day it was linked) that the normal sync, daily refresh and removal handle; a fake Plaid API (src/lib/plaid/demo.ts) answers in Plaid's place and never calls Plaid. It holds checking, savings, a credit card, a mortgage, a student loan and a car loan, a year of Plaid-shaped transactions with real PFC categories (src/data-sources/demo/demo-bank.ts) and loan details. The data is deterministic (later syncs add only the new days) and built so every finding shows up: a Netflix price rise, high phone and internet bills, overdraft and service fees, card interest, a converted trial, a duplicate charge, insurance, subscriptions and idle cash. A banner on every signed-in page says it's fake data and links to removing it. Offered only when Plaid isn't set up and outside production, or anywhere with DEMO_BANK=1 |
 | 76 The best option for you | PR #79 | Cards for a phone or internet bill, a subscription (price rise or review) and idle cash now compare the options Jane knows and pick the best one for the person: the lowest first-year cost (fees included) for the same kind of service, or the savings account they qualify for that earns the most (src/planning/compare.ts). The card shows "The best option for you" with Jane's pick already selected, up to two runners-up (price, saving, what's included, contract, fee, what's given up, the day the price was checked and its source) and "Don't switch" (the old action); one yes switches. The choice is checked against the comparison and kept on the decision as it was shown. Options live in switch_options, kept by the team on /admin/options (add, "Checked today", remove); only options checked on the provider's own page in the last 90 days (OPTION_STALE_DAYS) and saving at least $24 a year are compared. Never insurance or investments. Example options with made-up providers exist only for people using the demo bank, labelled "Example, not a real offer" |
 | 77 Jane switches for you | PR #79 | A yes on a switch becomes one action (agent state switching), whatever the finding: the person gets one "Sign up for …" button and Jane watches the account (after each sync and daily). A cheaper tier is done when the cheaper charge shows up; another provider's plan when its first bill shows up, and only then does the team cancel the old one, so the person is never without service; a savings account when the money is seen moving out (Jane never moves money). The saving is counted from the real new charge. No sign of it in 45 days (SWITCH_WATCH_DAYS) passes it to the team. On the demo bank, the new bill arrives two days after a switch so the whole loop can be tried |
+| 78 Jane in iMessage | PR #TBD | Jane can now text people, through Sendblue (iMessage, or SMS when the phone can't take one). On /settings, under Texts, the person enters a US mobile number, ticks a consent box with the exact wording in src/config/messaging.ts, and types the 6-digit code Jane texts them (it works for 10 minutes and 5 tries; at most 3 codes an hour; only a keyed hash is stored). The number is stored encrypted, with a keyed fingerprint to recognise replies, and is never logged; one number belongs to one account. Once verified, three kinds of text are on, each with its own switch: urgent alerts (instead of an email, within the same 3-a-day cap), the weekly plan ("Jane's plan this week: 1) … 2) … Reply YES for all, the numbers you want (e.g. 1 3), or NO.", only the no-risk items a one-tap link may approve, at most 5, answerable once within a week), and "Jane needs you" with a link to /actions when an action waits on them. Nothing goes out between 9pm and 8am in their timezone except the code and answers to their own texts; the rest waits until morning. Replies come in at /api/messaging/inbound, which refuses anything without Sendblue's secret header and ignores unknown or unverified numbers and group chats. Only exact replies do anything: YES, OK or 👍 approves every item, numbers ("1 3", "1,3") approve those, each as its own decision with the new source "text" and held an hour before Jane starts (like a link), so UNDO can take it back; NO closes the plan text without deciding anything; STOP (and STOPALL, UNSUBSCRIBE, CANCEL, END, QUIT) turns texts off at once, START back on, HELP explains. Everything else gets "Reply YES, the numbers, or NO. Questions? Open the app". Every text, both ways, is kept in a new text_messages table (in Download my data, deleted with the account) and sent through the jobs queue, so failures retry. Without Sendblue keys, texts are simulated outside production (shown in the dev log and on /settings/texts, where you can reply as the phone) and off in production |
 
 Still needed from a person before outside users: counsel (insurance referral licensing, privacy policy and terms), Plaid Production approval and questionnaire, a backup restore test, and admins enrolling in two-factor. See docs/beta-checklist.md.
 
@@ -1503,6 +1504,55 @@ Plaid so every feature can be used end to end.
 > Acceptance criteria:
 > - The old service is cancelled only after the new one is seen on the account
 > - Saving is counted from what the new charges actually are
+
+## Phase S: Jane in your messages (step 78)
+
+Fewer buttons: Jane decides, and the person answers yes, no or change by text. Apple has
+no public iMessage API, so texts go through Sendblue (iMessage, falling back to SMS),
+behind a stand-in like the simulated email and phone providers until there's an account
+and keys.
+
+### Step 78: Jane in iMessage
+
+> Read CLAUDE.md. Texts for notifications, and approvals by reply.
+>
+> Build:
+> 1. A messaging provider (src/lib/messaging/provider.ts) with a mode like mailMode and
+>    callMode: "imessage" (Sendblue, checked against its docs) only when SENDBLUE_API_KEY,
+>    SENDBLUE_API_SECRET, SENDBLUE_FROM_NUMBER and SENDBLUE_WEBHOOK_SECRET are set;
+>    "simulated" outside production (texts kept in text_messages and the dev log, with a
+>    dev-only page to reply as the phone); "off" otherwise.
+> 2. A "Texts" section on /settings: a US number (E.164), an explicit consent box ("Jane may
+>    text you about your money: alerts, your weekly plan, and things that need you. Message
+>    and data rates may apply. Reply STOP to stop, HELP for help.") and a 6-digit code by
+>    text. The code is hashed, works for 10 minutes and 5 tries, and sends are rate-limited.
+>    The number is stored encrypted, with an HMAC to find the person from an inbound text,
+>    and never logged. Turning texts off, or STOP, stops them at once; START turns them
+>    back on; HELP explains. Quiet hours: nothing between 9pm and 8am in the person's
+>    timezone except the code; anything else waits until morning.
+> 3. What gets texted, each its own setting, on once verified: urgent alerts (with the
+>    same daily cap as alert emails); the weekly plan ("Jane's plan this week: 1) … 2) …
+>    Reply YES for all, the numbers you want (e.g. 1 3), or NO."), only the no-risk items a
+>    one-tap link allows, kept like a plan link (checked against each card, a week, once);
+>    and "needs you" when an action waits on the person, with a link to /actions.
+> 4. POST /api/messaging/inbound: refuses anything without Sendblue's webhook secret, finds
+>    the person by the number's HMAC (verified numbers only), and reads only YES (Y, OK, 👍),
+>    NO, numbers ("1 3", "1,3"), UNDO, STOP (STOPALL, UNSUBSCRIBE, CANCEL, END, QUIT), START
+>    and HELP. YES or numbers approve those items of the latest open plan text (decision
+>    source "text", held an hour like a link); UNDO takes the last one back while allowed.
+>    Each reply gets a short answer; anything else gets "Reply YES, the numbers, or NO.
+>    Questions? Open the app".
+> 5. Delivery through the jobs queue (text_send), so failures retry, and every text in a
+>    user-owned text_messages table (direction, kind, status, provider id), in Download my
+>    data and deleted with the account.
+>
+> Acceptance criteria:
+> - Nothing is texted to a number before it's verified, or after texts are off or STOP
+> - A reply only ever approves that person's own no-risk items, once; free text never
+>   acts
+> - Fixed wording only, no Claude text; no number or text content in logs
+> - The whole loop runs without keys: verify, plan text, reply "1", one decision with
+>   source "text", the agent held, UNDO
 
 ## Phase N: the complete picture (steps 65–68)
 

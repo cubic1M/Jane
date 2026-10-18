@@ -60,10 +60,12 @@ export const AGENT_CALL_TYPES: readonly ActionType[] = ["negotiate_bill"];
 
 // How long the agent waits before acting on an approval the person didn't make in the app,
 // so "Take it back" really works: a standing rule's (the person hasn't looked at it) and a
-// one-tap link's (spec step 60). Approvals in the app start at once.
-export const AGENT_HOLD_HOURS: Partial<Record<"rule" | "link" | "auto", number>> = {
+// one-tap link's (spec step 60) and a reply to the plan text's (spec step 78). Approvals in
+// the app start at once.
+export const AGENT_HOLD_HOURS: Partial<Record<"rule" | "link" | "auto" | "text", number>> = {
   rule: 24,
   link: 1,
+  text: 1,
 };
 
 // Switching to a picked option (spec step 77, src/lib/agent/switch.ts).
