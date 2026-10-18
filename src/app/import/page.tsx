@@ -22,8 +22,9 @@ async function ImportContent() {
       <div className="flex flex-col gap-2">
         <h1 className="text-3xl font-semibold tracking-tight">Import your transactions</h1>
         <p className="text-zinc-600 dark:text-zinc-400">
-          Download CSV exports from your bank&apos;s website and upload them here. Files are read
-          once and never stored. Importing the same file twice is safe: we skip rows we already
+          Download your statements from your bank&apos;s website as CSV, OFX or QFX (often called
+          &ldquo;Quicken&rdquo; or &ldquo;Money&rdquo; downloads) and upload them here. Files are
+          read once and never stored. Importing the same file twice is safe: we skip rows we already
           have.
         </p>
       </div>
@@ -35,7 +36,7 @@ async function ImportContent() {
       </section>
 
       <section className="flex flex-col gap-4">
-        <h2 className="text-xl font-semibold">2. Upload CSV files</h2>
+        <h2 className="text-xl font-semibold">2. Upload statement files</h2>
         {accounts.length === 0 ? (
           <p className="text-zinc-600 dark:text-zinc-400">Add an account first.</p>
         ) : (

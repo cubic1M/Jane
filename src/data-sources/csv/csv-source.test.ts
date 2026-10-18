@@ -147,3 +147,12 @@ describe("CsvDataSource", () => {
     await expect(source.load()).rejects.toBeInstanceOf(CsvFormatError);
   });
 });
+
+describe("OFX and QFX uploads", () => {
+  it("reads them through the same path as CSV", () => {
+    const text = readFileSync(new URL("../ofx/__fixtures__/card-xml.qfx", import.meta.url), "utf8");
+    const result = readCsvFile({ name: "card.qfx", text });
+    expect(result).toMatchObject({ ok: true, format: { id: "ofx" } });
+    expect(result.ok && result.transactions).toHaveLength(2);
+  });
+});

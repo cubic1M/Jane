@@ -57,11 +57,11 @@ export function ImportForm({ accounts }: { accounts: AccountOption[] }) {
         </select>
       </label>
       <label className="flex flex-col gap-1 text-sm font-medium">
-        CSV files
+        Statement files (CSV, OFX or QFX)
         <input
           name="files"
           type="file"
-          accept=".csv,text/csv"
+          accept=".csv,.ofx,.qfx,text/csv,application/x-ofx"
           multiple
           required
           onChange={() => setPreview(null)}

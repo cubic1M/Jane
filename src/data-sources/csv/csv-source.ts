@@ -6,6 +6,7 @@ import {
   type ParsedRow,
 } from "./formats";
 import { parseCsv } from "./parse-csv";
+import { looksLikeOfx, readOfx } from "@/data-sources/ofx/parse-ofx";
 import { dedupeKeys } from "@/data-sources/dedupe";
 import { normalizeMerchant } from "@/data-sources/merchant";
 import type {
@@ -23,7 +24,8 @@ export type CsvFileResult =
   | {
       ok: true;
       file: string;
-      format: CsvFormat;
+      // The CSV format, or OFX/QFX (which has no columns to map).
+      format: Pick<CsvFormat, "id" | "label">;
       transactions: Omit<NormalizedTransaction, "accountRef">[];
       skipped: SkippedRow[];
     }
@@ -31,7 +33,14 @@ export type CsvFileResult =
 
 const SUPPORTED = CSV_FORMATS.map((format) => format.label).join(", ");
 
+export const OFX_FORMAT = { id: "ofx", label: "OFX or QFX statement" } as const;
+
+// Reads one uploaded statement: a CSV export, or an OFX/QFX file (src/data-sources/ofx).
 export function readCsvFile(file: CsvFile): CsvFileResult {
+  if (looksLikeOfx(file.name, file.text)) {
+    const result = readOfx(file);
+    return result.ok ? { ...result, format: OFX_FORMAT } : result;
+  }
   let records;
   try {
     records = parseCsv(file.text);
