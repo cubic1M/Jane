@@ -7,6 +7,7 @@ export const CLIENT_EVENTS = [
   "report_viewed",
   "card_opened",
   "link_failed",
+  "insights_viewed",
 ] as const;
 
 export type ClientEventName = (typeof CLIENT_EVENTS)[number];

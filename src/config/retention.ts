@@ -11,6 +11,7 @@ export const REMOVAL_WARNING_DAYS = 7;
 export const ACTIVITY_EVENTS: readonly string[] = [
   "signed_in",
   "report_viewed",
+  "insights_viewed",
   "card_opened",
   "decision_yes",
   "decision_no",
