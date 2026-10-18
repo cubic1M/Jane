@@ -11,6 +11,7 @@ import { formatCents } from "@/lib/money";
 import { requireUser } from "@/lib/session";
 import { normalizeAlias } from "@/data-sources/merchant-directory";
 import { buildKit, hasKit } from "@/lib/diy";
+import { outcomeFor } from "@/lib/merchant-outcomes";
 import { merchantFor } from "@/lib/merchants";
 import { DecisionButtons } from "./decision-buttons";
 import { DiyKit } from "./diy-kit";
@@ -41,6 +42,10 @@ async function Card({ params }: { params: PageProps<"/report/[findingId]">["para
         select: { id: true, diyDoneAt: true },
       });
   const merchantName = (finding.evidence as { merchant?: unknown } | null)?.merchant;
+  const outcome =
+    hasKit(card.actionType) && (open || diyDecision)
+      ? await outcomeFor(typeof merchantName === "string" ? merchantName : null, card.actionType)
+      : null;
   const kit =
     hasKit(card.actionType) && (open || diyDecision)
       ? buildKit(
@@ -132,6 +137,7 @@ async function Card({ params }: { params: PageProps<"/report/[findingId]">["para
         ) : diyDecision && kit ? (
           <DiyKit
             kit={kit}
+            usually={outcome?.medianMinutes ?? null}
             decisionId={diyDecision.id}
             doneOn={diyDecision.diyDoneAt?.toISOString().slice(0, 10) ?? null}
           />

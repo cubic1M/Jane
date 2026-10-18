@@ -5,6 +5,7 @@ import { plaidEnabled } from "@/lib/plaid/client";
 import { runInactiveCleanup } from "@/lib/plaid/inactive";
 import { ITEM_STATUS, syncItem } from "@/lib/plaid/sync";
 import { runDueJobs } from "@/lib/jobs";
+import { refreshMerchantOutcomes } from "@/lib/merchant-outcomes";
 import { takeSnapshots } from "@/lib/snapshots";
 
 // Vercel Cron, daily: syncs linked items that haven't synced in STALE_SYNC_HOURS, in case
@@ -24,6 +25,7 @@ export async function GET(request: Request) {
       inactive: null,
       snapshots: await takeSnapshots(),
       jobs: await runDueJobs(),
+      outcomes: await refreshMerchantOutcomes(),
     });
   }
 
@@ -57,5 +59,6 @@ export async function GET(request: Request) {
     inactive,
     snapshots: await takeSnapshots(),
     jobs: await runDueJobs(),
+    outcomes: await refreshMerchantOutcomes(),
   });
 }

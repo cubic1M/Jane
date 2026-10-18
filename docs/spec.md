@@ -21,7 +21,7 @@ The build runs in eleven steps, with Plaid added at step 7 after the founders te
 
 ## Status (Oct 18, 2026)
 
-Steps 1–39 are built (24 came before 22, because do-it-yourself kits need its cancel links). Where the build differs from the original plan, the plan below has been kept and the difference is noted here.
+Steps 1–40 are built (24 came before 22, because do-it-yourself kits need its cancel links). Where the build differs from the original plan, the plan below has been kept and the difference is noted here.
 
 | Step | Shipped in | Notes |
 | --- | --- | --- |
@@ -62,6 +62,7 @@ Steps 1–39 are built (24 came before 22, because do-it-yourself kits need its 
 | 37 OFX and QFX import | PR #47 | OFX/QFX files go through the same upload, preview and import path as CSV (recognized by extension or header); one reader handles SGML 1.x and XML 2.x; the bank's FITID is the dedupe key, so re-importing adds nothing; amounts are flipped to Plaid's sign; files are read in memory and never stored |
 | 38 Money calendar feed | PR #48 | An iCalendar feed at /api/calendar/<secret>.ics with expected bills and deposits for 60 days and goal dates; only a SHA-256 of the secret is stored, so the link is shown once (with a webcal: "add to calendar" link) and making a new one or turning it off kills the old one; deposits are "Expected deposit" without the payer's name; UIDs are built from merchant and date so events update in place |
 | 39 A weekly email about your plans | PR #49 | The digest adds budgets at 90% or more of their limit, every goal (with the week's change for goals tracked by an account balance), and net worth's change since last week (only once a week-old snapshot exists); each comes from the same function as its page; these sections count as content, so people who use them get a weekly email |
+| 40 Smarter merchant directory | PR #50 | The daily job rebuilds merchant_outcomes (counts and median minutes per merchant and action type, no user or action ids) from finished cancel, price, refund and bill actions, joining statement names through the directory; nothing shows below 5 cases; the team sees "usually about N minutes; X of Y worked" on actions, people see "usually takes about N minutes" on do-it-yourself kits |
 
 Still needed from a person before outside users: counsel (insurance referral licensing, privacy policy and terms), Plaid Production approval and questionnaire, a backup restore test, and admins enrolling in two-factor. See docs/beta-checklist.md.
 

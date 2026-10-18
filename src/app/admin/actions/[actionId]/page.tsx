@@ -3,6 +3,7 @@ import { Suspense } from "react";
 import { PLAYBOOKS } from "@/config/playbooks";
 import { normalizeAlias } from "@/data-sources/merchant-directory";
 import { DRAFTABLE } from "@/lib/drafts";
+import { describeOutcome, outcomeFor } from "@/lib/merchant-outcomes";
 import { merchantFor } from "@/lib/merchants";
 import { ACTION_STATUS_LABELS } from "@/lib/action-status";
 import type { DecisionCard } from "@/lib/cards";
@@ -41,6 +42,10 @@ async function ActionDetail({
     ?.merchant;
   const merchant = await merchantFor(
     typeof merchantName === "string" ? normalizeAlias(merchantName) : null,
+  );
+  const outcome = await outcomeFor(
+    typeof merchantName === "string" ? merchantName : null,
+    action.type,
   );
 
   return (
@@ -153,6 +158,7 @@ async function ActionDetail({
             </a>
           )}
           {merchant.supportPhone && <p>Phone: {merchant.supportPhone}</p>}
+          {outcome && <p>Past cases here: {describeOutcome(outcome)}.</p>}
           {!merchant.reviewedAt && (
             <p className="text-xs text-zinc-500">
               Not reviewed yet: check the links before using them.
