@@ -24,6 +24,9 @@ export function contentSecurityPolicy(isDev: boolean): string {
       ...(isDev ? ["ws:"] : []),
     ],
     "frame-src": ["https://cdn.plaid.com"],
+    // The service worker (public/sw.js) and the web app manifest.
+    "worker-src": ["'self'"],
+    "manifest-src": ["'self'"],
     "frame-ancestors": ["'none'"],
     "form-action": ["'self'"],
     "base-uri": ["'self'"],

@@ -29,6 +29,7 @@ export async function exportUserData(
     alerts,
     askConversations,
     household,
+    pushDevices,
     events,
   ] = await Promise.all([
     client.user.findUniqueOrThrow({
@@ -179,6 +180,8 @@ export async function exportUserData(
         },
       },
     }),
+    // How many devices get notifications, not their push addresses (those work as keys).
+    db.pushSubscriptions.count(),
     client.analyticsEvent.findMany({
       where: { userId },
       select: { name: true, createdAt: true },
@@ -204,6 +207,7 @@ export async function exportUserData(
     alerts,
     askConversations,
     household,
+    pushDevices,
     events,
   };
 }

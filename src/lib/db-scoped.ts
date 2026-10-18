@@ -101,6 +101,7 @@ export function scopedFor(userId: string, client: PrismaClient = db) {
     alerts: scoped.alert,
     askConversations: scoped.askConversation,
     askMessages: scoped.askMessage,
+    pushSubscriptions: scoped.pushSubscription,
   };
 }
 
