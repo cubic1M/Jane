@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { contentSecurityPolicy, securityHeaders } from "./security-headers";
+import { DOCUMENT_FILE_CSP, contentSecurityPolicy, securityHeaders } from "./security-headers";
 
 const headerMap = (isDev: boolean) =>
   Object.fromEntries(securityHeaders(isDev).map((h) => [h.key, h.value]));
@@ -33,5 +33,11 @@ describe("security headers", () => {
     expect(dev["Content-Security-Policy"]).toContain("'unsafe-eval'");
     expect(dev["Content-Security-Policy"]).toContain("ws:");
     expect(dev["Strict-Transport-Security"]).toBeUndefined();
+  });
+
+  it("sandbox uploaded documents and load nothing alongside them", () => {
+    expect(DOCUMENT_FILE_CSP).toMatch(/^sandbox;/);
+    expect(DOCUMENT_FILE_CSP).toContain("default-src 'none'");
+    expect(DOCUMENT_FILE_CSP).not.toContain("script-src");
   });
 });

@@ -1,7 +1,7 @@
 import { randomBytes } from "node:crypto";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
-import { PrismaClient } from "@/generated/prisma/client";
+import { PrismaClient, type Prisma } from "@/generated/prisma/client";
 
 vi.mock("@/lib/analytics", () => ({ track: vi.fn() }));
 vi.mock("@/lib/session", () => ({ requireUser: vi.fn() }));
@@ -151,7 +151,62 @@ describe.runIf(url)("deadlines against a real database", () => {
       sources: [...DEADLINE_SOURCES, card, broken],
     });
     expect(list.map((d) => d.key)).toEqual([expect.stringMatching(/^entered:/), "doc:1"]);
-    expect(await documentDeadlines(me, { client, now: NOW })).toEqual([]);
+  });
+
+  it("brings in the dates from the person's uploaded documents, and no one else's", async () => {
+    const me = await person();
+    const other = await person();
+    const upload = (
+      userId: string,
+      data: Omit<
+        Prisma.DocumentUncheckedCreateInput,
+        "userId" | "fileName" | "contentType" | "sizeBytes" | "encryptedBytes"
+      >,
+    ) =>
+      client.document.create({
+        data: {
+          userId,
+          fileName: "scan.pdf",
+          contentType: "application/pdf",
+          sizeBytes: 3,
+          encryptedBytes: Buffer.from("v1x"),
+          ...data,
+        },
+      });
+    const policy = await upload(me, {
+      kind: "insurance_policy",
+      provider: "GEICO",
+      policyType: "auto",
+      renewalDate: new Date("2026-10-20"),
+    });
+    await upload(me, {
+      kind: "receipt",
+      provider: "Best Buy",
+      purchaseDate: new Date("2026-10-10"),
+    });
+    await upload(other, {
+      kind: "warranty",
+      provider: "Dyson",
+      warrantyEndsOn: new Date("2026-11-01"),
+    });
+
+    expect(await documentDeadlines(other, { client, now: NOW })).toEqual([
+      expect.objectContaining({ title: "Dyson warranty ends", kind: "warranty" }),
+    ]);
+    const list = await listDeadlines(me, { client, now: NOW, sources: [documentDeadlines] });
+    expect(list.map((d) => [d.title, d.date, d.kind, d.source])).toEqual([
+      ["GEICO car insurance renews", "2026-10-20", "renewal", "documents"],
+      ["Return window for Best Buy", "2026-11-09", "return", "documents"],
+    ]);
+
+    // The policy's renewal is 2 days away, so it gets a reminder; it has no other.
+    const raise = vi.fn(async () => ({ raised: 1, emailed: 0 }));
+    await remindDeadlines(me, { client, now: NOW, raise, sources: [documentDeadlines] });
+    expect(raise).toHaveBeenCalledWith(
+      me,
+      [expect.objectContaining({ type: "deadline_soon", key: expect.stringContaining(policy.id) })],
+      { client, now: NOW },
+    );
   });
 
   it("finds return windows and due dates from the person's accounts", async () => {

@@ -273,6 +273,7 @@ model User {
   transactions        Transaction[]
   recurringStreams    RecurringStream[]
   liabilities         Liability[]
+  ownedAssets         OwnedAsset[]
   findings            Finding[]
   decisions           Decision[]
   actions             Action[]
@@ -292,6 +293,7 @@ model User {
   savingsGoals        SavingsGoal[]
   balanceSnapshots    BalanceSnapshot[]
   checkIns            CheckIn[]
+  documents           Document[]
 
   @@map("users")
 }
@@ -391,6 +393,7 @@ model Account {
   balanceSnapshots BalanceSnapshot[]
   checkIns         CheckIn[]
   liability        Liability?
+  ownedAssets      OwnedAsset[]
 
   @@index([userId])
   @@index([itemId])
@@ -495,6 +498,29 @@ model Liability {
 
   @@index([userId])
   @@map("liabilities")
+}
+
+// Things the person owns (spec step 67): a home, a car, anything else of value, at the
+// value they give and the day they gave it. Counted in net worth; with the loan against it,
+// shown as equity. Never estimated by Jane.
+model OwnedAsset {
+  id            String   @id @default(cuid())
+  userId        String   @map("user_id")
+  // home, vehicle or other.
+  kind          String
+  name          String
+  valueCents    Int      @map("value_cents")
+  valuedOn      DateTime @map("valued_on") @db.Date
+  // The mortgage or car loan against it, when there is one.
+  loanAccountId String?  @map("loan_account_id")
+  createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt     DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  loanAccount Account? @relation(fields: [loanAccountId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+  @@map("owned_assets")
 }
 
 model Finding {
@@ -1285,6 +1311,43 @@ model PlanLink {
 
   @@index([userId])
   @@map("plan_links")
+}
+
+// Insurance policies, warranties and receipts the person uploaded (spec step 68). The file
+// is AES-256-GCM encrypted (src/lib/crypto.ts); the key facts are read by Claude or typed
+// by the person, and they can always correct them.
+model Document {
+  id                  String    @id @default(cuid())
+  userId              String    @map("user_id")
+  // insurance_policy, warranty, receipt or other (src/config/documents.ts).
+  kind                String
+  fileName            String    @map("file_name")
+  // One of the allowed types, checked against the file's first bytes.
+  contentType         String    @map("content_type")
+  sizeBytes           Int       @map("size_bytes")
+  // "v1" + iv + auth tag + ciphertext; never the plain file.
+  encryptedBytes      Bytes     @map("encrypted_bytes")
+  provider            String?
+  // Policies only: auto, home, renters, life, health or other.
+  policyType          String?   @map("policy_type")
+  // One line, checked by the guardrails before it's shown.
+  coverageSummary     String?   @map("coverage_summary")
+  premiumCents        Int?      @map("premium_cents")
+  // monthly, quarterly, every 6 months or yearly.
+  premiumFrequency    String?   @map("premium_frequency")
+  renewalDate         DateTime? @map("renewal_date") @db.Date
+  warrantyEndsOn      DateTime? @map("warranty_ends_on") @db.Date
+  purchaseDate        DateTime? @map("purchase_date") @db.Date
+  purchaseAmountCents Int?      @map("purchase_amount_cents")
+  // Who wrote the facts: claude, you (the person) or none yet.
+  extractionSource    String    @default("none") @map("extraction_source")
+  uploadedAt          DateTime  @default(now()) @map("uploaded_at") @db.Timestamptz(3)
+  updatedAt           DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, uploadedAt])
+  @@map("documents")
 }
 
 // What kind of hand-entered deadline it is (spec step 71).

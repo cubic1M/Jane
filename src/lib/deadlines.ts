@@ -10,6 +10,7 @@ import type { PrismaClient } from "@/generated/prisma/client";
 import {
   deadlineAlerts,
   enteredDeadlines,
+  fromDocumentDates,
   paymentDeadlines,
   renewalDeadlines,
   returnDeadlines,
@@ -21,6 +22,7 @@ import { raiseAlerts } from "@/lib/alerts";
 import { track } from "@/lib/analytics";
 import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
+import { documentDates } from "@/lib/documents/dates";
 
 // Deadlines (spec step 71): loads each source's data, keeps the deadlines the person types
 // in, and raises the deadline_soon reminders (src/insights/deadlines.ts decides which).
@@ -88,10 +90,10 @@ export const handEnteredDeadlines: DeadlineSource = async (userId, { client }) =
     }),
   );
 
-// Dates read from uploaded policies, warranties and receipts (spec step 68). That step
-// isn't merged yet, so this has nothing to add; it becomes a call to its documentDates
-// once it is.
-export const documentDeadlines: DeadlineSource = async () => [];
+// Dates read from uploaded policies, warranties and receipts (spec step 68): renewals,
+// warranty ends and receipts' return windows.
+export const documentDeadlines: DeadlineSource = async (userId, { client }) =>
+  fromDocumentDates(await documentDates(userId, { client }));
 
 // Every source, in one list.
 export const DEADLINE_SOURCES: readonly DeadlineSource[] = [

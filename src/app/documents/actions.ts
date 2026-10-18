@@ -1,0 +1,79 @@
+"use server";
+
+import { revalidatePath } from "next/cache";
+import { MAX_DOCUMENT_BYTES } from "@/config/documents";
+import { track } from "@/lib/analytics";
+import { isDocumentKind, type RawFacts } from "@/lib/documents/facts";
+import { addDocument, removeDocument, saveDocumentFacts } from "@/lib/documents/store";
+import { hit } from "@/lib/rate-limit";
+import { requireUser } from "@/lib/session";
+
+// Uploading, correcting and deleting documents on /documents (spec step 68). The upload
+// and facts forms keep their message on screen and refresh the list themselves, so these
+// don't revalidate /documents; deleting has no message, so it does.
+
+export type FormState = { ok: boolean; message: string } | null;
+
+export async function uploadDocument(_previous: FormState, formData: FormData): Promise<FormState> {
+  const user = await requireUser();
+  if (!(await hit("documents", user.id)).ok) {
+    return { ok: false, message: "That's a lot of uploads at once. Try again in an hour." };
+  }
+  const file = formData.get("file");
+  const kind = formData.get("kind");
+  if (!(file instanceof File) || file.size === 0) return { ok: false, message: "Choose a file." };
+  if (!isDocumentKind(kind)) return { ok: false, message: "Pick what kind of document it is." };
+  // Checked again on the bytes; this stops an oversized file before it's read.
+  if (file.size > MAX_DOCUMENT_BYTES) {
+    return {
+      ok: false,
+      message: `That file is larger than ${MAX_DOCUMENT_BYTES / 1024 / 1024} MB. Try a smaller scan or a photo.`,
+    };
+  }
+
+  const result = await addDocument(user.id, {
+    file: { name: file.name, type: file.type, size: file.size },
+    bytes: new Uint8Array(await file.arrayBuffer()),
+    kind,
+  });
+  if (!result.ok) return { ok: false, message: result.error };
+  await track(user.id, "document_uploaded", { kind, read: result.read });
+  if (result.read === "you") {
+    return { ok: true, message: "Saved. Fill in the key facts below so Jane can use them." };
+  }
+  return {
+    ok: true,
+    message: result.summaryRejected
+      ? "Saved. Jane read the key facts below; add what it covers in your own words."
+      : "Saved. Jane read the key facts below. Check them and fix anything that's off.",
+  };
+}
+
+const FACT_FIELDS = [
+  "provider",
+  "policyType",
+  "coverageSummary",
+  "premiumCents",
+  "premiumFrequency",
+  "renewalDate",
+  "warrantyEndsOn",
+  "purchaseDate",
+  "purchaseAmountCents",
+] as const;
+
+export async function saveFacts(_previous: FormState, formData: FormData): Promise<FormState> {
+  const user = await requireUser();
+  const raw: RawFacts = {};
+  for (const field of FACT_FIELDS) {
+    const value = formData.get(field);
+    if (typeof value === "string") raw[field] = value;
+  }
+  const result = await saveDocumentFacts(user.id, String(formData.get("documentId") ?? ""), raw);
+  return result.ok ? { ok: true, message: "Saved." } : { ok: false, message: result.error };
+}
+
+export async function deleteDocument(formData: FormData): Promise<void> {
+  const user = await requireUser();
+  await removeDocument(user.id, String(formData.get("documentId") ?? ""));
+  revalidatePath("/documents");
+}

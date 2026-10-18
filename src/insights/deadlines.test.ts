@@ -14,7 +14,7 @@ import { addDays } from "@/detection/units";
 import type { DebtAccount } from "./loans";
 import {
   deadlineAlerts,
-  documentDeadlines,
+  fromDocumentDates,
   dueIn,
   enteredDeadlines,
   groupDeadlines,
@@ -284,7 +284,7 @@ describe("uploaded documents", () => {
   ] as const;
 
   it("turns each document date into a deadline that links to the documents", () => {
-    expect(documentDeadlines([...dates])).toEqual([
+    expect(fromDocumentDates([...dates])).toEqual([
       expect.objectContaining({
         key: "document:doc1:renewal:2026-11-01",
         title: "GEICO car insurance renews",
@@ -298,7 +298,7 @@ describe("uploaded documents", () => {
   });
 
   it("reminds about a policy renewal, which has no other reminder", () => {
-    const [renewal] = documentDeadlines([{ ...dates[0], date: addDays(AS_OF, 2) }]);
+    const [renewal] = fromDocumentDates([{ ...dates[0], date: addDays(AS_OF, 2) }]);
     expect(deadlineAlerts([renewal], AS_OF).map((a) => a.key)).toEqual([renewal.key]);
   });
 });

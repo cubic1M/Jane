@@ -92,6 +92,7 @@ export function scopedFor(userId: string, client: PrismaClient = db) {
     transactions: scoped.transaction,
     recurringStreams: scoped.recurringStream,
     liabilities: scoped.liability,
+    ownedAssets: scoped.ownedAsset,
     findings: scoped.finding,
     decisions: scoped.decision,
     actions: scoped.action,
@@ -112,6 +113,7 @@ export function scopedFor(userId: string, client: PrismaClient = db) {
     agentMessages: scoped.agentMessage,
     planProposals: scoped.planProposal,
     planLinks: scoped.planLink,
+    documents: scoped.document,
     deadlines: scoped.deadline,
   };
 }

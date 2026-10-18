@@ -45,3 +45,33 @@ export function decrypt(payload: string): string {
     decipher.final(),
   ]).toString("utf8");
 }
+
+// The same scheme for files (spec step 68), as bytes rather than text: a version byte,
+// then the iv, the auth tag and the ciphertext.
+const BYTES_VERSION = 1;
+
+export function encryptBytes(plaintext: Uint8Array): Uint8Array<ArrayBuffer> {
+  const iv = randomBytes(IV_BYTES);
+  const cipher = createCipheriv(ALGORITHM, getKey(), iv);
+  const ciphertext = Buffer.concat([cipher.update(plaintext), cipher.final()]);
+  // A plain Uint8Array copy, the type Prisma stores as bytes.
+  return new Uint8Array(
+    Buffer.concat([Buffer.from([BYTES_VERSION]), iv, cipher.getAuthTag(), ciphertext]),
+  );
+}
+
+export function decryptBytes(payload: Uint8Array): Buffer {
+  const data = Buffer.from(payload.buffer, payload.byteOffset, payload.byteLength);
+  if (data.length < 1 + IV_BYTES + TAG_BYTES || data[0] !== BYTES_VERSION) {
+    throw new Error("Malformed encrypted value");
+  }
+  const iv = data.subarray(1, 1 + IV_BYTES);
+  const tag = data.subarray(1 + IV_BYTES, 1 + IV_BYTES + TAG_BYTES);
+  const decipher = createDecipheriv(ALGORITHM, getKey(), iv, { authTagLength: TAG_BYTES });
+  decipher.setAuthTag(tag);
+  // As above: final() throws on any tampering, so partial output is never returned.
+  return Buffer.concat([
+    decipher.update(data.subarray(1 + IV_BYTES + TAG_BYTES)),
+    decipher.final(),
+  ]);
+}

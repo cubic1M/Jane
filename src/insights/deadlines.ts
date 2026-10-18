@@ -246,7 +246,7 @@ const DOCUMENT_DEADLINES: Record<
 };
 
 // Dates from the person's uploaded policies, warranties and receipts.
-export function documentDeadlines(dates: DocumentDate[]): Deadline[] {
+export function fromDocumentDates(dates: DocumentDate[]): Deadline[] {
   return dates.map((d): Deadline => {
     const shape = DOCUMENT_DEADLINES[d.what];
     return {

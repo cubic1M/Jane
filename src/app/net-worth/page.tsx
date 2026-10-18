@@ -1,11 +1,14 @@
 import Link from "next/link";
+import { connection } from "next/server";
 import { Suspense } from "react";
 import { AppHeader } from "@/components/app-header";
+import { AssetPrompts } from "@/components/asset-prompts";
 import { NET_WORTH_MONTHS } from "@/config/net-worth";
 import { monthsEnding } from "@/insights/spending";
 import { monthlyNetWorth, netWorth } from "@/insights/net-worth";
 import { scopedDb } from "@/lib/db-scoped";
 import { formatCents } from "@/lib/money";
+import { assetPrompts } from "@/lib/owned-assets";
 import { requireUser } from "@/lib/session";
 
 const monthLabel = (month: string) =>
@@ -17,25 +20,39 @@ const monthLabel = (month: string) =>
 
 async function NetWorthContent() {
   const user = await requireUser();
+  await connection();
   const db = await scopedDb();
   const asOf = new Date().toISOString().slice(0, 10);
   const [first] = monthsEnding(asOf, NET_WORTH_MONTHS);
-  const [accounts, snapshots] = await Promise.all([
+  const [accounts, snapshots, ownedRows] = await Promise.all([
     db.accounts.findMany({
-      select: { id: true, name: true, type: true, currentBalanceCents: true },
+      select: { id: true, name: true, type: true, subtype: true, currentBalanceCents: true },
       orderBy: { name: "asc" },
     }),
     db.balanceSnapshots.findMany({
       where: { date: { gte: new Date(`${first}-01T00:00:00Z`) } },
       select: { accountId: true, date: true, balanceCents: true },
     }),
+    // Things you own, at your values (spec step 67).
+    db.ownedAssets.findMany({
+      select: { id: true, valueCents: true, valuedOn: true, loanAccountId: true },
+    }),
   ]);
-  const today = netWorth(accounts.map((a) => ({ ...a, balanceCents: a.currentBalanceCents })));
+  const owned = ownedRows.map((o) => ({ ...o, valuedOn: o.valuedOn.toISOString().slice(0, 10) }));
+  const today = netWorth(
+    accounts.map((a) => ({ ...a, balanceCents: a.currentBalanceCents })),
+    owned,
+  );
   const months = monthlyNetWorth(
     accounts,
     snapshots.map((s) => ({ ...s, date: s.date.toISOString().slice(0, 10) })),
     asOf,
     NET_WORTH_MONTHS,
+    owned,
+  );
+  const prompts = assetPrompts(
+    accounts,
+    ownedRows.map((o) => o.loanAccountId),
   );
   const max = Math.max(1, ...months.map((m) => Math.abs(m.netCents ?? 0)));
 
@@ -72,6 +89,27 @@ async function NetWorthContent() {
           accounts, at the balance they report.
         </p>
       )}
+
+      <p className="text-sm text-zinc-600 dark:text-zinc-400">
+        {today.ownedCents > 0 ? (
+          <>
+            Includes {formatCents(today.ownedCents)} for things you own (your values).{" "}
+            <Link href="/things" className="font-medium text-emerald-700 hover:underline">
+              Things you own
+            </Link>
+          </>
+        ) : (
+          <>
+            Own a home or a car?{" "}
+            <Link href="/things" className="font-medium text-emerald-700 hover:underline">
+              Add what it&apos;s worth
+            </Link>{" "}
+            to count it.
+          </>
+        )}
+      </p>
+
+      <AssetPrompts prompts={prompts} />
 
       {today.missing.length > 0 && (
         <p className="text-sm text-zinc-600 dark:text-zinc-400">

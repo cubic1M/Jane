@@ -41,6 +41,9 @@ const SIGNED_IN = [
   "/check-in",
   "/connect",
   "/import",
+  "/things",
+  "/afford",
+  "/documents",
   "/deadlines",
 ];
 const ADMIN = [
