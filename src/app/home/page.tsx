@@ -39,6 +39,9 @@ async function HomeContent() {
           <Link href="/goals" className={LINK}>
             Goals
           </Link>
+          <Link href="/year" className={LINK}>
+            Year in review
+          </Link>
         </span>
       </div>
 

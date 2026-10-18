@@ -97,16 +97,25 @@ export async function recordPaidMembership(
 
 // Yearly savings from finished actions, from the cards people approved.
 // Savings from finished changes: actions the team finished, and do-it-yourself changes the
-// person marked done. A finding has one live decision, so nothing counts twice.
-export async function savedToDate(userId: string, { client = defaultClient }: Options = {}) {
+// person marked done. A finding has one live decision, so nothing counts twice. With
+// `between`, only changes finished in that time (the year in review uses it).
+export async function savedToDate(
+  userId: string,
+  { client = defaultClient, between }: Options & { between?: { from: Date; to: Date } } = {},
+) {
   const db = scopedFor(userId, client);
+  const finished = between ? { gte: between.from, lt: between.to } : undefined;
   const [done, diy] = await Promise.all([
     db.actions.findMany({
-      where: { status: "done" },
+      where: { status: "done", ...(finished ? { completedAt: finished } : {}) },
       select: { decision: { select: { cardSnapshot: true } } },
     }),
     db.decisions.findMany({
-      where: { choice: "diy", diyDoneAt: { not: null }, undoneAt: null },
+      where: {
+        choice: "diy",
+        diyDoneAt: finished ?? { not: null },
+        undoneAt: null,
+      },
       select: { cardSnapshot: true },
     }),
   ]);
