@@ -13,6 +13,7 @@ export const ACTIVITY_EVENTS: readonly string[] = [
   "report_viewed",
   "insights_viewed",
   "alerts_viewed",
+  "debt_planner_viewed",
   "card_opened",
   "decision_yes",
   "decision_no",

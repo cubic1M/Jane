@@ -116,3 +116,20 @@ export function checkGuardrails(
   if (GUARANTEE.some((p) => p.test(text))) issues.push("guaranteed_outcome");
   return issues.length === 0 ? { ok: true } : { ok: false, issues };
 }
+
+// (e) Recommending one choice over another. The debt planner is education: it shows the
+// math for each order of paying cards down and leaves the choice to the person.
+const RECOMMENDATION = [
+  /\byou should\b/i,
+  /\b(we|i) (recommend|suggest|advise)\b/i,
+  // "Not a recommendation" is how the planner says it doesn't recommend, so it's allowed.
+  /\brecommended\b/i,
+  /\b(our|my) recommendation\b/i,
+  /\b(best|better|smartest|right|wisest) (choice|option|strategy|plan|way|approach)\b/i,
+  /\bgo with\b/i,
+  /\bpick (the )?(avalanche|snowball)\b/i,
+];
+
+export function recommendsAChoice(text: string): boolean {
+  return RECOMMENDATION.some((pattern) => pattern.test(text));
+}
