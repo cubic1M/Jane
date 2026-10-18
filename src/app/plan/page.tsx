@@ -9,7 +9,7 @@ import { markPlanShown, planFor } from "@/lib/plan";
 import { savingsLine } from "@/lib/savings-text";
 import { requireUser } from "@/lib/session";
 import { recentRuleApprovals } from "@/lib/standing-rules";
-import { openProposals, refreshProposals } from "@/lib/proposals";
+import { openProposals, recentAutoCategories, refreshProposals } from "@/lib/proposals";
 import { categoryOptions } from "@/lib/categories";
 import { BUDGET_SUGGESTION_MONTHS } from "@/config/budgets";
 import { EMERGENCY_FUND_MONTHS } from "@/config/proposals";
@@ -17,6 +17,7 @@ import type { Proposal } from "@/planning/proposals";
 import { PlanItem } from "./plan-item";
 import { RuleApprovals } from "./rule-approvals";
 import { SetupItem, type SetupView } from "./setup-item";
+import { UseAllSuggestions } from "./use-all";
 import { AutopilotChooser } from "@/components/autopilot-chooser";
 import { autopilotOf } from "@/lib/autopilot";
 import { YesToAll } from "./yes-to-all";
@@ -26,12 +27,14 @@ async function Plan({ searchParams }: { searchParams: PageProps<"/plan">["search
   const db = await scopedDb();
   if ((await db.accounts.count()) === 0) redirect("/connect");
   await refreshProposals(user.id);
-  const [items, byRules, setup, autopilot] = await Promise.all([
+  const [items, byRules, setup, autopilot, filed] = await Promise.all([
     planFor(user.id),
     recentRuleApprovals(user.id),
     openProposals(user.id),
     autopilotOf(user.id),
+    recentAutoCategories(user.id),
   ]);
+  const setupMoney = setup.filter((p) => p.kind !== "category").length;
   await markPlanShown(
     user.id,
     items.map((i) => i.card.findingId),
@@ -115,12 +118,22 @@ async function Plan({ searchParams }: { searchParams: PageProps<"/plan">["search
       {setup.length > 0 && (
         <section className="flex flex-col gap-3">
           <h2 className="text-xl font-semibold">Set up, from your own numbers</h2>
+          {setupMoney > 1 && <UseAllSuggestions count={setupMoney} />}
           <ul className="flex flex-col gap-3">
             {setup.map((p) => (
               <SetupItem key={p.key} item={setupView(p)} />
             ))}
           </ul>
         </section>
+      )}
+      {filed.length > 0 && (
+        <p className="text-sm text-zinc-600 dark:text-zinc-400">
+          Jane filed {filed.map((f) => f.merchantName).join(", ")} into{" "}
+          {filed.length === 1 ? "a category" : "categories"} from our merchant directory.{" "}
+          <Link href="/transactions" className="font-medium text-emerald-700 hover:underline">
+            Change or undo
+          </Link>
+        </p>
       )}
       {items.length > 0 && <h2 className="text-xl font-semibold">Each item</h2>}
       <ul className="flex flex-col gap-3">

@@ -92,6 +92,11 @@ export async function refreshProposals(
   await db.planProposals.deleteMany({
     where: { status: "open", key: { notIn: [...freshKeys] } },
   });
+  // Categories from the merchant directory are filed on their own (spec step 63): they
+  // change no money and can be undone on /transactions. Not for "Ask me first".
+  const autopilot = (
+    await client.user.findUnique({ where: { id: userId }, select: { autopilot: true } })
+  )?.autopilot;
   for (const proposal of fresh) {
     if (answered.has(proposal.key)) continue;
     const payload = proposal as unknown as Prisma.InputJsonObject;
@@ -100,7 +105,61 @@ export async function refreshProposals(
       create: { userId, key: proposal.key, kind: proposal.kind, payload },
       update: { payload },
     });
+    if (proposal.kind === "category" && autopilot !== "ask") {
+      await setMerchantCategory(userId, proposal.merchantKey, proposal.detailed, { client });
+      await db.planProposals.updateMany({
+        where: { key: proposal.key, status: "open" },
+        data: {
+          status: "accepted",
+          answeredAt: now,
+          payload: { ...proposal, auto: true } as unknown as Prisma.InputJsonObject,
+        },
+      });
+      await track(userId, "proposal_auto_applied", { kind: proposal.kind });
+    }
   }
+}
+
+// Categories Jane filed on its own lately, for the plan to mention (and undo on
+// /transactions).
+export async function recentAutoCategories(
+  userId: string,
+  { client = defaultClient, now = new Date(), days = 7 }: Options & { days?: number } = {},
+): Promise<{ merchantName: string; detailed: string }[]> {
+  const rows = await scopedFor(userId, client).planProposals.findMany({
+    where: {
+      kind: "category",
+      status: "accepted",
+      answeredAt: { gte: new Date(now.getTime() - days * 24 * 60 * 60 * 1000) },
+    },
+    select: { payload: true },
+  });
+  return rows
+    .map((r) => r.payload as unknown as Proposal & { auto?: boolean })
+    .filter(
+      (p): p is Extract<Proposal, { kind: "category" }> & { auto?: boolean } =>
+        p.kind === "category" && p.auto === true,
+    )
+    .map((p) => ({ merchantName: p.merchantName, detailed: p.detailed }));
+}
+
+// "Use Jane's suggestions": every open budget and goal proposal, as proposed. Returns how
+// many were set up.
+export async function acceptAllProposals(
+  userId: string,
+  { client = defaultClient, now = new Date() }: Options = {},
+): Promise<number> {
+  const open = await openProposals(userId, { client });
+  let accepted = 0;
+  for (const proposal of open.filter((p) => p.kind === "budget" || p.kind === "goal")) {
+    try {
+      await answerProposal(userId, proposal.key, true, {}, { client, now });
+      accepted += 1;
+    } catch (error) {
+      if (!(error instanceof ProposalError)) throw error;
+    }
+  }
+  return accepted;
 }
 
 export async function openProposals(

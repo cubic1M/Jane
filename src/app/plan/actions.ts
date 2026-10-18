@@ -6,7 +6,7 @@ import { runAgentNow } from "@/lib/agent/run";
 import { PLAN_OPTIONS } from "@/config/plan";
 import { DecisionError, undoDecision } from "@/lib/decisions";
 import { answerPlanItem, yesToAll } from "@/lib/plan";
-import { ProposalError, answerProposal } from "@/lib/proposals";
+import { ProposalError, acceptAllProposals, answerProposal } from "@/lib/proposals";
 import { undoRuleApproval } from "@/lib/standing-rules";
 import { requireUser } from "@/lib/session";
 import type { ActionType } from "@/generated/prisma/client";
@@ -112,4 +112,11 @@ export async function answerSetup(
     ok: true,
     message: accept ? "Done. It's set up." : "Skipped. Jane won't suggest it again.",
   };
+}
+
+// "Use Jane's suggestions": every proposed budget and goal in one tap.
+export async function acceptSuggestions(): Promise<ProposalState> {
+  const user = await requireUser();
+  const n = await acceptAllProposals(user.id);
+  return { ok: true, message: `Set up ${n} ${n === 1 ? "suggestion" : "suggestions"}.` };
 }
