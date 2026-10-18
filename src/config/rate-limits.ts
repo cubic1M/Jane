@@ -1,3 +1,5 @@
+import { RETENTION_PERIODS } from "./retention";
+
 // Requests allowed per window, per user (signed in) or per IP (signed out). Generous for
 // people, tight enough to stop scripts. src/lib/rate-limit.ts enforces them.
 
@@ -30,5 +32,6 @@ export const RATE_LIMITS = {
 
 export type LimitName = keyof typeof RATE_LIMITS;
 
-// Old counter rows are deleted once they're this old.
-export const RATE_LIMIT_RETENTION_HOURS = 24;
+// Old counter rows are deleted once they're this old (the retention list's period, so the
+// privacy policy and both cleanups agree).
+export const RATE_LIMIT_RETENTION_HOURS = RETENTION_PERIODS.rateLimits.days * 24;
