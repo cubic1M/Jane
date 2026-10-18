@@ -7,19 +7,20 @@ import { scopeArgs } from "./db-scoped";
 
 const ME = "user_me";
 const OTHER = "user_other";
+const MINE = { userId: ME };
 
 describe("scopeArgs", () => {
   it.each(["findMany", "findFirst", "findUnique", "count", "aggregate", "groupBy", "deleteMany"])(
-    "adds the user to the filter for %s",
+    "ANDs the user onto the filter for %s",
     (operation) => {
       expect(scopeArgs(operation, { where: { id: "f_1" } }, ME)).toEqual({
-        where: { id: "f_1", userId: ME },
+        where: { id: "f_1", AND: [MINE] },
       });
     },
   );
 
   it("scopes a query with no filter at all", () => {
-    expect(scopeArgs("findMany", undefined, ME)).toEqual({ where: { userId: ME } });
+    expect(scopeArgs("findMany", undefined, ME)).toEqual({ where: { AND: [MINE] } });
   });
 
   it("keeps the caller's other arguments", () => {
@@ -29,19 +30,31 @@ describe("scopeArgs", () => {
         { where: { status: "new" }, orderBy: { createdAt: "desc" }, take: 5 },
         ME,
       ),
-    ).toEqual({ where: { status: "new", userId: ME }, orderBy: { createdAt: "desc" }, take: 5 });
+    ).toEqual({
+      where: { status: "new", AND: [MINE] },
+      orderBy: { createdAt: "desc" },
+      take: 5,
+    });
   });
 
-  it("does not let the caller filter by another user's id", () => {
+  it("keeps a filter on another user's id, so it matches nothing", () => {
     expect(scopeArgs("findMany", { where: { userId: OTHER } }, ME)).toEqual({
-      where: { userId: ME },
+      where: { userId: OTHER, AND: [MINE] },
+    });
+  });
+
+  it("adds to the caller's own AND conditions", () => {
+    expect(scopeArgs("findMany", { where: { AND: { status: "new" } } }, ME)).toEqual({
+      where: { AND: [{ status: "new" }, MINE] },
+    });
+    expect(scopeArgs("findMany", { where: { AND: [{ status: "new" }] } }, ME)).toEqual({
+      where: { AND: [{ status: "new" }, MINE] },
     });
   });
 
   it("keeps OR filters inside the user's rows", () => {
-    // Top-level keys are ANDed, so OR can't reach outside the user's rows.
     expect(scopeArgs("findMany", { where: { OR: [{ userId: OTHER }, { id: "x" }] } }, ME)).toEqual({
-      where: { OR: [{ userId: OTHER }, { id: "x" }], userId: ME },
+      where: { OR: [{ userId: OTHER }, { id: "x" }], AND: [MINE] },
     });
   });
 
@@ -64,11 +77,11 @@ describe("scopeArgs", () => {
 
   it("scopes updates and stops them moving rows to another user", () => {
     expect(scopeArgs("update", { where: { id: "f_1" }, data: { userId: OTHER } }, ME)).toEqual({
-      where: { id: "f_1", userId: ME },
+      where: { id: "f_1", AND: [MINE] },
       data: { userId: ME },
     });
     expect(scopeArgs("updateMany", { where: {}, data: { status: "shown" } }, ME)).toEqual({
-      where: { userId: ME },
+      where: { AND: [MINE] },
       data: { status: "shown", userId: ME },
     });
   });
@@ -81,17 +94,17 @@ describe("scopeArgs", () => {
         ME,
       ),
     ).toEqual({
-      where: { id: "f_1", userId: ME },
+      where: { id: "f_1", AND: [MINE] },
       create: { title: "t", userId: ME },
       update: { title: "u", userId: ME },
     });
   });
 
   it("does not modify the caller's arguments", () => {
-    const args = { where: { id: "f_1" } };
+    const args = { where: { id: "f_1", AND: [{ status: "new" }] } };
     scopeArgs("findMany", args, ME);
 
-    expect(args).toEqual({ where: { id: "f_1" } });
+    expect(args).toEqual({ where: { id: "f_1", AND: [{ status: "new" }] } });
   });
 
   it("rejects operations it does not know how to scope", () => {
