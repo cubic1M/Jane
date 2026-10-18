@@ -1,16 +1,22 @@
 import { expect, test } from "@playwright/test";
 import { E2E_DATABASE_URL, deleteUser, signedInUser } from "./db";
 
-for (const [path, link, heading] of [
-  ["/privacy", "Privacy", "Privacy Policy"],
-  ["/terms", "Terms", "Terms of Service"],
-  ["/security", "Security", "How we keep your data safe"],
-]) {
-  test(`${path} is linked from every page and marked as a draft`, async ({ page }) => {
-    await page.goto("/");
-    await page.getByRole("contentinfo").getByRole("link", { name: link }).click();
+test("every page links to the legal pages", async ({ page }) => {
+  await page.goto("/");
+  const footer = page.getByRole("contentinfo");
+  await expect(footer.getByRole("link", { name: "Privacy" })).toHaveAttribute("href", "/privacy");
+  await expect(footer.getByRole("link", { name: "Terms" })).toHaveAttribute("href", "/terms");
+  await expect(footer.getByRole("link", { name: "Security" })).toHaveAttribute("href", "/security");
+});
 
-    await expect(page).toHaveURL(path);
+for (const [path, heading] of [
+  ["/privacy", "Privacy Policy"],
+  ["/terms", "Terms of Service"],
+  ["/security", "How we keep your data safe"],
+]) {
+  test(`${path} shows its content, marked as a draft`, async ({ page }) => {
+    await page.goto(path);
+
     await expect(page.getByRole("heading", { level: 1, name: heading })).toBeVisible();
     await expect(page.getByRole("note")).toContainText("Draft, pending legal review");
   });
