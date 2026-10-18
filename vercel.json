@@ -9,5 +9,12 @@
       "path": "/api/cron/digest",
       "schedule": "0 15 * * *"
     }
-  ]
+  ],
+  "git": {
+    "deploymentEnabled": {
+      "claude/**": false,
+      "worktree-*": false,
+      "review-*": false
+    }
+  }
 }
