@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { GetStartedButton } from "@/components/get-started-button";
 import { LandingViewTracker } from "@/components/landing-view-tracker";
 
@@ -29,8 +30,11 @@ export default function Home() {
           We find the subscriptions, fees, idle cash and interest quietly costing you, and help you
           fix them.
         </p>
-        <div>
+        <div className="flex flex-wrap items-center gap-6">
           <GetStartedButton />
+          <Link href="/login" className="font-medium text-emerald-700 hover:underline">
+            Sign in
+          </Link>
         </div>
       </div>
 

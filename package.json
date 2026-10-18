@@ -5,6 +5,7 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
+    "vercel-build": "if [ \"$VERCEL_ENV\" = production ]; then prisma migrate deploy; fi && next build",
     "start": "next start",
     "lint": "eslint",
     "typecheck": "next typegen && tsc --noEmit",
@@ -19,6 +20,7 @@
     "@prisma/adapter-pg": "7.10.1",
     "@prisma/client": "7.10.1",
     "next": "16.4.2",
+    "next-auth": "^5.0.0-beta.30",
     "pg": "8.23.1",
     "posthog-node": "5.56.2",
     "react": "19.3.0",
