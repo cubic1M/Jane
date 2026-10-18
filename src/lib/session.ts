@@ -1,10 +1,11 @@
 import type { Session } from "next-auth";
-import { cookies } from "next/headers";
+import { cookies, headers } from "next/headers";
 import { notFound, redirect } from "next/navigation";
-import { connection } from "next/server";
+import { after, connection } from "next/server";
 import { auth } from "@/auth";
 import { TERMS_VERSION } from "@/config/legal";
 import { adminSessionState, sessionTokenFrom } from "@/lib/admin-gate";
+import { noteSessionSeen } from "@/lib/user-sessions";
 
 export type SessionUser = Session["user"];
 
@@ -18,8 +19,25 @@ export async function getSessionState(): Promise<SessionState | null> {
   // Auth.js makes a random CSRF token on every session lookup. Waiting for the
   // request first keeps Next.js from treating that as part of a prerender.
   await connection();
+  // auth() reads the sessions table on every call, so a session signed out from another
+  // device (spec step 73) stops working on its very next request.
   const session = await auth();
-  return session?.user ? { user: session.user, mfaPending: session.mfaPending } : null;
+  if (!session?.user) return null;
+  await noteDevice();
+  return { user: session.user, mfaPending: session.mfaPending };
+}
+
+// Which device this session is on and when it was last used (spec step 73), written after
+// the response so pages don't wait for it. A failure here never breaks the page.
+async function noteDevice(): Promise<void> {
+  const token = sessionTokenFrom(await cookies());
+  if (!token) return;
+  const userAgent = (await headers()).get("user-agent");
+  after(() =>
+    noteSessionSeen(token, userAgent).catch((error) =>
+      console.error("Couldn't note the session's device", { error }),
+    ),
+  );
 }
 
 // Signed in, with the two-factor code entered if two-factor is on. Null otherwise, so
