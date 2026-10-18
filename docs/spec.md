@@ -19,6 +19,24 @@ The MVP proves one thing: people will link their accounts and say yes to an agen
 
 The build runs in eleven steps, with Plaid added at step 7 after the founders test on their own CSV data; the second half of this doc holds one Claude Code prompt per step.
 
+## Status (Oct 18, 2026)
+
+Steps 1–11 are built. Where the build differs from the original plan, the plan below has been kept and the difference is noted here.
+
+| Step | Shipped in | Notes |
+| --- | --- | --- |
+| 1–3 Foundation, auth, CSV import | PRs #1–#2 | |
+| 4 Detection engine | PR #3 | Plaid PFC v2 category names |
+| 5 LLM explanations and guardrails | PR #5 | Explanations written after the import response; refusals fall back to templates |
+| 6 Report, decision cards, decision log | PR #6 | Card is its own page; card hash proves which version was approved; e2e tests run in CI |
+| 7 Plaid linking and sync | PR #7 | Detection uses Plaid streams per account and our fallback for the rest, so CSV and Plaid data mix; CSV import kept for admins and existing CSV users |
+| 8 Concierge queue and metrics | PR #8 | Non-admins get a real 404 via the proxy |
+| 9 Weekly digest | PR #9 | Daily cron, one digest per person per week on their Monday |
+| 10 Membership test | PR #10 | Stripe optional: Reserve always works, the paid button appears once keys are set |
+| 11 Beta hardening | PRs #11–#12 | Error monitoring stored in our own database instead of a third-party service; rate limits in Postgres; ADMIN_EMAILS makes the founders admins; checklist status in docs/beta-checklist.md |
+
+Still needed from a person before outside users: counsel (insurance referral licensing, privacy policy and terms), Plaid Production approval and questionnaire, a backup restore test, and admins enrolling in two-factor. See docs/beta-checklist.md.
+
 ## Success metrics
 
 Set each target before the beta opens, so results can't be reinterpreted afterwards. Every metric comes from events the app logs from step 1.
@@ -174,7 +192,7 @@ Start these in week 1; several have lead times longer than the code they unblock
 
 ## Using Claude Code
 
-Put the CLAUDE.md below in the repo root first; Claude Code reads it at the start of every session, so each step's prompt can stay short. Then run the ten build steps in order, one session per step.
+Put the CLAUDE.md below in the repo root first; Claude Code reads it at the start of every session, so each step's prompt can stay short. Then run the build steps in order, one session per step.
 
 Workflow for every step:
 
@@ -571,8 +589,290 @@ Steps 7–11 end with a beta-ready product: outside users link accounts through 
 ## Open questions
 
 - [ ] Target values for each success metric
-- [ ] Membership test price, and whether to offer the paid option or reserve only
+- [x] Membership test price, and whether to offer the paid option or reserve only: $49 one-time (MEMBERSHIP_TEST_PRICE); Reserve only until Stripe keys are added
 - [ ] Which insurance marketplace and high-yield account to use as referral partners
-- [ ] Is Plaid's recurring transactions endpoint enabled on our plan, or do we rely on the fallback detector?
+- [x] Is Plaid's recurring transactions endpoint enabled on our plan, or do we rely on the fallback detector? It works in Sandbox; the fallback covers any account without streams, so either way is fine
 - [ ] Launch state, for the insurance referral licensing question
 - [ ] Who on the team owns the concierge queue and its one-business-day turnaround?
+
+# Beyond the MVP: building the full financial controller
+
+The MVP proves people will link accounts and say yes. The full Jane is a financial controller: it watches everything, explains it plainly, finds every leak, and handles the fixes, first with the concierge team, then with automation. These steps continue the numbering and keep the same rules and workflow as steps 1–11.
+
+Principles that still hold:
+
+- **Read-only until counsel says otherwise.** No money movement, investing, investment advice, or tax and legal advice. Phase F lists what needs licenses and isn't built until counsel signs off.
+- **Rules decide, the LLM explains.** Every new finding type is a tested rule with thresholds in config; Claude only writes text and classifies edge cases, behind the guardrails.
+- **Every step is shippable alone.** One PR per step, tests for every rule and route, and nothing that blocks on an outside account: when a step needs one, build a working stand-in and note what to swap in later.
+- **Measure, then automate.** Minutes per action decide which concierge work to automate first.
+
+## Phase A: beta-ready polish (steps 12–14)
+
+### Step 12: Legal pages and consent
+
+> Read CLAUDE.md and docs/beta-checklist.md. Add the legal pages and record consent.
+>
+> Build:
+> 1. /privacy, /terms and /security pages written from the facts in
+>    docs/beta-checklist.md (data read, what's shared with Claude, retention,
+>    deletion, no tracking pixels). Show a "Draft, pending legal review" banner
+>    unless env LEGAL_REVIEWED is "true".
+> 2. Footer links to all three on every page.
+> 3. Sign-up requires ticking "I agree to the Terms and Privacy Policy"; store the
+>    accepted terms version and time on the user and audit-log it.
+> 4. When the terms version changes, existing users accept the new version once
+>    before continuing.
+>
+> Acceptance criteria:
+> - Sign-up is refused without consent; the accepted version is stored
+> - A terms version bump asks existing users once, then never again
+> - Pages render at 375px and pass the existing CSP
+
+### Step 13: Home dashboard
+
+> Read CLAUDE.md. Give linked users a home page that answers "how am I doing?"
+>
+> Build:
+> 1. /home: money found, saved to date, actions waiting on you, newest findings,
+>    the next few upcoming charges, and when data was last updated.
+> 2. Sign-in lands on /home once a person has any account; /connect otherwise.
+> 3. Empty and loading states that never show a blank page.
+>
+> Acceptance criteria:
+> - New users land on /connect, linked users on /home (e2e)
+> - Every number on /home matches the report and actions pages
+> - Works at 375px
+
+### Step 14: Your data: freshness and export
+
+> Read CLAUDE.md. Let people see how fresh their data is and take it with them.
+>
+> Build:
+> 1. On /settings, each account with its balance, last update and source.
+> 2. "Refresh now" for linked banks (runs a sync), rate limited.
+> 3. "Download my data": a JSON file with every row the app holds for the person
+>    (accounts, transactions, findings, decisions, actions, digests, settings),
+>    never another person's, never tokens. Audit-log each export.
+>
+> Acceptance criteria:
+> - The export contains every user-owned table and nothing from other users
+> - Access tokens and secrets never appear in the export (test)
+> - Refresh is rate limited
+
+## Phase B: see everything (steps 15–17)
+
+### Step 15: Spending insights
+
+> Read CLAUDE.md. Show where money goes, without budgets or advice.
+>
+> Build:
+> 1. src/insights: pure functions for spending by category per month, top
+>    merchants, income versus spending, and month-over-month changes. Transfers,
+>    card payments and refunds are handled so nothing is counted twice.
+> 2. /insights with simple accessible charts (inline SVG, text alternatives) and
+>    a 12-month range.
+> 3. Track insights_viewed.
+>
+> Acceptance criteria:
+> - Totals reconcile exactly with the transactions they come from (tests)
+> - Card payments and transfers between the person's own accounts aren't spending
+> - Charts have text equivalents and work at 375px
+
+### Step 16: Upcoming bills and cash-flow forecast
+
+> Read CLAUDE.md. Predict what's coming out of the person's accounts.
+>
+> Build:
+> 1. Next expected date and amount for every active recurring stream (Plaid's
+>    predicted date when present, our cadence otherwise).
+> 2. A 30-day forecast for each checking account: today's balance, minus
+>    upcoming bills, plus expected recurring income.
+> 3. A new finding type, low_balance_risk (no dollar estimate), when the
+>    forecast dips below a configured cushion before the next income.
+> 4. /bills: a calendar-style list of the next 30 days.
+>
+> Acceptance criteria:
+> - Forecast tests with fixed fixtures, including irregular income
+> - low_balance_risk is created and cleared by rescans like other findings
+> - Thresholds live in config
+
+### Step 17: Alerts
+
+> Read CLAUDE.md. Tell people when something needs their attention.
+>
+> Build:
+> 1. An alerts table and engine run after every sync or import: new
+>    subscription, price increase, fee charged, unusually large charge, possible
+>    duplicate charge, low balance ahead.
+> 2. /alerts in the app; urgent alerts by email right away (at most a configured
+>    number per day), the rest in the weekly digest.
+> 3. Per-type preferences on /settings.
+> 4. Each alert is raised once per event, never repeated by a rescan.
+>
+> Acceptance criteria:
+> - A test per alert rule, including the no-alert case
+> - Preferences are respected; the daily email cap holds
+> - Rescans never duplicate an alert
+
+## Phase C: more ways to save (steps 18–20)
+
+### Step 18: Refunds and disputes
+
+> Read CLAUDE.md. Find money people are owed back.
+>
+> Build:
+> 1. New finding types: duplicate_charge (same merchant and amount within a
+>    configured number of days), charge_after_cancel (a charge from a merchant
+>    whose cancellation action is done), trial_conversion (a first full charge
+>    after a $0 or $1 charge).
+> 2. A new action type, request_refund, with team playbook text.
+> 3. Thresholds in src/config/detection.ts.
+>
+> Acceptance criteria:
+> - Rule tests with fixtures, including look-alikes that must not match
+> - Money found counts refunds only at medium confidence or above
+
+### Step 19: Bill negotiation
+
+> Read CLAUDE.md. Spot bills that are usually negotiable and priced high.
+>
+> Build:
+> 1. A bill_negotiation finding for phone, internet, TV and insurance bills
+>    above benchmark ranges in config (labelled as estimates, with the source of
+>    each range noted in config).
+> 2. A negotiate_bill action type for the concierge, with a script.
+>
+> Acceptance criteria:
+> - Rule tests at, below and above each benchmark
+> - Cards say "typical price" and never promise a result (guardrails)
+
+### Step 20: Debt payoff planner (education, not advice)
+
+> Read CLAUDE.md. Help people see what card interest costs over time.
+>
+> Build:
+> 1. A calculator for credit cards: balances from the person's accounts, APR
+>    and minimum payment entered by them. Show avalanche and snowball schedules
+>    side by side with total interest and payoff dates.
+> 2. Plain disclaimer: math, not a recommendation; guardrails on any LLM text.
+> 3. Link from card_interest findings.
+>
+> Acceptance criteria:
+> - Schedule math matches hand-checked examples to the cent
+> - No wording that recommends a choice (guardrail tests)
+
+## Phase D: Jane does more for you (steps 21–24)
+
+### Step 21: Team playbooks and drafted messages
+
+> Read CLAUDE.md. Make each concierge action faster.
+>
+> Build:
+> 1. A playbook per action type on the admin action page: steps, what to ask the
+>    person for, and how to close.
+> 2. A Claude-drafted merchant email or call script for the action (guardrailed,
+>    only the details the merchant needs), with a copy button.
+> 3. "Automate next" on /admin/metrics: action types ranked by approvals ×
+>    minutes per action.
+>
+> Acceptance criteria:
+> - Drafts never include data the merchant doesn't need (payload test)
+> - The ranking matches hand-computed fixtures
+
+### Step 22: Do-it-yourself kits
+
+> Read CLAUDE.md. Let people fix things themselves when that's quicker.
+>
+> Build:
+> 1. On decision cards for supported actions, a "Do it myself" option: the
+>    merchant's cancel or support link, steps, and a pre-written email (mailto).
+> 2. The person marks it done; it counts as saved like a team action.
+> 3. Track diy_started and diy_done.
+>
+> Acceptance criteria:
+> - "Do it myself" never creates a concierge action
+> - Savings from DIY count once in saved-to-date
+
+### Step 23: Ask Jane
+
+> Read CLAUDE.md. Let people ask questions about their own money.
+>
+> Build:
+> 1. /ask: a chat with Claude using read-only, user-scoped tools (search
+>    transactions, spending by category, list findings and actions, upcoming
+>    bills). Streaming answers.
+> 2. Every answer goes through the guardrails; no advice, no invented numbers
+>    (figures must come from tool results).
+> 3. Conversations stored per user, deletable, included in data export and
+>    "Delete all my data". Rate limited.
+>
+> Acceptance criteria:
+> - Tools can only read the signed-in person's data (tests)
+> - A figure not in any tool result is caught by the guardrails
+> - Conversations are removed by "Delete all my data"
+
+### Step 24: Merchant directory
+
+> Read CLAUDE.md. Build shared knowledge about merchants.
+>
+> Build:
+> 1. A merchants table (not user data): canonical name, aliases, cancel URL,
+>    support contact, category, typical prices. Admin-editable at /admin/merchants.
+> 2. Used by DIY kits, playbooks, detection (better merchant matching) and cards.
+> 3. Seed it with the most common subscriptions.
+>
+> Acceptance criteria:
+> - No personal data in the merchants table (schema review and test)
+> - Merchant matching improves on the existing fixtures without regressions
+
+## Phase E: grow (steps 25–27)
+
+### Step 25: Household sharing
+
+> Read CLAUDE.md. Let partners see shared money.
+>
+> Build:
+> 1. Invite a partner to a household; each person chooses which accounts to share.
+> 2. Partners see shared accounts' findings; decisions stay per person.
+> 3. Scoping helper extended so shared rows are readable, never writable, by the partner.
+>
+> Acceptance criteria:
+> - A partner can't see unshared accounts or the other person's decisions (tests)
+> - Leaving a household removes access immediately
+
+### Step 26: Installable app and notifications
+
+> Read CLAUDE.md. Make Jane feel like an app on phones.
+>
+> Build:
+> 1. A web app manifest, icons and an offline page (PWA).
+> 2. Web push for urgent alerts when VAPID keys are set; email otherwise.
+>
+> Acceptance criteria:
+> - Lighthouse PWA checks pass
+> - Push is optional and off without keys
+
+### Step 27: Partner referrals
+
+> Read CLAUDE.md. Turn referral partners on safely.
+>
+> Build:
+> 1. Partner records with disclosure text, referral links and states where each
+>    is allowed; cards show the disclosure word for word.
+> 2. Conversion tracking (webhook or manual entry) and referral revenue in metrics.
+> 3. Insurance referrals stay off until counsel's answer is recorded in config.
+>
+> Acceptance criteria:
+> - No card with a partner action renders without its disclosure (test)
+> - A partner can be turned off instantly
+
+## Phase F: regulated capabilities (plan only)
+
+Each of these needs licensing, a regulated partner, or legal review. Don't build until counsel signs off; when they do, each becomes its own phase of steps.
+
+| Capability | Why it matters | Prerequisite |
+| --- | --- | --- |
+| Moving idle cash or paying bills | Jane acts directly instead of guiding | A licensed money-movement partner, Plaid Transfer or similar, and a legal review |
+| Investing and portfolio help | The other half of a financial controller | Investment adviser registration (RIA) or a registered partner |
+| Tax preparation help | Big savings, high trust | Tax counsel; partner filing service |
+| Credit score monitoring | Context for card and loan findings | A credit bureau partner and FCRA review |
