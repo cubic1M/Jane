@@ -321,6 +321,13 @@ export const BILL_NEGOTIATION_MIN_GAP_CENTS = 1_000;
 // Only events this recent raise an alert, so importing a year of history doesn't send a
 // year of alerts.
 export const ALERT_RECENT_DAYS = 7;
+// How far ahead /subscriptions looks for each charge's next date: past a year, so yearly
+// charges have one.
+export const NEXT_CHARGE_WINDOW_DAYS = 400;
+// Yearly and quarterly renewals get a "renews soon" alert this many days ahead (monthly
+// charges are too frequent to be news).
+export const RENEWAL_ALERT_DAYS = 7;
+export const RENEWAL_FREQUENCIES: readonly Frequency[] = ["QUARTERLY", "ANNUALLY"];
 // A bill reminder comes this many days before the bill's expected date.
 export const BILL_REMINDER_DAYS = 3;
 // A charge is unusually large when it is at least this much (in cents)...

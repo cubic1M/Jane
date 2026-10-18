@@ -29,7 +29,7 @@ async function HomeContent() {
       <AppHeader email={user.email} />
       <div className="flex flex-wrap items-baseline justify-between gap-2">
         <h1 className="text-3xl font-semibold tracking-tight">How you&apos;re doing</h1>
-        <span className="flex gap-3 text-sm">
+        <span className="flex flex-wrap gap-x-3 gap-y-1 text-sm">
           <Link href="/net-worth" className={LINK}>
             Net worth
           </Link>
@@ -38,6 +38,9 @@ async function HomeContent() {
           </Link>
           <Link href="/goals" className={LINK}>
             Goals
+          </Link>
+          <Link href="/subscriptions" className={LINK}>
+            Subscriptions
           </Link>
           <Link href="/year" className={LINK}>
             Year in review
