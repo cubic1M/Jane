@@ -9,8 +9,11 @@ export function DiyKit({
   kit,
   decisionId,
   doneOn,
+  usually = null,
 }: {
   kit: Kit;
+  // Median minutes our team spends on this at this merchant, once there are enough cases.
+  usually?: number | null;
   decisionId: string;
   // When they marked it done (YYYY-MM-DD), if they have.
   doneOn: string | null;
@@ -33,6 +36,11 @@ export function DiyKit({
   return (
     <section className="flex flex-col gap-3 rounded-xl border border-emerald-200 p-4 dark:border-emerald-900">
       <h2 className="font-semibold">Doing it yourself</h2>
+      {usually !== null && (
+        <p className="text-sm text-zinc-600 dark:text-zinc-400">
+          With this company it usually takes about {usually} minutes.
+        </p>
+      )}
       {kit.link && (
         <a
           href={kit.link.url}

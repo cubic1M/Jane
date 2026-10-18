@@ -779,6 +779,21 @@ model Job {
   @@map("jobs")
 }
 
+// How actions at one merchant tend to go, aggregated from finished actions by the daily
+// job (src/lib/merchant-outcomes.ts). Counts only: no user ids, no action ids.
+model MerchantOutcome {
+  id            String     @id @default(cuid())
+  merchantKey   String     @map("merchant_key")
+  actionType    ActionType @map("action_type")
+  cases         Int
+  succeeded     Int
+  medianMinutes Int?       @map("median_minutes")
+  updatedAt     DateTime   @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  @@unique([merchantKey, actionType])
+  @@map("merchant_outcomes")
+}
+
 // Invite codes keep the beta closed: signing up needs a code with uses left.
 model InviteCode {
   id        String    @id @default(cuid())
