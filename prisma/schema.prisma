@@ -1,0 +1,21 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model AnalyticsEvent {
+  id         String   @id @default(cuid())
+  // Null for visitors who have not signed up; their anonymous_id is in properties.
+  userId     String?  @map("user_id")
+  name       String
+  properties Json     @default("{}")
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  @@index([userId])
+  @@index([name, createdAt])
+  @@map("analytics_events")
+}

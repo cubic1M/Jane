@@ -1,8 +1,42 @@
-node_modules/
-.env
-.env.local
+# dependencies
+/node_modules
+/.pnp
+.pnp.*
+
+# testing
+/coverage
+/test-results/
+/playwright-report/
+/blob-report/
+/playwright/.cache/
+
+# next.js
+/.next/
+/out/
+/build
+/dist
+
+# env files: only the example is committed
+.env*
+!.env.example
+
+# real bank exports and other private data
 private/
-.next/
-dist/
-*.log
+
+# misc
 .DS_Store
+*.pem
+*.log
+
+# vercel
+.vercel
+
+# local preview config (machine-specific paths)
+/.claude/launch.json
+
+# typescript
+*.tsbuildinfo
+next-env.d.ts
+
+# generated prisma client
+/src/generated/
