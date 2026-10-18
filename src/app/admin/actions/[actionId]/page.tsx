@@ -1,7 +1,9 @@
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
 import { PLAYBOOKS } from "@/config/playbooks";
+import { normalizeAlias } from "@/data-sources/merchant-directory";
 import { DRAFTABLE } from "@/lib/drafts";
+import { merchantFor } from "@/lib/merchants";
 import { ACTION_STATUS_LABELS } from "@/lib/action-status";
 import type { DecisionCard } from "@/lib/cards";
 import { getActionForAdmin } from "@/lib/concierge";
@@ -25,6 +27,11 @@ async function ActionDetail({
   const card = action.decision.cardSnapshot as unknown as DecisionCard;
   const closed = action.status === "done" || action.status === "failed";
   const playbook = PLAYBOOKS[action.type];
+  const merchantName = (action.decision.finding.evidence as { merchant?: unknown } | null)
+    ?.merchant;
+  const merchant = await merchantFor(
+    typeof merchantName === "string" ? normalizeAlias(merchantName) : null,
+  );
 
   return (
     <>
@@ -85,6 +92,38 @@ async function ActionDetail({
           <p>
             <strong>Closing:</strong> {playbook.close}
           </p>
+        </section>
+      )}
+
+      {merchant && (
+        <section className="flex flex-col gap-1 rounded-xl border border-zinc-200 p-4 text-sm dark:border-zinc-800">
+          <h2 className="font-semibold">{merchant.name}</h2>
+          {merchant.cancelUrl && (
+            <a
+              href={merchant.cancelUrl}
+              className="text-emerald-700 hover:underline"
+              rel="noreferrer"
+              target="_blank"
+            >
+              Cancel or manage the account
+            </a>
+          )}
+          {merchant.supportUrl && (
+            <a
+              href={merchant.supportUrl}
+              className="text-emerald-700 hover:underline"
+              rel="noreferrer"
+              target="_blank"
+            >
+              Support
+            </a>
+          )}
+          {merchant.supportPhone && <p>Phone: {merchant.supportPhone}</p>}
+          {!merchant.reviewedAt && (
+            <p className="text-xs text-zinc-500">
+              Not reviewed yet: check the links before using them.
+            </p>
+          )}
         </section>
       )}
 

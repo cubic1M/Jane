@@ -192,7 +192,10 @@ describe("sumMoneyFound", () => {
 
 describe("runDetection", () => {
   const updateMany = vi.fn();
-  const client = { user: { updateMany } } as unknown as PrismaClient;
+  const client = {
+    user: { updateMany },
+    merchant: { findMany: async () => [] },
+  } as unknown as PrismaClient;
   const now = new Date("2026-10-15T18:30:00Z");
 
   beforeEach(() => {
@@ -341,7 +344,10 @@ describe("runDetection", () => {
 describe("runDetection asking Claude about unclear merchants", () => {
   const now = new Date("2026-10-15T12:00:00Z");
   const updateMany = vi.fn();
-  const client = { user: { updateMany } } as unknown as PrismaClient;
+  const client = {
+    user: { updateMany },
+    merchant: { findMany: async () => [] },
+  } as unknown as PrismaClient;
   const CANVA = {
     description: "CANVA* PRO MONTHLY",
     pfcPrimary: "GENERAL_SERVICES",

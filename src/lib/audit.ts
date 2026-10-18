@@ -27,7 +27,8 @@ export type AuditEvent =
   | "invite_code_created"
   | "terms_accepted"
   | "data_exported"
-  | "admin_drafted_message";
+  | "admin_drafted_message"
+  | "merchant_saved";
 
 export type AuditActor = { type: ActorType; id: string | null };
 

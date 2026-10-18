@@ -12,6 +12,7 @@ import { llmModel } from "@/lib/anthropic";
 import { scopedFor, type ScopedDb } from "@/lib/db-scoped";
 import { detectAlerts } from "./alerts";
 import { detect } from "./detect";
+import { withDirectory } from "./merchants";
 import { atLeast } from "./helpers";
 import { isAmbiguousRecurring } from "./rules/subscription-review";
 import { buildStreams } from "./streams";
@@ -125,9 +126,13 @@ function contentOf(candidate: Candidate) {
   };
 }
 
-async function loadInput(db: ScopedDb, asOf: string): Promise<DetectionInput> {
+async function loadInput(
+  db: ScopedDb,
+  asOf: string,
+  client: PrismaClient,
+): Promise<DetectionInput> {
   const cutoff = monthsBefore(asOf, LOOKBACK_MONTHS);
-  const [accounts, transactions, streams, cancelled] = await Promise.all([
+  const [accounts, transactions, streams, cancelled, directory] = await Promise.all([
     db.accounts.findMany({
       select: { id: true, name: true, type: true, subtype: true, currentBalanceCents: true },
       orderBy: { id: "asc" },
@@ -163,29 +168,35 @@ async function loadInput(db: ScopedDb, asOf: string): Promise<DetectionInput> {
       select: { completedAt: true, decision: { select: { finding: { select: { key: true } } } } },
       orderBy: { completedAt: "asc" },
     }),
+    // The merchant directory is shared, not user data, so it's read without scoping.
+    client.merchant.findMany({ select: { key: true, name: true, aliases: true, category: true } }),
   ]);
 
-  return {
-    asOf,
-    accounts,
-    transactions: transactions.map((t) => ({ ...t, date: isoDate(t.date) })),
-    recurringStreams: streams.map((s) => ({
-      ...s,
-      lastDate: s.lastDate ? isoDate(s.lastDate) : null,
-      predictedNextDate: s.predictedNextDate ? isoDate(s.predictedNextDate) : null,
-    })),
-    cancelledMerchants: cancelled.flatMap((a) => {
-      const key = a.decision.finding.key;
-      return a.completedAt && key.startsWith(MERCHANT_KEY_PREFIX)
-        ? [
-            {
-              merchantKey: key.slice(MERCHANT_KEY_PREFIX.length),
-              cancelledOn: isoDate(a.completedAt),
-            },
-          ]
-        : [];
-    }),
-  };
+  // Company names and categories from the merchant directory (detection/merchants.ts).
+  return withDirectory(
+    {
+      asOf,
+      accounts,
+      transactions: transactions.map((t) => ({ ...t, date: isoDate(t.date) })),
+      recurringStreams: streams.map((s) => ({
+        ...s,
+        lastDate: s.lastDate ? isoDate(s.lastDate) : null,
+        predictedNextDate: s.predictedNextDate ? isoDate(s.predictedNextDate) : null,
+      })),
+      cancelledMerchants: cancelled.flatMap((a) => {
+        const key = a.decision.finding.key;
+        return a.completedAt && key.startsWith(MERCHANT_KEY_PREFIX)
+          ? [
+              {
+                merchantKey: key.slice(MERCHANT_KEY_PREFIX.length),
+                cancelledOn: isoDate(a.completedAt),
+              },
+            ]
+          : [];
+      }),
+    },
+    directory,
+  );
 }
 
 // The detection input for one person, for read-only features like upcoming charges.
@@ -193,7 +204,7 @@ export async function loadDetectionInput(
   userId: string,
   { client = defaultClient, now = new Date() }: Pick<Options, "client" | "now"> = {},
 ): Promise<DetectionInput> {
-  return loadInput(scopedFor(userId, client), isoDate(now));
+  return loadInput(scopedFor(userId, client), isoDate(now), client);
 }
 
 export type DetectionSummary = {
@@ -281,7 +292,7 @@ export async function runDetection(
   }: Options = {},
 ): Promise<DetectionSummary> {
   const db = scopedFor(userId, client);
-  const input = await loadInput(db, isoDate(now));
+  const input = await loadInput(db, isoDate(now), client);
   input.subscriptionMerchantKeys = await subscriptionMerchantKeys(db, input, check);
   const candidates = detect(input);
 
