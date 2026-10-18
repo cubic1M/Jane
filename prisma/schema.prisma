@@ -81,6 +81,19 @@ enum AgentDirection {
   @@map("agent_direction")
 }
 
+enum AutopilotLevel {
+  // Ask me first: no standing rules.
+  ask
+  // Handle the safe stuff: refunds, fee refunds, small price pushback, lower card rates.
+  safe
+  // Everything a rule is allowed to do, with higher limits.
+  all
+  // The person fine-tuned the rules by hand.
+  custom
+
+  @@map("autopilot_level")
+}
+
 enum ProposalStatus {
   open
   accepted
@@ -193,48 +206,50 @@ enum ActorType {
 }
 
 model User {
-  id                         String    @id @default(cuid())
-  email                      String    @unique
-  emailVerified              DateTime? @map("email_verified") @db.Timestamptz(3)
+  id                         String          @id @default(cuid())
+  email                      String          @unique
+  emailVerified              DateTime?       @map("email_verified") @db.Timestamptz(3)
   name                       String?
   image                      String?
-  role                       Role      @default(user)
-  createdAt                  DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
-  updatedAt                  DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
-  deletedAt                  DateTime? @map("deleted_at") @db.Timestamptz(3)
+  role                       Role            @default(user)
+  createdAt                  DateTime        @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt                  DateTime        @updatedAt @map("updated_at") @db.Timestamptz(3)
+  deletedAt                  DateTime?       @map("deleted_at") @db.Timestamptz(3)
   // Set when detection first finishes for this user, so /scanning knows it can move on.
-  firstDetectionAt           DateTime? @map("first_detection_at") @db.Timestamptz(3)
+  firstDetectionAt           DateTime?       @map("first_detection_at") @db.Timestamptz(3)
   // Email preferences, changed on /settings or by the unsubscribe link.
-  digestEnabled              Boolean   @default(true) @map("digest_enabled")
+  digestEnabled              Boolean         @default(true) @map("digest_enabled")
   // IANA name, e.g. America/New_York. Null means US Pacific.
   timezone                   String?
   // Membership offer: when it was last shown (counted once per snooze period) and when
   // the person last said "not now".
-  membershipOfferShownAt     DateTime? @map("membership_offer_shown_at") @db.Timestamptz(3)
-  membershipOfferDismissedAt DateTime? @map("membership_offer_dismissed_at") @db.Timestamptz(3)
+  membershipOfferShownAt     DateTime?       @map("membership_offer_shown_at") @db.Timestamptz(3)
+  membershipOfferDismissedAt DateTime?       @map("membership_offer_dismissed_at") @db.Timestamptz(3)
   // When we last warned that linked banks will be disconnected for inactivity.
-  plaidRemovalWarnedAt       DateTime? @map("plaid_removal_warned_at") @db.Timestamptz(3)
+  plaidRemovalWarnedAt       DateTime?       @map("plaid_removal_warned_at") @db.Timestamptz(3)
   // Per alert type: "email", "app" or "off". Missing types use the defaults in
   // src/config/alerts.ts.
-  alertPrefs                 Json      @default("{}") @map("alert_prefs")
+  alertPrefs                 Json            @default("{}") @map("alert_prefs")
   // The private calendar feed (/api/calendar/<token>): SHA-256 of the link's secret, so a
   // database leak doesn't reveal working links. Null when the feed is off.
-  calendarTokenHash          String?   @unique @map("calendar_token_hash")
-  calendarCreatedAt          DateTime? @map("calendar_created_at") @db.Timestamptz(3)
+  calendarTokenHash          String?         @unique @map("calendar_token_hash")
+  calendarCreatedAt          DateTime?       @map("calendar_created_at") @db.Timestamptz(3)
   // Two-letter US state, chosen on /settings. Referral partners are only offered where
   // they're allowed; with no state, none are.
   state                      String?
   // Admin two-factor (TOTP). The secret is AES-256-GCM encrypted like Plaid tokens;
   // mfaEnabledAt is set once the first code checks out.
-  mfaSecretEncrypted         String?   @map("mfa_secret_encrypted")
-  mfaEnabledAt               DateTime? @map("mfa_enabled_at") @db.Timestamptz(3)
+  mfaSecretEncrypted         String?         @map("mfa_secret_encrypted")
+  mfaEnabledAt               DateTime?       @map("mfa_enabled_at") @db.Timestamptz(3)
   // The Terms and Privacy Policy version the person last accepted (src/config/legal.ts).
-  termsVersion               String?   @map("terms_version")
-  termsAcceptedAt            DateTime? @map("terms_accepted_at") @db.Timestamptz(3)
+  termsVersion               String?         @map("terms_version")
+  termsAcceptedAt            DateTime?       @map("terms_accepted_at") @db.Timestamptz(3)
   // The first-weeks checklist on Home: when each item was first seen done (item key to
   // ISO time, so each funnel event fires once) and when the person hid it for good.
-  checklistProgress          Json      @default("{}") @map("checklist_progress")
-  checklistDismissedAt       DateTime? @map("checklist_dismissed_at") @db.Timestamptz(3)
+  checklistProgress          Json            @default("{}") @map("checklist_progress")
+  checklistDismissedAt       DateTime?       @map("checklist_dismissed_at") @db.Timestamptz(3)
+  // How much Jane does on its own (spec step 57). Null until the person picks.
+  autopilot                  AutopilotLevel?
 
   authAccounts        AuthAccount[]
   mfaBackupCodes      MfaBackupCode[]

@@ -6,6 +6,9 @@ import { DEFAULT_TIMEZONE, TIMEZONES } from "@/config/digest";
 import { alertPrefs, isUrgent } from "@/lib/alerts";
 import { twoFactorStatus } from "@/lib/mfa";
 import { rulesFor } from "@/lib/standing-rules";
+import { autopilotOf } from "@/lib/autopilot";
+import { AUTOPILOT_LEVELS } from "@/config/autopilot";
+import { AutopilotChooser } from "@/components/autopilot-chooser";
 import { db } from "@/lib/db";
 import { scopedDb } from "@/lib/db-scoped";
 import { requireUser } from "@/lib/session";
@@ -24,7 +27,7 @@ import { RulesForm } from "./rules-form";
 async function SettingsContent() {
   const user = await requireUser();
   const mine = await scopedDb();
-  const [prefs, items, accounts, lastCsv, twoFactor, rules] = await Promise.all([
+  const [prefs, items, accounts, lastCsv, twoFactor, rules, autopilot] = await Promise.all([
     db.user.findUniqueOrThrow({
       where: { id: user.id },
       select: {
@@ -65,6 +68,7 @@ async function SettingsContent() {
     }),
     twoFactorStatus(user.id),
     rulesFor(user.id),
+    autopilotOf(user.id),
   ]);
   const csvUpdated = new Map(lastCsv.map((row) => [row.accountId, row.createdAt]));
   const alerts = alertPrefs(prefs.alertPrefs);
@@ -192,8 +196,24 @@ async function SettingsContent() {
         {vapidPublicKey() && <NotificationsToggle publicKey={vapidPublicKey() ?? ""} />}
       </section>
 
+      <section id="autopilot" className="flex scroll-mt-8 flex-col gap-3">
+        <h2 className="text-xl font-semibold">Autopilot</h2>
+        <p className="text-zinc-600 dark:text-zinc-400">
+          Now:{" "}
+          <strong>
+            {autopilot === null
+              ? "not chosen yet"
+              : autopilot === "custom"
+                ? "your own rules (below)"
+                : AUTOPILOT_LEVELS[autopilot].label}
+          </strong>
+          . Pick a level to change it.
+        </p>
+        <AutopilotChooser compact />
+      </section>
+
       <section id="rules" className="flex scroll-mt-8 flex-col gap-3">
-        <h2 className="text-xl font-semibold">Standing rules</h2>
+        <h2 className="text-xl font-semibold">Fine-tune: standing rules</h2>
         <p className="text-zinc-600 dark:text-zinc-400">
           Things Jane may do without asking each time. Jane tells you whenever a rule is used, and
           you can take it back for a day. Moving money, phone calls, cancelling things and insurance

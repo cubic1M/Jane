@@ -261,7 +261,10 @@ export async function listQueue(
     assignee: filter.assignee ?? null,
     count: actions.length,
   });
-  return actions.map((a) => ({ ...a, title: titleOf(a.decision.cardSnapshot) }));
+  // An action whose person was deleted mid-request comes back without its decision.
+  return actions
+    .filter((a) => a.decision)
+    .map((a) => ({ ...a, title: titleOf(a.decision.cardSnapshot) }));
 }
 
 export async function getActionForAdmin(

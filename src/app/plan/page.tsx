@@ -17,6 +17,8 @@ import type { Proposal } from "@/planning/proposals";
 import { PlanItem } from "./plan-item";
 import { RuleApprovals } from "./rule-approvals";
 import { SetupItem, type SetupView } from "./setup-item";
+import { AutopilotChooser } from "@/components/autopilot-chooser";
+import { autopilotOf } from "@/lib/autopilot";
 import { YesToAll } from "./yes-to-all";
 
 async function Plan({ searchParams }: { searchParams: PageProps<"/plan">["searchParams"] }) {
@@ -24,10 +26,11 @@ async function Plan({ searchParams }: { searchParams: PageProps<"/plan">["search
   const db = await scopedDb();
   if ((await db.accounts.count()) === 0) redirect("/connect");
   await refreshProposals(user.id);
-  const [items, byRules, setup] = await Promise.all([
+  const [items, byRules, setup, autopilot] = await Promise.all([
     planFor(user.id),
     recentRuleApprovals(user.id),
     openProposals(user.id),
+    autopilotOf(user.id),
   ]);
   await markPlanShown(
     user.id,
@@ -86,6 +89,7 @@ async function Plan({ searchParams }: { searchParams: PageProps<"/plan">["search
           .
         </p>
       </div>
+      {autopilot === null && <AutopilotChooser compact />}
       {byRules.length > 0 && (
         <RuleApprovals
           approvals={byRules.map((a) => ({

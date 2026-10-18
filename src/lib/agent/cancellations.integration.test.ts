@@ -45,7 +45,8 @@ describe.runIf(url)("cancellations by the agent, against a real database", () =>
 
   // A merchant only cancellable from the account holder's page.
   async function pageOnlyMerchant() {
-    const name = `Pageonly${crypto.randomUUID().slice(0, 8).replace(/\d/g, "x")}`;
+    // Letters only (they survive normalization), random enough never to repeat.
+    const name = `Pageonly${Array.from({ length: 14 }, () => "abcdefghijklmnopqrstuvwxyz"[Math.floor(Math.random() * 26)]).join("")}`;
     const key = name.toLowerCase();
     merchantKeys.push(key);
     await client.merchant.create({
