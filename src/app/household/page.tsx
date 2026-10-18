@@ -9,7 +9,10 @@ import { HOUSEHOLD_MAX_MEMBERS } from "@/config/household";
 import { leave, share } from "./actions";
 import { InviteForm } from "./forms";
 
-const CARD = "flex flex-col gap-3 rounded-xl border border-zinc-200 p-4 dark:border-zinc-800";
+// Emails and account names can be long with no spaces; they wrap rather than push the page
+// sideways on a phone.
+const CARD =
+  "flex min-w-0 flex-col gap-3 rounded-xl border border-zinc-200 p-4 [overflow-wrap:anywhere] dark:border-zinc-800";
 const label = (a: { name: string; mask: string | null }) =>
   a.mask ? `${a.name} ····${a.mask}` : a.name;
 
