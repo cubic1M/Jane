@@ -882,6 +882,117 @@ Principles that still hold:
 > - No card with a partner action renders without its disclosure (test)
 > - A partner can be turned off instantly
 
+## Phase G: plan and track (steps 28–32)
+
+Phases A–E find money and fix it. Phase G helps people plan: their own categories, budgets, goals, net worth and reminders. All of it is the person's own numbers and plain math; none of it is advice.
+
+### Step 28: Category corrections
+
+> Read CLAUDE.md. Let people fix a wrong category, once.
+>
+> Build:
+> 1. On /insights (and a transaction list), change a transaction's category.
+> 2. Offer "always for this merchant": a per-person merchant rule applied to past
+>    and future transactions, ahead of Plaid's and Claude's categories.
+> 3. Insights, detection and Ask Jane use the corrected category.
+>
+> Acceptance criteria:
+> - A correction survives the next sync or import (tests)
+> - A merchant rule never touches another person's transactions
+
+### Step 29: Budgets
+
+> Read CLAUDE.md. A monthly limit per category, if the person wants one.
+>
+> Build:
+> 1. Budgets per spending category, with a suggested amount from the last three
+>    months (shown as a suggestion, never a recommendation).
+> 2. Progress on /insights and Home: spent, left, and days left in the month.
+> 3. A non-urgent "over budget" alert, once per category per month, respecting
+>    alert preferences.
+>
+> Acceptance criteria:
+> - Totals match /insights exactly (same rules for transfers and refunds)
+> - The over-budget alert is raised once per category per month
+
+### Step 30: Savings goals
+
+> Read CLAUDE.md. Track progress toward a goal the person sets.
+>
+> Build:
+> 1. Goals with a name, target amount and date, optionally tied to a savings
+>    account's balance (or updated by hand).
+> 2. Progress and the monthly amount needed to reach the target by the date:
+>    math only, with the same "not a recommendation" wording as the debt planner.
+>
+> Acceptance criteria:
+> - Monthly-needed math matches hand-checked examples to the cent
+> - Goal wording passes the recommendation guardrail
+
+### Step 31: Net worth over time
+
+> Read CLAUDE.md. Show where the person stands and how it's moving.
+>
+> Build:
+> 1. A daily balance snapshot per account (cron), kept for two years.
+> 2. /net-worth: assets minus debts today, and a monthly chart, with a note on
+>    which accounts are included and which have no balance.
+>
+> Acceptance criteria:
+> - Snapshots are idempotent per account per day
+> - Credit card balances count as debts; accounts without balances are left out
+>   and listed
+
+### Step 32: Bill reminders
+
+> Read CLAUDE.md. Remind people before a bill they can't afford to miss.
+>
+> Build:
+> 1. A "bill due soon" alert a configured number of days before an expected bill
+>    (from the forecast), urgent only when the account is forecast to be short.
+> 2. Per-type preferences and the daily cap from step 17 apply.
+>
+> Acceptance criteria:
+> - One reminder per bill per due date, even across rescans
+> - Urgent only when the forecast balance on the due date is below the cushion
+
+## Phase H: trust and scale (steps 33–35)
+
+### Step 33: Accessibility
+
+> Read CLAUDE.md. Make every page usable with a keyboard and a screen reader.
+>
+> Build:
+> 1. Automated axe checks in the end-to-end tests on every page, signed in and out.
+> 2. Fix what they find: labels, contrast, focus order, headings.
+>
+> Acceptance criteria:
+> - No serious or critical axe violations on any page
+
+### Step 34: Metrics at scale
+
+> Read CLAUDE.md. Keep the team's pages fast as people join.
+>
+> Build:
+> 1. Move /admin/metrics to SQL aggregates instead of loading every row.
+> 2. A small job table for slow work (explanations, digests) with retries.
+>
+> Acceptance criteria:
+> - The SQL numbers match the current pure functions on the test fixtures
+> - A failed job retries with backoff and is visible on an admin page
+
+### Step 35: Year in review
+
+> Read CLAUDE.md. A once-a-year look back the person can keep.
+>
+> Build:
+> 1. /year: spending by category and month, what Jane found, what was saved
+>    (team and do-it-yourself), and the biggest changes from last year.
+> 2. A printable layout.
+>
+> Acceptance criteria:
+> - Every figure matches the insights and saved-to-date numbers for that year
+
 ## Phase F: regulated capabilities (plan only)
 
 Each of these needs licensing, a regulated partner, or legal review. Don't build until counsel signs off; when they do, each becomes its own phase of steps.
