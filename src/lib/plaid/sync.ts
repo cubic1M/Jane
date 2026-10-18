@@ -82,13 +82,14 @@ async function saveTransactions(db: ScopedDb, accountIds: Map<string, string>, s
     ];
   });
 
-  const existing = new Set(
-    (
-      await db.transactions.findMany({
-        where: { plaidTransactionId: { in: rows.map((r) => r.plaidTransactionId) } },
-        select: { plaidTransactionId: true },
-      })
-    ).map((t) => t.plaidTransactionId),
+  const saved = await db.transactions.findMany({
+    where: { plaidTransactionId: { in: rows.map((r) => r.plaidTransactionId) } },
+    select: { plaidTransactionId: true, categorySource: true },
+  });
+  const existing = new Set(saved.map((t) => t.plaidTransactionId));
+  // Categories the person set by hand survive Plaid's later changes to the transaction.
+  const corrected = new Set(
+    saved.filter((t) => t.categorySource === "user").map((t) => t.plaidTransactionId),
   );
   const fresh = rows.filter((r) => !existing.has(r.plaidTransactionId));
   const changed = rows.filter((r) => existing.has(r.plaidTransactionId));
@@ -98,7 +99,14 @@ async function saveTransactions(db: ScopedDb, accountIds: Map<string, string>, s
     skipDuplicates: true,
   });
   for (const { plaidTransactionId, ...data } of changed) {
-    await db.transactions.updateMany({ where: { plaidTransactionId }, data });
+    const { pfcPrimary, pfcDetailed, categorySource, ...rest } = data;
+    await db.transactions.updateMany({
+      where: { plaidTransactionId },
+      data:
+        corrected.has(plaidTransactionId) && categorySource !== "user"
+          ? rest
+          : { ...rest, pfcPrimary, pfcDetailed, categorySource },
+    });
   }
   const { count: removed } =
     sync.removedTransactionIds.length > 0

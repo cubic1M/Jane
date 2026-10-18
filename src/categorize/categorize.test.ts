@@ -26,7 +26,11 @@ function txn(
   };
 }
 
-const findMany = vi.fn();
+// Rows in the merchant cache; the mock honours the query's source filter.
+let cache: { merchantKey: string; pfcDetailed: string; source: string }[] = [];
+const findMany = vi.fn(async ({ where }: { where: { source?: string } }) =>
+  cache.filter((row) => !where.source || row.source === where.source),
+);
 const createMany = vi.fn();
 const db = { userId: "user_1", merchantCategories: { findMany, createMany } } as unknown as Pick<
   ScopedDb,
@@ -35,7 +39,8 @@ const db = { userId: "user_1", merchantCategories: { findMany, createMany } } as
 
 describe("categorizeTransactions", () => {
   beforeEach(() => {
-    findMany.mockReset().mockResolvedValue([]);
+    cache = [];
+    findMany.mockClear();
     createMany.mockReset().mockResolvedValue({ count: 0 });
     vi.mocked(classifyMerchants).mockReset().mockResolvedValue(new Map());
   });
@@ -45,8 +50,24 @@ describe("categorizeTransactions", () => {
 
     expect(result.category?.detailed).toBe("ENTERTAINMENT_TV_AND_MOVIES");
     expect(result.categorySource).toBe("rule");
-    expect(findMany).not.toHaveBeenCalled();
+    // Only the person's own merchant rules are looked up.
+    expect(findMany).toHaveBeenCalledTimes(1);
+    expect(findMany.mock.calls[0][0].where.source).toBe("user");
     expect(classifyMerchants).not.toHaveBeenCalled();
+  });
+
+  it("puts the person's own merchant rule ahead of everything", async () => {
+    cache = [
+      { merchantKey: "netflix", pfcDetailed: "ENTERTAINMENT_OTHER_ENTERTAINMENT", source: "user" },
+    ];
+
+    const [result] = await categorizeTransactions(
+      [txn("NETFLIX.COM", { categoryDetailed: "ENTERTAINMENT_TV_AND_MOVIES" })],
+      db,
+    );
+
+    expect(result.category?.detailed).toBe("ENTERTAINMENT_OTHER_ENTERTAINMENT");
+    expect(result.categorySource).toBe("user");
   });
 
   it("keeps a category the source already gave", async () => {
@@ -60,9 +81,9 @@ describe("categorizeTransactions", () => {
   });
 
   it("uses the cache before the LLM, then caches new LLM answers", async () => {
-    findMany.mockResolvedValue([
-      { merchantKey: "corner market", pfcDetailed: "FOOD_AND_DRINK_GROCERIES" },
-    ]);
+    cache = [
+      { merchantKey: "corner market", pfcDetailed: "FOOD_AND_DRINK_GROCERIES", source: "llm" },
+    ];
     vi.mocked(classifyMerchants).mockResolvedValue(
       new Map([["fancy salon", "PERSONAL_CARE_HAIR_AND_BEAUTY"]]),
     );

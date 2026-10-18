@@ -121,6 +121,8 @@ enum CategorySource {
   rule
   llm
   plaid
+  // Set by the person: on one transaction, or as a rule for a merchant. Wins over the rest.
+  user
 
   @@map("category_source")
 }

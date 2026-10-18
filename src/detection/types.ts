@@ -23,7 +23,7 @@ export type DetectionTransaction = {
   merchantName: string | null;
   pfcPrimary: string | null;
   pfcDetailed: string | null;
-  categorySource: "rule" | "llm" | "plaid" | null;
+  categorySource: "rule" | "llm" | "plaid" | "user" | null;
 };
 
 // A row from recurring_streams (Plaid's /transactions/recurring/get, from step 7).
