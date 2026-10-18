@@ -25,17 +25,18 @@ const action = (overrides: Partial<DigestInput["actions"][number]>) => ({
 });
 
 describe("buildDigest", () => {
-  it("skips people with nothing new and nothing pending", () => {
+  it("skips people with nothing new, nothing pending and nothing on their plan", () => {
     expect(buildDigest(input())).toBeNull();
-    // An action finished weeks ago and an old finding aren't news.
-    expect(
-      buildDigest(
-        input({
-          actions: [action({ completedAt: daysAgo(20) })],
-          findings: [{ title: "Old", annualSavingsCents: 100, createdAt: daysAgo(30) }],
-        }),
-      ),
-    ).toBeNull();
+    // An action finished weeks ago isn't news.
+    expect(buildDigest(input({ actions: [action({ completedAt: daysAgo(20) })] }))).toBeNull();
+  });
+
+  it("sends Jane's plan every week while something waits for a yes or no", () => {
+    // An old finding isn't new, but it's still on the plan.
+    const digest = buildDigest(
+      input({ findings: [{ title: "Old", annualSavingsCents: 100, createdAt: daysAgo(30) }] }),
+    );
+    expect(digest).toMatchObject({ newFindings: [], plan: { items: 1 } });
   });
 
   it("totals what was saved this week and to date from finished actions", () => {

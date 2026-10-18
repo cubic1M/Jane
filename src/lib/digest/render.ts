@@ -6,6 +6,7 @@ import type { DigestPayload } from "./build";
 // click tracking.
 
 export type DigestLinks = {
+  plan: string;
   report: string;
   actions: string;
   alerts: string;
@@ -37,6 +38,16 @@ function sections(p: DigestPayload, links: DigestLinks): Section[] {
       heading: "We need something from you",
       items: waiting.map((a) => `${a.title}: ${a.userTodo ?? "see your actions page"}`),
       link: { label: "Open your actions", url: links.actions },
+    });
+  }
+  if (p.plan && p.plan.items > 0) {
+    const n = p.plan.items;
+    out.push({
+      heading: "Jane's plan this week",
+      items: [
+        `${n} ${n === 1 ? "thing" : "things"} Jane can do for you. Say yes, no or change each one; nothing happens until you do.`,
+      ],
+      link: { label: "Review your plan", url: links.plan },
     });
   }
   if (p.finishedThisWeek.length > 0) {

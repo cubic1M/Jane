@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { renderDigest } from "./render";
 
 const LINKS = {
+  plan: "https://app.example.com/api/digest/click?d=d1&to=%2Fplan",
   report: "https://app.example.com/api/digest/click?d=d1&to=%2Freport",
   actions: "https://app.example.com/api/digest/click?d=d1&to=%2Factions",
   alerts: "https://app.example.com/api/digest/click?d=d1&to=%2Falerts",
@@ -98,5 +99,15 @@ describe("renderDigest", () => {
 
     expect(text).toContain("We'll keep doing this for you, ongoing");
     expect(text).toContain(`See membership: ${LINKS.actions}`);
+  });
+
+  it("links Jane's plan when items wait for an answer", () => {
+    const email = renderDigest({ ...payload, plan: { items: 3 } }, LINKS);
+    expect(email.text).toContain("Jane's plan this week");
+    expect(email.text).toContain("3 things Jane can do for you");
+    expect(email.text).toContain(`Review your plan: ${LINKS.plan}`);
+    expect(renderDigest({ ...payload, plan: { items: 0 } }, LINKS).text).not.toContain(
+      "Jane's plan",
+    );
   });
 });
