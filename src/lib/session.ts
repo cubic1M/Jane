@@ -5,8 +5,8 @@ import { auth } from "@/auth";
 
 export type SessionUser = Session["user"];
 
-// Where signed-in users go after sign-in. Switch to "/connect" when Plaid lands in step 7.
-export const HOME_PATH = "/import";
+// Where signed-in users go after sign-in.
+export const HOME_PATH = "/connect";
 
 export async function getCurrentUser(): Promise<SessionUser | null> {
   // Auth.js makes a random CSRF token on every session lookup. Waiting for the

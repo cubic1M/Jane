@@ -10,7 +10,8 @@ export type AuditEvent =
   // Finding data was sent to Claude for card text.
   | "explanations_generated"
   | "decision_made"
-  | "decision_undone";
+  | "decision_undone"
+  | "item_linked";
 
 export type AuditActor = { type: ActorType; id: string | null };
 

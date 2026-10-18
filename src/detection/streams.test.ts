@@ -110,15 +110,31 @@ describe("fallback recurring detection", () => {
 });
 
 describe("buildStreams", () => {
-  it("uses the fallback only when there are no Plaid streams", () => {
-    const transactions = monthly(4, 1549, NETFLIX);
+  it("uses Plaid streams for the accounts they cover and the fallback for the rest", () => {
+    const onCard = monthly(4, 1549, { ...NETFLIX, accountId: CARD.id });
+    const onChecking = monthly(4, 1199, { ...HULU });
+    const hulu = plaidStream({ merchantName: "Spotify" });
 
-    expect(buildStreams(input({ transactions }))).toHaveLength(1);
+    expect(buildStreams(input({ transactions: onCard })).map((s) => s.merchant)).toEqual([
+      "Netflix",
+    ]);
+    // The card has Plaid streams, so its charges aren't detected twice; the CSV checking
+    // account still gets the fallback.
     expect(
       buildStreams(
-        input({ transactions, recurringStreams: [plaidStream({ merchantName: "Hulu" })] }),
+        input({ transactions: [...onCard, ...onChecking], recurringStreams: [hulu] }),
       ).map((s) => s.merchant),
-    ).toEqual(["Hulu"]);
+    ).toEqual(["Spotify", "Hulu"]);
+  });
+
+  it("keeps the Plaid stream when the fallback finds the same merchant elsewhere", () => {
+    const onChecking = monthly(4, 1549, NETFLIX);
+
+    expect(
+      buildStreams(input({ transactions: onChecking, recurringStreams: [plaidStream()] })).map(
+        (s) => [s.merchant, s.confidence],
+      ),
+    ).toEqual([["Netflix", "high"]]);
   });
 
   it("maps Plaid streams, matching their transactions by Plaid id", () => {

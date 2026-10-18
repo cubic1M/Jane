@@ -20,6 +20,8 @@ vi.mock("@/lib/audit", () => ({ logAudit: vi.fn() }));
 vi.mock("@/lib/db-scoped", () => ({
   scopedDb: vi.fn(async () => ({ userId: "user_1", accounts: { create: accountsCreate } })),
 }));
+vi.mock("@/lib/session", () => ({ requireUser: vi.fn(async () => ({ id: "user_1" })) }));
+vi.mock("@/lib/csv-access", () => ({ canImportCsv: vi.fn() }));
 vi.mock("@/detection/engine", () => ({ runDetection }));
 vi.mock("@/lib/explanations", () => ({ explainFindings }));
 vi.mock("next/server", () => ({
@@ -34,6 +36,7 @@ import { confirmImport, createCsvAccount, previewImport } from "./actions";
 import { CsvFormatError } from "@/data-sources/csv/csv-source";
 import { track } from "@/lib/analytics";
 import { logAudit } from "@/lib/audit";
+import { canImportCsv } from "@/lib/csv-access";
 
 const CHASE_CARD =
   "Transaction Date,Post Date,Description,Category,Type,Amount,Memo\n" +
@@ -58,6 +61,23 @@ beforeEach(() => {
   afterCallbacks.length = 0;
   vi.mocked(track).mockReset();
   vi.mocked(logAudit).mockReset();
+  vi.mocked(canImportCsv).mockReset().mockResolvedValue(true);
+});
+
+describe("CSV access", () => {
+  it("refuses people who link through Plaid instead", async () => {
+    vi.mocked(canImportCsv).mockResolvedValue(false);
+
+    for (const result of [
+      await createCsvAccount(null, form({ name: "Card", kind: "credit_card" })),
+      await previewImport(form({ files: [csv("card.csv")] })),
+      await confirmImport(form({ accountId: "acct_1", files: [csv("card.csv")] })),
+    ]) {
+      expect(result).toEqual({ ok: false, error: expect.stringContaining("only for founders") });
+    }
+    expect(accountsCreate).not.toHaveBeenCalled();
+    expect(importCsvFiles).not.toHaveBeenCalled();
+  });
 });
 
 describe("createCsvAccount", () => {

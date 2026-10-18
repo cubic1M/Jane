@@ -45,11 +45,11 @@ async function ReportContent() {
         <section className="flex flex-col gap-3">
           <h1 className="text-3xl font-semibold tracking-tight">Your money report</h1>
           <p className="text-zinc-600 dark:text-zinc-400">
-            We haven&apos;t read any transactions yet. Import a few months of statements and
-            we&apos;ll look for money you&apos;re losing.
+            We haven&apos;t read any transactions yet. Link your bank and we&apos;ll look for money
+            you&apos;re losing.
           </p>
-          <Link href="/import" className="font-medium text-emerald-700 hover:underline">
-            Import transactions
+          <Link href="/connect" className="font-medium text-emerald-700 hover:underline">
+            Link an account
           </Link>
         </section>
       ) : findings.length === 0 ? (
@@ -113,8 +113,8 @@ async function ReportContent() {
         <section className="flex flex-col gap-3">
           <h2 className="text-xl font-semibold">Accounts we read</h2>
           <AccountList accounts={accounts} />
-          <Link href="/import" className="font-medium text-emerald-700 hover:underline">
-            Import more transactions
+          <Link href="/connect" className="font-medium text-emerald-700 hover:underline">
+            Add or manage accounts
           </Link>
         </section>
       )}
