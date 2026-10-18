@@ -140,6 +140,8 @@ model User {
   // the person last said "not now".
   membershipOfferShownAt     DateTime? @map("membership_offer_shown_at") @db.Timestamptz(3)
   membershipOfferDismissedAt DateTime? @map("membership_offer_dismissed_at") @db.Timestamptz(3)
+  // When we last warned that linked banks will be disconnected for inactivity.
+  plaidRemovalWarnedAt       DateTime? @map("plaid_removal_warned_at") @db.Timestamptz(3)
 
   authAccounts       AuthAccount[]
   sessions           Session[]

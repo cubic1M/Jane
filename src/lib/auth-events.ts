@@ -28,4 +28,6 @@ export async function recordSignIn({ user, account, isNewUser }: SignInEvent): P
     await track(user.id, "signup_completed", { method, anonymous_id: anonymousId });
   }
   await logAudit(actor, "user_signed_in", target, { method });
+  // Counts as activity, so linked banks aren't removed for inactivity (step 11).
+  await track(user.id, "signed_in", { method });
 }

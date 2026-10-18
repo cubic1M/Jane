@@ -57,3 +57,14 @@ export async function digestEnabled(userId: string): Promise<boolean> {
     await client.end();
   }
 }
+
+export async function userExists(userId: string): Promise<boolean> {
+  const client = new Client({ connectionString: E2E_DATABASE_URL });
+  await client.connect();
+  try {
+    const { rows } = await client.query(`SELECT 1 FROM users WHERE id = $1`, [userId]);
+    return rows.length > 0;
+  } finally {
+    await client.end();
+  }
+}
