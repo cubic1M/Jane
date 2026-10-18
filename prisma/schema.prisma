@@ -203,6 +203,7 @@ model User {
   pushSubscriptions   PushSubscription[]
   referralConversions ReferralConversion[]
   budgets             Budget[]
+  savingsGoals        SavingsGoal[]
 
   @@map("users")
 }
@@ -710,6 +711,26 @@ model Budget {
 
   @@unique([userId, category])
   @@map("budgets")
+}
+
+// A savings goal the person set. Progress comes from a linked account's balance, or an
+// amount they update by hand.
+model SavingsGoal {
+  id               String   @id @default(cuid())
+  userId           String   @map("user_id")
+  name             String
+  targetCents      Int      @map("target_cents")
+  targetDate       DateTime @map("target_date") @db.Date
+  // A savings account whose balance is the progress; null to track by hand.
+  accountId        String?  @map("account_id")
+  manualSavedCents Int?     @map("manual_saved_cents")
+  createdAt        DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt        DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("savings_goals")
 }
 
 // Invite codes keep the beta closed: signing up needs a code with uses left.

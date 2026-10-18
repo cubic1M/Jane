@@ -51,6 +51,10 @@ async function Insights() {
           ·{" "}
           <Link href="/budgets" className="font-medium text-emerald-700 hover:underline">
             Budgets
+          </Link>{" "}
+          ·{" "}
+          <Link href="/goals" className="font-medium text-emerald-700 hover:underline">
+            Goals
           </Link>
         </p>
       </div>
