@@ -513,6 +513,29 @@ model Alert {
   @@map("alerts")
 }
 
+// The merchant directory: shared knowledge about companies (names, aliases, cancel and
+// support links, typical prices). Never personal data, so no user_id. Edited at
+// /admin/merchants; seeded from src/config/merchant-seed.ts.
+model Merchant {
+  id                  String    @id @default(cuid())
+  // Normalized merchant key (src/data-sources/merchant.ts), lower case.
+  key                 String    @unique
+  name                String
+  aliases             String[]  @default([])
+  // Plaid PFC detailed category, used when a transaction has none.
+  category            String?
+  cancelUrl           String?   @map("cancel_url")
+  supportUrl          String?   @map("support_url")
+  supportPhone        String?   @map("support_phone")
+  typicalMonthlyCents Int?      @map("typical_monthly_cents")
+  // When someone on the team last checked the row; null until then.
+  reviewedAt          DateTime? @map("reviewed_at") @db.Timestamptz(3)
+  createdAt           DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt           DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  @@map("merchants")
+}
+
 // Invite codes keep the beta closed: signing up needs a code with uses left.
 model InviteCode {
   id        String    @id @default(cuid())

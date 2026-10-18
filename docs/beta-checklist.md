@@ -33,6 +33,7 @@ Also added in step 11, beyond the checklist:
 | Backups enabled and a restore tested once | In Neon: confirm point-in-time restore is on for the production branch, then restore to a new branch, check that a few tables have rows, and delete the branch. Write down the date it was tested. |
 | Admins enrolled in MFA | Each person in `ADMIN_EMAILS` signs in, opens `/admin`, and adds the key to an authenticator app. If someone loses their phone, clear `mfa_secret_encrypted` and `mfa_enabled_at` on their user row so they can enrol again. |
 | Bill price ranges reviewed | `BILL_BENCHMARKS` in `src/config/detection.ts` holds our own estimates of typical phone and internet/TV prices. Check them against current carrier and provider list prices, and update each range's `source` line. |
+| Merchant directory reviewed | Open `/admin/merchants`, check each seeded company's cancel and support links, add typical prices, and tick "I checked these details today". |
 | Plaid Production | `PLAID_ENV` is still `sandbox`. When Plaid approves Production, set `PLAID_ENV=production` and the production secret in Vercel, then confirm `/admin/launch` is all green. |
 
 ## What the app does with data (facts for the privacy policy)
