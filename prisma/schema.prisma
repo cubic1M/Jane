@@ -121,21 +121,25 @@ enum ActorType {
 }
 
 model User {
-  id               String    @id @default(cuid())
-  email            String    @unique
-  emailVerified    DateTime? @map("email_verified") @db.Timestamptz(3)
-  name             String?
-  image            String?
-  role             Role      @default(user)
-  createdAt        DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
-  updatedAt        DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
-  deletedAt        DateTime? @map("deleted_at") @db.Timestamptz(3)
+  id                         String    @id @default(cuid())
+  email                      String    @unique
+  emailVerified              DateTime? @map("email_verified") @db.Timestamptz(3)
+  name                       String?
+  image                      String?
+  role                       Role      @default(user)
+  createdAt                  DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt                  DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
+  deletedAt                  DateTime? @map("deleted_at") @db.Timestamptz(3)
   // Set when detection first finishes for this user, so /scanning knows it can move on.
-  firstDetectionAt DateTime? @map("first_detection_at") @db.Timestamptz(3)
+  firstDetectionAt           DateTime? @map("first_detection_at") @db.Timestamptz(3)
   // Email preferences, changed on /settings or by the unsubscribe link.
-  digestEnabled    Boolean   @default(true) @map("digest_enabled")
+  digestEnabled              Boolean   @default(true) @map("digest_enabled")
   // IANA name, e.g. America/New_York. Null means US Pacific.
-  timezone         String?
+  timezone                   String?
+  // Membership offer: when it was last shown (counted once per snooze period) and when
+  // the person last said "not now".
+  membershipOfferShownAt     DateTime? @map("membership_offer_shown_at") @db.Timestamptz(3)
+  membershipOfferDismissedAt DateTime? @map("membership_offer_dismissed_at") @db.Timestamptz(3)
 
   authAccounts       AuthAccount[]
   sessions           Session[]

@@ -79,5 +79,26 @@ test.describe("signed in", () => {
     const action = page.getByRole("listitem").filter({ hasText: "Netflix went up" });
     await expect(action).toContainText("Waiting on you");
     await expect(action).toContainText("Reply to Netflix's email");
+
+    // Finishing the first action starts the membership offer. Without Stripe keys only
+    // the free reservation is offered; "Not now" hides it.
+    await page.goBack();
+    await expect(page.getByRole("heading", { name: "What they approved" })).toBeVisible();
+    const done = page.locator("form", { has: page.getByRole("button", { name: "Save" }) });
+    await done.getByLabel("Status").selectOption({ label: "Done" });
+    await done.getByLabel(/Minutes spent/).fill("12");
+    await done.getByRole("button", { name: "Save" }).click();
+    // A closed action shows a summary instead of the form.
+    await expect(page.getByText("after 12 minutes")).toBeVisible();
+
+    await page.goto("/actions");
+    const offer = page.getByRole("region", { name: "Membership" });
+    await expect(offer).toContainText("We'll keep doing this for you, ongoing.");
+    await expect(offer.getByRole("button", { name: "Reserve my spot (free)" })).toBeVisible();
+    await expect(offer.getByRole("button", { name: /founding member/ })).toHaveCount(0);
+    await offer.getByRole("button", { name: "Not now" }).click();
+    await expect(offer).toHaveCount(0);
+    await page.reload();
+    await expect(page.getByRole("region", { name: "Membership" })).toHaveCount(0);
   });
 });

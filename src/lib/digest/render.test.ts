@@ -17,6 +17,7 @@ const payload = {
     { title: "Refund fees", status: "waiting_on_user" as const, userTodo: "Call your bank" },
   ],
   newFindings: [],
+  membershipOffer: false,
 };
 
 describe("renderDigest", () => {
@@ -46,5 +47,12 @@ describe("renderDigest", () => {
     expect(renderDigest({ ...payload, savedThisWeekCents: 0 }, LINKS).subject).toBe(
       "Your week in money",
     );
+  });
+
+  it("includes the membership offer when it's due", () => {
+    const { text } = renderDigest({ ...payload, membershipOffer: true }, LINKS);
+
+    expect(text).toContain("We'll keep doing this for you, ongoing");
+    expect(text).toContain(`See membership: ${LINKS.actions}`);
   });
 });

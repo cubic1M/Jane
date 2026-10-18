@@ -56,6 +56,13 @@ function sections(p: DigestPayload, links: DigestLinks): Section[] {
       link: { label: "Open your report", url: links.report },
     });
   }
+  if (p.membershipOffer) {
+    out.push({
+      heading: "We'll keep doing this for you, ongoing",
+      items: ["Become a founding member, or reserve your spot for free."],
+      link: { label: "See membership", url: links.actions },
+    });
+  }
   return out;
 }
 

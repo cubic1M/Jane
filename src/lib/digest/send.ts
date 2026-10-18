@@ -3,6 +3,7 @@ import type { PrismaClient } from "@/generated/prisma/client";
 import { track } from "@/lib/analytics";
 import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
+import { offerFor } from "@/lib/membership/service";
 import { sendEmail } from "@/lib/email";
 import { buildDigest, type DigestPayload } from "./build";
 import { appBase, clickLink } from "./links";
@@ -41,7 +42,7 @@ const titleOf = (snapshot: unknown) => {
 
 async function payloadFor(userId: string, now: Date, client: PrismaClient) {
   const db = scopedFor(userId, client);
-  const [actions, findings, found, last] = await Promise.all([
+  const [actions, findings, found, last, offer] = await Promise.all([
     db.actions.findMany({
       select: {
         status: true,
@@ -60,11 +61,13 @@ async function payloadFor(userId: string, now: Date, client: PrismaClient) {
       orderBy: { sentAt: "desc" },
       select: { sentAt: true },
     }),
+    offerFor(userId, { client, now }),
   ]);
   return buildDigest({
     now,
     lastSentAt: last?.sentAt ?? null,
     moneyFoundCents: found,
+    membershipOffer: offer.show,
     actions: actions.map((a) => ({
       status: a.status,
       completedAt: a.completedAt,

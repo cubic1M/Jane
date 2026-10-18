@@ -3,8 +3,11 @@ import { Suspense } from "react";
 import { AppHeader } from "@/components/app-header";
 import { ACTION_STATUS_LABELS } from "@/lib/action-status";
 import { scopedDb } from "@/lib/db-scoped";
+import { membershipPriceCents, stripeEnabled } from "@/lib/membership/offer";
+import { markOfferShown, offerFor, savedToDate } from "@/lib/membership/service";
 import { formatCents } from "@/lib/money";
 import { requireUser } from "@/lib/session";
+import { MembershipOffer } from "./membership-offer";
 
 // The card text saved with the decision: what the person agreed to.
 function agreedTo(snapshot: unknown): { title: string; annualSavingsCents: number | null } {
@@ -24,9 +27,16 @@ const STATUS_STYLES: Record<keyof typeof ACTION_STATUS_LABELS, string> = {
   failed: "bg-red-100 text-red-800 dark:bg-red-950 dark:text-red-300",
 };
 
-async function ActionsContent() {
+async function ActionsContent({
+  searchParams,
+}: {
+  searchParams: PageProps<"/actions">["searchParams"];
+}) {
   const user = await requireUser();
   const db = await scopedDb();
+  const { membership } = await searchParams;
+  const [offer, saved] = await Promise.all([offerFor(user.id), savedToDate(user.id)]);
+  await markOfferShown(user.id, offer, saved);
   const actions = await db.actions.findMany({
     select: {
       id: true,
@@ -47,6 +57,25 @@ async function ActionsContent() {
           Everything you said yes to, and where it stands.
         </p>
       </div>
+
+      {membership === "paid" && (
+        <p role="status" className="rounded-xl bg-emerald-50 p-4 dark:bg-emerald-950">
+          Thank you for becoming a founding member. We&apos;ll be in touch soon.
+        </p>
+      )}
+      {offer.show && (
+        <MembershipOffer
+          savedLabel={saved > 0 ? formatCents(saved) : null}
+          priceLabel={stripeEnabled() ? formatCents(membershipPriceCents()) : null}
+        />
+      )}
+      {!offer.show && offer.member && membership !== "paid" && (
+        <p className="text-sm text-zinc-600 dark:text-zinc-400">
+          {offer.member === "paid"
+            ? "You're a founding member. Thank you."
+            : "Your membership spot is reserved. We'll let you know when it opens."}
+        </p>
+      )}
 
       {actions.length === 0 ? (
         <p className="text-zinc-600 dark:text-zinc-400">
@@ -95,11 +124,11 @@ async function ActionsContent() {
   );
 }
 
-export default function ActionsPage() {
+export default function ActionsPage({ searchParams }: PageProps<"/actions">) {
   return (
     <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-8 px-4 py-10 sm:px-6 sm:py-12">
       <Suspense fallback={<p className="text-zinc-500">Loading…</p>}>
-        <ActionsContent />
+        <ActionsContent searchParams={searchParams} />
       </Suspense>
     </main>
   );
