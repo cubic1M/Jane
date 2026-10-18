@@ -4,7 +4,6 @@ import { DRAFTABLE, PLACEHOLDERS, draftMessage, draftPayload, templateDraft } fr
 import { SECRET_STRINGS, findingOfType, sampleFindings } from "./__fixtures__/findings";
 import { checkGuardrails } from "./guardrails";
 
-
 // One sample finding per action type that can be drafted.
 const cases = sampleFindings()
   .filter((f) => DRAFTABLE[ACTION_FOR_FINDING[f.type]])
