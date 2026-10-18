@@ -15,13 +15,16 @@ export const ALERT_TYPES: readonly AlertType[] = [
   "price_increase",
   "new_subscription",
   "over_budget",
+  "bill_due",
 ];
 
-// Time-sensitive alerts: these can be emailed right away.
+// Time-sensitive alerts: these can be emailed right away. A bill reminder is only urgent
+// (and emailed) when the account is forecast to be short on the due date.
 export const URGENT_ALERT_TYPES: readonly AlertType[] = [
   "large_charge",
   "duplicate_charge",
   "low_balance",
+  "bill_due",
 ];
 
 export const ALERT_LABELS: Record<AlertType, { label: string; description: string }> = {
@@ -53,6 +56,11 @@ export const ALERT_LABELS: Record<AlertType, { label: string; description: strin
     label: "Over budget",
     description: "Spending in a category passed the monthly budget you set.",
   },
+  bill_due: {
+    label: "Bill due soon",
+    description:
+      "A regular bill is due in the next few days; urgent if your balance could fall short.",
+  },
 };
 
 export const DEFAULT_ALERT_DELIVERY: Record<AlertType, AlertDelivery> = {
@@ -63,6 +71,7 @@ export const DEFAULT_ALERT_DELIVERY: Record<AlertType, AlertDelivery> = {
   price_increase: "app",
   new_subscription: "app",
   over_budget: "app",
+  bill_due: "email",
 };
 
 // At most this many alert emails per person in any 24 hours. The rest wait for the
