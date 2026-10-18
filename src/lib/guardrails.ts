@@ -35,6 +35,11 @@ const INVESTMENT = [
   /\b401\(?k\)?/i,
   /\b(roth|ira)\b/i,
   /\bannuit(y|ies)\b/i,
+  // What to buy, sell or hold, and how investments did (spec step 66: balances only).
+  /\b(buy|buying|sell|selling|hold|holding|dump|trim)\b[^.!?]{0,40}\b(positions?|holdings?|funds?|shares?|stocks?|assets?)\b/i,
+  /\brebalanc/i,
+  /\b(asset )?allocation\b/i,
+  /\b(outperform\w*|underperform\w*|beat the market|market timing|capital gains?)\b/i,
 ];
 
 // (b) Tax or legal advice.

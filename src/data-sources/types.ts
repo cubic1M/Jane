@@ -35,15 +35,59 @@ export const LOAN_KINDS = {
 } as const;
 
 export type LoanKind = keyof typeof LOAN_KINDS;
-export type SyncedKind = AccountKind | LoanKind;
 
-export const SYNCED_KINDS = { ...ACCOUNT_KINDS, ...LOAN_KINDS } as const;
+// Investment and retirement accounts (spec step 66): their balances only, for net worth.
+// No holdings, no transactions, and nothing said about what's in them.
+export const INVESTMENT_KINDS = {
+  retirement: { label: "Retirement account", type: "investment", subtype: "retirement" },
+  investment_account: { label: "Investment account", type: "investment", subtype: "brokerage" },
+} as const;
+
+export type InvestmentKind = keyof typeof INVESTMENT_KINDS;
+
+// Plaid investment subtypes that are retirement accounts (plaid SDK AccountSubtype).
+const RETIREMENT_SUBTYPES = new Set([
+  "401a",
+  "401k",
+  "403b",
+  "457b",
+  "ira",
+  "roth",
+  "roth 401k",
+  "roth 403b",
+  "roth 457b",
+  "sep ira",
+  "simple ira",
+  "sarsep",
+  "keogh",
+  "pension",
+  "roth pension",
+  "retirement",
+  "thrift savings plan",
+  "roth thrift savings plan",
+  "profit sharing plan",
+  "roth profit sharing plan",
+]);
+
+export type SyncedKind = AccountKind | LoanKind | InvestmentKind;
+
+export const SYNCED_KINDS = { ...ACCOUNT_KINDS, ...LOAN_KINDS, ...INVESTMENT_KINDS } as const;
 
 export const isLoanKind = (kind: SyncedKind): kind is LoanKind => Object.hasOwn(LOAN_KINDS, kind);
 
+// Whether an account's transactions are kept: checking, savings and cards. Loans and
+// investments are kept for their balances only.
+export const keepsTransactions = (kind: SyncedKind) => Object.hasOwn(ACCOUNT_KINDS, kind);
+
 // Any kind Plaid accounts are kept as. Other loan subtypes (e.g. "home equity loan") are
-// kept as a plain loan; other types (investment, brokerage) aren't kept yet.
+// kept as a plain loan; investment accounts (type "brokerage" in old API versions) as
+// retirement or investment accounts.
 export function syncedKindOf(type: string, subtype: string | null): SyncedKind | null {
+  if (type === "investment" || type === "brokerage") {
+    return RETIREMENT_SUBTYPES.has((subtype ?? "").toLowerCase())
+      ? "retirement"
+      : "investment_account";
+  }
   for (const [kind, plaid] of Object.entries(SYNCED_KINDS)) {
     if (plaid.type === type && plaid.subtype === subtype) return kind as SyncedKind;
   }

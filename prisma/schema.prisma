@@ -348,6 +348,9 @@ model PlaidItem {
   // Linked with Liabilities as an optional product (spec step 65): loans and card rates
   // are read on each sync. Items linked before that never are (it would start billing).
   liabilities          Boolean   @default(false)
+  // Linked with Investments as an optional product (spec step 66): investment and
+  // retirement balances are read on each sync. Holdings are never stored.
+  investments          Boolean   @default(false)
   lastSyncedAt         DateTime? @map("last_synced_at") @db.Timestamptz(3)
   createdAt            DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt            DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)

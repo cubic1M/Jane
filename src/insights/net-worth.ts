@@ -14,6 +14,8 @@ export type NetWorthAccount = {
 
 export type NetWorth = {
   assetsCents: number;
+  // Of the assets, what's in investment and retirement accounts (spec step 66).
+  investmentsCents: number;
   debtsCents: number;
   netCents: number;
   // Accounts we couldn't include, by name.
@@ -24,6 +26,7 @@ const isDebt = (type: string) => DEBT_ACCOUNT_TYPES.includes(type);
 
 export function netWorth(accounts: NetWorthAccount[]): NetWorth {
   let assets = 0;
+  let investments = 0;
   let debts = 0;
   const missing: string[] = [];
   for (const a of accounts) {
@@ -33,9 +36,11 @@ export function netWorth(accounts: NetWorthAccount[]): NetWorth {
     }
     if (isDebt(a.type)) debts += a.balanceCents;
     else assets += a.balanceCents;
+    if (a.type === "investment") investments += a.balanceCents;
   }
   return {
     assetsCents: assets,
+    investmentsCents: investments,
     debtsCents: debts,
     netCents: assets - debts,
     missing: missing.sort(),

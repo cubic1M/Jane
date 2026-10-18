@@ -3,7 +3,7 @@ import { PersonalFinanceCategoryVersion } from "plaid";
 import { SYNC_MAX_RESTARTS, SYNC_PAGE_SIZE } from "@/config/plaid";
 import { plaidCall, plaidErrorCode } from "@/lib/plaid/client";
 import {
-  isLoanKind,
+  keepsTransactions,
   syncedKindOf,
   type DataSource,
   type NormalizedAccount,
@@ -14,7 +14,7 @@ import {
 // Plaid as a DataSource: one /transactions/sync run for an item, from its saved cursor.
 // Besides the batch, a sync returns what Plaid removed and the cursor to save. Only the
 // account kinds the app understands are kept: checking, savings and credit cards with
-// their transactions, and loans (spec step 65) for their balances only.
+// their transactions, and loans and investments (spec steps 65–66) for their balances only.
 
 export type PlaidSync = SourceBatch & {
   removedTransactionIds: string[];
@@ -25,7 +25,14 @@ export type PlaidSync = SourceBatch & {
 export const toCents = (dollars: number | null | undefined): number | null =>
   dollars === null || dollars === undefined ? null : Math.round(dollars * 100);
 
-export function normalizeAccount(account: AccountBase): NormalizedAccount | null {
+// Any account Plaid returns: /transactions/sync's, /liabilities/get's or
+// /investments/holdings/get's, which share these fields.
+type PlaidAccount = Pick<
+  AccountBase,
+  "account_id" | "name" | "official_name" | "mask" | "type" | "subtype" | "balances"
+>;
+
+export function normalizeAccount(account: PlaidAccount): NormalizedAccount | null {
   const kind = syncedKindOf(account.type, account.subtype ?? null);
   if (!kind) return null;
   return {
@@ -109,7 +116,7 @@ export class PlaidDataSource implements DataSource {
     const kept = [...accounts.values()]
       .map(normalizeAccount)
       .filter((a): a is NormalizedAccount => a !== null);
-    const keptRefs = new Set(kept.filter((a) => !isLoanKind(a.kind)).map((a) => a.ref));
+    const keptRefs = new Set(kept.filter((a) => keepsTransactions(a.kind)).map((a) => a.ref));
     return {
       accounts: kept,
       transactions: [...changed.values()]

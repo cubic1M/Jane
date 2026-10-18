@@ -66,6 +66,13 @@ async function NetWorthContent() {
         ))}
       </section>
 
+      {today.investmentsCents > 0 && (
+        <p className="text-sm text-zinc-600 dark:text-zinc-400">
+          What you have includes {formatCents(today.investmentsCents)} in retirement and investment
+          accounts, at the balance they report.
+        </p>
+      )}
+
       {today.missing.length > 0 && (
         <p className="text-sm text-zinc-600 dark:text-zinc-400">
           Not included, because there&apos;s no balance: {today.missing.join(", ")}. Add a balance

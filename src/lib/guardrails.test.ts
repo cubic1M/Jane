@@ -26,12 +26,27 @@ describe("checkGuardrails", () => {
       "Move it into bitcoin.",
       "A Roth IRA would grow faster.",
       "Treasury bills pay more right now.",
+      "Sell your shares before the end of the year.",
+      "Hold onto those positions.",
+      "It's a good time to rebalance.",
+      "Your asset allocation looks heavy.",
+      "Your account outperformed last year.",
     ])("rejects %j", (text) => {
       expect(issuesOf(text)).toContain("investment_advice");
     });
 
     it("allows savings accounts and CDs, which are bank deposits", () => {
       expect(issuesOf("A high-yield savings account or a CD pays more interest.")).toEqual([]);
+    });
+
+    it("allows everyday words like being on hold or keeping a plan", () => {
+      for (const text of [
+        "Jane was on hold for ten minutes.",
+        "Keep your current plan.",
+        "Switch to a cheaper option.",
+      ]) {
+        expect(issuesOf(text), text).toEqual([]);
+      }
     });
   });
 

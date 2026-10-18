@@ -78,6 +78,14 @@ export function demoPlaidApi(
     liabilitiesGet: async () => ({
       data: { accounts: demoAccounts(demo), liabilities: demoLiabilities(demo, today(now)) },
     }),
+    // Balances only; the demo has no holdings to drop.
+    investmentsHoldingsGet: async () => ({
+      data: {
+        accounts: demoAccounts(demo).filter((a) => a.type === "investment"),
+        holdings: [],
+        securities: [],
+      },
+    }),
     itemRemove: async () => ({ data: {} }),
   };
   return api as unknown as PlaidApi;
@@ -106,6 +114,7 @@ export async function linkDemoBank(
       accessTokenEncrypted: encrypt(`${DEMO_TOKEN_PREFIX}${seed}:${today(now)}`),
       institutionName: DEMO_INSTITUTION,
       liabilities: true,
+      investments: true,
     },
     select: { id: true },
   });

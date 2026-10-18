@@ -57,6 +57,8 @@ describe("the demo bank", () => {
       "mortgage",
       "student_loan",
       "auto_loan",
+      "retirement",
+      "investment_account",
     ]);
   });
 

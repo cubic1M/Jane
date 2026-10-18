@@ -43,6 +43,8 @@ export type SyncResult = {
   recurring: "updated" | "unavailable";
   // "off" for items linked before Liabilities was asked for.
   liabilities: "updated" | "unavailable" | "off";
+  // Investment and retirement balances (spec step 66); "off" as above.
+  investments: "updated" | "unavailable" | "off";
 };
 
 type Options = { client?: PrismaClient; api?: PlaidApi; now?: Date };
@@ -275,6 +277,31 @@ async function demoSwitches(db: ScopedDb): Promise<DemoSwitch[]> {
   });
 }
 
+// Investment and retirement balances (spec step 66): the accounts only, for net worth.
+// Plaid's holdings and securities come back too, and are dropped: Jane says nothing about
+// what's in an account. An error only warns, like liabilities.
+async function saveInvestmentBalances(
+  db: ScopedDb,
+  api: PlaidApi,
+  accessToken: string,
+  itemId: string,
+): Promise<SyncResult["investments"]> {
+  let accounts: NormalizedAccount[];
+  try {
+    const data = await plaidCall(api.investmentsHoldingsGet({ access_token: accessToken }));
+    accounts = data.accounts
+      .map((a) => normalizeAccount(a))
+      .filter((a): a is NormalizedAccount => a !== null);
+  } catch (error) {
+    const code = plaidErrorCode(error);
+    if (!code) throw error;
+    console.warn("Plaid investments unavailable", { code });
+    return "unavailable";
+  }
+  await saveAccounts(db, itemId, { accounts });
+  return "updated";
+}
+
 export async function syncItem(
   itemId: string,
   { client = defaultClient, api = plaid(), now = new Date() }: Options = {},
@@ -288,6 +315,7 @@ export async function syncItem(
       accessTokenEncrypted: true,
       transactionsCursor: true,
       liabilities: true,
+      investments: true,
     },
   });
   if (!item) throw new Error("Plaid item not found");
@@ -307,6 +335,9 @@ export async function syncItem(
   const liabilities = item.liabilities
     ? await saveLiabilities(db, api, accessToken, item.id)
     : "off";
+  const investments = item.investments
+    ? await saveInvestmentBalances(db, api, accessToken, item.id)
+    : "off";
 
   await db.plaidItems.updateMany({
     where: { id: item.id },
@@ -319,6 +350,7 @@ export async function syncItem(
     firstSync: item.transactionsCursor === null,
     recurring,
     liabilities,
+    investments,
   };
   if (result.firstSync) {
     await track(item.userId, "first_sync_completed", {
@@ -326,6 +358,7 @@ export async function syncItem(
       transactions: result.added,
       recurring,
       liabilities,
+      investments,
     });
   }
 
