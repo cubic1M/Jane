@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { openDocument } from "@/lib/documents/store";
+import { DOCUMENT_FILE_CSP } from "@/lib/security-headers";
 import { getCurrentUser } from "@/lib/session";
 
 // One uploaded document, decrypted, for its owner only (spec step 68). Anyone else gets
@@ -29,6 +30,8 @@ export async function GET(
       "content-length": String(file.bytes.length),
       "content-disposition": disposition(download ? "attachment" : "inline", file.fileName),
       "x-content-type-options": "nosniff",
+      // A crafted PDF or image opened inline can't run script on Jane's origin.
+      "content-security-policy": DOCUMENT_FILE_CSP,
       "cache-control": "private, no-store",
     },
   });

@@ -47,6 +47,7 @@ describe("GET /api/documents/[documentId] (spec step 68)", () => {
     expect(Buffer.from(await response.arrayBuffer()).toString()).toBe("%PDF-1.7");
     expect(response.headers.get("content-type")).toBe("application/pdf");
     expect(response.headers.get("x-content-type-options")).toBe("nosniff");
+    expect(response.headers.get("content-security-policy")).toMatch(/^sandbox; default-src 'none'/);
     expect(response.headers.get("cache-control")).toBe("private, no-store");
     expect(response.headers.get("content-disposition")).toBe(
       `inline; filename="Policy 2027 _ GEICO.pdf"; filename*=UTF-8''Policy%202027%20%E2%80%93%20GEICO.pdf`,

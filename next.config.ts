@@ -1,5 +1,5 @@
 import type { NextConfig } from "next";
-import { securityHeaders } from "./src/lib/security-headers";
+import { DOCUMENT_FILE_CSP, securityHeaders } from "./src/lib/security-headers";
 
 const nextConfig: NextConfig = {
   /* config options here */
@@ -16,6 +16,11 @@ const nextConfig: NextConfig = {
   async headers() {
     return [
       { source: "/:path*", headers: securityHeaders(process.env.NODE_ENV === "development") },
+      // Later entries win: uploaded documents get their own sandboxed policy (spec step 68).
+      {
+        source: "/api/documents/:documentId",
+        headers: [{ key: "Content-Security-Policy", value: DOCUMENT_FILE_CSP }],
+      },
     ];
   },
   turbopack: {
