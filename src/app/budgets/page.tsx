@@ -100,8 +100,9 @@ async function Budgets() {
       )}
 
       {irregular.items.length > 0 && (
-        // Spec step 70: yearly and irregular bills, as a monthly amount to set aside.
-        <section className="flex flex-col gap-3">
+        // Spec step 70: yearly and irregular bills, as a monthly amount to set aside. The
+        // Ahead hub links here (spec step 80).
+        <section id="yearly" className="flex scroll-mt-4 flex-col gap-3">
           <div className="flex flex-wrap items-baseline justify-between gap-2">
             <h2 className="text-xl font-semibold">Set aside for yearly bills</h2>
             <span className="font-semibold">{formatCents(irregular.monthlyCents)} a month</span>

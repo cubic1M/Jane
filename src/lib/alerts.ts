@@ -225,6 +225,20 @@ export async function listAlerts(
   });
 }
 
+// The newest unread alerts, for the Jane hub (spec step 80). Showing them there doesn't
+// mark them read; opening /alerts does.
+export async function newestUnreadAlerts(
+  userId: string,
+  { client = defaultClient, limit }: Pick<Options, "client"> & { limit: number },
+) {
+  return scopedFor(userId, client).alerts.findMany({
+    where: { readAt: null, type: { in: await shownTypes(userId, client) } },
+    orderBy: [{ createdAt: "desc" }, { id: "asc" }],
+    take: limit,
+    select: { id: true, type: true, title: true, body: true, createdAt: true },
+  });
+}
+
 export async function unreadAlertCount(
   userId: string,
   { client = defaultClient }: Pick<Options, "client"> = {},
