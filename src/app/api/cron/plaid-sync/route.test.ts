@@ -7,6 +7,9 @@ vi.mock("@/lib/plaid/sync", () => ({ syncItem: vi.fn(), ITEM_STATUS: { active: "
 vi.mock("@/lib/plaid/inactive", () => ({
   runInactiveCleanup: vi.fn(async () => ({ warned: 0, removed: 1, failed: 0 })),
 }));
+vi.mock("@/lib/snapshots", () => ({
+  takeSnapshots: vi.fn(async () => ({ saved: 3, removed: 0 })),
+}));
 
 import { syncItem } from "@/lib/plaid/sync";
 import { GET } from "./route";
@@ -45,11 +48,23 @@ describe("GET /api/cron/plaid-sync", () => {
       synced: 1,
       failed: 1,
       inactive: { warned: 0, removed: 1, failed: 0 },
+      snapshots: { saved: 3, removed: 0 },
     });
     expect(syncItem).toHaveBeenCalledWith("a");
     expect(syncItem).toHaveBeenCalledWith("b");
     const where = findMany.mock.calls[0][0].where;
     expect(where.status).toBe("active");
     expect(where.OR[0]).toEqual({ lastSyncedAt: null });
+  });
+
+  it("still snapshots balances when Plaid isn't set up", async () => {
+    vi.stubEnv("PLAID_SECRET", "");
+    expect(await (await call("Bearer cron-secret")).json()).toEqual({
+      synced: 0,
+      failed: 0,
+      inactive: null,
+      snapshots: { saved: 3, removed: 0 },
+    });
+    expect(syncItem).not.toHaveBeenCalled();
   });
 });

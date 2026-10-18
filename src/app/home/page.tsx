@@ -27,7 +27,20 @@ async function HomeContent() {
   return (
     <>
       <AppHeader email={user.email} />
-      <h1 className="text-3xl font-semibold tracking-tight">How you&apos;re doing</h1>
+      <div className="flex flex-wrap items-baseline justify-between gap-2">
+        <h1 className="text-3xl font-semibold tracking-tight">How you&apos;re doing</h1>
+        <span className="flex gap-3 text-sm">
+          <Link href="/net-worth" className={LINK}>
+            Net worth
+          </Link>
+          <Link href="/budgets" className={LINK}>
+            Budgets
+          </Link>
+          <Link href="/goals" className={LINK}>
+            Goals
+          </Link>
+        </span>
+      </div>
 
       <section className="grid gap-3 sm:grid-cols-3">
         <div className={CARD}>
