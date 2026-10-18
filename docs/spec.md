@@ -21,7 +21,7 @@ The build runs in eleven steps, with Plaid added at step 7 after the founders te
 
 ## Status (Oct 18, 2026)
 
-Steps 1–24 are built (24 came before 22, because do-it-yourself kits need its cancel links). Where the build differs from the original plan, the plan below has been kept and the difference is noted here.
+Steps 1–25 are built (24 came before 22, because do-it-yourself kits need its cancel links). Where the build differs from the original plan, the plan below has been kept and the difference is noted here.
 
 | Step | Shipped in | Notes |
 | --- | --- | --- |
@@ -47,6 +47,7 @@ Steps 1–24 are built (24 came before 22, because do-it-yourself kits need its 
 | 24 Merchant directory | PR #29 | Built before 22 and 23; seeded with 21 common subscriptions in the migration (from src/config/merchant-seed.ts, all unreviewed); detection gives directory merchants one name and fills missing categories; one-word names match exactly, so "Apple Store" isn't Apple's subscriptions; no seeded prices (they change too often), the team adds them when reviewing |
 | 22 Do-it-yourself kits | PR #30 | A third answer on the card ("I'll do it myself"), stored as a decision with choice diy and no action; kits for cancelling, price increases, refunds, bank fees (email via mailto) and bill negotiation (call script); "I did it" sets diy_done_at and the finding to done; approval rate counts do-it-yourself as a yes |
 | 23 Ask Jane | PR #31 | Answers are held until the guardrails pass, so the stream shows what Jane is looking up and then the whole answer, never unchecked text; allowed figures are those in tool results, the question and earlier answers; tools return cleaned-up merchant names (transfers just say "Transfer"), never raw descriptions or account names; Claude uses adaptive thinking with a manual tool loop; checked against the real API only by an opt-in live test |
+| 25 Household sharing | PR #32 | Two people per household; invite links work only for the invited email, once, for 7 days, and are shown to the inviter (emailed too when email is set up); partners see only undecided findings that sit entirely on shared accounts, so no decision can be read off a status; sharedReadFor in db-scoped.ts is read-only by construction and checks membership on every call |
 
 Still needed from a person before outside users: counsel (insurance referral licensing, privacy policy and terms), Plaid Production approval and questionnaire, a backup restore test, and admins enrolling in two-factor. See docs/beta-checklist.md.
 

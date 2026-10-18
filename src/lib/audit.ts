@@ -29,7 +29,11 @@ export type AuditEvent =
   | "data_exported"
   | "admin_drafted_message"
   | "merchant_saved"
-  | "diy_done";
+  | "diy_done"
+  | "household_invite_sent"
+  | "household_joined"
+  | "household_left"
+  | "account_sharing_changed";
 
 export type AuditActor = { type: ActorType; id: string | null };
 

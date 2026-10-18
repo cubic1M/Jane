@@ -28,6 +28,7 @@ export async function exportUserData(
     subscriptionChecks,
     alerts,
     askConversations,
+    household,
     events,
   ] = await Promise.all([
     client.user.findUniqueOrThrow({
@@ -64,6 +65,7 @@ export async function exportUserData(
         subtype: true,
         currentBalanceCents: true,
         availableBalanceCents: true,
+        sharedWithHousehold: true,
         createdAt: true,
       },
     }),
@@ -162,6 +164,21 @@ export async function exportUserData(
       },
       orderBy: { createdAt: "asc" },
     }),
+    // Their own membership and the invites they sent; never the partner's data.
+    client.householdMember.findUnique({
+      where: { userId },
+      select: {
+        joinedAt: true,
+        household: {
+          select: {
+            invites: {
+              where: { userId },
+              select: { email: true, createdAt: true, acceptedAt: true },
+            },
+          },
+        },
+      },
+    }),
     client.analyticsEvent.findMany({
       where: { userId },
       select: { name: true, createdAt: true },
@@ -186,6 +203,7 @@ export async function exportUserData(
     subscriptionChecks,
     alerts,
     askConversations,
+    household,
     events,
   };
 }
