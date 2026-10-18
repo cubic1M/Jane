@@ -9,6 +9,7 @@ import { track } from "@/lib/analytics";
 import { raiseAlerts } from "@/lib/alerts";
 import { confirmRefunds } from "@/lib/agent/refund-check";
 import { refundChargesAfterCancel } from "@/lib/agent/run";
+import { refreshProposals } from "@/lib/proposals";
 import { applyStandingRules } from "@/lib/standing-rules";
 import { db as defaultClient } from "@/lib/db";
 import { llmModel } from "@/lib/anthropic";
@@ -383,6 +384,13 @@ export async function runDetection(
     await refundAfterCancel(userId, { client });
   } catch (error) {
     console.error("Refund after cancel failed", { userId, error: String(error) });
+  }
+
+  // Set-up proposals follow the person's numbers (spec step 55).
+  try {
+    await refreshProposals(userId, { client, now });
+  } catch (error) {
+    console.error("Proposals failed", { userId, error: String(error) });
   }
 
   // Refunds coming back in the transactions close their actions (spec step 52).

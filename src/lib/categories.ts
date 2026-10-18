@@ -62,6 +62,24 @@ export async function correctCategory(
     await db.transactions.updateMany({ where: { id: transaction.id }, data });
     return { updated: 1 };
   }
+  return setMerchantCategory(userId, key, detailed, { client });
+}
+
+// Every transaction at one merchant, now and later, goes in this category.
+export async function setMerchantCategory(
+  userId: string,
+  key: string,
+  detailed: string,
+  { client = defaultClient }: Options = {},
+): Promise<{ updated: number }> {
+  const category = categoryOf(detailed);
+  if (!category) throw new CategoryError("Pick a category from the list.");
+  const db = scopedFor(userId, client);
+  const data = {
+    pfcPrimary: category.primary,
+    pfcDetailed: category.detailed,
+    categorySource: "user" as const,
+  };
   await db.merchantCategories.upsert({
     where: { userId_merchantKey: { userId, merchantKey: key } },
     create: {

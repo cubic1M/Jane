@@ -90,13 +90,16 @@ export function PlanItem({ item }: { item: PlanItemView }) {
           <input type="hidden" name="actionType" value={item.actionType} />
           <input type="hidden" name="changed" value={String(changing)} />
           {changing && (
-            <fieldset className="flex flex-col gap-3 rounded-lg bg-zinc-50 p-3 dark:bg-zinc-900">
+            <fieldset className="flex min-w-0 flex-col gap-3 rounded-lg bg-zinc-50 p-3 dark:bg-zinc-900">
               <legend className="sr-only">Change what Jane does</legend>
               {item.options.map((option) =>
                 option.kind === "choice" ? (
-                  <label key={option.key} className="flex flex-col gap-1 text-sm font-medium">
+                  <label
+                    key={option.key}
+                    className="flex min-w-0 flex-col gap-1 text-sm font-medium"
+                  >
                     {option.label}
-                    <select name={`option.${option.key}`} className={FIELD}>
+                    <select name={`option.${option.key}`} className={`${FIELD} w-full max-w-full`}>
                       {option.choices.map((c) => (
                         <option key={c.value} value={c.value}>
                           {c.label}
@@ -105,7 +108,10 @@ export function PlanItem({ item }: { item: PlanItemView }) {
                     </select>
                   </label>
                 ) : (
-                  <label key={option.key} className="flex flex-col gap-1 text-sm font-medium">
+                  <label
+                    key={option.key}
+                    className="flex min-w-0 flex-col gap-1 text-sm font-medium"
+                  >
                     {option.label}
                     <input name={`option.${option.key}`} inputMode="decimal" className={FIELD} />
                     <span className="text-xs font-normal text-zinc-600 dark:text-zinc-400">

@@ -9,15 +9,26 @@ import { markPlanShown, planFor } from "@/lib/plan";
 import { savingsLine } from "@/lib/savings-text";
 import { requireUser } from "@/lib/session";
 import { recentRuleApprovals } from "@/lib/standing-rules";
+import { openProposals, refreshProposals } from "@/lib/proposals";
+import { categoryOptions } from "@/lib/categories";
+import { BUDGET_SUGGESTION_MONTHS } from "@/config/budgets";
+import { EMERGENCY_FUND_MONTHS } from "@/config/proposals";
+import type { Proposal } from "@/planning/proposals";
 import { PlanItem } from "./plan-item";
 import { RuleApprovals } from "./rule-approvals";
+import { SetupItem, type SetupView } from "./setup-item";
 import { YesToAll } from "./yes-to-all";
 
 async function Plan({ searchParams }: { searchParams: PageProps<"/plan">["searchParams"] }) {
   const user = await requireUser();
   const db = await scopedDb();
   if ((await db.accounts.count()) === 0) redirect("/connect");
-  const [items, byRules] = await Promise.all([planFor(user.id), recentRuleApprovals(user.id)]);
+  await refreshProposals(user.id);
+  const [items, byRules, setup] = await Promise.all([
+    planFor(user.id),
+    recentRuleApprovals(user.id),
+    openProposals(user.id),
+  ]);
   await markPlanShown(
     user.id,
     items.map((i) => i.card.findingId),
@@ -90,6 +101,16 @@ async function Plan({ searchParams }: { searchParams: PageProps<"/plan">["search
           items={items.map((i) => ({ findingId: i.card.findingId, cardHash: i.cardHash }))}
         />
       )}
+      {setup.length > 0 && (
+        <section className="flex flex-col gap-3">
+          <h2 className="text-xl font-semibold">Set up, from your own numbers</h2>
+          <ul className="flex flex-col gap-3">
+            {setup.map((p) => (
+              <SetupItem key={p.key} item={setupView(p)} />
+            ))}
+          </ul>
+        </section>
+      )}
       <ul className="flex flex-col gap-3">
         {items.map((i) => (
           <PlanItem
@@ -109,6 +130,46 @@ async function Plan({ searchParams }: { searchParams: PageProps<"/plan">["search
       </ul>
     </>
   );
+}
+
+const CATEGORIES = categoryOptions().flatMap((group) =>
+  group.options.map((o) => ({ value: o.value, label: `${group.label}: ${o.label}` })),
+);
+const monthYear = (iso: string) =>
+  new Date(`${iso}T00:00:00Z`).toLocaleDateString("en-US", {
+    month: "long",
+    year: "numeric",
+    timeZone: "UTC",
+  });
+
+// A proposal as the plan shows it: what Jane would set up, and the numbers behind it.
+function setupView(p: Proposal): SetupView {
+  if (p.kind === "budget") {
+    return {
+      key: p.key,
+      title: `Set a ${formatCents(p.amountCents)} monthly budget for ${p.category}`,
+      basis: `Your own average over the last ${BUDGET_SUGGESTION_MONTHS} complete months, rounded up. Math from your data, not advice.`,
+      fields: [{ kind: "amount", label: "Monthly budget ($)", value: String(p.amountCents / 100) }],
+    };
+  }
+  if (p.kind === "goal") {
+    return {
+      key: p.key,
+      title: `Start an emergency fund: ${formatCents(p.targetCents)} by ${monthYear(p.targetDate)}`,
+      basis: `${EMERGENCY_FUND_MONTHS} months of your own average spending (${formatCents(p.monthlySpendingCents)} a month). Math from your data, not advice.`,
+      fields: [
+        { kind: "amount", label: "Amount ($)", value: String(p.targetCents / 100) },
+        { kind: "date", label: "By", value: p.targetDate },
+      ],
+    };
+  }
+  const label = CATEGORIES.find((c) => c.value === p.detailed)?.label ?? p.detailed;
+  return {
+    key: p.key,
+    title: `Put ${p.merchantName} under ${label}`,
+    basis: `${p.transactions} charges with no category. This is the category our merchant directory has for it.`,
+    fields: [{ kind: "category", label: "Category", value: p.detailed, options: CATEGORIES }],
+  };
 }
 
 export default function PlanPage({ searchParams }: PageProps<"/plan">) {

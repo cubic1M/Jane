@@ -215,6 +215,9 @@ describe.runIf(url)("deleting data against a real database", () => {
     await client.standingRule.create({
       data: { userId, key: "recover_bank_fees", monthlyLimit: 3 },
     });
+    await client.planProposal.create({
+      data: { userId, key: "goal:emergency_fund", kind: "goal", payload: {} },
+    });
     const agentAction = await client.action.findFirstOrThrow({ where: { userId } });
     await client.agentMessage.create({
       data: {
@@ -264,6 +267,7 @@ describe.runIf(url)("deleting data against a real database", () => {
       mfaBackupCodes: await client.mfaBackupCode.count(where),
       standingRules: await client.standingRule.count(where),
       agentMessages: await client.agentMessage.count(where),
+      planProposals: await client.planProposal.count(where),
     };
   }
 
