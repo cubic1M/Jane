@@ -16,6 +16,9 @@ Finds money users are losing and turns each finding into a yes/no decision card.
    `DIRECT_URL=$TEST_DATABASE_URL npx prisma migrate deploy` so `npm test` also runs the
    cross-user access test against real Postgres (CI always does).
 
+On Vercel, the `vercel-build` script applies pending migrations (`prisma migrate deploy`) before
+each build, using `DIRECT_URL`.
+
 To make someone an admin, set their role in the database:
 `UPDATE users SET role = 'admin' WHERE email = 'you@example.com';`
 
