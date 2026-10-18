@@ -112,28 +112,30 @@ enum ActorType {
 }
 
 model User {
-  id            String    @id @default(cuid())
-  email         String    @unique
-  emailVerified DateTime? @map("email_verified") @db.Timestamptz(3)
-  name          String?
-  image         String?
-  role          Role      @default(user)
-  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
-  updatedAt     DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
-  deletedAt     DateTime? @map("deleted_at") @db.Timestamptz(3)
+  id               String    @id @default(cuid())
+  email            String    @unique
+  emailVerified    DateTime? @map("email_verified") @db.Timestamptz(3)
+  name             String?
+  image            String?
+  role             Role      @default(user)
+  createdAt        DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt        DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
+  deletedAt        DateTime? @map("deleted_at") @db.Timestamptz(3)
+  // Set when detection first finishes for this user, so /scanning knows it can move on.
+  firstDetectionAt DateTime? @map("first_detection_at") @db.Timestamptz(3)
 
-  authAccounts      AuthAccount[]
-  sessions          Session[]
-  plaidItems        PlaidItem[]
-  accounts          Account[]
-  transactions      Transaction[]
-  recurringStreams  RecurringStream[]
-  findings          Finding[]
-  decisions         Decision[]
-  actions           Action[]
-  digests           Digest[]
-  membershipIntents MembershipIntent[]
-  analyticsEvents   AnalyticsEvent[]
+  authAccounts       AuthAccount[]
+  sessions           Session[]
+  plaidItems         PlaidItem[]
+  accounts           Account[]
+  transactions       Transaction[]
+  recurringStreams   RecurringStream[]
+  findings           Finding[]
+  decisions          Decision[]
+  actions            Action[]
+  digests            Digest[]
+  membershipIntents  MembershipIntent[]
+  analyticsEvents    AnalyticsEvent[]
   merchantCategories MerchantCategory[]
 
   @@map("users")
@@ -200,7 +202,7 @@ model PlaidItem {
 }
 
 model Account {
-  id                    String   @id @default(cuid())
+  id                    String         @id @default(cuid())
   userId                String         @map("user_id")
   source                DataSourceKind
   // Plaid-only; null for CSV accounts.
@@ -228,7 +230,7 @@ model Account {
 }
 
 model Transaction {
-  id                 String   @id @default(cuid())
+  id                 String          @id @default(cuid())
   userId             String          @map("user_id")
   accountId          String          @map("account_id")
   source             DataSourceKind
@@ -271,6 +273,11 @@ model RecurringStream {
   averageAmountCents Int       @map("average_amount_cents")
   lastDate           DateTime? @map("last_date") @db.Date
   status             String
+  isActive           Boolean   @default(true) @map("is_active")
+  pfcPrimary         String?   @map("pfc_primary")
+  pfcDetailed        String?   @map("pfc_detailed")
+  // Plaid transaction ids in the stream, sorted by posted date.
+  transactionIds     String[]  @default([]) @map("transaction_ids")
   createdAt          DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt          DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
 
@@ -286,10 +293,16 @@ model Finding {
   id                 String        @id @default(cuid())
   userId             String        @map("user_id")
   type               FindingType
+  // Identifies the same opportunity across scans (e.g. "merchant:netflix", "account:<id>"),
+  // so a rescan updates the finding instead of adding another.
+  key                String
   title              String
   explanation        String?
   // Null when there is no dollar estimate (e.g. insurance reshop).
   annualSavingsCents Int?          @map("annual_savings_cents")
+  // What the rule measured (annual cost, fees, excess cash). A declined finding only comes
+  // back when this moves by more than the configured share.
+  amountCents        Int?          @map("amount_cents")
   confidence         Confidence
   evidence           Json          @default("{}")
   status             FindingStatus @default(new)
@@ -299,7 +312,7 @@ model Finding {
   user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
   decisions Decision[]
 
-  @@index([userId])
+  @@unique([userId, type, key])
   @@index([userId, status])
   @@map("findings")
 }

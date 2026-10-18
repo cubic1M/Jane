@@ -1,8 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { accountsCreate, importCsvFiles } = vi.hoisted(() => ({
+const { accountsCreate, importCsvFiles, runDetection } = vi.hoisted(() => ({
   accountsCreate: vi.fn(),
   importCsvFiles: vi.fn(),
+  runDetection: vi.fn(),
 }));
 
 vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
@@ -16,6 +17,7 @@ vi.mock("@/lib/audit", () => ({ logAudit: vi.fn() }));
 vi.mock("@/lib/db-scoped", () => ({
   scopedDb: vi.fn(async () => ({ userId: "user_1", accounts: { create: accountsCreate } })),
 }));
+vi.mock("@/detection/engine", () => ({ runDetection }));
 vi.mock("@/lib/import/import-csv", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/lib/import/import-csv")>()),
   importCsvFiles,
@@ -44,6 +46,7 @@ const csv = (name: string, text = CHASE_CARD) => new File([text], name, { type: 
 beforeEach(() => {
   accountsCreate.mockReset().mockResolvedValue({});
   importCsvFiles.mockReset();
+  runDetection.mockReset().mockResolvedValue({});
   vi.mocked(track).mockReset();
   vi.mocked(logAudit).mockReset();
 });
@@ -134,6 +137,18 @@ describe("confirmImport", () => {
       { ...counts, files: 1 },
     );
     expect(track).toHaveBeenCalledWith("user_1", "import_completed", { ...counts, files: 1 });
+    expect(runDetection).toHaveBeenCalledWith("user_1");
+  });
+
+  it("still moves to /scanning when detection fails after a successful import", async () => {
+    importCsvFiles.mockResolvedValue({ parsed: 1, inserted: 1, duplicates: 0, skipped: 0 });
+    runDetection.mockRejectedValue(new Error("database hiccup"));
+    vi.spyOn(console, "error").mockImplementation(() => {});
+
+    await expect(
+      confirmImport(form({ accountId: "acct_1", files: [csv("card.csv")] })),
+    ).rejects.toThrow("redirect:/scanning");
+    expect(logAudit).toHaveBeenCalled();
   });
 
   it("returns a readable error and tracks import_failed for an unknown format", async () => {
@@ -146,5 +161,6 @@ describe("confirmImport", () => {
     expect(result).toEqual({ ok: false, error: "x.csv: Unknown format." });
     expect(track).toHaveBeenCalledWith("user_1", "import_failed", { reason: "unknown_format" });
     expect(logAudit).not.toHaveBeenCalled();
+    expect(runDetection).not.toHaveBeenCalled();
   });
 });
