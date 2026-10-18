@@ -166,6 +166,48 @@ describe.runIf(url)("data export against a real database", () => {
     expect(text).not.toContain("other");
   });
 
+  it("includes their side of shared bills, not the partner's charges", async () => {
+    const me = await person("payer");
+    const partner = await person("partner");
+    const { id: householdId } = await client.household.create({ select: { id: true } });
+    await client.householdMember.createMany({
+      data: [
+        { householdId, userId: me.userId },
+        { householdId, userId: partner.userId },
+      ],
+    });
+    const charge = (payerId: string, transactionId: string) => ({
+      householdId,
+      transactionId,
+      payerId,
+      amountCents: 10_000,
+      partnerShareBps: 5_000,
+      userId: payerId,
+    });
+    await client.sharedCharge.createMany({
+      data: [
+        charge(me.userId, `mine-${me.suffix}`),
+        charge(partner.userId, `theirs-${partner.suffix}`),
+      ],
+    });
+    await client.settlement.create({
+      data: {
+        householdId,
+        fromUserId: partner.userId,
+        toUserId: me.userId,
+        amountCents: 2_500,
+        userId: partner.userId,
+      },
+    });
+
+    const { household } = await exportUserData(me.userId, { client });
+
+    expect(household?.household.sharedCharges.map((c) => c.transactionId)).toEqual([
+      `mine-${me.suffix}`,
+    ]);
+    expect(household?.household.settlements).toMatchObject([{ amountCents: 2_500 }]);
+  });
+
   it("never includes secrets or the team's private notes", async () => {
     const me = await person("secret");
 

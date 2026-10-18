@@ -18,7 +18,20 @@ export async function deleteAllData(
   for (const item of items) {
     await removePlaidItem(userId, item.id, "user_deleted_data", { client, api });
   }
-  await client.user.delete({ where: { id: userId } });
+  // Shared bills belong to the household, not the user row, so they're ended here, as when
+  // someone leaves; the partner keeps the household and their own data.
+  const membership = await client.householdMember.findUnique({
+    where: { userId },
+    select: { householdId: true },
+  });
+  await client.$transaction(async (tx) => {
+    if (membership) {
+      const where = { where: { householdId: membership.householdId } };
+      await tx.sharedCharge.deleteMany(where);
+      await tx.settlement.deleteMany(where);
+    }
+    await tx.user.delete({ where: { id: userId } });
+  });
   await logAudit(
     { type: "user", id: userId },
     "user_data_deleted",

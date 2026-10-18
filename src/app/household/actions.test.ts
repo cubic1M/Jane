@@ -10,6 +10,12 @@ vi.mock("@/lib/session", () => ({
   requireUser: vi.fn(async () => ({ id: "u1", email: "alex@example.com" })),
 }));
 vi.mock("@/lib/email", () => ({ sendEmail: vi.fn(async () => undefined) }));
+vi.mock("@/lib/shared-bills", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/shared-bills")>()),
+  splitCharge: vi.fn(),
+  unsplitCharge: vi.fn(),
+  settleUp: vi.fn(),
+}));
 vi.mock("@/lib/household", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/lib/household")>()),
   invitePartner: vi.fn(async () => ({ token: "tok" })),
@@ -26,7 +32,8 @@ import {
   leaveHousehold,
   setAccountSharing,
 } from "@/lib/household";
-import { invite, join, leave, share } from "./actions";
+import { SharedBillError, settleUp, splitCharge, unsplitCharge } from "@/lib/shared-bills";
+import { invite, join, leave, settle, share, split, unsplit } from "./actions";
 
 const form = (fields: Record<string, string>) => {
   const data = new FormData();
@@ -80,5 +87,25 @@ describe("household actions", () => {
 
     await leave();
     expect(leaveHousehold).toHaveBeenCalledWith("u1");
+  });
+
+  it("splits, unsplits and settles for the signed-in person only", async () => {
+    await split(form({ transactionId: "t1" }));
+    expect(splitCharge).toHaveBeenLastCalledWith("u1", "t1", 5_000);
+    await split(form({ transactionId: "t1", percent: "30" }));
+    expect(splitCharge).toHaveBeenLastCalledWith("u1", "t1", 3_000);
+
+    await unsplit(form({ sharedChargeId: "s1" }));
+    expect(unsplitCharge).toHaveBeenCalledWith("u1", "s1");
+
+    await settle();
+    expect(settleUp).toHaveBeenCalledWith("u1");
+  });
+
+  it("ignores a split that isn't allowed, but not other errors", async () => {
+    vi.mocked(splitCharge).mockRejectedValueOnce(new SharedBillError("no"));
+    await expect(split(form({ transactionId: "t1" }))).resolves.toBeUndefined();
+    vi.mocked(splitCharge).mockRejectedValueOnce(new Error("db down"));
+    await expect(split(form({ transactionId: "t1" }))).rejects.toThrow("db down");
   });
 });

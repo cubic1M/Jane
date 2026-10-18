@@ -146,6 +146,9 @@ export async function leaveHousehold(
   });
   if (!left) return;
   await client.$transaction(async (tx) => {
+    // The shared balance ends with the pair; each person's own transactions stay.
+    await tx.sharedCharge.deleteMany({ where: { householdId: left.householdId } });
+    await tx.settlement.deleteMany({ where: { householdId: left.householdId } });
     await tx.householdMember.delete({ where: { userId } });
     if ((await tx.householdMember.count({ where: { householdId: left.householdId } })) === 0) {
       await tx.household.delete({ where: { id: left.householdId } });

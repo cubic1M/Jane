@@ -12,6 +12,7 @@ import {
   setAccountSharing,
 } from "@/lib/household";
 import { requireUser } from "@/lib/session";
+import { SharedBillError, settleUp, splitCharge, unsplitCharge } from "@/lib/shared-bills";
 
 export type HouseholdState = { ok: boolean; message: string; link?: string } | null;
 
@@ -70,4 +71,32 @@ export async function join(_previous: HouseholdState, formData: FormData): Promi
     throw error;
   }
   redirect("/household");
+}
+
+// Splits a charge on a shared account, half each unless a share is given (percent).
+export async function split(formData: FormData): Promise<void> {
+  const user = await requireUser();
+  const percent = Number(formData.get("percent") ?? 50);
+  try {
+    await splitCharge(
+      user.id,
+      String(formData.get("transactionId") ?? ""),
+      Math.round(percent * 100),
+    );
+  } catch (error) {
+    if (!(error instanceof SharedBillError)) throw error;
+  }
+  revalidatePath("/household");
+}
+
+export async function unsplit(formData: FormData): Promise<void> {
+  const user = await requireUser();
+  await unsplitCharge(user.id, String(formData.get("sharedChargeId") ?? ""));
+  revalidatePath("/household");
+}
+
+export async function settle(): Promise<void> {
+  const user = await requireUser();
+  await settleUp(user.id);
+  revalidatePath("/household");
 }

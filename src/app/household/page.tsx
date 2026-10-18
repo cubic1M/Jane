@@ -8,6 +8,8 @@ import { requireUser } from "@/lib/session";
 import { HOUSEHOLD_MAX_MEMBERS } from "@/config/household";
 import { leave, share } from "./actions";
 import { InviteForm } from "./forms";
+import { SharedBills } from "./shared-bills";
+import { shareableCharges, sharedBills } from "@/lib/shared-bills";
 
 // Emails and account names can be long with no spaces; they wrap rather than push the page
 // sideways on a phone.
@@ -28,6 +30,14 @@ async function Household() {
     sharedReadFor(user.id),
   ]);
   const partnerFindings = await shared.findings();
+  const bills = await sharedBills(user.id);
+  const shareable = bills ? await shareableCharges(user.id) : [];
+  const splitMap = new Map(
+    (bills?.charges ?? []).map((c) => [
+      c.transactionId,
+      { sharedChargeId: c.id, partnerShareBps: c.partnerShareBps },
+    ]),
+  );
   const partners = household?.members.filter((m) => m.userId !== user.id) ?? [];
   const full = (household?.members.length ?? 1) >= HOUSEHOLD_MAX_MEMBERS;
 
@@ -98,6 +108,15 @@ async function Household() {
           </ul>
         )}
       </section>
+
+      {bills && (
+        <SharedBills
+          partnerEmail={bills.partnerEmail}
+          owedToMeCents={bills.owedToMeCents}
+          charges={shareable}
+          split={splitMap}
+        />
+      )}
 
       {partners.length > 0 && (
         <section className={CARD}>
