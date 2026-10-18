@@ -331,6 +331,10 @@ model Session {
   createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
   // Set when an admin enters a valid two-factor code in this session.
   mfaVerifiedAt DateTime? @map("mfa_verified_at") @db.Timestamptz(3)
+  // Devices and sessions (spec step 73): the browser's user agent (trimmed, never an IP
+  // address) and when this session was last used, updated at most every few minutes.
+  userAgent     String?   @map("user_agent")
+  lastSeenAt    DateTime? @map("last_seen_at") @db.Timestamptz(3)
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 

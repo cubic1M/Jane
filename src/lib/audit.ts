@@ -74,6 +74,9 @@ export type AuditEvent =
   | "document_deleted"
   // The tax-time pack downloaded as a CSV (spec step 72).
   | "tax_pack_downloaded"
+  // Devices and sessions (spec step 73): one other session, or all the others, signed out.
+  | "session_signed_out"
+  | "other_sessions_signed_out"
   // Texts (spec step 78). Never the number or what a text said.
   | "text_number_verified"
   | "text_number_removed"

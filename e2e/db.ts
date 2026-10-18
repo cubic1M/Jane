@@ -108,3 +108,35 @@ export async function enableTwoFactor(userId: string): Promise<void> {
     await client.end();
   }
 }
+
+// Another signed-in session for a user, as if on a second device (spec step 73).
+export async function addSession(
+  userId: string,
+  userAgent: string,
+): Promise<{ id: string; sessionToken: string }> {
+  const id = `s${crypto.randomUUID().replaceAll("-", "")}`;
+  const sessionToken = `e2e-session-${id}`;
+  const client = new Client({ connectionString: E2E_DATABASE_URL });
+  await client.connect();
+  try {
+    await client.query(
+      `INSERT INTO sessions (id, session_token, user_id, expires, user_agent, last_seen_at)
+       VALUES ($1, $2, $3, now() + interval '1 day', $4, now() - interval '3 hours')`,
+      [id, sessionToken, userId, userAgent],
+    );
+  } finally {
+    await client.end();
+  }
+  return { id, sessionToken };
+}
+
+export async function sessionExists(id: string): Promise<boolean> {
+  const client = new Client({ connectionString: E2E_DATABASE_URL });
+  await client.connect();
+  try {
+    const { rows } = await client.query(`SELECT 1 FROM sessions WHERE id = $1`, [id]);
+    return rows.length > 0;
+  } finally {
+    await client.end();
+  }
+}

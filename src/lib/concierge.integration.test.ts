@@ -10,7 +10,13 @@ import { track } from "@/lib/analytics";
 import { logAudit } from "@/lib/audit";
 import { findingOfType } from "./__fixtures__/findings";
 import { CARD_SELECT, buildCard, cardHash } from "./cards";
-import { ConciergeError, changeActionStatus, getActionForAdmin, listQueue } from "./concierge";
+import {
+  ConciergeError,
+  NOT_ON_TEAM,
+  changeActionStatus,
+  getActionForAdmin,
+  listQueue,
+} from "./concierge";
 import { recordDecision } from "./decisions";
 
 // Runs against a real, migrated Postgres (see src/detection/engine.integration.test.ts).
@@ -173,12 +179,25 @@ describe.runIf(url)("concierge actions against a real database", () => {
     expect(queue.map((a) => a.id)).toContain(actionId);
     const created = queue.map((a) => a.createdAt.getTime());
     expect(created).toEqual([...created].sort((a, b) => a - b));
+    // One entry per person shown, naming their actions (spec step 74).
     expect(logAudit).toHaveBeenCalledWith(
       { type: "admin", id: "admin_1" },
       "admin_viewed_queue",
-      null,
-      expect.any(Object),
+      { type: "user", id: userId },
+      expect.objectContaining({
+        action_ids: queue
+          .filter((a) => a.userId === userId)
+          .map((a) => a.id)
+          .join(","),
+      }),
     );
+    const viewed = vi
+      .mocked(logAudit)
+      .mock.calls.filter(([, event]) => event === "admin_viewed_queue");
+    expect(new Set(viewed.map(([, , target]) => target?.id)).size).toBe(viewed.length);
+    for (const [, , , metadata] of viewed) {
+      expect(String(metadata?.action_ids)).not.toContain(email);
+    }
 
     const detail = await getActionForAdmin(ADMIN, actionId, { client });
     expect(detail?.user.email).toBe(email);
@@ -190,41 +209,93 @@ describe.runIf(url)("concierge actions against a real database", () => {
     );
   });
 
-  it("assigns actions, logs who moved them, and filters the queue by assignee", async () => {
-    const { actionId } = await approvedAction();
-    const change = {
-      status: "in_progress" as const,
-      assignee: "sam@example.com",
-      notes: null,
-      userTodo: null,
-      failureReason: null,
-      minutesSpent: null,
-    };
-    await changeActionStatus(ADMIN, actionId, change, { client, notify });
+  it("logs an empty queue view about no one", async () => {
+    const queue = await listQueue(
+      ADMIN,
+      { type: null, status: null, assignee: `nobody-${crypto.randomUUID()}@example.com` },
+      { client },
+    );
+    expect(queue).toEqual([]);
+    expect(logAudit).toHaveBeenCalledTimes(1);
     expect(logAudit).toHaveBeenCalledWith(
-      { type: "admin", id: ADMIN.id },
-      "action_assigned",
-      { type: "action", id: actionId },
-      { from: null, to: "sam@example.com" },
+      { type: "admin", id: "admin_1" },
+      "admin_viewed_queue",
+      null,
+      expect.objectContaining({ count: 0 }),
     );
+  });
 
-    vi.mocked(logAudit).mockClear();
-    await changeActionStatus(ADMIN, actionId, change, { client, notify });
-    expect(vi.mocked(logAudit).mock.calls.map(([, event]) => event)).not.toContain(
-      "action_assigned",
-    );
+  it("assigns actions, logs who moved them, and filters the queue by assignee", async () => {
+    // A real team member, so the audit log can name them by id.
+    const samEmail = `sam-${crypto.randomUUID()}@example.com`;
+    const sam = await client.user.create({ data: { email: samEmail, role: "admin" } });
+    try {
+      const { actionId } = await approvedAction();
+      const change = {
+        status: "in_progress" as const,
+        assignee: samEmail,
+        notes: null,
+        userTodo: null,
+        failureReason: null,
+        minutesSpent: null,
+      };
+      await changeActionStatus(ADMIN, actionId, change, { client, notify });
+      // Ids only in audit metadata: the admin's user id, never their email.
+      expect(logAudit).toHaveBeenCalledWith(
+        { type: "admin", id: ADMIN.id },
+        "action_assigned",
+        { type: "action", id: actionId },
+        { from: null, to: sam.id, user_id: userId },
+      );
 
-    const sams = await listQueue(
-      ADMIN,
-      { type: null, status: null, assignee: "sam@example.com" },
-      { client },
-    );
-    expect(sams.map((a) => a.id)).toContain(actionId);
-    const unassigned = await listQueue(
-      ADMIN,
-      { type: null, status: null, assignee: "unassigned" },
-      { client },
-    );
-    expect(unassigned.map((a) => a.id)).not.toContain(actionId);
+      vi.mocked(logAudit).mockClear();
+      await changeActionStatus(ADMIN, actionId, change, { client, notify });
+      expect(vi.mocked(logAudit).mock.calls.map(([, event]) => event)).not.toContain(
+        "action_assigned",
+      );
+
+      vi.mocked(logAudit).mockClear();
+      const sams = await listQueue(
+        ADMIN,
+        { type: null, status: null, assignee: samEmail },
+        { client },
+      );
+      expect(sams.map((a) => a.id)).toContain(actionId);
+      expect(logAudit).toHaveBeenCalledWith(
+        { type: "admin", id: ADMIN.id },
+        "admin_viewed_queue",
+        { type: "user", id: userId },
+        expect.objectContaining({ assignee: sam.id }),
+      );
+
+      // Someone who isn't (or is no longer) on the team is recorded as such, not by email.
+      vi.mocked(logAudit).mockClear();
+      await changeActionStatus(
+        ADMIN,
+        actionId,
+        { ...change, assignee: "gone@example.com" },
+        { client, notify },
+      );
+      expect(logAudit).toHaveBeenCalledWith(
+        { type: "admin", id: ADMIN.id },
+        "action_assigned",
+        { type: "action", id: actionId },
+        { from: sam.id, to: NOT_ON_TEAM, user_id: userId },
+      );
+
+      vi.mocked(logAudit).mockClear();
+      const unassigned = await listQueue(
+        ADMIN,
+        { type: null, status: null, assignee: "unassigned" },
+        { client },
+      );
+      expect(unassigned.map((a) => a.id)).not.toContain(actionId);
+      for (const [, , , metadata] of vi.mocked(logAudit).mock.calls) {
+        expect(metadata?.assignee).toBe("unassigned");
+      }
+      expect(JSON.stringify(vi.mocked(logAudit).mock.calls)).not.toContain("@");
+    } finally {
+      await client.user.delete({ where: { id: sam.id } });
+    }
   });
 });

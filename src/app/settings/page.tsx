@@ -25,6 +25,27 @@ import { EmailForm } from "./email-form";
 import { TwoFactorOnForms } from "./two-factor-forms";
 import { RulesForm } from "./rules-form";
 import { TextsSection } from "./texts-section";
+import { cookies } from "next/headers";
+import { connection } from "next/server";
+import { sessionTokenFrom } from "@/lib/admin-gate";
+import { listSessions } from "@/lib/user-sessions";
+import { SessionsList } from "./sessions-list";
+
+// Where you're signed in (spec step 73). This session is found by its cookie, here on the
+// server; the page only ever gets row ids and labels.
+async function SessionsSection({ userId }: { userId: string }) {
+  await connection();
+  const sessions = await listSessions(userId, sessionTokenFrom(await cookies()));
+  return (
+    <section id="sessions" className="flex scroll-mt-8 flex-col gap-3">
+      <h2 className="text-xl font-semibold">Where you&apos;re signed in</h2>
+      <p className="text-zinc-600 dark:text-zinc-400">
+        Don&apos;t recognize one? Sign it out; it stops working straight away.
+      </p>
+      <SessionsList sessions={sessions} />
+    </section>
+  );
+}
 
 async function SettingsContent() {
   const user = await requireUser();
@@ -178,6 +199,16 @@ async function SettingsContent() {
           </Link>
           .
         </p>
+        <p className="text-sm text-zinc-600 dark:text-zinc-400">
+          See every time our team or Jane&apos;s agent looked at or acted on your data:{" "}
+          <Link
+            href="/settings/team-access"
+            className="font-medium text-emerald-700 hover:underline"
+          >
+            Who saw my data
+          </Link>
+          .
+        </p>
       </section>
 
       <section className="flex flex-col gap-3">
@@ -269,6 +300,8 @@ async function SettingsContent() {
           </>
         )}
       </section>
+
+      <SessionsSection userId={user.id} />
 
       <TextsSection userId={user.id} />
 

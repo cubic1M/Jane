@@ -136,13 +136,15 @@ export async function changeActionStatus(
     { from: action.status, to: change.status, user_id: action.userId },
   );
   if ((change.assignee ?? null) !== (action.assignee ?? null)) {
+    const ids = await adminIdsByEmail([action.assignee, change.assignee], client);
     await logAudit(
       { type: "admin", id: admin.id },
       "action_assigned",
       { type: "action", id: action.id },
       {
-        from: action.assignee,
-        to: change.assignee,
+        from: assigneeForAudit(action.assignee, ids),
+        to: assigneeForAudit(change.assignee, ids),
+        user_id: action.userId,
       },
     );
   }
@@ -260,21 +262,73 @@ export async function listQueue(
       assignee: true,
       createdAt: true,
       handoffReason: true,
+      userId: true,
       user: { select: { email: true } },
       decision: { select: { cardSnapshot: true } },
     },
     orderBy: [{ createdAt: "asc" }, { id: "asc" }],
   });
-  await logAudit({ type: "admin", id: admin.id }, "admin_viewed_queue", null, {
+  // An action whose person was deleted mid-request comes back without its decision.
+  const shown = actions.filter((a) => a.decision);
+  await logQueueView(admin, filter, shown, client);
+  return shown.map((a) => ({ ...a, title: titleOf(a.decision.cardSnapshot) }));
+}
+
+// Audit metadata holds ids only, so an assignee (a team member's email) is recorded as
+// that admin's user id, or NOT_ON_TEAM when no admin has that email any more. "unassigned"
+// and null stay as they are.
+export const NOT_ON_TEAM = "not_on_team";
+
+async function adminIdsByEmail(
+  emails: (string | null | undefined)[],
+  client: PrismaClient,
+): Promise<Map<string, string>> {
+  const wanted = emails.filter((e): e is string => !!e && e !== "unassigned");
+  if (wanted.length === 0) return new Map();
+  const admins = await client.user.findMany({
+    where: { role: "admin", email: { in: wanted } },
+    select: { id: true, email: true },
+  });
+  return new Map(admins.flatMap((a) => (a.email ? [[a.email, a.id] as const] : [])));
+}
+
+function assigneeForAudit(
+  assignee: string | null | undefined,
+  ids: Map<string, string>,
+): string | null {
+  if (!assignee) return null;
+  if (assignee === "unassigned") return assignee;
+  return ids.get(assignee) ?? NOT_ON_TEAM;
+}
+
+// One admin_viewed_queue entry per person whose actions were listed, naming those actions,
+// so each person sees the view on /settings/team-access (spec step 74). An empty queue
+// still logs the view, about no one.
+async function logQueueView(
+  admin: Admin,
+  filter: QueueFilter,
+  shown: { id: string; userId: string }[],
+  client: PrismaClient,
+) {
+  const actor = { type: "admin" as const, id: admin.id };
+  const metadata = {
     type: filter.type,
     status: filter.status,
-    assignee: filter.assignee ?? null,
-    count: actions.length,
-  });
-  // An action whose person was deleted mid-request comes back without its decision.
-  return actions
-    .filter((a) => a.decision)
-    .map((a) => ({ ...a, title: titleOf(a.decision.cardSnapshot) }));
+    assignee: assigneeForAudit(filter.assignee, await adminIdsByEmail([filter.assignee], client)),
+    count: shown.length,
+  };
+  if (shown.length === 0) return logAudit(actor, "admin_viewed_queue", null, metadata);
+  const byPerson = Map.groupBy(shown, (a) => a.userId);
+  await Promise.all(
+    [...byPerson].map(([userId, theirs]) =>
+      logAudit(
+        actor,
+        "admin_viewed_queue",
+        { type: "user", id: userId },
+        { ...metadata, action_ids: theirs.map((a) => a.id).join(",") },
+      ),
+    ),
+  );
 }
 
 export async function getActionForAdmin(

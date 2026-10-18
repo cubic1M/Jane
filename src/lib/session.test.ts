@@ -1,7 +1,11 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("@/auth", () => ({ auth: vi.fn() }));
-vi.mock("next/headers", () => ({ cookies: vi.fn(async () => ({ get: () => undefined })) }));
+vi.mock("next/headers", () => ({
+  cookies: vi.fn(async () => ({ get: () => undefined })),
+  headers: vi.fn(async () => new Headers({ "user-agent": "Test Browser" })),
+}));
+vi.mock("@/lib/user-sessions", () => ({ noteSessionSeen: vi.fn(async () => {}) }));
 vi.mock("@/lib/admin-gate", () => ({
   adminSessionState: vi.fn(async () => "verified"),
   sessionTokenFrom: vi.fn(() => "token"),
@@ -14,12 +18,16 @@ vi.mock("next/navigation", () => ({
     throw new Error("notFound");
   }),
 }));
-vi.mock("next/server", () => ({ connection: vi.fn(async () => {}) }));
+vi.mock("next/server", () => ({
+  connection: vi.fn(async () => {}),
+  after: vi.fn((task: () => unknown) => task()),
+}));
 
-import { connection } from "next/server";
+import { after, connection } from "next/server";
 import { auth } from "@/auth";
 import { TERMS_VERSION } from "@/config/legal";
 import { adminSessionState } from "@/lib/admin-gate";
+import { noteSessionSeen } from "@/lib/user-sessions";
 import { getCurrentUser, getSessionState, requireAdmin, requireUser } from "./session";
 
 const mockAuth = vi.mocked(auth as unknown as () => Promise<unknown>);
@@ -51,6 +59,26 @@ describe("getCurrentUser", () => {
     await getCurrentUser();
 
     expect(calls).toEqual(["connection", "auth"]);
+  });
+
+  // Spec step 73: the device and time are noted after the response, never blocking it.
+  it("notes this session's device after the response", async () => {
+    vi.mocked(noteSessionSeen).mockClear();
+    vi.mocked(after).mockClear();
+    signedInAs("user");
+
+    await getSessionState();
+
+    expect(after).toHaveBeenCalledOnce();
+    expect(noteSessionSeen).toHaveBeenCalledWith("token", "Test Browser");
+  });
+
+  it("notes nothing when signed out", async () => {
+    vi.mocked(noteSessionSeen).mockClear();
+    mockAuth.mockResolvedValue(null);
+
+    expect(await getSessionState()).toBeNull();
+    expect(noteSessionSeen).not.toHaveBeenCalled();
   });
 
   it("treats a session that still owes a two-factor code as signed out", async () => {

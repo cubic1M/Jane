@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { LegalPage } from "@/components/legal-page";
 import { COMPANY_NAME, contactEmail } from "@/config/legal";
 import { retentionPolicy } from "@/lib/retention";
@@ -27,6 +28,10 @@ export default function PrivacyPage() {
         <li>
           What you do in the app: which findings you open, your yes or no answers, and settings.
         </li>
+        <li>
+          If you turn on texts: your mobile number (encrypted), when you agreed, and the texts Jane
+          sent you and you sent back.
+        </li>
       </ul>
 
       <h2>How we use it</h2>
@@ -34,6 +39,10 @@ export default function PrivacyPage() {
         <li>To find subscriptions, fees, idle cash, insurance and interest costing you money.</li>
         <li>So our team can carry out the changes you approve, and nothing you haven&apos;t.</li>
         <li>To send the emails you ask for: sign-in links, status updates and a weekly summary.</li>
+        <li>
+          To send the texts you turn on (alerts, your weekly plan, things that need you) and act on
+          your replies. Reply STOP to stop them.
+        </li>
         <li>To improve the product, using counts and trends rather than individual records.</li>
       </ul>
 
@@ -57,6 +66,10 @@ export default function PrivacyPage() {
           email delivery (Resend), analytics, and payments (Stripe) if you choose to pay.
         </li>
         <li>
+          <strong>Sendblue</strong> delivers texts, if you turn them on: it receives your mobile
+          number, the texts Jane sends you and your replies.
+        </li>
+        <li>
           <strong>Merchants and partners</strong>, only the details needed to complete an action you
           approved, such as asking a company to cancel a subscription.
         </li>
@@ -70,6 +83,11 @@ export default function PrivacyPage() {
         <li>Each person&apos;s data is only ever read for that person.</li>
         <li>
           Team access needs a second sign-in factor, and every team view of your data is logged.
+          Signed in, you can see each one under{" "}
+          <Link href="/settings/team-access" className="underline">
+            Who saw my data
+          </Link>
+          .
         </li>
         <li>Error logs have email addresses, card and account numbers, and tokens removed.</li>
       </ul>
