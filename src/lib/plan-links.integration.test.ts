@@ -8,7 +8,7 @@ vi.mock("@/lib/audit", () => ({ logAudit: vi.fn(), SYSTEM_ACTOR: { type: "system
 
 import { findingOfType } from "./__fixtures__/findings";
 import { runJob } from "./jobs";
-import { LinkError, createPlanLink, takeBackLink, useLink, viewPlanLink } from "./plan-links";
+import { LinkError, createPlanLink, takeBackLink, redeemLink, viewPlanLink } from "./plan-links";
 import { saveRules, applyStandingRules } from "./standing-rules";
 
 // Runs against a real, migrated Postgres (see src/detection/engine.integration.test.ts).
@@ -73,9 +73,9 @@ describe.runIf(url)("one-tap links against a real database", () => {
   it("works once, approves each item, waits an hour before starting, and can be taken back", async () => {
     const userId = await person();
     const token = tokenOf((await createPlanLink(userId, { client }))!.url);
-    const { approved } = await useLink(token, { client });
+    const { approved } = await redeemLink(token, { client });
     expect(approved).toBe(2);
-    await expect(useLink(token, { client })).rejects.toBeInstanceOf(LinkError);
+    await expect(redeemLink(token, { client })).rejects.toBeInstanceOf(LinkError);
 
     const decisions = await client.decision.findMany({
       where: { userId },
@@ -107,7 +107,7 @@ describe.runIf(url)("one-tap links against a real database", () => {
     const token = tokenOf((await createPlanLink(userId, { client }))!.url);
     const later = new Date(Date.now() + 8 * 24 * HOUR);
     expect((await viewPlanLink(token, { client, now: later })).state).toBe("expired");
-    await expect(useLink(token, { client, now: later })).rejects.toBeInstanceOf(LinkError);
+    await expect(redeemLink(token, { client, now: later })).rejects.toBeInstanceOf(LinkError);
     expect((await viewPlanLink("A".repeat(43), { client })).state).toBe("invalid");
     expect((await viewPlanLink("../../etc", { client })).state).toBe("invalid");
   });

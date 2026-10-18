@@ -9,12 +9,12 @@ vi.mock("@/lib/plan-links", () => {
   class LinkError extends Error {}
   return {
     LinkError,
-    useLink: vi.fn(async () => ({ approved: 2, skipped: 1, userId: "u1" })),
+    redeemLink: vi.fn(async () => ({ approved: 2, skipped: 1, userId: "u1" })),
     takeBackLink: vi.fn(async () => 2),
   };
 });
 
-import { LinkError, takeBackLink, useLink } from "@/lib/plan-links";
+import { LinkError, takeBackLink, redeemLink } from "@/lib/plan-links";
 import { goAhead, takeBack } from "./actions";
 
 const form = (token: string) => {
@@ -29,11 +29,11 @@ describe("one-tap link page", () => {
       ok: true,
       message: expect.stringContaining("Jane is on 2 things. 1 had changed"),
     });
-    expect(useLink).toHaveBeenCalledWith("tok");
+    expect(redeemLink).toHaveBeenCalledWith("tok");
   });
 
   it("explains a used or expired link, and takes back on request", async () => {
-    vi.mocked(useLink).mockRejectedValueOnce(new LinkError("This link was already used."));
+    vi.mocked(redeemLink).mockRejectedValueOnce(new LinkError("This link was already used."));
     expect(await goAhead(null, form("tok"))).toEqual({
       ok: false,
       message: "This link was already used.",

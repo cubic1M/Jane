@@ -3,7 +3,7 @@
 import { after } from "next/server";
 import { runQueuedFor } from "@/lib/agent/run";
 import { scopedFor } from "@/lib/db-scoped";
-import { LinkError, takeBackLink, useLink } from "@/lib/plan-links";
+import { LinkError, takeBackLink, redeemLink } from "@/lib/plan-links";
 
 export type GoState = { ok: boolean; message: string } | null;
 
@@ -11,7 +11,7 @@ export type GoState = { ok: boolean; message: string } | null;
 // no sign-in, and it only covers the items it was made for.
 export async function goAhead(_previous: GoState, formData: FormData): Promise<GoState> {
   try {
-    const { approved, skipped, userId } = await useLink(String(formData.get("token") ?? ""));
+    const { approved, skipped, userId } = await redeemLink(String(formData.get("token") ?? ""));
     // The agent waits out the hour to take it back, then starts (the daily job, or now if due).
     const working = await scopedFor(userId).actions.findMany({
       where: { agentState: "working" },
