@@ -80,7 +80,7 @@ async function SettingsContent() {
     <>
       <AppHeader email={user.email} />
       <h1 className="text-3xl font-semibold tracking-tight">Settings</h1>
-      <section className="flex flex-col gap-3">
+      <section id="banks" className="flex scroll-mt-8 flex-col gap-3">
         <h2 className="text-xl font-semibold">Connected banks</h2>
         {items.length === 0 ? (
           <p className="text-zinc-600 dark:text-zinc-400">No banks linked.</p>

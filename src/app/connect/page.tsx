@@ -4,8 +4,10 @@ import { AppHeader } from "@/components/app-header";
 import { canImportCsv } from "@/lib/csv-access";
 import { scopedDb } from "@/lib/db-scoped";
 import { plaidEnabled } from "@/lib/plaid/client";
+import { demoBankEnabled } from "@/lib/plaid/demo";
 import { ITEM_STATUS } from "@/lib/plaid/sync";
 import { requireUser } from "@/lib/session";
+import { linkDemo } from "./demo-actions";
 import { LinkButton } from "./link-button";
 
 const PRIMARY_BUTTON =
@@ -101,7 +103,24 @@ async function ConnectContent() {
             className={PRIMARY_BUTTON}
           />
         ) : (
-          <p className="text-zinc-600 dark:text-zinc-400">Bank linking isn&apos;t set up yet.</p>
+          !demoBankEnabled() && (
+            <p className="text-zinc-600 dark:text-zinc-400">Bank linking isn&apos;t set up yet.</p>
+          )
+        )}
+        {demoBankEnabled() && (
+          <form
+            action={linkDemo}
+            className="flex flex-col gap-2 rounded-xl border border-dashed border-zinc-300 p-4 dark:border-zinc-700"
+          >
+            <p className="font-semibold">Try Jane with a demo bank</p>
+            <p className="text-sm text-zinc-600 dark:text-zinc-400">
+              A pretend bank with a year of fake transactions, a card and loans, so you can see
+              everything Jane does. Nothing real is connected, and you can remove it anytime.
+            </p>
+            <button type="submit" className={SECONDARY_BUTTON + " self-start"}>
+              Link a demo bank
+            </button>
+          </form>
         )}
         {items.length > 0 && (
           <Link href="/scanning" className="font-medium text-emerald-700 hover:underline">

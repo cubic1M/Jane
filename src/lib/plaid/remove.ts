@@ -5,6 +5,7 @@ import { decrypt } from "@/lib/crypto";
 import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
 import { PlaidRequestError, plaid, plaidCall } from "./client";
+import { isDemoToken } from "./demo";
 
 // Removes a linked bank: tells Plaid (/item/remove, which also stops billing for it),
 // then deletes the item with its accounts, transactions and streams.
@@ -35,8 +36,10 @@ export async function removePlaidItem(
   });
   if (!item) throw new ItemMissingError();
 
+  const accessToken = decrypt(item.accessTokenEncrypted);
   try {
-    await plaidCall(api.itemRemove({ access_token: decrypt(item.accessTokenEncrypted) }));
+    // A demo bank (spec step 75) has nothing at Plaid to remove.
+    if (!isDemoToken(accessToken)) await plaidCall(api.itemRemove({ access_token: accessToken }));
   } catch (error) {
     if (!(error instanceof PlaidRequestError && error.code && ALREADY_GONE.has(error.code))) {
       throw error;

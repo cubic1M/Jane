@@ -16,6 +16,7 @@ import { db as defaultClient } from "@/lib/db";
 import { scopedFor, type ScopedDb } from "@/lib/db-scoped";
 import { enqueueJob, runJob } from "@/lib/jobs";
 import { plaid, plaidCall, plaidErrorCode } from "./client";
+import { demoPlaidApi, isDemoToken } from "./demo";
 
 // Brings one Plaid item up to date: accounts, transactions since the saved cursor
 // (added, modified and removed), recurring streams, loans and card rates (Liabilities,
@@ -258,6 +259,8 @@ export async function syncItem(
   if (!item) throw new Error("Plaid item not found");
   const db = scopedFor(item.userId, client);
   const accessToken = decrypt(item.accessTokenEncrypted);
+  // The demo bank (spec step 75) answers in Plaid's place; everything after is the same.
+  if (isDemoToken(accessToken)) api = demoPlaidApi(accessToken, now);
 
   const sync = await new PlaidDataSource(api, accessToken, item.transactionsCursor).load();
   const accountIds = await saveAccounts(db, item.id, sync);

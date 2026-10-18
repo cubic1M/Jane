@@ -88,6 +88,7 @@ Steps 1–63 are built (24 came before 22, because do-it-yourself kits need its 
 | 63 Set-up done for you | PR #74 | Categories the merchant directory knows are filed on their own after each scan (they change no money; the plan says which and links to /transactions to change or undo), except for "Ask me first". Budgets and the emergency fund are one "Use Jane's N suggestions" tap on the plan, or Yes / No / Change each as before |
 | 64 Jane finds support contacts | PR #76 | When the merchant directory has no support email for a company the agent must write to, it no longer just stops: it hands the request to the team as before and queues a lookup (job find_support_contact). Claude searches only the company's own website (web search limited to the domain of the directory's cancel or support link) and keeps an address only if both it and the page it came from are on that domain (https), so a look-alike like netflix.com.evil.example is refused. The address is stored as a suggestion (merchants.suggested_support_email, with its source page) and shown on /admin/merchants under "Support emails Jane found" with Use it / Not right. Using it, or saving a support email by hand, picks the waiting requests back up on their own. Needs ANTHROPIC_API_KEY; without it nothing is looked up and the team adds the address as before |
 | 65 Loans and mortgage | PR #77 | New bank links ask Plaid for Liabilities as an optional product (only where the bank supports it, so no bank drops out of Link and nothing extra is billed elsewhere); items linked before keep working as they were and are never called (plaid_items.liabilities). Each sync then reads /liabilities/get: credit cards (purchase APR, minimum, due date), mortgages, student loans and other closed-end loans (Plaid's newer `loan` list, which covers car loans), and the LIABILITIES DEFAULT_UPDATE webhook syncs again. Loan accounts are kept for their balances (so net worth counts them by itself) but not their transactions. Rates, payments and dates go in a new liabilities table, in basis points and cents; account numbers, addresses, guarantors and reference numbers are never stored. The debt planner fills in each card's and loan's rate and minimum from the bank (mortgages left out, PLANNER_LEFT_OUT_SUBTYPES), still editable. New /loans page (linked from Home): what you owe, due each month, and each card and loan with its rate, payment, next due date (marked when due within a week), payoff date, interest paid this year, and the bank's overdue flag first. Nothing is estimated: a missing detail shows as "Not reported". Included in Download my data |
+| 75 Demo bank | PR #78 | A stand-in for Plaid until there are keys. "Link a demo bank" on /connect makes an ordinary plaid_items row (ids start with demo-; the encrypted access token names the demo seed and the day it was linked) that the normal sync, daily refresh and removal handle; a fake Plaid API (src/lib/plaid/demo.ts) answers in Plaid's place and never calls Plaid. It holds checking, savings, a credit card, a mortgage, a student loan and a car loan, a year of Plaid-shaped transactions with real PFC categories (src/data-sources/demo/demo-bank.ts) and loan details. The data is deterministic (later syncs add only the new days) and built so every finding shows up: a Netflix price rise, high phone and internet bills, overdraft and service fees, card interest, a converted trial, a duplicate charge, insurance, subscriptions and idle cash. A banner on every signed-in page says it's fake data and links to removing it. Offered only when Plaid isn't set up and outside production, or anywhere with DEMO_BANK=1 |
 
 Still needed from a person before outside users: counsel (insurance referral licensing, privacy policy and terms), Plaid Production approval and questionnaire, a backup restore test, and admins enrolling in two-factor. See docs/beta-checklist.md.
 
@@ -1444,6 +1445,55 @@ the timeline and can be taken back.
 >
 > Acceptance criteria:
 > - Only addresses found on the company's own domain; never used before the team confirms
+
+## Phase R: the best option, chosen for you (steps 75–77)
+
+Top priority (Oct 18, 2026), built before the rest of Phase N. Instead of only saying how
+much could be saved, Jane compares the real alternatives, picks the best one for this
+person, and switches with one yes. Until Plaid keys are in place, a demo bank stands in for
+Plaid so every feature can be used end to end.
+
+### Step 75: Demo bank
+
+> Read CLAUDE.md. A placeholder for Plaid while there are no keys: "Link a demo bank" on
+> /connect creates a fake item with checking, savings, a credit card, a mortgage, a student
+> loan and a car loan, a year of realistic transactions (subscriptions, bills, fees, a
+> price rise, a duplicate charge) and loan details, through the same sync path as Plaid.
+>
+> Acceptance criteria:
+> - Shown only when Plaid isn't set up and outside production, unless DEMO_BANK=1
+> - Every screen labels demo data as fake; removing the demo bank removes all of it
+> - Detection, the plan, loans, net worth and the agent all work on it unchanged
+
+### Step 76: The best option for you
+
+> Read CLAUDE.md. For a bill, a subscription or idle cash, Jane compares the options it
+> knows (a cheaper tier of the same service, other providers' plans, savings accounts) and
+> picks the best one for this person: the lowest yearly cost that keeps what they use
+> now. The card shows the pick, the yearly saving and the runners-up; yes, no, or pick
+> another.
+>
+> Build:
+> 1. A catalog of options (switch_options), kept by the team on /admin/options with a
+>    source link and the date it was checked; demo options only outside production.
+> 2. A pure comparison (src/planning/compare.ts): what each option would cost this person a
+>    year, what they'd give up, and the pick with the reasons.
+>
+> Acceptance criteria:
+> - Only reviewed options in production; prices older than OPTION_STALE_DAYS aren't shown
+> - Never insurance or investments (those go through licensed partners, Phase P); the
+>   guardrails check every sentence
+> - "Best" always means cheapest for the same service, and the card says so
+
+### Step 77: Jane switches for you
+
+> Read CLAUDE.md. A yes on the pick becomes one action: Jane gives the sign-up link (or
+> asks the company to change the plan), watches for the new charge, and only then cancels
+> the old one, so the person is never without the service.
+>
+> Acceptance criteria:
+> - The old service is cancelled only after the new one is seen on the account
+> - Saving is counted from what the new charges actually are
 
 ## Phase N: the complete picture (steps 65–68)
 

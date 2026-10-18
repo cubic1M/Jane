@@ -1,4 +1,6 @@
 import Link from "next/link";
+import { Suspense } from "react";
+import { DemoBanner } from "@/components/demo-banner";
 import { signOutToHome } from "@/lib/auth-actions";
 
 export function AppHeader({ email }: { email: string | null | undefined }) {
@@ -42,6 +44,9 @@ export function AppHeader({ email }: { email: string | null | undefined }) {
           </button>
         </form>
       </div>
+      <Suspense>
+        <DemoBanner />
+      </Suspense>
     </header>
   );
 }
