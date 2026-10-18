@@ -43,7 +43,8 @@ test.describe("signed in", () => {
       { name: "authjs.session-token", value: user.sessionToken, url: baseURL ?? "" },
     ]);
 
-    // Approve a card as this (admin) user, so there's an action in the queue.
+    // Approve a card as this (admin) user, so there's an action in the queue. Insurance is
+    // the team's, never the agent's, so it stays in the queue however fast the agent is.
     await page.goto("/import");
     await page.getByLabel("Name").fill("Test Card");
     await page.getByLabel("Type").selectOption({ label: "Credit card" });
@@ -52,7 +53,7 @@ test.describe("signed in", () => {
     await page.getByRole("button", { name: "Preview" }).click();
     await page.getByRole("button", { name: /Import \d+ transactions/ }).click();
     await expect(page).toHaveURL("/report", { timeout: 30_000 });
-    await page.getByRole("link", { name: /Netflix went up/ }).click();
+    await page.getByRole("link", { name: /Geico insurance/i }).click();
     await page.getByRole("button", { name: "Yes, do this for me" }).click();
     await expect(page).toHaveURL("/actions");
 
@@ -71,14 +72,14 @@ test.describe("signed in", () => {
     await expect(form.getByRole("alert")).toContainText("minutes");
 
     await form.getByLabel("Status").selectOption({ label: "Waiting on you" });
-    await form.getByLabel(/What the person needs to do/).fill("Reply to Netflix's email");
+    await form.getByLabel(/What the person needs to do/).fill("Send us your GEICO policy");
     await form.getByRole("button", { name: "Save" }).click();
     await expect(form.getByRole("status")).toContainText("Saved");
 
     await page.goto("/actions");
-    const action = page.getByRole("listitem").filter({ hasText: "Netflix went up" });
+    const action = page.getByRole("listitem").filter({ hasText: /Geico insurance/i });
     await expect(action).toContainText("Waiting on you");
-    await expect(action).toContainText("Reply to Netflix's email");
+    await expect(action).toContainText("Send us your GEICO policy");
 
     // Finishing the first action starts the membership offer. Without Stripe keys only
     // the free reservation is offered; "Not now" hides it.

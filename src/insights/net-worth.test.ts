@@ -14,6 +14,7 @@ describe("netWorth", () => {
     expect(netWorth(accounts)).toEqual({
       assetsCents: 1_250_000,
       investmentsCents: 0,
+      ownedCents: 0,
       debtsCents: 920_000,
       netCents: 330_000,
       missing: ["Old Card"],
@@ -29,6 +30,22 @@ describe("netWorth", () => {
       assetsCents: 1_250_000 + 8_425_040,
       investmentsCents: 8_425_040,
       netCents: 330_000 + 8_425_040,
+    });
+  });
+});
+
+describe("netWorth with things you own", () => {
+  it("counts them as assets at the person's values, and says how much", () => {
+    const owned = [
+      { id: "house", valueCents: 45_000_000, valuedOn: "2026-09-01" },
+      { id: "car", valueCents: 1_800_000, valuedOn: "2025-01-15" },
+    ];
+    expect(netWorth(accounts, owned)).toMatchObject({
+      assetsCents: 1_250_000 + 46_800_000,
+      ownedCents: 46_800_000,
+      investmentsCents: 0,
+      debtsCents: 920_000,
+      netCents: 330_000 + 46_800_000,
     });
   });
 });
@@ -67,5 +84,42 @@ describe("monthlyNetWorth", () => {
       { month: "2026-09", netCents: 100_000 },
       { month: "2026-10", netCents: 150_000 },
     ]);
+  });
+});
+
+describe("monthlyNetWorth with things you own", () => {
+  it("counts each from the month of its value, like an account with one snapshot", () => {
+    const months = monthlyNetWorth(
+      accounts,
+      [
+        { accountId: "chk", date: "2026-08-31", balanceCents: 150_000 },
+        { accountId: "loan", date: "2026-08-31", balanceCents: 800_000 },
+      ],
+      "2026-10-20",
+      4,
+      [
+        // Valued in September: not counted in August.
+        { id: "house", valueCents: 45_000_000, valuedOn: "2026-09-12" },
+        // Valued long ago: counted in every month.
+        { id: "car", valueCents: 1_000_000, valuedOn: "2025-01-15" },
+      ],
+    );
+    expect(months).toEqual([
+      { month: "2026-07", netCents: 1_000_000 },
+      { month: "2026-08", netCents: 150_000 - 800_000 + 1_000_000 },
+      { month: "2026-09", netCents: 150_000 - 800_000 + 46_000_000 },
+      { month: "2026-10", netCents: 150_000 - 800_000 + 46_000_000 },
+    ]);
+  });
+
+  it("doesn't mix up a thing owned with an account that has the same id", () => {
+    const months = monthlyNetWorth(
+      [{ id: "x", type: "credit" }],
+      [{ accountId: "x", date: "2026-10-01", balanceCents: 5_000 }],
+      "2026-10-20",
+      1,
+      [{ id: "x", valueCents: 100_000, valuedOn: "2026-10-01" }],
+    );
+    expect(months).toEqual([{ month: "2026-10", netCents: 95_000 }]);
   });
 });

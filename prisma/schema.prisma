@@ -271,6 +271,7 @@ model User {
   transactions        Transaction[]
   recurringStreams    RecurringStream[]
   liabilities         Liability[]
+  ownedAssets         OwnedAsset[]
   findings            Finding[]
   decisions           Decision[]
   actions             Action[]
@@ -390,6 +391,7 @@ model Account {
   balanceSnapshots BalanceSnapshot[]
   checkIns         CheckIn[]
   liability        Liability?
+  ownedAssets      OwnedAsset[]
 
   @@index([userId])
   @@index([itemId])
@@ -494,6 +496,29 @@ model Liability {
 
   @@index([userId])
   @@map("liabilities")
+}
+
+// Things the person owns (spec step 67): a home, a car, anything else of value, at the
+// value they give and the day they gave it. Counted in net worth; with the loan against it,
+// shown as equity. Never estimated by Jane.
+model OwnedAsset {
+  id            String   @id @default(cuid())
+  userId        String   @map("user_id")
+  // home, vehicle or other.
+  kind          String
+  name          String
+  valueCents    Int      @map("value_cents")
+  valuedOn      DateTime @map("valued_on") @db.Date
+  // The mortgage or car loan against it, when there is one.
+  loanAccountId String?  @map("loan_account_id")
+  createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt     DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  loanAccount Account? @relation(fields: [loanAccountId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+  @@map("owned_assets")
 }
 
 model Finding {
