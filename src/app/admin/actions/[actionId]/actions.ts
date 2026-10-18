@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import type { ActionStatus } from "@/generated/prisma/client";
 import { logAudit } from "@/lib/audit";
-import { ACTION_STATUSES, ConciergeError, changeActionStatus } from "@/lib/concierge";
+import { ACTION_STATUSES, ConciergeError, changeActionStatus, teamMembers } from "@/lib/concierge";
 import { db } from "@/lib/db";
 import { draftMessage, type Draft } from "@/lib/drafts";
 import { requireAdmin } from "@/lib/session";
@@ -23,11 +23,15 @@ export async function updateAction(_previous: FormState, formData: FormData): Pr
     return { ok: false, message: "Pick a status." };
   }
   const minutes = text(formData.get("minutesSpent"));
+  const assignee = text(formData.get("assignee"));
+  if (assignee && !(await teamMembers()).includes(assignee)) {
+    return { ok: false, message: "Assign it to someone on the team." };
+  }
 
   try {
     await changeActionStatus(admin, actionId, {
       status: status as ActionStatus,
-      assignee: text(formData.get("assignee")),
+      assignee,
       notes: text(formData.get("notes")),
       userTodo: text(formData.get("userTodo")),
       failureReason: text(formData.get("failureReason")),

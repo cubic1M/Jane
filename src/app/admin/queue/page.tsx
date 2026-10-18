@@ -4,7 +4,7 @@ import { TURNAROUND_BUSINESS_DAYS } from "@/config/concierge";
 import type { ActionStatus, ActionType } from "@/generated/prisma/client";
 import { ACTION_STATUS_LABELS } from "@/lib/action-status";
 import { isOverdue } from "@/lib/business-days";
-import { ACTION_STATUSES, listQueue } from "@/lib/concierge";
+import { ACTION_STATUSES, listQueue, loadWorkload, teamMembers } from "@/lib/concierge";
 import { requireAdmin } from "@/lib/session";
 import { AdminNav } from "../admin-nav";
 
@@ -35,17 +35,44 @@ async function Queue({
 }) {
   const admin = await requireAdmin();
   const params = await searchParams;
+  const team = await teamMembers();
+  const assignee =
+    params.assignee === "unassigned"
+      ? "unassigned"
+      : (pick(params.assignee, team) ?? (params.assignee === "me" ? (admin.email ?? null) : null));
   const filter = {
     type: pick(params.type, ACTION_TYPES),
     status: pick<ActionStatus>(params.status, ACTION_STATUSES),
+    assignee,
   };
-  const actions = await listQueue(admin, filter);
+  const [actions, load] = await Promise.all([listQueue(admin, filter), loadWorkload()]);
   const now = new Date();
 
   return (
     <>
       <AdminNav email={admin.email} />
       <h1 className="text-3xl font-semibold tracking-tight">Action queue</h1>
+
+      {load.length > 0 && (
+        <section className="flex flex-col gap-2">
+          <h2 className="font-semibold">Who has what</h2>
+          <ul className="flex flex-wrap gap-2 text-sm">
+            {load.map((row) => (
+              <li key={row.assignee ?? "unassigned"}>
+                <Link
+                  href={`/admin/queue?assignee=${encodeURIComponent(row.assignee ?? "unassigned")}`}
+                  className={`inline-flex gap-1 rounded-full border px-3 py-1 hover:bg-zinc-100 dark:hover:bg-zinc-900 ${row.overdue > 0 ? "border-red-400 dark:border-red-800" : "border-zinc-300 dark:border-zinc-700"}`}
+                >
+                  <span className="font-medium">{row.assignee ?? "Unassigned"}</span>
+                  <span>
+                    {row.open} open{row.overdue > 0 ? `, ${row.overdue} overdue` : ""}
+                  </span>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
 
       <form className="flex flex-wrap items-end gap-3 text-sm">
         <label className="flex flex-col gap-1">
@@ -74,6 +101,22 @@ async function Queue({
             {ACTION_STATUSES.map((s) => (
               <option key={s} value={s}>
                 {ACTION_STATUS_LABELS[s].label}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="flex flex-col gap-1">
+          Assignee
+          <select
+            name="assignee"
+            defaultValue={filter.assignee ?? ""}
+            className="h-10 rounded-lg border border-zinc-300 bg-transparent px-2 dark:border-zinc-700"
+          >
+            <option value="">Everyone</option>
+            <option value="unassigned">Unassigned</option>
+            {team.map((email) => (
+              <option key={email} value={email}>
+                {email === admin.email ? `${email} (me)` : email}
               </option>
             ))}
           </select>

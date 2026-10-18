@@ -14,6 +14,7 @@ vi.mock("@/lib/drafts", () => ({ draftMessage: vi.fn() }));
 vi.mock("@/lib/concierge", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/lib/concierge")>()),
   changeActionStatus: vi.fn(),
+  teamMembers: vi.fn(async () => ["sam@example.com"]),
 }));
 
 import { ConciergeError, changeActionStatus } from "@/lib/concierge";
@@ -49,7 +50,13 @@ describe("updateAction", () => {
   it("passes the form through, with blanks as null and minutes as a number", async () => {
     const result = await updateAction(
       null,
-      form({ actionId: "a1", status: "done", minutesSpent: "15", notes: "  ", assignee: "sam" }),
+      form({
+        actionId: "a1",
+        status: "done",
+        minutesSpent: "15",
+        notes: "  ",
+        assignee: "sam@example.com",
+      }),
     );
 
     expect(result).toEqual({ ok: true, message: expect.stringContaining("Saved") });
@@ -58,7 +65,7 @@ describe("updateAction", () => {
       "a1",
       {
         status: "done",
-        assignee: "sam",
+        assignee: "sam@example.com",
         notes: null,
         userTodo: null,
         failureReason: null,
@@ -183,5 +190,36 @@ describe("recordConversion", () => {
       ok: false,
     });
     expect(db.referralConversion.create).not.toHaveBeenCalled();
+  });
+});
+
+describe("updateAction assignment", () => {
+  beforeEach(() => {
+    vi.mocked(requireAdmin)
+      .mockReset()
+      .mockResolvedValue({ id: "admin_1", role: "admin" } as never);
+    vi.mocked(changeActionStatus).mockReset();
+  });
+
+  it("assigns to someone on the team", async () => {
+    await updateAction(
+      null,
+      form({ actionId: "a1", status: "in_progress", assignee: "sam@example.com" }),
+    );
+    expect(changeActionStatus).toHaveBeenCalledWith(
+      expect.anything(),
+      "a1",
+      expect.objectContaining({ assignee: "sam@example.com" }),
+    );
+  });
+
+  it("refuses someone who isn't on the team", async () => {
+    expect(
+      await updateAction(
+        null,
+        form({ actionId: "a1", status: "in_progress", assignee: "stranger@example.com" }),
+      ),
+    ).toMatchObject({ ok: false });
+    expect(changeActionStatus).not.toHaveBeenCalled();
   });
 });

@@ -1,4 +1,8 @@
-import { MAX_MINUTES_PER_ACTION, MAX_TEAM_TEXT } from "@/config/concierge";
+import {
+  MAX_MINUTES_PER_ACTION,
+  MAX_TEAM_TEXT,
+  TURNAROUND_BUSINESS_DAYS,
+} from "@/config/concierge";
 import type {
   ActionStatus,
   ActionType,
@@ -8,6 +12,7 @@ import type {
 import { sendStatusEmail, statusEmail } from "@/lib/action-emails";
 import { track } from "@/lib/analytics";
 import { logAudit } from "@/lib/audit";
+import { isOverdue } from "@/lib/business-days";
 import { db as defaultClient } from "@/lib/db";
 import { offerFor } from "@/lib/membership/service";
 
@@ -105,6 +110,7 @@ export async function changeActionStatus(
       type: true,
       status: true,
       startedAt: true,
+      assignee: true,
       decision: { select: { findingId: true, cardSnapshot: true } },
       user: { select: { email: true } },
     },
@@ -141,6 +147,17 @@ export async function changeActionStatus(
     { type: "action", id: action.id },
     { from: action.status, to: change.status, user_id: action.userId },
   );
+  if ((change.assignee ?? null) !== (action.assignee ?? null)) {
+    await logAudit(
+      { type: "admin", id: admin.id },
+      "action_assigned",
+      { type: "action", id: action.id },
+      {
+        from: action.assignee,
+        to: change.assignee,
+      },
+    );
+  }
   if (!moved) return;
 
   const event = EVENT[change.status];
@@ -166,7 +183,58 @@ export async function changeActionStatus(
   }
 }
 
-export type QueueFilter = { type: ActionType | null; status: ActionStatus | null };
+export type QueueFilter = {
+  type: ActionType | null;
+  status: ActionStatus | null;
+  // An assignee's email, "unassigned", or null for everyone.
+  assignee?: string | null;
+};
+
+// The team's members: the admins, by email. Only they can be assigned actions.
+export async function teamMembers({ client = defaultClient }: Pick<Options, "client"> = {}) {
+  const admins = await client.user.findMany({
+    where: { role: "admin", deletedAt: null },
+    select: { email: true },
+    orderBy: { email: "asc" },
+  });
+  return admins.map((a) => a.email);
+}
+
+export type WorkloadRow = { assignee: string | null; open: number; overdue: number };
+
+export async function loadWorkload({
+  client = defaultClient,
+  now = new Date(),
+}: Pick<Options, "client" | "now"> = {}): Promise<WorkloadRow[]> {
+  const open = await client.action.findMany({
+    where: { status: { in: [...OPEN_ACTION_STATUSES] } },
+    select: { assignee: true, status: true, createdAt: true },
+  });
+  return workload(open, now);
+}
+
+// Pure: open actions per assignee (unassigned last), and how many are overdue by the
+// queue's own rule (still queued after TURNAROUND_BUSINESS_DAYS).
+export function workload(
+  actions: { assignee: string | null; status: ActionStatus; createdAt: Date }[],
+  now: Date,
+): WorkloadRow[] {
+  const rows = new Map<string | null, WorkloadRow>();
+  for (const a of actions) {
+    if (!(OPEN_ACTION_STATUSES as readonly string[]).includes(a.status)) continue;
+    const row = rows.get(a.assignee) ?? { assignee: a.assignee, open: 0, overdue: 0 };
+    row.open += 1;
+    if (a.status === "queued" && isOverdue(a.createdAt, TURNAROUND_BUSINESS_DAYS, now)) {
+      row.overdue += 1;
+    }
+    rows.set(a.assignee, row);
+  }
+  return [...rows.values()].sort(
+    (a, b) =>
+      Number(a.assignee === null) - Number(b.assignee === null) ||
+      (a.assignee ?? "").localeCompare(b.assignee ?? ""),
+  );
+}
 
 export async function listQueue(
   admin: Admin,
@@ -176,6 +244,9 @@ export async function listQueue(
   const actions = await client.action.findMany({
     where: {
       ...(filter.type ? { type: filter.type } : {}),
+      ...(filter.assignee
+        ? { assignee: filter.assignee === "unassigned" ? null : filter.assignee }
+        : {}),
       status: filter.status ? filter.status : { in: [...OPEN_ACTION_STATUSES] },
     },
     select: {
@@ -192,6 +263,7 @@ export async function listQueue(
   await logAudit({ type: "admin", id: admin.id }, "admin_viewed_queue", null, {
     type: filter.type,
     status: filter.status,
+    assignee: filter.assignee ?? null,
     count: actions.length,
   });
   return actions.map((a) => ({ ...a, title: titleOf(a.decision.cardSnapshot) }));

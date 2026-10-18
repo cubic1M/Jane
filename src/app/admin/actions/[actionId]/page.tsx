@@ -7,7 +7,7 @@ import { describeOutcome, outcomeFor } from "@/lib/merchant-outcomes";
 import { merchantFor } from "@/lib/merchants";
 import { ACTION_STATUS_LABELS } from "@/lib/action-status";
 import type { DecisionCard } from "@/lib/cards";
-import { getActionForAdmin } from "@/lib/concierge";
+import { getActionForAdmin, teamMembers } from "@/lib/concierge";
 import { formatCents } from "@/lib/money";
 import { requireAdmin } from "@/lib/session";
 import { AdminNav } from "../../admin-nav";
@@ -30,6 +30,13 @@ async function ActionDetail({
   const card = action.decision.cardSnapshot as unknown as DecisionCard;
   const closed = action.status === "done" || action.status === "failed";
   const playbook = PLAYBOOKS[action.type];
+  const [team, replies] = await Promise.all([
+    teamMembers(),
+    db.savedReply.findMany({
+      select: { id: true, title: true, body: true },
+      orderBy: { title: "asc" },
+    }),
+  ]);
   // Older cards were saved before partners had their own field.
   const partnerKey = (card as Partial<DecisionCard>).referralPartner?.key ?? null;
   const partner = partnerKey
@@ -200,6 +207,8 @@ async function ActionDetail({
           actionId={action.id}
           status={action.status}
           assignee={action.assignee}
+          team={team}
+          replies={replies}
           notes={action.notes}
           userTodo={action.userTodo}
         />

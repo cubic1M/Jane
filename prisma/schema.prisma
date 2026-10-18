@@ -794,6 +794,18 @@ model MerchantOutcome {
   @@map("merchant_outcomes")
 }
 
+// Team-written replies for common updates to a person (what they need to do next).
+// Team content, not user data.
+model SavedReply {
+  id        String   @id @default(cuid())
+  title     String
+  body      String
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  @@map("saved_replies")
+}
+
 // Invite codes keep the beta closed: signing up needs a code with uses left.
 model InviteCode {
   id        String    @id @default(cuid())
