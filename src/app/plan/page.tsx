@@ -78,13 +78,14 @@ async function Plan({ searchParams }: { searchParams: PageProps<"/plan">["search
             {total > 0
               ? `, worth up to about ${formatCents(total)} a year if you say yes to all`
               : ""}
-            . Say yes, no, or change how Jane does it. Nothing happens until you say yes.
+            . Jane has ticked what it would do: one tap to go ahead, or untick anything first.
+            Nothing happens until you do.
           </p>
         )}
         <p className="text-sm text-zinc-600 dark:text-zinc-400">
-          Want Jane to handle small things without asking?{" "}
-          <Link href="/settings#rules" className="font-medium text-emerald-700 hover:underline">
-            Set standing rules
+          Want Jane to do more without asking?{" "}
+          <Link href="/settings#autopilot" className="font-medium text-emerald-700 hover:underline">
+            Autopilot settings
           </Link>
           .
         </p>
@@ -100,9 +101,15 @@ async function Plan({ searchParams }: { searchParams: PageProps<"/plan">["search
           }))}
         />
       )}
-      {items.length > 1 && (
+      {items.length > 0 && (
         <YesToAll
-          items={items.map((i) => ({ findingId: i.card.findingId, cardHash: i.cardHash }))}
+          items={items.map((i) => ({
+            findingId: i.card.findingId,
+            cardHash: i.cardHash,
+            title: i.card.title,
+            savings: savingsLine(i.card.findingType, i.card.annualSavingsCents),
+            preselected: i.preselected,
+          }))}
         />
       )}
       {setup.length > 0 && (
@@ -115,6 +122,7 @@ async function Plan({ searchParams }: { searchParams: PageProps<"/plan">["search
           </ul>
         </section>
       )}
+      {items.length > 0 && <h2 className="text-xl font-semibold">Each item</h2>}
       <ul className="flex flex-col gap-3">
         {items.map((i) => (
           <PlanItem
