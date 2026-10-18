@@ -34,6 +34,7 @@ const SIGNED_IN = [
   "/settings",
   "/household",
   "/debt",
+  "/year",
   "/connect",
   "/import",
 ];
@@ -45,6 +46,7 @@ const ADMIN = [
   "/admin/invites",
   "/admin/errors",
   "/admin/launch",
+  "/admin/jobs",
 ];
 
 for (const colorScheme of ["light", "dark"] as const) {
