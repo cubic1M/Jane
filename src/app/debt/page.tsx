@@ -1,7 +1,8 @@
+import Link from "next/link";
 import { Suspense } from "react";
 import { AppHeader } from "@/components/app-header";
 import { ViewTracker } from "@/components/view-tracker";
-import { MAX_PLANNER_CARDS } from "@/config/planning";
+import { MAX_PLANNER_CARDS, PLANNER_LEFT_OUT_SUBTYPES } from "@/config/planning";
 import { scopedDb } from "@/lib/db-scoped";
 import { requireUser } from "@/lib/session";
 import { PLANNER_COPY } from "@/planning/debt-copy";
@@ -10,12 +11,29 @@ import { DebtPlanner } from "./planner";
 async function Planner() {
   const user = await requireUser();
   const db = await scopedDb();
-  const cards = await db.accounts.findMany({
-    where: { type: "credit" },
-    select: { id: true, name: true, mask: true, currentBalanceCents: true },
-    orderBy: { name: "asc" },
-    take: MAX_PLANNER_CARDS,
-  });
+  const [debts, leftOut] = await Promise.all([
+    db.accounts.findMany({
+      where: {
+        OR: [
+          { type: "credit" },
+          { type: "loan", NOT: { subtype: { in: [...PLANNER_LEFT_OUT_SUBTYPES] } } },
+        ],
+      },
+      select: {
+        id: true,
+        name: true,
+        mask: true,
+        currentBalanceCents: true,
+        // Rates and minimums from Plaid Liabilities (spec step 65), never guessed.
+        liability: { select: { aprBps: true, minimumPaymentCents: true } },
+      },
+      orderBy: [{ type: "asc" }, { name: "asc" }],
+      take: MAX_PLANNER_CARDS,
+    }),
+    db.accounts.count({
+      where: { type: "loan", subtype: { in: [...PLANNER_LEFT_OUT_SUBTYPES] } },
+    }),
+  ]);
   const now = new Date();
 
   return (
@@ -26,12 +44,22 @@ async function Planner() {
         <h1 className="text-3xl font-semibold tracking-tight">{PLANNER_COPY.title}</h1>
         <p className="text-zinc-600 dark:text-zinc-400">{PLANNER_COPY.intro}</p>
       </div>
+      {leftOut > 0 && (
+        <p className="text-sm text-zinc-600 dark:text-zinc-400">
+          {PLANNER_COPY.mortgageLeftOut}{" "}
+          <Link href="/loans" className="font-medium text-emerald-700 hover:underline">
+            See your loans
+          </Link>
+        </p>
+      )}
       <DebtPlanner
-        cards={cards.map((c) => ({
+        cards={debts.map((c) => ({
           id: c.id,
           name: c.mask ? `${c.name} ····${c.mask}` : c.name,
-          // Card balances are what's owed; a credit (negative) balance owes nothing.
+          // Balances are what's owed; a credit (negative) balance owes nothing.
           balanceCents: Math.max(0, c.currentBalanceCents ?? 0),
+          aprBps: c.liability?.aprBps ?? null,
+          minimumCents: c.liability?.minimumPaymentCents ?? null,
         }))}
         startYear={now.getUTCFullYear()}
         startMonth={now.getUTCMonth()}

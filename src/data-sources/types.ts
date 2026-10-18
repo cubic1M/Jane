@@ -24,11 +24,37 @@ export function accountKindOf(type: string, subtype: string | null): AccountKind
   return null;
 }
 
+// Loans come from Plaid only (spec step 65): their balances count toward net worth and
+// their rates and payments come from Plaid Liabilities. Their transactions aren't kept,
+// since spending and detection read the checking and card side of each payment.
+export const LOAN_KINDS = {
+  mortgage: { label: "Mortgage", type: "loan", subtype: "mortgage" },
+  student_loan: { label: "Student loan", type: "loan", subtype: "student" },
+  auto_loan: { label: "Car loan", type: "loan", subtype: "auto" },
+  other_loan: { label: "Loan", type: "loan", subtype: "loan" },
+} as const;
+
+export type LoanKind = keyof typeof LOAN_KINDS;
+export type SyncedKind = AccountKind | LoanKind;
+
+export const SYNCED_KINDS = { ...ACCOUNT_KINDS, ...LOAN_KINDS } as const;
+
+export const isLoanKind = (kind: SyncedKind): kind is LoanKind => Object.hasOwn(LOAN_KINDS, kind);
+
+// Any kind Plaid accounts are kept as. Other loan subtypes (e.g. "home equity loan") are
+// kept as a plain loan; other types (investment, brokerage) aren't kept yet.
+export function syncedKindOf(type: string, subtype: string | null): SyncedKind | null {
+  for (const [kind, plaid] of Object.entries(SYNCED_KINDS)) {
+    if (plaid.type === type && plaid.subtype === subtype) return kind as SyncedKind;
+  }
+  return type === "loan" ? "other_loan" : null;
+}
+
 export type NormalizedAccount = {
   // Stable id within the source: the Plaid account id, or our own id for CSV accounts.
   ref: string;
   name: string;
-  kind: AccountKind;
+  kind: SyncedKind;
   mask: string | null;
   currentBalanceCents: number | null;
 };

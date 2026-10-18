@@ -50,6 +50,9 @@ export async function createLinkToken(
         ? { access_token: accessToken }
         : {
             products: [Products.Transactions],
+            // Loans and card rates where the bank supports them; billed only then, and it
+            // doesn't limit which banks can be picked (spec step 65).
+            optional_products: [Products.Liabilities],
             transactions: { days_requested: TRANSACTION_DAYS_REQUESTED },
           }),
     }),
@@ -72,6 +75,7 @@ export async function exchangePublicToken(
       plaidItemId: data.item_id,
       accessTokenEncrypted: encrypt(data.access_token),
       institutionName,
+      liabilities: true,
     },
     select: { id: true },
   });

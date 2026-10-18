@@ -1,4 +1,4 @@
-import { ACCOUNT_KINDS, accountKindOf, type AccountKind } from "@/data-sources/types";
+import { SYNCED_KINDS, accountKindOf, syncedKindOf, type AccountKind } from "@/data-sources/types";
 import type { ScopedDb } from "@/lib/db-scoped";
 
 export type AccountSummary = {
@@ -28,12 +28,14 @@ export async function listAccountSummaries(db: ScopedDb): Promise<AccountSummary
 
   return accounts.map((account) => {
     const kind = accountKindOf(account.type, account.subtype);
+    // Loans from Plaid are labelled too ("Mortgage"), though they aren't import kinds.
+    const synced = syncedKindOf(account.type, account.subtype);
     const stat = statsByAccount.get(account.id);
     return {
       id: account.id,
       name: account.name,
       kind,
-      kindLabel: kind ? ACCOUNT_KINDS[kind].label : (account.subtype ?? account.type),
+      kindLabel: synced ? SYNCED_KINDS[synced].label : (account.subtype ?? account.type),
       currentBalanceCents: account.currentBalanceCents,
       transactionCount: stat?._count._all ?? 0,
       firstDate: isoDate(stat?._min.date),

@@ -45,6 +45,10 @@ export async function planWebhook(
   if (body.webhook_type === "TRANSACTIONS" && SYNC_CODES.has(String(body.webhook_code))) {
     return { itemId: item.id, sync: true };
   }
+  // New or changed loan and card details (spec step 65); the sync reads them again.
+  if (body.webhook_type === "LIABILITIES" && body.webhook_code === "DEFAULT_UPDATE") {
+    return { itemId: item.id, sync: true };
+  }
   if (body.webhook_type === "ITEM") {
     const code = String(body.webhook_code);
     if (

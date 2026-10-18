@@ -12,8 +12,9 @@ investment advice in this MVP.
 - Tailwind CSS for styling
 - Postgres with Prisma ORM; money as integer cents, timestamps UTC
 - Auth.js: email magic link and Google sign-in
-- CSV import of the founders' own data first; Plaid Node SDK (Transactions
-  only) added in step 7 behind the same DataSource interface
+- CSV import of the founders' own data first; Plaid Node SDK (Transactions)
+  added in step 7 behind the same DataSource interface; Liabilities (read-only,
+  optional product) from step 65
 - Anthropic SDK for finding explanations; model name from env ANTHROPIC_MODEL
 - Stripe Checkout for the membership test
 - Resend for email
