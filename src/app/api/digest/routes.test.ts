@@ -26,6 +26,9 @@ vi.mock("@/lib/db-scoped", () => ({
 }));
 vi.mock("@/lib/analytics", () => ({ track: vi.fn() }));
 vi.mock("@/lib/digest/send", () => ({ runDigests: vi.fn() }));
+vi.mock("@/lib/jobs", () => ({
+  runDueJobs: vi.fn(async () => ({ done: 0, retried: 0, failed: 0 })),
+}));
 vi.mock("@/lib/session", () => ({ requireUser: vi.fn() }));
 
 import { track } from "@/lib/analytics";

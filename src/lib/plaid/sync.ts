@@ -8,7 +8,7 @@ import { track } from "@/lib/analytics";
 import { decrypt } from "@/lib/crypto";
 import { db as defaultClient } from "@/lib/db";
 import { scopedFor, type ScopedDb } from "@/lib/db-scoped";
-import { explainFindings } from "@/lib/explanations";
+import { enqueueJob, runJob } from "@/lib/jobs";
 import { plaid, plaidCall, plaidErrorCode } from "./client";
 
 // Brings one Plaid item up to date: accounts, transactions since the saved cursor
@@ -211,6 +211,9 @@ export async function syncItem(
   }
 
   await runDetection(item.userId, { client, now });
-  await explainFindings(item.userId, { client });
+  // Card text from Claude, as a job: retried later if it fails, without failing the sync.
+  await runJob(await enqueueJob("explain_findings", { userId: item.userId }, { client }), {
+    client,
+  });
   return result;
 }

@@ -35,7 +35,8 @@ export type AuditEvent =
   | "household_left"
   | "account_sharing_changed"
   | "referral_partner_saved"
-  | "referral_conversion_recorded";
+  | "referral_conversion_recorded"
+  | "job_retried";
 
 export type AuditActor = { type: ActorType; id: string | null };
 
