@@ -30,11 +30,19 @@ const RULES: readonly Rule[] = [
     category: "BANK_FEES_FOREIGN_TRANSACTION_FEES",
     keywords: ["FOREIGN TRANSACTION FEE", "FOREIGN EXCHANGE FEE", "INTL TRANSACTION FEE"],
   },
+  // Cash advance fees and interest have their own category in PFCv2, so they sit above
+  // the general interest rule.
   {
-    category: "BANK_FEES_INTEREST_CHARGE",
-    keywords: ["INTEREST CHARGE", "PURCHASE INTEREST", "CASH ADVANCE INTEREST"],
+    category: "BANK_FEES_CASH_ADVANCE",
+    keywords: ["CASH ADVANCE INTEREST", "CASH ADVANCE FEE"],
     direction: "out",
   },
+  {
+    category: "BANK_FEES_INTEREST_CHARGE",
+    keywords: ["INTEREST CHARGE", "PURCHASE INTEREST"],
+    direction: "out",
+  },
+  { category: "BANK_FEES_LATE_FEES", keywords: ["LATE FEE", "LATE PAYMENT FEE"] },
   {
     category: "BANK_FEES_OTHER_BANK_FEES",
     keywords: [
@@ -42,7 +50,6 @@ const RULES: readonly Rule[] = [
       "SERVICE CHARGE",
       "MAINTENANCE FEE",
       "ANNUAL MEMBERSHIP FEE",
-      "LATE FEE",
       "WIRE FEE",
     ],
   },
@@ -55,7 +62,7 @@ const RULES: readonly Rule[] = [
 
   // Income
   {
-    category: "INCOME_WAGES",
+    category: "INCOME_SALARY",
     keywords: ["PAYROLL", "DIRECT DEP", "DIR DEP", "SALARY"],
     direction: "in",
   },
