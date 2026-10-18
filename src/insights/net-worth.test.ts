@@ -13,9 +13,22 @@ describe("netWorth", () => {
   it("counts cards and loans as debts, and lists accounts without a balance", () => {
     expect(netWorth(accounts)).toEqual({
       assetsCents: 1_250_000,
+      investmentsCents: 0,
       debtsCents: 920_000,
       netCents: 330_000,
       missing: ["Old Card"],
+    });
+  });
+
+  it("counts investment and retirement balances as assets, and says how much", () => {
+    const withInvestments = [
+      ...accounts,
+      { id: "401k", name: "401(k)", type: "investment", balanceCents: 8_425_040 },
+    ];
+    expect(netWorth(withInvestments)).toMatchObject({
+      assetsCents: 1_250_000 + 8_425_040,
+      investmentsCents: 8_425_040,
+      netCents: 330_000 + 8_425_040,
     });
   });
 });

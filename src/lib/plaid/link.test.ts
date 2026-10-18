@@ -36,13 +36,13 @@ describe("Plaid Link", () => {
     vi.unstubAllEnvs();
   });
 
-  it("asks for Transactions, Liabilities where supported, a year of history and our webhook", async () => {
+  it("asks for Transactions, Liabilities and Investments where supported, a year of history and our webhook", async () => {
     expect(await createLinkToken("user_1", null, { api })).toBe("link-sandbox-1");
 
     expect(linkTokenCreate).toHaveBeenCalledWith(
       expect.objectContaining({
         products: ["transactions"],
-        optional_products: ["liabilities"],
+        optional_products: ["liabilities", "investments"],
         transactions: { days_requested: 365 },
         user: { client_user_id: "user_1" },
         country_codes: ["US"],
@@ -87,6 +87,7 @@ describe("Plaid Link", () => {
     expect(saved.accessTokenEncrypted).not.toContain("access-sandbox-secret");
     expect(decrypt(saved.accessTokenEncrypted)).toBe("access-sandbox-secret");
     expect(saved.liabilities).toBe(true);
+    expect(saved.investments).toBe(true);
     expect(JSON.stringify(vi.mocked(logAudit).mock.calls)).not.toContain("access-sandbox");
     expect(JSON.stringify(vi.mocked(track).mock.calls)).not.toContain("access-sandbox");
     expect(logAudit).toHaveBeenCalledWith(

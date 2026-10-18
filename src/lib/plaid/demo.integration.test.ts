@@ -55,7 +55,12 @@ describe.runIf(url)("the demo bank, end to end", () => {
     expect(decrypt(item.accessTokenEncrypted)).toMatch(/^demo:[a-f0-9]{16}:2026-10-18$/);
 
     const result = await syncItem(itemId, { client, api: plaid, now: LINKED });
-    expect(result).toMatchObject({ accounts: 6, firstSync: true, liabilities: "updated" });
+    expect(result).toMatchObject({
+      accounts: 8,
+      firstSync: true,
+      liabilities: "updated",
+      investments: "updated",
+    });
     expect(result.added).toBeGreaterThan(400);
     expect(await client.liability.count({ where: { userId } })).toBe(4);
     // Loans are kept for their balances, their payments come from checking.

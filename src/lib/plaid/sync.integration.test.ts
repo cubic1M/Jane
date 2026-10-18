@@ -31,10 +31,12 @@ describe.runIf(url)("syncItem against a real database", () => {
   const transactionsSync = vi.fn();
   const transactionsRecurringGet = vi.fn();
   const liabilitiesGet = vi.fn();
+  const investmentsHoldingsGet = vi.fn();
   const api = {
     transactionsSync,
     transactionsRecurringGet,
     liabilitiesGet,
+    investmentsHoldingsGet,
   } as unknown as PlaidApi;
 
   beforeAll(async () => {
@@ -64,6 +66,7 @@ describe.runIf(url)("syncItem against a real database", () => {
     transactionsSync.mockReset();
     transactionsRecurringGet.mockReset();
     liabilitiesGet.mockReset();
+    investmentsHoldingsGet.mockReset();
     vi.mocked(track).mockReset();
   });
 
@@ -110,6 +113,7 @@ describe.runIf(url)("syncItem against a real database", () => {
       recurring: "updated",
       // Linked before Liabilities was asked for: never called, so never billed.
       liabilities: "off",
+      investments: "off",
     });
     expect(liabilitiesGet).not.toHaveBeenCalled();
     expect(transactionsSync.mock.calls[0][0]).toMatchObject({
@@ -298,5 +302,80 @@ describe.runIf(url)("syncItem against a real database", () => {
     expect(await client.liability.count({ where: { userId } })).toBe(1);
     transactionsSync.mockReset();
     transactionsRecurringGet.mockReset();
+  });
+
+  it("keeps investment and retirement balances only, never holdings or trades", async () => {
+    const investItem = await client.plaidItem.create({
+      data: {
+        userId,
+        plaidItemId: `item-invest-${suffix}`,
+        accessTokenEncrypted: encrypt("access-sandbox-invest"),
+        institutionName: "First Platypus Bank",
+        investments: true,
+      },
+    });
+    const k401 = plaidAccount({
+      account_id: `${suffix}-401k`,
+      name: "Plaid 401k",
+      type: "investment",
+      subtype: "401k",
+      balances: { current: 23631.98, available: null, limit: null, iso_currency_code: "USD" },
+    } as never);
+    // A trade on the 401(k) comes through the transactions side too: it isn't kept.
+    transactionsSync.mockResolvedValueOnce(
+      syncPage({
+        accounts: [k401],
+        added: [
+          plaidTransaction({
+            transaction_id: `${suffix}-trade`,
+            account_id: `${suffix}-401k`,
+            name: "BUY VTSAX",
+          }),
+        ],
+        next_cursor: "invest-1",
+      }),
+    );
+    transactionsRecurringGet.mockResolvedValueOnce({
+      data: { outflow_streams: [], inflow_streams: [] },
+    });
+    investmentsHoldingsGet.mockResolvedValueOnce({
+      data: {
+        accounts: [k401],
+        holdings: [
+          {
+            account_id: `${suffix}-401k`,
+            security_id: "sec1",
+            quantity: 100,
+            institution_value: 23631.98,
+          },
+        ],
+        securities: [
+          { security_id: "sec1", name: "Vanguard Total Stock Market", ticker_symbol: "VTSAX" },
+        ],
+      },
+    });
+
+    const result = await syncItem(investItem.id, { client, api, now: NOW });
+    expect(result.investments).toBe("updated");
+    expect(investmentsHoldingsGet).toHaveBeenCalledWith({ access_token: "access-sandbox-invest" });
+    expect(
+      await client.account.findFirstOrThrow({
+        where: { itemId: investItem.id },
+        select: { type: true, subtype: true, currentBalanceCents: true },
+      }),
+    ).toEqual({ type: "investment", subtype: "retirement", currentBalanceCents: 2_363_198 });
+    expect(
+      await client.transaction.count({ where: { plaidTransactionId: `${suffix}-trade` } }),
+    ).toBe(0);
+
+    investmentsHoldingsGet.mockRejectedValueOnce(plaidApiError("PRODUCTS_NOT_SUPPORTED"));
+    transactionsSync.mockResolvedValueOnce(syncPage({ accounts: [k401], next_cursor: "invest-2" }));
+    transactionsRecurringGet.mockResolvedValueOnce({
+      data: { outflow_streams: [], inflow_streams: [] },
+    });
+    vi.spyOn(console, "warn").mockImplementation(() => {});
+    expect((await syncItem(investItem.id, { client, api, now: NOW })).investments).toBe(
+      "unavailable",
+    );
   });
 });

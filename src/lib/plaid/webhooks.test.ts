@@ -32,8 +32,8 @@ describe("planWebhook", () => {
     },
   );
 
-  it("syncs when the bank's loan and card details change", async () => {
-    expect(await plan({ webhook_type: "LIABILITIES", webhook_code: "DEFAULT_UPDATE" })).toEqual({
+  it.each(["LIABILITIES", "HOLDINGS"])("syncs when the bank's %s details change", async (type) => {
+    expect(await plan({ webhook_type: type, webhook_code: "DEFAULT_UPDATE" })).toEqual({
       itemId: "item_1",
       sync: true,
     });

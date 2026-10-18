@@ -39,7 +39,8 @@ const primaryOf = (detailed: PfcDetailed): PfcPrimary =>
     (PFC_TAXONOMY[p] as readonly string[]).includes(detailed),
   )!;
 
-type AccountKey = "checking" | "savings" | "card" | "mortgage" | "student" | "auto";
+type AccountKey =
+  "checking" | "savings" | "card" | "mortgage" | "student" | "auto" | "retirement" | "brokerage";
 
 export const accountId = (seed: string, key: AccountKey) => `demo-${seed}-${key}`;
 
@@ -479,6 +480,8 @@ export function demoAccounts({ seed }: DemoSeed): AccountBase[] {
     account(seed, "mortgage", "Demo Home Loan", "0004", "loan", "mortgage", 312400),
     account(seed, "student", "Demo Student Loan", "0005", "loan", "student", 18345),
     account(seed, "auto", "Demo Car Loan", "0006", "loan", "auto", 18020),
+    account(seed, "retirement", "Demo 401(k)", "0007", "investment", "401k", 84250.4),
+    account(seed, "brokerage", "Demo Brokerage", "0008", "investment", "brokerage", 12480.15),
   ];
 }
 

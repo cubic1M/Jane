@@ -33,7 +33,7 @@ describe("normalizeAccount", () => {
     ).toMatchObject({ kind: "credit_card", currentBalanceCents: 123456 });
   });
 
-  it("keeps loans, and skips account kinds the app doesn't use yet", () => {
+  it("keeps loans and investments, and skips account kinds the app doesn't use", () => {
     expect(
       normalizeAccount(plaidAccount({ type: "loan", subtype: "mortgage" } as never))?.kind,
     ).toBe("mortgage");
@@ -41,8 +41,12 @@ describe("normalizeAccount", () => {
       normalizeAccount(plaidAccount({ type: "loan", subtype: "home equity loan" } as never))?.kind,
     ).toBe("other_loan");
     expect(
-      normalizeAccount(plaidAccount({ type: "investment", subtype: "401k" } as never)),
-    ).toBeNull();
+      normalizeAccount(plaidAccount({ type: "investment", subtype: "401k" } as never))?.kind,
+    ).toBe("retirement");
+    expect(
+      normalizeAccount(plaidAccount({ type: "brokerage", subtype: null } as never))?.kind,
+    ).toBe("investment_account");
+    expect(normalizeAccount(plaidAccount({ type: "other", subtype: null } as never))).toBeNull();
   });
 });
 
