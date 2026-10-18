@@ -5,6 +5,7 @@ import { ALERT_EMAILS_PER_DAY, ALERT_LABELS, ALERT_TYPES } from "@/config/alerts
 import { DEFAULT_TIMEZONE, TIMEZONES } from "@/config/digest";
 import { alertPrefs, isUrgent } from "@/lib/alerts";
 import { twoFactorStatus } from "@/lib/mfa";
+import { rulesFor } from "@/lib/standing-rules";
 import { db } from "@/lib/db";
 import { scopedDb } from "@/lib/db-scoped";
 import { requireUser } from "@/lib/session";
@@ -18,11 +19,12 @@ import { NotificationsToggle } from "./notifications";
 import { DeleteDataForm, DisconnectForm, RefreshForm } from "./data-forms";
 import { EmailForm } from "./email-form";
 import { TwoFactorOnForms } from "./two-factor-forms";
+import { RulesForm } from "./rules-form";
 
 async function SettingsContent() {
   const user = await requireUser();
   const mine = await scopedDb();
-  const [prefs, items, accounts, lastCsv, twoFactor] = await Promise.all([
+  const [prefs, items, accounts, lastCsv, twoFactor, rules] = await Promise.all([
     db.user.findUniqueOrThrow({
       where: { id: user.id },
       select: {
@@ -62,6 +64,7 @@ async function SettingsContent() {
       select: { accountId: true, createdAt: true },
     }),
     twoFactorStatus(user.id),
+    rulesFor(user.id),
   ]);
   const csvUpdated = new Map(lastCsv.map((row) => [row.accountId, row.createdAt]));
   const alerts = alertPrefs(prefs.alertPrefs);
@@ -187,6 +190,26 @@ async function SettingsContent() {
           }))}
         />
         {vapidPublicKey() && <NotificationsToggle publicKey={vapidPublicKey() ?? ""} />}
+      </section>
+
+      <section id="rules" className="flex scroll-mt-8 flex-col gap-3">
+        <h2 className="text-xl font-semibold">Standing rules</h2>
+        <p className="text-zinc-600 dark:text-zinc-400">
+          Things Jane may do without asking each time. Jane tells you whenever a rule is used, and
+          you can take it back for a day. Moving money, phone calls, cancelling things and insurance
+          always need your yes.
+        </p>
+        <RulesForm
+          rules={rules.map((r) => ({
+            key: r.key,
+            label: r.label,
+            description: r.description,
+            enabled: r.enabled,
+            monthlyLimit: r.monthlyLimit,
+            maxAmountLabel: r.maxAmount?.label ?? null,
+            maxDollars: r.maxAnnualCents === null ? "" : String(r.maxAnnualCents / 100),
+          }))}
+        />
       </section>
 
       <section id="two-factor" className="flex scroll-mt-8 flex-col gap-3">

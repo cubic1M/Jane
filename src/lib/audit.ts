@@ -49,7 +49,8 @@ export type AuditEvent =
   | "mfa_failed"
   | "mfa_disabled"
   | "mfa_backup_code_used"
-  | "mfa_backup_codes_created";
+  | "mfa_backup_codes_created"
+  | "standing_rules_saved";
 
 export type AuditActor = { type: ActorType; id: string | null };
 

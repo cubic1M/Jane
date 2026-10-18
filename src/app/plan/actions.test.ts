@@ -9,6 +9,7 @@ vi.mock("@/lib/session", () => ({
   requireUser: vi.fn(async () => ({ id: "u1", email: "alex@example.com" })),
 }));
 vi.mock("@/lib/plan", () => ({ answerPlanItem: vi.fn(), yesToAll: vi.fn() }));
+vi.mock("@/lib/standing-rules", () => ({ undoRuleApproval: vi.fn() }));
 vi.mock("@/lib/decisions", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/lib/decisions")>()),
   undoDecision: vi.fn(),
@@ -16,7 +17,8 @@ vi.mock("@/lib/decisions", async (importOriginal) => ({
 
 import { undoDecision } from "@/lib/decisions";
 import { answerPlanItem, yesToAll } from "@/lib/plan";
-import { answerAll, answerItem, undoItem } from "./actions";
+import { undoRuleApproval } from "@/lib/standing-rules";
+import { answerAll, answerItem, undoItem, undoRule } from "./actions";
 
 const HASH = "a".repeat(64);
 const form = (fields: Record<string, string | string[]>) => {
@@ -97,5 +99,10 @@ describe("plan actions", () => {
       { findingId: "f1", cardHash: HASH },
       { findingId: "f2", cardHash: HASH },
     ]);
+  });
+
+  it("takes back a rule's approval for the signed-in person", async () => {
+    expect(await undoRule(null, form({ decisionId: "d5" }))).toEqual({ kind: "undone" });
+    expect(undoRuleApproval).toHaveBeenCalledWith("u1", "d5");
   });
 });

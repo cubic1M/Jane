@@ -8,14 +8,16 @@ import { formatCents } from "@/lib/money";
 import { markPlanShown, planFor } from "@/lib/plan";
 import { savingsLine } from "@/lib/savings-text";
 import { requireUser } from "@/lib/session";
+import { recentRuleApprovals } from "@/lib/standing-rules";
 import { PlanItem } from "./plan-item";
+import { RuleApprovals } from "./rule-approvals";
 import { YesToAll } from "./yes-to-all";
 
 async function Plan({ searchParams }: { searchParams: PageProps<"/plan">["searchParams"] }) {
   const user = await requireUser();
   const db = await scopedDb();
   if ((await db.accounts.count()) === 0) redirect("/connect");
-  const items = await planFor(user.id);
+  const [items, byRules] = await Promise.all([planFor(user.id), recentRuleApprovals(user.id)]);
   await markPlanShown(
     user.id,
     items.map((i) => i.card.findingId),
@@ -65,7 +67,24 @@ async function Plan({ searchParams }: { searchParams: PageProps<"/plan">["search
             . Say yes, no, or change how Jane does it. Nothing happens until you say yes.
           </p>
         )}
+        <p className="text-sm text-zinc-600 dark:text-zinc-400">
+          Want Jane to handle small things without asking?{" "}
+          <Link href="/settings#rules" className="font-medium text-emerald-700 hover:underline">
+            Set standing rules
+          </Link>
+          .
+        </p>
       </div>
+      {byRules.length > 0 && (
+        <RuleApprovals
+          approvals={byRules.map((a) => ({
+            decisionId: a.decisionId,
+            title: a.title,
+            ruleLabel: a.ruleLabel,
+            canUndo: a.canUndo,
+          }))}
+        />
+      )}
       {items.length > 1 && (
         <YesToAll
           items={items.map((i) => ({ findingId: i.card.findingId, cardHash: i.cardHash }))}
