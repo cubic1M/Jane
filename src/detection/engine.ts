@@ -7,9 +7,13 @@ import {
 import type { Finding, FindingStatus, FindingType, PrismaClient } from "@/generated/prisma/client";
 import { track } from "@/lib/analytics";
 import { db as defaultClient } from "@/lib/db";
-import { scopedFor } from "@/lib/db-scoped";
+import { llmModel } from "@/lib/anthropic";
+import { scopedFor, type ScopedDb } from "@/lib/db-scoped";
 import { detect } from "./detect";
 import { atLeast } from "./helpers";
+import { isAmbiguousRecurring } from "./rules/subscription-review";
+import { buildStreams } from "./streams";
+import { SUBSCRIPTION_PROMPT_VERSION, checkSubscriptions } from "@/lib/subscription-check";
 import type { Candidate, DetectionInput } from "./types";
 import { isoDate, monthsBefore } from "./units";
 
@@ -116,7 +120,7 @@ function contentOf(candidate: Candidate) {
   };
 }
 
-async function loadInput(db: ReturnType<typeof scopedFor>, asOf: string): Promise<DetectionInput> {
+async function loadInput(db: ScopedDb, asOf: string): Promise<DetectionInput> {
   const cutoff = monthsBefore(asOf, LOOKBACK_MONTHS);
   const [accounts, transactions, streams] = await Promise.all([
     db.accounts.findMany({
@@ -175,16 +179,67 @@ const NO_FINDINGS: Record<FindingType, number> = {
   card_interest: 0,
 };
 
-type Options = { client?: PrismaClient; now?: Date };
+type Options = {
+  client?: PrismaClient;
+  now?: Date;
+  checkSubscriptions?: (merchants: string[]) => Promise<Map<string, boolean>>;
+};
+
+// Merchant keys Claude has called subscriptions. Recurring charges whose category doesn't
+// settle it are asked about once per merchant; every answer, yes or no, is kept so the
+// same merchant is never asked twice.
+async function subscriptionMerchantKeys(
+  db: ScopedDb,
+  input: DetectionInput,
+  check: (merchants: string[]) => Promise<Map<string, boolean>>,
+): Promise<string[]> {
+  const stored = await db.subscriptionChecks.findMany({
+    select: { merchantKey: true, isSubscription: true },
+  });
+  const known = new Map(stored.map((c) => [c.merchantKey, c.isSubscription]));
+
+  const keyByName = new Map<string, string>();
+  for (const stream of buildStreams(input).filter(isAmbiguousRecurring)) {
+    if (!known.has(stream.merchantKey)) keyByName.set(stream.merchant, stream.merchantKey);
+  }
+  if (keyByName.size > 0) {
+    const answers = await check([...keyByName.keys()].sort());
+    const rows = [...answers].flatMap(([name, isSubscription]) => {
+      const merchantKey = keyByName.get(name);
+      return merchantKey ? [{ merchantKey, isSubscription }] : [];
+    });
+    if (rows.length > 0) {
+      await db.subscriptionChecks.createMany({
+        data: rows.map((row) => ({
+          userId: db.userId,
+          ...row,
+          model: llmModel(),
+          promptVersion: SUBSCRIPTION_PROMPT_VERSION,
+        })),
+        skipDuplicates: true,
+      });
+      for (const row of rows) known.set(row.merchantKey, row.isSubscription);
+    }
+  }
+  return [...known]
+    .filter(([, isSubscription]) => isSubscription)
+    .map(([key]) => key)
+    .sort();
+}
 
 // Runs every rule on the user's data and saves the results. Safe to run as often as we
 // like: a second run with the same data changes nothing.
 export async function runDetection(
   userId: string,
-  { client = defaultClient, now = new Date() }: Options = {},
+  {
+    client = defaultClient,
+    now = new Date(),
+    checkSubscriptions: check = checkSubscriptions,
+  }: Options = {},
 ): Promise<DetectionSummary> {
   const db = scopedFor(userId, client);
   const input = await loadInput(db, isoDate(now));
+  input.subscriptionMerchantKeys = await subscriptionMerchantKeys(db, input, check);
   const candidates = detect(input);
 
   const existing = await db.findings.findMany({

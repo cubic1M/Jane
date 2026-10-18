@@ -50,6 +50,8 @@ export type DetectionInput = {
   // Posted (not pending) transactions inside the lookback window.
   transactions: DetectionTransaction[];
   recurringStreams: DetectionRecurringStream[];
+  // Merchant keys Claude said are subscriptions (see AMBIGUOUS_SUBSCRIPTION_CATEGORIES).
+  subscriptionMerchantKeys?: string[];
 };
 
 // The proof behind a finding, stored as JSON so the card can show why.

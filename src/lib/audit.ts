@@ -3,7 +3,12 @@ import { db } from "@/lib/db";
 
 // Every sensitive event goes through logAudit. Add new events here so the log stays
 // queryable by a known set of names.
-export type AuditEvent = "user_signed_up" | "user_signed_in" | "import_completed";
+export type AuditEvent =
+  | "user_signed_up"
+  | "user_signed_in"
+  | "import_completed"
+  // Finding data was sent to Claude for card text.
+  | "explanations_generated";
 
 export type AuditActor = { type: ActorType; id: string | null };
 

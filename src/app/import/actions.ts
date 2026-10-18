@@ -2,12 +2,14 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { after } from "next/server";
 import { CsvFormatError, type CsvFile } from "@/data-sources/csv/csv-source";
 import { ACCOUNT_KINDS, isAccountKind } from "@/data-sources/types";
 import { runDetection } from "@/detection/engine";
 import { track } from "@/lib/analytics";
 import { logAudit } from "@/lib/audit";
 import { scopedDb } from "@/lib/db-scoped";
+import { explainFindings } from "@/lib/explanations";
 import {
   AccountNotFoundError,
   MAX_FILE_BYTES,
@@ -113,5 +115,14 @@ export async function confirmImport(formData: FormData): Promise<ActionResult> {
     // the report anyway if it doesn't finish.
     console.error("Detection failed after import", { error });
   }
+  // Card text from Claude takes a few seconds per finding, so it's written after the
+  // response. Until then the report shows template text.
+  after(async () => {
+    try {
+      await explainFindings(db.userId);
+    } catch (error) {
+      console.error("Explaining findings failed after import", { error });
+    }
+  });
   redirect("/scanning");
 }

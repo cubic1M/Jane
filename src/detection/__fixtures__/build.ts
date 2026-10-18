@@ -139,3 +139,34 @@ export function plaidStream(
     ...overrides,
   };
 }
+
+// A made-up year: two streaming services (one just went up), car insurance, groceries,
+// a couple of bank fees, card interest, and more cash than the household needs on hand.
+export function sampleYear() {
+  return input({
+    transactions: [
+      ...monthly(8, [1549, 1549, 1549, 1549, 1549, 1549, 1549, 1799], {
+        ...NETFLIX,
+        accountId: CARD.id,
+      }),
+      ...monthly(8, 1199, { ...HULU, accountId: CARD.id }),
+      ...monthly(8, 9800, GEICO),
+      ...monthly(8, 180_000, { ...GROCERIES, accountId: CARD.id }),
+      tx({
+        date: "2026-04-03",
+        amountCents: 3400,
+        description: "OVERDRAFT FEE",
+        pfcPrimary: "BANK_FEES",
+        pfcDetailed: "BANK_FEES_OVERDRAFT_FEES",
+      }),
+      tx({
+        date: "2026-09-25",
+        accountId: CARD.id,
+        amountCents: 2655,
+        description: "PURCHASE INTEREST CHARGE",
+        pfcPrimary: "BANK_FEES",
+        pfcDetailed: "BANK_FEES_INTEREST_CHARGE",
+      }),
+    ],
+  });
+}
