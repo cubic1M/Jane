@@ -27,6 +27,7 @@ import { enqueueJob, runJob } from "@/lib/jobs";
 import { merchantFor } from "@/lib/merchants";
 import { agentFromAddress, mailMode, replyAddress, sendAgentMail, tokenFromAddress } from "./mail";
 import { readReply, type ReplyReading } from "./read-reply";
+import { composeAnswer, whatIsAsked, type KnownFacts } from "./auto-answer";
 import { simulatedAddress } from "./simulated-company";
 import { isCallAction, startCall } from "@/lib/voice/calls";
 
@@ -451,6 +452,7 @@ export async function handleReply(
     now = new Date(),
     read = readReply,
     notify = sendStatusEmail,
+    send: deliver = sendAgentMail,
   }: Options = {},
 ): Promise<"acted" | "kept" | "unknown"> {
   const token = tokenFromAddress(toAddress);
@@ -504,18 +506,53 @@ export async function handleReply(
       );
       await track(userId, "agent_action_done", { action_type: action.type });
       break;
-    case "needs_info":
+    case "needs_info": {
+      const question = reading.question ?? reading.summary;
+      const asked = whatIsAsked(question);
+      if (asked.kind === "never") {
+        // Jane never gives these out; a request for them by email is unusual.
+        await setStatus(
+          userId,
+          action,
+          "waiting_on_user",
+          {
+            agentState: "handed_off",
+            handoffReason: "The company asked for something Jane never shares.",
+            agentNextAt: null,
+            userTodo: `${merchant} asked: ${question} Jane never shares that, and it's unusual to ask by email. Don't reply with it; if you think it's genuine, contact ${merchant} yourself. Our team will follow up.`,
+          },
+          options,
+        );
+        await note(userId, action.id, `${merchant} asked for something Jane never shares.`, client);
+        break;
+      }
+      // Answered from the person's own data when Jane knows everything asked.
+      const answer =
+        asked.kind === "facts"
+          ? composeAnswer(asked.facts, await knownFacts(userId, action, client))
+          : null;
+      if (answer) {
+        await replyToCompany(userId, action, `From the account holder's records: ${answer}`, {
+          client,
+          now,
+          deliver,
+        });
+        await note(userId, action.id, `Answered ${merchant}'s question: ${answer}`, client);
+        await track(userId, "agent_answered_itself", { action_type: action.type });
+        break;
+      }
       await setStatus(
         userId,
         action,
         "waiting_on_user",
         {
           agentNextAt: null,
-          userTodo: `${merchant} asked: ${reading.question ?? reading.summary} Answer on your actions page and Jane will reply.`,
+          userTodo: `${merchant} asked: ${question} Answer on your actions page and Jane will reply.`,
         },
         options,
       );
       break;
+    }
     case "needs_person":
       await setStatus(
         userId,
@@ -570,13 +607,28 @@ export async function answerCompany(
   if (!action || !first || !canAgentWork(action) || action.status !== "waiting_on_user") {
     throw new AnswerError("Jane isn't waiting on an answer for this one.");
   }
+  await replyToCompany(userId, action, `From the account holder: ${text}`, {
+    client,
+    now,
+    deliver,
+  });
+}
+
+// Sends an answer to the company's question and waits for their reply again.
+async function replyToCompany(
+  userId: string,
+  action: LoadedAction,
+  answer: string,
+  { client, now, deliver }: { client: PrismaClient; now: Date; deliver: typeof sendAgentMail },
+) {
+  const first = action.agentMessages[0];
   await send(
     userId,
     action,
     {
       to: first.toAddress,
       subject: first.subject.startsWith("Re: ") ? first.subject : `Re: ${first.subject}`,
-      body: `Hello,\n\nThank you. From the account holder: ${text}\n\nCould you go ahead with the request?\n\n${AGENT_SIGNATURE}`,
+      body: `Hello,\n\nThank you. ${answer}\n\nCould you go ahead with the request?\n\n${AGENT_SIGNATURE}`,
     },
     { client, send: deliver },
   );
@@ -591,6 +643,38 @@ export async function answerCompany(
     },
     { client, now, notify: sendStatusEmail },
   );
+}
+
+// What Jane knows that a company may ask about: the card's last 4 digits (from the
+// account the charge was on), the account email and name, and the charges themselves.
+async function knownFacts(
+  userId: string,
+  action: LoadedAction,
+  client: PrismaClient,
+): Promise<KnownFacts> {
+  const evidence = (action.decision.finding.evidence ?? {}) as {
+    accountId?: unknown;
+    charges?: unknown;
+  };
+  const charges = (Array.isArray(evidence.charges) ? evidence.charges : [])
+    .map((c) => c as { date?: unknown; amountCents?: unknown; accountId?: unknown })
+    .filter((c) => typeof c.date === "string" && typeof c.amountCents === "number");
+  const accountId =
+    typeof evidence.accountId === "string"
+      ? evidence.accountId
+      : (charges.find((c) => typeof c.accountId === "string")?.accountId as string | undefined);
+  const account = accountId
+    ? await scopedFor(userId, client).accounts.findFirst({
+        where: { id: accountId },
+        select: { mask: true },
+      })
+    : null;
+  return {
+    cardLast4: account?.mask ?? null,
+    email: action.user.email,
+    name: action.user.name,
+    charges: charges.map((c) => ({ date: c.date as string, amountCents: c.amountCents as number })),
+  };
 }
 
 // The daily job: follow up (or hand off) every action whose follow-up is due, and settle
