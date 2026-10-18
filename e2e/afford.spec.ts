@@ -23,7 +23,10 @@ test("can I afford this shows a purchase's effect before and after, from the URL
 
   // Without a bank, a wrong amount is refused and there's nothing to work out yet.
   await page.goto("/afford?amount=abc");
-  await expect(page.getByRole("alert")).toHaveText("Enter an amount, like 250.");
+  // Next's route announcer is also role="alert", so pick ours by its text.
+  await expect(
+    page.getByRole("alert").filter({ hasText: "Enter an amount, like 250." }),
+  ).toBeVisible();
   await expect(page.getByText("This is math, not a recommendation.")).toBeVisible();
 
   await page.goto("/connect");
