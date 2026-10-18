@@ -1,5 +1,6 @@
 import { LegalPage } from "@/components/legal-page";
 import { COMPANY_NAME, contactEmail } from "@/config/legal";
+import { retentionPolicy } from "@/lib/retention";
 
 export const metadata = { title: `Privacy Policy | ${COMPANY_NAME}` };
 
@@ -66,10 +67,9 @@ export default function PrivacyPage() {
 
       <h2>How long we keep it, and deleting it</h2>
       <ul>
-        <li>
-          If you don&apos;t use the app for 60 days, we disconnect your banks (we email you a week
-          before).
-        </li>
+        {retentionPolicy().map((line) => (
+          <li key={line}>{line}</li>
+        ))}
         <li>
           You can disconnect a bank or delete all your data at any time in Settings. Deleting
           disconnects every bank at Plaid and removes everything we hold about you. A record that a

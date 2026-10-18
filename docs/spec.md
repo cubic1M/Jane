@@ -21,7 +21,7 @@ The build runs in eleven steps, with Plaid added at step 7 after the founders te
 
 ## Status (Oct 18, 2026)
 
-Steps 1–42 are built (24 came before 22, because do-it-yourself kits need its cancel links). Where the build differs from the original plan, the plan below has been kept and the difference is noted here.
+Steps 1–43 are built (24 came before 22, because do-it-yourself kits need its cancel links). Where the build differs from the original plan, the plan below has been kept and the difference is noted here.
 
 | Step | Shipped in | Notes |
 | --- | --- | --- |
@@ -65,6 +65,7 @@ Steps 1–42 are built (24 came before 22, because do-it-yourself kits need its 
 | 40 Smarter merchant directory | PR #50 | The daily job rebuilds merchant_outcomes (counts and median minutes per merchant and action type, no user or action ids) from finished cancel, price, refund and bill actions, joining statement names through the directory; nothing shows below 5 cases; the team sees "usually about N minutes; X of Y worked" on actions, people see "usually takes about N minutes" on do-it-yourself kits |
 | 41 Team workload | PR #51 | Assignees are picked from the team (admins by email) and checked on save; the queue shows "who has what" (open and overdue per person, overdue by the queue's own business-day rule) and filters by assignee; saved replies (/admin/replies) fill in what the person needs to do; assignments and saved replies are audit-logged |
 | 42 Health checks | PR #52 | Each daily job's run is recorded (cron_runs); /admin/health shows the last and last good run of each, linked banks, background jobs and errors in the last day (audit-logged); each daily job checks the others when it starts and emails each address in ADMIN_EMAILS about one missed for over 26 hours, once per outage (health_notices); if every job stops, only the health page shows it |
+| 43 Data retention | PR #53 | RETENTION_PERIODS in src/config/retention.ts drives both the daily cleanup (usage events 395 days, error reports 90, finished jobs 30, cron runs 90, rate-limit counters 1, expired sessions and sign-in links at once) and the privacy page's retention list, which is generated from it; a test renders the page and checks every line, and that every configured kind has a cleanup |
 
 Still needed from a person before outside users: counsel (insurance referral licensing, privacy policy and terms), Plaid Production approval and questionnaire, a backup restore test, and admins enrolling in two-factor. See docs/beta-checklist.md.
 

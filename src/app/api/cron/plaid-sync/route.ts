@@ -7,6 +7,7 @@ import { ITEM_STATUS, syncItem } from "@/lib/plaid/sync";
 import { recordRun, reportMissedJobs } from "@/lib/health";
 import { runDueJobs } from "@/lib/jobs";
 import { refreshMerchantOutcomes } from "@/lib/merchant-outcomes";
+import { runRetention } from "@/lib/retention";
 import { takeSnapshots } from "@/lib/snapshots";
 
 // Vercel Cron, daily: syncs linked items that haven't synced in STALE_SYNC_HOURS, in case
@@ -41,6 +42,7 @@ async function dailyWork() {
       snapshots: await takeSnapshots(),
       jobs: await runDueJobs(),
       outcomes: await refreshMerchantOutcomes(),
+      retention: await runRetention(),
     };
   }
 
@@ -75,5 +77,6 @@ async function dailyWork() {
     snapshots: await takeSnapshots(),
     jobs: await runDueJobs(),
     outcomes: await refreshMerchantOutcomes(),
+    retention: await runRetention(),
   };
 }

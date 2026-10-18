@@ -46,6 +46,6 @@ Also added in step 11, beyond the checklist:
   - Card text shown to a person is saved with each decision.
 - **Shared with Claude (Anthropic)**: only the finding type, merchant names, amounts, dates and the savings estimate. Never account names or numbers, transaction descriptions, emails or tokens.
 - **Shared with Claude for Ask Jane**: the person's question, and what Jane looks up to answer it: cleaned-up merchant names, categories, dates and amounts, and the titles of findings and actions. Never raw transaction descriptions, account names or numbers; transfers are shown only as "Transfer". Conversations are stored until the person deletes them.
-- **Retention**: linked banks are removed after 60 days of inactivity, with a warning a week before. "Delete all my data" removes everything at once.
+- **Retention**: linked banks are removed after 60 days of inactivity, with a warning a week before. Usage records, error reports, background-job and scheduled-job records, rate-limit counters and expired sessions are deleted daily after the periods in `src/config/retention.ts`; the privacy page's retention list is generated from the same file. "Delete all my data" removes everything at once.
 - **Audit log**: keeps ids and event names (no personal data) after deletion.
 - **Email**: a weekly digest, with one-click unsubscribe. Click tracking is through our own links; no tracking pixels.
