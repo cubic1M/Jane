@@ -8,6 +8,7 @@ import type { Finding, FindingStatus, FindingType, PrismaClient } from "@/genera
 import { track } from "@/lib/analytics";
 import { raiseAlerts } from "@/lib/alerts";
 import { confirmRefunds } from "@/lib/agent/refund-check";
+import { refundChargesAfterCancel } from "@/lib/agent/run";
 import { applyStandingRules } from "@/lib/standing-rules";
 import { db as defaultClient } from "@/lib/db";
 import { llmModel } from "@/lib/anthropic";
@@ -243,6 +244,7 @@ type Options = {
   raiseAlerts?: typeof raiseAlerts;
   applyStandingRules?: typeof applyStandingRules;
   confirmRefunds?: typeof confirmRefunds;
+  refundChargesAfterCancel?: typeof refundChargesAfterCancel;
 };
 
 // Merchant keys Claude has called subscriptions. Recurring charges whose category doesn't
@@ -298,6 +300,7 @@ export async function runDetection(
     raiseAlerts: raise = raiseAlerts,
     applyStandingRules: applyRules = applyStandingRules,
     confirmRefunds: confirm = confirmRefunds,
+    refundChargesAfterCancel: refundAfterCancel = refundChargesAfterCancel,
   }: Options = {},
 ): Promise<DetectionSummary> {
   const db = scopedFor(userId, client);
@@ -373,6 +376,13 @@ export async function runDetection(
     await applyRules(userId, { client, now });
   } catch (error) {
     console.error("Standing rules failed", { userId, error: String(error) });
+  }
+
+  // A charge after a cancellation Jane did gets its refund asked for (spec step 53).
+  try {
+    await refundAfterCancel(userId, { client });
+  } catch (error) {
+    console.error("Refund after cancel failed", { userId, error: String(error) });
   }
 
   // Refunds coming back in the transactions close their actions (spec step 52).

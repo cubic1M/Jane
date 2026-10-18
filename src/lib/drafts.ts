@@ -97,6 +97,8 @@ type FindingForDraft = { type: FindingType; evidence: unknown };
 export function draftPayload(
   actionType: ActionType,
   finding: FindingForDraft,
+  // What to ask for instead of the usual request, e.g. a downgrade rather than a cancel.
+  { request }: { request?: string } = {},
 ): { payload: DraftPayload; allowedCents: number[] } | null {
   const spec = DRAFTABLE[actionType];
   if (!spec) return null;
@@ -115,7 +117,7 @@ export function draftPayload(
     payload: {
       channel: spec.channel,
       to: facts.merchant ?? spec.recipient,
-      request: spec.request,
+      request: request ?? spec.request,
       facts,
       charges: spec.charges ? input.charges : [],
       placeholders: PLACEHOLDERS,
@@ -164,9 +166,9 @@ const MAX_BODY = 2000;
 export async function draftMessage(
   actionType: ActionType,
   finding: FindingForDraft,
-  { client = anthropic } = {},
+  { client = anthropic, request }: { client?: typeof anthropic; request?: string } = {},
 ): Promise<DraftResult | null> {
-  const prepared = draftPayload(actionType, finding);
+  const prepared = draftPayload(actionType, finding, { request });
   if (!prepared) return null;
   const { payload, allowedCents } = prepared;
   const template = templateDraft(payload);

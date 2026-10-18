@@ -3,12 +3,13 @@ import type { ActionType } from "@/generated/prisma/client";
 // The action agent (spec step 51): which approved actions it works itself, and how
 // patiently. Everything else stays with the team.
 
-// Actions the agent works by email. More are added as their playbooks are proven
-// (step 53 adds cancellations).
+// Actions the agent works by email (or, for some cancellations, with a link for the
+// person). Bill negotiation needs a call (step 54).
 export const AGENT_ACTION_TYPES: readonly ActionType[] = [
   "request_refund",
   "fight_price_increase",
   "recover_bank_fees",
+  "cancel_subscription",
 ];
 
 // Days to wait for a reply before following up, and how many follow-ups before passing
@@ -28,3 +29,24 @@ export const AGENT_SIGNATURE = "Jane, an assistant writing for a customer";
 export const REFUND_MATCH_MIN_SHARE = 0.5;
 // Actions whose success is money coming back.
 export const REFUND_ACTION_TYPES: readonly ActionType[] = ["request_refund", "recover_bank_fees"];
+
+// Cancellations (spec step 53). A cancellation is confirmed by the company's written reply,
+// or, when the person cancels on the company's own page, by no charge arriving this many
+// days after the next one was due.
+export const CANCEL_CONFIRM_GRACE_DAYS = 5;
+// When we can't tell how often it charged, wait this long instead.
+export const CANCEL_CONFIRM_DEFAULT_DAYS = 35;
+
+// What the agent asks for when the person changed the plan item (src/config/plan.ts).
+export const AGENT_REQUESTS: Record<string, Record<string, string | null>> = {
+  cancel_subscription: {
+    cancel: null,
+    downgrade:
+      "move the account to the cheapest plan with the same service instead of cancelling, and confirm the change in writing",
+  },
+  fight_price_increase: {
+    old_price: null,
+    loyalty_discount: "offer a loyalty discount on the current price",
+    cheaper_plan: "move the account to a cheaper plan with the same service",
+  },
+};

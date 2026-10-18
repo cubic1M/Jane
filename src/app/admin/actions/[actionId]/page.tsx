@@ -98,11 +98,14 @@ async function ActionDetail({
         )}
         <p className="text-sm text-zinc-600 dark:text-zinc-400">
           Approved from{" "}
-          {action.decision.source === "plan"
-            ? "Jane's plan"
-            : action.decision.source === "rule"
-              ? "a standing rule"
-              : "the card"}
+          {
+            {
+              card: "the card",
+              plan: "Jane's plan",
+              rule: "a standing rule",
+              auto: "an automatic follow-up (a charge after a cancellation they approved)",
+            }[action.decision.source]
+          }
           .
         </p>
         {card.referralDisclosure && <p className="text-sm">{card.referralDisclosure}</p>}
