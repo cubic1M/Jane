@@ -652,23 +652,28 @@ model Alert {
 // support links, typical prices). Never personal data, so no user_id. Edited at
 // /admin/merchants; seeded from src/config/merchant-seed.ts.
 model Merchant {
-  id                  String    @id @default(cuid())
+  id                     String    @id @default(cuid())
   // Normalized merchant key (src/data-sources/merchant.ts), lower case.
-  key                 String    @unique
-  name                String
-  aliases             String[]  @default([])
+  key                    String    @unique
+  name                   String
+  aliases                String[]  @default([])
   // Plaid PFC detailed category, used when a transaction has none.
-  category            String?
-  cancelUrl           String?   @map("cancel_url")
-  supportUrl          String?   @map("support_url")
-  supportPhone        String?   @map("support_phone")
+  category               String?
+  cancelUrl              String?   @map("cancel_url")
+  supportUrl             String?   @map("support_url")
+  supportPhone           String?   @map("support_phone")
   // Where the action agent writes. Added by the team; never guessed.
-  supportEmail        String?   @map("support_email")
-  typicalMonthlyCents Int?      @map("typical_monthly_cents")
+  supportEmail           String?   @map("support_email")
+  // A support address the agent found on the company's own site (spec step 64), with the
+  // page it came from. The agent doesn't use it until the team confirms it.
+  suggestedSupportEmail  String?   @map("suggested_support_email")
+  suggestedSupportSource String?   @map("suggested_support_source")
+  suggestedAt            DateTime? @map("suggested_at") @db.Timestamptz(3)
+  typicalMonthlyCents    Int?      @map("typical_monthly_cents")
   // When someone on the team last checked the row; null until then.
-  reviewedAt          DateTime? @map("reviewed_at") @db.Timestamptz(3)
-  createdAt           DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
-  updatedAt           DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
+  reviewedAt             DateTime? @map("reviewed_at") @db.Timestamptz(3)
+  createdAt              DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt              DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
 
   @@map("merchants")
 }

@@ -33,6 +33,7 @@ import { enqueueJob, runJob } from "@/lib/jobs";
 import { merchantFor } from "@/lib/merchants";
 import { agentFromAddress, mailMode, replyAddress, sendAgentMail, tokenFromAddress } from "./mail";
 import { readReply, type ReplyReading } from "./read-reply";
+import { findSupportContact } from "./find-contact";
 import { composeAnswer, whatIsAsked, type KnownFacts } from "./auto-answer";
 import { simulatedAddress } from "./simulated-company";
 import { isCallAction, startCall } from "@/lib/voice/calls";
@@ -55,6 +56,10 @@ const DAY_MS = 24 * 60 * 60 * 1000;
 const WORKABLE: readonly ActionStatus[] = ["queued", "in_progress", "waiting_on_user"];
 
 export const isAgentAction = (type: ActionType) => AGENT_ACTION_TYPES.includes(type);
+
+// The start of the hand-off reason when a company has no support email, so the actions can
+// be picked up again once the team adds one.
+export const NO_SUPPORT_EMAIL = "No support email in the merchant directory for";
 
 // Called when an action is approved: hands it to the agent and queues its first step.
 // Returns the job, so a request can run it straight away.
@@ -375,9 +380,11 @@ export async function agentStep(
     await handOff(
       userId,
       action,
-      `No support email for ${merchantOf(action)} in the merchant directory. Add one on /admin/merchants and the agent takes it from there, or contact them by hand.`,
+      `${NO_SUPPORT_EMAIL} ${merchantOf(action)}. Add or confirm one on /admin/merchants and the agent takes it from there, or contact them by hand.`,
       options,
     );
+    // Jane looks for one on the company's own site, for the team to confirm (step 64).
+    await enqueueJob("find_support_contact", { userId, actionId: action.id }, { client, now });
     return "handed_off";
   }
 
@@ -951,4 +958,47 @@ export async function refundChargesAfterCancel(
     }
   }
   return approved;
+}
+
+// The job behind a missing support email: looks it up on the company's own site.
+export async function lookUpSupportFor(
+  userId: string,
+  actionId: string,
+  { client = defaultClient }: Pick<Options, "client"> = {},
+): Promise<void> {
+  const action = await loadAction(userId, actionId, client);
+  if (!action?.company) return;
+  const row = await merchantFor(normalizeAlias(action.company), { client });
+  if (row) await findSupportContact(row.id, { client });
+}
+
+// Once the team adds or confirms a merchant's support email, the agent picks up the
+// actions it had passed on for lack of one. Returns how many.
+export async function resumeForMerchant(
+  merchantName: string,
+  { client = defaultClient, now = new Date() }: Pick<Options, "client" | "now"> = {},
+): Promise<number> {
+  // A system lookup across people: ids only; each is then scoped.
+  const waiting = await client.action.findMany({
+    where: {
+      agentState: "handed_off",
+      status: "queued",
+      handoffReason: { startsWith: `${NO_SUPPORT_EMAIL} ${merchantName}.` },
+    },
+    select: { id: true, userId: true },
+  });
+  for (const { id, userId } of waiting) {
+    await scopedFor(userId, client).actions.updateMany({
+      where: { id, agentState: "handed_off" },
+      data: { agentState: "working", handoffReason: null, agentNextAt: now },
+    });
+    await note(
+      userId,
+      id,
+      `${merchantName}'s support email was added: Jane is taking it back.`,
+      client,
+    );
+    await enqueueJob("agent_step", { userId, actionId: id }, { client, now });
+  }
+  return waiting.length;
 }
