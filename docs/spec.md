@@ -1001,6 +1001,118 @@ Phases A–E find money and fix it. Phase G helps people plan: their own categor
 > Acceptance criteria:
 > - Every figure matches the insights and saved-to-date numbers for that year
 
+## Phase I: everything in one place (steps 36–40)
+
+Phase I brings in the rest of a person's money picture without new regulated work: every subscription and renewal, more ways to get data in, a calendar they already use, and a weekly email that reflects their plans.
+
+### Step 36: Subscriptions and renewals
+
+> Read CLAUDE.md. One list of everything that renews.
+>
+> Build:
+> 1. /subscriptions: every recurring charge we see, with frequency, last and next
+>    charge, and yearly cost; quick links to the card or do-it-yourself kit.
+> 2. A "renews soon" alert a configured number of days before a yearly or
+>    quarterly renewal, once per renewal.
+>
+> Acceptance criteria:
+> - Totals match the subscription findings and forecast
+> - One alert per renewal date; monthly charges never trigger it
+
+### Step 37: OFX and QFX import
+
+> Read CLAUDE.md. Let people bring files from any bank.
+>
+> Build:
+> 1. Import .ofx and .qfx (the formats most banks offer besides CSV) through the
+>    same DataSource interface and dedupe rules as CSV.
+> 2. Parsed in memory, never stored raw (same rule as CSV).
+>
+> Acceptance criteria:
+> - Fixture files from two OFX dialects (SGML 1.x and XML 2.x) import correctly
+> - Re-importing the same file adds nothing
+
+### Step 38: Money calendar feed
+
+> Read CLAUDE.md. Put bills and paydays in the calendar the person already uses.
+>
+> Build:
+> 1. A private calendar feed (iCalendar) of expected bills, paydays, goal dates and
+>    renewals, behind a secret link the person can reset.
+> 2. Settings: copy the link, reset it, turn it off.
+>
+> Acceptance criteria:
+> - The feed holds no account names or numbers, and an old link stops working the
+>   moment it's reset
+> - Events are stable across refreshes (same UID for the same bill)
+
+### Step 39: A weekly email about your plans
+
+> Read CLAUDE.md. Make the digest reflect budgets, goals and net worth.
+>
+> Build:
+> 1. Digest sections for budgets (over or close), goals (progress since last
+>    week) and net worth change, only when the person uses those features.
+> 2. Still never sent empty.
+>
+> Acceptance criteria:
+> - Each section appears only with data, and its numbers match the pages
+
+### Step 40: Smarter merchant directory
+
+> Read CLAUDE.md. Learn from what the team does.
+>
+> Build:
+> 1. Per merchant: how often cancellations and refunds succeed and how long they
+>    take, from finished actions (aggregated, no personal data).
+> 2. Shown to the team on actions and to people on do-it-yourself kits ("usually
+>    takes about 10 minutes") once there are enough cases.
+>
+> Acceptance criteria:
+> - Nothing is shown below a configured minimum number of cases
+> - The aggregates hold no user ids
+
+## Phase J: running the service (steps 41–43)
+
+### Step 41: Team workload
+
+> Read CLAUDE.md. Help the concierge team share the queue.
+>
+> Build:
+> 1. Assign actions to team members, filter by assignee, and see each person's
+>    open work and overdue items.
+> 2. Saved replies for common updates to the person.
+>
+> Acceptance criteria:
+> - Assignment and saved replies are audit-logged
+> - Overdue uses the same business-day rule as the queue
+
+### Step 42: Health checks
+
+> Read CLAUDE.md. Know when something quietly stops.
+>
+> Build:
+> 1. Record each cron run and Plaid sync; /admin/health shows the last run of
+>    each, failed jobs and error counts.
+> 2. Email the team when a daily job hasn't run for over a day.
+>
+> Acceptance criteria:
+> - A missed run is reported once, not every hour
+> - Health pages are admin-only and audit-logged
+
+### Step 43: Data retention
+
+> Read CLAUDE.md. Keep only what's needed.
+>
+> Build:
+> 1. Scheduled deletion of old analytics events, rate-limit rows, finished jobs and
+>    stale sessions, by periods in config.
+> 2. The privacy policy's retention section generated from the same config.
+>
+> Acceptance criteria:
+> - Each kind of data is removed after its period, and nothing younger is touched
+> - The policy text and the config can't disagree (test)
+
 ## Phase F: regulated capabilities (plan only)
 
 Each of these needs licensing, a regulated partner, or legal review. Don't build until counsel signs off; when they do, each becomes its own phase of steps.
