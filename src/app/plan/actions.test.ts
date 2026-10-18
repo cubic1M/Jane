@@ -15,6 +15,10 @@ vi.mock("@/lib/session", () => ({
 }));
 vi.mock("@/lib/plan", () => ({ answerPlanItem: vi.fn(), yesToAll: vi.fn() }));
 vi.mock("@/lib/standing-rules", () => ({ undoRuleApproval: vi.fn() }));
+vi.mock("@/lib/proposals", () => {
+  class ProposalError extends Error {}
+  return { ProposalError, answerProposal: vi.fn() };
+});
 vi.mock("@/lib/decisions", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/lib/decisions")>()),
   undoDecision: vi.fn(),
@@ -23,7 +27,8 @@ vi.mock("@/lib/decisions", async (importOriginal) => ({
 import { undoDecision } from "@/lib/decisions";
 import { answerPlanItem, yesToAll } from "@/lib/plan";
 import { undoRuleApproval } from "@/lib/standing-rules";
-import { answerAll, answerItem, undoItem, undoRule } from "./actions";
+import { ProposalError, answerProposal } from "@/lib/proposals";
+import { answerAll, answerItem, answerSetup, undoItem, undoRule } from "./actions";
 
 const HASH = "a".repeat(64);
 const form = (fields: Record<string, string | string[]>) => {
@@ -109,5 +114,21 @@ describe("plan actions", () => {
   it("takes back a rule's approval for the signed-in person", async () => {
     expect(await undoRule(null, form({ decisionId: "d5" }))).toEqual({ kind: "undone" });
     expect(undoRuleApproval).toHaveBeenCalledWith("u1", "d5");
+  });
+
+  it("answers a set-up proposal with the person's changes", async () => {
+    expect(
+      await answerSetup(null, form({ key: "budget:Food and drink", choice: "yes", amount: "400" })),
+    ).toMatchObject({ ok: true });
+    expect(answerProposal).toHaveBeenCalledWith("u1", "budget:Food and drink", true, {
+      amount: "400",
+      date: "",
+      detailed: "",
+    });
+    vi.mocked(answerProposal).mockRejectedValueOnce(new ProposalError("Enter a monthly amount."));
+    expect(await answerSetup(null, form({ key: "x", choice: "yes" }))).toEqual({
+      ok: false,
+      message: "Enter a monthly amount.",
+    });
   });
 });

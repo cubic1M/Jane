@@ -78,6 +78,14 @@ enum AgentDirection {
   @@map("agent_direction")
 }
 
+enum ProposalStatus {
+  open
+  accepted
+  dismissed
+
+  @@map("proposal_status")
+}
+
 enum DecisionSource {
   card
   plan
@@ -229,6 +237,7 @@ model User {
   mfaBackupCodes      MfaBackupCode[]
   standingRules       StandingRule[]
   agentMessages       AgentMessage[]
+  planProposals       PlanProposal[]
   sessions            Session[]
   plaidItems          PlaidItem[]
   accounts            Account[]
@@ -1116,4 +1125,24 @@ model AgentMessage {
   @@index([actionId, createdAt])
   @@index([userId])
   @@map("agent_messages")
+}
+
+// Set-up Jane proposes from the person's own numbers (spec step 55): a budget, an
+// emergency-fund goal, a category for a merchant. Nothing is created until they say yes;
+// a no is kept so the same proposal doesn't come back.
+model PlanProposal {
+  id         String         @id @default(cuid())
+  userId     String         @map("user_id")
+  // e.g. "budget:Food and drink", "goal:emergency_fund", "category:canva".
+  key        String
+  kind       String
+  payload    Json
+  status     ProposalStatus @default(open)
+  createdAt  DateTime       @default(now()) @map("created_at") @db.Timestamptz(3)
+  answeredAt DateTime?      @map("answered_at") @db.Timestamptz(3)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, key])
+  @@map("plan_proposals")
 }

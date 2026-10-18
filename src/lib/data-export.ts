@@ -33,6 +33,7 @@ export async function exportUserData(
     backupCodesLeft,
     standingRules,
     agentMessages,
+    planProposals,
     budgets,
     savingsGoals,
     balanceSnapshots,
@@ -240,6 +241,16 @@ export async function exportUserData(
       },
       orderBy: { createdAt: "asc" },
     }),
+    db.planProposals.findMany({
+      select: {
+        key: true,
+        kind: true,
+        payload: true,
+        status: true,
+        createdAt: true,
+        answeredAt: true,
+      },
+    }),
     db.budgets.findMany({ select: { category: true, amountCents: true, createdAt: true } }),
     db.savingsGoals.findMany({
       select: {
@@ -284,6 +295,7 @@ export async function exportUserData(
     backupCodesLeft,
     standingRules,
     agentMessages,
+    planProposals,
     budgets,
     savingsGoals,
     balanceSnapshots,

@@ -6,6 +6,7 @@ import { runAgentNow } from "@/lib/agent/run";
 import { PLAN_OPTIONS } from "@/config/plan";
 import { DecisionError, undoDecision } from "@/lib/decisions";
 import { answerPlanItem, yesToAll } from "@/lib/plan";
+import { ProposalError, answerProposal } from "@/lib/proposals";
 import { undoRuleApproval } from "@/lib/standing-rules";
 import { requireUser } from "@/lib/session";
 import type { ActionType } from "@/generated/prisma/client";
@@ -85,4 +86,30 @@ export async function undoRule(_previous: ItemState, formData: FormData): Promis
     return { kind: "error", message: error.message };
   }
   return { kind: "undone" };
+}
+
+export type ProposalState = { ok: boolean; message: string } | null;
+
+// Yes, no, or yes with changes on a set-up proposal.
+export async function answerSetup(
+  _previous: ProposalState,
+  formData: FormData,
+): Promise<ProposalState> {
+  const user = await requireUser();
+  const accept = formData.get("choice") === "yes";
+  const text = (name: string) => String(formData.get(name) ?? "");
+  try {
+    await answerProposal(user.id, text("key"), accept, {
+      amount: text("amount"),
+      date: text("date"),
+      detailed: text("detailed"),
+    });
+  } catch (error) {
+    if (error instanceof ProposalError) return { ok: false, message: error.message };
+    throw error;
+  }
+  return {
+    ok: true,
+    message: accept ? "Done. It's set up." : "Skipped. Jane won't suggest it again.",
+  };
 }
