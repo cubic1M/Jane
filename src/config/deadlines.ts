@@ -58,8 +58,10 @@ export const DEADLINE_REMINDER_DAYS = 3;
 // Return windows get more notice: there's a trip to the shop to fit in.
 export const RETURN_REMINDER_DAYS = 5;
 
-// Kinds reminded about by another alert already, so deadline_soon leaves them out:
-// renewals have "Renews soon" and payments "Bill due soon".
+// Kinds reminded about by another alert already, so deadline_soon leaves them out when Jane
+// found them in the transactions or loans: renewals have "Renews soon" and payments "Bill
+// due soon". A renewal date from an uploaded policy has no other reminder, so it keeps this
+// one.
 export const DEADLINE_KINDS_REMINDED_ELSEWHERE: readonly string[] = ["renewal", "payment"];
 
 // Longest title and note for a deadline the person types in.

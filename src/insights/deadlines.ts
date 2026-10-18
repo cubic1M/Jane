@@ -214,6 +214,54 @@ export function paymentDeadlines(accounts: DebtAccount[], asOf: string): Deadlin
   );
 }
 
+// A date read from an uploaded document (spec step 68's documentDates).
+export type DocumentDate = {
+  documentId: string;
+  title: string;
+  // YYYY-MM-DD.
+  date: string;
+  what: "renewal" | "warranty_end" | "return_window";
+};
+
+const DOCUMENT_DEADLINES: Record<
+  DocumentDate["what"],
+  { kind: DeadlineKind; title: (name: string) => string; detail: string }
+> = {
+  renewal: {
+    kind: "renewal",
+    title: (name) => `${name} renews`,
+    detail: "From the policy you uploaded. A good time to compare prices before it renews.",
+  },
+  warranty_end: {
+    kind: "warranty",
+    title: (name) => `${name} warranty ends`,
+    detail: "From the warranty you uploaded. Get anything covered looked at before then.",
+  },
+  return_window: {
+    kind: "return",
+    title: (name) => `Return window for ${name}`,
+    detail:
+      "From the receipt you uploaded. Most shops take returns for about 30 days; the receipt has the exact date.",
+  },
+};
+
+// Dates from the person's uploaded policies, warranties and receipts.
+export function documentDeadlines(dates: DocumentDate[]): Deadline[] {
+  return dates.map((d): Deadline => {
+    const shape = DOCUMENT_DEADLINES[d.what];
+    return {
+      key: `document:${d.documentId}:${d.what}:${d.date}`,
+      title: shape.title(d.title),
+      date: d.date,
+      kind: shape.kind,
+      source: "documents",
+      amountCents: null,
+      href: "/documents",
+      detail: shape.detail,
+    };
+  });
+}
+
 export type EnteredDeadline = {
   id: string;
   title: string;
@@ -290,10 +338,11 @@ export const reminderDays = (kind: DeadlineKind) =>
 
 // A deadline_soon reminder for each deadline coming up within its reminder days, keyed by
 // the deadline, so it's raised once (the alerts table's unique index). Renewals and
-// payments are left out: "Renews soon" and "Bill due soon" already remind about them.
+// payments Jane found in the accounts are left out: "Renews soon" and "Bill due soon"
+// already remind about them.
 export function deadlineAlerts(deadlines: Deadline[], asOf: string): AlertCandidate[] {
   return deadlines
-    .filter((d) => !DEADLINE_KINDS_REMINDED_ELSEWHERE.includes(d.kind))
+    .filter((d) => d.source === "documents" || !DEADLINE_KINDS_REMINDED_ELSEWHERE.includes(d.kind))
     .filter((d) => {
       const days = daysBetween(asOf, d.date);
       return days >= 0 && days <= reminderDays(d.kind);

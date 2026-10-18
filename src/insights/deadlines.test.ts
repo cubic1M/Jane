@@ -14,6 +14,7 @@ import { addDays } from "@/detection/units";
 import type { DebtAccount } from "./loans";
 import {
   deadlineAlerts,
+  documentDeadlines,
   dueIn,
   enteredDeadlines,
   groupDeadlines,
@@ -272,6 +273,33 @@ describe("hand-entered", () => {
         entryId: "d1",
       },
     ]);
+  });
+});
+
+describe("uploaded documents", () => {
+  const dates = [
+    { documentId: "doc1", title: "GEICO car insurance", date: "2026-11-01", what: "renewal" },
+    { documentId: "doc2", title: "Dyson", date: "2026-12-01", what: "warranty_end" },
+    { documentId: "doc3", title: "Best Buy", date: "2026-10-30", what: "return_window" },
+  ] as const;
+
+  it("turns each document date into a deadline that links to the documents", () => {
+    expect(documentDeadlines([...dates])).toEqual([
+      expect.objectContaining({
+        key: "document:doc1:renewal:2026-11-01",
+        title: "GEICO car insurance renews",
+        kind: "renewal",
+        source: "documents",
+        href: "/documents",
+      }),
+      expect.objectContaining({ title: "Dyson warranty ends", kind: "warranty" }),
+      expect.objectContaining({ title: "Return window for Best Buy", kind: "return" }),
+    ]);
+  });
+
+  it("reminds about a policy renewal, which has no other reminder", () => {
+    const [renewal] = documentDeadlines([{ ...dates[0], date: addDays(AS_OF, 2) }]);
+    expect(deadlineAlerts([renewal], AS_OF).map((a) => a.key)).toEqual([renewal.key]);
   });
 });
 

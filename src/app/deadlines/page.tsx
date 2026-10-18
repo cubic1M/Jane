@@ -47,11 +47,13 @@ function Row({ deadline, today }: { deadline: Deadline; today: string }) {
         )}
         {deadline.href && (
           <Link href={deadline.href} className={LINK}>
-            {deadline.kind === "payment"
-              ? "See the loan"
-              : deadline.kind === "renewal"
-                ? "See subscriptions"
-                : "See the charge"}
+            {deadline.source === "documents"
+              ? "See your documents"
+              : deadline.kind === "payment"
+                ? "See the loan"
+                : deadline.kind === "renewal"
+                  ? "See subscriptions"
+                  : "See the charge"}
           </Link>
         )}
         {deadline.entryId && (
