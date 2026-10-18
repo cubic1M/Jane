@@ -33,7 +33,10 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     // The beta is invite-only: new accounts need a redeemed invite code.
     signIn: allowSignIn,
     session({ session, user }) {
-      return { ...session, user: { ...session.user, id: user.id, role: user.role } };
+      return {
+        ...session,
+        user: { ...session.user, id: user.id, role: user.role, termsVersion: user.termsVersion },
+      };
     },
   },
   events: {

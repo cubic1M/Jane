@@ -12,6 +12,7 @@ function toAdapterUser(user: User): AdapterUser {
     name: user.name,
     image: user.image,
     role: user.role,
+    termsVersion: user.termsVersion,
   };
 }
 

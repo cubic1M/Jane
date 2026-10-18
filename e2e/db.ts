@@ -1,4 +1,5 @@
 import { Client } from "pg";
+import { TERMS_VERSION } from "../src/config/legal";
 
 // Signed-in end-to-end tests write to a database, so they only run when
 // E2E_DATABASE_URL points at a scratch one. Never the live database.
@@ -15,7 +16,10 @@ if (E2E_DATABASE_URL && /neon\.tech/.test(E2E_DATABASE_URL)) {
 // by default, so CSV import is open to them.
 export async function signedInUser(
   role: "admin" | "user" = "admin",
-  { mfa = true }: { mfa?: boolean } = {},
+  {
+    mfa = true,
+    termsVersion = TERMS_VERSION,
+  }: { mfa?: boolean; termsVersion?: string | null } = {},
 ): Promise<{ userId: string; sessionToken: string }> {
   const id = crypto.randomUUID().replaceAll("-", "");
   const userId = `e2e${id}`;
@@ -24,8 +28,9 @@ export async function signedInUser(
   await client.connect();
   try {
     await client.query(
-      `INSERT INTO users (id, email, role, updated_at) VALUES ($1, $2, $3, now())`,
-      [userId, `${userId}@example.test`, role],
+      `INSERT INTO users (id, email, role, terms_version, terms_accepted_at, updated_at)
+       VALUES ($1, $2, $3, $4, now(), now())`,
+      [userId, `${userId}@example.test`, role, termsVersion],
     );
     await client.query(
       // Admins get a session that has already passed two-factor; e2e/mfa.spec.ts covers

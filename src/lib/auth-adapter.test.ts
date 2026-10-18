@@ -10,6 +10,7 @@ const DB_USER = {
   name: "Ada",
   image: null,
   role: "user",
+  termsVersion: "2026-10-18",
   createdAt: new Date(),
   updatedAt: new Date(),
   deletedAt: null,
@@ -22,6 +23,7 @@ const ADAPTER_USER = {
   name: "Ada",
   image: null,
   role: "user",
+  termsVersion: "2026-10-18",
 };
 
 const EXPIRES = new Date("2099-01-01T00:00:00Z");
@@ -60,6 +62,7 @@ describe("createAuthAdapter", () => {
       emailVerified: null,
       name: "Ada",
       role: "admin",
+      termsVersion: null,
     });
 
     expect(client.user.create).toHaveBeenCalledWith({

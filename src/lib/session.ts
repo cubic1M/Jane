@@ -3,6 +3,7 @@ import { cookies } from "next/headers";
 import { notFound, redirect } from "next/navigation";
 import { connection } from "next/server";
 import { auth } from "@/auth";
+import { TERMS_VERSION } from "@/config/legal";
 import { adminSessionState, sessionTokenFrom } from "@/lib/admin-gate";
 
 export type SessionUser = Session["user"];
@@ -18,9 +19,11 @@ export async function getCurrentUser(): Promise<SessionUser | null> {
   return session?.user ?? null;
 }
 
+// Signed in and on the current Terms version; otherwise sign in, or accept them once.
 export async function requireUser(): Promise<SessionUser> {
   const user = await getCurrentUser();
   if (!user) redirect("/login");
+  if (user.termsVersion !== TERMS_VERSION) redirect("/terms/accept");
   return user;
 }
 
@@ -29,6 +32,7 @@ export async function requireUser(): Promise<SessionUser> {
 export async function requireAdmin(): Promise<SessionUser> {
   const user = await getCurrentUser();
   if (user?.role !== "admin") notFound();
+  if (user.termsVersion !== TERMS_VERSION) redirect("/terms/accept");
   const state = await adminSessionState(sessionTokenFrom(await cookies()));
   if (state === "needs_mfa") redirect("/mfa");
   if (state !== "verified") notFound();

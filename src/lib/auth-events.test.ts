@@ -6,9 +6,12 @@ vi.mock("next/headers", () => ({ cookies: async () => ({ get: cookieGet }) }));
 vi.mock("@/lib/analytics", () => ({ track: vi.fn() }));
 vi.mock("@/lib/audit", () => ({ logAudit: vi.fn() }));
 vi.mock("@/lib/db", () => ({ db: { user: { updateMany } } }));
+vi.mock("@/lib/terms", () => ({ TERMS_COOKIE: "fc_terms", acceptTerms: vi.fn() }));
 
 import { track } from "@/lib/analytics";
+import { TERMS_VERSION } from "@/config/legal";
 import { logAudit } from "@/lib/audit";
+import { acceptTerms } from "@/lib/terms";
 import { recordSignIn, signInMethod } from "./auth-events";
 
 const USER = { type: "user", id: "user_1" };
@@ -20,6 +23,21 @@ describe("recordSignIn", () => {
     cookieGet.mockReset().mockReturnValue({ value: "anon-123" });
     updateMany.mockReset().mockResolvedValue({ count: 0 });
     vi.unstubAllEnvs();
+  });
+
+  it("records Terms consent given at sign-up in this browser", async () => {
+    vi.mocked(acceptTerms).mockReset();
+    cookieGet.mockImplementation((name: string) =>
+      name === "fc_terms" ? { value: TERMS_VERSION } : { value: "anon-123" },
+    );
+
+    await recordSignIn({
+      user: { id: "user_1" },
+      account: { provider: "resend" },
+      isNewUser: true,
+    });
+
+    expect(acceptTerms).toHaveBeenCalledWith("user_1", { via: "signup" });
   });
 
   it("makes ADMIN_EMAILS admins on sign-in, once", async () => {

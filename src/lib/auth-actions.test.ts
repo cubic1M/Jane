@@ -33,6 +33,7 @@ vi.mock("next/navigation", () => ({
 import { signIn, signOut } from "@/auth";
 import { checkCode, redeemInvite } from "@/lib/invites";
 import { hit } from "@/lib/rate-limit";
+import { TERMS_VERSION } from "@/config/legal";
 import { signInWithEmail, signInWithGoogle, signOutToHome } from "./auth-actions";
 
 function emailForm(email: string) {
@@ -45,6 +46,8 @@ describe("auth actions", () => {
   beforeEach(() => {
     vi.mocked(signIn).mockReset().mockResolvedValue(undefined);
     vi.mocked(signOut).mockReset().mockResolvedValue(undefined);
+    vi.mocked(redeemInvite).mockReset();
+    cookieSet.mockReset();
   });
 
   it("sends a magic link and lands the user on the home path", async () => {
@@ -102,6 +105,7 @@ describe("auth actions", () => {
     vi.mocked(redeemInvite).mockResolvedValueOnce("ok");
     const form = emailForm("new@example.com");
     form.set("invite", "abcd-efgh-jkmn");
+    form.set("consent", "on");
     await signInWithEmail(form).catch(() => {});
     expect(redeemInvite).toHaveBeenCalledWith("abcd-efgh-jkmn", "new@example.com");
     expect(signIn).toHaveBeenCalled();
@@ -112,10 +116,28 @@ describe("auth actions", () => {
     expect(signIn).not.toHaveBeenCalled();
   });
 
+  it("refuses sign-up without agreeing to the Terms, and remembers consent until the account exists", async () => {
+    const form = emailForm("new@example.com");
+    form.set("invite", "abcd-efgh-jkmn");
+
+    await expect(signInWithEmail(form)).rejects.toThrow("redirect:/signup?error=ConsentRequired");
+    expect(redeemInvite).not.toHaveBeenCalled();
+
+    vi.mocked(redeemInvite).mockResolvedValueOnce("ok");
+    form.set("consent", "on");
+    await signInWithEmail(form).catch(() => {});
+    expect(cookieSet).toHaveBeenCalledWith(
+      "fc_terms",
+      TERMS_VERSION,
+      expect.objectContaining({ httpOnly: true }),
+    );
+  });
+
   it("carries a checked invite code through Google sign-up in a cookie", async () => {
     vi.mocked(checkCode).mockResolvedValueOnce("ok");
     const form = new FormData();
     form.set("invite", "abcd efgh jkmn");
+    form.set("consent", "on");
 
     await signInWithGoogle(form).catch(() => {});
 

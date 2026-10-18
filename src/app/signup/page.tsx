@@ -24,7 +24,7 @@ export default function SignupPage({ searchParams }: PageProps<"/signup">) {
         <AuthError searchParams={searchParams} />
       </Suspense>
 
-      <AuthForm submitLabel="Email me a sign-up link" askForInvite />
+      <AuthForm submitLabel="Email me a sign-up link" signUp />
 
       <p className="text-sm text-zinc-600 dark:text-zinc-400">
         Already have an account?{" "}

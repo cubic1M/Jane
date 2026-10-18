@@ -18,6 +18,7 @@ vi.mock("next/server", () => ({ connection: vi.fn(async () => {}) }));
 
 import { connection } from "next/server";
 import { auth } from "@/auth";
+import { TERMS_VERSION } from "@/config/legal";
 import { adminSessionState } from "@/lib/admin-gate";
 import { getCurrentUser, requireAdmin, requireUser } from "./session";
 
@@ -25,7 +26,7 @@ const mockAuth = vi.mocked(auth as unknown as () => Promise<unknown>);
 
 function signedInAs(role: "user" | "admin") {
   mockAuth.mockResolvedValue({
-    user: { id: `${role}_1`, email: `${role}@example.com`, role },
+    user: { id: `${role}_1`, email: `${role}@example.com`, role, termsVersion: TERMS_VERSION },
     expires: "2099-01-01T00:00:00.000Z",
   });
 }
@@ -61,6 +62,15 @@ describe("requireUser", () => {
     signedInAs("user");
 
     await expect(requireUser()).resolves.toMatchObject({ id: "user_1", role: "user" });
+  });
+
+  it("asks for the current Terms once before anything else", async () => {
+    mockAuth.mockResolvedValue({
+      user: { id: "user_1", role: "user", termsVersion: "2020-01-01" },
+      expires: "2099-01-01T00:00:00.000Z",
+    });
+
+    await expect(requireUser()).rejects.toThrow("redirect:/terms/accept");
   });
 
   it("redirects to /login when signed out", async () => {
