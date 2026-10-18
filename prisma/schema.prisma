@@ -167,6 +167,9 @@ model User {
   // Per alert type: "email", "app" or "off". Missing types use the defaults in
   // src/config/alerts.ts.
   alertPrefs                 Json      @default("{}") @map("alert_prefs")
+  // Two-letter US state, chosen on /settings. Referral partners are only offered where
+  // they're allowed; with no state, none are.
+  state                      String?
   // Admin two-factor (TOTP). The secret is AES-256-GCM encrypted like Plaid tokens;
   // mfaEnabledAt is set once the first code checks out.
   mfaSecretEncrypted         String?   @map("mfa_secret_encrypted")
@@ -175,26 +178,27 @@ model User {
   termsVersion               String?   @map("terms_version")
   termsAcceptedAt            DateTime? @map("terms_accepted_at") @db.Timestamptz(3)
 
-  authAccounts       AuthAccount[]
-  sessions           Session[]
-  plaidItems         PlaidItem[]
-  accounts           Account[]
-  transactions       Transaction[]
-  recurringStreams   RecurringStream[]
-  findings           Finding[]
-  decisions          Decision[]
-  actions            Action[]
-  digests            Digest[]
-  membershipIntents  MembershipIntent[]
-  analyticsEvents    AnalyticsEvent[]
-  merchantCategories MerchantCategory[]
-  subscriptionChecks SubscriptionCheck[]
-  alerts             Alert[]
-  askConversations   AskConversation[]
-  askMessages        AskMessage[]
-  householdMember    HouseholdMember?
-  householdInvites   HouseholdInvite[]
-  pushSubscriptions  PushSubscription[]
+  authAccounts        AuthAccount[]
+  sessions            Session[]
+  plaidItems          PlaidItem[]
+  accounts            Account[]
+  transactions        Transaction[]
+  recurringStreams    RecurringStream[]
+  findings            Finding[]
+  decisions           Decision[]
+  actions             Action[]
+  digests             Digest[]
+  membershipIntents   MembershipIntent[]
+  analyticsEvents     AnalyticsEvent[]
+  merchantCategories  MerchantCategory[]
+  subscriptionChecks  SubscriptionCheck[]
+  alerts              Alert[]
+  askConversations    AskConversation[]
+  askMessages         AskMessage[]
+  householdMember     HouseholdMember?
+  householdInvites    HouseholdInvite[]
+  pushSubscriptions   PushSubscription[]
+  referralConversions ReferralConversion[]
 
   @@map("users")
 }
@@ -645,6 +649,47 @@ model PushSubscription {
 
   @@index([userId])
   @@map("push_subscriptions")
+}
+
+// Referral partners the concierge may send people to (an insurance marketplace, a savings
+// account). Each covers one action type, in the states listed, and its disclosure is shown
+// on the card word for word. Turning one off takes effect on the next page load.
+model ReferralPartner {
+  id                        String     @id @default(cuid())
+  key                       String     @unique
+  name                      String
+  actionType                ActionType @map("action_type")
+  disclosure                String
+  referralUrl               String     @map("referral_url")
+  // Two-letter state codes where the partner may be offered.
+  allowedStates             String[]   @default([]) @map("allowed_states")
+  active                    Boolean    @default(false)
+  // What one conversion pays us, for revenue estimates; the real amount is recorded each time.
+  revenuePerConversionCents Int?       @map("revenue_per_conversion_cents")
+  createdAt                 DateTime   @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt                 DateTime   @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  conversions ReferralConversion[]
+
+  @@map("referral_partners")
+}
+
+// A referral that turned into revenue, entered by the team on the action page.
+model ReferralConversion {
+  id          String   @id @default(cuid())
+  partnerId   String   @map("partner_id")
+  userId      String   @map("user_id")
+  actionId    String?  @map("action_id")
+  amountCents Int      @map("amount_cents")
+  source      String   @default("manual")
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  partner ReferralPartner @relation(fields: [partnerId], references: [id], onDelete: Restrict)
+  user    User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([partnerId, createdAt])
+  @@index([userId])
+  @@map("referral_conversions")
 }
 
 // Invite codes keep the beta closed: signing up needs a code with uses left.

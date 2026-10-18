@@ -44,6 +44,8 @@ export type MetricRows = {
   membershipIntents: { userId: string; at: Date }[];
   // Anything showing the person came back: an app event or a digest click.
   activity: { userId: string; at: Date }[];
+  // Referral revenue the team recorded.
+  conversions: { partner: string; amountCents: number; at: Date }[];
 };
 
 export type Window = { start: Date; end: Date };
@@ -156,6 +158,27 @@ export function computeMetrics(rows: MetricRows, w: Window) {
       rate: rate(retained.length, cohort.length),
     },
     minutes,
+    referrals: referralRevenue(rows.conversions, w),
+  };
+}
+
+// Referral revenue recorded in the window, in total and by partner (largest first).
+export function referralRevenue(conversions: MetricRows["conversions"], w: Window) {
+  const inWindow = conversions.filter((c) => within(c.at, w));
+  const byPartner = new Map<string, { conversions: number; cents: number }>();
+  for (const c of inWindow) {
+    const total = byPartner.get(c.partner) ?? { conversions: 0, cents: 0 };
+    byPartner.set(c.partner, {
+      conversions: total.conversions + 1,
+      cents: total.cents + c.amountCents,
+    });
+  }
+  return {
+    conversions: inWindow.length,
+    cents: inWindow.reduce((sum, c) => sum + c.amountCents, 0),
+    byPartner: [...byPartner]
+      .map(([partner, t]) => ({ partner, ...t }))
+      .sort((a, b) => b.cents - a.cents || a.partner.localeCompare(b.partner)),
   };
 }
 
@@ -200,48 +223,61 @@ export function automateNext(actions: MetricRows["actions"]): AutomateRow[] {
 export async function loadMetricRows({
   client = defaultClient,
 }: { client?: PrismaClient } = {}): Promise<MetricRows> {
-  const [users, accounts, findings, opens, decisions, actions, intents, events, digests] =
-    await Promise.all([
-      client.user.findMany({ select: { id: true, createdAt: true } }),
-      client.account.groupBy({ by: ["userId"], _min: { createdAt: true } }),
-      client.finding.findMany({
-        select: {
-          id: true,
-          userId: true,
-          type: true,
-          status: true,
-          confidence: true,
-          annualSavingsCents: true,
-        },
-      }),
-      client.analyticsEvent.findMany({
-        where: { name: "card_opened" },
-        select: { properties: true, createdAt: true },
-      }),
-      client.decision.findMany({
-        where: { undoneAt: null },
-        select: { choice: true, createdAt: true, finding: { select: { type: true } } },
-      }),
-      client.action.findMany({
-        select: {
-          userId: true,
-          type: true,
-          status: true,
-          createdAt: true,
-          completedAt: true,
-          minutesSpent: true,
-        },
-      }),
-      client.membershipIntent.findMany({ select: { userId: true, createdAt: true } }),
-      client.analyticsEvent.findMany({
-        where: { userId: { not: null } },
-        select: { userId: true, createdAt: true },
-      }),
-      client.digest.findMany({
-        where: { openedAt: { not: null } },
-        select: { userId: true, openedAt: true },
-      }),
-    ]);
+  const [
+    users,
+    accounts,
+    findings,
+    opens,
+    decisions,
+    actions,
+    intents,
+    events,
+    digests,
+    conversions,
+  ] = await Promise.all([
+    client.user.findMany({ select: { id: true, createdAt: true } }),
+    client.account.groupBy({ by: ["userId"], _min: { createdAt: true } }),
+    client.finding.findMany({
+      select: {
+        id: true,
+        userId: true,
+        type: true,
+        status: true,
+        confidence: true,
+        annualSavingsCents: true,
+      },
+    }),
+    client.analyticsEvent.findMany({
+      where: { name: "card_opened" },
+      select: { properties: true, createdAt: true },
+    }),
+    client.decision.findMany({
+      where: { undoneAt: null },
+      select: { choice: true, createdAt: true, finding: { select: { type: true } } },
+    }),
+    client.action.findMany({
+      select: {
+        userId: true,
+        type: true,
+        status: true,
+        createdAt: true,
+        completedAt: true,
+        minutesSpent: true,
+      },
+    }),
+    client.membershipIntent.findMany({ select: { userId: true, createdAt: true } }),
+    client.analyticsEvent.findMany({
+      where: { userId: { not: null } },
+      select: { userId: true, createdAt: true },
+    }),
+    client.digest.findMany({
+      where: { openedAt: { not: null } },
+      select: { userId: true, openedAt: true },
+    }),
+    client.referralConversion.findMany({
+      select: { amountCents: true, createdAt: true, partner: { select: { name: true } } },
+    }),
+  ]);
 
   const findingType = new Map(findings.map((f) => [f.id, f.type]));
   return {
@@ -266,6 +302,11 @@ export async function loadMetricRows({
       ...events.flatMap((e) => (e.userId ? [{ userId: e.userId, at: e.createdAt }] : [])),
       ...digests.flatMap((d) => (d.openedAt ? [{ userId: d.userId, at: d.openedAt }] : [])),
     ],
+    conversions: conversions.map((c) => ({
+      partner: c.partner.name,
+      amountCents: c.amountCents,
+      at: c.createdAt,
+    })),
   };
 }
 

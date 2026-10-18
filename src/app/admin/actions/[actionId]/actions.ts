@@ -72,3 +72,45 @@ export async function draftForAction(
   );
   return { ok: true, draft: result.draft, byClaude: result.kind === "llm" };
 }
+
+export type ConversionState = { ok: boolean; message: string } | null;
+
+// Records that a referral on this action turned into revenue.
+export async function recordConversion(
+  _previous: ConversionState,
+  formData: FormData,
+): Promise<ConversionState> {
+  const admin = await requireAdmin();
+  const action = await db.action.findUnique({
+    where: { id: String(formData.get("actionId") ?? "") },
+    select: { id: true, userId: true, decision: { select: { cardSnapshot: true } } },
+  });
+  const key = (action?.decision.cardSnapshot as { referralPartner?: { key?: unknown } } | null)
+    ?.referralPartner?.key;
+  if (!action || typeof key !== "string") {
+    return { ok: false, message: "This action didn't use a referral partner." };
+  }
+  const partner = await db.referralPartner.findUnique({ where: { key }, select: { id: true } });
+  if (!partner) return { ok: false, message: "That partner no longer exists." };
+  const dollars = Number(String(formData.get("amount") ?? "").replace(/[$,]/g, ""));
+  if (!Number.isFinite(dollars) || dollars <= 0) {
+    return { ok: false, message: "Enter the amount the partner paid, like 40." };
+  }
+  const conversion = await db.referralConversion.create({
+    data: {
+      partnerId: partner.id,
+      userId: action.userId,
+      actionId: action.id,
+      amountCents: Math.round(dollars * 100),
+    },
+    select: { id: true, amountCents: true },
+  });
+  await logAudit(
+    { type: "admin", id: admin.id },
+    "referral_conversion_recorded",
+    { type: "action", id: action.id },
+    { partner: key, amount_cents: conversion.amountCents },
+  );
+  revalidatePath(`/admin/actions/${action.id}`);
+  return { ok: true, message: "Recorded." };
+}

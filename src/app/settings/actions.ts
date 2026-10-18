@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { ALERT_TYPES } from "@/config/alerts";
+import { isStateCode } from "@/config/referrals";
 import { TIMEZONES } from "@/config/digest";
 import { runDetection } from "@/detection/engine";
 import { deleteAllData } from "@/lib/account-deletion";
@@ -31,6 +32,19 @@ export async function saveEmailPreferences(
     where: { id: user.id },
     data: { digestEnabled: formData.get("digest") === "on", timezone },
   });
+  revalidatePath("/settings");
+  return { ok: true, message: "Saved." };
+}
+
+// The person's state. Only used to decide which referral partners may be offered.
+export async function saveState(
+  _previous: SettingsState,
+  formData: FormData,
+): Promise<SettingsState> {
+  const user = await requireUser();
+  const state = String(formData.get("state") ?? "");
+  if (state && !isStateCode(state)) return { ok: false, message: "Pick a state from the list." };
+  await db.user.update({ where: { id: user.id }, data: { state: state || null } });
   revalidatePath("/settings");
   return { ok: true, message: "Saved." };
 }

@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 
 vi.mock("@/lib/db", () => ({ db: {} }));
 vi.mock("@/lib/session", () => ({ requireUser: vi.fn() }));
-import { automateNext, computeMetrics, median, type MetricRows } from "./metrics";
+import { automateNext, computeMetrics, median, referralRevenue, type MetricRows } from "./metrics";
 
 const day = (n: number) => new Date(Date.UTC(2026, 9, 1 + n));
 const WINDOW = { start: day(0), end: day(30) };
@@ -16,6 +16,7 @@ const empty = (): MetricRows => ({
   actions: [],
   membershipIntents: [],
   activity: [],
+  conversions: [],
 });
 
 describe("computeMetrics", () => {
@@ -181,5 +182,29 @@ describe("automateNext", () => {
 
   it("is empty with no actions", () => {
     expect(automateNext([])).toEqual([]);
+  });
+});
+
+describe("referralRevenue", () => {
+  it("adds up revenue in the window, by partner", () => {
+    expect(
+      referralRevenue(
+        [
+          { partner: "Example Bank", amountCents: 4_000, at: day(2) },
+          { partner: "Example Bank", amountCents: 4_000, at: day(5) },
+          { partner: "Other Bank", amountCents: 10_000, at: day(6) },
+          // Outside the window.
+          { partner: "Other Bank", amountCents: 99_999, at: day(40) },
+        ],
+        WINDOW,
+      ),
+    ).toEqual({
+      conversions: 3,
+      cents: 18_000,
+      byPartner: [
+        { partner: "Other Bank", conversions: 1, cents: 10_000 },
+        { partner: "Example Bank", conversions: 2, cents: 8_000 },
+      ],
+    });
   });
 });

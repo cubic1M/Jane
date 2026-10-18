@@ -3,7 +3,13 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
 vi.mock("@/lib/session", () => ({ requireAdmin: vi.fn() }));
 vi.mock("@/lib/audit", () => ({ logAudit: vi.fn() }));
-vi.mock("@/lib/db", () => ({ db: { action: { findUnique: vi.fn() } } }));
+vi.mock("@/lib/db", () => ({
+  db: {
+    action: { findUnique: vi.fn() },
+    referralPartner: { findUnique: vi.fn() },
+    referralConversion: { create: vi.fn() },
+  },
+}));
 vi.mock("@/lib/drafts", () => ({ draftMessage: vi.fn() }));
 vi.mock("@/lib/concierge", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/lib/concierge")>()),
@@ -15,7 +21,7 @@ import { requireAdmin } from "@/lib/session";
 import { logAudit } from "@/lib/audit";
 import { db } from "@/lib/db";
 import { draftMessage } from "@/lib/drafts";
-import { draftForAction, updateAction } from "./actions";
+import { draftForAction, recordConversion, updateAction } from "./actions";
 
 function form(fields: Record<string, string>) {
   const data = new FormData();
@@ -128,5 +134,54 @@ describe("draftForAction", () => {
     expect(await draftForAction(null, form({ actionId: "a1" }))).toMatchObject({ ok: false });
     vi.mocked(db.action.findUnique).mockResolvedValue(null);
     expect(await draftForAction(null, form({ actionId: "x" }))).toMatchObject({ ok: false });
+  });
+});
+
+describe("recordConversion", () => {
+  beforeEach(() => {
+    vi.mocked(requireAdmin)
+      .mockReset()
+      .mockResolvedValue({ id: "admin_1", role: "admin" } as never);
+    vi.mocked(db.action.findUnique)
+      .mockReset()
+      .mockResolvedValue({
+        id: "a1",
+        userId: "u1",
+        decision: {
+          cardSnapshot: { referralPartner: { key: "example-bank", name: "Example Bank" } },
+        },
+      } as never);
+    vi.mocked(db.referralPartner.findUnique)
+      .mockReset()
+      .mockResolvedValue({ id: "p1" } as never);
+    vi.mocked(db.referralConversion.create)
+      .mockReset()
+      .mockResolvedValue({ id: "c1", amountCents: 4_000 } as never);
+  });
+
+  it("records revenue against the partner the card used", async () => {
+    expect(await recordConversion(null, form({ actionId: "a1", amount: "$40" }))).toEqual({
+      ok: true,
+      message: "Recorded.",
+    });
+    expect(db.referralConversion.create).toHaveBeenCalledWith({
+      data: { partnerId: "p1", userId: "u1", actionId: "a1", amountCents: 4_000 },
+      select: { id: true, amountCents: true },
+    });
+  });
+
+  it("refuses an action without a partner, or a bad amount", async () => {
+    expect(await recordConversion(null, form({ actionId: "a1", amount: "zero" }))).toMatchObject({
+      ok: false,
+    });
+    vi.mocked(db.action.findUnique).mockResolvedValue({
+      id: "a1",
+      userId: "u1",
+      decision: { cardSnapshot: { referralPartner: null } },
+    } as never);
+    expect(await recordConversion(null, form({ actionId: "a1", amount: "40" }))).toMatchObject({
+      ok: false,
+    });
+    expect(db.referralConversion.create).not.toHaveBeenCalled();
   });
 });

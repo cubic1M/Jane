@@ -1,7 +1,7 @@
 import { createHash } from "node:crypto";
-import { REFERRAL_PARTNERS } from "@/config/referrals";
 import type { ActionType, FindingType } from "@/generated/prisma/client";
 import { explanationFor } from "@/lib/card-text";
+import type { CardPartner } from "@/lib/referrals";
 
 // The decision card: everything the person sees before saying yes or no. The same object
 // is saved word for word with their decision, and its hash makes sure the card they
@@ -21,6 +21,8 @@ export type DecisionCard = {
   giveUp: string;
   alternatives: string[];
   evidence: CardEvidenceRow[];
+  // The referral partner this action uses, if any, and its disclosure word for word.
+  referralPartner: { key: string; name: string } | null;
   referralDisclosure: string | null;
 };
 
@@ -134,7 +136,12 @@ function evidenceRows(type: FindingType, evidence: Json): CardEvidenceRow[] {
   }
 }
 
-export function buildCard(finding: CardFinding): DecisionCard {
+// A card that uses a referral partner always carries the partner's disclosure: a partner
+// without one is refused rather than shown silently.
+export function buildCard(finding: CardFinding, partner: CardPartner | null = null): DecisionCard {
+  if (partner && !partner.disclosure.trim()) {
+    throw new Error(`Referral partner ${partner.key} has no disclosure`);
+  }
   const evidence = obj(finding.evidence);
   const text = explanationFor(finding);
   const actionType = ACTION_FOR_FINDING[finding.type];
@@ -149,7 +156,8 @@ export function buildCard(finding: CardFinding): DecisionCard {
     giveUp: text.giveUp,
     alternatives: text.alternatives,
     evidence: evidenceRows(finding.type, evidence),
-    referralDisclosure: REFERRAL_PARTNERS[actionType]?.disclosure ?? null,
+    referralPartner: partner ? { key: partner.key, name: partner.name } : null,
+    referralDisclosure: partner ? partner.disclosure : null,
   };
 }
 
