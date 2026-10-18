@@ -22,6 +22,7 @@ describe.runIf(url)("scopedFor against a real database", () => {
       data: {
         userId: user.id,
         type: "bank_fees",
+        key: "account:checking",
         title: `${name}'s fees`,
         confidence: "high",
         annualSavingsCents: 3500,
@@ -89,7 +90,13 @@ describe.runIf(url)("scopedFor against a real database", () => {
 
   it("creates rows for the scoped user even if another user id is passed", async () => {
     const created = await scopedFor(alice.userId, client).findings.create({
-      data: { userId: bob.userId, type: "idle_cash", title: "idle", confidence: "low" },
+      data: {
+        userId: bob.userId,
+        type: "idle_cash",
+        key: "depository",
+        title: "idle",
+        confidence: "low",
+      },
     });
 
     expect(created.userId).toBe(alice.userId);

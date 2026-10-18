@@ -22,6 +22,8 @@ describe("categorizeByRules", () => {
     ["NON-CHASE ATM FEE-WITH", "BANK_FEES_ATM_FEES"],
     ["OVERDRAFT FEE FOR A $40.00 ITEM", "BANK_FEES_OVERDRAFT_FEES"],
     ["PURCHASE INTEREST CHARGE", "BANK_FEES_INTEREST_CHARGE"],
+    ["CASH ADVANCE INTEREST CHARGE", "BANK_FEES_CASH_ADVANCE"],
+    ["LATE FEE", "BANK_FEES_LATE_FEES"],
     ["FOREIGN TRANSACTION FEE", "BANK_FEES_FOREIGN_TRANSACTION_FEES"],
     ["Payment to Chase card ending in 1234 10/07", "LOAN_PAYMENTS_CREDIT_CARD_PAYMENT"],
     ["Zelle payment to Sam Example JPM99a1b2c3d", "TRANSFER_OUT_ACCOUNT_TRANSFER"],
@@ -30,7 +32,7 @@ describe("categorizeByRules", () => {
   });
 
   it.each([
-    ["ACME CORP PAYROLL PPD ID: 9876543210", "INCOME_WAGES"],
+    ["ACME CORP PAYROLL PPD ID: 9876543210", "INCOME_SALARY"],
     ["INTEREST PAYMENT", "INCOME_INTEREST_EARNED"],
     ["Zelle payment from Sam Example", "TRANSFER_IN_ACCOUNT_TRANSFER"],
     ["Payment Thank You-Mobile", "LOAN_PAYMENTS_CREDIT_CARD_PAYMENT"],
@@ -74,5 +76,13 @@ describe("taxonomy", () => {
 
   it("rejects names outside the taxonomy", () => {
     expect(categoryOf("SUBSCRIPTIONS")).toBeNull();
+  });
+
+  it("is Plaid's PFCv2 list, including the v2 renames", () => {
+    expect(ALL_DETAILED).toHaveLength(127);
+    expect(categoryOf("INCOME_SALARY")?.primary).toBe("INCOME");
+    expect(categoryOf("LOAN_DISBURSEMENTS_OTHER_DISBURSEMENT")?.primary).toBe("LOAN_DISBURSEMENTS");
+    expect(categoryOf("BANK_FEES_LATE_FEES")?.primary).toBe("BANK_FEES");
+    expect(categoryOf("INCOME_WAGES")).toBeNull();
   });
 });
