@@ -806,6 +806,30 @@ model SavedReply {
   @@map("saved_replies")
 }
 
+// Each run of a scheduled job, for /admin/health. No user data.
+model CronRun {
+  id         String    @id @default(cuid())
+  name       String
+  startedAt  DateTime  @default(now()) @map("started_at") @db.Timestamptz(3)
+  finishedAt DateTime? @map("finished_at") @db.Timestamptz(3)
+  ok         Boolean?
+  // Counts the job returned, or the scrubbed error.
+  summary    Json?
+  error      String?
+
+  @@index([name, startedAt])
+  @@map("cron_runs")
+}
+
+// Problems already emailed to the team, so each outage is reported once. Removed when
+// the job runs again.
+model HealthNotice {
+  key        String   @id
+  reportedAt DateTime @default(now()) @map("reported_at") @db.Timestamptz(3)
+
+  @@map("health_notices")
+}
+
 // Invite codes keep the beta closed: signing up needs a code with uses left.
 model InviteCode {
   id        String    @id @default(cuid())

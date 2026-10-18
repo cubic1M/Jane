@@ -4,6 +4,7 @@ import { db } from "@/lib/db";
 import { plaidEnabled } from "@/lib/plaid/client";
 import { runInactiveCleanup } from "@/lib/plaid/inactive";
 import { ITEM_STATUS, syncItem } from "@/lib/plaid/sync";
+import { recordRun, reportMissedJobs } from "@/lib/health";
 import { runDueJobs } from "@/lib/jobs";
 import { refreshMerchantOutcomes } from "@/lib/merchant-outcomes";
 import { takeSnapshots } from "@/lib/snapshots";
@@ -18,15 +19,29 @@ export async function GET(request: Request) {
   if (!secret || request.headers.get("authorization") !== `Bearer ${secret}`) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+  await checkHealth();
+  return NextResponse.json(await recordRun("plaid-sync", dailyWork));
+}
+
+// Tells the team if another daily job has stopped. Never stops this one.
+async function checkHealth() {
+  try {
+    await reportMissedJobs();
+  } catch (error) {
+    console.error("Health check failed", { error: String(error) });
+  }
+}
+
+async function dailyWork() {
   if (!plaidEnabled()) {
-    return NextResponse.json({
+    return {
       synced: 0,
       failed: 0,
       inactive: null,
       snapshots: await takeSnapshots(),
       jobs: await runDueJobs(),
       outcomes: await refreshMerchantOutcomes(),
-    });
+    };
   }
 
   const cutoff = new Date(Date.now() - STALE_SYNC_HOURS * 60 * 60 * 1000);
@@ -53,12 +68,12 @@ export async function GET(request: Request) {
     }
   }
   const inactive = await runInactiveCleanup();
-  return NextResponse.json({
+  return {
     synced,
     failed,
     inactive,
     snapshots: await takeSnapshots(),
     jobs: await runDueJobs(),
     outcomes: await refreshMerchantOutcomes(),
-  });
+  };
 }

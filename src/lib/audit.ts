@@ -39,7 +39,8 @@ export type AuditEvent =
   | "job_retried"
   | "action_assigned"
   | "saved_reply_saved"
-  | "saved_reply_deleted";
+  | "saved_reply_deleted"
+  | "admin_viewed_health";
 
 export type AuditActor = { type: ActorType; id: string | null };
 

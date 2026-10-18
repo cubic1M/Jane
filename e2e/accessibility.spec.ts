@@ -49,6 +49,7 @@ const ADMIN = [
   "/admin/launch",
   "/admin/jobs",
   "/admin/replies",
+  "/admin/health",
 ];
 
 for (const colorScheme of ["light", "dark"] as const) {
