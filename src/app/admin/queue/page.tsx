@@ -157,6 +157,11 @@ async function Queue({
                     {action.assignee ? ` · ${action.assignee}` : ""}
                     {late ? " · over one business day" : ""}
                   </span>
+                  {action.handoffReason && (
+                    <span className="text-sm text-amber-800">
+                      From the agent: {action.handoffReason}
+                    </span>
+                  )}
                 </Link>
               </li>
             );

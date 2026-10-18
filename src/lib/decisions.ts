@@ -10,6 +10,7 @@ import { logAudit } from "@/lib/audit";
 import { ACTION_FOR_FINDING, CARD_SELECT, buildCard, cardHash } from "@/lib/cards";
 import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
+import { isAgentAction, startAgent } from "@/lib/agent/run";
 import { hasKit } from "@/lib/diy";
 import { PlanOptionsError, parsePlanOptions } from "@/lib/plan-options";
 import { partnerForUser } from "@/lib/referrals";
@@ -47,7 +48,12 @@ export class DecisionError extends Error {
 
 type Options = { client?: PrismaClient; now?: Date };
 
-export type DecisionResult = { decisionId: string; actionId: string | null };
+export type DecisionResult = {
+  decisionId: string;
+  actionId: string | null;
+  // When the action agent took the action: its first job, for the caller to run now.
+  agentJobId?: string;
+};
 
 export type Answer = {
   findingId: string;
@@ -95,7 +101,7 @@ export async function recordDecision(
   }
   const source = answer.source ?? "card";
 
-  const result = await db.transaction(async (tx) => {
+  const result: DecisionResult = await db.transaction(async (tx) => {
     // Claims the finding, so two clicks can't both record an answer.
     const claimed = await tx.findings.updateMany({
       where: { id: finding.id, status: { in: DECIDABLE } },
@@ -138,6 +144,10 @@ export async function recordDecision(
       action_id: result.actionId,
     },
   );
+  // The agent works the action itself when it can (src/lib/agent/run.ts).
+  if (result.actionId && isAgentAction(card.actionType)) {
+    result.agentJobId = await startAgent(userId, result.actionId, { client });
+  }
   const EVENT = { yes: "decision_yes", no: "decision_no", diy: "diy_started" } as const;
   await track(userId, EVENT[answer.choice], {
     finding_type: card.findingType,

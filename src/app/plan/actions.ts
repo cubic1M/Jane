@@ -1,6 +1,8 @@
 "use server";
 
 import { redirect } from "next/navigation";
+import { after } from "next/server";
+import { runAgentNow } from "@/lib/agent/run";
 import { PLAN_OPTIONS } from "@/config/plan";
 import { DecisionError, undoDecision } from "@/lib/decisions";
 import { answerPlanItem, yesToAll } from "@/lib/plan";
@@ -37,6 +39,7 @@ export async function answerItem(_previous: ItemState, formData: FormData): Prom
   // No revalidate here: the item stays on screen showing its answer (and Undo) until the
   // page is next loaded.
   const result = await answerPlanItem(user.id, { findingId, cardHash, choice, options });
+  if (result.ok) after(() => runAgentNow([result.agentJobId]));
   if (!result.ok) return { kind: "error", message: result.message };
   return choice === "yes"
     ? { kind: "approved", changed: options !== undefined }
@@ -65,6 +68,7 @@ export async function answerAll(formData: FormData): Promise<void> {
     .filter(([id, hash]) => ID.test(id ?? "") && HASH.test(hash ?? ""))
     .map(([findingId, cardHash]) => ({ findingId, cardHash }));
   const results = await yesToAll(user.id, items);
+  after(() => runAgentNow(results.map((r) => (r.ok ? r.agentJobId : undefined))));
   const approved = results.filter((r) => r.ok).length;
   redirect(
     `/plan?${new URLSearchParams({ approved: String(approved), skipped: String(results.length - approved) })}`,

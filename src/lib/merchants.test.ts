@@ -14,6 +14,7 @@ const input = (overrides: Partial<MerchantInput> = {}): MerchantInput => ({
   cancelUrl: "https://streamflix.example/account",
   supportUrl: "",
   supportPhone: "1 (800) 555-0100",
+  supportEmail: "",
   typicalMonthly: "12.99",
   reviewed: true,
   ...overrides,
@@ -31,6 +32,7 @@ describe("validateMerchant", () => {
         cancelUrl: "https://streamflix.example/account",
         supportUrl: null,
         supportPhone: "1 (800) 555-0100",
+        supportEmail: null,
         typicalMonthlyCents: 1_299,
       },
     });
@@ -49,6 +51,18 @@ describe("validateMerchant", () => {
     const result = validateMerchant(input(overrides));
     expect(result.ok).toBe(false);
     expect(!result.ok && result.message).toContain(message);
+  });
+
+  it("keeps a company's support email, but never a personal mail address", () => {
+    expect(validateMerchant(input({ supportEmail: " Support@Streamflix.example " }))).toMatchObject(
+      {
+        ok: true,
+        data: { supportEmail: "support@streamflix.example" },
+      },
+    );
+    for (const supportEmail of ["jordan@gmail.com", "help@outlook.com", "not an email"]) {
+      expect(validateMerchant(input({ supportEmail }))).toMatchObject({ ok: false });
+    }
   });
 
   it("refuses anything that looks like a person's email", () => {
@@ -82,12 +96,17 @@ describe("merchants table", () => {
         "key",
         "name",
         "reviewedAt",
+        // The company's own address (validated: never a personal mail service).
+        "supportEmail",
         "supportPhone",
         "supportUrl",
         "typicalMonthlyCents",
         "updatedAt",
       ].sort(),
     );
-    expect(model).not.toMatch(/\bUser\b|userId|email|account/i);
+    // Nothing else mentions users or email: only the company support address above.
+    expect(model.replace(/^\s*supportEmail\b.*$/m, "")).not.toMatch(
+      /\bUser\b|userId|email|account/i,
+    );
   });
 });

@@ -55,6 +55,26 @@ enum Confidence {
   @@map("confidence")
 }
 
+enum AgentState {
+  // Writing or sending.
+  working
+  // Sent; waiting for the company's reply (or the next follow-up).
+  waiting_reply
+  // Passed to the team, with a reason.
+  handed_off
+  // Done, by the agent.
+  finished
+
+  @@map("agent_state")
+}
+
+enum AgentDirection {
+  outbound
+  inbound
+
+  @@map("agent_direction")
+}
+
 enum DecisionSource {
   card
   plan
@@ -202,6 +222,7 @@ model User {
   authAccounts        AuthAccount[]
   mfaBackupCodes      MfaBackupCode[]
   standingRules       StandingRule[]
+  agentMessages       AgentMessage[]
   sessions            Session[]
   plaidItems          PlaidItem[]
   accounts            Account[]
@@ -453,28 +474,39 @@ model Decision {
 }
 
 model Action {
-  id            String       @id @default(cuid())
-  decisionId    String       @unique @map("decision_id")
-  userId        String       @map("user_id")
-  type          ActionType
-  status        ActionStatus @default(queued)
-  assignee      String?
-  notes         String?
+  id             String       @id @default(cuid())
+  decisionId     String       @unique @map("decision_id")
+  userId         String       @map("user_id")
+  type           ActionType
+  status         ActionStatus @default(queued)
+  assignee       String?
+  notes          String?
   // For waiting_on_user: exactly what the person needs to do, shown on /actions.
-  userTodo      String?      @map("user_todo")
+  userTodo       String?      @map("user_todo")
   // Why a failed action failed, so card copy and rules can be fixed. Team-only.
-  failureReason String?      @map("failure_reason")
-  minutesSpent  Int?         @map("minutes_spent")
-  startedAt     DateTime?    @map("started_at") @db.Timestamptz(3)
-  completedAt   DateTime?    @map("completed_at") @db.Timestamptz(3)
-  createdAt     DateTime     @default(now()) @map("created_at") @db.Timestamptz(3)
-  updatedAt     DateTime     @updatedAt @map("updated_at") @db.Timestamptz(3)
+  failureReason  String?      @map("failure_reason")
+  minutesSpent   Int?         @map("minutes_spent")
+  // The action agent (spec step 51). Null for actions the team works by hand.
+  agentState     AgentState?  @map("agent_state")
+  // When the agent next looks at it (a follow-up if the company hasn't replied).
+  agentNextAt    DateTime?    @map("agent_next_at") @db.Timestamptz(3)
+  agentFollowUps Int          @default(0) @map("agent_follow_ups")
+  // Why the agent passed it to the team; shown on the queue.
+  handoffReason  String?      @map("handoff_reason")
+  // The random part of the reply-to address, so a company's reply finds its action.
+  replyToken     String?      @unique @map("reply_token")
+  startedAt      DateTime?    @map("started_at") @db.Timestamptz(3)
+  completedAt    DateTime?    @map("completed_at") @db.Timestamptz(3)
+  createdAt      DateTime     @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt      DateTime     @updatedAt @map("updated_at") @db.Timestamptz(3)
 
-  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  decision Decision @relation(fields: [decisionId], references: [id], onDelete: Cascade)
+  user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  decision      Decision       @relation(fields: [decisionId], references: [id], onDelete: Cascade)
+  agentMessages AgentMessage[]
 
   @@index([userId])
   @@index([status, createdAt])
+  @@index([agentState, agentNextAt])
   @@map("actions")
 }
 
@@ -578,6 +610,8 @@ model Merchant {
   cancelUrl           String?   @map("cancel_url")
   supportUrl          String?   @map("support_url")
   supportPhone        String?   @map("support_phone")
+  // Where the action agent writes. Added by the team; never guessed.
+  supportEmail        String?   @map("support_email")
   typicalMonthlyCents Int?      @map("typical_monthly_cents")
   // When someone on the team last checked the row; null until then.
   reviewedAt          DateTime? @map("reviewed_at") @db.Timestamptz(3)
@@ -1039,4 +1073,28 @@ model StandingRule {
 
   @@unique([userId, key])
   @@map("standing_rules")
+}
+
+// Every email the action agent sent or received for an action: its timeline. Owned by the
+// person the action is for.
+model AgentMessage {
+  id          String         @id @default(cuid())
+  actionId    String         @map("action_id")
+  userId      String         @map("user_id")
+  direction   AgentDirection
+  toAddress   String         @map("to_address")
+  fromAddress String         @map("from_address")
+  subject     String
+  body        String
+  // For a reply: how the agent read it (src/lib/agent/read-reply.ts).
+  outcome     String?
+  summary     String?
+  createdAt   DateTime       @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  action Action @relation(fields: [actionId], references: [id], onDelete: Cascade)
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([actionId, createdAt])
+  @@index([userId])
+  @@map("agent_messages")
 }

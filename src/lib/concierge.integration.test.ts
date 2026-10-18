@@ -41,7 +41,8 @@ describe.runIf(url)("concierge actions against a real database", () => {
 
   let sequence = 0;
   async function approvedAction() {
-    const f = findingOfType("price_increase");
+    // A kind the team always works by hand (the agent's kinds skip the queue).
+    const f = findingOfType("insurance_reshop");
     sequence += 1;
     const finding = await client.finding.create({
       data: {
@@ -168,11 +169,7 @@ describe.runIf(url)("concierge actions against a real database", () => {
   it("lists open actions oldest first and audit-logs every view", async () => {
     const { actionId } = await approvedAction();
 
-    const queue = await listQueue(
-      ADMIN,
-      { type: "fight_price_increase", status: null },
-      { client },
-    );
+    const queue = await listQueue(ADMIN, { type: "insurance_reshop", status: null }, { client });
     expect(queue.map((a) => a.id)).toContain(actionId);
     const created = queue.map((a) => a.createdAt.getTime());
     expect(created).toEqual([...created].sort((a, b) => a - b));

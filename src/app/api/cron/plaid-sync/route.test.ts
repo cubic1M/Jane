@@ -14,6 +14,7 @@ vi.mock("@/lib/health", () => ({
 vi.mock("@/lib/jobs", () => ({
   runDueJobs: vi.fn(async () => ({ done: 1, retried: 0, failed: 0 })),
 }));
+vi.mock("@/lib/agent/run", () => ({ runAgentFollowUps: vi.fn(async () => ({ checked: 0 })) }));
 vi.mock("@/lib/merchant-outcomes", () => ({
   refreshMerchantOutcomes: vi.fn(async () => ({ merchants: 2 })),
 }));
@@ -61,6 +62,7 @@ describe("GET /api/cron/plaid-sync", () => {
       inactive: { warned: 0, removed: 1, failed: 0 },
       snapshots: { saved: 3, removed: 0 },
       jobs: { done: 1, retried: 0, failed: 0 },
+      agent: { checked: 0 },
       outcomes: { merchants: 2 },
       retention: { rateLimits: 4 },
     });
@@ -79,6 +81,7 @@ describe("GET /api/cron/plaid-sync", () => {
       inactive: null,
       snapshots: { saved: 3, removed: 0 },
       jobs: { done: 1, retried: 0, failed: 0 },
+      agent: { checked: 0 },
       outcomes: { merchants: 2 },
       retention: { rateLimits: 4 },
     });

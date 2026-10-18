@@ -6,9 +6,17 @@ type Email = {
   html: string;
   text: string;
   headers?: Record<string, string>;
+  replyTo?: string;
 };
 
-export async function sendEmail({ to, subject, html, text, headers }: Email): Promise<void> {
+export async function sendEmail({
+  to,
+  subject,
+  html,
+  text,
+  headers,
+  replyTo,
+}: Email): Promise<void> {
   const apiKey = process.env.RESEND_API_KEY;
   const from = process.env.EMAIL_FROM;
   if (!apiKey || !from) throw new Error("RESEND_API_KEY and EMAIL_FROM must be set");
@@ -16,7 +24,15 @@ export async function sendEmail({ to, subject, html, text, headers }: Email): Pr
   const response = await fetch(RESEND_ENDPOINT, {
     method: "POST",
     headers: { authorization: `Bearer ${apiKey}`, "content-type": "application/json" },
-    body: JSON.stringify({ from, to, subject, html, text, ...(headers ? { headers } : {}) }),
+    body: JSON.stringify({
+      from,
+      to,
+      subject,
+      html,
+      text,
+      ...(headers ? { headers } : {}),
+      ...(replyTo ? { reply_to: replyTo } : {}),
+    }),
   });
   if (!response.ok) {
     throw new Error(`Resend rejected the email (${response.status}): ${await response.text()}`);

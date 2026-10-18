@@ -1,5 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+// Work after the response (the agent's first step) isn't part of these tests.
+vi.mock("next/server", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("next/server")>()),
+  after: vi.fn(),
+}));
 vi.mock("@/lib/rate-limit", () => ({
   limitOrNull: vi.fn(async () => null),
   hit: vi.fn(async () => ({ ok: true, remaining: 1, retryAfterSeconds: 0 })),

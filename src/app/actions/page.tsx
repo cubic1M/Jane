@@ -8,6 +8,8 @@ import { markOfferShown, offerFor, savedToDate } from "@/lib/membership/service"
 import { formatCents } from "@/lib/money";
 import { requireUser } from "@/lib/session";
 import { MembershipOffer } from "./membership-offer";
+import { AnswerForm } from "./answer-form";
+import { AgentTimeline } from "@/components/agent-timeline";
 import { savingsLine } from "@/lib/savings-text";
 import type { FindingType } from "@/generated/prisma/client";
 
@@ -52,7 +54,21 @@ async function ActionsContent({
       status: true,
       userTodo: true,
       createdAt: true,
+      agentState: true,
       decision: { select: { cardSnapshot: true } },
+      agentMessages: {
+        orderBy: { createdAt: "asc" },
+        select: {
+          id: true,
+          direction: true,
+          toAddress: true,
+          fromAddress: true,
+          subject: true,
+          body: true,
+          summary: true,
+          createdAt: true,
+        },
+      },
     },
     orderBy: [{ createdAt: "desc" }, { id: "asc" }],
   });
@@ -153,7 +169,25 @@ async function ActionsContent({
                     <strong>What we need from you:</strong> {action.userTodo}
                   </p>
                 ) : (
-                  <p className="text-sm text-zinc-600 dark:text-zinc-400">{status.detail}</p>
+                  <p className="text-sm text-zinc-600 dark:text-zinc-400">
+                    {action.status === "in_progress" && action.agentState === "waiting_reply"
+                      ? "Jane wrote to the company and is waiting for their reply."
+                      : status.detail}
+                  </p>
+                )}
+                {/* The company asked a question the agent can't answer: the person can. */}
+                {action.status === "waiting_on_user" && action.agentState === "waiting_reply" && (
+                  <AnswerForm actionId={action.id} />
+                )}
+                {action.agentMessages.length > 0 && (
+                  <details>
+                    <summary className="cursor-pointer text-sm font-medium text-emerald-700">
+                      What Jane sent and heard back ({action.agentMessages.length})
+                    </summary>
+                    <div className="mt-2">
+                      <AgentTimeline messages={action.agentMessages} />
+                    </div>
+                  </details>
                 )}
               </li>
             );

@@ -16,6 +16,7 @@ const EMPTY: MerchantFormValues = {
   cancelUrl: "",
   supportUrl: "",
   supportPhone: "",
+  supportEmail: "",
   typicalMonthly: "",
   reviewed: false,
 };
@@ -70,6 +71,7 @@ async function Merchants() {
                     cancelUrl: m.cancelUrl ?? "",
                     supportUrl: m.supportUrl ?? "",
                     supportPhone: m.supportPhone ?? "",
+                    supportEmail: m.supportEmail ?? "",
                     typicalMonthly:
                       m.typicalMonthlyCents === null
                         ? ""

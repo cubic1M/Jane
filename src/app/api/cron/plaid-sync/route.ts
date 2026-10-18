@@ -5,6 +5,7 @@ import { plaidEnabled } from "@/lib/plaid/client";
 import { runInactiveCleanup } from "@/lib/plaid/inactive";
 import { ITEM_STATUS, syncItem } from "@/lib/plaid/sync";
 import { recordRun, reportMissedJobs } from "@/lib/health";
+import { runAgentFollowUps } from "@/lib/agent/run";
 import { runDueJobs } from "@/lib/jobs";
 import { refreshMerchantOutcomes } from "@/lib/merchant-outcomes";
 import { runRetention } from "@/lib/retention";
@@ -41,6 +42,7 @@ async function dailyWork() {
       inactive: null,
       snapshots: await takeSnapshots(),
       jobs: await runDueJobs(),
+      agent: await runAgentFollowUps(),
       outcomes: await refreshMerchantOutcomes(),
       retention: await runRetention(),
     };
@@ -76,6 +78,7 @@ async function dailyWork() {
     inactive,
     snapshots: await takeSnapshots(),
     jobs: await runDueJobs(),
+    agent: await runAgentFollowUps(),
     outcomes: await refreshMerchantOutcomes(),
     retention: await runRetention(),
   };

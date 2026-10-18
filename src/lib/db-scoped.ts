@@ -108,6 +108,7 @@ export function scopedFor(userId: string, client: PrismaClient = db) {
     checkIns: scoped.checkIn,
     mfaBackupCodes: scoped.mfaBackupCode,
     standingRules: scoped.standingRule,
+    agentMessages: scoped.agentMessage,
   };
 }
 

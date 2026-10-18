@@ -32,6 +32,7 @@ export async function exportUserData(
     pushDevices,
     backupCodesLeft,
     standingRules,
+    agentMessages,
     budgets,
     savingsGoals,
     balanceSnapshots,
@@ -225,6 +226,20 @@ export async function exportUserData(
         updatedAt: true,
       },
     }),
+    // Every email the action agent sent or received for the person's actions.
+    db.agentMessages.findMany({
+      select: {
+        actionId: true,
+        direction: true,
+        toAddress: true,
+        fromAddress: true,
+        subject: true,
+        body: true,
+        summary: true,
+        createdAt: true,
+      },
+      orderBy: { createdAt: "asc" },
+    }),
     db.budgets.findMany({ select: { category: true, amountCents: true, createdAt: true } }),
     db.savingsGoals.findMany({
       select: {
@@ -268,6 +283,7 @@ export async function exportUserData(
     pushDevices,
     backupCodesLeft,
     standingRules,
+    agentMessages,
     budgets,
     savingsGoals,
     balanceSnapshots,
