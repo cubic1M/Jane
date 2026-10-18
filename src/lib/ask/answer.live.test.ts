@@ -1,5 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 
+vi.mock("@/lib/session", () => ({ requireUser: vi.fn() }));
+
 vi.mock("./tools", async (importOriginal) => ({
   ...(await importOriginal<typeof import("./tools")>()),
   runAskTool: vi.fn(async (_userId: string, name: string) =>
