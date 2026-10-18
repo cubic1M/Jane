@@ -132,4 +132,14 @@ describe("renderDigest", () => {
     );
     expect(quiet.text).not.toContain("What Jane did");
   });
+
+  it("offers a one-tap link when there is one", () => {
+    const email = renderDigest(
+      { ...payload, plan: { items: 4 } },
+      { ...LINKS, goAhead: { url: "https://app.example.com/plan/go?token=t", count: 2 } },
+    );
+    expect(email.text).toContain("Go ahead in one tap");
+    expect(email.text).toContain("Go ahead with 2: https://app.example.com/plan/go?token=t");
+    expect(renderDigest(payload, LINKS).text).not.toContain("one tap");
+  });
 });

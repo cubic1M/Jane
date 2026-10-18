@@ -104,6 +104,7 @@ async function ActionDetail({
               plan: "Jane's plan",
               rule: "a standing rule",
               auto: "an automatic follow-up (a charge after a cancellation they approved)",
+              link: "a one-tap link in their email or a notification",
             }[action.decision.source]
           }
           .

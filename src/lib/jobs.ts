@@ -59,10 +59,11 @@ export function backoffMs(attempts: number): number {
 export async function enqueueJob(
   kind: JobKind,
   payload: JobPayload,
-  { client = defaultClient, now = new Date() }: Options = {},
+  // runAt: not before this (e.g. after the time a person has to take something back).
+  { client = defaultClient, now = new Date(), runAt = now }: Options & { runAt?: Date } = {},
 ): Promise<string> {
   const job = await client.job.create({
-    data: { kind, payload, runAt: now, maxAttempts: JOB_MAX_ATTEMPTS },
+    data: { kind, payload, runAt, maxAttempts: JOB_MAX_ATTEMPTS },
     select: { id: true },
   });
   return job.id;

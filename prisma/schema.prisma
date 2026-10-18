@@ -109,6 +109,8 @@ enum DecisionSource {
   // A follow-up Jane starts on its own because of an earlier yes: a refund when a
   // company charges after a cancellation the person approved.
   auto
+  // A one-tap link from the weekly email or a notification (spec step 60).
+  link
 
   @@map("decision_source")
 }
@@ -256,6 +258,7 @@ model User {
   standingRules       StandingRule[]
   agentMessages       AgentMessage[]
   planProposals       PlanProposal[]
+  planLinks           PlanLink[]
   sessions            Session[]
   plaidItems          PlaidItem[]
   accounts            Account[]
@@ -1163,4 +1166,25 @@ model PlanProposal {
 
   @@unique([userId, key])
   @@map("plan_proposals")
+}
+
+// One-tap approval links in the weekly email and notifications (spec step 60): "Go ahead
+// with this week's plan" for no-risk items, without signing in. Only a hash of the token
+// is kept; a link works once, for a week, for that person and those items.
+model PlanLink {
+  id          String    @id @default(cuid())
+  userId      String    @map("user_id")
+  tokenHash   String    @unique @map("token_hash")
+  // The items as they were when the link was made: [{ findingId, cardHash, title }].
+  items       Json
+  // What the link approved, so "Take it back" can undo exactly that.
+  decisionIds String[]  @default([]) @map("decision_ids")
+  expiresAt   DateTime  @map("expires_at") @db.Timestamptz(3)
+  usedAt      DateTime? @map("used_at") @db.Timestamptz(3)
+  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("plan_links")
 }

@@ -15,6 +15,8 @@ export type DigestLinks = {
   netWorth: string;
   settings: string;
   unsubscribe: string;
+  // A one-tap link for this week's no-risk items (spec step 60), when there are any.
+  goAhead?: { url: string; count: number };
 };
 
 function escapeHtml(value: string): string {
@@ -38,6 +40,16 @@ function sections(p: DigestPayload, links: DigestLinks): Section[] {
       heading: "We need something from you",
       items: waiting.map((a) => `${a.title}: ${a.userTodo ?? "see your actions page"}`),
       link: { label: "Open your actions", url: links.actions },
+    });
+  }
+  if (links.goAhead) {
+    const n = links.goAhead.count;
+    out.push({
+      heading: "Go ahead in one tap",
+      items: [
+        `Jane is ready to go ahead with ${n} ${n === 1 ? "thing" : "things"} that can't cost you anything. You can take it back for an hour.`,
+      ],
+      link: { label: `Go ahead with ${n}`, url: links.goAhead.url },
     });
   }
   if (p.plan && p.plan.items > 0) {

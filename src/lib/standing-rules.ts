@@ -224,11 +224,23 @@ export async function recentRuleApprovals(
 export async function undoRuleApproval(
   userId: string,
   decisionId: string,
+  options: Options = {},
+): Promise<void> {
+  return undoApproval(userId, decisionId, "rule", RULE_UNDO_HOURS, options);
+}
+
+// Takes back an approval made by a rule or a one-tap link, within its window and before
+// the work starts.
+export async function undoApproval(
+  userId: string,
+  decisionId: string,
+  source: "rule" | "link",
+  windowHours: number,
   { client = defaultClient, now = new Date() }: Options = {},
 ): Promise<void> {
   const db = scopedFor(userId, client);
   const decision = await db.decisions.findFirst({
-    where: { id: decisionId, source: "rule", undoneAt: null },
+    where: { id: decisionId, source, undoneAt: null },
     select: {
       id: true,
       findingId: true,
@@ -237,7 +249,7 @@ export async function undoRuleApproval(
     },
   });
   const ageHours = decision ? (now.getTime() - decision.createdAt.getTime()) / 3_600_000 : Infinity;
-  if (!decision || ageHours > RULE_UNDO_HOURS || decision.action?.status !== "queued") {
+  if (!decision || ageHours > windowHours || decision.action?.status !== "queued") {
     throw new DecisionError(
       "cannot_undo",
       "This can't be taken back anymore: the work has started.",
@@ -263,7 +275,7 @@ export async function undoRuleApproval(
     { type: "user", id: userId },
     "decision_undone",
     { type: "finding", id: decision.findingId },
-    { decision_id: decision.id, source: "rule" },
+    { decision_id: decision.id, source },
   );
   await track(userId, "rule_approval_undone", {});
 }
