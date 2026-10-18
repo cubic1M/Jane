@@ -82,4 +82,32 @@ describe("set-up proposals", () => {
     ).filter((p) => p.kind === "category");
     expect(found.map((p) => p.key)).toEqual(["category:canva"]);
   });
+
+  // Spec step 70.
+  it("proposes a Yearly bills goal of a year of the monthly set-aside", () => {
+    expect(
+      proposals(input({ yearlyBillsMonthlyCents: 2_800 })).find(
+        (p) => p.key === "goal:yearly_bills",
+      ),
+    ).toEqual({
+      kind: "goal",
+      key: "goal:yearly_bills",
+      name: "Yearly bills",
+      targetCents: 33_600,
+      targetDate: "2027-10-18",
+      monthlySpendingCents: 320_000,
+      monthlySetAsideCents: 2_800,
+    });
+  });
+
+  it("proposes no Yearly bills goal without yearly bills, or to someone who has one", () => {
+    const keys = (over: Partial<ProposalInput>) => proposals(input(over)).map((p) => p.key);
+    expect(keys({ yearlyBillsMonthlyCents: 0 })).not.toContain("goal:yearly_bills");
+    expect(keys({})).not.toContain("goal:yearly_bills");
+    expect(keys({ yearlyBillsMonthlyCents: 2_800, goalNames: ["Yearly bills"] })).not.toContain(
+      "goal:yearly_bills",
+    );
+    // The emergency fund is still proposed alongside it.
+    expect(keys({ yearlyBillsMonthlyCents: 2_800 })).toContain("goal:emergency_fund");
+  });
 });
