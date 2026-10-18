@@ -139,6 +139,15 @@ describe.runIf(url)("deleting data against a real database", () => {
     await client.referralConversion.create({
       data: { partnerId: partner.id, userId, amountCents: 4_000 },
     });
+    const snapshotAccount = await client.account.findFirstOrThrow({ where: { userId } });
+    await client.balanceSnapshot.create({
+      data: {
+        userId,
+        accountId: snapshotAccount.id,
+        date: new Date("2026-10-01"),
+        balanceCents: 100,
+      },
+    });
     await client.savingsGoal.create({
       data: { userId, name: "Trip", targetCents: 200_000, targetDate: new Date("2027-06-01") },
     });
@@ -200,6 +209,7 @@ describe.runIf(url)("deleting data against a real database", () => {
       referralConversions: await client.referralConversion.count(where),
       budgets: await client.budget.count(where),
       savingsGoals: await client.savingsGoal.count(where),
+      balanceSnapshots: await client.balanceSnapshot.count(where),
       sessions: await client.session.count(where),
       authAccounts: await client.authAccount.count(where),
     };

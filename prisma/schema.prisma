@@ -204,6 +204,7 @@ model User {
   referralConversions ReferralConversion[]
   budgets             Budget[]
   savingsGoals        SavingsGoal[]
+  balanceSnapshots    BalanceSnapshot[]
 
   @@map("users")
 }
@@ -294,6 +295,7 @@ model Account {
   item             PlaidItem?        @relation(fields: [itemId], references: [id], onDelete: Cascade)
   transactions     Transaction[]
   recurringStreams RecurringStream[]
+  balanceSnapshots BalanceSnapshot[]
 
   @@index([userId])
   @@index([itemId])
@@ -731,6 +733,24 @@ model SavingsGoal {
 
   @@index([userId])
   @@map("savings_goals")
+}
+
+// One account's balance on one day, taken by the daily job, for net worth over time.
+// Kept for SNAPSHOT_RETENTION_DAYS; removed with the account.
+model BalanceSnapshot {
+  id           String   @id @default(cuid())
+  userId       String   @map("user_id")
+  accountId    String   @map("account_id")
+  date         DateTime @db.Date
+  balanceCents Int      @map("balance_cents")
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  account Account @relation(fields: [accountId], references: [id], onDelete: Cascade)
+
+  @@unique([accountId, date])
+  @@index([userId, date])
+  @@map("balance_snapshots")
 }
 
 // Invite codes keep the beta closed: signing up needs a code with uses left.

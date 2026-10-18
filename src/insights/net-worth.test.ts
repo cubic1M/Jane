@@ -1,0 +1,46 @@
+import { describe, expect, it } from "vitest";
+import { monthlyNetWorth, netWorth } from "./net-worth";
+
+const accounts = [
+  { id: "chk", name: "Checking", type: "depository", balanceCents: 250_000 },
+  { id: "sav", name: "Savings", type: "depository", balanceCents: 1_000_000 },
+  { id: "card", name: "Rewards Card", type: "credit", balanceCents: 120_000 },
+  { id: "loan", name: "Car Loan", type: "loan", balanceCents: 800_000 },
+  { id: "csv", name: "Old Card", type: "credit", balanceCents: null },
+];
+
+describe("netWorth", () => {
+  it("counts cards and loans as debts, and lists accounts without a balance", () => {
+    expect(netWorth(accounts)).toEqual({
+      assetsCents: 1_250_000,
+      debtsCents: 920_000,
+      netCents: 330_000,
+      missing: ["Old Card"],
+    });
+  });
+});
+
+describe("monthlyNetWorth", () => {
+  it("uses each account's last snapshot in or before each month", () => {
+    const months = monthlyNetWorth(
+      accounts,
+      [
+        { accountId: "chk", date: "2026-08-10", balanceCents: 100_000 },
+        { accountId: "chk", date: "2026-08-31", balanceCents: 150_000 },
+        { accountId: "card", date: "2026-08-31", balanceCents: 50_000 },
+        { accountId: "chk", date: "2026-10-01", balanceCents: 200_000 },
+        // An account the person no longer has is ignored.
+        { accountId: "gone", date: "2026-10-01", balanceCents: 9_999_999 },
+      ],
+      "2026-10-20",
+      4,
+    );
+    expect(months).toEqual([
+      { month: "2026-07", netCents: null },
+      { month: "2026-08", netCents: 100_000 },
+      // No new snapshots in September: August's carry forward.
+      { month: "2026-09", netCents: 100_000 },
+      { month: "2026-10", netCents: 150_000 },
+    ]);
+  });
+});
