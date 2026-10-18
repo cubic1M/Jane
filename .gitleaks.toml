@@ -1,0 +1,13 @@
+# Secret scanning (the "Secret scan" CI job). Uses gitleaks' default rules, plus narrow
+# exceptions for made-up values in tests that only look like secrets. Add an exception
+# only for a value that is certainly not a real secret, and say where it comes from.
+
+[extend]
+useDefault = true
+
+[[allowlists]]
+description = "Made-up Web Push subscription keys in src/lib/push.test.ts and src/app/api/push/route.test.ts (step 26). Not real keys; later replaced with obviously fake ones."
+regexes = [
+  '''^BNcRdreALRFXTkOO[A-Za-z0-9_-]*$''',
+  '''^tBHItJI5svbpez7KI4CCXg$''',
+]
