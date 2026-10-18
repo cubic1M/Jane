@@ -3,7 +3,8 @@ import { monthsEnding } from "./spending";
 
 // Net worth: what the person holds minus what they owe, from account balances. Credit
 // cards and loans report what's owed as a positive balance, so they count as debts.
-// Accounts with no balance are left out, and listed so the person knows. Pure.
+// Accounts with no balance are left out, and listed so the person knows. Things the person
+// owns (spec step 67) count as assets at the value they gave. Pure.
 
 export type NetWorthAccount = {
   id: string;
@@ -12,10 +13,15 @@ export type NetWorthAccount = {
   balanceCents: number | null;
 };
 
+// A home, car or other thing of value, at the value the person gave on the day they gave it.
+export type OwnedValue = { id: string; valueCents: number; valuedOn: string };
+
 export type NetWorth = {
   assetsCents: number;
   // Of the assets, what's in investment and retirement accounts (spec step 66).
   investmentsCents: number;
+  // Of the assets, the things the person owns, at their own values (spec step 67).
+  ownedCents: number;
   debtsCents: number;
   netCents: number;
   // Accounts we couldn't include, by name.
@@ -24,7 +30,7 @@ export type NetWorth = {
 
 const isDebt = (type: string) => DEBT_ACCOUNT_TYPES.includes(type);
 
-export function netWorth(accounts: NetWorthAccount[]): NetWorth {
+export function netWorth(accounts: NetWorthAccount[], owned: OwnedValue[] = []): NetWorth {
   let assets = 0;
   let investments = 0;
   let debts = 0;
@@ -38,9 +44,12 @@ export function netWorth(accounts: NetWorthAccount[]): NetWorth {
     else assets += a.balanceCents;
     if (a.type === "investment") investments += a.balanceCents;
   }
+  const ownedCents = owned.reduce((sum, o) => sum + o.valueCents, 0);
+  assets += ownedCents;
   return {
     assetsCents: assets,
     investmentsCents: investments,
+    ownedCents,
     debtsCents: debts,
     netCents: assets - debts,
     missing: missing.sort(),
@@ -72,13 +81,24 @@ export function netWorthOn(
 }
 
 // Net worth at the end of each month: each account's last snapshot in or before that
-// month. Months before any snapshot have no value.
+// month. Months before any snapshot have no value. Each thing owned counts like an account
+// with one snapshot: its value, from the day it was valued.
 export function monthlyNetWorth(
-  accounts: Pick<NetWorthAccount, "id" | "type">[],
-  snapshots: Snapshot[],
+  realAccounts: Pick<NetWorthAccount, "id" | "type">[],
+  realSnapshots: Snapshot[],
   asOf: string,
   monthCount: number,
+  owned: OwnedValue[] = [],
 ): { month: string; netCents: number | null }[] {
+  const accounts = [...realAccounts, ...owned.map((o) => ({ id: `owned:${o.id}`, type: "owned" }))];
+  const snapshots = [
+    ...realSnapshots,
+    ...owned.map((o) => ({
+      accountId: `owned:${o.id}`,
+      date: o.valuedOn,
+      balanceCents: o.valueCents,
+    })),
+  ];
   const typeOf = new Map(accounts.map((a) => [a.id, a.type]));
   const byAccount = new Map<string, Snapshot[]>();
   for (const s of [...snapshots].sort((a, b) => a.date.localeCompare(b.date))) {

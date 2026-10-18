@@ -41,6 +41,7 @@ export async function exportUserData(
     balanceSnapshots,
     checkIns,
     events,
+    ownedAssets,
   ] = await Promise.all([
     client.user.findUniqueOrThrow({
       where: { id: userId },
@@ -298,6 +299,18 @@ export async function exportUserData(
       select: { name: true, createdAt: true },
       orderBy: { createdAt: "asc" },
     }),
+    // Things they own, at their values (spec step 67).
+    db.ownedAssets.findMany({
+      select: {
+        kind: true,
+        name: true,
+        valueCents: true,
+        valuedOn: true,
+        loanAccountId: true,
+        createdAt: true,
+        updatedAt: true,
+      },
+    }),
   ]);
 
   return {
@@ -330,5 +343,6 @@ export async function exportUserData(
     balanceSnapshots,
     checkIns,
     events,
+    ownedAssets,
   };
 }

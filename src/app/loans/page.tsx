@@ -2,10 +2,12 @@ import Link from "next/link";
 import { connection } from "next/server";
 import { Suspense } from "react";
 import { AppHeader } from "@/components/app-header";
+import { AssetPrompts } from "@/components/asset-prompts";
 import { ViewTracker } from "@/components/view-tracker";
 import { debtSummary, formatRate } from "@/insights/loans";
 import { scopedDb } from "@/lib/db-scoped";
 import { formatCents } from "@/lib/money";
+import { assetPrompts } from "@/lib/owned-assets";
 import { requireUser } from "@/lib/session";
 
 const LINK = "font-medium text-emerald-700 hover:underline";
@@ -22,30 +24,38 @@ async function LoansContent() {
   const user = await requireUser();
   await connection();
   const db = await scopedDb();
-  const accounts = await db.accounts.findMany({
-    where: { type: { in: ["credit", "loan"] } },
-    select: {
-      id: true,
-      name: true,
-      mask: true,
-      type: true,
-      subtype: true,
-      currentBalanceCents: true,
-      liability: {
-        select: {
-          aprBps: true,
-          rateType: true,
-          minimumPaymentCents: true,
-          nextPaymentDueDate: true,
-          payoffDate: true,
-          isOverdue: true,
-          pastDueCents: true,
-          ytdInterestPaidCents: true,
-          description: true,
+  const [accounts, linked] = await Promise.all([
+    db.accounts.findMany({
+      where: { type: { in: ["credit", "loan"] } },
+      select: {
+        id: true,
+        name: true,
+        mask: true,
+        type: true,
+        subtype: true,
+        currentBalanceCents: true,
+        liability: {
+          select: {
+            aprBps: true,
+            rateType: true,
+            minimumPaymentCents: true,
+            nextPaymentDueDate: true,
+            payoffDate: true,
+            isOverdue: true,
+            pastDueCents: true,
+            ytdInterestPaidCents: true,
+            description: true,
+          },
         },
       },
-    },
-  });
+    }),
+    // Mortgages and car loans with a home or car linked (spec step 67).
+    db.ownedAssets.findMany({ select: { loanAccountId: true } }),
+  ]);
+  const prompts = assetPrompts(
+    accounts,
+    linked.map((o) => o.loanAccountId),
+  );
   const summary = debtSummary(accounts, new Date().toISOString().slice(0, 10));
 
   return (
@@ -158,6 +168,16 @@ async function LoansContent() {
               </li>
             ))}
           </ul>
+
+          <AssetPrompts prompts={prompts} />
+
+          <p className="text-sm text-zinc-600 dark:text-zinc-400">
+            Own a home or a car?{" "}
+            <Link href="/things" className={LINK}>
+              Things you own
+            </Link>{" "}
+            shows what you own of it, from the values you give.
+          </p>
 
           <p className="text-sm text-zinc-600 dark:text-zinc-400">
             Want to see how paying them down could go?{" "}
