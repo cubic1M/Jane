@@ -18,7 +18,7 @@ const call = (method: "POST" | "DELETE", body: unknown) =>
   );
 const subscription = {
   endpoint: "https://fcm.googleapis.com/fcm/send/abc",
-  keys: { p256dh: "BNcRdreALRFXTkOO", auth: "tBHItJI5svbpez7KI4CCXg" },
+  keys: { p256dh: "test-p256dh-key", auth: "test-auth-key" },
 };
 
 describe("/api/push", () => {
