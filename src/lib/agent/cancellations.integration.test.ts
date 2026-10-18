@@ -224,4 +224,53 @@ describe.runIf(url)("cancellations by the agent, against a real database", () =>
     expect(decision.action).toMatchObject({ type: "request_refund", agentState: "working" });
     expect(await refundChargesAfterCancel(userId, { client })).toEqual([]);
   });
+
+  it("confirms a cancellation the person never told Jane about, by the missing charge", async () => {
+    const { userId } = await person();
+    const merchant = await pageOnlyMerchant();
+    const { actionId } = await approve(userId, "subscription_review", merchant);
+    await agentStep(userId, actionId, { client, notify });
+    const offered = await reload(actionId);
+    expect(offered.confirmAfter).not.toBeNull();
+    await confirmCancellations({
+      client,
+      now: new Date(offered.confirmAfter!.getTime() + DAY),
+      notify,
+    });
+    expect(await reload(actionId)).toMatchObject({ status: "done", agentState: "finished" });
+    const noted = await client.agentMessage.findFirstOrThrow({
+      where: { actionId, direction: "note" },
+      orderBy: { createdAt: "desc" },
+    });
+    expect(noted.body).toContain("since Jane gave you their cancel page");
+  });
+
+  it("reminds the person when the charge still comes and they haven't cancelled", async () => {
+    const { userId, accountId } = await person();
+    const merchant = await pageOnlyMerchant();
+    const { actionId } = await approve(userId, "subscription_review", merchant);
+    await agentStep(userId, actionId, { client, notify });
+    await client.transaction.create({
+      data: {
+        userId,
+        accountId,
+        source: "csv",
+        dedupeKey: crypto.randomUUID(),
+        date: new Date(Date.now() + 2 * DAY),
+        amountCents: 1_549,
+        description: merchant.toUpperCase(),
+      },
+    });
+    const offered = await reload(actionId);
+    const result = await confirmCancellations({
+      client,
+      now: new Date(offered.confirmAfter!.getTime() + DAY),
+      notify,
+    });
+    expect(result.reminded).toBeGreaterThanOrEqual(1);
+    const reminded = await reload(actionId);
+    expect(reminded).toMatchObject({ status: "waiting_on_user", agentState: "confirming" });
+    expect(reminded.userTodo).toContain("looks active");
+    expect(reminded.confirmAfter!.getTime()).toBeGreaterThan(offered.confirmAfter!.getTime());
+  });
 });
