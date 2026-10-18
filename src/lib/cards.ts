@@ -35,6 +35,9 @@ export const ACTION_FOR_FINDING: Record<FindingType, ActionType> = {
   insurance_reshop: "insurance_reshop",
   card_interest: "card_interest",
   low_balance_risk: "review_cash_flow",
+  duplicate_charge: "request_refund",
+  charge_after_cancel: "request_refund",
+  trial_conversion: "request_refund",
 };
 
 // Recent rows shown as proof on the card.
@@ -66,6 +69,12 @@ function whatChanges(type: FindingType, evidence: Json): string {
       return "We ask your card company for a lower rate and look at balance transfer options for you.";
     case "low_balance_risk":
       return "We ask your billers to move due dates to after your payday, and remind you before the low point.";
+    case "duplicate_charge":
+      return `We ask ${merchant} to refund the second charge, and your card company if they don't.`;
+    case "charge_after_cancel":
+      return `We show ${merchant} the cancellation and ask for these charges back, and make sure it's really cancelled.`;
+    case "trial_conversion":
+      return `We ask ${merchant} to refund the charge and cancel, before the next one.`;
   }
 }
 

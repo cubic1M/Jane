@@ -72,6 +72,9 @@ function changedEnough(before: number | null, after: number | null): boolean {
   return Math.abs(after - before) / Math.abs(before) > RESURFACE_DECLINED_CHANGE;
 }
 
+// Subscription findings are keyed "merchant:<merchant key>".
+const MERCHANT_KEY_PREFIX = "merchant:";
+
 const idOf = (f: { type: string; key: string }) => `${f.type}\u0000${f.key}`;
 
 // Pure: decides what to write. New opportunities are created; known ones are updated in
@@ -124,7 +127,7 @@ function contentOf(candidate: Candidate) {
 
 async function loadInput(db: ScopedDb, asOf: string): Promise<DetectionInput> {
   const cutoff = monthsBefore(asOf, LOOKBACK_MONTHS);
-  const [accounts, transactions, streams] = await Promise.all([
+  const [accounts, transactions, streams, cancelled] = await Promise.all([
     db.accounts.findMany({
       select: { id: true, name: true, type: true, subtype: true, currentBalanceCents: true },
       orderBy: { id: "asc" },
@@ -149,6 +152,17 @@ async function loadInput(db: ScopedDb, asOf: string): Promise<DetectionInput> {
       orderBy: [{ date: "asc" }, { id: "asc" }],
     }),
     db.recurringStreams.findMany({ orderBy: { id: "asc" } }),
+    // Subscriptions our team finished cancelling, for charges that come after.
+    db.actions.findMany({
+      where: {
+        type: "cancel_subscription",
+        status: "done",
+        completedAt: { not: null },
+        decision: { finding: { type: "subscription_review" } },
+      },
+      select: { completedAt: true, decision: { select: { finding: { select: { key: true } } } } },
+      orderBy: { completedAt: "asc" },
+    }),
   ]);
 
   return {
@@ -160,6 +174,17 @@ async function loadInput(db: ScopedDb, asOf: string): Promise<DetectionInput> {
       lastDate: s.lastDate ? isoDate(s.lastDate) : null,
       predictedNextDate: s.predictedNextDate ? isoDate(s.predictedNextDate) : null,
     })),
+    cancelledMerchants: cancelled.flatMap((a) => {
+      const key = a.decision.finding.key;
+      return a.completedAt && key.startsWith(MERCHANT_KEY_PREFIX)
+        ? [
+            {
+              merchantKey: key.slice(MERCHANT_KEY_PREFIX.length),
+              cancelledOn: isoDate(a.completedAt),
+            },
+          ]
+        : [];
+    }),
   };
 }
 
@@ -189,6 +214,9 @@ const NO_FINDINGS: Record<FindingType, number> = {
   insurance_reshop: 0,
   card_interest: 0,
   low_balance_risk: 0,
+  duplicate_charge: 0,
+  charge_after_cancel: 0,
+  trial_conversion: 0,
 };
 
 type Options = {

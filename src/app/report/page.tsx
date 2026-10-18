@@ -10,6 +10,7 @@ import { scopedDb } from "@/lib/db-scoped";
 import { explanationFor } from "@/lib/card-text";
 import { formatCents } from "@/lib/money";
 import { requireUser } from "@/lib/session";
+import { savingsLine } from "@/lib/savings-text";
 
 // Shown when nothing was found, so the person knows what we looked at.
 const WHAT_WE_CHECK = [
@@ -21,6 +22,7 @@ const WHAT_WE_CHECK = [
   "Insurance you could reshop",
   "Credit card interest",
   "Bills that could take your balance too low",
+  "Double charges, charges after you cancelled, and trials that became full charges",
 ];
 
 async function ReportContent() {
@@ -94,9 +96,7 @@ async function ReportContent() {
                     <span className="flex flex-col gap-1">
                       <span className="font-semibold">{text.title}</span>
                       <span className="text-sm text-zinc-600 dark:text-zinc-400">
-                        {finding.annualSavingsCents !== null
-                          ? `Could save about ${formatCents(finding.annualSavingsCents)} a year`
-                          : "Savings depend on the quotes we find"}
+                        {savingsLine(finding.type, finding.annualSavingsCents)}
                       </span>
                     </span>
                     <span aria-hidden className="text-zinc-400">

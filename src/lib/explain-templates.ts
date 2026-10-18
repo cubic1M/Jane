@@ -108,6 +108,38 @@ const TEMPLATES: Record<FindingType, (input: ExplainInput) => Omit<ExplanationCo
       ],
     };
   },
+  duplicate_charge: (input) => {
+    const merchant = fact(input.facts, "merchant") ?? "The same company";
+    const refund = fact(input.facts, "refundAmount");
+    return {
+      explanation: `${merchant} charged you${refund ? ` ${refund}` : ""} twice within a day. If you only bought once, the second charge can usually be refunded, by the merchant or through your card company.`,
+      giveUp: "Nothing, if it really was one purchase.",
+      alternatives: [
+        "Ask the merchant yourself",
+        "Dispute it with your card company",
+        "Keep both if you bought twice",
+      ],
+    };
+  },
+  charge_after_cancel: (input) => {
+    const merchant = fact(input.facts, "merchant") ?? "This company";
+    const refund = fact(input.facts, "refundAmount");
+    const on = fact(input.facts, "cancelledOn");
+    return {
+      explanation: `We cancelled ${merchant}${on ? ` on ${on}` : ""}, but it charged you${refund ? ` ${refund}` : " again"} afterwards. Charges after a cancellation are usually refunded when you show the cancellation.`,
+      giveUp: "Nothing.",
+      alternatives: ["Ask the merchant yourself", "Dispute it with your card company"],
+    };
+  },
+  trial_conversion: (input) => {
+    const merchant = fact(input.facts, "merchant") ?? "A service";
+    const refund = fact(input.facts, "refundAmount");
+    return {
+      explanation: `${merchant} started with a free or tiny trial charge, then charged you${refund ? ` ${refund}` : " the full price"}. If you didn't mean to keep it, many companies refund a first charge when asked soon after.`,
+      giveUp: `You would lose access to ${merchant}.`,
+      alternatives: ["Keep it", "Cancel before the next charge without asking for a refund"],
+    };
+  },
   card_interest: (input) => {
     const total = fact(input.facts, "totalLast12Months");
     return {

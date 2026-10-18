@@ -27,7 +27,35 @@ export function sampleFindings(): Candidate[] {
           pfcPrimary: "BANK_FEES",
           pfcDetailed: "BANK_FEES_OVERDRAFT_FEES",
         }),
+        // Charged twice the same day.
+        ...[1, 2].map(() =>
+          tx({
+            date: "2026-10-02",
+            accountId: CARD.id,
+            amountCents: 4999,
+            description: "GADGET SHOP 12 JORDAN RIVERA",
+            merchantName: "Gadget Shop",
+            pfcPrimary: "GENERAL_MERCHANDISE",
+            pfcDetailed: "GENERAL_MERCHANDISE_ELECTRONICS",
+          }),
+        ),
+        // A $1 trial that became a full charge.
+        ...[
+          { date: "2026-09-20", amountCents: 100 },
+          { date: "2026-10-04", amountCents: 1299 },
+        ].map((t) =>
+          tx({
+            ...t,
+            accountId: CARD.id,
+            description: "STREAMFLIX TRIAL 4111",
+            merchantName: "Streamflix",
+            pfcPrimary: "ENTERTAINMENT",
+            pfcDetailed: "ENTERTAINMENT_TV_AND_MOVIES",
+          }),
+        ),
       ],
+      // We cancelled Hulu, and it kept charging.
+      cancelledMerchants: [{ merchantKey: "hulu", cancelledOn: "2026-09-01" }],
     }),
   );
 }

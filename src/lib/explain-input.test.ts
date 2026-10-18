@@ -14,6 +14,9 @@ describe("prepareExplainInput", () => {
         "insurance_reshop",
         "card_interest",
         "low_balance_risk",
+        "duplicate_charge",
+        "charge_after_cancel",
+        "trial_conversion",
       ]),
     );
   });

@@ -8,6 +8,7 @@ const { scoped } = vi.hoisted(() => ({
     recurringStreams: { findMany: vi.fn() },
     findings: { findMany: vi.fn(), createMany: vi.fn(), update: vi.fn(), deleteMany: vi.fn() },
     subscriptionChecks: { findMany: vi.fn(), createMany: vi.fn() },
+    actions: { findMany: vi.fn(async () => []) },
   },
 }));
 
@@ -16,6 +17,7 @@ vi.mock("@/lib/db-scoped", () => ({ scopedFor: vi.fn(() => scoped) }));
 vi.mock("@/lib/analytics", () => ({ track: vi.fn() }));
 vi.mock("@/lib/alerts", () => ({ raiseAlerts: vi.fn() }));
 
+import { REFUND_FINDING_TYPES } from "@/config/detection";
 import type { PrismaClient } from "@/generated/prisma/client";
 import { raiseAlerts } from "@/lib/alerts";
 import { track } from "@/lib/analytics";
@@ -141,6 +143,19 @@ describe("sumMoneyFound", () => {
     confidence: "high" as const,
     annualSavingsCents: 1000,
     ...overrides,
+  });
+
+  it("counts refunds only at medium confidence or above", () => {
+    for (const type of REFUND_FINDING_TYPES) {
+      expect(
+        sumMoneyFound([
+          row({ type, confidence: "medium", annualSavingsCents: 4_999 }),
+          row({ type, confidence: "high", annualSavingsCents: 1_000 }),
+          row({ type, confidence: "low", annualSavingsCents: 99_999 }),
+        ]),
+        type,
+      ).toBe(5_999);
+    }
   });
 
   it("adds open findings at medium confidence or above", () => {
