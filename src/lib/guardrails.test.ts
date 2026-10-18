@@ -94,6 +94,19 @@ describe("checkGuardrails", () => {
     });
   });
 
+  it("makes bill cards compare with a typical price and never promise a result", () => {
+    const ok = "You pay about $165.00 a month, above the typical price for a phone bill.";
+    expect(checkGuardrails(ok, [16_500], "bill_negotiation")).toEqual({ ok: true });
+    expect(
+      checkGuardrails("Your $165.00 phone bill is too high.", [16_500], "bill_negotiation"),
+    ).toEqual({ ok: false, issues: ["missing_required_wording"] });
+    expect(
+      checkGuardrails(`${ok} Asking will save you money.`, [16_500], "bill_negotiation"),
+    ).toEqual({ ok: false, issues: ["guaranteed_outcome"] });
+    // Other cards don't need the wording.
+    expect(checkGuardrails("Your bill went up.", [], "price_increase")).toEqual({ ok: true });
+  });
+
   it("reports every rule that fails", () => {
     expect(issuesOf("You will save $999 by investing it, tax free.")).toEqual([
       "investment_advice",

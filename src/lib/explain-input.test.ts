@@ -17,6 +17,7 @@ describe("prepareExplainInput", () => {
         "duplicate_charge",
         "charge_after_cancel",
         "trial_conversion",
+        "bill_negotiation",
       ]),
     );
   });

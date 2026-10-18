@@ -1,4 +1,4 @@
-import { CARD, CHECKING, input, sampleYear, tx } from "@/detection/__fixtures__/build";
+import { CARD, CHECKING, input, monthly, sampleYear, tx } from "@/detection/__fixtures__/build";
 import { detect } from "@/detection/detect";
 import type { Candidate } from "@/detection/types";
 
@@ -39,6 +39,13 @@ export function sampleFindings(): Candidate[] {
             pfcDetailed: "GENERAL_MERCHANDISE_ELECTRONICS",
           }),
         ),
+        // A phone bill well above the typical price.
+        ...monthly(6, 16_500, {
+          description: "VERIZON WIRELESS PAYMENTS",
+          merchantName: "Verizon Wireless",
+          pfcPrimary: "RENT_AND_UTILITIES",
+          pfcDetailed: "RENT_AND_UTILITIES_TELEPHONE",
+        }),
         // A $1 trial that became a full charge.
         ...[
           { date: "2026-09-20", amountCents: 100 },

@@ -1,9 +1,15 @@
+import type { FindingType } from "@/generated/prisma/client";
+
 // Every piece of Claude-written text passes through checkGuardrails before anyone sees it.
 // Anything that fails is replaced with fixed template text, so these checks lean strict:
 // a false alarm only costs a plainer explanation.
 
 export type GuardrailIssue =
-  "investment_advice" | "tax_or_legal_advice" | "unsupported_dollar_figure" | "guaranteed_outcome";
+  | "investment_advice"
+  | "tax_or_legal_advice"
+  | "unsupported_dollar_figure"
+  | "guaranteed_outcome"
+  | "missing_required_wording";
 
 export type GuardrailResult = { ok: true } | { ok: false; issues: GuardrailIssue[] };
 
@@ -88,8 +94,20 @@ function supported(figure: Figure, allowedCents: readonly number[]): boolean {
   });
 }
 
-export function checkGuardrails(text: string, allowedCents: readonly number[]): GuardrailResult {
+// Wording some cards must use. A bill's price is compared with a typical price, never
+// called too high as a fact.
+export const REQUIRED_WORDING: Partial<Record<FindingType, RegExp>> = {
+  bill_negotiation: /\btypical price\b/i,
+};
+
+export function checkGuardrails(
+  text: string,
+  allowedCents: readonly number[],
+  findingType?: FindingType,
+): GuardrailResult {
   const issues: GuardrailIssue[] = [];
+  const required = findingType && REQUIRED_WORDING[findingType];
+  if (required && !required.test(text)) issues.push("missing_required_wording");
   if (INVESTMENT.some((p) => p.test(text))) issues.push("investment_advice");
   if (TAX_OR_LEGAL.some((p) => p.test(text))) issues.push("tax_or_legal_advice");
   if (dollarFigures(text).some((f) => !supported(f, allowedCents))) {

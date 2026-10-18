@@ -140,7 +140,7 @@ export async function explainFinding(finding: FindingToExplain): Promise<Explana
   const content = parseExplanation(text);
   if (!content) return { kind: "template", content: template, reason: "invalid_output", hash };
 
-  const check = checkGuardrails(contentText(content), allowedCents);
+  const check = checkGuardrails(contentText(content), allowedCents, input.findingType);
   if (!check.ok) {
     return {
       kind: "template",

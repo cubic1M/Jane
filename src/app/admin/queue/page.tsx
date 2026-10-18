@@ -17,6 +17,7 @@ const ACTION_TYPES: ActionType[] = [
   "card_interest",
   "review_cash_flow",
   "request_refund",
+  "negotiate_bill",
 ];
 
 const label = (value: string) => value.replaceAll("_", " ");

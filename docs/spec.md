@@ -21,7 +21,7 @@ The build runs in eleven steps, with Plaid added at step 7 after the founders te
 
 ## Status (Oct 18, 2026)
 
-Steps 1–18 are built. Where the build differs from the original plan, the plan below has been kept and the difference is noted here.
+Steps 1–19 are built. Where the build differs from the original plan, the plan below has been kept and the difference is noted here.
 
 | Step | Shipped in | Notes |
 | --- | --- | --- |
@@ -41,6 +41,7 @@ Steps 1–18 are built. Where the build differs from the original plan, the plan
 | 16 Bills and cash-flow forecast | PR #23 | Low balance ahead is a finding with no dollar estimate; checking accounts only |
 | 17 Alerts | PR #24 | Only events from the last 7 days alert, so a first import doesn't flood; low balance alerts at most once per account per month; "unsubscribe" in an alert email turns alert emails off but keeps them in the app |
 | 18 Refunds and disputes | PR #25 | Refunds count once (not yearly) and read "Could get back"; charge-after-cancel uses the date our team finished a cancellation; trials need 3+ days between the small and full charge so fuel and hotel holds don't match; the double-charge alert and finding share one rule; the request_refund playbook starts src/config/playbooks.ts (more in step 21) |
+| 19 Bill negotiation | PR #26 | Phone and internet/TV only: insurance stays with insurance_reshop, since one price range would mislead; the ranges are our own estimates from published list prices, marked for review; the guardrails reject any bill card that doesn't say "typical price"; the call script is in src/config/playbooks.ts |
 
 Still needed from a person before outside users: counsel (insurance referral licensing, privacy policy and terms), Plaid Production approval and questionnaire, a backup restore test, and admins enrolling in two-factor. See docs/beta-checklist.md.
 

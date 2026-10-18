@@ -30,6 +30,7 @@ enum FindingType {
   duplicate_charge
   charge_after_cancel
   trial_conversion
+  bill_negotiation
 
   @@map("finding_type")
 }
@@ -70,6 +71,7 @@ enum ActionType {
   card_interest
   review_cash_flow
   request_refund
+  negotiate_bill
 
   @@map("action_type")
 }

@@ -9,6 +9,12 @@ describe("playbooks", () => {
     expect(playbook?.close).toMatch(/Done when/);
   });
 
+  it("gives bill negotiation a call script that never promises the person a result", () => {
+    const script = PLAYBOOKS.negotiate_bill?.script ?? [];
+    expect(script.length).toBeGreaterThan(0);
+    expect(script.join(" ")).not.toMatch(/guarantee|promise|will save/i);
+  });
+
   it("never tells the team to collect card numbers or logins", () => {
     for (const playbook of Object.values(PLAYBOOKS)) {
       const text = [...playbook.steps, ...playbook.askFor].join(" ").toLowerCase();
