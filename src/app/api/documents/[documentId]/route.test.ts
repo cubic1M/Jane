@@ -34,7 +34,7 @@ describe("GET /api/documents/[documentId] (spec step 68)", () => {
     expect(openDocument).toHaveBeenCalledWith("u1", "someone-elses");
   });
 
-  it("serves the owner's file with safe headers", async () => {
+  it("always downloads a PDF, which Chrome won't show sandboxed", async () => {
     vi.mocked(openDocument).mockResolvedValue({
       fileName: "Policy 2027 – GEICO.pdf",
       contentType: "application/pdf",
@@ -46,12 +46,28 @@ describe("GET /api/documents/[documentId] (spec step 68)", () => {
     expect(response.status).toBe(200);
     expect(Buffer.from(await response.arrayBuffer()).toString()).toBe("%PDF-1.7");
     expect(response.headers.get("content-type")).toBe("application/pdf");
-    expect(response.headers.get("x-content-type-options")).toBe("nosniff");
-    expect(response.headers.get("content-security-policy")).toMatch(/^sandbox; default-src 'none'/);
-    expect(response.headers.get("cache-control")).toBe("private, no-store");
     expect(response.headers.get("content-disposition")).toBe(
-      `inline; filename="Policy 2027 _ GEICO.pdf"; filename*=UTF-8''Policy%202027%20%E2%80%93%20GEICO.pdf`,
+      `attachment; filename="Policy 2027 _ GEICO.pdf"; filename*=UTF-8''Policy%202027%20%E2%80%93%20GEICO.pdf`,
     );
+    expect(response.headers.get("x-content-type-options")).toBe("nosniff");
+    expect(response.headers.get("cache-control")).toBe("private, no-store");
+  });
+
+  it("opens an image in the browser, sandboxed, or downloads it when asked", async () => {
+    vi.mocked(openDocument).mockResolvedValue({
+      fileName: "receipt.png",
+      contentType: "image/png",
+      bytes: Buffer.from([0x89, 0x50, 0x4e, 0x47]),
+    });
+
+    const response = await call("d1");
+
+    expect(response.headers.get("content-type")).toBe("image/png");
+    expect(response.headers.get("content-disposition")).toBe(
+      `inline; filename="receipt.png"; filename*=UTF-8''receipt.png`,
+    );
+    expect(response.headers.get("content-security-policy")).toMatch(/^sandbox; default-src 'none'/);
+    expect(response.headers.get("x-content-type-options")).toBe("nosniff");
 
     const download = await call("d1", "?download=1");
     expect(download.headers.get("content-disposition")).toMatch(/^attachment; /);

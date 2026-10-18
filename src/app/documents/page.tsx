@@ -129,14 +129,17 @@ async function DocumentsContent() {
                   {SOURCE_NOTE[d.extractionSource] ?? SOURCE_NOTE.none}
                 </p>
                 <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm">
-                  <a
-                    href={`/api/documents/${d.id}`}
-                    target="_blank"
-                    rel="noopener"
-                    className={LINK}
-                  >
-                    Open<span className="sr-only"> {d.fileName}</span>
-                  </a>
+                  {/* PDFs only download: Chrome won't show one sandboxed. */}
+                  {d.contentType !== "application/pdf" && (
+                    <a
+                      href={`/api/documents/${d.id}`}
+                      target="_blank"
+                      rel="noopener"
+                      className={LINK}
+                    >
+                      Open<span className="sr-only"> {d.fileName}</span>
+                    </a>
+                  )}
                   <a href={`/api/documents/${d.id}?download=1`} className={LINK}>
                     Download<span className="sr-only"> {d.fileName}</span>
                   </a>
