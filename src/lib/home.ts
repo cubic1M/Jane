@@ -1,4 +1,7 @@
+import { BUDGET_SUGGESTION_MONTHS } from "@/config/budgets";
 import { HOME_LIST_LIMIT, UPCOMING_DAYS } from "@/config/home";
+import { budgetSummary } from "@/insights/budgets";
+import { loadInsightTransactions } from "@/insights/load";
 import { loadDetectionInput, moneyFound } from "@/detection/engine";
 import type { PrismaClient } from "@/generated/prisma/client";
 import { unreadAlertCount } from "@/lib/alerts";
@@ -17,35 +20,55 @@ export async function homeSummary(
   const accounts = await db.accounts.count();
   if (accounts === 0) return null;
 
-  const [found, saved, waiting, openActions, findings, input, lastSync, lastImport, alerts] =
-    await Promise.all([
-      moneyFound(userId, { client }),
-      savedToDate(userId, { client }),
-      db.actions.findMany({
-        where: { status: "waiting_on_user" },
-        select: { id: true, userTodo: true, decision: { select: { cardSnapshot: true } } },
-        orderBy: { updatedAt: "asc" },
-      }),
-      db.actions.count({ where: { status: { in: ["queued", "in_progress", "waiting_on_user"] } } }),
-      db.findings.findMany({
-        where: { status: { in: ["new", "shown"] } },
-        select: { id: true, type: true, title: true, annualSavingsCents: true },
-        orderBy: [{ createdAt: "desc" }, { id: "asc" }],
-        take: HOME_LIST_LIMIT,
-      }),
-      loadDetectionInput(userId, { client, now }),
-      db.plaidItems.findFirst({
-        where: { lastSyncedAt: { not: null } },
-        orderBy: { lastSyncedAt: "desc" },
-        select: { lastSyncedAt: true },
-      }),
-      db.transactions.findFirst({
-        where: { source: "csv" },
-        orderBy: { createdAt: "desc" },
-        select: { createdAt: true },
-      }),
-      unreadAlertCount(userId, { client }),
-    ]);
+  const [
+    found,
+    saved,
+    waiting,
+    openActions,
+    findings,
+    input,
+    lastSync,
+    lastImport,
+    alerts,
+    budgets,
+  ] = await Promise.all([
+    moneyFound(userId, { client }),
+    savedToDate(userId, { client }),
+    db.actions.findMany({
+      where: { status: "waiting_on_user" },
+      select: { id: true, userTodo: true, decision: { select: { cardSnapshot: true } } },
+      orderBy: { updatedAt: "asc" },
+    }),
+    db.actions.count({ where: { status: { in: ["queued", "in_progress", "waiting_on_user"] } } }),
+    db.findings.findMany({
+      where: { status: { in: ["new", "shown"] } },
+      select: { id: true, type: true, title: true, annualSavingsCents: true },
+      orderBy: [{ createdAt: "desc" }, { id: "asc" }],
+      take: HOME_LIST_LIMIT,
+    }),
+    loadDetectionInput(userId, { client, now }),
+    db.plaidItems.findFirst({
+      where: { lastSyncedAt: { not: null } },
+      orderBy: { lastSyncedAt: "desc" },
+      select: { lastSyncedAt: true },
+    }),
+    db.transactions.findFirst({
+      where: { source: "csv" },
+      orderBy: { createdAt: "desc" },
+      select: { createdAt: true },
+    }),
+    unreadAlertCount(userId, { client }),
+    db.budgets.findMany({ select: { category: true, amountCents: true } }),
+  ]);
+  const asOf = now.toISOString().slice(0, 10);
+  const budget =
+    budgets.length === 0
+      ? null
+      : budgetSummary(
+          await loadInsightTransactions(db, asOf, BUDGET_SUGGESTION_MONTHS + 1),
+          budgets,
+          asOf,
+        );
 
   const updated = [lastSync?.lastSyncedAt, lastImport?.createdAt]
     .filter((d): d is Date => d instanceof Date)
@@ -56,6 +79,7 @@ export async function homeSummary(
     savedToDateCents: saved,
     openActions,
     unreadAlerts: alerts,
+    budgets: budget ? { progress: budget.progress, daysLeft: budget.daysLeft } : null,
     waitingOnYou: waiting.map((a) => ({
       id: a.id,
       todo: a.userTodo,

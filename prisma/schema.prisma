@@ -103,6 +103,7 @@ enum AlertType {
   large_charge
   duplicate_charge
   low_balance
+  over_budget
 
   @@map("alert_type")
 }
@@ -201,6 +202,7 @@ model User {
   householdInvites    HouseholdInvite[]
   pushSubscriptions   PushSubscription[]
   referralConversions ReferralConversion[]
+  budgets             Budget[]
 
   @@map("users")
 }
@@ -692,6 +694,22 @@ model ReferralConversion {
   @@index([partnerId, createdAt])
   @@index([userId])
   @@map("referral_conversions")
+}
+
+// A monthly spending limit the person set for one category (the plain category names
+// insights uses, e.g. "Food and drink").
+model Budget {
+  id          String   @id @default(cuid())
+  userId      String   @map("user_id")
+  category    String
+  amountCents Int      @map("amount_cents")
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt   DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, category])
+  @@map("budgets")
 }
 
 // Invite codes keep the beta closed: signing up needs a code with uses left.

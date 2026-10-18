@@ -2,6 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { Suspense } from "react";
 import { AppHeader } from "@/components/app-header";
+import { BudgetList } from "@/components/budget-list";
 import { homeSummary } from "@/lib/home";
 import { formatCents } from "@/lib/money";
 import { requireUser } from "@/lib/session";
@@ -100,6 +101,8 @@ async function HomeContent() {
           </ul>
         )}
       </section>
+
+      {home.budgets && <BudgetList {...home.budgets} />}
 
       <section className="flex flex-col gap-2">
         <div className="flex items-baseline justify-between gap-2">
