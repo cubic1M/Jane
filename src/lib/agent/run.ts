@@ -60,7 +60,7 @@ export async function startAgent(
 }
 
 async function loadAction(userId: string, actionId: string, client: PrismaClient) {
-  return scopedFor(userId, client).actions.findFirst({
+  const action = await scopedFor(userId, client).actions.findFirst({
     where: { id: actionId },
     select: {
       id: true,
@@ -87,6 +87,25 @@ async function loadAction(userId: string, actionId: string, client: PrismaClient
       },
     },
   });
+  if (!action) return null;
+  return { ...action, company: await companyOf(userId, action.decision.finding.evidence, client) };
+}
+
+// Who the request goes to: the merchant on the finding, or for bank fees the bank that
+// holds the account (known for linked banks; a file import doesn't say).
+async function companyOf(
+  userId: string,
+  evidence: unknown,
+  client: PrismaClient,
+): Promise<string | null> {
+  const facts = (evidence ?? {}) as { merchant?: unknown; accountId?: unknown };
+  if (typeof facts.merchant === "string" && facts.merchant.trim()) return facts.merchant;
+  if (typeof facts.accountId !== "string") return null;
+  const account = await scopedFor(userId, client).accounts.findFirst({
+    where: { id: facts.accountId },
+    select: { item: { select: { institutionName: true } } },
+  });
+  return account?.item?.institutionName ?? null;
 }
 
 type LoadedAction = NonNullable<Awaited<ReturnType<typeof loadAction>>>;
@@ -105,10 +124,7 @@ export function canAgentWork(action: {
   );
 }
 
-const merchantOf = (action: LoadedAction) => {
-  const merchant = (action.decision.finding.evidence as { merchant?: unknown } | null)?.merchant;
-  return typeof merchant === "string" ? merchant : "the company";
-};
+const merchantOf = (action: LoadedAction) => action.company ?? "the company";
 
 const titleOf = (action: LoadedAction) => {
   const title = (action.decision.cardSnapshot as { title?: unknown } | null)?.title;
@@ -118,9 +134,9 @@ const titleOf = (action: LoadedAction) => {
 // Where to write: the directory's support email (added by the team, never guessed), or a
 // simulated company in development.
 async function recipientFor(action: LoadedAction, client: PrismaClient): Promise<string | null> {
-  const merchant = merchantOf(action);
-  if (mailMode() === "simulated") return simulatedAddress(merchant);
-  const row = await merchantFor(normalizeAlias(merchant), { client });
+  if (!action.company) return null;
+  if (mailMode() === "simulated") return simulatedAddress(action.company);
+  const row = await merchantFor(normalizeAlias(action.company), { client });
   return row?.supportEmail ?? null;
 }
 
@@ -172,10 +188,15 @@ async function handOff(
   await track(userId, "agent_handed_off", { action_type: action.type });
 }
 
+// The person's name and account email in place of the placeholders, and the company's
+// name where the draft only knew "the bank" or "the company".
 function fill(text: string, action: LoadedAction): string {
-  return text
+  const filled = text
     .replaceAll(PLACEHOLDERS.name, action.user.name?.trim() || "the account holder")
     .replaceAll(PLACEHOLDERS.email, action.user.email);
+  return action.company
+    ? filled.replace(/^Hello the (bank|company|provider),/m, `Hello ${action.company},`)
+    : filled;
 }
 
 async function record(
@@ -256,6 +277,15 @@ export async function agentStep(
 
   if (mailMode() === "off") {
     await handOff(userId, action, "Email for the agent isn't set up yet.", options);
+    return "handed_off";
+  }
+  if (!action.company) {
+    await handOff(
+      userId,
+      action,
+      "We don't know which bank holds this account (it was imported from a file). Contact the bank by hand, or link the account so Jane knows.",
+      options,
+    );
     return "handed_off";
   }
   const to = await recipientFor(action, client);

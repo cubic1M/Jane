@@ -495,6 +495,10 @@ model Action {
   handoffReason  String?      @map("handoff_reason")
   // The random part of the reply-to address, so a company's reply finds its action.
   replyToken     String?      @unique @map("reply_token")
+  // A refund seen coming back in the person's own transactions (spec step 52): the date
+  // and how much. Counted as saved instead of the card's estimate.
+  refundSeenAt   DateTime?    @map("refund_seen_at") @db.Date
+  refundCents    Int?         @map("refund_cents")
   startedAt      DateTime?    @map("started_at") @db.Timestamptz(3)
   completedAt    DateTime?    @map("completed_at") @db.Timestamptz(3)
   createdAt      DateTime     @default(now()) @map("created_at") @db.Timestamptz(3)

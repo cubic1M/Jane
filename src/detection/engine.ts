@@ -7,6 +7,7 @@ import {
 import type { Finding, FindingStatus, FindingType, PrismaClient } from "@/generated/prisma/client";
 import { track } from "@/lib/analytics";
 import { raiseAlerts } from "@/lib/alerts";
+import { confirmRefunds } from "@/lib/agent/refund-check";
 import { applyStandingRules } from "@/lib/standing-rules";
 import { db as defaultClient } from "@/lib/db";
 import { llmModel } from "@/lib/anthropic";
@@ -241,6 +242,7 @@ type Options = {
   checkSubscriptions?: (merchants: string[]) => Promise<Map<string, boolean>>;
   raiseAlerts?: typeof raiseAlerts;
   applyStandingRules?: typeof applyStandingRules;
+  confirmRefunds?: typeof confirmRefunds;
 };
 
 // Merchant keys Claude has called subscriptions. Recurring charges whose category doesn't
@@ -295,6 +297,7 @@ export async function runDetection(
     checkSubscriptions: check = checkSubscriptions,
     raiseAlerts: raise = raiseAlerts,
     applyStandingRules: applyRules = applyStandingRules,
+    confirmRefunds: confirm = confirmRefunds,
   }: Options = {},
 ): Promise<DetectionSummary> {
   const db = scopedFor(userId, client);
@@ -370,6 +373,13 @@ export async function runDetection(
     await applyRules(userId, { client, now });
   } catch (error) {
     console.error("Standing rules failed", { userId, error: String(error) });
+  }
+
+  // Refunds coming back in the transactions close their actions (spec step 52).
+  try {
+    await confirm(userId, { client, now });
+  } catch (error) {
+    console.error("Refund check failed", { userId, error: String(error) });
   }
 
   const counts = { ...NO_FINDINGS };

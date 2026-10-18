@@ -54,7 +54,9 @@ export type AuditEvent =
   // The action agent (src/lib/agent/run.ts).
   | "agent_message_sent"
   | "agent_reply_received"
-  | "agent_handed_off";
+  | "agent_handed_off"
+  // A refund seen coming back in the person's transactions (src/lib/agent/refund-check.ts).
+  | "refund_seen";
 
 export type AuditActor = { type: ActorType; id: string | null };
 
