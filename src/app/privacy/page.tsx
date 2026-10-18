@@ -77,6 +77,8 @@ export default function PrivacyPage() {
         </li>
       </ul>
 
+      <p>You can download a copy of your data in Settings.</p>
+
       <h2>Email and tracking</h2>
       <p>
         Weekly emails can be turned off in Settings or with one click from the email. We note when

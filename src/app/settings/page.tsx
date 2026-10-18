@@ -4,21 +4,49 @@ import { DEFAULT_TIMEZONE, TIMEZONES } from "@/config/digest";
 import { db } from "@/lib/db";
 import { scopedDb } from "@/lib/db-scoped";
 import { requireUser } from "@/lib/session";
-import { DeleteDataForm, DisconnectForm } from "./data-forms";
+import { formatCents } from "@/lib/money";
+import { DeleteDataForm, DisconnectForm, RefreshForm } from "./data-forms";
 import { EmailForm } from "./email-form";
 
 async function SettingsContent() {
   const user = await requireUser();
-  const [prefs, items] = await Promise.all([
+  const mine = await scopedDb();
+  const [prefs, items, accounts, lastCsv] = await Promise.all([
     db.user.findUniqueOrThrow({
       where: { id: user.id },
       select: { digestEnabled: true, timezone: true },
     }),
-    (await scopedDb()).plaidItems.findMany({
-      select: { id: true, institutionName: true, accounts: { select: { name: true, mask: true } } },
+    mine.plaidItems.findMany({
+      select: {
+        id: true,
+        institutionName: true,
+        lastSyncedAt: true,
+        accounts: { select: { name: true, mask: true } },
+      },
       orderBy: { createdAt: "asc" },
     }),
+    mine.accounts.findMany({
+      select: {
+        id: true,
+        name: true,
+        mask: true,
+        source: true,
+        type: true,
+        currentBalanceCents: true,
+        item: { select: { lastSyncedAt: true, institutionName: true } },
+      },
+      orderBy: [{ source: "asc" }, { name: "asc" }],
+    }),
+    // The newest CSV row per account: when that account was last imported.
+    mine.transactions.findMany({
+      where: { source: "csv" },
+      distinct: ["accountId"],
+      orderBy: [{ accountId: "asc" }, { createdAt: "desc" }],
+      select: { accountId: true, createdAt: true },
+    }),
   ]);
+  const csvUpdated = new Map(lastCsv.map((row) => [row.accountId, row.createdAt]));
+  const day = (d: Date | null | undefined) => (d ? d.toISOString().slice(0, 10) : "not yet");
 
   return (
     <>
@@ -37,17 +65,60 @@ async function SettingsContent() {
               >
                 <div>
                   <p className="font-semibold">{item.institutionName ?? "Your bank"}</p>
+                  <p className="text-xs text-zinc-500">Updated {day(item.lastSyncedAt)}</p>
                   <p className="text-sm text-zinc-600 dark:text-zinc-400">
                     {item.accounts
                       .map((a) => (a.mask ? `${a.name} ····${a.mask}` : a.name))
                       .join(", ")}
                   </p>
                 </div>
-                <DisconnectForm itemId={item.id} name={item.institutionName ?? "this bank"} />
+                <div className="flex flex-col gap-2 sm:flex-row">
+                  <RefreshForm itemId={item.id} />
+                  <DisconnectForm itemId={item.id} name={item.institutionName ?? "this bank"} />
+                </div>
               </li>
             ))}
           </ul>
         )}
+      </section>
+
+      {accounts.length > 0 && (
+        <section className="flex flex-col gap-3">
+          <h2 className="text-xl font-semibold">Your accounts</h2>
+          <ul className="divide-y divide-zinc-200 rounded-xl border border-zinc-200 text-sm dark:divide-zinc-800 dark:border-zinc-800">
+            {accounts.map((a) => (
+              <li key={a.id} className="flex flex-wrap justify-between gap-2 px-4 py-3">
+                <span>
+                  <span className="font-medium">{a.mask ? `${a.name} ····${a.mask}` : a.name}</span>
+                  <span className="block text-xs text-zinc-500">
+                    {a.source === "plaid"
+                      ? `Linked through ${a.item?.institutionName ?? "Plaid"} · updated ${day(a.item?.lastSyncedAt)}`
+                      : `CSV import · last import ${day(csvUpdated.get(a.id))}`}
+                  </span>
+                </span>
+                <span className="font-medium">
+                  {a.currentBalanceCents === null
+                    ? "No balance"
+                    : formatCents(a.currentBalanceCents)}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+
+      <section className="flex flex-col gap-3">
+        <h2 className="text-xl font-semibold">Your data</h2>
+        <p className="text-zinc-600 dark:text-zinc-400">
+          Download a copy of everything we hold about you, as a JSON file.
+        </p>
+        <a
+          href="/api/export"
+          download
+          className="inline-flex h-11 items-center justify-center self-start rounded-full border border-zinc-300 px-5 text-sm font-semibold hover:bg-zinc-100 dark:border-zinc-700 dark:hover:bg-zinc-900"
+        >
+          Download my data
+        </a>
       </section>
 
       <section className="flex flex-col gap-3">

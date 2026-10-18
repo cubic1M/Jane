@@ -16,6 +16,8 @@ export const RATE_LIMITS = {
   events: { limit: 120, windowSeconds: 60 },
   // Unsubscribe links, per IP.
   unsubscribe: { limit: 20, windowSeconds: 10 * 60 },
+  // "Download my data", per user.
+  export: { limit: 5, windowSeconds: 60 * 60 },
   // Admin two-factor codes, per user.
   mfa: { limit: 5, windowSeconds: 10 * 60 },
 } satisfies Record<string, Limit>;

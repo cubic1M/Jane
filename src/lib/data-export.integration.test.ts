@@ -1,0 +1,164 @@
+import { randomBytes } from "node:crypto";
+import { PrismaPg } from "@prisma/adapter-pg";
+import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
+import { PrismaClient } from "@/generated/prisma/client";
+
+vi.mock("@/lib/session", () => ({ requireUser: vi.fn() }));
+
+import { encrypt } from "./crypto";
+import { exportUserData } from "./data-export";
+
+// Runs against a real, migrated Postgres (see src/detection/engine.integration.test.ts).
+const url = process.env.TEST_DATABASE_URL;
+
+describe.runIf(url)("data export against a real database", () => {
+  let client: PrismaClient;
+  const ids: string[] = [];
+
+  async function person(name: string) {
+    const suffix = crypto.randomUUID();
+    const user = await client.user.create({
+      data: { email: `${name}-${suffix}@example.com`, mfaSecretEncrypted: encrypt("TOTPSECRET") },
+    });
+    ids.push(user.id);
+    const userId = user.id;
+    const item = await client.plaidItem.create({
+      data: {
+        userId,
+        plaidItemId: `item-${suffix}`,
+        accessTokenEncrypted: encrypt(`access-sandbox-${suffix}`),
+        transactionsCursor: `cursor-${suffix}`,
+        institutionName: `${name} Bank`,
+      },
+    });
+    const account = await client.account.create({
+      data: {
+        userId,
+        source: "plaid",
+        itemId: item.id,
+        plaidAccountId: `acc-${suffix}`,
+        name: `${name} checking`,
+        type: "depository",
+        subtype: "checking",
+      },
+    });
+    await client.transaction.create({
+      data: {
+        userId,
+        accountId: account.id,
+        source: "plaid",
+        plaidTransactionId: `t-${suffix}`,
+        date: new Date(),
+        amountCents: 100,
+        description: `${name} purchase`,
+      },
+    });
+    await client.recurringStream.create({
+      data: {
+        userId,
+        accountId: account.id,
+        plaidStreamId: `s-${suffix}`,
+        frequency: "MONTHLY",
+        lastAmountCents: 1,
+        averageAmountCents: 1,
+        status: "MATURE",
+      },
+    });
+    const finding = await client.finding.create({
+      data: { userId, type: "bank_fees", key: "k", title: `${name} fees`, confidence: "high" },
+    });
+    const decision = await client.decision.create({
+      data: { userId, findingId: finding.id, choice: "yes", cardSnapshot: { title: "x" } },
+    });
+    await client.action.create({
+      data: {
+        userId,
+        decisionId: decision.id,
+        type: "recover_bank_fees",
+        notes: "TEAM-ONLY NOTE",
+        failureReason: null,
+      },
+    });
+    await client.digest.create({
+      data: { userId, weekStart: new Date("2026-10-19"), payload: {} },
+    });
+    await client.membershipIntent.create({ data: { userId, kind: "reserve" } });
+    await client.analyticsEvent.create({ data: { userId, name: "report_viewed" } });
+    await client.merchantCategory.create({
+      data: {
+        userId,
+        merchantKey: "m",
+        pfcPrimary: "OTHER",
+        pfcDetailed: "OTHER_OTHER",
+        source: "llm",
+      },
+    });
+    await client.subscriptionCheck.create({
+      data: { userId, merchantKey: "m", isSubscription: true, model: "x", promptVersion: "v" },
+    });
+    await client.session.create({
+      data: { userId, sessionToken: `sess-${suffix}`, expires: new Date(Date.now() + 1e9) },
+    });
+    return { userId, suffix };
+  }
+
+  beforeAll(() => {
+    vi.stubEnv("TOKEN_ENCRYPTION_KEY", randomBytes(32).toString("base64"));
+    client = new PrismaClient({ adapter: new PrismaPg({ connectionString: url }) });
+  });
+
+  afterAll(async () => {
+    await client.user.deleteMany({ where: { id: { in: ids } } });
+    await client.$disconnect();
+    vi.unstubAllEnvs();
+  });
+
+  it("holds every kind of row for the person, and nothing of anyone else's", async () => {
+    const me = await person("me");
+    const other = await person("other");
+
+    const data = await exportUserData(me.userId, { client });
+
+    for (const key of [
+      "banks",
+      "accounts",
+      "transactions",
+      "recurringStreams",
+      "findings",
+      "decisions",
+      "actions",
+      "digests",
+      "membershipIntents",
+      "merchantCategories",
+      "subscriptionChecks",
+      "events",
+    ] as const) {
+      expect(data[key], key).toHaveLength(1);
+    }
+    expect(data.profile.id).toBe(me.userId);
+    const text = JSON.stringify(data);
+    expect(text).toContain("me purchase");
+    expect(text).not.toContain(other.suffix);
+    expect(text).not.toContain("other");
+  });
+
+  it("never includes secrets or the team's private notes", async () => {
+    const me = await person("secret");
+
+    const text = JSON.stringify(await exportUserData(me.userId, { client }));
+
+    for (const forbidden of [
+      "access-sandbox",
+      "accessTokenEncrypted",
+      "cursor-",
+      "transactionsCursor",
+      "mfaSecret",
+      "TOTPSECRET",
+      "sess-",
+      "sessionToken",
+      "TEAM-ONLY NOTE",
+    ]) {
+      expect(text).not.toContain(forbidden);
+    }
+  });
+});

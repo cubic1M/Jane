@@ -1,7 +1,7 @@
 "use client";
 
 import { useActionState } from "react";
-import { deleteMyData, disconnectBank, type SettingsState } from "./actions";
+import { deleteMyData, disconnectBank, refreshBank, type SettingsState } from "./actions";
 
 const DANGER =
   "inline-flex h-11 items-center justify-center rounded-full border border-red-300 px-5 text-sm font-semibold text-red-700 hover:bg-red-50 disabled:opacity-50 dark:border-red-800 dark:text-red-400 dark:hover:bg-red-950";
@@ -32,6 +32,22 @@ export function DisconnectForm({ itemId, name }: { itemId: string; name: string 
       <input type="hidden" name="itemId" value={itemId} />
       <button type="submit" disabled={pending} className={DANGER}>
         {pending ? "Disconnecting…" : "Disconnect"}
+      </button>
+      <Message state={state} />
+    </form>
+  );
+}
+
+const QUIET =
+  "inline-flex h-11 items-center justify-center rounded-full border border-zinc-300 px-5 text-sm font-semibold hover:bg-zinc-100 disabled:opacity-50 dark:border-zinc-700 dark:hover:bg-zinc-900";
+
+export function RefreshForm({ itemId }: { itemId: string }) {
+  const [state, action, pending] = useActionState<SettingsState, FormData>(refreshBank, null);
+  return (
+    <form action={action} className="flex flex-col gap-2">
+      <input type="hidden" name="itemId" value={itemId} />
+      <button type="submit" disabled={pending} className={QUIET}>
+        {pending ? "Refreshing…" : "Refresh now"}
       </button>
       <Message state={state} />
     </form>
