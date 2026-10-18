@@ -130,6 +130,9 @@ describe.runIf(url)("data export against a real database", () => {
         valuedOn: new Date("2026-09-01"),
       },
     });
+    await client.deadline.create({
+      data: { userId, title: `${name} FSA deadline`, dueOn: new Date("2026-12-31"), kind: "fsa" },
+    });
     return { userId, suffix };
   }
 
@@ -170,6 +173,7 @@ describe.runIf(url)("data export against a real database", () => {
       "balanceSnapshots",
       "events",
       "ownedAssets",
+      "deadlines",
     ] as const) {
       expect(data[key], key).toHaveLength(1);
     }

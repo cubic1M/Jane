@@ -158,6 +158,9 @@ async function HomeContent() {
           <Link href="/documents" className={LINK}>
             Policies and receipts
           </Link>
+          <Link href="/deadlines" className={LINK}>
+            Deadlines
+          </Link>
         </span>
       </div>
 

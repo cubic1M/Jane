@@ -43,6 +43,7 @@ export async function exportUserData(
     events,
     ownedAssets,
     documents,
+    deadlines,
   ] = await Promise.all([
     client.user.findUniqueOrThrow({
       where: { id: userId },
@@ -335,6 +336,11 @@ export async function exportUserData(
       },
       orderBy: { uploadedAt: "asc" },
     }),
+    // Deadlines they typed in (spec step 71).
+    db.deadlines.findMany({
+      select: { title: true, dueOn: true, kind: true, note: true, doneAt: true, createdAt: true },
+      orderBy: { dueOn: "asc" },
+    }),
   ]);
 
   return {
@@ -372,5 +378,6 @@ export async function exportUserData(
       note: "The files themselves aren't in this download. Download each one from /documents.",
       files: documents,
     },
+    deadlines,
   };
 }

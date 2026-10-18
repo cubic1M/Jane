@@ -44,6 +44,7 @@ const SIGNED_IN = [
   "/things",
   "/afford",
   "/documents",
+  "/deadlines",
 ];
 const ADMIN = [
   "/admin/queue",
