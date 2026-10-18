@@ -1,5 +1,8 @@
 // What the home dashboard shows.
 
+// Where signed-in users go after sign-in. /home sends people without accounts to /connect.
+export const HOME_PATH = "/home";
+
 // Upcoming charges within this many days: a month, including the same date next month.
 export const UPCOMING_DAYS = 31;
 // At most this many upcoming charges and newest findings.

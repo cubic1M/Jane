@@ -93,3 +93,18 @@ export async function addAlert(
     await client.end();
   }
 }
+
+// Turns two-factor on for a user (a placeholder secret: tests only check that a code is
+// asked for, never enter a right one).
+export async function enableTwoFactor(userId: string): Promise<void> {
+  const client = new Client({ connectionString: E2E_DATABASE_URL });
+  await client.connect();
+  try {
+    await client.query(
+      `UPDATE users SET mfa_enabled_at = now(), mfa_secret_encrypted = 'e2e-placeholder' WHERE id = $1`,
+      [userId],
+    );
+  } finally {
+    await client.end();
+  }
+}

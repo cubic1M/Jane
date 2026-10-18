@@ -211,6 +211,7 @@ describe.runIf(url)("deleting data against a real database", () => {
     await client.authAccount.create({
       data: { userId, type: "oauth", provider: "google", providerAccountId: `g-${suffix}` },
     });
+    await client.mfaBackupCode.create({ data: { userId, codeHash: `hash-${suffix}` } });
     return { userId, itemId: item.id, accessToken: `access-${suffix}` };
   }
 
@@ -245,6 +246,7 @@ describe.runIf(url)("deleting data against a real database", () => {
       settlements: await client.settlement.count(where),
       sessions: await client.session.count(where),
       authAccounts: await client.authAccount.count(where),
+      mfaBackupCodes: await client.mfaBackupCode.count(where),
     };
   }
 

@@ -8,21 +8,34 @@ import { adminSessionState, sessionTokenFrom } from "@/lib/admin-gate";
 
 export type SessionUser = Session["user"];
 
-// Where signed-in users go after sign-in. /home sends people without accounts to /connect.
-export const HOME_PATH = "/home";
+export { HOME_PATH } from "@/config/home";
 
-export async function getCurrentUser(): Promise<SessionUser | null> {
+export type SessionState = { user: SessionUser; mfaPending: boolean };
+
+// The signed-in person, including one who still owes a two-factor code. Only /mfa uses
+// this directly; everything else goes through getCurrentUser or requireUser.
+export async function getSessionState(): Promise<SessionState | null> {
   // Auth.js makes a random CSRF token on every session lookup. Waiting for the
   // request first keeps Next.js from treating that as part of a prerender.
   await connection();
   const session = await auth();
-  return session?.user ?? null;
+  return session?.user ? { user: session.user, mfaPending: session.mfaPending } : null;
 }
 
-// Signed in and on the current Terms version; otherwise sign in, or accept them once.
+// Signed in, with the two-factor code entered if two-factor is on. Null otherwise, so
+// API routes treat a session that still owes a code as signed out.
+export async function getCurrentUser(): Promise<SessionUser | null> {
+  const state = await getSessionState();
+  return state && !state.mfaPending ? state.user : null;
+}
+
+// Signed in, past two-factor and on the current Terms version; otherwise sign in, enter
+// the code, or accept the Terms once.
 export async function requireUser(): Promise<SessionUser> {
-  const user = await getCurrentUser();
-  if (!user) redirect("/login");
+  const state = await getSessionState();
+  if (!state) redirect("/login");
+  if (state.mfaPending) redirect("/mfa");
+  const { user } = state;
   if (user.termsVersion !== TERMS_VERSION) redirect("/terms/accept");
   return user;
 }
@@ -30,11 +43,13 @@ export async function requireUser(): Promise<SessionUser> {
 // Admin pages answer 404 to everyone else, so their existence isn't revealed. Admins
 // must also have entered a two-factor code in this session.
 export async function requireAdmin(): Promise<SessionUser> {
-  const user = await getCurrentUser();
+  const state = await getSessionState();
+  const user = state?.user;
   if (user?.role !== "admin") notFound();
+  if (state?.mfaPending) redirect("/mfa");
   if (user.termsVersion !== TERMS_VERSION) redirect("/terms/accept");
-  const state = await adminSessionState(sessionTokenFrom(await cookies()));
-  if (state === "needs_mfa") redirect("/mfa");
-  if (state !== "verified") notFound();
+  const gate = await adminSessionState(sessionTokenFrom(await cookies()));
+  if (gate === "needs_mfa") redirect("/mfa");
+  if (gate !== "verified") notFound();
   return user;
 }

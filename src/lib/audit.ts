@@ -42,7 +42,14 @@ export type AuditEvent =
   | "saved_reply_deleted"
   | "admin_viewed_health"
   | "charge_split"
-  | "household_settled";
+  | "household_settled"
+  // Two-factor for everyone (admins keep the admin_mfa_* names above).
+  | "mfa_enabled"
+  | "mfa_verified"
+  | "mfa_failed"
+  | "mfa_disabled"
+  | "mfa_backup_code_used"
+  | "mfa_backup_codes_created";
 
 export type AuditActor = { type: ActorType; id: string | null };
 

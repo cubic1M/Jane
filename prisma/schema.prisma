@@ -192,6 +192,7 @@ model User {
   checklistDismissedAt       DateTime? @map("checklist_dismissed_at") @db.Timestamptz(3)
 
   authAccounts        AuthAccount[]
+  mfaBackupCodes      MfaBackupCode[]
   sessions            Session[]
   plaidItems          PlaidItem[]
   accounts            Account[]
@@ -986,4 +987,19 @@ model AnalyticsEvent {
   @@index([userId])
   @@index([name, createdAt])
   @@map("analytics_events")
+}
+
+// Two-factor backup codes: each works once, in place of an authenticator code. Only a
+// SHA-256 hash is kept; the codes are shown once when made.
+model MfaBackupCode {
+  id        String    @id @default(cuid())
+  userId    String    @map("user_id")
+  codeHash  String    @map("code_hash")
+  usedAt    DateTime? @map("used_at") @db.Timestamptz(3)
+  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, codeHash])
+  @@map("mfa_backup_codes")
 }

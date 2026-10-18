@@ -21,7 +21,7 @@ The build runs in eleven steps, with Plaid added at step 7 after the founders te
 
 ## Status (Oct 18, 2026)
 
-Steps 1–47 are built (24 came before 22, because do-it-yourself kits need its cancel links). Where the build differs from the original plan, the plan below has been kept and the difference is noted here.
+Steps 1–48 are built (24 came before 22, because do-it-yourself kits need its cancel links). Where the build differs from the original plan, the plan below has been kept and the difference is noted here.
 
 | Step | Shipped in | Notes |
 | --- | --- | --- |
@@ -70,6 +70,7 @@ Steps 1–47 are built (24 came before 22, because do-it-yourself kits need its 
 | 45 Monthly check-in | PR #56 | /check-in shows the month just ended (or any earlier month): spending against the month before and its biggest changes, budgets kept, net worth change (from snapshots), what Jane found and what got done; Claude writes 2-3 sentences from those figures only, checked by the guardrails with a template fallback, stored per person and month; the email goes out in the first 7 days of the month (person's timezone), once, only to people who get the weekly email, never for an empty month |
 | 46 Shared bills | PR #57 | On /household either partner can split a charge from the last 45 days on a shared account (half by default; the split is stored in basis points); both see the same running balance, "Settle up" records a settlement that zeroes it; leaving the household or deleting your data ends the shared balance (shared charges and settlements are deleted) while each person's own transactions stay; the data export holds the charges you paid and the settle-ups you were part of |
 | 47 First week with Jane | PR #58 | A "Getting started" card on Home for the first 28 days: link a bank or import a statement, decide on 3 cards (undone decisions don't count), set a budget or a goal, choose how alerts reach you (saved alert settings or a phone with notifications on); each ticks from real data, never from the checklist; the first time each is seen done Home records it (users.checklist_progress) and sends checklist_item_done once, then checklist_completed; "Hide this for good" sets checklist_dismissed_at and sends checklist_dismissed |
+| 48 Two-factor for everyone | PR #59 | Anyone can turn it on from /settings (an authenticator app, the same TOTP as the team's); the first code makes 10 backup codes, shown once and stored as SHA-256 hashes, each working once (case, spaces and dashes ignored); every session after that must enter a code or backup code at /mfa before any page or API answers (API routes treat it as signed out); new backup codes and turning it off need a current code, and admins can't turn it off; the session lookup (/api/auth/session) no longer returns the session token, which it used to, so a script on a page could have read it |
 
 Still needed from a person before outside users: counsel (insurance referral licensing, privacy policy and terms), Plaid Production approval and questionnaire, a backup restore test, and admins enrolling in two-factor. See docs/beta-checklist.md.
 

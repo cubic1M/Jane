@@ -1,5 +1,5 @@
 import type { Adapter, AdapterSession, AdapterUser } from "next-auth/adapters";
-import type { PrismaClient, User } from "@/generated/prisma/client";
+import type { PrismaClient, Session, User } from "@/generated/prisma/client";
 
 // A small Auth.js adapter over our own tables. We don't use @auth/prisma-adapter because
 // our "accounts" table holds bank accounts; sign-in providers live in auth_accounts.
@@ -13,11 +13,17 @@ function toAdapterUser(user: User): AdapterUser {
     image: user.image,
     role: user.role,
     termsVersion: user.termsVersion,
+    mfaEnabled: Boolean(user.mfaEnabledAt),
   };
 }
 
-function toAdapterSession(session: AdapterSession): AdapterSession {
-  return { sessionToken: session.sessionToken, userId: session.userId, expires: session.expires };
+function toAdapterSession(session: AdapterSession | Session): AdapterSession {
+  return {
+    sessionToken: session.sessionToken,
+    userId: session.userId,
+    expires: session.expires,
+    mfaVerified: "mfaVerifiedAt" in session && Boolean(session.mfaVerifiedAt),
+  };
 }
 
 function isNotFound(error: unknown): boolean {

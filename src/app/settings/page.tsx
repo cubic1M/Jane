@@ -4,6 +4,7 @@ import { AppHeader } from "@/components/app-header";
 import { ALERT_EMAILS_PER_DAY, ALERT_LABELS, ALERT_TYPES } from "@/config/alerts";
 import { DEFAULT_TIMEZONE, TIMEZONES } from "@/config/digest";
 import { alertPrefs, isUrgent } from "@/lib/alerts";
+import { twoFactorStatus } from "@/lib/mfa";
 import { db } from "@/lib/db";
 import { scopedDb } from "@/lib/db-scoped";
 import { requireUser } from "@/lib/session";
@@ -16,11 +17,12 @@ import { StateForm } from "./state-form";
 import { NotificationsToggle } from "./notifications";
 import { DeleteDataForm, DisconnectForm, RefreshForm } from "./data-forms";
 import { EmailForm } from "./email-form";
+import { TwoFactorOnForms } from "./two-factor-forms";
 
 async function SettingsContent() {
   const user = await requireUser();
   const mine = await scopedDb();
-  const [prefs, items, accounts, lastCsv] = await Promise.all([
+  const [prefs, items, accounts, lastCsv, twoFactor] = await Promise.all([
     db.user.findUniqueOrThrow({
       where: { id: user.id },
       select: {
@@ -59,6 +61,7 @@ async function SettingsContent() {
       orderBy: [{ accountId: "asc" }, { createdAt: "desc" }],
       select: { accountId: true, createdAt: true },
     }),
+    twoFactorStatus(user.id),
   ]);
   const csvUpdated = new Map(lastCsv.map((row) => [row.accountId, row.createdAt]));
   const alerts = alertPrefs(prefs.alertPrefs);
@@ -184,6 +187,33 @@ async function SettingsContent() {
           }))}
         />
         {vapidPublicKey() && <NotificationsToggle publicKey={vapidPublicKey() ?? ""} />}
+      </section>
+
+      <section id="two-factor" className="flex scroll-mt-8 flex-col gap-3">
+        <h2 className="text-xl font-semibold">Two-factor sign-in</h2>
+        {twoFactor.enabledAt ? (
+          <>
+            <p className="text-zinc-600 dark:text-zinc-400">
+              On since {day(twoFactor.enabledAt)}. Each new sign-in asks for a code from your
+              authenticator app. {twoFactor.backupCodesLeft} backup{" "}
+              {twoFactor.backupCodesLeft === 1 ? "code" : "codes"} left.
+            </p>
+            <TwoFactorOnForms canTurnOff={user.role !== "admin"} />
+          </>
+        ) : (
+          <>
+            <p className="text-zinc-600 dark:text-zinc-400">
+              Optional extra protection: after the email link or Google, signing in also asks for a
+              code from an app on your phone.
+            </p>
+            <Link
+              href="/settings/two-factor"
+              className="inline-flex h-11 w-fit items-center justify-center rounded-full bg-emerald-700 px-6 font-semibold text-white hover:bg-emerald-800"
+            >
+              Turn on two-factor
+            </Link>
+          </>
+        )}
       </section>
 
       <section className="flex flex-col gap-3 rounded-xl border border-red-200 p-4 dark:border-red-900">

@@ -1,8 +1,10 @@
 import { redirect } from "next/navigation";
-import { getCurrentUser, HOME_PATH } from "@/lib/session";
+import { getSessionState, HOME_PATH } from "@/lib/session";
 
-// Render inside <Suspense>: it reads the session cookie.
+// Render inside <Suspense>: it reads the session cookie. Someone who still owes a
+// two-factor code goes to enter it rather than signing in again.
 export async function RedirectIfSignedIn() {
-  if (await getCurrentUser()) redirect(HOME_PATH);
+  const state = await getSessionState();
+  if (state) redirect(state.mfaPending ? "/mfa" : HOME_PATH);
   return null;
 }

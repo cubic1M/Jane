@@ -26,7 +26,7 @@ export const RATE_LIMITS = {
   calendar: { limit: 120, windowSeconds: 60 * 60 },
   // Ask Jane questions, per user.
   ask: { limit: 30, windowSeconds: 60 * 60 },
-  // Admin two-factor codes, per user.
+  // Two-factor codes (authenticator or backup), per user.
   mfa: { limit: 5, windowSeconds: 10 * 60 },
 } satisfies Record<string, Limit>;
 

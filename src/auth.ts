@@ -4,6 +4,7 @@ import Resend from "next-auth/providers/resend";
 import { createAuthAdapter } from "@/lib/auth-adapter";
 import { allowSignIn } from "@/lib/auth-gate";
 import { recordSignIn } from "@/lib/auth-events";
+import { sessionPayload } from "@/lib/auth-session";
 import { db } from "@/lib/db";
 import { sendMagicLink } from "@/lib/email";
 
@@ -32,12 +33,8 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   callbacks: {
     // The beta is invite-only: new accounts need a redeemed invite code.
     signIn: allowSignIn,
-    session({ session, user }) {
-      return {
-        ...session,
-        user: { ...session.user, id: user.id, role: user.role, termsVersion: user.termsVersion },
-      };
-    },
+    // Only what the app needs: never the session token.
+    session: ({ session, user }) => sessionPayload({ session, user }),
   },
   events: {
     signIn: recordSignIn,
