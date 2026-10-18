@@ -3,6 +3,7 @@ import { cardInterest } from "./rules/card-interest";
 import { duplicateSubscription } from "./rules/duplicate-subscription";
 import { idleCash } from "./rules/idle-cash";
 import { insuranceReshop } from "./rules/insurance-reshop";
+import { lowBalanceRisk } from "./rules/low-balance-risk";
 import { priceIncrease } from "./rules/price-increase";
 import type { Rule } from "./rules/rule";
 import { subscriptionReview } from "./rules/subscription-review";
@@ -17,6 +18,7 @@ export const RULES: readonly Rule[] = [
   idleCash,
   insuranceReshop,
   cardInterest,
+  lowBalanceRisk,
 ];
 
 // Pure: same input, same candidates in the same order. If two candidates share a type and

@@ -13,6 +13,7 @@ describe("prepareExplainInput", () => {
         "idle_cash",
         "insurance_reshop",
         "card_interest",
+        "low_balance_risk",
       ]),
     );
   });

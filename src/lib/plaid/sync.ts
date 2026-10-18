@@ -117,6 +117,9 @@ function streamRow(stream: TransactionStream, accountId: string) {
     lastAmountCents: toCents(stream.last_amount.amount) ?? 0,
     averageAmountCents: toCents(stream.average_amount.amount) ?? 0,
     lastDate: stream.last_date ? new Date(`${stream.last_date}T00:00:00Z`) : null,
+    predictedNextDate: stream.predicted_next_date
+      ? new Date(`${stream.predicted_next_date}T00:00:00Z`)
+      : null,
     status: stream.status,
     isActive: stream.is_active,
     pfcPrimary: stream.personal_finance_category?.primary ?? null,

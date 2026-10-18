@@ -33,6 +33,10 @@ export type Stream = {
   pfcDetailed: string | null;
   active: boolean;
   confidence: ConfidenceLevel;
+  // The account it's charged to, the last charge date, and Plaid's predicted next date.
+  accountId: string | null;
+  lastDate: string | null;
+  predictedNextDate: string | null;
 };
 
 function merchantOf(t: DetectionTransaction) {
@@ -71,7 +75,7 @@ const PLAID_STATUS_CONFIDENCE: Record<string, ConfidenceLevel> = {
   EARLY_DETECTION: "medium",
 };
 
-function fromPlaidStream(
+export function fromPlaidStream(
   stream: DetectionRecurringStream,
   byPlaidId: Map<string, DetectionTransaction>,
 ): Stream {
@@ -95,6 +99,9 @@ function fromPlaidStream(
     pfcDetailed: stream.pfcDetailed,
     active: stream.isActive && stream.status !== "TOMBSTONED",
     confidence: PLAID_STATUS_CONFIDENCE[stream.status] ?? "low",
+    accountId: stream.accountId,
+    lastDate: stream.lastDate ?? charges.at(-1)?.date ?? null,
+    predictedNextDate: stream.predictedNextDate ?? null,
   };
 }
 
@@ -155,6 +162,9 @@ function detectRun(charges: DetectionTransaction[], asOf: string): Stream | null
     pfcDetailed: mostCommon(run.map((c) => c.pfcDetailed)),
     active: daysBetween(last.date, asOf) <= usualGap * ACTIVE_WITHIN_INTERVALS,
     confidence: run.length >= HIGH_CONFIDENCE_MIN_CHARGES ? "high" : "medium",
+    accountId: last.accountId,
+    lastDate: last.date,
+    predictedNextDate: null,
   };
 }
 

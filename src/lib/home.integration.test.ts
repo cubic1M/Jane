@@ -78,7 +78,7 @@ describe.runIf(url)("home summary against a real database", () => {
       "Review your Netflix subscription",
     ]);
     expect(home?.upcoming).toEqual([
-      { merchant: "Netflix", date: "2026-11-14", amountCents: 1549 },
+      { merchant: "Netflix", date: "2026-11-15", amountCents: 1549 },
     ]);
     expect(home?.lastUpdated).toBeInstanceOf(Date);
   });

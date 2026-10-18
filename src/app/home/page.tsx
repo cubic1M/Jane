@@ -2,7 +2,6 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { Suspense } from "react";
 import { AppHeader } from "@/components/app-header";
-import { UPCOMING_DAYS } from "@/config/home";
 import { homeSummary } from "@/lib/home";
 import { formatCents } from "@/lib/money";
 import { requireUser } from "@/lib/session";
@@ -92,7 +91,12 @@ async function HomeContent() {
       </section>
 
       <section className="flex flex-col gap-2">
-        <h2 className="text-xl font-semibold">Coming up in the next {UPCOMING_DAYS} days</h2>
+        <div className="flex items-baseline justify-between gap-2">
+          <h2 className="text-xl font-semibold">Coming up this month</h2>
+          <Link href="/bills" className={`text-sm ${LINK}`}>
+            All bills
+          </Link>
+        </div>
         {home.upcoming.length === 0 ? (
           <p className="text-zinc-600 dark:text-zinc-400">No regular charges expected.</p>
         ) : (

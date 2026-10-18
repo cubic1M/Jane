@@ -231,3 +231,14 @@ export const NON_SPENDING_CATEGORIES: readonly PfcDetailed[] = [
   // Card purchases are already counted on the card itself.
   "LOAN_PAYMENTS_CREDIT_CARD_PAYMENT",
 ];
+
+// --- Cash-flow forecast (low balance ahead) ----------------------------------------
+
+// How far ahead the forecast looks: a month, including the same date next month.
+export const FORECAST_DAYS = 31;
+// A checking account forecast to dip below this before more income arrives is a risk.
+export const LOW_BALANCE_CUSHION_CENTS = 10_000;
+// Below zero is high confidence; between zero and the cushion is medium.
+export const LOW_BALANCE_HIGH_CONFIDENCE_BELOW_CENTS = 0;
+// Plaid depository subtypes the forecast runs for.
+export const FORECAST_SUBTYPES: readonly string[] = ["checking"];
