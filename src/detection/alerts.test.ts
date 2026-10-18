@@ -13,6 +13,7 @@ import {
   tx,
 } from "./__fixtures__/build";
 import {
+  billReminderAlerts,
   detectAlerts,
   duplicateChargeAlerts,
   feeAlerts,
@@ -249,5 +250,53 @@ describe("detectAlerts", () => {
     const data = input({ transactions: monthly(6, 1199, { ...GEICO, pfcDetailed: null }) });
     const quiet = { ...data, asOf: addDays(AS_OF, 10) };
     expect(detectAlerts(quiet, detect(quiet), LATER_SCAN)).toEqual([]);
+  });
+});
+
+describe("bill_due", () => {
+  // Geico every month on the 17th, from checking; AS_OF is Oct 15, so the next is in 2 days.
+  const geico = [4, 3, 2, 1].map((m) =>
+    tx({ ...GEICO, date: monthsAgo(m, 17), amountCents: 9_800 }),
+  );
+  const withBalance = (cents: number, asOf = AS_OF) =>
+    input({
+      asOf,
+      accounts: [{ ...CHECKING, currentBalanceCents: cents }],
+      transactions: geico,
+    });
+
+  it("reminds before a bill, not urgent when there's enough money", () => {
+    expect(billReminderAlerts(withBalance(200_000))).toEqual([
+      expect.objectContaining({
+        type: "bill_due",
+        key: "Geico:2026-10-17",
+        title: "Geico, about $98.00, due Oct 17",
+        urgent: false,
+      }),
+    ]);
+  });
+
+  it("is urgent when the balance could be under the cushion on the due date", () => {
+    const [alert] = billReminderAlerts(withBalance(12_000));
+    expect(alert).toMatchObject({ urgent: true });
+    expect(alert.body).toContain("$22.00");
+  });
+
+  it("says nothing when the next bill is further off, or just went out", () => {
+    expect(billReminderAlerts(withBalance(200_000, "2026-10-10"))).toEqual([]);
+    expect(billReminderAlerts(withBalance(200_000, "2026-10-17"))).toEqual([]);
+  });
+
+  it("uses the same key on a rescan, and a new one for next month's bill", () => {
+    const now = billReminderAlerts(withBalance(200_000)).map((a) => a.key);
+    expect(billReminderAlerts(withBalance(200_000)).map((a) => a.key)).toEqual(now);
+    const november = billReminderAlerts(
+      input({
+        asOf: "2026-11-15",
+        accounts: [{ ...CHECKING, currentBalanceCents: 200_000 }],
+        transactions: [...geico, tx({ ...GEICO, date: "2026-10-17", amountCents: 9_800 })],
+      }),
+    );
+    expect(november.map((a) => a.key)).toEqual(["Geico:2026-11-17"]);
   });
 });

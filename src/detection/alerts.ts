@@ -1,6 +1,8 @@
 import type { AlertType } from "@/generated/prisma/client";
 import {
   ALERT_RECENT_DAYS,
+  BILL_REMINDER_DAYS,
+  LOW_BALANCE_CUSHION_CENTS,
   BANK_FEE_CATEGORIES,
   CARD_INTEREST_CATEGORIES,
   LARGE_CHARGE_EXCLUDED_PRIMARIES,
@@ -11,6 +13,7 @@ import {
 } from "@/config/detection";
 import { formatCents } from "@/lib/money";
 import { byDate, inList, inLookback } from "./helpers";
+import { forecastAccounts, upcomingBills } from "./forecast";
 import { duplicatePairs } from "./rules/duplicate-charge";
 import { buildStreams, merchantOf, type Stream } from "./streams";
 import type { Candidate, DetectionInput, DetectionTransaction } from "./types";
@@ -26,6 +29,8 @@ export type AlertCandidate = {
   key: string;
   title: string;
   body: string;
+  // Overrides the type's usual urgency (bill reminders are urgent only when short).
+  urgent?: boolean;
 };
 
 export type AlertContext = {
@@ -185,6 +190,31 @@ export function lowBalanceAlerts(candidates: Candidate[]): AlertCandidate[] {
     });
 }
 
+// A regular bill due in the next BILL_REMINDER_DAYS, one per bill per due date. Urgent
+// only when its account is forecast below the cushion on that day.
+export function billReminderAlerts(input: DetectionInput): AlertCandidate[] {
+  const until = addDays(input.asOf, BILL_REMINDER_DAYS);
+  const forecasts = forecastAccounts(input, BILL_REMINDER_DAYS);
+  const balanceOn = (accountId: string | null, date: string) =>
+    forecasts.find((f) => f.accountId === accountId)?.days.find((d) => d.date === date)
+      ?.balanceCents;
+  return upcomingBills(input, BILL_REMINDER_DAYS)
+    .filter((b) => b.date > input.asOf && b.date <= until)
+    .map((b): AlertCandidate => {
+      const balance = balanceOn(b.accountId, b.date);
+      const short = balance !== undefined && balance < LOW_BALANCE_CUSHION_CENTS;
+      return {
+        type: "bill_due",
+        key: `${b.merchant}:${b.date}`,
+        title: `${b.merchant}, about ${formatCents(b.amountCents)}, due ${shortDate(b.date)}`,
+        body: short
+          ? `Your balance could be about ${formatCents(balance)} that day, so there may not be enough. Moving money in first could avoid a fee.`
+          : "Expected from your past charges; the date and amount are estimates.",
+        urgent: short,
+      };
+    });
+}
+
 // Every alert for this scan, in a stable order.
 export function detectAlerts(
   input: DetectionInput,
@@ -199,5 +229,6 @@ export function detectAlerts(
     ...feeAlerts(input),
     ...priceIncreaseAlerts(input, candidates),
     ...newSubscriptionAlerts(input, candidates, context),
+    ...billReminderAlerts(input),
   ];
 }

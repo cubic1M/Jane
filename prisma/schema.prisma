@@ -104,6 +104,7 @@ enum AlertType {
   duplicate_charge
   low_balance
   over_budget
+  bill_due
 
   @@map("alert_type")
 }

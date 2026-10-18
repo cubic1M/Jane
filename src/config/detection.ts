@@ -321,6 +321,8 @@ export const BILL_NEGOTIATION_MIN_GAP_CENTS = 1_000;
 // Only events this recent raise an alert, so importing a year of history doesn't send a
 // year of alerts.
 export const ALERT_RECENT_DAYS = 7;
+// A bill reminder comes this many days before the bill's expected date.
+export const BILL_REMINDER_DAYS = 3;
 // A charge is unusually large when it is at least this much (in cents)...
 export const LARGE_CHARGE_MIN_CENTS = 50_000;
 // ...and at least this many times the account's typical (median) charge...

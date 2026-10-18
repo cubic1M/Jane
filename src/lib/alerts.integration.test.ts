@@ -90,6 +90,27 @@ describe.runIf(url)("raiseAlerts against a real database", () => {
     expect((await alertsOf(user.id))[0].emailedAt).toEqual(NOW);
   });
 
+  it("emails a bill reminder only when it's urgent", async () => {
+    const user = await person();
+    await raiseAlerts(
+      user.id,
+      [
+        alert({ type: "bill_due", key: "Geico:2026-10-17", urgent: false }),
+        alert({ type: "bill_due", key: "Rent:2026-10-18", urgent: true }),
+      ],
+      { client, now: NOW, send },
+    );
+
+    const rows = await alertsOf(user.id);
+    expect(rows.map((r) => [r.key, r.urgent, r.emailedAt !== null])).toEqual(
+      expect.arrayContaining([
+        ["Geico:2026-10-17", false, false],
+        ["Rent:2026-10-18", true, true],
+      ]),
+    );
+    expect(send).toHaveBeenCalledTimes(1);
+  });
+
   it("respects preferences: off is never stored, in-app is never emailed", async () => {
     const user = await person({ large_charge: "off", duplicate_charge: "app" });
 

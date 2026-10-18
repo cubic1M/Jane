@@ -74,7 +74,12 @@ export async function raiseAlerts(
   if (wanted.length === 0) return { raised: 0, emailed: 0 };
 
   const created = await scopedFor(userId, client).alerts.createManyAndReturn({
-    data: wanted.map((a) => ({ userId, ...a, urgent: isUrgent(a.type), createdAt: now })),
+    data: wanted.map((a) => ({
+      userId,
+      ...a,
+      urgent: a.urgent ?? isUrgent(a.type),
+      createdAt: now,
+    })),
     skipDuplicates: true,
     select: { type: true },
   });
