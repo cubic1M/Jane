@@ -236,6 +236,16 @@ describe.runIf(url)("deleting data against a real database", () => {
     await client.ownedAsset.create({
       data: { userId, kind: "home", name: "House", valueCents: 1, valuedOn: new Date() },
     });
+    await client.document.create({
+      data: {
+        userId,
+        kind: "receipt",
+        fileName: "receipt.pdf",
+        contentType: "application/pdf",
+        sizeBytes: 9,
+        encryptedBytes: Buffer.from("encrypted"),
+      },
+    });
     return { userId, itemId: item.id, accessToken: `access-${suffix}` };
   }
 
@@ -276,6 +286,7 @@ describe.runIf(url)("deleting data against a real database", () => {
       planProposals: await client.planProposal.count(where),
       planLinks: await client.planLink.count(where),
       ownedAssets: await client.ownedAsset.count(where),
+      documents: await client.document.count(where),
     };
   }
 

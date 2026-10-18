@@ -55,3 +55,9 @@ export function securityHeaders(isDev: boolean): Header[] {
     { key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=(), payment=()" },
   ];
 }
+
+// Uploaded documents opened inline (/api/documents/<id>, spec step 68): sandboxed, with
+// nothing loaded alongside, so a crafted PDF or image can't run script on our origin.
+// next.config.ts sets it after the site-wide headers, which would otherwise replace it.
+export const DOCUMENT_FILE_CSP =
+  "sandbox; default-src 'none'; style-src 'unsafe-inline'; frame-ancestors 'none'";

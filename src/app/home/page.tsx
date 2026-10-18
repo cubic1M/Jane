@@ -155,6 +155,9 @@ async function HomeContent() {
           <Link href="/afford" className={LINK}>
             Can I afford this?
           </Link>
+          <Link href="/documents" className={LINK}>
+            Policies and receipts
+          </Link>
         </span>
       </div>
 

@@ -42,6 +42,7 @@ export async function exportUserData(
     checkIns,
     events,
     ownedAssets,
+    documents,
   ] = await Promise.all([
     client.user.findUniqueOrThrow({
       where: { id: userId },
@@ -311,6 +312,29 @@ export async function exportUserData(
         updatedAt: true,
       },
     }),
+    // Uploaded policies, warranties and receipts (spec step 68): what each is and its key
+    // facts, not the files, which download one by one from /documents.
+    db.documents.findMany({
+      select: {
+        id: true,
+        kind: true,
+        fileName: true,
+        contentType: true,
+        sizeBytes: true,
+        provider: true,
+        policyType: true,
+        coverageSummary: true,
+        premiumCents: true,
+        premiumFrequency: true,
+        renewalDate: true,
+        warrantyEndsOn: true,
+        purchaseDate: true,
+        purchaseAmountCents: true,
+        extractionSource: true,
+        uploadedAt: true,
+      },
+      orderBy: { uploadedAt: "asc" },
+    }),
   ]);
 
   return {
@@ -344,5 +368,9 @@ export async function exportUserData(
     checkIns,
     events,
     ownedAssets,
+    documents: {
+      note: "The files themselves aren't in this download. Download each one from /documents.",
+      files: documents,
+    },
   };
 }

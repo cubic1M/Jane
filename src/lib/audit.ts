@@ -65,7 +65,13 @@ export type AuditEvent =
   | "agent_handed_off"
   | "agent_call_started"
   // A refund seen coming back in the person's transactions (src/lib/agent/refund-check.ts).
-  | "refund_seen";
+  | "refund_seen"
+  // Insurance policies, warranties and receipts (spec step 68). Never the file or its text.
+  | "document_uploaded"
+  | "document_read"
+  | "document_viewed"
+  | "document_facts_saved"
+  | "document_deleted";
 
 export type AuditActor = { type: ActorType; id: string | null };
 

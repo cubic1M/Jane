@@ -18,6 +18,7 @@ import { BestOption } from "./best-option";
 import { DecisionButtons } from "./decision-buttons";
 import { DiyKit } from "./diy-kit";
 import { savingsLine } from "@/lib/savings-text";
+import { policyForMerchant, policyLines } from "@/lib/documents/dates";
 
 async function Card({ params }: { params: PageProps<"/report/[findingId]">["params"] }) {
   const user = await requireUser();
@@ -50,6 +51,13 @@ async function Card({ params }: { params: PageProps<"/report/[findingId]">["para
     hasKit(card.actionType) && (open || diyDecision)
       ? await outcomeFor(typeof merchantName === "string" ? merchantName : null, card.actionType)
       : null;
+  // The person's own policy from this insurer, if they uploaded one (spec step 68). Shown
+  // beside the card, not in it, so the card and its hash stay the same.
+  const policy =
+    finding.type === "insurance_reshop" && typeof merchantName === "string"
+      ? await policyForMerchant(user.id, merchantName)
+      : null;
+  const fromPolicy = policy ? policyLines(policy) : [];
   const kit =
     hasKit(card.actionType) && (open || diyDecision)
       ? buildKit(
@@ -96,6 +104,21 @@ async function Card({ params }: { params: PageProps<"/report/[findingId]">["para
             An estimate from your last 12 months, not a promise.
           </p>
         </section>
+
+        {fromPolicy.length > 0 && (
+          <section className="flex flex-col gap-1 rounded-xl border border-zinc-200 p-4 dark:border-zinc-800">
+            <h2 className="text-sm font-semibold">From your policy</h2>
+            {fromPolicy.map((line) => (
+              <p key={line}>{line}</p>
+            ))}
+            <Link
+              href="/documents"
+              className="text-sm font-medium text-emerald-700 hover:underline"
+            >
+              See your policy
+            </Link>
+          </section>
+        )}
 
         {card.findingType === "card_interest" && (
           <Link href="/debt" className="font-medium text-emerald-700 hover:underline">
