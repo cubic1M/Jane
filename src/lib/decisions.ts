@@ -148,7 +148,7 @@ export async function recordDecision(
   );
   // The agent works the action itself when it can (src/lib/agent/run.ts).
   if (result.actionId && isAgentAction(card.actionType)) {
-    result.agentJobId = await startAgent(userId, result.actionId, { client });
+    result.agentJobId = await startAgent(userId, result.actionId, { client, source });
   }
   const EVENT = { yes: "decision_yes", no: "decision_no", diy: "diy_started" } as const;
   await track(userId, EVENT[answer.choice], {

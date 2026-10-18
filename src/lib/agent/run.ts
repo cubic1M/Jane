@@ -5,6 +5,7 @@ import {
   CANCEL_CONFIRM_DEFAULT_DAYS,
   CANCEL_CONFIRM_GRACE_DAYS,
   AGENT_FOLLOW_UP_DAYS,
+  AGENT_HOLD_HOURS,
   AGENT_MAX_BODY,
   AGENT_MAX_FOLLOW_UPS,
   AGENT_SIGNATURE,
@@ -12,7 +13,12 @@ import {
 import { CHARGES_PER_YEAR } from "@/config/detection";
 import { normalizeMerchant } from "@/data-sources/merchant";
 import { normalizeAlias } from "@/data-sources/merchant-directory";
-import type { ActionStatus, ActionType, PrismaClient } from "@/generated/prisma/client";
+import type {
+  ActionStatus,
+  ActionType,
+  DecisionSource,
+  PrismaClient,
+} from "@/generated/prisma/client";
 import { sendStatusEmail, statusEmail } from "@/lib/action-emails";
 import { track } from "@/lib/analytics";
 import { logAudit, SYSTEM_ACTOR } from "@/lib/audit";
@@ -55,17 +61,24 @@ export const isAgentAction = (type: ActionType) => AGENT_ACTION_TYPES.includes(t
 export async function startAgent(
   userId: string,
   actionId: string,
-  { client = defaultClient, now = new Date() }: Options = {},
+  {
+    client = defaultClient,
+    now = new Date(),
+    source = "card",
+  }: Options & { source?: DecisionSource } = {},
 ): Promise<string> {
+  // Approvals made outside the app wait out the time to take them back.
+  const holdHours = AGENT_HOLD_HOURS[source as keyof typeof AGENT_HOLD_HOURS] ?? 0;
+  const startAt = new Date(now.getTime() + holdHours * 60 * 60 * 1000);
   await scopedFor(userId, client).actions.updateMany({
     where: { id: actionId, agentState: null },
     data: {
       agentState: "working",
-      agentNextAt: now,
+      agentNextAt: startAt,
       replyToken: randomBytes(16).toString("hex"),
     },
   });
-  return enqueueJob("agent_step", { userId, actionId }, { client, now });
+  return enqueueJob("agent_step", { userId, actionId }, { client, now, runAt: startAt });
 }
 
 export async function loadAction(userId: string, actionId: string, client: PrismaClient) {

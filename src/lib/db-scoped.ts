@@ -110,6 +110,7 @@ export function scopedFor(userId: string, client: PrismaClient = db) {
     standingRules: scoped.standingRule,
     agentMessages: scoped.agentMessage,
     planProposals: scoped.planProposal,
+    planLinks: scoped.planLink,
   };
 }
 

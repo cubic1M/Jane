@@ -34,6 +34,7 @@ export async function exportUserData(
     standingRules,
     agentMessages,
     planProposals,
+    planLinks,
     budgets,
     savingsGoals,
     balanceSnapshots,
@@ -251,6 +252,10 @@ export async function exportUserData(
         answeredAt: true,
       },
     }),
+    // When one-tap links were made and used; never their tokens.
+    db.planLinks.findMany({
+      select: { items: true, decisionIds: true, expiresAt: true, usedAt: true, createdAt: true },
+    }),
     db.budgets.findMany({ select: { category: true, amountCents: true, createdAt: true } }),
     db.savingsGoals.findMany({
       select: {
@@ -296,6 +301,7 @@ export async function exportUserData(
     standingRules,
     agentMessages,
     planProposals,
+    planLinks,
     budgets,
     savingsGoals,
     balanceSnapshots,

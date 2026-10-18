@@ -57,3 +57,11 @@ export const AGENT_REQUESTS: Record<string, Record<string, string | null>> = {
 // with the person's own yes on that bill; no standing rule or automatic follow-up starts
 // one (checked in src/lib/voice/calls.ts as well as NEVER_BY_RULE).
 export const AGENT_CALL_TYPES: readonly ActionType[] = ["negotiate_bill"];
+
+// How long the agent waits before acting on an approval the person didn't make in the app,
+// so "Take it back" really works: a standing rule's (the person hasn't looked at it) and a
+// one-tap link's (spec step 60). Approvals in the app start at once.
+export const AGENT_HOLD_HOURS: Partial<Record<"rule" | "link" | "auto", number>> = {
+  rule: 24,
+  link: 1,
+};

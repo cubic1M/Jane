@@ -14,6 +14,7 @@ import { netWorth, netWorthOn } from "@/insights/net-worth";
 import { listGoals } from "@/lib/goals";
 import { sendPush } from "@/lib/push";
 import { whatJaneDid } from "@/lib/what-jane-did";
+import { createPlanLink } from "@/lib/plan-links";
 import { buildDigest, type DigestPayload, type DigestPlans } from "./build";
 import { appBase, clickLink } from "./links";
 import { renderDigest, type DigestLinks } from "./render";
@@ -235,7 +236,10 @@ export async function runDigests({
         data: { userId: user.id, weekStart: week, payload: payload as DigestPayload },
         select: { id: true },
       });
-      const links = linksFor(digest.id, user.id);
+      // A one-tap link for this week's no-risk items. Its token only goes in the email
+      // (and the notification), never in the stored digest.
+      const goAhead = await createPlanLink(user.id, { client, now }).catch(() => null);
+      const links = { ...linksFor(digest.id, user.id), ...(goAhead ? { goAhead } : {}) };
       const email = renderDigest(payload, links);
       try {
         await send({
@@ -262,8 +266,10 @@ export async function runDigests({
           user.id,
           {
             title: "Jane's plan is ready",
-            body: `${n} ${n === 1 ? "thing" : "things"} to say yes or no to.`,
-            url: "/plan",
+            body: goAhead
+              ? `Tap to let Jane go ahead with ${goAhead.count} ${goAhead.count === 1 ? "thing" : "things"}.`
+              : `${n} ${n === 1 ? "thing" : "things"} to say yes or no to.`,
+            url: goAhead?.url ?? "/plan",
           },
           { client },
         ).catch((error) =>
