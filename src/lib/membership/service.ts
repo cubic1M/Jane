@@ -108,7 +108,7 @@ export async function savedToDate(
   const [done, diy] = await Promise.all([
     db.actions.findMany({
       where: { status: "done", ...(finished ? { completedAt: finished } : {}) },
-      select: { decision: { select: { cardSnapshot: true } } },
+      select: { refundCents: true, decision: { select: { cardSnapshot: true } } },
     }),
     db.decisions.findMany({
       where: {
@@ -119,8 +119,13 @@ export async function savedToDate(
       select: { cardSnapshot: true },
     }),
   ]);
-  return [...done.map((a) => a.decision), ...diy].reduce((sum, d) => {
-    const cents = (d.cardSnapshot as { annualSavingsCents?: unknown } | null)?.annualSavingsCents;
-    return sum + (typeof cents === "number" ? cents : 0);
-  }, 0);
+  // A refund seen in the transactions counts for what actually came back.
+  const estimate = (snapshot: unknown) => {
+    const cents = (snapshot as { annualSavingsCents?: unknown } | null)?.annualSavingsCents;
+    return typeof cents === "number" ? cents : 0;
+  };
+  return (
+    done.reduce((sum, a) => sum + (a.refundCents ?? estimate(a.decision.cardSnapshot)), 0) +
+    diy.reduce((sum, d) => sum + estimate(d.cardSnapshot), 0)
+  );
 }

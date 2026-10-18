@@ -4,8 +4,12 @@ import type { ActionType } from "@/generated/prisma/client";
 // patiently. Everything else stays with the team.
 
 // Actions the agent works by email. More are added as their playbooks are proven
-// (steps 52 and 53).
-export const AGENT_ACTION_TYPES: readonly ActionType[] = ["request_refund", "fight_price_increase"];
+// (step 53 adds cancellations).
+export const AGENT_ACTION_TYPES: readonly ActionType[] = [
+  "request_refund",
+  "fight_price_increase",
+  "recover_bank_fees",
+];
 
 // Days to wait for a reply before following up, and how many follow-ups before passing
 // the action to the team.
@@ -17,3 +21,10 @@ export const AGENT_MAX_BODY = 4_000;
 
 // How the agent signs its emails.
 export const AGENT_SIGNATURE = "Jane, an assistant writing for a customer";
+
+// Refunds seen in the person's own transactions (spec step 52): money coming back from the
+// company (or a fee reversal on the account), on or after the day it was approved, of at
+// least this share of what was asked for. Partial refunds count for what came back.
+export const REFUND_MATCH_MIN_SHARE = 0.5;
+// Actions whose success is money coming back.
+export const REFUND_ACTION_TYPES: readonly ActionType[] = ["request_refund", "recover_bank_fees"];
