@@ -21,7 +21,7 @@ The build runs in eleven steps, with Plaid added at step 7 after the founders te
 
 ## Status (Oct 18, 2026)
 
-Steps 1–48 are built (24 came before 22, because do-it-yourself kits need its cancel links). Where the build differs from the original plan, the plan below has been kept and the difference is noted here.
+Steps 1–48 are built (24 came before 22, because do-it-yourself kits need its cancel links). On Oct 18, 2026 the roadmap was reordered: Phase M (Jane acts for you, steps 49–56) comes next, then the rest of Phase L (steps 57–58), Phase N (the complete picture), Phase O (plan ahead) and Phase P (regulated features through partners), which replaces the old Phase F. Where the build differs from the original plan, the plan below has been kept and the difference is noted here.
 
 | Step | Shipped in | Notes |
 | --- | --- | --- |
@@ -638,7 +638,7 @@ The MVP proves people will link accounts and say yes. The full Jane is a financi
 
 Principles that still hold:
 
-- **Read-only until counsel says otherwise.** No money movement, investing, investment advice, or tax and legal advice. Phase F lists what needs licenses and isn't built until counsel signs off.
+- **Read-only until counsel says otherwise.** No money movement, investing, investment advice, or tax and legal advice. Phase P lists what needs licenses; it goes through licensed partners, built against their sandboxes, and doesn't go live until the partner and counsel sign off.
 - **Rules decide, the LLM explains.** Every new finding type is a tested rule with thresholds in config; Claude only writes text and classifies edge cases, behind the guardrails.
 - **Every step is shippable alone.** One PR per step, tests for every rule and route, and nothing that blocks on an outside account: when a step needs one, build a working stand-in and note what to swap in later.
 - **Measure, then automate.** Minutes per action decide which concierge work to automate first.
@@ -1183,7 +1183,150 @@ Phase K turns everything Jane knows into a few clear numbers and nudges, still a
 > - Items tick themselves from real state, not clicks on the checklist
 > - Dismissing hides it for good
 
-## Phase L: your account, your control (steps 48–50)
+## Phase M: Jane acts for you (steps 49–56)
+
+Top priority (reordered Oct 18, 2026). Competitors already find subscriptions and have a
+team negotiate bills; Rocket Money's Rowan agent (Aug 2026) acts on a one-word reply for
+subscriptions, bills and savings. Jane stands out by acting on everything it finds
+(refunds, fees, insurance, interest, deadlines), never taking a cut of savings, and
+letting people set their own rules. The goal of this phase: the agent proposes and does
+the work; the person says yes, no or change; the team handles only what the agent hands
+off.
+
+Ground rules for every step in this phase:
+- Nothing happens without a yes, either from the person or from a standing rule they set.
+- The agent never asks for, stores or uses the person's passwords for other services.
+  When a company insists the account holder acts, Jane prepares everything and sends the
+  person a one-tap step.
+- Every message the agent writes passes the guardrails and is kept in the action's
+  timeline; every agent step writes to audit_log.
+- No money movement and no investment, tax or legal advice (Phase P covers partners).
+
+### Step 49: Jane's plan
+
+> Read CLAUDE.md. One list of what Jane proposes to do, instead of a pile of cards.
+>
+> Build:
+> 1. /plan: the open findings turned into proposed actions, ranked by money and urgency,
+>    each with what Jane will do, what it saves and the evidence (the card's content).
+> 2. Yes / No / Change on each item, and "Yes to all". Change edits the action's options
+>    (for example cancel or downgrade, the price to ask for, which account).
+> 3. A new plan each week: in the weekly email and as a notification, linking to /plan.
+>
+> Acceptance criteria:
+> - Each item maps to one finding; every answer is logged in the decision log, one decision
+>   per item for "Yes to all"
+> - Changed options are stored with the decision and used by whoever does the action
+> - Items already decided or snoozed don't come back until the finding changes
+
+### Step 50: Standing rules
+
+> Read CLAUDE.md. Let people pre-approve the small things.
+>
+> Build:
+> 1. Rules in Settings, chosen from a fixed list (for example: always request refunds for
+>    double charges; always dispute bank fees; cancel subscriptions I mark unused; fight
+>    price increases under an amount I choose), each with a monthly limit.
+> 2. A matching plan item is approved by the rule: logged as a decision made by that rule,
+>    with a notification and the usual undo window.
+>
+> Acceptance criteria:
+> - A rule only approves items it matches (a test per rule)
+> - Turning a rule off stops it at once; rules never approve money movement or phone calls
+> - Rules live in config (src/config/rules.ts), never inline
+
+### Step 51: The action agent
+
+> Read CLAUDE.md. Approved actions are worked by an agent, not a person.
+>
+> Build:
+> 1. An agent run per approved action: its playbook (src/config/playbooks.ts) becomes
+>    steps the agent takes; state is kept on the action with a timeline.
+> 2. The first channel is email: the agent writes to the company's support address (from
+>    the merchant directory) from a Jane address, stating it acts on the person's behalf,
+>    and reads replies (inbound email webhook, parsed by Claude into a status).
+> 3. Follow-ups on a schedule; when stuck (needs a login, a phone call, an ID check) it
+>    hands the action to the team queue or asks the person for a one-tap step, with the
+>    reason.
+> 4. Without email keys, a simulated company mailbox in development answers like a real
+>    support team, so the whole loop runs and is tested.
+>
+> Acceptance criteria:
+> - Every outgoing message passes the guardrails and appears in the timeline
+> - The team queue shows only handed-off actions, each with why
+> - An agent can't act on an action that isn't approved (test against every status)
+
+### Step 52: Refunds and fees, done by the agent
+
+> Read CLAUDE.md. The first actions the agent finishes alone.
+>
+> Build:
+> 1. Agent playbooks for double charges, charges after cancelling, trial conversions and
+>    bank fee refunds: the request, follow-ups, and what counts as success.
+> 2. Success measured from the transactions (a refund or reversal appears) as well as
+>    replies; results feed the merchant outcomes.
+>
+> Acceptance criteria:
+> - An action is "done" only when a refund or a written confirmation is seen
+> - Money saved counts only confirmed refunds
+
+### Step 53: Cancellations and price fights, done by the agent
+
+> Read CLAUDE.md. Subscriptions without a phone call.
+>
+> Build:
+> 1. Cancellation through the merchant's channel from the directory (email, or a one-tap
+>    link for the person where the company requires it), and price-increase requests.
+> 2. Confirmation: the reply, then no further charge; the charge-after-cancel rule is the
+>    safety net.
+>
+> Acceptance criteria:
+> - A cancellation is confirmed only by a reply or a missed charge, never assumed
+> - A charge after a confirmed cancel opens a refund action automatically
+
+### Step 54: Phone negotiation
+
+> Read CLAUDE.md. Bills and insurance that need a call.
+>
+> Build:
+> 1. A voice provider behind an interface (src/lib/voice), with a simulated call in
+>    development; the real provider switches on with its keys.
+> 2. The call script comes from the playbook: who Jane is, the person's authorization,
+>    the target price from the bill benchmarks; the transcript and outcome are stored.
+>
+> Acceptance criteria:
+> - Calls happen only with an explicit yes for that bill (no standing rule can approve one)
+> - The person sees the transcript; claims in the script pass the guardrails
+
+### Step 55: Jane drafts budgets and goals
+
+> Read CLAUDE.md. Less setting up.
+>
+> Build:
+> 1. Proposed budgets from the person's own spending and an emergency-fund goal from three
+>    months of spending, as plan items (Yes / No / Change).
+> 2. Uncategorized merchants get a proposed category in the plan as well.
+>
+> Acceptance criteria:
+> - Nothing is created until the person says yes
+> - Proposals are math from their data, labelled as such, never advice
+
+### Step 56: What Jane did
+
+> Read CLAUDE.md. Show the work.
+>
+> Build:
+> 1. Each action's timeline in plain words: what Jane sent, what came back, what's next.
+> 2. A weekly "what Jane did for you" section in the weekly email and on Home: actions
+>    finished, money confirmed saved, what's waiting on the person.
+>
+> Acceptance criteria:
+> - Every agent step appears in the timeline
+> - Money figures come only from confirmed outcomes
+
+## Phase L: your account, your control (steps 48, 57–58)
+
+Step 48 shipped before Phase M; 57 and 58 follow it.
 
 ### Step 48: Two-factor for everyone
 
@@ -1198,7 +1341,7 @@ Phase K turns everything Jane knows into a few clear numbers and nudges, still a
 > - Backup codes work once each and are stored hashed
 > - The admin rule (two-factor always) is unchanged
 
-### Step 49: Devices and sessions
+### Step 57: Devices and sessions
 
 > Read CLAUDE.md. See where you're signed in, and sign out elsewhere.
 >
@@ -1210,26 +1353,84 @@ Phase K turns everything Jane knows into a few clear numbers and nudges, still a
 > - Signed-out sessions stop working at once
 > - Session tokens never reach the page
 
-### Step 50: Who saw my data
+### Step 58: Who saw my data
 
 > Read CLAUDE.md. Make the team's access visible to the person.
 >
 > Build:
-> 1. A "Team access" page listing when the concierge team viewed or acted on the
->    person's data (from the audit log): date, what, and why (the action).
+> 1. A "Team access" page listing when the concierge team or the agent viewed or acted
+>    on the person's data (from the audit log): date, what, and why (the action).
 > 2. Included in "Download my data".
 >
 > Acceptance criteria:
 > - Only the person's own entries; team members shown by role, not name
 > - Every team view of their data appears (test against the audit events)
 
-## Phase F: regulated capabilities (plan only)
+## Phase N: the complete picture (steps 59–62)
 
-Each of these needs licensing, a regulated partner, or legal review. Don't build until counsel signs off; when they do, each becomes its own phase of steps.
+### Step 59: Loans and mortgage
 
-| Capability | Why it matters | Prerequisite |
+> Read CLAUDE.md. Plaid Liabilities (read-only): student, auto and mortgage balances,
+> rates and due dates. The debt planner and net worth fill in by themselves.
+>
+> Acceptance criteria:
+> - Rates and balances come from Plaid, never typed guesses; check the Plaid docs for fields
+
+### Step 60: Investment and retirement balances
+
+> Read CLAUDE.md. Plaid Investments balances only, for net worth. No holdings advice, no
+> performance commentary.
+>
+> Acceptance criteria:
+> - The guardrails reject any text about what to buy, sell or hold
+
+### Step 61: Things you own
+
+> Read CLAUDE.md. Home and car values entered by hand (with the date), in net worth.
+
+### Step 62: Insurance policies and documents
+
+> Read CLAUDE.md. Upload policies, warranties and receipts; Jane reads the key facts
+> (coverage, renewal date, price) into the insurance reshop and deadlines. Files are
+> encrypted at rest and covered by export and deletion.
+
+## Phase O: plan ahead (steps 63–66)
+
+### Step 63: Can I afford this?
+
+> Read CLAUDE.md. Enter a purchase or a monthly change; see its effect on safe to spend,
+> goals and the next 12 months. Math, not advice.
+
+### Step 64: Saving for irregular costs
+
+> Read CLAUDE.md. Yearly and irregular bills (car, holidays, annual subscriptions) become a
+> monthly amount to set aside, shown in budgets and safe to spend.
+
+### Step 65: Deadlines
+
+> Read CLAUDE.md. Return windows, warranties, card benefits, FSA deadlines and renewals in
+> one list, with reminders, from transactions and uploaded documents.
+
+### Step 66: Life events and tax-time pack
+
+> Read CLAUDE.md. Checklists for moving, a new job, a new baby; a tax-time pack of
+> charity receipts, deductible-looking spending and estimated-tax reminders. Organizing
+> only: no tax advice.
+
+## Phase P: regulated features through partners
+
+Licensed partners hold the license and move the money; Jane connects through their APIs.
+Each integration is built and tested against the partner's sandbox behind a switch, like
+the membership checkout stand-in. Going live needs the company to sign up with the
+partner, pass its review, and add the keys; counsel reviews the disclosures and contract.
+Check each partner's current docs and terms before building.
+
+| Capability | Kind of partner (examples) | What stays with Jane |
 | --- | --- | --- |
-| Moving idle cash or paying bills | Jane acts directly instead of guiding | A licensed money-movement partner, Plaid Transfer or similar, and a legal review |
-| Investing and portfolio help | The other half of a financial controller | Investment adviser registration (RIA) or a registered partner |
-| Tax preparation help | Big savings, high trust | Tax counsel; partner filing service |
-| Credit score monitoring | Context for card and loan findings | A credit bureau partner and FCRA review |
+| Paying cards and bills, moving idle cash | Money-movement APIs (Plaid Transfer, Method, Dwolla, Moov) | Every payment needs an explicit yes; limits; disclosures |
+| Credit score and report | Embedded credit APIs (Array, Spinwheel) | FCRA permissible purpose; how the data is used |
+| Tax filing | Embedded tax filing (Column Tax, April) | No tax advice from Jane itself |
+| Investing | Brokerage APIs plus a registered adviser partner (Alpaca, DriveWealth) | Recommendations come from the partner's adviser, never from Jane |
+
+Order: card and bill payments first (they act on findings Jane already makes), then
+credit score, tax filing, investing last.
