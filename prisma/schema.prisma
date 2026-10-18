@@ -60,6 +60,9 @@ enum AgentState {
   working
   // Sent; waiting for the company's reply (or the next follow-up).
   waiting_reply
+  // Cancelled (by the person, through the company's own page): waiting to see no
+  // further charge before calling it done.
+  confirming
   // Passed to the team, with a reason.
   handed_off
   // Done, by the agent.
@@ -79,6 +82,9 @@ enum DecisionSource {
   card
   plan
   rule
+  // A follow-up Jane starts on its own because of an earlier yes: a refund when a
+  // company charges after a cancellation the person approved.
+  auto
 
   @@map("decision_source")
 }
@@ -499,6 +505,12 @@ model Action {
   // and how much. Counted as saved instead of the card's estimate.
   refundSeenAt   DateTime?    @map("refund_seen_at") @db.Date
   refundCents    Int?         @map("refund_cents")
+  // For a cancellation the person did on the company's page: the day they did it, and
+  // when a missed charge confirms it.
+  cancelledOn    DateTime?    @map("cancelled_on") @db.Date
+  confirmAfter   DateTime?    @map("confirm_after") @db.Date
+  // The company's own cancel page, when only the account holder can cancel there.
+  selfServiceUrl String?      @map("self_service_url")
   startedAt      DateTime?    @map("started_at") @db.Timestamptz(3)
   completedAt    DateTime?    @map("completed_at") @db.Timestamptz(3)
   createdAt      DateTime     @default(now()) @map("created_at") @db.Timestamptz(3)

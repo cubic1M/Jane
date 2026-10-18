@@ -9,6 +9,7 @@ import { formatCents } from "@/lib/money";
 import { requireUser } from "@/lib/session";
 import { MembershipOffer } from "./membership-offer";
 import { AnswerForm } from "./answer-form";
+import { SelfCancel } from "./self-cancel";
 import { AgentTimeline } from "@/components/agent-timeline";
 import { savingsLine } from "@/lib/savings-text";
 import type { FindingType } from "@/generated/prisma/client";
@@ -55,7 +56,10 @@ async function ActionsContent({
       userTodo: true,
       createdAt: true,
       agentState: true,
-      decision: { select: { cardSnapshot: true } },
+      selfServiceUrl: true,
+      cancelledOn: true,
+      confirmAfter: true,
+      decision: { select: { cardSnapshot: true, finding: { select: { evidence: true } } } },
       agentMessages: {
         orderBy: { createdAt: "asc" },
         select: {
@@ -172,13 +176,29 @@ async function ActionsContent({
                   <p className="text-sm text-zinc-600 dark:text-zinc-400">
                     {action.status === "in_progress" && action.agentState === "waiting_reply"
                       ? "Jane wrote to the company and is waiting for their reply."
-                      : status.detail}
+                      : action.status === "in_progress" &&
+                          action.agentState === "confirming" &&
+                          action.cancelledOn
+                        ? `You cancelled on ${action.cancelledOn.toISOString().slice(0, 10)}. Jane is watching for the next charge to make sure${action.confirmAfter ? ` (around ${action.confirmAfter.toISOString().slice(0, 10)})` : ""}.`
+                        : status.detail}
                   </p>
                 )}
                 {/* The company asked a question the agent can't answer: the person can. */}
                 {action.status === "waiting_on_user" && action.agentState === "waiting_reply" && (
                   <AnswerForm actionId={action.id} />
                 )}
+                {action.status === "waiting_on_user" &&
+                  action.agentState === "confirming" &&
+                  action.selfServiceUrl && (
+                    <SelfCancel
+                      actionId={action.id}
+                      company={String(
+                        (action.decision.finding.evidence as { merchant?: unknown } | null)
+                          ?.merchant ?? "the company",
+                      )}
+                      url={action.selfServiceUrl}
+                    />
+                  )}
                 {action.agentMessages.length > 0 && (
                   <details>
                     <summary className="cursor-pointer text-sm font-medium text-emerald-700">

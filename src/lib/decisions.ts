@@ -118,7 +118,9 @@ export async function recordDecision(
         cardSnapshot: card as unknown as Prisma.InputJsonObject,
         source,
         ...(options ? { options } : {}),
-        ...(source === "rule" && answer.ruleKey ? { ruleKey: answer.ruleKey } : {}),
+        ...((source === "rule" || source === "auto") && answer.ruleKey
+          ? { ruleKey: answer.ruleKey }
+          : {}),
       },
       select: { id: true },
     });

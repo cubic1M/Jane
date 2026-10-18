@@ -1,11 +1,16 @@
 import { randomBytes } from "node:crypto";
 import {
   AGENT_ACTION_TYPES,
+  AGENT_REQUESTS,
+  CANCEL_CONFIRM_DEFAULT_DAYS,
+  CANCEL_CONFIRM_GRACE_DAYS,
   AGENT_FOLLOW_UP_DAYS,
   AGENT_MAX_BODY,
   AGENT_MAX_FOLLOW_UPS,
   AGENT_SIGNATURE,
 } from "@/config/agent";
+import { CHARGES_PER_YEAR } from "@/config/detection";
+import { normalizeMerchant } from "@/data-sources/merchant";
 import { normalizeAlias } from "@/data-sources/merchant-directory";
 import type { ActionStatus, ActionType, PrismaClient } from "@/generated/prisma/client";
 import { sendStatusEmail, statusEmail } from "@/lib/action-emails";
@@ -15,6 +20,8 @@ import { FINDING_STATUS } from "@/lib/action-status";
 import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
 import { PLACEHOLDERS, draftMessage, draftPayload } from "@/lib/drafts";
+import { CARD_SELECT, buildCard, cardHash } from "@/lib/cards";
+import { DecisionError, recordDecision } from "@/lib/decisions";
 import { checkGuardrails } from "@/lib/guardrails";
 import { enqueueJob, runJob } from "@/lib/jobs";
 import { merchantFor } from "@/lib/merchants";
@@ -76,10 +83,12 @@ async function loadAction(userId: string, actionId: string, client: PrismaClient
           undoneAt: true,
           findingId: true,
           cardSnapshot: true,
+          options: true,
           finding: { select: { type: true, evidence: true } },
         },
       },
       user: { select: { email: true, name: true } },
+      cancelledOn: true,
       agentMessages: {
         where: { direction: "outbound" },
         orderBy: { createdAt: "asc" },
@@ -283,10 +292,42 @@ export async function agentStep(
     await handOff(
       userId,
       action,
-      "We don't know which bank holds this account (it was imported from a file). Contact the bank by hand, or link the account so Jane knows.",
+      action.type === "recover_bank_fees"
+        ? "We don't know which bank holds this account (it was imported from a file). Contact the bank by hand, or link the account so Jane knows."
+        : "This request covers more than one company; a person needs to pick which one.",
       options,
     );
     return "handed_off";
+  }
+  const chosen = (action.decision.options ?? {}) as Record<string, unknown>;
+  if (action.type === "request_refund" && chosen.method === "dispute") {
+    await handOff(
+      userId,
+      action,
+      "The person chose to dispute this with their card; that goes to the card company, not the merchant.",
+      options,
+    );
+    return "handed_off";
+  }
+  // Some companies only cancel from the account holder's own page: the person gets the
+  // link, and Jane confirms by watching for the next charge.
+  if (action.type === "cancel_subscription" && action.agentMessages.length === 0) {
+    const row = await merchantFor(normalizeAlias(action.company), { client });
+    if (row?.cancelUrl && !row.supportEmail) {
+      await setStatus(
+        userId,
+        action,
+        "waiting_on_user",
+        {
+          agentState: "confirming",
+          agentNextAt: null,
+          selfServiceUrl: row.cancelUrl,
+          userTodo: `${action.company} only cancels from your own account. Open their cancel page, cancel, then tap "I've cancelled" on your actions page. Jane then watches for the next charge to make sure.`,
+        },
+        options,
+      );
+      return "waiting";
+    }
   }
   const to = await recipientFor(action, client);
   if (!to) {
@@ -302,8 +343,17 @@ export async function agentStep(
   const first = action.agentMessages[0];
   if (!first) {
     const finding = action.decision.finding;
-    const draft = await draftMessage(action.type, finding);
-    const prepared = draftPayload(action.type, finding);
+    // What the person picked on the plan, e.g. a downgrade instead of a cancel.
+    const choice =
+      action.type === "cancel_subscription"
+        ? chosen.plan
+        : action.type === "fight_price_increase"
+          ? chosen.ask
+          : undefined;
+    const request =
+      (typeof choice === "string" ? AGENT_REQUESTS[action.type]?.[choice] : null) ?? undefined;
+    const draft = await draftMessage(action.type, finding, { request });
+    const prepared = draftPayload(action.type, finding, { request });
     if (!draft || !prepared || draft.draft.channel !== "email") {
       await handOff(userId, action, "This kind of request needs a call, not an email.", options);
       return "handed_off";
@@ -522,11 +572,12 @@ export async function answerCompany(
   );
 }
 
-// The daily job: follow up (or hand off) every action whose follow-up is due.
+// The daily job: follow up (or hand off) every action whose follow-up is due, and settle
+// cancellations whose wait for a missed charge is over.
 export async function runAgentFollowUps({
   client = defaultClient,
   now = new Date(),
-}: Options = {}): Promise<{ checked: number }> {
+}: Options = {}): Promise<{ checked: number; confirmed: number; charged: number }> {
   // A system job across users: ids only, and agentStep scopes each one.
   const due = await client.action.findMany({
     where: { agentState: "waiting_reply", status: "in_progress", agentNextAt: { lte: now } },
@@ -540,7 +591,8 @@ export async function runAgentFollowUps({
       console.error("Agent follow-up failed", { actionId: action.id, error: String(error) });
     }
   }
-  return { checked: due.length };
+  const cancellations = await confirmCancellations({ client, now });
+  return { checked: due.length, ...cancellations };
 }
 
 // Runs the agent's first steps right after a request, then the jobs they queued for the
@@ -577,4 +629,152 @@ export async function runQueuedFor(
     });
     for (const job of queued) await runJob(job.id, { client });
   }
+}
+
+const isoDay = (d: Date) => d.toISOString().slice(0, 10);
+
+// When a missed charge confirms a cancellation: the next charge's due date (from the last
+// charge and how often it charged) plus a few days' grace.
+export function confirmDate(evidence: unknown, cancelledOn: Date): Date {
+  const facts = (evidence ?? {}) as { frequency?: unknown; charges?: unknown };
+  const perYear =
+    typeof facts.frequency === "string"
+      ? (CHARGES_PER_YEAR as Record<string, number>)[facts.frequency]
+      : undefined;
+  const dates = (Array.isArray(facts.charges) ? facts.charges : [])
+    .map((c) => (c as { date?: unknown }).date)
+    .filter((d): d is string => typeof d === "string")
+    .sort();
+  const last = dates.at(-1);
+  const due =
+    perYear && last
+      ? new Date(new Date(`${last}T00:00:00Z`).getTime() + Math.round(365 / perYear) * DAY_MS)
+      : new Date(cancelledOn.getTime() + CANCEL_CONFIRM_DEFAULT_DAYS * DAY_MS);
+  const from = due > cancelledOn ? due : cancelledOn;
+  return new Date(from.getTime() + CANCEL_CONFIRM_GRACE_DAYS * DAY_MS);
+}
+
+// The person says they cancelled on the company's page. Jane waits for the next charge
+// date to pass without a charge before calling it done.
+export async function markSelfCancelled(
+  userId: string,
+  actionId: string,
+  { client = defaultClient, now = new Date() }: Options = {},
+): Promise<void> {
+  const action = await loadAction(userId, actionId, client);
+  if (
+    !action ||
+    action.type !== "cancel_subscription" ||
+    action.agentState !== "confirming" ||
+    action.status !== "waiting_on_user" ||
+    action.decision.choice !== "yes" ||
+    action.decision.undoneAt !== null
+  ) {
+    throw new AnswerError("Jane isn't waiting on a cancellation for this one.");
+  }
+  const cancelledOn = new Date(`${isoDay(now)}T00:00:00Z`);
+  await setStatus(
+    userId,
+    action,
+    "in_progress",
+    {
+      cancelledOn,
+      confirmAfter: confirmDate(action.decision.finding.evidence, cancelledOn),
+      userTodo: null,
+    },
+    { client, now, notify: sendStatusEmail },
+  );
+  await track(userId, "self_cancel_reported", { action_type: action.type });
+}
+
+// Confirms (or questions) cancellations whose wait is over: no charge from the company
+// since the person cancelled means done; a charge means it may not have gone through.
+export async function confirmCancellations({
+  client = defaultClient,
+  now = new Date(),
+  notify = sendStatusEmail,
+}: Options = {}): Promise<{ confirmed: number; charged: number }> {
+  // A system job across users: ids only, and everything after is scoped to the person.
+  const due = await client.action.findMany({
+    where: {
+      agentState: "confirming",
+      status: "in_progress",
+      confirmAfter: { lte: new Date(`${isoDay(now)}T00:00:00Z`) },
+    },
+    select: { id: true, userId: true },
+    take: 200,
+  });
+  const counts = { confirmed: 0, charged: 0 };
+  for (const { id, userId } of due) {
+    const action = await loadAction(userId, id, client);
+    if (!action?.cancelledOn || !action.company) continue;
+    const want = normalizeMerchant(action.company)?.key;
+    const charges = await scopedFor(userId, client).transactions.findMany({
+      where: { amountCents: { gt: 0 }, date: { gt: action.cancelledOn } },
+      select: { date: true, amountCents: true, description: true, merchantName: true },
+    });
+    const after = charges.find((c) => {
+      const got = normalizeMerchant(c.merchantName ?? c.description)?.key;
+      return Boolean(want && got && (got === want || got.startsWith(`${want} `)));
+    });
+    if (!after) {
+      await setStatus(
+        userId,
+        action,
+        "done",
+        { agentState: "finished", confirmAfter: null },
+        { client, now, notify },
+      );
+      await track(userId, "cancellation_confirmed", { by: "missed_charge" });
+      counts.confirmed += 1;
+    } else {
+      await setStatus(
+        userId,
+        action,
+        "waiting_on_user",
+        {
+          agentState: "handed_off",
+          handoffReason: `${action.company} charged again after the person cancelled on their page.`,
+          confirmAfter: null,
+          userTodo: `${action.company} charged you again on ${isoDay(after.date)} after you cancelled, so the cancellation may not have gone through. Check your account with them; our team will follow up too.`,
+        },
+        { client, now, notify },
+      );
+      counts.charged += 1;
+    }
+  }
+  return counts;
+}
+
+// A company charged after a cancellation the person approved: Jane asks for that money
+// back on its own (logged as an automatic follow-up of the earlier yes).
+export async function refundChargesAfterCancel(
+  userId: string,
+  { client = defaultClient }: Pick<Options, "client"> = {},
+): Promise<string[]> {
+  const db = scopedFor(userId, client);
+  const findings = await db.findings.findMany({
+    where: { type: "charge_after_cancel", status: { in: ["new", "shown"] } },
+    select: CARD_SELECT,
+  });
+  const approved: string[] = [];
+  for (const finding of findings) {
+    try {
+      const { decisionId } = await recordDecision(
+        userId,
+        {
+          findingId: finding.id,
+          choice: "yes",
+          cardHash: cardHash(buildCard(finding)),
+          source: "auto",
+          ruleKey: "charge_after_cancel",
+        },
+        { client },
+      );
+      approved.push(decisionId);
+    } catch (error) {
+      if (!(error instanceof DecisionError)) throw error;
+    }
+  }
+  return approved;
 }
