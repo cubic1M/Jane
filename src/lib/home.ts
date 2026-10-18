@@ -11,6 +11,7 @@ import { safeToSpend } from "@/planning/safe-to-spend";
 import { scopedFor } from "@/lib/db-scoped";
 import { savedToDate } from "@/lib/membership/service";
 import { upcomingCharges } from "@/lib/upcoming";
+import { whatJaneDid } from "@/lib/what-jane-did";
 
 // Everything the home dashboard shows, for one person. Null when they have no accounts.
 
@@ -64,6 +65,7 @@ export async function homeSummary(
   ]);
   // Jane's plan: every open finding is an item on it.
   const planItems = await db.findings.count({ where: { status: { in: ["new", "shown"] } } });
+  const janeDid = await whatJaneDid(userId, { client, now });
   const goals = await listGoals(userId, { client, now });
   const asOf = now.toISOString().slice(0, 10);
   const budget =
@@ -85,6 +87,7 @@ export async function homeSummary(
     openActions,
     unreadAlerts: alerts,
     plan: { items: planItems },
+    janeDid,
     budgets: budget ? { progress: budget.progress, daysLeft: budget.daysLeft } : null,
     goals: goals.map((g) => ({ id: g.id, name: g.name, percent: g.progress.percent })),
     safeToSpend: input.accounts.some(

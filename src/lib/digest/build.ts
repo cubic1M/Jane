@@ -28,6 +28,14 @@ export type DigestInput = {
   alerts: { title: string; createdAt: Date; emailedAt: Date | null }[];
   // Budgets, goals and net worth, for people who use them.
   plans?: DigestPlans;
+  // The action agent's week (src/lib/what-jane-did.ts).
+  janeDid?: {
+    finished: number;
+    confirmedCents: number;
+    contacts: number;
+    working: number;
+    waiting: number;
+  };
 };
 
 export type DigestPlans = {
@@ -51,6 +59,8 @@ export type DigestPayload = {
   netWorth?: { nowCents: number; changeCents: number } | null;
   // Jane's plan: how many open findings wait for a yes or no (none before step 49).
   plan?: { items: number };
+  // What the action agent did this week (none before step 56).
+  janeDid?: DigestInput["janeDid"];
 };
 
 const total = (rows: { annualSavingsCents: number | null }[]) =>
@@ -113,5 +123,6 @@ export function buildDigest(input: DigestInput): DigestPayload | null {
     goals,
     netWorth,
     plan: { items: input.findings.length },
+    janeDid: input.janeDid,
   };
 }

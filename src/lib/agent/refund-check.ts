@@ -7,6 +7,8 @@ import { track } from "@/lib/analytics";
 import { logAudit, SYSTEM_ACTOR } from "@/lib/audit";
 import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
+import { formatCents } from "@/lib/money";
+import { note } from "./run";
 
 // Confirms refunds from the person's own transactions: after each scan, every open or
 // finished refund action looks for the money coming back. A refund seen closes the action
@@ -166,6 +168,12 @@ export async function confirmRefunds(
         refund_cents: refundCents,
         closed: closing,
       },
+    );
+    await note(
+      userId,
+      action.id,
+      `Saw ${formatCents(refundCents)} come back on ${dayOf(seenOn)}${closing ? ": done" : ""}.`,
+      client,
     );
     await track(userId, "refund_seen", { action_type: action.type, refund_cents: refundCents });
     confirmed += 1;

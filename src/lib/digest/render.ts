@@ -50,6 +50,26 @@ function sections(p: DigestPayload, links: DigestLinks): Section[] {
       link: { label: "Review your plan", url: links.plan },
     });
   }
+  const did = p.janeDid;
+  if (did && (did.finished > 0 || did.contacts > 0 || did.working > 0)) {
+    out.push({
+      heading: "What Jane did for you this week",
+      items: [
+        did.finished > 0 &&
+          `Finished ${did.finished} ${did.finished === 1 ? "thing" : "things"}${
+            did.confirmedCents > 0
+              ? `, with ${formatCents(did.confirmedCents)} confirmed back or saved`
+              : ""
+          }.`,
+        did.contacts > 0 &&
+          `Wrote or called ${did.contacts} ${did.contacts === 1 ? "time" : "times"} on your behalf.`,
+        did.working > 0 && `Still working on ${did.working}.`,
+        did.waiting > 0 &&
+          `${did.waiting} ${did.waiting === 1 ? "thing needs" : "things need"} something from you.`,
+      ].filter((line): line is string => typeof line === "string"),
+      link: { label: "See every step", url: links.actions },
+    });
+  }
   if (p.finishedThisWeek.length > 0) {
     out.push({
       heading: "Finished this week",

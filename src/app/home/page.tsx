@@ -11,6 +11,7 @@ import { formatCents } from "@/lib/money";
 import { requireUser } from "@/lib/session";
 import { savingsPhrase } from "@/lib/savings-text";
 import { FirstWeekChecklist } from "./checklist";
+import { janeDidSomething, type JaneDid } from "@/lib/what-jane-did";
 
 const CARD = "flex flex-col gap-1 rounded-xl border border-zinc-200 p-4 dark:border-zinc-800";
 const LINK = "font-medium text-emerald-700 hover:underline";
@@ -68,6 +69,43 @@ function SafeToSpendCard({ safe }: { safe: SafeToSpend }) {
   );
 }
 
+// The action agent's week, in plain words. Money only from confirmed outcomes.
+function JaneDidCard({ did }: { did: JaneDid }) {
+  const lines = [
+    did.finished.length > 0 &&
+      `Finished ${did.finished.length} ${did.finished.length === 1 ? "thing" : "things"}${
+        did.confirmedCents > 0
+          ? `, with ${formatCents(did.confirmedCents)} confirmed back or saved`
+          : ""
+      }.`,
+    did.contacts > 0 &&
+      `Wrote or called ${did.contacts} ${did.contacts === 1 ? "time" : "times"} on your behalf.`,
+    did.working > 0 && `Still working on ${did.working}.`,
+  ].filter(Boolean) as string[];
+  return (
+    <section className="flex flex-col gap-2 rounded-xl border border-zinc-200 p-4 dark:border-zinc-800">
+      <div className="flex flex-wrap items-baseline justify-between gap-2">
+        <h2 className="font-semibold">What Jane did this week</h2>
+        <Link href="/actions" className={`text-sm ${LINK}`}>
+          See every step
+        </Link>
+      </div>
+      {lines.length > 0 && (
+        <ul className="flex flex-col gap-1 text-sm">
+          {lines.map((line) => (
+            <li key={line}>{line}</li>
+          ))}
+        </ul>
+      )}
+      {did.waiting.length > 0 && (
+        <p className="rounded-lg bg-amber-50 p-3 text-sm dark:bg-amber-950">
+          <strong>Waiting on you:</strong> {did.waiting.map((w) => w.title).join("; ")}
+        </p>
+      )}
+    </section>
+  );
+}
+
 async function HomeContent() {
   const user = await requireUser();
   const home = await homeSummary(user.id);
@@ -118,6 +156,8 @@ async function HomeContent() {
           <span className="text-sm">Review your plan ›</span>
         </Link>
       )}
+
+      {janeDidSomething(home.janeDid) && <JaneDidCard did={home.janeDid} />}
 
       {home.safeToSpend && <SafeToSpendCard safe={home.safeToSpend} />}
 

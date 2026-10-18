@@ -132,7 +132,7 @@ describe.runIf(url)("cancellations by the agent, against a real database", () =>
       agentState: "confirming",
       selfServiceUrl: `https://${merchant.toLowerCase()}.example/cancel`,
     });
-    expect(await client.agentMessage.count({ where: { actionId } })).toBe(0);
+    expect(await client.agentMessage.count({ where: { actionId, direction: "outbound" } })).toBe(0);
 
     const today = new Date();
     await markSelfCancelled(userId, actionId, { client, now: today });
