@@ -7,6 +7,7 @@ import type { PrismaClient } from "@/generated/prisma/client";
 import { unreadAlertCount } from "@/lib/alerts";
 import { db as defaultClient } from "@/lib/db";
 import { listGoals } from "@/lib/goals";
+import { safeToSpend } from "@/planning/safe-to-spend";
 import { scopedFor } from "@/lib/db-scoped";
 import { savedToDate } from "@/lib/membership/service";
 import { upcomingCharges } from "@/lib/upcoming";
@@ -83,6 +84,20 @@ export async function homeSummary(
     unreadAlerts: alerts,
     budgets: budget ? { progress: budget.progress, daysLeft: budget.daysLeft } : null,
     goals: goals.map((g) => ({ id: g.id, name: g.name, percent: g.progress.percent })),
+    safeToSpend: input.accounts.some(
+      (a) => a.type === "depository" && a.subtype === "checking" && a.currentBalanceCents !== null,
+    )
+      ? safeToSpend(input, {
+          budgetsLeftCents: (budget?.progress ?? []).reduce(
+            (sum, p) => sum + Math.max(0, p.leftCents),
+            0,
+          ),
+          goalsCents: goals.reduce(
+            (sum, g) => sum + (g.progress.status === "on_the_way" ? g.progress.monthlyCents : 0),
+            0,
+          ),
+        })
+      : null,
     waitingOnYou: waiting.map((a) => ({
       id: a.id,
       todo: a.userTodo,

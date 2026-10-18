@@ -4,6 +4,7 @@ import { Suspense } from "react";
 import { AppHeader } from "@/components/app-header";
 import { BudgetList } from "@/components/budget-list";
 import { homeSummary } from "@/lib/home";
+import type { SafeToSpend } from "@/planning/safe-to-spend";
 import { formatCents } from "@/lib/money";
 import { requireUser } from "@/lib/session";
 import { savingsPhrase } from "@/lib/savings-text";
@@ -17,6 +18,51 @@ function shortDate(iso: string): string {
     day: "numeric",
     timeZone: "UTC",
   });
+}
+
+function SafeToSpendCard({ safe }: { safe: SafeToSpend }) {
+  const short = safe.safeCents < 0;
+  const rows: [string, number][] = [
+    ["Checking balance today", safe.balanceCents],
+    [
+      `Regular bills from checking before ${safe.payday ? shortDate(safe.payday) : "then"}`,
+      -safe.billsCents,
+    ],
+    ["Left in this month's budgets", -safe.budgetsLeftCents],
+    ["Toward your goals this month", -safe.goalsCents],
+  ];
+  return (
+    <section className="flex flex-col gap-2 rounded-xl border border-zinc-200 p-4 dark:border-zinc-800">
+      <h2 className="text-sm text-zinc-600 dark:text-zinc-400">
+        {safe.payday ? `Safe to spend until ${shortDate(safe.payday)}` : "Safe to spend"}
+      </h2>
+      <p className={`text-3xl font-semibold ${short ? "text-red-700" : ""}`}>
+        {short ? `Short by ${formatCents(-safe.safeCents)}` : formatCents(safe.safeCents)}
+      </p>
+      {!safe.payday && (
+        <p className="text-xs text-zinc-500">
+          We don&apos;t see a deposit coming in the next month, so this covers the month&apos;s
+          bills.
+        </p>
+      )}
+      <details>
+        <summary className="cursor-pointer text-sm font-medium text-emerald-700">
+          How we worked it out
+        </summary>
+        <ul className="mt-2 flex flex-col gap-1 text-sm">
+          {rows.map(([label, cents]) => (
+            <li key={label} className="flex justify-between gap-2">
+              <span>{label}</span>
+              <span>{cents < 0 ? `−${formatCents(-cents)}` : formatCents(cents)}</span>
+            </li>
+          ))}
+        </ul>
+        <p className="mt-2 text-xs text-zinc-500">
+          Bills are estimates from your past charges. This is math, not a recommendation.
+        </p>
+      </details>
+    </section>
+  );
 }
 
 async function HomeContent() {
@@ -47,6 +93,8 @@ async function HomeContent() {
           </Link>
         </span>
       </div>
+
+      {home.safeToSpend && <SafeToSpendCard safe={home.safeToSpend} />}
 
       <section className="grid gap-3 sm:grid-cols-3">
         <div className={CARD}>
