@@ -111,6 +111,9 @@ describe.runIf(url)("data export against a real database", () => {
     await client.balanceSnapshot.create({
       data: { userId, accountId: account.id, date: new Date("2026-10-01"), balanceCents: 100 },
     });
+    await client.lifeEvent.create({
+      data: { userId, kind: "moving", startedOn: new Date("2026-10-01"), checkedItems: ["mail"] },
+    });
     await client.askConversation.create({
       data: {
         userId,
@@ -160,6 +163,7 @@ describe.runIf(url)("data export against a real database", () => {
       "savingsGoals",
       "balanceSnapshots",
       "events",
+      "lifeEvents",
     ] as const) {
       expect(data[key], key).toHaveLength(1);
     }

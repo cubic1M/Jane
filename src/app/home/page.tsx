@@ -145,6 +145,12 @@ async function HomeContent() {
           <Link href="/year" className={LINK}>
             Year in review
           </Link>
+          <Link href="/life-events" className={LINK}>
+            Life events
+          </Link>
+          <Link href="/tax-pack" className={LINK}>
+            Tax-time pack
+          </Link>
         </span>
       </div>
 

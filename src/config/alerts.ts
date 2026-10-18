@@ -17,6 +17,7 @@ export const ALERT_TYPES: readonly AlertType[] = [
   "over_budget",
   "bill_due",
   "renews_soon",
+  "estimated_tax",
 ];
 
 // Time-sensitive alerts: these can be emailed right away. A bill reminder is only urgent
@@ -66,6 +67,11 @@ export const ALERT_LABELS: Record<AlertType, { label: string; description: strin
     description:
       "A regular bill is due in the next few days; urgent if your balance could fall short.",
   },
+  estimated_tax: {
+    label: "IRS estimated-payment date",
+    description:
+      "A reminder before each IRS estimated-payment date, if you have contracting or gig income.",
+  },
 };
 
 export const DEFAULT_ALERT_DELIVERY: Record<AlertType, AlertDelivery> = {
@@ -78,6 +84,7 @@ export const DEFAULT_ALERT_DELIVERY: Record<AlertType, AlertDelivery> = {
   over_budget: "app",
   bill_due: "email",
   renews_soon: "app",
+  estimated_tax: "app",
 };
 
 // At most this many alert emails per person in any 24 hours. The rest wait for the

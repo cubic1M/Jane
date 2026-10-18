@@ -1,0 +1,71 @@
+// Every sentence the tax-time pack and its reminder alert show (spec step 72). Static, never
+// from Claude. Organizing only: tax-pack-copy.test.ts checks no sentence says what counts,
+// what's allowed or what to do, and that the disclaimer is there.
+
+export const TAX_PACK_COPY = {
+  title: "Tax-time pack",
+  intro:
+    "Your charity gifts, some spending and any contracting or gig income for the year, gathered in one place to hand to whoever does your taxes.",
+  disclaimer:
+    "Spending people often show their tax preparer. Jane doesn't know your tax situation; this is not tax advice.",
+  notAdvice:
+    "Jane gathers these from your accounts. It doesn't know your tax situation; this is not tax advice.",
+  charityHeading: "Charity",
+  charityEmpty: "No donations found for this year.",
+  preparerHeading: "Spending you may want to show your tax preparer",
+  groupLabels: {
+    medical: "Medical",
+    childcare: "Childcare",
+    education: "Education",
+  },
+  groupEmpty: "None found for this year.",
+  interestHeading: "Interest paid on loans",
+  interestNote: "As your lender reports it for this year so far.",
+  interestPastYear:
+    "Your bank reports loan interest for the current year only. Your lender's year-end statement has the full amount for past years.",
+  interestEmpty: "No student loan or mortgage interest reported.",
+  incomeHeading: "Income from contracting or gig work",
+  incomeEmpty: "No contracting or gig income found for this year.",
+  remindersHeading: "IRS estimated-payment dates",
+  remindersNote:
+    "These are reminders of the usual dates only. Dates can move for weekends and holidays; irs.gov has the exact ones and explains who pays.",
+  irsLinkLabel: "Estimated payments on irs.gov",
+  downloadLabel: "Download as CSV",
+  totalLabel: "Total",
+  dateLabel: "Date",
+  payeeLabel: "Payee",
+  amountLabel: "Amount",
+  yearsLabel: "Years",
+  lifeEventsPrompt: "Getting ready for a big change instead?",
+  lifeEventsLink: "Life-event checklists",
+  incomplete:
+    "This only includes what's in your linked accounts. Receipts and statements are the source of truth.",
+} as const;
+
+export const QUARTER_LABELS = [
+  "January to March",
+  "April to June",
+  "July to September",
+  "October to December",
+] as const;
+
+// The alert raised before each estimated-payment date, for people with contracting or gig
+// income.
+export function estimatedTaxAlertCopy(dateLabel: string): { title: string; body: string } {
+  return {
+    title: `IRS estimated-payment date: ${dateLabel}`,
+    body: `You've had contracting or gig income, so here's a reminder that ${dateLabel} is an IRS estimated-payment date. Your tax-time pack has your income by quarter. Jane doesn't know your tax situation; this is not tax advice.`,
+  };
+}
+
+export function allTaxPackCopy(): string[] {
+  const { groupLabels, ...rest } = TAX_PACK_COPY;
+  const alert = estimatedTaxAlertCopy("Jan 15");
+  return [
+    ...Object.values(rest),
+    ...Object.values(groupLabels),
+    ...QUARTER_LABELS,
+    alert.title,
+    alert.body,
+  ];
+}

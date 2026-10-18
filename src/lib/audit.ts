@@ -65,7 +65,9 @@ export type AuditEvent =
   | "agent_handed_off"
   | "agent_call_started"
   // A refund seen coming back in the person's transactions (src/lib/agent/refund-check.ts).
-  | "refund_seen";
+  | "refund_seen"
+  // The tax-time pack downloaded as a CSV (spec step 72).
+  | "tax_pack_downloaded";
 
 export type AuditActor = { type: ActorType; id: string | null };
 

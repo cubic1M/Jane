@@ -41,6 +41,7 @@ export async function exportUserData(
     balanceSnapshots,
     checkIns,
     events,
+    lifeEvents,
   ] = await Promise.all([
     client.user.findUniqueOrThrow({
       where: { id: userId },
@@ -298,6 +299,16 @@ export async function exportUserData(
       select: { name: true, createdAt: true },
       orderBy: { createdAt: "asc" },
     }),
+    // Life-event checklists (spec step 72).
+    db.lifeEvents.findMany({
+      select: {
+        kind: true,
+        startedOn: true,
+        checkedItems: true,
+        createdAt: true,
+        completedAt: true,
+      },
+    }),
   ]);
 
   return {
@@ -330,5 +341,6 @@ export async function exportUserData(
     balanceSnapshots,
     checkIns,
     events,
+    lifeEvents,
   };
 }
