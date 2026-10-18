@@ -8,6 +8,9 @@ import { deleteAllData } from "@/lib/account-deletion";
 import { db } from "@/lib/db";
 import { PlaidRequestError } from "@/lib/plaid/client";
 import { ItemMissingError, removePlaidItem } from "@/lib/plaid/remove";
+import { syncItem } from "@/lib/plaid/sync";
+import { scopedFor } from "@/lib/db-scoped";
+import { hit } from "@/lib/rate-limit";
 import { requireUser } from "@/lib/session";
 
 export type SettingsState = { ok: boolean; message: string } | null;
@@ -71,4 +74,39 @@ export async function deleteMyData(
     throw error;
   }
   redirect("/goodbye");
+}
+
+// "Refresh now": reads new transactions from one linked bank right away.
+export async function refreshBank(
+  _previous: SettingsState,
+  formData: FormData,
+): Promise<SettingsState> {
+  const user = await requireUser();
+  if (!(await hit("plaid", user.id)).ok) {
+    return { ok: false, message: "You've refreshed a lot recently. Try again in a few minutes." };
+  }
+  const item = await scopedFor(user.id).plaidItems.findFirst({
+    where: { id: String(formData.get("itemId") ?? "") },
+    select: { id: true },
+  });
+  if (!item) return { ok: false, message: "That linked bank doesn't exist." };
+  try {
+    const result = await syncItem(item.id);
+    revalidatePath("/settings");
+    return {
+      ok: true,
+      message: result.added > 0 ? `Updated: ${result.added} new transactions.` : "Up to date.",
+    };
+  } catch (error) {
+    if (error instanceof PlaidRequestError) {
+      return {
+        ok: false,
+        message:
+          error.code === "ITEM_LOGIN_REQUIRED"
+            ? "Your bank needs you to sign in again. Use Reconnect on the Accounts page."
+            : "We couldn't reach your bank just now. Try again later.",
+      };
+    }
+    throw error;
+  }
 }

@@ -25,7 +25,8 @@ export type AuditEvent =
   | "admin_mfa_failed"
   | "user_made_admin"
   | "invite_code_created"
-  | "terms_accepted";
+  | "terms_accepted"
+  | "data_exported";
 
 export type AuditActor = { type: ActorType; id: string | null };
 

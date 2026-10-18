@@ -1,5 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+const { findFirst } = vi.hoisted(() => ({ findFirst: vi.fn() }));
+
 vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
 vi.mock("next/navigation", () => ({
   redirect: vi.fn((path: string) => {
@@ -10,6 +12,11 @@ vi.mock("@/lib/db", () => ({ db: {} }));
 vi.mock("@/lib/session", () => ({ requireUser: vi.fn(async () => ({ id: "u1" })) }));
 vi.mock("@/detection/engine", () => ({ runDetection: vi.fn() }));
 vi.mock("@/lib/account-deletion", () => ({ deleteAllData: vi.fn() }));
+vi.mock("@/lib/plaid/sync", () => ({ syncItem: vi.fn() }));
+vi.mock("@/lib/rate-limit", () => ({ hit: vi.fn(async () => ({ ok: true })) }));
+vi.mock("@/lib/db-scoped", () => ({
+  scopedFor: vi.fn(() => ({ plaidItems: { findFirst: findFirst } })),
+}));
 vi.mock("@/lib/plaid/remove", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/lib/plaid/remove")>()),
   removePlaidItem: vi.fn(),
@@ -18,7 +25,9 @@ vi.mock("@/lib/plaid/remove", async (importOriginal) => ({
 import { runDetection } from "@/detection/engine";
 import { deleteAllData } from "@/lib/account-deletion";
 import { ItemMissingError, removePlaidItem } from "@/lib/plaid/remove";
-import { deleteMyData, disconnectBank } from "./actions";
+import { syncItem } from "@/lib/plaid/sync";
+import { hit } from "@/lib/rate-limit";
+import { deleteMyData, disconnectBank, refreshBank } from "./actions";
 
 const form = (fields: Record<string, string>) => {
   const data = new FormData();
@@ -60,5 +69,37 @@ describe("disconnectBank", () => {
     vi.mocked(removePlaidItem).mockRejectedValue(new ItemMissingError());
     expect(await disconnectBank(null, form({ itemId: "x" }))).toMatchObject({ ok: false });
     expect(runDetection).not.toHaveBeenCalled();
+  });
+});
+
+describe("refreshBank", () => {
+  beforeEach(() => {
+    findFirst.mockReset().mockResolvedValue({ id: "item1" });
+    vi.mocked(syncItem)
+      .mockReset()
+      .mockResolvedValue({ added: 3 } as never);
+    vi.mocked(hit)
+      .mockReset()
+      .mockResolvedValue({ ok: true } as never);
+  });
+
+  it("syncs the person's own bank and says what changed", async () => {
+    expect(await refreshBank(null, form({ itemId: "item1" }))).toEqual({
+      ok: true,
+      message: "Updated: 3 new transactions.",
+    });
+    expect(syncItem).toHaveBeenCalledWith("item1");
+  });
+
+  it("refuses someone else's bank and is rate limited", async () => {
+    findFirst.mockResolvedValue(null);
+    expect(await refreshBank(null, form({ itemId: "x" }))).toMatchObject({ ok: false });
+
+    vi.mocked(hit).mockResolvedValue({ ok: false } as never);
+    expect(await refreshBank(null, form({ itemId: "item1" }))).toMatchObject({
+      ok: false,
+      message: expect.stringContaining("refreshed a lot"),
+    });
+    expect(syncItem).not.toHaveBeenCalled();
   });
 });
