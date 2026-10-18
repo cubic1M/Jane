@@ -110,4 +110,26 @@ describe("renderDigest", () => {
       "Jane's plan",
     );
   });
+
+  it("says what Jane did this week, with only confirmed money", () => {
+    const email = renderDigest(
+      {
+        ...payload,
+        janeDid: { finished: 2, confirmedCents: 6_420, contacts: 3, working: 1, waiting: 1 },
+      },
+      LINKS,
+    );
+    expect(email.text).toContain("What Jane did for you this week");
+    expect(email.text).toContain("Finished 2 things, with $64.20 confirmed back or saved.");
+    expect(email.text).toContain("Wrote or called 3 times on your behalf.");
+    expect(email.text).toContain("1 thing needs something from you.");
+    const quiet = renderDigest(
+      {
+        ...payload,
+        janeDid: { finished: 0, confirmedCents: 0, contacts: 0, working: 0, waiting: 0 },
+      },
+      LINKS,
+    );
+    expect(quiet.text).not.toContain("What Jane did");
+  });
 });

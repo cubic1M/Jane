@@ -195,6 +195,7 @@ export async function handOff(
     where: { id: action.id },
     data: { agentState: "handed_off", handoffReason: reason, agentNextAt: null, status: "queued" },
   });
+  await note(userId, action.id, `Passed to our team: ${reason}`, options.client);
   await logAudit(SYSTEM_ACTOR, "agent_handed_off", { type: "action", id: action.id }, { reason });
   await track(userId, "agent_handed_off", { action_type: action.type });
 }
@@ -214,7 +215,7 @@ export async function record(
   userId: string,
   actionId: string,
   message: {
-    direction: "outbound" | "inbound";
+    direction: "outbound" | "inbound" | "note";
     to: string;
     from: string;
     subject: string;
@@ -236,6 +237,18 @@ export async function record(
       summary: reading?.summary ?? null,
     },
   });
+}
+
+// A step that isn't a message, for the timeline: "Passed to our team: …", "Saw $50.00
+// come back on 2026-10-20".
+export async function note(userId: string, actionId: string, text: string, client: PrismaClient) {
+  await record(
+    userId,
+    actionId,
+    { direction: "note", to: "", from: "Jane", subject: "", body: text },
+    null,
+    client,
+  );
 }
 
 async function send(
@@ -333,6 +346,7 @@ export async function agentStep(
         },
         options,
       );
+      await note(userId, action.id, `Asked you to cancel on ${action.company}'s own page.`, client);
       return "waiting";
     }
   }
@@ -691,6 +705,12 @@ export async function markSelfCancelled(
     },
     { client, now, notify: sendStatusEmail },
   );
+  await note(
+    userId,
+    action.id,
+    `You cancelled on ${isoDay(cancelledOn)}. Jane is watching for the next charge to make sure.`,
+    client,
+  );
   await track(userId, "self_cancel_reported", { action_type: action.type });
 }
 
@@ -732,6 +752,7 @@ export async function confirmCancellations({
         { agentState: "finished", confirmAfter: null },
         { client, now, notify },
       );
+      await note(userId, id, `No charge from ${action.company} since you cancelled: done.`, client);
       await track(userId, "cancellation_confirmed", { by: "missed_charge" });
       counts.confirmed += 1;
     } else {
@@ -746,6 +767,12 @@ export async function confirmCancellations({
           userTodo: `${action.company} charged you again on ${isoDay(after.date)} after you cancelled, so the cancellation may not have gone through. Check your account with them; our team will follow up too.`,
         },
         { client, now, notify },
+      );
+      await note(
+        userId,
+        id,
+        `${action.company} charged again on ${isoDay(after.date)} after you cancelled.`,
+        client,
       );
       counts.charged += 1;
     }

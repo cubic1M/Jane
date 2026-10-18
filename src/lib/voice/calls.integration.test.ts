@@ -144,14 +144,20 @@ describe.runIf(url)("phone negotiation, against a real database", () => {
     const { action, step } = await called("rule");
     expect(step).toBe("handed_off");
     expect(action.handoffReason).toContain("own yes");
-    expect(await client.agentMessage.count({ where: { actionId: action.id } })).toBe(0);
+    expect(
+      await client.agentMessage.count({ where: { actionId: action.id, direction: "outbound" } }),
+    ).toBe(0);
   });
 
   it("runs a simulated call to an outcome", async () => {
     const { userId, action } = await called();
     await simulatedCallResult(userId, action.id, { client });
     expect((await reload(action.id)).agentState).not.toBe("waiting_reply");
-    expect(await client.agentMessage.count({ where: { actionId: action.id } })).toBe(2);
+    expect(
+      await client.agentMessage.count({
+        where: { actionId: action.id, direction: { in: ["outbound", "inbound"] } },
+      }),
+    ).toBe(2);
     expect(await handleCallResult("nope", result({}), { client, notify })).toBe("unknown");
   });
 });

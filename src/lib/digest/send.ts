@@ -13,6 +13,7 @@ import { loadInsightTransactions } from "@/insights/load";
 import { netWorth, netWorthOn } from "@/insights/net-worth";
 import { listGoals } from "@/lib/goals";
 import { sendPush } from "@/lib/push";
+import { whatJaneDid } from "@/lib/what-jane-did";
 import { buildDigest, type DigestPayload, type DigestPlans } from "./build";
 import { appBase, clickLink } from "./links";
 import { renderDigest, type DigestLinks } from "./render";
@@ -87,6 +88,7 @@ async function payloadFor(userId: string, now: Date, client: PrismaClient) {
     take: ALERTS_PAGE_LIMIT,
   });
   const plans = await plansFor(userId, now, client);
+  const did = await whatJaneDid(userId, { client, now });
   return buildDigest({
     now,
     lastSentAt: last?.sentAt ?? null,
@@ -106,6 +108,13 @@ async function payloadFor(userId: string, now: Date, client: PrismaClient) {
     findings,
     alerts,
     plans,
+    janeDid: {
+      finished: did.finished.length,
+      confirmedCents: did.confirmedCents,
+      contacts: did.contacts,
+      working: did.working,
+      waiting: did.waiting.length,
+    },
   });
 }
 

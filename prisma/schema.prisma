@@ -74,6 +74,9 @@ enum AgentState {
 enum AgentDirection {
   outbound
   inbound
+  // A step Jane took that isn't a message: a hand-off, a refund seen, a cancellation
+  // confirmed. Shown on the timeline in plain words.
+  note
 
   @@map("agent_direction")
 }

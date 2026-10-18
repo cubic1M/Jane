@@ -110,7 +110,11 @@ describe.runIf(url)("the action agent against a real database", () => {
     expect((await client.finding.findUniqueOrThrow({ where: { id: findingId } })).status).toBe(
       "done",
     );
-    expect(await client.agentMessage.count({ where: { actionId: action.id } })).toBe(2);
+    expect(
+      await client.agentMessage.count({
+        where: { actionId: action.id, direction: { in: ["outbound", "inbound"] } },
+      }),
+    ).toBe(2);
     expect(notify).toHaveBeenCalled();
   });
 
@@ -217,6 +221,10 @@ describe.runIf(url)("the action agent against a real database", () => {
     expect(await runJob(job.id, { client, handlers })).toBe("done");
     const after = await reload(action.id);
     expect(after.agentState).not.toBe("working");
-    expect(await client.agentMessage.count({ where: { actionId: action.id } })).toBe(2);
+    expect(
+      await client.agentMessage.count({
+        where: { actionId: action.id, direction: { in: ["outbound", "inbound"] } },
+      }),
+    ).toBe(2);
   });
 });

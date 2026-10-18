@@ -8,6 +8,7 @@ import {
   handOff,
   loadAction,
   merchantOf,
+  note,
   record,
   setStatus,
   type LoadedAction,
@@ -286,6 +287,12 @@ export async function answerOffer(
       options,
     );
   }
+  await note(
+    userId,
+    action.id,
+    accept ? "You accepted the offer." : "You declined the offer; nothing changes.",
+    client,
+  );
   await track(userId, accept ? "call_offer_accepted" : "call_offer_declined", {});
 }
 
