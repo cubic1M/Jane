@@ -1,4 +1,5 @@
 import { defineConfig, devices } from "@playwright/test";
+import { E2E_AUTH_SECRET } from "./e2e/db";
 
 const PORT = 3000;
 
@@ -32,7 +33,7 @@ export default defineConfig({
       ? {
           DATABASE_URL: scratchDatabase,
           DIRECT_URL: scratchDatabase,
-          AUTH_SECRET: process.env.AUTH_SECRET ?? "e2e-only-auth-secret-not-for-production",
+          AUTH_SECRET: E2E_AUTH_SECRET,
           ANTHROPIC_API_KEY: "",
           RESEND_API_KEY: "",
         }

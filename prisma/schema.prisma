@@ -132,6 +132,10 @@ model User {
   deletedAt        DateTime? @map("deleted_at") @db.Timestamptz(3)
   // Set when detection first finishes for this user, so /scanning knows it can move on.
   firstDetectionAt DateTime? @map("first_detection_at") @db.Timestamptz(3)
+  // Email preferences, changed on /settings or by the unsubscribe link.
+  digestEnabled    Boolean   @default(true) @map("digest_enabled")
+  // IANA name, e.g. America/New_York. Null means US Pacific.
+  timezone         String?
 
   authAccounts       AuthAccount[]
   sessions           Session[]

@@ -1,0 +1,69 @@
+import type { ActionStatus } from "@/generated/prisma/client";
+
+// What goes in a week's digest, and whether to send one at all. Pure, so the skip rule
+// and the totals are tested directly.
+
+const WEEK_MS = 7 * 24 * 60 * 60 * 1000;
+const PENDING: ActionStatus[] = ["queued", "in_progress", "waiting_on_user"];
+
+export type DigestInput = {
+  now: Date;
+  // When the last digest went out; null for someone's first.
+  lastSentAt: Date | null;
+  moneyFoundCents: number;
+  actions: {
+    status: ActionStatus;
+    completedAt: Date | null;
+    userTodo: string | null;
+    // From the card the person approved.
+    title: string;
+    annualSavingsCents: number | null;
+  }[];
+  // Open findings on the report.
+  findings: { title: string; annualSavingsCents: number | null; createdAt: Date }[];
+};
+
+export type DigestPayload = {
+  savedThisWeekCents: number;
+  savedToDateCents: number;
+  moneyFoundCents: number;
+  finishedThisWeek: { title: string; annualSavingsCents: number | null }[];
+  pending: { title: string; status: ActionStatus; userTodo: string | null }[];
+  newFindings: { title: string; annualSavingsCents: number | null }[];
+};
+
+const total = (rows: { annualSavingsCents: number | null }[]) =>
+  rows.reduce((sum, r) => sum + (r.annualSavingsCents ?? 0), 0);
+
+// Null when there's nothing new and nothing pending: we never send an empty digest.
+export function buildDigest(input: DigestInput): DigestPayload | null {
+  const weekAgo = new Date(input.now.getTime() - WEEK_MS);
+  const done = input.actions.filter((a) => a.status === "done");
+  const finishedThisWeek = done.filter((a) => a.completedAt && a.completedAt > weekAgo);
+  const pending = input.actions.filter((a) => PENDING.includes(a.status));
+  const since = input.lastSentAt ?? new Date(0);
+  const newFindings = input.findings.filter((f) => f.createdAt > since);
+
+  if (finishedThisWeek.length === 0 && pending.length === 0 && newFindings.length === 0) {
+    return null;
+  }
+  return {
+    savedThisWeekCents: total(finishedThisWeek),
+    savedToDateCents: total(done),
+    moneyFoundCents: input.moneyFoundCents,
+    finishedThisWeek: finishedThisWeek.map(({ title, annualSavingsCents }) => ({
+      title,
+      annualSavingsCents,
+    })),
+    // Things waiting on the person come first.
+    pending: pending
+      .map(({ title, status, userTodo }) => ({ title, status, userTodo }))
+      .sort(
+        (a, b) => Number(b.status === "waiting_on_user") - Number(a.status === "waiting_on_user"),
+      ),
+    newFindings: newFindings.map(({ title, annualSavingsCents }) => ({
+      title,
+      annualSavingsCents,
+    })),
+  };
+}
