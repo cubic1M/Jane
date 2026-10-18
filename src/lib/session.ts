@@ -8,8 +8,8 @@ import { adminSessionState, sessionTokenFrom } from "@/lib/admin-gate";
 
 export type SessionUser = Session["user"];
 
-// Where signed-in users go after sign-in.
-export const HOME_PATH = "/connect";
+// Where signed-in users go after sign-in. /home sends people without accounts to /connect.
+export const HOME_PATH = "/home";
 
 export async function getCurrentUser(): Promise<SessionUser | null> {
   // Auth.js makes a random CSRF token on every session lookup. Waiting for the

@@ -160,6 +160,14 @@ async function loadInput(db: ScopedDb, asOf: string): Promise<DetectionInput> {
   };
 }
 
+// The detection input for one person, for read-only features like upcoming charges.
+export async function loadDetectionInput(
+  userId: string,
+  { client = defaultClient, now = new Date() }: Pick<Options, "client" | "now"> = {},
+): Promise<DetectionInput> {
+  return loadInput(scopedFor(userId, client), isoDate(now));
+}
+
 export type DetectionSummary = {
   counts: Record<FindingType, number>;
   created: number;

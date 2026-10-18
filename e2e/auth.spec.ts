@@ -21,7 +21,7 @@ test("login page explains an expired magic link", async ({ page }) => {
   ).toBeVisible();
 });
 
-for (const path of ["/connect", "/import", "/scanning", "/report", "/actions"]) {
+for (const path of ["/home", "/connect", "/import", "/scanning", "/report", "/actions"]) {
   test(`signed-out visitors are sent from ${path} to /login`, async ({ page }) => {
     await page.goto(path);
 
