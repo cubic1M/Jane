@@ -76,7 +76,14 @@ describe.runIf(url)("autopilot against a real database", () => {
   it("asks first when told to, and becomes custom when rules are fine-tuned", async () => {
     const userId = await person();
     await setAutopilot(userId, "safe", { client });
+    await setAutopilot(userId, "all", { client });
+    expect(
+      (await client.user.findUniqueOrThrow({ where: { id: userId } })).acceptSimpleOffers,
+    ).toBe(true);
     expect(await setAutopilot(userId, "ask", { client })).toBe(0);
+    expect(
+      (await client.user.findUniqueOrThrow({ where: { id: userId } })).acceptSimpleOffers,
+    ).toBe(false);
     expect((await rulesFor(userId, { client })).every((r) => !r.enabled)).toBe(true);
     await markCustom(userId, { client });
     expect(await autopilotOf(userId, { client })).toBe("custom");

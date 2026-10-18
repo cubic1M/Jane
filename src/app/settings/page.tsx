@@ -9,6 +9,7 @@ import { rulesFor } from "@/lib/standing-rules";
 import { autopilotOf } from "@/lib/autopilot";
 import { AUTOPILOT_LEVELS } from "@/config/autopilot";
 import { AutopilotChooser } from "@/components/autopilot-chooser";
+import { CallOffersForm } from "./call-offers-form";
 import { db } from "@/lib/db";
 import { scopedDb } from "@/lib/db-scoped";
 import { requireUser } from "@/lib/session";
@@ -36,6 +37,7 @@ async function SettingsContent() {
         alertPrefs: true,
         state: true,
         calendarCreatedAt: true,
+        acceptSimpleOffers: true,
       },
     }),
     mine.plaidItems.findMany({
@@ -210,6 +212,7 @@ async function SettingsContent() {
           . Pick a level to change it.
         </p>
         <AutopilotChooser compact />
+        <CallOffersForm accept={prefs.acceptSimpleOffers} />
       </section>
 
       <section id="rules" className="flex scroll-mt-8 flex-col gap-3">

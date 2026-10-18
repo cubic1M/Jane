@@ -36,7 +36,16 @@ export async function setAutopilot(
     })),
     { client },
   );
-  await client.user.update({ where: { id: userId }, data: { autopilot: level } });
+  // "Everything allowed" also accepts no-strings call offers; "Ask me first" never does;
+  // "safe" leaves the person's own choice alone.
+  await client.user.update({
+    where: { id: userId },
+    data: {
+      autopilot: level,
+      ...(level === "all" ? { acceptSimpleOffers: true } : {}),
+      ...(level === "ask" ? { acceptSimpleOffers: false } : {}),
+    },
+  });
   await logAudit(
     { type: "user", id: userId },
     "autopilot_set",
@@ -58,4 +67,13 @@ export async function markCustom(userId: string, { client = defaultClient }: Opt
 export async function autopilotOf(userId: string, { client = defaultClient }: Options = {}) {
   const user = await client.user.findUnique({ where: { id: userId }, select: { autopilot: true } });
   return user?.autopilot ?? null;
+}
+
+export async function setAcceptSimpleOffers(
+  userId: string,
+  accept: boolean,
+  { client = defaultClient }: Options = {},
+) {
+  await client.user.update({ where: { id: userId }, data: { acceptSimpleOffers: accept } });
+  await track(userId, "call_offer_limit_set", { accept });
 }

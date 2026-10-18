@@ -32,11 +32,17 @@ describe("POST /api/voice/result", () => {
       transcript: "...",
       newMonthlyCents: 9_900,
       offer: null,
+      offerTerms: null,
     });
     for (const bad of [
       { ...good, outcome: "maybe" },
       { ...good, newMonthlyCents: -1 },
       { ...good, transcript: 5 },
+      {
+        ...good,
+        outcome: "offer",
+        offerTerms: { monthlyCents: 100, contractMonths: -1, feeCents: 0 },
+      },
     ]) {
       expect((await post(bad, "Bearer s")).status).toBe(400);
     }

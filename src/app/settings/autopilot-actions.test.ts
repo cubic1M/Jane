@@ -10,12 +10,12 @@ vi.mock("@/lib/db-scoped", () => ({
 vi.mock("@/lib/agent/run", () => ({ runQueuedFor: vi.fn() }));
 vi.mock("@/lib/autopilot", () => {
   class AutopilotError extends Error {}
-  return { AutopilotError, setAutopilot: vi.fn(async () => 3) };
+  return { AutopilotError, setAutopilot: vi.fn(async () => 3), setAcceptSimpleOffers: vi.fn() };
 });
 
 import { after } from "next/server";
-import { AutopilotError, setAutopilot } from "@/lib/autopilot";
-import { chooseAutopilot } from "./autopilot-actions";
+import { AutopilotError, setAcceptSimpleOffers, setAutopilot } from "@/lib/autopilot";
+import { chooseAutopilot, saveCallOffers } from "./autopilot-actions";
 
 const form = (level: string) => {
   const data = new FormData();
@@ -39,5 +39,14 @@ describe("choosing autopilot", () => {
       ok: false,
       message: "Pick one of the choices.",
     });
+  });
+
+  it("saves the call-offer limit for the signed-in person", async () => {
+    const on = new FormData();
+    on.set("accept", "on");
+    expect(await saveCallOffers(null, on)).toMatchObject({ ok: true });
+    expect(setAcceptSimpleOffers).toHaveBeenLastCalledWith("u1", true);
+    await saveCallOffers(null, new FormData());
+    expect(setAcceptSimpleOffers).toHaveBeenLastCalledWith("u1", false);
   });
 });

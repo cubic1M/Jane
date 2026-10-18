@@ -4,9 +4,10 @@ import { handleCallResult } from "@/lib/voice/calls";
 import { CALL_OUTCOMES, type CallOutcome } from "@/lib/voice/provider";
 
 // A calling service's result for one of the agent's calls, as JSON:
-// { token, outcome, transcript, newMonthlyCents?, offer? }, with
+// { token, outcome, transcript, newMonthlyCents?, offer?, offerTerms? }, with
 // "Authorization: Bearer $VOICE_WEBHOOK_SECRET". token is the one the call was placed with;
-// outcome is one of lowered, offer, refused, needs_person or no_answer.
+// outcome is one of lowered, offer, refused, needs_person or no_answer; offerTerms is
+// { monthlyCents, contractMonths, feeCents } for an offer.
 
 const MAX_BYTES = 200_000;
 
@@ -28,7 +29,16 @@ export async function POST(request: Request) {
   } catch {
     return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
   }
-  const { token, outcome, transcript, newMonthlyCents, offer } = body;
+  const { token, outcome, transcript, newMonthlyCents, offer, offerTerms } = body;
+  const cents = (v: unknown) => typeof v === "number" && Number.isInteger(v) && v >= 0;
+  const terms = offerTerms as Record<string, unknown> | undefined | null;
+  if (
+    terms !== undefined &&
+    terms !== null &&
+    !(cents(terms.monthlyCents) && cents(terms.contractMonths) && cents(terms.feeCents))
+  ) {
+    return NextResponse.json({ error: "Invalid offer terms" }, { status: 400 });
+  }
   if (
     typeof token !== "string" ||
     !CALL_OUTCOMES.includes(outcome as CallOutcome) ||
@@ -44,6 +54,13 @@ export async function POST(request: Request) {
     transcript,
     newMonthlyCents: typeof newMonthlyCents === "number" ? newMonthlyCents : null,
     offer: typeof offer === "string" ? offer : null,
+    offerTerms: terms
+      ? {
+          monthlyCents: terms.monthlyCents as number,
+          contractMonths: terms.contractMonths as number,
+          feeCents: terms.feeCents as number,
+        }
+      : null,
   });
   return NextResponse.json({ result });
 }

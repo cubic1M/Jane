@@ -105,7 +105,9 @@ export async function startCall(
     "This call may be recorded.",
     fill(draft.draft.body, action).replaceAll(PLACEHOLDERS.name, "the account holder"),
     `The typical price for this kind of service is up to ${formatCents(target)} a month; they pay ${formatCents(monthlyCents)}.`,
-    "Don't accept a contract, a fee or a different plan: write the offer down and say the account holder will decide.",
+    action.user.acceptSimpleOffers
+      ? "You may accept a lower monthly price, even on a different plan of the same service, if there's no contract and no fee. Anything with a contract or a fee: write it down and say the account holder will decide."
+      : "Don't accept a contract, a fee or a different plan: write the offer down and say the account holder will decide.",
   ].join("\n\n");
   const allowed = [...prepared.allowedCents, target, monthlyCents];
   if (!checkGuardrails(script, allowed, "bill_negotiation").ok) {
@@ -206,11 +208,23 @@ export async function handleCallResult(
   if (action.agentState !== "waiting_reply" || action.status !== "in_progress") return "kept";
 
   const options = { client, now, notify };
-  if (
-    result.outcome === "lowered" &&
-    result.newMonthlyCents !== null &&
+  // An offer inside the person's limit (spec step 62) counts as accepted on the call.
+  const terms = result.offerTerms;
+  const withinLimit =
+    result.outcome === "offer" &&
+    action.user.acceptSimpleOffers &&
+    terms !== undefined &&
+    terms !== null &&
+    terms.contractMonths === 0 &&
+    terms.feeCents === 0 &&
     monthlyCents !== null &&
-    result.newMonthlyCents < monthlyCents
+    terms.monthlyCents < monthlyCents;
+  const lowerTo = withinLimit ? terms!.monthlyCents : result.newMonthlyCents;
+  if (
+    (result.outcome === "lowered" || withinLimit) &&
+    lowerTo !== null &&
+    monthlyCents !== null &&
+    lowerTo < monthlyCents
   ) {
     await setStatus(
       userId,
@@ -218,11 +232,19 @@ export async function handleCallResult(
       "done",
       {
         agentState: "finished",
-        confirmedAnnualCents: (monthlyCents - result.newMonthlyCents) * 12,
+        confirmedAnnualCents: (monthlyCents - lowerTo) * 12,
         userTodo: null,
       },
       options,
     );
+    if (withinLimit) {
+      await note(
+        userId,
+        action.id,
+        `Accepted on the call, within your limit: ${result.offer ?? "a lower price"}.`,
+        client,
+      );
+    }
     await track(userId, "agent_call_lowered", { action_type: action.type });
   } else if (result.outcome === "offer") {
     await setStatus(
