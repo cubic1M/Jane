@@ -3,48 +3,17 @@ import { llmEnabled, llmModel } from "@/lib/anthropic";
 import { SYSTEM_ACTOR, logAudit } from "@/lib/audit";
 import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
-import { EXPLAIN_PROMPT_VERSION, explainFinding, type FindingToExplain } from "./explain";
-import { inputHash, prepareExplainInput } from "./explain-input";
-import { templateExplanation, type ExplanationContent } from "./explain-templates";
+import { EXPLAIN_PROMPT_VERSION, explainFinding } from "./explain";
+import { currentHash } from "./card-text";
 
 // Explanations are cached on the finding with a hash of what Claude was sent. They are
 // regenerated only when that input changes, i.e. when the finding's evidence does.
+// Reading them back for a page is in card-text.ts.
 
 // Findings someone may still look at.
 const SHOWN_STATUSES: FindingStatus[] = ["new", "shown", "approved", "in_progress"];
 // Requests to Claude in flight at once for one user.
 const CONCURRENCY = 4;
-
-type StoredFinding = FindingToExplain & {
-  explanation: unknown;
-  explanationHash: string | null;
-};
-
-function currentHash(finding: FindingToExplain): string {
-  return inputHash(prepareExplainInput(finding).input, EXPLAIN_PROMPT_VERSION);
-}
-
-function storedContent(value: unknown): ExplanationContent | null {
-  const v = value as Record<string, unknown> | null;
-  const ok =
-    typeof v?.title === "string" &&
-    typeof v.explanation === "string" &&
-    typeof v.giveUp === "string" &&
-    Array.isArray(v.alternatives) &&
-    v.alternatives.every((a) => typeof a === "string");
-  return ok ? (v as ExplanationContent) : null;
-}
-
-// What the card shows: the stored explanation while it matches the finding's evidence,
-// otherwise the template text.
-export function explanationFor(finding: StoredFinding): ExplanationContent {
-  const { input } = prepareExplainInput(finding);
-  if (finding.explanationHash === inputHash(input, EXPLAIN_PROMPT_VERSION)) {
-    const stored = storedContent(finding.explanation);
-    if (stored) return stored;
-  }
-  return templateExplanation(finding.title, input);
-}
 
 async function inBatches<T, R>(items: T[], size: number, run: (item: T) => Promise<R>) {
   const results: R[] = [];

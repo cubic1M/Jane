@@ -1,7 +1,12 @@
 export const ANONYMOUS_ID_COOKIE = "fc_aid";
 
 // Events the browser may send to POST /api/events. Server-side events don't need to be listed.
-export const CLIENT_EVENTS = ["landing_viewed", "get_started_clicked"] as const;
+export const CLIENT_EVENTS = [
+  "landing_viewed",
+  "get_started_clicked",
+  "report_viewed",
+  "card_opened",
+] as const;
 
 export type ClientEventName = (typeof CLIENT_EVENTS)[number];
 

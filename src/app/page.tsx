@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { GetStartedButton } from "@/components/get-started-button";
-import { LandingViewTracker } from "@/components/landing-view-tracker";
+import { ViewTracker } from "@/components/view-tracker";
 
 const POINTS = [
   {
@@ -20,7 +20,7 @@ const POINTS = [
 export default function Home() {
   return (
     <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col justify-center gap-12 px-6 py-20">
-      <LandingViewTracker />
+      <ViewTracker event="landing_viewed" />
 
       <div className="flex flex-col gap-6">
         <h1 className="text-4xl font-semibold tracking-tight text-balance sm:text-5xl">

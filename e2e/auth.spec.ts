@@ -15,10 +15,13 @@ test("sign-up page offers a magic link and links to sign in", async ({ page }) =
 test("login page explains an expired magic link", async ({ page }) => {
   await page.goto("/login?error=Verification");
 
-  await expect(page.getByRole("alert")).toContainText("expired or was already used");
+  // Next.js adds an empty route announcer with role="alert"; look for ours by its text.
+  await expect(
+    page.getByRole("alert").filter({ hasText: "expired or was already used" }),
+  ).toBeVisible();
 });
 
-for (const path of ["/import", "/scanning", "/report"]) {
+for (const path of ["/import", "/scanning", "/report", "/actions"]) {
   test(`signed-out visitors are sent from ${path} to /login`, async ({ page }) => {
     await page.goto(path);
 

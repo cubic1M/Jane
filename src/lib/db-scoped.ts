@@ -74,6 +74,17 @@ export function scopedFor(userId: string, client: PrismaClient = db) {
 
   // Only user-owned tables are exposed; users, audit_log and analytics have their own helpers.
   return {
+    // An interactive transaction over the same scoped tables.
+    transaction: <T>(
+      run: (tx: {
+        findings: typeof scoped.finding;
+        decisions: typeof scoped.decision;
+        actions: typeof scoped.action;
+      }) => Promise<T>,
+    ) =>
+      scoped.$transaction((tx) =>
+        run({ findings: tx.finding, decisions: tx.decision, actions: tx.action }),
+      ),
     userId,
     plaidItems: scoped.plaidItem,
     accounts: scoped.account,

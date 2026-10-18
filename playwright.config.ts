@@ -2,6 +2,9 @@ import { defineConfig, devices } from "@playwright/test";
 
 const PORT = 3000;
 
+// Signed-in tests need a scratch database (see e2e/db.ts); the dev server gets it too.
+const scratchDatabase = process.env.E2E_DATABASE_URL;
+
 export default defineConfig({
   testDir: "./e2e",
   fullyParallel: true,
@@ -19,7 +22,18 @@ export default defineConfig({
   webServer: {
     command: "npm run dev",
     url: `http://localhost:${PORT}/api/health`,
-    reuseExistingServer: !process.env.CI,
+    // A running server may be pointed at another database, so never reuse one for
+    // signed-in tests.
+    reuseExistingServer: !process.env.CI && !scratchDatabase,
     timeout: 120_000,
+    env: scratchDatabase
+      ? {
+          DATABASE_URL: scratchDatabase,
+          DIRECT_URL: scratchDatabase,
+          AUTH_SECRET: process.env.AUTH_SECRET ?? "e2e-only-auth-secret-not-for-production",
+          ANTHROPIC_API_KEY: "",
+          RESEND_API_KEY: "",
+        }
+      : {},
   },
 });

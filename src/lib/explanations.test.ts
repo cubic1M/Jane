@@ -12,7 +12,7 @@ import { logAudit } from "@/lib/audit";
 import { findingOfType } from "./__fixtures__/findings";
 import { EXPLAIN_PROMPT_VERSION, type ExplanationResult } from "./explain";
 import { inputHash, prepareExplainInput } from "./explain-input";
-import { explainFindings, explanationFor } from "./explanations";
+import { explainFindings } from "./explanations";
 
 const CONTENT = {
   title: "Netflix went up",
@@ -130,25 +130,5 @@ describe("explainFindings", () => {
     expect(await explainFindings("user_1", { explain })).toMatchObject({ unavailable: 1 });
     expect(scoped.findings.update).not.toHaveBeenCalled();
     expect(logAudit).not.toHaveBeenCalled();
-  });
-});
-
-describe("explanationFor", () => {
-  it("shows the stored explanation while the evidence is unchanged", () => {
-    const finding = row("price_increase", { explanation: CONTENT });
-    finding.explanationHash = hashOf(finding);
-
-    expect(explanationFor(finding)).toEqual(CONTENT);
-  });
-
-  it("shows the template once the evidence has changed", () => {
-    const finding = row("price_increase", { explanation: CONTENT, explanationHash: "old" });
-
-    expect(explanationFor(finding).title).toBe(finding.title);
-    expect(explanationFor(finding).explanation).toContain("raised your price");
-  });
-
-  it("shows the template when nothing has been generated yet", () => {
-    expect(explanationFor(row("bank_fees")).explanation).toContain("in fees");
   });
 });
