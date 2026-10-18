@@ -1,7 +1,9 @@
 import type { Session } from "next-auth";
+import { cookies } from "next/headers";
 import { notFound, redirect } from "next/navigation";
 import { connection } from "next/server";
 import { auth } from "@/auth";
+import { adminSessionState, sessionTokenFrom } from "@/lib/admin-gate";
 
 export type SessionUser = Session["user"];
 
@@ -22,9 +24,13 @@ export async function requireUser(): Promise<SessionUser> {
   return user;
 }
 
-// Admin pages answer 404 to everyone else, so their existence isn't revealed.
+// Admin pages answer 404 to everyone else, so their existence isn't revealed. Admins
+// must also have entered a two-factor code in this session.
 export async function requireAdmin(): Promise<SessionUser> {
   const user = await getCurrentUser();
   if (user?.role !== "admin") notFound();
+  const state = await adminSessionState(sessionTokenFrom(await cookies()));
+  if (state === "needs_mfa") redirect("/mfa");
+  if (state !== "verified") notFound();
   return user;
 }

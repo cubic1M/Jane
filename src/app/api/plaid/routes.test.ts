@@ -2,6 +2,11 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const { afterCallbacks } = vi.hoisted(() => ({ afterCallbacks: [] as (() => Promise<void>)[] }));
 
+vi.mock("@/lib/rate-limit", () => ({
+  limitOrNull: vi.fn(async () => null),
+  hit: vi.fn(async () => ({ ok: true, remaining: 1, retryAfterSeconds: 0 })),
+  ipKey: vi.fn(() => "ip"),
+}));
 vi.mock("next/server", async (importOriginal) => ({
   ...(await importOriginal<typeof import("next/server")>()),
   after: vi.fn((callback: () => Promise<void>) => afterCallbacks.push(callback)),

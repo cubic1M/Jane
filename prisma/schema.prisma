@@ -142,6 +142,10 @@ model User {
   membershipOfferDismissedAt DateTime? @map("membership_offer_dismissed_at") @db.Timestamptz(3)
   // When we last warned that linked banks will be disconnected for inactivity.
   plaidRemovalWarnedAt       DateTime? @map("plaid_removal_warned_at") @db.Timestamptz(3)
+  // Admin two-factor (TOTP). The secret is AES-256-GCM encrypted like Plaid tokens;
+  // mfaEnabledAt is set once the first code checks out.
+  mfaSecretEncrypted         String?   @map("mfa_secret_encrypted")
+  mfaEnabledAt               DateTime? @map("mfa_enabled_at") @db.Timestamptz(3)
 
   authAccounts       AuthAccount[]
   sessions           Session[]
@@ -179,11 +183,13 @@ model AuthAccount {
 }
 
 model Session {
-  id           String   @id @default(cuid())
-  sessionToken String   @unique @map("session_token")
-  userId       String   @map("user_id")
-  expires      DateTime @db.Timestamptz(3)
-  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  id            String    @id @default(cuid())
+  sessionToken  String    @unique @map("session_token")
+  userId        String    @map("user_id")
+  expires       DateTime  @db.Timestamptz(3)
+  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  // Set when an admin enters a valid two-factor code in this session.
+  mfaVerifiedAt DateTime? @map("mfa_verified_at") @db.Timestamptz(3)
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
@@ -456,6 +462,64 @@ model SubscriptionCheck {
 
   @@unique([userId, merchantKey])
   @@map("subscription_checks")
+}
+
+// Invite codes keep the beta closed: signing up needs a code with uses left.
+model InviteCode {
+  id        String    @id @default(cuid())
+  code      String    @unique
+  maxUses   Int       @map("max_uses")
+  uses      Int       @default(0)
+  // What the code is for, e.g. "Friends of Sam". Team-only.
+  note      String?
+  expiresAt DateTime? @map("expires_at") @db.Timestamptz(3)
+  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  access BetaAccess[]
+
+  @@map("invite_codes")
+}
+
+// Emails allowed to create an account, each from a redeemed invite code.
+model BetaAccess {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  inviteCodeId String   @map("invite_code_id")
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  inviteCode InviteCode @relation(fields: [inviteCodeId], references: [id], onDelete: Cascade)
+
+  @@map("beta_access")
+}
+
+// Fixed-window request counters for rate limiting (src/lib/rate-limit.ts). Keys hold a
+// route name plus a user id or a hashed IP, never raw personal data.
+model RateLimit {
+  key         String
+  windowStart DateTime @map("window_start") @db.Timestamptz(3)
+  count       Int      @default(0)
+
+  @@id([key, windowStart])
+  @@index([windowStart])
+  @@map("rate_limits")
+}
+
+// Server errors, scrubbed of personal data and secrets before they're stored
+// (src/lib/error-log.ts). No user id, so the log holds nothing personal.
+model ErrorEvent {
+  id        String   @id @default(cuid())
+  message   String
+  stack     String?
+  // Path without the query string, e.g. /api/plaid/exchange.
+  path      String?
+  method    String?
+  // Next.js context: "route", "render", "action" or "proxy".
+  routeType String?  @map("route_type")
+  digest    String?
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  @@index([createdAt])
+  @@map("error_events")
 }
 
 // Deliberately no foreign keys: the log must outlive the users and rows it describes,

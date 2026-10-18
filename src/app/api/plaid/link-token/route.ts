@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { limitOrNull } from "@/lib/rate-limit";
 import { PlaidRequestError, plaidEnabled } from "@/lib/plaid/client";
 import { ItemNotFoundError, createLinkToken } from "@/lib/plaid/link";
 import { getCurrentUser } from "@/lib/session";
@@ -10,6 +11,8 @@ const ID_PATTERN = /^[a-z0-9]{1,40}$/i;
 export async function POST(request: Request) {
   const user = await getCurrentUser();
   if (!user) return NextResponse.json({ error: "Not signed in" }, { status: 401 });
+  const limited = await limitOrNull("plaid", user.id);
+  if (limited) return limited;
   if (!plaidEnabled()) {
     return NextResponse.json({ error: "Bank linking isn't set up yet." }, { status: 503 });
   }

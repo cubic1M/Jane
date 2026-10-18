@@ -2,6 +2,7 @@ import NextAuth from "next-auth";
 import Google from "next-auth/providers/google";
 import Resend from "next-auth/providers/resend";
 import { createAuthAdapter } from "@/lib/auth-adapter";
+import { allowSignIn } from "@/lib/auth-gate";
 import { recordSignIn } from "@/lib/auth-events";
 import { db } from "@/lib/db";
 import { sendMagicLink } from "@/lib/email";
@@ -29,6 +30,8 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     error: "/login",
   },
   callbacks: {
+    // The beta is invite-only: new accounts need a redeemed invite code.
+    signIn: allowSignIn,
     session({ session, user }) {
       return { ...session, user: { ...session.user, id: user.id, role: user.role } };
     },

@@ -1,12 +1,17 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { SESSION_COOKIES, isAdminSession } from "@/lib/admin-gate";
+import { adminSessionState, sessionTokenFrom } from "@/lib/admin-gate";
 
-// /admin answers everyone but admins with a 404, so its existence isn't revealed. The
-// pages check again with requireAdmin(); this runs first so the status is a real 404
-// rather than a streamed not-found page.
+// /admin answers everyone but admins with a 404, so its existence isn't revealed, and
+// sends admins who haven't entered a two-factor code in this session to /mfa. The pages
+// check again with requireAdmin(); this runs first so the status is a real 404.
 export async function proxy(request: NextRequest) {
-  const token = SESSION_COOKIES.map((name) => request.cookies.get(name)?.value).find(Boolean);
-  if (await isAdminSession(token)) return NextResponse.next();
+  const state = await adminSessionState(sessionTokenFrom(request.cookies));
+  if (state === "verified") return NextResponse.next();
+  if (state === "needs_mfa") {
+    const target = new URL("/mfa", request.url);
+    target.searchParams.set("next", request.nextUrl.pathname);
+    return NextResponse.redirect(target);
+  }
   return NextResponse.rewrite(new URL("/404", request.url), { status: 404 });
 }
 

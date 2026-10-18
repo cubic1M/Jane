@@ -1,10 +1,11 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { cookieGet } = vi.hoisted(() => ({ cookieGet: vi.fn() }));
+const { cookieGet, updateMany } = vi.hoisted(() => ({ cookieGet: vi.fn(), updateMany: vi.fn() }));
 
 vi.mock("next/headers", () => ({ cookies: async () => ({ get: cookieGet }) }));
 vi.mock("@/lib/analytics", () => ({ track: vi.fn() }));
 vi.mock("@/lib/audit", () => ({ logAudit: vi.fn() }));
+vi.mock("@/lib/db", () => ({ db: { user: { updateMany } } }));
 
 import { track } from "@/lib/analytics";
 import { logAudit } from "@/lib/audit";
@@ -17,6 +18,27 @@ describe("recordSignIn", () => {
     vi.mocked(track).mockReset().mockResolvedValue(undefined);
     vi.mocked(logAudit).mockReset().mockResolvedValue(undefined);
     cookieGet.mockReset().mockReturnValue({ value: "anon-123" });
+    updateMany.mockReset().mockResolvedValue({ count: 0 });
+    vi.unstubAllEnvs();
+  });
+
+  it("makes ADMIN_EMAILS admins on sign-in, once", async () => {
+    vi.stubEnv("ADMIN_EMAILS", "founder@example.com");
+    updateMany.mockResolvedValueOnce({ count: 1 });
+
+    await recordSignIn({ user: { id: "user_1", email: "Founder@example.com" }, isNewUser: false });
+
+    expect(updateMany).toHaveBeenCalledWith({
+      where: { id: "user_1", role: "user" },
+      data: { role: "admin" },
+    });
+    expect(logAudit).toHaveBeenCalledWith(USER, "user_made_admin", USER, { via: "ADMIN_EMAILS" });
+  });
+
+  it("leaves everyone else's role alone", async () => {
+    vi.stubEnv("ADMIN_EMAILS", "founder@example.com");
+    await recordSignIn({ user: { id: "user_1", email: "someone@example.com" }, isNewUser: false });
+    expect(updateMany).not.toHaveBeenCalled();
   });
 
   it("logs sign-up and sign-in and tracks signup_completed for a new user", async () => {

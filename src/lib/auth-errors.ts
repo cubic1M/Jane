@@ -5,6 +5,11 @@ const MESSAGES: Record<string, string> = {
   OAuthAccountNotLinked:
     "That email already has an account with a different sign-in method. Use the one you signed up with.",
   AccessDenied: "Sign-in was cancelled or not allowed.",
+  InviteRequired: "The beta is invite-only. Enter your invite code to sign up.",
+  InvalidInvite: "That invite code isn't valid. Check it and try again.",
+  InviteUsedUp: "That invite code has been used up. Ask for a new one.",
+  InviteExpired: "That invite code has expired. Ask for a new one.",
+  TooManyRequests: "Too many sign-in attempts. Wait a few minutes and try again.",
 };
 
 const FALLBACK = "Something went wrong signing you in. Please try again.";

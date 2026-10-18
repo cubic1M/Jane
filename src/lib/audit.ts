@@ -19,7 +19,12 @@ export type AuditEvent =
   | "action_status_changed"
   | "membership_paid"
   | "item_removed"
-  | "user_data_deleted";
+  | "user_data_deleted"
+  | "admin_mfa_enrolled"
+  | "admin_mfa_verified"
+  | "admin_mfa_failed"
+  | "user_made_admin"
+  | "invite_code_created";
 
 export type AuditActor = { type: ActorType; id: string | null };
 

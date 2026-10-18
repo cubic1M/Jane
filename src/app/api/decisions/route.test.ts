@@ -1,5 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+vi.mock("@/lib/rate-limit", () => ({
+  limitOrNull: vi.fn(async () => null),
+  hit: vi.fn(async () => ({ ok: true, remaining: 1, retryAfterSeconds: 0 })),
+  ipKey: vi.fn(() => "ip"),
+}));
 vi.mock("@/lib/session", () => ({ getCurrentUser: vi.fn() }));
 vi.mock("@/lib/decisions", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/lib/decisions")>()),
