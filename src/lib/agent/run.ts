@@ -28,6 +28,7 @@ import { merchantFor } from "@/lib/merchants";
 import { agentFromAddress, mailMode, replyAddress, sendAgentMail, tokenFromAddress } from "./mail";
 import { readReply, type ReplyReading } from "./read-reply";
 import { simulatedAddress } from "./simulated-company";
+import { isCallAction, startCall } from "@/lib/voice/calls";
 
 // The action agent (spec step 51). An approved action of a type in AGENT_ACTION_TYPES is
 // worked by the agent instead of the team: it emails the company from Jane's address,
@@ -66,7 +67,7 @@ export async function startAgent(
   return enqueueJob("agent_step", { userId, actionId }, { client, now });
 }
 
-async function loadAction(userId: string, actionId: string, client: PrismaClient) {
+export async function loadAction(userId: string, actionId: string, client: PrismaClient) {
   const action = await scopedFor(userId, client).actions.findFirst({
     where: { id: actionId },
     select: {
@@ -84,6 +85,7 @@ async function loadAction(userId: string, actionId: string, client: PrismaClient
           findingId: true,
           cardSnapshot: true,
           options: true,
+          source: true,
           finding: { select: { type: true, evidence: true } },
         },
       },
@@ -117,7 +119,7 @@ async function companyOf(
   return account?.item?.institutionName ?? null;
 }
 
-type LoadedAction = NonNullable<Awaited<ReturnType<typeof loadAction>>>;
+export type LoadedAction = NonNullable<Awaited<ReturnType<typeof loadAction>>>;
 
 // The agent may only touch an approved action that isn't finished.
 export function canAgentWork(action: {
@@ -133,7 +135,7 @@ export function canAgentWork(action: {
   );
 }
 
-const merchantOf = (action: LoadedAction) => action.company ?? "the company";
+export const merchantOf = (action: LoadedAction) => action.company ?? "the company";
 
 const titleOf = (action: LoadedAction) => {
   const title = (action.decision.cardSnapshot as { title?: unknown } | null)?.title;
@@ -149,7 +151,7 @@ async function recipientFor(action: LoadedAction, client: PrismaClient): Promise
   return row?.supportEmail ?? null;
 }
 
-async function setStatus(
+export async function setStatus(
   userId: string,
   action: LoadedAction,
   status: ActionStatus,
@@ -183,7 +185,7 @@ async function setStatus(
 }
 
 // Passes the action to the team with the reason, back in the queue.
-async function handOff(
+export async function handOff(
   userId: string,
   action: LoadedAction,
   reason: string,
@@ -199,7 +201,7 @@ async function handOff(
 
 // The person's name and account email in place of the placeholders, and the company's
 // name where the draft only knew "the bank" or "the company".
-function fill(text: string, action: LoadedAction): string {
+export function fill(text: string, action: LoadedAction): string {
   const filled = text
     .replaceAll(PLACEHOLDERS.name, action.user.name?.trim() || "the account holder")
     .replaceAll(PLACEHOLDERS.email, action.user.email);
@@ -208,7 +210,7 @@ function fill(text: string, action: LoadedAction): string {
     : filled;
 }
 
-async function record(
+export async function record(
   userId: string,
   actionId: string,
   message: {
@@ -284,6 +286,11 @@ export async function agentStep(
   if (!action || !canAgentWork(action)) return "skipped";
   const options = { client, now, notify };
 
+  // Bills are negotiated by phone (src/lib/voice/calls.ts), once.
+  if (isCallAction(action.type)) {
+    if (action.agentMessages.length > 0) return "waiting";
+    return (await startCall(userId, action, options)) === "called" ? "sent" : "handed_off";
+  }
   if (mailMode() === "off") {
     await handOff(userId, action, "Email for the agent isn't set up yet.", options);
     return "handed_off";
@@ -621,7 +628,7 @@ export async function runQueuedFor(
     const queued = await client.job.findMany({
       where: {
         status: "queued",
-        kind: { in: ["agent_step", "agent_simulated_reply"] },
+        kind: { in: ["agent_step", "agent_simulated_reply", "voice_simulated_result"] },
         payload: { path: ["actionId"], equals: actionId },
       },
       select: { id: true },

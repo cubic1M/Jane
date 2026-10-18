@@ -28,15 +28,25 @@ export function AgentTimeline({ messages }: { messages: TimelineMessage[] }) {
           }`}
         >
           <span className="font-medium">
-            {m.direction === "outbound"
-              ? `Jane wrote to ${m.toAddress}`
-              : `Reply from ${m.fromAddress}`}
+            {m.toAddress.startsWith("tel:")
+              ? `Jane called ${m.toAddress.slice(4)}`
+              : m.fromAddress.startsWith("tel:")
+                ? `How the call went with ${m.fromAddress.slice(4)}`
+                : m.direction === "outbound"
+                  ? `Jane wrote to ${m.toAddress}`
+                  : `Reply from ${m.fromAddress}`}
           </span>
           <span className="text-xs text-zinc-600 dark:text-zinc-400">{when(m.createdAt)}</span>
           {m.summary && <span>{m.summary}</span>}
           <details>
             <summary className="cursor-pointer text-xs font-medium text-emerald-700">
-              {m.direction === "outbound" ? "Read the email" : "Read the reply"}
+              {m.toAddress.startsWith("tel:")
+                ? "Read the call script"
+                : m.fromAddress.startsWith("tel:")
+                  ? "Read the transcript"
+                  : m.direction === "outbound"
+                    ? "Read the email"
+                    : "Read the reply"}
             </summary>
             <p className="mt-1 font-medium [overflow-wrap:anywhere]">{m.subject}</p>
             <p className="whitespace-pre-wrap [overflow-wrap:anywhere]">{m.body}</p>

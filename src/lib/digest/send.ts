@@ -57,6 +57,7 @@ async function payloadFor(userId: string, now: Date, client: PrismaClient) {
         completedAt: true,
         userTodo: true,
         refundCents: true,
+        confirmedAnnualCents: true,
         decision: { select: { cardSnapshot: true } },
       },
     }),
@@ -96,8 +97,11 @@ async function payloadFor(userId: string, now: Date, client: PrismaClient) {
       completedAt: a.completedAt,
       userTodo: a.userTodo,
       ...titleOf(a.decision.cardSnapshot),
-      // A refund seen in the transactions counts for what actually came back.
-      ...(a.refundCents !== null ? { annualSavingsCents: a.refundCents } : {}),
+      // A refund seen in the transactions, or a lower price confirmed on a call, counts for
+      // what actually happened.
+      ...((a.refundCents ?? a.confirmedAnnualCents) !== null
+        ? { annualSavingsCents: a.refundCents ?? a.confirmedAnnualCents }
+        : {}),
     })),
     findings,
     alerts,

@@ -10,6 +10,8 @@ export const AGENT_ACTION_TYPES: readonly ActionType[] = [
   "fight_price_increase",
   "recover_bank_fees",
   "cancel_subscription",
+  // By phone (AGENT_CALL_TYPES below).
+  "negotiate_bill",
 ];
 
 // Days to wait for a reply before following up, and how many follow-ups before passing
@@ -50,3 +52,8 @@ export const AGENT_REQUESTS: Record<string, Record<string, string | null>> = {
     cheaper_plan: "move the account to a cheaper plan with the same service",
   },
 };
+
+// Phone negotiation (spec step 54): bills the agent calls about. A call only ever happens
+// with the person's own yes on that bill; no standing rule or automatic follow-up starts
+// one (checked in src/lib/voice/calls.ts as well as NEVER_BY_RULE).
+export const AGENT_CALL_TYPES: readonly ActionType[] = ["negotiate_bill"];

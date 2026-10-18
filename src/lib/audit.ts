@@ -55,6 +55,7 @@ export type AuditEvent =
   | "agent_message_sent"
   | "agent_reply_received"
   | "agent_handed_off"
+  | "agent_call_started"
   // A refund seen coming back in the person's transactions (src/lib/agent/refund-check.ts).
   | "refund_seen";
 
