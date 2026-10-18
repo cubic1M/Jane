@@ -3,8 +3,10 @@ import {
   DEMO_INSTITUTION,
   demoAccounts,
   demoLiabilities,
+  demoSwitchTransactions,
   demoTransactions,
   type DemoSeed,
+  type DemoSwitch,
 } from "@/data-sources/demo/demo-bank";
 import type { PrismaClient } from "@/generated/prisma/client";
 import { track } from "@/lib/analytics";
@@ -43,7 +45,12 @@ const yesterday = (now: Date) => new Date(now.getTime() - 86_400_000).toISOStrin
 
 // Just the calls the app makes, answered with the demo bank's data. The cursor is the last
 // day already sent, so each sync adds only the days since.
-export function demoPlaidApi(accessToken: string, now: Date = new Date()): PlaidApi {
+export function demoPlaidApi(
+  accessToken: string,
+  now: Date = new Date(),
+  // Switches the person made, so their new bills show up (spec step 77).
+  switches: DemoSwitch[] = [],
+): PlaidApi {
   const demo = seedOf(accessToken);
   const through = yesterday(now);
   const api = {
@@ -52,7 +59,13 @@ export function demoPlaidApi(accessToken: string, now: Date = new Date()): Plaid
       return {
         data: {
           accounts: demoAccounts(demo),
-          added: after !== null && after >= through ? [] : demoTransactions(demo, after, through),
+          added:
+            after !== null && after >= through
+              ? []
+              : [
+                  ...demoTransactions(demo, after, through),
+                  ...demoSwitchTransactions(demo, switches, after, through),
+                ],
           modified: [],
           removed: [],
           next_cursor: after !== null && after > through ? after : through,

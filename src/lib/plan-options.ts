@@ -48,15 +48,25 @@ function readOption(option: PlanOption, raw: unknown): string | number {
 export function describePlanOptions(actionType: ActionType, options: unknown): string[] {
   if (!options || typeof options !== "object") return [];
   const values = options as Record<string, unknown>;
-  return PLAN_OPTIONS[actionType].flatMap((option) => {
-    const value = values[option.key];
-    if (value === undefined) return [];
-    if (option.kind === "choice") {
-      const choice = option.choices.find((c) => c.value === value);
-      return choice ? [`${option.label}: ${choice.label}`] : [];
-    }
-    return typeof value === "number"
-      ? [`${option.label.replace(/ \(\$\)$/, "")}: $${(value / 100).toLocaleString("en-US")}`]
+  // A switch to a compared option (spec step 76).
+  const switchTo =
+    typeof values.switchName === "string"
+      ? [
+          `Switch to: ${values.switchName}${typeof values.switchProvider === "string" && values.switchProvider !== values.switchName ? ` (${values.switchProvider})` : ""}`,
+        ]
       : [];
-  });
+  return [
+    ...switchTo,
+    ...PLAN_OPTIONS[actionType].flatMap((option) => {
+      const value = values[option.key];
+      if (value === undefined) return [];
+      if (option.kind === "choice") {
+        const choice = option.choices.find((c) => c.value === value);
+        return choice ? [`${option.label}: ${choice.label}`] : [];
+      }
+      return typeof value === "number"
+        ? [`${option.label.replace(/ \(\$\)$/, "")}: $${(value / 100).toLocaleString("en-US")}`]
+        : [];
+    }),
+  ];
 }

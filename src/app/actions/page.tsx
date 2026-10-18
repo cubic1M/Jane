@@ -10,6 +10,7 @@ import { requireUser } from "@/lib/session";
 import { MembershipOffer } from "./membership-offer";
 import { AnswerForm } from "./answer-form";
 import { SelfCancel } from "./self-cancel";
+import { switchOf } from "@/lib/agent/switch";
 import { OfferForm } from "./offer-form";
 import { AgentTimeline } from "@/components/agent-timeline";
 import { savingsLine } from "@/lib/savings-text";
@@ -61,7 +62,9 @@ async function ActionsContent({
       selfServiceUrl: true,
       cancelledOn: true,
       confirmAfter: true,
-      decision: { select: { cardSnapshot: true, finding: { select: { evidence: true } } } },
+      decision: {
+        select: { cardSnapshot: true, options: true, finding: { select: { evidence: true } } },
+      },
       agentMessages: {
         orderBy: { createdAt: "asc" },
         select: {
@@ -152,6 +155,7 @@ async function ActionsContent({
           {actions.map((action) => {
             const card = agreedTo(action.decision.cardSnapshot);
             const status = ACTION_STATUS_LABELS[action.status];
+            const switching = switchOf(action.decision.options);
             return (
               <li
                 key={action.id}
@@ -165,10 +169,17 @@ async function ActionsContent({
                     {status.label}
                   </span>
                 </div>
-                {card.annualSavingsCents !== null && (
+                {switching ? (
                   <p className="text-sm text-zinc-600 dark:text-zinc-400">
-                    {savingsLine(card.findingType, card.annualSavingsCents)}
+                    Switching to {switching.name}: about {formatCents(switching.savingCents)}{" "}
+                    {switching.kind === "savings" ? "more a year" : "less in the first year"}
                   </p>
+                ) : (
+                  card.annualSavingsCents !== null && (
+                    <p className="text-sm text-zinc-600 dark:text-zinc-400">
+                      {savingsLine(card.findingType, card.annualSavingsCents)}
+                    </p>
+                  )
                 )}
                 {action.status === "waiting_on_user" && action.userTodo ? (
                   <p className="rounded-lg bg-amber-50 p-3 text-sm dark:bg-amber-950">
@@ -203,6 +214,18 @@ async function ActionsContent({
                       )}
                       url={action.selfServiceUrl}
                     />
+                  )}
+                {action.status === "waiting_on_user" &&
+                  action.agentState === "switching" &&
+                  action.selfServiceUrl && (
+                    <a
+                      href={action.selfServiceUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex h-10 items-center justify-center self-start rounded-full bg-emerald-700 px-5 text-sm font-semibold text-white hover:bg-emerald-800"
+                    >
+                      Sign up for {switching?.name ?? "it"}
+                    </a>
                   )}
                 {action.agentMessages.length > 0 && (
                   <details>

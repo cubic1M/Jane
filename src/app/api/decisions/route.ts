@@ -7,6 +7,8 @@ import { decisionErrorResponse } from "./errors";
 
 const ID_PATTERN = /^[a-z0-9]{1,40}$/i;
 const HASH_PATTERN = /^[0-9a-f]{64}$/;
+// A compared option's id (spec step 76), or "keep" for keeping what they have.
+const OPTION_PATTERN = /^[a-z0-9-]{1,60}$/i;
 
 // Records a yes, no or do-it-yourself on a decision card. The card hash proves which
 // version was shown.
@@ -22,19 +24,25 @@ export async function POST(request: Request) {
   } catch {
     return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
   }
-  const { findingId, choice, cardHash } = body ?? {};
+  const { findingId, choice, cardHash, switchTo } = body ?? {};
   if (
     typeof findingId !== "string" ||
     !ID_PATTERN.test(findingId) ||
     (choice !== "yes" && choice !== "no" && choice !== "diy") ||
     typeof cardHash !== "string" ||
-    !HASH_PATTERN.test(cardHash)
+    !HASH_PATTERN.test(cardHash) ||
+    (switchTo !== undefined && (typeof switchTo !== "string" || !OPTION_PATTERN.test(switchTo)))
   ) {
     return NextResponse.json({ error: "Invalid decision" }, { status: 400 });
   }
 
   try {
-    const result = await recordDecision(user.id, { findingId, choice, cardHash });
+    const result = await recordDecision(user.id, {
+      findingId,
+      choice,
+      cardHash,
+      ...(choice === "yes" && typeof switchTo === "string" ? { options: { switchTo } } : {}),
+    });
     after(() => runAgentNow([result.agentJobId]));
     return NextResponse.json(
       { decisionId: result.decisionId, actionId: result.actionId },

@@ -20,12 +20,17 @@ export function DecisionButtons({
   cardHash,
   undoSeconds,
   diy = false,
+  switchTo,
+  yesLabel = "Yes, do this for me",
 }: {
   findingId: string;
   cardHash: string;
   undoSeconds: number;
   // Whether a do-it-yourself kit is offered.
   diy?: boolean;
+  // The compared option picked to switch to, or "keep" (spec step 76).
+  switchTo?: string;
+  yesLabel?: string;
 }) {
   const router = useRouter();
   const [state, setState] = useState<State>({ kind: "idle" });
@@ -50,7 +55,12 @@ export function DecisionButtons({
       const response = await fetch("/api/decisions", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ findingId, choice, cardHash }),
+        body: JSON.stringify({
+          findingId,
+          choice,
+          cardHash,
+          ...(choice === "yes" && switchTo ? { switchTo } : {}),
+        }),
       });
       const body = (await response.json()) as { decisionId?: string; error?: string };
       if (!response.ok || !body.decisionId) {
@@ -115,7 +125,7 @@ export function DecisionButtons({
           disabled={state.kind === "sending"}
           className={PRIMARY_BUTTON}
         >
-          Yes, do this for me
+          {yesLabel}
         </button>
         <button
           type="button"

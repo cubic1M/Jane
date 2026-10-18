@@ -46,6 +46,7 @@ const ADMIN = [
   "/admin/queue",
   "/admin/metrics",
   "/admin/merchants",
+  "/admin/options",
   "/admin/partners",
   "/admin/invites",
   "/admin/errors",

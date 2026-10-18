@@ -36,6 +36,7 @@ import { readReply, type ReplyReading } from "./read-reply";
 import { findSupportContact } from "./find-contact";
 import { composeAnswer, whatIsAsked, type KnownFacts } from "./auto-answer";
 import { simulatedAddress } from "./simulated-company";
+import { confirmSwitches, startSwitch, switchOf } from "./switch";
 import { isCallAction, startCall } from "@/lib/voice/calls";
 
 // The action agent (spec step 51). An approved action of a type in AGENT_ACTION_TYPES is
@@ -317,6 +318,9 @@ export async function agentStep(
   const action = await loadAction(userId, actionId, client);
   if (!action || !canAgentWork(action)) return "skipped";
   const options = { client, now, notify };
+
+  // A switch to an option the person picked (spec steps 76–77) replaces the usual request.
+  if (switchOf(action.decision.options)) return startSwitch(userId, action, options);
 
   // Bills are negotiated by phone (src/lib/voice/calls.ts), once.
   if (isCallAction(action.type)) {
@@ -708,7 +712,13 @@ async function knownFacts(
 export async function runAgentFollowUps({
   client = defaultClient,
   now = new Date(),
-}: Options = {}): Promise<{ checked: number; confirmed: number; charged: number }> {
+}: Options = {}): Promise<{
+  checked: number;
+  confirmed: number;
+  charged: number;
+  switched: number;
+  handedOff: number;
+}> {
   // A system job across users: ids only, and agentStep scopes each one.
   const due = await client.action.findMany({
     where: { agentState: "waiting_reply", status: "in_progress", agentNextAt: { lte: now } },
@@ -723,7 +733,8 @@ export async function runAgentFollowUps({
     }
   }
   const cancellations = await confirmCancellations({ client, now });
-  return { checked: due.length, ...cancellations };
+  const switches = await confirmSwitches({ client, now });
+  return { checked: due.length, ...cancellations, ...switches };
 }
 
 // Runs the agent's first steps right after a request, then the jobs they queued for the

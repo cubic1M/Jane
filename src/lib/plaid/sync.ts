@@ -16,6 +16,10 @@ import { db as defaultClient } from "@/lib/db";
 import { scopedFor, type ScopedDb } from "@/lib/db-scoped";
 import { enqueueJob, runJob } from "@/lib/jobs";
 import { plaid, plaidCall, plaidErrorCode } from "./client";
+import { DEMO_OPTIONS } from "@/data-sources/demo/demo-options";
+import type { DemoSwitch } from "@/data-sources/demo/demo-bank";
+import { confirmSwitches, switchOf } from "@/lib/agent/switch";
+import { ensureDemoOptions } from "@/lib/compare";
 import { demoPlaidApi, isDemoToken } from "./demo";
 
 // Brings one Plaid item up to date: accounts, transactions since the saved cursor
@@ -241,6 +245,36 @@ async function saveLiabilities(
   return "updated";
 }
 
+// The person's switches in progress, for the demo bank to answer (spec step 77).
+async function demoSwitches(db: ScopedDb): Promise<DemoSwitch[]> {
+  const actions = await db.actions.findMany({
+    where: { agentState: "switching", startedAt: { not: null } },
+    select: {
+      id: true,
+      startedAt: true,
+      decision: { select: { options: true, finding: { select: { evidence: true } } } },
+    },
+  });
+  return actions.flatMap((a) => {
+    const sw = switchOf(a.decision.options);
+    const options = (a.decision.options ?? {}) as { switchTo?: unknown };
+    if (!sw || typeof options.switchTo !== "string") return [];
+    const merchant = (a.decision.finding.evidence as { merchant?: unknown } | null)?.merchant;
+    return [
+      {
+        actionId: a.id,
+        kind: sw.kind,
+        provider: sw.provider,
+        company: typeof merchant === "string" ? merchant : null,
+        category: DEMO_OPTIONS.find((o) => o.id === options.switchTo)?.category ?? null,
+        monthlyCents: sw.monthlyCents,
+        amountCents: sw.amountCents,
+        startDay: a.startedAt!.toISOString().slice(0, 10),
+      },
+    ];
+  });
+}
+
 export async function syncItem(
   itemId: string,
   { client = defaultClient, api = plaid(), now = new Date() }: Options = {},
@@ -260,7 +294,11 @@ export async function syncItem(
   const db = scopedFor(item.userId, client);
   const accessToken = decrypt(item.accessTokenEncrypted);
   // The demo bank (spec step 75) answers in Plaid's place; everything after is the same.
-  if (isDemoToken(accessToken)) api = demoPlaidApi(accessToken, now);
+  if (isDemoToken(accessToken)) {
+    api = demoPlaidApi(accessToken, now, await demoSwitches(db));
+    // Its example options to compare against (spec step 76).
+    await ensureDemoOptions({ client, now });
+  }
 
   const sync = await new PlaidDataSource(api, accessToken, item.transactionsCursor).load();
   const accountIds = await saveAccounts(db, item.id, sync);
@@ -292,6 +330,8 @@ export async function syncItem(
   }
 
   await runDetection(item.userId, { client, now });
+  // New charges may show that a switch went through (spec step 77).
+  await confirmSwitches({ client, now, userId: item.userId });
   // Card text from Claude, as a job: retried later if it fails, without failing the sync.
   await runJob(await enqueueJob("explain_findings", { userId: item.userId }, { client }), {
     client,
