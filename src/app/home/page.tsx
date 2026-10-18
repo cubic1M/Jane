@@ -104,6 +104,25 @@ async function HomeContent() {
 
       {home.budgets && <BudgetList {...home.budgets} />}
 
+      {home.goals.length > 0 && (
+        <section className="flex flex-col gap-2">
+          <div className="flex items-baseline justify-between gap-2">
+            <h2 className="text-xl font-semibold">Your goals</h2>
+            <Link href="/goals" className={`text-sm ${LINK}`}>
+              All goals
+            </Link>
+          </div>
+          <ul className="flex flex-col gap-1 text-sm">
+            {home.goals.map((g) => (
+              <li key={g.id} className="flex justify-between gap-2">
+                <span>{g.name}</span>
+                <span>{g.percent}%</span>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+
       <section className="flex flex-col gap-2">
         <div className="flex items-baseline justify-between gap-2">
           <h2 className="text-xl font-semibold">Coming up this month</h2>

@@ -6,6 +6,7 @@ import { loadDetectionInput, moneyFound } from "@/detection/engine";
 import type { PrismaClient } from "@/generated/prisma/client";
 import { unreadAlertCount } from "@/lib/alerts";
 import { db as defaultClient } from "@/lib/db";
+import { listGoals } from "@/lib/goals";
 import { scopedFor } from "@/lib/db-scoped";
 import { savedToDate } from "@/lib/membership/service";
 import { upcomingCharges } from "@/lib/upcoming";
@@ -60,6 +61,7 @@ export async function homeSummary(
     unreadAlertCount(userId, { client }),
     db.budgets.findMany({ select: { category: true, amountCents: true } }),
   ]);
+  const goals = await listGoals(userId, { client, now });
   const asOf = now.toISOString().slice(0, 10);
   const budget =
     budgets.length === 0
@@ -80,6 +82,7 @@ export async function homeSummary(
     openActions,
     unreadAlerts: alerts,
     budgets: budget ? { progress: budget.progress, daysLeft: budget.daysLeft } : null,
+    goals: goals.map((g) => ({ id: g.id, name: g.name, percent: g.progress.percent })),
     waitingOnYou: waiting.map((a) => ({
       id: a.id,
       todo: a.userTodo,
