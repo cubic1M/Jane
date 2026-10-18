@@ -101,6 +101,7 @@ Steps 1–63 are built (24 came before 22, because do-it-yourself kits need its 
 | 76 The best option for you | PR #79 | Cards for a phone or internet bill, a subscription (price rise or review) and idle cash now compare the options Jane knows and pick the best one for the person: the lowest first-year cost (fees included) for the same kind of service, or the savings account they qualify for that earns the most (src/planning/compare.ts). The card shows "The best option for you" with Jane's pick already selected, up to two runners-up (price, saving, what's included, contract, fee, what's given up, the day the price was checked and its source) and "Don't switch" (the old action); one yes switches. The choice is checked against the comparison and kept on the decision as it was shown. Options live in switch_options, kept by the team on /admin/options (add, "Checked today", remove); only options checked on the provider's own page in the last 90 days (OPTION_STALE_DAYS) and saving at least $24 a year are compared. Never insurance or investments. Example options with made-up providers exist only for people using the demo bank, labelled "Example, not a real offer" |
 | 77 Jane switches for you | PR #79 | A yes on a switch becomes one action (agent state switching), whatever the finding: the person gets one "Sign up for …" button and Jane watches the account (after each sync and daily). A cheaper tier is done when the cheaper charge shows up; another provider's plan when its first bill shows up, and only then does the team cancel the old one, so the person is never without service; a savings account when the money is seen moving out (Jane never moves money). The saving is counted from the real new charge. No sign of it in 45 days (SWITCH_WATCH_DAYS) passes it to the team. On the demo bank, the new bill arrives two days after a switch so the whole loop can be tried |
 | 78 Jane in iMessage | PR #91 | Jane can now text people, through Sendblue (iMessage, or SMS when the phone can't take one). On /settings, under Texts, the person enters a US mobile number, ticks a consent box with the exact wording in src/config/messaging.ts, and types the 6-digit code Jane texts them (it works for 10 minutes and 5 tries; at most 3 codes an hour; only a keyed hash is stored). The number is stored encrypted, with a keyed fingerprint to recognise replies, and is never logged; one number belongs to one account. Once verified, three kinds of text are on, each with its own switch: urgent alerts (instead of an email, within the same 3-a-day cap), the weekly plan ("Jane's plan this week: 1) … 2) … Reply YES for all, the numbers you want (e.g. 1 3), or NO.", only the no-risk items a one-tap link may approve, at most 5, answerable once within a week), and "Jane needs you" with a link to /actions when an action waits on them. Nothing goes out between 9pm and 8am in their timezone except the code and answers to their own texts; the rest waits until morning. Replies come in at /api/messaging/inbound, which refuses anything without Sendblue's secret header and ignores unknown or unverified numbers and group chats. Only exact replies do anything: YES, OK or 👍 approves every item, numbers ("1 3", "1,3") approve those, each as its own decision with the new source "text" and held an hour before Jane starts (like a link), so UNDO can take it back; NO closes the plan text without deciding anything; STOP (and STOPALL, UNSUBSCRIBE, CANCEL, END, QUIT) turns texts off at once, START back on, HELP explains. Everything else gets "Reply YES, the numbers, or NO. Questions? Open the app". Every text, both ways, is kept in a new text_messages table (in Download my data, deleted with the account) and sent through the jobs queue, so failures retry. Without Sendblue keys, texts are simulated outside production (shown in the dev log and on /settings/texts, where you can reply as the phone) and off in production |
+| 79 Navigation, Today and Settings | PR #92 | One menu with five places: Today (/home), Jane (/jane), Money (/money), Ahead (/ahead) and Ask, plus a profile icon holding the signed-in email, Settings and Sign out. On phones it's a tab bar along the bottom with icons, kept clear of the page and the iPhone home indicator; on computers the same five sit along the top. The tab for the page you're on is highlighted; every existing page is mapped to one tab in src/config/navigation.ts (Settings, /connect and /import light up the profile icon), and a test reads the pages from src/app so a new page can't be left out. Home is now "Today", with only what needs you: Jane's plan this week ("N things, could save $X a year", Review and approve), safe to spend until payday, Needs you (actions waiting on you and new alerts), Coming up (the next 7 bills, deadlines and card or loan payments in the next month, soonest first, a bill that's also a deadline shown once; src/insights/coming-up.ts), what Jane did this week, Getting started for new people, and "N new things to decide" linking to the Jane tab. Money found, saved and in progress are one line under the heading. The row of 13 links, goals, budgets and "New for you" left Home for the Money and Jane tabs. Settings is in four groups with a menu at the top: Accounts, Notifications, Autopilot, and Privacy and security; every old anchor (#banks, #alerts, #autopilot, #rules, #two-factor, #sessions, #texts) still works. The Jane, Money and Ahead pages themselves are step 80 |
 | 80 Jane, Money and Ahead hubs | PR #93 | Three new pages that gather the existing ones; every old page and link still works. /jane ("What Jane is doing for you"): To decide (the plan's top 5 cards with their saving and Jane's pick when there's one, linking to each card, plus "See the full plan" and "All findings"), In progress (open actions with their status, waiting-on-you first with what's needed), Done (finished actions with what they saved, and the saved-so-far total) and the 3 newest unread alerts (seeing them there doesn't mark them read). /money ("Your money"): tiles for net worth, investments (only with an investment account), things you own ("Add your home" when a mortgage has nothing linked), goals on track, spending this month, budgets over, bills and subscriptions (with a second link to Coming up), transactions, loans and cards owed, and documents. /ahead ("Plan ahead"): deadlines (the next one and how many in 30 days), the yearly-bills set-aside (linking to the new /budgets#yearly), paying off debt, can I afford this, life events (a checklist in progress), the tax-time pack year, the monthly check-in and the year in review. Each number comes from the same code as its full page; every tile has a friendly empty state. One shared tile (src/components/hub-tile.tsx), two across on a phone and three on a wider screen. Limits live in src/config/hubs.ts |
 
 Still needed from a person before outside users: counsel (insurance referral licensing, privacy policy and terms), Plaid Production approval and questionnaire, a backup restore test, and admins enrolling in two-factor. See docs/beta-checklist.md.
@@ -1649,6 +1650,68 @@ Step 48 shipped before Phase M; 73 and 74 come after Phases Q, N and O.
 > Acceptance criteria:
 > - Only the person's own entries; team members shown by role, not name
 > - Every team view of their data appears (test against the audit events)
+
+## Phase T: one place for everything (steps 79–80)
+
+About 30 pages were added one step at a time. The menu had nine overlapping links, Home
+had a row of 13 more and Settings 13 mixed sections. Now there are four tabs plus Ask,
+and Settings behind the profile icon. Nothing is removed, and every old address still
+works, since emails and texts link to them.
+
+| Tab | Address | What it's for | Pages under it |
+| --- | --- | --- | --- |
+| Today | /home | Only what needs you now | |
+| Jane | /jane | Everything Jane found and is doing | /plan, /report and each card, /actions, /alerts |
+| Money | /money | The picture of your money | /net-worth, /loans, /things, /goals, /budgets, /subscriptions, /bills, /transactions, /insights, /documents, /household |
+| Ahead | /ahead | Planning | /afford, /deadlines, /debt, /life-events, /tax-pack, /check-in, /year |
+| Ask | /ask | Questions about your money | |
+| Settings (profile menu) | /settings | Your account and choices | /settings/*, /connect, /import |
+
+### Step 79: Navigation, Today and Settings
+
+> Read CLAUDE.md. One menu, a calmer Home and a grouped Settings.
+>
+> Build:
+> 1. The menu (src/components/app-header.tsx) shows the five places, with a profile menu
+>    holding the signed-in email, Settings and Sign out. On phones it's a tab bar along the
+>    bottom (icon and label, 44px targets) that never covers the page and sits above the
+>    iPhone home indicator; from sm up, the same five along the top. The tab for the
+>    current page is highlighted (aria-current="page"), from one tested map of every page
+>    to its tab (src/config/navigation.ts). The demo-bank banner stays. Admin pages keep
+>    their own menu.
+> 2. Today (/home), in this order: Jane's plan this week ("N things, could save $X a
+>    year", Review and approve); safe to spend until payday with how it's worked out;
+>    Needs you (actions waiting on the person, new alerts); Coming up, the next 7 bills,
+>    deadlines and card or loan payments over the next month, soonest first, with the same
+>    bill shown once even when it's also a deadline (src/insights/coming-up.ts); what Jane
+>    did this week; Getting started for new people; and one line, "N new things to
+>    decide", to the Jane tab. Money found, saved and in progress fit on one line under the
+>    heading. The row of links, goals and "New for you" move to the Money and Jane tabs.
+> 3. Settings in four groups, with a menu of them at the top: Accounts (connected banks
+>    and adding one, your accounts, household, where you live), Notifications (email,
+>    alerts, texts), Autopilot (the level and standing rules) and Privacy and security
+>    (two-factor, where you're signed in, who saw my data, the money calendar link, your
+>    data, delete all my data). Every section keeps its anchor (#banks, #alerts,
+>    #autopilot, #rules, #two-factor, #sessions, #texts).
+>
+> Acceptance criteria:
+> - Every signed-in page belongs to exactly one tab (tested against the pages in src/app)
+> - No sideways scroll at 375px, and the tab bar never hides the end of a page
+> - Every old address and anchor still works
+
+### Step 80: Jane, Money and Ahead hubs
+
+> Read CLAUDE.md. A front page for each tab.
+>
+> Build:
+> 1. /jane, /money and /ahead each gather the tab's existing pages as cards, each with a
+>    live number from the person's data (what's in the plan, net worth, the next deadline)
+>    and a link to the full page.
+> 2. Nothing new is worked out on a hub: each number comes from the same code as its page.
+>
+> Acceptance criteria:
+> - Each hub's numbers match the pages they link to
+> - Every page in the tab is reachable from its hub
 
 ## Phase P: regulated features through partners
 

@@ -21,7 +21,8 @@ export const metadata: Metadata = {
   icons: { apple: "/icons/192" },
 };
 
-export const viewport: Viewport = { themeColor: "#047857" };
+// viewportFit "cover" lets the phone tab bar (spec step 79) sit above the iPhone home indicator.
+export const viewport: Viewport = { themeColor: "#047857", viewportFit: "cover" };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (

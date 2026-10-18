@@ -33,9 +33,9 @@ test("can I afford this shows a purchase's effect before and after, from the URL
   await page.getByRole("button", { name: "Link a demo bank" }).click();
   await expect(page).toHaveURL("/report", { timeout: 60_000 });
 
-  await page.goto("/home");
-  await page.getByRole("link", { name: "Can I afford this?" }).click();
-  await expect(page).toHaveURL("/afford");
+  // Spec step 79: "Can I afford this?" lives under the Ahead tab now, not in a row of
+  // links on Home.
+  await page.goto("/afford");
   await page.getByLabel("What it is").selectOption("purchase");
   await page.getByLabel("Amount ($)").fill("250");
   await page.getByRole("button", { name: "Show the math" }).click();
