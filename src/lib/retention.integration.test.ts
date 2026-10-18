@@ -48,9 +48,11 @@ describe.runIf(url)("data retention against a real database", () => {
     ] as const) {
       await client.cronRun.create({ data: { name, startedAt: at } });
     }
+    // The young window is dated today: rate limiting also clears old windows by the real
+    // date now and then (src/lib/rate-limit.ts), which would take one dated near 1991.
     for (const [key, at] of [
       [`old-${tag}`, old(p.rateLimits.days)],
-      [`young-${tag}`, young(p.rateLimits.days)],
+      [`young-${tag}`, new Date()],
     ] as const) {
       await client.rateLimit.create({ data: { key, windowStart: at, count: 1 } });
     }

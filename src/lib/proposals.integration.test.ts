@@ -33,7 +33,8 @@ describe.runIf(url)("set-up proposals against a real database", () => {
         subtype: "checking",
       },
     });
-    const merchant = `Zz${crypto.randomUUID().slice(0, 6).replace(/\d/g, "q")}tools`;
+    // Letters only (they survive normalization), random enough never to repeat.
+    const merchant = `Zz${Array.from({ length: 14 }, () => "abcdefghijklmnopqrstuvwxyz"[Math.floor(Math.random() * 26)]).join("")}tools`;
     merchantKeys.push(merchant.toLowerCase());
     await client.merchant.create({
       data: {

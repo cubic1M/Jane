@@ -11,6 +11,8 @@ import { formatCents } from "@/lib/money";
 import { requireUser } from "@/lib/session";
 import { savingsPhrase } from "@/lib/savings-text";
 import { FirstWeekChecklist } from "./checklist";
+import { AutopilotChooser } from "@/components/autopilot-chooser";
+import { autopilotOf } from "@/lib/autopilot";
 import { janeDidSomething, type JaneDid } from "@/lib/what-jane-did";
 
 const CARD = "flex flex-col gap-1 rounded-xl border border-zinc-200 p-4 dark:border-zinc-800";
@@ -111,6 +113,7 @@ async function HomeContent() {
   const home = await homeSummary(user.id);
   if (!home) redirect("/connect");
   const checklist = await firstWeekChecklist(user.id);
+  const autopilot = await autopilotOf(user.id);
   if (checklist?.newlyDone.length) {
     after(() => recordChecklistProgress(user.id, checklist));
   }
@@ -141,6 +144,8 @@ async function HomeContent() {
           </Link>
         </span>
       </div>
+
+      {autopilot === null && <AutopilotChooser />}
 
       {checklist && !checklist.complete && <FirstWeekChecklist items={checklist.items} />}
 

@@ -21,7 +21,7 @@ The build runs in eleven steps, with Plaid added at step 7 after the founders te
 
 ## Status (Oct 18, 2026)
 
-Steps 1–56 are built (24 came before 22, because do-it-yourself kits need its cancel links). On Oct 18, 2026 the roadmap was reordered: Phase M (Jane acts for you, steps 49–56) comes next, then the rest of Phase L (steps 57–58), Phase N (the complete picture), Phase O (plan ahead) and Phase P (regulated features through partners), which replaces the old Phase F. Where the build differs from the original plan, the plan below has been kept and the difference is noted here.
+Steps 1–57 are built (24 came before 22, because do-it-yourself kits need its cancel links). On Oct 18, 2026 the roadmap was reordered: Phase M (Jane acts for you, steps 49–56), then Phase Q (Autopilot, steps 57–64), Phase N (the complete picture, 65–68), Phase O (plan ahead, 69–72), the rest of Phase L (73–74) and Phase P (regulated features through partners), which replaces the old Phase F. Where the build differs from the original plan, the plan below has been kept and the difference is noted here.
 
 | Step | Shipped in | Notes |
 | --- | --- | --- |
@@ -79,6 +79,7 @@ Steps 1–56 are built (24 came before 22, because do-it-yourself kits need its 
 | 54 Phone negotiation | PR #66 | Bill negotiation joins the agent, by phone (AGENT_CALL_TYPES). A call needs the person's own yes on that bill: rules and automatic follow-ups can't start one (NEVER_BY_RULE, and checked again before calling). The script: the call may be recorded, who Jane is and who it calls for, the request, the typical price and what they pay (guardrailed, with the required "typical price" wording), and never accepting a contract, fee or new plan on the call. Outcomes: a lower price closes the action and counts (old minus new) times twelve as saved (actions.confirmed_annual_cents); an offer goes to the person to accept (the team puts it in place) or decline; account-holder-only goes to the person and the team; a refusal or no answer goes to the team. The script and transcript are on the timeline. No calling service is connected yet: development uses a simulated call, production hands calls to the team, and a service, once chosen, posts results to POST /api/voice/result (shared-secret auth). Card interest calls stay with the team, since a standing rule may approve those |
 | 55 Jane drafts budgets and goals | PR #67 | /plan has a "Set up, from your own numbers" section: budgets for the three biggest spending categories without one (their own 3-month average, rounded up, at least $20), an emergency fund of 3 months of their own average spending to reach in 12 months (unless they have one), and a category for merchants with no category that the merchant directory knows (never guessed). Each is Yes / No / Change (amount, date, category); nothing is created until yes, and a no is remembered so it doesn't come back. Proposals refresh after every scan and when the plan opens, and are labelled as math from their data, not advice (plan_proposals, src/config/proposals.ts). Change panels no longer push the plan sideways on a phone |
 | 56 What Jane did | PR #68 | Every agent step is on the action's timeline in plain words: emails and replies, calls and transcripts, and notes for the steps that aren't messages (passed to the team and why, asked to cancel on the company's page, cancelled and watching, no charge so done, charged again, a refund seen, an offer accepted or declined). Home has a "What Jane did this week" card and the weekly email a matching section: things finished, money confirmed back or saved (only refunds seen in transactions and prices confirmed on a call, never estimates or written promises), emails and calls made, what's still in progress and what waits on the person |
+| 57 Autopilot levels | PR #69 | One choice instead of rule-by-rule settings: "Handle the safe stuff" (recommended: refunds for double charges, trials and fees, the old price back on increases up to $120 a year, a lower card rate; up to 5 a month each), "Handle everything allowed" (the same kinds, no size limit on increases, 10 a month) and "Ask me first" (no rules); levels live in src/config/autopilot.ts and can only switch on standing rules, so never money, calls, cancellations or insurance. A one-tap chooser shows on Home and the plan until the person picks; picking applies the rules at once and the agent starts on what they approved (each can be taken back for a day). Settings shows the level, with the standing rules as "Fine-tune" (which makes it "custom"). Also: the team queue skips an action whose person was deleted mid-request, and three shared-database test clashes are fixed |
 
 Still needed from a person before outside users: counsel (insurance referral licensing, privacy policy and terms), Plaid Production approval and questionnaire, a backup restore test, and admins enrolling in two-factor. See docs/beta-checklist.md.
 
@@ -1332,9 +1333,164 @@ Ground rules for every step in this phase:
 > - Every agent step appears in the timeline
 > - Money figures come only from confirmed outcomes
 
-## Phase L: your account, your control (steps 48, 57–58)
+## Phase Q: Autopilot (steps 57–64)
 
-Step 48 shipped before Phase M; 57 and 58 follow it.
+Top priority (Oct 18, 2026). Jane decides on its own whenever an action can't hurt the
+person and can be undone, and stops them only when they could lose money, get locked into
+something, or Jane truly doesn't know. Moving money, contracts or fees, cancelling things
+they may use, and account-holder-only steps always need them. Every automatic step is on
+the timeline and can be taken back.
+
+### Step 57: Autopilot levels
+
+> Read CLAUDE.md. One choice instead of rule-by-rule settings.
+>
+> Build:
+> 1. Three levels: Ask me first; Handle the safe stuff (recommended); Handle everything
+>    allowed. Each sets the standing rules (src/config/autopilot.ts); fine-tuning rules by
+>    hand makes it "custom".
+> 2. A one-tap chooser on Home and the plan until the person picks; picking applies the
+>    rules at once.
+>
+> Acceptance criteria:
+> - No level ever approves moving money, calls, cancellations or insurance
+> - Picking a level approves matching open items straight away, each one undoable
+
+### Step 58: Jane answers companies' questions itself
+
+> Read CLAUDE.md. Only ask the person what Jane can't know.
+>
+> Build:
+> 1. When a company asks for a detail Jane already has (last 4 digits of the card from the
+>    account, the account email, charge dates and amounts, the account holder's name), the
+>    agent answers on its own.
+> 2. Everything else still goes to the person.
+>
+> Acceptance criteria:
+> - Never a full card or account number, a password, or anything not in the person's data
+> - Each automatic answer is on the timeline
+
+### Step 59: One tap for the whole week
+
+> Read CLAUDE.md. The plan arrives decided.
+>
+> Build:
+> 1. Jane pre-selects the items it would do; one "Go ahead" approves them, and the person
+>    unticks what they don't want.
+>
+> Acceptance criteria:
+> - One decision per item, as with "Yes to all"; unticked items stay on the plan
+
+### Step 60: Approve from email or phone
+
+> Read CLAUDE.md. No app needed for a quick yes.
+>
+> Build:
+> 1. Signed one-tap links in the weekly email and notifications: "Go ahead with this
+>    week's plan" and "Take it back".
+>
+> Acceptance criteria:
+> - Links expire, work once, and only for that person and those items
+> - Never for anything that needs a contract, a call or money movement
+
+### Step 61: Cancellations confirm themselves
+
+> Read CLAUDE.md. "I've cancelled it" becomes optional.
+>
+> Build:
+> 1. After the company's cancel page is offered, Jane watches for the next charge anyway;
+>    no charge by the due date closes it without the person telling Jane.
+>
+> Acceptance criteria:
+> - A charge after the due date still goes to the person
+
+### Step 62: Call offers within your limits
+
+> Read CLAUDE.md. Fewer offers to answer.
+>
+> Build:
+> 1. A limit the person sets once (e.g. accept any lower price with no contract and no
+>    fee); offers inside it are accepted on the call.
+>
+> Acceptance criteria:
+> - Anything with a contract or a fee still comes to the person
+
+### Step 63: Set-up done for you
+
+> Read CLAUDE.md. Harmless set-up just happens.
+>
+> Build:
+> 1. Categories from the merchant directory are applied automatically (undoable).
+> 2. Budgets and the emergency fund are one "Use Jane's suggestions" tap.
+>
+> Acceptance criteria:
+> - Nothing that changes money is applied without a yes
+
+### Step 64: Jane finds support contacts
+
+> Read CLAUDE.md. Less waiting on the team.
+>
+> Build:
+> 1. When a company's support email is missing, the agent looks it up on the company's own
+>    site (Claude's web search) and the team confirms it once on /admin/merchants.
+>
+> Acceptance criteria:
+> - Only addresses found on the company's own domain; never used before the team confirms
+
+## Phase N: the complete picture (steps 65–68)
+
+### Step 65: Loans and mortgage
+
+> Read CLAUDE.md. Plaid Liabilities (read-only): student, auto and mortgage balances,
+> rates and due dates. The debt planner and net worth fill in by themselves.
+>
+> Acceptance criteria:
+> - Rates and balances come from Plaid, never typed guesses; check the Plaid docs for fields
+
+### Step 66: Investment and retirement balances
+
+> Read CLAUDE.md. Plaid Investments balances only, for net worth. No holdings advice, no
+> performance commentary.
+>
+> Acceptance criteria:
+> - The guardrails reject any text about what to buy, sell or hold
+
+### Step 67: Things you own
+
+> Read CLAUDE.md. Home and car values entered by hand (with the date), in net worth.
+
+### Step 68: Insurance policies and documents
+
+> Read CLAUDE.md. Upload policies, warranties and receipts; Jane reads the key facts
+> (coverage, renewal date, price) into the insurance reshop and deadlines. Files are
+> encrypted at rest and covered by export and deletion.
+
+## Phase O: plan ahead (steps 69–72)
+
+### Step 69: Can I afford this?
+
+> Read CLAUDE.md. Enter a purchase or a monthly change; see its effect on safe to spend,
+> goals and the next 12 months. Math, not advice.
+
+### Step 70: Saving for irregular costs
+
+> Read CLAUDE.md. Yearly and irregular bills (car, holidays, annual subscriptions) become a
+> monthly amount to set aside, shown in budgets and safe to spend.
+
+### Step 71: Deadlines
+
+> Read CLAUDE.md. Return windows, warranties, card benefits, FSA deadlines and renewals in
+> one list, with reminders, from transactions and uploaded documents.
+
+### Step 72: Life events and tax-time pack
+
+> Read CLAUDE.md. Checklists for moving, a new job, a new baby; a tax-time pack of
+> charity receipts, deductible-looking spending and estimated-tax reminders. Organizing
+> only: no tax advice.
+
+## Phase L: your account, your control (steps 48, 73–74)
+
+Step 48 shipped before Phase M; 73 and 74 come after Phases Q, N and O.
 
 ### Step 48: Two-factor for everyone
 
@@ -1349,7 +1505,7 @@ Step 48 shipped before Phase M; 57 and 58 follow it.
 > - Backup codes work once each and are stored hashed
 > - The admin rule (two-factor always) is unchanged
 
-### Step 57: Devices and sessions
+### Step 73: Devices and sessions
 
 > Read CLAUDE.md. See where you're signed in, and sign out elsewhere.
 >
@@ -1361,7 +1517,7 @@ Step 48 shipped before Phase M; 57 and 58 follow it.
 > - Signed-out sessions stop working at once
 > - Session tokens never reach the page
 
-### Step 58: Who saw my data
+### Step 74: Who saw my data
 
 > Read CLAUDE.md. Make the team's access visible to the person.
 >
@@ -1373,57 +1529,6 @@ Step 48 shipped before Phase M; 57 and 58 follow it.
 > Acceptance criteria:
 > - Only the person's own entries; team members shown by role, not name
 > - Every team view of their data appears (test against the audit events)
-
-## Phase N: the complete picture (steps 59–62)
-
-### Step 59: Loans and mortgage
-
-> Read CLAUDE.md. Plaid Liabilities (read-only): student, auto and mortgage balances,
-> rates and due dates. The debt planner and net worth fill in by themselves.
->
-> Acceptance criteria:
-> - Rates and balances come from Plaid, never typed guesses; check the Plaid docs for fields
-
-### Step 60: Investment and retirement balances
-
-> Read CLAUDE.md. Plaid Investments balances only, for net worth. No holdings advice, no
-> performance commentary.
->
-> Acceptance criteria:
-> - The guardrails reject any text about what to buy, sell or hold
-
-### Step 61: Things you own
-
-> Read CLAUDE.md. Home and car values entered by hand (with the date), in net worth.
-
-### Step 62: Insurance policies and documents
-
-> Read CLAUDE.md. Upload policies, warranties and receipts; Jane reads the key facts
-> (coverage, renewal date, price) into the insurance reshop and deadlines. Files are
-> encrypted at rest and covered by export and deletion.
-
-## Phase O: plan ahead (steps 63–66)
-
-### Step 63: Can I afford this?
-
-> Read CLAUDE.md. Enter a purchase or a monthly change; see its effect on safe to spend,
-> goals and the next 12 months. Math, not advice.
-
-### Step 64: Saving for irregular costs
-
-> Read CLAUDE.md. Yearly and irregular bills (car, holidays, annual subscriptions) become a
-> monthly amount to set aside, shown in budgets and safe to spend.
-
-### Step 65: Deadlines
-
-> Read CLAUDE.md. Return windows, warranties, card benefits, FSA deadlines and renewals in
-> one list, with reminders, from transactions and uploaded documents.
-
-### Step 66: Life events and tax-time pack
-
-> Read CLAUDE.md. Checklists for moving, a new job, a new baby; a tax-time pack of
-> charity receipts, deductible-looking spending and estimated-tax reminders. Organizing
-> only: no tax advice.
 
 ## Phase P: regulated features through partners
 

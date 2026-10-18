@@ -5,6 +5,7 @@ import { STANDING_RULES } from "@/config/rules";
 import { parseMoneyToCents } from "@/lib/money";
 import { requireUser } from "@/lib/session";
 import { RuleError, saveRules } from "@/lib/standing-rules";
+import { markCustom } from "@/lib/autopilot";
 
 export type RulesState = { ok: boolean; message: string } | null;
 
@@ -24,6 +25,7 @@ export async function saveStandingRules(
   });
   try {
     await saveRules(user.id, rules);
+    await markCustom(user.id);
   } catch (error) {
     if (error instanceof RuleError) return { ok: false, message: error.message };
     throw error;

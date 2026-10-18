@@ -51,6 +51,7 @@ export type AuditEvent =
   | "mfa_backup_code_used"
   | "mfa_backup_codes_created"
   | "standing_rules_saved"
+  | "autopilot_set"
   | "proposal_answered"
   // The action agent (src/lib/agent/run.ts).
   | "agent_message_sent"
