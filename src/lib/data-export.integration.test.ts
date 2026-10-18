@@ -250,6 +250,35 @@ describe.runIf(url)("data export against a real database", () => {
     }
   });
 
+  it("lists when the team saw their data, by role, never anyone else's (spec step 74)", async () => {
+    const me = await person("seen");
+    const other = await person("unseen");
+    const adminId = `admin-${me.suffix}`;
+    const view = async (userId: string) => {
+      const { id } = await client.action.findFirstOrThrow({ where: { userId } });
+      await client.auditLog.create({
+        data: {
+          actorType: "admin",
+          actorId: adminId,
+          event: "admin_viewed_action",
+          targetType: "action",
+          targetId: id,
+          metadata: { user_id: userId },
+        },
+      });
+    };
+    await view(me.userId);
+    await view(other.userId);
+
+    const { teamAccess } = await exportUserData(me.userId, { client });
+
+    expect(teamAccess).toMatchObject([
+      { who: "Our concierge team", what: "Viewed your request", why: "x" },
+    ]);
+    expect(JSON.stringify(teamAccess)).not.toContain(adminId);
+    await client.auditLog.deleteMany({ where: { actorId: adminId } });
+  });
+
   it("lists the person's documents and their facts, but not the files (spec step 68)", async () => {
     const me = await person("docs");
     const other = await person("otherdocs");

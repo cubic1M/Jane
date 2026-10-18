@@ -198,6 +198,16 @@ async function SettingsContent() {
           </Link>
           .
         </p>
+        <p className="text-sm text-zinc-600 dark:text-zinc-400">
+          See every time our team or Jane&apos;s agent looked at or acted on your data:{" "}
+          <Link
+            href="/settings/team-access"
+            className="font-medium text-emerald-700 hover:underline"
+          >
+            Who saw my data
+          </Link>
+          .
+        </p>
       </section>
 
       <section className="flex flex-col gap-3">
