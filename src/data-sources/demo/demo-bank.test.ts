@@ -157,4 +157,14 @@ describe("the demo bank after a switch", () => {
       personal_finance_category: { primary: "TRANSFER_OUT" },
     });
   });
+
+  // Spec step 70.
+  it("has yearly and seasonal costs: car registration once, gifts in November and December", () => {
+    const rows = demoTransactions(DEMO, null, THROUGH);
+    expect(rows.filter((t) => t.merchant_name === "California DMV").map((t) => t.date)).toEqual([
+      addDays(DEMO.anchor, -150),
+    ]);
+    const gifts = rows.filter((t) => t.merchant_name === "Etsy").map((t) => t.date.slice(5, 7));
+    expect(new Set(gifts)).toEqual(new Set(["11", "12"]));
+  });
 });
