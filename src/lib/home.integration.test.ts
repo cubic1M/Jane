@@ -82,4 +82,21 @@ describe.runIf(url)("home summary against a real database", () => {
     ]);
     expect(home?.lastUpdated).toBeInstanceOf(Date);
   });
+
+  it("counts unread alerts, leaving out read ones and types turned off", async () => {
+    const base = { userId, title: "t", body: "b" };
+    await client.alert.createMany({
+      data: [
+        { ...base, type: "fee_charged", key: "a" },
+        { ...base, type: "fee_charged", key: "b", readAt: NOW },
+        { ...base, type: "large_charge", key: "c" },
+      ],
+    });
+    await client.user.update({
+      where: { id: userId },
+      data: { alertPrefs: { large_charge: "off" } },
+    });
+
+    expect((await homeSummary(userId, { client, now: NOW }))?.unreadAlerts).toBe(1);
+  });
 });

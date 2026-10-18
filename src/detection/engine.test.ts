@@ -14,8 +14,10 @@ const { scoped } = vi.hoisted(() => ({
 vi.mock("@/lib/db", () => ({ db: {} }));
 vi.mock("@/lib/db-scoped", () => ({ scopedFor: vi.fn(() => scoped) }));
 vi.mock("@/lib/analytics", () => ({ track: vi.fn() }));
+vi.mock("@/lib/alerts", () => ({ raiseAlerts: vi.fn() }));
 
 import type { PrismaClient } from "@/generated/prisma/client";
+import { raiseAlerts } from "@/lib/alerts";
 import { track } from "@/lib/analytics";
 import { CHECKING, NETFLIX, monthly } from "./__fixtures__/build";
 import {
@@ -190,7 +192,8 @@ describe("runDetection", () => {
     scoped.findings.deleteMany.mockReset();
     scoped.subscriptionChecks.findMany.mockReset().mockResolvedValue([]);
     scoped.subscriptionChecks.createMany.mockReset();
-    updateMany.mockReset();
+    updateMany.mockReset().mockResolvedValue({ count: 1 });
+    vi.mocked(raiseAlerts).mockReset().mockResolvedValue({ raised: 0, emailed: 0 });
     vi.mocked(track).mockReset();
   });
 
@@ -285,6 +288,38 @@ describe("runDetection", () => {
       where: { id: { in: ["stale"] }, status: { in: ["new", "shown"] } },
     });
     expect(summary.removed).toBe(1);
+  });
+
+  it("raises this scan's alerts, telling the rules what was already known", async () => {
+    updateMany.mockResolvedValue({ count: 0 });
+    scoped.findings.findMany.mockResolvedValue([
+      { id: "f1", type: "bank_fees", key: "account:x", status: "shown", evidence: {} },
+    ]);
+
+    await runDetection("user_1", { client, now });
+
+    expect(raiseAlerts).toHaveBeenCalledWith("user_1", expect.any(Array), { client, now });
+    // Netflix's subscription finding is new on a later scan, and charged this month.
+    const [, alerts] = vi.mocked(raiseAlerts).mock.calls[0];
+    expect(alerts).toEqual([
+      expect.objectContaining({ type: "new_subscription", key: "merchant:netflix" }),
+    ]);
+  });
+
+  it("raises no new-subscription alerts on the first scan", async () => {
+    await runDetection("user_1", { client, now });
+    expect(vi.mocked(raiseAlerts).mock.calls[0][1]).toEqual([]);
+  });
+
+  it("still finishes the scan when alerts fail", async () => {
+    vi.mocked(raiseAlerts).mockRejectedValue(new Error("database is down"));
+    const error = vi.spyOn(console, "error").mockImplementation(() => {});
+
+    const summary = await runDetection("user_1", { client, now });
+
+    expect(summary.created).toBe(1);
+    expect(error).toHaveBeenCalledWith("Alerts failed", expect.any(Object));
+    error.mockRestore();
   });
 });
 

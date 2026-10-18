@@ -23,6 +23,8 @@ export type DigestInput = {
   }[];
   // Open findings on the report.
   findings: { title: string; annualSavingsCents: number | null; createdAt: Date }[];
+  // Alerts the person gets (not turned off). Ones already emailed aren't repeated.
+  alerts: { title: string; createdAt: Date; emailedAt: Date | null }[];
 };
 
 export type DigestPayload = {
@@ -32,6 +34,7 @@ export type DigestPayload = {
   finishedThisWeek: { title: string; annualSavingsCents: number | null }[];
   pending: { title: string; status: ActionStatus; userTodo: string | null }[];
   newFindings: { title: string; annualSavingsCents: number | null }[];
+  alerts: { title: string }[];
   membershipOffer: boolean;
 };
 
@@ -46,8 +49,14 @@ export function buildDigest(input: DigestInput): DigestPayload | null {
   const pending = input.actions.filter((a) => PENDING.includes(a.status));
   const since = input.lastSentAt ?? new Date(0);
   const newFindings = input.findings.filter((f) => f.createdAt > since);
+  const alerts = input.alerts.filter((a) => a.createdAt > since && a.emailedAt === null);
 
-  if (finishedThisWeek.length === 0 && pending.length === 0 && newFindings.length === 0) {
+  if (
+    finishedThisWeek.length === 0 &&
+    pending.length === 0 &&
+    newFindings.length === 0 &&
+    alerts.length === 0
+  ) {
     return null;
   }
   return {
@@ -68,6 +77,7 @@ export function buildDigest(input: DigestInput): DigestPayload | null {
       title,
       annualSavingsCents,
     })),
+    alerts: alerts.map(({ title }) => ({ title })),
     membershipOffer: input.membershipOffer,
   };
 }

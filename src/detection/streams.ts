@@ -39,7 +39,7 @@ export type Stream = {
   predictedNextDate: string | null;
 };
 
-function merchantOf(t: DetectionTransaction) {
+export function merchantOf(t: DetectionTransaction) {
   return normalizeMerchant(t.merchantName ?? t.description) ?? normalizeMerchant(t.description);
 }
 

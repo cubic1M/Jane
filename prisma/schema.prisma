@@ -87,6 +87,18 @@ enum MembershipIntentKind {
   @@map("membership_intent_kind")
 }
 
+// Things worth a person's attention, raised after each sync or import (src/alerts).
+enum AlertType {
+  new_subscription
+  price_increase
+  fee_charged
+  large_charge
+  duplicate_charge
+  low_balance
+
+  @@map("alert_type")
+}
+
 // Where an account or transaction came from. CSV is the founders' own exports;
 // Plaid arrives in step 7 behind the same DataSource interface.
 enum DataSourceKind {
@@ -144,6 +156,9 @@ model User {
   membershipOfferDismissedAt DateTime? @map("membership_offer_dismissed_at") @db.Timestamptz(3)
   // When we last warned that linked banks will be disconnected for inactivity.
   plaidRemovalWarnedAt       DateTime? @map("plaid_removal_warned_at") @db.Timestamptz(3)
+  // Per alert type: "email", "app" or "off". Missing types use the defaults in
+  // src/config/alerts.ts.
+  alertPrefs                 Json      @default("{}") @map("alert_prefs")
   // Admin two-factor (TOTP). The secret is AES-256-GCM encrypted like Plaid tokens;
   // mfaEnabledAt is set once the first code checks out.
   mfaSecretEncrypted         String?   @map("mfa_secret_encrypted")
@@ -166,6 +181,7 @@ model User {
   analyticsEvents    AnalyticsEvent[]
   merchantCategories MerchantCategory[]
   subscriptionChecks SubscriptionCheck[]
+  alerts             Alert[]
 
   @@map("users")
 }
@@ -469,6 +485,26 @@ model SubscriptionCheck {
 
   @@unique([userId, merchantKey])
   @@map("subscription_checks")
+}
+
+model Alert {
+  id        String    @id @default(cuid())
+  userId    String    @map("user_id")
+  type      AlertType
+  // Identifies the event (e.g. a transaction id), so a rescan never raises it twice.
+  key       String
+  title     String
+  body      String
+  urgent    Boolean   @default(false)
+  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  readAt    DateTime? @map("read_at") @db.Timestamptz(3)
+  emailedAt DateTime? @map("emailed_at") @db.Timestamptz(3)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, type, key])
+  @@index([userId, createdAt])
+  @@map("alerts")
 }
 
 // Invite codes keep the beta closed: signing up needs a code with uses left.

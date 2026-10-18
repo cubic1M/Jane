@@ -11,6 +11,7 @@ const input = (overrides: Partial<DigestInput> = {}): DigestInput => ({
   membershipOffer: false,
   actions: [],
   findings: [],
+  alerts: [],
   ...overrides,
 });
 
@@ -87,6 +88,17 @@ describe("buildDigest", () => {
     expect(
       buildDigest(input({ findings, lastSentAt: null }))?.newFindings.map((f) => f.title),
     ).toEqual(["New", "Old"]);
+  });
+
+  it("includes this week's alerts that weren't emailed, and sends for them alone", () => {
+    const alerts = [
+      { title: "Fee", createdAt: daysAgo(2), emailedAt: null },
+      { title: "Emailed already", createdAt: daysAgo(2), emailedAt: daysAgo(2) },
+      { title: "Last week", createdAt: daysAgo(9), emailedAt: null },
+    ];
+
+    expect(buildDigest(input({ alerts }))?.alerts).toEqual([{ title: "Fee" }]);
+    expect(buildDigest(input({ alerts: alerts.slice(1) }))).toBeNull();
   });
 
   it("never sends a digest for the membership offer alone", () => {

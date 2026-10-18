@@ -242,3 +242,32 @@ export const LOW_BALANCE_CUSHION_CENTS = 10_000;
 export const LOW_BALANCE_HIGH_CONFIDENCE_BELOW_CENTS = 0;
 // Plaid depository subtypes the forecast runs for.
 export const FORECAST_SUBTYPES: readonly string[] = ["checking"];
+
+// --- Alerts (src/detection/alerts.ts) ------------------------------------------------
+
+// Only events this recent raise an alert, so importing a year of history doesn't send a
+// year of alerts.
+export const ALERT_RECENT_DAYS = 7;
+// A charge is unusually large when it is at least this much (in cents)...
+export const LARGE_CHARGE_MIN_CENTS = 50_000;
+// ...and at least this many times the account's typical (median) charge...
+export const LARGE_CHARGE_MEDIAN_MULTIPLE = 5;
+// ...judged only once the account has this many charges to compare with.
+export const LARGE_CHARGE_MIN_HISTORY = 10;
+// Two charges at the same merchant, for the same amount, this many days apart or less
+// might be a double charge.
+export const DUPLICATE_CHARGE_WINDOW_DAYS = 1;
+// Smaller repeats (a second coffee) aren't worth an alert.
+export const DUPLICATE_CHARGE_MIN_CENTS = 1_000;
+// Where buying the same thing twice in a day is normal, or the "charge" is money moving.
+export const DUPLICATE_CHARGE_EXCLUDED_PRIMARIES: readonly PfcPrimary[] = [
+  "FOOD_AND_DRINK",
+  "TRANSPORTATION",
+  "TRANSFER_OUT",
+  "LOAN_PAYMENTS",
+];
+// Money moving rather than spent never counts as an unusually large charge.
+export const LARGE_CHARGE_EXCLUDED_PRIMARIES: readonly PfcPrimary[] = [
+  "TRANSFER_OUT",
+  "LOAN_PAYMENTS",
+];

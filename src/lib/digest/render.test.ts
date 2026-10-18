@@ -4,6 +4,7 @@ import { renderDigest } from "./render";
 const LINKS = {
   report: "https://app.example.com/api/digest/click?d=d1&to=%2Freport",
   actions: "https://app.example.com/api/digest/click?d=d1&to=%2Factions",
+  alerts: "https://app.example.com/api/digest/click?d=d1&to=%2Falerts",
   settings: "https://app.example.com/api/digest/click?d=d1&to=%2Fsettings",
   unsubscribe: "https://app.example.com/unsubscribe?token=t",
 };
@@ -17,6 +18,7 @@ const payload = {
     { title: "Refund fees", status: "waiting_on_user" as const, userTodo: "Call your bank" },
   ],
   newFindings: [],
+  alerts: [],
   membershipOffer: false,
 };
 
@@ -47,6 +49,19 @@ describe("renderDigest", () => {
     expect(renderDigest({ ...payload, savedThisWeekCents: 0 }, LINKS).subject).toBe(
       "Your week in money",
     );
+  });
+
+  it("lists alerts with a link to the alerts page", () => {
+    const { text } = renderDigest(
+      { ...payload, alerts: [{ title: "$35.00 fee on Checking" }] },
+      LINKS,
+    );
+
+    expect(text).toContain("Alerts\n- $35.00 fee on Checking");
+    expect(text).toContain(`See your alerts: ${LINKS.alerts}`);
+    // A payload stored before alerts existed still renders.
+    const old = { ...payload, alerts: undefined } as unknown as typeof payload;
+    expect(renderDigest(old, LINKS).text).not.toContain("See your alerts");
   });
 
   it("includes the membership offer when it's due", () => {

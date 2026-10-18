@@ -127,4 +127,24 @@ describe.runIf(url)("runDigests against a real database", () => {
       "2026-10-19",
     ]);
   });
+
+  it("lists alerts that weren't emailed, unless the person turned that type off", async () => {
+    const alert = { type: "fee_charged" as const, title: "$35.00 fee on Checking", body: "b" };
+    for (const [name, alertPrefs] of [
+      ["alerted", {}],
+      ["muted", { fee_charged: "off" }],
+    ] as const) {
+      await person(name);
+      await client.user.update({ where: { id: ids[name] }, data: { alertPrefs } });
+      await client.alert.create({
+        data: { userId: ids[name], ...alert, key: "tx_1", createdAt: new Date("2026-10-17") },
+      });
+    }
+
+    const run = await runDigests({ client, now: MONDAY, dryRun: true, send });
+
+    const preview = run.previews.find((p) => p.userId === ids.alerted);
+    expect(preview?.text).toContain("Alerts\n- $35.00 fee on Checking");
+    expect(run.previews.some((p) => p.userId === ids.muted)).toBe(false);
+  });
 });

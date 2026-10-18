@@ -6,7 +6,8 @@ vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
 vi.mock("@/lib/db", () => ({ db: { user: { update } } }));
 vi.mock("@/lib/session", () => ({ requireUser: vi.fn(async () => ({ id: "u1" })) }));
 
-import { saveEmailPreferences } from "./actions";
+import { DEFAULT_ALERT_DELIVERY } from "@/config/alerts";
+import { saveAlertPreferences, saveEmailPreferences } from "./actions";
 
 const form = (fields: Record<string, string>) => {
   const data = new FormData();
@@ -39,5 +40,36 @@ describe("saveEmailPreferences", () => {
       ok: false,
     });
     expect(update).not.toHaveBeenCalled();
+  });
+});
+
+describe("saveAlertPreferences", () => {
+  beforeEach(() => update.mockReset());
+
+  it("saves a choice for every alert type, falling back to defaults", async () => {
+    expect(
+      await saveAlertPreferences(
+        null,
+        form({
+          large_charge: "off",
+          fee_charged: "email",
+          low_balance: "app",
+          price_increase: "x",
+        }),
+      ),
+    ).toEqual({ ok: true, message: "Saved." });
+
+    expect(update).toHaveBeenCalledWith({
+      where: { id: "u1" },
+      data: {
+        alertPrefs: {
+          ...DEFAULT_ALERT_DELIVERY,
+          large_charge: "off",
+          // Only urgent alerts can be emailed right away.
+          fee_charged: "app",
+          low_balance: "app",
+        },
+      },
+    });
   });
 });

@@ -1,6 +1,7 @@
 import { HOME_LIST_LIMIT, UPCOMING_DAYS } from "@/config/home";
 import { loadDetectionInput, moneyFound } from "@/detection/engine";
 import type { PrismaClient } from "@/generated/prisma/client";
+import { unreadAlertCount } from "@/lib/alerts";
 import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
 import { savedToDate } from "@/lib/membership/service";
@@ -16,7 +17,7 @@ export async function homeSummary(
   const accounts = await db.accounts.count();
   if (accounts === 0) return null;
 
-  const [found, saved, waiting, openActions, findings, input, lastSync, lastImport] =
+  const [found, saved, waiting, openActions, findings, input, lastSync, lastImport, alerts] =
     await Promise.all([
       moneyFound(userId, { client }),
       savedToDate(userId, { client }),
@@ -43,6 +44,7 @@ export async function homeSummary(
         orderBy: { createdAt: "desc" },
         select: { createdAt: true },
       }),
+      unreadAlertCount(userId, { client }),
     ]);
 
   const updated = [lastSync?.lastSyncedAt, lastImport?.createdAt]
@@ -53,6 +55,7 @@ export async function homeSummary(
     moneyFoundCents: found,
     savedToDateCents: saved,
     openActions,
+    unreadAlerts: alerts,
     waitingOnYou: waiting.map((a) => ({
       id: a.id,
       todo: a.userTodo,

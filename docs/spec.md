@@ -21,7 +21,7 @@ The build runs in eleven steps, with Plaid added at step 7 after the founders te
 
 ## Status (Oct 18, 2026)
 
-Steps 1–11 are built. Where the build differs from the original plan, the plan below has been kept and the difference is noted here.
+Steps 1–17 are built. Where the build differs from the original plan, the plan below has been kept and the difference is noted here.
 
 | Step | Shipped in | Notes |
 | --- | --- | --- |
@@ -34,6 +34,12 @@ Steps 1–11 are built. Where the build differs from the original plan, the plan
 | 9 Weekly digest | PR #9 | Daily cron, one digest per person per week on their Monday |
 | 10 Membership test | PR #10 | Stripe optional: Reserve always works, the paid button appears once keys are set |
 | 11 Beta hardening | PRs #11–#12 | Error monitoring stored in our own database instead of a third-party service; rate limits in Postgres; ADMIN_EMAILS makes the founders admins; checklist status in docs/beta-checklist.md |
+| 12 Legal pages and consent | PR #14 | Policy and terms are drafts marked for counsel review (LEGAL_REVIEWED); sign-up and existing users accept the current Terms version |
+| 13 Home dashboard | PR #15 | /home is where signed-in people land |
+| 14 Data export and account management | PR #16 | JSON export leaves out tokens, cursors, the MFA secret, sessions and team notes |
+| 15 Spending insights | PR #22 | Transfers and card payments aren't counted as spending |
+| 16 Bills and cash-flow forecast | PR #23 | Low balance ahead is a finding with no dollar estimate; checking accounts only |
+| 17 Alerts | PR #24 | Only events from the last 7 days alert, so a first import doesn't flood; low balance alerts at most once per account per month; "unsubscribe" in an alert email turns alert emails off but keeps them in the app |
 
 Still needed from a person before outside users: counsel (insurance referral licensing, privacy policy and terms), Plaid Production approval and questionnaire, a backup restore test, and admins enrolling in two-factor. See docs/beta-checklist.md.
 
