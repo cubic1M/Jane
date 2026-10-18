@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { limitOrNull } from "@/lib/rate-limit";
 import { reserveMembership } from "@/lib/membership/service";
 import { getCurrentUser } from "@/lib/session";
 
@@ -6,6 +7,8 @@ import { getCurrentUser } from "@/lib/session";
 export async function POST() {
   const user = await getCurrentUser();
   if (!user) return NextResponse.json({ error: "Not signed in" }, { status: 401 });
+  const limited = await limitOrNull("membership", user.id);
+  if (limited) return limited;
   await reserveMembership(user.id);
   return NextResponse.json({ reserved: true });
 }

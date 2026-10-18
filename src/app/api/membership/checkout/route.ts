@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { limitOrNull } from "@/lib/rate-limit";
 import { track } from "@/lib/analytics";
 import { appBase } from "@/lib/digest/links";
 import { membershipPriceCents, stripeEnabled } from "@/lib/membership/offer";
@@ -10,6 +11,8 @@ import { getCurrentUser } from "@/lib/session";
 export async function POST() {
   const user = await getCurrentUser();
   if (!user) return NextResponse.json({ error: "Not signed in" }, { status: 401 });
+  const limited = await limitOrNull("membership", user.id);
+  if (limited) return limited;
   if (!stripeEnabled()) {
     return NextResponse.json({ error: "Payments aren't set up yet." }, { status: 503 });
   }

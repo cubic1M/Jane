@@ -1,4 +1,5 @@
 import type { NextConfig } from "next";
+import { securityHeaders } from "./src/lib/security-headers";
 
 const nextConfig: NextConfig = {
   /* config options here */
@@ -11,6 +12,11 @@ const nextConfig: NextConfig = {
     // CSV uploads go through server actions; the 1 MB default is too small for a
     // year of transactions. Matches MAX_FILE_BYTES in src/lib/import/import-csv.ts.
     serverActions: { bodySizeLimit: "5mb" },
+  },
+  async headers() {
+    return [
+      { source: "/:path*", headers: securityHeaders(process.env.NODE_ENV === "development") },
+    ];
   },
   turbopack: {
     rules: {

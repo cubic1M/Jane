@@ -1,6 +1,11 @@
 import { NextRequest } from "next/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+vi.mock("@/lib/rate-limit", () => ({
+  limitOrNull: vi.fn(async () => null),
+  hit: vi.fn(async () => ({ ok: true, remaining: 1, retryAfterSeconds: 0 })),
+  ipKey: vi.fn(() => "ip"),
+}));
 vi.mock("@/lib/analytics", () => ({ track: vi.fn() }));
 vi.mock("@/lib/session", () => ({ getCurrentUser: vi.fn() }));
 

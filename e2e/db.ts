@@ -15,6 +15,7 @@ if (E2E_DATABASE_URL && /neon\.tech/.test(E2E_DATABASE_URL)) {
 // by default, so CSV import is open to them.
 export async function signedInUser(
   role: "admin" | "user" = "admin",
+  { mfa = true }: { mfa?: boolean } = {},
 ): Promise<{ userId: string; sessionToken: string }> {
   const id = crypto.randomUUID().replaceAll("-", "");
   const userId = `e2e${id}`;
@@ -27,9 +28,11 @@ export async function signedInUser(
       [userId, `${userId}@example.test`, role],
     );
     await client.query(
-      `INSERT INTO sessions (id, session_token, user_id, expires)
-       VALUES ($1, $2, $3, now() + interval '1 day')`,
-      [`s${id}`, sessionToken, userId],
+      // Admins get a session that has already passed two-factor; e2e/mfa.spec.ts covers
+      // the check itself.
+      `INSERT INTO sessions (id, session_token, user_id, expires, mfa_verified_at)
+       VALUES ($1, $2, $3, now() + interval '1 day', CASE WHEN $4 THEN now() END)`,
+      [`s${id}`, sessionToken, userId, role === "admin" && mfa],
     );
   } finally {
     await client.end();

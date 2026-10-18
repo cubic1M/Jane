@@ -2,20 +2,7 @@ import Link from "next/link";
 import { Suspense } from "react";
 import { AuthForm } from "@/components/auth-form";
 import { RedirectIfSignedIn } from "@/components/redirect-if-signed-in";
-import { authErrorMessage } from "@/lib/auth-errors";
-
-async function LoginError({ searchParams }: Pick<PageProps<"/login">, "searchParams">) {
-  const message = authErrorMessage((await searchParams).error);
-  if (!message) return null;
-  return (
-    <p
-      role="alert"
-      className="rounded-lg bg-red-50 px-4 py-3 text-sm text-red-800 dark:bg-red-950 dark:text-red-200"
-    >
-      {message}
-    </p>
-  );
-}
+import { AuthError } from "@/components/auth-error";
 
 export default function LoginPage({ searchParams }: PageProps<"/login">) {
   return (
@@ -32,7 +19,7 @@ export default function LoginPage({ searchParams }: PageProps<"/login">) {
       </div>
 
       <Suspense>
-        <LoginError searchParams={searchParams} />
+        <AuthError searchParams={searchParams} />
       </Suspense>
 
       <AuthForm submitLabel="Email me a sign-in link" />

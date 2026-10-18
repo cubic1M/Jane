@@ -34,6 +34,8 @@ export default defineConfig({
           DATABASE_URL: scratchDatabase,
           DIRECT_URL: scratchDatabase,
           AUTH_SECRET: E2E_AUTH_SECRET,
+          // A fixed test-only key for encrypting secrets (admin two-factor, Plaid tokens).
+          TOKEN_ENCRYPTION_KEY: Buffer.alloc(32, 7).toString("base64"),
           ANTHROPIC_API_KEY: "",
           RESEND_API_KEY: "",
         }

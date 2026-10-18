@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { track } from "@/lib/analytics";
 import { ANONYMOUS_ID_COOKIE, isClientEvent } from "@/lib/analytics-events";
+import { ipKey, limitOrNull } from "@/lib/rate-limit";
 import { getCurrentUser } from "@/lib/session";
 
 const ONE_YEAR_SECONDS = 60 * 60 * 24 * 365;
@@ -8,6 +9,8 @@ const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{
 const ID_PATTERN = /^[a-z0-9]{1,40}$/i;
 
 export async function POST(request: NextRequest) {
+  const limited = await limitOrNull("events", ipKey(request.headers));
+  if (limited) return limited;
   let body: unknown;
   try {
     body = await request.json();

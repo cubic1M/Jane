@@ -1,6 +1,11 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("@/auth", () => ({ auth: vi.fn() }));
+vi.mock("next/headers", () => ({ cookies: vi.fn(async () => ({ get: () => undefined })) }));
+vi.mock("@/lib/admin-gate", () => ({
+  adminSessionState: vi.fn(async () => "verified"),
+  sessionTokenFrom: vi.fn(() => "token"),
+}));
 vi.mock("next/navigation", () => ({
   redirect: vi.fn((path: string) => {
     throw new Error(`redirect:${path}`);
@@ -13,6 +18,7 @@ vi.mock("next/server", () => ({ connection: vi.fn(async () => {}) }));
 
 import { connection } from "next/server";
 import { auth } from "@/auth";
+import { adminSessionState } from "@/lib/admin-gate";
 import { getCurrentUser, requireAdmin, requireUser } from "./session";
 
 const mockAuth = vi.mocked(auth as unknown as () => Promise<unknown>);
@@ -79,6 +85,13 @@ describe("requireAdmin", () => {
     signedInAs("user");
 
     await expect(requireAdmin()).rejects.toThrow("notFound");
+  });
+
+  it("sends an admin without a two-factor code in this session to /mfa", async () => {
+    signedInAs("admin");
+    vi.mocked(adminSessionState).mockResolvedValueOnce("needs_mfa");
+
+    await expect(requireAdmin()).rejects.toThrow("redirect:/mfa");
   });
 
   it("answers 404 when signed out", async () => {

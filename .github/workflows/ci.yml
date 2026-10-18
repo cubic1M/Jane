@@ -74,6 +74,18 @@ jobs:
           DIRECT_URL: ${{ env.E2E_DATABASE_URL }}
       - run: npm run test:e2e
 
+  dependency-audit:
+    name: Dependency audit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      # Fails on known high or critical vulnerabilities in what ships to production.
+      - run: npm audit --omit=dev --audit-level=high
+
   secret-scan:
     name: Secret scan
     runs-on: ubuntu-latest
