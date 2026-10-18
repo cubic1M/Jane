@@ -24,8 +24,8 @@ test("delete all my data needs DELETE typed, then removes the account", async ({
   await page.getByLabel("Name").fill("Test Card");
   await page.getByLabel("Type").selectOption({ label: "Credit card" });
   await page.getByRole("button", { name: "Add account" }).click();
-  // The page re-renders after adding; the newest copy of the list is the visible one.
-  await expect(page.getByText("Test Card").last()).toBeVisible();
+  // Exact text: the account dropdown's "Test Card (Credit card)" option is hidden.
+  await expect(page.getByText("Test Card", { exact: true })).toBeVisible();
 
   await page.goto("/settings");
   await page.getByLabel("Type DELETE to confirm").fill("delete");
