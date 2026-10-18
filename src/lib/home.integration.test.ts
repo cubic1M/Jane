@@ -99,4 +99,30 @@ describe.runIf(url)("home summary against a real database", () => {
 
     expect((await homeSummary(userId, { client, now: NOW }))?.unreadAlerts).toBe(1);
   });
+
+  it("works out safe to spend from the same budgets and goals the pages show", async () => {
+    // Without a checking balance there's nothing to work it out from.
+    expect((await homeSummary(userId, { client, now: NOW }))?.safeToSpend).toBeNull();
+    await client.account.updateMany({ where: { userId }, data: { currentBalanceCents: 200_000 } });
+    await client.budget.create({ data: { userId, category: "Entertainment", amountCents: 5_000 } });
+    await client.savingsGoal.create({
+      data: { userId, name: "Trip", targetCents: 120_000, targetDate: new Date("2027-10-15") },
+    });
+    const home = await homeSummary(userId, { client, now: NOW });
+    const budgetLeft = (home?.budgets?.progress ?? []).reduce(
+      (sum, p) => sum + Math.max(0, p.leftCents),
+      0,
+    );
+    expect(home?.safeToSpend).toMatchObject({
+      budgetsLeftCents: budgetLeft,
+      goalsCents: 10_000,
+    });
+    const safe = home?.safeToSpend;
+    expect(safe?.safeCents).toBe(
+      (safe?.balanceCents ?? 0) -
+        (safe?.billsCents ?? 0) -
+        (safe?.budgetsLeftCents ?? 0) -
+        (safe?.goalsCents ?? 0),
+    );
+  });
 });
