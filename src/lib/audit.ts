@@ -11,7 +11,12 @@ export type AuditEvent =
   | "explanations_generated"
   | "decision_made"
   | "decision_undone"
-  | "item_linked";
+  | "item_linked"
+  // Admin tools: every view of user data and every status change.
+  | "admin_viewed_queue"
+  | "admin_viewed_action"
+  | "admin_viewed_metrics"
+  | "action_status_changed";
 
 export type AuditActor = { type: ActorType; id: string | null };
 
