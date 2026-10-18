@@ -76,6 +76,16 @@ describe("the demo bank", () => {
     ]);
   });
 
+  it("puts in a big recent purchase and a trial for /deadlines", () => {
+    const rows = demoTransactions(DEMO, null, THROUGH);
+    expect(rows.filter((t) => t.merchant_name === "Apple")).toEqual([
+      expect.objectContaining({ date: "2026-10-16", amount: 1349 }),
+    ]);
+    expect(rows.filter((t) => t.merchant_name === "Paramount+")).toEqual([
+      expect.objectContaining({ date: "2026-10-12", amount: 0.99 }),
+    ]);
+  });
+
   it("reports loans with due dates after today", () => {
     const loans = normalizeLiabilities(demoLiabilities(DEMO, "2026-10-18"));
     expect(loans.map((l) => l.kind)).toEqual(["credit", "mortgage", "student", "loan"]);

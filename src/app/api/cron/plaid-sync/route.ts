@@ -10,11 +10,13 @@ import { runDueJobs } from "@/lib/jobs";
 import { refreshMerchantOutcomes } from "@/lib/merchant-outcomes";
 import { runRetention } from "@/lib/retention";
 import { takeSnapshots } from "@/lib/snapshots";
+import { remindAllDeadlines } from "@/lib/deadlines";
 
 // Vercel Cron, daily: syncs linked items that haven't synced in STALE_SYNC_HOURS, in case
 // a webhook was missed, then removes items of people inactive for INACTIVE_ITEM_DAYS
 // (after a warning email), then snapshots every account's balance for net worth over
-// time (CSV accounts too, so that runs even without Plaid). Vercel sends
+// time (CSV accounts too, so that runs even without Plaid), and last raises deadline
+// reminders (spec step 71) from what just synced. Vercel sends
 // "Authorization: Bearer $CRON_SECRET".
 export async function GET(request: Request) {
   const secret = process.env.CRON_SECRET;
@@ -45,6 +47,7 @@ async function dailyWork() {
       agent: await runAgentFollowUps(),
       outcomes: await refreshMerchantOutcomes(),
       retention: await runRetention(),
+      deadlines: await remindAllDeadlines(),
     };
   }
 
@@ -81,5 +84,6 @@ async function dailyWork() {
     agent: await runAgentFollowUps(),
     outcomes: await refreshMerchantOutcomes(),
     retention: await runRetention(),
+    deadlines: await remindAllDeadlines(),
   };
 }

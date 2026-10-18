@@ -124,6 +124,18 @@ describe.runIf(url)("data export against a real database", () => {
     await client.session.create({
       data: { userId, sessionToken: `sess-${suffix}`, expires: new Date(Date.now() + 1e9) },
     });
+    await client.ownedAsset.create({
+      data: {
+        userId,
+        kind: "home",
+        name: `${name} house`,
+        valueCents: 45_000_000,
+        valuedOn: new Date("2026-09-01"),
+      },
+    });
+    await client.deadline.create({
+      data: { userId, title: `${name} FSA deadline`, dueOn: new Date("2026-12-31"), kind: "fsa" },
+    });
     return { userId, suffix };
   }
 
@@ -163,6 +175,8 @@ describe.runIf(url)("data export against a real database", () => {
       "savingsGoals",
       "balanceSnapshots",
       "events",
+      "ownedAssets",
+      "deadlines",
       "lifeEvents",
     ] as const) {
       expect(data[key], key).toHaveLength(1);
@@ -234,5 +248,37 @@ describe.runIf(url)("data export against a real database", () => {
     ]) {
       expect(text).not.toContain(forbidden);
     }
+  });
+
+  it("lists the person's documents and their facts, but not the files (spec step 68)", async () => {
+    const me = await person("docs");
+    const other = await person("otherdocs");
+    const document = (userId: string, fileName: string) => ({
+      userId,
+      kind: "insurance_policy",
+      fileName,
+      contentType: "application/pdf",
+      sizeBytes: 9,
+      encryptedBytes: Buffer.from("SECRETBYTES"),
+      provider: "GEICO",
+      premiumCents: 61_200,
+      premiumFrequency: "semiannual",
+      renewalDate: new Date("2027-03-01"),
+      extractionSource: "claude",
+    });
+    await client.document.createMany({
+      data: [document(me.userId, "my-policy.pdf"), document(other.userId, "their-policy.pdf")],
+    });
+
+    const data = await exportUserData(me.userId, { client });
+
+    expect(data.documents.note).toContain("/documents");
+    expect(data.documents.files).toMatchObject([
+      { fileName: "my-policy.pdf", provider: "GEICO", premiumCents: 61_200 },
+    ]);
+    const text = JSON.stringify(data);
+    expect(text).not.toContain("their-policy.pdf");
+    expect(text).not.toContain("encryptedBytes");
+    expect(text).not.toContain(Buffer.from("SECRETBYTES").toString("base64"));
   });
 });

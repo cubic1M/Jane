@@ -41,6 +41,9 @@ export async function exportUserData(
     balanceSnapshots,
     checkIns,
     events,
+    ownedAssets,
+    documents,
+    deadlines,
     lifeEvents,
   ] = await Promise.all([
     client.user.findUniqueOrThrow({
@@ -299,6 +302,46 @@ export async function exportUserData(
       select: { name: true, createdAt: true },
       orderBy: { createdAt: "asc" },
     }),
+    // Things they own, at their values (spec step 67).
+    db.ownedAssets.findMany({
+      select: {
+        kind: true,
+        name: true,
+        valueCents: true,
+        valuedOn: true,
+        loanAccountId: true,
+        createdAt: true,
+        updatedAt: true,
+      },
+    }),
+    // Uploaded policies, warranties and receipts (spec step 68): what each is and its key
+    // facts, not the files, which download one by one from /documents.
+    db.documents.findMany({
+      select: {
+        id: true,
+        kind: true,
+        fileName: true,
+        contentType: true,
+        sizeBytes: true,
+        provider: true,
+        policyType: true,
+        coverageSummary: true,
+        premiumCents: true,
+        premiumFrequency: true,
+        renewalDate: true,
+        warrantyEndsOn: true,
+        purchaseDate: true,
+        purchaseAmountCents: true,
+        extractionSource: true,
+        uploadedAt: true,
+      },
+      orderBy: { uploadedAt: "asc" },
+    }),
+    // Deadlines they typed in (spec step 71).
+    db.deadlines.findMany({
+      select: { title: true, dueOn: true, kind: true, note: true, doneAt: true, createdAt: true },
+      orderBy: { dueOn: "asc" },
+    }),
     // Life-event checklists (spec step 72).
     db.lifeEvents.findMany({
       select: {
@@ -341,6 +384,12 @@ export async function exportUserData(
     balanceSnapshots,
     checkIns,
     events,
+    ownedAssets,
+    documents: {
+      note: "The files themselves aren't in this download. Download each one from /documents.",
+      files: documents,
+    },
+    deadlines,
     lifeEvents,
   };
 }

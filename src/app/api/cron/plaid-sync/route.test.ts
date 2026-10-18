@@ -19,6 +19,9 @@ vi.mock("@/lib/merchant-outcomes", () => ({
   refreshMerchantOutcomes: vi.fn(async () => ({ merchants: 2 })),
 }));
 vi.mock("@/lib/retention", () => ({ runRetention: vi.fn(async () => ({ rateLimits: 4 })) }));
+vi.mock("@/lib/deadlines", () => ({
+  remindAllDeadlines: vi.fn(async () => ({ users: 2, raised: 1, failed: 0 })),
+}));
 vi.mock("@/lib/snapshots", () => ({
   takeSnapshots: vi.fn(async () => ({ saved: 3, removed: 0 })),
 }));
@@ -65,6 +68,7 @@ describe("GET /api/cron/plaid-sync", () => {
       agent: { checked: 0 },
       outcomes: { merchants: 2 },
       retention: { rateLimits: 4 },
+      deadlines: { users: 2, raised: 1, failed: 0 },
     });
     expect(syncItem).toHaveBeenCalledWith("a");
     expect(syncItem).toHaveBeenCalledWith("b");
@@ -84,6 +88,7 @@ describe("GET /api/cron/plaid-sync", () => {
       agent: { checked: 0 },
       outcomes: { merchants: 2 },
       retention: { rateLimits: 4 },
+      deadlines: { users: 2, raised: 1, failed: 0 },
     });
     expect(syncItem).not.toHaveBeenCalled();
   });
