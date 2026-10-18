@@ -480,41 +480,44 @@ model Decision {
 }
 
 model Action {
-  id             String       @id @default(cuid())
-  decisionId     String       @unique @map("decision_id")
-  userId         String       @map("user_id")
-  type           ActionType
-  status         ActionStatus @default(queued)
-  assignee       String?
-  notes          String?
+  id                   String       @id @default(cuid())
+  decisionId           String       @unique @map("decision_id")
+  userId               String       @map("user_id")
+  type                 ActionType
+  status               ActionStatus @default(queued)
+  assignee             String?
+  notes                String?
   // For waiting_on_user: exactly what the person needs to do, shown on /actions.
-  userTodo       String?      @map("user_todo")
+  userTodo             String?      @map("user_todo")
   // Why a failed action failed, so card copy and rules can be fixed. Team-only.
-  failureReason  String?      @map("failure_reason")
-  minutesSpent   Int?         @map("minutes_spent")
+  failureReason        String?      @map("failure_reason")
+  minutesSpent         Int?         @map("minutes_spent")
   // The action agent (spec step 51). Null for actions the team works by hand.
-  agentState     AgentState?  @map("agent_state")
+  agentState           AgentState?  @map("agent_state")
   // When the agent next looks at it (a follow-up if the company hasn't replied).
-  agentNextAt    DateTime?    @map("agent_next_at") @db.Timestamptz(3)
-  agentFollowUps Int          @default(0) @map("agent_follow_ups")
+  agentNextAt          DateTime?    @map("agent_next_at") @db.Timestamptz(3)
+  agentFollowUps       Int          @default(0) @map("agent_follow_ups")
   // Why the agent passed it to the team; shown on the queue.
-  handoffReason  String?      @map("handoff_reason")
+  handoffReason        String?      @map("handoff_reason")
   // The random part of the reply-to address, so a company's reply finds its action.
-  replyToken     String?      @unique @map("reply_token")
+  replyToken           String?      @unique @map("reply_token")
   // A refund seen coming back in the person's own transactions (spec step 52): the date
   // and how much. Counted as saved instead of the card's estimate.
-  refundSeenAt   DateTime?    @map("refund_seen_at") @db.Date
-  refundCents    Int?         @map("refund_cents")
+  refundSeenAt         DateTime?    @map("refund_seen_at") @db.Date
+  refundCents          Int?         @map("refund_cents")
   // For a cancellation the person did on the company's page: the day they did it, and
   // when a missed charge confirms it.
-  cancelledOn    DateTime?    @map("cancelled_on") @db.Date
-  confirmAfter   DateTime?    @map("confirm_after") @db.Date
+  cancelledOn          DateTime?    @map("cancelled_on") @db.Date
+  confirmAfter         DateTime?    @map("confirm_after") @db.Date
   // The company's own cancel page, when only the account holder can cancel there.
-  selfServiceUrl String?      @map("self_service_url")
-  startedAt      DateTime?    @map("started_at") @db.Timestamptz(3)
-  completedAt    DateTime?    @map("completed_at") @db.Timestamptz(3)
-  createdAt      DateTime     @default(now()) @map("created_at") @db.Timestamptz(3)
-  updatedAt      DateTime     @updatedAt @map("updated_at") @db.Timestamptz(3)
+  selfServiceUrl       String?      @map("self_service_url")
+  // Yearly savings confirmed on a call (a lower monthly price, times twelve). Counted as
+  // saved instead of the card's estimate.
+  confirmedAnnualCents Int?         @map("confirmed_annual_cents")
+  startedAt            DateTime?    @map("started_at") @db.Timestamptz(3)
+  completedAt          DateTime?    @map("completed_at") @db.Timestamptz(3)
+  createdAt            DateTime     @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt            DateTime     @updatedAt @map("updated_at") @db.Timestamptz(3)
 
   user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
   decision      Decision       @relation(fields: [decisionId], references: [id], onDelete: Cascade)

@@ -10,6 +10,7 @@ import { requireUser } from "@/lib/session";
 import { MembershipOffer } from "./membership-offer";
 import { AnswerForm } from "./answer-form";
 import { SelfCancel } from "./self-cancel";
+import { OfferForm } from "./offer-form";
 import { AgentTimeline } from "@/components/agent-timeline";
 import { savingsLine } from "@/lib/savings-text";
 import type { FindingType } from "@/generated/prisma/client";
@@ -56,6 +57,7 @@ async function ActionsContent({
       userTodo: true,
       createdAt: true,
       agentState: true,
+      type: true,
       selfServiceUrl: true,
       cancelledOn: true,
       confirmAfter: true,
@@ -187,6 +189,9 @@ async function ActionsContent({
                 {action.status === "waiting_on_user" && action.agentState === "waiting_reply" && (
                   <AnswerForm actionId={action.id} />
                 )}
+                {action.status === "waiting_on_user" &&
+                  action.agentState === "confirming" &&
+                  action.type === "negotiate_bill" && <OfferForm actionId={action.id} />}
                 {action.status === "waiting_on_user" &&
                   action.agentState === "confirming" &&
                   action.selfServiceUrl && (

@@ -9,6 +9,7 @@ import type { PrismaClient } from "@/generated/prisma/client";
 import { db as defaultClient } from "@/lib/db";
 import { agentStep, handleReply } from "@/lib/agent/run";
 import { simulatedReply } from "@/lib/agent/simulated-company";
+import { simulatedCallResult } from "@/lib/voice/calls";
 import { explainFindings } from "@/lib/explanations";
 import { scrub } from "@/lib/scrub";
 
@@ -17,7 +18,8 @@ import { scrub } from "@/lib/scrub";
 // is retried after a growing wait, and after JOB_MAX_ATTEMPTS it's marked failed and shown
 // on /admin/jobs. Payloads hold ids only.
 
-export type JobKind = "explain_findings" | "agent_step" | "agent_simulated_reply";
+export type JobKind =
+  "explain_findings" | "agent_step" | "agent_simulated_reply" | "voice_simulated_result";
 export type JobPayload = { userId: string; actionId?: string };
 // Tests pass only the handlers they need; a job with no handler fails like any error.
 export type Handlers = Partial<Record<JobKind, (payload: JobPayload) => Promise<unknown>>>;
@@ -34,6 +36,7 @@ export const HANDLERS: Required<Handlers> = {
     simulatedReply(payload.userId, actionIdOf(payload), {
       deliver: (toAddress, mail) => handleReply(toAddress, mail),
     }),
+  voice_simulated_result: (payload) => simulatedCallResult(payload.userId, actionIdOf(payload)),
 };
 
 type Options = { client?: PrismaClient; now?: Date; handlers?: Handlers };
