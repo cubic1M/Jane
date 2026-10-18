@@ -16,6 +16,7 @@ export const ALERT_TYPES: readonly AlertType[] = [
   "new_subscription",
   "over_budget",
   "bill_due",
+  "renews_soon",
 ];
 
 // Time-sensitive alerts: these can be emailed right away. A bill reminder is only urgent
@@ -56,6 +57,10 @@ export const ALERT_LABELS: Record<AlertType, { label: string; description: strin
     label: "Over budget",
     description: "Spending in a category passed the monthly budget you set.",
   },
+  renews_soon: {
+    label: "Renews soon",
+    description: "A yearly or quarterly subscription is about to renew.",
+  },
   bill_due: {
     label: "Bill due soon",
     description:
@@ -72,6 +77,7 @@ export const DEFAULT_ALERT_DELIVERY: Record<AlertType, AlertDelivery> = {
   new_subscription: "app",
   over_budget: "app",
   bill_due: "email",
+  renews_soon: "app",
 };
 
 // At most this many alert emails per person in any 24 hours. The rest wait for the

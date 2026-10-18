@@ -21,7 +21,7 @@ The build runs in eleven steps, with Plaid added at step 7 after the founders te
 
 ## Status (Oct 18, 2026)
 
-Steps 1–35 are built (24 came before 22, because do-it-yourself kits need its cancel links). Where the build differs from the original plan, the plan below has been kept and the difference is noted here.
+Steps 1–36 are built (24 came before 22, because do-it-yourself kits need its cancel links). Where the build differs from the original plan, the plan below has been kept and the difference is noted here.
 
 | Step | Shipped in | Notes |
 | --- | --- | --- |
@@ -58,6 +58,7 @@ Steps 1–35 are built (24 came before 22, because do-it-yourself kits need its 
 | 33 Accessibility | PR #42 | axe found 40 serious problems, nearly all dark-mode text contrast; fixed once in globals.css (lighter shades for brand and status text in dark mode) rather than page by page, plus the household share button's accessible name; e2e/accessibility.spec.ts checks every page signed out, signed in and as the team, in light and dark mode |
 | 34 Metrics at scale | PR #43 | /admin/metrics now runs SQL aggregates (src/lib/metrics-sql.ts); computeMetrics stays as the readable definition, and a test checks both agree on one database snapshot; jobs live in a Postgres table claimed with SKIP LOCKED, retried at 1, 5, 30, 120 and 720 minutes, then shown at /admin/jobs; explanations after imports and syncs are the first job kind; due retries run in the two daily crons (and whenever a new job runs), since cron frequency may be limited to daily |
 | 35 Year in review | PR #44 | /year (any year with data) builds on spendingInsights month by month and on saved-to-date limited to the year, so the figures match those pages; "what Jane found" counts findings created that year; prints cleanly (navigation and footer hidden) via the browser's print, which also saves a PDF |
+| 36 Subscriptions and renewals | PR #46 | /subscriptions lists every active recurring charge from the same streams as the subscription findings and bills forecast (yearly cost and next date agree), split into subscriptions and other bills; renews_soon alerts come 7 days before a yearly or quarterly renewal, keyed by stream and date; yearly charges need Plaid's recurring streams, since 12 months of transactions show only one charge |
 
 Still needed from a person before outside users: counsel (insurance referral licensing, privacy policy and terms), Plaid Production approval and questionnaire, a backup restore test, and admins enrolling in two-factor. See docs/beta-checklist.md.
 

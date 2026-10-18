@@ -2,6 +2,8 @@ import type { AlertType } from "@/generated/prisma/client";
 import {
   ALERT_RECENT_DAYS,
   BILL_REMINDER_DAYS,
+  RENEWAL_ALERT_DAYS,
+  RENEWAL_FREQUENCIES,
   LOW_BALANCE_CUSHION_CENTS,
   BANK_FEE_CATEGORIES,
   CARD_INTEREST_CATEGORIES,
@@ -13,7 +15,7 @@ import {
 } from "@/config/detection";
 import { formatCents } from "@/lib/money";
 import { byDate, inList, inLookback } from "./helpers";
-import { forecastAccounts, upcomingBills } from "./forecast";
+import { expectedDates, forecastAccounts, upcomingBills } from "./forecast";
 import { duplicatePairs } from "./rules/duplicate-charge";
 import { buildStreams, merchantOf, type Stream } from "./streams";
 import type { Candidate, DetectionInput, DetectionTransaction } from "./types";
@@ -215,6 +217,24 @@ export function billReminderAlerts(input: DetectionInput): AlertCandidate[] {
     });
 }
 
+// A yearly or quarterly charge about to renew, once per renewal date. Monthly charges are
+// left out: they come round too often to be news.
+export function renewalAlerts(input: DetectionInput, streams: Stream[]): AlertCandidate[] {
+  const until = addDays(input.asOf, RENEWAL_ALERT_DAYS);
+  return streams
+    .filter((s) => s.active && s.frequency !== null && RENEWAL_FREQUENCIES.includes(s.frequency))
+    .flatMap((s) =>
+      expectedDates(s, input.asOf, until)
+        .filter((date) => date > input.asOf)
+        .map((date): AlertCandidate => ({
+          type: "renews_soon",
+          key: `${s.key}:${date}`,
+          title: `${s.merchant} renews ${shortDate(date)}, about ${formatCents(s.lastAmountCents)}`,
+          body: "If you don't want another year (or quarter), cancel before then. It's on your subscriptions page.",
+        })),
+    );
+}
+
 // Every alert for this scan, in a stable order.
 export function detectAlerts(
   input: DetectionInput,
@@ -230,5 +250,6 @@ export function detectAlerts(
     ...priceIncreaseAlerts(input, candidates),
     ...newSubscriptionAlerts(input, candidates, context),
     ...billReminderAlerts(input),
+    ...renewalAlerts(input, streams),
   ];
 }

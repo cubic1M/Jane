@@ -105,6 +105,7 @@ enum AlertType {
   low_balance
   over_budget
   bill_due
+  renews_soon
 
   @@map("alert_type")
 }
