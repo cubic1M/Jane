@@ -124,6 +124,21 @@ describe.runIf(url)("deleting data against a real database", () => {
     await client.alert.create({
       data: { userId, type: "fee_charged", key: "tx_1", title: "Fee", body: "b" },
     });
+    const partner = await client.referralPartner.upsert({
+      where: { key: "deletion-test-partner" },
+      create: {
+        key: "deletion-test-partner",
+        name: "Test Partner",
+        actionType: "move_idle_cash",
+        disclosure: "We may earn a fee.",
+        referralUrl: "https://example.com",
+      },
+      update: {},
+      select: { id: true },
+    });
+    await client.referralConversion.create({
+      data: { partnerId: partner.id, userId, amountCents: 4_000 },
+    });
     await client.pushSubscription.create({
       data: { userId, endpoint: `https://push.example/${suffix}`, p256dh: "p", auth: "a" },
     });
@@ -176,6 +191,7 @@ describe.runIf(url)("deleting data against a real database", () => {
       householdMembers: await client.householdMember.count(where),
       householdInvites: await client.householdInvite.count(where),
       pushSubscriptions: await client.pushSubscription.count(where),
+      referralConversions: await client.referralConversion.count(where),
       sessions: await client.session.count(where),
       authAccounts: await client.authAccount.count(where),
     };

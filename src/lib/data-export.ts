@@ -43,6 +43,7 @@ export async function exportUserData(
         timezone: true,
         digestEnabled: true,
         alertPrefs: true,
+        state: true,
         termsVersion: true,
         termsAcceptedAt: true,
       },

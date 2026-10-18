@@ -10,6 +10,8 @@ import { getActionForAdmin } from "@/lib/concierge";
 import { formatCents } from "@/lib/money";
 import { requireAdmin } from "@/lib/session";
 import { AdminNav } from "../../admin-nav";
+import { db } from "@/lib/db";
+import { ConversionForm } from "./conversion-form";
 import { DraftPanel } from "./draft-panel";
 import { StatusForm } from "./status-form";
 import { savingsPhrase } from "@/lib/savings-text";
@@ -27,6 +29,14 @@ async function ActionDetail({
   const card = action.decision.cardSnapshot as unknown as DecisionCard;
   const closed = action.status === "done" || action.status === "failed";
   const playbook = PLAYBOOKS[action.type];
+  // Older cards were saved before partners had their own field.
+  const partnerKey = (card as Partial<DecisionCard>).referralPartner?.key ?? null;
+  const partner = partnerKey
+    ? await db.referralPartner.findUnique({
+        where: { key: partnerKey },
+        select: { name: true, referralUrl: true, active: true, revenuePerConversionCents: true },
+      })
+    : null;
   const merchantName = (action.decision.finding.evidence as { merchant?: unknown } | null)
     ?.merchant;
   const merchant = await merchantFor(
@@ -61,6 +71,30 @@ async function ActionDetail({
           <strong>They give up:</strong> {card.giveUp}
         </p>
         {card.referralDisclosure && <p className="text-sm">{card.referralDisclosure}</p>}
+        {partner && (
+          <div className="flex flex-col gap-2 border-t border-zinc-200 pt-2 text-sm dark:border-zinc-800">
+            <p>
+              Referral partner: <strong>{partner.name}</strong>
+              {!partner.active && " (now turned off)"} ·{" "}
+              <a
+                href={partner.referralUrl}
+                target="_blank"
+                rel="noreferrer"
+                className="text-emerald-700 hover:underline"
+              >
+                Referral link
+              </a>
+            </p>
+            <ConversionForm
+              actionId={action.id}
+              suggested={
+                partner.revenuePerConversionCents === null
+                  ? ""
+                  : String(partner.revenuePerConversionCents / 100)
+              }
+            />
+          </div>
+        )}
       </section>
 
       {!closed && (

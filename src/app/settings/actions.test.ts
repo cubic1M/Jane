@@ -7,7 +7,7 @@ vi.mock("@/lib/db", () => ({ db: { user: { update } } }));
 vi.mock("@/lib/session", () => ({ requireUser: vi.fn(async () => ({ id: "u1" })) }));
 
 import { DEFAULT_ALERT_DELIVERY } from "@/config/alerts";
-import { saveAlertPreferences, saveEmailPreferences } from "./actions";
+import { saveAlertPreferences, saveEmailPreferences, saveState } from "./actions";
 
 const form = (fields: Record<string, string>) => {
   const data = new FormData();
@@ -71,5 +71,21 @@ describe("saveAlertPreferences", () => {
         },
       },
     });
+  });
+});
+
+describe("saveState", () => {
+  beforeEach(() => update.mockReset());
+
+  it("saves a state from the list, or clears it", async () => {
+    expect(await saveState(null, form({ state: "CA" }))).toMatchObject({ ok: true });
+    expect(update).toHaveBeenCalledWith({ where: { id: "u1" }, data: { state: "CA" } });
+    await saveState(null, form({ state: "" }));
+    expect(update).toHaveBeenLastCalledWith({ where: { id: "u1" }, data: { state: null } });
+  });
+
+  it("refuses anything else", async () => {
+    expect(await saveState(null, form({ state: "Narnia" }))).toMatchObject({ ok: false });
+    expect(update).not.toHaveBeenCalled();
   });
 });

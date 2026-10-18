@@ -64,6 +64,14 @@ function rows(windows: { days: number; metrics: Metrics }[]) {
       "30-day retention",
       each((m) => `${percent(m.retention.rate)} (${m.retention.retained}/${m.retention.cohort})`),
     ],
+    [
+      "Referral revenue",
+      each((m) =>
+        m.referrals.conversions === 0
+          ? "–"
+          : `${formatCents(m.referrals.cents)} (${m.referrals.conversions} conversions)`,
+      ),
+    ],
     ...actionTypes.map((type) => [
       `Minutes per action: ${type.replaceAll("_", " ")}`,
       each((m) => {

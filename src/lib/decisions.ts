@@ -6,10 +6,11 @@ import type {
 } from "@/generated/prisma/client";
 import { track } from "@/lib/analytics";
 import { logAudit } from "@/lib/audit";
-import { CARD_SELECT, buildCard, cardHash } from "@/lib/cards";
+import { ACTION_FOR_FINDING, CARD_SELECT, buildCard, cardHash } from "@/lib/cards";
 import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
 import { hasKit } from "@/lib/diy";
+import { partnerForUser } from "@/lib/referrals";
 
 // Yes, no, or "I'll do it myself" on a decision card. Every answer is kept with the card
 // exactly as shown. A yes approves the finding and queues an action for the concierge
@@ -60,7 +61,10 @@ export async function recordDecision(
   if (!DECIDABLE.includes(finding.status)) {
     throw new DecisionError("already_decided", "You've already answered this one.");
   }
-  const card = buildCard(finding);
+  const card = buildCard(
+    finding,
+    await partnerForUser(userId, ACTION_FOR_FINDING[finding.type], { client }),
+  );
   if (cardHash(card) !== answer.cardHash) {
     throw new DecisionError("card_changed", "This card was updated. Please look at it again.");
   }

@@ -10,10 +10,10 @@ Every item from the spec's "Security and compliance checklist", marked as either
 | Read-only Plaid products only; Transactions alone in the MVP | Done. Link tokens request `transactions` only. | `src/lib/plaid/link.ts` |
 | Plaid webhooks verified before processing | Done. The ES256 JWT, body hash and 5-minute age are checked before anything is read. | `src/lib/plaid/webhook-verify.ts` |
 | Admin screens behind a role check and MFA; every admin view of user data in the audit log | Done. A proxy returns a real 404 to non-admins. Admins need a TOTP code in each session. Queue, action and metrics views are audit-logged. | `src/proxy.ts`, `src/lib/mfa.ts`, `src/lib/concierge.ts` |
-| "Delete all my data" removes every Plaid item (`/item/remove`) and all rows for the user | Done, and checked in Plaid Sandbox: afterwards Plaid answers `ITEM_NOT_FOUND`. A test covers all 21 user-owned tables. | `src/lib/account-deletion.ts` |
+| "Delete all my data" removes every Plaid item (`/item/remove`) and all rows for the user | Done, and checked in Plaid Sandbox: afterwards Plaid answers `ITEM_NOT_FOUND`. A test covers all 22 user-owned tables. | `src/lib/account-deletion.ts` |
 | Inactive items removed on a schedule to stop Plaid billing | Done. Warning email at 53 days without activity, removal at 60, run by the daily Plaid job. | `src/lib/plaid/inactive.ts` |
 | No investment, tax or legal advice in any card or LLM output; guardrail on LLM text before display | Done. Guardrails reject investment, tax and legal advice, invented dollar figures, and promises. Template text is tested against the same rules. | `src/lib/guardrails.ts` |
-| Referral relationships disclosed on any card that uses one | Done in code. A card shows the partner's disclosure line. **Needs a person** to add each partner's wording to `src/config/referrals.ts` when an agreement is signed. | `src/config/referrals.ts` |
+| Referral relationships disclosed on any card that uses one | Done in code. Partners are set up at `/admin/partners`, each with its disclosure (required), referral link and allowed states; a card using one shows the disclosure word for word, and a test checks every finding type. Turning a partner off takes effect on the next page load. **Needs a person** to add each partner once an agreement is signed. | `src/lib/referrals.ts`, `src/lib/cards.ts` |
 | Rate limiting on auth and API routes | Done. Postgres-backed limits on sign-in (per IP and per email), Plaid, decisions, membership, events, unsubscribe and admin MFA codes. A load test gets 429s. | `src/lib/rate-limit.ts` |
 | Dependency and secret scanning in CI | Done. `npm audit` (high and critical) runs on every PR, Dependabot opens weekly update PRs, and gitleaks scans for secrets. | `.github/workflows/ci.yml`, `.github/dependabot.yml` |
 
@@ -27,7 +27,7 @@ Also added in step 11, beyond the checklist:
 
 | Item | What to do |
 | --- | --- |
-| Counsel has confirmed whether insurance referral fees need a license in your launch state | Ask a lawyer before turning on any insurance referral partner. Until then, keep `insurance_reshop` without a partner (quotes only, no referral fee). |
+| Counsel has confirmed whether insurance referral fees need a license in your launch state | Ask a lawyer before turning on any insurance referral partner. Insurance partners can't be switched on until counsel's answer is recorded in `COUNSEL_INSURANCE_REFERRALS` (`src/config/referrals.ts`): set `approved`, the date, and a note. |
 | Privacy policy and terms published, covering Plaid data use, retention and deletion | Have counsel write or review them, then publish at `/privacy` and `/terms` and link them from sign-up. The facts to cover are in "What the app does with data" below. |
 | Plaid's security questionnaire answered truthfully for Production access | Answer it in the Plaid dashboard. The controls listed above are the true answers for encryption, access control, MFA, logging, deletion and vulnerability scanning. |
 | Backups enabled and a restore tested once | In Neon: confirm point-in-time restore is on for the production branch, then restore to a new branch, check that a few tables have rows, and delete the branch. Write down the date it was tested. |

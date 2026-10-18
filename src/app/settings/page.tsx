@@ -9,7 +9,9 @@ import { scopedDb } from "@/lib/db-scoped";
 import { requireUser } from "@/lib/session";
 import { formatCents } from "@/lib/money";
 import { vapidPublicKey } from "@/lib/push";
+import { US_STATES } from "@/config/referrals";
 import { AlertsForm } from "./alerts-form";
+import { StateForm } from "./state-form";
 import { NotificationsToggle } from "./notifications";
 import { DeleteDataForm, DisconnectForm, RefreshForm } from "./data-forms";
 import { EmailForm } from "./email-form";
@@ -20,7 +22,7 @@ async function SettingsContent() {
   const [prefs, items, accounts, lastCsv] = await Promise.all([
     db.user.findUniqueOrThrow({
       where: { id: user.id },
-      select: { digestEnabled: true, timezone: true, alertPrefs: true },
+      select: { digestEnabled: true, timezone: true, alertPrefs: true, state: true },
     }),
     mine.plaidItems.findMany({
       select: {
@@ -113,6 +115,14 @@ async function SettingsContent() {
           </ul>
         </section>
       )}
+
+      <section className="flex flex-col gap-2">
+        <h2 className="text-xl font-semibold">Where you live</h2>
+        <p className="text-zinc-600 dark:text-zinc-400">
+          Some offers (like savings accounts from partners) are only available in some states.
+        </p>
+        <StateForm state={prefs.state} states={US_STATES} />
+      </section>
 
       <section className="flex flex-col gap-2">
         <h2 className="text-xl font-semibold">Household</h2>

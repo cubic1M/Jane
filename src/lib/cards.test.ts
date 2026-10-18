@@ -1,5 +1,4 @@
-import { describe, expect, it, vi } from "vitest";
-import { REFERRAL_PARTNERS } from "@/config/referrals";
+import { describe, expect, it } from "vitest";
 import { findingOfType, sampleFindings } from "./__fixtures__/findings";
 import { buildCard, cardHash, type CardFinding } from "./cards";
 
@@ -40,14 +39,28 @@ describe("buildCard", () => {
     expect(card.evidence[0]).toMatchObject({ date: "2026-10-15", amountCents: 1799 });
   });
 
-  it("shows a referral disclosure when the action uses a partner", () => {
-    vi.spyOn(REFERRAL_PARTNERS, "move_idle_cash", "get").mockReturnValue({
-      name: "Example Bank",
-      disclosure: "We may earn a referral fee from Example Bank if you open an account.",
-    });
+  // Acceptance criterion: no card with a partner action renders without its disclosure.
+  it.each(sampleFindings().map((f) => [f.type] as const))(
+    "%s: a card with a partner always carries its disclosure, word for word",
+    (type) => {
+      const partner = {
+        key: "example-bank",
+        name: "Example Bank",
+        disclosure: "We may earn a referral fee from Example Bank if you open an account.",
+      };
+      const card = buildCard(asStored(type), partner);
+      expect(card.referralDisclosure).toBe(partner.disclosure);
+      expect(card.referralPartner).toEqual({ key: "example-bank", name: "Example Bank" });
+      expect(() => buildCard(asStored(type), { ...partner, disclosure: "  " })).toThrow(
+        /no disclosure/,
+      );
+    },
+  );
 
-    expect(buildCard(asStored("idle_cash")).referralDisclosure).toBe(
-      "We may earn a referral fee from Example Bank if you open an account.",
+  it("changes the card hash when a partner is turned off, so old answers are refused", () => {
+    const partner = { key: "p", name: "P", disclosure: "We may earn a fee." };
+    expect(cardHash(buildCard(asStored("idle_cash"), partner))).not.toBe(
+      cardHash(buildCard(asStored("idle_cash"))),
     );
   });
 });

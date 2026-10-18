@@ -3,7 +3,8 @@ import { notFound } from "next/navigation";
 import { Suspense } from "react";
 import { AppHeader } from "@/components/app-header";
 import { ViewTracker } from "@/components/view-tracker";
-import { CARD_SELECT, buildCard, cardHash } from "@/lib/cards";
+import { ACTION_FOR_FINDING, CARD_SELECT, buildCard, cardHash } from "@/lib/cards";
+import { partnerForUser } from "@/lib/referrals";
 import { scopedDb } from "@/lib/db-scoped";
 import { UNDO_WINDOW_SECONDS } from "@/lib/decisions";
 import { formatCents } from "@/lib/money";
@@ -30,7 +31,7 @@ async function Card({ params }: { params: PageProps<"/report/[findingId]">["para
       data: { status: "shown" },
     });
   }
-  const card = buildCard(finding);
+  const card = buildCard(finding, await partnerForUser(user.id, ACTION_FOR_FINDING[finding.type]));
   const open = finding.status === "new" || finding.status === "shown";
   // A do-it-yourself answer shows the kit instead of the buttons.
   const diyDecision = open
