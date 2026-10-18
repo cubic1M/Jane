@@ -3,6 +3,7 @@ import { normalizeMerchant } from "@/data-sources/merchant";
 import { findInDirectory } from "@/data-sources/merchant-directory";
 import type { Prisma, PrismaClient } from "@/generated/prisma/client";
 import { budgetSummary } from "@/insights/budgets";
+import { irregularCosts } from "@/lib/irregular";
 import { loadInsightTransactions } from "@/insights/load";
 import { spendingInsights } from "@/insights/spending";
 import { track } from "@/lib/analytics";
@@ -15,7 +16,8 @@ import { GoalError, addGoal } from "@/lib/goals";
 import { proposals, type Proposal } from "@/planning/proposals";
 
 // Set-up Jane proposes on the plan (spec step 55): budgets from the person's own averages,
-// an emergency fund from their own spending, categories for merchants that have none.
+// an emergency fund from their own spending, categories for merchants that have none, and
+// a "Yearly bills" goal from their irregular costs (spec step 70).
 // Nothing is created until they say yes; a no is kept so it doesn't come back.
 
 type Options = { client?: PrismaClient; now?: Date };
@@ -29,7 +31,7 @@ export async function currentProposals(
 ): Promise<Proposal[]> {
   const db = scopedFor(userId, client);
   const asOf = now.toISOString().slice(0, 10);
-  const [transactions, budgets, goals, uncategorized, directory] = await Promise.all([
+  const [transactions, budgets, goals, uncategorized, directory, irregular] = await Promise.all([
     loadInsightTransactions(db, asOf, BUDGET_SUGGESTION_MONTHS + 1),
     db.budgets.findMany({ select: { category: true, amountCents: true } }),
     db.savingsGoals.findMany({ select: { name: true } }),
@@ -38,6 +40,7 @@ export async function currentProposals(
       select: { description: true, merchantName: true },
     }),
     client.merchant.findMany(),
+    irregularCosts(userId, { client, now }),
   ]);
   const summary = budgetSummary(transactions, budgets, asOf);
   // Average spending over the complete months before this one.
@@ -65,6 +68,7 @@ export async function currentProposals(
     budgetedCategories: budgets.map((b) => b.category),
     goalNames: goals.map((g) => g.name),
     monthlySpendingCents,
+    yearlyBillsMonthlyCents: irregular.monthlyCents,
     uncategorized: [...byMerchant].map(([merchantKey, { name, count }]) => {
       // The directory's own name and category ("The New York Times", not "Nytimes").
       const known = findInDirectory(merchantKey, directory);

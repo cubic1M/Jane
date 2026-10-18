@@ -177,6 +177,18 @@ function setupView(p: Proposal): SetupView {
       fields: [{ kind: "amount", label: "Monthly budget ($)", value: String(p.amountCents / 100) }],
     };
   }
+  if (p.kind === "goal" && p.monthlySetAsideCents !== undefined) {
+    // Spec step 70: the yearly and irregular bills, a month at a time.
+    return {
+      key: p.key,
+      title: `Save for yearly bills: ${formatCents(p.targetCents)} by ${monthYear(p.targetDate)}`,
+      basis: `Your yearly and irregular bills come to ${formatCents(p.monthlySetAsideCents)} a month (see Budgets), so a year of that. Math from your data, not a recommendation.`,
+      fields: [
+        { kind: "amount", label: "Amount ($)", value: String(p.targetCents / 100) },
+        { kind: "date", label: "By", value: p.targetDate },
+      ],
+    };
+  }
   if (p.kind === "goal") {
     return {
       key: p.key,

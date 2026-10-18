@@ -40,7 +40,20 @@ describe("safeToSpend", () => {
       billsCents: 9_800,
       budgetsLeftCents: 20_000,
       goalsCents: 10_000,
+      setAsideCents: 0,
       safeCents: 150_000 - 9_800 - 20_000 - 10_000,
+    });
+  });
+
+  it("takes this month's set-aside for yearly bills off as its own line (spec step 70)", () => {
+    const safe = safeToSpend(data(), {
+      budgetsLeftCents: 20_000,
+      goalsCents: 10_000,
+      setAsideCents: 2_800,
+    });
+    expect(safe).toMatchObject({
+      setAsideCents: 2_800,
+      safeCents: 150_000 - 9_800 - 20_000 - 10_000 - 2_800,
     });
   });
 
