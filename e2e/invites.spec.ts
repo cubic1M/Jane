@@ -9,6 +9,7 @@ test("sign-up needs a valid invite code", async ({ page }) => {
 
   await page.getByLabel("Invite code").fill("ABCD-EFGH-JKMN");
   await page.getByLabel("Email").fill(`invite-${crypto.randomUUID()}@example.test`);
+  await page.getByRole("checkbox", { name: /I agree to the Terms/ }).check();
   await page.getByRole("button", { name: "Email me a sign-up link" }).click();
 
   await expect(page).toHaveURL(/\/signup\?error=InvalidInvite/);
