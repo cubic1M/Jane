@@ -5,8 +5,9 @@ import { addDays } from "@/detection/units";
 
 // "Safe to spend until payday": checking balance today, minus regular bills from
 // checking before the next expected deposit, minus what's left in this month's budgets,
-// minus this month's amounts toward goals. Each part comes from the page that shows it
-// (bills forecast, budgets, goals), so the number reconciles with them. Math only.
+// minus this month's amounts toward goals, minus this month's set-aside for yearly bills
+// (spec step 70). Each part comes from the page that shows it (bills forecast, budgets,
+// goals), so the number reconciles with them. Math only.
 
 export type SafeToSpend = {
   // The next expected deposit, or null when none is expected in the forecast window.
@@ -16,12 +17,17 @@ export type SafeToSpend = {
   billsCents: number;
   budgetsLeftCents: number;
   goalsCents: number;
+  setAsideCents: number;
   safeCents: number;
 };
 
 export function safeToSpend(
   input: DetectionInput,
-  { budgetsLeftCents, goalsCents }: { budgetsLeftCents: number; goalsCents: number },
+  {
+    budgetsLeftCents,
+    goalsCents,
+    setAsideCents = 0,
+  }: { budgetsLeftCents: number; goalsCents: number; setAsideCents?: number },
 ): SafeToSpend {
   const checking = input.accounts.filter(
     (a) =>
@@ -56,6 +62,7 @@ export function safeToSpend(
     billsCents,
     budgetsLeftCents,
     goalsCents,
-    safeCents: balance - billsCents - budgetsLeftCents - goalsCents,
+    setAsideCents,
+    safeCents: balance - billsCents - budgetsLeftCents - goalsCents - setAsideCents,
   };
 }
