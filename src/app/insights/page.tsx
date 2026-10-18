@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { redirect } from "next/navigation";
 import { Suspense } from "react";
 import { AppHeader } from "@/components/app-header";
@@ -53,7 +54,10 @@ async function Insights() {
         <h1 className="text-3xl font-semibold tracking-tight">Where your money goes</h1>
         <p className="text-zinc-600 dark:text-zinc-400">
           The last {INSIGHT_MONTHS} months from your accounts. Moving money between your own
-          accounts and paying off cards isn&apos;t counted as spending.
+          accounts and paying off cards isn&apos;t counted as spending.{" "}
+          <Link href="/transactions" className="font-medium text-emerald-700 hover:underline">
+            Fix a category
+          </Link>
         </p>
       </div>
 

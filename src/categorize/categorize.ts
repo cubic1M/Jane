@@ -5,7 +5,7 @@ import { normalizeMerchant } from "@/data-sources/merchant";
 import type { NormalizedTransaction } from "@/data-sources/types";
 import type { ScopedDb } from "@/lib/db-scoped";
 
-export type CategorySource = "rule" | "llm" | "plaid";
+export type CategorySource = "rule" | "llm" | "plaid" | "user";
 
 export type Categorized<T> = T & {
   category: Category | null;
@@ -14,13 +14,30 @@ export type Categorized<T> = T & {
 
 type Db = Pick<ScopedDb, "userId" | "merchantCategories">;
 
-// Plaid's own category first, then keyword rules, then the LLM for whatever is left,
-// cached per merchant so each merchant is only ever sent once per user.
+// The person's own merchant rules first, then Plaid's category, then keyword rules, then
+// the LLM for whatever is left, cached per merchant so each merchant is only ever sent
+// once per user.
 export async function categorizeTransactions<T extends NormalizedTransaction>(
   transactions: T[],
   db: Db,
 ): Promise<Categorized<T>[]> {
+  const merchantKeyOf = (t: T) => normalizeMerchant(t.description)?.key ?? null;
+  const keys = [...new Set(transactions.map(merchantKeyOf).filter((k) => k !== null))];
+  const userRules = new Map<string, Category>();
+  if (keys.length > 0) {
+    const rules = await db.merchantCategories.findMany({
+      where: { merchantKey: { in: keys }, source: "user" },
+    });
+    for (const rule of rules) {
+      const category = categoryOf(rule.pfcDetailed);
+      if (category) userRules.set(rule.merchantKey, category);
+    }
+  }
+
   const results: Categorized<T>[] = transactions.map((transaction) => {
+    const key = merchantKeyOf(transaction);
+    const fromUser = key ? userRules.get(key) : undefined;
+    if (fromUser) return { ...transaction, category: fromUser, categorySource: "user" };
     const fromSource = transaction.categoryDetailed
       ? categoryOf(transaction.categoryDetailed)
       : null;
@@ -30,7 +47,6 @@ export async function categorizeTransactions<T extends NormalizedTransaction>(
     return { ...transaction, category: null, categorySource: null };
   });
 
-  const merchantKeyOf = (t: T) => normalizeMerchant(t.description)?.key ?? null;
   const unplaced = new Set(
     results.flatMap((r) => (r.category ? [] : [merchantKeyOf(r)])).filter((k) => k !== null),
   );

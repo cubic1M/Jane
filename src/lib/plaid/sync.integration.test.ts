@@ -145,4 +145,36 @@ describe.runIf(url)("syncItem against a real database", () => {
     ]);
     expect(track).not.toHaveBeenCalledWith(userId, "first_sync_completed", expect.anything());
   });
+
+  it("keeps a category the person corrected when Plaid later changes the transaction", async () => {
+    await client.transaction.updateMany({
+      where: { plaidTransactionId: `${suffix}-t1` },
+      data: {
+        pfcPrimary: "ENTERTAINMENT",
+        pfcDetailed: "ENTERTAINMENT_OTHER_ENTERTAINMENT",
+        categorySource: "user",
+      },
+    });
+    transactionsSync.mockResolvedValueOnce(
+      syncPage({
+        accounts: [plaidAccount({ account_id: `${suffix}-acc` })],
+        modified: [{ ...netflix("t1", "2026-08-01", 16.49), account_id: `${suffix}-acc` }],
+        next_cursor: "cursor-3",
+      }),
+    );
+    transactionsRecurringGet.mockResolvedValueOnce({
+      data: { outflow_streams: [], inflow_streams: [] },
+    });
+
+    await syncItem(itemId, { client, api, now: NOW });
+
+    const row = await client.transaction.findFirstOrThrow({
+      where: { plaidTransactionId: `${suffix}-t1` },
+    });
+    expect(row).toMatchObject({
+      amountCents: 1649,
+      pfcDetailed: "ENTERTAINMENT_OTHER_ENTERTAINMENT",
+      categorySource: "user",
+    });
+  });
 });
