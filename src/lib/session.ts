@@ -1,5 +1,6 @@
 import type { Session } from "next-auth";
 import { notFound, redirect } from "next/navigation";
+import { connection } from "next/server";
 import { auth } from "@/auth";
 
 export type SessionUser = Session["user"];
@@ -8,6 +9,9 @@ export type SessionUser = Session["user"];
 export const HOME_PATH = "/import";
 
 export async function getCurrentUser(): Promise<SessionUser | null> {
+  // Auth.js makes a random CSRF token on every session lookup. Waiting for the
+  // request first keeps Next.js from treating that as part of a prerender.
+  await connection();
   const session = await auth();
   return session?.user ?? null;
 }

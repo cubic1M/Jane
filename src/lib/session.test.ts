@@ -9,9 +9,11 @@ vi.mock("next/navigation", () => ({
     throw new Error("notFound");
   }),
 }));
+vi.mock("next/server", () => ({ connection: vi.fn(async () => {}) }));
 
+import { connection } from "next/server";
 import { auth } from "@/auth";
-import { requireAdmin, requireUser } from "./session";
+import { getCurrentUser, requireAdmin, requireUser } from "./session";
 
 const mockAuth = vi.mocked(auth as unknown as () => Promise<unknown>);
 
@@ -21,6 +23,28 @@ function signedInAs(role: "user" | "admin") {
     expires: "2099-01-01T00:00:00.000Z",
   });
 }
+
+describe("getCurrentUser", () => {
+  beforeEach(() => {
+    mockAuth.mockReset();
+  });
+
+  // Auth.js uses crypto during the lookup, which Next.js rejects while prerendering.
+  it("waits for the request before reading the session", async () => {
+    const calls: string[] = [];
+    vi.mocked(connection).mockImplementationOnce(async () => {
+      calls.push("connection");
+    });
+    mockAuth.mockImplementationOnce(async () => {
+      calls.push("auth");
+      return null;
+    });
+
+    await getCurrentUser();
+
+    expect(calls).toEqual(["connection", "auth"]);
+  });
+});
 
 describe("requireUser", () => {
   beforeEach(() => {
