@@ -56,6 +56,12 @@ async function Card({ params }: { params: PageProps<"/report/[findingId]">["para
           </p>
         </section>
 
+        {card.findingType === "card_interest" && (
+          <Link href="/debt" className="font-medium text-emerald-700 hover:underline">
+            See what paying off your cards could look like
+          </Link>
+        )}
+
         <section className="flex flex-col gap-1">
           <h2 className="font-semibold">What you give up</h2>
           <p className="text-zinc-700 dark:text-zinc-300">{card.giveUp}</p>
