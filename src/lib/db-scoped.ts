@@ -1,5 +1,6 @@
-import type { PrismaClient } from "@/generated/prisma/client";
+import type { Prisma, PrismaClient } from "@/generated/prisma/client";
 import { db } from "@/lib/db";
+import { evidenceRefs, onSharedAccountsOnly } from "@/lib/finding-accounts";
 import { requireUser } from "@/lib/session";
 
 // Every query on a user-owned table goes through here. scopeArgs ANDs the user's id onto
@@ -110,3 +111,94 @@ export async function scopedDb(): Promise<ScopedDb> {
   const user = await requireUser();
   return scopedFor(user.id);
 }
+
+// What a household partner may read of the other person's data: accounts they chose to
+// share, those accounts' transactions, and undecided findings that sit entirely on them.
+// Read-only by construction: there are no write methods to call. Membership is checked
+// every time this is built, so leaving a household removes access at once. Decisions are
+// never exposed, and only undecided findings are, so a decision can't be read off a status.
+export async function sharedReadFor(viewerId: string, client: PrismaClient = db) {
+  const membership = await client.householdMember.findUnique({
+    where: { userId: viewerId },
+    select: { householdId: true },
+  });
+  const partners = membership
+    ? await client.householdMember.findMany({
+        where: { householdId: membership.householdId, userId: { not: viewerId } },
+        select: { userId: true, user: { select: { email: true, name: true } } },
+      })
+    : [];
+  const partnerIds = partners.map((p) => p.userId);
+  const accounts =
+    partnerIds.length === 0
+      ? []
+      : await client.account.findMany({
+          where: { userId: { in: partnerIds }, sharedWithHousehold: true },
+          select: {
+            id: true,
+            userId: true,
+            name: true,
+            mask: true,
+            type: true,
+            subtype: true,
+            currentBalanceCents: true,
+          },
+          orderBy: [{ userId: "asc" }, { name: "asc" }],
+        });
+  const accountIds = accounts.map((a) => a.id);
+
+  return Object.freeze({
+    partners: partners.map((p) => ({ userId: p.userId, email: p.user.email, name: p.user.name })),
+    accounts,
+    transactions: (where: Prisma.TransactionWhereInput = {}) =>
+      client.transaction.findMany({
+        where: { AND: [where, { accountId: { in: accountIds } }] },
+        select: {
+          id: true,
+          accountId: true,
+          date: true,
+          amountCents: true,
+          merchantName: true,
+          description: true,
+          pfcPrimary: true,
+        },
+        orderBy: [{ date: "desc" }, { id: "asc" }],
+      }),
+    findings: async () => {
+      if (partnerIds.length === 0 || accountIds.length === 0) return [];
+      const findings = await client.finding.findMany({
+        where: { userId: { in: partnerIds }, status: { in: ["new", "shown"] } },
+        select: {
+          id: true,
+          userId: true,
+          type: true,
+          title: true,
+          annualSavingsCents: true,
+          evidence: true,
+        },
+        orderBy: [{ annualSavingsCents: "desc" }, { id: "asc" }],
+      });
+      const refs = findings.map((f) => evidenceRefs(f.evidence));
+      const txIds = [...new Set(refs.flatMap((r) => r.transactionIds))];
+      const placed = txIds.length
+        ? await client.transaction.findMany({
+            where: { id: { in: txIds }, accountId: { in: accountIds } },
+            select: { id: true, accountId: true },
+          })
+        : [];
+      const txAccount = new Map(placed.map((t) => [t.id, t.accountId]));
+      const shared = new Set(accountIds);
+      return findings
+        .filter((_, i) => onSharedAccountsOnly(refs[i], shared, txAccount))
+        .map((f) => ({
+          id: f.id,
+          userId: f.userId,
+          type: f.type,
+          title: f.title,
+          annualSavingsCents: f.annualSavingsCents,
+        }));
+    },
+  });
+}
+
+export type SharedView = Awaited<ReturnType<typeof sharedReadFor>>;

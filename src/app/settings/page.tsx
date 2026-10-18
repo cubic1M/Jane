@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { Suspense } from "react";
 import { AppHeader } from "@/components/app-header";
 import { ALERT_EMAILS_PER_DAY, ALERT_LABELS, ALERT_TYPES } from "@/config/alerts";
@@ -110,6 +111,16 @@ async function SettingsContent() {
           </ul>
         </section>
       )}
+
+      <section className="flex flex-col gap-2">
+        <h2 className="text-xl font-semibold">Household</h2>
+        <p className="text-zinc-600 dark:text-zinc-400">
+          Share chosen accounts with a partner, read-only.{" "}
+          <Link href="/household" className="font-medium text-emerald-700 hover:underline">
+            Manage your household
+          </Link>
+        </p>
+      </section>
 
       <section className="flex flex-col gap-3">
         <h2 className="text-xl font-semibold">Your data</h2>

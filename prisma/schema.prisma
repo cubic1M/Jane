@@ -192,6 +192,8 @@ model User {
   alerts             Alert[]
   askConversations   AskConversation[]
   askMessages        AskMessage[]
+  householdMember    HouseholdMember?
+  householdInvites   HouseholdInvite[]
 
   @@map("users")
 }
@@ -273,6 +275,8 @@ model Account {
   // Entered by hand for CSV accounts, which usually lack balances.
   currentBalanceCents   Int?           @map("current_balance_cents")
   availableBalanceCents Int?           @map("available_balance_cents")
+  // Whether the person's household partner may see this account (read-only).
+  sharedWithHousehold   Boolean        @default(false) @map("shared_with_household")
   createdAt             DateTime       @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt             DateTime       @updatedAt @map("updated_at") @db.Timestamptz(3)
 
@@ -575,6 +579,54 @@ model AskMessage {
   @@index([conversationId, createdAt])
   @@index([userId])
   @@map("ask_messages")
+}
+
+// Households: partners who share some accounts. Each person picks which of their own
+// accounts to share; a partner can read those (and undecided findings on them), never
+// change them, and never sees the other person's decisions.
+model Household {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  members HouseholdMember[]
+  invites HouseholdInvite[]
+
+  @@map("households")
+}
+
+model HouseholdMember {
+  id          String   @id @default(cuid())
+  householdId String   @map("household_id")
+  // One household per person.
+  userId      String   @unique @map("user_id")
+  joinedAt    DateTime @default(now()) @map("joined_at") @db.Timestamptz(3)
+
+  household Household @relation(fields: [householdId], references: [id], onDelete: Cascade)
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([householdId])
+  @@map("household_members")
+}
+
+model HouseholdInvite {
+  id          String    @id @default(cuid())
+  householdId String    @map("household_id")
+  // Who sent the invite.
+  userId      String    @map("user_id")
+  // Only someone signed in with this email can accept.
+  email       String
+  // SHA-256 of the link's token; the token itself is never stored.
+  tokenHash   String    @unique @map("token_hash")
+  expiresAt   DateTime  @map("expires_at") @db.Timestamptz(3)
+  acceptedAt  DateTime? @map("accepted_at") @db.Timestamptz(3)
+  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  household Household @relation(fields: [householdId], references: [id], onDelete: Cascade)
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([householdId])
+  @@index([userId])
+  @@map("household_invites")
 }
 
 // Invite codes keep the beta closed: signing up needs a code with uses left.
