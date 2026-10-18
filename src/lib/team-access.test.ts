@@ -136,6 +136,8 @@ describe("the mapping covers every audit event", () => {
     ["document_facts_saved", "own"],
     ["document_deleted", "own"],
     ["tax_pack_downloaded", "own"],
+    ["session_signed_out", "own"],
+    ["other_sessions_signed_out", "own"],
   ] as [AuditEvent, string][])("hides %s (%s)", (event, because) => {
     expect(TEAM_ACCESS_RULES[event]).toEqual({ shown: false, because });
     // Even an admin or system row about the person's action stays off the page.

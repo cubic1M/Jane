@@ -125,6 +125,8 @@ export const TEAM_ACCESS_RULES: Record<AuditEvent, EventRule> = {
   document_facts_saved: own,
   document_deleted: own,
   tax_pack_downloaded: own,
+  session_signed_out: own,
+  other_sessions_signed_out: own,
 };
 
 export const SHOWN_EVENTS = (Object.keys(TEAM_ACCESS_RULES) as AuditEvent[]).filter(
