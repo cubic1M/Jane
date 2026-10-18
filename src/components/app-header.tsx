@@ -23,6 +23,9 @@ export function AppHeader({ email }: { email: string | null | undefined }) {
         <Link href="/alerts" className="hover:underline">
           Alerts
         </Link>
+        <Link href="/ask" className="hover:underline">
+          Ask
+        </Link>
         <Link href="/settings" className="hover:underline">
           Settings
         </Link>
