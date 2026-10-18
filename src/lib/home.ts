@@ -29,7 +29,7 @@ export async function homeSummary(
       db.actions.count({ where: { status: { in: ["queued", "in_progress", "waiting_on_user"] } } }),
       db.findings.findMany({
         where: { status: { in: ["new", "shown"] } },
-        select: { id: true, title: true, annualSavingsCents: true },
+        select: { id: true, type: true, title: true, annualSavingsCents: true },
         orderBy: [{ createdAt: "desc" }, { id: "asc" }],
         take: HOME_LIST_LIMIT,
       }),

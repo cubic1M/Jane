@@ -54,6 +54,8 @@ export type DetectionInput = {
   recurringStreams: DetectionRecurringStream[];
   // Merchant keys Claude said are subscriptions (see AMBIGUOUS_SUBSCRIPTION_CATEGORIES).
   subscriptionMerchantKeys?: string[];
+  // Merchants whose subscription our team cancelled, and the day it was done.
+  cancelledMerchants?: { merchantKey: string; cancelledOn: string }[];
 };
 
 // The proof behind a finding, stored as JSON so the card can show why.

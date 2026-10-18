@@ -3,9 +3,6 @@ import {
   ALERT_RECENT_DAYS,
   BANK_FEE_CATEGORIES,
   CARD_INTEREST_CATEGORIES,
-  DUPLICATE_CHARGE_EXCLUDED_PRIMARIES,
-  DUPLICATE_CHARGE_MIN_CENTS,
-  DUPLICATE_CHARGE_WINDOW_DAYS,
   LARGE_CHARGE_EXCLUDED_PRIMARIES,
   LARGE_CHARGE_MEDIAN_MULTIPLE,
   LARGE_CHARGE_MIN_CENTS,
@@ -14,9 +11,10 @@ import {
 } from "@/config/detection";
 import { formatCents } from "@/lib/money";
 import { byDate, inList, inLookback } from "./helpers";
+import { duplicatePairs } from "./rules/duplicate-charge";
 import { buildStreams, merchantOf, type Stream } from "./streams";
 import type { Candidate, DetectionInput, DetectionTransaction } from "./types";
-import { addDays, daysBetween, median } from "./units";
+import { addDays, median } from "./units";
 
 // Alerts: things that just happened and are worth a look now. Like the rules, these are
 // pure: the user's data and this scan's findings in, alerts out. Each alert's key names
@@ -160,41 +158,16 @@ export function largeChargeAlerts(input: DetectionInput, streams: Stream[]): Ale
   });
 }
 
-// The same amount at the same merchant on the same account, within the window. The
-// later charge is the one flagged.
+// The later of two identical charges (see rules/duplicate-charge.ts), when recent.
 export function duplicateChargeAlerts(input: DetectionInput): AlertCandidate[] {
-  const groups = new Map<string, DetectionTransaction[]>();
-  for (const t of inLookback(input)) {
-    if (
-      t.amountCents < DUPLICATE_CHARGE_MIN_CENTS ||
-      inList(t.pfcPrimary, DUPLICATE_CHARGE_EXCLUDED_PRIMARIES)
-    ) {
-      continue;
-    }
-    const merchant = merchantOf(t)?.key;
-    if (!merchant) continue;
-    const key = `${t.accountId}\u0000${merchant}\u0000${t.amountCents}`;
-    groups.set(key, [...(groups.get(key) ?? []), t]);
-  }
-  const alerts: AlertCandidate[] = [];
-  for (const charges of groups.values()) {
-    charges.sort(byDate);
-    for (let i = 1; i < charges.length; i += 1) {
-      const [first, second] = [charges[i - 1], charges[i]];
-      if (
-        daysBetween(first.date, second.date) <= DUPLICATE_CHARGE_WINDOW_DAYS &&
-        isRecent(second.date, input.asOf)
-      ) {
-        alerts.push({
-          type: "duplicate_charge",
-          key: second.id,
-          title: `Charged twice? ${formatCents(second.amountCents)} at ${merchantName(second)}`,
-          body: `Two charges of ${formatCents(second.amountCents)} on ${accountName(input, second.accountId)}, ${shortDate(first.date)} and ${shortDate(second.date)}. If you only bought once, ask the merchant or your bank to reverse one.`,
-        });
-      }
-    }
-  }
-  return alerts.sort((a, b) => a.key.localeCompare(b.key));
+  return duplicatePairs(input)
+    .filter(({ second }) => isRecent(second.date, input.asOf))
+    .map(({ first, second }): AlertCandidate => ({
+      type: "duplicate_charge",
+      key: second.id,
+      title: `Charged twice? ${formatCents(second.amountCents)} at ${merchantName(second)}`,
+      body: `Two charges of ${formatCents(second.amountCents)} on ${accountName(input, second.accountId)}, ${shortDate(first.date)} and ${shortDate(second.date)}. If you only bought once, it's on your report and we can ask for the money back.`,
+    }));
 }
 
 // A low-balance forecast, at most once per account per month the dip falls in.

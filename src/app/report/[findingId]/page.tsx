@@ -9,6 +9,7 @@ import { UNDO_WINDOW_SECONDS } from "@/lib/decisions";
 import { formatCents } from "@/lib/money";
 import { requireUser } from "@/lib/session";
 import { DecisionButtons } from "./decision-buttons";
+import { savingsLine } from "@/lib/savings-text";
 
 async function Card({ params }: { params: PageProps<"/report/[findingId]">["params"] }) {
   const user = await requireUser();
@@ -48,9 +49,7 @@ async function Card({ params }: { params: PageProps<"/report/[findingId]">["para
           </h2>
           <p className="mt-1">{card.whatChanges}</p>
           <p className="mt-3 text-lg font-semibold">
-            {card.annualSavingsCents !== null
-              ? `Could save about ${formatCents(card.annualSavingsCents)} a year`
-              : "Savings depend on the quotes we find"}
+            {savingsLine(card.findingType, card.annualSavingsCents)}
           </p>
           <p className="text-xs text-zinc-600 dark:text-zinc-400">
             An estimate from your last 12 months, not a promise.

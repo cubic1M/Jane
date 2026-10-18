@@ -127,6 +127,21 @@ export function prepareExplainInput(finding: ExplainableFinding): PreparedInput 
       };
       sent = charges(evidence.transactions, true);
       break;
+    case "duplicate_charge":
+    case "charge_after_cancel":
+    case "trial_conversion":
+      facts = {
+        merchant: text(evidence.merchant),
+        refundAmount: money(num(evidence.refundCents)),
+        ...(finding.type === "charge_after_cancel"
+          ? { cancelledOn: text(evidence.cancelledOn) }
+          : {}),
+        ...(finding.type === "trial_conversion"
+          ? { trialCharge: money(num(evidence.trialCents)) }
+          : {}),
+      };
+      sent = charges(evidence.charges);
+      break;
     case "low_balance_risk":
       facts = {
         account: "checking account",

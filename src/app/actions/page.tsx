@@ -8,14 +8,23 @@ import { markOfferShown, offerFor, savedToDate } from "@/lib/membership/service"
 import { formatCents } from "@/lib/money";
 import { requireUser } from "@/lib/session";
 import { MembershipOffer } from "./membership-offer";
+import { savingsLine } from "@/lib/savings-text";
+import type { FindingType } from "@/generated/prisma/client";
 
 // The card text saved with the decision: what the person agreed to.
-function agreedTo(snapshot: unknown): { title: string; annualSavingsCents: number | null } {
-  const card = (snapshot ?? {}) as { title?: unknown; annualSavingsCents?: unknown };
+function agreedTo(snapshot: unknown) {
+  const card = (snapshot ?? {}) as {
+    title?: unknown;
+    annualSavingsCents?: unknown;
+    findingType?: unknown;
+  };
   return {
     title: typeof card.title === "string" ? card.title : "Your request",
     annualSavingsCents:
       typeof card.annualSavingsCents === "number" ? card.annualSavingsCents : null,
+    findingType: (typeof card.findingType === "string"
+      ? card.findingType
+      : "subscription_review") as FindingType,
   };
 }
 
@@ -105,7 +114,7 @@ async function ActionsContent({
                 </div>
                 {card.annualSavingsCents !== null && (
                   <p className="text-sm text-zinc-600 dark:text-zinc-400">
-                    Could save about {formatCents(card.annualSavingsCents)} a year
+                    {savingsLine(card.findingType, card.annualSavingsCents)}
                   </p>
                 )}
                 {action.status === "waiting_on_user" && action.userTodo ? (

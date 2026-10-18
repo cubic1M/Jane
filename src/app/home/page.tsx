@@ -5,6 +5,7 @@ import { AppHeader } from "@/components/app-header";
 import { homeSummary } from "@/lib/home";
 import { formatCents } from "@/lib/money";
 import { requireUser } from "@/lib/session";
+import { savingsPhrase } from "@/lib/savings-text";
 
 const CARD = "flex flex-col gap-1 rounded-xl border border-zinc-200 p-4 dark:border-zinc-800";
 const LINK = "font-medium text-emerald-700 hover:underline";
@@ -90,7 +91,7 @@ async function HomeContent() {
                   <span className="font-medium">{f.title}</span>
                   {f.annualSavingsCents !== null && (
                     <span className="text-sm text-zinc-600 dark:text-zinc-400">
-                      about {formatCents(f.annualSavingsCents)} a year
+                      {savingsPhrase(f.type, f.annualSavingsCents)}
                     </span>
                   )}
                 </Link>

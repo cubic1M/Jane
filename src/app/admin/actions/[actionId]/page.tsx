@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
+import { PLAYBOOKS } from "@/config/playbooks";
 import { ACTION_STATUS_LABELS } from "@/lib/action-status";
 import type { DecisionCard } from "@/lib/cards";
 import { getActionForAdmin } from "@/lib/concierge";
@@ -7,6 +8,7 @@ import { formatCents } from "@/lib/money";
 import { requireAdmin } from "@/lib/session";
 import { AdminNav } from "../../admin-nav";
 import { StatusForm } from "./status-form";
+import { savingsPhrase } from "@/lib/savings-text";
 
 async function ActionDetail({
   params,
@@ -20,6 +22,7 @@ async function ActionDetail({
   // The card exactly as the person approved it.
   const card = action.decision.cardSnapshot as unknown as DecisionCard;
   const closed = action.status === "done" || action.status === "failed";
+  const playbook = PLAYBOOKS[action.type];
 
   return (
     <>
@@ -42,7 +45,7 @@ async function ActionDetail({
         <p>
           <strong>Estimate:</strong>{" "}
           {card.annualSavingsCents !== null
-            ? `${formatCents(card.annualSavingsCents)} a year`
+            ? savingsPhrase(card.findingType, card.annualSavingsCents)
             : "none"}
         </p>
         <p>
@@ -50,6 +53,26 @@ async function ActionDetail({
         </p>
         {card.referralDisclosure && <p className="text-sm">{card.referralDisclosure}</p>}
       </section>
+
+      {playbook && !closed && (
+        <section className="flex flex-col gap-2 rounded-xl bg-emerald-50 p-4 text-sm dark:bg-emerald-950">
+          <h2 className="font-semibold">Playbook</h2>
+          <ol className="list-decimal space-y-1 pl-5">
+            {playbook.steps.map((step) => (
+              <li key={step}>{step}</li>
+            ))}
+          </ol>
+          <p className="font-medium">Ask the person for</p>
+          <ul className="list-disc space-y-1 pl-5">
+            {playbook.askFor.map((item) => (
+              <li key={item}>{item}</li>
+            ))}
+          </ul>
+          <p>
+            <strong>Closing:</strong> {playbook.close}
+          </p>
+        </section>
+      )}
 
       <section className="flex flex-col gap-2">
         <h2 className="font-semibold">Evidence</h2>

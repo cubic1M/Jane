@@ -1,5 +1,7 @@
 import { bankFees } from "./rules/bank-fees";
 import { cardInterest } from "./rules/card-interest";
+import { chargeAfterCancel } from "./rules/charge-after-cancel";
+import { duplicateCharge } from "./rules/duplicate-charge";
 import { duplicateSubscription } from "./rules/duplicate-subscription";
 import { idleCash } from "./rules/idle-cash";
 import { insuranceReshop } from "./rules/insurance-reshop";
@@ -7,6 +9,7 @@ import { lowBalanceRisk } from "./rules/low-balance-risk";
 import { priceIncrease } from "./rules/price-increase";
 import type { Rule } from "./rules/rule";
 import { subscriptionReview } from "./rules/subscription-review";
+import { trialConversion } from "./rules/trial-conversion";
 import { buildStreams } from "./streams";
 import type { Candidate, DetectionInput } from "./types";
 
@@ -19,6 +22,9 @@ export const RULES: readonly Rule[] = [
   insuranceReshop,
   cardInterest,
   lowBalanceRisk,
+  duplicateCharge,
+  chargeAfterCancel,
+  trialConversion,
 ];
 
 // Pure: same input, same candidates in the same order. If two candidates share a type and
