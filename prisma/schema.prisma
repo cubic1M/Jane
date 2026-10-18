@@ -186,6 +186,10 @@ model User {
   // The Terms and Privacy Policy version the person last accepted (src/config/legal.ts).
   termsVersion               String?   @map("terms_version")
   termsAcceptedAt            DateTime? @map("terms_accepted_at") @db.Timestamptz(3)
+  // The first-weeks checklist on Home: when each item was first seen done (item key to
+  // ISO time, so each funnel event fires once) and when the person hid it for good.
+  checklistProgress          Json      @default("{}") @map("checklist_progress")
+  checklistDismissedAt       DateTime? @map("checklist_dismissed_at") @db.Timestamptz(3)
 
   authAccounts        AuthAccount[]
   sessions            Session[]

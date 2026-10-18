@@ -1,13 +1,16 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import { after } from "next/server";
 import { Suspense } from "react";
 import { AppHeader } from "@/components/app-header";
 import { BudgetList } from "@/components/budget-list";
+import { firstWeekChecklist, recordChecklistProgress } from "@/lib/checklist";
 import { homeSummary } from "@/lib/home";
 import type { SafeToSpend } from "@/planning/safe-to-spend";
 import { formatCents } from "@/lib/money";
 import { requireUser } from "@/lib/session";
 import { savingsPhrase } from "@/lib/savings-text";
+import { FirstWeekChecklist } from "./checklist";
 
 const CARD = "flex flex-col gap-1 rounded-xl border border-zinc-200 p-4 dark:border-zinc-800";
 const LINK = "font-medium text-emerald-700 hover:underline";
@@ -69,6 +72,10 @@ async function HomeContent() {
   const user = await requireUser();
   const home = await homeSummary(user.id);
   if (!home) redirect("/connect");
+  const checklist = await firstWeekChecklist(user.id);
+  if (checklist?.newlyDone.length) {
+    after(() => recordChecklistProgress(user.id, checklist));
+  }
 
   return (
     <>
@@ -96,6 +103,8 @@ async function HomeContent() {
           </Link>
         </span>
       </div>
+
+      {checklist && !checklist.complete && <FirstWeekChecklist items={checklist.items} />}
 
       {home.safeToSpend && <SafeToSpendCard safe={home.safeToSpend} />}
 

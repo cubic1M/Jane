@@ -27,6 +27,7 @@ export const ACTIVITY_EVENTS: readonly string[] = [
   "import_completed",
   "membership_reserved",
   "membership_checkout_started",
+  "checklist_dismissed",
 ];
 
 // Records deleted by the daily cleanup once they're this many days old. `policy` is how
