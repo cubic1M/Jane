@@ -7,6 +7,361 @@ datasource db {
   provider = "postgresql"
 }
 
+// Conventions: money is integer cents, timestamps are UTC (timestamptz), and every
+// user-owned row has user_id and is deleted with its user. Query user-owned tables
+// through src/lib/db-scoped.ts, never the raw client.
+
+enum Role {
+  user
+  admin
+
+  @@map("role")
+}
+
+enum FindingType {
+  subscription_review
+  duplicate_subscription
+  price_increase
+  bank_fees
+  idle_cash
+  insurance_reshop
+  card_interest
+
+  @@map("finding_type")
+}
+
+enum FindingStatus {
+  new
+  shown
+  approved
+  declined
+  in_progress
+  done
+  failed
+
+  @@map("finding_status")
+}
+
+enum Confidence {
+  low
+  medium
+  high
+
+  @@map("confidence")
+}
+
+enum DecisionChoice {
+  yes
+  no
+
+  @@map("decision_choice")
+}
+
+enum ActionType {
+  cancel_subscription
+  fight_price_increase
+  recover_bank_fees
+  move_idle_cash
+  insurance_reshop
+  card_interest
+
+  @@map("action_type")
+}
+
+enum ActionStatus {
+  queued
+  in_progress
+  waiting_on_user
+  done
+  failed
+
+  @@map("action_status")
+}
+
+enum MembershipIntentKind {
+  reserve
+  paid
+
+  @@map("membership_intent_kind")
+}
+
+enum ActorType {
+  user
+  admin
+  system
+
+  @@map("actor_type")
+}
+
+model User {
+  id            String    @id @default(cuid())
+  email         String    @unique
+  emailVerified DateTime? @map("email_verified") @db.Timestamptz(3)
+  name          String?
+  image         String?
+  role          Role      @default(user)
+  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt     DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
+  deletedAt     DateTime? @map("deleted_at") @db.Timestamptz(3)
+
+  authAccounts      AuthAccount[]
+  sessions          Session[]
+  plaidItems        PlaidItem[]
+  accounts          Account[]
+  transactions      Transaction[]
+  recurringStreams  RecurringStream[]
+  findings          Finding[]
+  decisions         Decision[]
+  actions           Action[]
+  digests           Digest[]
+  membershipIntents MembershipIntent[]
+  analyticsEvents   AnalyticsEvent[]
+
+  @@map("users")
+}
+
+// Auth.js tables. "accounts" is taken by bank accounts, so sign-in providers live in
+// auth_accounts. OAuth tokens are not stored: we only use Google to sign in.
+model AuthAccount {
+  id                String   @id @default(cuid())
+  userId            String   @map("user_id")
+  type              String
+  provider          String
+  providerAccountId String   @map("provider_account_id")
+  createdAt         DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@index([userId])
+  @@map("auth_accounts")
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique @map("session_token")
+  userId       String   @map("user_id")
+  expires      DateTime @db.Timestamptz(3)
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("sessions")
+}
+
+// Magic-link tokens. Auth.js stores a hash, never the token from the email.
+model VerificationToken {
+  identifier String
+  token      String
+  expires    DateTime @db.Timestamptz(3)
+
+  @@id([identifier, token])
+  @@map("verification_tokens")
+}
+
+model PlaidItem {
+  id                   String    @id @default(cuid())
+  userId               String    @map("user_id")
+  plaidItemId          String    @unique @map("plaid_item_id")
+  // AES-256-GCM via src/lib/crypto.ts. Never log or return it.
+  accessTokenEncrypted String    @map("access_token_encrypted")
+  institutionName      String?   @map("institution_name")
+  status               String    @default("active")
+  transactionsCursor   String?   @map("transactions_cursor")
+  lastSyncedAt         DateTime? @map("last_synced_at") @db.Timestamptz(3)
+  createdAt            DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt            DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  accounts Account[]
+
+  @@index([userId])
+  @@map("plaid_items")
+}
+
+model Account {
+  id                    String   @id @default(cuid())
+  userId                String   @map("user_id")
+  itemId                String   @map("item_id")
+  plaidAccountId        String   @unique @map("plaid_account_id")
+  name                  String
+  mask                  String?
+  type                  String
+  subtype               String?
+  currentBalanceCents   Int?     @map("current_balance_cents")
+  availableBalanceCents Int?     @map("available_balance_cents")
+  createdAt             DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt             DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  user             User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  item             PlaidItem         @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  transactions     Transaction[]
+  recurringStreams RecurringStream[]
+
+  @@index([userId])
+  @@index([itemId])
+  @@map("accounts")
+}
+
+model Transaction {
+  id                 String   @id @default(cuid())
+  userId             String   @map("user_id")
+  accountId          String   @map("account_id")
+  plaidTransactionId String   @unique @map("plaid_transaction_id")
+  date               DateTime @db.Date
+  // Plaid's sign convention: positive is money out of the account.
+  amountCents        Int      @map("amount_cents")
+  merchantName       String?  @map("merchant_name")
+  pfcPrimary         String?  @map("pfc_primary")
+  pfcDetailed        String?  @map("pfc_detailed")
+  pending            Boolean  @default(false)
+  createdAt          DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt          DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  account Account @relation(fields: [accountId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([accountId])
+  @@index([userId, date])
+  @@map("transactions")
+}
+
+model RecurringStream {
+  id                 String    @id @default(cuid())
+  userId             String    @map("user_id")
+  accountId          String    @map("account_id")
+  plaidStreamId      String    @unique @map("plaid_stream_id")
+  merchantName       String?   @map("merchant_name")
+  // Plaid's values as given, e.g. MONTHLY; status e.g. MATURE.
+  frequency          String
+  lastAmountCents    Int       @map("last_amount_cents")
+  averageAmountCents Int       @map("average_amount_cents")
+  lastDate           DateTime? @map("last_date") @db.Date
+  status             String
+  createdAt          DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt          DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  account Account @relation(fields: [accountId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([accountId])
+  @@map("recurring_streams")
+}
+
+model Finding {
+  id                 String        @id @default(cuid())
+  userId             String        @map("user_id")
+  type               FindingType
+  title              String
+  explanation        String?
+  // Null when there is no dollar estimate (e.g. insurance reshop).
+  annualSavingsCents Int?          @map("annual_savings_cents")
+  confidence         Confidence
+  evidence           Json          @default("{}")
+  status             FindingStatus @default(new)
+  createdAt          DateTime      @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt          DateTime      @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  decisions Decision[]
+
+  @@index([userId])
+  @@index([userId, status])
+  @@map("findings")
+}
+
+// Append-only log of every yes or no, with the card exactly as the user saw it.
+model Decision {
+  id           String         @id @default(cuid())
+  findingId    String         @map("finding_id")
+  userId       String         @map("user_id")
+  choice       DecisionChoice
+  cardSnapshot Json           @map("card_snapshot")
+  createdAt    DateTime       @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  finding Finding @relation(fields: [findingId], references: [id], onDelete: Cascade)
+  action  Action?
+
+  @@index([userId])
+  @@index([findingId])
+  @@map("decisions")
+}
+
+model Action {
+  id           String       @id @default(cuid())
+  decisionId   String       @unique @map("decision_id")
+  userId       String       @map("user_id")
+  type         ActionType
+  status       ActionStatus @default(queued)
+  assignee     String?
+  notes        String?
+  minutesSpent Int?         @map("minutes_spent")
+  startedAt    DateTime?    @map("started_at") @db.Timestamptz(3)
+  completedAt  DateTime?    @map("completed_at") @db.Timestamptz(3)
+  createdAt    DateTime     @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt    DateTime     @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  decision Decision @relation(fields: [decisionId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([status, createdAt])
+  @@map("actions")
+}
+
+model Digest {
+  id        String    @id @default(cuid())
+  userId    String    @map("user_id")
+  weekStart DateTime  @map("week_start") @db.Date
+  payload   Json
+  sentAt    DateTime? @map("sent_at") @db.Timestamptz(3)
+  openedAt  DateTime? @map("opened_at") @db.Timestamptz(3)
+  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, weekStart])
+  @@index([userId])
+  @@map("digests")
+}
+
+model MembershipIntent {
+  id              String               @id @default(cuid())
+  userId          String               @map("user_id")
+  kind            MembershipIntentKind
+  stripeSessionId String?              @unique @map("stripe_session_id")
+  amountCents     Int?                 @map("amount_cents")
+  createdAt       DateTime             @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("membership_intents")
+}
+
+// Deliberately no foreign keys: the log must outlive the users and rows it describes,
+// including the record of a user deleting their data.
+model AuditLog {
+  id         String    @id @default(cuid())
+  // Null for system events.
+  actorId    String?   @map("actor_id")
+  actorType  ActorType @map("actor_type")
+  event      String
+  targetType String?   @map("target_type")
+  targetId   String?   @map("target_id")
+  metadata   Json      @default("{}")
+  createdAt  DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  @@index([actorId])
+  @@index([targetType, targetId])
+  @@index([event, createdAt])
+  @@map("audit_log")
+}
+
 model AnalyticsEvent {
   id         String   @id @default(cuid())
   // Null for visitors who have not signed up; their anonymous_id is in properties.
@@ -14,6 +369,8 @@ model AnalyticsEvent {
   name       String
   properties Json     @default("{}")
   createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  user User? @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
   @@index([name, createdAt])
