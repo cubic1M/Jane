@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useState } from "react";
 import type { ActionStatus } from "@/generated/prisma/client";
 import { ACTION_STATUS_LABELS } from "@/lib/action-status";
 import { updateAction, type FormState } from "./actions";
@@ -15,14 +15,19 @@ export function StatusForm({
   assignee,
   notes,
   userTodo,
+  team,
+  replies,
 }: {
   actionId: string;
   status: ActionStatus;
   assignee: string | null;
   notes: string | null;
   userTodo: string | null;
+  team: string[];
+  replies: { id: string; title: string; body: string }[];
 }) {
   const [state, action, pending] = useActionState<FormState, FormData>(updateAction, null);
+  const [todo, setTodo] = useState(userTodo ?? "");
 
   return (
     <form action={action} className="flex flex-col gap-4">
@@ -39,11 +44,45 @@ export function StatusForm({
       </label>
       <label className="flex flex-col gap-1 text-sm font-medium">
         Assignee
-        <input name="assignee" defaultValue={assignee ?? ""} className={FIELD} />
+        <select name="assignee" defaultValue={assignee ?? ""} className={FIELD}>
+          <option value="">Unassigned</option>
+          {/* Someone no longer on the team stays visible until reassigned. */}
+          {[...new Set([...team, ...(assignee ? [assignee] : [])])].map((email) => (
+            <option key={email} value={email}>
+              {email}
+            </option>
+          ))}
+        </select>
       </label>
+      {replies.length > 0 && (
+        <label className="flex flex-col gap-1 text-sm font-medium">
+          Insert a saved reply
+          <select
+            value=""
+            onChange={(e) => {
+              const reply = replies.find((r) => r.id === e.target.value);
+              if (reply) setTodo(reply.body);
+            }}
+            className={FIELD}
+          >
+            <option value="">Pick one…</option>
+            {replies.map((r) => (
+              <option key={r.id} value={r.id}>
+                {r.title}
+              </option>
+            ))}
+          </select>
+        </label>
+      )}
       <label className="flex flex-col gap-1 text-sm font-medium">
         What the person needs to do (required for Waiting on you; shown to them)
-        <textarea name="userTodo" defaultValue={userTodo ?? ""} rows={2} className={FIELD} />
+        <textarea
+          name="userTodo"
+          value={todo}
+          onChange={(e) => setTodo(e.target.value)}
+          rows={3}
+          className={FIELD}
+        />
       </label>
       <label className="flex flex-col gap-1 text-sm font-medium">
         Minutes spent (required to close as Done or Couldn&apos;t complete)

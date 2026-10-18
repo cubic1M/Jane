@@ -192,4 +192,42 @@ describe.runIf(url)("concierge actions against a real database", () => {
       { user_id: userId },
     );
   });
+
+  it("assigns actions, logs who moved them, and filters the queue by assignee", async () => {
+    const { actionId } = await approvedAction();
+    const change = {
+      status: "in_progress" as const,
+      assignee: "sam@example.com",
+      notes: null,
+      userTodo: null,
+      failureReason: null,
+      minutesSpent: null,
+    };
+    await changeActionStatus(ADMIN, actionId, change, { client, notify });
+    expect(logAudit).toHaveBeenCalledWith(
+      { type: "admin", id: ADMIN.id },
+      "action_assigned",
+      { type: "action", id: actionId },
+      { from: null, to: "sam@example.com" },
+    );
+
+    vi.mocked(logAudit).mockClear();
+    await changeActionStatus(ADMIN, actionId, change, { client, notify });
+    expect(vi.mocked(logAudit).mock.calls.map(([, event]) => event)).not.toContain(
+      "action_assigned",
+    );
+
+    const sams = await listQueue(
+      ADMIN,
+      { type: null, status: null, assignee: "sam@example.com" },
+      { client },
+    );
+    expect(sams.map((a) => a.id)).toContain(actionId);
+    const unassigned = await listQueue(
+      ADMIN,
+      { type: null, status: null, assignee: "unassigned" },
+      { client },
+    );
+    expect(unassigned.map((a) => a.id)).not.toContain(actionId);
+  });
 });

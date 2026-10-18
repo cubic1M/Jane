@@ -36,7 +36,10 @@ export type AuditEvent =
   | "account_sharing_changed"
   | "referral_partner_saved"
   | "referral_conversion_recorded"
-  | "job_retried";
+  | "job_retried"
+  | "action_assigned"
+  | "saved_reply_saved"
+  | "saved_reply_deleted";
 
 export type AuditActor = { type: ActorType; id: string | null };
 
