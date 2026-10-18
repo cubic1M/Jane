@@ -21,10 +21,14 @@ function escapeHtml(value: string): string {
 
 export type StatusEmail = { subject: string; lines: string[] };
 
+export const MEMBERSHIP_LINE =
+  "We'll keep doing this for you, ongoing. See your actions page to become a founding member.";
+
 export function statusEmail(
   status: ActionStatus,
   title: string,
   userTodo: string | null,
+  { membershipOffer = false }: { membershipOffer?: boolean } = {},
 ): StatusEmail | null {
   switch (status) {
     case "in_progress":
@@ -35,7 +39,10 @@ export function statusEmail(
         lines: [`To finish "${title}", we need you to:`, userTodo ?? "Check your actions page."],
       };
     case "done":
-      return { subject: `Done: ${title}`, lines: [`"${title}" is finished.`] };
+      return {
+        subject: `Done: ${title}`,
+        lines: [`"${title}" is finished.`, ...(membershipOffer ? [MEMBERSHIP_LINE] : [])],
+      };
     case "failed":
       return {
         subject: `We couldn't finish: ${title}`,

@@ -11,6 +11,8 @@ export type DigestInput = {
   // When the last digest went out; null for someone's first.
   lastSentAt: Date | null;
   moneyFoundCents: number;
+  // Whether the membership offer is due (src/lib/membership/offer.ts).
+  membershipOffer: boolean;
   actions: {
     status: ActionStatus;
     completedAt: Date | null;
@@ -30,6 +32,7 @@ export type DigestPayload = {
   finishedThisWeek: { title: string; annualSavingsCents: number | null }[];
   pending: { title: string; status: ActionStatus; userTodo: string | null }[];
   newFindings: { title: string; annualSavingsCents: number | null }[];
+  membershipOffer: boolean;
 };
 
 const total = (rows: { annualSavingsCents: number | null }[]) =>
@@ -65,5 +68,6 @@ export function buildDigest(input: DigestInput): DigestPayload | null {
       title,
       annualSavingsCents,
     })),
+    membershipOffer: input.membershipOffer,
   };
 }

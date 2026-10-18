@@ -9,6 +9,7 @@ import { sendStatusEmail, statusEmail } from "@/lib/action-emails";
 import { track } from "@/lib/analytics";
 import { logAudit } from "@/lib/audit";
 import { db as defaultClient } from "@/lib/db";
+import { offerFor } from "@/lib/membership/service";
 
 // The team's side of actions. Admin pages work across users, so these use the raw
 // client; every caller must have passed requireAdmin() first, and every read of user
@@ -149,7 +150,12 @@ export async function changeActionStatus(
       minutes_spent: closing ? change.minutesSpent : null,
     });
   }
-  const email = statusEmail(change.status, titleOf(action.decision.cardSnapshot), change.userTodo);
+  // The first finished action is when the membership offer starts (spec step 10).
+  const membershipOffer =
+    change.status === "done" && (await offerFor(action.userId, { client, now })).show;
+  const email = statusEmail(change.status, titleOf(action.decision.cardSnapshot), change.userTodo, {
+    membershipOffer,
+  });
   if (email && action.user.email) {
     try {
       await notify(action.user.email, email);

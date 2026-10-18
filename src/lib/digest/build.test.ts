@@ -8,6 +8,7 @@ const input = (overrides: Partial<DigestInput> = {}): DigestInput => ({
   now: NOW,
   lastSentAt: daysAgo(7),
   moneyFoundCents: 50_000,
+  membershipOffer: false,
   actions: [],
   findings: [],
   ...overrides,
@@ -86,5 +87,9 @@ describe("buildDigest", () => {
     expect(
       buildDigest(input({ findings, lastSentAt: null }))?.newFindings.map((f) => f.title),
     ).toEqual(["New", "Old"]);
+  });
+
+  it("never sends a digest for the membership offer alone", () => {
+    expect(buildDigest(input({ membershipOffer: true }))).toBeNull();
   });
 });

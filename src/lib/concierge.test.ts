@@ -1,4 +1,7 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
+
+vi.mock("@/lib/db", () => ({ db: {} }));
+vi.mock("@/lib/session", () => ({ requireUser: vi.fn() }));
 import { checkChange, type StatusChange } from "./concierge";
 
 const change = (overrides: Partial<StatusChange> = {}): StatusChange => ({
