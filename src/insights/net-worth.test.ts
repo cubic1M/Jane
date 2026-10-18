@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { monthlyNetWorth, netWorth } from "./net-worth";
+import { monthlyNetWorth, netWorth, netWorthOn } from "./net-worth";
 
 const accounts = [
   { id: "chk", name: "Checking", type: "depository", balanceCents: 250_000 },
@@ -17,6 +17,18 @@ describe("netWorth", () => {
       netCents: 330_000,
       missing: ["Old Card"],
     });
+  });
+});
+
+describe("netWorthOn", () => {
+  it("uses each account's last snapshot on or before the day", () => {
+    const snapshots = [
+      { accountId: "chk", date: "2026-10-01", balanceCents: 100_000 },
+      { accountId: "chk", date: "2026-10-10", balanceCents: 150_000 },
+      { accountId: "card", date: "2026-10-05", balanceCents: 20_000 },
+    ];
+    expect(netWorthOn(accounts, snapshots, "2026-10-08")).toBe(80_000);
+    expect(netWorthOn(accounts, snapshots, "2026-09-01")).toBeNull();
   });
 });
 

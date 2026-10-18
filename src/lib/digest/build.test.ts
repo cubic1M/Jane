@@ -101,6 +101,42 @@ describe("buildDigest", () => {
     expect(buildDigest(input({ alerts: alerts.slice(1) }))).toBeNull();
   });
 
+  it("adds budgets near or over their limit, goals, and the week's net worth change", () => {
+    const digest = buildDigest(
+      input({
+        plans: {
+          budgets: [
+            { category: "Food and drink", spentCents: 18_500, budgetCents: 20_000 },
+            { category: "Shopping", spentCents: 5_000, budgetCents: 20_000 },
+            { category: "Travel", spentCents: 30_000, budgetCents: 20_000 },
+          ],
+          goals: [{ name: "Trip", percent: 40, savedChangeCents: 10_000 }],
+          netWorth: { nowCents: 500_000, weekAgoCents: 480_000 },
+        },
+      }),
+    );
+    expect(digest?.budgets).toEqual([
+      { category: "Food and drink", spentCents: 18_500, budgetCents: 20_000, over: false },
+      { category: "Travel", spentCents: 30_000, budgetCents: 20_000, over: true },
+    ]);
+    expect(digest?.goals).toEqual([{ name: "Trip", percent: 40, savedChangeCents: 10_000 }]);
+    expect(digest?.netWorth).toEqual({ nowCents: 500_000, changeCents: 20_000 });
+  });
+
+  it("leaves out net worth without last week's snapshot, and still never sends empty", () => {
+    expect(
+      buildDigest(
+        input({
+          plans: {
+            budgets: [{ category: "Shopping", spentCents: 5_000, budgetCents: 20_000 }],
+            goals: [],
+            netWorth: { nowCents: 500_000, weekAgoCents: null },
+          },
+        }),
+      ),
+    ).toBeNull();
+  });
+
   it("never sends a digest for the membership offer alone", () => {
     expect(buildDigest(input({ membershipOffer: true }))).toBeNull();
   });

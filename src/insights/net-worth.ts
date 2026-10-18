@@ -44,6 +44,28 @@ export function netWorth(accounts: NetWorthAccount[]): NetWorth {
 
 export type Snapshot = { accountId: string; date: string; balanceCents: number };
 
+// Net worth on a past day: each account's last snapshot on or before it. Null when no
+// account had a snapshot by then.
+export function netWorthOn(
+  accounts: Pick<NetWorthAccount, "id" | "type">[],
+  snapshots: Snapshot[],
+  date: string,
+): number | null {
+  const typeOf = new Map(accounts.map((a) => [a.id, a.type]));
+  const latest = new Map<string, Snapshot>();
+  for (const s of snapshots) {
+    if (!typeOf.has(s.accountId) || s.date > date) continue;
+    const known = latest.get(s.accountId);
+    if (!known || s.date > known.date) latest.set(s.accountId, s);
+  }
+  if (latest.size === 0) return null;
+  let net = 0;
+  for (const [accountId, s] of latest) {
+    net += isDebt(typeOf.get(accountId) ?? "") ? -s.balanceCents : s.balanceCents;
+  }
+  return net;
+}
+
 // Net worth at the end of each month: each account's last snapshot in or before that
 // month. Months before any snapshot have no value.
 export function monthlyNetWorth(

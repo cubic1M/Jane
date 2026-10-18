@@ -1,3 +1,4 @@
+import { DIGEST_BUDGET_NEAR_SHARE } from "@/config/digest";
 import type { ActionStatus } from "@/generated/prisma/client";
 
 // What goes in a week's digest, and whether to send one at all. Pure, so the skip rule
@@ -25,6 +26,14 @@ export type DigestInput = {
   findings: { title: string; annualSavingsCents: number | null; createdAt: Date }[];
   // Alerts the person gets (not turned off). Ones already emailed aren't repeated.
   alerts: { title: string; createdAt: Date; emailedAt: Date | null }[];
+  // Budgets, goals and net worth, for people who use them.
+  plans?: DigestPlans;
+};
+
+export type DigestPlans = {
+  budgets: { category: string; spentCents: number; budgetCents: number }[];
+  goals: { name: string; percent: number; savedChangeCents: number | null }[];
+  netWorth: { nowCents: number; weekAgoCents: number | null } | null;
 };
 
 export type DigestPayload = {
@@ -36,6 +45,10 @@ export type DigestPayload = {
   newFindings: { title: string; annualSavingsCents: number | null }[];
   alerts: { title: string }[];
   membershipOffer: boolean;
+  // Older payloads (before step 39) have none of these.
+  budgets?: { category: string; spentCents: number; budgetCents: number; over: boolean }[];
+  goals?: { name: string; percent: number; savedChangeCents: number | null }[];
+  netWorth?: { nowCents: number; changeCents: number } | null;
 };
 
 const total = (rows: { annualSavingsCents: number | null }[]) =>
@@ -50,12 +63,25 @@ export function buildDigest(input: DigestInput): DigestPayload | null {
   const since = input.lastSentAt ?? new Date(0);
   const newFindings = input.findings.filter((f) => f.createdAt > since);
   const alerts = input.alerts.filter((a) => a.createdAt > since && a.emailedAt === null);
+  // Budgets close to or over their limit; goals; net worth when last week is known.
+  const budgets = (input.plans?.budgets ?? [])
+    .filter((b) => b.spentCents >= b.budgetCents * DIGEST_BUDGET_NEAR_SHARE)
+    .map((b) => ({ ...b, over: b.spentCents > b.budgetCents }));
+  const goals = input.plans?.goals ?? [];
+  const worth = input.plans?.netWorth;
+  const netWorth =
+    worth && worth.weekAgoCents !== null
+      ? { nowCents: worth.nowCents, changeCents: worth.nowCents - worth.weekAgoCents }
+      : null;
 
   if (
     finishedThisWeek.length === 0 &&
     pending.length === 0 &&
     newFindings.length === 0 &&
-    alerts.length === 0
+    alerts.length === 0 &&
+    budgets.length === 0 &&
+    goals.length === 0 &&
+    netWorth === null
   ) {
     return null;
   }
@@ -79,5 +105,8 @@ export function buildDigest(input: DigestInput): DigestPayload | null {
     })),
     alerts: alerts.map(({ title }) => ({ title })),
     membershipOffer: input.membershipOffer,
+    budgets,
+    goals,
+    netWorth,
   };
 }

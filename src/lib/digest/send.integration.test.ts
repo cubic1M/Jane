@@ -147,4 +147,51 @@ describe.runIf(url)("runDigests against a real database", () => {
     expect(preview?.text).toContain("Alerts\n- $35.00 fee on Checking");
     expect(run.previews.some((p) => p.userId === ids.muted)).toBe(false);
   });
+
+  it("adds budgets, goals and net worth for people who use them, matching the pages", async () => {
+    await person("planner");
+    const userId = ids.planner;
+    const account = await client.account.findFirstOrThrow({ where: { userId } });
+    await client.account.update({
+      where: { id: account.id },
+      data: { currentBalanceCents: 30_000 },
+    });
+    // Card balance a week ago was $250 owed; now $300: net worth down $50.
+    await client.balanceSnapshot.create({
+      data: { userId, accountId: account.id, date: new Date("2026-10-12"), balanceCents: 25_000 },
+    });
+    await client.transaction.create({
+      data: {
+        userId,
+        accountId: account.id,
+        source: "csv",
+        dedupeKey: "food-1",
+        date: new Date("2026-10-05"),
+        amountCents: 23_000,
+        description: "GROCER",
+        pfcPrimary: "FOOD_AND_DRINK",
+      },
+    });
+    await client.budget.create({
+      data: { userId, category: "Food and drink", amountCents: 20_000 },
+    });
+    await client.savingsGoal.create({
+      data: {
+        userId,
+        name: "Trip",
+        targetCents: 100_000,
+        targetDate: new Date("2027-06-01"),
+        manualSavedCents: 40_000,
+      },
+    });
+
+    const run = await runDigests({ client, now: MONDAY, dryRun: true, send });
+    const preview = run.previews.find((p) => p.userId === userId);
+
+    expect(preview?.text).toContain(
+      "Budgets this month\n- Food and drink: $230.00 of $200.00 (over)",
+    );
+    expect(preview?.text).toContain("Your goals\n- Trip: 40%");
+    expect(preview?.text).toContain("Net worth\n- -$300.00, down $50.00 this week");
+  });
 });
