@@ -386,6 +386,36 @@ const ONE_OFF: (Template & { offsets: number[] })[] = [
     amount: 64.2,
     offsets: [-2],
   },
+  // Spec step 70: the yearly car registration, paid five months ago.
+  {
+    key: "dmv",
+    account: "checking",
+    name: "CA DMV VEHICLE REGISTRATION",
+    merchant: "California DMV",
+    category: "GOVERNMENT_AND_NON_PROFIT_GOVERNMENT_DEPARTMENTS_AND_AGENCIES",
+    amount: 212,
+    offsets: [-150],
+  },
+];
+
+// Spec step 70: holiday gifts every November and December, on these [month, day]s, so
+// the season shows as a yearly cost to set aside for.
+const SEASONAL: (Template & { dates: [month: number, day: number][] })[] = [
+  {
+    key: "gifts",
+    account: "card",
+    name: "ETSY.COM*GIFTS",
+    merchant: "Etsy",
+    category: "GENERAL_MERCHANDISE_GIFTS_AND_NOVELTIES",
+    amount: [70, 150],
+    dates: [
+      [11, 24],
+      [11, 28],
+      [12, 5],
+      [12, 14],
+      [12, 19],
+    ],
+  },
 ];
 
 // How far back the first sync goes, like Plaid's days_requested.
@@ -446,6 +476,14 @@ export function demoTransactions(
     for (const offset of t.offsets) {
       const day = addDays(demo.anchor, offset);
       if (inRange(day)) out.push(transaction(t, day, demo));
+    }
+  }
+  for (const t of SEASONAL) {
+    for (let y = first.getUTCFullYear(); y <= last.getUTCFullYear(); y += 1) {
+      for (const [month, dayOfMonth] of t.dates) {
+        const day = `${y}-${String(month).padStart(2, "0")}-${String(dayOfMonth).padStart(2, "0")}`;
+        if (inRange(day)) out.push(transaction(t, day, demo));
+      }
     }
   }
   return out.sort(
