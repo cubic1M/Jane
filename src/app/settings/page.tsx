@@ -1,10 +1,13 @@
 import { Suspense } from "react";
 import { AppHeader } from "@/components/app-header";
+import { ALERT_EMAILS_PER_DAY, ALERT_LABELS, ALERT_TYPES } from "@/config/alerts";
 import { DEFAULT_TIMEZONE, TIMEZONES } from "@/config/digest";
+import { alertPrefs, isUrgent } from "@/lib/alerts";
 import { db } from "@/lib/db";
 import { scopedDb } from "@/lib/db-scoped";
 import { requireUser } from "@/lib/session";
 import { formatCents } from "@/lib/money";
+import { AlertsForm } from "./alerts-form";
 import { DeleteDataForm, DisconnectForm, RefreshForm } from "./data-forms";
 import { EmailForm } from "./email-form";
 
@@ -14,7 +17,7 @@ async function SettingsContent() {
   const [prefs, items, accounts, lastCsv] = await Promise.all([
     db.user.findUniqueOrThrow({
       where: { id: user.id },
-      select: { digestEnabled: true, timezone: true },
+      select: { digestEnabled: true, timezone: true, alertPrefs: true },
     }),
     mine.plaidItems.findMany({
       select: {
@@ -46,6 +49,7 @@ async function SettingsContent() {
     }),
   ]);
   const csvUpdated = new Map(lastCsv.map((row) => [row.accountId, row.createdAt]));
+  const alerts = alertPrefs(prefs.alertPrefs);
   const day = (d: Date | null | undefined) => (d ? d.toISOString().slice(0, 10) : "not yet");
 
   return (
@@ -127,6 +131,22 @@ async function SettingsContent() {
           digestEnabled={prefs.digestEnabled}
           timezone={prefs.timezone ?? DEFAULT_TIMEZONE}
           timezones={TIMEZONES}
+        />
+      </section>
+
+      <section id="alerts" className="flex scroll-mt-8 flex-col gap-3">
+        <h2 className="text-xl font-semibold">Alerts</h2>
+        <p className="text-zinc-600 dark:text-zinc-400">
+          We check for these after every update from your bank. Emails right away are limited to{" "}
+          {ALERT_EMAILS_PER_DAY} a day; anything else waits for the weekly email.
+        </p>
+        <AlertsForm
+          rows={ALERT_TYPES.map((type) => ({
+            type,
+            ...ALERT_LABELS[type],
+            urgent: isUrgent(type),
+            value: alerts[type],
+          }))}
         />
       </section>
 

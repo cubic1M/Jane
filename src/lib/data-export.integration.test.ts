@@ -96,6 +96,9 @@ describe.runIf(url)("data export against a real database", () => {
     await client.subscriptionCheck.create({
       data: { userId, merchantKey: "m", isSubscription: true, model: "x", promptVersion: "v" },
     });
+    await client.alert.create({
+      data: { userId, type: "fee_charged", key: "tx_1", title: "Fee", body: "b" },
+    });
     await client.session.create({
       data: { userId, sessionToken: `sess-${suffix}`, expires: new Date(Date.now() + 1e9) },
     });
@@ -131,6 +134,7 @@ describe.runIf(url)("data export against a real database", () => {
       "membershipIntents",
       "merchantCategories",
       "subscriptionChecks",
+      "alerts",
       "events",
     ] as const) {
       expect(data[key], key).toHaveLength(1);

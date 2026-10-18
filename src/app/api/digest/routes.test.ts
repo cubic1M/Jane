@@ -1,10 +1,14 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-const { findUnique, digestsUpdateMany, userUpdateMany } = vi.hoisted(() => ({
-  findUnique: vi.fn(),
-  digestsUpdateMany: vi.fn(),
-  userUpdateMany: vi.fn(),
-}));
+const { findUnique, digestsUpdateMany, userUpdateMany, userFindUnique, userUpdate } = vi.hoisted(
+  () => ({
+    findUnique: vi.fn(),
+    digestsUpdateMany: vi.fn(),
+    userUpdateMany: vi.fn(),
+    userFindUnique: vi.fn(),
+    userUpdate: vi.fn(),
+  }),
+);
 
 vi.mock("@/lib/rate-limit", () => ({
   limitOrNull: vi.fn(async () => null),
@@ -12,13 +16,17 @@ vi.mock("@/lib/rate-limit", () => ({
   ipKey: vi.fn(() => "ip"),
 }));
 vi.mock("@/lib/db", () => ({
-  db: { digest: { findUnique }, user: { updateMany: userUpdateMany } },
+  db: {
+    digest: { findUnique },
+    user: { updateMany: userUpdateMany, findUnique: userFindUnique, update: userUpdate },
+  },
 }));
 vi.mock("@/lib/db-scoped", () => ({
   scopedFor: vi.fn(() => ({ digests: { updateMany: digestsUpdateMany } })),
 }));
 vi.mock("@/lib/analytics", () => ({ track: vi.fn() }));
 vi.mock("@/lib/digest/send", () => ({ runDigests: vi.fn() }));
+vi.mock("@/lib/session", () => ({ requireUser: vi.fn() }));
 
 import { track } from "@/lib/analytics";
 import { runDigests } from "@/lib/digest/send";
@@ -33,6 +41,8 @@ beforeEach(() => {
   findUnique.mockReset();
   digestsUpdateMany.mockReset();
   userUpdateMany.mockReset().mockResolvedValue({ count: 1 });
+  userFindUnique.mockReset().mockResolvedValue({ alertPrefs: { low_balance: "off" } });
+  userUpdate.mockReset();
   vi.mocked(track).mockReset();
   vi.mocked(runDigests)
     .mockReset()
@@ -99,7 +109,22 @@ describe("POST /api/unsubscribe", () => {
     const response = await post(`token=${unsubscribeToken("u1")}&from=page`);
 
     expect(response.status).toBe(303);
-    expect(response.headers.get("location")).toBe("https://app.example.com/unsubscribe?done=1");
+    expect(response.headers.get("location")).toBe(
+      "https://app.example.com/unsubscribe?done=1&what=digest",
+    );
+  });
+
+  it("with what=alerts, stops alert emails but keeps the digest and in-app alerts", async () => {
+    const response = await post(`token=${unsubscribeToken("u1")}&what=alerts&from=page`);
+
+    expect(response.headers.get("location")).toBe(
+      "https://app.example.com/unsubscribe?done=1&what=alerts",
+    );
+    const { alertPrefs } = userUpdate.mock.calls[0][0].data;
+    expect(Object.values(alertPrefs)).not.toContain("email");
+    expect(alertPrefs).toMatchObject({ large_charge: "app", low_balance: "off" });
+    expect(userUpdateMany).not.toHaveBeenCalled();
+    expect(track).toHaveBeenCalledWith("u1", "alert_emails_unsubscribed", {});
   });
 
   it("rejects a forged token", async () => {

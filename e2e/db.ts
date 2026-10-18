@@ -76,3 +76,20 @@ export async function userExists(userId: string): Promise<boolean> {
     await client.end();
   }
 }
+
+export async function addAlert(
+  userId: string,
+  alert: { type: string; title: string; body: string },
+): Promise<void> {
+  const client = new Client({ connectionString: E2E_DATABASE_URL });
+  await client.connect();
+  try {
+    await client.query(
+      `INSERT INTO alerts (id, user_id, type, key, title, body, urgent)
+       VALUES ($1, $2, $3, $1, $4, $5, true)`,
+      [`a${crypto.randomUUID()}`, userId, alert.type, alert.title, alert.body],
+    );
+  } finally {
+    await client.end();
+  }
+}

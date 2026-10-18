@@ -47,6 +47,16 @@ async function HomeContent() {
         </div>
       </section>
 
+      {home.unreadAlerts > 0 && (
+        <Link
+          href="/alerts"
+          className="flex flex-wrap items-center justify-between gap-2 rounded-xl bg-amber-50 p-4 font-semibold hover:bg-amber-100 dark:bg-amber-950 dark:hover:bg-amber-900"
+        >
+          <span>{home.unreadAlerts === 1 ? "1 new alert" : `${home.unreadAlerts} new alerts`}</span>
+          <span className="text-sm text-emerald-700">See alerts</span>
+        </Link>
+      )}
+
       {home.waitingOnYou.length > 0 && (
         <section className="flex flex-col gap-2 rounded-xl bg-amber-50 p-4 dark:bg-amber-950">
           <h2 className="font-semibold">We need something from you</h2>

@@ -121,6 +121,9 @@ describe.runIf(url)("deleting data against a real database", () => {
     await client.subscriptionCheck.create({
       data: { userId, merchantKey: "m", isSubscription: true, model: "x", promptVersion: "v" },
     });
+    await client.alert.create({
+      data: { userId, type: "fee_charged", key: "tx_1", title: "Fee", body: "b" },
+    });
     await client.session.create({
       data: { userId, sessionToken: `sess-${suffix}`, expires: new Date(Date.now() + 1e9) },
     });
@@ -146,6 +149,7 @@ describe.runIf(url)("deleting data against a real database", () => {
       analyticsEvents: await client.analyticsEvent.count(where),
       merchantCategories: await client.merchantCategory.count(where),
       subscriptionChecks: await client.subscriptionCheck.count(where),
+      alerts: await client.alert.count(where),
       sessions: await client.session.count(where),
       authAccounts: await client.authAccount.count(where),
     };

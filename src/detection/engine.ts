@@ -6,9 +6,11 @@ import {
 } from "@/config/detection";
 import type { Finding, FindingStatus, FindingType, PrismaClient } from "@/generated/prisma/client";
 import { track } from "@/lib/analytics";
+import { raiseAlerts } from "@/lib/alerts";
 import { db as defaultClient } from "@/lib/db";
 import { llmModel } from "@/lib/anthropic";
 import { scopedFor, type ScopedDb } from "@/lib/db-scoped";
+import { detectAlerts } from "./alerts";
 import { detect } from "./detect";
 import { atLeast } from "./helpers";
 import { isAmbiguousRecurring } from "./rules/subscription-review";
@@ -193,6 +195,7 @@ type Options = {
   client?: PrismaClient;
   now?: Date;
   checkSubscriptions?: (merchants: string[]) => Promise<Map<string, boolean>>;
+  raiseAlerts?: typeof raiseAlerts;
 };
 
 // Merchant keys Claude has called subscriptions. Recurring charges whose category doesn't
@@ -245,6 +248,7 @@ export async function runDetection(
     client = defaultClient,
     now = new Date(),
     checkSubscriptions: check = checkSubscriptions,
+    raiseAlerts: raise = raiseAlerts,
   }: Options = {},
 ): Promise<DetectionSummary> {
   const db = scopedFor(userId, client);
@@ -287,10 +291,21 @@ export async function runDetection(
     });
   }
 
-  await client.user.updateMany({
+  const firstRun = await client.user.updateMany({
     where: { id: userId, firstDetectionAt: null },
     data: { firstDetectionAt: now },
   });
+
+  // Alerts never stop a scan: if saving or emailing them fails, the findings still stand.
+  try {
+    const alerts = detectAlerts(input, candidates, {
+      knownFindings: new Set(existing.map(idOf)),
+      firstScan: firstRun.count > 0,
+    });
+    await raise(userId, alerts, { client, now });
+  } catch (error) {
+    console.error("Alerts failed", { userId, error: String(error) });
+  }
 
   const counts = { ...NO_FINDINGS };
   for (const c of candidates) counts[c.type] += 1;

@@ -8,6 +8,7 @@ import type { DigestPayload } from "./build";
 export type DigestLinks = {
   report: string;
   actions: string;
+  alerts: string;
   settings: string;
   unsubscribe: string;
 };
@@ -47,6 +48,14 @@ function sections(p: DigestPayload, links: DigestLinks): Section[] {
       heading: "We're working on",
       items: working.map((a) => `${a.title}: ${ACTION_STATUS_LABELS[a.status].label}`),
       link: { label: "See all your actions", url: links.actions },
+    });
+  }
+  // Older payloads (stored before alerts existed) have no alerts list.
+  if (p.alerts?.length > 0) {
+    out.push({
+      heading: "Alerts",
+      items: p.alerts.map((a) => a.title),
+      link: { label: "See your alerts", url: links.alerts },
     });
   }
   if (p.newFindings.length > 0) {

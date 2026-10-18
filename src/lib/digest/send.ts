@@ -1,4 +1,6 @@
+import { ALERT_TYPES, ALERTS_PAGE_LIMIT } from "@/config/alerts";
 import { moneyFound } from "@/detection/engine";
+import { alertPrefs } from "@/lib/alerts";
 import type { PrismaClient } from "@/generated/prisma/client";
 import { track } from "@/lib/analytics";
 import { db as defaultClient } from "@/lib/db";
@@ -42,7 +44,7 @@ const titleOf = (snapshot: unknown) => {
 
 async function payloadFor(userId: string, now: Date, client: PrismaClient) {
   const db = scopedFor(userId, client);
-  const [actions, findings, found, last, offer] = await Promise.all([
+  const [actions, findings, found, last, offer, user] = await Promise.all([
     db.actions.findMany({
       select: {
         status: true,
@@ -62,7 +64,20 @@ async function payloadFor(userId: string, now: Date, client: PrismaClient) {
       select: { sentAt: true },
     }),
     offerFor(userId, { client, now }),
+    client.user.findUnique({ where: { id: userId }, select: { alertPrefs: true } }),
   ]);
+  const prefs = alertPrefs(user?.alertPrefs);
+  // Alerts since the last digest that weren't already emailed.
+  const alerts = await db.alerts.findMany({
+    where: {
+      type: { in: ALERT_TYPES.filter((t) => prefs[t] !== "off") },
+      createdAt: { gt: last?.sentAt ?? new Date(0) },
+      emailedAt: null,
+    },
+    select: { title: true, createdAt: true, emailedAt: true },
+    orderBy: [{ createdAt: "asc" }, { id: "asc" }],
+    take: ALERTS_PAGE_LIMIT,
+  });
   return buildDigest({
     now,
     lastSentAt: last?.sentAt ?? null,
@@ -75,6 +90,7 @@ async function payloadFor(userId: string, now: Date, client: PrismaClient) {
       ...titleOf(a.decision.cardSnapshot),
     })),
     findings,
+    alerts,
   });
 }
 
@@ -82,6 +98,7 @@ function linksFor(digestId: string, userId: string): DigestLinks {
   return {
     report: clickLink(digestId, "/report"),
     actions: clickLink(digestId, "/actions"),
+    alerts: clickLink(digestId, "/alerts"),
     settings: clickLink(digestId, "/settings"),
     unsubscribe: `${appBase()}/unsubscribe?token=${unsubscribeToken(userId)}`,
   };
@@ -157,6 +174,7 @@ export async function runDigests({
         saved_this_week_cents: payload.savedThisWeekCents,
         pending: payload.pending.length,
         new_findings: payload.newFindings.length,
+        alerts: payload.alerts.length,
       });
       run.sent += 1;
     } catch (error) {
