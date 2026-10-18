@@ -21,7 +21,7 @@ The build runs in eleven steps, with Plaid added at step 7 after the founders te
 
 ## Status (Oct 18, 2026)
 
-Steps 1–32 are built (24 came before 22, because do-it-yourself kits need its cancel links). Where the build differs from the original plan, the plan below has been kept and the difference is noted here.
+Steps 1–33 are built (24 came before 22, because do-it-yourself kits need its cancel links). Where the build differs from the original plan, the plan below has been kept and the difference is noted here.
 
 | Step | Shipped in | Notes |
 | --- | --- | --- |
@@ -55,6 +55,7 @@ Steps 1–32 are built (24 came before 22, because do-it-yourself kits need its 
 | 30 Savings goals | PR #39 | Progress is a linked account's balance or an amount entered by hand; months are counted by day of month (Oct 20 to Apr 20 is 6), and the monthly amount is rounded up to the cent so it reaches the target; every sentence about the math passes the recommendation guardrail |
 | 31 Net worth over time | PR #40 | Snapshots are taken by the existing daily job (no new cron), for CSV accounts too, and kept two years; a month's value is each account's last snapshot in or before it, so quiet months carry forward; credit and loan balances are debts; accounts with no balance are left out and named |
 | 32 Bill reminders | PR #41 | A bill_due alert 1 to 3 days before each expected bill, keyed by merchant and due date; alerts can now set their own urgency, so a reminder is urgent (and emailed, within the daily cap) only when the account's forecast balance that day is under the low-balance cushion |
+| 33 Accessibility | PR #42 | axe found 40 serious problems, nearly all dark-mode text contrast; fixed once in globals.css (lighter shades for brand and status text in dark mode) rather than page by page, plus the household share button's accessible name; e2e/accessibility.spec.ts checks every page signed out, signed in and as the team, in light and dark mode |
 
 Still needed from a person before outside users: counsel (insurance referral licensing, privacy policy and terms), Plaid Production approval and questionnaire, a backup restore test, and admins enrolling in two-factor. See docs/beta-checklist.md.
 
