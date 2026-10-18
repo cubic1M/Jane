@@ -1,12 +1,14 @@
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
 import { PLAYBOOKS } from "@/config/playbooks";
+import { DRAFTABLE } from "@/lib/drafts";
 import { ACTION_STATUS_LABELS } from "@/lib/action-status";
 import type { DecisionCard } from "@/lib/cards";
 import { getActionForAdmin } from "@/lib/concierge";
 import { formatCents } from "@/lib/money";
 import { requireAdmin } from "@/lib/session";
 import { AdminNav } from "../../admin-nav";
+import { DraftPanel } from "./draft-panel";
 import { StatusForm } from "./status-form";
 import { savingsPhrase } from "@/lib/savings-text";
 
@@ -54,7 +56,7 @@ async function ActionDetail({
         {card.referralDisclosure && <p className="text-sm">{card.referralDisclosure}</p>}
       </section>
 
-      {playbook && !closed && (
+      {!closed && (
         <section className="flex flex-col gap-2 rounded-xl bg-emerald-50 p-4 text-sm dark:bg-emerald-950">
           <h2 className="font-semibold">Playbook</h2>
           <ol className="list-decimal space-y-1 pl-5">
@@ -85,6 +87,8 @@ async function ActionDetail({
           </p>
         </section>
       )}
+
+      {!closed && DRAFTABLE[action.type] && <DraftPanel actionId={action.id} />}
 
       <section className="flex flex-col gap-2">
         <h2 className="font-semibold">Evidence</h2>

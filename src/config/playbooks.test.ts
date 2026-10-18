@@ -2,6 +2,21 @@ import { describe, expect, it } from "vitest";
 import { PLAYBOOKS } from "./playbooks";
 
 describe("playbooks", () => {
+  it("has steps, asks and a closing rule for every action type", () => {
+    for (const [type, playbook] of Object.entries(PLAYBOOKS)) {
+      expect(playbook.steps.length, type).toBeGreaterThan(0);
+      expect(playbook.askFor.length, type).toBeGreaterThan(0);
+      expect(playbook.close.length, type).toBeGreaterThan(0);
+    }
+  });
+
+  it("keeps the team away from investment advice", () => {
+    for (const playbook of Object.values(PLAYBOOKS)) {
+      const text = playbook.steps.join(" ");
+      expect(text).not.toMatch(/\b(stocks?|etfs?|crypto|brokerage)\b/i);
+    }
+  });
+
   it("has a complete playbook for refund requests", () => {
     const playbook = PLAYBOOKS.request_refund;
     expect(playbook?.steps.length).toBeGreaterThan(0);

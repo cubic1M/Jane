@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 
 vi.mock("@/lib/db", () => ({ db: {} }));
 vi.mock("@/lib/session", () => ({ requireUser: vi.fn() }));
-import { computeMetrics, median, type MetricRows } from "./metrics";
+import { automateNext, computeMetrics, median, type MetricRows } from "./metrics";
 
 const day = (n: number) => new Date(Date.UTC(2026, 9, 1 + n));
 const WINDOW = { start: day(0), end: day(30) };
@@ -136,5 +136,50 @@ describe("median", () => {
     expect(median([3, 1, 2])).toBe(2);
     expect(median([1, 2, 3, 4])).toBe(3);
     expect(median([])).toBeNull();
+  });
+});
+
+describe("automateNext", () => {
+  const action = (
+    type: MetricRows["actions"][number]["type"],
+    status: MetricRows["actions"][number]["status"],
+    minutesSpent: number | null,
+  ) => ({
+    userId: "u",
+    type,
+    status,
+    createdAt: new Date("2026-10-01"),
+    completedAt: status === "done" || status === "failed" ? new Date("2026-10-02") : null,
+    minutesSpent,
+  });
+
+  it("ranks action types by approvals × average minutes, matching a hand count", () => {
+    const rows = automateNext([
+      // 4 approvals, finished ones took 10 and 20 minutes (one unlogged): 4 × 15 = 60.
+      action("cancel_subscription", "done", 10),
+      action("cancel_subscription", "done", 20),
+      action("cancel_subscription", "done", null),
+      action("cancel_subscription", "queued", null),
+      // 2 approvals; only the finished one counts toward minutes: 2 × 45 = 90.
+      action("negotiate_bill", "done", 45),
+      action("negotiate_bill", "failed", 30),
+      // 1 × 25 = 25.
+      action("fight_price_increase", "done", 25),
+      // Nothing finished yet: ranked last.
+      action("request_refund", "queued", null),
+      action("request_refund", "in_progress", null),
+      action("request_refund", "queued", null),
+    ]);
+
+    expect(rows).toEqual([
+      { type: "negotiate_bill", approvals: 2, averageMinutes: 45, teamMinutes: 90 },
+      { type: "cancel_subscription", approvals: 4, averageMinutes: 15, teamMinutes: 60 },
+      { type: "fight_price_increase", approvals: 1, averageMinutes: 25, teamMinutes: 25 },
+      { type: "request_refund", approvals: 3, averageMinutes: null, teamMinutes: null },
+    ]);
+  });
+
+  it("is empty with no actions", () => {
+    expect(automateNext([])).toEqual([]);
   });
 });

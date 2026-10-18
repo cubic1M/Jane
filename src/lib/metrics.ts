@@ -160,6 +160,41 @@ export function computeMetrics(rows: MetricRows, w: Window) {
 
 export type Metrics = ReturnType<typeof computeMetrics>;
 
+export type AutomateRow = {
+  type: ActionType;
+  // Every action of this type ever approved.
+  approvals: number;
+  // Average logged minutes over finished actions; null until one has minutes.
+  averageMinutes: number | null;
+  // approvals × averageMinutes: the team time this type has cost so far.
+  teamMinutes: number | null;
+};
+
+// "Automate next": action types ranked by approvals × minutes per action, all time.
+// Types without logged minutes go last, by approvals.
+export function automateNext(actions: MetricRows["actions"]): AutomateRow[] {
+  return byType(actions.map((a) => a.type))
+    .map((type) => {
+      const ofType = actions.filter((a) => a.type === type);
+      const logged = ofType.filter((a) => a.status === "done" && a.minutesSpent !== null);
+      const averageMinutes = logged.length
+        ? logged.reduce((sum, a) => sum + (a.minutesSpent ?? 0), 0) / logged.length
+        : null;
+      return {
+        type,
+        approvals: ofType.length,
+        averageMinutes: averageMinutes === null ? null : Math.round(averageMinutes),
+        teamMinutes: averageMinutes === null ? null : Math.round(ofType.length * averageMinutes),
+      };
+    })
+    .sort(
+      (a, b) =>
+        (b.teamMinutes ?? -1) - (a.teamMinutes ?? -1) ||
+        b.approvals - a.approvals ||
+        a.type.localeCompare(b.type),
+    );
+}
+
 // Reads everything the metrics need. Fine at beta scale; move to SQL aggregates later.
 export async function loadMetricRows({
   client = defaultClient,
@@ -237,13 +272,16 @@ export async function loadMetrics(
   admin: Admin,
   days: number[],
   { client = defaultClient, now = new Date() }: { client?: PrismaClient; now?: Date } = {},
-): Promise<{ days: number; metrics: Metrics }[]> {
+): Promise<{ windows: { days: number; metrics: Metrics }[]; automateNext: AutomateRow[] }> {
   const rows = await loadMetricRows({ client });
   await logAudit({ type: "admin", id: admin.id }, "admin_viewed_metrics", null, {
     windows: days.join(","),
   });
-  return days.map((d) => ({
-    days: d,
-    metrics: computeMetrics(rows, { start: new Date(now.getTime() - d * DAY_MS), end: now }),
-  }));
+  return {
+    windows: days.map((d) => ({
+      days: d,
+      metrics: computeMetrics(rows, { start: new Date(now.getTime() - d * DAY_MS), end: now }),
+    })),
+    automateNext: automateNext(rows.actions),
+  };
 }

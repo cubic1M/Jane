@@ -1,7 +1,7 @@
 import type { ActionType } from "@/generated/prisma/client";
 
 // What the concierge team does for each action type, shown on the admin action page.
-// Plain steps a new team member can follow. More action types get one in step 21.
+// Plain steps a new team member can follow.
 
 export type Playbook = {
   steps: string[];
@@ -13,7 +13,94 @@ export type Playbook = {
   script?: string[];
 };
 
-export const PLAYBOOKS: Partial<Record<ActionType, Playbook>> = {
+// Every playbook ends the same way when the person has to do something.
+const WAITING =
+  "If only the person can do the next step, set Waiting on user and write exactly what they need to do.";
+
+export const PLAYBOOKS: Record<ActionType, Playbook> = {
+  cancel_subscription: {
+    steps: [
+      "Check the card for the merchant, the latest charge and how often it bills.",
+      "Cancel through the merchant's website, chat or phone line. Use the drafted message below if they need it in writing.",
+      "Ask for written confirmation (an email or a confirmation number) and the date the last charge will be.",
+      "For a duplicate-services card, the person picks which service to keep before you cancel anything.",
+      WAITING,
+    ],
+    askFor: [
+      "Which service to keep, if the card covers more than one.",
+      "The login email for the account, if the merchant needs it to find them.",
+    ],
+    close:
+      "Done when you have the confirmation: put the confirmation number or email in the notes. If it charges again, the charge-after-cancel finding will catch it.",
+  },
+  fight_price_increase: {
+    steps: [
+      "Check the card: the old price, the new price, and when it changed.",
+      "Contact the merchant and ask to keep the old price, for a loyalty discount, or for a cheaper plan with the same service.",
+      "Write down every offer. Don't accept a plan change without the person.",
+      WAITING,
+    ],
+    askFor: ["What they can't give up in the current plan."],
+    close:
+      "Done when a lower price is confirmed: note the new price. Failed if nothing cheaper is offered; note the best offer.",
+  },
+  recover_bank_fees: {
+    steps: [
+      "List the fees from the card evidence: dates, amounts and kind (overdraft, late, ATM).",
+      "Contact the bank or card company and ask them to refund the fees as a courtesy. First-time and recent fees are refunded most often.",
+      "Ask what would stop them happening again: low-balance alerts, overdraft settings, or a no-fee account.",
+      WAITING,
+    ],
+    askFor: ["Permission to call the bank on their behalf, or a time for a three-way call."],
+    close:
+      "Done when a refund is confirmed: note how much came back. Failed if the bank refuses; note the reason given.",
+  },
+  move_idle_cash: {
+    steps: [
+      "Check the card: how much cash is above their cushion.",
+      "Share two or three FDIC-insured high-yield savings accounts and their current rates, and how to open one. Never pick for them, and never mention investments.",
+      "Once they've opened an account, remind them how to move the money (they move it themselves).",
+      WAITING,
+    ],
+    askFor: [
+      "Whether they'd rather keep it at their current bank (ask the bank for a better savings rate).",
+    ],
+    close:
+      "Done when the person confirms the money moved. Failed if they decide to leave it; note why.",
+  },
+  insurance_reshop: {
+    steps: [
+      "Check the card: the insurer and what they pay a year.",
+      "Ask the person for their current declarations page so quotes match the same coverage.",
+      "Get quotes with the same coverage and deductibles. Only use referral partners listed in src/config/referrals.ts, and show the disclosure.",
+      "Show the person the quotes side by side. They choose; never switch a policy for them.",
+      WAITING,
+    ],
+    askFor: ["Their declarations page (coverage, limits and deductibles)."],
+    close:
+      "Done when they switch to a cheaper policy or decide to keep theirs after seeing quotes: note the yearly difference. Failed if no quote is cheaper.",
+  },
+  card_interest: {
+    steps: [
+      "Check the card: interest paid over the last 12 months.",
+      "Ask the card company for a lower rate.",
+      "Share how balance transfer offers work, including the one-time fee, and point them to the debt planner at /debt. Don't recommend a specific card or plan.",
+      WAITING,
+    ],
+    askFor: ["Their current APR and minimum payment, if they know them."],
+    close:
+      "Done when a lower rate is confirmed or the person has what they need to decide: note the new APR. Failed if the issuer refuses.",
+  },
+  review_cash_flow: {
+    steps: [
+      "Check the card: the bills before the low point and when income arrives.",
+      "Ask each biller whether the due date can move to a few days after payday.",
+      "Remind the person a few days before the forecast low point.",
+      WAITING,
+    ],
+    askFor: ["Their payday, if it isn't clear from the deposits."],
+    close: "Done when due dates have moved or the person has been reminded: note what changed.",
+  },
   negotiate_bill: {
     steps: [
       "Check the card: the provider, what they pay a month, and the typical price range we showed them.",

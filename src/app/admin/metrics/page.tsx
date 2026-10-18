@@ -76,7 +76,7 @@ function rows(windows: { days: number; metrics: Metrics }[]) {
 
 async function MetricsContent() {
   const admin = await requireAdmin();
-  const windows = await loadMetrics(admin, WINDOWS);
+  const { windows, automateNext } = await loadMetrics(admin, WINDOWS);
   return (
     <>
       <AdminNav email={admin.email} />
@@ -102,6 +102,43 @@ async function MetricsContent() {
           </tbody>
         </table>
       </div>
+      <section className="flex flex-col gap-2">
+        <h2 className="text-xl font-semibold">Automate next</h2>
+        <p className="text-sm text-zinc-600 dark:text-zinc-400">
+          Action types by the team time they&apos;ve taken so far: approvals times average
+          minutes per finished action, all time.
+        </p>
+        {automateNext.length === 0 ? (
+          <p className="text-sm text-zinc-500">No actions yet.</p>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr>
+                  {["Action", "Approvals", "Minutes each", "Team minutes"].map((h) => (
+                    <th key={h} scope="col" className="py-2 pr-4 text-left">
+                      {h}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {automateNext.map((row) => (
+                  <Row
+                    key={row.type}
+                    name={row.type.replaceAll("_", " ")}
+                    values={[
+                      String(row.approvals),
+                      row.averageMinutes === null ? "–" : String(row.averageMinutes),
+                      row.teamMinutes === null ? "not enough data" : String(row.teamMinutes),
+                    ]}
+                  />
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </section>
       <p className="text-xs text-zinc-500">
         Approval rate is yes answers over cards opened. Completion rate is done over all actions
         closed in the period. Willingness to pay counts reservations and payments after a
