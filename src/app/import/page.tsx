@@ -1,15 +1,19 @@
+import { redirect } from "next/navigation";
 import { Suspense } from "react";
 import { AddAccountForm } from "./add-account-form";
 import { ImportForm } from "./import-form";
 import { AppHeader } from "@/components/app-header";
 import { AccountList } from "@/components/account-list";
 import { listAccountSummaries } from "@/lib/accounts";
+import { canImportCsv } from "@/lib/csv-access";
 import { scopedDb } from "@/lib/db-scoped";
 import { requireUser } from "@/lib/session";
 
 async function ImportContent() {
   const user = await requireUser();
-  const accounts = await listAccountSummaries(await scopedDb());
+  const db = await scopedDb();
+  if (!(await canImportCsv(user, db))) redirect("/connect");
+  const accounts = await listAccountSummaries(db);
 
   return (
     <>

@@ -8,7 +8,8 @@ if (E2E_DATABASE_URL && /neon\.tech/.test(E2E_DATABASE_URL)) {
   throw new Error("E2E_DATABASE_URL looks like a hosted database; use a scratch one.");
 }
 
-// Creates a user with a database session and returns the session cookie value.
+// Creates an admin (so CSV import is open to them) with a database session, and returns
+// the session cookie value.
 export async function signedInUser(): Promise<{ userId: string; sessionToken: string }> {
   const id = crypto.randomUUID().replaceAll("-", "");
   const userId = `e2e${id}`;
@@ -16,10 +17,10 @@ export async function signedInUser(): Promise<{ userId: string; sessionToken: st
   const client = new Client({ connectionString: E2E_DATABASE_URL });
   await client.connect();
   try {
-    await client.query(`INSERT INTO users (id, email, updated_at) VALUES ($1, $2, now())`, [
-      userId,
-      `${userId}@example.test`,
-    ]);
+    await client.query(
+      `INSERT INTO users (id, email, role, updated_at) VALUES ($1, $2, 'admin', now())`,
+      [userId, `${userId}@example.test`],
+    );
     await client.query(
       `INSERT INTO sessions (id, session_token, user_id, expires)
        VALUES ($1, $2, $3, now() + interval '1 day')`,

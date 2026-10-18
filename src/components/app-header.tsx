@@ -5,8 +5,8 @@ export function AppHeader({ email }: { email: string | null | undefined }) {
   return (
     <header className="flex flex-wrap items-center justify-between gap-4 text-sm text-zinc-600 dark:text-zinc-400">
       <nav className="flex gap-4 font-medium">
-        <Link href="/import" className="hover:underline">
-          Import
+        <Link href="/connect" className="hover:underline">
+          Accounts
         </Link>
         <Link href="/report" className="hover:underline">
           Report

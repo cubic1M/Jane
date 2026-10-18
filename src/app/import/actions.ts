@@ -8,7 +8,8 @@ import { ACCOUNT_KINDS, isAccountKind } from "@/data-sources/types";
 import { runDetection } from "@/detection/engine";
 import { track } from "@/lib/analytics";
 import { logAudit } from "@/lib/audit";
-import { scopedDb } from "@/lib/db-scoped";
+import { canImportCsv } from "@/lib/csv-access";
+import { scopedDb, type ScopedDb } from "@/lib/db-scoped";
 import { explainFindings } from "@/lib/explanations";
 import {
   AccountNotFoundError,
@@ -19,14 +20,25 @@ import {
   type FilePreview,
 } from "@/lib/import/import-csv";
 import { parseMoneyToCents } from "@/lib/money";
+import { requireUser } from "@/lib/session";
 
 export type ActionResult = { ok: true } | { ok: false; error: string };
+
+const NOT_ALLOWED = "CSV import is only for founders. Link your bank on the Accounts page.";
+
+// The scoped database for someone allowed to import CSVs (see csv-access.ts), else null.
+async function csvDb(): Promise<ScopedDb | null> {
+  const user = await requireUser();
+  const db = await scopedDb();
+  return (await canImportCsv(user, db)) ? db : null;
+}
 
 export async function createCsvAccount(
   _previous: ActionResult | null,
   formData: FormData,
 ): Promise<ActionResult> {
-  const db = await scopedDb();
+  const db = await csvDb();
+  if (!db) return { ok: false, error: NOT_ALLOWED };
   const name = String(formData.get("name") ?? "").trim();
   const kind = formData.get("kind");
   const balanceText = String(formData.get("balance") ?? "").trim();
@@ -66,7 +78,8 @@ async function readFiles(formData: FormData): Promise<CsvFile[] | string> {
 export type PreviewResult = { ok: true; files: FilePreview[] } | { ok: false; error: string };
 
 export async function previewImport(formData: FormData): Promise<PreviewResult> {
-  const db = await scopedDb();
+  const db = await csvDb();
+  if (!db) return { ok: false, error: NOT_ALLOWED };
   const files = await readFiles(formData);
   if (typeof files === "string") return { ok: false, error: files };
 
@@ -80,7 +93,8 @@ export async function previewImport(formData: FormData): Promise<PreviewResult> 
 }
 
 export async function confirmImport(formData: FormData): Promise<ActionResult> {
-  const db = await scopedDb();
+  const db = await csvDb();
+  if (!db) return { ok: false, error: NOT_ALLOWED };
   const accountId = String(formData.get("accountId") ?? "");
   const files = await readFiles(formData);
   if (typeof files === "string") return { ok: false, error: files };

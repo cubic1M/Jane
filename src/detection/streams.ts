@@ -71,7 +71,7 @@ const PLAID_STATUS_CONFIDENCE: Record<string, ConfidenceLevel> = {
   EARLY_DETECTION: "medium",
 };
 
-function fromPlaid(
+function fromPlaidStream(
   stream: DetectionRecurringStream,
   byPlaidId: Map<string, DetectionTransaction>,
 ): Stream {
@@ -172,15 +172,26 @@ export function detectRecurring(input: DetectionInput): Stream[] {
     .filter((s): s is Stream => s !== null);
 }
 
-// Outflow streams only (Plaid gives outflows positive amounts, like transactions).
+// Outflow streams only (Plaid gives outflows positive amounts, like transactions). Plaid's
+// streams cover the accounts Plaid reported them for; every other account (CSV imports,
+// or a Plaid item without the recurring add-on) goes through our own fallback, so
+// founders' CSV data keeps working next to linked accounts.
 export function buildStreams(input: DetectionInput): Stream[] {
   if (input.recurringStreams.length === 0) return detectRecurring(input);
 
   const byPlaidId = new Map(
     input.transactions.flatMap((t) => (t.plaidTransactionId ? [[t.plaidTransactionId, t]] : [])),
   );
-  return input.recurringStreams
+  const fromPlaid = input.recurringStreams
     .filter((s) => s.averageAmountCents > 0)
     .sort((a, b) => a.plaidStreamId.localeCompare(b.plaidStreamId))
-    .map((s) => fromPlaid(s, byPlaidId));
+    .map((s) => fromPlaidStream(s, byPlaidId));
+
+  const covered = new Set(input.recurringStreams.map((s) => s.accountId));
+  const fallback = detectRecurring({
+    ...input,
+    transactions: input.transactions.filter((t) => !covered.has(t.accountId)),
+  });
+  const keys = new Set(fromPlaid.map((s) => s.key));
+  return [...fromPlaid, ...fallback.filter((s) => !keys.has(s.key))];
 }

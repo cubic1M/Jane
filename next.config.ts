@@ -3,6 +3,9 @@ import type { NextConfig } from "next";
 const nextConfig: NextConfig = {
   /* config options here */
   cacheComponents: true,
+  // Load Plaid's SDK as a plain Node package; bundled, its HTTP client picks a
+  // browser adapter and every request fails without a response.
+  serverExternalPackages: ["plaid"],
   partialPrefetching: true,
   experimental: {
     // CSV uploads go through server actions; the 1 MB default is too small for a
