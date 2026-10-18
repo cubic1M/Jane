@@ -68,6 +68,18 @@ async function ActionDetail({
               <li key={item}>{item}</li>
             ))}
           </ul>
+          {playbook.script && (
+            <>
+              <p className="font-medium">Script</p>
+              <ul className="space-y-1">
+                {playbook.script.map((line) => (
+                  <li key={line} className="italic">
+                    &ldquo;{line}&rdquo;
+                  </li>
+                ))}
+              </ul>
+            </>
+          )}
           <p>
             <strong>Closing:</strong> {playbook.close}
           </p>

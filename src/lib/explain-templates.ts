@@ -140,6 +140,23 @@ const TEMPLATES: Record<FindingType, (input: ExplainInput) => Omit<ExplanationCo
       alternatives: ["Keep it", "Cancel before the next charge without asking for a refund"],
     };
   },
+  bill_negotiation: (input) => {
+    const merchant = fact(input.facts, "merchant") ?? "this provider";
+    const kind = fact(input.facts, "kindOfBill") ?? "this kind of";
+    const perMonth = fact(input.facts, "perMonth");
+    const from = fact(input.facts, "typicalPriceFrom");
+    const to = fact(input.facts, "typicalPriceTo");
+    const typical = from && to ? `the typical price of ${from} to ${to}` : "the typical price";
+    return {
+      explanation: `You pay ${merchant}${perMonth ? ` about ${perMonth} a month` : ""}, above ${typical} for a ${kind} bill. Providers often lower a bill when a customer asks, which could save ${yearly(input, "money every year")}.`,
+      giveUp: "Possibly a promotional price that ends later, or a plan with fewer extras.",
+      alternatives: [
+        "Ask them yourself for a loyalty offer",
+        "Switch to another provider",
+        "Keep your current plan",
+      ],
+    };
+  },
   card_interest: (input) => {
     const total = fact(input.facts, "totalLast12Months");
     return {

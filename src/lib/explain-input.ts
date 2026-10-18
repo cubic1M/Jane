@@ -142,6 +142,16 @@ export function prepareExplainInput(finding: ExplainableFinding): PreparedInput 
       };
       sent = charges(evidence.charges);
       break;
+    case "bill_negotiation":
+      facts = {
+        ...stream(evidence),
+        kindOfBill: text(evidence.billKind),
+        perMonth: money(num(evidence.monthlyCents)),
+        typicalPriceFrom: money(num(evidence.typicalLowCents)),
+        typicalPriceTo: money(num(evidence.typicalHighCents)),
+      };
+      sent = charges(evidence.charges);
+      break;
     case "low_balance_risk":
       facts = {
         account: "checking account",

@@ -9,9 +9,33 @@ export type Playbook = {
   askFor: string[];
   // When the action counts as done, and what to record.
   close: string;
+  // What to say on the call, when there's a call to make.
+  script?: string[];
 };
 
 export const PLAYBOOKS: Partial<Record<ActionType, Playbook>> = {
+  negotiate_bill: {
+    steps: [
+      "Check the card: the provider, what they pay a month, and the typical price range we showed them.",
+      'Call or chat with the provider\'s retention or loyalty team (ask for "cancellations" if the menu has no loyalty option). Use the script below.',
+      "Write down every offer: new monthly price, how long it lasts, any contract or equipment change.",
+      "Don't accept anything yourself. Set the action to Waiting on user with the offers, and accept only the one the person picks.",
+      "If the provider needs the account holder on the line, set Waiting on user and ask for a time to do a three-way call.",
+    ],
+    askFor: [
+      "The account holder's name and the account PIN or security answer the provider uses.",
+      "Anything they don't want to lose (a channel, a speed, a phone line).",
+    ],
+    close:
+      "Done when the person accepts a lower price and it shows on the next bill: note the new monthly price and minutes spent. Failed if no offer beats the current price; note what was offered.",
+    script: [
+      "Hi, I'm calling on behalf of [name], the account holder, about their bill.",
+      "They've been a customer since [year] and pay [current monthly price]. That's above what similar plans cost, and they're looking at other providers.",
+      "Is there a loyalty discount, a current promotion, or a cheaper plan with the same [speed / lines / channels]?",
+      "What would the new monthly price be, for how long, and is there a contract or any fee?",
+      "Thank you. I'll check with [name] and call back to accept, so please note these offers on the account.",
+    ],
+  },
   request_refund: {
     steps: [
       "Check the evidence on the card: dates, amounts, and (for a charge after cancelling) the date we cancelled.",

@@ -12,7 +12,9 @@ describe("templateExplanation", () => {
       const { input, allowedCents } = prepareExplainInput(finding);
       const content = templateExplanation(finding.title, input);
 
-      expect(checkGuardrails(contentText(content), allowedCents)).toEqual({ ok: true });
+      expect(checkGuardrails(contentText(content), allowedCents, finding.type)).toEqual({
+        ok: true,
+      });
       const asJson = JSON.stringify({
         title: content.title,
         explanation: content.explanation,

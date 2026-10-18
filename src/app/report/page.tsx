@@ -23,6 +23,7 @@ const WHAT_WE_CHECK = [
   "Credit card interest",
   "Bills that could take your balance too low",
   "Double charges, charges after you cancelled, and trials that became full charges",
+  "Phone and internet bills above the typical price",
 ];
 
 async function ReportContent() {

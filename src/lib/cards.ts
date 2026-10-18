@@ -38,6 +38,7 @@ export const ACTION_FOR_FINDING: Record<FindingType, ActionType> = {
   duplicate_charge: "request_refund",
   charge_after_cancel: "request_refund",
   trial_conversion: "request_refund",
+  bill_negotiation: "negotiate_bill",
 };
 
 // Recent rows shown as proof on the card.
@@ -73,6 +74,8 @@ function whatChanges(type: FindingType, evidence: Json): string {
       return `We ask ${merchant} to refund the second charge, and your card company if they don't.`;
     case "charge_after_cancel":
       return `We show ${merchant} the cancellation and ask for these charges back, and make sure it's really cancelled.`;
+    case "bill_negotiation":
+      return `We call ${merchant}, ask for a lower rate or a cheaper plan with the same service, and tell you what they offer before anything changes.`;
     case "trial_conversion":
       return `We ask ${merchant} to refund the charge and cancel, before the next one.`;
   }

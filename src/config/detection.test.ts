@@ -13,6 +13,7 @@ const CATEGORY_LISTS = {
   INSURANCE_CATEGORIES: config.INSURANCE_CATEGORIES,
   NON_SPENDING_CATEGORIES: config.NON_SPENDING_CATEGORIES,
   SERVICE_GROUPS: config.SERVICE_GROUPS.flatMap((g) => g.categories),
+  BILL_BENCHMARKS: config.BILL_BENCHMARKS.flatMap((b) => b.categories),
 };
 
 describe("detection config", () => {

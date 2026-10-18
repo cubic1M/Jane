@@ -217,6 +217,7 @@ const NO_FINDINGS: Record<FindingType, number> = {
   duplicate_charge: 0,
   charge_after_cancel: 0,
   trial_conversion: 0,
+  bill_negotiation: 0,
 };
 
 type Options = {
