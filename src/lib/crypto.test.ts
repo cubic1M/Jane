@@ -1,6 +1,6 @@
 import { randomBytes } from "node:crypto";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { decrypt, encrypt } from "./crypto";
+import { decrypt, decryptBytes, encrypt, encryptBytes } from "./crypto";
 
 const KEY = randomBytes(32).toString("base64");
 
@@ -71,5 +71,42 @@ describe("crypto", () => {
 
     vi.stubEnv("TOKEN_ENCRYPTION_KEY", randomBytes(16).toString("base64"));
     expect(() => encrypt("secret")).toThrow("must be 32 bytes");
+  });
+});
+
+describe("file encryption (spec step 68)", () => {
+  beforeEach(() => vi.stubEnv("TOKEN_ENCRYPTION_KEY", KEY));
+  afterEach(() => vi.unstubAllEnvs());
+
+  const file = Buffer.concat([Buffer.from("%PDF-1.7\n"), randomBytes(5000)]);
+
+  it("round-trips a file's bytes without keeping them in the clear", () => {
+    const encrypted = Buffer.from(encryptBytes(file));
+    expect(encrypted.includes(Buffer.from("%PDF"))).toBe(false);
+    expect(decryptBytes(encrypted).equals(file)).toBe(true);
+    expect(decryptBytes(encryptBytes(new Uint8Array())).length).toBe(0);
+  });
+
+  it("uses a fresh IV each time", () => {
+    expect(Buffer.from(encryptBytes(file)).equals(Buffer.from(encryptBytes(file)))).toBe(false);
+  });
+
+  it("refuses a file that was changed, cut short or given another version", () => {
+    const encrypted = encryptBytes(file);
+    for (const index of [5, 20, 40, encrypted.length - 1]) {
+      const changed = Buffer.from(encrypted);
+      changed[index] ^= 0x01;
+      expect(() => decryptBytes(changed), `byte ${index}`).toThrow();
+    }
+    expect(() => decryptBytes(encrypted.subarray(0, 20))).toThrow("Malformed");
+    const versioned = Buffer.from(encrypted);
+    versioned[0] = 2;
+    expect(() => decryptBytes(versioned)).toThrow("Malformed");
+  });
+
+  it("refuses a file encrypted with another key", () => {
+    const encrypted = encryptBytes(file);
+    vi.stubEnv("TOKEN_ENCRYPTION_KEY", randomBytes(32).toString("base64"));
+    expect(() => decryptBytes(encrypted)).toThrow();
   });
 });

@@ -170,6 +170,13 @@ async function SettingsContent() {
         >
           Download my data
         </a>
+        <p className="text-sm text-zinc-600 dark:text-zinc-400">
+          Uploaded policies, warranties and receipts download one by one from{" "}
+          <Link href="/documents" className="font-medium text-emerald-700 hover:underline">
+            Policies and receipts
+          </Link>
+          .
+        </p>
       </section>
 
       <section className="flex flex-col gap-3">

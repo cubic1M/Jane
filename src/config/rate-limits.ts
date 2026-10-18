@@ -28,6 +28,8 @@ export const RATE_LIMITS = {
   ask: { limit: 30, windowSeconds: 60 * 60 },
   // Two-factor codes (authenticator or backup), per user.
   mfa: { limit: 5, windowSeconds: 10 * 60 },
+  // Uploading documents (each may be read by Claude), per user.
+  documents: { limit: 20, windowSeconds: 60 * 60 },
 } satisfies Record<string, Limit>;
 
 export type LimitName = keyof typeof RATE_LIMITS;

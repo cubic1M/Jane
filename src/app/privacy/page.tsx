@@ -21,6 +21,10 @@ export default function PrivacyPage() {
         </li>
         <li>CSV statements you upload. Files are read once and never stored.</li>
         <li>
+          Insurance policies, warranties and receipts you choose to keep with us, and their key
+          facts.
+        </li>
+        <li>
           What you do in the app: which findings you open, your yes or no answers, and settings.
         </li>
       </ul>
@@ -45,6 +49,10 @@ export default function PrivacyPage() {
           name, email, account names or numbers.
         </li>
         <li>
+          <strong>Anthropic (Claude)</strong> also reads a policy, warranty or receipt you upload,
+          to fill in its key facts. It receives that file and nothing else about you.
+        </li>
+        <li>
           <strong>Service providers</strong> that run the app for us: hosting (Vercel), database,
           email delivery (Resend), analytics, and payments (Stripe) if you choose to pay.
         </li>
@@ -58,6 +66,7 @@ export default function PrivacyPage() {
       <h2>How we protect it</h2>
       <ul>
         <li>Bank connection tokens are encrypted (AES-256-GCM) and never shown or logged.</li>
+        <li>Documents you upload are encrypted (AES-256-GCM), and only you can open them.</li>
         <li>Each person&apos;s data is only ever read for that person.</li>
         <li>
           Team access needs a second sign-in factor, and every team view of your data is logged.

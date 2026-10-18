@@ -233,6 +233,16 @@ describe.runIf(url)("deleting data against a real database", () => {
         body: "Please refund.",
       },
     });
+    await client.document.create({
+      data: {
+        userId,
+        kind: "receipt",
+        fileName: "receipt.pdf",
+        contentType: "application/pdf",
+        sizeBytes: 9,
+        encryptedBytes: Buffer.from("encrypted"),
+      },
+    });
     return { userId, itemId: item.id, accessToken: `access-${suffix}` };
   }
 
@@ -272,6 +282,7 @@ describe.runIf(url)("deleting data against a real database", () => {
       agentMessages: await client.agentMessage.count(where),
       planProposals: await client.planProposal.count(where),
       planLinks: await client.planLink.count(where),
+      documents: await client.document.count(where),
     };
   }
 

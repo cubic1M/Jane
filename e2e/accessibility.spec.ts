@@ -41,6 +41,7 @@ const SIGNED_IN = [
   "/check-in",
   "/connect",
   "/import",
+  "/documents",
 ];
 const ADMIN = [
   "/admin/queue",
