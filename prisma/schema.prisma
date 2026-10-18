@@ -211,6 +211,7 @@ model User {
   budgets             Budget[]
   savingsGoals        SavingsGoal[]
   balanceSnapshots    BalanceSnapshot[]
+  checkIns            CheckIn[]
 
   @@map("users")
 }
@@ -302,6 +303,7 @@ model Account {
   transactions     Transaction[]
   recurringStreams RecurringStream[]
   balanceSnapshots BalanceSnapshot[]
+  checkIns         CheckIn[]
 
   @@index([userId])
   @@index([itemId])
@@ -828,6 +830,27 @@ model HealthNotice {
   reportedAt DateTime @default(now()) @map("reported_at") @db.Timestamptz(3)
 
   @@map("health_notices")
+}
+
+// The monthly check-in for one person and month: its summary (Claude's, or the
+// template's), kept so it's written once, and when it was emailed.
+model CheckIn {
+  id        String    @id @default(cuid())
+  userId    String    @map("user_id")
+  // YYYY-MM.
+  month     String
+  summary   String
+  // "llm" or "template".
+  source    String
+  emailedAt DateTime? @map("emailed_at") @db.Timestamptz(3)
+  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  account   Account? @relation(fields: [accountId], references: [id])
+  accountId String?
+
+  @@unique([userId, month])
+  @@map("check_ins")
 }
 
 // Invite codes keep the beta closed: signing up needs a code with uses left.

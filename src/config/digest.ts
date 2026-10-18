@@ -19,6 +19,7 @@ export const TIMEZONES: readonly { id: string; label: string }[] = [
 // Pages a digest link may lead to (anything else goes to the report).
 export const DIGEST_LINK_PATHS = [
   "/report",
+  "/check-in",
   "/actions",
   "/alerts",
   "/budgets",
@@ -32,3 +33,7 @@ export const DIGEST_BUDGET_NEAR_SHARE = 0.9;
 
 // Added to every digest link, so analytics can attribute visits.
 export const DIGEST_UTM = { utm_source: "digest", utm_medium: "email", utm_campaign: "weekly" };
+
+// The monthly check-in email goes out on the first daily run in the first days of the
+// month (the person's own timezone), so a missed day doesn't skip a month.
+export const CHECK_IN_EMAIL_DAYS = 7;

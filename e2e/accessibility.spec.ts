@@ -36,6 +36,7 @@ const SIGNED_IN = [
   "/debt",
   "/year",
   "/subscriptions",
+  "/check-in",
   "/connect",
   "/import",
 ];

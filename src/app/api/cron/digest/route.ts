@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { runMonthlyCheckIns } from "@/lib/check-in-email";
 import { runDigests } from "@/lib/digest/send";
 import { recordRun, reportMissedJobs } from "@/lib/health";
 import { runDueJobs } from "@/lib/jobs";
@@ -20,8 +21,13 @@ export async function GET(request: Request) {
   return NextResponse.json(
     await recordRun("digest", async () => {
       const run = await runDigests({ dryRun });
-      // A second daily chance for jobs waiting to be retried.
-      return { ...run, previews: undefined, jobs: await runDueJobs() };
+      return {
+        ...run,
+        previews: undefined,
+        checkIns: await runMonthlyCheckIns(),
+        // A second daily chance for jobs waiting to be retried.
+        jobs: await runDueJobs(),
+      };
     }),
   );
 }

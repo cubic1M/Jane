@@ -88,6 +88,9 @@ async function HomeContent() {
           <Link href="/subscriptions" className={LINK}>
             Subscriptions
           </Link>
+          <Link href="/check-in" className={LINK}>
+            Monthly check-in
+          </Link>
           <Link href="/year" className={LINK}>
             Year in review
           </Link>
