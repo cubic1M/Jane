@@ -2,7 +2,7 @@
 
 import { after } from "next/server";
 import { runQueuedFor } from "@/lib/agent/run";
-import { AutopilotError, setAutopilot } from "@/lib/autopilot";
+import { AutopilotError, setAcceptSimpleOffers, setAutopilot } from "@/lib/autopilot";
 import { scopedDb } from "@/lib/db-scoped";
 import { requireUser } from "@/lib/session";
 
@@ -39,5 +39,21 @@ export async function chooseAutopilot(
       started > 0
         ? `Autopilot is on. Jane started on ${started} ${started === 1 ? "thing" : "things"} already; see them on your plan.`
         : "Autopilot is on. Jane will handle these as they come up.",
+  };
+}
+
+// The call-offer limit (spec step 62).
+export async function saveCallOffers(
+  _previous: AutopilotState,
+  formData: FormData,
+): Promise<AutopilotState> {
+  const user = await requireUser();
+  const accept = formData.get("accept") === "on";
+  await setAcceptSimpleOffers(user.id, accept);
+  return {
+    ok: true,
+    message: accept
+      ? "Saved: Jane accepts lower prices with no contract and no fee on bill calls."
+      : "Saved: every offer on a bill call comes to you first.",
   };
 }

@@ -33,11 +33,15 @@ export const CALL_OUTCOMES: readonly CallOutcome[] = [
   "no_answer",
 ];
 
+export type OfferTerms = { monthlyCents: number; contractMonths: number; feeCents: number };
+
 export type CallResult = {
   outcome: CallOutcome;
   transcript: string;
   newMonthlyCents: number | null;
   offer: string | null;
+  // For an offer: its price, contract length and one-off fee, when the provider said them.
+  offerTerms?: OfferTerms | null;
 };
 
 // What the simulated provider says, the same every time for the same action.
@@ -64,7 +68,17 @@ export function simulatedCall(
       outcome: "offer",
       newMonthlyCents: null,
       offer: `${dollars(targetCents)} a month with a 12-month contract`,
+      offerTerms: { monthlyCents: targetCents, contractMonths: 12, feeCents: 0 },
       transcript: `${opening}\n${company}: The best I can do is ${dollars(targetCents)} a month with a 12-month contract.\nJane: I'll check with the account holder before accepting anything.`,
+    };
+  }
+  if (n < 8) {
+    return {
+      outcome: "offer",
+      newMonthlyCents: null,
+      offer: `${dollars(targetCents)} a month on the basic plan, no contract and no fee`,
+      offerTerms: { monthlyCents: targetCents, contractMonths: 0, feeCents: 0 },
+      transcript: `${opening}\n${company}: I can move you to the basic plan at ${dollars(targetCents)} a month, no contract, no fee.`,
     };
   }
   if (n < 9) {

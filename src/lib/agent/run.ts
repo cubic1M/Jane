@@ -103,7 +103,7 @@ export async function loadAction(userId: string, actionId: string, client: Prism
           finding: { select: { type: true, evidence: true } },
         },
       },
-      user: { select: { email: true, name: true } },
+      user: { select: { email: true, name: true, acceptSimpleOffers: true } },
       cancelledOn: true,
       agentMessages: {
         where: { direction: "outbound" },

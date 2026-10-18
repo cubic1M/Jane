@@ -252,6 +252,9 @@ model User {
   checklistDismissedAt       DateTime?       @map("checklist_dismissed_at") @db.Timestamptz(3)
   // How much Jane does on its own (spec step 57). Null until the person picks.
   autopilot                  AutopilotLevel?
+  // On bill calls, accept any lower price with no contract and no fee, even on a different
+  // plan of the same service (spec step 62). Off: every offer comes to the person.
+  acceptSimpleOffers         Boolean         @default(false) @map("accept_simple_offers")
 
   authAccounts        AuthAccount[]
   mfaBackupCodes      MfaBackupCode[]

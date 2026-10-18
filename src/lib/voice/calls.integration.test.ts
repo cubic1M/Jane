@@ -23,9 +23,13 @@ describe.runIf(url)("phone negotiation, against a real database", () => {
   const notify = vi.fn(async () => undefined);
 
   // An approved bill negotiation, with the call placed.
-  async function called(source: "card" | "rule" = "card") {
+  async function called(source: "card" | "rule" = "card", acceptSimpleOffers = false) {
     const user = await client.user.create({
-      data: { email: `call-${crypto.randomUUID()}@example.com`, name: "Alex Rivera" },
+      data: {
+        email: `call-${crypto.randomUUID()}@example.com`,
+        name: "Alex Rivera",
+        acceptSimpleOffers,
+      },
     });
     created.push(user.id);
     const f = findingOfType("bill_negotiation");
@@ -159,5 +163,45 @@ describe.runIf(url)("phone negotiation, against a real database", () => {
       }),
     ).toBe(2);
     expect(await handleCallResult("nope", result({}), { client, notify })).toBe("unknown");
+  });
+
+  it("accepts an offer inside the person's limit, and brings the rest to them", async () => {
+    const simple = { monthlyCents: 9_900, contractMonths: 0, feeCents: 0 };
+    const within = await called("card", true);
+    const script = await client.agentMessage.findFirstOrThrow({
+      where: { actionId: within.action.id },
+    });
+    expect(script.body).toContain("no contract and no fee");
+    await handleCallResult(
+      within.action.replyToken!,
+      result({ outcome: "offer", offer: "basic plan", offerTerms: simple }),
+      { client, notify },
+    );
+    expect(await reload(within.action.id)).toMatchObject({
+      status: "done",
+      confirmedAnnualCents: (within.evidence.monthlyCents - 9_900) * 12,
+    });
+
+    // A contract always comes to the person, limit or not.
+    const contract = await called("card", true);
+    await handleCallResult(
+      contract.action.replyToken!,
+      result({
+        outcome: "offer",
+        offer: "12 months",
+        offerTerms: { ...simple, contractMonths: 12 },
+      }),
+      { client, notify },
+    );
+    expect((await reload(contract.action.id)).status).toBe("waiting_on_user");
+
+    // Without the limit, even a no-strings offer comes to them.
+    const off = await called("card", false);
+    await handleCallResult(
+      off.action.replyToken!,
+      result({ outcome: "offer", offer: "basic plan", offerTerms: simple }),
+      { client, notify },
+    );
+    expect((await reload(off.action.id)).status).toBe("waiting_on_user");
   });
 });

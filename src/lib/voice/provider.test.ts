@@ -22,6 +22,13 @@ describe("calls", () => {
       ),
     );
     expect(outcomes).toEqual(new Set(["lowered", "offer", "refused", "needs_person"]));
+    const offers = Array.from({ length: 80 }, (_, i) =>
+      simulatedCall(`a${i}`, "Comcast", 16_500, 12_000),
+    )
+      .filter((c) => c.outcome === "offer")
+      .map((c) => c.offerTerms?.contractMonths);
+    // Some offers come with a contract, some without.
+    expect(new Set(offers)).toEqual(new Set([12, 0]));
   });
 
   it("never lowers below the target, and says so on the call", () => {
