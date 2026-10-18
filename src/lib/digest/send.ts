@@ -7,7 +7,12 @@ import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
 import { offerFor } from "@/lib/membership/service";
 import { sendEmail } from "@/lib/email";
-import { buildDigest, type DigestPayload } from "./build";
+import { BUDGET_SUGGESTION_MONTHS } from "@/config/budgets";
+import { budgetSummary } from "@/insights/budgets";
+import { loadInsightTransactions } from "@/insights/load";
+import { netWorth, netWorthOn } from "@/insights/net-worth";
+import { listGoals } from "@/lib/goals";
+import { buildDigest, type DigestPayload, type DigestPlans } from "./build";
 import { appBase, clickLink } from "./links";
 import { renderDigest, type DigestLinks } from "./render";
 import { unsubscribeToken } from "./unsubscribe";
@@ -78,6 +83,7 @@ async function payloadFor(userId: string, now: Date, client: PrismaClient) {
     orderBy: [{ createdAt: "asc" }, { id: "asc" }],
     take: ALERTS_PAGE_LIMIT,
   });
+  const plans = await plansFor(userId, now, client);
   return buildDigest({
     now,
     lastSentAt: last?.sentAt ?? null,
@@ -91,7 +97,65 @@ async function payloadFor(userId: string, now: Date, client: PrismaClient) {
     })),
     findings,
     alerts,
+    plans,
   });
+}
+
+const WEEK_MS = 7 * 24 * 60 * 60 * 1000;
+
+// Budgets, goals and net worth, from the same functions as their pages.
+async function plansFor(userId: string, now: Date, client: PrismaClient): Promise<DigestPlans> {
+  const db = scopedFor(userId, client);
+  const asOf = now.toISOString().slice(0, 10);
+  const weekAgo = new Date(now.getTime() - WEEK_MS).toISOString().slice(0, 10);
+  const [budgetRows, goals, accounts, snapshots] = await Promise.all([
+    db.budgets.findMany({ select: { category: true, amountCents: true } }),
+    listGoals(userId, { client, now }),
+    db.accounts.findMany({
+      select: { id: true, name: true, type: true, currentBalanceCents: true },
+    }),
+    db.balanceSnapshots.findMany({
+      where: { date: { lte: new Date(`${weekAgo}T00:00:00Z`) } },
+      select: { accountId: true, date: true, balanceCents: true },
+    }),
+  ]);
+  const summary =
+    budgetRows.length === 0
+      ? null
+      : budgetSummary(
+          await loadInsightTransactions(db, asOf, BUDGET_SUGGESTION_MONTHS + 1),
+          budgetRows,
+          asOf,
+        );
+  const snaps = snapshots.map((s) => ({ ...s, date: s.date.toISOString().slice(0, 10) }));
+  const balanceThen = (accountId: string) =>
+    snaps
+      .filter((s) => s.accountId === accountId)
+      .sort((a, b) => a.date.localeCompare(b.date))
+      .at(-1)?.balanceCents;
+  const usesNetWorth = snaps.length > 0;
+  return {
+    budgets: (summary?.progress ?? []).map((p) => ({
+      category: p.category,
+      spentCents: p.spentCents,
+      budgetCents: p.budgetCents,
+    })),
+    goals: goals.map((g) => {
+      const then = g.accountId && g.accountName ? balanceThen(g.accountId) : undefined;
+      return {
+        name: g.name,
+        percent: g.progress.percent,
+        savedChangeCents: then === undefined ? null : g.progress.savedCents - Math.max(0, then),
+      };
+    }),
+    netWorth: usesNetWorth
+      ? {
+          nowCents: netWorth(accounts.map((a) => ({ ...a, balanceCents: a.currentBalanceCents })))
+            .netCents,
+          weekAgoCents: netWorthOn(accounts, snaps, weekAgo),
+        }
+      : null,
+  };
 }
 
 function linksFor(digestId: string, userId: string): DigestLinks {
@@ -99,6 +163,9 @@ function linksFor(digestId: string, userId: string): DigestLinks {
     report: clickLink(digestId, "/report"),
     actions: clickLink(digestId, "/actions"),
     alerts: clickLink(digestId, "/alerts"),
+    budgets: clickLink(digestId, "/budgets"),
+    goals: clickLink(digestId, "/goals"),
+    netWorth: clickLink(digestId, "/net-worth"),
     settings: clickLink(digestId, "/settings"),
     unsubscribe: `${appBase()}/unsubscribe?token=${unsubscribeToken(userId)}`,
   };

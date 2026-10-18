@@ -9,6 +9,9 @@ export type DigestLinks = {
   report: string;
   actions: string;
   alerts: string;
+  budgets: string;
+  goals: string;
+  netWorth: string;
   settings: string;
   unsubscribe: string;
 };
@@ -63,6 +66,41 @@ function sections(p: DigestPayload, links: DigestLinks): Section[] {
       heading: "New since last week",
       items: p.newFindings.map((f) => `${f.title}${yearly(f.annualSavingsCents)}`),
       link: { label: "Open your report", url: links.report },
+    });
+  }
+  if (p.budgets?.length) {
+    out.push({
+      heading: "Budgets this month",
+      items: p.budgets.map(
+        (b) =>
+          `${b.category}: ${formatCents(b.spentCents)} of ${formatCents(b.budgetCents)}${b.over ? " (over)" : ""}`,
+      ),
+      link: { label: "See your budgets", url: links.budgets },
+    });
+  }
+  if (p.goals?.length) {
+    out.push({
+      heading: "Your goals",
+      items: p.goals.map((g) => {
+        const change =
+          g.savedChangeCents === null || g.savedChangeCents === 0
+            ? ""
+            : ` (${g.savedChangeCents > 0 ? "+" : "−"}${formatCents(Math.abs(g.savedChangeCents))} this week)`;
+        return `${g.name}: ${g.percent}%${change}`;
+      }),
+      link: { label: "See your goals", url: links.goals },
+    });
+  }
+  if (p.netWorth) {
+    const { nowCents, changeCents } = p.netWorth;
+    const direction =
+      changeCents === 0
+        ? "no change this week"
+        : `${changeCents > 0 ? "up" : "down"} ${formatCents(Math.abs(changeCents))} this week`;
+    out.push({
+      heading: "Net worth",
+      items: [`${formatCents(nowCents)}, ${direction}`],
+      link: { label: "See your net worth", url: links.netWorth },
     });
   }
   if (p.membershipOffer) {

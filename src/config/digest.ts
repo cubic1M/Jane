@@ -17,7 +17,18 @@ export const TIMEZONES: readonly { id: string; label: string }[] = [
 ];
 
 // Pages a digest link may lead to (anything else goes to the report).
-export const DIGEST_LINK_PATHS = ["/report", "/actions", "/alerts", "/settings"] as const;
+export const DIGEST_LINK_PATHS = [
+  "/report",
+  "/actions",
+  "/alerts",
+  "/budgets",
+  "/goals",
+  "/net-worth",
+  "/settings",
+] as const;
+
+// Budgets show in the weekly email once this share is spent (or they're over).
+export const DIGEST_BUDGET_NEAR_SHARE = 0.9;
 
 // Added to every digest link, so analytics can attribute visits.
 export const DIGEST_UTM = { utm_source: "digest", utm_medium: "email", utm_campaign: "weekly" };

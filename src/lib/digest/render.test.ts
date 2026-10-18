@@ -5,6 +5,9 @@ const LINKS = {
   report: "https://app.example.com/api/digest/click?d=d1&to=%2Freport",
   actions: "https://app.example.com/api/digest/click?d=d1&to=%2Factions",
   alerts: "https://app.example.com/api/digest/click?d=d1&to=%2Falerts",
+  budgets: "https://app.example.com/api/digest/click?d=d1&to=%2Fbudgets",
+  goals: "https://app.example.com/api/digest/click?d=d1&to=%2Fgoals",
+  netWorth: "https://app.example.com/api/digest/click?d=d1&to=%2Fnet-worth",
   settings: "https://app.example.com/api/digest/click?d=d1&to=%2Fsettings",
   unsubscribe: "https://app.example.com/unsubscribe?token=t",
 };
@@ -62,6 +65,32 @@ describe("renderDigest", () => {
     // A payload stored before alerts existed still renders.
     const old = { ...payload, alerts: undefined } as unknown as typeof payload;
     expect(renderDigest(old, LINKS).text).not.toContain("See your alerts");
+  });
+
+  it("shows budgets, goals and net worth only when there's something to show", () => {
+    const { text } = renderDigest(
+      {
+        ...payload,
+        budgets: [
+          { category: "Food and drink", spentCents: 23_000, budgetCents: 20_000, over: true },
+        ],
+        goals: [
+          { name: "Trip", percent: 40, savedChangeCents: 10_000 },
+          { name: "Car", percent: 10, savedChangeCents: null },
+        ],
+        netWorth: { nowCents: 1_234_500, changeCents: -20_000 },
+      },
+      LINKS,
+    );
+    expect(text).toContain("Budgets this month\n- Food and drink: $230.00 of $200.00 (over)");
+    expect(text).toContain("- Trip: 40% (+$100.00 this week)\n- Car: 10%");
+    expect(text).toContain("Net worth\n- $12,345.00, down $200.00 this week");
+    expect(text).toContain(`See your net worth: ${LINKS.netWorth}`);
+
+    const plain = renderDigest(payload, LINKS).text;
+    for (const heading of ["Budgets this month", "Your goals", "Net worth"]) {
+      expect(plain).not.toContain(heading);
+    }
   });
 
   it("includes the membership offer when it's due", () => {
