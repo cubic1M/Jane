@@ -91,6 +91,20 @@ export const SUBSCRIPTION_MERCHANTS: readonly string[] = [
   "youtube premium",
 ];
 
+// Categories too broad to say whether a recurring charge is a subscription (a software
+// tool, a membership, a box delivery). For these, and for uncategorized charges, Claude is
+// asked once per merchant; the subscription rule then treats a "yes" like a known merchant.
+export const AMBIGUOUS_SUBSCRIPTION_CATEGORIES: readonly PfcDetailed[] = [
+  "ENTERTAINMENT_OTHER_ENTERTAINMENT",
+  "GENERAL_MERCHANDISE_OTHER_GENERAL_MERCHANDISE",
+  "GENERAL_SERVICES_EDUCATION",
+  "GENERAL_SERVICES_OTHER_GENERAL_SERVICES",
+  "PERSONAL_CARE_OTHER_PERSONAL_CARE",
+  "OTHER_OTHER",
+];
+// A subscription known only from Claude's answer is never rated above this.
+export const LLM_SUBSCRIPTION_MAX_CONFIDENCE: ConfidenceLevel = "medium";
+
 // Groups of interchangeable services. Two or more active subscriptions in one group is a
 // duplicate. A stream joins a group by category or by merchant name.
 export const SERVICE_GROUPS: readonly {

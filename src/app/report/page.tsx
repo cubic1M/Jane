@@ -5,6 +5,7 @@ import { AppHeader } from "@/components/app-header";
 import { moneyFound } from "@/detection/engine";
 import { listAccountSummaries } from "@/lib/accounts";
 import { scopedDb } from "@/lib/db-scoped";
+import { explanationFor } from "@/lib/explanations";
 import { formatCents } from "@/lib/money";
 import { requireUser } from "@/lib/session";
 
@@ -15,7 +16,15 @@ async function ReportContent() {
     listAccountSummaries(db),
     db.findings.findMany({
       where: { status: { notIn: ["declined", "done", "failed"] } },
-      select: { id: true, title: true },
+      select: {
+        id: true,
+        type: true,
+        title: true,
+        annualSavingsCents: true,
+        evidence: true,
+        explanation: true,
+        explanationHash: true,
+      },
       orderBy: [{ annualSavingsCents: { sort: "desc", nulls: "last" } }, { id: "asc" }],
     }),
     moneyFound(user.id),
@@ -39,10 +48,16 @@ async function ReportContent() {
         </p>
       )}
       {findings.length > 0 && (
-        <ul className="flex list-disc flex-col gap-1 pl-5">
-          {findings.map((f) => (
-            <li key={f.id}>{f.title}</li>
-          ))}
+        <ul className="flex flex-col gap-4">
+          {findings.map((f) => {
+            const text = explanationFor(f);
+            return (
+              <li key={f.id} className="flex flex-col gap-1">
+                <h2 className="font-semibold">{text.title}</h2>
+                <p className="text-zinc-600 dark:text-zinc-400">{text.explanation}</p>
+              </li>
+            );
+          })}
         </ul>
       )}
       <AccountList accounts={accounts} />

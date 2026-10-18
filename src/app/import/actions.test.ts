@@ -1,10 +1,13 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { accountsCreate, importCsvFiles, runDetection } = vi.hoisted(() => ({
-  accountsCreate: vi.fn(),
-  importCsvFiles: vi.fn(),
-  runDetection: vi.fn(),
-}));
+const { accountsCreate, importCsvFiles, runDetection, explainFindings, afterCallbacks } =
+  vi.hoisted(() => ({
+    explainFindings: vi.fn(),
+    afterCallbacks: [] as (() => Promise<void>)[],
+    accountsCreate: vi.fn(),
+    importCsvFiles: vi.fn(),
+    runDetection: vi.fn(),
+  }));
 
 vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
 vi.mock("next/navigation", () => ({
@@ -18,6 +21,10 @@ vi.mock("@/lib/db-scoped", () => ({
   scopedDb: vi.fn(async () => ({ userId: "user_1", accounts: { create: accountsCreate } })),
 }));
 vi.mock("@/detection/engine", () => ({ runDetection }));
+vi.mock("@/lib/explanations", () => ({ explainFindings }));
+vi.mock("next/server", () => ({
+  after: vi.fn((callback: () => Promise<void>) => afterCallbacks.push(callback)),
+}));
 vi.mock("@/lib/import/import-csv", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/lib/import/import-csv")>()),
   importCsvFiles,
@@ -47,6 +54,8 @@ beforeEach(() => {
   accountsCreate.mockReset().mockResolvedValue({});
   importCsvFiles.mockReset();
   runDetection.mockReset().mockResolvedValue({});
+  explainFindings.mockReset().mockResolvedValue({});
+  afterCallbacks.length = 0;
   vi.mocked(track).mockReset();
   vi.mocked(logAudit).mockReset();
 });
@@ -138,6 +147,20 @@ describe("confirmImport", () => {
     );
     expect(track).toHaveBeenCalledWith("user_1", "import_completed", { ...counts, files: 1 });
     expect(runDetection).toHaveBeenCalledWith("user_1");
+  });
+
+  it("explains the findings after responding", async () => {
+    importCsvFiles.mockResolvedValue({ parsed: 1, inserted: 1, duplicates: 0, skipped: 0 });
+
+    await expect(
+      confirmImport(form({ accountId: "acct_1", files: [csv("card.csv")] })),
+    ).rejects.toThrow("redirect:/scanning");
+    expect(explainFindings).not.toHaveBeenCalled();
+
+    explainFindings.mockRejectedValueOnce(new Error("database hiccup"));
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    for (const callback of afterCallbacks) await callback();
+    expect(explainFindings).toHaveBeenCalledWith("user_1");
   });
 
   it("still moves to /scanning when detection fails after a successful import", async () => {

@@ -1,11 +1,13 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const { scoped } = vi.hoisted(() => ({
   scoped: {
+    userId: "user_1",
     accounts: { findMany: vi.fn() },
     transactions: { findMany: vi.fn() },
     recurringStreams: { findMany: vi.fn() },
     findings: { findMany: vi.fn(), createMany: vi.fn(), update: vi.fn(), deleteMany: vi.fn() },
+    subscriptionChecks: { findMany: vi.fn(), createMany: vi.fn() },
   },
 }));
 
@@ -186,6 +188,8 @@ describe("runDetection", () => {
     scoped.findings.createMany.mockReset().mockResolvedValue({ count: 1 });
     scoped.findings.update.mockReset();
     scoped.findings.deleteMany.mockReset();
+    scoped.subscriptionChecks.findMany.mockReset().mockResolvedValue([]);
+    scoped.subscriptionChecks.createMany.mockReset();
     updateMany.mockReset();
     vi.mocked(track).mockReset();
   });
@@ -281,6 +285,76 @@ describe("runDetection", () => {
       where: { id: { in: ["stale"] }, status: { in: ["new", "shown"] } },
     });
     expect(summary.removed).toBe(1);
+  });
+});
+
+describe("runDetection asking Claude about unclear merchants", () => {
+  const now = new Date("2026-10-15T12:00:00Z");
+  const updateMany = vi.fn();
+  const client = { user: { updateMany } } as unknown as PrismaClient;
+  const CANVA = {
+    description: "CANVA* PRO MONTHLY",
+    pfcPrimary: "GENERAL_SERVICES",
+    pfcDetailed: "GENERAL_SERVICES_OTHER_GENERAL_SERVICES",
+  };
+
+  beforeEach(() => {
+    scoped.accounts.findMany.mockResolvedValue([{ ...CHECKING, currentBalanceCents: null }]);
+    scoped.transactions.findMany.mockResolvedValue(
+      monthly(4, 1499, CANVA).map((t) => ({ ...t, date: new Date(`${t.date}T00:00:00Z`) })),
+    );
+    scoped.recurringStreams.findMany.mockResolvedValue([]);
+    scoped.findings.findMany.mockReset().mockResolvedValue([]);
+    scoped.findings.createMany.mockReset().mockResolvedValue({ count: 1 });
+    scoped.subscriptionChecks.findMany.mockReset().mockResolvedValue([]);
+    scoped.subscriptionChecks.createMany.mockReset();
+    vi.stubEnv("ANTHROPIC_MODEL", "claude-test-model");
+  });
+
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
+  it("asks once, saves the answer and lets the rule use it", async () => {
+    const check = vi.fn().mockResolvedValue(new Map([["Canva", true]]));
+
+    const summary = await runDetection("user_1", { client, now, checkSubscriptions: check });
+
+    expect(check).toHaveBeenCalledWith(["Canva"]);
+    expect(scoped.subscriptionChecks.createMany).toHaveBeenCalledWith({
+      data: [
+        {
+          userId: "user_1",
+          merchantKey: "canva",
+          isSubscription: true,
+          model: "claude-test-model",
+          promptVersion: "subscription-v1",
+        },
+      ],
+      skipDuplicates: true,
+    });
+    expect(summary.counts.subscription_review).toBe(1);
+  });
+
+  it("never asks again about a merchant it has an answer for", async () => {
+    scoped.subscriptionChecks.findMany.mockResolvedValue([
+      { merchantKey: "canva", isSubscription: false },
+    ]);
+    const check = vi.fn();
+
+    const summary = await runDetection("user_1", { client, now, checkSubscriptions: check });
+
+    expect(check).not.toHaveBeenCalled();
+    expect(summary.counts.subscription_review).toBe(0);
+  });
+
+  it("finds no subscription when Claude can't be asked", async () => {
+    const check = vi.fn().mockResolvedValue(new Map());
+
+    const summary = await runDetection("user_1", { client, now, checkSubscriptions: check });
+
+    expect(scoped.subscriptionChecks.createMany).not.toHaveBeenCalled();
+    expect(summary.counts.subscription_review).toBe(0);
   });
 });
 

@@ -103,6 +103,15 @@ enum CategorySource {
   @@map("category_source")
 }
 
+// Where a finding's explanation came from: Claude, or the fixed text for its type when
+// Claude's answer failed the guardrails.
+enum ExplanationSource {
+  llm
+  template
+
+  @@map("explanation_source")
+}
+
 enum ActorType {
   user
   admin
@@ -137,6 +146,7 @@ model User {
   membershipIntents  MembershipIntent[]
   analyticsEvents    AnalyticsEvent[]
   merchantCategories MerchantCategory[]
+  subscriptionChecks SubscriptionCheck[]
 
   @@map("users")
 }
@@ -290,24 +300,33 @@ model RecurringStream {
 }
 
 model Finding {
-  id                 String        @id @default(cuid())
-  userId             String        @map("user_id")
+  id                 String             @id @default(cuid())
+  userId             String             @map("user_id")
   type               FindingType
   // Identifies the same opportunity across scans (e.g. "merchant:netflix", "account:<id>"),
   // so a rescan updates the finding instead of adding another.
   key                String
   title              String
-  explanation        String?
+  // The card text: { title, explanation, giveUp, alternatives }. Null until generated;
+  // the page shows template text meanwhile (src/lib/explanations.ts).
+  explanation        Json?
+  explanationSource  ExplanationSource? @map("explanation_source")
+  // Audit trail: which model and prompt wrote it (both null for template text).
+  explanationModel   String?            @map("explanation_model")
+  explanationPrompt  String?            @map("explanation_prompt_version")
+  // Hash of exactly what was sent. A different hash means the evidence changed and the
+  // explanation is regenerated.
+  explanationHash    String?            @map("explanation_input_hash")
   // Null when there is no dollar estimate (e.g. insurance reshop).
-  annualSavingsCents Int?          @map("annual_savings_cents")
+  annualSavingsCents Int?               @map("annual_savings_cents")
   // What the rule measured (annual cost, fees, excess cash). A declined finding only comes
   // back when this moves by more than the configured share.
-  amountCents        Int?          @map("amount_cents")
+  amountCents        Int?               @map("amount_cents")
   confidence         Confidence
-  evidence           Json          @default("{}")
-  status             FindingStatus @default(new)
-  createdAt          DateTime      @default(now()) @map("created_at") @db.Timestamptz(3)
-  updatedAt          DateTime      @updatedAt @map("updated_at") @db.Timestamptz(3)
+  evidence           Json               @default("{}")
+  status             FindingStatus      @default(new)
+  createdAt          DateTime           @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt          DateTime           @updatedAt @map("updated_at") @db.Timestamptz(3)
 
   user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
   decisions Decision[]
@@ -403,6 +422,24 @@ model MerchantCategory {
   @@unique([userId, merchantKey])
   @@index([userId])
   @@map("merchant_categories")
+}
+
+// Claude's answer to "is this recurring merchant a subscription?", for merchants whose
+// category doesn't settle it. Asked once per merchant; the detection rules still decide
+// whether there is a finding.
+model SubscriptionCheck {
+  id             String   @id @default(cuid())
+  userId         String   @map("user_id")
+  merchantKey    String   @map("merchant_key")
+  isSubscription Boolean  @map("is_subscription")
+  model          String
+  promptVersion  String   @map("prompt_version")
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, merchantKey])
+  @@map("subscription_checks")
 }
 
 // Deliberately no foreign keys: the log must outlive the users and rows it describes,
