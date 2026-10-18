@@ -77,17 +77,22 @@ async function Household() {
             {accounts.map((a) => (
               <li key={a.id} className="flex flex-wrap items-center justify-between gap-2 py-2">
                 <span>{label(a)}</span>
-                <form action={share}>
-                  <input type="hidden" name="accountId" value={a.id} />
-                  <input type="hidden" name="shared" value={String(!a.sharedWithHousehold)} />
-                  <button
-                    type="submit"
-                    aria-label={`${a.sharedWithHousehold ? "Stop sharing" : "Share"} ${label(a)}`}
-                    className={`rounded-full px-3 py-1 text-xs font-semibold ${a.sharedWithHousehold ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300" : "border border-zinc-300 dark:border-zinc-700"}`}
-                  >
-                    {a.sharedWithHousehold ? "Shared · stop" : "Not shared · share"}
-                  </button>
-                </form>
+                <span className="flex items-center gap-3">
+                  <span className="text-xs text-zinc-500">
+                    {a.sharedWithHousehold ? "Shared" : "Not shared"}
+                  </span>
+                  <form action={share}>
+                    <input type="hidden" name="accountId" value={a.id} />
+                    <input type="hidden" name="shared" value={String(!a.sharedWithHousehold)} />
+                    <button
+                      type="submit"
+                      className="rounded-full border border-zinc-300 px-3 py-1 text-xs font-semibold hover:bg-zinc-100 dark:border-zinc-700 dark:hover:bg-zinc-900"
+                    >
+                      {a.sharedWithHousehold ? "Stop sharing" : "Share"}
+                      <span className="sr-only"> {label(a)}</span>
+                    </button>
+                  </form>
+                </span>
               </li>
             ))}
           </ul>

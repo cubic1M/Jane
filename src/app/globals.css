@@ -24,3 +24,27 @@ body {
   color: var(--foreground);
   font-family: var(--font-sans), system-ui, sans-serif;
 }
+
+/* Dark mode: the brand and status colours used for text in light mode are too dim on the
+   near-black background (WCAG AA needs 4.5:1). These lighter shades replace them for text
+   everywhere, so a page can't forget a dark: variant. Unlayered, so they win over the
+   utilities; checked by the axe tests in e2e/accessibility.spec.ts. */
+@media (prefers-color-scheme: dark) {
+  .text-emerald-700,
+  .text-emerald-800 {
+    color: var(--color-emerald-400);
+  }
+  .text-zinc-500 {
+    color: var(--color-zinc-400);
+  }
+  .text-red-700 {
+    color: var(--color-red-400);
+  }
+  .text-amber-700,
+  .text-amber-800 {
+    color: var(--color-amber-300);
+  }
+  .text-sky-800 {
+    color: var(--color-sky-300);
+  }
+}
