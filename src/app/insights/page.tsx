@@ -4,7 +4,10 @@ import { Suspense } from "react";
 import { AppHeader } from "@/components/app-header";
 import { ViewTracker } from "@/components/view-tracker";
 import { INSIGHT_MONTHS } from "@/config/insights";
-import { monthsEnding, spendingInsights } from "@/insights/spending";
+import { BudgetList } from "@/components/budget-list";
+import { budgetSummary } from "@/insights/budgets";
+import { loadInsightTransactions } from "@/insights/load";
+import { spendingInsights } from "@/insights/spending";
 import { scopedDb } from "@/lib/db-scoped";
 import { formatCents } from "@/lib/money";
 import { requireUser } from "@/lib/session";
@@ -21,25 +24,12 @@ async function Insights() {
   const user = await requireUser();
   const db = await scopedDb();
   const asOf = new Date().toISOString().slice(0, 10);
-  const [first] = monthsEnding(asOf, INSIGHT_MONTHS);
-  const transactions = await db.transactions.findMany({
-    where: { date: { gte: new Date(`${first}-01T00:00:00Z`) } },
-    select: {
-      date: true,
-      amountCents: true,
-      description: true,
-      merchantName: true,
-      pfcPrimary: true,
-      pfcDetailed: true,
-      pending: true,
-    },
-  });
+  const transactions = await loadInsightTransactions(db, asOf, INSIGHT_MONTHS);
   if (transactions.length === 0) redirect("/home");
 
-  const insights = spendingInsights(
-    transactions.map((t) => ({ ...t, date: t.date.toISOString().slice(0, 10) })),
-    { asOf, monthCount: INSIGHT_MONTHS },
-  );
+  const insights = spendingInsights(transactions, { asOf, monthCount: INSIGHT_MONTHS });
+  const budgets = await db.budgets.findMany({ select: { category: true, amountCents: true } });
+  const budget = budgets.length > 0 ? budgetSummary(transactions, budgets, asOf) : null;
   // The latest month that has any spending.
   const latest =
     [...insights.months].reverse().find((m) => m.spendingCents > 0)?.month ??
@@ -57,9 +47,15 @@ async function Insights() {
           accounts and paying off cards isn&apos;t counted as spending.{" "}
           <Link href="/transactions" className="font-medium text-emerald-700 hover:underline">
             Fix a category
+          </Link>{" "}
+          ·{" "}
+          <Link href="/budgets" className="font-medium text-emerald-700 hover:underline">
+            Budgets
           </Link>
         </p>
       </div>
+
+      {budget && <BudgetList progress={budget.progress} daysLeft={budget.daysLeft} />}
 
       <section className="flex flex-col gap-3">
         <h2 className="text-xl font-semibold">Income and spending by month</h2>

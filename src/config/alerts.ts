@@ -14,6 +14,7 @@ export const ALERT_TYPES: readonly AlertType[] = [
   "fee_charged",
   "price_increase",
   "new_subscription",
+  "over_budget",
 ];
 
 // Time-sensitive alerts: these can be emailed right away.
@@ -48,6 +49,10 @@ export const ALERT_LABELS: Record<AlertType, { label: string; description: strin
     label: "New subscription",
     description: "A recurring charge we hadn't seen before.",
   },
+  over_budget: {
+    label: "Over budget",
+    description: "Spending in a category passed the monthly budget you set.",
+  },
 };
 
 export const DEFAULT_ALERT_DELIVERY: Record<AlertType, AlertDelivery> = {
@@ -57,6 +62,7 @@ export const DEFAULT_ALERT_DELIVERY: Record<AlertType, AlertDelivery> = {
   fee_charged: "app",
   price_increase: "app",
   new_subscription: "app",
+  over_budget: "app",
 };
 
 // At most this many alert emails per person in any 24 hours. The rest wait for the

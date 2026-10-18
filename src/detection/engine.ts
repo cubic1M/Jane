@@ -10,6 +10,9 @@ import { raiseAlerts } from "@/lib/alerts";
 import { db as defaultClient } from "@/lib/db";
 import { llmModel } from "@/lib/anthropic";
 import { scopedFor, type ScopedDb } from "@/lib/db-scoped";
+import { BUDGET_SUGGESTION_MONTHS } from "@/config/budgets";
+import { budgetSummary, overBudgetAlerts } from "@/insights/budgets";
+import { loadInsightTransactions } from "@/insights/load";
 import { detectAlerts } from "./alerts";
 import { detect } from "./detect";
 import { withDirectory } from "./merchants";
@@ -342,7 +345,18 @@ export async function runDetection(
       knownFindings: new Set(existing.map(idOf)),
       firstScan: firstRun.count > 0,
     });
-    await raise(userId, alerts, { client, now });
+    const budgets = await db.budgets.findMany({ select: { category: true, amountCents: true } });
+    const overBudget =
+      budgets.length === 0
+        ? []
+        : overBudgetAlerts(
+            budgetSummary(
+              await loadInsightTransactions(db, input.asOf, BUDGET_SUGGESTION_MONTHS + 1),
+              budgets,
+              input.asOf,
+            ),
+          );
+    await raise(userId, [...alerts, ...overBudget], { client, now });
   } catch (error) {
     console.error("Alerts failed", { userId, error: String(error) });
   }

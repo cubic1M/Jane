@@ -9,6 +9,9 @@ const { scoped } = vi.hoisted(() => ({
     findings: { findMany: vi.fn(), createMany: vi.fn(), update: vi.fn(), deleteMany: vi.fn() },
     subscriptionChecks: { findMany: vi.fn(), createMany: vi.fn() },
     actions: { findMany: vi.fn(async () => []) },
+    budgets: {
+      findMany: vi.fn(async (): Promise<{ category: string; amountCents: number }[]> => []),
+    },
   },
 }));
 
@@ -322,6 +325,20 @@ describe("runDetection", () => {
     expect(alerts).toEqual([
       expect.objectContaining({ type: "new_subscription", key: "merchant:netflix" }),
     ]);
+  });
+
+  it("raises an over-budget alert from the person's budgets", async () => {
+    scoped.budgets.findMany.mockResolvedValueOnce([
+      { category: "Entertainment", amountCents: 1_000 },
+    ]);
+
+    await runDetection("user_1", { client, now });
+
+    expect(vi.mocked(raiseAlerts).mock.calls[0][1]).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ type: "over_budget", key: "Entertainment:2026-10" }),
+      ]),
+    );
   });
 
   it("raises no new-subscription alerts on the first scan", async () => {
