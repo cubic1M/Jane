@@ -131,3 +131,20 @@ export async function comparisonFor(
   const includeDemo = await hasDemoBank(userId, { client });
   return compareOptions(current, await usableOptions({ client, now, includeDemo }));
 }
+
+// Several findings at once, for the Jane hub (spec step 80): the directory and the options
+// load once, not once per finding. In the same order as `findings`.
+export async function comparisonsFor(
+  findings: FindingLike[],
+  { userId, client = defaultClient, now = new Date() }: CompareFor,
+): Promise<(Comparison | null)[]> {
+  if (findings.length === 0) return [];
+  const directory = await client.merchant.findMany({
+    select: { key: true, name: true, aliases: true, category: true },
+  });
+  const currents = findings.map((f) => currentFor(f, directory));
+  if (currents.every((c) => c === null)) return currents.map(() => null);
+  const includeDemo = await hasDemoBank(userId, { client });
+  const options = await usableOptions({ client, now, includeDemo });
+  return currents.map((current) => (current ? compareOptions(current, options) : null));
+}
