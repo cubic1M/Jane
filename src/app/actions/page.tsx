@@ -56,6 +56,11 @@ async function ActionsContent({
     },
     orderBy: [{ createdAt: "desc" }, { id: "asc" }],
   });
+  const diy = await db.decisions.findMany({
+    where: { choice: "diy", undoneAt: null },
+    select: { id: true, findingId: true, diyDoneAt: true, cardSnapshot: true },
+    orderBy: [{ createdAt: "desc" }, { id: "asc" }],
+  });
 
   return (
     <>
@@ -86,7 +91,33 @@ async function ActionsContent({
         </p>
       )}
 
-      {actions.length === 0 ? (
+      {diy.length > 0 && (
+        <section className="flex flex-col gap-3">
+          <h2 className="text-xl font-semibold">Doing it yourself</h2>
+          <ul className="flex flex-col gap-3">
+            {diy.map((d) => {
+              const card = agreedTo(d.cardSnapshot);
+              return (
+                <li key={d.id}>
+                  <Link
+                    href={`/report/${d.findingId}`}
+                    className="flex flex-wrap items-start justify-between gap-2 rounded-xl border border-zinc-200 p-4 hover:bg-zinc-50 dark:border-zinc-800 dark:hover:bg-zinc-900"
+                  >
+                    <span className="font-semibold">{card.title}</span>
+                    <span
+                      className={`rounded-full px-3 py-1 text-xs font-semibold ${d.diyDoneAt ? STATUS_STYLES.done : STATUS_STYLES.waiting_on_user}`}
+                    >
+                      {d.diyDoneAt ? "Done" : "Your steps"}
+                    </span>
+                  </Link>
+                </li>
+              );
+            })}
+          </ul>
+        </section>
+      )}
+
+      {actions.length === 0 && diy.length > 0 ? null : actions.length === 0 ? (
         <p className="text-zinc-600 dark:text-zinc-400">
           Nothing yet.{" "}
           <Link href="/report" className="font-medium text-emerald-700 hover:underline">

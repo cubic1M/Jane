@@ -21,7 +21,7 @@ The build runs in eleven steps, with Plaid added at step 7 after the founders te
 
 ## Status (Oct 18, 2026)
 
-Steps 1–21 and 24 are built (24 came before 22, because do-it-yourself kits need its cancel links). Where the build differs from the original plan, the plan below has been kept and the difference is noted here.
+Steps 1–22 and 24 are built (24 came before 22, because do-it-yourself kits need its cancel links). Where the build differs from the original plan, the plan below has been kept and the difference is noted here.
 
 | Step | Shipped in | Notes |
 | --- | --- | --- |
@@ -45,6 +45,7 @@ Steps 1–21 and 24 are built (24 came before 22, because do-it-yourself kits ne
 | 20 Debt payoff planner | PR #27 | /debt, linked from card interest cards; runs in the browser from balances on linked cards, with APR and minimums typed by the person; strategies named "highest rate first" and "smallest balance first" (avalanche and snowball as asides); no Claude text, and all planner wording is checked by a new "recommends a choice" guardrail |
 | 21 Team playbooks and drafted messages | PR #28 | Drafts are built from the privacy-safe explain input, cut to the facts each request needs, with [placeholders] for the person's name and email; no draft for moving cash, insurance quotes or due-date changes (no single company to write to); drafts aren't stored, each one is audit-logged |
 | 24 Merchant directory | PR #29 | Built before 22 and 23; seeded with 21 common subscriptions in the migration (from src/config/merchant-seed.ts, all unreviewed); detection gives directory merchants one name and fills missing categories; one-word names match exactly, so "Apple Store" isn't Apple's subscriptions; no seeded prices (they change too often), the team adds them when reviewing |
+| 22 Do-it-yourself kits | PR #30 | A third answer on the card ("I'll do it myself"), stored as a decision with choice diy and no action; kits for cancelling, price increases, refunds, bank fees (email via mailto) and bill negotiation (call script); "I did it" sets diy_done_at and the finding to done; approval rate counts do-it-yourself as a yes |
 
 Still needed from a person before outside users: counsel (insurance referral licensing, privacy policy and terms), Plaid Production approval and questionnaire, a backup restore test, and admins enrolling in two-factor. See docs/beta-checklist.md.
 

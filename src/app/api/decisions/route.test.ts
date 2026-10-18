@@ -56,6 +56,15 @@ describe("POST /api/decisions", () => {
     });
   });
 
+  it("accepts a do-it-yourself answer", async () => {
+    vi.mocked(recordDecision).mockResolvedValue({ decisionId: "d2", actionId: null });
+
+    const response = await post({ findingId: "f1", choice: "diy", cardHash: HASH });
+
+    expect(response.status).toBe(201);
+    expect(await response.json()).toEqual({ decisionId: "d2", actionId: null });
+  });
+
   it.each([
     ["invalid JSON", "{"],
     ["a missing choice", { findingId: "f1", cardHash: HASH }],

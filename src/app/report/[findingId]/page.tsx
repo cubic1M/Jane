@@ -8,7 +8,11 @@ import { scopedDb } from "@/lib/db-scoped";
 import { UNDO_WINDOW_SECONDS } from "@/lib/decisions";
 import { formatCents } from "@/lib/money";
 import { requireUser } from "@/lib/session";
+import { normalizeAlias } from "@/data-sources/merchant-directory";
+import { buildKit, hasKit } from "@/lib/diy";
+import { merchantFor } from "@/lib/merchants";
 import { DecisionButtons } from "./decision-buttons";
+import { DiyKit } from "./diy-kit";
 import { savingsLine } from "@/lib/savings-text";
 
 async function Card({ params }: { params: PageProps<"/report/[findingId]">["params"] }) {
@@ -28,6 +32,22 @@ async function Card({ params }: { params: PageProps<"/report/[findingId]">["para
   }
   const card = buildCard(finding);
   const open = finding.status === "new" || finding.status === "shown";
+  // A do-it-yourself answer shows the kit instead of the buttons.
+  const diyDecision = open
+    ? null
+    : await db.decisions.findFirst({
+        where: { findingId: finding.id, choice: "diy", undoneAt: null },
+        select: { id: true, diyDoneAt: true },
+      });
+  const merchantName = (finding.evidence as { merchant?: unknown } | null)?.merchant;
+  const kit =
+    hasKit(card.actionType) && (open || diyDecision)
+      ? buildKit(
+          card.actionType,
+          finding,
+          await merchantFor(typeof merchantName === "string" ? normalizeAlias(merchantName) : null),
+        )
+      : null;
 
   return (
     <>
@@ -106,6 +126,13 @@ async function Card({ params }: { params: PageProps<"/report/[findingId]">["para
             findingId={finding.id}
             cardHash={cardHash(card)}
             undoSeconds={UNDO_WINDOW_SECONDS}
+            diy={kit !== null}
+          />
+        ) : diyDecision && kit ? (
+          <DiyKit
+            kit={kit}
+            decisionId={diyDecision.id}
+            doneOn={diyDecision.diyDoneAt?.toISOString().slice(0, 10) ?? null}
           />
         ) : (
           <p className="rounded-xl bg-zinc-100 p-4 dark:bg-zinc-900">

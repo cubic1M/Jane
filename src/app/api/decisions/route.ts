@@ -7,7 +7,8 @@ import { decisionErrorResponse } from "./errors";
 const ID_PATTERN = /^[a-z0-9]{1,40}$/i;
 const HASH_PATTERN = /^[0-9a-f]{64}$/;
 
-// Records a yes or no on a decision card. The card hash proves which version was shown.
+// Records a yes, no or do-it-yourself on a decision card. The card hash proves which
+// version was shown.
 export async function POST(request: Request) {
   const user = await getCurrentUser();
   if (!user) return NextResponse.json({ error: "Not signed in" }, { status: 401 });
@@ -24,7 +25,7 @@ export async function POST(request: Request) {
   if (
     typeof findingId !== "string" ||
     !ID_PATTERN.test(findingId) ||
-    (choice !== "yes" && choice !== "no") ||
+    (choice !== "yes" && choice !== "no" && choice !== "diy") ||
     typeof cardHash !== "string" ||
     !HASH_PATTERN.test(cardHash)
   ) {

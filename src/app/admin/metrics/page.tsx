@@ -140,10 +140,10 @@ async function MetricsContent() {
         )}
       </section>
       <p className="text-xs text-zinc-500">
-        Approval rate is yes answers over cards opened. Completion rate is done over all actions
-        closed in the period. Willingness to pay counts reservations and payments after a
-        person&apos;s first finished action. Retention counts people whose 30th day after linking
-        fell in the period and who came back in days 23 to 30.
+        Approval rate is yes answers (including do-it-yourself) over cards opened. Completion rate
+        is done over all actions closed in the period. Willingness to pay counts reservations and
+        payments after a person&apos;s first finished action. Retention counts people whose 30th day
+        after linking fell in the period and who came back in days 23 to 30.
       </p>
     </>
   );

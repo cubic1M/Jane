@@ -18,6 +18,8 @@ export const ACTIVITY_EVENTS: readonly string[] = [
   "decision_yes",
   "decision_no",
   "decision_undone",
+  "diy_started",
+  "diy_done",
   "digest_clicked",
   "link_started",
   "link_succeeded",

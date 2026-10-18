@@ -19,10 +19,13 @@ export function DecisionButtons({
   findingId,
   cardHash,
   undoSeconds,
+  diy = false,
 }: {
   findingId: string;
   cardHash: string;
   undoSeconds: number;
+  // Whether a do-it-yourself kit is offered.
+  diy?: boolean;
 }) {
   const router = useRouter();
   const [state, setState] = useState<State>({ kind: "idle" });
@@ -41,7 +44,7 @@ export function DecisionButtons({
     return () => clearTimeout(timer);
   }, [state, router]);
 
-  async function decide(choice: "yes" | "no") {
+  async function decide(choice: "yes" | "no" | "diy") {
     setState({ kind: "sending" });
     try {
       const response = await fetch("/api/decisions", {
@@ -56,6 +59,10 @@ export function DecisionButtons({
       }
       if (choice === "yes") {
         router.push("/actions");
+      } else if (choice === "diy") {
+        // The card page shows the kit once the answer is saved.
+        setState({ kind: "idle" });
+        router.refresh();
       } else {
         setState({ kind: "declined", decisionId: body.decisionId, secondsLeft: undoSeconds });
       }
@@ -119,6 +126,16 @@ export function DecisionButtons({
           No thanks
         </button>
       </div>
+      {diy && (
+        <button
+          type="button"
+          onClick={() => decide("diy")}
+          disabled={state.kind === "sending"}
+          className="self-start text-sm font-medium text-emerald-700 hover:underline disabled:opacity-50"
+        >
+          I&apos;ll do it myself: show me how
+        </button>
+      )}
       <Link href="/report" className="text-sm text-zinc-500 hover:underline">
         Decide later
       </Link>
