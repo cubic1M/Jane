@@ -24,6 +24,7 @@ import { DeleteDataForm, DisconnectForm, RefreshForm } from "./data-forms";
 import { EmailForm } from "./email-form";
 import { TwoFactorOnForms } from "./two-factor-forms";
 import { RulesForm } from "./rules-form";
+import { TextsSection } from "./texts-section";
 import { cookies } from "next/headers";
 import { connection } from "next/server";
 import { sessionTokenFrom } from "@/lib/admin-gate";
@@ -301,6 +302,8 @@ async function SettingsContent() {
       </section>
 
       <SessionsSection userId={user.id} />
+
+      <TextsSection userId={user.id} />
 
       <section className="flex flex-col gap-3 rounded-xl border border-red-200 p-4 dark:border-red-900">
         <h2 className="text-xl font-semibold">Delete all my data</h2>

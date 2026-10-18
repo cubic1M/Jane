@@ -23,7 +23,18 @@ const LINK_UNDO_HOURS = AGENT_HOLD_HOURS.link ?? 1;
 
 type Options = { client?: PrismaClient; now?: Date };
 
-type LinkItem = { findingId: string; cardHash: string; title: string };
+export type LinkItem = { findingId: string; cardHash: string; title: string };
+
+// This week's ticked, no-risk items: what a one-tap link or the weekly plan text (spec step
+// 78) may approve. Never calls, cancellations, moving money or insurance.
+export async function noRiskItems(
+  userId: string,
+  { client = defaultClient }: Pick<Options, "client"> = {},
+): Promise<LinkItem[]> {
+  return (await planFor(userId, { client }))
+    .filter((i) => i.preselected && !NEVER_BY_RULE.includes(i.card.actionType))
+    .map((i) => ({ findingId: i.card.findingId, cardHash: i.cardHash, title: i.card.title }));
+}
 
 const hashOf = (token: string) => createHash("sha256").update(token).digest("hex");
 
@@ -32,9 +43,7 @@ export async function createPlanLink(
   userId: string,
   { client = defaultClient, now = new Date() }: Options = {},
 ): Promise<{ url: string; count: number } | null> {
-  const items: LinkItem[] = (await planFor(userId, { client }))
-    .filter((i) => i.preselected && !NEVER_BY_RULE.includes(i.card.actionType))
-    .map((i) => ({ findingId: i.card.findingId, cardHash: i.cardHash, title: i.card.title }));
+  const items = await noRiskItems(userId, { client });
   if (items.length === 0) return null;
   const token = randomBytes(32).toString("base64url");
   await scopedFor(userId, client).planLinks.create({
@@ -85,6 +94,54 @@ export async function viewPlanLink(
 
 export class LinkError extends Error {}
 
+// Approves each item as its own decision from this source, checked against the card as it
+// was; an item that changed or was answered meanwhile is skipped. Shared by one-tap links
+// and plan texts (spec step 78).
+export async function approveItems(
+  userId: string,
+  items: LinkItem[],
+  source: "link" | "text",
+  { client = defaultClient }: Pick<Options, "client"> = {},
+): Promise<{ decisionIds: string[]; skipped: number }> {
+  const decisionIds: string[] = [];
+  let skipped = 0;
+  for (const item of items) {
+    try {
+      const { decisionId } = await recordDecision(
+        userId,
+        { findingId: item.findingId, cardHash: item.cardHash, choice: "yes", source },
+        { client },
+      );
+      decisionIds.push(decisionId);
+    } catch (error) {
+      if (!(error instanceof DecisionError)) throw error;
+      skipped += 1;
+    }
+  }
+  return { decisionIds, skipped };
+}
+
+// Takes back what a link or a plan text approved, while the work hasn't started and within
+// its hold (AGENT_HOLD_HOURS). Returns how many were taken back.
+export async function takeBackApprovals(
+  userId: string,
+  decisionIds: string[],
+  source: "link" | "text",
+  { client = defaultClient, now = new Date() }: Options = {},
+): Promise<number> {
+  const hours = AGENT_HOLD_HOURS[source] ?? LINK_UNDO_HOURS;
+  let undone = 0;
+  for (const decisionId of decisionIds) {
+    try {
+      await undoApproval(userId, decisionId, source, hours, { client, now });
+      undone += 1;
+    } catch (error) {
+      if (!(error instanceof DecisionError)) throw error;
+    }
+  }
+  return undone;
+}
+
 // The one tap. Each item is approved as its own decision (source "link"), checked against
 // the card as it was; an item that changed or was answered meanwhile is skipped.
 export async function redeemLink(
@@ -100,21 +157,12 @@ export async function redeemLink(
   });
   if (claimed.count === 0) throw new LinkError("This link was already used.");
 
-  const decisionIds: string[] = [];
-  let skipped = 0;
-  for (const item of link.items as LinkItem[]) {
-    try {
-      const { decisionId } = await recordDecision(
-        link.userId,
-        { findingId: item.findingId, cardHash: item.cardHash, choice: "yes", source: "link" },
-        { client },
-      );
-      decisionIds.push(decisionId);
-    } catch (error) {
-      if (!(error instanceof DecisionError)) throw error;
-      skipped += 1;
-    }
-  }
+  const { decisionIds, skipped } = await approveItems(
+    link.userId,
+    link.items as LinkItem[],
+    "link",
+    { client },
+  );
   await client.planLink.update({ where: { id: link.id }, data: { decisionIds } });
   await logAudit(
     { type: "user", id: link.userId },
@@ -136,15 +184,7 @@ export async function takeBackLink(
 ): Promise<number> {
   const link = await findLink(token, client);
   if (!link?.usedAt) throw new LinkError("There's nothing to take back.");
-  let undone = 0;
-  for (const decisionId of link.decisionIds) {
-    try {
-      await undoApproval(link.userId, decisionId, "link", LINK_UNDO_HOURS, { client, now });
-      undone += 1;
-    } catch (error) {
-      if (!(error instanceof DecisionError)) throw error;
-    }
-  }
+  const undone = await takeBackApprovals(link.userId, link.decisionIds, "link", { client, now });
   if (undone === 0) throw new LinkError("It can't be taken back anymore: Jane has started.");
   return undone;
 }

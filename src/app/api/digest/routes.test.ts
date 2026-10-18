@@ -37,6 +37,9 @@ vi.mock("@/lib/jobs", () => ({
   runDueJobs: vi.fn(async () => ({ done: 0, retried: 0, failed: 0 })),
 }));
 vi.mock("@/lib/session", () => ({ requireUser: vi.fn() }));
+vi.mock("@/lib/messaging/texts", () => ({
+  runPlanTexts: vi.fn(async () => ({ sent: 0, none: 0, already: 0, off: 0, failed: 0 })),
+}));
 
 import { track } from "@/lib/analytics";
 import { runDigests } from "@/lib/digest/send";

@@ -1,3 +1,4 @@
+import { TEXT_CODE_RATE_LIMIT } from "./messaging";
 import { RETENTION_PERIODS } from "./retention";
 
 // Requests allowed per window, per user (signed in) or per IP (signed out). Generous for
@@ -32,6 +33,8 @@ export const RATE_LIMITS = {
   documents: { limit: 20, windowSeconds: 60 * 60 },
   // Tax-time pack CSV downloads, per user (spec step 72).
   taxPack: { limit: 30, windowSeconds: 60 * 60 },
+  // Verification codes texted, per user (spec step 78; src/config/messaging.ts).
+  textCodes: TEXT_CODE_RATE_LIMIT,
 } satisfies Record<string, Limit>;
 
 export type LimitName = keyof typeof RATE_LIMITS;

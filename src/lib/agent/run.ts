@@ -38,6 +38,7 @@ import { composeAnswer, whatIsAsked, type KnownFacts } from "./auto-answer";
 import { simulatedAddress } from "./simulated-company";
 import { confirmSwitches, startSwitch, switchOf } from "./switch";
 import { isCallAction, startCall } from "@/lib/voice/calls";
+import { textNeedsYou } from "@/lib/messaging/texts";
 
 // The action agent (spec step 51). An approved action of a type in AGENT_ACTION_TYPES is
 // worked by the agent instead of the team: it emails the company from Jane's address,
@@ -199,6 +200,12 @@ export async function setStatus(
     if (email && action.user.email) {
       await notify(action.user.email, email).catch((error) =>
         console.error("Agent status email failed", { actionId: action.id, error: String(error) }),
+      );
+    }
+    // A text too, when the person turned them on (spec step 78).
+    if (status === "waiting_on_user") {
+      await textNeedsYou(userId, titleOf(action), { client, now }).catch((error) =>
+        console.error("Needs-you text failed", { actionId: action.id, error: String(error) }),
       );
     }
   }

@@ -114,6 +114,8 @@ enum DecisionSource {
   auto
   // A one-tap link from the weekly email or a notification (spec step 60).
   link
+  // A reply to Jane's weekly plan text (spec step 78).
+  text
 
   @@map("decision_source")
 }
@@ -298,6 +300,8 @@ model User {
   checkIns            CheckIn[]
   documents           Document[]
   lifeEvents          LifeEvent[]
+  textSetting         TextSetting?
+  textMessages        TextMessage[]
 
   @@map("users")
 }
@@ -1406,4 +1410,76 @@ model LifeEvent {
 
   @@index([userId])
   @@map("life_events")
+}
+
+// Texts (spec step 78): the person's phone number for Jane's texts, with their consent. One
+// row per person. The number is AES-256-GCM encrypted (src/lib/crypto.ts) and never logged;
+// phone_hmac (HMAC-SHA256 with TOKEN_ENCRYPTION_KEY) finds the person from an inbound text.
+model TextSetting {
+  id             String    @id @default(cuid())
+  userId         String    @unique @map("user_id")
+  phoneEncrypted String    @map("phone_encrypted")
+  phoneHmac      String    @map("phone_hmac")
+  // When they ticked the consent box, and which wording (src/config/messaging.ts).
+  consentAt      DateTime  @map("consent_at") @db.Timestamptz(3)
+  consentVersion String    @map("consent_version")
+  // Set once the code texted to the number was entered. Nothing else is sent before.
+  verifiedAt     DateTime? @map("verified_at") @db.Timestamptz(3)
+  // The pending code: an HMAC of it, when it expires, and wrong tries so far.
+  codeHash       String?   @map("code_hash")
+  codeExpiresAt  DateTime? @map("code_expires_at") @db.Timestamptz(3)
+  codeTries      Int       @default(0) @map("code_tries")
+  // Texts on or off (the switch on /settings). STOP turns them off and sets opted_out_at;
+  // only START turns them back on after that.
+  enabled        Boolean   @default(true)
+  optedOutAt     DateTime? @map("opted_out_at") @db.Timestamptz(3)
+  // What gets texted.
+  alerts         Boolean   @default(true)
+  weeklyPlan     Boolean   @default(true) @map("weekly_plan")
+  needsYou       Boolean   @default(true) @map("needs_you")
+  createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt      DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([phoneHmac])
+  @@map("text_settings")
+}
+
+// Every text Jane sent or received (spec step 78).
+model TextMessage {
+  id          String    @id @default(cuid())
+  userId      String    @map("user_id")
+  // outbound or inbound.
+  direction   String
+  // Outbound: code, welcome, alert, plan, needs_you or reply. Inbound: the reply's meaning
+  // (yes, no, numbers, undo, stop, start, help or other).
+  kind        String
+  // What was said. A verification code is never stored, only "Your Jane code is ······".
+  body        String
+  // queued, sent, delivered, failed, skipped (texts turned off before it went) or received.
+  status      String
+  // The provider's id (Sendblue's message_handle), so status updates and repeated
+  // webhooks find the same row.
+  providerId  String?   @unique @map("provider_id")
+  // Not before this (quiet hours).
+  sendAfter   DateTime? @map("send_after") @db.Timestamptz(3)
+  sentAt      DateTime? @map("sent_at") @db.Timestamptz(3)
+  lastError   String?   @map("last_error")
+  // A weekly plan text, like a one-tap link (spec step 60): its items as they were
+  // ([{ findingId, cardHash, title }]), its week, when it expires and was answered, and
+  // what the answer approved, so UNDO takes back exactly that.
+  items       Json?
+  weekStart   DateTime? @map("week_start") @db.Date
+  expiresAt   DateTime? @map("expires_at") @db.Timestamptz(3)
+  usedAt      DateTime? @map("used_at") @db.Timestamptz(3)
+  decisionIds String[]  @default([]) @map("decision_ids")
+  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // One plan text a week (rows without a week don't collide).
+  @@unique([userId, weekStart])
+  @@index([userId, createdAt])
+  @@map("text_messages")
 }

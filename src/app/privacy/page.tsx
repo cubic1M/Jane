@@ -28,6 +28,10 @@ export default function PrivacyPage() {
         <li>
           What you do in the app: which findings you open, your yes or no answers, and settings.
         </li>
+        <li>
+          If you turn on texts: your mobile number (encrypted), when you agreed, and the texts Jane
+          sent you and you sent back.
+        </li>
       </ul>
 
       <h2>How we use it</h2>
@@ -35,6 +39,10 @@ export default function PrivacyPage() {
         <li>To find subscriptions, fees, idle cash, insurance and interest costing you money.</li>
         <li>So our team can carry out the changes you approve, and nothing you haven&apos;t.</li>
         <li>To send the emails you ask for: sign-in links, status updates and a weekly summary.</li>
+        <li>
+          To send the texts you turn on (alerts, your weekly plan, things that need you) and act on
+          your replies. Reply STOP to stop them.
+        </li>
         <li>To improve the product, using counts and trends rather than individual records.</li>
       </ul>
 
@@ -56,6 +64,10 @@ export default function PrivacyPage() {
         <li>
           <strong>Service providers</strong> that run the app for us: hosting (Vercel), database,
           email delivery (Resend), analytics, and payments (Stripe) if you choose to pay.
+        </li>
+        <li>
+          <strong>Sendblue</strong> delivers texts, if you turn them on: it receives your mobile
+          number, the texts Jane sends you and your replies.
         </li>
         <li>
           <strong>Merchants and partners</strong>, only the details needed to complete an action you
