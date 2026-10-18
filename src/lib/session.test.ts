@@ -20,14 +20,15 @@ import { connection } from "next/server";
 import { auth } from "@/auth";
 import { TERMS_VERSION } from "@/config/legal";
 import { adminSessionState } from "@/lib/admin-gate";
-import { getCurrentUser, requireAdmin, requireUser } from "./session";
+import { getCurrentUser, getSessionState, requireAdmin, requireUser } from "./session";
 
 const mockAuth = vi.mocked(auth as unknown as () => Promise<unknown>);
 
-function signedInAs(role: "user" | "admin") {
+function signedInAs(role: "user" | "admin", mfaPending = false) {
   mockAuth.mockResolvedValue({
     user: { id: `${role}_1`, email: `${role}@example.com`, role, termsVersion: TERMS_VERSION },
     expires: "2099-01-01T00:00:00.000Z",
+    mfaPending,
   });
 }
 
@@ -50,6 +51,12 @@ describe("getCurrentUser", () => {
     await getCurrentUser();
 
     expect(calls).toEqual(["connection", "auth"]);
+  });
+
+  it("treats a session that still owes a two-factor code as signed out", async () => {
+    signedInAs("user", true);
+    expect(await getCurrentUser()).toBeNull();
+    expect(await getSessionState()).toMatchObject({ mfaPending: true, user: { id: "user_1" } });
   });
 });
 
@@ -78,6 +85,12 @@ describe("requireUser", () => {
 
     await expect(requireUser()).rejects.toThrow("redirect:/login");
   });
+
+  it("asks for the two-factor code before anything else", async () => {
+    signedInAs("user", true);
+
+    await expect(requireUser()).rejects.toThrow("redirect:/mfa");
+  });
 });
 
 describe("requireAdmin", () => {
@@ -100,6 +113,12 @@ describe("requireAdmin", () => {
   it("sends an admin without a two-factor code in this session to /mfa", async () => {
     signedInAs("admin");
     vi.mocked(adminSessionState).mockResolvedValueOnce("needs_mfa");
+
+    await expect(requireAdmin()).rejects.toThrow("redirect:/mfa");
+  });
+
+  it("sends an admin whose session still owes a code to /mfa", async () => {
+    signedInAs("admin", true);
 
     await expect(requireAdmin()).rejects.toThrow("redirect:/mfa");
   });

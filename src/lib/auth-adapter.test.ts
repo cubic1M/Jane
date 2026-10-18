@@ -24,6 +24,7 @@ const ADAPTER_USER = {
   image: null,
   role: "user",
   termsVersion: "2026-10-18",
+  mfaEnabled: false,
 };
 
 const EXPIRES = new Date("2099-01-01T00:00:00Z");
@@ -63,6 +64,7 @@ describe("createAuthAdapter", () => {
       name: "Ada",
       role: "admin",
       termsVersion: null,
+      mfaEnabled: false,
     });
 
     expect(client.user.create).toHaveBeenCalledWith({
@@ -82,9 +84,24 @@ describe("createAuthAdapter", () => {
     });
 
     expect(await adapter.getSessionAndUser("token")).toEqual({
-      session: { sessionToken: "token", userId: "user_1", expires: EXPIRES },
+      session: { sessionToken: "token", userId: "user_1", expires: EXPIRES, mfaVerified: false },
       user: { ...ADAPTER_USER, role: "admin" },
     });
+  });
+
+  it("says whether two-factor is on and whether this session entered a code", async () => {
+    client.session.findUnique.mockResolvedValue({
+      id: "s_1",
+      sessionToken: "token",
+      userId: "user_1",
+      expires: EXPIRES,
+      mfaVerifiedAt: new Date(),
+      user: { ...DB_USER, mfaEnabledAt: new Date(), mfaSecretEncrypted: "secret" },
+    });
+
+    const found = await adapter.getSessionAndUser("token");
+    expect(found?.session.mfaVerified).toBe(true);
+    expect(found?.user).toEqual({ ...ADAPTER_USER, mfaEnabled: true });
   });
 
   it("returns null for an unknown session", async () => {

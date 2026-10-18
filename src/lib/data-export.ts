@@ -30,6 +30,7 @@ export async function exportUserData(
     askConversations,
     household,
     pushDevices,
+    backupCodesLeft,
     budgets,
     savingsGoals,
     balanceSnapshots,
@@ -54,6 +55,7 @@ export async function exportUserData(
         termsAcceptedAt: true,
         checklistProgress: true,
         checklistDismissedAt: true,
+        mfaEnabledAt: true,
       },
     }),
     db.plaidItems.findMany({
@@ -208,6 +210,8 @@ export async function exportUserData(
     }),
     // How many devices get notifications, not their push addresses (those work as keys).
     db.pushSubscriptions.count(),
+    // How many two-factor backup codes are unused; never the codes or their hashes.
+    db.mfaBackupCodes.count({ where: { usedAt: null } }),
     db.budgets.findMany({ select: { category: true, amountCents: true, createdAt: true } }),
     db.savingsGoals.findMany({
       select: {
@@ -249,6 +253,7 @@ export async function exportUserData(
     askConversations,
     household,
     pushDevices,
+    backupCodesLeft,
     budgets,
     savingsGoals,
     balanceSnapshots,
