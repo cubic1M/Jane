@@ -10,7 +10,7 @@ import { track } from "@/lib/analytics";
 import { logAudit } from "@/lib/audit";
 import { canImportCsv } from "@/lib/csv-access";
 import { scopedDb, type ScopedDb } from "@/lib/db-scoped";
-import { explainFindings } from "@/lib/explanations";
+import { enqueueJob, runJob } from "@/lib/jobs";
 import {
   AccountNotFoundError,
   MAX_FILE_BYTES,
@@ -130,13 +130,8 @@ export async function confirmImport(formData: FormData): Promise<ActionResult> {
     console.error("Detection failed after import", { error });
   }
   // Card text from Claude takes a few seconds per finding, so it's written after the
-  // response. Until then the report shows template text.
-  after(async () => {
-    try {
-      await explainFindings(db.userId);
-    } catch (error) {
-      console.error("Explaining findings failed after import", { error });
-    }
-  });
+  // response, as a job that's retried if it fails. Until then the report shows templates.
+  const job = await enqueueJob("explain_findings", { userId: db.userId });
+  after(() => runJob(job));
   redirect("/scanning");
 }

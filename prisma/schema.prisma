@@ -754,6 +754,26 @@ model BalanceSnapshot {
   @@map("balance_snapshots")
 }
 
+// Slow work done outside the request (writing explanations), retried with backoff when it
+// fails. Not user data: payloads hold ids only. See src/lib/jobs.ts and /admin/jobs.
+model Job {
+  id          String   @id @default(cuid())
+  kind        String
+  payload     Json     @default("{}")
+  // queued, running, done or failed.
+  status      String   @default("queued")
+  attempts    Int      @default(0)
+  maxAttempts Int      @default(5) @map("max_attempts")
+  runAt       DateTime @default(now()) @map("run_at") @db.Timestamptz(3)
+  // The last error, scrubbed of personal data.
+  lastError   String?  @map("last_error")
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt   DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  @@index([status, runAt])
+  @@map("jobs")
+}
+
 // Invite codes keep the beta closed: signing up needs a code with uses left.
 model InviteCode {
   id        String    @id @default(cuid())

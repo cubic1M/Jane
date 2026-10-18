@@ -7,6 +7,9 @@ vi.mock("@/lib/plaid/sync", () => ({ syncItem: vi.fn(), ITEM_STATUS: { active: "
 vi.mock("@/lib/plaid/inactive", () => ({
   runInactiveCleanup: vi.fn(async () => ({ warned: 0, removed: 1, failed: 0 })),
 }));
+vi.mock("@/lib/jobs", () => ({
+  runDueJobs: vi.fn(async () => ({ done: 1, retried: 0, failed: 0 })),
+}));
 vi.mock("@/lib/snapshots", () => ({
   takeSnapshots: vi.fn(async () => ({ saved: 3, removed: 0 })),
 }));
@@ -49,6 +52,7 @@ describe("GET /api/cron/plaid-sync", () => {
       failed: 1,
       inactive: { warned: 0, removed: 1, failed: 0 },
       snapshots: { saved: 3, removed: 0 },
+      jobs: { done: 1, retried: 0, failed: 0 },
     });
     expect(syncItem).toHaveBeenCalledWith("a");
     expect(syncItem).toHaveBeenCalledWith("b");
@@ -64,6 +68,7 @@ describe("GET /api/cron/plaid-sync", () => {
       failed: 0,
       inactive: null,
       snapshots: { saved: 3, removed: 0 },
+      jobs: { done: 1, retried: 0, failed: 0 },
     });
     expect(syncItem).not.toHaveBeenCalled();
   });

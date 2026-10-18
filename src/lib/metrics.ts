@@ -219,7 +219,8 @@ export function automateNext(actions: MetricRows["actions"]): AutomateRow[] {
     );
 }
 
-// Reads everything the metrics need. Fine at beta scale; move to SQL aggregates later.
+// Reads every row the metrics need: the reference data for computeMetrics in tests. The
+// page uses metrics-sql.ts instead.
 export async function loadMetricRows({
   client = defaultClient,
 }: { client?: PrismaClient } = {}): Promise<MetricRows> {
@@ -310,20 +311,27 @@ export async function loadMetricRows({
   };
 }
 
+// The metrics page: worked out by Postgres (metrics-sql.ts), which matches computeMetrics
+// on the same data but doesn't load every row.
 export async function loadMetrics(
   admin: Admin,
   days: number[],
   { client = defaultClient, now = new Date() }: { client?: PrismaClient; now?: Date } = {},
 ): Promise<{ windows: { days: number; metrics: Metrics }[]; automateNext: AutomateRow[] }> {
-  const rows = await loadMetricRows({ client });
   await logAudit({ type: "admin", id: admin.id }, "admin_viewed_metrics", null, {
     windows: days.join(","),
   });
-  return {
-    windows: days.map((d) => ({
+  // Imported here because metrics-sql.ts imports this file.
+  const { automateNextSql, computeMetricsSql } = await import("./metrics-sql");
+  const windows = [];
+  for (const d of days) {
+    windows.push({
       days: d,
-      metrics: computeMetrics(rows, { start: new Date(now.getTime() - d * DAY_MS), end: now }),
-    })),
-    automateNext: automateNext(rows.actions),
-  };
+      metrics: await computeMetricsSql(client, {
+        start: new Date(now.getTime() - d * DAY_MS),
+        end: now,
+      }),
+    });
+  }
+  return { windows, automateNext: await automateNextSql(client) };
 }

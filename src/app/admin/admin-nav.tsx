@@ -20,6 +20,9 @@ export function AdminNav({ email }: { email: string | null | undefined }) {
         <Link href="/admin/invites" className="hover:underline">
           Invites
         </Link>
+        <Link href="/admin/jobs" className="hover:underline">
+          Jobs
+        </Link>
         <Link href="/admin/errors" className="hover:underline">
           Errors
         </Link>
