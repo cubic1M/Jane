@@ -27,6 +27,7 @@ export async function exportUserData(
     merchantCategories,
     subscriptionChecks,
     alerts,
+    askConversations,
     events,
   ] = await Promise.all([
     client.user.findUniqueOrThrow({
@@ -150,6 +151,17 @@ export async function exportUserData(
       },
       orderBy: { createdAt: "asc" },
     }),
+    db.askConversations.findMany({
+      select: {
+        title: true,
+        createdAt: true,
+        messages: {
+          select: { role: true, content: true, createdAt: true },
+          orderBy: { createdAt: "asc" },
+        },
+      },
+      orderBy: { createdAt: "asc" },
+    }),
     client.analyticsEvent.findMany({
       where: { userId },
       select: { name: true, createdAt: true },
@@ -173,6 +185,7 @@ export async function exportUserData(
     merchantCategories,
     subscriptionChecks,
     alerts,
+    askConversations,
     events,
   };
 }

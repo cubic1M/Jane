@@ -124,6 +124,13 @@ describe.runIf(url)("deleting data against a real database", () => {
     await client.alert.create({
       data: { userId, type: "fee_charged", key: "tx_1", title: "Fee", body: "b" },
     });
+    await client.askConversation.create({
+      data: {
+        userId,
+        title: "Food spending?",
+        messages: { create: [{ userId, role: "user", content: "Food spending?" }] },
+      },
+    });
     await client.session.create({
       data: { userId, sessionToken: `sess-${suffix}`, expires: new Date(Date.now() + 1e9) },
     });
@@ -150,6 +157,8 @@ describe.runIf(url)("deleting data against a real database", () => {
       merchantCategories: await client.merchantCategory.count(where),
       subscriptionChecks: await client.subscriptionCheck.count(where),
       alerts: await client.alert.count(where),
+      askConversations: await client.askConversation.count(where),
+      askMessages: await client.askMessage.count(where),
       sessions: await client.session.count(where),
       authAccounts: await client.authAccount.count(where),
     };
