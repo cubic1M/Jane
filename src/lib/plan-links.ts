@@ -87,7 +87,7 @@ export class LinkError extends Error {}
 
 // The one tap. Each item is approved as its own decision (source "link"), checked against
 // the card as it was; an item that changed or was answered meanwhile is skipped.
-export async function useLink(
+export async function redeemLink(
   token: string,
   { client = defaultClient, now = new Date() }: Options = {},
 ): Promise<{ approved: number; skipped: number; userId: string }> {
