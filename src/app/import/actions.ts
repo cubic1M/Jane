@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { CsvFormatError, type CsvFile } from "@/data-sources/csv/csv-source";
 import { ACCOUNT_KINDS, isAccountKind } from "@/data-sources/types";
+import { runDetection } from "@/detection/engine";
 import { track } from "@/lib/analytics";
 import { logAudit } from "@/lib/audit";
 import { scopedDb } from "@/lib/db-scoped";
@@ -104,5 +105,13 @@ export async function confirmImport(formData: FormData): Promise<ActionResult> {
     metadata,
   );
   await track(db.userId, "import_completed", metadata);
+
+  try {
+    await runDetection(db.userId);
+  } catch (error) {
+    // The import itself worked, so don't fail it. /scanning waits for detection and offers
+    // the report anyway if it doesn't finish.
+    console.error("Detection failed after import", { error });
+  }
   redirect("/scanning");
 }
