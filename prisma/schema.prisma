@@ -267,6 +267,7 @@ model User {
   accounts            Account[]
   transactions        Transaction[]
   recurringStreams    RecurringStream[]
+  liabilities         Liability[]
   findings            Finding[]
   decisions           Decision[]
   actions             Action[]
@@ -341,6 +342,9 @@ model PlaidItem {
   institutionName      String?   @map("institution_name")
   status               String    @default("active")
   transactionsCursor   String?   @map("transactions_cursor")
+  // Linked with Liabilities as an optional product (spec step 65): loans and card rates
+  // are read on each sync. Items linked before that never are (it would start billing).
+  liabilities          Boolean   @default(false)
   lastSyncedAt         DateTime? @map("last_synced_at") @db.Timestamptz(3)
   createdAt            DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt            DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
@@ -378,6 +382,7 @@ model Account {
   recurringStreams RecurringStream[]
   balanceSnapshots BalanceSnapshot[]
   checkIns         CheckIn[]
+  liability        Liability?
 
   @@index([userId])
   @@index([itemId])
@@ -444,6 +449,44 @@ model RecurringStream {
   @@index([userId])
   @@index([accountId])
   @@map("recurring_streams")
+}
+
+// What the bank reports about a card or loan through Plaid Liabilities (spec step 65):
+// rate, payments and dates, one row per account. Read-only and refreshed on every sync.
+// Account numbers, addresses and reference numbers are never stored.
+model Liability {
+  id                        String    @id @default(cuid())
+  userId                    String    @map("user_id")
+  accountId                 String    @unique @map("account_id")
+  // credit, mortgage, student or loan (Plaid's list it came from).
+  kind                      String
+  // Yearly rate in basis points: 2499 is 24.99%. Cards: the purchase APR.
+  aprBps                    Int?      @map("apr_bps")
+  // fixed or variable, when the bank says.
+  rateType                  String?   @map("rate_type")
+  // What's due each month: a card's or student loan's minimum, a mortgage's or loan's
+  // next payment.
+  minimumPaymentCents       Int?      @map("minimum_payment_cents")
+  nextPaymentDueDate        DateTime? @map("next_payment_due_date") @db.Date
+  lastPaymentCents          Int?      @map("last_payment_cents")
+  lastPaymentDate           DateTime? @map("last_payment_date") @db.Date
+  originationPrincipalCents Int?      @map("origination_principal_cents")
+  originationDate           DateTime? @map("origination_date") @db.Date
+  // Mortgages and loans: the maturity date; student loans: the expected payoff date.
+  payoffDate                DateTime? @map("payoff_date") @db.Date
+  isOverdue                 Boolean?  @map("is_overdue")
+  pastDueCents              Int?      @map("past_due_cents")
+  ytdInterestPaidCents      Int?      @map("ytd_interest_paid_cents")
+  // The bank's own description, e.g. "Conventional 30 year fixed".
+  description               String?
+  createdAt                 DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt                 DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  account Account @relation(fields: [accountId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("liabilities")
 }
 
 model Finding {

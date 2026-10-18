@@ -1,7 +1,13 @@
 import type { PlaidApi, TransactionStream } from "plaid";
 import { categorizeTransactions } from "@/categorize/categorize";
-import { PlaidDataSource, toCents, type PlaidSync } from "@/data-sources/plaid/plaid-source";
-import { ACCOUNT_KINDS } from "@/data-sources/types";
+import { normalizeLiabilities } from "@/data-sources/plaid/liabilities";
+import {
+  PlaidDataSource,
+  normalizeAccount,
+  toCents,
+  type PlaidSync,
+} from "@/data-sources/plaid/plaid-source";
+import { SYNCED_KINDS, type NormalizedAccount } from "@/data-sources/types";
 import { runDetection } from "@/detection/engine";
 import type { PrismaClient } from "@/generated/prisma/client";
 import { track } from "@/lib/analytics";
@@ -12,7 +18,8 @@ import { enqueueJob, runJob } from "@/lib/jobs";
 import { plaid, plaidCall, plaidErrorCode } from "./client";
 
 // Brings one Plaid item up to date: accounts, transactions since the saved cursor
-// (added, modified and removed), recurring streams, then detection and explanations,
+// (added, modified and removed), recurring streams, loans and card rates (Liabilities,
+// when the item was linked with it), then detection and explanations,
 // exactly as after a CSV import. Runs without a session (webhooks, the daily job), so it
 // scopes every query to the item's owner.
 
@@ -29,11 +36,13 @@ export type SyncResult = {
   removed: number;
   firstSync: boolean;
   recurring: "updated" | "unavailable";
+  // "off" for items linked before Liabilities was asked for.
+  liabilities: "updated" | "unavailable" | "off";
 };
 
 type Options = { client?: PrismaClient; api?: PlaidApi; now?: Date };
 
-async function saveAccounts(db: ScopedDb, itemId: string, sync: PlaidSync) {
+async function saveAccounts(db: ScopedDb, itemId: string, sync: { accounts: NormalizedAccount[] }) {
   const ids = new Map<string, string>();
   for (const account of sync.accounts) {
     const saved = await db.accounts.upsert({
@@ -45,8 +54,8 @@ async function saveAccounts(db: ScopedDb, itemId: string, sync: PlaidSync) {
         plaidAccountId: account.ref,
         name: account.name,
         mask: account.mask,
-        type: ACCOUNT_KINDS[account.kind].type,
-        subtype: ACCOUNT_KINDS[account.kind].subtype,
+        type: SYNCED_KINDS[account.kind].type,
+        subtype: SYNCED_KINDS[account.kind].subtype,
         currentBalanceCents: account.currentBalanceCents,
       },
       update: {
@@ -173,6 +182,64 @@ async function saveRecurringStreams(
   return "updated";
 }
 
+const day = (value: string | null) => (value ? new Date(`${value}T00:00:00Z`) : null);
+
+// Rates, payments and due dates for the item's cards and loans (spec step 65). Like
+// recurring streams, a Plaid error here (the bank doesn't support it, the person has no
+// such accounts) only warns: the rest of the sync stands.
+async function saveLiabilities(
+  db: ScopedDb,
+  api: PlaidApi,
+  accessToken: string,
+  itemId: string,
+): Promise<SyncResult["liabilities"]> {
+  let data;
+  try {
+    data = await plaidCall(api.liabilitiesGet({ access_token: accessToken }));
+  } catch (error) {
+    const code = plaidErrorCode(error);
+    if (!code) throw error;
+    console.warn("Plaid liabilities unavailable", { code });
+    return "unavailable";
+  }
+  // Fresh balances, and the loan accounts themselves if the transactions sync had none.
+  const accountIds = await saveAccounts(db, itemId, {
+    accounts: data.accounts.map(normalizeAccount).filter((a): a is NormalizedAccount => a !== null),
+  });
+  const kept: string[] = [];
+  for (const l of normalizeLiabilities(data.liabilities)) {
+    const accountId = accountIds.get(l.accountRef);
+    if (!accountId) continue;
+    const row = {
+      kind: l.kind,
+      aprBps: l.aprBps,
+      rateType: l.rateType,
+      minimumPaymentCents: l.minimumPaymentCents,
+      nextPaymentDueDate: day(l.nextPaymentDueDate),
+      lastPaymentCents: l.lastPaymentCents,
+      lastPaymentDate: day(l.lastPaymentDate),
+      originationPrincipalCents: l.originationPrincipalCents,
+      originationDate: day(l.originationDate),
+      payoffDate: day(l.payoffDate),
+      isOverdue: l.isOverdue,
+      pastDueCents: l.pastDueCents,
+      ytdInterestPaidCents: l.ytdInterestPaidCents,
+      description: l.description,
+    };
+    await db.liabilities.upsert({
+      where: { accountId },
+      create: { ...row, userId: db.userId, accountId },
+      update: row,
+    });
+    kept.push(accountId);
+  }
+  // A card or loan the bank no longer reports keeps its account, but not stale details.
+  await db.liabilities.deleteMany({
+    where: { account: { itemId }, accountId: { notIn: kept } },
+  });
+  return "updated";
+}
+
 export async function syncItem(
   itemId: string,
   { client = defaultClient, api = plaid(), now = new Date() }: Options = {},
@@ -180,7 +247,13 @@ export async function syncItem(
   // The one unscoped read: finds the item's owner so everything after is scoped to them.
   const item = await client.plaidItem.findUnique({
     where: { id: itemId },
-    select: { id: true, userId: true, accessTokenEncrypted: true, transactionsCursor: true },
+    select: {
+      id: true,
+      userId: true,
+      accessTokenEncrypted: true,
+      transactionsCursor: true,
+      liabilities: true,
+    },
   });
   if (!item) throw new Error("Plaid item not found");
   const db = scopedFor(item.userId, client);
@@ -190,6 +263,9 @@ export async function syncItem(
   const accountIds = await saveAccounts(db, item.id, sync);
   const counts = await saveTransactions(db, accountIds, sync);
   const recurring = await saveRecurringStreams(db, api, accessToken, accountIds);
+  const liabilities = item.liabilities
+    ? await saveLiabilities(db, api, accessToken, item.id)
+    : "off";
 
   await db.plaidItems.updateMany({
     where: { id: item.id },
@@ -201,12 +277,14 @@ export async function syncItem(
     ...counts,
     firstSync: item.transactionsCursor === null,
     recurring,
+    liabilities,
   };
   if (result.firstSync) {
     await track(item.userId, "first_sync_completed", {
       accounts: result.accounts,
       transactions: result.added,
       recurring,
+      liabilities,
     });
   }
 

@@ -36,12 +36,13 @@ describe("Plaid Link", () => {
     vi.unstubAllEnvs();
   });
 
-  it("asks for Transactions only, a year of history and our webhook", async () => {
+  it("asks for Transactions, Liabilities where supported, a year of history and our webhook", async () => {
     expect(await createLinkToken("user_1", null, { api })).toBe("link-sandbox-1");
 
     expect(linkTokenCreate).toHaveBeenCalledWith(
       expect.objectContaining({
         products: ["transactions"],
+        optional_products: ["liabilities"],
         transactions: { days_requested: 365 },
         user: { client_user_id: "user_1" },
         country_codes: ["US"],
@@ -61,6 +62,7 @@ describe("Plaid Link", () => {
     const request = linkTokenCreate.mock.calls[0][0];
     expect(request.access_token).toBe("access-sandbox-item");
     expect(request.products).toBeUndefined();
+    expect(request.optional_products).toBeUndefined();
   });
 
   it("refuses update mode for an item the user doesn't have", async () => {
@@ -84,6 +86,7 @@ describe("Plaid Link", () => {
     const saved = scoped.plaidItems.create.mock.calls[0][0].data;
     expect(saved.accessTokenEncrypted).not.toContain("access-sandbox-secret");
     expect(decrypt(saved.accessTokenEncrypted)).toBe("access-sandbox-secret");
+    expect(saved.liabilities).toBe(true);
     expect(JSON.stringify(vi.mocked(logAudit).mock.calls)).not.toContain("access-sandbox");
     expect(JSON.stringify(vi.mocked(track).mock.calls)).not.toContain("access-sandbox");
     expect(logAudit).toHaveBeenCalledWith(

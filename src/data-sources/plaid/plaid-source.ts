@@ -3,7 +3,8 @@ import { PersonalFinanceCategoryVersion } from "plaid";
 import { SYNC_MAX_RESTARTS, SYNC_PAGE_SIZE } from "@/config/plaid";
 import { plaidCall, plaidErrorCode } from "@/lib/plaid/client";
 import {
-  accountKindOf,
+  isLoanKind,
+  syncedKindOf,
   type DataSource,
   type NormalizedAccount,
   type NormalizedTransaction,
@@ -12,7 +13,8 @@ import {
 
 // Plaid as a DataSource: one /transactions/sync run for an item, from its saved cursor.
 // Besides the batch, a sync returns what Plaid removed and the cursor to save. Only the
-// account kinds the app understands (checking, savings, credit card) are kept.
+// account kinds the app understands are kept: checking, savings and credit cards with
+// their transactions, and loans (spec step 65) for their balances only.
 
 export type PlaidSync = SourceBatch & {
   removedTransactionIds: string[];
@@ -24,7 +26,7 @@ export const toCents = (dollars: number | null | undefined): number | null =>
   dollars === null || dollars === undefined ? null : Math.round(dollars * 100);
 
 export function normalizeAccount(account: AccountBase): NormalizedAccount | null {
-  const kind = accountKindOf(account.type, account.subtype ?? null);
+  const kind = syncedKindOf(account.type, account.subtype ?? null);
   if (!kind) return null;
   return {
     ref: account.account_id,
@@ -107,7 +109,7 @@ export class PlaidDataSource implements DataSource {
     const kept = [...accounts.values()]
       .map(normalizeAccount)
       .filter((a): a is NormalizedAccount => a !== null);
-    const keptRefs = new Set(kept.map((a) => a.ref));
+    const keptRefs = new Set(kept.filter((a) => !isLoanKind(a.kind)).map((a) => a.ref));
     return {
       accounts: kept,
       transactions: [...changed.values()]

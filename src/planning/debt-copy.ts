@@ -2,21 +2,23 @@
 // it recommends a choice (src/lib/guardrails.ts recommendsAChoice).
 
 export const PLANNER_COPY = {
-  title: "What paying off your cards could look like",
+  title: "What paying off your cards and loans could look like",
   intro:
-    "Enter each card's rate and minimum payment, and what you could pay toward cards each month. We show two common orders for paying them down, side by side.",
+    "Rates and minimum payments come from your bank when it reports them; fill in any that are missing, and what you could pay toward these debts each month. We show two common orders for paying them down, side by side.",
+  fromBank: "Rate and minimum from your bank. Change them to try other numbers.",
+  mortgageLeftOut: "Mortgages aren't included here.",
   disclaimer:
-    "This is math, not a recommendation. It assumes no new purchases, fees or rate changes, and rounds interest to the cent each month. Your card statements are the source of truth.",
+    "This is math, not a recommendation. It assumes no new purchases, fees or rate changes, and rounds interest to the cent each month. Your statements are the source of truth.",
   strategies: {
     avalanche: {
       name: "Highest rate first",
       also: "Sometimes called the avalanche method.",
-      how: "After the minimums, extra money goes to the card with the highest rate.",
+      how: "After the minimums, extra money goes to the debt with the highest rate.",
     },
     snowball: {
       name: "Smallest balance first",
       also: "Sometimes called the snowball method.",
-      how: "After the minimums, extra money goes to the card with the smallest balance.",
+      how: "After the minimums, extra money goes to the debt with the smallest balance.",
     },
   },
   budgetBelowMinimums:
@@ -24,7 +26,7 @@ export const PLANNER_COPY = {
   neverPaysOff:
     "At this monthly amount the balance doesn't go down fast enough to finish within 50 years. Try a higher monthly amount.",
   noCards:
-    "We didn't find credit cards on your linked accounts. Add a card by hand to try the numbers.",
+    "We didn't find credit cards or loans on your linked accounts. Add one by hand to try the numbers.",
 } as const;
 
 // Every string in the copy, for tests.

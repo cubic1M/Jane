@@ -30,7 +30,12 @@ describe.runIf(url)("syncItem against a real database", () => {
   let itemId: string;
   const transactionsSync = vi.fn();
   const transactionsRecurringGet = vi.fn();
-  const api = { transactionsSync, transactionsRecurringGet } as unknown as PlaidApi;
+  const liabilitiesGet = vi.fn();
+  const api = {
+    transactionsSync,
+    transactionsRecurringGet,
+    liabilitiesGet,
+  } as unknown as PlaidApi;
 
   beforeAll(async () => {
     vi.stubEnv("TOKEN_ENCRYPTION_KEY", randomBytes(32).toString("base64"));
@@ -58,6 +63,7 @@ describe.runIf(url)("syncItem against a real database", () => {
   beforeEach(() => {
     transactionsSync.mockReset();
     transactionsRecurringGet.mockReset();
+    liabilitiesGet.mockReset();
     vi.mocked(track).mockReset();
   });
 
@@ -102,7 +108,10 @@ describe.runIf(url)("syncItem against a real database", () => {
       removed: 0,
       firstSync: true,
       recurring: "updated",
+      // Linked before Liabilities was asked for: never called, so never billed.
+      liabilities: "off",
     });
+    expect(liabilitiesGet).not.toHaveBeenCalled();
     expect(transactionsSync.mock.calls[0][0]).toMatchObject({
       access_token: "access-sandbox-test",
       cursor: undefined,
@@ -176,5 +185,118 @@ describe.runIf(url)("syncItem against a real database", () => {
       pfcDetailed: "ENTERTAINMENT_OTHER_ENTERTAINMENT",
       categorySource: "user",
     });
+  });
+
+  it("reads loans and card rates for items linked with Liabilities", async () => {
+    const loanItem = await client.plaidItem.create({
+      data: {
+        userId,
+        plaidItemId: `item-loans-${suffix}`,
+        accessTokenEncrypted: encrypt("access-sandbox-loans"),
+        institutionName: "First Platypus Bank",
+        liabilities: true,
+      },
+    });
+    const card = plaidAccount({
+      account_id: `${suffix}-card`,
+      type: "credit",
+      subtype: "credit card",
+      balances: { current: 410.5, available: null, limit: 2000, iso_currency_code: "USD" },
+    } as never);
+    const mortgage = plaidAccount({
+      account_id: `${suffix}-mortgage`,
+      name: "Home loan",
+      type: "loan",
+      subtype: "mortgage",
+      balances: { current: 56302.06, available: null, limit: null, iso_currency_code: "USD" },
+    } as never);
+    const liabilities = (withMortgage: boolean) => ({
+      data: {
+        accounts: withMortgage ? [card, mortgage] : [card],
+        liabilities: {
+          credit: [
+            {
+              account_id: `${suffix}-card`,
+              aprs: [{ apr_percentage: 22.99, apr_type: "purchase_apr" }],
+              is_overdue: false,
+              minimum_payment_amount: 35,
+              next_payment_due_date: "2026-11-05",
+            },
+          ],
+          mortgage: withMortgage
+            ? [
+                {
+                  account_id: `${suffix}-mortgage`,
+                  account_number: "3120194154",
+                  interest_rate: { percentage: 3.99, type: "fixed" },
+                  next_monthly_payment: 3141.54,
+                  next_payment_due_date: "2026-11-01",
+                  maturity_date: "2045-07-31",
+                  past_due_amount: 0,
+                },
+              ]
+            : [],
+          student: [],
+        },
+      },
+    });
+    // The transactions side doesn't list the mortgage; Liabilities still brings it in.
+    transactionsSync.mockResolvedValue(syncPage({ accounts: [card], next_cursor: "loans-1" }));
+    transactionsRecurringGet.mockResolvedValue({
+      data: { outflow_streams: [], inflow_streams: [] },
+    });
+    liabilitiesGet.mockResolvedValueOnce(liabilities(true));
+
+    expect((await syncItem(loanItem.id, { client, api, now: NOW })).liabilities).toBe("updated");
+    expect(liabilitiesGet).toHaveBeenCalledWith({ access_token: "access-sandbox-loans" });
+    const accounts = await client.account.findMany({
+      where: { itemId: loanItem.id },
+      select: { name: true, type: true, subtype: true, currentBalanceCents: true },
+      orderBy: { type: "asc" },
+    });
+    expect(accounts).toEqual([
+      {
+        name: "Plaid Checking",
+        type: "credit",
+        subtype: "credit card",
+        currentBalanceCents: 41050,
+      },
+      { name: "Home loan", type: "loan", subtype: "mortgage", currentBalanceCents: 5_630_206 },
+    ]);
+    const rows = await client.liability.findMany({
+      where: { userId },
+      select: { kind: true, aprBps: true, minimumPaymentCents: true, payoffDate: true },
+      orderBy: { kind: "asc" },
+    });
+    expect(rows).toEqual([
+      { kind: "credit", aprBps: 2299, minimumPaymentCents: 3500, payoffDate: null },
+      {
+        kind: "mortgage",
+        aprBps: 399,
+        minimumPaymentCents: 314_154,
+        payoffDate: new Date("2045-07-31T00:00:00Z"),
+      },
+    ]);
+    expect(JSON.stringify(await client.liability.findMany({ where: { userId } }))).not.toContain(
+      "3120194154",
+    );
+
+    // The bank stops reporting the mortgage: its details go, the account stays.
+    liabilitiesGet.mockResolvedValueOnce(liabilities(false));
+    await syncItem(loanItem.id, { client, api, now: NOW });
+    expect(await client.liability.count({ where: { userId } })).toBe(1);
+
+    // Liabilities fails: the rest of the sync stands.
+    liabilitiesGet.mockRejectedValueOnce(plaidApiError("PRODUCTS_NOT_SUPPORTED"));
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    expect((await syncItem(loanItem.id, { client, api, now: NOW })).liabilities).toBe(
+      "unavailable",
+    );
+    expect(warn).toHaveBeenCalledWith(expect.stringContaining("liabilities"), {
+      code: "PRODUCTS_NOT_SUPPORTED",
+    });
+    expect(await client.liability.count({ where: { userId } })).toBe(1);
+    transactionsSync.mockReset();
+    transactionsRecurringGet.mockReset();
   });
 });

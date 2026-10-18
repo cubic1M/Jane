@@ -27,7 +27,7 @@ test("the debt planner shows both orders side by side, without recommending one"
   await page.getByLabel("Balance ($)").fill("1000");
   await page.getByLabel("Rate (APR %)").fill("12");
   await page.getByLabel("Minimum payment ($)").fill("25");
-  await page.getByLabel("Paid toward cards each month ($)").fill("100");
+  await page.getByLabel("Paid toward these debts each month ($)").fill("100");
 
   for (const name of ["Highest rate first", "Smallest balance first"]) {
     const plan = page.getByRole("region", { name });
@@ -36,7 +36,7 @@ test("the debt planner shows both orders side by side, without recommending one"
   }
   await expect(page.getByText(/recommend(ed)? (the|this)|you should/i)).toHaveCount(0);
 
-  await page.getByLabel("Paid toward cards each month ($)").fill("10");
+  await page.getByLabel("Paid toward these debts each month ($)").fill("10");
   await expect(page.getByRole("alert").filter({ hasText: "less than the minimum" })).toHaveCount(2);
 
   const overflow = await page.evaluate(

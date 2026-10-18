@@ -33,9 +33,15 @@ describe("normalizeAccount", () => {
     ).toMatchObject({ kind: "credit_card", currentBalanceCents: 123456 });
   });
 
-  it("skips account kinds the app doesn't use", () => {
+  it("keeps loans, and skips account kinds the app doesn't use yet", () => {
     expect(
-      normalizeAccount(plaidAccount({ type: "loan", subtype: "mortgage" } as never)),
+      normalizeAccount(plaidAccount({ type: "loan", subtype: "mortgage" } as never))?.kind,
+    ).toBe("mortgage");
+    expect(
+      normalizeAccount(plaidAccount({ type: "loan", subtype: "home equity loan" } as never))?.kind,
+    ).toBe("other_loan");
+    expect(
+      normalizeAccount(plaidAccount({ type: "investment", subtype: "401k" } as never)),
     ).toBeNull();
   });
 });
@@ -75,7 +81,7 @@ describe("PlaidDataSource", () => {
     expect(batch.removedTransactionIds).toEqual(["gone"]);
   });
 
-  it("drops transactions on accounts it skips", async () => {
+  it("keeps loan accounts for their balance, but not their transactions", async () => {
     const loan = plaidAccount({ account_id: "acc_loan", type: "loan", subtype: "auto" } as never);
     const sync = vi.fn().mockResolvedValueOnce(
       syncPage({
@@ -90,7 +96,10 @@ describe("PlaidDataSource", () => {
 
     const batch = await new PlaidDataSource(apiWith(sync), "access-sandbox-x", null).load();
 
-    expect(batch.accounts.map((a) => a.ref)).toEqual(["acc_checking"]);
+    expect(batch.accounts.map((a) => [a.ref, a.kind])).toEqual([
+      ["acc_checking", "checking"],
+      ["acc_loan", "auto_loan"],
+    ]);
     expect(batch.transactions.map((t) => t.externalId)).toEqual(["txn_1"]);
   });
 

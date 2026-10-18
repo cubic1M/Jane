@@ -1,4 +1,5 @@
-// Plaid settings in one place. Products: Transactions only (see CLAUDE.md).
+// Plaid settings in one place. Products: Transactions, plus Liabilities as an optional
+// product from spec step 65 (read-only rates and payments for cards and loans).
 
 // History requested when an account is first linked. Detection looks back 12 months and
 // Plaid recommends at least 180 days for recurring streams.
@@ -18,3 +19,6 @@ export const CRON_SYNC_LIMIT = 25;
 
 // Webhooks signed longer ago than this are rejected as possible replays (Plaid's advice).
 export const WEBHOOK_MAX_AGE_SECONDS = 5 * 60;
+
+// Rates above this from Plaid are treated as missing rather than shown: 100% a year.
+export const MAX_APR_BPS = 10_000;

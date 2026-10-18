@@ -11,7 +11,15 @@ import {
   type Strategy,
 } from "@/planning/debt";
 
-type Row = { id: string; name: string; balance: string; apr: string; minimum: string };
+type Row = {
+  id: string;
+  name: string;
+  balance: string;
+  apr: string;
+  minimum: string;
+  // The rate and minimum were filled in from the bank (Plaid Liabilities).
+  fromBank: boolean;
+};
 
 const INPUT =
   "h-11 w-full rounded-lg border border-zinc-300 bg-transparent px-3 text-base dark:border-zinc-700";
@@ -25,7 +33,13 @@ export function DebtPlanner({
   startMonth,
   maxCards,
 }: {
-  cards: { id: string; name: string; balanceCents: number }[];
+  cards: {
+    id: string;
+    name: string;
+    balanceCents: number;
+    aprBps: number | null;
+    minimumCents: number | null;
+  }[];
   startYear: number;
   // 0-based, like Date.getUTCMonth.
   startMonth: number;
@@ -37,10 +51,11 @@ export function DebtPlanner({
           id: c.id,
           name: c.name,
           balance: dollars(c.balanceCents),
-          apr: "",
-          minimum: "",
+          apr: c.aprBps === null ? "" : (c.aprBps / 100).toFixed(2),
+          minimum: c.minimumCents === null ? "" : dollars(c.minimumCents),
+          fromBank: c.aprBps !== null && c.minimumCents !== null,
         }))
-      : [{ id: "manual-1", name: "Card 1", balance: "", apr: "", minimum: "" }],
+      : [{ id: "manual-1", name: "Card 1", balance: "", apr: "", minimum: "", fromBank: false }],
   );
   const [budget, setBudget] = useState("");
 
@@ -86,7 +101,7 @@ export function DebtPlanner({
             className="grid gap-3 rounded-xl border border-zinc-200 p-4 sm:grid-cols-4 dark:border-zinc-800"
           >
             <label className="flex flex-col gap-1 text-sm font-medium">
-              Card
+              Card or loan
               <input
                 className={INPUT}
                 value={row.name}
@@ -121,6 +136,11 @@ export function DebtPlanner({
                 onChange={(e) => update(row.id, "minimum", e.target.value)}
               />
             </label>
+            {row.fromBank && (
+              <p className="text-sm text-zinc-600 sm:col-span-4 dark:text-zinc-400">
+                {PLANNER_COPY.fromBank}
+              </p>
+            )}
           </li>
         ))}
       </ul>
@@ -136,17 +156,18 @@ export function DebtPlanner({
                 balance: "",
                 apr: "",
                 minimum: "",
+                fromBank: false,
               },
             ])
           }
           className="self-start text-sm font-medium text-emerald-700 hover:underline"
         >
-          Add a card
+          Add a card or loan
         </button>
       )}
 
       <label className="flex flex-col gap-1 font-medium sm:max-w-xs">
-        Paid toward cards each month ($)
+        Paid toward these debts each month ($)
         <input
           className={INPUT}
           inputMode="decimal"

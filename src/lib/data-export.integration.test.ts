@@ -64,6 +64,9 @@ describe.runIf(url)("data export against a real database", () => {
         status: "MATURE",
       },
     });
+    await client.liability.create({
+      data: { userId, accountId: account.id, kind: "credit", aprBps: 2299 },
+    });
     const finding = await client.finding.create({
       data: { userId, type: "bank_fees", key: "k", title: `${name} fees`, confidence: "high" },
     });
@@ -143,6 +146,7 @@ describe.runIf(url)("data export against a real database", () => {
       "accounts",
       "transactions",
       "recurringStreams",
+      "liabilities",
       "findings",
       "decisions",
       "actions",

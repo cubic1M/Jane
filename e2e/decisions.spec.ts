@@ -55,8 +55,9 @@ test("import, approve a card and see the action queued", async ({ page }) => {
 
   await expect(page).toHaveURL("/actions");
   const action = page.getByRole("listitem").filter({ hasText: "Netflix went up" });
-  // The agent starts right away on a card's yes, so a fast run may already show it working.
-  await expect(action).toContainText(/Queued|In progress/);
+  // The agent starts right away on a card's yes, and the simulated company answers in
+  // seconds, so a fast run may already show it working, or even done.
+  await expect(action).toContainText(/Queued|In progress|Waiting on you|Done/);
   await expectNoSidewaysScroll(page);
 });
 

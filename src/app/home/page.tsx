@@ -127,6 +127,9 @@ async function HomeContent() {
           <Link href="/net-worth" className={LINK}>
             Net worth
           </Link>
+          <Link href="/loans" className={LINK}>
+            Loans
+          </Link>
           <Link href="/budgets" className={LINK}>
             Budgets
           </Link>
