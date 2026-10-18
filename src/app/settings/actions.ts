@@ -7,6 +7,8 @@ import { isStateCode } from "@/config/referrals";
 import { TIMEZONES } from "@/config/digest";
 import { runDetection } from "@/detection/engine";
 import { deleteAllData } from "@/lib/account-deletion";
+import { createCalendarToken, turnOffCalendar } from "@/lib/calendar";
+import { appBase } from "@/lib/digest/links";
 import { alertPrefs } from "@/lib/alerts";
 import { db } from "@/lib/db";
 import { PlaidRequestError } from "@/lib/plaid/client";
@@ -47,6 +49,27 @@ export async function saveState(
   await db.user.update({ where: { id: user.id }, data: { state: state || null } });
   revalidatePath("/settings");
   return { ok: true, message: "Saved." };
+}
+
+export type CalendarState = { ok: boolean; message: string; link?: string } | null;
+
+// A new private calendar link; any old one stops working.
+export async function createCalendarLink(): Promise<CalendarState> {
+  const user = await requireUser();
+  const token = await createCalendarToken(user.id);
+  revalidatePath("/settings");
+  return {
+    ok: true,
+    message: "Your calendar link (shown once; anyone with it can see these events):",
+    link: `${appBase()}/api/calendar/${token}.ics`,
+  };
+}
+
+export async function stopCalendar(): Promise<CalendarState> {
+  const user = await requireUser();
+  await turnOffCalendar(user.id);
+  revalidatePath("/settings");
+  return { ok: true, message: "Calendar link turned off." };
 }
 
 // Which alerts the person gets, and how. Unknown values fall back to the defaults.

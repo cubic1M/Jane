@@ -172,6 +172,10 @@ model User {
   // Per alert type: "email", "app" or "off". Missing types use the defaults in
   // src/config/alerts.ts.
   alertPrefs                 Json      @default("{}") @map("alert_prefs")
+  // The private calendar feed (/api/calendar/<token>): SHA-256 of the link's secret, so a
+  // database leak doesn't reveal working links. Null when the feed is off.
+  calendarTokenHash          String?   @unique @map("calendar_token_hash")
+  calendarCreatedAt          DateTime? @map("calendar_created_at") @db.Timestamptz(3)
   // Two-letter US state, chosen on /settings. Referral partners are only offered where
   // they're allowed; with no state, none are.
   state                      String?

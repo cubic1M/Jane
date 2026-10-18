@@ -11,6 +11,7 @@ import { formatCents } from "@/lib/money";
 import { vapidPublicKey } from "@/lib/push";
 import { US_STATES } from "@/config/referrals";
 import { AlertsForm } from "./alerts-form";
+import { CalendarForm } from "./calendar-form";
 import { StateForm } from "./state-form";
 import { NotificationsToggle } from "./notifications";
 import { DeleteDataForm, DisconnectForm, RefreshForm } from "./data-forms";
@@ -22,7 +23,13 @@ async function SettingsContent() {
   const [prefs, items, accounts, lastCsv] = await Promise.all([
     db.user.findUniqueOrThrow({
       where: { id: user.id },
-      select: { digestEnabled: true, timezone: true, alertPrefs: true, state: true },
+      select: {
+        digestEnabled: true,
+        timezone: true,
+        alertPrefs: true,
+        state: true,
+        calendarCreatedAt: true,
+      },
     }),
     mine.plaidItems.findMany({
       select: {
@@ -115,6 +122,11 @@ async function SettingsContent() {
           </ul>
         </section>
       )}
+
+      <section className="flex flex-col gap-2">
+        <h2 className="text-xl font-semibold">Money calendar</h2>
+        <CalendarForm since={prefs.calendarCreatedAt?.toISOString().slice(0, 10) ?? null} />
+      </section>
 
       <section className="flex flex-col gap-2">
         <h2 className="text-xl font-semibold">Where you live</h2>
