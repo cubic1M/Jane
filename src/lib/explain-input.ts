@@ -127,6 +127,19 @@ export function prepareExplainInput(finding: ExplainableFinding): PreparedInput 
       };
       sent = charges(evidence.transactions, true);
       break;
+    case "low_balance_risk":
+      facts = {
+        account: "checking account",
+        balanceToday: money(num(evidence.balanceCents)),
+        lowestBalance: money(num(evidence.lowestCents)),
+        lowestAround: text(evidence.lowestDate),
+        cushion: money(num(evidence.cushionCents)),
+      };
+      sent = list(evidence.bills)
+        .map(obj)
+        .slice(-MAX_CHARGES)
+        .map((b) => ({ date: text(b.date) ?? "", amount: money(num(b.amountCents) ?? 0) ?? "" }));
+      break;
     case "idle_cash":
       facts = {
         cashBalance: money(num(evidence.totalBalanceCents)),

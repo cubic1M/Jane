@@ -36,6 +36,8 @@ export type DetectionRecurringStream = {
   lastAmountCents: number;
   averageAmountCents: number;
   lastDate: string | null;
+  // Plaid's predicted next charge (YYYY-MM-DD), when it has one.
+  predictedNextDate?: string | null;
   status: string;
   isActive: boolean;
   pfcPrimary: string | null;

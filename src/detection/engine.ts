@@ -156,6 +156,7 @@ async function loadInput(db: ScopedDb, asOf: string): Promise<DetectionInput> {
     recurringStreams: streams.map((s) => ({
       ...s,
       lastDate: s.lastDate ? isoDate(s.lastDate) : null,
+      predictedNextDate: s.predictedNextDate ? isoDate(s.predictedNextDate) : null,
     })),
   };
 }
@@ -185,6 +186,7 @@ const NO_FINDINGS: Record<FindingType, number> = {
   idle_cash: 0,
   insurance_reshop: 0,
   card_interest: 0,
+  low_balance_risk: 0,
 };
 
 type Options = {

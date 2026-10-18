@@ -12,7 +12,11 @@ export function sampleFindings(): Candidate[] {
   return detect(
     input({
       ...year,
-      accounts: [{ ...CHECKING, name: "Jordan's Everyday Checking" }, ...year.accounts.slice(1)],
+      // A low checking balance, so the bills forecast finds a low_balance_risk too.
+      accounts: [
+        { ...CHECKING, name: "Jordan's Everyday Checking", currentBalanceCents: 5_000 },
+        ...year.accounts.slice(1),
+      ],
       transactions: [
         ...year.transactions,
         tx({

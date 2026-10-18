@@ -26,6 +26,7 @@ enum FindingType {
   idle_cash
   insurance_reshop
   card_interest
+  low_balance_risk
 
   @@map("finding_type")
 }
@@ -64,6 +65,7 @@ enum ActionType {
   move_idle_cash
   insurance_reshop
   card_interest
+  review_cash_flow
 
   @@map("action_type")
 }
@@ -301,6 +303,8 @@ model RecurringStream {
   lastAmountCents    Int       @map("last_amount_cents")
   averageAmountCents Int       @map("average_amount_cents")
   lastDate           DateTime? @map("last_date") @db.Date
+  // Plaid's guess at the next charge, when it has one.
+  predictedNextDate  DateTime? @map("predicted_next_date") @db.Date
   status             String
   isActive           Boolean   @default(true) @map("is_active")
   pfcPrimary         String?   @map("pfc_primary")

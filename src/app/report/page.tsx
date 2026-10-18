@@ -20,6 +20,7 @@ const WHAT_WE_CHECK = [
   "Cash earning little interest",
   "Insurance you could reshop",
   "Credit card interest",
+  "Bills that could take your balance too low",
 ];
 
 async function ReportContent() {

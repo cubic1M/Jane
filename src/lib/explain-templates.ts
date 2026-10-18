@@ -95,6 +95,19 @@ const TEMPLATES: Record<FindingType, (input: ExplainInput) => Omit<ExplanationCo
       ],
     };
   },
+  low_balance_risk: (input) => {
+    const lowest = fact(input.facts, "lowestBalance");
+    const around = fact(input.facts, "lowestAround");
+    return {
+      explanation: `Your upcoming bills could take your checking account down to about ${lowest ?? "a low balance"}${around ? ` around ${around}` : ""}, before more money comes in. Moving a due date or two could keep you clear of overdraft fees.`,
+      giveUp: "Nothing, though a biller may need a few days to move a due date.",
+      alternatives: [
+        "Move money from savings before then",
+        "Pay one bill a little later",
+        "Turn on low-balance alerts",
+      ],
+    };
+  },
   card_interest: (input) => {
     const total = fact(input.facts, "totalLast12Months");
     return {

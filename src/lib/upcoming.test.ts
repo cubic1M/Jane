@@ -2,14 +2,14 @@ import { describe, expect, it } from "vitest";
 import { GROCERIES, NETFLIX, input, monthly, monthsAgo, tx } from "@/detection/__fixtures__/build";
 import { upcomingCharges } from "./upcoming";
 
-const OPTIONS = { days: 30, limit: 5 };
+const OPTIONS = { days: 31, limit: 5 };
 
 describe("upcomingCharges", () => {
   it("predicts the next charge of each active stream from its usual gap", () => {
     // Monthly on the 15th, last charge today (2026-10-15).
     const [next] = upcomingCharges(input({ transactions: monthly(4, 1549, NETFLIX) }), OPTIONS);
 
-    expect(next).toEqual({ merchant: "Netflix", date: "2026-11-14", amountCents: 1549 });
+    expect(next).toEqual({ merchant: "Netflix", date: "2026-11-15", amountCents: 1549 });
   });
 
   it("rolls an overdue charge forward to the next expected date", () => {

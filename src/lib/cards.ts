@@ -34,6 +34,7 @@ export const ACTION_FOR_FINDING: Record<FindingType, ActionType> = {
   idle_cash: "move_idle_cash",
   insurance_reshop: "insurance_reshop",
   card_interest: "card_interest",
+  low_balance_risk: "review_cash_flow",
 };
 
 // Recent rows shown as proof on the card.
@@ -63,6 +64,8 @@ function whatChanges(type: FindingType, evidence: Json): string {
       return `We get quotes with the same coverage as your ${merchant} policy and show you any cheaper option before anything changes.`;
     case "card_interest":
       return "We ask your card company for a lower rate and look at balance transfer options for you.";
+    case "low_balance_risk":
+      return "We ask your billers to move due dates to after your payday, and remind you before the low point.";
   }
 }
 
@@ -106,6 +109,14 @@ function evidenceRows(type: FindingType, evidence: Json): CardEvidenceRow[] {
     case "bank_fees":
     case "card_interest":
       return transactionRows(evidence.transactions);
+    case "low_balance_risk":
+      return list(evidence.bills)
+        .map(obj)
+        .map((b) => ({
+          date: text(b.date),
+          label: `${text(b.merchant) ?? "Bill"} (expected)`,
+          amountCents: num(b.amountCents),
+        }));
     default:
       return transactionRows(evidence.charges);
   }
