@@ -104,3 +104,11 @@ export const PLAN_URGENT_FINDING_TYPES: readonly FindingType[] = [
   "charge_after_cancel",
   "trial_conversion",
 ];
+
+// The week's one tap (spec step 59) starts with everything Jane would do ticked, except
+// these: cancelling something the person may still use, and moving money. Those stay on
+// the plan, unticked, for the person to pick.
+export const PLAN_NEVER_PRESELECTED: readonly ActionType[] = [
+  "cancel_subscription",
+  "move_idle_cash",
+];

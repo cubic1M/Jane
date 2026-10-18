@@ -153,4 +153,24 @@ describe.runIf(url)("Jane's plan against a real database", () => {
       (await client.decision.findFirstOrThrow({ where: { findingId: bill.id } })).options,
     ).toBeNull();
   });
+
+  it("ticks what Jane would do, leaving low-confidence items unticked and on the plan", async () => {
+    const userId = await person();
+    const fee = await finding(userId, "bank_fees", 3_500);
+    const trial = await finding(userId, "trial_conversion", 12_000);
+    const subscription = await finding(userId, "subscription_review", 21_588);
+    await client.finding.update({ where: { id: trial.id }, data: { confidence: "low" } });
+    const plan = await planFor(userId, { client });
+    const item = (id: string) => plan.find((i) => i.card.findingId === id)!;
+    expect(item(fee.id).preselected).toBe(true);
+    expect(item(trial.id).preselected).toBe(false);
+    // Cancelling something they may still use is never ticked for them.
+    expect(item(subscription.id).preselected).toBe(false);
+
+    // The week's one tap sends only what's ticked; the rest stays.
+    await yesToAll(userId, [{ findingId: fee.id, cardHash: item(fee.id).cardHash }], { client });
+    expect((await planFor(userId, { client })).map((i) => i.card.findingId).sort()).toEqual(
+      [trial.id, subscription.id].sort(),
+    );
+  });
 });
