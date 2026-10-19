@@ -223,6 +223,7 @@ export const ACTION_IDS = [
   "paycheck.undo",
   "bill.pay",
   "bill.skip",
+  "attention.resume",
 ] as const;
 export type ActionId = (typeof ACTION_IDS)[number];
 
@@ -376,6 +377,8 @@ export type MessageRefs = {
   paycheckPlanId?: string;
   // Spec step 145: a bill to pay, by its plan key (bill:<accountId>:<due date>).
   billKey?: string;
+  // Spec step 147: a kind of message Jane stopped bringing up, by its source.
+  attentionSource?: string;
   // Spec step 141: a sector's autopilot change typed in the chat, set on "Set it".
   sectorChange?: {
     sector: string;
