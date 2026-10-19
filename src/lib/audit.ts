@@ -99,7 +99,9 @@ export type AuditEvent =
   | "investor_profile_saved"
   // Orders sent to the brokerage partner (spec step 133): how many, why, and whether the
   // partner was the simulation; never amounts or tickers.
-  | "brokerage_orders_placed";
+  | "brokerage_orders_placed"
+  // Automatic investing (spec step 134): started, paused, resumed or changed; never amounts.
+  | "auto_invest_set";
 
 export type AuditActor = { type: ActorType; id: string | null };
 

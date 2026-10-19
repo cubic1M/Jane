@@ -329,6 +329,8 @@ model User {
   taxForms               TaxForm[]
   budgetTuneUps          BudgetTuneUp[]
   goalTransfers          GoalTransfer[]
+  autoInvestPlan         AutoInvestPlan?
+  autoInvestRuns         AutoInvestRun[]
 
   savedShares SavedShare[]
 
@@ -2080,4 +2082,50 @@ model BrokerageOrder {
   @@index([userId, placedAt])
   @@index([accountId])
   @@map("brokerage_orders")
+}
+
+// Spec step 134: investing automatically every payday, set up once with a tap. "fixed"
+// invests amountCents each payday; "leftover" invests part of what's safe to spend above
+// the floor (src/config/auto-invest.ts). Paused by the person, or by Jane for a payday when
+// safe to spend is low.
+model AutoInvestPlan {
+  id           String    @id @default(cuid())
+  userId       String    @unique @map("user_id")
+  mode         String
+  amountCents  Int?      @map("amount_cents")
+  // The investment account it goes into.
+  accountId    String    @map("account_id")
+  // active or paused (by the person).
+  status       String    @default("active")
+  // The last paycheck it ran for, so each one runs once.
+  lastPaydayOn DateTime? @map("last_payday_on") @db.Date
+  createdAt    DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt    DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("auto_invest_plans")
+}
+
+// Spec step 134: every payday's outcome, invested or paused, so every contribution is
+// visible.
+model AutoInvestRun {
+  id          String   @id @default(cuid())
+  userId      String   @map("user_id")
+  paydayOn    DateTime @map("payday_on") @db.Date
+  // invested or paused.
+  status      String
+  amountCents Int      @default(0) @map("amount_cents")
+  // Safe to spend when it ran.
+  safeCents   Int?     @map("safe_cents")
+  // The orders' batch (src/lib/brokerage/partner.ts), when invested.
+  batchId     String?  @map("batch_id")
+  reason      String?
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, paydayOn])
+  @@index([userId, createdAt])
+  @@map("auto_invest_runs")
 }

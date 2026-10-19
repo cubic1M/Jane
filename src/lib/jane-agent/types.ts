@@ -96,6 +96,11 @@ export const ACTION_IDS = [
   "invest.answer.5",
   // Spec step 133: move to the recommended mix, through the brokerage partner.
   "invest.rebalance",
+  // Spec step 134: automatic investing.
+  "invest.auto_start",
+  "invest.auto_leftover",
+  "invest.auto_pause",
+  "invest.auto_resume",
   // Jane notices changes (spec step 97).
   "change.look",
   "change.budget",
@@ -204,6 +209,8 @@ export type MessageRefs = {
   investAgain?: true;
   // Spec step 133: the rebalancing plan the button places, by its key.
   rebalanceKey?: string;
+  // Spec step 134: what "Start" sets up: an amount (cents) every payday, into an account.
+  autoInvest?: { amountCents: number; accountId: string };
   // Spec step 97: a change Jane noticed (src/insights/changes.ts), by its key; for a
   // category's pace, the budget "Set a budget" would set (cents a month).
   change?: { key: string; kind: string; category?: string; budgetCents?: number };
