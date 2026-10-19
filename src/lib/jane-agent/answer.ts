@@ -1,3 +1,5 @@
+import { insuranceReply } from "./insurance/replies";
+import { loadInsuranceSnapshot } from "./insurance/snapshot";
 import { AFFORD_USUAL_MONTHS } from "@/config/agent-chat";
 import { INSIGHT_MONTHS } from "@/config/insights";
 import type { PrismaClient } from "@/generated/prisma/client";
@@ -29,6 +31,7 @@ import {
 } from "./replies";
 import { changesReply } from "./replies-changes";
 import { lifeEventReply } from "./replies-life";
+import { weeklyReview } from "./replies-review";
 import { loadSnapshot } from "./snapshot";
 import { answerTaxIntent } from "./tax-answer";
 
@@ -49,6 +52,8 @@ export async function answerByRules(
       return null;
     case "help":
       return helpReply();
+    case "insurance":
+      return insuranceReply(intent, await loadInsuranceSnapshot(userId, { client, now }), asOf);
     case "greeting": {
       if (intent.thanks) return greetingReply(true, null);
       const home = await homeSummary(userId, { client, now });
@@ -88,6 +93,16 @@ export async function answerByRules(
       const open = await listLifeEvents(userId, { client });
       const going = open.some((e) => e.kind === intent.event && e.completedAt === null);
       return lifeEventReply(intent.event, going);
+    }
+    case "review": {
+      const snapshot = await loadSnapshot(userId, { client, now });
+      return snapshot
+        ? weeklyReview(snapshot, now)
+        : {
+            body: "Link a bank or import a CSV, and I'll review your weeks here.",
+            actions: [],
+            refs: {},
+          };
     }
     case "changes":
       return changesReply(await loadChanges(userId, { client, now }));

@@ -49,8 +49,9 @@ const TAX = [
   /\bdeductions?\b/i,
   /\bwrite[- ]off\b/i,
   /\birs\b/i,
-  // Also liability insurance and a loan's liability, which demo advice may talk about.
-  /\bliab(le|ility)\b/i,
+  // Also a loan's liability and being liable, which demo advice may talk about. Liability
+  // cover on an insurance policy is a kind of cover, so it's allowed (spec step 102).
+  /(?<!(?:injury|damage|personal) )\bliab(le|ility)\b(?! (?:cover|coverage|insurance|limits?|only)\b)(?!, per\b)/i,
 ];
 const LEGAL = [/\blegal(ly)?\b/i, /\b(lawyer|attorney|lawsuit|litigation|court)s?\b/i, /\bsue\b/i];
 
