@@ -3,7 +3,9 @@ import type { PrismaClient } from "@/generated/prisma/client";
 import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
 import { loadOverrides, loadTaxForms } from "@/lib/tax-organizer";
-import { buildTaxPack, type TaxPack } from "@/planning/tax-pack";
+import { buildTaxPack, packStates, type TaxPack } from "@/planning/tax-pack";
+import { loadTaxProfile } from "@/lib/tax-profile";
+import { loadResidency } from "@/lib/tax-states";
 
 // Loads one person's tax-time pack for a year (spec step 72). Only their own accounts, never
 // a household partner's, and only posted transactions. Spec step 119: grouped by their tax
@@ -17,7 +19,7 @@ export async function loadTaxPack(
   { client = defaultClient, now = new Date() }: { client?: PrismaClient; now?: Date } = {},
 ): Promise<TaxPack> {
   const db = scopedFor(userId, client);
-  const [transactions, loans, overrides, forms] = await Promise.all([
+  const [transactions, loans, overrides, forms, profile, residency] = await Promise.all([
     db.transactions.findMany({
       where: {
         pending: false,
@@ -43,6 +45,8 @@ export async function loadTaxPack(
     }),
     loadOverrides(userId, { client }),
     loadTaxForms(userId, year, { client, now }),
+    loadTaxProfile(userId, { client, now }),
+    loadResidency(userId, year, { client }),
   ]);
   return buildTaxPack({
     year,
@@ -55,5 +59,13 @@ export async function loadTaxPack(
     })),
     overrides,
     forms: forms.forms,
+    // Spec step 165: the states lived or worked in.
+    states: packStates({
+      year,
+      state: profile.state.value,
+      moves: residency.inUse,
+      workState: residency.workState,
+      locality: residency.locality,
+    }),
   });
 }

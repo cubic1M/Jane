@@ -15,7 +15,8 @@ import {
 // Spec step 128: the demo bank's holdings, shaped like Plaid Investments.
 
 const DEMO = { seed: "abc123", anchor: "2026-10-18" };
-const TODAY = "2026-10-18";
+// The anchor's eve: prices are the demo bank's own (spec step 156 moves them after).
+const TODAY = "2026-10-17";
 
 describe("the demo bank's holdings", () => {
   it("add up to each investment account's balance to the cent", () => {
@@ -29,7 +30,7 @@ describe("the demo bank's holdings", () => {
   });
 
   it("are Plaid-shaped: every holding's security is listed, in dollars, with a cost basis", () => {
-    const securities = new Set(demoSecurities(TODAY).map((s) => s.security_id));
+    const securities = new Set(demoSecurities(TODAY, DEMO.anchor).map((s) => s.security_id));
     for (const h of demoHoldings(DEMO, TODAY)) {
       expect(securities.has(h.security_id), h.security_id).toBe(true);
       expect(h.iso_currency_code).toBe("USD");
@@ -37,7 +38,9 @@ describe("the demo bank's holdings", () => {
       const n = normalizeHolding(h);
       expect(n?.valueCents).toBe(Math.round(h.institution_value * 100));
     }
-    expect(demoSecurities(TODAY).map((s) => normalizeSecurity(s).ticker)).toContain("NSTDX");
+    expect(demoSecurities(TODAY, DEMO.anchor).map((s) => normalizeSecurity(s).ticker)).toContain(
+      "NSTDX",
+    );
   });
 
   it("have something for each later step: a costly fund, the employer's shares, a gain and a loss", () => {
