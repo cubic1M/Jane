@@ -167,7 +167,7 @@ test("a policy document is read for the person to check and confirm (step 151)",
   await page.getByRole("link", { name: "Check and confirm" }).click();
   await expect(page.getByRole("heading", { name: "Check what Jane read", level: 1 })).toBeVisible();
   await expect(page.getByText("As you typed it.").first()).toBeVisible();
-  await page.getByLabel("Deductible ($)").fill("500");
+  await page.getByRole("textbox", { name: "Deductible ($)" }).fill("500");
   await page.getByRole("button", { name: "Confirm" }).click();
 
   await expect(page.getByText("Confirmed. It's on your insurance now.")).toBeVisible();
