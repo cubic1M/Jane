@@ -326,6 +326,7 @@ model User {
   policyReadings         PolicyReading[]
   lifeApplications       LifeApplication[]
   coverChanges           CoverChange[]
+  renewalNegotiations    RenewalNegotiation[]
   lifeEvents             LifeEvent[]
   // What's in investment accounts (spec step 128).
   securities             Security[]
@@ -1805,25 +1806,35 @@ model InsuranceCheckup {
 // src/config/claims.ts) as they were when it started. A step is only ever marked done,
 // never removed, so the tracker never loses one.
 model InsuranceClaim {
-  id          String    @id @default(cuid())
-  userId      String    @map("user_id")
-  policyId    String?   @map("policy_id")
+  id            String    @id @default(cuid())
+  userId        String    @map("user_id")
+  policyId      String?   @map("policy_id")
   // The kind of policy (POLICY_KINDS) and what happened (the guide's event key).
-  kind        String
-  event       String
-  happenedOn  DateTime  @map("happened_on") @db.Date
+  kind          String
+  event         String
+  happenedOn    DateTime  @map("happened_on") @db.Date
   // open or closed.
-  status      String    @default("open")
+  status        String    @default("open")
   // [{ key, label, dueOn: YYYY-MM-DD, doneAt: ISO time or null }].
-  steps       Json      @default("[]")
-  carrier     String?
+  steps         Json      @default("[]")
+  carrier       String?
   // The insurer's claims line and page, from the partner's catalog when known.
-  claimsPhone String?   @map("claims_phone")
-  claimsUrl   String?   @map("claims_url")
-  claimNumber String?   @map("claim_number")
-  closedAt    DateTime? @map("closed_at") @db.Timestamptz(3)
-  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
-  updatedAt   DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
+  claimsPhone   String?   @map("claims_phone")
+  claimsUrl     String?   @map("claims_url")
+  claimNumber   String?   @map("claim_number")
+  // Spec step 155: a small claim filed by Jane through the insurance partner, after the
+  // person reviewed it: what they claim and why, and the carrier's status as it moves.
+  amountCents   Int?      @map("amount_cents")
+  description   String?
+  // draft (written, waiting for the person's review) or filed.
+  filing        String?
+  filedAt       DateTime? @map("filed_at") @db.Timestamptz(3)
+  // received, reviewing, approved, paid or denied.
+  carrierStatus String?   @map("carrier_status")
+  payoutCents   Int?      @map("payout_cents")
+  closedAt      DateTime? @map("closed_at") @db.Timestamptz(3)
+  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt     DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
 
   user   User             @relation(fields: [userId], references: [id], onDelete: Cascade)
   policy InsurancePolicy? @relation(fields: [policyId], references: [id], onDelete: SetNull)
@@ -1952,6 +1963,38 @@ model CoverChange {
   @@unique([userId, event, eventKey, change, policyId])
   @@index([userId, status])
   @@map("cover_changes")
+}
+
+// Renewal negotiation (spec step 155): before a renewal with a price rise, Jane asks the
+// carrier for a better rate through the insurance partner (step 54's call flow), with the
+// reshop running alongside. Within the person's autopilot limits, or on their tap.
+model RenewalNegotiation {
+  id                   String    @id @default(cuid())
+  userId               String    @map("user_id")
+  policyId             String    @map("policy_id")
+  // Stops the same rise being negotiated twice.
+  key                  String
+  currentAnnualCents   Int       @map("current_annual_cents")
+  renewalAnnualCents   Int       @map("renewal_annual_cents")
+  // The best like-for-like quote from the reshop, used as leverage.
+  competingAnnualCents Int?      @map("competing_annual_cents")
+  // asked, lowered, kept or declined.
+  status               String    @default("asked")
+  resultAnnualCents    Int?      @map("result_annual_cents")
+  // What was said, line by line, and anything the carrier offered that changes the cover
+  // (never accepted on the call).
+  transcript           Json      @default("[]")
+  offer                String?
+  // Who started the call: the person's tap, or Jane within their autopilot limits.
+  calledBy             String?   @map("called_by")
+  createdAt            DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  calledAt             DateTime? @map("called_at") @db.Timestamptz(3)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, key])
+  @@index([userId, status])
+  @@map("renewal_negotiations")
 }
 
 // The household facts that matter for cover (spec step 102), as the person typed them.
