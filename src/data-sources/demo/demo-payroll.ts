@@ -22,7 +22,8 @@ const DEDUCTIONS: readonly { label: string; amountCents: number }[] = [
 ];
 const GROSS_CENTS = 360_000;
 
-const day = (y: number, m: number, d: number) => new Date(Date.UTC(y, m, d)).toISOString().slice(0, 10);
+const day = (y: number, m: number, d: number) =>
+  new Date(Date.UTC(y, m, d)).toISOString().slice(0, 10);
 
 // The last two paydays (the 1st and 15th) on or before `now`.
 function paydays(now: Date): string[] {

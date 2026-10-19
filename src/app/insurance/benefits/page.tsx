@@ -7,7 +7,7 @@ import { adviceMode } from "@/lib/advice-mode";
 import { listBenefits, nextQuestion, openEnrollmentAtWork } from "@/lib/insurance/benefits";
 import { latestCheckup } from "@/lib/insurance/checkups";
 import { payrollFor } from "@/lib/insurance/payroll";
-import { ANSWER_OF, benefitLine, QUESTIONS } from "@/lib/jane-agent/insurance/benefit-words";
+import { benefitLine, QUESTIONS } from "@/lib/jane-agent/insurance/benefit-words";
 import { requireUser } from "@/lib/session";
 import { answer, compareNow, confirm, notThis } from "./actions";
 
