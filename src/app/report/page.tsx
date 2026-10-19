@@ -42,7 +42,7 @@ async function ReportContent() {
 
   return (
     <>
-      <AppHeader email={user.email} />
+      <AppHeader user={user} />
       <ViewTracker event="report_viewed" />
 
       {transactions === 0 ? (

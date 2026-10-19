@@ -69,7 +69,7 @@ async function Card({ params }: { params: PageProps<"/report/[findingId]">["para
 
   return (
     <>
-      <AppHeader email={user.email} />
+      <AppHeader user={user} />
       <ViewTracker event="card_opened" findingId={finding.id} />
       <Link href="/report" className="text-sm text-zinc-500 hover:underline">
         ‹ Back to your report

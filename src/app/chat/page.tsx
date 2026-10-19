@@ -35,7 +35,7 @@ async function Chat({ searchParams }: { searchParams: PageProps<"/chat">["search
 
   return (
     <>
-      <AppHeader email={user.email} />
+      <AppHeader user={user} />
       <div className="flex flex-col gap-1">
         <h1 className="text-2xl font-semibold tracking-tight">Chat with Jane</h1>
         <p className="text-sm text-zinc-600 dark:text-zinc-400">

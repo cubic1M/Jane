@@ -14,7 +14,7 @@ async function Content() {
 
   return (
     <>
-      <AppHeader email={user.email} />
+      <AppHeader user={user} />
       <h1 className="text-3xl font-semibold tracking-tight">Turn on two-factor</h1>
       <ol className="flex list-decimal flex-col gap-2 pl-5 text-zinc-600 dark:text-zinc-400">
         <li>

@@ -38,7 +38,7 @@ async function Planner() {
 
   return (
     <>
-      <AppHeader email={user.email} />
+      <AppHeader user={user} />
       <ViewTracker event="debt_planner_viewed" />
       <div className="flex flex-col gap-2">
         <h1 className="text-3xl font-semibold tracking-tight">{PLANNER_COPY.title}</h1>

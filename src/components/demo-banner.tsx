@@ -1,12 +1,10 @@
 import Link from "next/link";
 import { hasDemoBank } from "@/lib/plaid/demo";
-import { getCurrentUser } from "@/lib/session";
 
 // Shown on every signed-in page while a demo bank is linked (spec step 75), so fake data
 // is never mistaken for real money.
-export async function DemoBanner() {
-  const user = await getCurrentUser();
-  if (!user || !(await hasDemoBank(user.id))) return null;
+export async function DemoBanner({ userId }: { userId: string }) {
+  if (!(await hasDemoBank(userId))) return null;
   return (
     <p
       role="note"

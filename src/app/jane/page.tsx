@@ -49,7 +49,7 @@ async function JaneContent() {
 
   return (
     <>
-      <AppHeader email={user.email} />
+      <AppHeader user={user} />
       <div className="flex flex-col gap-2">
         <h1 className="text-3xl font-semibold tracking-tight">What Jane is doing for you</h1>
         <p className={MUTED}>

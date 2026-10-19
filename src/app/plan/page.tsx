@@ -51,7 +51,7 @@ async function Plan({ searchParams }: { searchParams: PageProps<"/plan">["search
 
   return (
     <>
-      <AppHeader email={user.email} />
+      <AppHeader user={user} />
       <ViewTracker event="plan_viewed" />
       {approved !== null && (
         <p role="status" className="rounded-xl bg-emerald-50 p-4 dark:bg-emerald-950">

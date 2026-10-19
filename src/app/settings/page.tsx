@@ -141,7 +141,7 @@ async function SettingsContent() {
 
   return (
     <>
-      <AppHeader email={user.email} />
+      <AppHeader user={user} />
       <div className="flex flex-col gap-3">
         <h1 className="text-3xl font-semibold tracking-tight">Settings</h1>
         <nav aria-label="Settings sections">
