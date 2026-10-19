@@ -18,6 +18,8 @@ import { topicOf, withTopic, type Topic } from "./context";
 import { matchCategory, type Intent } from "./intents";
 import { loadRecurring } from "./recurring";
 import { costReply, paydayReply, subscriptionsReply } from "./recurring-replies";
+import { answerDebt } from "./debt-answer";
+import { isDebtIntent } from "./debt-intents";
 import { answerInvestments } from "./investments/answer";
 import {
   actReply,
@@ -100,6 +102,8 @@ async function byIntent(
       await loadInsightTransactions(scopedFor(userId, client), asOf, INSIGHT_MONTHS),
       asOf,
     );
+  // Loans and debt (spec Phase Y, ./debt-answer.ts).
+  if (isDebtIntent(intent)) return answerDebt(userId, intent, { client, now });
   switch (intent.kind) {
     case "follow_up":
       return null;

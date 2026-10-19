@@ -45,7 +45,7 @@ test("a renter adds their renters policy and the gap goes", async ({ context, pa
   expect(overflow).toBeLessThanOrEqual(0);
 });
 
-test("a demo-bank person sees the sample policy and gets like-for-like quotes (steps 102–103)", async ({
+test("a demo-bank person sees the sample policy, like-for-like quotes and Jane's pick (steps 102–104)", async ({
   context,
   page,
   baseURL,
@@ -67,7 +67,12 @@ test("a demo-bank person sees the sample policy and gets like-for-like quotes (s
 
   await page.getByRole("link", { name: "Compare quotes" }).click();
   await expect(page.getByText("Sample quotes from Jane's demo carrier catalog")).toBeVisible();
-  await page.getByRole("button", { name: "Get quotes" }).click();
+  // The policy renews in 40 days, so Jane shopped it by herself when the bank linked
+  // (spec step 104): her pick, why, labelled as demo advice.
+  const pick = page.getByRole("region", { name: /Jane's pick/ });
+  await expect(pick.getByRole("heading")).toHaveText("Jane's pick: Lighthouse Insurance (demo)");
+  await expect(pick.getByText("$408.00 a year less for the same cover")).toBeVisible();
+  await expect(pick.getByText("Demo advice: sample data, not financial advice")).toBeVisible();
   const lighthouse = page.getByRole("listitem").filter({ hasText: "Lighthouse Insurance (demo)" });
   await expect(lighthouse.getByText("Same cover and deductible as your policy.")).toBeVisible();
   await expect(
@@ -77,4 +82,23 @@ test("a demo-bank person sees the sample policy and gets like-for-like quotes (s
     () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
   );
   expect(overflow).toBeLessThanOrEqual(0);
+});
+
+test("a demo-bank person says yes to Jane's pick (step 104)", async ({
+  context,
+  page,
+  baseURL,
+}) => {
+  const user = await signedInUser("user");
+  userId = user.userId;
+  await context.addCookies([
+    { name: "authjs.session-token", value: user.sessionToken, url: baseURL ?? "" },
+  ]);
+  await page.goto("/connect");
+  await page.getByRole("button", { name: "Link a demo bank" }).click();
+  await expect(page).toHaveURL("/chat", { timeout: 60_000 });
+  await page.goto("/insurance");
+  await page.getByRole("link", { name: "Compare quotes" }).click();
+  await page.getByRole("button", { name: "Yes, switch" }).click();
+  await expect(page).toHaveURL("/actions");
 });

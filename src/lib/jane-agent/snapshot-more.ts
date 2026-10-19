@@ -1,6 +1,8 @@
 import type { PrismaClient } from "@/generated/prisma/client";
 import { switchOf } from "@/lib/agent/switch";
 import { autopilotOf } from "@/lib/autopilot";
+import { loadPayoff, type Payoff } from "@/lib/debt-plan";
+import type { DebtBook } from "@/insights/debts";
 import { scopedFor } from "@/lib/db-scoped";
 import { assetPrompts, promptHref } from "@/lib/owned-assets";
 import { openProposals } from "@/lib/proposals";
@@ -35,6 +37,10 @@ export type MoreSnapshot = {
   // Mortgages and car loans with no home or car linked to them, with the link that opens
   // the add form prefilled.
   assetPrompts: { loanId: string; loanName: string; kind: "home" | "vehicle"; href: string }[];
+  // Spec step 109: every debt, as on the loans page.
+  debts?: DebtBook;
+  // Spec step 110: the payoff plan across them, and the one the person started.
+  payoff?: Payoff;
   // Insurance (spec Phase X), from the same loader as /insurance. Optional, so a snapshot
   // built without it (in tests) says nothing about insurance.
   insurance?: InsuranceSnapshot;
@@ -47,7 +53,7 @@ export async function loadMore(
   { client, now = new Date() }: { client: PrismaClient; now?: Date },
 ): Promise<MoreSnapshot> {
   const db = scopedFor(userId, client);
-  const [autopilot, proposals, waiting, loans, owned] = await Promise.all([
+  const [autopilot, proposals, waiting, loans, owned, payoff] = await Promise.all([
     autopilotOf(userId, { client }),
     openProposals(userId, { client }),
     db.actions.findMany({
@@ -71,6 +77,7 @@ export async function loadMore(
       orderBy: { id: "asc" },
     }),
     db.ownedAssets.findMany({ select: { loanAccountId: true } }),
+    loadPayoff(userId, { client, now }),
   ]);
   const insurance = await loadInsuranceSnapshot(userId, { client, now });
 
@@ -104,6 +111,8 @@ export async function loadMore(
         ? [{ loanId: p.loanId, loanName: p.loanName, kind: p.kind, href: promptHref(p) }]
         : [],
     ),
+    debts: payoff.book,
+    payoff,
     insurance,
   };
 }

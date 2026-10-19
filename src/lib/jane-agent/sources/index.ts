@@ -1,4 +1,5 @@
 import { briefSource } from "./brief";
+import { DEBT_SOURCES } from "./debt-sources";
 import { didSource } from "./did";
 import { findingsSource } from "./findings";
 import { insuranceSource } from "./insurance";
@@ -23,6 +24,8 @@ import { investmentsSource } from "./investments";
 // src/config/agent-chat.ts (CHAT_SOURCE_LIMITS).
 export const MESSAGE_SOURCES: readonly MessageSource[] = [
   briefSource,
+  // Loans and debt (spec Phase Y, ./debt-sources.ts).
+  ...DEBT_SOURCES,
   findingsSource,
   // Insurance (spec Phase X).
   insuranceSource,

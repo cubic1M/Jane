@@ -114,6 +114,10 @@ describe.runIf(url)("insurance quotes against a real database", () => {
   it("gets quotes from the chat by rules and by the Compare quotes button", async () => {
     const me = await person(true);
     await demoPolicyOf(me);
+    // A CSV account next to the demo bank: quotes, but no demo advice (no pick, spec 104).
+    await client.account.create({
+      data: { userId: me, source: "csv", name: "Card", type: "credit", subtype: "credit card" },
+    });
     const { reply } = await sendToJane(me, "find me cheaper car insurance", { client, now: NOW });
     expect(reply.body.split("\n")).toEqual([
       "I asked for quotes with the same cover and deductible as your GEICO car insurance, which costs $1,704.00 a year:",
