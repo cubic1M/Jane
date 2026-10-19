@@ -49,7 +49,9 @@ type AccountKey =
   | "retirement"
   | "brokerage"
   // Spec step 159: a demo HSA, only when the person links one (DemoExtra).
-  | "hsa";
+  | "hsa"
+  // Spec step 160: a demo employer stock plan (vested RSUs).
+  | "stock_plan";
 
 export const accountId = (seed: string, key: AccountKey) => `demo-${seed}-${key}`;
 
@@ -605,11 +607,15 @@ export function demoAccounts({ seed }: DemoSeed, extras: readonly DemoExtra[] = 
     ...(extras.includes("hsa")
       ? [account(seed, "hsa", "Demo HSA", "0009", "investment", "hsa", 4271.8)]
       : []),
+    // Spec step 160: vested Acme shares from work, at the demo price.
+    ...(extras.includes("stock_plan")
+      ? [account(seed, "stock_plan", "Demo Stock Plan", "0010", "investment", "stock plan", 20460)]
+      : []),
   ];
 }
 
 // Extra stand-in accounts a demo-bank person can link (spec step 159 on).
-export const DEMO_EXTRAS = ["hsa"] as const;
+export const DEMO_EXTRAS = ["hsa", "stock_plan"] as const;
 export type DemoExtra = (typeof DEMO_EXTRAS)[number];
 
 // The next time a day of the month comes round, after `today`.

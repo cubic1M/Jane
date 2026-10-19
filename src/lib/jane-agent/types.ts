@@ -134,6 +134,9 @@ export const ACTION_IDS = [
   // Spec step 159: the HSA.
   "hsa.link",
   "hsa.invest",
+  // Spec step 160: company stock, sold down in parts.
+  "company.link",
+  "company.sell",
   // Jane notices changes (spec step 97).
   "change.look",
   "change.budget",
@@ -269,6 +272,8 @@ export type MessageRefs = {
   autoInvest?: { amountCents: number; accountId: string };
   // Spec step 158: the college plan "Start saving for college" sets up.
   college?: { childName: string; childAge: number; type: "public" | "private" };
+  // Spec step 160: the company stock plan "Sell this part" sells from, by its key.
+  companyPlan?: string;
   // Spec step 97: a change Jane noticed (src/insights/changes.ts), by its key; for a
   // category's pace, the budget "Set a budget" would set (cents a month).
   change?: { key: string; kind: string; category?: string; budgetCents?: number };

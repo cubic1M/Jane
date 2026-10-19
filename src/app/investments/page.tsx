@@ -206,6 +206,12 @@ async function InvestmentsContent() {
             : invested beyond a cash cushion, and the receipts vault.
           </p>
           <p className="text-sm text-zinc-600 dark:text-zinc-400">
+            <Link href="/investments/company-stock" className={LINK}>
+              Company stock
+            </Link>
+            : RSUs, ESPP and options, without too many eggs in one basket.
+          </p>
+          <p className="text-sm text-zinc-600 dark:text-zinc-400">
             Learn:{" "}
             {["index-funds", "fees", "the-match", "roth-vs-traditional", "rebalancing"].map(
               (slug, i) => (

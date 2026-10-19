@@ -343,6 +343,7 @@ model User {
   autopilotActs    AutopilotAct[]
   collegePlans     CollegePlan[]
   hsaReceipts      HsaReceipt[]
+  equityGrants     EquityGrant[]
 
   @@map("users")
 }
@@ -2386,4 +2387,32 @@ model HsaReceipt {
 
   @@index([userId, date])
   @@map("hsa_receipts")
+}
+
+// Spec step 160: stock from work: RSUs still to vest, an ESPP, options. From the person's
+// own answers (a guided form) or the demo stock plan. Shares already vested and held show
+// up as holdings; this is what's still coming.
+model EquityGrant {
+  id             String    @id @default(cuid())
+  userId         String    @map("user_id")
+  company        String
+  ticker         String?
+  // rsu, espp or options (src/config/company-stock.ts).
+  kind           String
+  unvestedShares Float     @map("unvested_shares")
+  sharesPerVest  Float?    @map("shares_per_vest")
+  everyMonths    Int?      @map("every_months")
+  nextVestOn     DateTime? @map("next_vest_on") @db.Date
+  // Options: the price to buy each share; ESPP: the discount on the price.
+  strikeCents    Int?      @map("strike_cents")
+  esppDiscount   Float?    @map("espp_discount")
+  // you (the form) or demo (the demo stock plan).
+  source         String    @default("you")
+  createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt      DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("equity_grants")
 }
