@@ -1,6 +1,7 @@
 import { CHAT_WEEK_DAYS } from "@/config/agent-chat";
 import { CATEGORY_LABELS, UNCATEGORIZED } from "@/insights/labels";
 import { parseMoneyToCents } from "@/lib/money";
+import { parseDebtIntent, type DebtIntent } from "./debt-intents";
 
 // What the person typed to Jane, understood by rules (spec step 84). Pure: the text and
 // today's date in, one intent out. Works with no Claude key at all; anything it can't
@@ -36,6 +37,8 @@ export type Intent =
   // days is null for the usual coming-up list.
   | { kind: "coming_up"; days: number | null }
   | { kind: "act"; verb: ActVerb; target: string }
+  // Loans and debt (spec Phase Y, ./debt-intents.ts).
+  | DebtIntent
   | { kind: "unknown" };
 
 const MONTHS = [
@@ -206,6 +209,8 @@ export function parseIntent(raw: string, asOf: string): Intent {
     };
   }
   if (SAFE.test(text)) return { kind: "safe_to_spend" };
+  const debt = parseDebtIntent(text);
+  if (debt) return debt;
   if (SPENDING.test(text)) {
     const on = /\b(?:on|for|at) (.+?)(?= (?:this|last|in|during|so far|since)\b|$)/.exec(text);
     const category = on ? cleanTarget(on[1]) : "";

@@ -13,12 +13,14 @@ import { CARD_SELECT, buildCard } from "@/lib/cards";
 import { comparisonFor } from "@/lib/compare";
 import { frequencyWords } from "@/lib/explain-input";
 import { scopedFor } from "@/lib/db-scoped";
+import { loadDebts } from "@/lib/debts";
 import { listGoals } from "@/lib/goals";
 import { homeSummary } from "@/lib/home";
 import { formatCents } from "@/lib/money";
 import { affordWindow } from "@/planning/afford";
 import type { Scored } from "@/planning/compare";
 import { ACTION_HANDLERS } from "./actions";
+import { DEBT_TOOLS, debtsToolOutput } from "./debt-tools";
 import { monthLabel, type Reply } from "./replies";
 import { localTime } from "./quiet-hours";
 import { loadSnapshot } from "./snapshot";
@@ -53,6 +55,9 @@ export const CHAT_PAGES: Readonly<Record<string, { label: string; href: string }
   actions: { label: "See actions", href: "/actions" },
   net_worth: { label: "See net worth", href: "/net-worth" },
   settings: { label: "Settings", href: "/settings" },
+  // Loans and debt (spec Phase Y).
+  loans: { label: "See every debt", href: "/loans" },
+  debt: { label: "Open the payoff planner", href: "/debt" },
 };
 
 const noInput = { type: "object" as const, properties: {}, additionalProperties: false };
@@ -110,6 +115,8 @@ export const CHAT_TOOLS: Anthropic.Tool[] = [
       "What the person has (accounts and things they own) minus what they owe, from their linked balances.",
     input_schema: noInput,
   },
+  // Loans and debt (spec Phase Y, ./debt-tools.ts).
+  ...DEBT_TOOLS,
   {
     name: "propose_action",
     description:
@@ -311,6 +318,8 @@ export async function runChatTool(
         accountsWithoutABalance: worth.missing.length,
       });
     }
+    case "debts":
+      return out(debtsToolOutput(await loadDebts(userId, { client, now }), money));
     default:
       return { content: JSON.stringify({ error: `There's no tool called ${name}.` }), cents: [] };
   }

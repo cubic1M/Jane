@@ -375,6 +375,18 @@ export async function exportUserData(
     // entry, by role, never a team member's name or id.
     teamAccessFor(userId, { client, limit: null }),
   ]);
+  // Terms they typed for debts their bank doesn't report (spec step 109).
+  const debtTerms = await db.debtTerms.findMany({
+    select: {
+      debtKey: true,
+      aprBps: true,
+      minimumPaymentCents: true,
+      balanceCents: true,
+      payoffDate: true,
+      updatedAt: true,
+    },
+    orderBy: { debtKey: "asc" },
+  });
 
   return {
     exportedAt: now.toISOString(),
@@ -407,6 +419,7 @@ export async function exportUserData(
     checkIns,
     events,
     ownedAssets,
+    debtTerms,
     documents: {
       note: "The files themselves aren't in this download. Download each one from /documents.",
       files: documents,

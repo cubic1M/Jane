@@ -16,6 +16,8 @@ export const CHAT_SOURCE_LIMITS: Readonly<Record<string, number>> = {
   steps: 2,
   budgets: 1,
   things: 1,
+  // Loans and debt (spec Phase Y).
+  debts: 1,
 };
 
 // Quiet hours in the person's timezone (users.timezone): nothing is posted from 9pm to
@@ -60,6 +62,10 @@ export const MESSAGE_PRIORITY = {
   setup: 65,
   budget_nearly_over: 44,
   asset_prompt: 30,
+  // Loans and debt (spec step 109): a buy now, pay later plan Jane found, then a debt
+  // with no rate, both after the rest.
+  debt_found: 35,
+  debt_missing_rate: 33,
 } as const;
 
 // The chat page shows the last this-many messages, with "Show earlier" for more.

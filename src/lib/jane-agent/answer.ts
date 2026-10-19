@@ -6,8 +6,10 @@ import { loadAffordNumbers } from "@/lib/afford";
 import { autopilotOf } from "@/lib/autopilot";
 import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
+import { loadDebts } from "@/lib/debts";
 import { homeSummary } from "@/lib/home";
 import { whatJaneDid } from "@/lib/what-jane-did";
+import { debtReply } from "./debt-replies";
 import type { Intent } from "./intents";
 import {
   actReply,
@@ -88,5 +90,9 @@ export async function answerByRules(
       return undoReply(await loadSnapshot(userId, { client, now }), now);
     case "pause_autopilot":
       return pauseReply(await autopilotOf(userId, { client }));
+    // Loans and debt (spec Phase Y).
+    case "debts":
+    case "debt_detail":
+      return debtReply(intent, await loadDebts(userId, { client, now }));
   }
 }

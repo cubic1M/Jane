@@ -81,6 +81,7 @@ const STATUS: Record<string, string> = {
   goals: "Looking at your goals…",
   budgets: "Checking your budgets…",
   net_worth: "Adding up your net worth…",
+  debts: "Looking at your debts…",
   finding_details: "Looking into it…",
   subscriptions: "Checking your subscriptions…",
   propose_action: "Getting a button ready…",
