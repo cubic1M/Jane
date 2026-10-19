@@ -1,33 +1,40 @@
-// The main menu (spec step 79): Jane's chat first (spec step 81), then four tabs, with
-// Settings behind the profile menu. Every signed-in page belongs to exactly one of them, so
-// the right tab lights up wherever the person is. A page's sub-pages (/report/abc,
-// /settings/two-factor) belong with it. Ask left the menu for the chat's message box, and
-// still lights up Chat.
-//
-// Spec step 86: the chat is where things happen, and the four tabs are its details. The
-// menu shows Chat and a "Details" menu holding Today, Jane, Money and Ahead with every page
-// under them (DETAIL_PAGES).
+// The main menu (spec steps 79, 81, 86), reorganised: the chat first, then a Details menu
+// with one entry per place: Today, Money, the four "Grow and protect" sectors (Investments,
+// Loans and debt, Insurance, Taxes), Ahead and What Jane did. Each lands on a hub that links
+// its own sub-pages. A page's sub-pages (/report/abc, /settings/two-factor) belong with it.
+// Ask left the menu for the chat's message box, and still lights up Chat.
 
-export type TabKey = "chat" | "today" | "jane" | "money" | "ahead" | "settings";
+export type TabKey =
+  | "chat"
+  | "today"
+  | "money"
+  | "investments"
+  | "loans"
+  | "insurance"
+  | "taxes"
+  | "ahead"
+  | "jane"
+  | "settings";
 
 export type Tab = {
   key: TabKey;
   label: string;
   href: string;
-  // The pages it covers, its own first.
+  // The pages it covers, its own first. Its sub-pages are listed on the page itself (a hub
+  // page links each of them), not in the menu.
   paths: readonly string[];
+  // A heading the menu shows above a run of tabs with the same one.
+  group?: string;
 };
 
-// In menu order. Settings isn't a tab: it's in the profile menu, and lights that up.
+// THE MENU, in order. Every signed-in page belongs to exactly one tab (the tests read
+// src/app and fail on a page that doesn't), so a lane adding a page adds its path to its
+// sector's tab here and nowhere else; a new sector adds a tab. Settings isn't a tab: it's
+// in the profile menu, and lights that up. Documents, things you own and the household are
+// under it, linked from Money and Settings.
 export const TABS: readonly Tab[] = [
   { key: "chat", label: "Chat", href: "/chat", paths: ["/chat", "/ask"] },
   { key: "today", label: "Today", href: "/home", paths: ["/home"] },
-  {
-    key: "jane",
-    label: "Jane",
-    href: "/jane",
-    paths: ["/jane", "/plan", "/report", "/actions", "/alerts", "/saved", "/learn"],
-  },
   {
     key: "money",
     label: "Money",
@@ -35,9 +42,6 @@ export const TABS: readonly Tab[] = [
     paths: [
       "/money",
       "/net-worth",
-      "/investments",
-      "/loans",
-      "/things",
       "/goals",
       "/budgets",
       "/subscriptions",
@@ -45,27 +49,49 @@ export const TABS: readonly Tab[] = [
       "/transactions",
       "/transfers",
       "/insights",
-      "/documents",
-      "/insurance",
-      "/household",
     ],
+  },
+  {
+    key: "investments",
+    label: "Investments",
+    href: "/investments",
+    paths: ["/investments"],
+    group: "Grow and protect",
+  },
+  {
+    key: "loans",
+    label: "Loans and debt",
+    href: "/loans",
+    // The payoff planner (/debt) is the debt half of this tab.
+    paths: ["/loans", "/debt"],
+    group: "Grow and protect",
+  },
+  {
+    key: "insurance",
+    label: "Insurance",
+    href: "/insurance",
+    paths: ["/insurance"],
+    group: "Grow and protect",
+  },
+  {
+    key: "taxes",
+    label: "Taxes",
+    href: "/taxes",
+    // The tax-time pack is the taxes tab's own page.
+    paths: ["/taxes", "/tax-pack"],
+    group: "Grow and protect",
   },
   {
     key: "ahead",
     label: "Ahead",
     href: "/ahead",
-    paths: [
-      "/ahead",
-      "/afford",
-      "/deadlines",
-      "/debt",
-      "/life-events",
-      "/tax-pack",
-      "/taxes",
-      "/check-in",
-      "/monthly",
-      "/year",
-    ],
+    paths: ["/ahead", "/afford", "/deadlines", "/life-events", "/check-in", "/monthly", "/year"],
+  },
+  {
+    key: "jane",
+    label: "What Jane did",
+    href: "/jane",
+    paths: ["/jane", "/plan", "/report", "/actions", "/alerts", "/saved", "/learn"],
   },
 ];
 
@@ -73,7 +99,7 @@ export const SETTINGS_TAB: Tab = {
   key: "settings",
   label: "Settings",
   href: "/settings",
-  paths: ["/settings", "/connect", "/import"],
+  paths: ["/settings", "/connect", "/import", "/documents", "/things", "/household"],
 };
 
 const ALL_TABS: readonly Tab[] = [...TABS, SETTINGS_TAB];
@@ -96,33 +122,5 @@ export function tabsClaiming(pathname: string): TabKey[] {
 // Spec step 86: the tabs behind the Details menu, in menu order.
 export const DETAIL_TABS: readonly Tab[] = TABS.filter((tab) => tab.key !== "chat");
 
-// Names for the pages in the Details menu, where the address alone reads badly. A page
-// without one is named from its address ("/life-events" is "Life events").
-const PAGE_LABELS: Readonly<Record<string, string>> = {
-  "/report": "Savings report",
-  "/saved": "What Jane saved you",
-  "/things": "Things you own",
-  "/afford": "Can I afford it?",
-  "/tax-pack": "Tax-time pack",
-  "/check-in": "Monthly check-in",
-  "/monthly": "Monthly money report",
-  "/year": "Year in review",
-};
-
-const fromPath = (href: string) => {
-  const words = href.slice(1).replace(/-/g, " ");
-  return words.charAt(0).toUpperCase() + words.slice(1);
-};
-
-// The pages under each detail tab, as the Details menu lists them under the tab's own page.
-// Made from the tabs' paths, so a page added to a tab is in the menu too.
-export const DETAIL_PAGES: Readonly<Record<string, readonly { label: string; href: string }[]>> =
-  Object.fromEntries(
-    DETAIL_TABS.map((tab) => [
-      tab.key,
-      tab.paths.slice(1).map((href) => ({ href, label: PAGE_LABELS[href] ?? fromPath(href) })),
-    ]),
-  );
-
-// Whether a page is one of the details (anything under Today, Jane, Money or Ahead).
+// Whether a page is one of the details (anything in the menu but Chat).
 export const isDetail = (pathname: string) => DETAIL_TABS.some((t) => t.key === tabFor(pathname));
