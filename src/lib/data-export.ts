@@ -55,6 +55,8 @@ export async function exportUserData(
     janeMessages,
     teamAccess,
     taxProfile,
+    taxTags,
+    taxForms,
   ] = await Promise.all([
     client.user.findUniqueOrThrow({
       where: { id: userId },
@@ -410,6 +412,11 @@ export async function exportUserData(
         updatedAt: true,
       },
     }),
+    // Tax tags they chose and tax forms they said arrived (spec step 119).
+    db.taxTags.findMany({
+      select: { transactionId: true, merchantKey: true, tag: true, updatedAt: true },
+    }),
+    db.taxForms.findMany({ select: { year: true, key: true, receivedAt: true } }),
   ]);
   // What's in their investment accounts and its history (spec step 128).
   const investments = await investmentsExport(userId, client);
@@ -468,5 +475,7 @@ export async function exportUserData(
       actionId,
     })),
     taxProfile,
+    taxTags,
+    taxForms,
   };
 }

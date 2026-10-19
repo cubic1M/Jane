@@ -65,6 +65,7 @@ const SIGNED_IN = [
   "/tax-pack",
   "/taxes",
   "/taxes/profile",
+  "/taxes/tags",
   "/settings/team-access",
   "/jane",
   "/money",

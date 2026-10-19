@@ -41,6 +41,9 @@ investment advice in this MVP.
   financial advice" (DEMO_ADVICE_LABEL, DemoAdviceLabel, refs.advice in the chat).
   Real accounts never get advice: REAL_ACCOUNT_ADVICE in src/config/advice.ts stays
   false until a licensed partner is connected and counsel signs off
+- Trial people (step 138, ids starting "trial_", src/lib/trial.ts) are sample data:
+  never emailed, never contact a company (the agent uses the simulated company and
+  number), never in analytics or metrics, and deleted after TRIAL_HOURS
 - Write tests for every rule and every API route you add
 - Prefer small, readable modules over clever abstractions
 - When unsure about a Plaid field or category name, check the Plaid docs instead

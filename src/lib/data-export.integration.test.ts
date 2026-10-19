@@ -117,6 +117,10 @@ describe.runIf(url)("data export against a real database", () => {
     await client.taxProfile.create({
       data: { userId, state: name === "me" ? "CA" : "TX", answered: ["state"] },
     });
+    await client.taxTag.create({ data: { userId, merchantKey: `${name} merchant`, tag: "work" } });
+    await client.taxForm.create({
+      data: { userId, year: 2026, key: `w2:${name}`, receivedAt: new Date("2027-02-01") },
+    });
     await client.janeMessage.create({
       data: { userId, kind: "brief", body: `${name} brief`, dedupeKey: "brief:2026-10-18" },
     });
@@ -224,6 +228,8 @@ describe.runIf(url)("data export against a real database", () => {
       "budgetTuneUps",
       "goalTransfers",
       "janeMessages",
+      "taxTags",
+      "taxForms",
     ] as const) {
       expect(data[key], key).toHaveLength(1);
     }

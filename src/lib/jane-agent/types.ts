@@ -51,6 +51,11 @@ export const ACTION_IDS = [
   "tax.income_add",
   "tax.income_no",
   "tax.state_set",
+  // Spec step 119: tax tags and forms.
+  "tax.tag_yes",
+  "tax.tag_no",
+  "tax.tag_set",
+  "tax.form_got",
   // Investments (spec step 129 on): the answer buttons on an investor-profile question,
   // by position (src/config/investing.ts PROFILE_QUESTIONS).
   "invest.answer.1",
@@ -121,6 +126,12 @@ export type MessageRefs = {
   incomeKind?: string;
   // The state "Yes, set it" would put on the tax profile (two letters).
   taxState?: string;
+  // Spec step 119: a merchant's tax tag to keep or set (a TAX_TAGS key, or "none"), and a tax
+  // form to tick off.
+  merchantKey?: string;
+  taxTag?: string;
+  taxForm?: string;
+  taxYear?: number;
   // Spec step 98: demo advice (src/lib/advice-mode.ts). The chat shows DEMO_ADVICE_LABEL
   // under it. Set it on every message that recommends investments, taxes, insurance or loans.
   advice?: true;

@@ -1,7 +1,9 @@
 import Link from "next/link";
 import { GetStartedButton } from "@/components/get-started-button";
 import { AsciiHeroBackground } from "@/components/ascii-hero-background";
+import { TryButton } from "@/components/try-button";
 import { ViewTracker } from "@/components/view-tracker";
+import { trialEnabled } from "@/lib/trial";
 
 const POINTS = [
   {
@@ -62,6 +64,7 @@ export default function Home() {
           </p>
           <div className="flex flex-wrap items-center gap-6">
             <GetStartedButton />
+            {trialEnabled() && <TryButton />}
             <Link href="/login" className="font-medium text-emerald-700 hover:underline">
               Sign in
             </Link>
