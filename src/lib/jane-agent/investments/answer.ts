@@ -5,12 +5,14 @@ import type { InvestmentIntent } from "./intents";
 import { profileOf } from "@/lib/investments/profile";
 import { adviceMode } from "@/lib/advice-mode";
 import { loadFees } from "@/lib/investments/fees";
+import { loadAccountPlan } from "@/lib/investments/accounts";
 import { loadAutoInvest } from "@/lib/investments/auto-invest";
 import { loadRebalance } from "@/lib/investments/rebalance";
 import { loadRetirement } from "@/lib/investments/retirement";
 import { profileSummary } from "@/planning/investor-profile";
 import { loadReview } from "@/lib/investments/review";
 import {
+  accountsReply,
   autoInvestReply,
   feesReply,
   holdingsReply,
@@ -48,6 +50,8 @@ export async function answerInvestments(
       ]);
       return retirementReply(data, advice);
     }
+    case "accounts":
+      return accountsReply(await loadAccountPlan(userId, { client, now }));
     case "auto_invest":
       return autoInvestReply(await loadAutoInvest(userId, { client, now }));
     case "rebalance": {

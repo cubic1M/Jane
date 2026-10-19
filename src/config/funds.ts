@@ -27,6 +27,11 @@ export type FundFacts = {
   category: string;
   // Where the facts came from.
   source: string;
+  // Spec step 135: what it pays out a year (interest and dividends) as a share of its
+  // value, in basis points, and whether that's mostly interest (taxed as ordinary income)
+  // rather than qualified dividends.
+  yieldBps?: number;
+  interest?: boolean;
 };
 
 const DEMO_SOURCE = "Demo fund facts (sample data, not a real fund)";
@@ -37,48 +42,58 @@ export const FUND_FACTS: Readonly<Record<string, FundFacts>> = {
     mix: { us_stocks: 0.54, intl_stocks: 0.36, bonds: 0.1 },
     category: "Target date 2055",
     source: DEMO_SOURCE,
+    yieldBps: 170,
   },
   SLGFX: {
     expenseRatioBps: 102,
     mix: { us_stocks: 0.97, cash: 0.03 },
     category: "US large-company growth (actively managed)",
     source: DEMO_SOURCE,
+    yieldBps: 40,
   },
   KTSIX: {
     expenseRatioBps: 3,
     mix: { us_stocks: 1 },
     category: "US total stock market index",
     source: DEMO_SOURCE,
+    yieldBps: 130,
   },
   KTBIX: {
     expenseRatioBps: 5,
     mix: { bonds: 1 },
     category: "US total bond market index",
     source: DEMO_SOURCE,
+    yieldBps: 380,
+    interest: true,
   },
   KTIIX: {
     expenseRatioBps: 8,
     mix: { intl_stocks: 1 },
     category: "International total stock market index",
     source: DEMO_SOURCE,
+    yieldBps: 290,
   },
   DSVXX: {
     expenseRatioBps: 35,
     mix: { cash: 1 },
     category: "Stable value",
     source: DEMO_SOURCE,
+    yieldBps: 310,
+    interest: true,
   },
   KLCX: {
     expenseRatioBps: 4,
     mix: { us_stocks: 1 },
     category: "US large-company index",
     source: DEMO_SOURCE,
+    yieldBps: 120,
   },
   PDIFX: {
     expenseRatioBps: 115,
     mix: { us_stocks: 0.92, cash: 0.08 },
     category: "US dividend income (actively managed)",
     source: DEMO_SOURCE,
+    yieldBps: 320,
   },
   // Not held by the demo person: the lower-cost equivalents (spec step 130).
   KTRGX: {
@@ -86,12 +101,14 @@ export const FUND_FACTS: Readonly<Record<string, FundFacts>> = {
     mix: { us_stocks: 0.54, intl_stocks: 0.36, bonds: 0.1 },
     category: "Target date 2055 (index)",
     source: DEMO_SOURCE,
+    yieldBps: 180,
   },
   KDVX: {
     expenseRatioBps: 6,
     mix: { us_stocks: 1 },
     category: "US dividend index",
     source: DEMO_SOURCE,
+    yieldBps: 280,
   },
 };
 

@@ -2,6 +2,7 @@ import { BNPL_PAY_IN_4_RATE_SOURCE } from "@/config/debt";
 import { LOAN_DUE_SOON_DAYS } from "@/config/loans";
 import { SYNCED_KINDS, syncedKindOf } from "@/data-sources/types";
 import type { BnplPlan } from "./bnpl";
+import { monthlyInterest } from "@/planning/debt";
 import { netWorth } from "./net-worth";
 
 // Every debt in one place (spec step 109): loans and cards from the bank (Plaid
@@ -15,7 +16,8 @@ export type DebtKind = "card" | "mortgage" | "student" | "auto" | "loan" | "bnpl
 
 // bank: the bank reports it. typed: the person typed it. terms: the plan's own terms (Pay
 // in 4 is interest-free). payments: worked out from the payments made so far.
-export type DebtSource = "bank" | "typed" | "terms" | "payments";
+// accepted: the terms of a new loan the person accepted through Jane (spec step 112).
+export type DebtSource = "bank" | "typed" | "terms" | "payments" | "accepted";
 
 export type DebtAccountInput = {
   id: string;
@@ -88,6 +90,9 @@ export type DebtBook = {
   bnplOwedCents: number;
   // Plans whose balance isn't known yet.
   bnplUnknown: number;
+  // Spec step 112: new loans the person accepted through Jane, not linked yet, by their
+  // terms: not in net worth either.
+  newLoansOwedCents: number;
   totalOwedCents: number;
   // Monthly payments added up (Pay in 4 runs every two weeks and ends within weeks, so it's
   // left out), and how many monthly debts have no payment yet.
@@ -215,8 +220,75 @@ function planDebt(p: BnplPlan, typed: TypedTerms | undefined, asOf: string): Deb
   };
 }
 
+// A new loan the person accepted through Jane (spec step 112), from its terms: what's
+// left after the months paid since it was funded, at its level payment.
+export type NewLoanInput = {
+  applicationId: string;
+  lender: string;
+  product: string;
+  aprBps: number;
+  rateType: string;
+  termMonths: number;
+  amountCents: number;
+  monthlyCents: number;
+  // YYYY-MM-DD.
+  fundedOn: string;
+};
+
+const PRODUCT_KIND: Record<string, DebtKind> = {
+  student: "student",
+  auto: "auto",
+  mortgage: "mortgage",
+  personal: "loan",
+};
+
+const addMonths = (day: string, months: number) => {
+  const [y, m, d] = day.split("-").map(Number);
+  return new Date(Date.UTC(y, m - 1 + months, d)).toISOString().slice(0, 10);
+};
+
+export function newLoanDebt(loan: NewLoanInput, asOf: string): Debt {
+  const [fy, fm] = loan.fundedOn.split("-").map(Number);
+  const [ay, am] = asOf.split("-").map(Number);
+  const paid = Math.max(0, Math.min(loan.termMonths, (ay - fy) * 12 + (am - fm)));
+  let balance = loan.amountCents;
+  for (let i = 0; i < paid && balance > 0; i += 1) {
+    balance = Math.max(0, balance + monthlyInterest(balance, loan.aprBps) - loan.monthlyCents);
+  }
+  const nextDue = addMonths(loan.fundedOn, paid + 1);
+  return {
+    key: `loan:${loan.applicationId}`,
+    accountId: null,
+    name: `${loan.lender} loan`,
+    kind: PRODUCT_KIND[loan.product] ?? "loan",
+    kindLabel: "New loan, not linked yet",
+    balanceCents: balance,
+    balanceFrom: "accepted",
+    aprBps: loan.aprBps,
+    rateType: loan.rateType,
+    aprFrom: "accepted",
+    paymentCents: loan.monthlyCents,
+    paymentEvery: "month",
+    paymentFrom: "accepted",
+    nextDue,
+    dueSoon: dueSoonOf(nextDue, asOf),
+    payoffDate: addMonths(loan.fundedOn, loan.termMonths),
+    payoffFrom: "accepted",
+    overdue: false,
+    pastDueCents: null,
+    description: `${loan.termMonths} months from ${loan.fundedOn}`,
+    inNetWorth: false,
+    typedOn: null,
+  };
+}
+
 export function debtBook(
-  input: { accounts: DebtAccountInput[]; plans: BnplPlan[]; typed: TypedTerms[] },
+  input: {
+    accounts: DebtAccountInput[];
+    plans: BnplPlan[];
+    typed: TypedTerms[];
+    newLoans?: NewLoanInput[];
+  },
   asOf: string,
 ): DebtBook {
   const typedBy = new Map(input.typed.map((t) => [t.debtKey, t]));
@@ -224,6 +296,7 @@ export function debtBook(
   const debts = [
     ...accounts.map((a) => accountDebt(a, typedBy.get(`account:${a.id}`), asOf)),
     ...input.plans.map((p) => planDebt(p, typedBy.get(`bnpl:${p.key}`), asOf)),
+    ...(input.newLoans ?? []).map((l) => newLoanDebt(l, asOf)),
   ].sort(
     // Overdue first, then by the next due date, then by name.
     (a, b) =>
@@ -241,13 +314,17 @@ export function debtBook(
   ).debtsCents;
   const plans = debts.filter((d) => d.kind === "bnpl");
   const bnplOwedCents = plans.reduce((sum, d) => sum + (d.balanceCents ?? 0), 0);
+  const newLoansOwedCents = debts
+    .filter((d) => d.key.startsWith("loan:"))
+    .reduce((sum, d) => sum + (d.balanceCents ?? 0), 0);
   const monthly = debts.filter((d) => d.paymentEvery === "month");
   return {
     debts,
     accountsOwedCents,
     bnplOwedCents,
     bnplUnknown: plans.filter((d) => d.balanceCents === null).length,
-    totalOwedCents: accountsOwedCents + bnplOwedCents,
+    newLoansOwedCents,
+    totalOwedCents: accountsOwedCents + bnplOwedCents + newLoansOwedCents,
     monthlyCents: monthly.reduce((sum, d) => sum + (d.paymentCents ?? 0), 0),
     missingMonthly: monthly.filter((d) => d.paymentCents === null).length,
     missingRate: debts.filter((d) => d.aprBps === null && (d.balanceCents ?? 1) > 0),
@@ -272,6 +349,8 @@ export function sourceLabel(from: DebtSource | null, typedOn: string | null = nu
       return BNPL_PAY_IN_4_RATE_SOURCE.charAt(0).toLowerCase() + BNPL_PAY_IN_4_RATE_SOURCE.slice(1);
     case "payments":
       return "worked out from your payments";
+    case "accepted":
+      return "from the loan you accepted";
     default:
       return "not known yet";
   }

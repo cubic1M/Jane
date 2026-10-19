@@ -12,9 +12,17 @@ export type DebtIntent =
   | { kind: "payoff_plan"; extraCents: number | null }
   // Spec step 111: "can I refinance my car loan?", "find me a better rate". target is the
   // debt they named, or null for all of them.
-  | { kind: "refinance"; target: string | null };
+  | { kind: "refinance"; target: string | null }
+  // Spec step 112: "how's my loan application?".
+  | { kind: "loan_status" };
 
-const DEBT_KINDS = new Set<string>(["debts", "debt_detail", "payoff_plan", "refinance"]);
+const DEBT_KINDS = new Set<string>([
+  "debts",
+  "debt_detail",
+  "payoff_plan",
+  "refinance",
+  "loan_status",
+]);
 export const isDebtIntent = (intent: { kind: string }): intent is DebtIntent =>
   DEBT_KINDS.has(intent.kind);
 
@@ -38,6 +46,11 @@ const REFINANCE =
 const REFINANCE_TARGET =
   /\b(?:on|for|of) (?:my |the |our )?(.+)$|\b(?:refinanc|consolidat)\w* (?:my |the |our )?(.+)$/;
 
+const LOAN_STATUS =
+  /\b(?:loan )?application(?:'s| is)?(?: status)?\b|\bdid (?:the|my) (?:new )?loan (?:go through|fund|come through)\b|\b(?:status of|where'?s|how'?s) (?:my |the )?(?:new )?loan\b/;
+// "Apply for the refinance": the pick and its Apply button.
+const APPLY = /^apply\b|\bapply (?:for|with|to)\b/;
+
 const clean = (target: string) =>
   target
     .replace(/\b(?:paid off|off|in full)\b/g, "")
@@ -55,9 +68,16 @@ export function parseDebtIntent(
   if (MORE.test(text) && amountCents !== null)
     return { kind: "payoff_plan", extraCents: amountCents };
   if (PAYOFF.test(text)) return { kind: "payoff_plan", extraCents: null };
+  if (LOAN_STATUS.test(text)) return { kind: "loan_status" };
+  if (APPLY.test(text) && !REFINANCE_TARGET.test(text)) return { kind: "refinance", target: null };
   if (REFINANCE.test(text)) {
     const on = REFINANCE_TARGET.exec(text);
-    const target = on ? clean(on[1] ?? on[2]) : "";
+    const target = on
+      ? clean(on[1] ?? on[2]).replace(
+          /^(?:(?:a|an|the) )?(?:refinanc\w*|refi|new loan|loan)\b(?: (?:on|for|of) (?:my |the |our )?)?/,
+          "",
+        )
+      : "";
     return {
       kind: "refinance",
       target:

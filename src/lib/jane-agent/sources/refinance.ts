@@ -7,7 +7,8 @@ import { snoozeButton, type MessageSource } from "./source";
 // Refinance offers (spec step 111). Jane checks rates every month by herself
 // (src/lib/refinance.ts) and brings one up only when switching would save at least
 // REFI_MIN_SAVING_CENTS over the same months, fees included. Once per offer: a better one
-// next month is news again, the same one isn't. Labelled demo advice; never applied for.
+// next month is news again, the same one isn't. Labelled demo advice. "Apply" only prepares
+// the application (spec step 112); nothing is sent without the person's Submit.
 
 export const refinanceSource: MessageSource = {
   key: "refinance",
@@ -23,8 +24,20 @@ export const refinanceSource: MessageSource = {
             ...c.why,
             "These are sample offers from a stand-in lender catalog. Nothing is applied for until you say so.",
           ].join("\n"),
-          refs: { advice: true as const },
-          actions: [SEE_OFFERS, snoozeButton()],
+          refs: {
+            advice: true as const,
+            refinance: { debtKey: c.debtKey, lender: pick.offer.lender },
+          },
+          actions: [
+            // Spec step 112: prepares the application; nothing is sent until Submit.
+            {
+              id: "loan.prepare" as const,
+              label: `Apply with ${pick.offer.lender}`,
+              kind: "primary" as const,
+            },
+            SEE_OFFERS,
+            snoozeButton(),
+          ],
           dedupeKey: `offer:${c.debtKey}:${pick.offer.id}`,
           // The comparisons come biggest saving first: that one now, the rest when there's room.
           priority:

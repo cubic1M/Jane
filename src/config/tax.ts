@@ -283,6 +283,12 @@ export const REFUND = {
   recentDays: 30,
 } as const;
 
+// Spec step 126: filing. Jane offers to start the return in filing season (MM-DD, the
+// year after the tax year; through the October extension deadline). The demo partner
+// accepts a return this many hours after it's submitted.
+export const FILING_SEASON = { from: "01-20", until: "10-15" } as const;
+export const DEMO_FILING_ACCEPT_HOURS = 24;
+
 // The estimate tells the person when it has moved by at least this much (in cents) since
 // Jane last said it.
 export const TAX_ESTIMATE_STEP_CENTS = 50_000;
@@ -305,6 +311,8 @@ export const TAX_MESSAGE_PRIORITY = {
   saving: 34,
   // Spec step 125.
   refund: 68,
+  // Spec step 126.
+  filing: 72,
   // Spec step 123.
   quarterly: 88,
   set_aside: 39,
@@ -346,6 +354,11 @@ export const TAX_AUTOPILOT: readonly { feature: string; ask: string; auto: strin
     feature: "refund",
     ask: "I spot your tax refund when it lands, check it against my estimate and, with demo advice, suggest where it could go.",
     auto: "I spot your tax refund when it lands, check it against my estimate and, with demo advice, have the plan for it ready: one tap sets up the goals and reminders. Moving the money is always yours.",
+  },
+  {
+    feature: "filing",
+    ask: "In filing season I offer to start your return with the filing partner, handing over your profile, income, tags and forms; you review and sign it, and I track it.",
+    auto: "In filing season, once your forms are in, I start your return with the filing partner by myself and tell you when it's ready to review. Only you can sign it; nothing is filed until you do.",
   },
   {
     feature: "tags",

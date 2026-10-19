@@ -70,6 +70,8 @@ export const MESSAGE_PRIORITY = {
   insurance_checked: 48,
   // Spec step 106: the coverage checkup, a heads-up that can wait.
   insurance_checkup: 46,
+  // Spec step 107: a claim's next step is due, like something only the person can do.
+  insurance_claim: 86,
   urgent_alert: 95,
   deadline: 90,
   waiting_on_you: 85,
@@ -119,6 +121,8 @@ export const MESSAGE_PRIORITY = {
   retirement: 39,
   // Spec step 134: the offer to invest every payday, and what each payday did.
   auto_invest_offer: 33,
+  // Spec step 135: which account to fill first (demo advice).
+  account_order: 37,
   auto_invest_run: 31,
 } as const;
 

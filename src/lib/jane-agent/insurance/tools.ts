@@ -15,6 +15,7 @@ import { yearlyPremium } from "@/lib/insurance/policies";
 import { quotesFor } from "@/lib/insurance/quotes";
 import { adviceMode } from "@/lib/advice-mode";
 import { latestCheckup } from "@/lib/insurance/checkups";
+import { eventLabel, listClaims } from "@/lib/insurance/claims";
 import { formatCents } from "@/lib/money";
 import { loadInsuranceSnapshot } from "./snapshot";
 
@@ -42,6 +43,12 @@ export const INSURANCE_TOOLS: Anthropic.Tool[] = [
       'Jane\'s latest coverage checkup (demo advice; empty for real accounts): each recommendation (a deductible to raise or lower against their savings, too little or too much cover, bundling, full cover on a car worth little, life cover after a new baby) with what it costs or saves a year and the risk it changes. It never runs a new checkup: the person can ask Jane "check my insurance".',
     input_schema: noInput,
   },
+  {
+    name: "insurance_claims",
+    description:
+      "Claims the person is tracking with Jane (spec step 107): what happened and when, the insurer and its claims line when known, the claim number, and every step with when it's due and whether it's done. Jane reminds the person; she never files a claim or talks to the insurer for them. For something that just happened, the person can tell Jane, like \"I had a car accident\", for what to do now.",
+    input_schema: noInput,
+  },
 ];
 
 export const isInsuranceTool = (name: string) => INSURANCE_TOOLS.some((t) => t.name === name);
@@ -59,6 +66,23 @@ export async function runInsuranceTool(
     return formatCents(value);
   };
   if (name === "insurance_quotes") return quotesTool(userId, { client, now }, money, cents);
+  if (name === "insurance_claims") {
+    const claims = await listClaims(userId, { client });
+    return {
+      content: JSON.stringify({
+        claims: claims.map((c) => ({
+          what: eventLabel(c.kind, c.event),
+          happenedOn: c.happenedOn,
+          status: c.status,
+          insurer: c.carrier,
+          claimsLine: c.claimsPhone,
+          claimNumber: c.claimNumber,
+          steps: c.steps.map((s) => ({ step: s.label, dueOn: s.dueOn, done: s.doneAt !== null })),
+        })),
+      }),
+      cents,
+    };
+  }
   if (name === "insurance_checkup") {
     const checkup = (await adviceMode(userId, { client }))
       ? await latestCheckup(userId, { client })
