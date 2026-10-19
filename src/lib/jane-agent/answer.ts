@@ -66,6 +66,9 @@ import { rankedFor } from "./priorities";
 import { prioritiesReply } from "./replies-priorities";
 import { paycheckReply } from "./replies-paycheck";
 import { latestPaycheckPlan } from "@/lib/money-movement/paycheck";
+import { loadBillPay } from "@/lib/money-movement/bill-pay";
+import { moneyPartnerFor } from "@/lib/money-movement/partner";
+import { billsReply } from "./replies-billpay";
 import { groupedHelpReply } from "./replies-help";
 import { lifeEventReply } from "./replies-life";
 import { savedReply } from "./replies-saved";
@@ -278,6 +281,10 @@ async function byIntent(
     }
     case "paycheck":
       return paycheckReply(await latestPaycheckPlan(userId, { client, now }));
+    case "bills_paid": {
+      const partner = await moneyPartnerFor(userId, { client });
+      return billsReply(partner ? await loadBillPay(userId, { client, now }) : null, asOf);
+    }
     case "priorities": {
       const snapshot = await loadSnapshot(userId, { client, now });
       return prioritiesReply(snapshot ? rankedFor(snapshot) : []);
