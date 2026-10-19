@@ -12,6 +12,12 @@ import { autopilotOf } from "@/lib/autopilot";
 import { loadInvestmentSnapshot } from "./snapshot";
 import { overviewReply } from "./replies";
 import { loadAccountPlan } from "@/lib/investments/accounts";
+import { loadReturns } from "@/lib/investments/returns";
+import { loadGoalBuckets } from "@/lib/investments/goal-buckets";
+import { estimateCollege, loadCollege, type CollegeEstimate } from "@/lib/investments/college";
+import { loadHsa } from "@/lib/investments/hsa";
+import { loadCompanyStock } from "@/lib/investments/company-stock";
+import { formatReturn } from "@/insights/returns";
 import { loadAutoInvest } from "@/lib/investments/auto-invest";
 import { loadRebalance } from "@/lib/investments/rebalance";
 import { loadRetirement } from "@/lib/investments/retirement";
@@ -82,6 +88,43 @@ export const INVESTMENT_TOOLS: Anthropic.Tool[] = [
     input_schema: noInput,
   },
   {
+    name: "investment_returns",
+    description:
+      "How the person's investments have done over the last month, 3 months and 12 months: the time-weighted return (what they own, leaving out money paid in), the money-weighted return (their own money, timing included), a similar mix of index funds for comparison, money paid in, and dividends and interest received. Past results only: never say what comes next.",
+    input_schema: noInput,
+  },
+  {
+    name: "goal_buckets",
+    description:
+      "In demo advice mode: each of the person's goals (and retirement) with how far away it is, the mix it's invested in by the glide path (cash under 3 years, safer as the date nears, stocks capped by their risk level), what it needs a month, and whether Jane splits automatic investing's new money by goal by herself at their autopilot level.",
+    input_schema: noInput,
+  },
+  {
+    name: "college_plan",
+    description:
+      "In demo advice mode: what college could cost for a child of a given age (public in-state or private), as a low-to-high range when they start, the monthly amount to get there as a range, and the 529 plans compared on fees and the state tax break from the tax profile's state. Without child_age, the person's existing college plans. To set one up, the person types the age and taps Start saving for college.",
+    input_schema: {
+      type: "object",
+      properties: {
+        child_age: { type: "number", description: "The child's age now, 0 to 17." },
+        college_type: { type: "string", enum: ["public", "private"] },
+      },
+      additionalProperties: false,
+    },
+  },
+  {
+    name: "hsa",
+    description:
+      "The person's HSA: balance, cash and invested, the cash cushion, how much of the cash is beyond it (demo advice: worth investing), the year's limit for their cover (self or family, catch-up from 55) and the room left, and the receipts vault: medical charges from their transactions saved to pay back tax-free later.",
+    input_schema: noInput,
+  },
+  {
+    name: "company_stock",
+    description:
+      "Stock from where the person works: shares held in each account, grants still to vest (RSUs, ESPP, options), and the share of what they've invested, against the common 10% limit. In demo advice mode, the plan to sell down in parts three months apart (oldest shares first), each part's estimated tax on the gain, and how much a 50% drop would cost before and after. Selling is the person's tap on Jane's message or the company stock page, never yours.",
+    input_schema: noInput,
+  },
+  {
     name: "explainer",
     description:
       "Jane's fixed plain-language explainer for a word (education, not advice; waiting for counsel's review): what it is and how it works, with sources. Use it when the person asks what something means, and quote it rather than writing your own definition.",
@@ -105,6 +148,11 @@ export const INVESTMENT_TOOL_STATUS: Readonly<Record<string, string>> = {
   auto_invest: "Checking automatic investing…",
   account_plan: "Working out which account first…",
   explainer: "Looking that up…",
+  hsa: "Checking your HSA…",
+  company_stock: "Looking at your company stock…",
+  college_plan: "Working out college costs…",
+  goal_buckets: "Looking at your goals…",
+  investment_returns: "Working out your returns…",
   investments_overview: "Looking at how your investments are doing…",
 };
 
@@ -394,6 +442,136 @@ export async function runInvestmentTool(
         note: note.body,
         ordersReady: snapshot.advice ? (snapshot.rebalance?.orders.length ?? 0) : 0,
         whatJaneDoesByHerself: INVESTMENT_AUTOPILOT[key],
+      });
+    }
+    case "investment_returns": {
+      const returns = await loadReturns(userId, { client, now });
+      const pct = (r: number | null) => (r === null ? null : formatReturn(r));
+      return out({
+        asOf: returns.asOf,
+        pricesFrom: returns.simulatedPrices ? "demo price feed (made up)" : "your bank",
+        periods: returns.periods.map((p) => ({
+          period: p.label,
+          from: p.from,
+          startValue: money(p.startCents),
+          endValue: money(p.endCents),
+          investments: pct(p.timeWeighted),
+          yourMoney: pct(p.moneyWeighted),
+          similarMix: pct(p.benchmark),
+          paidIn: money(p.paidInCents),
+          dividendsAndInterest: money(p.incomeCents),
+        })),
+        note: "Past results only.",
+      });
+    }
+    case "goal_buckets": {
+      const data = await loadGoalBuckets(userId, { client, now });
+      if (!data.advice) return out({ note: "Investing by goal is for demo advice mode only." });
+      if (!data.buckets) return out({ note: "The investor profile isn't finished." });
+      const pct = (s: number) => `${Math.round(s * 100)}%`;
+      return out({
+        janeSplitsNewMoneyByHerself: data.byHerself,
+        goals: data.buckets.map((b) => ({
+          goal: b.name,
+          yearsAway: Math.round(b.yearsLeft * 10) / 10,
+          stocks: pct(b.mix.us_stocks + b.mix.intl_stocks),
+          bonds: pct(b.mix.bonds),
+          cash: pct(b.mix.cash),
+          needsAMonth: money(b.monthlyCents),
+          why: b.why,
+        })),
+      });
+    }
+    case "college_plan": {
+      const args = (input && typeof input === "object" ? input : {}) as Record<string, unknown>;
+      const { advice, plans } = await loadCollege(userId, { client, now });
+      if (!advice) return out({ note: "College savings plans are for demo advice mode only." });
+      const age = typeof args.child_age === "number" ? Math.round(args.child_age) : null;
+      const describe = (e: CollegeEstimate) => ({
+        childAge: e.childAge,
+        college: e.type,
+        startsInYears: e.years,
+        fourYearCost: { low: money(e.cost.lowCents), high: money(e.cost.highCents) },
+        monthlyToGetThere: { low: money(e.monthly.lowCents), high: money(e.monthly.highCents) },
+        plans: e.plans.map((p) => ({
+          plan: p.plan.name,
+          feesAYear: money(p.feeCents),
+          stateTaxBreakAYear: money(p.benefitCents),
+        })),
+      });
+      if (age !== null && age >= 0 && age <= 17) {
+        const type = args.college_type === "private" ? "private" : "public";
+        return out(describe(await estimateCollege(userId, { childAge: age, type }, { client })));
+      }
+      return out({ plans: plans.map((p) => ({ child: p.childName, ...describe(p.estimate) })) });
+    }
+    case "company_stock": {
+      const view = await loadCompanyStock(userId, { client, now });
+      return out({
+        company: view.company,
+        ticker: view.ticker,
+        held: view.holdings.map((h) => ({
+          account: h.accountName,
+          shares: h.quantity,
+          value: money(h.valueCents),
+        })),
+        stillToVest: view.grants.map((g) => ({
+          kind: g.kind,
+          shares: g.unvestedShares,
+          everyMonths: g.everyMonths,
+          sharesEachTime: g.sharesPerVest,
+          nextVest: g.nextVestOn,
+        })),
+        shareOfInvested: Math.round(view.concentration.share * 1000) / 10,
+        shareWithUnvested: Math.round(view.concentration.shareWithUnvested * 1000) / 10,
+        overTheLimit: view.concentration.overLimit,
+        plan: !view.advice
+          ? "advice only in demo advice mode"
+          : view.plan && {
+              account: view.plan.accountName,
+              sellInAll: money(view.plan.sellCents),
+              estimatedTax: money(view.plan.taxCents),
+              shareAfter: Math.round(view.plan.shareAfter * 1000) / 10,
+              costOfAHalfDropBefore: money(view.plan.dropBeforeCents),
+              costOfAHalfDropAfter: money(view.plan.dropAfterCents),
+              parts: view.plan.parts.map((p) => ({
+                on: p.on,
+                sell: money(p.proceedsCents),
+                gain: money(p.gainCents),
+                estimatedTax: money(p.taxCents),
+              })),
+            },
+        taxRatesFromTheTaxEstimate: view.rates.fromEstimate,
+      });
+    }
+    case "hsa": {
+      const view = await loadHsa(userId, { client, now });
+      return out({
+        account: view.account && {
+          name: view.account.name,
+          balance: money(view.account.balanceCents),
+        },
+        cover: view.coverage,
+        plan: view.plan && {
+          cash: money(view.plan.cashCents),
+          invested: money(view.plan.investedCents),
+          cushion: money(view.plan.cushionCents),
+          beyondTheCushion: view.advice
+            ? money(view.plan.toInvestCents)
+            : "advice only in demo advice mode",
+          limitThisYear: money(view.plan.limitCents),
+          roomLeft: money(view.plan.roomCents),
+          perPaycheck: money(view.plan.perPaycheckCents),
+        },
+        receiptsVault: {
+          saved: money(view.savedCents),
+          receipts: view.receipts.slice(0, 10).map((r) => ({
+            date: r.date,
+            merchant: r.merchant,
+            amount: money(r.amountCents),
+            status: r.status,
+          })),
+        },
       });
     }
     case "explainer": {

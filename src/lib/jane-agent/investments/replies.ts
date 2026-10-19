@@ -1,5 +1,22 @@
 import { GOALS, INVESTMENT_AUTOPILOT, PROFILE_QUESTIONS, RISK_LEVELS } from "@/config/investing";
 import { portfolioNote } from "@/insights/portfolio-note";
+import { RETURNS_NOTE } from "@/config/returns";
+import { formatReturn } from "@/insights/returns";
+import type { Returns } from "@/lib/investments/returns";
+import type { Bucket } from "@/planning/goal-buckets";
+import { COLLEGE_TYPES } from "@/config/college";
+import type { CollegeEstimate } from "@/lib/investments/college";
+import type { HsaView } from "@/lib/investments/hsa";
+import type { CompanyStockView } from "@/lib/investments/company-stock";
+import {
+  COMPANY_LINK,
+  concentrationLine,
+  planLine,
+  sellButton,
+  sellDue,
+  SELL_WORDS,
+} from "./company-copy";
+import { byHerselfLine } from "./goals-copy";
 import { formatBps, type InvestmentAccountView, type HoldingView } from "@/insights/investments";
 import type { FeeSummary } from "@/insights/investment-fees";
 import { classWords, listWords, type PortfolioReview } from "@/insights/portfolio-review";
@@ -442,8 +459,9 @@ export function overviewReply(snapshot: InvestmentSnapshot): Reply {
     review: snapshot.advice ? snapshot.review : null,
     ordersReady: snapshot.advice ? (plan?.orders.length ?? 0) : 0,
   });
+  const returned = returnsLine(snapshot.returns);
   return {
-    body: note.body,
+    body: returned ? `${note.body} ${returned}` : note.body,
     actions: [...(note.decision ? [rebalanceButton()] : []), SEE],
     refs: {
       ...(snapshot.advice && snapshot.review ? { advice: true as const } : {}),
@@ -462,5 +480,179 @@ export function autopilotReply(level: string | null): Reply {
     body: `${level ? `On your autopilot setting, here's` : "Here's"} what I do with your investments by myself. ${lines.join(" ")}`,
     actions: [SEE, { id: "open", label: "Change autopilot", kind: "link", href: "/settings" }],
     refs: {},
+  };
+}
+
+// Spec step 156: one line on how they've done over the longest period Jane can measure.
+export function returnsLine(returns: Returns): string | null {
+  const p = returns.periods.at(-1);
+  if (!p || p.timeWeighted === null) return null;
+  const money =
+    p.moneyWeighted === null ? "" : ` (your own money: ${formatReturn(p.moneyWeighted)})`;
+  const mix =
+    p.benchmark === null
+      ? ""
+      : `, against ${formatReturn(p.benchmark)} for a similar mix of index funds`;
+  const paid =
+    p.incomeCents > 0 ? `, and paid ${formatCents(p.incomeCents)} in dividends and interest` : "";
+  return `${p.label}, what you own returned ${formatReturn(p.timeWeighted)}${money}${mix}${paid}.`;
+}
+
+export function returnsReply(returns: Returns): Reply {
+  if (returns.periods.length === 0) {
+    return {
+      body: "I can't work out returns yet: I need at least two days of balances. I take a snapshot every day, so check back tomorrow.",
+      actions: [SEE],
+      refs: {},
+    };
+  }
+  const lines = returns.periods.map(
+    (p) =>
+      `- ${p.label}: ${p.timeWeighted === null ? "not known" : formatReturn(p.timeWeighted)}${p.moneyWeighted === null ? "" : `; your money ${formatReturn(p.moneyWeighted)}`}${p.benchmark === null ? "" : `; similar mix ${formatReturn(p.benchmark)}`}`,
+  );
+  return {
+    body: `${returnsLine(returns) ?? "Here's how they've done."}\n${lines.join("\n")}\n${RETURNS_NOTE}${returns.simulatedPrices ? " The prices are the demo price feed's (made up)." : ""}`,
+    actions: [SEE],
+    refs: {},
+  };
+}
+
+// Spec step 157: each goal's bucket and why.
+export function goalBucketsReply(data: {
+  advice: boolean;
+  byHerself: boolean;
+  buckets: Bucket[] | null;
+}): Reply {
+  const link: MessageAction = {
+    id: "open",
+    label: "See each goal",
+    kind: "link",
+    href: "/investments/goals",
+  };
+  if (!data.advice) {
+    return {
+      body: "Investing by goal is only in demo advice mode for now.",
+      actions: [SEE],
+      refs: {},
+    };
+  }
+  if (!data.buckets) {
+    const ask = asking(PROFILE_QUESTIONS[0]);
+    return {
+      body: "Each goal's mix is capped by your risk level, so four quick answers first.",
+      actions: ask.actions,
+      refs: ask.refs,
+    };
+  }
+  if (data.buckets.length === 0) {
+    return {
+      body: "You don't have a goal with a date yet. Add one and I'll invest for it, cash when it's close and safer as the date nears.",
+      actions: [{ id: "open", label: "Add a goal", kind: "link", href: "/goals" }],
+      refs: {},
+    };
+  }
+  return {
+    body: `Each goal is invested for when you need it.\n${data.buckets.map((b) => `- ${b.name}: ${b.why}`).join("\n")}\n${byHerselfLine(data.byHerself)}`,
+    actions: [link],
+    refs: { advice: true },
+  };
+}
+
+// Spec step 158: what college could cost and what to put aside, with the button.
+export function collegeReply(
+  advice: boolean,
+  estimate: CollegeEstimate | null,
+  plans: number,
+): Reply {
+  const link: MessageAction = {
+    id: "open",
+    label: "Plan for college",
+    kind: "link",
+    href: "/investments/college",
+  };
+  if (!advice) {
+    return {
+      body: "College savings plans are only in demo advice mode for now.",
+      actions: [link],
+      refs: {},
+    };
+  }
+  if (!estimate) {
+    return {
+      body: `Tell me how old your child is and I'll work out what to put aside, for example "college for my 5 year old"${plans > 0 ? `. You have ${plans} college ${plans === 1 ? "plan" : "plans"} already` : ""}.`,
+      actions: [link],
+      refs: {},
+    };
+  }
+  const best = estimate.plans[0];
+  const benefit =
+    best && best.benefitCents > 0
+      ? `, with your state's tax break of about ${formatCents(best.benefitCents)} a year`
+      : "";
+  return {
+    body: `For a ${estimate.childAge}-year-old at ${COLLEGE_TYPES[estimate.type].toLowerCase()}, four years could cost about ${formatCents(estimate.cost.lowCents)} to ${formatCents(estimate.cost.highCents)} when they start in ${estimate.years} years. Putting aside about ${formatCents(estimate.monthly.lowCents)} to ${formatCents(estimate.monthly.highCents)} a month gets there, depending on prices and returns.${best ? ` The plan that comes out ahead: ${best.plan.name}${benefit}.` : ""} Tap and I'll set it up as a goal and invest for it.`,
+    actions: [{ id: "college.start", label: "Start saving for college", kind: "primary" }, link],
+    refs: {
+      advice: true,
+      college: { childName: "your child", childAge: estimate.childAge, type: estimate.type },
+    },
+  };
+}
+
+// Spec step 159: the HSA and its receipts vault.
+export function hsaReply(view: HsaView): Reply {
+  const link: MessageAction = {
+    id: "open",
+    label: "See your HSA",
+    kind: "link",
+    href: "/investments/hsa",
+  };
+  const vault =
+    view.savedCents > 0
+      ? ` Your receipts vault has ${formatCents(view.savedCents)} of medical costs you can pay back from it tax-free.`
+      : "";
+  if (!view.account || !view.plan) {
+    return {
+      body: `I don't see an HSA yet.${vault}`,
+      actions:
+        view.demo && view.advice
+          ? [{ id: "hsa.link", label: "Link a demo HSA", kind: "primary" }, link]
+          : [link],
+      refs: {},
+    };
+  }
+  const p = view.plan;
+  const facts = `Your HSA has ${formatCents(view.account.balanceCents)}: ${formatCents(p.cashCents)} in cash and ${formatCents(p.investedCents)} invested. This year you can put in ${formatCents(p.roomCents)} more under the ${formatCents(p.limitCents)} limit.${vault}`;
+  if (!view.advice || p.toInvestCents <= 0) return { body: facts, actions: [link], refs: {} };
+  return {
+    body: `${facts} ${formatCents(p.toInvestCents)} of the cash is beyond the ${formatCents(p.cushionCents)} cushion and could be invested, in the simulated brokerage (no real money moves).`,
+    actions: [
+      { id: "hsa.invest", label: `Invest ${formatCents(p.toInvestCents)}`, kind: "primary" },
+      link,
+    ],
+    refs: { advice: true },
+  };
+}
+
+// Spec step 160: company stock. Facts for everyone; the plan to sell down in demo advice mode.
+export function companyStockReply(view: CompanyStockView, today: string): Reply {
+  if (!view.company) {
+    return {
+      body: "I don't see stock from where you work. Add a grant (RSUs, an ESPP or options) and I'll keep an eye on how much of your investing is in it.",
+      actions:
+        view.demo && view.advice
+          ? [{ id: "company.link", label: "Link a demo stock plan", kind: "primary" }, COMPANY_LINK]
+          : [COMPANY_LINK],
+      refs: {},
+    };
+  }
+  const facts = concentrationLine(view);
+  const plan = view.advice ? planLine(view, today) : null;
+  if (!plan || !view.plan) return { body: facts, actions: [COMPANY_LINK], refs: {} };
+  const due = sellDue(view, today);
+  return {
+    body: `${facts} ${plan}${due ? ` ${SELL_WORDS}` : ""}`,
+    actions: due ? [sellButton(view), COMPANY_LINK] : [COMPANY_LINK],
+    refs: { advice: true, ...(due ? { companyPlan: view.plan.key } : {}) },
   };
 }

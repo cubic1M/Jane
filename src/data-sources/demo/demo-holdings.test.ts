@@ -15,7 +15,8 @@ import {
 // Spec step 128: the demo bank's holdings, shaped like Plaid Investments.
 
 const DEMO = { seed: "abc123", anchor: "2026-10-18" };
-const TODAY = "2026-10-18";
+// The anchor's eve: prices are the demo bank's own (spec step 156 moves them after).
+const TODAY = "2026-10-17";
 
 describe("the demo bank's holdings", () => {
   it("add up to each investment account's balance to the cent", () => {
@@ -29,7 +30,7 @@ describe("the demo bank's holdings", () => {
   });
 
   it("are Plaid-shaped: every holding's security is listed, in dollars, with a cost basis", () => {
-    const securities = new Set(demoSecurities(TODAY).map((s) => s.security_id));
+    const securities = new Set(demoSecurities(TODAY, DEMO.anchor).map((s) => s.security_id));
     for (const h of demoHoldings(DEMO, TODAY)) {
       expect(securities.has(h.security_id), h.security_id).toBe(true);
       expect(h.iso_currency_code).toBe("USD");
@@ -37,7 +38,9 @@ describe("the demo bank's holdings", () => {
       const n = normalizeHolding(h);
       expect(n?.valueCents).toBe(Math.round(h.institution_value * 100));
     }
-    expect(demoSecurities(TODAY).map((s) => normalizeSecurity(s).ticker)).toContain("NSTDX");
+    expect(demoSecurities(TODAY, DEMO.anchor).map((s) => normalizeSecurity(s).ticker)).toContain(
+      "NSTDX",
+    );
   });
 
   it("have something for each later step: a costly fund, the employer's shares, a gain and a loss", () => {
@@ -181,5 +184,45 @@ describe("deposits on the demo bank (spec step 134)", () => {
       amount: -100,
       security_id: null,
     });
+  });
+});
+
+describe("the demo HSA (spec step 159)", () => {
+  it("is there only when linked, and holds its balance", () => {
+    expect(demoAccounts(DEMO).some((a) => a.subtype === "hsa")).toBe(false);
+    const hsa = demoAccounts(DEMO, ["hsa"]).find((a) => a.subtype === "hsa")!;
+    const held = demoHoldings(DEMO, TODAY, [], ["hsa"]).filter(
+      (h) => h.account_id === hsa.account_id,
+    );
+    expect(held.reduce((s, h) => s + Math.round(h.institution_value * 100), 0)).toBe(427_180);
+    expect(demoHoldings(DEMO, TODAY).some((h) => h.account_id === hsa.account_id)).toBe(false);
+  });
+
+  it("is paid into every payday", () => {
+    const year = demoInvestmentTransactions(DEMO, "2025-10-17", "2026-10-17", ["hsa"]);
+    const hsa = year.filter((t) => t.name === "HSA PAYROLL CONTRIBUTION");
+    expect(hsa).toHaveLength(24);
+    expect(hsa.reduce((s, t) => s - t.amount, 0)).toBe(2_400);
+  });
+});
+
+describe("the demo stock plan (spec step 160)", () => {
+  it("is there only when linked, and holds 150 Acme shares", () => {
+    expect(demoAccounts(DEMO).some((a) => a.subtype === "stock plan")).toBe(false);
+    const plan = demoAccounts(DEMO, ["stock_plan"]).find((a) => a.subtype === "stock plan")!;
+    const held = demoHoldings(DEMO, TODAY, [], ["stock_plan"]).filter(
+      (h) => h.account_id === plan.account_id,
+    );
+    expect(held.reduce((s, h) => s + Math.round(h.institution_value * 100), 0)).toBe(2_046_000);
+    const acme = held.find((h) => h.quantity === 150)!;
+    expect(acme.cost_basis).toBe(14_700);
+  });
+
+  it("vested in four lots behind its cost basis", () => {
+    const vests = demoInvestmentTransactions(DEMO, "2025-01-01", TODAY, ["stock_plan"]).filter(
+      (t) => t.name === "RSU VEST ACME CORP",
+    );
+    expect(vests.map((t) => t.quantity)).toEqual([37.5, 37.5, 37.5, 37.5]);
+    expect(vests.reduce((s, t) => s + t.amount, 0)).toBe(14_700);
   });
 });

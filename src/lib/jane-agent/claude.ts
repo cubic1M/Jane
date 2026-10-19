@@ -19,6 +19,8 @@ import {
 } from "@/lib/guardrails";
 import { DEBT_TOOL_STATUS } from "./debt-tools";
 import { CHAT_TOOLS, chatPrimer, proposeAction, runChatTool, type Proposal } from "./claude-tools";
+import { BLOCK_KINDS, buildBlock, type BlockKind } from "./block-data";
+import { blockCents, drawBlock, type AnswerBlock } from "./blocks";
 import { GuardedText } from "./guarded-text";
 import { INVESTMENT_TOOL_STATUS } from "./investments/tools";
 import type { Reply } from "./replies";
@@ -35,7 +37,7 @@ import type { Reply } from "./replies";
 // the answer streamed as it's written (onEvent), a sentence at a time once each passes the
 // guardrails (./guarded-text), with what Jane is looking up in between.
 
-export const CHAT_PROMPT_VERSION = "chat-v6";
+export const CHAT_PROMPT_VERSION = "chat-v7";
 
 // The one rule that differs in demo advice mode (spec step 98).
 const NO_ADVICE = `- Never give investment, tax or legal advice, and don't mention investments, taxes or legal matters at all. Don't suggest financial products beyond Jane's pick from finding_details.`;
@@ -46,6 +48,7 @@ const SYSTEM = `You are Jane, the money helper inside a personal finance app, an
 Be useful, like a friend who's good with money and has their numbers in front of them:
 - Answer the actual question, with their figures. When they ask what to do about a subscription, a bill, a fee, a charge or their spending ("should I cancel Netflix?"), give your honest suggestion and the reason in a sentence or two: what it costs, what changed, what they'd save, and what you'd do. For example: "Netflix went up from $A to $B a month, which is $C a year. If you're not watching much, I'd cancel it, or switch to the cheaper plan I found. Tap Yes and I'll take care of it." (with their real amounts in place of $A, $B and $C)
 - Before suggesting what to do about something the app found, look at finding_details for it. Use subscriptions for what they pay on a schedule.
+- For "am I OK?", "how am I doing" or "what should I do this month", use whole_picture: start with its headline, then the one to three things that matter most, with the first one's button.
 - What they've told you is under "remembered" in their numbers. Respect it: never suggest anything they said not to suggest, or cutting something they said they need.
 - If they push back ("you tell me"), give a straight answer from their numbers. Don't repeat yourself or hand it back to them.
 - Every answer must stand on its own. A button is extra: never answer with only a button or "tap the button".
@@ -122,7 +125,12 @@ const STATUS: Record<string, string> = {
   plan_upkeep: "Looking at your week…",
   proven_savings: "Adding up what I saved you…",
   autopilot_settings: "Checking what I may do by myself…",
+  nightly_log: "Looking at last night's checks…",
+  priorities: "Working out what matters most…",
+  whole_picture: "Looking across everything…",
+  money_moves: "Checking what money moved…",
   propose_action: "Getting a button ready…",
+  show_block: "Drawing it…",
 };
 export const statusFor = (tool: string) =>
   STATUS[tool] ?? INVESTMENT_TOOL_STATUS[tool] ?? "Looking that up…";
@@ -206,6 +214,7 @@ export async function askClaudeInChat(
   let rewrites = 0;
   const messages = conversation(history, question);
   let proposal: Extract<Proposal, { ok: true }> | null = null;
+  let shown: AnswerBlock | null = null;
   const draft = new GuardedText(
     () => allowedCents,
     (text) => onEvent({ type: "text", text }),
@@ -283,6 +292,39 @@ export async function askClaudeInChat(
       const results: Anthropic.ToolResultBlockParam[] = [];
       for (const block of response.content) {
         if (block.type !== "tool_use") continue;
+        // Spec step 94: one block, built from the person's numbers, not Claude's.
+        if (block.name === "show_block") {
+          const args = (block.input ?? {}) as {
+            kind?: string;
+            month?: string;
+            finding_id?: string;
+          };
+          const kind = (BLOCK_KINDS as readonly string[]).includes(args.kind ?? "")
+            ? (args.kind as BlockKind)
+            : null;
+          const built: AnswerBlock | null =
+            shown || !kind
+              ? null
+              : await buildBlock(userId, kind, {
+                  client,
+                  now,
+                  month: args.month,
+                  findingId: args.finding_id,
+                });
+          if (built) {
+            shown = built;
+            allowedCents.push(...blockCents(built));
+          }
+          results.push({
+            type: "tool_result",
+            tool_use_id: block.id,
+            content: built
+              ? `It will be shown under your answer: ${drawBlock(built).alt}`
+              : "There's nothing to show for that.",
+            ...(built ? {} : { is_error: true }),
+          });
+          continue;
+        }
         if (block.name === "propose_action") {
           const result: Proposal = proposal
             ? { ok: false, error: "You already offered a button for this answer." }
@@ -335,7 +377,11 @@ export async function askClaudeInChat(
         issues: check.issues,
       };
     }
-    const refs = proposal?.refs ?? {};
+    const refs: Reply["refs"] = { ...(proposal?.refs ?? {}) };
+    // Its words pass the same guardrails as the answer, or it isn't shown.
+    if (shown && checkGuardrails(drawBlock(shown).alt, allowedCents, undefined, profile).ok) {
+      refs.block = shown;
+    }
     return {
       kind: "answer",
       reply: {

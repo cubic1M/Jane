@@ -187,3 +187,27 @@ export const INVESTMENT_AUTOPILOT: Readonly<
 };
 // A paused automatic investing plan is mentioned again after this many days.
 export const AUTO_PAUSED_NUDGE_DAYS = 30;
+
+// Spec step 157: the glide path. Each goal's money gets safer as its date nears, the way
+// target-date funds cut stocks towards their date. Money needed within 3 years stays in
+// cash: the SEC and FINRA's guidance is that short-term money belongs somewhere safe and
+// easy to reach, because stocks can fall a lot in a year or two. Stocks here never go
+// above what the person's risk level allows (TARGET_MIXES).
+export const GLIDE_PATH: readonly {
+  fromYears: number;
+  stocks: number;
+  bonds: number;
+  cash: number;
+}[] = [
+  { fromYears: 15, stocks: 0.9, bonds: 0.08, cash: 0.02 },
+  { fromYears: 10, stocks: 0.7, bonds: 0.27, cash: 0.03 },
+  { fromYears: 5, stocks: 0.5, bonds: 0.45, cash: 0.05 },
+  { fromYears: 3, stocks: 0.3, bonds: 0.6, cash: 0.1 },
+  { fromYears: 0, stocks: 0, bonds: 0, cash: 1 },
+];
+export const GLIDE_PATH_SOURCE =
+  "Like target-date funds' glide paths; money needed within 3 years kept in cash (SEC Investor.gov, FINRA)";
+// Of the stocks, this share goes outside the US (as in TARGET_MIXES).
+export const INTL_SHARE_OF_STOCKS = 1 / 3;
+// Goals this close count as near-term: never in stocks.
+export const NEAR_TERM_YEARS = 3;

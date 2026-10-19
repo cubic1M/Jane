@@ -1,6 +1,16 @@
 import type { PrismaClient } from "@/generated/prisma/client";
 import { scopedFor } from "@/lib/db-scoped";
 import { loadTaxEstimate } from "@/lib/tax-estimate";
+import { adviceMode } from "@/lib/advice-mode";
+import { loadInvestmentTaxes } from "@/lib/investment-taxes";
+import { investmentsReply } from "./tax-investments";
+import { loadTaxDocuments } from "@/lib/tax-documents";
+import { documentsReply } from "./tax-documents-message";
+import { loadTaxPlan } from "@/lib/tax-plan";
+import { planReply } from "./tax-plan-message";
+import { loadGiving } from "@/lib/giving";
+import { givingReply } from "./giving-message";
+import { moveReply, statesReply, workStateReply } from "./tax-states-message";
 import { loadWithholding } from "@/lib/tax-withholding";
 import { loadTaxSavings } from "@/lib/tax-savings";
 import { loadSelfEmployed } from "@/lib/self-employed";
@@ -90,6 +100,19 @@ export async function answerTaxIntent(
       return setKidsReply(intent.count);
     case "set_state":
       return setStateReply(intent.state);
+    case "move":
+    case "work_state": {
+      const { view } = await loadWorkingProfile(userId, { client, now });
+      return intent.ask === "move"
+        ? moveReply(intent, view.state.value, now)
+        : workStateReply(intent.state, view.state.value);
+    }
+    case "giving":
+      return givingReply(await loadGiving(userId, { client, now }));
+    case "plan":
+      return planReply(await loadTaxPlan(userId, { client, now }), now.toISOString().slice(0, 10));
+    case "states":
+      return statesReply(await loadTaxEstimate(userId, { client, now }));
     case "tags":
       return tagsReply(await loadTaxTags(userId, year, { client }));
     case "tag_total":
@@ -103,12 +126,25 @@ export async function answerTaxIntent(
         intent.tag,
       );
     }
-    case "forms":
-      return formsReply(await loadTaxForms(userId, year, { client, now }));
+    case "forms": {
+      // Spec step 166: with a document partner, what was collected and how it checked.
+      const docs = await loadTaxDocuments(userId, year, { client, now });
+      return docs.collecting
+        ? documentsReply(docs)
+        : formsReply(await loadTaxForms(userId, year, { client, now }));
+    }
     case "pack":
       return packReply(await loadTaxPack(userId, year, { client, now }));
     case "estimate":
       return estimateMessage(await loadTaxEstimate(userId, { client, now }));
+    case "investments": {
+      const [estimate, advice] = await Promise.all([
+        loadTaxEstimate(userId, { client, now }),
+        adviceMode(userId, { client }),
+      ]);
+      const view = await loadInvestmentTaxes(userId, estimate.year, { client, now });
+      return investmentsReply(view, estimate, advice);
+    }
     case "standard_deduction":
       return standardDeductionReply(await loadTaxEstimate(userId, { client, now }));
     case "bracket":

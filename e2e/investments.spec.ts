@@ -140,4 +140,48 @@ test("the demo bank's holdings show with their sources, and Jane answers about t
   await page.getByRole("textbox", { name: "Message Jane" }).fill("how are my investments doing");
   await page.getByRole("button", { name: "Send" }).click();
   await expect(page.getByText(/^Your investments start \w+ at \$/)).toBeVisible();
+
+  // Step 156: how they've done, past results only, prices from the demo feed.
+  await page.goto("/investments");
+  await expect(page.getByRole("heading", { name: "How they've done" })).toBeVisible();
+  await expect(page.getByRole("cell", { name: "Last 12 months" })).toBeVisible();
+  await expect(page.getByText(/Prices come from the demo price feed \(made up\)/)).toBeVisible();
+
+  // Step 157: each goal invested for its timeline, with the glide path shown.
+  await page.goto("/investments/goals");
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText("Invested for each goal");
+  await expect(page.getByRole("heading", { name: "The glide path" })).toBeVisible();
+  await expect(page.getByRole("cell", { name: "0 to 3" })).toBeVisible();
+
+  // Step 158: college savings, set up as a goal.
+  await page.goto("/investments/college");
+  await page.getByLabel("Child's first name").fill("Sam");
+  await page.getByLabel("Age now").fill("5");
+  await page.getByRole("button", { name: "Start saving for college" }).click();
+  await expect(page.getByRole("status")).toContainText("Saved as a goal");
+  await expect(page.getByRole("heading", { name: "Sam, 5" })).toBeVisible();
+  await expect(
+    page.getByText(/four years\. Put aside about \$[\d,.]+ to \$[\d,.]+ a month/),
+  ).toBeVisible();
+
+  // Step 159: a demo HSA, its extra cash invested with a tap, and the receipts vault.
+  await page.goto("/investments/hsa");
+  await page.getByRole("button", { name: "Link a demo HSA" }).click();
+  await expect(page.getByRole("heading", { name: /^Demo HSA: \$/ })).toBeVisible();
+  await page.getByRole("button", { name: /^Invest \$/ }).click();
+  await expect(page.getByText(/^Simulated brokerage: these orders are pretend/)).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Receipts vault" })).toBeVisible();
+  await expect(page.getByText("BRIGHT SMILES DENTAL", { exact: false })).toBeVisible();
+
+  // Step 160: a demo stock plan, the plan to sell down with its tax, the first part sold.
+  await page.goto("/investments/company-stock");
+  await page.getByRole("button", { name: "Link a demo stock plan" }).click();
+  await expect(page.getByRole("status")).toHaveText("Demo stock plan linked.");
+  await expect(page.getByRole("heading", { name: /^Sell down in \d parts$/ })).toBeVisible();
+  await expect(page.getByText(/Estimated tax on the gains: about \$[\d,.]+/)).toBeVisible();
+  await page.getByRole("button", { name: "Sell the first part (simulated)" }).click();
+  await expect(page.getByRole("status")).toContainText("Sold the first part");
+  await expect(page.getByRole("button", { name: "Sell the first part (simulated)" })).toHaveCount(
+    0,
+  );
 });

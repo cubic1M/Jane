@@ -20,6 +20,14 @@ import { loadAccountPlan } from "./accounts";
 import { loadFees } from "./fees";
 import { loadRetirement } from "./retirement";
 import { loadReview } from "./review";
+import { loadReturns } from "./returns";
+import { loadGoalBuckets } from "./goal-buckets";
+import { estimateCollege } from "./college";
+import { collectReceipts, investHsaCash, loadHsa } from "./hsa";
+import { CompanyStockError, loadCompanyStock, saveGrant, sellPart } from "./company-stock";
+import { setAutopilot } from "@/lib/autopilot";
+import { takeSnapshots } from "@/lib/snapshots";
+import { syncDemoInvestments } from "@/lib/plaid/sync";
 import { loadInvestments } from "./holdings";
 import { loadRebalance, placeRebalance, RebalanceError } from "./rebalance";
 import { loadAutoInvest, runAutoInvest, setAutoInvestStatus, startAutoInvest } from "./auto-invest";
@@ -256,10 +264,12 @@ describe.runIf(url)("investments in Jane's chat, against a real database", () =>
       expect(a.holdingsMatch, a.name).toBe(true);
     }
     expect((await loadRebalance(userId, { client, now: LINKED })).plan!.orders).toEqual([]);
-    // And they stay that way through a full sync of the demo bank.
+    // And they stay that way through a full sync of the demo bank: prices have moved a
+    // little (spec step 156), but the mix is still on target.
     const item = await client.plaidItem.findFirstOrThrow({ where: { userId } });
-    await syncItem(item.id, { client, api: plaid, now: new Date("2026-10-20T15:00:00Z") });
-    expect((await loadRebalance(userId, { client, now: LINKED })).plan!.orders).toEqual([]);
+    const later = new Date("2026-10-20T15:00:00Z");
+    await syncItem(item.id, { client, api: plaid, now: later });
+    expect((await loadReview(userId, { client, now: later })).review?.offTarget).toBe(false);
     expect(
       await client.investmentTransaction.count({
         where: { userId, plaidInvestmentTransactionId: { contains: "-order-" } },
@@ -404,6 +414,270 @@ describe.runIf(url)("investments in Jane's chat, against a real database", () =>
       expect(
         note.actions.filter((a) => a.kind !== "link" && a.id !== "snooze").length,
       ).toBeLessThanOrEqual(1);
+    },
+  );
+
+  it(
+    "step 156: returns from snapshots and the price feed, leaving out money paid in",
+    SLOW,
+    async () => {
+      const userId = await demoPerson();
+      await saveProfileForm(
+        userId,
+        { age: "45", horizon: "over_20", dropReaction: "worry", goals: ["retirement"] },
+        { client, now: LINKED },
+      );
+      const day = (n: number) => new Date(LINKED.getTime() + n * 86_400_000);
+      // The daily job: snapshot, then invest the Oct 15 paycheck, then prices move.
+      await takeSnapshots({ client, now: day(0) });
+      const brokerage = (await loadAutoInvest(userId, { client, now: day(0) })).accounts[0].id;
+      await startAutoInvest(
+        userId,
+        { mode: "fixed", amountCents: 10_000, accountId: brokerage },
+        { client, now: day(0) },
+      );
+      const item = await client.plaidItem.findFirstOrThrow({ where: { userId } });
+      await syncDemoInvestments(item.id, { client, now: day(2) });
+      await takeSnapshots({ client, now: day(1) });
+
+      const returns = await loadReturns(userId, { client, now: day(2) });
+      expect(returns.simulatedPrices).toBe(true);
+      expect(returns.periods.map((p) => p.key)).toEqual(["1m", "3m", "1y"]);
+      const month = returns.periods[0];
+      expect(month.paidInCents).toBe(10_000);
+      // The $100 deposit is money in, not a gain: the investments' own return leaves it out.
+      const naive = month.endCents / month.startCents - 1;
+      expect(month.timeWeighted!).toBeLessThan(naive);
+      expect(month.benchmark).not.toBeNull();
+      // Dividends and interest from the demo's own transactions.
+      expect(returns.periods[2].incomeCents).toBeGreaterThan(0);
+    },
+  );
+
+  it("step 157: at the safe level, new money goes by goal, near-term in cash", SLOW, async () => {
+    const userId = await demoPerson();
+    await saveProfileForm(
+      userId,
+      { age: "45", horizon: "over_20", dropReaction: "worry", goals: ["retirement", "home"] },
+      { client, now: LINKED },
+    );
+    // A house in two years, saved by hand so far.
+    await client.savingsGoal.create({
+      data: {
+        userId,
+        name: "House",
+        targetCents: 3_000_000,
+        targetDate: new Date("2028-10-01"),
+        manualSavedCents: 0,
+      },
+    });
+    await setAutopilot(userId, "safe", { client, now: LINKED });
+    const { buckets, byHerself } = await loadGoalBuckets(userId, { client, now: LINKED });
+    expect(byHerself).toBe(true);
+    expect(buckets?.map((b) => [b.name, b.nearTerm])).toEqual([
+      ["House", true],
+      ["Retirement", false],
+    ]);
+    const brokerage = (await loadAutoInvest(userId, { client, now: LINKED })).accounts[0].id;
+    const run = await startAutoInvest(
+      userId,
+      { mode: "fixed", amountCents: 10_000, accountId: brokerage },
+      { client, now: LINKED },
+    );
+    expect(run?.status).toBe("invested");
+    // The house needs more than $100 a month, so all of it stays in cash: nothing is bought.
+    const orders = await client.brokerageOrder.findMany({
+      where: { userId, reason: "auto_invest" },
+    });
+    expect(orders.map((o) => o.side)).toEqual(["deposit"]);
+    const saved = await client.autoInvestRun.findFirstOrThrow({ where: { userId } });
+    expect(saved.reason).toBe("By goal: House $100.00");
+  });
+
+  it(
+    "step 158: college for a 5 year old, with the state's break, set up as a goal",
+    SLOW,
+    async () => {
+      const userId = await demoPerson();
+      await saveProfileForm(
+        userId,
+        { age: "40", horizon: "over_20", dropReaction: "worry", goals: ["education"] },
+        { client, now: LINKED },
+      );
+      await client.taxProfile.create({
+        data: {
+          userId,
+          state: "NY",
+          filingStatus: "single",
+          childrenUnder17: 1,
+          answered: ["state", "filingStatus", "dependants"],
+        },
+      });
+      const estimate = await estimateCollege(userId, { childAge: 5, type: "public" }, { client });
+      expect(estimate.state).toBe("NY");
+      expect(estimate.plans[0]).toMatchObject({ plan: { key: "home" } });
+      expect(estimate.plans[0].benefitCents).toBeGreaterThan(0);
+
+      const { reply } = await sendToJane(userId, "save for college for my 5 year old", {
+        client,
+        now: LINKED,
+      });
+      expect(reply.refs.college).toEqual({ childName: "your child", childAge: 5, type: "public" });
+      const { message } = await takeChatAction(userId, reply.id, "college.start", {
+        client,
+        now: LINKED,
+      });
+      expect(message.refs.note).toMatch(/^Done: a goal of \$[\d,.]+ by September 2039\./);
+      const plan = await client.collegePlan.findFirstOrThrow({ where: { userId } });
+      const goal = await client.savingsGoal.findUniqueOrThrow({ where: { id: plan.goalId! } });
+      expect(goal.name).toBe("College for your child");
+      // The goal joins the buckets (step 157): 13 years away, invested.
+      const { buckets } = await loadGoalBuckets(userId, { client, now: LINKED });
+      expect(buckets?.find((b) => b.id === goal.id)).toMatchObject({ nearTerm: false });
+    },
+  );
+
+  it(
+    "step 159: receipts saved by herself, a demo HSA, its extra cash invested with a tap",
+    SLOW,
+    async () => {
+      const userId = await demoPerson();
+      // The demo bank's pharmacy and dentist charges, saved by Jane's brain on the first
+      // sync by herself, once each.
+      expect(await client.hsaReceipt.count({ where: { userId } })).toBe(3);
+      expect(await collectReceipts(userId, { client, now: LINKED })).toBe(0);
+      const receipts = await client.hsaReceipt.findMany({
+        where: { userId },
+        include: { transaction: true },
+      });
+      expect(receipts.every((r) => r.transaction.amountCents === r.amountCents)).toBe(true);
+      expect(receipts.reduce((s, r) => s + r.amountCents, 0)).toBe(22_680);
+
+      const snapshot = await loadSnapshot(userId, { client, now: LINKED });
+      const offer = investmentsSource
+        .gather(snapshot!, {} as never)
+        .find((c) => c.dedupeKey === "hsa:link")!;
+      const posted = await client.janeMessage.create({
+        data: {
+          userId,
+          kind: offer.kind,
+          body: offer.body,
+          refs: offer.refs,
+          actions: offer.actions,
+          dedupeKey: "test:hsa:link",
+        },
+      });
+      await takeChatAction(userId, posted.id, "hsa.link", { client, now: LINKED });
+      const hsa = await loadHsa(userId, { client, now: LINKED });
+      expect(hsa.account).toMatchObject({ name: "Demo HSA", balanceCents: 427_180 });
+      expect(hsa.plan).toMatchObject({ cashCents: 285_000, toInvestCents: 85_000 });
+
+      const { amountCents } = await investHsaCash(userId, { client, now: LINKED });
+      expect(amountCents).toBe(85_000);
+      expect((await loadHsa(userId, { client, now: LINKED })).plan?.toInvestCents).toBe(0);
+    },
+  );
+
+  it(
+    "step 160: a demo stock plan, the plan to sell down with its tax, one part sold with a tap",
+    SLOW,
+    async () => {
+      const userId = await demoPerson();
+      // The demo bank alone: 38 Acme shares in the brokerage, under the limit.
+      const before = await loadCompanyStock(userId, { client, now: LINKED });
+      expect(before).toMatchObject({ company: "Acme Corp", ticker: "ACME", demo: true });
+      expect(before.concentration.overLimit).toBe(false);
+      expect(before.plan?.parts ?? []).toEqual([]);
+
+      const offer = (await sendToJane(userId, "my rsus", { client, now: LINKED })).reply;
+      expect(offer.actions.map((a) => a.id)).toEqual(["open"]);
+      const posted = await client.janeMessage.create({
+        data: {
+          userId,
+          kind: "decision",
+          body: "Want to try a demo stock plan?",
+          refs: {},
+          actions: [{ id: "company.link", label: "Link a demo stock plan", kind: "primary" }],
+          dedupeKey: "test:company:link",
+        },
+      });
+      await takeChatAction(userId, posted.id, "company.link", { client, now: LINKED });
+
+      const view = await loadCompanyStock(userId, { client, now: LINKED });
+      expect(view.holdings.map((h) => [h.accountName, h.quantity])).toEqual(
+        expect.arrayContaining([
+          ["Demo Stock Plan", 150],
+          ["Demo Brokerage", 38],
+        ]),
+      );
+      expect(view.grants).toMatchObject([{ kind: "rsu", unvestedShares: 120, source: "demo" }]);
+      expect(view.concentration.overLimit).toBe(true);
+      expect(view.concentration.shareWithUnvested).toBeGreaterThan(view.concentration.share);
+      const plan = view.plan!;
+      expect(plan.accountName).toBe("Demo Stock Plan");
+      expect(plan.parts.length).toBeGreaterThan(1);
+      expect(plan.parts[0].on).toBe("2026-10-18");
+      expect(plan.taxCents).toBeGreaterThan(0);
+      expect(plan.shareAfter).toBeCloseTo(0.1, 2);
+      // Nothing is sold without the tap.
+      expect(await client.brokerageOrder.count({ where: { userId, reason: "diversify" } })).toBe(0);
+
+      // Jane's message, then the tap.
+      const snapshot = await loadSnapshot(userId, { client, now: LINKED });
+      const message = investmentsSource
+        .gather(snapshot!, {} as never)
+        .find((c) => c.dedupeKey.startsWith("company:sell:"))!;
+      expect(message.refs).toEqual({ advice: true, companyPlan: plan.key });
+      const decision = await client.janeMessage.create({
+        data: {
+          userId,
+          kind: message.kind,
+          body: message.body,
+          refs: message.refs,
+          actions: message.actions,
+          dedupeKey: "test:company:sell",
+        },
+      });
+      const { message: done } = await takeChatAction(userId, decision.id, "company.sell", {
+        client,
+        now: LINKED,
+      });
+      expect(done.refs.note).toMatch(
+        /^Done in the simulated brokerage \(no real money moves\): sold/,
+      );
+      const orders = await client.brokerageOrder.findMany({
+        where: { userId, reason: "diversify" },
+      });
+      expect(orders.find((o) => o.side === "sell")).toMatchObject({ ticker: "ACME" });
+      expect(orders.filter((o) => o.side === "buy").length).toBeGreaterThan(0);
+
+      // The next part waits three months; selling again now is refused.
+      const after = await loadCompanyStock(userId, { client, now: LINKED });
+      expect(after.concentration.share).toBeLessThan(view.concentration.share);
+      expect(after.plan?.parts[0].on).toBe("2027-01-18");
+      await expect(sellPart(userId, after.plan!.key, { client, now: LINKED })).rejects.toThrow(
+        CompanyStockError,
+      );
+      await expect(sellPart(userId, plan.key, { client, now: LINKED })).rejects.toThrow(
+        /changed since this plan/,
+      );
+
+      // The guided form checks what it saves.
+      await expect(
+        saveGrant(
+          userId,
+          {
+            company: "",
+            ticker: "",
+            kind: "rsu",
+            unvestedShares: "1",
+            sharesPerVest: "",
+            everyMonths: "",
+            nextVestOn: "",
+          },
+          { client },
+        ),
+      ).rejects.toThrow(/company's name/);
     },
   );
 });

@@ -59,6 +59,18 @@ import { taxMilesAdd, taxQuarterPaid } from "./tax-self-employed";
 import { taxRefundApply, taxRefundNo } from "./tax-refund";
 import { taxFileStart } from "./tax-filing";
 import {
+  taxLocal1,
+  taxLocal2,
+  taxLocalNo,
+  taxMoveNo,
+  taxMoveSet,
+  taxMoveYes,
+  taxWorkSet,
+} from "./tax-states";
+import { taxDocAsk, taxDocChase, taxDocRight, taxDocsTick } from "./tax-documents";
+import { taxPlanAdd, taxPlanNo } from "./tax-plan";
+import { taxFundOpen, taxGivingNo, taxReceiptGot } from "./giving";
+import {
   investAnswer1,
   investAnswer2,
   investAnswer3,
@@ -69,6 +81,11 @@ import {
   investAutoLeftover,
   investAutoPause,
   investAutoResume,
+  collegeStart,
+  hsaLink,
+  hsaInvest,
+  companyLink,
+  companySell,
 } from "./investments";
 import { changeBudget, changeExpected, changeLook } from "./changes";
 import { lifeNever, lifeNo, lifeYes } from "./life";
@@ -80,7 +97,10 @@ import { savedShare } from "./saved";
 import { prefSave, suggestNever } from "./remember";
 import { welcomeTour } from "./welcome";
 import { autopilotSectorSet } from "./sector";
+import { paycheckMove, paycheckSkip, paycheckUndo } from "./paycheck";
+import { billPay, billSkip } from "./billpay";
 import { bundleYes1, bundleYes2, bundleYes3, bundleYes4, bundleYes5 } from "./bundle";
+import { FLOW_PICKS, flowBack, flowCancel } from "./flows";
 
 // Every button action, by id (spec step 81). A new button is a new handler here; the
 // message sources offer it by id (src/lib/jane-agent/types.ts ACTION_IDS).
@@ -159,6 +179,10 @@ export const ACTION_HANDLERS: Readonly<Record<ActionId, ActionHandler>> = {
   "bundle.3": bundleYes3,
   "bundle.4": bundleYes4,
   "bundle.5": bundleYes5,
+  // Spec step 95.
+  ...FLOW_PICKS,
+  "flow.back": flowBack,
+  "flow.cancel": flowCancel,
   // Taxes (spec step 118).
   "tax.found_yes": taxFoundYes,
   ...TAX_PROFILE_HANDLERS,
@@ -187,6 +211,22 @@ export const ACTION_HANDLERS: Readonly<Record<ActionId, ActionHandler>> = {
   "tax.refund_no": taxRefundNo,
   // Spec step 126.
   "tax.file_start": taxFileStart,
+  "tax.move_yes": taxMoveYes,
+  "tax.move_no": taxMoveNo,
+  "tax.move_set": taxMoveSet,
+  "tax.work_set": taxWorkSet,
+  "tax.local_1": taxLocal1,
+  "tax.local_2": taxLocal2,
+  "tax.local_no": taxLocalNo,
+  "tax.doc_right": taxDocRight,
+  "tax.doc_ask": taxDocAsk,
+  "tax.doc_chase": taxDocChase,
+  "tax.docs_tick": taxDocsTick,
+  "tax.plan_add": taxPlanAdd,
+  "tax.plan_no": taxPlanNo,
+  "tax.receipt_got": taxReceiptGot,
+  "tax.fund_open": taxFundOpen,
+  "tax.giving_no": taxGivingNo,
   // Investments (spec step 129 on).
   "invest.answer.1": investAnswer1,
   "invest.answer.2": investAnswer2,
@@ -198,6 +238,11 @@ export const ACTION_HANDLERS: Readonly<Record<ActionId, ActionHandler>> = {
   "invest.auto_leftover": investAutoLeftover,
   "invest.auto_pause": investAutoPause,
   "invest.auto_resume": investAutoResume,
+  "college.start": collegeStart,
+  "hsa.link": hsaLink,
+  "hsa.invest": hsaInvest,
+  "company.link": companyLink,
+  "company.sell": companySell,
   // Jane notices changes (spec step 97).
   "change.look": changeLook,
   "change.budget": changeBudget,
@@ -221,6 +266,12 @@ export const ACTION_HANDLERS: Readonly<Record<ActionId, ActionHandler>> = {
   "welcome.tour": welcomeTour,
   // One autopilot, every sector (spec step 141).
   "autopilot.sector_set": autopilotSectorSet,
+  // Money that moves itself (spec step 144).
+  "paycheck.move": paycheckMove,
+  "paycheck.skip": paycheckSkip,
+  "paycheck.undo": paycheckUndo,
+  "bill.pay": billPay,
+  "bill.skip": billSkip,
 };
 
 const MESSAGE_ID = /^[a-z0-9]{1,40}$/i;

@@ -178,7 +178,7 @@ describe.runIf(url)("Jane's chat against a real database", () => {
     });
 
     it("takes back a No within seconds, and not after", async () => {
-      const [first, second] = (await messagesOf(userId)).filter(
+      const [first] = (await messagesOf(userId)).filter(
         (m) => m.status === "open" && buttonIds(m).includes("finding.no"),
       );
       const { message: declined } = await takeChatAction(userId, first.id, "finding.no", {
@@ -194,9 +194,10 @@ describe.runIf(url)("Jane's chat against a real database", () => {
         "shown",
       );
 
-      await takeChatAction(userId, second.id, "finding.no", { client });
+      // A No again, taken back too late.
+      await takeChatAction(userId, first.id, "finding.no", { client });
       await expect(
-        takeChatAction(userId, second.id, "undo.no", {
+        takeChatAction(userId, first.id, "undo.no", {
           client,
           now: new Date(Date.now() + 20 * SECOND),
         }),

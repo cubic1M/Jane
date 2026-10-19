@@ -8,6 +8,9 @@ import { GoalError, addGoal } from "@/lib/goals";
 import { dismissSaving, loadTaxSavings } from "@/lib/tax-savings";
 import { RefundError, applyRefundPlan, dismissRefund } from "@/lib/tax-refund";
 import { TaxOrganizerError, markTaxForm } from "@/lib/tax-organizer";
+import { TaxDocumentError, decideDocument } from "@/lib/tax-documents";
+import { TaxPlanError, addPlanMove, dismissPlanMove } from "@/lib/tax-plan";
+import { GivingError, markReceipt, openDonorFund } from "@/lib/giving";
 import { WithholdingError, clearW4Change, keepRefund, recordW4Change } from "@/lib/tax-withholding";
 
 // /taxes (spec step 119): "I have it" on a tax form Jane expects, or "Not yet" to undo it.
@@ -139,6 +142,82 @@ export async function refundAction(_previous: FormState, formData: FormData): Pr
     return { ok: true, message: "OK. It's yours to use as you like." };
   } catch (error) {
     if (error instanceof RefundError) return { ok: false, message: error.message };
+    throw error;
+  }
+}
+
+// Spec step 166: on a collected form that doesn't match the accounts, "It's right, use it"
+// or "I'll ask them" (a reminder on the deadlines).
+export async function documentAction(_previous: FormState, formData: FormData): Promise<FormState> {
+  const user = await requireUser();
+  const year = Number(formData.get("year"));
+  const key = String(formData.get("key") ?? "");
+  const decision = String(formData.get("decision") ?? "");
+  if (!Number.isInteger(year) || (decision !== "right" && decision !== "ask")) {
+    return { ok: false, message: "Something went wrong. Try again." };
+  }
+  try {
+    const form = await decideDocument(user.id, year, key, decision, { via: "page" });
+    revalidatePath("/taxes");
+    return {
+      ok: true,
+      message:
+        decision === "right"
+          ? `Using your ${form.form} from ${form.from} as it is.`
+          : `Asking ${form.from} for a corrected form is on your deadlines.`,
+    };
+  } catch (error) {
+    if (error instanceof TaxDocumentError) return { ok: false, message: error.message };
+    throw error;
+  }
+}
+
+// Spec step 167: a tax move on the deadlines, or not for me.
+export async function planAction(_previous: FormState, formData: FormData): Promise<FormState> {
+  const user = await requireUser();
+  const id = String(formData.get("move") ?? "");
+  const intent = String(formData.get("intent") ?? "");
+  if (!id || (intent !== "add" && intent !== "no")) {
+    return { ok: false, message: "Something went wrong. Try again." };
+  }
+  try {
+    if (intent === "add") {
+      const move = await addPlanMove(user.id, id, { via: "page" });
+      revalidatePath("/taxes");
+      return { ok: true, message: `"${move.task.title}" is on your deadlines.` };
+    }
+    await dismissPlanMove(user.id, id, { via: "page" });
+    revalidatePath("/taxes");
+    return { ok: true, message: "OK. Jane won't bring it up again this year." };
+  } catch (error) {
+    if (error instanceof TaxPlanError) return { ok: false, message: error.message };
+    throw error;
+  }
+}
+
+// Spec step 168: a gift's receipt, or a donor-advised fund through the stand-in.
+export async function givingAction(_previous: FormState, formData: FormData): Promise<FormState> {
+  const user = await requireUser();
+  const intent = String(formData.get("intent") ?? "");
+  try {
+    if (intent === "receipt") {
+      const gift = await markReceipt(user.id, String(formData.get("gift") ?? ""), {
+        via: "page",
+      });
+      revalidatePath("/taxes");
+      return { ok: true, message: `Got it: your gift to ${gift.payee} has its receipt.` };
+    }
+    if (intent === "fund") {
+      const fund = await openDonorFund(user.id, { via: "page" });
+      revalidatePath("/taxes");
+      return {
+        ok: true,
+        message: `${fund.fundName} is open. Putting money in is on your deadlines.`,
+      };
+    }
+    return { ok: false, message: "Something went wrong. Try again." };
+  } catch (error) {
+    if (error instanceof GivingError) return { ok: false, message: error.message };
     throw error;
   }
 }

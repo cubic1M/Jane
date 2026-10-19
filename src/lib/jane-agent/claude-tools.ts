@@ -18,6 +18,14 @@ import { listGoals } from "@/lib/goals";
 import { lifeGuessesFor } from "@/lib/life-guesses";
 import { loadUpkeep } from "@/lib/plan-upkeep";
 import { sectorAutopilots } from "@/lib/sector-autopilot";
+import { lastControllerRun } from "@/lib/controller-log";
+import { CONTROLLER_STEP_LABELS } from "@/config/controller";
+import { rankedFor } from "./priorities";
+import { wholePicture } from "./whole-picture";
+import { latestPaycheckPlan } from "@/lib/money-movement/paycheck";
+import { listTransfers } from "@/lib/money-movement/transfers";
+import { loadBillPay } from "@/lib/money-movement/bill-pay";
+import { moneyPartnerFor } from "@/lib/money-movement/partner";
 import { SECTOR_LABELS, SECTOR_LEVEL_LABELS } from "@/config/autopilot-sectors";
 import { provenSavings } from "@/lib/savings-proof";
 import { listLifeEvents } from "@/lib/life-events";
@@ -33,6 +41,7 @@ import { rebalanceOffer } from "./investments/replies";
 import { loadRebalance } from "@/lib/investments/rebalance";
 import { monthLabel, type Reply } from "./replies";
 import { guessLine } from "./replies-life";
+import { BLOCK_KINDS } from "./block-data";
 import { listPreferences } from "./preferences";
 import { cachedPrimer, keepPrimer } from "./primer-cache";
 import { loadRecurring } from "./recurring";
@@ -177,6 +186,30 @@ export const CHAT_TOOLS: Anthropic.Tool[] = [
     input_schema: noInput,
   },
   {
+    name: "nightly_log",
+    description:
+      "What Jane checked for the person last night (spec step 142): one line per area (bank sync, changes, insurance reshops, debts and rates, taxes, investing drift, goals and budgets), in the order she ran them, with what each found or did, and any that failed and will be tried again.",
+    input_schema: noInput,
+  },
+  {
+    name: "priorities",
+    description:
+      'The person\'s next best things to do (spec step 143), ranked across everything Jane found and is waiting on: findings, insurance picks, refinance offers, steps only they can do and dated deadlines. Each with the money it saves a year, the minutes it takes, its urgency and why it ranks where it does. Use it for "what should I do first" and to put the most important first.',
+    input_schema: noInput,
+  },
+  {
+    name: "whole_picture",
+    description:
+      'How the person is doing across every sector at once (spec step 183), for "am I OK?", "how am I doing" and "what should I do this month": a verdict (ok, watch or act) with its one-sentence headline, safe to spend until payday, bills and deadlines due this week and this month, budgets over, goals behind, urgent alerts, what Jane\'s agent is working on, the steps waiting on the person, and the one to three things that matter most (from the ranked list) with why. Lead with the headline, then the things that matter; use the same figures.',
+    input_schema: noInput,
+  },
+  {
+    name: "money_moves",
+    description:
+      "Money that moves itself (spec step 144): the newest paycheck's plan (what goes to each goal, the emergency fund, the tax set-aside and extra debt payments, kept above safe to spend's cushion) with what Jane moved by herself and what waits for a tap; cards and loans due in the next three weeks (spec step 145) with what pays each (the person's own autopay, a payment Jane scheduled, one she can schedule with a tap, or checking would run short and a due date worth moving after payday); and the latest transfers with their status. Until a money-movement partner is connected these are sample transfers: no real money moves.",
+    input_schema: noInput,
+  },
+  {
     name: "propose_action",
     description:
       "Offer the person a button under your answer. You can't do anything yourself; the person decides by tapping. Use it at most once: when your answer suggests something that can be done, or the person asked for it. Actions: finding.yes (Yes and No on one open finding; give finding_id from open_findings), plan.approve_safe (approve the plan's safe items together), goal.start (start a savings goal; give goal_name, goal_amount in dollars and goal_month as YYYY-MM within the next 12 months), invest.rebalance (demo advice mode: place the orders that move to the recommended mix, in the simulated brokerage), open (a link to a page; give page).",
@@ -191,6 +224,22 @@ export const CHAT_TOOLS: Anthropic.Tool[] = [
         page: { type: "string", enum: Object.keys(CHAT_PAGES) },
       },
       required: ["action"],
+      additionalProperties: false,
+    },
+  },
+  // Spec step 94.
+  {
+    name: "show_block",
+    description:
+      "Show one chart, table or timeline under your answer, drawn from the person's own numbers (the same as the pages): spending_by_category (bars for one month; give month as YYYY-MM, or leave it out for this month), spending_by_month (bars, the last few months), coming_up (a timeline of bills and deadlines), goals (progress bars), options (a table comparing a finding's options; give finding_id). Use it at most once, when a picture says it better than a list.",
+    input_schema: {
+      type: "object",
+      properties: {
+        kind: { type: "string", enum: [...BLOCK_KINDS] },
+        month: { type: "string" },
+        finding_id: { type: "string" },
+      },
+      required: ["kind"],
       additionalProperties: false,
     },
   },
@@ -398,6 +447,107 @@ export async function runChatTool(
           why: e.why,
         })),
       });
+    }
+    case "money_moves": {
+      const [plan, transfers, partner] = await Promise.all([
+        latestPaycheckPlan(userId, { client, now }),
+        listTransfers(userId, { client, now }),
+        moneyPartnerFor(userId, { client }),
+      ]);
+      const bills = partner ? await loadBillPay(userId, { client, now }) : null;
+      return out({
+        sampleOnly: true,
+        bills: (bills?.items ?? []).map((i) => ({
+          name: i.bill.name,
+          due: i.bill.dueOn,
+          minimum: money(i.bill.minimumCents),
+          status: i.status,
+          ...(i.status === "scheduled" || i.status === "ask"
+            ? { amount: money(i.amountCents), on: i.runOn }
+            : {}),
+          ...(i.status === "short" && i.moveTo ? { moveDueDateTo: i.moveTo } : {}),
+        })),
+        paycheck: plan && {
+          amount: money(plan.paycheckCents),
+          paidOn: plan.paidOn,
+          moves: plan.moves.map((m) => ({ to: m.label, amount: money(m.cents), status: m.status })),
+        },
+        transfers: transfers.slice(0, 10).map((t) => ({
+          to: t.toName,
+          amount: money(t.amountCents),
+          status: t.status,
+          on: t.runOn,
+          by: t.by,
+        })),
+      });
+    }
+    case "priorities": {
+      const snapshot = await loadSnapshot(userId, { client, now });
+      return out({
+        ranked: (snapshot ? rankedFor(snapshot) : []).slice(0, 10).map((r) => ({
+          what: r.title,
+          kind: r.kind,
+          savesAYear: r.valueCents === null ? null : money(r.valueCents),
+          minutes: r.minutes,
+          due: r.dueOn ?? null,
+          why: r.why,
+          findingId: r.kind === "finding" ? r.ref : null,
+        })),
+      });
+    }
+    case "whole_picture": {
+      const snapshot = await loadSnapshot(userId, { client, now });
+      if (!snapshot) return out({ linked: false });
+      const ranked = rankedFor(snapshot);
+      const week = wholePicture(snapshot, ranked, "now");
+      const month = wholePicture(snapshot, ranked, "month");
+      const due = (rows: typeof week.due) =>
+        rows.map((d) => ({
+          what: d.label,
+          date: d.date,
+          amount: d.amountCents === null ? null : money(d.amountCents),
+        }));
+      return out({
+        verdict: week.verdict,
+        headline: week.headline,
+        safeToSpend: week.safe && {
+          amount: money(week.safe.safeCents),
+          untilPayday: week.safe.payday,
+        },
+        dueThisWeek: due(week.due),
+        dueThisMonth: due(month.due),
+        budgetsOver: week.budgetsOver.map((b) => ({
+          category: b.category,
+          over: money(b.overCents),
+        })),
+        goalsBehind: week.goalsBehind.map((g) => ({ goal: g.name, stillToGo: money(g.leftCents) })),
+        urgent: week.urgent,
+        janeWorkingOn: week.working,
+        waitingOnThePerson: week.waitingOnYou,
+        safeToApproveAtOnce: week.safeItems,
+        mattersMost: week.top.map((r) => ({
+          what: r.title,
+          savesAYear: r.valueCents === null ? null : money(r.valueCents),
+          why: r.why,
+          findingId: r.kind === "finding" ? r.ref : null,
+        })),
+      });
+    }
+    case "nightly_log": {
+      const run = await lastControllerRun(userId, { client, now });
+      return out(
+        run
+          ? {
+              night: run.day,
+              checked: run.steps.map((s) => ({
+                area: CONTROLLER_STEP_LABELS[s.step],
+                result: s.status,
+                did: s.did,
+                changed: s.changed,
+              })),
+            }
+          : { note: "No nightly run yet." },
+      );
     }
     case "autopilot_settings": {
       const sectors = await sectorAutopilots(userId, { client, now });

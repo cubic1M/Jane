@@ -87,6 +87,8 @@ export async function loadTaxTags(
         merchantName: true,
         pfcDetailed: true,
       },
+      // In a fixed order, so the tags and their totals always come out the same way.
+      orderBy: [{ date: "asc" }, { id: "asc" }],
     }),
     loadOverrides(userId, { client }),
   ]);
@@ -233,11 +235,17 @@ export async function loadTaxForms(
         merchantName: true,
         account: { select: { name: true } },
       },
+      orderBy: [{ date: "asc" }, { id: "asc" }],
     }),
-    db.accounts.findMany({ select: { name: true, type: true, subtype: true } }),
+    // In a fixed order, so the forms always come out in the same order.
+    db.accounts.findMany({
+      select: { name: true, type: true, subtype: true },
+      orderBy: [{ name: "asc" }, { id: "asc" }],
+    }),
     // Banks report loan interest for the current year only; for a past year it's unknown.
     db.liabilities.findMany({
       select: { kind: true, ytdInterestPaidCents: true, account: { select: { name: true } } },
+      orderBy: [{ account: { name: "asc" } }, { id: "asc" }],
     }),
     db.taxForms.findMany({ where: { year }, select: { key: true } }),
   ]);
@@ -268,7 +276,14 @@ export async function markTaxForm(
   year: number,
   key: string,
   received: boolean,
-  { client = defaultClient, now = new Date(), via }: Options & { via: "chat" | "page" },
+  {
+    client = defaultClient,
+    now = new Date(),
+    via,
+  }: Options & {
+    // Spec step 166: "autopilot" when Jane ticks off a collected form that checks out.
+    via: "chat" | "page" | "autopilot";
+  },
 ): Promise<ExpectedForm> {
   const { forms } = await loadTaxForms(userId, year, { client, now });
   const form = forms.find((f) => f.key === key);

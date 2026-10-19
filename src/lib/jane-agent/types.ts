@@ -1,4 +1,6 @@
+import type { AnswerBlock } from "./blocks";
 import type { Topic } from "./context";
+import type { FlowState } from "./flows/engine";
 import type { Intent } from "./intents";
 import type { PreferenceDraft } from "./preferences";
 
@@ -99,6 +101,14 @@ export const ACTION_IDS = [
   "bundle.3",
   "bundle.4",
   "bundle.5",
+  // Spec step 95: a guided flow's answers, Back and Cancel (refs.flow).
+  "flow.pick.1",
+  "flow.pick.2",
+  "flow.pick.3",
+  "flow.pick.4",
+  "flow.pick.5",
+  "flow.back",
+  "flow.cancel",
   // Taxes (spec step 118): the tax profile, one question at a time.
   "tax.found_yes",
   "tax.filing_single",
@@ -134,6 +144,28 @@ export const ACTION_IDS = [
   "tax.refund_no",
   // Spec step 126: start the return with the filing partner (signing is on the page).
   "tax.file_start",
+  // Spec step 165: a move (spotted, or typed), an out-of-state employer, and the city
+  // income tax question (its places by position).
+  "tax.move_yes",
+  "tax.move_no",
+  "tax.move_set",
+  "tax.work_set",
+  "tax.local_1",
+  "tax.local_2",
+  "tax.local_no",
+  // Spec step 166: a collected form that doesn't match (use it, or ask the payer), a form
+  // still missing, and ticking off the collected ones.
+  "tax.doc_right",
+  "tax.doc_ask",
+  "tax.doc_chase",
+  "tax.docs_tick",
+  // Spec step 167: a tax move's reminder on the deadlines, or not for me.
+  "tax.plan_add",
+  "tax.plan_no",
+  // Spec step 168: a gift's receipt, a donor-advised fund, and not this year.
+  "tax.receipt_got",
+  "tax.fund_open",
+  "tax.giving_no",
   // Investments (spec step 129 on): the answer buttons on an investor-profile question,
   // by position (src/config/investing.ts PROFILE_QUESTIONS).
   "invest.answer.1",
@@ -148,6 +180,14 @@ export const ACTION_IDS = [
   "invest.auto_leftover",
   "invest.auto_pause",
   "invest.auto_resume",
+  // Spec step 158: start saving for college.
+  "college.start",
+  // Spec step 159: the HSA.
+  "hsa.link",
+  "hsa.invest",
+  // Spec step 160: company stock, sold down in parts.
+  "company.link",
+  "company.sell",
   // Jane notices changes (spec step 97).
   "change.look",
   "change.budget",
@@ -171,6 +211,12 @@ export const ACTION_IDS = [
   "welcome.tour",
   // One autopilot, every sector (spec step 141).
   "autopilot.sector_set",
+  // Money that moves itself (spec step 144).
+  "paycheck.move",
+  "paycheck.skip",
+  "paycheck.undo",
+  "bill.pay",
+  "bill.skip",
 ] as const;
 export type ActionId = (typeof ACTION_IDS)[number];
 
@@ -250,6 +296,12 @@ export type MessageRefs = {
   preference?: PreferenceDraft;
   // Spec step 92: the messages a bundle stands for, by dedupeKey, in button order.
   items?: { dedupeKey: string; label: string }[];
+  // Spec step 94: a chart, table, timeline or progress bars shown with the answer.
+  block?: AnswerBlock;
+  // Spec step 95: where a guided flow is.
+  flow?: FlowState;
+  // Spec step 96: pinned to the top of the chat.
+  pinned?: true;
   // Taxes (spec step 118): the tax profile question a message is asking, and the kind of
   // income "Add it" would add.
   taxField?: string;
@@ -276,6 +328,15 @@ export type MessageRefs = {
   taxMiles?: number;
   // Spec step 125: the refund (its transaction id) a message is about.
   taxRefund?: string;
+  // Spec step 165: the move "Yes" saves, the employer's state "Yes" saves (with taxState
+  // for the home state), and the city income taxes (LOCAL_TAXES keys) in button order.
+  taxMove?: { date: string; from: string; to: string };
+  taxWorkState?: string;
+  taxLocals?: string[];
+  // Spec step 167: the tax plan move ("<year>:<key>") a message is about.
+  taxPlanMove?: string;
+  // Spec step 168: the gift (its transaction id) a receipt message is about.
+  taxGift?: string;
   // Spec step 98: demo advice (src/lib/advice-mode.ts). The chat shows DEMO_ADVICE_LABEL
   // under it. Set it on every message that recommends investments, taxes, insurance or loans.
   advice?: true;
@@ -287,6 +348,10 @@ export type MessageRefs = {
   rebalanceKey?: string;
   // Spec step 134: what "Start" sets up: an amount (cents) every payday, into an account.
   autoInvest?: { amountCents: number; accountId: string };
+  // Spec step 158: the college plan "Start saving for college" sets up.
+  college?: { childName: string; childAge: number; type: "public" | "private" };
+  // Spec step 160: the company stock plan "Sell this part" sells from, by its key.
+  companyPlan?: string;
   // Spec step 97: a change Jane noticed (src/insights/changes.ts), by its key; for a
   // category's pace, the budget "Set a budget" would set (cents a month).
   change?: { key: string; kind: string; category?: string; budgetCents?: number };
@@ -295,6 +360,10 @@ export type MessageRefs = {
   // Spec step 101: a budget tune-up's month (YYYY-MM), and a transfer to count toward a goal.
   tuneUpMonth?: string;
   transactionId?: string;
+  // Spec step 144: a paycheck's plan.
+  paycheckPlanId?: string;
+  // Spec step 145: a bill to pay, by its plan key (bill:<accountId>:<due date>).
+  billKey?: string;
   // Spec step 141: a sector's autopilot change typed in the chat, set on "Set it".
   sectorChange?: {
     sector: string;

@@ -8,6 +8,9 @@ import { loadSelfEmployed } from "@/lib/self-employed";
 import { filingPartnerFor } from "@/lib/filing";
 import { FilingError, filingYear, inFilingSeason, startReturn } from "@/lib/tax-filing";
 import { loadTaxForms } from "@/lib/tax-organizer";
+import { collectTaxDocuments } from "@/lib/tax-documents";
+import { addOpenPlanMoves } from "@/lib/tax-plan";
+import { remindReceipts } from "@/lib/giving";
 
 // What Jane does about taxes by herself before she talks (spec steps 123–127), at the
 // autopilot levels that let her act (src/config/tax.ts TAX_AUTOPILOT). Nothing here moves
@@ -23,15 +26,36 @@ export const setAsideGoalName = (year: number) => `Taxes set aside for ${year}`;
 export async function runTaxAutopilot(
   userId: string,
   { client = defaultClient, now = new Date() }: Options = {},
-): Promise<{ goalStarted: boolean; returnStarted: boolean }> {
+): Promise<{
+  goalStarted: boolean;
+  returnStarted: boolean;
+  documents: { collected: number; ticked: number };
+  planAdded: number;
+  receiptsReminded: number;
+}> {
   // Spec step 141: Taxes' autopilot. Starting a return or a goal moves no money: the level
   // is enough.
-  if (!(await mayAct(userId, "taxes", { needs: "safe", cents: 0 }, { client, now })).ok) {
-    return { goalStarted: false, returnStarted: false };
+  const acts = (await mayAct(userId, "taxes", { needs: "safe", cents: 0 }, { client, now })).ok;
+  // Spec step 166: collecting tax forms only reads, so Jane does it at every level; ticking
+  // off the ones that check out is for the levels that let her act.
+  const documents = await collectTaxDocuments(userId, { client, now, tick: acts });
+  if (!acts) {
+    return {
+      goalStarted: false,
+      returnStarted: false,
+      documents,
+      planAdded: 0,
+      receiptsReminded: 0,
+    };
   }
   return {
     returnStarted: await startReturnWhenReady(userId, client, now),
     goalStarted: await startSetAsideGoal(userId, client, now),
+    documents,
+    // Spec step 167: each tax move open now goes on the deadlines.
+    planAdded: (await addOpenPlanMoves(userId, { client, now })).length,
+    // Spec step 168: a reminder to get each gift's missing receipt.
+    receiptsReminded: await remindReceipts(userId, { client, now }),
   };
 }
 

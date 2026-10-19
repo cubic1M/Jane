@@ -40,13 +40,41 @@ vi.mock("@/lib/tax-organizer", async (importOriginal) => ({
   markTaxForm: vi.fn(async () => ({ form: "W-2", from: "ACME" })),
 }));
 
+vi.mock("@/lib/tax-documents", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/tax-documents")>()),
+  decideDocument: vi.fn(async () => ({ form: "W-2", from: "ACME CORP PAYROLL" })),
+}));
+
+vi.mock("@/lib/tax-plan", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/tax-plan")>()),
+  addPlanMove: vi.fn(async () => ({ task: { title: "Make your IRA contribution (2026 taxes)" } })),
+  dismissPlanMove: vi.fn(),
+}));
+
+vi.mock("@/lib/giving", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/giving")>()),
+  markReceipt: vi.fn(async () => ({ payee: "American Red Cross" })),
+  openDonorFund: vi.fn(async () => ({ fundName: "Demo Giving Fund" })),
+}));
+
 import { adviceMode } from "@/lib/advice-mode";
+import { GivingError, markReceipt, openDonorFund } from "@/lib/giving";
+import { TaxPlanError, addPlanMove, dismissPlanMove } from "@/lib/tax-plan";
+import { TaxDocumentError, decideDocument } from "@/lib/tax-documents";
 import { TaxOrganizerError, markTaxForm } from "@/lib/tax-organizer";
 import { clearW4Change, keepRefund, recordW4Change } from "@/lib/tax-withholding";
 import { addDeadline } from "@/lib/deadlines";
 import { dismissSaving } from "@/lib/tax-savings";
 import { applyRefundPlan, dismissRefund } from "@/lib/tax-refund";
-import { markForm, refundAction, savingAction, w4Action } from "./actions";
+import {
+  documentAction,
+  givingAction,
+  planAction,
+  markForm,
+  refundAction,
+  savingAction,
+  w4Action,
+} from "./actions";
 
 // Spec step 119: "I have it" and "Not yet" on /taxes.
 
@@ -164,5 +192,89 @@ describe("refundAction (spec step 125)", () => {
       ok: true,
     });
     expect(dismissRefund).toHaveBeenCalledWith("u1", "t1", { via: "page" });
+  });
+});
+
+describe("a collected form that doesn't match (spec step 166)", () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  it("uses it as it is, or puts asking the payer on the deadlines", async () => {
+    expect(
+      await documentAction(null, form({ year: "2026", key: "w2:acme", decision: "right" })),
+    ).toEqual({ ok: true, message: "Using your W-2 from ACME CORP PAYROLL as it is." });
+    expect(decideDocument).toHaveBeenCalledWith("u1", 2026, "w2:acme", "right", { via: "page" });
+    expect(
+      await documentAction(null, form({ year: "2026", key: "w2:acme", decision: "ask" })),
+    ).toEqual({
+      ok: true,
+      message: "Asking ACME CORP PAYROLL for a corrected form is on your deadlines.",
+    });
+  });
+
+  it("refuses anything else, and says what's wrong", async () => {
+    expect(
+      await documentAction(null, form({ year: "2026", key: "w2:acme", decision: "file" })),
+    ).toMatchObject({ ok: false });
+    vi.mocked(decideDocument).mockRejectedValueOnce(
+      new TaxDocumentError("That form isn't collected anymore."),
+    );
+    expect(
+      await documentAction(null, form({ year: "2026", key: "w2:gone", decision: "right" })),
+    ).toEqual({ ok: false, message: "That form isn't collected anymore." });
+  });
+});
+
+describe("a tax plan move (spec step 167)", () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  it("puts it on the deadlines, or not for me", async () => {
+    expect(await planAction(null, form({ move: "2026:ira", intent: "add" }))).toEqual({
+      ok: true,
+      message: '"Make your IRA contribution (2026 taxes)" is on your deadlines.',
+    });
+    expect(addPlanMove).toHaveBeenCalledWith("u1", "2026:ira", { via: "page" });
+    expect(await planAction(null, form({ move: "2026:ira", intent: "no" }))).toMatchObject({
+      ok: true,
+    });
+    expect(dismissPlanMove).toHaveBeenCalledWith("u1", "2026:ira", { via: "page" });
+  });
+
+  it("says when it's past its deadline", async () => {
+    vi.mocked(addPlanMove).mockRejectedValueOnce(new TaxPlanError("That's past its deadline now."));
+    expect(await planAction(null, form({ move: "2025:ira", intent: "add" }))).toEqual({
+      ok: false,
+      message: "That's past its deadline now.",
+    });
+    expect(await planAction(null, form({ move: "2026:ira", intent: "pay" }))).toMatchObject({
+      ok: false,
+    });
+  });
+});
+
+describe("giving (spec step 168)", () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  it("records a receipt, and opens a donor-advised fund", async () => {
+    expect(await givingAction(null, form({ intent: "receipt", gift: "t1" }))).toEqual({
+      ok: true,
+      message: "Got it: your gift to American Red Cross has its receipt.",
+    });
+    expect(markReceipt).toHaveBeenCalledWith("u1", "t1", { via: "page" });
+    expect(await givingAction(null, form({ intent: "fund" }))).toEqual({
+      ok: true,
+      message: "Demo Giving Fund is open. Putting money in is on your deadlines.",
+    });
+    expect(openDonorFund).toHaveBeenCalledWith("u1", { via: "page" });
+  });
+
+  it("says what's wrong", async () => {
+    vi.mocked(openDonorFund).mockRejectedValueOnce(
+      new GivingError("A donor-advised fund is only offered in demo advice mode for now."),
+    );
+    expect(await givingAction(null, form({ intent: "fund" }))).toEqual({
+      ok: false,
+      message: "A donor-advised fund is only offered in demo advice mode for now.",
+    });
+    expect(await givingAction(null, form({ intent: "give" }))).toMatchObject({ ok: false });
   });
 });

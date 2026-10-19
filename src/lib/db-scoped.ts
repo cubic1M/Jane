@@ -109,6 +109,8 @@ export function scopedFor(userId: string, client: PrismaClient = db) {
     renewalNegotiations: scoped.renewalNegotiation,
     refinanceChecks: scoped.refinanceCheck,
     loanApplications: scoped.loanApplication,
+    studentLoanProfiles: scoped.studentLoanProfile,
+    creditReports: scoped.creditReport,
     balanceTransfers: scoped.balanceTransfer,
     findings: scoped.finding,
     decisions: scoped.decision,
@@ -141,6 +143,7 @@ export function scopedFor(userId: string, client: PrismaClient = db) {
     taxProfiles: scoped.taxProfile,
     taxTags: scoped.taxTag,
     taxForms: scoped.taxForm,
+    taxDocuments: scoped.taxDocument,
     taxReturns: scoped.taxReturn,
     // One-tap answers from Jane's emails (spec step 85).
     chatReplyLinks: scoped.chatReplyLink,
@@ -155,6 +158,11 @@ export function scopedFor(userId: string, client: PrismaClient = db) {
     // One autopilot, every sector (spec step 141).
     autopilotSectors: scoped.autopilotSector,
     autopilotActs: scoped.autopilotAct,
+    // The nightly controller run's log (spec step 142).
+    controllerRuns: scoped.controllerRun,
+    // Money that moves itself (spec steps 144–145).
+    moneyTransfers: scoped.moneyTransfer,
+    paycheckPlans: scoped.paycheckPlan,
     savedShares: scoped.savedShare,
     // What's in investment accounts (spec step 128).
     securities: scoped.security,
@@ -167,6 +175,12 @@ export function scopedFor(userId: string, client: PrismaClient = db) {
     // Automatic investing (spec step 134).
     autoInvestPlans: scoped.autoInvestPlan,
     autoInvestRuns: scoped.autoInvestRun,
+    // College savings (spec step 158).
+    collegePlans: scoped.collegePlan,
+    // The HSA receipts vault (spec step 159).
+    hsaReceipts: scoped.hsaReceipt,
+    // Company stock grants (spec step 160).
+    equityGrants: scoped.equityGrant,
   };
 }
 

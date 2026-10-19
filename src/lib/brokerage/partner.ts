@@ -1,8 +1,8 @@
 import { randomUUID } from "node:crypto";
 import { SIMULATED_PARTNER } from "@/config/brokerage";
-import { DEMO_PRICES } from "@/data-sources/demo/demo-holdings";
 import type { PrismaClient } from "@/generated/prisma/client";
 import { scopedFor } from "@/lib/db-scoped";
+import { lastClose, marketDataFor } from "@/lib/market-data/partner";
 
 // The brokerage partner (spec step 133): where Jane sends orders once the person taps,
 // and where confirmations come from. An interface, so a real brokerage (with a registered
@@ -31,8 +31,11 @@ export interface BrokeragePartner {
   readonly name: string;
   // True for the simulation: screens must say no real money moves.
   readonly simulated: boolean;
-  // Today's price for a ticker, in cents, or null when the partner doesn't trade it.
-  priceOf(ticker: string): number | null;
+  // The price an order fills at, in cents, or null when the partner doesn't trade it.
+  priceOf(
+    ticker: string,
+    options: { userId: string; client: PrismaClient; now: Date },
+  ): Promise<number | null>;
   placeOrders(
     userId: string,
     batch: { batchId: string; reason: string; orders: OrderRequest[] },
@@ -45,15 +48,17 @@ export interface BrokeragePartner {
 export const simulatedBrokerage: BrokeragePartner = {
   name: SIMULATED_PARTNER,
   simulated: true,
-  priceOf(ticker) {
-    const price = DEMO_PRICES[ticker.toUpperCase()];
-    return price === undefined ? null : Math.round(price * 100);
+  // The last close from the market-data partner (spec step 156); cash is always a dollar.
+  async priceOf(ticker, { userId, client, now }) {
+    if (ticker.toUpperCase() === "CASH") return 100;
+    const market = await marketDataFor(userId, client);
+    return market?.priceCents(ticker, lastClose(now)) ?? null;
   },
   async placeOrders(userId, { batchId, reason, orders }, { client, now }) {
     const db = scopedFor(userId, client);
     const out: Confirmation[] = [];
     for (const order of orders) {
-      const priceCents = this.priceOf(order.ticker);
+      const priceCents = await this.priceOf(order.ticker, { userId, client, now });
       const filled = priceCents !== null && order.amountCents > 0;
       const quantity = filled ? Number((order.amountCents / priceCents).toFixed(6)) : 0;
       const confirmation = filled ? `SIM-${randomUUID().slice(0, 8).toUpperCase()}` : null;

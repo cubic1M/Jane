@@ -13,7 +13,7 @@ import {
 } from "@/config/tax";
 import { formatCents } from "@/lib/money";
 import { requireUser } from "@/lib/session";
-import { loadTaxForms, loadTaxTags } from "@/lib/tax-organizer";
+import { loadTaxTags } from "@/lib/tax-organizer";
 import { adviceMode } from "@/lib/advice-mode";
 import { loadTaxEstimate } from "@/lib/tax-estimate";
 import { checkFrom } from "@/lib/tax-withholding";
@@ -23,10 +23,19 @@ import { defaultTaxYear } from "@/planning/tax-pack";
 import { stateName, type FieldStatus } from "@/planning/tax-profile";
 import { EstimateSection } from "./estimate-section";
 import { SavingsSection } from "./savings-section";
+import { InvestmentsSection } from "./investments-section";
+import { loadInvestmentTaxes } from "@/lib/investment-taxes";
 import { RefundSection } from "./refund-section";
 import { loadRefunds } from "@/lib/tax-refund";
 import { WithholdingSection } from "./withholding-section";
 import { FormToggle } from "./form-toggle";
+import { DocumentButtons } from "./document-buttons";
+import { PlanSection } from "./plan-section";
+import { GivingSection } from "./giving-section";
+import { loadGiving } from "@/lib/giving";
+import { loadTaxPlan } from "@/lib/tax-plan";
+import { loadTaxDocuments } from "@/lib/tax-documents";
+import { COMPARED } from "@/planning/tax-document-check";
 
 // Taxes (spec steps 118–127): Jane keeps the person's taxes organised all year. Step 118:
 // the tax profile, and what Jane does by herself at their autopilot level.
@@ -65,7 +74,8 @@ async function TaxesContent() {
   const [{ view, autopilot }, tags, forms, estimate, advice] = await Promise.all([
     loadWorkingProfile(user.id, { now }),
     loadTaxTags(user.id, year),
-    loadTaxForms(user.id, year, { now }),
+    // Spec step 166: with what Jane collected and how each checked.
+    loadTaxDocuments(user.id, year, { now }),
     loadTaxEstimate(user.id, { now }),
     adviceMode(user.id),
   ]);
@@ -86,7 +96,17 @@ async function TaxesContent() {
       <RefundSection refunds={(await loadRefunds(user.id, { now })).refunds} />
       <EstimateSection view={estimate} />
       <WithholdingSection view={{ estimate, check: checkFrom(estimate), advice }} />
+      <InvestmentsSection
+        view={await loadInvestmentTaxes(user.id, estimate.year, { now })}
+        estimate={estimate}
+        advice={advice}
+      />
       <SavingsSection view={await loadTaxSavings(user.id, { now, loaded: { estimate, advice } })} />
+      <GivingSection view={await loadGiving(user.id, { now, loaded: { estimate, advice } })} />
+      <PlanSection
+        view={await loadTaxPlan(user.id, { now, loaded: { estimate, advice } })}
+        today={now.toISOString().slice(0, 10)}
+      />
 
       <section aria-labelledby="profile" className={CARD}>
         <div className="flex flex-wrap items-baseline justify-between gap-2">
@@ -183,6 +203,24 @@ async function TaxesContent() {
                 <span className="[overflow-wrap:anywhere]">
                   <strong>{f.form}</strong> from {f.from}, for {f.what}
                 </span>
+                {f.document && f.check && (
+                  <span
+                    className={
+                      f.usable
+                        ? "text-emerald-800 dark:text-emerald-300"
+                        : "text-red-800 dark:text-red-300"
+                    }
+                  >
+                    {f.check.status === "differs"
+                      ? `Collected by Jane: it shows ${COMPARED[f.formKey]} of ${formatCents(f.check.formCents)}; your accounts show ${formatCents(f.check.seenCents ?? 0)}. ${f.usable ? "You said it's right, so it's used." : "Not used until you say it's right."}`
+                      : f.check.status === "unchecked"
+                        ? "Collected by Jane. Nothing in your accounts to check it against."
+                        : "Collected by Jane: matches your accounts."}
+                  </span>
+                )}
+                {f.document && !f.usable && f.document.decision === null && (
+                  <DocumentButtons year={year} formKey={f.key} label={`${f.form} from ${f.from}`} />
+                )}
                 <span className="text-zinc-600 dark:text-zinc-400">
                   {f.received
                     ? "Received"

@@ -2880,6 +2880,315 @@ connected.
 > Acceptance criteria:
 > - Nothing over the cap happens without a tap; every action is in the log with its reason
 
+## Phase AF: taxes, all of it (steps 165–173)
+
+Phase Z gave Jane the core of taxes: profile, organizer, estimate, withholding, savings,
+freelancers, investment taxes, refunds, filing and autopilot. This phase covers everyone's
+real situation: states, documents that arrive by themselves, a year-round plan, giving,
+families, homes, records that survive an audit, last year's return, and side income. All
+recommendations are demo advice; figures live in config, marked for review, with sources.
+
+### Step 165: State and local taxes
+
+> Read CLAUDE.md. Every state someone lived or worked in.
+>
+> Build:
+> 1. Part-year and multi-state situations (a move, remote work for an out-of-state
+>    employer), state credits and local income taxes, in the estimate and the pack, with
+>    state figures in config per state (the states the demo uses first, the rest marked to
+>    add).
+>
+> Acceptance criteria:
+> - A mid-year move splits income correctly; each state's figures cite their source
+
+### Step 166: Tax documents that collect themselves
+
+> Read CLAUDE.md. W-2s and 1099s, gathered by Jane.
+>
+> Build:
+> 1. A tax-document partner interface with a stand-in (payroll and brokerage forms for the
+>    demo): forms fetched when available, matched to the expected list (step 119), amounts
+>    checked against the transactions, missing ones chased with a reminder.
+>
+> Acceptance criteria:
+> - A form that disagrees with the transactions is flagged, never silently used
+
+### Step 167: The year-round tax plan
+
+> Read CLAUDE.md. The right move at the right time.
+>
+> Build:
+> 1. A calendar of tax moves with their deadlines (retirement and HSA contributions,
+>    estimated payments, December harvesting, giving before year-end, the W-4 after a life
+>    event), each prepared by Jane and done by herself at the right autopilot level.
+>
+> Acceptance criteria:
+> - Every move has a deadline from config; nothing past its deadline is offered
+
+### Step 168: Giving, done smart
+
+> Read CLAUDE.md. More good for the same money (demo advice).
+>
+> Build:
+> 1. Donations found and receipted, bunching years compared with the standard deduction,
+>    giving appreciated shares instead of cash (with step 124), a donor-advised fund
+>    stand-in.
+>
+> Acceptance criteria:
+> - The comparison shows the tax with and without each option
+
+### Step 169: Family taxes
+
+> Read CLAUDE.md. Kids, care and school (demo advice).
+>
+> Build:
+> 1. The child tax credit, dependent care FSA versus the credit, education credits (which
+>    one fits), 529 benefits from step 158, and filing status choices for couples.
+>
+> Acceptance criteria:
+> - Each choice shows both sides' tax; eligibility rules are tested
+
+### Step 170: Homeowner taxes
+
+> Read CLAUDE.md. What a home changes at tax time (demo advice).
+>
+> Build:
+> 1. Mortgage interest and property tax (with the state and local tax cap), points, the
+>    home office, energy credits from purchases seen, and the gain on a sale tracked
+>    against the exclusion.
+>
+> Acceptance criteria:
+> - The cap is applied; every figure links to its transactions or documents
+
+### Step 171: Audit-ready records
+
+> Read CLAUDE.md. Proof for everything claimed.
+>
+> Build:
+> 1. Every deduction and credit tied to its transactions, receipts and documents; an audit
+>    pack per year; how long to keep what, with reminders before deleting.
+>
+> Acceptance criteria:
+> - Nothing in the pack lacks its source; retention follows config
+
+### Step 172: Last year's return, reviewed
+
+> Read CLAUDE.md. Money left behind last year (demo advice).
+>
+> Build:
+> 1. An uploaded prior-year return read (with confirm, like step 151) and checked against
+>    what Jane knows: missed deductions or credits, and an amended return prepared through
+>    the filing stand-in when it's worth it.
+>
+> Acceptance criteria:
+> - Nothing is amended without the person's review and signature
+
+### Step 173: Side income and rentals
+
+> Read CLAUDE.md. Income beyond the paycheck (demo advice).
+>
+> Build:
+> 1. Rental income and expenses, depreciation basics, gig income from platform payouts,
+>    hobby versus business, all in the estimate, the quarterly amounts and the pack.
+>
+> Acceptance criteria:
+> - Platform payouts are matched to their 1099s; depreciation math is tested
+
+## Phase AG: credit and borrowing, all of it (steps 174–181)
+
+Phase Y handles the debts someone has. This phase covers the rest of credit: the right card
+for each purchase, building credit, buy-now-pay-later under control, help when money is
+tight, big purchases planned before the loan, medical bills, and collections. Partners are
+stand-ins; advice is demo advice.
+
+### Step 174: The right card for each purchase
+
+> Read CLAUDE.md. Rewards without the fees (demo advice).
+>
+> Build:
+> 1. A card catalog stand-in (rewards, annual fees, intro offers); which of their cards to
+>    use for each kind of spending, whether each annual fee pays for itself, and a better card
+>    when one would earn more, applied for through the partner stand-in with one tap.
+>
+> Acceptance criteria:
+> - Rewards use the person's own spending; the fee is always counted
+
+### Step 175: Building credit
+
+> Read CLAUDE.md. A better score, step by step.
+>
+> Build:
+> 1. Paying before the statement date to lower utilisation (reminders or automatic through
+>    the money-movement stand-in), on-time streaks, a credit-builder product stand-in for thin
+>    files, and a score simulator for each change.
+>
+> Acceptance criteria:
+> - The simulator is labelled an estimate; nothing changes a real account
+
+### Step 176: Buy now, pay later under control
+
+> Read CLAUDE.md. Every installment, seen and planned.
+>
+> Build:
+> 1. All plans with their next installments in the forecast and safe to spend, a warning
+>    before a new plan would strain the month, and paying off early when it's free.
+>
+> Acceptance criteria:
+> - Installments match the plans' schedules; the warning uses the forecast
+
+### Step 177: When money is tight
+
+> Read CLAUDE.md. Help before it goes wrong.
+>
+> Build:
+> 1. When the forecast shows a shortfall, Jane prepares the options: due-date moves,
+>    hardship programs and lower rates asked for (the call flow, through stand-ins), late
+>    fees waived, which bills to pay first, as one plan with one tap per item.
+>
+> Acceptance criteria:
+> - Essentials (housing, utilities, insurance) come first; every request needs a tap
+
+### Step 178: Buying a car
+
+> Read CLAUDE.md. The loan sorted before the dealer (demo advice).
+>
+> Build:
+> 1. What they can afford, preapproval offers compared (lender stand-in), the dealer's
+>    financing checked against them, and the insurance cost included (Phase AD).
+>
+> Acceptance criteria:
+> - Affordability includes insurance and running costs; offers compare total cost
+
+### Step 179: Buying a home
+
+> Read CLAUDE.md. From saving to closing (demo advice).
+>
+> Build:
+> 1. Affordability, a down-payment goal invested for its date (step 157), mortgage
+>    preapproval offers compared (stand-in), closing costs estimated, and PMI explained.
+>
+> Acceptance criteria:
+> - The plan uses their real cash flow; every assumption is shown
+
+### Step 180: Medical bills
+
+> Read CLAUDE.md. Pay less for care already received.
+>
+> Build:
+> 1. Medical bills found, checked against insurance (Phase AD), financial-assistance
+>    applications and itemized-bill requests drafted, payment plans at zero interest, all
+>    sent with a tap.
+>
+> Acceptance criteria:
+> - Nothing is sent to a provider without a tap; amounts match the bills
+
+### Step 181: Collections and credit report errors
+
+> Read CLAUDE.md. Fix what's wrong on the report.
+>
+> Build:
+> 1. Collections and errors found through the credit partner stand-in, validation and
+>    dispute letters drafted, deadlines tracked, results followed up in the chat.
+>
+> Acceptance criteria:
+> - Every letter cites the right rule and deadline from config; nothing is sent without a
+>   tap
+
+## Phase AH: Jane the agent, round two (steps 182–188)
+
+Phase V made the chat professional. This round makes Jane the one place the person needs:
+she gets payday right, answers across every sector at once, runs the day in one message,
+takes requests that span several sectors, can be talked to, shows everything she did, and
+fits how each person likes to be spoken to.
+
+### Step 182: Paydays that are right
+
+> Read CLAUDE.md. Fix the payday Jane plans around.
+>
+> Build:
+> 1. Paychecks detected for every common schedule (weekly, every two weeks, twice a month on
+>    fixed dates like the 1st and 15th with weekend and holiday shifts, monthly), from
+>    payroll-like deposits only; small interest or refunds are never a paycheck.
+> 2. Safe to spend, the forecast, the brief and every sector that reads the payday use it.
+>
+> Acceptance criteria:
+> - The demo bank's 1st-and-15th payroll is found and $1.02 of interest never is; each
+>   schedule has tests with shifted dates
+
+### Step 183: Answers across everything
+
+> Read CLAUDE.md. "Am I OK?" and "what should I do this month?" answered whole.
+>
+> Build:
+> 1. Rule answers and a Claude tool that pull from every sector at once: the ranked list
+>    (step 143), the health score (step 146), what's due, what Jane is doing; one answer
+>    with the one to three things that matter and their buttons.
+>
+> Acceptance criteria:
+> - Step 87 gains whole-picture questions and they score well; figures match each sector
+
+### Step 184: The day in one message
+
+> Read CLAUDE.md. One morning message runs the day.
+>
+> Build:
+> 1. The brief becomes the day's agenda: what Jane did overnight (step 142), what needs a
+>    yes (with "approve all safe ones"), what's coming up, each a line with its button;
+>    nothing else from Jane until something urgent.
+>
+> Acceptance criteria:
+> - A day with nothing to do gets one short line; urgent things still come at once
+
+### Step 185: Requests that span sectors
+
+> Read CLAUDE.md. "Switch my car insurance and put the savings in my emergency fund."
+>
+> Build:
+> 1. Requests that need several actions become one plan: each step through its feature's
+>    own code, shown together for one confirmation, done in order, with what happened after
+>    each and undo where the feature has it.
+>
+> Acceptance criteria:
+> - Nothing runs before the confirmation; a failed step stops the rest and says why
+
+### Step 186: Talk to Jane
+
+> Read CLAUDE.md. Speak instead of typing.
+>
+> Build:
+> 1. A microphone button in the message box (the browser's speech recognition where
+>    available, the existing /api/voice route otherwise) and answers read aloud on request;
+>    the words go through the same rules and guardrails as typing.
+>
+> Acceptance criteria:
+> - Works with a keyboard and a screen reader; nothing is recorded or stored beyond the
+>   text sent
+
+### Step 187: Everything Jane did
+
+> Read CLAUDE.md. A full, honest record.
+>
+> Build:
+> 1. An activity timeline in the chat and on /jane: every action Jane took by herself or on
+>    a tap, across sectors, with why, the money involved and undo while it works; "why did
+>    you do that?" answered from it.
+>
+> Acceptance criteria:
+> - Every autopilot action appears with its reason; nothing is missing against the audit
+>   log
+
+### Step 188: Jane's way of talking
+
+> Read CLAUDE.md. Short or detailed, as the person likes.
+>
+> Build:
+> 1. Preferences (step 91) for answer length, how often Jane posts, and plain or numbers-
+>    first, picked up from what the person says ("keep it short") and set in Settings; the
+>    templates and Claude's instructions follow them.
+>
+> Acceptance criteria:
+> - The answer shape (step 89) holds at every length; step 87's scores hold
+
 ### Later, when the founder is ready
 
 These need an outside account, a partner or a decision: Plaid Production (real banks) and

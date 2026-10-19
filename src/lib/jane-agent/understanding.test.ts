@@ -58,6 +58,18 @@ describe("new questions", () => {
     expect(parse("how much do I have to spend").kind).toBe("safe_to_spend");
   });
 
+  it("reads whether bills are paid (spec step 145)", () => {
+    for (const text of [
+      "are my bills paid",
+      "pay my credit card",
+      "bill pay",
+      "is my card covered",
+    ]) {
+      expect(parse(text), text).toEqual({ kind: "bills_paid" });
+    }
+    expect(parse("what bills are due this week").kind).not.toBe("bills_paid");
+  });
+
   it("reads paydays and subscriptions", () => {
     for (const text of ["when do I get paid", "when's my next paycheck", "next payday"]) {
       expect(parse(text), text).toEqual({ kind: "payday" });
