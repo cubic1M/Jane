@@ -72,6 +72,9 @@ export type MessageRefs = {
   // The goal "Start a goal for it" would add (spec step 84): money in cents, date
   // YYYY-MM-DD.
   goal?: { name: string; targetCents: number; targetDate: string };
+  // Spec step 98: demo advice (src/lib/advice-mode.ts). The chat shows DEMO_ADVICE_LABEL
+  // under it. Set it on every message that recommends investments, taxes, insurance or loans.
+  advice?: true;
 };
 
 // A message the brain wants to post.
