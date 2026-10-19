@@ -16,7 +16,13 @@ import { loadSnapshot } from "@/lib/jane-agent/snapshot";
 import { sendToJane } from "@/lib/jane-agent/typing";
 import { linkDemoBank } from "@/lib/plaid/demo";
 import { syncItem } from "@/lib/plaid/sync";
-import { checkRates, lenderPartnerFor, loadRefinance, refreshRefinance } from "./refinance";
+import {
+  checkRates,
+  ensureChecked,
+  lenderPartnerFor,
+  loadRefinance,
+  refreshRefinance,
+} from "./refinance";
 
 // Spec step 111 against a real, migrated Postgres, on the demo bank: Jane asks the
 // stand-in lender partner for offers once a month by herself, compares each with keeping
@@ -151,6 +157,13 @@ describe.runIf(url)("refinance offers against a real database", () => {
     expect(row.checkedOn.toISOString().slice(0, 10)).toBe("2026-11-27");
   });
 
+  it("checks when the offers are opened before Jane's first check, and only then", async () => {
+    expect(await ensureChecked(userId, opts())).toBe(false);
+    await client.refinanceCheck.deleteMany({ where: { userId } });
+    expect(await ensureChecked(userId, opts())).toBe(true);
+    expect((await loadRefinance(userId, opts())).checkedOn).toBe("2026-10-18");
+  });
+
   it("never pulls anything for a real account", async () => {
     const realId = await person("refi-real");
     await client.account.create({
@@ -165,6 +178,7 @@ describe.runIf(url)("refinance offers against a real database", () => {
     });
     expect(await lenderPartnerFor(realId, opts())).toBeNull();
     expect(await checkRates(realId, opts())).toBeNull();
+    expect(await ensureChecked(realId, opts())).toBe(false);
     expect(await client.refinanceCheck.count({ where: { userId: realId } })).toBe(0);
     const { reply } = await sendToJane(realId, "find me a better rate", opts());
     expect(reply.body).toMatch(

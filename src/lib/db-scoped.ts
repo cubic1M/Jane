@@ -101,6 +101,7 @@ export function scopedFor(userId: string, client: PrismaClient = db) {
     insuranceQuotes: scoped.insuranceQuote,
     insuranceShops: scoped.insuranceShop,
     insuranceCheckups: scoped.insuranceCheckup,
+    insuranceClaims: scoped.insuranceClaim,
     refinanceChecks: scoped.refinanceCheck,
     loanApplications: scoped.loanApplication,
     balanceTransfers: scoped.balanceTransfer,
@@ -135,6 +136,7 @@ export function scopedFor(userId: string, client: PrismaClient = db) {
     taxProfiles: scoped.taxProfile,
     taxTags: scoped.taxTag,
     taxForms: scoped.taxForm,
+    taxReturns: scoped.taxReturn,
     // One-tap answers from Jane's emails (spec step 85).
     chatReplyLinks: scoped.chatReplyLink,
     // "That's expected" on a change (spec step 97).

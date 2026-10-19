@@ -16,6 +16,8 @@ export type AuditEvent =
   // old one once the new one's first payment went through.
   | "insurance_policy_bound"
   | "insurance_policy_cancelled"
+  // Spec step 107: a claim tracker started (the kind and what happened, never details).
+  | "insurance_claim_started"
   | "user_signed_in"
   | "import_completed"
   // Finding data was sent to Claude for card text.
@@ -95,6 +97,9 @@ export type AuditEvent =
   // A tax tag the person changed (spec step 119): the tag and whether on one transaction or
   // a merchant, never which.
   | "tax_tag_changed"
+  // Filing (spec step 126): a return started with the filing partner, and signed.
+  | "tax_return_started"
+  | "tax_return_signed"
   // Devices and sessions (spec step 73): one other session, or all the others, signed out.
   | "session_signed_out"
   | "other_sessions_signed_out"

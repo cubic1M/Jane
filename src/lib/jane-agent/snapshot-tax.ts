@@ -12,6 +12,8 @@ import { loadTaxSavings } from "@/lib/tax-savings";
 import { loadSelfEmployed, type SelfEmployedView } from "@/lib/self-employed";
 import { REFUND } from "@/config/tax";
 import { loadRefunds, recentRefund, type RefundView } from "@/lib/tax-refund";
+import { filingPartnerFor } from "@/lib/filing";
+import { filingYear, inFilingSeason, loadReturn, type ReturnView } from "@/lib/tax-filing";
 import type { TaxSaving } from "@/planning/tax-savings";
 import type { WithholdingCheck } from "@/planning/withholding";
 import { loadTaxForms, loadTaxTags } from "@/lib/tax-organizer";
@@ -46,6 +48,8 @@ export type TaxSnapshot = {
     selfEmployed?: SelfEmployedView;
     // Spec step 125: a refund that landed lately and hasn't been dealt with.
     refund?: RefundView | null;
+    // Spec step 126: filing season, the partner, and the year's return.
+    filing?: { year: number; inSeason: boolean; available: boolean; return: ReturnView | null };
   } | null;
 };
 
@@ -92,6 +96,19 @@ export async function loadTaxSnapshot(
       savings: (await loadTaxSavings(userId, { client, now, loaded: { estimate, advice } }))
         .savings,
       selfEmployed: await loadSelfEmployed(userId, { client, now, loaded: { estimate, advice } }),
+      filing: await (async () => {
+        const fy = filingYear(today);
+        const [partner, ret] = await Promise.all([
+          filingPartnerFor(userId, { client }),
+          loadReturn(userId, fy, { client, now }),
+        ]);
+        return {
+          year: fy,
+          inSeason: inFilingSeason(fy, today),
+          available: partner !== null,
+          return: ret,
+        };
+      })(),
       refund: recentRefund(
         (await loadRefunds(userId, { client, now, days: REFUND.recentDays })).refunds,
         now,

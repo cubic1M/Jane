@@ -17,6 +17,7 @@ import { matchLine, projectionLine } from "./retirement-copy";
 import { mixLine, planSummary, rebalanceButton, SIMULATED_WORDS } from "./rebalance-copy";
 import type { RebalancePlan } from "@/insights/rebalance";
 import type { loadAutoInvest } from "@/lib/investments/auto-invest";
+import type { AccountPlan } from "@/lib/investments/accounts";
 import {
   AUTO_LINK,
   AUTO_PROMISE,
@@ -361,5 +362,50 @@ export function autoInvestReply(data: Awaited<ReturnType<typeof loadAutoInvest>>
     body: `I can invest ${formatCents(data.suggestion.amountCents)} every payday for you, or the rest after bills and goals. ${AUTO_PROMISE}`,
     actions: [...startButtons(data.suggestion.amountCents), AUTO_LINK],
     refs: { advice: true, autoInvest: data.suggestion },
+  };
+}
+
+// Spec step 135: which account first, where to hold what, and gains not yet taxed.
+export function accountsReply(plan: AccountPlan): Reply {
+  const link: MessageAction = {
+    id: "open",
+    label: "See the order",
+    kind: "link",
+    href: "/investments/accounts",
+  };
+  const gains =
+    plan.gains.gainsCents + plan.gains.lossesCents > 0
+      ? `In your taxable accounts there's ${formatCents(plan.gains.gainsCents)} of gains and ${formatCents(plan.gains.lossesCents)} of losses not yet taxed.`
+      : null;
+  if (!plan.advice) {
+    return {
+      body: [gains, "I don't recommend an account order on real accounts yet."]
+        .filter(Boolean)
+        .join(" "),
+      actions: [link],
+      refs: {},
+    };
+  }
+  if (!plan.order) {
+    const ask = asking(plan.profile.complete ? PROFILE_QUESTIONS[0] : plan.profile.next);
+    return {
+      body: "The order depends on what the money is for and when you'll need it. Four quick answers first.",
+      actions: ask.actions,
+      refs: ask.refs,
+    };
+  }
+  const order = plan.order
+    .map(
+      (s, i) =>
+        `${i + 1}. ${s.title}${s.roomCents !== null ? ` (up to ${formatCents(s.roomCents)} a year)` : ""}. ${s.why}`,
+    )
+    .join("\n");
+  const location = plan.location.length
+    ? `\nWhere to hold what:\n${plan.location.map((m) => `- ${m.holding.name} is better in ${m.better}. ${m.why}`).join("\n")}`
+    : "";
+  return {
+    body: `Here's the order I'd fill your accounts in:\n${order}${location}${gains ? `\n${gains}` : ""}`,
+    actions: [link],
+    refs: { advice: true },
   };
 }

@@ -1,4 +1,6 @@
 import { checkupAnswer } from "./insurance/checkup";
+import { autopilotAnswer } from "./insurance/autopilot";
+import { claimAnswer } from "./insurance/claim";
 import { quotesAnswer } from "./insurance/quotes";
 import { insuranceReply } from "./insurance/replies";
 import { loadInsuranceSnapshot } from "./insurance/snapshot";
@@ -177,6 +179,10 @@ async function byIntent(
       if (intent.ask === "quotes") return quotesAnswer(userId, intent, { client, now });
       // Spec step 106: the coverage checkup, run when asked.
       if (intent.ask === "checkup") return checkupAnswer(userId, { client, now });
+      // Spec step 107: something happened.
+      if (intent.ask === "claim") return claimAnswer(userId, intent, { client, now });
+      // Spec step 108: what Jane does with insurance by herself.
+      if (intent.ask === "autopilot") return autopilotAnswer(userId, { client });
       return insuranceReply(intent, await loadInsuranceSnapshot(userId, { client, now }), asOf);
     case "greeting": {
       if (intent.thanks) return greetingReply(true, null);

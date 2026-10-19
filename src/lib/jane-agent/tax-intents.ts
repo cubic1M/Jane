@@ -30,7 +30,9 @@ export type TaxIntent =
   | { kind: "tax"; ask: "home_office" }
   | { kind: "tax"; ask: "miles"; miles: number | null }
   // Spec step 125.
-  | { kind: "tax"; ask: "refund" };
+  | { kind: "tax"; ask: "refund" }
+  // Spec step 126.
+  | { kind: "tax"; ask: "file" };
 
 const NUMBER_WORDS: Readonly<Record<string, number>> = {
   no: 0,
@@ -109,6 +111,8 @@ const MILES_ADD =
 const MILEAGE = /\b(?:business |work )?mileage\b|\bbusiness miles\b/;
 const REFUND_ASK =
   /\bwhere(?:'s| is) my (?:tax )?refund\b|\b(?:did|has) my (?:tax )?refund (?:come|arrive|land|come in)\b|\bwhat (?:should|could) i do with my (?:tax )?refund\b|\bmy tax refund\b/;
+const FILE =
+  /\bfile (?:my |our )?(?:tax(?:es)?|return|tax return)\b|\b(?:my |our )?tax return\b|\btax deadline\b|\bwhen (?:are|is) (?:my |our )?tax(?:es)? due\b|\b(?:status of|where is) my return\b/;
 const PACK = /\btax(?:-| )?time pack\b|\btax pack\b|\byear-end pack\b/;
 
 function stateCode(words: string): string | null {
@@ -139,6 +143,7 @@ export function parseTaxIntent(text: string): TaxIntent | null {
   if (untag) return { kind: "tax", ask: "tag", target: untag[1].trim(), tag: null };
   if (PACK.test(text)) return { kind: "tax", ask: "pack" };
   if (REFUND_ASK.test(text)) return { kind: "tax", ask: "refund" };
+  if (FILE.test(text)) return { kind: "tax", ask: "file" };
   if (WITHHOLDING.test(text)) return { kind: "tax", ask: "withholding" };
   if (SAVINGS.test(text)) return { kind: "tax", ask: "savings" };
   const miles = MILES_ADD.exec(text);
