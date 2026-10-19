@@ -53,7 +53,13 @@ export type TaxPack = {
   forms: (ExpectedForm & { received: boolean })[];
 };
 
-const PREPARER_ORDER: readonly PreparerGroup[] = ["medical", "childcare", "education", "work"];
+const PREPARER_ORDER: readonly PreparerGroup[] = [
+  "medical",
+  "childcare",
+  "education",
+  "work",
+  "business",
+];
 
 const yearOf = (day: string) => Number(day.slice(0, 4));
 

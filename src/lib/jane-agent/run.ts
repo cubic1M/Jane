@@ -6,6 +6,7 @@ import { scopedFor } from "@/lib/db-scoped";
 import { loadDetectionInput } from "@/detection/engine";
 import { policiesFromPayments } from "@/lib/found-policies";
 import { runPlanUpkeep } from "@/lib/plan-upkeep";
+import { runTaxAutopilotSafely } from "@/lib/tax-autopilot";
 import { gather, plan, type BrainSettings } from "./brain";
 import { closeSettled, postMessages } from "./messages";
 import { queueChatNotificationsSafely } from "./notify";
@@ -44,6 +45,8 @@ export async function runJaneAgent(
   await policiesFromPayments(userId, { client, now, input }).catch((error) =>
     console.error("Finding policies from payments failed", { userId, error: String(error) }),
   );
+  // Taxes (spec steps 123–127): what Jane sets up by herself, at the person's level.
+  await runTaxAutopilotSafely(userId, { client, now });
   const snapshot = await loadSnapshot(userId, { client, now, input });
   if (!snapshot) return { posted: 0 };
   await closeSettled(userId, { client, now });

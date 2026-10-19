@@ -21,6 +21,7 @@ import { TAX_PROFILE_HANDLERS, taxFoundYes, taxIncomeAdd, taxIncomeNo, taxStateS
 import { taxFormGot, taxTagNo, taxTagSet, taxTagYes } from "./tax-organizer";
 import { taxW4Keep, taxW4Next, taxW4Sent, taxW4Start, taxW4Stop } from "./tax-w4";
 import { taxSaveNo, taxSaveTask } from "./tax-savings";
+import { taxMilesAdd, taxQuarterPaid } from "./tax-self-employed";
 import {
   investAnswer1,
   investAnswer2,
@@ -89,6 +90,9 @@ export const ACTION_HANDLERS: Readonly<Record<ActionId, ActionHandler>> = {
   // Spec step 122.
   "tax.save_task": taxSaveTask,
   "tax.save_no": taxSaveNo,
+  // Spec step 123.
+  "tax.quarter_paid": taxQuarterPaid,
+  "tax.miles_add": taxMilesAdd,
   // Investments (spec step 129 on).
   "invest.answer.1": investAnswer1,
   "invest.answer.2": investAnswer2,
