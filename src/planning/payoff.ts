@@ -80,7 +80,9 @@ export type Scenario = {
   extraCents: number;
   months: number;
   interestCents: number;
-  // Against paying only the minimums; null when the minimums alone never pay it all off.
+  // Against paying only the minimums, or, when the minimums alone never pay it all off,
+  // against this plan with no more each month (savedAgainst says which). Null for that
+  // plan's own row.
   interestSavedCents: number | null;
 };
 
@@ -98,6 +100,7 @@ export type PayoffSummary = {
   // What paying more each month does, in the picked order (highest rate first without
   // advice), from DEBT_EXTRA_SCENARIOS_CENTS on top of the plan's own extra.
   scenarios: Scenario[];
+  savedAgainst: "minimums" | "plan";
 };
 
 type Ok = Extract<PayoffPlan, { ok: true }>;
@@ -160,6 +163,10 @@ export function payoffSummary(
   const baseline = minimumsOnly(cards);
   const picked = advice && cards.length > 0 ? pickStrategy(cards, avalanche, snowball) : null;
   const strategy = picked?.strategy ?? "avalanche";
+  // When each minimum alone never finishes, the plan as it is (no more each month) is what
+  // paying more is measured against, so the table never shows only dashes.
+  const asIs = payoffPlan(cards, budget, strategy);
+  const reference = baseline.ok ? baseline : asIs.ok ? asIs : null;
   const scenarios = DEBT_EXTRA_SCENARIOS_CENTS.flatMap((more): Scenario[] => {
     const plan = payoffPlan(cards, budget + more, strategy);
     if (!plan.ok) return [];
@@ -168,9 +175,10 @@ export function payoffSummary(
         extraCents: extraCents + more,
         months: plan.months,
         interestCents: plan.totalInterestCents,
-        interestSavedCents: baseline.ok
-          ? baseline.totalInterestCents - plan.totalInterestCents
-          : null,
+        interestSavedCents:
+          reference && (baseline.ok || more > 0)
+            ? reference.totalInterestCents - plan.totalInterestCents
+            : null,
       },
     ];
   });
@@ -182,6 +190,7 @@ export function payoffSummary(
     avalanche,
     snowball,
     baseline,
+    savedAgainst: baseline.ok ? "minimums" : "plan",
     pick: picked && {
       strategy: picked.strategy,
       order: payoffOrder(cards, picked.strategy).map((c) => c.name),

@@ -200,3 +200,25 @@ describe("giving in the chat", () => {
     });
   });
 });
+
+// Spec step 169.
+describe("family taxes in the chat", () => {
+  it.each([
+    "should we file jointly or separately",
+    "head of household or single",
+    "how does the child tax credit work for me",
+    "dependent care fsa or the credit",
+    "american opportunity or lifetime learning",
+    "what's the 529 tax deduction",
+  ])("%s asks about family taxes", (text) => {
+    expect(parse(text)).toEqual({ kind: "tax", ask: "family" });
+  });
+
+  it("still sets the filing status when told it", () => {
+    expect(parse("we file jointly")).toEqual({
+      kind: "tax",
+      ask: "set_filing",
+      status: "married_joint",
+    });
+  });
+});

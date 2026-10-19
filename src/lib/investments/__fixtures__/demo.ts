@@ -90,6 +90,13 @@ export function demoInvestmentSnapshot(over: Partial<InvestmentSnapshot> = {}): 
     goalBuckets: { byHerself: false, buckets: null },
     college: { children: 0, plans: 0 },
     hsa: { account: null, plan: null, savedCents: 0, demo: true, receipts: 0 },
+    // No crypto connected.
+    crypto: {
+      size: { totalCents: 0, share: 0, overShare: false, gainCents: null },
+      fees: null,
+      demo: true,
+      sources: [],
+    },
     // The demo brokerage's 38 Acme shares, under the limit: no plan.
     companyStock: {
       company: "Acme Corp",

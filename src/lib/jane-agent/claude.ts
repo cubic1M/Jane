@@ -131,6 +131,7 @@ const STATUS: Record<string, string> = {
   priorities: "Working out what matters most…",
   whole_picture: "Looking across everything…",
   money_moves: "Checking what money moved…",
+  health_score: "Working out your money health score…",
   propose_action: "Getting a button ready…",
   show_block: "Drawing it…",
 };

@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { SIMULATED_PARTNER } from "@/config/brokerage";
+import { isCryptoTicker } from "@/config/crypto";
 import type { PrismaClient } from "@/generated/prisma/client";
 import { scopedFor } from "@/lib/db-scoped";
 import { lastClose, marketDataFor } from "@/lib/market-data/partner";
@@ -50,11 +51,13 @@ export const simulatedBrokerage: BrokeragePartner = {
   simulated: true,
   // The last close from the market-data partner (spec step 156); cash is always a dollar.
   async priceOf(ticker, { userId, client, now }) {
+    if (isCryptoTicker(ticker)) return null;
     if (ticker.toUpperCase() === "CASH") return 100;
     const market = await marketDataFor(userId, client);
     return market?.priceCents(ticker, lastClose(now)) ?? null;
   },
   async placeOrders(userId, { batchId, reason, orders }, { client, now }) {
+    refuseCrypto(orders);
     const db = scopedFor(userId, client);
     const out: Confirmation[] = [];
     for (const order of orders) {
@@ -95,6 +98,18 @@ export const simulatedBrokerage: BrokeragePartner = {
     return out;
   },
 };
+
+export class NoCryptoOrders extends Error {
+  constructor() {
+    super("Jane never trades crypto.");
+  }
+}
+
+// Spec step 161: there is no order path for crypto. Any batch with a crypto order is
+// refused whole, before anything is recorded, whichever partner is in use.
+export function refuseCrypto(orders: OrderRequest[]) {
+  if (orders.some((o) => isCryptoTicker(o.ticker))) throw new NoCryptoOrders();
+}
 
 // The partner in use. Swap in a real brokerage here once one is connected.
 export const brokeragePartner = (): BrokeragePartner => simulatedBrokerage;

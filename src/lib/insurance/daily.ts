@@ -6,8 +6,11 @@ import { reshopAll, reshopPerson } from "./shop";
 import { benefitsFromPayroll } from "./benefits";
 import { enrollmentReview } from "./benefits-review";
 import { BENEFITS_DAILY_LIMIT } from "@/config/benefits";
-import { LIFE_DAILY_LIMIT } from "@/config/insurance";
+import { CLAIMS_DAILY_LIMIT, LIFE_DAILY_LIMIT } from "@/config/insurance";
 import { sizeLife } from "./life";
+import { coverChangesAll, prepareCoverChanges } from "./cover-changes";
+import { negotiationsAll, negotiationsDue } from "./negotiate";
+import { refreshClaimStatuses } from "./claim-filing";
 
 // Insurance that runs itself (spec Phase X), at every autopilot level: reshops 45 days before
 // renewal and on a price rise (step 104), and the coverage checkup once a year and after a
@@ -21,6 +24,9 @@ export async function insuranceDaily({ client = defaultClient, now = new Date() 
     checkups: await checkupAll({ client, now }),
     benefits: await benefitsAll({ client, now }),
     life: await lifeAll({ client, now }),
+    coverChanges: await coverChangesAll({ client, now }),
+    negotiations: await negotiationsAll({ client, now }),
+    claims: await claimStatusesAll({ client, now }),
   };
 }
 
@@ -83,7 +89,32 @@ export async function insuranceAfterSync(
     await enrollmentReview(userId, { client, now });
     // Spec step 153.
     await sizeLife(userId, { client, now });
+    // Spec step 154.
+    await prepareCoverChanges(userId, { client, now });
+    // Spec step 155.
+    await negotiationsDue(userId, { client, now });
+    await refreshClaimStatuses(userId, { client, now });
   } catch (error) {
     console.error("Insurance after sync failed", { userId, error: String(error) });
   }
+}
+
+// Spec step 155: the carrier's status on every claim Jane filed.
+export async function claimStatusesAll({ client = defaultClient, now = new Date() }: Options = {}) {
+  // A system job across users: ids only; everything after is scoped to the person.
+  const people = await client.insuranceClaim.findMany({
+    where: { filing: "filed", status: "open" },
+    select: { userId: true },
+    distinct: ["userId"],
+    take: CLAIMS_DAILY_LIMIT,
+  });
+  let moved = 0;
+  for (const { userId } of people) {
+    try {
+      moved += (await refreshClaimStatuses(userId, { client, now })).length;
+    } catch (error) {
+      console.error("Claim status failed", { userId, error: String(error) });
+    }
+  }
+  return { people: people.length, moved };
 }
