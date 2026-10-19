@@ -77,6 +77,21 @@ describe("expectedForms", () => {
     });
   });
 
+  it("for a past year, still expects the loan interest forms, amount unknown", () => {
+    const forms = expectedForms({
+      year: 2025,
+      transactions: [],
+      accounts: [],
+      loans: [
+        { name: "Home Loan", kind: "mortgage", ytdInterestPaidCents: null },
+        { name: "Car", kind: "loan", ytdInterestPaidCents: null },
+      ],
+    });
+    expect(forms).toEqual([
+      expect.objectContaining({ key: "mortgage:home-loan", form: "1098", amountCents: null }),
+    ]);
+  });
+
   it("uses each year's threshold: $600 for 2025", () => {
     const [form] = expectedForms({
       year: 2025,

@@ -216,7 +216,7 @@ describe.runIf(url)("the tax organizer against a real database", () => {
       now: later(),
     });
     expect(donated.reply.body).toBe(
-      "So far in 2026 I've tagged $100.00 of donations (2): American Red Cross $100.00. It's all in your tax-time pack.",
+      "You've given $100.00 to charity in 2026 so far, by my tax tags (2): American Red Cross $100.00. It's all in your tax-time pack.",
     );
 
     const forms = await sendToJane(userId, "what tax forms should I expect", {
