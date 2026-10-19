@@ -149,6 +149,9 @@ describe.runIf(url)("data export against a real database", () => {
         valuedOn: new Date("2026-09-01"),
       },
     });
+    await client.debtTerms.create({
+      data: { userId, debtKey: `bnpl:affirm:${name.length}`, aprBps: 1500 },
+    });
     await client.deadline.create({
       data: { userId, title: `${name} FSA deadline`, dueOn: new Date("2026-12-31"), kind: "fsa" },
     });
@@ -221,6 +224,7 @@ describe.runIf(url)("data export against a real database", () => {
       "balanceSnapshots",
       "events",
       "ownedAssets",
+      "debtTerms",
       "deadlines",
       "lifeEvents",
       "changeAcks",
