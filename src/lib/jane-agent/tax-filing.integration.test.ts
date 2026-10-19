@@ -31,6 +31,8 @@ const url = process.env.TEST_DATABASE_URL;
 const LINKED = new Date("2026-10-18T15:00:00Z");
 const FEB = new Date("2027-02-10T16:00:00Z");
 const HOUR = 60 * 60 * 1000;
+// Each test runs Jane over a whole demo bank, which takes longer than vitest's default.
+vi.setConfig({ testTimeout: 60_000 });
 
 describe.runIf(url)("filing through the partner against a real database", () => {
   let client: PrismaClient;

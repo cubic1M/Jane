@@ -55,6 +55,7 @@ export async function exportUserData(
     savedShares,
     autopilotSectors,
     autopilotActs,
+    controllerRuns,
     janeMessages,
     janePreferences,
     teamAccess,
@@ -401,6 +402,10 @@ export async function exportUserData(
     db.autopilotActs.findMany({
       select: { sector: true, cents: true, what: true, createdAt: true },
     }),
+    // The nightly controller run's log (spec step 142).
+    db.controllerRuns.findMany({
+      select: { day: true, startedAt: true, finishedAt: true, steps: true },
+    }),
     // Jane's chat (spec step 81): every message, with the buttons and what they answered.
     db.janeMessages.findMany({
       select: {
@@ -598,6 +603,7 @@ export async function exportUserData(
     savedShares,
     autopilotSectors,
     autopilotActs,
+    controllerRuns,
     janeMessages,
     janePreferences,
     investments,

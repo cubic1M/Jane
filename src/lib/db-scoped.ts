@@ -152,6 +152,8 @@ export function scopedFor(userId: string, client: PrismaClient = db) {
     // One autopilot, every sector (spec step 141).
     autopilotSectors: scoped.autopilotSector,
     autopilotActs: scoped.autopilotAct,
+    // The nightly controller run's log (spec step 142).
+    controllerRuns: scoped.controllerRun,
     savedShares: scoped.savedShare,
     // What's in investment accounts (spec step 128).
     securities: scoped.security,

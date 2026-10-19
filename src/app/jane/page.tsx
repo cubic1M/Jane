@@ -3,7 +3,9 @@ import { connection } from "next/server";
 import { Suspense, type ReactNode } from "react";
 import { AppHeader } from "@/components/app-header";
 import { scopedDb } from "@/lib/db-scoped";
+import { lastControllerRun } from "@/lib/controller-log";
 import { loadJaneHub } from "@/lib/hubs/jane";
+import { checkedLine } from "@/lib/jane-agent/replies-checked";
 import { formatCents } from "@/lib/money";
 import { requireUser } from "@/lib/session";
 
@@ -44,7 +46,11 @@ async function JaneContent() {
   const user = await requireUser();
   await connection();
   const db = await scopedDb();
-  const [hub, accounts] = await Promise.all([loadJaneHub(user.id), db.accounts.count()]);
+  const [hub, accounts, lastRun] = await Promise.all([
+    loadJaneHub(user.id),
+    db.accounts.count(),
+    lastControllerRun(user.id),
+  ]);
   const { decide, inProgress, done, alerts } = hub;
 
   return (
@@ -168,6 +174,22 @@ async function JaneContent() {
               </li>
             ))}
           </ul>
+        )}
+      </Section>
+
+      {/* Spec step 142: the nightly controller run, one line per sector. */}
+      <Section title="What I checked last night" links={[]}>
+        {lastRun ? (
+          <ul className="flex flex-col gap-1 text-sm">
+            {lastRun.steps.map((s) => (
+              <li key={s.step}>
+                {checkedLine(s)}
+                {s.changed > 0 ? <span className={MUTED}> · {s.changed} changed</span> : null}
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p className={MUTED}>Jane checks everything every night. The first run shows here.</p>
         )}
       </Section>
 
