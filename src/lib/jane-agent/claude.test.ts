@@ -23,12 +23,35 @@ const client = {} as PrismaClient;
 const create = vi.fn();
 // What each request sent, as it was then (the loop keeps adding to one array).
 const sent: { role: string; content: unknown }[][] = [];
+// A streamed request: what create returns, played back as the SDK's stream events, the
+// text a few characters at a time.
+type Listener = (...args: unknown[]) => void;
 const claude = () =>
   ({
     messages: {
-      create: (params: { messages: { role: string; content: unknown }[] }) => {
+      stream: (params: { messages: { role: string; content: unknown }[] }) => {
         sent.push(structuredClone(params.messages));
-        return create(params);
+        const listeners: Record<string, Listener[]> = {};
+        const emit = (name: string, ...args: unknown[]) =>
+          (listeners[name] ?? []).forEach((fn) => fn(...args));
+        const stream = {
+          on(name: string, fn: Listener) {
+            (listeners[name] ??= []).push(fn);
+            return stream;
+          },
+          async finalMessage() {
+            const message = await create(params);
+            for (const block of message.content) {
+              emit("streamEvent", { type: "content_block_start", content_block: block });
+              if (block.type === "text") {
+                for (let i = 0; i < block.text.length; i += 7)
+                  emit("text", block.text.slice(i, i + 7));
+              }
+            }
+            return message;
+          },
+        };
+        return stream;
       },
     },
   }) as never;
@@ -96,10 +119,11 @@ describe("askClaudeInChat", () => {
       safeToSpend: "$1,234.56",
       until: "2026-10-30",
     });
-    // The same model settings as Ask, with the chat's tools.
+    // A faster model than the rest of the app, thinking little, with the chat's tools.
     expect(create.mock.calls[0][0]).toMatchObject({
+      model: "claude-sonnet-5-5",
       thinking: { type: "adaptive" },
-      output_config: { effort: "medium" },
+      output_config: { effort: "low" },
       tools: CHAT_TOOLS,
     });
   });
@@ -253,5 +277,92 @@ describe("proposeAction", () => {
     expect((await propose({ action: "open", page: "https://evil.example" })).ok).toBe(false);
     expect((await propose({ action: "autopilot.pause" })).ok).toBe(false);
     expect((await propose(null)).ok).toBe(false);
+  });
+
+  it("uses the chat model from the environment when one is set", async () => {
+    vi.stubEnv("ANTHROPIC_CHAT_MODEL", "claude-haiku-5-5");
+    create.mockResolvedValueOnce(final("Hi there."));
+    await askClaudeInChat("u1", [], "hello", options);
+    expect(create.mock.calls[0][0]).toMatchObject({ model: "claude-haiku-5-5" });
+    vi.unstubAllEnvs();
+  });
+
+  it("sends the person's main numbers with the question, so no lookup is needed", async () => {
+    vi.mocked(homeSummary).mockResolvedValue({
+      safeToSpend: {
+        safeCents: 123_456,
+        payday: "2026-10-30",
+        balanceCents: 300_000,
+        billsCents: 50_000,
+        budgetsLeftCents: 0,
+        goalsCents: 0,
+        setAsideCents: 0,
+      },
+      comingUp: [],
+    } as never);
+    create.mockResolvedValueOnce(final("You have $1,234.56 to spend until Oct 30."));
+
+    const result = await askClaudeInChat("u1", [], "how am I doing", options);
+
+    // One request, and the figure from the numbers passes the guardrails.
+    expect(create).toHaveBeenCalledTimes(1);
+    expect(result.kind).toBe("answer");
+    const system = create.mock.calls[0][0].system as { text: string }[];
+    expect(system[0]).toMatchObject({ cache_control: { type: "ephemeral" } });
+    expect(system[1].text).toContain("today is 2026-10-18");
+    expect(system[1].text).toContain('safe_to_spend: {"safeToSpend":"$1,234.56"');
+    // Its findings, from the same snapshot as the tool.
+    expect(system[1].text).toContain("Review your Hulu subscription");
+  });
+
+  it("streams what it's looking up and the answer as it's written", async () => {
+    create
+      .mockResolvedValueOnce({
+        stop_reason: "tool_use",
+        content: [
+          { type: "text", text: "Let me check. " },
+          { type: "tool_use", id: "t-found", name: "open_findings", input: {} },
+        ],
+      })
+      .mockResolvedValueOnce(final("Hulu is on your list. Want me to look at it?"));
+    vi.mocked(homeSummary).mockResolvedValue(null as never);
+    const events: unknown[] = [];
+
+    await askClaudeInChat("u1", [], "what have you found", {
+      ...options,
+      onEvent: (e) => events.push(e),
+    });
+
+    expect(events[0]).toEqual({ type: "status", text: "Looking at your numbers…" });
+    // The lead-in shows, then is taken back when it turns into a lookup.
+    expect(events).toContainEqual({ type: "text", text: "Let me check." });
+    const reset = events.findIndex((e) => (e as { type: string }).type === "reset");
+    const looking = events.findIndex(
+      (e) => (e as { text?: string }).text === "Checking what I've found…",
+    );
+    expect(looking).toBeGreaterThan(0);
+    expect(reset).toBeGreaterThan(looking);
+    // Then the answer, a sentence at a time.
+    expect(events.slice(reset + 1)).toEqual([
+      { type: "text", text: "Hulu is on your list." },
+      { type: "text", text: " Want me to look at it?" },
+    ]);
+  });
+
+  it("never streams a sentence the guardrails refuse", async () => {
+    create.mockResolvedValueOnce(
+      final("Here's the plan. You'll definitely save $9,999.00 with this. Okay?"),
+    );
+    const shown: string[] = [];
+
+    const result = await askClaudeInChat("u1", [], "save me money", {
+      ...options,
+      onEvent: (e) => {
+        if (e.type === "text") shown.push(e.text);
+      },
+    });
+
+    expect(shown).toEqual(["Here's the plan."]);
+    expect(result.kind).toBe("blocked");
   });
 });

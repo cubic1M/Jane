@@ -84,6 +84,18 @@ export const CHAT_MAX_MESSAGE = 500;
 export const CHAT_CLAUDE_HISTORY = 10;
 // Most rounds of tool calls Claude may make for one answer, like Ask (ASK_MAX_TOOL_ROUNDS).
 export const CHAT_CLAUDE_MAX_TURNS = 6;
+// How hard Claude thinks before answering in the chat: low keeps answers quick, and the
+// person's main numbers come with the question (CHAT_PRIMER_TOOLS) so most need no lookup.
+export const CHAT_CLAUDE_EFFORT = "low";
+// Looked up before Claude is asked, and sent with the question.
+export const CHAT_PRIMER_TOOLS = [
+  "safe_to_spend",
+  "coming_up",
+  "spending_by_category",
+  "budgets",
+  "goals",
+  "open_findings",
+] as const;
 // "What's due this week" looks this many days ahead.
 export const CHAT_WEEK_DAYS = 7;
 // Categories named when the person asks what they spent without naming one.

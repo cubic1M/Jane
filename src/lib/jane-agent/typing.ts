@@ -8,7 +8,7 @@ import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
 import { hit } from "@/lib/rate-limit";
 import { answerByRules } from "./answer";
-import { askClaudeInChat, type ChatTurn } from "./claude";
+import { askClaudeInChat, type ChatStreamEvent, type ChatTurn } from "./claude";
 import { parseIntent } from "./intents";
 import { unknownReply, type Reply } from "./replies";
 import { MESSAGE_SELECT, toChatMessage, type ChatMessage } from "./types";
@@ -24,6 +24,8 @@ type Options = {
   client?: PrismaClient;
   now?: Date;
   claude?: () => Pick<Anthropic, "messages">;
+  // Claude's answer as it's written, and what Jane is looking up (./claude).
+  onEvent?: (event: ChatStreamEvent) => void;
 };
 
 export type ChatInputErrorCode = "empty" | "too_long" | "rate_limited";
@@ -63,7 +65,7 @@ async function answer(
   userId: string,
   text: string,
   history: ChatTurn[],
-  { client, now, claude }: Required<Pick<Options, "client" | "now">> & Options,
+  { client, now, claude, onEvent }: Required<Pick<Options, "client" | "now">> & Options,
 ): Promise<{ reply: Reply; intent: string; source: Source }> {
   const intent = parseIntent(text, now.toISOString().slice(0, 10));
   const byRules = await answerByRules(userId, intent, { client, now });
@@ -77,7 +79,12 @@ async function answer(
       source: "fallback",
     };
   }
-  const result = await askClaudeInChat(userId, history, text, { client, now, claude });
+  const result = await askClaudeInChat(userId, history, text, {
+    client,
+    now,
+    claude,
+    onEvent,
+  });
   const source: Source =
     result.kind === "answer"
       ? "claude"
@@ -90,7 +97,7 @@ async function answer(
 export async function sendToJane(
   userId: string,
   raw: string,
-  { client = defaultClient, now = new Date(), claude }: Options = {},
+  { client = defaultClient, now = new Date(), claude, onEvent }: Options = {},
 ): Promise<{ sent: ChatMessage; reply: ChatMessage }> {
   const text = raw.trim();
   if (!text) throw new ChatInputError("empty", "Type a message first.");
@@ -121,7 +128,12 @@ export async function sendToJane(
     select: MESSAGE_SELECT,
   });
 
-  const { reply, intent, source } = await answer(userId, text, history, { client, now, claude });
+  const { reply, intent, source } = await answer(userId, text, history, {
+    client,
+    now,
+    claude,
+    onEvent,
+  });
   // A millisecond later, so the answer always sits under the question.
   const answeredAt = new Date(now.getTime() + 1);
   const replied = await db.janeMessages.create({
