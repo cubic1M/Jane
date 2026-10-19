@@ -39,6 +39,10 @@ export const ACTION_IDS = [
   // Loans and debt (spec step 110): start the payoff plan in one order or the other.
   "debt_plan.avalanche",
   "debt_plan.snowball",
+  // Jane notices changes (spec step 97).
+  "change.look",
+  "change.budget",
+  "change.expected",
 ] as const;
 export type ActionId = (typeof ACTION_IDS)[number];
 
@@ -80,6 +84,9 @@ export type MessageRefs = {
   advice?: true;
   // Spec step 110: the extra a month the payoff plan's buttons start it with, in cents.
   debtPlanExtraCents?: number;
+  // Spec step 97: a change Jane noticed (src/insights/changes.ts), by its key; for a
+  // category's pace, the budget "Set a budget" would set (cents a month).
+  change?: { key: string; kind: string; category?: string; budgetCents?: number };
 };
 
 // A message the brain wants to post.

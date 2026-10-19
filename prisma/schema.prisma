@@ -311,6 +311,7 @@ model User {
   securities             Security[]
   holdings               Holding[]
   investmentTransactions InvestmentTransaction[]
+  changeAcks             ChangeAck[]
 
   @@map("users")
 }
@@ -1622,4 +1623,20 @@ model InvestmentTransaction {
   @@index([userId, date])
   @@index([accountId])
   @@map("investment_transactions")
+}
+
+// "That's expected" on a change Jane noticed (spec step 97): a bill that moved, a new
+// subscription, a paycheck, a category's pace or a new fee. Keyed by the change's own key
+// (src/insights/changes.ts), so that change is never brought up again.
+model ChangeAck {
+  id        String   @id @default(cuid())
+  userId    String   @map("user_id")
+  key       String
+  kind      String
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, key])
+  @@map("change_acks")
 }

@@ -38,6 +38,26 @@ describe("debt questions", () => {
     expect(intent("payoff date for Klarna")).toEqual({ kind: "debt_detail", target: "klarna" });
   });
 
+  it("reads a question about getting out of debt, with any extra a month", () => {
+    for (const text of [
+      "What's the fastest way out of debt?",
+      "how do I pay off my debt",
+      "when will I be debt free",
+      "which card should I pay off first",
+      "show me my payoff plan",
+    ]) {
+      expect(intent(text), text).toEqual({ kind: "payoff_plan", extraCents: null });
+    }
+    expect(intent("what if I pay $200 more a month")).toEqual({
+      kind: "payoff_plan",
+      extraCents: 20_000,
+    });
+    expect(intent("paying an extra 150 toward my debts")).toEqual({
+      kind: "payoff_plan",
+      extraCents: 15_000,
+    });
+  });
+
   it("leaves requests and other questions alone", () => {
     expect(intent("lower the rate on my card")).toMatchObject({ kind: "act", verb: "lower" });
     expect(intent("what's due this week")).toMatchObject({ kind: "coming_up" });

@@ -19,6 +19,8 @@ export const CHAT_SOURCE_LIMITS: Readonly<Record<string, number>> = {
   // Loans and debt (spec Phase Y).
   debts: 1,
   payoff: 1,
+  // Spec step 97.
+  changes: 2,
   // Spec step 128 on.
   investments: 2,
 };
@@ -74,6 +76,10 @@ export const MESSAGE_PRIORITY = {
   payoff_off_track: 72,
   payoff_offer: 55,
   payoff_on_track: 48,
+  // Spec step 97: a change Jane noticed is news, so it comes before set-up suggestions and
+  // findings that can wait (a price rise's finding is asked about in the change's own
+  // heads-up).
+  change: 66,
   // Spec step 128: what's in investment accounts, the first time Jane sees it.
   investments: 32,
 } as const;

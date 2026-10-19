@@ -170,14 +170,17 @@ describe.runIf(url)("payoff plans against a real database", () => {
       data: { currentBalanceCents: (card.currentBalanceCents ?? 0) - (owed - target) - 50_000 },
     });
 
+    // Jane's own run checks the plan before it looks at the person's money.
     await runJaneAgent(userId, { client, now: later(62), trigger: "open" });
-    const posted = await client.janeMessage.findFirst({
-      where: { userId, dedupeKey: { startsWith: "payoff:check:" }, kind: "done" },
-    });
-    expect(posted?.body).toMatch(/^I checked your payoff plan: you're on track/);
     expect((await client.debtPlan.findUniqueOrThrow({ where: { userId } })).status).toBe(
       "on_track",
     );
+    const snapshot = await loadSnapshot(userId, opts(later(62)));
+    const [message] = gather(snapshot!, later(62), { trigger: "open" }).filter(
+      (m) => m.source === "payoff",
+    );
+    expect(message).toMatchObject({ kind: "done", dedupeKey: "payoff:check:2026-12-19" });
+    expect(message.body).toMatch(/^I checked your payoff plan: you're on track/);
   });
 
   it("gives Claude the plan, with every figure recorded", async () => {

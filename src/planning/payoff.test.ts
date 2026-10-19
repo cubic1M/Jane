@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { DEBT_EXTRA_SCENARIOS_CENTS } from "@/config/debt";
 import type { Debt } from "@/insights/debts";
-import { payoffPlan } from "./debt";
+import { payoffPlan, type PayoffPlan } from "./debt";
 import {
   expectedBalances,
   minimumsOnly,
@@ -167,16 +167,19 @@ describe("the payoff plan", () => {
 });
 
 describe("which order Jane picks", () => {
-  const ok = (months: number, interest: number, paidOffMonth: Record<string, number>) =>
-    ({
-      ok: true,
-      strategy: "avalanche",
-      months,
-      totalInterestCents: interest,
-      totalPaidCents: 0,
-      paidOffMonth,
-      schedule: [],
-    }) as const;
+  const ok = (
+    months: number,
+    interest: number,
+    paidOffMonth: Record<string, number>,
+  ): PayoffPlan => ({
+    ok: true,
+    strategy: "avalanche",
+    months,
+    totalInterestCents: interest,
+    totalPaidCents: 0,
+    paidOffMonth,
+    schedule: [],
+  });
   const cards = planDebts([
     CARD,
     debt({ key: "small", kind: "card", balanceCents: 20_000, aprBps: 1500 }),
