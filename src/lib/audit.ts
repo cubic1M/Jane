@@ -65,6 +65,9 @@ export type AuditEvent =
   | "proposal_answered"
   // A button on one of Jane's chat messages (spec step 81): which one, never the text.
   | "chat_action_taken"
+  // What Jane remembers (spec step 91): saved on the person's tap, deleted in Settings.
+  | "preference_saved"
+  | "preference_deleted"
   // The action agent (src/lib/agent/run.ts).
   | "agent_message_sent"
   | "agent_reply_received"
