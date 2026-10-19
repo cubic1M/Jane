@@ -140,7 +140,11 @@ test("apply prepares the application, and it's sent only once the terms are revi
   await expect(page.getByText("Ready for you to review and submit")).toBeVisible();
   // Submit needs the terms reviewed (the server refuses without it too).
   await expect(page.getByLabel("I've reviewed the terms above")).toHaveAttribute("required", "");
-  await page.getByLabel("I've reviewed the terms above").check();
+  // On a phone the checkbox can land under Next's dev indicator in the bottom corner, which
+  // swallows the tap; bring it to the middle of the screen first.
+  const reviewed = page.getByLabel("I've reviewed the terms above");
+  await reviewed.evaluate((el) => el.scrollIntoView({ block: "center" }));
+  await reviewed.check();
   await page.getByRole("button", { name: "Submit the application" }).click();
   await expect(page.getByText("Approved by Harbor Auto Refi: waiting for your yes.")).toBeVisible();
   await page.getByRole("button", { name: "Accept the loan" }).click();
