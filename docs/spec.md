@@ -19,9 +19,9 @@ The MVP proves one thing: people will link their accounts and say yes to an agen
 
 The build runs in eleven steps, with Plaid added at step 7 after the founders test on their own CSV data; the second half of this doc holds one Claude Code prompt per step.
 
-## Status (Oct 18, 2026)
+## Status (Oct 19, 2026)
 
-Steps 1–63 are built (24 came before 22, because do-it-yourself kits need its cancel links). On Oct 18, 2026 the roadmap was reordered: Phase M (Jane acts for you, steps 49–56), then Phase Q (Autopilot, steps 57–64), Phase N (the complete picture, 65–68), Phase O (plan ahead, 69–72), the rest of Phase L (73–74) and Phase P (regulated features through partners), which replaces the old Phase F. Where the build differs from the original plan, the plan below has been kept and the difference is noted here.
+Steps 1–63 are built (24 came before 22, because do-it-yourself kits need its cancel links). On Oct 18, 2026 the roadmap was reordered: Phase M (Jane acts for you, steps 49–56), then Phase Q (Autopilot, steps 57–64), Phase N (the complete picture, 65–68), Phase O (plan ahead, 69–72), the rest of Phase L (73–74) and Phase P (regulated features through partners), which replaces the old Phase F. On Oct 19, 2026, after Phase U, two phases were added: Phase V (Jane does the thinking, steps 87–94: she remembers, notices changes, fills things in from payments and keeps plans up to date by herself) and Phase W (show Jane to more people, steps 95–97). Production deploys only when the founder asks (automatic Vercel deploys are off: the free plan allows 100 a day). Where the build differs from the original plan, the plan below has been kept and the difference is noted here.
 
 | Step | Shipped in | Notes |
 | --- | --- | --- |
@@ -108,6 +108,7 @@ Steps 1–63 are built (24 came before 22, because do-it-yourself kits need its 
 | 83 Every feature from the chat | PR #102 | Five more message sources and twelve more buttons, each through the feature's own code and checked again on the server. Autopilot: until the person picks a level, one "How much should I do on my own?" message with Handle the safe stuff, Handle everything allowed and Ask me first (setAutopilot, as in Settings; asked once and outside the daily limit). Set-up suggestions: each budget and goal on the plan, the Yearly bills goal included, said as math from their own numbers, with Set it up, No and (with more than one) Use all N suggestions (answerProposal, acceptAllProposals). Things waiting on the person: a company's question with Answer (opens that action), an offer made on a call with Accept and Decline (answerOffer), a company that only cancels online with Open cancel page and I've cancelled (markSelfCancelled), and a switch with Sign up; the general "I need you for one step" message skips these. Budgets nearly used up (90%, in src/config/agent-chat.ts) with Open and Snooze, and Snooze on one gone over. Deadlines in the next 3 days: Mark done on ones the person typed in (markDeadlineDone) and Remind me tomorrow on all. Urgent alerts: Got it marks that alert read. Things you own: a mortgage or car loan with nothing linked gets "Add your home's value" (or car's), opening the form prefilled. "Not now" (and Snooze, Remind me tomorrow) hides a heads-up until the start of the person's tomorrow (jane_messages.snoozed_until); Jane never posts it again before then and brings it back at the bottom with its buttons after, if it still applies. Messages answered elsewhere (autopilot in Settings, a suggestion on the plan, a step on Actions, a deadline, an alert) lose their buttons. Calls, cancellations, insurance and moving money still only happen with the person's own tap. None of these pages has an undo, so these buttons have none either |
 | 84 Typing to Jane | PR #101 | The box at the bottom of the chat is a real one: what you type is a "user" message and Jane's answer a "reply" right under it, capped at 500 characters and 60 messages an hour. Rules answer first, with no key needed (src/lib/jane-agent/intents.ts, pure): "can I afford $900 for a trip in March" (the effect on safe to spend, goals and checking from the afford page's math; for a later month a "Start a goal for it" button), "how much did I spend on food last month" (categories in everyday words, or a merchant), "what's due (this week)", "safe to spend", "cancel Hulu" / "lower my phone bill" / "get my refund from Target" (the matching open finding with its Yes, No and Jane's pick, or "I don't see anything open" with Open subscriptions), "what did you do", "yes to all" (offers Approve all safe ones), "undo" (offers Undo on a rule's yes), "pause autopilot" (offers a Pause button) and "help". Typing never acts: every change is a button, checked again when tapped; two new buttons were added to the registry (Start a goal, Pause autopilot). With ANTHROPIC_API_KEY set, anything else goes to Claude with the last 10 typed messages and answers only, read-only tools (Ask's, plus safe to spend, coming up, findings, goals, budgets and net worth), at most 6 rounds and Ask's hourly limit; its one propose_action tool can only offer a registered button (a finding's Yes and No, Approve all safe ones, a goal, or a link to a known page). Every Claude answer passes the guardrails or is replaced by safe text with no buttons. Typed text is in Download my data, deleted with the account and never logged (analytics get only the kind of question). /ask still works and its old conversations stay readable there, linked from the chat when you have some |
 | 85 Jane's messages as notifications | PR #103 | Jane's important chat messages now reach the person outside the app: things to decide and the week's plan, heads-ups, and "I did this" with Undo (the morning brief only if they turn it on; heads-ups about alerts go out as alerts, never twice). With phone notifications on, each goes straight away as a notification titled "Jane" with the message and up to two of its buttons ("Yes", "No"); tapping a button answers it through a new signed-in endpoint (/api/chat/act) with the chat's own checks, and signed out it just opens the message in the chat (/chat#message). Without a phone, or for people who prefer email, one email lists everything that sat unread for an hour (from the daily run straight away), in Jane's ASCII look, each button a one-tap link to a small confirm page (/chat/reply) with the message and one button: hashed token, works once, for 3 days, only that person's own message, and someone else signed in is refused. Limits in src/config/chat-notify.ts: 6 a day, 2 emails a day, 5 messages an email, nothing older than a day, nothing in quiet hours (9pm to 8am) and nothing already read, answered or sent (jane_messages.notified_at and notified_via). Sending is a job (chat_notify) so failures retry. Settings → Notifications has "Messages from Jane": phone notifications (email until they're on), email, both or off, and which kinds; changes apply at once, and the email's "Stop these emails" link turns email off. Audited (chat_notification_sent: channel and kind only) and tracked. Phone notifications need the VAPID keys and email needs Resend's key |
+| Chat fixes after Phase U | PRs #105–#112 | From the founder trying the chat: "can I spend $500 this week for food" is an affordability question with the food budget and a usual week next to it (#105); free questions use a faster model (ANTHROPIC_CHAT_MODEL, default Sonnet 5.5, low effort) with the person's main numbers sent up front and the answer streamed a sentence at a time, each past the guardrails (#106); every figure in what Jane was given counts for the guardrails and a failed answer gets one rewrite before the fallback, and greetings are answered by rules (#107); finding_details and subscriptions tools so Jane suggests what to do from the evidence and the compared options (#109); Jane's own messages have a yellow edge, her answers stay plain (#111); /transactions no longer scrolls sideways on phones (#108); the header reads the session once (#110); automatic Vercel deploys are off (#112) |
 
 Still needed from a person before outside users: counsel (insurance referral licensing, privacy policy and terms), Plaid Production approval and questionnaire, a backup restore test, and admins enrolling in two-factor. See docs/beta-checklist.md.
 
@@ -1812,6 +1813,200 @@ Ground rules for every step in this phase:
 > Acceptance criteria:
 > - Every page is reachable from the chat or the Details menu (tested against src/app)
 > - Answering on a page or in the chat shows the same answer in both
+
+## Phase V: Jane does the thinking (steps 87–94)
+
+After Phase U, Jane talks to the person, but much of what she knows still has to be typed
+in or looked up by them: insurance from a document, goals updated by hand, life events
+started from a page. And she forgets: a "no" today can come back as the same suggestion
+next week. This phase makes her notice things by herself and keep what she knows up to date,
+so the person's part is a yes or a no. Nothing here needs an outside account.
+
+Ground rules, as in Phase U: rules decide and Claude only words things, through the
+guardrails; every suggestion is a chat message with buttons through the feature's own code;
+thresholds in config; no investment, tax or legal advice.
+
+### Step 87: Jane remembers
+
+> Read CLAUDE.md. Jane remembers what the person tells her.
+>
+> Build:
+> 1. jane_preferences (user-owned, exported, deleted with the account): "don't suggest this
+>    again" on any suggestion (by finding fingerprint or merchant), things they've said in
+>    the chat ("I need my car", "I'm not cancelling Netflix", "payday is the 15th"), each
+>    with where it came from and when.
+> 2. A "Don't suggest again" button on Jane's own messages; typed preferences saved only
+>    after a confirm button ("Got it: I won't suggest cancelling Netflix again. [Save]").
+> 3. The brain and the chat read them: a dismissed suggestion never comes back, and Claude
+>    gets them with the person's numbers. Settings lists them, each one deletable.
+>
+> Acceptance criteria:
+> - A dismissed suggestion never returns, even when the finding is found again
+> - Nothing typed is saved without the confirm tap; deleting one takes effect at once
+
+### Step 88: Jane notices changes
+
+> Read CLAUDE.md. Jane spots what changed, before the person does.
+>
+> Build:
+> 1. New heads-ups, each a rule in src/config/changes.ts: any regular bill whose amount
+>    changed (utilities, insurance, phone, not only subscriptions), a new subscription
+>    started, a paycheck that's late, smaller or from a new employer, and a category
+>    running well above its usual pace for the month.
+> 2. Each with the right buttons: "Set a budget" (prefilled), "Look into it" (opens the
+>    finding), "That's expected" (stops it for this merchant or month).
+>
+> Acceptance criteria:
+> - Each rule has tests with the demo bank and with edge cases (one-off big months,
+>   annual bills, a paycheck moved by a holiday)
+> - "That's expected" stops that heads-up for that merchant or month
+
+### Step 89: Insurance and renewals from payments
+
+> Read CLAUDE.md. Jane fills in what she can see in the payments.
+>
+> Build:
+> 1. Insurance policies found from regular payments to insurers (a merchant list in
+>    config): insurer, kind when the name says it (auto, home, renters, life), premium and
+>    how often, a renewal estimated from the payment pattern; added as "found from your
+>    payments" with Confirm and Not insurance buttons. Documents (step 68) still add detail.
+> 2. Deadlines filled in by themselves: yearly renewals and card annual fees from the
+>    payment history, and trials that end (a small or free charge followed by a sign-up),
+>    each a deadline with a heads-up a week before.
+>
+> Acceptance criteria:
+> - Nothing found from payments counts until the person confirms it, and "Not insurance"
+>   sticks
+> - A renewal date is always shown as an estimate
+
+### Step 90: Life events spotted
+
+> Read CLAUDE.md. Jane notices big changes in someone's life from their money.
+>
+> Build:
+> 1. Rules in config for moving (movers, a new utility account, a deposit, a new rent
+>    amount), a new job (a new employer's paycheck, the old one stopping) and a new baby
+>    (several baby-store charges); each needs two or more signals.
+> 2. Jane asks once, kindly: "Looks like you might be moving. Want my moving checklist?"
+>    with Yes (starts the life-events checklist), Not me and Don't ask again.
+>
+> Acceptance criteria:
+> - One signal alone never asks; Not me and Don't ask again stop it
+> - The question never says what it's based on beyond the person's own charges
+
+### Step 91: Goals and budgets that keep up
+
+> Read CLAUDE.md. Plans update themselves.
+>
+> Build:
+> 1. Goal progress counts transfers into the goal's savings account by itself; Jane says
+>    when a goal is ahead or behind, with buttons to change the monthly amount or the date.
+> 2. On the 1st, Jane proposes a budget tune-up from last month (categories over or well
+>    under), as one message with Accept all, Change and Keep as is.
+>
+> Acceptance criteria:
+> - Nothing about a goal or budget changes without a tap
+> - Proposals use the same math and wording as the Goals and Budgets pages
+
+### Step 92: "Why?" in the chat
+
+> Read CLAUDE.md. Every suggestion can explain itself, in the chat.
+>
+> Build:
+> 1. A "Why?" button on Jane's suggestions: a reply with the evidence (the charges and
+>    dates), what would change, what they'd give up, and the options compared with Jane's
+>    pick, from finding_details, as fixed wording (no Claude needed).
+> 2. Typed follow-ups ("why that one?", "what else is there?") answered from the same
+>    details.
+>
+> Acceptance criteria:
+> - Every figure in a "Why?" reply comes from the finding or its comparison
+> - Works without an Anthropic key
+
+### Step 93: Jane's answer checks
+
+> Read CLAUDE.md. Make sure Jane's chat answers stay good.
+>
+> Build:
+> 1. A fixed set of questions over the demo bank (what people really ask: "should I cancel
+>    Netflix", "can I spend $500 on food this week", "hi", "what's due", "where's my money
+>    going"), each with what a good answer has: answered (not the fallback), the right
+>    figures, a suggestion and a button where one fits, nothing the guardrails refuse.
+> 2. A script that runs them against Claude and scores each, run on demand before a deploy
+>    (it costs a little per run, so not on every push), plus a rules-only part in the
+>    normal tests.
+> 3. Blocked answers counted per day on /admin/metrics (issue codes only).
+>
+> Acceptance criteria:
+> - The rules-only questions run in CI; the Claude run reports a score per question
+> - A change that makes Jane answer worse shows up as a lower score
+
+### Step 94: Faster, cheaper answers
+
+> Read CLAUDE.md. Answer more questions instantly, without Claude.
+>
+> Build:
+> 1. More rule answers from the questions people type most (from chat_message_sent
+>    intents marked "unknown"): a merchant's cost ("how much is Netflix"), the next
+>    paycheck, the subscription list, the biggest spending this month, a finding by name.
+> 2. The numbers sent with a free question are cached for a minute per person, so a
+>    follow-up starts at once.
+>
+> Acceptance criteria:
+> - Each new rule answer has tests and matches the page it comes from
+> - A follow-up question within a minute doesn't reload the numbers
+
+## Phase W: show Jane to more people (steps 95–97)
+
+### Step 95: Try Jane without signing up
+
+> Read CLAUDE.md. Let visitors see Jane before they sign up.
+>
+> Build:
+> 1. "Try it with sample data" on the landing page: a temporary demo person with the demo
+>    bank, the chat and every page, read-only for anything that would contact a company,
+>    deleted after a day; "Sign up to use your own accounts" everywhere.
+> 2. Rate-limited per visitor, no email collected, never mixed into metrics.
+>
+> Acceptance criteria:
+> - A demo visitor can't reach anyone else's data or send anything outside the app
+> - Demo people are deleted on time
+
+### Step 96: What Jane saved you
+
+> Read CLAUDE.md. Show the savings Jane can prove.
+>
+> Build:
+> 1. A page with the confirmed savings (confirmedAnnualCents and refunds that arrived),
+>    each with its receipt (the old charge, the new one, the refund), separate from
+>    estimates, which are labelled as estimates.
+> 2. A shareable card with the total only (no merchants or amounts unless the person picks
+>    them).
+>
+> Acceptance criteria:
+> - Only savings seen in the person's own transactions count as confirmed
+> - Nothing personal is shared without the person choosing it
+
+### Step 97: Help inside the chat
+
+> Read CLAUDE.md. New people learn Jane by using her.
+>
+> Build:
+> 1. A short first-run conversation in the chat: what Jane does, what she never does,
+>    autopilot levels, and three example questions to tap.
+> 2. "help" and "what can you do" answer with the features grouped, each a link.
+>
+> Acceptance criteria:
+> - The first-run messages show once and can be skipped
+> - Every link in help goes to a real page (tested against src/app)
+
+### Later, when the founder is ready
+
+These need an outside account or a decision, so they wait for the founder: Plaid
+Production (real banks instead of the demo bank), counsel's review (privacy policy,
+terms, insurance referrals), a native iPhone app (an Apple developer account), Phase P
+partners (moving money, credit score, tax filing, investing), and Vercel Pro if 100
+deploys a day is ever too few.
 
 ## Phase P: regulated features through partners
 
