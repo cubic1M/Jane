@@ -118,6 +118,7 @@ describe.runIf(url)("data export against a real database", () => {
       data: { userId, kind: "brief", body: `${name} brief`, dedupeKey: "brief:2026-10-18" },
     });
     await client.changeAck.create({ data: { userId, key: "fee:tx_1", kind: "new_fee" } });
+    await client.lifeEventAnswer.create({ data: { userId, kind: "moving", answer: "not_me" } });
     await client.askConversation.create({
       data: {
         userId,
@@ -212,6 +213,7 @@ describe.runIf(url)("data export against a real database", () => {
       "deadlines",
       "lifeEvents",
       "changeAcks",
+      "lifeEventAnswers",
       "janeMessages",
     ] as const) {
       expect(data[key], key).toHaveLength(1);

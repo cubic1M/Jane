@@ -310,6 +310,7 @@ model User {
   holdings               Holding[]
   investmentTransactions InvestmentTransaction[]
   changeAcks             ChangeAck[]
+  lifeEventAnswers       LifeEventAnswer[]
 
   @@map("users")
 }
@@ -1584,4 +1585,20 @@ model ChangeAck {
 
   @@unique([userId, key])
   @@map("change_acks")
+}
+
+// The person's answer when Jane asked about a life event she spotted (spec step 100): yes
+// (she ran the checklist), not_me (never asked about that kind again) or never (no
+// life-event questions at all; kind is "all").
+model LifeEventAnswer {
+  id        String   @id @default(cuid())
+  userId    String   @map("user_id")
+  kind      String
+  answer    String
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, kind])
+  @@map("life_event_answers")
 }

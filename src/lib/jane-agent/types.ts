@@ -40,6 +40,10 @@ export const ACTION_IDS = [
   "change.look",
   "change.budget",
   "change.expected",
+  // Life events spotted (spec step 100).
+  "life.yes",
+  "life.no",
+  "life.never",
 ] as const;
 export type ActionId = (typeof ACTION_IDS)[number];
 
@@ -82,6 +86,8 @@ export type MessageRefs = {
   // Spec step 97: a change Jane noticed (src/insights/changes.ts), by its key; for a
   // category's pace, the budget "Set a budget" would set (cents a month).
   change?: { key: string; kind: string; category?: string; budgetCents?: number };
+  // Spec step 100: the life event (moving, new_job, new_baby) Yes would start.
+  lifeKind?: string;
 };
 
 // A message the brain wants to post.
