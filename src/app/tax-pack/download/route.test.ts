@@ -56,7 +56,17 @@ describe("GET /tax-pack/download", () => {
     );
     expect(response.headers.get("cache-control")).toBe("no-store");
     expect(await response.text()).toBe(
-      "Group,Date,Payee,Amount\r\nCharity,2025-05-01,'@Red Cross,50.00\r\n",
+      [
+        "Group,Date,Payee,Amount,Note",
+        "Charity,2025-05-01,'@Red Cross,50.00,Tagged by Jane",
+        "Summary,,Charity: total,50.00,",
+        "Summary,,Medical: total,0.00,",
+        "Summary,,Childcare: total,0.00,",
+        "Summary,,Education: total,0.00,",
+        "Summary,,Work expenses: total,0.00,",
+        "Summary,,Income from contracting or gig work: total,0.00,",
+        "",
+      ].join("\r\n"),
     );
     expect(logAudit).toHaveBeenCalledWith(
       { type: "user", id: "u1" },

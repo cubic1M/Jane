@@ -17,6 +17,7 @@ import { linkDemoBank } from "@/lib/plaid/demo";
 import { syncItem } from "@/lib/plaid/sync";
 import { profileSummary } from "@/planning/investor-profile";
 import { loadFees } from "./fees";
+import { loadReview } from "./review";
 import { profileOf, saveProfileForm } from "./profile";
 
 // Investments (spec steps 128–137) against a real, migrated Postgres (see
@@ -152,5 +153,21 @@ describe.runIf(url)("investments in Jane's chat, against a real database", () =>
     });
     expect(reply.refs.advice).toBe(true);
     expect(reply.body).toContain("Lower-cost equivalents:");
+  });
+
+  it("step 131: reviews against the profile once it's answered", SLOW, async () => {
+    const userId = await demoPerson();
+    expect((await loadReview(userId, { client, now: LINKED })).review).toBeNull();
+    await saveProfileForm(
+      userId,
+      { age: "45", horizon: "over_20", dropReaction: "worry", goals: ["retirement"] },
+      { client, now: LINKED },
+    );
+    const { review } = await loadReview(userId, { client, now: LINKED });
+    expect(review).toMatchObject({ riskLevel: 3, offTarget: true, totalCents: 9_673_055 });
+    expect(review?.recommendations[0].kind).toBe("rebalance");
+    const { reply } = await sendToJane(userId, "review my portfolio", { client, now: LINKED });
+    expect(reply.refs.advice).toBe(true);
+    expect(reply.body).toMatch(/^Against your moderate profile/);
   });
 });

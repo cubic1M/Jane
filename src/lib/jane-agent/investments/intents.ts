@@ -2,7 +2,7 @@
 // normalized text in (./../intents.ts normalize), the topic out, or null when it isn't
 // about investments. Each investment step adds its topics here.
 
-export type InvestmentTopic = "holdings" | "profile" | "fees";
+export type InvestmentTopic = "holdings" | "profile" | "fees" | "review";
 
 export type InvestmentIntent = {
   kind: "investments";
@@ -38,7 +38,12 @@ const PROFILE =
 const FEES =
   /\bexpense ratios?\b|\b(?:investment|investing|fund|401\(?k\)?|ira|brokerage|portfolio|advisory|adviser|advisor) (?:fees?|costs?|charges?)\b|\bwhat do (?:my )?(?:investments|funds|401\(?k\)?) cost\b|\bhow much (?:do|am) i pay(?:ing)? (?:in fees )?(?:for|on) (?:my )?(?:investments|funds|401\(?k\)?|ira|brokerage)\b|\bcheaper funds?\b|\blower[- ]cost funds?\b/;
 
+// Spec step 131: does it fit?
+const REVIEW =
+  /\b(?:review|check|look at|assess) (?:my )?(?:portfolio|investments|401\(?k\)?|ira|allocation|holdings)\b|\b(?:is|are) my (?:portfolio|investments|401\(?k\)?|ira|mix) (?:ok|okay|good|fine|balanced|right|too risky|risky|diversified)\b|\bam i (?:well |properly )?diversified\b|\b(?:asset )?allocation\b|\bhow should i (?:invest|be invested)\b|\bwhat should i (?:change|do) (?:with|in|about) my (?:portfolio|investments|401\(?k\)?|ira|brokerage)\b|\bportfolio review\b|\btoo much (?:in|of) (?:one|a single) (?:stock|company)\b/;
+
 export function parseInvestmentIntent(text: string): InvestmentIntent | null {
+  if (REVIEW.test(text)) return { kind: "investments", topic: "review", account: null };
   if (FEES.test(text)) {
     return { kind: "investments", topic: "fees", account: ACCOUNT.exec(text)?.[1] ?? null };
   }

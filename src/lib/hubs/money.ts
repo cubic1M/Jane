@@ -12,6 +12,7 @@ import { scopedFor } from "@/lib/db-scoped";
 import { listGoals } from "@/lib/goals";
 import { formatCents } from "@/lib/money";
 import { assetPrompts, promptHref, type AssetPrompt } from "@/lib/owned-assets";
+import { loadInsurance } from "@/lib/insurance/profile";
 import { plural, type HubGroup, type HubTileData } from "./tile";
 
 // The Money hub (spec step 80): the picture of the person's money, one tile per page, each
@@ -34,6 +35,8 @@ export type MoneyData = {
   recurring: { count: number; yearlyCents: number };
   debt: { accounts: number; owedCents: number };
   documents: number;
+  // Spec step 102: policies on the insurance profile and gaps in the cover.
+  insurance: { policies: number; gaps: number };
 };
 
 const monthName = (month: string) =>
@@ -146,6 +149,17 @@ export function moneyTiles(d: MoneyData): HubGroup[] {
       value: d.documents > 0 ? String(d.documents) : null,
       status: d.documents > 0 ? "Policies, warranties and receipts" : "Add a policy or receipt",
     },
+    {
+      label: "Insurance",
+      href: "/insurance",
+      value: d.insurance.policies > 0 ? String(d.insurance.policies) : null,
+      status:
+        d.insurance.gaps > 0
+          ? `${plural(d.insurance.gaps, "gap")} in your cover`
+          : d.insurance.policies > 0
+            ? "Every policy in one place"
+            : "Add your policies",
+    },
   ];
 
   return [
@@ -162,7 +176,7 @@ export async function loadMoneyHub(
 ): Promise<MoneyData> {
   const db = scopedFor(userId, client);
   const asOf = now.toISOString().slice(0, 10);
-  const [accounts, owned, goals, budgets, transactions, input, confirmed, documents] =
+  const [accounts, owned, goals, budgets, transactions, input, confirmed, documents, insurance] =
     await Promise.all([
       db.accounts.findMany({
         select: {
@@ -199,6 +213,7 @@ export async function loadMoneyHub(
         select: { merchantKey: true },
       }),
       db.documents.count(),
+      loadInsurance(userId, { client, now }),
     ]);
 
   // Net worth today, as /net-worth works it out.
@@ -243,5 +258,6 @@ export async function loadMoneyHub(
     },
     debt: { accounts: debt.lines.length, owedCents: debt.totalOwedCents },
     documents,
+    insurance: { policies: insurance.policies.length, gaps: insurance.gaps.length },
   };
 }

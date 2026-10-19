@@ -23,7 +23,14 @@ export async function GET(request: NextRequest) {
     { type: "user", id: user.id },
     "tax_pack_downloaded",
     { type: "user", id: user.id },
-    { year, rows: csv.split("\r\n").length - 2 },
+    {
+      year,
+      // Transactions in it, not the summary lines.
+      rows:
+        pack.charity.rows.length +
+        Object.values(pack.preparer).reduce((n, g) => n + g.rows.length, 0) +
+        pack.income.rows.length,
+    },
   );
   return new NextResponse(csv, {
     headers: {

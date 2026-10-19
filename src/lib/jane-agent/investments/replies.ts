@@ -1,9 +1,14 @@
 import { GOALS, PROFILE_QUESTIONS } from "@/config/investing";
 import { formatBps, type InvestmentAccountView, type HoldingView } from "@/insights/investments";
 import type { FeeSummary } from "@/insights/investment-fees";
+import { classWords, type PortfolioReview } from "@/insights/portfolio-review";
 import type { Investments } from "@/lib/investments/holdings";
 import { formatCents } from "@/lib/money";
-import { profileSummary, type ProfileAnswers } from "@/planning/investor-profile";
+import {
+  profileSummary,
+  type ProfileAnswers,
+  type ProfileSummary,
+} from "@/planning/investor-profile";
 import type { Reply } from "../replies";
 import type { MessageAction } from "../types";
 import { equivalentLine, feeRange, switchSummary } from "./fees-copy";
@@ -152,4 +157,54 @@ export function feesReply(fees: FeeSummary, advice: boolean): Reply {
   if (!advice || fees.equivalents.length === 0) return { body, actions: [link], refs: {} };
   body += `\n\nLower-cost equivalents:\n${fees.equivalents.map((e) => `- ${equivalentLine(e)}`).join("\n")}\n${switchSummary(fees.equivalents, fees.years)}`;
   return { body, actions: [link], refs: { advice: true } };
+}
+
+// Spec step 131: the portfolio review. Facts for everyone; what to change only in demo
+// advice mode, and only once the profile is complete.
+export function reviewReply(
+  investments: Investments,
+  profile: ProfileSummary,
+  review: PortfolioReview | null,
+  advice: boolean,
+): Reply {
+  const link: MessageAction = {
+    id: "open",
+    label: "See the review",
+    kind: "link",
+    href: "/investments/review",
+  };
+  if (investments.holdingCount === 0) return holdingsReply(investments, null);
+  const mix = investments.byAssetClass
+    .map((c) => `${formatCents(c.valueCents)} in ${classWords(c.label)}`)
+    .join(", ");
+  if (!advice) {
+    return {
+      body: `Here's your mix: ${mix}. I don't give investment recommendations on real accounts yet.`,
+      actions: [link],
+      refs: {},
+    };
+  }
+  if (!profile.complete || !review) {
+    const ask = asking(profile.complete ? PROFILE_QUESTIONS[0] : profile.next);
+    return {
+      body: `To check whether your investments fit you, I need four quick answers first. Here's your mix for now: ${mix}.`,
+      actions: ask.actions,
+      refs: ask.refs,
+    };
+  }
+  const now = review.mix
+    .map(
+      (m) =>
+        `${classWords(m.label)} ${Math.round(m.share * 100)}% (target ${Math.round(m.targetShare * 100)}%)`,
+    )
+    .join(", ");
+  const changes =
+    review.recommendations.length === 0
+      ? "Your mix is on target: nothing to change."
+      : `What I'd change:\n${review.recommendations.map((r, i) => `${i + 1}. ${r.what} ${r.why}`).join("\n")}`;
+  return {
+    body: `Against your ${review.riskLabel.toLowerCase()} profile: ${now}.\n${changes}`,
+    actions: [link],
+    refs: { advice: true },
+  };
 }

@@ -17,6 +17,8 @@ export const TAX_PACK_COPY = {
     medical: "Medical",
     childcare: "Childcare",
     education: "Education",
+    // Spec step 119: tagged by the person.
+    work: "Work expenses",
   },
   groupEmpty: "None found for this year.",
   interestHeading: "Interest paid on loans",
@@ -40,6 +42,19 @@ export const TAX_PACK_COPY = {
   lifeEventsLink: "Life-event checklists",
   incomplete:
     "This only includes what's in your linked accounts. Receipts and statements are the source of truth.",
+  // Spec step 119: the summary, the tags and the forms to expect.
+  summaryHeading: "Summary",
+  tagsNote: "Gathered from your tax tags. Change any tag and the pack follows.",
+  tagsLink: "See and change your tax tags",
+  checkNote: "Tagged by Jane: check it",
+  formsHeading: "Tax forms to expect",
+  formsEmpty: "No forms expected from what's in your accounts.",
+  formsNote:
+    "From the payers and lenders in your accounts. Usual dates; each payer sends its own form.",
+  formReceived: "Received",
+  formWaiting: "Waiting",
+  formMayNotSend: "May not send one: below the reporting threshold",
+  noteLabel: "Note",
 } as const;
 
 export const QUARTER_LABELS = [
