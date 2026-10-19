@@ -96,7 +96,7 @@ describe.runIf(url)("investment taxes against a real database", () => {
     expect(estimate.input.income.longTermGainsCents).toBe(view.realisedCents.longTerm);
   });
 
-  it("warns about the wash sale, and in October offers the harvest and where to hold what", async () => {
+  it("warns about the wash sale, and in October offers the harvest", async () => {
     const out = taxesSource.gather((await loadSnapshot(userId, { client, now: LINKED }))!, {
       now: LINKED,
       local: { date: "2026-10-18", hour: 8 },
@@ -113,13 +113,12 @@ describe.runIf(url)("investment taxes against a real database", () => {
     );
     expect(harvest.body).toContain("turn that off first");
     expect(harvest.refs).toMatchObject({ advice: true, taxTask: { dueOn: "2026-12-15" } });
-    expect(out.find((c) => c.dedupeKey.startsWith("location:"))?.body).toMatch(
-      /^Pinnacle Dividend Income Fund pays out income/,
-    );
+    // Where to hold what is the investments lane's to say (step 135).
+    expect(out.some((c) => c.dedupeKey.startsWith("location:"))).toBe(false);
   });
 
   it("answers capital gains questions, and gives Claude the details", async () => {
-    const { reply } = await sendToJane(userId, "what are my capital gains this year", {
+    const { reply } = await sendToJane(userId, "what are my realized gains this year", {
       client,
       now: LINKED,
     });

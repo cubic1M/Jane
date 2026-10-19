@@ -2,7 +2,7 @@ import { WASH_SALE_DAYS } from "@/config/tax-rates";
 import type { InvestmentTaxesView } from "@/lib/investment-taxes";
 import type { TaxEstimateView } from "@/lib/tax-estimate";
 import { formatCents } from "@/lib/money";
-import type { HarvestChance, InvHolding, Realised } from "@/planning/investment-taxes";
+import type { HarvestChance, Realised } from "@/planning/investment-taxes";
 import { estimateTaxes } from "@/planning/tax-estimate";
 import { roundDollars } from "@/planning/tax-estimate-copy";
 import { snoozeButton } from "./sources/source";
@@ -73,17 +73,6 @@ export function harvestMessage(chance: HarvestChance, estimate: TaxEstimateView)
           : `No buying it back for ${WASH_SALE_DAYS} days.`,
       },
     },
-  };
-}
-
-export function locationMessage(h: InvHolding): Said {
-  return {
-    body: `${h.name} pays out income that's taxed every year in your brokerage account. Held in a 401(k) or IRA instead, it wouldn't be, so new money for it is better put there, and the brokerage kept for index funds that pay out little.`,
-    actions: [
-      { id: "open", label: "See your investments", kind: "link", href: "/investments" },
-      snoozeButton(),
-    ],
-    refs: { advice: true },
   };
 }
 

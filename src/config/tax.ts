@@ -328,7 +328,8 @@ export const TAX_MESSAGE_PRIORITY = {
   // Spec step 127.
   january: 74,
   // Spec step 124.
-  wash_sale: 71,
+  // A wash sale is news, but not before what can save money today.
+  wash_sale: 41,
   harvest: 33,
   // Spec step 123.
   quarterly: 88,

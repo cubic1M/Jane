@@ -118,8 +118,10 @@ const REFUND_ASK =
 const FILE =
   /\bfile (?:my |our )?(?:tax(?:es)?|return|tax return)\b|\b(?:my |our )?tax return\b|\btax deadline\b|\bwhen (?:are|is) (?:my |our )?tax(?:es)? due\b|\b(?:status of|where is) my return\b/;
 const STANDARD = /\bstandard deduction\b/;
+// Capital gains, harvesting and asset location in general are the investments lane's
+// (step 135, ./investments/intents.ts); these are what step 124 adds.
 const INVESTMENT_TAX =
-  /\bcapital gains?\b|\brealized gains?\b|\brealised gains?\b|\btax[- ]loss harvest\w*\b|\bharvest (?:my )?loss(?:es)?\b|\bwash sales?\b|\b(?:gains|losses) (?:on|from) my (?:investments|stocks|funds)\b|\bwhich account should i (?:hold|keep|put)\b/;
+  /\breali[sz]ed (?:gains?|losses?)\b|\bharvest (?:my )?loss(?:es)?\b|\bwash sales?\b|\b(?:gains|losses) (?:on|from) (?:my )?(?:sales|selling)\b/;
 const PACK = /\btax(?:-| )?time pack\b|\btax pack\b|\byear-end pack\b/;
 
 function stateCode(words: string): string | null {

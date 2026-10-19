@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { DemoAdviceLabel } from "@/components/demo-advice-label";
 import type { InvestmentTaxesView } from "@/lib/investment-taxes";
 import type { TaxEstimateView } from "@/lib/tax-estimate";
@@ -72,7 +73,13 @@ export function InvestmentsSection({
           {view.location.map((h) => (
             <p key={`loc${h.securityId}`}>
               {h.name}: its payouts are taxed every year here; it&apos;s better held in a 401(k) or
-              IRA.
+              IRA.{" "}
+              <Link
+                href="/investments/accounts"
+                className="font-medium text-emerald-700 hover:underline"
+              >
+                Where to hold what
+              </Link>
             </p>
           ))}
           <DemoAdviceLabel />

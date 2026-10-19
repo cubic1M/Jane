@@ -71,8 +71,8 @@ describe("tax intents", () => {
     ["file my taxes", "file"],
     ["when is the tax deadline", "file"],
     ["what's the standard deduction", "standard_deduction"],
-    ["what are my capital gains this year", "investments"],
-    ["should I do tax loss harvesting", "investments"],
+    ["what are my realized gains this year", "investments"],
+    ["should I harvest my losses", "investments"],
     ["was that a wash sale", "investments"],
   ])("%s asks about %s (steps 120–121)", (text, ask) => {
     expect(parse(text)).toEqual({ kind: "tax", ask });
@@ -86,6 +86,11 @@ describe("tax intents", () => {
     });
     expect(parse("log 40 miles")).toEqual({ kind: "tax", ask: "miles", miles: 40 });
     expect(parse("my business mileage")).toEqual({ kind: "tax", ask: "miles", miles: null });
+  });
+
+  it("leaves capital gains and harvesting in general to the investments lane", () => {
+    expect(parse("do I have capital gains").kind).not.toBe("tax");
+    expect(parse("tax loss harvesting").kind).not.toBe("tax");
   });
 
   it("leaves debts to the loans: how much do I owe isn't a tax question", () => {

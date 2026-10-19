@@ -11,7 +11,7 @@ import { nextQuarter, quarterMessage, setAsideMessage } from "../tax-self-employ
 import { refundMessage } from "../tax-refund-message";
 import { filingAccepted, filingOffer, filingReady } from "../tax-filing-message";
 import { januaryMessage } from "../tax-january";
-import { harvestMessage, locationMessage, washSaleMessage } from "../tax-investments";
+import { harvestMessage, washSaleMessage } from "../tax-investments";
 import { HARVEST_FROM } from "@/config/tax";
 import { formatCents } from "@/lib/money";
 import { incomeLine, listOf } from "@/planning/tax-profile";
@@ -194,7 +194,8 @@ export const taxesSource: MessageSource = {
     }
 
     // Spec step 124: investments. A wash sale, for everyone; in demo advice mode, a loss
-    // worth harvesting (from October to the year's end) and what's better held elsewhere.
+    // worth harvesting (from October to the year's end). Where to hold what is said by the
+    // investments lane (step 135).
     const inv = tax.investments;
     if (inv) {
       for (const sale of inv.washSales) {
@@ -216,14 +217,6 @@ export const taxesSource: MessageSource = {
               priority: TAX_MESSAGE_PRIORITY.harvest,
             });
           }
-        }
-        for (const holding of inv.location.slice(0, 1)) {
-          out.push({
-            kind: "decision",
-            ...locationMessage(holding),
-            dedupeKey: `location:${estimate.year}:${holding.securityId}`,
-            priority: TAX_MESSAGE_PRIORITY.harvest - 1,
-          });
         }
       }
     }
