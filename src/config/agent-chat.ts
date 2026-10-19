@@ -208,6 +208,10 @@ export const CHAT_PRIMER_TOOLS = [
 export const CHAT_RUNNERS_UP = 2;
 // "What's due this week" looks this many days ahead.
 export const CHAT_WEEK_DAYS = 7;
+// Spec step 183: "Am I OK?" names at most this many bills and deadlines due within
+// CHAT_WEEK_DAYS (or by the month's end for "this month"), and this many things to do.
+export const WHOLE_PICTURE_DUE = 3;
+export const WHOLE_PICTURE_TOP = 3;
 // Categories named when the person asks what they spent without naming one.
 export const CHAT_TOP_CATEGORIES = 3;
 
