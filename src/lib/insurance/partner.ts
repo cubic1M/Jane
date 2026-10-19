@@ -12,6 +12,7 @@ import { hasDemoBank } from "@/lib/plaid/demo";
 import type { Coverage } from "./coverage";
 import { demoPartner } from "./demo-partner";
 import type { LifeAnswers, LifeDecision } from "./life-underwriting";
+import type { CarrierClaimStatus } from "./claim-rules";
 
 // The insurance partner (spec step 103): who quotes, binds and cancels policies. The
 // shapes here follow what a licensed insurance marketplace's API returns (a quote id, the
@@ -138,7 +139,48 @@ export interface InsurancePartner {
     change: { kind: CoverChangeKind; detail: Record<string, unknown> },
     options: { now: Date },
   ): Promise<Endorsement>;
+  // Spec step 155: asking the carrier for a better renewal rate (step 54's call flow).
+  negotiateRenewal(
+    request: {
+      carrier: string;
+      kind: PolicyKind;
+      currentAnnualCents: number;
+      renewalAnnualCents: number;
+      competingAnnualCents: number | null;
+    },
+    options: { now: Date },
+  ): Promise<Negotiation>;
+  // Spec step 155: a small claim filed with the carrier, and its status afterwards.
+  fileClaim(
+    claim: {
+      carrier: string;
+      kind: PolicyKind;
+      event: string;
+      happenedOn: string;
+      amountCents: number;
+      description: string;
+    },
+    options: { now: Date },
+  ): Promise<{ claimNumber: string }>;
+  claimStatus(
+    claim: {
+      claimNumber: string;
+      filedAt: Date;
+      amountCents: number;
+      deductibleCents: number | null;
+    },
+    options: { now: Date },
+  ): Promise<{ status: CarrierClaimStatus; payoutCents: number | null }>;
 }
+
+export type Negotiation = {
+  outcome: "lowered" | "kept";
+  annualPremiumCents: number;
+  // What was said, line by line.
+  transcript: string[];
+  // Anything offered that changes the cover, never accepted on the call.
+  offer: string | null;
+};
 
 export type Endorsement = {
   premiumCents: number | null;

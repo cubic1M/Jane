@@ -1,3 +1,5 @@
+import type { RewardCategory } from "@/config/credit-cards";
+
 // Questions about debts, understood by rules (spec Phase Y). Pure: normalized text in
 // (./intents.ts normalize), a debt intent or null out. Wired into parseIntent.
 
@@ -22,7 +24,15 @@ export type DebtIntent =
   // Spec step 115: "can I get rid of PMI?", "my mortgage", "what if I pay extra on my house?".
   | { kind: "mortgage" }
   // Spec step 116: "what's my credit score?", "how do I improve my credit?".
-  | { kind: "credit_score" };
+  | { kind: "credit_score" }
+  // Spec step 117: "what do you do about my debts?", "when are my debt payments due?".
+  | { kind: "debt_autopilot" }
+  | { kind: "debt_due" }
+  // Spec step 174: "which card should I use for groceries?", "is my annual fee worth it?",
+  // "what's the best credit card for me?".
+  | { kind: "card_for"; category: RewardCategory | null }
+  | { kind: "card_fee" }
+  | { kind: "card_better" };
 
 const DEBT_KINDS = new Set<string>([
   "debts",
@@ -34,6 +44,11 @@ const DEBT_KINDS = new Set<string>([
   "student_loans",
   "mortgage",
   "credit_score",
+  "debt_autopilot",
+  "debt_due",
+  "card_for",
+  "card_fee",
+  "card_better",
 ]);
 export const isDebtIntent = (intent: { kind: string }): intent is DebtIntent =>
   DEBT_KINDS.has(intent.kind);
@@ -66,10 +81,32 @@ const MORTGAGE =
   /\b(?:pmi|escrow|private mortgage insurance)\b|\bmortgage\b|\b(?:extra|more) (?:principal|payments?)\b.*\b(?:house|home)\b/;
 const CREDIT =
   /\bcredit (?:score|rating|report)\b|\bfico\b|\b(?:improve|raise|boost|build|fix) (?:my )?credit\b|\bcredit utili[sz]ation\b/;
+const DEBT_AUTOPILOT =
+  /\bwhat (?:do|will|can) you do (?:about|with|for) (?:my )?(?:debts?|loans|cards)\b|\b(?:debt|loan) autopilot\b|\bautopilot (?:for|on) (?:my )?(?:debts?|loans)\b/;
+const DEBT_DUE =
+  /\bwhen (?:are|is) (?:my )?(?:debt|loan|card|credit card)s? (?:payments? )?due\b|\b(?:debt|loan|card) payments? (?:due|coming up)\b|\bnext (?:debt|loan|card) payment\b|\bmove (?:my )?(?:due date|payment date)\b/;
 const LOAN_STATUS =
   /\b(?:loan )?application(?:'s| is)?(?: status)?\b|\bdid (?:the|my) (?:new )?loan (?:go through|fund|come through)\b|\b(?:status of|where'?s|how'?s) (?:my |the )?(?:new )?loan\b/;
 // "Apply for the refinance": the pick and its Apply button.
 const APPLY = /^apply\b|\bapply (?:for|with|to)\b/;
+
+// Spec step 174.
+const CARD_FOR =
+  /\bwhich (?:credit )?card (?:should|do|would|to|can) (?:i |we )?(?:use|pay with|put)\b|\bwhat card (?:should|do) (?:i|we) use\b|\bbest card (?:for|to use)\b|\bwhich card (?:for|earns)\b/;
+const CARD_FEE =
+  /\bannual fees?\b|\bis (?:my )?(?:credit )?card(?:'s)? fee worth\b|\bis (?:my )?(?:credit )?card worth (?:it|the fee|keeping)\b/;
+const CARD_BETTER =
+  /\b(?:best|better|new|another|right) (?:credit |rewards )?card(?: for me)?\b|\bwhich credit card should (?:i|we) (?:get|apply)\b|\bcard rewards?\b|\bcash ?back card\b|\brewards card\b|\bcredit card rewards?\b/;
+const CARD_KINDS: readonly [RegExp, RewardCategory][] = [
+  [/\bgrocer/, "groceries"],
+  [/\b(?:gas|fuel)\b/, "gas"],
+  [/\b(?:dining|restaurants?|eating out|takeout|coffee|food)\b/, "dining"],
+  [/\b(?:travel|flights?|hotels?|ubers?|rides?|taxis?)\b/, "travel"],
+  [/\b(?:streaming|netflix|spotify|subscriptions?)\b/, "streaming"],
+  [/\b(?:online|amazon)\b/, "online"],
+  [/\b(?:everything else|everything|other)\b/, "other"],
+];
+const cardKind = (text: string) => CARD_KINDS.find(([re]) => re.test(text))?.[1] ?? null;
 
 const clean = (target: string) =>
   target
@@ -88,6 +125,13 @@ export function parseDebtIntent(
   if (MORE.test(text) && amountCents !== null)
     return { kind: "payoff_plan", extraCents: amountCents };
   if (PAYOFF.test(text)) return { kind: "payoff_plan", extraCents: null };
+  if (DEBT_AUTOPILOT.test(text)) return { kind: "debt_autopilot" };
+  if (CARD_FOR.test(text)) return { kind: "card_for", category: cardKind(text) };
+  if (CARD_FEE.test(text)) return { kind: "card_fee" };
+  if (CARD_BETTER.test(text) && !/\b0 ?%|balance transfer/.test(text)) {
+    return { kind: "card_better" };
+  }
+  if (DEBT_DUE.test(text)) return { kind: "debt_due" };
   if (CREDIT.test(text)) return { kind: "credit_score" };
   if (TRANSFER.test(text)) return { kind: "balance_transfer" };
   if (LOAN_STATUS.test(text)) return { kind: "loan_status" };

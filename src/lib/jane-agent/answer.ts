@@ -5,6 +5,7 @@ import { readingsAnswer } from "./insurance/readings";
 import { cardCoverAnswer } from "./insurance/card-cover";
 import { lifeAnswer } from "./insurance/life";
 import { lifeChangeAnswer } from "./insurance/cover-changes";
+import { fileClaimAnswer, renewalCallAnswer } from "./insurance/done-by-jane";
 import type { CoverEvent } from "@/config/insurance";
 import { claimAnswer } from "./insurance/claim";
 import { quotesAnswer } from "./insurance/quotes";
@@ -67,11 +68,14 @@ import { checkedReply } from "./replies-checked";
 import { rankedFor } from "./priorities";
 import { prioritiesReply } from "./replies-priorities";
 import { wholePictureReply } from "./whole-picture";
+import { planReply } from "./multi";
 import { paycheckReply } from "./replies-paycheck";
 import { latestPaycheckPlan } from "@/lib/money-movement/paycheck";
 import { loadBillPay } from "@/lib/money-movement/bill-pay";
 import { moneyPartnerFor } from "@/lib/money-movement/partner";
 import { billsReply } from "./replies-billpay";
+import { healthFor } from "@/lib/health-score";
+import { healthReply } from "./replies-health";
 import { groupedHelpReply } from "./replies-help";
 import { lifeEventReply } from "./replies-life";
 import { savedReply } from "./replies-saved";
@@ -233,6 +237,9 @@ async function byIntent(
       // Spec step 153: life cover sized and applied for.
       if (intent.ask === "life") return lifeAnswer(userId, { client, now });
       // Spec step 154: a life change told to Jane.
+      // Spec step 155: renewal calls and claims done by Jane.
+      if (intent.ask === "renewal_call") return renewalCallAnswer(userId, { client, now });
+      if (intent.ask === "file_claim") return fileClaimAnswer(userId, { client, now });
       if (intent.ask === "life_change") {
         return lifeChangeAnswer(userId, intent.event as CoverEvent, { client, now });
       }
@@ -296,6 +303,8 @@ async function byIntent(
         next && { date: next.date, cents: next.amountCents, from: next.from, asOf },
       );
     }
+    case "health":
+      return healthReply(await healthFor(userId, { client, now }));
     case "bills_paid": {
       const partner = await moneyPartnerFor(userId, { client });
       return billsReply(partner ? await loadBillPay(userId, { client, now }) : null, asOf);
@@ -304,6 +313,19 @@ async function byIntent(
       const snapshot = await loadSnapshot(userId, { client, now });
       return prioritiesReply(snapshot ? rankedFor(snapshot) : []);
     }
+    // Spec step 185: one plan for several actions, or money into a goal.
+    case "move_to_goal":
+      return planReply(userId, [intent], {
+        client,
+        now,
+        answer: (part) => byIntent(userId, part, { client, now }),
+      });
+    case "multi":
+      return planReply(userId, intent.parts, {
+        client,
+        now,
+        answer: (part) => byIntent(userId, part, { client, now }),
+      });
     // Spec step 183.
     case "whole_picture": {
       const snapshot = await loadSnapshot(userId, { client, now });

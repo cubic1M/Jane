@@ -127,6 +127,7 @@ describe("the payoff plan", () => {
     const [first] = summary.scenarios;
     expect(first.extraCents).toBe(0);
     expect(first.interestSavedCents).toBeGreaterThan(0);
+    expect(summary.savedAgainst).toBe("minimums");
   });
 
   it("shows what paying more each month does, each scenario sooner and cheaper", () => {
@@ -138,7 +139,7 @@ describe("the payoff plan", () => {
     }
   });
 
-  it("has no interest saved when the minimums alone never pay a debt off", () => {
+  it("measures paying more against the plan when the minimums alone never pay a debt off", () => {
     // $2,410.50 at 22.99% costs about $46 a month; a $35 minimum never catches up.
     const tight = debt({
       key: "card",
@@ -149,7 +150,13 @@ describe("the payoff plan", () => {
     });
     const summary = payoffSummary([tight, CAR], { extraCents: 0, advice: false });
     expect(summary.baseline.ok).toBe(false);
-    expect(summary.scenarios[0].interestSavedCents).toBeNull();
+    expect(summary.savedAgainst).toBe("plan");
+    const [asIs, ...more] = summary.scenarios;
+    expect(asIs.interestSavedCents).toBeNull();
+    for (const s of more) {
+      expect(s.interestSavedCents).toBe(asIs.interestCents - s.interestCents);
+      expect(s.interestSavedCents).toBeGreaterThan(0);
+    }
     // With the car's payment rolling over once it's paid off, the plan still finishes.
     expect(summary.avalanche.ok).toBe(true);
   });

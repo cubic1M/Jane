@@ -17,6 +17,7 @@ import { loadGoalBuckets } from "@/lib/investments/goal-buckets";
 import { estimateCollege, loadCollege, type CollegeEstimate } from "@/lib/investments/college";
 import { loadHsa } from "@/lib/investments/hsa";
 import { loadCompanyStock } from "@/lib/investments/company-stock";
+import { loadCrypto } from "@/lib/crypto/crypto";
 import { formatReturn } from "@/insights/returns";
 import { loadAutoInvest } from "@/lib/investments/auto-invest";
 import { loadRebalance } from "@/lib/investments/rebalance";
@@ -125,6 +126,12 @@ export const INVESTMENT_TOOLS: Anthropic.Tool[] = [
     input_schema: noInput,
   },
   {
+    name: "crypto",
+    description:
+      "The person's crypto, read-only from their exchanges and wallets: each connection with its source and when it was read, each asset's amount, price and value, the total and its share of everything invested. In demo advice mode, two flags: a share above about 5%, and exchange fees well above low-cost exchanges'. Jane never buys, sells or moves crypto, at any level: there's no way to, so never offer to.",
+    input_schema: noInput,
+  },
+  {
     name: "explainer",
     description:
       "Jane's fixed plain-language explainer for a word (education, not advice; waiting for counsel's review): what it is and how it works, with sources. Use it when the person asks what something means, and quote it rather than writing your own definition.",
@@ -150,6 +157,7 @@ export const INVESTMENT_TOOL_STATUS: Readonly<Record<string, string>> = {
   explainer: "Looking that up…",
   hsa: "Checking your HSA…",
   company_stock: "Looking at your company stock…",
+  crypto: "Reading your crypto balances…",
   college_plan: "Working out college costs…",
   goal_buckets: "Looking at your goals…",
   investment_returns: "Working out your returns…",
@@ -504,6 +512,40 @@ export async function runInvestmentTool(
         return out(describe(await estimateCollege(userId, { childAge: age, type }, { client })));
       }
       return out({ plans: plans.map((p) => ({ child: p.childName, ...describe(p.estimate) })) });
+    }
+    case "crypto": {
+      const view = await loadCrypto(userId, { client, now });
+      return out({
+        connections: view.connections.map((c) => ({
+          name: c.name,
+          kind: c.kind,
+          source: c.source,
+          asOf: c.asOf?.toISOString() ?? null,
+          outOfDate: c.stale,
+          total: money(c.totalCents),
+        })),
+        assets: view.holdings.map((h) => ({
+          asset: h.asset,
+          name: h.name,
+          amount: h.quantity,
+          price: money(h.priceCents),
+          value: money(h.valueCents),
+        })),
+        total: money(view.size.totalCents),
+        shareOfInvested: Math.round(view.size.share * 1000) / 10,
+        flags: view.advice
+          ? {
+              shareAboveRuleOfThumb: view.size.overShare,
+              fees: view.fees && {
+                paid: money(view.fees.feesCents),
+                traded: money(view.fees.tradedCents),
+                percent: view.fees.bps === null ? null : view.fees.bps / 100,
+                costly: view.fees.flag,
+              },
+            }
+          : "advice only in demo advice mode",
+        trading: "never: Jane has no way to buy, sell or move crypto",
+      });
     }
     case "company_stock": {
       const view = await loadCompanyStock(userId, { client, now });

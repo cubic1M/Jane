@@ -336,6 +336,20 @@ export const QUESTIONS: readonly CheckQuestion[] = [
     expect: {},
   },
 
+  // Requests that span sectors (spec step 185): one plan, one confirmation.
+  {
+    id: "multi-1",
+    text: "cancel Hulu and Netflix",
+    needs: "rules",
+    expect: { intent: "multi", button: "multi.confirm", list: true },
+  },
+  {
+    id: "multi-2",
+    text: "cancel Hulu and put $50 in my emergency fund",
+    needs: "rules",
+    expect: { intent: "multi", avoid: /\bdone\b/i },
+  },
+
   // What's due.
   {
     id: "due-1",
@@ -927,6 +941,151 @@ export const QUESTIONS: readonly CheckQuestion[] = [
     text: "should I buy more of my company's stock",
     needs: "claude",
     expect: { avoid: /\byou should (?:buy|sell)\b/i },
+  },
+
+  // Loans and debt (spec steps 109–117): every debt question answered by the rules.
+  {
+    id: "debt-1",
+    text: "how much do I owe",
+    needs: "rules",
+    expect: {
+      intent: "debts",
+      mentions: /net worth/i,
+      link: "/loans",
+      list: true,
+      maxChars: 1_400,
+    },
+  },
+  {
+    id: "debt-2",
+    text: "when is my car paid off",
+    needs: "rules",
+    expect: { intent: "debt_detail", mentions: /paid off by/i, link: "/loans" },
+  },
+  {
+    id: "debt-3",
+    text: "what's the rate on my student loan",
+    needs: "rules",
+    expect: { intent: "debt_detail", mentions: /5\.25%.*from your bank/i },
+  },
+  {
+    id: "debt-4",
+    text: "what's the fastest way out of debt",
+    needs: "rules",
+    expect: {
+      intent: "payoff_plan",
+      mentions: /debt-free by/i,
+      button: "debt_plan.avalanche",
+      list: true,
+      maxChars: 1_200,
+    },
+  },
+  {
+    id: "debt-5",
+    text: "what if I pay $200 more a month on my debts",
+    needs: "rules",
+    expect: { intent: "payoff_plan", mentions: /\$200\.00 extra/i, list: true, maxChars: 1_200 },
+  },
+  {
+    id: "debt-6",
+    text: "can I refinance my car loan",
+    needs: "rules",
+    expect: { intent: "refinance", mentions: /same/i, button: "loan.prepare", maxChars: 1_200 },
+  },
+  {
+    id: "debt-7",
+    text: "should I do a balance transfer",
+    needs: "rules",
+    expect: {
+      intent: "balance_transfer",
+      mentions: /fee/i,
+      button: "transfer.start",
+      maxChars: 900,
+    },
+  },
+  {
+    id: "debt-8",
+    text: "which student loan plan should I be on",
+    needs: "rules",
+    expect: {
+      intent: "student_loans",
+      mentions: /forgiveness/i,
+      link: "https://studentaid.gov/",
+      list: true,
+      maxChars: 1_200,
+    },
+  },
+  {
+    id: "debt-9",
+    text: "can I get rid of PMI",
+    needs: "rules",
+    expect: { intent: "mortgage", mentions: /PMI/, link: "/loans/mortgage", maxChars: 1_200 },
+  },
+  {
+    id: "debt-10",
+    text: "what's my credit score",
+    needs: "rules",
+    expect: {
+      intent: "credit_score",
+      mentions: /stand-in/i,
+      link: "/loans/credit",
+      list: true,
+      maxChars: 1_200,
+    },
+  },
+  {
+    id: "debt-11",
+    text: "how's my loan application",
+    needs: "rules",
+    expect: { intent: "loan_status", mentions: /application/i },
+  },
+  {
+    id: "debt-12",
+    text: "when are my loan payments due",
+    needs: "rules",
+    expect: {
+      intent: "debt_due",
+      mentions: /next debt payment/i,
+      link: "/loans",
+      list: true,
+      maxChars: 1_000,
+    },
+  },
+  {
+    id: "debt-13",
+    text: "what do you do about my debts",
+    needs: "rules",
+    expect: {
+      intent: "debt_autopilot",
+      mentions: /by myself/i,
+      link: "/settings",
+      list: true,
+      maxChars: 1_600,
+    },
+  },
+  // Spec step 174: which card for what, whether a fee pays for itself, a better card.
+  {
+    id: "debt-14",
+    text: "which card should I use for groceries",
+    needs: "rules",
+    expect: { intent: "card_for", mentions: /for groceries/i, link: "/loans/cards" },
+  },
+  {
+    id: "debt-15",
+    text: "is my annual fee worth it",
+    needs: "rules",
+    expect: { intent: "card_fee", mentions: /pay for itself/i, link: "/loans/cards" },
+  },
+  {
+    id: "debt-16",
+    text: "what's the best credit card for me",
+    needs: "rules",
+    expect: {
+      intent: "card_better",
+      mentions: /hard credit check/i,
+      button: "credit_card.apply",
+      link: "/loans/cards",
+    },
   },
 
   // Outside what Jane does: brief, and never advice.

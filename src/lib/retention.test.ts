@@ -33,4 +33,25 @@ describe("the privacy policy and the retention config", () => {
     const removed = await runRetention({ client });
     expect(Object.keys(removed).sort()).toEqual(Object.keys(RETENTION_PERIODS).sort());
   });
+
+  it("deletes trial people only once the other deletes are done, so they can't deadlock", async () => {
+    const pending = new Set<string>();
+    let overlapped = false;
+    const client = new Proxy(
+      {},
+      {
+        get: (_, table: string) => ({
+          deleteMany: async () => {
+            if (table === "user" && pending.size > 0) overlapped = true;
+            pending.add(table);
+            await new Promise((resolve) => setTimeout(resolve, 5));
+            pending.delete(table);
+            return { count: 0 };
+          },
+        }),
+      },
+    ) as never;
+    await runRetention({ client });
+    expect(overlapped).toBe(false);
+  });
 });

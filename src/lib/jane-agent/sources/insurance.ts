@@ -11,6 +11,14 @@ import { trackerActions, trackerBody } from "../insurance/claim-words";
 import { readingBody, readingLink } from "../insurance/reading-words";
 import { DEPENDANTS_QUESTION, sizedActions, sizedBody } from "../insurance/life-words";
 import { coverActions, coverBody, coverEventRef } from "../insurance/cover-words";
+import {
+  ASK_CALL_ACTIONS,
+  askCallBody,
+  callResultBody,
+  claimStatusBody,
+  draftActions,
+  draftBody,
+} from "../insurance/done-by-jane-words";
 import type { InsuranceSnapshot } from "../insurance/snapshot";
 import type { Candidate } from "../types";
 import { shortDate, snoozeButton, type MessageSource } from "./source";
@@ -314,6 +322,48 @@ function coverChangeMessages(insurance: InsuranceSnapshot): Candidate[] {
   }));
 }
 
+// Spec step 155: the renewal call Jane offers to make (or made within the person's autopilot
+// limits) and its result; a claim's draft to file on a tap; the carrier's news on a claim.
+function doneByJaneMessages(insurance: InsuranceSnapshot): Candidate[] {
+  const policyOf = (id: string | null) => insurance.policies.find((p) => p.id === id);
+  const negotiations = (insurance.negotiations ?? []).map((n): Candidate =>
+    n.status === "asked"
+      ? {
+          kind: "decision",
+          body: askCallBody(n, policyOf(n.policyId)),
+          refs: { negotiationId: n.id },
+          actions: ASK_CALL_ACTIONS,
+          dedupeKey: `renewal-call:${n.id}`,
+          priority: MESSAGE_PRIORITY.renewal_call,
+        }
+      : {
+          kind: "heads_up",
+          body: callResultBody(n, policyOf(n.policyId)),
+          refs: {},
+          actions: [{ id: "open", label: "Your insurance", kind: "link", href: "/insurance" }],
+          dedupeKey: `renewal-result:${n.id}`,
+          priority: MESSAGE_PRIORITY.renewal_result,
+        },
+  );
+  const drafts = (insurance.draftClaims ?? []).map((c): Candidate => ({
+    kind: "decision",
+    body: draftBody(c),
+    refs: { claimId: c.id },
+    actions: draftActions(c),
+    dedupeKey: `claim-draft:${c.id}:${c.amountCents}`,
+    priority: MESSAGE_PRIORITY.claim_draft,
+  }));
+  const statuses = (insurance.filedClaims ?? []).map((c): Candidate => ({
+    kind: "heads_up",
+    body: claimStatusBody(c),
+    refs: {},
+    actions: [{ id: "open", label: "Your claim", kind: "link", href: "/insurance/claims" }],
+    dedupeKey: `claim-status:${c.id}:${c.carrierStatus}`,
+    priority: MESSAGE_PRIORITY.claim_status,
+  }));
+  return [...negotiations, ...drafts, ...statuses];
+}
+
 export const insuranceSource: MessageSource = {
   key: "insurance",
   gather: (snapshot) => {
@@ -330,6 +380,7 @@ export const insuranceSource: MessageSource = {
       ...readingMessages(insurance),
       ...lifeMessages(insurance, snapshot.asOf),
       ...coverChangeMessages(insurance),
+      ...doneByJaneMessages(insurance),
     ];
   },
 };

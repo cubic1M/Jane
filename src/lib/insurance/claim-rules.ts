@@ -21,7 +21,16 @@ export type Claim = {
   claimsUrl: string | null;
   claimNumber: string | null;
   createdAt: Date;
+  // Spec step 155: a small claim Jane files through the partner, after the person's review.
+  amountCents?: number | null;
+  description?: string | null;
+  filing?: "draft" | "filed" | null;
+  filedAt?: Date | null;
+  carrierStatus?: CarrierClaimStatus | null;
+  payoutCents?: number | null;
 };
+
+export type CarrierClaimStatus = "received" | "reviewing" | "approved" | "paid" | "denied";
 
 export const guideFor = (kind: PolicyKind): ClaimGuide => CLAIM_GUIDES[kind];
 
@@ -56,3 +65,12 @@ export function reminderDue(
   if (late < 0) return null;
   return { step, round: Math.floor(late / CLAIM_REMIND_EVERY_DAYS) };
 }
+
+// Spec step 155: the carrier's status on a claim Jane filed, in words.
+export const STATUS_WORDS: Record<CarrierClaimStatus, string> = {
+  received: "has your claim",
+  reviewing: "is reviewing your claim",
+  approved: "approved your claim",
+  paid: "paid your claim",
+  denied: "turned down your claim",
+};

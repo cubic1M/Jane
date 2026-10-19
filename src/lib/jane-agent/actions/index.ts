@@ -31,6 +31,9 @@ import {
   lifeCoverDismiss,
   coverApply,
   coverDismiss,
+  renewalCall,
+  renewalNo,
+  claimFile,
   benefitsDisabilityNone,
   benefitsDisabilityYes,
   benefitsLife1x,
@@ -83,6 +86,7 @@ import {
   hsaInvest,
   companyLink,
   companySell,
+  cryptoLink,
 } from "./investments";
 import { changeBudget, changeExpected, changeLook } from "./changes";
 import { lifeNever, lifeNo, lifeYes } from "./life";
@@ -97,6 +101,7 @@ import { autopilotSectorSet } from "./sector";
 import { paycheckMove, paycheckSkip, paycheckUndo } from "./paycheck";
 import { billPay, billSkip } from "./billpay";
 import { bundleYes1, bundleYes2, bundleYes3, bundleYes4, bundleYes5 } from "./bundle";
+import { multiCancel, multiConfirm, multiUndo } from "./multi";
 import { FLOW_PICKS, flowBack, flowCancel } from "./flows";
 
 // Every button action, by id (spec step 81). A new button is a new handler here; the
@@ -131,6 +136,9 @@ export const ACTION_HANDLERS: Readonly<Record<ActionId, ActionHandler>> = {
   "lifecover.dismiss": lifeCoverDismiss,
   "cover.apply": coverApply,
   "cover.dismiss": coverDismiss,
+  "renewal.call": renewalCall,
+  "renewal.no": renewalNo,
+  "claim.file": claimFile,
   "benefits.life_1x": benefitsLife1x,
   "benefits.life_2x": benefitsLife2x,
   "benefits.life_none": benefitsLifeNone,
@@ -173,6 +181,10 @@ export const ACTION_HANDLERS: Readonly<Record<ActionId, ActionHandler>> = {
   "bundle.3": bundleYes3,
   "bundle.4": bundleYes4,
   "bundle.5": bundleYes5,
+  // Spec step 185.
+  "multi.confirm": multiConfirm,
+  "multi.cancel": multiCancel,
+  "multi.undo": multiUndo,
   // Spec step 95.
   ...FLOW_PICKS,
   "flow.back": flowBack,
@@ -237,6 +249,7 @@ export const ACTION_HANDLERS: Readonly<Record<ActionId, ActionHandler>> = {
   "hsa.invest": hsaInvest,
   "company.link": companyLink,
   "company.sell": companySell,
+  "crypto.link": cryptoLink,
   // Jane notices changes (spec step 97).
   "change.look": changeLook,
   "change.budget": changeBudget,

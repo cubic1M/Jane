@@ -106,10 +106,13 @@ export function scopedFor(userId: string, client: PrismaClient = db) {
     policyReadings: scoped.policyReading,
     lifeApplications: scoped.lifeApplication,
     coverChanges: scoped.coverChange,
+    renewalNegotiations: scoped.renewalNegotiation,
     refinanceChecks: scoped.refinanceCheck,
     loanApplications: scoped.loanApplication,
     studentLoanProfiles: scoped.studentLoanProfile,
     creditReports: scoped.creditReport,
+    debtWatches: scoped.debtWatch,
+    cardApplications: scoped.cardApplication,
     balanceTransfers: scoped.balanceTransfer,
     findings: scoped.finding,
     decisions: scoped.decision,
@@ -162,6 +165,8 @@ export function scopedFor(userId: string, client: PrismaClient = db) {
     // Money that moves itself (spec steps 144–145).
     moneyTransfers: scoped.moneyTransfer,
     paycheckPlans: scoped.paycheckPlan,
+    // Money health score by month (spec step 146).
+    healthScores: scoped.healthScore,
     savedShares: scoped.savedShare,
     // What's in investment accounts (spec step 128).
     securities: scoped.security,
@@ -180,6 +185,9 @@ export function scopedFor(userId: string, client: PrismaClient = db) {
     hsaReceipts: scoped.hsaReceipt,
     // Company stock grants (spec step 160).
     equityGrants: scoped.equityGrant,
+    // Crypto, read-only (spec step 161).
+    cryptoConnections: scoped.cryptoConnection,
+    cryptoHoldings: scoped.cryptoHolding,
   };
 }
 

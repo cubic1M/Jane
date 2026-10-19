@@ -26,6 +26,7 @@ import { latestPaycheckPlan } from "@/lib/money-movement/paycheck";
 import { listTransfers } from "@/lib/money-movement/transfers";
 import { loadBillPay } from "@/lib/money-movement/bill-pay";
 import { moneyPartnerFor } from "@/lib/money-movement/partner";
+import { healthFor } from "@/lib/health-score";
 import { SECTOR_LABELS, SECTOR_LEVEL_LABELS } from "@/config/autopilot-sectors";
 import { provenSavings } from "@/lib/savings-proof";
 import { listLifeEvents } from "@/lib/life-events";
@@ -50,6 +51,7 @@ import { loadSnapshot } from "./snapshot";
 import { findingCandidate } from "./sources/findings";
 import { TAX_TOOLS, isTaxTool, runTaxTool } from "./tax-tools";
 import { ACTION_IDS, type ActionId, type MessageAction } from "./types";
+import { cryptoTotal } from "@/lib/crypto/crypto";
 
 // The tools Claude gets in Jane's chat (spec step 84). Read-only tools over the person's
 // own data, wrapping the same loaders as the pages (and Ask's own tools, src/lib/ask), each
@@ -195,6 +197,12 @@ export const CHAT_TOOLS: Anthropic.Tool[] = [
     name: "priorities",
     description:
       'The person\'s next best things to do (spec step 143), ranked across everything Jane found and is waiting on: findings, insurance picks, refinance offers, steps only they can do and dated deadlines. Each with the money it saves a year, the minutes it takes, its urgency and why it ranks where it does. Use it for "what should I do first" and to put the most important first.',
+    input_schema: noInput,
+  },
+  {
+    name: "health_score",
+    description:
+      "The person's money health score (spec step 146): one number out of 100 and its band, made of weighted parts (cash cushion, room each month, bills on time, card balances, savings goals), each with its points, why and the step that would raise it; parts not counted yet; and the change since last month with the part that moved it most. Say it kindly: a low part is room to grow, never a judgement.",
     input_schema: noInput,
   },
   {
@@ -448,6 +456,31 @@ export async function runChatTool(
         })),
       });
     }
+    case "health_score": {
+      const view = await healthFor(userId, { client, now });
+      return out(
+        view
+          ? {
+              score: view.score,
+              band: view.band,
+              parts: view.parts.map((p) => ({
+                part: p.label,
+                points: p.points,
+                outOf: p.max,
+                why: p.why,
+                toRaiseIt: p.next,
+              })),
+              notCounted: view.left.map((l) => ({ part: l.label, why: l.why })),
+              lastMonth: view.before && {
+                month: view.before.month,
+                score: view.before.score,
+                change: view.change?.delta ?? 0,
+                mostlyFrom: view.change?.biggest?.label ?? null,
+              },
+            }
+          : { score: null, why: "No accounts linked yet." },
+      );
+    }
     case "money_moves": {
       const [plan, transfers, partner] = await Promise.all([
         latestPaycheckPlan(userId, { client, now }),
@@ -598,20 +631,23 @@ export async function runChatTool(
     }
     case "net_worth": {
       const db = scopedFor(userId, client);
-      const [accounts, owned] = await Promise.all([
+      const [accounts, owned, crypto] = await Promise.all([
         db.accounts.findMany({
           select: { id: true, name: true, type: true, subtype: true, currentBalanceCents: true },
         }),
         db.ownedAssets.findMany({ select: { id: true, valueCents: true, valuedOn: true } }),
+        cryptoTotal(userId, { client }),
       ]);
       const worth = netWorth(
         accounts.map((a) => ({ ...a, balanceCents: a.currentBalanceCents })),
         owned.map((o) => ({ ...o, valuedOn: o.valuedOn.toISOString().slice(0, 10) })),
+        crypto,
       );
       return out({
         has: money(worth.assetsCents),
         owes: money(worth.debtsCents),
         netWorth: money(worth.netCents),
+        ...(worth.cryptoCents > 0 ? { ofWhichCryptoReadOnly: money(worth.cryptoCents) } : {}),
         accountsWithoutABalance: worth.missing.length,
       });
     }
