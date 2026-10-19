@@ -2,6 +2,7 @@ import { debtsSource } from "./debts";
 import { payoffSource } from "./payoff";
 import { loansSource } from "./loans";
 import { refinanceSource } from "./refinance";
+import { transfersSource } from "./transfers";
 import type { MessageSource } from "./source";
 
 // Every message source about loans and debt (spec Phase Y), registered in ./index.ts in
@@ -11,4 +12,5 @@ export const DEBT_SOURCES: readonly MessageSource[] = [
   payoffSource,
   refinanceSource,
   loansSource,
+  transfersSource,
 ];

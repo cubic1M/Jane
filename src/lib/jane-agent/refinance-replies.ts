@@ -2,7 +2,9 @@ import { REFI_MIN_SAVING_CENTS } from "@/config/debt";
 import { findDebt, type DebtBook } from "@/insights/debts";
 import { formatRate } from "@/insights/loans";
 import { statusLine, type LoanApplicationView } from "@/lib/loan-application-status";
+import type { Transfers } from "@/lib/balance-transfers";
 import { formatCents } from "@/lib/money";
+import { shortMonth } from "@/planning/balance-transfer";
 import type { Refinance } from "@/lib/refinance";
 import type { RefinanceComparison, ScoredOffer } from "@/planning/refinance";
 import type { Reply } from "./replies";
@@ -132,5 +134,61 @@ export function loanStatusReply(apps: readonly LoanApplicationView[]): Reply {
       { id: "open", label: "See the application", kind: "link", href: `/loans/apply/${latest.id}` },
     ],
     refs: {},
+  };
+}
+
+// "Should I do a balance transfer?" (spec step 113): each card's best 0% offer with the fee
+// counted, and the transfers Jane is keeping in view.
+export function transferReply(data: Transfers): Reply {
+  if (!data.available) {
+    return {
+      body: "0% transfer offers come from a lending partner, and there isn't one for your accounts yet.",
+      actions: [],
+      refs: {},
+    };
+  }
+  const lines: string[] = [];
+  for (const t of data.transfers.filter((x) => x.status === "active")) {
+    lines.push(
+      `You moved ${formatCents(t.amountCents)} to ${t.cardName}: 0% until ${shortMonth(t.promoEndsOn)}. Pay ${formatCents(t.monthlyNeededCents)} a month to clear it, fee included. I'll remind you before it ends.`,
+    );
+  }
+  const picks = data.comparisons.filter((c) => c.pick);
+  for (const c of picks) {
+    lines.push(
+      `For your ${c.debtName} (${formatCents(c.balanceCents)} at ${formatRate(c.aprBps)}), I'd move it to ${c.pick!.offer.cardName}:`,
+      ...c.why,
+    );
+  }
+  if (lines.length === 0) {
+    lines.push(
+      data.comparisons.length > 0
+        ? "None of the 0% offers saves enough on your cards once the transfer fee is counted."
+        : "You don't have a card balance a 0% transfer would help with.",
+    );
+  }
+  const only = picks.length === 1 ? picks[0] : null;
+  return {
+    body: [
+      ...lines,
+      ...(picks.length > 0 ? ["These are sample offers from a stand-in catalog."] : []),
+    ].join("\n"),
+    actions: [
+      ...(only
+        ? [
+            {
+              id: "transfer.start" as const,
+              label: `I've moved it to ${only.pick!.offer.cardName}`,
+              kind: "primary" as const,
+            },
+          ]
+        : []),
+      { id: "open", label: "See the offers", kind: "link", href: "/loans/refinance#transfers" },
+    ],
+    refs: only
+      ? { advice: true, transfer: { debtKey: only.debtKey, offerId: only.pick!.offer.id } }
+      : picks.length > 0
+        ? { advice: true }
+        : {},
   };
 }
