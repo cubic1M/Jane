@@ -1,6 +1,7 @@
 import type { Intent } from "../intents";
 import type { ActionId } from "../types";
 import { charge, lastMonth, spentOn, thisMonth, type Facts } from "./facts";
+import { MORE_ROWS } from "./bank-more";
 
 // Jane's answer checks (spec step 87): about 100 things people really type, over the demo
 // bank, each with what a good answer has. "rules" questions must be answered without
@@ -30,6 +31,13 @@ export type CheckQuestion = {
   needs: "rules" | "claude";
   after?: string;
   expect: Expect;
+  // Spec step 189: where it belongs (a sector and the page it's about), the Claude tool it
+  // should reach, and the guardrail profile its answer is checked with. Questions from
+  // bank-more.ts carry all four.
+  sector?: string;
+  page?: string;
+  tool?: string;
+  profile?: "standard" | "demo_advice";
 };
 
 const safe = (f: Facts) => [f.safeCents];
@@ -48,7 +56,7 @@ const inAccount = (name: string) => (f: Facts) => [
 ];
 const ADVICE = /\b(?:stocks?|invest\w*|tax(?:es)?|lawyer|legal)\b/i;
 
-export const QUESTIONS: readonly CheckQuestion[] = [
+const BASE_QUESTIONS: readonly CheckQuestion[] = [
   // Safe to spend.
   {
     id: "safe-1",
@@ -1083,3 +1091,31 @@ export const QUESTIONS: readonly CheckQuestion[] = [
   },
   { id: "out-4", text: "tell me a joke", needs: "claude", expect: { avoid: ADVICE } },
 ];
+
+// Sectors whose answers may give recommendations in demo advice mode (CLAUDE.md, step 98),
+// so their answers are checked with the "demo_advice" guardrail profile.
+const ADVICE_SECTORS = new Set([
+  "insurance",
+  "taxes",
+  "investing",
+  "hsa",
+  "giving",
+  "student",
+  "loans",
+  "credit",
+]);
+
+const MORE_QUESTIONS: readonly CheckQuestion[] = MORE_ROWS.map(
+  ([sector, page, tool, text], index): CheckQuestion => ({
+    id: `more-${String(index + 1).padStart(3, "0")}`,
+    text,
+    needs: "claude",
+    expect: sector === "edge" ? { avoid: ADVICE } : {},
+    sector,
+    page,
+    tool,
+    profile: ADVICE_SECTORS.has(sector) ? "demo_advice" : "standard",
+  }),
+);
+
+export const QUESTIONS: readonly CheckQuestion[] = [...BASE_QUESTIONS, ...MORE_QUESTIONS];
