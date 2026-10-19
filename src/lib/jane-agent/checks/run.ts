@@ -11,7 +11,6 @@ import { CHAT_PROMPT_VERSION } from "../claude";
 import { sendToJane, type AnswerSource } from "../typing";
 import { QUESTIONS, type CheckQuestion } from "./bank";
 import { loadFacts } from "./facts";
-import { adviceMode } from "@/lib/advice-mode";
 import { fixedChecks, fixedScore, reasonOf, type Check } from "./grade";
 import { GRADER_VERSION, gradeWithClaude, type ClaudeGrade, type Usage } from "./grader";
 
@@ -37,6 +36,8 @@ export type QuestionResult = {
   firstWordsMs?: number;
   checks?: Check[];
   claude?: ClaudeGrade;
+  // Spec step 93: the guardrail rules that blocked Claude's answer, if any.
+  blockedBy?: string[];
 };
 
 export type CheckRun = {
@@ -53,6 +54,8 @@ export type CheckRun = {
   capCents: number;
   stoppedAtCap: boolean;
   firstWordsMs: { median: number; max: number } | null;
+  // Spec step 93: how many answers each guardrail rule blocked.
+  blockedBy: Record<string, number>;
   results: QuestionResult[];
 };
 
@@ -102,10 +105,7 @@ export async function runAnswerChecks(
   }: Options,
 ): Promise<CheckRun> {
   const full = llmEnabled();
-  const [facts, advice] = await Promise.all([
-    loadFacts(userId, { client, now }),
-    adviceMode(userId, { client }),
-  ]);
+  const facts = await loadFacts(userId, { client, now });
   let spent = 0;
   // Jane's own calls to Claude count toward the cap too.
   const metered = () => {
@@ -171,7 +171,7 @@ export async function runAnswerChecks(
 
       const started = performance.now();
       let firstWords: number | null = null;
-      const { reply, source } = await sendToJane(userId, question.text, {
+      const { reply, source, issues } = await sendToJane(userId, question.text, {
         client,
         now: new Date(now.getTime() + (tick += 1000)),
         claude: metered,
@@ -185,7 +185,6 @@ export async function runAnswerChecks(
         { body: reply.body, actions: reply.actions, source },
         facts,
         earlier.map((t) => t.content),
-        advice ? "demo_advice" : "standard",
       );
       const fixed = fixedScore(checks);
       let grade: ClaudeGrade | undefined;
@@ -220,6 +219,7 @@ export async function runAnswerChecks(
         firstWordsMs,
         checks,
         claude: grade,
+        ...(issues ? { blockedBy: issues } : {}),
       });
       earlier.push(
         { role: "user", content: question.text },
@@ -248,6 +248,12 @@ export async function runAnswerChecks(
     capCents,
     stoppedAtCap,
     firstWordsMs: times.length ? { median: median(times), max: Math.max(...times) } : null,
+    blockedBy: graded
+      .flatMap((r) => r.blockedBy ?? [])
+      .reduce<Record<string, number>>(
+        (tally, code) => ({ ...tally, [code]: (tally[code] ?? 0) + 1 }),
+        {},
+      ),
     results,
   };
 }

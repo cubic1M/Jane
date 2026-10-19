@@ -38,6 +38,8 @@ import { EMPTY_ANSWERS, profileSummary, type ProfileAnswers } from "@/planning/i
 import {
   accountsReply,
   autoInvestReply,
+  autopilotReply,
+  overviewReply,
   feesReply,
   profileReply,
   rebalanceReply,
@@ -51,6 +53,7 @@ import { investmentsSource } from "../sources/investments";
 import { holdingsReply, matchAccounts } from "./replies";
 import { INVESTMENT_TOOLS, runInvestmentTool } from "./tools";
 import { CHAT_PAGES, CHAT_TOOLS, proposeAction } from "../claude-tools";
+import { learnLink, learnReply } from "../learn";
 import type { PrismaClient } from "@/generated/prisma/client";
 
 // Spec step 128: what the person owns, in Jane's chat.
@@ -98,7 +101,9 @@ describe("holdingsReply", () => {
 
   it("lists one account's holdings when the person names it", () => {
     const reply = holdingsReply(data, "401k");
-    expect(reply.body).toMatch(/^Your Demo 401\(k\) has \$84,250\.40 in 5 holdings:/);
+    expect(reply.body).toMatch(
+      /^Your Demo 401\(k\) has \$84,250\.40 in 5 holdings\. Biggest first:/,
+    );
     expect(reply.body).toContain("From Demo Bank (fake data).");
     expect(holdingsReply(data, "brokerage").body).toMatch(/^Your Demo Brokerage has \$12,480\.15/);
     expect(holdingsReply(data, "retirement").body).toMatch(/^Your Demo 401\(k\)/);
@@ -524,7 +529,7 @@ describe("the review message", () => {
   it("says the first change and why, once, in demo advice mode", () => {
     const [message] = gatherReview(true);
     expect(message).toMatchObject({
-      dedupeKey: "review:3:rebalance",
+      dedupeKey: "review:3:rebalance:2026-10",
       refs: { advice: true },
       priority: MESSAGE_PRIORITY.investment_review,
     });
@@ -703,13 +708,13 @@ describe("rebalance questions, by rules", () => {
 describe("rebalanceReply", () => {
   it("offers the orders with the button, saying they're simulated", () => {
     const reply = rebalanceReply(true, PLAN, profileSummary(FULL, ASOF));
-    expect(reply.body).toMatch(/^Here's the plan: \d+ orders: sell \$[\d,.]+ \(/);
+    expect(reply.body).toMatch(
+      /^I've got \d+ orders ready to move you to your moderate mix, in the simulated brokerage \(no real money moves\)\.\n\d+ orders: sell \$[\d,.]+ \(/,
+    );
     expect(reply.body).toContain(
       "After: 40% US stocks, 20% international stocks, 35% bonds, 5% cash.",
     );
-    expect(reply.body).toMatch(
-      /Tap and I'll place the orders in the simulated brokerage \(no real money moves\)\.$/,
-    );
+    expect(reply.body).toMatch(/Tap and I'll place them\.$/);
     expect(reply.actions[0]).toEqual({
       id: "invest.rebalance",
       label: "Move to the recommended mix",
@@ -744,7 +749,12 @@ describe("the review message with orders ready", () => {
       kind: "decision",
       refs: { advice: true, rebalanceKey: PLAN.key },
     });
-    expect(message.actions.map((a) => a.id)).toEqual(["invest.rebalance", "open", "snooze"]);
+    expect(message.actions.map((a) => a.id)).toEqual([
+      "invest.rebalance",
+      "open",
+      "open",
+      "snooze",
+    ]);
     expect(message.body).toContain(
       "Tap and I'll place them in the simulated brokerage (no real money moves).",
     );
@@ -844,6 +854,7 @@ describe("autoInvestReply", () => {
         accountId: "b",
         status: "active",
         lastPaydayOn: null,
+        updatedAt: new Date("2026-10-15T00:00:00Z"),
       },
       runs: [RUN],
     });
@@ -860,6 +871,7 @@ describe("autoInvestReply", () => {
         accountId: "b",
         status: "paused",
         lastPaydayOn: null,
+        updatedAt: new Date("2026-10-15T00:00:00Z"),
       },
     });
     expect(off.body).toBe("Automatic investing is paused (the rest after bills and goals).");
@@ -910,6 +922,7 @@ describe("automatic investing in Jane's messages", () => {
       accountId: "b",
       status: "active",
       lastPaydayOn: null,
+      updatedAt: new Date("2026-10-15T00:00:00Z"),
     };
     const paused = {
       ...RUN,
@@ -949,6 +962,7 @@ describe("Claude's auto_invest tool", () => {
         accountId: "b",
         status: "active",
         lastPaydayOn: null,
+        updatedAt: new Date("2026-10-15T00:00:00Z"),
       },
       runs: [RUN],
     });
@@ -1013,7 +1027,7 @@ describe("accountsReply", () => {
   it("gives the order with room and reasons, where to hold what, and the gains", () => {
     const reply = accountsReply(ACCOUNT_PLAN);
     expect(reply.body).toMatch(
-      /^Here's the order I'd fill your accounts in:\n1\. Your 401\(k\), up to the full match \(6% of pay\)\. You put in 4%/,
+      /^Fill the 401\(k\) match first, then an HSA, a Roth IRA, the rest of your 401\(k\) and a taxable account\.\n1\. Your 401\(k\), up to the full match \(6% of pay\)\. You put in 4%/,
     );
     expect(reply.body).toContain("3. A Roth IRA (up to $7,500.00 a year).");
     expect(reply.body).toContain("- Pinnacle Dividend Income Fund is better in your Demo 401(k).");
@@ -1085,5 +1099,167 @@ describe("Claude's account_plan tool", () => {
     expect(parsed.order[0].account).toBe("Your 401(k), up to the full match (6% of pay)");
     expect(parsed.topFederalRate).toBe("22%");
     expect(out.cents).toContain(ACCOUNT_PLAN.location[0].taxDragCents);
+  });
+});
+
+// Spec step 136: learn.
+describe("what-is questions, by rules", () => {
+  it.each([
+    ["what is an index fund", "index-funds"],
+    ["what's an expense ratio", "fees"],
+    ["how does the match work", "the-match"],
+    ["explain roth vs traditional", "roth-vs-traditional"],
+    ["what does rebalancing mean", "rebalancing"],
+    ["what is refinancing", "refinancing"],
+    ["what's a deductible", "deductibles"],
+    ["what is the standard deduction", "standard-deduction"],
+  ])("reads %j as learning about %s", (text, slug) => {
+    expect(parseIntent(text, ASOF)).toEqual({ kind: "learn", slug });
+  });
+
+  it.each(["what's my deductible", "what are my investment fees", "what is safe to spend"])(
+    "leaves %j to the other rules",
+    (text) => {
+      expect(parseIntent(text, ASOF).kind).not.toBe("learn");
+    },
+  );
+});
+
+describe("learnReply and learn links", () => {
+  it("answers with the explainer's summary and first paragraph, and a link to the rest", () => {
+    const reply = learnReply("index-funds");
+    expect(reply.body).toMatch(/^An index fund owns every company in a market list/);
+    expect(reply.actions).toEqual([
+      { id: "open", label: "Read more", kind: "link", href: "/learn/index-funds" },
+    ]);
+    expect(reply.refs).toEqual({});
+    expect(learnReply("nope").body).toMatch(/^I can explain: index funds, /);
+  });
+
+  it("puts a Learn link under Jane's investment answers", () => {
+    expect(learnLink("the-match")).toEqual({
+      id: "open",
+      label: "Learn: the employer match",
+      kind: "link",
+      href: "/learn/the-match",
+    });
+    const reply = rebalanceReply(true, PLAN, profileSummary(FULL, ASOF));
+    expect(reply.actions.map((a) => (a.kind === "link" ? a.href : a.id))).toContain(
+      "/learn/rebalancing",
+    );
+  });
+
+  it("gives Claude the fixed text", async () => {
+    const out = await runInvestmentTool(
+      "u",
+      "explainer",
+      { slug: "deductibles" },
+      {
+        client: {} as PrismaClient,
+        now: new Date(),
+      },
+    );
+    expect(JSON.parse(out.content)).toMatchObject({
+      title: "Deductibles",
+      page: "/learn/deductibles",
+    });
+  });
+});
+
+// Spec step 137: investments on autopilot.
+describe("overview and autopilot questions, by rules", () => {
+  it.each([
+    ["how are my investments doing", "overview"],
+    ["how's my portfolio looking", "overview"],
+    ["investment update", "overview"],
+    ["what do you do with my investments", "autopilot"],
+    ["investments on autopilot", "autopilot"],
+  ])("reads %j as %s", (text, topic) => {
+    expect(parseIntent(text, ASOF)).toMatchObject({ kind: "investments", topic });
+  });
+});
+
+describe("the monthly note, drift and the paused nudge in Jane's messages", () => {
+  const review = reviewPortfolio(demoInvestments().accounts, 3);
+  const gatherAll = (over: Partial<InvestmentSnapshot>, asOf = ASOF) =>
+    investmentsSource.gather(
+      { ...base, asOf, investments: demoInvestmentSnapshot(over) },
+      {} as never,
+    );
+
+  it("says once a month how it's going, with the orders when the mix has drifted", () => {
+    const monthly = gatherAll({ review, rebalance: PLAN }).find(
+      (c) => c.dedupeKey === "monthly:2026-10",
+    )!;
+    expect(monthly).toMatchObject({
+      kind: "decision",
+      refs: { advice: true, rebalanceKey: PLAN.key },
+      priority: MESSAGE_PRIORITY.investment_monthly,
+    });
+    expect(monthly.body).toMatch(/^Your investments start October at \$96,730\.55\./);
+    expect(monthly.actions.map((a) => a.id)).toEqual(["invest.rebalance", "open", "snooze"]);
+    // Real accounts get the facts, never the mix or the orders.
+    const real = gatherAll({ advice: false, review, rebalance: PLAN }).find(
+      (c) => c.dedupeKey === "monthly:2026-10",
+    )!;
+    expect(real).toMatchObject({ kind: "heads_up", refs: {} });
+    expect(real.body).not.toMatch(/mix|orders/);
+  });
+
+  it("brings drift up again each month while the mix stays off target", () => {
+    const keys = (asOf: string) =>
+      gatherAll({ review, rebalance: PLAN }, asOf)
+        .map((c) => c.dedupeKey)
+        .filter((k) => k.startsWith("review:"));
+    expect(keys("2026-10-19")).toEqual(["review:3:rebalance:2026-10"]);
+    expect(keys("2026-11-02")).toEqual(["review:3:rebalance:2026-11"]);
+  });
+
+  it("nudges once automatic investing has been paused for a month", () => {
+    const plan = {
+      mode: "fixed",
+      amountCents: 10_000,
+      accountId: "b",
+      status: "paused",
+      lastPaydayOn: null,
+      updatedAt: new Date("2026-09-01T00:00:00Z"),
+    };
+    const auto = { plan, runs: [], suggestion: null, accounts: [] };
+    const nudge = gatherAll({ profile: FULL, autoInvest: auto }).find((c) =>
+      c.dedupeKey.startsWith("auto:paused:"),
+    )!;
+    expect(nudge).toMatchObject({ kind: "decision", dedupeKey: "auto:paused:2026-09-01" });
+    expect(nudge.body).toMatch(
+      /^Automatic investing has been paused since Sep 1\. Want me to start again/,
+    );
+    expect(nudge.actions[0].id).toBe("invest.auto_resume");
+    const recent = { ...auto, plan: { ...plan, updatedAt: new Date("2026-10-10T00:00:00Z") } };
+    expect(
+      gatherAll({ profile: FULL, autoInvest: recent }).some((c) =>
+        c.dedupeKey.startsWith("auto:paused:"),
+      ),
+    ).toBe(false);
+  });
+});
+
+describe("overviewReply and autopilotReply", () => {
+  it("answers how it's going with the same note", () => {
+    const reply = overviewReply(demoInvestmentSnapshot({ advice: false }));
+    expect(reply.body).toMatch(/^Your investments start October at \$96,730\.55\./);
+    expect(overviewReply(demoInvestmentSnapshot({ accounts: [] })).actions[0]).toMatchObject({
+      href: "/connect",
+    });
+  });
+
+  it("says what Jane does by herself at each level, and that trades wait for a tap", () => {
+    expect(autopilotReply(null).body).toMatch(
+      /^Here's what I do with your investments by myself\./,
+    );
+    const all = autopilotReply("all").body;
+    expect(all).toMatch(/^On your autopilot setting, here's what I do/);
+    expect(all).toContain(
+      "Buying, selling and moving money always wait for your tap, at every level.",
+    );
+    expect(autopilotReply("ask").body).not.toMatch(/invest every payday/);
   });
 });

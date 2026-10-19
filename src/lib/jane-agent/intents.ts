@@ -8,6 +8,8 @@ import { parseTaxIntent, type TaxIntent } from "./tax-intents";
 import type { PreferenceDraft } from "./preferences";
 import { parseFact } from "./remember";
 import { parseInvestmentIntent, type InvestmentIntent } from "./investments/intents";
+import { parseSectorIntent, type SectorIntent } from "./autopilot-intents";
+import { parseLearnIntent, type LearnIntent } from "./learn";
 
 // What the person typed to Jane, understood by rules (spec step 84). Pure: the text and
 // today's date in, one intent out. Works with no Claude key at all; anything it can't
@@ -75,6 +77,10 @@ export type Intent =
   | TaxIntent
   // Spec step 128 on: what they own, and each later investment question.
   | InvestmentIntent
+  // Spec step 141: one autopilot, every sector.
+  | SectorIntent
+  // Spec step 136: what a word means.
+  | LearnIntent
   | { kind: "unknown" };
 
 const MONTHS = [
@@ -368,6 +374,8 @@ export function parseIntent(raw: string, asOf: string): Intent {
   if (GREETING.test(text)) return { kind: "greeting", thanks: false };
   if (THANKS.test(text)) return { kind: "greeting", thanks: true };
   if (PAUSE.test(text)) return { kind: "pause_autopilot" };
+  const sector = parseSectorIntent(text);
+  if (sector) return sector;
   if (SAVED.test(text)) return { kind: "saved" };
   if (REVIEW.test(text)) return { kind: "review" };
   if (CHANGES.test(text)) return { kind: "changes" };
@@ -376,6 +384,9 @@ export function parseIntent(raw: string, asOf: string): Intent {
   if (WHAT_DID.test(text)) return { kind: "what_did" };
   if (APPROVE_ALL.test(text)) return { kind: "approve_all" };
   if (UNDO.test(text)) return { kind: "undo" };
+  // Spec step 136: "what's a deductible?" is a question about the word, before the sectors.
+  const learn = parseLearnIntent(text);
+  if (learn) return learn;
   // Loans and debt (spec Phase Y) before taxes: "how much do I owe?" is about debts;
   // anything that mentions taxes is left to the tax questions.
   const debt = parseDebtIntent(text, parseAmount(text));

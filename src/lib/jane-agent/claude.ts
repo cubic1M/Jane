@@ -1,5 +1,8 @@
 import Anthropic from "@anthropic-ai/sdk";
 import {
+  CHAT_CLAUDE_COOLDOWN_SECONDS,
+  CHAT_CLAUDE_DEADLINE_MS,
+  CHAT_CLAUDE_FIRST_WORDS_MS,
   CHAT_CLAUDE_EFFORT,
   CHAT_CLAUDE_MAX_TURNS,
   CHAT_CLAUDE_REWRITES,
@@ -86,7 +89,17 @@ type Options = {
   // Demo advice mode (src/lib/advice-mode.ts, spec step 98): the demo guardrail profile,
   // and advice labelled. Off unless the caller checked adviceMode.
   advice?: boolean;
+  // Spec step 93: how long to wait for Claude to start, and to finish, in milliseconds.
+  firstWordsMs?: number;
+  deadlineMs?: number;
 };
+
+// Spec step 93: when Claude last failed, free questions get the rules' answer at once until
+// this time (ms), instead of waiting on Claude again. Per server instance.
+let claudeDownUntil = 0;
+export function resetClaudeHealth(): void {
+  claudeDownUntil = 0;
+}
 
 const STATUS: Record<string, string> = {
   // Loans and debt (spec Phase Y, ./debt-tools.ts).
@@ -108,6 +121,7 @@ const STATUS: Record<string, string> = {
   life_events: "Looking at your checklists…",
   plan_upkeep: "Looking at your week…",
   proven_savings: "Adding up what I saved you…",
+  autopilot_settings: "Checking what I may do by myself…",
   propose_action: "Getting a button ready…",
 };
 export const statusFor = (tool: string) =>
@@ -172,8 +186,13 @@ export async function askClaudeInChat(
     maxTurns = CHAT_CLAUDE_MAX_TURNS,
     onEvent = () => {},
     advice = false,
+    firstWordsMs = CHAT_CLAUDE_FIRST_WORDS_MS,
+    deadlineMs = CHAT_CLAUDE_DEADLINE_MS,
   }: Options,
 ): Promise<ClaudeAnswer> {
+  // Spec step 93: Claude failed a moment ago: answer from the rules now, never a spinner.
+  if (Date.now() < claudeDownUntil) return unavailable();
+  const started = Date.now();
   const profile = advice ? "demo_advice" : "standard";
   onEvent({ type: "status", text: "Looking at your numbers…" });
   const primer = await chatPrimer(userId, { client, now });
@@ -207,6 +226,9 @@ export async function askClaudeInChat(
 
   for (let turn = 0; turn < maxTurns; turn += 1) {
     let response: Anthropic.Message;
+    // Spec step 93: give up on a slow start, or a slow answer, for the rules' answer.
+    let stopped = false;
+    let timer: ReturnType<typeof setTimeout> | undefined;
     try {
       const stream = claude()
         .messages.stream({
@@ -219,6 +241,11 @@ export async function askClaudeInChat(
           messages,
         })
         .on("streamEvent", (event) => {
+          // It has started: now only the deadline applies.
+          if (timer && turn === 0) {
+            clearTimeout(timer);
+            timer = setTimeout(stop, Math.max(0, deadlineMs - (Date.now() - started)));
+          }
           if (event.type !== "content_block_start") return;
           if (event.content_block.type === "thinking") {
             onEvent({ type: "status", text: "Thinking…" });
@@ -228,11 +255,24 @@ export async function askClaudeInChat(
           }
         })
         .on("text", (delta) => draft.push(delta));
+      function stop() {
+        stopped = true;
+        if (typeof stream.abort === "function") stream.abort();
+      }
+      const left = deadlineMs - (Date.now() - started);
+      timer = setTimeout(stop, turn === 0 ? Math.min(firstWordsMs, left) : Math.max(0, left));
       response = await stream.finalMessage();
     } catch (error) {
       if (!(error instanceof Anthropic.APIError)) throw error;
-      console.error("Jane's chat request to Claude failed", { status: error.status });
+      if (stopped) {
+        console.warn("Jane's chat answer from Claude was too slow");
+      } else {
+        console.error("Jane's chat request to Claude failed", { status: error.status });
+      }
+      claudeDownUntil = Date.now() + CHAT_CLAUDE_COOLDOWN_SECONDS * 1000;
       return unavailable();
+    } finally {
+      clearTimeout(timer);
     }
 
     if (response.stop_reason === "tool_use") {

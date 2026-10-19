@@ -380,7 +380,30 @@ describe.runIf(url)("investments in Jane's chat, against a real database", () =>
         now: LINKED,
       });
       expect(reply.refs.advice).toBe(true);
-      expect(reply.body).toMatch(/^Here's the order I'd fill your accounts in:/);
+      expect(reply.body).toMatch(/^Fill the 401\(k\) match first, then /);
+    },
+  );
+
+  it(
+    "step 137: the monthly note from what went in last month, at most one decision",
+    SLOW,
+    async () => {
+      const userId = await demoPerson();
+      const snapshot = await loadSnapshot(userId, { client, now: LINKED });
+      // September's two paydays: 4% of pay and half of that matched, twice.
+      expect(snapshot?.investments?.month).toMatchObject({
+        month: "2026-10",
+        contributedCents: 40_800,
+      });
+      const note = investmentsSource
+        .gather(snapshot!, {} as never)
+        .find((c) => c.dedupeKey === "monthly:2026-10")!;
+      expect(note.body).toMatch(
+        /^Your investments start October at \$96,730\.55\. \$408\.00 went in last month\./,
+      );
+      expect(
+        note.actions.filter((a) => a.kind !== "link" && a.id !== "snooze").length,
+      ).toBeLessThanOrEqual(1);
     },
   );
 });
