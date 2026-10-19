@@ -31,11 +31,12 @@ To make someone an admin, set their role in the database:
 
 ## Commands
 
-| Command             | What it does                    |
-| ------------------- | ------------------------------- |
-| `npm run dev`       | Start the app on localhost:3000 |
-| `npm test`          | Unit tests (Vitest)             |
-| `npm run test:e2e`  | End-to-end tests (Playwright)   |
-| `npm run lint`      | ESLint                          |
-| `npm run typecheck` | TypeScript check                |
-| `npm run format`    | Format with Prettier            |
+| Command                  | What it does                                                                                                                                                                                                                                                 |
+| ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `npm run dev`            | Start the app on localhost:3000                                                                                                                                                                                                                              |
+| `npm test`               | Unit tests (Vitest)                                                                                                                                                                                                                                          |
+| `npm run test:e2e`       | End-to-end tests (Playwright)                                                                                                                                                                                                                                |
+| `npm run lint`           | ESLint                                                                                                                                                                                                                                                       |
+| `npm run typecheck`      | TypeScript check                                                                                                                                                                                                                                             |
+| `npm run format`         | Format with Prettier                                                                                                                                                                                                                                         |
+| `npm run checks:answers` | Jane's answer checks (spec step 87) against the scratch database in `TEST_DATABASE_URL`: rules questions only without `ANTHROPIC_API_KEY`, everything plus Claude's grades (within a spending cap) with it. Saves the run and compares it with the last one. |

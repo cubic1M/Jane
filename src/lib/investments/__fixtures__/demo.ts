@@ -1,5 +1,12 @@
 import { demoAccounts, DEMO_INSTITUTION } from "@/data-sources/demo/demo-bank";
-import { demoHoldings, demoSecurities } from "@/data-sources/demo/demo-holdings";
+import {
+  demoHoldings,
+  demoInvestmentTransactions,
+  demoSecurities,
+} from "@/data-sources/demo/demo-holdings";
+import { feeSummary, type FeeTransaction } from "@/insights/investment-fees";
+import type { InvestmentSnapshot } from "@/lib/jane-agent/investments/snapshot";
+import { EMPTY_ANSWERS } from "@/planning/investor-profile";
 import { normalizeHolding, normalizeSecurity } from "@/data-sources/plaid/investments";
 import { investmentSummary } from "@/insights/investments";
 import type { Investments } from "@/lib/investments/holdings";
@@ -42,4 +49,36 @@ export function demoInvestments(asOf = "2026-10-19"): Investments {
 
 export function noInvestments(asOf = "2026-10-19"): Investments {
   return { asOf, ...investmentSummary([], [], []), months: [] };
+}
+
+// The demo bank's fee transactions in the 12 months to the fixture's day: four quarterly
+// plan fees on the 401(k) and four advisory fees on the brokerage.
+export function demoFeeTransactions(): FeeTransaction[] {
+  return demoInvestmentTransactions(DEMO_FIXTURE_SEED, "2025-10-19", "2026-10-18")
+    .filter((t) => t.type === "fee")
+    .map((t) => ({
+      accountId: t.account_id,
+      amountCents: Math.round(t.amount * 100),
+      subtype: t.subtype,
+    }));
+}
+
+// Jane's brain's view of the demo bank's investments.
+export function demoInvestmentSnapshot(over: Partial<InvestmentSnapshot> = {}): InvestmentSnapshot {
+  const data = demoInvestments();
+  const fees = feeSummary(data.accounts, demoFeeTransactions());
+  return {
+    totalCents: data.totalCents,
+    holdingCount: data.holdingCount,
+    accounts: data.accounts,
+    advice: true,
+    profile: EMPTY_ANSWERS,
+    fees: {
+      totalYearlyCents: fees.totalYearlyCents,
+      overYears: fees.overYears,
+      equivalents: fees.equivalents,
+      years: fees.years,
+    },
+    ...over,
+  };
 }

@@ -16,6 +16,7 @@ import { sendToJane } from "@/lib/jane-agent/typing";
 import { linkDemoBank } from "@/lib/plaid/demo";
 import { syncItem } from "@/lib/plaid/sync";
 import { profileSummary } from "@/planning/investor-profile";
+import { loadFees } from "./fees";
 import { profileOf, saveProfileForm } from "./profile";
 
 // Investments (spec steps 128–137) against a real, migrated Postgres (see
@@ -108,9 +109,9 @@ describe.runIf(url)("investments in Jane's chat, against a real database", () =>
     );
     // Answered: Jane stops asking.
     const after = await loadSnapshot(userId, { client, now: LINKED });
-    expect(investmentsSource.gather(after!, {} as never).map((c) => c.dedupeKey)).toEqual([
-      "holdings",
-    ]);
+    expect(investmentsSource.gather(after!, {} as never).map((c) => c.dedupeKey)).not.toContain(
+      "profile",
+    );
 
     // Changed any time on the page; the first time it was finished is kept.
     await saveProfileForm(
@@ -136,5 +137,20 @@ describe.runIf(url)("investments in Jane's chat, against a real database", () =>
     expect(
       investmentsSource.gather(snapshot!, {} as never).some((c) => c.dedupeKey === "profile"),
     ).toBe(false);
+  });
+
+  it("step 130: fees come from the synced holdings and fee records", SLOW, async () => {
+    const userId = await demoPerson();
+    const { fees } = await loadFees(userId, { client, now: LINKED });
+    // Four quarterly advisory and plan fees in the 12 months before linking.
+    expect(fees.advisoryCents).toBe(12_480);
+    expect(fees.accountFeesCents).toBe(5_000);
+    expect(fees.equivalents.map((e) => e.ticker)).toEqual(["KTRGX", "KTSIX", "KDVX"]);
+    const { reply } = await sendToJane(userId, "what are my investment fees", {
+      client,
+      now: LINKED,
+    });
+    expect(reply.refs.advice).toBe(true);
+    expect(reply.body).toContain("Lower-cost equivalents:");
   });
 });
