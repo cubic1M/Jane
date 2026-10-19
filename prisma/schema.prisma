@@ -319,6 +319,8 @@ model User {
   changeAcks             ChangeAck[]
   taxProfile             TaxProfile?
   lifeEventAnswers       LifeEventAnswer[]
+  taxTags                TaxTag[]
+  taxForms               TaxForm[]
   budgetTuneUps          BudgetTuneUp[]
   goalTransfers          GoalTransfer[]
 
@@ -457,8 +459,9 @@ model Transaction {
   createdAt          DateTime        @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt          DateTime        @updatedAt @map("updated_at") @db.Timestamptz(3)
 
-  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
-  account Account @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  user    User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  account Account  @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  taxTags TaxTag[]
 
   @@unique([accountId, dedupeKey])
   @@index([userId])
@@ -1649,6 +1652,44 @@ model TaxProfile {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("tax_profiles")
+}
+
+// Tax tags the person chose (spec step 119): on one transaction, or on every transaction
+// from one merchant. Jane's own tags come from the spending category (src/config/tax.ts
+// TAX_TAGS) and aren't stored; these override them. tag is a TAX_TAGS key or "none" (not
+// for taxes). Tags never change the transaction or its category.
+model TaxTag {
+  id            String   @id @default(cuid())
+  userId        String   @map("user_id")
+  transactionId String?  @map("transaction_id")
+  // normalizeMerchant's key (src/data-sources/merchant.ts).
+  merchantKey   String?  @map("merchant_key")
+  tag           String
+  createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt     DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  user        User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  transaction Transaction? @relation(fields: [transactionId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, transactionId])
+  @@unique([userId, merchantKey])
+  @@index([userId])
+  @@map("tax_tags")
+}
+
+// Tax forms the person said have arrived (spec step 119), for a tax year: one row per form
+// Jane expected (src/planning/tax-documents.ts key), so she stops asking about it.
+model TaxForm {
+  id         String   @id @default(cuid())
+  userId     String   @map("user_id")
+  year       Int
+  key        String
+  receivedAt DateTime @map("received_at") @db.Timestamptz(3)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, year, key])
+  @@map("tax_forms")
 }
 
 // Spec step 128: a fund, share or cash position, as Plaid Investments (or the demo bank)

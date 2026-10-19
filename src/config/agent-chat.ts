@@ -96,6 +96,8 @@ export const MESSAGE_PRIORITY = {
   investment_fees: 36,
   // Spec step 131: the portfolio review's changes (demo advice).
   investment_review: 38,
+  // Spec step 132: behind for retirement, or missing employer match money (demo advice).
+  retirement: 39,
 } as const;
 
 // The chat page shows the last this-many messages, with "Show earlier" for more.

@@ -1,5 +1,4 @@
 import { COUNT_ONLY_WHEN_APPROVED, MONEY_FOUND_MIN_CONFIDENCE } from "@/config/detection";
-import { TRIAL_ID_PREFIX } from "@/config/trial";
 import { atLeast } from "@/detection/helpers";
 import {
   Prisma,
@@ -30,15 +29,10 @@ const list = (values: readonly string[]) => Prisma.join(values.map((v) => Prisma
 const n = (value: bigint | number | null) => Number(value ?? 0);
 const rate = (part: number, whole: number) => (whole === 0 ? null : part / whole);
 
-// Spec step 138: people trying Jane with sample data are never counted.
-const TRIAL = `${TRIAL_ID_PREFIX.replace("_", "\\_")}%`;
-const real = (column: string) => Prisma.sql`${Prisma.raw(column)} NOT LIKE ${TRIAL}`;
-
 // Each person's first linked or imported account.
 const FIRST_LINK = Prisma.sql`
   first_link AS (
-    SELECT user_id, MIN(created_at) AS linked_at FROM accounts
-    WHERE ${real("user_id")} GROUP BY user_id
+    SELECT user_id, MIN(created_at) AS linked_at FROM accounts GROUP BY user_id
   )`;
 
 export async function computeMetricsSql(client: Client, w: Window): Promise<Metrics> {
@@ -49,7 +43,7 @@ export async function computeMetricsSql(client: Client, w: Window): Promise<Metr
     WITH ${FIRST_LINK}
     SELECT COUNT(*) AS signed_up, COUNT(fl.user_id) AS linked
     FROM users u LEFT JOIN first_link fl ON fl.user_id = u.id
-    WHERE ${inWindow(Prisma.sql`u.created_at`)} AND ${real("u.id")}`;
+    WHERE ${inWindow(Prisma.sql`u.created_at`)}`;
 
   // Money found per user who linked in the window, by sumMoneyFound's rules.
   const found = await client.$queryRaw<{ cents: bigint }[]>`
@@ -74,7 +68,6 @@ export async function computeMetricsSql(client: Client, w: Window): Promise<Metr
     SELECT f.type::text AS type, COUNT(*) AS count
     FROM decisions d JOIN findings f ON f.id = d.finding_id
     WHERE d.undone_at IS NULL AND d.choice::text <> 'no' AND ${inWindow(Prisma.sql`d.created_at`)}
-      AND ${real("d.user_id")}
     GROUP BY f.type`;
   const shownBy = new Map(opens.map((o) => [o.type, n(o.count)]));
   const approvedBy = new Map(yeses.map((y) => [y.type, n(y.count)]));
@@ -87,14 +80,12 @@ export async function computeMetricsSql(client: Client, w: Window): Promise<Metr
   const [completion] = await client.$queryRaw<{ closed: bigint; done: bigint }[]>`
     SELECT COUNT(*) FILTER (WHERE status::text IN ('done', 'failed')) AS closed,
            COUNT(*) FILTER (WHERE status::text = 'done') AS done
-    FROM actions WHERE completed_at IS NOT NULL AND ${inWindow(Prisma.sql`completed_at`)}
-      AND ${real("user_id")}`;
+    FROM actions WHERE completed_at IS NOT NULL AND ${inWindow(Prisma.sql`completed_at`)}`;
 
   const [willingness] = await client.$queryRaw<{ completed: bigint; willing: bigint }[]>`
     WITH first_done AS (
       SELECT user_id, MIN(completed_at) AS done_at FROM actions
-      WHERE status::text = 'done' AND completed_at IS NOT NULL AND ${real("user_id")}
-      GROUP BY user_id
+      WHERE status::text = 'done' AND completed_at IS NOT NULL GROUP BY user_id
     )
     SELECT COUNT(*) AS completed,
            COUNT(*) FILTER (WHERE EXISTS (
@@ -130,7 +121,7 @@ export async function computeMetricsSql(client: Client, w: Window): Promise<Metr
            SUM(minutes_spent) AS total
     FROM actions
     WHERE status::text = 'done' AND completed_at IS NOT NULL
-      AND ${inWindow(Prisma.sql`completed_at`)} AND ${real("user_id")}
+      AND ${inWindow(Prisma.sql`completed_at`)}
     GROUP BY type ORDER BY type::text`;
 
   const conversions = await client.$queryRaw<{ partner: string; amount_cents: number; at: Date }[]>`
@@ -183,7 +174,7 @@ export async function automateNextSql(client: Client): Promise<AutomateRow[]> {
            COUNT(*) AS approvals,
            COUNT(minutes_spent) FILTER (WHERE status::text = 'done') AS logged,
            SUM(minutes_spent) FILTER (WHERE status::text = 'done') AS total
-    FROM actions WHERE ${real("user_id")} GROUP BY type`;
+    FROM actions GROUP BY type`;
   return rows
     .map((r) => {
       const average = n(r.logged) ? n(r.total) / n(r.logged) : null;
