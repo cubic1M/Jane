@@ -21,6 +21,7 @@ import { sectorAutopilots } from "@/lib/sector-autopilot";
 import { lastControllerRun } from "@/lib/controller-log";
 import { CONTROLLER_STEP_LABELS } from "@/config/controller";
 import { rankedFor } from "./priorities";
+import { wholePicture } from "./whole-picture";
 import { latestPaycheckPlan } from "@/lib/money-movement/paycheck";
 import { listTransfers } from "@/lib/money-movement/transfers";
 import { loadBillPay } from "@/lib/money-movement/bill-pay";
@@ -195,6 +196,12 @@ export const CHAT_TOOLS: Anthropic.Tool[] = [
     name: "priorities",
     description:
       'The person\'s next best things to do (spec step 143), ranked across everything Jane found and is waiting on: findings, insurance picks, refinance offers, steps only they can do and dated deadlines. Each with the money it saves a year, the minutes it takes, its urgency and why it ranks where it does. Use it for "what should I do first" and to put the most important first.',
+    input_schema: noInput,
+  },
+  {
+    name: "whole_picture",
+    description:
+      'How the person is doing across every sector at once (spec step 183), for "am I OK?", "how am I doing" and "what should I do this month": a verdict (ok, watch or act) with its one-sentence headline, safe to spend until payday, bills and deadlines due this week and this month, budgets over, goals behind, urgent alerts, what Jane\'s agent is working on, the steps waiting on the person, and the one to three things that matter most (from the ranked list) with why. Lead with the headline, then the things that matter; use the same figures.',
     input_schema: noInput,
   },
   {
@@ -484,6 +491,44 @@ export async function runChatTool(
           savesAYear: r.valueCents === null ? null : money(r.valueCents),
           minutes: r.minutes,
           due: r.dueOn ?? null,
+          why: r.why,
+          findingId: r.kind === "finding" ? r.ref : null,
+        })),
+      });
+    }
+    case "whole_picture": {
+      const snapshot = await loadSnapshot(userId, { client, now });
+      if (!snapshot) return out({ linked: false });
+      const ranked = rankedFor(snapshot);
+      const week = wholePicture(snapshot, ranked, "now");
+      const month = wholePicture(snapshot, ranked, "month");
+      const due = (rows: typeof week.due) =>
+        rows.map((d) => ({
+          what: d.label,
+          date: d.date,
+          amount: d.amountCents === null ? null : money(d.amountCents),
+        }));
+      return out({
+        verdict: week.verdict,
+        headline: week.headline,
+        safeToSpend: week.safe && {
+          amount: money(week.safe.safeCents),
+          untilPayday: week.safe.payday,
+        },
+        dueThisWeek: due(week.due),
+        dueThisMonth: due(month.due),
+        budgetsOver: week.budgetsOver.map((b) => ({
+          category: b.category,
+          over: money(b.overCents),
+        })),
+        goalsBehind: week.goalsBehind.map((g) => ({ goal: g.name, stillToGo: money(g.leftCents) })),
+        urgent: week.urgent,
+        janeWorkingOn: week.working,
+        waitingOnThePerson: week.waitingOnYou,
+        safeToApproveAtOnce: week.safeItems,
+        mattersMost: week.top.map((r) => ({
+          what: r.title,
+          savesAYear: r.valueCents === null ? null : money(r.valueCents),
           why: r.why,
           findingId: r.kind === "finding" ? r.ref : null,
         })),

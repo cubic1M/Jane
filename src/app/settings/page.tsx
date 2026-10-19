@@ -42,6 +42,7 @@ import { MemoryList } from "./memory-list";
 import { SECTOR_ALL_MEANS, SECTOR_LABELS } from "@/config/autopilot-sectors";
 import { sectorAutopilots } from "@/lib/sector-autopilot";
 import { SectorsForm } from "./sectors-form";
+import { dayLabel } from "@/lib/day-label";
 
 // "9pm", "8am".
 const clock = (hour: number) => `${hour % 12 || 12}${hour < 12 ? "am" : "pm"}`;
@@ -145,7 +146,7 @@ async function SettingsContent() {
   const csvUpdated = new Map(lastCsv.map((row) => [row.accountId, row.createdAt]));
   const alerts = alertPrefs(prefs.alertPrefs);
   const chatNotify = chatNotifyPrefs(prefs.chatNotifyPrefs);
-  const day = (d: Date | null | undefined) => (d ? d.toISOString().slice(0, 10) : "not yet");
+  const day = (d: Date | null | undefined) => (d ? dayLabel(d, { year: true }) : "not yet");
 
   return (
     <>
