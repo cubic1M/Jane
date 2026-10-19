@@ -40,13 +40,19 @@ vi.mock("@/lib/tax-organizer", async (importOriginal) => ({
   markTaxForm: vi.fn(async () => ({ form: "W-2", from: "ACME" })),
 }));
 
+vi.mock("@/lib/tax-documents", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/tax-documents")>()),
+  decideDocument: vi.fn(async () => ({ form: "W-2", from: "ACME CORP PAYROLL" })),
+}));
+
 import { adviceMode } from "@/lib/advice-mode";
+import { TaxDocumentError, decideDocument } from "@/lib/tax-documents";
 import { TaxOrganizerError, markTaxForm } from "@/lib/tax-organizer";
 import { clearW4Change, keepRefund, recordW4Change } from "@/lib/tax-withholding";
 import { addDeadline } from "@/lib/deadlines";
 import { dismissSaving } from "@/lib/tax-savings";
 import { applyRefundPlan, dismissRefund } from "@/lib/tax-refund";
-import { markForm, refundAction, savingAction, w4Action } from "./actions";
+import { documentAction, markForm, refundAction, savingAction, w4Action } from "./actions";
 
 // Spec step 119: "I have it" and "Not yet" on /taxes.
 
@@ -164,5 +170,34 @@ describe("refundAction (spec step 125)", () => {
       ok: true,
     });
     expect(dismissRefund).toHaveBeenCalledWith("u1", "t1", { via: "page" });
+  });
+});
+
+describe("a collected form that doesn't match (spec step 166)", () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  it("uses it as it is, or puts asking the payer on the deadlines", async () => {
+    expect(
+      await documentAction(null, form({ year: "2026", key: "w2:acme", decision: "right" })),
+    ).toEqual({ ok: true, message: "Using your W-2 from ACME CORP PAYROLL as it is." });
+    expect(decideDocument).toHaveBeenCalledWith("u1", 2026, "w2:acme", "right", { via: "page" });
+    expect(
+      await documentAction(null, form({ year: "2026", key: "w2:acme", decision: "ask" })),
+    ).toEqual({
+      ok: true,
+      message: "Asking ACME CORP PAYROLL for a corrected form is on your deadlines.",
+    });
+  });
+
+  it("refuses anything else, and says what's wrong", async () => {
+    expect(
+      await documentAction(null, form({ year: "2026", key: "w2:acme", decision: "file" })),
+    ).toMatchObject({ ok: false });
+    vi.mocked(decideDocument).mockRejectedValueOnce(
+      new TaxDocumentError("That form isn't collected anymore."),
+    );
+    expect(
+      await documentAction(null, form({ year: "2026", key: "w2:gone", decision: "right" })),
+    ).toEqual({ ok: false, message: "That form isn't collected anymore." });
   });
 });
