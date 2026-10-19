@@ -6,6 +6,7 @@ import {
 import { formatCents } from "@/lib/money";
 import { forecastAccounts } from "../forecast";
 import type { Rule } from "./rule";
+import { dayLabel } from "@/lib/day-label";
 
 // A checking account forecast to fall below the cushion in the next FORECAST_DAYS, from
 // its balance today, its recurring bills and its recurring income. No dollar estimate:
@@ -16,7 +17,7 @@ export const lowBalanceRisk: Rule = (input) =>
     .map((f) => ({
       type: "low_balance_risk",
       key: `account:${f.accountId}`,
-      title: `${f.accountName} could drop to ${formatCents(f.lowest.balanceCents)} around ${f.lowest.date}`,
+      title: `${f.accountName} could drop to ${formatCents(f.lowest.balanceCents)} around ${dayLabel(f.lowest.date)}`,
       annualSavingsCents: null,
       amountCents: f.lowest.balanceCents,
       confidence:

@@ -128,8 +128,12 @@ export function payoffToolOutput(payoff: Payoff, asOf: string, money: (cents: nu
       extraAMonth: money(s.extraCents),
       debtFree: monthAfter(asOf, s.months),
       interest: money(s.interestCents),
-      interestSavedVsMinimums: s.interestSavedCents === null ? null : money(s.interestSavedCents),
+      interestSaved: s.interestSavedCents === null ? null : money(s.interestSavedCents),
     })),
+    // What payingMore's interestSaved is against: each debt's own minimum, or this plan with
+    // nothing more a month (when the minimums alone never pay everything off).
+    interestSavedAgainst:
+      summary.savedAgainst === "minimums" ? "each debt's minimum alone" : "this plan, nothing more",
     janesPick: summary.pick,
     // What the two orders differ by in interest, so it can be quoted.
     interestDifference:

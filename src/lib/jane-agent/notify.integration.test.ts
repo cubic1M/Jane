@@ -21,6 +21,7 @@ import type { sendEmail } from "@/lib/email";
 import type { sendPush } from "@/lib/push";
 import { ChatActionError } from "./actions";
 import { markChatRead } from "./messages";
+import { AS_THEY_COME } from "./preferences";
 import { deliverChatNotifications, queueChatNotifications } from "./notify";
 import { createReplyLink, redeemReplyLink, ReplyLinkError, viewReplyLink } from "./reply-links";
 import { runJaneAgent } from "./run";
@@ -51,17 +52,32 @@ describe.runIf(url)("Jane's messages as notifications, against a real database",
     },
   ) as PlaidApi;
 
-  async function person(prefix: string, chatNotifyPrefs: Prisma.InputJsonObject = {}) {
+  // Each message on its own (spec step 184's "as they come"): these tests are about how
+  // single messages go out. The day's agenda has its own test below.
+  async function person(
+    prefix: string,
+    chatNotifyPrefs: Prisma.InputJsonObject = {},
+    { agenda = false }: { agenda?: boolean } = {},
+  ) {
     const user = await client.user.create({
       data: { email: `${prefix}-${crypto.randomUUID()}@example.com`, chatNotifyPrefs },
     });
     created.push(user.id);
+    if (!agenda) {
+      await client.janePreference.create({
+        data: { userId: user.id, ...AS_THEY_COME, value: AS_THEY_COME.value },
+      });
+    }
     return user.id;
   }
 
   // Someone with a couple of findings, and Jane's first messages to them, posted at 8am.
-  async function withMessages(prefix: string, prefs: Prisma.InputJsonObject = {}) {
-    const userId = await person(prefix, prefs);
+  async function withMessages(
+    prefix: string,
+    prefs: Prisma.InputJsonObject = {},
+    options: { agenda?: boolean } = {},
+  ) {
+    const userId = await person(prefix, prefs, options);
     await client.account.create({
       data: { userId, source: "csv", name: "Checking", type: "depository", subtype: "checking" },
     });
@@ -261,6 +277,27 @@ describe.runIf(url)("Jane's messages as notifications, against a real database",
       const { push, send } = fakes();
       await deliverChatNotifications(userId, { client, now: at(MINUTE), push, send });
       expect(push.mock.calls.some(([, p]) => p.body.startsWith("Good morning"))).toBe(true);
+    });
+
+    // Spec step 184: by default the day is one agenda message, and what it lists is hidden
+    // behind it; the agenda goes out once, like a decision, when something needs a yes.
+    it("pushes the day's agenda once when something on it needs a yes", async () => {
+      const userId = await withMessages("notify-agenda", {}, { agenda: true });
+      await device(userId);
+      const { push, send } = fakes();
+      // The agenda, and what shows besides it (the one-time autopilot question); never the
+      // findings hidden behind it.
+      const shown = (await messagesOf(userId)).filter(
+        (m) => m.kind === "decision" && m.readAt === null,
+      );
+      expect(
+        await deliverChatNotifications(userId, { client, now: at(MINUTE), push, send }),
+      ).toEqual({ pushed: shown.length + 1, emailed: 0 });
+      const agenda = push.mock.calls.find(([, p]) => p.body.startsWith("Good morning!"));
+      expect(agenda?.[1].actions?.length).toBeGreaterThan(0);
+      expect(
+        await deliverChatNotifications(userId, { client, now: at(2 * MINUTE), push, send }),
+      ).toEqual({ pushed: 0, emailed: 0 });
     });
 
     it("stops a kind turned off at once, and everything when off", async () => {

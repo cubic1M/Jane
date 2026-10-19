@@ -33,6 +33,9 @@ export type CheckQuestion = {
 };
 
 const safe = (f: Facts) => [f.safeCents];
+// Spec step 183: answers that are a short list by design.
+const WHOLE: Expect = { intent: "whole_picture", figures: safe, list: true, maxChars: 900 };
+const WHOLE_MONTH: Expect = { intent: "whole_picture", list: true, maxChars: 900 };
 const PAYROLL: Expect = { mentions: /acme/i, avoid: /interest|\$1\.02/i };
 const netflix = (f: Facts) => [charge(f, "Netflix")?.lastCents ?? null];
 const food = (month: (f: Facts) => string) => (f: Facts) => [
@@ -305,6 +308,34 @@ export const QUESTIONS: readonly CheckQuestion[] = [
   { id: "pay-2", text: "when's my next paycheck", needs: "rules", expect: PAYROLL },
   { id: "pay-3", text: "next payday", needs: "rules", expect: PAYROLL },
 
+  // The whole picture, across every sector (spec step 183): the verdict first with safe to
+  // spend, then the one to three things that matter.
+  { id: "whole-1", text: "am I ok?", needs: "rules", expect: WHOLE },
+  { id: "whole-2", text: "how am I doing", needs: "rules", expect: WHOLE },
+  { id: "whole-3", text: "how are my finances looking", needs: "rules", expect: WHOLE },
+  { id: "whole-4", text: "give me the big picture", needs: "rules", expect: WHOLE },
+  { id: "whole-5", text: "what should I do this month", needs: "rules", expect: WHOLE_MONTH },
+  { id: "whole-6", text: "whats my plan for this month", needs: "rules", expect: WHOLE_MONTH },
+  {
+    id: "whole-7",
+    text: "honestly, is my money situation alright or should I be worried?",
+    needs: "claude",
+    expect: { figures: safe },
+  },
+  {
+    id: "whole-8",
+    text: "how am I doing",
+    needs: "rules",
+    expect: { mentions: /\bpayday\b/i, list: true, maxChars: 900 },
+  },
+  {
+    id: "whole-8b",
+    text: "ok what's the first one?",
+    needs: "claude",
+    after: "whole-8",
+    expect: {},
+  },
+
   // What's due.
   {
     id: "due-1",
@@ -541,7 +572,7 @@ export const QUESTIONS: readonly CheckQuestion[] = [
     needs: "claude",
     expect: { mentions: /verizon/i, button: "finding.yes" },
   },
-  { id: "free-2", text: "am I on track this month", needs: "claude", expect: {} },
+  { id: "free-2", text: "am I on track this month", needs: "rules", expect: WHOLE },
   {
     id: "free-3",
     text: "where can I save money",
