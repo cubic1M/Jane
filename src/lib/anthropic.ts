@@ -4,6 +4,8 @@ import Anthropic from "@anthropic-ai/sdk";
 // Claude must work without a key too: callers check llmEnabled() and fall back.
 
 const DEFAULT_MODEL = "claude-opus-5-5";
+// Jane's chat answers while the person waits, so it uses a faster model than the rest.
+const DEFAULT_CHAT_MODEL = "claude-sonnet-5-5";
 
 let client: Anthropic | undefined;
 
@@ -13,6 +15,11 @@ export function llmEnabled(): boolean {
 
 export function llmModel(): string {
   return process.env.ANTHROPIC_MODEL || DEFAULT_MODEL;
+}
+
+// The model for Jane's chat (src/lib/jane-agent/claude.ts).
+export function chatModel(): string {
+  return process.env.ANTHROPIC_CHAT_MODEL || DEFAULT_CHAT_MODEL;
 }
 
 export function anthropic(): Anthropic {

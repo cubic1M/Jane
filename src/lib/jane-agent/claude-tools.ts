@@ -1,6 +1,7 @@
 import type Anthropic from "@anthropic-ai/sdk";
 import { BUDGET_SUGGESTION_MONTHS } from "@/config/budgets";
 import { MAX_AFFORD_CENTS } from "@/config/afford";
+import { CHAT_PRIMER_TOOLS } from "@/config/agent-chat";
 import type { PrismaClient } from "@/generated/prisma/client";
 import { budgetSummary } from "@/insights/budgets";
 import { loadInsightTransactions } from "@/insights/load";
@@ -221,6 +222,26 @@ export async function runChatTool(
     default:
       return { content: JSON.stringify({ error: `There's no tool called ${name}.` }), cents: [] };
   }
+}
+
+// The person's main numbers, looked up before Claude is asked and sent with the question,
+// so most answers need no lookup. The same tools Claude can call, so the figures are
+// recorded for the guardrails in the same way. One that fails is left out.
+export async function chatPrimer(
+  userId: string,
+  { client, now }: Options,
+): Promise<{ text: string; cents: number[] }> {
+  const results = await Promise.allSettled(
+    CHAT_PRIMER_TOOLS.map((name) => runChatTool(userId, name, {}, { client, now })),
+  );
+  const parts: string[] = [];
+  const cents: number[] = [];
+  results.forEach((result, i) => {
+    if (result.status !== "fulfilled") return;
+    parts.push(`${CHAT_PRIMER_TOOLS[i]}: ${result.value.content}`);
+    cents.push(...result.value.cents);
+  });
+  return { text: parts.join("\n"), cents };
 }
 
 // What propose_action adds to the reply: the buttons, the refs they need, and a fixed

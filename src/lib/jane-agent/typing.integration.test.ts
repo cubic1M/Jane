@@ -8,7 +8,7 @@ vi.mock("@/lib/session", () => ({ requireUser: vi.fn() }));
 vi.mock("@/lib/analytics", () => ({ track: vi.fn() }));
 vi.mock("@/lib/audit", () => ({ logAudit: vi.fn(), SYSTEM_ACTOR: { type: "system", id: null } }));
 
-import { CHAT_MAX_MESSAGE } from "@/config/agent-chat";
+import { CHAT_MAX_MESSAGE, CHAT_PRIMER_TOOLS } from "@/config/agent-chat";
 import { ASK_BLOCKED_REPLY } from "@/config/ask";
 import { RATE_LIMITS } from "@/config/rate-limits";
 import { track } from "@/lib/analytics";
@@ -223,7 +223,16 @@ describe.runIf(url)("typing to Jane against a real database", () => {
 
   describe("with a key", () => {
     const create = vi.fn();
-    const claude = () => ({ messages: { create } }) as never;
+    // The chat streams; this plays back what create returns, all at once.
+    const claude = () =>
+      ({
+        messages: {
+          stream: (params: unknown) => {
+            const stream = { on: () => stream, finalMessage: () => create(params) };
+            return stream;
+          },
+        },
+      }) as never;
 
     beforeAll(() => vi.stubEnv("ANTHROPIC_API_KEY", "test-key"));
     afterAll(() => vi.stubEnv("ANTHROPIC_API_KEY", ""));
@@ -246,6 +255,17 @@ describe.runIf(url)("typing to Jane against a real database", () => {
       create.mockClear();
       await send("safe to spend", { claude });
       expect(create).not.toHaveBeenCalled();
+    });
+
+    it("sends the person's main numbers with the question, from the real database", async () => {
+      create.mockReset().mockResolvedValueOnce({
+        stop_reason: "end_turn",
+        content: [{ type: "text", text: "OK." }],
+      });
+      await send("how am I doing overall?", { claude });
+      const numbers = (create.mock.calls[0][0] as { system: { text: string }[] }).system[1].text;
+      for (const tool of CHAT_PRIMER_TOOLS) expect(numbers).toContain(`${tool}: {`);
+      expect(numbers).toMatch(/"safeToSpend":"\$[\d,]+\.\d\d"/);
     });
 
     it("holds Ask's limit for free questions", async () => {
