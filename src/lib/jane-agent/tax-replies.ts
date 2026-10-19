@@ -4,6 +4,8 @@ import { TAX_TAG_ORDER, TAX_TAGS, UNTAGGED, type TaxTagKind } from "@/config/tax
 import { formatCents } from "@/lib/money";
 import type { TaxFormsView, TaxTagsView } from "@/lib/tax-organizer";
 import type { TaxEstimateView } from "@/lib/tax-estimate";
+import type { WithholdingView } from "@/lib/tax-withholding";
+import { onTrackLine, w4Suggestion, withholdingFacts } from "./tax-w4";
 import { federalLine, roundDollars, stateLine } from "@/planning/tax-estimate-copy";
 import type { TaxPack } from "@/planning/tax-pack";
 import { listOf } from "@/planning/tax-profile";
@@ -269,4 +271,28 @@ export function bracketReply(view: TaxEstimateView): Reply {
     actions: [link("See the estimate", "/taxes#estimate")],
     refs: {},
   };
+}
+
+// Spec step 121: "am I withholding enough?"
+export function withholdingReply(view: WithholdingView): Reply {
+  const { check, estimate } = view;
+  switch (check.status) {
+    case "unknown":
+      return {
+        body:
+          check.why === "no_pay"
+            ? "I can't see regular paychecks in your accounts, so I can't check your withholding."
+            : "I can see your paychecks but not what's withheld from them. Add the figures from your latest pay stub and I'll check.",
+        actions: [link("Add pay stub figures", `${PROFILE_HREF}#pay-stub`)],
+        refs: {},
+      };
+    case "on_track":
+      return {
+        body: onTrackLine(estimate, check.refundCents),
+        actions: [link("See the estimate", "/taxes#withholding")],
+        refs: {},
+      };
+    default:
+      return view.advice ? w4Suggestion(estimate, check) : withholdingFacts(estimate, check);
+  }
 }

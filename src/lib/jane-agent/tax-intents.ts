@@ -19,7 +19,9 @@ export type TaxIntent =
   | { kind: "tax"; ask: "pack" }
   // Spec step 120: the estimate and the top rate.
   | { kind: "tax"; ask: "estimate" }
-  | { kind: "tax"; ask: "bracket" };
+  | { kind: "tax"; ask: "bracket" }
+  // Spec step 121: the withholding checkup.
+  | { kind: "tax"; ask: "withholding" };
 
 const NUMBER_WORDS: Readonly<Record<string, number>> = {
   no: 0,
@@ -79,6 +81,8 @@ const FORMS =
 const ESTIMATE =
   /\bhow much (?:tax )?(?:will|do|would) (?:i|we) (?:owe|get back|pay in tax(?:es)?|have to pay in tax(?:es)?)\b|\b(?:will|do) (?:i|we) (?:owe|get a refund|get money back)\b|\btax (?:estimate|bill|refund)\b|\bestimated? (?:tax|refund)\b|\bwhat (?:will|do) (?:i|we) owe (?:in |the )?(?:tax|taxes|irs)\b|\brefund this year\b/;
 const BRACKET = /\btax bracket\b|\bmarginal (?:tax )?rate\b|\bwhat bracket\b|\bmy bracket\b/;
+const WITHHOLDING =
+  /\bw-?4\b|\bwithholding\b|\bwithhold(?:ing)? (?:enough|too much|too little|more|less)\b|\b(?:am i|are we) (?:having|getting) enough (?:tax )?(?:taken|withheld)\b|\btoo much (?:tax )?(?:taken out|withheld)\b/;
 const PACK = /\btax(?:-| )?time pack\b|\btax pack\b|\byear-end pack\b/;
 
 function stateCode(words: string): string | null {
@@ -108,6 +112,7 @@ export function parseTaxIntent(text: string): TaxIntent | null {
   const untag = UNTAG.exec(text);
   if (untag) return { kind: "tax", ask: "tag", target: untag[1].trim(), tag: null };
   if (PACK.test(text)) return { kind: "tax", ask: "pack" };
+  if (WITHHOLDING.test(text)) return { kind: "tax", ask: "withholding" };
   if (BRACKET.test(text)) return { kind: "tax", ask: "bracket" };
   if (ESTIMATE.test(text)) return { kind: "tax", ask: "estimate" };
   if (FORMS.test(text)) return { kind: "tax", ask: "forms" };

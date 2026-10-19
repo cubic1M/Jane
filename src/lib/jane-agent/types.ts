@@ -57,6 +57,12 @@ export const ACTION_IDS = [
   "tax.tag_no",
   "tax.tag_set",
   "tax.form_got",
+  // Spec step 121: a new W-4, walked through in the chat.
+  "tax.w4_start",
+  "tax.w4_next",
+  "tax.w4_sent",
+  "tax.w4_stop",
+  "tax.w4_keep",
   // Investments (spec step 129 on): the answer buttons on an investor-profile question,
   // by position (src/config/investing.ts PROFILE_QUESTIONS).
   "invest.answer.1",
@@ -130,6 +136,12 @@ export type MessageRefs = {
   taxTag?: string;
   taxForm?: string;
   taxYear?: number;
+  // Spec step 121: the W-4 change a message walks through (step "4b" or "4c", the amount
+  // in cents, what to put from January) and which of its three steps it's on.
+  w4Step?: string;
+  w4AmountCents?: number;
+  w4JanuaryCents?: number;
+  w4Flow?: number;
   // Spec step 98: demo advice (src/lib/advice-mode.ts). The chat shows DEMO_ADVICE_LABEL
   // under it. Set it on every message that recommends investments, taxes, insurance or loans.
   advice?: true;
