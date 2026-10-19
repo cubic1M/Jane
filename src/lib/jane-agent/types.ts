@@ -230,6 +230,8 @@ export type MessageRefs = {
   // Spec step 113: the 0% offer a transfer was made to, and the transfer Jane tracks.
   transfer?: { debtKey: string; offerId: string };
   transferId?: string;
+  // Spec step 174: the card "Apply" applies for.
+  creditCard?: { productId: string };
   // Insurance (spec Phase X): a coverage gap by its key (GAP_KEYS), and the policy a
   // message is about.
   insuranceGap?: string;

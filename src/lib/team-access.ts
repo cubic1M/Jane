@@ -51,6 +51,8 @@ export const TEAM_ACCESS_RULES: Record<AuditEvent, EventRule> = {
   // Loans (spec step 112): the person's own application and acceptance.
   loan_application_submitted: own,
   loan_accepted: own,
+  // Spec step 174: the person's own card application.
+  card_application_submitted: own,
   // Insurance (spec Phase X): the person's own edits to their profile.
   insurance_policy_saved: own,
   insurance_policy_removed: own,
