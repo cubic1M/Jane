@@ -110,7 +110,7 @@ async function quotesTool(
   money: (value: number | null) => string | null,
   cents: number[],
 ): Promise<ToolOutput> {
-  const { policies, canQuote, shops } = await loadInsuranceSnapshot(userId, { client, now });
+  const { policies, canQuote, shops = [] } = await loadInsuranceSnapshot(userId, { client, now });
   const active = policies.filter((p) => p.status === "active");
   const withQuotes = await Promise.all(
     active.map(async (p) => ({

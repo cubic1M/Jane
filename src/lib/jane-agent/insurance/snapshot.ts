@@ -19,9 +19,10 @@ export type InsuranceSnapshot = {
   canQuote: boolean;
   // Spec step 104: Jane shops this person's policies herself (a partner and demo advice
   // mode), her open picks, and reshops that found nothing better lately.
-  shopsItself: boolean;
-  shops: Shop[];
-  noBetter: Shop[];
+  // Optional, so a snapshot built without them (in tests) says nothing about reshops.
+  shopsItself?: boolean;
+  shops?: Shop[];
+  noBetter?: Shop[];
 };
 
 export async function loadInsuranceSnapshot(
