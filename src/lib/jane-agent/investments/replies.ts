@@ -26,6 +26,7 @@ import {
   runLine,
   startButtons,
 } from "./auto-copy";
+import { learnLink } from "../learn";
 import { asking, PROFILE_INTRO } from "./profile-question";
 
 // Jane's rule answers about investments (spec step 128 on). Pure: the numbers in, fixed
@@ -168,9 +169,11 @@ export function feesReply(fees: FeeSummary, advice: boolean): Reply {
     )
     .join("\n");
   let body = `${parts.join(", ")}. Over ${fees.years} years that's roughly ${feeRange(fees.overYears)} with growth, depending on returns.\nThe costliest:\n${top}`;
-  if (!advice || fees.equivalents.length === 0) return { body, actions: [link], refs: {} };
+  if (!advice || fees.equivalents.length === 0) {
+    return { body, actions: [link, learnLink("fees")], refs: {} };
+  }
   body += `\n\nLower-cost equivalents:\n${fees.equivalents.map((e) => `- ${equivalentLine(e)}`).join("\n")}\n${switchSummary(fees.equivalents, fees.years)}`;
-  return { body, actions: [link], refs: { advice: true } };
+  return { body, actions: [link, learnLink("index-funds")], refs: { advice: true } };
 }
 
 // Spec step 131: the portfolio review. Facts for everyone; what to change only in demo
@@ -218,7 +221,7 @@ export function reviewReply(
       : `What I'd change:\n${review.recommendations.map((r, i) => `${i + 1}. ${r.what} ${r.why}`).join("\n")}`;
   return {
     body: `Against your ${review.riskLabel.toLowerCase()} profile: ${now}.\n${changes}`,
-    actions: [link],
+    actions: [link, learnLink("rebalancing")],
     refs: { advice: true },
   };
 }
@@ -268,7 +271,11 @@ export function retirementReply(
       ? "Nothing to change: keep going as you are."
       : `What I'd change:\n${plan.changes.map((c, i) => `${i + 1}. ${c.what} ${c.why}`).join("\n")}`;
   const roth = plan.rothOrTraditional ? `\n${ROTH_WORDS[plan.rothOrTraditional]}` : "";
-  return { body: `${lines}\n${changes}${roth}`, actions: [link], refs: { advice: true } };
+  return {
+    body: `${lines}\n${changes}${roth}`,
+    actions: [link, learnLink("the-match")],
+    refs: { advice: true },
+  };
 }
 
 // Spec step 133: the orders that move to the recommended mix, with the button.
@@ -309,6 +316,7 @@ export function rebalanceOffer(plan: RebalancePlan): Reply {
     actions: [
       rebalanceButton(),
       { id: "open", label: "See the orders", kind: "link", href: "/investments/rebalance" },
+      learnLink("rebalancing"),
     ],
     refs: { advice: true, rebalanceKey: plan.key },
   };
@@ -405,7 +413,7 @@ export function accountsReply(plan: AccountPlan): Reply {
     : "";
   return {
     body: `Here's the order I'd fill your accounts in:\n${order}${location}${gains ? `\n${gains}` : ""}`,
-    actions: [link],
+    actions: [link, learnLink("roth-vs-traditional")],
     refs: { advice: true },
   };
 }

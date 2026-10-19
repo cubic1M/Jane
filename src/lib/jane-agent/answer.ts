@@ -28,6 +28,7 @@ import { costReply, paydayReply, subscriptionsReply } from "./recurring-replies"
 import { answerDebt } from "./debt-answer";
 import { isDebtIntent } from "./debt-intents";
 import { answerInvestments } from "./investments/answer";
+import { learnReply } from "./learn";
 import {
   actReply,
   affordReply,
@@ -263,6 +264,8 @@ async function byIntent(
       return pauseReply(await autopilotOf(userId, { client }));
     case "tax":
       return answerTaxIntent(userId, intent, { client, now });
+    case "learn":
+      return learnReply(intent.slug);
     case "investments":
       return answerInvestments(userId, intent, { client, now });
   }
