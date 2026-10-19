@@ -45,6 +45,9 @@ import { snoozeButton, type MessageSource } from "./source";
 // - Step 157: in demo advice mode, gives each goal a mix by when it's needed (cash under 3
 //   years) and says so once per set of goals; at "Handle the safe stuff" and above, splits
 //   automatic investing's new money by goal by herself.
+// - Step 158: in demo advice mode, when the tax profile has children and there's no college
+//   plan, offers once to plan for college; starting one is the person's tap, then the goal
+//   is funded by step 157's buckets and automatic investing.
 // - Step 137: a monthly note on how the investments stand (no predictions), with at most
 //   one decision (the orders when the mix has drifted); a nudge when automatic investing
 //   has been paused for a month; and what she does by herself at each autopilot level
@@ -219,6 +222,20 @@ export const investmentsSource: MessageSource = {
         ],
         dedupeKey: `goals:${goalBuckets.map((b) => `${b.id}:${b.nearTerm ? "cash" : "invested"}`).join(",")}`,
         priority: MESSAGE_PRIORITY.goal_buckets,
+      });
+    }
+    // Step 158: children on the tax profile and no college plan yet: Jane offers once.
+    if (inv.advice && inv.college.children > 0 && inv.college.plans === 0) {
+      out.push({
+        kind: "heads_up",
+        body: `Your tax profile has ${inv.college.children === 1 ? "a child" : `${inv.college.children} children`} under 17. Want to start saving for college? Tell me their age, like "college for my 5 year old", and I'll work out what to put aside a month and the 529 plan that comes out ahead.`,
+        refs: { advice: true },
+        actions: [
+          { id: "open", label: "Plan for college", kind: "link", href: "/investments/college" },
+          snoozeButton(),
+        ],
+        dedupeKey: "college:offer",
+        priority: MESSAGE_PRIORITY.college,
       });
     }
     const auto = inv.autoInvest;

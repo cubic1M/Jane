@@ -4,6 +4,8 @@ import { RETURNS_NOTE } from "@/config/returns";
 import { formatReturn } from "@/insights/returns";
 import type { Returns } from "@/lib/investments/returns";
 import type { Bucket } from "@/planning/goal-buckets";
+import { COLLEGE_TYPES } from "@/config/college";
+import type { CollegeEstimate } from "@/lib/investments/college";
 import { byHerselfLine } from "./goals-copy";
 import { formatBps, type InvestmentAccountView, type HoldingView } from "@/insights/investments";
 import type { FeeSummary } from "@/insights/investment-fees";
@@ -543,5 +545,46 @@ export function goalBucketsReply(data: {
     body: `Each goal is invested for when you need it.\n${data.buckets.map((b) => `- ${b.name}: ${b.why}`).join("\n")}\n${byHerselfLine(data.byHerself)}`,
     actions: [link],
     refs: { advice: true },
+  };
+}
+
+// Spec step 158: what college could cost and what to put aside, with the button.
+export function collegeReply(
+  advice: boolean,
+  estimate: CollegeEstimate | null,
+  plans: number,
+): Reply {
+  const link: MessageAction = {
+    id: "open",
+    label: "Plan for college",
+    kind: "link",
+    href: "/investments/college",
+  };
+  if (!advice) {
+    return {
+      body: "College savings plans are only in demo advice mode for now.",
+      actions: [link],
+      refs: {},
+    };
+  }
+  if (!estimate) {
+    return {
+      body: `Tell me how old your child is and I'll work out what to put aside, for example "college for my 5 year old"${plans > 0 ? `. You have ${plans} college ${plans === 1 ? "plan" : "plans"} already` : ""}.`,
+      actions: [link],
+      refs: {},
+    };
+  }
+  const best = estimate.plans[0];
+  const benefit =
+    best && best.benefitCents > 0
+      ? `, with your state's tax break of about ${formatCents(best.benefitCents)} a year`
+      : "";
+  return {
+    body: `For a ${estimate.childAge}-year-old at ${COLLEGE_TYPES[estimate.type].toLowerCase()}, four years could cost about ${formatCents(estimate.cost.lowCents)} to ${formatCents(estimate.cost.highCents)} when they start in ${estimate.years} years. Putting aside about ${formatCents(estimate.monthly.lowCents)} to ${formatCents(estimate.monthly.highCents)} a month gets there, depending on prices and returns.${best ? ` The plan that comes out ahead: ${best.plan.name}${benefit}.` : ""} Tap and I'll set it up as a goal and invest for it.`,
+    actions: [{ id: "college.start", label: "Start saving for college", kind: "primary" }, link],
+    refs: {
+      advice: true,
+      college: { childName: "your child", childAge: estimate.childAge, type: estimate.type },
+    },
   };
 }
