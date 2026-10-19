@@ -71,6 +71,9 @@ describe("tax intents", () => {
     ["file my taxes", "file"],
     ["when is the tax deadline", "file"],
     ["what's the standard deduction", "standard_deduction"],
+    ["what are my capital gains this year", "investments"],
+    ["should I do tax loss harvesting", "investments"],
+    ["was that a wash sale", "investments"],
   ])("%s asks about %s (steps 120–121)", (text, ask) => {
     expect(parse(text)).toEqual({ kind: "tax", ask });
   });

@@ -34,7 +34,9 @@ export type TaxIntent =
   // Spec step 126.
   | { kind: "tax"; ask: "file" }
   // Spec step 127.
-  | { kind: "tax"; ask: "standard_deduction" };
+  | { kind: "tax"; ask: "standard_deduction" }
+  // Spec step 124.
+  | { kind: "tax"; ask: "investments" };
 
 const NUMBER_WORDS: Readonly<Record<string, number>> = {
   no: 0,
@@ -116,6 +118,8 @@ const REFUND_ASK =
 const FILE =
   /\bfile (?:my |our )?(?:tax(?:es)?|return|tax return)\b|\b(?:my |our )?tax return\b|\btax deadline\b|\bwhen (?:are|is) (?:my |our )?tax(?:es)? due\b|\b(?:status of|where is) my return\b/;
 const STANDARD = /\bstandard deduction\b/;
+const INVESTMENT_TAX =
+  /\bcapital gains?\b|\brealized gains?\b|\brealised gains?\b|\btax[- ]loss harvest\w*\b|\bharvest (?:my )?loss(?:es)?\b|\bwash sales?\b|\b(?:gains|losses) (?:on|from) my (?:investments|stocks|funds)\b|\bwhich account should i (?:hold|keep|put)\b/;
 const PACK = /\btax(?:-| )?time pack\b|\btax pack\b|\byear-end pack\b/;
 
 function stateCode(words: string): string | null {
@@ -146,6 +150,7 @@ export function parseTaxIntent(text: string): TaxIntent | null {
   if (untag) return { kind: "tax", ask: "tag", target: untag[1].trim(), tag: null };
   if (PACK.test(text)) return { kind: "tax", ask: "pack" };
   if (STANDARD.test(text)) return { kind: "tax", ask: "standard_deduction" };
+  if (INVESTMENT_TAX.test(text)) return { kind: "tax", ask: "investments" };
   if (REFUND_ASK.test(text)) return { kind: "tax", ask: "refund" };
   if (FILE.test(text)) return { kind: "tax", ask: "file" };
   if (WITHHOLDING.test(text)) return { kind: "tax", ask: "withholding" };
