@@ -10,6 +10,7 @@ import type { StudentLoans } from "@/lib/student-loans";
 import type { Mortgage } from "@/lib/mortgage";
 import type { Credit } from "@/lib/credit";
 import type { CreditCards } from "@/lib/credit-cards";
+import type { CreditBuilding } from "@/lib/credit-building";
 import { REWARD_CATEGORY_LABELS } from "@/config/credit-cards";
 import type { DebtAutopilot } from "@/lib/debt-autopilot";
 import { PMI_SOURCE } from "@/config/debt";
@@ -72,6 +73,12 @@ export const DEBT_TOOLS: Anthropic.Tool[] = [
     name: "credit_cards",
     description:
       "The person's credit cards and their rewards, from a year of their own spending (demo-bank people only, from a stand-in card catalog; nothing for real accounts until a card partner is connected): spending by kind (dining, groceries, gas, travel, streaming, online, everything else), each card's rewards, what it earns and its annual fee, whether each fee pays for itself against the best no-fee card, which card to use for each kind, and up to three cards that would earn more after their fee, with any sign-up bonus. Applying is a hard credit check and only ever the person's tap (the credit_card.apply button); Jane never applies by herself. Demo advice.",
+    input_schema: noInput,
+  },
+  {
+    name: "credit_building",
+    description:
+      "Building the person's credit (demo-bank people only; nothing for real accounts): the card whose statement closes next, the day it closes, what to pay before then so card use reported is under 30% or 10%, whether Jane or the person already scheduled it (through the money-movement stand-in), the on-time payment streak in months, whether the credit file is thin with credit-builder stand-ins (a secured card, a credit-builder loan), and the score simulator's estimate after each change (paying cards down, a year on time, a new card, a builder loan). Every simulator figure is an estimate, never a promise. Paying from the chat and opening a builder account each need the person's tap.",
     input_schema: noInput,
   },
   {
@@ -215,6 +222,7 @@ export const DEBT_TOOL_STATUS: Readonly<Record<string, string>> = {
   credit_score: "Checking your credit score…",
   debt_autopilot: "Checking what's due on your debts…",
   credit_cards: "Checking your card rewards…",
+  credit_building: "Working out how to build your credit…",
 };
 
 export function refinanceToolOutput(refi: Refinance, money: (cents: number) => string) {
@@ -471,6 +479,50 @@ export function creditCardsToolOutput(cards: CreditCards, money: (cents: number)
       status: a.status,
       on: a.createdOn,
     })),
+  };
+}
+
+export function creditBuildingToolOutput(data: CreditBuilding, money: (cents: number) => string) {
+  if (!data.available) return { note: "No credit partner for this person's accounts." };
+  const s = data.statement;
+  return {
+    demoAdvice: true,
+    debtAutopilotLevel: data.level,
+    score: data.score,
+    nextStatement: s && {
+      card: s.cardName,
+      closesOn: s.closesOn,
+      payBy: s.payOn,
+      payToGetUnder30: money(s.toUnderHighCents),
+      payToGetUnder10: money(s.toUnderGoodCents),
+      suggested: s.suggested && {
+        amount: money(s.suggested.amountCents),
+        under: s.suggested.target === "good" ? "10%" : "30%",
+      },
+      alreadyScheduled: s.scheduled && {
+        amount: money(s.scheduled.amountCents),
+        on: s.scheduled.runOn,
+        by: s.scheduled.by,
+      },
+    },
+    onTimeStreak: data.streak && {
+      months: data.streak.months,
+      since: data.streak.since,
+      noLatePaymentsSeen: data.streak.clean,
+    },
+    thinFile: data.thin,
+    creditBuilders: data.builders.map((b) => ({
+      name: b.name,
+      issuer: b.issuer,
+      summary: b.summary,
+      cost: money(b.costCents),
+    })),
+    simulatorEstimates: data.estimates.map((e) => ({
+      change: e.label,
+      estimatedScore: e.score,
+      points: e.change,
+    })),
+    note: "Simulator figures are estimates from the stand-in score, not promises.",
   };
 }
 

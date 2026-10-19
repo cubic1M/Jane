@@ -130,12 +130,7 @@ describe("debt questions", () => {
   });
 
   it("reads questions about the credit score", () => {
-    for (const text of [
-      "what's my credit score?",
-      "how do I improve my credit",
-      "credit report",
-      "my fico",
-    ]) {
+    for (const text of ["what's my credit score?", "credit report", "my fico"]) {
       expect(intent(text), text).toEqual({ kind: "credit_score" });
     }
   });
@@ -150,6 +145,26 @@ describe("debt questions", () => {
     }
     for (const text of ["when are my loan payments due", "next card payment", "move my due date"]) {
       expect(intent(text), text).toEqual({ kind: "debt_due" });
+    }
+  });
+
+  it("reads building credit, and the score simulator", () => {
+    for (const text of [
+      "how do I improve my credit",
+      "how can I build my credit score",
+      "raise my score",
+      "do I need a credit builder",
+      "when does my statement close",
+    ]) {
+      expect(intent(text), text).toEqual({ kind: "build_credit" });
+    }
+    for (const text of [
+      "what would my score be if I paid off my card",
+      "what if I open a new card, what happens to my score",
+      "credit score simulator",
+      "how many points would my score go up",
+    ]) {
+      expect(intent(text), text).toEqual({ kind: "credit_simulate" });
     }
   });
 
