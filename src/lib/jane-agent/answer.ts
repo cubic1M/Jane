@@ -8,10 +8,10 @@ import { loadChanges } from "@/lib/changes";
 import { listLifeEvents } from "@/lib/life-events";
 import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
-import { loadDebts } from "@/lib/debts";
 import { homeSummary } from "@/lib/home";
 import { whatJaneDid } from "@/lib/what-jane-did";
-import { debtReply } from "./debt-replies";
+import { answerDebt } from "./debt-answer";
+import { isDebtIntent } from "./debt-intents";
 import type { Intent } from "./intents";
 import { answerInvestments } from "./investments/answer";
 import {
@@ -47,6 +47,8 @@ export async function answerByRules(
   { client = defaultClient, now = new Date() }: Options = {},
 ): Promise<Reply | null> {
   const asOf = now.toISOString().slice(0, 10);
+  // Loans and debt (spec Phase Y, ./debt-answer.ts).
+  if (isDebtIntent(intent)) return answerDebt(userId, intent, { client, now });
   switch (intent.kind) {
     case "unknown":
       return null;
@@ -114,10 +116,6 @@ export async function answerByRules(
       return undoReply(await loadSnapshot(userId, { client, now }), now);
     case "pause_autopilot":
       return pauseReply(await autopilotOf(userId, { client }));
-    // Loans and debt (spec Phase Y).
-    case "debts":
-    case "debt_detail":
-      return debtReply(intent, await loadDebts(userId, { client, now }));
     case "tax":
       return answerTaxIntent(userId, intent, { client, now });
     case "investments":

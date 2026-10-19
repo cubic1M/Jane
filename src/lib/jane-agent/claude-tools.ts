@@ -14,7 +14,6 @@ import { CARD_SELECT, buildCard } from "@/lib/cards";
 import { comparisonFor } from "@/lib/compare";
 import { frequencyWords } from "@/lib/explain-input";
 import { scopedFor } from "@/lib/db-scoped";
-import { loadDebts } from "@/lib/debts";
 import { loadChanges } from "@/lib/changes";
 import { listGoals } from "@/lib/goals";
 import { lifeGuessesFor } from "@/lib/life-guesses";
@@ -25,7 +24,8 @@ import { formatCents } from "@/lib/money";
 import { affordWindow } from "@/planning/afford";
 import type { Scored } from "@/planning/compare";
 import { ACTION_HANDLERS } from "./actions";
-import { DEBT_TOOLS, debtsToolOutput } from "./debt-tools";
+import { DEBT_CHAT_PAGES, DEBT_TOOLS } from "./debt-tools";
+import { isDebtTool, runDebtTool } from "./debt-tools-run";
 import { INVESTMENT_TOOLS, isInvestmentTool, runInvestmentTool } from "./investments/tools";
 import { monthLabel, type Reply } from "./replies";
 import { guessLine } from "./replies-life";
@@ -52,6 +52,8 @@ export const PROPOSABLE: readonly ActionId[] = ["finding.yes", "plan.approve_saf
 
 // Pages Claude may link to, by name.
 export const CHAT_PAGES: Readonly<Record<string, { label: string; href: string }>> = {
+  // Loans and debt (spec Phase Y, ./debt-tools.ts).
+  ...DEBT_CHAT_PAGES,
   today: { label: "See today", href: "/home" },
   plan: { label: "Open the plan", href: "/plan" },
   subscriptions: { label: "Open subscriptions", href: "/subscriptions" },
@@ -65,9 +67,6 @@ export const CHAT_PAGES: Readonly<Record<string, { label: string; href: string }
   net_worth: { label: "See net worth", href: "/net-worth" },
   investments: { label: "See what you own", href: "/investments" },
   settings: { label: "Settings", href: "/settings" },
-  // Loans and debt (spec Phase Y).
-  loans: { label: "See every debt", href: "/loans" },
-  debt: { label: "Open the payoff planner", href: "/debt" },
   // Taxes (spec steps 118–127).
   taxes: { label: "See your taxes", href: "/taxes" },
   tax_profile: { label: "See my tax profile", href: "/taxes/profile" },
@@ -77,6 +76,8 @@ const noInput = { type: "object" as const, properties: {}, additionalProperties:
 
 export const CHAT_TOOLS: Anthropic.Tool[] = [
   ...FROM_ASK,
+  // Loans and debt (spec Phase Y, ./debt-tools.ts).
+  ...DEBT_TOOLS,
   {
     name: "safe_to_spend",
     description:
@@ -128,8 +129,6 @@ export const CHAT_TOOLS: Anthropic.Tool[] = [
       "What the person has (accounts and things they own) minus what they owe, from their linked balances.",
     input_schema: noInput,
   },
-  // Loans and debt (spec Phase Y, ./debt-tools.ts).
-  ...DEBT_TOOLS,
   {
     name: "recent_changes",
     description:
@@ -183,6 +182,7 @@ export async function runChatTool(
 ): Promise<ToolOutput> {
   if (FROM_ASK.some((t) => t.name === name))
     return runAskTool(userId, name, input, { client, now });
+  if (isDebtTool(name)) return runDebtTool(userId, name, input, { client, now });
   if (isTaxTool(name)) return runTaxTool(userId, name, { client, now });
   if (isInvestmentTool(name)) return runInvestmentTool(userId, name, input, { client, now });
   const cents: number[] = [];
@@ -416,8 +416,6 @@ export async function runChatTool(
         accountsWithoutABalance: worth.missing.length,
       });
     }
-    case "debts":
-      return out(debtsToolOutput(await loadDebts(userId, { client, now }), money));
     default:
       return { content: JSON.stringify({ error: `There's no tool called ${name}.` }), cents: [] };
   }

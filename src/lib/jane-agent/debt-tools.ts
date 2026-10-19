@@ -43,3 +43,14 @@ export function debtsToolOutput(book: DebtBook, money: (cents: number) => string
     missingRates: book.missingRate.map((d) => d.name),
   };
 }
+
+// Pages Claude may link to about debts (./claude-tools.ts CHAT_PAGES).
+export const DEBT_CHAT_PAGES: Readonly<Record<string, { label: string; href: string }>> = {
+  loans: { label: "See every debt", href: "/loans" },
+  debt: { label: "Open the payoff planner", href: "/debt" },
+};
+
+// What the chat shows while Claude looks each one up (./claude.ts).
+export const DEBT_TOOL_STATUS: Readonly<Record<string, string>> = {
+  debts: "Looking at your debts…",
+};

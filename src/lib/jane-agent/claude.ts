@@ -14,6 +14,7 @@ import {
   unsupportedFigures,
   type GuardrailIssue,
 } from "@/lib/guardrails";
+import { DEBT_TOOL_STATUS } from "./debt-tools";
 import { CHAT_TOOLS, chatPrimer, proposeAction, runChatTool, type Proposal } from "./claude-tools";
 import { GuardedText } from "./guarded-text";
 import { INVESTMENT_TOOL_STATUS } from "./investments/tools";
@@ -80,6 +81,8 @@ type Options = {
 };
 
 const STATUS: Record<string, string> = {
+  // Loans and debt (spec Phase Y, ./debt-tools.ts).
+  ...DEBT_TOOL_STATUS,
   search_transactions: "Searching your transactions…",
   spending_by_category: "Adding up your spending…",
   monthly_totals: "Looking at your months…",
@@ -91,7 +94,6 @@ const STATUS: Record<string, string> = {
   goals: "Looking at your goals…",
   budgets: "Checking your budgets…",
   net_worth: "Adding up your net worth…",
-  debts: "Looking at your debts…",
   finding_details: "Looking into it…",
   subscriptions: "Checking your subscriptions…",
   recent_changes: "Looking at what changed…",

@@ -15,6 +15,8 @@ export type ActVerb = "cancel" | "lower" | "refund";
 
 export type Intent =
   | { kind: "help" }
+  // Loans and debt (spec Phase Y, ./debt-intents.ts).
+  | DebtIntent
   // "hi", "thanks": answered at once, without Claude.
   | { kind: "greeting"; thanks: boolean }
   | { kind: "what_did" }
@@ -46,8 +48,6 @@ export type Intent =
   // days is null for the usual coming-up list.
   | { kind: "coming_up"; days: number | null }
   | { kind: "act"; verb: ActVerb; target: string }
-  // Loans and debt (spec Phase Y, ./debt-intents.ts).
-  | DebtIntent
   // Taxes (spec steps 118–127): ./tax-intents.ts.
   | TaxIntent
   // Spec step 128 on: what they own, and each later investment question.

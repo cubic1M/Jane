@@ -1,3 +1,5 @@
+import { DEBT_MESSAGE_PRIORITY, DEBT_SOURCE_LIMITS } from "@/config/debt";
+
 // Jane the agent (spec steps 81–82): how much Jane says in the chat, and when. Jane's
 // brain (src/lib/jane-agent/brain.ts) reads every limit from here.
 
@@ -6,6 +8,8 @@ export const CHAT_DAILY_LIMIT = 5;
 // And at most this many of each group a day, so one kind can't crowd out the rest.
 // Keyed by message source (src/lib/jane-agent/sources).
 export const CHAT_SOURCE_LIMITS: Readonly<Record<string, number>> = {
+  // Loans and debt (spec Phase Y, src/config/debt.ts).
+  ...DEBT_SOURCE_LIMITS,
   findings: 3,
   heads_ups: 2,
   did: 2,
@@ -16,8 +20,6 @@ export const CHAT_SOURCE_LIMITS: Readonly<Record<string, number>> = {
   steps: 2,
   budgets: 1,
   things: 1,
-  // Loans and debt (spec Phase Y).
-  debts: 1,
   // Taxes (spec steps 118–127).
   taxes: 2,
   // Spec step 97.
@@ -50,6 +52,8 @@ export const DID_LOOKBACK_DAYS = 7;
 // Higher goes first. The plan comes before the findings it sums up; anything that can't
 // wait (an urgent alert, a deadline, something only the person can do) comes before both.
 export const MESSAGE_PRIORITY = {
+  // Loans and debt (spec Phase Y, src/config/debt.ts).
+  ...DEBT_MESSAGE_PRIORITY,
   brief: 1_000,
   urgent_alert: 95,
   deadline: 90,
@@ -72,10 +76,6 @@ export const MESSAGE_PRIORITY = {
   setup: 65,
   budget_nearly_over: 44,
   asset_prompt: 30,
-  // Loans and debt (spec step 109): a buy now, pay later plan Jane found, then a debt
-  // with no rate, both after the rest.
-  debt_found: 35,
-  debt_missing_rate: 33,
   // Spec step 97: a change Jane noticed is news, so it comes before set-up suggestions and
   // findings that can wait (a price rise's finding is asked about in the change's own
   // heads-up).
