@@ -6,6 +6,7 @@ import { GOALS, HORIZONS } from "@/config/investing";
 import { adviceMode } from "@/lib/advice-mode";
 import { loadFees } from "@/lib/investments/fees";
 import { loadInvestments } from "@/lib/investments/holdings";
+import { loadRetirement } from "@/lib/investments/retirement";
 import { loadReview } from "@/lib/investments/review";
 import { profileOf } from "@/lib/investments/profile";
 import { profileSummary } from "@/planning/investor-profile";
@@ -42,6 +43,12 @@ export const INVESTMENT_TOOLS: Anthropic.Tool[] = [
       "In demo advice mode, once the investor profile is complete: the person's mix (US stocks, international stocks, bonds, cash) against the target for their risk level, which parts are off target and by how much, any one company's shares that are too big a part (and whether it's their employer), idle cash, and what to change with the reason. Never say what returns will be.",
     input_schema: noInput,
   },
+  {
+    name: "retirement_plan",
+    description:
+      "In demo advice mode, once the investor profile is complete: what the person's retirement accounts could grow to by 67 as a low-to-high range in today's dollars, what that could pay out a year, the target (10 times pay) and whether they're on track, the employer match captured or missed, room left under this year's limit and any catch-up, Roth or traditional, and what to change. Always quote ranges; never promise.",
+    input_schema: noInput,
+  },
 ];
 
 // What the person sees while Jane looks it up.
@@ -50,6 +57,7 @@ export const INVESTMENT_TOOL_STATUS: Readonly<Record<string, string>> = {
   investor_profile: "Checking your investor profile…",
   investment_fees: "Adding up your investment fees…",
   portfolio_review: "Reviewing your investments…",
+  retirement_plan: "Looking at your retirement…",
 };
 
 export const isInvestmentTool = (name: string) => INVESTMENT_TOOLS.some((t) => t.name === name);
@@ -194,6 +202,46 @@ export async function runInvestmentTool(
           amount: money(r.amountCents),
         })),
         leftOut: review.leftOut,
+      });
+    }
+    case "retirement_plan": {
+      const [data, advice] = await Promise.all([
+        loadRetirement(userId, { client, now }),
+        adviceMode(userId, { client }),
+      ]);
+      if (!advice) return out({ note: "The retirement planner is for demo advice mode only." });
+      const plan = data.retirement;
+      if (!plan) {
+        return out({
+          note: "No plan yet: the investor profile isn't finished or there's no retirement account.",
+          balance: money(data.balanceCents),
+        });
+      }
+      const span = (r: { lowCents: number; highCents: number }) => ({
+        low: money(r.lowCents),
+        high: money(r.highCents),
+      });
+      return out({
+        balanceNow: money(data.balanceCents),
+        accounts: data.accounts,
+        retirementAge: plan.retirementAge,
+        projectionInTodaysDollars: span(plan.projection),
+        couldPayOutAYear: span(plan.yearlyIncome),
+        target: plan.targetCents === null ? null : money(plan.targetCents),
+        status: plan.status,
+        match: plan.match && {
+          youPutInShareOfPay: `${Math.round(plan.match.employeeRate * 1000) / 10}%`,
+          getAllOfIt: plan.match.captured,
+          missedAYear: money(plan.match.missedCents),
+          putInThisMuchForAllOfIt: `${Math.round(plan.match.fullMatchRate * 1000) / 10}%`,
+        },
+        roomLeftThisYear: money(plan.roomCents),
+        catchUp: money(plan.catchUpCents),
+        rothOrTraditional: plan.rothOrTraditional,
+        whatToChange: plan.changes.map((c) => {
+          c.figures.forEach(money);
+          return { what: c.what, why: c.why, extraAYear: money(c.extraYearlyCents) };
+        }),
       });
     }
     default:

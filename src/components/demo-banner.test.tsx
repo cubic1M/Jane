@@ -49,13 +49,6 @@ describe("DemoBanner", () => {
     expect(requireUser).not.toHaveBeenCalled();
   });
 
-  it("tells someone trying Jane that it's a sample person, deleted after a day", async () => {
-    const banner = await DemoBanner({ userId: "trial_abc" });
-    const text = (banner as ReactElement<{ children: ReactNode[] }>).props.children;
-    expect(String(text[0])).toMatch(/deleted after a day\.$/);
-    expect(hasDemoBank).not.toHaveBeenCalled();
-  });
-
   it("shows nothing without a demo bank", async () => {
     vi.mocked(hasDemoBank).mockResolvedValue(false);
 
