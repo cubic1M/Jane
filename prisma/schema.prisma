@@ -286,6 +286,7 @@ model User {
   ownedAssets            OwnedAsset[]
   debtTerms              DebtTerms[]
   debtPlan               DebtPlan?
+  refinanceCheck         RefinanceCheck?
   findings               Finding[]
   decisions              Decision[]
   actions                Action[]
@@ -615,6 +616,25 @@ model DebtPlan {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("debt_plans")
+}
+
+// Refinance offers Jane asked the lender partner for (spec step 111), once a month by
+// herself: each debt that can be refinanced, the months compared over and the offers the
+// person prequalified for (a soft check). Nothing here is an application.
+model RefinanceCheck {
+  id        String   @id @default(cuid())
+  userId    String   @unique @map("user_id")
+  checkedOn DateTime @map("checked_on") @db.Date
+  // The partner that quoted them ("demo" for the stand-in catalog).
+  partner   String
+  // [{ debtKey, product, termMonths, amountCents, offers: LoanOffer[] }]
+  quotes    Json     @default("[]")
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("refinance_checks")
 }
 
 model Finding {

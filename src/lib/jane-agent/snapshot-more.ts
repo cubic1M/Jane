@@ -2,6 +2,7 @@ import type { PrismaClient } from "@/generated/prisma/client";
 import { switchOf } from "@/lib/agent/switch";
 import { autopilotOf } from "@/lib/autopilot";
 import { loadPayoff, type Payoff } from "@/lib/debt-plan";
+import { loadRefinance, type Refinance } from "@/lib/refinance";
 import type { DebtBook } from "@/insights/debts";
 import { scopedFor } from "@/lib/db-scoped";
 import { assetPrompts, promptHref } from "@/lib/owned-assets";
@@ -41,6 +42,8 @@ export type MoreSnapshot = {
   debts?: DebtBook;
   // Spec step 110: the payoff plan across them, and the one the person started.
   payoff?: Payoff;
+  // Spec step 111: the refinance offers Jane keeps, compared with each debt.
+  refinance?: Refinance;
   // Insurance (spec Phase X), from the same loader as /insurance. Optional, so a snapshot
   // built without it (in tests) says nothing about insurance.
   insurance?: InsuranceSnapshot;
@@ -53,7 +56,7 @@ export async function loadMore(
   { client, now = new Date() }: { client: PrismaClient; now?: Date },
 ): Promise<MoreSnapshot> {
   const db = scopedFor(userId, client);
-  const [autopilot, proposals, waiting, loans, owned, payoff] = await Promise.all([
+  const [autopilot, proposals, waiting, loans, owned, payoff, refinance] = await Promise.all([
     autopilotOf(userId, { client }),
     openProposals(userId, { client }),
     db.actions.findMany({
@@ -78,6 +81,7 @@ export async function loadMore(
     }),
     db.ownedAssets.findMany({ select: { loanAccountId: true } }),
     loadPayoff(userId, { client, now }),
+    loadRefinance(userId, { client, now }),
   ]);
   const insurance = await loadInsuranceSnapshot(userId, { client, now });
 
@@ -113,6 +117,7 @@ export async function loadMore(
     ),
     debts: payoff.book,
     payoff,
+    refinance,
     insurance,
   };
 }
