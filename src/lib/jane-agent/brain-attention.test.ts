@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { plan, type History } from "./brain";
+import type { Attention } from "./attention";
 import type { Snapshot } from "./snapshot";
 import type { MessageSource } from "./sources";
 import { attentionSource } from "./sources/attention";
@@ -26,12 +27,12 @@ const SOURCES = [source("budgets"), source("changes"), source("heads_ups"), atte
 
 const snapshot = (attention: Snapshot["attention"]) =>
   ({ timezone: "America/Los_Angeles", asOf: "2026-10-19", attention }) as unknown as Snapshot;
-const quiet = {
+const quiet: Attention = {
   usualHour: null,
   channel: null,
   stopped: [],
   lastPostedAt: new Date(NOW.getTime() - 60 * 60 * 1000),
-} as const;
+};
 const posted = (s: Snapshot, trigger: "sync" | "open" = "sync") =>
   plan(s, NONE, NOW, { trigger, sources: SOURCES }).map((m) => m.source);
 
