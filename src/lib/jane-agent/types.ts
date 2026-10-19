@@ -51,6 +51,12 @@ export const ACTION_IDS = [
   "life.yes",
   "life.no",
   "life.never",
+  // Plans that keep up (spec step 101).
+  "tuneup.accept",
+  "tuneup.keep",
+  "tuneup.undo",
+  "transfer.count",
+  "transfer.skip",
 ] as const;
 export type ActionId = (typeof ACTION_IDS)[number];
 
@@ -99,6 +105,9 @@ export type MessageRefs = {
   change?: { key: string; kind: string; category?: string; budgetCents?: number };
   // Spec step 100: the life event (moving, new_job, new_baby) Yes would start.
   lifeKind?: string;
+  // Spec step 101: a budget tune-up's month (YYYY-MM), and a transfer to count toward a goal.
+  tuneUpMonth?: string;
+  transactionId?: string;
 };
 
 // A message the brain wants to post.
