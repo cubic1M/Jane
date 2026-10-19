@@ -5,6 +5,8 @@ import {
   type TaxTagKind,
 } from "@/config/tax";
 import { estimateMessage } from "../tax-replies";
+import { w4Suggestion, withholdingFacts } from "../tax-w4";
+import { savingMessage } from "../tax-saving-message";
 import { formatCents } from "@/lib/money";
 import { incomeLine, listOf } from "@/planning/tax-profile";
 import { PROFILE_HREF, PROFILE_INTRO, TAGS_HREF, nextQuestion } from "../tax-flow";
@@ -111,6 +113,41 @@ export const taxesSource: MessageSource = {
         dedupeKey: acts ? `estimate:${estimate.year}:${step}` : `estimate:${estimate.year}`,
         priority: TAX_MESSAGE_PRIORITY.estimate,
       });
+    }
+
+    // Spec step 121: a big refund or a bill coming. In demo advice mode, what to put on a
+    // new W-4 and a walk-through; otherwise the comparison and the IRS's estimator. Not once
+    // the person sent a W-4 this year, or said they'd keep a big refund.
+    const check = tax.withholding;
+    if (
+      estimate &&
+      check &&
+      (check.status === "big_refund" || check.status === "bill_coming") &&
+      !estimate.w4 &&
+      !(check.status === "big_refund" && estimate.keepRefundYear === estimate.year)
+    ) {
+      const message = tax.advice
+        ? w4Suggestion(estimate, check)
+        : withholdingFacts(estimate, check);
+      out.push({
+        kind: tax.advice ? "decision" : "heads_up",
+        ...message,
+        dedupeKey: `withholding:${estimate.year}:${check.status}`,
+        priority: TAX_MESSAGE_PRIORITY.withholding,
+      });
+    }
+
+    // Spec step 122: ways to pay less, biggest first, once each a year (demo advice only:
+    // the list is empty otherwise).
+    if (estimate && tax.advice) {
+      for (const saving of tax.savings ?? []) {
+        out.push({
+          kind: "decision",
+          ...savingMessage(saving, estimate.year),
+          dedupeKey: `saving:${estimate.year}:${saving.key}`,
+          priority: TAX_MESSAGE_PRIORITY.saving,
+        });
+      }
     }
 
     for (const form of tax.formsDue?.forms ?? []) {

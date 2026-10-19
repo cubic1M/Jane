@@ -11,9 +11,12 @@ import { demoPayroll } from "@/lib/payroll/demo";
 import { hasDemoBank } from "@/lib/plaid/demo";
 import { loadTaxTags } from "@/lib/tax-organizer";
 import { loadWorkingProfile } from "@/lib/tax-profile";
-import { estimateTaxes, type TaxEstimate } from "@/planning/tax-estimate";
+import { estimateTaxes, type EstimateInput, type TaxEstimate } from "@/planning/tax-estimate";
+import { perPaycheckEffect, type W4Step } from "@/planning/withholding";
 import {
   NO_PAY,
+  payFrequency,
+  paychecksLeft,
   otherIncomeSoFar,
   payFromStubs,
   payFromYtd,
@@ -46,6 +49,21 @@ export type TaxEstimateView = {
   assumptions: string[];
   // Profile fields filled in from what Jane found, not yet checked.
   unconfirmed: ProfileField[];
+  // Spec step 121: paydays, the W-4 change the person sent, their choice to keep a refund
+  // this year, and last year's federal refund as it arrived.
+  paychecks: {
+    // Paychecks so far this year.
+    count: number;
+    perYear: number | null;
+    left: number;
+    last: string | null;
+    withheldPerPaycheckCents: number;
+  };
+  w4: { step: W4Step; amountCents: number; changedOn: string } | null;
+  // Spec step 122: what the estimate was worked out from, for what-ifs.
+  input: EstimateInput;
+  keepRefundYear: number | null;
+  lastYearRefundCents: number | null;
 };
 
 const iso = (d: Date) => d.toISOString().slice(0, 10);
@@ -60,6 +78,8 @@ export async function loadTaxEstimate(
   const incomeCategories = [
     ...Object.values(INCOME_KINDS).flatMap((k) => [...k.categories]),
     "GOVERNMENT_AND_NON_PROFIT_TAX_PAYMENT",
+    // Spec step 121: last year's refund, as it arrived this year.
+    "INCOME_TAX_REFUND",
   ];
   const [{ view, profile }, demo, transactions, accounts, investmentCash, loans, tags, stored] =
     await Promise.all([
@@ -100,6 +120,11 @@ export async function loadTaxEstimate(
           payStateYtdCents: true,
           payRetirementYtdCents: true,
           payPretaxYtdCents: true,
+          w4Step: true,
+          w4AmountCents: true,
+          w4ChangedOn: true,
+          w4Year: true,
+          keepRefundYear: true,
         },
       }),
     ]);
@@ -197,7 +222,7 @@ export async function loadTaxEstimate(
     assumptions.push(`Income so far is projected to the end of ${year} at the same pace.`);
   }
 
-  const estimate = estimateTaxes({
+  const input: EstimateInput = {
     year,
     filingStatus,
     childrenUnder17: profile.childrenUnder17,
@@ -218,7 +243,54 @@ export async function loadTaxEstimate(
     federalEstimatedPaidCents: payments.federalCents,
     stateWithheldCents: pay.projected.stateWithheldCents,
     stateEstimatedPaidCents: payments.stateCents,
-  });
+  };
+  const base = estimateTaxes(input);
+  // Paydays: how often, and how many are left this year.
+  const frequency = payFrequency(paychecks.map((t) => t.date));
+  const lastPay =
+    paychecks
+      .map((t) => t.date)
+      .sort()
+      .at(-1) ?? null;
+  const left = frequency && lastPay && elapsed < 1 ? paychecksLeft(lastPay, frequency.perYear) : 0;
+
+  // Spec step 121: a W-4 change the person sent counts for the paychecks after it.
+  let estimate = base;
+  const w4 =
+    stored?.w4Year === year && stored.w4Step && stored.w4AmountCents !== null && stored.w4ChangedOn
+      ? {
+          step: stored.w4Step as W4Step,
+          amountCents: stored.w4AmountCents,
+          changedOn: iso(stored.w4ChangedOn),
+        }
+      : null;
+  if (w4 && frequency && withholdingKnown) {
+    const per = perPaycheckEffect(w4.step, w4.amountCents, base.marginalRate, frequency.perYear);
+    // Paychecks already paid since (the demo's sample stubs don't change) and those to come.
+    const since = pay.source === "demo" ? paychecks.filter((t) => t.date > w4.changedOn).length : 0;
+    const after =
+      since +
+      (lastPay && lastPay >= w4.changedOn ? left : paychecksLeft(w4.changedOn, frequency.perYear));
+    const delta = per * Math.min(after, frequency.perYear);
+    estimate = {
+      ...base,
+      paidCents: base.paidCents + delta,
+      refundCents: base.refundCents + delta,
+    };
+    assumptions.push(`It includes the W-4 change you sent on ${w4.changedOn}.`);
+  }
+  const lastYearRefundCents = rows
+    .filter(
+      (t) =>
+        t.pfcDetailed === "INCOME_TAX_REFUND" &&
+        t.amountCents < 0 &&
+        t.date.startsWith(String(year)) &&
+        /\b(?:IRS|TREAS 310|US TREASURY|U\.S\. TREASURY)\b/i.test(
+          `${t.description} ${t.merchantName ?? ""}`,
+        ),
+    )
+    .reduce((s, t) => s - t.amountCents, 0);
+
   const otherSoFarCents = Object.entries(otherSoFar)
     .filter(([key]) => key !== "qualifiedDividendsCents")
     .reduce((sum, [, cents]) => sum + cents, 0);
@@ -231,6 +303,23 @@ export async function loadTaxEstimate(
     withholdingKnown,
     assumptions,
     unconfirmed: profile.unconfirmed,
+    input,
+    paychecks: {
+      count: paychecks.filter((t) => t.date <= today).length,
+      perYear: frequency?.perYear ?? null,
+      left,
+      last: lastPay,
+      withheldPerPaycheckCents:
+        pay.source !== "none" && paychecks.length > 0
+          ? Math.round(
+              pay.soFar.federalWithheldCents /
+                Math.max(1, paychecks.filter((t) => t.date <= today).length),
+            )
+          : 0,
+    },
+    w4,
+    keepRefundYear: stored?.keepRefundYear ?? null,
+    lastYearRefundCents: lastYearRefundCents > 0 ? lastYearRefundCents : null,
   };
 }
 

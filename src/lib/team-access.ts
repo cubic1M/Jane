@@ -55,6 +55,8 @@ export const TEAM_ACCESS_RULES: Record<AuditEvent, EventRule> = {
   insurance_policy_saved: own,
   insurance_policy_removed: own,
   insurance_household_saved: own,
+  insurance_policy_bound: automatic,
+  insurance_policy_cancelled: automatic,
   user_signed_in: own,
   import_completed: own,
   explanations_generated: automatic,

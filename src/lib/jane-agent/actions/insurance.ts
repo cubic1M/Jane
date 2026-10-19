@@ -53,11 +53,15 @@ export const insuranceShopYes: ActionHandler = {
       throw new ChatActionError("failed", "Something went wrong. Open it instead.");
     }
     try {
-      const { actionId } = await acceptShop(userId, insuranceShopId, { client, now });
+      const { actionId, agentJobId } = await acceptShop(userId, insuranceShopId, {
+        client,
+        now,
+      });
       return {
         answeredWith: action.label,
-        note: "Done. I'm on it: your current policy stays in place until the new one is.",
+        note: "Done. I'm switching you now: your current policy stays in place until the new one's first payment goes through, then I cancel it from the same day.",
         refs: { ...message.refs, actionId },
+        agentJobIds: [agentJobId],
       };
     } catch (error) {
       if (error instanceof AcceptShopError) throw answeredElsewhere(error.message);

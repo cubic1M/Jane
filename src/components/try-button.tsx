@@ -1,0 +1,41 @@
+"use client";
+
+import Link from "next/link";
+import { useActionState } from "react";
+import { tryJane, type TryState } from "@/app/try/actions";
+
+// "Try it with sample data" on the landing page (spec step 138): a sample person with fake
+// data, deleted after a day. Agreeing to the Terms first, as at sign-up.
+export function TryButton() {
+  const [state, action, pending] = useActionState<TryState, FormData>(tryJane, null);
+  return (
+    <form action={action} className="flex flex-col gap-2">
+      <label className="flex items-start gap-2 text-sm text-zinc-600 dark:text-zinc-400">
+        <input type="checkbox" name="consent" required className="mt-0.5 h-5 w-5" />
+        <span>
+          I agree to the{" "}
+          <Link href="/terms" className="font-medium text-emerald-700 hover:underline">
+            Terms
+          </Link>{" "}
+          and{" "}
+          <Link href="/privacy" className="font-medium text-emerald-700 hover:underline">
+            Privacy Policy
+          </Link>
+          .
+        </span>
+      </label>
+      <button
+        type="submit"
+        disabled={pending}
+        className="inline-flex h-12 items-center justify-center rounded-full border border-emerald-700 px-6 text-base font-semibold text-emerald-800 transition-colors hover:bg-emerald-50 disabled:opacity-60 dark:text-emerald-300 dark:hover:bg-emerald-950"
+      >
+        {pending ? "Setting up a sample person…" : "Try it with sample data"}
+      </button>
+      {state?.error && (
+        <p role="alert" className="text-sm text-red-700">
+          {state.error}
+        </p>
+      )}
+    </form>
+  );
+}

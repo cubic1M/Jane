@@ -9,7 +9,7 @@ import { resolveHousehold, type Household } from "@/lib/insurance/household";
 import type { Policy } from "@/lib/insurance/policies";
 import type { Shop } from "@/lib/insurance/shop";
 import { gather, type BrainSettings } from "../brain";
-import { parseIntent } from "../intents";
+import { normalize, parseIntent } from "../intents";
 import type { Snapshot } from "../snapshot";
 import { parseInsurance } from "./intents";
 import { insuranceReply } from "./replies";
@@ -380,5 +380,56 @@ describe("Jane's own reshops in the chat (spec step 104)", () => {
       gather(s, MORNING, SYNC).filter((m) => m.source === "findings");
     expect(findings(snapshot({ findings: [finding] }))).toHaveLength(1);
     expect(findings({ ...withShops([]), findings: [finding] })).toEqual([]);
+  });
+});
+
+describe("Jane's switches in the chat (spec step 105)", () => {
+  const messages = (s: Snapshot) =>
+    gather(s, MORNING, SYNC).filter((m) => m.source === "insurance");
+  const sw = (status: "pending" | "active") => ({
+    policyId: "new1",
+    kind: "auto",
+    carrier: "Lighthouse Insurance (demo)",
+    status,
+    startsOn: "2026-11-28",
+    replaces: "GEICO",
+    actionId: "a1",
+  });
+  const withSwitches = (switches: ReturnType<typeof sw>[]) =>
+    snapshot({ insurance: { ...insurance(), switches } });
+
+  it("says what Jane bought, then that the switch is done with no gap in cover", () => {
+    const [bound] = messages(withSwitches([sw("pending")]));
+    expect(bound).toMatchObject({
+      kind: "done",
+      dedupeKey: "insurance:bound:new1",
+      refs: { policyId: "new1", actionId: "a1" },
+    });
+    expect(bound.body).toBe(
+      "I've bought your new Lighthouse Insurance (demo) car insurance, starting Nov 28. GEICO stays in place until its first payment goes through; then I cancel it from the same day, so you're never without cover.",
+    );
+    const [done] = messages(withSwitches([sw("active")]));
+    expect(done.dedupeKey).toBe("insurance:switched:new1");
+    expect(done.body).toMatch(/and I cancelled GEICO from Nov 28\. No gap in cover\.$/);
+  });
+
+  it("reads how a switch is going, and answers from the switches", () => {
+    for (const text of [
+      "how's my insurance switch going",
+      "did you switch my car insurance",
+      "is the insurance switch done yet",
+    ]) {
+      expect(parseInsurance(normalize(text))?.ask, text).toBe("switch");
+    }
+    expect(parseInsurance("switch my car insurance")?.ask).toBe("quotes");
+    const ask = parseInsurance("how's my insurance switch going")!;
+    // Without an insurance word it may be a phone plan's switch (spec step 77).
+    expect(parseInsurance("how's my switch going")).toBeNull();
+    expect(insuranceReply(ask, { ...insurance(), switches: [sw("pending")] }, ASOF).body).toBe(
+      "I bought your new Lighthouse Insurance (demo) car insurance, starting Nov 28, 2026. GEICO stays in place until its first payment goes through; then I cancel it from that day.",
+    );
+    expect(insuranceReply(ask, insurance(), ASOF).body).toMatch(
+      /^I'm not switching any of your insurance/,
+    );
   });
 });
