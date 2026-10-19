@@ -64,6 +64,7 @@ import { overviewReply, sectorChangeReply } from "./replies-autopilot";
 import { checkedReply } from "./replies-checked";
 import { rankedFor } from "./priorities";
 import { prioritiesReply } from "./replies-priorities";
+import { wholePictureReply } from "./whole-picture";
 import { paycheckReply } from "./replies-paycheck";
 import { latestPaycheckPlan } from "@/lib/money-movement/paycheck";
 import { loadBillPay } from "@/lib/money-movement/bill-pay";
@@ -288,6 +289,11 @@ async function byIntent(
     case "priorities": {
       const snapshot = await loadSnapshot(userId, { client, now });
       return prioritiesReply(snapshot ? rankedFor(snapshot) : []);
+    }
+    // Spec step 183.
+    case "whole_picture": {
+      const snapshot = await loadSnapshot(userId, { client, now });
+      return wholePictureReply(snapshot, snapshot ? rankedFor(snapshot) : [], intent.focus);
     }
     case "checked":
       return checkedReply(await lastControllerRun(userId, { client, now }));
