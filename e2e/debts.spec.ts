@@ -204,8 +204,8 @@ test("student loan plans are compared, and every step links to studentaid.gov", 
     expect(href).toMatch(/^https:\/\/studentaid\.gov\//);
   }
   await page.getByLabel("Income from your last tax return ($)").fill("45000");
-  await page.getByLabel("I work full time in public service").check();
-  await page.getByRole("button", { name: "Save" }).click();
+  await page.getByLabel("I work full time in public service").press("Space");
+  await page.getByRole("button", { name: "Save" }).press("Enter");
   await expect(page.getByRole("status")).toHaveText(
     "Saved. The plans are worked out again with it.",
   );
