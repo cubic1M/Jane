@@ -173,7 +173,10 @@ export async function closeSettled(
         ...(answer
           ? {
               answeredWith: CHOICE_WORDS[answer.choice],
-              refs: { ...message.refs, note: answeredWhere(answer.source) } as Prisma.InputJsonObject,
+              refs: {
+                ...message.refs,
+                note: answeredWhere(answer.source),
+              } as Prisma.InputJsonObject,
             }
           : {}),
       },
@@ -225,7 +228,10 @@ export async function messageAboutFinding(
   { client = defaultClient }: { client?: PrismaClient } = {},
 ): Promise<string | null> {
   const message = await scopedFor(userId, client).janeMessages.findFirst({
-    where: { kind: { in: ["decision", "reply"] }, refs: { path: ["findingId"], equals: findingId } },
+    where: {
+      kind: { in: ["decision", "reply"] },
+      refs: { path: ["findingId"], equals: findingId },
+    },
     orderBy: { createdAt: "desc" },
     select: { id: true },
   });

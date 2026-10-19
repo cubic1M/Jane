@@ -114,7 +114,8 @@ describe("navigation", () => {
       ...DETAIL_TABS.map((t) => t.href),
       ...Object.values(DETAIL_PAGES).flatMap((pages) => pages.map((p) => p.href)),
     ]);
-    for (const tab of DETAIL_TABS) for (const path of tab.paths) expect(inMenu, path).toContain(path);
+    for (const tab of DETAIL_TABS)
+      for (const path of tab.paths) expect(inMenu, path).toContain(path);
     expect(DETAIL_PAGES.money).toContainEqual({ label: "Net worth", href: "/net-worth" });
     expect(DETAIL_PAGES.ahead).toContainEqual({ label: "Can I afford it?", href: "/afford" });
   });

@@ -37,7 +37,7 @@ export function MainNav() {
   // The page the menu was opened on: it closes by itself when the page changes.
   const [openOn, setOpenOn] = useState<string | null>(null);
   const open = openOn === pathname;
-  const wrapper = useRef<HTMLLIElement>(null);
+  const wrapper = useRef<HTMLElement>(null);
   const panelId = useId();
 
   // Closes on a click outside and on Escape.
@@ -62,9 +62,10 @@ export function MainNav() {
 
   return (
     <nav
+      ref={wrapper}
       id="main-nav"
       aria-label="Main"
-      className="fixed inset-x-0 bottom-0 z-40 border-t border-zinc-200 bg-white pb-[env(safe-area-inset-bottom)] sm:static sm:z-auto sm:border-0 sm:bg-transparent sm:pb-0 dark:border-zinc-800 dark:bg-zinc-950 sm:dark:bg-transparent print:hidden"
+      className="fixed inset-x-0 bottom-0 z-40 border-t border-zinc-200 bg-white pb-[env(safe-area-inset-bottom)] sm:relative sm:z-auto sm:border-0 sm:bg-transparent sm:pb-0 dark:border-zinc-800 dark:bg-zinc-950 sm:dark:bg-transparent print:hidden"
     >
       <ul className="mx-auto flex max-w-3xl sm:gap-1">
         <li className="flex-1 sm:flex-none">
@@ -79,7 +80,7 @@ export function MainNav() {
             <Label text={chat.label} current={active === "chat"} />
           </Link>
         </li>
-        <li ref={wrapper} className="flex-1 sm:relative sm:flex-none">
+        <li className="flex-1 sm:flex-none">
           <button
             type="button"
             aria-expanded={open}
@@ -94,41 +95,41 @@ export function MainNav() {
             </span>
             <Label text="Details" current={inDetails} />
           </button>
-          {/* On phones it opens above the bar; from sm up, under the button. */}
-          <div
-            id={panelId}
-            hidden={!open}
-            className="fixed inset-x-0 bottom-[calc(3.5rem+env(safe-area-inset-bottom))] z-50 max-h-[70vh] flex-col gap-3 overflow-y-auto border-t border-zinc-200 bg-white p-3 text-sm shadow-lg [&:not([hidden])]:flex sm:absolute sm:inset-x-auto sm:top-full sm:bottom-auto sm:left-0 sm:mt-2 sm:w-96 sm:max-w-[calc(100vw-2rem)] sm:rounded-xl sm:border dark:border-zinc-800 dark:bg-zinc-900"
-          >
-            {DETAIL_TABS.map((tab) => (
-              <section key={tab.key} aria-label={tab.label} className="flex flex-col">
-                <Link
-                  href={tab.href}
-                  aria-current={pathname === tab.href ? "page" : undefined}
-                  className={`${PAGE_LINK} font-semibold ${active === tab.key ? "text-emerald-700" : ""}`}
-                >
-                  <Label text={tab.label} current={pathname === tab.href} />
-                </Link>
-                {DETAIL_PAGES[tab.key].length > 0 && (
-                  <ul className="flex flex-wrap gap-x-1 pl-2">
-                    {DETAIL_PAGES[tab.key].map((page) => (
-                      <li key={page.href}>
-                        <Link
-                          href={page.href}
-                          aria-current={current(page.href) ? "page" : undefined}
-                          className={`${PAGE_LINK} ${current(page.href) ? "font-semibold text-emerald-700" : "text-zinc-700 dark:text-zinc-300"}`}
-                        >
-                          <Label text={page.label} current={current(page.href)} />
-                        </Link>
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </section>
-            ))}
-          </div>
         </li>
       </ul>
+      {/* On phones it opens above the bar; from sm up, under the button. */}
+      <div
+        id={panelId}
+        hidden={!open}
+        className="fixed inset-x-0 bottom-[calc(3.5rem+env(safe-area-inset-bottom))] z-50 max-h-[70vh] flex-col gap-3 overflow-y-auto border-t border-zinc-200 bg-white p-3 text-sm shadow-lg [&:not([hidden])]:flex sm:absolute sm:inset-x-auto sm:top-full sm:bottom-auto sm:left-0 sm:mt-2 sm:w-96 sm:max-w-[calc(100vw-2rem)] sm:rounded-xl sm:border dark:border-zinc-800 dark:bg-zinc-900"
+      >
+        {DETAIL_TABS.map((tab) => (
+          <section key={tab.key} aria-label={tab.label} className="flex flex-col">
+            <Link
+              href={tab.href}
+              aria-current={pathname === tab.href ? "page" : undefined}
+              className={`${PAGE_LINK} font-semibold ${active === tab.key ? "text-emerald-700" : ""}`}
+            >
+              <Label text={tab.label} current={pathname === tab.href} />
+            </Link>
+            {DETAIL_PAGES[tab.key].length > 0 && (
+              <ul className="flex flex-wrap gap-x-1 pl-2">
+                {DETAIL_PAGES[tab.key].map((page) => (
+                  <li key={page.href}>
+                    <Link
+                      href={page.href}
+                      aria-current={current(page.href) ? "page" : undefined}
+                      className={`${PAGE_LINK} ${current(page.href) ? "font-semibold text-emerald-700" : "text-zinc-700 dark:text-zinc-300"}`}
+                    >
+                      <Label text={page.label} current={current(page.href)} />
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </section>
+        ))}
+      </div>
     </nav>
   );
 }

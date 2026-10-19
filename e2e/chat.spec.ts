@@ -97,7 +97,7 @@ test("the demo bank lands in Jane's chat, and Yes answers a finding", async ({
   );
   expect(overflow).toBeLessThanOrEqual(0);
   // Opened at the end: the message box sits above the tab bar.
-  await page.reload();
+  await page.goto("/chat");
   await expect(ask).toBeInViewport();
   const navTop = (await nav.boundingBox())?.y ?? 0;
   const box = await ask.boundingBox();
