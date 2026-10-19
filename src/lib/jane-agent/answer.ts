@@ -18,7 +18,9 @@ import { whatJaneDid } from "@/lib/what-jane-did";
 import { CATEGORY_LABELS, UNCATEGORIZED } from "@/insights/labels";
 import { topicOf, withTopic, type Topic } from "./context";
 import { matchCategory, type Intent } from "./intents";
+import { listPreferences, paydayDays } from "./preferences";
 import { loadRecurring } from "./recurring";
+import { paydayLine } from "./remember";
 import { costReply, paydayReply, subscriptionsReply } from "./recurring-replies";
 import { answerDebt } from "./debt-answer";
 import { isDebtIntent } from "./debt-intents";
@@ -27,13 +29,13 @@ import {
   actReply,
   affordReply,
   clarifyReply,
+  rememberReply,
   findingReply,
   rankFindings,
   categoryContext,
   approveAllReply,
   comingUpReply,
   greetingReply,
-  helpReply,
   pauseReply,
   safeReply,
   spendingReply,
@@ -42,6 +44,7 @@ import {
   type Reply,
 } from "./replies";
 import { changesReply } from "./replies-changes";
+import { groupedHelpReply } from "./replies-help";
 import { lifeEventReply } from "./replies-life";
 import { savedReply } from "./replies-saved";
 import { weeklyReview } from "./replies-review";
@@ -126,8 +129,20 @@ async function byIntent(
       ]);
       return subscriptionsReply(intent, recurring, snapshot);
     }
-    case "payday":
+    case "payday": {
+      // Spec step 91: what they told Jane comes first.
+      const days = paydayDays(await listPreferences(userId, { client }));
+      if (days) {
+        return {
+          body: paydayLine(days, asOf),
+          actions: [{ id: "open", label: "See today", kind: "link", href: "/home" }],
+          refs: {},
+        };
+      }
       return paydayReply(await loadRecurring(userId, { client, now }), asOf);
+    }
+    case "remember":
+      return rememberReply(intent.draft);
     case "about": {
       const [recurring, snapshot] = await Promise.all([
         loadRecurring(userId, { client, now }),
@@ -156,7 +171,7 @@ async function byIntent(
     case "unknown":
       return null;
     case "help":
-      return helpReply();
+      return groupedHelpReply();
     case "insurance":
       // Spec step 103: quotes ask the partner, the rest read the profile.
       if (intent.ask === "quotes") return quotesAnswer(userId, intent, { client, now });

@@ -4,6 +4,13 @@ import { formatCents } from "@/lib/money";
 import { nextQuestion, profileSummary } from "@/planning/investor-profile";
 import { equivalentLine, switchSummary } from "../investments/fees-copy";
 import { planSummary, rebalanceButton, SIMULATED_WORDS } from "../investments/rebalance-copy";
+import {
+  AUTO_LINK,
+  AUTO_PROMISE,
+  pauseButton,
+  runLine,
+  startButtons,
+} from "../investments/auto-copy";
 import { matchLine, projectionLine } from "../investments/retirement-copy";
 import { asking, PROFILE_INTRO } from "../investments/profile-question";
 import type { Candidate } from "../types";
@@ -24,6 +31,10 @@ import { snoozeButton, type MessageSource } from "./source";
 //   Step 133: with the orders that move to the target mix ready, so one tap places them
 //   (with the simulated brokerage until a real one is connected). Trading moves money, so
 //   it always waits for that tap, at every autopilot level.
+// - Step 134: in demo advice mode, once the profile is complete, offers once to invest
+//   automatically every payday (starting it is the person's tap); then on each payday
+//   invests by herself, at every autopilot level, says what she invested, and pauses that
+//   payday by herself when safe to spend is low, saying why.
 // - Step 132: in demo advice mode, once the profile is complete, checks the retirement
 //   projection and the employer match, and says so when the person is behind or missing
 //   match money (again when that changes). Raising a contribution is done at the
@@ -132,6 +143,29 @@ export const investmentsSource: MessageSource = {
         ],
         dedupeKey: `retirement:${retirement.status}:${retirement.match?.captured ?? "none"}`,
         priority: MESSAGE_PRIORITY.retirement,
+      });
+    }
+    const auto = inv.autoInvest;
+    if (inv.advice && inv.profile.answeredAt && !auto.plan && auto.suggestion) {
+      const account = auto.accounts.find((a) => a.id === auto.suggestion!.accountId);
+      out.push({
+        kind: "decision",
+        body: `Want me to invest for you automatically? ${formatCents(auto.suggestion.amountCents)} every payday${account ? ` into your ${account.name}` : ""}, in your mix, or the rest after bills and goals. ${AUTO_PROMISE}`,
+        refs: { advice: true, autoInvest: auto.suggestion },
+        actions: [...startButtons(auto.suggestion.amountCents), snoozeButton()],
+        dedupeKey: "auto:offer",
+        priority: MESSAGE_PRIORITY.auto_invest_offer,
+      });
+    }
+    // Every payday, invested or paused, is said once.
+    for (const run of auto.runs.slice(0, 3)) {
+      out.push({
+        kind: run.status === "invested" ? "done" : "heads_up",
+        body: runLine(run),
+        refs: {},
+        actions: [...(auto.plan?.status === "active" ? [pauseButton()] : []), AUTO_LINK],
+        dedupeKey: `auto:run:${run.id}`,
+        priority: MESSAGE_PRIORITY.auto_invest_run,
       });
     }
     return out;

@@ -67,9 +67,24 @@ export function demoPlaidApi(
   const through = yesterday(now);
   const holdings = demoHoldings(demo, through, orders);
   const securities = demoSecurities(through, new Set(holdings.map((h) => h.security_id)));
+  // An investment account's balance is what it holds (deposits from step 134 add to it).
+  const invested = demoAccounts(demo).map((a) =>
+    a.type === "investment"
+      ? {
+          ...a,
+          balances: {
+            ...a.balances,
+            current:
+              holdings
+                .filter((h) => h.account_id === a.account_id)
+                .reduce((s, h) => s + Math.round(h.institution_value * 100), 0) / 100,
+          },
+        }
+      : a,
+  );
   const paidOff = new Set(payoffs.filter((p) => p.day <= today(now)).map((p) => p.plaidAccountId));
   const accounts = () =>
-    demoAccounts(demo).map((a) =>
+    invested.map((a) =>
       paidOff.has(a.account_id) ? { ...a, balances: { ...a.balances, current: 0 } } : a,
     );
   const liabilities = () => {
@@ -112,7 +127,7 @@ export function demoPlaidApi(
     // What the investment accounts hold (spec step 128).
     investmentsHoldingsGet: async () => ({
       data: {
-        accounts: demoAccounts(demo).filter((a) => a.type === "investment"),
+        accounts: accounts().filter((a) => a.type === "investment"),
         holdings,
         securities,
       },
@@ -136,7 +151,7 @@ export function demoPlaidApi(
       const offset = options?.offset ?? 0;
       return {
         data: {
-          accounts: demoAccounts(demo).filter((a) => a.type === "investment"),
+          accounts: accounts().filter((a) => a.type === "investment"),
           investment_transactions: all.slice(offset, offset + (options?.count ?? 100)),
           securities,
           total_investment_transactions: all.length,

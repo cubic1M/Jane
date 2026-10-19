@@ -23,6 +23,8 @@ import { recentRuleApprovals } from "@/lib/standing-rules";
 import { loadInvestmentSnapshot, type InvestmentSnapshot } from "./investments/snapshot";
 import { loadMore, type MoreSnapshot } from "./snapshot-more";
 import { loadTaxSnapshot, type TaxSnapshot } from "./snapshot-tax";
+import { nameMatches } from "./names";
+import { keeps, listPreferences, neverKeys } from "./preferences";
 
 // Everything Jane's brain looks at for one person (spec step 82), loaded with the same
 // code as the pages that show it: Today (src/lib/home.ts), the plan, the comparisons, the
@@ -88,8 +90,13 @@ export type Snapshot = {
   upkeep?: UpkeepSnapshot;
   // Spec step 139: the savings the person's transactions confirm. Optional, like changes.
   saved?: { confirmedCents: number };
+  // Spec step 140: Jane hasn't said anything to this person yet (the first-run hello).
+  firstChat?: boolean;
   // Spec step 128 on: what's in investment accounts.
   investments?: InvestmentSnapshot;
+  // Spec step 91: suggestions the person said never to make again (preference keys);
+  // findings among them are already left out of findings above.
+  neverSuggest?: string[];
 } & MoreSnapshot &
   TaxSnapshot;
 
@@ -115,6 +122,13 @@ export function findingFingerprint(finding: {
     )
     .digest("hex");
 }
+
+// Spec step 91: findings that suggest cutting something, which "I need my …" rules out.
+const CUTTING: readonly FindingType[] = [
+  "subscription_review",
+  "duplicate_subscription",
+  "trial_conversion",
+];
 
 // The newest unread alerts the brain looks at for urgent ones.
 const ALERTS_LOOKED_AT = 10;
@@ -154,17 +168,33 @@ export async function loadSnapshot(
   if (!home) return null;
   const db = scopedFor(userId, client);
   // The person's own timezone: users have their own helpers, so a direct read by id.
-  const [user, plan, ruleApprovals, alerts] = await Promise.all([
+  const [user, plan, ruleApprovals, alerts, said, preferences] = await Promise.all([
     client.user.findUnique({ where: { id: userId }, select: { timezone: true } }),
     planFor(userId, { client }),
     recentRuleApprovals(userId, { client, now }),
     newestUnreadAlerts(userId, { client, limit: ALERTS_LOOKED_AT }),
+    db.janeMessages.count(),
+    listPreferences(userId, { client }),
   ]);
   const findings = await db.findings.findMany({
     where: { id: { in: plan.map((i) => i.card.findingId) } },
-    select: { id: true, type: true, title: true, annualSavingsCents: true, evidence: true },
+    select: {
+      id: true,
+      key: true,
+      type: true,
+      title: true,
+      annualSavingsCents: true,
+      evidence: true,
+    },
   });
-  const byId = new Map(findings.map((f) => [f.id, f]));
+  // Spec step 91: never a finding the person said not to suggest again, nor cutting
+  // something they said they need.
+  const never = neverKeys(preferences);
+  const kept = keeps(preferences);
+  const wanted = (f: (typeof findings)[number]) =>
+    !never.has(`finding:${f.key}`) &&
+    !(CUTTING.includes(f.type) && kept.some((target) => nameMatches(target, f.title)));
+  const byId = new Map(findings.filter(wanted).map((f) => [f.id, f]));
   const open = plan.flatMap((item) => {
     const finding = byId.get(item.card.findingId);
     return finding ? [{ item, finding }] : [];
@@ -221,7 +251,9 @@ export async function loadSnapshot(
     ...(await loadTaxSnapshot(userId, { client, now })),
     // Spec steps 97, 100 and 139 read the same bank data, so it's loaded once for them.
     ...(await thinking(userId, client, now, input)),
+    firstChat: said === 0,
     upkeep: await loadUpkeep(userId, { client, now }),
     investments: await loadInvestmentSnapshot(userId, { client, now }),
+    neverSuggest: [...never],
   };
 }

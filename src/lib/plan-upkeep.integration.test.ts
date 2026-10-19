@@ -183,7 +183,7 @@ describe.runIf(url)("plans that keep up, against a real database", { timeout: 30
     const review = await client.janeMessage.findFirst({
       where: { userId, dedupeKey: "review:2026-11-02" },
     });
-    expect(review?.body).toMatch(/^Your week with Jane:\n- Done: /);
+    expect(review?.body).toMatch(/^Here's your week with Jane\.\n- Done: /);
     const typed = await answerByRules(userId, { kind: "review" }, { client, now: sunday });
     expect(typed?.body).toBe(review?.body);
     const tool = JSON.parse(

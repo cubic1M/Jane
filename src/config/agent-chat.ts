@@ -104,6 +104,8 @@ export const MESSAGE_PRIORITY = {
   found_policy: 63,
   // Spec step 139: a savings milestone, like something Jane finished.
   saved_milestone: 52,
+  // Spec step 140: the first-run hello comes before everything, the brief included.
+  welcome: 2_000,
   review: 900,
   // Spec step 128: what's in investment accounts, the first time Jane sees it.
   investments: 32,
@@ -115,6 +117,9 @@ export const MESSAGE_PRIORITY = {
   investment_review: 38,
   // Spec step 132: behind for retirement, or missing employer match money (demo advice).
   retirement: 39,
+  // Spec step 134: the offer to invest every payday, and what each payday did.
+  auto_invest_offer: 33,
+  auto_invest_run: 31,
 } as const;
 
 // The chat page shows the last this-many messages, with "Show earlier" for more.
@@ -129,7 +134,7 @@ export const CHAT_HISTORY_HOURS = 48;
 
 // Spec step 83: sources whose messages don't count toward the daily limit, like the brief:
 // the one-time autopilot question, so it never pushes a finding out on the first day.
-export const CHAT_UNCAPPED_SOURCES: readonly string[] = ["autopilot", "review"];
+export const CHAT_UNCAPPED_SOURCES: readonly string[] = ["autopilot", "review", "welcome"];
 
 // Spec step 83: a budget counts as nearly over once this share of it is spent this month.
 export const BUDGET_NEARLY_OVER_SHARE = 0.9;

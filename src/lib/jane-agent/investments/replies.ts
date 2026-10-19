@@ -16,6 +16,15 @@ import { equivalentLine, feeRange, switchSummary } from "./fees-copy";
 import { matchLine, projectionLine } from "./retirement-copy";
 import { mixLine, planSummary, rebalanceButton, SIMULATED_WORDS } from "./rebalance-copy";
 import type { RebalancePlan } from "@/insights/rebalance";
+import type { loadAutoInvest } from "@/lib/investments/auto-invest";
+import {
+  AUTO_LINK,
+  AUTO_PROMISE,
+  pauseButton,
+  resumeButton,
+  runLine,
+  startButtons,
+} from "./auto-copy";
 import { asking, PROFILE_INTRO } from "./profile-question";
 
 // Jane's rule answers about investments (spec step 128 on). Pure: the numbers in, fixed
@@ -301,5 +310,56 @@ export function rebalanceOffer(plan: RebalancePlan): Reply {
       { id: "open", label: "See the orders", kind: "link", href: "/investments/rebalance" },
     ],
     refs: { advice: true, rebalanceKey: plan.key },
+  };
+}
+
+// Spec step 134: automatic investing: what it does now, or the offer to start.
+export function autoInvestReply(data: Awaited<ReturnType<typeof loadAutoInvest>>): Reply {
+  if (!data.advice) {
+    return {
+      body: "I don't invest automatically for real accounts yet.",
+      actions: [SEE],
+      refs: {},
+    };
+  }
+  if (!data.profileComplete) {
+    const ask = asking(PROFILE_QUESTIONS[0]);
+    return {
+      body: "Before I invest for you, four quick answers about what the money is for.",
+      actions: ask.actions,
+      refs: ask.refs,
+    };
+  }
+  const last = data.runs[0];
+  if (data.plan) {
+    const what =
+      data.plan.mode === "leftover"
+        ? "the rest after bills and goals"
+        : `${formatCents(data.plan.amountCents ?? 0)} every payday`;
+    const lastLine = last ? ` Last: ${runLine(last)}` : "";
+    if (data.plan.status === "paused") {
+      return {
+        body: `Automatic investing is paused (${what}).${lastLine}`,
+        actions: [resumeButton(), AUTO_LINK],
+        refs: {},
+      };
+    }
+    return {
+      body: `Automatic investing is on: ${what}. ${AUTO_PROMISE}${lastLine}`,
+      actions: [pauseButton(), AUTO_LINK],
+      refs: { advice: true },
+    };
+  }
+  if (!data.suggestion) {
+    return {
+      body: "I need an investment account that isn't a workplace plan, and a paycheck to go by, before I can invest automatically.",
+      actions: [SEE],
+      refs: {},
+    };
+  }
+  return {
+    body: `I can invest ${formatCents(data.suggestion.amountCents)} every payday for you, or the rest after bills and goals. ${AUTO_PROMISE}`,
+    actions: [...startButtons(data.suggestion.amountCents), AUTO_LINK],
+    refs: { advice: true, autoInvest: data.suggestion },
   };
 }

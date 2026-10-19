@@ -154,3 +154,32 @@ describe("simulated orders on the demo bank (spec step 133)", () => {
     ]);
   });
 });
+
+describe("deposits on the demo bank (spec step 134)", () => {
+  it("add to the account's cash, and show as a deposit", () => {
+    const brokerage = "demo-abc123-brokerage";
+    const deposit = {
+      id: "d1",
+      accountRef: brokerage,
+      ticker: "CASH",
+      side: "deposit" as const,
+      quantity: 100,
+      amountCents: 10_000,
+      day: "2026-10-18",
+    };
+    const cash = (h: ReturnType<typeof demoHoldings>) =>
+      Math.round(
+        h.find((x) => x.account_id === brokerage && x.security_id === "demo-sec-cash")!
+          .institution_value * 100,
+      );
+    expect(cash(demoHoldings(DEMO, TODAY, [deposit]))).toBe(
+      cash(demoHoldings(DEMO, TODAY)) + 10_000,
+    );
+    expect(demoOrderTransactions(DEMO, [deposit], "2026-10-17", "2026-10-18")[0]).toMatchObject({
+      type: "cash",
+      subtype: "deposit",
+      amount: -100,
+      security_id: null,
+    });
+  });
+});

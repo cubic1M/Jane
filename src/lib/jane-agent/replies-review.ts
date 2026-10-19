@@ -52,7 +52,7 @@ export function weeklyReview(snapshot: Snapshot, now: Date): Reply {
 
   const decision = snapshot.findings[0];
   const lines = [
-    "Your week with Jane:",
+    "Here's your week with Jane.",
     `- Done: ${did.length > 0 ? `I ${did.join("; ")}.` : "nothing finished this week. I'm still watching."}`,
     `- Saved: ${savedCents > 0 ? `${formatCents(savedCents)} confirmed back or saved.` : "nothing confirmed yet this week."}`,
     `- Next week: ${next.length > 0 ? `${next.join(", ")}.` : "nothing due that I know of."}`,
