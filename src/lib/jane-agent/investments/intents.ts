@@ -10,7 +10,9 @@ export type InvestmentTopic =
   | "retirement"
   | "rebalance"
   | "auto_invest"
-  | "accounts";
+  | "accounts"
+  | "overview"
+  | "autopilot";
 
 export type InvestmentIntent = {
   kind: "investments";
@@ -66,7 +68,15 @@ const AUTO_INVEST =
 const ACCOUNTS =
   /\bwhich account (?:should i |do i |to )?(?:invest|put|save|fill|use|start)\w*\b|\bwhere should i (?:put|invest|save|keep) (?:my )?(?:extra |spare |the )?money\b|\b(?:401\(?k\)?|workplace plan) or (?:a )?(?:roth )?ira\b|\b(?:roth )?ira or (?:a |my )?401\(?k\)?\b|\bshould i (?:open|get|start|use) (?:a |an )?(?:roth |traditional )?(?:ira|hsa)\b|\b(?:contribute to|fund|max out) (?:my |an |a )?hsa\b|\basset location\b|\b(?:capital|unreali[sz]ed) (?:gains?|losses?)\b|\btax[- ]loss harvest\w*\b|\btaxes on my investments\b/;
 
+// Spec step 137: how it's going, and what Jane does by herself.
+const OVERVIEW =
+  /\bhow(?:'s| are| is| have) my (?:investments|portfolio|401\(?k\)?|brokerage|ira)(?: been)? (?:doing|going|looking)\b|\b(?:investment|portfolio|investing) (?:update|summary|note|check-?in)\b|\bmonthly (?:investment|portfolio) note\b/;
+const AUTOPILOT =
+  /\bwhat do you do (?:with|about|for) my (?:investments|portfolio|money in the market)\b|\b(?:investments?|investing|portfolio) on autopilot\b|\bautopilot (?:for|on) (?:my )?(?:investments|investing|portfolio)\b|\bwhat (?:will|would|do) you (?:do|change) (?:in|with) my (?:investments|portfolio) (?:by yourself|on your own)\b/;
+
 export function parseInvestmentIntent(text: string): InvestmentIntent | null {
+  if (AUTOPILOT.test(text)) return { kind: "investments", topic: "autopilot", account: null };
+  if (OVERVIEW.test(text)) return { kind: "investments", topic: "overview", account: null };
   if (ACCOUNTS.test(text)) return { kind: "investments", topic: "accounts", account: null };
   if (AUTO_INVEST.test(text)) return { kind: "investments", topic: "auto_invest", account: null };
   if (REBALANCE.test(text)) return { kind: "investments", topic: "rebalance", account: null };
