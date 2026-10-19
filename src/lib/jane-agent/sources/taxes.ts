@@ -10,6 +10,7 @@ import { savingMessage } from "../tax-saving-message";
 import { nextQuarter, quarterMessage, setAsideMessage } from "../tax-self-employed";
 import { refundMessage } from "../tax-refund-message";
 import { filingAccepted, filingOffer, filingReady } from "../tax-filing-message";
+import { januaryMessage } from "../tax-january";
 import { formatCents } from "@/lib/money";
 import { incomeLine, listOf } from "@/planning/tax-profile";
 import { PROFILE_HREF, PROFILE_INTRO, TAGS_HREF, nextQuestion } from "../tax-flow";
@@ -187,6 +188,16 @@ export const taxesSource: MessageSource = {
         ...message,
         dedupeKey: `refund:${tax.refund.refund.transactionId}`,
         priority: TAX_MESSAGE_PRIORITY.refund,
+      });
+    }
+
+    // Spec step 127: in January, one message with last year's taxes ready.
+    if (tax.january) {
+      out.push({
+        kind: "heads_up",
+        ...januaryMessage(tax.january, tax.estimate ?? null),
+        dedupeKey: `january:${tax.january.year}`,
+        priority: TAX_MESSAGE_PRIORITY.january,
       });
     }
 

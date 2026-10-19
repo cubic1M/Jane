@@ -2,6 +2,7 @@ import { FILING_STATUSES, INCOME_KINDS, whatJaneDoes, type FilingStatus } from "
 import { stateName, type FieldStatus, type TaxProfileView } from "@/planning/tax-profile";
 import { TAX_TAG_ORDER, TAX_TAGS, UNTAGGED, type TaxTagKind } from "@/config/tax";
 import { formatCents } from "@/lib/money";
+import { STANDARD_DEDUCTION } from "@/config/tax-rates";
 import type { TaxFormsView, TaxTagsView } from "@/lib/tax-organizer";
 import type { TaxEstimateView } from "@/lib/tax-estimate";
 import type { WithholdingView } from "@/lib/tax-withholding";
@@ -65,7 +66,14 @@ export function taxProfileReply(view: TaxProfileView, autopilot: string | null):
   ];
   const doing = whatJaneDoes(autopilot)[0];
   const question = nextQuestion(view);
-  const body = `Here's your tax profile:\n${lines.join("\n")}\n${doing}${question ? `\n\n${question.body}` : ""}`;
+  const set = [view.filingStatus, view.dependants, view.state, view.incomeKinds].filter(
+    (f) => f.status === "yours",
+  ).length;
+  const lead =
+    set === 4
+      ? "Your tax profile is complete."
+      : `Your tax profile has ${set} of 4 answers so far; the rest are found by me or not set yet.`;
+  const body = `${lead}\n${lines.join("\n")}\n${doing}${question ? `\n\n${question.body}` : ""}`;
   return {
     body,
     actions: [
@@ -165,7 +173,7 @@ export function tagTotalReply(view: TaxTagsView, tag: TaxTagKind): Reply {
     .slice(0, 3)
     .map(([payee, cents]) => `${payee} ${formatCents(cents)}`);
   return {
-    body: `So far in ${view.year} I've tagged ${formatCents(total.totalCents)} of ${TAX_TAGS[tag].plural} (${total.count}): ${listOf(top)}${byPayee.size > 3 ? " and more" : ""}. It's all in your tax-time pack.`,
+    body: `You've ${tag === "donation" ? `given ${formatCents(total.totalCents)} to charity` : `spent ${formatCents(total.totalCents)} on ${TAX_TAGS[tag].plural}`} in ${view.year} so far, by my tax tags (${total.count}): ${listOf(top)}${byPayee.size > 3 ? " and more" : ""}. It's all in your tax-time pack.`,
     actions: [link("See tax tags", TAGS_HREF), link("Open the tax-time pack", "/tax-pack")],
     refs: {},
   };
@@ -225,7 +233,7 @@ export function formsReply(view: TaxFormsView): Reply {
       }`,
   );
   return {
-    body: `The tax forms I expect for ${view.year}, from your accounts:\n${lines.join("\n")}`,
+    body: `I expect ${view.forms.length} tax ${view.forms.length === 1 ? "form" : "forms"} for ${view.year}, from your accounts.\n${lines.join("\n")}`,
     actions: [link("See tax forms", "/taxes#forms")],
     refs: {},
   };
@@ -463,4 +471,19 @@ export function fileReply(f: {
   }
   const offer = filingOffer(f.year, f.profile, 0);
   return { ...offer, actions: offer.actions.filter((a) => a.id !== "snooze") };
+}
+
+// Spec step 127: "what's the standard deduction?", from the config and the estimate.
+export function standardDeductionReply(view: TaxEstimateView): Reply {
+  const d = view.estimate.deduction;
+  const status = FILING_STATUSES[view.estimate.filingStatus].toLowerCase();
+  const yours =
+    d.kind === "itemized"
+      ? ` Filing as ${status}, yours is ${formatCents(d.standardCents)}, but I estimate itemizing gives you more (about ${roundDollars(d.itemizedCents)}).`
+      : ` Filing as ${status}, yours is ${formatCents(d.standardCents)}, and it's more than itemizing would give you.`;
+  return {
+    body: `The ${view.year} standard deduction is ${formatCents(STANDARD_DEDUCTION.single)} for single filers, ${formatCents(STANDARD_DEDUCTION.married_joint)} married filing jointly and ${formatCents(STANDARD_DEDUCTION.head_of_household)} head of household.${yours}`,
+    actions: [link("See the estimate", "/taxes#estimate")],
+    refs: {},
+  };
 }

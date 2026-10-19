@@ -14,7 +14,9 @@ export type DebtIntent =
   // debt they named, or null for all of them.
   | { kind: "refinance"; target: string | null }
   // Spec step 112: "how's my loan application?".
-  | { kind: "loan_status" };
+  | { kind: "loan_status" }
+  // Spec step 113: "should I do a balance transfer?", "0% card".
+  | { kind: "balance_transfer" };
 
 const DEBT_KINDS = new Set<string>([
   "debts",
@@ -22,6 +24,7 @@ const DEBT_KINDS = new Set<string>([
   "payoff_plan",
   "refinance",
   "loan_status",
+  "balance_transfer",
 ]);
 export const isDebtIntent = (intent: { kind: string }): intent is DebtIntent =>
   DEBT_KINDS.has(intent.kind);
@@ -46,6 +49,8 @@ const REFINANCE =
 const REFINANCE_TARGET =
   /\b(?:on|for|of) (?:my |the |our )?(.+)$|\b(?:refinanc|consolidat)\w* (?:my |the |our )?(.+)$/;
 
+const TRANSFER =
+  /\bbalance transfers?\b|\b0 ?% (?:card|cards|transfer|apr|interest|intro)\b|\bzero percent\b|\bmove (?:my )?(?:credit )?card (?:debt|balance)\b|\btransfer (?:my )?(?:credit )?card(?: debt| balance)?\b|\btransfer (?:my )?balance\b/;
 const LOAN_STATUS =
   /\b(?:loan )?application(?:'s| is)?(?: status)?\b|\bdid (?:the|my) (?:new )?loan (?:go through|fund|come through)\b|\b(?:status of|where'?s|how'?s) (?:my |the )?(?:new )?loan\b/;
 // "Apply for the refinance": the pick and its Apply button.
@@ -68,6 +73,7 @@ export function parseDebtIntent(
   if (MORE.test(text) && amountCents !== null)
     return { kind: "payoff_plan", extraCents: amountCents };
   if (PAYOFF.test(text)) return { kind: "payoff_plan", extraCents: null };
+  if (TRANSFER.test(text)) return { kind: "balance_transfer" };
   if (LOAN_STATUS.test(text)) return { kind: "loan_status" };
   if (APPLY.test(text) && !REFINANCE_TARGET.test(text)) return { kind: "refinance", target: null };
   if (REFINANCE.test(text)) {
