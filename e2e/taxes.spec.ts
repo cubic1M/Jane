@@ -131,3 +131,50 @@ test("tax tags: Jane's tags, her questions, and tagging a work expense", async (
   );
   expect(await axe(page)).toEqual([]);
 });
+
+// Spec step 165: a move saved on the profile splits the state estimate, each state citing
+// its tax agency, and both states are in the tax-time pack.
+test("state taxes: a mid-year move splits the estimate, each state with its source", async ({
+  context,
+  page,
+  baseURL,
+}) => {
+  const user = await signedInUser("user");
+  userId = user.userId;
+  await context.addCookies([
+    { name: "authjs.session-token", value: user.sessionToken, url: baseURL ?? "" },
+  ]);
+  await page.goto("/connect");
+  await page.getByRole("button", { name: "Link a demo bank" }).click();
+  await expect(page).toHaveURL("/chat", { timeout: 60_000 });
+
+  await page.goto("/taxes/profile#states");
+  const where = page.locator("#states");
+  await expect(where.getByRole("heading", { name: "Where you lived and worked" })).toBeVisible();
+  await where.getByLabel("Moved on").fill("2026-07-01");
+  await where.locator("select[name=movedFrom]").selectOption("CA");
+  await where.locator("select[name=movedTo]").selectOption("NY");
+  await where.getByRole("button", { name: "Save where I lived" }).click();
+  await expect(where.getByRole("status")).toHaveText("Saved. Your state estimate uses it now.");
+  expect(await axe(page)).toEqual([]);
+
+  await page.goto("/taxes");
+  const estimate = page.getByRole("region", { name: "Your 2026 estimate" });
+  await expect(estimate.getByText(/^California and New York: /)).toBeVisible();
+  await estimate.getByText("How Jane worked it out").click();
+  await expect(
+    estimate.getByRole("link", { name: "California Franchise Tax Board" }),
+  ).toHaveAttribute("href", "https://www.ftb.ca.gov");
+  await expect(
+    estimate.getByRole("link", { name: "New York State Department of Taxation and Finance" }),
+  ).toHaveAttribute("href", "https://www.tax.ny.gov");
+  await expect(
+    estimate.getByText(/^California: lived there 2026-01-01 to 2026-06-30/),
+  ).toBeVisible();
+  expect(await axe(page)).toEqual([]);
+
+  await page.goto("/tax-pack?year=2026");
+  const states = page.getByRole("region", { name: "States you lived or worked in" });
+  await expect(states.getByRole("link", { name: "California Franchise Tax Board" })).toBeVisible();
+  await expect(states.getByText("Jan 1, 2026 to Jun 30, 2026")).toBeVisible();
+});

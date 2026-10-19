@@ -305,21 +305,6 @@ export function netCapital(stCents: number, ltCents: number, status: FilingStatu
   return { incomeCents: net, longTermCents: Math.max(0, Math.min(ltCents, net)) };
 }
 
-// Spec step 124: short- and long-term gains netted. A net gain counts as income, its long-
-// term part (up to the net) at the capital gains rates; a net loss comes off income only up
-// to the limit.
-export function netCapital(stCents: number, ltCents: number, status: FilingStatus) {
-  const net = stCents + ltCents;
-  if (net < 0) {
-    const limit =
-      status === "married_separate"
-        ? CAPITAL_LOSS_LIMIT.marriedSeparate
-        : CAPITAL_LOSS_LIMIT.normal;
-    return { incomeCents: Math.max(net, -limit), longTermCents: 0 };
-  }
-  return { incomeCents: net, longTermCents: Math.max(0, Math.min(ltCents, net)) };
-}
-
 export function estimateTaxes(input: EstimateInput): TaxEstimate {
   const status = input.filingStatus;
   const inc = input.income;
