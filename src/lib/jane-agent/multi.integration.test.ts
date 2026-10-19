@@ -181,9 +181,7 @@ describe.runIf(url)("requests that span sectors, against a real database", () =>
       client,
       now: later(),
     });
-    expect(message.refs.note).toMatch(
-      /^All done, in order\.\n1\. Done\. I'm switching you now/,
-    );
+    expect(message.refs.note).toMatch(/^All done, in order\.\n1\. Done\. I'm switching you now/);
     expect(await client.moneyTransfer.findFirst({ where: { userId } })).toMatchObject({
       amountCents: month,
     });
