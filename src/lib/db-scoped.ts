@@ -165,6 +165,8 @@ export function scopedFor(userId: string, client: PrismaClient = db) {
     // Money that moves itself (spec steps 144–145).
     moneyTransfers: scoped.moneyTransfer,
     paycheckPlans: scoped.paycheckPlan,
+    // Money health score by month (spec step 146).
+    healthScores: scoped.healthScore,
     savedShares: scoped.savedShare,
     // What's in investment accounts (spec step 128).
     securities: scoped.security,

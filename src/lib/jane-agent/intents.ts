@@ -94,6 +94,8 @@ export type Intent =
   | { kind: "paycheck" }
   // Spec step 145: "are my bills paid?"
   | { kind: "bills_paid" }
+  // Spec step 146: "what's my money health score?"
+  | { kind: "health" }
   // Spec step 141: one autopilot, every sector.
   | SectorIntent
   // Spec step 136: what a word means.
@@ -329,6 +331,8 @@ const PAYCHECK =
   /\bsplit my (?:paycheck|pay)\b|\bwhere (?:did|does) my (?:paycheck|pay) go\b|\bmy paycheck plan\b|\bwhat did you move\b/;
 const BILLS_PAID =
   /\b(?:are|is) my (?:bills?|card|credit card|loan)(?: payments?)? (?:paid|covered|set|on time)\b|\bpay my (?:bills?|card|credit card)(?: on time)?\b|\bbills? (?:paid )?on time\b|\bbill pay\b/;
+const HEALTH =
+  /\b(?:health score|money health|financial health|financial wellness)\b|\bhow healthy (?:are|is) my (?:money|finances)\b/;
 const PRIORITIES =
   /\bwhat should i do (?:first|next|now)\b|\bwhat matters (?:most|now)\b|\bwhat'?s (?:most )?important\b|\bwhere (?:do|should) i start\b|\bmy (?:top )?priorities\b|\bnext best thing\b/;
 // Spec step 183. "Am I OK to buy …" is a purchase question, and goals have their own answer.
@@ -440,6 +444,7 @@ export function parseIntent(raw: string, asOf: string): Intent {
   if (WHOLE_NOW.test(text)) return { kind: "whole_picture", focus: "now" };
   if (PRIORITIES.test(text)) return { kind: "priorities" };
   if (PAYCHECK.test(text)) return { kind: "paycheck" };
+  if (HEALTH.test(text)) return { kind: "health" };
   const sector = parseSectorIntent(text);
   if (sector) return sector;
   if (BILLS_PAID.test(text)) return { kind: "bills_paid" };
