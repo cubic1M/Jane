@@ -126,6 +126,17 @@ test("the demo bank lands in Jane's chat, and Yes answers a finding", async ({
   await expect(due.locator(".sr-only")).toContainText("Due this week: ");
   expect(await due.evaluate((el) => el.scrollWidth <= el.clientWidth)).toBe(true);
 
+  // Spec step 95: a guided flow, one question at a time in the same message; Cancel changes
+  // nothing.
+  await ask.fill("set up a budget");
+  await ask.press("Enter");
+  const flow = messages.filter({ hasText: "Setting up a budget" }).last();
+  await expect(flow).toContainText("1 of 2");
+  await flow.getByRole("button").first().click();
+  await expect(flow).toContainText("2 of 2");
+  await flow.getByRole("button", { name: "Cancel" }).click();
+  await expect(flow.getByRole("status")).toContainText("Nothing was changed.");
+
   // Spec step 91: Jane remembers what she's told, only on the tap, and Settings can forget it.
   await ask.fill("payday is the 15th");
   await ask.press("Enter");

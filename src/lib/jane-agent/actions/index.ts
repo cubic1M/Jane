@@ -57,6 +57,7 @@ import { prefSave, suggestNever } from "./remember";
 import { welcomeTour } from "./welcome";
 import { autopilotSectorSet } from "./sector";
 import { bundleYes1, bundleYes2, bundleYes3, bundleYes4, bundleYes5 } from "./bundle";
+import { FLOW_PICKS, flowBack, flowCancel } from "./flows";
 
 // Every button action, by id (spec step 81). A new button is a new handler here; the
 // message sources offer it by id (src/lib/jane-agent/types.ts ACTION_IDS).
@@ -111,6 +112,10 @@ export const ACTION_HANDLERS: Readonly<Record<ActionId, ActionHandler>> = {
   "bundle.3": bundleYes3,
   "bundle.4": bundleYes4,
   "bundle.5": bundleYes5,
+  // Spec step 95.
+  ...FLOW_PICKS,
+  "flow.back": flowBack,
+  "flow.cancel": flowCancel,
   // Taxes (spec step 118).
   "tax.found_yes": taxFoundYes,
   ...TAX_PROFILE_HANDLERS,

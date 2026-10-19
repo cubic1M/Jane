@@ -23,6 +23,7 @@ import { topicOf, withTopic, type Topic } from "./context";
 import { matchCategory, type Intent } from "./intents";
 import { listGoals } from "@/lib/goals";
 import { comingUpBlock, spendingBlock } from "./block-data";
+import { flowReply } from "./flows/chat";
 import { goalsReply } from "./goals-reply";
 import { listPreferences, paydayDays } from "./preferences";
 import { loadRecurring } from "./recurring";
@@ -151,6 +152,9 @@ async function byIntent(
     }
     case "remember":
       return rememberReply(intent.draft);
+    // Spec step 95.
+    case "flow":
+      return flowReply(intent.flow, { userId, client, now });
     // Spec step 94.
     case "goals":
       return goalsReply(await listGoals(userId, { client, now }));

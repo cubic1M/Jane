@@ -1,5 +1,6 @@
 import type { AnswerBlock } from "./blocks";
 import type { Topic } from "./context";
+import type { FlowState } from "./flows/engine";
 import type { Intent } from "./intents";
 import type { PreferenceDraft } from "./preferences";
 
@@ -71,6 +72,14 @@ export const ACTION_IDS = [
   "bundle.3",
   "bundle.4",
   "bundle.5",
+  // Spec step 95: a guided flow's answers, Back and Cancel (refs.flow).
+  "flow.pick.1",
+  "flow.pick.2",
+  "flow.pick.3",
+  "flow.pick.4",
+  "flow.pick.5",
+  "flow.back",
+  "flow.cancel",
   // Taxes (spec step 118): the tax profile, one question at a time.
   "tax.found_yes",
   "tax.filing_single",
@@ -214,6 +223,8 @@ export type MessageRefs = {
   items?: { dedupeKey: string; label: string }[];
   // Spec step 94: a chart, table, timeline or progress bars shown with the answer.
   block?: AnswerBlock;
+  // Spec step 95: where a guided flow is.
+  flow?: FlowState;
   // Taxes (spec step 118): the tax profile question a message is asking, and the kind of
   // income "Add it" would add.
   taxField?: string;

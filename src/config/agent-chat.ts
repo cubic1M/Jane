@@ -217,3 +217,6 @@ export const CHAT_UNANSWERED_DAYS = 30;
 // many rows.
 export const CHAT_BLOCK_WIDTH = 34;
 export const CHAT_BLOCK_ROWS = 8;
+
+// Spec step 95: guided flows in the chat show at most this many answers as buttons.
+export const CHAT_FLOW_OPTIONS = 5;
