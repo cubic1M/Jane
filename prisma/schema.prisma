@@ -360,6 +360,7 @@ model User {
   controllerRuns    ControllerRun[]
   moneyTransfers    MoneyTransfer[]
   paycheckPlans     PaycheckPlan[]
+  healthScores      HealthScore[]
 
   @@map("users")
 }
@@ -2843,4 +2844,24 @@ model PaycheckPlan {
 
   @@unique([userId, key])
   @@map("paycheck_plans")
+}
+
+// Money health score (spec step 146): the person's score for a month, kept up to date while
+// the month runs, so a later month can say how it changed. parts as computed then.
+model HealthScore {
+  id        String   @id @default(cuid())
+  userId    String   @map("user_id")
+  // YYYY-MM.
+  month     String
+  score     Int
+  band      String
+  // [{ part, label, points, max, why, next }].
+  parts     Json
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, month])
+  @@map("health_scores")
 }

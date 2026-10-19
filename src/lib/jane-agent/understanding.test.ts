@@ -58,6 +58,17 @@ describe("new questions", () => {
     expect(parse("how much do I have to spend").kind).toBe("safe_to_spend");
   });
 
+  it("reads the money health score (spec step 146)", () => {
+    for (const text of [
+      "what's my health score",
+      "how is my financial health",
+      "how healthy are my finances",
+    ]) {
+      expect(parse(text), text).toEqual({ kind: "health" });
+    }
+    expect(parse("how much did I spend on health").kind).not.toBe("health");
+  });
+
   it("reads whether bills are paid (spec step 145)", () => {
     for (const text of [
       "are my bills paid",
