@@ -1,6 +1,6 @@
 import type { DecisionCard } from "@/lib/cards";
 import { formatCents } from "@/lib/money";
-import type { Comparison } from "@/planning/compare";
+import { optionLabel, type Comparison } from "@/planning/compare";
 import { optionsBlock } from "./block-data";
 import type { Reply } from "./replies";
 import { sentence, shortDate } from "./sources/source";
@@ -52,12 +52,12 @@ export function optionsReply(
   }
   const savings = comparison.current.kind === "savings";
   const scored = (s: Comparison["pick"]) =>
-    `${s.option.provider} ${s.option.name}: ${formatCents(s.firstYearCents)} ${savings ? "earned" : ""} in the first year, ${savings ? "about" : "saving about"} ${formatCents(s.savingCents)}${savings ? " more" : ""}${s.notes.length ? ` (${s.notes.join(", ")})` : ""}`.replace(
+    `${optionLabel(s.option)}: ${formatCents(s.firstYearCents)} ${savings ? "earned" : ""} in the first year, ${savings ? "about" : "saving about"} ${formatCents(s.savingCents)}${savings ? " more" : ""}${s.notes.length ? ` (${s.notes.join(", ")})` : ""}`.replace(
       /\s+/g,
       " ",
     );
   const lines = [
-    `My pick is ${comparison.pick.option.provider} ${comparison.pick.option.name}. ${sentence(comparison.why)}`,
+    `My pick is ${optionLabel(comparison.pick.option)}. ${sentence(comparison.why)}`,
     `You ${savings ? "earn" : "pay"} about ${formatCents(comparison.currentYearCents)} a year now.`,
     `- ${scored(comparison.pick)}`,
     ...comparison.runnersUp.map((s) => `- ${scored(s)}`),
