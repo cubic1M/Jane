@@ -2762,6 +2762,124 @@ Jane doing the work and the person tapping once.
 > Acceptance criteria:
 > - Calls stay within the person's limits; a claim is never filed without their review
 
+## Phase AE: investing, all of it (steps 156–164)
+
+Phase AA built the core: holdings, a risk profile, fees, a review, retirement, one-tap
+rebalancing and automatic contributions. This phase makes Jane a full investing manager:
+prices and real returns, every goal invested for its own timeline, the special accounts
+(college, HSA, company stock, crypto), cash done right, a steady hand when markets drop,
+and a fully automatic mode within the person's limits. All advice is demo advice; orders
+and prices go through stand-ins until a brokerage, market-data and adviser partner are
+connected.
+
+### Step 156: Prices and real returns
+
+> Read CLAUDE.md. What the investments are worth and how they've done.
+>
+> Build:
+> 1. A market-data partner interface with a stand-in daily price feed for the demo
+>    holdings; values refreshed by the nightly run.
+> 2. Returns that count contributions properly (time-weighted and money-weighted),
+>    dividends and interest received, against a simple benchmark for their mix; on the
+>    investments page and in the chat ("how are my investments doing?").
+>
+> Acceptance criteria:
+> - Returns math is tested against worked examples; no predictions anywhere
+
+### Step 157: Every goal invested for its timeline
+
+> Read CLAUDE.md. Money for each goal, invested to match when it's needed (demo advice).
+>
+> Build:
+> 1. Each goal (house, car, wedding, retirement) gets a bucket: cash for under 3 years,
+>    a mix that gets safer as the date nears (a glide path in config) for longer ones.
+> 2. Jane moves new money to the right bucket by itself at the right autopilot level.
+>
+> Acceptance criteria:
+> - A near-term goal is never put in stocks; the glide path is shown and tested
+
+### Step 158: College savings
+
+> Read CLAUDE.md. Saving for a child's education (demo advice).
+>
+> Build:
+> 1. A cost projection (in config, with sources), a 529 plan comparison stand-in (fees,
+>    state tax benefit from the tax profile), a monthly amount to get there, set up as a goal
+>    with automatic contributions.
+>
+> Acceptance criteria:
+> - The state benefit uses the tax profile's state; amounts are ranges, never promises
+
+### Step 159: HSA as an investment
+
+> Read CLAUDE.md. The account with three tax breaks (demo advice).
+>
+> Build:
+> 1. HSA balance invested beyond a cash cushion, contributions up to the limit, and a
+>    receipts vault: medical charges found in transactions saved for later reimbursement.
+>
+> Acceptance criteria:
+> - Limits come from config with sources; every saved receipt links to its transaction
+
+### Step 160: Company stock
+
+> Read CLAUDE.md. RSUs, ESPP and options without too many eggs in one basket (demo advice).
+>
+> Build:
+> 1. Vesting and purchases from a guided flow or paycheck lines; concentration measured;
+>    a sell-and-diversify plan with the tax cost (step 124) and a schedule.
+>
+> Acceptance criteria:
+> - The plan shows the tax cost and the risk it removes; nothing is sold without a tap
+
+### Step 161: Crypto, read-only
+
+> Read CLAUDE.md. See it, size it, never trade it.
+>
+> Build:
+> 1. Crypto balances through a stand-in exchange or wallet connection (read-only),
+>    included in net worth and the mix; concentration and fee flags (demo advice); no
+>    trading, ever.
+>
+> Acceptance criteria:
+> - No order path exists for crypto; balances are labelled with their source and time
+
+### Step 162: Cash done right
+
+> Read CLAUDE.md. Every dollar of cash earning what it should (demo advice).
+>
+> Build:
+> 1. Cash across checking, savings and brokerage sweep compared with high-yield savings,
+>    money market funds and a Treasury ladder (stand-in rates with dates); the emergency
+>    fund kept liquid; one-tap moves through the money-movement stand-in.
+>
+> Acceptance criteria:
+> - The emergency fund is never put somewhere it can't be reached in days
+
+### Step 163: A steady hand
+
+> Read CLAUDE.md. When markets drop, Jane keeps the plan.
+>
+> Build:
+> 1. A big drop in the portfolio triggers one calm message: what changed, what it means
+>    for their goals' timelines, and the plan; a pause before any sell they start, with the
+>    long-term cost shown. No market predictions, ever.
+>
+> Acceptance criteria:
+> - Never says what markets will do; the pause can always be skipped
+
+### Step 164: Fully automatic investing
+
+> Read CLAUDE.md. Investing that runs itself, within limits.
+>
+> Build:
+> 1. At "handle everything" with an investing cap, Jane contributes, rebalances, invests
+>    new cash and harvests losses (step 124) through the stand-in brokerage by herself,
+>    posting one summary a month; everything above the cap asks first.
+>
+> Acceptance criteria:
+> - Nothing over the cap happens without a tap; every action is in the log with its reason
+
 ### Later, when the founder is ready
 
 These need an outside account, a partner or a decision: Plaid Production (real banks) and
