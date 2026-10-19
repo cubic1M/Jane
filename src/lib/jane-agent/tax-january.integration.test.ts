@@ -89,8 +89,8 @@ describe.runIf(url)("taxes on autopilot against a real database", () => {
     ).toBe(1);
   }, 120_000);
 
-  it("answers the standard deduction from the config, with the person's own", async () => {
-    const { reply } = await sendToJane(userId, "what's the standard deduction", {
+  it("answers whether to itemize from the config, with the person's own", async () => {
+    const { reply } = await sendToJane(userId, "should I itemize", {
       client,
       now: LINKED,
     });

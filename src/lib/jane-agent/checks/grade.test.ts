@@ -137,3 +137,18 @@ describe("firstSentence", () => {
     expect(firstSentence("It's $17.99 a month")).toBe("It's $17.99 a month");
   });
 });
+
+describe("fixedChecks in demo advice mode (spec step 137)", () => {
+  it("checks answers with the guardrails Jane uses for the person", () => {
+    const answer: Answer = {
+      body: "Your Demo 401(k) has $84,250.40 in 5 holdings.",
+      actions: [],
+      source: "rules",
+    };
+    const question = { id: "x", text: "what's in my 401k", needs: "rules" as const, expect: {} };
+    const guard = (advice: boolean) =>
+      fixedChecks(question, answer, { ...facts, advice }).find((c) => c.name === "guardrails")!.ok;
+    expect(guard(true)).toBe(true);
+    expect(guard(false)).toBe(false);
+  });
+});

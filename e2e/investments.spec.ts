@@ -123,4 +123,21 @@ test("the demo bank's holdings show with their sources, and Jane answers about t
   // After the rebalance above, no bond fund sits in the taxable account.
   await expect(page.getByText(/Keystone Total Bond Index Fund \(Demo Brokerage\)/)).toHaveCount(0);
   await expect(page.getByRole("heading", { name: "Gains and losses not yet taxed" })).toBeVisible();
+
+  // Step 136: plain explainers, one tap from the investments page, marked for review.
+  await page.goto("/investments");
+  await page.getByRole("link", { name: "index funds" }).click();
+  await expect(page).toHaveURL("/learn/index-funds");
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText("Index funds");
+  await expect(page.getByText(/waiting for review by counsel/)).toBeVisible();
+  await page.getByRole("link", { name: "← Learn" }).click();
+  await expect(page.getByRole("link", { name: "Standard deduction" })).toBeVisible();
+
+  // Step 137: what Jane does by herself, and how it's going.
+  await page.goto("/investments");
+  await expect(page.getByRole("heading", { name: "What Jane does by herself" })).toBeVisible();
+  await page.goto("/chat");
+  await page.getByRole("textbox", { name: "Message Jane" }).fill("how are my investments doing");
+  await page.getByRole("button", { name: "Send" }).click();
+  await expect(page.getByText(/^Your investments start \w+ at \$/)).toBeVisible();
 });

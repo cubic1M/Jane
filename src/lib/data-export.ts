@@ -53,6 +53,8 @@ export async function exportUserData(
     budgetTuneUps,
     goalTransfers,
     savedShares,
+    autopilotSectors,
+    autopilotActs,
     janeMessages,
     janePreferences,
     teamAccess,
@@ -386,6 +388,19 @@ export async function exportUserData(
     }),
     // Shared savings totals (spec step 139): never the token itself.
     db.savedShares.findMany({ select: { totalCents: true, createdAt: true, revokedAt: true } }),
+    // One autopilot, every sector (spec step 141): what was set, and what Jane did by herself.
+    db.autopilotSectors.findMany({
+      select: {
+        sector: true,
+        level: true,
+        actionCapCents: true,
+        monthlyCapCents: true,
+        updatedAt: true,
+      },
+    }),
+    db.autopilotActs.findMany({
+      select: { sector: true, cents: true, what: true, createdAt: true },
+    }),
     // Jane's chat (spec step 81): every message, with the buttons and what they answered.
     db.janeMessages.findMany({
       select: {
@@ -547,6 +562,8 @@ export async function exportUserData(
     budgetTuneUps,
     goalTransfers,
     savedShares,
+    autopilotSectors,
+    autopilotActs,
     janeMessages,
     janePreferences,
     investments,

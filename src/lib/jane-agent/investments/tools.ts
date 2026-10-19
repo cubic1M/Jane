@@ -6,6 +6,11 @@ import { GOALS, HORIZONS } from "@/config/investing";
 import { adviceMode } from "@/lib/advice-mode";
 import { loadFees } from "@/lib/investments/fees";
 import { loadInvestments } from "@/lib/investments/holdings";
+import { EXPLAINERS, REVIEW_NOTE, explainer } from "@/config/learn";
+import { INVESTMENT_AUTOPILOT } from "@/config/investing";
+import { autopilotOf } from "@/lib/autopilot";
+import { loadInvestmentSnapshot } from "./snapshot";
+import { overviewReply } from "./replies";
 import { loadAccountPlan } from "@/lib/investments/accounts";
 import { loadAutoInvest } from "@/lib/investments/auto-invest";
 import { loadRebalance } from "@/lib/investments/rebalance";
@@ -70,6 +75,23 @@ export const INVESTMENT_TOOLS: Anthropic.Tool[] = [
       "Which account to put money into first (employer match, HSA, IRA (Roth or traditional by their tax bracket from the tax estimate), the rest of the workplace plan, a taxable account), each with its yearly room and why, changing with the investor profile (money needed soon goes somewhere flexible); which holdings in a taxable account would be better kept in a tax-deferred one and what they cost in tax a year; and gains and losses not yet taxed. The order and moves are demo advice only; the gains are facts.",
     input_schema: noInput,
   },
+  {
+    name: "investments_overview",
+    description:
+      "How the person's investments stand this month: the total, the change from a month ago (from daily balances, counting what went in), what went in last month, fees a year, whether the mix is on target (demo advice), whether orders are ready, and what Jane does with investments by herself at their autopilot level. Facts about the past only: never say where markets are going.",
+    input_schema: noInput,
+  },
+  {
+    name: "explainer",
+    description:
+      "Jane's fixed plain-language explainer for a word (education, not advice; waiting for counsel's review): what it is and how it works, with sources. Use it when the person asks what something means, and quote it rather than writing your own definition.",
+    input_schema: {
+      type: "object",
+      properties: { slug: { type: "string", enum: EXPLAINERS.map((e) => e.slug) } },
+      required: ["slug"],
+      additionalProperties: false,
+    },
+  },
 ];
 
 // What the person sees while Jane looks it up.
@@ -82,6 +104,8 @@ export const INVESTMENT_TOOL_STATUS: Readonly<Record<string, string>> = {
   rebalance_plan: "Working out the orders…",
   auto_invest: "Checking automatic investing…",
   account_plan: "Working out which account first…",
+  explainer: "Looking that up…",
+  investments_overview: "Looking at how your investments are doing…",
 };
 
 export const isInvestmentTool = (name: string) => INVESTMENT_TOOLS.some((t) => t.name === name);
@@ -89,7 +113,7 @@ export const isInvestmentTool = (name: string) => INVESTMENT_TOOLS.some((t) => t
 export async function runInvestmentTool(
   userId: string,
   name: string,
-  _input: unknown,
+  input: unknown,
   { client, now }: { client: PrismaClient; now: Date },
 ): Promise<ToolOutput> {
   const cents: number[] = [];
@@ -348,6 +372,46 @@ export async function runInvestmentTool(
           better: m.better,
           taxAYearWhereItIs: money(m.taxDragCents),
         })),
+      });
+    }
+    case "investments_overview": {
+      const [snapshot, level] = await Promise.all([
+        loadInvestmentSnapshot(userId, { client, now }),
+        autopilotOf(userId, { client }),
+      ]);
+      const note = overviewReply(snapshot);
+      const key = (
+        level && Object.hasOwn(INVESTMENT_AUTOPILOT, level) ? level : "none"
+      ) as keyof typeof INVESTMENT_AUTOPILOT;
+      money(snapshot.totalCents);
+      if (snapshot.month.previousCents !== null) {
+        money(snapshot.month.previousCents);
+        money(snapshot.totalCents - snapshot.month.previousCents);
+      }
+      money(snapshot.month.contributedCents);
+      money(snapshot.fees.totalYearlyCents);
+      return out({
+        note: note.body,
+        ordersReady: snapshot.advice ? (snapshot.rebalance?.orders.length ?? 0) : 0,
+        whatJaneDoesByHerself: INVESTMENT_AUTOPILOT[key],
+      });
+    }
+    case "explainer": {
+      const slug =
+        (input && typeof input === "object" ? (input as { slug?: unknown }).slug : null) ?? "";
+      const e = typeof slug === "string" ? explainer(slug) : null;
+      if (!e)
+        return out({
+          error: "There's no explainer with that name.",
+          have: EXPLAINERS.map((x) => x.slug),
+        });
+      return out({
+        title: e.title,
+        summary: e.summary,
+        text: e.paragraphs,
+        sources: e.sources,
+        review: REVIEW_NOTE,
+        page: `/learn/${e.slug}`,
       });
     }
     default:
