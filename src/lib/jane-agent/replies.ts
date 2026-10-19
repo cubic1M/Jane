@@ -32,9 +32,8 @@ import {
 import { CHAT_CLARIFY_CHOICES } from "@/config/agent-chat";
 import { matchCategory, type ActVerb, type Intent } from "./intents";
 import { nameMatches } from "./names";
-import { localTime } from "./quiet-hours";
 import type { Snapshot, SnapshotFinding } from "./snapshot";
-import { findingsSource } from "./sources/findings";
+import { findingCandidate } from "./sources/findings";
 import { inDays, shortDate, things } from "./sources/source";
 import type { MessageAction, MessageRefs } from "./types";
 
@@ -485,11 +484,8 @@ export function matchFinding(
 
 // One finding as a decision, with the same words and buttons (Yes, Jane's pick, No, Open)
 // as its message from Jane's brain.
-export function findingReply(snapshot: Snapshot, finding: SnapshotFinding, now: Date): Reply {
-  const [candidate] = findingsSource.gather(
-    { ...snapshot, findings: [finding] },
-    { now, local: localTime(now, snapshot.timezone), trigger: "open" },
-  );
+export function findingReply(finding: SnapshotFinding): Reply {
+  const candidate = findingCandidate(finding);
   return reply(candidate.body, candidate.actions, {
     ...candidate.refs,
     topic: { kind: "act", target: finding.title, findingId: finding.findingId },
@@ -535,18 +531,17 @@ const findingChoices = (verb: ActVerb, findings: readonly SnapshotFinding[]) =>
 export function actReply(
   intent: Extract<Intent, { kind: "act" }>,
   snapshot: Snapshot | null,
-  now: Date,
 ): Reply {
   const subscriptions = link("Open subscriptions", "/subscriptions");
   const exact = intent.findingId
     ? snapshot?.findings.find((f) => f.findingId === intent.findingId)
     : undefined;
-  if (snapshot && exact) return findingReply(snapshot, exact, now);
+  if (snapshot && exact) return findingReply(exact);
   if (!intent.target) {
     const fitting = (snapshot?.findings ?? [])
       .filter((f) => VERB_TYPES[intent.verb].includes(f.type))
       .sort((a, b) => (b.annualSavingsCents ?? -1) - (a.annualSavingsCents ?? -1));
-    if (fitting.length === 1 && snapshot) return findingReply(snapshot, fitting[0], now);
+    if (fitting.length === 1 && snapshot) return findingReply(fitting[0]);
     if (fitting.length > 1) {
       return clarifyReply(
         `Which one should I ${intent.verb === "refund" ? "claim" : intent.verb}?`,
@@ -576,7 +571,7 @@ export function actReply(
       ),
     );
   }
-  return findingReply(snapshot, ranked[0].finding, now);
+  return findingReply(ranked[0].finding);
 }
 
 // "What did you do?": what the action agent did this week (src/lib/what-jane-did.ts).

@@ -1,0 +1,140 @@
+import { randomBytes } from "node:crypto";
+import { PrismaPg } from "@prisma/adapter-pg";
+import type { PlaidApi } from "plaid";
+import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
+import { PrismaClient } from "@/generated/prisma/client";
+
+vi.mock("@/lib/session", () => ({ requireUser: vi.fn() }));
+vi.mock("@/lib/analytics", () => ({ track: vi.fn() }));
+vi.mock("@/lib/audit", () => ({ logAudit: vi.fn(), SYSTEM_ACTOR: { type: "system", id: null } }));
+
+import { logAudit } from "@/lib/audit";
+import { takeChatAction } from "@/lib/jane-agent/actions";
+import { loadSnapshot } from "@/lib/jane-agent/snapshot";
+import { investmentsSource } from "@/lib/jane-agent/sources/investments";
+import { sendToJane } from "@/lib/jane-agent/typing";
+import { linkDemoBank } from "@/lib/plaid/demo";
+import { syncItem } from "@/lib/plaid/sync";
+import { profileSummary } from "@/planning/investor-profile";
+import { profileOf, saveProfileForm } from "./profile";
+
+// Investments (spec steps 128–137) against a real, migrated Postgres (see
+// src/detection/engine.integration.test.ts), on the demo bank.
+
+const url = process.env.TEST_DATABASE_URL;
+const LINKED = new Date("2026-10-18T15:00:00Z");
+// Each test links and syncs a demo bank, then talks to Jane: slower than most.
+const SLOW = { timeout: 60_000 };
+
+describe.runIf(url)("investments in Jane's chat, against a real database", () => {
+  let client: PrismaClient;
+  const created: string[] = [];
+  const plaid = new Proxy(
+    {},
+    {
+      get: () => () => {
+        throw new Error("no Plaid");
+      },
+    },
+  ) as PlaidApi;
+
+  async function demoPerson() {
+    const user = await client.user.create({
+      data: { email: `inv-${crypto.randomUUID()}@example.com` },
+    });
+    created.push(user.id);
+    const { itemId } = await linkDemoBank(user.id, { client, now: LINKED });
+    await syncItem(itemId, { client, api: plaid, now: LINKED });
+    return user.id;
+  }
+
+  beforeAll(() => {
+    vi.stubEnv("TOKEN_ENCRYPTION_KEY", randomBytes(32).toString("base64"));
+    vi.stubEnv("ANTHROPIC_API_KEY", "");
+    vi.stubEnv("PLAID_CLIENT_ID", "");
+    vi.stubEnv("PLAID_SECRET", "");
+    client = new PrismaClient({ adapter: new PrismaPg({ connectionString: url }) });
+  });
+  afterAll(async () => {
+    await client.user.deleteMany({ where: { id: { in: created } } });
+    await client.$disconnect();
+    vi.unstubAllEnvs();
+  });
+
+  it("step 129: asks the four questions in one message and saves each tap", SLOW, async () => {
+    const userId = await demoPerson();
+    const snapshot = await loadSnapshot(userId, { client, now: LINKED });
+    expect(snapshot?.investments).toMatchObject({ advice: true, holdingCount: 9 });
+    const question = investmentsSource
+      .gather(snapshot!, {} as never)
+      .find((c) => c.dedupeKey === "profile");
+    expect(question?.refs.investQuestion).toBe("age");
+
+    // Typed, the same questions come with their buttons.
+    const { reply } = await sendToJane(userId, "what's my risk profile", { client, now: LINKED });
+    expect(reply.refs).toMatchObject({ investQuestion: "age", note: "1 of 4: How old are you?" });
+
+    const tap = async (actionId: string) =>
+      (await takeChatAction(userId, reply.id, actionId, { client, now: LINKED })).message;
+    let message = await tap("invest.answer.3"); // 40s
+    expect(message).toMatchObject({
+      status: "open",
+      refs: { investQuestion: "horizon", note: "2 of 4: When will you need most of this money?" },
+    });
+    expect((await profileOf(userId, { client })).answeredAt).toBeNull();
+    message = await tap("invest.answer.4"); // 20 years or more
+    message = await tap("invest.answer.2"); // worry, but wait
+    // Nothing uses the profile before the last answer.
+    expect(profileSummary(await profileOf(userId, { client }), "2026-10-18").complete).toBe(false);
+    message = await tap("invest.answer.1"); // retirement
+    expect(message).toMatchObject({ status: "answered", answeredWith: "Retirement" });
+    expect(message.refs.note).toBe(
+      "Thanks. Your profile: Moderate: you'd worry, but wait it out after a drop, so less risk than your timeline allows. You can change it any time.",
+    );
+    const profile = await profileOf(userId, { client });
+    expect(profile).toMatchObject({
+      age: 45,
+      ageOn: "2026-10-18",
+      horizon: "over_20",
+      dropReaction: "worry",
+      goals: ["retirement"],
+    });
+    expect(profile.answeredAt).toEqual(LINKED);
+    expect(logAudit).toHaveBeenCalledWith(
+      { type: "user", id: userId },
+      "investor_profile_saved",
+      { type: "user", id: userId },
+      { changed: "goal", complete: true },
+    );
+    // Answered: Jane stops asking.
+    const after = await loadSnapshot(userId, { client, now: LINKED });
+    expect(investmentsSource.gather(after!, {} as never).map((c) => c.dedupeKey)).toEqual([
+      "holdings",
+    ]);
+
+    // Changed any time on the page; the first time it was finished is kept.
+    await saveProfileForm(
+      userId,
+      { age: "47", horizon: "3_to_10", dropReaction: "fine", goals: ["home", "growth"] },
+      { client, now: new Date("2026-11-01T00:00:00Z") },
+    );
+    expect(await profileOf(userId, { client })).toMatchObject({
+      age: 47,
+      horizon: "3_to_10",
+      goals: ["home", "growth"],
+      answeredAt: LINKED,
+    });
+  });
+
+  it("step 129: never asks someone with a real account, who gets no advice", SLOW, async () => {
+    const userId = await demoPerson();
+    await client.account.create({
+      data: { userId, source: "csv", name: "Checking", type: "depository", subtype: "checking" },
+    });
+    const snapshot = await loadSnapshot(userId, { client, now: LINKED });
+    expect(snapshot?.investments?.advice).toBe(false);
+    expect(
+      investmentsSource.gather(snapshot!, {} as never).some((c) => c.dedupeKey === "profile"),
+    ).toBe(false);
+  });
+});

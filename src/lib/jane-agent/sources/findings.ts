@@ -1,6 +1,6 @@
 import { MESSAGE_PRIORITY } from "@/config/agent-chat";
 import { formatCents } from "@/lib/money";
-import type { MessageAction } from "../types";
+import type { Candidate, MessageAction } from "../types";
 import type { SnapshotFinding } from "../snapshot";
 import { sentence, type MessageSource } from "./source";
 
@@ -17,41 +17,54 @@ function pickSentence(pick: NonNullable<SnapshotFinding["pick"]>): string {
 const bySavings = (a: SnapshotFinding, b: SnapshotFinding) =>
   (b.annualSavingsCents ?? -1) - (a.annualSavingsCents ?? -1);
 
+// One finding as Jane's question about it. Also how she answers about it when asked
+// (spec step 88), whatever else is waiting.
+export function findingCandidate(finding: SnapshotFinding): Candidate {
+  const actions: MessageAction[] = [{ id: "finding.yes", label: "Yes", kind: "primary" }];
+  if (finding.pick) {
+    actions.push({
+      id: "finding.pick",
+      label: `Switch to ${finding.pick.name}`,
+      kind: "primary",
+    });
+  }
+  actions.push(
+    { id: "finding.no", label: "No", kind: "secondary" },
+    { id: "open", label: "Open", kind: "link", href: `/report/${finding.findingId}` },
+  );
+  return {
+    kind: "decision",
+    body: [
+      sentence(finding.title),
+      sentence(finding.savings),
+      finding.pick ? pickSentence(finding.pick) : null,
+      "Want me to handle it?",
+    ]
+      .filter(Boolean)
+      .join(" "),
+    refs: {
+      findingId: finding.findingId,
+      fingerprint: finding.fingerprint,
+      ...(finding.pick ? { pickOptionId: finding.pick.optionId } : {}),
+    },
+    actions,
+    dedupeKey: finding.findingId,
+    priority: finding.urgent ? MESSAGE_PRIORITY.urgent_finding : MESSAGE_PRIORITY.finding,
+  };
+}
+
 export const findingsSource: MessageSource = {
   key: "findings",
   gather(snapshot) {
-    return [...snapshot.findings].sort(bySavings).map((finding) => {
-      const actions: MessageAction[] = [{ id: "finding.yes", label: "Yes", kind: "primary" }];
-      if (finding.pick) {
-        actions.push({
-          id: "finding.pick",
-          label: `Switch to ${finding.pick.name}`,
-          kind: "primary",
-        });
-      }
-      actions.push(
-        { id: "finding.no", label: "No", kind: "secondary" },
-        { id: "open", label: "Open", kind: "link", href: `/report/${finding.findingId}` },
-      );
-      return {
-        kind: "decision",
-        body: [
-          sentence(finding.title),
-          sentence(finding.savings),
-          finding.pick ? pickSentence(finding.pick) : null,
-          "Want me to handle it?",
-        ]
-          .filter(Boolean)
-          .join(" "),
-        refs: {
-          findingId: finding.findingId,
-          fingerprint: finding.fingerprint,
-          ...(finding.pick ? { pickOptionId: finding.pick.optionId } : {}),
-        },
-        actions,
-        dedupeKey: finding.findingId,
-        priority: finding.urgent ? MESSAGE_PRIORITY.urgent_finding : MESSAGE_PRIORITY.finding,
-      };
-    });
+    // Spec step 97: a finding a change's heads-up asks about (./changes.ts) isn't asked twice.
+    const askedByChange = new Set(
+      (snapshot.changes ?? []).flatMap((c) =>
+        c.finding && !c.finding.handledBy ? [c.finding.id] : [],
+      ),
+    );
+    return [...snapshot.findings]
+      .filter((finding) => !askedByChange.has(finding.findingId))
+      .sort(bySavings)
+      .map(findingCandidate);
   },
 };

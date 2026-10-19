@@ -393,7 +393,7 @@ describe("actReply", () => {
   ];
 
   it("answers 'cancel Hulu' with the finding as a decision, Yes and No, and does nothing", () => {
-    const reply = actReply(intent("cancel Hulu", "act"), snapshot({ findings }), NOW);
+    const reply = actReply(intent("cancel Hulu", "act"), snapshot({ findings }));
     expect(reply.body).toBe(
       "Review your Hulu subscription. Could save about $215.88 a year. Want me to handle it?",
     );
@@ -408,7 +408,7 @@ describe("actReply", () => {
   });
 
   it("finds a bill by its kind, with Jane's pick", () => {
-    const reply = actReply(intent("lower my phone bill", "act"), snapshot({ findings }), NOW);
+    const reply = actReply(intent("lower my phone bill", "act"), snapshot({ findings }));
     expect(reply.refs).toMatchObject({ findingId: "f2", pickOptionId: "mint" });
     expect(buttonIds(reply)).toEqual(["finding.yes", "finding.pick", "finding.no", "open"]);
   });
@@ -424,7 +424,7 @@ describe("actReply", () => {
         fingerprint: "fp4",
       }),
     ];
-    const which = actReply(intent("lower my bill", "act"), snapshot({ findings: two }), NOW);
+    const which = actReply(intent("lower my bill", "act"), snapshot({ findings: two }));
     expect(which.body).toBe("Which one should I lower?");
     expect(which.actions.map((a) => a.id)).toEqual(["clarify.1", "clarify.2", "open"]);
     expect(which.refs.choices?.map((c) => c.intent)).toEqual([
@@ -436,13 +436,12 @@ describe("actReply", () => {
     const exact = actReply(
       { kind: "act", verb: "lower", target: "anything", findingId: "f4" },
       snapshot({ findings: two }),
-      NOW,
     );
     expect(exact.refs.findingId).toBe("f4");
     // Only one that fits: no question.
-    expect(
-      actReply(intent("lower my bill", "act"), snapshot({ findings }), NOW).refs.findingId,
-    ).toBe("f2");
+    expect(actReply(intent("lower my bill", "act"), snapshot({ findings })).refs.findingId).toBe(
+      "f2",
+    );
     // Typos and everyday words: "the gym", "cancle".
     expect(
       actReply(
@@ -450,28 +449,27 @@ describe("actReply", () => {
         snapshot({
           findings: [finding({ findingId: "g", title: "Review your Planet Fitness subscription" })],
         }),
-        NOW,
       ).refs.findingId,
     ).toBe("g");
   });
 
   it("finds a refund", () => {
-    const reply = actReply(intent("get my refund from Target", "act"), snapshot({ findings }), NOW);
+    const reply = actReply(intent("get my refund from Target", "act"), snapshot({ findings }));
     expect(reply.refs.findingId).toBe("f3");
   });
 
   it("says so and offers subscriptions when nothing matches", () => {
-    const reply = actReply(intent("cancel Spotify", "act"), snapshot({ findings }), NOW);
+    const reply = actReply(intent("cancel Spotify", "act"), snapshot({ findings }));
     expect(reply.body).toBe(
       `I don't see anything open about "spotify" right now, so there's nothing for me to cancel yet.`,
     );
     expect(reply.actions).toEqual([
       { id: "open", label: "Open subscriptions", kind: "link", href: "/subscriptions" },
     ]);
-    expect(actReply(intent("cancel my subscription", "act"), snapshot(), NOW).body).toBe(
+    expect(actReply(intent("cancel my subscription", "act"), snapshot()).body).toBe(
       "There's nothing open for me to cancel right now.",
     );
-    expect(buttonIds(actReply(intent("cancel Hulu", "act"), null, NOW))).toEqual(["open"]);
+    expect(buttonIds(actReply(intent("cancel Hulu", "act"), null))).toEqual(["open"]);
   });
 });
 

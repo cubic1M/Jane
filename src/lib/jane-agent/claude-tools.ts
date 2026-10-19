@@ -2,6 +2,7 @@ import type Anthropic from "@anthropic-ai/sdk";
 import { BUDGET_SUGGESTION_MONTHS } from "@/config/budgets";
 import { MAX_AFFORD_CENTS } from "@/config/afford";
 import { CHAT_PRIMER_TOOLS, CHAT_RUNNERS_UP } from "@/config/agent-chat";
+import { LIFE_EVENTS } from "@/config/life-events";
 import type { PrismaClient } from "@/generated/prisma/client";
 import { budgetSummary } from "@/insights/budgets";
 import { loadInsightTransactions } from "@/insights/load";
@@ -11,7 +12,10 @@ import { CARD_SELECT, buildCard } from "@/lib/cards";
 import { comparisonFor } from "@/lib/compare";
 import { frequencyWords } from "@/lib/explain-input";
 import { scopedFor } from "@/lib/db-scoped";
+import { loadChanges } from "@/lib/changes";
 import { listGoals } from "@/lib/goals";
+import { lifeGuessesFor } from "@/lib/life-guesses";
+import { listLifeEvents } from "@/lib/life-events";
 import { homeSummary } from "@/lib/home";
 import { formatCents } from "@/lib/money";
 import { affordWindow } from "@/planning/afford";
@@ -19,10 +23,10 @@ import type { Scored } from "@/planning/compare";
 import { ACTION_HANDLERS } from "./actions";
 import { INVESTMENT_TOOLS, isInvestmentTool, runInvestmentTool } from "./investments/tools";
 import { monthLabel, type Reply } from "./replies";
-import { localTime } from "./quiet-hours";
+import { guessLine } from "./replies-life";
 import { loadRecurring } from "./recurring";
 import { loadSnapshot } from "./snapshot";
-import { findingsSource } from "./sources/findings";
+import { findingCandidate } from "./sources/findings";
 import { ACTION_IDS, type ActionId, type MessageAction } from "./types";
 
 // The tools Claude gets in Jane's chat (spec step 84). Read-only tools over the person's
@@ -109,6 +113,18 @@ export const CHAT_TOOLS: Anthropic.Tool[] = [
     name: "net_worth",
     description:
       "What the person has (accounts and things they own) minus what they owe, from their linked balances.",
+    input_schema: noInput,
+  },
+  {
+    name: "recent_changes",
+    description:
+      "What changed lately in the person's money (spec step 97): bills or subscriptions whose price moved, new regular charges, paychecks late, smaller or from a new employer, categories running above their usual pace this month, and new fees. Each with what Jane is doing about it.",
+    input_schema: noInput,
+  },
+  {
+    name: "life_events",
+    description:
+      "Big life changes (spec step 100): moving, a new job or a new baby that Jane spotted from two or more signs in the person's money and hasn't asked about yet, and the life-event checklists they have going, with how far along each is.",
     input_schema: noInput,
   },
   {
@@ -249,6 +265,44 @@ export async function runChatTool(
         })),
       });
     }
+    case "recent_changes": {
+      const changes = await loadChanges(userId, { client, now });
+      return out({
+        changes: changes.map((c) => ({
+          what: c.kind,
+          said: c.title,
+          date: c.date,
+          amount: money(c.amountCents),
+          usual: c.usualCents === null ? null : money(c.usualCents),
+          merchant: c.merchant,
+          category: c.category,
+          jane: c.finding?.handledBy
+            ? `already acting on it (${c.finding.handledBy === "rule" ? "autopilot" : "they said yes"})`
+            : c.finding
+              ? `can act on it with finding ${c.finding.id}`
+              : null,
+          openFindingId:
+            c.finding && (c.finding.status === "new" || c.finding.status === "shown")
+              ? c.finding.id
+              : null,
+        })),
+      });
+    }
+    case "life_events": {
+      const [guesses, checklists] = await Promise.all([
+        lifeGuessesFor(userId, { client, now }),
+        listLifeEvents(userId, { client }),
+      ]);
+      return out({
+        spotted: guesses.map(guessLine),
+        checklists: checklists.map((c) => ({
+          kind: c.kind,
+          started: c.startedOn,
+          done: c.completedAt !== null,
+          ticked: `${c.checkedItems.length} of ${LIFE_EVENTS[c.kind].items.length}`,
+        })),
+      });
+    }
     case "goals": {
       const goals = await listGoals(userId, { client, now });
       return out({
@@ -362,10 +416,7 @@ export async function proposeAction(
     const snapshot = await loadSnapshot(userId, { client, now });
     const finding = snapshot?.findings.find((f) => f.findingId === str(args.finding_id));
     if (!snapshot || !finding) return refuse("That isn't one of the person's open findings.");
-    const [candidate] = findingsSource.gather(
-      { ...snapshot, findings: [finding] },
-      { now, local: localTime(now, snapshot.timezone), trigger: "open" },
-    );
+    const candidate = findingCandidate(finding);
     return { ok: true, actions: candidate.actions, refs: candidate.refs, line: candidate.body };
   }
 

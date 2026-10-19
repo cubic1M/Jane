@@ -46,7 +46,6 @@ function withFinding(
   body: string,
   charge: Charge | null,
   snapshot: Snapshot | null,
-  now: Date,
   topic: Reply["refs"]["topic"],
 ): Reply {
   const finding =
@@ -54,7 +53,7 @@ function withFinding(
       ? snapshot.findings.find((f) => f.findingId === charge.openFindingId)
       : undefined;
   if (finding && snapshot) {
-    const decision = findingReply(snapshot, finding, now);
+    const decision = findingReply(finding);
     return {
       body: `${body}\n${decision.body}`,
       actions: decision.actions,
@@ -71,7 +70,6 @@ export function costReply(
   recurring: Recurring,
   snapshot: Snapshot | null,
   asOf: string,
-  now: Date,
 ): Reply | null {
   const matches = matchCharges(recurring.charges, intent.target);
   if (matches.length === 0) return null;
@@ -95,7 +93,7 @@ export function costReply(
         ? `${charge.merchant} costs you ${year} a year (${each}).`
         : `${charge.merchant} is ${each}, ${year} a year.`;
   const next = charge.nextDate ? ` The next charge is ${dateAndDays(charge.nextDate, asOf)}.` : "";
-  return withFinding(`${first}${next}`, charge, snapshot, now, {
+  return withFinding(`${first}${next}`, charge, snapshot, {
     kind: "cost",
     target: charge.merchant,
   });
@@ -107,7 +105,6 @@ export function subscriptionsReply(
   intent: { total: boolean; all: boolean },
   recurring: Recurring,
   snapshot: Snapshot | null,
-  now: Date,
 ): Reply {
   const list = recurring.charges.filter((c) => intent.all || c.subscription);
   const what = intent.all ? "regular charges" : "subscriptions";
@@ -137,7 +134,7 @@ export function subscriptionsReply(
     .filter((f) => ids.has(f.findingId))
     .sort((a, b) => (b.annualSavingsCents ?? -1) - (a.annualSavingsCents ?? -1))[0];
   if (best && snapshot) {
-    const decision = findingReply(snapshot, best, now);
+    const decision = findingReply(best);
     return {
       body: `${lines.join("\n")}\n${decision.body}`,
       actions: [...decision.actions, subscriptionsLink],

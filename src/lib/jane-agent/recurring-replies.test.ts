@@ -56,7 +56,7 @@ const ids = (r: { actions: { id: string }[] } | null) => r?.actions.map((a) => a
 
 describe("costReply", () => {
   it("gives the price, a year's cost and the next charge, then Jane's suggestion", () => {
-    const reply = costReply({ target: "netflix", year: false }, recurring, snapshot, TODAY, NOW)!;
+    const reply = costReply({ target: "netflix", year: false }, recurring, snapshot, TODAY)!;
     expect(reply.body).toBe(
       "Netflix is $17.99 a month, $215.88 a year. The next charge is Nov 14 (in 27 days).\nReview your Netflix subscription. Could save about $215.88 a year. Want me to handle it?",
     );
@@ -65,13 +65,13 @@ describe("costReply", () => {
   });
 
   it("answers a year when asked, everyday names, and other schedules", () => {
-    expect(
-      costReply({ target: "phone", year: true }, recurring, snapshot, TODAY, NOW)?.body,
-    ).toMatch(/^Verizon Wireless costs you \$1,740\.00 a year \(\$145\.00 a month\)\./);
-    expect(costReply({ target: "gym", year: false }, recurring, null, TODAY, NOW)?.body).toMatch(
+    expect(costReply({ target: "phone", year: true }, recurring, snapshot, TODAY)?.body).toMatch(
+      /^Verizon Wireless costs you \$1,740\.00 a year \(\$145\.00 a month\)\./,
+    );
+    expect(costReply({ target: "gym", year: false }, recurring, null, TODAY)?.body).toMatch(
       /^Planet Fitness is \$24\.99 a month/,
     );
-    const duolingo = costReply({ target: "duolingo", year: false }, recurring, null, TODAY, NOW)!;
+    const duolingo = costReply({ target: "duolingo", year: false }, recurring, null, TODAY)!;
     expect(duolingo.body).toMatch(/^Duolingo is \$29\.99 every 3 months, \$119\.96 a year\./);
     expect(ids(duolingo)).toEqual(["open"]);
   });
@@ -81,20 +81,20 @@ describe("costReply", () => {
       ...recurring,
       charges: [...recurring.charges, charge({ merchant: "Netflix Kids", openFindingId: null })],
     };
-    const which = costReply({ target: "netflix", year: false }, two, null, TODAY, NOW)!;
+    const which = costReply({ target: "netflix", year: false }, two, null, TODAY)!;
     expect(which.body).toBe("Which one do you mean?");
     expect(ids(which)).toEqual(["clarify.1", "clarify.2"]);
     expect(which.refs.choices?.[1]).toEqual({
       label: "Netflix Kids",
       intent: { kind: "cost", target: "Netflix Kids", year: false },
     });
-    expect(costReply({ target: "rent", year: false }, recurring, null, TODAY, NOW)).toBeNull();
+    expect(costReply({ target: "rent", year: false }, recurring, null, TODAY)).toBeNull();
   });
 });
 
 describe("subscriptionsReply", () => {
   it("lists them, most expensive first, with what they come to and the biggest saving", () => {
-    const reply = subscriptionsReply({ total: false, all: false }, recurring, snapshot, NOW);
+    const reply = subscriptionsReply({ total: false, all: false }, recurring, snapshot);
     expect(reply.body.split("\n").slice(0, 5)).toEqual([
       "You have 4 subscriptions, about $64.97 a month in all.",
       "- Planet Fitness $24.99 a month",
@@ -107,14 +107,14 @@ describe("subscriptionsReply", () => {
   });
 
   it("gives the total as the answer, and every bill when asked", () => {
-    expect(subscriptionsReply({ total: true, all: false }, recurring, null, NOW).body).toBe(
+    expect(subscriptionsReply({ total: true, all: false }, recurring, null).body).toBe(
       "You spend about $64.97 a month on 4 subscriptions, $779.60 a year. The biggest: Planet Fitness $24.99 a month, Netflix $17.99 a month, Hulu $11.99 a month.",
     );
-    expect(subscriptionsReply({ total: false, all: true }, recurring, null, NOW).body).toMatch(
+    expect(subscriptionsReply({ total: false, all: true }, recurring, null).body).toMatch(
       /^You have 5 regular charges/,
     );
     expect(
-      subscriptionsReply({ total: false, all: false }, { charges: [], nextIncome: null }, null, NOW)
+      subscriptionsReply({ total: false, all: false }, { charges: [], nextIncome: null }, null)
         .body,
     ).toBe("I don't see any subscriptions yet.");
   });

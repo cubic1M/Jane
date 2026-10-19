@@ -4,6 +4,8 @@ import type { PrismaClient } from "@/generated/prisma/client";
 import { loadInsightTransactions } from "@/insights/load";
 import { loadAffordNumbers } from "@/lib/afford";
 import { autopilotOf } from "@/lib/autopilot";
+import { loadChanges } from "@/lib/changes";
+import { listLifeEvents } from "@/lib/life-events";
 import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
 import { homeSummary } from "@/lib/home";
@@ -32,6 +34,8 @@ import {
   whatDidReply,
   type Reply,
 } from "./replies";
+import { changesReply } from "./replies-changes";
+import { lifeEventReply } from "./replies-life";
 import { loadSnapshot } from "./snapshot";
 
 // Answers a typed message by rules (spec step 84): loads only what the intent needs, with
@@ -101,14 +105,14 @@ async function byIntent(
         loadSnapshot(userId, { client, now }),
       ]);
       // Not a regular charge: what was spent there this month.
-      return costReply(intent, recurring, snapshot, asOf, now) ?? (await spendingOn(intent.target));
+      return costReply(intent, recurring, snapshot, asOf) ?? (await spendingOn(intent.target));
     }
     case "subscriptions": {
       const [recurring, snapshot] = await Promise.all([
         loadRecurring(userId, { client, now }),
         loadSnapshot(userId, { client, now }),
       ]);
-      return subscriptionsReply(intent, recurring, snapshot, now);
+      return subscriptionsReply(intent, recurring, snapshot);
     }
     case "payday":
       return paydayReply(await loadRecurring(userId, { client, now }), asOf);
@@ -120,17 +124,11 @@ async function byIntent(
       const exact = intent.findingId
         ? snapshot?.findings.find((f) => f.findingId === intent.findingId)
         : undefined;
-      if (snapshot && exact) return findingReply(snapshot, exact, now);
-      const cost = costReply(
-        { target: intent.target, year: false },
-        recurring,
-        snapshot,
-        asOf,
-        now,
-      );
+      if (snapshot && exact) return findingReply(exact);
+      const cost = costReply({ target: intent.target, year: false }, recurring, snapshot, asOf);
       if (cost) return cost;
       const ranked = snapshot ? rankFindings(snapshot.findings, null, intent.target) : [];
-      if (snapshot && ranked.length === 1) return findingReply(snapshot, ranked[0].finding, now);
+      if (snapshot && ranked.length === 1) return findingReply(ranked[0].finding);
       if (ranked.length > 1) {
         return clarifyReply(
           `I found ${ranked.length} things about "${intent.target}". Which one do you mean?`,
@@ -182,10 +180,17 @@ async function byIntent(
       const home = await homeSummary(userId, { client, now });
       return safeReply(home?.safeToSpend ?? null);
     }
+    case "life_event": {
+      const open = await listLifeEvents(userId, { client });
+      const going = open.some((e) => e.kind === intent.event && e.completedAt === null);
+      return lifeEventReply(intent.event, going);
+    }
+    case "changes":
+      return changesReply(await loadChanges(userId, { client, now }));
     case "what_did":
       return whatDidReply(await whatJaneDid(userId, { client, now }));
     case "act":
-      return actReply(intent, await loadSnapshot(userId, { client, now }), now);
+      return actReply(intent, await loadSnapshot(userId, { client, now }));
     case "approve_all":
       return approveAllReply(await loadSnapshot(userId, { client, now }));
     case "undo":
