@@ -11,8 +11,9 @@ test.setTimeout(120_000);
 test.use({ viewport: { width: 375, height: 812 } });
 
 let userId: string | undefined;
-// Every button but Pin (spec step 96), which every message of Jane's has.
-const NOT_PIN = /^(?!(?:Pin|Unpin)$)/;
+// Every button but Pin (spec step 96) and Read aloud (spec step 186), which every message of
+// Jane's has.
+const NOT_PIN = /^(?!(?:Pin|Unpin|Read aloud|Stop reading)$)/;
 test.afterEach(async () => {
   if (userId) await deleteUser(userId);
 });
