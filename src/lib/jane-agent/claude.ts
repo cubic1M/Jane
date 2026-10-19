@@ -93,6 +93,7 @@ const STATUS: Record<string, string> = {
   net_worth: "Adding up your net worth…",
   finding_details: "Looking into it…",
   subscriptions: "Checking your subscriptions…",
+  recent_changes: "Looking at what changed…",
   propose_action: "Getting a button ready…",
 };
 export const statusFor = (tool: string) =>

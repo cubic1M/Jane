@@ -15,6 +15,8 @@ export type Intent =
   // "hi", "thanks": answered at once, without Claude.
   | { kind: "greeting"; thanks: boolean }
   | { kind: "what_did" }
+  // Spec step 97: "what changed?"
+  | { kind: "changes" }
   | { kind: "approve_all" }
   | { kind: "undo" }
   | { kind: "pause_autopilot" }
@@ -161,6 +163,8 @@ const HELP =
 const PAUSE = /\b(?:pause|stop|turn off|switch off|disable) (?:the |my )?autopilot\b/;
 const WHAT_DID =
   /\bwhat (?:did|have) you (?:do|done|been (?:doing|up to))\b|\bwhat'?s new\b|\banything new\b|\bwhat happened\b|\bwhat are you (?:doing|working on)\b/;
+const CHANGES =
+  /\bwhat(?:'s| has| have)? changed\b|\b(?:has|have) (?:anything|something) changed\b|\bany(?:thing)? (?:changes?|different|unusual)\b|\bwhat'?s different\b|\bnoticed anything\b/;
 const APPROVE_ALL =
   /\b(?:yes to (?:all|everything)|approve (?:them all|all|everything|the safe ones|the safe stuff|safe ones))\b/;
 const UNDO = /^(?:undo|undo (?:that|it|the last one)|take (?:that|it) back)$/;
@@ -191,6 +195,7 @@ export function parseIntent(raw: string, asOf: string): Intent {
   if (GREETING.test(text)) return { kind: "greeting", thanks: false };
   if (THANKS.test(text)) return { kind: "greeting", thanks: true };
   if (PAUSE.test(text)) return { kind: "pause_autopilot" };
+  if (CHANGES.test(text)) return { kind: "changes" };
   if (WHAT_DID.test(text)) return { kind: "what_did" };
   if (APPROVE_ALL.test(text)) return { kind: "approve_all" };
   if (UNDO.test(text)) return { kind: "undo" };
