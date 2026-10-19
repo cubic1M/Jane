@@ -55,3 +55,34 @@ test("every debt shows with its source, and missing terms can be typed in", asyn
   await expect(affirm).toContainText("15.00%");
   await expect(affirm).toContainText("you typed it on");
 });
+
+// Spec step 110: the plan across every debt, Jane's pick as labelled demo advice, started
+// with one tap from the page.
+test("the payoff plan picks an order for the demo bank and starts with one tap", async ({
+  context,
+  page,
+  baseURL,
+}) => {
+  const user = await signedInUser("user");
+  userId = user.userId;
+  await context.addCookies([
+    { name: "authjs.session-token", value: user.sessionToken, url: baseURL ?? "" },
+  ]);
+  await page.goto("/connect");
+  await page.getByRole("button", { name: "Link a demo bank" }).click();
+  await expect(page).toHaveURL("/chat", { timeout: 60_000 });
+
+  await page.goto("/debt");
+  const plan = page.getByRole("region", { name: "Your way out of debt" });
+  await expect(plan).toContainText("Jane's pick: highest rate first");
+  await expect(plan.getByRole("listitem").first()).toHaveText("Demo Credit Card ····0003");
+  await expect(plan.getByRole("note")).toHaveText("Demo advice: sample data, not financial advice");
+  await expect(plan.getByRole("table", { name: "Paying more each month" })).toBeVisible();
+  await plan.getByRole("button", { name: "Start this plan" }).click();
+  await expect(page.getByRole("status")).toContainText("Started. Jane checks it every month");
+  await expect(page.getByRole("region", { name: "Your way out of debt" })).toContainText(
+    "This is your plan (highest rate first).",
+  );
+  // The planner below starts from the same debts.
+  await expect(page.getByLabel("Card or loan").first()).toHaveValue(/Demo/);
+});

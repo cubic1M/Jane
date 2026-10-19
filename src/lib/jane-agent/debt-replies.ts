@@ -1,6 +1,9 @@
 import { findDebt, sourceLabel, type Debt, type DebtBook } from "@/insights/debts";
 import { formatRate } from "@/insights/loans";
+import type { Payoff } from "@/lib/debt-plan";
 import { formatCents } from "@/lib/money";
+import type { PayoffPlan, Strategy } from "@/planning/debt";
+import { monthAfter, monthName, type LeftOut } from "@/planning/payoff";
 import type { DebtIntent } from "./debt-intents";
 import type { Reply } from "./replies";
 import { shortDate } from "./sources/source";
@@ -133,6 +136,130 @@ export function debtDetailReply(target: string, book: DebtBook): Reply {
   return { body: lines.join("\n"), actions: [SEE_DEBTS], refs: {} };
 }
 
-export function debtReply(intent: DebtIntent, book: DebtBook): Reply {
+export function debtReply(
+  intent: Exclude<DebtIntent, { kind: "payoff_plan" }>,
+  book: DebtBook,
+): Reply {
   return intent.kind === "debts" ? debtsReply(book) : debtDetailReply(intent.target, book);
+}
+
+// --- Spec step 110: payoff plans ------------------------------------------------------
+
+const STRATEGY_NAME: Record<Strategy, string> = {
+  avalanche: "highest rate first",
+  snowball: "smallest balance first",
+};
+const capital = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
+
+const LEFT_OUT_WHY: Record<LeftOut["reason"], string> = {
+  mortgage: "it runs on its own schedule",
+  no_balance: "no balance yet",
+  no_rate: "no rate yet",
+  no_payment: "no payment yet",
+};
+
+// "Debt-free by March 2028 (17 months), with $1,234.56 of interest".
+function outcome(plan: PayoffPlan, asOf: string): string {
+  if (!plan.ok) {
+    return plan.reason === "budget_below_minimums"
+      ? "that's less than the minimums"
+      : "it doesn't finish within 50 years";
+  }
+  return `debt-free by ${monthName(monthAfter(asOf, plan.months))} (${plural(plan.months, "month", "months")}), with ${formatCents(plan.totalInterestCents)} of interest`;
+}
+
+// The buttons that start the plan, Jane's pick first in demo advice mode.
+export function planButtons(first: Strategy, label: (s: Strategy) => string): MessageAction[] {
+  const other: Strategy = first === "avalanche" ? "snowball" : "avalanche";
+  return [
+    { id: `debt_plan.${first}`, label: label(first), kind: "primary" },
+    { id: `debt_plan.${other}`, label: label(other), kind: "secondary" },
+  ];
+}
+
+// "What's the fastest way out of debt?", "what if I pay $200 more?": the plan across every
+// debt, with the planner's math. In demo advice mode Jane picks the order and says why
+// (labelled); otherwise both orders side by side, as math, not a recommendation.
+export function payoffReply(payoff: Payoff, asOf: string): Reply {
+  const { summary, advice, stored } = payoff;
+  const planner = link("Open the payoff planner", "/debt");
+  if (summary.cards.length === 0) {
+    return {
+      body:
+        summary.leftOut.length > 0
+          ? `I can't plan yet: ${summary.leftOut.map((l) => `${l.name} (${LEFT_OUT_WHY[l.reason]})`).join(", ")}.`
+          : "You don't have any debts to pay off. Nice.",
+      actions: [SEE_DEBTS],
+      refs: {},
+    };
+  }
+  const lines: string[] = [];
+  const budget = summary.minimumsCents + summary.extraCents;
+  const paying = `Paying ${formatCents(budget)} a month (your minimums${summary.extraCents > 0 ? ` plus ${formatCents(summary.extraCents)} extra` : ""})`;
+  const pick = summary.pick;
+  if (pick) {
+    lines.push(`Here's how I'd pay them off: ${STRATEGY_NAME[pick.strategy]}.`);
+    lines.push(...pick.order.map((name, i) => `${i + 1}. ${name}`));
+    lines.push(...pick.why);
+    lines.push(`${paying}, you'd be ${outcome(summary[pick.strategy], asOf)}.`);
+  } else {
+    lines.push(`${paying}, here's how two common orders would go:`);
+    for (const s of ["avalanche", "snowball"] as const) {
+      lines.push(`- ${capital(STRATEGY_NAME[s])}: ${outcome(summary[s], asOf)}`);
+    }
+  }
+  const chosen = summary[pick?.strategy ?? "avalanche"];
+  if (summary.baseline.ok && chosen.ok) {
+    const saved = summary.baseline.totalInterestCents - chosen.totalInterestCents;
+    if (saved > 0)
+      lines.push(`That's ${formatCents(saved)} less interest than paying only the minimums.`);
+  } else if (!summary.baseline.ok) {
+    lines.push("Paying only the minimums on each, not everything would ever be paid off.");
+  }
+  const more = summary.scenarios.filter((s) => s.extraCents > summary.extraCents);
+  if (more.length > 0) {
+    lines.push(
+      `With more each month: ${more
+        .map(
+          (s) =>
+            `${formatCents(s.extraCents)} extra, debt-free by ${monthName(monthAfter(asOf, s.months))}`,
+        )
+        .join("; ")}.`,
+    );
+  }
+  if (summary.leftOut.length > 0) {
+    lines.push(
+      `Not included: ${summary.leftOut.map((l) => `${l.name} (${LEFT_OUT_WHY[l.reason]})`).join(", ")}.`,
+    );
+  }
+  if (!pick) lines.push("This is math, not a recommendation.");
+
+  const same =
+    stored &&
+    stored.extraCents === summary.extraCents &&
+    (pick ? stored.strategy === pick.strategy : true);
+  if (same) {
+    lines.push(
+      `This is your plan (${STRATEGY_NAME[stored.strategy]}). I check it every month${
+        stored.status === "off_track"
+          ? ", and last time you were behind"
+          : stored.status === "on_track"
+            ? ", and last time you were on track"
+            : ""
+      }.`,
+    );
+    return { body: lines.join("\n"), actions: [planner], refs: pick ? { advice: true } : {} };
+  }
+  const actions = planButtons(pick?.strategy ?? "avalanche", (s) =>
+    pick
+      ? s === pick.strategy
+        ? "Start this plan"
+        : `Use ${STRATEGY_NAME[s]}`
+      : `Track ${STRATEGY_NAME[s]}`,
+  );
+  return {
+    body: lines.join("\n"),
+    actions: [...actions, planner],
+    refs: { debtPlanExtraCents: summary.extraCents, ...(pick ? { advice: true as const } : {}) },
+  };
 }
