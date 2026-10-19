@@ -15,4 +15,6 @@ export const DEBT_ACTION_IDS = [
   "transfer.done",
   // Spec step 114: a studentaid.gov step done; on to the next.
   "student.next",
+  // Spec step 174: apply for the card Jane found (a hard credit check, only on this tap).
+  "credit_card.apply",
 ] as const;

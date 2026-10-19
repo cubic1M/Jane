@@ -1049,6 +1049,30 @@ export const QUESTIONS: readonly CheckQuestion[] = [
       maxChars: 1_600,
     },
   },
+  // Spec step 174: which card for what, whether a fee pays for itself, a better card.
+  {
+    id: "debt-14",
+    text: "which card should I use for groceries",
+    needs: "rules",
+    expect: { intent: "card_for", mentions: /for groceries/i, link: "/loans/cards" },
+  },
+  {
+    id: "debt-15",
+    text: "is my annual fee worth it",
+    needs: "rules",
+    expect: { intent: "card_fee", mentions: /pay for itself/i, link: "/loans/cards" },
+  },
+  {
+    id: "debt-16",
+    text: "what's the best credit card for me",
+    needs: "rules",
+    expect: {
+      intent: "card_better",
+      mentions: /hard credit check/i,
+      button: "credit_card.apply",
+      link: "/loans/cards",
+    },
+  },
 
   // Outside what Jane does: brief, and never advice.
   { id: "out-1", text: "what's the weather today", needs: "claude", expect: { avoid: ADVICE } },
