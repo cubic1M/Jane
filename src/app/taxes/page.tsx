@@ -32,6 +32,8 @@ import { FormToggle } from "./form-toggle";
 import { DocumentButtons } from "./document-buttons";
 import { PlanSection } from "./plan-section";
 import { GivingSection } from "./giving-section";
+import { FamilySection } from "./family-section";
+import { loadFamilyTaxes } from "@/lib/family-taxes";
 import { loadGiving } from "@/lib/giving";
 import { loadTaxPlan } from "@/lib/tax-plan";
 import { loadTaxDocuments } from "@/lib/tax-documents";
@@ -102,6 +104,7 @@ async function TaxesContent() {
         advice={advice}
       />
       <SavingsSection view={await loadTaxSavings(user.id, { now, loaded: { estimate, advice } })} />
+      <FamilySection view={await loadFamilyTaxes(user.id, { now, loaded: { estimate, advice } })} />
       <GivingSection view={await loadGiving(user.id, { now, loaded: { estimate, advice } })} />
       <PlanSection
         view={await loadTaxPlan(user.id, { now, loaded: { estimate, advice } })}

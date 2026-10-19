@@ -24,6 +24,8 @@ export type AuditEvent =
   | "employer_benefit_confirmed"
   | "life_application_submitted"
   | "insurance_cover_changed"
+  | "insurance_renewal_negotiated"
+  | "insurance_claim_filed"
   | "user_signed_in"
   | "import_completed"
   // Finding data was sent to Claude for card text.
@@ -133,7 +135,9 @@ export type AuditEvent =
   // College savings set up (spec step 158): the kind of college, never the child's details.
   | "college_plan_saved"
   // A company stock grant from the guided form (spec step 160): its kind, never amounts.
-  | "equity_grant_saved";
+  | "equity_grant_saved"
+  // A read-only crypto connection (spec step 161): exchange or wallet, never a key.
+  | "crypto_connected";
 
 export type AuditActor = { type: ActorType; id: string | null };
 

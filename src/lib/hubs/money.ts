@@ -13,6 +13,7 @@ import { listGoals } from "@/lib/goals";
 import { formatCents } from "@/lib/money";
 import { assetPrompts, promptHref, type AssetPrompt } from "@/lib/owned-assets";
 import { loadInsurance } from "@/lib/insurance/profile";
+import { cryptoTotal } from "@/lib/crypto/crypto";
 import { plural, type HubGroup, type HubTileData } from "./tile";
 
 // The Money hub (spec step 80): the picture of the person's money, one tile per page, each
@@ -176,50 +177,63 @@ export async function loadMoneyHub(
 ): Promise<MoneyData> {
   const db = scopedFor(userId, client);
   const asOf = now.toISOString().slice(0, 10);
-  const [accounts, owned, goals, budgets, transactions, input, confirmed, documents, insurance] =
-    await Promise.all([
-      db.accounts.findMany({
-        select: {
-          id: true,
-          name: true,
-          mask: true,
-          type: true,
-          subtype: true,
-          currentBalanceCents: true,
-          liability: {
-            select: {
-              aprBps: true,
-              rateType: true,
-              minimumPaymentCents: true,
-              nextPaymentDueDate: true,
-              payoffDate: true,
-              isOverdue: true,
-              pastDueCents: true,
-              ytdInterestPaidCents: true,
-              description: true,
-            },
+  const [
+    accounts,
+    owned,
+    goals,
+    budgets,
+    transactions,
+    input,
+    confirmed,
+    documents,
+    insurance,
+    crypto,
+  ] = await Promise.all([
+    db.accounts.findMany({
+      select: {
+        id: true,
+        name: true,
+        mask: true,
+        type: true,
+        subtype: true,
+        currentBalanceCents: true,
+        liability: {
+          select: {
+            aprBps: true,
+            rateType: true,
+            minimumPaymentCents: true,
+            nextPaymentDueDate: true,
+            payoffDate: true,
+            isOverdue: true,
+            pastDueCents: true,
+            ytdInterestPaidCents: true,
+            description: true,
           },
         },
-      }),
-      db.ownedAssets.findMany({
-        select: { id: true, valueCents: true, valuedOn: true, loanAccountId: true },
-      }),
-      listGoals(userId, { client, now }),
-      db.budgets.findMany({ select: { category: true, amountCents: true } }),
-      loadInsightTransactions(db, asOf, BUDGET_SUGGESTION_MONTHS + 1),
-      loadDetectionInput(userId, { client, now }),
-      db.subscriptionChecks.findMany({
-        where: { isSubscription: true },
-        select: { merchantKey: true },
-      }),
-      db.documents.count(),
-      loadInsurance(userId, { client, now }),
-    ]);
+      },
+    }),
+    db.ownedAssets.findMany({
+      select: { id: true, valueCents: true, valuedOn: true, loanAccountId: true },
+    }),
+    listGoals(userId, { client, now }),
+    db.budgets.findMany({ select: { category: true, amountCents: true } }),
+    loadInsightTransactions(db, asOf, BUDGET_SUGGESTION_MONTHS + 1),
+    loadDetectionInput(userId, { client, now }),
+    db.subscriptionChecks.findMany({
+      where: { isSubscription: true },
+      select: { merchantKey: true },
+    }),
+    db.documents.count(),
+    loadInsurance(userId, { client, now }),
+    // Crypto, read-only (spec step 161).
+    cryptoTotal(userId, { client }),
+  ]);
 
   // Net worth today, as /net-worth works it out.
   const worth = netWorth(
     accounts.map((a) => ({ ...a, balanceCents: a.currentBalanceCents })),
     owned.map((o) => ({ ...o, valuedOn: o.valuedOn.toISOString().slice(0, 10) })),
+    crypto,
   );
   // A home with nothing linked comes before a car.
   const prompts = assetPrompts(

@@ -63,9 +63,8 @@ const dayIndex = (day: string) =>
 // Cumulative log moves from the start, per ticker, filled as far as asked.
 const cumulative = new Map<string, number[]>();
 
-function walk(ticker: string, index: number): number {
+function walk(ticker: string, index: number, p: Profile = DEMO_PRICE_PROFILES[ticker]): number {
   if (index <= 0) return 0;
-  const p = DEMO_PRICE_PROFILES[ticker];
   let sums = cumulative.get(ticker);
   if (!sums) {
     sums = [0];
@@ -88,7 +87,27 @@ export function demoPrice(ticker: string, day: string, anchor: string): number |
   if (CASH_TICKERS.includes(t)) return 1;
   const p = DEMO_PRICE_PROFILES[t];
   if (!p) return null;
+  return priced(t, p, day, anchor);
+}
+
+function priced(key: string, p: Profile, day: string, anchor: string): number {
   const ref = dayIndex(addDays(anchor, -1));
-  const price = p.base * Math.exp(walk(t, dayIndex(day)) - walk(t, ref));
+  const price = p.base * Math.exp(walk(key, dayIndex(day), p) - walk(key, ref, p));
   return Math.round(price * 10_000) / 10_000;
+}
+
+// Spec step 161: the demo exchange's crypto prices, from the same kind of walk but kept
+// apart from the funds' feed, so nothing that trades (the brokerage) can price crypto.
+export const DEMO_CRYPTO_PROFILES: Readonly<Record<string, Profile>> = {
+  BTC: { base: 67_250, drift: 0.2, vol: 0.03, beta: 0.4 },
+  ETH: { base: 2_610, drift: 0.2, vol: 0.038, beta: 0.4 },
+  SOL: { base: 152.4, drift: 0.2, vol: 0.05, beta: 0.4 },
+  USDC: { base: 1, drift: 0, vol: 0, beta: 0 },
+};
+
+export function demoCryptoPrice(asset: string, day: string, anchor: string): number | null {
+  const a = asset.toUpperCase();
+  const p = DEMO_CRYPTO_PROFILES[a];
+  if (!p) return null;
+  return a === "USDC" ? 1 : priced(`crypto:${a}`, p, day, anchor);
 }

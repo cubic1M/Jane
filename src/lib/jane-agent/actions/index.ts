@@ -31,6 +31,9 @@ import {
   lifeCoverDismiss,
   coverApply,
   coverDismiss,
+  renewalCall,
+  renewalNo,
+  claimFile,
   benefitsDisabilityNone,
   benefitsDisabilityYes,
   benefitsLife1x,
@@ -83,6 +86,7 @@ import {
   hsaInvest,
   companyLink,
   companySell,
+  cryptoLink,
 } from "./investments";
 import { changeBudget, changeExpected, changeLook } from "./changes";
 import { lifeNever, lifeNo, lifeYes } from "./life";
@@ -131,6 +135,9 @@ export const ACTION_HANDLERS: Readonly<Record<ActionId, ActionHandler>> = {
   "lifecover.dismiss": lifeCoverDismiss,
   "cover.apply": coverApply,
   "cover.dismiss": coverDismiss,
+  "renewal.call": renewalCall,
+  "renewal.no": renewalNo,
+  "claim.file": claimFile,
   "benefits.life_1x": benefitsLife1x,
   "benefits.life_2x": benefitsLife2x,
   "benefits.life_none": benefitsLifeNone,
@@ -237,6 +244,7 @@ export const ACTION_HANDLERS: Readonly<Record<ActionId, ActionHandler>> = {
   "hsa.invest": hsaInvest,
   "company.link": companyLink,
   "company.sell": companySell,
+  "crypto.link": cryptoLink,
   // Jane notices changes (spec step 97).
   "change.look": changeLook,
   "change.budget": changeBudget,
