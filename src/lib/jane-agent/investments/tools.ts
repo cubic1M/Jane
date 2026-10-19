@@ -6,6 +6,7 @@ import { GOALS, HORIZONS } from "@/config/investing";
 import { adviceMode } from "@/lib/advice-mode";
 import { loadFees } from "@/lib/investments/fees";
 import { loadInvestments } from "@/lib/investments/holdings";
+import { loadAutoInvest } from "@/lib/investments/auto-invest";
 import { loadRebalance } from "@/lib/investments/rebalance";
 import { loadRetirement } from "@/lib/investments/retirement";
 import { loadReview } from "@/lib/investments/review";
@@ -56,6 +57,12 @@ export const INVESTMENT_TOOLS: Anthropic.Tool[] = [
       "In demo advice mode, once the investor profile is complete: the orders that would move each account to the recommended mix (sell and buy, amounts, which account), the mix before and after, and the gain or loss the sales would realise in a taxable account (an estimate). Orders go to a simulated brokerage: say no real money moves. To let the person place them, use propose_action with invest.rebalance.",
     input_schema: noInput,
   },
+  {
+    name: "auto_invest",
+    description:
+      "Automatic investing (demo advice mode): whether it's on or paused, how much goes in each payday (a set amount, or the rest after bills and goals), which account, the last few paydays (invested, or paused and why), and Jane's suggested amount if it isn't set up. Contributions go through a simulated brokerage: no real money moves. Safe to spend always comes first.",
+    input_schema: noInput,
+  },
 ];
 
 // What the person sees while Jane looks it up.
@@ -66,6 +73,7 @@ export const INVESTMENT_TOOL_STATUS: Readonly<Record<string, string>> = {
   portfolio_review: "Reviewing your investments…",
   retirement_plan: "Looking at your retirement…",
   rebalance_plan: "Working out the orders…",
+  auto_invest: "Checking automatic investing…",
 };
 
 export const isInvestmentTool = (name: string) => INVESTMENT_TOOLS.some((t) => t.name === name);
@@ -278,6 +286,28 @@ export async function runInvestmentTool(
           target: pct(m.target),
         })),
         realisedGainEstimate: money(plan.realisedGainCents),
+      });
+    }
+    case "auto_invest": {
+      const data = await loadAutoInvest(userId, { client, now });
+      if (!data.advice) return out({ note: "Automatic investing is for demo advice mode only." });
+      return out({
+        brokerage: "simulated: no real money moves",
+        profileComplete: data.profileComplete,
+        plan: data.plan && {
+          status: data.plan.status,
+          mode: data.plan.mode === "leftover" ? "the rest after bills and goals" : "a set amount",
+          eachPayday: data.plan.amountCents === null ? null : money(data.plan.amountCents),
+          into: data.accounts.find((a) => a.id === data.plan!.accountId)?.name ?? null,
+        },
+        lastPaydays: data.runs.slice(0, 5).map((r) => ({
+          payday: r.paydayOn,
+          status: r.status,
+          invested: money(r.amountCents),
+          safeToSpendThen: r.safeCents === null ? null : money(r.safeCents),
+          why: r.reason,
+        })),
+        suggestedEachPayday: data.suggestion ? money(data.suggestion.amountCents) : null,
       });
     }
     default:

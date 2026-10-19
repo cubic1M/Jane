@@ -153,6 +153,7 @@ describe("findings worth deciding", () => {
         { id: "finding.no", label: "No", kind: "secondary" },
         // Spec step 90: a quick reply, answered in the chat.
         { id: "finding.why", label: "Why?", kind: "quick" },
+        { id: "suggest.never", label: "Don't suggest again", kind: "secondary" },
         { id: "open", label: "Open", kind: "link", href: "/report/big" },
       ],
       priority: MESSAGE_PRIORITY.finding,
@@ -187,6 +188,7 @@ describe("findings worth deciding", () => {
       "No",
       "Why?",
       "Show options",
+      "Don't suggest again",
       "Open",
     ]);
   });

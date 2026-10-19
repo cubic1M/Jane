@@ -11,8 +11,15 @@ import type { SelfEmployedView } from "@/lib/self-employed";
 import { mileageDeduction } from "@/planning/self-employed";
 import type { TaxIntent } from "./tax-intents";
 import { quarterMessage, setAsideMessage } from "./tax-self-employed";
+import type { RefundView } from "@/lib/tax-refund";
+import { refundMessage } from "./tax-refund-message";
 import { onTrackLine, w4Suggestion, withholdingFacts } from "./tax-w4";
-import { federalLine, roundDollars, stateLine } from "@/planning/tax-estimate-copy";
+import {
+  balancePhrase as balancePhraseOf,
+  federalLine,
+  roundDollars,
+  stateLine,
+} from "@/planning/tax-estimate-copy";
 import type { TaxPack } from "@/planning/tax-pack";
 import { listOf } from "@/planning/tax-profile";
 import type { Reply } from "./replies";
@@ -403,4 +410,19 @@ export function selfEmployedReply(intent: TaxIntent, view: SelfEmployedView, now
   }
   const state = view.state?.payments.find((p) => p.date === next.date)?.cents ?? 0;
   return quarterMessage(view, { ...next, stateCents: state });
+}
+
+// Spec step 125: "where's my refund?"
+export function refundReply(refunds: RefundView[], estimate: TaxEstimateView): Reply {
+  const latest = refunds.find((r) => !r.handled) ?? refunds[0];
+  if (latest) return refundMessage(latest);
+  const e = estimate.estimate;
+  return {
+    body:
+      estimate.withholdingKnown && e.refundCents > 0
+        ? `I haven't seen a tax refund in your accounts yet. For ${estimate.year} I estimate ${balancePhraseOf(e.refundCents)}; I'll tell you when it lands.`
+        : "I haven't seen a tax refund in your accounts. I'll tell you when one lands.",
+    actions: [link("See the estimate", "/taxes#estimate")],
+    refs: {},
+  };
 }

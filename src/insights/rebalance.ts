@@ -108,7 +108,6 @@ function planAccount(account: InvestmentAccountView, riskLevel: RiskLevel): Plan
     .filter((h) => !h.isCash)
     .sort((a, b) => order(a) - order(b) || b.valueCents - a.valueCents);
   const orders: PlannedOrder[] = [];
-  let proceeds = 0;
   for (const h of candidates) {
     const main = dominant(h.mix);
     if (!main || main[0] === "cash") continue;
@@ -121,7 +120,6 @@ function planAccount(account: InvestmentAccountView, riskLevel: RiskLevel): Plan
       values.set(k, (values.get(k) ?? 0) - amount * s);
     }
     values.set("cash", (values.get("cash") ?? 0) + amount);
-    proceeds += amount;
     orders.push({
       accountId: account.id,
       accountName: account.name,

@@ -140,7 +140,7 @@ async function ApplicationContent({
           <form action={submitAction} className="flex flex-col gap-3">
             <input type="hidden" name="id" value={app.id} />
             <label className="flex items-center gap-2 text-sm">
-              <input type="checkbox" name="reviewed" className="h-5 w-5" />
+              <input type="checkbox" name="reviewed" required className="h-5 w-5" />
               I&apos;ve reviewed the terms above
             </label>
             <button type="submit" className={`${BUTTON} self-start`}>

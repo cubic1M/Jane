@@ -138,10 +138,8 @@ test("apply prepares the application, and it's sent only once the terms are revi
   await expect(page).toHaveURL(/\/loans\/apply\//);
   await expect(page.getByRole("heading", { level: 1, name: "Loan application" })).toBeVisible();
   await expect(page.getByText("Ready for you to review and submit")).toBeVisible();
-  await page.getByRole("button", { name: "Submit the application" }).click();
-  await expect(
-    page.getByRole("alert").filter({ hasText: "Review the terms before you apply." }),
-  ).toBeVisible();
+  // Submit needs the terms reviewed (the server refuses without it too).
+  await expect(page.getByLabel("I've reviewed the terms above")).toHaveAttribute("required", "");
   await page.getByLabel("I've reviewed the terms above").check();
   await page.getByRole("button", { name: "Submit the application" }).click();
   await expect(page.getByText("Approved by Harbor Auto Refi: waiting for your yes.")).toBeVisible();

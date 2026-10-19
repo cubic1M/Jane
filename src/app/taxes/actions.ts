@@ -6,6 +6,7 @@ import { adviceMode } from "@/lib/advice-mode";
 import { DeadlineError, addDeadline } from "@/lib/deadlines";
 import { GoalError, addGoal } from "@/lib/goals";
 import { dismissSaving, loadTaxSavings } from "@/lib/tax-savings";
+import { RefundError, applyRefundPlan, dismissRefund } from "@/lib/tax-refund";
 import { TaxOrganizerError, markTaxForm } from "@/lib/tax-organizer";
 import { WithholdingError, clearW4Change, keepRefund, recordW4Change } from "@/lib/tax-withholding";
 
@@ -116,6 +117,28 @@ export async function savingAction(_previous: FormState, formData: FormData): Pr
     if (error instanceof DeadlineError || error instanceof GoalError) {
       return { ok: false, message: error.message };
     }
+    throw error;
+  }
+}
+
+// Spec step 125: a refund's plan: set it up (goals and reminders) or leave it.
+export async function refundAction(_previous: FormState, formData: FormData): Promise<FormState> {
+  const user = await requireUser();
+  const id = String(formData.get("transactionId") ?? "");
+  try {
+    if (formData.get("intent") === "apply") {
+      const { reminders } = await applyRefundPlan(user.id, id, { via: "page" });
+      revalidatePath("/taxes");
+      return {
+        ok: true,
+        message: `Done: ${reminders} ${reminders === 1 ? "reminder" : "reminders"} on your deadlines.`,
+      };
+    }
+    await dismissRefund(user.id, id, { via: "page" });
+    revalidatePath("/taxes");
+    return { ok: true, message: "OK. It's yours to use as you like." };
+  } catch (error) {
+    if (error instanceof RefundError) return { ok: false, message: error.message };
     throw error;
   }
 }

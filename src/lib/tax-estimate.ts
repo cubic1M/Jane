@@ -71,10 +71,17 @@ const iso = (d: Date) => d.toISOString().slice(0, 10);
 
 export async function loadTaxEstimate(
   userId: string,
-  { client = defaultClient, now = new Date() }: Options = {},
+  {
+    client = defaultClient,
+    now = new Date(),
+    year: asked,
+  }: Options & {
+    // Spec step 125: a past year, to match a refund to; the usual tax year otherwise.
+    year?: number;
+  } = {},
 ): Promise<TaxEstimateView> {
   const today = iso(now);
-  const year = defaultTaxYear(today);
+  const year = asked ?? defaultTaxYear(today);
   const db = scopedFor(userId, client);
   const incomeCategories = [
     ...Object.values(INCOME_KINDS).flatMap((k) => [...k.categories]),
