@@ -1471,6 +1471,12 @@ model InsurancePolicy {
   documentId       String?   @unique @map("document_id")
   // The insurer's payments in the person's transactions (normalizeMerchant key), if known.
   merchantKey      String?   @map("merchant_key")
+  // Spec step 105, for a policy Jane bound: its number at the carrier, the day it starts,
+  // the policy it replaces and the switch action.
+  policyNumber     String?   @map("policy_number")
+  startsOn         DateTime? @map("starts_on") @db.Date
+  replacesPolicyId String?   @map("replaces_policy_id")
+  actionId         String?   @map("action_id")
   cancelledAt      DateTime? @map("cancelled_at") @db.Timestamptz(3)
   createdAt        DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt        DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)

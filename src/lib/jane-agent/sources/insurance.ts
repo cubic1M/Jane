@@ -1,6 +1,7 @@
 import { MESSAGE_PRIORITY } from "@/config/agent-chat";
 import { PREMIUM_FREQUENCIES } from "@/config/documents";
 import { gapAdvice, kindWords } from "@/lib/insurance/gaps";
+import type { PolicyKind } from "@/config/insurance";
 import type { Shop } from "@/lib/insurance/shop";
 import { formatCents } from "@/lib/money";
 import type { InsuranceSnapshot } from "../insurance/snapshot";
@@ -121,11 +122,53 @@ function checkedMessages(insurance: InsuranceSnapshot): Candidate[] {
   });
 }
 
+// Spec step 105: what Jane did after the Yes. "Bound, starts on …" once, and "switched, no
+// gap in cover" once the first payment went through and the old policy was cancelled.
+function switchMessages(insurance: InsuranceSnapshot): Candidate[] {
+  return (insurance.switches ?? []).flatMap((sw): Candidate[] => {
+    const name = `${sw.carrier} ${kindWords(sw.kind as PolicyKind)}`;
+    const starts = sw.startsOn ? shortDate(sw.startsOn) : "soon";
+    const open = {
+      id: "open",
+      label: "See your insurance",
+      kind: "link",
+      href: "/insurance",
+    } as const;
+    if (sw.status === "pending") {
+      return [
+        {
+          kind: "done",
+          body: `I've bought your new ${name}, starting ${starts}. ${sw.replaces ?? "Your old policy"} stays in place until its first payment goes through; then I cancel it from the same day, so you're never without cover.`,
+          refs: { policyId: sw.policyId, ...(sw.actionId ? { actionId: sw.actionId } : {}) },
+          actions: [open],
+          dedupeKey: `bound:${sw.policyId}`,
+          priority: MESSAGE_PRIORITY.insurance_checked,
+        },
+      ];
+    }
+    return [
+      {
+        kind: "done",
+        body: `Your switch is done: the first payment to ${sw.carrier} went through, so your new ${kindWords(sw.kind as PolicyKind)} is in place${sw.replaces ? ` and I cancelled ${sw.replaces} from ${starts}` : ""}. No gap in cover.`,
+        refs: { policyId: sw.policyId, ...(sw.actionId ? { actionId: sw.actionId } : {}) },
+        actions: [open],
+        dedupeKey: `switched:${sw.policyId}`,
+        priority: MESSAGE_PRIORITY.insurance_checked,
+      },
+    ];
+  });
+}
+
 export const insuranceSource: MessageSource = {
   key: "insurance",
   gather: (snapshot) => {
     const insurance = snapshot.insurance;
     if (!insurance) return [];
-    return [...shopMessages(insurance), ...gapMessages(insurance), ...checkedMessages(insurance)];
+    return [
+      ...shopMessages(insurance),
+      ...switchMessages(insurance),
+      ...gapMessages(insurance),
+      ...checkedMessages(insurance),
+    ];
   },
 };

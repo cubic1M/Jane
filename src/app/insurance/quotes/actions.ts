@@ -1,6 +1,8 @@
 "use server";
 
 import { redirect } from "next/navigation";
+import { after } from "next/server";
+import { runAgentNow } from "@/lib/agent/run";
 import { AcceptShopError, acceptShop } from "@/lib/insurance/accept";
 import { requestQuotes } from "@/lib/insurance/quotes";
 import { declineShop } from "@/lib/insurance/shop";
@@ -22,7 +24,9 @@ export async function switchToPick(formData: FormData): Promise<void> {
   const shopId = String(formData.get("shopId") ?? "");
   const policyId = String(formData.get("policyId") ?? "");
   try {
-    await acceptShop(user.id, shopId);
+    const { agentJobId } = await acceptShop(user.id, shopId);
+    // Spec step 105: Jane binds the new policy right after the response.
+    after(() => runAgentNow([agentJobId]));
   } catch (error) {
     if (error instanceof AcceptShopError) {
       redirect(`/insurance/quotes?policy=${encodeURIComponent(policyId)}&answered=1`);
