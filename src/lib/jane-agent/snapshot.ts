@@ -4,6 +4,7 @@ import type { AlertType, FindingType, PrismaClient } from "@/generated/prisma/cl
 import type { ComingUpRow } from "@/insights/coming-up";
 import type { Deadline } from "@/insights/deadlines";
 import { isUrgent, newestUnreadAlerts } from "@/lib/alerts";
+import { loadChanges, type ChangeView } from "@/lib/changes";
 import { comparisonsFor } from "@/lib/compare";
 import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
@@ -69,6 +70,9 @@ export type Snapshot = {
   urgentAlerts: { id: string; title: string; body: string }[];
   // Spec step 83: every budget this month, for "nearly over".
   budgetProgress: HomeSummary["budgetProgress"];
+  // Spec step 97: changes Jane noticed, not yet said to be expected. Optional so snapshots
+  // built by hand in tests needn't list them.
+  changes?: ChangeView[];
 } & MoreSnapshot;
 
 // A finding as Jane describes it in the chat: its type, title, saving and evidence. A
@@ -172,5 +176,6 @@ export async function loadSnapshot(
       .map((a) => ({ id: a.id, title: a.title, body: a.body })),
     budgetProgress: home.budgetProgress,
     ...(await loadMore(userId, { client })),
+    changes: await loadChanges(userId, { client, now }),
   };
 }

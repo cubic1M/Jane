@@ -120,6 +120,8 @@ export function scopedFor(userId: string, client: PrismaClient = db) {
     lifeEvents: scoped.lifeEvent,
     // One-tap answers from Jane's emails (spec step 85).
     chatReplyLinks: scoped.chatReplyLink,
+    // "That's expected" on a change (spec step 97).
+    changeAcks: scoped.changeAck,
   };
 }
 

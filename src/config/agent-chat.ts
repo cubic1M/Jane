@@ -16,6 +16,8 @@ export const CHAT_SOURCE_LIMITS: Readonly<Record<string, number>> = {
   steps: 2,
   budgets: 1,
   things: 1,
+  // Spec step 97.
+  changes: 2,
 };
 
 // Quiet hours in the person's timezone (users.timezone): nothing is posted from 9pm to
@@ -60,6 +62,10 @@ export const MESSAGE_PRIORITY = {
   setup: 65,
   budget_nearly_over: 44,
   asset_prompt: 30,
+  // Spec step 97: a change Jane noticed is news, so it comes before set-up suggestions and
+  // findings that can wait (a price rise's finding is asked about in the change's own
+  // heads-up).
+  change: 66,
 } as const;
 
 // The chat page shows the last this-many messages, with "Show earlier" for more.
