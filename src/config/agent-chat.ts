@@ -160,3 +160,12 @@ export const CHAT_TOP_CATEGORIES = 3;
 // months of that category, and a week is a month divided by this many weeks.
 export const AFFORD_USUAL_MONTHS = 3;
 export const WEEKS_PER_MONTH = 4.345;
+
+// Spec step 88: what a conversation remembers. A follow-up ("and Hulu?", "cancel it") goes
+// with the last thing talked about only within this many minutes, and never from another
+// day in the person's timezone.
+export const CHAT_CONTEXT_MINUTES = 30;
+// A clarifying question offers at most this many meanings, one button each.
+export const CHAT_CLARIFY_CHOICES = 3;
+// The subscriptions list names at most this many, the most expensive first.
+export const CHAT_SUBSCRIPTIONS_LISTED = 8;

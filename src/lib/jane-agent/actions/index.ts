@@ -16,6 +16,7 @@ import { alertGotIt, deadlineDone, snooze } from "./heads-ups";
 import { setupAll, setupNo, setupYes } from "./setup";
 import { cancelDone, offerAccept, offerDecline } from "./steps";
 import { goalStart } from "./goal";
+import { clarifyOne, clarifyThree, clarifyTwo } from "./clarify";
 import { TAX_PROFILE_HANDLERS, taxFoundYes, taxIncomeAdd, taxIncomeNo, taxStateSet } from "./taxes";
 import { taxFormGot, taxTagNo, taxTagSet, taxTagYes } from "./tax-organizer";
 import {
@@ -62,6 +63,10 @@ export const ACTION_HANDLERS: Readonly<Record<ActionId, ActionHandler>> = {
   // Typing to Jane (spec step 84).
   "goal.start": goalStart,
   "autopilot.pause": autopilotPause,
+  // Spec step 88.
+  "clarify.1": clarifyOne,
+  "clarify.2": clarifyTwo,
+  "clarify.3": clarifyThree,
   // Taxes (spec step 118).
   "tax.found_yes": taxFoundYes,
   ...TAX_PROFILE_HANDLERS,
@@ -114,6 +119,7 @@ export async function takeChatAction(
   message: ChatMessage;
   agentJobIds: (string | undefined)[];
   agentActionIds: string[];
+  posted: boolean;
 }> {
   const db = scopedFor(userId, client);
   const row = MESSAGE_ID.test(messageId)
@@ -173,6 +179,7 @@ export async function takeChatAction(
     message: updated ? toChatMessage(updated) : message,
     agentJobIds: outcome.agentJobIds ?? [],
     agentActionIds: outcome.agentActionIds ?? [],
+    posted: outcome.posted ?? false,
   };
 }
 
