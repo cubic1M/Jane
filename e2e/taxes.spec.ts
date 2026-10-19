@@ -178,3 +178,29 @@ test("state taxes: a mid-year move splits the estimate, each state with its sour
   await expect(states.getByRole("link", { name: "California Franchise Tax Board" })).toBeVisible();
   await expect(states.getByText("Jan 1, 2026 to Jun 30, 2026")).toBeVisible();
 });
+
+// Spec step 167: the year-round tax plan, each move by its deadline, one tap to put an open
+// one on the deadlines.
+test("the tax plan: moves by deadline, and one on the deadlines with a tap", async ({
+  context,
+  page,
+  baseURL,
+}) => {
+  const user = await signedInUser("user");
+  userId = user.userId;
+  await context.addCookies([
+    { name: "authjs.session-token", value: user.sessionToken, url: baseURL ?? "" },
+  ]);
+  await page.goto("/connect");
+  await page.getByRole("button", { name: "Link a demo bank" }).click();
+  await expect(page).toHaveURL("/chat", { timeout: 60_000 });
+
+  await page.goto("/taxes#plan");
+  const plan = page.getByRole("region", { name: /tax plan$/ });
+  await expect(plan.getByRole("heading", { name: "File your return" })).toBeVisible();
+  const add = plan.getByRole("button", { name: /^Add to my deadlines: / }).first();
+  await expect(add).toBeVisible();
+  await add.click();
+  await expect(plan.getByText("On your deadlines.").first()).toBeVisible();
+  expect(await axe(page)).toEqual([]);
+});

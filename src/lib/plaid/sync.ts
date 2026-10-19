@@ -253,6 +253,9 @@ async function saveLiabilities(
       pastDueCents: l.pastDueCents,
       ytdInterestPaidCents: l.ytdInterestPaidCents,
       description: l.description,
+      hasPmi: l.hasPmi,
+      escrowBalanceCents: l.escrowBalanceCents,
+      hasPrepaymentPenalty: l.hasPrepaymentPenalty,
     };
     await db.liabilities.upsert({
       where: { accountId },

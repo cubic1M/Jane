@@ -4,7 +4,8 @@ import { adviceMode } from "@/lib/advice-mode";
 import { track } from "@/lib/analytics";
 import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
-import { loadDebts } from "@/lib/debts";
+import { debtsOr, loadDebts } from "@/lib/debts";
+import type { DebtBook } from "@/insights/debts";
 import { demoLender } from "@/lib/lenders/demo";
 import type {
   LenderPartner,
@@ -123,14 +124,14 @@ export type Refinance = {
 
 export async function loadRefinance(
   userId: string,
-  { client = defaultClient, now = new Date() }: Options = {},
+  { client = defaultClient, now = new Date(), book: given }: Options & { book?: DebtBook } = {},
 ): Promise<Refinance> {
   const [found, row, book] = await Promise.all([
     lenderPartnerFor(userId, { client }),
     scopedFor(userId, client).refinanceChecks.findFirst({
       select: { checkedOn: true, quotes: true },
     }),
-    loadDebts(userId, { client, now }),
+    debtsOr(given, userId, { client, now }),
   ]);
   if (!found) return { available: false, checkedOn: null, comparisons: [] };
   const quotes = (Array.isArray(row?.quotes) ? row.quotes : []) as unknown as Quote[];
