@@ -50,17 +50,26 @@ test("new people land on Connect; once data is in, Home matches the report", asy
   );
   expect(overflow).toBeLessThanOrEqual(0);
 
-  // Spec step 79: on a phone the main menu is a tab bar along the bottom, with Today lit
-  // up, and the end of the page scrolls clear of it. Spec step 81: Chat comes first, and
-  // Ask moved into the chat's message box.
+  // Spec step 79: on a phone the main menu is a bar along the bottom, and the end of the
+  // page scrolls clear of it. Spec step 86: it's Chat and a Details menu holding Today,
+  // Jane, Money and Ahead with their pages; on Today, Details and Today are lit up.
   const nav = page.getByRole("navigation", { name: "Main" });
   // What screen readers hear: the ASCII glyphs and brackets are hidden from them.
-  const tabs = nav.getByRole("link");
-  await expect(tabs).toHaveCount(5);
-  for (const [i, name] of ["Chat", "Today", "Jane", "Money", "Ahead"].entries()) {
-    await expect(tabs.nth(i)).toHaveAccessibleName(name);
+  await expect(nav.getByRole("link")).toHaveCount(1);
+  await expect(nav.getByRole("link").first()).toHaveAccessibleName("Chat");
+  const details = nav.getByRole("button", { name: "Details" });
+  await expect(details).toHaveAttribute("aria-current", "true");
+  await details.click();
+  await expect(details).toHaveAttribute("aria-expanded", "true");
+  for (const name of ["Today", "Jane", "Money", "Ahead", "Net worth", "Can I afford it?"]) {
+    await expect(nav.getByRole("link", { name, exact: true })).toBeVisible();
   }
-  await expect(nav.getByRole("link", { name: "Today" })).toHaveAttribute("aria-current", "page");
+  await expect(nav.getByRole("link", { name: "Today", exact: true })).toHaveAttribute(
+    "aria-current",
+    "page",
+  );
+  await page.keyboard.press("Escape");
+  await expect(nav.getByRole("link")).toHaveCount(1);
   await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
   const navTop = (await nav.boundingBox())?.y ?? 0;
   const footerBottom = await page
@@ -75,5 +84,5 @@ test("new people land on Connect; once data is in, Home matches the report", asy
   await expect(
     page.getByRole("navigation", { name: "Settings sections" }).getByRole("link"),
   ).toHaveText(["Accounts", "Notifications", "Autopilot", "Privacy and security"]);
-  await expect(nav.getByRole("link", { name: "Today" })).not.toHaveAttribute("aria-current");
+  await expect(details).not.toHaveAttribute("aria-current");
 });

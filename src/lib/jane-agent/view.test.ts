@@ -37,7 +37,7 @@ describe("toView", () => {
         { id: "finding.yes", label: "Yes", kind: "primary" },
         { id: "finding.no", label: "No", kind: "secondary" },
       ],
-      links: [{ label: "Open", href: "/report/f1" }],
+      links: [{ label: "Open", href: "/report/f1?from=m1" }],
       undoUntil: null,
     });
   });
@@ -57,7 +57,7 @@ describe("toView", () => {
       answeredWith: "No",
       note: "OK, I'll leave it.",
       buttons: [{ id: "undo.no", label: "Undo", kind: "secondary" }],
-      links: [{ label: "Open", href: "/report/f1" }],
+      links: [{ label: "Open", href: "/report/f1?from=m1" }],
       undoUntil,
     });
     expect(toView(answered, new Date("2026-10-19T13:05:11Z"), null)).toMatchObject({
