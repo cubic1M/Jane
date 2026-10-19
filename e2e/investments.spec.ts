@@ -75,4 +75,12 @@ test("the demo bank's holdings show with their sources, and Jane answers about t
   await expect(page.getByRole("heading", { name: "Lower-cost equivalents" })).toBeVisible();
   await expect(page.getByText("Demo advice: sample data, not financial advice")).toBeVisible();
   await expect(page.getByText("How this is worked out: a range, not a promise")).toBeVisible();
+
+  // Step 131: the review against the (now aggressive) profile, labelled.
+  await page.goto("/investments/review");
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText("Portfolio review");
+  await expect(page.getByText("Aggressive", { exact: true })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "What to change" })).toBeVisible();
+  await expect(page.getByText(/into international stocks/)).toBeVisible();
+  await expect(page.getByText("Demo advice: sample data, not financial advice")).toBeVisible();
 });
