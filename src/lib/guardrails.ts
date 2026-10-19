@@ -45,15 +45,23 @@ const INVESTMENT = [
 // (b) Tax or legal advice. Demo advice (below) allows the tax part, never the legal part.
 const TAX = [
   /\btax(es|ed|able)?\b/i,
-  // Tax deductions. An insurance deductible is fine, so "deductible" alone is allowed.
-  /\bdeductions?\b/i,
+  // Tax deductions. An insurance deductible is fine, so "deductible" alone is allowed, and
+  // so is what comes out of a paycheck ("payroll deductions", spec step 93).
+  /(?<!(?:payroll|paycheck|pay) )\bdeductions?\b(?! (?:from|on|in) (?:your|my|the|their) (?:pay|paycheck|paychecks|wages)\b)/i,
   /\bwrite[- ]off\b/i,
   /\birs\b/i,
   // Also a loan's liability and being liable, which demo advice may talk about. Liability
   // cover on an insurance policy is a kind of cover, so it's allowed (spec step 102).
   /(?<!(?:injury|damage|personal) )\bliab(le|ility)\b(?! (?:cover|coverage|insurance|limits?|only)\b)(?!, per\b)/i,
 ];
-const LEGAL = [/\blegal(ly)?\b/i, /\b(lawyer|attorney|lawsuit|litigation|court)s?\b/i, /\bsue\b/i];
+// Spec step 93: narrowed where they blocked good answers: a food court is a place to eat,
+// and Sue is a name; suing someone is still blocked.
+const LEGAL = [
+  /\blegal(ly)?\b/i,
+  /\b(lawyer|attorney|lawsuit|litigation)s?\b/i,
+  /(?<!food )\bcourts?\b/i,
+  /\bsue (?:them|him|her|you|it|the|a|an|for|over)\b|\bsu(?:ed|ing)\b/i,
+];
 
 // (d) Promised outcomes. Savings are estimates: "could save about", never "will save".
 const GUARANTEE = [
@@ -63,7 +71,8 @@ const GUARANTEE = [
   /\brisk[- ]free\b/i,
   /\bno risk\b/i,
   /\b100 ?%/,
-  /\b(will|you'll|you will) (save|get|recover|receive|earn)\b/i,
+  // Getting paid on payday is a date, not a promise (spec step 93).
+  /\b(will|you'll|you will) (save|get|recover|receive|earn)\b(?! paid\b)/i,
 ];
 
 // "$1,234.56", "$15", "$ 15.5", plus "15 dollars". A k/m suffix makes the figure unreadable
