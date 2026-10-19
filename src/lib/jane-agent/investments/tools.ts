@@ -12,6 +12,8 @@ import { autopilotOf } from "@/lib/autopilot";
 import { loadInvestmentSnapshot } from "./snapshot";
 import { overviewReply } from "./replies";
 import { loadAccountPlan } from "@/lib/investments/accounts";
+import { loadReturns } from "@/lib/investments/returns";
+import { formatReturn } from "@/insights/returns";
 import { loadAutoInvest } from "@/lib/investments/auto-invest";
 import { loadRebalance } from "@/lib/investments/rebalance";
 import { loadRetirement } from "@/lib/investments/retirement";
@@ -82,6 +84,12 @@ export const INVESTMENT_TOOLS: Anthropic.Tool[] = [
     input_schema: noInput,
   },
   {
+    name: "investment_returns",
+    description:
+      "How the person's investments have done over the last month, 3 months and 12 months: the time-weighted return (what they own, leaving out money paid in), the money-weighted return (their own money, timing included), a similar mix of index funds for comparison, money paid in, and dividends and interest received. Past results only: never say what comes next.",
+    input_schema: noInput,
+  },
+  {
     name: "explainer",
     description:
       "Jane's fixed plain-language explainer for a word (education, not advice; waiting for counsel's review): what it is and how it works, with sources. Use it when the person asks what something means, and quote it rather than writing your own definition.",
@@ -105,6 +113,7 @@ export const INVESTMENT_TOOL_STATUS: Readonly<Record<string, string>> = {
   auto_invest: "Checking automatic investing…",
   account_plan: "Working out which account first…",
   explainer: "Looking that up…",
+  investment_returns: "Working out your returns…",
   investments_overview: "Looking at how your investments are doing…",
 };
 
@@ -394,6 +403,26 @@ export async function runInvestmentTool(
         note: note.body,
         ordersReady: snapshot.advice ? (snapshot.rebalance?.orders.length ?? 0) : 0,
         whatJaneDoesByHerself: INVESTMENT_AUTOPILOT[key],
+      });
+    }
+    case "investment_returns": {
+      const returns = await loadReturns(userId, { client, now });
+      const pct = (r: number | null) => (r === null ? null : formatReturn(r));
+      return out({
+        asOf: returns.asOf,
+        pricesFrom: returns.simulatedPrices ? "demo price feed (made up)" : "your bank",
+        periods: returns.periods.map((p) => ({
+          period: p.label,
+          from: p.from,
+          startValue: money(p.startCents),
+          endValue: money(p.endCents),
+          investments: pct(p.timeWeighted),
+          yourMoney: pct(p.moneyWeighted),
+          similarMix: pct(p.benchmark),
+          paidIn: money(p.paidInCents),
+          dividendsAndInterest: money(p.incomeCents),
+        })),
+        note: "Past results only.",
       });
     }
     case "explainer": {

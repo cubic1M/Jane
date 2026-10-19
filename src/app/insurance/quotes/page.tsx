@@ -39,8 +39,10 @@ function QuoteCard({
     <li className="flex flex-col gap-2 rounded-xl border border-zinc-200 p-4 [overflow-wrap:anywhere] dark:border-zinc-800">
       <div className="flex flex-wrap items-baseline justify-between gap-2">
         <div className="flex min-w-0 flex-col">
-          <h3 className="font-semibold">{quote.carrier.name}</h3>
-          <span className="text-sm text-zinc-500">Rated {quote.carrier.rating}</span>
+          <h3 className="font-semibold">{quote.plan ?? quote.carrier.name}</h3>
+          <span className="text-sm text-zinc-500">
+            {quote.plan ? `${quote.carrier.name}, rated` : "Rated"} {quote.carrier.rating}
+          </span>
         </div>
         <span className="text-xl font-semibold">
           {formatCents(quote.premiumCents)}{" "}
@@ -59,6 +61,14 @@ function QuoteCard({
               : ", the same as you pay now")}
         .
       </p>
+      {/* Spec step 149: health plans compare on a year's cost with the usual care. */}
+      {quote.expectedCostCents !== null && (
+        <p className="text-sm font-medium">
+          About {formatCents(quote.expectedCostCents)} a year with your usual care (premiums plus
+          what you&apos;d likely pay yourself; deductible {formatCents(quote.deductibleCents ?? 0)}
+          ).
+        </p>
+      )}
       {quote.sameCover ? (
         <p className="text-sm font-medium text-emerald-800 dark:text-emerald-300">
           Same cover and deductible as your policy.
