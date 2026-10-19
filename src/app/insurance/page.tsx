@@ -15,6 +15,7 @@ import {
   EMPTY_POLICY_INPUT,
   nextRenewal,
   policyFormValues,
+  premiumTotalLine,
   yearlyPremium,
   type Policy,
 } from "@/lib/insurance/policies";
@@ -178,9 +179,7 @@ async function InsuranceContent({
   const add = one("add");
   const typed = (fact: { value: number | string | null; from: string | null }) =>
     fact.from === "you" && fact.value !== null ? String(fact.value) : "";
-  const yearlyTotal = policies
-    .filter((p) => p.status === "active")
-    .reduce((sum, p) => sum + (yearlyPremium(p) ?? 0), 0);
+  const totalLine = premiumTotalLine(policies);
 
   return (
     <>
@@ -353,11 +352,7 @@ async function InsuranceContent({
           </p>
         ) : (
           <>
-            {yearlyTotal > 0 && (
-              <p className="text-sm text-zinc-600 dark:text-zinc-400">
-                Together about {formatCents(yearlyTotal)} a year, from the prices on file.
-              </p>
-            )}
+            {totalLine && <p className="text-sm text-zinc-600 dark:text-zinc-400">{totalLine}</p>}
             <ul className="flex flex-col gap-3">
               {policies.map((p) => (
                 <PolicyCard key={p.id} policy={p} asOf={asOf} editing={one("edit") === p.id} />
