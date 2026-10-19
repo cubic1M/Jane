@@ -169,6 +169,12 @@ describe("parseIntent", () => {
     ["What's new?", "what_did"],
     ["anything new", "what_did"],
     ["what have you been up to", "what_did"],
+    // Spec step 97.
+    ["what changed?", "changes"],
+    ["Has anything changed", "changes"],
+    ["anything unusual?", "changes"],
+    ["what's different this month", "changes"],
+    ["noticed anything?", "changes"],
     ["help", "help"],
     ["hi", "greeting"],
     ["Hey Jane!", "greeting"],

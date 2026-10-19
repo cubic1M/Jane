@@ -4,6 +4,7 @@ import type { AlertType, FindingType, PrismaClient } from "@/generated/prisma/cl
 import type { ComingUpRow } from "@/insights/coming-up";
 import type { Deadline } from "@/insights/deadlines";
 import { isUrgent, newestUnreadAlerts } from "@/lib/alerts";
+import { loadChanges, type ChangeView } from "@/lib/changes";
 import { comparisonsFor } from "@/lib/compare";
 import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
@@ -13,6 +14,7 @@ import { planFor } from "@/lib/plan";
 import { isNoRisk } from "@/lib/plan-links";
 import { savingsLine } from "@/lib/savings-text";
 import { recentRuleApprovals } from "@/lib/standing-rules";
+import { loadInvestmentSnapshot, type InvestmentSnapshot } from "./investments/snapshot";
 import { loadMore, type MoreSnapshot } from "./snapshot-more";
 import { loadTaxSnapshot, type TaxSnapshot } from "./snapshot-tax";
 
@@ -70,6 +72,11 @@ export type Snapshot = {
   urgentAlerts: { id: string; title: string; body: string }[];
   // Spec step 83: every budget this month, for "nearly over".
   budgetProgress: HomeSummary["budgetProgress"];
+  // Spec step 97: changes Jane noticed, not yet said to be expected. Optional so snapshots
+  // built by hand in tests needn't list them.
+  changes?: ChangeView[];
+  // Spec step 128 on: what's in investment accounts.
+  investments?: InvestmentSnapshot;
 } & MoreSnapshot &
   TaxSnapshot;
 
@@ -175,5 +182,7 @@ export async function loadSnapshot(
     budgetProgress: home.budgetProgress,
     ...(await loadMore(userId, { client })),
     ...(await loadTaxSnapshot(userId, { client, now })),
+    changes: await loadChanges(userId, { client, now }),
+    investments: await loadInvestmentSnapshot(userId, { client, now }),
   };
 }

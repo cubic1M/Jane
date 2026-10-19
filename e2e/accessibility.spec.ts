@@ -40,6 +40,7 @@ const SIGNED_IN = [
   "/budgets",
   "/goals",
   "/net-worth",
+  "/investments",
   "/loans",
   "/bills",
   "/alerts",

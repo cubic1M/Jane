@@ -268,44 +268,49 @@ model User {
   // use the defaults in src/config/chat-notify.ts.
   chatNotifyPrefs            Json            @default("{}") @map("chat_notify_prefs")
 
-  authAccounts        AuthAccount[]
-  mfaBackupCodes      MfaBackupCode[]
-  standingRules       StandingRule[]
-  agentMessages       AgentMessage[]
-  planProposals       PlanProposal[]
-  planLinks           PlanLink[]
-  janeMessages        JaneMessage[]
-  chatReplyLinks      ChatReplyLink[]
-  deadlines           Deadline[]
-  sessions            Session[]
-  plaidItems          PlaidItem[]
-  accounts            Account[]
-  transactions        Transaction[]
-  recurringStreams    RecurringStream[]
-  liabilities         Liability[]
-  ownedAssets         OwnedAsset[]
-  findings            Finding[]
-  decisions           Decision[]
-  actions             Action[]
-  digests             Digest[]
-  membershipIntents   MembershipIntent[]
-  analyticsEvents     AnalyticsEvent[]
-  merchantCategories  MerchantCategory[]
-  subscriptionChecks  SubscriptionCheck[]
-  alerts              Alert[]
-  askConversations    AskConversation[]
-  askMessages         AskMessage[]
-  householdMember     HouseholdMember?
-  householdInvites    HouseholdInvite[]
-  pushSubscriptions   PushSubscription[]
-  referralConversions ReferralConversion[]
-  budgets             Budget[]
-  savingsGoals        SavingsGoal[]
-  balanceSnapshots    BalanceSnapshot[]
-  checkIns            CheckIn[]
-  documents           Document[]
-  lifeEvents          LifeEvent[]
-  taxProfile          TaxProfile?
+  authAccounts           AuthAccount[]
+  mfaBackupCodes         MfaBackupCode[]
+  standingRules          StandingRule[]
+  agentMessages          AgentMessage[]
+  planProposals          PlanProposal[]
+  planLinks              PlanLink[]
+  janeMessages           JaneMessage[]
+  chatReplyLinks         ChatReplyLink[]
+  deadlines              Deadline[]
+  sessions               Session[]
+  plaidItems             PlaidItem[]
+  accounts               Account[]
+  transactions           Transaction[]
+  recurringStreams       RecurringStream[]
+  liabilities            Liability[]
+  ownedAssets            OwnedAsset[]
+  findings               Finding[]
+  decisions              Decision[]
+  actions                Action[]
+  digests                Digest[]
+  membershipIntents      MembershipIntent[]
+  analyticsEvents        AnalyticsEvent[]
+  merchantCategories     MerchantCategory[]
+  subscriptionChecks     SubscriptionCheck[]
+  alerts                 Alert[]
+  askConversations       AskConversation[]
+  askMessages            AskMessage[]
+  householdMember        HouseholdMember?
+  householdInvites       HouseholdInvite[]
+  pushSubscriptions      PushSubscription[]
+  referralConversions    ReferralConversion[]
+  budgets                Budget[]
+  savingsGoals           SavingsGoal[]
+  balanceSnapshots       BalanceSnapshot[]
+  checkIns               CheckIn[]
+  documents              Document[]
+  lifeEvents             LifeEvent[]
+  // What's in investment accounts (spec step 128).
+  securities             Security[]
+  holdings               Holding[]
+  investmentTransactions InvestmentTransaction[]
+  changeAcks             ChangeAck[]
+  taxProfile             TaxProfile?
 
   @@map("users")
 }
@@ -369,7 +374,8 @@ model PlaidItem {
   // are read on each sync. Items linked before that never are (it would start billing).
   liabilities          Boolean   @default(false)
   // Linked with Investments as an optional product (spec step 66): investment and
-  // retirement balances are read on each sync. Holdings are never stored.
+  // retirement balances, holdings and investment transactions (spec step 128) are read on
+  // each sync.
   investments          Boolean   @default(false)
   lastSyncedAt         DateTime? @map("last_synced_at") @db.Timestamptz(3)
   createdAt            DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
@@ -402,14 +408,17 @@ model Account {
   createdAt             DateTime       @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt             DateTime       @updatedAt @map("updated_at") @db.Timestamptz(3)
 
-  user             User              @relation(fields: [userId], references: [id], onDelete: Cascade)
-  item             PlaidItem?        @relation(fields: [itemId], references: [id], onDelete: Cascade)
-  transactions     Transaction[]
-  recurringStreams RecurringStream[]
-  balanceSnapshots BalanceSnapshot[]
-  checkIns         CheckIn[]
-  liability        Liability?
-  ownedAssets      OwnedAsset[]
+  user                   User                    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  item                   PlaidItem?              @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  transactions           Transaction[]
+  recurringStreams       RecurringStream[]
+  balanceSnapshots       BalanceSnapshot[]
+  checkIns               CheckIn[]
+  liability              Liability?
+  ownedAssets            OwnedAsset[]
+  // Spec step 128: what an investment account holds, and its buys, sells and contributions.
+  holdings               Holding[]
+  investmentTransactions InvestmentTransaction[]
 
   @@index([userId])
   @@index([itemId])
@@ -1498,4 +1507,106 @@ model TaxProfile {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("tax_profiles")
+}
+
+// Spec step 128: a fund, share or cash position, as Plaid Investments (or the demo bank)
+// describes it. Plaid's securities are shared across its customers; here each person has
+// their own copy, so every row is theirs. Prices are per share, in cents.
+model Security {
+  id               String    @id @default(cuid())
+  userId           String    @map("user_id")
+  plaidSecurityId  String    @map("plaid_security_id")
+  name             String
+  ticker           String?
+  // Plaid's type: cash, cryptocurrency, derivative, equity, etf, fixed income, loan,
+  // mutual fund or other; subtype e.g. "common stock" or "mutual fund".
+  type             String?
+  subtype          String?
+  isCashEquivalent Boolean   @default(false) @map("is_cash_equivalent")
+  closePriceCents  Int?      @map("close_price_cents")
+  closePriceAsOf   DateTime? @map("close_price_as_of") @db.Date
+  sector           String?
+  createdAt        DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt        DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  user                   User                    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  holdings               Holding[]
+  investmentTransactions InvestmentTransaction[]
+
+  @@unique([userId, plaidSecurityId])
+  @@index([userId])
+  @@map("securities")
+}
+
+// Spec step 128: how much of one security an account holds, replaced on every sync.
+// valueCents is what the institution says it's worth; costBasisCents what was paid for
+// the whole position, when the institution says.
+model Holding {
+  id             String    @id @default(cuid())
+  userId         String    @map("user_id")
+  accountId      String    @map("account_id")
+  securityId     String    @map("security_id")
+  // Shares or units; fractional shares are common.
+  quantity       Float
+  priceCents     Int       @map("price_cents")
+  priceAsOf      DateTime? @map("price_as_of") @db.Date
+  valueCents     Int       @map("value_cents")
+  costBasisCents Int?      @map("cost_basis_cents")
+  createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt      DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  account  Account  @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  security Security @relation(fields: [securityId], references: [id], onDelete: Cascade)
+
+  @@unique([accountId, securityId])
+  @@index([userId])
+  @@map("holdings")
+}
+
+// Spec step 128: buys, sells, dividends, contributions and fees in an investment account,
+// from Plaid Investments (or the demo bank). Plaid's sign: positive amounts are cash out
+// of the account (a buy, a fee), negative are cash in (a sale, a dividend, a contribution).
+model InvestmentTransaction {
+  id                           String   @id @default(cuid())
+  userId                       String   @map("user_id")
+  accountId                    String   @map("account_id")
+  securityId                   String?  @map("security_id")
+  plaidInvestmentTransactionId String   @unique @map("plaid_investment_transaction_id")
+  date                         DateTime @db.Date
+  name                         String
+  quantity                     Float
+  amountCents                  Int      @map("amount_cents")
+  priceCents                   Int      @map("price_cents")
+  feesCents                    Int?     @map("fees_cents")
+  // Plaid's type (buy, sell, cancel, cash, fee, transfer) and subtype (e.g. dividend,
+  // contribution, management fee).
+  type                         String
+  subtype                      String
+  createdAt                    DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt                    DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  account  Account   @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  security Security? @relation(fields: [securityId], references: [id], onDelete: SetNull)
+
+  @@index([userId, date])
+  @@index([accountId])
+  @@map("investment_transactions")
+}
+
+// "That's expected" on a change Jane noticed (spec step 97): a bill that moved, a new
+// subscription, a paycheck, a category's pace or a new fee. Keyed by the change's own key
+// (src/insights/changes.ts), so that change is never brought up again.
+model ChangeAck {
+  id        String   @id @default(cuid())
+  userId    String   @map("user_id")
+  key       String
+  kind      String
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, key])
+  @@map("change_acks")
 }

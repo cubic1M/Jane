@@ -32,11 +32,13 @@ describe.runIf(url)("syncItem against a real database", () => {
   const transactionsRecurringGet = vi.fn();
   const liabilitiesGet = vi.fn();
   const investmentsHoldingsGet = vi.fn();
+  const investmentsTransactionsGet = vi.fn();
   const api = {
     transactionsSync,
     transactionsRecurringGet,
     liabilitiesGet,
     investmentsHoldingsGet,
+    investmentsTransactionsGet,
   } as unknown as PlaidApi;
 
   beforeAll(async () => {
@@ -67,6 +69,7 @@ describe.runIf(url)("syncItem against a real database", () => {
     transactionsRecurringGet.mockReset();
     liabilitiesGet.mockReset();
     investmentsHoldingsGet.mockReset();
+    investmentsTransactionsGet.mockReset();
     vi.mocked(track).mockReset();
   });
 
@@ -304,7 +307,7 @@ describe.runIf(url)("syncItem against a real database", () => {
     transactionsRecurringGet.mockReset();
   });
 
-  it("keeps investment and retirement balances only, never holdings or trades", async () => {
+  it("keeps investment balances, holdings and investment transactions (spec step 128)", async () => {
     const investItem = await client.plaidItem.create({
       data: {
         userId,
@@ -354,6 +357,29 @@ describe.runIf(url)("syncItem against a real database", () => {
         ],
       },
     });
+    investmentsTransactionsGet.mockResolvedValueOnce({
+      data: {
+        accounts: [k401],
+        securities: [],
+        total_investment_transactions: 1,
+        investment_transactions: [
+          {
+            investment_transaction_id: `${suffix}-inv-buy`,
+            account_id: `${suffix}-401k`,
+            security_id: "sec1",
+            date: "2026-10-01",
+            name: "BUY VTSAX",
+            quantity: 3.5,
+            amount: 500,
+            price: 142.86,
+            fees: 0,
+            type: "buy",
+            subtype: "buy",
+            iso_currency_code: "USD",
+          },
+        ],
+      },
+    });
 
     const result = await syncItem(investItem.id, { client, api, now: NOW });
     expect(result.investments).toBe("updated");
@@ -363,10 +389,27 @@ describe.runIf(url)("syncItem against a real database", () => {
         where: { itemId: investItem.id },
         select: { type: true, subtype: true, currentBalanceCents: true },
       }),
-    ).toEqual({ type: "investment", subtype: "retirement", currentBalanceCents: 2_363_198 });
+    ).toEqual({ type: "investment", subtype: "401k", currentBalanceCents: 2_363_198 });
+    // The trade isn't kept as spending: it's an investment transaction.
     expect(
       await client.transaction.count({ where: { plaidTransactionId: `${suffix}-trade` } }),
     ).toBe(0);
+    expect(
+      await client.holding.findFirstOrThrow({
+        where: { account: { itemId: investItem.id } },
+        select: { quantity: true, valueCents: true, security: { select: { ticker: true } } },
+      }),
+    ).toEqual({ quantity: 100, valueCents: 2_363_198, security: { ticker: "VTSAX" } });
+    expect(
+      await client.investmentTransaction.findFirstOrThrow({
+        where: { plaidInvestmentTransactionId: `${suffix}-inv-buy` },
+        select: { amountCents: true, type: true, subtype: true, securityId: true },
+      }),
+    ).toMatchObject({ amountCents: 50_000, type: "buy", subtype: "buy" });
+    expect(investmentsTransactionsGet.mock.calls[0][0]).toMatchObject({
+      start_date: "2024-10-15",
+      end_date: "2026-10-15",
+    });
 
     investmentsHoldingsGet.mockRejectedValueOnce(plaidApiError("PRODUCTS_NOT_SUPPORTED"));
     transactionsSync.mockResolvedValueOnce(syncPage({ accounts: [k401], next_cursor: "invest-2" }));

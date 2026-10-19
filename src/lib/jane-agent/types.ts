@@ -49,6 +49,10 @@ export const ACTION_IDS = [
   "tax.income_add",
   "tax.income_no",
   "tax.state_set",
+  // Jane notices changes (spec step 97).
+  "change.look",
+  "change.budget",
+  "change.expected",
 ] as const;
 export type ActionId = (typeof ACTION_IDS)[number];
 
@@ -94,6 +98,9 @@ export type MessageRefs = {
   // Spec step 98: demo advice (src/lib/advice-mode.ts). The chat shows DEMO_ADVICE_LABEL
   // under it. Set it on every message that recommends investments, taxes, insurance or loans.
   advice?: true;
+  // Spec step 97: a change Jane noticed (src/insights/changes.ts), by its key; for a
+  // category's pace, the budget "Set a budget" would set (cents a month).
+  change?: { key: string; kind: string; category?: string; budgetCents?: number };
 };
 
 // A message the brain wants to post.

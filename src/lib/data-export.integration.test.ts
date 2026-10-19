@@ -120,6 +120,7 @@ describe.runIf(url)("data export against a real database", () => {
     await client.janeMessage.create({
       data: { userId, kind: "brief", body: `${name} brief`, dedupeKey: "brief:2026-10-18" },
     });
+    await client.changeAck.create({ data: { userId, key: "fee:tx_1", kind: "new_fee" } });
     await client.askConversation.create({
       data: {
         userId,
@@ -141,6 +142,35 @@ describe.runIf(url)("data export against a real database", () => {
     });
     await client.deadline.create({
       data: { userId, title: `${name} FSA deadline`, dueOn: new Date("2026-12-31"), kind: "fsa" },
+    });
+    // What's in an investment account (spec step 128).
+    const security = await client.security.create({
+      data: { userId, plaidSecurityId: `sec-${suffix}`, name: `${name} index fund` },
+    });
+    await client.holding.create({
+      data: {
+        userId,
+        accountId: account.id,
+        securityId: security.id,
+        quantity: 10,
+        priceCents: 10_000,
+        valueCents: 100_000,
+      },
+    });
+    await client.investmentTransaction.create({
+      data: {
+        userId,
+        accountId: account.id,
+        securityId: security.id,
+        plaidInvestmentTransactionId: `inv-${suffix}`,
+        date: new Date("2026-09-01"),
+        name: `${name} buy`,
+        quantity: 10,
+        amountCents: 100_000,
+        priceCents: 10_000,
+        type: "buy",
+        subtype: "buy",
+      },
     });
     return { userId, suffix };
   }
@@ -184,12 +214,16 @@ describe.runIf(url)("data export against a real database", () => {
       "ownedAssets",
       "deadlines",
       "lifeEvents",
+      "changeAcks",
       "janeMessages",
     ] as const) {
       expect(data[key], key).toHaveLength(1);
     }
     expect(data.profile.id).toBe(me.userId);
     expect(data.taxProfile).toMatchObject({ state: "CA", answered: ["state"] });
+    expect(data.investments.securities).toHaveLength(1);
+    expect(data.investments.holdings).toHaveLength(1);
+    expect(data.investments.transactions).toHaveLength(1);
     const text = JSON.stringify(data);
     expect(text).toContain("me purchase");
     expect(text).not.toContain(other.suffix);
