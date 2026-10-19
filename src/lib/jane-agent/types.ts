@@ -64,6 +64,12 @@ export const ACTION_IDS = [
   // Spec step 91: saving what the person told Jane, and a suggestion never to make again.
   "pref.save",
   "suggest.never",
+  // Spec step 92: a Yes each on a message bundling findings of one kind (refs.items).
+  "bundle.1",
+  "bundle.2",
+  "bundle.3",
+  "bundle.4",
+  "bundle.5",
   // Taxes (spec step 118): the tax profile, one question at a time.
   "tax.found_yes",
   "tax.filing_single",
@@ -195,6 +201,8 @@ export type MessageRefs = {
   budget?: { category: string; amountCents: number };
   // Spec step 91: what "Remember this" would save.
   preference?: PreferenceDraft;
+  // Spec step 92: the messages a bundle stands for, by dedupeKey, in button order.
+  items?: { dedupeKey: string; label: string }[];
   // Taxes (spec step 118): the tax profile question a message is asking, and the kind of
   // income "Add it" would add.
   taxField?: string;
@@ -251,6 +259,8 @@ export type Candidate = {
   // Never posted twice for the same person (jane_messages has a unique index on it).
   dedupeKey: string;
   priority: number;
+  // Spec step 92: how it goes into one message with others like it (findings of a kind).
+  bundle?: { group: string; name: string; line: string; cents: number | null };
 };
 
 // A stored message, as the chat and the button actions read it.

@@ -1,4 +1,8 @@
-import { CHAT_CRON_LIMIT, CHAT_HISTORY_HOURS } from "@/config/agent-chat";
+import {
+  CHAT_CRON_LIMIT,
+  CHAT_HISTORY_HOURS,
+  CHAT_TYPING_PAUSE_MINUTES,
+} from "@/config/agent-chat";
 import type { PrismaClient } from "@/generated/prisma/client";
 import { db as defaultClient } from "@/lib/db";
 import { refreshDebts } from "@/lib/debt-refresh";
@@ -8,7 +12,7 @@ import { policiesFromPayments } from "@/lib/found-policies";
 import { runPlanUpkeep } from "@/lib/plan-upkeep";
 import { runTaxAutopilotSafely } from "@/lib/tax-autopilot";
 import { gather, plan, type BrainSettings } from "./brain";
-import { closeSettled, postMessages } from "./messages";
+import { BUNDLED_UNTIL, closeSettled, postMessages } from "./messages";
 import { queueChatNotificationsSafely } from "./notify";
 import { inQuietHours } from "./quiet-hours";
 import { loadSnapshot } from "./snapshot";
@@ -32,6 +36,8 @@ export async function runJaneAgent(
   if (!user) return { posted: 0 };
   // Nothing to say in quiet hours, so nothing to load, unless the person is looking.
   if (trigger !== "open" && inQuietHours(now, user.timezone)) return { posted: 0 };
+  // Spec step 92: never interrupt. While they're chatting, Jane's own messages wait.
+  if (await chatting(userId, { client, now })) return { posted: 0 };
 
   // Spec step 101: what autopilot keeps up to date by itself, before Jane looks.
   await runPlanUpkeep(userId, { client, now }).catch((error) =>
@@ -62,7 +68,11 @@ export async function runJaneAgent(
           select: { dedupeKey: true, snoozedUntil: true },
         }),
     db.janeMessages.findMany({
-      where: { createdAt: { gte: new Date(now.getTime() - CHAT_HISTORY_HOURS * HOUR_MS) } },
+      where: {
+        createdAt: { gte: new Date(now.getTime() - CHAT_HISTORY_HOURS * HOUR_MS) },
+        // Findings behind a bundle (spec step 92) don't count toward the day.
+        OR: [{ snoozedUntil: null }, { snoozedUntil: { not: BUNDLED_UNTIL } }],
+      },
       select: { kind: true, dedupeKey: true, createdAt: true },
     }),
   ]);
@@ -83,6 +93,19 @@ export async function runJaneAgent(
   // What's important goes out as a notification, unless the person is looking (spec step 85).
   await queueChatNotificationsSafely(userId, { client, now, trigger });
   return { posted };
+}
+
+// Spec step 92: whether the person typed to Jane in the last CHAT_TYPING_PAUSE_MINUTES.
+export async function chatting(
+  userId: string,
+  { client = defaultClient, now = new Date() }: { client?: PrismaClient; now?: Date } = {},
+): Promise<boolean> {
+  const since = new Date(now.getTime() - CHAT_TYPING_PAUSE_MINUTES * 60_000);
+  return (
+    (await scopedFor(userId, client).janeMessages.count({
+      where: { kind: "user", createdAt: { gt: since, lte: now } },
+    })) > 0
+  );
 }
 
 // Never lets Jane's chat fail what called it (a sync, an import): logs and moves on.
