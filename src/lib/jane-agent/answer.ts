@@ -13,6 +13,7 @@ import { loadAffordNumbers } from "@/lib/afford";
 import { autopilotOf } from "@/lib/autopilot";
 import { loadChanges } from "@/lib/changes";
 import { provenSavings } from "@/lib/savings-proof";
+import { lastControllerRun } from "@/lib/controller-log";
 import { autopilotFor, sectorAutopilots } from "@/lib/sector-autopilot";
 import { listLifeEvents } from "@/lib/life-events";
 import { db as defaultClient } from "@/lib/db";
@@ -25,6 +26,9 @@ import { matchCategory, type Intent } from "./intents";
 import { listGoals } from "@/lib/goals";
 import { comingUpBlock, spendingBlock } from "./block-data";
 import { flowReply } from "./flows/chat";
+import { timezoneOf } from "./open";
+import { searchChat } from "./search";
+import { searchReply } from "./search-reply";
 import { goalsReply } from "./goals-reply";
 import { listPreferences, paydayDays } from "./preferences";
 import { loadRecurring } from "./recurring";
@@ -54,6 +58,9 @@ import {
 } from "./replies";
 import { changesReply } from "./replies-changes";
 import { overviewReply, sectorChangeReply } from "./replies-autopilot";
+import { checkedReply } from "./replies-checked";
+import { rankedFor } from "./priorities";
+import { prioritiesReply } from "./replies-priorities";
 import { groupedHelpReply } from "./replies-help";
 import { lifeEventReply } from "./replies-life";
 import { savedReply } from "./replies-saved";
@@ -153,6 +160,15 @@ async function byIntent(
     }
     case "remember":
       return rememberReply(intent.draft);
+    // Spec step 96.
+    case "search": {
+      const timezone = await timezoneOf(userId, { client });
+      return searchReply(
+        intent.query,
+        await searchChat(userId, intent.query, { client, now, timezone }),
+        timezone,
+      );
+    }
     // Spec step 95.
     case "flow":
       return flowReply(intent.flow, { userId, client, now });
@@ -249,6 +265,12 @@ async function byIntent(
       const going = open.some((e) => e.kind === intent.event && e.completedAt === null);
       return lifeEventReply(intent.event, going);
     }
+    case "priorities": {
+      const snapshot = await loadSnapshot(userId, { client, now });
+      return prioritiesReply(snapshot ? rankedFor(snapshot) : []);
+    }
+    case "checked":
+      return checkedReply(await lastControllerRun(userId, { client, now }));
     case "autopilot_overview":
       return overviewReply(
         await sectorAutopilots(userId, { client, now }),

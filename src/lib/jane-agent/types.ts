@@ -253,6 +253,8 @@ export type MessageRefs = {
   block?: AnswerBlock;
   // Spec step 95: where a guided flow is.
   flow?: FlowState;
+  // Spec step 96: pinned to the top of the chat.
+  pinned?: true;
   // Taxes (spec step 118): the tax profile question a message is asking, and the kind of
   // income "Add it" would add.
   taxField?: string;

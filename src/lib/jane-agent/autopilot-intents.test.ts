@@ -31,6 +31,14 @@ describe("sector autopilot intents", () => {
     expect(parse(text)).toEqual({ kind: "autopilot_overview" });
   });
 
+  // Spec step 142.
+  it.each(["what did you check last night?", "show me the nightly log", "what did you check"])(
+    "reads %j as last night's checks",
+    (text) => {
+      expect(parse(text)).toEqual({ kind: "checked" });
+    },
+  );
+
   it("leaves other questions about those areas alone", () => {
     expect(parse("what does my car insurance cover?").kind).not.toBe("autopilot_sector");
     expect(parse("cancel my netflix subscription").kind).toBe("act");
