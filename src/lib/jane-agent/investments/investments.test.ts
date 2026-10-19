@@ -12,14 +12,17 @@ vi.mock("@/lib/investments/holdings", () => ({ loadInvestments: vi.fn() }));
 vi.mock("@/lib/investments/profile", () => ({ profileOf: vi.fn() }));
 vi.mock("@/lib/investments/fees", () => ({ loadFees: vi.fn() }));
 vi.mock("@/lib/advice-mode", () => ({ adviceMode: vi.fn() }));
+vi.mock("@/lib/investments/review", () => ({ loadReview: vi.fn() }));
 
 import { loadInvestments } from "@/lib/investments/holdings";
 import { profileOf } from "@/lib/investments/profile";
 import { loadFees } from "@/lib/investments/fees";
 import { adviceMode } from "@/lib/advice-mode";
 import { feeSummary } from "@/insights/investment-fees";
-import { EMPTY_ANSWERS, type ProfileAnswers } from "@/planning/investor-profile";
-import { feesReply, profileReply } from "./replies";
+import { reviewPortfolio } from "@/insights/portfolio-review";
+import { loadReview } from "@/lib/investments/review";
+import { EMPTY_ANSWERS, profileSummary, type ProfileAnswers } from "@/planning/investor-profile";
+import { feesReply, profileReply, reviewReply } from "./replies";
 import { gather } from "../brain";
 import { parseIntent } from "../intents";
 import type { Snapshot } from "../snapshot";
@@ -439,5 +442,106 @@ describe("Claude's investment_fees tool", () => {
       hold: "Keystone Target 2055 Index Fund",
       offeredInPlan: true,
     });
+  });
+});
+
+// Spec step 131: does it fit?
+describe("review questions, by rules", () => {
+  it.each([
+    "review my portfolio",
+    "is my portfolio balanced",
+    "am I diversified",
+    "what's my asset allocation",
+    "how should I invest",
+    "what should I do with my 401k",
+  ])("reads %j as the review", (text) => {
+    expect(parseIntent(text, ASOF)).toEqual({
+      kind: "investments",
+      topic: "review",
+      account: null,
+    });
+  });
+});
+
+describe("reviewReply", () => {
+  const data = demoInvestments();
+  const done = profileSummary(FULL, ASOF);
+  const review = reviewPortfolio(data.accounts, 3);
+
+  it("gives real accounts their mix and no recommendation", () => {
+    const reply = reviewReply(data, done, review, false);
+    expect(reply.body).toMatch(/^Here's your mix: \$[\d,.]+ in US stocks, /);
+    expect(reply.body).toContain("I don't give investment recommendations on real accounts yet.");
+    expect(reply.refs).toEqual({});
+  });
+
+  it("asks the profile questions first in demo advice mode", () => {
+    const reply = reviewReply(data, profileSummary(EMPTY_ANSWERS, ASOF), null, true);
+    expect(reply.body).toMatch(
+      /^To check whether your investments fit you, I need four quick answers first/,
+    );
+    expect(reply.refs.investQuestion).toBe("age");
+    expect(reply.actions[0].id).toBe("invest.answer.1");
+  });
+
+  it("says what to change and why once the profile is in, labelled", () => {
+    const reply = reviewReply(data, done, review, true);
+    expect(reply.body).toMatch(
+      /^Against your moderate profile: US stocks 69% \(target 40%\), international stocks 14% \(target 20%\), bonds 10% \(target 35%\), cash 7% \(target 5%\)\.\nWhat I'd change:\n1\. Move about/,
+    );
+    expect(reply.refs).toEqual({ advice: true });
+  });
+});
+
+describe("the review message", () => {
+  const review = reviewPortfolio(demoInvestments().accounts, 3);
+  const gatherReview = (advice: boolean, r = review) =>
+    investmentsSource
+      .gather({ ...base, investments: demoInvestmentSnapshot({ advice, review: r }) }, {} as never)
+      .filter((c) => c.dedupeKey.startsWith("review:"));
+
+  it("says the first change and why, once, in demo advice mode", () => {
+    const [message] = gatherReview(true);
+    expect(message).toMatchObject({
+      dedupeKey: "review:3:rebalance",
+      refs: { advice: true },
+      priority: MESSAGE_PRIORITY.investment_review,
+    });
+    expect(message.body).toMatch(
+      /^I've reviewed your investments against your moderate profile\. Move about/,
+    );
+    expect(message.actions[0]).toMatchObject({ href: "/investments/review" });
+  });
+
+  it("stays quiet for real accounts, before the profile, and on target", () => {
+    expect(gatherReview(false)).toEqual([]);
+    expect(gatherReview(true, null as never)).toEqual([]);
+    expect(gatherReview(true, { ...review, recommendations: [] })).toEqual([]);
+  });
+});
+
+describe("Claude's portfolio_review tool", () => {
+  const options = { client: {} as PrismaClient, now: new Date("2026-10-19T12:00:00Z") };
+
+  it("is for demo advice mode only, after the profile", async () => {
+    vi.mocked(adviceMode).mockResolvedValue(false);
+    vi.mocked(loadReview).mockResolvedValue({
+      investments: demoInvestments(),
+      profile: profileSummary(FULL, ASOF),
+      review: reviewPortfolio(demoInvestments().accounts, 3),
+    });
+    expect(
+      JSON.parse((await runInvestmentTool("u", "portfolio_review", {}, options)).content),
+    ).toEqual({
+      note: "Reviews are for demo advice mode only.",
+    });
+    vi.mocked(adviceMode).mockResolvedValue(true);
+    const out = await runInvestmentTool("u", "portfolio_review", {}, options);
+    const parsed = JSON.parse(out.content);
+    expect(parsed.riskLevel).toBe("Moderate");
+    expect(parsed.whatToChange[0].amount).toMatch(/^\$/);
+    expect(out.cents).toContain(
+      reviewPortfolio(demoInvestments().accounts, 3).recommendations[0].amountCents,
+    );
   });
 });

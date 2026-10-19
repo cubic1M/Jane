@@ -160,6 +160,19 @@ describe.runIf(url)("metrics in SQL against a real database", () => {
 
     // Cy: signed up 2 days ago, never linked.
     await person("cy", 2);
+
+    // Spec step 138: someone trying Jane with sample data, 3 days ago. Never counted.
+    const trial = await client.user.create({
+      data: {
+        id: `trial_metrics${suffix}`,
+        email: `trial_metrics${suffix}@try.jane.invalid`,
+        createdAt: ago(3),
+      },
+    });
+    users.push(trial.id);
+    await client.account.create({
+      data: { userId: trial.id, source: "csv", name: "Card", type: "credit", createdAt: ago(3) },
+    });
   });
 
   afterAll(async () => {
@@ -186,6 +199,7 @@ describe.runIf(url)("metrics in SQL against a real database", () => {
 
   it("finds what the seeded history should give", async () => {
     const m = await computeMetricsSql(client, { start: ago(30), end: NOW });
+    // The trial person isn't in it.
     expect(m.linkRate).toEqual({ signedUp: 2, linked: 1, rate: 0.5 });
     expect(m.completion).toEqual({ closed: 2, done: 1, rate: 0.5 });
     expect(m.willingnessToPay).toEqual({ completed: 1, willing: 1, rate: 1 });
