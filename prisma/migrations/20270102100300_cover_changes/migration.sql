@@ -21,8 +21,7 @@ CREATE TABLE "cover_changes" (
 CREATE INDEX "cover_changes_user_id_status_idx" ON "cover_changes"("user_id", "status");
 
 -- CreateIndex
-CREATE UNIQUE INDEX "cover_changes_user_id_event_event_key_change_key" ON "cover_changes"("user_id", "event", "event_key", "change");
+CREATE UNIQUE INDEX "cover_changes_user_id_event_event_key_change_policy_id_key" ON "cover_changes"("user_id", "event", "event_key", "change", "policy_id");
 
 -- AddForeignKey
 ALTER TABLE "cover_changes" ADD CONSTRAINT "cover_changes_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
-

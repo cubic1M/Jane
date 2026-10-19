@@ -39,6 +39,7 @@ export async function closeAnsweredElsewhere(
   const deadlineIds = ids((m) => m.refs.deadlineEntryId);
   const alertIds = ids((m) => m.refs.alertId);
   const readingIds = ids((m) => m.refs.readingId);
+  const coverRefs = ids((m) => m.refs.coverEvent);
   const anyAutopilot = open.some(asksAutopilot);
   const anyProposal = open.some((m) => m.refs.proposalKey);
   if (
@@ -47,11 +48,12 @@ export async function closeAnsweredElsewhere(
     !actionIds.length &&
     !deadlineIds.length &&
     !alertIds.length &&
-    !readingIds.length
+    !readingIds.length &&
+    !coverRefs.length
   )
     return 0;
 
-  const [autopilot, proposals, actions, deadlines, alerts, readings] = await Promise.all([
+  const [autopilot, proposals, actions, deadlines, alerts, readings, covers] = await Promise.all([
     anyAutopilot ? autopilotOf(userId, { client }) : null,
     anyProposal ? openProposals(userId, { client }) : [],
     actionIds.length
@@ -75,22 +77,30 @@ export async function closeAnsweredElsewhere(
           select: { id: true },
         })
       : [],
+    coverRefs.length
+      ? db.coverChanges.findMany({
+          where: { status: "prepared" },
+          select: { event: true, eventKey: true },
+        })
+      : [],
   ]);
   const openProposalKeys = new Set(proposals.map((p) => p.key));
   const stepNow = new Map(actions.map((a) => [a.id, stepOf(a)]));
   const openDeadlines = new Set(deadlines.map((d) => d.id));
   const unreadAlerts = new Set(alerts.map((a) => a.id));
   const waitingReadings = new Set(readings.map((r) => r.id));
+  const preparedCovers = new Set(covers.map((c) => `${c.event}|${c.eventKey}`));
 
   const settled = (m: Open) => {
-    const { proposalKey, step, actionId, deadlineEntryId, alertId, readingId } = m.refs;
+    const { proposalKey, step, actionId, deadlineEntryId, alertId, readingId, coverEvent } = m.refs;
     return (
       (asksAutopilot(m) && autopilot !== null) ||
       (proposalKey !== undefined && !openProposalKeys.has(proposalKey)) ||
       (step !== undefined && actionId !== undefined && stepNow.get(actionId) !== step) ||
       (deadlineEntryId !== undefined && !openDeadlines.has(deadlineEntryId)) ||
       (alertId !== undefined && !unreadAlerts.has(alertId)) ||
-      (readingId !== undefined && !waitingReadings.has(readingId))
+      (readingId !== undefined && !waitingReadings.has(readingId)) ||
+      (coverEvent !== undefined && !preparedCovers.has(coverEvent))
     );
   };
 
