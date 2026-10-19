@@ -146,4 +146,10 @@ test("the demo bank's holdings show with their sources, and Jane answers about t
   await expect(page.getByRole("heading", { name: "How they've done" })).toBeVisible();
   await expect(page.getByRole("cell", { name: "Last 12 months" })).toBeVisible();
   await expect(page.getByText(/Prices come from the demo price feed \(made up\)/)).toBeVisible();
+
+  // Step 157: each goal invested for its timeline, with the glide path shown.
+  await page.goto("/investments/goals");
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText("Invested for each goal");
+  await expect(page.getByRole("heading", { name: "The glide path" })).toBeVisible();
+  await expect(page.getByRole("cell", { name: "0 to 3" })).toBeVisible();
 });

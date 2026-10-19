@@ -86,6 +86,7 @@ export function demoInvestmentSnapshot(over: Partial<InvestmentSnapshot> = {}): 
     accountPlan: { order: null, location: [] },
     month: { month: "2026-10", previousCents: null, contributedCents: 0 },
     returns: { asOf: "2026-10-18", periods: [], simulatedPrices: true },
+    goalBuckets: { byHerself: false, buckets: null },
     ...over,
   };
 }

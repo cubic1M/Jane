@@ -125,6 +125,8 @@ export const MESSAGE_PRIORITY = {
   account_order: 37,
   // Spec step 137: the monthly portfolio note.
   investment_monthly: 41,
+  // Spec step 157: each goal invested for its timeline (demo advice).
+  goal_buckets: 35,
   auto_invest_run: 31,
 } as const;
 

@@ -3,6 +3,8 @@ import { portfolioNote } from "@/insights/portfolio-note";
 import { RETURNS_NOTE } from "@/config/returns";
 import { formatReturn } from "@/insights/returns";
 import type { Returns } from "@/lib/investments/returns";
+import type { Bucket } from "@/planning/goal-buckets";
+import { byHerselfLine } from "./goals-copy";
 import { formatBps, type InvestmentAccountView, type HoldingView } from "@/insights/investments";
 import type { FeeSummary } from "@/insights/investment-fees";
 import { classWords, listWords, type PortfolioReview } from "@/insights/portfolio-review";
@@ -500,5 +502,46 @@ export function returnsReply(returns: Returns): Reply {
     body: `${returnsLine(returns) ?? "Here's how they've done."}\n${lines.join("\n")}\n${RETURNS_NOTE}${returns.simulatedPrices ? " The prices are the demo price feed's (made up)." : ""}`,
     actions: [SEE],
     refs: {},
+  };
+}
+
+// Spec step 157: each goal's bucket and why.
+export function goalBucketsReply(data: {
+  advice: boolean;
+  byHerself: boolean;
+  buckets: Bucket[] | null;
+}): Reply {
+  const link: MessageAction = {
+    id: "open",
+    label: "See each goal",
+    kind: "link",
+    href: "/investments/goals",
+  };
+  if (!data.advice) {
+    return {
+      body: "Investing by goal is only in demo advice mode for now.",
+      actions: [SEE],
+      refs: {},
+    };
+  }
+  if (!data.buckets) {
+    const ask = asking(PROFILE_QUESTIONS[0]);
+    return {
+      body: "Each goal's mix is capped by your risk level, so four quick answers first.",
+      actions: ask.actions,
+      refs: ask.refs,
+    };
+  }
+  if (data.buckets.length === 0) {
+    return {
+      body: "You don't have a goal with a date yet. Add one and I'll invest for it, cash when it's close and safer as the date nears.",
+      actions: [{ id: "open", label: "Add a goal", kind: "link", href: "/goals" }],
+      refs: {},
+    };
+  }
+  return {
+    body: `Each goal is invested for when you need it.\n${data.buckets.map((b) => `- ${b.name}: ${b.why}`).join("\n")}\n${byHerselfLine(data.byHerself)}`,
+    actions: [link],
+    refs: { advice: true },
   };
 }

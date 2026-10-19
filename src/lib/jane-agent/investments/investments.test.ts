@@ -18,6 +18,7 @@ vi.mock("@/lib/investments/rebalance", () => ({ loadRebalance: vi.fn() }));
 vi.mock("@/lib/investments/auto-invest", () => ({ loadAutoInvest: vi.fn() }));
 vi.mock("@/lib/investments/accounts", () => ({ loadAccountPlan: vi.fn() }));
 vi.mock("@/lib/investments/returns", () => ({ loadReturns: vi.fn() }));
+vi.mock("@/lib/investments/goal-buckets", () => ({ loadGoalBuckets: vi.fn() }));
 
 import { loadInvestments } from "@/lib/investments/holdings";
 import { profileOf } from "@/lib/investments/profile";
@@ -47,6 +48,7 @@ import {
   retirementReply,
   reviewReply,
   returnsReply,
+  goalBucketsReply,
 } from "./replies";
 import { gather } from "../brain";
 import { parseIntent } from "../intents";
@@ -56,6 +58,7 @@ import { holdingsReply, matchAccounts } from "./replies";
 import { INVESTMENT_TOOLS, runInvestmentTool } from "./tools";
 import { CHAT_PAGES, CHAT_TOOLS, proposeAction } from "../claude-tools";
 import { learnLink, learnReply } from "../learn";
+import { goalBuckets } from "@/planning/goal-buckets";
 import type { PrismaClient } from "@/generated/prisma/client";
 
 // Spec step 128: what the person owns, in Jane's chat.
@@ -1354,5 +1357,86 @@ describe("returnsReply", () => {
       yourMoney: "+6.9%",
     });
     expect(out.cents).toEqual(expect.arrayContaining([9_673_055, 37_440, 489_600]));
+  });
+});
+
+// Spec step 157: every goal invested for its timeline.
+const BUCKETS = goalBuckets(
+  [
+    { id: "house", name: "House", targetDate: "2028-10-01", monthlyCents: 50_000 },
+    { id: "retirement", name: "Retirement", targetDate: "2048-10-19", monthlyCents: 0 },
+  ],
+  "2026-10-19",
+  3,
+);
+
+describe("goal questions, by rules", () => {
+  it.each([
+    "how should my house goal be invested",
+    "invest for my goals",
+    "glide path",
+    "should I invest my savings for a house",
+  ])("reads %j as goals", (text) => {
+    expect(parseIntent(text, ASOF)).toMatchObject({ kind: "investments", topic: "goals" });
+  });
+});
+
+describe("goalBucketsReply and the goals message", () => {
+  it("lists each goal's mix and why, and says who moves new money", () => {
+    const reply = goalBucketsReply({ advice: true, byHerself: true, buckets: BUCKETS });
+    expect(reply.body).toMatch(
+      /^Each goal is invested for when you need it\.\n- House: 2 years away: kept in cash/,
+    );
+    expect(reply.body).toMatch(/goes to each goal by itself, near-term goals first\.$/);
+    expect(reply.refs).toEqual({ advice: true });
+    expect(goalBucketsReply({ advice: true, byHerself: false, buckets: BUCKETS }).body).toMatch(
+      /Choose “Handle the safe stuff”/,
+    );
+    expect(goalBucketsReply({ advice: false, byHerself: false, buckets: null }).refs).toEqual({});
+  });
+
+  it("says once, in demo advice mode, how each goal is invested", () => {
+    const messages = (advice: boolean) =>
+      investmentsSource
+        .gather(
+          {
+            ...base,
+            investments: demoInvestmentSnapshot({
+              advice,
+              goalBuckets: { byHerself: true, buckets: BUCKETS },
+            }),
+          },
+          {} as never,
+        )
+        .filter((c) => c.dedupeKey.startsWith("goals:"));
+    const [message] = messages(true);
+    expect(message).toMatchObject({
+      dedupeKey: "goals:house:cash,retirement:invested",
+      priority: MESSAGE_PRIORITY.goal_buckets,
+    });
+    expect(message.body).toMatch(
+      /^I've given each goal its own mix, by when you need it: House \(2 years away\): cash, never stocks; Retirement \(22 years away\): \d+% stocks\./,
+    );
+    expect(messages(false)).toEqual([]);
+  });
+
+  it("gives Claude each goal's mix", async () => {
+    const { loadGoalBuckets } = await import("@/lib/investments/goal-buckets");
+    vi.mocked(loadGoalBuckets).mockResolvedValue({
+      advice: true,
+      byHerself: true,
+      buckets: BUCKETS,
+    });
+    const out = await runInvestmentTool(
+      "u",
+      "goal_buckets",
+      {},
+      { client: {} as PrismaClient, now: new Date() },
+    );
+    expect(JSON.parse(out.content).goals[0]).toMatchObject({
+      goal: "House",
+      stocks: "0%",
+      cash: "100%",
+    });
   });
 });
