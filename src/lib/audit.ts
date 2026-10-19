@@ -20,6 +20,7 @@ export type AuditEvent =
   | "insurance_claim_started"
   // Spec step 150: a benefit through work confirmed (its kind, never the amounts).
   | "employer_benefit_confirmed"
+  | "life_application_submitted"
   | "user_signed_in"
   | "import_completed"
   // Finding data was sent to Claude for card text.
@@ -111,6 +112,8 @@ export type AuditEvent =
   // one that doesn't match their accounts.
   | "tax_document_collected"
   | "tax_document_decided"
+  // Spec step 168: a donor-advised fund opened with the stand-in (no money moves).
+  | "donor_fund_opened"
   // Devices and sessions (spec step 73): one other session, or all the others, signed out.
   | "session_signed_out"
   | "other_sessions_signed_out"
@@ -125,7 +128,9 @@ export type AuditEvent =
   // Automatic investing (spec step 134): started, paused, resumed or changed; never amounts.
   | "auto_invest_set"
   // College savings set up (spec step 158): the kind of college, never the child's details.
-  | "college_plan_saved";
+  | "college_plan_saved"
+  // A company stock grant from the guided form (spec step 160): its kind, never amounts.
+  | "equity_grant_saved";
 
 export type AuditActor = { type: ActorType; id: string | null };
 

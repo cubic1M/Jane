@@ -24,6 +24,7 @@ import { loadReturns } from "./returns";
 import { loadGoalBuckets } from "./goal-buckets";
 import { estimateCollege } from "./college";
 import { collectReceipts, investHsaCash, loadHsa } from "./hsa";
+import { CompanyStockError, loadCompanyStock, saveGrant, sellPart } from "./company-stock";
 import { setAutopilot } from "@/lib/autopilot";
 import { takeSnapshots } from "@/lib/snapshots";
 import { syncDemoInvestments } from "@/lib/plaid/sync";
@@ -574,6 +575,109 @@ describe.runIf(url)("investments in Jane's chat, against a real database", () =>
       const { amountCents } = await investHsaCash(userId, { client, now: LINKED });
       expect(amountCents).toBe(85_000);
       expect((await loadHsa(userId, { client, now: LINKED })).plan?.toInvestCents).toBe(0);
+    },
+  );
+
+  it(
+    "step 160: a demo stock plan, the plan to sell down with its tax, one part sold with a tap",
+    SLOW,
+    async () => {
+      const userId = await demoPerson();
+      // The demo bank alone: 38 Acme shares in the brokerage, under the limit.
+      const before = await loadCompanyStock(userId, { client, now: LINKED });
+      expect(before).toMatchObject({ company: "Acme Corp", ticker: "ACME", demo: true });
+      expect(before.concentration.overLimit).toBe(false);
+      expect(before.plan?.parts ?? []).toEqual([]);
+
+      const offer = (await sendToJane(userId, "my rsus", { client, now: LINKED })).reply;
+      expect(offer.actions.map((a) => a.id)).toEqual(["open"]);
+      const posted = await client.janeMessage.create({
+        data: {
+          userId,
+          kind: "decision",
+          body: "Want to try a demo stock plan?",
+          refs: {},
+          actions: [{ id: "company.link", label: "Link a demo stock plan", kind: "primary" }],
+          dedupeKey: "test:company:link",
+        },
+      });
+      await takeChatAction(userId, posted.id, "company.link", { client, now: LINKED });
+
+      const view = await loadCompanyStock(userId, { client, now: LINKED });
+      expect(view.holdings.map((h) => [h.accountName, h.quantity])).toEqual(
+        expect.arrayContaining([
+          ["Demo Stock Plan", 150],
+          ["Demo Brokerage", 38],
+        ]),
+      );
+      expect(view.grants).toMatchObject([{ kind: "rsu", unvestedShares: 120, source: "demo" }]);
+      expect(view.concentration.overLimit).toBe(true);
+      expect(view.concentration.shareWithUnvested).toBeGreaterThan(view.concentration.share);
+      const plan = view.plan!;
+      expect(plan.accountName).toBe("Demo Stock Plan");
+      expect(plan.parts.length).toBeGreaterThan(1);
+      expect(plan.parts[0].on).toBe("2026-10-18");
+      expect(plan.taxCents).toBeGreaterThan(0);
+      expect(plan.shareAfter).toBeCloseTo(0.1, 2);
+      // Nothing is sold without the tap.
+      expect(await client.brokerageOrder.count({ where: { userId, reason: "diversify" } })).toBe(0);
+
+      // Jane's message, then the tap.
+      const snapshot = await loadSnapshot(userId, { client, now: LINKED });
+      const message = investmentsSource
+        .gather(snapshot!, {} as never)
+        .find((c) => c.dedupeKey.startsWith("company:sell:"))!;
+      expect(message.refs).toEqual({ advice: true, companyPlan: plan.key });
+      const decision = await client.janeMessage.create({
+        data: {
+          userId,
+          kind: message.kind,
+          body: message.body,
+          refs: message.refs,
+          actions: message.actions,
+          dedupeKey: "test:company:sell",
+        },
+      });
+      const { message: done } = await takeChatAction(userId, decision.id, "company.sell", {
+        client,
+        now: LINKED,
+      });
+      expect(done.refs.note).toMatch(
+        /^Done in the simulated brokerage \(no real money moves\): sold/,
+      );
+      const orders = await client.brokerageOrder.findMany({
+        where: { userId, reason: "diversify" },
+      });
+      expect(orders.find((o) => o.side === "sell")).toMatchObject({ ticker: "ACME" });
+      expect(orders.filter((o) => o.side === "buy").length).toBeGreaterThan(0);
+
+      // The next part waits three months; selling again now is refused.
+      const after = await loadCompanyStock(userId, { client, now: LINKED });
+      expect(after.concentration.share).toBeLessThan(view.concentration.share);
+      expect(after.plan?.parts[0].on).toBe("2027-01-18");
+      await expect(sellPart(userId, after.plan!.key, { client, now: LINKED })).rejects.toThrow(
+        CompanyStockError,
+      );
+      await expect(sellPart(userId, plan.key, { client, now: LINKED })).rejects.toThrow(
+        /changed since this plan/,
+      );
+
+      // The guided form checks what it saves.
+      await expect(
+        saveGrant(
+          userId,
+          {
+            company: "",
+            ticker: "",
+            kind: "rsu",
+            unvestedShares: "1",
+            sharesPerVest: "",
+            everyMonths: "",
+            nextVestOn: "",
+          },
+          { client },
+        ),
+      ).rejects.toThrow(/company's name/);
     },
   );
 });

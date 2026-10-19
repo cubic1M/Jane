@@ -91,7 +91,9 @@ export const demoSecurityId = (key: string) => `demo-sec-${key.toLowerCase()}`;
 type Position = { key: Key; quantity: number; price: number; costBasis: number };
 
 // The cash position (last in each list) is filled in from the account's balance.
-const POSITIONS: Readonly<Record<"retirement" | "brokerage" | "hsa", readonly Position[]>> = {
+const POSITIONS: Readonly<
+  Record<"retirement" | "brokerage" | "hsa" | "stock_plan", readonly Position[]>
+> = {
   retirement: [
     { key: "NSTDX", quantity: 1520.384, price: 25.17, costBasis: 31_900 },
     { key: "SLGFX", quantity: 412.106, price: 51.36, costBasis: 17_400 },
@@ -110,7 +112,21 @@ const POSITIONS: Readonly<Record<"retirement" | "brokerage" | "hsa", readonly Po
     { key: "KTSIX", quantity: 10, price: 142.18, costBasis: 1_300 },
     { key: "CASH", quantity: 0, price: 1, costBasis: 0 },
   ],
+  // Spec step 160: 150 vested Acme shares, at the prices they vested at (DEMO_VESTS).
+  stock_plan: [
+    { key: "ACME", quantity: 150, price: 136.4, costBasis: 14_700 },
+    { key: "CASH", quantity: 0, price: 1, costBasis: 0 },
+  ],
 };
+
+// Spec step 160: when the demo stock plan's shares vested (days from the anchor), and at
+// what price: they're the lots behind its cost basis.
+export const DEMO_VESTS: readonly { offset: number; shares: number; price: number }[] = [
+  { offset: -400, shares: 37.5, price: 92 },
+  { offset: -300, shares: 37.5, price: 96 },
+  { offset: -200, shares: 37.5, price: 101 },
+  { offset: -100, shares: 37.5, price: 103 },
+];
 
 const cents = (dollars: number) => Math.round(dollars * 100);
 
@@ -224,6 +240,7 @@ export function demoLedger(
     "retirement",
     "brokerage",
     ...(extras.includes("hsa") ? ["hsa" as const] : []),
+    ...(extras.includes("stock_plan") ? ["stock_plan" as const] : []),
   ] as const;
   const rows: LedgerRow[] = accounts.flatMap((account) => {
     const id = accountId(demo.seed, account);
@@ -277,7 +294,7 @@ export const DEMO_MATCH_UP_TO = 0.06;
 
 type Event = {
   key: string;
-  account: "retirement" | "brokerage" | "hsa";
+  account: "retirement" | "brokerage" | "hsa" | "stock_plan";
   security: Key | null;
   name: string;
   quantity: number;
@@ -415,6 +432,22 @@ function eventsOn(day: string, anchor: string, extras: readonly DemoExtra[] = []
   }
   // One-offs, placed around the day the demo bank was linked so they always look recent.
   const offset = Math.round((Date.parse(day) - Date.parse(anchor)) / 86_400_000);
+  if (extras.includes("stock_plan")) {
+    for (const v of DEMO_VESTS.filter((x) => x.offset === offset)) {
+      out.push({
+        key: "rsu-vest",
+        account: "stock_plan",
+        security: "ACME",
+        name: "RSU VEST ACME CORP",
+        quantity: v.shares,
+        amount: round(v.shares * v.price, 2),
+        price: v.price,
+        fees: 0,
+        type: "buy" as InvestmentTransaction["type"],
+        subtype: "buy" as InvestmentTransaction["subtype"],
+      });
+    }
+  }
   if (offset === -200) {
     out.push({
       key: "acme-sale",

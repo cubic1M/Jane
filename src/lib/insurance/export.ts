@@ -124,5 +124,19 @@ export async function insuranceExport(
         orderBy: { createdAt: "asc" },
       }),
     ]);
-  return { policies, household, quotes, shops, checkups, claims, benefits, readings };
+  // Life cover sized and applied for, with their own answers (spec step 153).
+  const life = await db.lifeApplications.findMany({
+    select: {
+      status: true,
+      amountCents: true,
+      termYears: true,
+      method: true,
+      answers: true,
+      decision: true,
+      createdAt: true,
+      submittedAt: true,
+    },
+    orderBy: { createdAt: "asc" },
+  });
+  return { policies, household, quotes, shops, checkups, claims, benefits, readings, life };
 }

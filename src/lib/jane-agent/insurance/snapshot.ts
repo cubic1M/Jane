@@ -15,6 +15,7 @@ import {
   type BenefitQuestion,
 } from "@/lib/insurance/benefits";
 import { listReadings, type Reading } from "@/lib/insurance/readings";
+import { latestLife, type LifeApplication } from "@/lib/insurance/life";
 import { SWITCH_NEWS_DAYS, SWITCH_PAYMENT_DAYS } from "@/config/insurance";
 
 // What Jane's brain knows about the person's insurance (spec Phase X), from the same loader
@@ -46,6 +47,10 @@ export type InsuranceSnapshot = {
   benefitQuestion?: BenefitQuestion | null;
   // Spec step 151: policies read from documents, waiting for the person's confirm tap.
   readings?: Reading[];
+  // Spec step 153: life cover sized and being applied for (demo advice), or the question
+  // about dependants it needs first.
+  life?: LifeApplication | null;
+  lifeAsk?: "dependants" | null;
 };
 
 export type Switch = Awaited<ReturnType<typeof switchesFor>>[number];
@@ -63,6 +68,7 @@ export async function loadInsuranceSnapshot(
     checkup,
     claims,
     benefits,
+    life,
     switches,
   ] = await Promise.all([
     // Reads any policy document not read yet, so the readings below come after it.
@@ -76,6 +82,7 @@ export async function loadInsuranceSnapshot(
     latestCheckup(userId, { client }),
     listClaims(userId, { client }),
     listBenefits(userId, { client }),
+    latestLife(userId, { client }),
     switchesFor(userId, {
       client,
       since: new Date(now.getTime() - (SWITCH_NEWS_DAYS + SWITCH_PAYMENT_DAYS) * 86_400_000),
@@ -102,5 +109,15 @@ export async function loadInsuranceSnapshot(
         ? nextQuestion(benefits)
         : null,
     readings,
+    life: life && life.status !== "bought" ? life : null,
+    // Asked of people in demo advice mode with a paycheck, no life cover and no answer yet.
+    lifeAsk:
+      advice &&
+      !life &&
+      household.dependants.value === null &&
+      household.signals.paycheck &&
+      !policies.some((p) => p.kind === "life" && p.status === "active")
+        ? "dependants"
+        : null,
   };
 }
