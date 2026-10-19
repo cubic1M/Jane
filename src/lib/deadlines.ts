@@ -1,12 +1,14 @@
 import {
+  DEADLINE_HORIZON_DAYS,
   DEADLINE_MAX_YEARS_AHEAD,
   DEADLINE_NOTE_MAX,
   DEADLINE_TITLE_MAX,
 } from "@/config/deadlines";
+import { POLICY_KINDS } from "@/config/insurance";
 import { loadDetectionInput } from "@/detection/engine";
 import { buildStreams } from "@/detection/streams";
 import type { DetectionInput } from "@/detection/types";
-import { isoDate } from "@/detection/units";
+import { addDays, isoDate } from "@/detection/units";
 import type { PrismaClient } from "@/generated/prisma/client";
 import {
   deadlineAlerts,
@@ -19,11 +21,13 @@ import {
   upcomingDeadlines,
   type Deadline,
 } from "@/insights/deadlines";
+import { annualFeeDeadlines } from "@/insights/found-policies";
 import { raiseAlerts } from "@/lib/alerts";
 import { track } from "@/lib/analytics";
 import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
 import { documentDates } from "@/lib/documents/dates";
+import { listPolicies, nextRenewal } from "@/lib/insurance/policies";
 
 // Deadlines (spec step 71): loads each source's data, keeps the deadlines the person types
 // in, and raises the deadline_soon reminders (src/insights/deadlines.ts decides which).
@@ -50,6 +54,8 @@ export const transactionDeadlinesFrom =
       ...renewalDeadlines(input, streams),
       ...trialDeadlines(input),
       ...returnDeadlines(input, streams),
+      // Spec step 99.
+      ...annualFeeDeadlines(input),
     ];
   };
 
@@ -100,12 +106,43 @@ export const handEnteredDeadlines: DeadlineSource = async (userId, { client }) =
 export const documentDeadlines: DeadlineSource = async (userId, { client }) =>
   fromDocumentDates(await documentDates(userId, { client }));
 
+// Insurance renewals from the profile (spec step 99), confirmed or found from payments
+// (an estimate until confirmed). A policy read from a document has its date from the
+// document already.
+export const insuranceDeadlines: DeadlineSource = async (userId, { client, now }) => {
+  const asOf = isoDate(now);
+  const until = addDays(asOf, DEADLINE_HORIZON_DAYS);
+  const policies = await listPolicies(userId, { client });
+  return policies.flatMap((p): Deadline[] => {
+    if (p.documentId || (p.status !== "active" && p.status !== "found")) return [];
+    const date = nextRenewal(p, asOf);
+    if (!date || date > until) return [];
+    const name = `${p.carrier} ${POLICY_KINDS[p.kind].toLowerCase()} insurance`;
+    const found = p.status === "found";
+    return [
+      {
+        key: `policy:${p.id}:${date}`,
+        title: found ? `${name} renews (estimate)` : `${name} renews`,
+        date,
+        kind: "renewal",
+        source: "insurance",
+        amountCents: p.premiumCents,
+        href: "/insurance",
+        detail: found
+          ? "Worked out from your payments, so the date is an estimate. Confirm the policy to keep it on your profile."
+          : "A good time to compare prices before it renews.",
+      },
+    ];
+  });
+};
+
 // Every source, in one list.
 export const DEADLINE_SOURCES: readonly DeadlineSource[] = [
   transactionDeadlines,
   loanDeadlines,
   handEnteredDeadlines,
   documentDeadlines,
+  insuranceDeadlines,
 ];
 
 // Everything coming up, soonest first. A source that fails is left out (and logged) so

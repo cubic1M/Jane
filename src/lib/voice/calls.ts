@@ -73,13 +73,13 @@ export async function startCall(
     );
     return "handed_off";
   }
-  if (callMode(userId) === "off") {
+  if (callMode() === "off") {
     await handOff(userId, action, "Calls aren't set up yet: the team calls instead.", options);
     return "handed_off";
   }
   const company = merchantOf(action);
   const row = await merchantFor(normalizeAlias(company), { client });
-  const phone = callMode(userId) === "simulated" ? SIMULATED_NUMBER : row?.supportPhone;
+  const phone = callMode() === "simulated" ? SIMULATED_NUMBER : row?.supportPhone;
   const target = targetCents(action);
   const { monthlyCents } = billFacts(action);
   if (!phone || target === null || monthlyCents === null) {

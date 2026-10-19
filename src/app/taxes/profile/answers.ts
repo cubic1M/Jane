@@ -1,5 +1,6 @@
 import { INCOME_KIND_ORDER, isFilingStatus, type IncomeKind } from "@/config/tax";
-import { TaxProfileError, type TaxAnswer } from "@/lib/tax-profile";
+import { parseMoneyToCents } from "@/lib/money";
+import { TaxProfileError, type PayStubEntry, type TaxAnswer } from "@/lib/tax-profile";
 
 // The tax profile form's answers (spec step 118). A field left empty stays unanswered.
 
@@ -33,4 +34,26 @@ export function answersFrom(formData: FormData): TaxAnswer[] {
   const state = text(formData, "state");
   if (state) answers.push({ field: "state", value: state });
   return answers;
+}
+
+// Spec step 120: the pay stub form. Empty gross pay clears it.
+export function payStubFrom(formData: FormData): PayStubEntry | null {
+  const gross = text(formData, "payGross");
+  if (!gross) return null;
+  const money = (name: string) => {
+    const value = text(formData, name);
+    if (!value) return 0;
+    const cents = parseMoneyToCents(value);
+    if (cents === null)
+      throw new TaxProfileError("Amounts must be dollars and cents, like 1,234.56.");
+    return cents;
+  };
+  return {
+    asOf: text(formData, "payAsOf"),
+    grossCents: money("payGross"),
+    federalCents: money("payFederal"),
+    stateCents: money("payState"),
+    retirementCents: money("payRetirement"),
+    pretaxCents: money("payPretax"),
+  };
 }

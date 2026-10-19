@@ -184,6 +184,35 @@ export const TAX_FORMS_ASK_FROM = "01-20";
 // ...until this day (MM-DD), the usual filing deadline.
 export const TAX_FORMS_ASK_UNTIL = "04-15";
 
+// Spec step 120: the demo bank's stand-in pay stub, per paycheck, for its ACME CORP
+// PAYROLL deposits (src/lib/payroll/demo.ts). A real payroll connection (Plaid Income's
+// payroll data, or a payroll provider) replaces it. Net pay is the deposit: $2,450.00.
+export const DEMO_PAY_STUB = {
+  grossCents: 395_000,
+  retirementCents: 23_700,
+  // Health premiums, pre-tax (not subject to Social Security or Medicare).
+  otherPretaxCents: 14_500,
+  federalWithheldCents: 56_557,
+  stateWithheldCents: 21_000,
+  socialSecurityCents: 23_591,
+  medicareCents: 5_517,
+  // State disability insurance (California SDI).
+  stateDisabilityCents: 5_135,
+  netCents: 245_000,
+} as const;
+
+// Paychecks a year by the usual gap between them, in days.
+export const PAY_FREQUENCIES: readonly { maxGap: number; perYear: number; label: string }[] = [
+  { maxGap: 9, perYear: 52, label: "weekly" },
+  { maxGap: 14, perYear: 26, label: "every two weeks" },
+  { maxGap: 17, perYear: 24, label: "twice a month" },
+  { maxGap: 35, perYear: 12, label: "monthly" },
+];
+
+// The estimate tells the person when it has moved by at least this much (in cents) since
+// Jane last said it.
+export const TAX_ESTIMATE_STEP_CENTS = 50_000;
+
 // The chat (src/lib/jane-agent/sources/taxes.ts): how important tax messages are, among
 // the others in src/config/agent-chat.ts MESSAGE_PRIORITY.
 export const TAX_MESSAGE_PRIORITY = {
@@ -193,6 +222,8 @@ export const TAX_MESSAGE_PRIORITY = {
   tag_check: 33,
   tag_month: 25,
   form_due: 38,
+  // Spec step 120.
+  estimate: 30,
 } as const;
 
 // What Jane does about taxes by herself at each autopilot level (spec step 57), shown on
@@ -206,6 +237,11 @@ export const TAX_AUTOPILOT: readonly { feature: string; ask: string; auto: strin
     feature: "profile",
     ask: "I work out your tax profile from your accounts and ask you to check it; I only use what you've told me or said yes to.",
     auto: "I keep your tax profile up to date from your accounts and use what I find straight away, marked as found by me, until you check it. I ask before adding a new kind of income.",
+  },
+  {
+    feature: "estimate",
+    ask: "I keep your tax estimate up to date after every sync, from your income so far.",
+    auto: "I keep your tax estimate up to date after every sync, and tell you when it moves by $500 or more.",
   },
   {
     feature: "tags",

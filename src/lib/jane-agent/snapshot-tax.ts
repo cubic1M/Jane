@@ -5,6 +5,7 @@ import {
   type TaxTagKind,
 } from "@/config/tax";
 import type { PrismaClient } from "@/generated/prisma/client";
+import { loadTaxEstimate, type TaxEstimateView } from "@/lib/tax-estimate";
 import { loadTaxForms, loadTaxTags } from "@/lib/tax-organizer";
 import { loadTaxProfile } from "@/lib/tax-profile";
 import type { ExpectedForm } from "@/planning/tax-documents";
@@ -26,6 +27,8 @@ export type TaxSnapshot = {
       byTag: { tag: TaxTagKind; count: number; totalCents: number }[];
     };
     formsDue?: { year: number; forms: ExpectedForm[] };
+    // Spec step 120: the estimate, worked out fresh after every sync.
+    estimate?: TaxEstimateView;
   } | null;
 };
 
@@ -42,13 +45,14 @@ export async function loadTaxSnapshot(
   const year = now.getUTCFullYear();
   const last = previousMonth(today);
   const askForms = today.slice(5) >= TAX_FORMS_ASK_FROM && today.slice(5) <= TAX_FORMS_ASK_UNTIL;
-  const [profile, tags, lastMonthTags, forms] = await Promise.all([
+  const [profile, tags, lastMonthTags, forms, estimate] = await Promise.all([
     loadTaxProfile(userId, { client, now }),
     loadTaxTags(userId, year, { client }),
     Number(last.slice(0, 4)) === year
       ? null
       : loadTaxTags(userId, Number(last.slice(0, 4)), { client }),
     askForms ? loadTaxForms(userId, year - 1, { client, now }) : null,
+    loadTaxEstimate(userId, { client, now }),
   ]);
   const inLastMonth = (lastMonthTags ?? tags).tagged.filter((t) => t.date.startsWith(last));
   return {
@@ -65,6 +69,7 @@ export async function loadTaxSnapshot(
             : [];
         }),
       },
+      estimate,
       formsDue: forms
         ? { year: forms.year, forms: forms.forms.filter((f) => !f.received && !f.mayNotSend) }
         : undefined,

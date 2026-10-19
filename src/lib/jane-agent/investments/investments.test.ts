@@ -13,6 +13,7 @@ vi.mock("@/lib/investments/profile", () => ({ profileOf: vi.fn() }));
 vi.mock("@/lib/investments/fees", () => ({ loadFees: vi.fn() }));
 vi.mock("@/lib/advice-mode", () => ({ adviceMode: vi.fn() }));
 vi.mock("@/lib/investments/review", () => ({ loadReview: vi.fn() }));
+vi.mock("@/lib/investments/retirement", () => ({ loadRetirement: vi.fn() }));
 
 import { loadInvestments } from "@/lib/investments/holdings";
 import { profileOf } from "@/lib/investments/profile";
@@ -21,8 +22,10 @@ import { adviceMode } from "@/lib/advice-mode";
 import { feeSummary } from "@/insights/investment-fees";
 import { reviewPortfolio } from "@/insights/portfolio-review";
 import { loadReview } from "@/lib/investments/review";
+import { loadRetirement } from "@/lib/investments/retirement";
+import { retirementPlan } from "@/planning/retirement";
 import { EMPTY_ANSWERS, profileSummary, type ProfileAnswers } from "@/planning/investor-profile";
-import { feesReply, profileReply, reviewReply } from "./replies";
+import { feesReply, profileReply, retirementReply, reviewReply } from "./replies";
 import { gather } from "../brain";
 import { parseIntent } from "../intents";
 import type { Snapshot } from "../snapshot";
@@ -543,5 +546,122 @@ describe("Claude's portfolio_review tool", () => {
     expect(out.cents).toContain(
       reviewPortfolio(demoInvestments().accounts, 3).recommendations[0].amountCents,
     );
+  });
+});
+
+// Spec step 132: on track for retirement?
+const DEMO_RETIREMENT = retirementPlan({
+  age: 45,
+  balanceCents: 8_425_040,
+  employeeCents: 326_400,
+  employerCents: 163_200,
+  plan: { payCents: 8_160_000, matchRate: 0.5, matchUpTo: 0.06 },
+});
+
+describe("retirement questions, by rules", () => {
+  it.each([
+    "am I on track for retirement",
+    "when can I retire",
+    "am I getting my 401k match",
+    "roth or traditional",
+    "catch-up contributions",
+    "how much should I put in my 401k",
+  ])("reads %j as retirement", (text) => {
+    expect(parseIntent(text, ASOF)).toMatchObject({ kind: "investments", topic: "retirement" });
+  });
+
+  it("leaves what's in a retirement account to holdings", () => {
+    expect(parseIntent("how much is in my retirement account", ASOF)).toMatchObject({
+      topic: "holdings",
+    });
+  });
+});
+
+describe("retirementReply", () => {
+  const data = {
+    profile: profileSummary(FULL, ASOF),
+    balanceCents: 8_425_040,
+    accounts: ["Demo 401(k)"],
+    retirement: DEMO_RETIREMENT,
+  };
+
+  it("gives the range, the match and what to change, labelled", () => {
+    const reply = retirementReply(data, true);
+    expect(reply.body).toMatch(
+      /^By 67 your retirement accounts could be about \$[\d,.]+ to \$[\d,.]+ in today's dollars, depending on returns, short of the target of \$816,000\.00\. You're leaving about \$816\.00 a year of your employer's match on the table: you put in 4% of your pay, and they match up to 6%\.\nWhat I'd change:\n1\. Raise your 401\(k\) contribution from 4% to 6% of your pay\./,
+    );
+    expect(reply.body).toContain("A mix of Roth and traditional");
+    expect(reply.refs).toEqual({ advice: true });
+  });
+
+  it("gives real accounts the balance only, and asks for the profile first", () => {
+    expect(retirementReply(data, false).body).toBe(
+      "You have $84,250.40 in Demo 401(k). My retirement planner is only in demo advice mode for now.",
+    );
+    const ask = retirementReply(
+      { ...data, profile: profileSummary(EMPTY_ANSWERS, ASOF), retirement: null },
+      true,
+    );
+    expect(ask.refs.investQuestion).toBe("age");
+    expect(retirementReply({ ...data, accounts: [] }, true).actions[0]).toMatchObject({
+      href: "/connect",
+    });
+  });
+});
+
+describe("the retirement message", () => {
+  const gatherRetirement = (advice: boolean, retirement = DEMO_RETIREMENT) =>
+    investmentsSource
+      .gather({ ...base, investments: demoInvestmentSnapshot({ advice, retirement }) }, {} as never)
+      .filter((c) => c.dedupeKey.startsWith("retirement:"));
+
+  it("says when the person is behind or missing match money, with the first step", () => {
+    const [message] = gatherRetirement(true);
+    expect(message).toMatchObject({
+      dedupeKey: "retirement:behind:false",
+      refs: { advice: true },
+      priority: MESSAGE_PRIORITY.retirement,
+    });
+    expect(message.body).toMatch(
+      /match up to 6%\. First step: Raise your 401\(k\) contribution from 4% to 6% of your pay\.$/,
+    );
+  });
+
+  it("stays quiet for real accounts and when all is well", () => {
+    expect(gatherRetirement(false)).toEqual([]);
+    const fine = retirementPlan({
+      age: 45,
+      balanceCents: 90_000_000,
+      employeeCents: 489_600,
+      employerCents: 244_800,
+      plan: { payCents: 8_160_000, matchRate: 0.5, matchUpTo: 0.06 },
+    });
+    expect(gatherRetirement(true, fine)).toEqual([]);
+  });
+});
+
+describe("Claude's retirement_plan tool", () => {
+  it("records every figure, in demo advice mode only", async () => {
+    const options = { client: {} as PrismaClient, now: new Date("2026-10-19T12:00:00Z") };
+    vi.mocked(loadRetirement).mockResolvedValue({
+      profile: profileSummary(FULL, ASOF),
+      balanceCents: 8_425_040,
+      accounts: ["Demo 401(k)"],
+      retirement: DEMO_RETIREMENT,
+    });
+    vi.mocked(adviceMode).mockResolvedValue(false);
+    expect(
+      JSON.parse((await runInvestmentTool("u", "retirement_plan", {}, options)).content),
+    ).toEqual({
+      note: "The retirement planner is for demo advice mode only.",
+    });
+    vi.mocked(adviceMode).mockResolvedValue(true);
+    const out = await runInvestmentTool("u", "retirement_plan", {}, options);
+    const parsed = JSON.parse(out.content);
+    expect(parsed.status).toBe("behind");
+    expect(parsed.match.missedAYear).toBe("$816.00");
+    for (const c of DEMO_RETIREMENT.changes) {
+      for (const f of c.figures) expect(out.cents).toContain(f);
+    }
   });
 });
