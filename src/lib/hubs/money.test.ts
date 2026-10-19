@@ -28,6 +28,7 @@ const FULL: MoneyData = {
   recurring: { count: 12, yearlyCents: 4_800_00 },
   debt: { accounts: 2, owedCents: 10_000_00 },
   documents: 1,
+  insurance: { policies: 2, gaps: 1 },
 };
 
 const EMPTY: MoneyData = {
@@ -50,6 +51,7 @@ const EMPTY: MoneyData = {
   recurring: { count: 0, yearlyCents: 0 },
   debt: { accounts: 0, owedCents: 0 },
   documents: 0,
+  insurance: { policies: 0, gaps: 0 },
 };
 
 const byLabel = (data: MoneyData) =>
@@ -65,7 +67,7 @@ describe("moneyTiles", () => {
       ["What you have", ["Net worth", "Investments", "Things you own", "Goals"]],
       ["What goes out", ["Spending", "Budgets", "Bills and subscriptions", "Transactions"]],
       ["What you owe", ["Loans and cards"]],
-      ["Your files", ["Documents"]],
+      ["Your files", ["Documents", "Insurance"]],
     ]);
   });
 
@@ -96,6 +98,18 @@ describe("moneyTiles", () => {
       status: "Owed across 2 accounts",
     });
     expect(t["Documents"]).toMatchObject({ href: "/documents", value: "1" });
+    expect(t["Insurance"]).toMatchObject({
+      href: "/insurance",
+      value: "2",
+      status: "1 gap in your cover",
+    });
+  });
+
+  it("says the insurance tile's state without gaps (spec step 102)", () => {
+    expect(byLabel({ ...FULL, insurance: { policies: 2, gaps: 0 } })["Insurance"].status).toBe(
+      "Every policy in one place",
+    );
+    expect(byLabel(EMPTY)["Insurance"]).toMatchObject({ value: null, status: "Add your policies" });
   });
 
   it("asks for the home when there's a mortgage and nothing linked", () => {

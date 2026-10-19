@@ -58,6 +58,7 @@ const SIGNED_IN = [
   "/things",
   "/afford",
   "/documents",
+  "/insurance",
   "/deadlines",
   "/life-events",
   "/tax-pack",
