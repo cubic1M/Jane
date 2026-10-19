@@ -129,6 +129,16 @@ export const DEMO_EMPLOYER_PLAN_MENU: readonly string[] = [
   "DSVXX",
 ];
 
+// Spec step 131: the low-cost index fund Jane uses for each kind of investment when she
+// moves money to the target mix (and step 133 turns into orders). All are on the demo
+// plan's menu, so they work in the 401(k) too. Stand-in, like the rest of this table.
+export const CORE_FUNDS: Readonly<Record<Exclude<AssetClass, "other">, string>> = {
+  us_stocks: "KTSIX",
+  intl_stocks: "KTIIX",
+  bonds: "KTBIX",
+  cash: "DSVXX",
+};
+
 // Plaid subtypes of employer plans, where only the plan's menu can be bought.
 export const EMPLOYER_PLAN_SUBTYPES: readonly string[] = [
   "401a",

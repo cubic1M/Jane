@@ -17,6 +17,8 @@ import { snoozeButton, type MessageSource } from "./source";
 // - Step 130: in demo advice mode, finds what investing costs and a lower-cost equivalent
 //   for each costly fund, and says so once (again if the funds change). Switching moves
 //   money, so it always waits for the person's tap (step 133).
+// - Step 131: in demo advice mode, once the profile is complete, reviews the mix against
+//   its target and says what to change and why (again when that changes).
 
 const list = (names: string[]) =>
   names.length <= 1
@@ -74,6 +76,21 @@ export const investmentsSource: MessageSource = {
         ],
         dedupeKey: `fees:${tickers.join(",")}`,
         priority: MESSAGE_PRIORITY.investment_fees,
+      });
+    }
+    const review = inv.review;
+    if (inv.advice && review && review.recommendations.length > 0) {
+      const [first, ...rest] = review.recommendations;
+      out.push({
+        kind: "heads_up",
+        body: `I've reviewed your investments against your ${review.riskLabel.toLowerCase()} profile. ${first.what} ${first.why}${rest.length > 0 ? ` And ${rest.length} more ${rest.length === 1 ? "change" : "changes"} on the review.` : ""}`,
+        refs: { advice: true },
+        actions: [
+          { id: "open", label: "See the review", kind: "link", href: "/investments/review" },
+          snoozeButton(),
+        ],
+        dedupeKey: `review:${review.riskLevel}:${review.recommendations.map((r) => r.kind).join(",")}`,
+        priority: MESSAGE_PRIORITY.investment_review,
       });
     }
     return out;
