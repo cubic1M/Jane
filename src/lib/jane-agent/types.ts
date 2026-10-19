@@ -1,3 +1,6 @@
+import type { Topic } from "./context";
+import type { Intent } from "./intents";
+
 // Jane's chat messages (spec step 81): what a message is, what it's about and its buttons.
 // Stored in jane_messages; posted by Jane's brain (spec step 82) and, from step 84, typed
 // by the person.
@@ -36,6 +39,10 @@ export const ACTION_IDS = [
   // Typing to Jane (spec step 84).
   "goal.start",
   "autopilot.pause",
+  // Spec step 88: a clarifying question's answers, one per meaning (refs.choices).
+  "clarify.1",
+  "clarify.2",
+  "clarify.3",
 ] as const;
 export type ActionId = (typeof ACTION_IDS)[number];
 
@@ -75,6 +82,10 @@ export type MessageRefs = {
   // Spec step 98: demo advice (src/lib/advice-mode.ts). The chat shows DEMO_ADVICE_LABEL
   // under it. Set it on every message that recommends investments, taxes, insurance or loans.
   advice?: true;
+  // Spec step 88: what a reply was about, for a follow-up ("and Hulu?", "cancel it").
+  topic?: Topic;
+  // Spec step 88: a clarifying question's meanings, in button order (clarify.1, clarify.2…).
+  choices?: { label: string; intent: Intent }[];
 };
 
 // A message the brain wants to post.

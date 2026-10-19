@@ -6,8 +6,6 @@ import type { PrismaClient } from "@/generated/prisma/client";
 import { budgetSummary } from "@/insights/budgets";
 import { loadInsightTransactions } from "@/insights/load";
 import { netWorth } from "@/insights/net-worth";
-import { loadDetectionInput } from "@/detection/engine";
-import { recurringCharges } from "@/detection/subscriptions";
 import { ASK_TOOLS, runAskTool, type ToolOutput } from "@/lib/ask/tools";
 import { CARD_SELECT, buildCard } from "@/lib/cards";
 import { comparisonFor } from "@/lib/compare";
@@ -22,6 +20,7 @@ import { ACTION_HANDLERS } from "./actions";
 import { INVESTMENT_TOOLS, isInvestmentTool, runInvestmentTool } from "./investments/tools";
 import { monthLabel, type Reply } from "./replies";
 import { localTime } from "./quiet-hours";
+import { loadRecurring } from "./recurring";
 import { loadSnapshot } from "./snapshot";
 import { findingsSource } from "./sources/findings";
 import { ACTION_IDS, type ActionId, type MessageAction } from "./types";
@@ -236,22 +235,9 @@ export async function runChatTool(
       });
     }
     case "subscriptions": {
-      const db = scopedFor(userId, client);
-      const [input, confirmed, findings] = await Promise.all([
-        loadDetectionInput(userId, { client, now }),
-        db.subscriptionChecks.findMany({
-          where: { isSubscription: true },
-          select: { merchantKey: true },
-        }),
-        db.findings.findMany({
-          where: { status: { in: ["new", "shown"] } },
-          select: { id: true, key: true },
-        }),
-      ]);
-      input.subscriptionMerchantKeys = confirmed.map((c) => c.merchantKey);
-      const findingFor = new Map(findings.map((f) => [f.key, f.id]));
+      const { charges } = await loadRecurring(userId, { client, now });
       return out({
-        charges: recurringCharges(input).map((r) => ({
+        charges: charges.map((r) => ({
           merchant: r.merchant,
           subscription: r.subscription,
           billed: frequencyWords(r.frequency),
@@ -259,7 +245,7 @@ export async function runChatTool(
           lastDate: r.lastDate,
           nextDate: r.nextDate,
           aYear: money(r.annualCostCents),
-          openFindingId: findingFor.get(r.key) ?? null,
+          openFindingId: r.openFindingId,
         })),
       });
     }

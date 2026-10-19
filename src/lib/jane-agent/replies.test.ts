@@ -398,13 +398,61 @@ describe("actReply", () => {
       "Review your Hulu subscription. Could save about $215.88 a year. Want me to handle it?",
     );
     expect(buttonIds(reply)).toEqual(["finding.yes", "finding.no", "open"]);
-    expect(reply.refs).toEqual({ findingId: "f1", fingerprint: "fp1" });
+    expect(reply.refs).toMatchObject({ findingId: "f1", fingerprint: "fp1" });
+    // Spec step 88: and remembers it for "and Peacock?" or "cancel it".
+    expect(reply.refs.topic).toEqual({
+      kind: "act",
+      target: "Review your Hulu subscription",
+      findingId: "f1",
+    });
   });
 
   it("finds a bill by its kind, with Jane's pick", () => {
     const reply = actReply(intent("lower my phone bill", "act"), snapshot({ findings }), NOW);
     expect(reply.refs).toMatchObject({ findingId: "f2", pickOptionId: "mint" });
     expect(buttonIds(reply)).toEqual(["finding.yes", "finding.pick", "finding.no", "open"]);
+  });
+
+  // Spec step 88: when it could mean more than one, Jane asks which, a button each.
+  it("asks which one, with a button per meaning, when there's no name or two fit as well", () => {
+    const two = [
+      ...findings,
+      finding({
+        findingId: "f4",
+        type: "bill_negotiation",
+        title: "Your Comcast internet bill is above the typical price",
+        fingerprint: "fp4",
+      }),
+    ];
+    const which = actReply(intent("lower my bill", "act"), snapshot({ findings: two }), NOW);
+    expect(which.body).toBe("Which one should I lower?");
+    expect(which.actions.map((a) => a.id)).toEqual(["clarify.1", "clarify.2", "open"]);
+    expect(which.refs.choices?.map((c) => c.intent)).toEqual([
+      { kind: "act", verb: "lower", target: two[1].title, findingId: "f2" },
+      { kind: "act", verb: "lower", target: two[3].title, findingId: "f4" },
+    ]);
+    expect(which.actions[0].label.length).toBeLessThanOrEqual(40);
+    // A button's choice goes straight to its finding.
+    const exact = actReply(
+      { kind: "act", verb: "lower", target: "anything", findingId: "f4" },
+      snapshot({ findings: two }),
+      NOW,
+    );
+    expect(exact.refs.findingId).toBe("f4");
+    // Only one that fits: no question.
+    expect(
+      actReply(intent("lower my bill", "act"), snapshot({ findings }), NOW).refs.findingId,
+    ).toBe("f2");
+    // Typos and everyday words: "the gym", "cancle".
+    expect(
+      actReply(
+        intent("cancel my gym", "act"),
+        snapshot({
+          findings: [finding({ findingId: "g", title: "Review your Planet Fitness subscription" })],
+        }),
+        NOW,
+      ).refs.findingId,
+    ).toBe("g");
   });
 
   it("finds a refund", () => {
@@ -420,8 +468,8 @@ describe("actReply", () => {
     expect(reply.actions).toEqual([
       { id: "open", label: "Open subscriptions", kind: "link", href: "/subscriptions" },
     ]);
-    expect(actReply(intent("cancel my subscription", "act"), snapshot(), NOW).body).toMatch(
-      /^Which one\?/,
+    expect(actReply(intent("cancel my subscription", "act"), snapshot(), NOW).body).toBe(
+      "There's nothing open for me to cancel right now.",
     );
     expect(buttonIds(actReply(intent("cancel Hulu", "act"), null, NOW))).toEqual(["open"]);
   });

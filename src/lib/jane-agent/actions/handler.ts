@@ -32,6 +32,8 @@ export type ActionOutcome = {
   // Spec step 83: actions whose queued agent steps to run after the response (what a new
   // autopilot level approved at once, like Settings does).
   agentActionIds?: string[];
+  // Spec step 88: the tap posted a new message (an answer), so the chat should reload.
+  posted?: boolean;
 };
 
 export type ActionHandler = {

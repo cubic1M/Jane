@@ -29,7 +29,9 @@ import {
   type AffordNumbers,
   type AffordResult,
 } from "@/planning/afford";
+import { CHAT_CLARIFY_CHOICES } from "@/config/agent-chat";
 import { matchCategory, type ActVerb, type Intent } from "./intents";
+import { nameMatches } from "./names";
 import { localTime } from "./quiet-hours";
 import type { Snapshot, SnapshotFinding } from "./snapshot";
 import { findingsSource } from "./sources/findings";
@@ -358,24 +360,30 @@ export function spendingReply(
       open,
     );
   }
+  const q = intent.category.toLowerCase();
+  const spentAt = (match: (name: string) => boolean) =>
+    transactions.filter(
+      (t) =>
+        t.date.startsWith(intent.month) &&
+        kindOf(t) === "spending" &&
+        match(merchantOf(t).toLowerCase()),
+    );
+  const atMerchant = (matching: InsightTransaction[]) =>
+    reply(
+      `You spent ${fmt(matching.reduce((sum, t) => sum + t.amountCents, 0))} at ${merchantOf(matching[0])} ${when}.`,
+      open,
+    );
+  // Spec step 88: a merchant named word for word ("Uber") before the category it's in.
+  const byName = spentAt((name) => name.split(/[^a-z0-9&+']+/).includes(q));
+  if (byName.length > 0) return atMerchant(byName);
   const labels = [...new Set([...Object.values(CATEGORY_LABELS), UNCATEGORIZED])];
   const category = matchCategory(intent.category, labels);
   if (category) {
     const cents = categories.find((c) => c.category === category)?.cents ?? 0;
     return reply(`You spent ${fmt(cents)} on ${category} ${when}.`, open);
   }
-  const q = intent.category.toLowerCase();
-  const matching = transactions.filter(
-    (t) =>
-      t.date.startsWith(intent.month) &&
-      kindOf(t) === "spending" &&
-      merchantOf(t).toLowerCase().includes(q),
-  );
-  if (matching.length > 0) {
-    const cents = matching.reduce((sum, t) => sum + t.amountCents, 0);
-    const name = merchantOf(matching[0]);
-    return reply(`You spent ${fmt(cents)} at ${name} ${when}.`, open);
-  }
+  const matching = spentAt((name) => name.includes(q));
+  if (matching.length > 0) return atMerchant(matching);
   return reply(
     `I couldn't find spending on "${intent.category}" ${when}.${top ? ` The most went to: ${top}.` : ""}`,
     open,
@@ -443,56 +451,132 @@ const TYPE_WORDS: Partial<Record<FindingType, string>> = {
   charge_after_cancel: "charge refund",
 };
 
-// The open finding the person means: every word they typed is in its title (or its
-// kind), the kinds that fit the command first, then the biggest saving.
+// The open findings the person could mean: every word they typed is in the title (or its
+// kind, or an everyday word for it: src/lib/jane-agent/names.ts), the kinds that fit the
+// command first, then the biggest saving. rank says how well the kind fits: two with the
+// same rank could both be meant.
+export function rankFindings(
+  findings: readonly SnapshotFinding[],
+  verb: ActVerb | null,
+  target: string,
+): { finding: SnapshotFinding; rank: number }[] {
+  const types = verb ? VERB_TYPES[verb] : [];
+  const rank = (f: SnapshotFinding) => {
+    const index = types.indexOf(f.type);
+    return index === -1 ? types.length : index;
+  };
+  return findings
+    .filter((f) => nameMatches(target, `${f.title} ${TYPE_WORDS[f.type] ?? ""}`))
+    .map((finding) => ({ finding, rank: rank(finding) }))
+    .sort(
+      (a, b) =>
+        a.rank - b.rank ||
+        (b.finding.annualSavingsCents ?? -1) - (a.finding.annualSavingsCents ?? -1),
+    );
+}
+
 export function matchFinding(
   findings: readonly SnapshotFinding[],
   verb: ActVerb,
   target: string,
 ): SnapshotFinding | null {
-  const words = target
-    .toLowerCase()
-    .split(/[^a-z0-9+&']+/)
-    .filter((w) => w.length >= 2);
-  if (words.length === 0) return null;
-  const matches = findings.filter((f) => {
-    const haystack = `${f.title} ${TYPE_WORDS[f.type] ?? ""}`.toLowerCase();
-    return words.every((w) => haystack.includes(w));
+  return rankFindings(findings, verb, target)[0]?.finding ?? null;
+}
+
+// One finding as a decision, with the same words and buttons (Yes, Jane's pick, No, Open)
+// as its message from Jane's brain.
+export function findingReply(snapshot: Snapshot, finding: SnapshotFinding, now: Date): Reply {
+  const [candidate] = findingsSource.gather(
+    { ...snapshot, findings: [finding] },
+    { now, local: localTime(now, snapshot.timezone), trigger: "open" },
+  );
+  return reply(candidate.body, candidate.actions, {
+    ...candidate.refs,
+    topic: { kind: "act", target: finding.title, findingId: finding.findingId },
   });
-  const rank = (f: SnapshotFinding) => {
-    const index = VERB_TYPES[verb].indexOf(f.type);
-    return index === -1 ? VERB_TYPES[verb].length : index;
-  };
-  return (
-    [...matches].sort(
-      (a, b) => rank(a) - rank(b) || (b.annualSavingsCents ?? -1) - (a.annualSavingsCents ?? -1),
-    )[0] ?? null
+}
+
+// A button's label: short enough for a phone.
+const CHOICE_LABEL_MAX = 40;
+export const choiceLabel = (text: string) =>
+  text.length <= CHOICE_LABEL_MAX ? text : `${text.slice(0, CHOICE_LABEL_MAX - 1).trimEnd()}…`;
+
+// Spec step 88: when a message could mean more than one thing, a question with a button
+// per meaning; the tap answers that meaning (src/lib/jane-agent/actions/clarify.ts).
+export function clarifyReply(
+  question: string,
+  choices: { label: string; intent: Intent }[],
+  links: MessageAction[] = [],
+): Reply {
+  const shown = choices.slice(0, CHAT_CLARIFY_CHOICES);
+  return reply(
+    question,
+    [
+      ...shown.map((c, i): MessageAction => ({
+        id: `clarify.${i + 1}` as MessageAction["id"] & `clarify.${number}`,
+        label: choiceLabel(c.label),
+        kind: "secondary",
+      })),
+      ...links,
+    ],
+    { choices: shown.map((c) => ({ ...c, label: choiceLabel(c.label) })) },
   );
 }
 
+const findingChoices = (verb: ActVerb, findings: readonly SnapshotFinding[]) =>
+  findings.map((f) => ({
+    label: f.title,
+    intent: { kind: "act" as const, verb, target: f.title, findingId: f.findingId },
+  }));
+
 // "Cancel Hulu": the matching open finding as a decision, with the same Yes and No (and
-// Jane's pick) as its message from Jane's brain. Nothing happens until a tap.
+// Jane's pick) as its message from Jane's brain. Nothing happens until a tap. With no name,
+// or two that fit as well as each other, Jane asks which.
 export function actReply(
   intent: Extract<Intent, { kind: "act" }>,
   snapshot: Snapshot | null,
   now: Date,
 ): Reply {
   const subscriptions = link("Open subscriptions", "/subscriptions");
+  const exact = intent.findingId
+    ? snapshot?.findings.find((f) => f.findingId === intent.findingId)
+    : undefined;
+  if (snapshot && exact) return findingReply(snapshot, exact, now);
   if (!intent.target) {
-    return reply('Which one? Try "cancel Hulu" or "lower my phone bill".', [subscriptions]);
+    const fitting = (snapshot?.findings ?? [])
+      .filter((f) => VERB_TYPES[intent.verb].includes(f.type))
+      .sort((a, b) => (b.annualSavingsCents ?? -1) - (a.annualSavingsCents ?? -1));
+    if (fitting.length === 1 && snapshot) return findingReply(snapshot, fitting[0], now);
+    if (fitting.length > 1) {
+      return clarifyReply(
+        `Which one should I ${intent.verb === "refund" ? "claim" : intent.verb}?`,
+        findingChoices(intent.verb, fitting),
+        [subscriptions],
+      );
+    }
+    return reply(
+      `There's nothing open for me to ${intent.verb === "refund" ? "claim" : intent.verb} right now.`,
+      [subscriptions],
+    );
   }
-  const finding = snapshot && matchFinding(snapshot.findings, intent.verb, intent.target);
-  if (!snapshot || !finding) {
+  const ranked = snapshot ? rankFindings(snapshot.findings, intent.verb, intent.target) : [];
+  if (!snapshot || ranked.length === 0) {
     return reply(
       `I don't see anything open about "${intent.target}" right now, so there's nothing for me to ${intent.verb === "refund" ? "claim" : intent.verb} yet.`,
       [subscriptions],
     );
   }
-  const [candidate] = findingsSource.gather(
-    { ...snapshot, findings: [finding] },
-    { now, local: localTime(now, snapshot.timezone), trigger: "open" },
-  );
-  return reply(candidate.body, candidate.actions, candidate.refs);
+  const tied = ranked.filter((r) => r.rank === ranked[0].rank);
+  if (tied.length > 1) {
+    return clarifyReply(
+      `I found ${tied.length} things about "${intent.target}". Which one do you mean?`,
+      findingChoices(
+        intent.verb,
+        tied.map((t) => t.finding),
+      ),
+    );
+  }
+  return findingReply(snapshot, ranked[0].finding, now);
 }
 
 // "What did you do?": what the action agent did this week (src/lib/what-jane-did.ts).

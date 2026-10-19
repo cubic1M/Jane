@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import type Anthropic from "@anthropic-ai/sdk";
-import { CHAT_CLAUDE_HISTORY, CHAT_MAX_MESSAGE } from "@/config/agent-chat";
+import { CHAT_CLAUDE_HISTORY, CHAT_CONTEXT_MINUTES, CHAT_MAX_MESSAGE } from "@/config/agent-chat";
 import type { Prisma, PrismaClient } from "@/generated/prisma/client";
 import { adviceMode } from "@/lib/advice-mode";
 import { track } from "@/lib/analytics";
@@ -10,9 +10,12 @@ import { scopedFor } from "@/lib/db-scoped";
 import { hit } from "@/lib/rate-limit";
 import { answerByRules } from "./answer";
 import { askClaudeInChat, type ChatStreamEvent, type ChatTurn } from "./claude";
+import type { Topic } from "./context";
 import { parseIntent } from "./intents";
+import { storeReply } from "./messages";
+import { localTime } from "./quiet-hours";
 import { unknownReply, type Reply } from "./replies";
-import { MESSAGE_SELECT, toChatMessage, type ChatMessage } from "./types";
+import { MESSAGE_SELECT, parseRefs, toChatMessage, type ChatMessage } from "./types";
 
 // Typing to Jane (spec step 84). What the person types is stored as a "user" message and
 // Jane's answer as a "reply", right after it. Rules answer first (./intents, ./answer);
@@ -44,6 +47,34 @@ export class ChatInputError extends Error {
 export const CHAT_ASK_LIMITED_TEXT =
   'You\'ve asked me a lot of free questions this hour, so give me a little while. The questions in "help" still work now.';
 
+// Spec step 88: what Jane's last answer was about, if it was in the last
+// CHAT_CONTEXT_MINUTES and on the same day in the person's timezone: "it" never points at
+// something from another day.
+export async function lastTopic(
+  userId: string,
+  { client = defaultClient, now = new Date() }: { client?: PrismaClient; now?: Date } = {},
+): Promise<Topic | null> {
+  const [last, user] = await Promise.all([
+    scopedFor(userId, client).janeMessages.findFirst({
+      where: {
+        kind: "reply",
+        createdAt: { gte: new Date(now.getTime() - CHAT_CONTEXT_MINUTES * 60_000), lte: now },
+      },
+      orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+      select: { refs: true, createdAt: true },
+    }),
+    client.user.findUnique({ where: { id: userId }, select: { timezone: true } }),
+  ]);
+  if (!last) return null;
+  if (
+    localTime(last.createdAt, user?.timezone ?? null).date !==
+    localTime(now, user?.timezone ?? null).date
+  ) {
+    return null;
+  }
+  return parseRefs(last.refs).topic ?? null;
+}
+
 // The recent typed messages and Jane's answers to them, oldest first: all Claude sees.
 export async function recentTurns(
   userId: string,
@@ -73,7 +104,9 @@ async function answer(
   { client, now, claude, onEvent }: Required<Pick<Options, "client" | "now">> & Options,
 ): Promise<{ reply: Reply; intent: string; source: Source }> {
   const intent = parseIntent(text, now.toISOString().slice(0, 10));
-  const byRules = await answerByRules(userId, intent, { client, now });
+  // Spec step 88: what the conversation was about, for a follow-up.
+  const topic = await lastTopic(userId, { client, now });
+  const byRules = await answerByRules(userId, intent, { client, now, topic });
   if (byRules) return { reply: byRules, intent: intent.kind, source: "rules" };
   if (!llmEnabled()) return { reply: unknownReply(), intent: intent.kind, source: "fallback" };
   // Free questions count against Ask's limit too: the same tools and limits.
@@ -142,20 +175,8 @@ export async function sendToJane(
   });
   // A millisecond later, so the answer always sits under the question.
   const answeredAt = new Date(now.getTime() + 1);
-  const replied = await db.janeMessages.create({
-    data: {
-      userId,
-      kind: "reply",
-      body: reply.body,
-      refs: reply.refs as Prisma.InputJsonObject,
-      actions: reply.actions as Prisma.InputJsonArray,
-      dedupeKey: `reply:${key}`,
-      createdAt: answeredAt,
-      readAt: answeredAt,
-    },
-    select: MESSAGE_SELECT,
-  });
+  const replied = await storeReply(userId, reply, { client, at: answeredAt });
   // What kind of question, never its words.
   await track(userId, "chat_message_sent", { intent, source });
-  return { sent: toChatMessage(sent), reply: toChatMessage(replied), source, intent };
+  return { sent: toChatMessage(sent), reply: replied, source, intent };
 }
