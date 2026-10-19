@@ -35,7 +35,7 @@ export const CHAT_SOURCE_LIMITS: Readonly<Record<string, number>> = {
   // Spec step 139.
   saved: 1,
   // Spec step 128 on.
-  investments: 2,
+  investments: 3,
 };
 
 // Quiet hours in the person's timezone (users.timezone): nothing is posted from 9pm to
@@ -123,6 +123,8 @@ export const MESSAGE_PRIORITY = {
   auto_invest_offer: 33,
   // Spec step 135: which account to fill first (demo advice).
   account_order: 37,
+  // Spec step 137: the monthly portfolio note.
+  investment_monthly: 41,
   auto_invest_run: 31,
 } as const;
 
@@ -196,3 +198,16 @@ export const CHAT_TYPING_PAUSE_MINUTES = 10;
 // many, at most this many in one message (one button each).
 export const CHAT_BUNDLE_MIN = 2;
 export const CHAT_BUNDLE_MAX = 5;
+
+// Spec step 93: fast and reliable. The person's main numbers, sent with each free
+// question, are reused for this many seconds (a tap in the chat clears them).
+export const CHAT_PRIMER_CACHE_SECONDS = 60;
+// If Claude hasn't started (a word, a lookup or its thinking) within this many
+// milliseconds, or isn't done within the deadline, Jane answers from the rules instead.
+export const CHAT_CLAUDE_FIRST_WORDS_MS = 6_000;
+export const CHAT_CLAUDE_DEADLINE_MS = 20_000;
+// After Claude fails, free questions get the rules' answer at once for this long, instead
+// of waiting on Claude again.
+export const CHAT_CLAUDE_COOLDOWN_SECONDS = 60;
+// /admin/chat looks back this many days for what Jane couldn't answer.
+export const CHAT_UNANSWERED_DAYS = 30;
