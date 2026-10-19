@@ -76,12 +76,19 @@ describe.runIf(url)("never interrupt, against a real database", () => {
     // each morning until the subscriptions to review come up, together.
     let tomorrow = at(0);
     let messages: Awaited<ReturnType<typeof chatFeed>>["messages"] = [];
-    for (let day = 1; day <= 7 && !messages.some((m) => m.refs.items); day += 1) {
+    for (
+      let day = 1;
+      day <= 7 && !messages.some((m) => m.kind !== "brief" && m.refs.items);
+      day += 1
+    ) {
       tomorrow = at(day * 24 * 60 + 60);
       await runJaneAgent(userId, { client, now: tomorrow, trigger: "cron" });
       ({ messages } = await chatFeed(userId, { client, now: tomorrow }));
     }
-    const bundle = messages.find((m) => m.actions.some((a) => a.id === "bundle.1"))!;
+    // A bundle, not the day's agenda (spec step 184) posted before "as they come" was set.
+    const bundle = messages.find(
+      (m) => m.kind !== "brief" && m.actions.some((a) => a.id === "bundle.1"),
+    )!;
     expect(bundle.body).toMatch(/^I found \d+ /);
     const items = bundle.refs.items!;
     // The findings behind it aren't shown on their own.

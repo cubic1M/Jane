@@ -285,12 +285,16 @@ describe.runIf(url)("Jane's messages as notifications, against a real database",
       const userId = await withMessages("notify-agenda", {}, { agenda: true });
       await device(userId);
       const { push, send } = fakes();
+      // The agenda, and what shows besides it (the one-time autopilot question); never the
+      // findings hidden behind it.
+      const shown = (await messagesOf(userId)).filter(
+        (m) => m.kind === "decision" && m.readAt === null,
+      );
       expect(
         await deliverChatNotifications(userId, { client, now: at(MINUTE), push, send }),
-      ).toEqual({ pushed: 1, emailed: 0 });
-      const [, payload] = push.mock.calls[0];
-      expect(payload.body).toMatch(/^Good morning!/);
-      expect(payload.actions?.length).toBeGreaterThan(0);
+      ).toEqual({ pushed: shown.length + 1, emailed: 0 });
+      const agenda = push.mock.calls.find(([, p]) => p.body.startsWith("Good morning!"));
+      expect(agenda?.[1].actions?.length).toBeGreaterThan(0);
       expect(
         await deliverChatNotifications(userId, { client, now: at(2 * MINUTE), push, send }),
       ).toEqual({ pushed: 0, emailed: 0 });
