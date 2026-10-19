@@ -102,7 +102,7 @@ async function answer(
   text: string,
   history: ChatTurn[],
   { client, now, claude, onEvent }: Required<Pick<Options, "client" | "now">> & Options,
-): Promise<{ reply: Reply; intent: string; source: Source }> {
+): Promise<{ reply: Reply; intent: string; source: Source; issues?: string[] }> {
   const asOf = now.toISOString().slice(0, 10);
   const intent = parseIntent(text, asOf);
   // Spec step 89: no dead ends. An answer that couldn't be given ends with the closest
@@ -144,6 +144,8 @@ async function answer(
     reply: result.kind === "answer" ? result.reply : withNearby(result.reply),
     intent: intent.kind,
     source,
+    // Spec step 93: which guardrail rules blocked it, codes only, never the text.
+    ...(result.kind === "blocked" ? { issues: result.issues } : {}),
   };
 }
 
@@ -151,7 +153,13 @@ export async function sendToJane(
   userId: string,
   raw: string,
   { client = defaultClient, now = new Date(), claude, onEvent }: Options = {},
-): Promise<{ sent: ChatMessage; reply: ChatMessage; source: AnswerSource; intent: string }> {
+): Promise<{
+  sent: ChatMessage;
+  reply: ChatMessage;
+  source: AnswerSource;
+  intent: string;
+  issues?: string[];
+}> {
   const text = raw.trim();
   if (!text) throw new ChatInputError("empty", "Type a message first.");
   if (text.length > CHAT_MAX_MESSAGE) {
@@ -181,7 +189,7 @@ export async function sendToJane(
     select: MESSAGE_SELECT,
   });
 
-  const { reply, intent, source } = await answer(userId, text, history, {
+  const { reply, intent, source, issues } = await answer(userId, text, history, {
     client,
     now,
     claude,
@@ -191,6 +199,10 @@ export async function sendToJane(
   const answeredAt = new Date(now.getTime() + 1);
   const replied = await storeReply(userId, reply, { client, at: answeredAt });
   // What kind of question, never its words.
-  await track(userId, "chat_message_sent", { intent, source });
-  return { sent: toChatMessage(sent), reply: replied, source, intent };
+  await track(userId, "chat_message_sent", {
+    intent,
+    source,
+    ...(issues ? { issues: issues.join(",") } : {}),
+  });
+  return { sent: toChatMessage(sent), reply: replied, source, intent, issues };
 }

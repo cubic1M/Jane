@@ -77,6 +77,11 @@ export function formatRun(run: CheckRun, comparison: Comparison | null = null): 
     run.firstWordsMs
       ? `First words: ${run.firstWordsMs.median} ms median, ${run.firstWordsMs.max} ms slowest.`
       : "First words: -",
+    `Blocked by the guardrails: ${
+      Object.entries(run.blockedBy ?? {})
+        .map(([code, n]) => `${code} ${n}`)
+        .join(", ") || "none"
+    }.`,
   ];
   if (comparison) {
     lines.push(

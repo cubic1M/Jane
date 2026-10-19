@@ -41,7 +41,15 @@ export function insuranceSwitchOf(options: unknown): InsuranceSwitchOptions | nu
 export async function acceptShop(
   userId: string,
   shopId: string,
-  { client = defaultClient, now = new Date() }: Options = {},
+  {
+    client = defaultClient,
+    now = new Date(),
+    by = "person",
+  }: Options & {
+    // Spec step 141: "autopilot" when Insurance's autopilot said yes within its caps
+    // (src/lib/insurance/autopilot.ts); recorded like a standing rule's yes.
+    by?: "person" | "autopilot";
+  } = {},
 ): Promise<{ decisionId: string; actionId: string; agentJobId: string }> {
   const db = scopedFor(userId, client);
   const shop = await shopById(userId, shopId, { client });
@@ -109,7 +117,7 @@ export async function acceptShop(
         findingId: finding.id,
         choice: "yes",
         cardSnapshot: card as unknown as Prisma.InputJsonObject,
-        source: "chat",
+        source: by === "autopilot" ? "rule" : "chat",
         options: options as unknown as Prisma.InputJsonObject,
       },
       select: { id: true },
@@ -130,7 +138,7 @@ export async function acceptShop(
     { type: "finding", id: finding.id },
     {
       choice: "yes",
-      source: "chat",
+      source: by === "autopilot" ? "rule" : "chat",
       changed_options: true,
       decision_id: result.decisionId,
       action_id: result.actionId,
@@ -140,9 +148,14 @@ export async function acceptShop(
     finding_type: "insurance_reshop",
     action_type: "insurance_reshop",
     annual_savings_cents: shop.savingCents,
-    source: "chat",
+    source: by === "autopilot" ? "rule" : "chat",
   });
   // Spec step 105: Jane's agent does the switch itself (src/lib/insurance/switch.ts).
-  const agentJobId = await startAgent(userId, result.actionId, { client, now, source: "chat" });
+  // An autopilot yes waits out the rules' hold, so it can be taken back first.
+  const agentJobId = await startAgent(userId, result.actionId, {
+    client,
+    now,
+    source: by === "autopilot" ? "rule" : "chat",
+  });
   return { ...result, agentJobId };
 }

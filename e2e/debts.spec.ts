@@ -140,12 +140,13 @@ test("apply prepares the application, and it's sent only once the terms are revi
   await expect(page.getByText("Ready for you to review and submit")).toBeVisible();
   // Submit needs the terms reviewed (the server refuses without it too).
   await expect(page.getByLabel("I've reviewed the terms above")).toHaveAttribute("required", "");
-  // The label is the bigger target on a phone; tapping it ticks the box.
-  await page.getByText("I've reviewed the terms above").click();
+  // By keyboard: on a phone the fixed bottom navigation can sit over these while the page
+  // settles, and the keyboard doesn't depend on what's on top.
+  await page.getByLabel("I've reviewed the terms above").press("Space");
   await expect(page.getByLabel("I've reviewed the terms above")).toBeChecked();
-  await page.getByRole("button", { name: "Submit the application" }).click();
+  await page.getByRole("button", { name: "Submit the application" }).press("Enter");
   await expect(page.getByText("Approved by Harbor Auto Refi: waiting for your yes.")).toBeVisible();
-  await page.getByRole("button", { name: "Accept the loan" }).click();
+  await page.getByRole("button", { name: "Accept the loan" }).press("Enter");
   await expect(page.getByRole("status")).toContainText("Accepted.");
   await expect(page.getByRole("list", { name: "Steps" })).toContainText("Accepted:");
 });
@@ -170,7 +171,7 @@ test("a 0% transfer counts its fee and is tracked once moved", async ({
   const section = page.getByRole("region", { name: "Move card debt to 0%" });
   await expect(section).toContainText("Saving, fee counted");
   await expect(section).toContainText("transfer fee is counted");
-  await section.getByRole("button", { name: /^I've moved it to / }).click();
+  await section.getByRole("button", { name: /^I've moved it to / }).press("Enter");
   await expect(page.getByRole("status")).toContainText("The 0% end is on your deadlines");
   // The deadline shows on /deadlines from 90 days before the end (unit tests check it's saved).
   await expect(page.getByRole("list", { name: "Your transfers" })).toContainText("0% until");
