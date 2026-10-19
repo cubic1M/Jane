@@ -135,3 +135,42 @@ test("a person starts a claim tracker and ticks off a step (step 107)", async ({
   );
   expect(overflow).toBeLessThanOrEqual(0);
 });
+
+test("a policy document is read for the person to check and confirm (step 151)", async ({
+  context,
+  page,
+  baseURL,
+}) => {
+  const user = await signedInUser("user");
+  userId = user.userId;
+  await context.addCookies([
+    { name: "authjs.session-token", value: user.sessionToken, url: baseURL ?? "" },
+  ]);
+
+  // No Claude key here: the person types the facts Claude would have read.
+  await page.goto("/documents");
+  await page.getByLabel("What is it?").selectOption("insurance_policy");
+  await page.getByLabel("File (PDF or a photo)").setInputFiles({
+    name: "declarations.pdf",
+    mimeType: "application/pdf",
+    buffer: Buffer.from("%PDF-1.7\n%%EOF\n"),
+  });
+  await page.getByRole("button", { name: "Upload" }).click();
+  await expect(page.getByText(/Fill in the key facts below/)).toBeVisible();
+  await page.getByLabel("Insurance company").fill("GEICO");
+  await page.getByLabel("Type of policy").selectOption("auto");
+  await page.getByRole("button", { name: "Save facts" }).click();
+  await expect(page.getByLabel("Insurance company")).toHaveValue("GEICO");
+
+  await page.goto("/insurance");
+  await expect(page.getByRole("heading", { name: "Read from your documents" })).toBeVisible();
+  await page.getByRole("link", { name: "Check and confirm" }).click();
+  await expect(page.getByRole("heading", { name: "Check what Jane read", level: 1 })).toBeVisible();
+  await expect(page.getByText("As you typed it.").first()).toBeVisible();
+  await page.getByRole("textbox", { name: "Deductible ($)" }).fill("500");
+  await page.getByRole("button", { name: "Confirm" }).click();
+
+  await expect(page.getByText("Confirmed. It's on your insurance now.")).toBeVisible();
+  await expect(page.getByRole("heading", { name: "GEICO car insurance" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Read from your documents" })).toHaveCount(0);
+});

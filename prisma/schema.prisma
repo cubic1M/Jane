@@ -319,6 +319,7 @@ model User {
   insuranceCheckups      InsuranceCheckup[]
   insuranceClaims        InsuranceClaim[]
   employerBenefits       EmployerBenefit[]
+  policyReadings         PolicyReading[]
   lifeEvents             LifeEvent[]
   // What's in investment accounts (spec step 128).
   securities             Security[]
@@ -1583,6 +1584,7 @@ model Document {
 
   user              User              @relation(fields: [userId], references: [id], onDelete: Cascade)
   insurancePolicies InsurancePolicy[]
+  policyReading     PolicyReading?
 
   @@index([userId, uploadedAt])
   @@map("documents")
@@ -1795,6 +1797,33 @@ model EmployerBenefit {
   @@unique([userId, employer, kind, label])
   @@index([userId, status])
   @@map("employer_benefits")
+}
+
+// A policy document read for the person to confirm (spec step 151): the fields Jane read
+// from it (or prefilled from payments without a key), each with where it came from.
+// Nothing becomes a policy until they tap Confirm.
+model PolicyReading {
+  id         String    @id @default(cuid())
+  userId     String    @map("user_id")
+  documentId String    @unique @map("document_id")
+  // The policy on file it updates (a renewal notice), or null for a new one.
+  policyId   String?   @map("policy_id")
+  // The policy form's fields, as text (PolicyInput in src/lib/insurance/policies.ts).
+  fields     Json
+  // Field name to where it came from: document, you, payments or policy.
+  sources    Json      @default("{}")
+  // Field name to what the rules said about it (left blank, or worth a look).
+  notes      Json      @default("{}")
+  // waiting, confirmed or dismissed.
+  status     String    @default("waiting")
+  createdAt  DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  answeredAt DateTime? @map("answered_at") @db.Timestamptz(3)
+
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  document Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+
+  @@index([userId, status])
+  @@map("policy_readings")
 }
 
 // The household facts that matter for cover (spec step 102), as the person typed them.

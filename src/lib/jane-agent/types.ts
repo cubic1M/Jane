@@ -44,6 +44,9 @@ export const ACTION_IDS = [
   "benefits.disability_yes",
   "benefits.disability_none",
   "benefits.unsure",
+  // Spec step 151: a policy read from a document, to confirm.
+  "reading.confirm",
+  "reading.dismiss",
   "plan.approve_safe",
   "undo.rule",
   "undo.no",
@@ -212,6 +215,8 @@ export type MessageRefs = {
   claimStep?: string;
   // Spec step 150: the guided question a benefits message asks.
   benefitQuestion?: string;
+  // Spec step 151: the policy reading a message asks the person to confirm.
+  readingId?: string;
   // The finding as Jane described it (src/lib/jane-agent/fingerprint.ts): a button only
   // acts while the finding is still what the message said.
   fingerprint?: string;
