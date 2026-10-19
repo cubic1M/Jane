@@ -30,7 +30,9 @@ export type InsuranceAsk =
   // documents: policies Jane read from documents, to confirm (spec step 151).
   | "documents"
   // cards: cover that comes with the person's cards (spec step 152).
-  | "cards";
+  | "cards"
+  // life: how much life cover, applied for and bought (spec step 153).
+  | "life";
 
 export type InsuranceIntent = {
   kind: "insurance";
@@ -129,6 +131,10 @@ const COVER_AMOUNT =
 const CHECKUP =
   /\bcheck ?-?ups?\b|\b(?:check|review|look over) (?:my|our|the) (?:insurance|cover|coverage|policies|policy)\b|\b(?:right|wrong) amount of (?:cover|coverage|insurance)\b|\b(?:over|under)-?insured\b|\btoo much (?:cover|coverage|insurance)\b|\b(?:raise|lower|change) (?:my |the )?deductible\b/;
 
+// Sizing, applying for or buying life cover (spec step 153), even with "need" in it.
+const LIFE =
+  /\b(?:how much|apply(?:ing)?|buy(?:ing)?|get(?:ting)?|sign up)\b.{0,30}\b(?:life (?:insurance|cover|policy)|term life)\b|\b(?:life (?:insurance|cover)|term life)\b.{0,30}\b(?:how much|enough|apply|buy|should i get)\b/;
+
 const ASKS: readonly [InsuranceAsk, RegExp][] = [
   ["cards", CARD_COVER],
   [
@@ -179,10 +185,12 @@ export function parseInsurance(text: string): InsuranceIntent | null {
     !INSURANCE.test(text) &&
     !(COVER.test(text) && policyKind) &&
     !COVER_AMOUNT.test(text) &&
-    !CARD_COVER.test(text)
+    !CARD_COVER.test(text) &&
+    !LIFE.test(text)
   ) {
     return null;
   }
+  if (LIFE.test(text)) return { kind: "insurance", ask: "life", policyKind };
   // Spec step 149: whether they need a kind of cover, from their numbers.
   if (policyKind && NEED.test(text)) return { kind: "insurance", ask: "need", policyKind };
   const ask = ASKS.find(([, words]) => words.test(text))?.[0] ?? "list";

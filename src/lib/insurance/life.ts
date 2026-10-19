@@ -145,13 +145,20 @@ export type SizeResult =
   | { kind: "in_progress"; application: LifeApplication }
   | { kind: "no_advice" }
   | { kind: "ask_dependants" }
-  | { kind: "not_needed"; reason: "no_dependants" | "no_pay" | "covered" };
+  | { kind: "not_needed"; reason: "no_dependants" | "no_pay" | "covered" }
+  // "Not now" on the same amount and term: not suggested again until the numbers move.
+  | { kind: "dismissed" };
 
 // Works out the cover and gets term quotes, keeping one application to answer. Re-sized
 // when the numbers move; one being applied for is left alone.
 export async function sizeLife(
   userId: string,
-  { client = defaultClient, now = new Date(), partner }: Options = {},
+  {
+    client = defaultClient,
+    now = new Date(),
+    partner,
+    asked = false,
+  }: Options & { asked?: boolean } = {},
 ): Promise<SizeResult> {
   if (!(await adviceMode(userId, { client }))) return { kind: "no_advice" };
   const current = await latestLife(userId, { client });
@@ -164,6 +171,17 @@ export async function sizeLife(
   if (!need) return { kind: "not_needed", reason: "covered" };
 
   const db = scopedFor(userId, client);
+  // Asked for in so many words, it's offered again.
+  if (!current && !asked) {
+    const dismissed = await db.lifeApplications.findFirst({
+      where: { status: "dismissed" },
+      select: { amountCents: true, termYears: true },
+      orderBy: { updatedAt: "desc" },
+    });
+    if (dismissed?.amountCents === need.amountCents && dismissed.termYears === need.termYears) {
+      return { kind: "dismissed" };
+    }
+  }
   if (
     current &&
     current.amountCents === need.amountCents &&

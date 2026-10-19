@@ -432,6 +432,8 @@ export const LIFE_MIN_TERM_YEARS = 20;
 export const LIFE_TERMS = [10, 15, 20, 25, 30] as const;
 // Pay is read from the paychecks in this many days, times a year.
 export const LIFE_PAY_LOOKBACK_DAYS = 90;
+// People sized per daily run.
+export const LIFE_DAILY_LIMIT = 200;
 // The guided health questions for an application, asked one at a time. A yes to any of
 // the first four sends it for the carrier's review instead of an instant decision; tobacco
 // is priced in.

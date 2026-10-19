@@ -45,6 +45,17 @@ export const ACTION_IDS = [
   // Spec step 151: a policy read from a document, to confirm.
   "reading.confirm",
   "reading.dismiss",
+  // Spec step 153: life insurance, sized and applied for.
+  "lifecover.dependants_0",
+  "lifecover.dependants_1",
+  "lifecover.dependants_2",
+  "lifecover.dependants_3",
+  "lifecover.apply",
+  "lifecover.yes",
+  "lifecover.no",
+  "lifecover.submit",
+  "lifecover.buy",
+  "lifecover.dismiss",
   "plan.approve_safe",
   "undo.rule",
   "undo.no",
@@ -190,6 +201,8 @@ export type MessageRefs = {
   benefitQuestion?: string;
   // Spec step 151: the policy reading a message asks the person to confirm.
   readingId?: string;
+  // Spec step 153: the life application a message moves along.
+  lifeApplicationId?: string;
   // The finding as Jane described it (src/lib/jane-agent/fingerprint.ts): a button only
   // acts while the finding is still what the message said.
   fingerprint?: string;

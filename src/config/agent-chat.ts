@@ -77,6 +77,9 @@ export const MESSAGE_PRIORITY = {
   benefits_question: 47,
   // Spec step 151: a policy read from a document, waiting for the confirm tap.
   policy_reading: 63,
+  // Spec step 153: life cover sized with quotes (demo advice), and the question before it.
+  life_sized: 49,
+  life_dependants: 45,
   urgent_alert: 95,
   deadline: 90,
   waiting_on_you: 85,
