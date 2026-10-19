@@ -126,6 +126,9 @@ export function scopedFor(userId: string, client: PrismaClient = db) {
     changeAcks: scoped.changeAck,
     // Answers to "Are you moving?" and the like (spec step 100).
     lifeEventAnswers: scoped.lifeEventAnswer,
+    // Plans that keep up (spec step 101).
+    budgetTuneUps: scoped.budgetTuneUp,
+    goalTransfers: scoped.goalTransfer,
     // What's in investment accounts (spec step 128).
     securities: scoped.security,
     holdings: scoped.holding,

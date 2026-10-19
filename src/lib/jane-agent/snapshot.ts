@@ -8,6 +8,7 @@ import type { LifeGuess } from "@/insights/life-signals";
 import { isUrgent, newestUnreadAlerts } from "@/lib/alerts";
 import { loadChanges, type ChangeView } from "@/lib/changes";
 import { lifeGuessesFor } from "@/lib/life-guesses";
+import { loadUpkeep, type UpkeepSnapshot } from "@/lib/plan-upkeep";
 import { comparisonsFor } from "@/lib/compare";
 import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
@@ -80,6 +81,9 @@ export type Snapshot = {
   changes?: ChangeView[];
   // Spec step 100: life events Jane spotted and hasn't asked about. Optional, like changes.
   lifeGuesses?: LifeGuess[];
+  // Spec step 101: this month's budget tune-up, transfers to count toward a goal, and what
+  // autopilot counted lately. Optional, like changes.
+  upkeep?: UpkeepSnapshot;
   // Spec step 128 on: what's in investment accounts.
   investments?: InvestmentSnapshot;
 } & MoreSnapshot &
@@ -198,6 +202,7 @@ export async function loadSnapshot(
     ...(await loadTaxSnapshot(userId, { client, now })),
     // Spec steps 97 and 100 read the same bank data, so it's loaded once for both.
     ...(await thinking(userId, client, now)),
+    upkeep: await loadUpkeep(userId, { client, now }),
     investments: await loadInvestmentSnapshot(userId, { client, now }),
   };
 }
