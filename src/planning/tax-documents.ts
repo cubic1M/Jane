@@ -58,7 +58,8 @@ export function expectedForms(input: {
   year: number;
   transactions: FormTransaction[];
   accounts: FormAccount[];
-  // This year's loans only: banks report interest for the current year.
+  // Loans with this year's interest; for a past year, with null (banks only report the
+  // current year's).
   loans: FormLoan[];
 }): ExpectedForm[] {
   const inYear = input.transactions.filter(
@@ -108,6 +109,14 @@ export function expectedForms(input: {
     }
   }
   for (const loan of input.loans) {
+    // A past year's interest isn't reported any more (null): the lender still sends the form.
+    if (
+      loan.ytdInterestPaidCents === null &&
+      (loan.kind === "mortgage" || loan.kind === "student")
+    ) {
+      forms.push(make(loan.kind, loan.name, null));
+      continue;
+    }
     const cents = loan.ytdInterestPaidCents ?? 0;
     if (loan.kind === "mortgage" && cents >= MORTGAGE_INTEREST_THRESHOLD_CENTS) {
       forms.push(make("mortgage", loan.name, cents));

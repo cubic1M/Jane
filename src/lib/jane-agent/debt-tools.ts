@@ -4,6 +4,7 @@ import { formatRate } from "@/insights/loans";
 import { MAX_DEBT_EXTRA_CENTS } from "@/config/debt";
 import type { Payoff } from "@/lib/debt-plan";
 import { statusLine, type LoanApplicationView } from "@/lib/loan-application-status";
+import type { Transfers } from "@/lib/balance-transfers";
 import type { Refinance } from "@/lib/refinance";
 import type { PayoffPlan } from "@/planning/debt";
 import type { ScoredOffer } from "@/planning/refinance";
@@ -45,6 +46,12 @@ export const DEBT_TOOLS: Anthropic.Tool[] = [
     },
   },
   REFINANCE_TOOL,
+  {
+    name: "balance_transfers",
+    description:
+      "0% balance transfer offers for the person's cards (sample offers from a stand-in catalog; only demo-bank people have any): for each card, each offer's months at 0%, transfer fee, the monthly payment that clears the balance and fee before the 0% ends, the interest keeping it on the card at that payment would cost, and the saving with the fee counted; Jane's pick and why. Also the transfers the person told Jane they made, with when the 0% ends.",
+    input_schema: noInput,
+  },
   {
     name: "loan_applications",
     description:
@@ -154,6 +161,7 @@ export const DEBT_TOOL_STATUS: Readonly<Record<string, string>> = {
   payoff_plan: "Working out your payoff plan…",
   refinance_offers: "Checking loan offers…",
   loan_applications: "Checking your loan applications…",
+  balance_transfers: "Checking 0% transfer offers…",
 };
 
 export function refinanceToolOutput(refi: Refinance, money: (cents: number) => string) {
@@ -207,6 +215,42 @@ export function applicationsToolOutput(
       inAll: money(a.totalCents),
       saving: money(a.savingCents),
       sample: a.partner === "demo",
+    })),
+  };
+}
+
+export function transfersToolOutput(data: Transfers, money: (cents: number) => string) {
+  if (!data.available) {
+    return { note: "No lending partner for this person's accounts yet, so there are no offers." };
+  }
+  return {
+    cards: data.comparisons.map((c) => ({
+      card: c.debtName,
+      balance: money(c.balanceCents),
+      rate: formatRate(c.aprBps),
+      janesPick: c.pick?.offer.cardName ?? null,
+      why: c.why,
+      offers: c.offers.map((s) => ({
+        card: s.offer.cardName,
+        issuer: s.offer.issuer,
+        monthsAtZero: s.offer.promoMonths,
+        fee: money(s.offer.feeCents),
+        afterwards: formatRate(s.offer.goToAprBps),
+        payAMonthToClearIt: money(s.monthlyNeededCents),
+        zeroEnds: s.promoEndsOn,
+        keepingItInterest: s.keepInterestCents === null ? null : money(s.keepInterestCents),
+        savingWithFeeCounted: s.savingCents === null ? null : money(s.savingCents),
+        sample: s.offer.demo,
+      })),
+    })),
+    transfersMade: data.transfers.map((t) => ({
+      card: t.cardName,
+      from: t.fromName,
+      moved: money(t.amountCents),
+      fee: money(t.feeCents),
+      zeroEnds: t.promoEndsOn,
+      payAMonth: money(t.monthlyNeededCents),
+      status: t.status,
     })),
   };
 }

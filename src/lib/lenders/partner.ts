@@ -47,12 +47,36 @@ export type Applicant = {
   amountCents: number;
 };
 
+// Spec step 113: a 0% balance transfer card for a card's balance.
+export type TransferRequest = {
+  amountCents: number;
+  creditBand: PrequalifyRequest["creditBand"];
+  month: string;
+};
+
+export type TransferOffer = {
+  id: string;
+  issuer: string;
+  cardName: string;
+  // 0% for this many months from the transfer.
+  promoMonths: number;
+  // The transfer fee on this amount, and how the issuer puts it.
+  feeCents: number;
+  feeLabel: string;
+  // The rate once the 0% ends.
+  goToAprBps: number;
+  sourceUrl: string;
+  demo: boolean;
+};
+
 export type LenderPartner = {
   name: string;
   // Soft check: offers the person prequalifies for. Never a hard credit pull.
   prequalify(request: PrequalifyRequest): Promise<LoanOffer[]>;
   // One offer again, by id, as it stands now (null when it's gone).
   offer(id: string, request: PrequalifyRequest): Promise<LoanOffer | null>;
+  // Spec step 113: 0% balance transfer cards the person prequalifies for (a soft check).
+  balanceTransfers(request: TransferRequest): Promise<TransferOffer[]>;
   // Only after the person reviewed the terms and tapped Submit (spec step 112). A soft
   // check: approved on the offer's terms, or declined.
   apply(input: {

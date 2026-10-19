@@ -91,6 +91,17 @@ describe("debt questions", () => {
     });
   });
 
+  it("reads questions about 0% balance transfers", () => {
+    for (const text of [
+      "should I do a balance transfer?",
+      "is there a 0% card for my debt",
+      "move my credit card balance",
+      "transfer my card balance",
+    ]) {
+      expect(intent(text), text).toEqual({ kind: "balance_transfer" });
+    }
+  });
+
   it("leaves requests and other questions alone", () => {
     expect(intent("lower the rate on my card")).toMatchObject({ kind: "act", verb: "lower" });
     expect(intent("what's due this week")).toMatchObject({ kind: "coming_up" });
