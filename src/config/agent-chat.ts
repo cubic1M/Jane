@@ -1,3 +1,5 @@
+import { DEBT_MESSAGE_PRIORITY, DEBT_SOURCE_LIMITS } from "@/config/debt";
+
 // Jane the agent (spec steps 81–82): how much Jane says in the chat, and when. Jane's
 // brain (src/lib/jane-agent/brain.ts) reads every limit from here.
 
@@ -6,6 +8,8 @@ export const CHAT_DAILY_LIMIT = 5;
 // And at most this many of each group a day, so one kind can't crowd out the rest.
 // Keyed by message source (src/lib/jane-agent/sources).
 export const CHAT_SOURCE_LIMITS: Readonly<Record<string, number>> = {
+  // Loans and debt (spec Phase Y, src/config/debt.ts).
+  ...DEBT_SOURCE_LIMITS,
   findings: 3,
   // Insurance (spec Phase X).
   insurance: 1,
@@ -26,6 +30,8 @@ export const CHAT_SOURCE_LIMITS: Readonly<Record<string, number>> = {
   life: 1,
   // Spec step 101.
   upkeep: 2,
+  // Spec step 99.
+  found: 1,
   // Spec step 128 on.
   investments: 2,
 };
@@ -50,6 +56,8 @@ export const DID_LOOKBACK_DAYS = 7;
 // Higher goes first. The plan comes before the findings it sums up; anything that can't
 // wait (an urgent alert, a deadline, something only the person can do) comes before both.
 export const MESSAGE_PRIORITY = {
+  // Loans and debt (spec Phase Y, src/config/debt.ts).
+  ...DEBT_MESSAGE_PRIORITY,
   brief: 1_000,
   // Insurance (spec step 102): cover that looks missing, after budgets and goals.
   insurance_gap: 35,
@@ -83,6 +91,8 @@ export const MESSAGE_PRIORITY = {
   // Spec step 101: a budget tune-up or a transfer to count, before set-up suggestions; the
   // weekly review comes right after the brief.
   upkeep: 64,
+  // Spec step 99: a policy found from payments, to confirm.
+  found_policy: 63,
   review: 900,
   // Spec step 128: what's in investment accounts, the first time Jane sees it.
   investments: 32,
@@ -92,6 +102,8 @@ export const MESSAGE_PRIORITY = {
   investment_fees: 36,
   // Spec step 131: the portfolio review's changes (demo advice).
   investment_review: 38,
+  // Spec step 132: behind for retirement, or missing employer match money (demo advice).
+  retirement: 39,
 } as const;
 
 // The chat page shows the last this-many messages, with "Show earlier" for more.

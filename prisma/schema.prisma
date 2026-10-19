@@ -284,6 +284,7 @@ model User {
   recurringStreams       RecurringStream[]
   liabilities            Liability[]
   ownedAssets            OwnedAsset[]
+  debtTerms              DebtTerms[]
   findings               Finding[]
   decisions              Decision[]
   actions                Action[]
@@ -558,6 +559,28 @@ model OwnedAsset {
 
   @@index([userId])
   @@map("owned_assets")
+}
+
+// Terms the person typed for a debt the bank doesn't report (spec step 109): a card or
+// loan with no rate from the bank, or a buy now, pay later plan found from payments. Only
+// fills what the bank leaves out; the bank's figures always win.
+model DebtTerms {
+  id                  String    @id @default(cuid())
+  userId              String    @map("user_id")
+  // "account:<id>" or "bnpl:<plan key>" (src/insights/debts.ts).
+  debtKey             String    @map("debt_key")
+  aprBps              Int?      @map("apr_bps")
+  minimumPaymentCents Int?      @map("minimum_payment_cents")
+  // Buy now, pay later plans only: what's left to pay.
+  balanceCents        Int?      @map("balance_cents")
+  payoffDate          DateTime? @map("payoff_date") @db.Date
+  createdAt           DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt           DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, debtKey])
+  @@map("debt_terms")
 }
 
 model Finding {

@@ -1,4 +1,5 @@
 import { briefSource } from "./brief";
+import { DEBT_SOURCES } from "./debt-sources";
 import { didSource } from "./did";
 import { findingsSource } from "./findings";
 import { insuranceSource } from "./insurance";
@@ -15,6 +16,7 @@ import { changesSource } from "./changes";
 import { lifeSource } from "./life";
 import { reviewSource } from "./review";
 import { upkeepSource } from "./upkeep";
+import { foundPoliciesSource } from "./found-policies";
 import { investmentsSource } from "./investments";
 
 // Every message source Jane's brain gathers from (spec step 82). A new kind of message is a
@@ -22,6 +24,8 @@ import { investmentsSource } from "./investments";
 // src/config/agent-chat.ts (CHAT_SOURCE_LIMITS).
 export const MESSAGE_SOURCES: readonly MessageSource[] = [
   briefSource,
+  // Loans and debt (spec Phase Y, ./debt-sources.ts).
+  ...DEBT_SOURCES,
   findingsSource,
   // Insurance (spec Phase X).
   insuranceSource,
@@ -43,6 +47,8 @@ export const MESSAGE_SOURCES: readonly MessageSource[] = [
   // Spec step 101.
   upkeepSource,
   reviewSource,
+  // Spec step 99.
+  foundPoliciesSource,
   // Spec step 128 on.
   investmentsSource,
 ];

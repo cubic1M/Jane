@@ -25,6 +25,8 @@ import { formatCents } from "@/lib/money";
 import { affordWindow } from "@/planning/afford";
 import type { Scored } from "@/planning/compare";
 import { ACTION_HANDLERS } from "./actions";
+import { DEBT_CHAT_PAGES, DEBT_TOOLS } from "./debt-tools";
+import { isDebtTool, runDebtTool } from "./debt-tools-run";
 import { INVESTMENT_TOOLS, isInvestmentTool, runInvestmentTool } from "./investments/tools";
 import { monthLabel, type Reply } from "./replies";
 import { guessLine } from "./replies-life";
@@ -51,6 +53,8 @@ export const PROPOSABLE: readonly ActionId[] = ["finding.yes", "plan.approve_saf
 
 // Pages Claude may link to, by name.
 export const CHAT_PAGES: Readonly<Record<string, { label: string; href: string }>> = {
+  // Loans and debt (spec Phase Y, ./debt-tools.ts).
+  ...DEBT_CHAT_PAGES,
   today: { label: "See today", href: "/home" },
   insurance: { label: "See your insurance", href: "/insurance" },
   plan: { label: "Open the plan", href: "/plan" },
@@ -76,6 +80,8 @@ const noInput = { type: "object" as const, properties: {}, additionalProperties:
 
 export const CHAT_TOOLS: Anthropic.Tool[] = [
   ...FROM_ASK,
+  // Loans and debt (spec Phase Y, ./debt-tools.ts).
+  ...DEBT_TOOLS,
   // Insurance (spec Phase X).
   ...INSURANCE_TOOLS,
   {
@@ -182,6 +188,7 @@ export async function runChatTool(
 ): Promise<ToolOutput> {
   if (FROM_ASK.some((t) => t.name === name))
     return runAskTool(userId, name, input, { client, now });
+  if (isDebtTool(name)) return runDebtTool(userId, name, input, { client, now });
   if (isTaxTool(name)) return runTaxTool(userId, name, input, { client, now });
   if (isInvestmentTool(name)) return runInvestmentTool(userId, name, input, { client, now });
   if (isInsuranceTool(name)) return runInsuranceTool(userId, name, input, { client, now });
