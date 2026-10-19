@@ -44,3 +44,37 @@ test("a renter adds their renters policy and the gap goes", async ({ context, pa
   );
   expect(overflow).toBeLessThanOrEqual(0);
 });
+
+test("a demo-bank person sees the sample policy and gets like-for-like quotes (steps 102–103)", async ({
+  context,
+  page,
+  baseURL,
+}) => {
+  const user = await signedInUser("user");
+  userId = user.userId;
+  await context.addCookies([
+    { name: "authjs.session-token", value: user.sessionToken, url: baseURL ?? "" },
+  ]);
+  await page.goto("/connect");
+  await page.getByRole("button", { name: "Link a demo bank" }).click();
+  await expect(page).toHaveURL("/chat", { timeout: 60_000 });
+
+  await page.goto("/insurance");
+  await expect(page.getByRole("heading", { name: "GEICO car insurance" })).toBeVisible();
+  // The demo bank has a mortgage and no home policy: a gap, with demo advice, labelled.
+  await expect(page.getByText("No home insurance on file")).toBeVisible();
+  await expect(page.getByText("Demo advice: sample data, not financial advice")).toBeVisible();
+
+  await page.getByRole("link", { name: "Compare quotes" }).click();
+  await expect(page.getByText("Sample quotes from Jane's demo carrier catalog")).toBeVisible();
+  await page.getByRole("button", { name: "Get quotes" }).click();
+  const lighthouse = page.getByRole("listitem").filter({ hasText: "Lighthouse Insurance (demo)" });
+  await expect(lighthouse.getByText("Same cover and deductible as your policy.")).toBeVisible();
+  await expect(
+    lighthouse.getByText("$1,296.00 a year, $408.00 less than you pay now."),
+  ).toBeVisible();
+  const overflow = await page.evaluate(
+    () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
+  );
+  expect(overflow).toBeLessThanOrEqual(0);
+});
