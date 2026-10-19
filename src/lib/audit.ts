@@ -99,7 +99,10 @@ export type AuditEvent =
   // and the kind of message, never its text.
   | "chat_notification_sent"
   // What the investments are for (spec step 129): which answer changed, never the answers.
-  | "investor_profile_saved";
+  | "investor_profile_saved"
+  // Orders sent to the brokerage partner (spec step 133): how many, why, and whether the
+  // partner was the simulation; never amounts or tickers.
+  | "brokerage_orders_placed";
 
 export type AuditActor = { type: ActorType; id: string | null };
 

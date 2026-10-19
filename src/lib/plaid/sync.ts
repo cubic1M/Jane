@@ -29,10 +29,12 @@ import { enqueueJob, runJob } from "@/lib/jobs";
 import { plaid, plaidCall, plaidErrorCode } from "./client";
 import { DEMO_OPTIONS } from "@/data-sources/demo/demo-options";
 import type { DemoSwitch } from "@/data-sources/demo/demo-bank";
+import type { DemoOrder } from "@/data-sources/demo/demo-holdings";
+import { SIMULATED_PARTNER } from "@/config/brokerage";
 import { confirmSwitches, switchOf } from "@/lib/agent/switch";
 import { ensureDemoOptions } from "@/lib/compare";
 import { ensureDemoPolicies } from "@/lib/insurance/profile";
-import { reshopPerson } from "@/lib/insurance/shop";
+import { insuranceAfterSync } from "@/lib/insurance/daily";
 import { confirmInsuranceSwitches } from "@/lib/insurance/switch";
 import { demoPlaidApi, isDemoToken } from "./demo";
 import { runJaneAgentSafely } from "@/lib/jane-agent/run";
@@ -467,6 +469,57 @@ async function saveInvestmentTransactions(
   }
 }
 
+// Simulated orders the person placed through the stand-in brokerage (spec step 133), for
+// the demo bank to replay into its holdings.
+export async function demoOrders(db: ScopedDb): Promise<DemoOrder[]> {
+  const orders = await db.brokerageOrders.findMany({
+    where: { partner: SIMULATED_PARTNER, status: "filled" },
+    select: {
+      id: true,
+      ticker: true,
+      side: true,
+      quantity: true,
+      amountCents: true,
+      filledAt: true,
+      account: { select: { plaidAccountId: true } },
+    },
+    orderBy: [{ filledAt: "asc" }, { id: "asc" }],
+  });
+  return orders.flatMap((o) =>
+    o.account.plaidAccountId && o.filledAt && (o.side === "buy" || o.side === "sell")
+      ? [
+          {
+            id: o.id,
+            accountRef: o.account.plaidAccountId,
+            ticker: o.ticker,
+            side: o.side,
+            quantity: o.quantity,
+            amountCents: o.amountCents,
+            day: o.filledAt.toISOString().slice(0, 10),
+          },
+        ]
+      : [],
+  );
+}
+
+// Just the investment side of a demo item, right after the person placed simulated orders
+// (spec step 133), so the holdings show them without a whole sync.
+export async function syncDemoInvestments(
+  itemId: string,
+  { client = defaultClient, now = new Date() }: Options = {},
+): Promise<void> {
+  const item = await client.plaidItem.findUnique({
+    where: { id: itemId },
+    select: { id: true, userId: true, accessTokenEncrypted: true },
+  });
+  if (!item) return;
+  const accessToken = decrypt(item.accessTokenEncrypted);
+  if (!isDemoToken(accessToken)) return;
+  const db = scopedFor(item.userId, client);
+  const api = demoPlaidApi(accessToken, now, [], await demoOrders(db));
+  await saveInvestments(db, api, accessToken, item.id, now);
+}
+
 export async function syncItem(
   itemId: string,
   { client = defaultClient, api = plaid(), now = new Date() }: Options = {},
@@ -488,7 +541,7 @@ export async function syncItem(
   const accessToken = decrypt(item.accessTokenEncrypted);
   // The demo bank (spec step 75) answers in Plaid's place; everything after is the same.
   if (isDemoToken(accessToken)) {
-    api = demoPlaidApi(accessToken, now, await demoSwitches(db));
+    api = demoPlaidApi(accessToken, now, await demoSwitches(db), await demoOrders(db));
     // Its example options to compare against (spec step 76).
     await ensureDemoOptions({ client, now });
     // And its sample insurance policy (spec step 102).
@@ -536,9 +589,8 @@ export async function syncItem(
   await confirmInsuranceSwitches({ client, now, userId: item.userId });
   // Spec step 104: Jane reshops insurance that renews soon or went up, by herself. A
   // problem there never fails the sync; the daily run tries again.
-  await reshopPerson(item.userId, { client, now }).catch((error) =>
-    console.error("Insurance reshop failed", { userId: item.userId, error: String(error) }),
-  );
+  // Spec step 106: and checks the cover once a year and after a life event.
+  await insuranceAfterSync(item.userId, { client, now });
   // Card text from Claude, as a job: retried later if it fails, without failing the sync.
   await runJob(await enqueueJob("explain_findings", { userId: item.userId }, { client }), {
     client,

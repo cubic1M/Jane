@@ -7,7 +7,13 @@ import { closeSettled } from "../messages";
 import { MESSAGE_SELECT, toChatMessage, type ActionId, type ChatMessage } from "../types";
 import { DEBT_ACTION_HANDLERS } from "./debt-handlers";
 import { findingNo, findingPick, findingYes } from "./finding";
-import { insuranceGapNo, insuranceQuotes, insuranceShopNo, insuranceShopYes } from "./insurance";
+import {
+  insuranceGapNo,
+  insuranceQuotes,
+  insuranceShopNo,
+  insuranceShopYes,
+  insuranceCheckupSeen,
+} from "./insurance";
 import { ChatActionError, linksOf, type ActionHandler } from "./handler";
 import { planApproveSafe } from "./plan";
 import { undoNo, undoRule } from "./undo";
@@ -21,12 +27,14 @@ import { TAX_PROFILE_HANDLERS, taxFoundYes, taxIncomeAdd, taxIncomeNo, taxStateS
 import { taxFormGot, taxTagNo, taxTagSet, taxTagYes } from "./tax-organizer";
 import { taxW4Keep, taxW4Next, taxW4Sent, taxW4Start, taxW4Stop } from "./tax-w4";
 import { taxSaveNo, taxSaveTask } from "./tax-savings";
+import { taxMilesAdd, taxQuarterPaid } from "./tax-self-employed";
 import {
   investAnswer1,
   investAnswer2,
   investAnswer3,
   investAnswer4,
   investAnswer5,
+  investRebalance,
 } from "./investments";
 import { changeBudget, changeExpected, changeLook } from "./changes";
 import { lifeNever, lifeNo, lifeYes } from "./life";
@@ -51,6 +59,7 @@ export const ACTION_HANDLERS: Readonly<Record<ActionId, ActionHandler>> = {
   "insurance.quotes": insuranceQuotes,
   "insurance.shop_yes": insuranceShopYes,
   "insurance.shop_no": insuranceShopNo,
+  "insurance.checkup_seen": insuranceCheckupSeen,
   "plan.approve_safe": planApproveSafe,
   "undo.rule": undoRule,
   "undo.no": undoNo,
@@ -107,12 +116,16 @@ export const ACTION_HANDLERS: Readonly<Record<ActionId, ActionHandler>> = {
   // Spec step 122.
   "tax.save_task": taxSaveTask,
   "tax.save_no": taxSaveNo,
+  // Spec step 123.
+  "tax.quarter_paid": taxQuarterPaid,
+  "tax.miles_add": taxMilesAdd,
   // Investments (spec step 129 on).
   "invest.answer.1": investAnswer1,
   "invest.answer.2": investAnswer2,
   "invest.answer.3": investAnswer3,
   "invest.answer.4": investAnswer4,
   "invest.answer.5": investAnswer5,
+  "invest.rebalance": investRebalance,
   // Jane notices changes (spec step 97).
   "change.look": changeLook,
   "change.budget": changeBudget,

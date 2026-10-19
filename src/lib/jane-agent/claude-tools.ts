@@ -27,6 +27,8 @@ import { ACTION_HANDLERS } from "./actions";
 import { DEBT_CHAT_PAGES, DEBT_TOOLS } from "./debt-tools";
 import { isDebtTool, runDebtTool } from "./debt-tools-run";
 import { INVESTMENT_TOOLS, isInvestmentTool, runInvestmentTool } from "./investments/tools";
+import { rebalanceOffer } from "./investments/replies";
+import { loadRebalance } from "@/lib/investments/rebalance";
 import { monthLabel, type Reply } from "./replies";
 import { guessLine } from "./replies-life";
 import { listPreferences } from "./preferences";
@@ -49,7 +51,13 @@ type Options = { client: PrismaClient; now: Date };
 const FROM_ASK = ASK_TOOLS.filter((t) => t.name !== "list_findings");
 
 // Buttons Claude may offer. Undo isn't one: it belongs to the message it undoes.
-export const PROPOSABLE: readonly ActionId[] = ["finding.yes", "plan.approve_safe", "goal.start"];
+export const PROPOSABLE: readonly ActionId[] = [
+  "finding.yes",
+  "plan.approve_safe",
+  "goal.start",
+  // Spec step 133.
+  "invest.rebalance",
+];
 
 // Pages Claude may link to, by name.
 export const CHAT_PAGES: Readonly<Record<string, { label: string; href: string }>> = {
@@ -162,7 +170,7 @@ export const CHAT_TOOLS: Anthropic.Tool[] = [
   {
     name: "propose_action",
     description:
-      "Offer the person a button under your answer. You can't do anything yourself; the person decides by tapping. Use it at most once: when your answer suggests something that can be done, or the person asked for it. Actions: finding.yes (Yes and No on one open finding; give finding_id from open_findings), plan.approve_safe (approve the plan's safe items together), goal.start (start a savings goal; give goal_name, goal_amount in dollars and goal_month as YYYY-MM within the next 12 months), open (a link to a page; give page).",
+      "Offer the person a button under your answer. You can't do anything yourself; the person decides by tapping. Use it at most once: when your answer suggests something that can be done, or the person asked for it. Actions: finding.yes (Yes and No on one open finding; give finding_id from open_findings), plan.approve_safe (approve the plan's safe items together), goal.start (start a savings goal; give goal_name, goal_amount in dollars and goal_month as YYYY-MM within the next 12 months), invest.rebalance (demo advice mode: place the orders that move to the recommended mix, in the simulated brokerage), open (a link to a page; give page).",
     input_schema: {
       type: "object",
       properties: {
@@ -518,6 +526,17 @@ export async function proposeAction(
       refs: {},
       line: null,
     };
+  }
+
+  if (id === "invest.rebalance") {
+    const { advice, plan } = await loadRebalance(userId, { client, now });
+    if (!advice || !plan || plan.orders.length === 0) {
+      return refuse(
+        "There's no rebalancing to offer: not demo advice mode, no profile, or on target.",
+      );
+    }
+    const reply = rebalanceOffer(plan);
+    return { ok: true, actions: reply.actions, refs: reply.refs, line: reply.body };
   }
 
   // goal.start

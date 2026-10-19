@@ -13,6 +13,8 @@ import { valueWords } from "@/lib/insurance/coverage";
 import { gapAdvice, kindWords } from "@/lib/insurance/gaps";
 import { yearlyPremium } from "@/lib/insurance/policies";
 import { quotesFor } from "@/lib/insurance/quotes";
+import { adviceMode } from "@/lib/advice-mode";
+import { latestCheckup } from "@/lib/insurance/checkups";
 import { formatCents } from "@/lib/money";
 import { loadInsuranceSnapshot } from "./snapshot";
 
@@ -34,6 +36,12 @@ export const INSURANCE_TOOLS: Anthropic.Tool[] = [
       "Quotes Jane already got for the person's policies from the insurance partner (spec step 103), cheapest first, and Jane's own pick with why when she reshopped it (demo advice): carrier, rating, price per payment and a year, the saving against what they pay now, and whether the cover and deductible are the same or what's different. Demo quotes are sample prices from a made-up catalog, not real offers; say so. It never asks for new quotes: the person can ask Jane \"find me cheaper car insurance\" for that.",
     input_schema: noInput,
   },
+  {
+    name: "insurance_checkup",
+    description:
+      'Jane\'s latest coverage checkup (demo advice; empty for real accounts): each recommendation (a deductible to raise or lower against their savings, too little or too much cover, bundling, full cover on a car worth little, life cover after a new baby) with what it costs or saves a year and the risk it changes. It never runs a new checkup: the person can ask Jane "check my insurance".',
+    input_schema: noInput,
+  },
 ];
 
 export const isInsuranceTool = (name: string) => INSURANCE_TOOLS.some((t) => t.name === name);
@@ -51,6 +59,29 @@ export async function runInsuranceTool(
     return formatCents(value);
   };
   if (name === "insurance_quotes") return quotesTool(userId, { client, now }, money, cents);
+  if (name === "insurance_checkup") {
+    const checkup = (await adviceMode(userId, { client }))
+      ? await latestCheckup(userId, { client })
+      : null;
+    for (const r of checkup?.recommendations ?? []) cents.push(...r.cents.map(Math.abs));
+    return {
+      content: JSON.stringify(
+        checkup
+          ? {
+              ranOn: checkup.createdAt.toISOString().slice(0, 10),
+              why: checkup.reason,
+              demoAdvice: true,
+              recommendations: checkup.recommendations.map((r) => ({
+                change: r.title,
+                cost: r.cost,
+                risk: r.risk,
+              })),
+            }
+          : { note: "No checkup: it's demo advice, for demo data only, or none has run yet." },
+      ),
+      cents,
+    };
+  }
   if (name !== "insurance_policies") {
     return { content: JSON.stringify({ error: `There's no tool called ${name}.` }), cents };
   }

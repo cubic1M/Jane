@@ -9,7 +9,7 @@ export async function insuranceExport(
   { client = defaultClient }: { client?: PrismaClient } = {},
 ) {
   const db = scopedFor(userId, client);
-  const [policies, household, quotes, shops] = await Promise.all([
+  const [policies, household, quotes, shops, checkups] = await Promise.all([
     db.insurancePolicies.findMany({
       select: {
         kind: true,
@@ -70,6 +70,11 @@ export async function insuranceExport(
       },
       orderBy: { createdAt: "asc" },
     }),
+    // Coverage checkups and what they recommended (spec step 106).
+    db.insuranceCheckups.findMany({
+      select: { reason: true, recommendations: true, seenAt: true, createdAt: true },
+      orderBy: { createdAt: "asc" },
+    }),
   ]);
-  return { policies, household, quotes, shops };
+  return { policies, household, quotes, shops, checkups };
 }
