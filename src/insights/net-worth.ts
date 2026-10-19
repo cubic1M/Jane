@@ -4,7 +4,8 @@ import { monthsEnding } from "./spending";
 // Net worth: what the person holds minus what they owe, from account balances. Credit
 // cards and loans report what's owed as a positive balance, so they count as debts.
 // Accounts with no balance are left out, and listed so the person knows. Things the person
-// owns (spec step 67) count as assets at the value they gave. Pure.
+// owns (spec step 67) count as assets at the value they gave, and crypto (spec step 161) at
+// what its exchange or wallet last reported. Pure.
 
 export type NetWorthAccount = {
   id: string;
@@ -22,6 +23,8 @@ export type NetWorth = {
   investmentsCents: number;
   // Of the assets, the things the person owns, at their own values (spec step 67).
   ownedCents: number;
+  // Of the assets, crypto read from exchanges and wallets (spec step 161).
+  cryptoCents: number;
   debtsCents: number;
   netCents: number;
   // Accounts we couldn't include, by name.
@@ -30,7 +33,11 @@ export type NetWorth = {
 
 const isDebt = (type: string) => DEBT_ACCOUNT_TYPES.includes(type);
 
-export function netWorth(accounts: NetWorthAccount[], owned: OwnedValue[] = []): NetWorth {
+export function netWorth(
+  accounts: NetWorthAccount[],
+  owned: OwnedValue[] = [],
+  cryptoCents = 0,
+): NetWorth {
   let assets = 0;
   let investments = 0;
   let debts = 0;
@@ -45,11 +52,12 @@ export function netWorth(accounts: NetWorthAccount[], owned: OwnedValue[] = []):
     if (a.type === "investment") investments += a.balanceCents;
   }
   const ownedCents = owned.reduce((sum, o) => sum + o.valueCents, 0);
-  assets += ownedCents;
+  assets += ownedCents + cryptoCents;
   return {
     assetsCents: assets,
     investmentsCents: investments,
     ownedCents,
+    cryptoCents,
     debtsCents: debts,
     netCents: assets - debts,
     missing: missing.sort(),

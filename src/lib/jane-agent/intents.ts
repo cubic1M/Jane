@@ -90,6 +90,11 @@ export type Intent =
   | { kind: "priorities" }
   // Spec step 183: "am I OK?" and "what should I do this month?", across every sector.
   | { kind: "whole_picture"; focus: "now" | "month" }
+  // Spec step 185: money into a goal ("put the savings in my emergency fund"); "savings" is
+  // what the steps before it save, a month's worth.
+  | { kind: "move_to_goal"; amountCents: number | "savings"; goal: string }
+  // Spec step 185: a request that needs several actions, as one plan.
+  | { kind: "multi"; parts: Intent[] }
   // Spec step 144: "where did my paycheck go?"
   | { kind: "paycheck" }
   // Spec step 145: "are my bills paid?"
@@ -364,7 +369,7 @@ const SAFE =
   /\bsafe to spend\b|\bhow much (?:can|could) i (?:still )?spend\b|\bwhat can i (?:still )?spend\b|\bspending money left\b|\bhow much (?:money )?(?:do )?i (?:have|got) (?:left|to spend|left to spend)\b|\bhow much (?:money )?(?:is|do i have) left\b/;
 const SPENDING = /\b(?:spent|spend|spending)\b|\bwhere (?:does|did) (?:all )?my money go\b/;
 const COMING_UP =
-  /\bwhat'?s (?:due|coming(?: up)?|next)\b|\bcoming up\b|\bupcoming\b|\bbills? (?:due|coming)\b|\bwhat do i (?:owe|have to pay)\b|\bdue (?:this|next) week\b/;
+  /\bwhat'?s (?:due|coming(?: up)?|next)\b|\bcoming up\b|\bupcoming\b|\bbills? (?:are |is )?(?:due|coming)\b|\bwhen (?:are|is) (?:my )?(?:bills?|payments?) due\b|\bwhat do i (?:owe|have to pay)\b|\bdue (?:this|next) week\b/;
 // Spec step 88.
 const PAYDAY = /\b(?:pay ?days?|pay ?checks?|get(?:ting)? paid|salary|wages|next pay)\b/;
 const SUBSCRIPTIONS =
@@ -437,8 +442,56 @@ const CANCEL =
   /^(?:cancel|unsubscribe(?: from)?|stop(?: paying(?: for)?)?|end|get rid of|drop|quit) (.+)$/;
 const LOWER = /^(?:lower|reduce|cut|negotiate|bring down|shrink) (.+)$/;
 
-export function parseIntent(raw: string, asOf: string): Intent {
+// Spec step 185: "put the savings in my emergency fund", "move $200 to my vacation goal".
+const MOVE_TO_GOAL =
+  /^(?:put|move|send|add|transfer|save|stash) (?:all of |all )?(?:the |that |those |my )?(savings?|money (?:i|that) save[ds]?|it|that|them|\$?[\d,]+(?:\.\d{1,2})?(?: dollars)?) (?:in|into|to|toward|towards) (?:my |our |the )?(.+?)(?: goal| account)?$/;
+
+function moveToGoal(text: string): Intent | null {
+  const m = MOVE_TO_GOAL.exec(text);
+  if (!m) return null;
+  const amount = /[\d]/.test(m[1])
+    ? Math.round(Number(m[1].replace(/[$,]|dollars/g, "").trim()) * 100)
+    : ("savings" as const);
+  if (amount !== "savings" && !(amount > 0)) return null;
+  return { kind: "move_to_goal", amountCents: amount, goal: m[2].trim() };
+}
+
+// What a plan can be made of: something Jane does on a tap.
+const actionable = (i: Intent) =>
+  i.kind === "act" || i.kind === "move_to_goal" || (i.kind === "insurance" && i.ask === "quotes");
+
+const JOINERS = /\s*,?\s+(?:and then|and also|then|and)\s+|\s*;\s*|,\s+/;
+
+// Spec step 185: "switch my car insurance and put the savings in my emergency fund" is
+// two actions; "cancel netflix and hulu" carries the verb to Hulu. Null unless every part
+// is something Jane does on a tap.
+function parseMulti(text: string, asOf: string): Intent | null {
+  const pieces = text.split(JOINERS).filter(Boolean);
+  if (pieces.length < 2) return null;
+  const parts: Intent[] = [];
+  for (const piece of pieces) {
+    let intent = parseIntent(piece, asOf, { single: true });
+    const before = parts.at(-1);
+    if (!actionable(intent) && before?.kind === "act")
+      intent = parseIntent(`${before.verb} ${piece}`, asOf, { single: true });
+    if (!actionable(intent)) return null;
+    parts.push(intent);
+  }
+  return { kind: "multi", parts };
+}
+
+export function parseIntent(
+  raw: string,
+  asOf: string,
+  { single = false }: { single?: boolean } = {},
+): Intent {
   const text = fixTypos(normalize(raw));
+  if (!single) {
+    const multi = parseMulti(text, asOf);
+    if (multi) return multi;
+  }
+  const move = moveToGoal(text);
+  if (move) return move;
   if (!text || HELP.test(text)) return { kind: "help" };
   if (GREETING.test(text)) return { kind: "greeting", thanks: false };
   if (THANKS.test(text)) return { kind: "greeting", thanks: true };

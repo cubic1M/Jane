@@ -20,6 +20,7 @@ import { gather, plan, type BrainSettings } from "./brain";
 import { BUNDLED_UNTIL, closeSettled, postMessages } from "./messages";
 import { queueChatNotificationsSafely } from "./notify";
 import { inQuietHours } from "./quiet-hours";
+import { listPreferences, postingOf } from "./preferences";
 import { loadSnapshot } from "./snapshot";
 import type { Trigger } from "./sources";
 
@@ -82,7 +83,10 @@ export async function runJaneAgent(
   if (!snapshot) return { posted: 0 };
   await closeSettled(userId, { client, now });
 
-  const settings: BrainSettings = { trigger };
+  // Spec step 184: the day as one agenda message, plus whatever is urgent, unless the person
+  // wants things as they come.
+  const posting = postingOf(await listPreferences(userId, { client }));
+  const settings: BrainSettings = { trigger, agenda: posting === "daily" };
   const db = scopedFor(userId, client);
   const keys = gather(snapshot, now, settings).map((c) => c.dedupeKey);
   const [seen, recent] = await Promise.all([

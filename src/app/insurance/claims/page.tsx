@@ -7,7 +7,18 @@ import { eventLabel, guideFor, listClaims, nextStep, type Claim } from "@/lib/in
 import { kindWords } from "@/lib/insurance/gaps";
 import { listPolicies } from "@/lib/insurance/policies";
 import { requireUser } from "@/lib/session";
-import { claimNumber, finishClaim, stepDone } from "./actions";
+import {
+  claimNumber,
+  draftClaimForm,
+  fileClaimForm as fileIt,
+  finishClaim,
+  stepDone,
+} from "./actions";
+import { canFile } from "@/lib/insurance/claim-filing";
+import { partnerFor } from "@/lib/insurance/partner";
+import { STATUS_WORDS } from "@/lib/insurance/claim-rules";
+import { draftBody } from "@/lib/jane-agent/insurance/done-by-jane-words";
+import { formatCents } from "@/lib/money";
 import { StartClaimForm } from "./start-form";
 
 // Claims (spec step 107): when something happens, what to do now, what to collect, who to
@@ -27,7 +38,66 @@ const dateLabel = (iso: string) =>
     timeZone: "UTC",
   });
 
-function ClaimCard({ claim }: { claim: Claim }) {
+// Spec step 155: filed by Jane, a draft to check and file, or the form to write one up.
+function Filing({ claim, filable }: { claim: Claim; filable: boolean }) {
+  if (claim.filing === "filed") {
+    return (
+      <p className="rounded-lg bg-emerald-50 p-3 text-sm text-emerald-950 dark:bg-emerald-950 dark:text-emerald-50">
+        Filed by Jane: {claim.carrier} {STATUS_WORDS[claim.carrierStatus ?? "received"]}, number{" "}
+        {claim.claimNumber}.
+        {claim.payoutCents !== null && claim.payoutCents !== undefined
+          ? ` Payment: ${formatCents(claim.payoutCents)}.`
+          : ""}
+      </p>
+    );
+  }
+  if (!filable) return null;
+  if (claim.filing === "draft") {
+    const [intro, ...lines] = draftBody(claim).split("\n");
+    return (
+      <div className="flex flex-col gap-2 rounded-lg border border-zinc-200 p-3 text-sm dark:border-zinc-800">
+        <p className="font-medium">{intro}</p>
+        <ul>
+          {lines.map((l) => (
+            <li key={l}>{l.replace(/^- /, "")}</li>
+          ))}
+        </ul>
+        <form action={fileIt}>
+          <input type="hidden" name="claimId" value={claim.id} />
+          <button type="submit" className={SMALL_BUTTON}>
+            File it
+          </button>
+        </form>
+      </div>
+    );
+  }
+  return (
+    <form action={draftClaimForm} className="flex flex-col gap-2 text-sm">
+      <p className="font-medium">
+        Jane can file this claim for you. She&apos;ll show you before it goes.
+      </p>
+      <input type="hidden" name="claimId" value={claim.id} />
+      <label htmlFor={`amount-${claim.id}`} className="flex flex-col gap-1 font-medium">
+        How much it cost ($)
+        <input id={`amount-${claim.id}`} name="amount" inputMode="decimal" className={INPUT} />
+      </label>
+      <label htmlFor={`what-${claim.id}`} className="flex flex-col gap-1 font-medium">
+        What happened
+        <textarea
+          id={`what-${claim.id}`}
+          name="description"
+          rows={2}
+          className="min-w-0 rounded-lg border border-zinc-300 bg-transparent p-3 text-base dark:border-zinc-700"
+        />
+      </label>
+      <button type="submit" className={`${SMALL_BUTTON} self-start`}>
+        Write it up
+      </button>
+    </form>
+  );
+}
+
+function ClaimCard({ claim, filable = false }: { claim: Claim; filable?: boolean }) {
   const guide = guideFor(claim.kind);
   const next = nextStep(claim);
   const done = claim.steps.filter((s) => s.doneAt).length;
@@ -80,6 +150,7 @@ function ClaimCard({ claim }: { claim: Claim }) {
           </li>
         ))}
       </ol>
+      <Filing claim={claim} filable={filable} />
       {claim.status === "open" && (
         <div className="flex flex-wrap items-end gap-3">
           <form action={claimNumber} className="flex flex-wrap items-end gap-2">
@@ -112,10 +183,19 @@ function ClaimCard({ claim }: { claim: Claim }) {
   );
 }
 
-async function ClaimsContent() {
+async function ClaimsContent({ searchParams }: { searchParams: Promise<{ error?: string }> }) {
   const user = await requireUser();
   await connection();
-  const [claims, policies] = await Promise.all([listClaims(user.id), listPolicies(user.id)]);
+  const { error } = await searchParams;
+  const [claims, policies, partner] = await Promise.all([
+    listClaims(user.id),
+    listPolicies(user.id),
+    partnerFor(user.id),
+  ]);
+  const filable = new Set<string>();
+  for (const c of claims) {
+    if (await canFile(user.id, c, { partner })) filable.add(c.id);
+  }
   const today = new Date().toISOString().slice(0, 10);
   return (
     <>
@@ -128,13 +208,19 @@ async function ClaimsContent() {
         <p className="text-zinc-600 dark:text-zinc-400">
           When something happens, tell Jane in the chat (&ldquo;I had a car accident&rdquo;) or
           start a tracker here. Jane shows what to do now and what to collect, and reminds you of
-          each step until it&apos;s done. You file the claim with your insurer yourself.
+          each step until it&apos;s done. For a small claim on a policy she can reach, Jane can file
+          it with your insurer once you&apos;ve checked what she wrote.
         </p>
       </div>
+      {error && (
+        <p role="alert" className="text-red-700 dark:text-red-400">
+          {error}
+        </p>
+      )}
       {claims.length > 0 && (
         <ul className="flex flex-col gap-3">
           {claims.map((c) => (
-            <ClaimCard key={c.id} claim={c} />
+            <ClaimCard key={c.id} claim={c} filable={filable.has(c.id)} />
           ))}
         </ul>
       )}
@@ -153,11 +239,15 @@ async function ClaimsContent() {
   );
 }
 
-export default function ClaimsPage() {
+export default function ClaimsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ error?: string }>;
+}) {
   return (
     <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-6 px-4 py-10 sm:px-6 sm:py-12">
       <Suspense fallback={<p className="text-zinc-500">Loading…</p>}>
-        <ClaimsContent />
+        <ClaimsContent searchParams={searchParams} />
       </Suspense>
     </main>
   );

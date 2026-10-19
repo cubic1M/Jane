@@ -3189,6 +3189,121 @@ fits how each person likes to be spoken to.
 > Acceptance criteria:
 > - The answer shape (step 89) holds at every length; step 87's scores hold
 
+## Phase AI: Jane's chat, smooth (steps 189–195)
+
+Ten sectors each added their own phrases, replies and tools to the chat, and the rules
+answer first: a question worded a little differently falls through to three generic
+buttons, sectors collide over the same words, and Claude's answers have never been graded.
+This round is about quality, not new features. Jane understands anything about the
+person's money, answers it right, and feels quick and calm to use. Claude reads every free-text
+message and works through every sector's tools; the rules stay for button taps, exact
+commands and when Claude is unavailable. Every change is measured on one question bank.
+
+### Step 189: The question bank
+
+> Read CLAUDE.md. Measure the chat before changing it.
+>
+> Build:
+> 1. Grow step 87's bank to at least 400 everyday questions across every sector and page,
+>    worded the way people talk (typos, follow-ups, two questions at once), including every
+>    question the QA report found unanswered ("what's my net worth", "why is my checking
+>    going negative", "what about my HSA", "move $200 to savings"...). Each has the tool or
+>    rule it should reach, the figures the answer must contain and the guardrail profile.
+> 2. One script scores it: understood (no generic fallback), right route, right figures,
+>    guardrails pass, time to first words. The rules run with no key. The Claude part runs
+>    when ANTHROPIC_API_KEY is set and is skipped (and says so) otherwise.
+> 3. Today's scores recorded in docs/chat-quality.md as the baseline.
+>
+> Acceptance criteria:
+> - Every sector and every page has questions; the script runs in under five minutes with
+>   no key; the baseline is committed
+
+### Step 190: One registry for the chat
+
+> Read CLAUDE.md. Make the chat code simple enough to get right.
+>
+> Build:
+> 1. Every sector's intents, replies, buttons and Claude tools registered in one place, one
+>    entry per capability (what it answers, its tool, its reply, its buttons), in place of
+>    the scattered intent and reply files. Duplicates merged.
+> 2. A test that no two capabilities claim the same phrase, and that every capability has a
+>    tool and questions in the bank.
+>
+> Acceptance criteria:
+> - The bank's scores don't drop; the chat code is smaller; adding a capability touches one
+>   file plus its own feature
+
+### Step 191: Claude first
+
+> Read CLAUDE.md. Free text goes to Claude with every tool.
+>
+> Build:
+> 1. Every typed or spoken message goes to Claude with the registry's tools and the
+>    person's context (step 92). Button taps and exact commands ("approve all", "pause")
+>    keep the instant rule path. With no key, or when Claude is slow or down, the rules
+>    answer as today.
+> 2. Figures come only from tool results; the guardrails (and demo_advice in advice mode)
+>    run on every answer; a daily cost cap per person lives in src/config/agent-chat.ts.
+> 3. Answers stream, so the first words show within about a second and a half.
+>
+> Acceptance criteria:
+> - With a key, the bank's understood rate is at least 95% and right figures 100%; with no
+>   key, nothing is worse than before
+
+### Step 192: A tool for everything
+
+> Read CLAUDE.md. Anything on a page can be asked in the chat.
+>
+> Build:
+> 1. Walk every page and feature: each has a tool that reads it and, where the page acts,
+>    a tool that proposes the action as a card (never runs it without the usual tap or
+>    autopilot rule). Fill the gaps the bank shows: net worth, HSA, giving, student loans,
+>    card interest, why checking goes negative, moving money (queued for the team), budgets.
+>
+> Acceptance criteria:
+> - Every page has a bank question that's answered from its tool with the page's figures
+
+### Step 193: Conversations that flow
+
+> Read CLAUDE.md. Jane follows the conversation.
+>
+> Build:
+> 1. Follow-ups use what was just said ("what about the other one", "do it", "and for my
+>    wife's car?"); the topic carries until it changes. When Jane isn't sure, she asks one
+>    short question with the likely choices, never the three generic buttons when a tool
+>    fits. Two questions in one message get both answers.
+>
+> Acceptance criteria:
+> - The bank's follow-up and two-part questions score at least 90%
+
+### Step 194: Smooth to use
+
+> Read CLAUDE.md. The chat feels quick and calm.
+>
+> Build:
+> 1. No lost clicks while messages arrive (buttons and links work during refresh and
+>    streaming), no jumping scroll, a typing indicator, the message box right on phones
+>    with the keyboard open, plain errors with a retry, nothing posted twice.
+> 2. Fix every chat bug in the QA report and the flaky chat end-to-end tests; the chat specs
+>    pass ten runs in a row.
+>
+> Acceptance criteria:
+> - The chat e2e specs pass 10/10 in CI; phone and desktop checked in light and dark
+
+### Step 195: Graded every night
+
+> Read CLAUDE.md. Quality can only go up.
+>
+> Build:
+> 1. A scheduled GitHub Action runs the bank nightly (the Claude part when the
+>    ANTHROPIC_API_KEY secret is set), writes the scores to docs/chat-quality.md and opens
+>    an issue when a score drops. The rules part runs on every PR that touches the chat and
+>    fails it on a drop.
+> 2. /admin shows the scores over time and the questions that failed.
+>
+> Acceptance criteria:
+> - A deliberately broken intent fails the PR check; a night's scores appear on /admin
+
 ### Later, when the founder is ready
 
 These need an outside account, a partner or a decision: Plaid Production (real banks) and

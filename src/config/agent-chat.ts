@@ -96,6 +96,12 @@ export const MESSAGE_PRIORITY = {
   life_dependants: 45,
   // Spec step 154: cover changes after a life event, worth doing soon.
   cover_change: 72,
+  // Spec step 155: a renewal call to make (before the renewal), its result, a claim's draft
+  // to file, and the carrier's news on a filed claim.
+  renewal_call: 74,
+  renewal_result: 52,
+  claim_draft: 82,
+  claim_status: 68,
   urgent_alert: 95,
   deadline: 90,
   waiting_on_you: 85,
@@ -169,6 +175,8 @@ export const MESSAGE_PRIORITY = {
   hsa: 33,
   // Spec step 160: too much in the employer's stock (demo advice).
   company_stock: 37,
+  // Spec step 161: crypto seen, and its flags (demo advice).
+  crypto: 36,
   auto_invest_run: 31,
 } as const;
 
@@ -185,6 +193,14 @@ export const CHAT_HISTORY_HOURS = 48;
 // Spec step 83: sources whose messages don't count toward the daily limit, like the brief:
 // the one-time autopilot question, so it never pushes a finding out on the first day.
 export const CHAT_UNCAPPED_SOURCES: readonly string[] = ["autopilot", "review", "welcome"];
+
+// Spec step 184: the morning brief is the day's agenda. Anything less urgent than this
+// waits for it and becomes one of its lines; urgent alerts and deadlines come at once.
+export const AGENDA_URGENT_PRIORITY = 90;
+// The agenda lists at most this many things to say yes to (a Yes button each, like a
+// bundle's: bundle.1 to bundle.5) and this many other things worth knowing.
+export const AGENDA_MAX_YES = 5;
+export const AGENDA_MAX_LINES = 3;
 
 // Spec step 83: a budget counts as nearly over once this share of it is spent this month.
 export const BUDGET_NEARLY_OVER_SHARE = 0.9;

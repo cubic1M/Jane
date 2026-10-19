@@ -25,6 +25,7 @@ describe("low_balance_risk", () => {
       confidence: "medium",
     });
     expect(finding.evidence).toMatchObject({ lowestCents: 5_200, lowestDate: "2026-11-01" });
+    expect(finding.title).toBe("Everyday Checking could drop to $52.00 around Nov 1");
     expect((finding.evidence.bills as unknown[]).length).toBe(1);
   });
 

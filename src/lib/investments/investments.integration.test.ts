@@ -25,6 +25,9 @@ import { loadGoalBuckets } from "./goal-buckets";
 import { estimateCollege } from "./college";
 import { collectReceipts, investHsaCash, loadHsa } from "./hsa";
 import { CompanyStockError, loadCompanyStock, saveGrant, sellPart } from "./company-stock";
+import { cryptoTotal, loadCrypto, syncAllCrypto } from "@/lib/crypto/crypto";
+import { brokeragePartner, NoCryptoOrders } from "@/lib/brokerage/partner";
+import { loadMoneyHub } from "@/lib/hubs/money";
 import { setAutopilot } from "@/lib/autopilot";
 import { takeSnapshots } from "@/lib/snapshots";
 import { syncDemoInvestments } from "@/lib/plaid/sync";
@@ -546,6 +549,14 @@ describe.runIf(url)("investments in Jane's chat, against a real database", () =>
       // sync by herself, once each.
       expect(await client.hsaReceipt.count({ where: { userId } })).toBe(3);
       expect(await collectReceipts(userId, { client, now: LINKED })).toBe(0);
+      // Two collections at once (a page and the brain) save each charge once, without error.
+      await client.hsaReceipt.deleteMany({ where: { userId } });
+      const both = await Promise.all([
+        collectReceipts(userId, { client, now: LINKED }),
+        collectReceipts(userId, { client, now: LINKED }),
+      ]);
+      expect(both[0] + both[1]).toBe(3);
+      expect(await client.hsaReceipt.count({ where: { userId } })).toBe(3);
       const receipts = await client.hsaReceipt.findMany({
         where: { userId },
         include: { transaction: true },
@@ -678,6 +689,94 @@ describe.runIf(url)("investments in Jane's chat, against a real database", () =>
           { client },
         ),
       ).rejects.toThrow(/company's name/);
+    },
+  );
+
+  it(
+    "step 161: crypto read-only, labelled with its source and time, in net worth, never traded",
+    SLOW,
+    async () => {
+      const userId = await demoPerson();
+      const reply = (
+        await sendToJane(userId, "how much bitcoin do I have", { client, now: LINKED })
+      ).reply;
+      expect(reply.body).toMatch(/^I don't see any crypto\./);
+      const posted = await client.janeMessage.create({
+        data: {
+          userId,
+          kind: "decision",
+          body: reply.body,
+          refs: {},
+          actions: reply.actions,
+          dedupeKey: "test:crypto:link",
+        },
+      });
+      const { message } = await takeChatAction(userId, posted.id, "crypto.link", {
+        client,
+        now: LINKED,
+      });
+      expect(message.refs.note).toMatch(/^Connected, read-only\./);
+
+      const view = await loadCrypto(userId, { client, now: LINKED });
+      expect(view.connections).toMatchObject([
+        {
+          kind: "exchange",
+          name: "Demo Exchange",
+          source: "Demo Exchange (demo, sample data), read-only",
+          asOf: LINKED,
+          stale: false,
+        },
+      ]);
+      expect(view.holdings.map((h) => h.asset).sort()).toEqual(["BTC", "ETH", "SOL", "USDC"]);
+      expect(view.holdings.every((h) => h.asOf.getTime() === LINKED.getTime())).toBe(true);
+      expect(view.size.overShare).toBe(true);
+      expect(view.fees).toMatchObject({ bps: 149, flag: true });
+
+      // In net worth, at what the exchange reported.
+      const total = await cryptoTotal(userId, { client });
+      expect(total).toBe(view.size.totalCents);
+      const { netWorth } = await loadMoneyHub(userId, { client, now: LINKED });
+      expect(netWorth.cryptoCents).toBe(total);
+      expect(netWorth.assetsCents).toBeGreaterThan(netWorth.investmentsCents + total);
+
+      // Jane's messages: seen, then the two flags; none can trade.
+      const snapshot = await loadSnapshot(userId, { client, now: LINKED });
+      const messages = investmentsSource
+        .gather(snapshot!, {} as never)
+        .filter((c) => c.dedupeKey.startsWith("crypto:"));
+      expect(messages.map((m) => m.dedupeKey)).toEqual([
+        "crypto:seen",
+        "crypto:share",
+        "crypto:fees",
+      ]);
+
+      // No order path: the brokerage refuses crypto, and records nothing.
+      await expect(
+        brokeragePartner().placeOrders(
+          userId,
+          {
+            batchId: crypto.randomUUID(),
+            reason: "test",
+            orders: [
+              {
+                accountId: view.connections[0].id,
+                ticker: "BTC",
+                securityName: "Bitcoin",
+                side: "sell",
+                amountCents: 10_000,
+              },
+            ],
+          },
+          { client, now: LINKED },
+        ),
+      ).rejects.toBeInstanceOf(NoCryptoOrders);
+      expect(await client.brokerageOrder.count({ where: { userId, ticker: "BTC" } })).toBe(0);
+
+      // The nightly run reads the balances again, a day later, at that day's prices.
+      const tomorrow = new Date(LINKED.getTime() + 86_400_000);
+      expect((await syncAllCrypto({ client, now: tomorrow })).synced).toBeGreaterThan(0);
+      const later = await loadCrypto(userId, { client, now: tomorrow });
+      expect(later.connections[0].asOf).toEqual(tomorrow);
     },
   );
 });

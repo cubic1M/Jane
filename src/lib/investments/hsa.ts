@@ -50,18 +50,19 @@ export async function collectReceipts(
     },
     select: { id: true, amountCents: true, date: true, merchantName: true, description: true },
   });
-  for (const t of charges) {
-    await db.hsaReceipts.create({
-      data: {
-        userId,
-        transactionId: t.id,
-        amountCents: t.amountCents,
-        date: t.date,
-        merchant: t.merchantName ?? t.description,
-      },
-    });
-  }
-  return charges.length;
+  if (charges.length === 0) return 0;
+  // Two runs at once (a page and the brain) can find the same charge: each is saved once.
+  const { count } = await db.hsaReceipts.createMany({
+    data: charges.map((t) => ({
+      userId,
+      transactionId: t.id,
+      amountCents: t.amountCents,
+      date: t.date,
+      merchant: t.merchantName ?? t.description,
+    })),
+    skipDuplicates: true,
+  });
+  return count;
 }
 
 export async function collectAllReceipts({

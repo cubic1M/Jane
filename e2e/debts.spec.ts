@@ -266,3 +266,35 @@ test("the credit score is a labelled stand-in, with its factors and card use", a
   await expect(page.getByRole("list", { name: "Factors" }).getByRole("listitem")).toHaveCount(5);
   await expect(page.getByRole("region", { name: "Card use" })).toContainText("of your card limits");
 });
+
+// Spec step 174: what each card earns on the person's own spending, the fee counted, and a
+// better card applied for with one tap, labelled as demo advice.
+test("card rewards count the fee, and a better card is applied for with one tap", async ({
+  context,
+  page,
+  baseURL,
+}) => {
+  const user = await signedInUser("user");
+  userId = user.userId;
+  await context.addCookies([
+    { name: "authjs.session-token", value: user.sessionToken, url: baseURL ?? "" },
+  ]);
+  await page.goto("/connect");
+  await page.getByRole("button", { name: "Link a demo bank" }).click();
+  await expect(page).toHaveURL("/chat", { timeout: 60_000 });
+
+  await page.goto("/loans");
+  await page.getByRole("link", { name: "See your card rewards" }).click();
+  await expect(page.getByRole("heading", { level: 1, name: "Card rewards" })).toBeVisible();
+  await expect(page.getByText("Demo advice: sample data, not financial advice")).toBeVisible();
+  await expect(page.getByRole("region", { name: "Your cards" })).toContainText(
+    "The fee doesn't pay for itself",
+  );
+  const apply = page.getByRole("button", { name: /^Apply for the / });
+  await apply.scrollIntoViewIfNeeded();
+  // Keyboard, so the fixed bottom nav on phones never takes the tap.
+  await apply.focus();
+  await apply.press("Enter");
+  await expect(page.getByRole("status")).toHaveText("Sent just now.");
+  await expect(page.getByRole("region", { name: "Your applications" })).toContainText("Approved");
+});

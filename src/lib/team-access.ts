@@ -51,6 +51,8 @@ export const TEAM_ACCESS_RULES: Record<AuditEvent, EventRule> = {
   // Loans (spec step 112): the person's own application and acceptance.
   loan_application_submitted: own,
   loan_accepted: own,
+  // Spec step 174: the person's own card application.
+  card_application_submitted: own,
   // Insurance (spec Phase X): the person's own edits to their profile.
   insurance_policy_saved: own,
   insurance_policy_removed: own,
@@ -61,6 +63,8 @@ export const TEAM_ACCESS_RULES: Record<AuditEvent, EventRule> = {
   employer_benefit_confirmed: own,
   life_application_submitted: own,
   insurance_cover_changed: own,
+  insurance_renewal_negotiated: own,
+  insurance_claim_filed: own,
   user_signed_in: own,
   import_completed: own,
   explanations_generated: automatic,
@@ -160,6 +164,7 @@ export const TEAM_ACCESS_RULES: Record<AuditEvent, EventRule> = {
   auto_invest_set: own,
   college_plan_saved: own,
   equity_grant_saved: own,
+  crypto_connected: own,
 };
 
 export const SHOWN_EVENTS = (Object.keys(TEAM_ACCESS_RULES) as AuditEvent[]).filter(

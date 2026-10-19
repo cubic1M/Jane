@@ -20,6 +20,7 @@ import { syncItem } from "@/lib/plaid/sync";
 import { answerProposal } from "@/lib/proposals";
 import { takeChatAction } from "./actions";
 import { openChat } from "./open";
+import { AS_THEY_COME } from "./preferences";
 import { runJaneAgent } from "./run";
 import { startOfTomorrow } from "./snooze";
 import { parseActions, parseRefs, type ActionId } from "./types";
@@ -50,11 +51,16 @@ describe.runIf(url)("everything from Jane's chat, against a real database", () =
     },
   ) as PlaidApi;
 
+  // Each message on its own (spec step 184's "as they come"): these tests are about each
+  // kind of message's buttons. The day's agenda is in ./agent.integration.test.ts.
   async function person(prefix: string) {
     const user = await client.user.create({
       data: { email: `${prefix}-${crypto.randomUUID()}@example.com`, name: "Alex Rivera" },
     });
     created.push(user.id);
+    await client.janePreference.create({
+      data: { userId: user.id, ...AS_THEY_COME, value: AS_THEY_COME.value },
+    });
     return user.id;
   }
 
