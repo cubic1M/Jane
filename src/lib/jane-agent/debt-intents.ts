@@ -9,9 +9,12 @@ export type DebtIntent =
   | { kind: "debt_detail"; target: string }
   // Spec step 110: "what's the fastest way out of debt?", "what if I pay $200 more?".
   // extraCents is the extra a month they named, or null.
-  | { kind: "payoff_plan"; extraCents: number | null };
+  | { kind: "payoff_plan"; extraCents: number | null }
+  // Spec step 111: "can I refinance my car loan?", "find me a better rate". target is the
+  // debt they named, or null for all of them.
+  | { kind: "refinance"; target: string | null };
 
-const DEBT_KINDS = new Set<string>(["debts", "debt_detail", "payoff_plan"]);
+const DEBT_KINDS = new Set<string>(["debts", "debt_detail", "payoff_plan", "refinance"]);
 export const isDebtIntent = (intent: { kind: string }): intent is DebtIntent =>
   DEBT_KINDS.has(intent.kind);
 
@@ -30,6 +33,11 @@ const PAYOFF =
 const MORE =
   /\bwhat if (?:i|we) (?:pay|paid|put|added?)\b.*\b(?:more|extra)\b|\b(?:pay|paying|put|putting) (?:an )?extra\b.*\b(?:debts?|loans|cards|a month|each month|monthly)\b/;
 
+const REFINANCE =
+  /\brefinanc\w*\b|\brefi\b|\bbetter (?:rate|deal|loan|offer)s?\b|\bcheaper loans?\b|\b(?:loan|lender|rate) offers?\b|\bconsolidat\w*\b|\bshop (?:around )?for (?:a )?(?:loan|rate)s?\b/;
+const REFINANCE_TARGET =
+  /\b(?:on|for|of) (?:my |the |our )?(.+)$|\b(?:refinanc|consolidat)\w* (?:my |the |our )?(.+)$/;
+
 const clean = (target: string) =>
   target
     .replace(/\b(?:paid off|off|in full)\b/g, "")
@@ -47,6 +55,20 @@ export function parseDebtIntent(
   if (MORE.test(text) && amountCents !== null)
     return { kind: "payoff_plan", extraCents: amountCents };
   if (PAYOFF.test(text)) return { kind: "payoff_plan", extraCents: null };
+  if (REFINANCE.test(text)) {
+    const on = REFINANCE_TARGET.exec(text);
+    const target = on ? clean(on[1] ?? on[2]) : "";
+    return {
+      kind: "refinance",
+      target:
+        target &&
+        !/^(?:it|them|everything|all|anything|my debts?|debts?|loans|offers?|options?|rates?)$/.test(
+          target,
+        )
+          ? target
+          : null,
+    };
+  }
   const paid = PAID_OFF.exec(text);
   if (paid) {
     const target = clean(paid[1] ?? paid[2] ?? paid[3] ?? "");

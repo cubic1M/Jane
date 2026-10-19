@@ -11,6 +11,8 @@ import type { PrismaClient } from "@/generated/prisma/client";
 import type { ToolOutput } from "@/lib/ask/tools";
 import { formatCents } from "@/lib/money";
 import { loadTaxEstimate } from "@/lib/tax-estimate";
+import { loadWithholding } from "@/lib/tax-withholding";
+import { loadTaxSavings } from "@/lib/tax-savings";
 import { loadTaxForms, loadTaxTags } from "@/lib/tax-organizer";
 import { loadWorkingProfile } from "@/lib/tax-profile";
 import { defaultTaxYear } from "@/planning/tax-pack";
@@ -51,6 +53,18 @@ export const TAX_TOOLS: Anthropic.Tool[] = [
     name: "tax_estimate",
     description:
       "Jane's estimate of the person's federal and state tax for the tax year, from their income so far projected to the year's end, their pay stubs and their tax profile: income, adjustments, AGI, the deduction (standard or itemized, with its parts), taxable income, income tax, other taxes, credits, total tax, what's been withheld and paid, and the refund or amount owed; the state's the same way. Every figure is an estimate; also lists what Jane assumed. Say figures as estimates.",
+    input_schema: noInput,
+  },
+  {
+    name: "tax_withholding",
+    description:
+      "Whether the person's federal withholding is on course for the tax Jane estimates: on track, a big refund coming, or a bill coming, with the estimated refund or amount owed and paychecks left this year. In demo advice mode only, also what to put on a new W-4 (Step 4(b) deductions or Step 4(c) extra withholding) for the rest of the year and from January, and what each does to a paycheck. Jane never sends a W-4; the person does.",
+    input_schema: noInput,
+  },
+  {
+    name: "tax_savings",
+    description:
+      "Demo advice mode only: ways for the person to pay less tax this year that Jane found in their accounts (retirement contributions, IRA, HSA and FSA room, itemizing, bunching gifts, student loan interest, education and energy credits, dependent care), each with why, an estimated yearly saving and what to do. Outside demo advice mode it says it isn't available. Say every saving as an estimate.",
     input_schema: noInput,
   },
   {
@@ -181,6 +195,71 @@ export async function runTaxTool(
           rough: e.state.rough,
         },
         assumptions: view.assumptions,
+      });
+    }
+    case "tax_withholding": {
+      const { check, estimate, advice } = await loadWithholding(userId, { client, now });
+      const change = (
+        c: {
+          step: string;
+          amountCents: number;
+          perPaycheckCents: number;
+          refundAfterCents: number;
+        } | null,
+      ) =>
+        c && {
+          w4Step:
+            c.step === "4b"
+              ? "Step 4(b) deductions, a yearly amount"
+              : "Step 4(c) extra withholding per paycheck",
+          amount: money(c.amountCents),
+          changeInEachPaycheck: money(-c.perPaycheckCents),
+          estimateAfter:
+            c.refundAfterCents >= 0
+              ? `refund ${money(c.refundAfterCents)}`
+              : `owed ${money(-c.refundAfterCents)}`,
+        };
+      if (check.status === "unknown")
+        return out({ year: estimate.year, status: check.status, why: check.why });
+      return out({
+        year: estimate.year,
+        isAnEstimate: true,
+        status: check.status,
+        refund: check.refundCents >= 0 ? money(check.refundCents) : null,
+        owed: check.refundCents < 0 ? money(-check.refundCents) : null,
+        w4Sent: estimate.w4 ? { on: estimate.w4.changedOn } : null,
+        ...(check.status === "on_track"
+          ? {}
+          : {
+              paychecksLeft: check.paychecksLeft,
+              demoAdvice: advice
+                ? { thisYear: change(check.thisYear), fromJanuary: change(check.fromJanuary) }
+                : "Not available: W-4 suggestions are demo advice only. Point them to the IRS Tax Withholding Estimator.",
+            }),
+      });
+    }
+    case "tax_savings": {
+      const view = await loadTaxSavings(userId, { client, now });
+      if (!view.advice) {
+        return out({
+          available: false,
+          why: "Tax-saving suggestions are demo advice only for now.",
+        });
+      }
+      return out({
+        year: view.year,
+        isAnEstimate: true,
+        savings: view.savings.map((s) => ({
+          what: s.title,
+          why: s.why,
+          estimatedSavingAYear: money(s.estimateCents),
+          todo:
+            s.action.kind === "task"
+              ? `Reminder: ${s.action.title} by ${s.action.dueOn}`
+              : s.action.kind === "goal"
+                ? `Goal: ${s.action.name}, ${money(s.action.targetCents)} by ${s.action.targetDate}`
+                : `Open ${s.action.href}`,
+        })),
       });
     }
     case "tax_forms": {

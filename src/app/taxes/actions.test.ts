@@ -2,13 +2,45 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
 vi.mock("@/lib/session", () => ({ requireUser: vi.fn(async () => ({ id: "u1" })) }));
+vi.mock("@/lib/advice-mode", () => ({ adviceMode: vi.fn(async () => true) }));
+vi.mock("@/lib/tax-withholding", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/tax-withholding")>()),
+  recordW4Change: vi.fn(),
+  clearW4Change: vi.fn(),
+  keepRefund: vi.fn(),
+}));
+vi.mock("@/lib/deadlines", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/deadlines")>()),
+  addDeadline: vi.fn(),
+}));
+vi.mock("@/lib/tax-savings", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/tax-savings")>()),
+  dismissSaving: vi.fn(),
+  loadTaxSavings: vi.fn(async () => ({
+    year: 2026,
+    advice: true,
+    savings: [
+      {
+        key: "retirement",
+        title: "t",
+        why: "w",
+        estimateCents: 100,
+        action: { kind: "task", title: "Raise my 401(k)", dueOn: "2026-10-25", note: "n" },
+      },
+    ],
+  })),
+}));
 vi.mock("@/lib/tax-organizer", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/lib/tax-organizer")>()),
   markTaxForm: vi.fn(async () => ({ form: "W-2", from: "ACME" })),
 }));
 
+import { adviceMode } from "@/lib/advice-mode";
 import { TaxOrganizerError, markTaxForm } from "@/lib/tax-organizer";
-import { markForm } from "./actions";
+import { clearW4Change, keepRefund, recordW4Change } from "@/lib/tax-withholding";
+import { addDeadline } from "@/lib/deadlines";
+import { dismissSaving } from "@/lib/tax-savings";
+import { markForm, savingAction, w4Action } from "./actions";
 
 // Spec step 119: "I have it" and "Not yet" on /taxes.
 
@@ -41,6 +73,74 @@ describe("markForm", () => {
     expect(await markForm(null, form({ year: "2026", key: "nope", received: "1" }))).toEqual({
       ok: false,
       message: "That form isn't on your list anymore.",
+    });
+  });
+});
+
+describe("w4Action (spec step 121)", () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  it("records the W-4 the person sent, in demo advice mode only", async () => {
+    expect(
+      await w4Action(
+        null,
+        form({ intent: "sent", step: "4b", amountCents: "6169800", year: "2026" }),
+      ),
+    ).toEqual({ ok: true, message: "Saved. Your estimate counts it from your next paycheck." });
+    expect(recordW4Change).toHaveBeenCalledWith(
+      "u1",
+      { step: "4b", amountCents: 6_169_800 },
+      { via: "page" },
+    );
+    vi.mocked(adviceMode).mockResolvedValueOnce(false);
+    expect(await w4Action(null, form({ intent: "sent", step: "4b", amountCents: "100" }))).toEqual({
+      ok: false,
+      message: "That's only in demo advice mode.",
+    });
+    expect(recordW4Change).toHaveBeenCalledTimes(1);
+  });
+
+  it("undoes it, and keeps a refund for the year", async () => {
+    expect(await w4Action(null, form({ intent: "undo" }))).toMatchObject({ ok: true });
+    expect(clearW4Change).toHaveBeenCalledWith("u1", { via: "page" });
+    expect(await w4Action(null, form({ intent: "keep", year: "2026" }))).toMatchObject({
+      ok: true,
+    });
+    expect(keepRefund).toHaveBeenCalledWith("u1", 2026, { via: "page" });
+    expect(await w4Action(null, form({ intent: "nope" }))).toMatchObject({ ok: false });
+  });
+});
+
+describe("savingAction (spec step 122)", () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  it("sets the reminder for a way to pay less, in demo advice mode only", async () => {
+    expect(
+      await savingAction(null, form({ intent: "task", key: "retirement", year: "2026" })),
+    ).toEqual({
+      ok: true,
+      message: "Added to your deadlines. Jane will remind you.",
+    });
+    expect(addDeadline).toHaveBeenCalledWith("u1", {
+      title: "Raise my 401(k)",
+      dueOn: "2026-10-25",
+      kind: "other",
+      note: "n",
+    });
+    vi.mocked(adviceMode).mockResolvedValueOnce(false);
+    expect(
+      await savingAction(null, form({ intent: "task", key: "retirement", year: "2026" })),
+    ).toMatchObject({ ok: false });
+  });
+
+  it("Not for me, and refuses a suggestion that isn't open", async () => {
+    expect(
+      await savingAction(null, form({ intent: "no", key: "retirement", year: "2026" })),
+    ).toMatchObject({ ok: true });
+    expect(dismissSaving).toHaveBeenCalledWith("u1", 2026, "retirement", { via: "page" });
+    expect(await savingAction(null, form({ intent: "no", key: "ira", year: "2026" }))).toEqual({
+      ok: false,
+      message: "That suggestion isn't open anymore.",
     });
   });
 });

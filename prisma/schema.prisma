@@ -286,6 +286,7 @@ model User {
   ownedAssets            OwnedAsset[]
   debtTerms              DebtTerms[]
   debtPlan               DebtPlan?
+  refinanceCheck         RefinanceCheck?
   findings               Finding[]
   decisions              Decision[]
   actions                Action[]
@@ -326,6 +327,7 @@ model User {
   budgetTuneUps          BudgetTuneUp[]
   goalTransfers          GoalTransfer[]
 
+  savedShares            SavedShare[]
   @@map("users")
 }
 
@@ -614,6 +616,25 @@ model DebtPlan {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("debt_plans")
+}
+
+// Refinance offers Jane asked the lender partner for (spec step 111), once a month by
+// herself: each debt that can be refinanced, the months compared over and the offers the
+// person prequalified for (a soft check). Nothing here is an application.
+model RefinanceCheck {
+  id        String   @id @default(cuid())
+  userId    String   @unique @map("user_id")
+  checkedOn DateTime @map("checked_on") @db.Date
+  // The partner that quoted them ("demo" for the stand-in catalog).
+  partner   String
+  // [{ debtKey, product, termMonths, amountCents, offers: LoanOffer[] }]
+  quotes    Json     @default("[]")
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("refinance_checks")
 }
 
 model Finding {
@@ -1470,6 +1491,12 @@ model InsurancePolicy {
   documentId       String?   @unique @map("document_id")
   // The insurer's payments in the person's transactions (normalizeMerchant key), if known.
   merchantKey      String?   @map("merchant_key")
+  // Spec step 105, for a policy Jane bound: its number at the carrier, the day it starts,
+  // the policy it replaces and the switch action.
+  policyNumber     String?   @map("policy_number")
+  startsOn         DateTime? @map("starts_on") @db.Date
+  replacesPolicyId String?   @map("replaces_policy_id")
+  actionId         String?   @map("action_id")
   cancelledAt      DateTime? @map("cancelled_at") @db.Timestamptz(3)
   createdAt        DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt        DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
@@ -1710,6 +1737,16 @@ model TaxProfile {
   payStateYtdCents      Int?      @map("pay_state_ytd_cents")
   payRetirementYtdCents Int?      @map("pay_retirement_ytd_cents")
   payPretaxYtdCents     Int?      @map("pay_pretax_ytd_cents")
+  // Spec step 121: a W-4 change the person said they sent (step "4b" deductions, a yearly
+  // amount, or "4c" extra withholding per paycheck), from when, for which tax year; and the
+  // year they said they'd rather keep their refund, so Jane doesn't ask again that year.
+  w4Step                String?   @map("w4_step")
+  w4AmountCents         Int?      @map("w4_amount_cents")
+  w4ChangedOn           DateTime? @map("w4_changed_on") @db.Date
+  w4Year                Int?      @map("w4_year")
+  keepRefundYear        Int?      @map("keep_refund_year")
+  // Spec step 122: ways to pay less the person said no to, as "<year>:<key>".
+  savingsDismissed      String[]  @default([]) @map("savings_dismissed")
   createdAt             DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt             DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
 
@@ -1956,4 +1993,21 @@ model AnswerCheckRun {
 
   @@index([createdAt])
   @@map("answer_check_runs")
+}
+
+// A shared "What Jane saved me" total (spec step 139): the confirmed total when it was
+// shared, behind an unguessable link. Only the token's SHA-256 is kept. Nothing else about
+// the person is on the shared page; revoking takes it down.
+model SavedShare {
+  id         String    @id @default(cuid())
+  userId     String    @map("user_id")
+  tokenHash  String    @unique @map("token_hash")
+  totalCents Int       @map("total_cents")
+  createdAt  DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  revokedAt  DateTime? @map("revoked_at") @db.Timestamptz(3)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("saved_shares")
 }

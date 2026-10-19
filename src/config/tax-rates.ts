@@ -244,6 +244,15 @@ export const EDUCATION_CREDITS = {
   },
 } as const;
 
+// The 2025 home energy credits, still claimable on 2025 returns for property placed in
+// service in 2025: 30% of costs; improvements (25C) capped at $1,200 a year, $2,000 for heat
+// pumps; solar and batteries (25D) uncapped.
+export const ENERGY_CREDITS_2025 = {
+  rate: 0.3,
+  improvementCap: $(1_200),
+  heatPumpCap: $(2_000),
+} as const;
+
 // The home energy credits (25C, 25D) ended for property placed in service after Dec 31,
 // 2025, and the clean vehicle credits for vehicles acquired after Sep 30, 2025 (OBBBA).
 export const ENERGY_CREDITS_END = { home: "2025-12-31", vehicle: "2025-09-30" } as const;

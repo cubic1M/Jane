@@ -1,8 +1,10 @@
 import type { PrismaClient } from "@/generated/prisma/client";
 import { loadPayoff } from "@/lib/debt-plan";
 import { loadDebts } from "@/lib/debts";
+import { checkRates, loadRefinance } from "@/lib/refinance";
 import type { DebtIntent } from "./debt-intents";
 import { debtReply, payoffReply } from "./debt-replies";
+import { refinanceReply } from "./refinance-replies";
 import type { Reply } from "./replies";
 
 // Answers questions about debts by rules (spec Phase Y), with the same loaders as the
@@ -21,5 +23,14 @@ export async function answerDebt(
         await loadPayoff(userId, { client, now, extraCents: intent.extraCents ?? undefined }),
         now.toISOString().slice(0, 10),
       );
+    case "refinance": {
+      let refi = await loadRefinance(userId, { client, now });
+      // Asked before Jane's first monthly check: she checks now.
+      if (refi.available && refi.checkedOn === null) {
+        await checkRates(userId, { client, now });
+        refi = await loadRefinance(userId, { client, now });
+      }
+      return refinanceReply(intent.target, refi, await loadDebts(userId, { client, now }));
+    }
   }
 }

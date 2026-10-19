@@ -14,11 +14,16 @@ import {
 import { formatCents } from "@/lib/money";
 import { requireUser } from "@/lib/session";
 import { loadTaxForms, loadTaxTags } from "@/lib/tax-organizer";
+import { adviceMode } from "@/lib/advice-mode";
 import { loadTaxEstimate } from "@/lib/tax-estimate";
+import { checkFrom } from "@/lib/tax-withholding";
+import { loadTaxSavings } from "@/lib/tax-savings";
 import { loadWorkingProfile } from "@/lib/tax-profile";
 import { defaultTaxYear } from "@/planning/tax-pack";
 import { stateName, type FieldStatus } from "@/planning/tax-profile";
 import { EstimateSection } from "./estimate-section";
+import { SavingsSection } from "./savings-section";
+import { WithholdingSection } from "./withholding-section";
 import { FormToggle } from "./form-toggle";
 
 // Taxes (spec steps 118–127): Jane keeps the person's taxes organised all year. Step 118:
@@ -55,11 +60,12 @@ async function TaxesContent() {
   const now = new Date();
   // The year being gathered: last year until the end of April, then this one.
   const year = defaultTaxYear(now.toISOString().slice(0, 10));
-  const [{ view, autopilot }, tags, forms, estimate] = await Promise.all([
+  const [{ view, autopilot }, tags, forms, estimate, advice] = await Promise.all([
     loadWorkingProfile(user.id, { now }),
     loadTaxTags(user.id, year),
     loadTaxForms(user.id, year, { now }),
     loadTaxEstimate(user.id, { now }),
+    adviceMode(user.id),
   ]);
   const kids = view.dependants;
 
@@ -76,6 +82,8 @@ async function TaxesContent() {
       </div>
 
       <EstimateSection view={estimate} />
+      <WithholdingSection view={{ estimate, check: checkFrom(estimate), advice }} />
+      <SavingsSection view={await loadTaxSavings(user.id, { now, loaded: { estimate, advice } })} />
 
       <section aria-labelledby="profile" className={CARD}>
         <div className="flex flex-wrap items-baseline justify-between gap-2">
