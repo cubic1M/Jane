@@ -36,6 +36,9 @@ import {
 } from "@/lib/insurance/cover-changes";
 import { listPolicies } from "@/lib/insurance/policies";
 import { doneNote, parseCoverEventRef } from "../insurance/cover-words";
+import { NegotiationError, callCarrier, declineNegotiation } from "@/lib/insurance/negotiate";
+import { fileClaim as fileClaimNow } from "@/lib/insurance/claim-filing";
+import { callResultBody } from "../insurance/done-by-jane-words";
 import {
   askingStep,
   boughtNote,
@@ -473,5 +476,64 @@ export const coverDismiss: ActionHandler = {
       throw error;
     }
     return { answeredWith: action.label, note: "Okay, I've left your insurance as it is." };
+  },
+};
+
+// Spec step 155: the renewal call, on the person's tap; and filing the claim draft they've
+// just read.
+export const renewalCall: ActionHandler = {
+  id: "renewal.call",
+  on: "open",
+  async run({ userId, message, action, client, now }) {
+    const id = message.refs.negotiationId;
+    if (!id) throw new ChatActionError("failed", "Something went wrong. Open it instead.");
+    let result;
+    try {
+      result = await callCarrier(userId, id, { client, now });
+    } catch (error) {
+      if (error instanceof NegotiationError) throw answeredElsewhere(error.message);
+      throw error;
+    }
+    const policy = (await listPolicies(userId, { client })).find((p) => p.id === result.policyId);
+    return { answeredWith: action.label, note: callResultBody(result, policy) };
+  },
+};
+
+export const renewalNo: ActionHandler = {
+  id: "renewal.no",
+  on: "open",
+  async run({ userId, message, action, client }) {
+    const id = message.refs.negotiationId;
+    if (!id) throw new ChatActionError("failed", "Something went wrong. Open it instead.");
+    try {
+      await declineNegotiation(userId, id, { client });
+    } catch (error) {
+      if (error instanceof NegotiationError) throw answeredElsewhere(error.message);
+      throw error;
+    }
+    return {
+      answeredWith: action.label,
+      note: "Okay, I won't call. The new price applies when it renews.",
+    };
+  },
+};
+
+export const claimFile: ActionHandler = {
+  id: "claim.file",
+  on: "open",
+  async run({ userId, message, action, client, now }) {
+    const id = message.refs.claimId;
+    if (!id) throw new ChatActionError("failed", "Something went wrong. Open it instead.");
+    let claim;
+    try {
+      claim = await fileClaimNow(userId, id, { client, now });
+    } catch (error) {
+      if (error instanceof ClaimError) throw answeredElsewhere(error.message);
+      throw error;
+    }
+    return {
+      answeredWith: action.label,
+      note: `Filed. ${claim.carrier ?? "Your insurer"} has your claim, number ${claim.claimNumber}. I'll tell you here as it moves.`,
+    };
   },
 };

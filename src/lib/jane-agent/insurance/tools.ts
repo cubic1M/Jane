@@ -21,6 +21,7 @@ import { listReadings } from "@/lib/insurance/readings";
 import { cardCover, conditionWords } from "@/lib/insurance/card-cover";
 import { latestLife } from "@/lib/insurance/life";
 import { listCoverChanges } from "@/lib/insurance/cover-changes";
+import { listNegotiations } from "@/lib/insurance/negotiate";
 import { noteLines, readingLines } from "./reading-words";
 import { listBenefits, openEnrollmentAtWork, yearlyCost } from "@/lib/insurance/benefits";
 import { autopilotOf } from "@/lib/autopilot";
@@ -69,6 +70,12 @@ export const INSURANCE_TOOLS: Anthropic.Tool[] = [
     name: "insurance_life",
     description:
       "Life insurance sized for the person and applied for (spec step 153), demo advice only: the amount and term with the method (years of pay, debts, final expenses, schooling, less savings and cover they have), the term quotes, and where an application stands (health questions, the carrier's offer or review). Jane never applies or buys without the person's tap; to start, they tap Apply in the chat or on /insurance/life.",
+    input_schema: noInput,
+  },
+  {
+    name: "insurance_negotiations",
+    description:
+      "Renewals with a price rise and Jane's calls to the insurer about them (spec step 155): today's price, the renewal price, the best like-for-like quote from the reshop, whether Jane is waiting for the person's OK to call or already called (by their tap, or on autopilot within their limits), what the insurer agreed, and anything it offered that changes the cover (never accepted on the call).",
     input_schema: noInput,
   },
   {
@@ -144,6 +151,23 @@ export async function runInsuranceTool(
                 }
               : application.decision,
         },
+      }),
+      cents,
+    };
+  }
+  if (name === "insurance_negotiations") {
+    const negotiations = await listNegotiations(userId, { client });
+    return {
+      content: JSON.stringify({
+        negotiations: negotiations.map((n) => ({
+          status: n.status === "asked" ? "waiting for their OK to call" : n.status,
+          today: money(n.currentAnnualCents),
+          atRenewal: money(n.renewalAnnualCents),
+          sameCoverElsewhere: money(n.competingAnnualCents),
+          agreed: money(n.resultAnnualCents),
+          calledBy: n.calledBy,
+          offeredNotTaken: n.offer,
+        })),
       }),
       cents,
     };
@@ -243,6 +267,12 @@ export async function runInsuranceTool(
           insurer: c.carrier,
           claimsLine: c.claimsPhone,
           claimNumber: c.claimNumber,
+          // Spec step 155: filed by Jane through the partner, after their review.
+          filedByJane: c.filing === "filed",
+          draftWaitingForReview: c.filing === "draft",
+          claiming: money(c.amountCents ?? null),
+          insurerStatus: c.carrierStatus ?? null,
+          payout: money(c.payoutCents ?? null),
           steps: c.steps.map((s) => ({ step: s.label, dueOn: s.dueOn, done: s.doneAt !== null })),
         })),
       }),

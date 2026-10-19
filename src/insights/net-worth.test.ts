@@ -15,9 +15,19 @@ describe("netWorth", () => {
       assetsCents: 1_250_000,
       investmentsCents: 0,
       ownedCents: 0,
+      cryptoCents: 0,
       debtsCents: 920_000,
       netCents: 330_000,
       missing: ["Old Card"],
+    });
+  });
+
+  it("counts crypto (spec step 161) as an asset, at what its exchange or wallet reported", () => {
+    expect(netWorth(accounts, [], 822_993)).toMatchObject({
+      assetsCents: 1_250_000 + 822_993,
+      investmentsCents: 0,
+      cryptoCents: 822_993,
+      netCents: 330_000 + 822_993,
     });
   });
 

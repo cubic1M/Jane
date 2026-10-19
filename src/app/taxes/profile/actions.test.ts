@@ -8,6 +8,10 @@ vi.mock("@/lib/tax-profile", async (importOriginal) => ({
   savePayStub: vi.fn(),
   loadTaxProfile: vi.fn(async () => ({ state: { value: "NY" } })),
 }));
+vi.mock("@/lib/family-taxes", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/family-taxes")>()),
+  saveFamilyDetails: vi.fn(),
+}));
 vi.mock("@/lib/tax-states", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/lib/tax-states")>()),
   saveMoves: vi.fn(),
@@ -18,8 +22,14 @@ vi.mock("@/lib/tax-states", async (importOriginal) => ({
 import { revalidatePath } from "next/cache";
 import { TaxProfileError, savePayStub, saveTaxAnswers } from "@/lib/tax-profile";
 import { ResidencyError, saveLocality, saveMoves, saveWorkState } from "@/lib/tax-states";
-import { savePayStubAction, saveResidencyAction, saveTaxProfile } from "./actions";
-import { answersFrom, payStubFrom, residencyFrom } from "./answers";
+import { FamilyTaxesError, saveFamilyDetails } from "@/lib/family-taxes";
+import {
+  saveFamilyAction,
+  savePayStubAction,
+  saveResidencyAction,
+  saveTaxProfile,
+} from "./actions";
+import { answersFrom, familyFrom, payStubFrom, residencyFrom } from "./answers";
 
 // Spec step 118: the tax profile page saves only what was filled in.
 
@@ -208,5 +218,58 @@ describe("where you lived and worked (spec step 165)", () => {
         ]),
       ),
     ).toEqual({ ok: false, message: "Pick two different states." });
+  });
+});
+
+describe("family details (spec step 169)", () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  it("reads the children with an age, a spouse's wages, the home and a student", () => {
+    expect(
+      familyFrom(
+        form([
+          ["childAge0", "4"],
+          ["childMonths0", "12"],
+          ["childSsn0", "on"],
+          ["childAge1", ""],
+          ["childAge2", "9"],
+          ["childMonths2", "5"],
+          ["spouseWages", "40,000"],
+          ["paysOverHalfHome", "on"],
+          ["studentYears", "1"],
+          ["studentHalfTime", "on"],
+        ]),
+      ),
+    ).toEqual({
+      children: [
+        { ageAtYearEnd: 4, hasSsn: true, monthsLivedWithYou: 12 },
+        { ageAtYearEnd: 9, hasSsn: false, monthsLivedWithYou: 5 },
+      ],
+      spouseWagesCents: 4_000_000,
+      paysOverHalfHome: true,
+      student: { yearsOfCollegeBefore: 1, halfTime: true },
+    });
+    expect(() => familyFrom(form([["spouseWages", "lots"]]))).toThrow(FamilyTaxesError);
+  });
+
+  it("saves for the signed-in person and says what's wrong instead", async () => {
+    expect(await saveFamilyAction(null, form([["childAge0", "4"]]))).toEqual({
+      ok: true,
+      message: "Saved. Your family tax choices use it now.",
+    });
+    expect(saveFamilyDetails).toHaveBeenCalledWith(
+      "u1",
+      expect.objectContaining({
+        children: [{ ageAtYearEnd: 4, hasSsn: false, monthsLivedWithYou: 12 }],
+      }),
+      { via: "page" },
+    );
+    vi.mocked(saveFamilyDetails).mockRejectedValueOnce(
+      new FamilyTaxesError("Months lived with you must be 0 to 12."),
+    );
+    expect(await saveFamilyAction(null, form([["childAge0", "4"]]))).toEqual({
+      ok: false,
+      message: "Months lived with you must be 0 to 12.",
+    });
   });
 });

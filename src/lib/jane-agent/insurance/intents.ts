@@ -34,7 +34,10 @@ export type InsuranceAsk =
   // life: how much life cover, applied for and bought (spec step 153).
   | "life"
   // life_change: "I got married", "I bought a car": the cover changes it needs (spec step 154).
-  | "life_change";
+  | "life_change"
+  // Spec step 155: asking the insurer for a better renewal rate, and a claim Jane files.
+  | "renewal_call"
+  | "file_claim";
 
 export type InsuranceIntent = {
   kind: "insurance";
@@ -185,7 +188,17 @@ export function kindIn(text: string): PolicyKind | null {
 const NEED =
   /\b(?:do (?:i|we) need|should (?:i|we) (?:get|buy|have|add)|is (?:it|\w+ insurance) worth|worth (?:it|getting|having)|do (?:i|we) have to have)\b/;
 
+// Spec step 155: Jane filing a claim, or asking the insurer for a better renewal rate.
+const FILE_FOR_ME =
+  /\b(?:can|could|will|would) you (?:please )?(?:file|submit|send in)\b|\b(?:you|jane) (?:file|submit)\b.{0,20}\bclaims?\b|\bfile (?:it|the claim|my claim) with (?:my|the) (?:insurer|insurance(?: company)?)\b/;
+const RENEWAL_CALL =
+  /\b(?:negotiate|haggle|bargain)\b|\b(?:call|ring|phone|ask) (?:my |the )?(?:insurer|insurance(?: company)?|carrier)\b.{0,40}\b(?:better|lower|cheaper|rate|price|renewal)\b|\bbetter (?:renewal )?rate\b.{0,30}\brenew/;
+
 export function parseInsurance(text: string): InsuranceIntent | null {
+  if (FILE_FOR_ME.test(text)) return { kind: "insurance", ask: "file_claim", policyKind: null };
+  if (RENEWAL_CALL.test(text)) {
+    return { kind: "insurance", ask: "renewal_call", policyKind: kindIn(text) };
+  }
   // Something happened: the claims helper, whatever words were used.
   const claim = parseClaim(text);
   if (claim) return claim;

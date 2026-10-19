@@ -20,7 +20,7 @@ import { track } from "@/lib/analytics";
 import { logAudit } from "@/lib/audit";
 import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
-import { parseMoneyToCents } from "@/lib/money";
+import { formatCents, parseMoneyToCents } from "@/lib/money";
 import { CoverageError, fieldText, parseCoverage, readCoverage, type Coverage } from "./coverage";
 
 // The policies on the person's insurance profile (spec step 102): typed on /insurance,
@@ -98,6 +98,21 @@ export function toPolicy(row: Prisma.InsurancePolicyGetPayload<{ select: typeof 
 export function yearlyPremium(policy: Pick<Policy, "premiumCents" | "premiumFrequency">) {
   if (policy.premiumCents === null || !policy.premiumFrequency) return null;
   return policy.premiumCents * PREMIUM_FREQUENCIES[policy.premiumFrequency].perYear;
+}
+
+// The yearly total over the policies list: only the confirmed ones count, and it says so
+// when some found from payments aren't confirmed yet. Null when there's nothing to add up.
+export function premiumTotalLine(
+  policies: Pick<Policy, "status" | "premiumCents" | "premiumFrequency">[],
+): string | null {
+  const total = policies
+    .filter((p) => p.status === "active")
+    .reduce((sum, p) => sum + (yearlyPremium(p) ?? 0), 0);
+  if (total <= 0) return null;
+  const unconfirmed = policies.some((p) => p.status === "found");
+  return unconfirmed
+    ? `The ones you've confirmed come to about ${formatCents(total)} a year, from the prices on file. Confirm the others to count them.`
+    : `Together about ${formatCents(total)} a year, from the prices on file.`;
 }
 
 const addMonths = (iso: string, months: number) => {

@@ -34,28 +34,34 @@ test("the demo bank lands in Jane's chat, and Yes answers a finding", async ({
   await expect(page.getByRole("heading", { level: 1, name: "Chat with Jane" })).toBeVisible();
 
   const messages = page.getByRole("list", { name: "Messages" }).getByRole("listitem");
-  await expect(messages.filter({ hasText: /Good (morning|afternoon|evening)!/ })).toHaveCount(1);
-  await expect(messages.filter({ hasText: "Your plan for this week is ready" })).toHaveCount(1);
-  await expect(page.getByRole("button", { name: "Approve all safe ones" })).toBeVisible();
+  const ask = page.getByRole("textbox", { name: "Message Jane" });
 
-  // Spec step 90: "Why?" answers in the chat from the finding's own evidence, and leaves the
-  // decision open.
-  const explained = messages.filter({ hasText: "Want me to handle it?" }).nth(1);
-  const explainedBody = (await explained.locator("p").nth(1).textContent()) ?? "";
-  await explained.getByRole("button", { name: "Why?" }).click();
-  await expect(messages.last()).toContainText("If you say yes:");
-  await expect(
-    messages.filter({ hasText: explainedBody }).getByRole("button", { name: "Why?" }),
-  ).toHaveCount(0);
-  await expect(
-    messages.filter({ hasText: explainedBody }).getByRole("button", { name: "Yes", exact: true }),
-  ).toBeVisible();
+  // Spec step 184: the day in one message. The agenda says what needs a yes, a Yes each,
+  // and "Approve all safe ones"; each Yes is that thing's own.
+  const agenda = messages.filter({ hasText: /Good (morning|afternoon|evening)! / });
+  await expect(agenda).toHaveCount(1);
+  await expect(agenda).toContainText("need your yes:");
+  await expect(agenda.getByRole("button", { name: "Approve all safe ones" })).toBeVisible();
+  await agenda
+    .getByRole("button", { name: /^\[?Yes: / })
+    .first()
+    .click();
+  await expect(agenda.getByRole("status")).toContainText(":");
 
-  // A finding, found again by its words once its buttons are gone.
-  const first = messages.filter({ hasText: "Want me to handle it?" }).first();
-  const body = (await first.locator("p").nth(1).textContent()) ?? "";
+  // Asked about something, Jane answers with its Yes, No and "Why?" (spec step 90): "Why?"
+  // answers in the chat from the finding's own evidence, and leaves the decision open.
+  await ask.fill("cancel hulu");
+  await ask.press("Enter");
+  await expect(messages.last()).toContainText("Want me to handle it?");
+  const body = (await messages.last().locator("p").nth(1).textContent()) ?? "";
   expect(body).toContain("Want me to handle it?");
   const finding = messages.filter({ hasText: body });
+  await finding.getByRole("button", { name: "Why?" }).click();
+  await expect(messages.last()).toContainText("If you say yes:");
+  await expect(finding.getByRole("button", { name: "Why?" })).toHaveCount(0);
+  await expect(finding.getByRole("button", { name: "Yes", exact: true })).toBeVisible();
+
+  // Yes answers it, found again by its words once its buttons are gone.
   await finding.getByRole("button", { name: "Yes", exact: true }).click();
   await expect(finding.getByText("You chose:")).toBeVisible();
   await expect(finding.getByRole("button", { name: NOT_PIN })).toHaveCount(0);
@@ -84,7 +90,6 @@ test("the demo bank lands in Jane's chat, and Yes answers a finding", async ({
   const nav = page.getByRole("navigation", { name: "Main" });
   await expect(nav.getByRole("link").first()).toHaveAccessibleName("Chat");
   await expect(nav.getByRole("link", { name: "Chat" })).toHaveAttribute("aria-current", "page");
-  const ask = page.getByRole("textbox", { name: "Message Jane" });
   await expect(ask).toHaveAttribute("placeholder", "Ask Jane anything");
 
   // Typing a question (spec step 84): it shows as the person's message, with Jane's answer

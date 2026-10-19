@@ -293,6 +293,7 @@ model User {
   loanApplications       LoanApplication[]
   studentLoanProfile     StudentLoanProfile?
   creditReports          CreditReport[]
+  debtWatch              DebtWatch?
   balanceTransfers       BalanceTransfer[]
   findings               Finding[]
   decisions              Decision[]
@@ -325,6 +326,7 @@ model User {
   policyReadings         PolicyReading[]
   lifeApplications       LifeApplication[]
   coverChanges           CoverChange[]
+  renewalNegotiations    RenewalNegotiation[]
   lifeEvents             LifeEvent[]
   // What's in investment accounts (spec step 128).
   securities             Security[]
@@ -348,15 +350,17 @@ model User {
 
   savedShares SavedShare[]
 
-  autopilotSectors AutopilotSector[]
-  autopilotActs    AutopilotAct[]
-  collegePlans     CollegePlan[]
-  hsaReceipts      HsaReceipt[]
-  equityGrants     EquityGrant[]
-  controllerRuns   ControllerRun[]
-  moneyTransfers   MoneyTransfer[]
-  paycheckPlans    PaycheckPlan[]
-  healthScores     HealthScore[]
+  autopilotSectors  AutopilotSector[]
+  autopilotActs     AutopilotAct[]
+  collegePlans      CollegePlan[]
+  hsaReceipts       HsaReceipt[]
+  equityGrants      EquityGrant[]
+  cryptoConnections CryptoConnection[]
+  cryptoHoldings    CryptoHolding[]
+  controllerRuns    ControllerRun[]
+  moneyTransfers    MoneyTransfer[]
+  paycheckPlans     PaycheckPlan[]
+  healthScores      HealthScore[]
 
   @@map("users")
 }
@@ -773,6 +777,23 @@ model CreditReport {
 
   @@index([userId, pulledOn])
   @@map("credit_reports")
+}
+
+// Debt on autopilot (spec step 117): the rates Jane last saw on each debt, so she can say
+// when the bank changes one, and when she started the payoff plan by herself.
+model DebtWatch {
+  id            String    @id @default(cuid())
+  userId        String    @unique @map("user_id")
+  // { debtKey: aprBps } as last seen.
+  rates         Json      @default("{}")
+  // The latest changes, newest first: [{ debtKey, name, fromBps, toBps, on }].
+  changes       Json      @default("[]")
+  planStartedOn DateTime? @map("plan_started_on") @db.Date
+  updatedAt     DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("debt_watches")
 }
 
 // A balance transfer the person made to a 0% card (spec step 113), so Jane can keep the
@@ -1786,25 +1807,35 @@ model InsuranceCheckup {
 // src/config/claims.ts) as they were when it started. A step is only ever marked done,
 // never removed, so the tracker never loses one.
 model InsuranceClaim {
-  id          String    @id @default(cuid())
-  userId      String    @map("user_id")
-  policyId    String?   @map("policy_id")
+  id            String    @id @default(cuid())
+  userId        String    @map("user_id")
+  policyId      String?   @map("policy_id")
   // The kind of policy (POLICY_KINDS) and what happened (the guide's event key).
-  kind        String
-  event       String
-  happenedOn  DateTime  @map("happened_on") @db.Date
+  kind          String
+  event         String
+  happenedOn    DateTime  @map("happened_on") @db.Date
   // open or closed.
-  status      String    @default("open")
+  status        String    @default("open")
   // [{ key, label, dueOn: YYYY-MM-DD, doneAt: ISO time or null }].
-  steps       Json      @default("[]")
-  carrier     String?
+  steps         Json      @default("[]")
+  carrier       String?
   // The insurer's claims line and page, from the partner's catalog when known.
-  claimsPhone String?   @map("claims_phone")
-  claimsUrl   String?   @map("claims_url")
-  claimNumber String?   @map("claim_number")
-  closedAt    DateTime? @map("closed_at") @db.Timestamptz(3)
-  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
-  updatedAt   DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
+  claimsPhone   String?   @map("claims_phone")
+  claimsUrl     String?   @map("claims_url")
+  claimNumber   String?   @map("claim_number")
+  // Spec step 155: a small claim filed by Jane through the insurance partner, after the
+  // person reviewed it: what they claim and why, and the carrier's status as it moves.
+  amountCents   Int?      @map("amount_cents")
+  description   String?
+  // draft (written, waiting for the person's review) or filed.
+  filing        String?
+  filedAt       DateTime? @map("filed_at") @db.Timestamptz(3)
+  // received, reviewing, approved, paid or denied.
+  carrierStatus String?   @map("carrier_status")
+  payoutCents   Int?      @map("payout_cents")
+  closedAt      DateTime? @map("closed_at") @db.Timestamptz(3)
+  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt     DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
 
   user   User             @relation(fields: [userId], references: [id], onDelete: Cascade)
   policy InsurancePolicy? @relation(fields: [policyId], references: [id], onDelete: SetNull)
@@ -1933,6 +1964,38 @@ model CoverChange {
   @@unique([userId, event, eventKey, change, policyId])
   @@index([userId, status])
   @@map("cover_changes")
+}
+
+// Renewal negotiation (spec step 155): before a renewal with a price rise, Jane asks the
+// carrier for a better rate through the insurance partner (step 54's call flow), with the
+// reshop running alongside. Within the person's autopilot limits, or on their tap.
+model RenewalNegotiation {
+  id                   String    @id @default(cuid())
+  userId               String    @map("user_id")
+  policyId             String    @map("policy_id")
+  // Stops the same rise being negotiated twice.
+  key                  String
+  currentAnnualCents   Int       @map("current_annual_cents")
+  renewalAnnualCents   Int       @map("renewal_annual_cents")
+  // The best like-for-like quote from the reshop, used as leverage.
+  competingAnnualCents Int?      @map("competing_annual_cents")
+  // asked, lowered, kept or declined.
+  status               String    @default("asked")
+  resultAnnualCents    Int?      @map("result_annual_cents")
+  // What was said, line by line, and anything the carrier offered that changes the cover
+  // (never accepted on the call).
+  transcript           Json      @default("[]")
+  offer                String?
+  // Who started the call: the person's tap, or Jane within their autopilot limits.
+  calledBy             String?   @map("called_by")
+  createdAt            DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  calledAt             DateTime? @map("called_at") @db.Timestamptz(3)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, key])
+  @@index([userId, status])
+  @@map("renewal_negotiations")
 }
 
 // The household facts that matter for cover (spec step 102), as the person typed them.
@@ -2150,6 +2213,15 @@ model TaxProfile {
   donorFundPartner      String?   @map("donor_fund_partner")
   donorFundName         String?   @map("donor_fund_name")
   donorFundOpenedAt     DateTime? @map("donor_fund_opened_at") @db.Timestamptz(3)
+  // Spec step 169: family details for the family tax choices: each child
+  // ([{ ageAtYearEnd, hasSsn, monthsLivedWithYou }]), a spouse's wages for the year, whether
+  // the person pays over half the cost of their home, and a student's years of college
+  // before this one and whether at least half-time.
+  familyChildren        Json      @default("[]") @map("family_children")
+  spouseWagesCents      Int?      @map("spouse_wages_cents")
+  paysOverHalfHome      Boolean?  @map("pays_over_half_home")
+  studentYearsBefore    Int?      @map("student_years_before")
+  studentHalfTime       Boolean?  @map("student_half_time")
   createdAt             DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt             DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
 
@@ -2652,6 +2724,53 @@ model EquityGrant {
 
   @@index([userId])
   @@map("equity_grants")
+}
+
+// Spec step 161: crypto, read-only. An exchange account or a public wallet address, read
+// through a crypto source (a stand-in until a crypto data partner is connected). Jane never
+// holds keys and never trades: there is no order path for crypto. The last year's trading
+// fees and amounts, for the fee flag.
+model CryptoConnection {
+  id           String    @id @default(cuid())
+  userId       String    @map("user_id")
+  // exchange or wallet (src/config/crypto.ts).
+  kind         String
+  name         String
+  // The source behind it: demo (the stand-in) until a partner is connected.
+  partner      String
+  // A wallet's public address (never a key).
+  address      String?
+  lastSyncedAt DateTime? @map("last_synced_at") @db.Timestamptz(3)
+  feesCents    Int       @default(0) @map("fees_cents")
+  tradedCents  Int       @default(0) @map("traded_cents")
+  createdAt    DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  user     User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  holdings CryptoHolding[]
+
+  @@index([userId])
+  @@map("crypto_connections")
+}
+
+// One asset in one connection, as the source last reported it, with when.
+model CryptoHolding {
+  id             String   @id @default(cuid())
+  userId         String   @map("user_id")
+  connectionId   String   @map("connection_id")
+  asset          String
+  name           String
+  quantity       Float
+  priceCents     Int      @map("price_cents")
+  valueCents     Int      @map("value_cents")
+  costBasisCents Int?     @map("cost_basis_cents")
+  asOf           DateTime @map("as_of") @db.Timestamptz(3)
+
+  user       User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  connection CryptoConnection @relation(fields: [connectionId], references: [id], onDelete: Cascade)
+
+  @@unique([connectionId, asset])
+  @@index([userId])
+  @@map("crypto_holdings")
 }
 
 // One person's nightly controller run (spec step 142): when it ran and, for each sector's

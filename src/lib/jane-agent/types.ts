@@ -61,6 +61,10 @@ export const ACTION_IDS = [
   // Spec step 154: cover changes after a life event.
   "cover.apply",
   "cover.dismiss",
+  // Spec step 155: renewal negotiation and claims, done by Jane.
+  "renewal.call",
+  "renewal.no",
+  "claim.file",
   "plan.approve_safe",
   "undo.rule",
   "undo.no",
@@ -184,6 +188,8 @@ export const ACTION_IDS = [
   // Spec step 160: company stock, sold down in parts.
   "company.link",
   "company.sell",
+  // Spec step 161: connect a demo exchange, read-only (crypto is never traded).
+  "crypto.link",
   // Jane notices changes (spec step 97).
   "change.look",
   "change.budget",
@@ -255,6 +261,8 @@ export type MessageRefs = {
   lifeApplicationId?: string;
   // Spec step 154: the life event ("event|key") whose cover changes a message asks about.
   coverEvent?: string;
+  // Spec step 155: the renewal negotiation a message asks about.
+  negotiationId?: string;
   // The finding as Jane described it (src/lib/jane-agent/fingerprint.ts): a button only
   // acts while the finding is still what the message said.
   fingerprint?: string;
@@ -289,8 +297,10 @@ export type MessageRefs = {
   budget?: { category: string; amountCents: number };
   // Spec step 91: what "Remember this" would save.
   preference?: PreferenceDraft;
-  // Spec step 92: the messages a bundle stands for, by dedupeKey, in button order.
-  items?: { dedupeKey: string; label: string }[];
+  // Spec step 92: the messages a bundle stands for, by dedupeKey, in button order. Spec
+  // step 184: the morning agenda's too, each with the button its Yes stands for (a finding's
+  // Yes when left out).
+  items?: { dedupeKey: string; label: string; action?: ActionId }[];
   // Spec step 94: a chart, table, timeline or progress bars shown with the answer.
   block?: AnswerBlock;
   // Spec step 95: where a guided flow is.
