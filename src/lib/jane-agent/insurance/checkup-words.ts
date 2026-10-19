@@ -6,7 +6,13 @@ import type { Checkup } from "@/lib/insurance/checkups";
 // Recommendations said in the chat; the rest are on the checkup page.
 export const CHECKUP_SHOWN = 3;
 
-const WHY = { life_event: "after your life event", asked: "as you asked", yearly: "for the year" };
+const WHY = {
+  life_event: "after your life event",
+  asked: "as you asked",
+  yearly: "for the year",
+  // Spec step 150.
+  enrollment: "before open enrollment at work",
+};
 
 export function checkupBody(checkup: Checkup): string {
   const recs = checkup.recommendations;

@@ -6,6 +6,9 @@ import type { Payoff } from "@/lib/debt-plan";
 import { statusLine, type LoanApplicationView } from "@/lib/loan-application-status";
 import type { Transfers } from "@/lib/balance-transfers";
 import type { Refinance } from "@/lib/refinance";
+import type { StudentLoans } from "@/lib/student-loans";
+import { STUDENT_SOURCES, STUDENT_STEPS } from "@/config/student-loans";
+import { PLAN_NAMES } from "@/planning/student-loans";
 import type { PayoffPlan } from "@/planning/debt";
 import type { ScoredOffer } from "@/planning/refinance";
 import { monthAfter } from "@/planning/payoff";
@@ -46,6 +49,12 @@ export const DEBT_TOOLS: Anthropic.Tool[] = [
     },
   },
   REFINANCE_TOOL,
+  {
+    name: "student_loans",
+    description:
+      "The person's federal student loan compared under each repayment plan (their plan now, Standard, Income-Based Repayment, the Repayment Assistance Plan): the payment now, everything paid and anything forgiven at today's income, from the plans' rules with sources; forgiveness tracking (qualifying payments counted, toward PSLF or IBR forgiveness); the income used and where it came from; how many of studentaid.gov's steps are done, with each step's official page. In demo advice mode, Jane's pick and why.",
+    input_schema: noInput,
+  },
   {
     name: "balance_transfers",
     description:
@@ -153,6 +162,7 @@ export const DEBT_CHAT_PAGES: Readonly<Record<string, { label: string; href: str
   loans: { label: "See every debt", href: "/loans" },
   debt: { label: "Open the payoff planner", href: "/debt" },
   refinance: { label: "See the offers", href: "/loans/refinance" },
+  student: { label: "See student loan plans", href: "/loans/student" },
 };
 
 // What the chat shows while Claude looks each one up (./claude.ts).
@@ -162,6 +172,7 @@ export const DEBT_TOOL_STATUS: Readonly<Record<string, string>> = {
   refinance_offers: "Checking loan offers…",
   loan_applications: "Checking your loan applications…",
   balance_transfers: "Checking 0% transfer offers…",
+  student_loans: "Comparing student loan plans…",
 };
 
 export function refinanceToolOutput(refi: Refinance, money: (cents: number) => string) {
@@ -252,5 +263,42 @@ export function transfersToolOutput(data: Transfers, money: (cents: number) => s
       payAMonth: money(t.monthlyNeededCents),
       status: t.status,
     })),
+  };
+}
+
+export function studentToolOutput(data: StudentLoans, money: (cents: number) => string) {
+  if (!data.loan || !data.comparison)
+    return { note: "No federal student loan with a balance and rate." };
+  return {
+    loan: data.loan.name,
+    balance: money(data.loan.balanceCents!),
+    rate: formatRate(data.loan.aprBps!),
+    income: money(data.agiCents),
+    incomeFrom:
+      data.agiFrom === "you" ? "the person gave it" : "estimated from paychecks (take-home)",
+    plans: data.comparison.results.map((r) => ({
+      plan: PLAN_NAMES[r.plan],
+      monthlyNow: money(r.monthlyNowCents),
+      totalPaid: money(r.totalPaidCents),
+      forgiven: money(r.forgivenCents),
+      throughPslf: r.viaPslf,
+      months: r.months,
+    })),
+    janesPick: data.comparison.pick && {
+      plan: PLAN_NAMES[data.comparison.pick.plan],
+      why: data.comparison.pick.why,
+    },
+    forgiveness: {
+      toward: data.countingToward.name,
+      counted: data.paymentsCounted,
+      needed: data.countingToward.needed,
+      seenByJane: data.paymentsSeen,
+    },
+    steps: STUDENT_STEPS.map((s, i) => ({
+      step: s.title,
+      officialPage: s.url,
+      done: i < data.profile.stepsDone,
+    })),
+    sources: STUDENT_SOURCES,
   };
 }

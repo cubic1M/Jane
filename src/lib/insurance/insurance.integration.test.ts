@@ -19,6 +19,7 @@ import {
   updatePolicy,
 } from "./policies";
 import { DEMO_POLICY, ensureDemoPolicies, loadInsurance } from "./profile";
+import { confirmReading, listReadings } from "./readings";
 
 // The insurance profile against a real, migrated Postgres (spec step 102).
 const url = process.env.TEST_DATABASE_URL;
@@ -123,7 +124,7 @@ describe.runIf(url)("the insurance profile against a real database", () => {
     expect(await client.insurancePolicy.count({ where: { id } })).toBe(0);
   });
 
-  it("adds a policy from each uploaded policy document, once, even after it's removed", async () => {
+  it("reads each uploaded policy document to confirm, adding it once, even after it's removed", async () => {
     const me = await person();
     const doc = await policyDocument(me);
     await policyDocument(me, { provider: null });
@@ -138,6 +139,12 @@ describe.runIf(url)("the insurance profile against a real database", () => {
         provider: "Target",
       },
     });
+    // Spec step 151: read for the person to confirm; nothing is on their insurance before.
+    expect(await listPolicies(me, opts())).toEqual([]);
+    await loadInsurance(me, opts());
+    const [reading, ...others] = await listReadings(me, opts());
+    expect(others).toEqual([]);
+    await confirmReading(me, reading.id, opts());
     const [policy, ...rest] = await listPolicies(me, opts());
     expect(rest).toEqual([]);
     expect(policy).toMatchObject({
@@ -151,7 +158,9 @@ describe.runIf(url)("the insurance profile against a real database", () => {
       documentId: doc.id,
     });
     await removePolicy(me, policy.id, opts());
+    await loadInsurance(me, opts());
     expect(await listPolicies(me, opts())).toEqual([]);
+    expect(await listReadings(me, opts())).toHaveLength(1);
     // Kept as removed, so the document doesn't add it back.
     expect(await client.insurancePolicy.findUnique({ where: { id: policy.id } })).toMatchObject({
       status: "removed",

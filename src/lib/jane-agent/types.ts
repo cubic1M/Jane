@@ -36,6 +36,17 @@ export const ACTION_IDS = [
   "insurance.claim_start",
   "insurance.claim_step",
   "insurance.claim_close",
+  // Spec step 150: benefits through work.
+  "benefits.confirm_all",
+  "benefits.life_1x",
+  "benefits.life_2x",
+  "benefits.life_none",
+  "benefits.disability_yes",
+  "benefits.disability_none",
+  "benefits.unsure",
+  // Spec step 151: a policy read from a document, to confirm.
+  "reading.confirm",
+  "reading.dismiss",
   "plan.approve_safe",
   "undo.rule",
   "undo.no",
@@ -115,6 +126,21 @@ export const ACTION_IDS = [
   "tax.refund_no",
   // Spec step 126: start the return with the filing partner (signing is on the page).
   "tax.file_start",
+  // Spec step 165: a move (spotted, or typed), an out-of-state employer, and the city
+  // income tax question (its places by position).
+  "tax.move_yes",
+  "tax.move_no",
+  "tax.move_set",
+  "tax.work_set",
+  "tax.local_1",
+  "tax.local_2",
+  "tax.local_no",
+  // Spec step 166: a collected form that doesn't match (use it, or ask the payer), a form
+  // still missing, and ticking off the collected ones.
+  "tax.doc_right",
+  "tax.doc_ask",
+  "tax.doc_chase",
+  "tax.docs_tick",
   // Investments (spec step 129 on): the answer buttons on an investor-profile question,
   // by position (src/config/investing.ts PROFILE_QUESTIONS).
   "invest.answer.1",
@@ -193,6 +219,10 @@ export type MessageRefs = {
   claim?: { kind: string; event: string; policyId: string | null };
   claimId?: string;
   claimStep?: string;
+  // Spec step 150: the guided question a benefits message asks.
+  benefitQuestion?: string;
+  // Spec step 151: the policy reading a message asks the person to confirm.
+  readingId?: string;
   // The finding as Jane described it (src/lib/jane-agent/fingerprint.ts): a button only
   // acts while the finding is still what the message said.
   fingerprint?: string;
@@ -233,6 +263,8 @@ export type MessageRefs = {
   block?: AnswerBlock;
   // Spec step 95: where a guided flow is.
   flow?: FlowState;
+  // Spec step 96: pinned to the top of the chat.
+  pinned?: true;
   // Taxes (spec step 118): the tax profile question a message is asking, and the kind of
   // income "Add it" would add.
   taxField?: string;
@@ -259,6 +291,11 @@ export type MessageRefs = {
   taxMiles?: number;
   // Spec step 125: the refund (its transaction id) a message is about.
   taxRefund?: string;
+  // Spec step 165: the move "Yes" saves, the employer's state "Yes" saves (with taxState
+  // for the home state), and the city income taxes (LOCAL_TAXES keys) in button order.
+  taxMove?: { date: string; from: string; to: string };
+  taxWorkState?: string;
+  taxLocals?: string[];
   // Spec step 98: demo advice (src/lib/advice-mode.ts). The chat shows DEMO_ADVICE_LABEL
   // under it. Set it on every message that recommends investments, taxes, insurance or loans.
   advice?: true;

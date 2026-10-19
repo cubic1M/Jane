@@ -11,10 +11,19 @@ import {
   QBI,
   SELF_EMPLOYMENT_TAX,
   STANDARD_DEDUCTION,
-  STATE_TAX,
   STUDENT_LOAN_INTEREST,
   type Bracket,
 } from "@/config/tax-rates";
+import { bracketTax } from "@/planning/tax-brackets";
+import {
+  residentTax,
+  stateParts,
+  type LocalPart,
+  type Residency,
+  type StatePart,
+} from "@/planning/tax-states";
+
+export { bracketTax };
 
 // The tax estimate (spec step 120): federal and state tax for a year from the person's
 // income and profile, with every figure in cents and every one an estimate. Pure. It's a
@@ -58,8 +67,11 @@ export type EstimateInput = {
   filingStatus: FilingStatus;
   childrenUnder17: number;
   otherDependants: number;
-  // Two-letter state, or null when it isn't known.
+  // Two-letter state, or null when it isn't known: where the person lives at the year's end.
   state: string | null;
+  // Spec step 165: moves in the year, remote work for an employer in another state, and a
+  // city or county income tax. Left out: one state all year, no local tax.
+  residency?: Residency;
   income: EstimateIncome;
   // Adjustments and deductions Jane can see.
   studentLoanInterestCents: number;
@@ -91,6 +103,10 @@ export type StateEstimate = {
   source: string;
   // Figures not confirmed for the year, or a rough rate.
   rough: boolean;
+  // Spec step 165: each state that taxes some of the income (one for most people), and
+  // the local income tax. taxCents above is their total.
+  parts: StatePart[];
+  local: LocalPart | null;
 };
 
 export type TaxEstimate = {
@@ -136,18 +152,6 @@ export type TaxEstimate = {
 
 const round = (cents: number) => Math.round(cents);
 const clamp0 = (cents: number) => Math.max(0, cents);
-
-// Tax on income from a schedule of brackets.
-export function bracketTax(incomeCents: number, brackets: readonly Bracket[]): number {
-  let tax = 0;
-  for (let i = 0; i < brackets.length; i += 1) {
-    const from = brackets[i].over;
-    const to = brackets[i + 1]?.over ?? Infinity;
-    if (incomeCents <= from) break;
-    tax += (Math.min(incomeCents, to) - from) * brackets[i].rate;
-  }
-  return round(tax);
-}
 
 export const marginalRateOf = (incomeCents: number, brackets: readonly Bracket[]) =>
   [...brackets].reverse().find((b) => incomeCents > b.over)?.rate ?? brackets[0].rate;
@@ -255,41 +259,35 @@ function stateLocalCap(agiCents: number, status: FilingStatus): number {
   return Math.max(floor, cap - round(clamp0(agiCents - from) * ITEMIZED.saltPhaseDownRate));
 }
 
+// The state (and local) estimate: every state's part, totalled, against what was withheld
+// and paid to the states. Named after the state lived in at the year's end.
 export function stateEstimate(input: EstimateInput, agiCents: number): StateEstimate | null {
-  if (!input.state) return null;
-  const rules = STATE_TAX[input.state];
-  if (!rules) return null;
+  if (!input.state && !input.residency?.moves.length) return null;
+  const { parts, local } = stateParts({
+    year: input.year,
+    state: input.state,
+    residency: input.residency,
+    who: input,
+    agiCents,
+    wagesCents: input.income.wagesCents,
+  });
+  const home = parts.filter((p) => p.residence !== "nonresident").at(-1) ?? parts.at(-1) ?? null;
+  if (!home) return null;
   const paid = input.stateWithheldCents + input.stateEstimatedPaidCents;
-  const done = (taxable: number, tax: number, rough: boolean): StateEstimate => ({
-    code: input.state!,
-    kind: rules.kind,
-    taxableCents: taxable,
+  const tax = parts.reduce((s, p) => s + p.taxCents, 0) + (local?.taxCents ?? 0);
+  return {
+    code: home.code,
+    kind: home.kind !== "none" ? home.kind : (parts.find((p) => p.kind !== "none")?.kind ?? "none"),
+    // As if a resident all year: each part's share is of this.
+    taxableCents: residentTax(home.code, clamp0(agiCents), input)?.taxableCents ?? 0,
     taxCents: tax,
     paidCents: paid,
     refundCents: paid - tax,
-    source: rules.source,
-    rough,
-  });
-  switch (rules.kind) {
-    case "none":
-      return done(0, 0, false);
-    case "flat": {
-      const taxable = clamp0(agiCents - rules.deduction);
-      return done(taxable, round(taxable * rules.rate), Boolean(rules.estimate));
-    }
-    case "approximate": {
-      const taxable = clamp0(agiCents - STANDARD_DEDUCTION[input.filingStatus]);
-      return done(taxable, round(taxable * rules.rate), true);
-    }
-    case "brackets": {
-      const taxable = clamp0(agiCents - rules.deduction[input.filingStatus]);
-      const credits =
-        rules.personalCredit[input.filingStatus] +
-        (input.childrenUnder17 + input.otherDependants) * rules.dependantCredit;
-      const tax = clamp0(bracketTax(taxable, rules.brackets[input.filingStatus]) - credits);
-      return done(taxable, tax, Boolean(rules.estimate));
-    }
-  }
+    source: home.source,
+    rough: parts.some((p) => p.rough),
+    parts,
+    local,
+  };
 }
 
 // Spec step 124: short- and long-term gains netted. A net gain counts as income, its long-

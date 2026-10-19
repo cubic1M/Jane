@@ -41,6 +41,10 @@ vi.mock("@/lib/snapshots", () => ({
   takeSnapshots: vi.fn(async () => ({ saved: 3, removed: 0 })),
 }));
 
+vi.mock("@/lib/controller", () => ({
+  queueNightlyRuns: vi.fn(async () => ({ queued: 3, done: 3 })),
+}));
+
 import { syncItem } from "@/lib/plaid/sync";
 import { GET } from "./route";
 
@@ -87,6 +91,7 @@ describe("GET /api/cron/plaid-sync", () => {
       // Spec step 104: insurance reshopped by itself.
       insurance: { reshop: { people: 1, shops: 1 }, checkups: { people: 1, checkups: 0 } },
       autoInvest: { invested: 1, paused: 0, failed: 0 },
+      controller: { queued: 3, done: 3 },
       prices: { refreshed: 1, failed: 0 },
       hsaReceipts: { people: 1, saved: 2 },
     });
@@ -112,6 +117,7 @@ describe("GET /api/cron/plaid-sync", () => {
       // Spec step 104: insurance reshopped by itself.
       insurance: { reshop: { people: 1, shops: 1 }, checkups: { people: 1, checkups: 0 } },
       autoInvest: { invested: 1, paused: 0, failed: 0 },
+      controller: { queued: 3, done: 3 },
       prices: { refreshed: 1, failed: 0 },
       hsaReceipts: { people: 1, saved: 2 },
     });

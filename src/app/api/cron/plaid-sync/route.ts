@@ -7,6 +7,7 @@ import { ITEM_STATUS, syncItem } from "@/lib/plaid/sync";
 import { recordRun, reportMissedJobs } from "@/lib/health";
 import { runAgentFollowUps } from "@/lib/agent/run";
 import { runDueJobs } from "@/lib/jobs";
+import { queueNightlyRuns } from "@/lib/controller";
 import { refreshMerchantOutcomes } from "@/lib/merchant-outcomes";
 import { runRetention } from "@/lib/retention";
 import { takeSnapshots } from "@/lib/snapshots";
@@ -56,6 +57,8 @@ async function dailyWork() {
       insurance: await insuranceDaily(),
       // Spec step 134: automatic investing on new paychecks.
       autoInvest: await runAutoInvestForAll(),
+      // Spec step 142: each person's nightly controller run, through the jobs table.
+      controller: await queueNightlyRuns(),
       // Spec step 156: demo holdings revalued at the stand-in feed's prices.
       prices: await refreshDemoPrices(),
       // Spec step 159: medical charges saved to the HSA receipts vault.
@@ -99,6 +102,8 @@ async function dailyWork() {
     deadlines: await remindAllDeadlines(),
     insurance: await insuranceDaily(),
     autoInvest: await runAutoInvestForAll(),
+    // Spec step 142: each person's nightly controller run, through the jobs table.
+    controller: await queueNightlyRuns(),
     prices: await refreshDemoPrices(),
     hsaReceipts: await collectAllReceipts(),
   };

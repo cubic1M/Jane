@@ -18,6 +18,9 @@ import { listGoals } from "@/lib/goals";
 import { lifeGuessesFor } from "@/lib/life-guesses";
 import { loadUpkeep } from "@/lib/plan-upkeep";
 import { sectorAutopilots } from "@/lib/sector-autopilot";
+import { lastControllerRun } from "@/lib/controller-log";
+import { CONTROLLER_STEP_LABELS } from "@/config/controller";
+import { rankedFor } from "./priorities";
 import { SECTOR_LABELS, SECTOR_LEVEL_LABELS } from "@/config/autopilot-sectors";
 import { provenSavings } from "@/lib/savings-proof";
 import { listLifeEvents } from "@/lib/life-events";
@@ -176,6 +179,18 @@ export const CHAT_TOOLS: Anthropic.Tool[] = [
     name: "autopilot_settings",
     description:
       'How much Jane may do by herself in each area (spec step 141): subscriptions and bills, insurance, debt, taxes, investing, goals and budgets. Each area\'s level (always ask, the safe stuff, everything allowed), its caps each time and each month, and what it used this month. Over a cap Jane asks. To change an area, the person types it ("let Jane handle insurance up to $50 a month") or uses Settings.',
+    input_schema: noInput,
+  },
+  {
+    name: "nightly_log",
+    description:
+      "What Jane checked for the person last night (spec step 142): one line per area (bank sync, changes, insurance reshops, debts and rates, taxes, investing drift, goals and budgets), in the order she ran them, with what each found or did, and any that failed and will be tried again.",
+    input_schema: noInput,
+  },
+  {
+    name: "priorities",
+    description:
+      'The person\'s next best things to do (spec step 143), ranked across everything Jane found and is waiting on: findings, insurance picks, refinance offers, steps only they can do and dated deadlines. Each with the money it saves a year, the minutes it takes, its urgency and why it ranks where it does. Use it for "what should I do first" and to put the most important first.',
     input_schema: noInput,
   },
   {
@@ -416,6 +431,36 @@ export async function runChatTool(
           why: e.why,
         })),
       });
+    }
+    case "priorities": {
+      const snapshot = await loadSnapshot(userId, { client, now });
+      return out({
+        ranked: (snapshot ? rankedFor(snapshot) : []).slice(0, 10).map((r) => ({
+          what: r.title,
+          kind: r.kind,
+          savesAYear: r.valueCents === null ? null : money(r.valueCents),
+          minutes: r.minutes,
+          due: r.dueOn ?? null,
+          why: r.why,
+          findingId: r.kind === "finding" ? r.ref : null,
+        })),
+      });
+    }
+    case "nightly_log": {
+      const run = await lastControllerRun(userId, { client, now });
+      return out(
+        run
+          ? {
+              night: run.day,
+              checked: run.steps.map((s) => ({
+                area: CONTROLLER_STEP_LABELS[s.step],
+                result: s.status,
+                did: s.did,
+                changed: s.changed,
+              })),
+            }
+          : { note: "No nightly run yet." },
+      );
     }
     case "autopilot_settings": {
       const sectors = await sectorAutopilots(userId, { client, now });
