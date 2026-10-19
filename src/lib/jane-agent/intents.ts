@@ -88,6 +88,8 @@ export type Intent =
   | { kind: "checked" }
   // Spec step 143: "what should I do first?"
   | { kind: "priorities" }
+  // Spec step 183: "am I OK?" and "what should I do this month?", across every sector.
+  | { kind: "whole_picture"; focus: "now" | "month" }
   // Spec step 144: "where did my paycheck go?"
   | { kind: "paycheck" }
   // Spec step 145: "are my bills paid?"
@@ -332,11 +334,16 @@ const PAYCHECK =
 const BILLS_PAID =
   /\b(?:are|is) my (?:bills?|card|credit card|loan)(?: payments?)? (?:paid|covered|set|on time)\b|\bpay my (?:bills?|card|credit card)(?: on time)?\b|\bbills? (?:paid )?on time\b|\bbill pay\b/;
 const HEALTH =
-  /\b(?:health score|money health|financial health|financial wellness)\b|\bhow healthy (?:are|is) my (?:money|finances)\b|\bhow am i doing (?:financially|with (?:my )?money)\b/;
+  /\b(?:health score|money health|financial health|financial wellness)\b|\bhow healthy (?:are|is) my (?:money|finances)\b/;
 const MONTHLY_REPORT =
   /\b(?:monthly|money|month'?s) report\b|\bmonth in review\b|\breport (?:for|on) (?:last|this) month\b/;
 const PRIORITIES =
   /\bwhat should i do (?:first|next|now)\b|\bwhat matters (?:most|now)\b|\bwhat'?s (?:most )?important\b|\bwhere (?:do|should) i start\b|\bmy (?:top )?priorities\b|\bnext best thing\b/;
+// Spec step 183. "Am I OK to buy …" is a purchase question, and goals have their own answer.
+const WHOLE_NOW =
+  /\bam i (?:ok|okay|alright|all right|fine|good)\b(?! (?:to|if|for|with|on)\b)|\bhow am i doing\b(?! (?:on|with)\b)|\bhow (?:are|is) (?:my|our) (?:money|finances?)(?: doing| looking)?\b|\bhow'?s (?:my|our) (?:money|finances?)\b|\b(?:the )?(?:big|whole|full) picture\b|\bis (?:my|our) money (?:ok|okay|alright|fine)\b|\bam i on track\b(?! (?:for|with)\b)|\b(?:overall|in general),? how am i\b/;
+const WHOLE_MONTH =
+  /\bwhat (?:should|do|can) (?:i|we) (?:need to )?(?:do|focus on|work on) this month\b|\bthis month'?s (?:plan|priorities|to ?do)\b|\bwhat matters this month\b|\bplan for this month\b/;
 const CHECKED =
   /\bwhat did you check\b|\b(?:checked|check) (?:last night|overnight)\b|\bnightly (?:check|run|log)s?\b/;
 const APPROVE_ALL =
@@ -437,6 +444,8 @@ export function parseIntent(raw: string, asOf: string): Intent {
   if (THANKS.test(text)) return { kind: "greeting", thanks: true };
   if (PAUSE.test(text)) return { kind: "pause_autopilot" };
   if (CHECKED.test(text)) return { kind: "checked" };
+  if (WHOLE_MONTH.test(text)) return { kind: "whole_picture", focus: "month" };
+  if (WHOLE_NOW.test(text)) return { kind: "whole_picture", focus: "now" };
   if (PRIORITIES.test(text)) return { kind: "priorities" };
   if (PAYCHECK.test(text)) return { kind: "paycheck" };
   if (HEALTH.test(text)) return { kind: "health" };

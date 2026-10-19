@@ -68,7 +68,7 @@ describe("new questions", () => {
     for (const text of [
       "what's my health score",
       "how is my financial health",
-      "how am I doing financially",
+      "how healthy are my finances",
     ]) {
       expect(parse(text), text).toEqual({ kind: "health" });
     }
