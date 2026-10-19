@@ -18,7 +18,7 @@ import { shortDate, snoozeButton, type MessageSource } from "./source";
 type Policies = InsuranceSnapshot["policies"];
 
 function gapMessages(insurance: InsuranceSnapshot): Candidate[] {
-  return insurance.gaps.map((gap) => ({
+  return (insurance.gaps ?? []).map((gap) => ({
     kind: "heads_up",
     body: `${gap.title}. ${gap.why}${insurance.advice ? `\n${gapAdvice(gap).text}` : ""}`,
     refs: {
@@ -65,7 +65,7 @@ export function shopBody(shop: Shop, policies: Policies): string | null {
 }
 
 function shopMessages(insurance: InsuranceSnapshot): Candidate[] {
-  return insurance.shops.flatMap((shop): Candidate[] => {
+  return (insurance.shops ?? []).flatMap((shop): Candidate[] => {
     const body = shopBody(shop, insurance.policies);
     if (!body) return [];
     return [
@@ -92,7 +92,7 @@ function shopMessages(insurance: InsuranceSnapshot): Candidate[] {
 }
 
 function checkedMessages(insurance: InsuranceSnapshot): Candidate[] {
-  return insurance.noBetter.flatMap((shop): Candidate[] => {
+  return (insurance.noBetter ?? []).flatMap((shop): Candidate[] => {
     const policy = insurance.policies.find((p) => p.id === shop.policyId);
     if (!policy) return [];
     const why =
