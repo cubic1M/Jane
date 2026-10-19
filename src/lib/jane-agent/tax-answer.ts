@@ -1,6 +1,7 @@
 import type { PrismaClient } from "@/generated/prisma/client";
 import { scopedFor } from "@/lib/db-scoped";
 import { loadTaxEstimate } from "@/lib/tax-estimate";
+import { loadWithholding } from "@/lib/tax-withholding";
 import { loadTaxPack } from "@/lib/tax-pack";
 import { loadTaxForms, loadTaxTags } from "@/lib/tax-organizer";
 import { loadWorkingProfile } from "@/lib/tax-profile";
@@ -20,6 +21,7 @@ import {
   tagTotalReply,
   tagsReply,
   taxProfileReply,
+  withholdingReply,
 } from "./tax-replies";
 
 // Answers a typed tax question by rules (spec steps 118–127), with the same loaders as
@@ -99,5 +101,7 @@ export async function answerTaxIntent(
       return estimateMessage(await loadTaxEstimate(userId, { client, now }));
     case "bracket":
       return bracketReply(await loadTaxEstimate(userId, { client, now }));
+    case "withholding":
+      return withholdingReply(await loadWithholding(userId, { client, now }));
   }
 }

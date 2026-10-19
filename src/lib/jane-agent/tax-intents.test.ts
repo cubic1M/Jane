@@ -50,6 +50,25 @@ describe("tax intents", () => {
     expect(parse(text)).toEqual({ kind: "tax", ask: "set_state", state });
   });
 
+  it.each([
+    ["how much will I owe in taxes", "estimate"],
+    ["how much tax will I pay", "estimate"],
+    ["will I get a refund", "estimate"],
+    ["my tax estimate", "estimate"],
+    ["what's my tax bracket", "bracket"],
+    ["what's my marginal rate", "bracket"],
+    ["am I withholding enough", "withholding"],
+    ["should I change my W-4", "withholding"],
+    ["too much tax withheld?", "withholding"],
+  ])("%s asks about %s (steps 120–121)", (text, ask) => {
+    expect(parse(text)).toEqual({ kind: "tax", ask });
+  });
+
+  it("leaves debts to the loans: how much do I owe isn't a tax question", () => {
+    expect(parse("how much do I owe").kind).not.toBe("tax");
+    expect(parse("how much do I owe on my car").kind).not.toBe("tax");
+  });
+
   it("leaves everything else alone", () => {
     expect(parse("I live in a van").kind).toBe("unknown");
     expect(parse("get my refund from Target")).toMatchObject({ kind: "act", verb: "refund" });

@@ -1710,6 +1710,14 @@ model TaxProfile {
   payStateYtdCents      Int?      @map("pay_state_ytd_cents")
   payRetirementYtdCents Int?      @map("pay_retirement_ytd_cents")
   payPretaxYtdCents     Int?      @map("pay_pretax_ytd_cents")
+  // Spec step 121: a W-4 change the person said they sent (step "4b" deductions, a yearly
+  // amount, or "4c" extra withholding per paycheck), from when, for which tax year; and the
+  // year they said they'd rather keep their refund, so Jane doesn't ask again that year.
+  w4Step                String?   @map("w4_step")
+  w4AmountCents         Int?      @map("w4_amount_cents")
+  w4ChangedOn           DateTime? @map("w4_changed_on") @db.Date
+  w4Year                Int?      @map("w4_year")
+  keepRefundYear        Int?      @map("keep_refund_year")
   createdAt             DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt             DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
 

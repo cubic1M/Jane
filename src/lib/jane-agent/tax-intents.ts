@@ -19,7 +19,9 @@ export type TaxIntent =
   | { kind: "tax"; ask: "pack" }
   // Spec step 120: the estimate and the top rate.
   | { kind: "tax"; ask: "estimate" }
-  | { kind: "tax"; ask: "bracket" };
+  | { kind: "tax"; ask: "bracket" }
+  // Spec step 121: the withholding checkup.
+  | { kind: "tax"; ask: "withholding" };
 
 const NUMBER_WORDS: Readonly<Record<string, number>> = {
   no: 0,
@@ -76,13 +78,16 @@ const UNTAG =
   /^(?:untag|don't tag|do not tag|stop tagging) (?:my |the |all )?(.+?)(?: for tax(?:es)?)?$/;
 const FORMS =
   /\b(?:tax )?(?:forms?|documents?|paperwork) (?:do i need|to expect|am i waiting (?:on|for)|should i (?:get|expect)|for (?:my )?tax(?:es)?)\b|\b(?:my |a |the )?(?:w-?2s?|1099s?|1098s?)\b/;
+// About taxes, not debts: "how much do I owe" is the loans' question (step 109).
 const ESTIMATE =
-  /\bhow much (?:tax )?(?:will|do|would) (?:i|we) (?:get back|pay in tax(?:es)?|have to pay in tax(?:es)?)\b|\b(?:will|do) (?:i|we) (?:get a refund|get money back)\b|\btax (?:estimate|bill|refund)\b|\bestimated? (?:tax|refund)\b|\brefund this year\b/;
+  /\bhow much (?:tax|taxes) (?:will|do|would) (?:i|we) (?:owe|pay)\b|\bhow much (?:tax )?(?:will|do|would) (?:i|we) (?:get back|pay in tax(?:es)?|have to pay in tax(?:es)?)\b|\b(?:will|do) (?:i|we) (?:get a refund|get money back)\b|\btax (?:estimate|bill|refund)\b|\bestimated? (?:tax|refund)\b|\brefund this year\b/;
 // "How much do I owe?" is about debts (./debt-intents.ts) unless it says tax.
 const OWE =
   /\bhow much (?:tax )?(?:will|do|would) (?:i|we) owe\b|\b(?:will|do|what (?:will|do)) (?:i|we) owe\b/;
 const TAX_WORD = /\b(?:tax(?:es)?|irs|refund|return)\b/;
 const BRACKET = /\btax bracket\b|\bmarginal (?:tax )?rate\b|\bwhat bracket\b|\bmy bracket\b/;
+const WITHHOLDING =
+  /\bw-?4\b|\bwithholding\b|\bwithhold(?:ing)? (?:enough|too much|too little|more|less)\b|\b(?:am i|are we) (?:having|getting) enough (?:tax )?(?:taken|withheld)\b|\btoo much (?:tax )?(?:taken out|withheld)\b/;
 const PACK = /\btax(?:-| )?time pack\b|\btax pack\b|\byear-end pack\b/;
 
 function stateCode(words: string): string | null {
@@ -112,6 +117,7 @@ export function parseTaxIntent(text: string): TaxIntent | null {
   const untag = UNTAG.exec(text);
   if (untag) return { kind: "tax", ask: "tag", target: untag[1].trim(), tag: null };
   if (PACK.test(text)) return { kind: "tax", ask: "pack" };
+  if (WITHHOLDING.test(text)) return { kind: "tax", ask: "withholding" };
   if (BRACKET.test(text)) return { kind: "tax", ask: "bracket" };
   if (ESTIMATE.test(text) || (OWE.test(text) && TAX_WORD.test(text))) {
     return { kind: "tax", ask: "estimate" };
