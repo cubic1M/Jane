@@ -6,11 +6,11 @@ import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
 import { addDeadline } from "@/lib/deadlines";
 import { loadInvestmentTaxes } from "@/lib/investment-taxes";
-import { loadSelfEmployed } from "@/lib/self-employed";
+import { loadSelfEmployed, type SelfEmployedView } from "@/lib/self-employed";
 import { recordAct } from "@/lib/sector-autopilot";
 import { loadTaxEstimate, type TaxEstimateView } from "@/lib/tax-estimate";
 import { loadTaxTags } from "@/lib/tax-organizer";
-import { loadTaxSavings } from "@/lib/tax-savings";
+import { loadTaxSavings, type TaxSavingsView } from "@/lib/tax-savings";
 import { taxPlan, type PlanMove } from "@/planning/tax-plan";
 
 // The year-round tax plan (spec step 167), loaded from what Jane knows about the tax year.
@@ -35,7 +35,15 @@ export async function loadTaxPlan(
     client = defaultClient,
     now = new Date(),
     loaded,
-  }: Options & { loaded?: { estimate: TaxEstimateView; advice: boolean } } = {},
+  }: Options & {
+    loaded?: {
+      estimate: TaxEstimateView;
+      advice: boolean;
+      // Already loaded by the caller (Jane's snapshot), so not loaded twice.
+      savings?: TaxSavingsView;
+      selfEmployed?: SelfEmployedView;
+    };
+  } = {},
 ): Promise<TaxPlanView> {
   const [estimate, advice] = loaded
     ? [loaded.estimate, loaded.advice]
@@ -43,8 +51,8 @@ export async function loadTaxPlan(
   const year = estimate.year;
   const db = scopedFor(userId, client);
   const [savings, self, investments, tags, events, filed, profile] = await Promise.all([
-    loadTaxSavings(userId, { client, now, loaded: { estimate, advice } }),
-    loadSelfEmployed(userId, { client, now, loaded: { estimate, advice } }),
+    loaded?.savings ?? loadTaxSavings(userId, { client, now, loaded: { estimate, advice } }),
+    loaded?.selfEmployed ?? loadSelfEmployed(userId, { client, now, loaded: { estimate, advice } }),
     advice ? loadInvestmentTaxes(userId, year, { client, now }) : null,
     loadTaxTags(userId, year, { client }),
     db.lifeEvents.findMany({

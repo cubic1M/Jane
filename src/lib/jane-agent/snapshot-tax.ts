@@ -90,6 +90,10 @@ export async function loadTaxSnapshot(
     loadTaxEstimate(userId, { client, now }),
     adviceMode(userId, { client }),
   ]);
+  const [savings, selfEmployed] = await Promise.all([
+    loadTaxSavings(userId, { client, now, loaded: { estimate, advice } }),
+    loadSelfEmployed(userId, { client, now, loaded: { estimate, advice } }),
+  ]);
   const inLastMonth = (lastMonthTags ?? tags).tagged.filter((t) => t.date.startsWith(last));
   return {
     tax: {
@@ -107,9 +111,8 @@ export async function loadTaxSnapshot(
       },
       estimate,
       withholding: checkFrom(estimate),
-      savings: (await loadTaxSavings(userId, { client, now, loaded: { estimate, advice } }))
-        .savings,
-      selfEmployed: await loadSelfEmployed(userId, { client, now, loaded: { estimate, advice } }),
+      savings: savings.savings,
+      selfEmployed,
       filing: await (async () => {
         const fy = filingYear(today);
         const [partner, ret] = await Promise.all([
@@ -132,7 +135,11 @@ export async function loadTaxSnapshot(
         (await loadRefunds(userId, { client, now, days: REFUND.recentDays })).refunds,
         now,
       ),
-      plan: await loadTaxPlan(userId, { client, now, loaded: { estimate, advice } }),
+      plan: await loadTaxPlan(userId, {
+        client,
+        now,
+        loaded: { estimate, advice, savings, selfEmployed },
+      }),
       documents: inDocumentSeason(today)
         ? await loadTaxDocuments(userId, year - 1, { client, now })
         : null,
