@@ -6,6 +6,7 @@ import { loadTransfers, type Transfers } from "@/lib/balance-transfers";
 import { loadStudentLoans, type StudentLoans } from "@/lib/student-loans";
 import { loadMortgage, type Mortgage } from "@/lib/mortgage";
 import { loadCredit, type Credit } from "@/lib/credit";
+import { loadDebtAutopilot, type DebtAutopilot } from "@/lib/debt-autopilot";
 import { listApplications, type LoanApplicationView } from "@/lib/loan-applications";
 import { loadRefinance, type Refinance } from "@/lib/refinance";
 import type { DebtBook } from "@/insights/debts";
@@ -59,6 +60,8 @@ export type MoreSnapshot = {
   mortgage?: Mortgage | null;
   // Spec step 116: the latest credit score Jane pulled, and what's behind it.
   credit?: Credit;
+  // Spec step 117: what Jane does about debts by herself, and what she found.
+  debtAutopilot?: DebtAutopilot;
   // Insurance (spec Phase X), from the same loader as /insurance. Optional, so a snapshot
   // built without it (in tests) says nothing about insurance.
   insurance?: InsuranceSnapshot;
@@ -84,6 +87,7 @@ export async function loadMore(
     student,
     mortgage,
     credit,
+    debtAutopilot,
   ] = await Promise.all([
     autopilotOf(userId, { client }),
     openProposals(userId, { client }),
@@ -115,6 +119,7 @@ export async function loadMore(
     loadStudentLoans(userId, { client, now }),
     loadMortgage(userId, { client, now }),
     loadCredit(userId, { client, now }),
+    loadDebtAutopilot(userId, { client, now }),
   ]);
   const insurance = await loadInsuranceSnapshot(userId, { client, now });
 
@@ -156,6 +161,7 @@ export async function loadMore(
     student,
     mortgage,
     credit,
+    debtAutopilot,
     insurance,
   };
 }
