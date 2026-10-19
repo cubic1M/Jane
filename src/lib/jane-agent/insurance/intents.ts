@@ -32,7 +32,9 @@ export type InsuranceAsk =
   // cards: cover that comes with the person's cards (spec step 152).
   | "cards"
   // life: how much life cover, applied for and bought (spec step 153).
-  | "life";
+  | "life"
+  // life_change: "I got married", "I bought a car": the cover changes it needs (spec step 154).
+  | "life_change";
 
 export type InsuranceIntent = {
   kind: "insurance";
@@ -131,6 +133,13 @@ const COVER_AMOUNT =
 const CHECKUP =
   /\bcheck ?-?ups?\b|\b(?:check|review|look over) (?:my|our|the) (?:insurance|cover|coverage|policies|policy)\b|\b(?:right|wrong) amount of (?:cover|coverage|insurance)\b|\b(?:over|under)-?insured\b|\btoo much (?:cover|coverage|insurance)\b|\b(?:raise|lower|change) (?:my |the )?deductible\b/;
 
+// A life change the person tells Jane about (spec step 154), about insurance even without the
+// word. The other events (a move, a baby, a new job) come from step 100's life events.
+const MARRIED =
+  /\b(?:(?:just |recently )?got married|(?:we|i)(?:'re| are| am|'m) (?:now )?married|our wedding was)\b/;
+const CAR =
+  /\b(?:(?:just |recently )?(?:bought|got|picked up|leased) (?:a |my |our )?(?:new |used )?car)\b/;
+
 // Sizing, applying for or buying life cover (spec step 153), even with "need" in it.
 const LIFE =
   /\b(?:how much|apply(?:ing)?|buy(?:ing)?|get(?:ting)?|sign up)\b.{0,30}\b(?:life (?:insurance|cover|policy)|term life)\b|\b(?:life (?:insurance|cover)|term life)\b.{0,30}\b(?:how much|enough|apply|buy|should i get)\b/;
@@ -186,10 +195,16 @@ export function parseInsurance(text: string): InsuranceIntent | null {
     !(COVER.test(text) && policyKind) &&
     !COVER_AMOUNT.test(text) &&
     !CARD_COVER.test(text) &&
-    !LIFE.test(text)
+    !LIFE.test(text) &&
+    !MARRIED.test(text) &&
+    !CAR.test(text)
   ) {
     return null;
   }
+  if (MARRIED.test(text))
+    return { kind: "insurance", ask: "life_change", policyKind: null, event: "married" };
+  if (CAR.test(text))
+    return { kind: "insurance", ask: "life_change", policyKind: null, event: "car_bought" };
   if (LIFE.test(text)) return { kind: "insurance", ask: "life", policyKind };
   // Spec step 149: whether they need a kind of cover, from their numbers.
   if (policyKind && NEED.test(text)) return { kind: "insurance", ask: "need", policyKind };

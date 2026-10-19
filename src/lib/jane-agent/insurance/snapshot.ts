@@ -16,6 +16,7 @@ import {
 } from "@/lib/insurance/benefits";
 import { listReadings, type Reading } from "@/lib/insurance/readings";
 import { latestLife, type LifeApplication } from "@/lib/insurance/life";
+import { listCoverChanges, type CoverChange } from "@/lib/insurance/cover-changes";
 import { SWITCH_NEWS_DAYS, SWITCH_PAYMENT_DAYS } from "@/config/insurance";
 
 // What Jane's brain knows about the person's insurance (spec Phase X), from the same loader
@@ -51,6 +52,8 @@ export type InsuranceSnapshot = {
   // about dependants it needs first.
   life?: LifeApplication | null;
   lifeAsk?: "dependants" | null;
+  // Spec step 154: cover changes prepared after a life event, waiting for the person.
+  coverChanges?: CoverChange[];
 };
 
 export type Switch = Awaited<ReturnType<typeof switchesFor>>[number];
@@ -69,6 +72,7 @@ export async function loadInsuranceSnapshot(
     claims,
     benefits,
     life,
+    coverChanges,
     switches,
   ] = await Promise.all([
     // Reads any policy document not read yet, so the readings below come after it.
@@ -83,6 +87,7 @@ export async function loadInsuranceSnapshot(
     listClaims(userId, { client }),
     listBenefits(userId, { client }),
     latestLife(userId, { client }),
+    listCoverChanges(userId, { client, status: "prepared" }),
     switchesFor(userId, {
       client,
       since: new Date(now.getTime() - (SWITCH_NEWS_DAYS + SWITCH_PAYMENT_DAYS) * 86_400_000),
@@ -110,6 +115,7 @@ export async function loadInsuranceSnapshot(
         : null,
     readings,
     life: life && life.status !== "bought" ? life : null,
+    coverChanges,
     // Asked of people in demo advice mode with a paycheck, no life cover and no answer yet.
     lifeAsk:
       advice &&

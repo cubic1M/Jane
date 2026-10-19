@@ -87,6 +87,8 @@ export async function loadTaxTags(
         merchantName: true,
         pfcDetailed: true,
       },
+      // In a fixed order, so the tags and their totals always come out the same way.
+      orderBy: [{ date: "asc" }, { id: "asc" }],
     }),
     loadOverrides(userId, { client }),
   ]);
@@ -233,6 +235,7 @@ export async function loadTaxForms(
         merchantName: true,
         account: { select: { name: true } },
       },
+      orderBy: [{ date: "asc" }, { id: "asc" }],
     }),
     // In a fixed order, so the forms always come out in the same order.
     db.accounts.findMany({

@@ -58,6 +58,9 @@ export const ACTION_IDS = [
   "lifecover.submit",
   "lifecover.buy",
   "lifecover.dismiss",
+  // Spec step 154: cover changes after a life event.
+  "cover.apply",
+  "cover.dismiss",
   "plan.approve_safe",
   "undo.rule",
   "undo.no",
@@ -249,6 +252,8 @@ export type MessageRefs = {
   readingId?: string;
   // Spec step 153: the life application a message moves along.
   lifeApplicationId?: string;
+  // Spec step 154: the life event ("event|key") whose cover changes a message asks about.
+  coverEvent?: string;
   // The finding as Jane described it (src/lib/jane-agent/fingerprint.ts): a button only
   // acts while the finding is still what the message said.
   fingerprint?: string;
@@ -283,8 +288,10 @@ export type MessageRefs = {
   budget?: { category: string; amountCents: number };
   // Spec step 91: what "Remember this" would save.
   preference?: PreferenceDraft;
-  // Spec step 92: the messages a bundle stands for, by dedupeKey, in button order.
-  items?: { dedupeKey: string; label: string }[];
+  // Spec step 92: the messages a bundle stands for, by dedupeKey, in button order. Spec
+  // step 184: the morning agenda's too, each with the button its Yes stands for (a finding's
+  // Yes when left out).
+  items?: { dedupeKey: string; label: string; action?: ActionId }[];
   // Spec step 94: a chart, table, timeline or progress bars shown with the answer.
   block?: AnswerBlock;
   // Spec step 95: where a guided flow is.
