@@ -119,6 +119,8 @@ export const ACTION_IDS = [
   "policy.not_insurance",
   // What Jane saved you (spec step 139).
   "saved.share",
+  // Help inside the chat (spec step 140).
+  "welcome.tour",
 ] as const;
 export type ActionId = (typeof ACTION_IDS)[number];
 

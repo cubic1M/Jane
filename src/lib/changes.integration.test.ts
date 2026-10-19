@@ -225,7 +225,7 @@ describe.runIf(url)("Jane notices changes, with the demo bank", { timeout: 30_00
   it("answers 'what changed?' and gives Claude the same, with its figures recorded", async () => {
     const userId = await demoPerson("changes-ask-rules");
     const answer = await answerByRules(userId, { kind: "changes" }, { client, now: LINKED });
-    expect(answer?.body).toMatch(/^Here's what changed lately:\n- /);
+    expect(answer?.body).toMatch(/^\d+ things changed lately\.\n- /);
     expect(answer?.body).toContain("- Netflix went up from $15.49 to $17.99.");
 
     const tool = await runChatTool(userId, "recent_changes", {}, { client, now: LINKED });

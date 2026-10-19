@@ -44,6 +44,7 @@ import { budgetSet } from "./budget";
 import { findingOptions, findingWhy } from "./explain";
 import { savedShare } from "./saved";
 import { prefSave, suggestNever } from "./remember";
+import { welcomeTour } from "./welcome";
 
 // Every button action, by id (spec step 81). A new button is a new handler here; the
 // message sources offer it by id (src/lib/jane-agent/types.ts ACTION_IDS).
@@ -138,6 +139,8 @@ export const ACTION_HANDLERS: Readonly<Record<ActionId, ActionHandler>> = {
   "policy.not_insurance": policyNotInsurance,
   // What Jane saved you (spec step 139).
   "saved.share": savedShare,
+  // Help inside the chat (spec step 140).
+  "welcome.tour": welcomeTour,
 };
 
 const MESSAGE_ID = /^[a-z0-9]{1,40}$/i;

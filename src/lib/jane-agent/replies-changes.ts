@@ -43,7 +43,7 @@ export function changesReply(changes: ChangeView[]): Reply {
   const more = changes.length - shown.length;
   return {
     body: [
-      "Here's what changed lately:",
+      `${changes.length === 1 ? "One thing" : `${changes.length} things`} changed lately.`,
       ...shown.map((c) => `- ${changeLine(c)}`),
       ...(more > 0 ? [`And ${more} more.`] : []),
     ].join("\n"),
