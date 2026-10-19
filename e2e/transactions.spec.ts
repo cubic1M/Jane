@@ -38,8 +38,13 @@ test("a person fixes a category for a merchant", async ({ context, page, baseURL
   await page.reload();
   await expect(page.getByText("(yours)").first()).toBeVisible();
   await expect(page.getByRole("heading", { name: "Your merchant rules" })).toBeVisible();
-  const overflow = await page.evaluate(
-    () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
-  );
-  expect(overflow).toBeLessThanOrEqual(0);
+  const overflow = () =>
+    page.evaluate(
+      () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
+    );
+  expect(await overflow()).toBeLessThanOrEqual(0);
+  // Font metrics differ by platform (Linux draws text boxes wider than macOS), so check a
+  // narrower phone too: a row that only just fits at 375px shows up here everywhere.
+  await page.setViewportSize({ width: 320, height: 812 });
+  expect(await overflow()).toBeLessThanOrEqual(0);
 });
