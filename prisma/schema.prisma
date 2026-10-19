@@ -316,6 +316,7 @@ model User {
   insuranceShops         InsuranceShop[]
   insuranceCheckups      InsuranceCheckup[]
   insuranceClaims        InsuranceClaim[]
+  employerBenefits       EmployerBenefit[]
   lifeEvents             LifeEvent[]
   // What's in investment accounts (spec step 128).
   securities             Security[]
@@ -1697,6 +1698,38 @@ model InsuranceClaim {
 
   @@index([userId, status])
   @@map("insurance_claims")
+}
+
+// A benefit through work (spec step 150), found from a pay-stub deduction (or answered in
+// the guided flow). It only counts once the person confirms it; a confirmed insurance
+// benefit becomes a policy on the profile (policyId).
+model EmployerBenefit {
+  id           String   @id @default(cuid())
+  userId       String   @map("user_id")
+  employer     String
+  // health, dental, vision, life, disability, hsa or fsa (src/config/benefits.ts).
+  kind         String
+  // The deduction's label on the pay stub, or what the guided flow asked.
+  label        String
+  // What comes out of each paycheck (0 when the employer pays for it).
+  perPayCents  Int      @map("per_pay_cents")
+  // weekly, biweekly, semimonthly or monthly.
+  payFrequency String   @map("pay_frequency")
+  // Pay stub or guided answer: what the cover is worth (life: a multiple of pay).
+  details      Json     @default("{}")
+  // found, confirmed or declined.
+  status       String   @default("found")
+  // Where it came from: paystub or asked.
+  source       String
+  policyId     String?  @map("policy_id")
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt    DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, employer, kind, label])
+  @@index([userId, status])
+  @@map("employer_benefits")
 }
 
 // The household facts that matter for cover (spec step 102), as the person typed them.

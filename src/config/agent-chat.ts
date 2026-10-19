@@ -72,6 +72,9 @@ export const MESSAGE_PRIORITY = {
   insurance_checkup: 46,
   // Spec step 107: a claim's next step is due, like something only the person can do.
   insurance_claim: 86,
+  // Spec step 150: benefits found on a pay stub to confirm, and the short guided questions.
+  benefits_found: 62,
+  benefits_question: 47,
   urgent_alert: 95,
   deadline: 90,
   waiting_on_you: 85,

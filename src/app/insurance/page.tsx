@@ -202,6 +202,9 @@ async function InsuranceContent({
           <Link href="/insurance/claims" className={`text-sm ${LINK}`}>
             Something happened? Claims
           </Link>
+          <Link href="/insurance/benefits" className={`text-sm ${LINK}`}>
+            Benefits through work
+          </Link>
         </div>
       </div>
 

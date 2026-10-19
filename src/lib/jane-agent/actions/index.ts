@@ -16,6 +16,13 @@ import {
   insuranceClaimClose,
   insuranceClaimStart,
   insuranceClaimStep,
+  benefitsConfirmAll,
+  benefitsDisabilityNone,
+  benefitsDisabilityYes,
+  benefitsLife1x,
+  benefitsLife2x,
+  benefitsLifeNone,
+  benefitsUnsure,
 } from "./insurance";
 import { ChatActionError, linksOf, type ActionHandler } from "./handler";
 import { forgetPrimer } from "../primer-cache";
@@ -75,6 +82,13 @@ export const ACTION_HANDLERS: Readonly<Record<ActionId, ActionHandler>> = {
   "insurance.claim_start": insuranceClaimStart,
   "insurance.claim_step": insuranceClaimStep,
   "insurance.claim_close": insuranceClaimClose,
+  "benefits.confirm_all": benefitsConfirmAll,
+  "benefits.life_1x": benefitsLife1x,
+  "benefits.life_2x": benefitsLife2x,
+  "benefits.life_none": benefitsLifeNone,
+  "benefits.disability_yes": benefitsDisabilityYes,
+  "benefits.disability_none": benefitsDisabilityNone,
+  "benefits.unsure": benefitsUnsure,
   "plan.approve_safe": planApproveSafe,
   "undo.rule": undoRule,
   "undo.no": undoNo,

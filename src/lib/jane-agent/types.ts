@@ -34,6 +34,14 @@ export const ACTION_IDS = [
   "insurance.claim_start",
   "insurance.claim_step",
   "insurance.claim_close",
+  // Spec step 150: benefits through work.
+  "benefits.confirm_all",
+  "benefits.life_1x",
+  "benefits.life_2x",
+  "benefits.life_none",
+  "benefits.disability_yes",
+  "benefits.disability_none",
+  "benefits.unsure",
   "plan.approve_safe",
   "undo.rule",
   "undo.no",
@@ -172,6 +180,8 @@ export type MessageRefs = {
   claim?: { kind: string; event: string; policyId: string | null };
   claimId?: string;
   claimStep?: string;
+  // Spec step 150: the guided question a benefits message asks.
+  benefitQuestion?: string;
   // The finding as Jane described it (src/lib/jane-agent/fingerprint.ts): a button only
   // acts while the finding is still what the message said.
   fingerprint?: string;
