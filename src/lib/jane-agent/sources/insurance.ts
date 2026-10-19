@@ -10,6 +10,15 @@ import { BENEFITS_LINK, QUESTIONS, foundBody } from "../insurance/benefit-words"
 import { trackerActions, trackerBody } from "../insurance/claim-words";
 import { readingBody, readingLink } from "../insurance/reading-words";
 import { DEPENDANTS_QUESTION, sizedActions, sizedBody } from "../insurance/life-words";
+import { coverActions, coverBody, coverEventRef } from "../insurance/cover-words";
+import {
+  ASK_CALL_ACTIONS,
+  askCallBody,
+  callResultBody,
+  claimStatusBody,
+  draftActions,
+  draftBody,
+} from "../insurance/done-by-jane-words";
 import type { InsuranceSnapshot } from "../insurance/snapshot";
 import type { Candidate } from "../types";
 import { shortDate, snoozeButton, type MessageSource } from "./source";
@@ -296,6 +305,65 @@ function lifeMessages(insurance: InsuranceSnapshot, asOf: string): Candidate[] {
   ];
 }
 
+// Spec step 154: one message per life event, asking once about every change it needs.
+function coverChangeMessages(insurance: InsuranceSnapshot): Candidate[] {
+  const groups = new Map<string, NonNullable<InsuranceSnapshot["coverChanges"]>>();
+  for (const change of insurance.coverChanges ?? []) {
+    const ref = coverEventRef(change.event, change.eventKey);
+    groups.set(ref, [...(groups.get(ref) ?? []), change]);
+  }
+  return [...groups].map(([ref, changes]) => ({
+    kind: "decision",
+    body: coverBody(changes[0].event, changes, insurance.policies, insurance.canQuote),
+    refs: { coverEvent: ref },
+    actions: coverActions(changes, insurance.canQuote),
+    dedupeKey: `cover:${ref}`,
+    priority: MESSAGE_PRIORITY.cover_change,
+  }));
+}
+
+// Spec step 155: the renewal call Jane offers to make (or made within the person's autopilot
+// limits) and its result; a claim's draft to file on a tap; the carrier's news on a claim.
+function doneByJaneMessages(insurance: InsuranceSnapshot): Candidate[] {
+  const policyOf = (id: string | null) => insurance.policies.find((p) => p.id === id);
+  const negotiations = (insurance.negotiations ?? []).map((n): Candidate =>
+    n.status === "asked"
+      ? {
+          kind: "decision",
+          body: askCallBody(n, policyOf(n.policyId)),
+          refs: { negotiationId: n.id },
+          actions: ASK_CALL_ACTIONS,
+          dedupeKey: `renewal-call:${n.id}`,
+          priority: MESSAGE_PRIORITY.renewal_call,
+        }
+      : {
+          kind: "heads_up",
+          body: callResultBody(n, policyOf(n.policyId)),
+          refs: {},
+          actions: [{ id: "open", label: "Your insurance", kind: "link", href: "/insurance" }],
+          dedupeKey: `renewal-result:${n.id}`,
+          priority: MESSAGE_PRIORITY.renewal_result,
+        },
+  );
+  const drafts = (insurance.draftClaims ?? []).map((c): Candidate => ({
+    kind: "decision",
+    body: draftBody(c),
+    refs: { claimId: c.id },
+    actions: draftActions(c),
+    dedupeKey: `claim-draft:${c.id}:${c.amountCents}`,
+    priority: MESSAGE_PRIORITY.claim_draft,
+  }));
+  const statuses = (insurance.filedClaims ?? []).map((c): Candidate => ({
+    kind: "heads_up",
+    body: claimStatusBody(c),
+    refs: {},
+    actions: [{ id: "open", label: "Your claim", kind: "link", href: "/insurance/claims" }],
+    dedupeKey: `claim-status:${c.id}:${c.carrierStatus}`,
+    priority: MESSAGE_PRIORITY.claim_status,
+  }));
+  return [...negotiations, ...drafts, ...statuses];
+}
+
 export const insuranceSource: MessageSource = {
   key: "insurance",
   gather: (snapshot) => {
@@ -311,6 +379,8 @@ export const insuranceSource: MessageSource = {
       ...benefitMessages(insurance),
       ...readingMessages(insurance),
       ...lifeMessages(insurance, snapshot.asOf),
+      ...coverChangeMessages(insurance),
+      ...doneByJaneMessages(insurance),
     ];
   },
 };

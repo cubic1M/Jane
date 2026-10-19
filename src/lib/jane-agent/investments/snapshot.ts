@@ -12,6 +12,7 @@ import { loadGoalBuckets } from "@/lib/investments/goal-buckets";
 import { loadCollege } from "@/lib/investments/college";
 import { collectReceipts, loadHsa, type HsaView } from "@/lib/investments/hsa";
 import { loadCompanyStock, type CompanyStockView } from "@/lib/investments/company-stock";
+import { loadCrypto, type CryptoView } from "@/lib/crypto/crypto";
 import type { Bucket } from "@/planning/goal-buckets";
 import { loadAutoInvest } from "@/lib/investments/auto-invest";
 import { loadRebalance } from "@/lib/investments/rebalance";
@@ -54,6 +55,8 @@ export type InvestmentSnapshot = {
   hsa: Pick<HsaView, "account" | "plan" | "savedCents" | "demo"> & { receipts: number };
   // Spec step 160: the employer's stock and the plan to sell it down.
   companyStock: Pick<CompanyStockView, "company" | "concentration" | "plan" | "demo">;
+  // Spec step 161: crypto, read-only: its size and fees, and where it's read from.
+  crypto: Pick<CryptoView, "size" | "fees" | "demo"> & { sources: string[] };
   // Spec step 156: how they've done.
   returns: Returns;
   // Spec step 134: automatic investing, its recent paydays and Jane's suggestion.
@@ -119,6 +122,16 @@ export async function loadInvestmentSnapshot(
         demo: h.demo,
         receipts: h.receipts.filter((r) => r.status === "saved").length,
       })),
+    crypto: await loadCrypto(userId, {
+      client,
+      now,
+      investedCents: investments.totalCents,
+    }).then((c) => ({
+      size: c.size,
+      fees: c.fees,
+      demo: c.demo,
+      sources: c.connections.filter((x) => x.totalCents > 0).map((x) => x.name),
+    })),
     companyStock: await loadCompanyStock(userId, { client, now }).then((c) => ({
       company: c.company,
       concentration: c.concentration,

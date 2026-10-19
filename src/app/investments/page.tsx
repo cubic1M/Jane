@@ -9,6 +9,7 @@ import { INVESTMENT_AUTOPILOT } from "@/config/investing";
 import { explainer } from "@/config/learn";
 import { RETURNS_NOTE } from "@/config/returns";
 import { formatReturn } from "@/insights/returns";
+import { cryptoTotal } from "@/lib/crypto/crypto";
 import { loadReturns } from "@/lib/investments/returns";
 import { autopilotOf } from "@/lib/autopilot";
 import { scopedFor } from "@/lib/db-scoped";
@@ -83,7 +84,7 @@ async function InvestmentsContent() {
   const user = await requireUser();
   await connection();
   const data = await loadInvestments(user.id);
-  const [answers, simulated, level, returns] = await Promise.all([
+  const [answers, simulated, level, returns, crypto] = await Promise.all([
     profileOf(user.id),
     // Spec step 133: holdings shaped by simulated orders say so.
     scopedFor(user.id).brokerageOrders.count({ where: { partner: SIMULATED_PARTNER } }),
@@ -91,6 +92,8 @@ async function InvestmentsContent() {
     autopilotOf(user.id),
     // Spec step 156: how they've done.
     loadReturns(user.id, { investments: data }),
+    // Spec step 161: crypto, read-only, counted in the mix.
+    cryptoTotal(user.id),
   ]);
   const byHerself =
     INVESTMENT_AUTOPILOT[
@@ -212,6 +215,12 @@ async function InvestmentsContent() {
             : RSUs, ESPP and options, without too many eggs in one basket.
           </p>
           <p className="text-sm text-zinc-600 dark:text-zinc-400">
+            <Link href="/investments/crypto" className={LINK}>
+              Crypto
+            </Link>
+            : exchanges and wallets, read-only. Jane never trades crypto.
+          </p>
+          <p className="text-sm text-zinc-600 dark:text-zinc-400">
             Learn:{" "}
             {["index-funds", "fees", "the-match", "roth-vs-traditional", "rebalancing"].map(
               (slug, i) => (
@@ -235,6 +244,14 @@ async function InvestmentsContent() {
                     <span>{formatCents(c.valueCents)}</span>
                   </li>
                 ))}
+                {crypto > 0 && (
+                  <li className="flex justify-between gap-2">
+                    <Link href="/investments/crypto" className={LINK}>
+                      Crypto (read-only, from your exchanges and wallets)
+                    </Link>
+                    <span>{formatCents(crypto)}</span>
+                  </li>
+                )}
               </ul>
               <p className="text-xs text-zinc-500">
                 Funds are split by what they hold, from the fund facts shown on each one.

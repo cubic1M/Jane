@@ -17,6 +17,13 @@ import {
   type PolicyInput,
 } from "@/lib/insurance/policies";
 import { ReadingError, confirmReading, dismissReading } from "@/lib/insurance/readings";
+import {
+  CoverChangeError,
+  applyCoverEvent,
+  dismissCoverEvent,
+} from "@/lib/insurance/cover-changes";
+import { parseCoverEventRef } from "@/lib/jane-agent/insurance/cover-words";
+import { NegotiationError, callCarrier, declineNegotiation } from "@/lib/insurance/negotiate";
 import { requireUser } from "@/lib/session";
 
 // Insurance (spec step 102). A save goes back to /insurance with ?saved=, so the
@@ -91,6 +98,50 @@ export async function dismissReadingForm(formData: FormData): Promise<void> {
     await dismissReading(user.id, text(formData, "readingId"));
   } catch (error) {
     if (!(error instanceof ReadingError)) throw error;
+  }
+  refreshOthers();
+  redirect("/insurance");
+}
+
+// Spec step 154: a life event's prepared cover changes, made or left as they are.
+export async function applyChanges(formData: FormData): Promise<void> {
+  const user = await requireUser();
+  const parsed = parseCoverEventRef(text(formData, "coverEvent"));
+  if (parsed) await applyCoverEvent(user.id, parsed.event, parsed.eventKey);
+  refreshOthers();
+  redirect("/insurance?saved=changes");
+}
+
+export async function dismissChanges(formData: FormData): Promise<void> {
+  const user = await requireUser();
+  const parsed = parseCoverEventRef(text(formData, "coverEvent"));
+  try {
+    if (parsed) await dismissCoverEvent(user.id, parsed.event, parsed.eventKey);
+  } catch (error) {
+    if (!(error instanceof CoverChangeError)) throw error;
+  }
+  refreshOthers();
+  redirect("/insurance");
+}
+
+// Spec step 155: the renewal call, on the person's tap, or not.
+export async function callRenewal(formData: FormData): Promise<void> {
+  const user = await requireUser();
+  try {
+    await callCarrier(user.id, text(formData, "negotiationId"));
+  } catch (error) {
+    if (!(error instanceof NegotiationError)) throw error;
+  }
+  refreshOthers();
+  redirect("/insurance?saved=called#renewals");
+}
+
+export async function skipRenewal(formData: FormData): Promise<void> {
+  const user = await requireUser();
+  try {
+    await declineNegotiation(user.id, text(formData, "negotiationId"));
+  } catch (error) {
+    if (!(error instanceof NegotiationError)) throw error;
   }
   refreshOthers();
   redirect("/insurance");

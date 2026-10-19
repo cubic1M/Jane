@@ -140,6 +140,19 @@ describe("debt questions", () => {
     }
   });
 
+  it("reads what Jane does about debts, and what's due on them", () => {
+    for (const text of [
+      "what do you do about my debts",
+      "debt autopilot",
+      "autopilot for my loans",
+    ]) {
+      expect(intent(text), text).toEqual({ kind: "debt_autopilot" });
+    }
+    for (const text of ["when are my loan payments due", "next card payment", "move my due date"]) {
+      expect(intent(text), text).toEqual({ kind: "debt_due" });
+    }
+  });
+
   it("leaves requests and other questions alone", () => {
     expect(intent("lower the rate on my card")).toMatchObject({ kind: "act", verb: "lower" });
     expect(intent("what's due this week")).toMatchObject({ kind: "coming_up" });

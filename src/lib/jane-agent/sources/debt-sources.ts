@@ -3,6 +3,7 @@ import { payoffSource } from "./payoff";
 import { loansSource } from "./loans";
 import { refinanceSource } from "./refinance";
 import { creditSource } from "./credit";
+import { debtAutopilotSource } from "./debt-autopilot";
 import { mortgageSource } from "./mortgage";
 import { studentSource } from "./student";
 import { transfersSource } from "./transfers";
@@ -19,4 +20,5 @@ export const DEBT_SOURCES: readonly MessageSource[] = [
   studentSource,
   mortgageSource,
   creditSource,
+  debtAutopilotSource,
 ];

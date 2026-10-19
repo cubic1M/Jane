@@ -12,6 +12,7 @@ import { policiesFromPayments } from "@/lib/found-policies";
 import { runPaycheckPlan } from "@/lib/money-movement/paycheck";
 import { settleTransfers } from "@/lib/money-movement/transfers";
 import { runBillPay } from "@/lib/money-movement/bill-pay";
+import { healthFor } from "@/lib/health-score";
 import { runPlanUpkeep } from "@/lib/plan-upkeep";
 import { runTaxAutopilotSafely } from "@/lib/tax-autopilot";
 import { gather, plan, type BrainSettings } from "./brain";
@@ -66,6 +67,10 @@ export async function runJaneAgent(
   // Spec step 145: bills due soon that autopilot may pay, scheduled on time.
   await runBillPay(userId, { client, now, input }).catch((error) =>
     console.error("Bill pay failed", { userId, error: String(error) }),
+  );
+  // Spec step 146: this month's money health score, kept for next month's comparison.
+  await healthFor(userId, { client, now, input, keep: true }).catch((error) =>
+    console.error("Health score failed", { userId, error: String(error) }),
   );
   // Taxes (spec steps 123–127): what Jane sets up by herself, at the person's level.
   await runTaxAutopilotSafely(userId, { client, now });

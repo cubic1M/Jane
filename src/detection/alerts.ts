@@ -190,7 +190,7 @@ export function lowBalanceAlerts(candidates: Candidate[]): AlertCandidate[] {
         type: "low_balance",
         key: `${c.key}:${lowestDate.slice(0, "YYYY-MM".length)}`,
         title: c.title,
-        body: `Based on your balance today and the bills coming up before your next deposit, around ${shortDate(lowestDate)}. Moving a bill's date or some money now can avoid an overdraft.`,
+        body: `That's from your balance today and the bills due before your next deposit. Moving a bill's date or some money now can avoid an overdraft.`,
       };
     });
 }

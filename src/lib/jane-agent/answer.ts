@@ -4,6 +4,9 @@ import { benefitsAnswer } from "./insurance/benefits";
 import { readingsAnswer } from "./insurance/readings";
 import { cardCoverAnswer } from "./insurance/card-cover";
 import { lifeAnswer } from "./insurance/life";
+import { lifeChangeAnswer } from "./insurance/cover-changes";
+import { fileClaimAnswer, renewalCallAnswer } from "./insurance/done-by-jane";
+import type { CoverEvent } from "@/config/insurance";
 import { claimAnswer } from "./insurance/claim";
 import { quotesAnswer } from "./insurance/quotes";
 import { insuranceReply } from "./insurance/replies";
@@ -73,6 +76,8 @@ import { latestPaycheckPlan } from "@/lib/money-movement/paycheck";
 import { loadBillPay } from "@/lib/money-movement/bill-pay";
 import { moneyPartnerFor } from "@/lib/money-movement/partner";
 import { billsReply } from "./replies-billpay";
+import { healthFor } from "@/lib/health-score";
+import { healthReply } from "./replies-health";
 import { groupedHelpReply } from "./replies-help";
 import { lifeEventReply } from "./replies-life";
 import { savedReply } from "./replies-saved";
@@ -233,6 +238,13 @@ async function byIntent(
       if (intent.ask === "cards") return cardCoverAnswer(userId, { client });
       // Spec step 153: life cover sized and applied for.
       if (intent.ask === "life") return lifeAnswer(userId, { client, now });
+      // Spec step 154: a life change told to Jane.
+      // Spec step 155: renewal calls and claims done by Jane.
+      if (intent.ask === "renewal_call") return renewalCallAnswer(userId, { client, now });
+      if (intent.ask === "file_claim") return fileClaimAnswer(userId, { client, now });
+      if (intent.ask === "life_change") {
+        return lifeChangeAnswer(userId, intent.event as CoverEvent, { client, now });
+      }
       return insuranceReply(intent, await loadInsuranceSnapshot(userId, { client, now }), asOf);
     case "greeting": {
       if (intent.thanks) return greetingReply(true, null);
@@ -283,8 +295,18 @@ async function byIntent(
       const going = open.some((e) => e.kind === intent.event && e.completedAt === null);
       return lifeEventReply(intent.event, going);
     }
-    case "paycheck":
-      return paycheckReply(await latestPaycheckPlan(userId, { client, now }));
+    case "paycheck": {
+      const plan = await latestPaycheckPlan(userId, { client, now });
+      if (plan) return paycheckReply(plan);
+      const next = (await loadRecurring(userId, { client, now })).nextIncome;
+      return paycheckReply(
+        null,
+        true,
+        next && { date: next.date, cents: next.amountCents, from: next.from, asOf },
+      );
+    }
+    case "health":
+      return healthReply(await healthFor(userId, { client, now }));
     case "bills_paid": {
       const partner = await moneyPartnerFor(userId, { client });
       return billsReply(partner ? await loadBillPay(userId, { client, now }) : null, asOf);

@@ -1,4 +1,9 @@
-import { INSURANCE_PARTNER_ENV, QUOTABLE_KINDS, type PolicyKind } from "@/config/insurance";
+import {
+  INSURANCE_PARTNER_ENV,
+  QUOTABLE_KINDS,
+  type CoverChangeKind,
+  type PolicyKind,
+} from "@/config/insurance";
 import type { PremiumFrequency } from "@/config/documents";
 import type { PrismaClient } from "@/generated/prisma/client";
 import { demoOptionsAllowed } from "@/lib/compare";
@@ -7,6 +12,7 @@ import { hasDemoBank } from "@/lib/plaid/demo";
 import type { Coverage } from "./coverage";
 import { demoPartner } from "./demo-partner";
 import type { LifeAnswers, LifeDecision } from "./life-underwriting";
+import type { CarrierClaimStatus } from "./claim-rules";
 
 // The insurance partner (spec step 103): who quotes, binds and cancels policies. The
 // shapes here follow what a licensed insurance marketplace's API returns (a quote id, the
@@ -126,7 +132,62 @@ export interface InsurancePartner {
     },
     options: { now: Date },
   ): Promise<LifeDecision & { offerExpiresAt: string | null }>;
+  // Spec step 154: a change to a policy mid-term (an endorsement): the new price per
+  // payment, from when, and the carrier's confirmation.
+  endorse(
+    policy: { carrier: string; kind: PolicyKind; premiumCents: number | null },
+    change: { kind: CoverChangeKind; detail: Record<string, unknown> },
+    options: { now: Date },
+  ): Promise<Endorsement>;
+  // Spec step 155: asking the carrier for a better renewal rate (step 54's call flow).
+  negotiateRenewal(
+    request: {
+      carrier: string;
+      kind: PolicyKind;
+      currentAnnualCents: number;
+      renewalAnnualCents: number;
+      competingAnnualCents: number | null;
+    },
+    options: { now: Date },
+  ): Promise<Negotiation>;
+  // Spec step 155: a small claim filed with the carrier, and its status afterwards.
+  fileClaim(
+    claim: {
+      carrier: string;
+      kind: PolicyKind;
+      event: string;
+      happenedOn: string;
+      amountCents: number;
+      description: string;
+    },
+    options: { now: Date },
+  ): Promise<{ claimNumber: string }>;
+  claimStatus(
+    claim: {
+      claimNumber: string;
+      filedAt: Date;
+      amountCents: number;
+      deductibleCents: number | null;
+    },
+    options: { now: Date },
+  ): Promise<{ status: CarrierClaimStatus; payoutCents: number | null }>;
 }
+
+export type Negotiation = {
+  outcome: "lowered" | "kept";
+  annualPremiumCents: number;
+  // What was said, line by line.
+  transcript: string[];
+  // Anything offered that changes the cover, never accepted on the call.
+  offer: string | null;
+};
+
+export type Endorsement = {
+  premiumCents: number | null;
+  // YYYY-MM-DD.
+  effectiveDate: string;
+  confirmation: string;
+};
 
 export const isQuotable = (kind: PolicyKind) => QUOTABLE_KINDS.includes(kind);
 

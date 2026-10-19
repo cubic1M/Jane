@@ -9,6 +9,7 @@ import { rankedFor } from "@/lib/jane-agent/priorities";
 import { loadSnapshot } from "@/lib/jane-agent/snapshot";
 import { TOP_THINGS } from "@/config/priorities";
 import { checkedLine } from "@/lib/jane-agent/replies-checked";
+import { changeLine, scoreLine } from "@/lib/jane-agent/replies-health";
 import { formatCents } from "@/lib/money";
 import { loadTimeline } from "@/lib/timeline";
 import { requireUser } from "@/lib/session";
@@ -24,13 +25,15 @@ function Section({
   title,
   links,
   children,
+  id,
 }: {
   title: string;
   links: { href: string; label: string }[];
   children: ReactNode;
+  id?: string;
 }) {
   return (
-    <section className="flex flex-col gap-3">
+    <section id={id} className="flex scroll-mt-20 flex-col gap-3">
       <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
         <h2 className="text-xl font-semibold">{title}</h2>
         <span className="flex flex-wrap gap-x-4 text-sm">
@@ -84,6 +87,38 @@ async function JaneContent() {
               </li>
             ))}
           </ol>
+        </Section>
+      )}
+
+      {snapshot?.health && (
+        // Spec step 146: the money health score, every part explained.
+        <Section title="Money health" links={[]} id="health">
+          <p>
+            {scoreLine(snapshot.health)} {changeLine(snapshot.health)}
+          </p>
+          <ul className="flex flex-col gap-2">
+            {snapshot.health.parts.map((p) => (
+              <li key={p.part} className={ROW}>
+                <span className="flex flex-wrap items-baseline justify-between gap-x-4">
+                  <span className="font-semibold">{p.label}</span>
+                  <span className={`text-sm ${MUTED}`}>
+                    {p.points} of {p.max}
+                  </span>
+                </span>
+                <span className={`text-sm ${MUTED}`}>{p.why}</span>
+                {p.next && <span className="text-sm text-emerald-700">{p.next}</span>}
+              </li>
+            ))}
+          </ul>
+          {snapshot.health.left.length > 0 && (
+            <p className={`text-sm ${MUTED}`}>
+              Not counted yet: {snapshot.health.left.map((l) => `${l.label} (${l.why})`).join(" ")}
+            </p>
+          )}
+          <p className={`text-sm ${MUTED}`}>
+            Each part&apos;s weight is set in advance, and parts Jane can&apos;t see yet are left
+            out rather than counted against you.
+          </p>
         </Section>
       )}
 

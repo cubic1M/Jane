@@ -164,7 +164,7 @@ const day = (date: Date) => date.toISOString().slice(0, 10);
 
 // The newest charge from the policy's insurer above its price, in the last
 // PRICE_UP_LOOKBACK_DAYS: the price went up. Null when there's none.
-async function higherCharge(
+export async function higherCharge(
   userId: string,
   policy: Policy,
   { client, now }: { client: PrismaClient; now: Date },

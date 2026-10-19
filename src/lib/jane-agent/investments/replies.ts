@@ -8,6 +8,8 @@ import { COLLEGE_TYPES } from "@/config/college";
 import type { CollegeEstimate } from "@/lib/investments/college";
 import type { HsaView } from "@/lib/investments/hsa";
 import type { CompanyStockView } from "@/lib/investments/company-stock";
+import type { CryptoView } from "@/lib/crypto/crypto";
+import { CRYPTO_LINK, feeFlag, NEVER_TRADES, shareFlag, sizeLine } from "./crypto-copy";
 import {
   COMPANY_LINK,
   concentrationLine,
@@ -654,5 +656,42 @@ export function companyStockReply(view: CompanyStockView, today: string): Reply 
     body: `${facts} ${plan}${due ? ` ${SELL_WORDS}` : ""}`,
     actions: due ? [sellButton(view), COMPANY_LINK] : [COMPANY_LINK],
     refs: { advice: true, ...(due ? { companyPlan: view.plan.key } : {}) },
+  };
+}
+
+// Spec step 161: crypto. What it's worth and where it's read from, with when; the flags in
+// demo advice mode. Asked to buy or sell, the answer is the same: Jane never trades crypto.
+export function cryptoReply(view: CryptoView): Reply {
+  const holding = view.connections.filter((c) => c.totalCents > 0);
+  if (holding.length === 0) {
+    return {
+      body: `I don't see any crypto. ${view.demo ? "Want to connect a demo exchange? " : ""}${NEVER_TRADES}`,
+      actions: view.demo
+        ? [{ id: "crypto.link", label: "Connect a demo exchange", kind: "primary" }, CRYPTO_LINK]
+        : [CRYPTO_LINK],
+      refs: {},
+    };
+  }
+  const asOf = holding
+    .map((c) => c.asOf)
+    .filter((d): d is Date => d !== null)
+    .sort((a, b) => a.getTime() - b.getTime())[0];
+  const when = asOf
+    ? ` As of ${asOf.toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit", timeZone: "UTC", timeZoneName: "short" })}${holding.some((c) => c.stale) ? " (out of date)" : ""}.`
+    : "";
+  const facts = `${sizeLine(
+    view.size,
+    holding.map((c) => c.name),
+  )}${when}`;
+  const flags = view.advice
+    ? [
+        view.size.overShare ? shareFlag(view.size) : null,
+        view.fees?.flag ? feeFlag(view.fees) : null,
+      ].filter(Boolean)
+    : [];
+  return {
+    body: [facts, ...flags, NEVER_TRADES].join(" "),
+    actions: [CRYPTO_LINK],
+    refs: flags.length > 0 ? { advice: true } : {},
   };
 }
