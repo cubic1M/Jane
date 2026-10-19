@@ -457,3 +457,36 @@ export const LIFE_TOBACCO_FACTOR = 2.5;
 export const LIFE_STANDARD_FACTOR = 1.3;
 // How long a stand-in life application's offer stays open.
 export const LIFE_OFFER_DAYS = 30;
+
+// --- Cover changes with life events (spec step 154) ----------------------------------------
+// Events this recent get their cover changes prepared.
+export const COVER_EVENT_WINDOW_DAYS = 60;
+export const COVER_EVENTS = ["car_bought", "moving", "new_baby", "married", "new_job"] as const;
+export type CoverEvent = (typeof COVER_EVENTS)[number];
+export const COVER_CHANGES = [
+  "address",
+  "add_vehicle",
+  "add_spouse",
+  "add_dependant",
+  "review_life",
+  "review_benefits",
+  "get_auto",
+] as const;
+export type CoverChangeKind = (typeof COVER_CHANGES)[number];
+// Changes that never change the price: at "handle everything" Jane makes them herself.
+export const NO_PRICE_CHANGES: readonly CoverChangeKind[] = ["address"];
+// Changes made with the carrier through the partner; the rest are reviews and links.
+export const CARRIER_CHANGES: readonly CoverChangeKind[] = [
+  "address",
+  "add_vehicle",
+  "add_spouse",
+  "add_dependant",
+];
+// The stand-in carrier's new price after a change, as a multiple of the old.
+export const DEMO_ENDORSEMENT_FACTORS: Record<string, number> = {
+  add_vehicle: 1.8,
+  add_spouse: 1.3,
+  add_dependant: 1.25,
+  address: 1,
+};
+export const COVER_CHANGES_DAILY_LIMIT = 200;

@@ -1,5 +1,6 @@
 import type { AccountSummary } from "@/lib/accounts";
 import { formatCents } from "@/lib/money";
+import { dayLabel } from "@/lib/day-label";
 
 export function AccountList({ accounts }: { accounts: AccountSummary[] }) {
   if (accounts.length === 0) {
@@ -18,7 +19,7 @@ export function AccountList({ accounts }: { accounts: AccountSummary[] }) {
               {account.kindLabel} · {account.transactionCount} transactions
               {account.firstDate &&
                 account.lastDate &&
-                ` · ${account.firstDate} to ${account.lastDate}`}
+                ` · ${dayLabel(account.firstDate, { year: true })} to ${dayLabel(account.lastDate, { year: true })}`}
             </p>
           </div>
           <p className="text-right">

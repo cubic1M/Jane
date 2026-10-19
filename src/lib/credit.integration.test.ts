@@ -75,6 +75,7 @@ describe.runIf(url)("the credit score against a real database", () => {
       detail: "1 late fee in the last year.",
     });
     expect(credit.latest!.doing[0]).toMatch(/^Paying \$10\.50 on your Demo Credit Card ····0003/);
+    expect(credit.latest!.doing[0]).toMatch(/before it's due on [A-Z][a-z]{2} \d{1,2} brings/);
     expect(await creditBandFor(userId, opts())).toBe("good");
   });
 

@@ -3,6 +3,7 @@ import { PREMIUM_FREQUENCIES } from "@/config/documents";
 import {
   COVERAGE_FIELDS,
   DEFAULT_TERM_MONTHS,
+  DEMO_ENDORSEMENT_FACTORS,
   DEMO_PRICING,
   HEALTH_EXTRA_PERSON_SHARE,
   LIFE_OFFER_DAYS,
@@ -274,6 +275,20 @@ export const demoPartner: InsurancePartner = {
         decision.outcome === "offered"
           ? new Date(now.getTime() + LIFE_OFFER_DAYS * DAY_MS).toISOString()
           : null,
+    };
+  },
+
+  // Spec step 154: the stand-in prices a change from DEMO_ENDORSEMENT_FACTORS, from tomorrow.
+  async endorse(policy, change, { now }) {
+    const factor = DEMO_ENDORSEMENT_FACTORS[change.kind] ?? 1;
+    const effectiveDate = new Date(now.getTime() + DAY_MS).toISOString().slice(0, 10);
+    return {
+      premiumCents:
+        policy.premiumCents === null
+          ? null
+          : Math.round((policy.premiumCents * factor) / 100) * 100,
+      effectiveDate,
+      confirmation: `DEMO-END-${hashOf(policy, change, effectiveDate).slice(0, 8).toUpperCase()}`,
     };
   },
 
