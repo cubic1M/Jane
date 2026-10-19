@@ -6,7 +6,7 @@ import type { FindingType } from "@/generated/prisma/client";
 
 // score = VALUE * log10(1 + dollars a year per minute) + URGENCY * urgency (0 to 1)
 //       + CONFIDENCE * confidence (0 to 1)
-export const PRIORITY_WEIGHTS = { value: 1, urgency: 2, confidence: 0.5 } as const;
+export const PRIORITY_WEIGHTS = { value: 1, urgency: 3, confidence: 0.5 } as const;
 
 // Urgency is 1 when something is due within this many days (or overdue), falling to 0 at
 // the horizon.

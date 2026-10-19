@@ -14,7 +14,8 @@ import type { Snapshot } from "./snapshot";
 
 const DAY_MS = 86_400_000;
 const within = (date: string, asOf: string) =>
-  Date.parse(`${date}T00:00:00Z`) - Date.parse(`${asOf}T00:00:00Z`) <= URGENCY_HORIZON_DAYS * DAY_MS;
+  Date.parse(`${date}T00:00:00Z`) - Date.parse(`${asOf}T00:00:00Z`) <=
+  URGENCY_HORIZON_DAYS * DAY_MS;
 // Deadlines that are something to do (a renewal is only a date to know).
 const DOING = new Set(["payment", "trial", "return", "fsa", "card_benefit", "warranty", "other"]);
 

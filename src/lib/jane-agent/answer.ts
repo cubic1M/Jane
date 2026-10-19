@@ -51,6 +51,8 @@ import {
 import { changesReply } from "./replies-changes";
 import { overviewReply, sectorChangeReply } from "./replies-autopilot";
 import { checkedReply } from "./replies-checked";
+import { rankedFor } from "./priorities";
+import { prioritiesReply } from "./replies-priorities";
 import { groupedHelpReply } from "./replies-help";
 import { lifeEventReply } from "./replies-life";
 import { savedReply } from "./replies-saved";
@@ -228,6 +230,10 @@ async function byIntent(
       const open = await listLifeEvents(userId, { client });
       const going = open.some((e) => e.kind === intent.event && e.completedAt === null);
       return lifeEventReply(intent.event, going);
+    }
+    case "priorities": {
+      const snapshot = await loadSnapshot(userId, { client, now });
+      return prioritiesReply(snapshot ? rankedFor(snapshot) : []);
     }
     case "checked":
       return checkedReply(await lastControllerRun(userId, { client, now }));

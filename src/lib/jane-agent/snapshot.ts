@@ -191,6 +191,7 @@ export async function loadSnapshot(
       title: true,
       annualSavingsCents: true,
       evidence: true,
+      confidence: true,
     },
   });
   // Spec step 91: never a finding the person said not to suggest again, nor cutting
@@ -229,6 +230,7 @@ export async function loadSnapshot(
         savings: savingsLine(finding.type, finding.annualSavingsCents),
         fingerprint: findingFingerprint(finding),
         urgent: PLAN_URGENT_FINDING_TYPES.includes(finding.type),
+        confidence: finding.confidence,
         pick: comparison
           ? {
               optionId: comparison.pick.option.id,
