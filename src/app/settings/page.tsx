@@ -39,6 +39,9 @@ import { chatNotifyPrefs } from "@/lib/jane-agent/notify-prefs";
 import { ChatNotifyForm } from "./chat-notify-form";
 import { listPreferences } from "@/lib/jane-agent/preferences";
 import { MemoryList } from "./memory-list";
+import { SECTOR_ALL_MEANS, SECTOR_LABELS } from "@/config/autopilot-sectors";
+import { sectorAutopilots } from "@/lib/sector-autopilot";
+import { SectorsForm } from "./sectors-form";
 
 // "9pm", "8am".
 const clock = (hour: number) => `${hour % 12 || 12}${hour < 12 ? "am" : "pm"}`;
@@ -91,7 +94,7 @@ async function SessionsSection({ userId }: { userId: string }) {
 async function SettingsContent() {
   const user = await requireUser();
   const mine = await scopedDb();
-  const [prefs, items, accounts, lastCsv, twoFactor, rules, autopilot, remembered] =
+  const [prefs, items, accounts, lastCsv, twoFactor, rules, autopilot, remembered, sectors] =
     await Promise.all([
       db.user.findUniqueOrThrow({
         where: { id: user.id },
@@ -137,6 +140,7 @@ async function SettingsContent() {
       rulesFor(user.id),
       autopilotOf(user.id),
       listPreferences(user.id),
+      sectorAutopilots(user.id),
     ]);
   const csvUpdated = new Map(lastCsv.map((row) => [row.accountId, row.createdAt]));
   const alerts = alertPrefs(prefs.alertPrefs);
@@ -309,6 +313,26 @@ async function SettingsContent() {
           </p>
           <AutopilotChooser compact />
           <CallOffersForm accept={prefs.acceptSimpleOffers} />
+        </section>
+
+        <section id="sectors" className={SECTION}>
+          <h3 className={H3}>Area by area</h3>
+          <p className={MUTED}>
+            How much Jane may do by herself in each area, and up to how many dollars each time and
+            each month. Over a cap, she asks. Free checks (reshopping, rate checks) run in every
+            area.
+          </p>
+          <SectorsForm
+            rows={sectors.map((s) => ({
+              sector: s.sector,
+              label: SECTOR_LABELS[s.sector],
+              level: s.level,
+              actionCap: String(s.actionCapCents / 100),
+              monthlyCap: String(s.monthlyCapCents / 100),
+              used: formatCents(s.usedThisMonthCents),
+              allMeans: SECTOR_ALL_MEANS[s.sector],
+            }))}
+          />
         </section>
 
         <section id="rules" className={SECTION}>

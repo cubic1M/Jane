@@ -55,6 +55,7 @@ import { findingOptions, findingWhy } from "./explain";
 import { savedShare } from "./saved";
 import { prefSave, suggestNever } from "./remember";
 import { welcomeTour } from "./welcome";
+import { autopilotSectorSet } from "./sector";
 import { bundleYes1, bundleYes2, bundleYes3, bundleYes4, bundleYes5 } from "./bundle";
 import { FLOW_PICKS, flowBack, flowCancel } from "./flows";
 
@@ -175,6 +176,8 @@ export const ACTION_HANDLERS: Readonly<Record<ActionId, ActionHandler>> = {
   "saved.share": savedShare,
   // Help inside the chat (spec step 140).
   "welcome.tour": welcomeTour,
+  // One autopilot, every sector (spec step 141).
+  "autopilot.sector_set": autopilotSectorSet,
 };
 
 const MESSAGE_ID = /^[a-z0-9]{1,40}$/i;

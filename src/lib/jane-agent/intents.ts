@@ -9,6 +9,7 @@ import type { FlowId } from "./flows/engine";
 import type { PreferenceDraft } from "./preferences";
 import { parseFact } from "./remember";
 import { parseInvestmentIntent, type InvestmentIntent } from "./investments/intents";
+import { parseSectorIntent, type SectorIntent } from "./autopilot-intents";
 import { parseLearnIntent, type LearnIntent } from "./learn";
 
 // What the person typed to Jane, understood by rules (spec step 84). Pure: the text and
@@ -81,6 +82,8 @@ export type Intent =
   | TaxIntent
   // Spec step 128 on: what they own, and each later investment question.
   | InvestmentIntent
+  // Spec step 141: one autopilot, every sector.
+  | SectorIntent
   // Spec step 136: what a word means.
   | LearnIntent
   | { kind: "unknown" };
@@ -403,6 +406,8 @@ export function parseIntent(raw: string, asOf: string): Intent {
   if (GREETING.test(text)) return { kind: "greeting", thanks: false };
   if (THANKS.test(text)) return { kind: "greeting", thanks: true };
   if (PAUSE.test(text)) return { kind: "pause_autopilot" };
+  const sector = parseSectorIntent(text);
+  if (sector) return sector;
   if (SAVED.test(text)) return { kind: "saved" };
   if (REVIEW.test(text)) return { kind: "review" };
   if (CHANGES.test(text)) return { kind: "changes" };

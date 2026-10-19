@@ -15,6 +15,7 @@ import { scopedFor } from "@/lib/db-scoped";
 import { DecisionError, recordDecision } from "@/lib/decisions";
 import { sendPush } from "@/lib/push";
 import { partnerForUser } from "@/lib/referrals";
+import { autopilotFor, recordAct } from "@/lib/sector-autopilot";
 
 type Options = { client?: PrismaClient; now?: Date };
 
@@ -121,6 +122,11 @@ export async function applyStandingRules(
   const db = scopedFor(userId, client);
   const rules = (await rulesFor(userId, { client })).filter((r) => r.enabled);
   if (rules.length === 0) return [];
+  // Spec step 141: the rules are Subscriptions and bills' fine-tuning. They ask for money
+  // back and move none, so only the person setting that area to "Always ask" stops them
+  // ("Ask me first" already turns every rule off).
+  const bills = await autopilotFor(userId, "bills", { client, now });
+  if (bills.source === "set" && bills.level === "ask") return [];
 
   const [findings, takenBack, usedThisMonth] = await Promise.all([
     db.findings.findMany({
@@ -163,6 +169,10 @@ export async function applyStandingRules(
         { client },
       );
       used.set(rule.key, (used.get(rule.key) ?? 0) + 1);
+      await recordAct(userId, "bills", 0, `Said yes under a rule: ${finding.title}`, {
+        client,
+        now,
+      });
       approvals.push({ findingId: finding.id, decisionId, ruleKey: rule.key });
     } catch (error) {
       // Answered by the person in the meantime: nothing to do.
