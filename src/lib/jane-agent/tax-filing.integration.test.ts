@@ -14,7 +14,14 @@ import { filingPartnerFor } from "@/lib/filing";
 import { linkDemoBank } from "@/lib/plaid/demo";
 import { syncItem } from "@/lib/plaid/sync";
 import { runTaxAutopilot } from "@/lib/tax-autopilot";
-import { FilingError, inFilingSeason, loadReturn, signReturn, startReturn } from "@/lib/tax-filing";
+import {
+  FilingError,
+  filingYear,
+  inFilingSeason,
+  loadReturn,
+  signReturn,
+  startReturn,
+} from "@/lib/tax-filing";
 import { loadTaxForms, markTaxForm } from "@/lib/tax-organizer";
 import { saveTaxAnswers } from "@/lib/tax-profile";
 import { takeChatAction } from "./actions";
@@ -90,6 +97,13 @@ describe.runIf(url)("filing through the partner against a real database", () => 
     expect(inFilingSeason(2026, "2027-02-10")).toBe(true);
     expect(inFilingSeason(2026, "2027-10-15")).toBe(true);
     expect(inFilingSeason(2026, "2027-10-16")).toBe(false);
+  });
+
+  it("moves on to this year's return once last year's season closes", () => {
+    expect(filingYear("2027-02-10")).toBe(2026);
+    expect(filingYear("2027-10-15")).toBe(2026);
+    expect(filingYear("2026-10-16")).toBe(2026);
+    expect(filingYear("2026-12-31")).toBe(2026);
   });
 
   it("offers to start in season, only once the profile's answered, and starts from the chat", async () => {
@@ -206,7 +220,7 @@ describe.runIf(url)("filing through the partner against a real database", () => 
     );
     const { reply } = await sendToJane(userId, "when are my taxes due", { client, now: LINKED });
     expect(reply.body).toMatch(
-      /^Returns for 2025 are due April 15, 2026 \(October 15 with an extension\)\. Filing opens/,
+      /^Returns for 2026 are due April 15, 2027 \(October 15 with an extension\)\. Filing opens in late January 2027/,
     );
 
     const real = await client.user.create({
