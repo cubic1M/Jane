@@ -1,15 +1,25 @@
 import { describe, expect, it, vi } from "vitest";
 import { MESSAGE_PRIORITY } from "@/config/agent-chat";
-import { demoInvestments, noInvestments } from "@/lib/investments/__fixtures__/demo";
+import {
+  demoInvestments,
+  demoFeeTransactions,
+  demoInvestmentSnapshot,
+  noInvestments,
+} from "@/lib/investments/__fixtures__/demo";
 
 vi.mock("@/lib/session", () => ({ requireUser: vi.fn() }));
 vi.mock("@/lib/investments/holdings", () => ({ loadInvestments: vi.fn() }));
 vi.mock("@/lib/investments/profile", () => ({ profileOf: vi.fn() }));
+vi.mock("@/lib/investments/fees", () => ({ loadFees: vi.fn() }));
+vi.mock("@/lib/advice-mode", () => ({ adviceMode: vi.fn() }));
 
 import { loadInvestments } from "@/lib/investments/holdings";
 import { profileOf } from "@/lib/investments/profile";
+import { loadFees } from "@/lib/investments/fees";
+import { adviceMode } from "@/lib/advice-mode";
+import { feeSummary } from "@/insights/investment-fees";
 import { EMPTY_ANSWERS, type ProfileAnswers } from "@/planning/investor-profile";
-import { profileReply } from "./replies";
+import { feesReply, profileReply } from "./replies";
 import { gather } from "../brain";
 import { parseIntent } from "../intents";
 import type { Snapshot } from "../snapshot";
@@ -114,13 +124,7 @@ describe("the investments message", () => {
     const [message] = gather(
       {
         ...base,
-        investments: {
-          totalCents: data.totalCents,
-          holdingCount: data.holdingCount,
-          accounts: data.accounts,
-          advice: false,
-          profile: EMPTY_ANSWERS,
-        },
+        investments: demoInvestmentSnapshot({ advice: false }),
       },
       now,
       { trigger: "sync", sources: [investmentsSource] },
@@ -142,13 +146,7 @@ describe("the investments message", () => {
       investmentsSource.gather(
         {
           ...base,
-          investments: {
-            totalCents: 100,
-            holdingCount: 0,
-            accounts: [],
-            advice: true,
-            profile: EMPTY_ANSWERS,
-          },
+          investments: demoInvestmentSnapshot({ totalCents: 100, holdingCount: 0, accounts: [] }),
         },
         {} as never,
       ),
@@ -265,14 +263,8 @@ describe("profileReply", () => {
 });
 
 describe("the investor-profile question in the chat", () => {
-  const data = demoInvestments();
-  const inv = (advice: boolean, profile: ProfileAnswers) => ({
-    totalCents: data.totalCents,
-    holdingCount: data.holdingCount,
-    accounts: data.accounts,
-    advice,
-    profile,
-  });
+  const inv = (advice: boolean, profile: ProfileAnswers) =>
+    demoInvestmentSnapshot({ advice, profile });
   const ask = (advice: boolean, profile: ProfileAnswers, asOf = ASOF) =>
     investmentsSource
       .gather({ ...base, asOf, investments: inv(advice, profile) }, {} as never)
@@ -341,6 +333,111 @@ describe("Claude's investor_profile tool", () => {
       needsTheMoney: "In 10 to 20 years",
       goals: ["Retirement"],
       answeredOverAYearAgo: false,
+    });
+  });
+});
+
+// Spec step 130: what investing costs.
+describe("fee questions, by rules", () => {
+  it.each([
+    ["what are my investment fees", null],
+    ["what's the expense ratio on my funds", null],
+    ["401k fees", "401k"],
+    ["how much am I paying for my brokerage", "brokerage"],
+    ["are there cheaper funds", null],
+  ])("reads %j as fees", (text, account) => {
+    expect(parseIntent(text, ASOF)).toEqual({ kind: "investments", topic: "fees", account });
+  });
+
+  it.each(["lower my bank fees", "how much did I spend on fees", "refund the overdraft fee"])(
+    "leaves %j to the other rules",
+    (text) => {
+      expect(parseIntent(text, ASOF).kind).not.toBe("investments");
+    },
+  );
+});
+
+describe("feesReply", () => {
+  const data = demoInvestments();
+  const fees = feeSummary(data.accounts, demoFeeTransactions());
+
+  it("gives the yearly cost, the 30-year range and the costliest funds, for everyone", () => {
+    const reply = feesReply(fees, false);
+    expect(reply.body).toMatch(
+      /^Your investments cost about \$[\d,.]+ a year: \$[\d,.]+ in fund costs, \$124\.80 in advisory fees, \$50\.00 in account fees\. Over 30 years that's roughly \$[\d,.]+ to \$[\d,.]+ with growth, depending on returns\./,
+    );
+    expect(reply.body).toContain("- Northstar Target 2055 Fund: 0.75%");
+    expect(reply.body).not.toContain("equivalent");
+    expect(reply.refs).toEqual({});
+    expect(reply.actions[0]).toMatchObject({ href: "/investments/fees" });
+  });
+
+  it("adds the lower-cost equivalents in demo advice mode, labelled", () => {
+    const reply = feesReply(fees, true);
+    expect(reply.body).toContain("Lower-cost equivalents:");
+    expect(reply.body).toContain(
+      "- Summit Large Cap Growth Fund in your Demo 401(k) charges 1.02% a year; Keystone Total US Stock Index Fund (US total stock market index, offered in your plan) charges 0.03%.",
+    );
+    expect(reply.body).toMatch(/Switching those 3 funds could save about \$[\d,.]+ a year/);
+    expect(reply.refs).toEqual({ advice: true });
+  });
+
+  it("says when there are no fees to show", () => {
+    expect(feesReply(feeSummary([], []), true).body).toMatch(/^I don't see any investment fees/);
+  });
+});
+
+describe("the fees message", () => {
+  const gatherFees = (advice: boolean) =>
+    investmentsSource
+      .gather({ ...base, investments: demoInvestmentSnapshot({ advice }) }, {} as never)
+      .filter((c) => c.dedupeKey.startsWith("fees:"));
+
+  it("says once, in demo advice mode, what switching costly funds could save", () => {
+    const [message] = gatherFees(true);
+    expect(message).toMatchObject({
+      kind: "heads_up",
+      refs: { advice: true },
+      priority: MESSAGE_PRIORITY.investment_fees,
+      dedupeKey: "fees:NSTDX>KTRGX,PDIFX>KDVX,SLGFX>KTSIX",
+    });
+    expect(message.body).toMatch(
+      /^Your investments cost about \$[\d,.]+ a year in fees\. Northstar Target 2055 Fund in your Demo 401\(k\) charges 0\.75% a year; Keystone Target 2055 Index Fund/,
+    );
+    expect(message.body).toContain("I found 2 more like it.");
+    expect(message.body).toMatch(
+      /roughly \$[\d,.]+ to \$[\d,.]+ over 30 years depending on returns\.$/,
+    );
+  });
+
+  it("never recommends to real accounts", () => {
+    expect(gatherFees(false)).toEqual([]);
+  });
+});
+
+describe("Claude's investment_fees tool", () => {
+  it("records every figure, and gives equivalents only in demo advice mode", async () => {
+    vi.mocked(loadFees).mockResolvedValue({
+      investments: demoInvestments(),
+      fees: feeSummary(demoInvestments().accounts, demoFeeTransactions()),
+    });
+    vi.mocked(adviceMode).mockResolvedValue(false);
+    const options = { client: {} as PrismaClient, now: new Date("2026-10-19T12:00:00Z") };
+    const plain = await runInvestmentTool("u", "investment_fees", {}, options);
+    const parsed = JSON.parse(plain.content);
+    expect(parsed.advisoryFeesLast12Months).toBe("$124.80");
+    expect(parsed.over30Years.low).toMatch(/^\$/);
+    expect(parsed.lowerCostEquivalents).toMatch(/demo advice mode only/);
+    expect(plain.cents).toContain(12_480);
+
+    vi.mocked(adviceMode).mockResolvedValue(true);
+    const advice = JSON.parse(
+      (await runInvestmentTool("u", "investment_fees", {}, options)).content,
+    );
+    expect(advice.lowerCostEquivalents[0]).toMatchObject({
+      instead: "Northstar Target 2055 Fund",
+      hold: "Keystone Target 2055 Index Fund",
+      offeredInPlan: true,
     });
   });
 });

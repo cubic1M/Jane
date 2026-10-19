@@ -1,3 +1,5 @@
+import { DEBT_MESSAGE_PRIORITY, DEBT_SOURCE_LIMITS } from "@/config/debt";
+
 // Jane the agent (spec steps 81–82): how much Jane says in the chat, and when. Jane's
 // brain (src/lib/jane-agent/brain.ts) reads every limit from here.
 
@@ -6,6 +8,8 @@ export const CHAT_DAILY_LIMIT = 5;
 // And at most this many of each group a day, so one kind can't crowd out the rest.
 // Keyed by message source (src/lib/jane-agent/sources).
 export const CHAT_SOURCE_LIMITS: Readonly<Record<string, number>> = {
+  // Loans and debt (spec Phase Y, src/config/debt.ts).
+  ...DEBT_SOURCE_LIMITS,
   findings: 3,
   heads_ups: 2,
   did: 2,
@@ -16,13 +20,14 @@ export const CHAT_SOURCE_LIMITS: Readonly<Record<string, number>> = {
   steps: 2,
   budgets: 1,
   things: 1,
-  // Loans and debt (spec Phase Y).
-  debts: 1,
-  payoff: 1,
+  // Taxes (spec steps 118–127).
+  taxes: 2,
   // Spec step 97.
   changes: 2,
   // Spec step 100.
   life: 1,
+  // Spec step 101.
+  upkeep: 2,
   // Spec step 128 on.
   investments: 2,
 };
@@ -47,6 +52,8 @@ export const DID_LOOKBACK_DAYS = 7;
 // Higher goes first. The plan comes before the findings it sums up; anything that can't
 // wait (an urgent alert, a deadline, something only the person can do) comes before both.
 export const MESSAGE_PRIORITY = {
+  // Loans and debt (spec Phase Y, src/config/debt.ts).
+  ...DEBT_MESSAGE_PRIORITY,
   brief: 1_000,
   urgent_alert: 95,
   deadline: 90,
@@ -69,25 +76,22 @@ export const MESSAGE_PRIORITY = {
   setup: 65,
   budget_nearly_over: 44,
   asset_prompt: 30,
-  // Loans and debt (spec step 109): a buy now, pay later plan Jane found, then a debt
-  // with no rate, both after the rest.
-  debt_found: 35,
-  debt_missing_rate: 33,
-  // Spec step 110: a plan off track comes with the time-sensitive things; Jane's offer of a
-  // plan and an on-track check after the findings.
-  payoff_off_track: 72,
-  payoff_offer: 55,
-  payoff_on_track: 48,
   // Spec step 97: a change Jane noticed is news, so it comes before set-up suggestions and
   // findings that can wait (a price rise's finding is asked about in the change's own
   // heads-up).
   change: 66,
   // Spec step 100: a life event spotted, once, before set-up suggestions.
   life_event: 67,
+  // Spec step 101: a budget tune-up or a transfer to count, before set-up suggestions; the
+  // weekly review comes right after the brief.
+  upkeep: 64,
+  review: 900,
   // Spec step 128: what's in investment accounts, the first time Jane sees it.
   investments: 32,
   // Spec step 129: the investor-profile questions, which later investment steps wait on.
   investment_profile: 34,
+  // Spec step 130: costly funds with a lower-cost equivalent (demo advice).
+  investment_fees: 36,
 } as const;
 
 // The chat page shows the last this-many messages, with "Show earlier" for more.
@@ -102,7 +106,7 @@ export const CHAT_HISTORY_HOURS = 48;
 
 // Spec step 83: sources whose messages don't count toward the daily limit, like the brief:
 // the one-time autopilot question, so it never pushes a finding out on the first day.
-export const CHAT_UNCAPPED_SOURCES: readonly string[] = ["autopilot"];
+export const CHAT_UNCAPPED_SOURCES: readonly string[] = ["autopilot", "review"];
 
 // Spec step 83: a budget counts as nearly over once this share of it is spent this month.
 export const BUDGET_NEARLY_OVER_SHARE = 0.9;

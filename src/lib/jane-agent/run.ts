@@ -1,8 +1,9 @@
 import { CHAT_CRON_LIMIT, CHAT_HISTORY_HOURS } from "@/config/agent-chat";
 import type { PrismaClient } from "@/generated/prisma/client";
 import { db as defaultClient } from "@/lib/db";
-import { refreshDebtPlan } from "@/lib/debt-plan";
+import { refreshDebts } from "@/lib/debt-refresh";
 import { scopedFor } from "@/lib/db-scoped";
+import { runPlanUpkeep } from "@/lib/plan-upkeep";
 import { gather, plan, type BrainSettings } from "./brain";
 import { closeSettled, postMessages } from "./messages";
 import { queueChatNotificationsSafely } from "./notify";
@@ -29,10 +30,12 @@ export async function runJaneAgent(
   // Nothing to say in quiet hours, so nothing to load, unless the person is looking.
   if (trigger !== "open" && inQuietHours(now, user.timezone)) return { posted: 0 };
 
-  // Spec step 110: the payoff plan checks itself once a month, before Jane looks.
-  await refreshDebtPlan(userId, { client, now }).catch((error) =>
-    console.error("Payoff plan check failed", { userId, error: String(error) }),
+  // Spec step 101: what autopilot keeps up to date by itself, before Jane looks.
+  await runPlanUpkeep(userId, { client, now }).catch((error) =>
+    console.error("Plan upkeep failed", { userId, error: String(error) }),
   );
+  // Loans and debt (spec Phase Y): what Jane keeps current by herself, before she looks.
+  await refreshDebts(userId, { client, now });
   const snapshot = await loadSnapshot(userId, { client, now });
   if (!snapshot) return { posted: 0 };
   await closeSettled(userId, { client, now });

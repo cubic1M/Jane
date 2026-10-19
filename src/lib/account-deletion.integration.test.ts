@@ -227,6 +227,9 @@ describe.runIf(url)("deleting data against a real database", () => {
     await client.janeMessage.create({
       data: { userId, kind: "brief", body: "Good morning", dedupeKey: "brief:2026-10-18" },
     });
+    await client.taxProfile.create({
+      data: { userId, filingStatus: "single", answered: ["filingStatus"] },
+    });
     const agentAction = await client.action.findFirstOrThrow({ where: { userId } });
     await client.agentMessage.create({
       data: {
@@ -295,6 +298,7 @@ describe.runIf(url)("deleting data against a real database", () => {
       ownedAssets: await client.ownedAsset.count(where),
       documents: await client.document.count(where),
       deadlines: await client.deadline.count(where),
+      taxProfiles: await client.taxProfile.count(where),
     };
   }
 

@@ -164,6 +164,14 @@ describe("parseIntent", () => {
     expect(parse(text)).toEqual({ kind: "act", verb, target });
   });
 
+  // Spec step 101.
+  it.each(["how was my week?", "weekly review", "recap my week"])(
+    "understands %s as the review",
+    (text) => {
+      expect(parse(text)).toEqual({ kind: "review" });
+    },
+  );
+
   // Spec step 100.
   it.each([
     ["I'm moving next month", "moving"],

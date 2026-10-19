@@ -31,6 +31,20 @@ export const BNPL_AMOUNT_TOLERANCE_CENTS = 2;
 export const MAX_TYPED_APR_BPS = 9_999;
 export const MAX_TYPED_DEBT_CENTS = 2_000_000_000;
 
+// Jane's chat (src/config/agent-chat.ts takes these in): each debt message source's daily
+// limit, and where its messages go among the rest (higher first).
+export const DEBT_SOURCE_LIMITS = { debts: 1, payoff: 1 } as const;
+export const DEBT_MESSAGE_PRIORITY = {
+  // A buy now, pay later plan Jane found, then a debt with no rate, both after the rest.
+  debt_found: 35,
+  debt_missing_rate: 33,
+  // Spec step 110: a plan off track comes with the time-sensitive things; Jane's offer of a
+  // plan and an on-track check after the findings.
+  payoff_off_track: 72,
+  payoff_offer: 55,
+  payoff_on_track: 48,
+} as const;
+
 // What Jane does about debts by herself at each autopilot level (src/config/autopilot.ts),
 // step by step. Applying for credit, moving money and signing always need the person's tap,
 // at every level. Steps 110–117 add to this list.

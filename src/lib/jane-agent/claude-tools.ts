@@ -14,24 +14,26 @@ import { CARD_SELECT, buildCard } from "@/lib/cards";
 import { comparisonFor } from "@/lib/compare";
 import { frequencyWords } from "@/lib/explain-input";
 import { scopedFor } from "@/lib/db-scoped";
-import { loadPayoff } from "@/lib/debt-plan";
-import { loadDebts } from "@/lib/debts";
 import { loadChanges } from "@/lib/changes";
 import { listGoals } from "@/lib/goals";
 import { lifeGuessesFor } from "@/lib/life-guesses";
+import { loadUpkeep } from "@/lib/plan-upkeep";
 import { listLifeEvents } from "@/lib/life-events";
 import { homeSummary } from "@/lib/home";
 import { formatCents } from "@/lib/money";
 import { affordWindow } from "@/planning/afford";
 import type { Scored } from "@/planning/compare";
 import { ACTION_HANDLERS } from "./actions";
-import { DEBT_TOOLS, debtsToolOutput, extraFromInput, payoffToolOutput } from "./debt-tools";
+import { DEBT_CHAT_PAGES, DEBT_TOOLS } from "./debt-tools";
+import { isDebtTool, runDebtTool } from "./debt-tools-run";
 import { INVESTMENT_TOOLS, isInvestmentTool, runInvestmentTool } from "./investments/tools";
 import { monthLabel, type Reply } from "./replies";
 import { guessLine } from "./replies-life";
+import { weeklyReview } from "./replies-review";
 import { localTime } from "./quiet-hours";
 import { loadSnapshot } from "./snapshot";
 import { findingsSource } from "./sources/findings";
+import { TAX_TOOLS, isTaxTool, runTaxTool } from "./tax-tools";
 import { ACTION_IDS, type ActionId, type MessageAction } from "./types";
 
 // The tools Claude gets in Jane's chat (spec step 84). Read-only tools over the person's
@@ -50,6 +52,8 @@ export const PROPOSABLE: readonly ActionId[] = ["finding.yes", "plan.approve_saf
 
 // Pages Claude may link to, by name.
 export const CHAT_PAGES: Readonly<Record<string, { label: string; href: string }>> = {
+  // Loans and debt (spec Phase Y, ./debt-tools.ts).
+  ...DEBT_CHAT_PAGES,
   today: { label: "See today", href: "/home" },
   plan: { label: "Open the plan", href: "/plan" },
   subscriptions: { label: "Open subscriptions", href: "/subscriptions" },
@@ -63,15 +67,17 @@ export const CHAT_PAGES: Readonly<Record<string, { label: string; href: string }
   net_worth: { label: "See net worth", href: "/net-worth" },
   investments: { label: "See what you own", href: "/investments" },
   settings: { label: "Settings", href: "/settings" },
-  // Loans and debt (spec Phase Y).
-  loans: { label: "See every debt", href: "/loans" },
-  debt: { label: "Open the payoff planner", href: "/debt" },
+  // Taxes (spec steps 118–127).
+  taxes: { label: "See your taxes", href: "/taxes" },
+  tax_profile: { label: "See my tax profile", href: "/taxes/profile" },
 };
 
 const noInput = { type: "object" as const, properties: {}, additionalProperties: false };
 
 export const CHAT_TOOLS: Anthropic.Tool[] = [
   ...FROM_ASK,
+  // Loans and debt (spec Phase Y, ./debt-tools.ts).
+  ...DEBT_TOOLS,
   {
     name: "safe_to_spend",
     description:
@@ -123,8 +129,6 @@ export const CHAT_TOOLS: Anthropic.Tool[] = [
       "What the person has (accounts and things they own) minus what they owe, from their linked balances.",
     input_schema: noInput,
   },
-  // Loans and debt (spec Phase Y, ./debt-tools.ts).
-  ...DEBT_TOOLS,
   {
     name: "recent_changes",
     description:
@@ -135,6 +139,12 @@ export const CHAT_TOOLS: Anthropic.Tool[] = [
     name: "life_events",
     description:
       "Big life changes (spec step 100): moving, a new job or a new baby that Jane spotted from two or more signs in the person's money and hasn't asked about yet, and the life-event checklists they have going, with how far along each is.",
+    input_schema: noInput,
+  },
+  {
+    name: "plan_upkeep",
+    description:
+      "Plans that keep up (spec step 101): this month's budget tune-up (each budget, its amount and its usual month), transfers to savings Jane could count toward a goal, and the weekly review: what Jane did, what it saved and what's next.",
     input_schema: noInput,
   },
   {
@@ -155,6 +165,8 @@ export const CHAT_TOOLS: Anthropic.Tool[] = [
       additionalProperties: false,
     },
   },
+  // Taxes (spec steps 118–127): ./tax-tools.ts.
+  ...TAX_TOOLS,
   // Spec step 128 on.
   ...INVESTMENT_TOOLS,
 ];
@@ -170,6 +182,8 @@ export async function runChatTool(
 ): Promise<ToolOutput> {
   if (FROM_ASK.some((t) => t.name === name))
     return runAskTool(userId, name, input, { client, now });
+  if (isDebtTool(name)) return runDebtTool(userId, name, input, { client, now });
+  if (isTaxTool(name)) return runTaxTool(userId, name, { client, now });
   if (isInvestmentTool(name)) return runInvestmentTool(userId, name, input, { client, now });
   const cents: number[] = [];
   const money = (value: number) => {
@@ -326,6 +340,29 @@ export async function runChatTool(
         })),
       });
     }
+    case "plan_upkeep": {
+      const [upkeep, snapshot] = await Promise.all([
+        loadUpkeep(userId, { client, now }),
+        loadSnapshot(userId, { client, now }),
+      ]);
+      return out({
+        tuneUp: upkeep.tuneUp && {
+          month: upkeep.tuneUp.month,
+          status: upkeep.tuneUp.status,
+          budgets: upkeep.tuneUp.changes.map((c) => ({
+            category: c.category,
+            now: money(c.fromCents),
+            usual: money(c.toCents),
+          })),
+        },
+        transfersToCount: upkeep.transfers.map((t) => ({
+          amount: money(t.amountCents),
+          date: t.date,
+          goal: t.goal.name,
+        })),
+        weeklyReview: snapshot ? weeklyReview(snapshot, now).body : null,
+      });
+    }
     case "goals": {
       const goals = await listGoals(userId, { client, now });
       return out({
@@ -378,12 +415,6 @@ export async function runChatTool(
         netWorth: money(worth.netCents),
         accountsWithoutABalance: worth.missing.length,
       });
-    }
-    case "debts":
-      return out(debtsToolOutput(await loadDebts(userId, { client, now }), money));
-    case "payoff_plan": {
-      const payoff = await loadPayoff(userId, { client, now, extraCents: extraFromInput(input) });
-      return out(payoffToolOutput(payoff, asOf, money));
     }
     default:
       return { content: JSON.stringify({ error: `There's no tool called ${name}.` }), cents: [] };

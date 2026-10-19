@@ -5,6 +5,7 @@ import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
 import { closeSettled } from "../messages";
 import { MESSAGE_SELECT, toChatMessage, type ActionId, type ChatMessage } from "../types";
+import { DEBT_ACTION_HANDLERS } from "./debt-handlers";
 import { findingNo, findingPick, findingYes } from "./finding";
 import { ChatActionError, linksOf, type ActionHandler } from "./handler";
 import { planApproveSafe } from "./plan";
@@ -14,7 +15,7 @@ import { alertGotIt, deadlineDone, snooze } from "./heads-ups";
 import { setupAll, setupNo, setupYes } from "./setup";
 import { cancelDone, offerAccept, offerDecline } from "./steps";
 import { goalStart } from "./goal";
-import { debtPlanAvalanche, debtPlanSnowball } from "./debt-plan";
+import { TAX_PROFILE_HANDLERS, taxFoundYes, taxIncomeAdd, taxIncomeNo, taxStateSet } from "./taxes";
 import {
   investAnswer1,
   investAnswer2,
@@ -24,11 +25,14 @@ import {
 } from "./investments";
 import { changeBudget, changeExpected, changeLook } from "./changes";
 import { lifeNever, lifeNo, lifeYes } from "./life";
+import { transferCount, transferSkip, tuneUpAccept, tuneUpKeep, tuneUpUndo } from "./upkeep";
 
 // Every button action, by id (spec step 81). A new button is a new handler here; the
 // message sources offer it by id (src/lib/jane-agent/types.ts ACTION_IDS).
 export const ACTION_HANDLERS: Readonly<Record<ActionId, ActionHandler>> = {
   "finding.yes": findingYes,
+  // Loans and debt (spec Phase Y, ./debt-handlers.ts).
+  ...DEBT_ACTION_HANDLERS,
   "finding.no": findingNo,
   "finding.pick": findingPick,
   "plan.approve_safe": planApproveSafe,
@@ -50,9 +54,12 @@ export const ACTION_HANDLERS: Readonly<Record<ActionId, ActionHandler>> = {
   // Typing to Jane (spec step 84).
   "goal.start": goalStart,
   "autopilot.pause": autopilotPause,
-  // Loans and debt (spec step 110).
-  "debt_plan.avalanche": debtPlanAvalanche,
-  "debt_plan.snowball": debtPlanSnowball,
+  // Taxes (spec step 118).
+  "tax.found_yes": taxFoundYes,
+  ...TAX_PROFILE_HANDLERS,
+  "tax.income_add": taxIncomeAdd,
+  "tax.income_no": taxIncomeNo,
+  "tax.state_set": taxStateSet,
   // Investments (spec step 129 on).
   "invest.answer.1": investAnswer1,
   "invest.answer.2": investAnswer2,
@@ -67,6 +74,12 @@ export const ACTION_HANDLERS: Readonly<Record<ActionId, ActionHandler>> = {
   "life.yes": lifeYes,
   "life.no": lifeNo,
   "life.never": lifeNever,
+  // Plans that keep up (spec step 101).
+  "tuneup.accept": tuneUpAccept,
+  "tuneup.keep": tuneUpKeep,
+  "tuneup.undo": tuneUpUndo,
+  "transfer.count": transferCount,
+  "transfer.skip": transferSkip,
 };
 
 const MESSAGE_ID = /^[a-z0-9]{1,40}$/i;
@@ -116,6 +129,7 @@ export async function takeChatAction(
     where: { id: message.id, status: message.status },
     data: {
       status,
+      ...(outcome.body ? { body: outcome.body } : {}),
       answeredWith: outcome.answeredWith,
       answeredAt: status === "open" ? null : now,
       refs: refs as Prisma.InputJsonObject,

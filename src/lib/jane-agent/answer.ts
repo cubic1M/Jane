@@ -8,11 +8,10 @@ import { loadChanges } from "@/lib/changes";
 import { listLifeEvents } from "@/lib/life-events";
 import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
-import { loadPayoff } from "@/lib/debt-plan";
-import { loadDebts } from "@/lib/debts";
 import { homeSummary } from "@/lib/home";
 import { whatJaneDid } from "@/lib/what-jane-did";
-import { debtReply, payoffReply } from "./debt-replies";
+import { answerDebt } from "./debt-answer";
+import { isDebtIntent } from "./debt-intents";
 import type { Intent } from "./intents";
 import { answerInvestments } from "./investments/answer";
 import {
@@ -32,7 +31,9 @@ import {
 } from "./replies";
 import { changesReply } from "./replies-changes";
 import { lifeEventReply } from "./replies-life";
+import { weeklyReview } from "./replies-review";
 import { loadSnapshot } from "./snapshot";
+import { answerTaxIntent } from "./tax-answer";
 
 // Answers a typed message by rules (spec step 84): loads only what the intent needs, with
 // the same loaders as the pages, all scoped to the person, and words it with ./replies.
@@ -46,6 +47,8 @@ export async function answerByRules(
   { client = defaultClient, now = new Date() }: Options = {},
 ): Promise<Reply | null> {
   const asOf = now.toISOString().slice(0, 10);
+  // Loans and debt (spec Phase Y, ./debt-answer.ts).
+  if (isDebtIntent(intent)) return answerDebt(userId, intent, { client, now });
   switch (intent.kind) {
     case "unknown":
       return null;
@@ -91,6 +94,16 @@ export async function answerByRules(
       const going = open.some((e) => e.kind === intent.event && e.completedAt === null);
       return lifeEventReply(intent.event, going);
     }
+    case "review": {
+      const snapshot = await loadSnapshot(userId, { client, now });
+      return snapshot
+        ? weeklyReview(snapshot, now)
+        : {
+            body: "Link a bank or import a CSV, and I'll review your weeks here.",
+            actions: [],
+            refs: {},
+          };
+    }
     case "changes":
       return changesReply(await loadChanges(userId, { client, now }));
     case "what_did":
@@ -103,15 +116,8 @@ export async function answerByRules(
       return undoReply(await loadSnapshot(userId, { client, now }), now);
     case "pause_autopilot":
       return pauseReply(await autopilotOf(userId, { client }));
-    // Loans and debt (spec Phase Y).
-    case "debts":
-    case "debt_detail":
-      return debtReply(intent, await loadDebts(userId, { client, now }));
-    case "payoff_plan":
-      return payoffReply(
-        await loadPayoff(userId, { client, now, extraCents: intent.extraCents ?? undefined }),
-        asOf,
-      );
+    case "tax":
+      return answerTaxIntent(userId, intent, { client, now });
     case "investments":
       return answerInvestments(userId, intent, { client, now });
   }
