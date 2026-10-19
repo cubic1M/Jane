@@ -10,6 +10,7 @@ import { debtsOr, loadDebts } from "@/lib/debts";
 import type { DebtBook } from "@/insights/debts";
 import { formatCents } from "@/lib/money";
 import { creditBandOf, creditFactors, utilisation, type Utilisation } from "@/planning/credit";
+import { dayLabel } from "@/lib/day-label";
 
 // The credit score (spec step 116). Once a month Jane asks the credit partner for the
 // person's score with a soft pull (it never affects the score), and explains what's
@@ -150,7 +151,7 @@ export async function loadCredit(
   const doing: string[] = [];
   if (u && u.share > UTILISATION_HIGH && card) {
     doing.push(
-      `Paying ${formatCents(u.toUnderHighCents)} on your ${card.name}${card.nextDue ? ` before it's due on ${card.nextDue}` : ""} brings card use under ${Math.round(UTILISATION_HIGH * 100)}%. I'll remind you before the due date.`,
+      `Paying ${formatCents(u.toUnderHighCents)} on your ${card.name}${card.nextDue ? ` before it's due on ${dayLabel(card.nextDue)}` : ""} brings card use under ${Math.round(UTILISATION_HIGH * 100)}%. I'll remind you before the due date.`,
     );
   }
   if (card)

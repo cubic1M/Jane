@@ -386,12 +386,12 @@ export const CHECKUP_DAILY_LIMIT = 200;
 // Insurance is never approved by a standing rule (NEVER_BY_RULE): buying, changing or
 // cancelling cover always takes the person's own tap.
 export const INSURANCE_AUTOPILOT: Record<"ask" | "safe" | "all" | "custom" | "none", string> = {
-  none: "I watch every renewal and price rise, reshop each policy 45 days before it renews, check your cover once a year and after a life event, and remind you of claim steps. I read every policy document you upload and ask you to confirm it. I ask you before buying anything.",
-  ask: "I watch every renewal and price rise, reshop each policy 45 days before it renews, check your cover once a year and after a life event, and remind you of claim steps. I read every policy document you upload and ask you to confirm it. I ask you before buying anything.",
-  safe: "I watch every renewal and price rise, reshop each policy 45 days before it renews, check your cover once a year and after a life event, and remind you of claim steps. I read every policy document you upload and ask you to confirm it. I ask you before buying anything.",
+  none: "I watch every renewal and price rise, reshop each policy 45 days before it renews, check your cover once a year and after a life event, and remind you of claim steps. I read every policy document you upload and ask you to confirm it, and I ask before calling an insurer about a renewal that's going up. I file small claims for you once you've checked them. I ask you before buying anything.",
+  ask: "I watch every renewal and price rise, reshop each policy 45 days before it renews, check your cover once a year and after a life event, and remind you of claim steps. I read every policy document you upload and ask you to confirm it, and I ask before calling an insurer about a renewal that's going up. I file small claims for you once you've checked them. I ask you before buying anything.",
+  safe: "I watch every renewal and price rise, reshop each policy 45 days before it renews, check your cover once a year and after a life event, and remind you of claim steps. I read every policy document you upload and ask you to confirm it, and I ask before calling an insurer about a renewal that's going up. I file small claims for you once you've checked them. I ask you before buying anything.",
   custom:
-    "I watch every renewal and price rise, reshop each policy 45 days before it renews, check your cover once a year and after a life event, and remind you of claim steps. I read every policy document you upload and ask you to confirm it. I ask you before buying anything.",
-  all: "I watch every renewal and price rise, reshop each policy 45 days before it renews, and keep the best switch ready so it's one tap: I refresh its quotes before they expire. I also check your cover once a year, read every policy document you upload and remind you of claim steps. What I read and buying still take your tap.",
+    "I watch every renewal and price rise, reshop each policy 45 days before it renews, check your cover once a year and after a life event, and remind you of claim steps. I read every policy document you upload and ask you to confirm it, and I ask before calling an insurer about a renewal that's going up. I file small claims for you once you've checked them. I ask you before buying anything.",
+  all: "I watch every renewal and price rise, reshop each policy 45 days before it renews, and keep the best switch ready so it's one tap: I refresh its quotes before they expire. I also check your cover once a year, read every policy document you upload, remind you of claim steps, and call your insurer for a better rate before a renewal that's going up, within your limits. What I read, filing a claim and buying still take your tap.",
 };
 // At "handle everything", a ready pick's quotes are refreshed this many days before they
 // expire, so the one tap always works.
@@ -457,3 +457,51 @@ export const LIFE_TOBACCO_FACTOR = 2.5;
 export const LIFE_STANDARD_FACTOR = 1.3;
 // How long a stand-in life application's offer stays open.
 export const LIFE_OFFER_DAYS = 30;
+
+// --- Cover changes with life events (spec step 154) ----------------------------------------
+// Events this recent get their cover changes prepared.
+export const COVER_EVENT_WINDOW_DAYS = 60;
+export const COVER_EVENTS = ["car_bought", "moving", "new_baby", "married", "new_job"] as const;
+export type CoverEvent = (typeof COVER_EVENTS)[number];
+export const COVER_CHANGES = [
+  "address",
+  "add_vehicle",
+  "add_spouse",
+  "add_dependant",
+  "review_life",
+  "review_benefits",
+  "get_auto",
+] as const;
+export type CoverChangeKind = (typeof COVER_CHANGES)[number];
+// Changes that never change the price: at "handle everything" Jane makes them herself.
+export const NO_PRICE_CHANGES: readonly CoverChangeKind[] = ["address"];
+// Changes made with the carrier through the partner; the rest are reviews and links.
+export const CARRIER_CHANGES: readonly CoverChangeKind[] = [
+  "address",
+  "add_vehicle",
+  "add_spouse",
+  "add_dependant",
+];
+// The stand-in carrier's new price after a change, as a multiple of the old.
+export const DEMO_ENDORSEMENT_FACTORS: Record<string, number> = {
+  add_vehicle: 1.8,
+  add_spouse: 1.3,
+  add_dependant: 1.25,
+  address: 1,
+};
+export const COVER_CHANGES_DAILY_LIMIT = 200;
+
+// --- Renewal negotiation and claims, done by Jane (spec step 155) ---------------------------
+// A renewal this much (share) above today's price is worth asking the carrier about.
+export const NEGOTIATE_MIN_RISE = 0.05;
+// The stand-in carrier meets a cheaper competing quote this close (share above it), or
+// takes off this share of the rise for a loyal customer, never below today's price.
+export const DEMO_NEGOTIATE = { matchMargin: 0.02, loyaltyShareOfRise: 0.5 } as const;
+// Jane files claims up to this amount herself through the partner; bigger ones stay with
+// the person and the claims helper.
+export const SMALL_CLAIM_MAX_CENTS = 250_000;
+// The stand-in carrier's claim, day by day after filing: received, then reviewing, then
+// approved (paying the claim less the deductible), then paid.
+export const DEMO_CLAIM_DAYS = { reviewing: 2, approved: 5, paid: 10 } as const;
+export const NEGOTIATIONS_DAILY_LIMIT = 200;
+export const CLAIMS_DAILY_LIMIT = 200;

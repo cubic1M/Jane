@@ -99,6 +99,8 @@ export type Intent =
   | { kind: "paycheck" }
   // Spec step 145: "are my bills paid?"
   | { kind: "bills_paid" }
+  // Spec step 146: "what's my money health score?"
+  | { kind: "health" }
   // Spec step 141: one autopilot, every sector.
   | SectorIntent
   // Spec step 136: what a word means.
@@ -334,6 +336,8 @@ const PAYCHECK =
   /\bsplit my (?:paycheck|pay)\b|\bwhere (?:did|does) my (?:paycheck|pay) go\b|\bmy paycheck plan\b|\bwhat did you move\b/;
 const BILLS_PAID =
   /\b(?:are|is) my (?:bills?|card|credit card|loan)(?: payments?)? (?:paid|covered|set|on time)\b|\bpay my (?:bills?|card|credit card)(?: on time)?\b|\bbills? (?:paid )?on time\b|\bbill pay\b/;
+const HEALTH =
+  /\b(?:health score|money health|financial health|financial wellness)\b|\bhow healthy (?:are|is) my (?:money|finances)\b/;
 const PRIORITIES =
   /\bwhat should i do (?:first|next|now)\b|\bwhat matters (?:most|now)\b|\bwhat'?s (?:most )?important\b|\bwhere (?:do|should) i start\b|\bmy (?:top )?priorities\b|\bnext best thing\b/;
 // Spec step 183. "Am I OK to buy …" is a purchase question, and goals have their own answer.
@@ -361,7 +365,7 @@ const SAFE =
   /\bsafe to spend\b|\bhow much (?:can|could) i (?:still )?spend\b|\bwhat can i (?:still )?spend\b|\bspending money left\b|\bhow much (?:money )?(?:do )?i (?:have|got) (?:left|to spend|left to spend)\b|\bhow much (?:money )?(?:is|do i have) left\b/;
 const SPENDING = /\b(?:spent|spend|spending)\b|\bwhere (?:does|did) (?:all )?my money go\b/;
 const COMING_UP =
-  /\bwhat'?s (?:due|coming(?: up)?|next)\b|\bcoming up\b|\bupcoming\b|\bbills? (?:due|coming)\b|\bwhat do i (?:owe|have to pay)\b|\bdue (?:this|next) week\b/;
+  /\bwhat'?s (?:due|coming(?: up)?|next)\b|\bcoming up\b|\bupcoming\b|\bbills? (?:are |is )?(?:due|coming)\b|\bwhen (?:are|is) (?:my )?(?:bills?|payments?) due\b|\bwhat do i (?:owe|have to pay)\b|\bdue (?:this|next) week\b/;
 // Spec step 88.
 const PAYDAY = /\b(?:pay ?days?|pay ?checks?|get(?:ting)? paid|salary|wages|next pay)\b/;
 const SUBSCRIPTIONS =
@@ -493,6 +497,7 @@ export function parseIntent(
   if (WHOLE_NOW.test(text)) return { kind: "whole_picture", focus: "now" };
   if (PRIORITIES.test(text)) return { kind: "priorities" };
   if (PAYCHECK.test(text)) return { kind: "paycheck" };
+  if (HEALTH.test(text)) return { kind: "health" };
   const sector = parseSectorIntent(text);
   if (sector) return sector;
   if (BILLS_PAID.test(text)) return { kind: "bills_paid" };

@@ -9,6 +9,7 @@ import {
   saveClaimNumber,
   startClaim,
 } from "@/lib/insurance/claims";
+import { draftClaim, fileClaim } from "@/lib/insurance/claim-filing";
 import { requireUser } from "@/lib/session";
 
 // The claims page (spec step 107). Each goes back to /insurance/claims at the claim.
@@ -70,6 +71,32 @@ export async function claimNumber(formData: FormData): Promise<void> {
   await onClaim(formData, (userId, claimId) =>
     saveClaimNumber(userId, claimId, text(formData, "claimNumber")),
   );
+}
+
+// Spec step 155: Jane writes the claim up as a draft; only the File it tap on the draft
+// sends it to the insurer through the partner.
+export async function draftClaimForm(formData: FormData): Promise<void> {
+  const user = await requireUser();
+  const claimId = text(formData, "claimId");
+  let error: string | null = null;
+  try {
+    await draftClaim(user.id, claimId, {
+      amount: text(formData, "amount"),
+      description: text(formData, "description"),
+    });
+  } catch (e) {
+    if (!(e instanceof ClaimError)) throw e;
+    error = e.message;
+  }
+  revalidatePath("/insurance/claims");
+  revalidatePath("/chat");
+  redirect(
+    `/insurance/claims${error ? `?error=${encodeURIComponent(error)}` : ""}#claim-${claimId}`,
+  );
+}
+
+export async function fileClaimForm(formData: FormData): Promise<void> {
+  await onClaim(formData, (userId, claimId) => fileClaim(userId, claimId));
 }
 
 export async function finishClaim(formData: FormData): Promise<void> {

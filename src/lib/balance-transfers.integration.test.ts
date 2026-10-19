@@ -85,7 +85,7 @@ describe.runIf(url)("balance transfers against a real database", () => {
   it("answers in the chat, and 'I've moved it' puts the 0% end on the deadlines", async () => {
     const { reply } = await sendToJane(userId, "should I do a balance transfer?", opts());
     expect(reply.body).toMatch(
-      /^For your Demo Credit Card ····0003 \(\$2,410\.50 at 22\.99%\), I'd move it to /,
+      /^I'd move your Demo Credit Card ····0003 balance \(\$2,410\.50 at 22\.99%\) to /,
     );
     expect(reply.body).toContain("transfer fee is counted");
     const tapped = await takeChatAction(userId, reply.id, "transfer.start", opts());

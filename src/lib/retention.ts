@@ -21,7 +21,7 @@ export async function runRetention({
 }: { client?: PrismaClient; now?: Date } = {}): Promise<Record<RetainedKind, number>> {
   const before = (kind: RetainedKind) =>
     new Date(now.getTime() - RETENTION_PERIODS[kind].days * DAY);
-  const [analytics, errors, jobs, runs, limits, sessions, links, trials] = await Promise.all([
+  const [analytics, errors, jobs, runs, limits, sessions, links] = await Promise.all([
     client.analyticsEvent.deleteMany({ where: { createdAt: { lt: before("analyticsEvents") } } }),
     client.errorEvent.deleteMany({ where: { createdAt: { lt: before("errorEvents") } } }),
     client.job.deleteMany({
@@ -31,11 +31,13 @@ export async function runRetention({
     client.rateLimit.deleteMany({ where: { windowStart: { lt: before("rateLimits") } } }),
     client.session.deleteMany({ where: { expires: { lt: before("expiredSessions") } } }),
     client.verificationToken.deleteMany({ where: { expires: { lt: before("expiredSessions") } } }),
-    // Spec step 138: everything a trial person owns goes with them (it all cascades).
-    client.user.deleteMany({
-      where: { id: { startsWith: TRIAL_ID_PREFIX }, createdAt: { lt: before("trialPeople") } },
-    }),
   ]);
+  // Spec step 138: everything a trial person owns goes with them (it all cascades). After
+  // the rest, not alongside: the cascade deletes sessions too, and the two deletes at once
+  // can deadlock.
+  const trials = await client.user.deleteMany({
+    where: { id: { startsWith: TRIAL_ID_PREFIX }, createdAt: { lt: before("trialPeople") } },
+  });
   return {
     analyticsEvents: analytics.count,
     errorEvents: errors.count,

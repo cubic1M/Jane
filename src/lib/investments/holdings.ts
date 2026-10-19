@@ -201,6 +201,18 @@ export async function investmentsExport(userId: string, client: PrismaClient = d
       source: true,
     },
   });
+  // Spec step 161: crypto connections and what they held, as last read.
+  const cryptoConnections = await db.cryptoConnections.findMany({
+    select: {
+      kind: true,
+      name: true,
+      address: true,
+      lastSyncedAt: true,
+      holdings: {
+        select: { asset: true, quantity: true, valueCents: true, costBasisCents: true, asOf: true },
+      },
+    },
+  });
   return {
     securities,
     holdings,
@@ -210,5 +222,6 @@ export async function investmentsExport(userId: string, client: PrismaClient = d
     collegePlans,
     hsaReceipts,
     equityGrants,
+    cryptoConnections,
   };
 }

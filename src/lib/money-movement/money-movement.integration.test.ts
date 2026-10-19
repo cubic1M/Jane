@@ -174,6 +174,16 @@ describe.runIf(url)("money that moves itself", { timeout: 120_000 }, () => {
     expect(tool.transfers[0]).toMatchObject({ status: "cancelled" });
   });
 
+  it("says when the next paycheck comes when there's none to split yet", async () => {
+    const userId = await demoPerson("money-next");
+    const later = new Date("2026-10-25T15:00:00Z");
+    expect(
+      (await answerByRules(userId, { kind: "paycheck" }, { client, now: later }))?.body,
+    ).toMatch(
+      /^I split each paycheck when it lands\. Your next one is Nov 1 \(in 7 days\): about \$[\d,.]+ from /,
+    );
+  });
+
   it("never moves money for real accounts, nor between someone else's accounts", async () => {
     const real = await client.user.create({
       data: { email: `money-real-${crypto.randomUUID()}@example.com` },
