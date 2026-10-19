@@ -68,6 +68,8 @@ export type AuditEvent =
   | "mfa_backup_codes_created"
   | "standing_rules_saved"
   | "autopilot_set"
+  // One autopilot, every sector (spec step 141): a sector's level or caps changed.
+  | "autopilot_sector_set"
   | "plan_link_used"
   | "support_contact_suggested"
   | "support_contact_confirmed"
