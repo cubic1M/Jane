@@ -3,7 +3,14 @@ import type { ToolOutput } from "@/lib/ask/tools";
 import { loadDebts } from "@/lib/debts";
 import { formatCents } from "@/lib/money";
 import { loadPayoff } from "@/lib/debt-plan";
-import { DEBT_TOOLS, debtsToolOutput, extraFromInput, payoffToolOutput } from "./debt-tools";
+import { loadRefinance } from "@/lib/refinance";
+import {
+  DEBT_TOOLS,
+  debtsToolOutput,
+  extraFromInput,
+  payoffToolOutput,
+  refinanceToolOutput,
+} from "./debt-tools";
 
 // Runs Claude's debt tools (./debt-tools.ts) for one person: read-only, scoped to them,
 // every dollar figure recorded for the guardrails, like ./claude-tools.ts runChatTool.
@@ -25,6 +32,8 @@ export async function runDebtTool(
   switch (name) {
     case "debts":
       return out(debtsToolOutput(await loadDebts(userId, { client, now }), money));
+    case "refinance_offers":
+      return out(refinanceToolOutput(await loadRefinance(userId, { client, now }), money));
     case "payoff_plan": {
       const payoff = await loadPayoff(userId, { client, now, extraCents: extraFromInput(input) });
       return out(payoffToolOutput(payoff, now.toISOString().slice(0, 10), money));

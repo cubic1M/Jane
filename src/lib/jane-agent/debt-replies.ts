@@ -137,7 +137,7 @@ export function debtDetailReply(target: string, book: DebtBook): Reply {
 }
 
 export function debtReply(
-  intent: Exclude<DebtIntent, { kind: "payoff_plan" }>,
+  intent: Extract<DebtIntent, { kind: "debts" | "debt_detail" }>,
   book: DebtBook,
 ): Reply {
   return intent.kind === "debts" ? debtsReply(book) : debtDetailReply(intent.target, book);

@@ -58,6 +58,24 @@ describe("debt questions", () => {
     });
   });
 
+  it("reads a question about refinancing, with the debt named", () => {
+    expect(intent("Can I refinance my car loan?")).toEqual({
+      kind: "refinance",
+      target: "car loan",
+    });
+    expect(intent("find me a better rate on my student loan")).toEqual({
+      kind: "refinance",
+      target: "student loan",
+    });
+    expect(intent("should I consolidate my credit card")).toEqual({
+      kind: "refinance",
+      target: "credit card",
+    });
+    for (const text of ["refinance offers", "any better rates", "refinance"]) {
+      expect(intent(text), text).toEqual({ kind: "refinance", target: null });
+    }
+  });
+
   it("leaves requests and other questions alone", () => {
     expect(intent("lower the rate on my card")).toMatchObject({ kind: "act", verb: "lower" });
     expect(intent("what's due this week")).toMatchObject({ kind: "coming_up" });
