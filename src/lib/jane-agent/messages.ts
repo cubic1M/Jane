@@ -11,8 +11,9 @@ import { MESSAGE_SELECT, parseActions, parseRefs, toChatMessage, type ChatMessag
 
 type Options = { client?: PrismaClient; now?: Date };
 
-// Jane's own messages, as opposed to what the person typed (step 84).
-const JANE_KINDS = ["brief", "decision", "done", "heads_up", "reply"];
+// Jane's own messages, as opposed to what the person typed (step 84). Her answers to it
+// ("reply") don't count either: typing before the day's first visit still gets a brief.
+const JANE_KINDS = ["brief", "decision", "done", "heads_up"];
 
 // The newest messages, oldest first (the newest at the bottom of the chat). `pages` is how
 // many pages of CHAT_PAGE_SIZE to show ("Show earlier" adds one).
@@ -80,14 +81,15 @@ export async function postMessages(
 }
 
 // Open finding messages whose finding was answered some other way (on its card, the plan,
-// a rule, "Approve all safe ones") lose their buttons.
+// a rule, "Approve all safe ones") lose their buttons. So do Jane's answers that offered a
+// finding's Yes and No (spec step 84).
 export async function closeSettled(
   userId: string,
   { client = defaultClient, now = new Date() }: Options = {},
 ): Promise<number> {
   const db = scopedFor(userId, client);
   const open = await db.janeMessages.findMany({
-    where: { status: "open", kind: "decision" },
+    where: { status: "open", kind: { in: ["decision", "reply"] } },
     select: { id: true, refs: true, actions: true },
   });
   const byFinding = open.flatMap((m) => {

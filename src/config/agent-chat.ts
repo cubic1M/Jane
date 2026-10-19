@@ -55,3 +55,14 @@ export const CHAT_CRON_LIMIT = 200;
 
 // Messages read from the last this-many hours to count today's and find the last one.
 export const CHAT_HISTORY_HOURS = 48;
+
+// Typing to Jane (spec step 84). The longest message the box takes, in characters.
+export const CHAT_MAX_MESSAGE = 500;
+// Claude sees only this many recent typed messages and answers, never the whole chat.
+export const CHAT_CLAUDE_HISTORY = 10;
+// Most rounds of tool calls Claude may make for one answer, like Ask (ASK_MAX_TOOL_ROUNDS).
+export const CHAT_CLAUDE_MAX_TURNS = 6;
+// "What's due this week" looks this many days ahead.
+export const CHAT_WEEK_DAYS = 7;
+// Categories named when the person asks what they spent without naming one.
+export const CHAT_TOP_CATEGORIES = 3;
