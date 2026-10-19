@@ -7,6 +7,9 @@ import { statusLine, type LoanApplicationView } from "@/lib/loan-application-sta
 import type { Transfers } from "@/lib/balance-transfers";
 import type { Refinance } from "@/lib/refinance";
 import type { StudentLoans } from "@/lib/student-loans";
+import type { Mortgage } from "@/lib/mortgage";
+import { PMI_SOURCE } from "@/config/debt";
+import { PMI_STEPS } from "@/planning/mortgage";
 import { STUDENT_SOURCES, STUDENT_STEPS } from "@/config/student-loans";
 import { PLAN_NAMES } from "@/planning/student-loans";
 import type { PayoffPlan } from "@/planning/debt";
@@ -49,6 +52,12 @@ export const DEBT_TOOLS: Anthropic.Tool[] = [
     },
   },
   REFINANCE_TOOL,
+  {
+    name: "mortgage",
+    description:
+      "The person's mortgage, watched: balance, rate, payment; whether it has PMI and the loan as a share of the home's value (from the value they gave), with whether PMI can come off and the steps (rules from the CFPB); escrow balance and any escrow change in the payment; what extra principal each month would save; the best refinance offer's monthly saving, closing costs and break-even months.",
+    input_schema: noInput,
+  },
   {
     name: "student_loans",
     description:
@@ -163,6 +172,7 @@ export const DEBT_CHAT_PAGES: Readonly<Record<string, { label: string; href: str
   debt: { label: "Open the payoff planner", href: "/debt" },
   refinance: { label: "See the offers", href: "/loans/refinance" },
   student: { label: "See student loan plans", href: "/loans/student" },
+  mortgage: { label: "See your mortgage", href: "/loans/mortgage" },
 };
 
 // What the chat shows while Claude looks each one up (./claude.ts).
@@ -173,6 +183,7 @@ export const DEBT_TOOL_STATUS: Readonly<Record<string, string>> = {
   loan_applications: "Checking your loan applications…",
   balance_transfers: "Checking 0% transfer offers…",
   student_loans: "Comparing student loan plans…",
+  mortgage: "Looking at your mortgage…",
 };
 
 export function refinanceToolOutput(refi: Refinance, money: (cents: number) => string) {
@@ -300,5 +311,49 @@ export function studentToolOutput(data: StudentLoans, money: (cents: number) => 
       done: i < data.profile.stepsDone,
     })),
     sources: STUDENT_SOURCES,
+  };
+}
+
+export function mortgageToolOutput(m: Mortgage | null, money: (cents: number) => string) {
+  if (!m) return { note: "No mortgage on the linked accounts." };
+  return {
+    loan: m.loan.name,
+    balance: money(m.loan.balanceCents!),
+    rate: m.loan.aprBps === null ? null : formatRate(m.loan.aprBps),
+    payment: m.loan.paymentCents === null ? null : money(m.loan.paymentCents),
+    hasPmi: m.hasPmi,
+    homeValue: m.home && {
+      value: money(m.home.valueCents),
+      valuedOn: m.home.valuedOn,
+      fromThePerson: true,
+    },
+    pmi:
+      m.pmi.kind === "can_ask" || m.pmi.kind === "not_yet"
+        ? {
+            status: m.pmi.kind,
+            loanToValue: Math.round(m.pmi.ltv * 1000) / 10,
+            steps: PMI_STEPS,
+            source: PMI_SOURCE,
+          }
+        : { status: m.pmi.kind },
+    escrowBalance: m.escrowBalanceCents === null ? null : money(m.escrowBalanceCents),
+    escrowChange: m.escrow && {
+      from: money(m.escrow.fromCents),
+      to: money(m.escrow.toCents),
+      on: m.escrow.on,
+    },
+    prepaymentPenalty: m.hasPrepaymentPenalty,
+    extraPrincipal: m.extra?.scenarios.map((s) => ({
+      extraAMonth: money(s.extraCents),
+      monthsSooner: s.monthsSaved,
+      interestSaved: money(s.interestSavedCents),
+    })),
+    refinance: m.refi && {
+      lender: m.refi.lender,
+      rate: formatRate(m.refi.aprBps),
+      monthlySaving: money(m.refi.monthlySavingCents),
+      closingCosts: money(m.refi.closingCostsCents),
+      breakEvenMonths: m.refi.breakEvenMonths,
+    },
   };
 }

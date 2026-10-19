@@ -556,6 +556,11 @@ model Liability {
   ytdInterestPaidCents      Int?      @map("ytd_interest_paid_cents")
   // The bank's own description, e.g. "Conventional 30 year fixed".
   description               String?
+  // Mortgages (spec step 115): whether it carries private mortgage insurance, what's in
+  // escrow, and whether paying it off early costs a penalty, as Plaid reports them.
+  hasPmi                    Boolean?  @map("has_pmi")
+  escrowBalanceCents        Int?      @map("escrow_balance_cents")
+  hasPrepaymentPenalty      Boolean?  @map("has_prepayment_penalty")
   createdAt                 DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt                 DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
 
