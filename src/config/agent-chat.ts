@@ -53,9 +53,10 @@ export const MESSAGE_PRIORITY = {
   brief: 1_000,
   // Insurance (spec step 102): cover that looks missing, after budgets and goals.
   insurance_gap: 35,
-  // Spec step 104: a cheaper policy for the same cover, like a finding with a pick; and a
-  // reshop that found nothing better, like something Jane finished.
-  insurance_shop: 68,
+  // Spec step 104: a cheaper policy for the same cover, after news (a change Jane noticed)
+  // and set-up suggestions, before findings; and a reshop that found nothing better, like
+  // something Jane finished.
+  insurance_shop: 64,
   insurance_checked: 48,
   urgent_alert: 95,
   deadline: 90,
