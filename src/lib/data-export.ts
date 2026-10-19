@@ -56,6 +56,8 @@ export async function exportUserData(
     autopilotSectors,
     autopilotActs,
     controllerRuns,
+    moneyTransfers,
+    paycheckPlans,
     janeMessages,
     janePreferences,
     teamAccess,
@@ -406,6 +408,22 @@ export async function exportUserData(
     db.controllerRuns.findMany({
       select: { day: true, startedAt: true, finishedAt: true, steps: true },
     }),
+    // Money that moved by itself, or on a tap (spec steps 144–145).
+    db.moneyTransfers.findMany({
+      select: {
+        toName: true,
+        amountCents: true,
+        purpose: true,
+        status: true,
+        runOn: true,
+        by: true,
+        partner: true,
+        createdAt: true,
+      },
+    }),
+    db.paycheckPlans.findMany({
+      select: { paycheckCents: true, paidOn: true, moves: true, status: true, createdAt: true },
+    }),
     // Jane's chat (spec step 81): every message, with the buttons and what they answered.
     db.janeMessages.findMany({
       select: {
@@ -570,6 +588,8 @@ export async function exportUserData(
     autopilotSectors,
     autopilotActs,
     controllerRuns,
+    moneyTransfers,
+    paycheckPlans,
     janeMessages,
     janePreferences,
     investments,

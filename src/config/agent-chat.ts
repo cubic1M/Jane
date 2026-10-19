@@ -36,6 +36,8 @@ export const CHAT_SOURCE_LIMITS: Readonly<Record<string, number>> = {
   saved: 1,
   // Spec step 142.
   checked: 1,
+  // Spec step 144.
+  paycheck: 1,
   // Spec step 128 on.
   investments: 2,
 };
@@ -112,6 +114,8 @@ export const MESSAGE_PRIORITY = {
   welcome: 2_000,
   // Spec step 142: what Jane checked last night, after what needs the person.
   checked: 25,
+  // Spec step 144: a paycheck's plan, money in motion: right after deadlines.
+  paycheck: 88,
   review: 900,
   // Spec step 128: what's in investment accounts, the first time Jane sees it.
   investments: 32,
