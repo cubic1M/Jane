@@ -38,10 +38,13 @@ export async function loadTaxPack(
         merchantName: true,
         pfcDetailed: true,
       },
+      // In a fixed order, so the pack's rows always come out the same way.
+      orderBy: [{ date: "asc" }, { id: "asc" }],
     }),
     db.liabilities.findMany({
       where: { kind: { in: [...INTEREST_LOAN_KINDS] } },
       select: { kind: true, ytdInterestPaidCents: true, account: { select: { name: true } } },
+      orderBy: [{ account: { name: "asc" } }, { id: "asc" }],
     }),
     loadOverrides(userId, { client }),
     loadTaxForms(userId, year, { client, now }),

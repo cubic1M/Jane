@@ -320,7 +320,8 @@ describe.runIf(url)("typing to Jane against a real database", () => {
         stop_reason: "end_turn",
         content: [{ type: "text", text: "OK." }],
       });
-      await send("how am I doing overall?", { claude });
+      // Spec step 183: "how am I doing" is a rules answer now; this one needs Claude.
+      await send("give me your honest take on my money habits", { claude });
       const numbers = (create.mock.calls[0][0] as { system: { text: string }[] }).system[1].text;
       for (const tool of CHAT_PRIMER_TOOLS) expect(numbers).toContain(`${tool}: {`);
       expect(numbers).toMatch(/"safeToSpend":"\$[\d,]+\.\d\d"/);
