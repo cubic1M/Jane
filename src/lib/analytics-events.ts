@@ -13,6 +13,7 @@ export const CLIENT_EVENTS = [
   "plan_viewed",
   "loans_viewed",
   "documents_viewed",
+  "insurance_viewed",
   "deadlines_viewed",
   // Taxes (spec step 118).
   "taxes_viewed",

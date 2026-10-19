@@ -7,6 +7,8 @@ export const CHAT_DAILY_LIMIT = 5;
 // Keyed by message source (src/lib/jane-agent/sources).
 export const CHAT_SOURCE_LIMITS: Readonly<Record<string, number>> = {
   findings: 3,
+  // Insurance (spec Phase X).
+  insurance: 1,
   heads_ups: 2,
   did: 2,
   plan: 1,
@@ -49,6 +51,8 @@ export const DID_LOOKBACK_DAYS = 7;
 // wait (an urgent alert, a deadline, something only the person can do) comes before both.
 export const MESSAGE_PRIORITY = {
   brief: 1_000,
+  // Insurance (spec step 102): cover that looks missing, after budgets and goals.
+  insurance_gap: 35,
   urgent_alert: 95,
   deadline: 90,
   waiting_on_you: 85,

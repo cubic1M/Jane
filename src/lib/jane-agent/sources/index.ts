@@ -1,6 +1,7 @@
 import { briefSource } from "./brief";
 import { didSource } from "./did";
 import { findingsSource } from "./findings";
+import { insuranceSource } from "./insurance";
 import { headsUpsSource } from "./heads-ups";
 import { planSource } from "./plan";
 import type { MessageSource } from "./source";
@@ -22,6 +23,8 @@ import { investmentsSource } from "./investments";
 export const MESSAGE_SOURCES: readonly MessageSource[] = [
   briefSource,
   findingsSource,
+  // Insurance (spec Phase X).
+  insuranceSource,
   planSource,
   didSource,
   headsUpsSource,

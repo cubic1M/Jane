@@ -3,6 +3,7 @@ import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
 import { investmentsExport } from "@/lib/investments/holdings";
 import { teamAccessFor } from "@/lib/team-access-loader";
+import { insuranceExport } from "@/lib/insurance/export";
 
 // "Download my data": everything the app holds about one person, as JSON. Never another
 // person's rows, never secrets (Plaid access tokens and sync cursors, the two-factor
@@ -412,11 +413,14 @@ export async function exportUserData(
   ]);
   // What's in their investment accounts and its history (spec step 128).
   const investments = await investmentsExport(userId, client);
+  // Insurance (spec Phase X): every policy on the profile and the household facts.
+  const insurance = await insuranceExport(userId, { client });
 
   return {
     exportedAt: now.toISOString(),
     formatVersion: EXPORT_FORMAT_VERSION,
     profile,
+    insurance,
     banks,
     accounts,
     transactions,
