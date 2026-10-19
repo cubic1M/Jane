@@ -26,7 +26,7 @@ export const TABS: readonly Tab[] = [
     key: "jane",
     label: "Jane",
     href: "/jane",
-    paths: ["/jane", "/plan", "/report", "/actions", "/alerts"],
+    paths: ["/jane", "/plan", "/report", "/actions", "/alerts", "/saved"],
   },
   {
     key: "money",
@@ -98,6 +98,7 @@ export const DETAIL_TABS: readonly Tab[] = TABS.filter((tab) => tab.key !== "cha
 // without one is named from its address ("/life-events" is "Life events").
 const PAGE_LABELS: Readonly<Record<string, string>> = {
   "/report": "Savings report",
+  "/saved": "What Jane saved you",
   "/things": "Things you own",
   "/afford": "Can I afford it?",
   "/tax-pack": "Tax-time pack",
