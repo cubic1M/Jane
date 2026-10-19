@@ -41,8 +41,12 @@ export function inFilingSeason(year: number, today: string): boolean {
   );
 }
 
-// The year a return is for: last year (filing happens the year after).
-export const filingYear = (today: string) => Number(today.slice(0, 4)) - 1;
+// The year a return is for: last year (filing happens the year after), until last year's
+// season closes at the October extension deadline. After that the next return is this year's.
+export function filingYear(today: string): number {
+  const year = Number(today.slice(0, 4));
+  return today > `${year}-${FILING_SEASON.until}` ? year : year - 1;
+}
 
 function toView(row: {
   id: string;

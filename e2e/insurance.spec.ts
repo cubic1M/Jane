@@ -218,3 +218,34 @@ test("a demo-bank person sizes, applies for and buys life cover, a tap at a time
   await expect(page.getByText("Added to your insurance.")).toBeVisible();
   await expect(page.getByRole("heading", { name: /life insurance/ }).first()).toBeVisible();
 });
+
+test("a move gets its insurance changes ready, made on one tap (step 154)", async ({
+  context,
+  page,
+  baseURL,
+}) => {
+  const user = await signedInUser("user");
+  userId = user.userId;
+  await context.addCookies([
+    { name: "authjs.session-token", value: user.sessionToken, url: baseURL ?? "" },
+  ]);
+  await page.goto("/connect");
+  await page.getByRole("button", { name: "Link a demo bank" }).click();
+  await expect(page).toHaveURL("/chat", { timeout: 60_000 });
+
+  await page.goto("/life-events");
+  await page.getByRole("button", { name: "Start the moving checklist" }).click();
+  await expect(page.getByText(/0 of/).first()).toBeVisible();
+
+  await page.goto("/insurance");
+  const changes = page.getByRole("region", { name: "After life events" });
+  await expect(
+    changes.getByText("You're moving. Here's what I've got ready for your insurance:"),
+  ).toBeVisible();
+  await expect(
+    changes.getByText("Update the address on your GEICO car policy (the price stays the same)"),
+  ).toBeVisible();
+  await changes.getByRole("button", { name: "Make the changes" }).click();
+  await expect(page.getByText("Done. Your insurance is up to date.")).toBeVisible();
+  await expect(page.getByRole("region", { name: "After life events" })).toHaveCount(0);
+});
