@@ -1,4 +1,10 @@
-import { TAX_MESSAGE_PRIORITY, TAX_TAGS, type TaxTagKind } from "@/config/tax";
+import {
+  TAX_ESTIMATE_STEP_CENTS,
+  TAX_MESSAGE_PRIORITY,
+  TAX_TAGS,
+  type TaxTagKind,
+} from "@/config/tax";
+import { estimateMessage } from "../tax-replies";
 import { formatCents } from "@/lib/money";
 import { incomeLine, listOf } from "@/planning/tax-profile";
 import { PROFILE_HREF, PROFILE_INTRO, TAGS_HREF, nextQuestion } from "../tax-flow";
@@ -88,6 +94,22 @@ export const taxesSource: MessageSource = {
         actions: [{ id: "open", label: "See tax tags", kind: "link", href: TAGS_HREF }],
         dedupeKey: `month:${lastMonth.month}`,
         priority: TAX_MESSAGE_PRIORITY.tag_month,
+      });
+    }
+
+    // Spec step 120: the estimate, once there's income to estimate from; at the levels that
+    // let Jane act, again whenever it moves by TAX_ESTIMATE_STEP_CENTS.
+    const estimate = tax.estimate;
+    if (estimate && estimate.estimate.totalIncomeCents > 0) {
+      const balance = estimate.withholdingKnown
+        ? estimate.estimate.refundCents
+        : estimate.estimate.totalTaxCents;
+      const step = Math.round(balance / TAX_ESTIMATE_STEP_CENTS);
+      out.push({
+        kind: "heads_up",
+        ...estimateMessage(estimate),
+        dedupeKey: acts ? `estimate:${estimate.year}:${step}` : `estimate:${estimate.year}`,
+        priority: TAX_MESSAGE_PRIORITY.estimate,
       });
     }
 
