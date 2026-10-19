@@ -5,6 +5,8 @@ import { formatCents } from "@/lib/money";
 import type { TaxFormsView, TaxTagsView } from "@/lib/tax-organizer";
 import type { TaxEstimateView } from "@/lib/tax-estimate";
 import type { WithholdingView } from "@/lib/tax-withholding";
+import type { TaxSavingsView } from "@/lib/tax-savings";
+import { savingMessage } from "./tax-saving-message";
 import { onTrackLine, w4Suggestion, withholdingFacts } from "./tax-w4";
 import { federalLine, roundDollars, stateLine } from "@/planning/tax-estimate-copy";
 import type { TaxPack } from "@/planning/tax-pack";
@@ -295,4 +297,36 @@ export function withholdingReply(view: WithholdingView): Reply {
     default:
       return view.advice ? w4Suggestion(estimate, check) : withholdingFacts(estimate, check);
   }
+}
+
+// Spec step 122: "how can I pay less tax?" Demo advice only.
+export function savingsReply(view: TaxSavingsView): Reply {
+  if (!view.advice) {
+    return {
+      body: "Suggestions on paying less tax will come once Jane works with a tax professional. For now I can show your estimate, your tax tags and the forms to expect.",
+      actions: [link("See your taxes", "/taxes")],
+      refs: {},
+    };
+  }
+  const [first, ...rest] = view.savings;
+  if (!first) {
+    return {
+      body: `I haven't found more ways for you to pay less for ${view.year} from what's in your accounts.`,
+      actions: [link("See your taxes", "/taxes#savings")],
+      refs: { advice: true },
+    };
+  }
+  const top = savingMessage(first, view.year);
+  const more =
+    rest.length > 0
+      ? `\n\nAlso: ${rest
+          .slice(0, 3)
+          .map((s) => `${s.title.replace(/\.$/, "")} (about ${roundDollars(s.estimateCents)})`)
+          .join("; ")}.`
+      : "";
+  return {
+    body: `${top.body}${more}`,
+    actions: [...top.actions, link("All of them", "/taxes#savings")],
+    refs: top.refs,
+  };
 }

@@ -62,6 +62,11 @@ export type EstimateInput = {
   income: EstimateIncome;
   // Adjustments and deductions Jane can see.
   studentLoanInterestCents: number;
+  // Other above-the-line adjustments (an IRA deduction, an HSA contribution outside
+  // payroll): step 122's what-ifs.
+  otherAdjustmentsCents?: number;
+  // Credits Jane works out elsewhere (education, dependent care), not refundable.
+  otherCreditsCents?: number;
   mortgageInterestCents: number;
   charityCents: number;
   medicalCents: number;
@@ -304,7 +309,7 @@ export function estimateTaxes(input: EstimateInput): TaxEstimate {
     inc.unemploymentCents;
   const beforeStudent = totalIncome - halfSe;
   const studentLoan = studentLoanDeduction(input.studentLoanInterestCents, beforeStudent, status);
-  const agi = beforeStudent - studentLoan;
+  const agi = beforeStudent - studentLoan - (input.otherAdjustmentsCents ?? 0);
 
   const stateTaxSeen =
     input.stateWithheldCents + input.stateEstimatedPaidCents + input.otherStateLocalTaxCents;
@@ -374,10 +379,15 @@ export function estimateTaxes(input: EstimateInput): TaxEstimate {
     agiCents: agi,
     investmentIncomeCents: investmentIncome,
   });
+  const otherCredits = Math.min(
+    input.otherCreditsCents ?? 0,
+    clamp0(ordinaryTax - child.childCents - child.otherCents),
+  );
   const totalTax =
     ordinaryTax -
     child.childCents -
-    child.otherCents +
+    child.otherCents -
+    otherCredits +
     seTax +
     addlMedicare +
     niit -

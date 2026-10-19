@@ -33,7 +33,7 @@ export const MAX_TYPED_DEBT_CENTS = 2_000_000_000;
 
 // Jane's chat (src/config/agent-chat.ts takes these in): each debt message source's daily
 // limit, and where its messages go among the rest (higher first).
-export const DEBT_SOURCE_LIMITS = { debts: 1, payoff: 1 } as const;
+export const DEBT_SOURCE_LIMITS = { debts: 1, payoff: 1, refinance: 1 } as const;
 export const DEBT_MESSAGE_PRIORITY = {
   // A buy now, pay later plan Jane found, then a debt with no rate: news that can wait,
   // after the questions other features need answered first (taxes, investments).
@@ -44,6 +44,10 @@ export const DEBT_MESSAGE_PRIORITY = {
   payoff_off_track: 72,
   payoff_offer: 55,
   payoff_on_track: 48,
+  // Spec step 111: the refinance offer that saves the most, then any others: money that
+  // can wait a few days, after the questions other features wait on (taxes, 35).
+  refinance_offer: 33,
+  refinance_more: 28,
 } as const;
 
 // What Jane does about debts by herself at each autopilot level (src/config/autopilot.ts),
@@ -61,6 +65,10 @@ export const DEBT_AUTOPILOT: Readonly<
       step: 110,
       does: "Recomputes your payoff plan from your balances every month, checks it against what you owe and tells you when you're off track.",
     },
+    {
+      step: 111,
+      does: "Checks refinance rates with the lender partner every month (a soft check) and tells you only when a switch saves enough. Applying always needs your tap.",
+    },
   ],
   safe: [
     {
@@ -71,6 +79,10 @@ export const DEBT_AUTOPILOT: Readonly<
       step: 110,
       does: "Recomputes your payoff plan from your balances every month, checks it against what you owe and tells you when you're off track.",
     },
+    {
+      step: 111,
+      does: "Checks refinance rates with the lender partner every month (a soft check) and tells you only when a switch saves enough. Applying always needs your tap.",
+    },
   ],
   all: [
     {
@@ -80,6 +92,10 @@ export const DEBT_AUTOPILOT: Readonly<
     {
       step: 110,
       does: "Recomputes your payoff plan from your balances every month, checks it against what you owe and tells you when you're off track.",
+    },
+    {
+      step: 111,
+      does: "Checks refinance rates with the lender partner every month (a soft check) and tells you only when a switch saves enough. Applying always needs your tap.",
     },
   ],
 };
@@ -108,3 +124,32 @@ export const DEBT_PLAN_TRACK_MONTHS = 24;
 // meant to pay down since the last check, and by at least this much.
 export const DEBT_OFF_TRACK_SHARE = 0.5;
 export const DEBT_OFF_TRACK_MIN_CENTS = 10_000;
+
+// --- Step 111: refinance offers --------------------------------------------------------
+
+// The kinds of loan a lender partner refinances (src/lib/lenders), and which of the
+// person's debts each takes: a card's balance moves to a personal loan.
+export const LOAN_PRODUCTS = ["student", "auto", "mortgage", "personal"] as const;
+export type LoanProduct = (typeof LOAN_PRODUCTS)[number];
+export const PRODUCT_FOR_DEBT: Readonly<Record<string, LoanProduct>> = {
+  student: "student",
+  auto: "auto",
+  mortgage: "mortgage",
+  loan: "personal",
+  card: "personal",
+};
+// A card has no end date, so its offers are compared over this many months.
+export const REFI_CARD_TERM_MONTHS = 36;
+// Jane asks the lender partner for offers this often, by herself.
+export const REFI_CHECK_DAYS = 30;
+// And brings one up only when it saves at least this much over the same term, fees in.
+export const REFI_MIN_SAVING_CENTS = 30_000;
+// Offers shown besides the pick.
+export const REFI_RUNNERS_UP = 2;
+// Jane picks the cheapest fixed-rate offer that saves enough before a cheaper variable one:
+// a variable rate can go up, so its saving isn't certain.
+export const REFI_PREFER_FIXED = true;
+// Which lender partner to use: "demo" is the stand-in catalog (demo-bank people only, never
+// in production unless DEMO_BANK=1); "none" turns refinancing off. A real loan marketplace
+// partner is a new value here and a new implementation of LenderPartner.
+export const LENDER_PARTNER: "demo" | "none" = "demo";

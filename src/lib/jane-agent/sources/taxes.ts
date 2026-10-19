@@ -6,6 +6,7 @@ import {
 } from "@/config/tax";
 import { estimateMessage } from "../tax-replies";
 import { w4Suggestion, withholdingFacts } from "../tax-w4";
+import { savingMessage } from "../tax-saving-message";
 import { formatCents } from "@/lib/money";
 import { incomeLine, listOf } from "@/planning/tax-profile";
 import { PROFILE_HREF, PROFILE_INTRO, TAGS_HREF, nextQuestion } from "../tax-flow";
@@ -134,6 +135,19 @@ export const taxesSource: MessageSource = {
         dedupeKey: `withholding:${estimate.year}:${check.status}`,
         priority: TAX_MESSAGE_PRIORITY.withholding,
       });
+    }
+
+    // Spec step 122: ways to pay less, biggest first, once each a year (demo advice only:
+    // the list is empty otherwise).
+    if (estimate && tax.advice) {
+      for (const saving of tax.savings ?? []) {
+        out.push({
+          kind: "decision",
+          ...savingMessage(saving, estimate.year),
+          dedupeKey: `saving:${estimate.year}:${saving.key}`,
+          priority: TAX_MESSAGE_PRIORITY.saving,
+        });
+      }
     }
 
     for (const form of tax.formsDue?.forms ?? []) {

@@ -96,7 +96,7 @@ describe("the morning brief", () => {
     expect(brief.body).toBe(
       [
         "Good morning!",
-        "You have $1,234.56 safe to spend until payday on Oct 30.",
+        "You have $1,234.56 safe to spend until payday, Oct 30 (in 11 days).",
         "Bills due soon: Netflix $15.49 tomorrow.",
         "3 things are waiting for you.",
       ].join("\n"),

@@ -2,6 +2,7 @@ import type { PrismaClient } from "@/generated/prisma/client";
 import { scopedFor } from "@/lib/db-scoped";
 import { loadTaxEstimate } from "@/lib/tax-estimate";
 import { loadWithholding } from "@/lib/tax-withholding";
+import { loadTaxSavings } from "@/lib/tax-savings";
 import { loadTaxPack } from "@/lib/tax-pack";
 import { loadTaxForms, loadTaxTags } from "@/lib/tax-organizer";
 import { loadWorkingProfile } from "@/lib/tax-profile";
@@ -21,6 +22,7 @@ import {
   tagTotalReply,
   tagsReply,
   taxProfileReply,
+  savingsReply,
   withholdingReply,
 } from "./tax-replies";
 
@@ -103,5 +105,7 @@ export async function answerTaxIntent(
       return bracketReply(await loadTaxEstimate(userId, { client, now }));
     case "withholding":
       return withholdingReply(await loadWithholding(userId, { client, now }));
+    case "savings":
+      return savingsReply(await loadTaxSavings(userId, { client, now }));
   }
 }
