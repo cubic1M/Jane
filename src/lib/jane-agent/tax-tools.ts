@@ -15,6 +15,8 @@ import { loadWithholding } from "@/lib/tax-withholding";
 import { loadTaxSavings } from "@/lib/tax-savings";
 import { loadSelfEmployed } from "@/lib/self-employed";
 import { loadRefunds } from "@/lib/tax-refund";
+import { loadInvestmentTaxes } from "@/lib/investment-taxes";
+import { adviceMode } from "@/lib/advice-mode";
 import { filingYear, inFilingSeason, loadReturn } from "@/lib/tax-filing";
 import { filingPartnerFor } from "@/lib/filing";
 import { loadTaxForms, loadTaxTags } from "@/lib/tax-organizer";
@@ -87,6 +89,12 @@ export const TAX_TOOLS: Anthropic.Tool[] = [
     name: "tax_return",
     description:
       "Filing the person's tax return through the filing partner: the year being filed, whether it's filing season, whether filing through Jane is available for them, and the return's status (ready to review, submitted, accepted) with its federal refund or amount owed. Jane can start a return; only the person can sign and file it, on /taxes/file.",
+    input_schema: noInput,
+  },
+  {
+    name: "tax_investments",
+    description:
+      "Gains and losses in the person's taxable investment accounts for the tax year, from the cost basis their broker reports: realised (sold) and unrealised, each short- and long-term, sales that were wash sales and how much loss that disallowed; in demo advice mode also losses worth harvesting (with the wash-sale risk) and holdings better kept in a 401(k) or IRA. Retirement accounts aren't taxed on gains.",
     input_schema: noInput,
   },
   {
@@ -346,6 +354,40 @@ export async function runTaxTool(
               : `owed ${money(-ret.preview.federalRefundCents)}`,
           signedBy: ret.signerName,
         },
+      });
+    }
+    case "tax_investments": {
+      const year = defaultTaxYear(now.toISOString().slice(0, 10));
+      const [view, advice] = await Promise.all([
+        loadInvestmentTaxes(userId, year, { client, now }),
+        adviceMode(userId, { client }),
+      ]);
+      return out({
+        year,
+        realised: view.realised.map((r) => ({
+          security: r.ticker ?? r.name,
+          sold: r.date,
+          gain: money(r.gainCents),
+          longTerm: money(r.longTermCents),
+          shortTerm: money(r.shortTermCents),
+          washSaleDisallowed: r.washDisallowedCents > 0 ? money(r.washDisallowedCents) : null,
+        })),
+        unrealised: view.unrealised.map((u) => ({
+          security: u.holding.ticker ?? u.holding.name,
+          gain: money(u.gainCents),
+          longTerm: money(u.longTermCents),
+          shortTerm: money(u.shortTermCents),
+        })),
+        demoAdvice: advice
+          ? {
+              harvest: view.harvest.map((h) => ({
+                security: h.holding.ticker ?? h.holding.name,
+                loss: money(h.lossCents),
+                washRisk: h.washRisk,
+              })),
+              betterInRetirementAccounts: view.location.map((h) => h.name),
+            }
+          : "Not available: harvesting and where to hold what are demo advice only.",
       });
     }
     case "tax_forms": {

@@ -54,6 +54,9 @@ test("the tax profile shows what Jane found and saves the person's answers", asy
   const savings = page.getByRole("region", { name: "Ways to pay less" });
   await expect(savings.getByRole("heading", { name: /into your 401\(k\)/ })).toBeVisible();
   await expect(savings.getByRole("button", { name: "Remind me" })).toBeVisible();
+  // Spec step 124: gains from the demo brokerage, and its wash sale.
+  const investments = page.getByRole("region", { name: "Investments" });
+  await expect(investments.getByText(/^Wash sale: PDIFX sold at a loss/)).toBeVisible();
   const profile = page.getByRole("region", { name: "Your tax profile" });
   await expect(profile.getByText("California")).toBeVisible();
   await expect(profile.getByText("Found by Jane: check it").first()).toBeVisible();

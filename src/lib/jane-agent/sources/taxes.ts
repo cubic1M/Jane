@@ -11,6 +11,8 @@ import { nextQuarter, quarterMessage, setAsideMessage } from "../tax-self-employ
 import { refundMessage } from "../tax-refund-message";
 import { filingAccepted, filingOffer, filingReady } from "../tax-filing-message";
 import { januaryMessage } from "../tax-january";
+import { harvestMessage, washSaleMessage } from "../tax-investments";
+import { HARVEST_FROM } from "@/config/tax";
 import { formatCents } from "@/lib/money";
 import { incomeLine, listOf } from "@/planning/tax-profile";
 import { PROFILE_HREF, PROFILE_INTRO, TAGS_HREF, nextQuestion } from "../tax-flow";
@@ -189,6 +191,34 @@ export const taxesSource: MessageSource = {
         dedupeKey: `refund:${tax.refund.refund.transactionId}`,
         priority: TAX_MESSAGE_PRIORITY.refund,
       });
+    }
+
+    // Spec step 124: investments. A wash sale, for everyone; in demo advice mode, a loss
+    // worth harvesting (from October to the year's end). Where to hold what is said by the
+    // investments lane (step 135).
+    const inv = tax.investments;
+    if (inv) {
+      for (const sale of inv.washSales) {
+        out.push({
+          kind: "heads_up",
+          ...washSaleMessage(sale),
+          dedupeKey: `wash:${sale.securityId}:${sale.date}`,
+          priority: TAX_MESSAGE_PRIORITY.wash_sale,
+        });
+      }
+      if (tax.advice && estimate) {
+        const today = context.local.date;
+        if (today.slice(5) >= HARVEST_FROM && today.startsWith(String(estimate.year))) {
+          for (const chance of inv.harvest.slice(0, 1)) {
+            out.push({
+              kind: "decision",
+              ...harvestMessage(chance, estimate),
+              dedupeKey: `harvest:${estimate.year}:${chance.holding.securityId}`,
+              priority: TAX_MESSAGE_PRIORITY.harvest,
+            });
+          }
+        }
+      }
     }
 
     // Spec step 127: in January, one message with last year's taxes ready.
