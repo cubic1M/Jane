@@ -115,6 +115,15 @@ export const ACTION_IDS = [
   "tax.refund_no",
   // Spec step 126: start the return with the filing partner (signing is on the page).
   "tax.file_start",
+  // Spec step 165: a move (spotted, or typed), an out-of-state employer, and the city
+  // income tax question (its places by position).
+  "tax.move_yes",
+  "tax.move_no",
+  "tax.move_set",
+  "tax.work_set",
+  "tax.local_1",
+  "tax.local_2",
+  "tax.local_no",
   // Investments (spec step 129 on): the answer buttons on an investor-profile question,
   // by position (src/config/investing.ts PROFILE_QUESTIONS).
   "invest.answer.1",
@@ -251,6 +260,11 @@ export type MessageRefs = {
   taxMiles?: number;
   // Spec step 125: the refund (its transaction id) a message is about.
   taxRefund?: string;
+  // Spec step 165: the move "Yes" saves, the employer's state "Yes" saves (with taxState
+  // for the home state), and the city income taxes (LOCAL_TAXES keys) in button order.
+  taxMove?: { date: string; from: string; to: string };
+  taxWorkState?: string;
+  taxLocals?: string[];
   // Spec step 98: demo advice (src/lib/advice-mode.ts). The chat shows DEMO_ADVICE_LABEL
   // under it. Set it on every message that recommends investments, taxes, insurance or loans.
   advice?: true;

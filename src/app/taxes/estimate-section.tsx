@@ -2,6 +2,8 @@ import { formatCents } from "@/lib/money";
 import type { TaxEstimateView } from "@/lib/tax-estimate";
 import { FILING_STATUSES } from "@/config/tax";
 import { ESTIMATE_NOTE, federalLine, stateLine, stateSource } from "@/planning/tax-estimate-copy";
+import { STATE_SOURCES } from "@/config/tax-states";
+import { stateName } from "@/planning/tax-profile";
 
 // The tax estimate on /taxes (spec step 120): the refund or bill, federal and state, the
 // working behind it, and everything Jane assumed. Every figure is an estimate.
@@ -88,8 +90,66 @@ export function EstimateSection({ view }: { view: TaxEstimateView }) {
         </table>
         <p className="mt-2 text-zinc-600 dark:text-zinc-400">
           Your top federal rate: {Math.round(e.marginalRate * 100)}%.
-          {e.state && stateSource(e.state.code) ? ` ${stateSource(e.state.code)}` : ""}
+          {e.state && e.state.parts.length <= 1 && stateSource(e.state.code)
+            ? ` ${stateSource(e.state.code)}`
+            : ""}
         </p>
+        {e.state && (e.state.parts.length > 1 || e.state.local) && (
+          <table className="mt-2 w-full">
+            <caption className="sr-only">State and local taxes, by state</caption>
+            <tbody>
+              {e.state.parts.map((p) => (
+                <Row
+                  key={p.code}
+                  label={`${stateName(p.code)}: ${
+                    p.residence === "nonresident"
+                      ? "nonresident, wages from your employer there"
+                      : p.residence === "part_year"
+                        ? `lived there ${p.from} to ${p.to}`
+                        : `all of ${view.year}`
+                  }${p.creditCents > 0 ? ", after credit for other states" : ""}`}
+                  cents={p.taxCents}
+                />
+              ))}
+              {e.state.local && (
+                <Row label={`${e.state.local.label} income tax`} cents={e.state.local.taxCents} />
+              )}
+            </tbody>
+          </table>
+        )}
+        {e.state && (
+          <p className="mt-2 text-zinc-600 dark:text-zinc-400">
+            State figures from{" "}
+            {e.state.parts.map((p, i) => (
+              <span key={p.code}>
+                {i > 0 && ", "}
+                {p.url ? (
+                  <a href={p.url} className="text-emerald-700 hover:underline" rel="noreferrer">
+                    {STATE_SOURCES[p.code]?.agency ?? stateName(p.code)}
+                  </a>
+                ) : (
+                  stateName(p.code)
+                )}
+              </span>
+            ))}
+            {e.state.local && (
+              <>
+                {", "}
+                <a
+                  href={e.state.local.url}
+                  className="text-emerald-700 hover:underline"
+                  rel="noreferrer"
+                >
+                  {e.state.local.source}
+                </a>
+              </>
+            )}
+            , for review.{" "}
+            <a href="/taxes/profile#states" className="text-emerald-700 hover:underline">
+              Moved, or work for an employer in another state?
+            </a>
+          </p>
+        )}
       </details>
       {view.assumptions.length > 0 && (
         <div className="text-sm">

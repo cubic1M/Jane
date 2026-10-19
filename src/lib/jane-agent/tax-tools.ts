@@ -23,6 +23,7 @@ import { loadTaxForms, loadTaxTags } from "@/lib/tax-organizer";
 import { loadWorkingProfile } from "@/lib/tax-profile";
 import { defaultTaxYear } from "@/planning/tax-pack";
 import { stateName } from "@/planning/tax-profile";
+import { STATE_SOURCES } from "@/config/tax-states";
 
 // Claude's tax tools in Jane's chat (spec steps 118–127): read-only, over the person's own
 // data, through the same loaders as /taxes. Every dollar figure is recorded for the
@@ -95,6 +96,12 @@ export const TAX_TOOLS: Anthropic.Tool[] = [
     name: "tax_investments",
     description:
       "Gains and losses in the person's taxable investment accounts for the tax year, from the cost basis their broker reports: realised (sold) and unrealised, each short- and long-term, sales that were wash sales and how much loss that disallowed; in demo advice mode also losses worth harvesting (with the wash-sale risk) and holdings better kept in a 401(k) or IRA. Retirement accounts aren't taxed on gains.",
+    input_schema: noInput,
+  },
+  {
+    name: "tax_states",
+    description:
+      "The person's state and local income taxes for the tax year: each state that taxes some of their income (lived there all year, part of the year after a move, or as a nonresident for an employer in a state that taxes remote work), the dates lived there, the income it taxes, the tax after any credit for tax paid to another state, its tax agency and web address (the source of its figures), and whether its rate is rough; the city or county income tax; the moves Jane counted (told by the person, or spotted by Jane in payments to state agencies and not yet checked) and the employer's state. Every figure is an estimate.",
     input_schema: noInput,
   },
   {
@@ -388,6 +395,32 @@ export async function runTaxTool(
               betterInRetirementAccounts: view.location.map((h) => h.name),
             }
           : "Not available: harvesting and where to hold what are demo advice only.",
+      });
+    }
+    case "tax_states": {
+      const view = await loadTaxEstimate(userId, { client, now });
+      const state = view.estimate.state;
+      const r = view.residency;
+      return out({
+        year: view.year,
+        states: (state?.parts ?? []).map((p) => ({
+          state: stateName(p.code),
+          residence: p.residence,
+          livedThere: p.from ? { from: p.from, to: p.to } : null,
+          income: money(p.incomeCents),
+          tax: money(p.taxCents),
+          creditForOtherStates: p.creditCents > 0 ? money(p.creditCents) : null,
+          agency: STATE_SOURCES[p.code]?.agency ?? null,
+          source: p.url,
+          rough: p.rough,
+        })),
+        local: state?.local
+          ? { place: state.local.label, tax: money(state.local.taxCents), source: state.local.url }
+          : null,
+        total: state ? money(state.taxCents) : null,
+        moves: r.inUse.map((m) => ({ ...m, from: stateName(m.from), to: stateName(m.to) })),
+        moveSpottedNotChecked: r.usingSpotted,
+        employerState: r.workState ? stateName(r.workState) : null,
       });
     }
     case "tax_forms": {

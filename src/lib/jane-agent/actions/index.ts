@@ -35,6 +35,15 @@ import { taxMilesAdd, taxQuarterPaid } from "./tax-self-employed";
 import { taxRefundApply, taxRefundNo } from "./tax-refund";
 import { taxFileStart } from "./tax-filing";
 import {
+  taxLocal1,
+  taxLocal2,
+  taxLocalNo,
+  taxMoveNo,
+  taxMoveSet,
+  taxMoveYes,
+  taxWorkSet,
+} from "./tax-states";
+import {
   investAnswer1,
   investAnswer2,
   investAnswer3,
@@ -144,6 +153,13 @@ export const ACTION_HANDLERS: Readonly<Record<ActionId, ActionHandler>> = {
   "tax.refund_no": taxRefundNo,
   // Spec step 126.
   "tax.file_start": taxFileStart,
+  "tax.move_yes": taxMoveYes,
+  "tax.move_no": taxMoveNo,
+  "tax.move_set": taxMoveSet,
+  "tax.work_set": taxWorkSet,
+  "tax.local_1": taxLocal1,
+  "tax.local_2": taxLocal2,
+  "tax.local_no": taxLocalNo,
   // Investments (spec step 129 on).
   "invest.answer.1": investAnswer1,
   "invest.answer.2": investAnswer2,

@@ -310,6 +310,9 @@ export const TAX_ESTIMATE_STEP_CENTS = 50_000;
 export const TAX_MESSAGE_PRIORITY = {
   // The profile unlocks the rest of taxes, so it comes before budgets and goals.
   profile: 46,
+  // Spec step 165: a move changes the state estimate; the city tax question is small.
+  move: 44,
+  local: 31,
   new_income: 36,
   // Spec step 119.
   tag_check: 33,
@@ -387,6 +390,11 @@ export const TAX_AUTOPILOT: readonly { feature: string; ask: string; auto: strin
     feature: "investments",
     ask: "I work out your gains and losses from your holdings, warn you about wash sales and, with demo advice, show losses worth harvesting and what's better held in your 401(k) or IRA.",
     auto: "I work out your gains and losses after every sync, warn you about wash sales and, with demo advice, bring up losses worth harvesting before the year ends. I never sell anything myself.",
+  },
+  {
+    feature: "states",
+    ask: "I work out your state taxes, split between states when you move or work for an employer in another state, with any city income tax. When your payments to state agencies switch to a new state, I ask whether you moved.",
+    auto: "I work out your state taxes, split between states when you move or work for an employer in another state, with any city income tax. When your payments to state agencies switch to a new state, I count it as a move straight away and ask you to check it.",
   },
   {
     feature: "tags",

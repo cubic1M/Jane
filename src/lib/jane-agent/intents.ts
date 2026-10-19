@@ -411,6 +411,10 @@ export function parseIntent(raw: string, asOf: string): Intent {
   if (SAVED.test(text)) return { kind: "saved" };
   if (REVIEW.test(text)) return { kind: "review" };
   if (CHANGES.test(text)) return { kind: "changes" };
+  // Spec step 165: a move that names the states ("I moved from California to New York in
+  // June") is for the state taxes; "I just moved" is the moving checklist's.
+  const taxMove = parseTaxIntent(text);
+  if (taxMove?.ask === "move") return taxMove;
   const life = LIFE.find(([, pattern]) => pattern.test(text));
   if (life) return { kind: "life_event", event: life[0] };
   if (WHAT_DID.test(text)) return { kind: "what_did" };

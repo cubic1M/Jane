@@ -1929,6 +1929,14 @@ model TaxProfile {
   taxPayments           Json      @default("[]") @map("tax_payments")
   // Spec step 125: refunds (transaction ids) whose plan the person set up, or said no to.
   refundsHandled        String[]  @default([]) @map("refunds_handled")
+  // Spec step 165: moves in residencyYear ([{ date, from, to }]), the employer's state for
+  // someone working remotely for an employer in another state, the city or county income
+  // tax they live under (a LOCAL_TAXES key, or "none"), and the year the person told Jane
+  // where they lived (so she stops asking that year).
+  moves                 Json      @default("[]")
+  workState             String?   @map("work_state")
+  locality              String?
+  residencyYear         Int?      @map("residency_year")
   createdAt             DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt             DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
 
