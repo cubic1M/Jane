@@ -234,6 +234,17 @@ describe.runIf(url)("deleting data against a real database", () => {
     await client.taxForm.create({
       data: { userId, year: 2026, key: "w2:acme", receivedAt: new Date("2027-02-01") },
     });
+    await client.taxReturn.create({
+      data: {
+        userId,
+        year: 2026,
+        partner: "demo",
+        partnerReturnId: "r",
+        status: "ready_for_review",
+        package: {},
+        preview: {},
+      },
+    });
     const agentAction = await client.action.findFirstOrThrow({ where: { userId } });
     await client.agentMessage.create({
       data: {
@@ -305,6 +316,7 @@ describe.runIf(url)("deleting data against a real database", () => {
       taxProfiles: await client.taxProfile.count(where),
       taxTags: await client.taxTag.count(where),
       taxForms: await client.taxForm.count(where),
+      taxReturns: await client.taxReturn.count(where),
     };
   }
 

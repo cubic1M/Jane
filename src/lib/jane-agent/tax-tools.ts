@@ -15,6 +15,8 @@ import { loadWithholding } from "@/lib/tax-withholding";
 import { loadTaxSavings } from "@/lib/tax-savings";
 import { loadSelfEmployed } from "@/lib/self-employed";
 import { loadRefunds } from "@/lib/tax-refund";
+import { filingYear, inFilingSeason, loadReturn } from "@/lib/tax-filing";
+import { filingPartnerFor } from "@/lib/filing";
 import { loadTaxForms, loadTaxTags } from "@/lib/tax-organizer";
 import { loadWorkingProfile } from "@/lib/tax-profile";
 import { defaultTaxYear } from "@/planning/tax-pack";
@@ -79,6 +81,12 @@ export const TAX_TOOLS: Anthropic.Tool[] = [
     name: "tax_refunds",
     description:
       "Tax refunds seen in the person's accounts in the last year: federal or state, amount, date, the tax year, how it compares with Jane's estimate for that year, whether its plan was set up, and in demo advice mode only where it could go (emergency fund, high-rate debt, goals behind).",
+    input_schema: noInput,
+  },
+  {
+    name: "tax_return",
+    description:
+      "Filing the person's tax return through the filing partner: the year being filed, whether it's filing season, whether filing through Jane is available for them, and the return's status (ready to review, submitted, accepted) with its federal refund or amount owed. Jane can start a return; only the person can sign and file it, on /taxes/file.",
     input_schema: noInput,
   },
   {
@@ -316,6 +324,28 @@ export async function runTaxTool(
               ? r.plan.items.map((i) => ({ to: i.label, amount: money(i.cents) }))
               : undefined,
         })),
+      });
+    }
+    case "tax_return": {
+      const today = now.toISOString().slice(0, 10);
+      const fy = filingYear(today);
+      const [partner, ret] = await Promise.all([
+        filingPartnerFor(userId, { client }),
+        loadReturn(userId, fy, { client, now }),
+      ]);
+      return out({
+        year: fy,
+        filingSeason: inFilingSeason(fy, today),
+        availableThroughJane: partner !== null,
+        deadline: `${fy + 1}-04-15`,
+        return: ret && {
+          status: ret.status,
+          federal:
+            ret.preview.federalRefundCents >= 0
+              ? `refund ${money(ret.preview.federalRefundCents)}`
+              : `owed ${money(-ret.preview.federalRefundCents)}`,
+          signedBy: ret.signerName,
+        },
       });
     }
     case "tax_forms": {

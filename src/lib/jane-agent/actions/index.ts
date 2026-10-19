@@ -29,6 +29,7 @@ import { taxW4Keep, taxW4Next, taxW4Sent, taxW4Start, taxW4Stop } from "./tax-w4
 import { taxSaveNo, taxSaveTask } from "./tax-savings";
 import { taxMilesAdd, taxQuarterPaid } from "./tax-self-employed";
 import { taxRefundApply, taxRefundNo } from "./tax-refund";
+import { taxFileStart } from "./tax-filing";
 import {
   investAnswer1,
   investAnswer2,
@@ -112,6 +113,8 @@ export const ACTION_HANDLERS: Readonly<Record<ActionId, ActionHandler>> = {
   // Spec step 125.
   "tax.refund_apply": taxRefundApply,
   "tax.refund_no": taxRefundNo,
+  // Spec step 126.
+  "tax.file_start": taxFileStart,
   // Investments (spec step 129 on).
   "invest.answer.1": investAnswer1,
   "invest.answer.2": investAnswer2,

@@ -89,6 +89,9 @@ export type AuditEvent =
   // A tax tag the person changed (spec step 119): the tag and whether on one transaction or
   // a merchant, never which.
   | "tax_tag_changed"
+  // Filing (spec step 126): a return started with the filing partner, and signed.
+  | "tax_return_started"
+  | "tax_return_signed"
   // Devices and sessions (spec step 73): one other session, or all the others, signed out.
   | "session_signed_out"
   | "other_sessions_signed_out"

@@ -90,6 +90,8 @@ export const ACTION_IDS = [
   // Spec step 125: a tax refund's plan.
   "tax.refund_apply",
   "tax.refund_no",
+  // Spec step 126: start the return with the filing partner (signing is on the page).
+  "tax.file_start",
   // Investments (spec step 129 on): the answer buttons on an investor-profile question,
   // by position (src/config/investing.ts PROFILE_QUESTIONS).
   "invest.answer.1",
