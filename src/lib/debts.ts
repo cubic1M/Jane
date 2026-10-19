@@ -30,7 +30,7 @@ export async function loadDebts(
   const asOf = isoDay(now);
   const since = new Date(Date.parse(`${asOf}T00:00:00Z`) - BNPL_LOOKBACK_DAYS * DAY_MS);
   const words = BNPL_PROVIDERS.flatMap((p) => p.words);
-  const [accounts, payments, typed] = await Promise.all([
+  const [accounts, payments, typed, newLoans] = await Promise.all([
     db.accounts.findMany({
       where: { type: { in: ["credit", "loan"] } },
       select: {
@@ -76,6 +76,21 @@ export async function loadDebts(
         updatedAt: true,
       },
     }),
+    // Spec step 112: loans the person accepted through Jane, once funded.
+    db.loanApplications.findMany({
+      where: { status: { in: ["funded", "paid_off"] }, fundedAt: { not: null } },
+      select: {
+        id: true,
+        lender: true,
+        product: true,
+        aprBps: true,
+        rateType: true,
+        termMonths: true,
+        amountCents: true,
+        monthlyCents: true,
+        fundedAt: true,
+      },
+    }),
   ]);
   return debtBook(
     {
@@ -91,6 +106,11 @@ export async function loadDebts(
         balanceCents: t.balanceCents,
         payoffDate: t.payoffDate ? isoDay(t.payoffDate) : null,
         updatedOn: isoDay(t.updatedAt),
+      })),
+      newLoans: newLoans.map(({ id, fundedAt, ...l }) => ({
+        ...l,
+        applicationId: id,
+        fundedOn: isoDay(fundedAt!),
       })),
     },
     asOf,

@@ -68,6 +68,8 @@ describe("tax intents", () => {
     ["can I take a home office", "home_office"],
     ["where's my refund", "refund"],
     ["what should I do with my tax refund", "refund"],
+    ["file my taxes", "file"],
+    ["when is the tax deadline", "file"],
   ])("%s asks about %s (steps 120–121)", (text, ask) => {
     expect(parse(text)).toEqual({ kind: "tax", ask });
   });

@@ -4,6 +4,9 @@ import { db } from "@/lib/db";
 // Every sensitive event goes through logAudit. Add new events here so the log stays
 // queryable by a known set of names.
 export type AuditEvent =
+  // Loans (spec step 112): applying for credit and accepting a loan.
+  | "loan_application_submitted"
+  | "loan_accepted"
   | "user_signed_up"
   // Insurance (spec Phase X): a policy saved or removed, the household facts saved.
   | "insurance_policy_saved"
@@ -96,6 +99,9 @@ export type AuditEvent =
   // A tax tag the person changed (spec step 119): the tag and whether on one transaction or
   // a merchant, never which.
   | "tax_tag_changed"
+  // Filing (spec step 126): a return started with the filing partner, and signed.
+  | "tax_return_started"
+  | "tax_return_signed"
   // Devices and sessions (spec step 73): one other session, or all the others, signed out.
   | "session_signed_out"
   | "other_sessions_signed_out"

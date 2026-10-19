@@ -60,9 +60,16 @@ export function quotesReply(result: QuotesResult): Reply {
     const cover = q.sameCover ? "same cover" : `not the same cover: ${q.differences.join("; ")}`;
     return `- ${q.carrier.name}, rated ${q.carrier.rating}: ${formatCents(q.premiumCents)} ${PREMIUM_FREQUENCIES[q.premiumFrequency].label} (${formatCents(q.annualPremiumCents)} a year${vs}), ${cover}`;
   });
+  // The answer first: the lowest price for the same cover, or that none has it.
+  const best = quotes.find((q) => q.sameCover);
+  const bestSaving =
+    best && currentAnnualCents !== null ? currentAnnualCents - best.annualPremiumCents : null;
+  const headline = best
+    ? `The lowest price for the same cover as ${name} is ${best.carrier.name}, at ${formatCents(best.annualPremiumCents)} a year${bestSaving !== null && bestSaving > 0 ? `, ${formatCents(bestSaving)} less than you pay now` : ""}.`
+    : `None of the ${quotes.length === 1 ? "quote" : `${quotes.length} quotes`} for ${name} has quite the same cover, so check the differences.`;
   return {
     body: [
-      `I asked for quotes with the same cover and deductible as ${name}${currentAnnualCents === null ? "" : `, which costs ${formatCents(currentAnnualCents)} a year`}:`,
+      headline,
       ...lines,
       ...(quotes.length > SHOWN ? [`And ${quotes.length - SHOWN} more on the quotes page.`] : []),
       ...(demo ? ["These are sample quotes from my demo carrier catalog, not real offers."] : []),

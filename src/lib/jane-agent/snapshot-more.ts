@@ -2,6 +2,7 @@ import type { PrismaClient } from "@/generated/prisma/client";
 import { switchOf } from "@/lib/agent/switch";
 import { autopilotOf } from "@/lib/autopilot";
 import { loadPayoff, type Payoff } from "@/lib/debt-plan";
+import { listApplications, type LoanApplicationView } from "@/lib/loan-applications";
 import { loadRefinance, type Refinance } from "@/lib/refinance";
 import type { DebtBook } from "@/insights/debts";
 import { scopedFor } from "@/lib/db-scoped";
@@ -44,6 +45,8 @@ export type MoreSnapshot = {
   payoff?: Payoff;
   // Spec step 111: the refinance offers Jane keeps, compared with each debt.
   refinance?: Refinance;
+  // Spec step 112: the person's loan applications, newest first.
+  loanApplications?: LoanApplicationView[];
   // Insurance (spec Phase X), from the same loader as /insurance. Optional, so a snapshot
   // built without it (in tests) says nothing about insurance.
   insurance?: InsuranceSnapshot;
@@ -56,33 +59,35 @@ export async function loadMore(
   { client, now = new Date() }: { client: PrismaClient; now?: Date },
 ): Promise<MoreSnapshot> {
   const db = scopedFor(userId, client);
-  const [autopilot, proposals, waiting, loans, owned, payoff, refinance] = await Promise.all([
-    autopilotOf(userId, { client }),
-    openProposals(userId, { client }),
-    db.actions.findMany({
-      where: { status: "waiting_on_user" },
-      select: {
-        id: true,
-        status: true,
-        agentState: true,
-        type: true,
-        selfServiceUrl: true,
-        userTodo: true,
-        decision: {
-          select: { cardSnapshot: true, options: true, finding: { select: { evidence: true } } },
+  const [autopilot, proposals, waiting, loans, owned, payoff, refinance, loanApplications] =
+    await Promise.all([
+      autopilotOf(userId, { client }),
+      openProposals(userId, { client }),
+      db.actions.findMany({
+        where: { status: "waiting_on_user" },
+        select: {
+          id: true,
+          status: true,
+          agentState: true,
+          type: true,
+          selfServiceUrl: true,
+          userTodo: true,
+          decision: {
+            select: { cardSnapshot: true, options: true, finding: { select: { evidence: true } } },
+          },
         },
-      },
-      orderBy: [{ updatedAt: "asc" }, { id: "asc" }],
-    }),
-    db.accounts.findMany({
-      where: { type: "loan" },
-      select: { id: true, name: true, type: true, subtype: true },
-      orderBy: { id: "asc" },
-    }),
-    db.ownedAssets.findMany({ select: { loanAccountId: true } }),
-    loadPayoff(userId, { client, now }),
-    loadRefinance(userId, { client, now }),
-  ]);
+        orderBy: [{ updatedAt: "asc" }, { id: "asc" }],
+      }),
+      db.accounts.findMany({
+        where: { type: "loan" },
+        select: { id: true, name: true, type: true, subtype: true },
+        orderBy: { id: "asc" },
+      }),
+      db.ownedAssets.findMany({ select: { loanAccountId: true } }),
+      loadPayoff(userId, { client, now }),
+      loadRefinance(userId, { client, now }),
+      listApplications(userId, { client }),
+    ]);
   const insurance = await loadInsuranceSnapshot(userId, { client, now });
 
   return {
@@ -118,6 +123,7 @@ export async function loadMore(
     debts: payoff.book,
     payoff,
     refinance,
+    loanApplications,
     insurance,
   };
 }

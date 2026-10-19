@@ -5,6 +5,8 @@ import { loadWithholding } from "@/lib/tax-withholding";
 import { loadTaxSavings } from "@/lib/tax-savings";
 import { loadSelfEmployed } from "@/lib/self-employed";
 import { loadRefunds } from "@/lib/tax-refund";
+import { filingPartnerFor } from "@/lib/filing";
+import { filingYear, inFilingSeason, loadReturn } from "@/lib/tax-filing";
 import { loadTaxPack } from "@/lib/tax-pack";
 import { loadTaxForms, loadTaxTags } from "@/lib/tax-organizer";
 import { loadWorkingProfile } from "@/lib/tax-profile";
@@ -25,6 +27,7 @@ import {
   tagsReply,
   taxProfileReply,
   savingsReply,
+  fileReply,
   refundReply,
   selfEmployedReply,
   withholdingReply,
@@ -117,6 +120,22 @@ export async function answerTaxIntent(
         loadTaxEstimate(userId, { client, now }),
       ]);
       return refundReply(refunds.refunds, estimate);
+    }
+    case "file": {
+      const today = now.toISOString().slice(0, 10);
+      const fy = filingYear(today);
+      const [partner, ret, profile] = await Promise.all([
+        filingPartnerFor(userId, { client }),
+        loadReturn(userId, fy, { client, now }),
+        loadWorkingProfile(userId, { client, now }),
+      ]);
+      return fileReply({
+        year: fy,
+        inSeason: inFilingSeason(fy, today),
+        available: partner !== null,
+        ret,
+        profile: profile.view,
+      });
     }
     case "quarterly":
     case "set_aside":

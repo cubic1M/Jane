@@ -70,6 +70,10 @@ export async function postedToday(
   );
 }
 
+// Spec step 92: a finding behind a bundle is hidden for good (until this), and read: it's
+// never shown or sent on its own, only through the bundle's buttons.
+export const BUNDLED_UNTIL = new Date("9999-12-31T00:00:00Z");
+
 // Writes the brain's messages in its order, a millisecond apart so the chat keeps that
 // order. One that was posted meanwhile (the same dedupeKey) is skipped, never doubled.
 export async function postMessages(
@@ -88,9 +92,10 @@ export async function postMessages(
       dedupeKey: m.dedupeKey,
       priority: m.priority,
       createdAt: new Date(now.getTime() + index),
+      ...(m.hidden ? { snoozedUntil: BUNDLED_UNTIL, readAt: now } : {}),
     })),
     skipDuplicates: true,
-    select: { kind: true, dedupeKey: true },
+    select: { kind: true, dedupeKey: true, snoozedUntil: true },
   });
   // Spec step 83: one the person said "Not now" to, whose snooze is over, comes back at the
   // bottom of the chat as it is now, buttons and all (the brain only plans it then).
@@ -116,15 +121,17 @@ export async function postMessages(
         notifiedVia: null,
       },
     });
-    if (count > 0) created.push({ kind: m.kind, dedupeKey: m.dedupeKey });
+    if (count > 0) created.push({ kind: m.kind, dedupeKey: m.dedupeKey, snoozedUntil: null });
   }
-  for (const message of created) {
+  // What the person sees: not the findings hidden behind a bundle.
+  const shown = created.filter((m) => m.snoozedUntil?.getTime() !== BUNDLED_UNTIL.getTime());
+  for (const message of shown) {
     await track(userId, "chat_message_posted", {
       kind: message.kind,
       source: message.dedupeKey.split(":")[0],
     });
   }
-  return created.length;
+  return shown.length;
 }
 
 // Open finding messages whose finding was answered some other way (on its card, the plan,
@@ -136,7 +143,9 @@ export async function closeSettled(
 ): Promise<number> {
   const db = scopedFor(userId, client);
   // Spec step 83: and the rest of Jane's questions answered on their own pages.
-  const elsewhere = await closeAnsweredElsewhere(userId, { client, now });
+  const elsewhere =
+    (await closeAnsweredElsewhere(userId, { client, now })) +
+    (await settleBundles(userId, { client, now }));
   const open = await db.janeMessages.findMany({
     where: { status: "open", kind: { in: ["decision", "reply"] } },
     select: { id: true, refs: true, actions: true },
@@ -191,6 +200,50 @@ export async function closeSettled(
       },
     });
     closed += count;
+  }
+  return closed;
+}
+
+// Spec step 92: a bundle loses the Yes of each finding answered some other way (its own
+// row is closed like any finding's), and is answered once none are left.
+async function settleBundles(
+  userId: string,
+  { client, now }: { client: PrismaClient; now: Date },
+): Promise<number> {
+  const db = scopedFor(userId, client);
+  const bundles = (
+    await db.janeMessages.findMany({
+      where: { status: "open", kind: "decision", dedupeKey: { contains: ":bundle:" } },
+      select: { id: true, refs: true, actions: true },
+    })
+  ).map((m) => ({ id: m.id, refs: parseRefs(m.refs), actions: parseActions(m.actions) }));
+  const keys = bundles.flatMap((b) => (b.refs.items ?? []).map((i) => i.dedupeKey));
+  if (keys.length === 0) return 0;
+  const stillOpen = new Set(
+    (
+      await db.janeMessages.findMany({
+        where: { dedupeKey: { in: keys }, status: "open" },
+        select: { dedupeKey: true },
+      })
+    ).map((r) => r.dedupeKey),
+  );
+  let closed = 0;
+  for (const bundle of bundles) {
+    const items = bundle.refs.items ?? [];
+    const keep = bundle.actions.filter((a) => {
+      const n = /^bundle\.(\d)$/.exec(a.id)?.[1];
+      return !n || stillOpen.has(items[Number(n) - 1]?.dedupeKey ?? "");
+    });
+    if (keep.length === bundle.actions.length) continue;
+    const done = !keep.some((a) => a.kind !== "link");
+    const { count } = await db.janeMessages.updateMany({
+      where: { id: bundle.id, status: "open" },
+      data: {
+        actions: keep as Prisma.InputJsonArray,
+        ...(done ? { status: "answered", answeredAt: now, answeredWith: "All answered" } : {}),
+      },
+    });
+    closed += done ? count : 0;
   }
   return closed;
 }

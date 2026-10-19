@@ -76,6 +76,21 @@ describe("debt questions", () => {
     }
   });
 
+  it("reads questions about loan applications, and 'apply' as the refinance pick", () => {
+    for (const text of [
+      "how's my loan application",
+      "loan application status",
+      "did my loan go through",
+    ]) {
+      expect(intent(text), text).toEqual({ kind: "loan_status" });
+    }
+    expect(intent("apply for the refinance")).toEqual({ kind: "refinance", target: null });
+    expect(intent("apply for a refinance on my car loan")).toEqual({
+      kind: "refinance",
+      target: "car loan",
+    });
+  });
+
   it("leaves requests and other questions alone", () => {
     expect(intent("lower the rate on my card")).toMatchObject({ kind: "act", verb: "lower" });
     expect(intent("what's due this week")).toMatchObject({ kind: "coming_up" });

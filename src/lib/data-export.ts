@@ -61,6 +61,7 @@ export async function exportUserData(
     taxProfile,
     taxTags,
     taxForms,
+    taxReturns,
   ] = await Promise.all([
     client.user.findUniqueOrThrow({
       where: { id: userId },
@@ -454,6 +455,20 @@ export async function exportUserData(
       select: { transactionId: true, merchantKey: true, tag: true, updatedAt: true },
     }),
     db.taxForms.findMany({ select: { year: true, key: true, receivedAt: true } }),
+    // Returns filed through the filing partner (spec step 126), with what was handed over.
+    db.taxReturns.findMany({
+      select: {
+        year: true,
+        partner: true,
+        status: true,
+        package: true,
+        preview: true,
+        signerName: true,
+        signedAt: true,
+        submittedAt: true,
+        acceptedAt: true,
+      },
+    }),
   ]);
   // Terms they typed for debts their bank doesn't report (spec step 109).
   const debtTerms = await db.debtTerms.findMany({
@@ -467,6 +482,34 @@ export async function exportUserData(
     },
     orderBy: { debtKey: "asc" },
   });
+  // Their payoff plan, the refinance offers Jane checked, and their loan applications
+  // (spec steps 110–112).
+  const [debtPlan, refinanceCheck, loanApplications] = await Promise.all([
+    db.debtPlans.findFirst({
+      select: { strategy: true, extraCents: true, startedOn: true, checkedOn: true, status: true },
+    }),
+    db.refinanceChecks.findFirst({ select: { checkedOn: true, partner: true, quotes: true } }),
+    db.loanApplications.findMany({
+      select: {
+        lender: true,
+        oldName: true,
+        product: true,
+        aprBps: true,
+        termMonths: true,
+        amountCents: true,
+        monthlyCents: true,
+        feeCents: true,
+        status: true,
+        applicant: true,
+        submittedAt: true,
+        acceptedAt: true,
+        fundedAt: true,
+        paidOffAt: true,
+        createdAt: true,
+      },
+      orderBy: { createdAt: "asc" },
+    }),
+  ]);
   // What's in their investment accounts and its history (spec step 128).
   const investments = await investmentsExport(userId, client);
   // Insurance (spec Phase X): every policy on the profile and the household facts.
@@ -505,6 +548,9 @@ export async function exportUserData(
     events,
     ownedAssets,
     debtTerms,
+    debtPlan,
+    refinanceCheck,
+    loanApplications,
     documents: {
       note: "The files themselves aren't in this download. Download each one from /documents.",
       files: documents,
@@ -531,5 +577,6 @@ export async function exportUserData(
     taxProfile,
     taxTags,
     taxForms,
+    taxReturns,
   };
 }

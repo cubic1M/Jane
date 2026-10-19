@@ -18,7 +18,11 @@ export type InsuranceAsk =
   | "switch"
   | "checkup"
   // claim: something happened (spec step 107).
-  | "claim";
+  | "claim"
+  // autopilot: what Jane does with insurance by herself; contact: how to reach the insurer
+  // (spec step 108).
+  | "autopilot"
+  | "contact";
 
 export type InsuranceIntent = {
   kind: "insurance";
@@ -94,6 +98,14 @@ const CHECKUP =
   /\bcheck ?-?ups?\b|\b(?:check|review|look over) (?:my|our|the) (?:insurance|cover|coverage|policies|policy)\b|\b(?:right|wrong) amount of (?:cover|coverage|insurance)\b|\b(?:over|under)-?insured\b|\btoo much (?:cover|coverage|insurance)\b|\b(?:raise|lower|change) (?:my |the )?deductible\b/;
 
 const ASKS: readonly [InsuranceAsk, RegExp][] = [
+  [
+    "autopilot",
+    /\b(?:autopilot|on your own|by yourself|automatic(?:ally)?|without asking|what do you do|what will you do|what are you doing)\b/,
+  ],
+  [
+    "contact",
+    /\b(?:contact|phone number|claims? (?:line|number|phone)|call (?:my|the) (?:insurer|insurance)|reach (?:my|the) (?:insurer|insurance))\b/,
+  ],
   [
     "switch",
     /\bswitch(?:ed|ing)?\b.*\b(?:going|status|done|yet|happen\w*|progress|over)\b|\bdid you (?:switch|change)\b|\bhow'?s (?:my|the) switch\b|\bis my (?:new )?(?:insurance|policy) (?:active|in place|done)\b/,

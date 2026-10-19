@@ -165,6 +165,12 @@ async function InvestmentsContent() {
             </Link>
             : every payday, only what safe to spend doesn&apos;t need.
           </p>
+          <p className="text-sm text-zinc-600 dark:text-zinc-400">
+            <Link href="/investments/accounts" className={LINK}>
+              Which account first
+            </Link>
+            : the match, HSA, IRA or taxable, and where to hold what.
+          </p>
 
           {data.byAssetClass.length > 0 && (
             <section className="flex flex-col gap-2">

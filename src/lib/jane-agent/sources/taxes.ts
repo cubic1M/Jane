@@ -9,6 +9,7 @@ import { w4Suggestion, withholdingFacts } from "../tax-w4";
 import { savingMessage } from "../tax-saving-message";
 import { nextQuarter, quarterMessage, setAsideMessage } from "../tax-self-employed";
 import { refundMessage } from "../tax-refund-message";
+import { filingAccepted, filingOffer, filingReady } from "../tax-filing-message";
 import { formatCents } from "@/lib/money";
 import { incomeLine, listOf } from "@/planning/tax-profile";
 import { PROFILE_HREF, PROFILE_INTRO, TAGS_HREF, nextQuestion } from "../tax-flow";
@@ -187,6 +188,35 @@ export const taxesSource: MessageSource = {
         dedupeKey: `refund:${tax.refund.refund.transactionId}`,
         priority: TAX_MESSAGE_PRIORITY.refund,
       });
+    }
+
+    // Spec step 126: filing. In filing season, the offer to start; then the return ready to
+    // review (signed on the page only); then accepted.
+    const filing = tax.filing;
+    if (filing?.available) {
+      const ret = filing.return;
+      if (!ret && filing.inSeason) {
+        out.push({
+          kind: "decision",
+          ...filingOffer(filing.year, profile, tax.formsDue?.forms.length ?? 0),
+          dedupeKey: `file:${filing.year}`,
+          priority: TAX_MESSAGE_PRIORITY.filing,
+        });
+      } else if (ret?.status === "ready_for_review") {
+        out.push({
+          kind: "heads_up",
+          ...filingReady(ret),
+          dedupeKey: `review:${ret.year}`,
+          priority: TAX_MESSAGE_PRIORITY.filing,
+        });
+      } else if (ret?.status === "accepted") {
+        out.push({
+          kind: "done",
+          ...filingAccepted(ret),
+          dedupeKey: `accepted:${ret.year}`,
+          priority: TAX_MESSAGE_PRIORITY.filing,
+        });
+      }
     }
 
     for (const form of tax.formsDue?.forms ?? []) {
