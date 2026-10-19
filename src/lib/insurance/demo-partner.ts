@@ -4,10 +4,15 @@ import {
   COVERAGE_FIELDS,
   DEFAULT_TERM_MONTHS,
   DEMO_PRICING,
+  HEALTH_EXTRA_PERSON_SHARE,
   QUOTE_VALID_DAYS,
   type PolicyKind,
 } from "@/config/insurance";
-import { DEMO_CARRIERS, type DemoCarrier } from "@/data-sources/demo/demo-carriers";
+import {
+  DEMO_CARRIERS,
+  DEMO_HEALTH_PLANS,
+  type DemoCarrier,
+} from "@/data-sources/demo/demo-carriers";
 import type { Coverage } from "./coverage";
 import type { InsurancePartner, PartnerQuote, QuoteCarrier, QuoteRequest } from "./partner";
 
@@ -18,6 +23,9 @@ import type { InsurancePartner, PartnerQuote, QuoteCarrier, QuoteRequest } from 
 // quotes. Every quote says demo: true.
 
 const DAY_MS = 86_400_000;
+
+// Kinds quoted without a deductible.
+const NO_DEDUCTIBLE: readonly PolicyKind[] = ["life", "disability", "umbrella", "travel", "device"];
 
 const carrierOf = (c: DemoCarrier): QuoteCarrier => ({
   id: c.id,
@@ -121,9 +129,65 @@ export function basePremium(
       const share = num(coverage.reimbursement, p.defaults.reimbursement);
       return p.perPet * pets * (p.reimbursementFactors[share] ?? 1) * deductible;
     }
+    // Spec step 149.
+    case "disability": {
+      const p = DEMO_PRICING.disability;
+      const monthly = num(coverage.monthlyBenefit, p.defaults.monthlyBenefit);
+      const wait = num(coverage.waitingDays, p.defaults.waitingDays);
+      const factor =
+        p.waitingFactors[wait] ??
+        p.waitingFactors[
+          Number(
+            Object.keys(p.waitingFactors).sort(
+              (a, b) => Math.abs(Number(a) - wait) - Math.abs(Number(b) - wait),
+            )[0],
+          )
+        ];
+      return (monthly / 10_000) * p.perHundredMonthlyCents * factor;
+    }
+    case "umbrella": {
+      const p = DEMO_PRICING.umbrella;
+      return (
+        (num(coverage.liability, p.defaults.liability) / 100_000_000) * p.perMillionCents * state
+      );
+    }
+    case "travel": {
+      const p = DEMO_PRICING.travel;
+      return (num(coverage.tripCost, p.defaults.tripCost) * p.tripCostBps) / 10_000;
+    }
+    case "device":
+      return DEMO_PRICING.device.perDeviceCents;
     default:
       return null;
   }
+}
+
+// Spec step 149: the stand-in marketplace's health plans, priced for the household (one
+// person, and HEALTH_EXTRA_PERSON_SHARE more for each dependant).
+function healthQuotes(request: QuoteRequest, perYear: number, expiresAt: string): PartnerQuote[] {
+  const people = 1 + Math.max(0, request.household.dependants ?? 0);
+  return DEMO_HEALTH_PLANS.flatMap((plan): PartnerQuote[] => {
+    const carrier = DEMO_CARRIERS.find((c) => c.id === plan.carrierId);
+    if (!carrier) return [];
+    const yearly = plan.monthlyCents * 12 * (1 + (people - 1) * HEALTH_EXTRA_PERSON_SHARE);
+    const premiumCents = Math.round(yearly / perYear / 100) * 100;
+    return [
+      {
+        partnerQuoteId: `demo-q-${hashOf(plan.name, request)}`,
+        carrier: carrierOf(carrier),
+        plan: plan.name,
+        kind: "health",
+        annualPremiumCents: premiumCents * perYear,
+        premiumCents,
+        premiumFrequency: request.premiumFrequency,
+        termMonths: DEFAULT_TERM_MONTHS,
+        deductibleCents: plan.deductibleCents,
+        coverage: { outOfPocketMax: plan.outOfPocketMaxCents, coinsurance: plan.coinsurance },
+        expiresAt,
+        demo: true,
+      },
+    ];
+  }).sort((a, b) => a.annualPremiumCents - b.annualPremiumCents);
 }
 
 const hashOf = (...parts: unknown[]) =>
@@ -136,15 +200,15 @@ export const demoPartner: InsurancePartner = {
   async quote(request, { now }) {
     const perYear = PREMIUM_FREQUENCIES[request.premiumFrequency].perYear;
     const expiresAt = new Date(now.getTime() + QUOTE_VALID_DAYS * DAY_MS).toISOString();
+    if (request.kind === "health") return healthQuotes(request, perYear, expiresAt);
     const quotes: PartnerQuote[] = [];
     for (const carrier of DEMO_CARRIERS) {
       const factor = carrier.kinds[request.kind];
       if (factor === undefined) continue;
       const coverage = quotedCoverage(request.kind, request.coverage, carrier);
-      const deductibleCents =
-        request.kind === "life"
-          ? null
-          : nearestDeductible(request.deductibleCents, carrier.deductibles);
+      const deductibleCents = NO_DEDUCTIBLE.includes(request.kind)
+        ? null
+        : nearestDeductible(request.deductibleCents, carrier.deductibles);
       const base = basePremium(request.kind, coverage, deductibleCents ?? 0, request);
       if (base === null) continue;
       // Rounded to whole dollars a payment, as carriers bill.

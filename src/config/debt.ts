@@ -39,6 +39,7 @@ export const DEBT_SOURCE_LIMITS = {
   refinance: 1,
   loans: 2,
   transfers: 1,
+  student: 1,
 } as const;
 export const DEBT_MESSAGE_PRIORITY = {
   // A buy now, pay later plan Jane found, then a debt with no rate: news that can wait,
@@ -64,6 +65,9 @@ export const DEBT_MESSAGE_PRIORITY = {
   // like refinance offers.
   transfer_reminder: 89,
   transfer_offer: 32,
+  // Spec step 114: a cheaper student loan plan, and studentaid.gov's steps, both can wait.
+  student_pick: 31,
+  student_steps: 27,
 } as const;
 
 // What Jane does about debts by herself at each autopilot level (src/config/autopilot.ts),
@@ -93,6 +97,10 @@ export const DEBT_AUTOPILOT: Readonly<
       step: 113,
       does: "Looks for 0% balance transfer offers for your cards every month and, once you've moved a balance, puts the promo's end on your deadlines and reminds you 60, 30 and 7 days before it. Opening the card and moving the money are yours.",
     },
+    {
+      step: 114,
+      does: "Compares the federal student loan plans at your income, counts your qualifying payments toward forgiveness, and walks you through studentaid.gov's steps. Changing plans is done by you on studentaid.gov.",
+    },
   ],
   safe: [
     {
@@ -115,6 +123,10 @@ export const DEBT_AUTOPILOT: Readonly<
       step: 113,
       does: "Looks for 0% balance transfer offers for your cards every month and, once you've moved a balance, puts the promo's end on your deadlines and reminds you 60, 30 and 7 days before it. Opening the card and moving the money are yours.",
     },
+    {
+      step: 114,
+      does: "Compares the federal student loan plans at your income, counts your qualifying payments toward forgiveness, and walks you through studentaid.gov's steps. Changing plans is done by you on studentaid.gov.",
+    },
   ],
   all: [
     {
@@ -136,6 +148,10 @@ export const DEBT_AUTOPILOT: Readonly<
     {
       step: 113,
       does: "Looks for 0% balance transfer offers for your cards every month and, once you've moved a balance, puts the promo's end on your deadlines and reminds you 60, 30 and 7 days before it. Opening the card and moving the money are yours.",
+    },
+    {
+      step: 114,
+      does: "Compares the federal student loan plans at your income, counts your qualifying payments toward forgiveness, and walks you through studentaid.gov's steps. Changing plans is done by you on studentaid.gov.",
     },
   ],
 };

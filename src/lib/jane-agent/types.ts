@@ -1,4 +1,6 @@
+import type { AnswerBlock } from "./blocks";
 import type { Topic } from "./context";
+import type { FlowState } from "./flows/engine";
 import type { Intent } from "./intents";
 import type { PreferenceDraft } from "./preferences";
 
@@ -34,6 +36,14 @@ export const ACTION_IDS = [
   "insurance.claim_start",
   "insurance.claim_step",
   "insurance.claim_close",
+  // Spec step 150: benefits through work.
+  "benefits.confirm_all",
+  "benefits.life_1x",
+  "benefits.life_2x",
+  "benefits.life_none",
+  "benefits.disability_yes",
+  "benefits.disability_none",
+  "benefits.unsure",
   "plan.approve_safe",
   "undo.rule",
   "undo.no",
@@ -70,6 +80,14 @@ export const ACTION_IDS = [
   "bundle.3",
   "bundle.4",
   "bundle.5",
+  // Spec step 95: a guided flow's answers, Back and Cancel (refs.flow).
+  "flow.pick.1",
+  "flow.pick.2",
+  "flow.pick.3",
+  "flow.pick.4",
+  "flow.pick.5",
+  "flow.back",
+  "flow.cancel",
   // Taxes (spec step 118): the tax profile, one question at a time.
   "tax.found_yes",
   "tax.filing_single",
@@ -105,6 +123,15 @@ export const ACTION_IDS = [
   "tax.refund_no",
   // Spec step 126: start the return with the filing partner (signing is on the page).
   "tax.file_start",
+  // Spec step 165: a move (spotted, or typed), an out-of-state employer, and the city
+  // income tax question (its places by position).
+  "tax.move_yes",
+  "tax.move_no",
+  "tax.move_set",
+  "tax.work_set",
+  "tax.local_1",
+  "tax.local_2",
+  "tax.local_no",
   // Investments (spec step 129 on): the answer buttons on an investor-profile question,
   // by position (src/config/investing.ts PROFILE_QUESTIONS).
   "invest.answer.1",
@@ -182,6 +209,8 @@ export type MessageRefs = {
   claim?: { kind: string; event: string; policyId: string | null };
   claimId?: string;
   claimStep?: string;
+  // Spec step 150: the guided question a benefits message asks.
+  benefitQuestion?: string;
   // The finding as Jane described it (src/lib/jane-agent/fingerprint.ts): a button only
   // acts while the finding is still what the message said.
   fingerprint?: string;
@@ -218,6 +247,10 @@ export type MessageRefs = {
   preference?: PreferenceDraft;
   // Spec step 92: the messages a bundle stands for, by dedupeKey, in button order.
   items?: { dedupeKey: string; label: string }[];
+  // Spec step 94: a chart, table, timeline or progress bars shown with the answer.
+  block?: AnswerBlock;
+  // Spec step 95: where a guided flow is.
+  flow?: FlowState;
   // Taxes (spec step 118): the tax profile question a message is asking, and the kind of
   // income "Add it" would add.
   taxField?: string;
@@ -244,6 +277,11 @@ export type MessageRefs = {
   taxMiles?: number;
   // Spec step 125: the refund (its transaction id) a message is about.
   taxRefund?: string;
+  // Spec step 165: the move "Yes" saves, the employer's state "Yes" saves (with taxState
+  // for the home state), and the city income taxes (LOCAL_TAXES keys) in button order.
+  taxMove?: { date: string; from: string; to: string };
+  taxWorkState?: string;
+  taxLocals?: string[];
   // Spec step 98: demo advice (src/lib/advice-mode.ts). The chat shows DEMO_ADVICE_LABEL
   // under it. Set it on every message that recommends investments, taxes, insurance or loans.
   advice?: true;

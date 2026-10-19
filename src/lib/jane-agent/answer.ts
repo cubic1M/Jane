@@ -1,5 +1,6 @@
 import { checkupAnswer } from "./insurance/checkup";
 import { autopilotAnswer } from "./insurance/autopilot";
+import { benefitsAnswer } from "./insurance/benefits";
 import { claimAnswer } from "./insurance/claim";
 import { quotesAnswer } from "./insurance/quotes";
 import { insuranceReply } from "./insurance/replies";
@@ -22,6 +23,10 @@ import { whatJaneDid } from "@/lib/what-jane-did";
 import { CATEGORY_LABELS, UNCATEGORIZED } from "@/insights/labels";
 import { topicOf, withTopic, type Topic } from "./context";
 import { matchCategory, type Intent } from "./intents";
+import { listGoals } from "@/lib/goals";
+import { comingUpBlock, spendingBlock } from "./block-data";
+import { flowReply } from "./flows/chat";
+import { goalsReply } from "./goals-reply";
 import { listPreferences, paydayDays } from "./preferences";
 import { loadRecurring } from "./recurring";
 import { paydayLine } from "./remember";
@@ -161,6 +166,12 @@ async function byIntent(
     }
     case "remember":
       return rememberReply(intent.draft);
+    // Spec step 95.
+    case "flow":
+      return flowReply(intent.flow, { userId, client, now });
+    // Spec step 94.
+    case "goals":
+      return goalsReply(await listGoals(userId, { client, now }));
     case "about": {
       const [recurring, snapshot] = await Promise.all([
         loadRecurring(userId, { client, now }),
@@ -199,6 +210,8 @@ async function byIntent(
       if (intent.ask === "claim") return claimAnswer(userId, intent, { client, now });
       // Spec step 108: what Jane does with insurance by herself.
       if (intent.ask === "autopilot") return autopilotAnswer(userId, { client });
+      // Spec step 150: cover through work.
+      if (intent.ask === "benefits") return benefitsAnswer(userId, { client, now });
       return insuranceReply(intent, await loadInsuranceSnapshot(userId, { client, now }), asOf);
     case "greeting": {
       if (intent.thanks) return greetingReply(true, null);
@@ -225,11 +238,20 @@ async function byIntent(
         loadInsightTransactions(db, asOf, INSIGHT_MONTHS),
         db.budgets.findMany({ select: { category: true, amountCents: true } }),
       ]);
-      return spendingReply(intent, transactions, asOf, budgets);
+      const answer = spendingReply(intent, transactions, asOf, budgets);
+      // Spec step 94: where it went, as a chart, when no one category was asked about.
+      const block = intent.category ? null : spendingBlock(transactions, asOf, intent.month);
+      return block ? { ...answer, refs: { ...answer.refs, block } } : answer;
     }
     case "coming_up": {
       const home = await homeSummary(userId, { client, now });
-      return comingUpReply(intent, home?.comingUp ?? []);
+      const answer = comingUpReply(intent, home?.comingUp ?? []);
+      // Spec step 94: the same rows, as a timeline.
+      const rows = (home?.comingUp ?? []).filter(
+        (r) => intent.days === null || r.daysLeft <= intent.days,
+      );
+      const block = comingUpBlock(rows, intent.days === null ? "Coming up" : "Due this week");
+      return block ? { ...answer, refs: { ...answer.refs, block } } : answer;
     }
     case "safe_to_spend": {
       const home = await homeSummary(userId, { client, now });

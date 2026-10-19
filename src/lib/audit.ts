@@ -18,6 +18,8 @@ export type AuditEvent =
   | "insurance_policy_cancelled"
   // Spec step 107: a claim tracker started (the kind and what happened, never details).
   | "insurance_claim_started"
+  // Spec step 150: a benefit through work confirmed (its kind, never the amounts).
+  | "employer_benefit_confirmed"
   | "user_signed_in"
   | "import_completed"
   // Finding data was sent to Claude for card text.
