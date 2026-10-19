@@ -200,6 +200,12 @@ async function InvestmentsContent() {
             : what it could cost and the 529 that comes out ahead.
           </p>
           <p className="text-sm text-zinc-600 dark:text-zinc-400">
+            <Link href="/investments/hsa" className={LINK}>
+              HSA
+            </Link>
+            : invested beyond a cash cushion, and the receipts vault.
+          </p>
+          <p className="text-sm text-zinc-600 dark:text-zinc-400">
             Learn:{" "}
             {["index-funds", "fees", "the-match", "roth-vs-traditional", "rebalancing"].map(
               (slug, i) => (

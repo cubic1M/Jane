@@ -292,6 +292,7 @@ model User {
   refinanceCheck         RefinanceCheck?
   loanApplications       LoanApplication[]
   studentLoanProfile     StudentLoanProfile?
+  creditReports          CreditReport[]
   balanceTransfers       BalanceTransfer[]
   findings               Finding[]
   decisions              Decision[]
@@ -349,6 +350,7 @@ model User {
   autopilotSectors AutopilotSector[]
   autopilotActs    AutopilotAct[]
   collegePlans     CollegePlan[]
+  hsaReceipts      HsaReceipt[]
   controllerRuns   ControllerRun[]
   moneyTransfers   MoneyTransfer[]
   paycheckPlans    PaycheckPlan[]
@@ -418,6 +420,9 @@ model PlaidItem {
   // retirement balances, holdings and investment transactions (spec step 128) are read on
   // each sync.
   investments          Boolean   @default(false)
+  // Demo bank only (spec step 159 on): extra stand-in accounts the person linked, e.g.
+  // "hsa" for a demo HSA.
+  demoExtras           String[]  @default([]) @map("demo_extras")
   lastSyncedAt         DateTime? @map("last_synced_at") @db.Timestamptz(3)
   createdAt            DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt            DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
@@ -490,9 +495,10 @@ model Transaction {
   createdAt          DateTime        @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt          DateTime        @updatedAt @map("updated_at") @db.Timestamptz(3)
 
-  user    User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  account Account  @relation(fields: [accountId], references: [id], onDelete: Cascade)
-  taxTags TaxTag[]
+  user       User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  account    Account     @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  taxTags    TaxTag[]
+  hsaReceipt HsaReceipt?
 
   @@unique([accountId, dedupeKey])
   @@index([userId])
@@ -737,6 +743,33 @@ model StudentLoanProfile {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("student_loan_profiles")
+}
+
+// A credit score Jane pulled (spec step 116), a soft pull once a month: the score and the
+// facts behind it from the credit partner. Kept to show how it moves. The stand-in's are
+// marked demo and never a real score.
+model CreditReport {
+  id               String   @id @default(cuid())
+  userId           String   @map("user_id")
+  partner          String
+  score            Int
+  model            String
+  rangeLow         Int      @map("range_low")
+  rangeHigh        Int      @map("range_high")
+  cardLimitCents   Int      @map("card_limit_cents")
+  averageAgeMonths Int      @map("average_age_months")
+  hardInquiries    Int      @map("hard_inquiries")
+  // What Jane saw when she pulled it, for the factors: card balances, an overdue loan,
+  // late fees in the last year, whether there's an installment loan.
+  inputs           Json     @default("{}")
+  demo             Boolean  @default(false)
+  pulledOn         DateTime @map("pulled_on") @db.Date
+  createdAt        DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, pulledOn])
+  @@map("credit_reports")
 }
 
 // A balance transfer the person made to a 0% card (spec step 113), so Jane can keep the
@@ -2526,6 +2559,28 @@ model CollegePlan {
 
   @@index([userId])
   @@map("college_plans")
+}
+
+// Spec step 159: the HSA receipts vault. A medical charge Jane found in the person's
+// transactions, kept so it can be paid back from the HSA tax-free later (there's no
+// deadline while the HSA was open when the cost happened). Each links to its transaction.
+model HsaReceipt {
+  id            String    @id @default(cuid())
+  userId        String    @map("user_id")
+  transactionId String    @unique @map("transaction_id")
+  amountCents   Int       @map("amount_cents")
+  date          DateTime  @db.Date
+  merchant      String
+  // saved, or reimbursed once the person took the money back out.
+  status        String    @default("saved")
+  reimbursedAt  DateTime? @map("reimbursed_at") @db.Timestamptz(3)
+  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  transaction Transaction @relation(fields: [transactionId], references: [id], onDelete: Cascade)
+
+  @@index([userId, date])
+  @@map("hsa_receipts")
 }
 
 // One person's nightly controller run (spec step 142): when it ran and, for each sector's

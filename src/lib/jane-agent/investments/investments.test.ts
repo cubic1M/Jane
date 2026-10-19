@@ -50,6 +50,7 @@ import {
   returnsReply,
   goalBucketsReply,
   collegeReply,
+  hsaReply,
 } from "./replies";
 import { gather } from "../brain";
 import { parseIntent } from "../intents";
@@ -61,6 +62,7 @@ import { CHAT_PAGES, CHAT_TOOLS, proposeAction } from "../claude-tools";
 import { learnLink, learnReply } from "../learn";
 import { goalBuckets } from "@/planning/goal-buckets";
 import { comparePlans } from "@/planning/college";
+import { hsaPlan } from "@/planning/hsa";
 import type { PrismaClient } from "@/generated/prisma/client";
 
 // Spec step 128: what the person owns, in Jane's chat.
@@ -1506,5 +1508,94 @@ describe("collegeReply and the college message", () => {
     expect(offers({ children: 2, plans: 1 })).toEqual([]);
     expect(offers({ children: 0, plans: 0 })).toEqual([]);
     expect(offers({ children: 1, plans: 0 }, false)).toEqual([]);
+  });
+});
+
+// Spec step 159: the HSA.
+const HSA_PLAN = hsaPlan({
+  balanceCents: 427_180,
+  cashCents: 285_000,
+  contributedCents: 240_000,
+  coverage: "self",
+  age: 45,
+});
+const HSA_VIEW = {
+  advice: true,
+  account: { id: "h", name: "Demo HSA", balanceCents: 427_180 },
+  plan: HSA_PLAN,
+  coverage: "self" as const,
+  receipts: [
+    {
+      id: "r",
+      transactionId: "t",
+      date: "2026-09-01",
+      merchant: "CVS Pharmacy",
+      amountCents: 2_340,
+      status: "saved",
+    },
+  ],
+  savedCents: 22_680,
+  demo: true,
+};
+
+describe("HSA questions, by rules", () => {
+  it.each(["my hsa", "health savings account", "receipts vault", "medical receipts"])(
+    "reads %j as the HSA",
+    (text) => {
+      expect(parseIntent(text, ASOF)).toMatchObject({ kind: "investments", topic: "hsa" });
+    },
+  );
+  it("leaves which account to fill to the account order", () => {
+    expect(parseIntent("should I max out my HSA", ASOF)).toMatchObject({ topic: "accounts" });
+  });
+});
+
+describe("hsaReply and the HSA messages", () => {
+  it("gives the facts, the room, the vault, and the invest button in demo advice mode", () => {
+    const reply = hsaReply(HSA_VIEW);
+    expect(reply.body).toMatch(
+      /^Your HSA has \$4,271\.80: \$2,850\.00 in cash and \$1,421\.80 invested\. This year you can put in \$2,000\.00 more under the \$4,400\.00 limit\. Your receipts vault has \$226\.80/,
+    );
+    expect(reply.actions[0]).toEqual({
+      id: "hsa.invest",
+      label: "Invest $850.00",
+      kind: "primary",
+    });
+    expect(hsaReply({ ...HSA_VIEW, advice: false }).actions.map((a) => a.id)).toEqual(["open"]);
+    expect(hsaReply({ ...HSA_VIEW, account: null, plan: null }).actions[0].id).toBe("hsa.link");
+  });
+
+  it("says when receipts are saved, offers to invest the extra cash, or a demo HSA", () => {
+    const gatherHsa = (hsa: InvestmentSnapshot["hsa"], advice = true) =>
+      investmentsSource
+        .gather({ ...base, investments: demoInvestmentSnapshot({ advice, hsa }) }, {} as never)
+        .filter((c) => c.dedupeKey.startsWith("hsa:"));
+    const withHsa = gatherHsa({
+      account: HSA_VIEW.account,
+      plan: HSA_PLAN,
+      savedCents: 22_680,
+      demo: true,
+      receipts: 3,
+    });
+    expect(withHsa.map((m) => [m.kind, m.dedupeKey])).toEqual([
+      ["done", "hsa:receipts:3"],
+      ["decision", "hsa:invest:85000"],
+    ]);
+    expect(withHsa[1].body).toMatch(/the other \$850\.00 could be invested to grow untaxed\./);
+    const without = gatherHsa({
+      account: null,
+      plan: null,
+      savedCents: 22_680,
+      demo: true,
+      receipts: 3,
+    });
+    expect(without.map((m) => m.dedupeKey)).toEqual(["hsa:receipts:3", "hsa:link"]);
+    // Receipts are kept for everyone; the advice isn't.
+    expect(
+      gatherHsa(
+        { account: HSA_VIEW.account, plan: HSA_PLAN, savedCents: 1, demo: true, receipts: 1 },
+        false,
+      ).map((m) => m.dedupeKey),
+    ).toEqual(["hsa:receipts:1"]);
   });
 });

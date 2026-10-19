@@ -129,6 +129,17 @@ describe("debt questions", () => {
     expect(intent("refinance my mortgage")).toMatchObject({ kind: "refinance" });
   });
 
+  it("reads questions about the credit score", () => {
+    for (const text of [
+      "what's my credit score?",
+      "how do I improve my credit",
+      "credit report",
+      "my fico",
+    ]) {
+      expect(intent(text), text).toEqual({ kind: "credit_score" });
+    }
+  });
+
   it("leaves requests and other questions alone", () => {
     expect(intent("lower the rate on my card")).toMatchObject({ kind: "act", verb: "lower" });
     expect(intent("what's due this week")).toMatchObject({ kind: "coming_up" });

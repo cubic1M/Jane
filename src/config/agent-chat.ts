@@ -147,6 +147,8 @@ export const MESSAGE_PRIORITY = {
   goal_buckets: 35,
   // Spec step 158: saving for college (demo advice).
   college: 34,
+  // Spec step 159: the HSA (demo advice) and its receipts vault.
+  hsa: 33,
   auto_invest_run: 31,
 } as const;
 

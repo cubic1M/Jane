@@ -6,6 +6,7 @@ import type { Returns } from "@/lib/investments/returns";
 import type { Bucket } from "@/planning/goal-buckets";
 import { COLLEGE_TYPES } from "@/config/college";
 import type { CollegeEstimate } from "@/lib/investments/college";
+import type { HsaView } from "@/lib/investments/hsa";
 import { byHerselfLine } from "./goals-copy";
 import { formatBps, type InvestmentAccountView, type HoldingView } from "@/insights/investments";
 import type { FeeSummary } from "@/insights/investment-fees";
@@ -586,5 +587,40 @@ export function collegeReply(
       advice: true,
       college: { childName: "your child", childAge: estimate.childAge, type: estimate.type },
     },
+  };
+}
+
+// Spec step 159: the HSA and its receipts vault.
+export function hsaReply(view: HsaView): Reply {
+  const link: MessageAction = {
+    id: "open",
+    label: "See your HSA",
+    kind: "link",
+    href: "/investments/hsa",
+  };
+  const vault =
+    view.savedCents > 0
+      ? ` Your receipts vault has ${formatCents(view.savedCents)} of medical costs you can pay back from it tax-free.`
+      : "";
+  if (!view.account || !view.plan) {
+    return {
+      body: `I don't see an HSA yet.${vault}`,
+      actions:
+        view.demo && view.advice
+          ? [{ id: "hsa.link", label: "Link a demo HSA", kind: "primary" }, link]
+          : [link],
+      refs: {},
+    };
+  }
+  const p = view.plan;
+  const facts = `Your HSA has ${formatCents(view.account.balanceCents)}: ${formatCents(p.cashCents)} in cash and ${formatCents(p.investedCents)} invested. This year you can put in ${formatCents(p.roomCents)} more under the ${formatCents(p.limitCents)} limit.${vault}`;
+  if (!view.advice || p.toInvestCents <= 0) return { body: facts, actions: [link], refs: {} };
+  return {
+    body: `${facts} ${formatCents(p.toInvestCents)} of the cash is beyond the ${formatCents(p.cushionCents)} cushion and could be invested, in the simulated brokerage (no real money moves).`,
+    actions: [
+      { id: "hsa.invest", label: `Invest ${formatCents(p.toInvestCents)}`, kind: "primary" },
+      link,
+    ],
+    refs: { advice: true },
   };
 }

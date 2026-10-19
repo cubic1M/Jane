@@ -8,6 +8,7 @@ import {
 } from "@/lib/investments/auto-invest";
 import { AUTO_LINK, runLine } from "../investments/auto-copy";
 import { CollegeError, startCollegePlan } from "@/lib/investments/college";
+import { HsaError, investHsaCash, linkDemoHsa } from "@/lib/investments/hsa";
 import { formatCents } from "@/lib/money";
 import { nextQuestion, profileSummary, questionAfter } from "@/planning/investor-profile";
 import { asking } from "../investments/profile-question";
@@ -173,6 +174,44 @@ export const collegeStart: ActionHandler = {
       };
     } catch (error) {
       if (error instanceof CollegeError) throw answeredElsewhere(error.message);
+      throw error;
+    }
+  },
+};
+
+// Spec step 159: link a demo HSA, and invest its cash beyond the cushion (the HSA page's
+// own code; investing moves money, so it's always the person's tap).
+export const hsaLink: ActionHandler = {
+  id: "hsa.link",
+  on: "open",
+  async run({ userId, action, client, now }) {
+    try {
+      await linkDemoHsa(userId, { client, now });
+    } catch (error) {
+      if (error instanceof HsaError) throw answeredElsewhere(error.message);
+      throw error;
+    }
+    return {
+      answeredWith: action.label,
+      note: "Linked. I'll keep your HSA's cash cushion and tell you when there's money to invest.",
+      actions: [{ id: "open", label: "See your HSA", kind: "link", href: "/investments/hsa" }],
+    };
+  },
+};
+
+export const hsaInvest: ActionHandler = {
+  id: "hsa.invest",
+  on: "open",
+  async run({ userId, action, client, now }) {
+    try {
+      const { amountCents } = await investHsaCash(userId, { client, now });
+      return {
+        answeredWith: action.label,
+        note: `Done in the simulated brokerage (no real money moves): ${formatCents(amountCents)} of your HSA cash invested.`,
+        actions: [{ id: "open", label: "See your HSA", kind: "link", href: "/investments/hsa" }],
+      };
+    } catch (error) {
+      if (error instanceof HsaError) throw answeredElsewhere(error.message);
       throw error;
     }
   },

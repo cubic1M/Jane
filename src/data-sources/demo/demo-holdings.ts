@@ -1,5 +1,5 @@
 import type { Holding, InvestmentTransaction, Security } from "plaid";
-import { accountId, addDays, demoAccounts, type DemoSeed } from "./demo-bank";
+import { accountId, addDays, demoAccounts, type DemoExtra, type DemoSeed } from "./demo-bank";
 import { demoPrice } from "./demo-prices";
 
 // What the demo bank's investment accounts hold (spec step 128), shaped like Plaid
@@ -91,7 +91,7 @@ export const demoSecurityId = (key: string) => `demo-sec-${key.toLowerCase()}`;
 type Position = { key: Key; quantity: number; price: number; costBasis: number };
 
 // The cash position (last in each list) is filled in from the account's balance.
-const POSITIONS: Readonly<Record<"retirement" | "brokerage", readonly Position[]>> = {
+const POSITIONS: Readonly<Record<"retirement" | "brokerage" | "hsa", readonly Position[]>> = {
   retirement: [
     { key: "NSTDX", quantity: 1520.384, price: 25.17, costBasis: 31_900 },
     { key: "SLGFX", quantity: 412.106, price: 51.36, costBasis: 17_400 },
@@ -103,6 +103,11 @@ const POSITIONS: Readonly<Record<"retirement" | "brokerage", readonly Position[]
     { key: "ACME", quantity: 38, price: 136.4, costBasis: 2_280 },
     { key: "PDIFX", quantity: 142.317, price: 21.72, costBasis: 3_640 },
     { key: "KLCX", quantity: 7.5, price: 452.3, costBasis: 3_180 },
+    { key: "CASH", quantity: 0, price: 1, costBasis: 0 },
+  ],
+  // Spec step 159: a demo HSA, mostly in cash.
+  hsa: [
+    { key: "KTSIX", quantity: 10, price: 142.18, costBasis: 1_300 },
     { key: "CASH", quantity: 0, price: 1, costBasis: 0 },
   ],
 };
@@ -166,8 +171,10 @@ export function demoHoldings(
   today: string,
   // Simulated orders the person placed (spec steps 133–134), applied in order.
   orders: DemoOrder[] = [],
+  // Extra stand-in accounts they linked (spec step 159).
+  extras: readonly DemoExtra[] = [],
 ): Holding[] {
-  const ledger = demoLedger(demo, orders);
+  const ledger = demoLedger(demo, orders, extras);
   return ledger.flatMap((p): Holding[] => {
     const isCash = SECURITIES[p.key]?.cash ?? false;
     if (!isCash && p.quantity <= 0) return [];
@@ -205,9 +212,20 @@ type LedgerRow = {
 // What each demo account holds: the seed, then each order, by quantity and cash. A sale
 // takes its share of the cost basis with it; the cash row takes every dollar in and out.
 // Pure.
-export function demoLedger(demo: DemoSeed, orders: DemoOrder[] = []): LedgerRow[] {
-  const balances = new Map(demoAccounts(demo).map((a) => [a.account_id, a.balances.current ?? 0]));
-  const rows: LedgerRow[] = (["retirement", "brokerage"] as const).flatMap((account) => {
+export function demoLedger(
+  demo: DemoSeed,
+  orders: DemoOrder[] = [],
+  extras: readonly DemoExtra[] = [],
+): LedgerRow[] {
+  const balances = new Map(
+    demoAccounts(demo, extras).map((a) => [a.account_id, a.balances.current ?? 0]),
+  );
+  const accounts = [
+    "retirement",
+    "brokerage",
+    ...(extras.includes("hsa") ? ["hsa" as const] : []),
+  ] as const;
+  const rows: LedgerRow[] = accounts.flatMap((account) => {
     const id = accountId(demo.seed, account);
     const positions = POSITIONS[account];
     const invested = positions
@@ -259,7 +277,7 @@ export const DEMO_MATCH_UP_TO = 0.06;
 
 type Event = {
   key: string;
-  account: "retirement" | "brokerage";
+  account: "retirement" | "brokerage" | "hsa";
   security: Key | null;
   name: string;
   quantity: number;
@@ -282,7 +300,11 @@ function days(start: string, end: string): string[] {
 
 const round = (n: number, places: number) => Number(n.toFixed(places));
 
-function eventsOn(day: string, anchor: string): Event[] {
+// Spec step 159: the demo HSA's payroll contribution, each payday: $2,400 a year, below the
+// limit.
+export const DEMO_HSA_PER_PAYCHECK = 100;
+
+function eventsOn(day: string, anchor: string, extras: readonly DemoExtra[] = []): Event[] {
   const md = day.slice(5);
   const dom = day.slice(8);
   const out: Event[] = [];
@@ -325,6 +347,19 @@ function eventsOn(day: string, anchor: string): Event[] {
         subtype: "buy" as InvestmentTransaction["subtype"],
       },
     );
+  }
+  if ((dom === "01" || dom === "15") && extras.includes("hsa")) {
+    out.push({
+      key: "hsa-contribution",
+      account: "hsa",
+      security: null,
+      name: "HSA PAYROLL CONTRIBUTION",
+      quantity: 0,
+      amount: -DEMO_HSA_PER_PAYCHECK,
+      price: 0,
+      type: "cash" as InvestmentTransaction["type"],
+      subtype: "contribution" as InvestmentTransaction["subtype"],
+    });
   }
   if (QUARTER_ENDS.includes(md)) {
     out.push(
@@ -430,9 +465,10 @@ export function demoInvestmentTransactions(
   demo: DemoSeed,
   start: string,
   end: string,
+  extras: readonly DemoExtra[] = [],
 ): InvestmentTransaction[] {
   return days(start, end).flatMap((day) =>
-    eventsOn(day, demo.anchor).map(
+    eventsOn(day, demo.anchor, extras).map(
       (e): InvestmentTransaction =>
         ({
           investment_transaction_id: `demo-${demo.seed}-inv-${e.key}-${day}`,
