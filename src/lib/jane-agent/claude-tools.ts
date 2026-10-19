@@ -35,6 +35,7 @@ import { rebalanceOffer } from "./investments/replies";
 import { loadRebalance } from "@/lib/investments/rebalance";
 import { monthLabel, type Reply } from "./replies";
 import { guessLine } from "./replies-life";
+import { BLOCK_KINDS } from "./block-data";
 import { listPreferences } from "./preferences";
 import { cachedPrimer, keepPrimer } from "./primer-cache";
 import { loadRecurring } from "./recurring";
@@ -199,6 +200,22 @@ export const CHAT_TOOLS: Anthropic.Tool[] = [
         page: { type: "string", enum: Object.keys(CHAT_PAGES) },
       },
       required: ["action"],
+      additionalProperties: false,
+    },
+  },
+  // Spec step 94.
+  {
+    name: "show_block",
+    description:
+      "Show one chart, table or timeline under your answer, drawn from the person's own numbers (the same as the pages): spending_by_category (bars for one month; give month as YYYY-MM, or leave it out for this month), spending_by_month (bars, the last few months), coming_up (a timeline of bills and deadlines), goals (progress bars), options (a table comparing a finding's options; give finding_id). Use it at most once, when a picture says it better than a list.",
+    input_schema: {
+      type: "object",
+      properties: {
+        kind: { type: "string", enum: [...BLOCK_KINDS] },
+        month: { type: "string" },
+        finding_id: { type: "string" },
+      },
+      required: ["kind"],
       additionalProperties: false,
     },
   },

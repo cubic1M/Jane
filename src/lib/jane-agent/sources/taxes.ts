@@ -12,6 +12,7 @@ import { refundMessage } from "../tax-refund-message";
 import { filingAccepted, filingOffer, filingReady } from "../tax-filing-message";
 import { januaryMessage } from "../tax-january";
 import { harvestMessage, washSaleMessage } from "../tax-investments";
+import { localityMessage, movingEventMessage, spottedMoveMessage } from "../tax-states-message";
 import { HARVEST_FROM } from "@/config/tax";
 import { formatCents } from "@/lib/money";
 import { incomeLine, listOf } from "@/planning/tax-profile";
@@ -23,6 +24,7 @@ import { shortDate, snoozeButton, type MessageSource } from "./source";
 // - Step 118: the tax profile, asked one question at a time in one message
 //   (../tax-flow.ts); then, when she sees a kind of income that isn't on it, she asks
 //   before adding it. Jane never adds anything to the profile by herself.
+// - Step 165: a move she spotted, or one on the checklist, and the city income tax question.
 // - Step 119: a merchant she tagged but isn't sure about ("is MasterClass education?"),
 //   once each; at the levels that let her act, what she tagged last month; and from late
 //   January, each tax form that should have arrived, until the person has it.
@@ -119,6 +121,46 @@ export const taxesSource: MessageSource = {
         dedupeKey: acts ? `estimate:${estimate.year}:${step}` : `estimate:${estimate.year}`,
         priority: TAX_MESSAGE_PRIORITY.estimate,
       });
+    }
+
+    // Spec step 165: a move Jane spotted in payments to state agencies (at the levels that
+    // let her act, already counted), or one started on the checklist; then, living in a
+    // state with city income taxes, whether the person lives in one.
+    const residency = estimate?.residency;
+    if (estimate && residency && !residency.told) {
+      const spotted = spottedMoveMessage(residency);
+      if (spotted) {
+        out.push({
+          kind: "decision",
+          ...spotted,
+          dedupeKey: `move:${residency.year}:${residency.spotted!.date}`,
+          priority: TAX_MESSAGE_PRIORITY.move,
+        });
+      } else if (residency.movingEvent) {
+        out.push({
+          kind: "decision",
+          ...movingEventMessage(residency, estimate.input.state),
+          dedupeKey: `moving:${residency.year}`,
+          priority: TAX_MESSAGE_PRIORITY.move,
+        });
+      }
+    }
+    const home = estimate?.estimate.state;
+    if (
+      estimate &&
+      home &&
+      residency?.locality === null &&
+      estimate.estimate.totalIncomeCents > 0
+    ) {
+      const local = localityMessage(home.code);
+      if (local) {
+        out.push({
+          kind: "decision",
+          ...local,
+          dedupeKey: `local:${home.code}`,
+          priority: TAX_MESSAGE_PRIORITY.local,
+        });
+      }
     }
 
     // Spec step 121: a big refund or a bill coming. In demo advice mode, what to put on a

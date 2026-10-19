@@ -46,6 +46,7 @@ export function quotesReply(result: QuotesResult): Reply {
       refs: { policyId: policy.id },
     };
   }
+  if (policy.kind === "health") return healthReply(result, href, name);
   const demo = quotes.some((q) => q.demo);
   const lines = quotes.slice(0, SHOWN).map((q) => {
     const saving = currentAnnualCents === null ? 0 : currentAnnualCents - q.annualPremiumCents;
@@ -77,6 +78,43 @@ export function quotesReply(result: QuotesResult): Reply {
     ].join("\n"),
     actions: [link("See the quotes", href)],
     refs: { policyId: policy.id },
+  };
+}
+
+// Spec step 149: health plans by what they'd cost in a year with the usual care.
+function healthReply(
+  result: Extract<QuotesResult, { kind: "quotes" }>,
+  href: string,
+  name: string,
+): Reply {
+  const plans = result.quotes
+    .filter((q) => q.expectedCostCents !== null)
+    .sort((a, b) => a.expectedCostCents! - b.expectedCostCents!);
+  const [best] = plans;
+  const current = result.currentTotalCents ?? null;
+  const saving = best && current !== null ? current - best.expectedCostCents! : null;
+  const headline = best
+    ? `With your usual care, the plan that would cost least in a year is ${best.plan ?? best.carrier.name}, at about ${formatCents(best.expectedCostCents!)}${saving !== null && saving > 0 ? `, ${formatCents(saving)} less than ${name}` : ""}.`
+    : `I couldn't work out a yearly cost for the plans offered for ${name}.`;
+  return {
+    body: [
+      headline,
+      ...plans
+        .slice(0, SHOWN)
+        .map(
+          (q) =>
+            `- ${q.plan ?? q.carrier.name}: ${formatCents(q.premiumCents)} ${PREMIUM_FREQUENCIES[q.premiumFrequency].label}, deductible ${formatCents(q.deductibleCents ?? 0)}, about ${formatCents(q.expectedCostCents!)} a year with your usual care`,
+        ),
+      ...(current === null
+        ? [`Add your plan's deductible, your share and its yearly most so I can compare it too.`]
+        : []),
+      ...(plans.some((q) => q.demo)
+        ? ["These are sample plans from my demo marketplace, not real offers."]
+        : []),
+      "Nothing changes unless you say so.",
+    ].join("\n"),
+    actions: [{ id: "open", label: "See the plans", kind: "link", href }],
+    refs: { policyId: result.policy.id },
   };
 }
 

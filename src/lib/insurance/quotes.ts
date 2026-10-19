@@ -6,6 +6,7 @@ import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
 import { readCoverage, type Coverage } from "./coverage";
 import { loadHousehold } from "./household";
+import { expectedSpend, expectedYearlyCost } from "./health";
 import { compareCover } from "./like-for-like";
 import { isQuotable, partnerFor, type InsurancePartner } from "./partner";
 import { POLICY_SELECT, nextRenewal, toPolicy, yearlyPremium, type Policy } from "./policies";
@@ -42,10 +43,20 @@ export type StoredQuote = {
   demo: boolean;
   expiresAt: Date;
   createdAt: Date;
+  // Spec step 149: a health plan's name and its cost in a year with the person's usual care.
+  plan: string | null;
+  expectedCostCents: number | null;
 };
 
 export type QuotesResult =
-  | { kind: "quotes"; policy: Policy; currentAnnualCents: number | null; quotes: StoredQuote[] }
+  | {
+      kind: "quotes";
+      policy: Policy;
+      currentAnnualCents: number | null;
+      quotes: StoredQuote[];
+      // Spec step 149: a health plan's cost in a year with the usual care, to compare on.
+      currentTotalCents?: number | null;
+    }
   // Why there are none: no partner for this person, a kind the partner doesn't quote, or
   // not one of their policies.
   | { kind: "unavailable"; reason: "no_partner" | "not_quotable" | "not_found" };
@@ -73,6 +84,8 @@ const QUOTE_SELECT = {
   demo: true,
   expiresAt: true,
   createdAt: true,
+  plan: true,
+  expectedCostCents: true,
 } as const;
 
 type QuoteRow = Prisma.InsuranceQuoteGetPayload<{ select: typeof QUOTE_SELECT }>;
@@ -106,6 +119,8 @@ export function toStoredQuote(r: QuoteRow): StoredQuote {
     demo: r.demo,
     expiresAt: r.expiresAt,
     createdAt: r.createdAt,
+    plan: r.plan,
+    expectedCostCents: r.expectedCostCents,
   };
 }
 
@@ -144,6 +159,7 @@ export async function requestQuotes(
     client.user.findUnique({ where: { id: userId }, select: { state: true } }),
     loadHousehold(userId, { client, now }),
   ]);
+  const spend = expectedSpend(household);
   const answers = await quoting.quote(
     {
       kind: policy.kind,
@@ -191,6 +207,10 @@ export async function requestQuotes(
           demo: q.demo,
           expiresAt: new Date(q.expiresAt),
           createdAt: now,
+          plan: q.plan ?? null,
+          // Health plans compare on a year's total cost with their usual care (step 149).
+          expectedCostCents:
+            q.kind === "health" ? expectedYearlyCost(q, q.annualPremiumCents, spend) : null,
         };
       }),
     });
@@ -204,6 +224,8 @@ export async function requestQuotes(
     kind: "quotes",
     policy,
     currentAnnualCents: yearlyPremium(policy),
+    currentTotalCents:
+      policy.kind === "health" ? expectedYearlyCost(policy, yearlyPremium(policy), spend) : null,
     quotes: await quotesFor(userId, policyId, { client, now }),
   };
 }

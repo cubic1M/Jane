@@ -102,6 +102,20 @@ describe("debt questions", () => {
     }
   });
 
+  it("reads questions about student loan plans and forgiveness", () => {
+    for (const text of [
+      "which student loan plan should I be on?",
+      "can I lower my student loan payment",
+      "am I eligible for PSLF",
+      "income-driven repayment",
+      "student loan forgiveness",
+    ]) {
+      expect(intent(text), text).toEqual({ kind: "student_loans" });
+    }
+    // The payoff date is still the debt itself.
+    expect(intent("when is my student loan paid off")).toMatchObject({ kind: "debt_detail" });
+  });
+
   it("leaves requests and other questions alone", () => {
     expect(intent("lower the rate on my card")).toMatchObject({ kind: "act", verb: "lower" });
     expect(intent("what's due this week")).toMatchObject({ kind: "coming_up" });
