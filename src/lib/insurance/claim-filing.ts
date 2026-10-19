@@ -5,7 +5,7 @@ import { logAudit } from "@/lib/audit";
 import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
 import { formatCents, parseMoneyToCents } from "@/lib/money";
-import type { CarrierClaimStatus, Claim } from "./claim-rules";
+import type { Claim } from "./claim-rules";
 import { ClaimError, claimById, listClaims } from "./claims";
 import { partnerFor, type InsurancePartner } from "./partner";
 
