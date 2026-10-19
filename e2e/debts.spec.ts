@@ -150,3 +150,29 @@ test("apply prepares the application, and it's sent only once the terms are revi
   await expect(page.getByRole("status")).toContainText("Accepted.");
   await expect(page.getByRole("list", { name: "Steps" })).toContainText("Accepted:");
 });
+
+// Spec step 113: a 0% balance transfer, fee counted; telling Jane it's done puts the end
+// on the deadlines.
+test("a 0% transfer counts its fee and is tracked once moved", async ({
+  context,
+  page,
+  baseURL,
+}) => {
+  const user = await signedInUser("user");
+  userId = user.userId;
+  await context.addCookies([
+    { name: "authjs.session-token", value: user.sessionToken, url: baseURL ?? "" },
+  ]);
+  await page.goto("/connect");
+  await page.getByRole("button", { name: "Link a demo bank" }).click();
+  await expect(page).toHaveURL("/chat", { timeout: 60_000 });
+
+  await page.goto("/loans/refinance#transfers");
+  const section = page.getByRole("region", { name: "Move card debt to 0%" });
+  await expect(section).toContainText("Saving, fee counted");
+  await expect(section).toContainText("transfer fee is counted");
+  await section.getByRole("button", { name: /^I've moved it to / }).press("Enter");
+  await expect(page.getByRole("status")).toContainText("The 0% end is on your deadlines");
+  // The deadline shows on /deadlines from 90 days before the end (unit tests check it's saved).
+  await expect(page.getByRole("list", { name: "Your transfers" })).toContainText("0% until");
+});
