@@ -5,6 +5,7 @@ import { CATEGORY_LABELS, UNCATEGORIZED } from "@/insights/labels";
 import { parseMoneyToCents } from "@/lib/money";
 import { parseDebtIntent, type DebtIntent } from "./debt-intents";
 import { parseTaxIntent, type TaxIntent } from "./tax-intents";
+import type { FlowId } from "./flows/engine";
 import type { PreferenceDraft } from "./preferences";
 import { parseFact } from "./remember";
 import { parseInvestmentIntent, type InvestmentIntent } from "./investments/intents";
@@ -66,6 +67,8 @@ export type Intent =
   | { kind: "payday" }
   // Spec step 94: how the savings goals are doing.
   | { kind: "goals" }
+  // Spec step 95: a guided flow to start, or the one left open to pick up again.
+  | { kind: "flow"; flow: FlowId | "resume" }
   // A name on its own, or "tell me about …": a subscription or bill, something Jane found,
   // or a spending category, whichever it is (src/lib/jane-agent/answer.ts).
   | { kind: "about"; target: string; findingId?: string }
@@ -332,6 +335,30 @@ const SUBSCRIPTIONS =
   /\bsubscriptions\b|\bsubscription list\b|\bwhat (?:am i|do i) pay(?:ing)? for\b|\b(?:recurring|regular|monthly) (?:charges|payments|bills)\b|\bwhat (?:charges|bills) me\b/;
 const ALL_RECURRING =
   /\bwhat (?:am i|do i) pay(?:ing)? for\b|\b(?:recurring|regular|monthly) (?:charges|payments|bills)\b|\bwhat (?:charges|bills) me\b/;
+// Spec step 95: what starts each guided flow, and picks one up again.
+const FLOW_STARTS: readonly [FlowId | "resume", RegExp][] = [
+  [
+    "budget",
+    /^(?:let'?s |help me )?(?:set ?up|make|create|start|add)(?: (?:a|my|some|new))? budgets?$|^budget (?:help|setup|set ?up)$/,
+  ],
+  [
+    "goal",
+    /^(?:let'?s |help me )?(?:set ?up|make|create|start|add)(?: (?:a|my|new))?(?: savings)? goal$|^(?:new|start a) savings goal$/,
+  ],
+  [
+    "switch",
+    /^(?:help me )?switch(?: (?:my|the|a))? (?:providers?|phone(?: plan)?|internet|carrier|plan)$|^(?:find|get) (?:me )?a cheaper (?:phone(?: plan)?|internet|plan|provider)$/,
+  ],
+  [
+    "dispute",
+    /^(?:dispute|report|challenge|contest)(?: (?:a|the|this|my))? (?:charge|transaction|payment)$|^i was (?:charged|billed) (?:twice|wrong|wrongly|by mistake|incorrectly)$|^(?:a )?wrong charge$/,
+  ],
+  [
+    "resume",
+    /^(?:continue|resume|keep going|go on|carry on|where were we|pick up where (?:we|i) left off)$/,
+  ],
+];
+
 // Spec step 94: "how are my goals doing", "goals", "am I on track with my goals".
 const GOALS =
   /^(?:how (?:are|is) |show (?:me )?|what are |list )?(?:my |our )?(?:savings )?goals?(?: doing| progress| looking)?$|\bgoals? (?:progress|doing)\b|\bon track (?:for|with) (?:my |our )?goals?\b/;
@@ -393,6 +420,10 @@ export function parseIntent(raw: string, asOf: string): Intent {
   if (debt) return debt;
   const tax = parseTaxIntent(text);
   if (tax) return tax;
+
+  // Spec step 95: a guided flow.
+  const flow = FLOW_STARTS.find(([, pattern]) => pattern.test(text));
+  if (flow) return { kind: "flow", flow: flow[0] };
 
   // Spec step 91: something they're telling Jane, not asking.
   const fact = parseFact(text);
