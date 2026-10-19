@@ -1,6 +1,14 @@
 import Link from "next/link";
 import type { HubGroup, HubTileData } from "@/lib/hubs/tile";
 
+// The number never breaks inside itself ("-$226,294.8" then "3" on a phone): it wraps only
+// between words, and a long one is a size smaller to fit two tiles across a phone.
+const LONG_WORD = 9;
+export function valueClass(value: string): string {
+  const longest = Math.max(...value.split(/\s+/).map((word) => word.length));
+  return `${longest > LONG_WORD ? "text-base" : "text-lg"} font-semibold tabular-nums [overflow-wrap:normal] sm:text-xl`;
+}
+
 // A hub tile (spec step 80): the label, one live number, a one-line status, and the page
 // it opens. The whole tile is the link; a second link sits above it.
 export function HubTile({ tile }: { tile: HubTileData }) {
@@ -12,9 +20,7 @@ export function HubTile({ tile }: { tile: HubTileData }) {
       >
         {tile.label}
       </Link>
-      {tile.value !== null && (
-        <p className="text-lg font-semibold tabular-nums sm:text-xl">{tile.value}</p>
-      )}
+      {tile.value !== null && <p className={valueClass(tile.value)}>{tile.value}</p>}
       <p className="text-sm text-zinc-600 dark:text-zinc-400">{tile.status}</p>
       {tile.more && (
         <Link
