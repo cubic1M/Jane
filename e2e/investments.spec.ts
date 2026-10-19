@@ -123,4 +123,13 @@ test("the demo bank's holdings show with their sources, and Jane answers about t
   // After the rebalance above, no bond fund sits in the taxable account.
   await expect(page.getByText(/Keystone Total Bond Index Fund \(Demo Brokerage\)/)).toHaveCount(0);
   await expect(page.getByRole("heading", { name: "Gains and losses not yet taxed" })).toBeVisible();
+
+  // Step 136: plain explainers, one tap from the investments page, marked for review.
+  await page.goto("/investments");
+  await page.getByRole("link", { name: "index funds" }).click();
+  await expect(page).toHaveURL("/learn/index-funds");
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText("Index funds");
+  await expect(page.getByText(/waiting for review by counsel/)).toBeVisible();
+  await page.getByRole("link", { name: "← Learn" }).click();
+  await expect(page.getByRole("link", { name: "Standard deduction" })).toBeVisible();
 });
