@@ -1,5 +1,6 @@
 import type { PrismaClient } from "@/generated/prisma/client";
 import { scopedFor } from "@/lib/db-scoped";
+import { loadTaxEstimate } from "@/lib/tax-estimate";
 import { loadTaxPack } from "@/lib/tax-pack";
 import { loadTaxForms, loadTaxTags } from "@/lib/tax-organizer";
 import { loadWorkingProfile } from "@/lib/tax-profile";
@@ -8,6 +9,8 @@ import { merchantKeyOf, payeeOf } from "@/planning/tax-tags";
 import type { Reply } from "./replies";
 import type { TaxIntent } from "./tax-intents";
 import {
+  bracketReply,
+  estimateMessage,
   formsReply,
   packReply,
   setFilingReply,
@@ -92,5 +95,9 @@ export async function answerTaxIntent(
       return formsReply(await loadTaxForms(userId, year, { client, now }));
     case "pack":
       return packReply(await loadTaxPack(userId, year, { client, now }));
+    case "estimate":
+      return estimateMessage(await loadTaxEstimate(userId, { client, now }));
+    case "bracket":
+      return bracketReply(await loadTaxEstimate(userId, { client, now }));
   }
 }

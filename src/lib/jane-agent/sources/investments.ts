@@ -3,6 +3,7 @@ import { PROFILE_QUESTIONS } from "@/config/investing";
 import { formatCents } from "@/lib/money";
 import { nextQuestion, profileSummary } from "@/planning/investor-profile";
 import { equivalentLine, switchSummary } from "../investments/fees-copy";
+import { matchLine, projectionLine } from "../investments/retirement-copy";
 import { asking, PROFILE_INTRO } from "../investments/profile-question";
 import type { Candidate } from "../types";
 import { snoozeButton, type MessageSource } from "./source";
@@ -19,6 +20,10 @@ import { snoozeButton, type MessageSource } from "./source";
 //   money, so it always waits for the person's tap (step 133).
 // - Step 131: in demo advice mode, once the profile is complete, reviews the mix against
 //   its target and says what to change and why (again when that changes).
+// - Step 132: in demo advice mode, once the profile is complete, checks the retirement
+//   projection and the employer match, and says so when the person is behind or missing
+//   match money (again when that changes). Raising a contribution is done at the
+//   employer's plan, so Jane says how and checks the next contributions herself.
 
 const list = (names: string[]) =>
   names.length <= 1
@@ -91,6 +96,35 @@ export const investmentsSource: MessageSource = {
         ],
         dedupeKey: `review:${review.riskLevel}:${review.recommendations.map((r) => r.kind).join(",")}`,
         priority: MESSAGE_PRIORITY.investment_review,
+      });
+    }
+    const retirement = inv.retirement;
+    if (
+      inv.advice &&
+      retirement &&
+      (retirement.status === "behind" ||
+        retirement.status === "maybe" ||
+        (retirement.match !== null && !retirement.match.captured))
+    ) {
+      const match = matchLine(retirement);
+      const first = retirement.changes[0];
+      out.push({
+        kind: "heads_up",
+        body: [projectionLine(retirement), match, first ? `First step: ${first.what}` : null]
+          .filter(Boolean)
+          .join(" "),
+        refs: { advice: true },
+        actions: [
+          {
+            id: "open",
+            label: "See your retirement plan",
+            kind: "link",
+            href: "/investments/retirement",
+          },
+          snoozeButton(),
+        ],
+        dedupeKey: `retirement:${retirement.status}:${retirement.match?.captured ?? "none"}`,
+        priority: MESSAGE_PRIORITY.retirement,
       });
     }
     return out;

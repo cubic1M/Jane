@@ -1595,20 +1595,29 @@ model ChatReplyLink {
 // value here is the person's own answer (picked, typed or a yes to what Jane found);
 // `answered` lists which fields they've answered, so nothing is assumed silently.
 model TaxProfile {
-  id              String   @id @default(cuid())
-  userId          String   @unique @map("user_id")
+  id                    String    @id @default(cuid())
+  userId                String    @unique @map("user_id")
   // single, married_joint, married_separate or head_of_household (src/config/tax.ts).
-  filingStatus    String?  @map("filing_status")
-  childrenUnder17 Int?     @map("children_under_17")
-  otherDependants Int?     @map("other_dependants")
+  filingStatus          String?   @map("filing_status")
+  childrenUnder17       Int?      @map("children_under_17")
+  otherDependants       Int?      @map("other_dependants")
   // Two-letter US state they file in.
-  state           String?
+  state                 String?
   // Kinds of income (src/config/tax.ts INCOME_KINDS).
-  incomeKinds     String[] @default([]) @map("income_kinds")
+  incomeKinds           String[]  @default([]) @map("income_kinds")
   // incomeKinds, filingStatus, dependants, state: the fields the person has answered.
-  answered        String[] @default([])
-  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
-  updatedAt       DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+  answered              String[]  @default([])
+  // Spec step 120: from the person's latest pay stub, year to date, when there's no payroll
+  // connection: as of that date, gross pay, federal and state tax withheld, pre-tax
+  // retirement (401(k)) and other pre-tax deductions (health, HSA, FSA).
+  payAsOf               DateTime? @map("pay_as_of") @db.Date
+  payGrossYtdCents      Int?      @map("pay_gross_ytd_cents")
+  payFederalYtdCents    Int?      @map("pay_federal_ytd_cents")
+  payStateYtdCents      Int?      @map("pay_state_ytd_cents")
+  payRetirementYtdCents Int?      @map("pay_retirement_ytd_cents")
+  payPretaxYtdCents     Int?      @map("pay_pretax_ytd_cents")
+  createdAt             DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt             DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 

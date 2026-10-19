@@ -409,6 +409,13 @@ export async function exportUserData(
         state: true,
         incomeKinds: true,
         answered: true,
+        // Spec step 120: their pay stub figures.
+        payAsOf: true,
+        payGrossYtdCents: true,
+        payFederalYtdCents: true,
+        payStateYtdCents: true,
+        payRetirementYtdCents: true,
+        payPretaxYtdCents: true,
         updatedAt: true,
       },
     }),

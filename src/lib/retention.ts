@@ -5,7 +5,6 @@ import {
   type RetainedKind,
 } from "@/config/retention";
 import { SNAPSHOT_RETENTION_DAYS } from "@/config/net-worth";
-import { TRIAL_ID_PREFIX } from "@/config/trial";
 import type { PrismaClient } from "@/generated/prisma/client";
 import { db as defaultClient } from "@/lib/db";
 
@@ -21,7 +20,7 @@ export async function runRetention({
 }: { client?: PrismaClient; now?: Date } = {}): Promise<Record<RetainedKind, number>> {
   const before = (kind: RetainedKind) =>
     new Date(now.getTime() - RETENTION_PERIODS[kind].days * DAY);
-  const [analytics, errors, jobs, runs, limits, sessions, links, trials] = await Promise.all([
+  const [analytics, errors, jobs, runs, limits, sessions, links] = await Promise.all([
     client.analyticsEvent.deleteMany({ where: { createdAt: { lt: before("analyticsEvents") } } }),
     client.errorEvent.deleteMany({ where: { createdAt: { lt: before("errorEvents") } } }),
     client.job.deleteMany({
@@ -31,10 +30,6 @@ export async function runRetention({
     client.rateLimit.deleteMany({ where: { windowStart: { lt: before("rateLimits") } } }),
     client.session.deleteMany({ where: { expires: { lt: before("expiredSessions") } } }),
     client.verificationToken.deleteMany({ where: { expires: { lt: before("expiredSessions") } } }),
-    // Spec step 138: everything a trial person owns goes with them (it all cascades).
-    client.user.deleteMany({
-      where: { id: { startsWith: TRIAL_ID_PREFIX }, createdAt: { lt: before("trialPeople") } },
-    }),
   ]);
   return {
     analyticsEvents: analytics.count,
@@ -43,7 +38,6 @@ export async function runRetention({
     cronRuns: runs.count,
     rateLimits: limits.count,
     expiredSessions: sessions.count + links.count,
-    trialPeople: trials.count,
   };
 }
 

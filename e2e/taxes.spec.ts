@@ -39,6 +39,11 @@ test("the tax profile shows what Jane found and saves the person's answers", asy
 
   await page.goto("/taxes");
   await expect(page.getByRole("heading", { level: 1 })).toHaveText("Taxes: 2026");
+  // Spec step 120: the estimate, from the demo bank's sample pay stubs.
+  const estimate = page.getByRole("region", { name: "Your 2026 estimate" });
+  await expect(estimate.getByText(/^Federal: a refund of about \$[\d,]+\.$/)).toBeVisible();
+  await expect(estimate.getByText(/^California: /)).toBeVisible();
+  await expect(estimate.getByText("Estimate", { exact: true })).toBeVisible();
   const profile = page.getByRole("region", { name: "Your tax profile" });
   await expect(profile.getByText("California")).toBeVisible();
   await expect(profile.getByText("Found by Jane: check it").first()).toBeVisible();
@@ -54,7 +59,9 @@ test("the tax profile shows what Jane found and saves the person's answers", asy
   await page.getByRole("radio", { name: "Head of household" }).check();
   await page.getByLabel("Children under 17 you claim").fill("1");
   await page.getByRole("button", { name: "Save my answers" }).click();
-  await expect(page.getByRole("status")).toHaveText("Saved. I'll use these for your taxes.");
+  await expect(page.getByRole("status").first()).toHaveText(
+    "Saved. I'll use these for your taxes.",
+  );
   expect(await axe(page)).toEqual([]);
 
   await page.goto("/taxes");

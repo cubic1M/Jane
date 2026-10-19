@@ -5,12 +5,13 @@ vi.mock("@/lib/session", () => ({ requireUser: vi.fn(async () => ({ id: "u1" }))
 vi.mock("@/lib/tax-profile", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/lib/tax-profile")>()),
   saveTaxAnswers: vi.fn(),
+  savePayStub: vi.fn(),
 }));
 
 import { revalidatePath } from "next/cache";
-import { TaxProfileError, saveTaxAnswers } from "@/lib/tax-profile";
-import { saveTaxProfile } from "./actions";
-import { answersFrom } from "./answers";
+import { TaxProfileError, savePayStub, saveTaxAnswers } from "@/lib/tax-profile";
+import { savePayStubAction, saveTaxProfile } from "./actions";
+import { answersFrom, payStubFrom } from "./answers";
 
 // Spec step 118: the tax profile page saves only what was filled in.
 
@@ -77,6 +78,65 @@ describe("the tax profile form", () => {
     expect(await saveTaxProfile(null, form([["state", "ZZ"]]))).toEqual({
       ok: false,
       message: "Pick a state from the list.",
+    });
+  });
+});
+
+describe("the pay stub form (spec step 120)", () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  it("reads dollars and cents, empty amounts as zero", () => {
+    expect(
+      payStubFrom(
+        form([
+          ["payAsOf", "2026-09-25"],
+          ["payGross", "76,000.00"],
+          ["payFederal", "9500"],
+          ["payState", ""],
+          ["payRetirement", "3,800"],
+          ["payPretax", "1200.50"],
+        ]),
+      ),
+    ).toEqual({
+      asOf: "2026-09-25",
+      grossCents: 7_600_000,
+      federalCents: 950_000,
+      stateCents: 0,
+      retirementCents: 380_000,
+      pretaxCents: 120_050,
+    });
+  });
+
+  it("clears it when gross pay is empty, and refuses amounts that aren't money", () => {
+    expect(payStubFrom(form([["payFederal", "100"]]))).toBeNull();
+    expect(() => payStubFrom(form([["payGross", "lots"]]))).toThrow(TaxProfileError);
+  });
+
+  it("saves for the signed-in person and says what changed", async () => {
+    expect(
+      await savePayStubAction(
+        null,
+        form([
+          ["payAsOf", "2026-09-25"],
+          ["payGross", "100"],
+        ]),
+      ),
+    ).toEqual({ ok: true, message: "Saved. Your estimate uses it now." });
+    expect(savePayStub).toHaveBeenCalledWith(
+      "u1",
+      expect.objectContaining({ grossCents: 10_000 }),
+      {
+        via: "page",
+      },
+    );
+    expect(await savePayStubAction(null, form([]))).toEqual({
+      ok: true,
+      message: "Cleared. Your estimate no longer uses a pay stub.",
+    });
+    vi.mocked(savePayStub).mockRejectedValueOnce(new TaxProfileError("Give the pay stub's date."));
+    expect(await savePayStubAction(null, form([["payGross", "100"]]))).toEqual({
+      ok: false,
+      message: "Give the pay stub's date.",
     });
   });
 });
