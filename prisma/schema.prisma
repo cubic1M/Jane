@@ -1444,6 +1444,8 @@ model JaneMessage {
   // push, email, both, or skipped (it had gone out already as an alert).
   notifiedAt   DateTime? @map("notified_at") @db.Timestamptz(3)
   notifiedVia  String?   @map("notified_via")
+  // "Not now" (spec step 83): hidden from the chat until then, when Jane may bring it up again.
+  snoozedUntil DateTime? @map("snoozed_until") @db.Timestamptz(3)
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 

@@ -4,6 +4,11 @@ import { findingsSource } from "./findings";
 import { headsUpsSource } from "./heads-ups";
 import { planSource } from "./plan";
 import type { MessageSource } from "./source";
+import { autopilotSource } from "./autopilot";
+import { budgetsSource } from "./budgets";
+import { setupSource } from "./setup";
+import { stepsSource } from "./steps";
+import { thingsSource } from "./things";
 
 // Every message source Jane's brain gathers from (spec step 82). A new kind of message is a
 // new module here, registered in this one list; its daily limit is in
@@ -14,6 +19,12 @@ export const MESSAGE_SOURCES: readonly MessageSource[] = [
   planSource,
   didSource,
   headsUpsSource,
+  // Spec step 83.
+  autopilotSource,
+  setupSource,
+  stepsSource,
+  budgetsSource,
+  thingsSource,
 ];
 
 export type { MessageSource, SourceContext, Trigger } from "./source";

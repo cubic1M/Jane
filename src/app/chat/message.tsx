@@ -14,6 +14,8 @@ const STYLES = {
   primary: `${BUTTON} bg-emerald-700 text-white hover:bg-emerald-800 disabled:opacity-60`,
   secondary: `${BUTTON} border border-zinc-400 hover:bg-zinc-100 disabled:opacity-60 dark:border-zinc-600 dark:hover:bg-zinc-900`,
 };
+const LINK =
+  "inline-flex min-h-11 items-center px-1 text-sm font-medium text-emerald-700 hover:underline";
 
 function Brackets({ children }: { children: React.ReactNode }) {
   return (
@@ -121,15 +123,25 @@ export function ChatMessageItem({ initial }: { initial: MessageView }) {
               ))}
             </form>
           )}
-          {message.links.map((link) => (
-            <Link
-              key={link.href + link.label}
-              href={link.href}
-              className="inline-flex min-h-11 items-center px-1 text-sm font-medium text-emerald-700 hover:underline"
-            >
-              {link.label} ›
-            </Link>
-          ))}
+          {message.links.map((link) =>
+            // Spec step 83: a company's own page (a cancel page, a sign-up link) opens in a
+            // new tab, so the chat stays where it was.
+            /^https:\/\//.test(link.href) ? (
+              <a
+                key={link.href + link.label}
+                href={link.href}
+                target="_blank"
+                rel="noopener noreferrer"
+                className={LINK}
+              >
+                {link.label} ›<span className="sr-only"> (opens in a new tab)</span>
+              </a>
+            ) : (
+              <Link key={link.href + link.label} href={link.href} className={LINK}>
+                {link.label} ›
+              </Link>
+            ),
+          )}
         </div>
       )}
     </li>

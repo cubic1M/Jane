@@ -5,6 +5,7 @@ import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
 import type { PlannedMessage } from "./brain";
 import { localTime } from "./quiet-hours";
+import { closeAnsweredElsewhere } from "./settled";
 import { MESSAGE_SELECT, parseActions, parseRefs, toChatMessage, type ChatMessage } from "./types";
 
 // Reading and writing Jane's chat messages (spec step 81), always for one person.
@@ -19,10 +20,16 @@ const JANE_KINDS = ["brief", "decision", "done", "heads_up"];
 // many pages of CHAT_PAGE_SIZE to show ("Show earlier" adds one).
 export async function chatFeed(
   userId: string,
-  { client = defaultClient, pages = 1 }: { client?: PrismaClient; pages?: number } = {},
+  {
+    client = defaultClient,
+    pages = 1,
+    now = new Date(),
+  }: { client?: PrismaClient; pages?: number; now?: Date } = {},
 ): Promise<{ messages: ChatMessage[]; hasEarlier: boolean }> {
   const take = CHAT_PAGE_SIZE * Math.max(1, pages);
   const rows = await scopedFor(userId, client).janeMessages.findMany({
+    // Spec step 83: a message the person said "Not now" to stays hidden until then.
+    where: { OR: [{ snoozedUntil: null }, { snoozedUntil: { lte: now } }] },
     select: MESSAGE_SELECT,
     orderBy: [{ createdAt: "desc" }, { id: "desc" }],
     take: take + 1,
@@ -71,6 +78,32 @@ export async function postMessages(
     skipDuplicates: true,
     select: { kind: true, dedupeKey: true },
   });
+  // Spec step 83: one the person said "Not now" to, whose snooze is over, comes back at the
+  // bottom of the chat as it is now, buttons and all (the brain only plans it then).
+  const createdKeys = new Set(created.map((m) => m.dedupeKey));
+  for (const [index, m] of planned.entries()) {
+    if (createdKeys.has(m.dedupeKey)) continue;
+    const { count } = await scopedFor(userId, client).janeMessages.updateMany({
+      where: { dedupeKey: m.dedupeKey, snoozedUntil: { lte: now } },
+      data: {
+        kind: m.kind,
+        body: m.body,
+        refs: m.refs as Prisma.InputJsonObject,
+        actions: m.actions as Prisma.InputJsonArray,
+        priority: m.priority,
+        status: "open",
+        answeredWith: null,
+        answeredAt: null,
+        readAt: null,
+        snoozedUntil: null,
+        createdAt: new Date(now.getTime() + index),
+        // Back as new, so it can go out as a notification again (spec step 85).
+        notifiedAt: null,
+        notifiedVia: null,
+      },
+    });
+    if (count > 0) created.push({ kind: m.kind, dedupeKey: m.dedupeKey });
+  }
   for (const message of created) {
     await track(userId, "chat_message_posted", {
       kind: message.kind,
@@ -88,6 +121,8 @@ export async function closeSettled(
   { client = defaultClient, now = new Date() }: Options = {},
 ): Promise<number> {
   const db = scopedFor(userId, client);
+  // Spec step 83: and the rest of Jane's questions answered on their own pages.
+  const elsewhere = await closeAnsweredElsewhere(userId, { client, now });
   const open = await db.janeMessages.findMany({
     where: { status: "open", kind: { in: ["decision", "reply"] } },
     select: { id: true, refs: true, actions: true },
@@ -96,7 +131,7 @@ export async function closeSettled(
     const findingId = parseRefs(m.refs).findingId;
     return findingId ? [{ id: m.id, findingId, actions: parseActions(m.actions) }] : [];
   });
-  if (byFinding.length === 0) return 0;
+  if (byFinding.length === 0) return elsewhere;
   const stillOpen = new Set(
     (
       await db.findings.findMany({
@@ -108,7 +143,7 @@ export async function closeSettled(
       })
     ).map((f) => f.id),
   );
-  let closed = 0;
+  let closed = elsewhere;
   for (const message of byFinding.filter((m) => !stillOpen.has(m.findingId))) {
     // Its Open link stays.
     const { count } = await db.janeMessages.updateMany({

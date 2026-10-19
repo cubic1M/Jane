@@ -9,14 +9,14 @@ vi.mock("next/server", () => ({ after: vi.fn((cb: () => unknown) => afterCallbac
 vi.mock("@/lib/session", () => ({
   requireUser: vi.fn(async () => ({ id: "u1", email: "alex@example.com" })),
 }));
-vi.mock("@/lib/agent/run", () => ({ runAgentNow: vi.fn() }));
+vi.mock("@/lib/agent/run", () => ({ runAgentNow: vi.fn(), runQueuedFor: vi.fn() }));
 vi.mock("@/lib/jane-agent/open", () => ({ timezoneOf: vi.fn(async () => "America/New_York") }));
 vi.mock("@/lib/jane-agent/actions", async () => {
   const { ChatActionError } = await import("@/lib/jane-agent/actions/handler");
   return { ChatActionError, takeChatAction: vi.fn() };
 });
 
-import { runAgentNow } from "@/lib/agent/run";
+import { runAgentNow, runQueuedFor } from "@/lib/agent/run";
 import { ChatActionError, takeChatAction } from "@/lib/jane-agent/actions";
 import type { ChatMessage } from "@/lib/jane-agent/types";
 import { toView } from "@/lib/jane-agent/view";
@@ -49,7 +49,11 @@ describe("tapButton", () => {
   });
 
   it("takes the action for the signed-in person and returns the answered message", async () => {
-    vi.mocked(takeChatAction).mockResolvedValue({ message: stored, agentJobIds: ["job1"] });
+    vi.mocked(takeChatAction).mockResolvedValue({
+      message: stored,
+      agentJobIds: ["job1"],
+      agentActionIds: [],
+    });
     const state = await tapButton(previous, form({ messageId: "m1", actionId: "finding.yes" }));
     expect(takeChatAction).toHaveBeenCalledWith("u1", "m1", "finding.yes");
     expect(state.error).toBeNull();
@@ -64,6 +68,20 @@ describe("tapButton", () => {
     expect(runAgentNow).not.toHaveBeenCalled();
     for (const callback of afterCallbacks) await callback();
     expect(runAgentNow).toHaveBeenCalledWith(["job1"]);
+    expect(runQueuedFor).not.toHaveBeenCalled();
+  });
+
+  // Spec step 83: an autopilot level's first approvals start at once, as in Settings.
+  it("runs the agent on what a new autopilot level approved, after the response", async () => {
+    vi.mocked(takeChatAction).mockResolvedValue({
+      message: { ...stored, answeredWith: "Handle the safe stuff" },
+      agentJobIds: [],
+      agentActionIds: ["a1", "a2"],
+    });
+    await tapButton(previous, form({ messageId: "m1", actionId: "autopilot.safe" }));
+    expect(runQueuedFor).not.toHaveBeenCalled();
+    for (const callback of afterCallbacks) await callback();
+    expect(runQueuedFor).toHaveBeenCalledWith(["a1", "a2"]);
   });
 
   it("shows why a tap was refused and leaves the message as it was", async () => {

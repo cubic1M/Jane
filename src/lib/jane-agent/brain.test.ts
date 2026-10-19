@@ -42,6 +42,12 @@ function snapshot(over: Partial<Snapshot> = {}): Snapshot {
     budgetsOver: [],
     goalsBehind: [],
     urgentAlerts: [],
+    // Spec step 83's sources stay quiet here (./sources-more.test.ts covers them).
+    budgetProgress: [],
+    autopilot: "safe",
+    setupProposals: [],
+    agentSteps: [],
+    assetPrompts: [],
     ...over,
   };
 }
@@ -339,6 +345,7 @@ describe("heads-ups", () => {
     ]);
     expect(messages.every((m) => m.kind === "heads_up")).toBe(true);
     expect(messages[1].actions).toEqual([
+      { id: "snooze", label: "Remind me tomorrow", kind: "secondary" },
       { id: "open", label: "Open", kind: "link", href: "/subscriptions" },
     ]);
   });

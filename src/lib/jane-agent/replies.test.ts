@@ -249,6 +249,12 @@ function snapshot(over: Partial<Snapshot> = {}): Snapshot {
     budgetsOver: [],
     goalsBehind: [],
     urgentAlerts: [],
+    // Spec step 83's fields.
+    budgetProgress: [],
+    autopilot: "safe",
+    setupProposals: [],
+    agentSteps: [],
+    assetPrompts: [],
     ...over,
   };
 }

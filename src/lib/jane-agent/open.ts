@@ -34,7 +34,7 @@ export async function openChat(
   } else {
     await runJaneAgentSafely(userId, { client, now, trigger: "open" });
   }
-  const feed = await chatFeed(userId, { client, pages });
+  const feed = await chatFeed(userId, { client, pages, now });
   return {
     messages: feed.messages.map((m) => toView(m, now, timezone)),
     hasEarlier: feed.hasEarlier,

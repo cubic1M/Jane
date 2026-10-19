@@ -40,14 +40,26 @@ export async function runJaneAgent(
       ? []
       : db.janeMessages.findMany({
           where: { dedupeKey: { in: keys } },
-          select: { dedupeKey: true },
+          select: { dedupeKey: true, snoozedUntil: true },
         }),
     db.janeMessages.findMany({
       where: { createdAt: { gte: new Date(now.getTime() - CHAT_HISTORY_HOURS * HOUR_MS) } },
       select: { kind: true, dedupeKey: true, createdAt: true },
     }),
   ]);
-  const planned = plan(snapshot, { recent, seenKeys: seen.map((s) => s.dedupeKey) }, now, settings);
+  const planned = plan(
+    snapshot,
+    {
+      recent,
+      seenKeys: seen.map((s) => s.dedupeKey),
+      // Spec step 83: what the person said "Not now" to, and until when.
+      snoozed: seen.flatMap((s) =>
+        s.snoozedUntil ? [{ dedupeKey: s.dedupeKey, until: s.snoozedUntil }] : [],
+      ),
+    },
+    now,
+    settings,
+  );
   const posted = await postMessages(userId, planned, { client, now });
   // What's important goes out as a notification, unless the person is looking (spec step 85).
   await queueChatNotificationsSafely(userId, { client, now, trigger });

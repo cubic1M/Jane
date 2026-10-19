@@ -92,8 +92,9 @@ describe.runIf(url)("Jane's chat against a real database", () => {
       for (const f of findings) {
         expect(buttonIds(f)).toEqual(expect.arrayContaining(["finding.yes", "finding.no", "open"]));
       }
-      // Within the day's limit, besides the brief, and all open.
-      expect(messages.length).toBeLessThanOrEqual(CHAT_DAILY_LIMIT + 1);
+      // Within the day's limit, besides the brief and the autopilot question (spec step 83),
+      // and all open.
+      expect(messages.length).toBeLessThanOrEqual(CHAT_DAILY_LIMIT + 2);
       expect(messages.every((m) => m.status === "open")).toBe(true);
     });
 
@@ -270,7 +271,13 @@ describe.runIf(url)("Jane's chat against a real database", () => {
         posted: 0,
       });
       const chat = await openChat(userId, { client, now: night });
-      expect(chat?.messages.map((m) => m.kind)).toEqual(["brief", "decision", "decision"]);
+      // The brief, the autopilot question (spec step 83), the plan and the finding.
+      expect(chat?.messages.map((m) => m.kind)).toEqual([
+        "brief",
+        "decision",
+        "decision",
+        "decision",
+      ]);
     });
 
     it("refuses a Yes once the finding changed since the message", async () => {

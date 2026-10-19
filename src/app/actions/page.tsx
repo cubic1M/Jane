@@ -159,7 +159,9 @@ async function ActionsContent({
             return (
               <li
                 key={action.id}
-                className="flex flex-col gap-2 rounded-xl border border-zinc-200 p-4 dark:border-zinc-800"
+                // Spec step 83: Jane's chat links straight to the one waiting on the person.
+                id={`action-${action.id}`}
+                className="flex scroll-mt-4 flex-col gap-2 rounded-xl border border-zinc-200 p-4 dark:border-zinc-800"
               >
                 <div className="flex flex-wrap items-start justify-between gap-2">
                   <h2 className="font-semibold">{card.title}</h2>

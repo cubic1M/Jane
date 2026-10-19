@@ -23,7 +23,7 @@ export function CategoryForm({
         <select
           name="category"
           defaultValue={current ?? ""}
-          className="h-10 rounded-lg border border-zinc-300 bg-transparent px-2 text-sm dark:border-zinc-700"
+          className="h-10 w-full min-w-0 rounded-lg border border-zinc-300 bg-transparent px-2 text-sm dark:border-zinc-700"
         >
           <option value="" disabled>
             Pick a category
