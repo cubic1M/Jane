@@ -35,7 +35,8 @@ const url = process.env.TEST_DATABASE_URL;
 const LINKED = new Date("2026-10-18T15:00:00Z");
 const NEXT_DAY = new Date("2026-10-19T15:00:00Z");
 
-describe.runIf(url)("Jane notices changes, with the demo bank", () => {
+// Each test links and syncs a year of demo data, so they get more time than usual.
+describe.runIf(url)("Jane notices changes, with the demo bank", { timeout: 30_000 }, () => {
   let client: PrismaClient;
   const created: string[] = [];
   const plaid = new Proxy(
