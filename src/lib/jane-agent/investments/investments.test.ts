@@ -17,6 +17,7 @@ vi.mock("@/lib/investments/retirement", () => ({ loadRetirement: vi.fn() }));
 vi.mock("@/lib/investments/rebalance", () => ({ loadRebalance: vi.fn() }));
 vi.mock("@/lib/investments/auto-invest", () => ({ loadAutoInvest: vi.fn() }));
 vi.mock("@/lib/investments/accounts", () => ({ loadAccountPlan: vi.fn() }));
+vi.mock("@/lib/investments/returns", () => ({ loadReturns: vi.fn() }));
 
 import { loadInvestments } from "@/lib/investments/holdings";
 import { profileOf } from "@/lib/investments/profile";
@@ -45,6 +46,7 @@ import {
   rebalanceReply,
   retirementReply,
   reviewReply,
+  returnsReply,
 } from "./replies";
 import { gather } from "../brain";
 import { parseIntent } from "../intents";
@@ -1261,5 +1263,96 @@ describe("overviewReply and autopilotReply", () => {
       "Buying, selling and moving money always wait for your tap, at every level.",
     );
     expect(autopilotReply("ask").body).not.toMatch(/invest every payday/);
+  });
+});
+
+// Spec step 156: prices and real returns.
+const RETURNS = {
+  asOf: "2026-10-18",
+  simulatedPrices: true,
+  periods: [
+    {
+      key: "1m" as const,
+      label: "Last month",
+      from: "2026-09-18",
+      to: "2026-10-18",
+      startCents: 9_500_000,
+      endCents: 9_673_055,
+      timeWeighted: 0.0123,
+      moneyWeighted: 0.011,
+      benchmark: 0.009,
+      paidInCents: 40_800,
+      incomeCents: 3_120,
+    },
+    {
+      key: "1y" as const,
+      label: "Last 12 months",
+      from: "2025-10-18",
+      to: "2026-10-18",
+      startCents: 9_000_000,
+      endCents: 9_673_055,
+      timeWeighted: 0.0712,
+      moneyWeighted: 0.0688,
+      benchmark: 0.0654,
+      paidInCents: 489_600,
+      incomeCents: 37_440,
+    },
+  ],
+};
+
+describe("return questions, by rules", () => {
+  it.each([
+    "what's my investment return",
+    "how much have my investments made",
+    "portfolio performance",
+    "401k returns",
+  ])("reads %j as returns", (text) => {
+    expect(parseIntent(text, ASOF)).toMatchObject({ kind: "investments", topic: "returns" });
+  });
+
+  it("leaves a store's returns to the other rules", () => {
+    expect(parseIntent("what's Target's return policy", ASOF)).not.toMatchObject({
+      topic: "returns",
+    });
+  });
+});
+
+describe("returnsReply", () => {
+  it("leads with the longest period, against a similar mix, past results only", () => {
+    const reply = returnsReply(RETURNS);
+    expect(reply.body).toMatch(
+      /^Last 12 months, what you own returned \+7\.1% \(your own money: \+6\.9%\), against \+6\.5% for a similar mix of index funds, and paid \$374\.40 in dividends and interest\.\n- Last month: \+1\.2%; your money \+1\.1%; similar mix \+0\.9%/,
+    );
+    expect(reply.body).toContain("they don't say what comes next");
+    expect(reply.body).toContain("demo price feed's (made up)");
+    expect(reply.body).not.toMatch(/\b(?:will|expect|forecast|predict)\w*/i);
+  });
+
+  it("says when there isn't enough history yet", () => {
+    expect(returnsReply({ ...RETURNS, periods: [] }).body).toMatch(/^I can't work out returns yet/);
+  });
+
+  it("adds the year's return to how the investments are doing", () => {
+    const reply = overviewReply(demoInvestmentSnapshot({ advice: false, returns: RETURNS }));
+    expect(reply.body).toMatch(/Last 12 months, what you own returned \+7\.1%/);
+  });
+
+  it("gives Claude every figure", async () => {
+    const { loadReturns } = await import("@/lib/investments/returns");
+    vi.mocked(loadReturns).mockResolvedValue(RETURNS);
+    const out = await runInvestmentTool(
+      "u",
+      "investment_returns",
+      {},
+      {
+        client: {} as PrismaClient,
+        now: new Date("2026-10-19T12:00:00Z"),
+      },
+    );
+    expect(JSON.parse(out.content).periods[1]).toMatchObject({
+      investments: "+7.1%",
+      yourMoney: "+6.9%",
+    });
+    expect(out.cents).toEqual(expect.arrayContaining([9_673_055, 37_440, 489_600]));
   });
 });

@@ -85,6 +85,7 @@ export function demoInvestmentSnapshot(over: Partial<InvestmentSnapshot> = {}): 
     autoInvest: { plan: null, runs: [], suggestion: null, accounts: [] },
     accountPlan: { order: null, location: [] },
     month: { month: "2026-10", previousCents: null, contributedCents: 0 },
+    returns: { asOf: "2026-10-18", periods: [], simulatedPrices: true },
     ...over,
   };
 }

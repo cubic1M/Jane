@@ -8,8 +8,9 @@
 //   yearly rate (XIRR) that makes the starting value and every deposit grow to the end value.
 
 export type DayValue = { day: string; valueCents: number };
-// Money paid in (positive) or taken out (negative) on a day. It counts as there before
-// that day's valuation.
+// Money paid in (positive) or taken out (negative) on a day. It lands after that day's
+// valuation (the daily job snapshots balances before it invests), so it counts from the
+// next stretch on.
 export type Flow = { day: string; amountCents: number };
 
 const DAY_MS = 86_400_000;
@@ -25,7 +26,7 @@ export function timeWeightedReturn(values: DayValue[], flows: Flow[]): number | 
     const prev = sorted[i - 1];
     const cur = sorted[i];
     const inflow = flows
-      .filter((f) => f.day > prev.day && f.day <= cur.day)
+      .filter((f) => f.day >= prev.day && f.day < cur.day)
       .reduce((s, f) => s + f.amountCents, 0);
     const start = prev.valueCents + inflow;
     if (start <= 0) return null;
@@ -43,7 +44,7 @@ export function moneyWeightedReturn(
 ): { yearly: number; period: number } | null {
   const total = years(start.day, end.day);
   if (total <= 0) return null;
-  const inside = flows.filter((f) => f.day > start.day && f.day <= end.day);
+  const inside = flows.filter((f) => f.day >= start.day && f.day < end.day);
   const gap = (r: number) =>
     start.valueCents * (1 + r) ** total +
     inside.reduce((s, f) => s + f.amountCents * (1 + r) ** years(f.day, end.day), 0) -

@@ -1,5 +1,8 @@
 import { GOALS, INVESTMENT_AUTOPILOT, PROFILE_QUESTIONS, RISK_LEVELS } from "@/config/investing";
 import { portfolioNote } from "@/insights/portfolio-note";
+import { RETURNS_NOTE } from "@/config/returns";
+import { formatReturn } from "@/insights/returns";
+import type { Returns } from "@/lib/investments/returns";
 import { formatBps, type InvestmentAccountView, type HoldingView } from "@/insights/investments";
 import type { FeeSummary } from "@/insights/investment-fees";
 import { classWords, listWords, type PortfolioReview } from "@/insights/portfolio-review";
@@ -442,8 +445,9 @@ export function overviewReply(snapshot: InvestmentSnapshot): Reply {
     review: snapshot.advice ? snapshot.review : null,
     ordersReady: snapshot.advice ? (plan?.orders.length ?? 0) : 0,
   });
+  const returned = returnsLine(snapshot.returns);
   return {
-    body: note.body,
+    body: returned ? `${note.body} ${returned}` : note.body,
     actions: [...(note.decision ? [rebalanceButton()] : []), SEE],
     refs: {
       ...(snapshot.advice && snapshot.review ? { advice: true as const } : {}),
@@ -461,6 +465,40 @@ export function autopilotReply(level: string | null): Reply {
   return {
     body: `${level ? `On your autopilot setting, here's` : "Here's"} what I do with your investments by myself. ${lines.join(" ")}`,
     actions: [SEE, { id: "open", label: "Change autopilot", kind: "link", href: "/settings" }],
+    refs: {},
+  };
+}
+
+// Spec step 156: one line on how they've done over the longest period Jane can measure.
+export function returnsLine(returns: Returns): string | null {
+  const p = returns.periods.at(-1);
+  if (!p || p.timeWeighted === null) return null;
+  const money =
+    p.moneyWeighted === null ? "" : ` (your own money: ${formatReturn(p.moneyWeighted)})`;
+  const mix =
+    p.benchmark === null
+      ? ""
+      : `, against ${formatReturn(p.benchmark)} for a similar mix of index funds`;
+  const paid =
+    p.incomeCents > 0 ? `, and paid ${formatCents(p.incomeCents)} in dividends and interest` : "";
+  return `${p.label}, what you own returned ${formatReturn(p.timeWeighted)}${money}${mix}${paid}.`;
+}
+
+export function returnsReply(returns: Returns): Reply {
+  if (returns.periods.length === 0) {
+    return {
+      body: "I can't work out returns yet: I need at least two days of balances. I take a snapshot every day, so check back tomorrow.",
+      actions: [SEE],
+      refs: {},
+    };
+  }
+  const lines = returns.periods.map(
+    (p) =>
+      `- ${p.label}: ${p.timeWeighted === null ? "not known" : formatReturn(p.timeWeighted)}${p.moneyWeighted === null ? "" : `; your money ${formatReturn(p.moneyWeighted)}`}${p.benchmark === null ? "" : `; similar mix ${formatReturn(p.benchmark)}`}`,
+  );
+  return {
+    body: `${returnsLine(returns) ?? "Here's how they've done."}\n${lines.join("\n")}\n${RETURNS_NOTE}${returns.simulatedPrices ? " The prices are the demo price feed's (made up)." : ""}`,
+    actions: [SEE],
     refs: {},
   };
 }

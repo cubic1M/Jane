@@ -122,7 +122,7 @@ export async function loadReturns(
   const flows: Flow[] = transactions
     .filter((t) => MONEY_IN_SUBTYPES.includes(t.subtype) || MONEY_OUT_SUBTYPES.includes(t.subtype))
     .map((t) => ({ day: iso(t.date), amountCents: -t.amountCents }))
-    .filter((f) => firstSnapshot !== null && f.day > firstSnapshot);
+    .filter((f) => firstSnapshot !== null && f.day >= firstSnapshot);
 
   const shares = investments.byAssetClass.filter((c) => c.assetClass !== "other");
   const total = shares.reduce((s, c) => s + c.valueCents, 0);
@@ -135,7 +135,7 @@ export async function loadReturns(
       if (v !== null) values.push({ day, valueCents: v });
     }
     if (values.length < 2) return [];
-    const inside = flows.filter((f) => f.day > values[0].day && f.day <= end);
+    const inside = flows.filter((f) => f.day >= values[0].day && f.day < end);
     const mwr = moneyWeightedReturn(values[0], inside, values.at(-1)!);
     const benchmark =
       market && total > 0
