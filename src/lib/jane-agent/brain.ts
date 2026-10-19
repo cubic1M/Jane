@@ -9,6 +9,7 @@ import { inQuietHours, localTime } from "./quiet-hours";
 import type { Snapshot } from "./snapshot";
 import { MESSAGE_SOURCES, type MessageSource, type Trigger } from "./sources";
 import { bundleGroups, bundleOf } from "./bundle";
+import { holds } from "./attention";
 import type { Candidate, MessageKind } from "./types";
 
 // Jane's daily brain (spec step 82): decides what to say. Pure: the snapshot of the
@@ -106,8 +107,16 @@ export function plan(
 
   // Spec step 91: never what the person said not to suggest again.
   const never = new Set(snapshot.neverSuggest ?? []);
+  // Spec step 147: never a kind the person never acts on, and what isn't urgent waits for
+  // the hour they usually answer (never more than a day).
+  const stopped = new Set((snapshot.attention?.stopped ?? []).map((s) => s.source));
+  const clock = { now, timezone, trigger: settings.trigger };
   const fresh = candidates.filter(
-    (c) => !seen.has(c.dedupeKey) && !never.has(`message:${c.dedupeKey}`),
+    (c) =>
+      !seen.has(c.dedupeKey) &&
+      !never.has(`message:${c.dedupeKey}`) &&
+      !stopped.has(c.source) &&
+      !holds(snapshot.attention, c.source, clock),
   );
   // Spec step 92: findings of one kind become one message, in the first one's place.
   const behind = new Map<string, PlannedMessage[]>();

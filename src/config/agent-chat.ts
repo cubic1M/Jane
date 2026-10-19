@@ -42,6 +42,8 @@ export const CHAT_SOURCE_LIMITS: Readonly<Record<string, number>> = {
   billpay: 1,
   // Spec step 146.
   health: 1,
+  // Spec step 147.
+  attention: 1,
   // Spec step 128 on.
   investments: 3,
 };
@@ -124,6 +126,8 @@ export const MESSAGE_PRIORITY = {
   billpay: 87,
   // Spec step 146: the money health score, after what needs the person.
   health: 28,
+  // Spec step 147: a kind Jane stopped bringing up, said once.
+  attention: 30,
   review: 900,
   // Spec step 128: what's in investment accounts, the first time Jane sees it.
   investments: 32,

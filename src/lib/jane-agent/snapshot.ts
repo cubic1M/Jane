@@ -11,6 +11,8 @@ import { loadChanges, type ChangeView } from "@/lib/changes";
 import { lastControllerRun, type LastRun } from "@/lib/controller-log";
 import { loadBillPay, type BillPayView } from "@/lib/money-movement/bill-pay";
 import { healthFor, type HealthView } from "@/lib/health-score";
+import type { Attention } from "./attention";
+import { loadAttention } from "./attention-load";
 import { moneyPartnerFor } from "@/lib/money-movement/partner";
 import { latestPaycheckPlan, type PaycheckPlanView } from "@/lib/money-movement/paycheck";
 import { lifeGuessesFor } from "@/lib/life-guesses";
@@ -109,6 +111,9 @@ export type Snapshot = {
   billPay?: BillPayView | null;
   // Spec step 146: the money health score this month. Optional, like changes.
   health?: HealthView | null;
+  // Spec step 147: when the person answers, and what Jane stopped bringing up. Optional,
+  // like changes.
+  attention?: Attention;
   // Spec step 128 on: what's in investment accounts.
   investments?: InvestmentSnapshot;
   // Spec step 91: suggestions the person said never to make again (preference keys);
@@ -285,5 +290,6 @@ export async function loadSnapshot(
     upkeep: await loadUpkeep(userId, { client, now }),
     investments: await loadInvestmentSnapshot(userId, { client, now }),
     neverSuggest: [...never],
+    attention: await loadAttention(userId, { client, now, timezone: user?.timezone ?? null }),
   };
 }

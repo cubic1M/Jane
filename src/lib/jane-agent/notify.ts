@@ -19,6 +19,8 @@ import { sendEmail } from "@/lib/email";
 import { enqueueJob, runJob } from "@/lib/jobs";
 import { pushEnabled, sendPush, type PushMessage } from "@/lib/push";
 import { renderChatEmail, type EmailMessage } from "./notify-email";
+import { alwaysSaid, sourceOf, type Attention } from "./attention";
+import { loadAttention } from "./attention-load";
 import { chatNotifyPrefs, notifiesKind, type ChatNotifyPrefs } from "./notify-prefs";
 import { inQuietHours } from "./quiet-hours";
 import type { Trigger } from "./sources";
@@ -39,6 +41,8 @@ const DAY_MS = 24 * HOUR_MS;
 // What a notification needs of a message.
 export type Notifiable = {
   id: string;
+  // Spec step 147: its source, for what's urgent.
+  dedupeKey?: string;
   kind: string;
   body: string;
   refs: unknown;
@@ -84,6 +88,32 @@ export function chatPushMessage(message: Notifiable, now: Date): PushMessage {
   };
 }
 
+// Spec step 147: several things that aren't urgent go out as one notification, opening the
+// chat, instead of one each.
+export function bundledPushMessage(messages: Notifiable[]): PushMessage {
+  return {
+    title: "Jane",
+    body: trimBody(`${messages.length} things for you. ${messages[0].body}`),
+    url: "/chat",
+    tag: "jane-bundle",
+  };
+}
+
+// Urgent: alerts, deadlines and bills (src/config/attention.ts), never bundled or held back
+// from a channel.
+const urgent = (m: Notifiable) => alwaysSaid(sourceOf(m.dedupeKey ?? ":"));
+
+// Spec step 147: for someone who wants both, what isn't urgent goes only the way they
+// answer (learned from their answers); urgent things go both ways.
+export function channelFor(
+  m: Notifiable,
+  prefs: ChatNotifyPrefs,
+  attention: Pick<Attention, "channel"> | null,
+): ChatNotifyPrefs["channel"] {
+  if (prefs.channel !== "both" || !attention?.channel || urgent(m)) return prefs.channel;
+  return attention.channel;
+}
+
 // Which messages may go out, most important first: kinds the person wants, and never one
 // about an alert (alerts have their own delivery, preferences and cap in
 // src/lib/alerts.ts, so they aren't sent twice).
@@ -115,6 +145,7 @@ type DeliverOptions = Options & {
 
 const MESSAGE_FIELDS = {
   id: true,
+  dedupeKey: true,
   kind: true,
   body: true,
   refs: true,
@@ -169,6 +200,15 @@ export async function deliverChatNotifications(
   ]);
   const due = chooseToNotify(waiting, prefs);
   let room = CHAT_NOTIFY_DAILY_LIMIT - sentToday;
+  // Spec step 147: which way this person answers, for what isn't urgent.
+  const attention =
+    prefs.channel === "both"
+      ? await loadAttention(userId, { client, now, timezone: user.timezone })
+      : null;
+  const wants = (m: Notifiable, via: "push" | "email") => {
+    const channel = channelFor(m, prefs, attention);
+    return channel === via || channel === "both";
+  };
 
   // Takes a message for one channel, only if nobody else has meanwhile.
   const claim = async (m: Notifiable, via: Channel) =>
@@ -202,19 +242,32 @@ export async function deliverChatNotifications(
   const pushedIds = new Set<string>();
   if (prefs.channel !== "email" && pushEnabled() && (await db.pushSubscriptions.count()) > 0) {
     pushWorks = true;
-    for (const m of due.filter((d) => d.notifiedVia === null)) {
+    const toPush = due.filter((d) => d.notifiedVia === null && wants(d, "push"));
+    // Urgent ones each on their own, with their buttons; the rest together (spec step 147).
+    const quiet = toPush.filter((m) => !urgent(m));
+    const groups = [
+      ...toPush.filter(urgent).map((m) => [m]),
+      ...(quiet.length > 1 ? [quiet] : quiet.map((m) => [m])),
+    ];
+    for (const group of groups) {
       if (room <= 0) break;
-      if (!(await claim(m, "push"))) continue;
-      if ((await push(userId, chatPushMessage(m, now), { client })) === 0) {
-        // No device took it (all gone): give it back for email.
-        await unclaim(m);
+      const claimed: Notifiable[] = [];
+      for (const m of group.slice(0, room)) if (await claim(m, "push")) claimed.push(m);
+      if (claimed.length === 0) continue;
+      const message =
+        claimed.length === 1 ? chatPushMessage(claimed[0], now) : bundledPushMessage(claimed);
+      if ((await push(userId, message, { client })) === 0) {
+        // No device took it (all gone): give them back for email.
+        for (const m of claimed) await unclaim(m);
         pushWorks = false;
         break;
       }
-      pushedIds.add(m.id);
-      pushed += 1;
-      room -= 1;
-      await record(m, "push");
+      for (const m of claimed) {
+        pushedIds.add(m.id);
+        pushed += 1;
+        room -= 1;
+        await record(m, "push");
+      }
     }
   }
 
@@ -227,6 +280,8 @@ export async function deliverChatNotifications(
   for (const m of due) {
     if (batch.length >= CHAT_EMAIL_MAX_MESSAGES) break;
     if (pushedIds.has(m.id) || m.createdAt.getTime() > unreadSince) continue;
+    // Spec step 147: what isn't urgent goes only the way they answer, when Jane knows it.
+    if (pushWorks && !wants(m, "email")) continue;
     // A message already pushed (to someone who wants both) doesn't count twice.
     if (m.notifiedVia === null) {
       if (room <= 0) continue;
