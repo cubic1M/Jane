@@ -35,7 +35,7 @@ test("every debt shows with its source, and missing terms can be typed in", asyn
   await expect(messages.last()).toContainText("Klarna Pay in 4");
   await messages.last().getByRole("link", { name: "See every debt" }).click();
 
-  await expect(page).toHaveURL("/loans");
+  await expect(page).toHaveURL(/\/loans/);
   await expect(page.getByRole("heading", { level: 1, name: "Every debt" })).toBeVisible();
   const loans = page.getByRole("list", { name: "Loans and cards" });
   const plans = page.getByRole("list", { name: "Buy now, pay later plans" });

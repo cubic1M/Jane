@@ -4,6 +4,7 @@ import type { PrismaClient } from "@/generated/prisma/client";
 import { loadInsightTransactions } from "@/insights/load";
 import { loadAffordNumbers } from "@/lib/afford";
 import { autopilotOf } from "@/lib/autopilot";
+import { loadChanges } from "@/lib/changes";
 import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
 import { loadDebts } from "@/lib/debts";
@@ -27,6 +28,7 @@ import {
   whatDidReply,
   type Reply,
 } from "./replies";
+import { changesReply } from "./replies-changes";
 import { loadSnapshot } from "./snapshot";
 
 // Answers a typed message by rules (spec step 84): loads only what the intent needs, with
@@ -81,6 +83,8 @@ export async function answerByRules(
       const home = await homeSummary(userId, { client, now });
       return safeReply(home?.safeToSpend ?? null);
     }
+    case "changes":
+      return changesReply(await loadChanges(userId, { client, now }));
     case "what_did":
       return whatDidReply(await whatJaneDid(userId, { client, now }));
     case "act":
