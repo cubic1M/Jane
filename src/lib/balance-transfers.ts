@@ -2,7 +2,8 @@ import type { PrismaClient } from "@/generated/prisma/client";
 import { track } from "@/lib/analytics";
 import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
-import { loadDebts } from "@/lib/debts";
+import { debtsOr, loadDebts } from "@/lib/debts";
+import type { DebtBook } from "@/insights/debts";
 import { addDeadline, markDeadlineDone } from "@/lib/deadlines";
 import { formatCents } from "@/lib/money";
 import { lenderPartnerFor, type TransferQuote } from "@/lib/refinance";
@@ -89,13 +90,13 @@ export type Transfers = {
 
 export async function loadTransfers(
   userId: string,
-  { client = defaultClient, now = new Date() }: Options = {},
+  { client = defaultClient, now = new Date(), book: given }: Options & { book?: DebtBook } = {},
 ): Promise<Transfers> {
   const db = scopedFor(userId, client);
   const [found, row, book, rows] = await Promise.all([
     lenderPartnerFor(userId, { client }),
     db.refinanceChecks.findFirst({ select: { transfers: true } }),
-    loadDebts(userId, { client, now }),
+    debtsOr(given, userId, { client, now }),
     db.balanceTransfers.findMany({
       select: SELECT,
       orderBy: [{ status: "asc" }, { promoEndsOn: "asc" }],
