@@ -180,6 +180,10 @@ export const ACTION_IDS = [
   "welcome.tour",
   // One autopilot, every sector (spec step 141).
   "autopilot.sector_set",
+  // Money that moves itself (spec step 144).
+  "paycheck.move",
+  "paycheck.skip",
+  "paycheck.undo",
 ] as const;
 export type ActionId = (typeof ACTION_IDS)[number];
 
@@ -311,6 +315,8 @@ export type MessageRefs = {
   // Spec step 101: a budget tune-up's month (YYYY-MM), and a transfer to count toward a goal.
   tuneUpMonth?: string;
   transactionId?: string;
+  // Spec step 144: a paycheck's plan.
+  paycheckPlanId?: string;
   // Spec step 141: a sector's autopilot change typed in the chat, set on "Set it".
   sectorChange?: {
     sector: string;

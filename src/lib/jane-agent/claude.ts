@@ -126,6 +126,7 @@ const STATUS: Record<string, string> = {
   autopilot_settings: "Checking what I may do by myself…",
   nightly_log: "Looking at last night's checks…",
   priorities: "Working out what matters most…",
+  money_moves: "Checking what money moved…",
   propose_action: "Getting a button ready…",
   show_block: "Drawing it…",
 };
