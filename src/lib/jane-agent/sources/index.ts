@@ -10,6 +10,7 @@ import { setupSource } from "./setup";
 import { stepsSource } from "./steps";
 import { thingsSource } from "./things";
 import { changesSource } from "./changes";
+import { lifeSource } from "./life";
 import { investmentsSource } from "./investments";
 import { insuranceSource } from "./insurance";
 
@@ -30,6 +31,8 @@ export const MESSAGE_SOURCES: readonly MessageSource[] = [
   thingsSource,
   // Spec step 97.
   changesSource,
+  // Spec step 100.
+  lifeSource,
   // Spec step 128 on.
   investmentsSource,
   // Insurance (spec Phase X).

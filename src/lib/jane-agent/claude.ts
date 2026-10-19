@@ -94,6 +94,7 @@ const STATUS: Record<string, string> = {
   finding_details: "Looking into it…",
   subscriptions: "Checking your subscriptions…",
   recent_changes: "Looking at what changed…",
+  life_events: "Looking at your checklists…",
   propose_action: "Getting a button ready…",
 };
 export const statusFor = (tool: string) =>

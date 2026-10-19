@@ -4,8 +4,12 @@ import { demoInvestments, noInvestments } from "@/lib/investments/__fixtures__/d
 
 vi.mock("@/lib/session", () => ({ requireUser: vi.fn() }));
 vi.mock("@/lib/investments/holdings", () => ({ loadInvestments: vi.fn() }));
+vi.mock("@/lib/investments/profile", () => ({ profileOf: vi.fn() }));
 
 import { loadInvestments } from "@/lib/investments/holdings";
+import { profileOf } from "@/lib/investments/profile";
+import { EMPTY_ANSWERS, type ProfileAnswers } from "@/planning/investor-profile";
+import { profileReply } from "./replies";
 import { gather } from "../brain";
 import { parseIntent } from "../intents";
 import type { Snapshot } from "../snapshot";
@@ -39,6 +43,7 @@ describe("investment questions, by rules", () => {
     "can I afford $500 for my brokerage fees",
     "how much did I spend on food",
     "cancel Hulu",
+    "change my goals",
   ])("leaves %j to the other rules", (text) => {
     expect(parseIntent(text, ASOF).kind).not.toBe("investments");
   });
@@ -79,28 +84,29 @@ describe("holdingsReply", () => {
   });
 });
 
+const base = {
+  timezone: "America/New_York",
+  asOf: ASOF,
+  weekStart: ASOF,
+  safeToSpend: null,
+  comingUp: [],
+  waitingOnYou: [],
+  findings: [],
+  plan: { items: 0, annualSavingsCents: 0, safeItems: 0 },
+  ruleApprovals: [],
+  finished: [],
+  deadlines: [],
+  budgetsOver: [],
+  goalsBehind: [],
+  urgentAlerts: [],
+  budgetProgress: [],
+  autopilot: "safe",
+  setupProposals: [],
+  agentSteps: [],
+  assetPrompts: [],
+} as Snapshot;
+
 describe("the investments message", () => {
-  const base = {
-    timezone: "America/New_York",
-    asOf: ASOF,
-    weekStart: ASOF,
-    safeToSpend: null,
-    comingUp: [],
-    waitingOnYou: [],
-    findings: [],
-    plan: { items: 0, annualSavingsCents: 0, safeItems: 0 },
-    ruleApprovals: [],
-    finished: [],
-    deadlines: [],
-    budgetsOver: [],
-    goalsBehind: [],
-    urgentAlerts: [],
-    budgetProgress: [],
-    autopilot: "safe",
-    setupProposals: [],
-    agentSteps: [],
-    assetPrompts: [],
-  } as Snapshot;
   const now = new Date("2026-10-19T13:00:00Z");
 
   it("says once that Jane can see what's in the accounts", () => {
@@ -112,6 +118,8 @@ describe("the investments message", () => {
           totalCents: data.totalCents,
           holdingCount: data.holdingCount,
           accounts: data.accounts,
+          advice: false,
+          profile: EMPTY_ANSWERS,
         },
       },
       now,
@@ -132,7 +140,16 @@ describe("the investments message", () => {
     expect(investmentsSource.gather(base, {} as never)).toEqual([]);
     expect(
       investmentsSource.gather(
-        { ...base, investments: { totalCents: 100, holdingCount: 0, accounts: [] } },
+        {
+          ...base,
+          investments: {
+            totalCents: 100,
+            holdingCount: 0,
+            accounts: [],
+            advice: true,
+            profile: EMPTY_ANSWERS,
+          },
+        },
         {} as never,
       ),
     ).toEqual([]);
@@ -181,6 +198,149 @@ describe("Claude's holdings tool", () => {
     );
     expect(JSON.parse(out.content)).toEqual({
       note: "No investment or retirement accounts are linked.",
+    });
+  });
+});
+
+// Spec step 129: what the investments are for.
+const FULL: ProfileAnswers = {
+  age: 45,
+  ageOn: "2026-10-19",
+  horizon: "10_to_20",
+  dropReaction: "worry",
+  goals: ["retirement"],
+  answeredAt: new Date("2026-10-19T12:00:00Z"),
+  updatedAt: new Date("2026-10-19T12:00:00Z"),
+};
+
+describe("investor-profile questions, by rules", () => {
+  it.each([
+    "what's my risk profile",
+    "my risk tolerance",
+    "how much risk should I take",
+    "change my investing goals",
+    "update my investor profile",
+    "change my risk",
+    "answer the questions",
+  ])("reads %j as the profile", (text) => {
+    expect(parseIntent(text, ASOF)).toEqual({
+      kind: "investments",
+      topic: "profile",
+      account: null,
+    });
+  });
+});
+
+describe("profileReply", () => {
+  it("asks the next question, with its answer buttons, until all four are in", () => {
+    const first = profileReply(EMPTY_ANSWERS, ASOF);
+    expect(first.body).toMatch(/^Before I check whether your investments fit you/);
+    expect(first.refs).toEqual({ investQuestion: "age", note: "1 of 4: How old are you?" });
+    expect(first.actions.map((a) => a.label)).toEqual([
+      "Under 30",
+      "30s",
+      "40s",
+      "50s",
+      "60 or over",
+      "Answer on the profile page",
+    ]);
+    expect(first.actions[0].id).toBe("invest.answer.1");
+    const third = profileReply({ ...FULL, dropReaction: null, goals: [] }, ASOF);
+    expect(third.body).toMatch(/^You've answered 2 of 4/);
+    expect(third.refs.note).toBe(
+      "3 of 4: If your investments fell 20% in a month, what would you do?",
+    );
+  });
+
+  it("says the level, why, and where to change it once answered", () => {
+    const reply = profileReply(FULL, ASOF);
+    expect(reply.body).toBe(
+      "Your investor profile: Moderate: you'd worry, but wait it out after a drop, so less risk than your timeline allows. A balance of growth and steadiness. Age 45; the money is for: Retirement.",
+    );
+    expect(reply.actions).toEqual([
+      { id: "open", label: "Change it", kind: "link", href: "/investments/profile" },
+    ]);
+    expect(profileReply(FULL, "2027-11-01").body).toMatch(/It's been a year/);
+  });
+});
+
+describe("the investor-profile question in the chat", () => {
+  const data = demoInvestments();
+  const inv = (advice: boolean, profile: ProfileAnswers) => ({
+    totalCents: data.totalCents,
+    holdingCount: data.holdingCount,
+    accounts: data.accounts,
+    advice,
+    profile,
+  });
+  const ask = (advice: boolean, profile: ProfileAnswers, asOf = ASOF) =>
+    investmentsSource
+      .gather({ ...base, asOf, investments: inv(advice, profile) }, {} as never)
+      .filter((c) => c.kind === "decision");
+
+  it("asks in demo advice mode, once there are holdings, until all four are in", () => {
+    const [message] = ask(true, EMPTY_ANSWERS);
+    expect(message).toMatchObject({
+      dedupeKey: "profile",
+      priority: MESSAGE_PRIORITY.investment_profile,
+      refs: { investQuestion: "age" },
+    });
+    expect(message.actions.at(-1)?.id).toBe("snooze");
+    expect(ask(true, { ...FULL, goals: [] })[0].refs.investQuestion).toBe("goal");
+    expect(ask(true, FULL)).toEqual([]);
+  });
+
+  it("never asks real accounts, which get no advice", () => {
+    expect(ask(false, EMPTY_ANSWERS)).toEqual([]);
+  });
+
+  it("goes through all four again a year after the last change", () => {
+    const [message] = ask(true, FULL, "2027-10-20");
+    expect(message).toMatchObject({
+      dedupeKey: "profile:2027",
+      refs: { investQuestion: "age", investAgain: true },
+    });
+  });
+});
+
+describe("Claude's investor_profile tool", () => {
+  it("says it isn't finished, so nothing is recommended from it", async () => {
+    vi.mocked(profileOf).mockResolvedValue({ ...FULL, goals: [] });
+    const out = await runInvestmentTool(
+      "u",
+      "investor_profile",
+      {},
+      {
+        client: {} as PrismaClient,
+        now: new Date("2026-10-19T12:00:00Z"),
+      },
+    );
+    expect(JSON.parse(out.content)).toMatchObject({
+      complete: false,
+      answered: 3,
+      nextQuestion: "What's this money mostly for?",
+    });
+  });
+
+  it("gives the level and the answers once complete", async () => {
+    vi.mocked(profileOf).mockResolvedValue(FULL);
+    const out = await runInvestmentTool(
+      "u",
+      "investor_profile",
+      {},
+      {
+        client: {} as PrismaClient,
+        now: new Date("2026-10-19T12:00:00Z"),
+      },
+    );
+    expect(JSON.parse(out.content)).toEqual({
+      complete: true,
+      riskLevel: "Moderate",
+      why: "Moderate: you'd worry, but wait it out after a drop, so less risk than your timeline allows.",
+      age: 45,
+      needsTheMoney: "In 10 to 20 years",
+      goals: ["Retirement"],
+      answeredOverAYearAgo: false,
     });
   });
 });

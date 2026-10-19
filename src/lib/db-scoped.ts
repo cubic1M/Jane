@@ -122,10 +122,14 @@ export function scopedFor(userId: string, client: PrismaClient = db) {
     chatReplyLinks: scoped.chatReplyLink,
     // "That's expected" on a change (spec step 97).
     changeAcks: scoped.changeAck,
+    // Answers to "Are you moving?" and the like (spec step 100).
+    lifeEventAnswers: scoped.lifeEventAnswer,
     // What's in investment accounts (spec step 128).
     securities: scoped.security,
     holdings: scoped.holding,
     investmentTransactions: scoped.investmentTransaction,
+    // What the investments are for (spec step 129).
+    investorProfiles: scoped.investorProfile,
     // Insurance (spec Phase X).
     insurancePolicies: scoped.insurancePolicy,
     insuranceProfiles: scoped.insuranceProfile,
