@@ -34,7 +34,21 @@ export type TaxIntent =
   // Spec step 126.
   | { kind: "tax"; ask: "file" }
   // Spec step 127.
-  | { kind: "tax"; ask: "standard_deduction" };
+  | { kind: "tax"; ask: "standard_deduction" }
+  // Spec step 124.
+  | { kind: "tax"; ask: "investments" }
+  // Spec step 165: a move ("from" null: the profile's state; month null: not said), an
+  // employer in another state, and the state taxes.
+  | {
+      kind: "tax";
+      ask: "move";
+      from: string | null;
+      to: string;
+      month: number | null;
+      day: number | null;
+    }
+  | { kind: "tax"; ask: "work_state"; state: string }
+  | { kind: "tax"; ask: "states" };
 
 const NUMBER_WORDS: Readonly<Record<string, number>> = {
   no: 0,
@@ -119,6 +133,34 @@ const FILE =
 // is the person's own question, answered from their estimate.
 const STANDARD =
   /\bshould (?:i|we) itemi[sz]e\b|\b(?:do|will|would) (?:i|we) itemi[sz]e\b|\bitemi[sz]e or not\b|\bitemi[sz]ing worth it\b/;
+// Capital gains, harvesting and asset location in general are the investments lane's
+// (step 135, ./investments/intents.ts); these are what step 124 adds.
+const INVESTMENT_TAX =
+  /\breali[sz]ed (?:gains?|losses?)\b|\bharvest (?:my )?loss(?:es)?\b|\bwash sales?\b|\b(?:gains|losses) (?:on|from) (?:my )?(?:sales|selling)\b/;
+// Spec step 165. State names only: two-letter codes are everyday words ("in", "or", "me").
+const STATE_NAMES = US_STATES.map((s) => s.name.toLowerCase()).join("|");
+const MONTHS = [
+  "january",
+  "february",
+  "march",
+  "april",
+  "may",
+  "june",
+  "july",
+  "august",
+  "september",
+  "october",
+  "november",
+  "december",
+];
+const MOVE = new RegExp(
+  `\\b(?:i|we) (?:moved|relocated)(?: from (${STATE_NAMES}))? to (${STATE_NAMES})(?: (?:in|on|at the (?:start|beginning|end) of) (${MONTHS.join("|")})(?: (\\d{1,2})(?:st|nd|rd|th)?)?)?(?: this year| last year)?$`,
+);
+const WORK_STATE = new RegExp(
+  `\\b(?:i|we) work (?:remotely |from home )?for (?:a |an )?(?:company|employer|firm|business) (?:based |that's |that is )?(?:in|out of) (${STATE_NAMES})\\b|\\bmy (?:employer|company|job) is (?:based )?in (${STATE_NAMES})\\b`,
+);
+const STATES_ASK =
+  /\bstate (?:income )?tax(?:es)?\b|\b(?:local|city) (?:income )?tax(?:es)?\b|\btax(?:es)? in (?:two|2|both|more than one|multiple) states\b|\bpart[- ]year (?:resident|return)\b|\bnonresident (?:return|tax)\b/;
 const PACK = /\btax(?:-| )?time pack\b|\btax pack\b|\byear-end pack\b/;
 
 function stateCode(words: string): string | null {
@@ -137,6 +179,23 @@ export function parseTaxIntent(text: string): TaxIntent | null {
     const n = /^\d+$/.test(kids[1]) ? Number(kids[1]) : NUMBER_WORDS[kids[1]];
     if (n !== undefined) return { kind: "tax", ask: "set_kids", count: n };
   }
+  const move = MOVE.exec(text);
+  if (move && (move[1] || move[3])) {
+    const to = stateCode(move[2])!;
+    const from = move[1] ? stateCode(move[1]) : null;
+    if (from !== to) {
+      return {
+        kind: "tax",
+        ask: "move",
+        from,
+        to,
+        month: move[3] ? MONTHS.indexOf(move[3]) + 1 : null,
+        day: move[4] ? Number(move[4]) : null,
+      };
+    }
+  }
+  const work = WORK_STATE.exec(text);
+  if (work) return { kind: "tax", ask: "work_state", state: stateCode(work[1] ?? work[2])! };
   const state = STATE.exec(text);
   if (state) {
     const code = stateCode(state[1]);
@@ -149,6 +208,7 @@ export function parseTaxIntent(text: string): TaxIntent | null {
   if (untag) return { kind: "tax", ask: "tag", target: untag[1].trim(), tag: null };
   if (PACK.test(text)) return { kind: "tax", ask: "pack" };
   if (STANDARD.test(text)) return { kind: "tax", ask: "standard_deduction" };
+  if (INVESTMENT_TAX.test(text)) return { kind: "tax", ask: "investments" };
   if (REFUND_ASK.test(text)) return { kind: "tax", ask: "refund" };
   if (FILE.test(text)) return { kind: "tax", ask: "file" };
   if (WITHHOLDING.test(text)) return { kind: "tax", ask: "withholding" };
@@ -160,6 +220,7 @@ export function parseTaxIntent(text: string): TaxIntent | null {
   if (SET_ASIDE.test(text)) return { kind: "tax", ask: "set_aside" };
   if (QUARTERLY_ASK.test(text)) return { kind: "tax", ask: "quarterly" };
   if (BRACKET.test(text)) return { kind: "tax", ask: "bracket" };
+  if (STATES_ASK.test(text)) return { kind: "tax", ask: "states" };
   if (ESTIMATE.test(text) || (OWE.test(text) && TAX_WORD.test(text))) {
     return { kind: "tax", ask: "estimate" };
   }
