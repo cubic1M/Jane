@@ -35,6 +35,7 @@ export const TABS: readonly Tab[] = [
     paths: [
       "/money",
       "/net-worth",
+      "/investments",
       "/loans",
       "/things",
       "/goals",

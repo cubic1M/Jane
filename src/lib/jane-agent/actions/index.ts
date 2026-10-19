@@ -16,6 +16,15 @@ import { cancelDone, offerAccept, offerDecline } from "./steps";
 import { goalStart } from "./goal";
 import { TAX_PROFILE_HANDLERS, taxFoundYes, taxIncomeAdd, taxIncomeNo, taxStateSet } from "./taxes";
 import { taxFormGot, taxTagNo, taxTagSet, taxTagYes } from "./tax-organizer";
+import {
+  investAnswer1,
+  investAnswer2,
+  investAnswer3,
+  investAnswer4,
+  investAnswer5,
+} from "./investments";
+import { changeBudget, changeExpected, changeLook } from "./changes";
+import { lifeNever, lifeNo, lifeYes } from "./life";
 
 // Every button action, by id (spec step 81). A new button is a new handler here; the
 // message sources offer it by id (src/lib/jane-agent/types.ts ACTION_IDS).
@@ -53,6 +62,20 @@ export const ACTION_HANDLERS: Readonly<Record<ActionId, ActionHandler>> = {
   "tax.tag_no": taxTagNo,
   "tax.tag_set": taxTagSet,
   "tax.form_got": taxFormGot,
+  // Investments (spec step 129 on).
+  "invest.answer.1": investAnswer1,
+  "invest.answer.2": investAnswer2,
+  "invest.answer.3": investAnswer3,
+  "invest.answer.4": investAnswer4,
+  "invest.answer.5": investAnswer5,
+  // Jane notices changes (spec step 97).
+  "change.look": changeLook,
+  "change.budget": changeBudget,
+  "change.expected": changeExpected,
+  // Life events spotted (spec step 100).
+  "life.yes": lifeYes,
+  "life.no": lifeNo,
+  "life.never": lifeNever,
 };
 
 const MESSAGE_ID = /^[a-z0-9]{1,40}$/i;

@@ -16,6 +16,7 @@ export const CLIENT_EVENTS = [
   "deadlines_viewed",
   // Taxes (spec step 118).
   "taxes_viewed",
+  "investments_viewed",
 ] as const;
 
 export type ClientEventName = (typeof CLIENT_EVENTS)[number];

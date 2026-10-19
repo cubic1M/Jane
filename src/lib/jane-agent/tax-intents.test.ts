@@ -44,7 +44,7 @@ describe("tax intents", () => {
 
   it.each([
     ["I live in Texas", "TX"],
-    ["we moved to new york", "NY"],
+    ["we live in new york", "NY"],
     ["I file in CA", "CA"],
   ])("%s sets the state", (text, state) => {
     expect(parse(text)).toEqual({ kind: "tax", ask: "set_state", state });

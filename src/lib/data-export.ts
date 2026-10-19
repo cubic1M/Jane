@@ -1,6 +1,7 @@
 import type { PrismaClient } from "@/generated/prisma/client";
 import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
+import { investmentsExport } from "@/lib/investments/holdings";
 import { teamAccessFor } from "@/lib/team-access-loader";
 
 // "Download my data": everything the app holds about one person, as JSON. Never another
@@ -46,6 +47,8 @@ export async function exportUserData(
     documents,
     deadlines,
     lifeEvents,
+    changeAcks,
+    lifeEventAnswers,
     janeMessages,
     teamAccess,
     taxProfile,
@@ -358,6 +361,10 @@ export async function exportUserData(
         completedAt: true,
       },
     }),
+    // Changes the person said were expected (spec step 97).
+    db.changeAcks.findMany({ select: { key: true, kind: true, createdAt: true } }),
+    // Answers to the life events Jane spotted (spec step 100).
+    db.lifeEventAnswers.findMany({ select: { kind: true, answer: true, createdAt: true } }),
     // Jane's chat (spec step 81): every message, with the buttons and what they answered.
     db.janeMessages.findMany({
       select: {
@@ -395,6 +402,8 @@ export async function exportUserData(
     }),
     db.taxForms.findMany({ select: { year: true, key: true, receivedAt: true } }),
   ]);
+  // What's in their investment accounts and its history (spec step 128).
+  const investments = await investmentsExport(userId, client);
 
   return {
     exportedAt: now.toISOString(),
@@ -433,7 +442,10 @@ export async function exportUserData(
     },
     deadlines,
     lifeEvents,
+    changeAcks,
+    lifeEventAnswers,
     janeMessages,
+    investments,
     teamAccess: teamAccess.map(({ at, who, what, why, actionId }) => ({
       at,
       who,

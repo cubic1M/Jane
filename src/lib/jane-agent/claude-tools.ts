@@ -2,6 +2,7 @@ import type Anthropic from "@anthropic-ai/sdk";
 import { BUDGET_SUGGESTION_MONTHS } from "@/config/budgets";
 import { MAX_AFFORD_CENTS } from "@/config/afford";
 import { CHAT_PRIMER_TOOLS, CHAT_RUNNERS_UP } from "@/config/agent-chat";
+import { LIFE_EVENTS } from "@/config/life-events";
 import type { PrismaClient } from "@/generated/prisma/client";
 import { budgetSummary } from "@/insights/budgets";
 import { loadInsightTransactions } from "@/insights/load";
@@ -13,13 +14,18 @@ import { CARD_SELECT, buildCard } from "@/lib/cards";
 import { comparisonFor } from "@/lib/compare";
 import { frequencyWords } from "@/lib/explain-input";
 import { scopedFor } from "@/lib/db-scoped";
+import { loadChanges } from "@/lib/changes";
 import { listGoals } from "@/lib/goals";
+import { lifeGuessesFor } from "@/lib/life-guesses";
+import { listLifeEvents } from "@/lib/life-events";
 import { homeSummary } from "@/lib/home";
 import { formatCents } from "@/lib/money";
 import { affordWindow } from "@/planning/afford";
 import type { Scored } from "@/planning/compare";
 import { ACTION_HANDLERS } from "./actions";
+import { INVESTMENT_TOOLS, isInvestmentTool, runInvestmentTool } from "./investments/tools";
 import { monthLabel, type Reply } from "./replies";
+import { guessLine } from "./replies-life";
 import { localTime } from "./quiet-hours";
 import { loadSnapshot } from "./snapshot";
 import { findingsSource } from "./sources/findings";
@@ -53,6 +59,7 @@ export const CHAT_PAGES: Readonly<Record<string, { label: string; href: string }
   afford: { label: "Can I afford this?", href: "/afford" },
   actions: { label: "See actions", href: "/actions" },
   net_worth: { label: "See net worth", href: "/net-worth" },
+  investments: { label: "See what you own", href: "/investments" },
   settings: { label: "Settings", href: "/settings" },
   // Taxes (spec steps 118–127).
   taxes: { label: "See your taxes", href: "/taxes" },
@@ -117,6 +124,18 @@ export const CHAT_TOOLS: Anthropic.Tool[] = [
     input_schema: noInput,
   },
   {
+    name: "recent_changes",
+    description:
+      "What changed lately in the person's money (spec step 97): bills or subscriptions whose price moved, new regular charges, paychecks late, smaller or from a new employer, categories running above their usual pace this month, and new fees. Each with what Jane is doing about it.",
+    input_schema: noInput,
+  },
+  {
+    name: "life_events",
+    description:
+      "Big life changes (spec step 100): moving, a new job or a new baby that Jane spotted from two or more signs in the person's money and hasn't asked about yet, and the life-event checklists they have going, with how far along each is.",
+    input_schema: noInput,
+  },
+  {
     name: "propose_action",
     description:
       "Offer the person a button under your answer. You can't do anything yourself; the person decides by tapping. Use it at most once: when your answer suggests something that can be done, or the person asked for it. Actions: finding.yes (Yes and No on one open finding; give finding_id from open_findings), plan.approve_safe (approve the plan's safe items together), goal.start (start a savings goal; give goal_name, goal_amount in dollars and goal_month as YYYY-MM within the next 12 months), open (a link to a page; give page).",
@@ -136,6 +155,8 @@ export const CHAT_TOOLS: Anthropic.Tool[] = [
   },
   // Taxes (spec steps 118–127): ./tax-tools.ts.
   ...TAX_TOOLS,
+  // Spec step 128 on.
+  ...INVESTMENT_TOOLS,
 ];
 
 const str = (value: unknown) => (typeof value === "string" ? value.trim() : "");
@@ -150,6 +171,7 @@ export async function runChatTool(
   if (FROM_ASK.some((t) => t.name === name))
     return runAskTool(userId, name, input, { client, now });
   if (isTaxTool(name)) return runTaxTool(userId, name, input, { client, now });
+  if (isInvestmentTool(name)) return runInvestmentTool(userId, name, input, { client, now });
   const cents: number[] = [];
   const money = (value: number) => {
     cents.push(Math.abs(value));
@@ -264,6 +286,44 @@ export async function runChatTool(
           nextDate: r.nextDate,
           aYear: money(r.annualCostCents),
           openFindingId: findingFor.get(r.key) ?? null,
+        })),
+      });
+    }
+    case "recent_changes": {
+      const changes = await loadChanges(userId, { client, now });
+      return out({
+        changes: changes.map((c) => ({
+          what: c.kind,
+          said: c.title,
+          date: c.date,
+          amount: money(c.amountCents),
+          usual: c.usualCents === null ? null : money(c.usualCents),
+          merchant: c.merchant,
+          category: c.category,
+          jane: c.finding?.handledBy
+            ? `already acting on it (${c.finding.handledBy === "rule" ? "autopilot" : "they said yes"})`
+            : c.finding
+              ? `can act on it with finding ${c.finding.id}`
+              : null,
+          openFindingId:
+            c.finding && (c.finding.status === "new" || c.finding.status === "shown")
+              ? c.finding.id
+              : null,
+        })),
+      });
+    }
+    case "life_events": {
+      const [guesses, checklists] = await Promise.all([
+        lifeGuessesFor(userId, { client, now }),
+        listLifeEvents(userId, { client }),
+      ]);
+      return out({
+        spotted: guesses.map(guessLine),
+        checklists: checklists.map((c) => ({
+          kind: c.kind,
+          started: c.startedOn,
+          done: c.completedAt !== null,
+          ticked: `${c.checkedItems.length} of ${LIFE_EVENTS[c.kind].items.length}`,
         })),
       });
     }

@@ -1,9 +1,13 @@
 import { createHash } from "node:crypto";
 import { PLAN_URGENT_FINDING_TYPES } from "@/config/plan";
+import { loadDetectionInput } from "@/detection/engine";
 import type { AlertType, FindingType, PrismaClient } from "@/generated/prisma/client";
 import type { ComingUpRow } from "@/insights/coming-up";
 import type { Deadline } from "@/insights/deadlines";
+import type { LifeGuess } from "@/insights/life-signals";
 import { isUrgent, newestUnreadAlerts } from "@/lib/alerts";
+import { loadChanges, type ChangeView } from "@/lib/changes";
+import { lifeGuessesFor } from "@/lib/life-guesses";
 import { comparisonsFor } from "@/lib/compare";
 import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
@@ -13,6 +17,7 @@ import { planFor } from "@/lib/plan";
 import { isNoRisk } from "@/lib/plan-links";
 import { savingsLine } from "@/lib/savings-text";
 import { recentRuleApprovals } from "@/lib/standing-rules";
+import { loadInvestmentSnapshot, type InvestmentSnapshot } from "./investments/snapshot";
 import { loadMore, type MoreSnapshot } from "./snapshot-more";
 import { loadTaxSnapshot, type TaxSnapshot } from "./snapshot-tax";
 
@@ -70,6 +75,13 @@ export type Snapshot = {
   urgentAlerts: { id: string; title: string; body: string }[];
   // Spec step 83: every budget this month, for "nearly over".
   budgetProgress: HomeSummary["budgetProgress"];
+  // Spec step 97: changes Jane noticed, not yet said to be expected. Optional so snapshots
+  // built by hand in tests needn't list them.
+  changes?: ChangeView[];
+  // Spec step 100: life events Jane spotted and hasn't asked about. Optional, like changes.
+  lifeGuesses?: LifeGuess[];
+  // Spec step 128 on: what's in investment accounts.
+  investments?: InvestmentSnapshot;
 } & MoreSnapshot &
   TaxSnapshot;
 
@@ -101,6 +113,15 @@ const ALERTS_LOOKED_AT = 10;
 // Urgent alerts Jane says another way: a deadline reminder as the deadline's heads-up, a
 // double charge as its finding (with Yes and No).
 const ALERTS_SAID_ELSEWHERE: readonly AlertType[] = ["deadline_soon", "duplicate_charge"];
+
+async function thinking(userId: string, client: PrismaClient, now: Date) {
+  const input = await loadDetectionInput(userId, { client, now });
+  const [changes, lifeGuesses] = await Promise.all([
+    loadChanges(userId, { client, now, input }),
+    lifeGuessesFor(userId, { client, now, input }),
+  ]);
+  return { changes, lifeGuesses };
+}
 
 export async function loadSnapshot(
   userId: string,
@@ -175,5 +196,8 @@ export async function loadSnapshot(
     budgetProgress: home.budgetProgress,
     ...(await loadMore(userId, { client })),
     ...(await loadTaxSnapshot(userId, { client, now })),
+    // Spec steps 97 and 100 read the same bank data, so it's loaded once for both.
+    ...(await thinking(userId, client, now)),
+    investments: await loadInvestmentSnapshot(userId, { client, now }),
   };
 }
