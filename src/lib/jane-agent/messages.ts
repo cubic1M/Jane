@@ -143,7 +143,9 @@ export async function closeSettled(
 ): Promise<number> {
   const db = scopedFor(userId, client);
   // Spec step 83: and the rest of Jane's questions answered on their own pages.
-  const elsewhere = await closeAnsweredElsewhere(userId, { client, now });
+  const elsewhere =
+    (await closeAnsweredElsewhere(userId, { client, now })) +
+    (await settleBundles(userId, { client, now }));
   const open = await db.janeMessages.findMany({
     where: { status: "open", kind: { in: ["decision", "reply"] } },
     select: { id: true, refs: true, actions: true },
@@ -198,6 +200,50 @@ export async function closeSettled(
       },
     });
     closed += count;
+  }
+  return closed;
+}
+
+// Spec step 92: a bundle loses the Yes of each finding answered some other way (its own
+// row is closed like any finding's), and is answered once none are left.
+async function settleBundles(
+  userId: string,
+  { client, now }: { client: PrismaClient; now: Date },
+): Promise<number> {
+  const db = scopedFor(userId, client);
+  const bundles = (
+    await db.janeMessages.findMany({
+      where: { status: "open", kind: "decision", dedupeKey: { contains: ":bundle:" } },
+      select: { id: true, refs: true, actions: true },
+    })
+  ).map((m) => ({ id: m.id, refs: parseRefs(m.refs), actions: parseActions(m.actions) }));
+  const keys = bundles.flatMap((b) => (b.refs.items ?? []).map((i) => i.dedupeKey));
+  if (keys.length === 0) return 0;
+  const stillOpen = new Set(
+    (
+      await db.janeMessages.findMany({
+        where: { dedupeKey: { in: keys }, status: "open" },
+        select: { dedupeKey: true },
+      })
+    ).map((r) => r.dedupeKey),
+  );
+  let closed = 0;
+  for (const bundle of bundles) {
+    const items = bundle.refs.items ?? [];
+    const keep = bundle.actions.filter((a) => {
+      const n = /^bundle\.(\d)$/.exec(a.id)?.[1];
+      return !n || stillOpen.has(items[Number(n) - 1]?.dedupeKey ?? "");
+    });
+    if (keep.length === bundle.actions.length) continue;
+    const done = !keep.some((a) => a.kind !== "link");
+    const { count } = await db.janeMessages.updateMany({
+      where: { id: bundle.id, status: "open" },
+      data: {
+        actions: keep as Prisma.InputJsonArray,
+        ...(done ? { status: "answered", answeredAt: now, answeredWith: "All answered" } : {}),
+      },
+    });
+    closed += done ? count : 0;
   }
   return closed;
 }

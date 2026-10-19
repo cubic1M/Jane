@@ -65,7 +65,8 @@ describe.runIf(url)("Jane's messages as notifications, against a real database",
     await client.account.create({
       data: { userId, source: "csv", name: "Checking", type: "depository", subtype: "checking" },
     });
-    for (const type of ["bank_fees", "bank_fees"] as const) {
+    // Two kinds, so each is its own message (spec step 92 bundles a kind together).
+    for (const type of ["bank_fees", "card_interest"] as const) {
       const f = findingOfType(type);
       await client.finding.create({
         data: {
