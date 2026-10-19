@@ -26,6 +26,7 @@ import {
   investAnswer3,
   investAnswer4,
   investAnswer5,
+  investRebalance,
 } from "./investments";
 import { changeBudget, changeExpected, changeLook } from "./changes";
 import { lifeNever, lifeNo, lifeYes } from "./life";
@@ -92,6 +93,7 @@ export const ACTION_HANDLERS: Readonly<Record<ActionId, ActionHandler>> = {
   "invest.answer.3": investAnswer3,
   "invest.answer.4": investAnswer4,
   "invest.answer.5": investAnswer5,
+  "invest.rebalance": investRebalance,
   // Jane notices changes (spec step 97).
   "change.look": changeLook,
   "change.budget": changeBudget,

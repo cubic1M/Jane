@@ -83,6 +83,8 @@ export const ACTION_IDS = [
   "invest.answer.3",
   "invest.answer.4",
   "invest.answer.5",
+  // Spec step 133: move to the recommended mix, through the brokerage partner.
+  "invest.rebalance",
   // Jane notices changes (spec step 97).
   "change.look",
   "change.budget",
@@ -175,6 +177,8 @@ export type MessageRefs = {
   // Jane is going through all four again (the yearly check).
   investQuestion?: string;
   investAgain?: true;
+  // Spec step 133: the rebalancing plan the button places, by its key.
+  rebalanceKey?: string;
   // Spec step 97: a change Jane noticed (src/insights/changes.ts), by its key; for a
   // category's pace, the budget "Set a budget" would set (cents a month).
   change?: { key: string; kind: string; category?: string; budgetCents?: number };

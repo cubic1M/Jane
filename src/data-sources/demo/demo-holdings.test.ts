@@ -8,6 +8,7 @@ import {
   DEMO_PAYCHECK_GROSS,
   demoHoldings,
   demoInvestmentTransactions,
+  demoOrderTransactions,
   demoSecurities,
 } from "./demo-holdings";
 
@@ -85,5 +86,71 @@ describe("the demo bank's investment transactions", () => {
         t.date <= "2026-10-24",
     );
     expect(after.length).toBeGreaterThan(0);
+  });
+});
+
+describe("simulated orders on the demo bank (spec step 133)", () => {
+  const brokerage = "demo-abc123-brokerage";
+  const orders = [
+    {
+      id: "o1",
+      accountRef: brokerage,
+      ticker: "PDIFX",
+      side: "sell" as const,
+      quantity: 100,
+      amountCents: 217_200,
+      day: "2026-10-18",
+    },
+    {
+      id: "o2",
+      accountRef: brokerage,
+      ticker: "KTBIX",
+      side: "buy" as const,
+      quantity: 200,
+      amountCents: 196_800,
+      day: "2026-10-18",
+    },
+  ];
+  const before = demoHoldings(DEMO, TODAY);
+  const after = demoHoldings(DEMO, TODAY, orders);
+  const total = (holdings: typeof before) =>
+    holdings
+      .filter((h) => h.account_id === brokerage)
+      .reduce((s, h) => s + Math.round(h.institution_value * 100), 0);
+  const of = (holdings: typeof before, id: string) =>
+    holdings.find((h) => h.account_id === brokerage && h.security_id === id);
+
+  it("keeps the account's total: cash takes the difference", () => {
+    expect(total(after)).toBe(total(before));
+    expect(Math.round(of(after, "demo-sec-cash")!.institution_value * 100)).toBe(
+      Math.round(of(before, "demo-sec-cash")!.institution_value * 100) + 217_200 - 196_800,
+    );
+  });
+
+  it("sells shares with their share of the cost basis, and buys new ones at cost", () => {
+    const pdifx = of(after, "demo-sec-pdifx")!;
+    expect(pdifx.quantity).toBeCloseTo(42.317, 6);
+    expect(pdifx.cost_basis).toBeCloseTo((3_640 * 42.317) / 142.317, 2);
+    expect(of(after, "demo-sec-ktbix")).toMatchObject({ quantity: 200, cost_basis: 1_968 });
+  });
+
+  it("drops a holding sold in full, and lists the orders as investment transactions", () => {
+    const all = demoHoldings(DEMO, TODAY, [
+      {
+        id: "o3",
+        accountRef: brokerage,
+        ticker: "KLCX",
+        side: "sell",
+        quantity: 7.5,
+        amountCents: 339_225,
+        day: "2026-10-18",
+      },
+    ]);
+    expect(of(all, "demo-sec-klcx")).toBeUndefined();
+    const rows = demoOrderTransactions(DEMO, orders, "2026-10-17", "2026-10-18");
+    expect(rows.map((r) => [r.investment_transaction_id, r.type, r.amount])).toEqual([
+      ["demo-abc123-order-o1", "sell", -2_172],
+      ["demo-abc123-order-o2", "buy", 1_968],
+    ]);
   });
 });

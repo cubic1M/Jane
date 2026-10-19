@@ -81,6 +81,7 @@ export function demoInvestmentSnapshot(over: Partial<InvestmentSnapshot> = {}): 
     },
     review: null,
     retirement: null,
+    rebalance: null,
     ...over,
   };
 }

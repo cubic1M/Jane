@@ -2,7 +2,10 @@ import Link from "next/link";
 import { connection } from "next/server";
 import { Suspense } from "react";
 import { AppHeader } from "@/components/app-header";
+import { SimulatedBanner } from "@/components/simulated-banner";
 import { ViewTracker } from "@/components/view-tracker";
+import { SIMULATED_PARTNER } from "@/config/brokerage";
+import { scopedFor } from "@/lib/db-scoped";
 import { formatBps, type HoldingView } from "@/insights/investments";
 import { loadInvestments } from "@/lib/investments/holdings";
 import { profileOf } from "@/lib/investments/profile";
@@ -73,7 +76,12 @@ function HoldingRow({ h }: { h: HoldingView }) {
 async function InvestmentsContent() {
   const user = await requireUser();
   await connection();
-  const [data, answers] = await Promise.all([loadInvestments(user.id), profileOf(user.id)]);
+  const [data, answers, simulated] = await Promise.all([
+    loadInvestments(user.id),
+    profileOf(user.id),
+    // Spec step 133: holdings shaped by simulated orders say so.
+    scopedFor(user.id).brokerageOrders.count({ where: { partner: SIMULATED_PARTNER } }),
+  ]);
   const profile = profileSummary(answers, data.asOf);
   const max = Math.max(1, ...data.months.map((m) => m.totalCents ?? 0));
 
@@ -81,6 +89,7 @@ async function InvestmentsContent() {
     <>
       <AppHeader user={user} />
       <ViewTracker event="investments_viewed" />
+      {simulated > 0 && <SimulatedBanner />}
       <div className="flex flex-col gap-2">
         <h1 className="text-3xl font-semibold tracking-tight">Investments</h1>
         <p className="text-zinc-600 dark:text-zinc-400">
