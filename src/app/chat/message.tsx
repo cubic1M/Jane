@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useActionState, useEffect, useState } from "react";
 import { DemoAdviceLabel } from "@/components/demo-advice-label";
 import type { MessageView } from "@/lib/jane-agent/view";
@@ -50,6 +51,12 @@ export function ChatMessageItem({ initial }: { initial: MessageView }) {
     error: null,
   });
   const message = state.message;
+  // Spec step 88: a tap that posted an answer (a clarifying question's button) reloads the
+  // chat so the answer shows under it.
+  const router = useRouter();
+  useEffect(() => {
+    if (state.postedAt) router.refresh();
+  }, [state.postedAt, router]);
   const undoExpired = useUndoTimer(message.undoUntil);
   const buttons = message.buttons.filter((b) => !(undoExpired && b.id.startsWith("undo.")));
 

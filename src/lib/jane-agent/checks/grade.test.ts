@@ -45,7 +45,7 @@ describe("fixedChecks", () => {
 
   it("fails the fallback, a misread, and a missing figure", () => {
     const checks = fixedChecks(
-      q("how much money do i have left", {
+      q("tell me a joke", {
         intent: "safe_to_spend",
         figures: (f) => [f.safeCents],
       }),

@@ -8,8 +8,6 @@ import type { PrismaClient } from "@/generated/prisma/client";
 import { budgetSummary } from "@/insights/budgets";
 import { loadInsightTransactions } from "@/insights/load";
 import { netWorth } from "@/insights/net-worth";
-import { loadDetectionInput } from "@/detection/engine";
-import { recurringCharges } from "@/detection/subscriptions";
 import { ASK_TOOLS, runAskTool, type ToolOutput } from "@/lib/ask/tools";
 import { CARD_SELECT, buildCard } from "@/lib/cards";
 import { comparisonFor } from "@/lib/compare";
@@ -30,10 +28,10 @@ import { isDebtTool, runDebtTool } from "./debt-tools-run";
 import { INVESTMENT_TOOLS, isInvestmentTool, runInvestmentTool } from "./investments/tools";
 import { monthLabel, type Reply } from "./replies";
 import { guessLine } from "./replies-life";
+import { loadRecurring } from "./recurring";
 import { weeklyReview } from "./replies-review";
-import { localTime } from "./quiet-hours";
 import { loadSnapshot } from "./snapshot";
-import { findingsSource } from "./sources/findings";
+import { findingCandidate } from "./sources/findings";
 import { TAX_TOOLS, isTaxTool, runTaxTool } from "./tax-tools";
 import { ACTION_IDS, type ActionId, type MessageAction } from "./types";
 
@@ -282,22 +280,9 @@ export async function runChatTool(
       });
     }
     case "subscriptions": {
-      const db = scopedFor(userId, client);
-      const [input, confirmed, findings] = await Promise.all([
-        loadDetectionInput(userId, { client, now }),
-        db.subscriptionChecks.findMany({
-          where: { isSubscription: true },
-          select: { merchantKey: true },
-        }),
-        db.findings.findMany({
-          where: { status: { in: ["new", "shown"] } },
-          select: { id: true, key: true },
-        }),
-      ]);
-      input.subscriptionMerchantKeys = confirmed.map((c) => c.merchantKey);
-      const findingFor = new Map(findings.map((f) => [f.key, f.id]));
+      const { charges } = await loadRecurring(userId, { client, now });
       return out({
-        charges: recurringCharges(input).map((r) => ({
+        charges: charges.map((r) => ({
           merchant: r.merchant,
           subscription: r.subscription,
           billed: frequencyWords(r.frequency),
@@ -305,7 +290,7 @@ export async function runChatTool(
           lastDate: r.lastDate,
           nextDate: r.nextDate,
           aYear: money(r.annualCostCents),
-          openFindingId: findingFor.get(r.key) ?? null,
+          openFindingId: r.openFindingId,
         })),
       });
     }
@@ -483,10 +468,7 @@ export async function proposeAction(
     const snapshot = await loadSnapshot(userId, { client, now });
     const finding = snapshot?.findings.find((f) => f.findingId === str(args.finding_id));
     if (!snapshot || !finding) return refuse("That isn't one of the person's open findings.");
-    const [candidate] = findingsSource.gather(
-      { ...snapshot, findings: [finding] },
-      { now, local: localTime(now, snapshot.timezone), trigger: "open" },
-    );
+    const candidate = findingCandidate(finding);
     return { ok: true, actions: candidate.actions, refs: candidate.refs, line: candidate.body };
   }
 

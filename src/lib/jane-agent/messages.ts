@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import { CHAT_PAGE_SIZE } from "@/config/agent-chat";
 import type {
   DecisionChoice,
@@ -11,7 +12,15 @@ import { scopedFor } from "@/lib/db-scoped";
 import type { PlannedMessage } from "./brain";
 import { localTime } from "./quiet-hours";
 import { closeAnsweredElsewhere } from "./settled";
-import { MESSAGE_SELECT, parseActions, parseRefs, toChatMessage, type ChatMessage } from "./types";
+import {
+  MESSAGE_SELECT,
+  parseActions,
+  parseRefs,
+  toChatMessage,
+  type ChatMessage,
+  type MessageAction,
+  type MessageRefs,
+} from "./types";
 
 // Reading and writing Jane's chat messages (spec step 81), always for one person.
 
@@ -236,4 +245,27 @@ export async function messageAboutFinding(
     select: { id: true },
   });
   return message?.id ?? null;
+}
+
+// Spec step 88: one of Jane's answers, stored under the message it answers (a typed
+// question, or a clarifying question's button). Read already: the person is looking.
+export async function storeReply(
+  userId: string,
+  reply: { body: string; actions: MessageAction[]; refs: MessageRefs },
+  { client = defaultClient, at }: { client?: PrismaClient; at: Date },
+): Promise<ChatMessage> {
+  const row = await scopedFor(userId, client).janeMessages.create({
+    data: {
+      userId,
+      kind: "reply",
+      body: reply.body,
+      refs: reply.refs as Prisma.InputJsonObject,
+      actions: reply.actions as Prisma.InputJsonArray,
+      dedupeKey: `reply:${randomUUID()}`,
+      createdAt: at,
+      readAt: at,
+    },
+    select: MESSAGE_SELECT,
+  });
+  return toChatMessage(row);
 }
