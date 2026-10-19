@@ -38,6 +38,8 @@ export const CHAT_SOURCE_LIMITS: Readonly<Record<string, number>> = {
   checked: 1,
   // Spec step 144.
   paycheck: 1,
+  // Spec step 145: one a day; the rest wait their turn.
+  billpay: 1,
   // Spec step 128 on.
   investments: 3,
 };
@@ -116,6 +118,8 @@ export const MESSAGE_PRIORITY = {
   checked: 25,
   // Spec step 144: a paycheck's plan, money in motion: right after deadlines.
   paycheck: 88,
+  // Spec step 145: a bill to pay on time, money in motion like a paycheck's plan.
+  billpay: 87,
   review: 900,
   // Spec step 128: what's in investment accounts, the first time Jane sees it.
   investments: 32,

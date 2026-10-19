@@ -83,6 +83,8 @@ export type Intent =
   | { kind: "priorities" }
   // Spec step 144: "where did my paycheck go?"
   | { kind: "paycheck" }
+  // Spec step 145: "are my bills paid?"
+  | { kind: "bills_paid" }
   // Spec step 141: one autopilot, every sector.
   | SectorIntent
   // Spec step 136: what a word means.
@@ -316,6 +318,8 @@ const REVIEW =
   /\b(?:weekly review|week in review|how was my week|how did my week go|recap(?: my| the| of my)? week|my week(?: so far)?)\b/;
 const PAYCHECK =
   /\bsplit my (?:paycheck|pay)\b|\bwhere (?:did|does) my (?:paycheck|pay) go\b|\bmy paycheck plan\b|\bwhat did you move\b/;
+const BILLS_PAID =
+  /\b(?:are|is) my (?:bills?|card|credit card|loan)(?: payments?)? (?:paid|covered|set|on time)\b|\bpay my (?:bills?|card|credit card)(?: on time)?\b|\bbills? (?:paid )?on time\b|\bbill pay\b/;
 const PRIORITIES =
   /\bwhat should i do (?:first|next|now)\b|\bwhat matters (?:most|now)\b|\bwhat'?s (?:most )?important\b|\bwhere (?:do|should) i start\b|\bmy (?:top )?priorities\b|\bnext best thing\b/;
 const CHECKED =
@@ -389,6 +393,7 @@ export function parseIntent(raw: string, asOf: string): Intent {
   if (CHECKED.test(text)) return { kind: "checked" };
   if (PRIORITIES.test(text)) return { kind: "priorities" };
   if (PAYCHECK.test(text)) return { kind: "paycheck" };
+  if (BILLS_PAID.test(text)) return { kind: "bills_paid" };
   const sector = parseSectorIntent(text);
   if (sector) return sector;
   if (SAVED.test(text)) return { kind: "saved" };

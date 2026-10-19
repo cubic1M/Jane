@@ -17,6 +17,7 @@ import { loadRebalance } from "@/lib/investments/rebalance";
 import { enqueueJob, runDueJobs } from "@/lib/jobs";
 import { runPaycheckPlan } from "@/lib/money-movement/paycheck";
 import { settleTransfers } from "@/lib/money-movement/transfers";
+import { runBillPay } from "@/lib/money-movement/bill-pay";
 import { runPlanUpkeep } from "@/lib/plan-upkeep";
 import { ITEM_STATUS, syncItem } from "@/lib/plaid/sync";
 import { scrub } from "@/lib/scrub";
@@ -131,18 +132,22 @@ const STEPS: Record<
     const plan = await runPaycheckPlan(userId, { client, now });
     const auto = plan?.moves.filter((m) => m.status === "auto").length ?? 0;
     const asked = plan?.moves.filter((m) => m.status === "asked").length ?? 0;
-    if (settled === 0 && auto === 0 && asked === 0) return { did: "Nothing to move.", changed: 0 };
+    const bills = await runBillPay(userId, { client, now });
+    if (settled === 0 && auto === 0 && asked === 0 && bills === 0) {
+      return { did: "Nothing to move.", changed: 0 };
+    }
     return {
       did: [
         settled > 0 ? `${plural(settled, "transfer")} went through` : null,
         auto > 0 ? `moved ${plural(auto, "part")} of a paycheck by myself` : null,
         asked > 0 ? `${plural(asked, "part")} of a paycheck to ask you about` : null,
+        bills > 0 ? `scheduled ${plural(bills, "bill payment")} on time` : null,
       ]
         .filter(Boolean)
         .join(", ")
         .replace(/^./, (c) => c.toUpperCase())
         .concat("."),
-      changed: settled + auto + asked,
+      changed: settled + auto + asked + bills,
     };
   },
 };
