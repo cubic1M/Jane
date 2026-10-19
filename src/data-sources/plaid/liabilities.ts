@@ -27,6 +27,10 @@ export type NormalizedLiability = {
   pastDueCents: number | null;
   ytdInterestPaidCents: number | null;
   description: string | null;
+  // Mortgages only (spec step 115); null for everything else.
+  hasPmi: boolean | null;
+  escrowBalanceCents: number | null;
+  hasPrepaymentPenalty: boolean | null;
 };
 
 // 15.24 (percent) -> 1524. Anything that can't be a real yearly rate is missing.
@@ -57,6 +61,9 @@ const EMPTY = {
   pastDueCents: null,
   ytdInterestPaidCents: null,
   description: null,
+  hasPmi: null,
+  escrowBalanceCents: null,
+  hasPrepaymentPenalty: null,
 } as const;
 
 export function normalizeLiabilities(liabilities: LiabilitiesObject): NormalizedLiability[] {
@@ -94,6 +101,10 @@ export function normalizeLiabilities(liabilities: LiabilitiesObject): Normalized
       pastDueCents,
       ytdInterestPaidCents: toCents(m.ytd_interest_paid),
       description: text(m.loan_type_description),
+      hasPmi: typeof m.has_pmi === "boolean" ? m.has_pmi : null,
+      escrowBalanceCents: toCents(m.escrow_balance),
+      hasPrepaymentPenalty:
+        typeof m.has_prepayment_penalty === "boolean" ? m.has_prepayment_penalty : null,
     });
   }
   for (const s of liabilities.student ?? []) {
