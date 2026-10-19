@@ -1,7 +1,8 @@
 import { defineConfig, devices } from "@playwright/test";
 import { E2E_AUTH_SECRET } from "./e2e/db";
 
-const PORT = 3000;
+// E2E_PORT lets several checkouts run the end-to-end tests at once.
+const PORT = Number(process.env.E2E_PORT ?? 3000);
 
 // Signed-in tests need a scratch database (see e2e/db.ts); the dev server gets it too.
 const scratchDatabase = process.env.E2E_DATABASE_URL;
@@ -23,7 +24,7 @@ export default defineConfig({
     { name: "mobile", use: { ...devices["Pixel 7"] } },
   ],
   webServer: {
-    command: "npm run dev",
+    command: `npm run dev -- -p ${PORT}`,
     url: `http://localhost:${PORT}/api/health`,
     // A running server may be pointed at another database, so never reuse one for
     // signed-in tests.
