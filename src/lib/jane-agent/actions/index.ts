@@ -15,6 +15,7 @@ import { setupAll, setupNo, setupYes } from "./setup";
 import { cancelDone, offerAccept, offerDecline } from "./steps";
 import { goalStart } from "./goal";
 import { TAX_PROFILE_HANDLERS, taxFoundYes, taxIncomeAdd, taxIncomeNo, taxStateSet } from "./taxes";
+import { taxFormGot, taxTagNo, taxTagSet, taxTagYes } from "./tax-organizer";
 
 // Every button action, by id (spec step 81). A new button is a new handler here; the
 // message sources offer it by id (src/lib/jane-agent/types.ts ACTION_IDS).
@@ -47,6 +48,11 @@ export const ACTION_HANDLERS: Readonly<Record<ActionId, ActionHandler>> = {
   "tax.income_add": taxIncomeAdd,
   "tax.income_no": taxIncomeNo,
   "tax.state_set": taxStateSet,
+  // Spec step 119.
+  "tax.tag_yes": taxTagYes,
+  "tax.tag_no": taxTagNo,
+  "tax.tag_set": taxTagSet,
+  "tax.form_got": taxFormGot,
 };
 
 const MESSAGE_ID = /^[a-z0-9]{1,40}$/i;
