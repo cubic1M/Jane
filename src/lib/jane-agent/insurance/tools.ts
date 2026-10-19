@@ -20,6 +20,7 @@ import { loadInsurance } from "@/lib/insurance/profile";
 import { listReadings } from "@/lib/insurance/readings";
 import { cardCover, conditionWords } from "@/lib/insurance/card-cover";
 import { latestLife } from "@/lib/insurance/life";
+import { listCoverChanges } from "@/lib/insurance/cover-changes";
 import { noteLines, readingLines } from "./reading-words";
 import { listBenefits, openEnrollmentAtWork, yearlyCost } from "@/lib/insurance/benefits";
 import { autopilotOf } from "@/lib/autopilot";
@@ -68,6 +69,12 @@ export const INSURANCE_TOOLS: Anthropic.Tool[] = [
     name: "insurance_life",
     description:
       "Life insurance sized for the person and applied for (spec step 153), demo advice only: the amount and term with the method (years of pay, debts, final expenses, schooling, less savings and cover they have), the term quotes, and where an application stands (health questions, the carrier's offer or review). Jane never applies or buys without the person's tap; to start, they tap Apply in the chat or on /insurance/life.",
+    input_schema: noInput,
+  },
+  {
+    name: "insurance_cover_changes",
+    description:
+      "Insurance changes after a life event (spec step 154): a car bought, a move, a new baby, a marriage or a new job, and the changes Jane prepared for each (add the car, update the address, add a spouse or the baby, review life cover or benefits), whether each is waiting for the person, made (with any new price and the carrier's confirmation) or turned down. Jane makes them with the carrier only on the person's tap, except an address change at the 'everything allowed' level.",
     input_schema: noInput,
   },
   {
@@ -137,6 +144,24 @@ export async function runInsuranceTool(
                 }
               : application.decision,
         },
+      }),
+      cents,
+    };
+  }
+  if (name === "insurance_cover_changes") {
+    const changes = await listCoverChanges(userId, { client });
+    return {
+      content: JSON.stringify({
+        changes: changes.map((c) => ({
+          event: c.event,
+          change: c.change,
+          status: c.status,
+          ...(c.newPremiumCents !== null ? { newPrice: money(c.newPremiumCents) } : {}),
+          ...(c.confirmation ? { confirmation: c.confirmation } : {}),
+          ...(c.doneBy
+            ? { madeBy: c.doneBy === "autopilot" ? "Jane, on autopilot" : "the person" }
+            : {}),
+        })),
       }),
       cents,
     };

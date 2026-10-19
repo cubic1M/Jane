@@ -10,6 +10,7 @@ import { BENEFITS_LINK, QUESTIONS, foundBody } from "../insurance/benefit-words"
 import { trackerActions, trackerBody } from "../insurance/claim-words";
 import { readingBody, readingLink } from "../insurance/reading-words";
 import { DEPENDANTS_QUESTION, sizedActions, sizedBody } from "../insurance/life-words";
+import { coverActions, coverBody, coverEventRef } from "../insurance/cover-words";
 import type { InsuranceSnapshot } from "../insurance/snapshot";
 import type { Candidate } from "../types";
 import { shortDate, snoozeButton, type MessageSource } from "./source";
@@ -296,6 +297,23 @@ function lifeMessages(insurance: InsuranceSnapshot, asOf: string): Candidate[] {
   ];
 }
 
+// Spec step 154: one message per life event, asking once about every change it needs.
+function coverChangeMessages(insurance: InsuranceSnapshot): Candidate[] {
+  const groups = new Map<string, NonNullable<InsuranceSnapshot["coverChanges"]>>();
+  for (const change of insurance.coverChanges ?? []) {
+    const ref = coverEventRef(change.event, change.eventKey);
+    groups.set(ref, [...(groups.get(ref) ?? []), change]);
+  }
+  return [...groups].map(([ref, changes]) => ({
+    kind: "decision",
+    body: coverBody(changes[0].event, changes, insurance.policies, insurance.canQuote),
+    refs: { coverEvent: ref },
+    actions: coverActions(changes, insurance.canQuote),
+    dedupeKey: `cover:${ref}`,
+    priority: MESSAGE_PRIORITY.cover_change,
+  }));
+}
+
 export const insuranceSource: MessageSource = {
   key: "insurance",
   gather: (snapshot) => {
@@ -311,6 +329,7 @@ export const insuranceSource: MessageSource = {
       ...benefitMessages(insurance),
       ...readingMessages(insurance),
       ...lifeMessages(insurance, snapshot.asOf),
+      ...coverChangeMessages(insurance),
     ];
   },
 };
