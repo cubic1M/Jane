@@ -1,3 +1,4 @@
+import { INSURANCE_TOOLS, isInsuranceTool, runInsuranceTool } from "./insurance/tools";
 import type Anthropic from "@anthropic-ai/sdk";
 import { BUDGET_SUGGESTION_MONTHS } from "@/config/budgets";
 import { MAX_AFFORD_CENTS } from "@/config/afford";
@@ -17,6 +18,7 @@ import { scopedFor } from "@/lib/db-scoped";
 import { loadChanges } from "@/lib/changes";
 import { listGoals } from "@/lib/goals";
 import { lifeGuessesFor } from "@/lib/life-guesses";
+import { loadUpkeep } from "@/lib/plan-upkeep";
 import { listLifeEvents } from "@/lib/life-events";
 import { homeSummary } from "@/lib/home";
 import { formatCents } from "@/lib/money";
@@ -26,6 +28,7 @@ import { ACTION_HANDLERS } from "./actions";
 import { INVESTMENT_TOOLS, isInvestmentTool, runInvestmentTool } from "./investments/tools";
 import { monthLabel, type Reply } from "./replies";
 import { guessLine } from "./replies-life";
+import { weeklyReview } from "./replies-review";
 import { localTime } from "./quiet-hours";
 import { loadSnapshot } from "./snapshot";
 import { findingsSource } from "./sources/findings";
@@ -49,6 +52,7 @@ export const PROPOSABLE: readonly ActionId[] = ["finding.yes", "plan.approve_saf
 // Pages Claude may link to, by name.
 export const CHAT_PAGES: Readonly<Record<string, { label: string; href: string }>> = {
   today: { label: "See today", href: "/home" },
+  insurance: { label: "See your insurance", href: "/insurance" },
   plan: { label: "Open the plan", href: "/plan" },
   subscriptions: { label: "Open subscriptions", href: "/subscriptions" },
   bills: { label: "See bills", href: "/bills" },
@@ -72,6 +76,8 @@ const noInput = { type: "object" as const, properties: {}, additionalProperties:
 
 export const CHAT_TOOLS: Anthropic.Tool[] = [
   ...FROM_ASK,
+  // Insurance (spec Phase X).
+  ...INSURANCE_TOOLS,
   {
     name: "safe_to_spend",
     description:
@@ -136,6 +142,12 @@ export const CHAT_TOOLS: Anthropic.Tool[] = [
     input_schema: noInput,
   },
   {
+    name: "plan_upkeep",
+    description:
+      "Plans that keep up (spec step 101): this month's budget tune-up (each budget, its amount and its usual month), transfers to savings Jane could count toward a goal, and the weekly review: what Jane did, what it saved and what's next.",
+    input_schema: noInput,
+  },
+  {
     name: "propose_action",
     description:
       "Offer the person a button under your answer. You can't do anything yourself; the person decides by tapping. Use it at most once: when your answer suggests something that can be done, or the person asked for it. Actions: finding.yes (Yes and No on one open finding; give finding_id from open_findings), plan.approve_safe (approve the plan's safe items together), goal.start (start a savings goal; give goal_name, goal_amount in dollars and goal_month as YYYY-MM within the next 12 months), open (a link to a page; give page).",
@@ -172,6 +184,7 @@ export async function runChatTool(
     return runAskTool(userId, name, input, { client, now });
   if (isTaxTool(name)) return runTaxTool(userId, name, input, { client, now });
   if (isInvestmentTool(name)) return runInvestmentTool(userId, name, input, { client, now });
+  if (isInsuranceTool(name)) return runInsuranceTool(userId, name, input, { client, now });
   const cents: number[] = [];
   const money = (value: number) => {
     cents.push(Math.abs(value));
@@ -325,6 +338,29 @@ export async function runChatTool(
           done: c.completedAt !== null,
           ticked: `${c.checkedItems.length} of ${LIFE_EVENTS[c.kind].items.length}`,
         })),
+      });
+    }
+    case "plan_upkeep": {
+      const [upkeep, snapshot] = await Promise.all([
+        loadUpkeep(userId, { client, now }),
+        loadSnapshot(userId, { client, now }),
+      ]);
+      return out({
+        tuneUp: upkeep.tuneUp && {
+          month: upkeep.tuneUp.month,
+          status: upkeep.tuneUp.status,
+          budgets: upkeep.tuneUp.changes.map((c) => ({
+            category: c.category,
+            now: money(c.fromCents),
+            usual: money(c.toCents),
+          })),
+        },
+        transfersToCount: upkeep.transfers.map((t) => ({
+          amount: money(t.amountCents),
+          date: t.date,
+          goal: t.goal.name,
+        })),
+        weeklyReview: snapshot ? weeklyReview(snapshot, now).body : null,
       });
     }
     case "goals": {

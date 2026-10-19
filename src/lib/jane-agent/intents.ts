@@ -1,3 +1,4 @@
+import { parseInsurance, type InsuranceIntent } from "./insurance/intents";
 import { CHAT_WEEK_DAYS } from "@/config/agent-chat";
 import type { LifeEventKind } from "@/config/life-events";
 import { CATEGORY_LABELS, UNCATEGORIZED } from "@/insights/labels";
@@ -14,6 +15,8 @@ export type ActVerb = "cancel" | "lower" | "refund";
 
 export type Intent =
   | { kind: "help" }
+  // Insurance (spec Phase X): ./insurance/intents.ts.
+  | InsuranceIntent
   // "hi", "thanks": answered at once, without Claude.
   | { kind: "greeting"; thanks: boolean }
   | { kind: "what_did" }
@@ -21,6 +24,8 @@ export type Intent =
   | { kind: "changes" }
   // Spec step 100: "I'm moving", "I got a new job", "we're having a baby".
   | { kind: "life_event"; event: LifeEventKind }
+  // Spec step 101: "how was my week?"
+  | { kind: "review" }
   | { kind: "approve_all" }
   | { kind: "undo" }
   | { kind: "pause_autopilot" }
@@ -185,6 +190,8 @@ const LIFE: readonly [LifeEventKind, RegExp][] = [
     /\b(?:having|expecting|had) a baby\b|\b(?:i'?m|we'?re|i am|we are) (?:pregnant|expecting)\b|\bnew baby\b/,
   ],
 ];
+const REVIEW =
+  /\b(?:weekly review|week in review|how was my week|how did my week go|recap(?: my| the| of my)? week|my week(?: so far)?)\b/;
 const APPROVE_ALL =
   /\b(?:yes to (?:all|everything)|approve (?:them all|all|everything|the safe ones|the safe stuff|safe ones))\b/;
 const UNDO = /^(?:undo|undo (?:that|it|the last one)|take (?:that|it) back)$/;
@@ -215,6 +222,7 @@ export function parseIntent(raw: string, asOf: string): Intent {
   if (GREETING.test(text)) return { kind: "greeting", thanks: false };
   if (THANKS.test(text)) return { kind: "greeting", thanks: true };
   if (PAUSE.test(text)) return { kind: "pause_autopilot" };
+  if (REVIEW.test(text)) return { kind: "review" };
   if (CHANGES.test(text)) return { kind: "changes" };
   const life = LIFE.find(([, pattern]) => pattern.test(text));
   if (life) return { kind: "life_event", event: life[0] };
@@ -260,6 +268,9 @@ export function parseIntent(raw: string, asOf: string): Intent {
   if (cancel) return { kind: "act", verb: "cancel", target: cleanTarget(cancel[1]) };
   const lower = LOWER.exec(text);
   if (lower) return { kind: "act", verb: "lower", target: cleanTarget(lower[1]) };
+
+  const insurance = parseInsurance(text);
+  if (insurance) return insurance;
 
   return { kind: "unknown" };
 }

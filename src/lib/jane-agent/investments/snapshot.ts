@@ -1,7 +1,10 @@
 import type { PrismaClient } from "@/generated/prisma/client";
 import { adviceMode } from "@/lib/advice-mode";
 import type { FeeSummary } from "@/insights/investment-fees";
+import type { PortfolioReview } from "@/insights/portfolio-review";
 import { loadFees } from "@/lib/investments/fees";
+import { loadInvestments } from "@/lib/investments/holdings";
+import { loadReview } from "@/lib/investments/review";
 import { profileOf } from "@/lib/investments/profile";
 import type { ProfileAnswers } from "@/planning/investor-profile";
 
@@ -18,14 +21,18 @@ export type InvestmentSnapshot = {
   profile: ProfileAnswers;
   // Spec step 130: what investing costs, and the lower-cost equivalents.
   fees: Pick<FeeSummary, "totalYearlyCents" | "overYears" | "equivalents" | "years">;
+  // Spec step 131: the mix against the profile's target; null until the profile is done.
+  review: PortfolioReview | null;
 };
 
 export async function loadInvestmentSnapshot(
   userId: string,
   { client, now }: { client: PrismaClient; now: Date },
 ): Promise<InvestmentSnapshot> {
-  const [{ investments, fees }, advice, profile] = await Promise.all([
-    loadFees(userId, { client, now }),
+  const investments = await loadInvestments(userId, { client, now });
+  const [{ fees }, { review }, advice, profile] = await Promise.all([
+    loadFees(userId, { client, now, investments }),
+    loadReview(userId, { client, now, investments }),
     adviceMode(userId, { client }),
     profileOf(userId, { client }),
   ]);
@@ -46,5 +53,6 @@ export async function loadInvestmentSnapshot(
       equivalents: fees.equivalents,
       years: fees.years,
     },
+    review,
   };
 }

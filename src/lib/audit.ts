@@ -5,6 +5,10 @@ import { db } from "@/lib/db";
 // queryable by a known set of names.
 export type AuditEvent =
   | "user_signed_up"
+  // Insurance (spec Phase X): a policy saved or removed, the household facts saved.
+  | "insurance_policy_saved"
+  | "insurance_policy_removed"
+  | "insurance_household_saved"
   | "user_signed_in"
   | "import_completed"
   // Finding data was sent to Claude for card text.

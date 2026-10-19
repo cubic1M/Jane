@@ -6,6 +6,7 @@ import { scopedFor } from "@/lib/db-scoped";
 import { closeSettled } from "../messages";
 import { MESSAGE_SELECT, toChatMessage, type ActionId, type ChatMessage } from "../types";
 import { findingNo, findingPick, findingYes } from "./finding";
+import { insuranceGapNo } from "./insurance";
 import { ChatActionError, linksOf, type ActionHandler } from "./handler";
 import { planApproveSafe } from "./plan";
 import { undoNo, undoRule } from "./undo";
@@ -25,6 +26,7 @@ import {
 } from "./investments";
 import { changeBudget, changeExpected, changeLook } from "./changes";
 import { lifeNever, lifeNo, lifeYes } from "./life";
+import { transferCount, transferSkip, tuneUpAccept, tuneUpKeep, tuneUpUndo } from "./upkeep";
 
 // Every button action, by id (spec step 81). A new button is a new handler here; the
 // message sources offer it by id (src/lib/jane-agent/types.ts ACTION_IDS).
@@ -32,6 +34,8 @@ export const ACTION_HANDLERS: Readonly<Record<ActionId, ActionHandler>> = {
   "finding.yes": findingYes,
   "finding.no": findingNo,
   "finding.pick": findingPick,
+  // Insurance (spec Phase X).
+  "insurance.gap_no": insuranceGapNo,
   "plan.approve_safe": planApproveSafe,
   "undo.rule": undoRule,
   "undo.no": undoNo,
@@ -76,6 +80,12 @@ export const ACTION_HANDLERS: Readonly<Record<ActionId, ActionHandler>> = {
   "life.yes": lifeYes,
   "life.no": lifeNo,
   "life.never": lifeNever,
+  // Plans that keep up (spec step 101).
+  "tuneup.accept": tuneUpAccept,
+  "tuneup.keep": tuneUpKeep,
+  "tuneup.undo": tuneUpUndo,
+  "transfer.count": transferCount,
+  "transfer.skip": transferSkip,
 };
 
 const MESSAGE_ID = /^[a-z0-9]{1,40}$/i;

@@ -6,6 +6,7 @@ import { GOALS, HORIZONS } from "@/config/investing";
 import { adviceMode } from "@/lib/advice-mode";
 import { loadFees } from "@/lib/investments/fees";
 import { loadInvestments } from "@/lib/investments/holdings";
+import { loadReview } from "@/lib/investments/review";
 import { profileOf } from "@/lib/investments/profile";
 import { profileSummary } from "@/planning/investor-profile";
 import { formatCents } from "@/lib/money";
@@ -35,6 +36,12 @@ export const INVESTMENT_TOOLS: Anthropic.Tool[] = [
       "What investing costs the person, from their holdings and fee records: each fund's yearly cost (expense ratio times what's in it), advisory and account fees from the last 12 months, the total a year, and what it costs over 30 years as a low-to-high range (with growth). In demo advice mode, also each costly fund's lower-cost equivalent with the yearly saving and the 30-year range. Quote ranges as ranges.",
     input_schema: noInput,
   },
+  {
+    name: "portfolio_review",
+    description:
+      "In demo advice mode, once the investor profile is complete: the person's mix (US stocks, international stocks, bonds, cash) against the target for their risk level, which parts are off target and by how much, any one company's shares that are too big a part (and whether it's their employer), idle cash, and what to change with the reason. Never say what returns will be.",
+    input_schema: noInput,
+  },
 ];
 
 // What the person sees while Jane looks it up.
@@ -42,6 +49,7 @@ export const INVESTMENT_TOOL_STATUS: Readonly<Record<string, string>> = {
   holdings: "Looking at what you own…",
   investor_profile: "Checking your investor profile…",
   investment_fees: "Adding up your investment fees…",
+  portfolio_review: "Reviewing your investments…",
 };
 
 export const isInvestmentTool = (name: string) => INVESTMENT_TOOLS.some((t) => t.name === name);
@@ -149,6 +157,43 @@ export async function runInvestmentTool(
               [`savingOver${fees.years}Years`]: span(e.overYears),
             }))
           : "Not shown: recommendations are for demo advice mode only.",
+      });
+    }
+    case "portfolio_review": {
+      const [{ profile, review }, advice] = await Promise.all([
+        loadReview(userId, { client, now }),
+        adviceMode(userId, { client }),
+      ]);
+      if (!advice) return out({ note: "Reviews are for demo advice mode only." });
+      if (!review || !profile.complete) {
+        return out({
+          note: "The investor profile isn't finished, so there's no target to review against. Suggest answering it (ask: \"my risk profile\").",
+        });
+      }
+      return out({
+        riskLevel: review.riskLabel,
+        total: money(review.totalCents),
+        mix: review.mix.map((m) => ({
+          kind: m.label,
+          now: `${Math.round(m.share * 100)}%`,
+          target: `${Math.round(m.targetShare * 100)}%`,
+          value: money(m.valueCents),
+          toReachTarget: money(m.changeCents),
+          offTarget: m.offTarget,
+        })),
+        tooMuchInOneCompany: review.concentrated.map((c) => ({
+          name: c.holding.name,
+          share: `${Math.round(c.share * 100)}%`,
+          employer: c.employer,
+          sellToReachLimit: money(c.overCents),
+        })),
+        idleCash: money(review.idleCashCents),
+        whatToChange: review.recommendations.map((r) => ({
+          what: r.what,
+          why: r.why,
+          amount: money(r.amountCents),
+        })),
+        leftOut: review.leftOut,
       });
     }
     default:

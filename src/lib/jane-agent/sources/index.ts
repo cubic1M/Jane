@@ -1,6 +1,7 @@
 import { briefSource } from "./brief";
 import { didSource } from "./did";
 import { findingsSource } from "./findings";
+import { insuranceSource } from "./insurance";
 import { headsUpsSource } from "./heads-ups";
 import { planSource } from "./plan";
 import type { MessageSource } from "./source";
@@ -12,6 +13,8 @@ import { thingsSource } from "./things";
 import { taxesSource } from "./taxes";
 import { changesSource } from "./changes";
 import { lifeSource } from "./life";
+import { reviewSource } from "./review";
+import { upkeepSource } from "./upkeep";
 import { investmentsSource } from "./investments";
 
 // Every message source Jane's brain gathers from (spec step 82). A new kind of message is a
@@ -20,6 +23,8 @@ import { investmentsSource } from "./investments";
 export const MESSAGE_SOURCES: readonly MessageSource[] = [
   briefSource,
   findingsSource,
+  // Insurance (spec Phase X).
+  insuranceSource,
   planSource,
   didSource,
   headsUpsSource,
@@ -35,6 +40,9 @@ export const MESSAGE_SOURCES: readonly MessageSource[] = [
   changesSource,
   // Spec step 100.
   lifeSource,
+  // Spec step 101.
+  upkeepSource,
+  reviewSource,
   // Spec step 128 on.
   investmentsSource,
 ];

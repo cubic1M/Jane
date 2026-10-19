@@ -93,7 +93,8 @@ describe("reading a document's facts with Claude (spec step 68)", () => {
 
   it("drops a summary that fails the guardrails and keeps the other facts", async () => {
     for (const summary of [
-      "Bodily injury liability up to the state minimum.",
+      // Liability cover is a kind of cover (spec step 102); being liable is legal talk.
+      "You are liable for any damage over the state minimum.",
       "You should invest the savings in an index fund.",
       "Covers your car with a $500 deductible.",
     ]) {
@@ -115,6 +116,20 @@ describe("reading a document's facts with Claude (spec step 68)", () => {
         facts: { provider: "Progressive", coverageSummary: null, premiumCents: 15_000 },
       });
     }
+  });
+
+  it("keeps a summary that names liability cover (spec step 102)", async () => {
+    const { claude } = fakeClaude(
+      answer({
+        provider: "Progressive",
+        coverageSummary: "Bodily injury liability up to the state minimum.",
+      }),
+    );
+    const result = await readDocumentFacts(
+      { bytes: PDF, contentType: "application/pdf", kind: "insurance_policy" },
+      { claude },
+    );
+    expect(result).toMatchObject({ summaryRejected: false });
   });
 
   it("allows the document's own price in the summary", async () => {
