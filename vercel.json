@@ -11,10 +11,6 @@
     }
   ],
   "git": {
-    "deploymentEnabled": {
-      "claude/**": false,
-      "worktree-*": false,
-      "review-*": false
-    }
+    "deploymentEnabled": false
   }
 }
