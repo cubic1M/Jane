@@ -10,6 +10,7 @@ vi.mock("@/lib/audit", () => ({ logAudit: vi.fn(), SYSTEM_ACTOR: { type: "system
 
 import { runDetection } from "@/detection/engine";
 import { setAutopilot } from "@/lib/autopilot";
+import { AS_THEY_COME } from "@/lib/jane-agent/preferences";
 import { runChatTool } from "@/lib/jane-agent/claude-tools";
 import { takeChatAction } from "@/lib/jane-agent/actions";
 import { answerByRules } from "@/lib/jane-agent/answer";
@@ -53,6 +54,11 @@ describe.runIf(url)("Jane notices changes, with the demo bank", { timeout: 30_00
       data: { email: `${prefix}-${crypto.randomUUID()}@example.com` },
     });
     created.push(user.id);
+    // Each message on its own, within the daily limits (spec step 184's "as they come"):
+    // these tests are about when a change comes up by itself.
+    await client.janePreference.create({
+      data: { userId: user.id, ...AS_THEY_COME, value: AS_THEY_COME.value },
+    });
     const { itemId } = await linkDemoBank(user.id, { client, now: LINKED });
     await syncItem(itemId, { client, api: plaid, now: LINKED });
     return user.id;
