@@ -77,7 +77,11 @@ const UNTAG =
 const FORMS =
   /\b(?:tax )?(?:forms?|documents?|paperwork) (?:do i need|to expect|am i waiting (?:on|for)|should i (?:get|expect)|for (?:my )?tax(?:es)?)\b|\b(?:my |a |the )?(?:w-?2s?|1099s?|1098s?)\b/;
 const ESTIMATE =
-  /\bhow much (?:tax )?(?:will|do|would) (?:i|we) (?:owe|get back|pay in tax(?:es)?|have to pay in tax(?:es)?)\b|\b(?:will|do) (?:i|we) (?:owe|get a refund|get money back)\b|\btax (?:estimate|bill|refund)\b|\bestimated? (?:tax|refund)\b|\bwhat (?:will|do) (?:i|we) owe (?:in |the )?(?:tax|taxes|irs)\b|\brefund this year\b/;
+  /\bhow much (?:tax )?(?:will|do|would) (?:i|we) (?:get back|pay in tax(?:es)?|have to pay in tax(?:es)?)\b|\b(?:will|do) (?:i|we) (?:get a refund|get money back)\b|\btax (?:estimate|bill|refund)\b|\bestimated? (?:tax|refund)\b|\brefund this year\b/;
+// "How much do I owe?" is about debts (./debt-intents.ts) unless it says tax.
+const OWE =
+  /\bhow much (?:tax )?(?:will|do|would) (?:i|we) owe\b|\b(?:will|do|what (?:will|do)) (?:i|we) owe\b/;
+const TAX_WORD = /\b(?:tax(?:es)?|irs|refund|return)\b/;
 const BRACKET = /\btax bracket\b|\bmarginal (?:tax )?rate\b|\bwhat bracket\b|\bmy bracket\b/;
 const PACK = /\btax(?:-| )?time pack\b|\btax pack\b|\byear-end pack\b/;
 
@@ -109,7 +113,9 @@ export function parseTaxIntent(text: string): TaxIntent | null {
   if (untag) return { kind: "tax", ask: "tag", target: untag[1].trim(), tag: null };
   if (PACK.test(text)) return { kind: "tax", ask: "pack" };
   if (BRACKET.test(text)) return { kind: "tax", ask: "bracket" };
-  if (ESTIMATE.test(text)) return { kind: "tax", ask: "estimate" };
+  if (ESTIMATE.test(text) || (OWE.test(text) && TAX_WORD.test(text))) {
+    return { kind: "tax", ask: "estimate" };
+  }
   if (FORMS.test(text)) return { kind: "tax", ask: "forms" };
   if (TAGS.test(text)) return { kind: "tax", ask: "tags" };
   if (DONATIONS.test(text)) return { kind: "tax", ask: "tag_total", tag: "donation" };
