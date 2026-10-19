@@ -144,6 +144,8 @@ export const MESSAGE_PRIORITY = {
   hsa: 33,
   // Spec step 160: too much in the employer's stock (demo advice).
   company_stock: 37,
+  // Spec step 161: crypto seen, and its flags (demo advice).
+  crypto: 36,
   auto_invest_run: 31,
 } as const;
 

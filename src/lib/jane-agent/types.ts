@@ -163,6 +163,8 @@ export const ACTION_IDS = [
   // Spec step 160: company stock, sold down in parts.
   "company.link",
   "company.sell",
+  // Spec step 161: connect a demo exchange, read-only (crypto is never traded).
+  "crypto.link",
   // Jane notices changes (spec step 97).
   "change.look",
   "change.budget",
