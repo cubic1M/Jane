@@ -82,6 +82,9 @@ export type AuditEvent =
   | "tax_pack_downloaded"
   // Taxes (spec steps 118–127): which fields of the tax profile changed, never the answers.
   | "tax_profile_changed"
+  // A tax tag the person changed (spec step 119): the tag and whether on one transaction or
+  // a merchant, never which.
+  | "tax_tag_changed"
   // Devices and sessions (spec step 73): one other session, or all the others, signed out.
   | "session_signed_out"
   | "other_sessions_signed_out"

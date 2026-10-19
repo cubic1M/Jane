@@ -61,4 +61,53 @@ test("the tax profile shows what Jane found and saves the person's answers", asy
   await expect(profile.getByText("Head of household")).toBeVisible();
   await expect(profile.getByText("1 under 17, 0 other")).toBeVisible();
   await expect(profile.getByText("Found by Jane: check it")).toHaveCount(0);
+
+  // Spec step 119: the forms to expect, ticked off from the page.
+  const forms = page.getByRole("region", { name: /Tax forms to expect/ });
+  await expect(forms.getByText("ACME CORP PAYROLL")).toBeVisible();
+  await forms.getByRole("button", { name: "I have it: W-2 from ACME CORP PAYROLL" }).click();
+  await expect(forms.getByRole("status").first()).toHaveText(
+    "Ticked off: W-2 from ACME CORP PAYROLL.",
+  );
+});
+
+test("tax tags: Jane's tags, her questions, and tagging a work expense", async ({
+  context,
+  page,
+  baseURL,
+}) => {
+  const user = await signedInUser("user");
+  userId = user.userId;
+  await context.addCookies([
+    { name: "authjs.session-token", value: user.sessionToken, url: baseURL ?? "" },
+  ]);
+  await page.goto("/connect");
+  await page.getByRole("button", { name: "Link a demo bank" }).click();
+  await expect(page).toHaveURL("/chat", { timeout: 60_000 });
+
+  await page.goto("/taxes/tags");
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText("Tax tags: 2026");
+  await expect(page.getByRole("region", { name: "Donation" })).toContainText("American Red Cross");
+  const checks = page.getByRole("region", { name: "Is Jane right about these?" });
+  await expect(checks).toContainText("MasterClass");
+  await checks.getByRole("button", { name: "No, not for taxes" }).first().click();
+  // Answered: it leaves the list (Duolingo, the other course, is still asked about).
+  await expect(checks).not.toContainText("MasterClass");
+  await expect(checks).toContainText("Duolingo");
+  expect(await axe(page)).toEqual([]);
+
+  await page.getByLabel(/Find a charge from 2026/).fill("Shell");
+  await page.getByRole("button", { name: "Find" }).click();
+  const search = page.getByRole("region", { name: "Tag something else" });
+  const first = search.getByRole("listitem").first();
+  await first.getByRole("combobox").selectOption("work");
+  await first.getByRole("button", { name: "Save" }).click();
+  await expect(first.getByRole("status")).toHaveText("Saved.");
+
+  await page.goto("/tax-pack");
+  await expect(page.getByRole("region", { name: "Summary" })).toContainText("Work expenses");
+  await expect(page.getByRole("region", { name: "Tax forms to expect" })).toContainText(
+    "W-2 from ACME CORP PAYROLL",
+  );
+  expect(await axe(page)).toEqual([]);
 });

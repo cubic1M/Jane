@@ -1,3 +1,4 @@
+import { quotesAnswer } from "./insurance/quotes";
 import { insuranceReply } from "./insurance/replies";
 import { loadInsuranceSnapshot } from "./insurance/snapshot";
 import { AFFORD_USUAL_MONTHS } from "@/config/agent-chat";
@@ -57,6 +58,8 @@ export async function answerByRules(
     case "help":
       return helpReply();
     case "insurance":
+      // Spec step 103: quotes ask the partner, the rest read the profile.
+      if (intent.ask === "quotes") return quotesAnswer(userId, intent, { client, now });
       return insuranceReply(intent, await loadInsuranceSnapshot(userId, { client, now }), asOf);
     case "greeting": {
       if (intent.thanks) return greetingReply(true, null);

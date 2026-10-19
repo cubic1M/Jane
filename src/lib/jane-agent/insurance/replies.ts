@@ -1,5 +1,5 @@
 import { PREMIUM_FREQUENCIES } from "@/config/documents";
-import { POLICY_KINDS, type PolicyKind } from "@/config/insurance";
+import { POLICY_KINDS, QUOTABLE_KINDS, type PolicyKind } from "@/config/insurance";
 import { daysBetween } from "@/detection/units";
 import { checkGuardrails } from "@/lib/guardrails";
 import { coverageLines } from "@/lib/insurance/coverage";
@@ -166,9 +166,19 @@ export function insuranceReply(
     ...about(p, { ...intent, ask: intent.ask === "list" ? "cover" : intent.ask }, asOf),
   }));
   const missing = answers.find((a) => a.missing);
+  // Spec step 103: one policy the partner can quote gets "Compare quotes".
+  const [only] = policies;
+  const compare =
+    policies.length === 1 &&
+    "canQuote" in profile &&
+    profile.canQuote &&
+    only.status === "active" &&
+    QUOTABLE_KINDS.includes(only.kind)
+      ? [{ id: "insurance.quotes", label: "Compare quotes", kind: "secondary" } as const]
+      : [];
   return {
     body: `${answers.map((a) => a.line).join("\n")}${missing ? "\nAdd it from your policy and I'll keep it on file." : ""}`,
-    actions: missing ? [editLink(missing.p), SEE] : [SEE],
+    actions: missing ? [editLink(missing.p), ...compare, SEE] : [...compare, SEE],
     refs: policies.length === 1 ? { policyId: policies[0].id } : {},
   };
 }

@@ -46,7 +46,14 @@ function Rows({ group, empty, label }: { group: PackGroup; empty: string; label:
         {group.rows.map((r) => (
           <tr key={r.id} className="border-t border-zinc-200 dark:border-zinc-800">
             <td className="py-1 pr-2 whitespace-nowrap">{day(r.date)}</td>
-            <td className="py-1 pr-2 [overflow-wrap:anywhere]">{r.payee}</td>
+            <td className="py-1 pr-2 [overflow-wrap:anywhere]">
+              {r.payee}
+              {r.source === "check" && (
+                <span className="block text-xs text-amber-800 dark:text-amber-300">
+                  {COPY.checkNote}
+                </span>
+              )}
+            </td>
             <td className="py-1 text-right whitespace-nowrap">{formatCents(r.amountCents)}</td>
           </tr>
         ))}
@@ -110,6 +117,59 @@ async function TaxPackContent({
           {COPY.downloadLabel}
         </a>
       </div>
+
+      <section aria-labelledby="summary" className={CARD}>
+        <h2 id="summary" className="text-xl font-semibold">
+          {COPY.summaryHeading}
+        </h2>
+        <dl className="grid grid-cols-1 gap-x-4 gap-y-1 text-sm sm:grid-cols-2">
+          {(
+            [
+              [COPY.charityHeading, pack.charity.totalCents],
+              ...groups.map((g) => [COPY.groupLabels[g], pack.preparer[g].totalCents] as const),
+              [COPY.incomeHeading, pack.income.totalCents],
+            ] as const
+          ).map(([label, cents]) => (
+            <div key={label} className="flex justify-between gap-2">
+              <dt className="text-zinc-600 dark:text-zinc-400">{label}</dt>
+              <dd className="whitespace-nowrap">{formatCents(cents)}</dd>
+            </div>
+          ))}
+        </dl>
+        <p className="text-xs text-zinc-500">
+          {COPY.tagsNote}{" "}
+          <Link href="/taxes/tags" className={LINK}>
+            {COPY.tagsLink}
+          </Link>
+        </p>
+      </section>
+
+      <section aria-labelledby="forms" className={CARD}>
+        <h2 id="forms" className="text-xl font-semibold">
+          {COPY.formsHeading}
+        </h2>
+        {pack.forms.length === 0 ? (
+          <p className="text-sm text-zinc-600 dark:text-zinc-400">{COPY.formsEmpty}</p>
+        ) : (
+          <ul className="flex flex-col gap-1 text-sm">
+            {pack.forms.map((f) => (
+              <li key={f.key} className="flex flex-wrap justify-between gap-x-3">
+                <span className="[overflow-wrap:anywhere]">
+                  {f.form} from {f.from}
+                </span>
+                <span className="text-zinc-600 dark:text-zinc-400">
+                  {f.received
+                    ? COPY.formReceived
+                    : f.mayNotSend
+                      ? COPY.formMayNotSend
+                      : `${COPY.formWaiting}, by about ${day(f.by)}`}
+                </span>
+              </li>
+            ))}
+          </ul>
+        )}
+        <p className="text-xs text-zinc-500">{COPY.formsNote}</p>
+      </section>
 
       <section aria-labelledby="charity" className={CARD}>
         <h2 id="charity" className="text-xl font-semibold">
