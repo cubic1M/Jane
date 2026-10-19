@@ -163,7 +163,7 @@ async function byIntent(
     case "greeting": {
       if (intent.thanks) return greetingReply(true, null);
       const home = await homeSummary(userId, { client, now });
-      return greetingReply(false, home?.safeToSpend ?? null);
+      return greetingReply(false, home?.safeToSpend ?? null, asOf);
     }
     case "afford": {
       const numbers = await loadAffordNumbers(userId, { client, now });
@@ -193,7 +193,7 @@ async function byIntent(
     }
     case "safe_to_spend": {
       const home = await homeSummary(userId, { client, now });
-      return safeReply(home?.safeToSpend ?? null);
+      return safeReply(home?.safeToSpend ?? null, asOf);
     }
     case "life_event": {
       const open = await listLifeEvents(userId, { client });

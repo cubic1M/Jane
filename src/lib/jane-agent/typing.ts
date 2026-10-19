@@ -14,7 +14,7 @@ import type { Topic } from "./context";
 import { parseIntent } from "./intents";
 import { storeReply } from "./messages";
 import { localTime } from "./quiet-hours";
-import { unknownReply, type Reply } from "./replies";
+import { clarifyReply, nearbyChoices, unknownReply, type Reply } from "./replies";
 import { MESSAGE_SELECT, parseRefs, toChatMessage, type ChatMessage } from "./types";
 
 // Typing to Jane (spec step 84). What the person types is stored as a "user" message and
@@ -103,16 +103,26 @@ async function answer(
   history: ChatTurn[],
   { client, now, claude, onEvent }: Required<Pick<Options, "client" | "now">> & Options,
 ): Promise<{ reply: Reply; intent: string; source: Source }> {
-  const intent = parseIntent(text, now.toISOString().slice(0, 10));
+  const asOf = now.toISOString().slice(0, 10);
+  const intent = parseIntent(text, asOf);
+  // Spec step 89: no dead ends. An answer that couldn't be given ends with the closest
+  // things Jane can answer, as buttons.
+  const withNearby = (reply: Reply): Reply => {
+    if (reply.actions.length > 0) return reply;
+    const nearby = clarifyReply(reply.body, nearbyChoices(text, asOf));
+    return { ...nearby, refs: { ...reply.refs, ...nearby.refs } };
+  };
   // Spec step 88: what the conversation was about, for a follow-up.
   const topic = await lastTopic(userId, { client, now });
   const byRules = await answerByRules(userId, intent, { client, now, topic });
   if (byRules) return { reply: byRules, intent: intent.kind, source: "rules" };
-  if (!llmEnabled()) return { reply: unknownReply(), intent: intent.kind, source: "fallback" };
+  if (!llmEnabled()) {
+    return { reply: unknownReply(text, asOf), intent: intent.kind, source: "fallback" };
+  }
   // Free questions count against Ask's limit too: the same tools and limits.
   if (!(await hit("ask", userId, { client, now })).ok) {
     return {
-      reply: { body: CHAT_ASK_LIMITED_TEXT, actions: [], refs: {} },
+      reply: withNearby({ body: CHAT_ASK_LIMITED_TEXT, actions: [], refs: {} }),
       intent: intent.kind,
       source: "fallback",
     };
@@ -130,7 +140,11 @@ async function answer(
       : result.kind === "blocked"
         ? "claude_blocked"
         : "claude_unavailable";
-  return { reply: result.reply, intent: intent.kind, source };
+  return {
+    reply: result.kind === "answer" ? result.reply : withNearby(result.reply),
+    intent: intent.kind,
+    source,
+  };
 }
 
 export async function sendToJane(
