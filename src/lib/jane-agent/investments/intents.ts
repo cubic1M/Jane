@@ -2,7 +2,7 @@
 // normalized text in (./../intents.ts normalize), the topic out, or null when it isn't
 // about investments. Each investment step adds its topics here.
 
-export type InvestmentTopic = "holdings";
+export type InvestmentTopic = "holdings" | "profile";
 
 export type InvestmentIntent = {
   kind: "investments";
@@ -29,7 +29,12 @@ const HOLDINGS = new RegExp(
   ].join("|"),
 );
 
+// Spec step 129: the investor profile.
+const PROFILE =
+  /\b(?:my )?(?:risk (?:profile|tolerance|level)|investor profile|investing profile)\b|\bhow much risk (?:should|can|do) i\b|\b(?:change|update|redo|set) (?:my )?(?:investing|investment|investor) (?:goals?|profile|answers)\b|\b(?:change|update|redo) my risk\b|\banswer (?:the |your )?(?:profile |investing )?questions\b|\bwhat (?:are|is) my (?:investing|investment) goals?\b/;
+
 export function parseInvestmentIntent(text: string): InvestmentIntent | null {
+  if (PROFILE.test(text)) return { kind: "investments", topic: "profile", account: null };
   if (!HOLDINGS.test(text)) return null;
   const account = ACCOUNT.exec(text)?.[1] ?? null;
   return {
