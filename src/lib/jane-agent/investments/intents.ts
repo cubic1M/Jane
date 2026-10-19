@@ -3,7 +3,14 @@
 // about investments. Each investment step adds its topics here.
 
 export type InvestmentTopic =
-  "holdings" | "profile" | "fees" | "review" | "retirement" | "rebalance" | "auto_invest";
+  | "holdings"
+  | "profile"
+  | "fees"
+  | "review"
+  | "retirement"
+  | "rebalance"
+  | "auto_invest"
+  | "accounts";
 
 export type InvestmentIntent = {
   kind: "investments";
@@ -55,7 +62,12 @@ const REBALANCE =
 const AUTO_INVEST =
   /\b(?:auto[- ]?invest\w*|automatic(?:ally)? invest\w*|invest\w* automatically)\b|\binvest (?:every|each|on) (?:payday|paycheck|month)\b|\b(?:pause|stop|resume|restart) (?:my )?(?:auto(?:matic)? )?investing\b/;
 
+// Spec step 135: which account first, where to hold what, gains not yet taxed.
+const ACCOUNTS =
+  /\bwhich account (?:should i |do i |to )?(?:invest|put|save|fill|use|start)\w*\b|\bwhere should i (?:put|invest|save|keep) (?:my )?(?:extra |spare |the )?money\b|\b(?:401\(?k\)?|workplace plan) or (?:a )?(?:roth )?ira\b|\b(?:roth )?ira or (?:a |my )?401\(?k\)?\b|\bshould i (?:open|get|start|use) (?:a |an )?(?:roth |traditional )?(?:ira|hsa)\b|\b(?:contribute to|fund|max out) (?:my |an |a )?hsa\b|\basset location\b|\b(?:capital|unreali[sz]ed) (?:gains?|losses?)\b|\btax[- ]loss harvest\w*\b|\btaxes on my investments\b/;
+
 export function parseInvestmentIntent(text: string): InvestmentIntent | null {
+  if (ACCOUNTS.test(text)) return { kind: "investments", topic: "accounts", account: null };
   if (AUTO_INVEST.test(text)) return { kind: "investments", topic: "auto_invest", account: null };
   if (REBALANCE.test(text)) return { kind: "investments", topic: "rebalance", account: null };
   if (RETIREMENT.test(text)) return { kind: "investments", topic: "retirement", account: null };

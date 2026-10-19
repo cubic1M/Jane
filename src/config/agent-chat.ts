@@ -119,6 +119,8 @@ export const MESSAGE_PRIORITY = {
   retirement: 39,
   // Spec step 134: the offer to invest every payday, and what each payday did.
   auto_invest_offer: 33,
+  // Spec step 135: which account to fill first (demo advice).
+  account_order: 37,
   auto_invest_run: 31,
 } as const;
 
