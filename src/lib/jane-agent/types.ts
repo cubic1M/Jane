@@ -106,6 +106,8 @@ export const ACTION_IDS = [
   // Insurance found from payments (spec step 99).
   "policy.confirm",
   "policy.not_insurance",
+  // What Jane saved you (spec step 139).
+  "saved.share",
 ] as const;
 export type ActionId = (typeof ACTION_IDS)[number];
 

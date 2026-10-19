@@ -37,6 +37,8 @@ import { findSupportContact } from "./find-contact";
 import { composeAnswer, whatIsAsked, type KnownFacts } from "./auto-answer";
 import { simulatedAddress } from "./simulated-company";
 import { confirmSwitches, startSwitch, switchOf } from "./switch";
+import { insuranceSwitchOf } from "@/lib/insurance/accept";
+import { confirmInsuranceSwitches, startInsuranceSwitch } from "@/lib/insurance/switch";
 import { isCallAction, startCall } from "@/lib/voice/calls";
 
 // The action agent (spec step 51). An approved action of a type in AGENT_ACTION_TYPES is
@@ -164,9 +166,13 @@ const titleOf = (action: LoadedAction) => {
 
 // Where to write: the directory's support email (added by the team, never guessed), or a
 // simulated company in development.
-async function recipientFor(action: LoadedAction, client: PrismaClient): Promise<string | null> {
+async function recipientFor(
+  userId: string,
+  action: LoadedAction,
+  client: PrismaClient,
+): Promise<string | null> {
   if (!action.company) return null;
-  if (mailMode() === "simulated") return simulatedAddress(action.company);
+  if (mailMode(userId) === "simulated") return simulatedAddress(action.company);
   const row = await merchantFor(normalizeAlias(action.company), { client });
   return row?.supportEmail ?? null;
 }
@@ -283,7 +289,7 @@ async function send(
   { client, send: deliver }: { client: PrismaClient; send: typeof sendAgentMail },
 ) {
   const replyTo = replyAddress(action.replyToken ?? "");
-  if (mailMode() === "email") {
+  if (mailMode(userId) === "email") {
     await deliver({ to: mail.to, subject: mail.subject, text: mail.body, replyTo });
   } else {
     // The simulated company answers through the same path a real reply takes.
@@ -326,13 +332,17 @@ export async function agentStep(
 
   // A switch to an option the person picked (spec steps 76–77) replaces the usual request.
   if (switchOf(action.decision.options)) return startSwitch(userId, action, options);
+  // Spec step 105: an insurance switch is bound through the insurance partner.
+  if (insuranceSwitchOf(action.decision.options)) {
+    return startInsuranceSwitch(userId, action, options);
+  }
 
   // Bills are negotiated by phone (src/lib/voice/calls.ts), once.
   if (isCallAction(action.type)) {
     if (action.agentMessages.length > 0) return "waiting";
     return (await startCall(userId, action, options)) === "called" ? "sent" : "handed_off";
   }
-  if (mailMode() === "off") {
+  if (mailMode(userId) === "off") {
     await handOff(userId, action, "Email for the agent isn't set up yet.", options);
     return "handed_off";
   }
@@ -384,7 +394,7 @@ export async function agentStep(
       return "waiting";
     }
   }
-  const to = await recipientFor(action, client);
+  const to = await recipientFor(userId, action, client);
   if (!to) {
     await handOff(
       userId,
@@ -739,7 +749,14 @@ export async function runAgentFollowUps({
   }
   const cancellations = await confirmCancellations({ client, now });
   const switches = await confirmSwitches({ client, now });
-  return { checked: due.length, ...cancellations, ...switches };
+  // Spec step 105: insurance switches whose first payment went through.
+  const insurance = await confirmInsuranceSwitches({ client, now });
+  return {
+    checked: due.length,
+    ...cancellations,
+    switched: switches.switched + insurance.switched,
+    handedOff: switches.handedOff + insurance.handedOff,
+  };
 }
 
 // Runs the agent's first steps right after a request, then the jobs they queued for the

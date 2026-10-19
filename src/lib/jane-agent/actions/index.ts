@@ -33,6 +33,7 @@ import { changeBudget, changeExpected, changeLook } from "./changes";
 import { lifeNever, lifeNo, lifeYes } from "./life";
 import { transferCount, transferSkip, tuneUpAccept, tuneUpKeep, tuneUpUndo } from "./upkeep";
 import { policyConfirm, policyNotInsurance } from "./found-policies";
+import { savedShare } from "./saved";
 
 // Every button action, by id (spec step 81). A new button is a new handler here; the
 // message sources offer it by id (src/lib/jane-agent/types.ts ACTION_IDS).
@@ -116,6 +117,8 @@ export const ACTION_HANDLERS: Readonly<Record<ActionId, ActionHandler>> = {
   // Insurance found from payments (spec step 99).
   "policy.confirm": policyConfirm,
   "policy.not_insurance": policyNotInsurance,
+  // What Jane saved you (spec step 139).
+  "saved.share": savedShare,
 };
 
 const MESSAGE_ID = /^[a-z0-9]{1,40}$/i;

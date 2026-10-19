@@ -47,6 +47,8 @@ const OUTSIDE = [
   "/unsubscribe",
   "/mfa",
   "/scanning",
+  // Spec step 139: a shared savings total.
+  "/s/[token]",
 ];
 const outside = (route: string) => OUTSIDE.includes(route) || route.startsWith("/admin");
 

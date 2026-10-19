@@ -164,6 +164,14 @@ describe("parseIntent", () => {
     expect(parse(text)).toEqual({ kind: "act", verb, target });
   });
 
+  // Spec step 139.
+  it.each(["how much have you saved me?", "what have you saved me", "total saved"])(
+    "understands %s as savings",
+    (text) => {
+      expect(parse(text)).toEqual({ kind: "saved" });
+    },
+  );
+
   // Spec step 101.
   it.each(["how was my week?", "weekly review", "recap my week"])(
     "understands %s as the review",

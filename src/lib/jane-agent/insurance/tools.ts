@@ -1,6 +1,11 @@
 import type Anthropic from "@anthropic-ai/sdk";
 import { PREMIUM_FREQUENCIES } from "@/config/documents";
-import { COVERAGE_FIELDS, HOUSING, POLICY_SOURCE_LABELS } from "@/config/insurance";
+import {
+  COVERAGE_FIELDS,
+  HOUSING,
+  POLICY_SOURCE_LABELS,
+  type PolicyKind,
+} from "@/config/insurance";
 import type { PrismaClient } from "@/generated/prisma/client";
 import type { ToolOutput } from "@/lib/ask/tools";
 import { checkGuardrails } from "@/lib/guardrails";
@@ -49,10 +54,13 @@ export async function runInsuranceTool(
   if (name !== "insurance_policies") {
     return { content: JSON.stringify({ error: `There's no tool called ${name}.` }), cents };
   }
-  const { policies, gaps, household, advice } = await loadInsuranceSnapshot(userId, {
-    client,
-    now,
-  });
+  const {
+    policies,
+    gaps,
+    household,
+    advice,
+    switches = [],
+  } = await loadInsuranceSnapshot(userId, { client, now });
   const fact = <T>(f: { value: T | null; from: string | null }) =>
     f.value === null
       ? "not known"
@@ -92,6 +100,16 @@ export async function runInsuranceTool(
         dependants: fact(household.dependants),
         pets: fact(household.pets),
       },
+      // Spec step 105: switches Jane is doing, and ones finished lately.
+      switches: switches.map((sw) => ({
+        newPolicy: `${sw.carrier} ${kindWords(sw.kind as PolicyKind)}`,
+        replaces: sw.replaces,
+        startsOn: sw.startsOn,
+        status:
+          sw.status === "pending"
+            ? "bought, waiting for its first payment; the old policy is cancelled only after"
+            : "done: first payment went through and the old policy was cancelled from the start day",
+      })),
       // What to add is demo advice (spec step 98): only in demo advice mode.
       gaps: gaps.map((g) => {
         if (!advice) return { what: g.title, why: g.why };
