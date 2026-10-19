@@ -135,5 +135,17 @@ export async function investmentsExport(userId: string, client: PrismaClient = d
       orderBy: [{ date: "asc" }, { id: "asc" }],
     }),
   ]);
-  return { securities, holdings, transactions };
+  // Spec step 129: their answers about what the money is for.
+  const profile = await db.investorProfiles.findFirst({
+    select: {
+      age: true,
+      ageOn: true,
+      horizon: true,
+      dropReaction: true,
+      goals: true,
+      answeredAt: true,
+      updatedAt: true,
+    },
+  });
+  return { securities, holdings, transactions, profile };
 }

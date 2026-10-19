@@ -70,6 +70,8 @@ export const MESSAGE_PRIORITY = {
   change: 66,
   // Spec step 128: what's in investment accounts, the first time Jane sees it.
   investments: 32,
+  // Spec step 129: the investor-profile questions, which later investment steps wait on.
+  investment_profile: 34,
 } as const;
 
 // The chat page shows the last this-many messages, with "Show earlier" for more.

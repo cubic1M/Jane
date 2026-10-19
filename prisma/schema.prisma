@@ -309,6 +309,8 @@ model User {
   securities             Security[]
   holdings               Holding[]
   investmentTransactions InvestmentTransaction[]
+  // What the investments are for (spec step 129).
+  investorProfile        InvestorProfile?
   changeAcks             ChangeAck[]
 
   @@map("users")
@@ -1568,6 +1570,28 @@ model InvestmentTransaction {
   @@index([userId, date])
   @@index([accountId])
   @@map("investment_transactions")
+}
+
+// Spec step 129: what the person's investments are for, from four questions (in the chat or
+// on /investments/profile). Kept as answered, one at a time; nothing uses it until all four
+// are in (answeredAt). Changed any time. The values are keys in src/config/investing.ts.
+model InvestorProfile {
+  id           String    @id @default(cuid())
+  userId       String    @unique @map("user_id")
+  // Age when answered, with the day, so it can be aged.
+  age          Int?
+  ageOn        DateTime? @map("age_on") @db.Date
+  horizon      String?
+  dropReaction String?   @map("drop_reaction")
+  goals        String[]  @default([])
+  // When the last of the four was answered; null while any is missing.
+  answeredAt   DateTime? @map("answered_at") @db.Timestamptz(3)
+  createdAt    DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt    DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("investor_profiles")
 }
 
 // "That's expected" on a change Jane noticed (spec step 97): a bill that moved, a new

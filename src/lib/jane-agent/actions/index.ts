@@ -14,6 +14,13 @@ import { alertGotIt, deadlineDone, snooze } from "./heads-ups";
 import { setupAll, setupNo, setupYes } from "./setup";
 import { cancelDone, offerAccept, offerDecline } from "./steps";
 import { goalStart } from "./goal";
+import {
+  investAnswer1,
+  investAnswer2,
+  investAnswer3,
+  investAnswer4,
+  investAnswer5,
+} from "./investments";
 import { changeBudget, changeExpected, changeLook } from "./changes";
 
 // Every button action, by id (spec step 81). A new button is a new handler here; the
@@ -41,6 +48,12 @@ export const ACTION_HANDLERS: Readonly<Record<ActionId, ActionHandler>> = {
   // Typing to Jane (spec step 84).
   "goal.start": goalStart,
   "autopilot.pause": autopilotPause,
+  // Investments (spec step 129 on).
+  "invest.answer.1": investAnswer1,
+  "invest.answer.2": investAnswer2,
+  "invest.answer.3": investAnswer3,
+  "invest.answer.4": investAnswer4,
+  "invest.answer.5": investAnswer5,
   // Jane notices changes (spec step 97).
   "change.look": changeLook,
   "change.budget": changeBudget,
