@@ -51,6 +51,7 @@ import {
   taxWorkSet,
 } from "./tax-states";
 import { taxDocAsk, taxDocChase, taxDocRight, taxDocsTick } from "./tax-documents";
+import { taxPlanAdd, taxPlanNo } from "./tax-plan";
 import {
   investAnswer1,
   investAnswer2,
@@ -179,6 +180,8 @@ export const ACTION_HANDLERS: Readonly<Record<ActionId, ActionHandler>> = {
   "tax.doc_ask": taxDocAsk,
   "tax.doc_chase": taxDocChase,
   "tax.docs_tick": taxDocsTick,
+  "tax.plan_add": taxPlanAdd,
+  "tax.plan_no": taxPlanNo,
   // Investments (spec step 129 on).
   "invest.answer.1": investAnswer1,
   "invest.answer.2": investAnswer2,

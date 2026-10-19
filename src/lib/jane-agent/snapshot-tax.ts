@@ -21,6 +21,7 @@ import { loadInvestmentTaxes, type InvestmentTaxesView } from "@/lib/investment-
 import type { TaxSaving } from "@/planning/tax-savings";
 import type { WithholdingCheck } from "@/planning/withholding";
 import { loadTaxForms, loadTaxTags } from "@/lib/tax-organizer";
+import { loadTaxPlan, type TaxPlanView } from "@/lib/tax-plan";
 import { inDocumentSeason, loadTaxDocuments, type TaxDocumentsView } from "@/lib/tax-documents";
 import { loadTaxProfile } from "@/lib/tax-profile";
 import type { ExpectedForm } from "@/planning/tax-documents";
@@ -61,6 +62,8 @@ export type TaxSnapshot = {
     filing?: { year: number; inSeason: boolean; available: boolean; return: ReturnView | null };
     // Spec step 166: last year's tax forms, collected and checked, in the document season.
     documents?: TaxDocumentsView | null;
+    // Spec step 167: the year-round tax plan.
+    plan?: TaxPlanView;
   } | null;
 };
 
@@ -129,6 +132,7 @@ export async function loadTaxSnapshot(
         (await loadRefunds(userId, { client, now, days: REFUND.recentDays })).refunds,
         now,
       ),
+      plan: await loadTaxPlan(userId, { client, now, loaded: { estimate, advice } }),
       documents: inDocumentSeason(today)
         ? await loadTaxDocuments(userId, year - 1, { client, now })
         : null,
