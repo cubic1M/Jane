@@ -289,6 +289,7 @@ model User {
   debtPlan               DebtPlan?
   refinanceCheck         RefinanceCheck?
   loanApplications       LoanApplication[]
+  balanceTransfers       BalanceTransfer[]
   findings               Finding[]
   decisions              Decision[]
   actions                Action[]
@@ -647,6 +648,9 @@ model RefinanceCheck {
   partner   String
   // [{ debtKey, product, termMonths, amountCents, offers: LoanOffer[] }]
   quotes    Json     @default("[]")
+  // Spec step 113: 0% balance transfer cards for each card, [{ debtKey, amountCents,
+  // offers: TransferOffer[] }].
+  transfers Json     @default("[]")
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
 
@@ -695,6 +699,38 @@ model LoanApplication {
 
   @@index([userId])
   @@map("loan_applications")
+}
+
+// A balance transfer the person made to a 0% card (spec step 113), so Jane can keep the
+// promo's end in view: the payment that clears it in time, a deadline, and reminders.
+model BalanceTransfer {
+  id                 String    @id @default(cuid())
+  userId             String    @map("user_id")
+  // The card the balance came from ("account:<id>").
+  fromDebtKey        String    @map("from_debt_key")
+  fromName           String    @map("from_name")
+  offerId            String    @map("offer_id")
+  issuer             String
+  cardName           String    @map("card_name")
+  amountCents        Int       @map("amount_cents")
+  feeCents           Int       @map("fee_cents")
+  promoMonths        Int       @map("promo_months")
+  goToAprBps         Int       @map("go_to_apr_bps")
+  monthlyNeededCents Int       @map("monthly_needed_cents")
+  startedOn          DateTime  @map("started_on") @db.Date
+  promoEndsOn        DateTime  @map("promo_ends_on") @db.Date
+  // The deadline it put on /deadlines (spec step 71).
+  deadlineId         String?   @map("deadline_id")
+  // active, done (paid off) or cancelled.
+  status             String    @default("active")
+  doneAt             DateTime? @map("done_at") @db.Timestamptz(3)
+  createdAt          DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt          DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("balance_transfers")
 }
 
 model Finding {

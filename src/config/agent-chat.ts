@@ -39,7 +39,7 @@ export const CHAT_SOURCE_LIMITS: Readonly<Record<string, number>> = {
   // Spec step 144.
   paycheck: 1,
   // Spec step 128 on.
-  investments: 2,
+  investments: 3,
 };
 
 // Quiet hours in the person's timezone (users.timezone): nothing is posted from 9pm to
@@ -131,6 +131,8 @@ export const MESSAGE_PRIORITY = {
   auto_invest_offer: 33,
   // Spec step 135: which account to fill first (demo advice).
   account_order: 37,
+  // Spec step 137: the monthly portfolio note.
+  investment_monthly: 41,
   auto_invest_run: 31,
 } as const;
 

@@ -5,7 +5,9 @@ import { AppHeader } from "@/components/app-header";
 import { SimulatedBanner } from "@/components/simulated-banner";
 import { ViewTracker } from "@/components/view-tracker";
 import { SIMULATED_PARTNER } from "@/config/brokerage";
+import { INVESTMENT_AUTOPILOT } from "@/config/investing";
 import { explainer } from "@/config/learn";
+import { autopilotOf } from "@/lib/autopilot";
 import { scopedFor } from "@/lib/db-scoped";
 import { formatBps, type HoldingView } from "@/insights/investments";
 import { loadInvestments } from "@/lib/investments/holdings";
@@ -77,12 +79,20 @@ function HoldingRow({ h }: { h: HoldingView }) {
 async function InvestmentsContent() {
   const user = await requireUser();
   await connection();
-  const [data, answers, simulated] = await Promise.all([
+  const [data, answers, simulated, level] = await Promise.all([
     loadInvestments(user.id),
     profileOf(user.id),
     // Spec step 133: holdings shaped by simulated orders say so.
     scopedFor(user.id).brokerageOrders.count({ where: { partner: SIMULATED_PARTNER } }),
+    // Spec step 137: what Jane does by herself at the person's autopilot level.
+    autopilotOf(user.id),
   ]);
+  const byHerself =
+    INVESTMENT_AUTOPILOT[
+      (level && Object.hasOwn(INVESTMENT_AUTOPILOT, level)
+        ? level
+        : "none") as keyof typeof INVESTMENT_AUTOPILOT
+    ];
   const profile = profileSummary(answers, data.asOf);
   const max = Math.max(1, ...data.months.map((m) => m.totalCents ?? 0));
 
@@ -243,6 +253,18 @@ async function InvestmentsContent() {
               </li>
             ))}
           </ul>
+
+          <section className="flex flex-col gap-2">
+            <h2 className="text-xl font-semibold">What Jane does by herself</h2>
+            <ul className="list-disc pl-5 text-sm">
+              {byHerself.map((line) => (
+                <li key={line}>{line}</li>
+              ))}
+            </ul>
+            <Link href="/settings" className={`text-sm ${LINK}`}>
+              Change your autopilot
+            </Link>
+          </section>
 
           <section className="flex flex-col gap-3">
             <h2 className="text-xl font-semibold">Month by month</h2>
