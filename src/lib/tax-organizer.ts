@@ -239,13 +239,11 @@ export async function loadTaxForms(
       select: { name: true, type: true, subtype: true },
       orderBy: [{ name: "asc" }, { id: "asc" }],
     }),
-    // Banks report loan interest for the current year only.
-    year === now.getUTCFullYear()
-      ? db.liabilities.findMany({
-          select: { kind: true, ytdInterestPaidCents: true, account: { select: { name: true } } },
-          orderBy: [{ account: { name: "asc" } }, { id: "asc" }],
-        })
-      : Promise.resolve([]),
+    // Banks report loan interest for the current year only; for a past year it's unknown.
+    db.liabilities.findMany({
+      select: { kind: true, ytdInterestPaidCents: true, account: { select: { name: true } } },
+      orderBy: [{ account: { name: "asc" } }, { id: "asc" }],
+    }),
     db.taxForms.findMany({ where: { year }, select: { key: true } }),
   ]);
   const got = new Set(received.map((r) => r.key));
@@ -263,7 +261,7 @@ export async function loadTaxForms(
     loans: loans.map((l) => ({
       name: l.account.name,
       kind: l.kind,
-      ytdInterestPaidCents: l.ytdInterestPaidCents,
+      ytdInterestPaidCents: year === now.getUTCFullYear() ? l.ytdInterestPaidCents : null,
     })),
   });
   return { year, forms: forms.map((f) => ({ ...f, received: got.has(f.key) })) };

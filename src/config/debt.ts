@@ -33,7 +33,13 @@ export const MAX_TYPED_DEBT_CENTS = 2_000_000_000;
 
 // Jane's chat (src/config/agent-chat.ts takes these in): each debt message source's daily
 // limit, and where its messages go among the rest (higher first).
-export const DEBT_SOURCE_LIMITS = { debts: 1, payoff: 1, refinance: 1, loans: 2 } as const;
+export const DEBT_SOURCE_LIMITS = {
+  debts: 1,
+  payoff: 1,
+  refinance: 1,
+  loans: 2,
+  transfers: 1,
+} as const;
 export const DEBT_MESSAGE_PRIORITY = {
   // A buy now, pay later plan Jane found, then a debt with no rate: news that can wait,
   // after the questions other features need answered first (taxes, investments).
@@ -54,6 +60,10 @@ export const DEBT_MESSAGE_PRIORITY = {
   loan_payoff_late: 84,
   loan_funded: 50,
   loan_paid_off: 52,
+  // Spec step 113: a reminder before a 0% transfer ends is a deadline; an offer can wait,
+  // like refinance offers.
+  transfer_reminder: 89,
+  transfer_offer: 32,
 } as const;
 
 // What Jane does about debts by herself at each autopilot level (src/config/autopilot.ts),
@@ -79,6 +89,10 @@ export const DEBT_AUTOPILOT: Readonly<
       step: 112,
       does: "Prepares the application for the offer you pick from what it already knows, then follows it: funding, and the old loan being paid off. Submitting and accepting a loan always need your tap.",
     },
+    {
+      step: 113,
+      does: "Looks for 0% balance transfer offers for your cards every month and, once you've moved a balance, puts the promo's end on your deadlines and reminds you 60, 30 and 7 days before it. Opening the card and moving the money are yours.",
+    },
   ],
   safe: [
     {
@@ -97,6 +111,10 @@ export const DEBT_AUTOPILOT: Readonly<
       step: 112,
       does: "Prepares the application for the offer you pick from what it already knows, then follows it: funding, and the old loan being paid off. Submitting and accepting a loan always need your tap.",
     },
+    {
+      step: 113,
+      does: "Looks for 0% balance transfer offers for your cards every month and, once you've moved a balance, puts the promo's end on your deadlines and reminds you 60, 30 and 7 days before it. Opening the card and moving the money are yours.",
+    },
   ],
   all: [
     {
@@ -114,6 +132,10 @@ export const DEBT_AUTOPILOT: Readonly<
     {
       step: 112,
       does: "Prepares the application for the offer you pick from what it already knows, then follows it: funding, and the old loan being paid off. Submitting and accepting a loan always need your tap.",
+    },
+    {
+      step: 113,
+      does: "Looks for 0% balance transfer offers for your cards every month and, once you've moved a balance, puts the promo's end on your deadlines and reminds you 60, 30 and 7 days before it. Opening the card and moving the money are yours.",
     },
   ],
 };
@@ -183,3 +205,13 @@ export const LOAN_PAYOFF_WAIT_DAYS = 10;
 export const LOAN_PAID_OFF_CENTS = 100;
 // An approved loan the person hasn't answered: Jane reminds them after this many days.
 export const LOAN_APPROVED_REMIND_DAYS = 1;
+
+// --- Step 113: balance transfers ----------------------------------------------------------
+
+// A 0% transfer is worth bringing up when it saves at least this much against keeping the
+// card, the transfer fee counted, paying the same each month.
+export const BT_MIN_SAVING_CENTS = 10_000;
+// Reminders before the 0% ends, in days. The promo end also goes on Deadlines.
+export const BT_REMIND_DAYS: readonly number[] = [60, 30, 7];
+// The demo bank shows a moved card balance gone this many days after the transfer.
+export const DEMO_TRANSFER_DAYS = 2;

@@ -1,6 +1,17 @@
 import { DEMO_LOAN_FUNDING_DAYS } from "@/config/debt";
-import { DEMO_LENDERS, demoLenderUrl, type DemoLender } from "@/data-sources/demo/demo-lenders";
-import type { LenderPartner, LoanOffer, PrequalifyRequest } from "./partner";
+import {
+  DEMO_LENDERS,
+  DEMO_TRANSFER_CARDS,
+  demoLenderUrl,
+  type DemoLender,
+} from "@/data-sources/demo/demo-lenders";
+import type {
+  LenderPartner,
+  LoanOffer,
+  PrequalifyRequest,
+  TransferOffer,
+  TransferRequest,
+} from "./partner";
 
 // The stand-in lender partner (spec step 111): offers from the demo catalog, priced by
 // the credit band and moving a little from month to month, like real rates; applications
@@ -45,10 +56,40 @@ export function demoQuote(lender: DemoLender, request: PrequalifyRequest): LoanO
   };
 }
 
+// Spec step 113: the stand-in 0% transfer cards that take this amount, with the fee on it.
+export function demoTransfers(request: TransferRequest): TransferOffer[] {
+  return DEMO_TRANSFER_CARDS.flatMap((card) => {
+    if (request.amountCents > card.maxAmountCents) return [];
+    const feeCents =
+      card.feeShare === 0
+        ? 0
+        : Math.max(card.feeMinCents, Math.round(request.amountCents * card.feeShare));
+    return [
+      {
+        id: `demo-bt-${card.key}-${card.promoMonths}`,
+        issuer: card.issuer,
+        cardName: card.name,
+        promoMonths: card.promoMonths,
+        feeCents,
+        feeLabel:
+          card.feeShare === 0
+            ? "No transfer fee"
+            : `${Math.round(card.feeShare * 100)}% transfer fee`,
+        goToAprBps: card.goToAprBps + BAND_BPS[request.creditBand],
+        sourceUrl: demoLenderUrl(card.key),
+        demo: true,
+      },
+    ];
+  });
+}
+
 export const demoLender: LenderPartner = {
   name: "Demo lender catalog (sample offers)",
   async prequalify(request) {
     return DEMO_LENDERS.flatMap((l) => demoQuote(l, request) ?? []);
+  },
+  async balanceTransfers(request) {
+    return demoTransfers(request);
   },
   async offer(id, request) {
     return (await this.prequalify(request)).find((o) => o.id === id) ?? null;

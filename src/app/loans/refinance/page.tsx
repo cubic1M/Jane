@@ -10,7 +10,9 @@ import { ensureChecked, loadRefinance } from "@/lib/refinance";
 import { requireUser } from "@/lib/session";
 import type { RefinanceComparison } from "@/planning/refinance";
 import { listApplications, statusLine } from "@/lib/loan-applications";
-import { applyAction, checkNow } from "./actions";
+import { loadTransfers, type Transfers } from "@/lib/balance-transfers";
+import { shortMonth } from "@/planning/balance-transfer";
+import { applyAction, checkNow, endTransferAction, startTransferAction } from "./actions";
 
 // Refinance offers (spec step 111): for each loan and card, the offers Jane checked,
 // compared with keeping it over the same months, fees included. Sample offers from the
@@ -116,6 +118,118 @@ function Comparison({ c }: { c: RefinanceComparison }) {
   );
 }
 
+// Spec step 113: 0% balance transfers for each card, fee counted, and the ones running.
+function TransfersSection({ data, started }: { data: Transfers; started: unknown }) {
+  const running = data.transfers.filter((t) => t.status === "active");
+  if (data.comparisons.length === 0 && running.length === 0) return null;
+  return (
+    <section id="transfers" aria-labelledby="transfers-title" className="flex flex-col gap-3">
+      <h2 id="transfers-title" className="text-xl font-semibold">
+        Move card debt to 0%
+      </h2>
+      {started === "started" && (
+        <p role="status" className="text-sm text-emerald-800 dark:text-emerald-200">
+          Got it. The 0% end is on your deadlines, and Jane reminds you before it.
+        </p>
+      )}
+      {started === "done" && (
+        <p role="status" className="text-sm text-emerald-800 dark:text-emerald-200">
+          Paid off before the 0% ended. Ticked off your deadlines.
+        </p>
+      )}
+      {running.length > 0 && (
+        <ul aria-label="Your transfers" className="flex flex-col gap-2 text-sm">
+          {running.map((t) => (
+            <li
+              key={t.id}
+              className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-zinc-200 p-3 dark:border-zinc-800"
+            >
+              <span>
+                {formatCents(t.amountCents)} moved to {t.cardName}: 0% until{" "}
+                {shortMonth(t.promoEndsOn)}. Pay {formatCents(t.monthlyNeededCents)} a month to
+                clear it, the {formatCents(t.feeCents)} fee included.
+              </span>
+              <form action={endTransferAction}>
+                <input type="hidden" name="id" value={t.id} />
+                <button type="submit" className="font-medium text-emerald-700 hover:underline">
+                  It&apos;s paid off
+                </button>
+              </form>
+            </li>
+          ))}
+        </ul>
+      )}
+      {data.comparisons.map((c) => (
+        <div
+          key={c.debtKey}
+          className="flex flex-col gap-2 rounded-xl border border-zinc-200 p-4 text-sm [overflow-wrap:anywhere] dark:border-zinc-800"
+        >
+          <p>
+            Your {c.debtName}: {formatCents(c.balanceCents)} at {formatRate(c.aprBps)}.
+          </p>
+          {c.pick && !running.some((t) => t.fromDebtKey === c.debtKey) && (
+            <div className="flex flex-col gap-1 rounded-lg bg-emerald-50 p-3 dark:bg-emerald-950">
+              <p className="font-medium">Jane&apos;s pick: {c.pick.offer.cardName}</p>
+              {c.why.map((line) => (
+                <p key={line}>{line}</p>
+              ))}
+              <DemoAdviceLabel />
+              <form action={startTransferAction} className="mt-2">
+                <input type="hidden" name="debtKey" value={c.debtKey} />
+                <input type="hidden" name="offerId" value={c.pick.offer.id} />
+                <button
+                  type="submit"
+                  className="h-11 rounded-full bg-emerald-700 px-5 font-medium text-white hover:bg-emerald-800"
+                >
+                  I&apos;ve moved it to {c.pick.offer.cardName}
+                </button>
+              </form>
+              <p className="text-xs text-zinc-600 dark:text-zinc-400">
+                Opening the card and moving the balance are yours to do; this tells Jane you have.
+              </p>
+            </div>
+          )}
+          <table className="w-full text-left">
+            <caption className="sr-only">0% offers for {c.debtName}</caption>
+            <thead>
+              <tr className="text-zinc-500">
+                <th scope="col" className="py-1 font-normal">
+                  Card
+                </th>
+                <th scope="col" className="py-1 font-normal">
+                  0% for
+                </th>
+                <th scope="col" className="py-1 font-normal">
+                  Fee
+                </th>
+                <th scope="col" className="py-1 font-normal">
+                  To clear it
+                </th>
+                <th scope="col" className="py-1 font-normal">
+                  Saving, fee counted
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              {c.offers.map((s) => (
+                <tr key={s.offer.id} className="border-t border-zinc-200 dark:border-zinc-800">
+                  <td className="py-1">{s.offer.cardName}</td>
+                  <td className="py-1">{s.offer.promoMonths} months</td>
+                  <td className="py-1">{formatCents(s.offer.feeCents)}</td>
+                  <td className="py-1">{formatCents(s.monthlyNeededCents)} a month</td>
+                  <td className="py-1">
+                    {s.savingCents === null ? "–" : formatCents(s.savingCents)}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      ))}
+    </section>
+  );
+}
+
 async function RefinanceContent({
   searchParams,
 }: {
@@ -126,7 +240,11 @@ async function RefinanceContent({
   const params = await searchParams;
   // Opened before Jane's first monthly check: she checks now.
   await ensureChecked(user.id);
-  const [refi, apps] = await Promise.all([loadRefinance(user.id), listApplications(user.id)]);
+  const [refi, apps, transfers] = await Promise.all([
+    loadRefinance(user.id),
+    listApplications(user.id),
+    loadTransfers(user.id),
+  ]);
   const shownApps = apps.filter((a) => a.status !== "withdrawn");
   const error = typeof params.error === "string" ? params.error : "";
 
@@ -203,6 +321,7 @@ async function RefinanceContent({
               ))}
             </ul>
           )}
+          <TransfersSection data={transfers} started={params.transfer} />
         </>
       )}
     </>
