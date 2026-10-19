@@ -48,6 +48,7 @@ import { policyConfirm, policyNotInsurance } from "./found-policies";
 import { budgetSet } from "./budget";
 import { findingOptions, findingWhy } from "./explain";
 import { savedShare } from "./saved";
+import { prefSave, suggestNever } from "./remember";
 import { welcomeTour } from "./welcome";
 
 // Every button action, by id (spec step 81). A new button is a new handler here; the
@@ -91,6 +92,9 @@ export const ACTION_HANDLERS: Readonly<Record<ActionId, ActionHandler>> = {
   "budget.set": budgetSet,
   "finding.why": findingWhy,
   "finding.options": findingOptions,
+  // Spec step 91.
+  "pref.save": prefSave,
+  "suggest.never": suggestNever,
   // Taxes (spec step 118).
   "tax.found_yes": taxFoundYes,
   ...TAX_PROFILE_HANDLERS,

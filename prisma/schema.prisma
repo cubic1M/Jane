@@ -275,6 +275,7 @@ model User {
   planProposals          PlanProposal[]
   planLinks              PlanLink[]
   janeMessages           JaneMessage[]
+  janePreferences        JanePreference[]
   chatReplyLinks         ChatReplyLink[]
   deadlines              Deadline[]
   sessions               Session[]
@@ -1719,6 +1720,28 @@ model JaneMessage {
   @@unique([userId, dedupeKey])
   @@index([userId, createdAt])
   @@map("jane_messages")
+}
+
+// Spec step 91: what Jane remembers about the person, saved only after their own tap. kind
+// "never": a suggestion they said not to make again (key: what it was about); "fact":
+// something they told her in the chat ("payday is the 15th", "I need my car"). The brain,
+// the chat and every sector read them (src/lib/jane-agent/preferences.ts); Settings lists
+// them, each deletable. In Download my data, deleted with the account.
+model JanePreference {
+  id        String   @id @default(cuid())
+  userId    String   @map("user_id")
+  kind      String
+  key       String
+  // What the fact says, for the code that reads it ({ days: [15] }, { target: "car" }).
+  value     Json     @default("{}")
+  // How Settings and the chat say it: "Payday is the 15th".
+  label     String
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, kind, key])
+  @@map("jane_preferences")
 }
 
 // One-tap answers from Jane's emails (spec step 85): one per button on one message. The
