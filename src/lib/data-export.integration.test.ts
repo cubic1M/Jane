@@ -124,6 +124,9 @@ describe.runIf(url)("data export against a real database", () => {
     await client.janeMessage.create({
       data: { userId, kind: "brief", body: `${name} brief`, dedupeKey: "brief:2026-10-18" },
     });
+    await client.janePreference.create({
+      data: { userId, kind: "fact", key: "payday", value: { days: [15] }, label: `${name} payday` },
+    });
     await client.changeAck.create({ data: { userId, key: "fee:tx_1", kind: "new_fee" } });
     await client.lifeEventAnswer.create({ data: { userId, kind: "moving", answer: "not_me" } });
     await client.budgetTuneUp.create({ data: { userId, month: "2026-10", changes: [] } });
@@ -232,6 +235,7 @@ describe.runIf(url)("data export against a real database", () => {
       "budgetTuneUps",
       "goalTransfers",
       "janeMessages",
+      "janePreferences",
       "taxTags",
       "taxForms",
     ] as const) {

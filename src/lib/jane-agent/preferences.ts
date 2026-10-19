@@ -14,11 +14,14 @@ import { scopedFor } from "@/lib/db-scoped";
 
 export type PreferenceKind = "never" | "fact";
 
+// Plain JSON, so it can sit on a message's refs.
+export type PreferenceValue = { [key: string]: string | number | boolean | number[] };
+
 export type Preference = {
   id: string;
   kind: PreferenceKind;
   key: string;
-  value: Record<string, unknown>;
+  value: PreferenceValue;
   label: string;
   createdAt: Date;
 };
@@ -29,7 +32,7 @@ export type PreferenceDraft = Pick<Preference, "kind" | "key" | "value" | "label
 type Options = { client?: PrismaClient };
 
 const LABEL_MAX = 200;
-const isObject = (v: unknown): v is Record<string, unknown> =>
+const isObject = (v: unknown): v is PreferenceValue =>
   typeof v === "object" && v !== null && !Array.isArray(v);
 
 export async function listPreferences(
@@ -62,9 +65,14 @@ export async function savePreference(
     create: { userId, kind: draft.kind, key: draft.key, ...data },
     update: data,
   });
-  await logAudit({ type: "user", id: userId }, "preference_saved", { type: "user", id: userId }, {
-    kind: draft.kind,
-  });
+  await logAudit(
+    { type: "user", id: userId },
+    "preference_saved",
+    { type: "user", id: userId },
+    {
+      kind: draft.kind,
+    },
+  );
 }
 
 // False when it isn't theirs or is already gone.

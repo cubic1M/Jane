@@ -17,8 +17,7 @@ const REMEMBER = /^(?:please )?remember (?:that )?(.+)$/;
 
 const ordinal = (n: number) => {
   const tens = n % 100;
-  const suffix =
-    tens >= 11 && tens <= 13 ? "th" : (["th", "st", "nd", "rd"][n % 10] ?? "th");
+  const suffix = tens >= 11 && tens <= 13 ? "th" : (["th", "st", "nd", "rd"][n % 10] ?? "th");
   return `${n}${suffix}`;
 };
 

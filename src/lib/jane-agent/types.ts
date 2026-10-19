@@ -1,5 +1,6 @@
 import type { Topic } from "./context";
 import type { Intent } from "./intents";
+import type { PreferenceDraft } from "./preferences";
 
 // Jane's chat messages (spec step 81): what a message is, what it's about and its buttons.
 // Stored in jane_messages; posted by Jane's brain (spec step 82) and, from step 84, typed
@@ -56,6 +57,9 @@ export const ACTION_IDS = [
   "budget.set",
   "finding.why",
   "finding.options",
+  // Spec step 91: saving what the person told Jane, and a suggestion never to make again.
+  "pref.save",
+  "suggest.never",
   // Taxes (spec step 118): the tax profile, one question at a time.
   "tax.found_yes",
   "tax.filing_single",
@@ -150,6 +154,8 @@ export type MessageRefs = {
   choices?: { label: string; intent: Intent }[];
   // Spec step 90: the budget "Set a budget" would set (cents a month).
   budget?: { category: string; amountCents: number };
+  // Spec step 91: what "Remember this" would save.
+  preference?: PreferenceDraft;
   // Taxes (spec step 118): the tax profile question a message is asking, and the kind of
   // income "Add it" would add.
   taxField?: string;

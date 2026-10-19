@@ -117,6 +117,20 @@ test("the demo bank lands in Jane's chat, and Yes answers a finding", async ({
   await expect(messages.last()).toContainText("Want me to handle it?");
   await expect(messages.last().getByRole("button", { name: "Yes", exact: true })).toBeVisible();
 
+  // Spec step 91: Jane remembers what she's told, only on the tap, and Settings can forget it.
+  await ask.fill("payday is the 15th");
+  await ask.press("Enter");
+  const told = messages.filter({ hasText: "I can remember that: payday is the 15th." }).last();
+  await expect(told).toBeVisible();
+  await told.getByRole("button", { name: "Remember this" }).click();
+  await expect(told.getByRole("status")).toContainText("Saved.");
+  await page.goto("/settings#remembers");
+  const remembers = page.locator("#remembers");
+  await expect(remembers).toContainText("Payday is the 15th");
+  await remembers.getByRole("button", { name: /Forget/ }).click();
+  await expect(remembers).toContainText("Nothing yet.");
+  await page.goto("/chat");
+
   const overflow = await page.evaluate(
     () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
   );

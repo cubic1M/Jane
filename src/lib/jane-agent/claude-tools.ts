@@ -28,6 +28,7 @@ import { isDebtTool, runDebtTool } from "./debt-tools-run";
 import { INVESTMENT_TOOLS, isInvestmentTool, runInvestmentTool } from "./investments/tools";
 import { monthLabel, type Reply } from "./replies";
 import { guessLine } from "./replies-life";
+import { listPreferences } from "./preferences";
 import { loadRecurring } from "./recurring";
 import { weeklyReview } from "./replies-review";
 import { loadSnapshot } from "./snapshot";
@@ -430,6 +431,11 @@ export async function chatPrimer(
     parts.push(`${CHAT_PRIMER_TOOLS[i]}: ${result.value.content}`);
     cents.push(...result.value.cents);
   });
+  // Spec step 91: what they told Jane, and suggestions not to make again.
+  const remembered = await listPreferences(userId, { client }).catch(() => []);
+  if (remembered.length > 0) {
+    parts.push(`remembered: ${JSON.stringify(remembered.map((p) => p.label))}`);
+  }
   return { text: parts.join("\n"), cents };
 }
 

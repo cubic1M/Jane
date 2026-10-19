@@ -35,6 +35,8 @@ export function findingCandidate(finding: SnapshotFinding): Candidate {
     ...(finding.pick
       ? [{ id: "finding.options" as const, label: "Show options", kind: "quick" as const }]
       : []),
+    // Spec step 91: No for good.
+    { id: "suggest.never", label: "Don't suggest again", kind: "secondary" },
     { id: "open", label: "Open", kind: "link", href: `/report/${finding.findingId}` },
   );
   return {

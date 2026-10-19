@@ -5,6 +5,8 @@ import { CATEGORY_LABELS, UNCATEGORIZED } from "@/insights/labels";
 import { parseMoneyToCents } from "@/lib/money";
 import { parseDebtIntent, type DebtIntent } from "./debt-intents";
 import { parseTaxIntent, type TaxIntent } from "./tax-intents";
+import type { PreferenceDraft } from "./preferences";
+import { parseFact } from "./remember";
 import { parseInvestmentIntent, type InvestmentIntent } from "./investments/intents";
 
 // What the person typed to Jane, understood by rules (spec step 84). Pure: the text and
@@ -62,6 +64,8 @@ export type Intent =
   // A name on its own, or "tell me about …": a subscription or bill, something Jane found,
   // or a spending category, whichever it is (src/lib/jane-agent/answer.ts).
   | { kind: "about"; target: string; findingId?: string }
+  // Spec step 91: something the person told Jane about themselves, to remember on a tap.
+  | { kind: "remember"; draft: PreferenceDraft }
   // A follow-up: "and Hulu?", "what about last month?" (target or month): resolved against
   // what the conversation was about (./context.ts).
   | { kind: "follow_up"; target: string | null; month: string | null }
@@ -373,6 +377,10 @@ export function parseIntent(raw: string, asOf: string): Intent {
   if (debt) return debt;
   const tax = parseTaxIntent(text);
   if (tax) return tax;
+
+  // Spec step 91: something they're telling Jane, not asking.
+  const fact = parseFact(text);
+  if (fact) return { kind: "remember", draft: fact };
 
   // Spec step 88: a follow-up to what was just said: another month, or another name.
   const follow = FOLLOW.exec(text);
