@@ -134,7 +134,13 @@ describe.runIf(url)("data export against a real database", () => {
       data: { userId, sector: "bills", level: "safe", actionCapCents: 100, monthlyCapCents: 100 },
     });
     await client.paycheckPlan.create({
-      data: { userId, key: "paycheck:t1", paycheckCents: 100, paidOn: new Date("2026-10-15"), moves: [] },
+      data: {
+        userId,
+        key: "paycheck:t1",
+        paycheckCents: 100,
+        paidOn: new Date("2026-10-15"),
+        moves: [],
+      },
     });
     await client.controllerRun.create({
       data: { userId, day: "2026-10-18", startedAt: new Date() },
