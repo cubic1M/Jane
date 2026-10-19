@@ -88,3 +88,8 @@ export const CHAT_CLAUDE_MAX_TURNS = 6;
 export const CHAT_WEEK_DAYS = 7;
 // Categories named when the person asks what they spent without naming one.
 export const CHAT_TOP_CATEGORIES = 3;
+
+// "Can I spend $500 on food this week?": "usually" is the average of this many complete
+// months of that category, and a week is a month divided by this many weeks.
+export const AFFORD_USUAL_MONTHS = 3;
+export const WEEKS_PER_MONTH = 4.345;

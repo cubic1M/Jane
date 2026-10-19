@@ -1,4 +1,4 @@
-import { CHAT_TOP_CATEGORIES } from "@/config/agent-chat";
+import { AFFORD_USUAL_MONTHS, CHAT_TOP_CATEGORIES, WEEKS_PER_MONTH } from "@/config/agent-chat";
 import { INSIGHT_MONTHS } from "@/config/insights";
 import { MAX_AFFORD_CENTS } from "@/config/afford";
 import { RULE_UNDO_HOURS } from "@/config/rules";
@@ -14,8 +14,21 @@ import {
 } from "@/insights/spending";
 import { formatCents } from "@/lib/money";
 import type { JaneDid } from "@/lib/what-jane-did";
-import { AFFORD_COPY, monthlyNeededLine, safeLine, shortLine } from "@/planning/afford-copy";
-import { affordCheck, affordWindow, monthOf, type AffordNumbers } from "@/planning/afford";
+import {
+  AFFORD_COPY,
+  monthlyNeededLine,
+  reachedByLine,
+  safeLine,
+  shortLine,
+} from "@/planning/afford-copy";
+import type { Budget } from "@/insights/budgets";
+import {
+  affordCheck,
+  affordWindow,
+  monthOf,
+  type AffordNumbers,
+  type AffordResult,
+} from "@/planning/afford";
 import { matchCategory, type ActVerb, type Intent } from "./intents";
 import { localTime } from "./quiet-hours";
 import type { Snapshot, SnapshotFinding } from "./snapshot";
@@ -71,31 +84,83 @@ export function unknownReply(): Reply {
   return reply(`I can help with your money here, but I didn't catch that. Try:\n${exampleList()}`);
 }
 
-// "Can I afford $900 for a trip in March?": what it does to safe to spend, goals and
-// checking, as on /afford. A purchase in a later month gets "Start a goal for it".
-export function affordReply(
-  intent: Extract<Intent, { kind: "afford" }>,
-  numbers: AffordNumbers,
-): Reply {
-  const { asOf } = numbers;
-  if (intent.amountCents === null) {
-    return reply('How much is it? Try "can I afford $900 for a trip in March".');
-  }
-  if (intent.amountCents > MAX_AFFORD_CENTS) return reply(AFFORD_COPY.errors.tooBig);
-  const current = monthOf(asOf);
-  const month = intent.month ?? current;
-  if (!affordWindow(asOf).months.includes(month)) return reply(AFFORD_COPY.errors.month);
-  const later = month > current;
-  const date = later ? `${month}-01` : asOf;
-  const result = affordCheck(numbers, {
-    kind: "purchase",
-    amountCents: intent.amountCents,
-    date,
-  });
+// The category a purchase is in ("food" → Food and drink), next to the person's own
+// numbers: spent this month so far, a usual month (the average of the last complete
+// months) and their budget, if they set one.
+export type CategoryContext = {
+  category: string;
+  month: string;
+  spentCents: number;
+  usualMonthCents: number;
+  budgetCents: number | null;
+};
 
+const CATEGORY_LIST = [...new Set([...Object.values(CATEGORY_LABELS), UNCATEGORIZED])];
+
+export function categoryContext(
+  query: string,
+  transactions: InsightTransaction[],
+  budgets: Budget[],
+  asOf: string,
+): CategoryContext | null {
+  const category = matchCategory(query, CATEGORY_LIST);
+  if (!category) return null;
+  const months = monthsEnding(asOf, AFFORD_USUAL_MONTHS + 1);
+  const insights = spendingInsights(transactions, { asOf, monthCount: months.length });
+  const spentIn = (m: string) =>
+    insights.categoriesByMonth[m]?.find((c) => c.category === category)?.cents ?? 0;
+  const month = months.at(-1)!;
+  const past = months.slice(0, -1);
+  return {
+    category,
+    month,
+    spentCents: spentIn(month),
+    usualMonthCents: Math.round(past.reduce((sum, m) => sum + spentIn(m), 0) / past.length),
+    budgetCents: budgets.find((b) => b.category === category)?.amountCents ?? null,
+  };
+}
+
+const roundDollars = (cents: number) => Math.round(cents / 100) * 100;
+// "about 5×", "about 1.5×".
+const times = (n: number) => `${n >= 10 ? Math.round(n) : Math.round(n * 10) / 10}×`;
+
+// What a once-off amount means next to the category: spent so far, a usual week or month,
+// the budget.
+function categoryLines(
+  context: CategoryContext,
+  amountCents: number,
+  period: "week" | "month" | null,
+): string[] {
+  const { category, month, spentCents, usualMonthCents, budgetCents } = context;
   const lines = [
-    `If you spend ${fmt(intent.amountCents)}${intent.what ? ` on ${intent.what}` : ""}${later ? ` in ${monthLabel(month)}` : " now"}:`,
+    `So far in ${monthLabel(month).split(" ")[0]} you've spent ${fmt(spentCents)} on ${category}.`,
   ];
+  if (usualMonthCents > 0) {
+    if (period === "week") {
+      const week = usualMonthCents / WEEKS_PER_MONTH;
+      lines.push(
+        `You usually spend about ${fmt(roundDollars(week))} a week on ${category}, so ${fmt(amountCents)} is about ${times(amountCents / week)} a usual week.`,
+      );
+    } else {
+      lines.push(
+        `You usually spend about ${fmt(roundDollars(usualMonthCents))} a month on ${category}.`,
+      );
+    }
+  }
+  if (budgetCents !== null) {
+    const after = spentCents + amountCents;
+    lines.push(
+      after > budgetCents
+        ? `Your ${category} budget is ${fmt(budgetCents)} a month: this would take you to ${fmt(after)}, ${fmt(after - budgetCents)} over.`
+        : `Your ${category} budget is ${fmt(budgetCents)} a month: this would take you to ${fmt(after)}, ${fmt(budgetCents - after)} under.`,
+    );
+  }
+  return lines;
+}
+
+// Safe to spend, goals and checking, before and after, as on /afford.
+function effectLines(result: AffordResult): string[] {
+  const lines: string[] = [];
   if (!result.safe) {
     lines.push(AFFORD_COPY.noChecking);
   } else if (result.safe.beforeCents === result.safe.afterCents) {
@@ -122,6 +187,17 @@ export function affordReply(
         ),
       );
     }
+    if (goal.kind === "reached_by" && goal.after !== goal.before) {
+      const short = (m: string | null) => m && utc(`${m}-01`, { month: "short", year: "numeric" });
+      lines.push(
+        reachedByLine(
+          goal.name,
+          { before: fmt(goal.beforeMonthlyCents), after: fmt(goal.afterMonthlyCents) },
+          short(goal.before),
+          short(goal.after),
+        ),
+      );
+    }
   }
   if (result.firstShort && (result.firstShort.before || result.firstShort.after)) {
     lines.push(
@@ -131,6 +207,49 @@ export function affordReply(
       ),
     );
   }
+  return lines;
+}
+
+// "Can I afford $900 for a trip in March?", "can I spend $500 on food this week?": what it
+// does to safe to spend, goals and checking, as on /afford, and, when it names a category,
+// how it compares with what the person usually spends there and their budget. A purchase
+// in a later month gets "Start a goal for it". "$500 a month on food" is a monthly change:
+// what's more than usual for that category.
+export function affordReply(
+  intent: Extract<Intent, { kind: "afford" }>,
+  numbers: AffordNumbers,
+  context: CategoryContext | null = null,
+): Reply {
+  const { asOf } = numbers;
+  if (intent.amountCents === null) {
+    return reply('How much is it? Try "can I afford $900 for a trip in March".');
+  }
+  if (intent.amountCents > MAX_AFFORD_CENTS) return reply(AFFORD_COPY.errors.tooBig);
+  const current = monthOf(asOf);
+  const month = intent.month ?? current;
+  if (!affordWindow(asOf).months.includes(month)) return reply(AFFORD_COPY.errors.month);
+  if (intent.recurring)
+    return monthlyAffordReply(intent.amountCents, intent.what, month, numbers, context);
+
+  const later = month > current;
+  const date = later ? `${month}-01` : asOf;
+  const result = affordCheck(numbers, {
+    kind: "purchase",
+    amountCents: intent.amountCents,
+    date,
+  });
+
+  const when = later
+    ? ` in ${monthLabel(month)}`
+    : intent.period === "week"
+      ? " this week"
+      : " now";
+  const lines = [
+    `If you spend ${fmt(intent.amountCents)}${intent.what ? ` on ${intent.what}` : ""}${when}:`,
+    ...effectLines(result),
+  ];
+  // Spending so far and the budget are about this month; a later month only gets the goal.
+  if (context && !later) lines.push(...categoryLines(context, intent.amountCents, intent.period));
   lines.push("This is math, not a recommendation.");
 
   const amount = (intent.amountCents / 100).toFixed(2);
@@ -149,6 +268,63 @@ export function affordReply(
   }
   actions.push(link("See the full check", `/afford?kind=purchase&amount=${amount}&date=${date}`));
   return reply(lines.join("\n"), actions, refs);
+}
+
+// "Can I spend $500 a month on food?": with a category, the change is what's above (or
+// below) a usual month there; without one, all of it is more going out each month.
+function monthlyAffordReply(
+  amountCents: number,
+  what: string | null,
+  month: string,
+  numbers: AffordNumbers,
+  context: CategoryContext | null,
+): Reply {
+  const from = month > monthOf(numbers.asOf) ? ` from ${monthLabel(month)}` : "";
+  const lines: string[] = [];
+  let extraCents = amountCents;
+  if (context && context.usualMonthCents > 0) {
+    const usual = roundDollars(context.usualMonthCents);
+    extraCents = amountCents - usual;
+    lines.push(
+      `You usually spend about ${fmt(usual)} a month on ${context.category}, so ${fmt(amountCents)} a month is ${
+        extraCents > 0
+          ? `${fmt(extraCents)} more`
+          : extraCents < 0
+            ? `${fmt(-extraCents)} less`
+            : "the same"
+      } each month.`,
+    );
+  } else {
+    lines.push(
+      `If you spend ${fmt(amountCents)} more each month${what ? ` on ${what}` : ""}${from}:`,
+    );
+  }
+  if (context?.budgetCents != null) {
+    const diff = amountCents - context.budgetCents;
+    lines.push(
+      `Your ${context.category} budget is ${fmt(context.budgetCents)} a month${diff > 0 ? `, ${fmt(diff)} less than this` : diff < 0 ? `, ${fmt(-diff)} more than this` : ", the same as this"}.`,
+    );
+  }
+  const actions: MessageAction[] = [];
+  if (extraCents === 0) {
+    lines.push("That's what you spend now, so nothing changes.");
+  } else {
+    if (context && context.usualMonthCents > 0) {
+      lines.push(`If that ${extraCents > 0 ? "extra goes out" : "stays in"} every month${from}:`);
+    }
+    lines.push(
+      ...effectLines(
+        affordCheck(numbers, { kind: "monthly", amountCents: extraCents, startMonth: month }),
+      ),
+    );
+    const kind = extraCents > 0 ? "more" : "less";
+    const amount = (Math.abs(extraCents) / 100).toFixed(2);
+    actions.push(
+      link("See the full check", `/afford?kind=${kind}&amount=${amount}&month=${month}`),
+    );
+  }
+  lines.push("This is math, not a recommendation.");
+  return reply(lines.join("\n"), actions);
 }
 
 const merchantOf = (t: InsightTransaction) =>

@@ -169,6 +169,26 @@ describe.runIf(url)("typing to Jane against a real database", () => {
     ]);
   });
 
+  it("reads 'can I spend $500 this week for food' as affording it, with the person's own budget", async () => {
+    // Someone else's food budget never shows up.
+    await client.budget.create({
+      data: { userId: otherId, category: "Food and drink", amountCents: 10_000 },
+    });
+    const first = (await send("can I spend 500 dollars this week for food")).reply.body;
+    expect(first).toMatch(/^If you spend \$500\.00 on food this week:/);
+    expect(first).toMatch(/So far in October you've spent \$[\d,]+\.\d\d on Food and drink\./);
+    expect(first).toMatch(/You usually spend about \$[\d,]+\.00 a week on Food and drink/);
+    expect(first).not.toContain("budget");
+
+    await client.budget.create({
+      data: { userId, category: "Food and drink", amountCents: 40_000 },
+    });
+    expect((await send("can I spend 500 dollars this week for food")).reply.body).toContain(
+      "Your Food and drink budget is $400.00 a month",
+    );
+    await client.budget.deleteMany({ where: { userId: { in: [userId, otherId] } } });
+  });
+
   it("pauses autopilot only on the tap", async () => {
     await client.user.update({ where: { id: userId }, data: { autopilot: "safe" } });
     const { reply } = await send("pause autopilot");

@@ -1,3 +1,4 @@
+import { AFFORD_USUAL_MONTHS } from "@/config/agent-chat";
 import { INSIGHT_MONTHS } from "@/config/insights";
 import type { PrismaClient } from "@/generated/prisma/client";
 import { loadInsightTransactions } from "@/insights/load";
@@ -11,6 +12,7 @@ import type { Intent } from "./intents";
 import {
   actReply,
   affordReply,
+  categoryContext,
   approveAllReply,
   comingUpReply,
   helpReply,
@@ -40,8 +42,20 @@ export async function answerByRules(
       return null;
     case "help":
       return helpReply();
-    case "afford":
-      return affordReply(intent, await loadAffordNumbers(userId, { client, now }));
+    case "afford": {
+      const numbers = await loadAffordNumbers(userId, { client, now });
+      if (!intent.category) return affordReply(intent, numbers);
+      const db = scopedFor(userId, client);
+      const [transactions, budgets] = await Promise.all([
+        loadInsightTransactions(db, asOf, AFFORD_USUAL_MONTHS + 1),
+        db.budgets.findMany({ select: { category: true, amountCents: true } }),
+      ]);
+      return affordReply(
+        intent,
+        numbers,
+        categoryContext(intent.category, transactions, budgets, asOf),
+      );
+    }
     case "spending": {
       const transactions = await loadInsightTransactions(
         scopedFor(userId, client),

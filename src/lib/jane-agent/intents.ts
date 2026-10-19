@@ -1,4 +1,5 @@
 import { CHAT_WEEK_DAYS } from "@/config/agent-chat";
+import { CATEGORY_LABELS, UNCATEGORIZED } from "@/insights/labels";
 import { parseMoneyToCents } from "@/lib/money";
 
 // What the person typed to Jane, understood by rules (spec step 84). Pure: the text and
@@ -15,7 +16,18 @@ export type Intent =
   | { kind: "undo" }
   | { kind: "pause_autopilot" }
   // amountCents is null when no amount was given; month (YYYY-MM) null means now.
-  | { kind: "afford"; amountCents: number | null; what: string | null; month: string | null }
+  // category: the person's words when they name a spending category ("food"), for the
+  // answer to compare with what they usually spend and their budget. period: "this week"
+  // or "a month" in the question; recurring: every month, not once.
+  | {
+      kind: "afford";
+      amountCents: number | null;
+      what: string | null;
+      month: string | null;
+      category: string | null;
+      period: "week" | "month" | null;
+      recurring: boolean;
+    }
   | { kind: "safe_to_spend" }
   // category is the person's own words ("food"), matched loosely later; month YYYY-MM.
   | { kind: "spending"; category: string | null; month: string }
@@ -117,10 +129,11 @@ function cleanTarget(text: string): string {
     .trim();
 }
 
-// "a trip", "the new couch": what the money is for, without the amount or the month.
+// "a trip", "the new couch", "food": what the money is for, without the amount or the
+// month. "for …" or "on …".
 function purchaseOf(text: string): string | null {
   const match =
-    /\bfor ((?:a |an |the |my |our |some )?[a-z][a-z' -]{0,40}?)(?= (?:in|by|next|this|on|during|until|at)\b|$)/.exec(
+    /\b(?:for|on) ((?:a |an |the |my |our |some )?[a-z][a-z' -]{0,40}?)(?= (?:in|by|next|this|on|during|until|at|a|per|each|every|monthly|weekly)\b|$)/.exec(
       text,
     );
   // Or "can I afford a vacation".
@@ -142,6 +155,17 @@ const WHAT_DID =
 const APPROVE_ALL =
   /\b(?:yes to (?:all|everything)|approve (?:them all|all|everything|the safe ones|the safe stuff|safe ones))\b/;
 const UNDO = /^(?:undo|undo (?:that|it|the last one)|take (?:that|it) back)$/;
+// Asking whether a purchase is OK without the word "afford": "can I spend $500 on food
+// this week", "should I buy a $1,200 laptop", "is it ok to spend 300 on clothes", "do I
+// have enough for a $900 trip". Only with an amount; without one, "how much can I spend"
+// is safe to spend.
+const AFFORD_ASK =
+  /^(?:so )?(?:can|could|should|may|shall|would) (?:i|we) (?:spend|buy|get|pay|put|book|go|splurge|drop|blow|use)\b|^(?:is it|would it be|will it be|is that) (?:ok|okay|fine|safe|alright|smart|wise|a good idea) (?:to|if i|if we) (?:spend|buy|pay|get|book|use)\b|^(?:do|will|would) (?:i|we) have (?:enough|room|money)\b/;
+// Every month, not once: "$500 a month", "monthly". "In a month" is a date, not a pace.
+const RECURRING = /(?<!\bin )\b(?:a|per|each|every) month\b|\bmonthly\b/;
+const WEEK = /\b(?:this|a|per|each|every|next) week\b|\bweekly\b/;
+const CATEGORY_LIST = [...new Set([...Object.values(CATEGORY_LABELS), UNCATEGORIZED])];
+
 const SAFE =
   /\bsafe to spend\b|\bhow much (?:can|could) i (?:still )?spend\b|\bwhat can i (?:still )?spend\b|\bspending money left\b/;
 const SPENDING = /\b(?:spent|spend|spending)\b/;
@@ -160,12 +184,17 @@ export function parseIntent(raw: string, asOf: string): Intent {
   if (APPROVE_ALL.test(text)) return { kind: "approve_all" };
   if (UNDO.test(text)) return { kind: "undo" };
 
-  if (/\bafford\b/.test(text)) {
+  if (/\bafford\b/.test(text) || (AFFORD_ASK.test(text) && parseAmount(text) !== null)) {
+    const what = purchaseOf(text);
+    const recurring = RECURRING.test(text);
     return {
       kind: "afford",
       amountCents: parseAmount(text),
-      what: purchaseOf(text),
+      what,
       month: parseMonth(text, asOf, "future"),
+      category: what && matchCategory(what, CATEGORY_LIST) ? what : null,
+      period: WEEK.test(text) ? "week" : recurring || /\bthis month\b/.test(text) ? "month" : null,
+      recurring,
     };
   }
   if (SAFE.test(text)) return { kind: "safe_to_spend" };
