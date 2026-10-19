@@ -13,6 +13,7 @@ import { filingAccepted, filingOffer, filingReady } from "../tax-filing-message"
 import { januaryMessage } from "../tax-january";
 import { harvestMessage, washSaleMessage } from "../tax-investments";
 import { localityMessage, movingEventMessage, spottedMoveMessage } from "../tax-states-message";
+import { collectedMessage, flaggedMessage, missingMessage } from "../tax-documents-message";
 import { HARVEST_FROM } from "@/config/tax";
 import { formatCents } from "@/lib/money";
 import { incomeLine, listOf } from "@/planning/tax-profile";
@@ -302,7 +303,39 @@ export const taxesSource: MessageSource = {
       }
     }
 
-    for (const form of tax.formsDue?.forms ?? []) {
+    // Spec step 166: with a document partner, Jane collects the forms herself: a form that
+    // doesn't match the accounts, the ones collected, and one still missing a week after its
+    // date. Without one, she asks whether each has arrived (below).
+    const docs = tax.documents;
+    if (docs?.collecting) {
+      for (const f of docs.flagged) {
+        out.push({
+          kind: "decision",
+          ...flaggedMessage(f, docs.year),
+          dedupeKey: `doc:${docs.year}:${f.key}:differs`,
+          priority: TAX_MESSAGE_PRIORITY.doc_flagged,
+        });
+      }
+      const collected = collectedMessage(docs, acts);
+      if (collected) {
+        const n = docs.forms.filter((f) => f.document && f.usable).length;
+        out.push({
+          kind: collected.actions.some((a) => a.id === "tax.docs_tick") ? "decision" : "done",
+          ...collected,
+          dedupeKey: `docs:${docs.year}:${n}`,
+          priority: TAX_MESSAGE_PRIORITY.doc_collected,
+        });
+      }
+      for (const f of docs.missing) {
+        out.push({
+          kind: "heads_up",
+          ...missingMessage(f, docs.year),
+          dedupeKey: `docmissing:${docs.year}:${f.key}`,
+          priority: TAX_MESSAGE_PRIORITY.doc_missing,
+        });
+      }
+    }
+    for (const form of docs?.collecting ? [] : (tax.formsDue?.forms ?? [])) {
       out.push({
         kind: "heads_up",
         body: `Your ${form.form} from ${form.from} for ${tax.formsDue!.year} is usually sent by ${shortDate(form.by)}. Have you got it?`,
