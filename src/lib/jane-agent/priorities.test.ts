@@ -142,3 +142,24 @@ describe("priorities from the snapshot", () => {
     );
   });
 });
+
+describe("refunds in the priorities", () => {
+  it("reads a double charge as money back once, not a year", () => {
+    const items = priorityItems(
+      snapshot({
+        findings: [
+          finding({
+            findingId: "dup",
+            type: "duplicate_charge",
+            title: "Charged twice? $64.20 at Target",
+            annualSavingsCents: 6_420,
+          }),
+        ],
+      }),
+    );
+    expect(items[0].once).toBe(true);
+    expect(
+      rankedFor(snapshot({ findings: [finding({ type: "duplicate_charge" })] }))[0].why,
+    ).toMatch(/gets the most back \(\$215\.88\)/);
+  });
+});
