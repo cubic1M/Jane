@@ -224,6 +224,20 @@ export async function unreadAlertCount(
   });
 }
 
+// One alert the person said "Got it" to in the chat (spec step 83) is read, as if seen on
+// /alerts. False when it's not theirs or was already read.
+export async function markAlertRead(
+  userId: string,
+  alertId: string,
+  { client = defaultClient, now = new Date() }: Pick<Options, "client" | "now"> = {},
+): Promise<boolean> {
+  const { count } = await scopedFor(userId, client).alerts.updateMany({
+    where: { id: alertId, readAt: null },
+    data: { readAt: now },
+  });
+  return count > 0;
+}
+
 // Once the person has seen /alerts, everything there is read (and won't be emailed late).
 export async function markAlertsRead(
   userId: string,

@@ -20,6 +20,19 @@ export const ACTION_IDS = [
   "plan.approve_safe",
   "undo.rule",
   "undo.no",
+  // Spec step 83: the rest of Jane from the chat.
+  "autopilot.safe",
+  "autopilot.all",
+  "autopilot.ask",
+  "setup.yes",
+  "setup.no",
+  "setup.all",
+  "offer.accept",
+  "offer.decline",
+  "cancel.done",
+  "deadline.done",
+  "alert.got_it",
+  "snooze",
   // Typing to Jane (spec step 84).
   "goal.start",
   "autopilot.pause",
@@ -50,6 +63,12 @@ export type MessageRefs = {
   previousActions?: MessageAction[];
   // A line under the answer: what happened when the button was tapped.
   note?: string;
+  // Spec step 83: a set-up suggestion (src/lib/proposals.ts), by its key.
+  proposalKey?: string;
+  // Spec step 83: the step only the person can do on an action (./agent-steps.ts).
+  step?: string;
+  // Spec step 83: a deadline the person typed in (src/lib/deadlines.ts), to mark done.
+  deadlineEntryId?: string;
   // The goal "Start a goal for it" would add (spec step 84): money in cents, date
   // YYYY-MM-DD.
   goal?: { name: string; targetCents: number; targetDate: string };

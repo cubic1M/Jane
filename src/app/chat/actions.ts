@@ -1,7 +1,7 @@
 "use server";
 
 import { after } from "next/server";
-import { runAgentNow } from "@/lib/agent/run";
+import { runAgentNow, runQueuedFor } from "@/lib/agent/run";
 import { ChatActionError, takeChatAction } from "@/lib/jane-agent/actions";
 import { timezoneOf } from "@/lib/jane-agent/open";
 import { toView, type MessageView } from "@/lib/jane-agent/view";
@@ -18,9 +18,15 @@ export async function tapButton(previous: MessageState, formData: FormData): Pro
   const messageId = String(formData.get("messageId") ?? "");
   const actionId = String(formData.get("actionId") ?? "");
   try {
-    const { message, agentJobIds } = await takeChatAction(user.id, messageId, actionId);
+    const { message, agentJobIds, agentActionIds } = await takeChatAction(
+      user.id,
+      messageId,
+      actionId,
+    );
     // The agent's first step, after the response (src/lib/agent/run.ts).
     after(() => runAgentNow(agentJobIds));
+    // Spec step 83: and what a new autopilot level approved at once, as Settings does.
+    if (agentActionIds.length > 0) after(() => runQueuedFor(agentActionIds));
     return { message: toView(message, new Date(), await timezoneOf(user.id)), error: null };
   } catch (error) {
     if (!(error instanceof ChatActionError)) throw error;

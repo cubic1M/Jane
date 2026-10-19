@@ -367,6 +367,7 @@ export async function exportUserData(
         answeredAt: true,
         readAt: true,
         createdAt: true,
+        snoozedUntil: true,
       },
       orderBy: { createdAt: "asc" },
     }),

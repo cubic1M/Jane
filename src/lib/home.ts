@@ -151,6 +151,15 @@ export async function homeSummary(
         ? [{ id: g.id, name: g.name, leftCents: g.progress.leftCents }]
         : [],
     ),
+    // Spec step 83: every budget this month, for Jane's "nearly over" heads-up.
+    budgetProgress: budget
+      ? budget.progress.map((p) => ({
+          category: p.category,
+          budgetCents: p.budgetCents,
+          spentCents: p.spentCents,
+          month: budget.month,
+        }))
+      : [],
   };
 }
 

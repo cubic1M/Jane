@@ -1,4 +1,4 @@
-import type { Candidate } from "../types";
+import type { Candidate, MessageAction } from "../types";
 import type { LocalTime } from "../quiet-hours";
 import type { Snapshot } from "../snapshot";
 
@@ -41,3 +41,11 @@ export const shortDate = (iso: string) =>
 // "today", "tomorrow", "in 2 days".
 export const inDays = (days: number) =>
   days <= 0 ? "today" : days === 1 ? "tomorrow" : `in ${days} days`;
+
+// Spec step 83: "Not now" hides a heads-up until tomorrow without answering it
+// (src/lib/jane-agent/snooze.ts); some say it their own way ("Snooze", "Remind me tomorrow").
+export const snoozeButton = (label = "Not now"): MessageAction => ({
+  id: "snooze",
+  label,
+  kind: "secondary",
+});

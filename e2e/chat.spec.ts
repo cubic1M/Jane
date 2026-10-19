@@ -3,7 +3,8 @@ import { E2E_DATABASE_URL, deleteUser, signedInUser } from "./db";
 
 // Spec steps 81–82: link the demo bank, land in Jane's chat, see the morning brief, tap
 // Yes on a finding and see it answered. On a phone, with nothing sideways and the tab bar
-// clear of the newest message. Spec step 84: type to Jane and get an answer.
+// clear of the newest message. Spec step 83: answer the autopilot question there too.
+// Spec step 84: type to Jane and get an answer.
 
 test.skip(!E2E_DATABASE_URL, "needs E2E_DATABASE_URL pointing at a scratch database");
 test.setTimeout(120_000);
@@ -48,6 +49,14 @@ test("the demo bank lands in Jane's chat, and Yes answers a finding", async ({
   // Still answered after a reload.
   await page.reload();
   await expect(messages.filter({ hasText: body }).getByText("You chose:")).toBeVisible();
+
+  // Spec step 83: the autopilot question, answered with one tap.
+  const autopilot = messages.filter({ hasText: "How much should I do on my own?" });
+  await expect(autopilot).toHaveCount(1);
+  await autopilot.getByRole("button", { name: "Handle the safe stuff" }).click();
+  await expect(autopilot.getByText("You chose:")).toBeVisible();
+  await expect(autopilot.getByRole("status")).toContainText("I'll handle the safe stuff");
+  await expect(autopilot.getByRole("button")).toHaveCount(0);
 
   // Chat is the first tab and lit up; the message box is at the end.
   const nav = page.getByRole("navigation", { name: "Main" });

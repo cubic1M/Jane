@@ -1436,6 +1436,8 @@ model JaneMessage {
   priority     Int       @default(0)
   readAt       DateTime? @map("read_at") @db.Timestamptz(3)
   createdAt    DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  // "Not now" (spec step 83): hidden from the chat until then, when Jane may bring it up again.
+  snoozedUntil DateTime? @map("snoozed_until") @db.Timestamptz(3)
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 

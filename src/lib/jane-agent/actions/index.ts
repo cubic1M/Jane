@@ -9,8 +9,11 @@ import { findingNo, findingPick, findingYes } from "./finding";
 import { ChatActionError, linksOf, type ActionHandler } from "./handler";
 import { planApproveSafe } from "./plan";
 import { undoNo, undoRule } from "./undo";
+import { autopilotAll, autopilotAsk, autopilotPause, autopilotSafe } from "./autopilot";
+import { alertGotIt, deadlineDone, snooze } from "./heads-ups";
+import { setupAll, setupNo, setupYes } from "./setup";
+import { cancelDone, offerAccept, offerDecline } from "./steps";
 import { goalStart } from "./goal";
-import { autopilotPause } from "./autopilot";
 
 // Every button action, by id (spec step 81). A new button is a new handler here; the
 // message sources offer it by id (src/lib/jane-agent/types.ts ACTION_IDS).
@@ -21,6 +24,19 @@ export const ACTION_HANDLERS: Readonly<Record<ActionId, ActionHandler>> = {
   "plan.approve_safe": planApproveSafe,
   "undo.rule": undoRule,
   "undo.no": undoNo,
+  // Spec step 83.
+  "autopilot.safe": autopilotSafe,
+  "autopilot.all": autopilotAll,
+  "autopilot.ask": autopilotAsk,
+  "setup.yes": setupYes,
+  "setup.no": setupNo,
+  "setup.all": setupAll,
+  "offer.accept": offerAccept,
+  "offer.decline": offerDecline,
+  "cancel.done": cancelDone,
+  "deadline.done": deadlineDone,
+  "alert.got_it": alertGotIt,
+  snooze: snooze,
   // Typing to Jane (spec step 84).
   "goal.start": goalStart,
   "autopilot.pause": autopilotPause,
@@ -38,7 +54,11 @@ export async function takeChatAction(
   messageId: string,
   actionId: string,
   { client = defaultClient, now = new Date() }: Options = {},
-): Promise<{ message: ChatMessage; agentJobIds: (string | undefined)[] }> {
+): Promise<{
+  message: ChatMessage;
+  agentJobIds: (string | undefined)[];
+  agentActionIds: string[];
+}> {
   const db = scopedFor(userId, client);
   const row = MESSAGE_ID.test(messageId)
     ? await db.janeMessages.findFirst({ where: { id: messageId }, select: MESSAGE_SELECT })
@@ -73,6 +93,8 @@ export async function takeChatAction(
       answeredAt: status === "open" ? null : now,
       refs: refs as Prisma.InputJsonObject,
       actions: (outcome.actions ?? linksOf(message.actions)) as Prisma.InputJsonArray,
+      // Spec step 83: "Not now" hides it until then; any other answer clears that.
+      snoozedUntil: outcome.snoozedUntil ?? null,
     },
   });
   // Other messages this settled (a finding approved with the whole plan) lose their buttons.
@@ -93,6 +115,7 @@ export async function takeChatAction(
   return {
     message: updated ? toChatMessage(updated) : message,
     agentJobIds: outcome.agentJobIds ?? [],
+    agentActionIds: outcome.agentActionIds ?? [],
   };
 }
 

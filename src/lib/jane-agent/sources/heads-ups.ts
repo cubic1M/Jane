@@ -3,7 +3,7 @@ import { daysBetween } from "@/detection/units";
 import { formatCents } from "@/lib/money";
 import type { Candidate } from "../types";
 import type { Snapshot } from "../snapshot";
-import { inDays, sentence, type MessageSource } from "./source";
+import { inDays, sentence, snoozeButton, type MessageSource } from "./source";
 
 // Heads-ups (spec step 82): urgent alerts, deadlines in the next 3 days, things only the
 // person can do, a budget gone over and a goal whose date passed short. Each once.
@@ -15,7 +15,12 @@ function urgentAlerts(snapshot: Snapshot): Candidate[] {
     kind: "heads_up",
     body: `${sentence(alert.title)} ${alert.body}`,
     refs: { alertId: alert.id },
-    actions: [open("See alerts", "/alerts")],
+    // Spec step 83: "Got it" marks it read, as opening Alerts does.
+    actions: [
+      { id: "alert.got_it", label: "Got it", kind: "primary" },
+      snoozeButton(),
+      open("See alerts", "/alerts"),
+    ],
     dedupeKey: `alert:${alert.id}`,
     priority: MESSAGE_PRIORITY.urgent_alert,
   }));
@@ -30,8 +35,18 @@ function deadlines(snapshot: Snapshot): Candidate[] {
       {
         kind: "heads_up" as const,
         body: `Coming up ${inDays(days)}: ${deadline.title}${amount}.`,
-        refs: { deadlineKey: deadline.key },
-        actions: [open("Open", deadline.href ?? "/deadlines")],
+        refs: {
+          deadlineKey: deadline.key,
+          ...(deadline.entryId ? { deadlineEntryId: deadline.entryId } : {}),
+        },
+        // Spec step 83: one the person typed in can be marked done here, as on Deadlines.
+        actions: [
+          ...(deadline.entryId
+            ? [{ id: "deadline.done", label: "Mark done", kind: "primary" } as const]
+            : []),
+          snoozeButton("Remind me tomorrow"),
+          open("Open", deadline.href ?? "/deadlines"),
+        ],
         dedupeKey: `deadline:${deadline.key}`,
         priority: MESSAGE_PRIORITY.deadline,
       },
@@ -40,14 +55,18 @@ function deadlines(snapshot: Snapshot): Candidate[] {
 }
 
 function waitingOnYou(snapshot: Snapshot): Candidate[] {
-  return snapshot.waitingOnYou.map((action) => ({
-    kind: "heads_up",
-    body: `I need you for one step on "${action.title}": ${action.todo ?? "open it to see what's needed."}`,
-    refs: { actionId: action.id },
-    actions: [open("Open", "/actions")],
-    dedupeKey: `waiting:${action.id}`,
-    priority: MESSAGE_PRIORITY.waiting_on_you,
-  }));
+  // Spec step 83: a step with its own buttons is said by ./steps.ts instead.
+  const ownStep = new Set(snapshot.agentSteps.map((s) => s.actionId));
+  return snapshot.waitingOnYou
+    .filter((action) => !ownStep.has(action.id))
+    .map((action) => ({
+      kind: "heads_up",
+      body: `I need you for one step on "${action.title}": ${action.todo ?? "open it to see what's needed."}`,
+      refs: { actionId: action.id },
+      actions: [open("Open", "/actions")],
+      dedupeKey: `waiting:${action.id}`,
+      priority: MESSAGE_PRIORITY.waiting_on_you,
+    }));
 }
 
 function budgetsOver(snapshot: Snapshot): Candidate[] {
@@ -55,7 +74,7 @@ function budgetsOver(snapshot: Snapshot): Candidate[] {
     kind: "heads_up",
     body: `You've gone over your ${budget.category} budget this month, by ${formatCents(budget.overCents)}.`,
     refs: {},
-    actions: [open("See budgets", "/budgets")],
+    actions: [open("See budgets", "/budgets"), snoozeButton("Snooze")],
     dedupeKey: `budget:${budget.category}:${budget.month}`,
     priority: MESSAGE_PRIORITY.budget_over,
   }));

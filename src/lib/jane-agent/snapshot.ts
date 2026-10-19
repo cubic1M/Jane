@@ -8,11 +8,12 @@ import { comparisonsFor } from "@/lib/compare";
 import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
 import { weekStart } from "@/lib/digest/week";
-import { homeSummary } from "@/lib/home";
+import { homeSummary, type HomeSummary } from "@/lib/home";
 import { planFor } from "@/lib/plan";
 import { isNoRisk } from "@/lib/plan-links";
 import { savingsLine } from "@/lib/savings-text";
 import { recentRuleApprovals } from "@/lib/standing-rules";
+import { loadMore, type MoreSnapshot } from "./snapshot-more";
 
 // Everything Jane's brain looks at for one person (spec step 82), loaded with the same
 // code as the pages that show it: Today (src/lib/home.ts), the plan, the comparisons, the
@@ -66,7 +67,9 @@ export type Snapshot = {
   budgetsOver: { category: string; overCents: number; month: string }[];
   goalsBehind: { id: string; name: string; leftCents: number }[];
   urgentAlerts: { id: string; title: string; body: string }[];
-};
+  // Spec step 83: every budget this month, for "nearly over".
+  budgetProgress: HomeSummary["budgetProgress"];
+} & MoreSnapshot;
 
 // A finding as Jane describes it in the chat: its type, title, saving and evidence. A
 // button only acts while this is unchanged; newer card wording (Claude's explanation)
@@ -167,5 +170,7 @@ export async function loadSnapshot(
     urgentAlerts: alerts
       .filter((a) => isUrgent(a.type) && !ALERTS_SAID_ELSEWHERE.includes(a.type))
       .map((a) => ({ id: a.id, title: a.title, body: a.body })),
+    budgetProgress: home.budgetProgress,
+    ...(await loadMore(userId, { client })),
   };
 }
