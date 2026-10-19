@@ -174,6 +174,14 @@ export const CHAT_HISTORY_HOURS = 48;
 // the one-time autopilot question, so it never pushes a finding out on the first day.
 export const CHAT_UNCAPPED_SOURCES: readonly string[] = ["autopilot", "review", "welcome"];
 
+// Spec step 184: the morning brief is the day's agenda. Anything less urgent than this
+// waits for it and becomes one of its lines; urgent alerts and deadlines come at once.
+export const AGENDA_URGENT_PRIORITY = 90;
+// The agenda lists at most this many things to say yes to (a Yes button each, like a
+// bundle's: bundle.1 to bundle.5) and this many other things worth knowing.
+export const AGENDA_MAX_YES = 5;
+export const AGENDA_MAX_LINES = 3;
+
 // Spec step 83: a budget counts as nearly over once this share of it is spent this month.
 export const BUDGET_NEARLY_OVER_SHARE = 0.9;
 // Typing to Jane (spec step 84). The longest message the box takes, in characters.
