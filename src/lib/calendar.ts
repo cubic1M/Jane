@@ -1,7 +1,7 @@
 import { createHash, randomBytes } from "node:crypto";
 import { CALENDAR_DAYS } from "@/config/calendar";
 import { loadDetectionInput } from "@/detection/engine";
-import { expectedDates, incomeStreams, upcomingBills } from "@/detection/forecast";
+import { expectedIncome, upcomingBills } from "@/detection/forecast";
 import { addDays } from "@/detection/units";
 import type { PrismaClient } from "@/generated/prisma/client";
 import { db as defaultClient } from "@/lib/db";
@@ -70,16 +70,12 @@ export async function calendarEvents(
     summary: `${b.merchant}, about ${formatCents(b.amountCents)}`,
     description: "Expected from your past charges. The date and amount are estimates.",
   }));
-  const deposits = incomeStreams(input)
-    .filter((s) => s.active)
-    .flatMap((s) =>
-      expectedDates(s, asOf, until).map((date): CalendarEvent => ({
-        uid: `deposit-${slug(s.merchantKey)}-${date}@${UID_DOMAIN}`,
-        date,
-        summary: `Expected deposit, about ${formatCents(s.lastAmountCents)}`,
-        description: "Expected from your past deposits. The date and amount are estimates.",
-      })),
-    );
+  const deposits = expectedIncome(input, until).map((d): CalendarEvent => ({
+    uid: `deposit-${slug(d.merchant)}-${d.date}@${UID_DOMAIN}`,
+    date: d.date,
+    summary: `Expected deposit, about ${formatCents(d.amountCents)}`,
+    description: "Expected from your past deposits. The date and amount are estimates.",
+  }));
   const goals = await scopedFor(userId, client).savingsGoals.findMany({
     select: { id: true, name: true, targetCents: true, targetDate: true },
   });
