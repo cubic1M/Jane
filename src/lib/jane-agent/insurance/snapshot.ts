@@ -6,7 +6,7 @@ import { partnerFor } from "@/lib/insurance/partner";
 import { loadInsurance } from "@/lib/insurance/profile";
 import { openShops, recentNoBetter, type Shop } from "@/lib/insurance/shop";
 import { switchesFor } from "@/lib/insurance/switch";
-import { SWITCH_NEWS_DAYS } from "@/config/insurance";
+import { SWITCH_NEWS_DAYS, SWITCH_PAYMENT_DAYS } from "@/config/insurance";
 
 // What Jane's brain knows about the person's insurance (spec Phase X), from the same loader
 // as /insurance.
@@ -45,7 +45,7 @@ export async function loadInsuranceSnapshot(
       recentNoBetter(userId, { client, now }),
       switchesFor(userId, {
         client,
-        since: new Date(now.getTime() - SWITCH_NEWS_DAYS * 86_400_000),
+        since: new Date(now.getTime() - (SWITCH_NEWS_DAYS + SWITCH_PAYMENT_DAYS) * 86_400_000),
       }),
     ]);
   return {

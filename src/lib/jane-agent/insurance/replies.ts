@@ -129,6 +129,31 @@ export function insuranceReply(
 
   const all = profile.policies;
 
+  // Spec step 105: how a switch Jane is doing is going.
+  if (intent.ask === "switch") {
+    const switches = ("switches" in profile ? profile.switches : undefined) ?? [];
+    if (switches.length === 0) {
+      return {
+        body: "I'm not switching any of your insurance right now. When I find a better policy for the same cover, I'll ask you first.",
+        actions: [SEE],
+        refs: {},
+      };
+    }
+    return {
+      body: switches
+        .map((sw) => {
+          const name = `${sw.carrier} ${kindWords(sw.kind as PolicyKind)}`;
+          const starts = sw.startsOn ? dateWords(sw.startsOn) : "soon";
+          return sw.status === "pending"
+            ? `I bought your new ${name}, starting ${starts}. ${sw.replaces ?? "Your old policy"} stays in place until its first payment goes through; then I cancel it from that day.`
+            : `Done: your ${name} is in place${sw.replaces ? ` and I cancelled ${sw.replaces} from ${starts}` : ""}. No gap in cover.`;
+        })
+        .join("\n"),
+      actions: [SEE],
+      refs: {},
+    };
+  }
+
   if (intent.ask === "gaps") {
     if (profile.gaps.length === 0) {
       return {

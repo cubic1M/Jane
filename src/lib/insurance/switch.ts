@@ -312,7 +312,9 @@ export async function switchesFor(
   const rows = await scopedFor(userId, client).insurancePolicies.findMany({
     where: {
       source: "switch",
-      OR: [{ status: "pending" }, { status: "active", updatedAt: { gte: since } }],
+      // A finished switch counts as recent by its start day: it finishes on that day or
+      // within SWITCH_PAYMENT_DAYS of it.
+      OR: [{ status: "pending" }, { status: "active", startsOn: { gte: since } }],
     },
     select: {
       id: true,
