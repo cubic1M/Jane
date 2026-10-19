@@ -125,6 +125,7 @@ const STATUS: Record<string, string> = {
   nightly_log: "Looking at last night's checks…",
   priorities: "Working out what matters most…",
   money_moves: "Checking what money moved…",
+  health_score: "Working out your money health score…",
   propose_action: "Getting a button ready…",
 };
 export const statusFor = (tool: string) =>
