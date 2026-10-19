@@ -578,6 +578,9 @@ model Liability {
   hasPmi                    Boolean?  @map("has_pmi")
   escrowBalanceCents        Int?      @map("escrow_balance_cents")
   hasPrepaymentPenalty      Boolean?  @map("has_prepayment_penalty")
+  // Cards (spec step 175): the last statement's date and balance, as Plaid reports them.
+  lastStatementIssueDate    DateTime? @map("last_statement_issue_date") @db.Date
+  lastStatementBalanceCents Int?      @map("last_statement_balance_cents")
   createdAt                 DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt                 DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
 
