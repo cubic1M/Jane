@@ -17,6 +17,7 @@ import { filingYear, inFilingSeason, loadReturn, type ReturnView } from "@/lib/t
 import { JANUARY_READY } from "@/config/tax";
 import { loadTaxPack } from "@/lib/tax-pack";
 import type { TaxPack } from "@/planning/tax-pack";
+import { loadInvestmentTaxes, type InvestmentTaxesView } from "@/lib/investment-taxes";
 import type { TaxSaving } from "@/planning/tax-savings";
 import type { WithholdingCheck } from "@/planning/withholding";
 import { loadTaxForms, loadTaxTags } from "@/lib/tax-organizer";
@@ -53,6 +54,8 @@ export type TaxSnapshot = {
     refund?: RefundView | null;
     // Spec step 127: in January, last year's pack, for the one "everything's ready" message.
     january?: TaxPack | null;
+    // Spec step 124: gains, losses and wash sales in taxable investment accounts.
+    investments?: InvestmentTaxesView;
     // Spec step 126: filing season, the partner, and the year's return.
     filing?: { year: number; inSeason: boolean; available: boolean; return: ReturnView | null };
   } | null;
@@ -114,6 +117,7 @@ export async function loadTaxSnapshot(
           return: ret,
         };
       })(),
+      investments: await loadInvestmentTaxes(userId, estimate.year, { client, now }),
       january:
         today.slice(5) >= JANUARY_READY.from && today.slice(5) <= JANUARY_READY.until
           ? await loadTaxPack(userId, year - 1, { client, now })

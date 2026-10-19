@@ -6,6 +6,7 @@ import type { Shop } from "@/lib/insurance/shop";
 import { formatCents } from "@/lib/money";
 import { reminderDue } from "@/lib/insurance/claim-rules";
 import { checkupBody } from "../insurance/checkup-words";
+import { BENEFITS_LINK, QUESTIONS, foundBody } from "../insurance/benefit-words";
 import { trackerActions, trackerBody } from "../insurance/claim-words";
 import type { InsuranceSnapshot } from "../insurance/snapshot";
 import type { Candidate } from "../types";
@@ -62,8 +63,12 @@ export function shopBody(
   const policy = policies.find((p) => p.id === shop.policyId);
   if (!policy || !shop.pick || shop.savingCents === null) return null;
   const { pick } = shop;
+  const price = `${formatCents(pick.premiumCents)} ${PREMIUM_FREQUENCIES[pick.premiumFrequency].label}`;
   return [
-    `I found ${kindWords(policy.kind)} ${formatCents(shop.savingCents)} a year cheaper for the same cover: ${pick.carrier.name}, at ${formatCents(pick.premiumCents)} ${PREMIUM_FREQUENCIES[pick.premiumFrequency].label}.`,
+    // Spec step 149: health plans compare on a year's total cost with the usual care.
+    policy.kind === "health"
+      ? `I found a health plan that would cost ${formatCents(shop.savingCents)} less a year with your usual care: ${pick.plan ?? pick.carrier.name}, at ${price}.`
+      : `I found ${kindWords(policy.kind)} ${formatCents(shop.savingCents)} a year cheaper for the same cover: ${pick.carrier.name}, at ${price}.`,
     ...shop.why.map((line) => `- ${line}`),
     ...(shop.demo
       ? ["These are sample quotes from my demo carrier catalog, not real offers."]
@@ -208,6 +213,40 @@ function claimReminders(insurance: InsuranceSnapshot, asOf: string): Candidate[]
   });
 }
 
+// Spec step 150: benefits found on the pay stub, to confirm in one tap; then the short guided
+// questions for cover the employer pays for, one at a time in the same message.
+function benefitMessages(insurance: InsuranceSnapshot): Candidate[] {
+  const found = (insurance.benefits ?? []).filter((b) => b.status === "found");
+  if (found.length > 0) {
+    return [
+      {
+        kind: "decision",
+        body: foundBody(found),
+        refs: {},
+        actions: [
+          { id: "benefits.confirm_all", label: "Yes, they're right", kind: "primary" },
+          { ...BENEFITS_LINK, label: "Review them" },
+          snoozeButton(),
+        ],
+        dedupeKey: `benefits:${found.map((b) => b.id).join(",")}`,
+        priority: MESSAGE_PRIORITY.benefits_found,
+      },
+    ];
+  }
+  const question = insurance.benefitQuestion;
+  if (!question) return [];
+  return [
+    {
+      kind: "decision",
+      body: QUESTIONS[question].body,
+      refs: { benefitQuestion: question },
+      actions: [...QUESTIONS[question].actions, BENEFITS_LINK],
+      dedupeKey: "benefit-questions",
+      priority: MESSAGE_PRIORITY.benefits_question,
+    },
+  ];
+}
+
 export const insuranceSource: MessageSource = {
   key: "insurance",
   gather: (snapshot) => {
@@ -220,6 +259,7 @@ export const insuranceSource: MessageSource = {
       ...gapMessages(insurance),
       ...checkedMessages(insurance),
       ...checkupMessages(insurance),
+      ...benefitMessages(insurance),
     ];
   },
 };

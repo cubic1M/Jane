@@ -1,4 +1,12 @@
-import { GAP_ADVICE, POLICY_KINDS, type GapKey, type PolicyKind } from "@/config/insurance";
+import {
+  GAP_ADVICE,
+  POLICY_KINDS,
+  TRAVEL_GAP_MIN_CENTS,
+  UMBRELLA_ASSETS_CENTS,
+  type GapKey,
+  type PolicyKind,
+} from "@/config/insurance";
+import { formatCents } from "@/lib/money";
 import { isLiabilityOnly } from "./coverage";
 import type { Household } from "./household";
 import type { Policy } from "./policies";
@@ -78,6 +86,7 @@ export function coverageGaps(household: Household, policies: Policy[]): Gap[] {
       why: "It has no collision or comprehensive cover, so it pays for damage you cause to other people and their cars, not for damage to your own car or if it's stolen.",
     });
   }
+  gaps.push(...moreGaps(household, policies));
   return gaps.filter((g) => !household.dismissedGaps.includes(g.key));
 }
 
@@ -87,3 +96,74 @@ export const kindWords = (kind: PolicyKind) =>
 
 // What to add for a gap: demo advice (spec step 98), only for people in demo advice mode.
 export const gapAdvice = (gap: Pick<Gap, "key">) => GAP_ADVICE[gap.key];
+
+// Spec step 149: health, disability, umbrella, pet and travel cover, read from the accounts.
+// Device protection is never a gap: it's for the person to choose (and cards often include
+// it, spec step 152).
+function moreGaps(household: Household, policies: Policy[]): Gap[] {
+  const gaps: Gap[] = [];
+  const { signals, pets } = household;
+  const gap = (key: GapKey, kind: PolicyKind, title: string, why: string): Gap => ({
+    key,
+    kind,
+    policyId: null,
+    title,
+    why,
+  });
+  // Only with bank data to go on: without it, there's nothing to say.
+  if (signals.medicalCents !== null && !has(policies, "health")) {
+    gaps.push(
+      gap(
+        "health",
+        "health",
+        "No health insurance on file",
+        "There's no health plan on your profile. A hospital stay can cost tens of thousands of dollars. If you're covered through work or a partner, add it so I can keep track of it.",
+      ),
+    );
+  }
+  if (signals.paycheck && !has(policies, "disability")) {
+    gaps.push(
+      gap(
+        "disability",
+        "disability",
+        "No disability insurance on file",
+        "You get a paycheck, and nothing on file would replace it if an illness or injury kept you from working for months. Jobs often include it: add it if yours does.",
+      ),
+    );
+  }
+  if (
+    signals.assetsCents !== null &&
+    signals.assetsCents >= UMBRELLA_ASSETS_CENTS &&
+    !has(policies, "umbrella")
+  ) {
+    gaps.push(
+      gap(
+        "umbrella",
+        "umbrella",
+        "No umbrella insurance on file",
+        `What you have is worth about ${formatCents(signals.assetsCents)} by your balances and values. If someone sued you for more than your car or home liability limits, the rest could come from it. An umbrella policy pays above those limits.`,
+      ),
+    );
+  }
+  if ((pets.value ?? 0) > 0 && !has(policies, "pet")) {
+    gaps.push(
+      gap(
+        "pet",
+        "pet",
+        "No pet insurance on file",
+        `You told me you have ${pets.value === 1 ? "a pet" : `${pets.value} pets`}, and there's no pet insurance on file. An emergency at the vet can cost thousands.`,
+      ),
+    );
+  }
+  if (signals.travelCents >= TRAVEL_GAP_MIN_CENTS && !has(policies, "travel")) {
+    gaps.push(
+      gap(
+        "travel",
+        "travel",
+        "No travel insurance for your trip",
+        `You've spent ${formatCents(signals.travelCents)} on flights and hotels lately, and there's no travel insurance on file. If the trip is cancelled, the non-refundable part is lost. Your card may already cover some of it.`,
+      ),
+    );
+  }
+  return gaps;
+}

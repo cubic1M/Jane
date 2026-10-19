@@ -7,7 +7,6 @@ import type { Snapshot, SnapshotFinding } from "./snapshot";
 // the person's own numbers, with the buttons of anything Jane found about it.
 
 const TODAY = "2026-10-18";
-const NOW = new Date("2026-10-18T15:00:00Z");
 
 const charge = (over: Partial<Charge>): Charge => ({
   key: over.merchant ?? "x",

@@ -8,6 +8,12 @@ import { openShops, recentNoBetter, type Shop } from "@/lib/insurance/shop";
 import { switchesFor } from "@/lib/insurance/switch";
 import { latestCheckup, type Checkup } from "@/lib/insurance/checkups";
 import { listClaims, type Claim } from "@/lib/insurance/claims";
+import {
+  listBenefits,
+  nextQuestion,
+  type Benefit,
+  type BenefitQuestion,
+} from "@/lib/insurance/benefits";
 import { SWITCH_NEWS_DAYS, SWITCH_PAYMENT_DAYS } from "@/config/insurance";
 
 // What Jane's brain knows about the person's insurance (spec Phase X), from the same loader
@@ -34,6 +40,9 @@ export type InsuranceSnapshot = {
   checkup?: Checkup | null;
   // Spec step 107: claims the person is tracking.
   claims?: Claim[];
+  // Spec step 150: benefits through work and the next guided question, if any.
+  benefits?: Benefit[];
+  benefitQuestion?: BenefitQuestion | null;
 };
 
 export type Switch = Awaited<ReturnType<typeof switchesFor>>[number];
@@ -50,6 +59,7 @@ export async function loadInsuranceSnapshot(
     noBetter,
     checkup,
     claims,
+    benefits,
     switches,
   ] = await Promise.all([
     loadInsurance(userId, { client, now }),
@@ -58,6 +68,7 @@ export async function loadInsuranceSnapshot(
     recentNoBetter(userId, { client, now }),
     latestCheckup(userId, { client }),
     listClaims(userId, { client }),
+    listBenefits(userId, { client }),
     switchesFor(userId, {
       client,
       since: new Date(now.getTime() - (SWITCH_NEWS_DAYS + SWITCH_PAYMENT_DAYS) * 86_400_000),
@@ -75,5 +86,13 @@ export async function loadInsuranceSnapshot(
     switches,
     checkup: checkup && !checkup.seenAt ? checkup : null,
     claims: claims.filter((c) => c.status === "open"),
+    benefits,
+    // Asked once the pay-stub benefits are answered (or there are none to answer), for people
+    // with a job: a paycheck in their accounts or a benefit on file.
+    benefitQuestion:
+      !benefits.some((b) => b.status === "found") &&
+      (household.signals.paycheck || benefits.length > 0)
+        ? nextQuestion(benefits)
+        : null,
   };
 }

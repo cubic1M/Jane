@@ -177,7 +177,8 @@ describe.runIf(url)("the insurance profile against a real database", () => {
     expect(profile.gaps.map((g) => g.key)).toEqual(["renters"]);
     // Saving the facts again keeps the dismissed gap.
     await saveHousehold(me, { housing: "rent", vehicles: "0", dependants: "1", pets: "1" }, opts());
-    expect((await loadInsurance(me, opts())).gaps.map((g) => g.key)).toEqual(["renters"]);
+    // A pet brings up pet cover too (spec step 149).
+    expect((await loadInsurance(me, opts())).gaps.map((g) => g.key)).toEqual(["renters", "pet"]);
   });
 
   it("sees rent payments as renting", async () => {
