@@ -237,6 +237,10 @@ export function parseIntent(raw: string, asOf: string): Intent {
   if (WHAT_DID.test(text)) return { kind: "what_did" };
   if (APPROVE_ALL.test(text)) return { kind: "approve_all" };
   if (UNDO.test(text)) return { kind: "undo" };
+  // Loans and debt (spec Phase Y) before taxes: "how much do I owe?" is about debts;
+  // anything that mentions taxes is left to the tax questions.
+  const debt = parseDebtIntent(text, parseAmount(text));
+  if (debt) return debt;
   const tax = parseTaxIntent(text);
   if (tax) return tax;
 
@@ -254,8 +258,6 @@ export function parseIntent(raw: string, asOf: string): Intent {
     };
   }
   if (SAFE.test(text)) return { kind: "safe_to_spend" };
-  const debt = parseDebtIntent(text);
-  if (debt) return debt;
   // Spec step 128 on: after affording, so "can I afford … my 401(k)" stays a money question.
   const investments = parseInvestmentIntent(text);
   if (investments) return investments;
