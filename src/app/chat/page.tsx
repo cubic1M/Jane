@@ -39,7 +39,8 @@ async function Chat({ searchParams }: { searchParams: PageProps<"/chat">["search
       <div className="flex flex-col gap-1">
         <h1 className="text-2xl font-semibold tracking-tight">Chat with Jane</h1>
         <p className="text-sm text-zinc-600 dark:text-zinc-400">
-          I look at your money every day and bring you what matters. Tap to answer.
+          I look at your money every day and bring you what matters. What I bring up on my own has a
+          yellow edge; my answers to your questions don&apos;t.
         </p>
       </div>
 
