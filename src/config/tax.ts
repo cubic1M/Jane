@@ -289,6 +289,10 @@ export const REFUND = {
 export const FILING_SEASON = { from: "01-20", until: "10-15" } as const;
 export const DEMO_FILING_ACCEPT_HOURS = 24;
 
+// Spec step 127: the one message in January with everything ready, sent between these
+// days (MM-DD) of the year after the tax year.
+export const JANUARY_READY = { from: "01-02", until: "01-31" } as const;
+
 // The estimate tells the person when it has moved by at least this much (in cents) since
 // Jane last said it.
 export const TAX_ESTIMATE_STEP_CENTS = 50_000;
@@ -313,6 +317,8 @@ export const TAX_MESSAGE_PRIORITY = {
   refund: 68,
   // Spec step 126.
   filing: 72,
+  // Spec step 127.
+  january: 74,
   // Spec step 123.
   quarterly: 88,
   set_aside: 39,
@@ -359,6 +365,11 @@ export const TAX_AUTOPILOT: readonly { feature: string; ask: string; auto: strin
     feature: "filing",
     ask: "In filing season I offer to start your return with the filing partner, handing over your profile, income, tags and forms; you review and sign it, and I track it.",
     auto: "In filing season, once your forms are in, I start your return with the filing partner by myself and tell you when it's ready to review. Only you can sign it; nothing is filed until you do.",
+  },
+  {
+    feature: "january",
+    ask: "In January I send one message with everything ready: the estimate, the tax-time pack and which forms are in.",
+    auto: "In January I send one message with everything ready (the estimate, the tax-time pack, which forms are in) and keep it all up to date until you file.",
   },
   {
     feature: "tags",
