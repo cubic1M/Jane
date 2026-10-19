@@ -17,6 +17,7 @@ import { scopedFor } from "@/lib/db-scoped";
 import { loadChanges } from "@/lib/changes";
 import { listGoals } from "@/lib/goals";
 import { lifeGuessesFor } from "@/lib/life-guesses";
+import { loadUpkeep } from "@/lib/plan-upkeep";
 import { listLifeEvents } from "@/lib/life-events";
 import { homeSummary } from "@/lib/home";
 import { formatCents } from "@/lib/money";
@@ -26,6 +27,7 @@ import { ACTION_HANDLERS } from "./actions";
 import { INVESTMENT_TOOLS, isInvestmentTool, runInvestmentTool } from "./investments/tools";
 import { monthLabel, type Reply } from "./replies";
 import { guessLine } from "./replies-life";
+import { weeklyReview } from "./replies-review";
 import { localTime } from "./quiet-hours";
 import { loadSnapshot } from "./snapshot";
 import { findingsSource } from "./sources/findings";
@@ -131,6 +133,12 @@ export const CHAT_TOOLS: Anthropic.Tool[] = [
     name: "life_events",
     description:
       "Big life changes (spec step 100): moving, a new job or a new baby that Jane spotted from two or more signs in the person's money and hasn't asked about yet, and the life-event checklists they have going, with how far along each is.",
+    input_schema: noInput,
+  },
+  {
+    name: "plan_upkeep",
+    description:
+      "Plans that keep up (spec step 101): this month's budget tune-up (each budget, its amount and its usual month), transfers to savings Jane could count toward a goal, and the weekly review: what Jane did, what it saved and what's next.",
     input_schema: noInput,
   },
   {
@@ -323,6 +331,29 @@ export async function runChatTool(
           done: c.completedAt !== null,
           ticked: `${c.checkedItems.length} of ${LIFE_EVENTS[c.kind].items.length}`,
         })),
+      });
+    }
+    case "plan_upkeep": {
+      const [upkeep, snapshot] = await Promise.all([
+        loadUpkeep(userId, { client, now }),
+        loadSnapshot(userId, { client, now }),
+      ]);
+      return out({
+        tuneUp: upkeep.tuneUp && {
+          month: upkeep.tuneUp.month,
+          status: upkeep.tuneUp.status,
+          budgets: upkeep.tuneUp.changes.map((c) => ({
+            category: c.category,
+            now: money(c.fromCents),
+            usual: money(c.toCents),
+          })),
+        },
+        transfersToCount: upkeep.transfers.map((t) => ({
+          amount: money(t.amountCents),
+          date: t.date,
+          goal: t.goal.name,
+        })),
+        weeklyReview: snapshot ? weeklyReview(snapshot, now).body : null,
       });
     }
     case "goals": {

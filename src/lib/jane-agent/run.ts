@@ -2,6 +2,7 @@ import { CHAT_CRON_LIMIT, CHAT_HISTORY_HOURS } from "@/config/agent-chat";
 import type { PrismaClient } from "@/generated/prisma/client";
 import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
+import { runPlanUpkeep } from "@/lib/plan-upkeep";
 import { gather, plan, type BrainSettings } from "./brain";
 import { closeSettled, postMessages } from "./messages";
 import { queueChatNotificationsSafely } from "./notify";
@@ -28,6 +29,10 @@ export async function runJaneAgent(
   // Nothing to say in quiet hours, so nothing to load, unless the person is looking.
   if (trigger !== "open" && inQuietHours(now, user.timezone)) return { posted: 0 };
 
+  // Spec step 101: what autopilot keeps up to date by itself, before Jane looks.
+  await runPlanUpkeep(userId, { client, now }).catch((error) =>
+    console.error("Plan upkeep failed", { userId, error: String(error) }),
+  );
   const snapshot = await loadSnapshot(userId, { client, now });
   if (!snapshot) return { posted: 0 };
   await closeSettled(userId, { client, now });
