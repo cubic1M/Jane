@@ -1,3 +1,4 @@
+import type { AnswerBlock } from "./blocks";
 import type { Topic } from "./context";
 import type { Intent } from "./intents";
 import type { PreferenceDraft } from "./preferences";
@@ -206,6 +207,8 @@ export type MessageRefs = {
   preference?: PreferenceDraft;
   // Spec step 92: the messages a bundle stands for, by dedupeKey, in button order.
   items?: { dedupeKey: string; label: string }[];
+  // Spec step 94: a chart, table, timeline or progress bars shown with the answer.
+  block?: AnswerBlock;
   // Taxes (spec step 118): the tax profile question a message is asking, and the kind of
   // income "Add it" would add.
   taxField?: string;

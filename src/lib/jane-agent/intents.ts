@@ -63,6 +63,8 @@ export type Intent =
   | { kind: "subscriptions"; total: boolean; all: boolean }
   // The next paycheck.
   | { kind: "payday" }
+  // Spec step 94: how the savings goals are doing.
+  | { kind: "goals" }
   // A name on its own, or "tell me about …": a subscription or bill, something Jane found,
   // or a spending category, whichever it is (src/lib/jane-agent/answer.ts).
   | { kind: "about"; target: string; findingId?: string }
@@ -327,6 +329,9 @@ const SUBSCRIPTIONS =
   /\bsubscriptions\b|\bsubscription list\b|\bwhat (?:am i|do i) pay(?:ing)? for\b|\b(?:recurring|regular|monthly) (?:charges|payments|bills)\b|\bwhat (?:charges|bills) me\b/;
 const ALL_RECURRING =
   /\bwhat (?:am i|do i) pay(?:ing)? for\b|\b(?:recurring|regular|monthly) (?:charges|payments|bills)\b|\bwhat (?:charges|bills) me\b/;
+// Spec step 94: "how are my goals doing", "goals", "am I on track with my goals".
+const GOALS =
+  /^(?:how (?:are|is) |show (?:me )?|what are |list )?(?:my |our )?(?:savings )?goals?(?: doing| progress| looking)?$|\bgoals? (?:progress|doing)\b|\bon track (?:for|with) (?:my |our )?goals?\b/;
 const COST = [
   /^how much (?:is|are|was|does|do) (?:i pay for |i spend for |i pay )?(.+?)(?: cost(?: me| us)?)?(?: (?:a|per|each|every) (month|year))?$/,
   /^how much (?:am i paying|do i pay|i pay) (?:for )?(.+?)(?: (?:a|per|each|every) (month|year))?$/,
@@ -422,6 +427,7 @@ export function parseIntent(raw: string, asOf: string): Intent {
   // Spec step 88: paydays, subscriptions and what one thing costs.
   const acting = REFUND.test(text) || CANCEL.test(text) || LOWER.test(text);
   if (!acting && PAYDAY.test(text)) return { kind: "payday" };
+  if (!acting && GOALS.test(text)) return { kind: "goals" };
   if (!acting && SUBSCRIPTIONS.test(text)) {
     return {
       kind: "subscriptions",
