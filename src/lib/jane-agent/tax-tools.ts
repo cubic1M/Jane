@@ -19,10 +19,13 @@ import { loadInvestmentTaxes } from "@/lib/investment-taxes";
 import { adviceMode } from "@/lib/advice-mode";
 import { filingYear, inFilingSeason, loadReturn } from "@/lib/tax-filing";
 import { filingPartnerFor } from "@/lib/filing";
-import { loadTaxForms, loadTaxTags } from "@/lib/tax-organizer";
+import { loadTaxTags } from "@/lib/tax-organizer";
 import { loadWorkingProfile } from "@/lib/tax-profile";
 import { defaultTaxYear } from "@/planning/tax-pack";
 import { stateName } from "@/planning/tax-profile";
+import { STATE_SOURCES } from "@/config/tax-states";
+import { loadTaxDocuments } from "@/lib/tax-documents";
+import { COMPARED } from "@/planning/tax-document-check";
 
 // Claude's tax tools in Jane's chat (spec steps 118–127): read-only, over the person's own
 // data, through the same loaders as /taxes. Every dollar figure is recorded for the
@@ -98,9 +101,15 @@ export const TAX_TOOLS: Anthropic.Tool[] = [
     input_schema: noInput,
   },
   {
+    name: "tax_states",
+    description:
+      "The person's state and local income taxes for the tax year: each state that taxes some of their income (lived there all year, part of the year after a move, or as a nonresident for an employer in a state that taxes remote work), the dates lived there, the income it taxes, the tax after any credit for tax paid to another state, its tax agency and web address (the source of its figures), and whether its rate is rough; the city or county income tax; the moves Jane counted (told by the person, or spotted by Jane in payments to state agencies and not yet checked) and the employer's state. Every figure is an estimate.",
+    input_schema: noInput,
+  },
+  {
     name: "tax_forms",
     description:
-      "The tax forms Jane expects for the tax year from the person's payers and lenders (W-2, 1099s, 1098s): each form, who sends it, the usual date it's sent by, whether the person has it, and whether the payer may not send one because the amount is under the reporting threshold.",
+      "The tax forms Jane expects for the tax year from the person's payers and lenders (W-2, 1099s, 1098s): each form, who sends it, the usual date it's sent by, whether the person has it, and whether the payer may not send one because the amount is under the reporting threshold; and the ones Jane collected from the document partner, with whether each matches the person's accounts (a form that doesn't match is flagged and not used until the person says it's right).",
     input_schema: noInput,
   },
 ];
@@ -390,10 +399,38 @@ export async function runTaxTool(
           : "Not available: harvesting and where to hold what are demo advice only.",
       });
     }
+    case "tax_states": {
+      const view = await loadTaxEstimate(userId, { client, now });
+      const state = view.estimate.state;
+      const r = view.residency;
+      return out({
+        year: view.year,
+        states: (state?.parts ?? []).map((p) => ({
+          state: stateName(p.code),
+          residence: p.residence,
+          livedThere: p.from ? { from: p.from, to: p.to } : null,
+          income: money(p.incomeCents),
+          tax: money(p.taxCents),
+          creditForOtherStates: p.creditCents > 0 ? money(p.creditCents) : null,
+          agency: STATE_SOURCES[p.code]?.agency ?? null,
+          source: p.url,
+          rough: p.rough,
+        })),
+        local: state?.local
+          ? { place: state.local.label, tax: money(state.local.taxCents), source: state.local.url }
+          : null,
+        total: state ? money(state.taxCents) : null,
+        moves: r.inUse.map((m) => ({ ...m, from: stateName(m.from), to: stateName(m.to) })),
+        moveSpottedNotChecked: r.usingSpotted,
+        employerState: r.workState ? stateName(r.workState) : null,
+      });
+    }
     case "tax_forms": {
-      const view = await loadTaxForms(userId, year, { client, now });
+      // Spec step 166: with what Jane collected and how each checked against the accounts.
+      const view = await loadTaxDocuments(userId, year, { client, now });
       return out({
         year,
+        collectedByJane: view.collecting,
         forms: view.forms.map((f) => ({
           form: f.form,
           from: f.from,
@@ -402,6 +439,16 @@ export async function runTaxTool(
           received: f.received,
           mayNotSend: f.mayNotSend,
           amountSeen: f.amountCents === null ? null : money(f.amountCents),
+          collected: f.document
+            ? {
+                on: f.document.fetchedAt,
+                check: f.check!.status,
+                formAmount: money(f.check!.formCents),
+                compared: COMPARED[f.formKey],
+                used: f.usable,
+                personSaidRight: f.document.decision === "right",
+              }
+            : null,
         })),
       });
     }

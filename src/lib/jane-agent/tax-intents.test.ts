@@ -124,3 +124,41 @@ describe("tax intents", () => {
     },
   );
 });
+
+// Spec step 165: moves, an out-of-state employer, and state and local taxes.
+describe("state taxes in the chat", () => {
+  it.each([
+    [
+      "I moved from California to New York on August 3rd",
+      { from: "CA", to: "NY", month: 8, day: 3 },
+    ],
+    ["we moved from texas to colorado in june", { from: "TX", to: "CO", month: 6, day: null }],
+    ["I moved to Oregon in March", { from: null, to: "OR", month: 3, day: null }],
+    ["I moved from Ohio to Michigan", { from: "OH", to: "MI", month: null, day: null }],
+  ])("%s is a move", (text, move) => {
+    expect(parse(text)).toEqual({ kind: "tax", ask: "move", ...move });
+  });
+
+  it("leaves a plain move to the moving checklist, and a state with no date to the profile", () => {
+    expect(parse("I just moved")).toEqual({ kind: "life_event", event: "moving" });
+    expect(parse("I live in Texas")).toEqual({ kind: "tax", ask: "set_state", state: "TX" });
+  });
+
+  it.each([
+    ["I work remotely for a company in New York", "NY"],
+    ["my employer is in New Jersey", "NJ"],
+    ["we work from home for an employer based in Connecticut", "CT"],
+  ])("%s is the employer's state", (text, state) => {
+    expect(parse(text)).toEqual({ kind: "tax", ask: "work_state", state });
+  });
+
+  it.each([
+    "what state taxes do I pay",
+    "do I owe taxes in two states",
+    "do I pay city tax",
+    "local income tax",
+    "do I need a part-year return",
+  ])("%s asks about state taxes", (text) => {
+    expect(parse(text)).toEqual({ kind: "tax", ask: "states" });
+  });
+});

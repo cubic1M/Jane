@@ -15,6 +15,11 @@ import { yearlyPremium } from "@/lib/insurance/policies";
 import { quotesFor } from "@/lib/insurance/quotes";
 import { adviceMode } from "@/lib/advice-mode";
 import { latestCheckup } from "@/lib/insurance/checkups";
+import { BENEFIT_LABELS } from "@/config/benefits";
+import { loadInsurance } from "@/lib/insurance/profile";
+import { listReadings } from "@/lib/insurance/readings";
+import { noteLines, readingLines } from "./reading-words";
+import { listBenefits, openEnrollmentAtWork, yearlyCost } from "@/lib/insurance/benefits";
 import { autopilotOf } from "@/lib/autopilot";
 import { autopilotReply } from "./autopilot";
 import { eventLabel, listClaims } from "@/lib/insurance/claims";
@@ -51,6 +56,18 @@ export const INSURANCE_TOOLS: Anthropic.Tool[] = [
       "Claims the person is tracking with Jane (spec step 107): what happened and when, the insurer and its claims line when known, the claim number, and every step with when it's due and whether it's done. Jane reminds the person; she never files a claim or talks to the insurer for them. For something that just happened, the person can tell Jane, like \"I had a car accident\", for what to do now.",
     input_schema: noInput,
   },
+  {
+    name: "insurance_benefits",
+    description:
+      "The person's benefits through work (spec step 150): each benefit found on their pay stub or that they told Jane about (health, dental, vision, life, disability, HSA, FSA), what it costs a paycheck and a year, whether they've confirmed it, and the employer's open enrollment dates. Found benefits don't count until confirmed.",
+    input_schema: noInput,
+  },
+  {
+    name: "insurance_documents",
+    description:
+      "Policies Jane read from the person's uploaded declarations pages and renewal notices (spec step 151): each field she read (insurer, kind, price, deductible, cover limits, renewal date) with where it came from (the document, what they typed, their payments, or the policy already on file), what the rules left out, and whether they've confirmed it. Nothing read is on their insurance until they confirm.",
+    input_schema: noInput,
+  },
 ];
 
 export const isInsuranceTool = (name: string) => INSURANCE_TOOLS.some((t) => t.name === name);
@@ -68,6 +85,46 @@ export async function runInsuranceTool(
     return formatCents(value);
   };
   if (name === "insurance_quotes") return quotesTool(userId, { client, now }, money, cents);
+  if (name === "insurance_documents") {
+    await loadInsurance(userId, { client, now });
+    const readings = await listReadings(userId, { client });
+    return {
+      content: JSON.stringify({
+        documents: readings
+          .filter((r) => r.status !== "dismissed")
+          .map((r) => ({
+            document: r.title,
+            updatesPolicyOnFile: r.policyId !== null,
+            status: r.status === "waiting" ? "waiting for them to confirm" : "confirmed",
+            read: readingLines(r),
+            leftOut: noteLines(r),
+          })),
+      }),
+      cents,
+    };
+  }
+  if (name === "insurance_benefits") {
+    const [benefits, window] = await Promise.all([
+      listBenefits(userId, { client }),
+      openEnrollmentAtWork(userId, { client, now }),
+    ]);
+    return {
+      content: JSON.stringify({
+        benefits: benefits
+          .filter((b) => b.status !== "declined")
+          .map((b) => ({
+            benefit: BENEFIT_LABELS[b.kind],
+            employer: b.employer,
+            aPaycheck: money(b.perPayCents),
+            aYear: money(yearlyCost(b)),
+            status: b.status === "found" ? "found on the pay stub, not confirmed yet" : b.status,
+            from: b.source === "asked" ? "they told Jane" : "pay stub",
+          })),
+        openEnrollmentAtWork: window,
+      }),
+      cents,
+    };
+  }
   if (name === "insurance_claims") {
     const claims = await listClaims(userId, { client });
     return {

@@ -20,6 +20,7 @@ import {
 } from "@/lib/insurance/policies";
 import { isQuotable } from "@/lib/insurance/partner";
 import { loadInsurance } from "@/lib/insurance/profile";
+import { listReadings } from "@/lib/insurance/readings";
 import { formatCents } from "@/lib/money";
 import { requireUser } from "@/lib/session";
 import { autopilotOf } from "@/lib/autopilot";
@@ -38,6 +39,7 @@ const SAVED: Record<string, string> = {
   removed: "Removed from your insurance.",
   household: "Saved. Jane checks your cover against it.",
   gap: "OK. Jane won't bring that one up again.",
+  read: "Confirmed. It's on your insurance now.",
 };
 
 const dateLabel = (day: string) =>
@@ -165,6 +167,8 @@ async function InsuranceContent({
     loadInsurance(user.id, { now }),
     autopilotOf(user.id),
   ]);
+  // Read after loadInsurance, which reads any policy document not read yet.
+  const readings = await listReadings(user.id, { status: "waiting" });
   const saved = SAVED[one("saved")];
   const add = one("add");
   const typed = (fact: { value: number | string | null; from: string | null }) =>
@@ -180,13 +184,12 @@ async function InsuranceContent({
       <div className="flex flex-col gap-2">
         <h1 className="text-3xl font-semibold tracking-tight">Insurance</h1>
         <p className="text-zinc-600 dark:text-zinc-400">
-          Every policy you have, what it covers and when it renews, in one place. Jane adds the ones
-          from your{" "}
+          Every policy you have, what it covers and when it renews, in one place. Jane reads your{" "}
           <Link href="/documents" className={LINK}>
             policy documents
           </Link>{" "}
-          by herself and points out cover that looks missing. She never buys, changes or cancels
-          insurance without your tap.
+          and adds each one once you confirm what she read, and points out cover that looks missing.
+          She never buys, changes or cancels insurance without your tap.
         </p>
         {/* Spec step 108: what Jane does with insurance by herself at their level. */}
         <p className="text-sm text-zinc-600 dark:text-zinc-400">
@@ -202,6 +205,9 @@ async function InsuranceContent({
           <Link href="/insurance/claims" className={`text-sm ${LINK}`}>
             Something happened? Claims
           </Link>
+          <Link href="/insurance/benefits" className={`text-sm ${LINK}`}>
+            Benefits through work
+          </Link>
         </div>
       </div>
 
@@ -212,6 +218,30 @@ async function InsuranceContent({
         >
           {saved}
         </p>
+      )}
+
+      {readings.length > 0 && (
+        <section className="flex flex-col gap-3" aria-labelledby="readings">
+          <h2 id="readings" className="text-xl font-semibold">
+            Read from your documents
+          </h2>
+          <p className="text-sm text-zinc-600 dark:text-zinc-400">
+            Nothing here is on your insurance until you confirm it.
+          </p>
+          <ul className="flex flex-col gap-3">
+            {readings.map((reading) => (
+              <li
+                key={reading.id}
+                className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-zinc-200 p-4 dark:border-zinc-800"
+              >
+                <span className="font-medium">{reading.title}</span>
+                <Link href={`/insurance/read/${reading.id}`} className={`text-sm ${LINK}`}>
+                  Check and confirm
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </section>
       )}
 
       {gaps.length > 0 && (

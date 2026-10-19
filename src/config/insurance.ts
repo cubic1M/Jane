@@ -30,7 +30,15 @@ export const isPolicyKind = (value: unknown): value is PolicyKind =>
 // Where a policy came from: typed by the person, read from an uploaded policy document
 // (spec step 68), found from regular payments to an insurer (spec step 99), the demo
 // bank's sample policy, or bound by Jane through the insurance partner (spec step 105).
-export const POLICY_SOURCES = ["typed", "document", "payments", "demo", "switch"] as const;
+export const POLICY_SOURCES = [
+  "typed",
+  "document",
+  "payments",
+  "demo",
+  "switch",
+  // Spec step 150: a benefit through work, confirmed from a pay stub or the guided flow.
+  "employer",
+] as const;
 export type PolicySource = (typeof POLICY_SOURCES)[number];
 
 export const POLICY_SOURCE_LABELS: Record<PolicySource, string> = {
@@ -39,6 +47,7 @@ export const POLICY_SOURCE_LABELS: Record<PolicySource, string> = {
   payments: "Found from your payments",
   demo: "Demo policy",
   switch: "Bound by Jane",
+  employer: "Through your job",
 };
 
 // found: seen in payments, not confirmed yet (it doesn't count until it is). active: the
@@ -377,12 +386,12 @@ export const CHECKUP_DAILY_LIMIT = 200;
 // Insurance is never approved by a standing rule (NEVER_BY_RULE): buying, changing or
 // cancelling cover always takes the person's own tap.
 export const INSURANCE_AUTOPILOT: Record<"ask" | "safe" | "all" | "custom" | "none", string> = {
-  none: "I watch every renewal and price rise, reshop each policy 45 days before it renews, check your cover once a year and after a life event, and remind you of claim steps. I ask you before buying anything.",
-  ask: "I watch every renewal and price rise, reshop each policy 45 days before it renews, check your cover once a year and after a life event, and remind you of claim steps. I ask you before buying anything.",
-  safe: "I watch every renewal and price rise, reshop each policy 45 days before it renews, check your cover once a year and after a life event, and remind you of claim steps. I ask you before buying anything.",
+  none: "I watch every renewal and price rise, reshop each policy 45 days before it renews, check your cover once a year and after a life event, and remind you of claim steps. I read every policy document you upload and ask you to confirm it. I ask you before buying anything.",
+  ask: "I watch every renewal and price rise, reshop each policy 45 days before it renews, check your cover once a year and after a life event, and remind you of claim steps. I read every policy document you upload and ask you to confirm it. I ask you before buying anything.",
+  safe: "I watch every renewal and price rise, reshop each policy 45 days before it renews, check your cover once a year and after a life event, and remind you of claim steps. I read every policy document you upload and ask you to confirm it. I ask you before buying anything.",
   custom:
-    "I watch every renewal and price rise, reshop each policy 45 days before it renews, check your cover once a year and after a life event, and remind you of claim steps. I ask you before buying anything.",
-  all: "I watch every renewal and price rise, reshop each policy 45 days before it renews, and keep the best switch ready so it's one tap: I refresh its quotes before they expire. I also check your cover once a year and remind you of claim steps. Buying still takes your tap.",
+    "I watch every renewal and price rise, reshop each policy 45 days before it renews, check your cover once a year and after a life event, and remind you of claim steps. I read every policy document you upload and ask you to confirm it. I ask you before buying anything.",
+  all: "I watch every renewal and price rise, reshop each policy 45 days before it renews, and keep the best switch ready so it's one tap: I refresh its quotes before they expire. I also check your cover once a year, read every policy document you upload and remind you of claim steps. What I read and buying still take your tap.",
 };
 // At "handle everything", a ready pick's quotes are refreshed this many days before they
 // expire, so the one tap always works.
@@ -398,3 +407,10 @@ export const HEALTH_DEFAULT_SPEND_CENTS = 150_000;
 export const OPEN_ENROLLMENT = { start: "11-01", end: "01-15" } as const;
 // Each extra person on a health plan costs this share of the first person's premium.
 export const HEALTH_EXTRA_PERSON_SHARE = 0.8;
+
+// --- Policies read from documents (spec step 151) ---------------------------------------------
+// What Jane reads off a declarations page or renewal notice is checked by these rules before
+// it's shown for the person to confirm: a renewal date this far either side of today, and a
+// price this far from what their payments show is pointed out.
+export const READING_RENEWAL_WINDOW_DAYS = { past: 366, future: 800 } as const;
+export const READING_PRICE_TOLERANCE = 0.2;

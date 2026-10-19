@@ -102,8 +102,11 @@ export function scopedFor(userId: string, client: PrismaClient = db) {
     insuranceShops: scoped.insuranceShop,
     insuranceCheckups: scoped.insuranceCheckup,
     insuranceClaims: scoped.insuranceClaim,
+    employerBenefits: scoped.employerBenefit,
+    policyReadings: scoped.policyReading,
     refinanceChecks: scoped.refinanceCheck,
     loanApplications: scoped.loanApplication,
+    studentLoanProfiles: scoped.studentLoanProfile,
     balanceTransfers: scoped.balanceTransfer,
     findings: scoped.finding,
     decisions: scoped.decision,
@@ -136,6 +139,7 @@ export function scopedFor(userId: string, client: PrismaClient = db) {
     taxProfiles: scoped.taxProfile,
     taxTags: scoped.taxTag,
     taxForms: scoped.taxForm,
+    taxDocuments: scoped.taxDocument,
     taxReturns: scoped.taxReturn,
     // One-tap answers from Jane's emails (spec step 85).
     chatReplyLinks: scoped.chatReplyLink,
@@ -150,6 +154,8 @@ export function scopedFor(userId: string, client: PrismaClient = db) {
     // One autopilot, every sector (spec step 141).
     autopilotSectors: scoped.autopilotSector,
     autopilotActs: scoped.autopilotAct,
+    // The nightly controller run's log (spec step 142).
+    controllerRuns: scoped.controllerRun,
     savedShares: scoped.savedShare,
     // What's in investment accounts (spec step 128).
     securities: scoped.security,
