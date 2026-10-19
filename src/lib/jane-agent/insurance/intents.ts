@@ -5,8 +5,10 @@ import type { PolicyKind } from "@/config/insurance";
 
 // cover: what a policy covers and its limits. renew: when it renews. cost: what it costs.
 // deductible: its deductible. gaps: what looks missing. list: every policy on file.
-// quotes: compare prices from the insurance partner (spec step 103).
-export type InsuranceAsk = "cover" | "renew" | "cost" | "deductible" | "gaps" | "list" | "quotes";
+// quotes: compare prices from the insurance partner (spec step 103). switch: how a switch
+// Jane is doing is going (spec step 105).
+export type InsuranceAsk =
+  "cover" | "renew" | "cost" | "deductible" | "gaps" | "list" | "quotes" | "switch";
 
 export type InsuranceIntent = {
   kind: "insurance";
@@ -32,8 +34,12 @@ const COVER = /\b(?:cover|covers|covered|coverage)\b/;
 
 const ASKS: readonly [InsuranceAsk, RegExp][] = [
   [
+    "switch",
+    /\bswitch(?:ed|ing)?\b.*\b(?:going|status|done|yet|happen\w*|progress|over)\b|\bdid you (?:switch|change)\b|\bhow'?s (?:my|the) switch\b|\bis my (?:new )?(?:insurance|policy) (?:active|in place|done)\b/,
+  ],
+  [
     "quotes",
-    /\b(?:quotes?|compare|comparing|shop|shopping|reshop|cheaper|better (?:price|deal|rate)|lower price|best price|find me)\b/,
+    /\b(?:quotes?|compare|comparing|shop|shopping|reshop|cheaper|better (?:price|deal|rate)|lower price|best price|find me|switch)\b/,
   ],
   ["renew", /\b(?:renew|renews|renewal|renewing|expire|expires|expiry|run out|runs out)\b/],
   ["deductible", /\bdeductibles?\b/],

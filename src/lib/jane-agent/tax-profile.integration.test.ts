@@ -66,7 +66,7 @@ describe.runIf(url)("the tax profile against a real database", () => {
   // Jane posts at most a few messages a day, the most important first: the tax questions
   // come within the first days of the demo bank.
   async function talkUntil(userId: string, dedupeKey: string) {
-    for (let day = 0; day < 7; day += 1) {
+    for (let day = 0; day < 21; day += 1) {
       await runJaneAgent(userId, {
         client,
         now: new Date(LINKED.getTime() + day * 24 * 60 * MINUTE),

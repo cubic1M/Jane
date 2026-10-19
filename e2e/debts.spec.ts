@@ -86,3 +86,34 @@ test("the payoff plan picks an order for the demo bank and starts with one tap",
   // The planner below starts from the same debts.
   await expect(page.getByLabel("Card or loan").first()).toHaveValue(/Demo/);
 });
+
+// Spec step 111: refinance offers from the stand-in lender catalog, compared over the same
+// months with fees, the pick labelled as demo advice.
+test("refinance offers compare total cost and pick one, labelled", async ({
+  context,
+  page,
+  baseURL,
+}) => {
+  const user = await signedInUser("user");
+  userId = user.userId;
+  await context.addCookies([
+    { name: "authjs.session-token", value: user.sessionToken, url: baseURL ?? "" },
+  ]);
+  await page.goto("/connect");
+  await page.getByRole("button", { name: "Link a demo bank" }).click();
+  await expect(page).toHaveURL("/chat", { timeout: 60_000 });
+
+  await page.goto("/loans");
+  await page.getByRole("link", { name: "See refinance offers" }).click();
+  await expect(page.getByRole("heading", { level: 1, name: "Refinance offers" })).toBeVisible();
+  await expect(page.getByText("sample offers from a stand-in lender catalog")).toBeVisible();
+  const car = page
+    .getByRole("list", { name: "Offers by debt" })
+    .getByRole("listitem")
+    .filter({ hasText: "Demo Car Loan" });
+  await expect(car).toContainText("Jane's pick: Harbor Auto Refi");
+  await expect(car.getByText("Demo advice: sample data, not financial advice")).toBeVisible();
+  await expect(car.getByRole("table")).toContainText("In all, with fees");
+  await page.getByRole("button", { name: "Check rates now" }).click();
+  await expect(page.getByRole("status")).toHaveText("Checked just now.");
+});

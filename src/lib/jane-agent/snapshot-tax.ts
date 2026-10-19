@@ -5,7 +5,12 @@ import {
   type TaxTagKind,
 } from "@/config/tax";
 import type { PrismaClient } from "@/generated/prisma/client";
+import { adviceMode } from "@/lib/advice-mode";
 import { loadTaxEstimate, type TaxEstimateView } from "@/lib/tax-estimate";
+import { checkFrom } from "@/lib/tax-withholding";
+import { loadTaxSavings } from "@/lib/tax-savings";
+import type { TaxSaving } from "@/planning/tax-savings";
+import type { WithholdingCheck } from "@/planning/withholding";
 import { loadTaxForms, loadTaxTags } from "@/lib/tax-organizer";
 import { loadTaxProfile } from "@/lib/tax-profile";
 import type { ExpectedForm } from "@/planning/tax-documents";
@@ -29,6 +34,11 @@ export type TaxSnapshot = {
     formsDue?: { year: number; forms: ExpectedForm[] };
     // Spec step 120: the estimate, worked out fresh after every sync.
     estimate?: TaxEstimateView;
+    // Spec step 121: the withholding checkup, and whether the W-4 suggestion may be shown.
+    withholding?: WithholdingCheck;
+    advice?: boolean;
+    // Spec step 122: ways to pay less (demo advice only; empty otherwise).
+    savings?: TaxSaving[];
   } | null;
 };
 
@@ -45,7 +55,7 @@ export async function loadTaxSnapshot(
   const year = now.getUTCFullYear();
   const last = previousMonth(today);
   const askForms = today.slice(5) >= TAX_FORMS_ASK_FROM && today.slice(5) <= TAX_FORMS_ASK_UNTIL;
-  const [profile, tags, lastMonthTags, forms, estimate] = await Promise.all([
+  const [profile, tags, lastMonthTags, forms, estimate, advice] = await Promise.all([
     loadTaxProfile(userId, { client, now }),
     loadTaxTags(userId, year, { client }),
     Number(last.slice(0, 4)) === year
@@ -53,6 +63,7 @@ export async function loadTaxSnapshot(
       : loadTaxTags(userId, Number(last.slice(0, 4)), { client }),
     askForms ? loadTaxForms(userId, year - 1, { client, now }) : null,
     loadTaxEstimate(userId, { client, now }),
+    adviceMode(userId, { client }),
   ]);
   const inLastMonth = (lastMonthTags ?? tags).tagged.filter((t) => t.date.startsWith(last));
   return {
@@ -70,6 +81,10 @@ export async function loadTaxSnapshot(
         }),
       },
       estimate,
+      withholding: checkFrom(estimate),
+      savings: (await loadTaxSavings(userId, { client, now, loaded: { estimate, advice } }))
+        .savings,
+      advice,
       formsDue: forms
         ? { year: forms.year, forms: forms.forms.filter((f) => !f.received && !f.mayNotSend) }
         : undefined,

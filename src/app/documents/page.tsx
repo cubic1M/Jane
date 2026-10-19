@@ -44,6 +44,8 @@ const SOURCE_NOTE: Record<string, string> = {
   claude: "Jane read these facts from the file. Check them and fix anything that's off.",
   you: "Facts you entered.",
   none: "No facts yet. Fill them in so Jane can use them.",
+  // Spec step 105: the declarations page from the insurer, when Jane switched a policy.
+  partner: "From your insurer, when Jane switched your policy.",
 };
 
 async function DocumentsContent() {

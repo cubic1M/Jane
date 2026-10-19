@@ -107,6 +107,7 @@ const STATUS: Record<string, string> = {
   recent_changes: "Looking at what changed…",
   life_events: "Looking at your checklists…",
   plan_upkeep: "Looking at your week…",
+  proven_savings: "Adding up what I saved you…",
   propose_action: "Getting a button ready…",
 };
 export const statusFor = (tool: string) =>

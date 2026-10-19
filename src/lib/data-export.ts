@@ -52,6 +52,7 @@ export async function exportUserData(
     lifeEventAnswers,
     budgetTuneUps,
     goalTransfers,
+    savedShares,
     janeMessages,
     janePreferences,
     teamAccess,
@@ -382,6 +383,8 @@ export async function exportUserData(
         createdAt: true,
       },
     }),
+    // Shared savings totals (spec step 139): never the token itself.
+    db.savedShares.findMany({ select: { totalCents: true, createdAt: true, revokedAt: true } }),
     // Jane's chat (spec step 81): every message, with the buttons and what they answered.
     db.janeMessages.findMany({
       select: {
@@ -491,6 +494,7 @@ export async function exportUserData(
     lifeEventAnswers,
     budgetTuneUps,
     goalTransfers,
+    savedShares,
     janeMessages,
     janePreferences,
     investments,

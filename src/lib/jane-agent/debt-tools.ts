@@ -3,7 +3,9 @@ import { sourceLabel, type DebtBook } from "@/insights/debts";
 import { formatRate } from "@/insights/loans";
 import { MAX_DEBT_EXTRA_CENTS } from "@/config/debt";
 import type { Payoff } from "@/lib/debt-plan";
+import type { Refinance } from "@/lib/refinance";
 import type { PayoffPlan } from "@/planning/debt";
+import type { ScoredOffer } from "@/planning/refinance";
 import { monthAfter } from "@/planning/payoff";
 
 // Claude's tools about debts in Jane's chat (spec Phase Y): read-only, over the same debt
@@ -11,6 +13,13 @@ import { monthAfter } from "@/planning/payoff";
 // the guardrails know it came from a tool (./claude-tools.ts).
 
 const noInput = { type: "object" as const, properties: {}, additionalProperties: false };
+
+export const REFINANCE_TOOL: Anthropic.Tool = {
+  name: "refinance_offers",
+  description:
+    "Refinance offers Jane checked for the person's loans and cards (sample offers from a stand-in lender catalog; only demo-bank people have any). For each debt: the balance, rate and months left, what keeping it costs over those months, each offer's rate, monthly payment, total over the same months with fees, saving, and break-even months for a fee; Jane's pick and why when one saves enough to switch. Nothing has been applied for.",
+  input_schema: noInput,
+};
 
 export const DEBT_TOOLS: Anthropic.Tool[] = [
   {
@@ -34,6 +43,7 @@ export const DEBT_TOOLS: Anthropic.Tool[] = [
       additionalProperties: false,
     },
   },
+  REFINANCE_TOOL,
 ];
 
 // The extra a month Claude asked about, in cents; undefined when it gave none or nonsense.
@@ -128,10 +138,44 @@ export function debtsToolOutput(book: DebtBook, money: (cents: number) => string
 export const DEBT_CHAT_PAGES: Readonly<Record<string, { label: string; href: string }>> = {
   loans: { label: "See every debt", href: "/loans" },
   debt: { label: "Open the payoff planner", href: "/debt" },
+  refinance: { label: "See the offers", href: "/loans/refinance" },
 };
 
 // What the chat shows while Claude looks each one up (./claude.ts).
 export const DEBT_TOOL_STATUS: Readonly<Record<string, string>> = {
   debts: "Looking at your debts…",
   payoff_plan: "Working out your payoff plan…",
+  refinance_offers: "Checking loan offers…",
 };
+
+export function refinanceToolOutput(refi: Refinance, money: (cents: number) => string) {
+  if (!refi.available) {
+    return { note: "No lending partner for this person's accounts yet, so there are no offers." };
+  }
+  const offer = (s: ScoredOffer) => ({
+    lender: s.offer.lender,
+    rate: formatRate(s.offer.aprBps),
+    rateType: s.offer.rateType,
+    fee: money(s.offer.feeCents),
+    feeIs: s.offer.feeLabel,
+    monthlyPayment: money(s.monthlyCents),
+    totalOverSameMonths: money(s.totalCents),
+    saving: money(s.savingCents),
+    breakEvenMonths: s.breakEvenMonths,
+    sample: s.offer.demo,
+  });
+  return {
+    checkedOn: refi.checkedOn,
+    debts: refi.comparisons.map((c) => ({
+      debt: c.debtName,
+      balance: money(c.balanceCents),
+      rate: formatRate(c.currentAprBps),
+      monthsLeft: c.termMonths,
+      keepingItCosts: money(c.currentTotalCents),
+      keepingMonthlyPayment: money(c.currentMonthlyCents),
+      janesPick: c.pick && offer(c.pick),
+      why: c.why,
+      offers: c.offers.map(offer),
+    })),
+  };
+}

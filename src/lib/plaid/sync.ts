@@ -33,6 +33,7 @@ import { confirmSwitches, switchOf } from "@/lib/agent/switch";
 import { ensureDemoOptions } from "@/lib/compare";
 import { ensureDemoPolicies } from "@/lib/insurance/profile";
 import { reshopPerson } from "@/lib/insurance/shop";
+import { confirmInsuranceSwitches } from "@/lib/insurance/switch";
 import { demoPlaidApi, isDemoToken } from "./demo";
 import { runJaneAgentSafely } from "@/lib/jane-agent/run";
 
@@ -531,6 +532,8 @@ export async function syncItem(
   await runDetection(item.userId, { client, now });
   // New charges may show that a switch went through (spec step 77).
   await confirmSwitches({ client, now, userId: item.userId });
+  // Spec step 105: an insurance switch whose first payment went through.
+  await confirmInsuranceSwitches({ client, now, userId: item.userId });
   // Spec step 104: Jane reshops insurance that renews soon or went up, by herself. A
   // problem there never fails the sync; the daily run tries again.
   await reshopPerson(item.userId, { client, now }).catch((error) =>
