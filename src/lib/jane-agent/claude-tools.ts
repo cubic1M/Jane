@@ -21,6 +21,8 @@ import { sectorAutopilots } from "@/lib/sector-autopilot";
 import { lastControllerRun } from "@/lib/controller-log";
 import { CONTROLLER_STEP_LABELS } from "@/config/controller";
 import { rankedFor } from "./priorities";
+import { latestPaycheckPlan } from "@/lib/money-movement/paycheck";
+import { listTransfers } from "@/lib/money-movement/transfers";
 import { SECTOR_LABELS, SECTOR_LEVEL_LABELS } from "@/config/autopilot-sectors";
 import { provenSavings } from "@/lib/savings-proof";
 import { listLifeEvents } from "@/lib/life-events";
@@ -191,6 +193,12 @@ export const CHAT_TOOLS: Anthropic.Tool[] = [
     name: "priorities",
     description:
       'The person\'s next best things to do (spec step 143), ranked across everything Jane found and is waiting on: findings, insurance picks, refinance offers, steps only they can do and dated deadlines. Each with the money it saves a year, the minutes it takes, its urgency and why it ranks where it does. Use it for "what should I do first" and to put the most important first.',
+    input_schema: noInput,
+  },
+  {
+    name: "money_moves",
+    description:
+      "Money that moves itself (spec step 144): the newest paycheck's plan (what goes to each goal, the emergency fund, the tax set-aside and extra debt payments, kept above safe to spend's cushion) with what Jane moved by herself and what waits for a tap, and the latest transfers with their status. Until a money-movement partner is connected these are sample transfers: no real money moves.",
     input_schema: noInput,
   },
   {
@@ -429,6 +437,27 @@ export async function runChatTool(
           what: e.title,
           about: money(e.cents),
           why: e.why,
+        })),
+      });
+    }
+    case "money_moves": {
+      const [plan, transfers] = await Promise.all([
+        latestPaycheckPlan(userId, { client, now }),
+        listTransfers(userId, { client, now }),
+      ]);
+      return out({
+        sampleOnly: true,
+        paycheck: plan && {
+          amount: money(plan.paycheckCents),
+          paidOn: plan.paidOn,
+          moves: plan.moves.map((m) => ({ to: m.label, amount: money(m.cents), status: m.status })),
+        },
+        transfers: transfers.slice(0, 10).map((t) => ({
+          to: t.toName,
+          amount: money(t.amountCents),
+          status: t.status,
+          on: t.runOn,
+          by: t.by,
         })),
       });
     }

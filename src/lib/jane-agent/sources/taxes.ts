@@ -14,6 +14,7 @@ import { januaryMessage } from "../tax-january";
 import { harvestMessage, washSaleMessage } from "../tax-investments";
 import { localityMessage, movingEventMessage, spottedMoveMessage } from "../tax-states-message";
 import { collectedMessage, flaggedMessage, missingMessage } from "../tax-documents-message";
+import { planMoveMessage } from "../tax-plan-message";
 import { HARVEST_FROM } from "@/config/tax";
 import { formatCents } from "@/lib/money";
 import { incomeLine, listOf } from "@/planning/tax-profile";
@@ -301,6 +302,22 @@ export const taxesSource: MessageSource = {
           priority: TAX_MESSAGE_PRIORITY.filing,
         });
       }
+    }
+
+    // Spec step 167: each tax move open now, once (moves with their own message, like the
+    // quarterly payment and filing, aren't posted again). At the levels that let Jane act
+    // it's already on the deadlines; otherwise one tap puts it there.
+    for (const m of tax.plan?.moves ?? []) {
+      if (!m.open || m.ownMessage || m.handled === "no") continue;
+      // Jane adds open moves herself at the levels that let her act (then says so); at the
+      // others the person adds them, so there's nothing more to say.
+      if ((m.handled === null) === acts) continue;
+      out.push({
+        kind: m.handled === "added" ? "done" : "decision",
+        ...planMoveMessage(m),
+        dedupeKey: `plan:${m.id}`,
+        priority: TAX_MESSAGE_PRIORITY.plan,
+      });
     }
 
     // Spec step 166: with a document partner, Jane collects the forms herself: a form that

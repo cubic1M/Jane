@@ -579,7 +579,13 @@ export function safeReply(
 
 // Which kinds of finding each command is about, first choice first.
 const VERB_TYPES: Record<ActVerb, readonly FindingType[]> = {
-  cancel: ["subscription_review", "duplicate_subscription", "trial_conversion", "price_increase"],
+  cancel: [
+    "subscription_review",
+    "duplicate_subscription",
+    "covered_by_card",
+    "trial_conversion",
+    "price_increase",
+  ],
   lower: ["bill_negotiation", "insurance_reshop", "bank_fees", "card_interest", "price_increase"],
   refund: ["duplicate_charge", "charge_after_cancel", "bank_fees", "trial_conversion"],
 };
@@ -594,6 +600,7 @@ const TYPE_WORDS: Partial<Record<FindingType, string>> = {
   duplicate_subscription: "subscription",
   duplicate_charge: "charge refund",
   charge_after_cancel: "charge refund",
+  covered_by_card: "insurance protection cover card",
 };
 
 // The open findings the person could mean: every word they typed is in the title (or its

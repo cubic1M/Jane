@@ -15,6 +15,8 @@ import { insuranceAutopilot } from "@/lib/insurance/autopilot";
 import { reshopPerson } from "@/lib/insurance/shop";
 import { loadRebalance } from "@/lib/investments/rebalance";
 import { enqueueJob, runDueJobs } from "@/lib/jobs";
+import { runPaycheckPlan } from "@/lib/money-movement/paycheck";
+import { settleTransfers } from "@/lib/money-movement/transfers";
 import { runPlanUpkeep } from "@/lib/plan-upkeep";
 import { ITEM_STATUS, syncItem } from "@/lib/plaid/sync";
 import { scrub } from "@/lib/scrub";
@@ -122,6 +124,25 @@ const STEPS: Record<
         .replace(/^./, (c) => c.toUpperCase())
         .concat("."),
       changed: tuned + counted,
+    };
+  },
+  async money(userId, { client, now }) {
+    const settled = await settleTransfers(userId, { client, now });
+    const plan = await runPaycheckPlan(userId, { client, now });
+    const auto = plan?.moves.filter((m) => m.status === "auto").length ?? 0;
+    const asked = plan?.moves.filter((m) => m.status === "asked").length ?? 0;
+    if (settled === 0 && auto === 0 && asked === 0) return { did: "Nothing to move.", changed: 0 };
+    return {
+      did: [
+        settled > 0 ? `${plural(settled, "transfer")} went through` : null,
+        auto > 0 ? `moved ${plural(auto, "part")} of a paycheck by myself` : null,
+        asked > 0 ? `${plural(asked, "part")} of a paycheck to ask you about` : null,
+      ]
+        .filter(Boolean)
+        .join(", ")
+        .replace(/^./, (c) => c.toUpperCase())
+        .concat("."),
+      changed: settled + auto + asked,
     };
   },
 };

@@ -157,6 +157,22 @@ const TEMPLATES: Record<FindingType, (input: ExplainInput) => Omit<ExplanationCo
       ],
     };
   },
+  covered_by_card: (input) => {
+    const merchant = fact(input.facts, "merchant") ?? "this plan";
+    const card = fact(input.facts, "card") ?? "one of your cards";
+    const benefit = fact(input.facts, "benefit") ?? "the same cover";
+    const limits = fact(input.facts, "limits");
+    const condition = fact(input.facts, "condition");
+    return {
+      explanation: `Your ${card} already gives you ${benefit.toLowerCase()}${limits ? ` (${limits})` : ""}${condition ? ` as long as ${condition}` : ""}. You also pay ${merchant}, ${yearly(input, "every year")}, for the same cover. Cancelling it stops you paying twice.`,
+      giveUp: `Anything ${merchant} covers beyond the card's limits.`,
+      alternatives: [
+        "Read the card's benefit guide first",
+        "Keep it for the higher limits",
+        "Keep it",
+      ],
+    };
+  },
   card_interest: (input) => {
     const total = fact(input.facts, "totalLast12Months");
     return {

@@ -9,6 +9,8 @@ export const CONTROLLER_STEPS = [
   "taxes",
   "investing",
   "goals",
+  // Spec step 144: transfers that went through, and paychecks' plans.
+  "money",
 ] as const;
 export type ControllerStep = (typeof CONTROLLER_STEPS)[number];
 
@@ -20,6 +22,7 @@ export const CONTROLLER_STEP_LABELS: Record<ControllerStep, string> = {
   taxes: "Taxes",
   investing: "Investing",
   goals: "Goals and budgets",
+  money: "Money moves",
 };
 
 // One person's run stops starting new steps after this long; the rest wait for the next
