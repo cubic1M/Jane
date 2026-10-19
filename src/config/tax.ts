@@ -227,7 +227,8 @@ export const IRS_W4_URL = "https://www.irs.gov/forms-pubs/about-form-w-4";
 // aren't shown. Purchases that look like tuition or home energy work are spotted by these
 // words in the payee.
 export const TAX_SAVINGS_MIN_CENTS = 2_500;
-export const TUITION_PAYEE = /\b(?:UNIV(?:ERSITY)?|COLLEGE|TUITION|BURSAR|COMMUNITY COLL|SCHOOL OF)\b/i;
+export const TUITION_PAYEE =
+  /\b(?:UNIV(?:ERSITY)?|COLLEGE|TUITION|BURSAR|COMMUNITY COLL|SCHOOL OF)\b/i;
 export const ENERGY_PAYEE =
   /\b(?:SOLAR|SUNRUN|SUNPOWER|SUNNOVA|TESLA ENERGY|HEAT PUMP|MITSUBISHI ELECTRIC|INSULATION|ENERGY STAR|GEOTHERMAL|POWERWALL)\b/i;
 // Health FSA: suggested when out-of-pocket medical spending this year is over this.
