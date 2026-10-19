@@ -63,7 +63,9 @@ test("a demo-bank person sees the sample policy, like-for-like quotes and Jane's
   await expect(page.getByRole("heading", { name: "GEICO car insurance" })).toBeVisible();
   // The demo bank has a mortgage and no home policy: a gap, with demo advice, labelled.
   await expect(page.getByText("No home insurance on file")).toBeVisible();
-  await expect(page.getByText("Demo advice: sample data, not financial advice")).toBeVisible();
+  await expect(
+    page.getByText("Demo advice: sample data, not financial advice").first(),
+  ).toBeVisible();
 
   await page.getByRole("link", { name: "Compare quotes" }).click();
   await expect(page.getByText("Sample quotes from Jane's demo carrier catalog")).toBeVisible();

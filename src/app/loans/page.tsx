@@ -336,6 +336,14 @@ async function LoansContent({
           </p>
 
           <p className="text-sm text-zinc-600 dark:text-zinc-400">
+            Have a federal student loan?{" "}
+            <Link href="/loans/student" className={LINK}>
+              Compare its repayment plans
+            </Link>
+            .
+          </p>
+
+          <p className="text-sm text-zinc-600 dark:text-zinc-400">
             Could a loan cost less?{" "}
             <Link href="/loans/refinance" className={LINK}>
               See refinance offers

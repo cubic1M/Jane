@@ -435,6 +435,20 @@ export const QUESTIONS: readonly CheckQuestion[] = [
     expect: { intent: "remember", button: "pref.save", mentions: /car/ },
   },
 
+  // Guided flows (spec step 95): the first question, a button each.
+  {
+    id: "flow-1",
+    text: "set up a budget",
+    needs: "rules",
+    expect: { intent: "flow", button: "flow.pick.1", mentions: /1 of 2/ },
+  },
+  {
+    id: "flow-2",
+    text: "dispute a charge",
+    needs: "rules",
+    expect: { intent: "flow", button: "flow.pick.1", mentions: /Which charge/ },
+  },
+
   // Follow-ups: the second needs the first.
   {
     id: "follow-1",

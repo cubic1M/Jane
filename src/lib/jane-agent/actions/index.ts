@@ -16,6 +16,13 @@ import {
   insuranceClaimClose,
   insuranceClaimStart,
   insuranceClaimStep,
+  benefitsConfirmAll,
+  benefitsDisabilityNone,
+  benefitsDisabilityYes,
+  benefitsLife1x,
+  benefitsLife2x,
+  benefitsLifeNone,
+  benefitsUnsure,
 } from "./insurance";
 import { ChatActionError, linksOf, type ActionHandler } from "./handler";
 import { forgetPrimer } from "../primer-cache";
@@ -34,6 +41,15 @@ import { taxSaveNo, taxSaveTask } from "./tax-savings";
 import { taxMilesAdd, taxQuarterPaid } from "./tax-self-employed";
 import { taxRefundApply, taxRefundNo } from "./tax-refund";
 import { taxFileStart } from "./tax-filing";
+import {
+  taxLocal1,
+  taxLocal2,
+  taxLocalNo,
+  taxMoveNo,
+  taxMoveSet,
+  taxMoveYes,
+  taxWorkSet,
+} from "./tax-states";
 import {
   investAnswer1,
   investAnswer2,
@@ -57,6 +73,7 @@ import { prefSave, suggestNever } from "./remember";
 import { welcomeTour } from "./welcome";
 import { autopilotSectorSet } from "./sector";
 import { bundleYes1, bundleYes2, bundleYes3, bundleYes4, bundleYes5 } from "./bundle";
+import { FLOW_PICKS, flowBack, flowCancel } from "./flows";
 
 // Every button action, by id (spec step 81). A new button is a new handler here; the
 // message sources offer it by id (src/lib/jane-agent/types.ts ACTION_IDS).
@@ -75,6 +92,13 @@ export const ACTION_HANDLERS: Readonly<Record<ActionId, ActionHandler>> = {
   "insurance.claim_start": insuranceClaimStart,
   "insurance.claim_step": insuranceClaimStep,
   "insurance.claim_close": insuranceClaimClose,
+  "benefits.confirm_all": benefitsConfirmAll,
+  "benefits.life_1x": benefitsLife1x,
+  "benefits.life_2x": benefitsLife2x,
+  "benefits.life_none": benefitsLifeNone,
+  "benefits.disability_yes": benefitsDisabilityYes,
+  "benefits.disability_none": benefitsDisabilityNone,
+  "benefits.unsure": benefitsUnsure,
   "plan.approve_safe": planApproveSafe,
   "undo.rule": undoRule,
   "undo.no": undoNo,
@@ -111,6 +135,10 @@ export const ACTION_HANDLERS: Readonly<Record<ActionId, ActionHandler>> = {
   "bundle.3": bundleYes3,
   "bundle.4": bundleYes4,
   "bundle.5": bundleYes5,
+  // Spec step 95.
+  ...FLOW_PICKS,
+  "flow.back": flowBack,
+  "flow.cancel": flowCancel,
   // Taxes (spec step 118).
   "tax.found_yes": taxFoundYes,
   ...TAX_PROFILE_HANDLERS,
@@ -139,6 +167,13 @@ export const ACTION_HANDLERS: Readonly<Record<ActionId, ActionHandler>> = {
   "tax.refund_no": taxRefundNo,
   // Spec step 126.
   "tax.file_start": taxFileStart,
+  "tax.move_yes": taxMoveYes,
+  "tax.move_no": taxMoveNo,
+  "tax.move_set": taxMoveSet,
+  "tax.work_set": taxWorkSet,
+  "tax.local_1": taxLocal1,
+  "tax.local_2": taxLocal2,
+  "tax.local_no": taxLocalNo,
   // Investments (spec step 129 on).
   "invest.answer.1": investAnswer1,
   "invest.answer.2": investAnswer2,

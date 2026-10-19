@@ -16,7 +16,9 @@ export type DebtIntent =
   // Spec step 112: "how's my loan application?".
   | { kind: "loan_status" }
   // Spec step 113: "should I do a balance transfer?", "0% card".
-  | { kind: "balance_transfer" };
+  | { kind: "balance_transfer" }
+  // Spec step 114: "which student loan plan?", "PSLF", "income-driven repayment".
+  | { kind: "student_loans" };
 
 const DEBT_KINDS = new Set<string>([
   "debts",
@@ -25,6 +27,7 @@ const DEBT_KINDS = new Set<string>([
   "refinance",
   "loan_status",
   "balance_transfer",
+  "student_loans",
 ]);
 export const isDebtIntent = (intent: { kind: string }): intent is DebtIntent =>
   DEBT_KINDS.has(intent.kind);
@@ -51,6 +54,8 @@ const REFINANCE_TARGET =
 
 const TRANSFER =
   /\bbalance transfers?\b|\b0 ?% (?:card|cards|transfer|apr|interest|intro)\b|\bzero percent\b|\bmove (?:my )?(?:credit )?card (?:debt|balance)\b|\btransfer (?:my )?(?:credit )?card(?: debt| balance)?\b|\btransfer (?:my )?balance\b/;
+const STUDENT =
+  /\b(?:idr|ibr|rap|pslf|income[- ]driven|income[- ]based|repayment assistance plan|public service loan forgiveness|studentaid)\b|\bstudent loans?\b.*\b(?:plans?|repay\w*|forgiv\w*|options?|lower|cheaper|best|income|switch)\b|\b(?:plans?|repay\w*|forgiv\w*|lower|reduce|cut)\b.*\bstudent loans?\b/;
 const LOAN_STATUS =
   /\b(?:loan )?application(?:'s| is)?(?: status)?\b|\bdid (?:the|my) (?:new )?loan (?:go through|fund|come through)\b|\b(?:status of|where'?s|how'?s) (?:my |the )?(?:new )?loan\b/;
 // "Apply for the refinance": the pick and its Apply button.
@@ -95,6 +100,7 @@ export function parseDebtIntent(
           : null,
     };
   }
+  if (STUDENT.test(text)) return { kind: "student_loans" };
   const paid = PAID_OFF.exec(text);
   if (paid) {
     const target = clean(paid[1] ?? paid[2] ?? paid[3] ?? "");

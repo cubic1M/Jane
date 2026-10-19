@@ -74,6 +74,9 @@ export const MESSAGE_PRIORITY = {
   insurance_checkup: 46,
   // Spec step 107: a claim's next step is due, like something only the person can do.
   insurance_claim: 86,
+  // Spec step 150: benefits found on a pay stub to confirm, and the short guided questions.
+  benefits_found: 62,
+  benefits_question: 47,
   urgent_alert: 95,
   deadline: 90,
   waiting_on_you: 85,
@@ -129,6 +132,8 @@ export const MESSAGE_PRIORITY = {
   account_order: 37,
   // Spec step 137: the monthly portfolio note.
   investment_monthly: 41,
+  // Spec step 157: each goal invested for its timeline (demo advice).
+  goal_buckets: 35,
   auto_invest_run: 31,
 } as const;
 
@@ -215,3 +220,12 @@ export const CHAT_CLAUDE_DEADLINE_MS = 20_000;
 export const CHAT_CLAUDE_COOLDOWN_SECONDS = 60;
 // /admin/chat looks back this many days for what Jane couldn't answer.
 export const CHAT_UNANSWERED_DAYS = 30;
+
+// Spec step 94: answer blocks (charts, tables, timelines, progress) are drawn in monospace
+// text at most this many characters wide, so they fit a 375px phone; and hold at most this
+// many rows.
+export const CHAT_BLOCK_WIDTH = 34;
+export const CHAT_BLOCK_ROWS = 8;
+
+// Spec step 95: guided flows in the chat show at most this many answers as buttons.
+export const CHAT_FLOW_OPTIONS = 5;
