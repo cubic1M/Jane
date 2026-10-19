@@ -13,6 +13,9 @@ import {
   insuranceShopNo,
   insuranceShopYes,
   insuranceCheckupSeen,
+  insuranceClaimClose,
+  insuranceClaimStart,
+  insuranceClaimStep,
 } from "./insurance";
 import { ChatActionError, linksOf, type ActionHandler } from "./handler";
 import { planApproveSafe } from "./plan";
@@ -28,6 +31,7 @@ import { taxFormGot, taxTagNo, taxTagSet, taxTagYes } from "./tax-organizer";
 import { taxW4Keep, taxW4Next, taxW4Sent, taxW4Start, taxW4Stop } from "./tax-w4";
 import { taxSaveNo, taxSaveTask } from "./tax-savings";
 import { taxMilesAdd, taxQuarterPaid } from "./tax-self-employed";
+import { taxRefundApply, taxRefundNo } from "./tax-refund";
 import {
   investAnswer1,
   investAnswer2,
@@ -35,6 +39,10 @@ import {
   investAnswer4,
   investAnswer5,
   investRebalance,
+  investAutoStart,
+  investAutoLeftover,
+  investAutoPause,
+  investAutoResume,
 } from "./investments";
 import { changeBudget, changeExpected, changeLook } from "./changes";
 import { lifeNever, lifeNo, lifeYes } from "./life";
@@ -43,6 +51,7 @@ import { policyConfirm, policyNotInsurance } from "./found-policies";
 import { budgetSet } from "./budget";
 import { findingOptions, findingWhy } from "./explain";
 import { savedShare } from "./saved";
+import { prefSave, suggestNever } from "./remember";
 import { welcomeTour } from "./welcome";
 import { autopilotSectorSet } from "./sector";
 
@@ -60,6 +69,9 @@ export const ACTION_HANDLERS: Readonly<Record<ActionId, ActionHandler>> = {
   "insurance.shop_yes": insuranceShopYes,
   "insurance.shop_no": insuranceShopNo,
   "insurance.checkup_seen": insuranceCheckupSeen,
+  "insurance.claim_start": insuranceClaimStart,
+  "insurance.claim_step": insuranceClaimStep,
+  "insurance.claim_close": insuranceClaimClose,
   "plan.approve_safe": planApproveSafe,
   "undo.rule": undoRule,
   "undo.no": undoNo,
@@ -87,6 +99,9 @@ export const ACTION_HANDLERS: Readonly<Record<ActionId, ActionHandler>> = {
   "budget.set": budgetSet,
   "finding.why": findingWhy,
   "finding.options": findingOptions,
+  // Spec step 91.
+  "pref.save": prefSave,
+  "suggest.never": suggestNever,
   // Taxes (spec step 118).
   "tax.found_yes": taxFoundYes,
   ...TAX_PROFILE_HANDLERS,
@@ -110,6 +125,9 @@ export const ACTION_HANDLERS: Readonly<Record<ActionId, ActionHandler>> = {
   // Spec step 123.
   "tax.quarter_paid": taxQuarterPaid,
   "tax.miles_add": taxMilesAdd,
+  // Spec step 125.
+  "tax.refund_apply": taxRefundApply,
+  "tax.refund_no": taxRefundNo,
   // Investments (spec step 129 on).
   "invest.answer.1": investAnswer1,
   "invest.answer.2": investAnswer2,
@@ -117,6 +135,10 @@ export const ACTION_HANDLERS: Readonly<Record<ActionId, ActionHandler>> = {
   "invest.answer.4": investAnswer4,
   "invest.answer.5": investAnswer5,
   "invest.rebalance": investRebalance,
+  "invest.auto_start": investAutoStart,
+  "invest.auto_leftover": investAutoLeftover,
+  "invest.auto_pause": investAutoPause,
+  "invest.auto_resume": investAutoResume,
   // Jane notices changes (spec step 97).
   "change.look": changeLook,
   "change.budget": changeBudget,

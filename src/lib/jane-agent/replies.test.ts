@@ -401,11 +401,12 @@ describe("actReply", () => {
     expect(reply.body).toBe(
       "I can cancel that for you. Review your Hulu subscription. Could save about $215.88 a year. Want me to handle it?",
     );
-    // Spec step 90: with "Why?", and "Remind me tomorrow".
+    // Spec steps 90–91: with "Why?", "Don't suggest again" and "Remind me tomorrow".
     expect(buttonIds(reply)).toEqual([
       "finding.yes",
       "finding.no",
       "finding.why",
+      "suggest.never",
       "snooze",
       "open",
     ]);
@@ -428,6 +429,7 @@ describe("actReply", () => {
       "finding.no",
       "finding.why",
       "finding.options",
+      "suggest.never",
       "snooze",
       "open",
     ]);

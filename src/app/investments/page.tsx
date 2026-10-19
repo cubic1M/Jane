@@ -159,6 +159,12 @@ async function InvestmentsContent() {
             </Link>
             : what you could have by 67, and your employer match.
           </p>
+          <p className="text-sm text-zinc-600 dark:text-zinc-400">
+            <Link href="/investments/auto" className={LINK}>
+              Automatic investing
+            </Link>
+            : every payday, only what safe to spend doesn&apos;t need.
+          </p>
 
           {data.byAssetClass.length > 0 && (
             <section className="flex flex-col gap-2">

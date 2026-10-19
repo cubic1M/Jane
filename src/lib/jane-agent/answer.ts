@@ -1,4 +1,5 @@
 import { checkupAnswer } from "./insurance/checkup";
+import { claimAnswer } from "./insurance/claim";
 import { quotesAnswer } from "./insurance/quotes";
 import { insuranceReply } from "./insurance/replies";
 import { loadInsuranceSnapshot } from "./insurance/snapshot";
@@ -19,7 +20,9 @@ import { whatJaneDid } from "@/lib/what-jane-did";
 import { CATEGORY_LABELS, UNCATEGORIZED } from "@/insights/labels";
 import { topicOf, withTopic, type Topic } from "./context";
 import { matchCategory, type Intent } from "./intents";
+import { listPreferences, paydayDays } from "./preferences";
 import { loadRecurring } from "./recurring";
+import { paydayLine } from "./remember";
 import { costReply, paydayReply, subscriptionsReply } from "./recurring-replies";
 import { answerDebt } from "./debt-answer";
 import { isDebtIntent } from "./debt-intents";
@@ -28,6 +31,7 @@ import {
   actReply,
   affordReply,
   clarifyReply,
+  rememberReply,
   findingReply,
   rankFindings,
   categoryContext,
@@ -128,8 +132,20 @@ async function byIntent(
       ]);
       return subscriptionsReply(intent, recurring, snapshot);
     }
-    case "payday":
+    case "payday": {
+      // Spec step 91: what they told Jane comes first.
+      const days = paydayDays(await listPreferences(userId, { client }));
+      if (days) {
+        return {
+          body: paydayLine(days, asOf),
+          actions: [{ id: "open", label: "See today", kind: "link", href: "/home" }],
+          refs: {},
+        };
+      }
       return paydayReply(await loadRecurring(userId, { client, now }), asOf);
+    }
+    case "remember":
+      return rememberReply(intent.draft);
     case "about": {
       const [recurring, snapshot] = await Promise.all([
         loadRecurring(userId, { client, now }),
@@ -164,6 +180,8 @@ async function byIntent(
       if (intent.ask === "quotes") return quotesAnswer(userId, intent, { client, now });
       // Spec step 106: the coverage checkup, run when asked.
       if (intent.ask === "checkup") return checkupAnswer(userId, { client, now });
+      // Spec step 107: something happened.
+      if (intent.ask === "claim") return claimAnswer(userId, intent, { client, now });
       return insuranceReply(intent, await loadInsuranceSnapshot(userId, { client, now }), asOf);
     case "greeting": {
       if (intent.thanks) return greetingReply(true, null);

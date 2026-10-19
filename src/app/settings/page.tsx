@@ -37,6 +37,8 @@ import {
 import { QUIET_END_HOUR, QUIET_START_HOUR } from "@/config/agent-chat";
 import { chatNotifyPrefs } from "@/lib/jane-agent/notify-prefs";
 import { ChatNotifyForm } from "./chat-notify-form";
+import { listPreferences } from "@/lib/jane-agent/preferences";
+import { MemoryList } from "./memory-list";
 import { SECTOR_ALL_MEANS, SECTOR_LABELS } from "@/config/autopilot-sectors";
 import { sectorAutopilots } from "@/lib/sector-autopilot";
 import { SectorsForm } from "./sectors-form";
@@ -92,8 +94,8 @@ async function SessionsSection({ userId }: { userId: string }) {
 async function SettingsContent() {
   const user = await requireUser();
   const mine = await scopedDb();
-  const [prefs, items, accounts, lastCsv, twoFactor, rules, autopilot, sectors] = await Promise.all(
-    [
+  const [prefs, items, accounts, lastCsv, twoFactor, rules, autopilot, remembered, sectors] =
+    await Promise.all([
       db.user.findUniqueOrThrow({
         where: { id: user.id },
         select: {
@@ -137,9 +139,9 @@ async function SettingsContent() {
       twoFactorStatus(user.id),
       rulesFor(user.id),
       autopilotOf(user.id),
+      listPreferences(user.id),
       sectorAutopilots(user.id),
-    ],
-  );
+    ]);
   const csvUpdated = new Map(lastCsv.map((row) => [row.accountId, row.createdAt]));
   const alerts = alertPrefs(prefs.alertPrefs);
   const chatNotify = chatNotifyPrefs(prefs.chatNotifyPrefs);
@@ -351,6 +353,16 @@ async function SettingsContent() {
               maxDollars: r.maxAnnualCents === null ? "" : String(r.maxAnnualCents / 100),
             }))}
           />
+        </section>
+
+        {/* Spec step 91: what Jane remembers, each one deletable. */}
+        <section id="remembers" className={SECTION}>
+          <h3 className={H3}>What Jane remembers</h3>
+          <p className={MUTED}>
+            What you&apos;ve told Jane in the chat, and suggestions you asked her not to make again.
+            She uses these in her answers and suggestions.
+          </p>
+          <MemoryList preferences={remembered} />
         </section>
       </Group>
 

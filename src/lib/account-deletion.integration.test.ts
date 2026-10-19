@@ -227,6 +227,9 @@ describe.runIf(url)("deleting data against a real database", () => {
     await client.janeMessage.create({
       data: { userId, kind: "brief", body: "Good morning", dedupeKey: "brief:2026-10-18" },
     });
+    await client.janePreference.create({
+      data: { userId, kind: "fact", key: "payday", label: "Payday is the 15th" },
+    });
     await client.taxProfile.create({
       data: { userId, filingStatus: "single", answered: ["filingStatus"] },
     });
@@ -296,6 +299,7 @@ describe.runIf(url)("deleting data against a real database", () => {
       mfaBackupCodes: await client.mfaBackupCode.count(where),
       standingRules: await client.standingRule.count(where),
       janeMessages: await client.janeMessage.count(where),
+      janePreferences: await client.janePreference.count(where),
       agentMessages: await client.agentMessage.count(where),
       planProposals: await client.planProposal.count(where),
       planLinks: await client.planLink.count(where),

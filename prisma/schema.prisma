@@ -275,6 +275,7 @@ model User {
   planProposals          PlanProposal[]
   planLinks              PlanLink[]
   janeMessages           JaneMessage[]
+  janePreferences        JanePreference[]
   chatReplyLinks         ChatReplyLink[]
   deadlines              Deadline[]
   sessions               Session[]
@@ -313,6 +314,7 @@ model User {
   insuranceQuotes        InsuranceQuote[]
   insuranceShops         InsuranceShop[]
   insuranceCheckups      InsuranceCheckup[]
+  insuranceClaims        InsuranceClaim[]
   lifeEvents             LifeEvent[]
   // What's in investment accounts (spec step 128).
   securities             Security[]
@@ -329,6 +331,8 @@ model User {
   taxForms               TaxForm[]
   budgetTuneUps          BudgetTuneUp[]
   goalTransfers          GoalTransfer[]
+  autoInvestPlan         AutoInvestPlan?
+  autoInvestRuns         AutoInvestRun[]
 
   savedShares SavedShare[]
 
@@ -1514,6 +1518,7 @@ model InsurancePolicy {
   document Document?        @relation(fields: [documentId], references: [id], onDelete: SetNull)
   quotes   InsuranceQuote[]
   shops    InsuranceShop[]
+  claims   InsuranceClaim[]
 
   @@index([userId, status])
   @@map("insurance_policies")
@@ -1613,6 +1618,37 @@ model InsuranceCheckup {
 
   @@index([userId, createdAt])
   @@map("insurance_checkups")
+}
+
+// A claim the person is making (spec step 107), with its steps (CLAIM_GUIDES in
+// src/config/claims.ts) as they were when it started. A step is only ever marked done,
+// never removed, so the tracker never loses one.
+model InsuranceClaim {
+  id          String    @id @default(cuid())
+  userId      String    @map("user_id")
+  policyId    String?   @map("policy_id")
+  // The kind of policy (POLICY_KINDS) and what happened (the guide's event key).
+  kind        String
+  event       String
+  happenedOn  DateTime  @map("happened_on") @db.Date
+  // open or closed.
+  status      String    @default("open")
+  // [{ key, label, dueOn: YYYY-MM-DD, doneAt: ISO time or null }].
+  steps       Json      @default("[]")
+  carrier     String?
+  // The insurer's claims line and page, from the partner's catalog when known.
+  claimsPhone String?   @map("claims_phone")
+  claimsUrl   String?   @map("claims_url")
+  claimNumber String?   @map("claim_number")
+  closedAt    DateTime? @map("closed_at") @db.Timestamptz(3)
+  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt   DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  user   User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  policy InsurancePolicy? @relation(fields: [policyId], references: [id], onDelete: SetNull)
+
+  @@index([userId, status])
+  @@map("insurance_claims")
 }
 
 // The household facts that matter for cover (spec step 102), as the person typed them.
@@ -1722,6 +1758,28 @@ model JaneMessage {
   @@map("jane_messages")
 }
 
+// Spec step 91: what Jane remembers about the person, saved only after their own tap. kind
+// "never": a suggestion they said not to make again (key: what it was about); "fact":
+// something they told her in the chat ("payday is the 15th", "I need my car"). The brain,
+// the chat and every sector read them (src/lib/jane-agent/preferences.ts); Settings lists
+// them, each deletable. In Download my data, deleted with the account.
+model JanePreference {
+  id        String   @id @default(cuid())
+  userId    String   @map("user_id")
+  kind      String
+  key       String
+  // What the fact says, for the code that reads it ({ days: [15] }, { target: "car" }).
+  value     Json     @default("{}")
+  // How Settings and the chat say it: "Payday is the 15th".
+  label     String
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, kind, key])
+  @@map("jane_preferences")
+}
+
 // One-tap answers from Jane's emails (spec step 85): one per button on one message. The
 // link opens a confirm page with one button, so mail scanners can't answer anything. Only
 // the SHA-256 of the token is kept; it works once, until expiresAt, for that person's own
@@ -1785,6 +1843,8 @@ model TaxProfile {
   businessMiles         Int?      @map("business_miles")
   businessMilesYear     Int?      @map("business_miles_year")
   taxPayments           Json      @default("[]") @map("tax_payments")
+  // Spec step 125: refunds (transaction ids) whose plan the person set up, or said no to.
+  refundsHandled        String[]  @default([]) @map("refunds_handled")
   createdAt             DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt             DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
 
@@ -2118,4 +2178,50 @@ model AutopilotAct {
 
   @@index([userId, sector, createdAt])
   @@map("autopilot_acts")
+}
+
+// Spec step 134: investing automatically every payday, set up once with a tap. "fixed"
+// invests amountCents each payday; "leftover" invests part of what's safe to spend above
+// the floor (src/config/auto-invest.ts). Paused by the person, or by Jane for a payday when
+// safe to spend is low.
+model AutoInvestPlan {
+  id           String    @id @default(cuid())
+  userId       String    @unique @map("user_id")
+  mode         String
+  amountCents  Int?      @map("amount_cents")
+  // The investment account it goes into.
+  accountId    String    @map("account_id")
+  // active or paused (by the person).
+  status       String    @default("active")
+  // The last paycheck it ran for, so each one runs once.
+  lastPaydayOn DateTime? @map("last_payday_on") @db.Date
+  createdAt    DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt    DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("auto_invest_plans")
+}
+
+// Spec step 134: every payday's outcome, invested or paused, so every contribution is
+// visible.
+model AutoInvestRun {
+  id          String   @id @default(cuid())
+  userId      String   @map("user_id")
+  paydayOn    DateTime @map("payday_on") @db.Date
+  // invested or paused.
+  status      String
+  amountCents Int      @default(0) @map("amount_cents")
+  // Safe to spend when it ran.
+  safeCents   Int?     @map("safe_cents")
+  // The orders' batch (src/lib/brokerage/partner.ts), when invested.
+  batchId     String?  @map("batch_id")
+  reason      String?
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, paydayOn])
+  @@index([userId, createdAt])
+  @@map("auto_invest_runs")
 }

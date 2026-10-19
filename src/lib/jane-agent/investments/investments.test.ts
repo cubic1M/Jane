@@ -15,6 +15,7 @@ vi.mock("@/lib/advice-mode", () => ({ adviceMode: vi.fn() }));
 vi.mock("@/lib/investments/review", () => ({ loadReview: vi.fn() }));
 vi.mock("@/lib/investments/retirement", () => ({ loadRetirement: vi.fn() }));
 vi.mock("@/lib/investments/rebalance", () => ({ loadRebalance: vi.fn() }));
+vi.mock("@/lib/investments/auto-invest", () => ({ loadAutoInvest: vi.fn() }));
 
 import { loadInvestments } from "@/lib/investments/holdings";
 import { profileOf } from "@/lib/investments/profile";
@@ -26,10 +27,19 @@ import { loadReview } from "@/lib/investments/review";
 import { loadRetirement } from "@/lib/investments/retirement";
 import { retirementPlan } from "@/planning/retirement";
 import { loadRebalance } from "@/lib/investments/rebalance";
+import { loadAutoInvest } from "@/lib/investments/auto-invest";
+import type { InvestmentSnapshot } from "./snapshot";
 import { rebalancePlan } from "@/insights/rebalance";
 import { FUND_FACTS } from "@/config/funds";
 import { EMPTY_ANSWERS, profileSummary, type ProfileAnswers } from "@/planning/investor-profile";
-import { feesReply, profileReply, rebalanceReply, retirementReply, reviewReply } from "./replies";
+import {
+  autoInvestReply,
+  feesReply,
+  profileReply,
+  rebalanceReply,
+  retirementReply,
+  reviewReply,
+} from "./replies";
 import { gather } from "../brain";
 import { parseIntent } from "../intents";
 import type { Snapshot } from "../snapshot";
@@ -771,5 +781,190 @@ describe("Claude and rebalancing", () => {
     expect(await proposeAction("u", { action: "invest.rebalance" }, options)).toMatchObject({
       ok: false,
     });
+  });
+});
+
+// Spec step 134: investing automatically.
+const AUTO_DATA = {
+  advice: true,
+  profileComplete: true,
+  plan: null,
+  runs: [],
+  accounts: [{ id: "b", name: "Demo Brokerage", subtype: "brokerage" }],
+  suggestion: { amountCents: 10_000, accountId: "b" },
+} as Awaited<ReturnType<typeof import("@/lib/investments/auto-invest").loadAutoInvest>>;
+const RUN = {
+  id: "r1",
+  paydayOn: "2026-10-15",
+  status: "invested",
+  amountCents: 10_000,
+  safeCents: 277_512,
+  reason: null,
+};
+
+describe("automatic investing questions, by rules", () => {
+  it.each([
+    "invest automatically",
+    "auto invest",
+    "invest every payday",
+    "pause investing",
+    "turn on automatic investing",
+  ])("reads %j as automatic investing", (text) => {
+    expect(parseIntent(text, ASOF)).toMatchObject({ kind: "investments", topic: "auto_invest" });
+  });
+});
+
+describe("autoInvestReply", () => {
+  it("offers to start, with the amount and the rest-after-bills choice", () => {
+    const reply = autoInvestReply(AUTO_DATA);
+    expect(reply.body).toMatch(
+      /^I can invest \$100\.00 every payday for you, or the rest after bills and goals\. I'll only invest what safe to spend doesn't need/,
+    );
+    expect(reply.actions.map((a) => a.id)).toEqual([
+      "invest.auto_start",
+      "invest.auto_leftover",
+      "open",
+    ]);
+    expect(reply.refs).toEqual({
+      advice: true,
+      autoInvest: { amountCents: 10_000, accountId: "b" },
+    });
+  });
+
+  it("says what it does, with the last payday, and offers to pause or resume", () => {
+    const on = autoInvestReply({
+      ...AUTO_DATA,
+      plan: {
+        mode: "fixed",
+        amountCents: 10_000,
+        accountId: "b",
+        status: "active",
+        lastPaydayOn: null,
+      },
+      runs: [RUN],
+    });
+    expect(on.body).toMatch(/^Automatic investing is on: \$100\.00 every payday\./);
+    expect(on.body).toContain(
+      "Last: I invested $100.00 from your Oct 15 paycheck, in the simulated brokerage (no real money moved).",
+    );
+    expect(on.actions[0].id).toBe("invest.auto_pause");
+    const off = autoInvestReply({
+      ...AUTO_DATA,
+      plan: {
+        mode: "leftover",
+        amountCents: null,
+        accountId: "b",
+        status: "paused",
+        lastPaydayOn: null,
+      },
+    });
+    expect(off.body).toBe("Automatic investing is paused (the rest after bills and goals).");
+    expect(off.actions[0].id).toBe("invest.auto_resume");
+  });
+
+  it("never for real accounts, and asks for the profile first", () => {
+    expect(autoInvestReply({ ...AUTO_DATA, advice: false }).body).toBe(
+      "I don't invest automatically for real accounts yet.",
+    );
+    expect(autoInvestReply({ ...AUTO_DATA, profileComplete: false }).refs.investQuestion).toBe(
+      "age",
+    );
+  });
+});
+
+describe("automatic investing in Jane's messages", () => {
+  const gatherAuto = (over: Partial<InvestmentSnapshot>) =>
+    investmentsSource
+      .gather({ ...base, investments: demoInvestmentSnapshot(over) }, {} as never)
+      .filter((c) => c.dedupeKey.startsWith("auto:"));
+
+  it("offers once, in demo advice mode, after the profile", () => {
+    const auto = {
+      plan: null,
+      runs: [],
+      suggestion: AUTO_DATA.suggestion,
+      accounts: AUTO_DATA.accounts,
+    };
+    const [offer] = gatherAuto({ profile: FULL, autoInvest: auto });
+    expect(offer).toMatchObject({
+      kind: "decision",
+      dedupeKey: "auto:offer",
+      refs: { advice: true, autoInvest: AUTO_DATA.suggestion },
+      priority: MESSAGE_PRIORITY.auto_invest_offer,
+    });
+    expect(offer.body).toMatch(
+      /^Want me to invest for you automatically\? \$100\.00 every payday into your Demo Brokerage/,
+    );
+    expect(gatherAuto({ advice: false, profile: FULL, autoInvest: auto })).toEqual([]);
+    expect(gatherAuto({ profile: EMPTY_ANSWERS, autoInvest: auto })).toEqual([]);
+  });
+
+  it("says every payday's contribution, and every pause with its reason", () => {
+    const plan = {
+      mode: "fixed",
+      amountCents: 10_000,
+      accountId: "b",
+      status: "active",
+      lastPaydayOn: null,
+    };
+    const paused = {
+      ...RUN,
+      id: "r2",
+      paydayOn: "2026-11-01",
+      status: "paused",
+      amountCents: 0,
+      reason: "Safe to spend is $900, and I keep at least $1,000 of it for you.",
+    };
+    const messages = gatherAuto({
+      profile: FULL,
+      autoInvest: { plan, runs: [paused, RUN], suggestion: null, accounts: [] },
+    });
+    expect(messages.map((m) => [m.kind, m.dedupeKey, m.body])).toEqual([
+      [
+        "heads_up",
+        "auto:run:r2",
+        "I paused investing for your Nov 1 paycheck. Safe to spend is $900, and I keep at least $1,000 of it for you.",
+      ],
+      [
+        "done",
+        "auto:run:r1",
+        "I invested $100.00 from your Oct 15 paycheck, in the simulated brokerage (no real money moved).",
+      ],
+    ]);
+    expect(messages[0].actions.map((a) => a.id)).toEqual(["invest.auto_pause", "open"]);
+  });
+});
+
+describe("Claude's auto_invest tool", () => {
+  it("reports the plan and paydays, recording every figure", async () => {
+    vi.mocked(loadAutoInvest).mockResolvedValue({
+      ...AUTO_DATA,
+      plan: {
+        mode: "fixed",
+        amountCents: 10_000,
+        accountId: "b",
+        status: "active",
+        lastPaydayOn: null,
+      },
+      runs: [RUN],
+    });
+    const out = await runInvestmentTool(
+      "u",
+      "auto_invest",
+      {},
+      {
+        client: {} as PrismaClient,
+        now: new Date("2026-10-19T12:00:00Z"),
+      },
+    );
+    const parsed = JSON.parse(out.content);
+    expect(parsed.plan).toEqual({
+      status: "active",
+      mode: "a set amount",
+      eachPayday: "$100.00",
+      into: "Demo Brokerage",
+    });
+    expect(parsed.brokerage).toBe("simulated: no real money moves");
+    expect(out.cents).toEqual(expect.arrayContaining([10_000, 277_512]));
   });
 });

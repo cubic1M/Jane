@@ -104,4 +104,14 @@ test("the demo bank's holdings show with their sources, and Jane answers about t
   await expect(page.getByRole("heading", { name: "Orders and confirmations" })).toBeVisible();
   await page.goto("/investments");
   await expect(page.getByText(/^Simulated brokerage: these orders are pretend/)).toBeVisible();
+
+  // Step 134: automatic investing, set up once, through the simulated brokerage.
+  await page.goto("/investments/auto");
+  await expect(page.getByText(/^Simulated brokerage: these orders are pretend/)).toBeVisible();
+  await expect(page.getByLabel("Amount each payday in dollars")).toHaveValue("100.00");
+  await page.getByRole("button", { name: "Save" }).click();
+  await expect(page.getByRole("status")).toHaveText("Saved.");
+  await expect(page.getByText("On: $100.00 every payday into Demo Brokerage.")).toBeVisible();
+  await page.getByRole("button", { name: "Pause" }).click();
+  await expect(page.getByText("Paused: $100.00 every payday into Demo Brokerage.")).toBeVisible();
 });
