@@ -48,6 +48,9 @@ import { snoozeButton, type MessageSource } from "./source";
 // - Step 158: in demo advice mode, when the tax profile has children and there's no college
 //   plan, offers once to plan for college; starting one is the person's tap, then the goal
 //   is funded by step 157's buckets and automatic investing.
+// - Step 159: saves medical charges to the HSA receipts vault by herself, says so once per
+//   batch, and in demo advice mode offers to invest the HSA's cash beyond its cushion (a
+//   tap), or a demo HSA when there's none.
 // - Step 137: a monthly note on how the investments stand (no predictions), with at most
 //   one decision (the orders when the mix has drifted); a nudge when automatic investing
 //   has been paused for a month; and what she does by herself at each autopilot level
@@ -236,6 +239,46 @@ export const investmentsSource: MessageSource = {
         ],
         dedupeKey: "college:offer",
         priority: MESSAGE_PRIORITY.college,
+      });
+    }
+    // Step 159: the HSA. Receipts are saved by herself at every level; investing the cash
+    // beyond the cushion moves money, so it waits for a tap.
+    const hsa = inv.hsa;
+    if (hsa.receipts > 0) {
+      out.push({
+        kind: "done",
+        body: `I've saved ${hsa.receipts} medical ${hsa.receipts === 1 ? "receipt" : "receipts"} (${formatCents(hsa.savedCents)}) to your HSA receipts vault. Paid out of pocket now, they can be paid back from an HSA tax-free later.`,
+        refs: {},
+        actions: [{ id: "open", label: "See the vault", kind: "link", href: "/investments/hsa" }],
+        dedupeKey: `hsa:receipts:${hsa.receipts}`,
+        priority: MESSAGE_PRIORITY.hsa,
+      });
+    }
+    if (inv.advice && hsa.account && hsa.plan && hsa.plan.toInvestCents > 0) {
+      out.push({
+        kind: "decision",
+        body: `Your HSA has ${formatCents(hsa.plan.cashCents)} in cash. Keeping a ${formatCents(hsa.plan.cushionCents)} cushion for this year's health costs, the other ${formatCents(hsa.plan.toInvestCents)} could be invested to grow untaxed. Tap and I'll invest it in a low-cost index fund ${SIMULATED_WORDS}.`,
+        refs: { advice: true },
+        actions: [
+          {
+            id: "hsa.invest",
+            label: `Invest ${formatCents(hsa.plan.toInvestCents)}`,
+            kind: "primary",
+          },
+          { id: "open", label: "See your HSA", kind: "link", href: "/investments/hsa" },
+          snoozeButton(),
+        ],
+        dedupeKey: `hsa:invest:${hsa.plan.toInvestCents}`,
+        priority: MESSAGE_PRIORITY.hsa,
+      });
+    } else if (inv.advice && !hsa.account && hsa.demo && hsa.receipts > 0) {
+      out.push({
+        kind: "decision",
+        body: "An HSA would let you pay these medical costs back tax-free. Want to try a demo HSA?",
+        refs: { advice: true },
+        actions: [{ id: "hsa.link", label: "Link a demo HSA", kind: "primary" }, snoozeButton()],
+        dedupeKey: "hsa:link",
+        priority: MESSAGE_PRIORITY.hsa,
       });
     }
     const auto = inv.autoInvest;

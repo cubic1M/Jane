@@ -177,5 +177,16 @@ export async function investmentsExport(userId: string, client: PrismaClient = d
       createdAt: true,
     },
   });
-  return { securities, holdings, transactions, profile, orders, collegePlans };
+  // Spec step 159: the HSA receipts vault.
+  const hsaReceipts = await db.hsaReceipts.findMany({
+    select: {
+      transactionId: true,
+      date: true,
+      merchant: true,
+      amountCents: true,
+      status: true,
+      reimbursedAt: true,
+    },
+  });
+  return { securities, holdings, transactions, profile, orders, collegePlans, hsaReceipts };
 }

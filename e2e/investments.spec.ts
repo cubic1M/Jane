@@ -163,4 +163,13 @@ test("the demo bank's holdings show with their sources, and Jane answers about t
   await expect(
     page.getByText(/four years\. Put aside about \$[\d,.]+ to \$[\d,.]+ a month/),
   ).toBeVisible();
+
+  // Step 159: a demo HSA, its extra cash invested with a tap, and the receipts vault.
+  await page.goto("/investments/hsa");
+  await page.getByRole("button", { name: "Link a demo HSA" }).click();
+  await expect(page.getByRole("heading", { name: /^Demo HSA: \$/ })).toBeVisible();
+  await page.getByRole("button", { name: /^Invest \$/ }).click();
+  await expect(page.getByText(/^Simulated brokerage: these orders are pretend/)).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Receipts vault" })).toBeVisible();
+  await expect(page.getByText("BRIGHT SMILES DENTAL", { exact: false })).toBeVisible();
 });

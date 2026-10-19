@@ -18,7 +18,11 @@ export type DebtIntent =
   // Spec step 113: "should I do a balance transfer?", "0% card".
   | { kind: "balance_transfer" }
   // Spec step 114: "which student loan plan?", "PSLF", "income-driven repayment".
-  | { kind: "student_loans" };
+  | { kind: "student_loans" }
+  // Spec step 115: "can I get rid of PMI?", "my mortgage", "what if I pay extra on my house?".
+  | { kind: "mortgage" }
+  // Spec step 116: "what's my credit score?", "how do I improve my credit?".
+  | { kind: "credit_score" };
 
 const DEBT_KINDS = new Set<string>([
   "debts",
@@ -28,6 +32,8 @@ const DEBT_KINDS = new Set<string>([
   "loan_status",
   "balance_transfer",
   "student_loans",
+  "mortgage",
+  "credit_score",
 ]);
 export const isDebtIntent = (intent: { kind: string }): intent is DebtIntent =>
   DEBT_KINDS.has(intent.kind);
@@ -56,6 +62,10 @@ const TRANSFER =
   /\bbalance transfers?\b|\b0 ?% (?:card|cards|transfer|apr|interest|intro)\b|\bzero percent\b|\bmove (?:my )?(?:credit )?card (?:debt|balance)\b|\btransfer (?:my )?(?:credit )?card(?: debt| balance)?\b|\btransfer (?:my )?balance\b/;
 const STUDENT =
   /\b(?:idr|ibr|rap|pslf|income[- ]driven|income[- ]based|repayment assistance plan|public service loan forgiveness|studentaid)\b|\bstudent loans?\b.*\b(?:plans?|repay\w*|forgiv\w*|options?|lower|cheaper|best|income|switch)\b|\b(?:plans?|repay\w*|forgiv\w*|lower|reduce|cut)\b.*\bstudent loans?\b/;
+const MORTGAGE =
+  /\b(?:pmi|escrow|private mortgage insurance)\b|\bmortgage\b|\b(?:extra|more) (?:principal|payments?)\b.*\b(?:house|home)\b/;
+const CREDIT =
+  /\bcredit (?:score|rating|report)\b|\bfico\b|\b(?:improve|raise|boost|build|fix) (?:my )?credit\b|\bcredit utili[sz]ation\b/;
 const LOAN_STATUS =
   /\b(?:loan )?application(?:'s| is)?(?: status)?\b|\bdid (?:the|my) (?:new )?loan (?:go through|fund|come through)\b|\b(?:status of|where'?s|how'?s) (?:my |the )?(?:new )?loan\b/;
 // "Apply for the refinance": the pick and its Apply button.
@@ -78,6 +88,7 @@ export function parseDebtIntent(
   if (MORE.test(text) && amountCents !== null)
     return { kind: "payoff_plan", extraCents: amountCents };
   if (PAYOFF.test(text)) return { kind: "payoff_plan", extraCents: null };
+  if (CREDIT.test(text)) return { kind: "credit_score" };
   if (TRANSFER.test(text)) return { kind: "balance_transfer" };
   if (LOAN_STATUS.test(text)) return { kind: "loan_status" };
   if (APPLY.test(text) && !REFINANCE_TARGET.test(text)) return { kind: "refinance", target: null };
@@ -101,6 +112,10 @@ export function parseDebtIntent(
     };
   }
   if (STUDENT.test(text)) return { kind: "student_loans" };
+  // After refinancing ("refinance my mortgage"); a payoff date stays the debt itself.
+  if (MORTGAGE.test(text) && !PAID_OFF.test(text) && !RATE.test(text) && !OWE.test(text)) {
+    return { kind: "mortgage" };
+  }
   const paid = PAID_OFF.exec(text);
   if (paid) {
     const target = clean(paid[1] ?? paid[2] ?? paid[3] ?? "");

@@ -14,6 +14,8 @@ import { applyStandingRules } from "@/lib/standing-rules";
 import { db as defaultClient } from "@/lib/db";
 import { llmModel } from "@/lib/anthropic";
 import { scopedFor, type ScopedDb } from "@/lib/db-scoped";
+import { cardProducts } from "@/lib/insurance/card-benefits";
+import { isDemoItemId } from "@/lib/plaid/demo";
 import { BUDGET_SUGGESTION_MONTHS } from "@/config/budgets";
 import { budgetSummary, overBudgetAlerts } from "@/insights/budgets";
 import { loadInsightTransactions } from "@/insights/load";
@@ -141,7 +143,14 @@ async function loadInput(
   const cutoff = monthsBefore(asOf, LOOKBACK_MONTHS);
   const [accounts, transactions, streams, cancelled, directory] = await Promise.all([
     db.accounts.findMany({
-      select: { id: true, name: true, type: true, subtype: true, currentBalanceCents: true },
+      select: {
+        id: true,
+        name: true,
+        type: true,
+        subtype: true,
+        currentBalanceCents: true,
+        item: { select: { plaidItemId: true } },
+      },
       orderBy: { id: "asc" },
     }),
     db.transactions.findMany({
@@ -183,7 +192,22 @@ async function loadInput(
   return withDirectory(
     {
       asOf,
-      accounts,
+      accounts: accounts.map((a) => ({
+        id: a.id,
+        name: a.name,
+        type: a.type,
+        subtype: a.subtype,
+        currentBalanceCents: a.currentBalanceCents,
+      })),
+      // Spec step 152: the cards that come with cover.
+      cardProducts: cardProducts(
+        accounts.map((a) => ({
+          id: a.id,
+          name: a.name,
+          type: a.type,
+          demo: !!a.item && isDemoItemId(a.item.plaidItemId),
+        })),
+      ),
       transactions: transactions.map((t) => ({ ...t, date: isoDate(t.date) })),
       recurringStreams: streams.map((s) => ({
         ...s,
@@ -236,6 +260,7 @@ const NO_FINDINGS: Record<FindingType, number> = {
   charge_after_cancel: 0,
   trial_conversion: 0,
   bill_negotiation: 0,
+  covered_by_card: 0,
 };
 
 type Options = {

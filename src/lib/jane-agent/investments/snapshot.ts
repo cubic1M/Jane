@@ -10,6 +10,7 @@ import { loadMonthFacts } from "@/lib/investments/overview";
 import { loadReturns, type Returns } from "@/lib/investments/returns";
 import { loadGoalBuckets } from "@/lib/investments/goal-buckets";
 import { loadCollege } from "@/lib/investments/college";
+import { collectReceipts, loadHsa, type HsaView } from "@/lib/investments/hsa";
 import type { Bucket } from "@/planning/goal-buckets";
 import { loadAutoInvest } from "@/lib/investments/auto-invest";
 import { loadRebalance } from "@/lib/investments/rebalance";
@@ -48,6 +49,8 @@ export type InvestmentSnapshot = {
   goalBuckets: { byHerself: boolean; buckets: Bucket[] | null };
   // Spec step 158: children on the tax profile, and college plans set up.
   college: { children: number; plans: number };
+  // Spec step 159: the HSA and its receipts vault.
+  hsa: Pick<HsaView, "account" | "plan" | "savedCents" | "demo"> & { receipts: number };
   // Spec step 156: how they've done.
   returns: Returns;
   // Spec step 134: automatic investing, its recent paydays and Jane's suggestion.
@@ -104,6 +107,15 @@ export async function loadInvestmentSnapshot(
     accountPlan: { order: accountPlan.order, location: accountPlan.location },
     month: await loadMonthFacts(userId, investments, { client, now }),
     returns: await loadReturns(userId, { client, now, investments }),
+    hsa: await collectReceipts(userId, { client, now })
+      .then(() => loadHsa(userId, { client, now }))
+      .then((h) => ({
+        account: h.account,
+        plan: h.plan,
+        savedCents: h.savedCents,
+        demo: h.demo,
+        receipts: h.receipts.filter((r) => r.status === "saved").length,
+      })),
     college: await loadCollege(userId, { client, now }).then((c) => ({
       children: c.children,
       plans: c.plans.length,
