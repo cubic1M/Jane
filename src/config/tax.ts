@@ -209,6 +209,19 @@ export const PAY_FREQUENCIES: readonly { maxGap: number; perYear: number; label:
   { maxGap: 35, perYear: 12, label: "monthly" },
 ];
 
+// Spec step 121: the withholding checkup. A refund over bigRefund, or a bill over bill, is
+// worth a W-4 change; the change aims for a small refund of target. Amounts are rounded:
+// extra withholding per paycheck up to a whole dollar, Step 4(b) deductions down to $100.
+export const WITHHOLDING = {
+  targetRefundCents: 30_000,
+  bigRefundCents: 100_000,
+  billCents: 10_000,
+  roundExtraCents: 100,
+  roundDeductionCents: 10_000,
+} as const;
+export const IRS_WITHHOLDING_ESTIMATOR_URL = "https://www.irs.gov/individuals/tax-withholding-estimator";
+export const IRS_W4_URL = "https://www.irs.gov/forms-pubs/about-form-w-4";
+
 // The estimate tells the person when it has moved by at least this much (in cents) since
 // Jane last said it.
 export const TAX_ESTIMATE_STEP_CENTS = 50_000;
@@ -224,6 +237,8 @@ export const TAX_MESSAGE_PRIORITY = {
   form_due: 38,
   // Spec step 120.
   estimate: 30,
+  // Spec step 121.
+  withholding: 37,
 } as const;
 
 // What Jane does about taxes by herself at each autopilot level (spec step 57), shown on
@@ -242,6 +257,11 @@ export const TAX_AUTOPILOT: readonly { feature: string; ask: string; auto: strin
     feature: "estimate",
     ask: "I keep your tax estimate up to date after every sync, from your income so far.",
     auto: "I keep your tax estimate up to date after every sync, and tell you when it moves by $500 or more.",
+  },
+  {
+    feature: "withholding",
+    ask: "I check your withholding against your estimate and, with demo advice, show what to put on a new W-4. Only you can send it to your employer.",
+    auto: "I check your withholding after every sync and bring up a W-4 change when you're heading for a big refund or a bill. Only you can send it to your employer.",
   },
   {
     feature: "tags",
