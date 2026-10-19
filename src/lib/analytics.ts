@@ -1,5 +1,6 @@
 import { PostHog } from "posthog-node";
 import { db } from "@/lib/db";
+import { isTrialUser } from "@/lib/trial-ids";
 
 export type EventProperties = Record<string, string | number | boolean | null>;
 
@@ -18,6 +19,8 @@ export async function track(
   name: string,
   properties: EventProperties = {},
 ): Promise<void> {
+  // Spec step 138: people trying Jane with sample data are never counted.
+  if (isTrialUser(userId)) return;
   await db.analyticsEvent.create({ data: { userId, name, properties } });
 
   const client = getPostHog();
