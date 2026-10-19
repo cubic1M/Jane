@@ -336,6 +336,20 @@ export const QUESTIONS: readonly CheckQuestion[] = [
     expect: {},
   },
 
+  // Requests that span sectors (spec step 185): one plan, one confirmation.
+  {
+    id: "multi-1",
+    text: "cancel Hulu and Netflix",
+    needs: "rules",
+    expect: { intent: "multi", button: "multi.confirm", list: true },
+  },
+  {
+    id: "multi-2",
+    text: "cancel Hulu and put $50 in my emergency fund",
+    needs: "rules",
+    expect: { intent: "multi", avoid: /\bdone\b/i },
+  },
+
   // What's due.
   {
     id: "due-1",
@@ -1047,6 +1061,30 @@ export const QUESTIONS: readonly CheckQuestion[] = [
       link: "/settings",
       list: true,
       maxChars: 1_600,
+    },
+  },
+  // Spec step 174: which card for what, whether a fee pays for itself, a better card.
+  {
+    id: "debt-14",
+    text: "which card should I use for groceries",
+    needs: "rules",
+    expect: { intent: "card_for", mentions: /for groceries/i, link: "/loans/cards" },
+  },
+  {
+    id: "debt-15",
+    text: "is my annual fee worth it",
+    needs: "rules",
+    expect: { intent: "card_fee", mentions: /pay for itself/i, link: "/loans/cards" },
+  },
+  {
+    id: "debt-16",
+    text: "what's the best credit card for me",
+    needs: "rules",
+    expect: {
+      intent: "card_better",
+      mentions: /hard credit check/i,
+      button: "credit_card.apply",
+      link: "/loans/cards",
     },
   },
 

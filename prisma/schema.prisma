@@ -294,6 +294,7 @@ model User {
   studentLoanProfile     StudentLoanProfile?
   creditReports          CreditReport[]
   debtWatch              DebtWatch?
+  cardApplications       CardApplication[]
   balanceTransfers       BalanceTransfer[]
   findings               Finding[]
   decisions              Decision[]
@@ -360,6 +361,7 @@ model User {
   controllerRuns    ControllerRun[]
   moneyTransfers    MoneyTransfer[]
   paycheckPlans     PaycheckPlan[]
+  healthScores      HealthScore[]
 
   @@map("users")
 }
@@ -793,6 +795,27 @@ model DebtWatch {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("debt_watches")
+}
+
+// A credit card applied for through Jane (spec step 174), only after the person tapped
+// Apply: the card, and what the issuer said.
+model CardApplication {
+  id                   String   @id @default(cuid())
+  userId               String   @map("user_id")
+  partner              String
+  productId            String   @map("product_id")
+  issuer               String
+  cardName             String   @map("card_name")
+  annualFeeCents       Int      @map("annual_fee_cents")
+  // pending, approved or declined.
+  status               String
+  partnerApplicationId String?  @map("partner_application_id")
+  createdAt            DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("card_applications")
 }
 
 // A balance transfer the person made to a 0% card (spec step 113), so Jane can keep the
@@ -2843,4 +2866,24 @@ model PaycheckPlan {
 
   @@unique([userId, key])
   @@map("paycheck_plans")
+}
+
+// Money health score (spec step 146): the person's score for a month, kept up to date while
+// the month runs, so a later month can say how it changed. parts as computed then.
+model HealthScore {
+  id        String   @id @default(cuid())
+  userId    String   @map("user_id")
+  // YYYY-MM.
+  month     String
+  score     Int
+  band      String
+  // [{ part, label, points, max, why, next }].
+  parts     Json
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, month])
+  @@map("health_scores")
 }

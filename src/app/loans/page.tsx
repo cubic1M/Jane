@@ -342,6 +342,13 @@ async function LoansContent({
             </Link>
             .
           </p>
+          <p className="text-sm text-zinc-600 dark:text-zinc-400">
+            Which card earns most on what you buy?{" "}
+            <Link href="/loans/cards" className={LINK}>
+              See your card rewards
+            </Link>
+            .
+          </p>
 
           <p className="text-sm text-zinc-600 dark:text-zinc-400">
             Own a home with a mortgage?{" "}

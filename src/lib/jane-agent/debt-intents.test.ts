@@ -153,6 +153,29 @@ describe("debt questions", () => {
     }
   });
 
+  it("reads which card to use, whether a fee is worth it, and the best card", () => {
+    expect(intent("Which card should I use for groceries?")).toEqual({
+      kind: "card_for",
+      category: "groceries",
+    });
+    expect(intent("what card should I use for gas")).toEqual({ kind: "card_for", category: "gas" });
+    expect(intent("best card for eating out")).toEqual({ kind: "card_for", category: "dining" });
+    expect(intent("which card should I use")).toEqual({ kind: "card_for", category: null });
+    for (const text of ["is my annual fee worth it", "is my credit card worth the fee"]) {
+      expect(intent(text), text).toEqual({ kind: "card_fee" });
+    }
+    for (const text of [
+      "what's the best credit card for me",
+      "should I get a new credit card",
+      "which credit card should I apply for",
+      "credit card rewards",
+    ]) {
+      expect(intent(text), text).toEqual({ kind: "card_better" });
+    }
+    // A 0% card is a balance transfer question.
+    expect(intent("best 0% card")).toEqual({ kind: "balance_transfer" });
+  });
+
   it("leaves requests and other questions alone", () => {
     expect(intent("lower the rate on my card")).toMatchObject({ kind: "act", verb: "lower" });
     expect(intent("what's due this week")).toMatchObject({ kind: "coming_up" });
