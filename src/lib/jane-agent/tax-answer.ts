@@ -10,6 +10,8 @@ import { loadTaxPlan } from "@/lib/tax-plan";
 import { planReply } from "./tax-plan-message";
 import { loadGiving } from "@/lib/giving";
 import { givingReply } from "./giving-message";
+import { loadFamilyTaxes } from "@/lib/family-taxes";
+import { familyReply } from "./family-taxes-message";
 import { moveReply, statesReply, workStateReply } from "./tax-states-message";
 import { loadWithholding } from "@/lib/tax-withholding";
 import { loadTaxSavings } from "@/lib/tax-savings";
@@ -107,6 +109,8 @@ export async function answerTaxIntent(
         ? moveReply(intent, view.state.value, now)
         : workStateReply(intent.state, view.state.value);
     }
+    case "family":
+      return familyReply(await loadFamilyTaxes(userId, { client, now }));
     case "giving":
       return givingReply(await loadGiving(userId, { client, now }));
     case "plan":

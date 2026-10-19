@@ -14,6 +14,8 @@ import { formatCents } from "@/lib/money";
 import { nextQuestion, profileSummary, questionAfter } from "@/planning/investor-profile";
 import { asking } from "../investments/profile-question";
 import { COMPANY_LINK } from "../investments/company-copy";
+import { CRYPTO_LINK, NEVER_TRADES } from "../investments/crypto-copy";
+import { CryptoError, linkDemoCrypto } from "@/lib/crypto/crypto";
 import { mixLine, SIMULATED_WORDS } from "../investments/rebalance-copy";
 import type { ActionId } from "../types";
 import { answeredElsewhere, ChatActionError, type ActionHandler } from "./handler";
@@ -257,5 +259,24 @@ export const companySell: ActionHandler = {
       if (error instanceof CompanyStockError) throw answeredElsewhere(error.message);
       throw error;
     }
+  },
+};
+
+// Spec step 161: connect the demo exchange, read-only. There is no crypto order button.
+export const cryptoLink: ActionHandler = {
+  id: "crypto.link",
+  on: "open",
+  async run({ userId, action, client, now }) {
+    try {
+      await linkDemoCrypto(userId, "exchange", { client, now });
+    } catch (error) {
+      if (error instanceof CryptoError) throw answeredElsewhere(error.message);
+      throw error;
+    }
+    return {
+      answeredWith: action.label,
+      note: `Connected, read-only. Your crypto now counts in your net worth. ${NEVER_TRADES}`,
+      actions: [CRYPTO_LINK],
+    };
   },
 };

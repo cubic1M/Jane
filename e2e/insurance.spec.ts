@@ -249,3 +249,39 @@ test("a move gets its insurance changes ready, made on one tap (step 154)", asyn
   await expect(page.getByText("Done. Your insurance is up to date.")).toBeVisible();
   await expect(page.getByRole("region", { name: "After life events" })).toHaveCount(0);
 });
+
+test("Jane files a small claim only after the person checks it (step 155)", async ({
+  context,
+  page,
+  baseURL,
+}) => {
+  const user = await signedInUser("user");
+  userId = user.userId;
+  await context.addCookies([
+    { name: "authjs.session-token", value: user.sessionToken, url: baseURL ?? "" },
+  ]);
+  await page.goto("/connect");
+  await page.getByRole("button", { name: "Link a demo bank" }).click();
+  await expect(page).toHaveURL("/chat", { timeout: 60_000 });
+
+  await page.goto("/insurance/claims");
+  await page.getByLabel("It's on").selectOption({ label: "GEICO car insurance" });
+  await page.getByRole("combobox", { name: "What happened" }).selectOption("accident");
+  await page.getByRole("button", { name: "Start the tracker" }).click();
+  await expect(page.getByText("Jane can file this claim for you.")).toBeVisible();
+  await page.getByLabel("How much it cost ($)").fill("900");
+  await page
+    .getByRole("textbox", { name: "What happened" })
+    .fill("Backed into a pole in a car park; the bumper is dented.");
+  await page.getByRole("button", { name: "Write it up" }).click();
+
+  // The draft, before anything goes to the insurer.
+  await expect(
+    page.getByText("Here's the claim I'd file with GEICO. Nothing goes until you tap File it."),
+  ).toBeVisible();
+  await expect(page.getByText("Claiming: $900.00")).toBeVisible();
+  await page.getByRole("button", { name: "File it" }).click();
+  await expect(
+    page.getByText(/^Filed by Jane: GEICO has your claim, number DEMO-CLM-/),
+  ).toBeVisible();
+});
