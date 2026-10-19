@@ -18,6 +18,7 @@ import {
   yearlyPremium,
   type Policy,
 } from "@/lib/insurance/policies";
+import { isQuotable } from "@/lib/insurance/partner";
 import { loadInsurance } from "@/lib/insurance/profile";
 import { formatCents } from "@/lib/money";
 import { requireUser } from "@/lib/session";
@@ -100,6 +101,11 @@ function PolicyCard({ policy, asOf, editing }: { policy: Policy; asOf: string; e
         <p className="text-sm text-zinc-600 dark:text-zinc-400">
           Add the deductible and limits from your policy so Jane can compare it like for like.
         </p>
+      )}
+      {isQuotable(policy.kind) && policy.status === "active" && (
+        <Link href={`/insurance/quotes?policy=${policy.id}`} className={`text-sm ${LINK}`}>
+          Compare quotes
+        </Link>
       )}
       {policy.documentId && (
         <Link href="/documents" className={`text-sm ${LINK}`}>

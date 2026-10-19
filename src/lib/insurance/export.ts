@@ -9,7 +9,7 @@ export async function insuranceExport(
   { client = defaultClient }: { client?: PrismaClient } = {},
 ) {
   const db = scopedFor(userId, client);
-  const [policies, household] = await Promise.all([
+  const [policies, household, quotes] = await Promise.all([
     db.insurancePolicies.findMany({
       select: {
         kind: true,
@@ -33,6 +33,26 @@ export async function insuranceExport(
     db.insuranceProfiles.findFirst({
       select: { housing: true, vehicles: true, dependants: true, pets: true, dismissedGaps: true },
     }),
+    // Quotes kept for their policies (spec step 103).
+    db.insuranceQuotes.findMany({
+      select: {
+        policyId: true,
+        carrierName: true,
+        rating: true,
+        kind: true,
+        premiumCents: true,
+        premiumFrequency: true,
+        annualPremiumCents: true,
+        deductibleCents: true,
+        coverage: true,
+        sameCover: true,
+        differences: true,
+        demo: true,
+        expiresAt: true,
+        createdAt: true,
+      },
+      orderBy: { createdAt: "asc" },
+    }),
   ]);
-  return { policies, household };
+  return { policies, household, quotes };
 }

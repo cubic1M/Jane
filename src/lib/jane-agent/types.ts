@@ -19,6 +19,7 @@ export const ACTION_IDS = [
   "finding.pick",
   // Insurance (spec Phase X).
   "insurance.gap_no",
+  "insurance.quotes",
   "plan.approve_safe",
   "undo.rule",
   "undo.no",
