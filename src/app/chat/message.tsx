@@ -98,6 +98,22 @@ export function ChatMessageItem({ initial }: { initial: MessageView }) {
         <time>{message.time}</time>
       </p>
       <p className="whitespace-pre-line [overflow-wrap:anywhere]">{message.body}</p>
+      {/* Spec step 94: a chart, table, timeline or progress bars, drawn in monospace text
+          that fits a phone; screen readers get the text alternative instead. */}
+      {message.block && (
+        <figure className="flex flex-col gap-1 border-l-2 border-zinc-300 pl-2 dark:border-zinc-700">
+          <figcaption className="text-xs font-semibold text-zinc-600 dark:text-zinc-400">
+            {message.block.title}
+          </figcaption>
+          <pre
+            aria-hidden="true"
+            className="overflow-hidden font-mono text-xs leading-5 whitespace-pre"
+          >
+            {message.block.lines.join("\n")}
+          </pre>
+          <p className="sr-only">{message.block.alt}</p>
+        </figure>
+      )}
       {message.advice && <DemoAdviceLabel />}
 
       {message.status !== "open" && (

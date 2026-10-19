@@ -190,6 +190,78 @@ export const CLAIM_GUIDES: Record<PolicyKind, ClaimGuide> = {
       PAID,
     ],
   },
+  // Spec step 149: the kinds added to the profile.
+  disability: {
+    events: { unable: "I can't work because of an illness or injury" },
+    now: ["Get the care you need first, and keep every doctor's note."],
+    collect: [
+      "Your doctor's statement of what you can't do, and for how long",
+      "The first day you couldn't work, and your pay stubs",
+    ],
+    steps: [
+      {
+        key: "employer",
+        label: "Tell your employer, and ask HR about any cover through work",
+        dueDays: 1,
+      },
+      FILE,
+      { key: "doctor", label: "Send your doctor's statement on the insurer's form", dueDays: 14 },
+      PAID,
+    ],
+  },
+  umbrella: {
+    events: { sued: "Someone is claiming money from me for an injury or damage" },
+    now: [
+      "Don't agree to pay anything or say whose fault it was.",
+      "Your car or home insurer usually handles it first; the umbrella pays above their limit.",
+    ],
+    collect: [
+      "The letter or claim you received",
+      "Photos and the names of anyone who saw what happened",
+    ],
+    steps: [
+      { key: "primary", label: "Tell your car or home insurer straight away", dueDays: 1 },
+      FILE,
+      { key: "documents", label: "Send the insurer every letter you get about it", dueDays: 7 },
+      PAID,
+    ],
+  },
+  travel: {
+    events: { cancelled: "A trip I had to cancel or cut short", medical: "Medical care on a trip" },
+    now: ["Get care first if you need it, and call the insurer's assistance line from abroad."],
+    collect: [
+      "Your bookings and what you paid, and any refunds you got",
+      "Doctor's notes or receipts for care, and why the trip changed",
+    ],
+    steps: [
+      {
+        key: "refunds",
+        label: "Ask the airline and hotel for refunds or credits first",
+        dueDays: 1,
+      },
+      FILE,
+      { key: "receipts", label: "Send the bookings, receipts and notes", dueDays: 14 },
+      PAID,
+    ],
+  },
+  device: {
+    events: { broken: "My phone or device broke", theft: "My phone or device was lost or stolen" },
+    now: ["Back up what you can, and lock or wipe a lost phone from another device."],
+    collect: [
+      "The device's make, model and serial number",
+      "A police report number if it was stolen",
+    ],
+    steps: [
+      {
+        key: "police",
+        label: "Report a theft to the police and get the report number",
+        dueDays: 1,
+      },
+      FILE,
+      { key: "repair", label: "Send the device for repair or pick up the replacement", dueDays: 7 },
+      PAID,
+    ],
+  },
   other: {
     events: { other: "Something else happened" },
     now: ["Make sure everyone is safe first. Call 911 in an emergency."],

@@ -289,6 +289,7 @@ model User {
   debtPlan               DebtPlan?
   refinanceCheck         RefinanceCheck?
   loanApplications       LoanApplication[]
+  studentLoanProfile     StudentLoanProfile?
   balanceTransfers       BalanceTransfer[]
   findings               Finding[]
   decisions              Decision[]
@@ -317,6 +318,7 @@ model User {
   insuranceShops         InsuranceShop[]
   insuranceCheckups      InsuranceCheckup[]
   insuranceClaims        InsuranceClaim[]
+  employerBenefits       EmployerBenefit[]
   lifeEvents             LifeEvent[]
   // What's in investment accounts (spec step 128).
   securities             Security[]
@@ -700,6 +702,31 @@ model LoanApplication {
 
   @@index([userId])
   @@map("loan_applications")
+}
+
+// What the person told Jane for comparing student loan plans (spec step 114): income and
+// family for the income-driven plans, public service work for PSLF, qualifying payments
+// counted before Jane could see them, and how far through studentaid.gov's steps they are.
+model StudentLoanProfile {
+  id            String   @id @default(cuid())
+  userId        String   @unique @map("user_id")
+  // Adjusted gross income from the last tax return; null means Jane estimates it.
+  agiCents      Int?     @map("agi_cents")
+  familySize    Int      @default(1) @map("family_size")
+  dependants    Int      @default(0)
+  // new (first loans on or after July 1, 2014) or old.
+  borrower      String   @default("new")
+  publicService Boolean  @default(false) @map("public_service")
+  // Qualifying payments studentaid.gov counted before the ones Jane sees.
+  countedBefore Int      @default(0) @map("counted_before")
+  // How many of the guided steps (STUDENT_STEPS) are done.
+  stepsDone     Int      @default(0) @map("steps_done")
+  createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt     DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("student_loan_profiles")
 }
 
 // A balance transfer the person made to a 0% card (spec step 113), so Jane can keep the
@@ -1631,6 +1658,10 @@ model InsuranceQuote {
   termMonths         Int      @map("term_months")
   deductibleCents    Int?     @map("deductible_cents")
   coverage           Json     @default("{}")
+  // Spec step 149: a health plan's name, and what it would cost in a year with the person's
+  // usual care (premium plus expected out of pocket).
+  plan               String?
+  expectedCostCents  Int?     @map("expected_cost_cents")
   // Like for like with the policy: the same cover, or what's different.
   sameCover          Boolean  @map("same_cover")
   differences        String[] @default([])
@@ -1733,6 +1764,38 @@ model InsuranceClaim {
 
   @@index([userId, status])
   @@map("insurance_claims")
+}
+
+// A benefit through work (spec step 150), found from a pay-stub deduction (or answered in
+// the guided flow). It only counts once the person confirms it; a confirmed insurance
+// benefit becomes a policy on the profile (policyId).
+model EmployerBenefit {
+  id           String   @id @default(cuid())
+  userId       String   @map("user_id")
+  employer     String
+  // health, dental, vision, life, disability, hsa or fsa (src/config/benefits.ts).
+  kind         String
+  // The deduction's label on the pay stub, or what the guided flow asked.
+  label        String
+  // What comes out of each paycheck (0 when the employer pays for it).
+  perPayCents  Int      @map("per_pay_cents")
+  // weekly, biweekly, semimonthly or monthly.
+  payFrequency String   @map("pay_frequency")
+  // Pay stub or guided answer: what the cover is worth (life: a multiple of pay).
+  details      Json     @default("{}")
+  // found, confirmed or declined.
+  status       String   @default("found")
+  // Where it came from: paystub or asked.
+  source       String
+  policyId     String?  @map("policy_id")
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt    DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, employer, kind, label])
+  @@index([userId, status])
+  @@map("employer_benefits")
 }
 
 // The household facts that matter for cover (spec step 102), as the person typed them.
@@ -1929,6 +1992,14 @@ model TaxProfile {
   taxPayments           Json      @default("[]") @map("tax_payments")
   // Spec step 125: refunds (transaction ids) whose plan the person set up, or said no to.
   refundsHandled        String[]  @default([]) @map("refunds_handled")
+  // Spec step 165: moves in residencyYear ([{ date, from, to }]), the employer's state for
+  // someone working remotely for an employer in another state, the city or county income
+  // tax they live under (a LOCAL_TAXES key, or "none"), and the year the person told Jane
+  // where they lived (so she stops asking that year).
+  moves                 Json      @default("[]")
+  workState             String?   @map("work_state")
+  locality              String?
+  residencyYear         Int?      @map("residency_year")
   createdAt             DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt             DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
 
