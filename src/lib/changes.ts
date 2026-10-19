@@ -2,6 +2,7 @@ import { BILL_CHANGE_FINDINGS } from "@/config/changes";
 import type { FindingStatus, FindingType, PrismaClient } from "@/generated/prisma/client";
 import { loadDetectionInput } from "@/detection/engine";
 import { buildStreams } from "@/detection/streams";
+import type { DetectionInput } from "@/detection/types";
 import { detectChanges, type Change, type ChangeKind } from "@/insights/changes";
 import { track } from "@/lib/analytics";
 import { db as defaultClient } from "@/lib/db";
@@ -19,6 +20,8 @@ import { scopedFor } from "@/lib/db-scoped";
 // (src/lib/jane-agent/actions/changes.ts).
 
 type Options = { client?: PrismaClient; now?: Date };
+// The detection input, when the caller already loaded it (Jane's snapshot shares one).
+type LoadOptions = Options & { input?: DetectionInput };
 
 export type ChangeFinding = {
   id: string;
@@ -43,9 +46,9 @@ function findingKey(change: Change): { types: readonly FindingType[]; key: strin
 
 export async function loadChanges(
   userId: string,
-  { client = defaultClient, now = new Date() }: Options = {},
+  { client = defaultClient, now = new Date(), input: given }: LoadOptions = {},
 ): Promise<ChangeView[]> {
-  const input = await loadDetectionInput(userId, { client, now });
+  const input = given ?? (await loadDetectionInput(userId, { client, now }));
   const changes = detectChanges(input, buildStreams(input));
   if (changes.length === 0) return [];
   const db = scopedFor(userId, client);

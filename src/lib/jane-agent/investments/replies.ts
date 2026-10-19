@@ -1,8 +1,11 @@
+import { GOALS, PROFILE_QUESTIONS } from "@/config/investing";
 import type { InvestmentAccountView, HoldingView } from "@/insights/investments";
 import type { Investments } from "@/lib/investments/holdings";
 import { formatCents } from "@/lib/money";
+import { profileSummary, type ProfileAnswers } from "@/planning/investor-profile";
 import type { Reply } from "../replies";
 import type { MessageAction } from "../types";
+import { asking, PROFILE_INTRO } from "./profile-question";
 
 // Jane's rule answers about investments (spec step 128 on). Pure: the numbers in, fixed
 // wording and buttons out. Facts only, the same for every account; advice is in the later
@@ -89,6 +92,28 @@ export function holdingsReply(data: Investments, named: string | null): Reply {
   return {
     body: `You have ${formatCents(total)} across ${accounts.length} accounts (${each})${count > 0 ? `, in ${holdingsWord(count)}. The biggest:\n${biggest.map(line).join("\n")}` : "."}`,
     actions: [SEE],
+    refs: {},
+  };
+}
+
+// Spec step 129: the investor profile, or the questions when it isn't finished.
+export function profileReply(answers: ProfileAnswers, asOf: string): Reply {
+  const summary = profileSummary(answers, asOf);
+  if (!summary.complete) {
+    const ask = asking(summary.next);
+    return {
+      body:
+        summary.answered === 0
+          ? PROFILE_INTRO
+          : `You've answered ${summary.answered} of ${PROFILE_QUESTIONS.length} questions about what your investments are for. Here's the next one.`,
+      actions: ask.actions,
+      refs: ask.refs,
+    };
+  }
+  const goals = summary.goals.map((g) => GOALS[g]).join(", ");
+  return {
+    body: `Your investor profile: ${summary.why} ${summary.description} Age ${summary.age}; the money is for: ${goals}.${summary.stale ? " It's been a year: worth checking it still fits." : ""}`,
+    actions: [{ id: "open", label: "Change it", kind: "link", href: "/investments/profile" }],
     refs: {},
   };
 }

@@ -48,6 +48,7 @@ export async function exportUserData(
     deadlines,
     lifeEvents,
     changeAcks,
+    lifeEventAnswers,
     janeMessages,
     teamAccess,
   ] = await Promise.all([
@@ -359,6 +360,8 @@ export async function exportUserData(
     }),
     // Changes the person said were expected (spec step 97).
     db.changeAcks.findMany({ select: { key: true, kind: true, createdAt: true } }),
+    // Answers to the life events Jane spotted (spec step 100).
+    db.lifeEventAnswers.findMany({ select: { kind: true, answer: true, createdAt: true } }),
     // Jane's chat (spec step 81): every message, with the buttons and what they answered.
     db.janeMessages.findMany({
       select: {
@@ -433,6 +436,7 @@ export async function exportUserData(
     deadlines,
     lifeEvents,
     changeAcks,
+    lifeEventAnswers,
     janeMessages,
     investments,
     teamAccess: teamAccess.map(({ at, who, what, why, actionId }) => ({
