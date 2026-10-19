@@ -60,6 +60,9 @@ describe("tax intents", () => {
     ["am I withholding enough", "withholding"],
     ["should I change my W-4", "withholding"],
     ["too much tax withheld?", "withholding"],
+    ["how can I pay less tax", "savings"],
+    ["any tax breaks for me?", "savings"],
+    ["what can I deduct", "savings"],
   ])("%s asks about %s (steps 120–121)", (text, ask) => {
     expect(parse(text)).toEqual({ kind: "tax", ask });
   });

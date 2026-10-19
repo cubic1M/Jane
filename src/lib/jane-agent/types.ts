@@ -69,6 +69,9 @@ export const ACTION_IDS = [
   "tax.w4_sent",
   "tax.w4_stop",
   "tax.w4_keep",
+  // Spec step 122: a way to pay less, as a reminder to set or not for me.
+  "tax.save_task",
+  "tax.save_no",
   // Investments (spec step 129 on): the answer buttons on an investor-profile question,
   // by position (src/config/investing.ts PROFILE_QUESTIONS).
   "invest.answer.1",
@@ -155,6 +158,9 @@ export type MessageRefs = {
   w4AmountCents?: number;
   w4JanuaryCents?: number;
   w4Flow?: number;
+  // Spec step 122: the way to pay less a message is about, and the reminder it would set.
+  taxSaving?: string;
+  taxTask?: { title: string; dueOn: string; note: string };
   // Spec step 98: demo advice (src/lib/advice-mode.ts). The chat shows DEMO_ADVICE_LABEL
   // under it. Set it on every message that recommends investments, taxes, insurance or loans.
   advice?: true;

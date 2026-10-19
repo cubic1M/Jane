@@ -4,7 +4,6 @@ import {
   DEPENDENT_CARE_CREDIT,
   EDUCATION_CREDITS,
   ENERGY_CREDITS_2025,
-  IRA_DEDUCTION_PHASE_OUT,
   ITEMIZED,
   PAYROLL_TAX,
   SELF_EMPLOYMENT_TAX,
@@ -142,12 +141,9 @@ export function findTaxSavings(s: SavingsInput): TaxSaving[] {
       });
     }
   } else {
-    // No workplace plan: a traditional IRA is deductible in full.
-    const room = phaseOut(
-      CONTRIBUTION_LIMITS.ira,
-      s.estimate.agiCents,
-      IRA_DEDUCTION_PHASE_OUT[base.filingStatus],
-    );
+    // No workplace plan: a traditional IRA is deductible in full (the phase-out only
+    // applies to people covered by one, or whose spouse is).
+    const room = CONTRIBUTION_LIMITS.ira;
     if (room > 0) {
       out.push({
         key: "ira",

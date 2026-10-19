@@ -52,6 +52,8 @@ export type TaxEstimateView = {
   // Spec step 121: paydays, the W-4 change the person sent, their choice to keep a refund
   // this year, and last year's federal refund as it arrived.
   paychecks: {
+    // Paychecks so far this year.
+    count: number;
     perYear: number | null;
     left: number;
     last: string | null;
@@ -303,6 +305,7 @@ export async function loadTaxEstimate(
     unconfirmed: profile.unconfirmed,
     input,
     paychecks: {
+      count: paychecks.filter((t) => t.date <= today).length,
       perYear: frequency?.perYear ?? null,
       left,
       last: lastPay,

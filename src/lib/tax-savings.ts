@@ -38,12 +38,15 @@ export type TaxSavingsView = {
 
 export async function loadTaxSavings(
   userId: string,
-  { client = defaultClient, now = new Date() }: Options = {},
+  {
+    client = defaultClient,
+    now = new Date(),
+    loaded,
+  }: Options & { loaded?: { estimate: TaxEstimateView; advice: boolean } } = {},
 ): Promise<TaxSavingsView> {
-  const [estimate, advice] = await Promise.all([
-    loadTaxEstimate(userId, { client, now }),
-    adviceMode(userId, { client }),
-  ]);
+  const [estimate, advice] = loaded
+    ? [loaded.estimate, loaded.advice]
+    : await Promise.all([loadTaxEstimate(userId, { client, now }), adviceMode(userId, { client })]);
   if (!advice) return { year: estimate.year, advice, savings: [], estimate };
   const year = estimate.year;
   const db = scopedFor(userId, client);
@@ -76,10 +79,7 @@ export async function loadTaxSavings(
     }
   }
   const stubs = estimate.pay;
-  const paychecks = Math.max(
-    1,
-    Math.round((stubs.perYear ?? estimate.paychecks.perYear ?? 24) * estimate.elapsed),
-  );
+  const paychecks = Math.max(1, estimate.paychecks.count);
   const dismissed = new Set(profile?.savingsDismissed ?? []);
   const savings = findTaxSavings({
     year,

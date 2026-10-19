@@ -244,15 +244,6 @@ export const EDUCATION_CREDITS = {
   },
 } as const;
 
-// Traditional IRA deduction when covered by a workplace plan: phased out over this range
-// of modified AGI (2026, IRS Notice on 2026 limits). ESTIMATE TO VERIFY.
-export const IRA_DEDUCTION_PHASE_OUT = {
-  single: [$(81_000), $(91_000)],
-  married_joint: [$(129_000), $(149_000)],
-  married_separate: [0, $(10_000)],
-  head_of_household: [$(81_000), $(91_000)],
-} satisfies Record<FilingStatus, [number, number]>;
-
 // The 2025 home energy credits, still claimable on 2025 returns for property placed in
 // service in 2025: 30% of costs; improvements (25C) capped at $1,200 a year, $2,000 for heat
 // pumps; solar and batteries (25D) uncapped.
