@@ -48,6 +48,9 @@ const STATUS_WORDS: Record<string, string> = {
 // to src/lib/audit.ts without deciding here whether people see it.
 export const TEAM_ACCESS_RULES: Record<AuditEvent, EventRule> = {
   user_signed_up: own,
+  // Loans (spec step 112): the person's own application and acceptance.
+  loan_application_submitted: own,
+  loan_accepted: own,
   // Insurance (spec Phase X): the person's own edits to their profile.
   insurance_policy_saved: own,
   insurance_policy_removed: own,

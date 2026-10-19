@@ -4,6 +4,9 @@ import { db } from "@/lib/db";
 // Every sensitive event goes through logAudit. Add new events here so the log stays
 // queryable by a known set of names.
 export type AuditEvent =
+  // Loans (spec step 112): applying for credit and accepting a loan.
+  | "loan_application_submitted"
+  | "loan_accepted"
   | "user_signed_up"
   // Insurance (spec Phase X): a policy saved or removed, the household facts saved.
   | "insurance_policy_saved"

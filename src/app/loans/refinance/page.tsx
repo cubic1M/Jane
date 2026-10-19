@@ -9,7 +9,8 @@ import { formatCents } from "@/lib/money";
 import { loadRefinance } from "@/lib/refinance";
 import { requireUser } from "@/lib/session";
 import type { RefinanceComparison } from "@/planning/refinance";
-import { checkNow } from "./actions";
+import { listApplications, statusLine } from "@/lib/loan-applications";
+import { applyAction, checkNow } from "./actions";
 
 // Refinance offers (spec step 111): for each loan and card, the offers Jane checked,
 // compared with keeping it over the same months, fees included. Sample offers from the
@@ -46,6 +47,19 @@ function Comparison({ c }: { c: RefinanceComparison }) {
             <p key={line}>{line}</p>
           ))}
           <DemoAdviceLabel />
+          <form action={applyAction} className="mt-2">
+            <input type="hidden" name="debtKey" value={c.debtKey} />
+            <input type="hidden" name="lender" value={c.pick.offer.lender} />
+            <button
+              type="submit"
+              className="h-11 rounded-full bg-emerald-700 px-5 font-medium text-white hover:bg-emerald-800"
+            >
+              Apply with {c.pick.offer.lender}
+            </button>
+            <span className="ml-3 text-xs text-zinc-600 dark:text-zinc-400">
+              You review the terms before anything is sent.
+            </span>
+          </form>
         </div>
       ) : (
         <p className="text-sm">
@@ -110,7 +124,9 @@ async function RefinanceContent({
   const user = await requireUser();
   await connection();
   const params = await searchParams;
-  const refi = await loadRefinance(user.id);
+  const [refi, apps] = await Promise.all([loadRefinance(user.id), listApplications(user.id)]);
+  const shownApps = apps.filter((a) => a.status !== "withdrawn");
+  const error = typeof params.error === "string" ? params.error : "";
 
   return (
     <>
@@ -139,6 +155,28 @@ async function RefinanceContent({
             These are sample offers from a stand-in lender catalog for the demo bank, not real
             offers.
           </p>
+          {error && (
+            <p role="alert" className="text-sm text-amber-800 dark:text-amber-300">
+              {error}
+            </p>
+          )}
+          {shownApps.length > 0 && (
+            <section aria-labelledby="apps" className="flex flex-col gap-2">
+              <h2 id="apps" className="text-xl font-semibold">
+                Your applications
+              </h2>
+              <ul className="flex flex-col gap-1 text-sm">
+                {shownApps.map((a) => (
+                  <li key={a.id}>
+                    <Link href={`/loans/apply/${a.id}`} className={LINK}>
+                      {a.lender} for your {a.oldName}
+                    </Link>
+                    : {statusLine(a)}
+                  </li>
+                ))}
+              </ul>
+            </section>
+          )}
           {params.checked === "1" && (
             <p role="status" className="text-sm text-emerald-800 dark:text-emerald-200">
               Checked just now.

@@ -3,6 +3,7 @@ import { sourceLabel, type DebtBook } from "@/insights/debts";
 import { formatRate } from "@/insights/loans";
 import { MAX_DEBT_EXTRA_CENTS } from "@/config/debt";
 import type { Payoff } from "@/lib/debt-plan";
+import { statusLine, type LoanApplicationView } from "@/lib/loan-application-status";
 import type { Refinance } from "@/lib/refinance";
 import type { PayoffPlan } from "@/planning/debt";
 import type { ScoredOffer } from "@/planning/refinance";
@@ -44,6 +45,12 @@ export const DEBT_TOOLS: Anthropic.Tool[] = [
     },
   },
   REFINANCE_TOOL,
+  {
+    name: "loan_applications",
+    description:
+      "The person's loan applications for refinance offers (spec step 112): the lender, the loan it pays off, the terms (rate, months, monthly payment, fee, total, saving) and where each stands: draft (prepared, not sent), approved (waiting for their yes), declined, accepted, funded (old loan being paid off), paid_off (old loan at zero) or withdrawn. Jane never submits or accepts one herself.",
+    input_schema: noInput,
+  },
 ];
 
 // The extra a month Claude asked about, in cents; undefined when it gave none or nonsense.
@@ -146,6 +153,7 @@ export const DEBT_TOOL_STATUS: Readonly<Record<string, string>> = {
   debts: "Looking at your debts…",
   payoff_plan: "Working out your payoff plan…",
   refinance_offers: "Checking loan offers…",
+  loan_applications: "Checking your loan applications…",
 };
 
 export function refinanceToolOutput(refi: Refinance, money: (cents: number) => string) {
@@ -176,6 +184,29 @@ export function refinanceToolOutput(refi: Refinance, money: (cents: number) => s
       janesPick: c.pick && offer(c.pick),
       why: c.why,
       offers: c.offers.map(offer),
+    })),
+  };
+}
+
+export function applicationsToolOutput(
+  apps: readonly LoanApplicationView[],
+  money: (cents: number) => string,
+) {
+  return {
+    applications: apps.map((a) => ({
+      lender: a.lender,
+      payingOff: a.oldName,
+      status: a.status,
+      whereItStands: statusLine(a),
+      rate: formatRate(a.aprBps),
+      rateType: a.rateType,
+      months: a.termMonths,
+      amount: money(a.amountCents),
+      monthlyPayment: money(a.monthlyCents),
+      fee: money(a.feeCents),
+      inAll: money(a.totalCents),
+      saving: money(a.savingCents),
+      sample: a.partner === "demo",
     })),
   };
 }
