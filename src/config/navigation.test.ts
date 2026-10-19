@@ -1,15 +1,7 @@
 import { readdirSync, readFileSync } from "node:fs";
 import { join, relative, sep } from "node:path";
 import { describe, expect, it } from "vitest";
-import {
-  DETAIL_PAGES,
-  DETAIL_TABS,
-  SETTINGS_TAB,
-  TABS,
-  isDetail,
-  tabFor,
-  tabsClaiming,
-} from "./navigation";
+import { DETAIL_TABS, SETTINGS_TAB, TABS, isDetail, tabFor, tabsClaiming } from "./navigation";
 
 // Spec step 79: every signed-in page belongs to exactly one tab. The page list is read
 // from src/app, so a new page without a tab fails here.
@@ -85,24 +77,35 @@ describe("navigation", () => {
     for (const path of ["/jane", "/plan", "/report", "/report/abc", "/actions", "/alerts"]) {
       expect(tabFor(path), path).toBe("jane");
     }
-    for (const path of ["/money", "/net-worth", "/bills", "/household", "/household/join"]) {
+    for (const path of ["/money", "/net-worth", "/bills", "/subscriptions", "/transfers"]) {
       expect(tabFor(path), path).toBe("money");
     }
-    for (const path of [
-      "/ahead",
-      "/afford",
-      "/deadlines",
-      "/debt",
-      "/year",
-      "/tax-pack",
-      "/taxes",
-    ]) {
+    expect(tabFor("/investments/fees")).toBe("investments");
+    // Debt is the loans tab's other half, and the tax-time pack is a taxes page.
+    for (const path of ["/loans", "/loans/mortgage", "/debt"]) {
+      expect(tabFor(path), path).toBe("loans");
+    }
+    expect(tabFor("/insurance/claims")).toBe("insurance");
+    for (const path of ["/taxes", "/taxes/file", "/tax-pack"]) {
+      expect(tabFor(path), path).toBe("taxes");
+    }
+    for (const path of ["/ahead", "/afford", "/deadlines", "/life-events", "/check-in", "/year"]) {
       expect(tabFor(path), path).toBe("ahead");
     }
     // Spec step 81: Ask is opened from the chat, and lights up Chat.
     expect(tabFor("/chat")).toBe("chat");
     expect(tabFor("/ask")).toBe("chat");
-    for (const path of ["/settings", "/settings/team-access", "/connect", "/import"]) {
+    // Documents, things you own and the household are under Settings.
+    for (const path of [
+      "/settings",
+      "/settings/team-access",
+      "/connect",
+      "/import",
+      "/documents",
+      "/things",
+      "/household",
+      "/household/join",
+    ]) {
       expect(tabFor(path), path).toBe("settings");
     }
   });
@@ -112,31 +115,31 @@ describe("navigation", () => {
     expect(tabFor("/plans")).toBeNull();
   });
 
-  it("shows five places in order, Chat first, each linking to its own first page", () => {
-    expect(TABS.map((t) => t.label)).toEqual(["Chat", "Today", "Jane", "Money", "Ahead"]);
+  it("shows two places in the bar, Chat first, each linking to its own first page", () => {
+    expect(TABS[0].label).toBe("Chat");
     for (const tab of [...TABS, SETTINGS_TAB]) expect(tab.paths[0]).toBe(tab.href);
   });
 
-  // Spec step 86: the chat is where things happen; the tabs are its details.
-  it("puts Today, Jane, Money and Ahead behind Details, with every page under them", () => {
-    expect(DETAIL_TABS.map((t) => t.label)).toEqual(["Today", "Jane", "Money", "Ahead"]);
-    const inMenu = new Set([
-      ...DETAIL_TABS.map((t) => t.href),
-      ...Object.values(DETAIL_PAGES).flatMap((pages) => pages.map((p) => p.href)),
+  // The Details menu is short: one entry per place, the sectors under one heading.
+  it("lists one entry per place in Details, in the agreed order", () => {
+    expect(DETAIL_TABS.map((t) => t.label)).toEqual([
+      "Today",
+      "Money",
+      "Investments",
+      "Loans and debt",
+      "Insurance",
+      "Taxes",
+      "Ahead",
+      "What Jane did",
     ]);
-    for (const tab of DETAIL_TABS)
-      for (const path of tab.paths) expect(inMenu, path).toContain(path);
-    expect(DETAIL_PAGES.money).toContainEqual({ label: "Net worth", href: "/net-worth" });
-    expect(DETAIL_PAGES.ahead).toContainEqual({ label: "Can I afford it?", href: "/afford" });
+    expect(DETAIL_TABS.length).toBeLessThanOrEqual(12);
+    expect(DETAIL_TABS.filter((t) => t.group).map((t) => t.group)).toEqual(
+      Array(4).fill("Grow and protect"),
+    );
   });
 
-  it("reaches every signed-in page from the chat, the Details menu or Settings", () => {
-    const menuPaths = [
-      ...TABS[0].paths,
-      ...SETTINGS_TAB.paths,
-      ...DETAIL_TABS.map((t) => t.href),
-      ...Object.values(DETAIL_PAGES).flatMap((pages) => pages.map((p) => p.href)),
-    ];
+  it("reaches every signed-in page from the chat, Details, Settings or a place's hub", () => {
+    const menuPaths = [...TABS, SETTINGS_TAB].flatMap((t) => t.paths);
     for (const route of all.filter((r) => !outside(r))) {
       expect(
         menuPaths.some((path) => route === path || route.startsWith(`${path}/`)),
@@ -146,7 +149,7 @@ describe("navigation", () => {
   });
 
   it("knows which pages are details", () => {
-    for (const path of ["/home", "/plan", "/report/abc", "/bills", "/afford"]) {
+    for (const path of ["/home", "/plan", "/report/abc", "/bills", "/afford", "/debt", "/taxes"]) {
       expect(isDetail(path), path).toBe(true);
     }
     for (const path of ["/chat", "/ask", "/settings", "/login"]) {

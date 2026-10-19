@@ -176,7 +176,13 @@ async function JaneContent() {
         )}
       </Section>
 
-      <Section title="Done" links={[{ href: "/actions", label: "See all" }]}>
+      <Section
+        title="Done"
+        links={[
+          { href: "/actions", label: "See all" },
+          { href: "/saved", label: "What Jane saved you" },
+        ]}
+      >
         {done.savedToDateCents > 0 && (
           <p className="text-lg">
             Saved so far: <strong>{formatCents(done.savedToDateCents)}</strong>
