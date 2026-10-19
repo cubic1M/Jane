@@ -24,6 +24,8 @@ export const ACTION_IDS = [
   // Insurance (spec Phase X).
   "insurance.gap_no",
   "insurance.quotes",
+  "insurance.shop_yes",
+  "insurance.shop_no",
   "plan.approve_safe",
   "undo.rule",
   "undo.no",
@@ -101,6 +103,8 @@ export type MessageRefs = {
   // message is about.
   insuranceGap?: string;
   policyId?: string;
+  // Spec step 104: a reshop of a policy (src/lib/insurance/shop.ts), by id.
+  insuranceShopId?: string;
   // The finding as Jane described it (src/lib/jane-agent/fingerprint.ts): a button only
   // acts while the finding is still what the message said.
   fingerprint?: string;

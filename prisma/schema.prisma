@@ -310,6 +310,7 @@ model User {
   insurancePolicies      InsurancePolicy[]
   insuranceProfile       InsuranceProfile?
   insuranceQuotes        InsuranceQuote[]
+  insuranceShops         InsuranceShop[]
   lifeEvents             LifeEvent[]
   // What's in investment accounts (spec step 128).
   securities             Security[]
@@ -1476,6 +1477,7 @@ model InsurancePolicy {
   user     User             @relation(fields: [userId], references: [id], onDelete: Cascade)
   document Document?        @relation(fields: [documentId], references: [id], onDelete: SetNull)
   quotes   InsuranceQuote[]
+  shops    InsuranceShop[]
 
   @@index([userId, status])
   @@map("insurance_policies")
@@ -1516,6 +1518,43 @@ model InsuranceQuote {
 
   @@index([userId, policyId])
   @@map("insurance_quotes")
+}
+
+// One reshop of a policy (spec step 104): Jane asked the partner for quotes by herself (45
+// days before renewal, or after a price rise) or because the person asked, and either found
+// a better policy for the same cover (open, waiting for a tap) or didn't (no_better).
+model InsuranceShop {
+  id                 String    @id @default(cuid())
+  userId             String    @map("user_id")
+  policyId           String    @map("policy_id")
+  // Never two for the same reason: "renewal:<policy>:<date>", "price:<policy>:<cents>",
+  // "asked:<policy>:<time>".
+  key                String
+  // renewal, price_up or asked.
+  reason             String
+  // What the policy cost a year when Jane shopped it.
+  currentAnnualCents Int       @map("current_annual_cents")
+  // open, no_better, accepted, declined or expired.
+  status             String
+  // Jane's pick and the runners-up, as quoted (the quotes table is replaced by the next
+  // request, and the pick must stay what the person said yes to).
+  pick               Json?
+  runnersUp          Json      @default("[]") @map("runners_up")
+  savingCents        Int?      @map("saving_cents")
+  why                String[]  @default([])
+  quoteCount         Int       @map("quote_count")
+  demo               Boolean
+  // When the pick's quote expires.
+  expiresAt          DateTime? @map("expires_at") @db.Timestamptz(3)
+  answeredAt         DateTime? @map("answered_at") @db.Timestamptz(3)
+  createdAt          DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  user   User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  policy InsurancePolicy @relation(fields: [policyId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, key])
+  @@index([userId, status])
+  @@map("insurance_shops")
 }
 
 // The household facts that matter for cover (spec step 102), as the person typed them.

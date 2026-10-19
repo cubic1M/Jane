@@ -7,6 +7,7 @@ import { GAP_ADVICE } from "@/config/insurance";
 import { coverageGaps } from "@/lib/insurance/gaps";
 import { resolveHousehold, type Household } from "@/lib/insurance/household";
 import type { Policy } from "@/lib/insurance/policies";
+import type { Shop } from "@/lib/insurance/shop";
 import { gather, type BrainSettings } from "../brain";
 import { parseIntent } from "../intents";
 import type { Snapshot } from "../snapshot";
@@ -54,7 +55,16 @@ function insurance(
   advice = false,
   canQuote = false,
 ): InsuranceSnapshot {
-  return { policies, household: facts, gaps: coverageGaps(facts, policies), advice, canQuote };
+  return {
+    policies,
+    household: facts,
+    gaps: coverageGaps(facts, policies),
+    advice,
+    canQuote,
+    shopsItself: advice && canQuote,
+    shops: [],
+    noBetter: [],
+  };
 }
 
 function snapshot(over: Partial<Snapshot> = {}): Snapshot {
@@ -269,5 +279,106 @@ describe("coverage gaps as heads-ups", () => {
   it("says nothing without gaps or without insurance in the snapshot", () => {
     expect(messages(snapshot({ insurance: insurance() }))).toEqual([]);
     expect(messages(snapshot())).toEqual([]);
+  });
+});
+
+describe("Jane's own reshops in the chat (spec step 104)", () => {
+  const messages = (s: Snapshot) =>
+    gather(s, MORNING, SYNC).filter((m) => m.source === "insurance");
+  const pick = {
+    id: "q1",
+    policyId: "p1",
+    partner: "demo",
+    partnerQuoteId: "demo-q",
+    carrier: {
+      id: "demo-lighthouse",
+      name: "Lighthouse Insurance (demo)",
+      rating: "A+",
+      ratingScore: 95,
+      claimsPhone: "1-800-555-0101",
+      claimsUrl: "https://example.com",
+    },
+    kind: "auto" as const,
+    premiumCents: 10_800,
+    premiumFrequency: "monthly" as const,
+    annualPremiumCents: 129_600,
+    termMonths: 12,
+    deductibleCents: 100_000,
+    coverage: {},
+    sameCover: true,
+    differences: [],
+    demo: true,
+    expiresAt: new Date("2026-11-18T00:00:00Z"),
+    createdAt: new Date("2026-10-19T00:00:00Z"),
+  };
+  const shop = (over: Partial<Shop> = {}): Shop => ({
+    id: "s1",
+    policyId: "p1",
+    reason: "renewal",
+    status: "open",
+    currentAnnualCents: 170_400,
+    pick,
+    runnersUp: [],
+    savingCents: 40_800,
+    why: ["Line one.", "Line two.", "Line three."],
+    quoteCount: 4,
+    demo: true,
+    expiresAt: pick.expiresAt,
+    createdAt: pick.createdAt,
+    ...over,
+  });
+  const withShops = (shops: Shop[], noBetter: Shop[] = []) =>
+    snapshot({
+      insurance: { ...insurance([policy()], household(), true, true), shops, noBetter },
+    });
+
+  it("asks once about a cheaper policy, with Yes, Show options and Not now, labelled advice", () => {
+    const [message] = messages(withShops([shop()]));
+    expect(message).toMatchObject({
+      kind: "decision",
+      dedupeKey: "insurance:shop:s1",
+      priority: MESSAGE_PRIORITY.insurance_shop,
+      refs: { insuranceShopId: "s1", policyId: "p1", advice: true },
+    });
+    expect(message.body.split("\n")).toEqual([
+      "I found car insurance $408.00 a year cheaper for the same cover: Lighthouse Insurance (demo), at $108.00 a month.",
+      "- Line one.",
+      "- Line two.",
+      "- Line three.",
+      "These are sample quotes from my demo carrier catalog, not real offers.",
+      "Say yes and I'll switch you. Your GEICO policy stays in place until the new one is.",
+    ]);
+    expect(message.actions).toEqual([
+      { id: "insurance.shop_yes", label: "Yes, switch", kind: "primary" },
+      { id: "open", label: "Show options", kind: "link", href: "/insurance/quotes?policy=p1" },
+      { id: "insurance.shop_no", label: "Not now", kind: "secondary" },
+    ]);
+  });
+
+  it("says when a reshop found nothing better", () => {
+    const [message] = messages(
+      withShops([], [shop({ status: "no_better", pick: null, savingCents: null })]),
+    );
+    expect(message).toMatchObject({ kind: "done", dedupeKey: "insurance:checked:s1" });
+    expect(message.body).toBe(
+      "I shopped your GEICO car insurance before it renews on Nov 28: of 4 quotes, nothing with the same cover saved enough to switch. I'll look again next time.",
+    );
+  });
+
+  it("asks instead of the generic insurance finding when Jane shops by herself", () => {
+    const finding = {
+      findingId: "f1",
+      type: "insurance_reshop" as const,
+      title: "Your GEICO insurance could cost less",
+      annualSavingsCents: null,
+      savings: "",
+      fingerprint: "x",
+      urgent: false,
+      pick: null,
+    };
+    const findings = (s: Snapshot) =>
+      gather(s, MORNING, SYNC).filter((m) => m.source === "findings");
+    expect(findings(snapshot({ findings: [finding] }))).toHaveLength(1);
+    expect(findings({ ...withShops([]), findings: [finding] })).toEqual([]);
   });
 });

@@ -26,8 +26,12 @@ export const findingsSource: MessageSource = {
         c.finding && !c.finding.handledBy ? [c.finding.id] : [],
       ),
     );
+    // Spec step 104: when Jane shops insurance herself, her own reshop asks instead of the
+    // generic "could cost less" finding.
+    const shopsInsurance = snapshot.insurance?.shopsItself ?? false;
     return [...snapshot.findings]
       .filter((finding) => !askedByChange.has(finding.findingId))
+      .filter((finding) => !(shopsInsurance && finding.type === "insurance_reshop"))
       .sort(bySavings)
       .map((finding) => {
         const actions: MessageAction[] = [{ id: "finding.yes", label: "Yes", kind: "primary" }];

@@ -99,6 +99,7 @@ export function scopedFor(userId: string, client: PrismaClient = db) {
     insurancePolicies: scoped.insurancePolicy,
     insuranceProfiles: scoped.insuranceProfile,
     insuranceQuotes: scoped.insuranceQuote,
+    insuranceShops: scoped.insuranceShop,
     findings: scoped.finding,
     decisions: scoped.decision,
     actions: scoped.action,

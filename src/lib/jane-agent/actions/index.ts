@@ -7,7 +7,7 @@ import { closeSettled } from "../messages";
 import { MESSAGE_SELECT, toChatMessage, type ActionId, type ChatMessage } from "../types";
 import { DEBT_ACTION_HANDLERS } from "./debt-handlers";
 import { findingNo, findingPick, findingYes } from "./finding";
-import { insuranceGapNo, insuranceQuotes } from "./insurance";
+import { insuranceGapNo, insuranceQuotes, insuranceShopNo, insuranceShopYes } from "./insurance";
 import { ChatActionError, linksOf, type ActionHandler } from "./handler";
 import { planApproveSafe } from "./plan";
 import { undoNo, undoRule } from "./undo";
@@ -41,6 +41,8 @@ export const ACTION_HANDLERS: Readonly<Record<ActionId, ActionHandler>> = {
   // Insurance (spec Phase X).
   "insurance.gap_no": insuranceGapNo,
   "insurance.quotes": insuranceQuotes,
+  "insurance.shop_yes": insuranceShopYes,
+  "insurance.shop_no": insuranceShopNo,
   "plan.approve_safe": planApproveSafe,
   "undo.rule": undoRule,
   "undo.no": undoNo,
