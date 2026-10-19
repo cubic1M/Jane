@@ -60,6 +60,9 @@ const SIGNED_IN = [
   "/year",
   "/subscriptions",
   "/check-in",
+  // Spec steps 144 and 148.
+  "/transfers",
+  "/monthly",
   "/connect",
   "/import",
   "/things",
