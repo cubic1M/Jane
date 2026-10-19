@@ -1,6 +1,7 @@
 import type { FilingStatus } from "@/config/tax";
 import {
   ADDITIONAL_MEDICARE,
+  CAPITAL_LOSS_LIMIT,
   CAPITAL_GAINS_BRACKETS,
   CHILD_TAX_CREDIT,
   EITC,
@@ -291,9 +292,25 @@ export function stateEstimate(input: EstimateInput, agiCents: number): StateEsti
   }
 }
 
+// Spec step 124: short- and long-term gains netted. A net gain counts as income, its long-
+// term part (up to the net) at the capital gains rates; a net loss comes off income only up
+// to the limit.
+export function netCapital(stCents: number, ltCents: number, status: FilingStatus) {
+  const net = stCents + ltCents;
+  if (net < 0) {
+    const limit =
+      status === "married_separate"
+        ? CAPITAL_LOSS_LIMIT.marriedSeparate
+        : CAPITAL_LOSS_LIMIT.normal;
+    return { incomeCents: Math.max(net, -limit), longTermCents: 0 };
+  }
+  return { incomeCents: net, longTermCents: Math.max(0, Math.min(ltCents, net)) };
+}
+
 export function estimateTaxes(input: EstimateInput): TaxEstimate {
   const status = input.filingStatus;
   const inc = input.income;
+  const capital = netCapital(inc.shortTermGainsCents, inc.longTermGainsCents, status);
   const se = clamp0(inc.selfEmploymentCents);
   const seTax = selfEmploymentTax(se, inc.socialSecurityWagesCents);
   const halfSe = round(seTax / 2);
@@ -302,8 +319,7 @@ export function estimateTaxes(input: EstimateInput): TaxEstimate {
     inc.selfEmploymentCents +
     inc.interestCents +
     inc.dividendsCents +
-    inc.shortTermGainsCents +
-    inc.longTermGainsCents +
+    capital.incomeCents +
     inc.rentalCents +
     inc.retirementCents +
     inc.unemploymentCents;
@@ -333,7 +349,7 @@ export function estimateTaxes(input: EstimateInput): TaxEstimate {
   const afterDeduction = clamp0(agi - (itemizes ? itemizedTotal : standard) - nonItemizerCharity);
   // QBI: 20% of self-employment income less half the SE tax, capped at 20% of taxable
   // income before it; only below the threshold, where its limits start.
-  const preferential = inc.qualifiedDividendsCents + clamp0(inc.longTermGainsCents);
+  const preferential = inc.qualifiedDividendsCents + capital.longTermCents;
   const qbi =
     afterDeduction <= QBI.threshold[status]
       ? round(
@@ -355,11 +371,7 @@ export function estimateTaxes(input: EstimateInput): TaxEstimate {
     ) * ADDITIONAL_MEDICARE.rate,
   );
   const investmentIncome =
-    inc.interestCents +
-    inc.dividendsCents +
-    inc.shortTermGainsCents +
-    inc.longTermGainsCents +
-    inc.rentalCents;
+    inc.interestCents + inc.dividendsCents + clamp0(capital.incomeCents) + inc.rentalCents;
   const niit = round(
     Math.min(clamp0(investmentIncome), clamp0(agi - NET_INVESTMENT_INCOME_TAX.threshold[status])) *
       NET_INVESTMENT_INCOME_TAX.rate,
