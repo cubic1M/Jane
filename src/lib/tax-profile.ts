@@ -210,3 +210,64 @@ export async function addIncomeKind(
     options,
   );
 }
+
+// Spec step 120: the year-to-date figures from the person's latest pay stub, for when
+// there's no payroll connection. All amounts are whole cents, none negative; the date is
+// the pay stub's, not in the future.
+export type PayStubEntry = {
+  asOf: string;
+  grossCents: number;
+  federalCents: number;
+  stateCents: number;
+  retirementCents: number;
+  pretaxCents: number;
+};
+
+export async function savePayStub(
+  userId: string,
+  entry: PayStubEntry | null,
+  { client = defaultClient, now = new Date(), via }: Options & { via: "chat" | "page" },
+): Promise<void> {
+  if (entry) {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(entry.asOf) || Number.isNaN(Date.parse(entry.asOf))) {
+      throw new TaxProfileError("Give the pay stub's date.");
+    }
+    if (entry.asOf > iso(now))
+      throw new TaxProfileError("The pay stub's date can't be in the future.");
+    const amounts = [
+      entry.grossCents,
+      entry.federalCents,
+      entry.stateCents,
+      entry.retirementCents,
+      entry.pretaxCents,
+    ];
+    if (amounts.some((c) => !Number.isInteger(c) || c < 0)) {
+      throw new TaxProfileError("Amounts must be dollars and cents, none below zero.");
+    }
+    if (entry.retirementCents + entry.pretaxCents + entry.federalCents > entry.grossCents) {
+      throw new TaxProfileError(
+        "The deductions add up to more than the gross pay. Check the figures.",
+      );
+    }
+  }
+  const data = {
+    payAsOf: entry ? new Date(`${entry.asOf}T00:00:00Z`) : null,
+    payGrossYtdCents: entry?.grossCents ?? null,
+    payFederalYtdCents: entry?.federalCents ?? null,
+    payStateYtdCents: entry?.stateCents ?? null,
+    payRetirementYtdCents: entry?.retirementCents ?? null,
+    payPretaxYtdCents: entry?.pretaxCents ?? null,
+  };
+  await scopedFor(userId, client).taxProfiles.upsert({
+    where: { userId },
+    create: { userId, ...data },
+    update: data,
+  });
+  await logAudit(
+    { type: "user", id: userId },
+    "tax_profile_changed",
+    { type: "user", id: userId },
+    { fields: "payStub", via },
+  );
+  await track(userId, "tax_pay_stub_saved", { via, cleared: entry === null });
+}
