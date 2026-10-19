@@ -166,5 +166,16 @@ export async function investmentsExport(userId: string, client: PrismaClient = d
     },
     orderBy: { placedAt: "asc" },
   });
-  return { securities, holdings, transactions, profile, orders };
+  // Spec step 158: college savings plans.
+  const collegePlans = await db.collegePlans.findMany({
+    select: {
+      childName: true,
+      childAge: true,
+      ageOn: true,
+      collegeType: true,
+      planKey: true,
+      createdAt: true,
+    },
+  });
+  return { securities, holdings, transactions, profile, orders, collegePlans };
 }

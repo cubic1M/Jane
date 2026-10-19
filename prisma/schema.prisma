@@ -319,6 +319,7 @@ model User {
   insuranceCheckups      InsuranceCheckup[]
   insuranceClaims        InsuranceClaim[]
   employerBenefits       EmployerBenefit[]
+  policyReadings         PolicyReading[]
   lifeEvents             LifeEvent[]
   // What's in investment accounts (spec step 128).
   securities             Security[]
@@ -344,7 +345,10 @@ model User {
 
   autopilotSectors AutopilotSector[]
   autopilotActs    AutopilotAct[]
+  collegePlans     CollegePlan[]
   controllerRuns   ControllerRun[]
+  moneyTransfers   MoneyTransfer[]
+  paycheckPlans    PaycheckPlan[]
 
   @@map("users")
 }
@@ -552,6 +556,11 @@ model Liability {
   ytdInterestPaidCents      Int?      @map("ytd_interest_paid_cents")
   // The bank's own description, e.g. "Conventional 30 year fixed".
   description               String?
+  // Mortgages (spec step 115): whether it carries private mortgage insurance, what's in
+  // escrow, and whether paying it off early costs a penalty, as Plaid reports them.
+  hasPmi                    Boolean?  @map("has_pmi")
+  escrowBalanceCents        Int?      @map("escrow_balance_cents")
+  hasPrepaymentPenalty      Boolean?  @map("has_prepayment_penalty")
   createdAt                 DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt                 DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
 
@@ -1582,6 +1591,7 @@ model Document {
 
   user              User              @relation(fields: [userId], references: [id], onDelete: Cascade)
   insurancePolicies InsurancePolicy[]
+  policyReading     PolicyReading?
 
   @@index([userId, uploadedAt])
   @@map("documents")
@@ -1794,6 +1804,33 @@ model EmployerBenefit {
   @@unique([userId, employer, kind, label])
   @@index([userId, status])
   @@map("employer_benefits")
+}
+
+// A policy document read for the person to confirm (spec step 151): the fields Jane read
+// from it (or prefilled from payments without a key), each with where it came from.
+// Nothing becomes a policy until they tap Confirm.
+model PolicyReading {
+  id         String    @id @default(cuid())
+  userId     String    @map("user_id")
+  documentId String    @unique @map("document_id")
+  // The policy on file it updates (a renewal notice), or null for a new one.
+  policyId   String?   @map("policy_id")
+  // The policy form's fields, as text (PolicyInput in src/lib/insurance/policies.ts).
+  fields     Json
+  // Field name to where it came from: document, you, payments or policy.
+  sources    Json      @default("{}")
+  // Field name to what the rules said about it (left blank, or worth a look).
+  notes      Json      @default("{}")
+  // waiting, confirmed or dismissed.
+  status     String    @default("waiting")
+  createdAt  DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  answeredAt DateTime? @map("answered_at") @db.Timestamptz(3)
+
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  document Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+
+  @@index([userId, status])
+  @@map("policy_readings")
 }
 
 // The household facts that matter for cover (spec step 102), as the person typed them.
@@ -2443,6 +2480,28 @@ model AutoInvestRun {
   @@map("auto_invest_runs")
 }
 
+// Spec step 158: saving for a child's college. The child's age when the person said it (so
+// it can be aged), the kind of college, the 529 plan Jane compared best, and the savings
+// goal it set up, which step 157's buckets and automatic investing then fund.
+model CollegePlan {
+  id          String   @id @default(cuid())
+  userId      String   @map("user_id")
+  childName   String   @map("child_name")
+  childAge    Int      @map("child_age")
+  ageOn       DateTime @map("age_on") @db.Date
+  // public or private (src/config/college.ts).
+  collegeType String   @map("college_type")
+  planKey     String?  @map("plan_key")
+  goalId      String?  @map("goal_id")
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt   DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("college_plans")
+}
+
 // One person's nightly controller run (spec step 142): when it ran and, for each sector's
 // step in order, whether it ran, what it did and how much changed. One per person per day.
 model ControllerRun {
@@ -2459,4 +2518,59 @@ model ControllerRun {
 
   @@unique([userId, day])
   @@map("controller_runs")
+}
+
+// A transfer or payment through the money-movement partner (spec steps 144–145): the
+// stand-in until a licensed partner is connected, which moves nothing real. Undoable while
+// pending, until runOn.
+model MoneyTransfer {
+  id            String    @id @default(cuid())
+  userId        String    @map("user_id")
+  fromAccountId String    @map("from_account_id")
+  // The person's own account it goes to; null for a payment to someone else (a bill).
+  toAccountId   String?   @map("to_account_id")
+  toName        String    @map("to_name")
+  amountCents   Int       @map("amount_cents")
+  // goal, debt or bill; the sector whose autopilot caps it counts against.
+  purpose       String
+  sector        String
+  goalId        String?   @map("goal_id")
+  // pending, completed, cancelled or failed.
+  status        String    @default("pending")
+  runOn         DateTime  @map("run_on") @db.Date
+  partner       String
+  partnerRef    String?   @map("partner_ref")
+  // autopilot or person.
+  by            String
+  // What it came from: "paycheck:<transaction id>", "bill:<key>".
+  planKey       String?   @map("plan_key")
+  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  completedAt   DateTime? @map("completed_at") @db.Timestamptz(3)
+  cancelledAt   DateTime? @map("cancelled_at") @db.Timestamptz(3)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, status])
+  @@map("money_transfers")
+}
+
+// A paycheck's plan (spec step 144): where each part of it goes, worked out once when the
+// paycheck lands. proposed (waiting on a tap), moved, auto (autopilot moved all of it),
+// partial (autopilot moved some, the rest waits) or skipped.
+model PaycheckPlan {
+  id            String   @id @default(cuid())
+  userId        String   @map("user_id")
+  // "paycheck:<transaction id>".
+  key           String
+  paycheckCents Int      @map("paycheck_cents")
+  paidOn        DateTime @map("paid_on") @db.Date
+  // [{ purpose, sector, label, goalId?, toAccountId, toName, cents, status }].
+  moves         Json
+  status        String   @default("proposed")
+  createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, key])
+  @@map("paycheck_plans")
 }

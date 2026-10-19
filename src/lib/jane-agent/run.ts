@@ -9,6 +9,8 @@ import { refreshDebts } from "@/lib/debt-refresh";
 import { scopedFor } from "@/lib/db-scoped";
 import { loadDetectionInput } from "@/detection/engine";
 import { policiesFromPayments } from "@/lib/found-policies";
+import { runPaycheckPlan } from "@/lib/money-movement/paycheck";
+import { settleTransfers } from "@/lib/money-movement/transfers";
 import { runPlanUpkeep } from "@/lib/plan-upkeep";
 import { runTaxAutopilotSafely } from "@/lib/tax-autopilot";
 import { gather, plan, type BrainSettings } from "./brain";
@@ -50,6 +52,14 @@ export async function runJaneAgent(
   // Spec step 99: insurance found from payments joins the profile (as found) by itself.
   await policiesFromPayments(userId, { client, now, input }).catch((error) =>
     console.error("Finding policies from payments failed", { userId, error: String(error) }),
+  );
+  // Spec step 144: transfers whose day came have gone through, and a new paycheck gets its
+  // plan (moved by itself where autopilot allows).
+  await settleTransfers(userId, { client, now }).catch((error) =>
+    console.error("Settling transfers failed", { userId, error: String(error) }),
+  );
+  await runPaycheckPlan(userId, { client, now, input }).catch((error) =>
+    console.error("Paycheck plan failed", { userId, error: String(error) }),
   );
   // Taxes (spec steps 123–127): what Jane sets up by herself, at the person's level.
   await runTaxAutopilotSafely(userId, { client, now });

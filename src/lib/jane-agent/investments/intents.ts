@@ -14,13 +14,17 @@ export type InvestmentTopic =
   | "overview"
   | "autopilot"
   | "returns"
-  | "goals";
+  | "goals"
+  | "college";
 
 export type InvestmentIntent = {
   kind: "investments";
   topic: InvestmentTopic;
   // The account the person named ("401k", "brokerage", "ira"), when they named one.
   account: string | null;
+  // Spec step 158: a child's age and the kind of college, when the person said them.
+  childAge?: number;
+  collegeType?: "public" | "private";
 };
 
 const ACCOUNT_WORDS =
@@ -84,7 +88,27 @@ const RETURNS =
 const GOALS_INVESTED =
   /\bglide path\b|\bgoal buckets?\b|\b(?:invest|investing) (?:for|by) (?:my |each )?goals?\b|\bhow (?:is|should) (?:my )?(?:\w+ )?goal (?:be )?invested\b|\bshould i invest (?:my |the )?(?:\w+ )?(?:fund|savings|money) for (?:a |my |the )?(?:house|home|car|wedding|trip|down payment)\b/;
 
+// Spec step 158: saving for a child's college.
+const COLLEGE = /\b(?:college|529|university|tuition)\b/;
+const CHILD_AGE =
+  /\b(\d{1,2})[- ]?(?:year[- ]?olds?|yr[- ]?olds?|yo|years? old)\b|\b(?:is|turns|aged?) (\d{1,2})\b/;
+
 export function parseInvestmentIntent(text: string): InvestmentIntent | null {
+  if (COLLEGE.test(text) && !/\bcollege (?:loan|debt)s?\b|\bstudent loan/.test(text)) {
+    const age = CHILD_AGE.exec(text);
+    const years = age ? Number(age[1] ?? age[2]) : NaN;
+    return {
+      kind: "investments",
+      topic: "college",
+      account: null,
+      ...(Number.isInteger(years) && years <= 17 ? { childAge: years } : {}),
+      ...(/\bprivate\b/.test(text)
+        ? { collegeType: "private" as const }
+        : /\b(?:public|state|in-state)\b/.test(text)
+          ? { collegeType: "public" as const }
+          : {}),
+    };
+  }
   if (GOALS_INVESTED.test(text)) return { kind: "investments", topic: "goals", account: null };
   if (RETURNS.test(text) && /\b(?:invest|portfolio|401|return|performance)/.test(text)) {
     return { kind: "investments", topic: "returns", account: null };

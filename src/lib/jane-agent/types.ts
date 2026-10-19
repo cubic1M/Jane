@@ -44,6 +44,9 @@ export const ACTION_IDS = [
   "benefits.disability_yes",
   "benefits.disability_none",
   "benefits.unsure",
+  // Spec step 151: a policy read from a document, to confirm.
+  "reading.confirm",
+  "reading.dismiss",
   "plan.approve_safe",
   "undo.rule",
   "undo.no",
@@ -159,6 +162,8 @@ export const ACTION_IDS = [
   "invest.auto_leftover",
   "invest.auto_pause",
   "invest.auto_resume",
+  // Spec step 158: start saving for college.
+  "college.start",
   // Jane notices changes (spec step 97).
   "change.look",
   "change.budget",
@@ -182,6 +187,10 @@ export const ACTION_IDS = [
   "welcome.tour",
   // One autopilot, every sector (spec step 141).
   "autopilot.sector_set",
+  // Money that moves itself (spec step 144).
+  "paycheck.move",
+  "paycheck.skip",
+  "paycheck.undo",
 ] as const;
 export type ActionId = (typeof ACTION_IDS)[number];
 
@@ -217,6 +226,8 @@ export type MessageRefs = {
   claimStep?: string;
   // Spec step 150: the guided question a benefits message asks.
   benefitQuestion?: string;
+  // Spec step 151: the policy reading a message asks the person to confirm.
+  readingId?: string;
   // The finding as Jane described it (src/lib/jane-agent/fingerprint.ts): a button only
   // acts while the finding is still what the message said.
   fingerprint?: string;
@@ -305,6 +316,8 @@ export type MessageRefs = {
   rebalanceKey?: string;
   // Spec step 134: what "Start" sets up: an amount (cents) every payday, into an account.
   autoInvest?: { amountCents: number; accountId: string };
+  // Spec step 158: the college plan "Start saving for college" sets up.
+  college?: { childName: string; childAge: number; type: "public" | "private" };
   // Spec step 97: a change Jane noticed (src/insights/changes.ts), by its key; for a
   // category's pace, the budget "Set a budget" would set (cents a month).
   change?: { key: string; kind: string; category?: string; budgetCents?: number };
@@ -313,6 +326,8 @@ export type MessageRefs = {
   // Spec step 101: a budget tune-up's month (YYYY-MM), and a transfer to count toward a goal.
   tuneUpMonth?: string;
   transactionId?: string;
+  // Spec step 144: a paycheck's plan.
+  paycheckPlanId?: string;
   // Spec step 141: a sector's autopilot change typed in the chat, set on "Set it".
   sectorChange?: {
     sector: string;

@@ -103,6 +103,7 @@ export function scopedFor(userId: string, client: PrismaClient = db) {
     insuranceCheckups: scoped.insuranceCheckup,
     insuranceClaims: scoped.insuranceClaim,
     employerBenefits: scoped.employerBenefit,
+    policyReadings: scoped.policyReading,
     refinanceChecks: scoped.refinanceCheck,
     loanApplications: scoped.loanApplication,
     studentLoanProfiles: scoped.studentLoanProfile,
@@ -155,6 +156,9 @@ export function scopedFor(userId: string, client: PrismaClient = db) {
     autopilotActs: scoped.autopilotAct,
     // The nightly controller run's log (spec step 142).
     controllerRuns: scoped.controllerRun,
+    // Money that moves itself (spec steps 144–145).
+    moneyTransfers: scoped.moneyTransfer,
+    paycheckPlans: scoped.paycheckPlan,
     savedShares: scoped.savedShare,
     // What's in investment accounts (spec step 128).
     securities: scoped.security,
@@ -167,6 +171,8 @@ export function scopedFor(userId: string, client: PrismaClient = db) {
     // Automatic investing (spec step 134).
     autoInvestPlans: scoped.autoInvestPlan,
     autoInvestRuns: scoped.autoInvestRun,
+    // College savings (spec step 158).
+    collegePlans: scoped.collegePlan,
   };
 }
 

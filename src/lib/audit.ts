@@ -72,6 +72,9 @@ export type AuditEvent =
   | "autopilot_set"
   // One autopilot, every sector (spec step 141): a sector's level or caps changed.
   | "autopilot_sector_set"
+  // Money that moves itself (spec steps 144–145): a transfer or payment scheduled or undone.
+  | "money_transfer_scheduled"
+  | "money_transfer_cancelled"
   | "plan_link_used"
   | "support_contact_suggested"
   | "support_contact_confirmed"
@@ -122,7 +125,9 @@ export type AuditEvent =
   // partner was the simulation; never amounts or tickers.
   | "brokerage_orders_placed"
   // Automatic investing (spec step 134): started, paused, resumed or changed; never amounts.
-  | "auto_invest_set";
+  | "auto_invest_set"
+  // College savings set up (spec step 158): the kind of college, never the child's details.
+  | "college_plan_saved";
 
 export type AuditActor = { type: ActorType; id: string | null };
 

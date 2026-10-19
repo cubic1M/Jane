@@ -6,6 +6,7 @@ vi.mock("@/lib/session", () => ({
 }));
 vi.mock("@/lib/rate-limit", () => ({ hit: vi.fn() }));
 vi.mock("@/lib/analytics", () => ({ track: vi.fn() }));
+vi.mock("@/lib/insurance/readings", () => ({ readPolicyDocument: vi.fn(async () => null) }));
 vi.mock("@/lib/documents/store", () => ({
   addDocument: vi.fn(),
   saveDocumentFacts: vi.fn(),
@@ -16,6 +17,7 @@ import { revalidatePath } from "next/cache";
 import { MAX_DOCUMENT_BYTES } from "@/config/documents";
 import { track } from "@/lib/analytics";
 import { addDocument, removeDocument, saveDocumentFacts } from "@/lib/documents/store";
+import { readPolicyDocument } from "@/lib/insurance/readings";
 import { hit } from "@/lib/rate-limit";
 import { deleteDocument, saveFacts, uploadDocument } from "./actions";
 
@@ -65,6 +67,38 @@ describe("document actions (spec step 68)", () => {
     });
     // The message stays on screen; the form refreshes the list itself.
     expect(revalidatePath).not.toHaveBeenCalled();
+  });
+
+  it("reads a policy into one to confirm, and says where (spec step 151)", async () => {
+    vi.mocked(addDocument).mockResolvedValue({
+      ok: true,
+      id: "d1",
+      read: "claude",
+      summaryRejected: false,
+    });
+    vi.mocked(readPolicyDocument).mockResolvedValueOnce({ id: "r1" } as never);
+
+    expect(await uploadDocument(null, uploadForm())).toEqual({
+      ok: true,
+      message:
+        "Saved. Jane read the policy in it: confirm what she read on Insurance or in the chat, and it's added.",
+    });
+    const [userId, documentId, options] = vi.mocked(readPolicyDocument).mock.calls[0];
+    expect([userId, documentId]).toEqual(["u1", "d1"]);
+    expect(options?.file?.contentType).toBe("application/pdf");
+    expect(Buffer.from(options!.file!.bytes).toString()).toBe(PDF);
+  });
+
+  it("doesn't read a warranty as a policy", async () => {
+    vi.mocked(addDocument).mockResolvedValue({
+      ok: true,
+      id: "d1",
+      read: "claude",
+      summaryRejected: false,
+    });
+    vi.mocked(readPolicyDocument).mockClear();
+    await uploadDocument(null, uploadForm("warranty"));
+    expect(readPolicyDocument).not.toHaveBeenCalled();
   });
 
   it("asks the person for the facts when Jane couldn't read them", async () => {

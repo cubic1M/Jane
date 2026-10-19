@@ -22,6 +22,7 @@ import { loadRetirement } from "./retirement";
 import { loadReview } from "./review";
 import { loadReturns } from "./returns";
 import { loadGoalBuckets } from "./goal-buckets";
+import { estimateCollege } from "./college";
 import { setAutopilot } from "@/lib/autopilot";
 import { takeSnapshots } from "@/lib/snapshots";
 import { syncDemoInvestments } from "@/lib/plaid/sync";
@@ -490,4 +491,47 @@ describe.runIf(url)("investments in Jane's chat, against a real database", () =>
     const saved = await client.autoInvestRun.findFirstOrThrow({ where: { userId } });
     expect(saved.reason).toBe("By goal: House $100.00");
   });
+
+  it(
+    "step 158: college for a 5 year old, with the state's break, set up as a goal",
+    SLOW,
+    async () => {
+      const userId = await demoPerson();
+      await saveProfileForm(
+        userId,
+        { age: "40", horizon: "over_20", dropReaction: "worry", goals: ["education"] },
+        { client, now: LINKED },
+      );
+      await client.taxProfile.create({
+        data: {
+          userId,
+          state: "NY",
+          filingStatus: "single",
+          childrenUnder17: 1,
+          answered: ["state", "filingStatus", "dependants"],
+        },
+      });
+      const estimate = await estimateCollege(userId, { childAge: 5, type: "public" }, { client });
+      expect(estimate.state).toBe("NY");
+      expect(estimate.plans[0]).toMatchObject({ plan: { key: "home" } });
+      expect(estimate.plans[0].benefitCents).toBeGreaterThan(0);
+
+      const { reply } = await sendToJane(userId, "save for college for my 5 year old", {
+        client,
+        now: LINKED,
+      });
+      expect(reply.refs.college).toEqual({ childName: "your child", childAge: 5, type: "public" });
+      const { message } = await takeChatAction(userId, reply.id, "college.start", {
+        client,
+        now: LINKED,
+      });
+      expect(message.refs.note).toMatch(/^Done: a goal of \$[\d,.]+ by September 2039\./);
+      const plan = await client.collegePlan.findFirstOrThrow({ where: { userId } });
+      const goal = await client.savingsGoal.findUniqueOrThrow({ where: { id: plan.goalId! } });
+      expect(goal.name).toBe("College for your child");
+      // The goal joins the buckets (step 157): 13 years away, invested.
+      const { buckets } = await loadGoalBuckets(userId, { client, now: LINKED });
+      expect(buckets?.find((b) => b.id === goal.id)).toMatchObject({ nearTerm: false });
+    },
+  );
 });
