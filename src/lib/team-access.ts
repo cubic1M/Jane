@@ -48,6 +48,10 @@ const STATUS_WORDS: Record<string, string> = {
 // to src/lib/audit.ts without deciding here whether people see it.
 export const TEAM_ACCESS_RULES: Record<AuditEvent, EventRule> = {
   user_signed_up: own,
+  // Insurance (spec Phase X): the person's own edits to their profile.
+  insurance_policy_saved: own,
+  insurance_policy_removed: own,
+  insurance_household_saved: own,
   user_signed_in: own,
   import_completed: own,
   explanations_generated: automatic,
@@ -132,10 +136,6 @@ export const TEAM_ACCESS_RULES: Record<AuditEvent, EventRule> = {
   // Jane's chat messages as notifications (spec step 85).
   chat_notification_sent: automatic,
   investor_profile_saved: own,
-  // Insurance (spec Phase X): the person's own edits to their profile.
-  insurance_policy_saved: own,
-  insurance_policy_removed: own,
-  insurance_household_saved: own,
 };
 
 export const SHOWN_EVENTS = (Object.keys(TEAM_ACCESS_RULES) as AuditEvent[]).filter(

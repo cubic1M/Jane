@@ -304,6 +304,9 @@ model User {
   balanceSnapshots       BalanceSnapshot[]
   checkIns               CheckIn[]
   documents              Document[]
+  // Insurance (spec Phase X).
+  insurancePolicies      InsurancePolicy[]
+  insuranceProfile       InsuranceProfile?
   lifeEvents             LifeEvent[]
   // What's in investment accounts (spec step 128).
   securities             Security[]
@@ -314,9 +317,8 @@ model User {
   changeAcks             ChangeAck[]
   taxProfile             TaxProfile?
   lifeEventAnswers       LifeEventAnswer[]
-  // Insurance (spec Phase X).
-  insurancePolicies      InsurancePolicy[]
-  insuranceProfile       InsuranceProfile?
+  budgetTuneUps          BudgetTuneUp[]
+  goalTransfers          GoalTransfer[]
 
   @@map("users")
 }
@@ -1709,6 +1711,44 @@ model LifeEventAnswer {
 
   @@unique([userId, kind])
   @@map("life_event_answers")
+}
+
+// A month's budget tune-up (spec step 101): the budgets Jane would change and to what.
+// proposed (waiting on a tap), accepted (Accept all), auto (applied by autopilot), kept
+// (Keep) or undone (Undo after autopilot). One per person per month.
+model BudgetTuneUp {
+  id        String    @id @default(cuid())
+  userId    String    @map("user_id")
+  // YYYY-MM.
+  month     String
+  // [{ category, fromCents, toCents }].
+  changes   Json
+  status    String    @default("proposed")
+  decidedAt DateTime? @map("decided_at") @db.Timestamptz(3)
+  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, month])
+  @@map("budget_tune_ups")
+}
+
+// A transfer to savings Jane counted toward a goal tracked by hand (spec step 101), or the
+// person said not to: counted (by their tap), auto (by autopilot) or skipped. Each transfer
+// is counted once.
+model GoalTransfer {
+  id            String   @id @default(cuid())
+  userId        String   @map("user_id")
+  transactionId String   @map("transaction_id")
+  goalId        String?  @map("goal_id")
+  amountCents   Int      @map("amount_cents")
+  status        String
+  createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, transactionId])
+  @@map("goal_transfers")
 }
 
 // Spec step 87: one run of Jane's answer checks (src/lib/jane-agent/checks): the team's
