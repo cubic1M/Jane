@@ -6,12 +6,20 @@ vi.mock("@/lib/tax-profile", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/lib/tax-profile")>()),
   saveTaxAnswers: vi.fn(),
   savePayStub: vi.fn(),
+  loadTaxProfile: vi.fn(async () => ({ state: { value: "NY" } })),
+}));
+vi.mock("@/lib/tax-states", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/tax-states")>()),
+  saveMoves: vi.fn(),
+  saveWorkState: vi.fn(),
+  saveLocality: vi.fn(),
 }));
 
 import { revalidatePath } from "next/cache";
 import { TaxProfileError, savePayStub, saveTaxAnswers } from "@/lib/tax-profile";
-import { savePayStubAction, saveTaxProfile } from "./actions";
-import { answersFrom, payStubFrom } from "./answers";
+import { ResidencyError, saveLocality, saveMoves, saveWorkState } from "@/lib/tax-states";
+import { savePayStubAction, saveResidencyAction, saveTaxProfile } from "./actions";
+import { answersFrom, payStubFrom, residencyFrom } from "./answers";
 
 // Spec step 118: the tax profile page saves only what was filled in.
 
@@ -138,5 +146,67 @@ describe("the pay stub form (spec step 120)", () => {
       ok: false,
       message: "Give the pay stub's date.",
     });
+  });
+});
+
+describe("where you lived and worked (spec step 165)", () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  it("reads a move, one state all year, the employer's state and the city", () => {
+    expect(
+      residencyFrom(
+        form([
+          ["movedOn", "2026-08-03"],
+          ["movedFrom", "CA"],
+          ["movedTo", "NY"],
+          ["workState", "CT"],
+          ["locality", "nyc"],
+        ]),
+      ),
+    ).toEqual({
+      move: { date: "2026-08-03", from: "CA", to: "NY" },
+      oneState: false,
+      workState: "CT",
+      locality: "nyc",
+    });
+    expect(residencyFrom(form([["oneState", "1"]]))).toEqual({
+      move: null,
+      oneState: true,
+      workState: null,
+      locality: null,
+    });
+    expect(() => residencyFrom(form([["movedOn", "2026-08-03"]]))).toThrow(ResidencyError);
+  });
+
+  it("saves for the signed-in person and says what's wrong instead", async () => {
+    expect(
+      await saveResidencyAction(
+        null,
+        form([
+          ["movedOn", "2026-08-03"],
+          ["movedFrom", "CA"],
+          ["movedTo", "NY"],
+        ]),
+      ),
+    ).toEqual({ ok: true, message: "Saved. Your state estimate uses it now." });
+    expect(saveMoves).toHaveBeenCalledWith(
+      "u1",
+      2026,
+      [{ date: "2026-08-03", from: "CA", to: "NY" }],
+      expect.objectContaining({ via: "page" }),
+    );
+    expect(saveWorkState).toHaveBeenCalledWith("u1", null, { via: "page" });
+    expect(saveLocality).not.toHaveBeenCalled();
+    vi.mocked(saveMoves).mockRejectedValueOnce(new ResidencyError("Pick two different states."));
+    expect(
+      await saveResidencyAction(
+        null,
+        form([
+          ["movedOn", "2026-08-03"],
+          ["movedFrom", "CA"],
+          ["movedTo", "CA"],
+        ]),
+      ),
+    ).toEqual({ ok: false, message: "Pick two different states." });
   });
 });

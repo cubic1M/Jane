@@ -41,6 +41,8 @@ const quote = (
     demo: true,
     expiresAt: new Date("2026-11-18T00:00:00Z"),
     createdAt: new Date("2026-10-19T00:00:00Z"),
+    plan: null,
+    expectedCostCents: null,
     ...over,
   }) satisfies StoredQuote;
 
