@@ -3,6 +3,8 @@ import type { PrismaClient } from "@/generated/prisma/client";
 import { db as defaultClient } from "@/lib/db";
 import { refreshDebts } from "@/lib/debt-refresh";
 import { scopedFor } from "@/lib/db-scoped";
+import { loadDetectionInput } from "@/detection/engine";
+import { policiesFromPayments } from "@/lib/found-policies";
 import { runPlanUpkeep } from "@/lib/plan-upkeep";
 import { gather, plan, type BrainSettings } from "./brain";
 import { closeSettled, postMessages } from "./messages";
@@ -36,7 +38,13 @@ export async function runJaneAgent(
   );
   // Loans and debt (spec Phase Y): what Jane keeps current by herself, before she looks.
   await refreshDebts(userId, { client, now });
-  const snapshot = await loadSnapshot(userId, { client, now });
+  // The bank data, loaded once for what follows.
+  const input = await loadDetectionInput(userId, { client, now });
+  // Spec step 99: insurance found from payments joins the profile (as found) by itself.
+  await policiesFromPayments(userId, { client, now, input }).catch((error) =>
+    console.error("Finding policies from payments failed", { userId, error: String(error) }),
+  );
+  const snapshot = await loadSnapshot(userId, { client, now, input });
   if (!snapshot) return { posted: 0 };
   await closeSettled(userId, { client, now });
 

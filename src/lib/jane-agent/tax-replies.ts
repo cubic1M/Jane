@@ -3,6 +3,8 @@ import { stateName, type FieldStatus, type TaxProfileView } from "@/planning/tax
 import { TAX_TAG_ORDER, TAX_TAGS, UNTAGGED, type TaxTagKind } from "@/config/tax";
 import { formatCents } from "@/lib/money";
 import type { TaxFormsView, TaxTagsView } from "@/lib/tax-organizer";
+import type { TaxEstimateView } from "@/lib/tax-estimate";
+import { federalLine, roundDollars, stateLine } from "@/planning/tax-estimate-copy";
 import type { TaxPack } from "@/planning/tax-pack";
 import { listOf } from "@/planning/tax-profile";
 import type { Reply } from "./replies";
@@ -236,6 +238,35 @@ export function packReply(pack: TaxPack): Reply {
       link("Open the tax-time pack", `/tax-pack?year=${pack.year}`),
       link("Download the spreadsheet", `/tax-pack/download?year=${pack.year}`),
     ],
+    refs: {},
+  };
+}
+
+// Spec step 120: the estimate, as Jane brings it up and as she answers "how much will I
+// owe?". Always called an estimate.
+export function estimateMessage(view: TaxEstimateView): Reply {
+  const e = view.estimate;
+  const state = stateLine(e.state, view.withholdingKnown);
+  const sofar =
+    view.elapsed < 1
+      ? ` It's from your income so far (${roundDollars(view.incomeSoFarCents)}), projected to the end of the year.`
+      : "";
+  const assumed = view.assumptions.find((a) => a.startsWith("You haven't told me how you file"));
+  return {
+    body: `My estimate for your ${view.year} taxes: ${federalLine(e, view.withholdingKnown).replace(/^Federal: /, "federal, ")}${state ? ` ${state}` : ""}${sofar}${assumed ? ` ${assumed}` : ""} I update it after every sync.`,
+    actions: [
+      link("See the estimate", "/taxes#estimate"),
+      ...(view.withholdingKnown ? [] : [link("Add pay stub figures", `${PROFILE_HREF}#pay-stub`)]),
+    ],
+    refs: {},
+  };
+}
+
+export function bracketReply(view: TaxEstimateView): Reply {
+  const rate = Math.round(view.estimate.marginalRate * 100);
+  return {
+    body: `Your top federal rate is about ${rate}%: each extra $100 of income adds about $${rate} of federal tax, before any state tax. That's from my ${view.year} estimate.`,
+    actions: [link("See the estimate", "/taxes#estimate")],
     refs: {},
   };
 }

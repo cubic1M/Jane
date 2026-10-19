@@ -7,14 +7,33 @@ import { INCOME_KIND_ORDER, TAX_YEAR } from "@/config/tax";
 import { requireUser } from "@/lib/session";
 import { loadTaxProfile } from "@/lib/tax-profile";
 import { stateName } from "@/planning/tax-profile";
+import { scopedDb } from "@/lib/db-scoped";
+import { hasDemoBank } from "@/lib/plaid/demo";
 import { TaxProfileForm } from "./form";
+import { PayStubForm } from "./pay-stub-form";
 
 // The tax profile (spec step 118): every answer, and what Jane found, can be changed here.
 
 async function ProfileContent() {
   const user = await requireUser();
   await connection();
-  const view = await loadTaxProfile(user.id);
+  const db = await scopedDb();
+  const [view, demo, pay] = await Promise.all([
+    loadTaxProfile(user.id),
+    hasDemoBank(user.id),
+    db.taxProfiles.findFirst({
+      select: {
+        payAsOf: true,
+        payGrossYtdCents: true,
+        payFederalYtdCents: true,
+        payStateYtdCents: true,
+        payRetirementYtdCents: true,
+        payPretaxYtdCents: true,
+      },
+    }),
+  ]);
+  const dollars = (cents: number | null | undefined) =>
+    cents === null || cents === undefined ? "" : (cents / 100).toFixed(2);
   const seen = new Map(
     view.incomeKinds.found.map((f) => [f.kind, f.from.join(" and ") || "your accounts"]),
   );
@@ -47,6 +66,17 @@ async function ProfileContent() {
               ? `Found by Jane: ${stateName(view.state.value)}, going by ${view.state.from}. Save to confirm it.`
               : null,
           states: [...US_STATES],
+        }}
+      />
+      <PayStubForm
+        demo={demo}
+        values={{
+          asOf: pay?.payAsOf ? pay.payAsOf.toISOString().slice(0, 10) : "",
+          gross: dollars(pay?.payGrossYtdCents),
+          federal: dollars(pay?.payFederalYtdCents),
+          state: dollars(pay?.payStateYtdCents),
+          retirement: dollars(pay?.payRetirementYtdCents),
+          pretax: dollars(pay?.payPretaxYtdCents),
         }}
       />
       <Link href="/taxes" className="font-medium text-emerald-700 hover:underline">

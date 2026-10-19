@@ -40,6 +40,8 @@ export function parseDebtIntent(
   text: string,
   amountCents: number | null = null,
 ): DebtIntent | null {
+  // Taxes owed are the tax questions' (./tax-intents.ts).
+  if (/\b(?:tax|taxes|irs|tax refund)\b/.test(text)) return null;
   // "Lower the rate on my card" is a request, not a question (./intents.ts act).
   if (/^(?:lower|reduce|cut|negotiate|bring down|shrink|cancel|refund)\b/.test(text)) return null;
   if (MORE.test(text) && amountCents !== null)

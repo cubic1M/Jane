@@ -82,6 +82,9 @@ export const ACTION_IDS = [
   "tuneup.undo",
   "transfer.count",
   "transfer.skip",
+  // Insurance found from payments (spec step 99).
+  "policy.confirm",
+  "policy.not_insurance",
 ] as const;
 export type ActionId = (typeof ACTION_IDS)[number];
 

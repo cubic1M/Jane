@@ -63,5 +63,8 @@ describe("debt questions", () => {
     expect(intent("what's due this week")).toMatchObject({ kind: "coming_up" });
     expect(intent("how much did I spend on food last month")).toMatchObject({ kind: "spending" });
     expect(intent("can I afford $900 for a trip in March")).toMatchObject({ kind: "afford" });
+    // Taxes owed are a tax question.
+    expect(intent("how much do I owe in taxes")).toMatchObject({ kind: "tax" });
+    expect(intent("will I owe this year")).toMatchObject({ kind: "tax" });
   });
 });
