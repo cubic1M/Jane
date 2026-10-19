@@ -269,6 +269,20 @@ export const OPEN_ENROLLMENT_BY = "11-30";
 // Bunching gifts: suggested when doubling a year's gifts would take itemized deductions
 // past the standard deduction.
 
+// Spec step 125: tax refunds. A deposit is a refund when Plaid says so or its description
+// reads like one; federal when it's from the Treasury. A refund matches the estimate when
+// it's within matchCents or matchShare of it. Debt worth paying from a refund: rates from
+// debtAprBps up. Refunds Jane brings up: from the last recentDays.
+export const REFUND = {
+  payee:
+    /\b(?:TAX REF(?:UND)?|TREAS 310|IRS TREAS|FRANCHISE TAX BD|DEPT OF REVENUE|STATE TAX REFUND)\b/i,
+  federalPayee: /\b(?:IRS|TREAS 310|US TREASURY)\b/i,
+  matchCents: 5_000,
+  matchShare: 0.05,
+  debtAprBps: 800,
+  recentDays: 30,
+} as const;
+
 // The estimate tells the person when it has moved by at least this much (in cents) since
 // Jane last said it.
 export const TAX_ESTIMATE_STEP_CENTS = 50_000;
@@ -289,6 +303,8 @@ export const TAX_MESSAGE_PRIORITY = {
   withholding: 37,
   // Spec step 122.
   saving: 34,
+  // Spec step 125.
+  refund: 68,
   // Spec step 123.
   quarterly: 88,
   set_aside: 39,
@@ -325,6 +341,11 @@ export const TAX_AUTOPILOT: readonly { feature: string; ask: string; auto: strin
     feature: "self_employed",
     ask: "For freelance income, I suggest likely business expenses, remind you before each estimated tax date and, with demo advice, say how much to set aside from each payment.",
     auto: "For freelance income, I tag likely business expenses for you to check, remind you before each estimated tax date with the amount and, with demo advice, start a tax set-aside goal and tell you what to put in it from each payment. Paying is always your tap.",
+  },
+  {
+    feature: "refund",
+    ask: "I spot your tax refund when it lands, check it against my estimate and, with demo advice, suggest where it could go.",
+    auto: "I spot your tax refund when it lands, check it against my estimate and, with demo advice, have the plan for it ready: one tap sets up the goals and reminders. Moving the money is always yours.",
   },
   {
     feature: "tags",

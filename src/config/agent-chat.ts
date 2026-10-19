@@ -119,6 +119,9 @@ export const MESSAGE_PRIORITY = {
   investment_review: 38,
   // Spec step 132: behind for retirement, or missing employer match money (demo advice).
   retirement: 39,
+  // Spec step 134: the offer to invest every payday, and what each payday did.
+  auto_invest_offer: 33,
+  auto_invest_run: 31,
 } as const;
 
 // The chat page shows the last this-many messages, with "Show earlier" for more.

@@ -1,5 +1,6 @@
 import type { Topic } from "./context";
 import type { Intent } from "./intents";
+import type { PreferenceDraft } from "./preferences";
 
 // Jane's chat messages (spec step 81): what a message is, what it's about and its buttons.
 // Stored in jane_messages; posted by Jane's brain (spec step 82) and, from step 84, typed
@@ -60,6 +61,9 @@ export const ACTION_IDS = [
   "budget.set",
   "finding.why",
   "finding.options",
+  // Spec step 91: saving what the person told Jane, and a suggestion never to make again.
+  "pref.save",
+  "suggest.never",
   // Taxes (spec step 118): the tax profile, one question at a time.
   "tax.found_yes",
   "tax.filing_single",
@@ -90,6 +94,9 @@ export const ACTION_IDS = [
   // Spec step 123: freelancers.
   "tax.quarter_paid",
   "tax.miles_add",
+  // Spec step 125: a tax refund's plan.
+  "tax.refund_apply",
+  "tax.refund_no",
   // Investments (spec step 129 on): the answer buttons on an investor-profile question,
   // by position (src/config/investing.ts PROFILE_QUESTIONS).
   "invest.answer.1",
@@ -99,6 +106,11 @@ export const ACTION_IDS = [
   "invest.answer.5",
   // Spec step 133: move to the recommended mix, through the brokerage partner.
   "invest.rebalance",
+  // Spec step 134: automatic investing.
+  "invest.auto_start",
+  "invest.auto_leftover",
+  "invest.auto_pause",
+  "invest.auto_resume",
   // Jane notices changes (spec step 97).
   "change.look",
   "change.budget",
@@ -179,6 +191,8 @@ export type MessageRefs = {
   choices?: { label: string; intent: Intent }[];
   // Spec step 90: the budget "Set a budget" would set (cents a month).
   budget?: { category: string; amountCents: number };
+  // Spec step 91: what "Remember this" would save.
+  preference?: PreferenceDraft;
   // Taxes (spec step 118): the tax profile question a message is asking, and the kind of
   // income "Add it" would add.
   taxField?: string;
@@ -203,6 +217,8 @@ export type MessageRefs = {
   // Spec step 123: the estimated payment "I've paid it" records, and miles to add.
   taxQuarter?: { date: string; cents: number; stateCents: number };
   taxMiles?: number;
+  // Spec step 125: the refund (its transaction id) a message is about.
+  taxRefund?: string;
   // Spec step 98: demo advice (src/lib/advice-mode.ts). The chat shows DEMO_ADVICE_LABEL
   // under it. Set it on every message that recommends investments, taxes, insurance or loans.
   advice?: true;
@@ -212,6 +228,8 @@ export type MessageRefs = {
   investAgain?: true;
   // Spec step 133: the rebalancing plan the button places, by its key.
   rebalanceKey?: string;
+  // Spec step 134: what "Start" sets up: an amount (cents) every payday, into an account.
+  autoInvest?: { amountCents: number; accountId: string };
   // Spec step 97: a change Jane noticed (src/insights/changes.ts), by its key; for a
   // category's pace, the budget "Set a budget" would set (cents a month).
   change?: { key: string; kind: string; category?: string; budgetCents?: number };

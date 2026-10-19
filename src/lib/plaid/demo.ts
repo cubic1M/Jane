@@ -65,12 +65,27 @@ export function demoPlaidApi(
   const through = yesterday(now);
   const holdings = demoHoldings(demo, through, orders);
   const securities = demoSecurities(through, new Set(holdings.map((h) => h.security_id)));
+  // An investment account's balance is what it holds (deposits from step 134 add to it).
+  const accounts = demoAccounts(demo).map((a) =>
+    a.type === "investment"
+      ? {
+          ...a,
+          balances: {
+            ...a.balances,
+            current:
+              holdings
+                .filter((h) => h.account_id === a.account_id)
+                .reduce((s, h) => s + Math.round(h.institution_value * 100), 0) / 100,
+          },
+        }
+      : a,
+  );
   const api = {
     transactionsSync: async ({ cursor }: { cursor?: string }) => {
       const after = cursor && /^\d{4}-\d{2}-\d{2}$/.test(cursor) ? cursor : null;
       return {
         data: {
-          accounts: demoAccounts(demo),
+          accounts,
           added:
             after !== null && after >= through
               ? []
@@ -88,12 +103,12 @@ export function demoPlaidApi(
     // No recurring streams: Jane's own detection finds the recurring charges.
     transactionsRecurringGet: async () => ({ data: { outflow_streams: [], inflow_streams: [] } }),
     liabilitiesGet: async () => ({
-      data: { accounts: demoAccounts(demo), liabilities: demoLiabilities(demo, today(now)) },
+      data: { accounts, liabilities: demoLiabilities(demo, today(now)) },
     }),
     // What the investment accounts hold (spec step 128).
     investmentsHoldingsGet: async () => ({
       data: {
-        accounts: demoAccounts(demo).filter((a) => a.type === "investment"),
+        accounts: accounts.filter((a) => a.type === "investment"),
         holdings,
         securities,
       },
@@ -117,7 +132,7 @@ export function demoPlaidApi(
       const offset = options?.offset ?? 0;
       return {
         data: {
-          accounts: demoAccounts(demo).filter((a) => a.type === "investment"),
+          accounts: accounts.filter((a) => a.type === "investment"),
           investment_transactions: all.slice(offset, offset + (options?.count ?? 100)),
           securities,
           total_investment_transactions: all.length,

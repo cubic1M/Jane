@@ -28,6 +28,9 @@ vi.mock("@/lib/insurance/daily", () => ({
     checkups: { people: 1, checkups: 0 },
   })),
 }));
+vi.mock("@/lib/investments/auto-invest", () => ({
+  runAutoInvestForAll: vi.fn(async () => ({ invested: 1, paused: 0, failed: 0 })),
+}));
 vi.mock("@/lib/snapshots", () => ({
   takeSnapshots: vi.fn(async () => ({ saved: 3, removed: 0 })),
 }));
@@ -77,6 +80,7 @@ describe("GET /api/cron/plaid-sync", () => {
       deadlines: { users: 2, raised: 1, failed: 0 },
       // Spec step 104: insurance reshopped by itself.
       insurance: { reshop: { people: 1, shops: 1 }, checkups: { people: 1, checkups: 0 } },
+      autoInvest: { invested: 1, paused: 0, failed: 0 },
     });
     expect(syncItem).toHaveBeenCalledWith("a");
     expect(syncItem).toHaveBeenCalledWith("b");
@@ -99,6 +103,7 @@ describe("GET /api/cron/plaid-sync", () => {
       deadlines: { users: 2, raised: 1, failed: 0 },
       // Spec step 104: insurance reshopped by itself.
       insurance: { reshop: { people: 1, shops: 1 }, checkups: { people: 1, checkups: 0 } },
+      autoInvest: { invested: 1, paused: 0, failed: 0 },
     });
     expect(syncItem).not.toHaveBeenCalled();
   });

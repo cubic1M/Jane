@@ -54,6 +54,7 @@ export async function exportUserData(
     goalTransfers,
     savedShares,
     janeMessages,
+    janePreferences,
     teamAccess,
     taxProfile,
     taxTags,
@@ -400,6 +401,11 @@ export async function exportUserData(
       },
       orderBy: { createdAt: "asc" },
     }),
+    // What Jane remembers (spec step 91).
+    db.janePreferences.findMany({
+      select: { kind: true, key: true, value: true, label: true, createdAt: true },
+      orderBy: { createdAt: "asc" },
+    }),
     // When the team or Jane's agent viewed or acted on their data (spec step 74): every
     // entry, by role, never a team member's name or id.
     teamAccessFor(userId, { client, limit: null }),
@@ -424,6 +430,7 @@ export async function exportUserData(
         businessMiles: true,
         businessMilesYear: true,
         taxPayments: true,
+        refundsHandled: true,
         updatedAt: true,
       },
     }),
@@ -495,6 +502,7 @@ export async function exportUserData(
     goalTransfers,
     savedShares,
     janeMessages,
+    janePreferences,
     investments,
     teamAccess: teamAccess.map(({ at, who, what, why, actionId }) => ({
       at,

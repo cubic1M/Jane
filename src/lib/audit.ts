@@ -71,6 +71,9 @@ export type AuditEvent =
   | "proposal_answered"
   // A button on one of Jane's chat messages (spec step 81): which one, never the text.
   | "chat_action_taken"
+  // What Jane remembers (spec step 91): saved on the person's tap, deleted in Settings.
+  | "preference_saved"
+  | "preference_deleted"
   // The action agent (src/lib/agent/run.ts).
   | "agent_message_sent"
   | "agent_reply_received"
@@ -101,7 +104,9 @@ export type AuditEvent =
   | "investor_profile_saved"
   // Orders sent to the brokerage partner (spec step 133): how many, why, and whether the
   // partner was the simulation; never amounts or tickers.
-  | "brokerage_orders_placed";
+  | "brokerage_orders_placed"
+  // Automatic investing (spec step 134): started, paused, resumed or changed; never amounts.
+  | "auto_invest_set";
 
 export type AuditActor = { type: ActorType; id: string | null };
 

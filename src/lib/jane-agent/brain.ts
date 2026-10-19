@@ -101,9 +101,12 @@ export function plan(
     .sort((a, b) => b.c.priority - a.c.priority || a.index - b.index)
     .map(({ c }) => c);
 
+  // Spec step 91: never what the person said not to suggest again.
+  const never = new Set(snapshot.neverSuggest ?? []);
   const out: PlannedMessage[] = [];
   for (const candidate of candidates) {
     if (seen.has(candidate.dedupeKey)) continue;
+    if (never.has(`message:${candidate.dedupeKey}`)) continue;
     if (uncapped(candidate)) {
       seen.add(candidate.dedupeKey);
       out.push(candidate);

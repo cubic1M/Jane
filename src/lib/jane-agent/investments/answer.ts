@@ -5,11 +5,13 @@ import type { InvestmentIntent } from "./intents";
 import { profileOf } from "@/lib/investments/profile";
 import { adviceMode } from "@/lib/advice-mode";
 import { loadFees } from "@/lib/investments/fees";
+import { loadAutoInvest } from "@/lib/investments/auto-invest";
 import { loadRebalance } from "@/lib/investments/rebalance";
 import { loadRetirement } from "@/lib/investments/retirement";
 import { profileSummary } from "@/planning/investor-profile";
 import { loadReview } from "@/lib/investments/review";
 import {
+  autoInvestReply,
   feesReply,
   holdingsReply,
   profileReply,
@@ -46,6 +48,8 @@ export async function answerInvestments(
       ]);
       return retirementReply(data, advice);
     }
+    case "auto_invest":
+      return autoInvestReply(await loadAutoInvest(userId, { client, now }));
     case "rebalance": {
       const [{ advice, plan }, answers] = await Promise.all([
         loadRebalance(userId, { client, now }),

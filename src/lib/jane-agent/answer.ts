@@ -20,7 +20,9 @@ import { whatJaneDid } from "@/lib/what-jane-did";
 import { CATEGORY_LABELS, UNCATEGORIZED } from "@/insights/labels";
 import { topicOf, withTopic, type Topic } from "./context";
 import { matchCategory, type Intent } from "./intents";
+import { listPreferences, paydayDays } from "./preferences";
 import { loadRecurring } from "./recurring";
+import { paydayLine } from "./remember";
 import { costReply, paydayReply, subscriptionsReply } from "./recurring-replies";
 import { answerDebt } from "./debt-answer";
 import { isDebtIntent } from "./debt-intents";
@@ -29,6 +31,7 @@ import {
   actReply,
   affordReply,
   clarifyReply,
+  rememberReply,
   findingReply,
   rankFindings,
   categoryContext,
@@ -128,8 +131,20 @@ async function byIntent(
       ]);
       return subscriptionsReply(intent, recurring, snapshot);
     }
-    case "payday":
+    case "payday": {
+      // Spec step 91: what they told Jane comes first.
+      const days = paydayDays(await listPreferences(userId, { client }));
+      if (days) {
+        return {
+          body: paydayLine(days, asOf),
+          actions: [{ id: "open", label: "See today", kind: "link", href: "/home" }],
+          refs: {},
+        };
+      }
       return paydayReply(await loadRecurring(userId, { client, now }), asOf);
+    }
+    case "remember":
+      return rememberReply(intent.draft);
     case "about": {
       const [recurring, snapshot] = await Promise.all([
         loadRecurring(userId, { client, now }),
