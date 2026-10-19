@@ -51,12 +51,13 @@ test("new people land on Connect; once data is in, Home matches the report", asy
   expect(overflow).toBeLessThanOrEqual(0);
 
   // Spec step 79: on a phone the main menu is a tab bar along the bottom, with Today lit
-  // up, and the end of the page scrolls clear of it.
+  // up, and the end of the page scrolls clear of it. Spec step 81: Chat comes first, and
+  // Ask moved into the chat's message box.
   const nav = page.getByRole("navigation", { name: "Main" });
   // What screen readers hear: the ASCII glyphs and brackets are hidden from them.
   const tabs = nav.getByRole("link");
   await expect(tabs).toHaveCount(5);
-  for (const [i, name] of ["Today", "Jane", "Money", "Ahead", "Ask"].entries()) {
+  for (const [i, name] of ["Chat", "Today", "Jane", "Money", "Ahead"].entries()) {
     await expect(tabs.nth(i)).toHaveAccessibleName(name);
   }
   await expect(nav.getByRole("link", { name: "Today" })).toHaveAttribute("aria-current", "page");

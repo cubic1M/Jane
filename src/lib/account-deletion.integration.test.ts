@@ -224,6 +224,9 @@ describe.runIf(url)("deleting data against a real database", () => {
     await client.deadline.create({
       data: { userId, title: "FSA deadline", dueOn: new Date("2026-12-31"), kind: "fsa" },
     });
+    await client.janeMessage.create({
+      data: { userId, kind: "brief", body: "Good morning", dedupeKey: "brief:2026-10-18" },
+    });
     const agentAction = await client.action.findFirstOrThrow({ where: { userId } });
     await client.agentMessage.create({
       data: {
@@ -285,6 +288,7 @@ describe.runIf(url)("deleting data against a real database", () => {
       authAccounts: await client.authAccount.count(where),
       mfaBackupCodes: await client.mfaBackupCode.count(where),
       standingRules: await client.standingRule.count(where),
+      janeMessages: await client.janeMessage.count(where),
       agentMessages: await client.agentMessage.count(where),
       planProposals: await client.planProposal.count(where),
       planLinks: await client.planLink.count(where),

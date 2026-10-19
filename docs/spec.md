@@ -103,6 +103,8 @@ Steps 1–63 are built (24 came before 22, because do-it-yourself kits need its 
 | 78 Jane in iMessage | PR #91 (removed in PR #99) | Built, then removed at the user's request: they decided they don't want Jane to text them. Texts through Sendblue (alerts, the weekly plan with approval by reply, "needs you"), the Texts section on /settings, /settings/texts and /api/messaging/inbound are gone, and a migration drops the text_settings and text_messages tables and the decision source "text" (any approval made by a text reply is kept, counted as a one-tap link). The shared approve and take-back helpers in plan-links.ts stay, used by the one-tap link |
 | 79 Navigation, Today and Settings | PR #92 | One menu with five places: Today (/home), Jane (/jane), Money (/money), Ahead (/ahead) and Ask, plus a profile icon holding the signed-in email, Settings and Sign out. On phones it's a tab bar along the bottom with icons, kept clear of the page and the iPhone home indicator; on computers the same five sit along the top. The tab for the page you're on is highlighted; every existing page is mapped to one tab in src/config/navigation.ts (Settings, /connect and /import light up the profile icon), and a test reads the pages from src/app so a new page can't be left out. Home is now "Today", with only what needs you: Jane's plan this week ("N things, could save $X a year", Review and approve), safe to spend until payday, Needs you (actions waiting on you and new alerts), Coming up (the next 7 bills, deadlines and card or loan payments in the next month, soonest first, a bill that's also a deadline shown once; src/insights/coming-up.ts), what Jane did this week, Getting started for new people, and "N new things to decide" linking to the Jane tab. Money found, saved and in progress are one line under the heading. The row of 13 links, goals, budgets and "New for you" left Home for the Money and Jane tabs. Settings is in four groups with a menu at the top: Accounts, Notifications, Autopilot, and Privacy and security; every old anchor (#banks, #alerts, #autopilot, #rules, #two-factor, #sessions; #texts until texts were removed) still works. The Jane, Money and Ahead pages themselves are step 80 |
 | 80 Jane, Money and Ahead hubs | PR #93 | Three new pages that gather the existing ones; every old page and link still works. /jane ("What Jane is doing for you"): To decide (the plan's top 5 cards with their saving and Jane's pick when there's one, linking to each card, plus "See the full plan" and "All findings"), In progress (open actions with their status, waiting-on-you first with what's needed), Done (finished actions with what they saved, and the saved-so-far total) and the 3 newest unread alerts (seeing them there doesn't mark them read). /money ("Your money"): tiles for net worth, investments (only with an investment account), things you own ("Add your home" when a mortgage has nothing linked), goals on track, spending this month, budgets over, bills and subscriptions (with a second link to Coming up), transactions, loans and cards owed, and documents. /ahead ("Plan ahead"): deadlines (the next one and how many in 30 days), the yearly-bills set-aside (linking to the new /budgets#yearly), paying off debt, can I afford this, life events (a checklist in progress), the tax-time pack year, the monthly check-in and the year in review. Each number comes from the same code as its full page; every tile has a friendly empty state. One shared tile (src/components/hub-tile.tsx), two across on a phone and three on a wider screen. Limits live in src/config/hubs.ts |
+| 81 The chat as home | PR #100 | Home is now Jane's chat (/chat): Jane's messages, newest at the bottom, opened at the end, the last 50 with "Show earlier", in the ASCII style. Each message is a jane_messages row (kind brief, decision, done, heads_up, reply or user; body; refs; buttons; open, answered or dismissed with what was chosen; a dedupeKey unique per person), in Download my data and deleted with the account. Buttons, from one registry (src/lib/jane-agent/actions): Yes, No and Jane's pick ("Switch to …") on a finding, through recordDecision with the card hash and a new decision source "chat"; "Approve all safe ones" on the week's plan, through yesToAll on the same no-risk items as the one-tap link (never calls, cancellations, insurance or moving money); Undo on a rule's yes (within a day, before work starts) and on a No (for a few seconds, then the buttons come back); and Open links. Each tap is checked on the server (the person's own message, still open, offering that button) and works only while the finding is what the message said; it's audited (chat_action_taken) and tracked without amounts. An answered message shows "You chose: …" and a line on what happened, and messages answered elsewhere (on the card, the plan, a rule) lose their buttons. The menu is Chat (>_), Today, Jane, Money and Ahead; Ask left the tab bar for the "Ask Jane anything" box at the bottom of the chat and still lights up Chat. Sign-in, two-factor, the Terms and the installed app now open the chat; the demo bank's scan ends there too |
+| 82 Jane's brain | PR #100 | Jane decides what to say by itself (src/lib/jane-agent/brain.ts, pure): five message sources, each its own module in one list. The morning brief once a day from 7am (safe to spend until payday, bills due in 2 days, how many things wait); findings worth deciding, time-sensitive ones first, then the biggest yearly saving, with Jane's pick when it compared options; the week's plan ("N things, could save $X a year", Approve all safe ones, Review); "I did this" (a standing rule's yes with Undo for a day, and work the agent finished in the last week with what was confirmed); heads-ups (urgent alerts except double charges, said as findings, and deadline reminders, said as the deadline; deadlines in the next 3 days; a step only the person can do; a budget gone over; a goal whose date passed short). Limits in src/config/agent-chat.ts: 5 messages a day besides the brief, with a cap per source (3 findings, 2 heads-ups, 2 "I did this", 1 plan), counted in the person's own day; quiet from 9pm to 8am in users.timezone (US Pacific when unset; a new helper, src/lib/jane-agent/quiet-hours.ts); never the same dedupeKey twice (also a unique index); most important first. The runner loads everything with the existing loaders (Today's summary, the plan, comparisons, rules, alerts) and posts after each bank or demo-bank sync, after a CSV import, from the daily digest job (up to 200 people a run, the longest since Jane posted first) and when the person opens the chat with nothing posted yet today (then quiet hours and the 7am start don't apply: they're looking). A failure there never fails a sync or import |
 
 Still needed from a person before outside users: counsel (insurance referral licensing, privacy policy and terms), Plaid Production approval and questionnaire, a backup restore test, and admins enrolling in two-factor. See docs/beta-checklist.md.
 
@@ -1667,6 +1669,146 @@ works, since emails and texts link to them.
 > Acceptance criteria:
 > - Each hub's numbers match the pages they link to
 > - Every page in the tab is reachable from its hub
+
+## Phase U: Jane the agent (steps 81–86)
+
+Jane so far is a place to check: five tabs full of features. Now Jane comes to the person.
+Every day it looks at their money and posts what matters in one chat, with buttons to
+answer, so they don't have to go looking or think about what to do next. The chat is the
+home screen; the tabs become the details behind it. First in the app, then as
+notifications (push and email) that can be answered, later as a native app.
+
+Ground rules for every step in this phase:
+- Jane's messages are fixed templates in Jane's voice (short, plain, friendly); any text
+  from Claude (step 84) passes the guardrails before it's shown. No investment, tax or
+  legal advice.
+- Every button works through the code the rest of the app uses (decisions, the plan,
+  standing rules and their undo), never a shortcut, and is checked on the server: the
+  person's own message, still open, offering that button.
+- Moving money, cancellations, insurance and calls still need the person's own tap; a
+  chat button is one, autopilot never is.
+- Jane never says the same thing twice, keeps to a daily limit and stays quiet from 9pm to
+  8am in the person's timezone (src/config/agent-chat.ts).
+
+### Step 81: The chat as home
+
+> Read CLAUDE.md. One chat where Jane talks to the person, as the home screen.
+>
+> Build:
+> 1. jane_messages (user-owned, in Download my data, deleted with the account): kind
+>    (brief, decision, done, heads_up, reply, user), body, refs (finding, action,
+>    decision…), actions (the buttons: id, label, primary, secondary or link), status (open,
+>    answered, dismissed) with what was chosen and when, a dedupeKey unique per person,
+>    priority and readAt.
+> 2. /chat: newest at the bottom, opened at the end, the last 50 with "Show earlier". Jane's
+>    messages on the left with their buttons; an answered one shows what was chosen instead,
+>    keeping Undo while it works. A message box at the bottom ("Ask Jane anything") opens
+>    /ask until step 84. ASCII style; fits a 375px phone and the tab bar never covers the
+>    newest message.
+> 3. Home is /chat: a Chat tab first in the menu, then Today, Jane, Money and Ahead; Ask
+>    leaves the tab bar for the message box, and /ask still works under Chat.
+> 4. Buttons, as one registry of button actions (src/lib/jane-agent/actions): Yes, No and
+>    Jane's pick on a finding (recordDecision with the card hash, source "chat"; the pick as
+>    the option to switch to), "Approve all safe ones" on the week's plan (yesToAll on the
+>    one-tap link's no-risk items), Undo (a rule's yes within a day; a No within seconds),
+>    and Open links to the detail page.
+>
+> Acceptance criteria:
+> - Another person's message, a message no longer open, or a button it doesn't offer is
+>   refused, and changes nothing
+> - "Approve all safe ones" never includes cancellations, calls, insurance or moving money
+> - Undo works only while the app's own undo does
+
+### Step 82: Jane's brain
+
+> Read CLAUDE.md. Jane decides what to say, every day, by itself.
+>
+> Build:
+> 1. A pure brain (src/lib/jane-agent/brain.ts): plan(snapshot, history, now, settings)
+>    returns the messages to post, from one registry of message sources, each its own
+>    module: the morning brief (once a day after 7am: safe to spend until payday, bills
+>    due in 2 days, how many things wait), findings worth deciding (the biggest saving
+>    first, with Jane's pick), the week's plan, "I did this" (what autopilot did, with Undo
+>    while allowed) and heads-ups (deadlines in 3 days, a budget gone over, a goal falling
+>    behind, a step only the person can do, urgent alerts).
+> 2. Limits in src/config/agent-chat.ts: a daily cap besides the brief, a cap per source,
+>    quiet hours in users.timezone, never the same dedupeKey twice, most important first.
+> 3. A runner that loads the snapshot with the existing loaders and posts: after a bank or
+>    demo-bank sync, after a CSV import, from the daily job (batched and capped), and when
+>    the person opens the chat with nothing posted yet today.
+>
+> Acceptance criteria:
+> - Linking the demo bank lands on /chat with a brief, findings with buttons and the plan
+> - A second run posts nothing already posted; nothing is posted in quiet hours unless the
+>   person opens the chat
+> - Each source and each limit has its own test, timezones included
+
+### Step 83: Everything from the chat
+
+> Read CLAUDE.md. Every feature Jane already has, usable from the chat.
+>
+> Build:
+> 1. New sources and buttons for what's still only on the pages: Change on a plan item
+>    (its options as buttons), do-it-yourself kits, the agent's one-tap steps (cancel pages,
+>    "I've cancelled it", sign-up links for a switch), call offers, set-up proposals
+>    (budgets and goals), category filings, bill reminders, the monthly check-in and
+>    alerts as they're raised.
+> 2. Yes, No and Undo on each, through the same code as its page, with Undo wherever the
+>    page has one.
+>
+> Acceptance criteria:
+> - Each new button has a test that it works, refuses another person's message and a
+>   message no longer open
+> - Nothing that needs the person's own tap is ever done without it
+
+### Step 84: Typing to Jane
+
+> Read CLAUDE.md. The message box becomes a real one.
+>
+> Build:
+> 1. What the person types is a "user" message; Jane's answer is a "reply". Rules first:
+>    commands ("yes to all", "undo", "pause autopilot", "what's due this week") and
+>    questions about their numbers, answered from the same loaders as the pages.
+> 2. With ANTHROPIC_API_KEY set, anything else goes to Claude with the person's own data,
+>    like Ask (the same tools and limits), through checkGuardrails before it's shown. Free
+>    text never approves anything: Jane answers with the buttons to tap.
+> 3. /ask moves into the chat; its old conversations stay readable.
+>
+> Acceptance criteria:
+> - Every command has a test; without a key, everything works except free questions
+> - No reply shows advice the guardrails refuse; typing never acts without a tap
+
+### Step 85: Chat messages as notifications
+
+> Read CLAUDE.md. Jane's messages reach the person where they are.
+>
+> Build:
+> 1. A new message goes out as a push notification (where push is on) or, when unread for a
+>    while, in an email digest of what's waiting, in quiet hours' limits and a daily cap,
+>    each with links that open the message in the chat.
+> 2. Replies come back: a notification's action buttons and email links answer the same
+>    button on the same message (signed, single-use, the person's own, like one-tap links),
+>    so the safety rules stay the chat's.
+> 3. Notification settings per kind of message in Settings.
+>
+> Acceptance criteria:
+> - Nothing is sent in quiet hours or past the cap; a reply only answers its own message,
+>   once
+> - Turning a kind off stops it at once
+
+### Step 86: The tabs become details
+
+> Read CLAUDE.md. The chat is where things happen; the other pages are its details.
+>
+> Build:
+> 1. Today, Jane, Money and Ahead open from the chat ("See today", "Open") and move behind a
+>    "Details" menu; every page and address still works, since emails link to them.
+> 2. Each detail page links back to the chat message it came from, and answering on the
+>    page answers the message too.
+>
+> Acceptance criteria:
+> - Every page is reachable from the chat or the Details menu (tested against src/app)
+> - Answering on a page or in the chat shows the same answer in both
 
 ## Phase P: regulated features through partners
 

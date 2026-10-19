@@ -31,7 +31,8 @@ test("can I afford this shows a purchase's effect before and after, from the URL
 
   await page.goto("/connect");
   await page.getByRole("button", { name: "Link a demo bank" }).click();
-  await expect(page).toHaveURL("/report", { timeout: 60_000 });
+  // The scan ends in Jane's chat (spec step 82).
+  await expect(page).toHaveURL("/chat", { timeout: 60_000 });
 
   // Spec step 79: "Can I afford this?" lives under the Ahead tab now, not in a row of
   // links on Home.

@@ -113,6 +113,8 @@ export function scopedFor(userId: string, client: PrismaClient = db) {
     agentMessages: scoped.agentMessage,
     planProposals: scoped.planProposal,
     planLinks: scoped.planLink,
+    // Jane's chat (spec step 81).
+    janeMessages: scoped.janeMessage,
     documents: scoped.document,
     deadlines: scoped.deadline,
     lifeEvents: scoped.lifeEvent,

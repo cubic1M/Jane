@@ -13,7 +13,7 @@ describe("installable app", () => {
     expect(m).toMatchObject({
       name: expect.any(String),
       short_name: expect.any(String),
-      start_url: "/home",
+      start_url: "/chat",
       display: "standalone",
       theme_color: expect.stringMatching(/^#/),
       background_color: expect.stringMatching(/^#/),

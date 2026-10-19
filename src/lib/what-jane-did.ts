@@ -7,7 +7,13 @@ import { scopedFor } from "@/lib/db-scoped";
 // an estimate), what it's still working on, and what waits on the person.
 
 export type JaneDid = {
-  finished: { title: string; confirmedCents: number | null }[];
+  // The action and when it finished, for Jane's "I did this" messages (spec step 82).
+  finished: {
+    actionId: string;
+    title: string;
+    confirmedCents: number | null;
+    completedAt: Date | null;
+  }[];
   confirmedCents: number;
   // Emails and calls the agent made.
   contacts: number;
@@ -37,8 +43,10 @@ export async function whatJaneDid(
     db.actions.findMany({
       where: { agentState: "finished", status: "done", completedAt: { gte: since } },
       select: {
+        id: true,
         refundCents: true,
         confirmedAnnualCents: true,
+        completedAt: true,
         decision: { select: { cardSnapshot: true } },
       },
       orderBy: { completedAt: "asc" },
@@ -53,8 +61,10 @@ export async function whatJaneDid(
     db.agentMessages.count({ where: { direction: "outbound", createdAt: { gte: since } } }),
   ]);
   const rows = finished.map((a) => ({
+    actionId: a.id,
     title: titleOf(a.decision.cardSnapshot),
     confirmedCents: a.refundCents ?? a.confirmedAnnualCents ?? null,
+    completedAt: a.completedAt,
   }));
   return {
     finished: rows,

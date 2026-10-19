@@ -8,7 +8,7 @@ import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
 import { DecisionError, recordDecision } from "@/lib/decisions";
 import { appBase } from "@/lib/digest/links";
-import { planFor } from "@/lib/plan";
+import { planFor, type PlanItem } from "@/lib/plan";
 import { undoApproval } from "@/lib/standing-rules";
 
 // One-tap approval links (spec step 60) for the weekly email and notifications. A link
@@ -25,14 +25,18 @@ type Options = { client?: PrismaClient; now?: Date };
 
 export type LinkItem = { findingId: string; cardHash: string; title: string };
 
-// This week's ticked, no-risk items: what a one-tap link may approve. Never calls,
-// cancellations, moving money or insurance.
+// A ticked, no-risk plan item: one a one-tap link or "Approve all safe ones" in the chat
+// (spec step 81) may approve. Never calls, cancellations, moving money or insurance.
+export const isNoRisk = (item: PlanItem) =>
+  item.preselected && !NEVER_BY_RULE.includes(item.card.actionType);
+
+// This week's ticked, no-risk items.
 export async function noRiskItems(
   userId: string,
   { client = defaultClient }: Pick<Options, "client"> = {},
 ): Promise<LinkItem[]> {
   return (await planFor(userId, { client }))
-    .filter((i) => i.preselected && !NEVER_BY_RULE.includes(i.card.actionType))
+    .filter(isNoRisk)
     .map((i) => ({ findingId: i.card.findingId, cardHash: i.cardHash, title: i.card.title }));
 }
 

@@ -114,6 +114,9 @@ describe.runIf(url)("data export against a real database", () => {
     await client.lifeEvent.create({
       data: { userId, kind: "moving", startedOn: new Date("2026-10-01"), checkedItems: ["mail"] },
     });
+    await client.janeMessage.create({
+      data: { userId, kind: "brief", body: `${name} brief`, dedupeKey: "brief:2026-10-18" },
+    });
     await client.askConversation.create({
       data: {
         userId,
@@ -178,6 +181,7 @@ describe.runIf(url)("data export against a real database", () => {
       "ownedAssets",
       "deadlines",
       "lifeEvents",
+      "janeMessages",
     ] as const) {
       expect(data[key], key).toHaveLength(1);
     }

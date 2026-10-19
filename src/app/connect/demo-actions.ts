@@ -8,7 +8,7 @@ import { hit } from "@/lib/rate-limit";
 import { requireUser } from "@/lib/session";
 
 // "Link a demo bank" (spec step 75): creates the demo item, runs its first sync after the
-// response like a real link, and goes to the scan screen.
+// response like a real link, and goes to the scan screen, then Jane's chat (spec step 82).
 export async function linkDemo(): Promise<void> {
   const user = await requireUser();
   if (!(await hit("plaid", user.id)).ok) redirect("/connect");
@@ -29,5 +29,5 @@ export async function linkDemo(): Promise<void> {
       }
     });
   }
-  redirect("/scanning");
+  redirect("/scanning?then=chat");
 }

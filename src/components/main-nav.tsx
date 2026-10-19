@@ -9,11 +9,12 @@ import { TABS, tabFor, type TabKey } from "@/config/navigation";
 
 // ASCII style: each tab has a small text glyph instead of a drawn icon.
 const GLYPHS: Record<Exclude<TabKey, "settings">, string> = {
+  // Jane's chat (spec step 81).
+  chat: ">_",
   today: "(*)",
   jane: "<J>",
   money: "[$]",
   ahead: ">>>",
-  ask: "[?]",
 };
 
 export function MainNav() {

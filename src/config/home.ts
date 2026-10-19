@@ -1,7 +1,8 @@
 // What the home dashboard shows.
 
-// Where signed-in users go after sign-in. /home sends people without accounts to /connect.
-export const HOME_PATH = "/home";
+// Where signed-in users go after sign-in: Jane's chat (spec step 81). /chat and /home send
+// people without accounts to /connect.
+export const HOME_PATH = "/chat";
 
 // "Coming up" on Today (spec step 79): bills and deadlines in the next this-many days (a
 // month, including the same date next month), at most this many of them.
