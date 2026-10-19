@@ -87,7 +87,6 @@ describe.runIf(url)("the mortgage, watched, against a real database", () => {
   });
 
   it("raises PMI removal once the home's value puts the loan under 80%, with a drafted request", async () => {
-    const m = (await loadMortgage(userId, opts()))!;
     // The demo home is $380,000.
     // $312,400 of $380,000 is 82.2%: not yet.
     expect((await loadMortgage(userId, opts()))!.pmi).toMatchObject({ kind: "not_yet" });
