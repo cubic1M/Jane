@@ -13,4 +13,6 @@ export const DEBT_ACTION_IDS = [
   // Spec step 113: the person moved a card's balance to a 0% card, or paid it off.
   "transfer.start",
   "transfer.done",
+  // Spec step 114: a studentaid.gov step done; on to the next.
+  "student.next",
 ] as const;

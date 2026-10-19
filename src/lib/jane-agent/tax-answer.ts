@@ -1,6 +1,10 @@
 import type { PrismaClient } from "@/generated/prisma/client";
 import { scopedFor } from "@/lib/db-scoped";
 import { loadTaxEstimate } from "@/lib/tax-estimate";
+import { adviceMode } from "@/lib/advice-mode";
+import { loadInvestmentTaxes } from "@/lib/investment-taxes";
+import { investmentsReply } from "./tax-investments";
+import { moveReply, statesReply, workStateReply } from "./tax-states-message";
 import { loadWithholding } from "@/lib/tax-withholding";
 import { loadTaxSavings } from "@/lib/tax-savings";
 import { loadSelfEmployed } from "@/lib/self-employed";
@@ -90,6 +94,15 @@ export async function answerTaxIntent(
       return setKidsReply(intent.count);
     case "set_state":
       return setStateReply(intent.state);
+    case "move":
+    case "work_state": {
+      const { view } = await loadWorkingProfile(userId, { client, now });
+      return intent.ask === "move"
+        ? moveReply(intent, view.state.value, now)
+        : workStateReply(intent.state, view.state.value);
+    }
+    case "states":
+      return statesReply(await loadTaxEstimate(userId, { client, now }));
     case "tags":
       return tagsReply(await loadTaxTags(userId, year, { client }));
     case "tag_total":
@@ -109,6 +122,14 @@ export async function answerTaxIntent(
       return packReply(await loadTaxPack(userId, year, { client, now }));
     case "estimate":
       return estimateMessage(await loadTaxEstimate(userId, { client, now }));
+    case "investments": {
+      const [estimate, advice] = await Promise.all([
+        loadTaxEstimate(userId, { client, now }),
+        adviceMode(userId, { client }),
+      ]);
+      const view = await loadInvestmentTaxes(userId, estimate.year, { client, now });
+      return investmentsReply(view, estimate, advice);
+    }
     case "standard_deduction":
       return standardDeductionReply(await loadTaxEstimate(userId, { client, now }));
     case "bracket":
