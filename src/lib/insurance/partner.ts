@@ -1,4 +1,9 @@
-import { INSURANCE_PARTNER_ENV, QUOTABLE_KINDS, type PolicyKind } from "@/config/insurance";
+import {
+  INSURANCE_PARTNER_ENV,
+  QUOTABLE_KINDS,
+  type CoverChangeKind,
+  type PolicyKind,
+} from "@/config/insurance";
 import type { PremiumFrequency } from "@/config/documents";
 import type { PrismaClient } from "@/generated/prisma/client";
 import { demoOptionsAllowed } from "@/lib/compare";
@@ -126,7 +131,21 @@ export interface InsurancePartner {
     },
     options: { now: Date },
   ): Promise<LifeDecision & { offerExpiresAt: string | null }>;
+  // Spec step 154: a change to a policy mid-term (an endorsement): the new price per
+  // payment, from when, and the carrier's confirmation.
+  endorse(
+    policy: { carrier: string; kind: PolicyKind; premiumCents: number | null },
+    change: { kind: CoverChangeKind; detail: Record<string, unknown> },
+    options: { now: Date },
+  ): Promise<Endorsement>;
 }
+
+export type Endorsement = {
+  premiumCents: number | null;
+  // YYYY-MM-DD.
+  effectiveDate: string;
+  confirmation: string;
+};
 
 export const isQuotable = (kind: PolicyKind) => QUOTABLE_KINDS.includes(kind);
 
