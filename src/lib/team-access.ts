@@ -126,6 +126,7 @@ export const TEAM_ACCESS_RULES: Record<AuditEvent, EventRule> = {
   document_facts_saved: own,
   document_deleted: own,
   tax_pack_downloaded: own,
+  tax_profile_changed: own,
   session_signed_out: own,
   other_sessions_signed_out: own,
   // Jane's chat messages as notifications (spec step 85).
