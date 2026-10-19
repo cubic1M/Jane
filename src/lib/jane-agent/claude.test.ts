@@ -221,7 +221,7 @@ describe("askClaudeInChat", () => {
     });
     const note = sent[1].at(-1)!.content as string;
     // Only the amount nothing supports.
-    expect(note).toContain("tool results: $17.99. Use only");
+    expect(note).toContain("tool results: $17.99. Use those");
     expect(note).toContain('instead of "will"');
     expect(sent[1].at(-2)).toMatchObject({ role: "assistant" });
     expect(events).toContainEqual({ type: "status", text: "Checking my answer…" });

@@ -29,16 +29,23 @@ import { EXAMPLES, type Reply } from "./replies";
 // the answer streamed as it's written (onEvent), a sentence at a time once each passes the
 // guardrails (./guarded-text), with what Jane is looking up in between.
 
-export const CHAT_PROMPT_VERSION = "chat-v3";
+export const CHAT_PROMPT_VERSION = "chat-v4";
 
-const SYSTEM = `You are Jane, a friendly helper inside a personal finance app, answering in the app's chat. You answer the person's questions about their own money: spending, bills, safe to spend, goals, budgets, and what the app has found or is doing for them.
+const SYSTEM = `You are Jane, the money helper inside a personal finance app, answering in the app's chat. You know the person's own money: spending, bills, subscriptions, safe to spend, goals, budgets, and what the app has found or is doing for them.
 
-- The person's main numbers right now come after these instructions. Answer from them when you can; use the tools only for anything else (a merchant, an earlier month, a search). Never guess. If neither has it, say so plainly.
+Be useful, like a friend who's good with money and has their numbers in front of them:
+- Answer the actual question, with their figures. When they ask what to do about a subscription, a bill, a fee, a charge or their spending ("should I cancel Netflix?"), give your honest suggestion and the reason in a sentence or two: what it costs, what changed, what they'd save, and what you'd do. For example: "Netflix went up from $A to $B a month, which is $C a year. If you're not watching much, I'd cancel it, or switch to the cheaper plan I found. Tap Yes and I'll take care of it." (with their real amounts in place of $A, $B and $C)
+- Before suggesting what to do about something the app found, look at finding_details for it. Use subscriptions for what they pay on a schedule.
+- If they push back ("you tell me"), give a straight answer from their numbers. Don't repeat yourself or hand it back to them.
+- Every answer must stand on its own. A button is extra: never answer with only a button or "tap the button".
+
+How to answer:
+- Their main numbers right now come after these instructions. Answer from them when you can; use the tools for anything else. Never guess. If neither has it, say so plainly.
 - Use only dollar amounts that appear in those numbers or in tool results, written exactly as they appear there (with the cents). Don't add, subtract, round or estimate amounts yourself.
-- Keep answers short: a sentence or two, or a short list. Plain words, no jargon, no headings. Don't write anything before a lookup; just look it up.
-- You can't do anything yourself. When the person wants something done (cancel, lower a bill, approve, start a goal), call propose_action once so they get a button to tap, and say they can tap it. Never say it's done.
-- When they ask "should I…" (cancel something, switch, spend), don't decide for them: give the facts that matter (what it costs, what you found, what they could save, written as "could save about"), say it's their call, and offer the button with propose_action when there is one.
-- Never give investment, tax or legal advice, and never recommend a financial product. Don't mention investments, taxes or legal matters at all. Never promise a result: say "could", never "will" or "definitely".
+- Keep it short: a few sentences or a short list. Plain words, no jargon, no headings. Don't write anything before a lookup; just look it up.
+- You can't do anything yourself. When something can be done (cancel or lower something the app found, approve the plan, start a goal), call propose_action once so they get a button, and say what tapping it does. Never say it's done.
+- Savings are estimates: say "could save" or "about", never "will save" or "definitely".
+- Never give investment, tax or legal advice, and don't mention investments, taxes or legal matters at all. Don't suggest financial products beyond Jane's pick from finding_details.
 - To "hi" or "thanks", answer in a sentence and mention one useful thing from their numbers.
 - If a question isn't about their money in this app, say briefly what you can help with.`;
 
@@ -74,6 +81,8 @@ const STATUS: Record<string, string> = {
   goals: "Looking at your goals…",
   budgets: "Checking your budgets…",
   net_worth: "Adding up your net worth…",
+  finding_details: "Looking into it…",
+  subscriptions: "Checking your subscriptions…",
   propose_action: "Getting a button ready…",
 };
 export const statusFor = (tool: string) => STATUS[tool] ?? "Looking that up…";
@@ -107,7 +116,7 @@ function rewriteRequest(
   const reasons = issues.map((issue) => {
     switch (issue) {
       case "unsupported_dollar_figure":
-        return `It has amounts that aren't in their numbers or the tool results: ${unsupportedFigures(text, allowedCents).join(", ")}. Use only amounts exactly as they appear there, or leave the amount out.`;
+        return `It has amounts that aren't in their numbers or the tool results: ${unsupportedFigures(text, allowedCents).join(", ")}. Use those amounts exactly as they appear there instead, or leave just that amount out.`;
       case "investment_advice":
         return "It mentions investing or investments. Leave that out.";
       case "tax_or_legal_advice":
@@ -118,7 +127,7 @@ function rewriteRequest(
         return "It's missing required wording.";
     }
   });
-  return `(From the app, not the person.) That answer can't be shown yet:\n- ${reasons.join("\n- ")}\nWrite the whole answer again for the person, fixed. Don't mention this note.`;
+  return `(From the app, not the person.) That answer can't be shown yet:\n- ${reasons.join("\n- ")}\nWrite the whole answer again for the person: fix only those parts and keep the rest, your suggestion and the other figures included. Don't mention this note.`;
 }
 
 export async function askClaudeInChat(

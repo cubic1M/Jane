@@ -98,7 +98,10 @@ export const CHAT_PRIMER_TOOLS = [
   "budgets",
   "goals",
   "open_findings",
+  "subscriptions",
 ] as const;
+// finding_details lists Jane's pick and at most this many runners-up.
+export const CHAT_RUNNERS_UP = 2;
 // "What's due this week" looks this many days ahead.
 export const CHAT_WEEK_DAYS = 7;
 // Categories named when the person asks what they spent without naming one.

@@ -1,17 +1,23 @@
 import type Anthropic from "@anthropic-ai/sdk";
 import { BUDGET_SUGGESTION_MONTHS } from "@/config/budgets";
 import { MAX_AFFORD_CENTS } from "@/config/afford";
-import { CHAT_PRIMER_TOOLS } from "@/config/agent-chat";
+import { CHAT_PRIMER_TOOLS, CHAT_RUNNERS_UP } from "@/config/agent-chat";
 import type { PrismaClient } from "@/generated/prisma/client";
 import { budgetSummary } from "@/insights/budgets";
 import { loadInsightTransactions } from "@/insights/load";
 import { netWorth } from "@/insights/net-worth";
+import { loadDetectionInput } from "@/detection/engine";
+import { recurringCharges } from "@/detection/subscriptions";
 import { ASK_TOOLS, runAskTool, type ToolOutput } from "@/lib/ask/tools";
+import { CARD_SELECT, buildCard } from "@/lib/cards";
+import { comparisonFor } from "@/lib/compare";
+import { frequencyWords } from "@/lib/explain-input";
 import { scopedFor } from "@/lib/db-scoped";
 import { listGoals } from "@/lib/goals";
 import { homeSummary } from "@/lib/home";
 import { formatCents } from "@/lib/money";
 import { affordWindow } from "@/planning/afford";
+import type { Scored } from "@/planning/compare";
 import { ACTION_HANDLERS } from "./actions";
 import { monthLabel, type Reply } from "./replies";
 import { localTime } from "./quiet-hours";
@@ -68,7 +74,24 @@ export const CHAT_TOOLS: Anthropic.Tool[] = [
   {
     name: "open_findings",
     description:
-      "Things the app found that could save the person money and they haven't decided on yet, with each one's id (for propose_action), estimate, and Jane's pick when there's one.",
+      "Things the app found that could save the person money and they haven't decided on yet, with each one's id (for propose_action and finding_details), kind, estimate, and Jane's pick when there's one.",
+    input_schema: noInput,
+  },
+  {
+    name: "finding_details",
+    description:
+      "Everything about one finding, before you suggest what to do about it: why it was flagged, the evidence (charges and dates), what would change and what they'd give up, and, when the app compared options, what they pay now, Jane's pick and the runners-up with first-year cost and saving.",
+    input_schema: {
+      type: "object",
+      properties: { finding_id: { type: "string", description: "An id from open_findings." } },
+      required: ["finding_id"],
+      additionalProperties: false,
+    },
+  },
+  {
+    name: "subscriptions",
+    description:
+      "Everything that charges the person on a schedule, from their transactions, as on the Subscriptions page: how often, the last charge and its date, the next expected date, the cost a year, whether it's a subscription, and the id of an open finding about it if there is one.",
     input_schema: noInput,
   },
   {
@@ -90,7 +113,7 @@ export const CHAT_TOOLS: Anthropic.Tool[] = [
   {
     name: "propose_action",
     description:
-      "Offer the person a button under your answer. You can't do anything yourself; the person decides by tapping. Use it at most once, and only when the person asked for something to be done. Actions: finding.yes (Yes and No on one open finding; give finding_id from open_findings), plan.approve_safe (approve the plan's safe items together), goal.start (start a savings goal; give goal_name, goal_amount in dollars and goal_month as YYYY-MM within the next 12 months), open (a link to a page; give page).",
+      "Offer the person a button under your answer. You can't do anything yourself; the person decides by tapping. Use it at most once: when your answer suggests something that can be done, or the person asked for it. Actions: finding.yes (Yes and No on one open finding; give finding_id from open_findings), plan.approve_safe (approve the plan's safe items together), goal.start (start a savings goal; give goal_name, goal_amount in dollars and goal_month as YYYY-MM within the next 12 months), open (a link to a page; give page).",
     input_schema: {
       type: "object",
       properties: {
@@ -159,11 +182,80 @@ export async function runChatTool(
           if (f.pick) money(f.pick.savingCents);
           return {
             id: f.findingId,
+            kind: f.type,
             title: f.title,
             estimate: f.savings,
             janesPick: f.pick?.name ?? null,
           };
         }),
+      });
+    }
+    case "finding_details": {
+      const args = (input && typeof input === "object" ? input : {}) as Record<string, unknown>;
+      const finding = await scopedFor(userId, client).findings.findFirst({
+        where: { id: str(args.finding_id) },
+        select: { ...CARD_SELECT, status: true },
+      });
+      if (!finding) return out({ error: "There's no finding with that id. Use open_findings." });
+      const card = buildCard(finding);
+      if (card.annualSavingsCents !== null) money(card.annualSavingsCents);
+      const comparison = await comparisonFor(finding, { userId, client, now });
+      const scored = (s: Scored) => ({
+        provider: s.option.provider,
+        plan: s.option.name,
+        firstYearCost: money(s.firstYearCents),
+        savingFirstYear: money(s.savingCents),
+        notes: s.notes,
+      });
+      return out({
+        id: card.findingId,
+        kind: card.findingType,
+        status: finding.status,
+        title: card.title,
+        why: card.explanation,
+        whatChanges: card.whatChanges,
+        estimateAYear: card.annualSavingsCents === null ? null : money(card.annualSavingsCents),
+        giveUp: card.giveUp,
+        alternatives: card.alternatives,
+        evidence: card.evidence.map((row) => ({
+          date: row.date,
+          what: row.label,
+          amount: row.amountCents === null ? null : money(row.amountCents),
+        })),
+        comparison: comparison && {
+          payNowAYear: money(comparison.currentYearCents),
+          janesPick: scored(comparison.pick),
+          whyThePick: comparison.why,
+          runnersUp: comparison.runnersUp.slice(0, CHAT_RUNNERS_UP).map(scored),
+        },
+      });
+    }
+    case "subscriptions": {
+      const db = scopedFor(userId, client);
+      const [input, confirmed, findings] = await Promise.all([
+        loadDetectionInput(userId, { client, now }),
+        db.subscriptionChecks.findMany({
+          where: { isSubscription: true },
+          select: { merchantKey: true },
+        }),
+        db.findings.findMany({
+          where: { status: { in: ["new", "shown"] } },
+          select: { id: true, key: true },
+        }),
+      ]);
+      input.subscriptionMerchantKeys = confirmed.map((c) => c.merchantKey);
+      const findingFor = new Map(findings.map((f) => [f.key, f.id]));
+      return out({
+        charges: recurringCharges(input).map((r) => ({
+          merchant: r.merchant,
+          subscription: r.subscription,
+          billed: frequencyWords(r.frequency),
+          lastCharge: money(r.lastAmountCents),
+          lastDate: r.lastDate,
+          nextDate: r.nextDate,
+          aYear: money(r.annualCostCents),
+          openFindingId: findingFor.get(r.key) ?? null,
+        })),
       });
     }
     case "goals": {

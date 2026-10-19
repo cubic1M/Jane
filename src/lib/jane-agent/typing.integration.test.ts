@@ -16,6 +16,7 @@ import { exportUserData } from "@/lib/data-export";
 import { linkDemoBank } from "@/lib/plaid/demo";
 import { syncItem } from "@/lib/plaid/sync";
 import { ChatActionError, takeChatAction } from "./actions";
+import { runChatTool } from "./claude-tools";
 import { chatFeed, closeSettled, postedToday } from "./messages";
 import { parseActions } from "./types";
 import { ChatInputError, recentTurns, sendToJane } from "./typing";
@@ -187,6 +188,49 @@ describe.runIf(url)("typing to Jane against a real database", () => {
       "Your Food and drink budget is $400.00 a month",
     );
     await client.budget.deleteMany({ where: { userId: { in: [userId, otherId] } } });
+  });
+
+  it("gives Claude a finding's details and the subscriptions, from the person's own data", async () => {
+    const netflix = (
+      await client.finding.findMany({ where: { userId, type: "price_increase" } })
+    ).find((f) => (f.evidence as { merchant?: string }).merchant === "Netflix")!;
+    const details = await runChatTool(
+      userId,
+      "finding_details",
+      { finding_id: netflix.id },
+      { client, now: LINKED },
+    );
+    const parsed = JSON.parse(details.content);
+    expect(parsed).toMatchObject({ id: netflix.id, kind: "price_increase" });
+    expect(parsed.evidence.length).toBeGreaterThan(0);
+    // The demo bank's cheaper Netflix plan, compared.
+    expect(parsed.comparison.janesPick.provider).toMatch(/Netflix/);
+    // Every figure it shows is one the guardrails will allow.
+    expect(details.cents.length).toBeGreaterThan(0);
+
+    // Someone else's finding is out of reach.
+    const theirs = await runChatTool(
+      otherId,
+      "finding_details",
+      { finding_id: netflix.id },
+      { client, now: LINKED },
+    );
+    expect(JSON.parse(theirs.content)).toEqual({
+      error: "There's no finding with that id. Use open_findings.",
+    });
+
+    const subs = JSON.parse(
+      (await runChatTool(userId, "subscriptions", {}, { client, now: LINKED })).content,
+    );
+    expect(subs.charges).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          merchant: "Netflix",
+          subscription: true,
+          openFindingId: netflix.id,
+        }),
+      ]),
+    );
   });
 
   it("pauses autopilot only on the tap", async () => {
