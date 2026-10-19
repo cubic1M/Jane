@@ -88,6 +88,8 @@ export const MESSAGE_PRIORITY = {
   // Spec step 153: life cover sized with quotes (demo advice), and the question before it.
   life_sized: 49,
   life_dependants: 45,
+  // Spec step 154: cover changes after a life event, worth doing soon.
+  cover_change: 72,
   urgent_alert: 95,
   deadline: 90,
   waiting_on_you: 85,
@@ -172,6 +174,14 @@ export const CHAT_HISTORY_HOURS = 48;
 // the one-time autopilot question, so it never pushes a finding out on the first day.
 export const CHAT_UNCAPPED_SOURCES: readonly string[] = ["autopilot", "review", "welcome"];
 
+// Spec step 184: the morning brief is the day's agenda. Anything less urgent than this
+// waits for it and becomes one of its lines; urgent alerts and deadlines come at once.
+export const AGENDA_URGENT_PRIORITY = 90;
+// The agenda lists at most this many things to say yes to (a Yes button each, like a
+// bundle's: bundle.1 to bundle.5) and this many other things worth knowing.
+export const AGENDA_MAX_YES = 5;
+export const AGENDA_MAX_LINES = 3;
+
 // Spec step 83: a budget counts as nearly over once this share of it is spent this month.
 export const BUDGET_NEARLY_OVER_SHARE = 0.9;
 // Typing to Jane (spec step 84). The longest message the box takes, in characters.
@@ -200,6 +210,10 @@ export const CHAT_PRIMER_TOOLS = [
 export const CHAT_RUNNERS_UP = 2;
 // "What's due this week" looks this many days ahead.
 export const CHAT_WEEK_DAYS = 7;
+// Spec step 183: "Am I OK?" names at most this many bills and deadlines due within
+// CHAT_WEEK_DAYS (or by the month's end for "this month"), and this many things to do.
+export const WHOLE_PICTURE_DUE = 3;
+export const WHOLE_PICTURE_TOP = 3;
 // Categories named when the person asks what they spent without naming one.
 export const CHAT_TOP_CATEGORIES = 3;
 

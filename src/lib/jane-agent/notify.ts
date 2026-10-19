@@ -88,9 +88,13 @@ export function chatPushMessage(message: Notifiable, now: Date): PushMessage {
 // about an alert (alerts have their own delivery, preferences and cap in
 // src/lib/alerts.ts, so they aren't sent twice).
 export function chooseToNotify<T extends Notifiable>(messages: T[], prefs: ChatNotifyPrefs): T[] {
-  return messages.filter(
-    (m) => notifiesKind(prefs, m.kind) && parseRefs(m.refs).alertId === undefined,
-  );
+  return messages.filter((m) => {
+    const refs = parseRefs(m.refs);
+    // Spec step 184: the day's agenda goes out like a decision when something on it needs a
+    // yes (what it lists is hidden behind it, so it's the only message that can).
+    const kind = m.kind === "brief" && (refs.items?.length ?? 0) > 0 ? "decision" : m.kind;
+    return notifiesKind(prefs, kind) && refs.alertId === undefined;
+  });
 }
 
 // Email: real with Resend's key; printed to the console in local development (like the

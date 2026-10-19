@@ -326,6 +326,7 @@ model User {
   employerBenefits       EmployerBenefit[]
   policyReadings         PolicyReading[]
   lifeApplications       LifeApplication[]
+  coverChanges           CoverChange[]
   lifeEvents             LifeEvent[]
   // What's in investment accounts (spec step 128).
   securities             Security[]
@@ -1942,6 +1943,38 @@ model LifeApplication {
 
   @@index([userId, status])
   @@map("life_applications")
+}
+
+// Cover changes after a life event (spec step 154): a car bought, a move, a new baby, a
+// marriage or a new job, and the changes Jane prepares for it (add the car, move the
+// renters policy, add a dependant, review life cover), asked about once.
+model CoverChange {
+  id              String    @id @default(cuid())
+  userId          String    @map("user_id")
+  // car_bought, moving, new_baby, married or new_job.
+  event           String
+  // What the event is: a life event, an owned car, a car loan, or "told:<date>".
+  eventKey        String    @map("event_key")
+  // address, add_vehicle, add_spouse, add_dependant, review_life, review_benefits or get_auto.
+  change          String
+  policyId        String?   @map("policy_id")
+  // What the change needs, like the car's name.
+  detail          Json      @default("{}")
+  // prepared, done or dismissed.
+  status          String    @default("prepared")
+  // The price after the change, and the carrier's confirmation, through the partner.
+  newPremiumCents Int?      @map("new_premium_cents")
+  confirmation    String?
+  // Who made it: the person's tap, or Jane on her own (address only, at "handle everything").
+  doneBy          String?   @map("done_by")
+  createdAt       DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  doneAt          DateTime? @map("done_at") @db.Timestamptz(3)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, event, eventKey, change, policyId])
+  @@index([userId, status])
+  @@map("cover_changes")
 }
 
 // The household facts that matter for cover (spec step 102), as the person typed them.

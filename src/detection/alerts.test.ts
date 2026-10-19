@@ -226,6 +226,10 @@ describe("low_balance", () => {
     expect(lowBalanceAlerts(detect(data))).toEqual([
       expect.objectContaining({ type: "low_balance", key: "account:acct_checking:2026-11" }),
     ]);
+    // The day is in the title, once, as people read it.
+    const [alert] = lowBalanceAlerts(detect(data));
+    expect(alert.title).toMatch(/around Nov 1$/);
+    expect(alert.body).not.toMatch(/\d{4}-\d{2}-\d{2}|around/);
   });
 
   it("says nothing with enough cushion", () => {
