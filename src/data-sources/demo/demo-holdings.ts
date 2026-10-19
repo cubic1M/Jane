@@ -67,6 +67,20 @@ const SECURITIES: Readonly<Record<string, DemoSecurity>> = {
     subtype: "mutual fund",
   },
   KLCX: { ticker: "KLCX", name: "Keystone US Large Cap Index ETF", type: "etf", subtype: "etf" },
+  // Funds the demo person doesn't hold yet but can buy (spec step 133).
+  KTIIX: {
+    ticker: "KTIIX",
+    name: "Keystone Total International Index Fund",
+    type: "mutual fund",
+    subtype: "mutual fund",
+  },
+  KTRGX: {
+    ticker: "KTRGX",
+    name: "Keystone Target 2055 Index Fund",
+    type: "mutual fund",
+    subtype: "mutual fund",
+  },
+  KDVX: { ticker: "KDVX", name: "Keystone US Dividend Index ETF", type: "etf", subtype: "etf" },
   CASH: { ticker: null, name: "Cash", type: "cash", subtype: "cash", cash: true },
 };
 
@@ -94,39 +108,60 @@ const POSITIONS: Readonly<Record<"retirement" | "brokerage", readonly Position[]
 
 const cents = (dollars: number) => Math.round(dollars * 100);
 
-export function demoSecurities(today: string): Security[] {
-  return Object.entries(SECURITIES).map(([key, s]) => {
-    const price = [...POSITIONS.retirement, ...POSITIONS.brokerage].find(
-      (p) => p.key === key,
-    )!.price;
-    return {
-      security_id: demoSecurityId(key),
-      isin: null,
-      cusip: null,
-      sedol: null,
-      institution_security_id: null,
-      institution_id: null,
-      proxy_security_id: null,
-      name: s.name,
-      ticker_symbol: s.ticker,
-      is_cash_equivalent: s.cash ?? false,
-      type: s.type,
-      subtype: s.subtype,
-      close_price: price,
-      close_price_as_of: today,
-      update_datetime: null,
-      iso_currency_code: "USD",
-      unofficial_currency_code: null,
-      market_identifier_code: null,
-      sector: s.sector ?? null,
-      industry: null,
-      option_contract: null,
-      fixed_income: null,
-    } as Security;
+// Every demo security's price, in dollars: the held ones' and the ones that can be bought.
+export const DEMO_PRICES: Readonly<Record<string, number>> = {
+  ...Object.fromEntries(
+    [...POSITIONS.retirement, ...POSITIONS.brokerage].map((p) => [p.key, p.price]),
+  ),
+  KTIIX: 34.12,
+  KTRGX: 18.4,
+  KDVX: 41.25,
+};
+
+// The securities Plaid would list: the ones held (after any orders), or all of them.
+export function demoSecurities(today: string, only?: ReadonlySet<string>): Security[] {
+  return Object.entries(SECURITIES).flatMap(([key, s]) => {
+    if (only && !only.has(demoSecurityId(key))) return [];
+    const price = DEMO_PRICES[key];
+    return [
+      {
+        security_id: demoSecurityId(key),
+        isin: null,
+        cusip: null,
+        sedol: null,
+        institution_security_id: null,
+        institution_id: null,
+        proxy_security_id: null,
+        name: s.name,
+        ticker_symbol: s.ticker,
+        is_cash_equivalent: s.cash ?? false,
+        type: s.type,
+        subtype: s.subtype,
+        close_price: price,
+        close_price_as_of: today,
+        update_datetime: null,
+        iso_currency_code: "USD",
+        unofficial_currency_code: null,
+        market_identifier_code: null,
+        sector: s.sector ?? null,
+        industry: null,
+        option_contract: null,
+        fixed_income: null,
+      } as Security,
+    ];
   });
 }
 
-export function demoHoldings(demo: DemoSeed, today: string): Holding[] {
+export function demoHoldings(
+  demo: DemoSeed,
+  today: string,
+  // Simulated orders the person placed (spec step 133), applied in order.
+  orders: DemoOrder[] = [],
+): Holding[] {
+  return applyDemoOrders(seedHoldings(demo, today), orders, today);
+}
+
+function seedHoldings(demo: DemoSeed, today: string): Holding[] {
   const balances = new Map(demoAccounts(demo).map((a) => [a.account_id, a.balances.current ?? 0]));
   return (["retirement", "brokerage"] as const).flatMap((account) => {
     const id = accountId(demo.seed, account);
@@ -359,4 +394,107 @@ export function demoInvestmentTransactions(
         }) as InvestmentTransaction,
     ),
   );
+}
+
+// A simulated order the person placed through the stand-in brokerage (spec step 133),
+// filled on paper at the demo price. The demo bank replays them on every sync, so the
+// holdings stay as the orders left them; no real money is involved.
+export type DemoOrder = {
+  id: string;
+  // The demo account's Plaid id (accountId(seed, key)).
+  accountRef: string;
+  ticker: string;
+  side: "buy" | "sell";
+  quantity: number;
+  amountCents: number;
+  // YYYY-MM-DD the order filled.
+  day: string;
+};
+
+const tickerOf = (securityId: string) =>
+  Object.keys(SECURITIES).find((k) => demoSecurityId(k) === securityId) ?? null;
+
+// Each order moves money between the security and the account's cash, so the account's
+// total stays the same; a sale takes its share of the cost basis with it. Pure.
+export function applyDemoOrders(
+  holdings: Holding[],
+  orders: DemoOrder[],
+  today: string,
+): Holding[] {
+  const out = holdings.map((h) => ({ ...h }));
+  for (const order of orders) {
+    const cash = out.find(
+      (h) => h.account_id === order.accountRef && SECURITIES[tickerOf(h.security_id) ?? ""]?.cash,
+    );
+    const price = DEMO_PRICES[order.ticker];
+    if (!cash || price === undefined) continue;
+    let held = out.find(
+      (h) => h.account_id === order.accountRef && h.security_id === demoSecurityId(order.ticker),
+    );
+    if (!held && order.side === "sell") continue;
+    if (!held) {
+      held = {
+        account_id: order.accountRef,
+        security_id: demoSecurityId(order.ticker),
+        institution_price: price,
+        institution_price_as_of: today,
+        institution_price_datetime: null,
+        institution_value: 0,
+        cost_basis: 0,
+        quantity: 0,
+        iso_currency_code: "USD",
+        unofficial_currency_code: null,
+        vested_quantity: null,
+        vested_value: null,
+      } as Holding;
+      out.push(held);
+    }
+    const sign = order.side === "buy" ? 1 : -1;
+    const quantity = Math.max(0, round(held.quantity + sign * order.quantity, 6));
+    const basis =
+      order.side === "buy"
+        ? (held.cost_basis ?? 0) + order.amountCents / 100
+        : held.quantity > 0
+          ? (held.cost_basis ?? 0) * (quantity / held.quantity)
+          : 0;
+    const valueCents = cents(quantity * price);
+    const moved = cents(held.institution_value) - valueCents;
+    held.quantity = quantity;
+    held.cost_basis = round(basis, 2);
+    held.institution_value = valueCents / 100;
+    const cashCents = cents(cash.institution_value) + moved;
+    cash.institution_value = cashCents / 100;
+    cash.quantity = cashCents / 100;
+    cash.cost_basis = cashCents / 100;
+  }
+  return out.filter((h) => h.quantity > 0 || SECURITIES[tickerOf(h.security_id) ?? ""]?.cash);
+}
+
+// The orders as investment transactions, as a brokerage would report them.
+export function demoOrderTransactions(
+  demo: DemoSeed,
+  orders: DemoOrder[],
+  start: string,
+  end: string,
+): InvestmentTransaction[] {
+  return orders
+    .filter((o) => o.day > start && o.day <= end)
+    .map(
+      (o): InvestmentTransaction =>
+        ({
+          investment_transaction_id: `demo-${demo.seed}-order-${o.id}`,
+          account_id: o.accountRef,
+          security_id: demoSecurityId(o.ticker),
+          date: o.day,
+          name: `${o.side === "buy" ? "BUY" : "SELL"} ${SECURITIES[o.ticker]?.name.toUpperCase() ?? o.ticker}`,
+          quantity: o.side === "buy" ? o.quantity : -o.quantity,
+          amount: (o.side === "buy" ? o.amountCents : -o.amountCents) / 100,
+          price: DEMO_PRICES[o.ticker] ?? 0,
+          fees: 0,
+          type: o.side as InvestmentTransaction["type"],
+          subtype: o.side as InvestmentTransaction["subtype"],
+          iso_currency_code: "USD",
+          unofficial_currency_code: null,
+        }) as InvestmentTransaction,
+    );
 }

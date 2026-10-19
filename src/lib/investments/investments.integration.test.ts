@@ -19,6 +19,8 @@ import { profileSummary } from "@/planning/investor-profile";
 import { loadFees } from "./fees";
 import { loadRetirement } from "./retirement";
 import { loadReview } from "./review";
+import { loadInvestments } from "./holdings";
+import { loadRebalance, placeRebalance, RebalanceError } from "./rebalance";
 import { profileOf, saveProfileForm } from "./profile";
 
 // Investments (spec steps 128–137) against a real, migrated Postgres (see
@@ -200,5 +202,85 @@ describe.runIf(url)("investments in Jane's chat, against a real database", () =>
     });
     expect(reply.refs.advice).toBe(true);
     expect(reply.body).toMatch(/^By 67 your retirement accounts could be about/);
+  });
+
+  it("step 133: one tap places simulated orders that move to the target mix", SLOW, async () => {
+    const userId = await demoPerson();
+    await saveProfileForm(
+      userId,
+      { age: "45", horizon: "over_20", dropReaction: "worry", goals: ["retirement"] },
+      { client, now: LINKED },
+    );
+    const before = await loadInvestments(userId, { client, now: LINKED });
+    const { plan } = await loadRebalance(userId, { client, now: LINKED });
+    expect(plan!.orders.length).toBeGreaterThan(0);
+
+    // The review message carries the button and the plan's key.
+    const snapshot = await loadSnapshot(userId, { client, now: LINKED });
+    const review = investmentsSource
+      .gather(snapshot!, {} as never)
+      .find((c) => c.dedupeKey.startsWith("review:"))!;
+    expect(review.actions[0]).toMatchObject({ id: "invest.rebalance" });
+    expect(review.refs.rebalanceKey).toBe(plan!.key);
+
+    await expect(placeRebalance(userId, "stale", { client, now: LINKED })).rejects.toThrow(
+      RebalanceError,
+    );
+    const { reply } = await sendToJane(userId, "rebalance", { client, now: LINKED });
+    expect(reply.refs.rebalanceKey).toBe(plan!.key);
+    const { message } = await takeChatAction(userId, reply.id, "invest.rebalance", {
+      client,
+      now: LINKED,
+    });
+    expect(message.refs.note).toMatch(
+      /^Done in the simulated brokerage \(no real money moves\): \d+ of \d+ orders filled\. Your mix is now 40% US stocks, 20% international stocks, 35% bonds, 5% cash\.$/,
+    );
+    const orders = await client.brokerageOrder.findMany({ where: { userId } });
+    expect(orders.every((o) => o.partner === "simulated" && o.status === "filled")).toBe(true);
+    expect(logAudit).toHaveBeenCalledWith(
+      { type: "user", id: userId },
+      "brokerage_orders_placed",
+      expect.objectContaining({ type: "brokerage_batch" }),
+      { reason: "rebalance", orders: orders.length, simulated: true },
+    );
+
+    // The holdings show the new mix; each account's total is unchanged; nothing left to do.
+    const after = await loadInvestments(userId, { client, now: LINKED });
+    for (const a of after.accounts) {
+      const was = before.accounts.find((b) => b.id === a.id)!;
+      expect(a.holdingsCents, a.name).toBe(was.holdingsCents);
+      expect(a.holdingsMatch, a.name).toBe(true);
+    }
+    expect((await loadRebalance(userId, { client, now: LINKED })).plan!.orders).toEqual([]);
+    // And they stay that way through a full sync of the demo bank.
+    const item = await client.plaidItem.findFirstOrThrow({ where: { userId } });
+    await syncItem(item.id, { client, api: plaid, now: new Date("2026-10-20T15:00:00Z") });
+    expect((await loadRebalance(userId, { client, now: LINKED })).plan!.orders).toEqual([]);
+    expect(
+      await client.investmentTransaction.count({
+        where: { userId, plaidInvestmentTransactionId: { contains: "-order-" } },
+      }),
+    ).toBe(orders.length);
+    // Tapping again changes nothing.
+    await expect(
+      takeChatAction(userId, reply.id, "invest.rebalance", { client, now: LINKED }),
+    ).rejects.toThrow();
+  });
+
+  it("step 133: never trades for a real account", SLOW, async () => {
+    const userId = await demoPerson();
+    await client.account.create({
+      data: { userId, source: "csv", name: "Checking", type: "depository", subtype: "checking" },
+    });
+    await saveProfileForm(
+      userId,
+      { age: "45", horizon: "over_20", dropReaction: "worry", goals: ["retirement"] },
+      { client, now: LINKED },
+    );
+    expect((await loadRebalance(userId, { client, now: LINKED })).plan).toBeNull();
+    await expect(placeRebalance(userId, "any", { client, now: LINKED })).rejects.toThrow(
+      "Trading is only in demo advice mode for now.",
+    );
+    expect(await client.brokerageOrder.count({ where: { userId } })).toBe(0);
   });
 });
