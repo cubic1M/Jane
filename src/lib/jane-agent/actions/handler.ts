@@ -27,6 +27,11 @@ export type ActionOutcome = {
   actions?: MessageAction[];
   // The agent's first jobs, for the caller to run after the response.
   agentJobIds?: (string | undefined)[];
+  // Spec step 83: "Not now" hides the message from the chat until then.
+  snoozedUntil?: Date;
+  // Spec step 83: actions whose queued agent steps to run after the response (what a new
+  // autopilot level approved at once, like Settings does).
+  agentActionIds?: string[];
 };
 
 export type ActionHandler = {
@@ -49,3 +54,7 @@ export class ChatActionError extends Error {
 }
 
 export const linksOf = (actions: MessageAction[]) => actions.filter((a) => a.kind === "link");
+
+// Spec step 83: what a feature's own check says when the thing was already answered on its
+// page (or changed since the message), as a refusal that changes nothing.
+export const answeredElsewhere = (message: string) => new ChatActionError("not_open", message);

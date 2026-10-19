@@ -1,6 +1,7 @@
 import {
   CHAT_DAILY_LIMIT,
   CHAT_SOURCE_LIMITS,
+  CHAT_UNCAPPED_SOURCES,
   QUIET_END_HOUR,
   QUIET_START_HOUR,
 } from "@/config/agent-chat";
@@ -30,6 +31,9 @@ export type BrainSettings = {
 export type History = {
   recent: readonly { kind: string; dedupeKey: string; createdAt: Date }[];
   seenKeys: readonly string[];
+  // Spec step 83: messages the person said "Not now" to, and until when. Never posted again
+  // before then; after, Jane may bring them up again (if they still apply).
+  snoozed?: readonly { dedupeKey: string; until: Date }[];
 };
 
 export type PlannedMessage = Candidate & { source: string };
@@ -54,6 +58,10 @@ export function gather(snapshot: Snapshot, now: Date, settings: BrainSettings): 
 
 const sourceOf = (dedupeKey: string) => dedupeKey.slice(0, dedupeKey.indexOf(":"));
 
+// Spec step 83: the brief and the one-time autopilot question are outside the daily limits.
+const uncapped = (m: { kind: string; source: string }) =>
+  m.kind === "brief" || CHAT_UNCAPPED_SOURCES.includes(m.source);
+
 export function plan(
   snapshot: Snapshot,
   history: History,
@@ -67,7 +75,9 @@ export function plan(
   const today = localTime(now, timezone).date;
   const postedToday = history.recent.filter(
     (m) =>
-      COUNTED.includes(m.kind as MessageKind) && localTime(m.createdAt, timezone).date === today,
+      COUNTED.includes(m.kind as MessageKind) &&
+      !CHAT_UNCAPPED_SOURCES.includes(sourceOf(m.dedupeKey)) &&
+      localTime(m.createdAt, timezone).date === today,
   );
   const perSource = new Map<string, number>();
   for (const m of postedToday) {
@@ -76,7 +86,15 @@ export function plan(
   const limits = settings.sourceLimits ?? CHAT_SOURCE_LIMITS;
   let left = (settings.dailyLimit ?? CHAT_DAILY_LIMIT) - postedToday.length;
 
-  const seen = new Set([...history.seenKeys, ...history.recent.map((m) => m.dedupeKey)]);
+  // A snooze that's over lets its message come back (spec step 83).
+  const snoozeOver = new Set(
+    (history.snoozed ?? []).filter((s) => s.until <= now).map((s) => s.dedupeKey),
+  );
+  const seen = new Set(
+    [...history.seenKeys, ...history.recent.map((m) => m.dedupeKey)].filter(
+      (key) => !snoozeOver.has(key),
+    ),
+  );
   // Most important first; a stable sort keeps each source's own order within a priority.
   const candidates = gather(snapshot, now, settings)
     .map((c, index) => ({ c, index }))
@@ -86,7 +104,7 @@ export function plan(
   const out: PlannedMessage[] = [];
   for (const candidate of candidates) {
     if (seen.has(candidate.dedupeKey)) continue;
-    if (candidate.kind === "brief") {
+    if (uncapped(candidate)) {
       seen.add(candidate.dedupeKey);
       out.push(candidate);
       continue;

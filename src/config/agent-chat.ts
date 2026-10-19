@@ -10,6 +10,12 @@ export const CHAT_SOURCE_LIMITS: Readonly<Record<string, number>> = {
   heads_ups: 2,
   did: 2,
   plan: 1,
+  // Spec step 83.
+  autopilot: 1,
+  setup: 2,
+  steps: 2,
+  budgets: 1,
+  things: 1,
 };
 
 // Quiet hours in the person's timezone (users.timezone): nothing is posted from 9pm to
@@ -44,6 +50,16 @@ export const MESSAGE_PRIORITY = {
   finished: 50,
   budget_over: 45,
   goal_behind: 40,
+  // Spec step 83. A step only the person can do on something Jane is working on (a
+  // company's question, an offer made on a call, a cancel page, a sign-up link) comes
+  // right after urgent alerts and deadlines; the autopilot question before the plan; set-up suggestions after
+  // time-sensitive findings, before the rest; a budget nearly used up just under one gone
+  // over; a loan with nothing linked last.
+  agent_step: 87,
+  autopilot: 82,
+  setup: 65,
+  budget_nearly_over: 44,
+  asset_prompt: 30,
 } as const;
 
 // The chat page shows the last this-many messages, with "Show earlier" for more.
@@ -55,3 +71,10 @@ export const CHAT_CRON_LIMIT = 200;
 
 // Messages read from the last this-many hours to count today's and find the last one.
 export const CHAT_HISTORY_HOURS = 48;
+
+// Spec step 83: sources whose messages don't count toward the daily limit, like the brief:
+// the one-time autopilot question, so it never pushes a finding out on the first day.
+export const CHAT_UNCAPPED_SOURCES: readonly string[] = ["autopilot"];
+
+// Spec step 83: a budget counts as nearly over once this share of it is spent this month.
+export const BUDGET_NEARLY_OVER_SHARE = 0.9;
