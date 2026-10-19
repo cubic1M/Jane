@@ -19,7 +19,7 @@ export type MessageView = {
   note: string | null;
   // Demo advice (spec step 98): shown with DEMO_ADVICE_LABEL.
   advice: boolean;
-  buttons: { id: ActionId; label: string; kind: "primary" | "secondary" }[];
+  buttons: { id: ActionId; label: string; kind: "primary" | "secondary" | "quick" }[];
   links: { label: string; href: string }[];
   // Until when Undo works, so the page can hide it then.
   undoUntil: string | null;

@@ -26,6 +26,8 @@ import { changeBudget, changeExpected, changeLook } from "./changes";
 import { lifeNever, lifeNo, lifeYes } from "./life";
 import { transferCount, transferSkip, tuneUpAccept, tuneUpKeep, tuneUpUndo } from "./upkeep";
 import { clarifyOne, clarifyThree, clarifyTwo } from "./clarify";
+import { budgetSet } from "./budget";
+import { findingOptions, findingWhy } from "./explain";
 
 // Every button action, by id (spec step 81). A new button is a new handler here; the
 // message sources offer it by id (src/lib/jane-agent/types.ts ACTION_IDS).
@@ -82,6 +84,10 @@ export const ACTION_HANDLERS: Readonly<Record<ActionId, ActionHandler>> = {
   "clarify.1": clarifyOne,
   "clarify.2": clarifyTwo,
   "clarify.3": clarifyThree,
+  // Spec step 90.
+  "budget.set": budgetSet,
+  "finding.why": findingWhy,
+  "finding.options": findingOptions,
 };
 
 const MESSAGE_ID = /^[a-z0-9]{1,40}$/i;

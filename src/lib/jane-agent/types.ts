@@ -77,11 +77,17 @@ export const ACTION_IDS = [
   "clarify.1",
   "clarify.2",
   "clarify.3",
+  // Spec step 90: a budget the answer named, and the quick replies on a finding.
+  "budget.set",
+  "finding.why",
+  "finding.options",
 ] as const;
 export type ActionId = (typeof ACTION_IDS)[number];
 
 export type MessageAction =
-  | { id: ActionId; label: string; kind: "primary" | "secondary" }
+  // quick (spec step 90): a quick reply under an answer ("Why?", "Show options"), which
+  // answers in the chat and leaves the message's own buttons as they are.
+  | { id: ActionId; label: string; kind: "primary" | "secondary" | "quick" }
   | { id: "open"; label: string; kind: "link"; href: string };
 
 // What a message is about. Every field is optional; each source and action uses its own.
@@ -138,6 +144,8 @@ export type MessageRefs = {
   topic?: Topic;
   // Spec step 88: a clarifying question's meanings, in button order (clarify.1, clarify.2…).
   choices?: { label: string; intent: Intent }[];
+  // Spec step 90: the budget "Set a budget" would set (cents a month).
+  budget?: { category: string; amountCents: number };
 };
 
 // A message the brain wants to post.
@@ -178,7 +186,7 @@ export function parseActions(value: unknown): MessageAction[] {
     if (!isObject(a) || typeof a.label !== "string") return false;
     if (a.kind === "link") return a.id === "open" && typeof a.href === "string";
     return (
-      (a.kind === "primary" || a.kind === "secondary") &&
+      (a.kind === "primary" || a.kind === "secondary" || a.kind === "quick") &&
       (ACTION_IDS as readonly unknown[]).includes(a.id)
     );
   });

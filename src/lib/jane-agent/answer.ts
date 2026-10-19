@@ -167,12 +167,12 @@ async function byIntent(
       );
     }
     case "spending": {
-      const transactions = await loadInsightTransactions(
-        scopedFor(userId, client),
-        asOf,
-        INSIGHT_MONTHS,
-      );
-      return spendingReply(intent, transactions, asOf);
+      const db = scopedFor(userId, client);
+      const [transactions, budgets] = await Promise.all([
+        loadInsightTransactions(db, asOf, INSIGHT_MONTHS),
+        db.budgets.findMany({ select: { category: true, amountCents: true } }),
+      ]);
+      return spendingReply(intent, transactions, asOf, budgets);
     }
     case "coming_up": {
       const home = await homeSummary(userId, { client, now });
