@@ -58,7 +58,17 @@ export function deadlineSummary(
 export function aheadTiles(d: AheadData): HubGroup[] {
   const year = Number(d.asOf.slice(0, 4));
   const { newest } = d.lifeEvents;
-  const [afford, yearly, deadlines, debt, lifeEvents, taxPack, checkIn, review]: HubTileData[] = [
+  const [
+    afford,
+    yearly,
+    deadlines,
+    debt,
+    lifeEvents,
+    taxPack,
+    checkIn,
+    review,
+    taxes,
+  ]: HubTileData[] = [
     {
       label: "Can I afford this?",
       href: "/afford",
@@ -129,10 +139,17 @@ export function aheadTiles(d: AheadData): HubGroup[] {
       value: String(year),
       status: "Your year so far",
     },
+    // Taxes (spec steps 118–127).
+    {
+      label: "Taxes",
+      href: "/taxes",
+      value: null,
+      status: "What Jane needs to know, kept up to date from your accounts",
+    },
   ];
   return [
     { title: "Coming up", tiles: [deadlines, yearly, debt] },
-    { title: "Get ready", tiles: [afford, lifeEvents, taxPack] },
+    { title: "Get ready", tiles: [afford, lifeEvents, taxes, taxPack] },
     { title: "Look back", tiles: [checkIn, review] },
   ];
 }

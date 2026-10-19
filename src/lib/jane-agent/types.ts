@@ -36,6 +36,19 @@ export const ACTION_IDS = [
   // Typing to Jane (spec step 84).
   "goal.start",
   "autopilot.pause",
+  // Taxes (spec step 118): the tax profile, one question at a time.
+  "tax.found_yes",
+  "tax.filing_single",
+  "tax.filing_joint",
+  "tax.filing_separate",
+  "tax.filing_head",
+  "tax.kids_0",
+  "tax.kids_1",
+  "tax.kids_2",
+  "tax.kids_3",
+  "tax.income_add",
+  "tax.income_no",
+  "tax.state_set",
   // Investments (spec step 129 on): the answer buttons on an investor-profile question,
   // by position (src/config/investing.ts PROFILE_QUESTIONS).
   "invest.answer.1",
@@ -51,6 +64,12 @@ export const ACTION_IDS = [
   "life.yes",
   "life.no",
   "life.never",
+  // Plans that keep up (spec step 101).
+  "tuneup.accept",
+  "tuneup.keep",
+  "tuneup.undo",
+  "transfer.count",
+  "transfer.skip",
 ] as const;
 export type ActionId = (typeof ACTION_IDS)[number];
 
@@ -87,6 +106,12 @@ export type MessageRefs = {
   // The goal "Start a goal for it" would add (spec step 84): money in cents, date
   // YYYY-MM-DD.
   goal?: { name: string; targetCents: number; targetDate: string };
+  // Taxes (spec step 118): the tax profile question a message is asking, and the kind of
+  // income "Add it" would add.
+  taxField?: string;
+  incomeKind?: string;
+  // The state "Yes, set it" would put on the tax profile (two letters).
+  taxState?: string;
   // Spec step 98: demo advice (src/lib/advice-mode.ts). The chat shows DEMO_ADVICE_LABEL
   // under it. Set it on every message that recommends investments, taxes, insurance or loans.
   advice?: true;
@@ -99,6 +124,9 @@ export type MessageRefs = {
   change?: { key: string; kind: string; category?: string; budgetCents?: number };
   // Spec step 100: the life event (moving, new_job, new_baby) Yes would start.
   lifeKind?: string;
+  // Spec step 101: a budget tune-up's month (YYYY-MM), and a transfer to count toward a goal.
+  tuneUpMonth?: string;
+  transactionId?: string;
 };
 
 // A message the brain wants to post.

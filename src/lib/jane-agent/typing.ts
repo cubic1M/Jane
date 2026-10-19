@@ -60,7 +60,11 @@ export async function recentTurns(
     .map((m) => ({ role: m.kind === "user" ? "user" : "assistant", content: m.body }));
 }
 
-type Source = "rules" | "claude" | "claude_blocked" | "claude_unavailable" | "fallback";
+// How an answer was given: by the rules, by Claude (or blocked, or Claude couldn't), or
+// the fallback list of what Jane understands.
+export type AnswerSource =
+  "rules" | "claude" | "claude_blocked" | "claude_unavailable" | "fallback";
+type Source = AnswerSource;
 
 async function answer(
   userId: string,
@@ -100,7 +104,7 @@ export async function sendToJane(
   userId: string,
   raw: string,
   { client = defaultClient, now = new Date(), claude, onEvent }: Options = {},
-): Promise<{ sent: ChatMessage; reply: ChatMessage }> {
+): Promise<{ sent: ChatMessage; reply: ChatMessage; source: AnswerSource; intent: string }> {
   const text = raw.trim();
   if (!text) throw new ChatInputError("empty", "Type a message first.");
   if (text.length > CHAT_MAX_MESSAGE) {
@@ -153,5 +157,5 @@ export async function sendToJane(
   });
   // What kind of question, never its words.
   await track(userId, "chat_message_sent", { intent, source });
-  return { sent: toChatMessage(sent), reply: toChatMessage(replied) };
+  return { sent: toChatMessage(sent), reply: toChatMessage(replied), source, intent };
 }

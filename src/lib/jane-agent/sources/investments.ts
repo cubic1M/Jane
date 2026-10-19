@@ -2,6 +2,7 @@ import { MESSAGE_PRIORITY } from "@/config/agent-chat";
 import { PROFILE_QUESTIONS } from "@/config/investing";
 import { formatCents } from "@/lib/money";
 import { nextQuestion, profileSummary } from "@/planning/investor-profile";
+import { equivalentLine, switchSummary } from "../investments/fees-copy";
 import { asking, PROFILE_INTRO } from "../investments/profile-question";
 import type { Candidate } from "../types";
 import { snoozeButton, type MessageSource } from "./source";
@@ -13,6 +14,9 @@ import { snoozeButton, type MessageSource } from "./source";
 // - Step 129: in demo advice mode, asks the four investor-profile questions once she can see
 //   holdings, and again a year after they were answered. She never answers or changes them
 //   herself; nothing uses the profile until all four are in.
+// - Step 130: in demo advice mode, finds what investing costs and a lower-cost equivalent
+//   for each costly fund, and says so once (again if the funds change). Switching moves
+//   money, so it always waits for the person's tap (step 133).
 
 const list = (names: string[]) =>
   names.length <= 1
@@ -56,6 +60,21 @@ export const investmentsSource: MessageSource = {
           priority: MESSAGE_PRIORITY.investment_profile,
         });
       }
+    }
+    const fees = inv.fees;
+    if (inv.advice && fees.equivalents.length > 0) {
+      const tickers = fees.equivalents.map((e) => `${e.holding.ticker}>${e.ticker}`).sort();
+      out.push({
+        kind: "heads_up",
+        body: `Your investments cost about ${formatCents(fees.totalYearlyCents)} a year in fees. ${equivalentLine(fees.equivalents[0])}${fees.equivalents.length > 1 ? ` I found ${fees.equivalents.length - 1} more like it.` : ""} ${switchSummary(fees.equivalents, fees.years)}`,
+        refs: { advice: true },
+        actions: [
+          { id: "open", label: "See the fees", kind: "link", href: "/investments/fees" },
+          snoozeButton(),
+        ],
+        dedupeKey: `fees:${tickers.join(",")}`,
+        priority: MESSAGE_PRIORITY.investment_fees,
+      });
     }
     return out;
   },

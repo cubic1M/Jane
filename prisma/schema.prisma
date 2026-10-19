@@ -313,7 +313,10 @@ model User {
   // What the investments are for (spec step 129).
   investorProfile        InvestorProfile?
   changeAcks             ChangeAck[]
+  taxProfile             TaxProfile?
   lifeEventAnswers       LifeEventAnswer[]
+  budgetTuneUps          BudgetTuneUp[]
+  goalTransfers          GoalTransfer[]
 
   @@map("users")
 }
@@ -1510,6 +1513,30 @@ model ChatReplyLink {
   @@map("chat_reply_links")
 }
 
+// The tax profile (spec step 118): what Jane needs to know for the person's taxes. Every
+// value here is the person's own answer (picked, typed or a yes to what Jane found);
+// `answered` lists which fields they've answered, so nothing is assumed silently.
+model TaxProfile {
+  id              String   @id @default(cuid())
+  userId          String   @unique @map("user_id")
+  // single, married_joint, married_separate or head_of_household (src/config/tax.ts).
+  filingStatus    String?  @map("filing_status")
+  childrenUnder17 Int?     @map("children_under_17")
+  otherDependants Int?     @map("other_dependants")
+  // Two-letter US state they file in.
+  state           String?
+  // Kinds of income (src/config/tax.ts INCOME_KINDS).
+  incomeKinds     String[] @default([]) @map("income_kinds")
+  // incomeKinds, filingStatus, dependants, state: the fields the person has answered.
+  answered        String[] @default([])
+  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt       DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("tax_profiles")
+}
+
 // Spec step 128: a fund, share or cash position, as Plaid Investments (or the demo bank)
 // describes it. Plaid's securities are shared across its customers; here each person has
 // their own copy, so every row is theirs. Prices are per share, in cents.
@@ -1648,4 +1675,66 @@ model LifeEventAnswer {
 
   @@unique([userId, kind])
   @@map("life_event_answers")
+}
+
+// A month's budget tune-up (spec step 101): the budgets Jane would change and to what.
+// proposed (waiting on a tap), accepted (Accept all), auto (applied by autopilot), kept
+// (Keep) or undone (Undo after autopilot). One per person per month.
+model BudgetTuneUp {
+  id        String    @id @default(cuid())
+  userId    String    @map("user_id")
+  // YYYY-MM.
+  month     String
+  // [{ category, fromCents, toCents }].
+  changes   Json
+  status    String    @default("proposed")
+  decidedAt DateTime? @map("decided_at") @db.Timestamptz(3)
+  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, month])
+  @@map("budget_tune_ups")
+}
+
+// A transfer to savings Jane counted toward a goal tracked by hand (spec step 101), or the
+// person said not to: counted (by their tap), auto (by autopilot) or skipped. Each transfer
+// is counted once.
+model GoalTransfer {
+  id            String   @id @default(cuid())
+  userId        String   @map("user_id")
+  transactionId String   @map("transaction_id")
+  goalId        String?  @map("goal_id")
+  amountCents   Int      @map("amount_cents")
+  status        String
+  createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, transactionId])
+  @@map("goal_transfers")
+}
+
+// Spec step 87: one run of Jane's answer checks (src/lib/jane-agent/checks): the team's
+// own measurement of the chat over a demo-bank person, not anyone's data. Each question's
+// grade and reasons are in results, so runs can be compared.
+model AnswerCheckRun {
+  id            String   @id @default(cuid())
+  createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  // "rules_only" without an Anthropic key, "full" with one.
+  mode          String
+  // Jane's chat prompt version (src/lib/jane-agent/claude.ts) at the time.
+  promptVersion String   @map("prompt_version")
+  // 0–100 over the graded questions; null when none were graded.
+  score         Int?
+  graded        Int
+  skipped       Int
+  costCents     Int      @map("cost_cents")
+  stoppedAtCap  Boolean  @map("stopped_at_cap")
+  // Median time to Jane's first words, in milliseconds.
+  firstWordsMs  Int?     @map("first_words_ms")
+  results       Json
+
+  @@index([createdAt])
+  @@map("answer_check_runs")
 }

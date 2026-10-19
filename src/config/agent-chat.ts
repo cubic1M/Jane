@@ -18,10 +18,14 @@ export const CHAT_SOURCE_LIMITS: Readonly<Record<string, number>> = {
   things: 1,
   // Loans and debt (spec Phase Y).
   debts: 1,
+  // Taxes (spec steps 118–127).
+  taxes: 2,
   // Spec step 97.
   changes: 2,
   // Spec step 100.
   life: 1,
+  // Spec step 101.
+  upkeep: 2,
   // Spec step 128 on.
   investments: 2,
 };
@@ -78,10 +82,16 @@ export const MESSAGE_PRIORITY = {
   change: 66,
   // Spec step 100: a life event spotted, once, before set-up suggestions.
   life_event: 67,
+  // Spec step 101: a budget tune-up or a transfer to count, before set-up suggestions; the
+  // weekly review comes right after the brief.
+  upkeep: 64,
+  review: 900,
   // Spec step 128: what's in investment accounts, the first time Jane sees it.
   investments: 32,
   // Spec step 129: the investor-profile questions, which later investment steps wait on.
   investment_profile: 34,
+  // Spec step 130: costly funds with a lower-cost equivalent (demo advice).
+  investment_fees: 36,
 } as const;
 
 // The chat page shows the last this-many messages, with "Show earlier" for more.
@@ -96,7 +106,7 @@ export const CHAT_HISTORY_HOURS = 48;
 
 // Spec step 83: sources whose messages don't count toward the daily limit, like the brief:
 // the one-time autopilot question, so it never pushes a finding out on the first day.
-export const CHAT_UNCAPPED_SOURCES: readonly string[] = ["autopilot"];
+export const CHAT_UNCAPPED_SOURCES: readonly string[] = ["autopilot", "review"];
 
 // Spec step 83: a budget counts as nearly over once this share of it is spent this month.
 export const BUDGET_NEARLY_OVER_SHARE = 0.9;

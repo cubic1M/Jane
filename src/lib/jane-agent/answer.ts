@@ -31,7 +31,9 @@ import {
 } from "./replies";
 import { changesReply } from "./replies-changes";
 import { lifeEventReply } from "./replies-life";
+import { weeklyReview } from "./replies-review";
 import { loadSnapshot } from "./snapshot";
+import { answerTaxIntent } from "./tax-answer";
 
 // Answers a typed message by rules (spec step 84): loads only what the intent needs, with
 // the same loaders as the pages, all scoped to the person, and words it with ./replies.
@@ -90,6 +92,16 @@ export async function answerByRules(
       const going = open.some((e) => e.kind === intent.event && e.completedAt === null);
       return lifeEventReply(intent.event, going);
     }
+    case "review": {
+      const snapshot = await loadSnapshot(userId, { client, now });
+      return snapshot
+        ? weeklyReview(snapshot, now)
+        : {
+            body: "Link a bank or import a CSV, and I'll review your weeks here.",
+            actions: [],
+            refs: {},
+          };
+    }
     case "changes":
       return changesReply(await loadChanges(userId, { client, now }));
     case "what_did":
@@ -106,6 +118,8 @@ export async function answerByRules(
     case "debts":
     case "debt_detail":
       return debtReply(intent, await loadDebts(userId, { client, now }));
+    case "tax":
+      return answerTaxIntent(userId, intent, { client, now });
     case "investments":
       return answerInvestments(userId, intent, { client, now });
   }
