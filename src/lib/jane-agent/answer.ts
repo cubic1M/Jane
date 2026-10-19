@@ -15,6 +15,7 @@ import {
   categoryContext,
   approveAllReply,
   comingUpReply,
+  greetingReply,
   helpReply,
   pauseReply,
   safeReply,
@@ -42,6 +43,11 @@ export async function answerByRules(
       return null;
     case "help":
       return helpReply();
+    case "greeting": {
+      if (intent.thanks) return greetingReply(true, null);
+      const home = await homeSummary(userId, { client, now });
+      return greetingReply(false, home?.safeToSpend ?? null);
+    }
     case "afford": {
       const numbers = await loadAffordNumbers(userId, { client, now });
       if (!intent.category) return affordReply(intent, numbers);

@@ -1,9 +1,18 @@
 import Anthropic from "@anthropic-ai/sdk";
-import { CHAT_CLAUDE_EFFORT, CHAT_CLAUDE_MAX_TURNS } from "@/config/agent-chat";
+import {
+  CHAT_CLAUDE_EFFORT,
+  CHAT_CLAUDE_MAX_TURNS,
+  CHAT_CLAUDE_REWRITES,
+} from "@/config/agent-chat";
 import { ASK_BLOCKED_REPLY } from "@/config/ask";
 import type { PrismaClient } from "@/generated/prisma/client";
 import { anthropic, chatModel } from "@/lib/anthropic";
-import { checkGuardrails, dollarFigures, type GuardrailIssue } from "@/lib/guardrails";
+import {
+  checkGuardrails,
+  dollarFigures,
+  unsupportedFigures,
+  type GuardrailIssue,
+} from "@/lib/guardrails";
 import { CHAT_TOOLS, chatPrimer, proposeAction, runChatTool, type Proposal } from "./claude-tools";
 import { GuardedText } from "./guarded-text";
 import { EXAMPLES, type Reply } from "./replies";
@@ -20,15 +29,17 @@ import { EXAMPLES, type Reply } from "./replies";
 // the answer streamed as it's written (onEvent), a sentence at a time once each passes the
 // guardrails (./guarded-text), with what Jane is looking up in between.
 
-export const CHAT_PROMPT_VERSION = "chat-v2";
+export const CHAT_PROMPT_VERSION = "chat-v3";
 
 const SYSTEM = `You are Jane, a friendly helper inside a personal finance app, answering in the app's chat. You answer the person's questions about their own money: spending, bills, safe to spend, goals, budgets, and what the app has found or is doing for them.
 
 - The person's main numbers right now come after these instructions. Answer from them when you can; use the tools only for anything else (a merchant, an earlier month, a search). Never guess. If neither has it, say so plainly.
-- Use only dollar amounts that appear in those numbers or in tool results, written exactly as they appear there. Don't add, subtract or estimate amounts yourself.
+- Use only dollar amounts that appear in those numbers or in tool results, written exactly as they appear there (with the cents). Don't add, subtract, round or estimate amounts yourself.
 - Keep answers short: a sentence or two, or a short list. Plain words, no jargon, no headings. Don't write anything before a lookup; just look it up.
 - You can't do anything yourself. When the person wants something done (cancel, lower a bill, approve, start a goal), call propose_action once so they get a button to tap, and say they can tap it. Never say it's done.
-- Never give investment, tax or legal advice, and never recommend a financial product. Never promise a result.
+- When they ask "should I…" (cancel something, switch, spend), don't decide for them: give the facts that matter (what it costs, what you found, what they could save, written as "could save about"), say it's their call, and offer the button with propose_action when there is one.
+- Never give investment, tax or legal advice, and never recommend a financial product. Don't mention investments, taxes or legal matters at all. Never promise a result: say "could", never "will" or "definitely".
+- To "hi" or "thanks", answer in a sentence and mention one useful thing from their numbers.
 - If a question isn't about their money in this app, say briefly what you can help with.`;
 
 export type ChatTurn = { role: "user" | "assistant"; content: string };
@@ -87,6 +98,29 @@ function conversation(history: ChatTurn[], question: string): Anthropic.MessageP
   return turns.map((t) => ({ role: t.role, content: t.content }));
 }
 
+// What to fix, for one more try, in the words of the rules above.
+function rewriteRequest(
+  text: string,
+  issues: GuardrailIssue[],
+  allowedCents: readonly number[],
+): string {
+  const reasons = issues.map((issue) => {
+    switch (issue) {
+      case "unsupported_dollar_figure":
+        return `It has amounts that aren't in their numbers or the tool results: ${unsupportedFigures(text, allowedCents).join(", ")}. Use only amounts exactly as they appear there, or leave the amount out.`;
+      case "investment_advice":
+        return "It mentions investing or investments. Leave that out.";
+      case "tax_or_legal_advice":
+        return "It mentions taxes or legal matters. Leave that out.";
+      case "guaranteed_outcome":
+        return 'It promises a result. Say "could" or "about" instead of "will", "definitely" or "guaranteed".';
+      default:
+        return "It's missing required wording.";
+    }
+  });
+  return `(From the app, not the person.) That answer can't be shown yet:\n- ${reasons.join("\n- ")}\nWrite the whole answer again for the person, fixed. Don't mention this note.`;
+}
+
 export async function askClaudeInChat(
   userId: string,
   history: ChatTurn[],
@@ -101,12 +135,14 @@ export async function askClaudeInChat(
 ): Promise<ClaudeAnswer> {
   onEvent({ type: "status", text: "Looking at your numbers…" });
   const primer = await chatPrimer(userId, { client, now });
-  // Figures the answer may use: from the numbers sent up front, tools, the question, and
+  // Figures the answer may use: any in the numbers sent up front or a tool's result (a
+  // finding's title has some too: "Charged twice? $64.20 at Target"), the question, and
   // earlier answers.
-  const allowedCents = [question, ...history.map((m) => m.content)].flatMap((text) =>
+  const allowedCents = [question, primer.text, ...history.map((m) => m.content)].flatMap((text) =>
     dollarFigures(text).map((f) => f.cents),
   );
   allowedCents.push(...primer.cents);
+  let rewrites = 0;
   const messages = conversation(history, question);
   let proposal: Extract<Proposal, { ok: true }> | null = null;
   const draft = new GuardedText(
@@ -174,7 +210,7 @@ export async function askClaudeInChat(
           continue;
         }
         const output = await runChatTool(userId, block.name, block.input, { client, now });
-        allowedCents.push(...output.cents);
+        allowedCents.push(...output.cents, ...dollarFigures(output.content).map((f) => f.cents));
         results.push({ type: "tool_result", tool_use_id: block.id, content: output.content });
       }
       messages.push({ role: "user", content: results });
@@ -189,7 +225,19 @@ export async function askClaudeInChat(
       .trim();
     if (!text) return unavailable();
     const check = checkGuardrails(text, allowedCents);
+    if (!check.ok && rewrites < CHAT_CLAUDE_REWRITES && turn + 1 < maxTurns) {
+      // Once, Claude is told what can't be shown and answers again.
+      rewrites += 1;
+      draft.reset();
+      onEvent({ type: "reset" });
+      onEvent({ type: "status", text: "Checking my answer…" });
+      messages.push({ role: "assistant", content: response.content });
+      messages.push({ role: "user", content: rewriteRequest(text, check.issues, allowedCents) });
+      continue;
+    }
     if (!check.ok) {
+      // The issues only, never the text: it's about the person's money.
+      console.warn("Jane's chat answer was blocked by the guardrails", { issues: check.issues });
       // A safe fallback, with no buttons.
       return {
         kind: "blocked",

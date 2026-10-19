@@ -238,13 +238,17 @@ describe.runIf(url)("typing to Jane against a real database", () => {
     afterAll(() => vi.stubEnv("ANTHROPIC_API_KEY", ""));
 
     it("sends free questions to Claude with recent chat only, through the guardrails", async () => {
-      create.mockReset().mockResolvedValueOnce({
+      // Blocked, and blocked again after the one rewrite.
+      create.mockReset().mockResolvedValue({
         stop_reason: "end_turn",
         content: [{ type: "text", text: "Put the difference in an index fund." }],
       });
+      const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
       const { reply } = await send("is my rent too high?", { claude });
       expect(reply.body).toBe(ASK_BLOCKED_REPLY);
       expect(reply.actions).toEqual([]);
+      expect(create).toHaveBeenCalledTimes(2);
+      warn.mockRestore();
 
       // Recent typed messages and Jane's answers, never Jane's other messages.
       const turns = await recentTurns(userId, { client });
@@ -254,6 +258,11 @@ describe.runIf(url)("typing to Jane against a real database", () => {
       // The rules still answer what they understand, without Claude.
       create.mockClear();
       await send("safe to spend", { claude });
+      // So do greetings, at once.
+      expect((await send("hi", { claude })).reply.body).toMatch(
+        /^Hi! You have \$[\d,]+\.\d\d safe to spend/,
+      );
+      expect((await send("thanks!", { claude })).reply.body).toMatch(/^You're welcome/);
       expect(create).not.toHaveBeenCalled();
     });
 

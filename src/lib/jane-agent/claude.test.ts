@@ -176,22 +176,74 @@ describe("askClaudeInChat", () => {
     expect(lastToolResult(2).content).toBe("You already offered a button for this answer.");
   });
 
-  it("falls back to safe text, with no buttons, when the guardrails refuse", async () => {
+  it("falls back to safe text, with no buttons, when the rewrite fails too", async () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
     create
       .mockResolvedValueOnce(toolUse("propose_action", { action: "finding.yes", finding_id: "f1" }))
-      .mockResolvedValueOnce(final("Cancel Hulu and put the money in an index fund."));
+      .mockResolvedValueOnce(final("Cancel Hulu and put the money in an index fund."))
+      .mockResolvedValueOnce(final("Cancel Hulu and invest the rest."));
     const result = await askClaudeInChat("u1", [], "What should I do?", options);
     expect(result).toEqual({
       kind: "blocked",
       reply: { body: ASK_BLOCKED_REPLY, actions: [], refs: {} },
       issues: ["investment_advice"],
     });
+    // Why it was blocked, never the words.
+    expect(warn).toHaveBeenCalledWith(expect.stringContaining("blocked"), {
+      issues: ["investment_advice"],
+    });
+    expect(JSON.stringify(warn.mock.calls)).not.toContain("Hulu");
 
-    create.mockResolvedValueOnce(final("You'll save $5,000.00 a year."));
+    create.mockResolvedValue(final("You'll save $5,000.00 a year."));
     expect(await askClaudeInChat("u1", [], "How much?", options)).toMatchObject({
       kind: "blocked",
       issues: ["unsupported_dollar_figure", "guaranteed_outcome"],
     });
+    warn.mockRestore();
+  });
+
+  it("tells Claude what can't be shown, and shows the fixed answer", async () => {
+    create
+      .mockResolvedValueOnce(final("Hulu costs $17.99. You'll save $215.88 a year if you cancel."))
+      .mockResolvedValueOnce(
+        final("Hulu is on your list: you could save about $215.88 a year. It's your call."),
+      );
+    const events: unknown[] = [];
+
+    const result = await askClaudeInChat("u1", [], "should I cancel hulu", {
+      ...options,
+      onEvent: (e) => events.push(e),
+    });
+
+    expect(result).toMatchObject({
+      kind: "answer",
+      reply: { body: "Hulu is on your list: you could save about $215.88 a year. It's your call." },
+    });
+    const note = sent[1].at(-1)!.content as string;
+    // Only the amount nothing supports.
+    expect(note).toContain("tool results: $17.99. Use only");
+    expect(note).toContain('instead of "will"');
+    expect(sent[1].at(-2)).toMatchObject({ role: "assistant" });
+    expect(events).toContainEqual({ type: "status", text: "Checking my answer…" });
+  });
+
+  it("allows figures written inside what it was given, like a finding's title", async () => {
+    vi.mocked(loadSnapshot).mockResolvedValue({
+      ...snapshot,
+      findings: [
+        {
+          ...snapshot.findings[0],
+          findingId: "f2",
+          type: "duplicate_charge",
+          title: "Charged twice? $64.20 at Target",
+          annualSavingsCents: null,
+          savings: "Worth a look",
+        },
+      ],
+    } as Snapshot);
+    create.mockResolvedValueOnce(final("You were charged twice: $64.20 at Target."));
+    expect((await askClaudeInChat("u1", [], "anything odd?", options)).kind).toBe("answer");
+    expect(create).toHaveBeenCalledTimes(1);
   });
 
   it("stops at the turn limit", async () => {
@@ -350,7 +402,7 @@ describe("proposeAction", () => {
   });
 
   it("never streams a sentence the guardrails refuse", async () => {
-    create.mockResolvedValueOnce(
+    create.mockResolvedValue(
       final("Here's the plan. You'll definitely save $9,999.00 with this. Okay?"),
     );
     const shown: string[] = [];
@@ -362,7 +414,8 @@ describe("proposeAction", () => {
       },
     });
 
-    expect(shown).toEqual(["Here's the plan."]);
+    // Once per try (the rewrite starts the draft again), never the sentence after it.
+    expect(shown).toEqual(["Here's the plan.", "Here's the plan."]);
     expect(result.kind).toBe("blocked");
   });
 });

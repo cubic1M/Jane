@@ -11,6 +11,8 @@ export type ActVerb = "cancel" | "lower" | "refund";
 
 export type Intent =
   | { kind: "help" }
+  // "hi", "thanks": answered at once, without Claude.
+  | { kind: "greeting"; thanks: boolean }
   | { kind: "what_did" }
   | { kind: "approve_all" }
   | { kind: "undo" }
@@ -147,6 +149,10 @@ function purchaseOf(text: string): string | null {
   return /\d/.test(what) ? null : what;
 }
 
+const GREETING =
+  /^(?:(?:hi|hello|hey|hiya|howdy|yo|sup|morning|good (?:morning|afternoon|evening))(?: there)?(?: jane)?|jane)$/;
+const THANKS =
+  /^(?:thanks|thank you|thx|ty|cheers|ok thanks|okay thanks|great thanks|got it thanks)(?: so much| a lot)?(?: jane)?$/;
 const HELP =
   /^(?:help|\?|commands|menu|what can (?:you|i) (?:do|ask|say|type)(?: here)?|how does this work)$/;
 const PAUSE = /\b(?:pause|stop|turn off|switch off|disable) (?:the |my )?autopilot\b/;
@@ -179,6 +185,8 @@ const LOWER = /^(?:lower|reduce|cut|negotiate|bring down|shrink) (.+)$/;
 export function parseIntent(raw: string, asOf: string): Intent {
   const text = normalize(raw);
   if (!text || HELP.test(text)) return { kind: "help" };
+  if (GREETING.test(text)) return { kind: "greeting", thanks: false };
+  if (THANKS.test(text)) return { kind: "greeting", thanks: true };
   if (PAUSE.test(text)) return { kind: "pause_autopilot" };
   if (WHAT_DID.test(text)) return { kind: "what_did" };
   if (APPROVE_ALL.test(text)) return { kind: "approve_all" };

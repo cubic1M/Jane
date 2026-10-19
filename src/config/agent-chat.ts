@@ -87,6 +87,9 @@ export const CHAT_CLAUDE_MAX_TURNS = 6;
 // How hard Claude thinks before answering in the chat: low keeps answers quick, and the
 // person's main numbers come with the question (CHAT_PRIMER_TOOLS) so most need no lookup.
 export const CHAT_CLAUDE_EFFORT = "low";
+// When an answer fails the guardrails, Claude is told why and may answer again this many
+// times before the person gets the safe fallback (ASK_BLOCKED_REPLY).
+export const CHAT_CLAUDE_REWRITES = 1;
 // Looked up before Claude is asked, and sent with the question.
 export const CHAT_PRIMER_TOOLS = [
   "safe_to_spend",
