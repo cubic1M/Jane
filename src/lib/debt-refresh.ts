@@ -1,4 +1,5 @@
 import type { PrismaClient } from "@/generated/prisma/client";
+import { refreshCredit } from "@/lib/credit";
 import { refreshDebtPlan } from "@/lib/debt-plan";
 import { refreshLoanApplications } from "@/lib/loan-applications";
 import { refreshRefinance } from "@/lib/refinance";
@@ -14,6 +15,8 @@ export async function refreshDebts(
   const steps: [string, () => Promise<unknown>][] = [
     ["payoff plan", () => refreshDebtPlan(userId, { client, now })],
     // Spec step 111: asks the lender partner for rates once a month.
+    // Spec step 116: the monthly soft pull, before the rate check that's priced by it.
+    ["credit score", () => refreshCredit(userId, { client, now })],
     ["refinance rates", () => refreshRefinance(userId, { client, now })],
     // Spec step 112: loans funding, and old loans reaching zero.
     ["loan applications", () => refreshLoanApplications(userId, { client, now })],

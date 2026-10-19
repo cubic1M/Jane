@@ -9,6 +9,8 @@ import { loadAccountPlan } from "@/lib/investments/accounts";
 import { loadReturns } from "@/lib/investments/returns";
 import { loadGoalBuckets } from "@/lib/investments/goal-buckets";
 import { estimateCollege, loadCollege } from "@/lib/investments/college";
+import { collectReceipts, loadHsa } from "@/lib/investments/hsa";
+import { loadCompanyStock } from "@/lib/investments/company-stock";
 import { autopilotOf } from "@/lib/autopilot";
 import { loadInvestmentSnapshot } from "./snapshot";
 import { loadAutoInvest } from "@/lib/investments/auto-invest";
@@ -24,6 +26,8 @@ import {
   returnsReply,
   goalBucketsReply,
   collegeReply,
+  hsaReply,
+  companyStockReply,
   feesReply,
   holdingsReply,
   profileReply,
@@ -77,6 +81,11 @@ export async function answerInvestments(
       ]);
       return collegeReply(advice, estimate, plans.length);
     }
+    case "hsa":
+      await collectReceipts(userId, { client, now });
+      return hsaReply(await loadHsa(userId, { client, now }));
+    case "company_stock":
+      return companyStockReply(await loadCompanyStock(userId, { client, now }), asOf);
     case "goals":
       return goalBucketsReply(await loadGoalBuckets(userId, { client, now }));
     case "returns":

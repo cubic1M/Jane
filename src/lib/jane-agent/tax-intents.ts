@@ -48,7 +48,11 @@ export type TaxIntent =
       day: number | null;
     }
   | { kind: "tax"; ask: "work_state"; state: string }
-  | { kind: "tax"; ask: "states" };
+  | { kind: "tax"; ask: "states" }
+  // Spec step 167.
+  | { kind: "tax"; ask: "plan" }
+  // Spec step 168.
+  | { kind: "tax"; ask: "giving" };
 
 const NUMBER_WORDS: Readonly<Record<string, number>> = {
   no: 0,
@@ -161,6 +165,10 @@ const WORK_STATE = new RegExp(
 );
 const STATES_ASK =
   /\bstate (?:income )?tax(?:es)?\b|\b(?:local|city) (?:income )?tax(?:es)?\b|\btax(?:es)? in (?:two|2|both|more than one|multiple) states\b|\bpart[- ]year (?:resident|return)\b|\bnonresident (?:return|tax)\b/;
+const PLAN =
+  /\btax (?:plan|calendar|moves|deadlines|to-?dos?)\b|\b(?:year-end|end of (?:the )?year|year end) tax(?:es| moves| planning)?\b|\bwhat (?:tax )?(?:moves|deadlines) (?:are )?(?:coming|left|ahead)\b|\bwhat should i do (?:for|about) (?:my )?tax(?:es)? (?:this year|before (?:the )?year end|before december)\b/;
+const GIVING_ASK =
+  /\bdonor[- ]advised fund\b|\bdaf\b|\bbunch(?:ing)? (?:my )?(?:gifts|giving|donations)\b|\b(?:donate|give|gift) (?:stock|shares|appreciated (?:stock|shares))\b|\b(?:give|donate|giving) (?:smarter|better|tax[- ]efficiently)\b|\bhow should i (?:give|donate)\b|\b(?:charity|donation) receipts?\b|\breceipts? for (?:my )?(?:donations|gifts|charity)\b/;
 const PACK = /\btax(?:-| )?time pack\b|\btax pack\b|\byear-end pack\b/;
 
 function stateCode(words: string): string | null {
@@ -207,6 +215,8 @@ export function parseTaxIntent(text: string): TaxIntent | null {
   const untag = UNTAG.exec(text);
   if (untag) return { kind: "tax", ask: "tag", target: untag[1].trim(), tag: null };
   if (PACK.test(text)) return { kind: "tax", ask: "pack" };
+  if (PLAN.test(text)) return { kind: "tax", ask: "plan" };
+  if (GIVING_ASK.test(text)) return { kind: "tax", ask: "giving" };
   if (STANDARD.test(text)) return { kind: "tax", ask: "standard_deduction" };
   if (INVESTMENT_TAX.test(text)) return { kind: "tax", ask: "investments" };
   if (REFUND_ASK.test(text)) return { kind: "tax", ask: "refund" };

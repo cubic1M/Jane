@@ -66,6 +66,17 @@ test("a demo-bank person sees the sample policy, like-for-like quotes and Jane's
   await expect(
     page.getByText("Demo advice: sample data, not financial advice").first(),
   ).toBeVisible();
+  // Spec step 152: the demo card's phone protection, with its limits, makes Asurion a
+  // duplicate, cancelled through the usual card.
+  const cards = page.getByRole("region", { name: "Cover through your cards" });
+  await expect(cards.getByText(/Up to \$800\.00 a claim, Deductible \$50\.00/)).toBeVisible();
+  await expect(
+    cards.getByText(/You pay Asurion \$204\.00 a year for cover your Demo Credit Card/),
+  ).toBeVisible();
+  await expect(cards.getByRole("link", { name: "Cancel it" })).toHaveAttribute(
+    "href",
+    /^\/report\//,
+  );
 
   await page.getByRole("link", { name: "Compare quotes" }).click();
   await expect(page.getByText("Sample quotes from Jane's demo carrier catalog")).toBeVisible();
@@ -173,4 +184,37 @@ test("a policy document is read for the person to check and confirm (step 151)",
   await expect(page.getByText("Confirmed. It's on your insurance now.")).toBeVisible();
   await expect(page.getByRole("heading", { name: "GEICO car insurance" })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Read from your documents" })).toHaveCount(0);
+});
+
+test("a demo-bank person sizes, applies for and buys life cover, a tap at a time (step 153)", async ({
+  context,
+  page,
+  baseURL,
+}) => {
+  const user = await signedInUser("user");
+  userId = user.userId;
+  await context.addCookies([
+    { name: "authjs.session-token", value: user.sessionToken, url: baseURL ?? "" },
+  ]);
+  await page.goto("/connect");
+  await page.getByRole("button", { name: "Link a demo bank" }).click();
+  await expect(page).toHaveURL("/chat", { timeout: 60_000 });
+
+  await page.goto("/insurance/life");
+  await page.getByLabel("How many people depend on your income?").selectOption("2");
+  await page.getByRole("button", { name: "Work it out" }).click();
+  const need = page.getByRole("region", { name: /for 20 years|for 25 years|for 30 years/ });
+  await expect(need.getByText(/10 years of your pay/)).toBeVisible();
+  await expect(need.getByText("Demo advice: sample data, not financial advice")).toBeVisible();
+
+  await page.getByRole("button", { name: "Apply" }).first().click();
+  for (let i = 1; i <= 5; i += 1) {
+    await expect(page.getByText(new RegExp(`^Question ${i} of 5:`))).toBeVisible();
+    await page.getByRole("button", { name: "No", exact: true }).click();
+  }
+  await page.getByRole("button", { name: "Send application" }).click();
+  await expect(page.getByText(/their best rate\. Buy it\?/)).toBeVisible();
+  await page.getByRole("button", { name: "Buy it" }).click();
+  await expect(page.getByText("Added to your insurance.")).toBeVisible();
+  await expect(page.getByRole("heading", { name: /life insurance/ }).first()).toBeVisible();
 });

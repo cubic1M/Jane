@@ -1,5 +1,6 @@
 import { bankFees } from "./rules/bank-fees";
 import { billNegotiation } from "./rules/bill-negotiation";
+import { coveredByCard } from "./rules/covered-by-card";
 import { cardInterest } from "./rules/card-interest";
 import { chargeAfterCancel } from "./rules/charge-after-cancel";
 import { duplicateCharge } from "./rules/duplicate-charge";
@@ -27,6 +28,7 @@ export const RULES: readonly Rule[] = [
   chargeAfterCancel,
   trialConversion,
   billNegotiation,
+  coveredByCard,
 ];
 
 // Pure: same input, same candidates in the same order. If two candidates share a type and

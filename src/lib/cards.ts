@@ -41,6 +41,8 @@ export const ACTION_FOR_FINDING: Record<FindingType, ActionType> = {
   charge_after_cancel: "request_refund",
   trial_conversion: "request_refund",
   bill_negotiation: "negotiate_bill",
+  // Spec step 152: the duplicate plan is cancelled through the usual flow.
+  covered_by_card: "cancel_subscription",
 };
 
 // Recent rows shown as proof on the card.
@@ -80,6 +82,8 @@ function whatChanges(type: FindingType, evidence: Json): string {
       return `We call ${merchant}, ask for a lower rate or a cheaper plan with the same service, and tell you what they offer before anything changes.`;
     case "trial_conversion":
       return `We ask ${merchant} to refund the charge and cancel, before the next one.`;
+    case "covered_by_card":
+      return `We cancel your ${merchant} plan for you. Your ${text(evidence.card) ?? "card"} keeps covering you as long as ${text(evidence.condition) ?? "you use it"}.`;
   }
 }
 
@@ -123,6 +127,18 @@ function evidenceRows(type: FindingType, evidence: Json): CardEvidenceRow[] {
     case "bank_fees":
     case "card_interest":
       return transactionRows(evidence.transactions);
+    // Spec step 152: the card benefit's limits, then the plan's charges.
+    case "covered_by_card":
+      return [
+        ...list(evidence.limits)
+          .map(obj)
+          .map((l) => ({
+            date: null,
+            label: `${text(evidence.benefit) ?? "Card cover"}: ${text(l.label) ?? ""}${text(l.text) ? (num(l.cents) === null ? ` ${text(l.text)}` : ` (${text(l.text)})`) : ""}`,
+            amountCents: num(l.cents),
+          })),
+        ...transactionRows(evidence.charges),
+      ];
     case "low_balance_risk":
       return list(evidence.bills)
         .map(obj)

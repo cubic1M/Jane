@@ -6,6 +6,10 @@ import { loadInvestmentTaxes } from "@/lib/investment-taxes";
 import { investmentsReply } from "./tax-investments";
 import { loadTaxDocuments } from "@/lib/tax-documents";
 import { documentsReply } from "./tax-documents-message";
+import { loadTaxPlan } from "@/lib/tax-plan";
+import { planReply } from "./tax-plan-message";
+import { loadGiving } from "@/lib/giving";
+import { givingReply } from "./giving-message";
 import { moveReply, statesReply, workStateReply } from "./tax-states-message";
 import { loadWithholding } from "@/lib/tax-withholding";
 import { loadTaxSavings } from "@/lib/tax-savings";
@@ -103,6 +107,10 @@ export async function answerTaxIntent(
         ? moveReply(intent, view.state.value, now)
         : workStateReply(intent.state, view.state.value);
     }
+    case "giving":
+      return givingReply(await loadGiving(userId, { client, now }));
+    case "plan":
+      return planReply(await loadTaxPlan(userId, { client, now }), now.toISOString().slice(0, 10));
     case "states":
       return statesReply(await loadTaxEstimate(userId, { client, now }));
     case "tags":
