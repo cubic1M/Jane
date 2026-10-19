@@ -7,6 +7,7 @@ import { formatCents } from "@/lib/money";
 import { requireUser } from "@/lib/session";
 import { percent } from "@/planning/credit";
 import { STAND_IN_LABEL } from "@/lib/jane-agent/credit-replies";
+import { dayLabel } from "@/lib/day-label";
 
 // The credit score (spec step 116): the score from Jane's monthly soft pull, what's helping
 // and hurting, card use from the card balances, and what Jane is doing about it. The
@@ -61,7 +62,7 @@ async function CreditContent() {
           <section aria-label="Your score" className="flex flex-col gap-1">
             <p className="text-5xl font-semibold">{latest.score}</p>
             <p className="text-sm text-zinc-600 dark:text-zinc-400">
-              {latest.model}, checked {latest.pulledOn}
+              {latest.model}, checked {dayLabel(latest.pulledOn, { year: true })}
               {credit.previousScore !== null && credit.previousScore !== latest.score
                 ? `: ${latest.score > credit.previousScore ? "up" : "down"} ${Math.abs(latest.score - credit.previousScore)} since last month`
                 : ""}

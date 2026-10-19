@@ -13,6 +13,7 @@ import { FirstWeekChecklist } from "./checklist";
 import { AutopilotChooser } from "@/components/autopilot-chooser";
 import { autopilotOf } from "@/lib/autopilot";
 import { janeDidSomething, type JaneDid } from "@/lib/what-jane-did";
+import { dayLabel } from "@/lib/day-label";
 
 // Today (spec step 79): only what needs the person now. Everything else Jane found is on
 // the Jane tab, the picture of their money on Money, and planning on Ahead.
@@ -282,7 +283,7 @@ async function HomeContent() {
 
       <p className="text-xs text-zinc-500">
         {home.lastUpdated
-          ? `Data last updated ${home.lastUpdated.toISOString().slice(0, 10)}.`
+          ? `Data last updated ${dayLabel(home.lastUpdated, { year: true })}.`
           : "Waiting for your first update."}{" "}
         <Link href="/connect" className="hover:underline">
           Manage accounts
