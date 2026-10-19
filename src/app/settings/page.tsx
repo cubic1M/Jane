@@ -37,7 +37,9 @@ import {
 import { QUIET_END_HOUR, QUIET_START_HOUR } from "@/config/agent-chat";
 import { chatNotifyPrefs } from "@/lib/jane-agent/notify-prefs";
 import { ChatNotifyForm } from "./chat-notify-form";
-import { listPreferences } from "@/lib/jane-agent/preferences";
+import { listPreferences, postingOf } from "@/lib/jane-agent/preferences";
+import { styleOf } from "@/lib/jane-agent/style";
+import { StyleForm } from "./style-form";
 import { MemoryList } from "./memory-list";
 import { SECTOR_ALL_MEANS, SECTOR_LABELS } from "@/config/autopilot-sectors";
 import { sectorAutopilots } from "@/lib/sector-autopilot";
@@ -363,6 +365,11 @@ async function SettingsContent() {
             She uses these in her answers and suggestions.
           </p>
           <MemoryList preferences={remembered} />
+          <h3 className="mt-2 text-lg font-semibold">How Jane talks</h3>
+          <p className={MUTED}>
+            Or say it in the chat, like &quot;keep it short&quot;, and tap Remember this.
+          </p>
+          <StyleForm style={styleOf(remembered)} posting={postingOf(remembered)} />
         </section>
       </Group>
 

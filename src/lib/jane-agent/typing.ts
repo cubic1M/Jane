@@ -9,6 +9,8 @@ import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
 import { hit } from "@/lib/rate-limit";
 import { answerByRules } from "./answer";
+import { listPreferences } from "./preferences";
+import { shapeReply, styleInstructions, styleOf } from "./style";
 import { askClaudeInChat, type ChatStreamEvent, type ChatTurn } from "./claude";
 import type { Topic } from "./context";
 import { typedFlowReply } from "./flows/chat";
@@ -118,8 +120,12 @@ async function answer(
   if (toFlow) return { reply: toFlow, intent: "flow_answer", source: "rules" };
   // Spec step 88: what the conversation was about, for a follow-up.
   const topic = await lastTopic(userId, { client, now });
+  // Spec step 188: how the person likes Jane to talk.
+  const style = styleOf(await listPreferences(userId, { client }));
   const byRules = await answerByRules(userId, intent, { client, now, topic });
-  if (byRules) return { reply: byRules, intent: intent.kind, source: "rules" };
+  if (byRules) {
+    return { reply: shapeReply(byRules, style), intent: intent.kind, source: "rules" };
+  }
   if (!llmEnabled()) {
     return { reply: unknownReply(text, asOf), intent: intent.kind, source: "fallback" };
   }
@@ -137,6 +143,7 @@ async function answer(
     claude,
     onEvent,
     advice: await adviceMode(userId, { client }),
+    style: styleInstructions(style),
   });
   const source: Source =
     result.kind === "answer"
