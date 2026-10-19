@@ -13,6 +13,8 @@ export type AuditEvent =
   // old one once the new one's first payment went through.
   | "insurance_policy_bound"
   | "insurance_policy_cancelled"
+  // Spec step 107: a claim tracker started (the kind and what happened, never details).
+  | "insurance_claim_started"
   | "user_signed_in"
   | "import_completed"
   // Finding data was sent to Claude for card text.

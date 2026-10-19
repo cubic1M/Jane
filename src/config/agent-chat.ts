@@ -70,6 +70,8 @@ export const MESSAGE_PRIORITY = {
   insurance_checked: 48,
   // Spec step 106: the coverage checkup, a heads-up that can wait.
   insurance_checkup: 46,
+  // Spec step 107: a claim's next step is due, like something only the person can do.
+  insurance_claim: 86,
   urgent_alert: 95,
   deadline: 90,
   waiting_on_you: 85,

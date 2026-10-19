@@ -8,14 +8,65 @@ import type { PolicyKind } from "@/config/insurance";
 // quotes: compare prices from the insurance partner (spec step 103). switch: how a switch
 // Jane is doing is going (spec step 105). checkup: is the cover right, by rules (step 106).
 export type InsuranceAsk =
-  "cover" | "renew" | "cost" | "deductible" | "gaps" | "list" | "quotes" | "switch" | "checkup";
+  | "cover"
+  | "renew"
+  | "cost"
+  | "deductible"
+  | "gaps"
+  | "list"
+  | "quotes"
+  | "switch"
+  | "checkup"
+  // claim: something happened (spec step 107).
+  | "claim";
 
 export type InsuranceIntent = {
   kind: "insurance";
   ask: InsuranceAsk;
   // The kind of policy the person named, if any.
   policyKind: PolicyKind | null;
+  // Spec step 107: what happened, by the claim guide's event key (src/config/claims.ts).
+  event?: string;
 };
+
+// Something happened (spec step 107): the kind of policy it's for and the guide's event.
+// Home covers home and renters alike; the answer picks the policy the person has.
+const CLAIM_EVENTS: readonly [PolicyKind, string, RegExp][] = [
+  [
+    "auto",
+    "theft",
+    /\b(?:car|truck)\b.*\b(?:stolen|broken into|broke into)\b|\bstole my (?:car|truck)\b/,
+  ],
+  [
+    "auto",
+    "accident",
+    /\b(?:car accident|accident|crash(?:ed)?|fender bender|rear-?ended|t-?boned|totaled|hit (?:my|a|another|someone'?s) car|(?:car|truck) (?:was|got) hit)\b/,
+  ],
+  ["auto", "damage", /\b(?:hail|cracked|chipped) (?:windshield|car)\b|\bwindshield\b/],
+  [
+    "home",
+    "break_in",
+    /\b(?:broke in|broke into|broken into|break-?in|burglar\w*|burglary|robbed)\b/,
+  ],
+  [
+    "home",
+    "damage",
+    /\b(?:fire|flood\w*|water damage|pipe burst|burst pipe|leak\w*|storm damage|roof damage|tree fell)\b/,
+  ],
+  ["home", "theft", /\b(?:stolen|got stolen|was stolen|theft)\b/],
+  ["pet", "vet", /\bvet\b|\bmy (?:dog|cat|pet) (?:is|got|was) (?:sick|hurt|injured|ill)\b/],
+  ["life", "death", /\b(?:died|passed away|death in the family)\b/],
+  ["health", "bill", /\b(?:medical|hospital|doctor'?s?) bill\b/],
+];
+const CLAIM_ASK =
+  /\b(?:file|make|start|open|need to (?:make|file)) (?:a |an )?(?:insurance )?claim\b|\bclaim\b/;
+
+export function parseClaim(text: string): InsuranceIntent | null {
+  const found = CLAIM_EVENTS.find(([, , words]) => words.test(text));
+  if (found) return { kind: "insurance", ask: "claim", policyKind: found[0], event: found[1] };
+  if (CLAIM_ASK.test(text)) return { kind: "insurance", ask: "claim", policyKind: kindIn(text) };
+  return null;
+}
 
 const KIND_WORDS: readonly [PolicyKind, RegExp][] = [
   ["renters", /\brent(?:er'?s|al)\b/],
@@ -60,6 +111,9 @@ export function kindIn(text: string): PolicyKind | null {
 }
 
 export function parseInsurance(text: string): InsuranceIntent | null {
+  // Something happened: the claims helper, whatever words were used.
+  const claim = parseClaim(text);
+  if (claim) return claim;
   const policyKind = kindIn(text);
   if (!INSURANCE.test(text) && !(COVER.test(text) && policyKind) && !COVER_AMOUNT.test(text)) {
     return null;
