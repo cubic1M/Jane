@@ -70,6 +70,8 @@ export type Intent =
   | { kind: "goals" }
   // Spec step 95: a guided flow to start, or the one left open to pick up again.
   | { kind: "flow"; flow: FlowId | "resume" }
+  // Spec step 96: searching what was said in the chat.
+  | { kind: "search"; query: string }
   // A name on its own, or "tell me about …": a subscription or bill, something Jane found,
   // or a spending category, whichever it is (src/lib/jane-agent/answer.ts).
   | { kind: "about"; target: string; findingId?: string }
@@ -386,6 +388,10 @@ const FLOW_STARTS: readonly [FlowId | "resume", RegExp][] = [
   ],
 ];
 
+// Spec step 96: searching the chat.
+const SEARCH =
+  /^search(?: (?:the|our|my) (?:chat|messages))?(?: for)? (.+)$|^find (.+?) in (?:the|our|my) (?:chat|messages)$|^where did (?:you|we|i) (?:say|talk about|mention) (.+)$/;
+
 // Spec step 94: "how are my goals doing", "goals", "am I on track with my goals".
 const GOALS =
   /^(?:how (?:are|is) |show (?:me )?|what are |list )?(?:my |our )?(?:savings )?goals?(?: doing| progress| looking)?$|\bgoals? (?:progress|doing)\b|\bon track (?:for|with) (?:my |our )?goals?\b/;
@@ -463,6 +469,9 @@ export function parseIntent(raw: string, asOf: string): Intent {
   // Spec step 95: a guided flow.
   const flow = FLOW_STARTS.find(([, pattern]) => pattern.test(text));
   if (flow) return { kind: "flow", flow: flow[0] };
+  // Spec step 96: "search for Netflix", "where did you say Hulu".
+  const search = SEARCH.exec(text);
+  if (search) return { kind: "search", query: (search[1] ?? search[2] ?? search[3]).trim() };
 
   // Spec step 91: something they're telling Jane, not asking.
   const fact = parseFact(text);
