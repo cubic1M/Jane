@@ -1,5 +1,6 @@
 import { DEBT_AUTOPILOT, DEBT_DUE_DAYS, PAYDAY_LOOKBACK_DAYS } from "@/config/debt";
 import type { Prisma, PrismaClient } from "@/generated/prisma/client";
+import { upsertOnce } from "@/lib/unique-race";
 import { track } from "@/lib/analytics";
 import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
@@ -60,7 +61,9 @@ export async function runDebtAutopilot(
     changes: kept as unknown as Prisma.InputJsonArray,
     ...(planStarted ? { planStartedOn: new Date(`${isoDay(now)}T00:00:00Z`) } : {}),
   };
-  await db.debtWatches.upsert({ where: { userId }, create: { userId, ...data }, update: data });
+  await upsertOnce(() =>
+    db.debtWatches.upsert({ where: { userId }, create: { userId, ...data }, update: data }),
+  );
   if (changes.length > 0) await track(userId, "debt_rate_changed", { count: changes.length });
   if (planStarted) await track(userId, "debt_plan_started_by_jane");
   return { changes, planStarted };
