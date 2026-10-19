@@ -30,7 +30,7 @@ export async function loadDebts(
   const asOf = isoDay(now);
   const since = new Date(Date.parse(`${asOf}T00:00:00Z`) - BNPL_LOOKBACK_DAYS * DAY_MS);
   const words = BNPL_PROVIDERS.flatMap((p) => p.words);
-  const [accounts, payments, typed, newLoans] = await Promise.all([
+  const [accounts, payments, typed, newLoans, transfers] = await Promise.all([
     db.accounts.findMany({
       where: { type: { in: ["credit", "loan"] } },
       select: {
@@ -91,6 +91,21 @@ export async function loadDebts(
         fundedAt: true,
       },
     }),
+    // Spec step 113: balances moved to a 0% card, until that card is linked.
+    db.balanceTransfers.findMany({
+      where: { status: "active" },
+      select: {
+        id: true,
+        issuer: true,
+        cardName: true,
+        amountCents: true,
+        feeCents: true,
+        promoMonths: true,
+        monthlyNeededCents: true,
+        startedOn: true,
+        promoEndsOn: true,
+      },
+    }),
   ]);
   return debtBook(
     {
@@ -107,11 +122,25 @@ export async function loadDebts(
         payoffDate: t.payoffDate ? isoDay(t.payoffDate) : null,
         updatedOn: isoDay(t.updatedAt),
       })),
-      newLoans: newLoans.map(({ id, fundedAt, ...l }) => ({
-        ...l,
-        applicationId: id,
-        fundedOn: isoDay(fundedAt!),
-      })),
+      newLoans: [
+        ...newLoans.map(({ id, fundedAt, ...l }) => ({
+          ...l,
+          applicationId: id,
+          fundedOn: isoDay(fundedAt!),
+        })),
+        ...transfers.map((t) => ({
+          applicationId: t.id,
+          lender: t.issuer,
+          product: "personal",
+          aprBps: 0,
+          rateType: "intro",
+          termMonths: t.promoMonths,
+          amountCents: t.amountCents + t.feeCents,
+          monthlyCents: t.monthlyNeededCents,
+          fundedOn: isoDay(t.startedOn),
+          transfer: { cardName: t.cardName, promoEndsOn: isoDay(t.promoEndsOn) },
+        })),
+      ],
     },
     asOf,
   );

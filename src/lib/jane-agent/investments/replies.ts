@@ -1,7 +1,8 @@
-import { GOALS, PROFILE_QUESTIONS } from "@/config/investing";
+import { GOALS, INVESTMENT_AUTOPILOT, PROFILE_QUESTIONS, RISK_LEVELS } from "@/config/investing";
+import { portfolioNote } from "@/insights/portfolio-note";
 import { formatBps, type InvestmentAccountView, type HoldingView } from "@/insights/investments";
 import type { FeeSummary } from "@/insights/investment-fees";
-import { classWords, type PortfolioReview } from "@/insights/portfolio-review";
+import { classWords, listWords, type PortfolioReview } from "@/insights/portfolio-review";
 import type { Investments } from "@/lib/investments/holdings";
 import { formatCents } from "@/lib/money";
 import {
@@ -18,6 +19,7 @@ import { mixLine, planSummary, rebalanceButton, SIMULATED_WORDS } from "./rebala
 import type { RebalancePlan } from "@/insights/rebalance";
 import type { loadAutoInvest } from "@/lib/investments/auto-invest";
 import type { AccountPlan } from "@/lib/investments/accounts";
+import type { InvestmentSnapshot } from "./snapshot";
 import {
   AUTO_LINK,
   AUTO_PROMISE,
@@ -95,7 +97,7 @@ export function holdingsReply(data: Investments, named: string | null): Reply {
       };
     }
     return {
-      body: `Your ${a.name} has ${balance} in ${holdingsWord(a.holdings.length)}:\n${a.holdings.map(line).join("\n")}\nFrom ${a.institution ?? "your bank"}.`,
+      body: `Your ${a.name} has ${balance} in ${holdingsWord(a.holdings.length)}. Biggest first:\n${a.holdings.map(line).join("\n")}\nFrom ${a.institution ?? "your bank"}.`,
       actions: [SEE],
       refs: {},
     };
@@ -312,7 +314,7 @@ export function rebalanceReply(
 // The orders and the button that places them.
 export function rebalanceOffer(plan: RebalancePlan): Reply {
   return {
-    body: `Here's the plan: ${planSummary(plan)}\nTap and I'll place the orders ${SIMULATED_WORDS}.`,
+    body: `I've got ${plan.orders.length} orders ready to move you to your ${RISK_LEVELS[plan.riskLevel].label.toLowerCase()} mix, ${SIMULATED_WORDS}.\n${planSummary(plan)}\nTap and I'll place them.`,
     actions: [
       rebalanceButton(),
       { id: "open", label: "See the orders", kind: "link", href: "/investments/rebalance" },
@@ -411,9 +413,54 @@ export function accountsReply(plan: AccountPlan): Reply {
   const location = plan.location.length
     ? `\nWhere to hold what:\n${plan.location.map((m) => `- ${m.holding.name} is better in ${m.better}. ${m.why}`).join("\n")}`
     : "";
+  const [first, ...rest] = plan.order;
+  const lead = `Fill ${first.short} first${rest.length > 0 ? `, then ${listWords(rest.map((s) => s.short))}` : ""}.`;
   return {
-    body: `Here's the order I'd fill your accounts in:\n${order}${location}${gains ? `\n${gains}` : ""}`,
+    body: `${lead}\n${order}${location}${gains ? `\n${gains}` : ""}`,
     actions: [link, learnLink("roth-vs-traditional")],
     refs: { advice: true },
+  };
+}
+
+// Spec step 137: how the investments stand this month, with at most one decision.
+export function overviewReply(snapshot: InvestmentSnapshot): Reply {
+  if (snapshot.accounts.length === 0) {
+    return {
+      body: "I don't see any investment or retirement accounts yet. Link one and I'll tell you each month how it's going.",
+      actions: [CONNECT],
+      refs: {},
+    };
+  }
+  const plan =
+    snapshot.rebalance && snapshot.rebalance.orders.length > 0 ? snapshot.rebalance : null;
+  const note = portfolioNote({
+    month: snapshot.month.month,
+    totalCents: snapshot.totalCents,
+    previousCents: snapshot.month.previousCents,
+    contributedCents: snapshot.month.contributedCents,
+    feesYearlyCents: snapshot.fees.totalYearlyCents,
+    review: snapshot.advice ? snapshot.review : null,
+    ordersReady: snapshot.advice ? (plan?.orders.length ?? 0) : 0,
+  });
+  return {
+    body: note.body,
+    actions: [...(note.decision ? [rebalanceButton()] : []), SEE],
+    refs: {
+      ...(snapshot.advice && snapshot.review ? { advice: true as const } : {}),
+      ...(note.decision && plan ? { rebalanceKey: plan.key } : {}),
+    },
+  };
+}
+
+// Spec step 137: what Jane does with investments by herself at the person's level.
+export function autopilotReply(level: string | null): Reply {
+  const key = (
+    level && Object.hasOwn(INVESTMENT_AUTOPILOT, level) ? level : "none"
+  ) as keyof typeof INVESTMENT_AUTOPILOT;
+  const lines = INVESTMENT_AUTOPILOT[key];
+  return {
+    body: `${level ? `On your autopilot setting, here's` : "Here's"} what I do with your investments by myself. ${lines.join(" ")}`,
+    actions: [SEE, { id: "open", label: "Change autopilot", kind: "link", href: "/settings" }],
+    refs: {},
   };
 }

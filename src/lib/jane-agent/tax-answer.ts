@@ -29,6 +29,7 @@ import {
   savingsReply,
   fileReply,
   refundReply,
+  standardDeductionReply,
   selfEmployedReply,
   withholdingReply,
 } from "./tax-replies";
@@ -108,6 +109,8 @@ export async function answerTaxIntent(
       return packReply(await loadTaxPack(userId, year, { client, now }));
     case "estimate":
       return estimateMessage(await loadTaxEstimate(userId, { client, now }));
+    case "standard_deduction":
+      return standardDeductionReply(await loadTaxEstimate(userId, { client, now }));
     case "bracket":
       return bracketReply(await loadTaxEstimate(userId, { client, now }));
     case "withholding":

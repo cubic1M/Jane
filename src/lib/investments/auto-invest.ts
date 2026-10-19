@@ -67,7 +67,14 @@ export async function loadAutoInvest(
     adviceMode(userId, { client }),
     profileOf(userId, { client }),
     db.autoInvestPlans.findFirst({
-      select: { mode: true, amountCents: true, accountId: true, status: true, lastPaydayOn: true },
+      select: {
+        mode: true,
+        amountCents: true,
+        accountId: true,
+        status: true,
+        lastPaydayOn: true,
+        updatedAt: true,
+      },
     }),
     db.autoInvestRuns.findMany({
       select: {

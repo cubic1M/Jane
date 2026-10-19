@@ -10,4 +10,7 @@ export const DEBT_ACTION_IDS = [
   "loan.submit",
   "loan.accept",
   "loan.withdraw",
+  // Spec step 113: the person moved a card's balance to a 0% card, or paid it off.
+  "transfer.start",
+  "transfer.done",
 ] as const;

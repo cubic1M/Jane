@@ -4,6 +4,7 @@ import { recurringCharges } from "@/detection/subscriptions";
 import type { PrismaClient } from "@/generated/prisma/client";
 import { loadInsightTransactions } from "@/insights/load";
 import { spendingInsights } from "@/insights/spending";
+import { adviceMode } from "@/lib/advice-mode";
 import { scopedFor } from "@/lib/db-scoped";
 import { dollarFigures } from "@/lib/guardrails";
 import { CHAT_TOOLS, runChatTool } from "../claude-tools";
@@ -23,6 +24,11 @@ export type Facts = {
   // Spending by month (YYYY-MM): the total and each category's.
   months: Record<string, { totalCents: number; categories: Record<string, number> }>;
   findings: { id: string; type: string; title: string }[];
+  // Spec step 137: whether Jane is in demo advice mode for this person (step 98): her
+  // answers are then checked with the demo advice guardrails, as she checks them herself.
+  advice?: boolean;
+  // Spec step 137: what's in investment and retirement accounts.
+  investments?: { totalCents: number; accounts: { name: string; balanceCents: number | null }[] };
 };
 
 // The chat's lookups that need no input, run once for their figures.
@@ -36,11 +42,12 @@ export async function loadFacts(
   { client, now }: { client: PrismaClient; now: Date },
 ): Promise<Facts> {
   const asOf = now.toISOString().slice(0, 10);
-  const [snapshot, input, transactions, lookups] = await Promise.all([
+  const [snapshot, input, transactions, lookups, advice] = await Promise.all([
     loadSnapshot(userId, { client, now }),
     loadDetectionInput(userId, { client, now }),
     loadInsightTransactions(scopedFor(userId, client), asOf, INSIGHT_MONTHS),
     Promise.all(LOOKUPS.map((name) => runChatTool(userId, name, {}, { client, now }))),
+    adviceMode(userId, { client }),
   ]);
   const insights = spendingInsights(transactions, { asOf, monthCount: INSIGHT_MONTHS });
   const months: Facts["months"] = {};
@@ -67,6 +74,14 @@ export async function loadFacts(
       subscription: r.subscription,
     })),
     months,
+    advice,
+    investments: snapshot?.investments && {
+      totalCents: snapshot.investments.totalCents,
+      accounts: snapshot.investments.accounts.map((a) => ({
+        name: a.name,
+        balanceCents: a.balanceCents,
+      })),
+    },
     findings: (snapshot?.findings ?? []).map((f) => ({
       id: f.findingId,
       type: f.type,
