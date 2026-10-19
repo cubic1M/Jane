@@ -80,7 +80,67 @@ export const FUND_FACTS: Readonly<Record<string, FundFacts>> = {
     category: "US dividend income (actively managed)",
     source: DEMO_SOURCE,
   },
+  // Not held by the demo person: the lower-cost equivalents (spec step 130).
+  KTRGX: {
+    expenseRatioBps: 8,
+    mix: { us_stocks: 0.54, intl_stocks: 0.36, bonds: 0.1 },
+    category: "Target date 2055 (index)",
+    source: DEMO_SOURCE,
+  },
+  KDVX: {
+    expenseRatioBps: 6,
+    mix: { us_stocks: 1 },
+    category: "US dividend index",
+    source: DEMO_SOURCE,
+  },
 };
+
+// Names for funds Jane may suggest but nobody holds yet (held ones are named by Plaid).
+export const FUND_NAMES: Readonly<Record<string, string>> = {
+  NSTDX: "Northstar Target 2055 Fund",
+  SLGFX: "Summit Large Cap Growth Fund",
+  KTSIX: "Keystone Total US Stock Index Fund",
+  KTBIX: "Keystone Total Bond Index Fund",
+  KTIIX: "Keystone Total International Index Fund",
+  DSVXX: "Demo Stable Value Fund",
+  KLCX: "Keystone US Large Cap Index ETF",
+  PDIFX: "Pinnacle Dividend Income Fund",
+  KTRGX: "Keystone Target 2055 Index Fund",
+  KDVX: "Keystone US Dividend Index ETF",
+};
+
+// Spec step 130: for a costly fund, funds that do a similar job for less, best first. In
+// an employer plan (a 401(k) and the like) only funds on the plan's menu can be bought.
+// Stand-in: a fund-data partner would supply both lists.
+export const LOWER_COST_EQUIVALENTS: Readonly<Record<string, readonly string[]>> = {
+  NSTDX: ["KTRGX"],
+  SLGFX: ["KLCX", "KTSIX"],
+  PDIFX: ["KDVX", "KLCX"],
+};
+
+// The funds the demo employer's 401(k) offers. Plaid doesn't report a plan's menu.
+export const DEMO_EMPLOYER_PLAN_MENU: readonly string[] = [
+  "NSTDX",
+  "KTRGX",
+  "SLGFX",
+  "KTSIX",
+  "KTIIX",
+  "KTBIX",
+  "DSVXX",
+];
+
+// Plaid subtypes of employer plans, where only the plan's menu can be bought.
+export const EMPLOYER_PLAN_SUBTYPES: readonly string[] = [
+  "401a",
+  "401k",
+  "403b",
+  "457b",
+  "roth 401k",
+  "roth 403b",
+  "roth 457b",
+  "thrift savings plan",
+  "profit sharing plan",
+];
 
 // A security Plaid describes but the table doesn't know: classed by its Plaid type.
 export function mixOfType(type: string | null, isCashEquivalent: boolean): AssetMix {
