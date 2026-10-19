@@ -99,6 +99,13 @@ export const CAPITAL_GAINS_BRACKETS: Readonly<Record<FilingStatus, readonly Brac
   ],
 };
 
+// Spec step 124: a net capital loss comes off other income up to this much a year (the rest
+// carries forward); wash sales look this many days either side of a sale at a loss.
+export const CAPITAL_LOSS_LIMIT = { normal: $(3_000), marriedSeparate: $(1_500) } as const;
+export const WASH_SALE_DAYS = 30;
+// Gains on shares held longer than this many days are long-term.
+export const LONG_TERM_DAYS = 365;
+
 // Child tax credit (OBBBA, permanent): per qualifying child under 17, up to the refundable
 // part from 15% of earned income over $2,500; less $50 per $1,000 (or part) of income over
 // the threshold. Other dependants: $500, not refundable.
