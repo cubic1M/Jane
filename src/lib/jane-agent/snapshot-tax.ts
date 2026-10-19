@@ -21,6 +21,7 @@ import { loadInvestmentTaxes, type InvestmentTaxesView } from "@/lib/investment-
 import type { TaxSaving } from "@/planning/tax-savings";
 import type { WithholdingCheck } from "@/planning/withholding";
 import { loadTaxForms, loadTaxTags } from "@/lib/tax-organizer";
+import { loadTaxPlan, type TaxPlanView } from "@/lib/tax-plan";
 import { inDocumentSeason, loadTaxDocuments, type TaxDocumentsView } from "@/lib/tax-documents";
 import { loadTaxProfile } from "@/lib/tax-profile";
 import type { ExpectedForm } from "@/planning/tax-documents";
@@ -61,6 +62,8 @@ export type TaxSnapshot = {
     filing?: { year: number; inSeason: boolean; available: boolean; return: ReturnView | null };
     // Spec step 166: last year's tax forms, collected and checked, in the document season.
     documents?: TaxDocumentsView | null;
+    // Spec step 167: the year-round tax plan.
+    plan?: TaxPlanView;
   } | null;
 };
 
@@ -87,6 +90,10 @@ export async function loadTaxSnapshot(
     loadTaxEstimate(userId, { client, now }),
     adviceMode(userId, { client }),
   ]);
+  const [savings, selfEmployed] = await Promise.all([
+    loadTaxSavings(userId, { client, now, loaded: { estimate, advice } }),
+    loadSelfEmployed(userId, { client, now, loaded: { estimate, advice } }),
+  ]);
   const inLastMonth = (lastMonthTags ?? tags).tagged.filter((t) => t.date.startsWith(last));
   return {
     tax: {
@@ -104,9 +111,8 @@ export async function loadTaxSnapshot(
       },
       estimate,
       withholding: checkFrom(estimate),
-      savings: (await loadTaxSavings(userId, { client, now, loaded: { estimate, advice } }))
-        .savings,
-      selfEmployed: await loadSelfEmployed(userId, { client, now, loaded: { estimate, advice } }),
+      savings: savings.savings,
+      selfEmployed,
       filing: await (async () => {
         const fy = filingYear(today);
         const [partner, ret] = await Promise.all([
@@ -129,6 +135,11 @@ export async function loadTaxSnapshot(
         (await loadRefunds(userId, { client, now, days: REFUND.recentDays })).refunds,
         now,
       ),
+      plan: await loadTaxPlan(userId, {
+        client,
+        now,
+        loaded: { estimate, advice, savings, selfEmployed },
+      }),
       documents: inDocumentSeason(today)
         ? await loadTaxDocuments(userId, year - 1, { client, now })
         : null,

@@ -2032,6 +2032,9 @@ model TaxProfile {
   residencyYear         Int?      @map("residency_year")
   // Spec step 166: the day Jane last asked the document partner for forms.
   documentsCheckedOn    DateTime? @map("documents_checked_on") @db.Date
+  // Spec step 167: tax plan moves ("<year>:<key>") put on the deadlines, or said no to,
+  // as "<year>:<key>:added" or "<year>:<key>:no".
+  planHandled           String[]  @default([]) @map("plan_handled")
   createdAt             DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt             DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
 
