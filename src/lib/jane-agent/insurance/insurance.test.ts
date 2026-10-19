@@ -311,6 +311,8 @@ describe("Jane's own reshops in the chat (spec step 104)", () => {
     demo: true,
     expiresAt: new Date("2026-11-18T00:00:00Z"),
     createdAt: new Date("2026-10-19T00:00:00Z"),
+    plan: null,
+    expectedCostCents: null,
   };
   const shop = (over: Partial<Shop> = {}): Shop => ({
     id: "s1",
@@ -531,5 +533,92 @@ describe("insurance on autopilot (spec step 108)", () => {
     expect(reply.body).toContain(
       "- Lighthouse Insurance (demo) car insurance: claims line 1-800-555-0101",
     );
+  });
+});
+
+describe("do I need it? (spec step 149)", () => {
+  it.each([
+    ["do I need umbrella insurance", "umbrella"],
+    ["should I get disability insurance", "disability"],
+    ["is travel insurance worth it", "travel"],
+    ["do I need pet insurance", "pet"],
+    ["should I buy phone insurance", "device"],
+    ["do we need life insurance", "life"],
+  ])("reads %j", (text, policyKind) => {
+    expect(parseIntent(text, ASOF)).toEqual({ kind: "insurance", ask: "need", policyKind });
+  });
+
+  it("answers from the gap rule, with demo advice only in that mode", () => {
+    const facts = resolveHousehold(
+      { housing: null, vehicles: null, dependants: null, pets: null, dismissedGaps: [] },
+      { mortgage: false, homeOwned: false, rentPaid: false, cars: 0, assetsCents: 70_000_000 },
+    );
+    const ask = parseIntent("do I need umbrella insurance", ASOF) as Parameters<
+      typeof insuranceReply
+    >[0];
+    const plain = insuranceReply(ask, insurance([], facts), ASOF);
+    expect(plain.body).toMatch(
+      /^No umbrella insurance on file\. What you have is worth about \$700,000\.00/,
+    );
+    expect(plain.refs).toEqual({ insuranceGap: "umbrella" });
+    const advised = insuranceReply(ask, insurance([], facts, true), ASOF);
+    expect(advised.body).toContain(GAP_ADVICE.umbrella.text);
+    expect(advised.refs.advice).toBe(true);
+  });
+
+  it("explains why not, from the numbers, when the rule doesn't fire", () => {
+    const facts = resolveHousehold(null, {
+      mortgage: false,
+      homeOwned: false,
+      rentPaid: false,
+      cars: 0,
+      assetsCents: 4_000_000,
+    });
+    const ask = parseIntent("do I need umbrella insurance", ASOF) as Parameters<
+      typeof insuranceReply
+    >[0];
+    expect(insuranceReply(ask, insurance([], facts), ASOF).body).toBe(
+      "An umbrella policy pays above your car and home liability limits. It usually matters once what someone has is worth more than $500,000.00; by your balances and values, yours is about $40,000.00.",
+    );
+    expect(insuranceReply(ask, insurance([], facts, true), ASOF).body).toMatch(
+      /it can wait for now\.$/,
+    );
+  });
+
+  it("says when they already have it", () => {
+    const ask = parseIntent("do I need car insurance", ASOF) as Parameters<
+      typeof insuranceReply
+    >[0];
+    expect(insuranceReply(ask, insurance(), ASOF).body).toMatch(
+      /^You already have GEICO car insurance\./,
+    );
+  });
+
+  it("lists several gaps briefly, each a question away", () => {
+    const facts = resolveHousehold(
+      { housing: "rent", vehicles: null, dependants: 1, pets: null, dismissedGaps: [] },
+      { mortgage: false, homeOwned: false, rentPaid: false, cars: 0, paycheck: true },
+    );
+    const reply = insuranceReply(
+      parseInsurance("am i missing any insurance")!,
+      insurance([], facts, true),
+      ASOF,
+    );
+    expect(reply.body.split("\n")).toEqual([
+      "3 things look missing from your cover.",
+      "- No renters insurance on file",
+      "- No life insurance on file",
+      "- No disability insurance on file",
+      'Ask me about any of them, like "do I need renters insurance?"',
+    ]);
+    expect(reply.refs).toEqual({});
+  });
+});
+
+it("reads comparing health plans as quotes (spec step 149)", () => {
+  expect(parseIntent("compare health plans", ASOF)).toEqual({
+    kind: "insurance",
+    ask: "quotes",
+    policyKind: "health",
   });
 });

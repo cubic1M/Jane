@@ -34,7 +34,9 @@ export type TaxIntent =
   // Spec step 126.
   | { kind: "tax"; ask: "file" }
   // Spec step 127.
-  | { kind: "tax"; ask: "standard_deduction" };
+  | { kind: "tax"; ask: "standard_deduction" }
+  // Spec step 124.
+  | { kind: "tax"; ask: "investments" };
 
 const NUMBER_WORDS: Readonly<Record<string, number>> = {
   no: 0,
@@ -119,6 +121,10 @@ const FILE =
 // is the person's own question, answered from their estimate.
 const STANDARD =
   /\bshould (?:i|we) itemi[sz]e\b|\b(?:do|will|would) (?:i|we) itemi[sz]e\b|\bitemi[sz]e or not\b|\bitemi[sz]ing worth it\b/;
+// Capital gains, harvesting and asset location in general are the investments lane's
+// (step 135, ./investments/intents.ts); these are what step 124 adds.
+const INVESTMENT_TAX =
+  /\breali[sz]ed (?:gains?|losses?)\b|\bharvest (?:my )?loss(?:es)?\b|\bwash sales?\b|\b(?:gains|losses) (?:on|from) (?:my )?(?:sales|selling)\b/;
 const PACK = /\btax(?:-| )?time pack\b|\btax pack\b|\byear-end pack\b/;
 
 function stateCode(words: string): string | null {
@@ -149,6 +155,7 @@ export function parseTaxIntent(text: string): TaxIntent | null {
   if (untag) return { kind: "tax", ask: "tag", target: untag[1].trim(), tag: null };
   if (PACK.test(text)) return { kind: "tax", ask: "pack" };
   if (STANDARD.test(text)) return { kind: "tax", ask: "standard_deduction" };
+  if (INVESTMENT_TAX.test(text)) return { kind: "tax", ask: "investments" };
   if (REFUND_ASK.test(text)) return { kind: "tax", ask: "refund" };
   if (FILE.test(text)) return { kind: "tax", ask: "file" };
   if (WITHHOLDING.test(text)) return { kind: "tax", ask: "withholding" };

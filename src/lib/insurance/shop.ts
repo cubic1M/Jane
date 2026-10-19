@@ -15,6 +15,8 @@ import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
 import { normalizeMerchant } from "@/data-sources/merchant";
 import { isQuotable, partnerFor, type InsurancePartner } from "./partner";
+import { expectedSpend, expectedYearlyCost } from "./health";
+import { loadHousehold } from "./household";
 import { pickQuote } from "./pick";
 import { POLICY_SELECT, nextRenewal, toPolicy, yearlyPremium, type Policy } from "./policies";
 import { requestQuotes, type StoredQuote } from "./quotes";
@@ -90,6 +92,14 @@ export function toShop(row: Prisma.InsuranceShopGetPayload<{ select: typeof SHOP
   };
 }
 
+// Spec step 149: what a health policy costs in a year with the person's usual care, to
+// compare plans on; null for other kinds or when its terms aren't on file.
+async function currentTotal(userId: string, policy: Policy, client: PrismaClient, now: Date) {
+  if (policy.kind !== "health") return null;
+  const household = await loadHousehold(userId, { client, now });
+  return expectedYearlyCost(policy, yearlyPremium(policy), expectedSpend(household));
+}
+
 const json = (q: StoredQuote) => JSON.parse(JSON.stringify(q)) as Prisma.InputJsonObject;
 
 // Reshops one policy now and keeps the result. Null when it can't be shopped (no partner,
@@ -111,7 +121,12 @@ export async function shopPolicy(
   if (!quoting || !(await adviceMode(userId, { client }))) return null;
   const result = await requestQuotes(userId, policy.id, { client, now, partner: quoting });
   if (result.kind !== "quotes") return null;
-  const chosen = pickQuote(policy, current, result.quotes);
+  const chosen = pickQuote(
+    policy,
+    current,
+    result.quotes,
+    await currentTotal(userId, policy, client, now),
+  );
   // Another open shop for the same policy is replaced by this one.
   await db.insuranceShops.updateMany({
     where: { policyId: policy.id, status: "open" },
@@ -218,7 +233,12 @@ export async function refreshPicks(
     const policy = toPolicy(row);
     const result = await requestQuotes(userId, policy.id, { client, now, partner });
     if (result.kind !== "quotes") continue;
-    const chosen = pickQuote(policy, shop.currentAnnualCents, result.quotes);
+    const chosen = pickQuote(
+      policy,
+      shop.currentAnnualCents,
+      result.quotes,
+      await currentTotal(userId, policy, client, now),
+    );
     if (!chosen || chosen.pick.carrier.id !== shop.pick.carrier.id) continue;
     await db.insuranceShops.updateMany({
       where: { id: shop.id, status: "open" },

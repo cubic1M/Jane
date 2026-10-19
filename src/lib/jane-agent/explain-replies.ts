@@ -1,6 +1,7 @@
 import type { DecisionCard } from "@/lib/cards";
 import { formatCents } from "@/lib/money";
 import type { Comparison } from "@/planning/compare";
+import { optionsBlock } from "./block-data";
 import type { Reply } from "./replies";
 import { sentence, shortDate } from "./sources/source";
 import type { MessageAction } from "./types";
@@ -61,5 +62,10 @@ export function optionsReply(
     `- ${scored(comparison.pick)}`,
     ...comparison.runnersUp.map((s) => `- ${scored(s)}`),
   ];
-  return { body: lines.join("\n"), actions: decisionButtons(actions), refs: {} };
+  // Spec step 94: and side by side, as a table.
+  return {
+    body: lines.join("\n"),
+    actions: decisionButtons(actions),
+    refs: { block: optionsBlock(comparison) },
+  };
 }

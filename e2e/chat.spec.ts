@@ -117,6 +117,15 @@ test("the demo bank lands in Jane's chat, and Yes answers a finding", async ({
   await expect(messages.last()).toContainText("Want me to handle it?");
   await expect(messages.last().getByRole("button", { name: "Yes", exact: true })).toBeVisible();
 
+  // Spec step 94: a timeline drawn in monospace, fitting the phone, with a text alternative.
+  await ask.fill("what's due this week");
+  await ask.press("Enter");
+  const due = messages.last().locator("figure");
+  await expect(due).toBeVisible();
+  await expect(due.locator("figcaption")).toHaveText("Due this week");
+  await expect(due.locator(".sr-only")).toContainText("Due this week: ");
+  expect(await due.evaluate((el) => el.scrollWidth <= el.clientWidth)).toBe(true);
+
   // Spec step 91: Jane remembers what she's told, only on the tap, and Settings can forget it.
   await ask.fill("payday is the 15th");
   await ask.press("Enter");

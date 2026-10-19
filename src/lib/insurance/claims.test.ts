@@ -98,6 +98,12 @@ describe("what happened, in the person's words", () => {
     ["my dog is sick and we went to the vet", "pet", "vet"],
     ["my dad passed away", "life", "death"],
     ["I got a surprise hospital bill", "health", "bill"],
+    // Spec step 149.
+    ["my phone was stolen", "device", "theft"],
+    ["I cracked my phone screen", "device", "broken"],
+    ["our flight got cancelled", "travel", "cancelled"],
+    ["I can't work after my surgery", "disability", "unable"],
+    ["my neighbor is suing me", "umbrella", "sued"],
   ])("reads %j as a claim", (text, policyKind, event) => {
     expect(parseIntent(text, "2026-10-19")).toEqual({
       kind: "insurance",

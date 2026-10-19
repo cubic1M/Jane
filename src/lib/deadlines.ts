@@ -27,7 +27,9 @@ import { track } from "@/lib/analytics";
 import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
 import { documentDates } from "@/lib/documents/dates";
+import { openEnrollmentDates } from "@/lib/insurance/health";
 import { listPolicies, nextRenewal } from "@/lib/insurance/policies";
+import { loadInsurance } from "@/lib/insurance/profile";
 
 // Deadlines (spec step 71): loads each source's data, keeps the deadlines the person types
 // in, and raises the deadline_soon reminders (src/insights/deadlines.ts decides which).
@@ -136,6 +138,41 @@ export const insuranceDeadlines: DeadlineSource = async (userId, { client, now }
   });
 };
 
+// Spec step 149: marketplace open enrollment, for people with a health plan, or with other
+// policies on file and no health cover (a health gap): when it opens and its last day,
+// within the horizon.
+export const openEnrollmentDeadlines: DeadlineSource = async (userId, { client, now }) => {
+  const asOf = isoDate(now);
+  const until = addDays(asOf, DEADLINE_HORIZON_DAYS);
+  const { policies, gaps } = await loadInsurance(userId, { client, now });
+  const health = policies.some((p) => p.kind === "health" && p.status === "active");
+  // Without a plan: only for people keeping their insurance with Jane and missing health cover.
+  const missing =
+    gaps.some((g) => g.key === "health") && policies.some((p) => p.status === "active");
+  if (!health && !missing) return [];
+  return openEnrollmentDates(asOf).flatMap(({ date, what, year }): Deadline[] =>
+    date > until
+      ? []
+      : [
+          {
+            key: `open-enrollment:${year}:${what}`,
+            title:
+              what === "start"
+                ? "Marketplace health plans open for next year"
+                : "Last day to pick a marketplace health plan",
+            date,
+            kind: "renewal",
+            source: "insurance",
+            amountCents: null,
+            href: "/insurance",
+            detail: health
+              ? "Compare plans on what they'd cost in a year with your usual care, not the premium alone."
+              : "There's no health plan on file: this is when you can get one.",
+          },
+        ],
+  );
+};
+
 // Every source, in one list.
 export const DEADLINE_SOURCES: readonly DeadlineSource[] = [
   transactionDeadlines,
@@ -143,6 +180,7 @@ export const DEADLINE_SOURCES: readonly DeadlineSource[] = [
   handEnteredDeadlines,
   documentDeadlines,
   insuranceDeadlines,
+  openEnrollmentDeadlines,
 ];
 
 // Everything coming up, soonest first. A source that fails is left out (and logged) so

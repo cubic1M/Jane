@@ -1,6 +1,9 @@
 import type { PrismaClient } from "@/generated/prisma/client";
 import { scopedFor } from "@/lib/db-scoped";
 import { loadTaxEstimate } from "@/lib/tax-estimate";
+import { adviceMode } from "@/lib/advice-mode";
+import { loadInvestmentTaxes } from "@/lib/investment-taxes";
+import { investmentsReply } from "./tax-investments";
 import { loadWithholding } from "@/lib/tax-withholding";
 import { loadTaxSavings } from "@/lib/tax-savings";
 import { loadSelfEmployed } from "@/lib/self-employed";
@@ -109,6 +112,14 @@ export async function answerTaxIntent(
       return packReply(await loadTaxPack(userId, year, { client, now }));
     case "estimate":
       return estimateMessage(await loadTaxEstimate(userId, { client, now }));
+    case "investments": {
+      const [estimate, advice] = await Promise.all([
+        loadTaxEstimate(userId, { client, now }),
+        adviceMode(userId, { client }),
+      ]);
+      const view = await loadInvestmentTaxes(userId, estimate.year, { client, now });
+      return investmentsReply(view, estimate, advice);
+    }
     case "standard_deduction":
       return standardDeductionReply(await loadTaxEstimate(userId, { client, now }));
     case "bracket":

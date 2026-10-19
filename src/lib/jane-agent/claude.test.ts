@@ -561,3 +561,51 @@ describe("speed and failures", () => {
     expect(vi.mocked(loadSnapshot).mock.calls.length).toBeGreaterThan(again);
   });
 });
+
+// Spec step 94: Claude can attach one block, built from the person's numbers by Jane (never
+// from Claude's own figures), and its words pass the same guardrails.
+describe("show_block", () => {
+  beforeEach(() => {
+    create.mockReset();
+    forgetPrimer();
+    resetClaudeHealth();
+    vi.mocked(loadSnapshot).mockReset().mockResolvedValue(snapshot);
+    vi.mocked(homeSummary)
+      .mockReset()
+      .mockResolvedValue({
+        safeToSpend: null,
+        comingUp: [
+          {
+            key: "b1",
+            date: "2026-10-20",
+            label: "Verizon Wireless",
+            amountCents: 14_500,
+            daysLeft: 2,
+            href: "/bills",
+          },
+        ],
+      } as never);
+  });
+
+  it("attaches the block Jane drew from the person's numbers, once", async () => {
+    create
+      .mockResolvedValueOnce(toolUse("show_block", { kind: "coming_up" }))
+      .mockResolvedValueOnce(toolUse("show_block", { kind: "coming_up" }))
+      .mockResolvedValueOnce(final("Verizon Wireless is next, $145.00 on Oct 20."));
+    const result = await askClaudeInChat("u1", [], "what's next", options);
+    expect(result.kind).toBe("answer");
+    expect(result.reply.refs.block).toEqual({
+      type: "timeline",
+      title: "Coming up",
+      rows: [{ date: "2026-10-20", label: "Verizon Wireless", cents: 14_500 }],
+    });
+  });
+
+  it("refuses a kind it doesn't know, and shows nothing", async () => {
+    create
+      .mockResolvedValueOnce(toolUse("show_block", { kind: "pie_chart" }))
+      .mockResolvedValueOnce(final("Here you go."));
+    const result = await askClaudeInChat("u1", [], "chart it", options);
+    expect(result.reply.refs.block).toBeUndefined();
+  });
+});

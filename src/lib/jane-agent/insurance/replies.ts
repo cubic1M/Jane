@@ -10,6 +10,7 @@ import { formatCents } from "@/lib/money";
 import type { Reply } from "../replies";
 import type { MessageAction } from "../types";
 import type { InsuranceIntent } from "./intents";
+import { needReply } from "./need";
 import type { InsuranceSnapshot } from "./snapshot";
 
 // Jane's answers about insurance (spec Phase X). Pure: the profile in, fixed wording out.
@@ -133,6 +134,11 @@ export function insuranceReply(
 
   const all = profile.policies;
 
+  // Spec step 149: whether they need a kind of cover, from their numbers.
+  if (intent.ask === "need" && intent.policyKind && insurance) {
+    return needReply(intent.policyKind, insurance);
+  }
+
   // Spec step 108: how to reach each insurer, from the partner's catalog when known.
   if (intent.ask === "contact") {
     const policies = (
@@ -188,10 +194,15 @@ export function insuranceReply(
     }
     const advice = "advice" in profile && profile.advice;
     return {
-      body: `${profile.gaps.length === 1 ? "One thing looks" : `${profile.gaps.length} things look`} missing from your cover.\n${profile.gaps.map((g) => `- ${g.title}. ${g.why}${advice ? ` ${gapAdvice(g).text}` : ""}`).join("\n")}`,
+      // One gap with its reason (and what to add, as demo advice); several as a short list,
+      // each a question away (spec step 149).
+      body:
+        profile.gaps.length === 1
+          ? `One thing looks missing from your cover.\n- ${profile.gaps[0].title}. ${profile.gaps[0].why}${advice ? ` ${gapAdvice(profile.gaps[0]).text}` : ""}`
+          : `${profile.gaps.length} things look missing from your cover.\n${profile.gaps.map((g) => `- ${g.title}`).join("\n")}\nAsk me about any of them, like "do I need ${kindWords(profile.gaps[0].kind)}?"`,
       actions: [SEE],
       // Demo advice (spec step 98) is labelled in the chat.
-      refs: advice ? { advice: true } : {},
+      refs: advice && profile.gaps.length === 1 ? { advice: true } : {},
     };
   }
 
