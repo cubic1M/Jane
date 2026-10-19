@@ -2,6 +2,7 @@
 
 import { redirect } from "next/navigation";
 import { LoanApplicationError, prepareApplication } from "@/lib/loan-applications";
+import { TransferError, endTransfer, startTransfer } from "@/lib/balance-transfers";
 import { checkRates } from "@/lib/refinance";
 import { requireUser } from "@/lib/session";
 
@@ -32,4 +33,34 @@ export async function applyAction(formData: FormData): Promise<void> {
     throw error;
   }
   redirect(`/loans/apply/${id}`);
+}
+
+// Spec step 113: the person moved a card's balance to a 0% card, or paid that off.
+async function transferStep(step: () => Promise<unknown>, done: string): Promise<never> {
+  try {
+    await step();
+  } catch (error) {
+    if (error instanceof TransferError) {
+      redirect(`/loans/refinance?${new URLSearchParams({ error: error.message })}#transfers`);
+    }
+    throw error;
+  }
+  redirect(`/loans/refinance?transfer=${done}#transfers`);
+}
+
+export async function startTransferAction(formData: FormData): Promise<void> {
+  const user = await requireUser();
+  await transferStep(
+    () =>
+      startTransfer(user.id, {
+        debtKey: String(formData.get("debtKey") ?? ""),
+        offerId: String(formData.get("offerId") ?? ""),
+      }),
+    "started",
+  );
+}
+
+export async function endTransferAction(formData: FormData): Promise<void> {
+  const user = await requireUser();
+  await transferStep(() => endTransfer(user.id, String(formData.get("id") ?? ""), "done"), "done");
 }

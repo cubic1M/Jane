@@ -14,6 +14,9 @@ import { REFUND } from "@/config/tax";
 import { loadRefunds, recentRefund, type RefundView } from "@/lib/tax-refund";
 import { filingPartnerFor } from "@/lib/filing";
 import { filingYear, inFilingSeason, loadReturn, type ReturnView } from "@/lib/tax-filing";
+import { JANUARY_READY } from "@/config/tax";
+import { loadTaxPack } from "@/lib/tax-pack";
+import type { TaxPack } from "@/planning/tax-pack";
 import type { TaxSaving } from "@/planning/tax-savings";
 import type { WithholdingCheck } from "@/planning/withholding";
 import { loadTaxForms, loadTaxTags } from "@/lib/tax-organizer";
@@ -48,6 +51,8 @@ export type TaxSnapshot = {
     selfEmployed?: SelfEmployedView;
     // Spec step 125: a refund that landed lately and hasn't been dealt with.
     refund?: RefundView | null;
+    // Spec step 127: in January, last year's pack, for the one "everything's ready" message.
+    january?: TaxPack | null;
     // Spec step 126: filing season, the partner, and the year's return.
     filing?: { year: number; inSeason: boolean; available: boolean; return: ReturnView | null };
   } | null;
@@ -109,6 +114,10 @@ export async function loadTaxSnapshot(
           return: ret,
         };
       })(),
+      january:
+        today.slice(5) >= JANUARY_READY.from && today.slice(5) <= JANUARY_READY.until
+          ? await loadTaxPack(userId, year - 1, { client, now })
+          : null,
       refund: recentRefund(
         (await loadRefunds(userId, { client, now, days: REFUND.recentDays })).refunds,
         now,

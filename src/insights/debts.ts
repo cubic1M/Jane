@@ -233,6 +233,8 @@ export type NewLoanInput = {
   monthlyCents: number;
   // YYYY-MM-DD.
   fundedOn: string;
+  // Spec step 113: a 0% card a balance was moved to, under its own key and name.
+  transfer?: { cardName: string; promoEndsOn: string };
 };
 
 const PRODUCT_KIND: Record<string, DebtKind> = {
@@ -250,18 +252,22 @@ const addMonths = (day: string, months: number) => {
 export function newLoanDebt(loan: NewLoanInput, asOf: string): Debt {
   const [fy, fm] = loan.fundedOn.split("-").map(Number);
   const [ay, am] = asOf.split("-").map(Number);
-  const paid = Math.max(0, Math.min(loan.termMonths, (ay - fy) * 12 + (am - fm)));
+  // A transfer's balance isn't guessed from payments Jane can't see: it's what was moved,
+  // until the new card is linked.
+  const paid = loan.transfer
+    ? 0
+    : Math.max(0, Math.min(loan.termMonths, (ay - fy) * 12 + (am - fm)));
   let balance = loan.amountCents;
   for (let i = 0; i < paid && balance > 0; i += 1) {
     balance = Math.max(0, balance + monthlyInterest(balance, loan.aprBps) - loan.monthlyCents);
   }
   const nextDue = addMonths(loan.fundedOn, paid + 1);
   return {
-    key: `loan:${loan.applicationId}`,
+    key: loan.transfer ? `transfer:${loan.applicationId}` : `loan:${loan.applicationId}`,
     accountId: null,
-    name: `${loan.lender} loan`,
-    kind: PRODUCT_KIND[loan.product] ?? "loan",
-    kindLabel: "New loan, not linked yet",
+    name: loan.transfer ? loan.transfer.cardName : `${loan.lender} loan`,
+    kind: loan.transfer ? "card" : (PRODUCT_KIND[loan.product] ?? "loan"),
+    kindLabel: loan.transfer ? "0% balance transfer, not linked yet" : "New loan, not linked yet",
     balanceCents: balance,
     balanceFrom: "accepted",
     aprBps: loan.aprBps,
@@ -276,7 +282,9 @@ export function newLoanDebt(loan: NewLoanInput, asOf: string): Debt {
     payoffFrom: "accepted",
     overdue: false,
     pastDueCents: null,
-    description: `${loan.termMonths} months from ${loan.fundedOn}`,
+    description: loan.transfer
+      ? `0% until ${loan.transfer.promoEndsOn}, the fee included; link the card to follow it`
+      : `${loan.termMonths} months from ${loan.fundedOn}`,
     inNetWorth: false,
     typedOn: null,
   };
@@ -315,7 +323,7 @@ export function debtBook(
   const plans = debts.filter((d) => d.kind === "bnpl");
   const bnplOwedCents = plans.reduce((sum, d) => sum + (d.balanceCents ?? 0), 0);
   const newLoansOwedCents = debts
-    .filter((d) => d.key.startsWith("loan:"))
+    .filter((d) => d.key.startsWith("loan:") || d.key.startsWith("transfer:"))
     .reduce((sum, d) => sum + (d.balanceCents ?? 0), 0);
   const monthly = debts.filter((d) => d.paymentEvery === "month");
   return {
@@ -350,7 +358,7 @@ export function sourceLabel(from: DebtSource | null, typedOn: string | null = nu
     case "payments":
       return "worked out from your payments";
     case "accepted":
-      return "from the loan you accepted";
+      return "from the terms you accepted";
     default:
       return "not known yet";
   }
