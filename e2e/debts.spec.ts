@@ -326,3 +326,25 @@ test("building credit shows the simulator as an estimate and the statement payme
     "statement closes on",
   );
 });
+
+// Spec step 176: every buy now, pay later installment from the plans' own schedules.
+test("buy now, pay later installments are listed from the plans' schedules", async ({
+  context,
+  page,
+  baseURL,
+}) => {
+  const user = await signedInUser("user");
+  userId = user.userId;
+  await context.addCookies([
+    { name: "authjs.session-token", value: user.sessionToken, url: baseURL ?? "" },
+  ]);
+  await page.goto("/connect");
+  await page.getByRole("button", { name: "Link a demo bank" }).click();
+  await expect(page).toHaveURL("/chat", { timeout: 60_000 });
+
+  await page.goto("/loans");
+  const list = page.getByRole("list", { name: "Installments coming" });
+  await expect(list).toBeVisible();
+  await expect(list).toContainText("$62.25 to Klarna Pay in 4");
+  await expect(list).toContainText("$89.50 to Affirm plan");
+});

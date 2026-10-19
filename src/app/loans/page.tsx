@@ -7,7 +7,9 @@ import { ViewTracker } from "@/components/view-tracker";
 import { sourceLabel, type Debt } from "@/insights/debts";
 import { formatRate } from "@/insights/loans";
 import { scopedDb } from "@/lib/db-scoped";
+import { loadBnpl } from "@/lib/bnpl";
 import { loadDebts } from "@/lib/debts";
+import { dayLabel } from "@/lib/day-label";
 import { formatCents } from "@/lib/money";
 import { assetPrompts } from "@/lib/owned-assets";
 import { requireUser } from "@/lib/session";
@@ -228,7 +230,7 @@ async function LoansContent({
     return typeof v === "string" ? v : "";
   };
   const db = await scopedDb();
-  const [book, loans, linked] = await Promise.all([
+  const [book, loans, linked, bnpl] = await Promise.all([
     loadDebts(user.id),
     db.accounts.findMany({
       where: { type: "loan" },
@@ -236,6 +238,8 @@ async function LoansContent({
     }),
     // Mortgages and car loans with a home or car linked (spec step 67).
     db.ownedAssets.findMany({ select: { loanAccountId: true } }),
+    // Spec step 176: the plans' installments over the next month.
+    loadBnpl(user.id),
   ]);
   const prompts = assetPrompts(
     loans,
@@ -322,6 +326,22 @@ async function LoansContent({
                   <DebtCard key={d.key} debt={d} open={openKey === d.key} error={error} />
                 ))}
               </ul>
+              {bnpl.installments.length > 0 && (
+                <div className="flex flex-col gap-1 text-sm">
+                  <h3 className="font-medium">Installments coming</h3>
+                  <ul aria-label="Installments coming" className="list-disc pl-5">
+                    {bnpl.installments.slice(0, 8).map((i) => (
+                      <li key={`${i.planKey}${i.date}`}>
+                        {dayLabel(i.date)}: {formatCents(i.cents)} to {i.name}
+                      </li>
+                    ))}
+                  </ul>
+                  <p className="text-zinc-600 dark:text-zinc-400">
+                    From each plan&apos;s own schedule. Any your forecast doesn&apos;t count yet are
+                    taken off your safe to spend.
+                  </p>
+                </div>
+              )}
             </section>
           )}
 

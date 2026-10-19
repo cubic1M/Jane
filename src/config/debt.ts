@@ -45,6 +45,7 @@ export const DEBT_SOURCE_LIMITS = {
   debt_autopilot: 1,
   credit_cards: 2,
   credit_building: 2,
+  bnpl: 2,
 } as const;
 export const DEBT_MESSAGE_PRIORITY = {
   // A buy now, pay later plan Jane found, then a debt with no rate: news that can wait,
@@ -95,11 +96,15 @@ export const DEBT_MESSAGE_PRIORITY = {
   statement_paid: 51,
   credit_streak: 30,
   credit_builder: 29,
+  // Spec step 176: installments before payday that the forecast missed are time-sensitive;
+  // a free early payoff can wait.
+  bnpl_due: 74,
+  bnpl_payoff: 31,
 } as const;
 
 // What Jane does about debts by herself at each autopilot level (src/config/autopilot.ts),
 // step by step. Applying for credit, moving money and signing always need the person's tap,
-// at every level. Steps 110–117, 174 and 175 add to this list.
+// at every level. Steps 110–117 and 174–176 add to this list.
 export const DEBT_AUTOPILOT: Readonly<
   Record<"ask" | "safe" | "all", readonly { step: number; does: string }[]>
 > = {
@@ -148,6 +153,10 @@ export const DEBT_AUTOPILOT: Readonly<
       step: 175,
       does: "Reminds you before a card's statement closes with what to pay so a lower balance is reported, counts your on-time streak, and estimates what each change would do to your score. Paying waits for your tap.",
     },
+    {
+      step: 176,
+      does: "Puts every buy now, pay later installment in your forecast and safe to spend, warns you before a new plan would strain the month, and tells you when paying a Pay in 4 plan off early is free. Paying waits for your tap.",
+    },
   ],
   safe: [
     {
@@ -194,6 +203,10 @@ export const DEBT_AUTOPILOT: Readonly<
       step: 175,
       does: "Pays the amount that brings card use down before a card's statement closes, by itself through the money-movement stand-in within your debt limits, counts your on-time streak, and estimates what each change would do to your score. Opening a credit-builder account is always your tap.",
     },
+    {
+      step: 176,
+      does: "Puts every buy now, pay later installment in your forecast and safe to spend, warns you before a new plan would strain the month, and pays a Pay in 4 plan off early when that's free, with your tap.",
+    },
   ],
   all: [
     {
@@ -239,6 +252,10 @@ export const DEBT_AUTOPILOT: Readonly<
     {
       step: 175,
       does: "Pays the amount that brings card use down before a card's statement closes, by itself through the money-movement stand-in within your debt limits, counts your on-time streak, and estimates what each change would do to your score. Opening a credit-builder account is always your tap.",
+    },
+    {
+      step: 176,
+      does: "Puts every buy now, pay later installment in your forecast and safe to spend, warns you before a new plan would strain the month, and pays a Pay in 4 plan off early when that's free, with your tap.",
     },
   ],
 };

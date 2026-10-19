@@ -1073,6 +1073,25 @@ export const QUESTIONS: readonly CheckQuestion[] = [
       link: "/loans/cards",
     },
   },
+  // Spec step 176: buy now, pay later installments and a new plan's warning.
+  {
+    id: "debt-19",
+    text: "what buy now pay later payments do I have coming",
+    needs: "rules",
+    expect: {
+      intent: "bnpl",
+      mentions: /installments over the next month/i,
+      link: "/loans",
+      list: true,
+      maxChars: 1_200,
+    },
+  },
+  {
+    id: "debt-20",
+    text: "can I afford a $300 Klarna plan",
+    needs: "rules",
+    expect: { intent: "bnpl_new", mentions: /four payments of/i, link: "/loans" },
+  },
   // Spec step 175: building credit and the labelled score simulator.
   {
     id: "debt-17",

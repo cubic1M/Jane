@@ -148,6 +148,21 @@ describe("debt questions", () => {
     }
   });
 
+  it("reads buy now, pay later questions: what's coming, and whether a new plan fits", () => {
+    for (const text of [
+      "what buy now pay later payments do I have coming",
+      "my klarna installments",
+      "when is my next affirm payment due",
+    ]) {
+      expect(intent(text), text).toEqual({ kind: "bnpl" });
+    }
+    expect(intent("can I afford a $300 Klarna plan")).toEqual({
+      kind: "bnpl_new",
+      totalCents: 30_000,
+    });
+    expect(intent("should I start an affirm plan")).toEqual({ kind: "bnpl_new", totalCents: null });
+  });
+
   it("reads building credit, and the score simulator", () => {
     for (const text of [
       "how do I improve my credit",

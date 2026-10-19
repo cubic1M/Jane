@@ -35,7 +35,10 @@ export type DebtIntent =
   | { kind: "card_better" }
   // Spec step 175: "how do I build my credit?", "what would my score be if I paid my card off?".
   | { kind: "build_credit" }
-  | { kind: "credit_simulate" };
+  | { kind: "credit_simulate" }
+  // Spec step 176: "what buy now pay later payments do I have?", "can I afford a $300 Klarna?".
+  | { kind: "bnpl" }
+  | { kind: "bnpl_new"; totalCents: number | null };
 
 const DEBT_KINDS = new Set<string>([
   "debts",
@@ -54,6 +57,8 @@ const DEBT_KINDS = new Set<string>([
   "card_better",
   "build_credit",
   "credit_simulate",
+  "bnpl",
+  "bnpl_new",
 ]);
 export const isDebtIntent = (intent: { kind: string }): intent is DebtIntent =>
   DEBT_KINDS.has(intent.kind);
@@ -117,6 +122,13 @@ const CARD_KINDS: readonly [RegExp, RewardCategory][] = [
 ];
 const cardKind = (text: string) => CARD_KINDS.find(([re]) => re.test(text))?.[1] ?? null;
 
+// Spec step 176.
+const BNPL_WORD = /\b(?:klarna|affirm|afterpay|buy now,? pay later|bnpl|pay in 4|pay in four)\b/;
+const BNPL_NEW =
+  /\b(?:afford|take on|start|open|add|get|use|worth)\b.*\b(?:klarna|affirm|afterpay|buy now,? pay later|bnpl|pay in 4|pay in four|installments?)\b|\b(?:klarna|affirm|afterpay|buy now,? pay later|bnpl|pay in 4)\b.*\b(?:afford|strain|squeeze)\b/;
+const BNPL_LIST =
+  /\b(?:installments?|buy now,? pay later|bnpl|klarna|affirm|afterpay|pay in 4)\b.*\b(?:coming|due|next|payments?|plans?|do i have|owe|list|all)\b|\b(?:coming|due|next|my)\b.*\b(?:installments?|buy now,? pay later|bnpl|klarna|affirm|afterpay)\b/;
+
 const clean = (target: string) =>
   target
     .replace(/\b(?:paid off|off|in full)\b/g, "")
@@ -135,6 +147,10 @@ export function parseDebtIntent(
     return { kind: "payoff_plan", extraCents: amountCents };
   if (PAYOFF.test(text)) return { kind: "payoff_plan", extraCents: null };
   if (DEBT_AUTOPILOT.test(text)) return { kind: "debt_autopilot" };
+  if (BNPL_WORD.test(text) || /\binstallments?\b/.test(text)) {
+    if (BNPL_NEW.test(text)) return { kind: "bnpl_new", totalCents: amountCents };
+    if (BNPL_LIST.test(text)) return { kind: "bnpl" };
+  }
   if (SIMULATE.test(text)) return { kind: "credit_simulate" };
   if (BUILD_CREDIT.test(text)) return { kind: "build_credit" };
   if (CARD_FOR.test(text)) return { kind: "card_for", category: cardKind(text) };

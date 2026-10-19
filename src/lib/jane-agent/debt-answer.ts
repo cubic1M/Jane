@@ -8,6 +8,7 @@ import { loadCredit } from "@/lib/credit";
 import { loadDebtAutopilot } from "@/lib/debt-autopilot";
 import { loadCreditCards } from "@/lib/credit-cards";
 import { loadCreditBuilding } from "@/lib/credit-building";
+import { loadBnpl } from "@/lib/bnpl";
 import { pullCredit } from "@/lib/credit";
 import { listApplications } from "@/lib/loan-applications";
 import { checkRates, loadRefinance } from "@/lib/refinance";
@@ -20,6 +21,7 @@ import { creditReply } from "./credit-replies";
 import { debtAutopilotReply, debtDueReply } from "./debt-autopilot-replies";
 import { betterCardReply, cardFeeReply, cardForReply } from "./credit-card-replies";
 import { buildCreditReply, simulateReply } from "./credit-building-replies";
+import { bnplNewPlanReply, bnplReply } from "./bnpl-replies";
 import type { Reply } from "./replies";
 
 // Answers questions about debts by rules (spec Phase Y), with the same loaders as the
@@ -60,6 +62,19 @@ export async function answerDebt(
         data = await loadCreditBuilding(userId, { client, now });
       }
       return intent.kind === "build_credit" ? buildCreditReply(data) : simulateReply(data);
+    }
+    case "bnpl":
+      return bnplReply(await loadBnpl(userId, { client, now }));
+    case "bnpl_new": {
+      const data = await loadBnpl(userId, { client, now });
+      if (intent.totalCents === null) {
+        return {
+          body: 'How much is the plan? Tell me the total, like "can I afford a $300 Klarna plan", and I\'ll check it against your forecast.',
+          actions: [],
+          refs: {},
+        };
+      }
+      return bnplNewPlanReply(data, intent.totalCents);
     }
     case "card_for":
       return cardForReply(await loadCreditCards(userId, { client, now }), intent.category);

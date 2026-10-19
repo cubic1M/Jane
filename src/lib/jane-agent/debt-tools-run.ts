@@ -10,6 +10,7 @@ import { loadCredit } from "@/lib/credit";
 import { loadDebtAutopilot } from "@/lib/debt-autopilot";
 import { loadCreditCards } from "@/lib/credit-cards";
 import { loadCreditBuilding } from "@/lib/credit-building";
+import { loadBnpl } from "@/lib/bnpl";
 import { listApplications } from "@/lib/loan-applications";
 import { loadRefinance } from "@/lib/refinance";
 import {
@@ -26,6 +27,7 @@ import {
   debtAutopilotToolOutput,
   creditCardsToolOutput,
   creditBuildingToolOutput,
+  bnplToolOutput,
 } from "./debt-tools";
 
 // Runs Claude's debt tools (./debt-tools.ts) for one person: read-only, scoped to them,
@@ -50,6 +52,16 @@ export async function runDebtTool(
       return out(debtsToolOutput(await loadDebts(userId, { client, now }), money));
     case "debt_autopilot":
       return out(debtAutopilotToolOutput(await loadDebtAutopilot(userId, { client, now }), money));
+    case "bnpl_installments": {
+      const total = (input as { total_cents?: unknown } | null)?.total_cents;
+      return out(
+        bnplToolOutput(
+          await loadBnpl(userId, { client, now }),
+          typeof total === "number" && Number.isInteger(total) && total > 0 ? total : null,
+          money,
+        ),
+      );
+    }
     case "credit_building":
       return out(
         creditBuildingToolOutput(await loadCreditBuilding(userId, { client, now }), money),

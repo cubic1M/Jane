@@ -300,7 +300,7 @@ export async function loadSnapshot(
       .filter((a) => isUrgent(a.type) && !ALERTS_SAID_ELSEWHERE.includes(a.type))
       .map((a) => ({ id: a.id, title: a.title, body: a.body })),
     budgetProgress: home.budgetProgress,
-    ...(await loadMore(userId, { client, now })),
+    ...(await loadMore(userId, { client, now, input })),
     ...(await loadTaxSnapshot(userId, { client, now })),
     // Spec steps 97, 100, 139, 145 and 146 read the same bank data, so it's loaded once for them.
     ...(await thinking(userId, client, now, input)),

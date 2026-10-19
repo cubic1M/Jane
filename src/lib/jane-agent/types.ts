@@ -245,6 +245,8 @@ export type MessageRefs = {
   // credit-builder stand-in to open.
   creditStatement?: { accountId: string; closesOn: string };
   creditBuilder?: { productId: string };
+  // Spec step 176: the buy now, pay later plan "Pay it off" pays.
+  bnplPlan?: { key: string };
   // Insurance (spec Phase X): a coverage gap by its key (GAP_KEYS), and the policy a
   // message is about.
   insuranceGap?: string;

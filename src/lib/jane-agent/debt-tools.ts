@@ -11,6 +11,7 @@ import type { Mortgage } from "@/lib/mortgage";
 import type { Credit } from "@/lib/credit";
 import type { CreditCards } from "@/lib/credit-cards";
 import type { CreditBuilding } from "@/lib/credit-building";
+import { warnNewPlan, type Bnpl } from "@/lib/bnpl";
 import { REWARD_CATEGORY_LABELS } from "@/config/credit-cards";
 import type { DebtAutopilot } from "@/lib/debt-autopilot";
 import { PMI_SOURCE } from "@/config/debt";
@@ -80,6 +81,21 @@ export const DEBT_TOOLS: Anthropic.Tool[] = [
     description:
       "Building the person's credit (demo-bank people only; nothing for real accounts): the card whose statement closes next, the day it closes, what to pay before then so card use reported is under 30% or 10%, whether Jane or the person already scheduled it (through the money-movement stand-in), the on-time payment streak in months, whether the credit file is thin with credit-builder stand-ins (a secured card, a credit-builder loan), and the score simulator's estimate after each change (paying cards down, a year on time, a new card, a builder loan). Every simulator figure is an estimate, never a promise. Paying from the chat and opening a builder account each need the person's tap.",
     input_schema: noInput,
+  },
+  {
+    name: "bnpl_installments",
+    description:
+      "The person's buy now, pay later plans and their installments: each plan's payment, how often, next due date and balance when known, every installment over the next month (soonest first) from the plans' own schedules, which of them the checking forecast does not count yet (Jane takes those off safe to spend), and which Pay in 4 plans are free to pay off now (no interest or fee for paying early). With total_cents, also whether a new Pay in 4 plan of that total (four payments two weeks apart) would take checking under its cushion, from the checking forecast. Paying a plan off needs the person's tap (the bnpl.payoff button).",
+    input_schema: {
+      type: "object" as const,
+      properties: {
+        total_cents: {
+          type: "integer" as const,
+          description:
+            "The total of a new plan to check against the forecast, in cents (optional).",
+        },
+      },
+    },
   },
   {
     name: "mortgage",
@@ -223,6 +239,7 @@ export const DEBT_TOOL_STATUS: Readonly<Record<string, string>> = {
   debt_autopilot: "Checking what's due on your debts…",
   credit_cards: "Checking your card rewards…",
   credit_building: "Working out how to build your credit…",
+  bnpl_installments: "Checking your buy now, pay later installments…",
 };
 
 export function refinanceToolOutput(refi: Refinance, money: (cents: number) => string) {
@@ -523,6 +540,43 @@ export function creditBuildingToolOutput(data: CreditBuilding, money: (cents: nu
       points: e.change,
     })),
     note: "Simulator figures are estimates from the stand-in score, not promises.",
+  };
+}
+
+export function bnplToolOutput(
+  data: Bnpl,
+  totalCents: number | null,
+  money: (cents: number) => string,
+) {
+  const strain = totalCents ? warnNewPlan(data, totalCents) : null;
+  return {
+    plans: data.plans.map((p) => ({
+      name: p.name,
+      payment: money(p.paymentCents),
+      every: p.every === "two_weeks" ? "two weeks" : "month",
+      nextDue: p.nextDue,
+      balance: p.balanceCents === null ? null : money(p.balanceCents),
+      freeToPayOffNow: p.freePayoff && p.canCoverPayoff && !p.payoffScheduled,
+    })),
+    installmentsNextMonth: data.installments.map((i) => ({
+      on: i.date,
+      plan: i.name,
+      amount: money(i.cents),
+    })),
+    notInForecastYet: data.missing.map((i) => ({
+      on: i.date,
+      plan: i.name,
+      amount: money(i.cents),
+    })),
+    newPlanCheck: strain && {
+      total: money(totalCents!),
+      strainsTheMonth: strain.strained,
+      lowestCheckingWithPlan: money(strain.lowestWith.balanceCents),
+      on: strain.lowestWith.date,
+      lowestCheckingWithout: money(strain.lowestWithout.balanceCents),
+      underTheCushionBy: money(strain.shortCents),
+    },
+    alwaysNeedsATap: "paying a plan off",
   };
 }
 
