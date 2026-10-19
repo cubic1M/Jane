@@ -66,6 +66,7 @@ export async function exportUserData(
     taxTags,
     taxForms,
     taxReturns,
+    taxDocuments,
   ] = await Promise.all([
     client.user.findUniqueOrThrow({
       where: { id: userId },
@@ -475,6 +476,11 @@ export async function exportUserData(
         businessMilesYear: true,
         taxPayments: true,
         refundsHandled: true,
+        // Spec step 165: where they lived and worked.
+        moves: true,
+        workState: true,
+        locality: true,
+        residencyYear: true,
         updatedAt: true,
       },
     }),
@@ -495,6 +501,18 @@ export async function exportUserData(
         signedAt: true,
         submittedAt: true,
         acceptedAt: true,
+      },
+    }),
+    // Tax forms Jane collected (spec step 166), with their boxes.
+    db.taxDocuments.findMany({
+      select: {
+        year: true,
+        formKey: true,
+        payer: true,
+        partner: true,
+        boxes: true,
+        fetchedAt: true,
+        decision: true,
       },
     }),
   ]);
@@ -644,5 +662,6 @@ export async function exportUserData(
     taxTags,
     taxForms,
     taxReturns,
+    taxDocuments,
   };
 }

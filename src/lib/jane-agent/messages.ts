@@ -322,3 +322,38 @@ export async function storeReply(
   });
   return toChatMessage(row);
 }
+
+// Spec step 96: pin a message (or unpin it), the person's own only. False when it isn't
+// theirs.
+export async function setPinned(
+  userId: string,
+  messageId: string,
+  pinned: boolean,
+  { client = defaultClient }: { client?: PrismaClient } = {},
+): Promise<boolean> {
+  const db = scopedFor(userId, client);
+  const row = await db.janeMessages.findFirst({ where: { id: messageId }, select: { refs: true } });
+  if (!row) return false;
+  const refs = { ...parseRefs(row.refs) };
+  if (pinned) refs.pinned = true;
+  else delete refs.pinned;
+  await db.janeMessages.updateMany({
+    where: { id: messageId },
+    data: { refs: refs as Prisma.InputJsonObject },
+  });
+  return true;
+}
+
+// Spec step 96: the person's pinned messages, newest first.
+export async function pinnedMessages(
+  userId: string,
+  { client = defaultClient }: { client?: PrismaClient } = {},
+): Promise<ChatMessage[]> {
+  const rows = await scopedFor(userId, client).janeMessages.findMany({
+    where: { refs: { path: ["pinned"], equals: true } },
+    orderBy: { createdAt: "desc" },
+    select: MESSAGE_SELECT,
+    take: CHAT_PAGE_SIZE,
+  });
+  return rows.map(toChatMessage);
+}

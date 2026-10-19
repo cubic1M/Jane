@@ -31,6 +31,8 @@ export type MessageView = {
   undoUntil: string | null;
   // Spec step 94: a block drawn in monospace, with its text alternative.
   block: DrawnBlock | null;
+  // Spec step 96: pinned to the top of the chat.
+  pinned: boolean;
 };
 
 const TAGS: Record<MessageKind, string> = {
@@ -77,5 +79,6 @@ export function toView(message: ChatMessage, now: Date, timezone: string | null)
     ),
     undoUntil: buttons.some((b) => b.id.startsWith("undo.")) ? undoUntil : null,
     block: drawn(message.refs.block),
+    pinned: message.refs.pinned === true,
   };
 }
