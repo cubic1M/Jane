@@ -69,7 +69,10 @@ function change(
   }
   const reduction = -gapCents;
   const rate = Math.max(marginalRate, 0.1);
-  const amount = floorTo((reduction * perYear) / (paychecks * rate), WITHHOLDING.roundDeductionCents);
+  const amount = floorTo(
+    (reduction * perYear) / (paychecks * rate),
+    WITHHOLDING.roundDeductionCents,
+  );
   const perPaycheck = perPaycheckEffect("4b", amount, rate, perYear);
   return {
     step: "4b",
@@ -113,7 +116,12 @@ export function withholdingCheck(input: {
         WITHHOLDING.roundDeductionCents,
       );
       const per = perPaycheckEffect("4b", amount, input.marginalRate, perYear);
-      thisYear = { step: "4b", amountCents: amount, perPaycheckCents: per, refundAfterCents: refundCents + per * input.paychecksLeft };
+      thisYear = {
+        step: "4b",
+        amountCents: amount,
+        perPaycheckCents: per,
+        refundAfterCents: refundCents + per * input.paychecksLeft,
+      };
     }
   }
   // A full year with the same pay: the whole year's gap spread over every paycheck.

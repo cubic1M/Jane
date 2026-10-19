@@ -51,7 +51,8 @@ export async function recordW4Change(
   change: { step: W4Step; amountCents: number },
   { client = defaultClient, now = new Date(), via }: Options & { via: "chat" | "page" },
 ): Promise<void> {
-  if (change.step !== "4b" && change.step !== "4c") throw new WithholdingError("Pick 4(b) or 4(c).");
+  if (change.step !== "4b" && change.step !== "4c")
+    throw new WithholdingError("Pick 4(b) or 4(c).");
   if (!Number.isInteger(change.amountCents) || change.amountCents <= 0) {
     throw new WithholdingError("The amount must be more than zero.");
   }

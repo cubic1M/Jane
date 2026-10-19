@@ -78,8 +78,9 @@ const UNTAG =
   /^(?:untag|don't tag|do not tag|stop tagging) (?:my |the |all )?(.+?)(?: for tax(?:es)?)?$/;
 const FORMS =
   /\b(?:tax )?(?:forms?|documents?|paperwork) (?:do i need|to expect|am i waiting (?:on|for)|should i (?:get|expect)|for (?:my )?tax(?:es)?)\b|\b(?:my |a |the )?(?:w-?2s?|1099s?|1098s?)\b/;
+// About taxes, not debts: "how much do I owe" is the loans' question (step 109).
 const ESTIMATE =
-  /\bhow much (?:tax )?(?:will|do|would) (?:i|we) (?:owe|get back|pay in tax(?:es)?|have to pay in tax(?:es)?)\b|\b(?:will|do) (?:i|we) (?:owe|get a refund|get money back)\b|\btax (?:estimate|bill|refund)\b|\bestimated? (?:tax|refund)\b|\bwhat (?:will|do) (?:i|we) owe (?:in |the )?(?:tax|taxes|irs)\b|\brefund this year\b/;
+  /\bhow much (?:tax|taxes) (?:will|do|would) (?:i|we) (?:owe|pay)\b|\bhow much (?:will|would) (?:i|we) (?:owe|get back|pay)\b.*\b(?:tax|taxes|irs)\b|\bwill (?:i|we) owe\b.*\b(?:tax|taxes|irs)\b|\b(?:will|do) (?:i|we) get (?:a (?:tax )?refund|money back)\b|\btax (?:estimate|bill|refund)\b|\bestimated? (?:tax|refund)\b|\bwhat (?:will|do) (?:i|we) owe (?:in |the )?(?:tax|taxes|irs)\b|\brefund this year\b/;
 const BRACKET = /\btax bracket\b|\bmarginal (?:tax )?rate\b|\bwhat bracket\b|\bmy bracket\b/;
 const WITHHOLDING =
   /\bw-?4\b|\bwithholding\b|\bwithhold(?:ing)? (?:enough|too much|too little|more|less)\b|\b(?:am i|are we) (?:having|getting) enough (?:tax )?(?:taken|withheld)\b|\btoo much (?:tax )?(?:taken out|withheld)\b/;

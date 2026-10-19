@@ -78,9 +78,11 @@ describe("w4Action (spec step 121)", () => {
   });
 
   it("undoes it, and keeps a refund for the year", async () => {
-    expect((await w4Action(null, form({ intent: "undo" }))).ok).toBe(true);
+    expect(await w4Action(null, form({ intent: "undo" }))).toMatchObject({ ok: true });
     expect(clearW4Change).toHaveBeenCalledWith("u1", { via: "page" });
-    expect((await w4Action(null, form({ intent: "keep", year: "2026" }))).ok).toBe(true);
+    expect(await w4Action(null, form({ intent: "keep", year: "2026" }))).toMatchObject({
+      ok: true,
+    });
     expect(keepRefund).toHaveBeenCalledWith("u1", 2026, { via: "page" });
     expect(await w4Action(null, form({ intent: "nope" }))).toMatchObject({ ok: false });
   });

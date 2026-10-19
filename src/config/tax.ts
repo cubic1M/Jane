@@ -219,7 +219,8 @@ export const WITHHOLDING = {
   roundExtraCents: 100,
   roundDeductionCents: 10_000,
 } as const;
-export const IRS_WITHHOLDING_ESTIMATOR_URL = "https://www.irs.gov/individuals/tax-withholding-estimator";
+export const IRS_WITHHOLDING_ESTIMATOR_URL =
+  "https://www.irs.gov/individuals/tax-withholding-estimator";
 export const IRS_W4_URL = "https://www.irs.gov/forms-pubs/about-form-w-4";
 
 // The estimate tells the person when it has moved by at least this much (in cents) since
