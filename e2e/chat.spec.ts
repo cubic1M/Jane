@@ -72,6 +72,12 @@ test("the demo bank lands in Jane's chat, and Yes answers a finding", async ({
   await expect(page.getByText("safe to spend", { exact: true })).toBeVisible();
   await expect(messages.last()).toContainText(/You have \$[\d,]+\.\d\d safe to spend/);
   await expect(ask).toHaveValue("");
+  // Jane's answer looks different from what she brings up on her own.
+  await expect(messages.last()).toHaveAttribute("data-from", "answer");
+  await expect(messages.filter({ hasText: /Good (morning|afternoon|evening)!/ })).toHaveAttribute(
+    "data-from",
+    "jane",
+  );
 
   // A command answers with buttons and does nothing until one is tapped.
   await ask.fill("yes to all");

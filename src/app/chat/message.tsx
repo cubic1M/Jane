@@ -7,7 +7,10 @@ import { tapButton, type MessageState } from "./actions";
 
 // One message in Jane's chat (spec step 81). Jane's sit on the left with their buttons; a
 // tap answers it in place, and it shows what was chosen instead of the buttons. Undo stays
-// only while it still works.
+// only while it still works. What Jane brings up on her own (a brief, something to
+// decide, a heads-up, something done) has a yellow background and a thick yellow left edge;
+// her answers to what the person typed stay plain, so the two are never mixed up, with or
+// without seeing colour.
 
 const BUTTON = "inline-flex min-h-11 items-center justify-center px-3 text-sm font-semibold";
 const STYLES = {
@@ -63,14 +66,21 @@ export function ChatMessageItem({ initial }: { initial: MessageView }) {
     );
   }
 
+  const ownIdea = message.kind !== "reply";
+
   return (
     // Its id is the anchor notifications open (/chat#<id>, spec step 85).
     <li
       id={message.id}
-      className="flex w-full max-w-full scroll-mt-8 flex-col gap-2 self-start border border-zinc-300 p-3 sm:max-w-[85%] dark:border-zinc-700"
+      data-from={ownIdea ? "jane" : "answer"}
+      className={`flex w-full max-w-full scroll-mt-8 flex-col gap-2 self-start border p-3 sm:max-w-[85%] ${
+        ownIdea
+          ? "border-l-4 border-amber-500 bg-amber-50 dark:border-amber-600 dark:bg-amber-950/40"
+          : "border-zinc-300 dark:border-zinc-700"
+      }`}
     >
       <p className="flex flex-wrap items-baseline gap-x-2 text-xs text-zinc-500">
-        <span className="font-semibold text-emerald-700">
+        <span className={`font-semibold ${ownIdea ? "text-amber-800" : "text-emerald-700"}`}>
           jane<span aria-hidden="true">&gt;</span>
         </span>
         <span>{message.tag}</span>
