@@ -11,6 +11,7 @@ import { homeSummary } from "@/lib/home";
 import { whatJaneDid } from "@/lib/what-jane-did";
 import { debtReply } from "./debt-replies";
 import type { Intent } from "./intents";
+import { answerInvestments } from "./investments/answer";
 import {
   actReply,
   affordReply,
@@ -94,5 +95,7 @@ export async function answerByRules(
     case "debts":
     case "debt_detail":
       return debtReply(intent, await loadDebts(userId, { client, now }));
+    case "investments":
+      return answerInvestments(userId, intent, { client, now });
   }
 }

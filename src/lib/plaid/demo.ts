@@ -1,5 +1,11 @@
 import type { PlaidApi } from "plaid";
 import {
+  demoHoldings,
+  demoInvestmentTransactions,
+  demoSecurities,
+} from "@/data-sources/demo/demo-holdings";
+import {
+  addDays,
   DEMO_INSTITUTION,
   demoAccounts,
   demoLiabilities,
@@ -78,14 +84,38 @@ export function demoPlaidApi(
     liabilitiesGet: async () => ({
       data: { accounts: demoAccounts(demo), liabilities: demoLiabilities(demo, today(now)) },
     }),
-    // Balances only; the demo has no holdings to drop.
+    // What the investment accounts hold (spec step 128).
     investmentsHoldingsGet: async () => ({
       data: {
         accounts: demoAccounts(demo).filter((a) => a.type === "investment"),
-        holdings: [],
-        securities: [],
+        holdings: demoHoldings(demo, through),
+        securities: demoSecurities(through),
       },
     }),
+    investmentsTransactionsGet: async ({
+      start_date,
+      end_date,
+      options,
+    }: {
+      start_date: string;
+      end_date: string;
+      options?: { count?: number; offset?: number };
+    }) => {
+      const all = demoInvestmentTransactions(
+        demo,
+        addDays(start_date, -1),
+        end_date < through ? end_date : through,
+      );
+      const offset = options?.offset ?? 0;
+      return {
+        data: {
+          accounts: demoAccounts(demo).filter((a) => a.type === "investment"),
+          investment_transactions: all.slice(offset, offset + (options?.count ?? 100)),
+          securities: demoSecurities(through),
+          total_investment_transactions: all.length,
+        },
+      };
+    },
     itemRemove: async () => ({ data: {} }),
   };
   return api as unknown as PlaidApi;

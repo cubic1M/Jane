@@ -46,7 +46,7 @@ export const INVESTMENT_KINDS = {
 export type InvestmentKind = keyof typeof INVESTMENT_KINDS;
 
 // Plaid investment subtypes that are retirement accounts (plaid SDK AccountSubtype).
-const RETIREMENT_SUBTYPES = new Set([
+export const RETIREMENT_SUBTYPES = new Set([
   "401a",
   "401k",
   "403b",
@@ -101,6 +101,9 @@ export type NormalizedAccount = {
   kind: SyncedKind;
   mask: string | null;
   currentBalanceCents: number | null;
+  // Investment accounts only (spec step 128): Plaid's own subtype, e.g. "401k", "roth" or
+  // "hsa", kept so Jane knows which kind of account it is.
+  plaidSubtype?: string | null;
 };
 
 export type NormalizedTransaction = {

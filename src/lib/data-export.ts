@@ -1,6 +1,7 @@
 import type { PrismaClient } from "@/generated/prisma/client";
 import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
+import { investmentsExport } from "@/lib/investments/holdings";
 import { teamAccessFor } from "@/lib/team-access-loader";
 
 // "Download my data": everything the app holds about one person, as JSON. Never another
@@ -387,6 +388,8 @@ export async function exportUserData(
     },
     orderBy: { debtKey: "asc" },
   });
+  // What's in their investment accounts and its history (spec step 128).
+  const investments = await investmentsExport(userId, client);
 
   return {
     exportedAt: now.toISOString(),
@@ -427,6 +430,7 @@ export async function exportUserData(
     deadlines,
     lifeEvents,
     janeMessages,
+    investments,
     teamAccess: teamAccess.map(({ at, who, what, why, actionId }) => ({
       at,
       who,
