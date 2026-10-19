@@ -17,6 +17,8 @@ import {
   insuranceClaimStart,
   insuranceClaimStep,
   benefitsConfirmAll,
+  readingConfirm,
+  readingDismiss,
   benefitsDisabilityNone,
   benefitsDisabilityYes,
   benefitsLife1x,
@@ -62,6 +64,7 @@ import {
   investAutoLeftover,
   investAutoPause,
   investAutoResume,
+  collegeStart,
 } from "./investments";
 import { changeBudget, changeExpected, changeLook } from "./changes";
 import { lifeNever, lifeNo, lifeYes } from "./life";
@@ -96,6 +99,8 @@ export const ACTION_HANDLERS: Readonly<Record<ActionId, ActionHandler>> = {
   "insurance.claim_step": insuranceClaimStep,
   "insurance.claim_close": insuranceClaimClose,
   "benefits.confirm_all": benefitsConfirmAll,
+  "reading.confirm": readingConfirm,
+  "reading.dismiss": readingDismiss,
   "benefits.life_1x": benefitsLife1x,
   "benefits.life_2x": benefitsLife2x,
   "benefits.life_none": benefitsLifeNone,
@@ -192,6 +197,7 @@ export const ACTION_HANDLERS: Readonly<Record<ActionId, ActionHandler>> = {
   "invest.auto_leftover": investAutoLeftover,
   "invest.auto_pause": investAutoPause,
   "invest.auto_resume": investAutoResume,
+  "college.start": collegeStart,
   // Jane notices changes (spec step 97).
   "change.look": changeLook,
   "change.budget": changeBudget,
