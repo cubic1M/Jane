@@ -128,6 +128,8 @@ export const TEAM_ACCESS_RULES: Record<AuditEvent, EventRule> = {
   tax_pack_downloaded: own,
   session_signed_out: own,
   other_sessions_signed_out: own,
+  // Jane's chat messages as notifications (spec step 85).
+  chat_notification_sent: automatic,
 };
 
 export const SHOWN_EVENTS = (Object.keys(TEAM_ACCESS_RULES) as AuditEvent[]).filter(

@@ -264,6 +264,9 @@ model User {
   // On bill calls, accept any lower price with no contract and no fee, even on a different
   // plan of the same service (spec step 62). Off: every offer comes to the person.
   acceptSimpleOffers         Boolean         @default(false) @map("accept_simple_offers")
+  // Jane's chat messages as notifications (spec step 85): { channel, kinds }. Missing values
+  // use the defaults in src/config/chat-notify.ts.
+  chatNotifyPrefs            Json            @default("{}") @map("chat_notify_prefs")
 
   authAccounts        AuthAccount[]
   mfaBackupCodes      MfaBackupCode[]
@@ -272,6 +275,7 @@ model User {
   planProposals       PlanProposal[]
   planLinks           PlanLink[]
   janeMessages        JaneMessage[]
+  chatReplyLinks      ChatReplyLink[]
   deadlines           Deadline[]
   sessions            Session[]
   plaidItems          PlaidItem[]
@@ -1436,10 +1440,35 @@ model JaneMessage {
   priority     Int       @default(0)
   readAt       DateTime? @map("read_at") @db.Timestamptz(3)
   createdAt    DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  // When it went out as a notification (spec step 85), so it never goes twice, and how:
+  // push, email, both, or skipped (it had gone out already as an alert).
+  notifiedAt   DateTime? @map("notified_at") @db.Timestamptz(3)
+  notifiedVia  String?   @map("notified_via")
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([userId, dedupeKey])
   @@index([userId, createdAt])
   @@map("jane_messages")
+}
+
+// One-tap answers from Jane's emails (spec step 85): one per button on one message. The
+// link opens a confirm page with one button, so mail scanners can't answer anything. Only
+// the SHA-256 of the token is kept; it works once, until expiresAt, for that person's own
+// message and that button, through the same checks as the chat.
+model ChatReplyLink {
+  id        String    @id @default(cuid())
+  userId    String    @map("user_id")
+  messageId String    @map("message_id")
+  actionId  String    @map("action_id")
+  tokenHash String    @unique @map("token_hash")
+  expiresAt DateTime  @map("expires_at") @db.Timestamptz(3)
+  usedAt    DateTime? @map("used_at") @db.Timestamptz(3)
+  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([messageId])
+  @@map("chat_reply_links")
 }

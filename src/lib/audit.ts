@@ -78,7 +78,10 @@ export type AuditEvent =
   | "tax_pack_downloaded"
   // Devices and sessions (spec step 73): one other session, or all the others, signed out.
   | "session_signed_out"
-  | "other_sessions_signed_out";
+  | "other_sessions_signed_out"
+  // One of Jane's chat messages went out as a notification (spec step 85): the channel
+  // and the kind of message, never its text.
+  | "chat_notification_sent";
 
 export type AuditActor = { type: ActorType; id: string | null };
 

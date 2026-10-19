@@ -11,6 +11,7 @@ import { agentStep, handleReply, lookUpSupportFor } from "@/lib/agent/run";
 import { simulatedReply } from "@/lib/agent/simulated-company";
 import { simulatedCallResult } from "@/lib/voice/calls";
 import { explainFindings } from "@/lib/explanations";
+import { deliverChatNotifications } from "@/lib/jane-agent/notify";
 import { scrub } from "@/lib/scrub";
 
 // A small job queue in Postgres for slow work that can fail and be retried. A job is
@@ -23,7 +24,9 @@ export type JobKind =
   | "agent_step"
   | "agent_simulated_reply"
   | "voice_simulated_result"
-  | "find_support_contact";
+  | "find_support_contact"
+  // Jane's chat messages as notifications (spec step 85).
+  | "chat_notify";
 export type JobPayload = { userId: string; actionId?: string };
 // Tests pass only the handlers they need; a job with no handler fails like any error.
 export type Handlers = Partial<Record<JobKind, (payload: JobPayload) => Promise<unknown>>>;
@@ -42,6 +45,7 @@ export const HANDLERS: Required<Handlers> = {
     }),
   voice_simulated_result: (payload) => simulatedCallResult(payload.userId, actionIdOf(payload)),
   find_support_contact: (payload) => lookUpSupportFor(payload.userId, actionIdOf(payload)),
+  chat_notify: ({ userId }) => deliverChatNotifications(userId),
 };
 
 type Options = { client?: PrismaClient; now?: Date; handlers?: Handlers };
