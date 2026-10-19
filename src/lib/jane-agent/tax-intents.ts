@@ -52,7 +52,9 @@ export type TaxIntent =
   // Spec step 167.
   | { kind: "tax"; ask: "plan" }
   // Spec step 168.
-  | { kind: "tax"; ask: "giving" };
+  | { kind: "tax"; ask: "giving" }
+  // Spec step 169.
+  | { kind: "tax"; ask: "family" };
 
 const NUMBER_WORDS: Readonly<Record<string, number>> = {
   no: 0,
@@ -169,6 +171,10 @@ const PLAN =
   /\btax (?:plan|calendar|moves|deadlines|to-?dos?)\b|\b(?:year-end|end of (?:the )?year|year end) tax(?:es| moves| planning)?\b|\bwhat (?:tax )?(?:moves|deadlines) (?:are )?(?:coming|left|ahead)\b|\bwhat should i do (?:for|about) (?:my )?tax(?:es)? (?:this year|before (?:the )?year end|before december)\b/;
 const GIVING_ASK =
   /\bdonor[- ]advised fund\b|\bdaf\b|\bbunch(?:ing)? (?:my )?(?:gifts|giving|donations)\b|\b(?:donate|give|gift) (?:stock|shares|appreciated (?:stock|shares))\b|\b(?:give|donate|giving) (?:smarter|better|tax[- ]efficiently)\b|\bhow should i (?:give|donate)\b|\b(?:charity|donation) receipts?\b|\breceipts? for (?:my )?(?:donations|gifts|charity)\b/;
+// Questions, not answers: "should we file jointly or separately" compares; "we file
+// jointly" sets the profile (FILING).
+const FAMILY_ASK =
+  /\b(?:jointly or separately|separately or jointly|joint or separate|separate or joint)\b|\bhead of household or single\b|\bsingle or head of household\b|\bchild tax credit\b|\bdependent care (?:fsa|credit|account)\b|\bfsa or (?:the )?(?:care |childcare )?credit\b|\bamerican opportunity\b|\blifetime learning\b|\b(?:aotc|llc credit)\b|\beducation credits?\b|\b529 (?:tax|deduction|break|benefits?)\b|\bfamily tax(?:es)?\b|\btax(?:es)? (?:for|with) (?:my |our )?(?:kids|children|family)\b/;
 const PACK = /\btax(?:-| )?time pack\b|\btax pack\b|\byear-end pack\b/;
 
 function stateCode(words: string): string | null {
@@ -178,6 +184,7 @@ function stateCode(words: string): string | null {
 }
 
 export function parseTaxIntent(text: string): TaxIntent | null {
+  if (FAMILY_ASK.test(text)) return { kind: "tax", ask: "family" };
   for (const [pattern, status] of FILING) {
     if (pattern.test(text)) return { kind: "tax", ask: "set_filing", status };
   }

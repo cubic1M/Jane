@@ -362,6 +362,8 @@ export const TAX_MESSAGE_PRIORITY = {
   // Spec step 168: the giving options in season, and a gift's missing receipt.
   giving: 43,
   receipt: 32,
+  // Spec step 169: a family tax choice worth making.
+  family: 35,
 } as const;
 
 // What Jane does about taxes by herself at each autopilot level (spec step 57), shown on
@@ -415,6 +417,11 @@ export const TAX_AUTOPILOT: readonly { feature: string; ask: string; auto: strin
     feature: "investments",
     ask: "I work out your gains and losses from your holdings, warn you about wash sales and, with demo advice, show losses worth harvesting and what's better held in your 401(k) or IRA.",
     auto: "I work out your gains and losses after every sync, warn you about wash sales and, with demo advice, bring up losses worth harvesting before the year ends. I never sell anything myself.",
+  },
+  {
+    feature: "family",
+    ask: "With demo advice, I compare your family's tax choices (claiming the children, a dependent care FSA or the credit, which education credit, a 529's state break, filing jointly or separately) and show both sides' tax. Choosing is yours.",
+    auto: "With demo advice, I compare your family's tax choices after every sync, using your college plans and childcare and tuition spending, and tell you when one side saves money. Choosing is yours.",
   },
   {
     feature: "giving",

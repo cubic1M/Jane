@@ -5,7 +5,13 @@ import { track } from "@/lib/analytics";
 import { logAudit } from "@/lib/audit";
 import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
-import { claimContact, guideFor, type Claim, type ClaimStepState } from "./claim-rules";
+import {
+  claimContact,
+  guideFor,
+  type CarrierClaimStatus,
+  type Claim,
+  type ClaimStepState,
+} from "./claim-rules";
 
 export * from "./claim-rules";
 
@@ -31,6 +37,12 @@ const SELECT = {
   claimsUrl: true,
   claimNumber: true,
   createdAt: true,
+  amountCents: true,
+  description: true,
+  filing: true,
+  filedAt: true,
+  carrierStatus: true,
+  payoutCents: true,
 } as const;
 
 const day = (date: Date) => date.toISOString().slice(0, 10);
@@ -51,6 +63,12 @@ function toClaim(row: Prisma.InsuranceClaimGetPayload<{ select: typeof SELECT }>
     claimsUrl: row.claimsUrl,
     claimNumber: row.claimNumber,
     createdAt: row.createdAt,
+    amountCents: row.amountCents,
+    description: row.description,
+    filing: row.filing === "draft" || row.filing === "filed" ? row.filing : null,
+    filedAt: row.filedAt,
+    carrierStatus: (row.carrierStatus as CarrierClaimStatus | null) ?? null,
+    payoutCents: row.payoutCents,
   };
 }
 

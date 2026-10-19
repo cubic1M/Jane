@@ -30,6 +30,16 @@ import {
 } from "@/lib/insurance/life";
 import { nextLifeQuestion } from "@/lib/insurance/life-underwriting";
 import {
+  CoverChangeError,
+  applyCoverEvent,
+  dismissCoverEvent,
+} from "@/lib/insurance/cover-changes";
+import { listPolicies } from "@/lib/insurance/policies";
+import { doneNote, parseCoverEventRef } from "../insurance/cover-words";
+import { NegotiationError, callCarrier, declineNegotiation } from "@/lib/insurance/negotiate";
+import { fileClaim as fileClaimNow } from "@/lib/insurance/claim-filing";
+import { callResultBody } from "../insurance/done-by-jane-words";
+import {
   askingStep,
   boughtNote,
   decisionStep,
@@ -428,6 +438,102 @@ export const lifeCoverDismiss: ActionHandler = {
     return {
       answeredWith: action.label,
       note: "Okay. I won't bring it up again unless your numbers change.",
+    };
+  },
+};
+
+// Spec step 154: cover changes after a life event. One tap makes every prepared change (with
+// the carrier through the partner, or marks them done when the person made them); Not now
+// leaves everything as it is.
+const coverOf = (message: { refs: { coverEvent?: string } }) => {
+  const parsed = parseCoverEventRef(message.refs.coverEvent);
+  if (!parsed) throw new ChatActionError("failed", "Something went wrong. Open it instead.");
+  return parsed;
+};
+
+export const coverApply: ActionHandler = {
+  id: "cover.apply",
+  on: "open",
+  async run({ userId, message, action, client, now }) {
+    const { event, eventKey } = coverOf(message);
+    // The prices before, for saying what changed.
+    const before = await listPolicies(userId, { client });
+    const made = await applyCoverEvent(userId, event, eventKey, { client, now });
+    if (made.length === 0) throw answeredElsewhere("You've already answered this.");
+    return { answeredWith: action.label, note: doneNote(made, before) };
+  },
+};
+
+export const coverDismiss: ActionHandler = {
+  id: "cover.dismiss",
+  on: "open",
+  async run({ userId, message, action, client, now }) {
+    const { event, eventKey } = coverOf(message);
+    try {
+      await dismissCoverEvent(userId, event, eventKey, { client, now });
+    } catch (error) {
+      if (error instanceof CoverChangeError) throw answeredElsewhere(error.message);
+      throw error;
+    }
+    return { answeredWith: action.label, note: "Okay, I've left your insurance as it is." };
+  },
+};
+
+// Spec step 155: the renewal call, on the person's tap; and filing the claim draft they've
+// just read.
+export const renewalCall: ActionHandler = {
+  id: "renewal.call",
+  on: "open",
+  async run({ userId, message, action, client, now }) {
+    const id = message.refs.negotiationId;
+    if (!id) throw new ChatActionError("failed", "Something went wrong. Open it instead.");
+    let result;
+    try {
+      result = await callCarrier(userId, id, { client, now });
+    } catch (error) {
+      if (error instanceof NegotiationError) throw answeredElsewhere(error.message);
+      throw error;
+    }
+    const policy = (await listPolicies(userId, { client })).find((p) => p.id === result.policyId);
+    return { answeredWith: action.label, note: callResultBody(result, policy) };
+  },
+};
+
+export const renewalNo: ActionHandler = {
+  id: "renewal.no",
+  on: "open",
+  async run({ userId, message, action, client }) {
+    const id = message.refs.negotiationId;
+    if (!id) throw new ChatActionError("failed", "Something went wrong. Open it instead.");
+    try {
+      await declineNegotiation(userId, id, { client });
+    } catch (error) {
+      if (error instanceof NegotiationError) throw answeredElsewhere(error.message);
+      throw error;
+    }
+    return {
+      answeredWith: action.label,
+      note: "Okay, I won't call. The new price applies when it renews.",
+    };
+  },
+};
+
+export const claimFile: ActionHandler = {
+  id: "claim.file",
+  on: "open",
+  async run({ userId, message, action, client, now }) {
+    const id = message.refs.claimId;
+    if (!id) throw new ChatActionError("failed", "Something went wrong. Open it instead.");
+    let claim;
+    try {
+      claim = await fileClaimNow(userId, id, { client, now });
+    } catch (error) {
+      if (error instanceof ClaimError) throw answeredElsewhere(error.message);
+      throw error;
+    }
+    return {
+      answeredWith: action.label,
+      note: `Filed. ${claim.carrier ?? "Your insurer"} has your claim, number ${claim.claimNumber}. I'll tell you here as it moves.`,
     };
   },
 };

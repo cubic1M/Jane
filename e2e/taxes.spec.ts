@@ -204,3 +204,32 @@ test("the tax plan: moves by deadline, and one on the deadlines with a tap", asy
   await expect(plan.getByText("On your deadlines.").first()).toBeVisible();
   expect(await axe(page)).toEqual([]);
 });
+
+// Spec step 169: family details on the profile feed the family tax choices.
+test("family details: saved on the profile, and the choices on /taxes", async ({
+  context,
+  page,
+  baseURL,
+}) => {
+  const user = await signedInUser("user");
+  userId = user.userId;
+  await context.addCookies([
+    { name: "authjs.session-token", value: user.sessionToken, url: baseURL ?? "" },
+  ]);
+  await page.goto("/connect");
+  await page.getByRole("button", { name: "Link a demo bank" }).click();
+  await expect(page).toHaveURL("/chat", { timeout: 60_000 });
+
+  await page.goto("/taxes/profile#family");
+  const form = page.locator("#family");
+  await form.locator("input[name=childAge0]").fill("4");
+  await form.getByRole("button", { name: "Save family details" }).click();
+  await expect(form.getByRole("status")).toHaveText("Saved. Your family tax choices use it now.");
+  expect(await axe(page)).toEqual([]);
+
+  await page.goto("/taxes#family");
+  const family = page.getByRole("region", { name: "Family tax choices" });
+  await expect(family.getByRole("heading", { name: "Claiming your children" })).toBeVisible();
+  await expect(family.getByText("Demo advice: sample data, not financial advice")).toBeVisible();
+  expect(await axe(page)).toEqual([]);
+});

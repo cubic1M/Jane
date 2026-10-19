@@ -77,13 +77,13 @@ const nextDate = (today: string, monthDay: string) => {
   return thisYear >= today ? thisYear : `${Number(today.slice(0, 4)) + 1}-${monthDay}`;
 };
 
-function phaseOut(cents: number, magi: number, [from, to]: readonly [number, number]) {
+export function phaseOut(cents: number, magi: number, [from, to]: readonly [number, number]) {
   if (magi <= from) return cents;
   if (magi >= to) return 0;
   return Math.round(cents * (1 - (magi - from) / (to - from)));
 }
 
-function careShare(agiCents: number, jointly: boolean): number {
+export function careShare(agiCents: number, jointly: boolean): number {
   const c = DEPENDENT_CARE_CREDIT;
   const step = jointly ? c.stepSize.marriedJoint : c.stepSize.normal;
   const firstSteps = Math.ceil(Math.max(0, agiCents - c.firstStepFrom) / 200_000);

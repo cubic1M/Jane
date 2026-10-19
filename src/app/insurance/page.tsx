@@ -15,18 +15,31 @@ import {
   EMPTY_POLICY_INPUT,
   nextRenewal,
   policyFormValues,
+  premiumTotalLine,
   yearlyPremium,
   type Policy,
 } from "@/lib/insurance/policies";
 import { isQuotable } from "@/lib/insurance/partner";
 import { loadInsurance } from "@/lib/insurance/profile";
 import { listReadings } from "@/lib/insurance/readings";
+import { listCoverChanges } from "@/lib/insurance/cover-changes";
+import { listNegotiations } from "@/lib/insurance/negotiate";
+import { askCallBody, callResultBody } from "@/lib/jane-agent/insurance/done-by-jane-words";
+import { partnerFor } from "@/lib/insurance/partner";
+import { coverBody, coverActions, coverEventRef } from "@/lib/jane-agent/insurance/cover-words";
 import { cardCover, conditionWords, limitWords } from "@/lib/insurance/card-cover";
 import { formatCents } from "@/lib/money";
 import { requireUser } from "@/lib/session";
 import { autopilotOf } from "@/lib/autopilot";
 import { autopilotReply } from "@/lib/jane-agent/insurance/autopilot";
-import { deletePolicy, notNeeded } from "./actions";
+import {
+  applyChanges,
+  callRenewal,
+  deletePolicy,
+  dismissChanges,
+  notNeeded,
+  skipRenewal,
+} from "./actions";
 import { HouseholdForm, PolicyForm } from "./forms";
 
 // Insurance (spec step 102): every policy in one place, the household facts that matter
@@ -41,6 +54,8 @@ const SAVED: Record<string, string> = {
   household: "Saved. Jane checks your cover against it.",
   gap: "OK. Jane won't bring that one up again.",
   read: "Confirmed. It's on your insurance now.",
+  changes: "Done. Your insurance is up to date.",
+  called: "Jane called your insurer. What they said is below and in the chat.",
 };
 
 const dateLabel = (day: string) =>
@@ -169,18 +184,30 @@ async function InsuranceContent({
     autopilotOf(user.id),
   ]);
   // Read after loadInsurance, which reads any policy document not read yet.
-  const [readings, cards] = await Promise.all([
+  const [readings, cards, prepared, partner, negotiations] = await Promise.all([
     listReadings(user.id, { status: "waiting" }),
     cardCover(user.id),
+    listCoverChanges(user.id, { status: "prepared" }),
+    partnerFor(user.id),
+    listNegotiations(user.id),
   ]);
+  const policyById = (id: string) => policies.find((p) => p.id === id);
+  const renewals = negotiations.filter((n) => n.status !== "declined").slice(-3);
+  // Spec step 154: one group per life event.
+  const changeGroups = [
+    ...prepared
+      .reduce((groups, c) => {
+        const ref = coverEventRef(c.event, c.eventKey);
+        return groups.set(ref, [...(groups.get(ref) ?? []), c]);
+      }, new Map<string, typeof prepared>())
+      .entries(),
+  ];
   const payingTwice = cards.duplicates.filter((d) => d.status === "new" || d.status === "shown");
   const saved = SAVED[one("saved")];
   const add = one("add");
   const typed = (fact: { value: number | string | null; from: string | null }) =>
     fact.from === "you" && fact.value !== null ? String(fact.value) : "";
-  const yearlyTotal = policies
-    .filter((p) => p.status === "active")
-    .reduce((sum, p) => sum + (yearlyPremium(p) ?? 0), 0);
+  const totalLine = premiumTotalLine(policies);
 
   return (
     <>
@@ -228,6 +255,95 @@ async function InsuranceContent({
         >
           {saved}
         </p>
+      )}
+
+      {renewals.length > 0 && (
+        <section id="renewals" className="flex flex-col gap-3" aria-labelledby="renewals-heading">
+          <h2 id="renewals-heading" className="text-xl font-semibold">
+            Renewals going up
+          </h2>
+          {renewals.map((n) => (
+            <div
+              key={n.id}
+              className="flex flex-col gap-2 rounded-xl border border-zinc-200 p-4 text-sm dark:border-zinc-800"
+            >
+              {(n.status === "asked"
+                ? askCallBody(n, policyById(n.policyId))
+                : callResultBody(n, policyById(n.policyId))
+              )
+                .split("\n")
+                .map((line) => (
+                  <p key={line}>{line}</p>
+                ))}
+              {n.status === "asked" && (
+                <div className="flex flex-wrap gap-3">
+                  <form action={callRenewal}>
+                    <input type="hidden" name="negotiationId" value={n.id} />
+                    <button
+                      type="submit"
+                      className="inline-flex h-10 items-center rounded-full bg-emerald-700 px-5 font-semibold text-white hover:bg-emerald-800"
+                    >
+                      Call them
+                    </button>
+                  </form>
+                  <form action={skipRenewal}>
+                    <input type="hidden" name="negotiationId" value={n.id} />
+                    <button type="submit" className={`h-10 ${LINK}`}>
+                      No thanks
+                    </button>
+                  </form>
+                </div>
+              )}
+            </div>
+          ))}
+        </section>
+      )}
+
+      {changeGroups.length > 0 && (
+        <section id="changes" className="flex flex-col gap-3" aria-labelledby="changes-heading">
+          <h2 id="changes-heading" className="text-xl font-semibold">
+            After life events
+          </h2>
+          {changeGroups.map(([ref, changes]) => {
+            const [intro, ...lines] = coverBody(
+              changes[0].event,
+              changes,
+              policies,
+              partner !== null,
+            ).split("\n");
+            const [apply] = coverActions(changes, partner !== null);
+            return (
+              <div
+                key={ref}
+                className="flex flex-col gap-2 rounded-xl border border-zinc-200 p-4 dark:border-zinc-800"
+              >
+                <p className="font-medium">{intro}</p>
+                <ul className="flex flex-col gap-1 text-sm">
+                  {lines.map((line) => (
+                    <li key={line}>{line.replace(/^- /, "")}</li>
+                  ))}
+                </ul>
+                <div className="flex flex-wrap gap-3">
+                  <form action={applyChanges}>
+                    <input type="hidden" name="coverEvent" value={ref} />
+                    <button
+                      type="submit"
+                      className="inline-flex h-10 items-center rounded-full bg-emerald-700 px-5 text-sm font-semibold text-white hover:bg-emerald-800"
+                    >
+                      {apply.label}
+                    </button>
+                  </form>
+                  <form action={dismissChanges}>
+                    <input type="hidden" name="coverEvent" value={ref} />
+                    <button type="submit" className={`h-10 text-sm ${LINK}`}>
+                      Not now
+                    </button>
+                  </form>
+                </div>
+              </div>
+            );
+          })}
+        </section>
       )}
 
       {readings.length > 0 && (
@@ -353,11 +469,7 @@ async function InsuranceContent({
           </p>
         ) : (
           <>
-            {yearlyTotal > 0 && (
-              <p className="text-sm text-zinc-600 dark:text-zinc-400">
-                Together about {formatCents(yearlyTotal)} a year, from the prices on file.
-              </p>
-            )}
+            {totalLine && <p className="text-sm text-zinc-600 dark:text-zinc-400">{totalLine}</p>}
             <ul className="flex flex-col gap-3">
               {policies.map((p) => (
                 <PolicyCard key={p.id} policy={p} asOf={asOf} editing={one("edit") === p.id} />

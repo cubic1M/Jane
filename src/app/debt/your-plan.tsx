@@ -161,8 +161,9 @@ export function YourPlan({
         </table>
       )}
       <p className="text-xs text-zinc-500">
-        Interest saved is against paying only each debt&apos;s minimum
-        {summary.baseline.ok ? "" : ", which alone would never pay everything off"}.
+        {summary.savedAgainst === "minimums"
+          ? "Interest saved is against paying only each debt's minimum."
+          : `Interest saved is against paying ${formatCents(summary.minimumsCents + summary.extraCents)} a month as above: each debt's minimum on its own would never pay everything off.`}
       </p>
       {summary.leftOut.length > 0 && (
         <p className="text-sm text-zinc-600 dark:text-zinc-400">
