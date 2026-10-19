@@ -256,6 +256,8 @@ async function saveLiabilities(
       hasPmi: l.hasPmi,
       escrowBalanceCents: l.escrowBalanceCents,
       hasPrepaymentPenalty: l.hasPrepaymentPenalty,
+      lastStatementIssueDate: day(l.lastStatementIssueDate),
+      lastStatementBalanceCents: l.lastStatementBalanceCents,
     };
     await db.liabilities.upsert({
       where: { accountId },
