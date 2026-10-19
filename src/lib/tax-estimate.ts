@@ -14,6 +14,7 @@ import { loadWorkingProfile } from "@/lib/tax-profile";
 import { estimateTaxes, type EstimateInput, type TaxEstimate } from "@/planning/tax-estimate";
 import { perPaycheckEffect, type W4Step } from "@/planning/withholding";
 import { homeOfficeDeduction, mileageDeduction } from "@/planning/self-employed";
+import { loadInvestmentTaxes } from "@/lib/investment-taxes";
 import {
   NO_PAY,
   payFrequency,
@@ -214,7 +215,13 @@ export async function loadTaxEstimate(
   const miles = stored?.businessMilesYear === year ? (stored.businessMiles ?? 0) : 0;
   const businessSoFar = tags.totals.business.totalCents + mileageDeduction(miles);
   const otherSoFar = otherIncomeSoFar(rows, cash, year, businessSoFar);
-  const paced = projectOther(otherSoFar, year, today);
+  // Spec step 124: gains realised this year in taxable investment accounts.
+  const gains = (await loadInvestmentTaxes(userId, year, { client, now })).realisedCents;
+  const paced = {
+    ...projectOther(otherSoFar, year, today),
+    shortTermGainsCents: gains.shortTerm,
+    longTermGainsCents: gains.longTerm,
+  };
   const homeOffice =
     paced.selfEmploymentCents > 0
       ? Math.min(homeOfficeDeduction(stored?.homeOfficeSqFt ?? null), paced.selfEmploymentCents)
