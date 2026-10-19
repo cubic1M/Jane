@@ -401,7 +401,15 @@ describe("actReply", () => {
     expect(reply.body).toBe(
       "I can cancel that for you. Review your Hulu subscription. Could save about $215.88 a year. Want me to handle it?",
     );
-    expect(buttonIds(reply)).toEqual(["finding.yes", "finding.no", "open"]);
+    // Spec step 90: with "Why?", and "Remind me tomorrow".
+    expect(buttonIds(reply)).toEqual([
+      "finding.yes",
+      "finding.no",
+      "finding.why",
+      "snooze",
+      "open",
+    ]);
+    expect(reply.actions.find((a) => a.id === "snooze")?.label).toBe("Remind me tomorrow");
     expect(reply.refs).toMatchObject({ findingId: "f1", fingerprint: "fp1" });
     // Spec step 88: and remembers it for "and Peacock?" or "cancel it".
     expect(reply.refs.topic).toEqual({
@@ -414,7 +422,15 @@ describe("actReply", () => {
   it("finds a bill by its kind, with Jane's pick", () => {
     const reply = actReply(intent("lower my phone bill", "act"), snapshot({ findings }));
     expect(reply.refs).toMatchObject({ findingId: "f2", pickOptionId: "mint" });
-    expect(buttonIds(reply)).toEqual(["finding.yes", "finding.pick", "finding.no", "open"]);
+    expect(buttonIds(reply)).toEqual([
+      "finding.yes",
+      "finding.pick",
+      "finding.no",
+      "finding.why",
+      "finding.options",
+      "snooze",
+      "open",
+    ]);
   });
 
   // Spec step 88: when it could mean more than one, Jane asks which, a button each.

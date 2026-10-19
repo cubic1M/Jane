@@ -29,6 +29,7 @@ export const ACTION_IDS = [
   "insurance.quotes",
   "insurance.shop_yes",
   "insurance.shop_no",
+  "insurance.checkup_seen",
   "plan.approve_safe",
   "undo.rule",
   "undo.no",
@@ -52,6 +53,10 @@ export const ACTION_IDS = [
   "clarify.1",
   "clarify.2",
   "clarify.3",
+  // Spec step 90: a budget the answer named, and the quick replies on a finding.
+  "budget.set",
+  "finding.why",
+  "finding.options",
   // Taxes (spec step 118): the tax profile, one question at a time.
   "tax.found_yes",
   "tax.filing_single",
@@ -92,6 +97,8 @@ export const ACTION_IDS = [
   "invest.answer.3",
   "invest.answer.4",
   "invest.answer.5",
+  // Spec step 133: move to the recommended mix, through the brokerage partner.
+  "invest.rebalance",
   // Jane notices changes (spec step 97).
   "change.look",
   "change.budget",
@@ -115,7 +122,9 @@ export const ACTION_IDS = [
 export type ActionId = (typeof ACTION_IDS)[number];
 
 export type MessageAction =
-  | { id: ActionId; label: string; kind: "primary" | "secondary" }
+  // quick (spec step 90): a quick reply under an answer ("Why?", "Show options"), which
+  // answers in the chat and leaves the message's own buttons as they are.
+  | { id: ActionId; label: string; kind: "primary" | "secondary" | "quick" }
   | { id: "open"; label: string; kind: "link"; href: string };
 
 // What a message is about. Every field is optional; each source and action uses its own.
@@ -129,6 +138,8 @@ export type MessageRefs = {
   policyId?: string;
   // Spec step 104: a reshop of a policy (src/lib/insurance/shop.ts), by id.
   insuranceShopId?: string;
+  // Spec step 106: a coverage checkup, by id.
+  insuranceCheckupId?: string;
   // The finding as Jane described it (src/lib/jane-agent/fingerprint.ts): a button only
   // acts while the finding is still what the message said.
   fingerprint?: string;
@@ -159,6 +170,8 @@ export type MessageRefs = {
   topic?: Topic;
   // Spec step 88: a clarifying question's meanings, in button order (clarify.1, clarify.2…).
   choices?: { label: string; intent: Intent }[];
+  // Spec step 90: the budget "Set a budget" would set (cents a month).
+  budget?: { category: string; amountCents: number };
   // Taxes (spec step 118): the tax profile question a message is asking, and the kind of
   // income "Add it" would add.
   taxField?: string;
@@ -192,6 +205,8 @@ export type MessageRefs = {
   // Jane is going through all four again (the yearly check).
   investQuestion?: string;
   investAgain?: true;
+  // Spec step 133: the rebalancing plan the button places, by its key.
+  rebalanceKey?: string;
   // Spec step 97: a change Jane noticed (src/insights/changes.ts), by its key; for a
   // category's pace, the budget "Set a budget" would set (cents a month).
   change?: { key: string; kind: string; category?: string; budgetCents?: number };
@@ -240,7 +255,7 @@ export function parseActions(value: unknown): MessageAction[] {
     if (!isObject(a) || typeof a.label !== "string") return false;
     if (a.kind === "link") return a.id === "open" && typeof a.href === "string";
     return (
-      (a.kind === "primary" || a.kind === "secondary") &&
+      (a.kind === "primary" || a.kind === "secondary" || a.kind === "quick") &&
       (ACTION_IDS as readonly unknown[]).includes(a.id)
     );
   });

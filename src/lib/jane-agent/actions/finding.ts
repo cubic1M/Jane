@@ -1,4 +1,6 @@
-import type { DecisionChoice } from "@/generated/prisma/client";
+import { AGENT_FOLLOW_UP_DAYS } from "@/config/agent";
+import { TURNAROUND_BUSINESS_DAYS } from "@/config/concierge";
+import type { ActionType, DecisionChoice } from "@/generated/prisma/client";
 import { ACTION_FOR_FINDING, CARD_SELECT, buildCard, cardHash } from "@/lib/cards";
 import { scopedFor } from "@/lib/db-scoped";
 import { DecisionError, UNDO_WINDOW_SECONDS, recordDecision } from "@/lib/decisions";
@@ -17,6 +19,24 @@ import {
 // option to switch to (src/lib/compare.ts checks it's still on offer). Moving money,
 // cancelling, insurance and calls are all fine here: this is the person's own tap.
 
+// Spec step 90: after a Yes, what happens next and when, in plain words.
+export function nextStep(type: ActionType): string {
+  const followUp = `If they don't answer, I follow up after ${AGENT_FOLLOW_UP_DAYS} days.`;
+  switch (type) {
+    case "cancel_subscription":
+      return `Got it. I'll write to them today to cancel, and tell you here when they confirm. ${followUp}`;
+    case "fight_price_increase":
+      return `Got it. I'll ask them today to undo the price rise, and tell you here what they say. ${followUp}`;
+    case "request_refund":
+    case "recover_bank_fees":
+      return `Got it. I'll ask for the money back today, and tell you here when it lands. ${followUp}`;
+    case "negotiate_bill":
+      return "Got it. I'll call them for a lower price and bring any offer back to you here before saying yes to it.";
+    default:
+      return `Got it. Our team starts on it within ${TURNAROUND_BUSINESS_DAYS} business day${TURNAROUND_BUSINESS_DAYS === 1 ? "" : "s"}, and I'll tell you here what's next.`;
+  }
+}
+
 const ALREADY: ActionOutcome = {
   answeredWith: null,
   note: "You'd already answered this one.",
@@ -26,7 +46,7 @@ async function decide(
   context: ActionContext,
   choice: Extract<DecisionChoice, "yes" | "no">,
   switchTo?: string,
-): Promise<ActionOutcome & { decisionId?: string }> {
+): Promise<ActionOutcome & { decisionId?: string; actionType?: ActionType }> {
   const { userId, message, client } = context;
   const { findingId, fingerprint } = message.refs;
   if (!findingId) throw new ChatActionError("failed", "Something went wrong. Open it instead.");
@@ -62,6 +82,7 @@ async function decide(
     return {
       answeredWith: context.action.label,
       decisionId: result.decisionId,
+      actionType: ACTION_FOR_FINDING[finding.type],
       agentJobIds: [result.agentJobId],
     };
   } catch (error) {
@@ -76,8 +97,8 @@ export const findingYes: ActionHandler = {
   on: "open",
   async run(context) {
     const outcome = await decide(context, "yes");
-    return outcome.decisionId
-      ? { ...outcome, note: "Got it. I'm on it, and you can follow along on Actions." }
+    return outcome.decisionId && outcome.actionType
+      ? { ...outcome, note: nextStep(outcome.actionType) }
       : outcome;
   },
 };

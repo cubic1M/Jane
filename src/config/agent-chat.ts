@@ -68,6 +68,8 @@ export const MESSAGE_PRIORITY = {
   // something Jane finished.
   insurance_shop: 64,
   insurance_checked: 48,
+  // Spec step 106: the coverage checkup, a heads-up that can wait.
+  insurance_checkup: 46,
   urgent_alert: 95,
   deadline: 90,
   waiting_on_you: 85,
@@ -173,3 +175,7 @@ export const CHAT_CONTEXT_MINUTES = 30;
 export const CHAT_CLARIFY_CHOICES = 3;
 // The subscriptions list names at most this many, the most expensive first.
 export const CHAT_SUBSCRIPTIONS_LISTED = 8;
+
+// Spec step 90: a purchase that doesn't fit before payday gets "Start a goal for it",
+// reached this many months from now.
+export const AFFORD_GOAL_MONTHS = 3;

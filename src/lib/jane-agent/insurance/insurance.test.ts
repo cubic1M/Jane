@@ -433,3 +433,66 @@ describe("Jane's switches in the chat (spec step 105)", () => {
     );
   });
 });
+
+describe("the coverage checkup in the chat (spec step 106)", () => {
+  const messages = (s: Snapshot) =>
+    gather(s, MORNING, SYNC).filter((m) => m.source === "insurance");
+  const rec = {
+    key: "deductible_up" as const,
+    policyId: "p1",
+    kind: "auto" as const,
+    title: "Raise the deductible on your GEICO car insurance to $2,500.00.",
+    costCents: -18_933,
+    cost: "Saves about $189.33 a year",
+    risk: "On a claim you'd pay up to $1,500.00 more yourself.",
+    cents: [],
+  };
+  const checkup = (recommendations: (typeof rec)[]) => ({
+    id: "c1",
+    reason: "yearly" as const,
+    recommendations,
+    seenAt: null,
+    createdAt: MORNING,
+  });
+
+  it("says each recommendation with its cost and risk, labelled, with Got it", () => {
+    const [message] = messages(
+      snapshot({ insurance: { ...insurance(), checkup: checkup([rec]) } }),
+    );
+    expect(message).toMatchObject({
+      kind: "heads_up",
+      dedupeKey: "insurance:checkup:c1",
+      refs: { insuranceCheckupId: "c1", advice: true },
+      priority: MESSAGE_PRIORITY.insurance_checkup,
+    });
+    expect(message.body.split("\n")).toEqual([
+      "I checked your insurance for the year. One thing is worth a look:",
+      "- Raise the deductible on your GEICO car insurance to $2,500.00. Saves about $189.33 a year. On a claim you'd pay up to $1,500.00 more yourself.",
+      "Nothing changes unless you say so.",
+    ]);
+    expect(message.actions.map((a) => a.id)).toEqual(["insurance.checkup_seen", "open"]);
+  });
+
+  it("says when there's nothing to change", () => {
+    const [message] = messages(snapshot({ insurance: { ...insurance(), checkup: checkup([]) } }));
+    expect(message.kind).toBe("done");
+    expect(message.body).toMatch(/^I checked your insurance for the year: nothing to change\./);
+  });
+
+  it("reads checkup questions", () => {
+    for (const text of [
+      "check my insurance",
+      "insurance checkup",
+      "am I over-insured",
+      "should I raise my deductible",
+      "do I have the right amount of coverage",
+    ]) {
+      expect(parseIntent(text, ASOF), text).toMatchObject({ kind: "insurance", ask: "checkup" });
+    }
+    expect(parseIntent("what's my deductible", ASOF)).toMatchObject({ ask: "deductible" });
+  });
+});
+
+it("leaves a check-up on other things alone", () => {
+  expect(parseIntent("can you check up on my budget", ASOF).kind).not.toBe("insurance");
+});

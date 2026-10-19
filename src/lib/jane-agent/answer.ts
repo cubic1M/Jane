@@ -1,3 +1,4 @@
+import { checkupAnswer } from "./insurance/checkup";
 import { quotesAnswer } from "./insurance/quotes";
 import { insuranceReply } from "./insurance/replies";
 import { loadInsuranceSnapshot } from "./insurance/snapshot";
@@ -159,6 +160,8 @@ async function byIntent(
     case "insurance":
       // Spec step 103: quotes ask the partner, the rest read the profile.
       if (intent.ask === "quotes") return quotesAnswer(userId, intent, { client, now });
+      // Spec step 106: the coverage checkup, run when asked.
+      if (intent.ask === "checkup") return checkupAnswer(userId, { client, now });
       return insuranceReply(intent, await loadInsuranceSnapshot(userId, { client, now }), asOf);
     case "greeting": {
       if (intent.thanks) return greetingReply(true, null);
@@ -180,12 +183,12 @@ async function byIntent(
       );
     }
     case "spending": {
-      const transactions = await loadInsightTransactions(
-        scopedFor(userId, client),
-        asOf,
-        INSIGHT_MONTHS,
-      );
-      return spendingReply(intent, transactions, asOf);
+      const db = scopedFor(userId, client);
+      const [transactions, budgets] = await Promise.all([
+        loadInsightTransactions(db, asOf, INSIGHT_MONTHS),
+        db.budgets.findMany({ select: { category: true, amountCents: true } }),
+      ]);
+      return spendingReply(intent, transactions, asOf, budgets);
     }
     case "coming_up": {
       const home = await homeSummary(userId, { client, now });

@@ -136,7 +136,12 @@ describe("askClaudeInChat", () => {
     const result = await askClaudeInChat("u1", [], "I never watch Hulu", options);
 
     expect(result.kind).toBe("answer");
-    expect(result.reply.actions.map((a) => a.id)).toEqual(["finding.yes", "finding.no", "open"]);
+    expect(result.reply.actions.map((a) => a.id)).toEqual([
+      "finding.yes",
+      "finding.no",
+      "finding.why",
+      "open",
+    ]);
     expect(result.reply.refs).toEqual({ findingId: "f1", fingerprint: "fp1" });
     // Jane's own wording for the finding follows Claude's text.
     expect(result.reply.body).toMatch(/\n\nReview your Hulu subscription\. Could save about/);

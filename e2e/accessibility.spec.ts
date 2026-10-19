@@ -45,6 +45,7 @@ const SIGNED_IN = [
   "/investments/fees",
   "/investments/review",
   "/investments/retirement",
+  "/investments/rebalance",
   "/loans",
   "/bills",
   "/alerts",

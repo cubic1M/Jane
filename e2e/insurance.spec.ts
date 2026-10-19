@@ -78,6 +78,12 @@ test("a demo-bank person sees the sample policy, like-for-like quotes and Jane's
   await expect(
     lighthouse.getByText("$1,296.00 a year, $408.00 less than you pay now."),
   ).toBeVisible();
+
+  // Spec step 106: Jane checked the cover by herself when the bank linked.
+  await page.goto("/insurance/checkup");
+  await expect(page.getByRole("heading", { name: "Coverage checkup", level: 1 })).toBeVisible();
+  await expect(page.getByText(/Raise the injury cover on your GEICO car insurance/)).toBeVisible();
+  await expect(page.getByText("Demo advice: sample data, not financial advice")).toBeVisible();
   const overflow = await page.evaluate(
     () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
   );

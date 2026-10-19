@@ -93,4 +93,15 @@ test("the demo bank's holdings show with their sources, and Jane answers about t
   ).toBeVisible();
   await expect(page.getByText("Demo advice: sample data, not financial advice")).toBeVisible();
   await expect(page.getByText("How this is worked out: a range, not a promise")).toBeVisible();
+
+  // Step 133: the orders, simulated and said so, placed with one tap.
+  await page.goto("/investments/rebalance");
+  await expect(page.getByText(/^Simulated brokerage: these orders are pretend/)).toBeVisible();
+  await expect(page.getByRole("heading", { name: "The orders" })).toBeVisible();
+  await page.getByRole("button", { name: "Move to the recommended mix (simulated)" }).click();
+  await expect(page.getByRole("status")).toContainText("filled in the simulation");
+  await expect(page.getByText("Your mix is on target: nothing to trade.")).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Orders and confirmations" })).toBeVisible();
+  await page.goto("/investments");
+  await expect(page.getByText(/^Simulated brokerage: these orders are pretend/)).toBeVisible();
 });
