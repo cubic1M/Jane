@@ -2087,7 +2087,6 @@ model BrokerageOrder {
   @@map("brokerage_orders")
 }
 
-<<<<<<< prisma/schema.prisma
 // A tax return filed through the filing partner (spec step 126), one per tax year. Jane
 // hands over what she has (package: the profile, income, tags and forms, never account
 // numbers or tokens); the partner prepares it; the person reviews it and signs; only then is
@@ -2114,7 +2113,8 @@ model TaxReturn {
 
   @@unique([userId, year])
   @@map("tax_returns")
-=======
+}
+
 // Spec step 134: investing automatically every payday, set up once with a tap. "fixed"
 // invests amountCents each payday; "leftover" invests part of what's safe to spend above
 // the floor (src/config/auto-invest.ts). Paused by the person, or by Jane for a payday when
@@ -2159,5 +2159,4 @@ model AutoInvestRun {
   @@unique([userId, paydayOn])
   @@index([userId, createdAt])
   @@map("auto_invest_runs")
->>>>>>> /private/tmp/claude-501/-Users-andrewli-Desktop-Jane--claude-worktrees-nostalgic-meninsky-158bc1/056b25e7-5316-42c2-a586-652413b8a4fe/scratchpad/mf/prisma_schema.prisma.theirs
 }
