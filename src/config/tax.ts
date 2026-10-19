@@ -1,5 +1,6 @@
 import type { PfcDetailed } from "@/categorize/taxonomy";
 import type { AutopilotChoice } from "@/config/autopilot";
+import { CHARITY_CATEGORIES, PREPARER_GROUPS } from "@/config/tax-pack";
 
 // Taxes (spec steps 118–127): what Jane needs to know, how she works it out from the
 // person's accounts and what she does by herself at each autopilot level. Tax rates,
@@ -103,38 +104,120 @@ export const STATE_AGENCY_CATEGORIES: readonly PfcDetailed[] = [
 // The most dependants of each kind the profile takes.
 export const MAX_DEPENDANTS = 15;
 
+// Spec step 119: tax tags on transactions. Jane tags spending in these categories by
+// herself; "check" tags are ones she asks about (an online course may not be education
+// for taxes). Work expenses are only ever tagged by the person. Tags sit beside the
+// spending categories and never change them, so spending totals stay the same.
+export const TAX_TAGS = {
+  donation: {
+    label: "Donation",
+    plural: "donations",
+    categories: CHARITY_CATEGORIES,
+    check: false,
+  },
+  medical: {
+    label: "Medical",
+    plural: "medical",
+    categories: PREPARER_GROUPS.medical,
+    check: false,
+  },
+  childcare: {
+    label: "Childcare",
+    plural: "childcare",
+    categories: PREPARER_GROUPS.childcare,
+    check: false,
+  },
+  education: {
+    label: "Education",
+    plural: "education",
+    categories: PREPARER_GROUPS.education,
+    check: true,
+  },
+  work: { label: "Work expense", plural: "work expenses", categories: [], check: false },
+} as const satisfies Record<
+  string,
+  { label: string; plural: string; categories: readonly PfcDetailed[]; check: boolean }
+>;
+export type TaxTagKind = keyof typeof TAX_TAGS;
+export const TAX_TAG_ORDER = Object.keys(TAX_TAGS) as TaxTagKind[];
+export const isTaxTagKind = (value: unknown): value is TaxTagKind =>
+  typeof value === "string" && Object.hasOwn(TAX_TAGS, value);
+// What a person's "not for taxes" is stored as.
+export const UNTAGGED = "none";
+
+// /taxes/tags shows at most this many transactions when searching for one to tag.
+export const TAX_TAG_SEARCH_LIMIT = 50;
+
+// Spec step 119: the tax forms to expect, from the income and loans Jane sees. Usual dates
+// (MM-DD, the year after the tax year) the payer must send each by; a weekend or holiday
+// moves it to the next business day, so Jane says "by about". Thresholds in cents: below
+// them a payer needn't send a form (the income still counts). For review: from the IRS
+// "General Instructions for Certain Information Returns" (2026) and the One Big Beautiful
+// Bill Act, which raised the 1099-NEC/MISC threshold from $600 to $2,000 for payments made
+// in 2026 and put the 1099-K threshold back to $20,000 and 200 payments.
+export const TAX_FORMS = {
+  w2: { form: "W-2", what: "wages", by: "01-31" },
+  nec: { form: "1099-NEC or 1099-K", what: "freelance or gig pay", by: "01-31" },
+  int: { form: "1099-INT", what: "interest", by: "01-31" },
+  brokerage: { form: "consolidated 1099 (DIV and B)", what: "dividends and sales", by: "02-15" },
+  r: { form: "1099-R", what: "pension or retirement payouts", by: "01-31" },
+  g: { form: "1099-G", what: "unemployment benefits", by: "01-31" },
+  mortgage: { form: "1098", what: "mortgage interest", by: "01-31" },
+  student: { form: "1098-E", what: "student loan interest", by: "01-31" },
+} as const;
+export type TaxFormKey = keyof typeof TAX_FORMS;
+// For review: 1099-NEC/MISC, by the year the money was paid.
+export const NEC_THRESHOLD_CENTS: Readonly<Record<number, number>> = {
+  2025: 60_000,
+  2026: 200_000,
+};
+export const necThreshold = (year: number) =>
+  NEC_THRESHOLD_CENTS[year] ??
+  NEC_THRESHOLD_CENTS[Math.max(...Object.keys(NEC_THRESHOLD_CENTS).map(Number))];
+// For review: 1099-INT at $10 of interest; 1098-E at $600 of student loan interest; 1098 at
+// $600 of mortgage interest.
+export const INT_THRESHOLD_CENTS = 1_000;
+export const STUDENT_INTEREST_THRESHOLD_CENTS = 60_000;
+export const MORTGAGE_INTEREST_THRESHOLD_CENTS = 60_000;
+// Jane starts asking whether forms have arrived from this day (MM-DD) of the year after.
+export const TAX_FORMS_ASK_FROM = "01-20";
+// ...until this day (MM-DD), the usual filing deadline.
+export const TAX_FORMS_ASK_UNTIL = "04-15";
+
 // The chat (src/lib/jane-agent/sources/taxes.ts): how important tax messages are, among
 // the others in src/config/agent-chat.ts MESSAGE_PRIORITY.
 export const TAX_MESSAGE_PRIORITY = {
   profile: 35,
   new_income: 36,
+  // Spec step 119.
+  tag_check: 33,
+  tag_month: 25,
+  form_due: 38,
 } as const;
 
 // What Jane does about taxes by herself at each autopilot level (spec step 57), shown on
-// /taxes and said in the chat. Nothing is ever filed, signed or paid without a tap.
+// /taxes and said in the chat, one entry per feature: what she does when the person asks
+// her to check first ("Ask me first", or no level picked yet) and at the levels that let
+// her act (safe, everything allowed, custom). Nothing is ever filed, signed or paid
+// without a tap.
 export type TaxAutopilotLevel = AutopilotChoice | "custom" | "none";
-export const TAX_AUTOPILOT: Readonly<Record<TaxAutopilotLevel, readonly string[]>> = {
-  none: [
-    "I work out what I can from your accounts and ask you to check it.",
-    "I only use what you've told me or said yes to.",
-  ],
-  ask: [
-    "I work out what I can from your accounts and ask you to check it.",
-    "I only use what you've told me or said yes to.",
-  ],
-  safe: [
-    "I keep your tax profile up to date from your accounts and use what I find straight away, marked as found by me, until you check it.",
-    "When I see a new kind of income, I tell you and ask before adding it.",
-  ],
-  all: [
-    "I keep your tax profile up to date from your accounts and use what I find straight away, marked as found by me, until you check it.",
-    "When I see a new kind of income, I tell you and ask before adding it.",
-  ],
-  custom: [
-    "I keep your tax profile up to date from your accounts and use what I find straight away, marked as found by me, until you check it.",
-    "When I see a new kind of income, I tell you and ask before adding it.",
-  ],
-};
+export const TAX_AUTOPILOT: readonly { feature: string; ask: string; auto: string }[] = [
+  {
+    feature: "profile",
+    ask: "I work out your tax profile from your accounts and ask you to check it; I only use what you've told me or said yes to.",
+    auto: "I keep your tax profile up to date from your accounts and use what I find straight away, marked as found by me, until you check it. I ask before adding a new kind of income.",
+  },
+  {
+    feature: "tags",
+    ask: "I tag donations, medical, childcare and education spending as it comes in, and ask about anything I'm unsure of.",
+    auto: "I tag donations, medical, childcare and education spending as it comes in, ask about anything I'm unsure of, and tell you each month what I tagged.",
+  },
+];
+
+export function whatJaneDoes(level: string | null): string[] {
+  const auto = level === "safe" || level === "all" || level === "custom";
+  return TAX_AUTOPILOT.map((line) => (auto ? line.auto : line.ask));
+}
 
 // Whether Jane may use what she found before the person has said yes to it.
 export const usesFoundAnswers = (level: string | null): boolean =>

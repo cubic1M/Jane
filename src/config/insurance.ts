@@ -1,0 +1,222 @@
+// Insurance (spec Phase X, steps 102–108): every policy the person has, the household facts
+// that matter for cover, and the gaps Jane points out. src/lib/insurance reads every limit
+// and rule from here.
+//
+// What Jane does by herself, at every autopilot level (src/config/autopilot.ts): she keeps
+// the profile up to date from documents (and, from step 99, from payments) and points out
+// gaps. She never buys, changes or cancels cover without the person's own tap.
+
+// The kinds of policy, as the profile and the forms name them.
+export const POLICY_KINDS = {
+  auto: "Car",
+  home: "Home",
+  renters: "Renters",
+  life: "Life",
+  pet: "Pet",
+  health: "Health",
+  other: "Other",
+} as const;
+
+export type PolicyKind = keyof typeof POLICY_KINDS;
+
+export const isPolicyKind = (value: unknown): value is PolicyKind =>
+  typeof value === "string" && Object.hasOwn(POLICY_KINDS, value);
+
+// Where a policy came from: typed by the person, read from an uploaded policy document
+// (spec step 68), found from regular payments to an insurer (spec step 99), the demo
+// bank's sample policy, or bound by Jane through the insurance partner (spec step 105).
+export const POLICY_SOURCES = ["typed", "document", "payments", "demo", "switch"] as const;
+export type PolicySource = (typeof POLICY_SOURCES)[number];
+
+export const POLICY_SOURCE_LABELS: Record<PolicySource, string> = {
+  typed: "Added by you",
+  document: "From your policy document",
+  payments: "Found from your payments",
+  demo: "Demo policy",
+  switch: "Bound by Jane",
+};
+
+// found: seen in payments, not confirmed yet (it doesn't count until it is). active: the
+// person's cover. pending: bound through the partner, waiting for its first payment
+// (spec step 105). cancelled: ended. removed: taken off the profile by the person (a
+// document's policy is kept as removed, so the document doesn't add it back).
+export const POLICY_STATUSES = ["found", "active", "pending", "cancelled", "removed"] as const;
+export type PolicyStatus = (typeof POLICY_STATUSES)[number];
+
+// A cover limit: money (cents), yes or no, a number of years, or a share in percent.
+export type CoverageFieldType = "money" | "yesno" | "years" | "percent";
+export type CoverageField = { key: string; label: string; type: CoverageFieldType };
+
+// The cover limits that matter for each kind, in the order they're shown. Stored in
+// insurance_policies.coverage by key; any that aren't known are left out.
+export const COVERAGE_FIELDS: Record<PolicyKind, readonly CoverageField[]> = {
+  auto: [
+    { key: "bodilyInjuryPerPerson", label: "Injury liability, per person", type: "money" },
+    { key: "bodilyInjuryPerAccident", label: "Injury liability, per accident", type: "money" },
+    { key: "propertyDamage", label: "Property damage liability", type: "money" },
+    { key: "collision", label: "Collision (damage to your car in a crash)", type: "yesno" },
+    {
+      key: "comprehensive",
+      label: "Comprehensive (theft, weather, fire to your car)",
+      type: "yesno",
+    },
+    { key: "uninsuredMotorist", label: "Uninsured driver cover", type: "yesno" },
+  ],
+  home: [
+    { key: "dwelling", label: "The home itself", type: "money" },
+    { key: "personalProperty", label: "Your belongings", type: "money" },
+    { key: "liability", label: "Liability", type: "money" },
+  ],
+  renters: [
+    { key: "personalProperty", label: "Your belongings", type: "money" },
+    { key: "liability", label: "Liability", type: "money" },
+  ],
+  life: [
+    { key: "deathBenefit", label: "Pays out", type: "money" },
+    { key: "termYears", label: "Term", type: "years" },
+  ],
+  pet: [
+    { key: "annualLimit", label: "Yearly limit", type: "money" },
+    { key: "reimbursement", label: "Pays back", type: "percent" },
+  ],
+  health: [{ key: "outOfPocketMax", label: "Most you pay in a year", type: "money" }],
+  other: [],
+};
+
+// Limits on what can be typed, so a typo can't become a $10 billion policy.
+export const MAX_PREMIUM_CENTS = 10_000_000;
+export const MAX_DEDUCTIBLE_CENTS = 10_000_000;
+export const MAX_LIMIT_CENTS = 10_000_000_000;
+export const MAX_TERM_YEARS = 40;
+export const MAX_CARRIER_LENGTH = 80;
+export const MAX_COVERS_LENGTH = 160;
+// Policies a person can keep on the profile.
+export const MAX_POLICIES = 30;
+// A policy's term, in months, when nothing says otherwise.
+export const DEFAULT_TERM_MONTHS = 12;
+export const TERM_MONTHS = [6, 12] as const;
+
+// Household facts: housing, and how many cars, dependants and pets. Typed by the person;
+// until they are, housing and cars are read from their accounts (a mortgage or a home
+// they own means they own; rent payments in the last this-many days mean they rent; a car
+// loan or a car they own means a car).
+export const HOUSING = { own: "Own", rent: "Rent", other: "Neither" };
+export type Housing = keyof typeof HOUSING;
+export const RENT_LOOKBACK_DAYS = 90;
+export const RENT_CATEGORY = "RENT_AND_UTILITIES_RENT";
+export const MAX_HOUSEHOLD_COUNT = 20;
+
+// Coverage gaps (spec step 102), each found by a rule in src/lib/insurance/gaps.ts.
+export const GAP_KEYS = ["renters", "home", "auto", "life", "liability_only"] as const;
+export type GapKey = (typeof GAP_KEYS)[number];
+
+// "Renews soon": the profile and the chat say so this many days ahead.
+export const RENEWAL_SOON_DAYS = 45;
+
+// What to add for each gap: demo advice (spec step 98), shown only in demo advice mode
+// with DEMO_ADVICE_LABEL. The dollar figures are listed so Claude's answers that repeat
+// them pass the guardrails.
+export const GAP_ADVICE: Record<GapKey, { text: string; cents: number[] }> = {
+  renters: {
+    text: "Add renters insurance with at least $30,000 for your belongings and $100,000 of liability cover. It often costs less than $20 a month.",
+    cents: [3_000_000, 10_000_000, 2_000],
+  },
+  home: {
+    text: "Add home insurance that pays to rebuild the whole home, with at least $300,000 of liability cover. Your lender likely requires it.",
+    cents: [30_000_000],
+  },
+  auto: {
+    text: "Add car insurance with liability limits of at least $100,000 per person, $300,000 per accident and $100,000 for property damage.",
+    cents: [10_000_000, 30_000_000],
+  },
+  life: {
+    text: "Add term life insurance worth about 10 times your yearly pay, for as long as people depend on you. Term cover costs far less than whole life.",
+    cents: [],
+  },
+  liability_only: {
+    text: "If replacing your car would cost more than you could pay from savings, add collision and comprehensive cover. If it's worth little, liability only can make sense.",
+    cents: [],
+  },
+};
+
+// --- Quotes (spec step 103) --------------------------------------------------------------
+// Quotes come from an insurance partner (src/lib/insurance/partner.ts). Until a licensed
+// partner is connected, a stand-in carrier catalog (src/data-sources/demo/demo-carriers.ts)
+// prices policies for demo-bank people with the fixed rules below. Real accounts get no
+// quotes. At every autopilot level Jane may ask for quotes by herself: they cost nothing and
+// commit to nothing. Buying (binding) always needs the person's tap.
+
+// Which partner answers: "demo" (the stand-in, for demo-bank people only) until a real one
+// is connected. A real partner needs a licensed agency agreement and counsel's sign-off
+// (COUNSEL_INSURANCE_REFERRALS in src/config/referrals.ts).
+export const INSURANCE_PARTNER_ENV = "INSURANCE_PARTNER";
+
+// A quote is good for this many days.
+export const QUOTE_VALID_DAYS = 30;
+// Kinds the partner quotes. Health insurance goes through the marketplace, not a carrier.
+export const QUOTABLE_KINDS: readonly PolicyKind[] = ["auto", "home", "renters", "life", "pet"];
+
+// The stand-in's pricing, a year, in cents, before the carrier's own factor. Fixed rules
+// from the person's profile: what's insured, the cover and deductible asked for, and their
+// state. Made-up numbers in a realistic range; never a real carrier's rates.
+export const DEMO_PRICING = {
+  auto: {
+    perVehicle: 110_000,
+    // By injury liability per person: at least this much → this factor.
+    liabilityLevels: [
+      { atLeastCents: 10_000_000, factor: 1.15 },
+      { atLeastCents: 5_000_000, factor: 1 },
+      { atLeastCents: 0, factor: 0.9 },
+    ],
+    collision: 0.4,
+    comprehensive: 0.15,
+    uninsuredMotorist: 0.05,
+    // Defaults when the policy doesn't say.
+    defaults: {
+      bodilyInjuryPerPerson: 5_000_000,
+      bodilyInjuryPerAccident: 10_000_000,
+      propertyDamage: 5_000_000,
+      collision: true,
+      comprehensive: true,
+      uninsuredMotorist: true,
+    },
+  },
+  home: {
+    // A share of the home's rebuild value, in basis points.
+    dwellingBps: 35,
+    highLiabilityCents: 30_000_000,
+    highLiabilityFactor: 1.05,
+    defaults: { dwelling: 30_000_000, personalProperty: 15_000_000, liability: 30_000_000 },
+  },
+  renters: {
+    base: 9_000,
+    personalPropertyBps: 20,
+    highLiabilityCents: 30_000_000,
+    highLiabilityFactor: 1.1,
+    defaults: { personalProperty: 3_000_000, liability: 10_000_000 },
+  },
+  life: {
+    // Per $1,000 of cover, a year, for a 20-year term.
+    perThousandCents: 35,
+    termFactors: { 10: 0.7, 15: 0.85, 20: 1, 25: 1.25, 30: 1.6 } as Record<number, number>,
+    defaults: { deathBenefit: 50_000_000, termYears: 20 },
+  },
+  pet: {
+    perPet: 40_000,
+    reimbursementFactors: { 70: 0.85, 80: 1, 90: 1.2 } as Record<number, number>,
+    defaults: { annualLimit: 1_000_000, reimbursement: 80 },
+  },
+  // A higher deductible lowers the price (cents → factor); the nearest one counts.
+  deductibleFactors: [
+    { cents: 25_000, factor: 1.1 },
+    { cents: 50_000, factor: 1 },
+    { cents: 100_000, factor: 0.9 },
+    { cents: 250_000, factor: 0.8 },
+  ],
+  defaultDeductibleCents: 50_000,
+  // States where cover costs more (two-letter code → factor); the rest are 1.
+  stateFactors: { MI: 1.6, FL: 1.4, LA: 1.4, NY: 1.25, CA: 1.15, TX: 1.1 } as Record<
+    string,
+    number
+  >,
+} as const;

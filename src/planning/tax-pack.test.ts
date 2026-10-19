@@ -125,13 +125,72 @@ describe("the pack", () => {
     expect(pack.reminders).toEqual(estimatedTaxDates(2026));
   });
 
-  it("downloads one CSV row per transaction with its group", () => {
+  it("downloads one CSV row per transaction with its group, then the summary", () => {
     const lines = taxPackCsv(pack).trimEnd().split("\r\n");
-    expect(lines[0]).toBe("Group,Date,Payee,Amount");
-    expect(lines).toContain("Charity,2026-02-01,American Red Cross,50.00");
-    expect(lines).toContain("Medical,2026-03-10,SOMETHING,180.00");
-    expect(lines).toContain("Income from contracting or gig work,2026-11-02,SOMETHING,400.00");
-    expect(lines).toHaveLength(1 + 2 + 2 + 1 + 1 + 3);
+    expect(lines[0]).toBe("Group,Date,Payee,Amount,Note");
+    expect(lines).toContain("Charity,2026-02-01,American Red Cross,50.00,Tagged by Jane");
+    expect(lines).toContain("Medical,2026-03-10,SOMETHING,180.00,Tagged by Jane");
+    // Education is tagged, but Jane asks about it.
+    expect(lines).toContain("Education,2026-03-10,SOMETHING,120.00,Tagged by Jane: check it");
+    expect(lines).toContain("Income from contracting or gig work,2026-11-02,SOMETHING,400.00,");
+    expect(lines).toContain("Summary,,Medical: total,203.40,");
+    expect(lines).toHaveLength(1 + 2 + 2 + 1 + 1 + 3 + 6);
+  });
+});
+
+describe("the pack follows the tax tags (spec step 119)", () => {
+  const gift = tx({
+    id: "gift",
+    merchantName: "Red Cross",
+    pfcDetailed: "GOVERNMENT_AND_NON_PROFIT_DONATIONS",
+  });
+  const pens = tx({ id: "pens", merchantName: "Staples", amountCents: 1_250 });
+  const course = tx({
+    id: "course",
+    merchantName: "MasterClass",
+    amountCents: 12_000,
+    pfcDetailed: "GENERAL_SERVICES_EDUCATION",
+  });
+  const pack = buildTaxPack({
+    year: 2026,
+    today: "2026-12-01",
+    loans: [],
+    transactions: [gift, pens, course],
+    overrides: {
+      byTransaction: new Map([["gift", "none"]]),
+      byMerchant: new Map([
+        ["staples", "work"],
+        ["masterclass", "education"],
+      ]),
+    },
+    forms: [
+      {
+        key: "w2:acme",
+        formKey: "w2",
+        form: "W-2",
+        from: "ACME",
+        what: "wages",
+        by: "2027-01-31",
+        amountCents: 100,
+        mayNotSend: false,
+        received: false,
+      },
+    ],
+  });
+
+  it("matches the tags: untagged gifts are out, the person's work tag is in", () => {
+    expect(pack.charity.rows).toEqual([]);
+    expect(pack.preparer.work.rows).toEqual([
+      { id: "pens", date: "2026-03-10", payee: "Staples", amountCents: 1_250, source: "yours" },
+    ]);
+    expect(pack.preparer.education.rows[0].source).toBe("yours");
+  });
+
+  it("lists the forms to expect in the spreadsheet", () => {
+    const lines = taxPackCsv(pack).trimEnd().split("\r\n");
+    expect(lines).toContain("Work expenses,2026-03-10,Staples,12.50,Tagged by you");
+    expect(lines).toContain("Summary,,Work expenses: total,12.50,");
+    expect(lines[lines.length - 1]).toBe("Tax forms to expect,2027-01-31,W-2 from ACME,,Waiting");
   });
 });
 

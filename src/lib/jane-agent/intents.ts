@@ -1,3 +1,4 @@
+import { parseInsurance, type InsuranceIntent } from "./insurance/intents";
 import { CHAT_WEEK_DAYS } from "@/config/agent-chat";
 import type { LifeEventKind } from "@/config/life-events";
 import { CATEGORY_LABELS, UNCATEGORIZED } from "@/insights/labels";
@@ -14,6 +15,8 @@ export type ActVerb = "cancel" | "lower" | "refund";
 
 export type Intent =
   | { kind: "help" }
+  // Insurance (spec Phase X): ./insurance/intents.ts.
+  | InsuranceIntent
   // "hi", "thanks": answered at once, without Claude.
   | { kind: "greeting"; thanks: boolean }
   | { kind: "what_did" }
@@ -406,6 +409,11 @@ export function parseIntent(raw: string, asOf: string): Intent {
       all: ALL_RECURRING.test(text),
     };
   }
+  // Insurance questions ("how much is my home insurance") are the insurance lane's own.
+  if (!acting && !SPENDING.test(text)) {
+    const insurance = parseInsurance(text);
+    if (insurance) return insurance;
+  }
   for (const pattern of COST) {
     const cost = pattern.exec(text);
     if (!cost) continue;
@@ -434,6 +442,9 @@ export function parseIntent(raw: string, asOf: string): Intent {
   if (cancel) return { kind: "act", verb: "cancel", target: cleanTarget(cancel[1]) };
   const lower = LOWER.exec(text);
   if (lower) return { kind: "act", verb: "lower", target: cleanTarget(lower[1]) };
+
+  const insurance = parseInsurance(text);
+  if (insurance) return insurance;
 
   const about = ABOUT.exec(text);
   if (about) return { kind: "about", target: cleanTarget(about[1]) };
