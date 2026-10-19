@@ -17,7 +17,7 @@ import { collectedMessage, flaggedMessage, missingMessage } from "../tax-documen
 import { planMoveMessage } from "../tax-plan-message";
 import { givingOptionsMessage, receiptMessage } from "../giving-message";
 import { familyChoiceMessage, statusOf } from "../family-taxes-message";
-import { worthSaying } from "@/lib/family-taxes";
+import { worthSaying } from "@/planning/family-taxes";
 import { HARVEST_FROM } from "@/config/tax";
 import { formatCents } from "@/lib/money";
 import { incomeLine, listOf } from "@/planning/tax-profile";

@@ -1,4 +1,4 @@
-import { FAMILY_MIN_SAVING_CENTS } from "@/config/family-taxes";
+import { TUITION_PAYEE } from "@/config/tax";
 import type { PrismaClient } from "@/generated/prisma/client";
 import { adviceMode } from "@/lib/advice-mode";
 import { track } from "@/lib/analytics";
@@ -18,6 +18,8 @@ import {
   type FamilyChoice,
   type Student,
 } from "@/planning/family-taxes";
+
+export { worthSaying } from "@/planning/family-taxes";
 
 // Family taxes (spec step 169), loaded from what Jane knows: the children (the person's
 // family details, else step 158's college plans, else the profile's count), childcare and
@@ -111,7 +113,10 @@ export async function loadFamilyTaxes(
 
   const elapsed = estimate.elapsed > 0 && estimate.elapsed < 1 ? estimate.elapsed : 1;
   const careCents = Math.round(tags.totals.childcare.totalCents / elapsed);
-  const tuitionCents = tags.totals.education.totalCents;
+  // Only tuition paid to a school counts for the education credits (not a course app).
+  const tuitionCents = tags.tagged
+    .filter((t) => t.tag === "education" && TUITION_PAYEE.test(t.payee))
+    .reduce((sum, t) => sum + t.amountCents, 0);
   const student: Student = {
     yearsOfCollegeBefore: stored?.studentYearsBefore ?? 0,
     halfTime: stored?.studentHalfTime ?? true,
@@ -161,10 +166,6 @@ export async function loadFamilyTaxes(
   ].filter((c): c is FamilyChoice => c !== null);
   return { year, advice, choices, assumptions };
 }
-
-// Choices worth bringing up in the chat: both sides open, the better one saving enough.
-export const worthSaying = (c: FamilyChoice) =>
-  c.better !== null && c.savesCents >= FAMILY_MIN_SAVING_CENTS;
 
 // The family details form. Checked here, whatever the page sent.
 export async function saveFamilyDetails(

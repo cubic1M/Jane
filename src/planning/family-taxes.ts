@@ -1,4 +1,4 @@
-import { FAMILY_RULES } from "@/config/family-taxes";
+import { FAMILY_MIN_SAVING_CENTS, FAMILY_RULES } from "@/config/family-taxes";
 import { STATE_529 } from "@/config/college";
 import {
   CONTRIBUTION_LIMITS,
@@ -402,3 +402,7 @@ export function filingChoice(input: {
 
 const dollars = (cents: number) =>
   `$${Math.round(cents / 100).toLocaleString("en-US", { maximumFractionDigits: 0 })}`;
+
+// Choices worth bringing up in the chat: a better side, saving enough.
+export const worthSaying = (c: FamilyChoice) =>
+  c.better !== null && c.savesCents >= FAMILY_MIN_SAVING_CENTS;
