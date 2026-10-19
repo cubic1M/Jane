@@ -120,7 +120,7 @@ describe.runIf(url)("insurance quotes against a real database", () => {
     });
     const { reply } = await sendToJane(me, "find me cheaper car insurance", { client, now: NOW });
     expect(reply.body.split("\n")).toEqual([
-      "I asked for quotes with the same cover and deductible as your GEICO car insurance, which costs $1,704.00 a year:",
+      "The lowest price for the same cover as your GEICO car insurance is Lighthouse Insurance (demo), at $1,296.00 a year, $408.00 less than you pay now.",
       "- Northstar Assurance (demo), rated A-: $92.00 a month ($1,104.00 a year, $600.00 less), not the same cover: Property damage liability: $25,000.00 instead of your $50,000.00",
       "- Cedar & Stone (demo), rated A: $96.00 a month ($1,152.00 a year, $552.00 less), not the same cover: Uninsured driver cover: not included, and you have it now",
       "- Lighthouse Insurance (demo), rated A+: $108.00 a month ($1,296.00 a year, $408.00 less), same cover",
@@ -136,7 +136,7 @@ describe.runIf(url)("insurance quotes against a real database", () => {
     expect(cost.actions.map((a) => a.id)).toEqual(["insurance.quotes", "open"]);
     const { message } = await takeChatAction(me, cost.id, "insurance.quotes", { client, now: NOW });
     expect(message.answeredWith).toBe("Compare quotes");
-    expect(message.refs.note).toMatch(/^I asked for quotes with the same cover/);
+    expect(message.refs.note).toMatch(/^The lowest price for the same cover/);
     expect(message.actions).toEqual([
       expect.objectContaining({ id: "open", label: "See the quotes" }),
     ]);

@@ -22,6 +22,8 @@ import { isQuotable } from "@/lib/insurance/partner";
 import { loadInsurance } from "@/lib/insurance/profile";
 import { formatCents } from "@/lib/money";
 import { requireUser } from "@/lib/session";
+import { autopilotOf } from "@/lib/autopilot";
+import { autopilotReply } from "@/lib/jane-agent/insurance/autopilot";
 import { deletePolicy, notNeeded } from "./actions";
 import { HouseholdForm, PolicyForm } from "./forms";
 
@@ -159,7 +161,10 @@ async function InsuranceContent({
   };
   const now = new Date();
   const asOf = now.toISOString().slice(0, 10);
-  const { policies, household, gaps, advice } = await loadInsurance(user.id, { now });
+  const [{ policies, household, gaps, advice }, autopilot] = await Promise.all([
+    loadInsurance(user.id, { now }),
+    autopilotOf(user.id),
+  ]);
   const saved = SAVED[one("saved")];
   const add = one("add");
   const typed = (fact: { value: number | string | null; from: string | null }) =>
@@ -182,6 +187,13 @@ async function InsuranceContent({
           </Link>{" "}
           by herself and points out cover that looks missing. She never buys, changes or cancels
           insurance without your tap.
+        </p>
+        {/* Spec step 108: what Jane does with insurance by herself at their level. */}
+        <p className="text-sm text-zinc-600 dark:text-zinc-400">
+          On autopilot: {autopilotReply(autopilot).body}{" "}
+          <Link href="/settings#autopilot" className={LINK}>
+            Change it
+          </Link>
         </p>
         <div className="flex flex-wrap gap-4">
           <Link href="/insurance/checkup" className={`text-sm ${LINK}`}>

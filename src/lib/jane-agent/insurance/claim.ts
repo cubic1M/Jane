@@ -37,8 +37,8 @@ export async function claimAnswer(
     return {
       body:
         choices.length > 0
-          ? `I can help with that. Which insurance is it on, and what happened? Pick it on your claims page and I'll show what to do now, what to collect and who to call, and track each step:\n${choices.map((p) => `- ${p.carrier} ${kindWords(p.kind)}`).join("\n")}`
-          : 'I can help with that. Tell me what happened, like "I had a car accident" or "someone broke in", and I\'ll show what to do now, what to collect and who to call.',
+          ? `Tell me what happened and I'll show what to do now, what to collect and who to call, and track each step. You can also start it on your claims page for one of these.\n${choices.map((p) => `- ${p.carrier} ${kindWords(p.kind)}`).join("\n")}`
+          : 'Tell me what happened, like "I had a car accident" or "someone broke in", and I\'ll show what to do now, what to collect and who to call.',
       actions: [CLAIMS_PAGE],
       refs: {},
     };
