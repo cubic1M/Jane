@@ -244,7 +244,8 @@ export const TAX_ESTIMATE_STEP_CENTS = 50_000;
 // The chat (src/lib/jane-agent/sources/taxes.ts): how important tax messages are, among
 // the others in src/config/agent-chat.ts MESSAGE_PRIORITY.
 export const TAX_MESSAGE_PRIORITY = {
-  profile: 35,
+  // The profile unlocks the rest of taxes, so it comes before budgets and goals.
+  profile: 46,
   new_income: 36,
   // Spec step 119.
   tag_check: 33,
