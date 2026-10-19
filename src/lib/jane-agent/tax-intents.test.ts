@@ -162,3 +162,20 @@ describe("state taxes in the chat", () => {
     expect(parse(text)).toEqual({ kind: "tax", ask: "states" });
   });
 });
+
+// Spec step 167.
+describe("the tax plan in the chat", () => {
+  it.each([
+    "what's my tax plan",
+    "show my tax calendar",
+    "what tax deadlines are coming",
+    "year-end tax moves",
+    "what should I do for taxes before year end",
+  ])("%s asks for the plan", (text) => {
+    expect(parse(text)).toEqual({ kind: "tax", ask: "plan" });
+  });
+
+  it("leaves the filing deadline to filing", () => {
+    expect(parse("when is the tax deadline")).toEqual({ kind: "tax", ask: "file" });
+  });
+});

@@ -66,6 +66,17 @@ test("a demo-bank person sees the sample policy, like-for-like quotes and Jane's
   await expect(
     page.getByText("Demo advice: sample data, not financial advice").first(),
   ).toBeVisible();
+  // Spec step 152: the demo card's phone protection, with its limits, makes Asurion a
+  // duplicate, cancelled through the usual card.
+  const cards = page.getByRole("region", { name: "Cover through your cards" });
+  await expect(cards.getByText(/Up to \$800\.00 a claim, Deductible \$50\.00/)).toBeVisible();
+  await expect(
+    cards.getByText(/You pay Asurion \$204\.00 a year for cover your Demo Credit Card/),
+  ).toBeVisible();
+  await expect(cards.getByRole("link", { name: "Cancel it" })).toHaveAttribute(
+    "href",
+    /^\/report\//,
+  );
 
   await page.getByRole("link", { name: "Compare quotes" }).click();
   await expect(page.getByText("Sample quotes from Jane's demo carrier catalog")).toBeVisible();

@@ -15,6 +15,7 @@ import { remindAllDeadlines } from "@/lib/deadlines";
 import { insuranceDaily } from "@/lib/insurance/daily";
 import { runAutoInvestForAll } from "@/lib/investments/auto-invest";
 import { refreshDemoPrices } from "@/lib/investments/prices";
+import { collectAllReceipts } from "@/lib/investments/hsa";
 
 // Vercel Cron, daily: syncs linked items that haven't synced in STALE_SYNC_HOURS, in case
 // a webhook was missed, then removes items of people inactive for INACTIVE_ITEM_DAYS
@@ -60,6 +61,8 @@ async function dailyWork() {
       controller: await queueNightlyRuns(),
       // Spec step 156: demo holdings revalued at the stand-in feed's prices.
       prices: await refreshDemoPrices(),
+      // Spec step 159: medical charges saved to the HSA receipts vault.
+      hsaReceipts: await collectAllReceipts(),
     };
   }
 
@@ -102,5 +105,6 @@ async function dailyWork() {
     // Spec step 142: each person's nightly controller run, through the jobs table.
     controller: await queueNightlyRuns(),
     prices: await refreshDemoPrices(),
+    hsaReceipts: await collectAllReceipts(),
   };
 }
