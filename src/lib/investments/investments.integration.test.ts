@@ -256,10 +256,12 @@ describe.runIf(url)("investments in Jane's chat, against a real database", () =>
       expect(a.holdingsMatch, a.name).toBe(true);
     }
     expect((await loadRebalance(userId, { client, now: LINKED })).plan!.orders).toEqual([]);
-    // And they stay that way through a full sync of the demo bank.
+    // And they stay that way through a full sync of the demo bank: prices have moved a
+    // little (spec step 156), but the mix is still on target.
     const item = await client.plaidItem.findFirstOrThrow({ where: { userId } });
-    await syncItem(item.id, { client, api: plaid, now: new Date("2026-10-20T15:00:00Z") });
-    expect((await loadRebalance(userId, { client, now: LINKED })).plan!.orders).toEqual([]);
+    const later = new Date("2026-10-20T15:00:00Z");
+    await syncItem(item.id, { client, api: plaid, now: later });
+    expect((await loadReview(userId, { client, now: later })).review?.offTarget).toBe(false);
     expect(
       await client.investmentTransaction.count({
         where: { userId, plaidInvestmentTransactionId: { contains: "-order-" } },

@@ -207,7 +207,7 @@ describe("Claude's holdings tool", () => {
     expect(parsed.accounts[0].holdings[0]).toMatchObject({
       name: "Northstar Target 2055 Fund",
       yearlyCost: "0.75%",
-      source: "Demo Bank (fake data), Demo 401(k), price as of Oct 18, 2026",
+      source: "Demo Bank (fake data), Demo 401(k), price as of Oct 17, 2026",
     });
     expect(out.cents).toEqual(expect.arrayContaining([9_673_055, 3_826_807]));
   });
