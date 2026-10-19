@@ -151,6 +151,8 @@ describe("findings worth deciding", () => {
       actions: [
         { id: "finding.yes", label: "Yes", kind: "primary" },
         { id: "finding.no", label: "No", kind: "secondary" },
+        // Spec step 90: a quick reply, answered in the chat.
+        { id: "finding.why", label: "Why?", kind: "quick" },
         { id: "open", label: "Open", kind: "link", href: "/report/big" },
       ],
       priority: MESSAGE_PRIORITY.finding,
@@ -183,6 +185,8 @@ describe("findings worth deciding", () => {
       "Yes",
       "Switch to Pine Mobile",
       "No",
+      "Why?",
+      "Show options",
       "Open",
     ]);
   });

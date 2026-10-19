@@ -1,4 +1,5 @@
 import {
+  AFFORD_GOAL_MONTHS,
   AFFORD_USUAL_MONTHS,
   CHAT_TOP_CATEGORIES,
   CHAT_WEEK_DAYS,
@@ -35,11 +36,11 @@ import {
   type AffordResult,
 } from "@/planning/afford";
 import { CHAT_CLARIFY_CHOICES } from "@/config/agent-chat";
-import { matchCategory, type ActVerb, type Intent } from "./intents";
+import { addMonths, matchCategory, type ActVerb, type Intent } from "./intents";
 import { nameMatches } from "./names";
 import type { Snapshot, SnapshotFinding } from "./snapshot";
 import { findingCandidate } from "./sources/findings";
-import { dateAndDays, inDays, shortDate, things } from "./sources/source";
+import { dateAndDays, inDays, shortDate, snoozeButton, things } from "./sources/source";
 import type { MessageAction, MessageRefs } from "./types";
 
 // Jane's answers to what the person typed (spec step 84), from the same loaders as the
@@ -285,6 +286,16 @@ function effectLines(result: AffordResult, verdictSaidSafe = false): string[] {
   return lines;
 }
 
+// Spec step 90: "Set a budget", prefilled with a usual month there, rounded up to dollars.
+export function budgetSuggestion(category: string, usualMonthCents: number) {
+  return { budget: { category, amountCents: Math.ceil(usualMonthCents / 100) * 100 } };
+}
+export const budgetButton = (budget: { category: string; amountCents: number }): MessageAction => ({
+  id: "budget.set",
+  label: `Set a ${fmt(budget.amountCents)} budget`,
+  kind: "primary",
+});
+
 // "Can I afford $900 for a trip in March?", "can I spend $500 on food this week?": what it
 // does to safe to spend, goals and checking, as on /afford, and, when it names a category,
 // how it compares with what the person usually spends there and their budget. A purchase
@@ -329,16 +340,24 @@ export function affordReply(
   const amount = (intent.amountCents / 100).toFixed(2);
   const actions: MessageAction[] = [];
   const refs: MessageRefs = {};
-  if (later) {
+  // Spec step 90: one suggestion, with its button. Later on, or when it doesn't fit before
+  // payday, a goal to save for it; otherwise a budget for the category when there's none.
+  const short = !later && result.safe !== null && result.safe.afterCents < 0;
+  if (later || short) {
+    const goalMonth = later ? month : addMonths(current, AFFORD_GOAL_MONTHS);
     const name = intent.what
       ? intent.what.replace(/^(?:a|an|the|my|our|some) /, "")
-      : `Purchase in ${monthLabel(month)}`;
+      : `Purchase in ${monthLabel(goalMonth)}`;
     refs.goal = {
       name: name.charAt(0).toUpperCase() + name.slice(1),
       targetCents: intent.amountCents,
-      targetDate: `${month}-01`,
+      targetDate: `${goalMonth}-01`,
     };
     actions.push({ id: "goal.start", label: "Start a goal for it", kind: "primary" });
+    if (short) lines.push(`I can set up a goal to save for it by ${monthLabel(goalMonth)}.`);
+  } else if (context && context.budgetCents === null && context.usualMonthCents > 0) {
+    Object.assign(refs, budgetSuggestion(context.category, context.usualMonthCents));
+    actions.push(budgetButton(refs.budget!));
   }
   actions.push(link("See the full check", `/afford?kind=purchase&amount=${amount}&date=${date}`));
   return reply(lines.join("\n"), actions, refs);
@@ -410,6 +429,8 @@ export function spendingReply(
   intent: Extract<Intent, { kind: "spending" }>,
   transactions: InsightTransaction[],
   asOf: string,
+  // Spec step 90: given, a category with no budget gets "Set a budget".
+  budgets: readonly Budget[] | null = null,
 ): Reply {
   const open = [link("See insights", "/insights")];
   const months = monthsEnding(asOf, INSIGHT_MONTHS);
@@ -468,10 +489,21 @@ export function spendingReply(
   const category = matchCategory(intent.category, labels);
   if (category) {
     const cents = categories.find((c) => c.category === category)?.cents ?? 0;
-    return reply(
-      `You spent ${fmt(cents)} on ${category} ${when}.${versus(cents, spentIn(before, category))}`,
-      open,
+    const body = `You spent ${fmt(cents)} on ${category} ${when}.${versus(cents, spentIn(before, category))}`;
+    // A usual month: the complete months before this one.
+    const past = months.slice(-1 - AFFORD_USUAL_MONTHS, -1);
+    const usual = Math.round(
+      past.reduce((sum, m) => sum + (spentIn(m, category) ?? 0), 0) / Math.max(1, past.length),
     );
+    if (budgets && !budgets.some((b) => b.category === category) && usual > 0) {
+      const refs = budgetSuggestion(category, usual);
+      return reply(
+        `${body} A ${fmt(refs.budget.amountCents)} budget would match a usual month.`,
+        [budgetButton(refs.budget), ...open],
+        refs,
+      );
+    }
+    return reply(body, open);
   }
   const matching = spentAt((name) => name.includes(q));
   if (matching.length > 0) return atMerchant(matching);
@@ -588,7 +620,13 @@ export function matchFinding(
 // as its message from Jane's brain.
 export function findingReply(finding: SnapshotFinding, lead: string | null = null): Reply {
   const candidate = findingCandidate(finding);
-  return reply(lead ? `${lead} ${candidate.body}` : candidate.body, candidate.actions, {
+  // Spec step 90: "Remind me tomorrow" hides it until then, like "Not now".
+  const actions = [
+    ...candidate.actions.filter((a) => a.kind !== "link"),
+    snoozeButton("Remind me tomorrow"),
+    ...candidate.actions.filter((a) => a.kind === "link"),
+  ];
+  return reply(lead ? `${lead} ${candidate.body}` : candidate.body, actions, {
     ...candidate.refs,
     topic: { kind: "act", target: finding.title, findingId: finding.findingId },
   });
