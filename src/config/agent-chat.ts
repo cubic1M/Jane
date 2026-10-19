@@ -75,6 +75,8 @@ export const MESSAGE_PRIORITY = {
   // Spec step 150: benefits found on a pay stub to confirm, and the short guided questions.
   benefits_found: 62,
   benefits_question: 47,
+  // Spec step 151: a policy read from a document, waiting for the confirm tap.
+  policy_reading: 63,
   urgent_alert: 95,
   deadline: 90,
   waiting_on_you: 85,
