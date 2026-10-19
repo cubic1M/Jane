@@ -329,6 +329,7 @@ model User {
   lifeEventAnswers       LifeEventAnswer[]
   taxTags                TaxTag[]
   taxForms               TaxForm[]
+  taxReturns             TaxReturn[]
   budgetTuneUps          BudgetTuneUp[]
   goalTransfers          GoalTransfer[]
   autoInvestPlan         AutoInvestPlan?
@@ -2140,6 +2141,34 @@ model BrokerageOrder {
   @@index([userId, placedAt])
   @@index([accountId])
   @@map("brokerage_orders")
+}
+
+// A tax return filed through the filing partner (spec step 126), one per tax year. Jane
+// hands over what she has (package: the profile, income, tags and forms, never account
+// numbers or tokens); the partner prepares it; the person reviews it and signs; only then is
+// it submitted. status: ready_for_review, submitted, accepted or rejected.
+model TaxReturn {
+  id              String    @id @default(cuid())
+  userId          String    @map("user_id")
+  year            Int
+  // Which partner: "demo" is the stand-in (src/lib/filing/demo.ts).
+  partner         String
+  partnerReturnId String    @map("partner_return_id")
+  status          String
+  package         Json
+  // What the partner worked out: { federalRefundCents, stateRefundCents }.
+  preview         Json
+  signerName      String?   @map("signer_name")
+  signedAt        DateTime? @map("signed_at") @db.Timestamptz(3)
+  submittedAt     DateTime? @map("submitted_at") @db.Timestamptz(3)
+  acceptedAt      DateTime? @map("accepted_at") @db.Timestamptz(3)
+  createdAt       DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt       DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, year])
+  @@map("tax_returns")
 }
 
 // Spec step 134: investing automatically every payday, set up once with a tap. "fixed"

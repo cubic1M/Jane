@@ -218,7 +218,10 @@ async function TaxesContent() {
       </section>
 
       <p className="text-sm text-zinc-600 dark:text-zinc-400">
-        Freelance or gig work?{" "}
+        <Link href="/taxes/file" className={LINK}>
+          File your taxes
+        </Link>
+        . Freelance or gig work?{" "}
         <Link href="/taxes/self-employed" className={LINK}>
           Freelance taxes
         </Link>
