@@ -223,8 +223,9 @@ describe.runIf(url)("the tax organizer against a real database", () => {
       client,
       now: later(),
     });
+    // Spec step 166: the demo bank's forms collect themselves.
     expect(forms.reply.body).toContain(
-      "- W-2 from ACME CORP PAYROLL: usually sent by Jan 31, 2027",
+      "- W-2 from ACME CORP PAYROLL: usually ready by Jan 31, I'll collect it",
     );
 
     const pack = await sendToJane(userId, "my tax pack", { client, now: later() });
@@ -252,18 +253,57 @@ describe.runIf(url)("the tax organizer against a real database", () => {
   });
 
   it("asks from late January whether each form has arrived, and I have it ticks it off", async () => {
+    // Spec step 166: the demo bank's forms collect themselves, so Jane only asks people
+    // whose payers she can't collect from: here, a real account's W-2.
     const january = new Date("2027-01-21T16:00:00Z");
-    const snapshot = await loadSnapshot(userId, { client, now: january });
-    const due = taxesSource
-      .gather(snapshot!, { now: january, local: { date: "2027-01-21", hour: 8 }, trigger: "open" })
-      .filter((c) => c.dedupeKey.startsWith("form:2026:"));
+    const local = { date: "2027-01-21", hour: 8 };
+    const gather = async (who: string, now: Date, date = local) =>
+      taxesSource.gather((await loadSnapshot(who, { client, now }))!, {
+        now,
+        local: date,
+        trigger: "open",
+      });
+    expect((await gather(userId, january)).some((c) => c.dedupeKey.startsWith("form:"))).toBe(
+      false,
+    );
+
+    const real = await client.user.create({
+      data: { email: `tax-forms-real-${crypto.randomUUID()}@example.com` },
+    });
+    created.push(real.id);
+    const account = await client.account.create({
+      data: {
+        userId: real.id,
+        source: "csv",
+        name: "Checking",
+        type: "depository",
+        subtype: "checking",
+      },
+    });
+    for (const date of ["2026-08-14", "2026-08-28", "2026-09-11", "2026-09-25"]) {
+      await client.transaction.create({
+        data: {
+          userId: real.id,
+          accountId: account.id,
+          source: "csv",
+          date: new Date(`${date}T00:00:00Z`),
+          amountCents: -245_000,
+          description: "ACME CORP PAYROLL",
+          merchantName: "ACME CORP PAYROLL",
+          pfcDetailed: "INCOME_SALARY",
+        },
+      });
+    }
+    const due = (await gather(real.id, january)).filter((c) =>
+      c.dedupeKey.startsWith("form:2026:"),
+    );
     expect(due.map((c) => c.body)).toContain(
       "Your W-2 from ACME CORP PAYROLL for 2026 is usually sent by Jan 31. Have you got it?",
     );
     const w2 = due.find((c) => c.refs.taxForm?.startsWith("w2:"))!;
     const message = await client.janeMessage.create({
       data: {
-        userId,
+        userId: real.id,
         kind: w2.kind,
         body: w2.body,
         refs: w2.refs,
@@ -271,25 +311,18 @@ describe.runIf(url)("the tax organizer against a real database", () => {
         dedupeKey: `taxes:${w2.dedupeKey}`,
       },
     });
-    const after = await tap(userId, message.id, "tax.form_got", january);
+    const after = await tap(real.id, message.id, "tax.form_got", january);
     expect(after.refs.note).toBe(
       "Ticked off: W-2 from ACME CORP PAYROLL. Keep it with your tax papers.",
     );
-    const again = taxesSource.gather((await loadSnapshot(userId, { client, now: january }))!, {
-      now: january,
-      local: { date: "2027-01-21", hour: 8 },
-      trigger: "open",
-    });
-    expect(again.some((c) => c.refs.taxForm === w2.refs.taxForm)).toBe(false);
+    expect((await gather(real.id, january)).some((c) => c.refs.taxForm === w2.refs.taxForm)).toBe(
+      false,
+    );
     // Outside late January to mid-April, Jane doesn't ask.
     expect(
-      taxesSource
-        .gather((await loadSnapshot(userId, { client, now: LINKED }))!, {
-          now: LINKED,
-          local: { date: "2026-10-18", hour: 8 },
-          trigger: "open",
-        })
-        .some((c) => c.dedupeKey.startsWith("form:")),
+      (await gather(real.id, LINKED, { date: "2026-10-18", hour: 8 })).some((c) =>
+        c.dedupeKey.startsWith("form:"),
+      ),
     ).toBe(false);
   });
 

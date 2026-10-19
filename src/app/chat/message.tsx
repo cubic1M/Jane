@@ -6,6 +6,7 @@ import { useActionState, useEffect, useState } from "react";
 import { DemoAdviceLabel } from "@/components/demo-advice-label";
 import type { MessageView } from "@/lib/jane-agent/view";
 import { tapButton, type MessageState } from "./actions";
+import { togglePin } from "./pin";
 
 // One message in Jane's chat (spec step 81). Jane's sit on the left with their buttons; a
 // tap answers it in place, and it shows what was chosen instead of the buttons. Undo stays
@@ -141,6 +142,17 @@ export function ChatMessageItem({ initial }: { initial: MessageView }) {
         </p>
       )}
 
+      {/* Spec step 96: pin it to the top of the chat, or unpin it. */}
+      <form action={togglePin} className="-mb-2 self-end">
+        <input type="hidden" name="messageId" value={message.id} />
+        <input type="hidden" name="pinned" value={message.pinned ? "false" : "true"} />
+        <button
+          type="submit"
+          className="inline-flex min-h-11 items-center px-1 text-xs font-medium text-zinc-500 hover:underline"
+        >
+          {message.pinned ? "Unpin" : "Pin"}
+        </button>
+      </form>
       {(buttons.length > 0 || message.links.length > 0) && (
         <div className="flex flex-wrap items-center gap-2">
           {buttons.length > 0 && (
