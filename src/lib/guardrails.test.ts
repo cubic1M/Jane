@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { checkGuardrails, dollarFigures } from "./guardrails";
+import { checkGuardrails, dollarFigures, unsupportedFigures } from "./guardrails";
 
 const ALLOWED = [1549, 18588];
 
@@ -137,5 +137,14 @@ describe("dollarFigures", () => {
     expect(dollarFigures("$1,234.56, $15 and 20 dollars").map((f) => f.cents)).toEqual([
       123456, 1500, 2000,
     ]);
+  });
+});
+
+describe("unsupportedFigures", () => {
+  it("lists the amounts nothing supports, as written", () => {
+    expect(unsupportedFigures("$15.49 a month, $186 a year, $9.99 or 40 dollars", ALLOWED)).toEqual(
+      ["$9.99", "40 dollars"],
+    );
+    expect(unsupportedFigures("No amounts here.", ALLOWED)).toEqual([]);
   });
 });

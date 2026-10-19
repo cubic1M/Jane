@@ -74,19 +74,17 @@ const DOLLAR_WORD = /\b((?:\d{1,3}(?:,\d{3})+|\d+)(?:\.\d+)?)\s*(?:dollars|bucks
 
 type Figure = { cents: number; wholeDollars: boolean; scaled: boolean };
 
+function figureOf(match: RegExpMatchArray): Figure {
+  const number = match[1].replaceAll(",", "");
+  return {
+    cents: Math.round(Number(number) * 100),
+    wholeDollars: !number.includes("."),
+    scaled: Boolean(match[2]),
+  };
+}
+
 export function dollarFigures(text: string): Figure[] {
-  const figures: Figure[] = [];
-  for (const pattern of [DOLLAR_SIGN, DOLLAR_WORD]) {
-    for (const match of text.matchAll(pattern)) {
-      const number = match[1].replaceAll(",", "");
-      figures.push({
-        cents: Math.round(Number(number) * 100),
-        wholeDollars: !number.includes("."),
-        scaled: Boolean(match[2]),
-      });
-    }
-  }
-  return figures;
+  return [DOLLAR_SIGN, DOLLAR_WORD].flatMap((pattern) => [...text.matchAll(pattern)].map(figureOf));
 }
 
 // (c) Every dollar figure must be one we gave Claude. A whole-dollar figure may round an
@@ -104,6 +102,17 @@ function supported(figure: Figure, allowedCents: readonly number[]): boolean {
 export const REQUIRED_WORDING: Partial<Record<FindingType, RegExp>> = {
   bill_negotiation: /\btypical price\b/i,
 };
+
+// The dollar figures in text that nothing we gave Claude supports, as written.
+export function unsupportedFigures(text: string, allowedCents: readonly number[]): string[] {
+  const figures: string[] = [];
+  for (const pattern of [DOLLAR_SIGN, DOLLAR_WORD]) {
+    for (const match of text.matchAll(pattern)) {
+      if (!supported(figureOf(match), allowedCents)) figures.push(match[0].trim());
+    }
+  }
+  return figures;
+}
 
 export function checkGuardrails(
   text: string,

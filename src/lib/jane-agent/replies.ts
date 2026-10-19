@@ -399,6 +399,21 @@ export function comingUpReply(
 }
 
 // "Safe to spend": the number on Today.
+// "Hi": hello, safe to spend, and something to ask. "Thanks": you're welcome.
+export function greetingReply(
+  thanks: boolean,
+  safe: { safeCents: number; payday: string | null } | null,
+): Reply {
+  if (thanks) return reply("You're welcome! I'm here whenever you need me.");
+  const money = safe
+    ? ` You have ${fmt(safe.safeCents)} safe to spend${safe.payday ? ` until ${shortDate(safe.payday)}` : ""}.`
+    : "";
+  return reply(
+    `Hi!${money} Ask me anything about your money, like "${EXAMPLES[0]}".`,
+    safe ? [link("See today", "/home")] : [],
+  );
+}
+
 export function safeReply(safe: { safeCents: number; payday: string | null } | null): Reply {
   if (!safe) {
     return reply(AFFORD_COPY.noChecking, [link("Link a bank", "/connect")]);
