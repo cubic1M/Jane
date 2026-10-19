@@ -293,6 +293,7 @@ model User {
   loanApplications       LoanApplication[]
   studentLoanProfile     StudentLoanProfile?
   creditReports          CreditReport[]
+  debtWatch              DebtWatch?
   balanceTransfers       BalanceTransfer[]
   findings               Finding[]
   decisions              Decision[]
@@ -774,6 +775,23 @@ model CreditReport {
 
   @@index([userId, pulledOn])
   @@map("credit_reports")
+}
+
+// Debt on autopilot (spec step 117): the rates Jane last saw on each debt, so she can say
+// when the bank changes one, and when she started the payoff plan by herself.
+model DebtWatch {
+  id            String    @id @default(cuid())
+  userId        String    @unique @map("user_id")
+  // { debtKey: aprBps } as last seen.
+  rates         Json      @default("{}")
+  // The latest changes, newest first: [{ debtKey, name, fromBps, toBps, on }].
+  changes       Json      @default("[]")
+  planStartedOn DateTime? @map("plan_started_on") @db.Date
+  updatedAt     DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("debt_watches")
 }
 
 // A balance transfer the person made to a 0% card (spec step 113), so Jane can keep the
