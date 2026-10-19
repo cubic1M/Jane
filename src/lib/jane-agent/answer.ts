@@ -68,6 +68,7 @@ import { checkedReply } from "./replies-checked";
 import { rankedFor } from "./priorities";
 import { prioritiesReply } from "./replies-priorities";
 import { wholePictureReply } from "./whole-picture";
+import { planReply } from "./multi";
 import { paycheckReply } from "./replies-paycheck";
 import { latestPaycheckPlan } from "@/lib/money-movement/paycheck";
 import { loadBillPay } from "@/lib/money-movement/bill-pay";
@@ -312,6 +313,19 @@ async function byIntent(
       const snapshot = await loadSnapshot(userId, { client, now });
       return prioritiesReply(snapshot ? rankedFor(snapshot) : []);
     }
+    // Spec step 185: one plan for several actions, or money into a goal.
+    case "move_to_goal":
+      return planReply(userId, [intent], {
+        client,
+        now,
+        answer: (part) => byIntent(userId, part, { client, now }),
+      });
+    case "multi":
+      return planReply(userId, intent.parts, {
+        client,
+        now,
+        answer: (part) => byIntent(userId, part, { client, now }),
+      });
     // Spec step 183.
     case "whole_picture": {
       const snapshot = await loadSnapshot(userId, { client, now });
