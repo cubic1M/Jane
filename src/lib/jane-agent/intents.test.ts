@@ -72,7 +72,47 @@ describe("parseIntent", () => {
     ["can we afford $2,500 for a used car in 3 months", 250_000, "a used car", "2027-01"],
     ["can i afford a vacation", null, "a vacation", null],
   ])("understands %s", (text, amountCents, what, month) => {
-    expect(parse(text)).toEqual({ kind: "afford", amountCents, what, month });
+    expect(parse(text)).toMatchObject({ kind: "afford", amountCents, what, month });
+  });
+
+  // The screenshot that started this: "can I spend…" with an amount is about affording
+  // it, not about what was spent.
+  it.each([
+    ["can I spend 500 dollars this week for food", 50_000, "food", "food", "week", false],
+    ["Can I spend $500 on food this week?", 50_000, "food", "food", "week", false],
+    ["should I spend $200 on groceries", 20_000, "groceries", "groceries", null, false],
+    ["is it ok to spend $500 a month on food", 50_000, "food", "food", "month", true],
+    ["could I spend 300 on clothes", 30_000, "clothes", "clothes", null, false],
+    ["can we spend $1,200 on a new laptop", 120_000, "a new laptop", null, null, false],
+    ["should I buy a $900 couch", 90_000, null, null, null, false],
+    [
+      "is it okay to spend 80 on eating out this week",
+      8_000,
+      "eating out",
+      "eating out",
+      "week",
+      false,
+    ],
+    ["do I have enough for a $900 trip in March", 90_000, null, null, null, false],
+    ["can i spend 150 a week on groceries", 15_000, "groceries", "groceries", "week", false],
+    ["can I afford $400 a month for a gym", 40_000, "a gym", null, "month", true],
+    ["can I spend $600 on rent monthly", 60_000, "rent", "rent", "month", true],
+  ])("understands %s as affording it", (text, amountCents, what, category, period, recurring) => {
+    expect(parse(text)).toMatchObject({
+      kind: "afford",
+      amountCents,
+      what,
+      category,
+      period,
+      recurring,
+    });
+  });
+
+  it('doesn\'t take "in a month" as every month', () => {
+    expect(parse("can I afford $900 for a trip in a month")).toMatchObject({
+      kind: "afford",
+      recurring: false,
+    });
   });
 
   it.each([
@@ -83,6 +123,9 @@ describe("parseIntent", () => {
     ["how much have i spent at Target", "target", "2026-10"],
     ["how much did I spend last month", null, "2026-09"],
     ["how much did i spend this month", null, "2026-10"],
+    // No amount, or not a question about the future: still what was spent.
+    ["can I see what I spent on food this week", "food", "2026-10"],
+    ["did I spend $500 on food this month", "food", "2026-10"],
   ])("understands %s", (text, category, month) => {
     expect(parse(text)).toEqual({ kind: "spending", category, month });
   });

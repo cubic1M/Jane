@@ -9,6 +9,7 @@ import {
   actReply,
   affordReply,
   approveAllReply,
+  categoryContext,
   comingUpReply,
   helpReply,
   matchFinding,
@@ -94,6 +95,119 @@ describe("affordReply", () => {
   it("says when there's no checking account", () => {
     const reply = affordReply(intent("can I afford 50", "afford"), { ...numbers, safe: null });
     expect(reply.body).toContain("Link a checking account");
+  });
+});
+
+// The screenshot that started this: "can I spend 500 dollars this week for food" was
+// answered with what was spent. It's about affording it, next to a usual week of food and
+// the food budget.
+describe("affordReply for a category", () => {
+  const numbers: AffordNumbers = {
+    asOf: TODAY,
+    safe: { payday: "2026-10-30", balanceCents: 300_000, safeCents: 120_000 },
+    flows: [{ date: "2026-10-30", amountCents: 250_000 }],
+    goals: [],
+  };
+  const food = (date: string, cents: number) =>
+    ({
+      date,
+      amountCents: cents,
+      description: "Whole Foods",
+      merchantName: "Whole Foods",
+      pfcPrimary: "FOOD_AND_DRINK",
+      pfcDetailed: null,
+      pending: false,
+    }) satisfies InsightTransaction;
+  // $434.50 a month for three months (exactly $100 a week), $278.27 so far this month.
+  const transactions = [
+    food("2026-07-03", 43_450),
+    food("2026-08-03", 43_450),
+    food("2026-09-03", 43_450),
+    food("2026-10-02", 20_000),
+    food("2026-10-12", 7_827),
+  ];
+  const budgets = [{ category: "Food and drink", amountCents: 40_000 }];
+  const ask = (text: string, withBudget = true) => {
+    const parsed = intent(text, "afford");
+    const context = categoryContext(
+      parsed.category!,
+      transactions,
+      withBudget ? budgets : [],
+      TODAY,
+    );
+    return affordReply(parsed, numbers, context);
+  };
+
+  it("answers the question from the screenshot", () => {
+    const reply = ask("can I spend 500 dollars this week for food");
+    expect(reply.body.split("\n")).toEqual([
+      "If you spend $500.00 on food this week:",
+      "Safe to spend until Oct 30: $1,200.00 → $700.00",
+      "So far in October you've spent $278.27 on Food and drink.",
+      "You usually spend about $100.00 a week on Food and drink, so $500.00 is about 5× a usual week.",
+      "Your Food and drink budget is $400.00 a month: this would take you to $778.27, $378.27 over.",
+      "This is math, not a recommendation.",
+    ]);
+    expect(reply.actions[0]).toMatchObject({
+      href: "/afford?kind=purchase&amount=500.00&date=2026-10-18",
+    });
+    expect(recommendsAChoice(reply.body)).toBe(false);
+  });
+
+  it("says when it stays under the budget, and a usual month when no week is named", () => {
+    const body = ask("should I spend $100 on groceries").body;
+    expect(body).toContain("You usually spend about $435.00 a month on Food and drink.");
+    expect(body).toContain(
+      "Your Food and drink budget is $400.00 a month: this would take you to $378.27, $21.73 under.",
+    );
+  });
+
+  it("leaves the budget out when there isn't one", () => {
+    expect(ask("can I spend $50 on food", false).body).not.toContain("budget");
+  });
+
+  it("takes a monthly amount as the change from a usual month", () => {
+    const more = ask("is it ok to spend $500 a month on food");
+    expect(more.body).toContain(
+      "You usually spend about $435.00 a month on Food and drink, so $500.00 a month is $65.00 more each month.",
+    );
+    expect(more.body).toContain(
+      "Your Food and drink budget is $400.00 a month, $100.00 less than this.",
+    );
+    expect(more.body).toContain("If that extra goes out every month:");
+    expect(more.body).toContain("Safe to spend");
+    expect(more.actions[0]).toMatchObject({
+      href: "/afford?kind=more&amount=65.00&month=2026-10",
+    });
+
+    const less = ask("can I spend $300 a month on food");
+    expect(less.body).toContain("$300.00 a month is $135.00 less each month.");
+    expect(less.actions[0]).toMatchObject({
+      href: "/afford?kind=less&amount=135.00&month=2026-10",
+    });
+
+    expect(ask("can I spend $435 a month on food").body).toContain(
+      "That's what you spend now, so nothing changes.",
+    );
+  });
+
+  it("treats a monthly amount with no category as all extra", () => {
+    const reply = affordReply(intent("can I afford $400 a month for a gym", "afford"), numbers);
+    expect(reply.body).toMatch(/^If you spend \$400\.00 more each month on a gym:/);
+    expect(reply.actions[0]).toMatchObject({
+      href: "/afford?kind=more&amount=400.00&month=2026-10",
+    });
+  });
+
+  it("finds no category for words that aren't one, and no usual month without history", () => {
+    expect(categoryContext("a new laptop", transactions, budgets, TODAY)).toBeNull();
+    expect(categoryContext("food", [], [], TODAY)).toEqual({
+      category: "Food and drink",
+      month: "2026-10",
+      spentCents: 0,
+      usualMonthCents: 0,
+      budgetCents: null,
+    });
   });
 });
 
