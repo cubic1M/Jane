@@ -12,14 +12,18 @@ async function Content({
 }) {
   const { token, done, what } = await searchParams;
   const alerts = what === "alerts";
+  // Jane's emails of chat messages (spec step 85).
+  const chat = what === "chat";
   if (done === "1") {
     return (
       <>
         <h1 className="text-3xl font-semibold tracking-tight">You&apos;re unsubscribed</h1>
         <p className="text-zinc-600 dark:text-zinc-400">
-          {alerts
-            ? "We won't email you alerts anymore. They still show on your alerts page."
-            : "We won't send you the weekly email anymore."}{" "}
+          {chat
+            ? "Jane won't email you its messages anymore. They're always in your chat."
+            : alerts
+              ? "We won't email you alerts anymore. They still show on your alerts page."
+              : "We won't send you the weekly email anymore."}{" "}
           You can turn it back on in{" "}
           <Link href="/settings" className="font-medium text-emerald-700 hover:underline">
             settings
@@ -35,11 +39,11 @@ async function Content({
   return (
     <>
       <h1 className="text-3xl font-semibold tracking-tight">
-        {alerts ? "Stop alert emails?" : "Stop the weekly email?"}
+        {chat ? "Stop Jane's emails?" : alerts ? "Stop alert emails?" : "Stop the weekly email?"}
       </h1>
       <form
         method="post"
-        action={`/api/unsubscribe?${new URLSearchParams({ token, from: "page", ...(alerts ? { what: "alerts" } : {}) })}`}
+        action={`/api/unsubscribe?${new URLSearchParams({ token, from: "page", ...(alerts ? { what: "alerts" } : chat ? { what: "chat" } : {}) })}`}
       >
         <button
           type="submit"

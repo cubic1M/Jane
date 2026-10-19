@@ -64,7 +64,11 @@ export function ChatMessageItem({ initial }: { initial: MessageView }) {
   }
 
   return (
-    <li className="flex w-full max-w-full flex-col gap-2 self-start border border-zinc-300 p-3 sm:max-w-[85%] dark:border-zinc-700">
+    // Its id is the anchor notifications open (/chat#<id>, spec step 85).
+    <li
+      id={message.id}
+      className="flex w-full max-w-full scroll-mt-8 flex-col gap-2 self-start border border-zinc-300 p-3 sm:max-w-[85%] dark:border-zinc-700"
+    >
       <p className="flex flex-wrap items-baseline gap-x-2 text-xs text-zinc-500">
         <span className="font-semibold text-emerald-700">
           jane<span aria-hidden="true">&gt;</span>

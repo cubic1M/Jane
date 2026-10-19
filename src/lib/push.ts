@@ -3,13 +3,23 @@ import type { PrismaClient } from "@/generated/prisma/client";
 import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
 
-// Web Push for urgent alerts. Off unless VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY and
-// VAPID_SUBJECT are set; then a person's subscribed devices get urgent alerts instead of
-// email. Generate keys once with `npx web-push generate-vapid-keys`.
+// Web Push for urgent alerts and, from spec step 85, Jane's chat messages. Off unless
+// VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY and VAPID_SUBJECT are set; then a person's subscribed
+// devices get them instead of email. Generate keys once with
+// `npx web-push generate-vapid-keys`.
 
 type Options = { client?: PrismaClient };
 
-export type PushMessage = { title: string; body: string; url: string };
+export type PushMessage = {
+  title: string;
+  body: string;
+  url: string;
+  // Jane's chat messages (spec step 85): one notification per message (a repeat replaces
+  // it), with up to two of its buttons, answered through /api/chat/act.
+  tag?: string;
+  messageId?: string;
+  actions?: { action: string; title: string }[];
+};
 
 export function pushEnabled(): boolean {
   return Boolean(

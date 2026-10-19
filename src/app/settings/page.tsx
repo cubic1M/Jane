@@ -29,6 +29,17 @@ import { connection } from "next/server";
 import { sessionTokenFrom } from "@/lib/admin-gate";
 import { listSessions } from "@/lib/user-sessions";
 import { SessionsList } from "./sessions-list";
+import {
+  CHAT_NOTIFY_DAILY_LIMIT,
+  CHAT_NOTIFY_KIND_LABELS,
+  CHAT_NOTIFY_KINDS,
+} from "@/config/chat-notify";
+import { QUIET_END_HOUR, QUIET_START_HOUR } from "@/config/agent-chat";
+import { chatNotifyPrefs } from "@/lib/jane-agent/notify-prefs";
+import { ChatNotifyForm } from "./chat-notify-form";
+
+// "9pm", "8am".
+const clock = (hour: number) => `${hour % 12 || 12}${hour < 12 ? "am" : "pm"}`;
 
 // Spec step 79: the sections sit in four groups, with a menu of them at the top. Each
 // section keeps its id (#banks, #alerts, #autopilot, #rules, #two-factor, ...): other
@@ -88,6 +99,7 @@ async function SettingsContent() {
         state: true,
         calendarCreatedAt: true,
         acceptSimpleOffers: true,
+        chatNotifyPrefs: true,
       },
     }),
     mine.plaidItems.findMany({
@@ -124,6 +136,7 @@ async function SettingsContent() {
   ]);
   const csvUpdated = new Map(lastCsv.map((row) => [row.accountId, row.createdAt]));
   const alerts = alertPrefs(prefs.alertPrefs);
+  const chatNotify = chatNotifyPrefs(prefs.chatNotifyPrefs);
   const day = (d: Date | null | undefined) => (d ? d.toISOString().slice(0, 10) : "not yet");
 
   return (
@@ -230,6 +243,25 @@ async function SettingsContent() {
       </Group>
 
       <Group id="notifications">
+        {/* Spec step 85: Jane's chat messages as phone notifications or email. */}
+        <section id="jane-messages" className={SECTION}>
+          <h3 className={H3}>Messages from Jane</h3>
+          <p className={MUTED}>
+            When I post something important in your chat, I can send it to you, with buttons to
+            answer right there. At most {CHAT_NOTIFY_DAILY_LIMIT} a day, never between{" "}
+            {clock(QUIET_START_HOUR)} and {clock(QUIET_END_HOUR)}, and never something you&apos;ve
+            already seen.
+          </p>
+          <ChatNotifyForm
+            channel={chatNotify.channel}
+            kinds={CHAT_NOTIFY_KINDS.map((kind) => ({
+              kind,
+              label: CHAT_NOTIFY_KIND_LABELS[kind],
+              on: chatNotify.kinds[kind],
+            }))}
+          />
+        </section>
+
         <section id="email" className={SECTION}>
           <h3 className={H3}>Email</h3>
           <EmailForm

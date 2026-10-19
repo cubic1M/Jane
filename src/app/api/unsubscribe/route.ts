@@ -3,10 +3,12 @@ import { alertPrefs, withoutAlertEmails } from "@/lib/alerts";
 import { track } from "@/lib/analytics";
 import { db } from "@/lib/db";
 import { userFromUnsubscribeToken } from "@/lib/digest/unsubscribe";
+import { chatNotifyPrefs, withoutChatEmails } from "@/lib/jane-agent/notify-prefs";
 import { ipKey, limitOrNull } from "@/lib/rate-limit";
 
 // Turns the weekly digest off without signing in, or with what=alerts, stops alert emails
-// (alerts still show in the app). Mail apps call it directly (List-Unsubscribe-Post,
+// (alerts still show in the app), or with what=chat, stops Jane's emails of chat messages
+// (spec step 85). Mail apps call it directly (List-Unsubscribe-Post,
 // RFC 8058); the /unsubscribe page's button posts here too.
 export async function POST(request: Request) {
   const limited = await limitOrNull("unsubscribe", ipKey(request.headers));
@@ -14,9 +16,23 @@ export async function POST(request: Request) {
   const url = new URL(request.url);
   const userId = userFromUnsubscribeToken(url.searchParams.get("token"));
   if (!userId) return NextResponse.json({ error: "Invalid link" }, { status: 400 });
-  const what = url.searchParams.get("what") === "alerts" ? "alerts" : "digest";
+  const asked = url.searchParams.get("what");
+  const what = asked === "alerts" || asked === "chat" ? asked : "digest";
 
-  if (what === "alerts") {
+  if (what === "chat") {
+    // Jane's emails of chat messages (spec step 85): email off, phone notifications kept.
+    const user = await db.user.findUnique({
+      where: { id: userId },
+      select: { chatNotifyPrefs: true },
+    });
+    if (user) {
+      await db.user.update({
+        where: { id: userId },
+        data: { chatNotifyPrefs: withoutChatEmails(chatNotifyPrefs(user.chatNotifyPrefs)) },
+      });
+      await track(userId, "chat_emails_unsubscribed", {});
+    }
+  } else if (what === "alerts") {
     const user = await db.user.findUnique({ where: { id: userId }, select: { alertPrefs: true } });
     if (user) {
       await db.user.update({

@@ -97,6 +97,9 @@ export async function postMessages(
         readAt: null,
         snoozedUntil: null,
         createdAt: new Date(now.getTime() + index),
+        // Back as new, so it can go out as a notification again (spec step 85).
+        notifiedAt: null,
+        notifiedVia: null,
       },
     });
     if (count > 0) created.push({ kind: m.kind, dedupeKey: m.dedupeKey });
