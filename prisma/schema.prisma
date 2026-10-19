@@ -338,6 +338,9 @@ model User {
 
   savedShares SavedShare[]
 
+  autopilotSectors AutopilotSector[]
+  autopilotActs    AutopilotAct[]
+
   @@map("users")
 }
 
@@ -2188,6 +2191,41 @@ model BrokerageOrder {
   @@index([userId, placedAt])
   @@index([accountId])
   @@map("brokerage_orders")
+}
+
+// One autopilot, every sector (spec step 141): what the person set for one sector, over
+// the defaults for their step 57 level (src/config/autopilot-sectors.ts).
+model AutopilotSector {
+  id              String   @id @default(cuid())
+  userId          String   @map("user_id")
+  // bills, insurance, debt, taxes, investing or goals (SECTORS).
+  sector          String
+  // ask, safe or all (SECTOR_LEVELS).
+  level           String
+  actionCapCents  Int      @map("action_cap_cents")
+  monthlyCapCents Int      @map("monthly_cap_cents")
+  updatedAt       DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, sector])
+  @@map("autopilot_sectors")
+}
+
+// Something a sector did by itself (spec step 141), and the money it moved or committed,
+// so the monthly caps hold. Written through src/lib/sector-autopilot.ts recordAct.
+model AutopilotAct {
+  id        String   @id @default(cuid())
+  userId    String   @map("user_id")
+  sector    String
+  cents     Int
+  what      String
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, sector, createdAt])
+  @@map("autopilot_acts")
 }
 
 // A tax return filed through the filing partner (spec step 126), one per tax year. Jane

@@ -1,6 +1,7 @@
 import type { PrismaClient } from "@/generated/prisma/client";
 import { db as defaultClient } from "@/lib/db";
 import { checkupAll, checkupPerson } from "./checkups";
+import { insuranceAutopilot } from "./autopilot";
 import { reshopAll, reshopPerson } from "./shop";
 
 // Insurance that runs itself (spec Phase X), at every autopilot level: reshops 45 days before
@@ -23,6 +24,8 @@ export async function insuranceAfterSync(
 ): Promise<void> {
   try {
     await reshopPerson(userId, { client, now });
+    // Spec step 141: a switch within Insurance's autopilot caps, when the person allowed it.
+    await insuranceAutopilot(userId, { client, now });
     await checkupPerson(userId, { client, now });
   } catch (error) {
     console.error("Insurance after sync failed", { userId, error: String(error) });
