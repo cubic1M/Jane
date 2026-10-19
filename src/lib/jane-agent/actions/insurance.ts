@@ -30,6 +30,13 @@ import {
 } from "@/lib/insurance/life";
 import { nextLifeQuestion } from "@/lib/insurance/life-underwriting";
 import {
+  CoverChangeError,
+  applyCoverEvent,
+  dismissCoverEvent,
+} from "@/lib/insurance/cover-changes";
+import { listPolicies } from "@/lib/insurance/policies";
+import { doneNote, parseCoverEventRef } from "../insurance/cover-words";
+import {
   askingStep,
   boughtNote,
   decisionStep,
@@ -429,5 +436,42 @@ export const lifeCoverDismiss: ActionHandler = {
       answeredWith: action.label,
       note: "Okay. I won't bring it up again unless your numbers change.",
     };
+  },
+};
+
+// Spec step 154: cover changes after a life event. One tap makes every prepared change (with
+// the carrier through the partner, or marks them done when the person made them); Not now
+// leaves everything as it is.
+const coverOf = (message: { refs: { coverEvent?: string } }) => {
+  const parsed = parseCoverEventRef(message.refs.coverEvent);
+  if (!parsed) throw new ChatActionError("failed", "Something went wrong. Open it instead.");
+  return parsed;
+};
+
+export const coverApply: ActionHandler = {
+  id: "cover.apply",
+  on: "open",
+  async run({ userId, message, action, client, now }) {
+    const { event, eventKey } = coverOf(message);
+    // The prices before, for saying what changed.
+    const before = await listPolicies(userId, { client });
+    const made = await applyCoverEvent(userId, event, eventKey, { client, now });
+    if (made.length === 0) throw answeredElsewhere("You've already answered this.");
+    return { answeredWith: action.label, note: doneNote(made, before) };
+  },
+};
+
+export const coverDismiss: ActionHandler = {
+  id: "cover.dismiss",
+  on: "open",
+  async run({ userId, message, action, client, now }) {
+    const { event, eventKey } = coverOf(message);
+    try {
+      await dismissCoverEvent(userId, event, eventKey, { client, now });
+    } catch (error) {
+      if (error instanceof CoverChangeError) throw answeredElsewhere(error.message);
+      throw error;
+    }
+    return { answeredWith: action.label, note: "Okay, I've left your insurance as it is." };
   },
 };

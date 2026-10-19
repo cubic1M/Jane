@@ -5,6 +5,7 @@ import {
   URGENCY_HORIZON_DAYS,
   URGENT_FINDING_URGENCY,
 } from "@/config/priorities";
+import { isRefund } from "@/lib/savings-text";
 import { rankPriorities, type PriorityItem, type Ranked } from "@/planning/priorities";
 import type { Snapshot } from "./snapshot";
 
@@ -27,6 +28,7 @@ export function priorityItems(snapshot: Snapshot): PriorityItem[] {
       kind: "finding",
       title: f.title,
       valueCents: f.pick?.savingCents ?? f.annualSavingsCents,
+      once: !f.pick && isRefund(f.type),
       minutes: FINDING_MINUTES[f.type] ?? MINUTES.tap,
       urgency: f.urgent ? URGENT_FINDING_URGENCY : 0,
       confidence: f.confidence ?? "medium",

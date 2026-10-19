@@ -58,6 +58,9 @@ export const ACTION_IDS = [
   "lifecover.submit",
   "lifecover.buy",
   "lifecover.dismiss",
+  // Spec step 154: cover changes after a life event.
+  "cover.apply",
+  "cover.dismiss",
   "plan.approve_safe",
   "undo.rule",
   "undo.no",
@@ -250,6 +253,8 @@ export type MessageRefs = {
   readingId?: string;
   // Spec step 153: the life application a message moves along.
   lifeApplicationId?: string;
+  // Spec step 154: the life event ("event|key") whose cover changes a message asks about.
+  coverEvent?: string;
   // The finding as Jane described it (src/lib/jane-agent/fingerprint.ts): a button only
   // acts while the finding is still what the message said.
   fingerprint?: string;
