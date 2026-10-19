@@ -14,7 +14,10 @@ import { parseActions, parseRefs, type MessageAction, type MessageRefs } from ".
 
 type Open = { id: string; refs: MessageRefs; actions: MessageAction[] };
 
-const asksAutopilot = (m: Open) => m.actions.some((a) => a.id.startsWith("autopilot."));
+// The autopilot question's own buttons (not step 84's "Pause autopilot", which works on
+// a level already picked).
+const QUESTION_IDS: readonly string[] = ["autopilot.safe", "autopilot.all", "autopilot.ask"];
+const asksAutopilot = (m: Open) => m.actions.some((a) => QUESTION_IDS.includes(a.id));
 
 export async function closeAnsweredElsewhere(
   userId: string,

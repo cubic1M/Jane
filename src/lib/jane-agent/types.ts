@@ -33,6 +33,9 @@ export const ACTION_IDS = [
   "deadline.done",
   "alert.got_it",
   "snooze",
+  // Typing to Jane (spec step 84).
+  "goal.start",
+  "autopilot.pause",
 ] as const;
 export type ActionId = (typeof ACTION_IDS)[number];
 
@@ -66,6 +69,9 @@ export type MessageRefs = {
   step?: string;
   // Spec step 83: a deadline the person typed in (src/lib/deadlines.ts), to mark done.
   deadlineEntryId?: string;
+  // The goal "Start a goal for it" would add (spec step 84): money in cents, date
+  // YYYY-MM-DD.
+  goal?: { name: string; targetCents: number; targetDate: string };
 };
 
 // A message the brain wants to post.

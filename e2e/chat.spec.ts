@@ -4,6 +4,7 @@ import { E2E_DATABASE_URL, deleteUser, signedInUser } from "./db";
 // Spec steps 81–82: link the demo bank, land in Jane's chat, see the morning brief, tap
 // Yes on a finding and see it answered. On a phone, with nothing sideways and the tab bar
 // clear of the newest message. Spec step 83: answer the autopilot question there too.
+// Spec step 84: type to Jane and get an answer.
 
 test.skip(!E2E_DATABASE_URL, "needs E2E_DATABASE_URL pointing at a scratch database");
 test.setTimeout(120_000);
@@ -57,12 +58,26 @@ test("the demo bank lands in Jane's chat, and Yes answers a finding", async ({
   await expect(autopilot.getByRole("status")).toContainText("I'll handle the safe stuff");
   await expect(autopilot.getByRole("button")).toHaveCount(0);
 
-  // Chat is the first tab and lit up; Ask is the message box at the end.
+  // Chat is the first tab and lit up; the message box is at the end.
   const nav = page.getByRole("navigation", { name: "Main" });
   await expect(nav.getByRole("link").first()).toHaveAccessibleName("Chat");
   await expect(nav.getByRole("link", { name: "Chat" })).toHaveAttribute("aria-current", "page");
-  const ask = page.getByRole("link", { name: "Ask Jane anything" });
-  await expect(ask).toHaveAttribute("href", "/ask");
+  const ask = page.getByRole("textbox", { name: "Message Jane" });
+  await expect(ask).toHaveAttribute("placeholder", "Ask Jane anything");
+
+  // Typing a question (spec step 84): it shows as the person's message, with Jane's answer
+  // under it, and the box clears.
+  await ask.fill("safe to spend");
+  await page.getByRole("button", { name: "Send" }).click();
+  await expect(page.getByText("safe to spend", { exact: true })).toBeVisible();
+  await expect(messages.last()).toContainText(/You have \$[\d,]+\.\d\d safe to spend/);
+  await expect(ask).toHaveValue("");
+
+  // A command answers with buttons and does nothing until one is tapped.
+  await ask.fill("yes to all");
+  await ask.press("Enter");
+  await expect(messages.last()).toContainText("on your plan");
+  await expect(messages.last().getByRole("link", { name: /Review the plan/ })).toBeVisible();
 
   const overflow = await page.evaluate(
     () => document.documentElement.scrollWidth - document.documentElement.clientWidth,

@@ -9,10 +9,11 @@ import { findingNo, findingPick, findingYes } from "./finding";
 import { ChatActionError, linksOf, type ActionHandler } from "./handler";
 import { planApproveSafe } from "./plan";
 import { undoNo, undoRule } from "./undo";
-import { autopilotAll, autopilotAsk, autopilotSafe } from "./autopilot";
+import { autopilotAll, autopilotAsk, autopilotPause, autopilotSafe } from "./autopilot";
 import { alertGotIt, deadlineDone, snooze } from "./heads-ups";
 import { setupAll, setupNo, setupYes } from "./setup";
 import { cancelDone, offerAccept, offerDecline } from "./steps";
+import { goalStart } from "./goal";
 
 // Every button action, by id (spec step 81). A new button is a new handler here; the
 // message sources offer it by id (src/lib/jane-agent/types.ts ACTION_IDS).
@@ -36,6 +37,9 @@ export const ACTION_HANDLERS: Readonly<Record<ActionId, ActionHandler>> = {
   "deadline.done": deadlineDone,
   "alert.got_it": alertGotIt,
   snooze: snooze,
+  // Typing to Jane (spec step 84).
+  "goal.start": goalStart,
+  "autopilot.pause": autopilotPause,
 };
 
 const MESSAGE_ID = /^[a-z0-9]{1,40}$/i;

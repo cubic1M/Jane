@@ -78,3 +78,13 @@ export const CHAT_UNCAPPED_SOURCES: readonly string[] = ["autopilot"];
 
 // Spec step 83: a budget counts as nearly over once this share of it is spent this month.
 export const BUDGET_NEARLY_OVER_SHARE = 0.9;
+// Typing to Jane (spec step 84). The longest message the box takes, in characters.
+export const CHAT_MAX_MESSAGE = 500;
+// Claude sees only this many recent typed messages and answers, never the whole chat.
+export const CHAT_CLAUDE_HISTORY = 10;
+// Most rounds of tool calls Claude may make for one answer, like Ask (ASK_MAX_TOOL_ROUNDS).
+export const CHAT_CLAUDE_MAX_TURNS = 6;
+// "What's due this week" looks this many days ahead.
+export const CHAT_WEEK_DAYS = 7;
+// Categories named when the person asks what they spent without naming one.
+export const CHAT_TOP_CATEGORIES = 3;
