@@ -313,6 +313,7 @@ model User {
   // Insurance (spec Phase X).
   insurancePolicies      InsurancePolicy[]
   insuranceProfile       InsuranceProfile?
+  insuranceQuotes        InsuranceQuote[]
 
   @@map("users")
 }
@@ -1408,11 +1409,49 @@ model InsurancePolicy {
   createdAt        DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt        DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
 
-  user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  document Document? @relation(fields: [documentId], references: [id], onDelete: SetNull)
+  user     User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  document Document?        @relation(fields: [documentId], references: [id], onDelete: SetNull)
+  quotes   InsuranceQuote[]
 
   @@index([userId, status])
   @@map("insurance_policies")
+}
+
+// A quote for one of the person's policies from the insurance partner (spec step 103),
+// compared like for like. The newest request's quotes replace the last ones; a quote is
+// only good until it expires.
+model InsuranceQuote {
+  id                 String   @id @default(cuid())
+  userId             String   @map("user_id")
+  policyId           String   @map("policy_id")
+  // Which partner answered ("demo" for the stand-in) and its id for the quote.
+  partner            String
+  partnerQuoteId     String   @map("partner_quote_id")
+  carrierId          String   @map("carrier_id")
+  carrierName        String   @map("carrier_name")
+  rating             String
+  ratingScore        Int      @map("rating_score")
+  claimsPhone        String   @map("claims_phone")
+  claimsUrl          String   @map("claims_url")
+  kind               String
+  premiumCents       Int      @map("premium_cents")
+  premiumFrequency   String   @map("premium_frequency")
+  annualPremiumCents Int      @map("annual_premium_cents")
+  termMonths         Int      @map("term_months")
+  deductibleCents    Int?     @map("deductible_cents")
+  coverage           Json     @default("{}")
+  // Like for like with the policy: the same cover, or what's different.
+  sameCover          Boolean  @map("same_cover")
+  differences        String[] @default([])
+  demo               Boolean
+  expiresAt          DateTime @map("expires_at") @db.Timestamptz(3)
+  createdAt          DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  user   User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  policy InsurancePolicy @relation(fields: [policyId], references: [id], onDelete: Cascade)
+
+  @@index([userId, policyId])
+  @@map("insurance_quotes")
 }
 
 // The household facts that matter for cover (spec step 102), as the person typed them.

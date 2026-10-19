@@ -42,6 +42,7 @@ export const ACTION_IDS = [
   "change.expected",
   // Insurance (spec Phase X).
   "insurance.gap_no",
+  "insurance.quotes",
 ] as const;
 export type ActionId = (typeof ACTION_IDS)[number];
 

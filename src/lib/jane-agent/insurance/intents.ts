@@ -5,7 +5,8 @@ import type { PolicyKind } from "@/config/insurance";
 
 // cover: what a policy covers and its limits. renew: when it renews. cost: what it costs.
 // deductible: its deductible. gaps: what looks missing. list: every policy on file.
-export type InsuranceAsk = "cover" | "renew" | "cost" | "deductible" | "gaps" | "list";
+// quotes: compare prices from the insurance partner (spec step 103).
+export type InsuranceAsk = "cover" | "renew" | "cost" | "deductible" | "gaps" | "list" | "quotes";
 
 export type InsuranceIntent = {
   kind: "insurance";
@@ -30,6 +31,10 @@ const INSURANCE =
 const COVER = /\b(?:cover|covers|covered|coverage)\b/;
 
 const ASKS: readonly [InsuranceAsk, RegExp][] = [
+  [
+    "quotes",
+    /\b(?:quotes?|compare|comparing|shop|shopping|reshop|cheaper|better (?:price|deal|rate)|lower price|best price|find me)\b/,
+  ],
   ["renew", /\b(?:renew|renews|renewal|renewing|expire|expires|expiry|run out|runs out)\b/],
   ["deductible", /\bdeductibles?\b/],
   [

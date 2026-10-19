@@ -11,6 +11,7 @@ import { homeSummary } from "@/lib/home";
 import { whatJaneDid } from "@/lib/what-jane-did";
 import type { Intent } from "./intents";
 import { answerInvestments } from "./investments/answer";
+import { quotesAnswer } from "./insurance/quotes";
 import { insuranceReply } from "./insurance/replies";
 import { loadInsuranceSnapshot } from "./insurance/snapshot";
 import {
@@ -98,6 +99,8 @@ export async function answerByRules(
     case "investments":
       return answerInvestments(userId, intent, { client, now });
     case "insurance":
+      // Spec step 103: quotes ask the partner, the rest read the profile.
+      if (intent.ask === "quotes") return quotesAnswer(userId, intent, { client, now });
       return insuranceReply(intent, await loadInsuranceSnapshot(userId, { client, now }), asOf);
   }
 }

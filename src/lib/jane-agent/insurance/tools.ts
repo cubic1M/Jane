@@ -7,6 +7,7 @@ import { checkGuardrails } from "@/lib/guardrails";
 import { valueWords } from "@/lib/insurance/coverage";
 import { gapAdvice, kindWords } from "@/lib/insurance/gaps";
 import { yearlyPremium } from "@/lib/insurance/policies";
+import { quotesFor } from "@/lib/insurance/quotes";
 import { formatCents } from "@/lib/money";
 import { loadInsuranceSnapshot } from "./snapshot";
 
@@ -20,6 +21,12 @@ export const INSURANCE_TOOLS: Anthropic.Tool[] = [
     name: "insurance_policies",
     description:
       "The person's insurance profile: every policy on file (kind, insurer, price, how often it's paid, deductible, cover limits, what it covers, next renewal date and where it came from), their household facts (own or rent, cars, dependants, pets) and coverage gaps Jane found, each with why it matters. Figures only come from these records; when something isn't on file, say so.",
+    input_schema: noInput,
+  },
+  {
+    name: "insurance_quotes",
+    description:
+      "Quotes Jane already got for the person's policies from the insurance partner (spec step 103), cheapest first: carrier, rating, price per payment and a year, the saving against what they pay now, and whether the cover and deductible are the same or what's different. Demo quotes are sample prices from a made-up catalog, not real offers; say so. It never asks for new quotes: the person can ask Jane \"find me cheaper car insurance\" for that.",
     input_schema: noInput,
   },
 ];
@@ -38,6 +45,7 @@ export async function runInsuranceTool(
     cents.push(Math.abs(value));
     return formatCents(value);
   };
+  if (name === "insurance_quotes") return quotesTool(userId, { client, now }, money, cents);
   if (name !== "insurance_policies") {
     return { content: JSON.stringify({ error: `There's no tool called ${name}.` }), cents };
   }
@@ -91,6 +99,50 @@ export async function runInsuranceTool(
         cents.push(...add.cents);
         return { what: g.title, why: g.why, demoAdviceWhatToAdd: add.text };
       }),
+    }),
+    cents,
+  };
+}
+
+async function quotesTool(
+  userId: string,
+  { client, now }: { client: PrismaClient; now: Date },
+  money: (value: number | null) => string | null,
+  cents: number[],
+): Promise<ToolOutput> {
+  const { policies, canQuote } = await loadInsuranceSnapshot(userId, { client, now });
+  const active = policies.filter((p) => p.status === "active");
+  const withQuotes = await Promise.all(
+    active.map(async (p) => ({
+      policy: p,
+      quotes: await quotesFor(userId, p.id, { client, now }),
+    })),
+  );
+  const current = (p: (typeof active)[number]) => yearlyPremium(p);
+  return {
+    content: JSON.stringify({
+      partnerAvailable: canQuote,
+      policies: withQuotes
+        .filter((w) => w.quotes.length > 0)
+        .map(({ policy, quotes }) => ({
+          policy: `${policy.carrier} ${kindWords(policy.kind)}`,
+          paysNowAYear: money(current(policy)),
+          quotes: quotes.map((q) => {
+            const pays = current(policy);
+            return {
+              carrier: q.carrier.name,
+              rating: q.carrier.rating,
+              price: money(q.premiumCents),
+              paid: PREMIUM_FREQUENCIES[q.premiumFrequency].label,
+              aYear: money(q.annualPremiumCents),
+              savingAYear: pays === null ? null : money(pays - q.annualPremiumCents),
+              sameCoverAndDeductible: q.sameCover,
+              differences: q.differences,
+              sample: q.demo,
+              goodUntil: q.expiresAt.toISOString().slice(0, 10),
+            };
+          }),
+        })),
     }),
     cents,
   };

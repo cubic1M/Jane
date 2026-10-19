@@ -129,6 +129,7 @@ export function scopedFor(userId: string, client: PrismaClient = db) {
     // Insurance (spec Phase X).
     insurancePolicies: scoped.insurancePolicy,
     insuranceProfiles: scoped.insuranceProfile,
+    insuranceQuotes: scoped.insuranceQuote,
   };
 }
 
