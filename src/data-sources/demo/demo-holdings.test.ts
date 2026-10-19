@@ -205,3 +205,24 @@ describe("the demo HSA (spec step 159)", () => {
     expect(hsa.reduce((s, t) => s - t.amount, 0)).toBe(2_400);
   });
 });
+
+describe("the demo stock plan (spec step 160)", () => {
+  it("is there only when linked, and holds 150 Acme shares", () => {
+    expect(demoAccounts(DEMO).some((a) => a.subtype === "stock plan")).toBe(false);
+    const plan = demoAccounts(DEMO, ["stock_plan"]).find((a) => a.subtype === "stock plan")!;
+    const held = demoHoldings(DEMO, TODAY, [], ["stock_plan"]).filter(
+      (h) => h.account_id === plan.account_id,
+    );
+    expect(held.reduce((s, h) => s + Math.round(h.institution_value * 100), 0)).toBe(2_046_000);
+    const acme = held.find((h) => h.quantity === 150)!;
+    expect(acme.cost_basis).toBe(14_700);
+  });
+
+  it("vested in four lots behind its cost basis", () => {
+    const vests = demoInvestmentTransactions(DEMO, "2025-01-01", TODAY, ["stock_plan"]).filter(
+      (t) => t.name === "RSU VEST ACME CORP",
+    );
+    expect(vests.map((t) => t.quantity)).toEqual([37.5, 37.5, 37.5, 37.5]);
+    expect(vests.reduce((s, t) => s + t.amount, 0)).toBe(14_700);
+  });
+});

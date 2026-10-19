@@ -149,6 +149,8 @@ export const MESSAGE_PRIORITY = {
   college: 34,
   // Spec step 159: the HSA (demo advice) and its receipts vault.
   hsa: 33,
+  // Spec step 160: too much in the employer's stock (demo advice).
+  company_stock: 37,
   auto_invest_run: 31,
 } as const;
 

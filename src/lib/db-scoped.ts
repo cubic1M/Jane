@@ -177,6 +177,8 @@ export function scopedFor(userId: string, client: PrismaClient = db) {
     collegePlans: scoped.collegePlan,
     // The HSA receipts vault (spec step 159).
     hsaReceipts: scoped.hsaReceipt,
+    // Company stock grants (spec step 160).
+    equityGrants: scoped.equityGrant,
   };
 }
 

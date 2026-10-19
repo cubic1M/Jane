@@ -51,11 +51,13 @@ import {
   goalBucketsReply,
   collegeReply,
   hsaReply,
+  companyStockReply,
 } from "./replies";
 import { gather } from "../brain";
 import { parseIntent } from "../intents";
 import type { Snapshot } from "../snapshot";
 import { investmentsSource } from "../sources/investments";
+import { concentration, diversifyPlan } from "@/planning/company-stock";
 import { holdingsReply, matchAccounts } from "./replies";
 import { INVESTMENT_TOOLS, runInvestmentTool } from "./tools";
 import { CHAT_PAGES, CHAT_TOOLS, proposeAction } from "../claude-tools";
@@ -1597,5 +1599,118 @@ describe("hsaReply and the HSA messages", () => {
         false,
       ).map((m) => m.dedupeKey),
     ).toEqual(["hsa:receipts:1"]);
+  });
+});
+
+// Spec step 160: company stock.
+const COMPANY_PLAN = diversifyPlan({
+  quantity: 200,
+  priceCents: 10_000,
+  costBasisCents: 1_000_000,
+  lots: [{ date: null, quantity: 200 }],
+  totalInvestedCents: 10_000_000,
+  today: ASOF,
+  rates: { longTerm: 0.15, shortTerm: 0.22 },
+});
+const COMPANY = {
+  company: "Acme Corp",
+  concentration: concentration({
+    heldCents: 2_000_000,
+    unvestedCents: 1_000_000,
+    totalInvestedCents: 10_000_000,
+  }),
+  plan: {
+    ...COMPANY_PLAN,
+    key: "plan-key",
+    accountId: "a",
+    accountName: "Demo Stock Plan",
+    nextDue: ASOF,
+  },
+  demo: true,
+};
+const COMPANY_VIEW = {
+  ...COMPANY,
+  advice: true,
+  ticker: "ACME",
+  holdings: [],
+  grants: [],
+  rates: { longTerm: 0.15, shortTerm: 0.22, fromEstimate: false },
+};
+
+describe("company stock questions, by rules", () => {
+  it.each([
+    "my rsus",
+    "should I sell my company stock",
+    "how much employer stock do I have",
+    "my espp",
+    "my stock options",
+    "my vesting schedule",
+  ])("reads %j as company stock", (text) => {
+    expect(parseIntent(text, ASOF)).toMatchObject({
+      kind: "investments",
+      topic: "company_stock",
+    });
+  });
+  it("leaves the HSA and college alone", () => {
+    expect(parseIntent("my hsa", ASOF)).toMatchObject({ topic: "hsa" });
+    expect(parseIntent("college for my 5 year old", ASOF)).toMatchObject({ topic: "college" });
+  });
+});
+
+describe("companyStockReply and the company stock message", () => {
+  it("gives the share, the plan, its tax and the risk removed, with the sell button", () => {
+    const reply = companyStockReply(COMPANY_VIEW, ASOF);
+    expect(reply.body).toMatch(
+      /^Acme Corp is \$20,000\.00, 20% of what you've invested \(27% with the \$10,000\.00 still to vest\)\. A common rule is to keep it under 10%/,
+    );
+    expect(reply.body).toMatch(
+      /Selling about \$10,000\.00 in 4 parts brings it to 10%: the first part, now, is \$2,500\.00 with about \$187\.50 in estimated tax on the gain, then 3 more every 3 months\. A 50% drop in the stock would then cost about \$5,000\.00 instead of \$10,000\.00\./,
+    );
+    expect(reply.actions[0]).toEqual({
+      id: "company.sell",
+      label: "Sell $2,500.00 now",
+      kind: "primary",
+    });
+    expect(reply.refs).toEqual({ advice: true, companyPlan: "plan-key" });
+  });
+
+  it("gives only the facts outside demo advice mode, and offers a demo stock plan", () => {
+    const facts = companyStockReply({ ...COMPANY_VIEW, advice: false }, ASOF);
+    expect(facts.body).not.toMatch(/Selling|rule/);
+    expect(facts.actions.map((a) => a.id)).toEqual(["open"]);
+    expect(facts.refs).toEqual({});
+    const none = companyStockReply({ ...COMPANY_VIEW, company: null, plan: null }, ASOF);
+    expect(none.actions[0].id).toBe("company.link");
+  });
+
+  it("waits for the tap until the next part is due", () => {
+    const later = { ...COMPANY_VIEW.plan, parts: COMPANY_VIEW.plan.parts.slice(1) };
+    const reply = companyStockReply({ ...COMPANY_VIEW, plan: later }, ASOF);
+    expect(reply.body).toMatch(/the next part, on Jan 19, 2027, is \$2,500\.00/);
+    expect(reply.actions.map((a) => a.id)).toEqual(["open"]);
+  });
+
+  it("posts the plan when a part is due, a heads-up when it can't be sold, nothing otherwise", () => {
+    const gatherCompany = (companyStock: InvestmentSnapshot["companyStock"], advice = true) =>
+      investmentsSource
+        .gather(
+          { ...base, investments: demoInvestmentSnapshot({ advice, companyStock }) },
+          {} as never,
+        )
+        .filter((c) => c.dedupeKey.startsWith("company:"));
+    const due = gatherCompany(COMPANY);
+    expect(due.map((m) => [m.kind, m.dedupeKey, m.refs])).toEqual([
+      ["decision", "company:sell:plan-key", { advice: true, companyPlan: "plan-key" }],
+    ]);
+    expect(due[0].actions.map((a) => a.id)).toEqual(["company.sell", "open", "snooze"]);
+    expect(due[0].priority).toBe(MESSAGE_PRIORITY.company_stock);
+    const later = { ...COMPANY.plan, parts: COMPANY.plan.parts.slice(1) };
+    expect(gatherCompany({ ...COMPANY, plan: later })).toEqual([]);
+    expect(gatherCompany({ ...COMPANY, plan: null }).map((m) => m.dedupeKey)).toEqual([
+      "company:over",
+    ]);
+    expect(gatherCompany(COMPANY, false)).toEqual([]);
+    // The demo bank's own 38 shares are under the limit.
+    expect(gatherCompany(demoInvestmentSnapshot().companyStock)).toEqual([]);
   });
 });

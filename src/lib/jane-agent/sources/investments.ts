@@ -1,4 +1,5 @@
 import { MESSAGE_PRIORITY } from "@/config/agent-chat";
+import { EMPLOYER_STOCK_LIMIT } from "@/config/company-stock";
 import { AUTO_PAUSED_NUDGE_DAYS, PROFILE_QUESTIONS } from "@/config/investing";
 import { portfolioNote } from "@/insights/portfolio-note";
 import { bucketLine, byHerselfLine } from "../investments/goals-copy";
@@ -16,6 +17,14 @@ import {
 } from "../investments/auto-copy";
 import { matchLine, projectionLine } from "../investments/retirement-copy";
 import { asking, PROFILE_INTRO } from "../investments/profile-question";
+import {
+  COMPANY_LINK,
+  concentrationLine,
+  planLine,
+  sellButton,
+  sellDue,
+  SELL_WORDS,
+} from "../investments/company-copy";
 import type { Candidate } from "../types";
 import { learnLink } from "../learn";
 import { snoozeButton, type MessageSource } from "./source";
@@ -280,6 +289,32 @@ export const investmentsSource: MessageSource = {
         dedupeKey: "hsa:link",
         priority: MESSAGE_PRIORITY.hsa,
       });
+    }
+    // Step 160: too much in the employer's stock. Jane says so with the plan, its tax cost
+    // and the risk it removes, once a part is due; selling waits for the tap at every level.
+    const company = inv.companyStock;
+    if (inv.advice && company.concentration.overLimit) {
+      const today = snapshot.asOf.slice(0, 10);
+      const plan = planLine(company, today);
+      if (plan && company.plan && sellDue(company, today)) {
+        out.push({
+          kind: "decision",
+          body: `${concentrationLine(company)} ${plan} ${SELL_WORDS}`,
+          refs: { advice: true, companyPlan: company.plan.key },
+          actions: [sellButton(company), COMPANY_LINK, snoozeButton()],
+          dedupeKey: `company:sell:${company.plan.key}`,
+          priority: MESSAGE_PRIORITY.company_stock,
+        });
+      } else if (!company.plan) {
+        out.push({
+          kind: "heads_up",
+          body: `${concentrationLine(company)} A common rule is to keep it under ${Math.round(EMPLOYER_STOCK_LIMIT * 100)}%, because a bad year for the company would hit your job and your savings at once. It isn't in an account I can sell from; the company stock page shows what's held where.`,
+          refs: { advice: true },
+          actions: [COMPANY_LINK, snoozeButton()],
+          dedupeKey: "company:over",
+          priority: MESSAGE_PRIORITY.company_stock,
+        });
+      }
     }
     const auto = inv.autoInvest;
     // Step 137: contributions kept going: a plan the person paused a month ago comes up.

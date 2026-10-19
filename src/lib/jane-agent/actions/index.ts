@@ -79,6 +79,8 @@ import {
   collegeStart,
   hsaLink,
   hsaInvest,
+  companyLink,
+  companySell,
 } from "./investments";
 import { changeBudget, changeExpected, changeLook } from "./changes";
 import { lifeNever, lifeNo, lifeYes } from "./life";
@@ -228,6 +230,8 @@ export const ACTION_HANDLERS: Readonly<Record<ActionId, ActionHandler>> = {
   "college.start": collegeStart,
   "hsa.link": hsaLink,
   "hsa.invest": hsaInvest,
+  "company.link": companyLink,
+  "company.sell": companySell,
   // Jane notices changes (spec step 97).
   "change.look": changeLook,
   "change.budget": changeBudget,
