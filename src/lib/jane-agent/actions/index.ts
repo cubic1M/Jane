@@ -18,6 +18,7 @@ import {
   insuranceClaimStep,
 } from "./insurance";
 import { ChatActionError, linksOf, type ActionHandler } from "./handler";
+import { forgetPrimer } from "../primer-cache";
 import { planApproveSafe } from "./plan";
 import { undoNo, undoRule } from "./undo";
 import { autopilotAll, autopilotAsk, autopilotPause, autopilotSafe } from "./autopilot";
@@ -214,6 +215,8 @@ export async function takeChatAction(
   }
 
   const outcome = await handler.run({ userId, message, action, client, now });
+  // Spec step 93: a tap can change what's open, so Claude's copy of the numbers goes.
+  forgetPrimer(userId);
   const status = outcome.status ?? "answered";
   const refs = { ...(outcome.refs ?? message.refs) };
   if (outcome.note) refs.note = outcome.note;

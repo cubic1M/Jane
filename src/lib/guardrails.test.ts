@@ -229,3 +229,27 @@ describe("isAdvice", () => {
     expect(isAdvice("You have $1,234.56 to spend until Oct 30.")).toBe(false);
   });
 });
+
+// Spec step 93: fewer false blocks. Rules narrowed where they blocked good answers, each
+// still blocking what it's for.
+describe("narrowed rules", () => {
+  const issues = (text: string) => {
+    const result = checkGuardrails(text, []);
+    return result.ok ? [] : result.issues;
+  };
+
+  it("allows a paycheck's deductions, a food court, Sue, and getting paid", () => {
+    expect(issues("Your paycheck after payroll deductions lands Nov 1.")).toEqual([]);
+    expect(issues("Those are the deductions from your paycheck.")).toEqual([]);
+    expect(issues("Most of it went to the food court at the mall.")).toEqual([]);
+    expect(issues("You split the bill with Sue.")).toEqual([]);
+    expect(issues("You'll get paid on Nov 1.")).toEqual([]);
+  });
+
+  it("still blocks tax deductions, courts, suing and promised savings", () => {
+    expect(issues("You can claim it as a deduction.")).toEqual(["tax_or_legal_advice"]);
+    expect(issues("Take them to small claims court.")).toEqual(["tax_or_legal_advice"]);
+    expect(issues("You could sue them for it.")).toEqual(["tax_or_legal_advice"]);
+    expect(issues("You'll get your money back.")).toEqual(["guaranteed_outcome"]);
+  });
+});

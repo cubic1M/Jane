@@ -9,7 +9,8 @@ import { CHAT_CLAUDE_MAX_TURNS } from "@/config/agent-chat";
 import { ASK_BLOCKED_REPLY } from "@/config/ask";
 import type { PrismaClient } from "@/generated/prisma/client";
 import { homeSummary } from "@/lib/home";
-import { CHAT_UNAVAILABLE_TEXT, askClaudeInChat } from "./claude";
+import { CHAT_UNAVAILABLE_TEXT, askClaudeInChat, resetClaudeHealth } from "./claude";
+import { forgetPrimer } from "./primer-cache";
 import { CHAT_TOOLS, proposeAction } from "./claude-tools";
 import { loadSnapshot, type Snapshot } from "./snapshot";
 
@@ -88,6 +89,9 @@ describe("askClaudeInChat", () => {
   beforeEach(() => {
     create.mockReset();
     sent.length = 0;
+    // Spec step 93: each test starts with no cached numbers and Claude up.
+    forgetPrimer();
+    resetClaudeHealth();
     vi.mocked(loadSnapshot).mockReset().mockResolvedValue(snapshot);
     vi.mocked(homeSummary).mockReset();
   });
@@ -270,6 +274,7 @@ describe("askClaudeInChat", () => {
   it("is unavailable on an API error or a refusal", async () => {
     create.mockRejectedValueOnce(new Anthropic.APIError(500, undefined, "boom", new Headers()));
     expect((await askClaudeInChat("u1", [], "Hi", options)).kind).toBe("unavailable");
+    resetClaudeHealth();
     create.mockResolvedValueOnce({ stop_reason: "refusal", content: [] });
     expect((await askClaudeInChat("u1", [], "Hi", options)).kind).toBe("unavailable");
   });
@@ -297,6 +302,8 @@ describe("askClaudeInChat", () => {
 
 describe("proposeAction", () => {
   beforeEach(() => {
+    forgetPrimer();
+    resetClaudeHealth();
     vi.mocked(loadSnapshot).mockReset().mockResolvedValue(snapshot);
   });
   const propose = (input: unknown) => proposeAction("u1", input, { client, now: NOW });
@@ -490,5 +497,67 @@ describe("proposeAction", () => {
       expect(systemOf(0)).toMatch(/Never give investment, tax or legal advice/);
       warn.mockRestore();
     });
+  });
+});
+
+// Spec step 93: fast and reliable. A slow start gives up for the rules' answer, a failure
+// sends the next questions straight to the rules for a while, and the person's numbers are
+// reused for a minute.
+describe("speed and failures", () => {
+  // A stream that never starts until it's stopped, like a stuck request.
+  const stuck = () =>
+    ({
+      messages: {
+        stream: () => {
+          let reject: (e: unknown) => void = () => {};
+          const stream = {
+            on: () => stream,
+            abort: () => reject(new Anthropic.APIUserAbortError()),
+            finalMessage: () =>
+              new Promise((_, r) => {
+                reject = r;
+              }),
+          };
+          return stream;
+        },
+      },
+    }) as never;
+
+  beforeEach(() => {
+    create.mockReset();
+    forgetPrimer();
+    resetClaudeHealth();
+    vi.mocked(loadSnapshot).mockReset().mockResolvedValue(snapshot);
+    vi.mocked(homeSummary).mockReset();
+    vi.spyOn(console, "warn").mockImplementation(() => {});
+  });
+
+  it("gives up on a slow start, then answers from the rules for a while", async () => {
+    const result = await askClaudeInChat("u1", [], "hm", {
+      ...options,
+      claude: stuck,
+      firstWordsMs: 20,
+    });
+    expect(result).toMatchObject({ kind: "unavailable", reply: { body: CHAT_UNAVAILABLE_TEXT } });
+    // Right after, no waiting on Claude at all.
+    create.mockResolvedValueOnce(final("Fine."));
+    expect((await askClaudeInChat("u1", [], "hi", options)).kind).toBe("unavailable");
+    expect(create).not.toHaveBeenCalled();
+    resetClaudeHealth();
+    expect((await askClaudeInChat("u1", [], "hi", options)).kind).toBe("answer");
+  });
+
+  it("reuses the person's numbers for a minute, until a tap clears them", async () => {
+    create.mockResolvedValue(final("Fine."));
+    await askClaudeInChat("u1", [], "a", options);
+    const looks = vi.mocked(loadSnapshot).mock.calls.length;
+    await askClaudeInChat("u1", [], "b", options);
+    expect(vi.mocked(loadSnapshot).mock.calls.length).toBe(looks);
+    await askClaudeInChat("u1", [], "c", { ...options, now: new Date(NOW.getTime() + 61_000) });
+    expect(vi.mocked(loadSnapshot).mock.calls.length).toBeGreaterThan(looks);
+    const again = vi.mocked(loadSnapshot).mock.calls.length;
+    forgetPrimer("u1");
+    await askClaudeInChat("u1", [], "d", { ...options, now: new Date(NOW.getTime() + 62_000) });
+    expect(vi.mocked(loadSnapshot).mock.calls.length).toBeGreaterThan(again);
   });
 });

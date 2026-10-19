@@ -36,6 +36,7 @@ import { loadRebalance } from "@/lib/investments/rebalance";
 import { monthLabel, type Reply } from "./replies";
 import { guessLine } from "./replies-life";
 import { listPreferences } from "./preferences";
+import { cachedPrimer, keepPrimer } from "./primer-cache";
 import { loadRecurring } from "./recurring";
 import { weeklyReview } from "./replies-review";
 import { loadSnapshot } from "./snapshot";
@@ -500,6 +501,9 @@ export async function chatPrimer(
   userId: string,
   { client, now }: Options,
 ): Promise<{ text: string; cents: number[] }> {
+  // Spec step 93: reused for a minute.
+  const cached = cachedPrimer(userId, now);
+  if (cached) return cached;
   const results = await Promise.allSettled(
     CHAT_PRIMER_TOOLS.map((name) => runChatTool(userId, name, {}, { client, now })),
   );
@@ -515,7 +519,9 @@ export async function chatPrimer(
   if (remembered.length > 0) {
     parts.push(`remembered: ${JSON.stringify(remembered.map((p) => p.label))}`);
   }
-  return { text: parts.join("\n"), cents };
+  const primer = { text: parts.join("\n"), cents };
+  keepPrimer(userId, now, primer);
+  return primer;
 }
 
 // What propose_action adds to the reply: the buttons, the refs they need, and a fixed
