@@ -54,6 +54,9 @@ test("the tax profile shows what Jane found and saves the person's answers", asy
   const savings = page.getByRole("region", { name: "Ways to pay less" });
   await expect(savings.getByRole("heading", { name: /into your 401\(k\)/ })).toBeVisible();
   await expect(savings.getByRole("button", { name: "Remind me" })).toBeVisible();
+  // Spec step 124: gains from the demo brokerage, and its wash sale.
+  const investments = page.getByRole("region", { name: "Investments" });
+  await expect(investments.getByText(/^Wash sale: PDIFX sold at a loss/)).toBeVisible();
   const profile = page.getByRole("region", { name: "Your tax profile" });
   await expect(profile.getByText("California")).toBeVisible();
   await expect(profile.getByText("Found by Jane: check it").first()).toBeVisible();
@@ -126,5 +129,78 @@ test("tax tags: Jane's tags, her questions, and tagging a work expense", async (
   await expect(page.getByRole("region", { name: "Tax forms to expect" })).toContainText(
     "W-2 from ACME CORP PAYROLL",
   );
+  expect(await axe(page)).toEqual([]);
+});
+
+// Spec step 165: a move saved on the profile splits the state estimate, each state citing
+// its tax agency, and both states are in the tax-time pack.
+test("state taxes: a mid-year move splits the estimate, each state with its source", async ({
+  context,
+  page,
+  baseURL,
+}) => {
+  const user = await signedInUser("user");
+  userId = user.userId;
+  await context.addCookies([
+    { name: "authjs.session-token", value: user.sessionToken, url: baseURL ?? "" },
+  ]);
+  await page.goto("/connect");
+  await page.getByRole("button", { name: "Link a demo bank" }).click();
+  await expect(page).toHaveURL("/chat", { timeout: 60_000 });
+
+  await page.goto("/taxes/profile#states");
+  const where = page.locator("#states");
+  await expect(where.getByRole("heading", { name: "Where you lived and worked" })).toBeVisible();
+  await where.getByLabel("Moved on").fill("2026-07-01");
+  await where.locator("select[name=movedFrom]").selectOption("CA");
+  await where.locator("select[name=movedTo]").selectOption("NY");
+  await where.getByRole("button", { name: "Save where I lived" }).click();
+  await expect(where.getByRole("status")).toHaveText("Saved. Your state estimate uses it now.");
+  expect(await axe(page)).toEqual([]);
+
+  await page.goto("/taxes");
+  const estimate = page.getByRole("region", { name: "Your 2026 estimate" });
+  await expect(estimate.getByText(/^California and New York: /)).toBeVisible();
+  await estimate.getByText("How Jane worked it out").click();
+  await expect(
+    estimate.getByRole("link", { name: "California Franchise Tax Board" }),
+  ).toHaveAttribute("href", "https://www.ftb.ca.gov");
+  await expect(
+    estimate.getByRole("link", { name: "New York State Department of Taxation and Finance" }),
+  ).toHaveAttribute("href", "https://www.tax.ny.gov");
+  await expect(
+    estimate.getByText(/^California: lived there 2026-01-01 to 2026-06-30/),
+  ).toBeVisible();
+  expect(await axe(page)).toEqual([]);
+
+  await page.goto("/tax-pack?year=2026");
+  const states = page.getByRole("region", { name: "States you lived or worked in" });
+  await expect(states.getByRole("link", { name: "California Franchise Tax Board" })).toBeVisible();
+  await expect(states.getByText("Jan 1, 2026 to Jun 30, 2026")).toBeVisible();
+});
+
+// Spec step 167: the year-round tax plan, each move by its deadline, one tap to put an open
+// one on the deadlines.
+test("the tax plan: moves by deadline, and one on the deadlines with a tap", async ({
+  context,
+  page,
+  baseURL,
+}) => {
+  const user = await signedInUser("user");
+  userId = user.userId;
+  await context.addCookies([
+    { name: "authjs.session-token", value: user.sessionToken, url: baseURL ?? "" },
+  ]);
+  await page.goto("/connect");
+  await page.getByRole("button", { name: "Link a demo bank" }).click();
+  await expect(page).toHaveURL("/chat", { timeout: 60_000 });
+
+  await page.goto("/taxes#plan");
+  const plan = page.getByRole("region", { name: /tax plan$/ });
+  await expect(plan.getByRole("heading", { name: "File your return" })).toBeVisible();
+  const add = plan.getByRole("button", { name: /^Add to my deadlines: / }).first();
+  await expect(add).toBeVisible();
+  await add.click();
+  await expect(plan.getByText("On your deadlines.").first()).toBeVisible();
   expect(await axe(page)).toEqual([]);
 });

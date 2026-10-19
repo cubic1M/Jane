@@ -1,3 +1,4 @@
+import { concentration } from "@/planning/company-stock";
 import { demoAccounts, DEMO_INSTITUTION } from "@/data-sources/demo/demo-bank";
 import {
   demoHoldings,
@@ -26,7 +27,7 @@ export function demoInvestments(asOf = "2026-10-19"): Investments {
       balanceCents: Math.round((a.balances.current ?? 0) * 100),
       institution: DEMO_INSTITUTION,
     }));
-  const securities = demoSecurities("2026-10-18").map((s) => {
+  const securities = demoSecurities("2026-10-17", DEMO_FIXTURE_SEED.anchor).map((s) => {
     const n = normalizeSecurity(s);
     return {
       id: n.ref,
@@ -36,7 +37,7 @@ export function demoInvestments(asOf = "2026-10-19"): Investments {
       isCashEquivalent: n.isCashEquivalent,
     };
   });
-  const holdings = demoHoldings(DEMO_FIXTURE_SEED, "2026-10-18").flatMap((h, i) => {
+  const holdings = demoHoldings(DEMO_FIXTURE_SEED, "2026-10-17").flatMap((h, i) => {
     const n = normalizeHolding(h);
     return n ? [{ id: `h${i}`, accountId: n.accountRef, securityId: n.securityRef, ...n }] : [];
   });
@@ -85,6 +86,21 @@ export function demoInvestmentSnapshot(over: Partial<InvestmentSnapshot> = {}): 
     autoInvest: { plan: null, runs: [], suggestion: null, accounts: [] },
     accountPlan: { order: null, location: [] },
     month: { month: "2026-10", previousCents: null, contributedCents: 0 },
+    returns: { asOf: "2026-10-18", periods: [], simulatedPrices: true },
+    goalBuckets: { byHerself: false, buckets: null },
+    college: { children: 0, plans: 0 },
+    hsa: { account: null, plan: null, savedCents: 0, demo: true, receipts: 0 },
+    // The demo brokerage's 38 Acme shares, under the limit: no plan.
+    companyStock: {
+      company: "Acme Corp",
+      concentration: concentration({
+        heldCents: 518_320,
+        unvestedCents: 0,
+        totalInvestedCents: data.totalCents,
+      }),
+      plan: null,
+      demo: true,
+    },
     ...over,
   };
 }

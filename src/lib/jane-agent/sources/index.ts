@@ -1,4 +1,5 @@
 import { briefSource } from "./brief";
+import { weekSource } from "./week";
 import { DEBT_SOURCES } from "./debt-sources";
 import { didSource } from "./did";
 import { findingsSource } from "./findings";
@@ -19,6 +20,9 @@ import { upkeepSource } from "./upkeep";
 import { foundPoliciesSource } from "./found-policies";
 import { savedSource } from "./saved";
 import { welcomeSource } from "./welcome";
+import { checkedSource } from "./checked";
+import { paycheckSource } from "./paycheck";
+import { billPaySource } from "./billpay";
 import { investmentsSource } from "./investments";
 
 // Every message source Jane's brain gathers from (spec step 82). A new kind of message is a
@@ -26,6 +30,8 @@ import { investmentsSource } from "./investments";
 // src/config/agent-chat.ts (CHAT_SOURCE_LIMITS).
 export const MESSAGE_SOURCES: readonly MessageSource[] = [
   briefSource,
+  // Spec step 96.
+  weekSource,
   // Loans and debt (spec Phase Y, ./debt-sources.ts).
   ...DEBT_SOURCES,
   findingsSource,
@@ -55,6 +61,11 @@ export const MESSAGE_SOURCES: readonly MessageSource[] = [
   savedSource,
   // Spec step 140.
   welcomeSource,
+  // Spec step 142.
+  checkedSource,
+  // Spec step 144.
+  paycheckSource,
+  billPaySource,
   // Spec step 128 on.
   investmentsSource,
 ];

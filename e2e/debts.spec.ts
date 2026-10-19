@@ -176,3 +176,93 @@ test("a 0% transfer counts its fee and is tracked once moved", async ({
   // The deadline shows on /deadlines from 90 days before the end (unit tests check it's saved).
   await expect(page.getByRole("list", { name: "Your transfers" })).toContainText("0% until");
 });
+
+// Spec step 114: student loan plans compared, with the official steps linked.
+test("student loan plans are compared, and every step links to studentaid.gov", async ({
+  context,
+  page,
+  baseURL,
+}) => {
+  const user = await signedInUser("user");
+  userId = user.userId;
+  await context.addCookies([
+    { name: "authjs.session-token", value: user.sessionToken, url: baseURL ?? "" },
+  ]);
+  await page.goto("/connect");
+  await page.getByRole("button", { name: "Link a demo bank" }).click();
+  await expect(page).toHaveURL("/chat", { timeout: 60_000 });
+
+  await page.goto("/loans");
+  await page.getByRole("link", { name: "Compare its repayment plans" }).click();
+  await expect(page.getByRole("heading", { level: 1, name: "Student loans" })).toBeVisible();
+  await expect(page.getByRole("table", { name: "Repayment plans" })).toContainText(
+    "Repayment Assistance Plan (RAP)",
+  );
+  const steps = page.getByRole("list", { name: "Steps on studentaid.gov" }).getByRole("link");
+  await expect(steps).toHaveCount(5);
+  for (const href of await steps.evaluateAll((links) => links.map((a) => a.getAttribute("href")))) {
+    expect(href).toMatch(/^https:\/\/studentaid\.gov\//);
+  }
+  await page.getByLabel("Income from your last tax return ($)").fill("45000");
+  await page.getByLabel("I work full time in public service").press("Space");
+  await page.getByRole("button", { name: "Save" }).press("Enter");
+  await expect(page.getByRole("status")).toHaveText(
+    "Saved. The plans are worked out again with it.",
+  );
+  await expect(page.getByText(/toward Public Service Loan Forgiveness/)).toBeVisible();
+});
+
+// Spec step 115: the mortgage page: PMI waits for the home's value; escrow and extra
+// principal from the demo bank.
+test("the mortgage page shows PMI, the escrow change and extra principal", async ({
+  context,
+  page,
+  baseURL,
+}) => {
+  const user = await signedInUser("user");
+  userId = user.userId;
+  await context.addCookies([
+    { name: "authjs.session-token", value: user.sessionToken, url: baseURL ?? "" },
+  ]);
+  await page.goto("/connect");
+  await page.getByRole("button", { name: "Link a demo bank" }).click();
+  await expect(page).toHaveURL("/chat", { timeout: 60_000 });
+
+  await page.goto("/loans");
+  await page.getByRole("link", { name: "See PMI, escrow and extra payments" }).click();
+  await expect(page.getByRole("heading", { level: 1, name: "Your mortgage" })).toBeVisible();
+  const pmi = page.getByRole("region", { name: "Private mortgage insurance (PMI)" });
+  await expect(pmi).toContainText("Your loan has PMI.");
+  await expect(pmi.getByRole("link", { name: "the CFPB" })).toHaveAttribute(
+    "href",
+    /consumerfinance\.gov/,
+  );
+  await expect(page.getByRole("region", { name: "Escrow" })).toContainText("$2,198.31");
+  await expect(page.getByRole("table", { name: "Extra principal each month" })).toBeVisible();
+  await expect(page.getByRole("region", { name: "Refinancing" })).toContainText(
+    "It doesn't pay now",
+  );
+});
+
+// Spec step 116: the stand-in credit score, labelled, with what's helping and hurting.
+test("the credit score is a labelled stand-in, with its factors and card use", async ({
+  context,
+  page,
+  baseURL,
+}) => {
+  const user = await signedInUser("user");
+  userId = user.userId;
+  await context.addCookies([
+    { name: "authjs.session-token", value: user.sessionToken, url: baseURL ?? "" },
+  ]);
+  await page.goto("/connect");
+  await page.getByRole("button", { name: "Link a demo bank" }).click();
+  await expect(page).toHaveURL("/chat", { timeout: 60_000 });
+
+  await page.goto("/loans");
+  await page.getByRole("link", { name: "See your credit score" }).click();
+  await expect(page.getByRole("heading", { level: 1, name: "Credit score" })).toBeVisible();
+  await expect(page.getByRole("note").filter({ hasText: "stand-in score" })).toBeVisible();
+  await expect(page.getByRole("list", { name: "Factors" }).getByRole("listitem")).toHaveCount(5);
+  await expect(page.getByRole("region", { name: "Card use" })).toContainText("of your card limits");
+});

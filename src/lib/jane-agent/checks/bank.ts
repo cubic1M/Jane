@@ -33,6 +33,7 @@ export type CheckQuestion = {
 };
 
 const safe = (f: Facts) => [f.safeCents];
+const PAYROLL: Expect = { mentions: /acme/i, avoid: /interest|\$1\.02/i };
 const netflix = (f: Facts) => [charge(f, "Netflix")?.lastCents ?? null];
 const food = (month: (f: Facts) => string) => (f: Facts) => [
   spentOn(f, "Food and drink", month(f)),
@@ -298,10 +299,11 @@ export const QUESTIONS: readonly CheckQuestion[] = [
     expect: { list: true },
   },
 
-  // Paydays.
-  { id: "pay-1", text: "when do I get paid", needs: "rules", expect: {} },
-  { id: "pay-2", text: "when's my next paycheck", needs: "rules", expect: {} },
-  { id: "pay-3", text: "next payday", needs: "rules", expect: {} },
+  // Paydays: the demo bank's payroll on the 1st and 15th, never its $1.02 of interest
+  // (spec step 182).
+  { id: "pay-1", text: "when do I get paid", needs: "rules", expect: PAYROLL },
+  { id: "pay-2", text: "when's my next paycheck", needs: "rules", expect: PAYROLL },
+  { id: "pay-3", text: "next payday", needs: "rules", expect: PAYROLL },
 
   // What's due.
   {
@@ -433,6 +435,20 @@ export const QUESTIONS: readonly CheckQuestion[] = [
     text: "I need my car",
     needs: "rules",
     expect: { intent: "remember", button: "pref.save", mentions: /car/ },
+  },
+
+  // Guided flows (spec step 95): the first question, a button each.
+  {
+    id: "flow-1",
+    text: "set up a budget",
+    needs: "rules",
+    expect: { intent: "flow", button: "flow.pick.1", mentions: /1 of 2/ },
+  },
+  {
+    id: "flow-2",
+    text: "dispute a charge",
+    needs: "rules",
+    expect: { intent: "flow", button: "flow.pick.1", mentions: /Which charge/ },
   },
 
   // Follow-ups: the second needs the first.

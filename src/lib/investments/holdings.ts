@@ -166,5 +166,49 @@ export async function investmentsExport(userId: string, client: PrismaClient = d
     },
     orderBy: { placedAt: "asc" },
   });
-  return { securities, holdings, transactions, profile, orders };
+  // Spec step 158: college savings plans.
+  const collegePlans = await db.collegePlans.findMany({
+    select: {
+      childName: true,
+      childAge: true,
+      ageOn: true,
+      collegeType: true,
+      planKey: true,
+      createdAt: true,
+    },
+  });
+  // Spec step 159: the HSA receipts vault.
+  const hsaReceipts = await db.hsaReceipts.findMany({
+    select: {
+      transactionId: true,
+      date: true,
+      merchant: true,
+      amountCents: true,
+      status: true,
+      reimbursedAt: true,
+    },
+  });
+  // Spec step 160: company stock grants.
+  const equityGrants = await db.equityGrants.findMany({
+    select: {
+      company: true,
+      ticker: true,
+      kind: true,
+      unvestedShares: true,
+      sharesPerVest: true,
+      everyMonths: true,
+      nextVestOn: true,
+      source: true,
+    },
+  });
+  return {
+    securities,
+    holdings,
+    transactions,
+    profile,
+    orders,
+    collegePlans,
+    hsaReceipts,
+    equityGrants,
+  };
 }

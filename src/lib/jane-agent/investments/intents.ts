@@ -12,13 +12,21 @@ export type InvestmentTopic =
   | "auto_invest"
   | "accounts"
   | "overview"
-  | "autopilot";
+  | "autopilot"
+  | "returns"
+  | "goals"
+  | "college"
+  | "hsa"
+  | "company_stock";
 
 export type InvestmentIntent = {
   kind: "investments";
   topic: InvestmentTopic;
   // The account the person named ("401k", "brokerage", "ira"), when they named one.
   account: string | null;
+  // Spec step 158: a child's age and the kind of college, when the person said them.
+  childAge?: number;
+  collegeType?: "public" | "private";
 };
 
 const ACCOUNT_WORDS =
@@ -74,7 +82,52 @@ const OVERVIEW =
 const AUTOPILOT =
   /\bwhat do you do (?:with|about|for) my (?:investments|portfolio|money in the market)\b|\b(?:investments?|investing|portfolio) on autopilot\b|\bautopilot (?:for|on) (?:my )?(?:investments|investing|portfolio)\b|\bwhat (?:will|would|do) you (?:do|change) (?:in|with) my (?:investments|portfolio) (?:by yourself|on your own)\b/;
 
+// Spec step 156: how they've done, in numbers.
+const RETURNS =
+  /\b(?:my |the )?(?:investment |portfolio |401\(?k\)? )?(?:returns?|performance)\b(?! policy)|\bhow much (?:have|did) my (?:investments|portfolio|401\(?k\)?) (?:make|made|earn|earned|grow|grown|gain|gained)\b|\bhow much (?:have|did) i (?:make|made|earn|earned) (?:on|from) my (?:investments|portfolio)\b/;
+
+// Spec step 157: each goal's money, invested for when it's needed.
+const GOALS_INVESTED =
+  /\bglide path\b|\bgoal buckets?\b|\b(?:invest|investing) (?:for|by) (?:my |each )?goals?\b|\bhow (?:is|should) (?:my )?(?:\w+ )?goal (?:be )?invested\b|\bshould i invest (?:my |the )?(?:\w+ )?(?:fund|savings|money) for (?:a |my |the )?(?:house|home|car|wedding|trip|down payment)\b/;
+
+// Spec step 158: saving for a child's college.
+const COLLEGE = /\b(?:college|529|university|tuition)\b/;
+const CHILD_AGE =
+  /\b(\d{1,2})[- ]?(?:year[- ]?olds?|yr[- ]?olds?|yo|years? old)\b|\b(?:is|turns|aged?) (\d{1,2})\b/;
+
+// Spec step 159: the HSA.
+const HSA =
+  /\bhsa\b|\bhealth savings account\b|\b(?:medical )?receipts? vault\b|\bmedical receipts?\b/;
+
+// Spec step 160: stock from where the person works.
+const COMPANY_STOCK =
+  /\brsus?\b|\bespp\b|\bstock options?\b|\b(?:company|employer|employer's|company's) (?:stock|shares)\b|\b(?:restricted stock|stock plan|equity grants?|vesting schedule|vested shares|unvested shares)\b/;
+
 export function parseInvestmentIntent(text: string): InvestmentIntent | null {
+  if (COMPANY_STOCK.test(text))
+    return { kind: "investments", topic: "company_stock", account: null };
+  if (HSA.test(text) && !/\bshould i (?:open|get|start|use|max out|fund|contribute)\b/.test(text)) {
+    return { kind: "investments", topic: "hsa", account: null };
+  }
+  if (COLLEGE.test(text) && !/\bcollege (?:loan|debt)s?\b|\bstudent loan/.test(text)) {
+    const age = CHILD_AGE.exec(text);
+    const years = age ? Number(age[1] ?? age[2]) : NaN;
+    return {
+      kind: "investments",
+      topic: "college",
+      account: null,
+      ...(Number.isInteger(years) && years <= 17 ? { childAge: years } : {}),
+      ...(/\bprivate\b/.test(text)
+        ? { collegeType: "private" as const }
+        : /\b(?:public|state|in-state)\b/.test(text)
+          ? { collegeType: "public" as const }
+          : {}),
+    };
+  }
+  if (GOALS_INVESTED.test(text)) return { kind: "investments", topic: "goals", account: null };
+  if (RETURNS.test(text) && /\b(?:invest|portfolio|401|return|performance)/.test(text)) {
+    return { kind: "investments", topic: "returns", account: null };
+  }
   if (AUTOPILOT.test(text)) return { kind: "investments", topic: "autopilot", account: null };
   if (OVERVIEW.test(text)) return { kind: "investments", topic: "overview", account: null };
   if (ACCOUNTS.test(text)) return { kind: "investments", topic: "accounts", account: null };

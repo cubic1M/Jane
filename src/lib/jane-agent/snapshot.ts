@@ -8,6 +8,10 @@ import type { Deadline } from "@/insights/deadlines";
 import type { LifeGuess } from "@/insights/life-signals";
 import { isUrgent, newestUnreadAlerts } from "@/lib/alerts";
 import { loadChanges, type ChangeView } from "@/lib/changes";
+import { lastControllerRun, type LastRun } from "@/lib/controller-log";
+import { loadBillPay, type BillPayView } from "@/lib/money-movement/bill-pay";
+import { moneyPartnerFor } from "@/lib/money-movement/partner";
+import { latestPaycheckPlan, type PaycheckPlanView } from "@/lib/money-movement/paycheck";
 import { lifeGuessesFor } from "@/lib/life-guesses";
 import { loadUpkeep, type UpkeepSnapshot } from "@/lib/plan-upkeep";
 import { provenSavings } from "@/lib/savings-proof";
@@ -42,6 +46,9 @@ export type SnapshotFinding = {
   // Jane's pick when the finding compares options (spec step 76): what it saves in the
   // first year (bills) or earns more a year (savings).
   pick: { optionId: string; name: string; savingCents: number; savings: boolean } | null;
+  // Spec step 143: how sure detection is, for the priority engine. Optional for snapshots
+  // built by hand.
+  confidence?: "high" | "medium" | "low";
 };
 
 export type Snapshot = {
@@ -92,11 +99,20 @@ export type Snapshot = {
   saved?: { confirmedCents: number };
   // Spec step 140: Jane hasn't said anything to this person yet (the first-run hello).
   firstChat?: boolean;
+  // Spec step 142: last night's controller run, if recent. Optional, like changes.
+  lastRun?: LastRun | null;
+  // Spec step 144: the newest paycheck's plan. Optional, like changes.
+  paycheck?: PaycheckPlanView | null;
+  // Spec step 145: cards and loans due soon and what pays them, with a money-movement
+  // partner only. Optional, like changes.
+  billPay?: BillPayView | null;
   // Spec step 128 on: what's in investment accounts.
   investments?: InvestmentSnapshot;
   // Spec step 91: suggestions the person said never to make again (preference keys);
   // findings among them are already left out of findings above.
   neverSuggest?: string[];
+  // Spec step 96: what the chat covered the week before this one.
+  lastWeek?: ChatWeek;
 } & MoreSnapshot &
   TaxSnapshot;
 
@@ -123,6 +139,25 @@ export function findingFingerprint(finding: {
     .digest("hex");
 }
 
+// Spec step 96: the chat's week before `start` (the person's Monday): what they asked, said
+// yes or no to, and what Jane finished.
+export type ChatWeek = { start: string; asked: number; yes: number; no: number; done: number };
+
+async function chatWeek(userId: string, client: PrismaClient, start: Date): Promise<ChatWeek> {
+  const rows = await scopedFor(userId, client).janeMessages.findMany({
+    where: { createdAt: { gte: new Date(start.getTime() - 7 * 86_400_000), lt: start } },
+    select: { kind: true, answeredWith: true },
+  });
+  return {
+    start: new Date(start.getTime() - 7 * 86_400_000).toISOString().slice(0, 10),
+    asked: rows.filter((r) => r.kind === "user").length,
+    yes: rows.filter((r) => r.answeredWith && /^(?:yes|switch|approve)/i.test(r.answeredWith))
+      .length,
+    no: rows.filter((r) => r.answeredWith === "No").length,
+    done: rows.filter((r) => r.kind === "done").length,
+  };
+}
+
 // Spec step 91: findings that suggest cutting something, which "I need my …" rules out.
 const CUTTING: readonly FindingType[] = [
   "subscription_review",
@@ -144,12 +179,14 @@ async function thinking(
   given: DetectionInput | undefined,
 ) {
   const input = given ?? (await loadDetectionInput(userId, { client, now }));
-  const [changes, lifeGuesses, saved] = await Promise.all([
+  const [changes, lifeGuesses, saved, partner] = await Promise.all([
     loadChanges(userId, { client, now, input }),
     lifeGuessesFor(userId, { client, now, input }),
     provenSavings(userId, { client, now, input }),
+    moneyPartnerFor(userId, { client }),
   ]);
-  return { changes, lifeGuesses, saved: { confirmedCents: saved.confirmedCents } };
+  const billPay = partner ? await loadBillPay(userId, { client, now, input }) : null;
+  return { changes, lifeGuesses, saved: { confirmedCents: saved.confirmedCents }, billPay };
 }
 
 export async function loadSnapshot(
@@ -186,6 +223,7 @@ export async function loadSnapshot(
       title: true,
       annualSavingsCents: true,
       evidence: true,
+      confidence: true,
     },
   });
   // Spec step 91: never a finding the person said not to suggest again, nor cutting
@@ -224,6 +262,7 @@ export async function loadSnapshot(
         savings: savingsLine(finding.type, finding.annualSavingsCents),
         fingerprint: findingFingerprint(finding),
         urgent: PLAN_URGENT_FINDING_TYPES.includes(finding.type),
+        confidence: finding.confidence,
         pick: comparison
           ? {
               optionId: comparison.pick.option.id,
@@ -250,11 +289,14 @@ export async function loadSnapshot(
     budgetProgress: home.budgetProgress,
     ...(await loadMore(userId, { client, now })),
     ...(await loadTaxSnapshot(userId, { client, now })),
-    // Spec steps 97, 100 and 139 read the same bank data, so it's loaded once for them.
+    // Spec steps 97, 100, 139 and 145 read the same bank data, so it's loaded once for them.
     ...(await thinking(userId, client, now, input)),
     firstChat: said === 0,
+    lastRun: await lastControllerRun(userId, { client, now }),
+    paycheck: await latestPaycheckPlan(userId, { client, now }),
     upkeep: await loadUpkeep(userId, { client, now }),
     investments: await loadInvestmentSnapshot(userId, { client, now }),
     neverSuggest: [...never],
+    lastWeek: await chatWeek(userId, client, weekStart(now, user?.timezone)),
   };
 }

@@ -133,6 +133,18 @@ describe.runIf(url)("data export against a real database", () => {
     await client.autopilotSector.create({
       data: { userId, sector: "bills", level: "safe", actionCapCents: 100, monthlyCapCents: 100 },
     });
+    await client.paycheckPlan.create({
+      data: {
+        userId,
+        key: "paycheck:t1",
+        paycheckCents: 100,
+        paidOn: new Date("2026-10-15"),
+        moves: [],
+      },
+    });
+    await client.controllerRun.create({
+      data: { userId, day: "2026-10-18", startedAt: new Date() },
+    });
     await client.autopilotAct.create({ data: { userId, sector: "bills", cents: 0, what: "x" } });
     await client.savedShare.create({
       data: { userId, tokenHash: `hash-${crypto.randomUUID()}`, totalCents: 100 },
@@ -244,6 +256,8 @@ describe.runIf(url)("data export against a real database", () => {
       "savedShares",
       "autopilotSectors",
       "autopilotActs",
+      "controllerRuns",
+      "paycheckPlans",
       "janeMessages",
       "janePreferences",
       "taxTags",

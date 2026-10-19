@@ -31,6 +31,8 @@ const url = process.env.TEST_DATABASE_URL;
 const LINKED = new Date("2026-10-18T15:00:00Z");
 const FEB = new Date("2027-02-10T16:00:00Z");
 const HOUR = 60 * 60 * 1000;
+// Each test runs Jane over a whole demo bank, which takes longer than vitest's default.
+vi.setConfig({ testTimeout: 60_000 });
 
 describe.runIf(url)("filing through the partner against a real database", () => {
   let client: PrismaClient;
@@ -124,7 +126,8 @@ describe.runIf(url)("filing through the partner against a real database", () => 
     // What's handed over has no account numbers or tokens.
     expect(JSON.stringify(ret!.package)).not.toMatch(/access|token|demo-[a-f0-9]{16}/i);
     expect((await gather(userId, FEB)).some((c) => c.dedupeKey === "review:2026")).toBe(true);
-  });
+    // It links a demo bank itself, which takes longer than the default under a full run.
+  }, 60_000);
 
   it("is never submitted without the person's review and signature", async () => {
     const userId = await demoPerson("tax-file-sign");

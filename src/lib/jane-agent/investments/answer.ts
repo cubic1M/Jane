@@ -6,6 +6,11 @@ import { profileOf } from "@/lib/investments/profile";
 import { adviceMode } from "@/lib/advice-mode";
 import { loadFees } from "@/lib/investments/fees";
 import { loadAccountPlan } from "@/lib/investments/accounts";
+import { loadReturns } from "@/lib/investments/returns";
+import { loadGoalBuckets } from "@/lib/investments/goal-buckets";
+import { estimateCollege, loadCollege } from "@/lib/investments/college";
+import { collectReceipts, loadHsa } from "@/lib/investments/hsa";
+import { loadCompanyStock } from "@/lib/investments/company-stock";
 import { autopilotOf } from "@/lib/autopilot";
 import { loadInvestmentSnapshot } from "./snapshot";
 import { loadAutoInvest } from "@/lib/investments/auto-invest";
@@ -18,6 +23,11 @@ import {
   autoInvestReply,
   autopilotReply,
   overviewReply,
+  returnsReply,
+  goalBucketsReply,
+  collegeReply,
+  hsaReply,
+  companyStockReply,
   feesReply,
   holdingsReply,
   profileReply,
@@ -58,6 +68,28 @@ export async function answerInvestments(
       const snapshot = await loadInvestmentSnapshot(userId, { client, now });
       return overviewReply(snapshot);
     }
+    case "college": {
+      const [{ advice, plans }, estimate] = await Promise.all([
+        loadCollege(userId, { client, now }),
+        intent.childAge === undefined
+          ? Promise.resolve(null)
+          : estimateCollege(
+              userId,
+              { childAge: intent.childAge, type: intent.collegeType ?? "public" },
+              { client },
+            ),
+      ]);
+      return collegeReply(advice, estimate, plans.length);
+    }
+    case "hsa":
+      await collectReceipts(userId, { client, now });
+      return hsaReply(await loadHsa(userId, { client, now }));
+    case "company_stock":
+      return companyStockReply(await loadCompanyStock(userId, { client, now }), asOf);
+    case "goals":
+      return goalBucketsReply(await loadGoalBuckets(userId, { client, now }));
+    case "returns":
+      return returnsReply(await loadReturns(userId, { client, now }));
     case "autopilot":
       return autopilotReply(await autopilotOf(userId, { client }));
     case "accounts":

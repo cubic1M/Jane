@@ -17,9 +17,13 @@ import { filingYear, inFilingSeason, loadReturn, type ReturnView } from "@/lib/t
 import { JANUARY_READY } from "@/config/tax";
 import { loadTaxPack } from "@/lib/tax-pack";
 import type { TaxPack } from "@/planning/tax-pack";
+import { loadInvestmentTaxes, type InvestmentTaxesView } from "@/lib/investment-taxes";
 import type { TaxSaving } from "@/planning/tax-savings";
 import type { WithholdingCheck } from "@/planning/withholding";
 import { loadTaxForms, loadTaxTags } from "@/lib/tax-organizer";
+import { loadTaxPlan, type TaxPlanView } from "@/lib/tax-plan";
+import { loadGiving, type GivingView } from "@/lib/giving";
+import { inDocumentSeason, loadTaxDocuments, type TaxDocumentsView } from "@/lib/tax-documents";
 import { loadTaxProfile } from "@/lib/tax-profile";
 import type { ExpectedForm } from "@/planning/tax-documents";
 import type { TaxProfileView } from "@/planning/tax-profile";
@@ -53,8 +57,16 @@ export type TaxSnapshot = {
     refund?: RefundView | null;
     // Spec step 127: in January, last year's pack, for the one "everything's ready" message.
     january?: TaxPack | null;
+    // Spec step 124: gains, losses and wash sales in taxable investment accounts.
+    investments?: InvestmentTaxesView;
     // Spec step 126: filing season, the partner, and the year's return.
     filing?: { year: number; inSeason: boolean; available: boolean; return: ReturnView | null };
+    // Spec step 166: last year's tax forms, collected and checked, in the document season.
+    documents?: TaxDocumentsView | null;
+    // Spec step 167: the year-round tax plan.
+    plan?: TaxPlanView;
+    // Spec step 168: gifts, their receipts and the giving options.
+    giving?: GivingView;
   } | null;
 };
 
@@ -81,6 +93,10 @@ export async function loadTaxSnapshot(
     loadTaxEstimate(userId, { client, now }),
     adviceMode(userId, { client }),
   ]);
+  const [savings, selfEmployed] = await Promise.all([
+    loadTaxSavings(userId, { client, now, loaded: { estimate, advice } }),
+    loadSelfEmployed(userId, { client, now, loaded: { estimate, advice } }),
+  ]);
   const inLastMonth = (lastMonthTags ?? tags).tagged.filter((t) => t.date.startsWith(last));
   return {
     tax: {
@@ -98,9 +114,8 @@ export async function loadTaxSnapshot(
       },
       estimate,
       withholding: checkFrom(estimate),
-      savings: (await loadTaxSavings(userId, { client, now, loaded: { estimate, advice } }))
-        .savings,
-      selfEmployed: await loadSelfEmployed(userId, { client, now, loaded: { estimate, advice } }),
+      savings: savings.savings,
+      selfEmployed,
       filing: await (async () => {
         const fy = filingYear(today);
         const [partner, ret] = await Promise.all([
@@ -114,6 +129,7 @@ export async function loadTaxSnapshot(
           return: ret,
         };
       })(),
+      investments: await loadInvestmentTaxes(userId, estimate.year, { client, now }),
       january:
         today.slice(5) >= JANUARY_READY.from && today.slice(5) <= JANUARY_READY.until
           ? await loadTaxPack(userId, year - 1, { client, now })
@@ -122,6 +138,15 @@ export async function loadTaxSnapshot(
         (await loadRefunds(userId, { client, now, days: REFUND.recentDays })).refunds,
         now,
       ),
+      giving: await loadGiving(userId, { client, now, loaded: { estimate, advice } }),
+      plan: await loadTaxPlan(userId, {
+        client,
+        now,
+        loaded: { estimate, advice, savings, selfEmployed },
+      }),
+      documents: inDocumentSeason(today)
+        ? await loadTaxDocuments(userId, year - 1, { client, now })
+        : null,
       advice,
       formsDue: forms
         ? { year: forms.year, forms: forms.forms.filter((f) => !f.received && !f.mayNotSend) }

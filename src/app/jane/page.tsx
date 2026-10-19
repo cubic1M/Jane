@@ -3,7 +3,12 @@ import { connection } from "next/server";
 import { Suspense, type ReactNode } from "react";
 import { AppHeader } from "@/components/app-header";
 import { scopedDb } from "@/lib/db-scoped";
+import { lastControllerRun } from "@/lib/controller-log";
 import { loadJaneHub } from "@/lib/hubs/jane";
+import { rankedFor } from "@/lib/jane-agent/priorities";
+import { loadSnapshot } from "@/lib/jane-agent/snapshot";
+import { TOP_THINGS } from "@/config/priorities";
+import { checkedLine } from "@/lib/jane-agent/replies-checked";
 import { formatCents } from "@/lib/money";
 import { requireUser } from "@/lib/session";
 
@@ -44,7 +49,14 @@ async function JaneContent() {
   const user = await requireUser();
   await connection();
   const db = await scopedDb();
-  const [hub, accounts] = await Promise.all([loadJaneHub(user.id), db.accounts.count()]);
+  const [hub, accounts, lastRun, snapshot] = await Promise.all([
+    loadJaneHub(user.id),
+    db.accounts.count(),
+    lastControllerRun(user.id),
+    loadSnapshot(user.id),
+  ]);
+  // Spec step 143: the one to three things that matter most, and why.
+  const top = snapshot ? rankedFor(snapshot).slice(0, TOP_THINGS) : [];
   const { decide, inProgress, done, alerts } = hub;
 
   return (
@@ -57,6 +69,21 @@ async function JaneContent() {
           what&apos;s done.
         </p>
       </div>
+
+      {top.length > 0 && (
+        <Section title="The next best things" links={[]}>
+          <ol className="flex flex-col gap-2">
+            {top.map((r) => (
+              <li key={r.key} className={ROW}>
+                <Link href={r.href} className={LINK}>
+                  {r.title}
+                </Link>
+                <span className={`text-sm ${MUTED}`}>{r.why}</span>
+              </li>
+            ))}
+          </ol>
+        </Section>
+      )}
 
       <Section
         title="To decide"
@@ -168,6 +195,22 @@ async function JaneContent() {
               </li>
             ))}
           </ul>
+        )}
+      </Section>
+
+      {/* Spec step 142: the nightly controller run, one line per sector. */}
+      <Section title="What I checked last night" links={[]}>
+        {lastRun ? (
+          <ul className="flex flex-col gap-1 text-sm">
+            {lastRun.steps.map((s) => (
+              <li key={s.step}>
+                {checkedLine(s)}
+                {s.changed > 0 ? <span className={MUTED}> · {s.changed} changed</span> : null}
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p className={MUTED}>Jane checks everything every night. The first run shows here.</p>
         )}
       </Section>
 

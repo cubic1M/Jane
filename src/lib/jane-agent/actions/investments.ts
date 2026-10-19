@@ -7,8 +7,13 @@ import {
   startAutoInvest,
 } from "@/lib/investments/auto-invest";
 import { AUTO_LINK, runLine } from "../investments/auto-copy";
+import { CollegeError, startCollegePlan } from "@/lib/investments/college";
+import { HsaError, investHsaCash, linkDemoHsa } from "@/lib/investments/hsa";
+import { CompanyStockError, linkDemoStockPlan, sellPart } from "@/lib/investments/company-stock";
+import { formatCents } from "@/lib/money";
 import { nextQuestion, profileSummary, questionAfter } from "@/planning/investor-profile";
 import { asking } from "../investments/profile-question";
+import { COMPANY_LINK } from "../investments/company-copy";
 import { mixLine, SIMULATED_WORDS } from "../investments/rebalance-copy";
 import type { ActionId } from "../types";
 import { answeredElsewhere, ChatActionError, type ActionHandler } from "./handler";
@@ -151,3 +156,106 @@ function autoStatus(id: ActionId, status: "active" | "paused"): ActionHandler {
 
 export const investAutoPause = autoStatus("invest.auto_pause", "paused");
 export const investAutoResume = autoStatus("invest.auto_resume", "active");
+
+// Spec step 158: "Start saving for college", through college savings' own code (the page's).
+// It saves a goal; step 157's buckets and automatic investing fund it from then on.
+export const collegeStart: ActionHandler = {
+  id: "college.start",
+  on: "open",
+  async run({ userId, message, action, client, now }) {
+    const college = message.refs.college;
+    if (!college) throw new ChatActionError("not_offered", "That button isn't on this message.");
+    try {
+      const { goal } = await startCollegePlan(userId, college, { client, now });
+      return {
+        answeredWith: action.label,
+        note: `Done: a goal of ${formatCents(goal.targetCents)} by September ${goal.targetDate.slice(0, 4)}. I'll invest for it with your other goals; turn on automatic investing and it fills every payday.`,
+        actions: [
+          { id: "open", label: "See college savings", kind: "link", href: "/investments/college" },
+        ],
+      };
+    } catch (error) {
+      if (error instanceof CollegeError) throw answeredElsewhere(error.message);
+      throw error;
+    }
+  },
+};
+
+// Spec step 159: link a demo HSA, and invest its cash beyond the cushion (the HSA page's
+// own code; investing moves money, so it's always the person's tap).
+export const hsaLink: ActionHandler = {
+  id: "hsa.link",
+  on: "open",
+  async run({ userId, action, client, now }) {
+    try {
+      await linkDemoHsa(userId, { client, now });
+    } catch (error) {
+      if (error instanceof HsaError) throw answeredElsewhere(error.message);
+      throw error;
+    }
+    return {
+      answeredWith: action.label,
+      note: "Linked. I'll keep your HSA's cash cushion and tell you when there's money to invest.",
+      actions: [{ id: "open", label: "See your HSA", kind: "link", href: "/investments/hsa" }],
+    };
+  },
+};
+
+export const hsaInvest: ActionHandler = {
+  id: "hsa.invest",
+  on: "open",
+  async run({ userId, action, client, now }) {
+    try {
+      const { amountCents } = await investHsaCash(userId, { client, now });
+      return {
+        answeredWith: action.label,
+        note: `Done in the simulated brokerage (no real money moves): ${formatCents(amountCents)} of your HSA cash invested.`,
+        actions: [{ id: "open", label: "See your HSA", kind: "link", href: "/investments/hsa" }],
+      };
+    } catch (error) {
+      if (error instanceof HsaError) throw answeredElsewhere(error.message);
+      throw error;
+    }
+  },
+};
+
+// Spec step 160: link a demo stock plan, and sell one part of the company stock plan (the
+// company stock page's own code). Selling is always the person's tap, one part at a time,
+// at every autopilot level.
+export const companyLink: ActionHandler = {
+  id: "company.link",
+  on: "open",
+  async run({ userId, action, client, now }) {
+    try {
+      await linkDemoStockPlan(userId, { client, now });
+    } catch (error) {
+      if (error instanceof CompanyStockError) throw answeredElsewhere(error.message);
+      throw error;
+    }
+    return {
+      answeredWith: action.label,
+      note: "Linked. I'll keep an eye on how much of your investing is in your company's stock.",
+      actions: [COMPANY_LINK],
+    };
+  },
+};
+
+export const companySell: ActionHandler = {
+  id: "company.sell",
+  on: "open",
+  async run({ userId, message, action, client, now }) {
+    const key = message.refs.companyPlan;
+    if (!key) throw new ChatActionError("not_offered", "That button isn't on this message.");
+    try {
+      const { part } = await sellPart(userId, key, { client, now });
+      return {
+        answeredWith: action.label,
+        note: `Done ${SIMULATED_WORDS}: sold ${formatCents(part.proceedsCents)} of company stock and bought broad index funds with it. Estimated tax on the gain: about ${formatCents(part.taxCents)}. I'll remind you when the next part is due.`,
+        actions: [COMPANY_LINK],
+      };
+    } catch (error) {
+      if (error instanceof CompanyStockError) throw answeredElsewhere(error.message);
+      throw error;
+    }
+  },
+};

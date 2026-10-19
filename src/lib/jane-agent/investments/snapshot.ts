@@ -7,6 +7,12 @@ import { loadInvestments } from "@/lib/investments/holdings";
 import type { RebalancePlan } from "@/insights/rebalance";
 import { loadAccountPlan, type AccountPlan } from "@/lib/investments/accounts";
 import { loadMonthFacts } from "@/lib/investments/overview";
+import { loadReturns, type Returns } from "@/lib/investments/returns";
+import { loadGoalBuckets } from "@/lib/investments/goal-buckets";
+import { loadCollege } from "@/lib/investments/college";
+import { collectReceipts, loadHsa, type HsaView } from "@/lib/investments/hsa";
+import { loadCompanyStock, type CompanyStockView } from "@/lib/investments/company-stock";
+import type { Bucket } from "@/planning/goal-buckets";
 import { loadAutoInvest } from "@/lib/investments/auto-invest";
 import { loadRebalance } from "@/lib/investments/rebalance";
 import { loadRetirement } from "@/lib/investments/retirement";
@@ -40,6 +46,16 @@ export type InvestmentSnapshot = {
   accountPlan: Pick<AccountPlan, "order" | "location">;
   // Spec step 137: the monthly note's facts, and how much Jane does by herself.
   month: { month: string; previousCents: number | null; contributedCents: number };
+  // Spec step 157: each goal's bucket; null until the profile is done.
+  goalBuckets: { byHerself: boolean; buckets: Bucket[] | null };
+  // Spec step 158: children on the tax profile, and college plans set up.
+  college: { children: number; plans: number };
+  // Spec step 159: the HSA and its receipts vault.
+  hsa: Pick<HsaView, "account" | "plan" | "savedCents" | "demo"> & { receipts: number };
+  // Spec step 160: the employer's stock and the plan to sell it down.
+  companyStock: Pick<CompanyStockView, "company" | "concentration" | "plan" | "demo">;
+  // Spec step 156: how they've done.
+  returns: Returns;
   // Spec step 134: automatic investing, its recent paydays and Jane's suggestion.
   autoInvest: Pick<
     Awaited<ReturnType<typeof loadAutoInvest>>,
@@ -93,6 +109,30 @@ export async function loadInvestmentSnapshot(
     rebalance,
     accountPlan: { order: accountPlan.order, location: accountPlan.location },
     month: await loadMonthFacts(userId, investments, { client, now }),
+    returns: await loadReturns(userId, { client, now, investments }),
+    hsa: await collectReceipts(userId, { client, now })
+      .then(() => loadHsa(userId, { client, now }))
+      .then((h) => ({
+        account: h.account,
+        plan: h.plan,
+        savedCents: h.savedCents,
+        demo: h.demo,
+        receipts: h.receipts.filter((r) => r.status === "saved").length,
+      })),
+    companyStock: await loadCompanyStock(userId, { client, now }).then((c) => ({
+      company: c.company,
+      concentration: c.concentration,
+      plan: c.plan,
+      demo: c.demo,
+    })),
+    college: await loadCollege(userId, { client, now }).then((c) => ({
+      children: c.children,
+      plans: c.plans.length,
+    })),
+    goalBuckets: await loadGoalBuckets(userId, { client, now }).then((g) => ({
+      byHerself: g.byHerself,
+      buckets: g.buckets,
+    })),
     autoInvest: {
       plan: auto.plan,
       runs: auto.runs,
