@@ -19,6 +19,8 @@ import {
 } from "@/lib/guardrails";
 import { DEBT_TOOL_STATUS } from "./debt-tools";
 import { CHAT_TOOLS, chatPrimer, proposeAction, runChatTool, type Proposal } from "./claude-tools";
+import { BLOCK_KINDS, buildBlock, type BlockKind } from "./block-data";
+import { blockCents, drawBlock, type AnswerBlock } from "./blocks";
 import { GuardedText } from "./guarded-text";
 import { INVESTMENT_TOOL_STATUS } from "./investments/tools";
 import type { Reply } from "./replies";
@@ -126,6 +128,7 @@ const STATUS: Record<string, string> = {
   priorities: "Working out what matters most…",
   money_moves: "Checking what money moved…",
   propose_action: "Getting a button ready…",
+  show_block: "Drawing it…",
 };
 export const statusFor = (tool: string) =>
   STATUS[tool] ?? INVESTMENT_TOOL_STATUS[tool] ?? "Looking that up…";
@@ -209,6 +212,7 @@ export async function askClaudeInChat(
   let rewrites = 0;
   const messages = conversation(history, question);
   let proposal: Extract<Proposal, { ok: true }> | null = null;
+  let shown: AnswerBlock | null = null;
   const draft = new GuardedText(
     () => allowedCents,
     (text) => onEvent({ type: "text", text }),
@@ -286,6 +290,39 @@ export async function askClaudeInChat(
       const results: Anthropic.ToolResultBlockParam[] = [];
       for (const block of response.content) {
         if (block.type !== "tool_use") continue;
+        // Spec step 94: one block, built from the person's numbers, not Claude's.
+        if (block.name === "show_block") {
+          const args = (block.input ?? {}) as {
+            kind?: string;
+            month?: string;
+            finding_id?: string;
+          };
+          const kind = (BLOCK_KINDS as readonly string[]).includes(args.kind ?? "")
+            ? (args.kind as BlockKind)
+            : null;
+          const built: AnswerBlock | null =
+            shown || !kind
+              ? null
+              : await buildBlock(userId, kind, {
+                  client,
+                  now,
+                  month: args.month,
+                  findingId: args.finding_id,
+                });
+          if (built) {
+            shown = built;
+            allowedCents.push(...blockCents(built));
+          }
+          results.push({
+            type: "tool_result",
+            tool_use_id: block.id,
+            content: built
+              ? `It will be shown under your answer: ${drawBlock(built).alt}`
+              : "There's nothing to show for that.",
+            ...(built ? {} : { is_error: true }),
+          });
+          continue;
+        }
         if (block.name === "propose_action") {
           const result: Proposal = proposal
             ? { ok: false, error: "You already offered a button for this answer." }
@@ -338,7 +375,11 @@ export async function askClaudeInChat(
         issues: check.issues,
       };
     }
-    const refs = proposal?.refs ?? {};
+    const refs: Reply["refs"] = { ...(proposal?.refs ?? {}) };
+    // Its words pass the same guardrails as the answer, or it isn't shown.
+    if (shown && checkGuardrails(drawBlock(shown).alt, allowedCents, undefined, profile).ok) {
+      refs.block = shown;
+    }
     return {
       kind: "answer",
       reply: {

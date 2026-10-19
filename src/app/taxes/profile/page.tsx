@@ -11,6 +11,10 @@ import { scopedDb } from "@/lib/db-scoped";
 import { hasDemoBank } from "@/lib/plaid/demo";
 import { TaxProfileForm } from "./form";
 import { PayStubForm } from "./pay-stub-form";
+import { ResidencyForm } from "./residency-form";
+import { loadResidency } from "@/lib/tax-states";
+import { localitiesIn } from "@/planning/tax-states";
+import { defaultTaxYear } from "@/planning/tax-pack";
 
 // The tax profile (spec step 118): every answer, and what Jane found, can be changed here.
 
@@ -18,7 +22,8 @@ async function ProfileContent() {
   const user = await requireUser();
   await connection();
   const db = await scopedDb();
-  const [view, demo, pay] = await Promise.all([
+  const year = defaultTaxYear(new Date().toISOString().slice(0, 10));
+  const [view, demo, pay, residency] = await Promise.all([
     loadTaxProfile(user.id),
     hasDemoBank(user.id),
     db.taxProfiles.findFirst({
@@ -31,7 +36,9 @@ async function ProfileContent() {
         payPretaxYtdCents: true,
       },
     }),
+    loadResidency(user.id, year),
   ]);
+  const move = residency.told?.[0] ?? residency.spotted;
   const dollars = (cents: number | null | undefined) =>
     cents === null || cents === undefined ? "" : (cents / 100).toFixed(2);
   const seen = new Map(
@@ -65,6 +72,23 @@ async function ProfileContent() {
             view.state.status === "found"
               ? `Found by Jane: ${stateName(view.state.value)}, going by ${view.state.from}. Save to confirm it.`
               : null,
+          states: [...US_STATES],
+        }}
+      />
+      <ResidencyForm
+        values={{
+          year,
+          movedOn: move?.date ?? "",
+          movedFrom: move?.from ?? "",
+          movedTo: move?.to ?? "",
+          spottedNote:
+            !residency.told && residency.spotted
+              ? `Found by Jane: a move from ${stateName(residency.spotted.from)} to ${stateName(residency.spotted.to)} on ${residency.spotted.date}, going by your payments to state agencies. Save to confirm it, or tick one state all year.`
+              : null,
+          oneState: residency.told !== null && residency.told.length === 0,
+          workState: residency.workState ?? "",
+          locality: residency.locality ?? "",
+          localities: localitiesIn(view.state.value),
           states: [...US_STATES],
         }}
       />
