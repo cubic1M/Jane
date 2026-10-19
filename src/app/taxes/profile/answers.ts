@@ -2,6 +2,7 @@ import { INCOME_KIND_ORDER, isFilingStatus, type IncomeKind } from "@/config/tax
 import { parseMoneyToCents } from "@/lib/money";
 import { TaxProfileError, type PayStubEntry, type TaxAnswer } from "@/lib/tax-profile";
 import { ResidencyError } from "@/lib/tax-states";
+import { FamilyTaxesError, type FamilyDetails } from "@/lib/family-taxes";
 
 // The tax profile form's answers (spec step 118). A field left empty stays unanswered.
 
@@ -81,5 +82,38 @@ export function residencyFrom(formData: FormData): ResidencyEntry {
     oneState: !date && Boolean(formData.get("oneState")),
     workState: text(formData, "workState") || null,
     locality: text(formData, "locality") || null,
+  };
+}
+
+// Spec step 169: family details. Up to FAMILY_FORM_CHILDREN children (a row with no age is
+// left out), a spouse's wages, whether the person pays over half the home's costs, and a
+// student's years of college before this one.
+export const FAMILY_FORM_CHILDREN = 4;
+
+export function familyFrom(formData: FormData): FamilyDetails {
+  const children: FamilyDetails["children"] = [];
+  for (let i = 0; i < FAMILY_FORM_CHILDREN; i += 1) {
+    const age = text(formData, `childAge${i}`);
+    if (!age) continue;
+    const months = text(formData, `childMonths${i}`);
+    children.push({
+      ageAtYearEnd: Number(age),
+      hasSsn: Boolean(formData.get(`childSsn${i}`)),
+      monthsLivedWithYou: months ? Number(months) : 12,
+    });
+  }
+  const wages = text(formData, "spouseWages");
+  const spouseWagesCents = wages ? parseMoneyToCents(wages) : null;
+  if (wages && spouseWagesCents === null) {
+    throw new FamilyTaxesError("Your spouse's wages must be dollars and cents.");
+  }
+  const years = text(formData, "studentYears");
+  return {
+    children,
+    spouseWagesCents,
+    paysOverHalfHome: formData.get("paysOverHalfHome") ? true : null,
+    student: years
+      ? { yearsOfCollegeBefore: Number(years), halfTime: Boolean(formData.get("studentHalfTime")) }
+      : null,
   };
 }

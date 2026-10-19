@@ -27,6 +27,7 @@ import { STATE_SOURCES } from "@/config/tax-states";
 import { loadTaxDocuments } from "@/lib/tax-documents";
 import { loadTaxPlan } from "@/lib/tax-plan";
 import { loadGiving } from "@/lib/giving";
+import { loadFamilyTaxes } from "@/lib/family-taxes";
 import { COMPARED } from "@/planning/tax-document-check";
 
 // Claude's tax tools in Jane's chat (spec steps 118–127): read-only, over the person's own
@@ -118,6 +119,12 @@ export const TAX_TOOLS: Anthropic.Tool[] = [
     name: "tax_giving",
     description:
       "The person's gifts to charity this tax year (tagged as donations): each gift's date, charity and amount, whether it needs the charity's written receipt (gifts of $250 or more) and whether they have it; their donor-advised fund if they opened one; and in demo advice mode the options that do more good for the same money (bunching two years of gifts, a donor-advised fund, giving long-held shares instead of cash), each with the federal tax with and without it. Say the option figures are estimates and demo advice.",
+    input_schema: noInput,
+  },
+  {
+    name: "tax_family",
+    description:
+      "Demo advice only: the person's family tax choices for the tax year, each with both sides' federal tax and whether each side is open to them (with the eligibility rules): claiming their children, a dependent care FSA or the care credit, the American Opportunity or Lifetime Learning credit, a 529's state tax break, and married filing jointly or separately (or head of household or single); plus what Jane assumed. Choosing is the person's.",
     input_schema: noInput,
   },
   {
@@ -478,6 +485,25 @@ export async function runTaxTool(
               saves: money(o.savesCents),
             }))
           : undefined,
+      });
+    }
+    case "tax_family": {
+      const view = await loadFamilyTaxes(userId, { client, now });
+      return out({
+        year: view.year,
+        demoAdvice: view.advice,
+        choices: view.choices.map((c) => ({
+          choice: c.title,
+          sides: c.sides.map((s, i) => ({
+            option: s.label,
+            tax: money(s.taxCents),
+            open: s.eligible,
+            rules: s.why,
+            less: c.better === i,
+          })),
+          saves: c.better === null ? null : money(c.savesCents),
+        })),
+        assumed: view.assumptions,
       });
     }
     case "tax_forms": {

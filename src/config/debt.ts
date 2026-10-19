@@ -42,6 +42,7 @@ export const DEBT_SOURCE_LIMITS = {
   student: 1,
   mortgage: 1,
   credit: 1,
+  debt_autopilot: 1,
 } as const;
 export const DEBT_MESSAGE_PRIORITY = {
   // A buy now, pay later plan Jane found, then a debt with no rate: news that can wait,
@@ -76,6 +77,11 @@ export const DEBT_MESSAGE_PRIORITY = {
   // Spec step 116: card use high enough to hurt the score; a score that moved.
   credit_utilisation: 47,
   credit_moved: 34,
+  // Spec step 117: a rate the bank changed is news; a due date to move and a plan Jane
+  // started by herself can wait a little.
+  debt_rate_changed: 63,
+  debt_due_move: 33,
+  debt_plan_started: 49,
 } as const;
 
 // What Jane does about debts by herself at each autopilot level (src/config/autopilot.ts),
@@ -117,6 +123,10 @@ export const DEBT_AUTOPILOT: Readonly<
       step: 116,
       does: "Checks your credit score once a month with a soft pull (it never affects the score), explains what's helping and hurting, and tells you how much to pay on a card before the statement to bring your card use down.",
     },
+    {
+      step: 117,
+      does: "Watches every rate your bank reports and tells you when one changes, and drafts a request to move a payment due just before payday. Starting a payoff plan waits for your yes.",
+    },
   ],
   safe: [
     {
@@ -151,6 +161,10 @@ export const DEBT_AUTOPILOT: Readonly<
       step: 116,
       does: "Checks your credit score once a month with a soft pull (it never affects the score), explains what's helping and hurting, and tells you how much to pay on a card before the statement to bring your card use down.",
     },
+    {
+      step: 117,
+      does: "Watches every rate your bank reports and tells you when one changes, drafts a request to move a payment due just before payday, and starts your payoff plan by itself if you haven't, so it's checked every month.",
+    },
   ],
   all: [
     {
@@ -184,6 +198,10 @@ export const DEBT_AUTOPILOT: Readonly<
     {
       step: 116,
       does: "Checks your credit score once a month with a soft pull (it never affects the score), explains what's helping and hurting, and tells you how much to pay on a card before the statement to bring your card use down.",
+    },
+    {
+      step: 117,
+      does: "Watches every rate your bank reports and tells you when one changes, drafts a request to move a payment due just before payday, and starts your payoff plan by itself if you haven't, so it's checked every month.",
     },
   ],
 };
@@ -296,3 +314,14 @@ export const UTILISATION_HIGH = 0.3;
 export const CREDIT_BANDS = { excellent: 740, good: 670 } as const;
 // A move this big since the last pull is worth a message.
 export const CREDIT_SCORE_MOVE_POINTS = 10;
+
+// --- Step 117: debt on autopilot ------------------------------------------------------------
+
+// A payment due this many days or fewer before a payday is worth moving to just after it.
+export const DUE_BEFORE_PAYDAY_DAYS = 5;
+// Where Jane suggests moving it: this many days after the payday.
+export const DUE_AFTER_PAYDAY_DAYS = 3;
+// Paychecks looked at to find the paydays.
+export const PAYDAY_LOOKBACK_DAYS = 62;
+// Debt payments listed for "when are my debt payments due?": this many days ahead.
+export const DEBT_DUE_DAYS = 31;

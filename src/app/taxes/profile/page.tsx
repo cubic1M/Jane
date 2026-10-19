@@ -12,6 +12,9 @@ import { hasDemoBank } from "@/lib/plaid/demo";
 import { TaxProfileForm } from "./form";
 import { PayStubForm } from "./pay-stub-form";
 import { ResidencyForm } from "./residency-form";
+import { FamilyForm } from "./family-form";
+import { FAMILY_FORM_CHILDREN } from "./answers";
+import { parseChildren } from "@/lib/family-taxes";
 import { loadResidency } from "@/lib/tax-states";
 import { localitiesIn } from "@/planning/tax-states";
 import { defaultTaxYear } from "@/planning/tax-pack";
@@ -34,6 +37,11 @@ async function ProfileContent() {
         payStateYtdCents: true,
         payRetirementYtdCents: true,
         payPretaxYtdCents: true,
+        familyChildren: true,
+        spouseWagesCents: true,
+        paysOverHalfHome: true,
+        studentYearsBefore: true,
+        studentHalfTime: true,
       },
     }),
     loadResidency(user.id, year),
@@ -90,6 +98,24 @@ async function ProfileContent() {
           locality: residency.locality ?? "",
           localities: localitiesIn(view.state.value),
           states: [...US_STATES],
+        }}
+      />
+      <FamilyForm
+        values={{
+          year,
+          children: Array.from({ length: FAMILY_FORM_CHILDREN }, (_, i) => {
+            const c = parseChildren(pay?.familyChildren)[i];
+            return c
+              ? { age: String(c.ageAtYearEnd), ssn: c.hasSsn, months: String(c.monthsLivedWithYou) }
+              : { age: "", ssn: true, months: "12" };
+          }),
+          spouseWages: dollars(pay?.spouseWagesCents),
+          paysOverHalfHome: pay?.paysOverHalfHome ?? false,
+          studentYears:
+            pay?.studentYearsBefore === null || pay?.studentYearsBefore === undefined
+              ? ""
+              : String(pay.studentYearsBefore),
+          studentHalfTime: pay?.studentHalfTime ?? true,
         }}
       />
       <PayStubForm

@@ -1,5 +1,5 @@
 import { LENDER_PARTNER, REFI_CHECK_DAYS, type LoanProduct } from "@/config/debt";
-import { Prisma, type PrismaClient } from "@/generated/prisma/client";
+import type { Prisma, PrismaClient } from "@/generated/prisma/client";
 import { adviceMode } from "@/lib/advice-mode";
 import { track } from "@/lib/analytics";
 import { db as defaultClient } from "@/lib/db";
@@ -8,6 +8,7 @@ import { creditBandFor } from "@/lib/credit";
 import { debtsOr, loadDebts } from "@/lib/debts";
 import type { DebtBook } from "@/insights/debts";
 import { demoLender } from "@/lib/lenders/demo";
+import { upsertOnce } from "@/lib/unique-race";
 import type {
   LenderPartner,
   LoanOffer,
@@ -94,19 +95,14 @@ export async function checkRates(
     quotes: quotes as unknown as Prisma.InputJsonArray,
     transfers: transfers as unknown as Prisma.InputJsonArray,
   };
-  const save = () =>
+  // Two pages loading at once can both check: the second one's save updates.
+  await upsertOnce(() =>
     scopedFor(userId, client).refinanceChecks.upsert({
       where: { userId },
       create: { userId, ...data },
       update: data,
-    });
-  // Two pages loading at once can both find no row and both create it: the second updates.
-  await save().catch((error) => {
-    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
-      return save();
-    }
-    throw error;
-  });
+    }),
+  );
   await track(userId, "refinance_checked", { debts: quotes.length });
   return quotes;
 }
