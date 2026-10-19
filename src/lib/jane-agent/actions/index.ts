@@ -6,7 +6,7 @@ import { scopedFor } from "@/lib/db-scoped";
 import { closeSettled } from "../messages";
 import { MESSAGE_SELECT, toChatMessage, type ActionId, type ChatMessage } from "../types";
 import { findingNo, findingPick, findingYes } from "./finding";
-import { insuranceGapNo } from "./insurance";
+import { insuranceGapNo, insuranceQuotes } from "./insurance";
 import { ChatActionError, linksOf, type ActionHandler } from "./handler";
 import { planApproveSafe } from "./plan";
 import { undoNo, undoRule } from "./undo";
@@ -36,6 +36,7 @@ export const ACTION_HANDLERS: Readonly<Record<ActionId, ActionHandler>> = {
   "finding.pick": findingPick,
   // Insurance (spec Phase X).
   "insurance.gap_no": insuranceGapNo,
+  "insurance.quotes": insuranceQuotes,
   "plan.approve_safe": planApproveSafe,
   "undo.rule": undoRule,
   "undo.no": undoNo,

@@ -48,8 +48,13 @@ const household = (
     { mortgage: false, homeOwned: false, rentPaid: false, cars: 0 },
   );
 
-function insurance(policies = [policy()], facts = household(), advice = false): InsuranceSnapshot {
-  return { policies, household: facts, gaps: coverageGaps(facts, policies), advice };
+function insurance(
+  policies = [policy()],
+  facts = household(),
+  advice = false,
+  canQuote = false,
+): InsuranceSnapshot {
+  return { policies, household: facts, gaps: coverageGaps(facts, policies), advice, canQuote };
 }
 
 function snapshot(over: Partial<Snapshot> = {}): Snapshot {

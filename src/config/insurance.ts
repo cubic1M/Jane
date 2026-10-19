@@ -138,3 +138,85 @@ export const GAP_ADVICE: Record<GapKey, { text: string; cents: number[] }> = {
     cents: [],
   },
 };
+
+// --- Quotes (spec step 103) --------------------------------------------------------------
+// Quotes come from an insurance partner (src/lib/insurance/partner.ts). Until a licensed
+// partner is connected, a stand-in carrier catalog (src/data-sources/demo/demo-carriers.ts)
+// prices policies for demo-bank people with the fixed rules below. Real accounts get no
+// quotes. At every autopilot level Jane may ask for quotes by herself: they cost nothing and
+// commit to nothing. Buying (binding) always needs the person's tap.
+
+// Which partner answers: "demo" (the stand-in, for demo-bank people only) until a real one
+// is connected. A real partner needs a licensed agency agreement and counsel's sign-off
+// (COUNSEL_INSURANCE_REFERRALS in src/config/referrals.ts).
+export const INSURANCE_PARTNER_ENV = "INSURANCE_PARTNER";
+
+// A quote is good for this many days.
+export const QUOTE_VALID_DAYS = 30;
+// Kinds the partner quotes. Health insurance goes through the marketplace, not a carrier.
+export const QUOTABLE_KINDS: readonly PolicyKind[] = ["auto", "home", "renters", "life", "pet"];
+
+// The stand-in's pricing, a year, in cents, before the carrier's own factor. Fixed rules
+// from the person's profile: what's insured, the cover and deductible asked for, and their
+// state. Made-up numbers in a realistic range; never a real carrier's rates.
+export const DEMO_PRICING = {
+  auto: {
+    perVehicle: 110_000,
+    // By injury liability per person: at least this much → this factor.
+    liabilityLevels: [
+      { atLeastCents: 10_000_000, factor: 1.15 },
+      { atLeastCents: 5_000_000, factor: 1 },
+      { atLeastCents: 0, factor: 0.9 },
+    ],
+    collision: 0.4,
+    comprehensive: 0.15,
+    uninsuredMotorist: 0.05,
+    // Defaults when the policy doesn't say.
+    defaults: {
+      bodilyInjuryPerPerson: 5_000_000,
+      bodilyInjuryPerAccident: 10_000_000,
+      propertyDamage: 5_000_000,
+      collision: true,
+      comprehensive: true,
+      uninsuredMotorist: true,
+    },
+  },
+  home: {
+    // A share of the home's rebuild value, in basis points.
+    dwellingBps: 35,
+    highLiabilityCents: 30_000_000,
+    highLiabilityFactor: 1.05,
+    defaults: { dwelling: 30_000_000, personalProperty: 15_000_000, liability: 30_000_000 },
+  },
+  renters: {
+    base: 9_000,
+    personalPropertyBps: 20,
+    highLiabilityCents: 30_000_000,
+    highLiabilityFactor: 1.1,
+    defaults: { personalProperty: 3_000_000, liability: 10_000_000 },
+  },
+  life: {
+    // Per $1,000 of cover, a year, for a 20-year term.
+    perThousandCents: 35,
+    termFactors: { 10: 0.7, 15: 0.85, 20: 1, 25: 1.25, 30: 1.6 } as Record<number, number>,
+    defaults: { deathBenefit: 50_000_000, termYears: 20 },
+  },
+  pet: {
+    perPet: 40_000,
+    reimbursementFactors: { 70: 0.85, 80: 1, 90: 1.2 } as Record<number, number>,
+    defaults: { annualLimit: 1_000_000, reimbursement: 80 },
+  },
+  // A higher deductible lowers the price (cents → factor); the nearest one counts.
+  deductibleFactors: [
+    { cents: 25_000, factor: 1.1 },
+    { cents: 50_000, factor: 1 },
+    { cents: 100_000, factor: 0.9 },
+    { cents: 250_000, factor: 0.8 },
+  ],
+  defaultDeductibleCents: 50_000,
+  // States where cover costs more (two-letter code → factor); the rest are 1.
+  stateFactors: { MI: 1.6, FL: 1.4, LA: 1.4, NY: 1.25, CA: 1.15, TX: 1.1 } as Record<
+    string,
+    number
+  >,
+} as const;
