@@ -137,14 +137,24 @@ const MONTHLY: (Template & { days: number[] })[] = [
     amount: [88, 141],
     days: [18],
   },
+  // Paid with the card, whose phone protection (spec step 152) makes Asurion a duplicate.
   {
     key: "phone",
-    account: "checking",
+    account: "card",
     name: "VERIZON WIRELESS",
     merchant: "Verizon Wireless",
     category: "RENT_AND_UTILITIES_TELEPHONE",
     amount: 145,
     days: [20],
+  },
+  {
+    key: "phone-protection",
+    account: "card",
+    name: "ASURION WIRELESS PROTECTION",
+    merchant: "Asurion",
+    category: "GENERAL_SERVICES_INSURANCE",
+    amount: 17,
+    days: [21],
   },
   {
     key: "card-payment",
