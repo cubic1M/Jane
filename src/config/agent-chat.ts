@@ -38,6 +38,8 @@ export const CHAT_SOURCE_LIMITS: Readonly<Record<string, number>> = {
   checked: 1,
   // Spec step 144.
   paycheck: 1,
+  // Spec step 145: one a day; the rest wait their turn.
+  billpay: 1,
   // Spec step 128 on.
   investments: 3,
 };
@@ -83,6 +85,9 @@ export const MESSAGE_PRIORITY = {
   benefits_question: 47,
   // Spec step 151: a policy read from a document, waiting for the confirm tap.
   policy_reading: 63,
+  // Spec step 153: life cover sized with quotes (demo advice), and the question before it.
+  life_sized: 49,
+  life_dependants: 45,
   urgent_alert: 95,
   deadline: 90,
   waiting_on_you: 85,
@@ -123,6 +128,8 @@ export const MESSAGE_PRIORITY = {
   checked: 25,
   // Spec step 144: a paycheck's plan, money in motion: right after deadlines.
   paycheck: 88,
+  // Spec step 145: a bill to pay on time, money in motion like a paycheck's plan.
+  billpay: 87,
   review: 900,
   // Spec step 128: what's in investment accounts, the first time Jane sees it.
   investments: 32,
@@ -144,6 +151,10 @@ export const MESSAGE_PRIORITY = {
   goal_buckets: 35,
   // Spec step 158: saving for college (demo advice).
   college: 34,
+  // Spec step 159: the HSA (demo advice) and its receipts vault.
+  hsa: 33,
+  // Spec step 160: too much in the employer's stock (demo advice).
+  company_stock: 37,
   auto_invest_run: 31,
 } as const;
 

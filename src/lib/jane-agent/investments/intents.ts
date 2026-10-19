@@ -15,7 +15,9 @@ export type InvestmentTopic =
   | "autopilot"
   | "returns"
   | "goals"
-  | "college";
+  | "college"
+  | "hsa"
+  | "company_stock";
 
 export type InvestmentIntent = {
   kind: "investments";
@@ -93,7 +95,20 @@ const COLLEGE = /\b(?:college|529|university|tuition)\b/;
 const CHILD_AGE =
   /\b(\d{1,2})[- ]?(?:year[- ]?olds?|yr[- ]?olds?|yo|years? old)\b|\b(?:is|turns|aged?) (\d{1,2})\b/;
 
+// Spec step 159: the HSA.
+const HSA =
+  /\bhsa\b|\bhealth savings account\b|\b(?:medical )?receipts? vault\b|\bmedical receipts?\b/;
+
+// Spec step 160: stock from where the person works.
+const COMPANY_STOCK =
+  /\brsus?\b|\bespp\b|\bstock options?\b|\b(?:company|employer|employer's|company's) (?:stock|shares)\b|\b(?:restricted stock|stock plan|equity grants?|vesting schedule|vested shares|unvested shares)\b/;
+
 export function parseInvestmentIntent(text: string): InvestmentIntent | null {
+  if (COMPANY_STOCK.test(text))
+    return { kind: "investments", topic: "company_stock", account: null };
+  if (HSA.test(text) && !/\bshould i (?:open|get|start|use|max out|fund|contribute)\b/.test(text)) {
+    return { kind: "investments", topic: "hsa", account: null };
+  }
   if (COLLEGE.test(text) && !/\bcollege (?:loan|debt)s?\b|\bstudent loan/.test(text)) {
     const age = CHILD_AGE.exec(text);
     const years = age ? Number(age[1] ?? age[2]) : NaN;

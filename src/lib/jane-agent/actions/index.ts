@@ -19,6 +19,16 @@ import {
   benefitsConfirmAll,
   readingConfirm,
   readingDismiss,
+  lifeCoverDependants0,
+  lifeCoverDependants1,
+  lifeCoverDependants2,
+  lifeCoverDependants3,
+  lifeCoverApply,
+  lifeCoverYes,
+  lifeCoverNo,
+  lifeCoverSubmit,
+  lifeCoverBuy,
+  lifeCoverDismiss,
   benefitsDisabilityNone,
   benefitsDisabilityYes,
   benefitsLife1x,
@@ -67,6 +77,10 @@ import {
   investAutoPause,
   investAutoResume,
   collegeStart,
+  hsaLink,
+  hsaInvest,
+  companyLink,
+  companySell,
 } from "./investments";
 import { changeBudget, changeExpected, changeLook } from "./changes";
 import { lifeNever, lifeNo, lifeYes } from "./life";
@@ -79,6 +93,7 @@ import { prefSave, suggestNever } from "./remember";
 import { welcomeTour } from "./welcome";
 import { autopilotSectorSet } from "./sector";
 import { paycheckMove, paycheckSkip, paycheckUndo } from "./paycheck";
+import { billPay, billSkip } from "./billpay";
 import { bundleYes1, bundleYes2, bundleYes3, bundleYes4, bundleYes5 } from "./bundle";
 import { FLOW_PICKS, flowBack, flowCancel } from "./flows";
 
@@ -102,6 +117,16 @@ export const ACTION_HANDLERS: Readonly<Record<ActionId, ActionHandler>> = {
   "benefits.confirm_all": benefitsConfirmAll,
   "reading.confirm": readingConfirm,
   "reading.dismiss": readingDismiss,
+  "lifecover.dependants_0": lifeCoverDependants0,
+  "lifecover.dependants_1": lifeCoverDependants1,
+  "lifecover.dependants_2": lifeCoverDependants2,
+  "lifecover.dependants_3": lifeCoverDependants3,
+  "lifecover.apply": lifeCoverApply,
+  "lifecover.yes": lifeCoverYes,
+  "lifecover.no": lifeCoverNo,
+  "lifecover.submit": lifeCoverSubmit,
+  "lifecover.buy": lifeCoverBuy,
+  "lifecover.dismiss": lifeCoverDismiss,
   "benefits.life_1x": benefitsLife1x,
   "benefits.life_2x": benefitsLife2x,
   "benefits.life_none": benefitsLifeNone,
@@ -204,6 +229,10 @@ export const ACTION_HANDLERS: Readonly<Record<ActionId, ActionHandler>> = {
   "invest.auto_pause": investAutoPause,
   "invest.auto_resume": investAutoResume,
   "college.start": collegeStart,
+  "hsa.link": hsaLink,
+  "hsa.invest": hsaInvest,
+  "company.link": companyLink,
+  "company.sell": companySell,
   // Jane notices changes (spec step 97).
   "change.look": changeLook,
   "change.budget": changeBudget,
@@ -231,6 +260,8 @@ export const ACTION_HANDLERS: Readonly<Record<ActionId, ActionHandler>> = {
   "paycheck.move": paycheckMove,
   "paycheck.skip": paycheckSkip,
   "paycheck.undo": paycheckUndo,
+  "bill.pay": billPay,
+  "bill.skip": billSkip,
 };
 
 const MESSAGE_ID = /^[a-z0-9]{1,40}$/i;

@@ -59,6 +59,7 @@ export const TEAM_ACCESS_RULES: Record<AuditEvent, EventRule> = {
   insurance_policy_cancelled: automatic,
   insurance_claim_started: own,
   employer_benefit_confirmed: own,
+  life_application_submitted: own,
   user_signed_in: own,
   import_completed: own,
   explanations_generated: automatic,
@@ -157,6 +158,7 @@ export const TEAM_ACCESS_RULES: Record<AuditEvent, EventRule> = {
   brokerage_orders_placed: own,
   auto_invest_set: own,
   college_plan_saved: own,
+  equity_grant_saved: own,
 };
 
 export const SHOWN_EVENTS = (Object.keys(TEAM_ACCESS_RULES) as AuditEvent[]).filter(

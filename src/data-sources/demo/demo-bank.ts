@@ -40,7 +40,18 @@ const primaryOf = (detailed: PfcDetailed): PfcPrimary =>
   )!;
 
 type AccountKey =
-  "checking" | "savings" | "card" | "mortgage" | "student" | "auto" | "retirement" | "brokerage";
+  | "checking"
+  | "savings"
+  | "card"
+  | "mortgage"
+  | "student"
+  | "auto"
+  | "retirement"
+  | "brokerage"
+  // Spec step 159: a demo HSA, only when the person links one (DemoExtra).
+  | "hsa"
+  // Spec step 160: a demo employer stock plan (vested RSUs).
+  | "stock_plan";
 
 export const accountId = (seed: string, key: AccountKey) => `demo-${seed}-${key}`;
 
@@ -139,14 +150,24 @@ const MONTHLY: (Template & { days: number[] })[] = [
     amount: [88, 141],
     days: [18],
   },
+  // Paid with the card, whose phone protection (spec step 152) makes Asurion a duplicate.
   {
     key: "phone",
-    account: "checking",
+    account: "card",
     name: "VERIZON WIRELESS",
     merchant: "Verizon Wireless",
     category: "RENT_AND_UTILITIES_TELEPHONE",
     amount: 145,
     days: [20],
+  },
+  {
+    key: "phone-protection",
+    account: "card",
+    name: "ASURION WIRELESS PROTECTION",
+    merchant: "Asurion",
+    category: "GENERAL_SERVICES_INSURANCE",
+    amount: 17,
+    days: [21],
   },
   {
     key: "card-payment",
@@ -584,7 +605,7 @@ const account = (
     balances: { current, available: null, limit: null, iso_currency_code: "USD" },
   }) as unknown as AccountBase;
 
-export function demoAccounts({ seed }: DemoSeed): AccountBase[] {
+export function demoAccounts({ seed }: DemoSeed, extras: readonly DemoExtra[] = []): AccountBase[] {
   return [
     account(seed, "checking", "Demo Checking", "0001", "depository", "checking", 3840.12),
     account(seed, "savings", "Demo Savings", "0002", "depository", "savings", 24310),
@@ -594,8 +615,20 @@ export function demoAccounts({ seed }: DemoSeed): AccountBase[] {
     account(seed, "auto", "Demo Car Loan", "0006", "loan", "auto", 18020),
     account(seed, "retirement", "Demo 401(k)", "0007", "investment", "401k", 84250.4),
     account(seed, "brokerage", "Demo Brokerage", "0008", "investment", "brokerage", 12480.15),
+    // Spec step 159: a demo HSA's balance is what it holds.
+    ...(extras.includes("hsa")
+      ? [account(seed, "hsa", "Demo HSA", "0009", "investment", "hsa", 4271.8)]
+      : []),
+    // Spec step 160: vested Acme shares from work, at the demo price.
+    ...(extras.includes("stock_plan")
+      ? [account(seed, "stock_plan", "Demo Stock Plan", "0010", "investment", "stock plan", 20460)]
+      : []),
   ];
 }
+
+// Extra stand-in accounts a demo-bank person can link (spec step 159 on).
+export const DEMO_EXTRAS = ["hsa", "stock_plan"] as const;
+export type DemoExtra = (typeof DEMO_EXTRAS)[number];
 
 // The next time a day of the month comes round, after `today`.
 function nextDayOfMonth(today: string, dayOfMonth: number): string {

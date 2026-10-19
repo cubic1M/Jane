@@ -243,3 +243,26 @@ test("the mortgage page shows PMI, the escrow change and extra principal", async
     "It doesn't pay now",
   );
 });
+
+// Spec step 116: the stand-in credit score, labelled, with what's helping and hurting.
+test("the credit score is a labelled stand-in, with its factors and card use", async ({
+  context,
+  page,
+  baseURL,
+}) => {
+  const user = await signedInUser("user");
+  userId = user.userId;
+  await context.addCookies([
+    { name: "authjs.session-token", value: user.sessionToken, url: baseURL ?? "" },
+  ]);
+  await page.goto("/connect");
+  await page.getByRole("button", { name: "Link a demo bank" }).click();
+  await expect(page).toHaveURL("/chat", { timeout: 60_000 });
+
+  await page.goto("/loans");
+  await page.getByRole("link", { name: "See your credit score" }).click();
+  await expect(page.getByRole("heading", { level: 1, name: "Credit score" })).toBeVisible();
+  await expect(page.getByRole("note").filter({ hasText: "stand-in score" })).toBeVisible();
+  await expect(page.getByRole("list", { name: "Factors" }).getByRole("listitem")).toHaveCount(5);
+  await expect(page.getByRole("region", { name: "Card use" })).toContainText("of your card limits");
+});

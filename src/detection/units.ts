@@ -62,6 +62,23 @@ export function nextOccurrence(date: string, frequency: string, anchorDay?: numb
   return isoDate(target);
 }
 
+// Day numbers (days since 1970-01-01, UTC), for date math in tight loops.
+export const dayNumber = (date: string) => toUtc(date) / MS_PER_DAY;
+export const fromDayNumber = (day: number) => isoDate(new Date(day * MS_PER_DAY));
+
+// Days in a month (1-12), and the most a month has: "the 31st" is a month's last day.
+export const LAST_DAY_OF_MONTH = 31;
+export const DAYS_PER_WEEK = 7;
+export function daysInMonth(date: string): number {
+  const d = new Date(toUtc(date));
+  return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + 1, 0)).getUTCDate();
+}
+
+export function firstOfMonth(date: string): string {
+  const d = new Date(toUtc(date));
+  return isoDate(new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), 1)));
+}
+
 export function dayOfMonth(date: string): number {
   return new Date(toUtc(date)).getUTCDate();
 }

@@ -8,7 +8,9 @@ import {
 } from "@/data-sources/demo/demo-holdings";
 import {
   addDays,
+  DEMO_EXTRAS,
   DEMO_INSTITUTION,
+  type DemoExtra,
   demoAccounts,
   demoLiabilities,
   demoSwitchTransactions,
@@ -62,17 +64,19 @@ export function demoPlaidApi(
   orders: DemoOrder[] = [],
   // Loans a new lender paid off (spec step 112): at zero from that day, details gone.
   payoffs: { plaidAccountId: string; day: string }[] = [],
+  // Extra stand-in accounts the person linked (spec step 159).
+  extras: readonly DemoExtra[] = [],
 ): PlaidApi {
   const demo = seedOf(accessToken);
   const through = yesterday(now);
-  const holdings = demoHoldings(demo, through, orders);
+  const holdings = demoHoldings(demo, through, orders, extras);
   const securities = demoSecurities(
     through,
     demo.anchor,
     new Set(holdings.map((h) => h.security_id)),
   );
   // An investment account's balance is what it holds (deposits from step 134 add to it).
-  const invested = demoAccounts(demo).map((a) =>
+  const invested = demoAccounts(demo, extras).map((a) =>
     a.type === "investment"
       ? {
           ...a,
@@ -148,7 +152,7 @@ export function demoPlaidApi(
       const start = addDays(start_date, -1);
       const end = end_date < today(now) ? end_date : today(now);
       const all = [
-        ...demoInvestmentTransactions(demo, start, end < through ? end : through),
+        ...demoInvestmentTransactions(demo, start, end < through ? end : through, extras),
         // Orders show the day they filled.
         ...demoOrderTransactions(demo, orders, start, end),
       ];
@@ -231,4 +235,36 @@ export async function demoAnchorFor(
   } catch {
     return null;
   }
+}
+
+// The extras a demo item has, keeping only ones the demo bank knows (spec step 159).
+export const demoExtrasOf = (stored: readonly string[]): DemoExtra[] =>
+  stored.filter((e): e is DemoExtra => (DEMO_EXTRAS as readonly string[]).includes(e));
+
+// Links a stand-in extra (a demo HSA, spec step 159) to the person's demo bank. Returns the
+// demo item's id, or null without a demo bank. The caller refreshes the investments.
+export async function addDemoExtra(
+  userId: string,
+  extra: DemoExtra,
+  { client = defaultClient }: { client?: PrismaClient } = {},
+): Promise<string | null> {
+  const db = scopedFor(userId, client);
+  const item = await db.plaidItems.findFirst({
+    where: { plaidItemId: { startsWith: DEMO_ITEM_PREFIX } },
+    select: { id: true, demoExtras: true },
+  });
+  if (!item) return null;
+  if (!item.demoExtras.includes(extra)) {
+    await db.plaidItems.updateMany({
+      where: { id: item.id },
+      data: { demoExtras: [...item.demoExtras, extra] },
+    });
+    await logAudit(
+      { type: "user", id: userId },
+      "item_linked",
+      { type: "plaid_item", id: item.id },
+      { demo: true, extra },
+    );
+  }
+  return item.id;
 }
