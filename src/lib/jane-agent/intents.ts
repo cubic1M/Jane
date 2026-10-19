@@ -29,6 +29,8 @@ export type Intent =
   | { kind: "life_event"; event: LifeEventKind }
   // Spec step 101: "how was my week?"
   | { kind: "review" }
+  // Spec step 139: "how much have you saved me?"
+  | { kind: "saved" }
   | { kind: "approve_all" }
   | { kind: "undo" }
   | { kind: "pause_autopilot" }
@@ -193,6 +195,8 @@ const LIFE: readonly [LifeEventKind, RegExp][] = [
     /\b(?:having|expecting|had) a baby\b|\b(?:i'?m|we'?re|i am|we are) (?:pregnant|expecting)\b|\bnew baby\b/,
   ],
 ];
+const SAVED =
+  /\bhow much (?:have you|has jane|did you) saved? me\b|\bwhat (?:have you|did you) save(?:d)? me\b|\bmy savings so far\b|\btotal (?:you'?ve )?saved\b/;
 const REVIEW =
   /\b(?:weekly review|week in review|how was my week|how did my week go|recap(?: my| the| of my)? week|my week(?: so far)?)\b/;
 const APPROVE_ALL =
@@ -225,6 +229,7 @@ export function parseIntent(raw: string, asOf: string): Intent {
   if (GREETING.test(text)) return { kind: "greeting", thanks: false };
   if (THANKS.test(text)) return { kind: "greeting", thanks: true };
   if (PAUSE.test(text)) return { kind: "pause_autopilot" };
+  if (SAVED.test(text)) return { kind: "saved" };
   if (REVIEW.test(text)) return { kind: "review" };
   if (CHANGES.test(text)) return { kind: "changes" };
   const life = LIFE.find(([, pattern]) => pattern.test(text));

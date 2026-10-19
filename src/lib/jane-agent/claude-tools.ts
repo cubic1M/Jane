@@ -19,6 +19,7 @@ import { loadChanges } from "@/lib/changes";
 import { listGoals } from "@/lib/goals";
 import { lifeGuessesFor } from "@/lib/life-guesses";
 import { loadUpkeep } from "@/lib/plan-upkeep";
+import { provenSavings } from "@/lib/savings-proof";
 import { listLifeEvents } from "@/lib/life-events";
 import { homeSummary } from "@/lib/home";
 import { formatCents } from "@/lib/money";
@@ -151,6 +152,12 @@ export const CHAT_TOOLS: Anthropic.Tool[] = [
     name: "plan_upkeep",
     description:
       "Plans that keep up (spec step 101): this month's budget tune-up (each budget, its amount and its usual month), transfers to savings Jane could count toward a goal, and the weekly review: what Jane did, what it saved and what's next.",
+    input_schema: noInput,
+  },
+  {
+    name: "proven_savings",
+    description:
+      "What Jane has saved the person (spec step 139): the confirmed total, each saving with the transaction that proves it (a refund that came back, a lower bill, a new plan's first bill, a cancelled charge that stopped), and apart from it what's still an estimate. Only the confirmed total counts as saved.",
     input_schema: noInput,
   },
   {
@@ -368,6 +375,25 @@ export async function runChatTool(
           goal: t.goal.name,
         })),
         weeklyReview: snapshot ? weeklyReview(snapshot, now).body : null,
+      });
+    }
+    case "proven_savings": {
+      const saved = await provenSavings(userId, { client, now });
+      return out({
+        confirmedTotal: money(saved.confirmedCents),
+        receipts: saved.confirmed.map((r) => ({
+          what: r.title,
+          kind: r.kind,
+          saved: money(r.cents),
+          perYear: r.yearly,
+          proof: r.proof,
+        })),
+        estimatedTotal: money(saved.estimatedCents),
+        estimates: saved.estimated.map((e) => ({
+          what: e.title,
+          about: money(e.cents),
+          why: e.why,
+        })),
       });
     }
     case "goals": {

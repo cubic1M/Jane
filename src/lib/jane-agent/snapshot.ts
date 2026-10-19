@@ -10,6 +10,7 @@ import { isUrgent, newestUnreadAlerts } from "@/lib/alerts";
 import { loadChanges, type ChangeView } from "@/lib/changes";
 import { lifeGuessesFor } from "@/lib/life-guesses";
 import { loadUpkeep, type UpkeepSnapshot } from "@/lib/plan-upkeep";
+import { provenSavings } from "@/lib/savings-proof";
 import { comparisonsFor } from "@/lib/compare";
 import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
@@ -85,6 +86,8 @@ export type Snapshot = {
   // Spec step 101: this month's budget tune-up, transfers to count toward a goal, and what
   // autopilot counted lately. Optional, like changes.
   upkeep?: UpkeepSnapshot;
+  // Spec step 139: the savings the person's transactions confirm. Optional, like changes.
+  saved?: { confirmedCents: number };
   // Spec step 128 on: what's in investment accounts.
   investments?: InvestmentSnapshot;
 } & MoreSnapshot &
@@ -126,11 +129,12 @@ async function thinking(
   given: DetectionInput | undefined,
 ) {
   const input = given ?? (await loadDetectionInput(userId, { client, now }));
-  const [changes, lifeGuesses] = await Promise.all([
+  const [changes, lifeGuesses, saved] = await Promise.all([
     loadChanges(userId, { client, now, input }),
     lifeGuessesFor(userId, { client, now, input }),
+    provenSavings(userId, { client, now, input }),
   ]);
-  return { changes, lifeGuesses };
+  return { changes, lifeGuesses, saved: { confirmedCents: saved.confirmedCents } };
 }
 
 export async function loadSnapshot(
@@ -215,7 +219,7 @@ export async function loadSnapshot(
     budgetProgress: home.budgetProgress,
     ...(await loadMore(userId, { client, now })),
     ...(await loadTaxSnapshot(userId, { client, now })),
-    // Spec steps 97 and 100 read the same bank data, so it's loaded once for both.
+    // Spec steps 97, 100 and 139 read the same bank data, so it's loaded once for them.
     ...(await thinking(userId, client, now, input)),
     upkeep: await loadUpkeep(userId, { client, now }),
     investments: await loadInvestmentSnapshot(userId, { client, now }),

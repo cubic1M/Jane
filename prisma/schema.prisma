@@ -324,6 +324,7 @@ model User {
   budgetTuneUps          BudgetTuneUp[]
   goalTransfers          GoalTransfer[]
 
+  savedShares            SavedShare[]
   @@map("users")
 }
 
@@ -1885,4 +1886,21 @@ model AnswerCheckRun {
 
   @@index([createdAt])
   @@map("answer_check_runs")
+}
+
+// A shared "What Jane saved me" total (spec step 139): the confirmed total when it was
+// shared, behind an unguessable link. Only the token's SHA-256 is kept. Nothing else about
+// the person is on the shared page; revoking takes it down.
+model SavedShare {
+  id         String    @id @default(cuid())
+  userId     String    @map("user_id")
+  tokenHash  String    @unique @map("token_hash")
+  totalCents Int       @map("total_cents")
+  createdAt  DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  revokedAt  DateTime? @map("revoked_at") @db.Timestamptz(3)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("saved_shares")
 }

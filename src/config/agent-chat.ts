@@ -32,6 +32,8 @@ export const CHAT_SOURCE_LIMITS: Readonly<Record<string, number>> = {
   upkeep: 2,
   // Spec step 99.
   found: 1,
+  // Spec step 139.
+  saved: 1,
   // Spec step 128 on.
   investments: 2,
 };
@@ -93,6 +95,8 @@ export const MESSAGE_PRIORITY = {
   upkeep: 64,
   // Spec step 99: a policy found from payments, to confirm.
   found_policy: 63,
+  // Spec step 139: a savings milestone, like something Jane finished.
+  saved_milestone: 52,
   review: 900,
   // Spec step 128: what's in investment accounts, the first time Jane sees it.
   investments: 32,
