@@ -1,3 +1,4 @@
+import { INSURANCE_TOOLS, isInsuranceTool, runInsuranceTool } from "./insurance/tools";
 import type Anthropic from "@anthropic-ai/sdk";
 import { BUDGET_SUGGESTION_MONTHS } from "@/config/budgets";
 import { MAX_AFFORD_CENTS } from "@/config/afford";
@@ -55,6 +56,7 @@ export const CHAT_PAGES: Readonly<Record<string, { label: string; href: string }
   // Loans and debt (spec Phase Y, ./debt-tools.ts).
   ...DEBT_CHAT_PAGES,
   today: { label: "See today", href: "/home" },
+  insurance: { label: "See your insurance", href: "/insurance" },
   plan: { label: "Open the plan", href: "/plan" },
   subscriptions: { label: "Open subscriptions", href: "/subscriptions" },
   bills: { label: "See bills", href: "/bills" },
@@ -78,6 +80,8 @@ export const CHAT_TOOLS: Anthropic.Tool[] = [
   ...FROM_ASK,
   // Loans and debt (spec Phase Y, ./debt-tools.ts).
   ...DEBT_TOOLS,
+  // Insurance (spec Phase X).
+  ...INSURANCE_TOOLS,
   {
     name: "safe_to_spend",
     description:
@@ -185,6 +189,7 @@ export async function runChatTool(
   if (isDebtTool(name)) return runDebtTool(userId, name, input, { client, now });
   if (isTaxTool(name)) return runTaxTool(userId, name, { client, now });
   if (isInvestmentTool(name)) return runInvestmentTool(userId, name, input, { client, now });
+  if (isInsuranceTool(name)) return runInsuranceTool(userId, name, input, { client, now });
   const cents: number[] = [];
   const money = (value: number) => {
     cents.push(Math.abs(value));

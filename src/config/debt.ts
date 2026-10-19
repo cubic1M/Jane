@@ -35,9 +35,10 @@ export const MAX_TYPED_DEBT_CENTS = 2_000_000_000;
 // limit, and where its messages go among the rest (higher first).
 export const DEBT_SOURCE_LIMITS = { debts: 1 } as const;
 export const DEBT_MESSAGE_PRIORITY = {
-  // A buy now, pay later plan Jane found, then a debt with no rate, both after the rest.
-  debt_found: 35,
-  debt_missing_rate: 33,
+  // A buy now, pay later plan Jane found, then a debt with no rate: news that can wait,
+  // after the questions other features need answered first (taxes, investments).
+  debt_found: 31,
+  debt_missing_rate: 29,
 } as const;
 
 // What Jane does about debts by herself at each autopilot level (src/config/autopilot.ts),

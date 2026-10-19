@@ -17,6 +17,8 @@ export const ACTION_IDS = [
   "finding.yes",
   "finding.no",
   "finding.pick",
+  // Insurance (spec Phase X).
+  "insurance.gap_no",
   "plan.approve_safe",
   "undo.rule",
   "undo.no",
@@ -80,6 +82,10 @@ export type MessageAction =
 // What a message is about. Every field is optional; each source and action uses its own.
 export type MessageRefs = {
   findingId?: string;
+  // Insurance (spec Phase X): a coverage gap by its key (GAP_KEYS), and the policy a
+  // message is about.
+  insuranceGap?: string;
+  policyId?: string;
   // The finding as Jane described it (src/lib/jane-agent/fingerprint.ts): a button only
   // acts while the finding is still what the message said.
   fingerprint?: string;

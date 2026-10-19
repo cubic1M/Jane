@@ -107,3 +107,29 @@ export const PROFILE_QUESTIONS: readonly ProfileQuestion[] = [
 
 // Jane asks again after this long, in case life has changed.
 export const PROFILE_REVIEW_DAYS = 365;
+
+// Spec step 131: the mix of investments each risk level aims for, as shares of the money
+// invested. The stock/bond split follows the usual ladder of model portfolios (about 30%
+// stocks for the most careful up to about 90% for the boldest, as in target-date funds and
+// robo-adviser models), with about a third of stocks outside the US, roughly
+// international stocks' share of the world's stock markets.
+export const TARGET_MIXES: Readonly<
+  Record<RiskLevel, { us_stocks: number; intl_stocks: number; bonds: number; cash: number }>
+> = {
+  1: { us_stocks: 0.2, intl_stocks: 0.1, bonds: 0.6, cash: 0.1 },
+  2: { us_stocks: 0.3, intl_stocks: 0.15, bonds: 0.5, cash: 0.05 },
+  3: { us_stocks: 0.4, intl_stocks: 0.2, bonds: 0.35, cash: 0.05 },
+  4: { us_stocks: 0.5, intl_stocks: 0.25, bonds: 0.2, cash: 0.05 },
+  5: { us_stocks: 0.6, intl_stocks: 0.3, bonds: 0.08, cash: 0.02 },
+};
+
+// An asset class this many percentage points away from its target counts as off target.
+export const DRIFT_POINTS = 5;
+// Any one company's shares above this share of everything invested count as concentrated:
+// a common rule of thumb is no more than 5% in a single stock, and no more than 10% in the
+// stock of the company you work for (FINRA, "Concentrate on the Concentration").
+export const SINGLE_STOCK_LIMIT = 0.05;
+// Cash above the target by this many percentage points is money sitting idle.
+export const CASH_DRAG_POINTS = 5;
+// Moves smaller than this aren't worth suggesting.
+export const MIN_MOVE_CENTS = 50_000;
