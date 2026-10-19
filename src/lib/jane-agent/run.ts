@@ -67,7 +67,8 @@ export async function runJaneAgent(
   if (!snapshot) return { posted: 0 };
   await closeSettled(userId, { client, now });
 
-  const settings: BrainSettings = { trigger };
+  // Spec step 184: the day as one agenda message, plus whatever is urgent.
+  const settings: BrainSettings = { trigger, agenda: true };
   const db = scopedFor(userId, client);
   const keys = gather(snapshot, now, settings).map((c) => c.dedupeKey);
   const [seen, recent] = await Promise.all([
