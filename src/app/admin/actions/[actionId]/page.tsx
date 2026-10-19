@@ -106,6 +106,7 @@ async function ActionDetail({
               auto: "an automatic follow-up (a charge after a cancellation they approved)",
               link: "a one-tap link in their email or a notification",
               text: "a reply to Jane's plan text",
+              chat: "a button in Jane's chat",
             }[action.decision.source]
           }
           .

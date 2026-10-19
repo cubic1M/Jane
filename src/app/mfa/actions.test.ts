@@ -40,7 +40,8 @@ describe("submitCode", () => {
     vi.mocked(verifySessionCode).mockResolvedValueOnce({ result: "ok", backupCodes: ["a-b"] });
     expect(await submitCode(null, form({ code: "123456", next: "//evil.example" }))).toEqual({
       backupCodes: ["a-b"],
-      next: "/home",
+      // Home is Jane's chat (spec step 81).
+      next: "/chat",
     });
   });
 

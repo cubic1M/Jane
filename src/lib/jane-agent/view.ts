@@ -1,0 +1,67 @@
+import { validTimezone } from "@/lib/digest/week";
+import type { ActionId, ChatMessage, MessageKind, MessageStatus } from "./types";
+
+// A message as the chat shows it (spec step 81): plain data for the page. An open message
+// shows its buttons; an answered one shows what was chosen instead, keeping only its
+// links and an Undo while Undo still works.
+
+export type MessageView = {
+  id: string;
+  kind: MessageKind;
+  fromJane: boolean;
+  // A short tag in front: what sort of message it is.
+  tag: string;
+  time: string;
+  body: string;
+  status: MessageStatus;
+  answeredWith: string | null;
+  note: string | null;
+  buttons: { id: ActionId; label: string; kind: "primary" | "secondary" }[];
+  links: { label: string; href: string }[];
+  // Until when Undo works, so the page can hide it then.
+  undoUntil: string | null;
+};
+
+const TAGS: Record<MessageKind, string> = {
+  brief: "brief",
+  decision: "to decide",
+  done: "done",
+  heads_up: "heads-up",
+  reply: "jane",
+  user: "you",
+};
+
+export function toView(message: ChatMessage, now: Date, timezone: string | null): MessageView {
+  const undoUntil = message.refs.undoUntil ?? null;
+  const undoOpen = undoUntil === null || new Date(undoUntil) > now;
+  const buttons = message.actions.flatMap((a) => {
+    if (a.kind === "link") return [];
+    const isUndo = a.id.startsWith("undo.");
+    if (message.status === "dismissed") return [];
+    if (isUndo && !undoOpen) return [];
+    if (message.status === "answered" && !isUndo) return [];
+    return [{ id: a.id, label: a.label, kind: a.kind }];
+  });
+  return {
+    id: message.id,
+    kind: message.kind,
+    fromJane: message.kind !== "user",
+    tag: TAGS[message.kind],
+    time: message.createdAt.toLocaleString("en-US", {
+      timeZone: validTimezone(timezone),
+      month: "short",
+      day: "numeric",
+      hour: "numeric",
+      minute: "2-digit",
+    }),
+    body: message.body,
+    status: message.status,
+    answeredWith: message.answeredWith,
+    note: message.refs.note ?? null,
+    buttons,
+    links: message.actions.flatMap((a) =>
+      a.kind === "link" ? [{ label: a.label, href: a.href }] : [],
+    ),
+    undoUntil: buttons.some((b) => b.id.startsWith("undo.")) ? undoUntil : null,
+  };
+}

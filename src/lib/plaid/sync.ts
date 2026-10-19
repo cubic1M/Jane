@@ -21,6 +21,7 @@ import type { DemoSwitch } from "@/data-sources/demo/demo-bank";
 import { confirmSwitches, switchOf } from "@/lib/agent/switch";
 import { ensureDemoOptions } from "@/lib/compare";
 import { demoPlaidApi, isDemoToken } from "./demo";
+import { runJaneAgentSafely } from "@/lib/jane-agent/run";
 
 // Brings one Plaid item up to date: accounts, transactions since the saved cursor
 // (added, modified and removed), recurring streams, loans and card rates (Liabilities,
@@ -369,5 +370,7 @@ export async function syncItem(
   await runJob(await enqueueJob("explain_findings", { userId: item.userId }, { client }), {
     client,
   });
+  // Jane says what's new in the chat (spec step 82); a problem there never fails the sync.
+  await runJaneAgentSafely(item.userId, { client, now, trigger: "sync" });
   return result;
 }

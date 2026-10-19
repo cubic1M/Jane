@@ -22,7 +22,9 @@ test("a demo bank fills the report with fake data, labelled as fake, and can be 
 
   await page.goto("/connect");
   await page.getByRole("button", { name: "Link a demo bank" }).click();
-  await expect(page).toHaveURL("/report", { timeout: 60_000 });
+  // Spec step 82: the scan ends in Jane's chat (e2e/chat.spec.ts); the report is a tap away.
+  await expect(page).toHaveURL("/chat", { timeout: 60_000 });
+  await page.goto("/report");
   await expect(page.getByRole("heading", { level: 1 })).toContainText("We found");
   await expect(page.getByRole("link", { name: /Netflix went up/ })).toBeVisible();
   await expect(page.getByRole("note")).toContainText("demo bank with fake data");

@@ -1,4 +1,5 @@
 import type { MetadataRoute } from "next";
+import { HOME_PATH } from "@/config/home";
 
 // The web app manifest, so phones can add Jane to the home screen.
 export default function manifest(): MetadataRoute.Manifest {
@@ -7,7 +8,8 @@ export default function manifest(): MetadataRoute.Manifest {
     name: "Financial Controller",
     short_name: "Jane",
     description: "See how much money you're losing, and approve the fixes.",
-    start_url: "/home",
+    // Jane's chat (spec step 81).
+    start_url: HOME_PATH,
     scope: "/",
     display: "standalone",
     background_color: "#ffffff",

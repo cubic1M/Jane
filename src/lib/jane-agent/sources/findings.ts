@@ -1,0 +1,57 @@
+import { MESSAGE_PRIORITY } from "@/config/agent-chat";
+import { formatCents } from "@/lib/money";
+import type { MessageAction } from "../types";
+import type { SnapshotFinding } from "../snapshot";
+import { sentence, type MessageSource } from "./source";
+
+// New findings worth deciding (spec step 82): each open finding once, the biggest yearly
+// saving first (time-sensitive ones rank higher), with Jane's pick when it compared the
+// options. Buttons: Yes, No, the pick, and Open for the full card.
+
+function pickSentence(pick: NonNullable<SnapshotFinding["pick"]>): string {
+  return pick.savings
+    ? `My pick: ${pick.name}, which earns about ${formatCents(pick.savingCents)} more a year.`
+    : `My pick: ${pick.name}, which saves about ${formatCents(pick.savingCents)} in the first year.`;
+}
+
+const bySavings = (a: SnapshotFinding, b: SnapshotFinding) =>
+  (b.annualSavingsCents ?? -1) - (a.annualSavingsCents ?? -1);
+
+export const findingsSource: MessageSource = {
+  key: "findings",
+  gather(snapshot) {
+    return [...snapshot.findings].sort(bySavings).map((finding) => {
+      const actions: MessageAction[] = [{ id: "finding.yes", label: "Yes", kind: "primary" }];
+      if (finding.pick) {
+        actions.push({
+          id: "finding.pick",
+          label: `Switch to ${finding.pick.name}`,
+          kind: "primary",
+        });
+      }
+      actions.push(
+        { id: "finding.no", label: "No", kind: "secondary" },
+        { id: "open", label: "Open", kind: "link", href: `/report/${finding.findingId}` },
+      );
+      return {
+        kind: "decision",
+        body: [
+          sentence(finding.title),
+          sentence(finding.savings),
+          finding.pick ? pickSentence(finding.pick) : null,
+          "Want me to handle it?",
+        ]
+          .filter(Boolean)
+          .join(" "),
+        refs: {
+          findingId: finding.findingId,
+          fingerprint: finding.fingerprint,
+          ...(finding.pick ? { pickOptionId: finding.pick.optionId } : {}),
+        },
+        actions,
+        dedupeKey: finding.findingId,
+        priority: finding.urgent ? MESSAGE_PRIORITY.urgent_finding : MESSAGE_PRIORITY.finding,
+      };
+    });
+  },
+};

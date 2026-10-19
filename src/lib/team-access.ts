@@ -109,6 +109,7 @@ export const TEAM_ACCESS_RULES: Record<AuditEvent, EventRule> = {
   support_contact_suggested: notOnePerson,
   support_contact_confirmed: notOnePerson,
   proposal_answered: own,
+  chat_action_taken: own,
   agent_message_sent: onAction((m, company) =>
     m.follow_up === true ? `Wrote to ${named(company)} again` : `Wrote to ${named(company)}`,
   ),

@@ -5,14 +5,15 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
 // The first steps pace the hand-off; the last one waits until detection has finished
-// (GET /api/detection/status), then the report opens.
+// (GET /api/detection/status), then the report opens, or Jane's chat after linking the
+// demo bank (spec step 82).
 const STEPS = ["Reading your transactions", "Sorting them into categories", "Looking for savings"];
 const STEP_MS = 700;
 const POLL_MS = 1000;
 // After this long, offer the report anyway rather than leave someone staring at a spinner.
 const SLOW_MS = 20_000;
 
-export function ScanningProgress() {
+export function ScanningProgress({ next = "/report" }: { next?: "/report" | "/chat" }) {
   const router = useRouter();
   const [done, setDone] = useState(0);
   const [detected, setDetected] = useState(false);
@@ -21,13 +22,13 @@ export function ScanningProgress() {
   useEffect(() => {
     const last = STEPS.length - 1;
     if (done === STEPS.length) {
-      router.replace("/report");
+      router.replace(next);
       return;
     }
     if (done === last && !detected) return;
     const timer = setTimeout(() => setDone((d) => d + 1), STEP_MS);
     return () => clearTimeout(timer);
-  }, [done, detected, router]);
+  }, [done, detected, router, next]);
 
   useEffect(() => {
     if (detected) return;

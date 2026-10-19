@@ -4,7 +4,7 @@ import {
   PLAN_URGENT_FINDING_TYPES,
   type PlanOption,
 } from "@/config/plan";
-import type { ActionType, PrismaClient } from "@/generated/prisma/client";
+import type { ActionType, DecisionSource, PrismaClient } from "@/generated/prisma/client";
 import { track } from "@/lib/analytics";
 import {
   ACTION_FOR_FINDING,
@@ -104,13 +104,16 @@ export type PlanAnswerResult =
   | ({ findingId: string; ok: true } & DecisionResult)
   | { findingId: string; ok: false; message: string };
 
+// Answered on /plan, or from the chat (spec step 81, source "chat").
+type AnswerOptions = Options & { source?: Extract<DecisionSource, "plan" | "chat"> };
+
 export async function answerPlanItem(
   userId: string,
   answer: PlanAnswer,
-  { client = defaultClient }: Options = {},
+  { client = defaultClient, source = "plan" }: AnswerOptions = {},
 ): Promise<PlanAnswerResult> {
   try {
-    const result = await recordDecision(userId, { ...answer, source: "plan" }, { client });
+    const result = await recordDecision(userId, { ...answer, source }, { client });
     return { findingId: answer.findingId, ok: true, ...result };
   } catch (error) {
     if (!(error instanceof DecisionError)) throw error;
@@ -123,15 +126,16 @@ export async function answerPlanItem(
 export async function yesToAll(
   userId: string,
   items: { findingId: string; cardHash: string }[],
-  { client = defaultClient }: Options = {},
+  { client = defaultClient, source = "plan" }: AnswerOptions = {},
 ): Promise<PlanAnswerResult[]> {
   const results: PlanAnswerResult[] = [];
   for (const item of items) {
-    results.push(await answerPlanItem(userId, { ...item, choice: "yes" }, { client }));
+    results.push(await answerPlanItem(userId, { ...item, choice: "yes" }, { client, source }));
   }
   await track(userId, "plan_yes_to_all", {
     items: items.length,
     approved: results.filter((r) => r.ok).length,
+    source,
   });
   return results;
 }

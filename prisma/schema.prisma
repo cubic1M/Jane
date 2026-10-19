@@ -116,6 +116,8 @@ enum DecisionSource {
   link
   // A reply to Jane's weekly plan text (spec step 78).
   text
+  // A button on one of Jane's messages in the chat (spec step 81).
+  chat
 
   @@map("decision_source")
 }
@@ -271,6 +273,7 @@ model User {
   agentMessages       AgentMessage[]
   planProposals       PlanProposal[]
   planLinks           PlanLink[]
+  janeMessages        JaneMessage[]
   deadlines           Deadline[]
   sessions            Session[]
   plaidItems          PlaidItem[]
@@ -1482,4 +1485,37 @@ model TextMessage {
   @@unique([userId, weekStart])
   @@index([userId, createdAt])
   @@map("text_messages")
+}
+
+// Jane's chat (spec step 81): every message Jane posts, and later (step 84) what the person
+// types and Jane's answer. Posted by Jane's brain (spec step 82, src/lib/jane-agent).
+model JaneMessage {
+  id           String    @id @default(cuid())
+  userId       String    @map("user_id")
+  // brief, decision, done, heads_up, reply (Jane's answer) or user (what the person typed).
+  kind         String
+  // Fixed wording from a template, never Claude's text unless it passed the guardrails.
+  body         String
+  // What it's about: { findingId, actionId, decisionId, alertId, ... }.
+  refs         Json      @default("{}")
+  // The buttons: [{ id, label, kind: "primary" | "secondary" | "link", href? }]. Each id is
+  // one of the button actions in src/lib/jane-agent/actions.
+  actions      Json      @default("[]")
+  // open, answered or dismissed.
+  status       String    @default("open")
+  // The button's label the person tapped.
+  answeredWith String?   @map("answered_with")
+  answeredAt   DateTime? @map("answered_at") @db.Timestamptz(3)
+  // The same suggestion is never posted twice (finding:<id>, brief:<date>, ...).
+  dedupeKey    String    @map("dedupe_key")
+  // Higher is more important; the brain posts the most important first.
+  priority     Int       @default(0)
+  readAt       DateTime? @map("read_at") @db.Timestamptz(3)
+  createdAt    DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, dedupeKey])
+  @@index([userId, createdAt])
+  @@map("jane_messages")
 }

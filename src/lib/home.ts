@@ -140,6 +140,17 @@ export async function homeSummary(
       { days: COMING_UP_DAYS, limit: COMING_UP_LIMIT },
     ),
     lastUpdated: updated ?? null,
+    // For Jane's heads-ups in the chat (spec step 82): the deadlines page's list, budgets
+    // gone over this month and goals whose date passed short of the target.
+    deadlines,
+    budgetsOver: (budget?.progress ?? [])
+      .filter((p) => p.over)
+      .map((p) => ({ category: p.category, overCents: -p.leftCents, month: budget!.month })),
+    goalsBehind: goals.flatMap((g) =>
+      g.progress.status === "date_passed"
+        ? [{ id: g.id, name: g.name, leftCents: g.progress.leftCents }]
+        : [],
+    ),
   };
 }
 

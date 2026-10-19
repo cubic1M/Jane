@@ -47,6 +47,7 @@ export async function exportUserData(
     documents,
     deadlines,
     lifeEvents,
+    janeMessages,
     teamAccess,
     textSetting,
     textMessages,
@@ -357,6 +358,21 @@ export async function exportUserData(
         completedAt: true,
       },
     }),
+    // Jane's chat (spec step 81): every message, with the buttons and what they answered.
+    db.janeMessages.findMany({
+      select: {
+        kind: true,
+        body: true,
+        refs: true,
+        actions: true,
+        status: true,
+        answeredWith: true,
+        answeredAt: true,
+        readAt: true,
+        createdAt: true,
+      },
+      orderBy: { createdAt: "asc" },
+    }),
     // When the team or Jane's agent viewed or acted on their data (spec step 74): every
     // entry, by role, never a team member's name or id.
     teamAccessFor(userId, { client, limit: null }),
@@ -427,6 +443,7 @@ export async function exportUserData(
     },
     deadlines,
     lifeEvents,
+    janeMessages,
     teamAccess: teamAccess.map(({ at, who, what, why, actionId }) => ({
       at,
       who,

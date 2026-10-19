@@ -27,7 +27,8 @@ test("the hubs gather every page, with live numbers from the demo bank", async (
 
   await page.goto("/connect");
   await page.getByRole("button", { name: "Link a demo bank" }).click();
-  await expect(page).toHaveURL("/report", { timeout: 60_000 });
+  // The scan ends in Jane's chat (spec step 82).
+  await expect(page).toHaveURL("/chat", { timeout: 60_000 });
 
   // Jane: what's to decide, with Jane's pick where there's one.
   await page.goto("/jane");

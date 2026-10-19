@@ -25,6 +25,7 @@ vi.mock("@/lib/session", () => ({ requireUser: vi.fn(async () => ({ id: "user_1"
 vi.mock("@/lib/csv-access", () => ({ canImportCsv: vi.fn() }));
 vi.mock("@/detection/engine", () => ({ runDetection }));
 vi.mock("@/lib/jobs", () => ({ enqueueJob, runJob }));
+vi.mock("@/lib/jane-agent/run", () => ({ runJaneAgentSafely: vi.fn() }));
 vi.mock("next/server", () => ({
   after: vi.fn((callback: () => Promise<void>) => afterCallbacks.push(callback)),
 }));
@@ -38,6 +39,7 @@ import { CsvFormatError } from "@/data-sources/csv/csv-source";
 import { track } from "@/lib/analytics";
 import { logAudit } from "@/lib/audit";
 import { canImportCsv } from "@/lib/csv-access";
+import { runJaneAgentSafely } from "@/lib/jane-agent/run";
 
 const CHASE_CARD =
   "Transaction Date,Post Date,Description,Category,Type,Amount,Memo\n" +
@@ -171,7 +173,7 @@ describe("confirmImport", () => {
     expect(runDetection).toHaveBeenCalledWith("user_1");
   });
 
-  it("queues explanations as a job and runs it after responding", async () => {
+  it("queues explanations as a job and runs it after responding, then Jane's chat", async () => {
     importCsvFiles.mockResolvedValue({ parsed: 1, inserted: 1, duplicates: 0, skipped: 0 });
 
     await expect(
@@ -180,8 +182,12 @@ describe("confirmImport", () => {
     expect(enqueueJob).toHaveBeenCalledWith("explain_findings", { userId: "user_1" });
     expect(runJob).not.toHaveBeenCalled();
 
+    expect(runJaneAgentSafely).not.toHaveBeenCalled();
+
     for (const callback of afterCallbacks) await callback();
     expect(runJob).toHaveBeenCalledWith("job_1");
+    // Spec step 82: Jane says what's new in the chat once the import is in.
+    expect(runJaneAgentSafely).toHaveBeenCalledWith("user_1", { trigger: "import" });
   });
 
   it("still moves to /scanning when detection fails after a successful import", async () => {

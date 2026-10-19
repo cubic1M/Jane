@@ -81,7 +81,9 @@ describe("navigation", () => {
     for (const path of ["/ahead", "/afford", "/deadlines", "/debt", "/year", "/tax-pack"]) {
       expect(tabFor(path), path).toBe("ahead");
     }
-    expect(tabFor("/ask")).toBe("ask");
+    // Spec step 81: Ask is opened from the chat, and lights up Chat.
+    expect(tabFor("/chat")).toBe("chat");
+    expect(tabFor("/ask")).toBe("chat");
     for (const path of ["/settings", "/settings/team-access", "/connect", "/import"]) {
       expect(tabFor(path), path).toBe("settings");
     }
@@ -92,8 +94,8 @@ describe("navigation", () => {
     expect(tabFor("/plans")).toBeNull();
   });
 
-  it("shows five places in order, each linking to its own first page", () => {
-    expect(TABS.map((t) => t.label)).toEqual(["Today", "Jane", "Money", "Ahead", "Ask"]);
+  it("shows five places in order, Chat first, each linking to its own first page", () => {
+    expect(TABS.map((t) => t.label)).toEqual(["Chat", "Today", "Jane", "Money", "Ahead"]);
     for (const tab of [...TABS, SETTINGS_TAB]) expect(tab.paths[0]).toBe(tab.href);
   });
 });

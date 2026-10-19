@@ -59,6 +59,8 @@ export type AuditEvent =
   | "support_contact_suggested"
   | "support_contact_confirmed"
   | "proposal_answered"
+  // A button on one of Jane's chat messages (spec step 81): which one, never the text.
+  | "chat_action_taken"
   // The action agent (src/lib/agent/run.ts).
   | "agent_message_sent"
   | "agent_reply_received"

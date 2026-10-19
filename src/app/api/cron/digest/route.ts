@@ -3,6 +3,7 @@ import { runMonthlyCheckIns } from "@/lib/check-in-email";
 import { runDigests } from "@/lib/digest/send";
 import { recordRun, reportMissedJobs } from "@/lib/health";
 import { runDueJobs } from "@/lib/jobs";
+import { runJaneAgentForAll } from "@/lib/jane-agent/run";
 import { runPlanTexts } from "@/lib/messaging/texts";
 
 // Vercel Cron, daily: sends this week's digest to anyone whose Monday has arrived. With
@@ -30,6 +31,12 @@ export async function GET(request: Request) {
         // there never stops the rest of the run.
         planTexts: await runPlanTexts().catch((error) => {
           console.error("Plan texts failed", { error: String(error) });
+          return null;
+        }),
+        // Jane's daily look at everyone's money, in the chat (spec step 82). A problem
+        // there never stops the rest of the run.
+        chat: await runJaneAgentForAll().catch((error) => {
+          console.error("Jane's daily chat run failed", { error: String(error) });
           return null;
         }),
         // A second daily chance for jobs waiting to be retried.

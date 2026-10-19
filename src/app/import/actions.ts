@@ -6,6 +6,7 @@ import { after } from "next/server";
 import { CsvFormatError, type CsvFile } from "@/data-sources/csv/csv-source";
 import { ACCOUNT_KINDS, isAccountKind } from "@/data-sources/types";
 import { runDetection } from "@/detection/engine";
+import { runJaneAgentSafely } from "@/lib/jane-agent/run";
 import { track } from "@/lib/analytics";
 import { logAudit } from "@/lib/audit";
 import { canImportCsv } from "@/lib/csv-access";
@@ -132,6 +133,11 @@ export async function confirmImport(formData: FormData): Promise<ActionResult> {
   // Card text from Claude takes a few seconds per finding, so it's written after the
   // response, as a job that's retried if it fails. Until then the report shows templates.
   const job = await enqueueJob("explain_findings", { userId: db.userId });
-  after(() => runJob(job));
+  const userId = db.userId;
+  after(async () => {
+    await runJob(job);
+    // Then Jane says what's new in the chat (spec step 82).
+    await runJaneAgentSafely(userId, { trigger: "import" });
+  });
   redirect("/scanning");
 }

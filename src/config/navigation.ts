@@ -1,8 +1,10 @@
-// The main menu (spec step 79): four tabs plus Ask, with Settings behind the profile menu.
-// Every signed-in page belongs to exactly one of them, so the right tab lights up wherever
-// the person is. A page's sub-pages (/report/abc, /settings/two-factor) belong with it.
+// The main menu (spec step 79): Jane's chat first (spec step 81), then four tabs, with
+// Settings behind the profile menu. Every signed-in page belongs to exactly one of them, so
+// the right tab lights up wherever the person is. A page's sub-pages (/report/abc,
+// /settings/two-factor) belong with it. Ask left the menu for the chat's message box, and
+// still lights up Chat.
 
-export type TabKey = "today" | "jane" | "money" | "ahead" | "ask" | "settings";
+export type TabKey = "chat" | "today" | "jane" | "money" | "ahead" | "settings";
 
 export type Tab = {
   key: TabKey;
@@ -14,6 +16,7 @@ export type Tab = {
 
 // In menu order. Settings isn't a tab: it's in the profile menu, and lights that up.
 export const TABS: readonly Tab[] = [
+  { key: "chat", label: "Chat", href: "/chat", paths: ["/chat", "/ask"] },
   { key: "today", label: "Today", href: "/home", paths: ["/home"] },
   {
     key: "jane",
@@ -55,7 +58,6 @@ export const TABS: readonly Tab[] = [
       "/year",
     ],
   },
-  { key: "ask", label: "Ask", href: "/ask", paths: ["/ask"] },
 ];
 
 export const SETTINGS_TAB: Tab = {

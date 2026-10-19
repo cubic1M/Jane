@@ -20,6 +20,7 @@ async function violations(page: Page, path: string) {
 
 const SIGNED_OUT = ["/", "/login", "/signup", "/privacy", "/terms", "/security", "/offline"];
 const SIGNED_IN = [
+  "/chat",
   "/home",
   "/plan",
   "/report",

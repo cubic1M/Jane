@@ -92,7 +92,11 @@ describe.runIf(url)("Jane's plan against a real database", () => {
     expect(decisions.every((d) => d.source === "plan" && d.choice === "yes")).toBe(true);
     expect(await client.action.count({ where: { userId } })).toBe(2);
     expect(await planFor(userId, { client })).toEqual([]);
-    expect(track).toHaveBeenCalledWith(userId, "plan_yes_to_all", { items: 2, approved: 2 });
+    expect(track).toHaveBeenCalledWith(userId, "plan_yes_to_all", {
+      items: 2,
+      approved: 2,
+      source: "plan",
+    });
 
     // Asking again doesn't record twice.
     const again = await yesToAll(
