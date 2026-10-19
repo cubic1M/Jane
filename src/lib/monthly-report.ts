@@ -96,9 +96,17 @@ export async function monthlyReportFor(
   const month = previousMonth(today);
   const kept = await storedReport(userId, month, { client });
   if (kept) return kept;
+  // Nothing in the month at all: say so cheaply, without building the report each run.
+  const from = new Date(`${month}-01T00:00:00Z`);
+  const to = new Date(`${nextMonth(month)}-01T00:00:00Z`);
+  const db = scopedFor(userId, client);
+  const [transactions, transfers] = await Promise.all([
+    db.transactions.count({ where: { date: { gte: from, lt: to } } }),
+    db.moneyTransfers.count({ where: { status: "completed", runOn: { gte: from, lt: to } } }),
+  ]);
+  if (transactions === 0 && transfers === 0) return null;
   const report = await buildMonthlyReport(userId, month, { client, now });
   if (empty(report)) return null;
-  const db = scopedFor(userId, client);
   await db.monthlyReports
     .create({
       data: {
