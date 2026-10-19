@@ -32,7 +32,7 @@ import type { DemoSwitch } from "@/data-sources/demo/demo-bank";
 import { confirmSwitches, switchOf } from "@/lib/agent/switch";
 import { ensureDemoOptions } from "@/lib/compare";
 import { ensureDemoPolicies } from "@/lib/insurance/profile";
-import { reshopPerson } from "@/lib/insurance/shop";
+import { insuranceAfterSync } from "@/lib/insurance/daily";
 import { confirmInsuranceSwitches } from "@/lib/insurance/switch";
 import { demoPlaidApi, isDemoToken } from "./demo";
 import { runJaneAgentSafely } from "@/lib/jane-agent/run";
@@ -536,9 +536,8 @@ export async function syncItem(
   await confirmInsuranceSwitches({ client, now, userId: item.userId });
   // Spec step 104: Jane reshops insurance that renews soon or went up, by herself. A
   // problem there never fails the sync; the daily run tries again.
-  await reshopPerson(item.userId, { client, now }).catch((error) =>
-    console.error("Insurance reshop failed", { userId: item.userId, error: String(error) }),
-  );
+  // Spec step 106: and checks the cover once a year and after a life event.
+  await insuranceAfterSync(item.userId, { client, now });
   // Card text from Claude, as a job: retried later if it fails, without failing the sync.
   await runJob(await enqueueJob("explain_findings", { userId: item.userId }, { client }), {
     client,

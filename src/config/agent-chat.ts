@@ -66,6 +66,8 @@ export const MESSAGE_PRIORITY = {
   // something Jane finished.
   insurance_shop: 64,
   insurance_checked: 48,
+  // Spec step 106: the coverage checkup, a heads-up that can wait.
+  insurance_checkup: 46,
   urgent_alert: 95,
   deadline: 90,
   waiting_on_you: 85,
