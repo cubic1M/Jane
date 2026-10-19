@@ -2,6 +2,7 @@ import type { PrismaClient } from "@/generated/prisma/client";
 import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
 import { teamAccessFor } from "@/lib/team-access-loader";
+import { insuranceExport } from "@/lib/insurance/export";
 
 // "Download my data": everything the app holds about one person, as JSON. Never another
 // person's rows, never secrets (Plaid access tokens and sync cursors, the two-factor
@@ -375,6 +376,8 @@ export async function exportUserData(
     // entry, by role, never a team member's name or id.
     teamAccessFor(userId, { client, limit: null }),
   ]);
+  // Insurance (spec Phase X): every policy on the profile and the household facts.
+  const insurance = await insuranceExport(userId, { client });
 
   return {
     exportedAt: now.toISOString(),
@@ -414,6 +417,7 @@ export async function exportUserData(
     deadlines,
     lifeEvents,
     janeMessages,
+    insurance,
     teamAccess: teamAccess.map(({ at, who, what, why, actionId }) => ({
       at,
       who,

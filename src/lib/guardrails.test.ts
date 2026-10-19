@@ -67,6 +67,14 @@ describe("checkGuardrails", () => {
     expect(issuesOf("Raising your deductible lowers the premium.")).toEqual([]);
   });
 
+  it("allows liability cover on a policy, but not being liable", () => {
+    expect(issuesOf("It has liability cover only.")).toEqual([]);
+    expect(issuesOf("Injury liability, per person: 50 thousand.")).toEqual([]);
+    expect(issuesOf("Personal liability coverage is included.")).toEqual([]);
+    expect(issuesOf("You may be liable for the damage.")).toContain("tax_or_legal_advice");
+    expect(issuesOf("Your liability here is limited by law.")).toContain("tax_or_legal_advice");
+  });
+
   describe("(c) dollar figures", () => {
     it("rejects a figure that matches nothing in the evidence or estimate", () => {
       expect(issuesOf("Cancelling could save $250 a year.")).toEqual(["unsupported_dollar_figure"]);

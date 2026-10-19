@@ -52,7 +52,8 @@ const TAX_OR_LEGAL = [
   /\blegal(ly)?\b/i,
   /\b(lawyer|attorney|lawsuit|litigation|court)s?\b/i,
   /\bsue\b/i,
-  /\bliab(le|ility)\b/i,
+  // Liability cover on an insurance policy is a kind of cover, not legal advice.
+  /(?<!(?:injury|damage|personal) )\bliab(le|ility)\b(?! (?:cover|coverage|insurance|limits?|only)\b)(?!, per\b)/i,
 ];
 
 // (d) Promised outcomes. Savings are estimates: "could save about", never "will save".

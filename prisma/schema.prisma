@@ -305,6 +305,9 @@ model User {
   checkIns            CheckIn[]
   documents           Document[]
   lifeEvents          LifeEvent[]
+  // Insurance (spec Phase X).
+  insurancePolicies   InsurancePolicy[]
+  insuranceProfile    InsuranceProfile?
 
   @@map("users")
 }
@@ -1359,10 +1362,66 @@ model Document {
   uploadedAt          DateTime  @default(now()) @map("uploaded_at") @db.Timestamptz(3)
   updatedAt           DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
 
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user              User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  insurancePolicies InsurancePolicy[]
 
   @@index([userId, uploadedAt])
   @@map("documents")
+}
+
+// One insurance policy on the person's profile (spec step 102): typed, read from a policy
+// document, found from payments (step 99) or bound by Jane (step 105). Kinds, sources,
+// statuses and the cover fields are in src/config/insurance.ts.
+model InsurancePolicy {
+  id               String    @id @default(cuid())
+  userId           String    @map("user_id")
+  kind             String
+  carrier          String
+  // active, found (not confirmed yet), pending, cancelled or removed.
+  status           String    @default("active")
+  source           String
+  premiumCents     Int?      @map("premium_cents")
+  // monthly, quarterly, semiannual or yearly (PREMIUM_FREQUENCIES in src/config/documents.ts).
+  premiumFrequency String?   @map("premium_frequency")
+  deductibleCents  Int?      @map("deductible_cents")
+  // The cover limits by key (COVERAGE_FIELDS): cents, true/false, years or a percent.
+  coverage         Json      @default("{}")
+  // What's covered, in one line; checked by the guardrails before it's shown.
+  covers           String?
+  renewalDate      DateTime? @map("renewal_date") @db.Date
+  // How long one term runs, in months (6 or 12).
+  termMonths       Int       @default(12) @map("term_months")
+  // The policy document it was read from, if any.
+  documentId       String?   @unique @map("document_id")
+  // The insurer's payments in the person's transactions (normalizeMerchant key), if known.
+  merchantKey      String?   @map("merchant_key")
+  cancelledAt      DateTime? @map("cancelled_at") @db.Timestamptz(3)
+  createdAt        DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt        DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  document Document? @relation(fields: [documentId], references: [id], onDelete: SetNull)
+
+  @@index([userId, status])
+  @@map("insurance_policies")
+}
+
+// The household facts that matter for cover (spec step 102), as the person typed them.
+// Null means not said: housing and cars are then read from the accounts.
+model InsuranceProfile {
+  userId        String   @id @map("user_id")
+  // own, rent or other.
+  housing       String?
+  vehicles      Int?
+  dependants    Int?
+  pets          Int?
+  // Gaps the person said they don't need (GAP_KEYS), never brought up again.
+  dismissedGaps String[] @default([]) @map("dismissed_gaps")
+  updatedAt     DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("insurance_profiles")
 }
 
 // What kind of hand-entered deadline it is (spec step 71).

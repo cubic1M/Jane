@@ -81,7 +81,11 @@ export type AuditEvent =
   | "other_sessions_signed_out"
   // One of Jane's chat messages went out as a notification (spec step 85): the channel
   // and the kind of message, never its text.
-  | "chat_notification_sent";
+  | "chat_notification_sent"
+  // Insurance (spec Phase X): a policy saved or removed, the household facts saved.
+  | "insurance_policy_saved"
+  | "insurance_policy_removed"
+  | "insurance_household_saved";
 
 export type AuditActor = { type: ActorType; id: string | null };
 

@@ -276,6 +276,7 @@ describe.runIf(url)("the hubs against a real database", () => {
       recurring: { count: 0, yearlyCents: 0 },
       debt: { accounts: 0, owedCents: 0 },
       documents: 0,
+      insurance: { policies: 0, gaps: 0 },
     });
     expect(moneyTiles(money).flatMap((g) => g.tiles.map((t) => t.label))).not.toContain(
       "Investments",

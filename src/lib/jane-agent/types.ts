@@ -36,6 +36,8 @@ export const ACTION_IDS = [
   // Typing to Jane (spec step 84).
   "goal.start",
   "autopilot.pause",
+  // Insurance (spec Phase X).
+  "insurance.gap_no",
 ] as const;
 export type ActionId = (typeof ACTION_IDS)[number];
 
@@ -72,6 +74,10 @@ export type MessageRefs = {
   // The goal "Start a goal for it" would add (spec step 84): money in cents, date
   // YYYY-MM-DD.
   goal?: { name: string; targetCents: number; targetDate: string };
+  // Insurance (spec Phase X): a coverage gap by its key (GAP_KEYS), and the policy a
+  // message is about.
+  insuranceGap?: string;
+  policyId?: string;
 };
 
 // A message the brain wants to post.

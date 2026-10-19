@@ -171,6 +171,6 @@ export async function loadSnapshot(
       .filter((a) => isUrgent(a.type) && !ALERTS_SAID_ELSEWHERE.includes(a.type))
       .map((a) => ({ id: a.id, title: a.title, body: a.body })),
     budgetProgress: home.budgetProgress,
-    ...(await loadMore(userId, { client })),
+    ...(await loadMore(userId, { client, now })),
   };
 }

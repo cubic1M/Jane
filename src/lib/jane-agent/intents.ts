@@ -1,6 +1,7 @@
 import { CHAT_WEEK_DAYS } from "@/config/agent-chat";
 import { CATEGORY_LABELS, UNCATEGORIZED } from "@/insights/labels";
 import { parseMoneyToCents } from "@/lib/money";
+import { parseInsurance, type InsuranceIntent } from "./insurance/intents";
 
 // What the person typed to Jane, understood by rules (spec step 84). Pure: the text and
 // today's date in, one intent out. Works with no Claude key at all; anything it can't
@@ -36,6 +37,8 @@ export type Intent =
   // days is null for the usual coming-up list.
   | { kind: "coming_up"; days: number | null }
   | { kind: "act"; verb: ActVerb; target: string }
+  // Insurance (spec Phase X): ./insurance/intents.ts.
+  | InsuranceIntent
   | { kind: "unknown" };
 
 const MONTHS = [
@@ -225,6 +228,9 @@ export function parseIntent(raw: string, asOf: string): Intent {
   if (cancel) return { kind: "act", verb: "cancel", target: cleanTarget(cancel[1]) };
   const lower = LOWER.exec(text);
   if (lower) return { kind: "act", verb: "lower", target: cleanTarget(lower[1]) };
+
+  const insurance = parseInsurance(text);
+  if (insurance) return insurance;
 
   return { kind: "unknown" };
 }

@@ -16,6 +16,8 @@ export const CHAT_SOURCE_LIMITS: Readonly<Record<string, number>> = {
   steps: 2,
   budgets: 1,
   things: 1,
+  // Insurance (spec Phase X).
+  insurance: 1,
 };
 
 // Quiet hours in the person's timezone (users.timezone): nothing is posted from 9pm to
@@ -60,6 +62,8 @@ export const MESSAGE_PRIORITY = {
   setup: 65,
   budget_nearly_over: 44,
   asset_prompt: 30,
+  // Insurance (spec step 102): cover that looks missing, after budgets and goals.
+  insurance_gap: 35,
 } as const;
 
 // The chat page shows the last this-many messages, with "Show earlier" for more.
