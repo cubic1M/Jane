@@ -281,3 +281,19 @@ export const LIFE_COVER_YEARS_OF_PAY = 10;
 export const LIFE_COVER_DEFAULT_CENTS = 50_000_000;
 // People checked per daily run.
 export const CHECKUP_DAILY_LIMIT = 200;
+
+// --- Insurance on autopilot (spec step 108) ------------------------------------------------
+// What Jane does with insurance by herself at each autopilot level (src/config/autopilot.ts).
+// Insurance is never approved by a standing rule (NEVER_BY_RULE): buying, changing or
+// cancelling cover always takes the person's own tap.
+export const INSURANCE_AUTOPILOT: Record<"ask" | "safe" | "all" | "custom" | "none", string> = {
+  none: "I watch every renewal and price rise, reshop each policy 45 days before it renews, check your cover once a year and after a life event, and remind you of claim steps. I ask you before buying anything.",
+  ask: "I watch every renewal and price rise, reshop each policy 45 days before it renews, check your cover once a year and after a life event, and remind you of claim steps. I ask you before buying anything.",
+  safe: "I watch every renewal and price rise, reshop each policy 45 days before it renews, check your cover once a year and after a life event, and remind you of claim steps. I ask you before buying anything.",
+  custom:
+    "I watch every renewal and price rise, reshop each policy 45 days before it renews, check your cover once a year and after a life event, and remind you of claim steps. I ask you before buying anything.",
+  all: "I watch every renewal and price rise, reshop each policy 45 days before it renews, and keep the best switch ready so it's one tap: I refresh its quotes before they expire. I also check your cover once a year and remind you of claim steps. Buying still takes your tap.",
+};
+// At "handle everything", a ready pick's quotes are refreshed this many days before they
+// expire, so the one tap always works.
+export const PICK_REFRESH_DAYS = 5;

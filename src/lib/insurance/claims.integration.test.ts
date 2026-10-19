@@ -198,7 +198,7 @@ describe.runIf(url)("the claims helper against a real database", () => {
     expect(reply.refs.claim).toMatchObject({ kind: "home", event: "break_in", policyId: null });
     await policyOf(me, "renters", "Lemonade");
     const { reply: ask } = await sendToJane(me, "I need to file a claim", { client, now: NOW });
-    expect(ask.body).toMatch(/^I can help with that\. Which insurance is it on/);
+    expect(ask.body).toMatch(/^Tell me what happened and I'll show what to do now/);
     expect(ask.body).toContain("- Lemonade renters insurance");
     const { reply: renters } = await sendToJane(me, "someone broke into my apartment", {
       client,

@@ -3,6 +3,7 @@ import { POLICY_KINDS, QUOTABLE_KINDS, type PolicyKind } from "@/config/insuranc
 import { daysBetween } from "@/detection/units";
 import { checkGuardrails } from "@/lib/guardrails";
 import { coverageLines } from "@/lib/insurance/coverage";
+import { claimContact } from "@/lib/insurance/claim-rules";
 import { gapAdvice, kindWords } from "@/lib/insurance/gaps";
 import { yearlyPremium } from "@/lib/insurance/policies";
 import { formatCents } from "@/lib/money";
@@ -114,7 +115,10 @@ function about(
     default: {
       const lines = coverWords(p);
       return lines.length > 0
-        ? { line: `${name}:\n${lines.map((l) => `- ${l}`).join("\n")}`, missing: false }
+        ? {
+            line: `${name} covers what's below, from its record.\n${lines.map((l) => `- ${l}`).join("\n")}`,
+            missing: false,
+          }
         : { line: `I don't have what ${policyName(p)} covers yet.`, missing: true };
     }
   }
@@ -128,6 +132,23 @@ export function insuranceReply(
   const profile = insurance ?? { policies: [], gaps: [] };
 
   const all = profile.policies;
+
+  // Spec step 108: how to reach each insurer, from the partner's catalog when known.
+  if (intent.ask === "contact") {
+    const policies = (
+      intent.policyKind ? all.filter((p) => p.kind === intent.policyKind) : all
+    ).filter((p) => p.status === "active" || p.status === "pending");
+    if (policies.length === 0) return noPolicy(intent.policyKind, profile);
+    const lines = policies.map((p) => {
+      const contact = claimContact(p.carrier);
+      return `- ${p.carrier} ${kindWords(p.kind)}: ${contact.phone ? `claims line ${contact.phone}` : "on your insurance card, policy documents or their app"}`;
+    });
+    return {
+      body: `${policies.length === 1 ? "Here's how to reach your insurer." : "Here's how to reach each insurer."}\n${lines.join("\n")}\nIf something happened, tell me what, like "I had a car accident", and I'll walk you through the claim.`,
+      actions: [SEE, { id: "open", label: "Your documents", kind: "link", href: "/documents" }],
+      refs: {},
+    };
+  }
 
   // Spec step 105: how a switch Jane is doing is going.
   if (intent.ask === "switch") {
@@ -167,7 +188,7 @@ export function insuranceReply(
     }
     const advice = "advice" in profile && profile.advice;
     return {
-      body: `${profile.gaps.length === 1 ? "One thing looks" : `${profile.gaps.length} things look`} missing from your cover:\n${profile.gaps.map((g) => `- ${g.title}. ${g.why}${advice ? ` ${gapAdvice(g).text}` : ""}`).join("\n")}`,
+      body: `${profile.gaps.length === 1 ? "One thing looks" : `${profile.gaps.length} things look`} missing from your cover.\n${profile.gaps.map((g) => `- ${g.title}. ${g.why}${advice ? ` ${gapAdvice(g).text}` : ""}`).join("\n")}`,
       actions: [SEE],
       // Demo advice (spec step 98) is labelled in the chat.
       refs: advice ? { advice: true } : {},
@@ -180,7 +201,7 @@ export function insuranceReply(
   if (intent.ask === "list" && !intent.policyKind) {
     const gaps = profile.gaps.length;
     return {
-      body: `You have ${policies.length === 1 ? "1 policy" : `${policies.length} policies`} on file:\n${policies.map((p) => listLine(p, asOf)).join("\n")}${gaps > 0 ? `\n${gaps === 1 ? "One thing looks" : `${gaps} things look`} missing from your cover: ask me "what am I missing?"` : ""}`,
+      body: `You have ${policies.length === 1 ? "1 policy" : `${policies.length} policies`} on file.\n${policies.map((p) => listLine(p, asOf)).join("\n")}${gaps > 0 ? `\n${gaps === 1 ? "One thing looks" : `${gaps} things look`} missing from your cover. Ask me "what am I missing?"` : ""}`,
       actions: [SEE],
       refs: {},
     };

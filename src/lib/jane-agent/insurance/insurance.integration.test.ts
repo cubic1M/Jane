@@ -111,7 +111,7 @@ describe.runIf(url)("insurance in Jane's chat, against a real database", () => {
       "Your Allstate home insurance renews on Jan 15, 2027, in 88 days.",
     );
     expect((await answer("what does my home insurance cover"))?.body).toBe(
-      "Your Allstate home insurance:\n- The home itself: $400,000.00",
+      "Your Allstate home insurance covers what's below, from its record.\n- The home itself: $400,000.00",
     );
     expect((await answer("what insurance am I missing"))?.body).toMatch(/^Nothing looks missing/);
   });
