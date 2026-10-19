@@ -15,7 +15,8 @@
     "test:watch": "vitest",
     "test:e2e": "playwright test",
     "postinstall": "prisma generate",
-    "check:launch": "node scripts/launch-check.ts"
+    "check:launch": "node scripts/launch-check.ts",
+    "checks:answers": "ANSWER_CHECKS=1 vitest run src/lib/jane-agent/checks/cli.test.ts --silent=false"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.135.0",
