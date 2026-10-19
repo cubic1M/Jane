@@ -23,7 +23,12 @@ export type TaxIntent =
   // Spec step 121: the withholding checkup.
   | { kind: "tax"; ask: "withholding" }
   // Spec step 122: ways to pay less.
-  | { kind: "tax"; ask: "savings" };
+  | { kind: "tax"; ask: "savings" }
+  // Spec step 123: freelancers.
+  | { kind: "tax"; ask: "quarterly" }
+  | { kind: "tax"; ask: "set_aside" }
+  | { kind: "tax"; ask: "home_office" }
+  | { kind: "tax"; ask: "miles"; miles: number | null };
 
 const NUMBER_WORDS: Readonly<Record<string, number>> = {
   no: 0,
@@ -92,6 +97,14 @@ const WITHHOLDING =
   /\bw-?4\b|\bwithholding\b|\bwithhold(?:ing)? (?:enough|too much|too little|more|less)\b|\b(?:am i|are we) (?:having|getting) enough (?:tax )?(?:taken|withheld)\b|\btoo much (?:tax )?(?:taken out|withheld)\b/;
 const SAVINGS =
   /\bpay less (?:in )?tax(?:es)?\b|\bsave (?:on|money on) (?:my )?tax(?:es)?\b|\btax savings?\b|\b(?:lower|reduce|cut) (?:my |our )?tax(?:es| bill)?\b|\btax (?:breaks?|deductions?|credits?)\b|\bwhat (?:can|could) i deduct\b|\bdeductions? (?:can|could) i (?:take|claim)\b/;
+const QUARTERLY_ASK =
+  /\b(?:quarterly|estimated) (?:tax(?:es)?|payments?|tax payments?)\b|\bself[- ]employment tax\b|\b1040-?es\b/;
+const SET_ASIDE =
+  /\bset aside\b.*\btax(?:es)?\b|\bhow much (?:should|do) i (?:save|put aside|set aside|keep) for tax(?:es)?\b/;
+const HOME_OFFICE = /\bhome office\b/;
+const MILES_ADD =
+  /\b(?:i )?(?:drove|driven|log|add|record) (\d{1,3}(?:,\d{3})*|\d+) (?:business |work )?miles\b/;
+const MILEAGE = /\b(?:business |work )?mileage\b|\bbusiness miles\b/;
 const PACK = /\btax(?:-| )?time pack\b|\btax pack\b|\byear-end pack\b/;
 
 function stateCode(words: string): string | null {
@@ -123,6 +136,12 @@ export function parseTaxIntent(text: string): TaxIntent | null {
   if (PACK.test(text)) return { kind: "tax", ask: "pack" };
   if (WITHHOLDING.test(text)) return { kind: "tax", ask: "withholding" };
   if (SAVINGS.test(text)) return { kind: "tax", ask: "savings" };
+  const miles = MILES_ADD.exec(text);
+  if (miles) return { kind: "tax", ask: "miles", miles: Number(miles[1].replaceAll(",", "")) };
+  if (MILEAGE.test(text)) return { kind: "tax", ask: "miles", miles: null };
+  if (HOME_OFFICE.test(text)) return { kind: "tax", ask: "home_office" };
+  if (SET_ASIDE.test(text)) return { kind: "tax", ask: "set_aside" };
+  if (QUARTERLY_ASK.test(text)) return { kind: "tax", ask: "quarterly" };
   if (BRACKET.test(text)) return { kind: "tax", ask: "bracket" };
   if (ESTIMATE.test(text) || (OWE.test(text) && TAX_WORD.test(text))) {
     return { kind: "tax", ask: "estimate" };

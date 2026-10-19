@@ -13,6 +13,7 @@ import { formatCents } from "@/lib/money";
 import { loadTaxEstimate } from "@/lib/tax-estimate";
 import { loadWithholding } from "@/lib/tax-withholding";
 import { loadTaxSavings } from "@/lib/tax-savings";
+import { loadSelfEmployed } from "@/lib/self-employed";
 import { loadTaxForms, loadTaxTags } from "@/lib/tax-organizer";
 import { loadWorkingProfile } from "@/lib/tax-profile";
 import { defaultTaxYear } from "@/planning/tax-pack";
@@ -65,6 +66,12 @@ export const TAX_TOOLS: Anthropic.Tool[] = [
     name: "tax_savings",
     description:
       "Demo advice mode only: ways for the person to pay less tax this year that Jane found in their accounts (retirement contributions, IRA, HSA and FSA room, itemizing, bunching gifts, student loan interest, education and energy credits, dependent care), each with why, an estimated yearly saving and what to do. Outside demo advice mode it says it isn't available. Say every saving as an estimate.",
+    input_schema: noInput,
+  },
+  {
+    name: "tax_self_employed",
+    description:
+      "Freelance and gig taxes: freelance money in this year, business expenses tagged, the home office and business miles and what they take off, and in demo advice mode the share of each payment to set aside and the estimated tax payments left this year (dates and amounts that add up to what the estimate says is still owed). Say amounts as estimates.",
     input_schema: noInput,
   },
   {
@@ -260,6 +267,30 @@ export async function runTaxTool(
                 ? `Goal: ${s.action.name}, ${money(s.action.targetCents)} by ${s.action.targetDate}`
                 : `Open ${s.action.href}`,
         })),
+      });
+    }
+    case "tax_self_employed": {
+      const v = await loadSelfEmployed(userId, { client, now });
+      return out({
+        year: v.year,
+        isAnEstimate: true,
+        freelance: v.active,
+        freelanceInSoFar: money(v.freelanceInCents),
+        businessExpensesTagged: money(v.businessCents),
+        homeOffice: v.homeOffice.sqft
+          ? { squareFeet: v.homeOffice.sqft, deduction: money(v.homeOffice.deductionCents) }
+          : null,
+        businessMiles: { miles: v.mileage.miles, deduction: money(v.mileage.deductionCents) },
+        demoAdvice: v.advice
+          ? {
+              setAsideShareOfEachPayment: `${Math.round(v.setAsideRate * 100)}%`,
+              federalStillOwed: money(v.federal.owedCents),
+              estimatedPayments: v.federal.payments.map((p) => ({
+                due: p.date,
+                federal: money(p.cents),
+              })),
+            }
+          : "Not available: set-aside and payment amounts are demo advice only. Due dates: Apr 15, Jun 15, Sep 15, Jan 15.",
       });
     }
     case "tax_forms": {

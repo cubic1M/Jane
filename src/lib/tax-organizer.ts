@@ -34,10 +34,26 @@ export async function loadOverrides(
   userId: string,
   { client = defaultClient }: Options = {},
 ): Promise<TagOverrides> {
-  const rows = await scopedFor(userId, client).taxTags.findMany({
-    select: { transactionId: true, merchantKey: true, tag: true },
-  });
+  const db = scopedFor(userId, client);
+  const since = new Date(Date.now() - 400 * 86_400_000);
+  const [rows, profile, freelance] = await Promise.all([
+    db.taxTags.findMany({ select: { transactionId: true, merchantKey: true, tag: true } }),
+    db.taxProfiles.findFirst({ select: { incomeKinds: true, answered: true } }),
+    db.transactions.count({
+      where: {
+        amountCents: { lt: 0 },
+        pfcDetailed: { in: [...INCOME_KINDS.self_employed.categories] },
+        date: { gte: since },
+      },
+    }),
+  ]);
+  // Freelance income on their profile, or seen in the last year (unless they said no).
+  const answeredIncome = profile?.answered.includes("incomeKinds") ?? false;
+  const businessHints = answeredIncome
+    ? (profile?.incomeKinds.includes("self_employed") ?? false)
+    : freelance > 0;
   return {
+    businessHints,
     byTransaction: new Map(
       rows.flatMap((r) => (r.transactionId ? [[r.transactionId, r.tag]] : [])),
     ),

@@ -13,6 +13,7 @@ import { loadTaxTags } from "@/lib/tax-organizer";
 import { loadWorkingProfile } from "@/lib/tax-profile";
 import { estimateTaxes, type EstimateInput, type TaxEstimate } from "@/planning/tax-estimate";
 import { perPaycheckEffect, type W4Step } from "@/planning/withholding";
+import { homeOfficeDeduction, mileageDeduction } from "@/planning/self-employed";
 import {
   NO_PAY,
   payFrequency,
@@ -125,6 +126,10 @@ export async function loadTaxEstimate(
           w4ChangedOn: true,
           w4Year: true,
           keepRefundYear: true,
+          homeOfficeSqFt: true,
+          businessMiles: true,
+          businessMilesYear: true,
+          taxPayments: true,
         },
       }),
     ]);
@@ -197,9 +202,23 @@ export async function loadTaxEstimate(
         : takeHome
       : pay.projected.wagesCents;
 
-  const otherSoFar = otherIncomeSoFar(rows, cash, year);
-  const other = projectOther(otherSoFar, year, today);
-  const payments = taxPaymentsFor(rows, year);
+  // Spec step 123: freelance income less business expenses (tagged, and miles driven), and
+  // the home office for the year; estimated payments made from accounts Jane can't see.
+  const miles = stored?.businessMilesYear === year ? (stored.businessMiles ?? 0) : 0;
+  const businessSoFar = tags.totals.business.totalCents + mileageDeduction(miles);
+  const otherSoFar = otherIncomeSoFar(rows, cash, year, businessSoFar);
+  const paced = projectOther(otherSoFar, year, today);
+  const homeOffice =
+    paced.selfEmploymentCents > 0
+      ? Math.min(homeOfficeDeduction(stored?.homeOfficeSqFt ?? null), paced.selfEmploymentCents)
+      : 0;
+  const other = { ...paced, selfEmploymentCents: paced.selfEmploymentCents - homeOffice };
+  const seen = taxPaymentsFor(rows, year);
+  const typed = enteredTaxPayments(stored?.taxPayments, year);
+  const payments = {
+    federalCents: seen.federalCents + typed.federalCents,
+    stateCents: seen.stateCents + typed.stateCents,
+  };
   const loanInterest = (kind: string) => {
     const ytd = loans
       .filter((l) => l.kind === kind)
@@ -324,3 +343,29 @@ export async function loadTaxEstimate(
 }
 
 export const filingLabel = (status: FilingStatus) => FILING_STATUSES[status];
+
+// Spec step 123: estimated tax payments the person told Jane about, for the tax year (Feb 1
+// to Jan 31 of the next year, like the ones seen in transactions).
+export type EnteredTaxPayment = { date: string; cents: number; to: "federal" | "state" };
+
+export function parseTaxPayments(value: unknown): EnteredTaxPayment[] {
+  if (!Array.isArray(value)) return [];
+  return value.filter(
+    (p): p is EnteredTaxPayment =>
+      typeof p === "object" &&
+      p !== null &&
+      typeof (p as EnteredTaxPayment).date === "string" &&
+      Number.isInteger((p as EnteredTaxPayment).cents) &&
+      ((p as EnteredTaxPayment).to === "federal" || (p as EnteredTaxPayment).to === "state"),
+  );
+}
+
+export function enteredTaxPayments(value: unknown, year: number) {
+  const inYear = parseTaxPayments(value).filter(
+    (p) => p.date >= `${year}-02-01` && p.date <= `${year + 1}-01-31`,
+  );
+  return {
+    federalCents: inYear.filter((p) => p.to === "federal").reduce((s, p) => s + p.cents, 0),
+    stateCents: inYear.filter((p) => p.to === "state").reduce((s, p) => s + p.cents, 0),
+  };
+}

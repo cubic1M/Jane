@@ -1775,6 +1775,13 @@ model TaxProfile {
   keepRefundYear        Int?      @map("keep_refund_year")
   // Spec step 122: ways to pay less the person said no to, as "<year>:<key>".
   savingsDismissed      String[]  @default([]) @map("savings_dismissed")
+  // Spec step 123: the self-employed helpers. Home office square feet (simplified method),
+  // business miles driven so far in businessMilesYear, and estimated tax payments the person
+  // made from accounts Jane can't see: [{ date, cents, to: "federal" | "state" }].
+  homeOfficeSqFt        Int?      @map("home_office_sq_ft")
+  businessMiles         Int?      @map("business_miles")
+  businessMilesYear     Int?      @map("business_miles_year")
+  taxPayments           Json      @default("[]") @map("tax_payments")
   createdAt             DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt             DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
 

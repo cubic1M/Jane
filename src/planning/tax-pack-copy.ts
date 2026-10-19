@@ -19,6 +19,8 @@ export const TAX_PACK_COPY = {
     education: "Education",
     // Spec step 119: tagged by the person.
     work: "Work expenses",
+    // Spec step 123.
+    business: "Business expenses",
   },
   groupEmpty: "None found for this year.",
   interestHeading: "Interest paid on loans",
