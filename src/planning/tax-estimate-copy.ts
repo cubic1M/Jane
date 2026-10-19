@@ -25,8 +25,14 @@ export function federalLine(estimate: TaxEstimate, withholdingKnown: boolean): s
 
 export function stateLine(state: StateEstimate | null, withholdingKnown: boolean): string | null {
   if (!state) return null;
-  const name = stateName(state.code) ?? state.code;
-  if (state.kind === "none") return `${name}: no state income tax.`;
+  // Spec step 165: every state that taxes some of the income, and a city's own tax.
+  const names = (state.parts.length > 0 ? state.parts : [{ code: state.code }]).map(
+    (p) => stateName(p.code) ?? p.code,
+  );
+  const name = `${names.join(" and ")}${state.local ? ` with ${state.local.label}` : ""}`;
+  if (state.kind === "none" && !state.local) {
+    return `${name}: no state income tax.`;
+  }
   const rough = state.rough ? " (rough: this state's figures aren't confirmed for 2026)" : "";
   if (!withholdingKnown) return `${name}: about ${roundDollars(state.taxCents)} of tax${rough}.`;
   return `${name}: ${balancePhrase(state.refundCents)}${rough}.`;

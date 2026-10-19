@@ -23,6 +23,8 @@ import { defaultTaxYear } from "@/planning/tax-pack";
 import { stateName, type FieldStatus } from "@/planning/tax-profile";
 import { EstimateSection } from "./estimate-section";
 import { SavingsSection } from "./savings-section";
+import { InvestmentsSection } from "./investments-section";
+import { loadInvestmentTaxes } from "@/lib/investment-taxes";
 import { RefundSection } from "./refund-section";
 import { loadRefunds } from "@/lib/tax-refund";
 import { WithholdingSection } from "./withholding-section";
@@ -86,6 +88,11 @@ async function TaxesContent() {
       <RefundSection refunds={(await loadRefunds(user.id, { now })).refunds} />
       <EstimateSection view={estimate} />
       <WithholdingSection view={{ estimate, check: checkFrom(estimate), advice }} />
+      <InvestmentsSection
+        view={await loadInvestmentTaxes(user.id, estimate.year, { now })}
+        estimate={estimate}
+        advice={advice}
+      />
       <SavingsSection view={await loadTaxSavings(user.id, { now, loaded: { estimate, advice } })} />
 
       <section aria-labelledby="profile" className={CARD}>
