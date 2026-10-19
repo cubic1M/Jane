@@ -357,6 +357,11 @@ export const TAX_MESSAGE_PRIORITY = {
   doc_flagged: 70,
   doc_collected: 40,
   doc_missing: 38,
+  // Spec step 167: a tax move with a deadline coming.
+  plan: 42,
+  // Spec step 168: the giving options in season, and a gift's missing receipt.
+  giving: 43,
+  receipt: 32,
 } as const;
 
 // What Jane does about taxes by herself at each autopilot level (spec step 57), shown on
@@ -410,6 +415,16 @@ export const TAX_AUTOPILOT: readonly { feature: string; ask: string; auto: strin
     feature: "investments",
     ask: "I work out your gains and losses from your holdings, warn you about wash sales and, with demo advice, show losses worth harvesting and what's better held in your 401(k) or IRA.",
     auto: "I work out your gains and losses after every sync, warn you about wash sales and, with demo advice, bring up losses worth harvesting before the year ends. I never sell anything myself.",
+  },
+  {
+    feature: "giving",
+    ask: "I find your gifts to charity, ask for the receipt on each of $250 or more and, with demo advice, show before the year ends how bunching, a donor-advised fund or giving shares would change your tax.",
+    auto: "I find your gifts to charity, put getting each missing receipt on your deadlines and, with demo advice, show before the year ends how bunching, a donor-advised fund or giving shares would change your tax. The gifts themselves are always yours.",
+  },
+  {
+    feature: "plan",
+    ask: "I keep a calendar of tax moves with their deadlines (contributions, estimated payments, year-end sales and gifts, a W-4 check after a new job or baby) and bring each up when it's time, ready to put on your deadlines.",
+    auto: "I keep a calendar of tax moves with their deadlines and, when each one's time comes, put it on your deadlines myself and tell you. The contributions, payments, sales and gifts themselves are always yours.",
   },
   {
     feature: "documents",

@@ -6,6 +6,7 @@ import { db as defaultClient } from "@/lib/db";
 import { hasDemoBank } from "@/lib/plaid/demo";
 import type { Coverage } from "./coverage";
 import { demoPartner } from "./demo-partner";
+import type { LifeAnswers, LifeDecision } from "./life-underwriting";
 
 // The insurance partner (spec step 103): who quotes, binds and cancels policies. The
 // shapes here follow what a licensed insurance marketplace's API returns (a quote id, the
@@ -113,6 +114,18 @@ export interface InsurancePartner {
     policy: { carrier: string; policyNumber: string | null },
     options: { effectiveDate: string; now: Date },
   ): Promise<Cancellation>;
+  // Spec step 153: a life application on a quote, with the health answers: an offer at a
+  // rate class, or a referral for the carrier's own review.
+  applyLife(
+    application: {
+      quote: Pick<
+        PartnerQuote,
+        "partnerQuoteId" | "carrier" | "premiumCents" | "annualPremiumCents" | "premiumFrequency"
+      >;
+      answers: LifeAnswers;
+    },
+    options: { now: Date },
+  ): Promise<LifeDecision & { offerExpiresAt: string | null }>;
 }
 
 export const isQuotable = (kind: PolicyKind) => QUOTABLE_KINDS.includes(kind);

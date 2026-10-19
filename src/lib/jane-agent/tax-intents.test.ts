@@ -162,3 +162,41 @@ describe("state taxes in the chat", () => {
     expect(parse(text)).toEqual({ kind: "tax", ask: "states" });
   });
 });
+
+// Spec step 167.
+describe("the tax plan in the chat", () => {
+  it.each([
+    "what's my tax plan",
+    "show my tax calendar",
+    "what tax deadlines are coming",
+    "year-end tax moves",
+    "what should I do for taxes before year end",
+  ])("%s asks for the plan", (text) => {
+    expect(parse(text)).toEqual({ kind: "tax", ask: "plan" });
+  });
+
+  it("leaves the filing deadline to filing", () => {
+    expect(parse("when is the tax deadline")).toEqual({ kind: "tax", ask: "file" });
+  });
+});
+
+// Spec step 168.
+describe("giving in the chat", () => {
+  it.each([
+    "should I use a donor-advised fund",
+    "can I donate stock",
+    "should I bunch my donations",
+    "how should I give",
+    "where are my charity receipts",
+  ])("%s asks about giving", (text) => {
+    expect(parse(text)).toEqual({ kind: "tax", ask: "giving" });
+  });
+
+  it("leaves how much I've given to the tags", () => {
+    expect(parse("how much have I donated")).toEqual({
+      kind: "tax",
+      ask: "tag_total",
+      tag: "donation",
+    });
+  });
+});

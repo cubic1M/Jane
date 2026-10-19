@@ -17,6 +17,26 @@ import { trackerActions, trackerBody } from "../insurance/claim-words";
 import { declineShop } from "@/lib/insurance/shop";
 import { quotesReply } from "../insurance/quotes";
 import { ReadingError, confirmReading, dismissReading, getReading } from "@/lib/insurance/readings";
+import {
+  LifeError,
+  answerLifeQuestion,
+  buyLife,
+  dismissLife,
+  latestLife,
+  saveDependants,
+  sizeLife,
+  startLifeApplication,
+  submitLifeApplication,
+} from "@/lib/insurance/life";
+import { nextLifeQuestion } from "@/lib/insurance/life-underwriting";
+import {
+  askingStep,
+  boughtNote,
+  decisionStep,
+  NOT_NEEDED,
+  sizedActions,
+  sizedBody,
+} from "../insurance/life-words";
 import { ChatActionError, answeredElsewhere, type ActionHandler } from "./handler";
 
 // Insurance buttons (spec Phase X), through the same code as /insurance.
@@ -291,5 +311,123 @@ export const readingDismiss: ActionHandler = {
       throw error;
     }
     return { answeredWith: action.label, note: "Okay, I've left it off your insurance." };
+  },
+};
+
+// Spec step 153: life insurance, sized and applied for (demo advice). Each handler moves the
+// same message along: the dependants answer sizes the cover; Apply starts the health
+// questions; Send goes to the carrier; Buy takes the offer. Nothing commits without a tap.
+const lifeId = (message: { refs: { lifeApplicationId?: string } }) => {
+  const id = message.refs.lifeApplicationId;
+  if (!id) throw new ChatActionError("failed", "Something went wrong. Open it instead.");
+  return id;
+};
+
+async function lifeStep<T>(run: () => Promise<T>): Promise<T> {
+  try {
+    return await run();
+  } catch (error) {
+    if (error instanceof LifeError) throw answeredElsewhere(error.message);
+    throw error;
+  }
+}
+
+const dependants = (id: ActionHandler["id"], n: number): ActionHandler => ({
+  id,
+  on: "open",
+  async run({ userId, message, action, client, now }) {
+    await saveDependants(userId, n, { client });
+    const sized = await sizeLife(userId, { client, now });
+    if (sized.kind === "sized") {
+      const asOf = now.toISOString().slice(0, 10);
+      return {
+        status: "open",
+        answeredWith: null,
+        body: sizedBody(sized.application, asOf),
+        refs: { ...message.refs, lifeApplicationId: sized.application.id, advice: true },
+        actions: sizedActions(sized.application, asOf),
+      };
+    }
+    return {
+      answeredWith: action.label,
+      note:
+        sized.kind === "not_needed"
+          ? NOT_NEEDED[sized.reason]
+          : "Thanks, I've noted that on your insurance.",
+    };
+  },
+});
+
+export const lifeCoverDependants0 = dependants("lifecover.dependants_0", 0);
+export const lifeCoverDependants1 = dependants("lifecover.dependants_1", 1);
+export const lifeCoverDependants2 = dependants("lifecover.dependants_2", 2);
+export const lifeCoverDependants3 = dependants("lifecover.dependants_3", 3);
+
+export const lifeCoverApply: ActionHandler = {
+  id: "lifecover.apply",
+  on: "open",
+  async run({ userId, message, client, now }) {
+    const application = await lifeStep(() =>
+      startLifeApplication(userId, lifeId(message), null, { client, now }),
+    );
+    return { status: "open", answeredWith: null, ...askingStep(application), refs: message.refs };
+  },
+};
+
+const lifeAnswer = (id: ActionHandler["id"], yes: boolean): ActionHandler => ({
+  id,
+  on: "open",
+  async run({ userId, message, client }) {
+    const application = await lifeStep(async () => {
+      const current = await latestLife(userId, { client });
+      const key = current?.id === lifeId(message) ? nextLifeQuestion(current.answers) : null;
+      if (!key) throw new LifeError("That one's already been answered.");
+      return answerLifeQuestion(userId, current!.id, key, yes, { client });
+    });
+    return { status: "open", answeredWith: null, ...askingStep(application), refs: message.refs };
+  },
+});
+
+export const lifeCoverYes = lifeAnswer("lifecover.yes", true);
+export const lifeCoverNo = lifeAnswer("lifecover.no", false);
+
+export const lifeCoverSubmit: ActionHandler = {
+  id: "lifecover.submit",
+  on: "open",
+  async run({ userId, message, action, client, now }) {
+    const application = await lifeStep(() =>
+      submitLifeApplication(userId, lifeId(message), { client, now }),
+    );
+    const step = decisionStep(application);
+    if (application.status === "offered") {
+      return { status: "open", answeredWith: null, ...step, refs: message.refs };
+    }
+    return { answeredWith: action.label, note: step.body };
+  },
+};
+
+export const lifeCoverBuy: ActionHandler = {
+  id: "lifecover.buy",
+  on: "open",
+  async run({ userId, message, action, client, now }) {
+    const id = lifeId(message);
+    await lifeStep(() => buyLife(userId, id, { client, now }));
+    const application = await latestLife(userId, { client });
+    return {
+      answeredWith: action.label,
+      note: application ? boughtNote(application) : "Done. It's on your insurance.",
+    };
+  },
+};
+
+export const lifeCoverDismiss: ActionHandler = {
+  id: "lifecover.dismiss",
+  on: "open",
+  async run({ userId, message, action, client }) {
+    await lifeStep(() => dismissLife(userId, lifeId(message), { client }));
+    return {
+      answeredWith: action.label,
+      note: "Okay. I won't bring it up again unless your numbers change.",
+    };
   },
 };

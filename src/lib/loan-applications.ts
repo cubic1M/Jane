@@ -6,7 +6,8 @@ import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
 import { loadDebts } from "@/lib/debts";
 import type { Applicant, PrequalifyRequest } from "@/lib/lenders/partner";
-import { STAND_IN_CREDIT_BAND, lenderPartnerFor } from "@/lib/refinance";
+import { creditBandFor } from "@/lib/credit";
+import { lenderPartnerFor } from "@/lib/refinance";
 import { compareRefinance, refinanceable } from "@/planning/refinance";
 import {
   statusLine,
@@ -109,7 +110,7 @@ export async function prepareApplication(
     product: what.product,
     amountCents: debt.balanceCents!,
     termMonths: what.termMonths,
-    creditBand: STAND_IN_CREDIT_BAND,
+    creditBand: await creditBandFor(userId, { client }),
     month: asOf.slice(0, 7),
   };
   const offer = (await found.partner.prequalify(request)).find((o) => o.lender === input.lender);
@@ -199,7 +200,7 @@ export async function submitApplication(
       product: app.product,
       amountCents: app.amountCents,
       termMonths: app.termMonths,
-      creditBand: STAND_IN_CREDIT_BAND,
+      creditBand: await creditBandFor(userId, { client }),
       month: isoDay(now).slice(0, 7),
     },
     applicant: app.applicant,

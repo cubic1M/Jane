@@ -24,6 +24,8 @@ import { rankedFor } from "./priorities";
 import { wholePicture } from "./whole-picture";
 import { latestPaycheckPlan } from "@/lib/money-movement/paycheck";
 import { listTransfers } from "@/lib/money-movement/transfers";
+import { loadBillPay } from "@/lib/money-movement/bill-pay";
+import { moneyPartnerFor } from "@/lib/money-movement/partner";
 import { SECTOR_LABELS, SECTOR_LEVEL_LABELS } from "@/config/autopilot-sectors";
 import { provenSavings } from "@/lib/savings-proof";
 import { listLifeEvents } from "@/lib/life-events";
@@ -204,7 +206,7 @@ export const CHAT_TOOLS: Anthropic.Tool[] = [
   {
     name: "money_moves",
     description:
-      "Money that moves itself (spec step 144): the newest paycheck's plan (what goes to each goal, the emergency fund, the tax set-aside and extra debt payments, kept above safe to spend's cushion) with what Jane moved by herself and what waits for a tap, and the latest transfers with their status. Until a money-movement partner is connected these are sample transfers: no real money moves.",
+      "Money that moves itself (spec step 144): the newest paycheck's plan (what goes to each goal, the emergency fund, the tax set-aside and extra debt payments, kept above safe to spend's cushion) with what Jane moved by herself and what waits for a tap; cards and loans due in the next three weeks (spec step 145) with what pays each (the person's own autopay, a payment Jane scheduled, one she can schedule with a tap, or checking would run short and a due date worth moving after payday); and the latest transfers with their status. Until a money-movement partner is connected these are sample transfers: no real money moves.",
     input_schema: noInput,
   },
   {
@@ -447,12 +449,24 @@ export async function runChatTool(
       });
     }
     case "money_moves": {
-      const [plan, transfers] = await Promise.all([
+      const [plan, transfers, partner] = await Promise.all([
         latestPaycheckPlan(userId, { client, now }),
         listTransfers(userId, { client, now }),
+        moneyPartnerFor(userId, { client }),
       ]);
+      const bills = partner ? await loadBillPay(userId, { client, now }) : null;
       return out({
         sampleOnly: true,
+        bills: (bills?.items ?? []).map((i) => ({
+          name: i.bill.name,
+          due: i.bill.dueOn,
+          minimum: money(i.bill.minimumCents),
+          status: i.status,
+          ...(i.status === "scheduled" || i.status === "ask"
+            ? { amount: money(i.amountCents), on: i.runOn }
+            : {}),
+          ...(i.status === "short" && i.moveTo ? { moveDueDateTo: i.moveTo } : {}),
+        })),
         paycheck: plan && {
           amount: money(plan.paycheckCents),
           paidOn: plan.paidOn,
