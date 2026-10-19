@@ -2664,6 +2664,104 @@ asks. The goal stays the founder's: as little from the person as possible.
 > Acceptance criteria:
 > - Every figure matches the pages it comes from
 
+## Phase AD: insurance, all of it (steps 149–155)
+
+Phase X handles the policies Jane already knows about. This phase makes her cover the rest:
+every kind of insurance, the cover hiding in employer benefits and credit cards, policies
+read from documents with no typing, and the events that change what someone needs, with
+Jane doing the work and the person tapping once.
+
+### Step 149: Every kind of cover
+
+> Read CLAUDE.md. Insurance beyond car and home.
+>
+> Build:
+> 1. Health (marketplace plans compared on premium plus expected out-of-pocket, open
+>    enrollment dates as deadlines), disability, umbrella, pet, travel and device
+>    protection, each in the profile, the quote engine (stand-in carriers) and the gap
+>    rules.
+> 2. In the chat: "Do I need umbrella insurance?" answered from their numbers (demo advice).
+>
+> Acceptance criteria:
+> - Health plans compare total yearly cost, not just the premium; every kind has gap tests
+
+### Step 150: Employer benefits
+
+> Read CLAUDE.md. The cover that comes with the job.
+>
+> Build:
+> 1. Benefits found from paycheck deductions (health, life, disability, FSA and HSA) and a
+>    short guided flow for the rest; compared with buying the same cover privately; open
+>    enrollment as a deadline with Jane's recommendation ready (demo advice).
+>
+> Acceptance criteria:
+> - Deductions are matched to benefits only with confirmation; the comparison is like for
+>   like
+
+### Step 151: Policies read from documents
+
+> Read CLAUDE.md. No typing: Jane reads the policy.
+>
+> Build:
+> 1. Uploaded declarations pages and renewal notices (step 68) read into policy records:
+>    carrier, cover limits, deductibles, premium, renewal, with Claude extraction checked by
+>    rules and shown for a one-tap confirm; without a key, the fields to fill are prefilled
+>    from the payments.
+>
+> Acceptance criteria:
+> - Nothing extracted is saved without the confirm tap; every field shows where it came from
+
+### Step 152: Cover you already have
+
+> Read CLAUDE.md. Stop paying twice.
+>
+> Build:
+> 1. A card-benefits catalog (stand-in, reviewed by the team): rental car cover, phone
+>    protection, extended warranty, travel insurance; duplicates found against what the
+>    person pays for (device protection plans, rental add-ons, extended warranties) and
+>    cancelled through the usual one-tap flow.
+>
+> Acceptance criteria:
+> - A duplicate is only raised when the card benefit really covers it, with the benefit's
+>   limits shown
+
+### Step 153: Life insurance, sized and bought
+
+> Read CLAUDE.md. The right amount of life cover (demo advice).
+>
+> Build:
+> 1. A needs calculation (income replacement, debts, dependants, existing cover) with the
+>    method shown, term quotes from the engine, and one-tap apply through the partner
+>    stand-in, with the health questions as a guided flow.
+>
+> Acceptance criteria:
+> - The amount and term are explained; nothing is applied for without a tap
+
+### Step 154: When life changes, cover changes
+
+> Read CLAUDE.md. Jane updates cover after events.
+>
+> Build:
+> 1. A car bought, a move, a new baby, a marriage, a new job (step 100 and payments): Jane
+>    prepares the cover change (add the car, move the renters policy, add a dependant,
+>    review life cover) and asks once.
+>
+> Acceptance criteria:
+> - Every event has a test; nothing changes without the tap the autopilot level needs
+
+### Step 155: Renewal negotiation and claims, done by Jane
+
+> Read CLAUDE.md. Jane calls and files.
+>
+> Build:
+> 1. Before a renewal with a price rise, Jane asks the carrier for a better rate (step 54's
+>    call flow, through the partner stand-in) and reshops in parallel.
+> 2. Small claims filed through the partner stand-in from the claims helper (step 107),
+>    with status tracked in the chat.
+>
+> Acceptance criteria:
+> - Calls stay within the person's limits; a claim is never filed without their review
+
 ### Later, when the founder is ready
 
 These need an outside account, a partner or a decision: Plaid Production (real banks) and

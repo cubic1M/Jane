@@ -1,4 +1,5 @@
 import { checkupAnswer } from "./insurance/checkup";
+import { autopilotAnswer } from "./insurance/autopilot";
 import { claimAnswer } from "./insurance/claim";
 import { quotesAnswer } from "./insurance/quotes";
 import { insuranceReply } from "./insurance/replies";
@@ -29,6 +30,7 @@ import { costReply, paydayReply, subscriptionsReply } from "./recurring-replies"
 import { answerDebt } from "./debt-answer";
 import { isDebtIntent } from "./debt-intents";
 import { answerInvestments } from "./investments/answer";
+import { learnReply } from "./learn";
 import {
   actReply,
   affordReply,
@@ -186,6 +188,8 @@ async function byIntent(
       if (intent.ask === "checkup") return checkupAnswer(userId, { client, now });
       // Spec step 107: something happened.
       if (intent.ask === "claim") return claimAnswer(userId, intent, { client, now });
+      // Spec step 108: what Jane does with insurance by herself.
+      if (intent.ask === "autopilot") return autopilotAnswer(userId, { client });
       return insuranceReply(intent, await loadInsuranceSnapshot(userId, { client, now }), asOf);
     case "greeting": {
       if (intent.thanks) return greetingReply(true, null);
@@ -262,6 +266,8 @@ async function byIntent(
       return pauseReply(await autopilotOf(userId, { client }));
     case "tax":
       return answerTaxIntent(userId, intent, { client, now });
+    case "learn":
+      return learnReply(intent.slug);
     case "investments":
       return answerInvestments(userId, intent, { client, now });
   }
