@@ -101,6 +101,7 @@ export function scopedFor(userId: string, client: PrismaClient = db) {
     insuranceQuotes: scoped.insuranceQuote,
     insuranceShops: scoped.insuranceShop,
     insuranceCheckups: scoped.insuranceCheckup,
+    refinanceChecks: scoped.refinanceCheck,
     findings: scoped.finding,
     decisions: scoped.decision,
     actions: scoped.action,
@@ -139,6 +140,8 @@ export function scopedFor(userId: string, client: PrismaClient = db) {
     // Plans that keep up (spec step 101).
     budgetTuneUps: scoped.budgetTuneUp,
     goalTransfers: scoped.goalTransfer,
+    // Shared "What Jane saved me" totals (spec step 139).
+    savedShares: scoped.savedShare,
     // What's in investment accounts (spec step 128).
     securities: scoped.security,
     holdings: scoped.holding,

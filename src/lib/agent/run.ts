@@ -166,9 +166,13 @@ const titleOf = (action: LoadedAction) => {
 
 // Where to write: the directory's support email (added by the team, never guessed), or a
 // simulated company in development.
-async function recipientFor(action: LoadedAction, client: PrismaClient): Promise<string | null> {
+async function recipientFor(
+  userId: string,
+  action: LoadedAction,
+  client: PrismaClient,
+): Promise<string | null> {
   if (!action.company) return null;
-  if (mailMode() === "simulated") return simulatedAddress(action.company);
+  if (mailMode(userId) === "simulated") return simulatedAddress(action.company);
   const row = await merchantFor(normalizeAlias(action.company), { client });
   return row?.supportEmail ?? null;
 }
@@ -285,7 +289,7 @@ async function send(
   { client, send: deliver }: { client: PrismaClient; send: typeof sendAgentMail },
 ) {
   const replyTo = replyAddress(action.replyToken ?? "");
-  if (mailMode() === "email") {
+  if (mailMode(userId) === "email") {
     await deliver({ to: mail.to, subject: mail.subject, text: mail.body, replyTo });
   } else {
     // The simulated company answers through the same path a real reply takes.
@@ -338,7 +342,7 @@ export async function agentStep(
     if (action.agentMessages.length > 0) return "waiting";
     return (await startCall(userId, action, options)) === "called" ? "sent" : "handed_off";
   }
-  if (mailMode() === "off") {
+  if (mailMode(userId) === "off") {
     await handOff(userId, action, "Email for the agent isn't set up yet.", options);
     return "handed_off";
   }
@@ -390,7 +394,7 @@ export async function agentStep(
       return "waiting";
     }
   }
-  const to = await recipientFor(action, client);
+  const to = await recipientFor(userId, action, client);
   if (!to) {
     await handOff(
       userId,

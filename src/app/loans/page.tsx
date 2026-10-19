@@ -336,6 +336,14 @@ async function LoansContent({
           </p>
 
           <p className="text-sm text-zinc-600 dark:text-zinc-400">
+            Could a loan cost less?{" "}
+            <Link href="/loans/refinance" className={LINK}>
+              See refinance offers
+            </Link>
+            , checked every month.
+          </p>
+
+          <p className="text-sm text-zinc-600 dark:text-zinc-400">
             Want to see how paying them down could go?{" "}
             <Link href="/debt" className={LINK}>
               Try the payoff planner

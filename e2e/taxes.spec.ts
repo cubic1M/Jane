@@ -44,6 +44,12 @@ test("the tax profile shows what Jane found and saves the person's answers", asy
   await expect(estimate.getByText(/^Federal: a refund of about \$[\d,]+\.$/)).toBeVisible();
   await expect(estimate.getByText(/^California: /)).toBeVisible();
   await expect(estimate.getByText("Estimate", { exact: true })).toBeVisible();
+  // Spec step 121: what to put on a new W-4, as labelled demo advice.
+  const withholding = page.getByRole("region", { name: "Withholding" });
+  await expect(withholding.getByText("What to put on a new W-4")).toBeVisible();
+  await expect(withholding.getByRole("note")).toHaveText(
+    "Demo advice: sample data, not financial advice",
+  );
   const profile = page.getByRole("region", { name: "Your tax profile" });
   await expect(profile.getByText("California")).toBeVisible();
   await expect(profile.getByText("Found by Jane: check it").first()).toBeVisible();

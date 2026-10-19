@@ -9,6 +9,7 @@ import { loadInsightTransactions } from "@/insights/load";
 import { loadAffordNumbers } from "@/lib/afford";
 import { autopilotOf } from "@/lib/autopilot";
 import { loadChanges } from "@/lib/changes";
+import { provenSavings } from "@/lib/savings-proof";
 import { listLifeEvents } from "@/lib/life-events";
 import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
@@ -42,6 +43,7 @@ import {
 } from "./replies";
 import { changesReply } from "./replies-changes";
 import { lifeEventReply } from "./replies-life";
+import { savedReply } from "./replies-saved";
 import { weeklyReview } from "./replies-review";
 import { loadSnapshot } from "./snapshot";
 import { answerTaxIntent } from "./tax-answer";
@@ -201,6 +203,8 @@ async function byIntent(
       const going = open.some((e) => e.kind === intent.event && e.completedAt === null);
       return lifeEventReply(intent.event, going);
     }
+    case "saved":
+      return savedReply(await provenSavings(userId, { client, now }));
     case "review": {
       const snapshot = await loadSnapshot(userId, { client, now });
       return snapshot

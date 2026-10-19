@@ -4,7 +4,7 @@ import { gapAdvice, kindWords } from "@/lib/insurance/gaps";
 import type { PolicyKind } from "@/config/insurance";
 import type { Shop } from "@/lib/insurance/shop";
 import { formatCents } from "@/lib/money";
-import { checkupBody } from "../insurance/checkup";
+import { checkupBody } from "../insurance/checkup-words";
 import type { InsuranceSnapshot } from "../insurance/snapshot";
 import type { Candidate } from "../types";
 import { shortDate, snoozeButton, type MessageSource } from "./source";

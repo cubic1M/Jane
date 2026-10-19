@@ -25,6 +25,7 @@ import { goalStart } from "./goal";
 import { clarifyOne, clarifyThree, clarifyTwo } from "./clarify";
 import { TAX_PROFILE_HANDLERS, taxFoundYes, taxIncomeAdd, taxIncomeNo, taxStateSet } from "./taxes";
 import { taxFormGot, taxTagNo, taxTagSet, taxTagYes } from "./tax-organizer";
+import { taxW4Keep, taxW4Next, taxW4Sent, taxW4Start, taxW4Stop } from "./tax-w4";
 import {
   investAnswer1,
   investAnswer2,
@@ -36,6 +37,7 @@ import { changeBudget, changeExpected, changeLook } from "./changes";
 import { lifeNever, lifeNo, lifeYes } from "./life";
 import { transferCount, transferSkip, tuneUpAccept, tuneUpKeep, tuneUpUndo } from "./upkeep";
 import { policyConfirm, policyNotInsurance } from "./found-policies";
+import { savedShare } from "./saved";
 
 // Every button action, by id (spec step 81). A new button is a new handler here; the
 // message sources offer it by id (src/lib/jane-agent/types.ts ACTION_IDS).
@@ -85,6 +87,12 @@ export const ACTION_HANDLERS: Readonly<Record<ActionId, ActionHandler>> = {
   "tax.tag_no": taxTagNo,
   "tax.tag_set": taxTagSet,
   "tax.form_got": taxFormGot,
+  // Spec step 121.
+  "tax.w4_start": taxW4Start,
+  "tax.w4_next": taxW4Next,
+  "tax.w4_sent": taxW4Sent,
+  "tax.w4_stop": taxW4Stop,
+  "tax.w4_keep": taxW4Keep,
   // Investments (spec step 129 on).
   "invest.answer.1": investAnswer1,
   "invest.answer.2": investAnswer2,
@@ -108,6 +116,8 @@ export const ACTION_HANDLERS: Readonly<Record<ActionId, ActionHandler>> = {
   // Insurance found from payments (spec step 99).
   "policy.confirm": policyConfirm,
   "policy.not_insurance": policyNotInsurance,
+  // What Jane saved you (spec step 139).
+  "saved.share": savedShare,
 };
 
 const MESSAGE_ID = /^[a-z0-9]{1,40}$/i;
