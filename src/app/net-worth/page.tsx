@@ -9,6 +9,7 @@ import { monthlyNetWorth, netWorth } from "@/insights/net-worth";
 import { scopedDb } from "@/lib/db-scoped";
 import { formatCents } from "@/lib/money";
 import { assetPrompts } from "@/lib/owned-assets";
+import { cryptoTotal } from "@/lib/crypto/crypto";
 import { requireUser } from "@/lib/session";
 
 const monthLabel = (month: string) =>
@@ -24,7 +25,7 @@ async function NetWorthContent() {
   const db = await scopedDb();
   const asOf = new Date().toISOString().slice(0, 10);
   const [first] = monthsEnding(asOf, NET_WORTH_MONTHS);
-  const [accounts, snapshots, ownedRows] = await Promise.all([
+  const [accounts, snapshots, ownedRows, crypto] = await Promise.all([
     db.accounts.findMany({
       select: { id: true, name: true, type: true, subtype: true, currentBalanceCents: true },
       orderBy: { name: "asc" },
@@ -37,11 +38,14 @@ async function NetWorthContent() {
     db.ownedAssets.findMany({
       select: { id: true, valueCents: true, valuedOn: true, loanAccountId: true },
     }),
+    // Crypto, read-only (spec step 161).
+    cryptoTotal(user.id),
   ]);
   const owned = ownedRows.map((o) => ({ ...o, valuedOn: o.valuedOn.toISOString().slice(0, 10) }));
   const today = netWorth(
     accounts.map((a) => ({ ...a, balanceCents: a.currentBalanceCents })),
     owned,
+    crypto,
   );
   const months = monthlyNetWorth(
     accounts,
@@ -89,6 +93,16 @@ async function NetWorthContent() {
           accounts, at the balance they report.{" "}
           <Link href="/investments" className="font-medium text-emerald-700 hover:underline">
             See what&apos;s in them
+          </Link>
+        </p>
+      )}
+
+      {today.cryptoCents > 0 && (
+        <p className="text-sm text-zinc-600 dark:text-zinc-400">
+          Includes {formatCents(today.cryptoCents)} in crypto, as your exchange or wallet last
+          reported it (read-only).{" "}
+          <Link href="/investments/crypto" className="font-medium text-emerald-700 hover:underline">
+            See your crypto
           </Link>
         </p>
       )}

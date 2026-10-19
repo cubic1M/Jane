@@ -180,6 +180,9 @@ export function scopedFor(userId: string, client: PrismaClient = db) {
     hsaReceipts: scoped.hsaReceipt,
     // Company stock grants (spec step 160).
     equityGrants: scoped.equityGrant,
+    // Crypto, read-only (spec step 161).
+    cryptoConnections: scoped.cryptoConnection,
+    cryptoHoldings: scoped.cryptoHolding,
   };
 }
 

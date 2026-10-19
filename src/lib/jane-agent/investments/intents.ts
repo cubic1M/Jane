@@ -17,7 +17,8 @@ export type InvestmentTopic =
   | "goals"
   | "college"
   | "hsa"
-  | "company_stock";
+  | "company_stock"
+  | "crypto";
 
 export type InvestmentIntent = {
   kind: "investments";
@@ -103,7 +104,12 @@ const HSA =
 const COMPANY_STOCK =
   /\brsus?\b|\bespp\b|\bstock options?\b|\b(?:company|employer|employer's|company's) (?:stock|shares)\b|\b(?:restricted stock|stock plan|equity grants?|vesting schedule|vested shares|unvested shares)\b/;
 
+// Spec step 161: crypto.
+const CRYPTO =
+  /\b(?:crypto(?:currency|currencies)?|bitcoin|btc|ether(?:eum)?|eth|solana|coinbase|crypto wallet|stablecoins?|usdc)\b/;
+
 export function parseInvestmentIntent(text: string): InvestmentIntent | null {
+  if (CRYPTO.test(text)) return { kind: "investments", topic: "crypto", account: null };
   if (COMPANY_STOCK.test(text))
     return { kind: "investments", topic: "company_stock", account: null };
   if (HSA.test(text) && !/\bshould i (?:open|get|start|use|max out|fund|contribute)\b/.test(text)) {

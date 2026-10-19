@@ -52,12 +52,14 @@ import {
   collegeReply,
   hsaReply,
   companyStockReply,
+  cryptoReply,
 } from "./replies";
 import { gather } from "../brain";
 import { parseIntent } from "../intents";
 import type { Snapshot } from "../snapshot";
 import { investmentsSource } from "../sources/investments";
 import { concentration, diversifyPlan } from "@/planning/company-stock";
+import { cryptoFees, cryptoSize } from "@/insights/crypto";
 import { holdingsReply, matchAccounts } from "./replies";
 import { INVESTMENT_TOOLS, runInvestmentTool } from "./tools";
 import { CHAT_PAGES, CHAT_TOOLS, proposeAction } from "../claude-tools";
@@ -1716,5 +1718,106 @@ describe("companyStockReply and the company stock message", () => {
     expect(gatherCompany(COMPANY, false)).toEqual([]);
     // The demo bank's own 38 shares are under the limit.
     expect(gatherCompany(demoInvestmentSnapshot().companyStock)).toEqual([]);
+  });
+});
+
+// Spec step 161: crypto, read-only.
+const CRYPTO_SIZE = cryptoSize(
+  [
+    { valueCents: 822_993, costBasisCents: 693_000 },
+    { valueCents: 104_400, costBasisCents: 76_000 },
+  ],
+  9_673_055,
+);
+const CRYPTO_FEES = cryptoFees(2_688, 180_000);
+const READ = new Date("2026-10-18T15:00:00Z");
+const CRYPTO_VIEW = {
+  advice: true,
+  demo: true,
+  connections: [
+    {
+      id: "x",
+      kind: "exchange" as const,
+      name: "Demo Exchange",
+      address: null,
+      source: "Demo Exchange (demo, sample data), read-only",
+      asOf: READ,
+      stale: false,
+      totalCents: 822_993,
+      fees: CRYPTO_FEES,
+    },
+    {
+      id: "w",
+      kind: "wallet" as const,
+      name: "Demo Wallet",
+      address: "0xDEMO",
+      source: "Demo Wallet (demo, sample data), read-only",
+      asOf: READ,
+      stale: false,
+      totalCents: 104_400,
+      fees: null,
+    },
+  ],
+  holdings: [],
+  size: CRYPTO_SIZE,
+  fees: CRYPTO_FEES,
+};
+
+describe("crypto questions, by rules", () => {
+  it.each(["my crypto", "how much bitcoin do I have", "my ethereum", "should I buy btc"])(
+    "reads %j as crypto",
+    (text) => {
+      expect(parseIntent(text, ASOF)).toMatchObject({ kind: "investments", topic: "crypto" });
+    },
+  );
+});
+
+describe("cryptoReply and the crypto messages", () => {
+  it("gives the size with its sources and time, the flags, and never trades", () => {
+    const reply = cryptoReply(CRYPTO_VIEW);
+    expect(reply.body).toMatch(
+      /^Your crypto is \$9,273\.93, 8\.7% of everything you've invested, from Demo Exchange and Demo Wallet \(read-only\)\. As of Oct 18, 3:00 PM UTC\./,
+    );
+    expect(reply.body).toMatch(/above the 5% a common rule of thumb/);
+    expect(reply.body).toMatch(
+      /fees came to \$26\.88 on \$1,800\.00 of trades this past year \(1\.49%\)/,
+    );
+    expect(reply.body).toMatch(/I never buy, sell or move crypto\.$/);
+    expect(reply.actions.map((a) => a.id)).toEqual(["open"]);
+    expect(reply.refs).toEqual({ advice: true });
+  });
+
+  it("gives only the facts outside demo advice mode, and offers a demo exchange when empty", () => {
+    const facts = cryptoReply({ ...CRYPTO_VIEW, advice: false });
+    expect(facts.body).not.toMatch(/rule of thumb|fees came/);
+    expect(facts.refs).toEqual({});
+    const none = cryptoReply({ ...CRYPTO_VIEW, connections: [] });
+    expect(none.actions[0]).toMatchObject({ id: "crypto.link", kind: "primary" });
+  });
+
+  it("says once it can see crypto, and flags share and fees in demo advice mode", () => {
+    const gatherCrypto = (crypto: InvestmentSnapshot["crypto"], advice = true) =>
+      investmentsSource
+        .gather({ ...base, investments: demoInvestmentSnapshot({ advice, crypto }) }, {} as never)
+        .filter((c) => c.dedupeKey.startsWith("crypto:"));
+    const all = {
+      size: CRYPTO_SIZE,
+      fees: CRYPTO_FEES,
+      demo: true,
+      sources: ["Demo Exchange", "Demo Wallet"],
+    };
+    const messages = gatherCrypto(all);
+    expect(messages.map((m) => [m.kind, m.dedupeKey])).toEqual([
+      ["done", "crypto:seen"],
+      ["heads_up", "crypto:share"],
+      ["heads_up", "crypto:fees"],
+    ]);
+    expect(messages[0].body).toMatch(/It now counts in your net worth\. I only read it/);
+    // No message ever carries a button that would trade.
+    expect(messages.flatMap((m) => m.actions.map((a) => a.id))).toEqual(
+      expect.not.arrayContaining(["crypto.link", "invest.rebalance"]),
+    );
+    expect(gatherCrypto(all, false).map((m) => m.dedupeKey)).toEqual(["crypto:seen"]);
+    expect(gatherCrypto(demoInvestmentSnapshot().crypto)).toEqual([]);
   });
 });
