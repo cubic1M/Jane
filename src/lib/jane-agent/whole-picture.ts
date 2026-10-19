@@ -4,7 +4,7 @@ import type { Ranked } from "@/planning/priorities";
 import type { MessageAction, MessageRefs } from "./types";
 import type { Reply } from "./replies";
 import type { Snapshot } from "./snapshot";
-import { dateAndDays, inDays, sentence, things } from "./sources/source";
+import { dateAndDays, inDays, things } from "./sources/source";
 import { shortName } from "./sources/findings";
 
 // "Am I OK?" and "what should I do this month?" answered whole (spec step 183), from every
