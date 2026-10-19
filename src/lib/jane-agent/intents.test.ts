@@ -164,6 +164,22 @@ describe("parseIntent", () => {
     expect(parse(text)).toEqual({ kind: "act", verb, target });
   });
 
+  // Spec step 100.
+  it.each([
+    ["I'm moving next month", "moving"],
+    ["we just moved", "moving"],
+    ["I got a new job!", "new_job"],
+    ["starting my new job on Monday", "new_job"],
+    ["we're having a baby", "new_baby"],
+    ["I'm pregnant", "new_baby"],
+  ])("understands %s as a life event", (text, event) => {
+    expect(parse(text)).toEqual({ kind: "life_event", event });
+  });
+
+  it("doesn't take moving money for moving house", () => {
+    expect(parse("can you move my money to savings").kind).not.toBe("life_event");
+  });
+
   it.each([
     ["what did you do", "what_did"],
     ["What's new?", "what_did"],

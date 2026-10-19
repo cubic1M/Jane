@@ -309,8 +309,11 @@ model User {
   securities             Security[]
   holdings               Holding[]
   investmentTransactions InvestmentTransaction[]
+  // What the investments are for (spec step 129).
+  investorProfile        InvestorProfile?
   changeAcks             ChangeAck[]
   taxProfile             TaxProfile?
+  lifeEventAnswers       LifeEventAnswer[]
 
   @@map("users")
 }
@@ -1595,6 +1598,28 @@ model InvestmentTransaction {
   @@map("investment_transactions")
 }
 
+// Spec step 129: what the person's investments are for, from four questions (in the chat or
+// on /investments/profile). Kept as answered, one at a time; nothing uses it until all four
+// are in (answeredAt). Changed any time. The values are keys in src/config/investing.ts.
+model InvestorProfile {
+  id           String    @id @default(cuid())
+  userId       String    @unique @map("user_id")
+  // Age when answered, with the day, so it can be aged.
+  age          Int?
+  ageOn        DateTime? @map("age_on") @db.Date
+  horizon      String?
+  dropReaction String?   @map("drop_reaction")
+  goals        String[]  @default([])
+  // When the last of the four was answered; null while any is missing.
+  answeredAt   DateTime? @map("answered_at") @db.Timestamptz(3)
+  createdAt    DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt    DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("investor_profiles")
+}
+
 // "That's expected" on a change Jane noticed (spec step 97): a bill that moved, a new
 // subscription, a paycheck, a category's pace or a new fee. Keyed by the change's own key
 // (src/insights/changes.ts), so that change is never brought up again.
@@ -1609,4 +1634,20 @@ model ChangeAck {
 
   @@unique([userId, key])
   @@map("change_acks")
+}
+
+// The person's answer when Jane asked about a life event she spotted (spec step 100): yes
+// (she ran the checklist), not_me (never asked about that kind again) or never (no
+// life-event questions at all; kind is "all").
+model LifeEventAnswer {
+  id        String   @id @default(cuid())
+  userId    String   @map("user_id")
+  kind      String
+  answer    String
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, kind])
+  @@map("life_event_answers")
 }
