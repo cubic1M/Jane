@@ -7,6 +7,8 @@ import {
   startAutoInvest,
 } from "@/lib/investments/auto-invest";
 import { AUTO_LINK, runLine } from "../investments/auto-copy";
+import { CollegeError, startCollegePlan } from "@/lib/investments/college";
+import { formatCents } from "@/lib/money";
 import { nextQuestion, profileSummary, questionAfter } from "@/planning/investor-profile";
 import { asking } from "../investments/profile-question";
 import { mixLine, SIMULATED_WORDS } from "../investments/rebalance-copy";
@@ -151,3 +153,27 @@ function autoStatus(id: ActionId, status: "active" | "paused"): ActionHandler {
 
 export const investAutoPause = autoStatus("invest.auto_pause", "paused");
 export const investAutoResume = autoStatus("invest.auto_resume", "active");
+
+// Spec step 158: "Start saving for college", through college savings' own code (the page's).
+// It saves a goal; step 157's buckets and automatic investing fund it from then on.
+export const collegeStart: ActionHandler = {
+  id: "college.start",
+  on: "open",
+  async run({ userId, message, action, client, now }) {
+    const college = message.refs.college;
+    if (!college) throw new ChatActionError("not_offered", "That button isn't on this message.");
+    try {
+      const { goal } = await startCollegePlan(userId, college, { client, now });
+      return {
+        answeredWith: action.label,
+        note: `Done: a goal of ${formatCents(goal.targetCents)} by September ${goal.targetDate.slice(0, 4)}. I'll invest for it with your other goals; turn on automatic investing and it fills every payday.`,
+        actions: [
+          { id: "open", label: "See college savings", kind: "link", href: "/investments/college" },
+        ],
+      };
+    } catch (error) {
+      if (error instanceof CollegeError) throw answeredElsewhere(error.message);
+      throw error;
+    }
+  },
+};

@@ -11,6 +11,8 @@ test.setTimeout(120_000);
 test.use({ viewport: { width: 375, height: 812 } });
 
 let userId: string | undefined;
+// Every button but Pin (spec step 96), which every message of Jane's has.
+const NOT_PIN = /^(?!(?:Pin|Unpin)$)/;
 test.afterEach(async () => {
   if (userId) await deleteUser(userId);
 });
@@ -56,7 +58,7 @@ test("the demo bank lands in Jane's chat, and Yes answers a finding", async ({
   const finding = messages.filter({ hasText: body });
   await finding.getByRole("button", { name: "Yes", exact: true }).click();
   await expect(finding.getByText("You chose:")).toBeVisible();
-  await expect(finding.getByRole("button")).toHaveCount(0);
+  await expect(finding.getByRole("button", { name: NOT_PIN })).toHaveCount(0);
   await expect(finding.getByRole("link", { name: /Open/ })).toBeVisible();
 
   // Still answered after a reload.
@@ -76,7 +78,7 @@ test("the demo bank lands in Jane's chat, and Yes answers a finding", async ({
   await autopilot.getByRole("button", { name: "Handle the safe stuff" }).click();
   await expect(autopilot.getByText("You chose:")).toBeVisible();
   await expect(autopilot.getByRole("status")).toContainText("I'll handle the safe stuff");
-  await expect(autopilot.getByRole("button")).toHaveCount(0);
+  await expect(autopilot.getByRole("button", { name: NOT_PIN })).toHaveCount(0);
 
   // Chat is the first tab and lit up; the message box is at the end.
   const nav = page.getByRole("navigation", { name: "Main" });
@@ -112,7 +114,7 @@ test("the demo bank lands in Jane's chat, and Yes answers a finding", async ({
   await expect(messages.last()).toContainText("Which one do you mean?");
   // Found by its words: once answered, it's no longer the last message.
   const question = messages.filter({ hasText: "Which one do you mean?" }).last();
-  await question.getByRole("button").first().click();
+  await question.getByRole("button", { name: NOT_PIN }).first().click();
   await expect(question.getByText("You chose:")).toBeVisible();
   await expect(messages.last()).toContainText("Want me to handle it?");
   await expect(messages.last().getByRole("button", { name: "Yes", exact: true })).toBeVisible();
@@ -132,7 +134,7 @@ test("the demo bank lands in Jane's chat, and Yes answers a finding", async ({
   await ask.press("Enter");
   const flow = messages.filter({ hasText: "Setting up a budget" }).last();
   await expect(flow).toContainText("1 of 2");
-  await flow.getByRole("button").first().click();
+  await flow.getByRole("button", { name: NOT_PIN }).first().click();
   await expect(flow).toContainText("2 of 2");
   await flow.getByRole("button", { name: "Cancel" }).click();
   await expect(flow.getByRole("status")).toContainText("Nothing was changed.");
@@ -150,6 +152,18 @@ test("the demo bank lands in Jane's chat, and Yes answers a finding", async ({
   await remembers.getByRole("button", { name: /Forget/ }).click();
   await expect(remembers).toContainText("Nothing yet.");
   await page.goto("/chat");
+
+  // Spec step 96: search the chat, and pin a message to the top.
+  await page.getByRole("searchbox", { name: "Search the chat" }).first().fill("safe to spend");
+  await page.getByRole("button", { name: "Search" }).first().click();
+  await expect(page).toHaveURL(/\/chat\/search\?q=safe/);
+  await expect(page.getByRole("status")).toContainText('found for "safe to spend"');
+  await page.goto("/chat");
+  const pinIt = messages.filter({ hasText: /Good (morning|afternoon|evening)!/ });
+  await pinIt.getByRole("button", { name: "Pin" }).click();
+  await expect(page.getByRole("region", { name: "Pinned" })).toContainText(
+    /Good (morning|afternoon|evening)!/,
+  );
 
   const overflow = await page.evaluate(
     () => document.documentElement.scrollWidth - document.documentElement.clientWidth,

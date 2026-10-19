@@ -1,9 +1,9 @@
 import type { PrismaClient } from "@/generated/prisma/client";
-import type { Debt } from "@/insights/debts";
+import type { Debt, DebtBook } from "@/insights/debts";
 import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
-import { loadDebts } from "@/lib/debts";
-import { loadRefinance } from "@/lib/refinance";
+import { debtsOr } from "@/lib/debts";
+import { loadRefinance, type Refinance } from "@/lib/refinance";
 import {
   breakEvenMonths,
   escrowChange,
@@ -51,9 +51,14 @@ export type Mortgage = {
 
 export async function loadMortgage(
   userId: string,
-  { client = defaultClient, now = new Date() }: Options = {},
+  {
+    client = defaultClient,
+    now = new Date(),
+    book: given,
+    refinance: givenRefinance,
+  }: Options & { book?: DebtBook; refinance?: Refinance } = {},
 ): Promise<Mortgage | null> {
-  const book = await loadDebts(userId, { client, now });
+  const book = await debtsOr(given, userId, { client, now });
   const loan = [...book.debts]
     .filter((d) => d.kind === "mortgage" && d.accountId && (d.balanceCents ?? 0) > 0)
     .sort((a, b) => (b.balanceCents ?? 0) - (a.balanceCents ?? 0))[0];
@@ -77,7 +82,7 @@ export async function loadMortgage(
       },
       select: { date: true, amountCents: true },
     }),
-    loadRefinance(userId, { client, now }),
+    givenRefinance ? Promise.resolve(givenRefinance) : loadRefinance(userId, { client, now, book }),
     // Users have their own helpers, so a read of this column by id.
     client.user.findUnique({ where: { id: userId }, select: { name: true } }),
   ]);

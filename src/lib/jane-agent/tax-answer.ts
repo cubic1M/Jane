@@ -4,6 +4,8 @@ import { loadTaxEstimate } from "@/lib/tax-estimate";
 import { adviceMode } from "@/lib/advice-mode";
 import { loadInvestmentTaxes } from "@/lib/investment-taxes";
 import { investmentsReply } from "./tax-investments";
+import { loadTaxDocuments } from "@/lib/tax-documents";
+import { documentsReply } from "./tax-documents-message";
 import { moveReply, statesReply, workStateReply } from "./tax-states-message";
 import { loadWithholding } from "@/lib/tax-withholding";
 import { loadTaxSavings } from "@/lib/tax-savings";
@@ -116,8 +118,13 @@ export async function answerTaxIntent(
         intent.tag,
       );
     }
-    case "forms":
-      return formsReply(await loadTaxForms(userId, year, { client, now }));
+    case "forms": {
+      // Spec step 166: with a document partner, what was collected and how it checked.
+      const docs = await loadTaxDocuments(userId, year, { client, now });
+      return docs.collecting
+        ? documentsReply(docs)
+        : formsReply(await loadTaxForms(userId, year, { client, now }));
+    }
     case "pack":
       return packReply(await loadTaxPack(userId, year, { client, now }));
     case "estimate":

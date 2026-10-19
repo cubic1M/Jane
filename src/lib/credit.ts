@@ -6,7 +6,8 @@ import { demoCredit } from "@/lib/credit/demo";
 import type { CreditFactor, CreditPartner, CreditRequest } from "@/lib/credit/partner";
 import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
-import { loadDebts } from "@/lib/debts";
+import { debtsOr, loadDebts } from "@/lib/debts";
+import type { DebtBook } from "@/insights/debts";
 import { formatCents } from "@/lib/money";
 import { creditBandOf, creditFactors, utilisation, type Utilisation } from "@/planning/credit";
 
@@ -119,7 +120,7 @@ export type Credit = {
 
 export async function loadCredit(
   userId: string,
-  { client = defaultClient, now = new Date() }: Options = {},
+  { client = defaultClient, now = new Date(), book: given }: Options & { book?: DebtBook } = {},
 ): Promise<Credit> {
   const found = await creditPartnerFor(userId, { client });
   if (!found) return { available: false, latest: null, previousScore: null };
@@ -128,7 +129,7 @@ export async function loadCredit(
       orderBy: [{ pulledOn: "desc" }, { createdAt: "desc" }],
       take: 2,
     }),
-    loadDebts(userId, { client, now }),
+    debtsOr(given, userId, { client, now }),
   ]);
   const [latest, previous] = rows;
   if (!latest) return { available: true, latest: null, previousScore: null };

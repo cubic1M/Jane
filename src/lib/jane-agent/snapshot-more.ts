@@ -2,6 +2,7 @@ import type { PrismaClient } from "@/generated/prisma/client";
 import { switchOf } from "@/lib/agent/switch";
 import { autopilotOf } from "@/lib/autopilot";
 import { loadPayoff, type Payoff } from "@/lib/debt-plan";
+import { loadDebts } from "@/lib/debts";
 import { loadTransfers, type Transfers } from "@/lib/balance-transfers";
 import { loadStudentLoans, type StudentLoans } from "@/lib/student-loans";
 import { loadMortgage, type Mortgage } from "@/lib/mortgage";
@@ -71,6 +72,9 @@ export async function loadMore(
   { client, now = new Date() }: { client: PrismaClient; now?: Date },
 ): Promise<MoreSnapshot> {
   const db = scopedFor(userId, client);
+  // Every debt loader below works from the same debt book, loaded once.
+  const book = await loadDebts(userId, { client, now });
+  const refinance = await loadRefinance(userId, { client, now, book });
   const [
     autopilot,
     proposals,
@@ -78,7 +82,6 @@ export async function loadMore(
     loans,
     owned,
     payoff,
-    refinance,
     loanApplications,
     transfers,
     student,
@@ -108,13 +111,12 @@ export async function loadMore(
       orderBy: { id: "asc" },
     }),
     db.ownedAssets.findMany({ select: { loanAccountId: true } }),
-    loadPayoff(userId, { client, now }),
-    loadRefinance(userId, { client, now }),
+    loadPayoff(userId, { client, now, book }),
     listApplications(userId, { client }),
-    loadTransfers(userId, { client, now }),
-    loadStudentLoans(userId, { client, now }),
-    loadMortgage(userId, { client, now }),
-    loadCredit(userId, { client, now }),
+    loadTransfers(userId, { client, now, book }),
+    loadStudentLoans(userId, { client, now, book }),
+    loadMortgage(userId, { client, now, book, refinance }),
+    loadCredit(userId, { client, now, book }),
   ]);
   const insurance = await loadInsuranceSnapshot(userId, { client, now });
 

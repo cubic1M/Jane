@@ -14,6 +14,7 @@ import {
   type Benefit,
   type BenefitQuestion,
 } from "@/lib/insurance/benefits";
+import { listReadings, type Reading } from "@/lib/insurance/readings";
 import { SWITCH_NEWS_DAYS, SWITCH_PAYMENT_DAYS } from "@/config/insurance";
 
 // What Jane's brain knows about the person's insurance (spec Phase X), from the same loader
@@ -43,6 +44,8 @@ export type InsuranceSnapshot = {
   // Spec step 150: benefits through work and the next guided question, if any.
   benefits?: Benefit[];
   benefitQuestion?: BenefitQuestion | null;
+  // Spec step 151: policies read from documents, waiting for the person's confirm tap.
+  readings?: Reading[];
 };
 
 export type Switch = Awaited<ReturnType<typeof switchesFor>>[number];
@@ -53,7 +56,7 @@ export async function loadInsuranceSnapshot(
 ): Promise<InsuranceSnapshot> {
   const asOf = now.toISOString().slice(0, 10);
   const [
-    { policies, gaps, household, advice },
+    { policies, gaps, household, advice, readings },
     partner,
     shops,
     noBetter,
@@ -62,7 +65,11 @@ export async function loadInsuranceSnapshot(
     benefits,
     switches,
   ] = await Promise.all([
-    loadInsurance(userId, { client, now }),
+    // Reads any policy document not read yet, so the readings below come after it.
+    loadInsurance(userId, { client, now }).then(async (profile) => ({
+      ...profile,
+      readings: await listReadings(userId, { client, status: "waiting" }),
+    })),
     partnerFor(userId, { client }),
     openShops(userId, { client, now }),
     recentNoBetter(userId, { client, now }),
@@ -94,5 +101,6 @@ export async function loadInsuranceSnapshot(
       (household.signals.paycheck || benefits.length > 0)
         ? nextQuestion(benefits)
         : null,
+    readings,
   };
 }

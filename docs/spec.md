@@ -3094,6 +3094,101 @@ stand-ins; advice is demo advice.
 > - Every letter cites the right rule and deadline from config; nothing is sent without a
 >   tap
 
+## Phase AH: Jane the agent, round two (steps 182–188)
+
+Phase V made the chat professional. This round makes Jane the one place the person needs:
+she gets payday right, answers across every sector at once, runs the day in one message,
+takes requests that span several sectors, can be talked to, shows everything she did, and
+fits how each person likes to be spoken to.
+
+### Step 182: Paydays that are right
+
+> Read CLAUDE.md. Fix the payday Jane plans around.
+>
+> Build:
+> 1. Paychecks detected for every common schedule (weekly, every two weeks, twice a month on
+>    fixed dates like the 1st and 15th with weekend and holiday shifts, monthly), from
+>    payroll-like deposits only; small interest or refunds are never a paycheck.
+> 2. Safe to spend, the forecast, the brief and every sector that reads the payday use it.
+>
+> Acceptance criteria:
+> - The demo bank's 1st-and-15th payroll is found and $1.02 of interest never is; each
+>   schedule has tests with shifted dates
+
+### Step 183: Answers across everything
+
+> Read CLAUDE.md. "Am I OK?" and "what should I do this month?" answered whole.
+>
+> Build:
+> 1. Rule answers and a Claude tool that pull from every sector at once: the ranked list
+>    (step 143), the health score (step 146), what's due, what Jane is doing; one answer
+>    with the one to three things that matter and their buttons.
+>
+> Acceptance criteria:
+> - Step 87 gains whole-picture questions and they score well; figures match each sector
+
+### Step 184: The day in one message
+
+> Read CLAUDE.md. One morning message runs the day.
+>
+> Build:
+> 1. The brief becomes the day's agenda: what Jane did overnight (step 142), what needs a
+>    yes (with "approve all safe ones"), what's coming up, each a line with its button;
+>    nothing else from Jane until something urgent.
+>
+> Acceptance criteria:
+> - A day with nothing to do gets one short line; urgent things still come at once
+
+### Step 185: Requests that span sectors
+
+> Read CLAUDE.md. "Switch my car insurance and put the savings in my emergency fund."
+>
+> Build:
+> 1. Requests that need several actions become one plan: each step through its feature's
+>    own code, shown together for one confirmation, done in order, with what happened after
+>    each and undo where the feature has it.
+>
+> Acceptance criteria:
+> - Nothing runs before the confirmation; a failed step stops the rest and says why
+
+### Step 186: Talk to Jane
+
+> Read CLAUDE.md. Speak instead of typing.
+>
+> Build:
+> 1. A microphone button in the message box (the browser's speech recognition where
+>    available, the existing /api/voice route otherwise) and answers read aloud on request;
+>    the words go through the same rules and guardrails as typing.
+>
+> Acceptance criteria:
+> - Works with a keyboard and a screen reader; nothing is recorded or stored beyond the
+>   text sent
+
+### Step 187: Everything Jane did
+
+> Read CLAUDE.md. A full, honest record.
+>
+> Build:
+> 1. An activity timeline in the chat and on /jane: every action Jane took by herself or on
+>    a tap, across sectors, with why, the money involved and undo while it works; "why did
+>    you do that?" answered from it.
+>
+> Acceptance criteria:
+> - Every autopilot action appears with its reason; nothing is missing against the audit
+>   log
+
+### Step 188: Jane's way of talking
+
+> Read CLAUDE.md. Short or detailed, as the person likes.
+>
+> Build:
+> 1. Preferences (step 91) for answer length, how often Jane posts, and plain or numbers-
+>    first, picked up from what the person says ("keep it short") and set in Settings; the
+>    templates and Claude's instructions follow them.
+>
+> Acceptance criteria:
+> - The answer shape (step 89) holds at every length; step 87's scores hold
+
 ### Later, when the founder is ready
 
 These need an outside account, a partner or a decision: Plaid Production (real banks) and

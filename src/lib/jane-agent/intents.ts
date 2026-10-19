@@ -70,6 +70,8 @@ export type Intent =
   | { kind: "goals" }
   // Spec step 95: a guided flow to start, or the one left open to pick up again.
   | { kind: "flow"; flow: FlowId | "resume" }
+  // Spec step 96: searching what was said in the chat.
+  | { kind: "search"; query: string }
   // A name on its own, or "tell me about …": a subscription or bill, something Jane found,
   // or a spending category, whichever it is (src/lib/jane-agent/answer.ts).
   | { kind: "about"; target: string; findingId?: string }
@@ -82,6 +84,12 @@ export type Intent =
   | TaxIntent
   // Spec step 128 on: what they own, and each later investment question.
   | InvestmentIntent
+  // Spec step 142: "what did you check last night?"
+  | { kind: "checked" }
+  // Spec step 143: "what should I do first?"
+  | { kind: "priorities" }
+  // Spec step 144: "where did my paycheck go?"
+  | { kind: "paycheck" }
   // Spec step 141: one autopilot, every sector.
   | SectorIntent
   // Spec step 136: what a word means.
@@ -313,6 +321,12 @@ const SAVED =
   /\bhow much (?:have you|has jane|did you) saved? me\b|\bwhat (?:have you|did you) save(?:d)? me\b|\bmy savings so far\b|\btotal (?:you'?ve )?saved\b/;
 const REVIEW =
   /\b(?:weekly review|week in review|how was my week|how did my week go|recap(?: my| the| of my)? week|my week(?: so far)?)\b/;
+const PAYCHECK =
+  /\bsplit my (?:paycheck|pay)\b|\bwhere (?:did|does) my (?:paycheck|pay) go\b|\bmy paycheck plan\b|\bwhat did you move\b/;
+const PRIORITIES =
+  /\bwhat should i do (?:first|next|now)\b|\bwhat matters (?:most|now)\b|\bwhat'?s (?:most )?important\b|\bwhere (?:do|should) i start\b|\bmy (?:top )?priorities\b|\bnext best thing\b/;
+const CHECKED =
+  /\bwhat did you check\b|\b(?:checked|check) (?:last night|overnight)\b|\bnightly (?:check|run|log)s?\b/;
 const APPROVE_ALL =
   /\b(?:yes to (?:all|everything)|approve (?:them all|all|everything|the safe ones|the safe stuff|safe ones))\b/;
 const UNDO = /^(?:undo|undo (?:that|it|the last one)|take (?:that|it) back)$/;
@@ -362,6 +376,10 @@ const FLOW_STARTS: readonly [FlowId | "resume", RegExp][] = [
   ],
 ];
 
+// Spec step 96: searching the chat.
+const SEARCH =
+  /^search(?: (?:the|our|my) (?:chat|messages))?(?: for)? (.+)$|^find (.+?) in (?:the|our|my) (?:chat|messages)$|^where did (?:you|we|i) (?:say|talk about|mention) (.+)$/;
+
 // Spec step 94: "how are my goals doing", "goals", "am I on track with my goals".
 const GOALS =
   /^(?:how (?:are|is) |show (?:me )?|what are |list )?(?:my |our )?(?:savings )?goals?(?: doing| progress| looking)?$|\bgoals? (?:progress|doing)\b|\bon track (?:for|with) (?:my |our )?goals?\b/;
@@ -406,6 +424,9 @@ export function parseIntent(raw: string, asOf: string): Intent {
   if (GREETING.test(text)) return { kind: "greeting", thanks: false };
   if (THANKS.test(text)) return { kind: "greeting", thanks: true };
   if (PAUSE.test(text)) return { kind: "pause_autopilot" };
+  if (CHECKED.test(text)) return { kind: "checked" };
+  if (PRIORITIES.test(text)) return { kind: "priorities" };
+  if (PAYCHECK.test(text)) return { kind: "paycheck" };
   const sector = parseSectorIntent(text);
   if (sector) return sector;
   if (SAVED.test(text)) return { kind: "saved" };
@@ -433,6 +454,9 @@ export function parseIntent(raw: string, asOf: string): Intent {
   // Spec step 95: a guided flow.
   const flow = FLOW_STARTS.find(([, pattern]) => pattern.test(text));
   if (flow) return { kind: "flow", flow: flow[0] };
+  // Spec step 96: "search for Netflix", "where did you say Hulu".
+  const search = SEARCH.exec(text);
+  if (search) return { kind: "search", query: (search[1] ?? search[2] ?? search[3]).trim() };
 
   // Spec step 91: something they're telling Jane, not asking.
   const fact = parseFact(text);
