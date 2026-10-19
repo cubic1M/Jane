@@ -9,6 +9,7 @@ import type { LifeGuess } from "@/insights/life-signals";
 import { isUrgent, newestUnreadAlerts } from "@/lib/alerts";
 import { loadChanges, type ChangeView } from "@/lib/changes";
 import { lastControllerRun, type LastRun } from "@/lib/controller-log";
+import { latestPaycheckPlan, type PaycheckPlanView } from "@/lib/money-movement/paycheck";
 import { lifeGuessesFor } from "@/lib/life-guesses";
 import { loadUpkeep, type UpkeepSnapshot } from "@/lib/plan-upkeep";
 import { provenSavings } from "@/lib/savings-proof";
@@ -43,6 +44,9 @@ export type SnapshotFinding = {
   // Jane's pick when the finding compares options (spec step 76): what it saves in the
   // first year (bills) or earns more a year (savings).
   pick: { optionId: string; name: string; savingCents: number; savings: boolean } | null;
+  // Spec step 143: how sure detection is, for the priority engine. Optional for snapshots
+  // built by hand.
+  confidence?: "high" | "medium" | "low";
 };
 
 export type Snapshot = {
@@ -95,6 +99,8 @@ export type Snapshot = {
   firstChat?: boolean;
   // Spec step 142: last night's controller run, if recent. Optional, like changes.
   lastRun?: LastRun | null;
+  // Spec step 144: the newest paycheck's plan. Optional, like changes.
+  paycheck?: PaycheckPlanView | null;
   // Spec step 128 on: what's in investment accounts.
   investments?: InvestmentSnapshot;
   // Spec step 91: suggestions the person said never to make again (preference keys);
@@ -209,6 +215,7 @@ export async function loadSnapshot(
       title: true,
       annualSavingsCents: true,
       evidence: true,
+      confidence: true,
     },
   });
   // Spec step 91: never a finding the person said not to suggest again, nor cutting
@@ -247,6 +254,7 @@ export async function loadSnapshot(
         savings: savingsLine(finding.type, finding.annualSavingsCents),
         fingerprint: findingFingerprint(finding),
         urgent: PLAN_URGENT_FINDING_TYPES.includes(finding.type),
+        confidence: finding.confidence,
         pick: comparison
           ? {
               optionId: comparison.pick.option.id,
@@ -277,6 +285,7 @@ export async function loadSnapshot(
     ...(await thinking(userId, client, now, input)),
     firstChat: said === 0,
     lastRun: await lastControllerRun(userId, { client, now }),
+    paycheck: await latestPaycheckPlan(userId, { client, now }),
     upkeep: await loadUpkeep(userId, { client, now }),
     investments: await loadInvestmentSnapshot(userId, { client, now }),
     neverSuggest: [...never],
