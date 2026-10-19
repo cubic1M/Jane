@@ -17,7 +17,12 @@ import {
   type AutoInvestMode,
 } from "@/planning/auto-invest";
 import { profileSummary } from "@/planning/investor-profile";
+import { splitNewMoney } from "@/planning/goal-buckets";
+import { loadGoalBuckets } from "./goal-buckets";
 import { profileOf } from "./profile";
+
+const dollars = (cents: number) =>
+  `$${(cents / 100).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
 // Automatic investing (spec step 134). Set up once with a tap (an amount every payday, or
 // the rest after bills and goals); after that Jane runs it by herself on each new paycheck,
@@ -204,6 +209,18 @@ export async function runAutoInvest(
     safeCents: safe,
   });
   let batchId: string | null = null;
+  // Spec step 157: at "Handle the safe stuff" and above, new money goes by goal: near-term
+  // goals' share stays as cash, the rest is bought in each goal's own mix.
+  const goals =
+    decision.status === "invested" ? await loadGoalBuckets(userId, { client, now }) : null;
+  const split =
+    decision.status === "invested" && goals?.byHerself && goals.buckets && goals.buckets.length > 0
+      ? splitNewMoney(decision.amountCents, goals.buckets)
+      : null;
+  const buys =
+    decision.status === "invested"
+      ? (split?.buys ?? contributionBuys(decision.amountCents, profile.riskLevel))
+      : [];
   if (decision.status === "invested") {
     batchId = randomUUID();
     const confirmations = await brokeragePartner().placeOrders(
@@ -219,7 +236,7 @@ export async function runAutoInvest(
             side: "deposit",
             amountCents: decision.amountCents,
           },
-          ...contributionBuys(decision.amountCents, profile.riskLevel).map((b) => ({
+          ...buys.map((b) => ({
             accountId: plan.accountId,
             ticker: b.ticker,
             securityName: FUND_NAMES[b.ticker] ?? b.ticker,
@@ -249,7 +266,18 @@ export async function runAutoInvest(
       amountCents: decision.status === "invested" ? decision.amountCents : 0,
       safeCents: safe,
       batchId,
-      reason: decision.status === "paused" ? decision.reason : null,
+      reason:
+        decision.status === "paused"
+          ? decision.reason
+          : split && goals?.buckets
+            ? `By goal: ${split.perBucket
+                .filter((p) => p.amountCents > 0)
+                .map(
+                  (p) =>
+                    `${goals.buckets!.find((b) => b.id === p.id)?.name ?? "goal"} ${dollars(p.amountCents)}`,
+                )
+                .join(", ")}`
+            : null,
     },
   });
   await db.autoInvestPlans.updateMany({

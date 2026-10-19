@@ -21,6 +21,8 @@ import { loadFees } from "./fees";
 import { loadRetirement } from "./retirement";
 import { loadReview } from "./review";
 import { loadReturns } from "./returns";
+import { loadGoalBuckets } from "./goal-buckets";
+import { setAutopilot } from "@/lib/autopilot";
 import { takeSnapshots } from "@/lib/snapshots";
 import { syncDemoInvestments } from "@/lib/plaid/sync";
 import { loadInvestments } from "./holdings";
@@ -448,4 +450,44 @@ describe.runIf(url)("investments in Jane's chat, against a real database", () =>
       expect(returns.periods[2].incomeCents).toBeGreaterThan(0);
     },
   );
+
+  it("step 157: at the safe level, new money goes by goal, near-term in cash", SLOW, async () => {
+    const userId = await demoPerson();
+    await saveProfileForm(
+      userId,
+      { age: "45", horizon: "over_20", dropReaction: "worry", goals: ["retirement", "home"] },
+      { client, now: LINKED },
+    );
+    // A house in two years, saved by hand so far.
+    await client.savingsGoal.create({
+      data: {
+        userId,
+        name: "House",
+        targetCents: 3_000_000,
+        targetDate: new Date("2028-10-01"),
+        manualSavedCents: 0,
+      },
+    });
+    await setAutopilot(userId, "safe", { client, now: LINKED });
+    const { buckets, byHerself } = await loadGoalBuckets(userId, { client, now: LINKED });
+    expect(byHerself).toBe(true);
+    expect(buckets?.map((b) => [b.name, b.nearTerm])).toEqual([
+      ["House", true],
+      ["Retirement", false],
+    ]);
+    const brokerage = (await loadAutoInvest(userId, { client, now: LINKED })).accounts[0].id;
+    const run = await startAutoInvest(
+      userId,
+      { mode: "fixed", amountCents: 10_000, accountId: brokerage },
+      { client, now: LINKED },
+    );
+    expect(run?.status).toBe("invested");
+    // The house needs more than $100 a month, so all of it stays in cash: nothing is bought.
+    const orders = await client.brokerageOrder.findMany({
+      where: { userId, reason: "auto_invest" },
+    });
+    expect(orders.map((o) => o.side)).toEqual(["deposit"]);
+    const saved = await client.autoInvestRun.findFirstOrThrow({ where: { userId } });
+    expect(saved.reason).toBe("By goal: House $100.00");
+  });
 });

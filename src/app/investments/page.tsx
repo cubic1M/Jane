@@ -188,6 +188,12 @@ async function InvestmentsContent() {
             : the match, HSA, IRA or taxable, and where to hold what.
           </p>
           <p className="text-sm text-zinc-600 dark:text-zinc-400">
+            <Link href="/investments/goals" className={LINK}>
+              Invested for each goal
+            </Link>
+            : cash when it&apos;s close, safer as the date nears.
+          </p>
+          <p className="text-sm text-zinc-600 dark:text-zinc-400">
             Learn:{" "}
             {["index-funds", "fees", "the-match", "roth-vs-traditional", "rebalancing"].map(
               (slug, i) => (
