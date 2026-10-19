@@ -19,11 +19,14 @@ import { loadInvestmentTaxes } from "@/lib/investment-taxes";
 import { adviceMode } from "@/lib/advice-mode";
 import { filingYear, inFilingSeason, loadReturn } from "@/lib/tax-filing";
 import { filingPartnerFor } from "@/lib/filing";
-import { loadTaxForms, loadTaxTags } from "@/lib/tax-organizer";
+import { loadTaxTags } from "@/lib/tax-organizer";
 import { loadWorkingProfile } from "@/lib/tax-profile";
 import { defaultTaxYear } from "@/planning/tax-pack";
 import { stateName } from "@/planning/tax-profile";
 import { STATE_SOURCES } from "@/config/tax-states";
+import { loadTaxDocuments } from "@/lib/tax-documents";
+import { loadTaxPlan } from "@/lib/tax-plan";
+import { COMPARED } from "@/planning/tax-document-check";
 
 // Claude's tax tools in Jane's chat (spec steps 118–127): read-only, over the person's own
 // data, through the same loaders as /taxes. Every dollar figure is recorded for the
@@ -105,9 +108,15 @@ export const TAX_TOOLS: Anthropic.Tool[] = [
     input_schema: noInput,
   },
   {
+    name: "tax_plan",
+    description:
+      "The person's year-round tax plan for the tax year: each tax move that applies (workplace plan and IRA or HSA contributions, open enrollment, estimated payments, selling at a loss before year-end, gifts before December 31, a W-4 check after a new job or baby, filing), each with its deadline, when Jane brings it up, what she'd put on their deadlines, and whether it's there already or they said no. Moves past their deadline aren't included. Contribution, sale and gift moves are demo advice.",
+    input_schema: noInput,
+  },
+  {
     name: "tax_forms",
     description:
-      "The tax forms Jane expects for the tax year from the person's payers and lenders (W-2, 1099s, 1098s): each form, who sends it, the usual date it's sent by, whether the person has it, and whether the payer may not send one because the amount is under the reporting threshold.",
+      "The tax forms Jane expects for the tax year from the person's payers and lenders (W-2, 1099s, 1098s): each form, who sends it, the usual date it's sent by, whether the person has it, and whether the payer may not send one because the amount is under the reporting threshold; and the ones Jane collected from the document partner, with whether each matches the person's accounts (a form that doesn't match is flagged and not used until the person says it's right).",
     input_schema: noInput,
   },
 ];
@@ -423,10 +432,29 @@ export async function runTaxTool(
         employerState: r.workState ? stateName(r.workState) : null,
       });
     }
+    case "tax_plan": {
+      const plan = await loadTaxPlan(userId, { client, now });
+      return out({
+        year: plan.year,
+        demoAdvice: plan.advice,
+        moves: plan.moves.map((m) => ({
+          move: m.title,
+          deadline: m.deadline,
+          bringsUpOn: m.opensOn,
+          detail: m.detail,
+          amount: m.amountCents === null ? null : money(m.amountCents),
+          onDeadlines: m.handled === "added",
+          saidNo: m.handled === "no",
+          demoAdvice: m.advice,
+        })),
+      });
+    }
     case "tax_forms": {
-      const view = await loadTaxForms(userId, year, { client, now });
+      // Spec step 166: with what Jane collected and how each checked against the accounts.
+      const view = await loadTaxDocuments(userId, year, { client, now });
       return out({
         year,
+        collectedByJane: view.collecting,
         forms: view.forms.map((f) => ({
           form: f.form,
           from: f.from,
@@ -435,6 +463,16 @@ export async function runTaxTool(
           received: f.received,
           mayNotSend: f.mayNotSend,
           amountSeen: f.amountCents === null ? null : money(f.amountCents),
+          collected: f.document
+            ? {
+                on: f.document.fetchedAt,
+                check: f.check!.status,
+                formAmount: money(f.check!.formCents),
+                compared: COMPARED[f.formKey],
+                used: f.usable,
+                personSaidRight: f.document.decision === "right",
+              }
+            : null,
         })),
       });
     }

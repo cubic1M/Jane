@@ -146,6 +146,16 @@ export async function loadDebts(
   );
 }
 
+// The debt book already loaded for this person (Jane's snapshot loads it once and hands it
+// to every debt loader), or loaded now.
+export function debtsOr(
+  book: DebtBook | undefined,
+  userId: string,
+  options: Options = {},
+): Promise<DebtBook> {
+  return book ? Promise.resolve(book) : loadDebts(userId, options);
+}
+
 export class DebtTermsError extends Error {}
 
 export type DebtTermsInput = {

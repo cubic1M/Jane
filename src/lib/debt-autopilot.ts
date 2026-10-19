@@ -4,7 +4,8 @@ import { track } from "@/lib/analytics";
 import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
 import { loadPayoff, startDebtPlan } from "@/lib/debt-plan";
-import { loadDebts } from "@/lib/debts";
+import { debtsOr, loadDebts } from "@/lib/debts";
+import type { DebtBook } from "@/insights/debts";
 import { autopilotFor, mayAct, recordAct } from "@/lib/sector-autopilot";
 import { dueMoves, paydaysOf, type DueMove } from "@/planning/due-dates";
 import { rateChanges, type RateChange } from "@/planning/rate-watch";
@@ -85,11 +86,11 @@ export type DebtAutopilot = {
 
 export async function loadDebtAutopilot(
   userId: string,
-  { client = defaultClient, now = new Date() }: Options = {},
+  { client = defaultClient, now = new Date(), book: given }: Options & { book?: DebtBook } = {},
 ): Promise<DebtAutopilot> {
   const db = scopedFor(userId, client);
   const [book, watch, sector, pay] = await Promise.all([
-    loadDebts(userId, { client, now }),
+    debtsOr(given, userId, { client, now }),
     db.debtWatches.findFirst({ select: { changes: true, planStartedOn: true } }),
     autopilotFor(userId, "debt", { client, now }),
     db.transactions.findMany({

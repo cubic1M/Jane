@@ -1,11 +1,12 @@
 import { LENDER_PARTNER, REFI_CHECK_DAYS, type LoanProduct } from "@/config/debt";
-import type { Prisma, PrismaClient } from "@/generated/prisma/client";
+import { Prisma, type PrismaClient } from "@/generated/prisma/client";
 import { adviceMode } from "@/lib/advice-mode";
 import { track } from "@/lib/analytics";
 import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
 import { creditBandFor } from "@/lib/credit";
-import { loadDebts } from "@/lib/debts";
+import { debtsOr, loadDebts } from "@/lib/debts";
+import type { DebtBook } from "@/insights/debts";
 import { demoLender } from "@/lib/lenders/demo";
 import type {
   LenderPartner,
@@ -93,10 +94,18 @@ export async function checkRates(
     quotes: quotes as unknown as Prisma.InputJsonArray,
     transfers: transfers as unknown as Prisma.InputJsonArray,
   };
-  await scopedFor(userId, client).refinanceChecks.upsert({
-    where: { userId },
-    create: { userId, ...data },
-    update: data,
+  const save = () =>
+    scopedFor(userId, client).refinanceChecks.upsert({
+      where: { userId },
+      create: { userId, ...data },
+      update: data,
+    });
+  // Two pages loading at once can both find no row and both create it: the second updates.
+  await save().catch((error) => {
+    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
+      return save();
+    }
+    throw error;
   });
   await track(userId, "refinance_checked", { debts: quotes.length });
   return quotes;
@@ -125,14 +134,14 @@ export type Refinance = {
 
 export async function loadRefinance(
   userId: string,
-  { client = defaultClient, now = new Date() }: Options = {},
+  { client = defaultClient, now = new Date(), book: given }: Options & { book?: DebtBook } = {},
 ): Promise<Refinance> {
   const [found, row, book] = await Promise.all([
     lenderPartnerFor(userId, { client }),
     scopedFor(userId, client).refinanceChecks.findFirst({
       select: { checkedOn: true, quotes: true },
     }),
-    loadDebts(userId, { client, now }),
+    debtsOr(given, userId, { client, now }),
   ]);
   if (!found) return { available: false, checkedOn: null, comparisons: [] };
   const quotes = (Array.isArray(row?.quotes) ? row.quotes : []) as unknown as Quote[];

@@ -16,6 +16,7 @@ import { ClaimError, closeClaim, markStepDone, nextStep, startClaim } from "@/li
 import { trackerActions, trackerBody } from "../insurance/claim-words";
 import { declineShop } from "@/lib/insurance/shop";
 import { quotesReply } from "../insurance/quotes";
+import { ReadingError, confirmReading, dismissReading, getReading } from "@/lib/insurance/readings";
 import { ChatActionError, answeredElsewhere, type ActionHandler } from "./handler";
 
 // Insurance buttons (spec Phase X), through the same code as /insurance.
@@ -251,3 +252,44 @@ export const benefitsLifeNone = answer("benefits.life_none", "life", "none");
 export const benefitsDisabilityYes = answer("benefits.disability_yes", "disability", "yes");
 export const benefitsDisabilityNone = answer("benefits.disability_none", "disability", "none");
 export const benefitsUnsure = answer("benefits.unsure", null, "unsure");
+
+// Spec step 151: a policy read from a document. Confirm saves it as read (the page is for
+// fixing a field first); Not a policy saves nothing.
+export const readingConfirm: ActionHandler = {
+  id: "reading.confirm",
+  on: "open",
+  async run({ userId, message, action, client, now }) {
+    const id = message.refs.readingId;
+    if (!id) throw new ChatActionError("failed", "Something went wrong. Open it instead.");
+    const reading = await getReading(userId, id, { client });
+    try {
+      await confirmReading(userId, id, { client, now });
+    } catch (error) {
+      if (!(error instanceof ReadingError)) throw error;
+      if (reading?.status !== "waiting") throw answeredElsewhere(error.message);
+      throw new ChatActionError("failed", `${error.message} Tap Fix something to add it.`);
+    }
+    return {
+      answeredWith: action.label,
+      note: reading?.policyId
+        ? "Done. Your policy is up to date with the renewal notice."
+        : "Done. It's on your insurance now.",
+    };
+  },
+};
+
+export const readingDismiss: ActionHandler = {
+  id: "reading.dismiss",
+  on: "open",
+  async run({ userId, message, action, client, now }) {
+    const id = message.refs.readingId;
+    if (!id) throw new ChatActionError("failed", "Something went wrong. Open it instead.");
+    try {
+      await dismissReading(userId, id, { client, now });
+    } catch (error) {
+      if (error instanceof ReadingError) throw answeredElsewhere(error.message);
+      throw error;
+    }
+    return { answeredWith: action.label, note: "Okay, I've left it off your insurance." };
+  },
+};

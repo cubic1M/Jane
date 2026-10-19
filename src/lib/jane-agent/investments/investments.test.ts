@@ -49,6 +49,7 @@ import {
   reviewReply,
   returnsReply,
   goalBucketsReply,
+  collegeReply,
 } from "./replies";
 import { gather } from "../brain";
 import { parseIntent } from "../intents";
@@ -59,6 +60,7 @@ import { INVESTMENT_TOOLS, runInvestmentTool } from "./tools";
 import { CHAT_PAGES, CHAT_TOOLS, proposeAction } from "../claude-tools";
 import { learnLink, learnReply } from "../learn";
 import { goalBuckets } from "@/planning/goal-buckets";
+import { comparePlans } from "@/planning/college";
 import type { PrismaClient } from "@/generated/prisma/client";
 
 // Spec step 128: what the person owns, in Jane's chat.
@@ -1438,5 +1440,71 @@ describe("goalBucketsReply and the goals message", () => {
       stocks: "0%",
       cash: "100%",
     });
+  });
+});
+
+// Spec step 158: college savings.
+describe("college questions, by rules", () => {
+  it("reads the child's age and the kind of college", () => {
+    expect(parseIntent("save for college for my 5 year old", ASOF)).toEqual({
+      kind: "investments",
+      topic: "college",
+      account: null,
+      childAge: 5,
+    });
+    expect(parseIntent("how much for a private college for my 3-year-old", ASOF)).toMatchObject({
+      topic: "college",
+      childAge: 3,
+      collegeType: "private",
+    });
+    expect(parseIntent("should I open a 529", ASOF)).toMatchObject({ topic: "college" });
+    expect(parseIntent("pay off my student loan", ASOF)).not.toMatchObject({ topic: "college" });
+  });
+});
+
+describe("collegeReply and the college message", () => {
+  const estimate = {
+    childAge: 5,
+    type: "public" as const,
+    years: 13,
+    cost: { lowCents: 15_310_343, highCents: 20_253_440 },
+    monthly: { lowCents: 65_780, highCents: 106_611 },
+    plans: comparePlans("NY", "single", 1_000_000, 17_000_000),
+    state: "NY",
+  };
+
+  it("gives the cost and monthly amount as ranges, the best plan, and the button", () => {
+    const reply = collegeReply(true, estimate, 0);
+    expect(reply.body).toMatch(
+      /^For a 5-year-old at a public college in your state, four years could cost about \$153,103\.43 to \$202,534\.40 when they start in 13 years\. Putting aside about \$657\.80 to \$1,066\.11 a month gets there, depending on prices and returns\. The plan that comes out ahead: Your state's direct 529 plan \(demo\), with your state's tax break of about \$[\d,.]+ a year\./,
+    );
+    expect(reply.body).not.toMatch(/\bwill (?:have|cost|be)\b/);
+    expect(reply.actions[0]).toEqual({
+      id: "college.start",
+      label: "Start saving for college",
+      kind: "primary",
+    });
+    expect(reply.refs).toEqual({
+      advice: true,
+      college: { childName: "your child", childAge: 5, type: "public" },
+    });
+  });
+
+  it("asks for the age when it wasn't given, and never advises real accounts", () => {
+    expect(collegeReply(true, null, 0).body).toMatch(/^Tell me how old your child is/);
+    expect(collegeReply(false, estimate, 0).actions.map((a) => a.id)).toEqual(["open"]);
+  });
+
+  it("offers once when the tax profile has children and there's no plan", () => {
+    const offers = (college: InvestmentSnapshot["college"], advice = true) =>
+      investmentsSource
+        .gather({ ...base, investments: demoInvestmentSnapshot({ advice, college }) }, {} as never)
+        .filter((c) => c.dedupeKey === "college:offer");
+    expect(offers({ children: 2, plans: 0 })[0].body).toMatch(
+      /^Your tax profile has 2 children under 17\./,
+    );
+    expect(offers({ children: 2, plans: 1 })).toEqual([]);
+    expect(offers({ children: 0, plans: 0 })).toEqual([]);
+    expect(offers({ children: 1, plans: 0 }, false)).toEqual([]);
   });
 });

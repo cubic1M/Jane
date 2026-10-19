@@ -10,7 +10,7 @@ import { adviceMode } from "@/lib/advice-mode";
 import { track } from "@/lib/analytics";
 import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
-import { loadDebts } from "@/lib/debts";
+import { debtsOr, loadDebts } from "@/lib/debts";
 import type { Strategy } from "@/planning/debt";
 import {
   expectedBalances,
@@ -101,10 +101,15 @@ export function debtFreeOf(summary: PayoffSummary, strategy: Strategy, asOf: str
 
 export async function loadPayoff(
   userId: string,
-  { client = defaultClient, now = new Date(), extraCents }: Options & { extraCents?: number } = {},
+  {
+    client = defaultClient,
+    now = new Date(),
+    extraCents,
+    book: given,
+  }: Options & { extraCents?: number; book?: DebtBook } = {},
 ): Promise<Payoff> {
   const [book, advice, row] = await Promise.all([
-    loadDebts(userId, { client, now }),
+    debtsOr(given, userId, { client, now }),
     adviceMode(userId, { client }),
     scopedFor(userId, client).debtPlans.findFirst({ select: PLAN_SELECT }),
   ]);

@@ -17,6 +17,8 @@ import {
   insuranceClaimStart,
   insuranceClaimStep,
   benefitsConfirmAll,
+  readingConfirm,
+  readingDismiss,
   benefitsDisabilityNone,
   benefitsDisabilityYes,
   benefitsLife1x,
@@ -50,6 +52,8 @@ import {
   taxMoveYes,
   taxWorkSet,
 } from "./tax-states";
+import { taxDocAsk, taxDocChase, taxDocRight, taxDocsTick } from "./tax-documents";
+import { taxPlanAdd, taxPlanNo } from "./tax-plan";
 import {
   investAnswer1,
   investAnswer2,
@@ -61,6 +65,7 @@ import {
   investAutoLeftover,
   investAutoPause,
   investAutoResume,
+  collegeStart,
 } from "./investments";
 import { changeBudget, changeExpected, changeLook } from "./changes";
 import { lifeNever, lifeNo, lifeYes } from "./life";
@@ -72,6 +77,7 @@ import { savedShare } from "./saved";
 import { prefSave, suggestNever } from "./remember";
 import { welcomeTour } from "./welcome";
 import { autopilotSectorSet } from "./sector";
+import { paycheckMove, paycheckSkip, paycheckUndo } from "./paycheck";
 import { bundleYes1, bundleYes2, bundleYes3, bundleYes4, bundleYes5 } from "./bundle";
 import { FLOW_PICKS, flowBack, flowCancel } from "./flows";
 
@@ -93,6 +99,8 @@ export const ACTION_HANDLERS: Readonly<Record<ActionId, ActionHandler>> = {
   "insurance.claim_step": insuranceClaimStep,
   "insurance.claim_close": insuranceClaimClose,
   "benefits.confirm_all": benefitsConfirmAll,
+  "reading.confirm": readingConfirm,
+  "reading.dismiss": readingDismiss,
   "benefits.life_1x": benefitsLife1x,
   "benefits.life_2x": benefitsLife2x,
   "benefits.life_none": benefitsLifeNone,
@@ -174,6 +182,12 @@ export const ACTION_HANDLERS: Readonly<Record<ActionId, ActionHandler>> = {
   "tax.local_1": taxLocal1,
   "tax.local_2": taxLocal2,
   "tax.local_no": taxLocalNo,
+  "tax.doc_right": taxDocRight,
+  "tax.doc_ask": taxDocAsk,
+  "tax.doc_chase": taxDocChase,
+  "tax.docs_tick": taxDocsTick,
+  "tax.plan_add": taxPlanAdd,
+  "tax.plan_no": taxPlanNo,
   // Investments (spec step 129 on).
   "invest.answer.1": investAnswer1,
   "invest.answer.2": investAnswer2,
@@ -185,6 +199,7 @@ export const ACTION_HANDLERS: Readonly<Record<ActionId, ActionHandler>> = {
   "invest.auto_leftover": investAutoLeftover,
   "invest.auto_pause": investAutoPause,
   "invest.auto_resume": investAutoResume,
+  "college.start": collegeStart,
   // Jane notices changes (spec step 97).
   "change.look": changeLook,
   "change.budget": changeBudget,
@@ -208,6 +223,10 @@ export const ACTION_HANDLERS: Readonly<Record<ActionId, ActionHandler>> = {
   "welcome.tour": welcomeTour,
   // One autopilot, every sector (spec step 141).
   "autopilot.sector_set": autopilotSectorSet,
+  // Money that moves itself (spec step 144).
+  "paycheck.move": paycheckMove,
+  "paycheck.skip": paycheckSkip,
+  "paycheck.undo": paycheckUndo,
 };
 
 const MESSAGE_ID = /^[a-z0-9]{1,40}$/i;

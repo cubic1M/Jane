@@ -6,6 +6,7 @@ import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
 import { filingPartnerFor, type ReturnPackage, type ReturnPreview } from "@/lib/filing";
 import { loadTaxEstimate } from "@/lib/tax-estimate";
+import { loadTaxDocuments } from "@/lib/tax-documents";
 import { loadTaxForms, loadTaxTags } from "@/lib/tax-organizer";
 import { loadTaxProfile } from "@/lib/tax-profile";
 
@@ -83,12 +84,13 @@ export async function buildPackage(
   { client = defaultClient, now = new Date() }: Options = {},
 ): Promise<{ pkg: ReturnPackage; preview: ReturnPreview; missing: string[] }> {
   const db = scopedFor(userId, client);
-  const [profile, estimate, tags, forms, documents] = await Promise.all([
+  const [profile, estimate, tags, forms, documents, collected] = await Promise.all([
     loadTaxProfile(userId, { client, now }),
     loadTaxEstimate(userId, { client, now, year }),
     loadTaxTags(userId, year, { client }),
     loadTaxForms(userId, year, { client, now }),
     db.documents.findMany({ select: { kind: true, fileName: true } }),
+    loadTaxDocuments(userId, year, { client, now }),
   ]);
   const missing: string[] = [];
   if (profile.filingStatus.status !== "yours") missing.push("how you file");
@@ -117,6 +119,11 @@ export async function buildPackage(
     tags: Object.fromEntries(TAX_TAG_ORDER.map((t) => [t, tags.totals[t].totalCents])),
     forms: forms.forms.map((f) => ({ form: f.form, from: f.from, received: f.received })),
     documents: documents.map((d) => ({ kind: d.kind, title: d.fileName })),
+    // Spec step 166: the forms Jane collected, only those that check out or that the person
+    // said are right. A flagged form is never handed over.
+    collectedForms: collected.forms
+      .filter((f) => f.document && f.usable)
+      .map((f) => ({ form: f.form, from: f.from, boxes: { ...f.document!.boxes } })),
   };
   return {
     pkg,
