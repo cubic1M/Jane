@@ -293,6 +293,14 @@ export const DEMO_FILING_ACCEPT_HOURS = 24;
 // days (MM-DD) of the year after the tax year.
 export const JANUARY_READY = { from: "01-02", until: "01-31" } as const;
 
+// Spec step 124: investment taxes (demo advice for harvesting and where to hold what).
+// Harvesting chances from this much unrealised loss; holdings whose payouts are taxed each
+// year in a taxable account, by name.
+export const HARVEST_MIN_LOSS_CENTS = 20_000;
+export const TAX_HEAVY_HOLDING = /\b(?:BOND|INCOME|DIVIDEND|TREASURY|REIT|HIGH YIELD)\b/i;
+// Jane brings up harvesting from this day (MM-DD) to the end of the year.
+export const HARVEST_FROM = "10-01";
+
 // The estimate tells the person when it has moved by at least this much (in cents) since
 // Jane last said it.
 export const TAX_ESTIMATE_STEP_CENTS = 50_000;
@@ -319,6 +327,10 @@ export const TAX_MESSAGE_PRIORITY = {
   filing: 72,
   // Spec step 127.
   january: 74,
+  // Spec step 124.
+  // A wash sale is news, but not before what can save money today.
+  wash_sale: 41,
+  harvest: 33,
   // Spec step 123.
   quarterly: 88,
   set_aside: 39,
@@ -370,6 +382,11 @@ export const TAX_AUTOPILOT: readonly { feature: string; ask: string; auto: strin
     feature: "january",
     ask: "In January I send one message with everything ready: the estimate, the tax-time pack and which forms are in.",
     auto: "In January I send one message with everything ready (the estimate, the tax-time pack, which forms are in) and keep it all up to date until you file.",
+  },
+  {
+    feature: "investments",
+    ask: "I work out your gains and losses from your holdings, warn you about wash sales and, with demo advice, show losses worth harvesting and what's better held in your 401(k) or IRA.",
+    auto: "I work out your gains and losses after every sync, warn you about wash sales and, with demo advice, bring up losses worth harvesting before the year ends. I never sell anything myself.",
   },
   {
     feature: "tags",
