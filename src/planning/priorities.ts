@@ -17,6 +17,8 @@ export type PriorityItem = {
   title: string;
   // Money it saves or earns a year, when known.
   valueCents: number | null;
+  // The value is money back once (a refund), not every year.
+  once?: boolean;
   // Minutes of the person's time.
   minutes: number;
   // 0 to 1, or from a date.
@@ -77,12 +79,18 @@ function reasonFor(item: Ranked, all: Ranked[], asOf: string): string {
   } else if (item.urgencyScore >= 0.6) {
     reasons.push(item.kind === "task" ? "my work waits on it" : "it can't wait long");
   }
-  const most = Math.max(...all.map((a) => a.valueCents ?? 0));
+  const mostCents = Math.max(...all.map((a) => a.valueCents ?? 0));
   if (item.valueCents !== null && item.valueCents > 0) {
+    const cents = formatCents(item.valueCents);
+    const most = item.valueCents === mostCents;
     reasons.push(
-      item.valueCents === most
-        ? `it saves the most (${formatCents(item.valueCents)} a year)`
-        : `it saves ${formatCents(item.valueCents)} a year`,
+      item.once
+        ? most
+          ? `it gets the most back (${cents})`
+          : `it gets ${cents} back`
+        : most
+          ? `it saves the most (${cents} a year)`
+          : `it saves ${cents} a year`,
     );
   }
   reasons.push(timeWords(item.minutes));

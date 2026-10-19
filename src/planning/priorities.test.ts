@@ -45,6 +45,24 @@ describe("rankPriorities", () => {
     expect(first.why).toBe("First because it saves the most ($215.88 a year) and takes one tap.");
   });
 
+  it("says a refund gets money back once, not a year", () => {
+    const ranked = rankPriorities(
+      [
+        item({ title: "Lower your phone bill", valueCents: 60_000, minutes: 2 }),
+        item({ title: "Refund the double charge", valueCents: 6_420, once: true }),
+      ],
+      AS_OF,
+    );
+    expect(ranked.find((r) => r.title === "Refund the double charge")!.why).toMatch(
+      /it gets \$64\.20 back and takes one tap\.$/,
+    );
+    const [only] = rankPriorities(
+      [item({ title: "Refund", valueCents: 6_420, once: true })],
+      AS_OF,
+    );
+    expect(only.why).toBe("First because it gets the most back ($64.20) and takes one tap.");
+  });
+
   it("lets a deadline in the next few days beat a bigger saving", () => {
     const ranked = rankPriorities(
       [
