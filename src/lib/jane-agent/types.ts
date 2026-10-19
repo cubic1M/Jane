@@ -91,6 +91,9 @@ export type MessageRefs = {
   incomeKind?: string;
   // The state "Yes, set it" would put on the tax profile (two letters).
   taxState?: string;
+  // Spec step 98: demo advice (src/lib/advice-mode.ts). The chat shows DEMO_ADVICE_LABEL
+  // under it. Set it on every message that recommends investments, taxes, insurance or loans.
+  advice?: true;
 };
 
 // A message the brain wants to post.

@@ -1,4 +1,4 @@
-import { checkGuardrails } from "@/lib/guardrails";
+import { checkGuardrails, type GuardrailProfile } from "@/lib/guardrails";
 
 // Claude's chat answer shown as it's written, without showing anything the guardrails
 // haven't passed: text is held back until a sentence (or line) ends, then released only if
@@ -20,6 +20,8 @@ export class GuardedText {
   constructor(
     private readonly allowedCents: () => readonly number[],
     private readonly show: (text: string) => void,
+    // Demo advice mode (spec step 98) checks with the demo profile.
+    private readonly profile: GuardrailProfile = "standard",
   ) {}
 
   push(delta: string): void {
@@ -46,7 +48,7 @@ export class GuardedText {
   private release(end: number): void {
     if (this.stopped || end === 0) return;
     const next = this.held.slice(0, end);
-    if (!checkGuardrails(this.shown + next, this.allowedCents()).ok) {
+    if (!checkGuardrails(this.shown + next, this.allowedCents(), undefined, this.profile).ok) {
       this.stopped = true;
       return;
     }
