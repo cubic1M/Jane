@@ -16,7 +16,10 @@ import { findingOfType } from "@/lib/__fixtures__/findings";
 import { linkDemoBank } from "@/lib/plaid/demo";
 import { syncItem } from "@/lib/plaid/sync";
 import { applyStandingRules, saveRules } from "@/lib/standing-rules";
+import { CARD_SELECT, buildCard, cardHash } from "@/lib/cards";
+import { recordDecision } from "@/lib/decisions";
 import { ChatActionError, takeChatAction } from "./actions";
+import { closeSettled, messageAboutFinding } from "./messages";
 import { openChat } from "./open";
 import { runJaneAgent } from "./run";
 import { parseActions, parseRefs } from "./types";
@@ -292,6 +295,31 @@ describe.runIf(url)("Jane's chat against a real database", () => {
         takeChatAction(userId, message.id, "finding.yes", { client }),
       ).rejects.toMatchObject({ code: "failed" });
       expect(await client.decision.count({ where: { userId } })).toBe(0);
+    });
+
+    // Spec step 86: answering on the page or in the chat shows the same answer in both.
+    it("shows an answer given on the finding's page in the chat, and links the page back", async () => {
+      const userId = await withFindings(["bank_fees"]);
+      await runJaneAgent(userId, { client, trigger: "open" });
+      const message = (await messagesOf(userId)).find((m) => m.dedupeKey.startsWith("findings:"))!;
+      const findingId = parseRefs(message.refs).findingId!;
+      expect(await messageAboutFinding(userId, findingId, { client })).toBe(message.id);
+      expect(await messageAboutFinding("someone-else", findingId, { client })).toBeNull();
+
+      const finding = await client.finding.findUniqueOrThrow({
+        where: { id: findingId },
+        select: CARD_SELECT,
+      });
+      await recordDecision(
+        userId,
+        { findingId, choice: "no", cardHash: cardHash(buildCard(finding)), source: "card" },
+        { client },
+      );
+      await closeSettled(userId, { client });
+      const after = await client.janeMessage.findUniqueOrThrow({ where: { id: message.id } });
+      expect(after).toMatchObject({ status: "answered", answeredWith: "No" });
+      expect(parseRefs(after.refs).note).toBe("You answered this on its page.");
+      expect(buttonIds(after)).toEqual(["open"]);
     });
 
     it("says what a standing rule approved, with Undo for a day only", async () => {

@@ -1,7 +1,15 @@
 import { readdirSync, readFileSync } from "node:fs";
 import { join, relative, sep } from "node:path";
 import { describe, expect, it } from "vitest";
-import { SETTINGS_TAB, TABS, tabFor, tabsClaiming } from "./navigation";
+import {
+  DETAIL_PAGES,
+  DETAIL_TABS,
+  SETTINGS_TAB,
+  TABS,
+  isDetail,
+  tabFor,
+  tabsClaiming,
+} from "./navigation";
 
 // Spec step 79: every signed-in page belongs to exactly one tab. The page list is read
 // from src/app, so a new page without a tab fails here.
@@ -97,5 +105,41 @@ describe("navigation", () => {
   it("shows five places in order, Chat first, each linking to its own first page", () => {
     expect(TABS.map((t) => t.label)).toEqual(["Chat", "Today", "Jane", "Money", "Ahead"]);
     for (const tab of [...TABS, SETTINGS_TAB]) expect(tab.paths[0]).toBe(tab.href);
+  });
+
+  // Spec step 86: the chat is where things happen; the tabs are its details.
+  it("puts Today, Jane, Money and Ahead behind Details, with every page under them", () => {
+    expect(DETAIL_TABS.map((t) => t.label)).toEqual(["Today", "Jane", "Money", "Ahead"]);
+    const inMenu = new Set([
+      ...DETAIL_TABS.map((t) => t.href),
+      ...Object.values(DETAIL_PAGES).flatMap((pages) => pages.map((p) => p.href)),
+    ]);
+    for (const tab of DETAIL_TABS) for (const path of tab.paths) expect(inMenu, path).toContain(path);
+    expect(DETAIL_PAGES.money).toContainEqual({ label: "Net worth", href: "/net-worth" });
+    expect(DETAIL_PAGES.ahead).toContainEqual({ label: "Can I afford it?", href: "/afford" });
+  });
+
+  it("reaches every signed-in page from the chat, the Details menu or Settings", () => {
+    const menuPaths = [
+      ...TABS[0].paths,
+      ...SETTINGS_TAB.paths,
+      ...DETAIL_TABS.map((t) => t.href),
+      ...Object.values(DETAIL_PAGES).flatMap((pages) => pages.map((p) => p.href)),
+    ];
+    for (const route of all.filter((r) => !outside(r))) {
+      expect(
+        menuPaths.some((path) => route === path || route.startsWith(`${path}/`)),
+        route,
+      ).toBe(true);
+    }
+  });
+
+  it("knows which pages are details", () => {
+    for (const path of ["/home", "/plan", "/report/abc", "/bills", "/afford"]) {
+      expect(isDetail(path), path).toBe(true);
+    }
+    for (const path of ["/chat", "/ask", "/settings", "/login"]) {
+      expect(isDetail(path), path).toBe(false);
+    }
   });
 });

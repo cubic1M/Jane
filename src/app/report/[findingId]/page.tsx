@@ -19,6 +19,7 @@ import { DecisionButtons } from "./decision-buttons";
 import { DiyKit } from "./diy-kit";
 import { savingsLine } from "@/lib/savings-text";
 import { policyForMerchant, policyLines } from "@/lib/documents/dates";
+import { CHOICE_WORDS, messageAboutFinding } from "@/lib/jane-agent/messages";
 
 async function Card({ params }: { params: PageProps<"/report/[findingId]">["params"] }) {
   const user = await requireUser();
@@ -58,6 +59,18 @@ async function Card({ params }: { params: PageProps<"/report/[findingId]">["para
       ? await policyForMerchant(user.id, merchantName)
       : null;
   const fromPolicy = policy ? policyLines(policy) : [];
+  // Spec step 86: the chat message about this finding, to link back to, and the answer
+  // given (here or in the chat), shown the same in both.
+  const [chatMessageId, answer] = await Promise.all([
+    messageAboutFinding(user.id, finding.id),
+    open
+      ? null
+      : db.decisions.findFirst({
+          where: { findingId: finding.id, undoneAt: null },
+          orderBy: { createdAt: "desc" },
+          select: { choice: true, source: true },
+        }),
+  ]);
   const kit =
     hasKit(card.actionType) && (open || diyDecision)
       ? buildKit(
@@ -69,7 +82,7 @@ async function Card({ params }: { params: PageProps<"/report/[findingId]">["para
 
   return (
     <>
-      <AppHeader user={user} />
+      <AppHeader user={user} chatMessageId={chatMessageId} />
       <ViewTracker event="card_opened" findingId={finding.id} />
       <Link href="/report" className="text-sm text-zinc-500 hover:underline">
         ‹ Back to your report
@@ -181,7 +194,9 @@ async function Card({ params }: { params: PageProps<"/report/[findingId]">["para
           />
         ) : (
           <p className="rounded-xl bg-zinc-100 p-4 dark:bg-zinc-900">
-            You&apos;ve already answered this one.{" "}
+            {answer
+              ? `You chose: ${CHOICE_WORDS[answer.choice]}${answer.source === "chat" ? ", in the chat" : ""}.`
+              : "You've already answered this one."}{" "}
             <Link href="/actions" className="font-medium text-emerald-700 hover:underline">
               See your actions
             </Link>
