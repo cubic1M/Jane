@@ -152,3 +152,38 @@ export const QUALIFIED_DIVIDEND_RATE = 0.15;
 // A holding in a taxable account whose payouts cost more than this a year in tax is worth
 // moving into a tax-deferred account.
 export const MIN_TAX_DRAG_CENTS = 1_000;
+
+// Spec step 137: what Jane does with investments by herself at each autopilot level (spec
+// step 57), shown on /investments and said in the chat. Anything that buys, sells or moves
+// money waits for the person's tap at every level; automatic investing runs only after the
+// person has started it with a tap.
+export const INVESTMENT_AUTOPILOT: Readonly<
+  Record<"ask" | "safe" | "all" | "custom" | "none", readonly string[]>
+> = {
+  none: [
+    "I keep what you own up to date on every sync and tell you once a month how it's going.",
+    "I check your mix, fees and retirement and tell you what I'd change; trades wait for your tap.",
+  ],
+  ask: [
+    "I keep what you own up to date on every sync and tell you once a month how it's going.",
+    "I check your mix, fees and retirement and tell you what I'd change; trades wait for your tap.",
+  ],
+  safe: [
+    "I keep what you own up to date on every sync and tell you once a month how it's going.",
+    "I watch your mix every day and have the orders ready when it drifts; you tap once to place them.",
+    "Once you've started automatic investing, I invest every payday and pause by myself when safe to spend is low.",
+  ],
+  all: [
+    "I keep what you own up to date on every sync and tell you once a month how it's going.",
+    "I watch your mix every day and have the orders ready when it drifts; you tap once to place them.",
+    "Once you've started automatic investing, I invest every payday and pause by myself when safe to spend is low.",
+    "Buying, selling and moving money always wait for your tap, at every level.",
+  ],
+  custom: [
+    "I keep what you own up to date on every sync and tell you once a month how it's going.",
+    "I watch your mix every day and have the orders ready when it drifts; you tap once to place them.",
+    "Once you've started automatic investing, I invest every payday and pause by myself when safe to spend is low.",
+  ],
+};
+// A paused automatic investing plan is mentioned again after this many days.
+export const AUTO_PAUSED_NUDGE_DAYS = 30;

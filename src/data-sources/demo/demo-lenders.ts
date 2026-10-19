@@ -187,3 +187,49 @@ export const DEMO_LENDERS: readonly DemoLender[] = [
 ];
 
 export const demoLenderUrl = (key: string) => `${EXAMPLE}/${key}`;
+
+// Spec step 113: stand-in 0% balance transfer cards, for the demo bank's card. The fee is a
+// share of what's moved with a minimum; after the 0% ends the card charges goToAprBps.
+export type DemoTransferCard = {
+  key: string;
+  issuer: string;
+  name: string;
+  promoMonths: number;
+  feeShare: number;
+  feeMinCents: number;
+  goToAprBps: number;
+  maxAmountCents: number;
+};
+
+export const DEMO_TRANSFER_CARDS: readonly DemoTransferCard[] = [
+  {
+    key: "lumen",
+    issuer: "Lumen Bank",
+    name: "Lumen 0% Transfer Card",
+    promoMonths: 18,
+    feeShare: 0.03,
+    feeMinCents: 500,
+    goToAprBps: 2499,
+    maxAmountCents: 1_500_000,
+  },
+  {
+    key: "northstar",
+    issuer: "Northstar Credit",
+    name: "Northstar Slate",
+    promoMonths: 21,
+    feeShare: 0.05,
+    feeMinCents: 500,
+    goToAprBps: 2299,
+    maxAmountCents: 2_000_000,
+  },
+  {
+    key: "beacon",
+    issuer: "Beacon Card Co.",
+    name: "Beacon Intro",
+    promoMonths: 12,
+    feeShare: 0,
+    feeMinCents: 0,
+    goToAprBps: 2799,
+    maxAmountCents: 800_000,
+  },
+];

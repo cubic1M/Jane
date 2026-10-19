@@ -6,6 +6,7 @@ import { loadFees } from "@/lib/investments/fees";
 import { loadInvestments } from "@/lib/investments/holdings";
 import type { RebalancePlan } from "@/insights/rebalance";
 import { loadAccountPlan, type AccountPlan } from "@/lib/investments/accounts";
+import { loadMonthFacts } from "@/lib/investments/overview";
 import { loadAutoInvest } from "@/lib/investments/auto-invest";
 import { loadRebalance } from "@/lib/investments/rebalance";
 import { loadRetirement } from "@/lib/investments/retirement";
@@ -37,6 +38,8 @@ export type InvestmentSnapshot = {
   // Spec step 135: which account first and where to hold what; order null until the
   // profile is done.
   accountPlan: Pick<AccountPlan, "order" | "location">;
+  // Spec step 137: the monthly note's facts, and how much Jane does by herself.
+  month: { month: string; previousCents: number | null; contributedCents: number };
   // Spec step 134: automatic investing, its recent paydays and Jane's suggestion.
   autoInvest: Pick<
     Awaited<ReturnType<typeof loadAutoInvest>>,
@@ -89,6 +92,7 @@ export async function loadInvestmentSnapshot(
     retirement,
     rebalance,
     accountPlan: { order: accountPlan.order, location: accountPlan.location },
+    month: await loadMonthFacts(userId, investments, { client, now }),
     autoInvest: {
       plan: auto.plan,
       runs: auto.runs,
