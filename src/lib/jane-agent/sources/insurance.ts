@@ -8,6 +8,7 @@ import { reminderDue } from "@/lib/insurance/claim-rules";
 import { checkupBody } from "../insurance/checkup-words";
 import { BENEFITS_LINK, QUESTIONS, foundBody } from "../insurance/benefit-words";
 import { trackerActions, trackerBody } from "../insurance/claim-words";
+import { readingBody, readingLink } from "../insurance/reading-words";
 import type { InsuranceSnapshot } from "../insurance/snapshot";
 import type { Candidate } from "../types";
 import { shortDate, snoozeButton, type MessageSource } from "./source";
@@ -247,6 +248,23 @@ function benefitMessages(insurance: InsuranceSnapshot): Candidate[] {
   ];
 }
 
+// Spec step 151: each policy read from a document, for one Confirm tap. At every autopilot
+// level Jane reads the document herself and asks; nothing is saved without the tap.
+function readingMessages(insurance: InsuranceSnapshot): Candidate[] {
+  return (insurance.readings ?? []).map((reading) => ({
+    kind: "decision",
+    body: readingBody(reading),
+    refs: { readingId: reading.id },
+    actions: [
+      { id: "reading.confirm", label: "Confirm", kind: "primary" },
+      readingLink(reading.id),
+      { id: "reading.dismiss", label: "Not a policy", kind: "secondary" },
+    ],
+    dedupeKey: `reading:${reading.id}`,
+    priority: MESSAGE_PRIORITY.policy_reading,
+  }));
+}
+
 export const insuranceSource: MessageSource = {
   key: "insurance",
   gather: (snapshot) => {
@@ -260,6 +278,7 @@ export const insuranceSource: MessageSource = {
       ...checkedMessages(insurance),
       ...checkupMessages(insurance),
       ...benefitMessages(insurance),
+      ...readingMessages(insurance),
     ];
   },
 };

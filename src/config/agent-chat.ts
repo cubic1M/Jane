@@ -89,6 +89,8 @@ export const MESSAGE_PRIORITY = {
   // Spec step 150: benefits found on a pay stub to confirm, and the short guided questions.
   benefits_found: 62,
   benefits_question: 47,
+  // Spec step 151: a policy read from a document, waiting for the confirm tap.
+  policy_reading: 63,
   urgent_alert: 95,
   deadline: 90,
   waiting_on_you: 85,
@@ -156,6 +158,8 @@ export const MESSAGE_PRIORITY = {
   investment_monthly: 41,
   // Spec step 157: each goal invested for its timeline (demo advice).
   goal_buckets: 35,
+  // Spec step 158: saving for college (demo advice).
+  college: 34,
   auto_invest_run: 31,
 } as const;
 
