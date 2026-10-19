@@ -1,5 +1,6 @@
 import type { PrismaClient } from "@/generated/prisma/client";
 import { refreshDebtPlan } from "@/lib/debt-plan";
+import { refreshLoanApplications } from "@/lib/loan-applications";
 import { refreshRefinance } from "@/lib/refinance";
 
 // What Jane keeps current about debts by herself before her brain looks at the person's
@@ -14,6 +15,8 @@ export async function refreshDebts(
     ["payoff plan", () => refreshDebtPlan(userId, { client, now })],
     // Spec step 111: asks the lender partner for rates once a month.
     ["refinance rates", () => refreshRefinance(userId, { client, now })],
+    // Spec step 112: loans funding, and old loans reaching zero.
+    ["loan applications", () => refreshLoanApplications(userId, { client, now })],
   ];
   for (const [what, run] of steps) {
     await run().catch((error) =>

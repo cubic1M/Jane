@@ -34,7 +34,18 @@ export type LoanOffer = {
   demo: boolean;
 };
 
-export type ApplicationStatus = "submitted" | "approved" | "funded" | "declined";
+// What the lender says about an application: approved (on the offer's terms) or declined
+// after the soft check; then accepted once the person signs, and funded when the lender has
+// paid the old loan off.
+export type ApplicationStatus = "approved" | "declined" | "accepted" | "funded";
+
+export type Applicant = {
+  name: string;
+  email: string;
+  // The loan being paid off and what's owed on it, by name: never an account number.
+  payingOff: string;
+  amountCents: number;
+};
 
 export type LenderPartner = {
   name: string;
@@ -42,10 +53,19 @@ export type LenderPartner = {
   prequalify(request: PrequalifyRequest): Promise<LoanOffer[]>;
   // One offer again, by id, as it stands now (null when it's gone).
   offer(id: string, request: PrequalifyRequest): Promise<LoanOffer | null>;
-  // Only after the person taps Apply (spec step 112).
-  apply(input: { offerId: string; applicant: Record<string, string> }): Promise<{
-    applicationId: string;
-    status: ApplicationStatus;
-  }>;
-  status(applicationId: string): Promise<ApplicationStatus>;
+  // Only after the person reviewed the terms and tapped Submit (spec step 112). A soft
+  // check: approved on the offer's terms, or declined.
+  apply(input: {
+    offer: LoanOffer;
+    request: PrequalifyRequest;
+    applicant: Applicant;
+  }): Promise<{ applicationId: string; status: "approved" | "declined" }>;
+  // Only after the person tapped Accept: signs for the loan.
+  accept(applicationId: string): Promise<void>;
+  // Where it stands now. acceptedAt is when the person accepted, for the stand-in, which
+  // keeps no state of its own; a real partner looks it up.
+  status(
+    applicationId: string,
+    at: { now: Date; acceptedAt: Date | null },
+  ): Promise<ApplicationStatus>;
 };

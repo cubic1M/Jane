@@ -62,7 +62,8 @@ function line(debt: Debt): string {
 // on their own line, then every debt.
 export function debtsReply(book: DebtBook): Reply {
   const accounts = book.debts.filter((d) => d.inNetWorth);
-  const plans = book.debts.filter((d) => !d.inNetWorth);
+  const plans = book.debts.filter((d) => d.kind === "bnpl");
+  const newLoans = book.debts.filter((d) => d.key.startsWith("loan:"));
   if (book.debts.length === 0) {
     return {
       body: "I don't see any loans, cards or buy now, pay later plans. When you link a bank that reports them, I'll keep track of every one.",
@@ -82,6 +83,11 @@ export function debtsReply(book: DebtBook): Reply {
       `${accounts.length > 0 ? "Plus " : "You have "}${known}${plural(plans.length, "buy now, pay later plan", "buy now, pay later plans")}${
         book.bnplUnknown > 0 ? ` (${book.bnplUnknown} without a balance yet)` : ""
       }. Net worth doesn't count these: they aren't bank accounts.`,
+    );
+  }
+  if (newLoans.length > 0) {
+    lines.push(
+      `And ${formatCents(book.newLoansOwedCents)} on ${newLoans.map((d) => `your new ${d.name}`).join(" and ")}, from the terms you accepted. Link it to see it in your net worth.`,
     );
   }
   lines.push(...book.debts.map(line));

@@ -113,7 +113,11 @@ describe.runIf(url)("refinance offers against a real database", () => {
       /^I checked loan rates for you\. Your Demo Car Loan ····0006 \(6\.90%, \$18,020\.00 left\) could move to Harbor Auto Refi at 5\.\d\d% fixed\.$/,
     );
     expect(car.body).toContain("Nothing is applied for until you say so.");
-    expect(car.actions.map((a) => a.label)).toEqual(["See the offers", "Not now"]);
+    expect(car.actions.map((a) => a.label)).toEqual([
+      "Apply with Harbor Auto Refi",
+      "See the offers",
+      "Not now",
+    ]);
   });
 
   it("answers 'can I refinance my car loan?' with the pick, why and the others", async () => {
@@ -121,7 +125,11 @@ describe.runIf(url)("refinance offers against a real database", () => {
     expect(reply.body).toContain("Your Demo Car Loan ····0006: $18,020.00 at 6.90%.");
     expect(reply.body).toMatch(/My pick: Harbor Auto Refi at 5\.\d\d% fixed/);
     expect(reply.body).toContain("Also: ");
-    expect(reply.refs).toEqual({ advice: true });
+    expect(reply.refs).toEqual({
+      advice: true,
+      refinance: { debtKey: expect.stringMatching(/^account:/), lender: "Harbor Auto Refi" },
+    });
+    expect(reply.actions[0]).toMatchObject({ id: "loan.prepare" });
     const home = await sendToJane(userId, "refinance my mortgage", opts(later(0.001)));
     expect(home.reply.body).toContain("None of the 2 offers beats it over the same months");
     expect(home.reply.refs).toEqual({});

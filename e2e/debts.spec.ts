@@ -117,3 +117,33 @@ test("refinance offers compare total cost and pick one, labelled", async ({
   await page.getByRole("button", { name: "Check rates now" }).click();
   await expect(page.getByRole("status")).toHaveText("Checked just now.");
 });
+
+// Spec step 112: apply from the offers page; the terms must be reviewed before submitting.
+test("apply prepares the application, and it's sent only once the terms are reviewed", async ({
+  context,
+  page,
+  baseURL,
+}) => {
+  const user = await signedInUser("user");
+  userId = user.userId;
+  await context.addCookies([
+    { name: "authjs.session-token", value: user.sessionToken, url: baseURL ?? "" },
+  ]);
+  await page.goto("/connect");
+  await page.getByRole("button", { name: "Link a demo bank" }).click();
+  await expect(page).toHaveURL("/chat", { timeout: 60_000 });
+
+  await page.goto("/loans/refinance");
+  await page.getByRole("button", { name: "Apply with Harbor Auto Refi" }).click();
+  await expect(page).toHaveURL(/\/loans\/apply\//);
+  await expect(page.getByRole("heading", { level: 1, name: "Loan application" })).toBeVisible();
+  await expect(page.getByText("Ready for you to review and submit")).toBeVisible();
+  // Submit needs the terms reviewed (the server refuses without it too).
+  await expect(page.getByLabel("I've reviewed the terms above")).toHaveAttribute("required", "");
+  await page.getByLabel("I've reviewed the terms above").check();
+  await page.getByRole("button", { name: "Submit the application" }).click();
+  await expect(page.getByText("Approved by Harbor Auto Refi: waiting for your yes.")).toBeVisible();
+  await page.getByRole("button", { name: "Accept the loan" }).click();
+  await expect(page.getByRole("status")).toContainText("Accepted.");
+  await expect(page.getByRole("list", { name: "Steps" })).toContainText("Accepted:");
+});

@@ -1,5 +1,6 @@
 import type { Topic } from "./context";
 import type { Intent } from "./intents";
+import type { PreferenceDraft } from "./preferences";
 
 // Jane's chat messages (spec step 81): what a message is, what it's about and its buttons.
 // Stored in jane_messages; posted by Jane's brain (spec step 82) and, from step 84, typed
@@ -30,6 +31,9 @@ export const ACTION_IDS = [
   "insurance.shop_yes",
   "insurance.shop_no",
   "insurance.checkup_seen",
+  "insurance.claim_start",
+  "insurance.claim_step",
+  "insurance.claim_close",
   "plan.approve_safe",
   "undo.rule",
   "undo.no",
@@ -57,6 +61,15 @@ export const ACTION_IDS = [
   "budget.set",
   "finding.why",
   "finding.options",
+  // Spec step 91: saving what the person told Jane, and a suggestion never to make again.
+  "pref.save",
+  "suggest.never",
+  // Spec step 92: a Yes each on a message bundling findings of one kind (refs.items).
+  "bundle.1",
+  "bundle.2",
+  "bundle.3",
+  "bundle.4",
+  "bundle.5",
   // Taxes (spec step 118): the tax profile, one question at a time.
   "tax.found_yes",
   "tax.filing_single",
@@ -141,6 +154,9 @@ export type MessageRefs = {
   findingId?: string;
   // Spec step 110: the extra a month the payoff plan's buttons start it with, in cents.
   debtPlanExtraCents?: number;
+  // Spec step 112: the refinance offer "Apply" prepares, and the application it made.
+  refinance?: { debtKey: string; lender: string };
+  applicationId?: string;
   // Insurance (spec Phase X): a coverage gap by its key (GAP_KEYS), and the policy a
   // message is about.
   insuranceGap?: string;
@@ -149,6 +165,11 @@ export type MessageRefs = {
   insuranceShopId?: string;
   // Spec step 106: a coverage checkup, by id.
   insuranceCheckupId?: string;
+  // Spec step 107: a claim to start (what happened, on which policy) and one being tracked,
+  // with the step its Done button marks.
+  claim?: { kind: string; event: string; policyId: string | null };
+  claimId?: string;
+  claimStep?: string;
   // The finding as Jane described it (src/lib/jane-agent/fingerprint.ts): a button only
   // acts while the finding is still what the message said.
   fingerprint?: string;
@@ -181,6 +202,10 @@ export type MessageRefs = {
   choices?: { label: string; intent: Intent }[];
   // Spec step 90: the budget "Set a budget" would set (cents a month).
   budget?: { category: string; amountCents: number };
+  // Spec step 91: what "Remember this" would save.
+  preference?: PreferenceDraft;
+  // Spec step 92: the messages a bundle stands for, by dedupeKey, in button order.
+  items?: { dedupeKey: string; label: string }[];
   // Taxes (spec step 118): the tax profile question a message is asking, and the kind of
   // income "Add it" would add.
   taxField?: string;
@@ -237,6 +262,8 @@ export type Candidate = {
   // Never posted twice for the same person (jane_messages has a unique index on it).
   dedupeKey: string;
   priority: number;
+  // Spec step 92: how it goes into one message with others like it (findings of a kind).
+  bundle?: { group: string; name: string; line: string; cents: number | null };
 };
 
 // A stored message, as the chat and the button actions read it.

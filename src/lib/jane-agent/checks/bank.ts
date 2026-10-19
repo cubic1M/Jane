@@ -416,6 +416,20 @@ export const QUESTIONS: readonly CheckQuestion[] = [
   },
   { id: "cmd-10", text: "stop autopilot", needs: "rules", expect: { intent: "pause_autopilot" } },
 
+  // Telling Jane something (spec step 91): offered to remember, saved only on the tap.
+  {
+    id: "tell-1",
+    text: "payday is the 15th",
+    needs: "rules",
+    expect: { intent: "remember", button: "pref.save", mentions: /15th/ },
+  },
+  {
+    id: "tell-2",
+    text: "I need my car",
+    needs: "rules",
+    expect: { intent: "remember", button: "pref.save", mentions: /car/ },
+  },
+
   // Follow-ups: the second needs the first.
   {
     id: "follow-1",

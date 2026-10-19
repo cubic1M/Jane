@@ -3,6 +3,8 @@ import { dismissGap } from "@/lib/insurance/household";
 import { AcceptShopError, acceptShop } from "@/lib/insurance/accept";
 import { requestQuotes } from "@/lib/insurance/quotes";
 import { markCheckupSeen } from "@/lib/insurance/checkups";
+import { ClaimError, closeClaim, markStepDone, nextStep, startClaim } from "@/lib/insurance/claims";
+import { trackerActions, trackerBody } from "../insurance/claim-words";
 import { declineShop } from "@/lib/insurance/shop";
 import { quotesReply } from "../insurance/quotes";
 import { ChatActionError, answeredElsewhere, type ActionHandler } from "./handler";
@@ -107,5 +109,75 @@ export const insuranceCheckupSeen: ActionHandler = {
       answeredWith: action.label,
       note: "OK. I'll check your cover again in a year, or sooner if your life changes.",
     };
+  },
+};
+
+// Spec step 107: "Start a claim tracker" under the claims guide. The same message becomes
+// the tracker, one step at a time, like a guided flow.
+export const insuranceClaimStart: ActionHandler = {
+  id: "insurance.claim_start",
+  on: "open",
+  async run({ userId, message, client, now }) {
+    const wanted = message.refs.claim;
+    if (!wanted) throw new ChatActionError("failed", "Something went wrong. Open it instead.");
+    try {
+      const claim = await startClaim(
+        userId,
+        { policyId: wanted.policyId, kind: wanted.kind, event: wanted.event, happenedOn: "" },
+        { client, now },
+      );
+      return {
+        status: "open",
+        answeredWith: null,
+        body: trackerBody(claim),
+        refs: { ...message.refs, claimId: claim.id, claimStep: nextStep(claim)?.key },
+        actions: trackerActions(claim),
+      };
+    } catch (error) {
+      if (error instanceof ClaimError) throw answeredElsewhere(error.message);
+      throw error;
+    }
+  },
+};
+
+// "Done" on the claim's next step: marked done (never removed), and the message moves on.
+export const insuranceClaimStep: ActionHandler = {
+  id: "insurance.claim_step",
+  on: "open",
+  async run({ userId, message, client, now }) {
+    const { claimId, claimStep } = message.refs;
+    if (!claimId || !claimStep) {
+      throw new ChatActionError("failed", "Something went wrong. Open it instead.");
+    }
+    try {
+      const { claim } = await markStepDone(userId, claimId, claimStep, { client, now });
+      return {
+        status: "open",
+        answeredWith: null,
+        body: trackerBody(claim),
+        refs: { ...message.refs, claimStep: nextStep(claim)?.key },
+        actions: trackerActions(claim),
+      };
+    } catch (error) {
+      if (error instanceof ClaimError) throw answeredElsewhere(error.message);
+      throw error;
+    }
+  },
+};
+
+// "Close the claim" once every step is done and the person was paid.
+export const insuranceClaimClose: ActionHandler = {
+  id: "insurance.claim_close",
+  on: "open",
+  async run({ userId, message, action, client, now }) {
+    const { claimId } = message.refs;
+    if (!claimId) throw new ChatActionError("failed", "Something went wrong. Open it instead.");
+    try {
+      await closeClaim(userId, claimId, { client, now });
+    } catch (error) {
+      if (error instanceof ClaimError) throw answeredElsewhere(error.message);
+      throw error;
+    }
+    return { answeredWith: action.label, note: "Closed. I'm glad it's sorted." };
   },
 };

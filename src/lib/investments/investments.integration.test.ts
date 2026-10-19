@@ -16,6 +16,7 @@ import { sendToJane } from "@/lib/jane-agent/typing";
 import { linkDemoBank } from "@/lib/plaid/demo";
 import { syncItem } from "@/lib/plaid/sync";
 import { profileSummary } from "@/planning/investor-profile";
+import { loadAccountPlan } from "./accounts";
 import { loadFees } from "./fees";
 import { loadRetirement } from "./retirement";
 import { loadReview } from "./review";
@@ -341,6 +342,45 @@ describe.runIf(url)("investments in Jane's chat, against a real database", () =>
       expect(reply.actions[0]).toMatchObject({ id: "invest.auto_resume" });
       await takeChatAction(userId, reply.id, "invest.auto_resume", { client, now: LINKED });
       expect((await loadAutoInvest(userId, { client, now: LINKED })).plan?.status).toBe("active");
+    },
+  );
+
+  it(
+    "step 135: the account order follows the profile, from the match and the tax estimate",
+    SLOW,
+    async () => {
+      const userId = await demoPerson();
+      expect((await loadAccountPlan(userId, { client, now: LINKED })).order).toBeNull();
+      await saveProfileForm(
+        userId,
+        { age: "45", horizon: "over_20", dropReaction: "worry", goals: ["retirement"] },
+        { client, now: LINKED },
+      );
+      const plan = await loadAccountPlan(userId, { client, now: LINKED });
+      expect(plan.order?.map((s) => s.key)).toEqual([
+        "match",
+        "hsa",
+        "ira",
+        "workplace",
+        "taxable",
+      ]);
+      expect(plan.location.map((m) => m.holding.ticker)).toEqual(["PDIFX"]);
+      expect(plan.gains.losers[0].name).toBe("Pinnacle Dividend Income Fund");
+      // Saving for a home soon reorders it.
+      await saveProfileForm(
+        userId,
+        { age: "45", horizon: "3_to_10", dropReaction: "worry", goals: ["home"] },
+        { client, now: LINKED },
+      );
+      expect((await loadAccountPlan(userId, { client, now: LINKED })).order?.[1].key).toBe(
+        "flexible",
+      );
+      const { reply } = await sendToJane(userId, "which account should I invest in first", {
+        client,
+        now: LINKED,
+      });
+      expect(reply.refs.advice).toBe(true);
+      expect(reply.body).toMatch(/^Here's the order I'd fill your accounts in:/);
     },
   );
 });

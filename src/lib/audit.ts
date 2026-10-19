@@ -4,6 +4,9 @@ import { db } from "@/lib/db";
 // Every sensitive event goes through logAudit. Add new events here so the log stays
 // queryable by a known set of names.
 export type AuditEvent =
+  // Loans (spec step 112): applying for credit and accepting a loan.
+  | "loan_application_submitted"
+  | "loan_accepted"
   | "user_signed_up"
   // Insurance (spec Phase X): a policy saved or removed, the household facts saved.
   | "insurance_policy_saved"
@@ -13,6 +16,8 @@ export type AuditEvent =
   // old one once the new one's first payment went through.
   | "insurance_policy_bound"
   | "insurance_policy_cancelled"
+  // Spec step 107: a claim tracker started (the kind and what happened, never details).
+  | "insurance_claim_started"
   | "user_signed_in"
   | "import_completed"
   // Finding data was sent to Claude for card text.
@@ -69,6 +74,9 @@ export type AuditEvent =
   | "proposal_answered"
   // A button on one of Jane's chat messages (spec step 81): which one, never the text.
   | "chat_action_taken"
+  // What Jane remembers (spec step 91): saved on the person's tap, deleted in Settings.
+  | "preference_saved"
+  | "preference_deleted"
   // The action agent (src/lib/agent/run.ts).
   | "agent_message_sent"
   | "agent_reply_received"

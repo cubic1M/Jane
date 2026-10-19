@@ -1,6 +1,7 @@
 import { REFI_MIN_SAVING_CENTS } from "@/config/debt";
 import { findDebt, type DebtBook } from "@/insights/debts";
 import { formatRate } from "@/insights/loans";
+import { statusLine, type LoanApplicationView } from "@/lib/loan-application-status";
 import { formatCents } from "@/lib/money";
 import type { Refinance } from "@/lib/refinance";
 import type { RefinanceComparison, ScoredOffer } from "@/planning/refinance";
@@ -92,9 +93,44 @@ export function refinanceReply(target: string | null, refi: Refinance, book: Deb
     "",
     "Nothing is applied for until you say so.",
   ];
+  // Spec step 112: one pick shown gets its Apply button (it only prepares the application).
+  const only = picks.length === 1 ? picks[0] : null;
   return {
     body: lines.join("\n").replace(/\n{3,}/g, "\n\n"),
-    actions: [SEE_OFFERS],
-    refs: picks.length > 0 ? { advice: true } : {},
+    actions: only
+      ? [
+          { id: "loan.prepare", label: `Apply with ${only.pick!.offer.lender}`, kind: "primary" },
+          SEE_OFFERS,
+        ]
+      : [SEE_OFFERS],
+    refs: only
+      ? { advice: true, refinance: { debtKey: only.debtKey, lender: only.pick!.offer.lender } }
+      : picks.length > 0
+        ? { advice: true }
+        : {},
+  };
+}
+
+// "How's my loan application?" (spec step 112): each one and where it stands.
+export function loanStatusReply(apps: readonly LoanApplicationView[]): Reply {
+  const shown = apps.filter((a) => a.status !== "withdrawn");
+  if (shown.length === 0) {
+    return {
+      body: "You don't have a loan application. When I find a refinance offer worth switching to, Apply prepares one for you to review.",
+      actions: [SEE_OFFERS],
+      refs: {},
+    };
+  }
+  const lines = shown.map(
+    (a) =>
+      `- ${a.lender}, paying off your ${a.oldName} (${formatRate(a.aprBps)} ${a.rateType}, ${formatCents(a.monthlyCents)} a month): ${statusLine(a)}`,
+  );
+  const latest = shown[0];
+  return {
+    body: lines.join("\n"),
+    actions: [
+      { id: "open", label: "See the application", kind: "link", href: `/loans/apply/${latest.id}` },
+    ],
+    refs: {},
   };
 }

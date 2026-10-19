@@ -70,6 +70,8 @@ export const MESSAGE_PRIORITY = {
   insurance_checked: 48,
   // Spec step 106: the coverage checkup, a heads-up that can wait.
   insurance_checkup: 46,
+  // Spec step 107: a claim's next step is due, like something only the person can do.
+  insurance_claim: 86,
   urgent_alert: 95,
   deadline: 90,
   waiting_on_you: 85,
@@ -119,6 +121,8 @@ export const MESSAGE_PRIORITY = {
   retirement: 39,
   // Spec step 134: the offer to invest every payday, and what each payday did.
   auto_invest_offer: 33,
+  // Spec step 135: which account to fill first (demo advice).
+  account_order: 37,
   auto_invest_run: 31,
 } as const;
 
@@ -184,3 +188,11 @@ export const CHAT_SUBSCRIPTIONS_LISTED = 8;
 // Spec step 90: a purchase that doesn't fit before payday gets "Start a goal for it",
 // reached this many months from now.
 export const AFFORD_GOAL_MONTHS = 3;
+
+// Spec step 92: never interrupt. While the person is chatting (they typed within this many
+// minutes), Jane's own messages wait, and come after.
+export const CHAT_TYPING_PAUSE_MINUTES = 10;
+// Findings of the same kind become one message with a list and a Yes each: at least this
+// many, at most this many in one message (one button each).
+export const CHAT_BUNDLE_MIN = 2;
+export const CHAT_BUNDLE_MAX = 5;

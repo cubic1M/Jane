@@ -83,9 +83,12 @@ describe("the autopilot question", () => {
     const busy = snapshot({
       autopilot: null,
       urgentAlerts: Array.from({ length: 2 }, (_, i) => ({ id: `al${i}`, title: "A", body: "a" })),
-      findings: Array.from({ length: 5 }, (_, i) => ({
+      // Each of a different kind, so none go together in one message (spec step 92).
+      findings: (
+        ["price_increase", "bank_fees", "bill_negotiation", "idle_cash", "card_interest"] as const
+      ).map((type, i) => ({
         findingId: `f${i}`,
-        type: "price_increase" as const,
+        type,
         title: "Netflix went up",
         annualSavingsCents: 1_000,
         savings: "Could save about $10.00 a year",

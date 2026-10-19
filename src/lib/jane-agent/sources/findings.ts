@@ -14,6 +14,23 @@ function pickSentence(pick: NonNullable<SnapshotFinding["pick"]>): string {
     : `My pick: ${pick.name}, which saves about ${formatCents(pick.savingCents)} in the first year.`;
 }
 
+// Spec step 92: what a bundle's button calls it ("Yes: Netflix").
+const NAMES: readonly RegExp[] = [
+  /^Review your (.+?) subscription$/,
+  /^Your (.+?) (?:phone |internet and TV |internet |TV )?bill is above/,
+  /^(.+?) went up from/,
+  /^Charged twice\? .* at (.+)$/,
+  /in fees on (.+?) in the last/,
+  /^Your (.+?) insurance could cost less$/,
+];
+export function shortName(title: string): string {
+  for (const pattern of NAMES) {
+    const name = pattern.exec(title)?.[1];
+    if (name) return name;
+  }
+  return title.length <= 28 ? title : `${title.slice(0, 27).trimEnd()}…`;
+}
+
 const bySavings = (a: SnapshotFinding, b: SnapshotFinding) =>
   (b.annualSavingsCents ?? -1) - (a.annualSavingsCents ?? -1);
 
@@ -35,6 +52,8 @@ export function findingCandidate(finding: SnapshotFinding): Candidate {
     ...(finding.pick
       ? [{ id: "finding.options" as const, label: "Show options", kind: "quick" as const }]
       : []),
+    // Spec step 91: No for good.
+    { id: "suggest.never", label: "Don't suggest again", kind: "secondary" },
     { id: "open", label: "Open", kind: "link", href: `/report/${finding.findingId}` },
   );
   return {
@@ -55,6 +74,13 @@ export function findingCandidate(finding: SnapshotFinding): Candidate {
     actions,
     dedupeKey: finding.findingId,
     priority: finding.urgent ? MESSAGE_PRIORITY.urgent_finding : MESSAGE_PRIORITY.finding,
+    // Spec step 92: findings of one kind go together.
+    bundle: {
+      group: finding.type,
+      name: shortName(finding.title),
+      line: `${sentence(finding.title).replace(/\.$/, "")}: ${finding.savings.charAt(0).toLowerCase()}${finding.savings.slice(1)}`,
+      cents: finding.annualSavingsCents,
+    },
   };
 }
 

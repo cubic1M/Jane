@@ -48,12 +48,16 @@ const STATUS_WORDS: Record<string, string> = {
 // to src/lib/audit.ts without deciding here whether people see it.
 export const TEAM_ACCESS_RULES: Record<AuditEvent, EventRule> = {
   user_signed_up: own,
+  // Loans (spec step 112): the person's own application and acceptance.
+  loan_application_submitted: own,
+  loan_accepted: own,
   // Insurance (spec Phase X): the person's own edits to their profile.
   insurance_policy_saved: own,
   insurance_policy_removed: own,
   insurance_household_saved: own,
   insurance_policy_bound: automatic,
   insurance_policy_cancelled: automatic,
+  insurance_claim_started: own,
   user_signed_in: own,
   import_completed: own,
   explanations_generated: automatic,
@@ -116,6 +120,8 @@ export const TEAM_ACCESS_RULES: Record<AuditEvent, EventRule> = {
   support_contact_confirmed: notOnePerson,
   proposal_answered: own,
   chat_action_taken: own,
+  preference_saved: own,
+  preference_deleted: own,
   agent_message_sent: onAction((m, company) =>
     m.follow_up === true ? `Wrote to ${named(company)} again` : `Wrote to ${named(company)}`,
   ),

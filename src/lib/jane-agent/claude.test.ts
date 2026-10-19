@@ -140,6 +140,7 @@ describe("askClaudeInChat", () => {
       "finding.yes",
       "finding.no",
       "finding.why",
+      "suggest.never",
       "open",
     ]);
     expect(result.reply.refs).toEqual({ findingId: "f1", fingerprint: "fp1" });

@@ -8,6 +8,7 @@ import {
 import { inQuietHours, localTime } from "./quiet-hours";
 import type { Snapshot } from "./snapshot";
 import { MESSAGE_SOURCES, type MessageSource, type Trigger } from "./sources";
+import { bundleGroups, bundleOf } from "./bundle";
 import type { Candidate, MessageKind } from "./types";
 
 // Jane's daily brain (spec step 82): decides what to say. Pure: the snapshot of the
@@ -36,7 +37,9 @@ export type History = {
   snoozed?: readonly { dedupeKey: string; until: Date }[];
 };
 
-export type PlannedMessage = Candidate & { source: string };
+// hidden (spec step 92): stands behind a bundle; posted so it's never posted again on its
+// own, but not shown.
+export type PlannedMessage = Candidate & { source: string; hidden?: boolean };
 
 // Jane's own messages count toward the day; what the person typed and Jane's answers to it
 // (step 84) don't.
@@ -101,9 +104,24 @@ export function plan(
     .sort((a, b) => b.c.priority - a.c.priority || a.index - b.index)
     .map(({ c }) => c);
 
+  // Spec step 91: never what the person said not to suggest again.
+  const never = new Set(snapshot.neverSuggest ?? []);
+  const fresh = candidates.filter(
+    (c) => !seen.has(c.dedupeKey) && !never.has(`message:${c.dedupeKey}`),
+  );
+  // Spec step 92: findings of one kind become one message, in the first one's place.
+  const behind = new Map<string, PlannedMessage[]>();
+  for (const group of bundleGroups(fresh)) {
+    const bundle = bundleOf(group);
+    const at = fresh.indexOf(group[0]);
+    for (const item of group) fresh.splice(fresh.indexOf(item), 1);
+    fresh.splice(at, 0, bundle);
+    behind.set(bundle.dedupeKey, group);
+  }
   const out: PlannedMessage[] = [];
-  for (const candidate of candidates) {
+  for (const candidate of fresh) {
     if (seen.has(candidate.dedupeKey)) continue;
+    if (never.has(`message:${candidate.dedupeKey}`)) continue;
     if (uncapped(candidate)) {
       seen.add(candidate.dedupeKey);
       out.push(candidate);
@@ -115,6 +133,11 @@ export function plan(
     perSource.set(candidate.source, used + 1);
     left -= 1;
     out.push(candidate);
+    // A bundle's own findings, posted hidden behind it.
+    for (const item of behind.get(candidate.dedupeKey) ?? []) {
+      seen.add(item.dedupeKey);
+      out.push({ ...item, hidden: true });
+    }
   }
   return out;
 }

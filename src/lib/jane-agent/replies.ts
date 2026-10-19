@@ -41,6 +41,7 @@ import { nameMatches } from "./names";
 import type { Snapshot, SnapshotFinding } from "./snapshot";
 import { findingCandidate } from "./sources/findings";
 import { dateAndDays, inDays, shortDate, snoozeButton, things } from "./sources/source";
+import type { PreferenceDraft } from "./preferences";
 import type { MessageAction, MessageRefs } from "./types";
 
 // Jane's answers to what the person typed (spec step 84), from the same loaders as the
@@ -134,6 +135,17 @@ export function nearbyChoices(text: string, asOf: string): { label: string; inte
 // it (src/lib/jane-agent/checks), with the closest things she can answer as buttons.
 export const UNKNOWN_TEXT =
   "I can't answer that one yet. Tap one of these and I'll answer it now, with your numbers.";
+
+// Spec step 91: something the person told Jane, offered to remember. Nothing is saved
+// until they tap "Remember this".
+export function rememberReply(draft: PreferenceDraft): Reply {
+  const what = draft.label.charAt(0).toLowerCase() + draft.label.slice(1);
+  return reply(
+    `I can remember that: ${what}. I'll use it in my answers and suggestions from now on, and you can delete it in Settings anytime.`,
+    [{ id: "pref.save", label: "Remember this", kind: "primary" }],
+    { preference: draft },
+  );
+}
 
 // Anything the rules don't understand, when there's no Claude key (or Claude can't answer).
 export function unknownReply(text = "", asOf = new Date().toISOString().slice(0, 10)): Reply {

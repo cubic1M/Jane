@@ -133,3 +133,22 @@ export const SINGLE_STOCK_LIMIT = 0.05;
 export const CASH_DRAG_POINTS = 5;
 // Moves smaller than this aren't worth suggesting.
 export const MIN_MOVE_CENTS = 50_000;
+
+// Spec step 135: which account to fill first, and where each kind of investment is best
+// held. The order is the usual one (FINRA and most planners): the employer match first (an
+// instant return), then an HSA (tax-free in and out for health costs), then an IRA, then
+// the rest of the workplace plan, then a taxable account. Money needed within 10 years for
+// something other than retirement goes into a taxable account (or savings) right after the
+// match, because retirement accounts charge a 10% penalty before 59½ (IRS Topic 557).
+export const SOON_HORIZONS: readonly string[] = ["under_3", "3_to_10"];
+export const EARLY_WITHDRAWAL_PENALTY = 0.1;
+// Roth or traditional, by the marginal federal rate from the tax estimate (step 120): at
+// 12% or less the tax now is cheap (Roth); at 32% or more the deduction is worth more
+// (traditional); in between, a mix.
+export const ROTH_UP_TO_RATE = 0.12;
+export const TRADITIONAL_FROM_RATE = 0.32;
+// Qualified dividends' usual federal rate (most people), for the tax drag of stock funds.
+export const QUALIFIED_DIVIDEND_RATE = 0.15;
+// A holding in a taxable account whose payouts cost more than this a year in tax is worth
+// moving into a tax-deferred account.
+export const MIN_TAX_DRAG_CENTS = 1_000;
