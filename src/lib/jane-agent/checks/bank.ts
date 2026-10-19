@@ -1073,6 +1073,31 @@ export const QUESTIONS: readonly CheckQuestion[] = [
       link: "/loans/cards",
     },
   },
+  // Spec step 175: building credit and the labelled score simulator.
+  {
+    id: "debt-17",
+    text: "how do I build my credit",
+    needs: "rules",
+    expect: {
+      intent: "build_credit",
+      mentions: /statement closes/i,
+      link: "/loans/credit",
+      list: true,
+      maxChars: 1_000,
+    },
+  },
+  {
+    id: "debt-18",
+    text: "what would my score be if I paid off my card",
+    needs: "rules",
+    expect: {
+      intent: "credit_simulate",
+      mentions: /estimates/i,
+      link: "/loans/credit",
+      list: true,
+      maxChars: 1_200,
+    },
+  },
 
   // Outside what Jane does: brief, and never advice.
   { id: "out-1", text: "what's the weather today", needs: "claude", expect: { avoid: ADVICE } },

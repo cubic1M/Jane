@@ -262,7 +262,9 @@ test("the credit score is a labelled stand-in, with its factors and card use", a
   await page.goto("/loans");
   await page.getByRole("link", { name: "See your credit score" }).click();
   await expect(page.getByRole("heading", { level: 1, name: "Credit score" })).toBeVisible();
-  await expect(page.getByRole("note").filter({ hasText: "stand-in score" })).toBeVisible();
+  await expect(
+    page.getByRole("note").filter({ hasText: "not your real credit score" }),
+  ).toBeVisible();
   await expect(page.getByRole("list", { name: "Factors" }).getByRole("listitem")).toHaveCount(5);
   await expect(page.getByRole("region", { name: "Card use" })).toContainText("of your card limits");
 });
@@ -297,4 +299,30 @@ test("card rewards count the fee, and a better card is applied for with one tap"
   await apply.press("Enter");
   await expect(page.getByRole("status")).toHaveText("Sent just now.");
   await expect(page.getByRole("region", { name: "Your applications" })).toContainText("Approved");
+});
+
+// Spec step 175: the score simulator is labelled an estimate, and the payment before the
+// statement closes is shown with its tap.
+test("building credit shows the simulator as an estimate and the statement payment", async ({
+  context,
+  page,
+  baseURL,
+}) => {
+  const user = await signedInUser("user");
+  userId = user.userId;
+  await context.addCookies([
+    { name: "authjs.session-token", value: user.sessionToken, url: baseURL ?? "" },
+  ]);
+  await page.goto("/connect");
+  await page.getByRole("button", { name: "Link a demo bank" }).click();
+  await expect(page).toHaveURL("/chat", { timeout: 60_000 });
+
+  await page.goto("/loans/credit");
+  const build = page.getByRole("region", { name: "Build your credit" });
+  await expect(build).toBeVisible();
+  await expect(build.getByRole("table", { name: "Score simulator" })).toBeVisible();
+  await expect(build.getByRole("note")).toContainText("not promises");
+  await expect(build.getByRole("group", { name: "Before the statement" })).toContainText(
+    "statement closes on",
+  );
 });
