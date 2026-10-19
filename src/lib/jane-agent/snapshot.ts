@@ -90,6 +90,8 @@ export type Snapshot = {
   upkeep?: UpkeepSnapshot;
   // Spec step 139: the savings the person's transactions confirm. Optional, like changes.
   saved?: { confirmedCents: number };
+  // Spec step 140: Jane hasn't said anything to this person yet (the first-run hello).
+  firstChat?: boolean;
   // Spec step 128 on: what's in investment accounts.
   investments?: InvestmentSnapshot;
   // Spec step 91: suggestions the person said never to make again (preference keys);
@@ -166,11 +168,12 @@ export async function loadSnapshot(
   if (!home) return null;
   const db = scopedFor(userId, client);
   // The person's own timezone: users have their own helpers, so a direct read by id.
-  const [user, plan, ruleApprovals, alerts, preferences] = await Promise.all([
+  const [user, plan, ruleApprovals, alerts, said, preferences] = await Promise.all([
     client.user.findUnique({ where: { id: userId }, select: { timezone: true } }),
     planFor(userId, { client }),
     recentRuleApprovals(userId, { client, now }),
     newestUnreadAlerts(userId, { client, limit: ALERTS_LOOKED_AT }),
+    db.janeMessages.count(),
     listPreferences(userId, { client }),
   ]);
   const findings = await db.findings.findMany({
@@ -248,6 +251,7 @@ export async function loadSnapshot(
     ...(await loadTaxSnapshot(userId, { client, now })),
     // Spec steps 97, 100 and 139 read the same bank data, so it's loaded once for them.
     ...(await thinking(userId, client, now, input)),
+    firstChat: said === 0,
     upkeep: await loadUpkeep(userId, { client, now }),
     investments: await loadInvestmentSnapshot(userId, { client, now }),
     neverSuggest: [...never],

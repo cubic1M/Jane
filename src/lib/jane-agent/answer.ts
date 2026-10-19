@@ -36,7 +36,6 @@ import {
   approveAllReply,
   comingUpReply,
   greetingReply,
-  helpReply,
   pauseReply,
   safeReply,
   spendingReply,
@@ -45,6 +44,7 @@ import {
   type Reply,
 } from "./replies";
 import { changesReply } from "./replies-changes";
+import { groupedHelpReply } from "./replies-help";
 import { lifeEventReply } from "./replies-life";
 import { savedReply } from "./replies-saved";
 import { weeklyReview } from "./replies-review";
@@ -171,7 +171,7 @@ async function byIntent(
     case "unknown":
       return null;
     case "help":
-      return helpReply();
+      return groupedHelpReply();
     case "insurance":
       // Spec step 103: quotes ask the partner, the rest read the profile.
       if (intent.ask === "quotes") return quotesAnswer(userId, intent, { client, now });
