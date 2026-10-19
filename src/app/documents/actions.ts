@@ -1,10 +1,11 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { MAX_DOCUMENT_BYTES } from "@/config/documents";
+import { MAX_DOCUMENT_BYTES, type DocumentContentType } from "@/config/documents";
 import { track } from "@/lib/analytics";
 import { isDocumentKind, type RawFacts } from "@/lib/documents/facts";
 import { addDocument, removeDocument, saveDocumentFacts } from "@/lib/documents/store";
+import { readPolicyDocument } from "@/lib/insurance/readings";
 import { hit } from "@/lib/rate-limit";
 import { requireUser } from "@/lib/session";
 
@@ -31,13 +32,31 @@ export async function uploadDocument(_previous: FormState, formData: FormData): 
     };
   }
 
+  const bytes = new Uint8Array(await file.arrayBuffer());
   const result = await addDocument(user.id, {
     file: { name: file.name, type: file.type, size: file.size },
-    bytes: new Uint8Array(await file.arrayBuffer()),
+    bytes,
     kind,
   });
   if (!result.ok) return { ok: false, message: result.error };
   await track(user.id, "document_uploaded", { kind, read: result.read });
+  // A policy is read into one for the person to confirm (spec step 151). The upload's
+  // stated type matched its bytes, or it wasn't saved.
+  if (kind === "insurance_policy") {
+    const reading = await readPolicyDocument(user.id, result.id, {
+      file: { bytes, contentType: file.type as DocumentContentType },
+    }).catch((error) => {
+      console.error("Reading a policy failed", { error: String(error) });
+      return null;
+    });
+    if (reading) {
+      return {
+        ok: true,
+        message:
+          "Saved. Jane read the policy in it: confirm what she read on Insurance or in the chat, and it's added.",
+      };
+    }
+  }
   if (result.read === "you") {
     return { ok: true, message: "Saved. Fill in the key facts below so Jane can use them." };
   }

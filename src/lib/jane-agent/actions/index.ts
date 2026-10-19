@@ -17,6 +17,8 @@ import {
   insuranceClaimStart,
   insuranceClaimStep,
   benefitsConfirmAll,
+  readingConfirm,
+  readingDismiss,
   benefitsDisabilityNone,
   benefitsDisabilityYes,
   benefitsLife1x,
@@ -50,6 +52,7 @@ import {
   taxMoveYes,
   taxWorkSet,
 } from "./tax-states";
+import { taxDocAsk, taxDocChase, taxDocRight, taxDocsTick } from "./tax-documents";
 import {
   investAnswer1,
   investAnswer2,
@@ -96,6 +99,8 @@ export const ACTION_HANDLERS: Readonly<Record<ActionId, ActionHandler>> = {
   "insurance.claim_step": insuranceClaimStep,
   "insurance.claim_close": insuranceClaimClose,
   "benefits.confirm_all": benefitsConfirmAll,
+  "reading.confirm": readingConfirm,
+  "reading.dismiss": readingDismiss,
   "benefits.life_1x": benefitsLife1x,
   "benefits.life_2x": benefitsLife2x,
   "benefits.life_none": benefitsLifeNone,
@@ -177,6 +182,10 @@ export const ACTION_HANDLERS: Readonly<Record<ActionId, ActionHandler>> = {
   "tax.local_1": taxLocal1,
   "tax.local_2": taxLocal2,
   "tax.local_no": taxLocalNo,
+  "tax.doc_right": taxDocRight,
+  "tax.doc_ask": taxDocAsk,
+  "tax.doc_chase": taxDocChase,
+  "tax.docs_tick": taxDocsTick,
   // Investments (spec step 129 on).
   "invest.answer.1": investAnswer1,
   "invest.answer.2": investAnswer2,

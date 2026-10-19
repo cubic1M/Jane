@@ -319,6 +319,7 @@ model User {
   insuranceCheckups      InsuranceCheckup[]
   insuranceClaims        InsuranceClaim[]
   employerBenefits       EmployerBenefit[]
+  policyReadings         PolicyReading[]
   lifeEvents             LifeEvent[]
   // What's in investment accounts (spec step 128).
   securities             Security[]
@@ -332,6 +333,7 @@ model User {
   taxProfile             TaxProfile?
   lifeEventAnswers       LifeEventAnswer[]
   taxTags                TaxTag[]
+  taxDocuments           TaxDocument[]
   taxForms               TaxForm[]
   taxReturns             TaxReturn[]
   budgetTuneUps          BudgetTuneUp[]
@@ -1587,6 +1589,7 @@ model Document {
 
   user              User              @relation(fields: [userId], references: [id], onDelete: Cascade)
   insurancePolicies InsurancePolicy[]
+  policyReading     PolicyReading?
 
   @@index([userId, uploadedAt])
   @@map("documents")
@@ -1801,6 +1804,33 @@ model EmployerBenefit {
   @@map("employer_benefits")
 }
 
+// A policy document read for the person to confirm (spec step 151): the fields Jane read
+// from it (or prefilled from payments without a key), each with where it came from.
+// Nothing becomes a policy until they tap Confirm.
+model PolicyReading {
+  id         String    @id @default(cuid())
+  userId     String    @map("user_id")
+  documentId String    @unique @map("document_id")
+  // The policy on file it updates (a renewal notice), or null for a new one.
+  policyId   String?   @map("policy_id")
+  // The policy form's fields, as text (PolicyInput in src/lib/insurance/policies.ts).
+  fields     Json
+  // Field name to where it came from: document, you, payments or policy.
+  sources    Json      @default("{}")
+  // Field name to what the rules said about it (left blank, or worth a look).
+  notes      Json      @default("{}")
+  // waiting, confirmed or dismissed.
+  status     String    @default("waiting")
+  createdAt  DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  answeredAt DateTime? @map("answered_at") @db.Timestamptz(3)
+
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  document Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+
+  @@index([userId, status])
+  @@map("policy_readings")
+}
+
 // The household facts that matter for cover (spec step 102), as the person typed them.
 // Null means not said: housing and cars are then read from the accounts.
 model InsuranceProfile {
@@ -2003,6 +2033,8 @@ model TaxProfile {
   workState             String?   @map("work_state")
   locality              String?
   residencyYear         Int?      @map("residency_year")
+  // Spec step 166: the day Jane last asked the document partner for forms.
+  documentsCheckedOn    DateTime? @map("documents_checked_on") @db.Date
   createdAt             DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt             DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
 
@@ -2036,6 +2068,29 @@ model TaxTag {
 
 // Tax forms the person said have arrived (spec step 119), for a tax year: one row per form
 // Jane expected (src/planning/tax-documents.ts key), so she stops asking about it.
+// Spec step 166: a tax form Jane collected from a document partner (the demo stand-in for
+// now), for an expected form (TaxForm keys). Its boxes in cents; checked against the
+// accounts each time it's shown, never stored as matching. decision: "right" (the person
+// said a flagged form is right, so it's used) or "ask" (they'll ask the payer).
+model TaxDocument {
+  id        String    @id @default(cuid())
+  userId    String    @map("user_id")
+  year      Int
+  key       String
+  formKey   String    @map("form_key")
+  payer     String
+  partner   String
+  boxes     Json
+  fetchedAt DateTime  @map("fetched_at") @db.Timestamptz(3)
+  decision  String?
+  decidedAt DateTime? @map("decided_at") @db.Timestamptz(3)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, year, key])
+  @@map("tax_documents")
+}
+
 model TaxForm {
   id         String   @id @default(cuid())
   userId     String   @map("user_id")

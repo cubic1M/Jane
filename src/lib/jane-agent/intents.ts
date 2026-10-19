@@ -86,6 +86,8 @@ export type Intent =
   | InvestmentIntent
   // Spec step 142: "what did you check last night?"
   | { kind: "checked" }
+  // Spec step 143: "what should I do first?"
+  | { kind: "priorities" }
   // Spec step 141: one autopilot, every sector.
   | SectorIntent
   // Spec step 136: what a word means.
@@ -317,6 +319,8 @@ const SAVED =
   /\bhow much (?:have you|has jane|did you) saved? me\b|\bwhat (?:have you|did you) save(?:d)? me\b|\bmy savings so far\b|\btotal (?:you'?ve )?saved\b/;
 const REVIEW =
   /\b(?:weekly review|week in review|how was my week|how did my week go|recap(?: my| the| of my)? week|my week(?: so far)?)\b/;
+const PRIORITIES =
+  /\bwhat should i do (?:first|next|now)\b|\bwhat matters (?:most|now)\b|\bwhat'?s (?:most )?important\b|\bwhere (?:do|should) i start\b|\bmy (?:top )?priorities\b|\bnext best thing\b/;
 const CHECKED =
   /\bwhat did you check\b|\b(?:checked|check) (?:last night|overnight)\b|\bnightly (?:check|run|log)s?\b/;
 const APPROVE_ALL =
@@ -417,6 +421,7 @@ export function parseIntent(raw: string, asOf: string): Intent {
   if (THANKS.test(text)) return { kind: "greeting", thanks: true };
   if (PAUSE.test(text)) return { kind: "pause_autopilot" };
   if (CHECKED.test(text)) return { kind: "checked" };
+  if (PRIORITIES.test(text)) return { kind: "priorities" };
   const sector = parseSectorIntent(text);
   if (sector) return sector;
   if (SAVED.test(text)) return { kind: "saved" };

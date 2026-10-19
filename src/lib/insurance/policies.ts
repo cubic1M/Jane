@@ -20,12 +20,11 @@ import { track } from "@/lib/analytics";
 import { logAudit } from "@/lib/audit";
 import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
-import { checkGuardrails } from "@/lib/guardrails";
 import { parseMoneyToCents } from "@/lib/money";
 import { CoverageError, fieldText, parseCoverage, readCoverage, type Coverage } from "./coverage";
 
 // The policies on the person's insurance profile (spec step 102): typed on /insurance,
-// read from their policy documents (spec step 68), and from step 99 found from payments.
+// confirmed from their policy documents (spec steps 68 and 151), and from step 99 found from payments.
 // Every figure Jane says about a policy comes from one of these records.
 
 type Options = { client?: PrismaClient; now?: Date };
@@ -271,7 +270,7 @@ export async function removePolicy(
 }
 
 // Documents' policy types are the same words, except "health" and "other".
-const DOCUMENT_KIND: Record<string, PolicyKind> = {
+export const DOCUMENT_KIND: Record<string, PolicyKind> = {
   auto: "auto",
   home: "home",
   renters: "renters",
@@ -280,67 +279,12 @@ const DOCUMENT_KIND: Record<string, PolicyKind> = {
   other: "other",
 };
 
-// Every uploaded policy document with an insurer on it becomes a policy on the profile
-// (once: a document's policy is never added twice, even after it's removed). Its facts
-// are copied; the person adds the deductible and limits on /insurance.
-export async function policiesFromDocuments(
-  userId: string,
-  { client = defaultClient }: Options = {},
-): Promise<number> {
-  const db = scopedFor(userId, client);
-  const [documents, linked] = await Promise.all([
-    db.documents.findMany({
-      where: { kind: "insurance_policy", provider: { not: null } },
-      select: {
-        id: true,
-        provider: true,
-        policyType: true,
-        coverageSummary: true,
-        premiumCents: true,
-        premiumFrequency: true,
-        renewalDate: true,
-      },
-    }),
-    db.insurancePolicies.findMany({
-      where: { documentId: { not: null } },
-      select: { documentId: true },
-    }),
-  ]);
-  const have = new Set(linked.map((l) => l.documentId));
-  const fresh = documents.filter((d) => !have.has(d.id));
-  if (fresh.length === 0) return 0;
-  const { count } = await db.insurancePolicies.createMany({
-    data: fresh.map((d) => {
-      const covers =
-        d.coverageSummary && checkGuardrails(d.coverageSummary, [d.premiumCents ?? 0]).ok
-          ? d.coverageSummary
-          : null;
-      return {
-        userId,
-        kind: DOCUMENT_KIND[d.policyType ?? ""] ?? "other",
-        carrier: d.provider!.slice(0, MAX_CARRIER_LENGTH),
-        source: "document",
-        status: "active",
-        premiumCents: d.premiumCents,
-        premiumFrequency: d.premiumFrequency,
-        renewalDate: d.renewalDate,
-        covers,
-        documentId: d.id,
-      };
-    }),
-    skipDuplicates: true,
-  });
-  if (count > 0) await track(userId, "insurance_policy_added", { source: "document", count });
-  return count;
-}
-
 // The policies on the profile: active ones first by kind, then found ones waiting for a
 // yes, then pending switches. Cancelled and removed ones aren't on it.
 export async function listPolicies(
   userId: string,
   { client = defaultClient }: Options = {},
 ): Promise<Policy[]> {
-  await policiesFromDocuments(userId, { client });
   const rows = await scopedFor(userId, client).insurancePolicies.findMany({
     where: { status: { in: ["active", "found", "pending"] } },
     select: POLICY_SELECT,

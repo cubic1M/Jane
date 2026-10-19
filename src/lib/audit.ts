@@ -104,6 +104,10 @@ export type AuditEvent =
   // Filing (spec step 126): a return started with the filing partner, and signed.
   | "tax_return_started"
   | "tax_return_signed"
+  // Spec step 166: a tax form collected from the document partner, and the person's call on
+  // one that doesn't match their accounts.
+  | "tax_document_collected"
+  | "tax_document_decided"
   // Devices and sessions (spec step 73): one other session, or all the others, signed out.
   | "session_signed_out"
   | "other_sessions_signed_out"

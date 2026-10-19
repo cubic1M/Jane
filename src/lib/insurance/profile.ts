@@ -5,6 +5,7 @@ import { scopedFor } from "@/lib/db-scoped";
 import { coverageGaps, type Gap } from "./gaps";
 import { loadHousehold, type Household } from "./household";
 import { listPolicies, type Policy } from "./policies";
+import { readingsFromDocuments } from "./readings";
 
 // The person's insurance profile (spec step 102): every policy, the household facts and
 // the gaps, from the same code as /insurance. Jane's chat, its Claude tools and the page
@@ -24,6 +25,8 @@ export async function loadInsurance(
   userId: string,
   { client = defaultClient, now = new Date() }: Options = {},
 ): Promise<InsuranceProfile> {
+  // Policy documents not read yet are read for the person to confirm (spec step 151).
+  await readingsFromDocuments(userId, { client, now });
   const [policies, household, advice] = await Promise.all([
     listPolicies(userId, { client }),
     loadHousehold(userId, { client, now }),

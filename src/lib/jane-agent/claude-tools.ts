@@ -20,6 +20,7 @@ import { loadUpkeep } from "@/lib/plan-upkeep";
 import { sectorAutopilots } from "@/lib/sector-autopilot";
 import { lastControllerRun } from "@/lib/controller-log";
 import { CONTROLLER_STEP_LABELS } from "@/config/controller";
+import { rankedFor } from "./priorities";
 import { SECTOR_LABELS, SECTOR_LEVEL_LABELS } from "@/config/autopilot-sectors";
 import { provenSavings } from "@/lib/savings-proof";
 import { listLifeEvents } from "@/lib/life-events";
@@ -183,6 +184,12 @@ export const CHAT_TOOLS: Anthropic.Tool[] = [
     name: "nightly_log",
     description:
       "What Jane checked for the person last night (spec step 142): one line per area (bank sync, changes, insurance reshops, debts and rates, taxes, investing drift, goals and budgets), in the order she ran them, with what each found or did, and any that failed and will be tried again.",
+    input_schema: noInput,
+  },
+  {
+    name: "priorities",
+    description:
+      'The person\'s next best things to do (spec step 143), ranked across everything Jane found and is waiting on: findings, insurance picks, refinance offers, steps only they can do and dated deadlines. Each with the money it saves a year, the minutes it takes, its urgency and why it ranks where it does. Use it for "what should I do first" and to put the most important first.',
     input_schema: noInput,
   },
   {
@@ -421,6 +428,20 @@ export async function runChatTool(
           what: e.title,
           about: money(e.cents),
           why: e.why,
+        })),
+      });
+    }
+    case "priorities": {
+      const snapshot = await loadSnapshot(userId, { client, now });
+      return out({
+        ranked: (snapshot ? rankedFor(snapshot) : []).slice(0, 10).map((r) => ({
+          what: r.title,
+          kind: r.kind,
+          savesAYear: r.valueCents === null ? null : money(r.valueCents),
+          minutes: r.minutes,
+          due: r.dueOn ?? null,
+          why: r.why,
+          findingId: r.kind === "finding" ? r.ref : null,
         })),
       });
     }

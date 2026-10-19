@@ -16,6 +16,7 @@ import {
   updatePolicy,
   type PolicyInput,
 } from "@/lib/insurance/policies";
+import { ReadingError, confirmReading, dismissReading } from "@/lib/insurance/readings";
 import { requireUser } from "@/lib/session";
 
 // Insurance (spec step 102). A save goes back to /insurance with ?saved=, so the
@@ -65,6 +66,34 @@ export async function savePolicy(_previous: PolicyState, formData: FormData): Pr
   }
   refreshOthers();
   redirect(`/insurance?saved=${policyId ? "updated" : "added"}`);
+}
+
+// Spec step 151: a policy read from a document, confirmed as the person left the fields.
+export async function confirmReadingForm(
+  _previous: PolicyState,
+  formData: FormData,
+): Promise<PolicyState> {
+  const user = await requireUser();
+  const input = policyInputOf(formData);
+  try {
+    await confirmReading(user.id, text(formData, "readingId"), { input });
+  } catch (error) {
+    if (error instanceof ReadingError) return { message: error.message, input };
+    throw error;
+  }
+  refreshOthers();
+  redirect("/insurance?saved=read");
+}
+
+export async function dismissReadingForm(formData: FormData): Promise<void> {
+  const user = await requireUser();
+  try {
+    await dismissReading(user.id, text(formData, "readingId"));
+  } catch (error) {
+    if (!(error instanceof ReadingError)) throw error;
+  }
+  refreshOthers();
+  redirect("/insurance");
 }
 
 export async function deletePolicy(formData: FormData): Promise<void> {

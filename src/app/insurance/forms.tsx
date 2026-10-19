@@ -11,7 +11,13 @@ import {
 } from "@/config/insurance";
 import type { HouseholdInput } from "@/lib/insurance/household";
 import type { PolicyInput } from "@/lib/insurance/policies";
-import { saveHouseholdFacts, savePolicy, type HouseholdState, type PolicyState } from "./actions";
+import {
+  confirmReadingForm,
+  saveHouseholdFacts,
+  savePolicy,
+  type HouseholdState,
+  type PolicyState,
+} from "./actions";
 
 const INPUT =
   "h-11 min-w-0 rounded-lg border border-zinc-300 bg-transparent px-3 text-base dark:border-zinc-700";
@@ -19,16 +25,38 @@ const LABEL = "flex flex-col gap-1 text-sm font-medium";
 const BUTTON =
   "inline-flex h-11 items-center justify-center self-end rounded-full bg-emerald-700 px-6 font-semibold text-white hover:bg-emerald-800 disabled:opacity-50";
 
-// One policy, added or edited. The cover fields change with the kind of policy.
-export function PolicyForm({ policyId, values }: { policyId: string; values: PolicyInput }) {
-  const [state, action, pending] = useActionState<PolicyState, FormData>(savePolicy, null);
+// Under a field read from a document (spec step 151): where it came from, or why it's blank.
+function Hint({ text }: { text?: string }) {
+  return text ? (
+    <span className="text-xs font-normal text-zinc-600 dark:text-zinc-400">{text}</span>
+  ) : null;
+}
+
+// One policy, added or edited. The cover fields change with the kind of policy. With a
+// reading (spec step 151), it's a policy read from a document: each field says where it
+// came from, and saving confirms it.
+export function PolicyForm({
+  policyId,
+  values,
+  reading,
+}: {
+  policyId: string;
+  values: PolicyInput;
+  reading?: { id: string; hints: Record<string, string> };
+}) {
+  const [state, action, pending] = useActionState<PolicyState, FormData>(
+    reading ? confirmReadingForm : savePolicy,
+    null,
+  );
   const shown = state ? state.input : values;
   const [kind, setKind] = useState(shown.kind);
-  const id = (name: string) => `${policyId || "new"}-${name}`;
+  const id = (name: string) => `${reading?.id ?? (policyId || "new")}-${name}`;
+  const hint = (name: string) => <Hint text={reading?.hints[name]} />;
   const fields = isPolicyKind(kind) ? COVERAGE_FIELDS[kind] : [];
   return (
     <form action={action} className="grid grid-cols-[minmax(0,1fr)] gap-3 sm:grid-cols-2">
       <input type="hidden" name="policyId" value={policyId} />
+      {reading && <input type="hidden" name="readingId" value={reading.id} />}
       <label htmlFor={id("kind")} className={LABEL}>
         What it insures
         <select
@@ -44,6 +72,7 @@ export function PolicyForm({ policyId, values }: { policyId: string; values: Pol
             </option>
           ))}
         </select>
+        {hint("kind")}
       </label>
       <label htmlFor={id("carrier")} className={LABEL}>
         Insurance company
@@ -54,6 +83,7 @@ export function PolicyForm({ policyId, values }: { policyId: string; values: Pol
           placeholder="GEICO"
           className={INPUT}
         />
+        {hint("carrier")}
       </label>
       <label htmlFor={id("premium")} className={LABEL}>
         Price ($)
@@ -64,6 +94,7 @@ export function PolicyForm({ policyId, values }: { policyId: string; values: Pol
           defaultValue={shown.premium}
           className={INPUT}
         />
+        {hint("premium")}
       </label>
       <label htmlFor={id("premiumFrequency")} className={LABEL}>
         Paid
@@ -80,6 +111,7 @@ export function PolicyForm({ policyId, values }: { policyId: string; values: Pol
             </option>
           ))}
         </select>
+        {hint("premiumFrequency")}
       </label>
       <label htmlFor={id("deductible")} className={LABEL}>
         Deductible ($)
@@ -90,6 +122,7 @@ export function PolicyForm({ policyId, values }: { policyId: string; values: Pol
           defaultValue={shown.deductible}
           className={INPUT}
         />
+        {hint("deductible")}
       </label>
       <label htmlFor={id("renewalDate")} className={LABEL}>
         Renews on
@@ -100,6 +133,7 @@ export function PolicyForm({ policyId, values }: { policyId: string; values: Pol
           defaultValue={shown.renewalDate}
           className={INPUT}
         />
+        {hint("renewalDate")}
       </label>
       <label htmlFor={id("termMonths")} className={LABEL}>
         Each term lasts
@@ -115,6 +149,7 @@ export function PolicyForm({ policyId, values }: { policyId: string; values: Pol
             </option>
           ))}
         </select>
+        {hint("termMonths")}
       </label>
       <label htmlFor={id("covers")} className={LABEL}>
         What it covers (optional)
@@ -125,6 +160,7 @@ export function PolicyForm({ policyId, values }: { policyId: string; values: Pol
           placeholder="One car, two drivers"
           className={INPUT}
         />
+        {hint("covers")}
       </label>
       {fields.length > 0 && (
         <fieldset className="grid grid-cols-[minmax(0,1fr)] gap-3 sm:col-span-2 sm:grid-cols-2">
@@ -154,6 +190,7 @@ export function PolicyForm({ policyId, values }: { policyId: string; values: Pol
                   className={INPUT}
                 />
               )}
+              {hint(`coverage.${field.key}`)}
             </label>
           ))}
         </fieldset>
@@ -164,7 +201,7 @@ export function PolicyForm({ policyId, values }: { policyId: string; values: Pol
         </p>
       )}
       <button type="submit" disabled={pending} className={BUTTON}>
-        {pending ? "Saving…" : policyId ? "Save" : "Add it"}
+        {pending ? "Saving…" : reading ? "Confirm" : policyId ? "Save" : "Add it"}
       </button>
     </form>
   );

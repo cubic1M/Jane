@@ -191,8 +191,8 @@ export type InvestmentCash = { date: string; amountCents: number; subtype: strin
 const categories = (kind: keyof typeof INCOME_KINDS): readonly string[] =>
   INCOME_KINDS[kind].categories;
 
-const QUALIFIED = new Set(["qualified dividend", "long-term capital gain"]);
-const DIVIDENDS = new Set([
+export const QUALIFIED = new Set(["qualified dividend", "long-term capital gain"]);
+export const DIVIDENDS = new Set([
   "dividend",
   "qualified dividend",
   "non-qualified dividend",
