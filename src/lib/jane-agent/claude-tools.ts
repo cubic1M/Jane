@@ -42,6 +42,7 @@ import { loadSnapshot } from "./snapshot";
 import { findingCandidate } from "./sources/findings";
 import { TAX_TOOLS, isTaxTool, runTaxTool } from "./tax-tools";
 import { ACTION_IDS, type ActionId, type MessageAction } from "./types";
+import { cryptoTotal } from "@/lib/crypto/crypto";
 
 // The tools Claude gets in Jane's chat (spec step 84). Read-only tools over the person's
 // own data, wrapping the same loaders as the pages (and Ask's own tools, src/lib/ask), each
@@ -465,20 +466,23 @@ export async function runChatTool(
     }
     case "net_worth": {
       const db = scopedFor(userId, client);
-      const [accounts, owned] = await Promise.all([
+      const [accounts, owned, crypto] = await Promise.all([
         db.accounts.findMany({
           select: { id: true, name: true, type: true, subtype: true, currentBalanceCents: true },
         }),
         db.ownedAssets.findMany({ select: { id: true, valueCents: true, valuedOn: true } }),
+        cryptoTotal(userId, { client }),
       ]);
       const worth = netWorth(
         accounts.map((a) => ({ ...a, balanceCents: a.currentBalanceCents })),
         owned.map((o) => ({ ...o, valuedOn: o.valuedOn.toISOString().slice(0, 10) })),
+        crypto,
       );
       return out({
         has: money(worth.assetsCents),
         owes: money(worth.debtsCents),
         netWorth: money(worth.netCents),
+        ...(worth.cryptoCents > 0 ? { ofWhichCryptoReadOnly: money(worth.cryptoCents) } : {}),
         accountsWithoutABalance: worth.missing.length,
       });
     }
