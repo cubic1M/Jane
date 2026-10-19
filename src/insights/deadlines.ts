@@ -35,7 +35,7 @@ export type DeadlineKind =
   "renewal" | "trial" | "return" | "payment" | "fsa" | "card_benefit" | "warranty" | "other";
 
 // Where a deadline came from.
-export type DeadlineOrigin = "transactions" | "loans" | "entered" | "documents";
+export type DeadlineOrigin = "transactions" | "loans" | "entered" | "documents" | "insurance";
 
 export type Deadline = {
   // Stable across days and rescans (and names the date where it can move), so a reminder

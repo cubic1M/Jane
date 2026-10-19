@@ -2,6 +2,7 @@ import { CHAT_CRON_LIMIT, CHAT_HISTORY_HOURS } from "@/config/agent-chat";
 import type { PrismaClient } from "@/generated/prisma/client";
 import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
+import { policiesFromPayments } from "@/lib/found-policies";
 import { runPlanUpkeep } from "@/lib/plan-upkeep";
 import { gather, plan, type BrainSettings } from "./brain";
 import { closeSettled, postMessages } from "./messages";
@@ -32,6 +33,10 @@ export async function runJaneAgent(
   // Spec step 101: what autopilot keeps up to date by itself, before Jane looks.
   await runPlanUpkeep(userId, { client, now }).catch((error) =>
     console.error("Plan upkeep failed", { userId, error: String(error) }),
+  );
+  // Spec step 99: insurance found from payments joins the profile (as found) by itself.
+  await policiesFromPayments(userId, { client, now }).catch((error) =>
+    console.error("Finding policies from payments failed", { userId, error: String(error) }),
   );
   const snapshot = await loadSnapshot(userId, { client, now });
   if (!snapshot) return { posted: 0 };
