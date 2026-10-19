@@ -321,6 +321,7 @@ model User {
   insuranceClaims        InsuranceClaim[]
   employerBenefits       EmployerBenefit[]
   policyReadings         PolicyReading[]
+  lifeApplications       LifeApplication[]
   lifeEvents             LifeEvent[]
   // What's in investment accounts (spec step 128).
   securities             Security[]
@@ -1797,6 +1798,37 @@ model PolicyReading {
 
   @@index([userId, status])
   @@map("policy_readings")
+}
+
+// Life insurance, sized and applied for (spec step 153). Demo advice only. The amount and
+// term with the method behind them, the term quotes, the health answers, and the
+// carrier's decision. Nothing is applied for, and nothing bought, without the person's tap.
+model LifeApplication {
+  id          String    @id @default(cuid())
+  userId      String    @map("user_id")
+  // sized, asking, offered, referred, bought or dismissed.
+  status      String    @default("sized")
+  amountCents Int       @map("amount_cents")
+  termYears   Int       @map("term_years")
+  // The method, line by line (src/lib/insurance/life-need.ts), and why the term.
+  method      Json
+  termWhy     String    @map("term_why")
+  // The partner's term quotes, cheapest first.
+  quotes      Json      @default("[]")
+  // The quote applied for, and the health answers so far.
+  quoteId     String?   @map("quote_id")
+  answers     Json      @default("{}")
+  // The carrier's decision: an offer at a rate class, or a referral for its own review.
+  decision    Json?
+  policyId    String?   @map("policy_id")
+  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt   DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
+  submittedAt DateTime? @map("submitted_at") @db.Timestamptz(3)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, status])
+  @@map("life_applications")
 }
 
 // The household facts that matter for cover (spec step 102), as the person typed them.

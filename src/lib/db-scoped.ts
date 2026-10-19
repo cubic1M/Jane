@@ -104,6 +104,7 @@ export function scopedFor(userId: string, client: PrismaClient = db) {
     insuranceClaims: scoped.insuranceClaim,
     employerBenefits: scoped.employerBenefit,
     policyReadings: scoped.policyReading,
+    lifeApplications: scoped.lifeApplication,
     refinanceChecks: scoped.refinanceCheck,
     loanApplications: scoped.loanApplication,
     balanceTransfers: scoped.balanceTransfer,

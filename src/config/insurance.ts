@@ -414,3 +414,44 @@ export const HEALTH_EXTRA_PERSON_SHARE = 0.8;
 // price this far from what their payments show is pointed out.
 export const READING_RENEWAL_WINDOW_DAYS = { past: 366, future: 800 } as const;
 export const READING_PRICE_TOLERANCE = 0.2;
+
+// --- Life insurance, sized and bought (spec step 153) ------------------------------------------
+// Demo advice only. The need: years of pay replaced for the people who depend on it, plus
+// debts, final expenses and schooling per dependant, less savings and cover already in
+// place; rounded up, within these bounds.
+export const LIFE_NEED = {
+  incomeYears: 10,
+  finalExpensesCents: 1_500_000,
+  educationPerDependantCents: 5_000_000,
+  roundToCents: 5_000_000,
+  minCents: 10_000_000,
+  maxCents: 500_000_000,
+} as const;
+// The term: long enough to see the mortgage paid off and dependants grown, at least this.
+export const LIFE_MIN_TERM_YEARS = 20;
+export const LIFE_TERMS = [10, 15, 20, 25, 30] as const;
+// Pay is read from the paychecks in this many days, times a year.
+export const LIFE_PAY_LOOKBACK_DAYS = 90;
+// The guided health questions for an application, asked one at a time. A yes to any of
+// the first four sends it for the carrier's review instead of an instant decision; tobacco
+// is priced in.
+export const LIFE_HEALTH_QUESTIONS = [
+  {
+    key: "conditions",
+    text: "Have you ever been treated for heart disease, cancer, a stroke or diabetes?",
+  },
+  {
+    key: "hospital",
+    text: "Have you stayed in a hospital overnight in the last 5 years, other than for giving birth?",
+  },
+  { key: "medication", text: "Do you take any prescription medicine every day?" },
+  { key: "driving", text: "Have you had a DUI or your license suspended in the last 5 years?" },
+  { key: "tobacco", text: "Have you used tobacco or nicotine in the last 12 months?" },
+] as const;
+export type LifeQuestionKey = (typeof LIFE_HEALTH_QUESTIONS)[number]["key"];
+// The stand-in's price for a tobacco user, and for someone on daily medication, as a
+// multiple of the quote.
+export const LIFE_TOBACCO_FACTOR = 2.5;
+export const LIFE_STANDARD_FACTOR = 1.3;
+// How long a stand-in life application's offer stays open.
+export const LIFE_OFFER_DAYS = 30;
