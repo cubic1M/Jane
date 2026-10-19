@@ -12,7 +12,8 @@ export type InvestmentTopic =
   | "auto_invest"
   | "accounts"
   | "overview"
-  | "autopilot";
+  | "autopilot"
+  | "returns";
 
 export type InvestmentIntent = {
   kind: "investments";
@@ -74,7 +75,14 @@ const OVERVIEW =
 const AUTOPILOT =
   /\bwhat do you do (?:with|about|for) my (?:investments|portfolio|money in the market)\b|\b(?:investments?|investing|portfolio) on autopilot\b|\bautopilot (?:for|on) (?:my )?(?:investments|investing|portfolio)\b|\bwhat (?:will|would|do) you (?:do|change) (?:in|with) my (?:investments|portfolio) (?:by yourself|on your own)\b/;
 
+// Spec step 156: how they've done, in numbers.
+const RETURNS =
+  /\b(?:my |the )?(?:investment |portfolio |401\(?k\)? )?(?:returns?|performance)\b(?! policy)|\bhow much (?:have|did) my (?:investments|portfolio|401\(?k\)?) (?:make|made|earn|earned|grow|grown|gain|gained)\b|\bhow much (?:have|did) i (?:make|made|earn|earned) (?:on|from) my (?:investments|portfolio)\b/;
+
 export function parseInvestmentIntent(text: string): InvestmentIntent | null {
+  if (RETURNS.test(text) && /\b(?:invest|portfolio|401|return|performance)/.test(text)) {
+    return { kind: "investments", topic: "returns", account: null };
+  }
   if (AUTOPILOT.test(text)) return { kind: "investments", topic: "autopilot", account: null };
   if (OVERVIEW.test(text)) return { kind: "investments", topic: "overview", account: null };
   if (ACCOUNTS.test(text)) return { kind: "investments", topic: "accounts", account: null };
