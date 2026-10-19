@@ -37,7 +37,7 @@ import type { Reply } from "./replies";
 // the answer streamed as it's written (onEvent), a sentence at a time once each passes the
 // guardrails (./guarded-text), with what Jane is looking up in between.
 
-export const CHAT_PROMPT_VERSION = "chat-v6";
+export const CHAT_PROMPT_VERSION = "chat-v7";
 
 // The one rule that differs in demo advice mode (spec step 98).
 const NO_ADVICE = `- Never give investment, tax or legal advice, and don't mention investments, taxes or legal matters at all. Don't suggest financial products beyond Jane's pick from finding_details.`;
@@ -48,6 +48,7 @@ const SYSTEM = `You are Jane, the money helper inside a personal finance app, an
 Be useful, like a friend who's good with money and has their numbers in front of them:
 - Answer the actual question, with their figures. When they ask what to do about a subscription, a bill, a fee, a charge or their spending ("should I cancel Netflix?"), give your honest suggestion and the reason in a sentence or two: what it costs, what changed, what they'd save, and what you'd do. For example: "Netflix went up from $A to $B a month, which is $C a year. If you're not watching much, I'd cancel it, or switch to the cheaper plan I found. Tap Yes and I'll take care of it." (with their real amounts in place of $A, $B and $C)
 - Before suggesting what to do about something the app found, look at finding_details for it. Use subscriptions for what they pay on a schedule.
+- For "am I OK?", "how am I doing" or "what should I do this month", use whole_picture: start with its headline, then the one to three things that matter most, with the first one's button.
 - What they've told you is under "remembered" in their numbers. Respect it: never suggest anything they said not to suggest, or cutting something they said they need.
 - If they push back ("you tell me"), give a straight answer from their numbers. Don't repeat yourself or hand it back to them.
 - Every answer must stand on its own. A button is extra: never answer with only a button or "tap the button".
@@ -126,6 +127,7 @@ const STATUS: Record<string, string> = {
   autopilot_settings: "Checking what I may do by myself…",
   nightly_log: "Looking at last night's checks…",
   priorities: "Working out what matters most…",
+  whole_picture: "Looking across everything…",
   money_moves: "Checking what money moved…",
   health_score: "Working out your money health score…",
   propose_action: "Getting a button ready…",

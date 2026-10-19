@@ -76,6 +76,8 @@ export type Snapshot = {
     createdAt: Date;
     canUndo: boolean;
   }[];
+  // Spec step 183: how many of the person's yeses Jane's agent is still working on.
+  working?: number;
   finished: {
     actionId: string;
     title: string;
@@ -290,6 +292,7 @@ export async function loadSnapshot(
     },
     ruleApprovals,
     finished: home.janeDid.finished,
+    working: home.janeDid.working,
     deadlines: home.deadlines,
     budgetsOver: home.budgetsOver,
     goalsBehind: home.goalsBehind,
