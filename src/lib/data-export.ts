@@ -50,6 +50,8 @@ export async function exportUserData(
     lifeEvents,
     changeAcks,
     lifeEventAnswers,
+    budgetTuneUps,
+    goalTransfers,
     janeMessages,
     teamAccess,
     taxProfile,
@@ -364,6 +366,19 @@ export async function exportUserData(
     db.changeAcks.findMany({ select: { key: true, kind: true, createdAt: true } }),
     // Answers to the life events Jane spotted (spec step 100).
     db.lifeEventAnswers.findMany({ select: { kind: true, answer: true, createdAt: true } }),
+    // Budget tune-ups and transfers counted toward goals (spec step 101).
+    db.budgetTuneUps.findMany({
+      select: { month: true, changes: true, status: true, decidedAt: true, createdAt: true },
+    }),
+    db.goalTransfers.findMany({
+      select: {
+        transactionId: true,
+        goalId: true,
+        amountCents: true,
+        status: true,
+        createdAt: true,
+      },
+    }),
     // Jane's chat (spec step 81): every message, with the buttons and what they answered.
     db.janeMessages.findMany({
       select: {
@@ -405,6 +420,7 @@ export async function exportUserData(
     exportedAt: now.toISOString(),
     formatVersion: EXPORT_FORMAT_VERSION,
     profile,
+    insurance,
     banks,
     accounts,
     transactions,
@@ -440,9 +456,10 @@ export async function exportUserData(
     lifeEvents,
     changeAcks,
     lifeEventAnswers,
+    budgetTuneUps,
+    goalTransfers,
     janeMessages,
     investments,
-    insurance,
     teamAccess: teamAccess.map(({ at, who, what, why, actionId }) => ({
       at,
       who,

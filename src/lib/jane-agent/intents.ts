@@ -1,10 +1,10 @@
+import { parseInsurance, type InsuranceIntent } from "./insurance/intents";
 import { CHAT_WEEK_DAYS } from "@/config/agent-chat";
 import type { LifeEventKind } from "@/config/life-events";
 import { CATEGORY_LABELS, UNCATEGORIZED } from "@/insights/labels";
 import { parseMoneyToCents } from "@/lib/money";
 import { parseTaxIntent, type TaxIntent } from "./tax-intents";
 import { parseInvestmentIntent, type InvestmentIntent } from "./investments/intents";
-import { parseInsurance, type InsuranceIntent } from "./insurance/intents";
 
 // What the person typed to Jane, understood by rules (spec step 84). Pure: the text and
 // today's date in, one intent out. Works with no Claude key at all; anything it can't
@@ -15,6 +15,8 @@ export type ActVerb = "cancel" | "lower" | "refund";
 
 export type Intent =
   | { kind: "help" }
+  // Insurance (spec Phase X): ./insurance/intents.ts.
+  | InsuranceIntent
   // "hi", "thanks": answered at once, without Claude.
   | { kind: "greeting"; thanks: boolean }
   | { kind: "what_did" }
@@ -22,6 +24,8 @@ export type Intent =
   | { kind: "changes" }
   // Spec step 100: "I'm moving", "I got a new job", "we're having a baby".
   | { kind: "life_event"; event: LifeEventKind }
+  // Spec step 101: "how was my week?"
+  | { kind: "review" }
   | { kind: "approve_all" }
   | { kind: "undo" }
   | { kind: "pause_autopilot" }
@@ -48,8 +52,6 @@ export type Intent =
   | TaxIntent
   // Spec step 128 on: what they own, and each later investment question.
   | InvestmentIntent
-  // Insurance (spec Phase X): ./insurance/intents.ts.
-  | InsuranceIntent
   | { kind: "unknown" };
 
 const MONTHS = [
@@ -188,6 +190,8 @@ const LIFE: readonly [LifeEventKind, RegExp][] = [
     /\b(?:having|expecting|had) a baby\b|\b(?:i'?m|we'?re|i am|we are) (?:pregnant|expecting)\b|\bnew baby\b/,
   ],
 ];
+const REVIEW =
+  /\b(?:weekly review|week in review|how was my week|how did my week go|recap(?: my| the| of my)? week|my week(?: so far)?)\b/;
 const APPROVE_ALL =
   /\b(?:yes to (?:all|everything)|approve (?:them all|all|everything|the safe ones|the safe stuff|safe ones))\b/;
 const UNDO = /^(?:undo|undo (?:that|it|the last one)|take (?:that|it) back)$/;
@@ -218,6 +222,7 @@ export function parseIntent(raw: string, asOf: string): Intent {
   if (GREETING.test(text)) return { kind: "greeting", thanks: false };
   if (THANKS.test(text)) return { kind: "greeting", thanks: true };
   if (PAUSE.test(text)) return { kind: "pause_autopilot" };
+  if (REVIEW.test(text)) return { kind: "review" };
   if (CHANGES.test(text)) return { kind: "changes" };
   const life = LIFE.find(([, pattern]) => pattern.test(text));
   if (life) return { kind: "life_event", event: life[0] };

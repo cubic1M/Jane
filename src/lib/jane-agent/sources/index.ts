@@ -1,6 +1,7 @@
 import { briefSource } from "./brief";
 import { didSource } from "./did";
 import { findingsSource } from "./findings";
+import { insuranceSource } from "./insurance";
 import { headsUpsSource } from "./heads-ups";
 import { planSource } from "./plan";
 import type { MessageSource } from "./source";
@@ -12,8 +13,9 @@ import { thingsSource } from "./things";
 import { taxesSource } from "./taxes";
 import { changesSource } from "./changes";
 import { lifeSource } from "./life";
+import { reviewSource } from "./review";
+import { upkeepSource } from "./upkeep";
 import { investmentsSource } from "./investments";
-import { insuranceSource } from "./insurance";
 
 // Every message source Jane's brain gathers from (spec step 82). A new kind of message is a
 // new module here, registered in this one list; its daily limit is in
@@ -21,6 +23,8 @@ import { insuranceSource } from "./insurance";
 export const MESSAGE_SOURCES: readonly MessageSource[] = [
   briefSource,
   findingsSource,
+  // Insurance (spec Phase X).
+  insuranceSource,
   planSource,
   didSource,
   headsUpsSource,
@@ -36,10 +40,11 @@ export const MESSAGE_SOURCES: readonly MessageSource[] = [
   changesSource,
   // Spec step 100.
   lifeSource,
+  // Spec step 101.
+  upkeepSource,
+  reviewSource,
   // Spec step 128 on.
   investmentsSource,
-  // Insurance (spec Phase X).
-  insuranceSource,
 ];
 
 export type { MessageSource, SourceContext, Trigger } from "./source";

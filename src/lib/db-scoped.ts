@@ -93,6 +93,10 @@ export function scopedFor(userId: string, client: PrismaClient = db) {
     recurringStreams: scoped.recurringStream,
     liabilities: scoped.liability,
     ownedAssets: scoped.ownedAsset,
+    // Insurance (spec Phase X).
+    insurancePolicies: scoped.insurancePolicy,
+    insuranceProfiles: scoped.insuranceProfile,
+    insuranceQuotes: scoped.insuranceQuote,
     findings: scoped.finding,
     decisions: scoped.decision,
     actions: scoped.action,
@@ -126,16 +130,15 @@ export function scopedFor(userId: string, client: PrismaClient = db) {
     changeAcks: scoped.changeAck,
     // Answers to "Are you moving?" and the like (spec step 100).
     lifeEventAnswers: scoped.lifeEventAnswer,
+    // Plans that keep up (spec step 101).
+    budgetTuneUps: scoped.budgetTuneUp,
+    goalTransfers: scoped.goalTransfer,
     // What's in investment accounts (spec step 128).
     securities: scoped.security,
     holdings: scoped.holding,
     investmentTransactions: scoped.investmentTransaction,
     // What the investments are for (spec step 129).
     investorProfiles: scoped.investorProfile,
-    // Insurance (spec Phase X).
-    insurancePolicies: scoped.insurancePolicy,
-    insuranceProfiles: scoped.insuranceProfile,
-    insuranceQuotes: scoped.insuranceQuote,
   };
 }
 
