@@ -6,10 +6,11 @@ import { loadAffordNumbers } from "@/lib/afford";
 import { autopilotOf } from "@/lib/autopilot";
 import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
+import { loadPayoff } from "@/lib/debt-plan";
 import { loadDebts } from "@/lib/debts";
 import { homeSummary } from "@/lib/home";
 import { whatJaneDid } from "@/lib/what-jane-did";
-import { debtReply } from "./debt-replies";
+import { debtReply, payoffReply } from "./debt-replies";
 import type { Intent } from "./intents";
 import { answerInvestments } from "./investments/answer";
 import {
@@ -95,6 +96,11 @@ export async function answerByRules(
     case "debts":
     case "debt_detail":
       return debtReply(intent, await loadDebts(userId, { client, now }));
+    case "payoff_plan":
+      return payoffReply(
+        await loadPayoff(userId, { client, now, extraCents: intent.extraCents ?? undefined }),
+        asOf,
+      );
     case "investments":
       return answerInvestments(userId, intent, { client, now });
   }

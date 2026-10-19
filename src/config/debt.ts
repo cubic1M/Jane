@@ -42,11 +42,19 @@ export const DEBT_AUTOPILOT: Readonly<
       step: 109,
       does: "Keeps every loan, card and buy now, pay later plan up to date from your bank and payments, and tells you when one appears or a rate is missing.",
     },
+    {
+      step: 110,
+      does: "Recomputes your payoff plan from your balances every month, checks it against what you owe and tells you when you're off track.",
+    },
   ],
   safe: [
     {
       step: 109,
       does: "Keeps every loan, card and buy now, pay later plan up to date from your bank and payments, and tells you when one appears or a rate is missing.",
+    },
+    {
+      step: 110,
+      does: "Recomputes your payoff plan from your balances every month, checks it against what you owe and tells you when you're off track.",
     },
   ],
   all: [
@@ -54,5 +62,34 @@ export const DEBT_AUTOPILOT: Readonly<
       step: 109,
       does: "Keeps every loan, card and buy now, pay later plan up to date from your bank and payments, and tells you when one appears or a rate is missing.",
     },
+    {
+      step: 110,
+      does: "Recomputes your payoff plan from your balances every month, checks it against what you owe and tells you when you're off track.",
+    },
   ],
 };
+
+// --- Step 110: payoff plans ----------------------------------------------------------
+
+// Debts the payoff plan leaves out: a mortgage runs for decades on its own schedule and
+// would swamp the plan (step 115 watches it). Same as the planner (PLANNER_LEFT_OUT_SUBTYPES).
+export const PAYOFF_LEFT_OUT_KINDS: readonly string[] = ["mortgage"];
+// A Pay in 4 plan's payment comes every two weeks: this many count toward a month.
+export const BNPL_PAYMENTS_PER_MONTH = 2;
+// "What if I paid more?": the extra a month each scenario adds on top of the minimums.
+export const DEBT_EXTRA_SCENARIOS_CENTS: readonly number[] = [0, 5_000, 10_000, 25_000];
+// The most extra a month the chat or the page takes, as a typo guard.
+export const MAX_DEBT_EXTRA_CENTS = 10_000_000;
+// Demo advice picks highest rate first (least interest), unless smallest balance first
+// costs at most this much more interest and clears its first debt at least this many
+// months sooner: then the early win is worth the small cost.
+export const SNOWBALL_PICK_MAX_EXTRA_INTEREST_CENTS = 5_000;
+export const SNOWBALL_QUICK_WIN_MONTHS = 3;
+// The plan checks itself once this many days have passed since its last check.
+export const DEBT_PLAN_CHECK_DAYS = 28;
+// Months of expected balances kept, to compare with what's owed at each check.
+export const DEBT_PLAN_TRACK_MONTHS = 24;
+// Off track: owing more than the plan expected by more than this share of what the plan
+// meant to pay down since the last check, and by at least this much.
+export const DEBT_OFF_TRACK_SHARE = 0.5;
+export const DEBT_OFF_TRACK_MIN_CENTS = 10_000;

@@ -14,6 +14,7 @@ import { alertGotIt, deadlineDone, snooze } from "./heads-ups";
 import { setupAll, setupNo, setupYes } from "./setup";
 import { cancelDone, offerAccept, offerDecline } from "./steps";
 import { goalStart } from "./goal";
+import { debtPlanAvalanche, debtPlanSnowball } from "./debt-plan";
 
 // Every button action, by id (spec step 81). A new button is a new handler here; the
 // message sources offer it by id (src/lib/jane-agent/types.ts ACTION_IDS).
@@ -40,6 +41,9 @@ export const ACTION_HANDLERS: Readonly<Record<ActionId, ActionHandler>> = {
   // Typing to Jane (spec step 84).
   "goal.start": goalStart,
   "autopilot.pause": autopilotPause,
+  // Loans and debt (spec step 110).
+  "debt_plan.avalanche": debtPlanAvalanche,
+  "debt_plan.snowball": debtPlanSnowball,
 };
 
 const MESSAGE_ID = /^[a-z0-9]{1,40}$/i;

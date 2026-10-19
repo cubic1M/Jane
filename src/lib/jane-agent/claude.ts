@@ -92,6 +92,7 @@ const STATUS: Record<string, string> = {
   budgets: "Checking your budgets…",
   net_worth: "Adding up your net worth…",
   debts: "Looking at your debts…",
+  payoff_plan: "Working out your payoff plan…",
   finding_details: "Looking into it…",
   subscriptions: "Checking your subscriptions…",
   propose_action: "Getting a button ready…",

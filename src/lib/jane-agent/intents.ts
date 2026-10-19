@@ -212,7 +212,7 @@ export function parseIntent(raw: string, asOf: string): Intent {
     };
   }
   if (SAFE.test(text)) return { kind: "safe_to_spend" };
-  const debt = parseDebtIntent(text);
+  const debt = parseDebtIntent(text, parseAmount(text));
   if (debt) return debt;
   // Spec step 128 on: after affording, so "can I afford … my 401(k)" stays a money question.
   const investments = parseInvestmentIntent(text);

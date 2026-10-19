@@ -13,6 +13,7 @@ import { CARD_SELECT, buildCard } from "@/lib/cards";
 import { comparisonFor } from "@/lib/compare";
 import { frequencyWords } from "@/lib/explain-input";
 import { scopedFor } from "@/lib/db-scoped";
+import { loadPayoff } from "@/lib/debt-plan";
 import { loadDebts } from "@/lib/debts";
 import { listGoals } from "@/lib/goals";
 import { homeSummary } from "@/lib/home";
@@ -20,7 +21,7 @@ import { formatCents } from "@/lib/money";
 import { affordWindow } from "@/planning/afford";
 import type { Scored } from "@/planning/compare";
 import { ACTION_HANDLERS } from "./actions";
-import { DEBT_TOOLS, debtsToolOutput } from "./debt-tools";
+import { DEBT_TOOLS, debtsToolOutput, extraFromInput, payoffToolOutput } from "./debt-tools";
 import { INVESTMENT_TOOLS, isInvestmentTool, runInvestmentTool } from "./investments/tools";
 import { monthLabel, type Reply } from "./replies";
 import { localTime } from "./quiet-hours";
@@ -325,6 +326,10 @@ export async function runChatTool(
     }
     case "debts":
       return out(debtsToolOutput(await loadDebts(userId, { client, now }), money));
+    case "payoff_plan": {
+      const payoff = await loadPayoff(userId, { client, now, extraCents: extraFromInput(input) });
+      return out(payoffToolOutput(payoff, asOf, money));
+    }
     default:
       return { content: JSON.stringify({ error: `There's no tool called ${name}.` }), cents: [] };
   }

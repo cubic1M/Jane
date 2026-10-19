@@ -36,6 +36,9 @@ export const ACTION_IDS = [
   // Typing to Jane (spec step 84).
   "goal.start",
   "autopilot.pause",
+  // Loans and debt (spec step 110): start the payoff plan in one order or the other.
+  "debt_plan.avalanche",
+  "debt_plan.snowball",
 ] as const;
 export type ActionId = (typeof ACTION_IDS)[number];
 
@@ -75,6 +78,8 @@ export type MessageRefs = {
   // Spec step 98: demo advice (src/lib/advice-mode.ts). The chat shows DEMO_ADVICE_LABEL
   // under it. Set it on every message that recommends investments, taxes, insurance or loans.
   advice?: true;
+  // Spec step 110: the extra a month the payoff plan's buttons start it with, in cents.
+  debtPlanExtraCents?: number;
 };
 
 // A message the brain wants to post.

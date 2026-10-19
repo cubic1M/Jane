@@ -1,7 +1,7 @@
 import type { PrismaClient } from "@/generated/prisma/client";
 import { switchOf } from "@/lib/agent/switch";
 import { autopilotOf } from "@/lib/autopilot";
-import { loadDebts } from "@/lib/debts";
+import { loadPayoff, type Payoff } from "@/lib/debt-plan";
 import type { DebtBook } from "@/insights/debts";
 import { scopedFor } from "@/lib/db-scoped";
 import { assetPrompts, promptHref } from "@/lib/owned-assets";
@@ -38,6 +38,8 @@ export type MoreSnapshot = {
   assetPrompts: { loanId: string; loanName: string; kind: "home" | "vehicle"; href: string }[];
   // Spec step 109: every debt, as on the loans page.
   debts?: DebtBook;
+  // Spec step 110: the payoff plan across them, and the one the person started.
+  payoff?: Payoff;
 };
 
 const text = (v: unknown) => (typeof v === "string" && v.trim() ? v.trim() : null);
@@ -47,7 +49,7 @@ export async function loadMore(
   { client, now = new Date() }: { client: PrismaClient; now?: Date },
 ): Promise<MoreSnapshot> {
   const db = scopedFor(userId, client);
-  const [autopilot, proposals, waiting, loans, owned, debts] = await Promise.all([
+  const [autopilot, proposals, waiting, loans, owned, payoff] = await Promise.all([
     autopilotOf(userId, { client }),
     openProposals(userId, { client }),
     db.actions.findMany({
@@ -71,7 +73,7 @@ export async function loadMore(
       orderBy: { id: "asc" },
     }),
     db.ownedAssets.findMany({ select: { loanAccountId: true } }),
-    loadDebts(userId, { client, now }),
+    loadPayoff(userId, { client, now }),
   ]);
 
   return {
@@ -104,6 +106,7 @@ export async function loadMore(
         ? [{ loanId: p.loanId, loanName: p.loanName, kind: p.kind, href: promptHref(p) }]
         : [],
     ),
-    debts,
+    debts: payoff.book,
+    payoff,
   };
 }

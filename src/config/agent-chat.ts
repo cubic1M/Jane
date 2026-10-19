@@ -18,6 +18,7 @@ export const CHAT_SOURCE_LIMITS: Readonly<Record<string, number>> = {
   things: 1,
   // Loans and debt (spec Phase Y).
   debts: 1,
+  payoff: 1,
   // Spec step 128 on.
   investments: 2,
 };
@@ -68,6 +69,11 @@ export const MESSAGE_PRIORITY = {
   // with no rate, both after the rest.
   debt_found: 35,
   debt_missing_rate: 33,
+  // Spec step 110: a plan off track comes with the time-sensitive things; Jane's offer of a
+  // plan and an on-track check after the findings.
+  payoff_off_track: 72,
+  payoff_offer: 55,
+  payoff_on_track: 48,
   // Spec step 128: what's in investment accounts, the first time Jane sees it.
   investments: 32,
 } as const;

@@ -285,6 +285,7 @@ model User {
   liabilities            Liability[]
   ownedAssets            OwnedAsset[]
   debtTerms              DebtTerms[]
+  debtPlan               DebtPlan?
   findings               Finding[]
   decisions              Decision[]
   actions                Action[]
@@ -567,6 +568,37 @@ model DebtTerms {
 
   @@unique([userId, debtKey])
   @@map("debt_terms")
+}
+
+// The payoff plan the person started (spec step 110): the order and the extra a month.
+// Jane checks it every month against what's owed, then lays out the months ahead again
+// from the new balances.
+model DebtPlan {
+  id                    String   @id @default(cuid())
+  userId                String   @unique @map("user_id")
+  // avalanche (highest rate first) or snowball (smallest balance first).
+  strategy              String
+  // Paid on top of the minimums each month.
+  extraCents            Int      @map("extra_cents")
+  startedOn             DateTime @map("started_on") @db.Date
+  // The last check (or the start): the expected balances below run from here.
+  checkedOn             DateTime @map("checked_on") @db.Date
+  // What the plan's debts should add up to at the end of each month after checkedOn.
+  expected              Json     @default("[]")
+  // YYYY-MM.
+  debtFreeMonth         String?  @map("debt_free_month")
+  previousDebtFreeMonth String?  @map("previous_debt_free_month")
+  // on_track or off_track at the last check; null before the first.
+  status                String?
+  // At the last check: what the plan expected, and what was owed.
+  expectedCents         Int?     @map("expected_cents")
+  actualCents           Int?     @map("actual_cents")
+  createdAt             DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt             DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("debt_plans")
 }
 
 model Finding {

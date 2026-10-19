@@ -1,6 +1,7 @@
 import { CHAT_CRON_LIMIT, CHAT_HISTORY_HOURS } from "@/config/agent-chat";
 import type { PrismaClient } from "@/generated/prisma/client";
 import { db as defaultClient } from "@/lib/db";
+import { refreshDebtPlan } from "@/lib/debt-plan";
 import { scopedFor } from "@/lib/db-scoped";
 import { gather, plan, type BrainSettings } from "./brain";
 import { closeSettled, postMessages } from "./messages";
@@ -28,6 +29,10 @@ export async function runJaneAgent(
   // Nothing to say in quiet hours, so nothing to load, unless the person is looking.
   if (trigger !== "open" && inQuietHours(now, user.timezone)) return { posted: 0 };
 
+  // Spec step 110: the payoff plan checks itself once a month, before Jane looks.
+  await refreshDebtPlan(userId, { client, now }).catch((error) =>
+    console.error("Payoff plan check failed", { userId, error: String(error) }),
+  );
   const snapshot = await loadSnapshot(userId, { client, now });
   if (!snapshot) return { posted: 0 };
   await closeSettled(userId, { client, now });

@@ -6,9 +6,12 @@ export type DebtIntent =
   | { kind: "debts" }
   // "When is my car paid off?", "how much do I owe on my student loan?", "what's the rate
   // on my card?": one debt in full. target is the person's words for it.
-  | { kind: "debt_detail"; target: string };
+  | { kind: "debt_detail"; target: string }
+  // Spec step 110: "what's the fastest way out of debt?", "what if I pay $200 more?".
+  // extraCents is the extra a month they named, or null.
+  | { kind: "payoff_plan"; extraCents: number | null };
 
-const DEBT_KINDS = new Set<string>(["debts", "debt_detail"]);
+const DEBT_KINDS = new Set<string>(["debts", "debt_detail", "payoff_plan"]);
 export const isDebtIntent = (intent: { kind: string }): intent is DebtIntent =>
   DEBT_KINDS.has(intent.kind);
 
@@ -21,15 +24,27 @@ const PAID_OFF =
 const RATE =
   /\b(?:what'?s |what is )?(?:the )?(?:interest rate|rate|apr) (?:on|for|of) (?:my |the |our )?(.+)$/;
 
+const PAYOFF =
+  /\b(?:payoff|pay off|pay-off|debt) plan\b|\b(?:fastest|quickest|best|cheapest|smartest) way (?:out of|to pay off|to pay down|to get out of|to clear) (?:my |all my |our )?(?:debts?|loans|cards)\b|\bhow (?:do|can|should|could) (?:i|we) (?:pay off|pay down|get out of|get rid of|clear) (?:my |all my |our )?(?:debts?|loans|cards)\b|\bdebt[- ]free\b|\bwhich (?:debt|loan|card|one) (?:should|do|would) (?:i|we) pay(?: off| down)? first\b|\bwhat (?:order|debt) (?:should|do) (?:i|we) pay\b/;
+// "What if I pay $200 more a month?", "paying an extra $100 toward my debts".
+const MORE =
+  /\bwhat if (?:i|we) (?:pay|paid|put|added?)\b.*\b(?:more|extra)\b|\b(?:pay|paying|put|putting) (?:an )?extra\b.*\b(?:debts?|loans|cards|a month|each month|monthly)\b/;
+
 const clean = (target: string) =>
   target
     .replace(/\b(?:paid off|off|in full)\b/g, "")
     .replace(/\s+/g, " ")
     .trim();
 
-export function parseDebtIntent(text: string): DebtIntent | null {
+export function parseDebtIntent(
+  text: string,
+  amountCents: number | null = null,
+): DebtIntent | null {
   // "Lower the rate on my card" is a request, not a question (./intents.ts act).
   if (/^(?:lower|reduce|cut|negotiate|bring down|shrink|cancel|refund)\b/.test(text)) return null;
+  if (MORE.test(text) && amountCents !== null)
+    return { kind: "payoff_plan", extraCents: amountCents };
+  if (PAYOFF.test(text)) return { kind: "payoff_plan", extraCents: null };
   const paid = PAID_OFF.exec(text);
   if (paid) {
     const target = clean(paid[1] ?? paid[2] ?? paid[3] ?? "");
