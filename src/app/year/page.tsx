@@ -29,7 +29,7 @@ async function Year({ searchParams }: { searchParams: PageProps<"/year">["search
   return (
     <>
       <div className="print:hidden">
-        <AppHeader email={user.email} />
+        <AppHeader user={user} />
       </div>
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div className="flex flex-col gap-1">

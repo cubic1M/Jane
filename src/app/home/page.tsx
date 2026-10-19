@@ -254,7 +254,7 @@ async function HomeContent() {
 
   return (
     <>
-      <AppHeader email={user.email} />
+      <AppHeader user={user} />
       <div className="flex flex-col gap-1">
         <h1 className="text-3xl font-semibold tracking-tight">Today</h1>
         <Totals home={home} />

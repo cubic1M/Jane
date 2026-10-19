@@ -56,7 +56,7 @@ async function DocumentsContent() {
 
   return (
     <>
-      <AppHeader email={user.email} />
+      <AppHeader user={user} />
       <ViewTracker event="documents_viewed" />
       <div className="flex flex-col gap-2">
         <h1 className="text-3xl font-semibold tracking-tight">Policies and receipts</h1>
