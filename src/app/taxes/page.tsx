@@ -1,0 +1,144 @@
+import Link from "next/link";
+import { connection } from "next/server";
+import { Suspense } from "react";
+import { AppHeader } from "@/components/app-header";
+import { ViewTracker } from "@/components/view-tracker";
+import { FILING_STATUSES, INCOME_KINDS, TAX_AUTOPILOT, TAX_YEAR } from "@/config/tax";
+import { requireUser } from "@/lib/session";
+import { loadWorkingProfile } from "@/lib/tax-profile";
+import { stateName, type FieldStatus } from "@/planning/tax-profile";
+
+// Taxes (spec steps 118–127): Jane keeps the person's taxes organised all year. Step 118:
+// the tax profile, and what Jane does by herself at their autopilot level.
+
+const CARD = "flex flex-col gap-3 rounded-xl border border-zinc-200 p-4 dark:border-zinc-800";
+const LINK = "font-medium text-emerald-700 hover:underline";
+
+const BADGE: Readonly<Record<FieldStatus, string>> = {
+  yours: "Your answer",
+  found: "Found by Jane: check it",
+  missing: "Not set yet",
+};
+
+function Row({ label, value, status }: { label: string; value: string; status: FieldStatus }) {
+  return (
+    <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 border-t border-zinc-200 pt-2 first:border-0 first:pt-0 dark:border-zinc-800">
+      <dt className="text-zinc-600 dark:text-zinc-400">{label}</dt>
+      <dd className="flex flex-col items-end text-right">
+        <span className="[overflow-wrap:anywhere]">{value}</span>
+        <span
+          className={`text-xs ${status === "yours" ? "text-zinc-500" : "font-medium text-amber-800 dark:text-amber-300"}`}
+        >
+          {BADGE[status]}
+        </span>
+      </dd>
+    </div>
+  );
+}
+
+async function TaxesContent() {
+  const user = await requireUser();
+  await connection();
+  const { view, autopilot } = await loadWorkingProfile(user.id);
+  const level = (autopilot ?? "none") as keyof typeof TAX_AUTOPILOT;
+  const kids = view.dependants;
+
+  return (
+    <>
+      <AppHeader user={user} />
+      <ViewTracker event="taxes_viewed" />
+      <div className="flex flex-col gap-2">
+        <h1 className="text-3xl font-semibold tracking-tight">Taxes: {TAX_YEAR}</h1>
+        <p className="text-zinc-600 dark:text-zinc-400">
+          Jane keeps your taxes organised all year from your accounts, and asks you only what she
+          can&apos;t work out.
+        </p>
+      </div>
+
+      <section aria-labelledby="profile" className={CARD}>
+        <div className="flex flex-wrap items-baseline justify-between gap-2">
+          <h2 id="profile" className="text-xl font-semibold">
+            Your tax profile
+          </h2>
+          <Link href="/taxes/profile" className={LINK}>
+            {view.complete ? "Change it" : "Finish it"}
+          </Link>
+        </div>
+        <dl className="flex flex-col gap-2 text-sm">
+          <Row
+            label="How you file"
+            value={view.filingStatus.value ? FILING_STATUSES[view.filingStatus.value] : "—"}
+            status={view.filingStatus.status}
+          />
+          <Row
+            label="Dependants"
+            value={
+              kids.status === "yours"
+                ? `${kids.childrenUnder17} under 17, ${kids.otherDependants} other`
+                : "—"
+            }
+            status={kids.status}
+          />
+          <Row
+            label="State"
+            value={stateName(view.state.value) ?? "—"}
+            status={view.state.status}
+          />
+          <Row
+            label="Income"
+            value={
+              view.incomeKinds.value.length > 0
+                ? view.incomeKinds.value
+                    .map((k) => `${INCOME_KINDS[k].label} (${INCOME_KINDS[k].form})`)
+                    .join("; ")
+                : "—"
+            }
+            status={view.incomeKinds.status}
+          />
+        </dl>
+        {view.newIncome.length > 0 && (
+          <p className="text-sm text-amber-800 dark:text-amber-300">
+            New since you answered:{" "}
+            {view.newIncome.map((i) => INCOME_KINDS[i.kind].label.toLowerCase()).join("; ")}.{" "}
+            <Link href="/taxes/profile#income" className={LINK}>
+              Add it
+            </Link>
+          </p>
+        )}
+      </section>
+
+      <section aria-labelledby="by-herself" className={CARD}>
+        <h2 id="by-herself" className="text-xl font-semibold">
+          What Jane does by herself
+        </h2>
+        <ul className="flex list-disc flex-col gap-1 pl-5 text-sm">
+          {(TAX_AUTOPILOT[level] ?? TAX_AUTOPILOT.none).map((line) => (
+            <li key={line}>{line}</li>
+          ))}
+          <li>Nothing is ever filed, signed or paid without your tap.</li>
+        </ul>
+        <Link href="/settings#autopilot" className={`${LINK} text-sm`}>
+          Change your autopilot
+        </Link>
+      </section>
+
+      <p className="text-sm text-zinc-600 dark:text-zinc-400">
+        The year&apos;s records are in your{" "}
+        <Link href="/tax-pack" className={LINK}>
+          tax-time pack
+        </Link>
+        .
+      </p>
+    </>
+  );
+}
+
+export default function TaxesPage() {
+  return (
+    <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-6 px-4 py-10 sm:px-6 sm:py-12">
+      <Suspense fallback={<p className="text-zinc-500">Loading…</p>}>
+        <TaxesContent />
+      </Suspense>
+    </main>
+  );
+}

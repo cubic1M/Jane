@@ -26,6 +26,7 @@ describe("typos and short forms", () => {
     expect(fixTypos("lyft")).toBe("lyft");
     expect(fixTypos("power bill")).toBe("power bill");
     expect(fixTypos("spent $2 on gum")).toBe("spent $2 on gum");
+    expect(fixTypos("i have 2 kids")).toBe("i have 2 kids");
     expect(oneSlip("cancle", "cancel")).toBe(true);
     expect(oneSlip("hulu", "lulu")).toBe(true);
     expect(oneSlip("netflix", "nettflixx")).toBe(false);

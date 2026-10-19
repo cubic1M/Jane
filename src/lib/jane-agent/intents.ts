@@ -2,6 +2,7 @@ import { CHAT_WEEK_DAYS } from "@/config/agent-chat";
 import type { LifeEventKind } from "@/config/life-events";
 import { CATEGORY_LABELS, UNCATEGORIZED } from "@/insights/labels";
 import { parseMoneyToCents } from "@/lib/money";
+import { parseTaxIntent, type TaxIntent } from "./tax-intents";
 import { parseInvestmentIntent, type InvestmentIntent } from "./investments/intents";
 
 // What the person typed to Jane, understood by rules (spec step 84). Pure: the text and
@@ -20,6 +21,8 @@ export type Intent =
   | { kind: "changes" }
   // Spec step 100: "I'm moving", "I got a new job", "we're having a baby".
   | { kind: "life_event"; event: LifeEventKind }
+  // Spec step 101: "how was my week?"
+  | { kind: "review" }
   | { kind: "approve_all" }
   | { kind: "undo" }
   | { kind: "pause_autopilot" }
@@ -56,6 +59,8 @@ export type Intent =
   // A follow-up: "and Hulu?", "what about last month?" (target or month): resolved against
   // what the conversation was about (./context.ts).
   | { kind: "follow_up"; target: string | null; month: string | null }
+  // Taxes (spec steps 118–127): ./tax-intents.ts.
+  | TaxIntent
   // Spec step 128 on: what they own, and each later investment question.
   | InvestmentIntent
   | { kind: "unknown" };
@@ -210,15 +215,21 @@ export function oneSlip(a: string, b: string): boolean {
 
 // "safe 2 spend" → "safe to spend", "cancle hulu" → "cancel hulu", "hw much" → "how much".
 export function fixTypos(text: string): string {
-  return text
-    .replace(/(?<=[a-z]) 2 (?=[a-z])/g, " to ")
-    .split(" ")
-    .map((word) => {
-      if (Object.hasOwn(SHORT_FORMS, word)) return SHORT_FORMS[word];
-      if (word.length < 4 || (VOCABULARY as readonly string[]).includes(word)) return word;
-      return VOCABULARY.find((v) => oneSlip(word, v)) ?? word;
-    })
-    .join(" ");
+  return (
+    text
+      // "2" as "to" only before a verb, so "I have 2 kids" keeps its number.
+      .replace(
+        /(?<=[a-z]) 2 (?=(?:spend|pay|save|afford|cancel|get|go|buy|use|do|be|see)\b)/g,
+        " to ",
+      )
+      .split(" ")
+      .map((word) => {
+        if (Object.hasOwn(SHORT_FORMS, word)) return SHORT_FORMS[word];
+        if (word.length < 4 || (VOCABULARY as readonly string[]).includes(word)) return word;
+        return VOCABULARY.find((v) => oneSlip(word, v)) ?? word;
+      })
+      .join(" ")
+  );
 }
 
 // What to look for in the findings: no "my", no "subscription" or "bill" on the end.
@@ -275,6 +286,8 @@ const LIFE: readonly [LifeEventKind, RegExp][] = [
     /\b(?:having|expecting|had) a baby\b|\b(?:i'?m|we'?re|i am|we are) (?:pregnant|expecting)\b|\bnew baby\b/,
   ],
 ];
+const REVIEW =
+  /\b(?:weekly review|week in review|how was my week|how did my week go|recap(?: my| the| of my)? week|my week(?: so far)?)\b/;
 const APPROVE_ALL =
   /\b(?:yes to (?:all|everything)|approve (?:them all|all|everything|the safe ones|the safe stuff|safe ones))\b/;
 const UNDO = /^(?:undo|undo (?:that|it|the last one)|take (?:that|it) back)$/;
@@ -341,12 +354,15 @@ export function parseIntent(raw: string, asOf: string): Intent {
   if (GREETING.test(text)) return { kind: "greeting", thanks: false };
   if (THANKS.test(text)) return { kind: "greeting", thanks: true };
   if (PAUSE.test(text)) return { kind: "pause_autopilot" };
+  if (REVIEW.test(text)) return { kind: "review" };
   if (CHANGES.test(text)) return { kind: "changes" };
   const life = LIFE.find(([, pattern]) => pattern.test(text));
   if (life) return { kind: "life_event", event: life[0] };
   if (WHAT_DID.test(text)) return { kind: "what_did" };
   if (APPROVE_ALL.test(text)) return { kind: "approve_all" };
   if (UNDO.test(text)) return { kind: "undo" };
+  const tax = parseTaxIntent(text);
+  if (tax) return tax;
 
   // Spec step 88: a follow-up to what was just said: another month, or another name.
   const follow = FOLLOW.exec(text);

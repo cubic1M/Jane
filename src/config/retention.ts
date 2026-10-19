@@ -33,6 +33,9 @@ export const ACTIVITY_EVENTS: readonly string[] = [
   "checklist_dismissed",
   "documents_viewed",
   "document_uploaded",
+  // Taxes (spec step 118).
+  "tax_profile_answered",
+  "taxes_viewed",
 ];
 
 // Records deleted by the daily cleanup once they're this many days old. `policy` is how

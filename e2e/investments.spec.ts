@@ -67,4 +67,12 @@ test("the demo bank's holdings show with their sources, and Jane answers about t
   await page.getByRole("button", { name: "Save" }).click();
   await expect(page.getByRole("status")).toHaveText("Saved.");
   await expect(page.getByText("Aggressive", { exact: true })).toBeVisible();
+
+  // Step 130: what investing costs, with lower-cost equivalents labelled as demo advice.
+  await page.goto("/investments/fees");
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText("What investing costs you");
+  await expect(page.getByText("Advisory fees, last 12 months")).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Lower-cost equivalents" })).toBeVisible();
+  await expect(page.getByText("Demo advice: sample data, not financial advice")).toBeVisible();
+  await expect(page.getByText("How this is worked out: a range, not a promise")).toBeVisible();
 });

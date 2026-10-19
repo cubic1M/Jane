@@ -49,8 +49,11 @@ export async function exportUserData(
     lifeEvents,
     changeAcks,
     lifeEventAnswers,
+    budgetTuneUps,
+    goalTransfers,
     janeMessages,
     teamAccess,
+    taxProfile,
   ] = await Promise.all([
     client.user.findUniqueOrThrow({
       where: { id: userId },
@@ -362,6 +365,19 @@ export async function exportUserData(
     db.changeAcks.findMany({ select: { key: true, kind: true, createdAt: true } }),
     // Answers to the life events Jane spotted (spec step 100).
     db.lifeEventAnswers.findMany({ select: { kind: true, answer: true, createdAt: true } }),
+    // Budget tune-ups and transfers counted toward goals (spec step 101).
+    db.budgetTuneUps.findMany({
+      select: { month: true, changes: true, status: true, decidedAt: true, createdAt: true },
+    }),
+    db.goalTransfers.findMany({
+      select: {
+        transactionId: true,
+        goalId: true,
+        amountCents: true,
+        status: true,
+        createdAt: true,
+      },
+    }),
     // Jane's chat (spec step 81): every message, with the buttons and what they answered.
     db.janeMessages.findMany({
       select: {
@@ -381,6 +397,18 @@ export async function exportUserData(
     // When the team or Jane's agent viewed or acted on their data (spec step 74): every
     // entry, by role, never a team member's name or id.
     teamAccessFor(userId, { client, limit: null }),
+    // Their tax profile (spec step 118): their answers.
+    db.taxProfiles.findFirst({
+      select: {
+        filingStatus: true,
+        childrenUnder17: true,
+        otherDependants: true,
+        state: true,
+        incomeKinds: true,
+        answered: true,
+        updatedAt: true,
+      },
+    }),
   ]);
   // What's in their investment accounts and its history (spec step 128).
   const investments = await investmentsExport(userId, client);
@@ -424,6 +452,8 @@ export async function exportUserData(
     lifeEvents,
     changeAcks,
     lifeEventAnswers,
+    budgetTuneUps,
+    goalTransfers,
     janeMessages,
     investments,
     teamAccess: teamAccess.map(({ at, who, what, why, actionId }) => ({
@@ -433,5 +463,6 @@ export async function exportUserData(
       why,
       actionId,
     })),
+    taxProfile,
   };
 }
