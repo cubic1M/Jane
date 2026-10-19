@@ -171,6 +171,35 @@ async function TaxPackContent({
         <p className="text-xs text-zinc-500">{COPY.formsNote}</p>
       </section>
 
+      <section aria-labelledby="states" className={CARD}>
+        <h2 id="states" className="text-xl font-semibold">
+          {COPY.statesHeading}
+        </h2>
+        {pack.states.length === 0 ? (
+          <p className="text-sm text-zinc-600 dark:text-zinc-400">{COPY.statesEmpty}</p>
+        ) : (
+          <ul className="flex flex-col gap-1 text-sm">
+            {pack.states.map((st) => (
+              <li key={st.code} className="flex flex-wrap justify-between gap-x-3">
+                <a href={st.url} className={LINK} rel="noreferrer">
+                  {st.agency}
+                </a>
+                <span className="text-zinc-600 dark:text-zinc-400">
+                  {st.nonresident
+                    ? COPY.statesNonresident
+                    : st.code.length > 2
+                      ? COPY.statesLocal
+                      : st.from
+                        ? `${day(st.from)} to ${day(st.to!)}`
+                        : COPY.statesAllYear}
+                </span>
+              </li>
+            ))}
+          </ul>
+        )}
+        <p className="text-xs text-zinc-500">{COPY.statesNote}</p>
+      </section>
+
       <section aria-labelledby="charity" className={CARD}>
         <h2 id="charity" className="text-xl font-semibold">
           {COPY.charityHeading}

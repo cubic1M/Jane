@@ -22,7 +22,11 @@ export type InsuranceAsk =
   // autopilot: what Jane does with insurance by herself; contact: how to reach the insurer
   // (spec step 108).
   | "autopilot"
-  | "contact";
+  | "contact"
+  // need: "do I need umbrella insurance?", answered from their numbers (spec step 149).
+  | "need"
+  // benefits: cover through work (spec step 150).
+  | "benefits";
 
 export type InsuranceIntent = {
   kind: "insurance";
@@ -36,6 +40,22 @@ export type InsuranceIntent = {
 // Something happened (spec step 107): the kind of policy it's for and the guide's event.
 // Home covers home and renters alike; the answer picks the policy the person has.
 const CLAIM_EVENTS: readonly [PolicyKind, string, RegExp][] = [
+  // Spec step 149: the kinds added to the profile come first, so "my phone was stolen" isn't
+  // a home theft.
+  ["device", "theft", /\b(?:phone|laptop|tablet) (?:was |got )?(?:stolen|lost)\b/],
+  [
+    "device",
+    "broken",
+    /\bmy (?:phone|laptop|tablet) (?:broke|is broken|got (?:wet|damaged))\b|\bcracked (?:my )?(?:phone|screen)\b/,
+  ],
+  [
+    "travel",
+    "cancelled",
+    /\b(?:flight|trip) (?:was |got )?cancell?ed\b|\bcancell?ed (?:my|our) trip\b/,
+  ],
+  ["travel", "medical", /\b(?:sick|hurt|injured|hospital) (?:abroad|on (?:my|our|the) trip)\b/],
+  ["disability", "unable", /\bcan'?t work\b|\bunable to work\b|\bout of work (?:sick|injured)\b/],
+  ["umbrella", "sued", /\b(?:being sued|suing me|sued me|sue me)\b/],
   [
     "auto",
     "theft",
@@ -77,6 +97,11 @@ export function parseClaim(text: string): InsuranceIntent | null {
 }
 
 const KIND_WORDS: readonly [PolicyKind, RegExp][] = [
+  // Spec step 149.
+  ["umbrella", /\bumbrella\b/],
+  ["disability", /\bdisabilit(?:y|ies)\b|\bincome protection\b/],
+  ["travel", /\btravel\b|\btrip (?:insurance|cover)\b/],
+  ["device", /\bdevice\b|\bphone (?:insurance|protection)\b/],
   ["renters", /\brent(?:er'?s|al)\b/],
   ["auto", /\b(?:car|cars|auto|vehicle|motor)\b/],
   ["home", /\b(?:home|homeowners?'?|house|homeowner'?s)\b/],
@@ -88,7 +113,7 @@ const KIND_WORDS: readonly [PolicyKind, RegExp][] = [
 // Words that make it about insurance on their own, and cover words that need a kind too
 // ("does my budget cover rent" isn't about insurance; "am I covered if my car is stolen" is).
 const INSURANCE =
-  /\b(?:insurance|insured|insurer|insurers|polic(?:y|ies)|deductibles?|premiums?|(?:under|over)-?insured)\b/;
+  /\b(?:insurance|insured|insurer|insurers|polic(?:y|ies)|deductibles?|premiums?|(?:under|over)-?insured|(?:health|medical) plans?|benefits?\b.{0,30}\b(?:work|job|employer)|(?:work|job|employer) benefits|open enrollment)\b/;
 const COVER = /\b(?:cover|covers|covered|coverage)\b/;
 // About the amount of cover, so about insurance even without the word (spec step 106).
 const COVER_AMOUNT =
@@ -98,6 +123,10 @@ const CHECKUP =
   /\bcheck ?-?ups?\b|\b(?:check|review|look over) (?:my|our|the) (?:insurance|cover|coverage|policies|policy)\b|\b(?:right|wrong) amount of (?:cover|coverage|insurance)\b|\b(?:over|under)-?insured\b|\btoo much (?:cover|coverage|insurance)\b|\b(?:raise|lower|change) (?:my |the )?deductible\b/;
 
 const ASKS: readonly [InsuranceAsk, RegExp][] = [
+  [
+    "benefits",
+    /\bbenefits?\b|\bthrough (?:work|my job)\b|\bat work\b|\bmy (?:employer|job)\b|\bopen enrollment\b/,
+  ],
   [
     "autopilot",
     /\b(?:autopilot|on your own|by yourself|automatic(?:ally)?|without asking|what do you do|what will you do|what are you doing)\b/,
@@ -126,6 +155,9 @@ export function kindIn(text: string): PolicyKind | null {
   return KIND_WORDS.find(([, words]) => words.test(text))?.[0] ?? null;
 }
 
+const NEED =
+  /\b(?:do (?:i|we) need|should (?:i|we) (?:get|buy|have|add)|is (?:it|\w+ insurance) worth|worth (?:it|getting|having)|do (?:i|we) have to have)\b/;
+
 export function parseInsurance(text: string): InsuranceIntent | null {
   // Something happened: the claims helper, whatever words were used.
   const claim = parseClaim(text);
@@ -134,6 +166,8 @@ export function parseInsurance(text: string): InsuranceIntent | null {
   if (!INSURANCE.test(text) && !(COVER.test(text) && policyKind) && !COVER_AMOUNT.test(text)) {
     return null;
   }
+  // Spec step 149: whether they need a kind of cover, from their numbers.
+  if (policyKind && NEED.test(text)) return { kind: "insurance", ask: "need", policyKind };
   const ask = ASKS.find(([, words]) => words.test(text))?.[0] ?? "list";
   return { kind: "insurance", ask, policyKind };
 }

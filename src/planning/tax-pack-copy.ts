@@ -57,6 +57,14 @@ export const TAX_PACK_COPY = {
   formWaiting: "Waiting",
   formMayNotSend: "May not send one: below the reporting threshold",
   noteLabel: "Note",
+  // Spec step 165: the states (and city) the year's income was taxed in.
+  statesHeading: "States you lived or worked in",
+  statesNote:
+    "From your tax profile. Each state's tax agency, linked, is where its figures come from.",
+  statesEmpty: "No state on your tax profile yet.",
+  statesAllYear: "All year",
+  statesNonresident: "Employer's state (you lived elsewhere)",
+  statesLocal: "City income tax",
 } as const;
 
 export const QUARTER_LABELS = [

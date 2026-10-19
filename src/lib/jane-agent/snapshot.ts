@@ -8,6 +8,7 @@ import type { Deadline } from "@/insights/deadlines";
 import type { LifeGuess } from "@/insights/life-signals";
 import { isUrgent, newestUnreadAlerts } from "@/lib/alerts";
 import { loadChanges, type ChangeView } from "@/lib/changes";
+import { lastControllerRun, type LastRun } from "@/lib/controller-log";
 import { lifeGuessesFor } from "@/lib/life-guesses";
 import { loadUpkeep, type UpkeepSnapshot } from "@/lib/plan-upkeep";
 import { provenSavings } from "@/lib/savings-proof";
@@ -92,11 +93,15 @@ export type Snapshot = {
   saved?: { confirmedCents: number };
   // Spec step 140: Jane hasn't said anything to this person yet (the first-run hello).
   firstChat?: boolean;
+  // Spec step 142: last night's controller run, if recent. Optional, like changes.
+  lastRun?: LastRun | null;
   // Spec step 128 on: what's in investment accounts.
   investments?: InvestmentSnapshot;
   // Spec step 91: suggestions the person said never to make again (preference keys);
   // findings among them are already left out of findings above.
   neverSuggest?: string[];
+  // Spec step 96: what the chat covered the week before this one.
+  lastWeek?: ChatWeek;
 } & MoreSnapshot &
   TaxSnapshot;
 
@@ -121,6 +126,25 @@ export function findingFingerprint(finding: {
       ]),
     )
     .digest("hex");
+}
+
+// Spec step 96: the chat's week before `start` (the person's Monday): what they asked, said
+// yes or no to, and what Jane finished.
+export type ChatWeek = { start: string; asked: number; yes: number; no: number; done: number };
+
+async function chatWeek(userId: string, client: PrismaClient, start: Date): Promise<ChatWeek> {
+  const rows = await scopedFor(userId, client).janeMessages.findMany({
+    where: { createdAt: { gte: new Date(start.getTime() - 7 * 86_400_000), lt: start } },
+    select: { kind: true, answeredWith: true },
+  });
+  return {
+    start: new Date(start.getTime() - 7 * 86_400_000).toISOString().slice(0, 10),
+    asked: rows.filter((r) => r.kind === "user").length,
+    yes: rows.filter((r) => r.answeredWith && /^(?:yes|switch|approve)/i.test(r.answeredWith))
+      .length,
+    no: rows.filter((r) => r.answeredWith === "No").length,
+    done: rows.filter((r) => r.kind === "done").length,
+  };
 }
 
 // Spec step 91: findings that suggest cutting something, which "I need my …" rules out.
@@ -252,8 +276,10 @@ export async function loadSnapshot(
     // Spec steps 97, 100 and 139 read the same bank data, so it's loaded once for them.
     ...(await thinking(userId, client, now, input)),
     firstChat: said === 0,
+    lastRun: await lastControllerRun(userId, { client, now }),
     upkeep: await loadUpkeep(userId, { client, now }),
     investments: await loadInvestmentSnapshot(userId, { client, now }),
     neverSuggest: [...never],
+    lastWeek: await chatWeek(userId, client, weekStart(now, user?.timezone)),
   };
 }
