@@ -150,6 +150,9 @@ export function scopedFor(userId: string, client: PrismaClient = db) {
     investorProfiles: scoped.investorProfile,
     // Orders through the brokerage partner (spec step 133).
     brokerageOrders: scoped.brokerageOrder,
+    // Automatic investing (spec step 134).
+    autoInvestPlans: scoped.autoInvestPlan,
+    autoInvestRuns: scoped.autoInvestRun,
   };
 }
 

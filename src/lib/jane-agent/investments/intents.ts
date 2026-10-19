@@ -3,7 +3,7 @@
 // about investments. Each investment step adds its topics here.
 
 export type InvestmentTopic =
-  "holdings" | "profile" | "fees" | "review" | "retirement" | "rebalance";
+  "holdings" | "profile" | "fees" | "review" | "retirement" | "rebalance" | "auto_invest";
 
 export type InvestmentIntent = {
   kind: "investments";
@@ -51,7 +51,12 @@ const RETIREMENT =
 const REBALANCE =
   /\brebalanc\w*\b|\b(?:move|get) (?:me |my (?:money|investments) )?(?:to|back to) (?:the |my )?(?:recommended|target|right) mix\b|\bfix my (?:mix|portfolio|allocation)\b/;
 
+// Spec step 134: investing automatically.
+const AUTO_INVEST =
+  /\b(?:auto[- ]?invest\w*|automatic(?:ally)? invest\w*|invest\w* automatically)\b|\binvest (?:every|each|on) (?:payday|paycheck|month)\b|\b(?:pause|stop|resume|restart) (?:my )?(?:auto(?:matic)? )?investing\b/;
+
 export function parseInvestmentIntent(text: string): InvestmentIntent | null {
+  if (AUTO_INVEST.test(text)) return { kind: "investments", topic: "auto_invest", account: null };
   if (REBALANCE.test(text)) return { kind: "investments", topic: "rebalance", account: null };
   if (RETIREMENT.test(text)) return { kind: "investments", topic: "retirement", account: null };
   if (REVIEW.test(text)) return { kind: "investments", topic: "review", account: null };

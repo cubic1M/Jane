@@ -140,6 +140,7 @@ export const TEAM_ACCESS_RULES: Record<AuditEvent, EventRule> = {
   chat_notification_sent: automatic,
   investor_profile_saved: own,
   brokerage_orders_placed: own,
+  auto_invest_set: own,
 };
 
 export const SHOWN_EVENTS = (Object.keys(TEAM_ACCESS_RULES) as AuditEvent[]).filter(

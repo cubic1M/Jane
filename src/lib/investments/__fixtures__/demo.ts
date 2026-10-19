@@ -82,6 +82,7 @@ export function demoInvestmentSnapshot(over: Partial<InvestmentSnapshot> = {}): 
     review: null,
     retirement: null,
     rebalance: null,
+    autoInvest: { plan: null, runs: [], suggestion: null, accounts: [] },
     ...over,
   };
 }

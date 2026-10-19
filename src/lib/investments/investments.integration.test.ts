@@ -21,6 +21,9 @@ import { loadRetirement } from "./retirement";
 import { loadReview } from "./review";
 import { loadInvestments } from "./holdings";
 import { loadRebalance, placeRebalance, RebalanceError } from "./rebalance";
+import { loadAutoInvest, runAutoInvest, setAutoInvestStatus, startAutoInvest } from "./auto-invest";
+import { homeSummary } from "@/lib/home";
+import { decideContribution } from "@/planning/auto-invest";
 import { profileOf, saveProfileForm } from "./profile";
 
 // Investments (spec steps 128–137) against a real, migrated Postgres (see
@@ -283,4 +286,61 @@ describe.runIf(url)("investments in Jane's chat, against a real database", () =>
     );
     expect(await client.brokerageOrder.count({ where: { userId } })).toBe(0);
   });
+
+  it(
+    "step 134: invests each new paycheck by itself, only what safe to spend doesn't need",
+    SLOW,
+    async () => {
+      const userId = await demoPerson();
+      await saveProfileForm(
+        userId,
+        { age: "45", horizon: "over_20", dropReaction: "worry", goals: ["retirement"] },
+        { client, now: LINKED },
+      );
+      const offer = await loadAutoInvest(userId, { client, now: LINKED });
+      // 5% of the $2,450 paycheck, rounded down to $25, into the brokerage (not the 401(k)).
+      expect(offer.suggestion?.amountCents).toBe(10_000);
+      expect(offer.accounts.map((a) => a.name)).toEqual(["Demo Brokerage"]);
+      const brokerage = offer.accounts[0].id;
+      const before = (await loadInvestments(userId, { client, now: LINKED })).accounts.find(
+        (a) => a.id === brokerage,
+      )!;
+
+      const safe =
+        (await homeSummary(userId, { client, now: LINKED }))?.safeToSpend?.safeCents ?? null;
+      const expected = decideContribution({ mode: "fixed", amountCents: 10_000, safeCents: safe });
+      // Started with a tap: runs at once for the Oct 15 paycheck.
+      const run = await startAutoInvest(
+        userId,
+        { mode: "fixed", amountCents: 10_000, accountId: brokerage },
+        { client, now: LINKED },
+      );
+      expect(run).toMatchObject({ paydayOn: "2026-10-15", status: expected.status });
+      const runs = await client.autoInvestRun.findMany({ where: { userId } });
+      expect(runs).toHaveLength(1);
+      if (expected.status === "invested") {
+        const after = (await loadInvestments(userId, { client, now: LINKED })).accounts.find(
+          (a) => a.id === brokerage,
+        )!;
+        expect(after.balanceCents).toBe((before.balanceCents ?? 0) + expected.amountCents);
+        expect(after.holdingsMatch).toBe(true);
+        const orders = await client.brokerageOrder.findMany({
+          where: { userId, reason: "auto_invest" },
+        });
+        expect(orders.map((o) => o.side).sort()).toEqual(["buy", "buy", "buy", "deposit"]);
+      }
+      // The same paycheck never runs twice; paused runs nothing.
+      expect(await runAutoInvest(userId, { client, now: LINKED })).toBeNull();
+      await setAutoInvestStatus(userId, "paused", { client });
+      expect(
+        await runAutoInvest(userId, { client, now: new Date("2026-11-02T15:00:00Z") }),
+      ).toBeNull();
+      // Typed, Jane says it's paused and offers to turn it back on.
+      const { reply } = await sendToJane(userId, "automatic investing", { client, now: LINKED });
+      expect(reply.body).toMatch(/^Automatic investing is paused \(\$100\.00 every payday\)\./);
+      expect(reply.actions[0]).toMatchObject({ id: "invest.auto_resume" });
+      await takeChatAction(userId, reply.id, "invest.auto_resume", { client, now: LINKED });
+      expect((await loadAutoInvest(userId, { client, now: LINKED })).plan?.status).toBe("active");
+    },
+  );
 });
