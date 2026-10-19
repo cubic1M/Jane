@@ -115,10 +115,12 @@ main h2::before {
   }
 }
 
-/* A dropdown or text box sizes itself to its longest option or value; in the wide
-   monospace font that can push a page past a phone's width. Never wider than its box. */
+/* A dropdown or text box sizes itself to its longest option or value (a text box to about
+   20 characters); in the wide monospace font that can push a page past a phone's width.
+   Never wider than its box, and free to shrink in a flex row. */
 select,
 input,
 textarea {
   max-width: 100%;
+  min-width: 0;
 }

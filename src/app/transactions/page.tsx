@@ -70,7 +70,7 @@ async function Transactions({
           name="q"
           defaultValue={search}
           placeholder="Search by merchant"
-          className="h-11 flex-1 rounded-full border border-zinc-300 bg-transparent px-4 dark:border-zinc-700"
+          className="h-11 min-w-0 flex-1 rounded-full border border-zinc-300 bg-transparent px-4 dark:border-zinc-700"
         />
         <button
           type="submit"
