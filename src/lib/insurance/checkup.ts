@@ -33,7 +33,11 @@ export type CheckupKey =
   | "home_under"
   | "home_over"
   | "bundle"
-  | "life_after_baby";
+  | "life_after_baby"
+  // Spec step 150: a benefit through work, kept or bought privately instead.
+  | "benefit_keep"
+  | "benefit_private"
+  | "benefit_details";
 
 export type Recommendation = {
   key: CheckupKey;

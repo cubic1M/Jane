@@ -20,6 +20,9 @@ import { loadAccountPlan } from "./accounts";
 import { loadFees } from "./fees";
 import { loadRetirement } from "./retirement";
 import { loadReview } from "./review";
+import { loadReturns } from "./returns";
+import { takeSnapshots } from "@/lib/snapshots";
+import { syncDemoInvestments } from "@/lib/plaid/sync";
 import { loadInvestments } from "./holdings";
 import { loadRebalance, placeRebalance, RebalanceError } from "./rebalance";
 import { loadAutoInvest, runAutoInvest, setAutoInvestStatus, startAutoInvest } from "./auto-invest";
@@ -256,10 +259,12 @@ describe.runIf(url)("investments in Jane's chat, against a real database", () =>
       expect(a.holdingsMatch, a.name).toBe(true);
     }
     expect((await loadRebalance(userId, { client, now: LINKED })).plan!.orders).toEqual([]);
-    // And they stay that way through a full sync of the demo bank.
+    // And they stay that way through a full sync of the demo bank: prices have moved a
+    // little (spec step 156), but the mix is still on target.
     const item = await client.plaidItem.findFirstOrThrow({ where: { userId } });
-    await syncItem(item.id, { client, api: plaid, now: new Date("2026-10-20T15:00:00Z") });
-    expect((await loadRebalance(userId, { client, now: LINKED })).plan!.orders).toEqual([]);
+    const later = new Date("2026-10-20T15:00:00Z");
+    await syncItem(item.id, { client, api: plaid, now: later });
+    expect((await loadReview(userId, { client, now: later })).review?.offTarget).toBe(false);
     expect(
       await client.investmentTransaction.count({
         where: { userId, plaidInvestmentTransactionId: { contains: "-order-" } },
@@ -404,6 +409,43 @@ describe.runIf(url)("investments in Jane's chat, against a real database", () =>
       expect(
         note.actions.filter((a) => a.kind !== "link" && a.id !== "snooze").length,
       ).toBeLessThanOrEqual(1);
+    },
+  );
+
+  it(
+    "step 156: returns from snapshots and the price feed, leaving out money paid in",
+    SLOW,
+    async () => {
+      const userId = await demoPerson();
+      await saveProfileForm(
+        userId,
+        { age: "45", horizon: "over_20", dropReaction: "worry", goals: ["retirement"] },
+        { client, now: LINKED },
+      );
+      const day = (n: number) => new Date(LINKED.getTime() + n * 86_400_000);
+      // The daily job: snapshot, then invest the Oct 15 paycheck, then prices move.
+      await takeSnapshots({ client, now: day(0) });
+      const brokerage = (await loadAutoInvest(userId, { client, now: day(0) })).accounts[0].id;
+      await startAutoInvest(
+        userId,
+        { mode: "fixed", amountCents: 10_000, accountId: brokerage },
+        { client, now: day(0) },
+      );
+      const item = await client.plaidItem.findFirstOrThrow({ where: { userId } });
+      await syncDemoInvestments(item.id, { client, now: day(2) });
+      await takeSnapshots({ client, now: day(1) });
+
+      const returns = await loadReturns(userId, { client, now: day(2) });
+      expect(returns.simulatedPrices).toBe(true);
+      expect(returns.periods.map((p) => p.key)).toEqual(["1m", "3m", "1y"]);
+      const month = returns.periods[0];
+      expect(month.paidInCents).toBe(10_000);
+      // The $100 deposit is money in, not a gain: the investments' own return leaves it out.
+      const naive = month.endCents / month.startCents - 1;
+      expect(month.timeWeighted!).toBeLessThan(naive);
+      expect(month.benchmark).not.toBeNull();
+      // Dividends and interest from the demo's own transactions.
+      expect(returns.periods[2].incomeCents).toBeGreaterThan(0);
     },
   );
 });

@@ -140,4 +140,10 @@ test("the demo bank's holdings show with their sources, and Jane answers about t
   await page.getByRole("textbox", { name: "Message Jane" }).fill("how are my investments doing");
   await page.getByRole("button", { name: "Send" }).click();
   await expect(page.getByText(/^Your investments start \w+ at \$/)).toBeVisible();
+
+  // Step 156: how they've done, past results only, prices from the demo feed.
+  await page.goto("/investments");
+  await expect(page.getByRole("heading", { name: "How they've done" })).toBeVisible();
+  await expect(page.getByRole("cell", { name: "Last 12 months" })).toBeVisible();
+  await expect(page.getByText(/Prices come from the demo price feed \(made up\)/)).toBeVisible();
 });
