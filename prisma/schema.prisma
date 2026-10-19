@@ -321,6 +321,8 @@ model User {
   investmentTransactions InvestmentTransaction[]
   // What the investments are for (spec step 129).
   investorProfile        InvestorProfile?
+  // Orders through the brokerage partner, simulated until one is connected (spec step 133).
+  brokerageOrders        BrokerageOrder[]
   changeAcks             ChangeAck[]
   taxProfile             TaxProfile?
   lifeEventAnswers       LifeEventAnswer[]
@@ -438,6 +440,8 @@ model Account {
   // Spec step 128: what an investment account holds, and its buys, sells and contributions.
   holdings               Holding[]
   investmentTransactions InvestmentTransaction[]
+  // Spec step 133: orders placed in it.
+  brokerageOrders        BrokerageOrder[]
 
   @@index([userId])
   @@index([itemId])
@@ -1802,6 +1806,15 @@ model TaxProfile {
   w4ChangedOn           DateTime? @map("w4_changed_on") @db.Date
   w4Year                Int?      @map("w4_year")
   keepRefundYear        Int?      @map("keep_refund_year")
+  // Spec step 122: ways to pay less the person said no to, as "<year>:<key>".
+  savingsDismissed      String[]  @default([]) @map("savings_dismissed")
+  // Spec step 123: the self-employed helpers. Home office square feet (simplified method),
+  // business miles driven so far in businessMilesYear, and estimated tax payments the person
+  // made from accounts Jane can't see: [{ date, cents, to: "federal" | "state" }].
+  homeOfficeSqFt        Int?      @map("home_office_sq_ft")
+  businessMiles         Int?      @map("business_miles")
+  businessMilesYear     Int?      @map("business_miles_year")
+  taxPayments           Json      @default("[]") @map("tax_payments")
   createdAt             DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt             DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
 
@@ -2065,4 +2078,39 @@ model SavedShare {
 
   @@index([userId])
   @@map("saved_shares")
+}
+
+// Spec step 133: an order sent to the brokerage partner, with its confirmation. Until a
+// real brokerage is connected the partner is a simulation (partner "simulated"): orders
+// are filled at the latest price on paper, no real money moves, and every screen says so.
+// One batch is one tap ("Move to the recommended mix").
+model BrokerageOrder {
+  id           String    @id @default(cuid())
+  userId       String    @map("user_id")
+  accountId    String    @map("account_id")
+  batchId      String    @map("batch_id")
+  // Why: rebalance (step 133) or auto_invest (step 134).
+  reason       String
+  partner      String
+  ticker       String
+  securityName String    @map("security_name")
+  // buy or sell, by dollar amount.
+  side         String
+  amountCents  Int       @map("amount_cents")
+  quantity     Float
+  priceCents   Int       @map("price_cents")
+  // filled or rejected, as the partner confirmed.
+  status       String
+  // The partner's own confirmation number.
+  confirmation String?
+  placedAt     DateTime  @map("placed_at") @db.Timestamptz(3)
+  filledAt     DateTime? @map("filled_at") @db.Timestamptz(3)
+  createdAt    DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  account Account @relation(fields: [accountId], references: [id], onDelete: Cascade)
+
+  @@index([userId, placedAt])
+  @@index([accountId])
+  @@map("brokerage_orders")
 }

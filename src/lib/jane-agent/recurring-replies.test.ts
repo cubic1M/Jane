@@ -60,7 +60,7 @@ describe("costReply", () => {
     expect(reply.body).toBe(
       "Netflix is $17.99 a month, $215.88 a year. The next charge is Nov 14 (in 27 days).\nReview your Netflix subscription. Could save about $215.88 a year. Want me to handle it?",
     );
-    expect(ids(reply)).toEqual(["finding.yes", "finding.no", "open"]);
+    expect(ids(reply)).toEqual(["finding.yes", "finding.no", "finding.why", "snooze", "open"]);
     expect(reply.refs.topic).toEqual({ kind: "cost", target: "Netflix", findingId: "f1" });
   });
 
@@ -103,7 +103,14 @@ describe("subscriptionsReply", () => {
       "- Duolingo $29.99 every 3 months",
     ]);
     expect(reply.body).toContain("Review your Netflix subscription.");
-    expect(ids(reply)).toEqual(["finding.yes", "finding.no", "open", "open"]);
+    expect(ids(reply)).toEqual([
+      "finding.yes",
+      "finding.no",
+      "finding.why",
+      "snooze",
+      "open",
+      "open",
+    ]);
   });
 
   it("gives the total as the answer, and every bill when asked", () => {

@@ -146,20 +146,23 @@ describe.runIf(url)("typing to Jane against a real database", () => {
       /^You have \$[\d,]+\.\d\d safe to spend/,
     );
     expect((await send("what's coming up")).reply.body).toMatch(
-      /^(Here's what's coming up:\n- |Nothing coming up)/,
+      /^(\d+ things? (?:is|are) coming up[.,]|Nothing is coming up)/,
     );
     expect((await send("how much did I spend on food last month")).reply.body).toMatch(
-      /^You spent \$[\d,]+\.\d\d on Food and drink in September 2026\.$/,
+      /^You spent \$[\d,]+\.\d\d on Food and drink in September 2026\./,
     );
     expect((await send("what did you do")).reply.actions[0]).toMatchObject({ href: "/actions" });
-    expect((await send("help")).reply.body).toMatch(/^You can ask me things like:/);
-    // Without a key, a free question gets what Jane can do.
-    expect((await send("is my rent too high?")).reply.body).toMatch(/^I can help with your money/);
+    expect((await send("help")).reply.body).toMatch(/^Here's what I can help with\./);
+    // Without a key, a free question gets the closest things Jane can answer, as buttons
+    // (spec step 89: no dead ends).
+    const free = (await send("is my rent too high?")).reply;
+    expect(free.body).toMatch(/^I can't answer that one yet\./);
+    expect(free.actions.map((a) => a.id)).toEqual(["clarify.1", "clarify.2", "clarify.3"]);
   });
 
   it("starts a goal only when 'Start a goal for it' is tapped", async () => {
     const { reply } = await send("can I afford $900 for a trip in March");
-    expect(reply.body).toMatch(/^If you spend \$900\.00 on a trip in March 2027:/);
+    expect(reply.body).toMatch(/^(Yes|It would be tight)[:,] .*\$900\.00 on a trip in March 2027/);
     expect(await client.savingsGoal.count({ where: { userId } })).toBe(0);
     await takeChatAction(userId, reply.id, "goal.start", { client });
     expect(await client.savingsGoal.findMany({ where: { userId } })).toEqual([
@@ -177,7 +180,7 @@ describe.runIf(url)("typing to Jane against a real database", () => {
       data: { userId: otherId, category: "Food and drink", amountCents: 10_000 },
     });
     const first = (await send("can I spend 500 dollars this week for food")).reply.body;
-    expect(first).toMatch(/^If you spend \$500\.00 on food this week:/);
+    expect(first).toMatch(/^(Yes|Not without).*\$500\.00 on food this week/);
     expect(first).toMatch(/So far in October you've spent \$[\d,]+\.\d\d on Food and drink\./);
     expect(first).toMatch(/You usually spend about \$[\d,]+\.00 a week on Food and drink/);
     expect(first).not.toContain("budget");
@@ -291,7 +294,8 @@ describe.runIf(url)("typing to Jane against a real database", () => {
       const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
       const { reply } = await send("is my rent too high?", { claude });
       expect(reply.body).toBe(ASK_BLOCKED_REPLY);
-      expect(reply.actions).toEqual([]);
+      // Spec step 89: never a dead end, never a finding's buttons.
+      expect(reply.actions.every((a) => a.id.startsWith("clarify."))).toBe(true);
       expect(create).toHaveBeenCalledTimes(2);
       warn.mockRestore();
 

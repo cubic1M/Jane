@@ -42,6 +42,13 @@ export const shortDate = (iso: string) =>
 export const inDays = (days: number) =>
   days <= 0 ? "today" : days === 1 ? "tomorrow" : `in ${days} days`;
 
+// Spec step 89: a date the way Jane always says it, "Oct 28 (in 3 days)", counted from
+// asOf (YYYY-MM-DD).
+export const dateAndDays = (date: string, asOf: string) =>
+  `${shortDate(date)} (${inDays(
+    Math.round((Date.parse(`${date}T00:00:00Z`) - Date.parse(`${asOf}T00:00:00Z`)) / 86_400_000),
+  )})`;
+
 // Spec step 83: "Not now" hides a heads-up until tomorrow without answering it
 // (src/lib/jane-agent/snooze.ts); some say it their own way ("Snooze", "Remind me tomorrow").
 export const snoozeButton = (label = "Not now"): MessageAction => ({

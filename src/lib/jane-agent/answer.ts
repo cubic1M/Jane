@@ -34,7 +34,6 @@ import {
   approveAllReply,
   comingUpReply,
   greetingReply,
-  helpReply,
   pauseReply,
   safeReply,
   spendingReply,
@@ -43,6 +42,7 @@ import {
   type Reply,
 } from "./replies";
 import { changesReply } from "./replies-changes";
+import { groupedHelpReply } from "./replies-help";
 import { lifeEventReply } from "./replies-life";
 import { savedReply } from "./replies-saved";
 import { weeklyReview } from "./replies-review";
@@ -157,7 +157,7 @@ async function byIntent(
     case "unknown":
       return null;
     case "help":
-      return helpReply();
+      return groupedHelpReply();
     case "insurance":
       // Spec step 103: quotes ask the partner, the rest read the profile.
       if (intent.ask === "quotes") return quotesAnswer(userId, intent, { client, now });
@@ -169,7 +169,7 @@ async function byIntent(
     case "greeting": {
       if (intent.thanks) return greetingReply(true, null);
       const home = await homeSummary(userId, { client, now });
-      return greetingReply(false, home?.safeToSpend ?? null);
+      return greetingReply(false, home?.safeToSpend ?? null, asOf);
     }
     case "afford": {
       const numbers = await loadAffordNumbers(userId, { client, now });
@@ -186,12 +186,12 @@ async function byIntent(
       );
     }
     case "spending": {
-      const transactions = await loadInsightTransactions(
-        scopedFor(userId, client),
-        asOf,
-        INSIGHT_MONTHS,
-      );
-      return spendingReply(intent, transactions, asOf);
+      const db = scopedFor(userId, client);
+      const [transactions, budgets] = await Promise.all([
+        loadInsightTransactions(db, asOf, INSIGHT_MONTHS),
+        db.budgets.findMany({ select: { category: true, amountCents: true } }),
+      ]);
+      return spendingReply(intent, transactions, asOf, budgets);
     }
     case "coming_up": {
       const home = await homeSummary(userId, { client, now });
@@ -199,7 +199,7 @@ async function byIntent(
     }
     case "safe_to_spend": {
       const home = await homeSummary(userId, { client, now });
-      return safeReply(home?.safeToSpend ?? null);
+      return safeReply(home?.safeToSpend ?? null, asOf);
     }
     case "life_event": {
       const open = await listLifeEvents(userId, { client });

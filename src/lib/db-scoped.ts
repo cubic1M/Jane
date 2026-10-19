@@ -149,6 +149,8 @@ export function scopedFor(userId: string, client: PrismaClient = db) {
     investmentTransactions: scoped.investmentTransaction,
     // What the investments are for (spec step 129).
     investorProfiles: scoped.investorProfile,
+    // Orders through the brokerage partner (spec step 133).
+    brokerageOrders: scoped.brokerageOrder,
   };
 }
 

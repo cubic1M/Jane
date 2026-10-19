@@ -58,8 +58,11 @@ describe("affordReply", () => {
 
   it("shows the effect on safe to spend and goals now, with no goal button", () => {
     const reply = affordReply(intent("can I afford $200 for a jacket", "afford"), numbers);
-    expect(reply.body).toContain("If you spend $200.00 on a jacket now:");
-    expect(reply.body).toContain("Safe to spend until Oct 30: $1,200.00 → $1,000.00");
+    // Spec step 89: the answer first, with the person's figure and date.
+    expect(reply.body).toMatch(
+      /^Yes: after \$200\.00 on a jacket now, you'd still have \$1,000\.00 safe to spend until Oct 30 \(in 12 days\)\.\n/,
+    );
+    expect(reply.body).not.toContain("Safe to spend until Oct 30:");
     expect(reply.body).toContain(
       "Emergency fund: $500.00 a month → $516.67 a month to reach it by Oct 18, 2027.",
     );
@@ -73,7 +76,7 @@ describe("affordReply", () => {
 
   it("offers to start a goal for a purchase in a later month", () => {
     const reply = affordReply(intent("can I afford $900 for a trip in March", "afford"), numbers);
-    expect(reply.body).toContain("If you spend $900.00 on a trip in March 2027:");
+    expect(reply.body).toMatch(/^Yes: \$900\.00 on a trip in March 2027 fits/);
     // After payday, so safe to spend doesn't change.
     expect(reply.body).toContain("Safe to spend stays $1,200.00 until Oct 30");
     expect(buttonIds(reply)).toEqual(["goal.start", "open"]);
@@ -142,8 +145,7 @@ describe("affordReply for a category", () => {
   it("answers the question from the screenshot", () => {
     const reply = ask("can I spend 500 dollars this week for food");
     expect(reply.body.split("\n")).toEqual([
-      "If you spend $500.00 on food this week:",
-      "Safe to spend until Oct 30: $1,200.00 → $700.00",
+      "Yes: after $500.00 on food this week, you'd still have $700.00 safe to spend until Oct 30 (in 12 days).",
       "So far in October you've spent $278.27 on Food and drink.",
       "You usually spend about $100.00 a week on Food and drink, so $500.00 is about 5× a usual week.",
       "Your Food and drink budget is $400.00 a month: this would take you to $778.27, $378.27 over.",
@@ -175,8 +177,7 @@ describe("affordReply for a category", () => {
     expect(more.body).toContain(
       "Your Food and drink budget is $400.00 a month, $100.00 less than this.",
     );
-    expect(more.body).toContain("If that extra goes out every month:");
-    expect(more.body).toContain("Safe to spend");
+    expect(more.body).toMatch(/^Yes: after \$65\.00 more going out each month, you'd still have/);
     expect(more.actions[0]).toMatchObject({
       href: "/afford?kind=more&amount=65.00&month=2026-10",
     });
@@ -188,13 +189,13 @@ describe("affordReply for a category", () => {
     });
 
     expect(ask("can I spend $435 a month on food").body).toContain(
-      "That's what you spend now, so nothing changes.",
+      "Yes: that's what you spend now, so nothing changes.",
     );
   });
 
   it("treats a monthly amount with no category as all extra", () => {
     const reply = affordReply(intent("can I afford $400 a month for a gym", "afford"), numbers);
-    expect(reply.body).toMatch(/^If you spend \$400\.00 more each month on a gym:/);
+    expect(reply.body).toMatch(/^Yes: after \$400\.00 more going out each month on a gym, you'd/);
     expect(reply.actions[0]).toMatchObject({
       href: "/afford?kind=more&amount=400.00&month=2026-10",
     });
@@ -235,7 +236,9 @@ describe("spendingReply", () => {
   it("answers for a category in loose words, this month and last", () => {
     expect(
       spendingReply(intent("how much did I spend on food", "spending"), transactions, TODAY).body,
-    ).toBe("You spent $165.00 on Food and drink in October 2026 so far.");
+    ).toBe(
+      "You spent $165.00 on Food and drink in October 2026 so far. In all of September it was $300.00.",
+    );
     expect(
       spendingReply(
         intent("how much did I spend on groceries last month", "spending"),
@@ -307,7 +310,7 @@ describe("comingUpReply", () => {
 
   it("lists what's coming, soonest as given", () => {
     expect(comingUpReply(intent("what's due", "coming_up"), rows).body).toBe(
-      "Here's what's coming up:\n- Oct 20 (in 2 days): Netflix, $15.49\n- Oct 18 (today): FSA deadline\n- Nov 1 (in 14 days): Rent, $2,000.00",
+      "3 things are coming up, $2,015.49 in all.\n- Oct 20 (in 2 days): Netflix, $15.49\n- Oct 18 (today): FSA deadline\n- Nov 1 (in 14 days): Rent, $2,000.00",
     );
   });
 
@@ -315,15 +318,15 @@ describe("comingUpReply", () => {
     const reply = comingUpReply(intent("what's due this week", "coming_up"), rows);
     expect(reply.body).not.toContain("Rent");
     expect(comingUpReply(intent("what's due this week", "coming_up"), []).body).toBe(
-      "Nothing due this week that I can see.",
+      "Nothing is due this week that I can see.",
     );
   });
 });
 
 describe("safeReply", () => {
   it("gives the number until payday", () => {
-    expect(safeReply({ safeCents: 123_456, payday: "2026-10-30" }).body).toMatch(
-      /^You have \$1,234\.56 safe to spend until Oct 30, your next payday\./,
+    expect(safeReply({ safeCents: 123_456, payday: "2026-10-30" }, TODAY).body).toMatch(
+      /^You have \$1,234\.56 safe to spend until your next payday, Oct 30 \(in 12 days\)\./,
     );
   });
 
@@ -394,10 +397,19 @@ describe("actReply", () => {
 
   it("answers 'cancel Hulu' with the finding as a decision, Yes and No, and does nothing", () => {
     const reply = actReply(intent("cancel Hulu", "act"), snapshot({ findings }));
+    // Spec step 89: yes, Jane can, first.
     expect(reply.body).toBe(
-      "Review your Hulu subscription. Could save about $215.88 a year. Want me to handle it?",
+      "I can cancel that for you. Review your Hulu subscription. Could save about $215.88 a year. Want me to handle it?",
     );
-    expect(buttonIds(reply)).toEqual(["finding.yes", "finding.no", "open"]);
+    // Spec step 90: with "Why?", and "Remind me tomorrow".
+    expect(buttonIds(reply)).toEqual([
+      "finding.yes",
+      "finding.no",
+      "finding.why",
+      "snooze",
+      "open",
+    ]);
+    expect(reply.actions.find((a) => a.id === "snooze")?.label).toBe("Remind me tomorrow");
     expect(reply.refs).toMatchObject({ findingId: "f1", fingerprint: "fp1" });
     // Spec step 88: and remembers it for "and Peacock?" or "cancel it".
     expect(reply.refs.topic).toEqual({
@@ -410,7 +422,15 @@ describe("actReply", () => {
   it("finds a bill by its kind, with Jane's pick", () => {
     const reply = actReply(intent("lower my phone bill", "act"), snapshot({ findings }));
     expect(reply.refs).toMatchObject({ findingId: "f2", pickOptionId: "mint" });
-    expect(buttonIds(reply)).toEqual(["finding.yes", "finding.pick", "finding.no", "open"]);
+    expect(buttonIds(reply)).toEqual([
+      "finding.yes",
+      "finding.pick",
+      "finding.no",
+      "finding.why",
+      "finding.options",
+      "snooze",
+      "open",
+    ]);
   });
 
   // Spec step 88: when it could mean more than one, Jane asks which, a button each.
@@ -604,7 +624,22 @@ describe("help and unknown", () => {
   it("lists what you can ask, and that typing never acts alone", () => {
     expect(helpReply().body).toContain("- can I afford $900 for a trip in March");
     expect(helpReply().body).toContain("I never act on what you type alone");
-    expect(unknownReply().body).toMatch(/^I can help with your money here/);
+    expect(unknownReply().body).toMatch(/^I can't answer that one yet\./);
+  });
+
+  // Spec step 89: no dead ends. The closest things Jane can answer, as buttons.
+  it("offers the closest things Jane can answer, as buttons", () => {
+    const bills = unknownReply("why are my bills so weird", TODAY);
+    expect(bills.actions.map((a) => a.id)).toEqual(["clarify.1", "clarify.2", "clarify.3"]);
+    expect(bills.refs.choices?.[0]).toEqual({
+      label: "What's due this week",
+      intent: { kind: "coming_up", days: 7 },
+    });
+    expect(unknownReply("purple", TODAY).refs.choices?.map((c) => c.label)).toEqual([
+      "Safe to spend",
+      "What's due this week",
+      "My subscriptions",
+    ]);
   });
 
   it("never recommends a choice", () => {

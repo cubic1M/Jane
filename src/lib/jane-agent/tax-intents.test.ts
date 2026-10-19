@@ -60,8 +60,24 @@ describe("tax intents", () => {
     ["am I withholding enough", "withholding"],
     ["should I change my W-4", "withholding"],
     ["too much tax withheld?", "withholding"],
+    ["how can I pay less tax", "savings"],
+    ["any tax breaks for me?", "savings"],
+    ["what can I deduct", "savings"],
+    ["when are my quarterly taxes due", "quarterly"],
+    ["how much should I set aside for taxes", "set_aside"],
+    ["can I take a home office", "home_office"],
   ])("%s asks about %s (steps 120–121)", (text, ask) => {
     expect(parse(text)).toEqual({ kind: "tax", ask });
+  });
+
+  it("reads miles to add, and mileage questions", () => {
+    expect(parse("I drove 1,200 business miles")).toEqual({
+      kind: "tax",
+      ask: "miles",
+      miles: 1200,
+    });
+    expect(parse("log 40 miles")).toEqual({ kind: "tax", ask: "miles", miles: 40 });
+    expect(parse("my business mileage")).toEqual({ kind: "tax", ask: "miles", miles: null });
   });
 
   it("leaves debts to the loans: how much do I owe isn't a tax question", () => {

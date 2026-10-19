@@ -56,6 +56,10 @@ export const ACTION_IDS = [
   "clarify.1",
   "clarify.2",
   "clarify.3",
+  // Spec step 90: a budget the answer named, and the quick replies on a finding.
+  "budget.set",
+  "finding.why",
+  "finding.options",
   // Taxes (spec step 118): the tax profile, one question at a time.
   "tax.found_yes",
   "tax.filing_single",
@@ -80,6 +84,12 @@ export const ACTION_IDS = [
   "tax.w4_sent",
   "tax.w4_stop",
   "tax.w4_keep",
+  // Spec step 122: a way to pay less, as a reminder to set or not for me.
+  "tax.save_task",
+  "tax.save_no",
+  // Spec step 123: freelancers.
+  "tax.quarter_paid",
+  "tax.miles_add",
   // Investments (spec step 129 on): the answer buttons on an investor-profile question,
   // by position (src/config/investing.ts PROFILE_QUESTIONS).
   "invest.answer.1",
@@ -87,6 +97,8 @@ export const ACTION_IDS = [
   "invest.answer.3",
   "invest.answer.4",
   "invest.answer.5",
+  // Spec step 133: move to the recommended mix, through the brokerage partner.
+  "invest.rebalance",
   // Jane notices changes (spec step 97).
   "change.look",
   "change.budget",
@@ -106,11 +118,15 @@ export const ACTION_IDS = [
   "policy.not_insurance",
   // What Jane saved you (spec step 139).
   "saved.share",
+  // Help inside the chat (spec step 140).
+  "welcome.tour",
 ] as const;
 export type ActionId = (typeof ACTION_IDS)[number];
 
 export type MessageAction =
-  | { id: ActionId; label: string; kind: "primary" | "secondary" }
+  // quick (spec step 90): a quick reply under an answer ("Why?", "Show options"), which
+  // answers in the chat and leaves the message's own buttons as they are.
+  | { id: ActionId; label: string; kind: "primary" | "secondary" | "quick" }
   | { id: "open"; label: string; kind: "link"; href: string };
 
 // What a message is about. Every field is optional; each source and action uses its own.
@@ -161,6 +177,8 @@ export type MessageRefs = {
   topic?: Topic;
   // Spec step 88: a clarifying question's meanings, in button order (clarify.1, clarify.2…).
   choices?: { label: string; intent: Intent }[];
+  // Spec step 90: the budget "Set a budget" would set (cents a month).
+  budget?: { category: string; amountCents: number };
   // Taxes (spec step 118): the tax profile question a message is asking, and the kind of
   // income "Add it" would add.
   taxField?: string;
@@ -179,6 +197,12 @@ export type MessageRefs = {
   w4AmountCents?: number;
   w4JanuaryCents?: number;
   w4Flow?: number;
+  // Spec step 122: the way to pay less a message is about, and the reminder it would set.
+  taxSaving?: string;
+  taxTask?: { title: string; dueOn: string; note: string };
+  // Spec step 123: the estimated payment "I've paid it" records, and miles to add.
+  taxQuarter?: { date: string; cents: number; stateCents: number };
+  taxMiles?: number;
   // Spec step 98: demo advice (src/lib/advice-mode.ts). The chat shows DEMO_ADVICE_LABEL
   // under it. Set it on every message that recommends investments, taxes, insurance or loans.
   advice?: true;
@@ -186,6 +210,8 @@ export type MessageRefs = {
   // Jane is going through all four again (the yearly check).
   investQuestion?: string;
   investAgain?: true;
+  // Spec step 133: the rebalancing plan the button places, by its key.
+  rebalanceKey?: string;
   // Spec step 97: a change Jane noticed (src/insights/changes.ts), by its key; for a
   // category's pace, the budget "Set a budget" would set (cents a month).
   change?: { key: string; kind: string; category?: string; budgetCents?: number };
@@ -234,7 +260,7 @@ export function parseActions(value: unknown): MessageAction[] {
     if (!isObject(a) || typeof a.label !== "string") return false;
     if (a.kind === "link") return a.id === "open" && typeof a.href === "string";
     return (
-      (a.kind === "primary" || a.kind === "secondary") &&
+      (a.kind === "primary" || a.kind === "secondary" || a.kind === "quick") &&
       (ACTION_IDS as readonly unknown[]).includes(a.id)
     );
   });

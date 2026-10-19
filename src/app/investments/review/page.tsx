@@ -123,6 +123,11 @@ async function ReviewContent() {
                 ))}
               </ol>
             )}
+            {review.recommendations.some((r) => r.kind === "rebalance") && (
+              <Link href="/investments/rebalance" className={`text-sm ${LINK}`}>
+                See the orders to move to the recommended mix
+              </Link>
+            )}
             <DemoAdviceLabel />
           </section>
           {review.leftOut.length > 0 && (

@@ -18,6 +18,8 @@ const BUTTON = "inline-flex min-h-11 items-center justify-center px-3 text-sm fo
 const STYLES = {
   primary: `${BUTTON} bg-emerald-700 text-white hover:bg-emerald-800 disabled:opacity-60`,
   secondary: `${BUTTON} border border-zinc-400 hover:bg-zinc-100 disabled:opacity-60 dark:border-zinc-600 dark:hover:bg-zinc-900`,
+  // Spec step 90: a quick reply ("Why?", "Show options"), lighter than a decision.
+  quick: `${BUTTON} border border-dashed border-zinc-400 font-medium text-zinc-700 hover:bg-zinc-100 disabled:opacity-60 dark:border-zinc-600 dark:text-zinc-300 dark:hover:bg-zinc-900`,
 };
 const LINK =
   "inline-flex min-h-11 items-center px-1 text-sm font-medium text-emerald-700 hover:underline";

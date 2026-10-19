@@ -134,6 +134,14 @@ export const TAX_TAGS = {
     check: true,
   },
   work: { label: "Work expense", plural: "work expenses", categories: [], check: false },
+  // Spec step 123: costs of freelance or gig work. Tagged by the person; for people with
+  // freelance income Jane also suggests likely ones (BUSINESS_HINT_CATEGORIES) and asks.
+  business: {
+    label: "Business expense",
+    plural: "business expenses",
+    categories: [],
+    check: false,
+  },
 } as const satisfies Record<
   string,
   { label: string; plural: string; categories: readonly PfcDetailed[]; check: boolean }
@@ -144,6 +152,29 @@ export const isTaxTagKind = (value: unknown): value is TaxTagKind =>
   typeof value === "string" && Object.hasOwn(TAX_TAGS, value);
 // What a person's "not for taxes" is stored as.
 export const UNTAGGED = "none";
+
+// Spec step 123: spending Jane suggests as a business expense, and asks about, for people
+// with freelance or gig income.
+export const BUSINESS_HINT_CATEGORIES: readonly PfcDetailed[] = [
+  "GENERAL_MERCHANDISE_OFFICE_SUPPLIES",
+  "GENERAL_SERVICES_ACCOUNTING_AND_FINANCIAL_PLANNING",
+  "GENERAL_SERVICES_CONSULTING_AND_LEGAL",
+  "GENERAL_SERVICES_POSTAGE_AND_SHIPPING",
+];
+
+// Spec step 123: estimated tax for freelancers. Jane reminds this many days before each
+// due date, with the amount, when the year's estimate leaves at least minOwedCents to pay
+// (under $1,000 owed there's no penalty). Paying: IRS Direct Pay.
+export const QUARTERLY = {
+  remindDays: 14,
+  minOwedCents: 100_000,
+} as const;
+export const IRS_DIRECT_PAY_URL = "https://www.irs.gov/payments/direct-pay";
+// Freelance payments from the last this-many days get a set-aside message.
+export const SET_ASIDE_RECENT_DAYS = 14;
+// The most square feet and miles the helpers take.
+export const MAX_HOME_OFFICE_SQFT = 300;
+export const MAX_BUSINESS_MILES = 200_000;
 
 // /taxes/tags shows at most this many transactions when searching for one to tag.
 export const TAX_TAG_SEARCH_LIMIT = 50;
@@ -223,6 +254,21 @@ export const IRS_WITHHOLDING_ESTIMATOR_URL =
   "https://www.irs.gov/individuals/tax-withholding-estimator";
 export const IRS_W4_URL = "https://www.irs.gov/forms-pubs/about-form-w-4";
 
+// Spec step 122: the tax savings finder (demo advice). Savings under this many cents a year
+// aren't shown. Purchases that look like tuition or home energy work are spotted by these
+// words in the payee.
+export const TAX_SAVINGS_MIN_CENTS = 2_500;
+export const TUITION_PAYEE =
+  /\b(?:UNIV(?:ERSITY)?|COLLEGE|TUITION|BURSAR|COMMUNITY COLL|SCHOOL OF)\b/i;
+export const ENERGY_PAYEE =
+  /\b(?:SOLAR|SUNRUN|SUNPOWER|SUNNOVA|TESLA ENERGY|HEAT PUMP|MITSUBISHI ELECTRIC|INSULATION|ENERGY STAR|GEOTHERMAL|POWERWALL)\b/i;
+// Health FSA: suggested when out-of-pocket medical spending this year is over this.
+export const FSA_SUGGEST_FROM_CENTS = 50_000;
+// When open enrollment usually ends (MM-DD): the reminder Jane sets for it.
+export const OPEN_ENROLLMENT_BY = "11-30";
+// Bunching gifts: suggested when doubling a year's gifts would take itemized deductions
+// past the standard deduction.
+
 // The estimate tells the person when it has moved by at least this much (in cents) since
 // Jane last said it.
 export const TAX_ESTIMATE_STEP_CENTS = 50_000;
@@ -241,6 +287,11 @@ export const TAX_MESSAGE_PRIORITY = {
   estimate: 30,
   // Spec step 121.
   withholding: 37,
+  // Spec step 122.
+  saving: 34,
+  // Spec step 123.
+  quarterly: 88,
+  set_aside: 39,
 } as const;
 
 // What Jane does about taxes by herself at each autopilot level (spec step 57), shown on
@@ -264,6 +315,16 @@ export const TAX_AUTOPILOT: readonly { feature: string; ask: string; auto: strin
     feature: "withholding",
     ask: "I check your withholding against your estimate and, with demo advice, show what to put on a new W-4. Only you can send it to your employer.",
     auto: "I check your withholding after every sync and bring up a W-4 change when you're heading for a big refund or a bill. Only you can send it to your employer.",
+  },
+  {
+    feature: "savings",
+    ask: "With demo advice, I look for ways to pay less (retirement and health accounts, deductions, credits) and show each with an estimate; you pick which to act on.",
+    auto: "With demo advice, I look for ways to pay less after every sync and bring up each new one with the goal or reminder ready to set with one tap. I never change your contributions myself.",
+  },
+  {
+    feature: "self_employed",
+    ask: "For freelance income, I suggest likely business expenses, remind you before each estimated tax date and, with demo advice, say how much to set aside from each payment.",
+    auto: "For freelance income, I tag likely business expenses for you to check, remind you before each estimated tax date with the amount and, with demo advice, start a tax set-aside goal and tell you what to put in it from each payment. Paying is always your tap.",
   },
   {
     feature: "tags",

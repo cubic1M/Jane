@@ -17,10 +17,12 @@ import { loadTaxForms, loadTaxTags } from "@/lib/tax-organizer";
 import { adviceMode } from "@/lib/advice-mode";
 import { loadTaxEstimate } from "@/lib/tax-estimate";
 import { checkFrom } from "@/lib/tax-withholding";
+import { loadTaxSavings } from "@/lib/tax-savings";
 import { loadWorkingProfile } from "@/lib/tax-profile";
 import { defaultTaxYear } from "@/planning/tax-pack";
 import { stateName, type FieldStatus } from "@/planning/tax-profile";
 import { EstimateSection } from "./estimate-section";
+import { SavingsSection } from "./savings-section";
 import { WithholdingSection } from "./withholding-section";
 import { FormToggle } from "./form-toggle";
 
@@ -81,6 +83,7 @@ async function TaxesContent() {
 
       <EstimateSection view={estimate} />
       <WithholdingSection view={{ estimate, check: checkFrom(estimate), advice }} />
+      <SavingsSection view={await loadTaxSavings(user.id, { now, loaded: { estimate, advice } })} />
 
       <section aria-labelledby="profile" className={CARD}>
         <div className="flex flex-wrap items-baseline justify-between gap-2">
@@ -212,7 +215,11 @@ async function TaxesContent() {
       </section>
 
       <p className="text-sm text-zinc-600 dark:text-zinc-400">
-        The year&apos;s records are in your{" "}
+        Freelance or gig work?{" "}
+        <Link href="/taxes/self-employed" className={LINK}>
+          Freelance taxes
+        </Link>
+        . The year&apos;s records are in your{" "}
         <Link href="/tax-pack" className={LINK}>
           tax-time pack
         </Link>

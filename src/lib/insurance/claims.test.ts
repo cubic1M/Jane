@@ -107,6 +107,15 @@ describe("what happened, in the person's words", () => {
     });
   });
 
+  it("leaves questions about cover alone", () => {
+    expect(parseIntent("am I covered if my car is stolen", "2026-10-19")).toMatchObject({
+      ask: "cover",
+    });
+    expect(parseIntent("what happens if there's a flood", "2026-10-19")).not.toMatchObject({
+      ask: "claim",
+    });
+  });
+
   it("asks which policy when only a claim is mentioned", () => {
     expect(parseIntent("I need to file a claim on my car insurance", "2026-10-19")).toEqual({
       kind: "insurance",

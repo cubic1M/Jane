@@ -2,7 +2,9 @@ import type { PlaidApi } from "plaid";
 import {
   demoHoldings,
   demoInvestmentTransactions,
+  demoOrderTransactions,
   demoSecurities,
+  type DemoOrder,
 } from "@/data-sources/demo/demo-holdings";
 import {
   addDays,
@@ -56,9 +58,13 @@ export function demoPlaidApi(
   now: Date = new Date(),
   // Switches the person made, so their new bills show up (spec step 77).
   switches: DemoSwitch[] = [],
+  // Simulated orders the person placed (spec step 133), so the holdings show them.
+  orders: DemoOrder[] = [],
 ): PlaidApi {
   const demo = seedOf(accessToken);
   const through = yesterday(now);
+  const holdings = demoHoldings(demo, through, orders);
+  const securities = demoSecurities(through, new Set(holdings.map((h) => h.security_id)));
   const api = {
     transactionsSync: async ({ cursor }: { cursor?: string }) => {
       const after = cursor && /^\d{4}-\d{2}-\d{2}$/.test(cursor) ? cursor : null;
@@ -88,8 +94,8 @@ export function demoPlaidApi(
     investmentsHoldingsGet: async () => ({
       data: {
         accounts: demoAccounts(demo).filter((a) => a.type === "investment"),
-        holdings: demoHoldings(demo, through),
-        securities: demoSecurities(through),
+        holdings,
+        securities,
       },
     }),
     investmentsTransactionsGet: async ({
@@ -101,17 +107,19 @@ export function demoPlaidApi(
       end_date: string;
       options?: { count?: number; offset?: number };
     }) => {
-      const all = demoInvestmentTransactions(
-        demo,
-        addDays(start_date, -1),
-        end_date < through ? end_date : through,
-      );
+      const start = addDays(start_date, -1);
+      const end = end_date < today(now) ? end_date : today(now);
+      const all = [
+        ...demoInvestmentTransactions(demo, start, end < through ? end : through),
+        // Orders show the day they filled.
+        ...demoOrderTransactions(demo, orders, start, end),
+      ];
       const offset = options?.offset ?? 0;
       return {
         data: {
           accounts: demoAccounts(demo).filter((a) => a.type === "investment"),
           investment_transactions: all.slice(offset, offset + (options?.count ?? 100)),
-          securities: demoSecurities(through),
+          securities,
           total_investment_transactions: all.length,
         },
       };
