@@ -8,6 +8,7 @@ import { loadFees } from "@/lib/investments/fees";
 import { loadAccountPlan } from "@/lib/investments/accounts";
 import { loadReturns } from "@/lib/investments/returns";
 import { loadGoalBuckets } from "@/lib/investments/goal-buckets";
+import { estimateCollege, loadCollege } from "@/lib/investments/college";
 import { autopilotOf } from "@/lib/autopilot";
 import { loadInvestmentSnapshot } from "./snapshot";
 import { loadAutoInvest } from "@/lib/investments/auto-invest";
@@ -22,6 +23,7 @@ import {
   overviewReply,
   returnsReply,
   goalBucketsReply,
+  collegeReply,
   feesReply,
   holdingsReply,
   profileReply,
@@ -61,6 +63,19 @@ export async function answerInvestments(
     case "overview": {
       const snapshot = await loadInvestmentSnapshot(userId, { client, now });
       return overviewReply(snapshot);
+    }
+    case "college": {
+      const [{ advice, plans }, estimate] = await Promise.all([
+        loadCollege(userId, { client, now }),
+        intent.childAge === undefined
+          ? Promise.resolve(null)
+          : estimateCollege(
+              userId,
+              { childAge: intent.childAge, type: intent.collegeType ?? "public" },
+              { client },
+            ),
+      ]);
+      return collegeReply(advice, estimate, plans.length);
     }
     case "goals":
       return goalBucketsReply(await loadGoalBuckets(userId, { client, now }));

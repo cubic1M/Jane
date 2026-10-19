@@ -1,7 +1,8 @@
 import { MESSAGE_PRIORITY } from "@/config/agent-chat";
 import { formatCents } from "@/lib/money";
 import type { Candidate, MessageAction } from "../types";
-import type { SnapshotFinding } from "../snapshot";
+import type { Snapshot, SnapshotFinding } from "../snapshot";
+import { rankedFor } from "../priorities";
 import { sentence, type MessageSource } from "./source";
 
 // New findings worth deciding (spec step 82): each open finding once, the biggest yearly
@@ -31,8 +32,13 @@ export function shortName(title: string): string {
   return title.length <= 28 ? title : `${title.slice(0, 27).trimEnd()}…`;
 }
 
-const bySavings = (a: SnapshotFinding, b: SnapshotFinding) =>
-  (b.annualSavingsCents ?? -1) - (a.annualSavingsCents ?? -1);
+// Spec step 143: most important first, by the priority engine (money per minute of the
+// person's time, urgency, confidence), not just the biggest saving.
+const byPriority = (snapshot: Snapshot) => {
+  const order = new Map(rankedFor(snapshot).map((r, i) => [r.key, i]));
+  const at = (f: SnapshotFinding) => order.get(`finding:${f.findingId}`) ?? Number.MAX_SAFE_INTEGER;
+  return (a: SnapshotFinding, b: SnapshotFinding) => at(a) - at(b);
+};
 
 // One finding as Jane's question about it. Also how she answers about it when asked
 // (spec step 88), whatever else is waiting.
@@ -99,7 +105,7 @@ export const findingsSource: MessageSource = {
     return [...snapshot.findings]
       .filter((finding) => !askedByChange.has(finding.findingId))
       .filter((finding) => !(shopsInsurance && finding.type === "insurance_reshop"))
-      .sort(bySavings)
+      .sort(byPriority(snapshot))
       .map(findingCandidate);
   },
 };

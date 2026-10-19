@@ -13,6 +13,7 @@ import { simulatedCallResult } from "@/lib/voice/calls";
 import { explainFindings } from "@/lib/explanations";
 import { deliverChatNotifications } from "@/lib/jane-agent/notify";
 import { scrub } from "@/lib/scrub";
+import { retryControllerStep, runController } from "@/lib/controller";
 
 // A small job queue in Postgres for slow work that can fail and be retried. A job is
 // claimed with FOR UPDATE SKIP LOCKED, so two runners never take the same one; a failure
@@ -26,8 +27,11 @@ export type JobKind =
   | "voice_simulated_result"
   | "find_support_contact"
   // Jane's chat messages as notifications (spec step 85).
-  | "chat_notify";
-export type JobPayload = { userId: string; actionId?: string };
+  | "chat_notify"
+  // The nightly controller run (spec step 142), and the retry of one failed step.
+  | "controller_run"
+  | "controller_step";
+export type JobPayload = { userId: string; actionId?: string; step?: string };
 // Tests pass only the handlers they need; a job with no handler fails like any error.
 export type Handlers = Partial<Record<JobKind, (payload: JobPayload) => Promise<unknown>>>;
 
@@ -46,6 +50,8 @@ export const HANDLERS: Required<Handlers> = {
   voice_simulated_result: (payload) => simulatedCallResult(payload.userId, actionIdOf(payload)),
   find_support_contact: (payload) => lookUpSupportFor(payload.userId, actionIdOf(payload)),
   chat_notify: ({ userId }) => deliverChatNotifications(userId),
+  controller_run: ({ userId }) => runController(userId),
+  controller_step: ({ userId, step }) => retryControllerStep(userId, step ?? ""),
 };
 
 type Options = { client?: PrismaClient; now?: Date; handlers?: Handlers };

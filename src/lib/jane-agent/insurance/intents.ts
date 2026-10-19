@@ -26,7 +26,9 @@ export type InsuranceAsk =
   // need: "do I need umbrella insurance?", answered from their numbers (spec step 149).
   | "need"
   // benefits: cover through work (spec step 150).
-  | "benefits";
+  | "benefits"
+  // documents: policies Jane read from documents, to confirm (spec step 151).
+  | "documents";
 
 export type InsuranceIntent = {
   kind: "insurance";
@@ -113,7 +115,7 @@ const KIND_WORDS: readonly [PolicyKind, RegExp][] = [
 // Words that make it about insurance on their own, and cover words that need a kind too
 // ("does my budget cover rent" isn't about insurance; "am I covered if my car is stolen" is).
 const INSURANCE =
-  /\b(?:insurance|insured|insurer|insurers|polic(?:y|ies)|deductibles?|premiums?|(?:under|over)-?insured|(?:health|medical) plans?|benefits?\b.{0,30}\b(?:work|job|employer)|(?:work|job|employer) benefits|open enrollment)\b/;
+  /\b(?:insurance|insured|insurer|insurers|polic(?:y|ies)|deductibles?|premiums?|(?:under|over)-?insured|(?:health|medical) plans?|benefits?\b.{0,30}\b(?:work|job|employer)|(?:work|job|employer) benefits|open enrollment|declarations? pages?|renewal notices?)\b/;
 const COVER = /\b(?:cover|covers|covered|coverage)\b/;
 // About the amount of cover, so about insurance even without the word (spec step 106).
 const COVER_AMOUNT =
@@ -123,6 +125,10 @@ const CHECKUP =
   /\bcheck ?-?ups?\b|\b(?:check|review|look over) (?:my|our|the) (?:insurance|cover|coverage|policies|policy)\b|\b(?:right|wrong) amount of (?:cover|coverage|insurance)\b|\b(?:over|under)-?insured\b|\btoo much (?:cover|coverage|insurance)\b|\b(?:raise|lower|change) (?:my |the )?deductible\b/;
 
 const ASKS: readonly [InsuranceAsk, RegExp][] = [
+  [
+    "documents",
+    /\b(?:read|upload\w*|scan\w*|sent you)\b.{0,30}\b(?:polic(?:y|ies)|declarations?|renewal notices?|documents?)\b|\bdeclarations? pages?\b|\brenewal notices?\b|\bpolicy documents?\b/,
+  ],
   [
     "benefits",
     /\bbenefits?\b|\bthrough (?:work|my job)\b|\bat work\b|\bmy (?:employer|job)\b|\bopen enrollment\b/,
