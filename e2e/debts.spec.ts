@@ -173,3 +173,38 @@ test("a 0% transfer counts its fee and is tracked once moved", async ({
   // The deadline shows on /deadlines from 90 days before the end (unit tests check it's saved).
   await expect(page.getByRole("list", { name: "Your transfers" })).toContainText("0% until");
 });
+
+// Spec step 114: student loan plans compared, with the official steps linked.
+test("student loan plans are compared, and every step links to studentaid.gov", async ({
+  context,
+  page,
+  baseURL,
+}) => {
+  const user = await signedInUser("user");
+  userId = user.userId;
+  await context.addCookies([
+    { name: "authjs.session-token", value: user.sessionToken, url: baseURL ?? "" },
+  ]);
+  await page.goto("/connect");
+  await page.getByRole("button", { name: "Link a demo bank" }).click();
+  await expect(page).toHaveURL("/chat", { timeout: 60_000 });
+
+  await page.goto("/loans");
+  await page.getByRole("link", { name: "Compare its repayment plans" }).click();
+  await expect(page.getByRole("heading", { level: 1, name: "Student loans" })).toBeVisible();
+  await expect(page.getByRole("table", { name: "Repayment plans" })).toContainText(
+    "Repayment Assistance Plan (RAP)",
+  );
+  const steps = page.getByRole("list", { name: "Steps on studentaid.gov" }).getByRole("link");
+  await expect(steps).toHaveCount(5);
+  for (const href of await steps.evaluateAll((links) => links.map((a) => a.getAttribute("href")))) {
+    expect(href).toMatch(/^https:\/\/studentaid\.gov\//);
+  }
+  await page.getByLabel("Income from your last tax return ($)").fill("45000");
+  await page.getByLabel("I work full time in public service").check();
+  await page.getByRole("button", { name: "Save" }).click();
+  await expect(page.getByRole("status")).toHaveText(
+    "Saved. The plans are worked out again with it.",
+  );
+  await expect(page.getByText(/toward Public Service Loan Forgiveness/)).toBeVisible();
+});
