@@ -92,6 +92,17 @@ test("the demo bank lands in Jane's chat, and Yes answers a finding", async ({
   await expect(messages.last()).toContainText("on your plan");
   await expect(messages.last().getByRole("link", { name: /Review the plan/ })).toBeVisible();
 
+  // Spec step 88: a name that could mean two things gets a question with a button each,
+  // and the tap answers it in the chat.
+  await ask.fill("cancel streaming");
+  await ask.press("Enter");
+  await expect(messages.last()).toContainText("Which one do you mean?");
+  const question = messages.last();
+  await question.getByRole("button").first().click();
+  await expect(question.getByText("You chose:")).toBeVisible();
+  await expect(messages.last()).toContainText("Want me to handle it?");
+  await expect(messages.last().getByRole("button", { name: "Yes", exact: true })).toBeVisible();
+
   const overflow = await page.evaluate(
     () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
   );
