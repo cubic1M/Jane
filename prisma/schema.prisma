@@ -341,6 +341,7 @@ model User {
 
   autopilotSectors AutopilotSector[]
   autopilotActs    AutopilotAct[]
+  collegePlans     CollegePlan[]
 
   @@map("users")
 }
@@ -2332,4 +2333,26 @@ model AutoInvestRun {
   @@unique([userId, paydayOn])
   @@index([userId, createdAt])
   @@map("auto_invest_runs")
+}
+
+// Spec step 158: saving for a child's college. The child's age when the person said it (so
+// it can be aged), the kind of college, the 529 plan Jane compared best, and the savings
+// goal it set up, which step 157's buckets and automatic investing then fund.
+model CollegePlan {
+  id          String   @id @default(cuid())
+  userId      String   @map("user_id")
+  childName   String   @map("child_name")
+  childAge    Int      @map("child_age")
+  ageOn       DateTime @map("age_on") @db.Date
+  // public or private (src/config/college.ts).
+  collegeType String   @map("college_type")
+  planKey     String?  @map("plan_key")
+  goalId      String?  @map("goal_id")
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt   DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("college_plans")
 }

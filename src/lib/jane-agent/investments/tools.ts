@@ -14,6 +14,7 @@ import { overviewReply } from "./replies";
 import { loadAccountPlan } from "@/lib/investments/accounts";
 import { loadReturns } from "@/lib/investments/returns";
 import { loadGoalBuckets } from "@/lib/investments/goal-buckets";
+import { estimateCollege, loadCollege, type CollegeEstimate } from "@/lib/investments/college";
 import { formatReturn } from "@/insights/returns";
 import { loadAutoInvest } from "@/lib/investments/auto-invest";
 import { loadRebalance } from "@/lib/investments/rebalance";
@@ -97,6 +98,19 @@ export const INVESTMENT_TOOLS: Anthropic.Tool[] = [
     input_schema: noInput,
   },
   {
+    name: "college_plan",
+    description:
+      "In demo advice mode: what college could cost for a child of a given age (public in-state or private), as a low-to-high range when they start, the monthly amount to get there as a range, and the 529 plans compared on fees and the state tax break from the tax profile's state. Without child_age, the person's existing college plans. To set one up, the person types the age and taps Start saving for college.",
+    input_schema: {
+      type: "object",
+      properties: {
+        child_age: { type: "number", description: "The child's age now, 0 to 17." },
+        college_type: { type: "string", enum: ["public", "private"] },
+      },
+      additionalProperties: false,
+    },
+  },
+  {
     name: "explainer",
     description:
       "Jane's fixed plain-language explainer for a word (education, not advice; waiting for counsel's review): what it is and how it works, with sources. Use it when the person asks what something means, and quote it rather than writing your own definition.",
@@ -120,6 +134,7 @@ export const INVESTMENT_TOOL_STATUS: Readonly<Record<string, string>> = {
   auto_invest: "Checking automatic investing…",
   account_plan: "Working out which account first…",
   explainer: "Looking that up…",
+  college_plan: "Working out college costs…",
   goal_buckets: "Looking at your goals…",
   investment_returns: "Working out your returns…",
   investments_overview: "Looking at how your investments are doing…",
@@ -450,6 +465,29 @@ export async function runInvestmentTool(
           why: b.why,
         })),
       });
+    }
+    case "college_plan": {
+      const args = (input && typeof input === "object" ? input : {}) as Record<string, unknown>;
+      const { advice, plans } = await loadCollege(userId, { client, now });
+      if (!advice) return out({ note: "College savings plans are for demo advice mode only." });
+      const age = typeof args.child_age === "number" ? Math.round(args.child_age) : null;
+      const describe = (e: CollegeEstimate) => ({
+        childAge: e.childAge,
+        college: e.type,
+        startsInYears: e.years,
+        fourYearCost: { low: money(e.cost.lowCents), high: money(e.cost.highCents) },
+        monthlyToGetThere: { low: money(e.monthly.lowCents), high: money(e.monthly.highCents) },
+        plans: e.plans.map((p) => ({
+          plan: p.plan.name,
+          feesAYear: money(p.feeCents),
+          stateTaxBreakAYear: money(p.benefitCents),
+        })),
+      });
+      if (age !== null && age >= 0 && age <= 17) {
+        const type = args.college_type === "private" ? "private" : "public";
+        return out(describe(await estimateCollege(userId, { childAge: age, type }, { client })));
+      }
+      return out({ plans: plans.map((p) => ({ child: p.childName, ...describe(p.estimate) })) });
     }
     case "explainer": {
       const slug =

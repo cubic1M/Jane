@@ -119,6 +119,8 @@ export const ACTION_IDS = [
   "invest.auto_leftover",
   "invest.auto_pause",
   "invest.auto_resume",
+  // Spec step 158: start saving for college.
+  "college.start",
   // Jane notices changes (spec step 97).
   "change.look",
   "change.budget",
@@ -248,6 +250,8 @@ export type MessageRefs = {
   rebalanceKey?: string;
   // Spec step 134: what "Start" sets up: an amount (cents) every payday, into an account.
   autoInvest?: { amountCents: number; accountId: string };
+  // Spec step 158: the college plan "Start saving for college" sets up.
+  college?: { childName: string; childAge: number; type: "public" | "private" };
   // Spec step 97: a change Jane noticed (src/insights/changes.ts), by its key; for a
   // category's pace, the budget "Set a budget" would set (cents a month).
   change?: { key: string; kind: string; category?: string; budgetCents?: number };
