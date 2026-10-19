@@ -47,6 +47,17 @@ export const ACTION_IDS = [
   // Spec step 151: a policy read from a document, to confirm.
   "reading.confirm",
   "reading.dismiss",
+  // Spec step 153: life insurance, sized and applied for.
+  "lifecover.dependants_0",
+  "lifecover.dependants_1",
+  "lifecover.dependants_2",
+  "lifecover.dependants_3",
+  "lifecover.apply",
+  "lifecover.yes",
+  "lifecover.no",
+  "lifecover.submit",
+  "lifecover.buy",
+  "lifecover.dismiss",
   "plan.approve_safe",
   "undo.rule",
   "undo.no",
@@ -144,6 +155,10 @@ export const ACTION_IDS = [
   // Spec step 167: a tax move's reminder on the deadlines, or not for me.
   "tax.plan_add",
   "tax.plan_no",
+  // Spec step 168: a gift's receipt, a donor-advised fund, and not this year.
+  "tax.receipt_got",
+  "tax.fund_open",
+  "tax.giving_no",
   // Investments (spec step 129 on): the answer buttons on an investor-profile question,
   // by position (src/config/investing.ts PROFILE_QUESTIONS).
   "invest.answer.1",
@@ -160,6 +175,12 @@ export const ACTION_IDS = [
   "invest.auto_resume",
   // Spec step 158: start saving for college.
   "college.start",
+  // Spec step 159: the HSA.
+  "hsa.link",
+  "hsa.invest",
+  // Spec step 160: company stock, sold down in parts.
+  "company.link",
+  "company.sell",
   // Jane notices changes (spec step 97).
   "change.look",
   "change.budget",
@@ -187,6 +208,8 @@ export const ACTION_IDS = [
   "paycheck.move",
   "paycheck.skip",
   "paycheck.undo",
+  "bill.pay",
+  "bill.skip",
 ] as const;
 export type ActionId = (typeof ACTION_IDS)[number];
 
@@ -224,6 +247,8 @@ export type MessageRefs = {
   benefitQuestion?: string;
   // Spec step 151: the policy reading a message asks the person to confirm.
   readingId?: string;
+  // Spec step 153: the life application a message moves along.
+  lifeApplicationId?: string;
   // The finding as Jane described it (src/lib/jane-agent/fingerprint.ts): a button only
   // acts while the finding is still what the message said.
   fingerprint?: string;
@@ -299,6 +324,8 @@ export type MessageRefs = {
   taxLocals?: string[];
   // Spec step 167: the tax plan move ("<year>:<key>") a message is about.
   taxPlanMove?: string;
+  // Spec step 168: the gift (its transaction id) a receipt message is about.
+  taxGift?: string;
   // Spec step 98: demo advice (src/lib/advice-mode.ts). The chat shows DEMO_ADVICE_LABEL
   // under it. Set it on every message that recommends investments, taxes, insurance or loans.
   advice?: true;
@@ -312,6 +339,8 @@ export type MessageRefs = {
   autoInvest?: { amountCents: number; accountId: string };
   // Spec step 158: the college plan "Start saving for college" sets up.
   college?: { childName: string; childAge: number; type: "public" | "private" };
+  // Spec step 160: the company stock plan "Sell this part" sells from, by its key.
+  companyPlan?: string;
   // Spec step 97: a change Jane noticed (src/insights/changes.ts), by its key; for a
   // category's pace, the budget "Set a budget" would set (cents a month).
   change?: { key: string; kind: string; category?: string; budgetCents?: number };
@@ -322,6 +351,8 @@ export type MessageRefs = {
   transactionId?: string;
   // Spec step 144: a paycheck's plan.
   paycheckPlanId?: string;
+  // Spec step 145: a bill to pay, by its plan key (bill:<accountId>:<due date>).
+  billKey?: string;
   // Spec step 141: a sector's autopilot change typed in the chat, set on "Set it".
   sectorChange?: {
     sector: string;

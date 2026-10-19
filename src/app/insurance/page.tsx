@@ -21,6 +21,7 @@ import {
 import { isQuotable } from "@/lib/insurance/partner";
 import { loadInsurance } from "@/lib/insurance/profile";
 import { listReadings } from "@/lib/insurance/readings";
+import { cardCover, conditionWords, limitWords } from "@/lib/insurance/card-cover";
 import { formatCents } from "@/lib/money";
 import { requireUser } from "@/lib/session";
 import { autopilotOf } from "@/lib/autopilot";
@@ -168,7 +169,11 @@ async function InsuranceContent({
     autopilotOf(user.id),
   ]);
   // Read after loadInsurance, which reads any policy document not read yet.
-  const readings = await listReadings(user.id, { status: "waiting" });
+  const [readings, cards] = await Promise.all([
+    listReadings(user.id, { status: "waiting" }),
+    cardCover(user.id),
+  ]);
+  const payingTwice = cards.duplicates.filter((d) => d.status === "new" || d.status === "shown");
   const saved = SAVED[one("saved")];
   const add = one("add");
   const typed = (fact: { value: number | string | null; from: string | null }) =>
@@ -208,6 +213,11 @@ async function InsuranceContent({
           <Link href="/insurance/benefits" className={`text-sm ${LINK}`}>
             Benefits through work
           </Link>
+          {advice && (
+            <Link href="/insurance/life" className={`text-sm ${LINK}`}>
+              Life cover
+            </Link>
+          )}
         </div>
       </div>
 
@@ -241,6 +251,49 @@ async function InsuranceContent({
               </li>
             ))}
           </ul>
+        </section>
+      )}
+
+      {cards.cards.length > 0 && (
+        <section id="cards" className="flex flex-col gap-3" aria-labelledby="cards-heading">
+          <h2 id="cards-heading" className="text-xl font-semibold">
+            Cover through your cards
+          </h2>
+          {payingTwice.map((d) => (
+            <p
+              key={d.findingId}
+              className="flex flex-wrap items-center gap-x-4 gap-y-1 rounded-xl bg-amber-50 p-4 text-sm text-amber-950 dark:bg-amber-950 dark:text-amber-50"
+            >
+              <span>
+                You pay {d.merchant}
+                {d.annualSavingsCents ? ` ${formatCents(d.annualSavingsCents)} a year` : ""} for
+                cover your {d.card} already gives you.
+              </span>
+              <Link href={`/report/${d.findingId}`} className={LINK}>
+                Cancel it
+              </Link>
+            </p>
+          ))}
+          {cards.cards.map((card) => (
+            <div
+              key={card.accountId}
+              className="flex flex-col gap-2 rounded-xl border border-zinc-200 p-4 dark:border-zinc-800"
+            >
+              <h3 className="font-semibold">{card.card}</h3>
+              <ul className="flex flex-col gap-1 text-sm">
+                {card.benefits.map((b) => (
+                  <li key={b.kind}>
+                    <span className="font-medium">{b.label}:</span> {limitWords(b)}, when{" "}
+                    {conditionWords(b)}.
+                  </li>
+                ))}
+              </ul>
+              <p className="text-xs text-zinc-600 dark:text-zinc-400">
+                From the card&apos;s benefit guide, checked by our team. The card company&apos;s
+                terms decide what&apos;s covered.
+              </p>
+            </div>
+          ))}
         </section>
       )}
 

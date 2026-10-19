@@ -1,4 +1,5 @@
 import { FORECAST_SUBTYPES } from "@/config/detection";
+import { expectedPaydays, isPaycheck } from "./paydays";
 import { buildStreams, detectRecurring, fromPlaidStream, type Stream } from "./streams";
 import type { DetectionInput, DetectionTransaction } from "./types";
 import { addDays, dayOfMonth, nextOccurrence } from "./units";
@@ -82,6 +83,28 @@ export function incomeStreams(input: DetectionInput): Stream[] {
   return [...plaid, ...detectRecurring({ ...input, transactions: flipped })];
 }
 
+// Money expected in from today through `until`: paychecks on their pay schedules (spec
+// step 182, src/detection/paydays.ts), and other regular deposits such as interest from
+// their streams.
+export function expectedIncome(input: DetectionInput, until: string): Expected[] {
+  const paychecks = expectedPaydays(input, until).map((p) => ({
+    merchant: p.employer,
+    date: p.date,
+    amountCents: p.amountCents,
+    accountId: p.accountId,
+  }));
+  const payroll = (s: Stream) =>
+    s.charges.some((c) => isPaycheck({ ...c, amountCents: -Math.abs(c.amountCents) }));
+  const other = expand(
+    incomeStreams(input).filter((s) => !payroll(s)),
+    input.asOf,
+    until,
+  );
+  return [...paychecks, ...other].sort(
+    (a, b) => a.date.localeCompare(b.date) || a.merchant.localeCompare(b.merchant),
+  );
+}
+
 export function upcomingBills(input: DetectionInput, days: number): Expected[] {
   return expand(buildStreams(input), input.asOf, addDays(input.asOf, days));
 }
@@ -89,7 +112,7 @@ export function upcomingBills(input: DetectionInput, days: number): Expected[] {
 export function forecastAccounts(input: DetectionInput, days: number): AccountForecast[] {
   const until = addDays(input.asOf, days);
   const bills = upcomingBills(input, days);
-  const income = expand(incomeStreams(input), input.asOf, until);
+  const income = expectedIncome(input, until);
 
   return input.accounts
     .filter(

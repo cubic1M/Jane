@@ -22,6 +22,7 @@ import { savedSource } from "./saved";
 import { welcomeSource } from "./welcome";
 import { checkedSource } from "./checked";
 import { paycheckSource } from "./paycheck";
+import { billPaySource } from "./billpay";
 import { investmentsSource } from "./investments";
 
 // Every message source Jane's brain gathers from (spec step 82). A new kind of message is a
@@ -64,6 +65,7 @@ export const MESSAGE_SOURCES: readonly MessageSource[] = [
   checkedSource,
   // Spec step 144.
   paycheckSource,
+  billPaySource,
   // Spec step 128 on.
   investmentsSource,
 ];

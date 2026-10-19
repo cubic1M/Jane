@@ -2,6 +2,8 @@ import { checkupAnswer } from "./insurance/checkup";
 import { autopilotAnswer } from "./insurance/autopilot";
 import { benefitsAnswer } from "./insurance/benefits";
 import { readingsAnswer } from "./insurance/readings";
+import { cardCoverAnswer } from "./insurance/card-cover";
+import { lifeAnswer } from "./insurance/life";
 import { claimAnswer } from "./insurance/claim";
 import { quotesAnswer } from "./insurance/quotes";
 import { insuranceReply } from "./insurance/replies";
@@ -64,6 +66,9 @@ import { rankedFor } from "./priorities";
 import { prioritiesReply } from "./replies-priorities";
 import { paycheckReply } from "./replies-paycheck";
 import { latestPaycheckPlan } from "@/lib/money-movement/paycheck";
+import { loadBillPay } from "@/lib/money-movement/bill-pay";
+import { moneyPartnerFor } from "@/lib/money-movement/partner";
+import { billsReply } from "./replies-billpay";
 import { groupedHelpReply } from "./replies-help";
 import { lifeEventReply } from "./replies-life";
 import { savedReply } from "./replies-saved";
@@ -220,6 +225,10 @@ async function byIntent(
       if (intent.ask === "benefits") return benefitsAnswer(userId, { client, now });
       // Spec step 151: policies read from documents.
       if (intent.ask === "documents") return readingsAnswer(userId, { client, now });
+      // Spec step 152: cover that comes with their cards.
+      if (intent.ask === "cards") return cardCoverAnswer(userId, { client });
+      // Spec step 153: life cover sized and applied for.
+      if (intent.ask === "life") return lifeAnswer(userId, { client, now });
       return insuranceReply(intent, await loadInsuranceSnapshot(userId, { client, now }), asOf);
     case "greeting": {
       if (intent.thanks) return greetingReply(true, null);
@@ -272,6 +281,10 @@ async function byIntent(
     }
     case "paycheck":
       return paycheckReply(await latestPaycheckPlan(userId, { client, now }));
+    case "bills_paid": {
+      const partner = await moneyPartnerFor(userId, { client });
+      return billsReply(partner ? await loadBillPay(userId, { client, now }) : null, asOf);
+    }
     case "priorities": {
       const snapshot = await loadSnapshot(userId, { client, now });
       return prioritiesReply(snapshot ? rankedFor(snapshot) : []);
