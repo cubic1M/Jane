@@ -70,6 +70,14 @@ describe.runIf(url)("bills paid on time", { timeout: 120_000 }, () => {
     });
   }
 
+  // Checking with room for the card's whole balance on every forecast day, so the tests
+  // don't hang on the demo's own margins.
+  const plentyInChecking = (userId: string) =>
+    client.account.updateMany({
+      where: { userId, subtype: "checking" },
+      data: { currentBalanceCents: 1_000_000 },
+    });
+
   const card = async (userId: string) =>
     (await loadBillPay(userId, { client, now: LINKED })).items.find(
       (i) => i.bill.name === "Demo Credit Card",
@@ -115,6 +123,7 @@ describe.runIf(url)("bills paid on time", { timeout: 120_000 }, () => {
   it("pays a card nothing covers by itself, within the caps, without overdrawing", async () => {
     const userId = await demoPerson("bills-auto");
     await noCardAutopay(userId);
+    await plentyInChecking(userId);
     // Over the cap: it waits for a tap.
     await setSectorAutopilot(
       userId,
@@ -128,13 +137,15 @@ describe.runIf(url)("bills paid on time", { timeout: 120_000 }, () => {
     await setSectorAutopilot(
       userId,
       "bills",
-      { actionCapCents: 10_000, monthlyCapCents: 10_000 },
+      { actionCapCents: 300_000, monthlyCapCents: 300_000 },
       { client, now: LINKED },
     );
     expect(await runBillPay(userId, { client, now: LINKED })).toBe(1);
     const [transfer] = await listTransfers(userId, { client, now: LINKED });
     expect(transfer).toMatchObject({
       toName: "Demo Credit Card",
+      // The whole balance, since checking can take it.
+      amountCents: 241_050,
       purpose: "bill",
       status: "pending",
       by: "autopilot",
@@ -167,6 +178,7 @@ describe.runIf(url)("bills paid on time", { timeout: 120_000 }, () => {
   it("asks with one tap when bills ask first, and the tap schedules it once", async () => {
     const userId = await demoPerson("bills-ask");
     await noCardAutopay(userId);
+    await plentyInChecking(userId);
     await setSectorAutopilot(userId, "bills", { level: "ask" }, { client, now: LINKED });
     expect(await runBillPay(userId, { client, now: LINKED })).toBe(0);
 
