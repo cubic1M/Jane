@@ -1,4 +1,4 @@
-import { LOAN_PAID_OFF_CENTS, type LoanProduct } from "@/config/debt";
+import { DEMO_TRANSFER_DAYS, LOAN_PAID_OFF_CENTS, type LoanProduct } from "@/config/debt";
 import type { Prisma, PrismaClient } from "@/generated/prisma/client";
 import { track } from "@/lib/analytics";
 import { logAudit } from "@/lib/audit";
@@ -332,26 +332,46 @@ export async function refreshLoanApplications(
   return { funded, paidOff };
 }
 
-// The demo bank's side (spec step 75): demo loans a funded application has paid off, by
-// the plaid account id and the day, so its next sync shows them at zero.
+// The demo bank's side (spec step 75): demo loans a funded application has paid off, and
+// demo cards whose balance was moved to a 0% card (spec step 113), by the plaid account id
+// and the day, so its next sync shows them at zero.
 export async function demoPayoffs(
   userId: string,
   { client = defaultClient }: Options = {},
 ): Promise<{ plaidAccountId: string; day: string }[]> {
   const db = scopedFor(userId, client);
-  const apps = await db.loanApplications.findMany({
-    where: { status: { in: ["funded", "paid_off"] }, fundedAt: { not: null } },
-    select: { oldAccountId: true, fundedAt: true },
-  });
-  if (apps.length === 0) return [];
+  const [apps, transfers] = await Promise.all([
+    db.loanApplications.findMany({
+      where: { status: { in: ["funded", "paid_off"] }, fundedAt: { not: null } },
+      select: { oldAccountId: true, fundedAt: true },
+    }),
+    db.balanceTransfers.findMany({
+      where: { status: { in: ["active", "done"] } },
+      select: { fromDebtKey: true, startedOn: true },
+    }),
+  ]);
+  const moved = [
+    ...apps.flatMap((a) =>
+      a.oldAccountId ? [{ id: a.oldAccountId, day: isoDay(a.fundedAt!) }] : [],
+    ),
+    ...transfers.flatMap((t) =>
+      t.fromDebtKey.startsWith("account:")
+        ? [
+            {
+              id: t.fromDebtKey.slice("account:".length),
+              day: isoDay(new Date(t.startedOn.getTime() + DEMO_TRANSFER_DAYS * 86_400_000)),
+            },
+          ]
+        : [],
+    ),
+  ];
+  if (moved.length === 0) return [];
   const accounts = await db.accounts.findMany({
-    where: { id: { in: apps.flatMap((a) => a.oldAccountId ?? []) } },
+    where: { id: { in: moved.map((m) => m.id) } },
     select: { id: true, plaidAccountId: true },
   });
-  return apps.flatMap((a) => {
-    const account = accounts.find((x) => x.id === a.oldAccountId);
-    return account?.plaidAccountId
-      ? [{ plaidAccountId: account.plaidAccountId, day: isoDay(a.fundedAt!) }]
-      : [];
+  return moved.flatMap((m) => {
+    const account = accounts.find((x) => x.id === m.id);
+    return account?.plaidAccountId ? [{ plaidAccountId: account.plaidAccountId, day: m.day }] : [];
   });
 }

@@ -63,7 +63,9 @@ function line(debt: Debt): string {
 export function debtsReply(book: DebtBook): Reply {
   const accounts = book.debts.filter((d) => d.inNetWorth);
   const plans = book.debts.filter((d) => d.kind === "bnpl");
-  const newLoans = book.debts.filter((d) => d.key.startsWith("loan:"));
+  const newLoans = book.debts.filter(
+    (d) => d.key.startsWith("loan:") || d.key.startsWith("transfer:"),
+  );
   if (book.debts.length === 0) {
     return {
       body: "I don't see any loans, cards or buy now, pay later plans. When you link a bank that reports them, I'll keep track of every one.",

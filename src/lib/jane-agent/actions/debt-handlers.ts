@@ -2,6 +2,7 @@ import type { DEBT_ACTION_IDS } from "../debt-action-ids";
 import { debtPlanAvalanche, debtPlanSnowball } from "./debt-plan";
 import type { ActionHandler } from "./handler";
 import { loanAccept, loanPrepare, loanSubmit, loanWithdraw } from "./loans";
+import { transferDone, transferStart } from "./transfers";
 
 // Every button handler about loans and debt (spec Phase Y), registered in ./index.ts in one
 // place.
@@ -14,4 +15,6 @@ export const DEBT_ACTION_HANDLERS: Readonly<
   "loan.submit": loanSubmit,
   "loan.accept": loanAccept,
   "loan.withdraw": loanWithdraw,
+  "transfer.start": transferStart,
+  "transfer.done": transferDone,
 };
