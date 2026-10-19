@@ -1,5 +1,6 @@
 import { MESSAGE_PRIORITY } from "@/config/agent-chat";
-import { PROFILE_QUESTIONS } from "@/config/investing";
+import { AUTO_PAUSED_NUDGE_DAYS, PROFILE_QUESTIONS } from "@/config/investing";
+import { portfolioNote } from "@/insights/portfolio-note";
 import { formatCents } from "@/lib/money";
 import { nextQuestion, profileSummary } from "@/planning/investor-profile";
 import { equivalentLine, switchSummary } from "../investments/fees-copy";
@@ -8,6 +9,7 @@ import {
   AUTO_LINK,
   AUTO_PROMISE,
   pauseButton,
+  resumeButton,
   runLine,
   startButtons,
 } from "../investments/auto-copy";
@@ -39,6 +41,10 @@ import { snoozeButton, type MessageSource } from "./source";
 // - Step 135: in demo advice mode, once the profile is complete, says once which account to
 //   fill first and where each holding is best kept (again when that changes). Moving money
 //   between accounts is the person's step.
+// - Step 137: a monthly note on how the investments stand (no predictions), with at most
+//   one decision (the orders when the mix has drifted); a nudge when automatic investing
+//   has been paused for a month; and what she does by herself at each autopilot level
+//   (src/config/investing.ts INVESTMENT_AUTOPILOT).
 // - Step 132: in demo advice mode, once the profile is complete, checks the retirement
 //   projection and the employer match, and says so when the person is behind or missing
 //   match money (again when that changes). Raising a contribution is done at the
@@ -118,7 +124,9 @@ export const investmentsSource: MessageSource = {
           learnLink("rebalancing"),
           snoozeButton(),
         ],
-        dedupeKey: `review:${review.riskLevel}:${review.recommendations.map((r) => r.kind).join(",")}`,
+        // Step 137: drift is watched every day; while the mix stays off target Jane says so
+        // again each month, with the orders ready.
+        dedupeKey: `review:${review.riskLevel}:${review.recommendations.map((r) => r.kind).join(",")}:${snapshot.asOf.slice(0, 7)}`,
         priority: MESSAGE_PRIORITY.investment_review,
       });
     }
@@ -168,7 +176,49 @@ export const investmentsSource: MessageSource = {
         priority: MESSAGE_PRIORITY.account_order,
       });
     }
+    // Step 137: the monthly note, once a month.
+    const orders = inv.rebalance && inv.rebalance.orders.length > 0 ? inv.rebalance : null;
+    const note = portfolioNote({
+      month: inv.month.month,
+      totalCents: inv.totalCents,
+      previousCents: inv.month.previousCents,
+      contributedCents: inv.month.contributedCents,
+      feesYearlyCents: inv.fees.totalYearlyCents,
+      review: inv.advice ? inv.review : null,
+      ordersReady: inv.advice ? (orders?.orders.length ?? 0) : 0,
+    });
+    out.push({
+      kind: note.decision ? "decision" : "heads_up",
+      body: note.body,
+      refs: {
+        ...(inv.advice && inv.review ? { advice: true as const } : {}),
+        ...(note.decision && orders ? { rebalanceKey: orders.key } : {}),
+      },
+      actions: [
+        ...(note.decision ? [rebalanceButton()] : []),
+        { id: "open", label: "See your investments", kind: "link", href: "/investments" },
+        snoozeButton(),
+      ],
+      dedupeKey: `monthly:${inv.month.month}`,
+      priority: MESSAGE_PRIORITY.investment_monthly,
+    });
     const auto = inv.autoInvest;
+    // Step 137: contributions kept going: a plan the person paused a month ago comes up.
+    if (
+      inv.advice &&
+      auto.plan?.status === "paused" &&
+      Date.parse(snapshot.asOf) - auto.plan.updatedAt.getTime() >=
+        AUTO_PAUSED_NUDGE_DAYS * 86_400_000
+    ) {
+      out.push({
+        kind: "decision",
+        body: `Automatic investing has been paused since ${auto.plan.updatedAt.toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: "UTC" })}. Want me to start again from your next paycheck? ${AUTO_PROMISE}`,
+        refs: {},
+        actions: [resumeButton(), AUTO_LINK, snoozeButton()],
+        dedupeKey: `auto:paused:${auto.plan.updatedAt.toISOString().slice(0, 10)}`,
+        priority: MESSAGE_PRIORITY.auto_invest_offer,
+      });
+    }
     if (inv.advice && inv.profile.answeredAt && !auto.plan && auto.suggestion) {
       const account = auto.accounts.find((a) => a.id === auto.suggestion!.accountId);
       out.push({

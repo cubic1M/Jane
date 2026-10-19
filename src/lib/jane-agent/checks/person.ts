@@ -1,6 +1,7 @@
 import type { PlaidApi } from "plaid";
 import type { PrismaClient } from "@/generated/prisma/client";
 import { linkDemoBank } from "@/lib/plaid/demo";
+import { saveProfileForm } from "@/lib/investments/profile";
 import { syncItem } from "@/lib/plaid/sync";
 
 // The person Jane's answer checks talk to (spec step 87): a new account with the demo bank
@@ -29,6 +30,12 @@ export async function createCheckPerson({
   });
   const { itemId } = await linkDemoBank(user.id, { client, now });
   await syncItem(itemId, { client, api: NO_PLAID, now });
+  // Spec step 137: a finished investor profile, so investment questions get full answers.
+  await saveProfileForm(
+    user.id,
+    { age: "45", horizon: "over_20", dropReaction: "worry", goals: ["retirement"] },
+    { client, now },
+  );
   return user.id;
 }
 

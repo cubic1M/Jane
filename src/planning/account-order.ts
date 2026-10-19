@@ -31,6 +31,8 @@ import type { HoldingView, InvestmentAccountView } from "@/insights/investments"
 export type AccountStep = {
   key: "match" | "hsa" | "ira" | "workplace" | "taxable" | "flexible";
   title: string;
+  // A few words, for a sentence ("the 401(k) match").
+  short: string;
   // Yearly room, when there's a limit.
   roomCents: number | null;
   why: string;
@@ -78,6 +80,7 @@ export function accountOrder(input: OrderInput): AccountStep[] {
   if (input.match) {
     steps.push({
       key: "match",
+      short: "the 401(k) match",
       title: `Your 401(k), up to the full match (${pct(input.match.fullMatchRate)} of pay)`,
       roomCents: null,
       why: input.match.captured
@@ -88,6 +91,7 @@ export function accountOrder(input: OrderInput): AccountStep[] {
   if (soon) {
     steps.push({
       key: "flexible",
+      short: input.goals.includes("education") ? "a 529 or a taxable account" : "a taxable account",
       title: input.goals.includes("education")
         ? "A 529 college savings plan, or a taxable account"
         : "A taxable account (or savings), for money you'll need soon",
@@ -99,6 +103,7 @@ export function accountOrder(input: OrderInput): AccountStep[] {
     CONTRIBUTION_LIMITS.hsaSelf + (input.age >= 55 ? CONTRIBUTION_LIMITS.hsaCatchUp55 : 0);
   steps.push({
     key: "hsa",
+    short: "an HSA",
     title: input.hasHsa ? "Your HSA" : "An HSA, if your health plan has a high deductible",
     roomCents: hsaRoom,
     why: "Money goes in before tax, grows tax-free and comes out tax-free for health costs: the only account that's tax-free all three ways.",
@@ -107,6 +112,7 @@ export function accountOrder(input: OrderInput): AccountStep[] {
   const iraRoom = IRA_LIMIT_CENTS + (input.age >= 50 ? IRA_CATCH_UP_CENTS : 0);
   steps.push({
     key: "ira",
+    short: kind ? IRA_KIND[kind] : "an IRA",
     title: `${kind ? IRA_KIND[kind].charAt(0).toUpperCase() + IRA_KIND[kind].slice(1) : "An IRA"}`,
     roomCents: iraRoom,
     why:
@@ -120,6 +126,7 @@ export function accountOrder(input: OrderInput): AccountStep[] {
   });
   steps.push({
     key: "workplace",
+    short: "the rest of your 401(k)",
     title: "Back to your 401(k), up to the limit",
     roomCents: Math.max(
       0,
@@ -130,6 +137,7 @@ export function accountOrder(input: OrderInput): AccountStep[] {
   if (!soon) {
     steps.push({
       key: "taxable",
+      short: "a taxable account",
       title: "A taxable account for the rest",
       roomCents: null,
       why: "No limits and you can take money out any time; hold broad stock index funds here, which pay out little to tax.",

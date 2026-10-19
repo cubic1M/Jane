@@ -37,6 +37,11 @@ const netflix = (f: Facts) => [charge(f, "Netflix")?.lastCents ?? null];
 const food = (month: (f: Facts) => string) => (f: Facts) => [
   spentOn(f, "Food and drink", month(f)),
 ];
+// Spec step 137: the investment figures a right answer gives.
+const invested = (f: Facts) => [f.investments?.totalCents ?? null];
+const inAccount = (name: string) => (f: Facts) => [
+  f.investments?.accounts.find((a) => a.name.includes(name))?.balanceCents ?? null,
+];
 const ADVICE = /\b(?:stocks?|invest\w*|tax(?:es)?|lawyer|legal)\b/i;
 
 export const QUESTIONS: readonly CheckQuestion[] = [
@@ -571,6 +576,98 @@ export const QUESTIONS: readonly CheckQuestion[] = [
     expect: { mentions: /fee/i },
   },
 
+  // Taxes (spec steps 118–127): answered by rules, in demo advice mode on the demo bank.
+  {
+    id: "tax-1",
+    text: "what's my tax profile",
+    needs: "rules",
+    expect: { intent: "tax", list: true, link: "/taxes/profile" },
+  },
+  {
+    id: "tax-2",
+    text: "how much will I owe in taxes",
+    needs: "rules",
+    expect: { intent: "tax", mentions: /\bestimate\b/i, link: "/taxes" },
+  },
+  {
+    id: "tax-3",
+    text: "will I get a tax refund",
+    needs: "rules",
+    expect: { intent: "tax", mentions: /\brefund of about \$[\d,]+/i },
+  },
+  {
+    id: "tax-4",
+    text: "what's my tax bracket",
+    needs: "rules",
+    expect: { intent: "tax", mentions: /\b\d+%/ },
+  },
+  {
+    id: "tax-5",
+    text: "am I withholding too much",
+    needs: "rules",
+    expect: { intent: "tax", button: "tax.w4_start", mentions: /W-4/ },
+  },
+  {
+    id: "tax-6",
+    text: "how can I pay less tax",
+    needs: "rules",
+    expect: { intent: "tax", button: "tax.save_task", mentions: /401\(k\)/ },
+  },
+  {
+    id: "tax-7",
+    text: "how much have I donated this year",
+    needs: "rules",
+    expect: { intent: "tax", mentions: /American Red Cross/ },
+  },
+  {
+    id: "tax-8",
+    text: "what tax forms should I expect",
+    needs: "rules",
+    expect: { intent: "tax", list: true, mentions: /W-2/ },
+  },
+  {
+    id: "tax-9",
+    text: "my tax pack",
+    needs: "rules",
+    expect: { intent: "tax", link: "/tax-pack" },
+  },
+  {
+    id: "tax-10",
+    text: "where's my refund",
+    needs: "rules",
+    expect: { intent: "tax", mentions: /\brefund\b/i },
+  },
+  {
+    id: "tax-11",
+    text: "when are my quarterly taxes due",
+    needs: "rules",
+    expect: { intent: "tax", mentions: /freelance/i },
+  },
+  {
+    id: "tax-12",
+    text: "how do I file my taxes",
+    needs: "rules",
+    expect: { intent: "tax", mentions: /April 15/ },
+  },
+  {
+    id: "tax-13",
+    text: "I'm married filing jointly",
+    needs: "rules",
+    expect: { intent: "tax", button: "tax.filing_joint" },
+  },
+  {
+    id: "tax-14",
+    text: "tag Starbucks as work",
+    needs: "rules",
+    expect: { intent: "tax", button: "tax.tag_set" },
+  },
+  {
+    id: "tax-15",
+    text: "should I itemize",
+    needs: "rules",
+    expect: { intent: "tax", mentions: /\$16,100/ },
+  },
+
   // Insurance (spec step 108), over the demo bank's sample GEICO car policy
   // (DEMO_POLICY in src/lib/insurance/profile.ts: $142.00 a month, a $1,000.00 deductible).
   {
@@ -684,6 +781,107 @@ export const QUESTIONS: readonly CheckQuestion[] = [
     expect: { mentions: /deductible/i },
   },
 
+  // Investments (spec steps 128–137), on the demo bank in demo advice mode.
+  {
+    id: "inv-1",
+    text: "what do I own",
+    needs: "rules",
+    expect: { intent: "investments", figures: invested, link: "/investments", list: true },
+  },
+  {
+    id: "inv-2",
+    text: "what's in my 401k",
+    needs: "rules",
+    expect: {
+      intent: "investments",
+      figures: inAccount("401(k)"),
+      list: true,
+      mentions: /401\(k\)/,
+    },
+  },
+  {
+    id: "inv-3",
+    text: "what are my investment fees",
+    needs: "rules",
+    expect: { intent: "investments", link: "/investments/fees", list: true, maxChars: 1_600 },
+  },
+  {
+    id: "inv-4",
+    text: "review my portfolio",
+    needs: "rules",
+    expect: { intent: "investments", link: "/investments/review", list: true, maxChars: 1_600 },
+  },
+  {
+    id: "inv-5",
+    text: "am I on track for retirement",
+    needs: "rules",
+    expect: {
+      intent: "investments",
+      link: "/investments/retirement",
+      list: true,
+      maxChars: 1_800,
+      mentions: /match/i,
+      avoid: /\b(?:guarantee|will have)\b/i,
+    },
+  },
+  {
+    id: "inv-6",
+    text: "rebalance",
+    needs: "rules",
+    expect: {
+      intent: "investments",
+      button: "invest.rebalance",
+      mentions: /simulated/i,
+      maxChars: 1_200,
+    },
+  },
+  {
+    id: "inv-7",
+    text: "which account should I invest in first",
+    needs: "rules",
+    expect: { intent: "investments", link: "/investments/accounts", list: true, maxChars: 2_400 },
+  },
+  {
+    id: "inv-8",
+    text: "invest automatically",
+    needs: "rules",
+    expect: { intent: "investments", button: "invest.auto_start", mentions: /safe to spend/i },
+  },
+  {
+    id: "inv-9",
+    text: "what's my risk profile",
+    needs: "rules",
+    expect: { intent: "investments", mentions: /moderate/i, link: "/investments/profile" },
+  },
+  {
+    id: "inv-10",
+    text: "what is an index fund",
+    needs: "rules",
+    expect: { intent: "learn", link: "/learn/index-funds" },
+  },
+  {
+    id: "inv-11",
+    text: "how are my investments doing",
+    needs: "rules",
+    expect: {
+      intent: "investments",
+      figures: invested,
+      avoid: /\b(?:will (?:rise|fall|go)|expect|forecast|predict)\w*/i,
+    },
+  },
+  {
+    id: "inv-12",
+    text: "what do you do with my investments",
+    needs: "rules",
+    expect: { intent: "investments", mentions: /by myself/i, link: "/settings" },
+  },
+  {
+    id: "inv-13",
+    text: "should I buy more of my company's stock",
+    needs: "claude",
+    expect: { avoid: /\byou should (?:buy|sell)\b/i },
+  },
+
   // Outside what Jane does: brief, and never advice.
   { id: "out-1", text: "what's the weather today", needs: "claude", expect: { avoid: ADVICE } },
   {
@@ -692,6 +890,5 @@ export const QUESTIONS: readonly CheckQuestion[] = [
     needs: "claude",
     expect: { avoid: /\bbuy\b.*\bstock|\byou should (?:buy|sell)\b/i },
   },
-  { id: "out-3", text: "how do I file my taxes", needs: "claude", expect: {} },
   { id: "out-4", text: "tell me a joke", needs: "claude", expect: { avoid: ADVICE } },
 ];

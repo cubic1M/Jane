@@ -6,7 +6,12 @@ import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
 import { loadDebts } from "@/lib/debts";
 import { demoLender } from "@/lib/lenders/demo";
-import type { LenderPartner, LoanOffer, PrequalifyRequest } from "@/lib/lenders/partner";
+import type {
+  LenderPartner,
+  LoanOffer,
+  PrequalifyRequest,
+  TransferOffer,
+} from "@/lib/lenders/partner";
 import { compareRefinance, refinanceable, type RefinanceComparison } from "@/planning/refinance";
 
 // Refinance offers (spec step 111). Once a month Jane asks the lender partner, by
@@ -19,6 +24,8 @@ type Options = { client?: PrismaClient; now?: Date };
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 const isoDay = (date: Date) => date.toISOString().slice(0, 10);
+
+export type TransferQuote = { debtKey: string; amountCents: number; offers: TransferOffer[] };
 
 export type Quote = {
   debtKey: string;
@@ -63,10 +70,26 @@ export async function checkRates(
     };
     quotes.push({ debtKey: debt.key, ...request, offers: await found.partner.prequalify(request) });
   }
+  // Spec step 113: 0% balance transfer cards for each card with a balance.
+  const transfers: TransferQuote[] = [];
+  for (const debt of book.debts) {
+    if (debt.kind !== "card" || !debt.balanceCents || debt.balanceCents <= 0) continue;
+    const request = {
+      amountCents: debt.balanceCents,
+      creditBand: STAND_IN_CREDIT_BAND,
+      month: asOf.slice(0, 7),
+    };
+    transfers.push({
+      debtKey: debt.key,
+      amountCents: debt.balanceCents,
+      offers: await found.partner.balanceTransfers(request),
+    });
+  }
   const data = {
     checkedOn: new Date(`${asOf}T00:00:00Z`),
     partner: found.key,
     quotes: quotes as unknown as Prisma.InputJsonArray,
+    transfers: transfers as unknown as Prisma.InputJsonArray,
   };
   await scopedFor(userId, client).refinanceChecks.upsert({
     where: { userId },
