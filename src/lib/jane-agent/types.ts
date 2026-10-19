@@ -21,6 +21,9 @@ export const ACTION_IDS = [
   ...DEBT_ACTION_IDS,
   "finding.no",
   "finding.pick",
+  // Insurance (spec Phase X).
+  "insurance.gap_no",
+  "insurance.quotes",
   "plan.approve_safe",
   "undo.rule",
   "undo.no",
@@ -53,6 +56,11 @@ export const ACTION_IDS = [
   "tax.income_add",
   "tax.income_no",
   "tax.state_set",
+  // Spec step 119: tax tags and forms.
+  "tax.tag_yes",
+  "tax.tag_no",
+  "tax.tag_set",
+  "tax.form_got",
   // Investments (spec step 129 on): the answer buttons on an investor-profile question,
   // by position (src/config/investing.ts PROFILE_QUESTIONS).
   "invest.answer.1",
@@ -86,6 +94,10 @@ export type MessageRefs = {
   findingId?: string;
   // Spec step 110: the extra a month the payoff plan's buttons start it with, in cents.
   debtPlanExtraCents?: number;
+  // Insurance (spec Phase X): a coverage gap by its key (GAP_KEYS), and the policy a
+  // message is about.
+  insuranceGap?: string;
+  policyId?: string;
   // The finding as Jane described it (src/lib/jane-agent/fingerprint.ts): a button only
   // acts while the finding is still what the message said.
   fingerprint?: string;
@@ -118,6 +130,12 @@ export type MessageRefs = {
   incomeKind?: string;
   // The state "Yes, set it" would put on the tax profile (two letters).
   taxState?: string;
+  // Spec step 119: a merchant's tax tag to keep or set (a TAX_TAGS key, or "none"), and a tax
+  // form to tick off.
+  merchantKey?: string;
+  taxTag?: string;
+  taxForm?: string;
+  taxYear?: number;
   // Spec step 98: demo advice (src/lib/advice-mode.ts). The chat shows DEMO_ADVICE_LABEL
   // under it. Set it on every message that recommends investments, taxes, insurance or loans.
   advice?: true;

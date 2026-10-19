@@ -3,6 +3,7 @@ import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
 import { investmentsExport } from "@/lib/investments/holdings";
 import { teamAccessFor } from "@/lib/team-access-loader";
+import { insuranceExport } from "@/lib/insurance/export";
 
 // "Download my data": everything the app holds about one person, as JSON. Never another
 // person's rows, never secrets (Plaid access tokens and sync cursors, the two-factor
@@ -54,6 +55,8 @@ export async function exportUserData(
     janeMessages,
     teamAccess,
     taxProfile,
+    taxTags,
+    taxForms,
   ] = await Promise.all([
     client.user.findUniqueOrThrow({
       where: { id: userId },
@@ -409,6 +412,11 @@ export async function exportUserData(
         updatedAt: true,
       },
     }),
+    // Tax tags they chose and tax forms they said arrived (spec step 119).
+    db.taxTags.findMany({
+      select: { transactionId: true, merchantKey: true, tag: true, updatedAt: true },
+    }),
+    db.taxForms.findMany({ select: { year: true, key: true, receivedAt: true } }),
   ]);
   // Terms they typed for debts their bank doesn't report (spec step 109).
   const debtTerms = await db.debtTerms.findMany({
@@ -424,11 +432,14 @@ export async function exportUserData(
   });
   // What's in their investment accounts and its history (spec step 128).
   const investments = await investmentsExport(userId, client);
+  // Insurance (spec Phase X): every policy on the profile and the household facts.
+  const insurance = await insuranceExport(userId, { client });
 
   return {
     exportedAt: now.toISOString(),
     formatVersion: EXPORT_FORMAT_VERSION,
     profile,
+    insurance,
     banks,
     accounts,
     transactions,
@@ -477,5 +488,7 @@ export async function exportUserData(
       actionId,
     })),
     taxProfile,
+    taxTags,
+    taxForms,
   };
 }

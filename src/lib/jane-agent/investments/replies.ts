@@ -1,12 +1,19 @@
 import { GOALS, PROFILE_QUESTIONS } from "@/config/investing";
 import { formatBps, type InvestmentAccountView, type HoldingView } from "@/insights/investments";
 import type { FeeSummary } from "@/insights/investment-fees";
+import { classWords, type PortfolioReview } from "@/insights/portfolio-review";
 import type { Investments } from "@/lib/investments/holdings";
 import { formatCents } from "@/lib/money";
-import { profileSummary, type ProfileAnswers } from "@/planning/investor-profile";
+import {
+  profileSummary,
+  type ProfileAnswers,
+  type ProfileSummary,
+} from "@/planning/investor-profile";
 import type { Reply } from "../replies";
 import type { MessageAction } from "../types";
+import { ROTH_WORDS, type RetirementPlan } from "@/planning/retirement";
 import { equivalentLine, feeRange, switchSummary } from "./fees-copy";
+import { matchLine, projectionLine } from "./retirement-copy";
 import { asking, PROFILE_INTRO } from "./profile-question";
 
 // Jane's rule answers about investments (spec step 128 on). Pure: the numbers in, fixed
@@ -152,4 +159,102 @@ export function feesReply(fees: FeeSummary, advice: boolean): Reply {
   if (!advice || fees.equivalents.length === 0) return { body, actions: [link], refs: {} };
   body += `\n\nLower-cost equivalents:\n${fees.equivalents.map((e) => `- ${equivalentLine(e)}`).join("\n")}\n${switchSummary(fees.equivalents, fees.years)}`;
   return { body, actions: [link], refs: { advice: true } };
+}
+
+// Spec step 131: the portfolio review. Facts for everyone; what to change only in demo
+// advice mode, and only once the profile is complete.
+export function reviewReply(
+  investments: Investments,
+  profile: ProfileSummary,
+  review: PortfolioReview | null,
+  advice: boolean,
+): Reply {
+  const link: MessageAction = {
+    id: "open",
+    label: "See the review",
+    kind: "link",
+    href: "/investments/review",
+  };
+  if (investments.holdingCount === 0) return holdingsReply(investments, null);
+  const mix = investments.byAssetClass
+    .map((c) => `${formatCents(c.valueCents)} in ${classWords(c.label)}`)
+    .join(", ");
+  if (!advice) {
+    return {
+      body: `Here's your mix: ${mix}. I don't give investment recommendations on real accounts yet.`,
+      actions: [link],
+      refs: {},
+    };
+  }
+  if (!profile.complete || !review) {
+    const ask = asking(profile.complete ? PROFILE_QUESTIONS[0] : profile.next);
+    return {
+      body: `To check whether your investments fit you, I need four quick answers first. Here's your mix for now: ${mix}.`,
+      actions: ask.actions,
+      refs: ask.refs,
+    };
+  }
+  const now = review.mix
+    .map(
+      (m) =>
+        `${classWords(m.label)} ${Math.round(m.share * 100)}% (target ${Math.round(m.targetShare * 100)}%)`,
+    )
+    .join(", ");
+  const changes =
+    review.recommendations.length === 0
+      ? "Your mix is on target: nothing to change."
+      : `What I'd change:\n${review.recommendations.map((r, i) => `${i + 1}. ${r.what} ${r.why}`).join("\n")}`;
+  return {
+    body: `Against your ${review.riskLabel.toLowerCase()} profile: ${now}.\n${changes}`,
+    actions: [link],
+    refs: { advice: true },
+  };
+}
+
+// Spec step 132: on track for retirement? Demo advice only, once the profile is in.
+export function retirementReply(
+  data: {
+    profile: ProfileSummary;
+    balanceCents: number;
+    accounts: string[];
+    retirement: RetirementPlan | null;
+  },
+  advice: boolean,
+): Reply {
+  const link: MessageAction = {
+    id: "open",
+    label: "See your retirement plan",
+    kind: "link",
+    href: "/investments/retirement",
+  };
+  if (data.accounts.length === 0) {
+    return {
+      body: "I don't see a retirement account yet. Link your 401(k) or IRA and I'll show where you're headed.",
+      actions: [CONNECT],
+      refs: {},
+    };
+  }
+  if (!advice) {
+    return {
+      body: `You have ${formatCents(data.balanceCents)} in ${data.accounts.join(" and ")}. My retirement planner is only in demo advice mode for now.`,
+      actions: [SEE],
+      refs: {},
+    };
+  }
+  if (!data.profile.complete || !data.retirement) {
+    const ask = asking(data.profile.complete ? PROFILE_QUESTIONS[0] : data.profile.next);
+    return {
+      body: `You have ${formatCents(data.balanceCents)} in ${data.accounts.join(" and ")}. To plan from here I need your age and three more quick answers.`,
+      actions: ask.actions,
+      refs: ask.refs,
+    };
+  }
+  const plan = data.retirement;
+  const lines = [projectionLine(plan), matchLine(plan)].filter(Boolean).join(" ");
+  const changes =
+    plan.changes.length === 0
+      ? "Nothing to change: keep going as you are."
+      : `What I'd change:\n${plan.changes.map((c, i) => `${i + 1}. ${c.what} ${c.why}`).join("\n")}`;
+  const roth = plan.rothOrTraditional ? `\n${ROTH_WORDS[plan.rothOrTraditional]}` : "";
+  return { body: `${lines}\n${changes}${roth}`, actions: [link], refs: { advice: true } };
 }

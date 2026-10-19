@@ -1,5 +1,5 @@
 import { US_STATES } from "@/config/referrals";
-import type { FilingStatus } from "@/config/tax";
+import type { FilingStatus, TaxTagKind } from "@/config/tax";
 
 // What the person typed about taxes (spec steps 118–127), understood by rules. Pure: the
 // normalized text in (./intents.ts normalize), a tax intent out, or null when it isn't
@@ -10,7 +10,13 @@ export type TaxIntent =
   // status null: "I'm married", which could be either way.
   | { kind: "tax"; ask: "set_filing"; status: FilingStatus | null }
   | { kind: "tax"; ask: "set_kids"; count: number }
-  | { kind: "tax"; ask: "set_state"; state: string };
+  | { kind: "tax"; ask: "set_state"; state: string }
+  // Spec step 119: the tags, one tag's total, tagging a merchant, the forms, the pack.
+  | { kind: "tax"; ask: "tags" }
+  | { kind: "tax"; ask: "tag_total"; tag: TaxTagKind }
+  | { kind: "tax"; ask: "tag"; target: string; tag: TaxTagKind | null }
+  | { kind: "tax"; ask: "forms" }
+  | { kind: "tax"; ask: "pack" };
 
 const NUMBER_WORDS: Readonly<Record<string, number>> = {
   no: 0,
@@ -44,6 +50,31 @@ const KIDS =
 
 const STATE = /\b(?:i|we) (?:live|moved|file|reside|am|'m) (?:in|to) ([a-z][a-z .]{1,30})$/;
 
+const TAGS =
+  /\btax tags?\b|\btagged for (?:my )?tax(?:es)?\b|\bwhat(?:'s| is| have you| did you) tag(?:ged)?\b/;
+const DONATIONS =
+  /\bhow much (?:have i|did i|i've) (?:given|give|donated?)\b|\b(?:my )?(?:donations|charity|charitable giving|giving) (?:this year|so far|total)\b|\bdonated (?:this year|so far)\b/;
+const TAG_TOTAL =
+  /\b(medical|childcare|education|work) (?:expenses? |costs? |spending |bills )?(?:for (?:my )?tax(?:es)?|tagged|this year for tax(?:es)?)\b/;
+const TAG_WORDS: Readonly<Record<string, TaxTagKind>> = {
+  donation: "donation",
+  donations: "donation",
+  charity: "donation",
+  medical: "medical",
+  childcare: "childcare",
+  education: "education",
+  work: "work",
+  "work expense": "work",
+  "work expenses": "work",
+};
+const TAG =
+  /^tag (?:my |the |all )?(?:charges? (?:from|at) )?(.+?) (?:charges? |payments? |purchases? )?as (?:a |an )?(donations?|charity|medical|childcare|education|work(?: expenses?)?)$/;
+const UNTAG =
+  /^(?:untag|don't tag|do not tag|stop tagging) (?:my |the |all )?(.+?)(?: for tax(?:es)?)?$/;
+const FORMS =
+  /\b(?:tax )?(?:forms?|documents?|paperwork) (?:do i need|to expect|am i waiting (?:on|for)|should i (?:get|expect)|for (?:my )?tax(?:es)?)\b|\b(?:my |a |the )?(?:w-?2s?|1099s?|1098s?)\b/;
+const PACK = /\btax(?:-| )?time pack\b|\btax pack\b|\byear-end pack\b/;
+
 function stateCode(words: string): string | null {
   const w = words.trim().replace(/\.$/, "");
   const match = US_STATES.find((s) => s.name.toLowerCase() === w || s.code.toLowerCase() === w);
@@ -65,6 +96,17 @@ export function parseTaxIntent(text: string): TaxIntent | null {
     const code = stateCode(state[1]);
     if (code) return { kind: "tax", ask: "set_state", state: code };
   }
+  const tag = TAG.exec(text);
+  if (tag)
+    return { kind: "tax", ask: "tag", target: tag[1].trim(), tag: TAG_WORDS[tag[2]] ?? "work" };
+  const untag = UNTAG.exec(text);
+  if (untag) return { kind: "tax", ask: "tag", target: untag[1].trim(), tag: null };
+  if (PACK.test(text)) return { kind: "tax", ask: "pack" };
+  if (FORMS.test(text)) return { kind: "tax", ask: "forms" };
+  if (TAGS.test(text)) return { kind: "tax", ask: "tags" };
+  if (DONATIONS.test(text)) return { kind: "tax", ask: "tag_total", tag: "donation" };
+  const total = TAG_TOTAL.exec(text);
+  if (total) return { kind: "tax", ask: "tag_total", tag: TAG_WORDS[total[1]] };
   if (PROFILE.test(text)) return { kind: "tax", ask: "profile" };
   return null;
 }

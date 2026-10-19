@@ -12,10 +12,14 @@ const YEAR_MS = 365 * 86_400_000;
 
 export async function loadFees(
   userId: string,
-  { client = defaultClient, now = new Date() }: { client?: PrismaClient; now?: Date } = {},
+  {
+    client = defaultClient,
+    now = new Date(),
+    investments: loaded,
+  }: { client?: PrismaClient; now?: Date; investments?: Investments } = {},
 ): Promise<{ investments: Investments; fees: FeeSummary }> {
   const [investments, rows] = await Promise.all([
-    loadInvestments(userId, { client, now }),
+    loaded ?? loadInvestments(userId, { client, now }),
     scopedFor(userId, client).investmentTransactions.findMany({
       where: {
         date: { gt: new Date(now.getTime() - YEAR_MS), lte: now },

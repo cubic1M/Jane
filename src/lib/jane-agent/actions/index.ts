@@ -7,6 +7,7 @@ import { closeSettled } from "../messages";
 import { MESSAGE_SELECT, toChatMessage, type ActionId, type ChatMessage } from "../types";
 import { DEBT_ACTION_HANDLERS } from "./debt-handlers";
 import { findingNo, findingPick, findingYes } from "./finding";
+import { insuranceGapNo, insuranceQuotes } from "./insurance";
 import { ChatActionError, linksOf, type ActionHandler } from "./handler";
 import { planApproveSafe } from "./plan";
 import { undoNo, undoRule } from "./undo";
@@ -16,6 +17,7 @@ import { setupAll, setupNo, setupYes } from "./setup";
 import { cancelDone, offerAccept, offerDecline } from "./steps";
 import { goalStart } from "./goal";
 import { TAX_PROFILE_HANDLERS, taxFoundYes, taxIncomeAdd, taxIncomeNo, taxStateSet } from "./taxes";
+import { taxFormGot, taxTagNo, taxTagSet, taxTagYes } from "./tax-organizer";
 import {
   investAnswer1,
   investAnswer2,
@@ -35,6 +37,9 @@ export const ACTION_HANDLERS: Readonly<Record<ActionId, ActionHandler>> = {
   ...DEBT_ACTION_HANDLERS,
   "finding.no": findingNo,
   "finding.pick": findingPick,
+  // Insurance (spec Phase X).
+  "insurance.gap_no": insuranceGapNo,
+  "insurance.quotes": insuranceQuotes,
   "plan.approve_safe": planApproveSafe,
   "undo.rule": undoRule,
   "undo.no": undoNo,
@@ -60,6 +65,11 @@ export const ACTION_HANDLERS: Readonly<Record<ActionId, ActionHandler>> = {
   "tax.income_add": taxIncomeAdd,
   "tax.income_no": taxIncomeNo,
   "tax.state_set": taxStateSet,
+  // Spec step 119.
+  "tax.tag_yes": taxTagYes,
+  "tax.tag_no": taxTagNo,
+  "tax.tag_set": taxTagSet,
+  "tax.form_got": taxFormGot,
   // Investments (spec step 129 on).
   "invest.answer.1": investAnswer1,
   "invest.answer.2": investAnswer2,

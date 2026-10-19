@@ -138,6 +138,18 @@ async function InvestmentsContent() {
             </Link>
             : every fee, a year and over 30 years.
           </p>
+          <p className="text-sm text-zinc-600 dark:text-zinc-400">
+            <Link href="/investments/review" className={LINK}>
+              Portfolio review
+            </Link>
+            : your mix against the target for your risk level.
+          </p>
+          <p className="text-sm text-zinc-600 dark:text-zinc-400">
+            <Link href="/investments/retirement" className={LINK}>
+              Retirement
+            </Link>
+            : what you could have by 67, and your employer match.
+          </p>
 
           {data.byAssetClass.length > 0 && (
             <section className="flex flex-col gap-2">

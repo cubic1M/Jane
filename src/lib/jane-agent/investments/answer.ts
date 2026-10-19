@@ -5,7 +5,9 @@ import type { InvestmentIntent } from "./intents";
 import { profileOf } from "@/lib/investments/profile";
 import { adviceMode } from "@/lib/advice-mode";
 import { loadFees } from "@/lib/investments/fees";
-import { feesReply, holdingsReply, profileReply } from "./replies";
+import { loadRetirement } from "@/lib/investments/retirement";
+import { loadReview } from "@/lib/investments/review";
+import { feesReply, holdingsReply, profileReply, retirementReply, reviewReply } from "./replies";
 
 // Rule answers to investment questions (spec step 128 on), loaded with the same code as
 // the investments page and scoped to the person.
@@ -27,6 +29,20 @@ export async function answerInvestments(
         adviceMode(userId, { client }),
       ]);
       return feesReply(fees, advice);
+    }
+    case "retirement": {
+      const [data, advice] = await Promise.all([
+        loadRetirement(userId, { client, now }),
+        adviceMode(userId, { client }),
+      ]);
+      return retirementReply(data, advice);
+    }
+    case "review": {
+      const [{ investments, profile, review }, advice] = await Promise.all([
+        loadReview(userId, { client, now }),
+        adviceMode(userId, { client }),
+      ]);
+      return reviewReply(investments, profile, review, advice);
     }
   }
 }

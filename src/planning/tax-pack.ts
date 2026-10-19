@@ -1,19 +1,20 @@
 import {
-  CHARITY_CATEGORIES,
   ESTIMATED_TAX_DATES,
   INTEREST_LOAN_KINDS,
-  PREPARER_GROUPS,
   SELF_EMPLOYED_INCOME_CATEGORIES,
   TAX_PACK_LAST_YEAR_UNTIL,
   TAX_PACK_YEARS_BACK,
   type PreparerGroup,
 } from "@/config/tax-pack";
+import type { ExpectedForm } from "@/planning/tax-documents";
 import { TAX_PACK_COPY } from "@/planning/tax-pack-copy";
+import { NO_OVERRIDES, tagAll, type TagOverrides, type TagSource } from "@/planning/tax-tags";
 
 // The tax-time pack (spec step 72): a year's charity gifts, spending people often show their
 // tax preparer and contracting or gig income, grouped and totalled. Organizing only: it
 // never decides what counts. Pure; dates are YYYY-MM-DD and amounts follow Plaid (positive is
-// money out).
+// money out). Spec step 119: the groups are the tax tags (src/planning/tax-tags.ts), so the
+// pack always matches them, with a summary and the forms to expect.
 
 export type PackTransaction = {
   id: string;
@@ -30,7 +31,14 @@ export type PackLoan = {
   ytdInterestPaidCents: number | null;
 };
 
-export type PackRow = { id: string; date: string; payee: string; amountCents: number };
+export type PackRow = {
+  id: string;
+  date: string;
+  payee: string;
+  amountCents: number;
+  // Spec step 119: who tagged it (tagged groups only).
+  source?: TagSource;
+};
 export type PackGroup = { rows: PackRow[]; totalCents: number };
 
 export type TaxPack = {
@@ -41,7 +49,11 @@ export type TaxPack = {
   interest: { name: string; kind: string; cents: number }[] | null;
   income: PackGroup & { quarterCents: [number, number, number, number] };
   reminders: string[];
+  // Spec step 119: the forms to expect for the year, and whether each arrived.
+  forms: (ExpectedForm & { received: boolean })[];
 };
+
+const PREPARER_ORDER: readonly PreparerGroup[] = ["medical", "childcare", "education", "work"];
 
 const yearOf = (day: string) => Number(day.slice(0, 4));
 
@@ -94,20 +106,39 @@ function group(transactions: PackTransaction[], test: (t: PackTransaction) => bo
 const isIn = (list: readonly string[]) => (t: PackTransaction) =>
   t.pfcDetailed !== null && list.includes(t.pfcDetailed);
 
+const tagGroup = (rows: PackRow[]): PackGroup => ({
+  rows,
+  totalCents: rows.reduce((sum, r) => sum + r.amountCents, 0),
+});
+
 export function buildTaxPack({
   year,
   today,
   transactions,
   loans,
+  overrides = NO_OVERRIDES,
+  forms = [],
 }: {
   year: number;
   today: string;
   transactions: PackTransaction[];
   loans: PackLoan[];
+  overrides?: TagOverrides;
+  forms?: TaxPack["forms"];
 }): TaxPack {
   const inYear = transactions.filter((t) => yearOf(t.date) === year);
-  const out = inYear.filter((t) => t.amountCents > 0);
   const incoming = inYear.filter((t) => t.amountCents < 0);
+  const tagged = tagAll(inYear, overrides);
+  const rowsFor = (tag: string): PackRow[] =>
+    tagged
+      .filter((t) => t.tag === tag)
+      .map((t) => ({
+        id: t.id,
+        date: t.date,
+        payee: t.payee,
+        amountCents: t.amountCents,
+        source: t.source,
+      }));
 
   const income = group(incoming, isIn(SELF_EMPLOYED_INCOME_CATEGORIES));
   const quarterCents: [number, number, number, number] = [0, 0, 0, 0];
@@ -115,10 +146,7 @@ export function buildTaxPack({
     quarterCents[Math.floor((Number(row.date.slice(5, 7)) - 1) / 3)] += row.amountCents;
 
   const preparer = Object.fromEntries(
-    (Object.keys(PREPARER_GROUPS) as PreparerGroup[]).map((g) => [
-      g,
-      group(out, isIn(PREPARER_GROUPS[g])),
-    ]),
+    PREPARER_ORDER.map((g) => [g, tagGroup(rowsFor(g))]),
   ) as Record<PreparerGroup, PackGroup>;
 
   const interest =
@@ -135,11 +163,12 @@ export function buildTaxPack({
 
   return {
     year,
-    charity: group(out, isIn(CHARITY_CATEGORIES)),
+    charity: tagGroup(rowsFor("donation")),
     preparer,
     interest,
     income: { ...income, quarterCents },
     reminders: estimatedTaxDates(year),
+    forms,
   };
 }
 
@@ -152,7 +181,14 @@ export function csvCell(value: string): string {
 
 const dollars = (cents: number) => (cents / 100).toFixed(2);
 
-// One row per transaction: group, date, payee and amount in dollars.
+const NOTES: Readonly<Record<TagSource, string>> = {
+  yours: "Tagged by you",
+  jane: "Tagged by Jane",
+  check: TAX_PACK_COPY.checkNote,
+};
+
+// One row per transaction: group, date, payee, amount in dollars and who tagged it; then
+// the summary (each group's total) and the forms to expect.
 export function taxPackCsv(pack: TaxPack): string {
   const groups: [string, PackGroup][] = [
     [TAX_PACK_COPY.charityHeading, pack.charity],
@@ -163,10 +199,34 @@ export function taxPackCsv(pack: TaxPack): string {
     [TAX_PACK_COPY.incomeHeading, pack.income],
   ];
   const lines = [
-    ["Group", "Date", "Payee", "Amount"],
+    ["Group", "Date", "Payee", "Amount", TAX_PACK_COPY.noteLabel],
     ...groups.flatMap(([label, g]) =>
-      g.rows.map((r) => [label, r.date, r.payee, dollars(r.amountCents)]),
+      g.rows.map((r) => [
+        label,
+        r.date,
+        r.payee,
+        dollars(r.amountCents),
+        r.source ? NOTES[r.source] : "",
+      ]),
     ),
+    ...groups.map(([label, g]) => [
+      TAX_PACK_COPY.summaryHeading,
+      "",
+      `${label}: ${TAX_PACK_COPY.totalLabel.toLowerCase()}`,
+      dollars(g.totalCents),
+      "",
+    ]),
+    ...pack.forms.map((f) => [
+      TAX_PACK_COPY.formsHeading,
+      f.by,
+      `${f.form} from ${f.from}`,
+      "",
+      f.received
+        ? TAX_PACK_COPY.formReceived
+        : f.mayNotSend
+          ? TAX_PACK_COPY.formMayNotSend
+          : TAX_PACK_COPY.formWaiting,
+    ]),
   ];
   return `${lines.map((cells) => cells.map(csvCell).join(",")).join("\r\n")}\r\n`;
 }

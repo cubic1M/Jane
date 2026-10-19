@@ -79,6 +79,8 @@ export function demoInvestmentSnapshot(over: Partial<InvestmentSnapshot> = {}): 
       equivalents: fees.equivalents,
       years: fees.years,
     },
+    review: null,
+    retirement: null,
     ...over,
   };
 }

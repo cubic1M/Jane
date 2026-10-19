@@ -8,6 +8,7 @@ import { assetPrompts, promptHref } from "@/lib/owned-assets";
 import { openProposals } from "@/lib/proposals";
 import type { BudgetProposal, GoalProposal } from "@/planning/proposals";
 import { safeLink, stepOf, type AgentStep } from "./agent-steps";
+import { loadInsuranceSnapshot, type InsuranceSnapshot } from "./insurance/snapshot";
 
 // The rest of what Jane's brain looks at (spec step 83), loaded with the same code as the
 // pages that show it: the autopilot choice (Settings), the set-up suggestions (the plan),
@@ -40,6 +41,9 @@ export type MoreSnapshot = {
   debts?: DebtBook;
   // Spec step 110: the payoff plan across them, and the one the person started.
   payoff?: Payoff;
+  // Insurance (spec Phase X), from the same loader as /insurance. Optional, so a snapshot
+  // built without it (in tests) says nothing about insurance.
+  insurance?: InsuranceSnapshot;
 };
 
 const text = (v: unknown) => (typeof v === "string" && v.trim() ? v.trim() : null);
@@ -75,6 +79,7 @@ export async function loadMore(
     db.ownedAssets.findMany({ select: { loanAccountId: true } }),
     loadPayoff(userId, { client, now }),
   ]);
+  const insurance = await loadInsuranceSnapshot(userId, { client, now });
 
   return {
     autopilot,
@@ -108,5 +113,6 @@ export async function loadMore(
     ),
     debts: payoff.book,
     payoff,
+    insurance,
   };
 }

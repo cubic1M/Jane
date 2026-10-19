@@ -16,6 +16,7 @@ import type { ActionId, MessageAction, MessageRefs } from "./types";
 // profile page, and can be typed ("I live in Texas").
 
 export const PROFILE_HREF = "/taxes/profile";
+export const TAGS_HREF = "/taxes/tags";
 
 const link = (label: string, href = PROFILE_HREF): MessageAction => ({
   id: "open",

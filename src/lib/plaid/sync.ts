@@ -31,6 +31,7 @@ import { DEMO_OPTIONS } from "@/data-sources/demo/demo-options";
 import type { DemoSwitch } from "@/data-sources/demo/demo-bank";
 import { confirmSwitches, switchOf } from "@/lib/agent/switch";
 import { ensureDemoOptions } from "@/lib/compare";
+import { ensureDemoPolicies } from "@/lib/insurance/profile";
 import { demoPlaidApi, isDemoToken } from "./demo";
 import { runJaneAgentSafely } from "@/lib/jane-agent/run";
 
@@ -488,6 +489,8 @@ export async function syncItem(
     api = demoPlaidApi(accessToken, now, await demoSwitches(db));
     // Its example options to compare against (spec step 76).
     await ensureDemoOptions({ client, now });
+    // And its sample insurance policy (spec step 102).
+    await ensureDemoPolicies(item.userId, { client, now });
   }
 
   const sync = await new PlaidDataSource(api, accessToken, item.transactionsCursor).load();

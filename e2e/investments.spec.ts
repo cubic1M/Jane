@@ -75,4 +75,22 @@ test("the demo bank's holdings show with their sources, and Jane answers about t
   await expect(page.getByRole("heading", { name: "Lower-cost equivalents" })).toBeVisible();
   await expect(page.getByText("Demo advice: sample data, not financial advice")).toBeVisible();
   await expect(page.getByText("How this is worked out: a range, not a promise")).toBeVisible();
+
+  // Step 131: the review against the (now aggressive) profile, labelled.
+  await page.goto("/investments/review");
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText("Portfolio review");
+  await expect(page.getByText("Aggressive", { exact: true })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "What to change" })).toBeVisible();
+  await expect(page.getByText(/into international stocks/)).toBeVisible();
+  await expect(page.getByText("Demo advice: sample data, not financial advice")).toBeVisible();
+
+  // Step 132: retirement as a range in today's dollars, with the missed match, labelled.
+  await page.goto("/investments/retirement");
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText("Retirement");
+  await expect(page.getByText(/miss about \$816\.00 a year/)).toBeVisible();
+  await expect(
+    page.getByText("Raise your 401(k) contribution from 4% to 6% of your pay."),
+  ).toBeVisible();
+  await expect(page.getByText("Demo advice: sample data, not financial advice")).toBeVisible();
+  await expect(page.getByText("How this is worked out: a range, not a promise")).toBeVisible();
 });

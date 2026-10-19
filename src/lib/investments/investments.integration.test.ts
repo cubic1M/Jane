@@ -17,6 +17,8 @@ import { linkDemoBank } from "@/lib/plaid/demo";
 import { syncItem } from "@/lib/plaid/sync";
 import { profileSummary } from "@/planning/investor-profile";
 import { loadFees } from "./fees";
+import { loadRetirement } from "./retirement";
+import { loadReview } from "./review";
 import { profileOf, saveProfileForm } from "./profile";
 
 // Investments (spec steps 128–137) against a real, migrated Postgres (see
@@ -152,5 +154,51 @@ describe.runIf(url)("investments in Jane's chat, against a real database", () =>
     });
     expect(reply.refs.advice).toBe(true);
     expect(reply.body).toContain("Lower-cost equivalents:");
+  });
+
+  it("step 131: reviews against the profile once it's answered", SLOW, async () => {
+    const userId = await demoPerson();
+    expect((await loadReview(userId, { client, now: LINKED })).review).toBeNull();
+    await saveProfileForm(
+      userId,
+      { age: "45", horizon: "over_20", dropReaction: "worry", goals: ["retirement"] },
+      { client, now: LINKED },
+    );
+    const { review } = await loadReview(userId, { client, now: LINKED });
+    expect(review).toMatchObject({ riskLevel: 3, offTarget: true, totalCents: 9_673_055 });
+    expect(review?.recommendations[0].kind).toBe("rebalance");
+    const { reply } = await sendToJane(userId, "review my portfolio", { client, now: LINKED });
+    expect(reply.refs.advice).toBe(true);
+    expect(reply.body).toMatch(/^Against your moderate profile/);
+  });
+
+  it("step 132: plans retirement from the contributions and the plan's match", SLOW, async () => {
+    const userId = await demoPerson();
+    expect((await loadRetirement(userId, { client, now: LINKED })).retirement).toBeNull();
+    await saveProfileForm(
+      userId,
+      { age: "45", horizon: "over_20", dropReaction: "worry", goals: ["retirement"] },
+      { client, now: LINKED },
+    );
+    const { retirement, balanceCents, accounts } = await loadRetirement(userId, {
+      client,
+      now: LINKED,
+    });
+    expect(balanceCents).toBe(8_425_040);
+    expect(accounts).toEqual(["Demo 401(k)"]);
+    // 24 paydays in the 12 months before linking: 4% of pay, and half of that matched.
+    expect(retirement?.match).toEqual({
+      employeeRate: 0.04,
+      captured: false,
+      missedCents: 81_600,
+      fullMatchRate: 0.06,
+    });
+    expect(retirement?.status).toBe("behind");
+    const { reply } = await sendToJane(userId, "am I on track for retirement", {
+      client,
+      now: LINKED,
+    });
+    expect(reply.refs.advice).toBe(true);
+    expect(reply.body).toMatch(/^By 67 your retirement accounts could be about/);
   });
 });

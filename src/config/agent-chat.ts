@@ -11,6 +11,8 @@ export const CHAT_SOURCE_LIMITS: Readonly<Record<string, number>> = {
   // Loans and debt (spec Phase Y, src/config/debt.ts).
   ...DEBT_SOURCE_LIMITS,
   findings: 3,
+  // Insurance (spec Phase X).
+  insurance: 1,
   heads_ups: 2,
   did: 2,
   plan: 1,
@@ -55,6 +57,8 @@ export const MESSAGE_PRIORITY = {
   // Loans and debt (spec Phase Y, src/config/debt.ts).
   ...DEBT_MESSAGE_PRIORITY,
   brief: 1_000,
+  // Insurance (spec step 102): cover that looks missing, after budgets and goals.
+  insurance_gap: 35,
   urgent_alert: 95,
   deadline: 90,
   waiting_on_you: 85,
@@ -92,6 +96,10 @@ export const MESSAGE_PRIORITY = {
   investment_profile: 34,
   // Spec step 130: costly funds with a lower-cost equivalent (demo advice).
   investment_fees: 36,
+  // Spec step 131: the portfolio review's changes (demo advice).
+  investment_review: 38,
+  // Spec step 132: behind for retirement, or missing employer match money (demo advice).
+  retirement: 39,
 } as const;
 
 // The chat page shows the last this-many messages, with "Show earlier" for more.
