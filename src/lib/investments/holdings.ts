@@ -147,5 +147,24 @@ export async function investmentsExport(userId: string, client: PrismaClient = d
       updatedAt: true,
     },
   });
-  return { securities, holdings, transactions, profile };
+  // Spec step 133: orders through the brokerage partner, with confirmations.
+  const orders = await db.brokerageOrders.findMany({
+    select: {
+      accountId: true,
+      reason: true,
+      partner: true,
+      ticker: true,
+      securityName: true,
+      side: true,
+      amountCents: true,
+      quantity: true,
+      priceCents: true,
+      status: true,
+      confirmation: true,
+      placedAt: true,
+      filledAt: true,
+    },
+    orderBy: { placedAt: "asc" },
+  });
+  return { securities, holdings, transactions, profile, orders };
 }

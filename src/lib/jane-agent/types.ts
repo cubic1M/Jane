@@ -29,6 +29,7 @@ export const ACTION_IDS = [
   "insurance.quotes",
   "insurance.shop_yes",
   "insurance.shop_no",
+  "insurance.checkup_seen",
   "plan.approve_safe",
   "undo.rule",
   "undo.no",
@@ -86,6 +87,8 @@ export const ACTION_IDS = [
   "invest.answer.3",
   "invest.answer.4",
   "invest.answer.5",
+  // Spec step 133: move to the recommended mix, through the brokerage partner.
+  "invest.rebalance",
   // Jane notices changes (spec step 97).
   "change.look",
   "change.budget",
@@ -126,6 +129,8 @@ export type MessageRefs = {
   policyId?: string;
   // Spec step 104: a reshop of a policy (src/lib/insurance/shop.ts), by id.
   insuranceShopId?: string;
+  // Spec step 106: a coverage checkup, by id.
+  insuranceCheckupId?: string;
   // The finding as Jane described it (src/lib/jane-agent/fingerprint.ts): a button only
   // acts while the finding is still what the message said.
   fingerprint?: string;
@@ -184,6 +189,8 @@ export type MessageRefs = {
   // Jane is going through all four again (the yearly check).
   investQuestion?: string;
   investAgain?: true;
+  // Spec step 133: the rebalancing plan the button places, by its key.
+  rebalanceKey?: string;
   // Spec step 97: a change Jane noticed (src/insights/changes.ts), by its key; for a
   // category's pace, the budget "Set a budget" would set (cents a month).
   change?: { key: string; kind: string; category?: string; budgetCents?: number };

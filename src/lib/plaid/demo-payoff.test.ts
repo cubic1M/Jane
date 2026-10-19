@@ -17,6 +17,7 @@ describe("the demo bank after a refinance", () => {
       TOKEN,
       new Date("2026-10-20T12:00:00Z"),
       [],
+      [],
       [{ plaidAccountId: CAR, day: "2026-10-21" }],
     );
     const { data: early } = await before.liabilitiesGet({ access_token: TOKEN });
@@ -26,6 +27,7 @@ describe("the demo bank after a refinance", () => {
     const after = demoPlaidApi(
       TOKEN,
       new Date("2026-10-22T12:00:00Z"),
+      [],
       [],
       [{ plaidAccountId: CAR, day: "2026-10-21" }],
     );

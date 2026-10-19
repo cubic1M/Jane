@@ -6,9 +6,9 @@ import type { PolicyKind } from "@/config/insurance";
 // cover: what a policy covers and its limits. renew: when it renews. cost: what it costs.
 // deductible: its deductible. gaps: what looks missing. list: every policy on file.
 // quotes: compare prices from the insurance partner (spec step 103). switch: how a switch
-// Jane is doing is going (spec step 105).
+// Jane is doing is going (spec step 105). checkup: is the cover right, by rules (step 106).
 export type InsuranceAsk =
-  "cover" | "renew" | "cost" | "deductible" | "gaps" | "list" | "quotes" | "switch";
+  "cover" | "renew" | "cost" | "deductible" | "gaps" | "list" | "quotes" | "switch" | "checkup";
 
 export type InsuranceIntent = {
   kind: "insurance";
@@ -29,24 +29,28 @@ const KIND_WORDS: readonly [PolicyKind, RegExp][] = [
 // Words that make it about insurance on their own, and cover words that need a kind too
 // ("does my budget cover rent" isn't about insurance; "am I covered if my car is stolen" is).
 const INSURANCE =
-  /\b(?:insurance|insured|insurer|insurers|polic(?:y|ies)|deductibles?|premiums?)\b/;
+  /\b(?:insurance|insured|insurer|insurers|polic(?:y|ies)|deductibles?|premiums?|(?:under|over)-?insured)\b/;
 const COVER = /\b(?:cover|covers|covered|coverage)\b/;
+// About the amount of cover, so about insurance even without the word (spec step 106).
+const COVER_AMOUNT =
+  /\b(?:right|wrong) amount of (?:cover|coverage)\b|\btoo (?:much|little) (?:cover|coverage)\b/;
+// Whether the cover is right (spec step 106).
+const CHECKUP =
+  /\bcheck ?-?ups?\b|\b(?:check|review|look over) (?:my|our|the) (?:insurance|cover|coverage|policies|policy)\b|\b(?:right|wrong) amount of (?:cover|coverage|insurance)\b|\b(?:over|under)-?insured\b|\btoo much (?:cover|coverage|insurance)\b|\b(?:raise|lower|change) (?:my |the )?deductible\b/;
 
 const ASKS: readonly [InsuranceAsk, RegExp][] = [
   [
     "switch",
     /\bswitch(?:ed|ing)?\b.*\b(?:going|status|done|yet|happen\w*|progress|over)\b|\bdid you (?:switch|change)\b|\bhow'?s (?:my|the) switch\b|\bis my (?:new )?(?:insurance|policy) (?:active|in place|done)\b/,
   ],
+  ["checkup", CHECKUP],
   [
     "quotes",
     /\b(?:quotes?|compare|comparing|shop|shopping|reshop|cheaper|better (?:price|deal|rate)|lower price|best price|find me|switch)\b/,
   ],
   ["renew", /\b(?:renew|renews|renewal|renewing|expire|expires|expiry|run out|runs out)\b/],
   ["deductible", /\bdeductibles?\b/],
-  [
-    "gaps",
-    /\b(?:missing|gaps?|enough|underinsured|under-insured|over-insured|need any|do i need|am i covered enough|anything i need)\b/,
-  ],
+  ["gaps", /\b(?:missing|gaps?|enough|need any|do i need|am i covered enough|anything i need)\b/],
   ["cost", /\b(?:how much|cost|costs|paying|price|premiums?|a month|a year)\b/],
   ["cover", /\b(?:cover|covers|covered|coverage|limits?|include|includes|what does)\b/],
 ];
@@ -57,7 +61,9 @@ export function kindIn(text: string): PolicyKind | null {
 
 export function parseInsurance(text: string): InsuranceIntent | null {
   const policyKind = kindIn(text);
-  if (!INSURANCE.test(text) && !(COVER.test(text) && policyKind)) return null;
+  if (!INSURANCE.test(text) && !(COVER.test(text) && policyKind) && !COVER_AMOUNT.test(text)) {
+    return null;
+  }
   const ask = ASKS.find(([, words]) => words.test(text))?.[0] ?? "list";
   return { kind: "insurance", ask, policyKind };
 }

@@ -14,6 +14,7 @@ vi.mock("@/lib/investments/fees", () => ({ loadFees: vi.fn() }));
 vi.mock("@/lib/advice-mode", () => ({ adviceMode: vi.fn() }));
 vi.mock("@/lib/investments/review", () => ({ loadReview: vi.fn() }));
 vi.mock("@/lib/investments/retirement", () => ({ loadRetirement: vi.fn() }));
+vi.mock("@/lib/investments/rebalance", () => ({ loadRebalance: vi.fn() }));
 
 import { loadInvestments } from "@/lib/investments/holdings";
 import { profileOf } from "@/lib/investments/profile";
@@ -24,15 +25,18 @@ import { reviewPortfolio } from "@/insights/portfolio-review";
 import { loadReview } from "@/lib/investments/review";
 import { loadRetirement } from "@/lib/investments/retirement";
 import { retirementPlan } from "@/planning/retirement";
+import { loadRebalance } from "@/lib/investments/rebalance";
+import { rebalancePlan } from "@/insights/rebalance";
+import { FUND_FACTS } from "@/config/funds";
 import { EMPTY_ANSWERS, profileSummary, type ProfileAnswers } from "@/planning/investor-profile";
-import { feesReply, profileReply, retirementReply, reviewReply } from "./replies";
+import { feesReply, profileReply, rebalanceReply, retirementReply, reviewReply } from "./replies";
 import { gather } from "../brain";
 import { parseIntent } from "../intents";
 import type { Snapshot } from "../snapshot";
 import { investmentsSource } from "../sources/investments";
 import { holdingsReply, matchAccounts } from "./replies";
 import { INVESTMENT_TOOLS, runInvestmentTool } from "./tools";
-import { CHAT_PAGES, CHAT_TOOLS } from "../claude-tools";
+import { CHAT_PAGES, CHAT_TOOLS, proposeAction } from "../claude-tools";
 import type { PrismaClient } from "@/generated/prisma/client";
 
 // Spec step 128: what the person owns, in Jane's chat.
@@ -663,5 +667,109 @@ describe("Claude's retirement_plan tool", () => {
     for (const c of DEMO_RETIREMENT.changes) {
       for (const f of c.figures) expect(out.cents).toContain(f);
     }
+  });
+});
+
+// Spec step 133: move to the recommended mix with one tap.
+const PLAN = rebalancePlan(
+  demoInvestments().accounts,
+  3,
+  (t) => FUND_FACTS[t]?.mix ?? { other: 1 },
+);
+
+describe("rebalance questions, by rules", () => {
+  it.each(["rebalance", "rebalance my 401k", "move me to the recommended mix", "fix my portfolio"])(
+    "reads %j as rebalancing",
+    (text) => {
+      expect(parseIntent(text, ASOF)).toMatchObject({ kind: "investments", topic: "rebalance" });
+    },
+  );
+});
+
+describe("rebalanceReply", () => {
+  it("offers the orders with the button, saying they're simulated", () => {
+    const reply = rebalanceReply(true, PLAN, profileSummary(FULL, ASOF));
+    expect(reply.body).toMatch(/^Here's the plan: \d+ orders: sell \$[\d,.]+ \(/);
+    expect(reply.body).toContain(
+      "After: 40% US stocks, 20% international stocks, 35% bonds, 5% cash.",
+    );
+    expect(reply.body).toMatch(
+      /Tap and I'll place the orders in the simulated brokerage \(no real money moves\)\.$/,
+    );
+    expect(reply.actions[0]).toEqual({
+      id: "invest.rebalance",
+      label: "Move to the recommended mix",
+      kind: "primary",
+    });
+    expect(reply.refs).toEqual({ advice: true, rebalanceKey: PLAN.key });
+  });
+
+  it("never offers trades to real accounts, asks for the profile first, and says when on target", () => {
+    expect(
+      rebalanceReply(false, PLAN, profileSummary(FULL, ASOF)).actions.map((a) => a.id),
+    ).toEqual(["open"]);
+    expect(
+      rebalanceReply(true, null, profileSummary(EMPTY_ANSWERS, ASOF)).refs.investQuestion,
+    ).toBe("age");
+    expect(rebalanceReply(true, { ...PLAN, orders: [] }, profileSummary(FULL, ASOF)).body).toMatch(
+      /^Your mix is already on target/,
+    );
+  });
+});
+
+describe("the review message with orders ready", () => {
+  it("is a decision with the one-tap button and the plan's key", () => {
+    const review = reviewPortfolio(demoInvestments().accounts, 3);
+    const [message] = investmentsSource
+      .gather(
+        { ...base, investments: demoInvestmentSnapshot({ review, rebalance: PLAN }) },
+        {} as never,
+      )
+      .filter((c) => c.dedupeKey.startsWith("review:"));
+    expect(message).toMatchObject({
+      kind: "decision",
+      refs: { advice: true, rebalanceKey: PLAN.key },
+    });
+    expect(message.actions.map((a) => a.id)).toEqual(["invest.rebalance", "open", "snooze"]);
+    expect(message.body).toContain(
+      "Tap and I'll place them in the simulated brokerage (no real money moves).",
+    );
+  });
+});
+
+describe("Claude and rebalancing", () => {
+  const options = { client: {} as PrismaClient, now: new Date("2026-10-19T12:00:00Z") };
+
+  it("reads the plan, saying the brokerage is simulated", async () => {
+    vi.mocked(loadRebalance).mockResolvedValue({
+      advice: true,
+      plan: PLAN,
+      investments: demoInvestments(),
+    });
+    const out = await runInvestmentTool("u", "rebalance_plan", {}, options);
+    const parsed = JSON.parse(out.content);
+    expect(parsed.brokerage).toBe("simulated: no real money moves");
+    expect(parsed.orders).toHaveLength(PLAN.orders.length);
+    for (const o of PLAN.orders) expect(out.cents).toContain(o.amountCents);
+  });
+
+  it("can offer the button, only with a plan in demo advice mode", async () => {
+    vi.mocked(loadRebalance).mockResolvedValue({
+      advice: true,
+      plan: PLAN,
+      investments: demoInvestments(),
+    });
+    expect(await proposeAction("u", { action: "invest.rebalance" }, options)).toMatchObject({
+      ok: true,
+      refs: { rebalanceKey: PLAN.key },
+    });
+    vi.mocked(loadRebalance).mockResolvedValue({
+      advice: false,
+      plan: null,
+      investments: demoInvestments(),
+    });
+    expect(await proposeAction("u", { action: "invest.rebalance" }, options)).toMatchObject({
+      ok: false,
+    });
   });
 });

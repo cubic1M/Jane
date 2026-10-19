@@ -14,6 +14,8 @@ import type { MessageAction } from "../types";
 import { ROTH_WORDS, type RetirementPlan } from "@/planning/retirement";
 import { equivalentLine, feeRange, switchSummary } from "./fees-copy";
 import { matchLine, projectionLine } from "./retirement-copy";
+import { mixLine, planSummary, rebalanceButton, SIMULATED_WORDS } from "./rebalance-copy";
+import type { RebalancePlan } from "@/insights/rebalance";
 import { asking, PROFILE_INTRO } from "./profile-question";
 
 // Jane's rule answers about investments (spec step 128 on). Pure: the numbers in, fixed
@@ -257,4 +259,47 @@ export function retirementReply(
       : `What I'd change:\n${plan.changes.map((c, i) => `${i + 1}. ${c.what} ${c.why}`).join("\n")}`;
   const roth = plan.rothOrTraditional ? `\n${ROTH_WORDS[plan.rothOrTraditional]}` : "";
   return { body: `${lines}\n${changes}${roth}`, actions: [link], refs: { advice: true } };
+}
+
+// Spec step 133: the orders that move to the recommended mix, with the button.
+export function rebalanceReply(
+  advice: boolean,
+  plan: RebalancePlan | null,
+  profile: ProfileSummary,
+): Reply {
+  if (!advice) {
+    return {
+      body: "I don't place investment orders on real accounts yet.",
+      actions: [SEE],
+      refs: {},
+    };
+  }
+  if (!plan) {
+    const ask = asking(profile.complete ? PROFILE_QUESTIONS[0] : profile.next);
+    return {
+      body: "To work out your recommended mix I need four quick answers first.",
+      actions: ask.actions,
+      refs: ask.refs,
+    };
+  }
+  if (plan.orders.length === 0) {
+    return {
+      body: `Your mix is already on target: ${mixLine(plan.after)}. Nothing to trade.`,
+      actions: [SEE],
+      refs: { advice: true },
+    };
+  }
+  return rebalanceOffer(plan);
+}
+
+// The orders and the button that places them.
+export function rebalanceOffer(plan: RebalancePlan): Reply {
+  return {
+    body: `Here's the plan: ${planSummary(plan)}\nTap and I'll place the orders ${SIMULATED_WORDS}.`,
+    actions: [
+      rebalanceButton(),
+      { id: "open", label: "See the orders", kind: "link", href: "/investments/rebalance" },
+    ],
+    refs: { advice: true, rebalanceKey: plan.key },
+  };
 }

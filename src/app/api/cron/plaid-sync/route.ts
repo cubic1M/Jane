@@ -11,7 +11,7 @@ import { refreshMerchantOutcomes } from "@/lib/merchant-outcomes";
 import { runRetention } from "@/lib/retention";
 import { takeSnapshots } from "@/lib/snapshots";
 import { remindAllDeadlines } from "@/lib/deadlines";
-import { reshopAll } from "@/lib/insurance/shop";
+import { insuranceDaily } from "@/lib/insurance/daily";
 
 // Vercel Cron, daily: syncs linked items that haven't synced in STALE_SYNC_HOURS, in case
 // a webhook was missed, then removes items of people inactive for INACTIVE_ITEM_DAYS
@@ -49,8 +49,8 @@ async function dailyWork() {
       outcomes: await refreshMerchantOutcomes(),
       retention: await runRetention(),
       deadlines: await remindAllDeadlines(),
-      // Spec step 104: insurance reshopped by itself, 45 days before renewal and on a rise.
-      insurance: await reshopAll(),
+      // Spec steps 104 and 106: insurance reshopped and checked by itself.
+      insurance: await insuranceDaily(),
     };
   }
 
@@ -88,6 +88,6 @@ async function dailyWork() {
     outcomes: await refreshMerchantOutcomes(),
     retention: await runRetention(),
     deadlines: await remindAllDeadlines(),
-    insurance: await reshopAll(),
+    insurance: await insuranceDaily(),
   };
 }
