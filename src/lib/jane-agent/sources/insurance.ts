@@ -4,6 +4,7 @@ import { gapAdvice, kindWords } from "@/lib/insurance/gaps";
 import type { PolicyKind } from "@/config/insurance";
 import type { Shop } from "@/lib/insurance/shop";
 import { formatCents } from "@/lib/money";
+import { checkupBody } from "../insurance/checkup-words";
 import type { InsuranceSnapshot } from "../insurance/snapshot";
 import type { Candidate } from "../types";
 import { shortDate, snoozeButton, type MessageSource } from "./source";
@@ -159,6 +160,26 @@ function switchMessages(insurance: InsuranceSnapshot): Candidate[] {
   });
 }
 
+// Spec step 106: the coverage checkup Jane ran by herself (demo advice): the top
+// recommendations with what each costs and the risk it changes, or "nothing to change".
+function checkupMessages(insurance: InsuranceSnapshot): Candidate[] {
+  const checkup = insurance.checkup;
+  if (!checkup) return [];
+  return [
+    {
+      kind: checkup.recommendations.length === 0 ? "done" : "heads_up",
+      body: checkupBody(checkup),
+      refs: { insuranceCheckupId: checkup.id, advice: true },
+      actions: [
+        { id: "insurance.checkup_seen", label: "Got it", kind: "secondary" },
+        { id: "open", label: "See the checkup", kind: "link", href: "/insurance/checkup" },
+      ],
+      dedupeKey: `checkup:${checkup.id}`,
+      priority: MESSAGE_PRIORITY.insurance_checkup,
+    },
+  ];
+}
+
 export const insuranceSource: MessageSource = {
   key: "insurance",
   gather: (snapshot) => {
@@ -169,6 +190,7 @@ export const insuranceSource: MessageSource = {
       ...switchMessages(insurance),
       ...gapMessages(insurance),
       ...checkedMessages(insurance),
+      ...checkupMessages(insurance),
     ];
   },
 };

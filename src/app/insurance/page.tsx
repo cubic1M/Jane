@@ -183,6 +183,9 @@ async function InsuranceContent({
           by herself and points out cover that looks missing. She never buys, changes or cancels
           insurance without your tap.
         </p>
+        <Link href="/insurance/checkup" className={`text-sm ${LINK}`}>
+          Coverage checkup
+        </Link>
       </div>
 
       {saved && (

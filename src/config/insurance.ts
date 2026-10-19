@@ -254,3 +254,30 @@ export const RESHOP_NEWS_DAYS = 7;
 export const SWITCH_PAYMENT_DAYS = 10;
 // Switches finished in the last this-many days are said in the chat.
 export const SWITCH_NEWS_DAYS = 7;
+
+// --- Coverage checkup (spec step 106) -------------------------------------------------------
+// Demo advice only (spec step 98). Jane runs it by herself once a year and after a life event
+// (spec step 100), at every autopilot level; changing cover always needs the person's tap.
+// Each recommendation shows what it costs (or saves) a year, from DEMO_PRICING's fixed
+// rules, and the risk it changes.
+export const CHECKUP_EVERY_DAYS = 365;
+// A higher deductible is worth it when savings cover it this many times over; a deductible
+// savings can't cover once is too high.
+export const DEDUCTIBLE_SAVINGS_MULTIPLE = 3;
+// Car injury liability below this per person is low for someone with something to protect.
+export const LIABILITY_TARGET_CENTS = 10_000_000;
+export const LIABILITY_TARGET_ACCIDENT_CENTS = 30_000_000;
+// Full cover on a car worth less than this rarely pays: repairs would soon cost more than
+// the car.
+export const FULL_COVER_MIN_CAR_VALUE_CENTS = 400_000;
+// Home cover below this share of the home's value may not rebuild it; above the upper share,
+// it may insure more than there is to rebuild.
+export const HOME_UNDER_INSURED_SHARE = 0.8;
+export const HOME_OVER_INSURED_SHARE = 1.5;
+// Carriers usually take this share off when car and home (or renters) are with them both.
+export const BUNDLE_DISCOUNT_SHARE = 0.1;
+// Term life worth this many years of pay, after a new baby with no life cover.
+export const LIFE_COVER_YEARS_OF_PAY = 10;
+export const LIFE_COVER_DEFAULT_CENTS = 50_000_000;
+// People checked per daily run.
+export const CHECKUP_DAILY_LIMIT = 200;

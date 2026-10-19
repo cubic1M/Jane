@@ -312,6 +312,7 @@ model User {
   insuranceProfile       InsuranceProfile?
   insuranceQuotes        InsuranceQuote[]
   insuranceShops         InsuranceShop[]
+  insuranceCheckups      InsuranceCheckup[]
   lifeEvents             LifeEvent[]
   // What's in investment accounts (spec step 128).
   securities             Security[]
@@ -1587,6 +1588,28 @@ model InsuranceShop {
   @@unique([userId, key])
   @@index([userId, status])
   @@map("insurance_shops")
+}
+
+// A coverage checkup (spec step 106): Jane's recommendations on the person's cover (demo
+// advice), each with its cost and the risk it changes, run once a year by itself, after a
+// life event, or when asked.
+model InsuranceCheckup {
+  id              String    @id @default(cuid())
+  userId          String    @map("user_id")
+  // yearly, life_event or asked.
+  reason          String
+  // The life event that started it (life_events.id), if any.
+  lifeEventId     String?   @map("life_event_id")
+  // Recommendation[] (src/lib/insurance/checkup.ts), as shown.
+  recommendations Json      @default("[]")
+  // When the person said "Got it" in the chat or opened the page.
+  seenAt          DateTime? @map("seen_at") @db.Timestamptz(3)
+  createdAt       DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+  @@map("insurance_checkups")
 }
 
 // The household facts that matter for cover (spec step 102), as the person typed them.
