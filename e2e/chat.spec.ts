@@ -97,7 +97,8 @@ test("the demo bank lands in Jane's chat, and Yes answers a finding", async ({
   await ask.fill("cancel streaming");
   await ask.press("Enter");
   await expect(messages.last()).toContainText("Which one do you mean?");
-  const question = messages.last();
+  // Found by its words: once answered, it's no longer the last message.
+  const question = messages.filter({ hasText: "Which one do you mean?" }).last();
   await question.getByRole("button").first().click();
   await expect(question.getByText("You chose:")).toBeVisible();
   await expect(messages.last()).toContainText("Want me to handle it?");
