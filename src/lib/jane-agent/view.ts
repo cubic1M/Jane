@@ -27,7 +27,7 @@ const TAGS: Record<MessageKind, string> = {
   decision: "to decide",
   done: "done",
   heads_up: "heads-up",
-  reply: "jane",
+  reply: "answer",
   user: "you",
 };
 

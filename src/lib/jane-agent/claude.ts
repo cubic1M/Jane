@@ -1,0 +1,145 @@
+import Anthropic from "@anthropic-ai/sdk";
+import { CHAT_CLAUDE_MAX_TURNS } from "@/config/agent-chat";
+import { ASK_BLOCKED_REPLY } from "@/config/ask";
+import type { PrismaClient } from "@/generated/prisma/client";
+import { anthropic, llmModel } from "@/lib/anthropic";
+import { checkGuardrails, dollarFigures, type GuardrailIssue } from "@/lib/guardrails";
+import { CHAT_TOOLS, proposeAction, runChatTool, type Proposal } from "./claude-tools";
+import { EXAMPLES, type Reply } from "./replies";
+
+// Free questions in Jane's chat, with an Anthropic key (spec step 84): Claude, the
+// person's recent typed messages and Jane's answers to them, and read-only tools over their
+// own data, like Ask (src/lib/ask/answer.ts). Claude's text is only shown once it passes the
+// guardrails, which allow only dollar figures from a tool, the question or an earlier
+// answer. Claude can offer one button from the action registry (propose_action), never
+// press it: the person taps.
+
+export const CHAT_PROMPT_VERSION = "chat-v1";
+
+const SYSTEM = `You are Jane, a friendly helper inside a personal finance app, answering in the app's chat. You answer the person's questions about their own money: spending, bills, safe to spend, goals, budgets, and what the app has found or is doing for them.
+
+- Use the tools to look things up. Never guess. If the tools don't have it, say so plainly.
+- Use only dollar amounts that appear in tool results, written exactly as they appear there. Don't add, subtract or estimate amounts yourself.
+- Keep answers short: a sentence or two, or a short list. Plain words, no jargon, no headings.
+- You can't do anything yourself. When the person wants something done (cancel, lower a bill, approve, start a goal), call propose_action once so they get a button to tap, and say they can tap it. Never say it's done.
+- Never give investment, tax or legal advice, and never recommend a financial product. Never promise a result.
+- If a question isn't about their money in this app, say briefly what you can help with.`;
+
+export type ChatTurn = { role: "user" | "assistant"; content: string };
+
+export type ClaudeAnswer =
+  | { kind: "answer"; reply: Reply }
+  | { kind: "blocked"; reply: Reply; issues: GuardrailIssue[] }
+  | { kind: "unavailable"; reply: Reply };
+
+type Options = {
+  client: PrismaClient;
+  now: Date;
+  claude?: () => Pick<Anthropic, "messages">;
+  maxTurns?: number;
+};
+
+// Shown when Claude can't answer (an error, a refusal, too many lookups).
+export const CHAT_UNAVAILABLE_TEXT = `I couldn't look into that just now. Try one of these:\n${EXAMPLES.map((e) => `- ${e}`).join("\n")}`;
+
+const unavailable = (): ClaudeAnswer => ({
+  kind: "unavailable",
+  reply: { body: CHAT_UNAVAILABLE_TEXT, actions: [], refs: {} },
+});
+
+// The API wants the first message from the person, and one turn per side.
+function conversation(history: ChatTurn[], question: string): Anthropic.MessageParam[] {
+  const turns: ChatTurn[] = [];
+  for (const turn of [...history, { role: "user" as const, content: question }]) {
+    const last = turns.at(-1);
+    if (!last && turn.role === "assistant") continue;
+    if (last && last.role === turn.role) last.content = `${last.content}\n\n${turn.content}`;
+    else turns.push({ ...turn });
+  }
+  return turns.map((t) => ({ role: t.role, content: t.content }));
+}
+
+export async function askClaudeInChat(
+  userId: string,
+  history: ChatTurn[],
+  question: string,
+  { client, now, claude = anthropic, maxTurns = CHAT_CLAUDE_MAX_TURNS }: Options,
+): Promise<ClaudeAnswer> {
+  // Figures the answer may use: from tools, the question, and earlier answers.
+  const allowedCents = [question, ...history.map((m) => m.content)].flatMap((text) =>
+    dollarFigures(text).map((f) => f.cents),
+  );
+  const messages = conversation(history, question);
+  let proposal: Extract<Proposal, { ok: true }> | null = null;
+
+  for (let turn = 0; turn < maxTurns; turn += 1) {
+    let response: Anthropic.Message;
+    try {
+      response = await claude().messages.create({
+        model: llmModel(),
+        max_tokens: 16000,
+        system: SYSTEM,
+        tools: CHAT_TOOLS,
+        thinking: { type: "adaptive" },
+        output_config: { effort: "medium" },
+        messages,
+      });
+    } catch (error) {
+      if (!(error instanceof Anthropic.APIError)) throw error;
+      console.error("Jane's chat request to Claude failed", { status: error.status });
+      return unavailable();
+    }
+
+    if (response.stop_reason === "tool_use") {
+      messages.push({ role: "assistant", content: response.content });
+      const results: Anthropic.ToolResultBlockParam[] = [];
+      for (const block of response.content) {
+        if (block.type !== "tool_use") continue;
+        if (block.name === "propose_action") {
+          const result: Proposal = proposal
+            ? { ok: false, error: "You already offered a button for this answer." }
+            : await proposeAction(userId, block.input, { client, now });
+          if (result.ok) proposal = result;
+          results.push({
+            type: "tool_result",
+            tool_use_id: block.id,
+            content: result.ok ? "The button will be shown under your answer." : result.error,
+            ...(result.ok ? {} : { is_error: true }),
+          });
+          continue;
+        }
+        const output = await runChatTool(userId, block.name, block.input, { client, now });
+        allowedCents.push(...output.cents);
+        results.push({ type: "tool_result", tool_use_id: block.id, content: output.content });
+      }
+      messages.push({ role: "user", content: results });
+      continue;
+    }
+
+    if (response.stop_reason !== "end_turn") return unavailable();
+    const text = response.content
+      .flatMap((b) => (b.type === "text" ? [b.text] : []))
+      .join("\n")
+      .trim();
+    if (!text) return unavailable();
+    const check = checkGuardrails(text, allowedCents);
+    if (!check.ok) {
+      // A safe fallback, with no buttons.
+      return {
+        kind: "blocked",
+        reply: { body: ASK_BLOCKED_REPLY, actions: [], refs: {} },
+        issues: check.issues,
+      };
+    }
+    return {
+      kind: "answer",
+      reply: {
+        body: proposal?.line ? `${text}\n\n${proposal.line}` : text,
+        actions: proposal?.actions ?? [],
+        refs: proposal?.refs ?? {},
+      },
+    };
+  }
+  // Too many rounds of lookups for one message.
+  return unavailable();
+}

@@ -20,6 +20,9 @@ export const ACTION_IDS = [
   "plan.approve_safe",
   "undo.rule",
   "undo.no",
+  // Typing to Jane (spec step 84).
+  "goal.start",
+  "autopilot.pause",
 ] as const;
 export type ActionId = (typeof ACTION_IDS)[number];
 
@@ -47,6 +50,9 @@ export type MessageRefs = {
   previousActions?: MessageAction[];
   // A line under the answer: what happened when the button was tapped.
   note?: string;
+  // The goal "Start a goal for it" would add (spec step 84): money in cents, date
+  // YYYY-MM-DD.
+  goal?: { name: string; targetCents: number; targetDate: string };
 };
 
 // A message the brain wants to post.
