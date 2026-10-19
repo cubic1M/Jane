@@ -292,6 +292,7 @@ model User {
   refinanceCheck         RefinanceCheck?
   loanApplications       LoanApplication[]
   studentLoanProfile     StudentLoanProfile?
+  creditReports          CreditReport[]
   balanceTransfers       BalanceTransfer[]
   findings               Finding[]
   decisions              Decision[]
@@ -741,6 +742,33 @@ model StudentLoanProfile {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("student_loan_profiles")
+}
+
+// A credit score Jane pulled (spec step 116), a soft pull once a month: the score and the
+// facts behind it from the credit partner. Kept to show how it moves. The stand-in's are
+// marked demo and never a real score.
+model CreditReport {
+  id               String   @id @default(cuid())
+  userId           String   @map("user_id")
+  partner          String
+  score            Int
+  model            String
+  rangeLow         Int      @map("range_low")
+  rangeHigh        Int      @map("range_high")
+  cardLimitCents   Int      @map("card_limit_cents")
+  averageAgeMonths Int      @map("average_age_months")
+  hardInquiries    Int      @map("hard_inquiries")
+  // What Jane saw when she pulled it, for the factors: card balances, an overdue loan,
+  // late fees in the last year, whether there's an installment loan.
+  inputs           Json     @default("{}")
+  demo             Boolean  @default(false)
+  pulledOn         DateTime @map("pulled_on") @db.Date
+  createdAt        DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, pulledOn])
+  @@map("credit_reports")
 }
 
 // A balance transfer the person made to a 0% card (spec step 113), so Jane can keep the

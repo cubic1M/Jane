@@ -336,6 +336,14 @@ async function LoansContent({
           </p>
 
           <p className="text-sm text-zinc-600 dark:text-zinc-400">
+            How do your debts look to lenders?{" "}
+            <Link href="/loans/credit" className={LINK}>
+              See your credit score
+            </Link>
+            .
+          </p>
+
+          <p className="text-sm text-zinc-600 dark:text-zinc-400">
             Own a home with a mortgage?{" "}
             <Link href="/loans/mortgage" className={LINK}>
               See PMI, escrow and extra payments

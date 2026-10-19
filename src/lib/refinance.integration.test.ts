@@ -85,6 +85,13 @@ describe.runIf(url)("refinance offers against a real database", () => {
     await checkRates(userId, opts());
   });
 
+  it("keeps one check when two pages ask at once", async () => {
+    await client.refinanceCheck.deleteMany({ where: { userId } });
+    const checks = await Promise.all([1, 2, 3].map(() => checkRates(userId, opts())));
+    expect(checks.every((c) => c !== null && c.length > 0)).toBe(true);
+    expect(await client.refinanceCheck.count({ where: { userId } })).toBe(1);
+  });
+
   it("compares every loan and card with keeping it, fees in, and picks only real savings", async () => {
     const refi = await loadRefinance(userId, opts());
     expect(refi.available).toBe(true);
