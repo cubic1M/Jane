@@ -2,6 +2,7 @@ import {
   COVERAGE_FIELDS,
   MAX_LIMIT_CENTS,
   MAX_TERM_YEARS,
+  MAX_WAITING_DAYS,
   type CoverageField,
   type PolicyKind,
 } from "@/config/insurance";
@@ -47,12 +48,15 @@ function parseField(field: CoverageField, raw: string): number | boolean | null 
     return cents;
   }
   const n = Number(text.replace(/%$/, ""));
-  const max = field.type === "years" ? MAX_TERM_YEARS : 100;
+  const max =
+    field.type === "years" ? MAX_TERM_YEARS : field.type === "days" ? MAX_WAITING_DAYS : 100;
   if (!Number.isInteger(n) || n <= 0 || n > max) {
     throw new CoverageError(
       field.type === "years"
         ? `Enter "${field.label}" in whole years.`
-        : `Enter "${field.label}" as a percent, like 80.`,
+        : field.type === "days"
+          ? `Enter "${field.label}" in days, like 90.`
+          : `Enter "${field.label}" as a percent, like 80.`,
     );
   }
   return n;
@@ -81,6 +85,7 @@ export function valueWords(field: CoverageField, value: number | boolean): strin
   if (field.type === "yesno") return value ? "Yes" : "No";
   if (field.type === "money") return formatCents(value as number);
   if (field.type === "years") return `${value} years`;
+  if (field.type === "days") return `${value} days`;
   return `${value}%`;
 }
 

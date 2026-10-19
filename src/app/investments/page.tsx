@@ -7,6 +7,9 @@ import { ViewTracker } from "@/components/view-tracker";
 import { SIMULATED_PARTNER } from "@/config/brokerage";
 import { INVESTMENT_AUTOPILOT } from "@/config/investing";
 import { explainer } from "@/config/learn";
+import { RETURNS_NOTE } from "@/config/returns";
+import { formatReturn } from "@/insights/returns";
+import { loadReturns } from "@/lib/investments/returns";
 import { autopilotOf } from "@/lib/autopilot";
 import { scopedFor } from "@/lib/db-scoped";
 import { formatBps, type HoldingView } from "@/insights/investments";
@@ -79,13 +82,15 @@ function HoldingRow({ h }: { h: HoldingView }) {
 async function InvestmentsContent() {
   const user = await requireUser();
   await connection();
-  const [data, answers, simulated, level] = await Promise.all([
-    loadInvestments(user.id),
+  const data = await loadInvestments(user.id);
+  const [answers, simulated, level, returns] = await Promise.all([
     profileOf(user.id),
     // Spec step 133: holdings shaped by simulated orders say so.
     scopedFor(user.id).brokerageOrders.count({ where: { partner: SIMULATED_PARTNER } }),
     // Spec step 137: what Jane does by herself at the person's autopilot level.
     autopilotOf(user.id),
+    // Spec step 156: how they've done.
+    loadReturns(user.id, { investments: data }),
   ]);
   const byHerself =
     INVESTMENT_AUTOPILOT[
@@ -183,6 +188,12 @@ async function InvestmentsContent() {
             : the match, HSA, IRA or taxable, and where to hold what.
           </p>
           <p className="text-sm text-zinc-600 dark:text-zinc-400">
+            <Link href="/investments/goals" className={LINK}>
+              Invested for each goal
+            </Link>
+            : cash when it&apos;s close, safer as the date nears.
+          </p>
+          <p className="text-sm text-zinc-600 dark:text-zinc-400">
             Learn:{" "}
             {["index-funds", "fees", "the-match", "roth-vs-traditional", "rebalancing"].map(
               (slug, i) => (
@@ -253,6 +264,50 @@ async function InvestmentsContent() {
               </li>
             ))}
           </ul>
+
+          {returns.periods.length > 0 && (
+            <section className="flex flex-col gap-2" aria-labelledby="returns-heading">
+              <h2 id="returns-heading" className="text-xl font-semibold">
+                How they&apos;ve done
+              </h2>
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="text-left text-zinc-500">
+                      <th className="font-normal">Period</th>
+                      <th className="text-right font-normal">Investments</th>
+                      <th className="text-right font-normal">Your money</th>
+                      <th className="text-right font-normal">Similar mix</th>
+                      <th className="text-right font-normal">Paid out</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {returns.periods.map((p) => (
+                      <tr key={p.key}>
+                        <td>{p.label}</td>
+                        <td className="text-right">
+                          {p.timeWeighted === null ? "–" : formatReturn(p.timeWeighted)}
+                        </td>
+                        <td className="text-right">
+                          {p.moneyWeighted === null ? "–" : formatReturn(p.moneyWeighted)}
+                        </td>
+                        <td className="text-right">
+                          {p.benchmark === null ? "–" : formatReturn(p.benchmark)}
+                        </td>
+                        <td className="text-right">{formatCents(p.incomeCents)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              <p className="text-xs text-zinc-500">
+                Investments: how what you own did, leaving out money you paid in. Your money: what
+                your own money earned, timing included. Similar mix: low-cost index funds in the
+                same shares as yours. Paid out: dividends and interest. {RETURNS_NOTE}
+                {returns.simulatedPrices && " Prices come from the demo price feed (made up)."}
+              </p>
+            </section>
+          )}
 
           <section className="flex flex-col gap-2">
             <h2 className="text-xl font-semibold">What Jane does by herself</h2>

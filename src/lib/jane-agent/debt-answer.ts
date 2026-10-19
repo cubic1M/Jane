@@ -2,11 +2,13 @@ import type { PrismaClient } from "@/generated/prisma/client";
 import { loadPayoff } from "@/lib/debt-plan";
 import { loadDebts } from "@/lib/debts";
 import { loadTransfers } from "@/lib/balance-transfers";
+import { loadStudentLoans } from "@/lib/student-loans";
 import { listApplications } from "@/lib/loan-applications";
 import { checkRates, loadRefinance } from "@/lib/refinance";
 import type { DebtIntent } from "./debt-intents";
 import { debtReply, payoffReply } from "./debt-replies";
 import { loanStatusReply, refinanceReply, transferReply } from "./refinance-replies";
+import { studentReply } from "./student-replies";
 import type { Reply } from "./replies";
 
 // Answers questions about debts by rules (spec Phase Y), with the same loaders as the
@@ -34,6 +36,8 @@ export async function answerDebt(
       }
       return refinanceReply(intent.target, refi, await loadDebts(userId, { client, now }));
     }
+    case "student_loans":
+      return studentReply(await loadStudentLoans(userId, { client, now }));
     case "balance_transfer":
       return transferReply(await loadTransfers(userId, { client, now }));
     case "loan_status":

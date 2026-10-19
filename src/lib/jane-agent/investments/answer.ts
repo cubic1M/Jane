@@ -6,6 +6,8 @@ import { profileOf } from "@/lib/investments/profile";
 import { adviceMode } from "@/lib/advice-mode";
 import { loadFees } from "@/lib/investments/fees";
 import { loadAccountPlan } from "@/lib/investments/accounts";
+import { loadReturns } from "@/lib/investments/returns";
+import { loadGoalBuckets } from "@/lib/investments/goal-buckets";
 import { autopilotOf } from "@/lib/autopilot";
 import { loadInvestmentSnapshot } from "./snapshot";
 import { loadAutoInvest } from "@/lib/investments/auto-invest";
@@ -18,6 +20,8 @@ import {
   autoInvestReply,
   autopilotReply,
   overviewReply,
+  returnsReply,
+  goalBucketsReply,
   feesReply,
   holdingsReply,
   profileReply,
@@ -58,6 +62,10 @@ export async function answerInvestments(
       const snapshot = await loadInvestmentSnapshot(userId, { client, now });
       return overviewReply(snapshot);
     }
+    case "goals":
+      return goalBucketsReply(await loadGoalBuckets(userId, { client, now }));
+    case "returns":
+      return returnsReply(await loadReturns(userId, { client, now }));
     case "autopilot":
       return autopilotReply(await autopilotOf(userId, { client }));
     case "accounts":

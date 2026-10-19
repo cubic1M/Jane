@@ -19,7 +19,7 @@ import {
 import type { PrismaClient } from "@/generated/prisma/client";
 import { track } from "@/lib/analytics";
 import { logAudit } from "@/lib/audit";
-import { encrypt } from "@/lib/crypto";
+import { decrypt, encrypt } from "@/lib/crypto";
 import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
 import { plaidEnabled } from "./client";
@@ -66,7 +66,11 @@ export function demoPlaidApi(
   const demo = seedOf(accessToken);
   const through = yesterday(now);
   const holdings = demoHoldings(demo, through, orders);
-  const securities = demoSecurities(through, new Set(holdings.map((h) => h.security_id)));
+  const securities = demoSecurities(
+    through,
+    demo.anchor,
+    new Set(holdings.map((h) => h.security_id)),
+  );
   // An investment account's balance is what it holds (deposits from step 134 add to it).
   const invested = demoAccounts(demo).map((a) =>
     a.type === "investment"
@@ -209,4 +213,22 @@ export async function hasDemoBank(
     where: { plaidItemId: { startsWith: DEMO_ITEM_PREFIX } },
   });
   return count > 0;
+}
+
+// The day a person's demo bank was linked (spec step 156: the price feed starts there), or
+// null without one.
+export async function demoAnchorFor(
+  userId: string,
+  { client = defaultClient }: { client?: PrismaClient } = {},
+): Promise<string | null> {
+  const item = await scopedFor(userId, client).plaidItems.findFirst({
+    where: { plaidItemId: { startsWith: DEMO_ITEM_PREFIX } },
+    select: { accessTokenEncrypted: true },
+  });
+  if (!item) return null;
+  try {
+    return seedOf(decrypt(item.accessTokenEncrypted)).anchor;
+  } catch {
+    return null;
+  }
 }
