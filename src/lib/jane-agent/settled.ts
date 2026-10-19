@@ -9,8 +9,8 @@ import { parseActions, parseRefs, type MessageAction, type MessageRefs } from ".
 // Messages answered somewhere else lose their buttons (spec step 83, like findings in step
 // 81): the autopilot question once a level is picked in Settings, a set-up suggestion
 // answered on the plan, a step on an action that's no longer waiting on it (answered on
-// Actions), a deadline marked done on Deadlines and an alert read on Alerts. Their links
-// stay.
+// Actions), a deadline marked done on Deadlines, an alert read on Alerts and a policy
+// reading confirmed on Insurance (spec step 151). Their links stay.
 
 type Open = { id: string; refs: MessageRefs; actions: MessageAction[] };
 
@@ -38,12 +38,20 @@ export async function closeAnsweredElsewhere(
   const actionIds = ids((m) => (m.refs.step ? m.refs.actionId : undefined));
   const deadlineIds = ids((m) => m.refs.deadlineEntryId);
   const alertIds = ids((m) => m.refs.alertId);
+  const readingIds = ids((m) => m.refs.readingId);
   const anyAutopilot = open.some(asksAutopilot);
   const anyProposal = open.some((m) => m.refs.proposalKey);
-  if (!anyAutopilot && !anyProposal && !actionIds.length && !deadlineIds.length && !alertIds.length)
+  if (
+    !anyAutopilot &&
+    !anyProposal &&
+    !actionIds.length &&
+    !deadlineIds.length &&
+    !alertIds.length &&
+    !readingIds.length
+  )
     return 0;
 
-  const [autopilot, proposals, actions, deadlines, alerts] = await Promise.all([
+  const [autopilot, proposals, actions, deadlines, alerts, readings] = await Promise.all([
     anyAutopilot ? autopilotOf(userId, { client }) : null,
     anyProposal ? openProposals(userId, { client }) : [],
     actionIds.length
@@ -61,20 +69,28 @@ export async function closeAnsweredElsewhere(
     alertIds.length
       ? db.alerts.findMany({ where: { id: { in: alertIds }, readAt: null }, select: { id: true } })
       : [],
+    readingIds.length
+      ? db.policyReadings.findMany({
+          where: { id: { in: readingIds }, status: "waiting" },
+          select: { id: true },
+        })
+      : [],
   ]);
   const openProposalKeys = new Set(proposals.map((p) => p.key));
   const stepNow = new Map(actions.map((a) => [a.id, stepOf(a)]));
   const openDeadlines = new Set(deadlines.map((d) => d.id));
   const unreadAlerts = new Set(alerts.map((a) => a.id));
+  const waitingReadings = new Set(readings.map((r) => r.id));
 
   const settled = (m: Open) => {
-    const { proposalKey, step, actionId, deadlineEntryId, alertId } = m.refs;
+    const { proposalKey, step, actionId, deadlineEntryId, alertId, readingId } = m.refs;
     return (
       (asksAutopilot(m) && autopilot !== null) ||
       (proposalKey !== undefined && !openProposalKeys.has(proposalKey)) ||
       (step !== undefined && actionId !== undefined && stepNow.get(actionId) !== step) ||
       (deadlineEntryId !== undefined && !openDeadlines.has(deadlineEntryId)) ||
-      (alertId !== undefined && !unreadAlerts.has(alertId))
+      (alertId !== undefined && !unreadAlerts.has(alertId)) ||
+      (readingId !== undefined && !waitingReadings.has(readingId))
     );
   };
 
