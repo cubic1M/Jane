@@ -3,6 +3,7 @@ import { CHAT_WEEK_DAYS } from "@/config/agent-chat";
 import type { LifeEventKind } from "@/config/life-events";
 import { CATEGORY_LABELS, UNCATEGORIZED } from "@/insights/labels";
 import { parseMoneyToCents } from "@/lib/money";
+import { parseDebtIntent, type DebtIntent } from "./debt-intents";
 import { parseTaxIntent, type TaxIntent } from "./tax-intents";
 import { parseInvestmentIntent, type InvestmentIntent } from "./investments/intents";
 
@@ -15,6 +16,8 @@ export type ActVerb = "cancel" | "lower" | "refund";
 
 export type Intent =
   | { kind: "help" }
+  // Loans and debt (spec Phase Y, ./debt-intents.ts).
+  | DebtIntent
   // Insurance (spec Phase X): ./insurance/intents.ts.
   | InsuranceIntent
   // "hi", "thanks": answered at once, without Claude.
@@ -246,6 +249,8 @@ export function parseIntent(raw: string, asOf: string): Intent {
     };
   }
   if (SAFE.test(text)) return { kind: "safe_to_spend" };
+  const debt = parseDebtIntent(text);
+  if (debt) return debt;
   // Spec step 128 on: after affording, so "can I afford … my 401(k)" stays a money question.
   const investments = parseInvestmentIntent(text);
   if (investments) return investments;

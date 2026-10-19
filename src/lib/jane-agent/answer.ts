@@ -13,6 +13,8 @@ import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
 import { homeSummary } from "@/lib/home";
 import { whatJaneDid } from "@/lib/what-jane-did";
+import { answerDebt } from "./debt-answer";
+import { isDebtIntent } from "./debt-intents";
 import type { Intent } from "./intents";
 import { answerInvestments } from "./investments/answer";
 import {
@@ -48,6 +50,8 @@ export async function answerByRules(
   { client = defaultClient, now = new Date() }: Options = {},
 ): Promise<Reply | null> {
   const asOf = now.toISOString().slice(0, 10);
+  // Loans and debt (spec Phase Y, ./debt-answer.ts).
+  if (isDebtIntent(intent)) return answerDebt(userId, intent, { client, now });
   switch (intent.kind) {
     case "unknown":
       return null;

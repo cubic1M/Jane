@@ -1,3 +1,5 @@
+import { DEBT_MESSAGE_PRIORITY, DEBT_SOURCE_LIMITS } from "@/config/debt";
+
 // Jane the agent (spec steps 81–82): how much Jane says in the chat, and when. Jane's
 // brain (src/lib/jane-agent/brain.ts) reads every limit from here.
 
@@ -6,6 +8,8 @@ export const CHAT_DAILY_LIMIT = 5;
 // And at most this many of each group a day, so one kind can't crowd out the rest.
 // Keyed by message source (src/lib/jane-agent/sources).
 export const CHAT_SOURCE_LIMITS: Readonly<Record<string, number>> = {
+  // Loans and debt (spec Phase Y, src/config/debt.ts).
+  ...DEBT_SOURCE_LIMITS,
   findings: 3,
   // Insurance (spec Phase X).
   insurance: 2,
@@ -52,6 +56,8 @@ export const DID_LOOKBACK_DAYS = 7;
 // Higher goes first. The plan comes before the findings it sums up; anything that can't
 // wait (an urgent alert, a deadline, something only the person can do) comes before both.
 export const MESSAGE_PRIORITY = {
+  // Loans and debt (spec Phase Y, src/config/debt.ts).
+  ...DEBT_MESSAGE_PRIORITY,
   brief: 1_000,
   // Insurance (spec step 102): cover that looks missing, after budgets and goals.
   insurance_gap: 35,
