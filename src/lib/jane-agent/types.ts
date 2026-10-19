@@ -144,6 +144,10 @@ export const ACTION_IDS = [
   // Spec step 167: a tax move's reminder on the deadlines, or not for me.
   "tax.plan_add",
   "tax.plan_no",
+  // Spec step 168: a gift's receipt, a donor-advised fund, and not this year.
+  "tax.receipt_got",
+  "tax.fund_open",
+  "tax.giving_no",
   // Investments (spec step 129 on): the answer buttons on an investor-profile question,
   // by position (src/config/investing.ts PROFILE_QUESTIONS).
   "invest.answer.1",
@@ -302,6 +306,8 @@ export type MessageRefs = {
   taxLocals?: string[];
   // Spec step 167: the tax plan move ("<year>:<key>") a message is about.
   taxPlanMove?: string;
+  // Spec step 168: the gift (its transaction id) a receipt message is about.
+  taxGift?: string;
   // Spec step 98: demo advice (src/lib/advice-mode.ts). The chat shows DEMO_ADVICE_LABEL
   // under it. Set it on every message that recommends investments, taxes, insurance or loans.
   advice?: true;

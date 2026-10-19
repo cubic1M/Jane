@@ -2075,6 +2075,14 @@ model TaxProfile {
   // Spec step 167: tax plan moves ("<year>:<key>") put on the deadlines, or said no to,
   // as "<year>:<key>:added" or "<year>:<key>:no".
   planHandled           String[]  @default([]) @map("plan_handled")
+  // Spec step 168: gifts (transaction ids) the person has the charity's receipt for; the
+  // year they said no to the giving options; and the donor-advised fund they opened with
+  // the stand-in (no money moves through Jane).
+  givingReceipts        String[]  @default([]) @map("giving_receipts")
+  givingDismissedYear   Int?      @map("giving_dismissed_year")
+  donorFundPartner      String?   @map("donor_fund_partner")
+  donorFundName         String?   @map("donor_fund_name")
+  donorFundOpenedAt     DateTime? @map("donor_fund_opened_at") @db.Timestamptz(3)
   createdAt             DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt             DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
 

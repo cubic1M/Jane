@@ -54,6 +54,7 @@ import {
 } from "./tax-states";
 import { taxDocAsk, taxDocChase, taxDocRight, taxDocsTick } from "./tax-documents";
 import { taxPlanAdd, taxPlanNo } from "./tax-plan";
+import { taxFundOpen, taxGivingNo, taxReceiptGot } from "./giving";
 import {
   investAnswer1,
   investAnswer2,
@@ -190,6 +191,9 @@ export const ACTION_HANDLERS: Readonly<Record<ActionId, ActionHandler>> = {
   "tax.docs_tick": taxDocsTick,
   "tax.plan_add": taxPlanAdd,
   "tax.plan_no": taxPlanNo,
+  "tax.receipt_got": taxReceiptGot,
+  "tax.fund_open": taxFundOpen,
+  "tax.giving_no": taxGivingNo,
   // Investments (spec step 129 on).
   "invest.answer.1": investAnswer1,
   "invest.answer.2": investAnswer2,
