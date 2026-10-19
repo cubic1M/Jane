@@ -26,6 +26,7 @@ import { stateName } from "@/planning/tax-profile";
 import { STATE_SOURCES } from "@/config/tax-states";
 import { loadTaxDocuments } from "@/lib/tax-documents";
 import { loadTaxPlan } from "@/lib/tax-plan";
+import { loadGiving } from "@/lib/giving";
 import { COMPARED } from "@/planning/tax-document-check";
 
 // Claude's tax tools in Jane's chat (spec steps 118–127): read-only, over the person's own
@@ -111,6 +112,12 @@ export const TAX_TOOLS: Anthropic.Tool[] = [
     name: "tax_plan",
     description:
       "The person's year-round tax plan for the tax year: each tax move that applies (workplace plan and IRA or HSA contributions, open enrollment, estimated payments, selling at a loss before year-end, gifts before December 31, a W-4 check after a new job or baby, filing), each with its deadline, when Jane brings it up, what she'd put on their deadlines, and whether it's there already or they said no. Moves past their deadline aren't included. Contribution, sale and gift moves are demo advice.",
+    input_schema: noInput,
+  },
+  {
+    name: "tax_giving",
+    description:
+      "The person's gifts to charity this tax year (tagged as donations): each gift's date, charity and amount, whether it needs the charity's written receipt (gifts of $250 or more) and whether they have it; their donor-advised fund if they opened one; and in demo advice mode the options that do more good for the same money (bunching two years of gifts, a donor-advised fund, giving long-held shares instead of cash), each with the federal tax with and without it. Say the option figures are estimates and demo advice.",
     input_schema: noInput,
   },
   {
@@ -447,6 +454,30 @@ export async function runTaxTool(
           saidNo: m.handled === "no",
           demoAdvice: m.advice,
         })),
+      });
+    }
+    case "tax_giving": {
+      const view = await loadGiving(userId, { client, now });
+      return out({
+        year: view.year,
+        given: money(view.totalCents),
+        gifts: view.gifts.map((g) => ({
+          date: g.date,
+          to: g.payee,
+          amount: money(g.cents),
+          needsReceipt: g.needsReceipt,
+          haveReceipt: g.receipted,
+        })),
+        donorAdvisedFund: view.fund,
+        demoAdvice: view.advice
+          ? view.options.map((o) => ({
+              option: o.title,
+              why: o.why,
+              taxWith: money(o.withCents),
+              taxWithout: money(o.withoutCents),
+              saves: money(o.savesCents),
+            }))
+          : undefined,
       });
     }
     case "tax_forms": {

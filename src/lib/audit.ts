@@ -108,6 +108,8 @@ export type AuditEvent =
   // one that doesn't match their accounts.
   | "tax_document_collected"
   | "tax_document_decided"
+  // Spec step 168: a donor-advised fund opened with the stand-in (no money moves).
+  | "donor_fund_opened"
   // Devices and sessions (spec step 73): one other session, or all the others, signed out.
   | "session_signed_out"
   | "other_sessions_signed_out"
