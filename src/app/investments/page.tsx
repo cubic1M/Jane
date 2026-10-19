@@ -132,6 +132,12 @@ async function InvestmentsContent() {
               {profile.complete ? "Change it" : "Answer them"}
             </Link>
           </p>
+          <p className="text-sm text-zinc-600 dark:text-zinc-400">
+            <Link href="/investments/fees" className={LINK}>
+              What investing costs you
+            </Link>
+            : every fee, a year and over 30 years.
+          </p>
 
           {data.byAssetClass.length > 0 && (
             <section className="flex flex-col gap-2">

@@ -1692,3 +1692,27 @@ model LifeEventAnswer {
   @@unique([userId, kind])
   @@map("life_event_answers")
 }
+
+// Spec step 87: one run of Jane's answer checks (src/lib/jane-agent/checks): the team's
+// own measurement of the chat over a demo-bank person, not anyone's data. Each question's
+// grade and reasons are in results, so runs can be compared.
+model AnswerCheckRun {
+  id            String   @id @default(cuid())
+  createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  // "rules_only" without an Anthropic key, "full" with one.
+  mode          String
+  // Jane's chat prompt version (src/lib/jane-agent/claude.ts) at the time.
+  promptVersion String   @map("prompt_version")
+  // 0–100 over the graded questions; null when none were graded.
+  score         Int?
+  graded        Int
+  skipped       Int
+  costCents     Int      @map("cost_cents")
+  stoppedAtCap  Boolean  @map("stopped_at_cap")
+  // Median time to Jane's first words, in milliseconds.
+  firstWordsMs  Int?     @map("first_words_ms")
+  results       Json
+
+  @@index([createdAt])
+  @@map("answer_check_runs")
+}
