@@ -44,6 +44,8 @@ export const CHAT_SOURCE_LIMITS: Readonly<Record<string, number>> = {
   health: 1,
   // Spec step 147.
   attention: 1,
+  // Spec step 148.
+  report: 1,
   // Spec step 128 on.
   investments: 3,
 };
@@ -128,6 +130,8 @@ export const MESSAGE_PRIORITY = {
   health: 28,
   // Spec step 147: a kind Jane stopped bringing up, said once.
   attention: 30,
+  // Spec step 148: the monthly money report, once a month, after what needs the person.
+  report: 40,
   review: 900,
   // Spec step 128: what's in investment accounts, the first time Jane sees it.
   investments: 32,

@@ -63,6 +63,7 @@ export const TABS: readonly Tab[] = [
       "/tax-pack",
       "/taxes",
       "/check-in",
+      "/monthly",
       "/year",
     ],
   },
@@ -104,6 +105,7 @@ const PAGE_LABELS: Readonly<Record<string, string>> = {
   "/afford": "Can I afford it?",
   "/tax-pack": "Tax-time pack",
   "/check-in": "Monthly check-in",
+  "/monthly": "Monthly money report",
   "/year": "Year in review",
 };
 

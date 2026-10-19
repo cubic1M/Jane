@@ -13,6 +13,7 @@ import { loadBillPay, type BillPayView } from "@/lib/money-movement/bill-pay";
 import { healthFor, type HealthView } from "@/lib/health-score";
 import type { Attention } from "./attention";
 import { loadAttention } from "./attention-load";
+import { recentReport, type StoredReport } from "@/lib/monthly-report-store";
 import { moneyPartnerFor } from "@/lib/money-movement/partner";
 import { latestPaycheckPlan, type PaycheckPlanView } from "@/lib/money-movement/paycheck";
 import { lifeGuessesFor } from "@/lib/life-guesses";
@@ -114,6 +115,8 @@ export type Snapshot = {
   // Spec step 147: when the person answers, and what Jane stopped bringing up. Optional,
   // like changes.
   attention?: Attention;
+  // Spec step 148: the monthly money report, while it's new. Optional, like changes.
+  monthlyReport?: StoredReport | null;
   // Spec step 128 on: what's in investment accounts.
   investments?: InvestmentSnapshot;
   // Spec step 91: suggestions the person said never to make again (preference keys);
@@ -291,5 +294,6 @@ export async function loadSnapshot(
     investments: await loadInvestmentSnapshot(userId, { client, now }),
     neverSuggest: [...never],
     attention: await loadAttention(userId, { client, now, timezone: user?.timezone ?? null }),
+    monthlyReport: await recentReport(userId, { client, now }),
   };
 }

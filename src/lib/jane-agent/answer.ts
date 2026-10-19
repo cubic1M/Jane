@@ -60,6 +60,8 @@ import { moneyPartnerFor } from "@/lib/money-movement/partner";
 import { billsReply } from "./replies-billpay";
 import { healthFor } from "@/lib/health-score";
 import { healthReply } from "./replies-health";
+import { storedReport } from "@/lib/monthly-report-store";
+import { reportReply } from "./replies-report";
 import { groupedHelpReply } from "./replies-help";
 import { lifeEventReply } from "./replies-life";
 import { savedReply } from "./replies-saved";
@@ -240,6 +242,8 @@ async function byIntent(
     }
     case "paycheck":
       return paycheckReply(await latestPaycheckPlan(userId, { client, now }));
+    case "monthly_report":
+      return reportReply(await storedReport(userId, null, { client }));
     case "health":
       return healthReply(await healthFor(userId, { client, now }));
     case "bills_paid": {
