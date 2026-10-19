@@ -102,7 +102,7 @@ describe.runIf(url)("insurance quotes against a real database", () => {
     const demo = await person(true);
     const health = await addPolicy(
       demo,
-      { ...EMPTY_POLICY_INPUT, kind: "health", carrier: "Aetna" },
+      { ...EMPTY_POLICY_INPUT, kind: "other", carrier: "Aetna" },
       { client },
     );
     expect(await requestQuotes(demo, health, { client, now: NOW })).toEqual({

@@ -1588,6 +1588,10 @@ model InsuranceQuote {
   termMonths         Int      @map("term_months")
   deductibleCents    Int?     @map("deductible_cents")
   coverage           Json     @default("{}")
+  // Spec step 149: a health plan's name, and what it would cost in a year with the person's
+  // usual care (premium plus expected out of pocket).
+  plan               String?
+  expectedCostCents  Int?     @map("expected_cost_cents")
   // Like for like with the policy: the same cover, or what's different.
   sameCover          Boolean  @map("same_cover")
   differences        String[] @default([])
