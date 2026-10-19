@@ -287,6 +287,7 @@ model User {
   debtTerms              DebtTerms[]
   debtPlan               DebtPlan?
   refinanceCheck         RefinanceCheck?
+  loanApplications       LoanApplication[]
   findings               Finding[]
   decisions              Decision[]
   actions                Action[]
@@ -634,6 +635,48 @@ model RefinanceCheck {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("refinance_checks")
+}
+
+// A loan application Jane prepared for a refinance offer (spec step 112): the terms the
+// person reviewed, and where it stands. Nothing is sent to the lender until they tap
+// Submit, and nothing is signed until they tap Accept. Then Jane watches the new loan fund
+// and the old one reach zero.
+model LoanApplication {
+  id                   String    @id @default(cuid())
+  userId               String    @map("user_id")
+  // The debt it replaces ("account:<id>") and that account, to watch it reach zero.
+  debtKey              String    @map("debt_key")
+  oldAccountId         String?   @map("old_account_id")
+  oldName              String    @map("old_name")
+  partner              String
+  offerId              String    @map("offer_id")
+  lender               String
+  product              String
+  aprBps               Int       @map("apr_bps")
+  rateType             String    @map("rate_type")
+  termMonths           Int       @map("term_months")
+  amountCents          Int       @map("amount_cents")
+  feeCents             Int       @map("fee_cents")
+  monthlyCents         Int       @map("monthly_cents")
+  totalCents           Int       @map("total_cents")
+  savingCents          Int       @map("saving_cents")
+  // draft, approved, declined, accepted, funded, paid_off or withdrawn.
+  status               String    @default("draft")
+  // The prefilled details sent with it (names, never account numbers).
+  applicant            Json      @default("{}")
+  partnerApplicationId String?   @map("partner_application_id")
+  reviewedAt           DateTime? @map("reviewed_at") @db.Timestamptz(3)
+  submittedAt          DateTime? @map("submitted_at") @db.Timestamptz(3)
+  acceptedAt           DateTime? @map("accepted_at") @db.Timestamptz(3)
+  fundedAt             DateTime? @map("funded_at") @db.Timestamptz(3)
+  paidOffAt            DateTime? @map("paid_off_at") @db.Timestamptz(3)
+  createdAt            DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt            DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("loan_applications")
 }
 
 model Finding {

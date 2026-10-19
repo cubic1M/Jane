@@ -33,6 +33,7 @@ import { confirmSwitches, switchOf } from "@/lib/agent/switch";
 import { ensureDemoOptions } from "@/lib/compare";
 import { ensureDemoPolicies } from "@/lib/insurance/profile";
 import { reshopPerson } from "@/lib/insurance/shop";
+import { demoPayoffs } from "@/lib/loan-applications";
 import { demoPlaidApi, isDemoToken } from "./demo";
 import { runJaneAgentSafely } from "@/lib/jane-agent/run";
 
@@ -487,7 +488,13 @@ export async function syncItem(
   const accessToken = decrypt(item.accessTokenEncrypted);
   // The demo bank (spec step 75) answers in Plaid's place; everything after is the same.
   if (isDemoToken(accessToken)) {
-    api = demoPlaidApi(accessToken, now, await demoSwitches(db));
+    api = demoPlaidApi(
+      accessToken,
+      now,
+      await demoSwitches(db),
+      // Spec step 112: loans a refinance paid off.
+      await demoPayoffs(item.userId, { client }),
+    );
     // Its example options to compare against (spec step 76).
     await ensureDemoOptions({ client, now });
     // And its sample insurance policy (spec step 102).

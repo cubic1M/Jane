@@ -106,6 +106,9 @@ export type MessageRefs = {
   findingId?: string;
   // Spec step 110: the extra a month the payoff plan's buttons start it with, in cents.
   debtPlanExtraCents?: number;
+  // Spec step 112: the refinance offer "Apply" prepares, and the application it made.
+  refinance?: { debtKey: string; lender: string };
+  applicationId?: string;
   // Insurance (spec Phase X): a coverage gap by its key (GAP_KEYS), and the policy a
   // message is about.
   insuranceGap?: string;

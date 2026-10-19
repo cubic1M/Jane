@@ -7,9 +7,14 @@ vi.mock("next/navigation", () => ({
 }));
 vi.mock("@/lib/session", () => ({ requireUser: vi.fn(async () => ({ id: "u1" })) }));
 vi.mock("@/lib/refinance", () => ({ checkRates: vi.fn() }));
+vi.mock("@/lib/loan-applications", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/loan-applications")>()),
+  prepareApplication: vi.fn(),
+}));
 
 import { checkRates } from "@/lib/refinance";
-import { checkNow } from "./actions";
+import { LoanApplicationError, prepareApplication } from "@/lib/loan-applications";
+import { applyAction, checkNow } from "./actions";
 
 describe("check rates now", () => {
   it("checks for the signed-in person and says so", async () => {
@@ -21,5 +26,28 @@ describe("check rates now", () => {
   it("goes back quietly when there's no lending partner", async () => {
     vi.mocked(checkRates).mockResolvedValueOnce(null);
     await expect(checkNow()).rejects.toThrow("REDIRECT /loans/refinance");
+  });
+});
+
+describe("apply with a lender", () => {
+  const form = () => {
+    const data = new FormData();
+    data.set("debtKey", "account:car");
+    data.set("lender", "Harbor Auto Refi");
+    return data;
+  };
+  it("prepares the application and opens it for review", async () => {
+    vi.mocked(prepareApplication).mockResolvedValueOnce({ id: "a1" } as never);
+    await expect(applyAction(form())).rejects.toThrow("REDIRECT /loans/apply/a1");
+    expect(prepareApplication).toHaveBeenCalledWith("u1", {
+      debtKey: "account:car",
+      lender: "Harbor Auto Refi",
+    });
+  });
+  it("shows why when it can't", async () => {
+    vi.mocked(prepareApplication).mockRejectedValueOnce(new LoanApplicationError("No offer now."));
+    await expect(applyAction(form())).rejects.toThrow(
+      "REDIRECT /loans/refinance?error=No+offer+now.",
+    );
   });
 });

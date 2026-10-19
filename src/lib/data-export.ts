@@ -437,6 +437,34 @@ export async function exportUserData(
     },
     orderBy: { debtKey: "asc" },
   });
+  // Their payoff plan, the refinance offers Jane checked, and their loan applications
+  // (spec steps 110–112).
+  const [debtPlan, refinanceCheck, loanApplications] = await Promise.all([
+    db.debtPlans.findFirst({
+      select: { strategy: true, extraCents: true, startedOn: true, checkedOn: true, status: true },
+    }),
+    db.refinanceChecks.findFirst({ select: { checkedOn: true, partner: true, quotes: true } }),
+    db.loanApplications.findMany({
+      select: {
+        lender: true,
+        oldName: true,
+        product: true,
+        aprBps: true,
+        termMonths: true,
+        amountCents: true,
+        monthlyCents: true,
+        feeCents: true,
+        status: true,
+        applicant: true,
+        submittedAt: true,
+        acceptedAt: true,
+        fundedAt: true,
+        paidOffAt: true,
+        createdAt: true,
+      },
+      orderBy: { createdAt: "asc" },
+    }),
+  ]);
   // What's in their investment accounts and its history (spec step 128).
   const investments = await investmentsExport(userId, client);
   // Insurance (spec Phase X): every policy on the profile and the household facts.
@@ -475,6 +503,9 @@ export async function exportUserData(
     events,
     ownedAssets,
     debtTerms,
+    debtPlan,
+    refinanceCheck,
+    loanApplications,
     documents: {
       note: "The files themselves aren't in this download. Download each one from /documents.",
       files: documents,

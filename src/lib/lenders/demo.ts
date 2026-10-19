@@ -1,10 +1,13 @@
+import { DEMO_LOAN_FUNDING_DAYS } from "@/config/debt";
 import { DEMO_LENDERS, demoLenderUrl, type DemoLender } from "@/data-sources/demo/demo-lenders";
 import type { LenderPartner, LoanOffer, PrequalifyRequest } from "./partner";
 
 // The stand-in lender partner (spec step 111): offers from the demo catalog, priced by
-// the credit band and moving a little from month to month, like real rates. Pure apart
-// from applications (spec step 112). Never used for a real account.
+// the credit band and moving a little from month to month, like real rates; applications
+// approve at once on the offer's terms and fund a few days after acceptance (spec step
+// 112). Never used for a real account.
 
+const DAY_MS = 24 * 60 * 60 * 1000;
 const BAND_BPS = { excellent: -50, good: 0, fair: 150 } as const;
 // The month's move for each lender, in basis points.
 const MOVES = [-25, -15, -5, 0, 5, 15, 25];
@@ -50,10 +53,21 @@ export const demoLender: LenderPartner = {
   async offer(id, request) {
     return (await this.prequalify(request)).find((o) => o.id === id) ?? null;
   },
-  async apply() {
-    throw new Error("Applying comes with spec step 112.");
+  // The soft check stand-in: approves an offer that's still in the catalog this month, at
+  // its terms, and declines one that isn't.
+  async apply({ offer, request }) {
+    const still = await this.offer(offer.id, request);
+    return {
+      applicationId: `demo-app-${crypto.randomUUID().replaceAll("-", "").slice(0, 16)}`,
+      status: still ? "approved" : "declined",
+    };
   },
-  async status() {
-    throw new Error("Applying comes with spec step 112.");
+  async accept() {},
+  // Funded DEMO_LOAN_FUNDING_DAYS after the person accepted.
+  async status(_applicationId, { now, acceptedAt }) {
+    if (!acceptedAt) return "approved";
+    return now.getTime() - acceptedAt.getTime() >= DEMO_LOAN_FUNDING_DAYS * DAY_MS
+      ? "funded"
+      : "accepted";
   },
 };

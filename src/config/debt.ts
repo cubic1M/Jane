@@ -33,7 +33,7 @@ export const MAX_TYPED_DEBT_CENTS = 2_000_000_000;
 
 // Jane's chat (src/config/agent-chat.ts takes these in): each debt message source's daily
 // limit, and where its messages go among the rest (higher first).
-export const DEBT_SOURCE_LIMITS = { debts: 1, payoff: 1, refinance: 1 } as const;
+export const DEBT_SOURCE_LIMITS = { debts: 1, payoff: 1, refinance: 1, loans: 2 } as const;
 export const DEBT_MESSAGE_PRIORITY = {
   // A buy now, pay later plan Jane found, then a debt with no rate: news that can wait,
   // after the questions other features need answered first (taxes, investments).
@@ -48,6 +48,12 @@ export const DEBT_MESSAGE_PRIORITY = {
   // can wait a few days, after the questions other features wait on (taxes, 35).
   refinance_offer: 33,
   refinance_more: 28,
+  // Spec step 112: an approved loan waiting for the person's yes, and an old loan still
+  // showing a balance after the new one funded, come early; funded and paid-off news after.
+  loan_approved: 86,
+  loan_payoff_late: 84,
+  loan_funded: 50,
+  loan_paid_off: 52,
 } as const;
 
 // What Jane does about debts by herself at each autopilot level (src/config/autopilot.ts),
@@ -69,6 +75,10 @@ export const DEBT_AUTOPILOT: Readonly<
       step: 111,
       does: "Checks refinance rates with the lender partner every month (a soft check) and tells you only when a switch saves enough. Applying always needs your tap.",
     },
+    {
+      step: 112,
+      does: "Prepares the application for the offer you pick from what it already knows, then follows it: funding, and the old loan being paid off. Submitting and accepting a loan always need your tap.",
+    },
   ],
   safe: [
     {
@@ -83,6 +93,10 @@ export const DEBT_AUTOPILOT: Readonly<
       step: 111,
       does: "Checks refinance rates with the lender partner every month (a soft check) and tells you only when a switch saves enough. Applying always needs your tap.",
     },
+    {
+      step: 112,
+      does: "Prepares the application for the offer you pick from what it already knows, then follows it: funding, and the old loan being paid off. Submitting and accepting a loan always need your tap.",
+    },
   ],
   all: [
     {
@@ -96,6 +110,10 @@ export const DEBT_AUTOPILOT: Readonly<
     {
       step: 111,
       does: "Checks refinance rates with the lender partner every month (a soft check) and tells you only when a switch saves enough. Applying always needs your tap.",
+    },
+    {
+      step: 112,
+      does: "Prepares the application for the offer you pick from what it already knows, then follows it: funding, and the old loan being paid off. Submitting and accepting a loan always need your tap.",
     },
   ],
 };
@@ -153,3 +171,15 @@ export const REFI_PREFER_FIXED = true;
 // in production unless DEMO_BANK=1); "none" turns refinancing off. A real loan marketplace
 // partner is a new value here and a new implementation of LenderPartner.
 export const LENDER_PARTNER: "demo" | "none" = "demo";
+
+// --- Step 112: one-tap apply ------------------------------------------------------------
+
+// The stand-in lender funds an accepted loan this many days later (a real one says when).
+export const DEMO_LOAN_FUNDING_DAYS = 3;
+// Once funded, the old loan should show as paid off within this many days; after that Jane
+// tells the person it still shows a balance.
+export const LOAN_PAYOFF_WAIT_DAYS = 10;
+// An old loan counts as paid off at or under this balance (a few cents of interest).
+export const LOAN_PAID_OFF_CENTS = 100;
+// An approved loan the person hasn't answered: Jane reminds them after this many days.
+export const LOAN_APPROVED_REMIND_DAYS = 1;

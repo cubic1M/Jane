@@ -56,15 +56,34 @@ export function demoPlaidApi(
   now: Date = new Date(),
   // Switches the person made, so their new bills show up (spec step 77).
   switches: DemoSwitch[] = [],
+  // Loans a new lender paid off (spec step 112): at zero from that day, details gone.
+  payoffs: { plaidAccountId: string; day: string }[] = [],
 ): PlaidApi {
   const demo = seedOf(accessToken);
   const through = yesterday(now);
+  const paidOff = new Set(payoffs.filter((p) => p.day <= today(now)).map((p) => p.plaidAccountId));
+  const accounts = () =>
+    demoAccounts(demo).map((a) =>
+      paidOff.has(a.account_id) ? { ...a, balances: { ...a.balances, current: 0 } } : a,
+    );
+  const liabilities = () => {
+    const all = demoLiabilities(demo, today(now));
+    const keep = <T extends { account_id?: string | null }>(list: T[] | null | undefined) =>
+      (list ?? []).filter((l) => !paidOff.has(l.account_id ?? ""));
+    return {
+      ...all,
+      credit: keep(all.credit),
+      mortgage: keep(all.mortgage),
+      student: keep(all.student),
+      loan: keep((all as { loan?: { account_id?: string | null }[] }).loan),
+    } as typeof all;
+  };
   const api = {
     transactionsSync: async ({ cursor }: { cursor?: string }) => {
       const after = cursor && /^\d{4}-\d{2}-\d{2}$/.test(cursor) ? cursor : null;
       return {
         data: {
-          accounts: demoAccounts(demo),
+          accounts: accounts(),
           added:
             after !== null && after >= through
               ? []
@@ -82,7 +101,7 @@ export function demoPlaidApi(
     // No recurring streams: Jane's own detection finds the recurring charges.
     transactionsRecurringGet: async () => ({ data: { outflow_streams: [], inflow_streams: [] } }),
     liabilitiesGet: async () => ({
-      data: { accounts: demoAccounts(demo), liabilities: demoLiabilities(demo, today(now)) },
+      data: { accounts: accounts(), liabilities: liabilities() },
     }),
     // What the investment accounts hold (spec step 128).
     investmentsHoldingsGet: async () => ({
