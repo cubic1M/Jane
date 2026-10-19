@@ -82,6 +82,12 @@ export const MESSAGE_PRIORITY = {
   life_dependants: 45,
   // Spec step 154: cover changes after a life event, worth doing soon.
   cover_change: 72,
+  // Spec step 155: a renewal call to make (before the renewal), its result, a claim's draft
+  // to file, and the carrier's news on a filed claim.
+  renewal_call: 74,
+  renewal_result: 52,
+  claim_draft: 82,
+  claim_status: 68,
   urgent_alert: 95,
   deadline: 90,
   waiting_on_you: 85,

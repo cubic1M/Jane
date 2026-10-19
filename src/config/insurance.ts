@@ -504,3 +504,4 @@ export const SMALL_CLAIM_MAX_CENTS = 250_000;
 // approved (paying the claim less the deductible), then paid.
 export const DEMO_CLAIM_DAYS = { reviewing: 2, approved: 5, paid: 10 } as const;
 export const NEGOTIATIONS_DAILY_LIMIT = 200;
+export const CLAIMS_DAILY_LIMIT = 200;
