@@ -663,7 +663,7 @@ export const QUESTIONS: readonly CheckQuestion[] = [
   },
   {
     id: "tax-15",
-    text: "what's the standard deduction",
+    text: "should I itemize",
     needs: "rules",
     expect: { intent: "tax", mentions: /\$16,100/ },
   },

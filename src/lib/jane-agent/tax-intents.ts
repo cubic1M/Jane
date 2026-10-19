@@ -115,7 +115,10 @@ const REFUND_ASK =
   /\bwhere(?:'s| is) my (?:tax )?refund\b|\b(?:did|has) my (?:tax )?refund (?:come|arrive|land|come in)\b|\bwhat (?:should|could) i do with my (?:tax )?refund\b|\bmy tax refund\b/;
 const FILE =
   /\bfile (?:my |our )?(?:tax(?:es)?|return|tax return)\b|\b(?:my |our )?tax return\b|\btax deadline\b|\bwhen (?:are|is) (?:my |our )?tax(?:es)? due\b|\b(?:status of|where is) my return\b/;
-const STANDARD = /\bstandard deduction\b/;
+// "What is the standard deduction" is the learn explainers' (step 136); whether to itemize
+// is the person's own question, answered from their estimate.
+const STANDARD =
+  /\bshould (?:i|we) itemi[sz]e\b|\b(?:do|will|would) (?:i|we) itemi[sz]e\b|\bitemi[sz]e or not\b|\bitemi[sz]ing worth it\b/;
 const PACK = /\btax(?:-| )?time pack\b|\btax pack\b|\byear-end pack\b/;
 
 function stateCode(words: string): string | null {
