@@ -177,3 +177,11 @@ export const CHAT_SUBSCRIPTIONS_LISTED = 8;
 // Spec step 90: a purchase that doesn't fit before payday gets "Start a goal for it",
 // reached this many months from now.
 export const AFFORD_GOAL_MONTHS = 3;
+
+// Spec step 92: never interrupt. While the person is chatting (they typed within this many
+// minutes), Jane's own messages wait, and come after.
+export const CHAT_TYPING_PAUSE_MINUTES = 10;
+// Findings of the same kind become one message with a list and a Yes each: at least this
+// many, at most this many in one message (one button each).
+export const CHAT_BUNDLE_MIN = 2;
+export const CHAT_BUNDLE_MAX = 5;

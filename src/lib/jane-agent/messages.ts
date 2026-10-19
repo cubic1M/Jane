@@ -70,6 +70,10 @@ export async function postedToday(
   );
 }
 
+// Spec step 92: a finding behind a bundle is hidden for good (until this), and read: it's
+// never shown or sent on its own, only through the bundle's buttons.
+export const BUNDLED_UNTIL = new Date("9999-12-31T00:00:00Z");
+
 // Writes the brain's messages in its order, a millisecond apart so the chat keeps that
 // order. One that was posted meanwhile (the same dedupeKey) is skipped, never doubled.
 export async function postMessages(
@@ -88,9 +92,10 @@ export async function postMessages(
       dedupeKey: m.dedupeKey,
       priority: m.priority,
       createdAt: new Date(now.getTime() + index),
+      ...(m.hidden ? { snoozedUntil: BUNDLED_UNTIL, readAt: now } : {}),
     })),
     skipDuplicates: true,
-    select: { kind: true, dedupeKey: true },
+    select: { kind: true, dedupeKey: true, snoozedUntil: true },
   });
   // Spec step 83: one the person said "Not now" to, whose snooze is over, comes back at the
   // bottom of the chat as it is now, buttons and all (the brain only plans it then).
@@ -116,15 +121,17 @@ export async function postMessages(
         notifiedVia: null,
       },
     });
-    if (count > 0) created.push({ kind: m.kind, dedupeKey: m.dedupeKey });
+    if (count > 0) created.push({ kind: m.kind, dedupeKey: m.dedupeKey, snoozedUntil: null });
   }
-  for (const message of created) {
+  // What the person sees: not the findings hidden behind a bundle.
+  const shown = created.filter((m) => m.snoozedUntil?.getTime() !== BUNDLED_UNTIL.getTime());
+  for (const message of shown) {
     await track(userId, "chat_message_posted", {
       kind: message.kind,
       source: message.dedupeKey.split(":")[0],
     });
   }
-  return created.length;
+  return shown.length;
 }
 
 // Open finding messages whose finding was answered some other way (on its card, the plan,
