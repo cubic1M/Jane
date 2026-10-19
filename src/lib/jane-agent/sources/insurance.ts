@@ -54,7 +54,11 @@ function gapMessages(insurance: InsuranceSnapshot): Candidate[] {
 
 // "I found car insurance $408.00 a year cheaper for the same cover", with the pick, why in
 // three lines, and what Yes does.
-export function shopBody(shop: Shop, policies: Policies): string | null {
+export function shopBody(
+  shop: Shop,
+  policies: Policies,
+  autopilot: string | null = null,
+): string | null {
   const policy = policies.find((p) => p.id === shop.policyId);
   if (!policy || !shop.pick || shop.savingCents === null) return null;
   const { pick } = shop;
@@ -64,13 +68,16 @@ export function shopBody(shop: Shop, policies: Policies): string | null {
     ...(shop.demo
       ? ["These are sample quotes from my demo carrier catalog, not real offers."]
       : []),
-    `Say yes and I'll switch you. Your ${policy.carrier} policy stays in place until the new one is.`,
+    // Spec step 108: at "handle everything" the switch is ready to go.
+    autopilot === "all"
+      ? `It's ready: tap Yes and I'll do the rest. I buy it, confirm its first payment, then cancel ${policy.carrier} from the same day.`
+      : `Say yes and I'll switch you. Your ${policy.carrier} policy stays in place until the new one is.`,
   ].join("\n");
 }
 
-function shopMessages(insurance: InsuranceSnapshot): Candidate[] {
+function shopMessages(insurance: InsuranceSnapshot, autopilot: string | null): Candidate[] {
   return (insurance.shops ?? []).flatMap((shop): Candidate[] => {
-    const body = shopBody(shop, insurance.policies);
+    const body = shopBody(shop, insurance.policies, autopilot);
     if (!body) return [];
     return [
       {
@@ -208,7 +215,7 @@ export const insuranceSource: MessageSource = {
     if (!insurance) return [];
     return [
       ...claimReminders(insurance, snapshot.asOf),
-      ...shopMessages(insurance),
+      ...shopMessages(insurance, snapshot.autopilot),
       ...switchMessages(insurance),
       ...gapMessages(insurance),
       ...checkedMessages(insurance),
