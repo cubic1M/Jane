@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useActionState, useEffect, useState } from "react";
+import { DemoAdviceLabel } from "@/components/demo-advice-label";
 import type { MessageView } from "@/lib/jane-agent/view";
 import { tapButton, type MessageState } from "./actions";
 
@@ -88,6 +89,7 @@ export function ChatMessageItem({ initial }: { initial: MessageView }) {
         <time>{message.time}</time>
       </p>
       <p className="whitespace-pre-line [overflow-wrap:anywhere]">{message.body}</p>
+      {message.advice && <DemoAdviceLabel />}
 
       {message.status !== "open" && (
         <p className="text-sm text-zinc-600 dark:text-zinc-400">

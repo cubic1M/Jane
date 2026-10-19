@@ -33,6 +33,14 @@ investment advice in this MVP.
 - Detection thresholds and rates live in src/config/detection.ts, never inline
 - LLM output never gives investment, tax or legal advice; run it through the
   guardrail check in src/lib/guardrails.ts before display
+- Demo advice exception (step 98): when adviceMode(userId) in src/lib/advice-mode.ts
+  is true (every account is the demo bank; in production only with DEMO_ADVICE=1),
+  recommendations on investments, taxes, insurance and loans may be shown, checked
+  with the "demo_advice" guardrail profile (unsupported figures, promised outcomes
+  and legal advice stay blocked) and always labelled "Demo advice: sample data, not
+  financial advice" (DEMO_ADVICE_LABEL, DemoAdviceLabel, refs.advice in the chat).
+  Real accounts never get advice: REAL_ACCOUNT_ADVICE in src/config/advice.ts stays
+  false until a licensed partner is connected and counsel signs off
 - Write tests for every rule and every API route you add
 - Prefer small, readable modules over clever abstractions
 - When unsure about a Plaid field or category name, check the Plaid docs instead
