@@ -1,4 +1,5 @@
 import { validTimezone } from "@/lib/digest/week";
+import { withFrom } from "./back-link";
 import type { ActionId, ChatMessage, MessageKind, MessageStatus } from "./types";
 
 // A message as the chat shows it (spec step 81): plain data for the page. An open message
@@ -16,6 +17,8 @@ export type MessageView = {
   status: MessageStatus;
   answeredWith: string | null;
   note: string | null;
+  // Demo advice (spec step 98): shown with DEMO_ADVICE_LABEL.
+  advice: boolean;
   buttons: { id: ActionId; label: string; kind: "primary" | "secondary" }[];
   links: { label: string; href: string }[];
   // Until when Undo works, so the page can hide it then.
@@ -58,9 +61,11 @@ export function toView(message: ChatMessage, now: Date, timezone: string | null)
     status: message.status,
     answeredWith: message.answeredWith,
     note: message.refs.note ?? null,
+    advice: message.refs.advice === true,
     buttons,
+    // Spec step 86: a page opened from here links back to this message.
     links: message.actions.flatMap((a) =>
-      a.kind === "link" ? [{ label: a.label, href: a.href }] : [],
+      a.kind === "link" ? [{ label: a.label, href: withFrom(a.href, message.id) }] : [],
     ),
     undoUntil: buttons.some((b) => b.id.startsWith("undo.")) ? undoUntil : null,
   };

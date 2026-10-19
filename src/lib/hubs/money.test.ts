@@ -74,7 +74,7 @@ describe("moneyTiles", () => {
   it("shows one live number per tile, linked to its page", () => {
     const t = byLabel(FULL);
     expect(t["Net worth"]).toMatchObject({ href: "/net-worth", value: "$40,000.00" });
-    expect(t["Investments"]).toMatchObject({ href: "/net-worth", value: "$20,000.00" });
+    expect(t["Investments"]).toMatchObject({ href: "/investments", value: "$20,000.00" });
     expect(t["Goals"]).toMatchObject({ value: "2 on track", status: "Of 3 goals" });
     expect(t["Spending"]).toMatchObject({
       href: "/insights",

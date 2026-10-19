@@ -6,6 +6,7 @@ vi.mock("@/lib/session", () => ({ requireUser: vi.fn() }));
 vi.mock("@/lib/analytics", () => ({ track: vi.fn() }));
 vi.mock("@/lib/audit", () => ({ logAudit: vi.fn(), SYSTEM_ACTOR: { type: "system", id: null } }));
 
+import { GAP_ADVICE } from "@/config/insurance";
 import { EMPTY_POLICY_INPUT, addPolicy } from "@/lib/insurance/policies";
 import { loadInsurance } from "@/lib/insurance/profile";
 import { ChatActionError, takeChatAction } from "../actions";
@@ -144,5 +145,27 @@ describe.runIf(url)("insurance in Jane's chat, against a real database", () => {
     expect(data.household.home).toEqual({ value: "Own", from: "accounts" });
     expect(data.gaps.map((g: { what: string }) => g.what)).toEqual(["No home insurance on file"]);
     expect(output.cents).toEqual(expect.arrayContaining([14_200, 170_400, 100_000, 5_000_000]));
+    // A real account never gets advice (spec step 98).
+    expect(data.gaps[0].demoAdviceWhatToAdd).toBeUndefined();
+  });
+
+  it("says what to add to a demo-bank person, as demo advice", async () => {
+    const me = await homeowner();
+    await client.account.deleteMany({ where: { userId: me, source: "csv" } });
+    await client.plaidItem.create({
+      data: {
+        userId: me,
+        plaidItemId: `demo-${crypto.randomUUID()}`,
+        accessTokenEncrypted: "v1:unused",
+      },
+    });
+    const data = JSON.parse(
+      (await runChatTool(me, "insurance_policies", {}, { client, now: NOW })).content,
+    );
+    expect(data.gaps[0].demoAdviceWhatToAdd).toBe(GAP_ADVICE.home.text);
+    await runJaneAgent(me, { client, now: NOW, trigger: "open" });
+    const message = await gapMessage(me);
+    expect(message?.body).toContain(GAP_ADVICE.home.text);
+    expect(parseRefs(message?.refs).advice).toBe(true);
   });
 });

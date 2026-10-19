@@ -14,6 +14,7 @@ import { alertGotIt, deadlineDone, snooze } from "./heads-ups";
 import { setupAll, setupNo, setupYes } from "./setup";
 import { cancelDone, offerAccept, offerDecline } from "./steps";
 import { goalStart } from "./goal";
+import { changeBudget, changeExpected, changeLook } from "./changes";
 import { insuranceGapNo } from "./insurance";
 
 // Every button action, by id (spec step 81). A new button is a new handler here; the
@@ -41,6 +42,10 @@ export const ACTION_HANDLERS: Readonly<Record<ActionId, ActionHandler>> = {
   // Typing to Jane (spec step 84).
   "goal.start": goalStart,
   "autopilot.pause": autopilotPause,
+  // Jane notices changes (spec step 97).
+  "change.look": changeLook,
+  "change.budget": changeBudget,
+  "change.expected": changeExpected,
   // Insurance (spec Phase X).
   "insurance.gap_no": insuranceGapNo,
 };

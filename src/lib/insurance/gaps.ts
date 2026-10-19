@@ -1,4 +1,4 @@
-import { POLICY_KINDS, type GapKey, type PolicyKind } from "@/config/insurance";
+import { GAP_ADVICE, POLICY_KINDS, type GapKey, type PolicyKind } from "@/config/insurance";
 import { isLiabilityOnly } from "./coverage";
 import type { Household } from "./household";
 import type { Policy } from "./policies";
@@ -84,3 +84,6 @@ export function coverageGaps(household: Household, policies: Policy[]): Gap[] {
 // "car insurance", "renters insurance".
 export const kindWords = (kind: PolicyKind) =>
   kind === "other" ? "insurance" : `${POLICY_KINDS[kind].toLowerCase()} insurance`;
+
+// What to add for a gap: demo advice (spec step 98), only for people in demo advice mode.
+export const gapAdvice = (gap: Pick<Gap, "key">) => GAP_ADVICE[gap.key];

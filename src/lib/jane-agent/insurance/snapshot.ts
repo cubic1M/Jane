@@ -11,6 +11,8 @@ export type InsuranceSnapshot = {
   policies: (Policy & { nextRenewal: string | null })[];
   gaps: Gap[];
   household: Household;
+  // Demo advice mode (spec step 98).
+  advice: boolean;
 };
 
 export async function loadInsuranceSnapshot(
@@ -18,10 +20,11 @@ export async function loadInsuranceSnapshot(
   { client, now }: { client: PrismaClient; now: Date },
 ): Promise<InsuranceSnapshot> {
   const asOf = now.toISOString().slice(0, 10);
-  const { policies, gaps, household } = await loadInsurance(userId, { client, now });
+  const { policies, gaps, household, advice } = await loadInsurance(userId, { client, now });
   return {
     policies: policies.map((p) => ({ ...p, nextRenewal: nextRenewal(p, asOf) })),
     gaps,
     household,
+    advice,
   };
 }

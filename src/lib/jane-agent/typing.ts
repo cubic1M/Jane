@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import type Anthropic from "@anthropic-ai/sdk";
 import { CHAT_CLAUDE_HISTORY, CHAT_MAX_MESSAGE } from "@/config/agent-chat";
 import type { Prisma, PrismaClient } from "@/generated/prisma/client";
+import { adviceMode } from "@/lib/advice-mode";
 import { track } from "@/lib/analytics";
 import { llmEnabled } from "@/lib/anthropic";
 import { db as defaultClient } from "@/lib/db";
@@ -84,6 +85,7 @@ async function answer(
     now,
     claude,
     onEvent,
+    advice: await adviceMode(userId, { client }),
   });
   const source: Source =
     result.kind === "answer"

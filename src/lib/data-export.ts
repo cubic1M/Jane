@@ -1,6 +1,7 @@
 import type { PrismaClient } from "@/generated/prisma/client";
 import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
+import { investmentsExport } from "@/lib/investments/holdings";
 import { teamAccessFor } from "@/lib/team-access-loader";
 import { insuranceExport } from "@/lib/insurance/export";
 
@@ -47,6 +48,7 @@ export async function exportUserData(
     documents,
     deadlines,
     lifeEvents,
+    changeAcks,
     janeMessages,
     teamAccess,
   ] = await Promise.all([
@@ -356,6 +358,8 @@ export async function exportUserData(
         completedAt: true,
       },
     }),
+    // Changes the person said were expected (spec step 97).
+    db.changeAcks.findMany({ select: { key: true, kind: true, createdAt: true } }),
     // Jane's chat (spec step 81): every message, with the buttons and what they answered.
     db.janeMessages.findMany({
       select: {
@@ -376,6 +380,8 @@ export async function exportUserData(
     // entry, by role, never a team member's name or id.
     teamAccessFor(userId, { client, limit: null }),
   ]);
+  // What's in their investment accounts and its history (spec step 128).
+  const investments = await investmentsExport(userId, client);
   // Insurance (spec Phase X): every policy on the profile and the household facts.
   const insurance = await insuranceExport(userId, { client });
 
@@ -416,7 +422,9 @@ export async function exportUserData(
     },
     deadlines,
     lifeEvents,
+    changeAcks,
     janeMessages,
+    investments,
     insurance,
     teamAccess: teamAccess.map(({ at, who, what, why, actionId }) => ({
       at,

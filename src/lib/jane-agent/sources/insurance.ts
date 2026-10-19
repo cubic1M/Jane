@@ -1,19 +1,24 @@
 import { MESSAGE_PRIORITY } from "@/config/agent-chat";
-import { kindWords } from "@/lib/insurance/gaps";
+import { gapAdvice, kindWords } from "@/lib/insurance/gaps";
 import type { Candidate } from "../types";
 import { snoozeButton, type MessageSource } from "./source";
 
 // Insurance (spec Phase X). Step 102: cover that looks missing, as a heads-up, once per
 // gap: "I have this" opens the add form for that kind, "I don't need it" never brings it up
-// again, "Not now" until tomorrow. Jane never buys cover.
+// again, "Not now" until tomorrow. Jane never buys cover. In demo advice mode (spec step 98)
+// she also says what to add, labelled.
 
 export const insuranceSource: MessageSource = {
   key: "insurance",
   gather: (snapshot) =>
     (snapshot.insurance?.gaps ?? []).map((gap): Candidate => ({
       kind: "heads_up",
-      body: `${gap.title}. ${gap.why}`,
-      refs: { insuranceGap: gap.key, ...(gap.policyId ? { policyId: gap.policyId } : {}) },
+      body: `${gap.title}. ${gap.why}${snapshot.insurance?.advice ? `\n${gapAdvice(gap).text}` : ""}`,
+      refs: {
+        insuranceGap: gap.key,
+        ...(gap.policyId ? { policyId: gap.policyId } : {}),
+        ...(snapshot.insurance?.advice ? { advice: true as const } : {}),
+      },
       actions: [
         gap.policyId
           ? {

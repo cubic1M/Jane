@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from "vitest";
 vi.mock("@/lib/session", () => ({ requireUser: vi.fn() }));
 
 import { MESSAGE_PRIORITY } from "@/config/agent-chat";
+import { GAP_ADVICE } from "@/config/insurance";
 import { coverageGaps } from "@/lib/insurance/gaps";
 import { resolveHousehold, type Household } from "@/lib/insurance/household";
 import type { Policy } from "@/lib/insurance/policies";
@@ -47,8 +48,8 @@ const household = (
     { mortgage: false, homeOwned: false, rentPaid: false, cars: 0 },
   );
 
-function insurance(policies = [policy()], facts = household()): InsuranceSnapshot {
-  return { policies, household: facts, gaps: coverageGaps(facts, policies) };
+function insurance(policies = [policy()], facts = household(), advice = false): InsuranceSnapshot {
+  return { policies, household: facts, gaps: coverageGaps(facts, policies), advice };
 }
 
 function snapshot(over: Partial<Snapshot> = {}): Snapshot {
@@ -199,6 +200,14 @@ describe("insurance answers", () => {
     expect(gaps.body).toMatch(
       /^One thing looks missing from your cover:\n- No renters insurance on file\. You told me you rent/,
     );
+    const advised = insuranceReply(
+      ask("am I missing any insurance"),
+      insurance([], household({ housing: "rent" }), true),
+      ASOF,
+    );
+    expect(advised.body).toContain(GAP_ADVICE.renters.text);
+    expect(advised.refs).toEqual({ advice: true });
+    expect(gaps.refs).toEqual({});
     expect(insuranceReply(ask("am I missing any insurance"), insurance(), ASOF).body).toMatch(
       /^Nothing looks missing/,
     );
@@ -233,6 +242,16 @@ describe("coverage gaps as heads-ups", () => {
       { id: "insurance.gap_no", label: "I don't need it", kind: "secondary" },
       { id: "snooze", label: "Not now", kind: "secondary" },
     ]);
+  });
+
+  it("says what to add only in demo advice mode, labelled (spec step 98)", () => {
+    const facts = household({ housing: "rent" });
+    const [plain] = messages(snapshot({ insurance: insurance([], facts) }));
+    expect(plain.body).not.toContain(GAP_ADVICE.renters.text);
+    expect(plain.refs.advice).toBeUndefined();
+    const [advice] = messages(snapshot({ insurance: insurance([], facts, true) }));
+    expect(advice.body.split("\n")[1]).toBe(GAP_ADVICE.renters.text);
+    expect(advice.refs.advice).toBe(true);
   });
 
   it("links a liability-only car policy to its own record", () => {

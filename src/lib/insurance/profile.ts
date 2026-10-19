@@ -1,4 +1,5 @@
 import type { PrismaClient } from "@/generated/prisma/client";
+import { adviceMode } from "@/lib/advice-mode";
 import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
 import { coverageGaps, type Gap } from "./gaps";
@@ -15,18 +16,21 @@ export type InsuranceProfile = {
   policies: Policy[];
   household: Household;
   gaps: Gap[];
+  // Demo advice mode (spec step 98): whether Jane may say what to add or change.
+  advice: boolean;
 };
 
 export async function loadInsurance(
   userId: string,
   { client = defaultClient, now = new Date() }: Options = {},
 ): Promise<InsuranceProfile> {
-  const [policies, household] = await Promise.all([
+  const [policies, household, advice] = await Promise.all([
     listPolicies(userId, { client }),
     loadHousehold(userId, { client, now }),
+    adviceMode(userId, { client }),
   ]);
   // Found policies don't count until the person confirms them (spec step 99).
-  return { policies, household, gaps: coverageGaps(household, policies) };
+  return { policies, household, gaps: coverageGaps(household, policies), advice };
 }
 
 // The demo bank's sample policy (spec step 75): the GEICO car insurance its payments show,

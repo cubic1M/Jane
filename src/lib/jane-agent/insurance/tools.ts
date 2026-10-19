@@ -5,7 +5,7 @@ import type { PrismaClient } from "@/generated/prisma/client";
 import type { ToolOutput } from "@/lib/ask/tools";
 import { checkGuardrails } from "@/lib/guardrails";
 import { valueWords } from "@/lib/insurance/coverage";
-import { kindWords } from "@/lib/insurance/gaps";
+import { gapAdvice, kindWords } from "@/lib/insurance/gaps";
 import { yearlyPremium } from "@/lib/insurance/policies";
 import { formatCents } from "@/lib/money";
 import { loadInsuranceSnapshot } from "./snapshot";
@@ -41,7 +41,10 @@ export async function runInsuranceTool(
   if (name !== "insurance_policies") {
     return { content: JSON.stringify({ error: `There's no tool called ${name}.` }), cents };
   }
-  const { policies, gaps, household } = await loadInsuranceSnapshot(userId, { client, now });
+  const { policies, gaps, household, advice } = await loadInsuranceSnapshot(userId, {
+    client,
+    now,
+  });
   const fact = <T>(f: { value: T | null; from: string | null }) =>
     f.value === null
       ? "not known"
@@ -81,7 +84,13 @@ export async function runInsuranceTool(
         dependants: fact(household.dependants),
         pets: fact(household.pets),
       },
-      gaps: gaps.map((g) => ({ what: g.title, why: g.why })),
+      // What to add is demo advice (spec step 98): only in demo advice mode.
+      gaps: gaps.map((g) => {
+        if (!advice) return { what: g.title, why: g.why };
+        const add = gapAdvice(g);
+        cents.push(...add.cents);
+        return { what: g.title, why: g.why, demoAdviceWhatToAdd: add.text };
+      }),
     }),
     cents,
   };

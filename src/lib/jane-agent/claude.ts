@@ -10,11 +10,13 @@ import { anthropic, chatModel } from "@/lib/anthropic";
 import {
   checkGuardrails,
   dollarFigures,
+  isAdvice,
   unsupportedFigures,
   type GuardrailIssue,
 } from "@/lib/guardrails";
 import { CHAT_TOOLS, chatPrimer, proposeAction, runChatTool, type Proposal } from "./claude-tools";
 import { GuardedText } from "./guarded-text";
+import { INVESTMENT_TOOL_STATUS } from "./investments/tools";
 import { EXAMPLES, type Reply } from "./replies";
 
 // Free questions in Jane's chat, with an Anthropic key (spec step 84): Claude, the
@@ -31,6 +33,10 @@ import { EXAMPLES, type Reply } from "./replies";
 
 export const CHAT_PROMPT_VERSION = "chat-v4";
 
+// The one rule that differs in demo advice mode (spec step 98).
+const NO_ADVICE = `- Never give investment, tax or legal advice, and don't mention investments, taxes or legal matters at all. Don't suggest financial products beyond Jane's pick from finding_details.`;
+const DEMO_ADVICE = `- This person is using the demo bank with sample data, so you may recommend what to do about investments, taxes, insurance and loans: say what you'd do and why, from their numbers. Never promise a result or a return, and never give legal advice. The app labels your answer as demo advice; don't add a label or disclaimer yourself.`;
+
 const SYSTEM = `You are Jane, the money helper inside a personal finance app, answering in the app's chat. You know the person's own money: spending, bills, subscriptions, safe to spend, goals, budgets, and what the app has found or is doing for them.
 
 Be useful, like a friend who's good with money and has their numbers in front of them:
@@ -45,9 +51,10 @@ How to answer:
 - Keep it short: a few sentences or a short list. Plain words, no jargon, no headings. Don't write anything before a lookup; just look it up.
 - You can't do anything yourself. When something can be done (cancel or lower something the app found, approve the plan, start a goal), call propose_action once so they get a button, and say what tapping it does. Never say it's done.
 - Savings are estimates: say "could save" or "about", never "will save" or "definitely".
-- Never give investment, tax or legal advice, and don't mention investments, taxes or legal matters at all. Don't suggest financial products beyond Jane's pick from finding_details.
+${NO_ADVICE}
 - To "hi" or "thanks", answer in a sentence and mention one useful thing from their numbers.
 - If a question isn't about their money in this app, say briefly what you can help with.`;
+const SYSTEM_DEMO_ADVICE = SYSTEM.replace(NO_ADVICE, DEMO_ADVICE);
 
 export type ChatTurn = { role: "user" | "assistant"; content: string };
 
@@ -67,6 +74,9 @@ type Options = {
   claude?: () => Pick<Anthropic, "messages">;
   maxTurns?: number;
   onEvent?: (event: ChatStreamEvent) => void;
+  // Demo advice mode (src/lib/advice-mode.ts, spec step 98): the demo guardrail profile,
+  // and advice labelled. Off unless the caller checked adviceMode.
+  advice?: boolean;
 };
 
 const STATUS: Record<string, string> = {
@@ -83,9 +93,11 @@ const STATUS: Record<string, string> = {
   net_worth: "Adding up your net worth…",
   finding_details: "Looking into it…",
   subscriptions: "Checking your subscriptions…",
+  recent_changes: "Looking at what changed…",
   propose_action: "Getting a button ready…",
 };
-export const statusFor = (tool: string) => STATUS[tool] ?? "Looking that up…";
+export const statusFor = (tool: string) =>
+  STATUS[tool] ?? INVESTMENT_TOOL_STATUS[tool] ?? "Looking that up…";
 
 // Shown when Claude can't answer (an error, a refusal, too many lookups).
 export const CHAT_UNAVAILABLE_TEXT = `I couldn't look into that just now. Try one of these:\n${EXAMPLES.map((e) => `- ${e}`).join("\n")}`;
@@ -112,6 +124,7 @@ function rewriteRequest(
   text: string,
   issues: GuardrailIssue[],
   allowedCents: readonly number[],
+  advice: boolean,
 ): string {
   const reasons = issues.map((issue) => {
     switch (issue) {
@@ -120,7 +133,9 @@ function rewriteRequest(
       case "investment_advice":
         return "It mentions investing or investments. Leave that out.";
       case "tax_or_legal_advice":
-        return "It mentions taxes or legal matters. Leave that out.";
+        return advice
+          ? "It gives legal advice. Leave that out."
+          : "It mentions taxes or legal matters. Leave that out.";
       case "guaranteed_outcome":
         return 'It promises a result. Say "could" or "about" instead of "will", "definitely" or "guaranteed".';
       default:
@@ -140,8 +155,10 @@ export async function askClaudeInChat(
     claude = anthropic,
     maxTurns = CHAT_CLAUDE_MAX_TURNS,
     onEvent = () => {},
+    advice = false,
   }: Options,
 ): Promise<ClaudeAnswer> {
+  const profile = advice ? "demo_advice" : "standard";
   onEvent({ type: "status", text: "Looking at your numbers…" });
   const primer = await chatPrimer(userId, { client, now });
   // Figures the answer may use: any in the numbers sent up front or a tool's result (a
@@ -157,10 +174,15 @@ export async function askClaudeInChat(
   const draft = new GuardedText(
     () => allowedCents,
     (text) => onEvent({ type: "text", text }),
+    profile,
   );
   const system: Anthropic.TextBlockParam[] = [
-    // The instructions and tools are the same for everyone, so they're cached.
-    { type: "text", text: SYSTEM, cache_control: { type: "ephemeral" } },
+    // The instructions and tools are the same for everyone in each mode, so they're cached.
+    {
+      type: "text",
+      text: advice ? SYSTEM_DEMO_ADVICE : SYSTEM,
+      cache_control: { type: "ephemeral" },
+    },
     {
       type: "text",
       text: `The person's numbers right now (today is ${now.toISOString().slice(0, 10)}):\n${primer.text || "None available."}`,
@@ -233,7 +255,7 @@ export async function askClaudeInChat(
       .join("\n")
       .trim();
     if (!text) return unavailable();
-    const check = checkGuardrails(text, allowedCents);
+    const check = checkGuardrails(text, allowedCents, undefined, profile);
     if (!check.ok && rewrites < CHAT_CLAUDE_REWRITES && turn + 1 < maxTurns) {
       // Once, Claude is told what can't be shown and answers again.
       rewrites += 1;
@@ -241,7 +263,10 @@ export async function askClaudeInChat(
       onEvent({ type: "reset" });
       onEvent({ type: "status", text: "Checking my answer…" });
       messages.push({ role: "assistant", content: response.content });
-      messages.push({ role: "user", content: rewriteRequest(text, check.issues, allowedCents) });
+      messages.push({
+        role: "user",
+        content: rewriteRequest(text, check.issues, allowedCents, advice),
+      });
       continue;
     }
     if (!check.ok) {
@@ -254,12 +279,14 @@ export async function askClaudeInChat(
         issues: check.issues,
       };
     }
+    const refs = proposal?.refs ?? {};
     return {
       kind: "answer",
       reply: {
         body: proposal?.line ? `${text}\n\n${proposal.line}` : text,
         actions: proposal?.actions ?? [],
-        refs: proposal?.refs ?? {},
+        // Demo advice is always labelled (the chat shows DEMO_ADVICE_LABEL under it).
+        refs: advice && isAdvice(text) ? { ...refs, advice: true } : refs,
       },
     };
   }

@@ -1,4 +1,4 @@
-import type { PlaidApi, TransactionStream } from "plaid";
+import type { Holding, InvestmentTransaction, PlaidApi, TransactionStream } from "plaid";
 import { categorizeTransactions } from "@/categorize/categorize";
 import { normalizeLiabilities } from "@/data-sources/plaid/liabilities";
 import {
@@ -7,7 +7,18 @@ import {
   toCents,
   type PlaidSync,
 } from "@/data-sources/plaid/plaid-source";
+import {
+  normalizeHolding,
+  normalizeInvestmentTransaction,
+  normalizeSecurity,
+  type NormalizedSecurity,
+} from "@/data-sources/plaid/investments";
 import { SYNCED_KINDS, type NormalizedAccount } from "@/data-sources/types";
+import {
+  INVESTMENT_HISTORY_DAYS,
+  INVESTMENT_RESYNC_DAYS,
+  INVESTMENT_TRANSACTIONS_PAGE,
+} from "@/config/funds";
 import { runDetection } from "@/detection/engine";
 import type { PrismaClient } from "@/generated/prisma/client";
 import { track } from "@/lib/analytics";
@@ -45,7 +56,8 @@ export type SyncResult = {
   recurring: "updated" | "unavailable";
   // "off" for items linked before Liabilities was asked for.
   liabilities: "updated" | "unavailable" | "off";
-  // Investment and retirement balances (spec step 66); "off" as above.
+  // Investment and retirement balances (spec step 66) and holdings (step 128); "off" as
+  // above.
   investments: "updated" | "unavailable" | "off";
 };
 
@@ -64,13 +76,15 @@ async function saveAccounts(db: ScopedDb, itemId: string, sync: { accounts: Norm
         name: account.name,
         mask: account.mask,
         type: SYNCED_KINDS[account.kind].type,
-        subtype: SYNCED_KINDS[account.kind].subtype,
+        subtype: account.plaidSubtype ?? SYNCED_KINDS[account.kind].subtype,
         currentBalanceCents: account.currentBalanceCents,
       },
       update: {
         name: account.name,
         mask: account.mask,
         currentBalanceCents: account.currentBalanceCents,
+        // Investment accounts keep Plaid's own subtype (spec step 128).
+        ...(account.plaidSubtype ? { subtype: account.plaidSubtype } : {}),
       },
       select: { id: true },
     });
@@ -279,29 +293,151 @@ async function demoSwitches(db: ScopedDb): Promise<DemoSwitch[]> {
   });
 }
 
-// Investment and retirement balances (spec step 66): the accounts only, for net worth.
-// Plaid's holdings and securities come back too, and are dropped: Jane says nothing about
-// what's in an account. An error only warns, like liabilities.
-async function saveInvestmentBalances(
+// Investment and retirement accounts (spec step 66) and what they hold (spec step 128):
+// the balances for net worth, then the securities and holdings, replaced each time, and
+// the investment transactions since the last sync. An error only warns, like liabilities;
+// a failure reading the transactions keeps the holdings.
+async function saveInvestments(
   db: ScopedDb,
   api: PlaidApi,
   accessToken: string,
   itemId: string,
+  now: Date,
 ): Promise<SyncResult["investments"]> {
-  let accounts: NormalizedAccount[];
+  let holdings: Awaited<ReturnType<PlaidApi["investmentsHoldingsGet"]>>["data"];
   try {
-    const data = await plaidCall(api.investmentsHoldingsGet({ access_token: accessToken }));
-    accounts = data.accounts
-      .map((a) => normalizeAccount(a))
-      .filter((a): a is NormalizedAccount => a !== null);
+    holdings = await plaidCall(api.investmentsHoldingsGet({ access_token: accessToken }));
   } catch (error) {
     const code = plaidErrorCode(error);
     if (!code) throw error;
     console.warn("Plaid investments unavailable", { code });
     return "unavailable";
   }
-  await saveAccounts(db, itemId, { accounts });
+  const accounts = holdings.accounts
+    .map((a) => normalizeAccount(a))
+    .filter((a): a is NormalizedAccount => a !== null);
+  const accountIds = await saveAccounts(db, itemId, { accounts });
+  const securityIds = await saveSecurities(db, holdings.securities.map(normalizeSecurity));
+  await saveHoldings(db, accountIds, securityIds, holdings.holdings);
+  await saveInvestmentTransactions(db, api, accessToken, accountIds, securityIds, now);
   return "updated";
+}
+
+async function saveSecurities(db: ScopedDb, securities: NormalizedSecurity[]) {
+  const ids = new Map<string, string>();
+  for (const s of securities) {
+    const data = {
+      name: s.name,
+      ticker: s.ticker,
+      type: s.type,
+      subtype: s.subtype,
+      isCashEquivalent: s.isCashEquivalent,
+      closePriceCents: s.closePriceCents,
+      closePriceAsOf: s.closePriceAsOf ? new Date(`${s.closePriceAsOf}T00:00:00Z`) : null,
+      sector: s.sector,
+    };
+    const saved = await db.securities.upsert({
+      where: { userId_plaidSecurityId: { userId: db.userId, plaidSecurityId: s.ref } },
+      create: { userId: db.userId, plaidSecurityId: s.ref, ...data },
+      update: data,
+      select: { id: true },
+    });
+    ids.set(s.ref, saved.id);
+  }
+  return ids;
+}
+
+async function saveHoldings(
+  db: ScopedDb,
+  accountIds: Map<string, string>,
+  securityIds: Map<string, string>,
+  holdings: Holding[],
+) {
+  const kept = new Map<string, string[]>([...accountIds.values()].map((id) => [id, []]));
+  for (const h of holdings.map(normalizeHolding)) {
+    const accountId = h && accountIds.get(h.accountRef);
+    const securityId = h && securityIds.get(h.securityRef);
+    if (!h || !accountId || !securityId) continue;
+    const data = {
+      quantity: h.quantity,
+      priceCents: h.priceCents,
+      priceAsOf: h.priceAsOf ? new Date(`${h.priceAsOf}T00:00:00Z`) : null,
+      valueCents: h.valueCents,
+      costBasisCents: h.costBasisCents,
+    };
+    await db.holdings.upsert({
+      where: { accountId_securityId: { accountId, securityId } },
+      create: { userId: db.userId, accountId, securityId, ...data },
+      update: data,
+    });
+    kept.get(accountId)?.push(securityId);
+  }
+  // Whatever an account no longer holds.
+  for (const [accountId, securities] of kept) {
+    await db.holdings.deleteMany({ where: { accountId, securityId: { notIn: securities } } });
+  }
+}
+
+async function saveInvestmentTransactions(
+  db: ScopedDb,
+  api: PlaidApi,
+  accessToken: string,
+  accountIds: Map<string, string>,
+  securityIds: Map<string, string>,
+  now: Date,
+) {
+  if (accountIds.size === 0) return;
+  const seen = await db.investmentTransactions.count({
+    where: { accountId: { in: [...accountIds.values()] } },
+  });
+  const end = now.toISOString().slice(0, 10);
+  const start = new Date(
+    now.getTime() - (seen > 0 ? INVESTMENT_RESYNC_DAYS : INVESTMENT_HISTORY_DAYS) * 86_400_000,
+  )
+    .toISOString()
+    .slice(0, 10);
+  const rows: InvestmentTransaction[] = [];
+  try {
+    for (let offset = 0; ;) {
+      const page = await plaidCall(
+        api.investmentsTransactionsGet({
+          access_token: accessToken,
+          start_date: start,
+          end_date: end,
+          options: { count: INVESTMENT_TRANSACTIONS_PAGE, offset },
+        }),
+      );
+      rows.push(...page.investment_transactions);
+      offset += page.investment_transactions.length;
+      if (page.investment_transactions.length === 0 || offset >= page.total_investment_transactions)
+        break;
+    }
+  } catch (error) {
+    const code = plaidErrorCode(error);
+    if (!code) throw error;
+    console.warn("Plaid investment transactions unavailable", { code });
+    return;
+  }
+  for (const t of rows.map(normalizeInvestmentTransaction)) {
+    const accountId = t && accountIds.get(t.accountRef);
+    if (!t || !accountId) continue;
+    const data = {
+      securityId: t.securityRef ? (securityIds.get(t.securityRef) ?? null) : null,
+      date: new Date(`${t.date}T00:00:00Z`),
+      name: t.name,
+      quantity: t.quantity,
+      amountCents: t.amountCents,
+      priceCents: t.priceCents,
+      feesCents: t.feesCents,
+      type: t.type,
+      subtype: t.subtype,
+    };
+    await db.investmentTransactions.upsert({
+      where: { plaidInvestmentTransactionId: t.ref },
+      create: { userId: db.userId, accountId, plaidInvestmentTransactionId: t.ref, ...data },
+      update: data,
+    });
+  }
 }
 
 export async function syncItem(
@@ -340,7 +476,7 @@ export async function syncItem(
     ? await saveLiabilities(db, api, accessToken, item.id)
     : "off";
   const investments = item.investments
-    ? await saveInvestmentBalances(db, api, accessToken, item.id)
+    ? await saveInvestments(db, api, accessToken, item.id, now)
     : "off";
 
   await db.plaidItems.updateMany({

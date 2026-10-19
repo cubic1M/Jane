@@ -2,13 +2,14 @@ import Link from "next/link";
 import { connection } from "next/server";
 import { Suspense } from "react";
 import { AppHeader } from "@/components/app-header";
+import { DemoAdviceLabel } from "@/components/demo-advice-label";
 import { ViewTracker } from "@/components/view-tracker";
 import { PREMIUM_FREQUENCIES } from "@/config/documents";
 import { HOUSING, POLICY_SOURCE_LABELS, RENEWAL_SOON_DAYS, isPolicyKind } from "@/config/insurance";
 import { daysBetween } from "@/detection/units";
 import { checkGuardrails } from "@/lib/guardrails";
 import { coverageLines } from "@/lib/insurance/coverage";
-import { kindWords } from "@/lib/insurance/gaps";
+import { gapAdvice, kindWords } from "@/lib/insurance/gaps";
 import type { Household } from "@/lib/insurance/household";
 import {
   EMPTY_POLICY_INPUT,
@@ -152,7 +153,7 @@ async function InsuranceContent({
   };
   const now = new Date();
   const asOf = now.toISOString().slice(0, 10);
-  const { policies, household, gaps } = await loadInsurance(user.id, { now });
+  const { policies, household, gaps, advice } = await loadInsurance(user.id, { now });
   const saved = SAVED[one("saved")];
   const add = one("add");
   const typed = (fact: { value: number | string | null; from: string | null }) =>
@@ -200,6 +201,12 @@ async function InsuranceContent({
               >
                 <h3 className="font-semibold">{gap.title}</h3>
                 <p className="text-sm">{gap.why}</p>
+                {advice && (
+                  <div className="flex flex-col gap-1">
+                    <p className="text-sm font-medium">{gapAdvice(gap).text}</p>
+                    <DemoAdviceLabel />
+                  </div>
+                )}
                 <div className="flex flex-wrap items-center gap-4 text-sm">
                   {gap.policyId ? (
                     <Link

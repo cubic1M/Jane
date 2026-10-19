@@ -112,3 +112,29 @@ export type GapKey = (typeof GAP_KEYS)[number];
 
 // "Renews soon": the profile and the chat say so this many days ahead.
 export const RENEWAL_SOON_DAYS = 45;
+
+// What to add for each gap: demo advice (spec step 98), shown only in demo advice mode
+// with DEMO_ADVICE_LABEL. The dollar figures are listed so Claude's answers that repeat
+// them pass the guardrails.
+export const GAP_ADVICE: Record<GapKey, { text: string; cents: number[] }> = {
+  renters: {
+    text: "Add renters insurance with at least $30,000 for your belongings and $100,000 of liability cover. It often costs less than $20 a month.",
+    cents: [3_000_000, 10_000_000, 2_000],
+  },
+  home: {
+    text: "Add home insurance that pays to rebuild the whole home, with at least $300,000 of liability cover. Your lender likely requires it.",
+    cents: [30_000_000],
+  },
+  auto: {
+    text: "Add car insurance with liability limits of at least $100,000 per person, $300,000 per accident and $100,000 for property damage.",
+    cents: [10_000_000, 30_000_000],
+  },
+  life: {
+    text: "Add term life insurance worth about 10 times your yearly pay, for as long as people depend on you. Term cover costs far less than whole life.",
+    cents: [],
+  },
+  liability_only: {
+    text: "If replacing your car would cost more than you could pay from savings, add collision and comprehensive cover. If it's worth little, liability only can make sense.",
+    cents: [],
+  },
+};

@@ -14,6 +14,7 @@ export const CLIENT_EVENTS = [
   "loans_viewed",
   "documents_viewed",
   "deadlines_viewed",
+  "investments_viewed",
   "insurance_viewed",
 ] as const;
 

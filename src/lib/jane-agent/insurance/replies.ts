@@ -3,7 +3,7 @@ import { POLICY_KINDS, type PolicyKind } from "@/config/insurance";
 import { daysBetween } from "@/detection/units";
 import { checkGuardrails } from "@/lib/guardrails";
 import { coverageLines } from "@/lib/insurance/coverage";
-import { kindWords } from "@/lib/insurance/gaps";
+import { gapAdvice, kindWords } from "@/lib/insurance/gaps";
 import { yearlyPremium } from "@/lib/insurance/policies";
 import { formatCents } from "@/lib/money";
 import type { Reply } from "../replies";
@@ -140,10 +140,12 @@ export function insuranceReply(
         refs: {},
       };
     }
+    const advice = "advice" in profile && profile.advice;
     return {
-      body: `${profile.gaps.length === 1 ? "One thing looks" : `${profile.gaps.length} things look`} missing from your cover:\n${profile.gaps.map((g) => `- ${g.title}. ${g.why}`).join("\n")}`,
+      body: `${profile.gaps.length === 1 ? "One thing looks" : `${profile.gaps.length} things look`} missing from your cover:\n${profile.gaps.map((g) => `- ${g.title}. ${g.why}${advice ? ` ${gapAdvice(g).text}` : ""}`).join("\n")}`,
       actions: [SEE],
-      refs: {},
+      // Demo advice (spec step 98) is labelled in the chat.
+      refs: advice ? { advice: true } : {},
     };
   }
 
