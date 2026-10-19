@@ -663,6 +663,119 @@ export const QUESTIONS: readonly CheckQuestion[] = [
     expect: { intent: "tax", mentions: /\$16,100/ },
   },
 
+  // Insurance (spec step 108), over the demo bank's sample GEICO car policy
+  // (DEMO_POLICY in src/lib/insurance/profile.ts: $142.00 a month, a $1,000.00 deductible).
+  {
+    id: "ins-1",
+    text: "what insurance do I have",
+    needs: "rules",
+    expect: { intent: "insurance", figures: () => [14_200], mentions: /GEICO/, list: true },
+  },
+  {
+    id: "ins-2",
+    text: "what does my car insurance cover",
+    needs: "rules",
+    expect: { intent: "insurance", figures: () => [100_000], mentions: /collision/i, list: true },
+  },
+  {
+    id: "ins-3",
+    text: "when does my car insurance renew",
+    needs: "rules",
+    expect: { intent: "insurance", mentions: /renews on/ },
+  },
+  {
+    id: "ins-4",
+    text: "how much is my car insurance",
+    needs: "rules",
+    expect: { intent: "insurance", figures: () => [14_200, 170_400] },
+  },
+  {
+    id: "ins-5",
+    text: "what's my deductible",
+    needs: "rules",
+    expect: { intent: "insurance", figures: () => [100_000] },
+  },
+  {
+    id: "ins-6",
+    text: "am I missing any insurance",
+    needs: "rules",
+    expect: { intent: "insurance", mentions: /home insurance/i, list: true },
+  },
+  {
+    id: "ins-7",
+    text: "find me cheaper car insurance",
+    needs: "rules",
+    expect: {
+      intent: "insurance",
+      button: "insurance.shop_yes",
+      mentions: /same cover/,
+      list: true,
+    },
+  },
+  {
+    id: "ins-8",
+    text: "check my insurance",
+    needs: "rules",
+    expect: { intent: "insurance", mentions: /deductible/i, list: true },
+  },
+  {
+    id: "ins-9",
+    text: "I had a car accident",
+    needs: "rules",
+    expect: {
+      intent: "insurance",
+      button: "insurance.claim_start",
+      mentions: /911/,
+      list: true,
+      // The guide: what to do now and what to collect, in one message.
+      maxChars: 1_100,
+    },
+  },
+  {
+    id: "ins-10",
+    text: "how's my insurance switch going",
+    needs: "rules",
+    expect: { intent: "insurance", mentions: /not switching/ },
+  },
+  {
+    id: "ins-11",
+    text: "what do you do with my insurance on your own",
+    needs: "rules",
+    expect: { intent: "insurance", mentions: /never buy, change or cancel/ },
+  },
+  {
+    id: "ins-12",
+    text: "how do I contact my insurer",
+    needs: "rules",
+    expect: { intent: "insurance", mentions: /GEICO/, list: true },
+  },
+  {
+    id: "ins-13",
+    text: "does my car insurance include collision",
+    needs: "rules",
+    expect: { intent: "insurance", mentions: /Collision/, list: true },
+  },
+  {
+    id: "ins-14",
+    text: "should I raise my deductible",
+    needs: "rules",
+    expect: { intent: "insurance", mentions: /deductible/i, list: true },
+  },
+
+  // Insurance questions only Claude answers.
+  {
+    id: "ins-free-1",
+    text: "is my car insurance a good deal",
+    needs: "claude",
+    expect: { mentions: /GEICO/ },
+  },
+  {
+    id: "ins-free-2",
+    text: "what would raising my deductible save",
+    needs: "claude",
+    expect: { mentions: /deductible/i },
+  },
+
   // Outside what Jane does: brief, and never advice.
   { id: "out-1", text: "what's the weather today", needs: "claude", expect: { avoid: ADVICE } },
   {
