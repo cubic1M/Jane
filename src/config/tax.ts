@@ -289,9 +289,33 @@ export const REFUND = {
 export const FILING_SEASON = { from: "01-20", until: "10-15" } as const;
 export const DEMO_FILING_ACCEPT_HOURS = 24;
 
+// Spec step 166: tax forms Jane collects from the document partner (a stand-in for the
+// demo bank). She looks for each expected form from its usual date (TAX_FORMS by) until the
+// filing deadline, once a day. A form agrees with the transactions when the amounts are
+// within the larger of matchCents and matchShare of them (post-tax deductions such as a
+// Roth 401(k) can make a W-2's take-home differ); otherwise it's flagged and not used until
+// the person says it's right. A form still missing chaseDays after its date gets a nudge,
+// and "Remind me" puts asking the payer on their deadlines remindDays out.
+export const TAX_DOCUMENTS = {
+  from: "01-20",
+  until: "04-15",
+  matchCents: 100,
+  matchShare: 0.01,
+  chaseDays: 7,
+  remindDays: 7,
+} as const;
+
 // Spec step 127: the one message in January with everything ready, sent between these
 // days (MM-DD) of the year after the tax year.
 export const JANUARY_READY = { from: "01-02", until: "01-31" } as const;
+
+// Spec step 124: investment taxes (demo advice for harvesting and where to hold what).
+// Harvesting chances from this much unrealised loss; holdings whose payouts are taxed each
+// year in a taxable account, by name.
+export const HARVEST_MIN_LOSS_CENTS = 20_000;
+export const TAX_HEAVY_HOLDING = /\b(?:BOND|INCOME|DIVIDEND|TREASURY|REIT|HIGH YIELD)\b/i;
+// Jane brings up harvesting from this day (MM-DD) to the end of the year.
+export const HARVEST_FROM = "10-01";
 
 // The estimate tells the person when it has moved by at least this much (in cents) since
 // Jane last said it.
@@ -302,6 +326,9 @@ export const TAX_ESTIMATE_STEP_CENTS = 50_000;
 export const TAX_MESSAGE_PRIORITY = {
   // The profile unlocks the rest of taxes, so it comes before budgets and goals.
   profile: 46,
+  // Spec step 165: a move changes the state estimate; the city tax question is small.
+  move: 44,
+  local: 31,
   new_income: 36,
   // Spec step 119.
   tag_check: 33,
@@ -319,9 +346,19 @@ export const TAX_MESSAGE_PRIORITY = {
   filing: 72,
   // Spec step 127.
   january: 74,
+  // Spec step 124.
+  // A wash sale is news, but not before what can save money today.
+  wash_sale: 41,
+  harvest: 33,
   // Spec step 123.
   quarterly: 88,
   set_aside: 39,
+  // Spec step 166: a form that disagrees with the accounts matters more than one collected.
+  doc_flagged: 70,
+  doc_collected: 40,
+  doc_missing: 38,
+  // Spec step 167: a tax move with a deadline coming.
+  plan: 42,
 } as const;
 
 // What Jane does about taxes by herself at each autopilot level (spec step 57), shown on
@@ -370,6 +407,26 @@ export const TAX_AUTOPILOT: readonly { feature: string; ask: string; auto: strin
     feature: "january",
     ask: "In January I send one message with everything ready: the estimate, the tax-time pack and which forms are in.",
     auto: "In January I send one message with everything ready (the estimate, the tax-time pack, which forms are in) and keep it all up to date until you file.",
+  },
+  {
+    feature: "investments",
+    ask: "I work out your gains and losses from your holdings, warn you about wash sales and, with demo advice, show losses worth harvesting and what's better held in your 401(k) or IRA.",
+    auto: "I work out your gains and losses after every sync, warn you about wash sales and, with demo advice, bring up losses worth harvesting before the year ends. I never sell anything myself.",
+  },
+  {
+    feature: "plan",
+    ask: "I keep a calendar of tax moves with their deadlines (contributions, estimated payments, year-end sales and gifts, a W-4 check after a new job or baby) and bring each up when it's time, ready to put on your deadlines.",
+    auto: "I keep a calendar of tax moves with their deadlines and, when each one's time comes, put it on your deadlines myself and tell you. The contributions, payments, sales and gifts themselves are always yours.",
+  },
+  {
+    feature: "documents",
+    ask: "From late January I collect your tax forms (W-2s, 1099s, 1098s) when they're ready and check each one against your accounts. I show you each form; one that doesn't match is flagged and never used until you say it's right.",
+    auto: "From late January I collect your tax forms when they're ready, check each one against your accounts and tick off the ones that match. One that doesn't match is flagged and never used until you say it's right; one that's late gets a nudge to ask the payer.",
+  },
+  {
+    feature: "states",
+    ask: "I work out your state taxes, split between states when you move or work for an employer in another state, with any city income tax. When your payments to state agencies switch to a new state, I ask whether you moved.",
+    auto: "I work out your state taxes, split between states when you move or work for an employer in another state, with any city income tax. When your payments to state agencies switch to a new state, I count it as a move straight away and ask you to check it.",
   },
   {
     feature: "tags",

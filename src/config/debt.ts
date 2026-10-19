@@ -39,6 +39,8 @@ export const DEBT_SOURCE_LIMITS = {
   refinance: 1,
   loans: 2,
   transfers: 1,
+  student: 1,
+  mortgage: 1,
 } as const;
 export const DEBT_MESSAGE_PRIORITY = {
   // A buy now, pay later plan Jane found, then a debt with no rate: news that can wait,
@@ -64,6 +66,12 @@ export const DEBT_MESSAGE_PRIORITY = {
   // like refinance offers.
   transfer_reminder: 89,
   transfer_offer: 32,
+  // Spec step 114: a cheaper student loan plan, and studentaid.gov's steps, both can wait.
+  student_pick: 31,
+  student_steps: 27,
+  // Spec step 115: PMI that can come off is money every month; an escrow change is news.
+  mortgage_pmi: 62,
+  mortgage_escrow: 46,
 } as const;
 
 // What Jane does about debts by herself at each autopilot level (src/config/autopilot.ts),
@@ -93,6 +101,14 @@ export const DEBT_AUTOPILOT: Readonly<
       step: 113,
       does: "Looks for 0% balance transfer offers for your cards every month and, once you've moved a balance, puts the promo's end on your deadlines and reminds you 60, 30 and 7 days before it. Opening the card and moving the money are yours.",
     },
+    {
+      step: 114,
+      does: "Compares the federal student loan plans at your income, counts your qualifying payments toward forgiveness, and walks you through studentaid.gov's steps. Changing plans is done by you on studentaid.gov.",
+    },
+    {
+      step: 115,
+      does: "Watches your mortgage: tells you once when your home's value lets PMI come off (and drafts the request), spots escrow changes in your payment, and works out refinance break-even and extra payments. Sending the request and paying more are yours.",
+    },
   ],
   safe: [
     {
@@ -115,6 +131,14 @@ export const DEBT_AUTOPILOT: Readonly<
       step: 113,
       does: "Looks for 0% balance transfer offers for your cards every month and, once you've moved a balance, puts the promo's end on your deadlines and reminds you 60, 30 and 7 days before it. Opening the card and moving the money are yours.",
     },
+    {
+      step: 114,
+      does: "Compares the federal student loan plans at your income, counts your qualifying payments toward forgiveness, and walks you through studentaid.gov's steps. Changing plans is done by you on studentaid.gov.",
+    },
+    {
+      step: 115,
+      does: "Watches your mortgage: tells you once when your home's value lets PMI come off (and drafts the request), spots escrow changes in your payment, and works out refinance break-even and extra payments. Sending the request and paying more are yours.",
+    },
   ],
   all: [
     {
@@ -136,6 +160,14 @@ export const DEBT_AUTOPILOT: Readonly<
     {
       step: 113,
       does: "Looks for 0% balance transfer offers for your cards every month and, once you've moved a balance, puts the promo's end on your deadlines and reminds you 60, 30 and 7 days before it. Opening the card and moving the money are yours.",
+    },
+    {
+      step: 114,
+      does: "Compares the federal student loan plans at your income, counts your qualifying payments toward forgiveness, and walks you through studentaid.gov's steps. Changing plans is done by you on studentaid.gov.",
+    },
+    {
+      step: 115,
+      does: "Watches your mortgage: tells you once when your home's value lets PMI come off (and drafts the request), spots escrow changes in your payment, and works out refinance break-even and extra payments. Sending the request and paying more are yours.",
     },
   ],
 };
@@ -215,3 +247,19 @@ export const BT_MIN_SAVING_CENTS = 10_000;
 export const BT_REMIND_DAYS: readonly number[] = [60, 30, 7];
 // The demo bank shows a moved card balance gone this many days after the transfer.
 export const DEMO_TRANSFER_DAYS = 2;
+
+// --- Step 115: mortgage ------------------------------------------------------------------
+
+// PMI (Homeowners Protection Act, as the CFPB explains it): you can ask your servicer to
+// cancel it once the balance is 80% of the home's original value, and it ends by itself at
+// 78%. Many lenders also take today's value (usually with an appraisal). Jane raises it
+// once the value the person gave (spec step 67) puts the loan under 80%.
+export const PMI_ASK_LTV = 0.8;
+export const PMI_AUTO_LTV = 0.78;
+export const PMI_SOURCE =
+  "https://www.consumerfinance.gov/ask-cfpb/when-can-i-remove-private-mortgage-insurance-pmi-from-my-loan-en-202/";
+// "What if I paid more on the mortgage?": extra principal a month.
+export const MORTGAGE_EXTRA_SCENARIOS_CENTS: readonly number[] = [10_000, 25_000, 50_000];
+// A mortgage payment that moves by at least this much is an escrow change (taxes or
+// insurance), when the rate is fixed.
+export const ESCROW_CHANGE_MIN_CENTS = 1_000;

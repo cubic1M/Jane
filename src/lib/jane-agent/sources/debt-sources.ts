@@ -2,6 +2,8 @@ import { debtsSource } from "./debts";
 import { payoffSource } from "./payoff";
 import { loansSource } from "./loans";
 import { refinanceSource } from "./refinance";
+import { mortgageSource } from "./mortgage";
+import { studentSource } from "./student";
 import { transfersSource } from "./transfers";
 import type { MessageSource } from "./source";
 
@@ -13,4 +15,6 @@ export const DEBT_SOURCES: readonly MessageSource[] = [
   refinanceSource,
   loansSource,
   transfersSource,
+  studentSource,
+  mortgageSource,
 ];

@@ -72,6 +72,9 @@ describe("tax intents", () => {
     ["when is the tax deadline", "file"],
     ["should I itemize", "standard_deduction"],
     ["is itemizing worth it", "standard_deduction"],
+    ["what are my realized gains this year", "investments"],
+    ["should I harvest my losses", "investments"],
+    ["was that a wash sale", "investments"],
   ])("%s asks about %s (steps 120–121)", (text, ask) => {
     expect(parse(text)).toEqual({ kind: "tax", ask });
   });
@@ -84,6 +87,11 @@ describe("tax intents", () => {
     });
     expect(parse("log 40 miles")).toEqual({ kind: "tax", ask: "miles", miles: 40 });
     expect(parse("my business mileage")).toEqual({ kind: "tax", ask: "miles", miles: null });
+  });
+
+  it("leaves capital gains and harvesting in general to the investments lane", () => {
+    expect(parse("do I have capital gains").kind).not.toBe("tax");
+    expect(parse("tax loss harvesting").kind).not.toBe("tax");
   });
 
   it("leaves debts to the loans: how much do I owe isn't a tax question", () => {
@@ -115,4 +123,59 @@ describe("tax intents", () => {
       expect(parse(text).kind).not.toBe("tax");
     },
   );
+});
+
+// Spec step 165: moves, an out-of-state employer, and state and local taxes.
+describe("state taxes in the chat", () => {
+  it.each([
+    [
+      "I moved from California to New York on August 3rd",
+      { from: "CA", to: "NY", month: 8, day: 3 },
+    ],
+    ["we moved from texas to colorado in june", { from: "TX", to: "CO", month: 6, day: null }],
+    ["I moved to Oregon in March", { from: null, to: "OR", month: 3, day: null }],
+    ["I moved from Ohio to Michigan", { from: "OH", to: "MI", month: null, day: null }],
+  ])("%s is a move", (text, move) => {
+    expect(parse(text)).toEqual({ kind: "tax", ask: "move", ...move });
+  });
+
+  it("leaves a plain move to the moving checklist, and a state with no date to the profile", () => {
+    expect(parse("I just moved")).toEqual({ kind: "life_event", event: "moving" });
+    expect(parse("I live in Texas")).toEqual({ kind: "tax", ask: "set_state", state: "TX" });
+  });
+
+  it.each([
+    ["I work remotely for a company in New York", "NY"],
+    ["my employer is in New Jersey", "NJ"],
+    ["we work from home for an employer based in Connecticut", "CT"],
+  ])("%s is the employer's state", (text, state) => {
+    expect(parse(text)).toEqual({ kind: "tax", ask: "work_state", state });
+  });
+
+  it.each([
+    "what state taxes do I pay",
+    "do I owe taxes in two states",
+    "do I pay city tax",
+    "local income tax",
+    "do I need a part-year return",
+  ])("%s asks about state taxes", (text) => {
+    expect(parse(text)).toEqual({ kind: "tax", ask: "states" });
+  });
+});
+
+// Spec step 167.
+describe("the tax plan in the chat", () => {
+  it.each([
+    "what's my tax plan",
+    "show my tax calendar",
+    "what tax deadlines are coming",
+    "year-end tax moves",
+    "what should I do for taxes before year end",
+  ])("%s asks for the plan", (text) => {
+    expect(parse(text)).toEqual({ kind: "tax", ask: "plan" });
+  });
+
+  it("leaves the filing deadline to filing", () => {
+    expect(parse("when is the tax deadline")).toEqual({ kind: "tax", ask: "file" });
+  });
 });

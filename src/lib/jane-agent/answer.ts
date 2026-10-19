@@ -16,6 +16,7 @@ import { loadAffordNumbers } from "@/lib/afford";
 import { autopilotOf } from "@/lib/autopilot";
 import { loadChanges } from "@/lib/changes";
 import { provenSavings } from "@/lib/savings-proof";
+import { lastControllerRun } from "@/lib/controller-log";
 import { autopilotFor, sectorAutopilots } from "@/lib/sector-autopilot";
 import { listLifeEvents } from "@/lib/life-events";
 import { db as defaultClient } from "@/lib/db";
@@ -25,6 +26,13 @@ import { whatJaneDid } from "@/lib/what-jane-did";
 import { CATEGORY_LABELS, UNCATEGORIZED } from "@/insights/labels";
 import { topicOf, withTopic, type Topic } from "./context";
 import { matchCategory, type Intent } from "./intents";
+import { listGoals } from "@/lib/goals";
+import { comingUpBlock, spendingBlock } from "./block-data";
+import { flowReply } from "./flows/chat";
+import { timezoneOf } from "./open";
+import { searchChat } from "./search";
+import { searchReply } from "./search-reply";
+import { goalsReply } from "./goals-reply";
 import { listPreferences, paydayDays } from "./preferences";
 import { loadRecurring } from "./recurring";
 import { paydayLine } from "./remember";
@@ -53,6 +61,11 @@ import {
 } from "./replies";
 import { changesReply } from "./replies-changes";
 import { overviewReply, sectorChangeReply } from "./replies-autopilot";
+import { checkedReply } from "./replies-checked";
+import { rankedFor } from "./priorities";
+import { prioritiesReply } from "./replies-priorities";
+import { paycheckReply } from "./replies-paycheck";
+import { latestPaycheckPlan } from "@/lib/money-movement/paycheck";
 import { groupedHelpReply } from "./replies-help";
 import { lifeEventReply } from "./replies-life";
 import { savedReply } from "./replies-saved";
@@ -152,6 +165,21 @@ async function byIntent(
     }
     case "remember":
       return rememberReply(intent.draft);
+    // Spec step 96.
+    case "search": {
+      const timezone = await timezoneOf(userId, { client });
+      return searchReply(
+        intent.query,
+        await searchChat(userId, intent.query, { client, now, timezone }),
+        timezone,
+      );
+    }
+    // Spec step 95.
+    case "flow":
+      return flowReply(intent.flow, { userId, client, now });
+    // Spec step 94.
+    case "goals":
+      return goalsReply(await listGoals(userId, { client, now }));
     case "about": {
       const [recurring, snapshot] = await Promise.all([
         loadRecurring(userId, { client, now }),
@@ -224,11 +252,20 @@ async function byIntent(
         loadInsightTransactions(db, asOf, INSIGHT_MONTHS),
         db.budgets.findMany({ select: { category: true, amountCents: true } }),
       ]);
-      return spendingReply(intent, transactions, asOf, budgets);
+      const answer = spendingReply(intent, transactions, asOf, budgets);
+      // Spec step 94: where it went, as a chart, when no one category was asked about.
+      const block = intent.category ? null : spendingBlock(transactions, asOf, intent.month);
+      return block ? { ...answer, refs: { ...answer.refs, block } } : answer;
     }
     case "coming_up": {
       const home = await homeSummary(userId, { client, now });
-      return comingUpReply(intent, home?.comingUp ?? []);
+      const answer = comingUpReply(intent, home?.comingUp ?? []);
+      // Spec step 94: the same rows, as a timeline.
+      const rows = (home?.comingUp ?? []).filter(
+        (r) => intent.days === null || r.daysLeft <= intent.days,
+      );
+      const block = comingUpBlock(rows, intent.days === null ? "Coming up" : "Due this week");
+      return block ? { ...answer, refs: { ...answer.refs, block } } : answer;
     }
     case "safe_to_spend": {
       const home = await homeSummary(userId, { client, now });
@@ -239,6 +276,14 @@ async function byIntent(
       const going = open.some((e) => e.kind === intent.event && e.completedAt === null);
       return lifeEventReply(intent.event, going);
     }
+    case "paycheck":
+      return paycheckReply(await latestPaycheckPlan(userId, { client, now }));
+    case "priorities": {
+      const snapshot = await loadSnapshot(userId, { client, now });
+      return prioritiesReply(snapshot ? rankedFor(snapshot) : []);
+    }
+    case "checked":
+      return checkedReply(await lastControllerRun(userId, { client, now }));
     case "autopilot_overview":
       return overviewReply(
         await sectorAutopilots(userId, { client, now }),

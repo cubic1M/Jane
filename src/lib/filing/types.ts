@@ -23,6 +23,9 @@ export type ReturnPackage = {
   tags: Record<string, number>;
   forms: { form: string; from: string; received: boolean }[];
   documents: { kind: string; title: string }[];
+  // Spec step 166: collected forms that check out (or the person said are right), with
+  // their boxes in cents. Optional: returns started before step 166 don't have it.
+  collectedForms?: { form: string; from: string; boxes: Record<string, number> }[];
 };
 
 export type ReturnPreview = { federalRefundCents: number; stateRefundCents: number | null };

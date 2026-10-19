@@ -11,6 +11,7 @@ import { hit } from "@/lib/rate-limit";
 import { answerByRules } from "./answer";
 import { askClaudeInChat, type ChatStreamEvent, type ChatTurn } from "./claude";
 import type { Topic } from "./context";
+import { typedFlowReply } from "./flows/chat";
 import { parseIntent } from "./intents";
 import { storeReply } from "./messages";
 import { localTime } from "./quiet-hours";
@@ -112,6 +113,9 @@ async function answer(
     const nearby = clarifyReply(reply.body, nearbyChoices(text, asOf));
     return { ...nearby, refs: { ...reply.refs, ...nearby.refs } };
   };
+  // Spec step 95: an answer typed to a guided flow's question.
+  const toFlow = await typedFlowReply(text, { userId, client, now });
+  if (toFlow) return { reply: toFlow, intent: "flow_answer", source: "rules" };
   // Spec step 88: what the conversation was about, for a follow-up.
   const topic = await lastTopic(userId, { client, now });
   const byRules = await answerByRules(userId, intent, { client, now, topic });

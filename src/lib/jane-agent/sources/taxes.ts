@@ -11,6 +11,11 @@ import { nextQuarter, quarterMessage, setAsideMessage } from "../tax-self-employ
 import { refundMessage } from "../tax-refund-message";
 import { filingAccepted, filingOffer, filingReady } from "../tax-filing-message";
 import { januaryMessage } from "../tax-january";
+import { harvestMessage, washSaleMessage } from "../tax-investments";
+import { localityMessage, movingEventMessage, spottedMoveMessage } from "../tax-states-message";
+import { collectedMessage, flaggedMessage, missingMessage } from "../tax-documents-message";
+import { planMoveMessage } from "../tax-plan-message";
+import { HARVEST_FROM } from "@/config/tax";
 import { formatCents } from "@/lib/money";
 import { incomeLine, listOf } from "@/planning/tax-profile";
 import { PROFILE_HREF, PROFILE_INTRO, TAGS_HREF, nextQuestion } from "../tax-flow";
@@ -21,6 +26,7 @@ import { shortDate, snoozeButton, type MessageSource } from "./source";
 // - Step 118: the tax profile, asked one question at a time in one message
 //   (../tax-flow.ts); then, when she sees a kind of income that isn't on it, she asks
 //   before adding it. Jane never adds anything to the profile by herself.
+// - Step 165: a move she spotted, or one on the checklist, and the city income tax question.
 // - Step 119: a merchant she tagged but isn't sure about ("is MasterClass education?"),
 //   once each; at the levels that let her act, what she tagged last month; and from late
 //   January, each tax form that should have arrived, until the person has it.
@@ -119,6 +125,46 @@ export const taxesSource: MessageSource = {
       });
     }
 
+    // Spec step 165: a move Jane spotted in payments to state agencies (at the levels that
+    // let her act, already counted), or one started on the checklist; then, living in a
+    // state with city income taxes, whether the person lives in one.
+    const residency = estimate?.residency;
+    if (estimate && residency && !residency.told) {
+      const spotted = spottedMoveMessage(residency);
+      if (spotted) {
+        out.push({
+          kind: "decision",
+          ...spotted,
+          dedupeKey: `move:${residency.year}:${residency.spotted!.date}`,
+          priority: TAX_MESSAGE_PRIORITY.move,
+        });
+      } else if (residency.movingEvent) {
+        out.push({
+          kind: "decision",
+          ...movingEventMessage(residency, estimate.input.state),
+          dedupeKey: `moving:${residency.year}`,
+          priority: TAX_MESSAGE_PRIORITY.move,
+        });
+      }
+    }
+    const home = estimate?.estimate.state;
+    if (
+      estimate &&
+      home &&
+      residency?.locality === null &&
+      estimate.estimate.totalIncomeCents > 0
+    ) {
+      const local = localityMessage(home.code);
+      if (local) {
+        out.push({
+          kind: "decision",
+          ...local,
+          dedupeKey: `local:${home.code}`,
+          priority: TAX_MESSAGE_PRIORITY.local,
+        });
+      }
+    }
+
     // Spec step 121: a big refund or a bill coming. In demo advice mode, what to put on a
     // new W-4 and a walk-through; otherwise the comparison and the IRS's estimator. Not once
     // the person sent a W-4 this year, or said they'd keep a big refund.
@@ -191,6 +237,34 @@ export const taxesSource: MessageSource = {
       });
     }
 
+    // Spec step 124: investments. A wash sale, for everyone; in demo advice mode, a loss
+    // worth harvesting (from October to the year's end). Where to hold what is said by the
+    // investments lane (step 135).
+    const inv = tax.investments;
+    if (inv) {
+      for (const sale of inv.washSales) {
+        out.push({
+          kind: "heads_up",
+          ...washSaleMessage(sale),
+          dedupeKey: `wash:${sale.securityId}:${sale.date}`,
+          priority: TAX_MESSAGE_PRIORITY.wash_sale,
+        });
+      }
+      if (tax.advice && estimate) {
+        const today = context.local.date;
+        if (today.slice(5) >= HARVEST_FROM && today.startsWith(String(estimate.year))) {
+          for (const chance of inv.harvest.slice(0, 1)) {
+            out.push({
+              kind: "decision",
+              ...harvestMessage(chance, estimate),
+              dedupeKey: `harvest:${estimate.year}:${chance.holding.securityId}`,
+              priority: TAX_MESSAGE_PRIORITY.harvest,
+            });
+          }
+        }
+      }
+    }
+
     // Spec step 127: in January, one message with last year's taxes ready.
     if (tax.january) {
       out.push({
@@ -230,7 +304,55 @@ export const taxesSource: MessageSource = {
       }
     }
 
-    for (const form of tax.formsDue?.forms ?? []) {
+    // Spec step 167: each tax move open now, once (moves with their own message, like the
+    // quarterly payment and filing, aren't posted again). At the levels that let Jane act
+    // it's already on the deadlines; otherwise one tap puts it there.
+    for (const m of tax.plan?.moves ?? []) {
+      if (!m.open || m.ownMessage || m.handled === "no") continue;
+      // Jane adds open moves herself at the levels that let her act (then says so); at the
+      // others the person adds them, so there's nothing more to say.
+      if ((m.handled === null) === acts) continue;
+      out.push({
+        kind: m.handled === "added" ? "done" : "decision",
+        ...planMoveMessage(m),
+        dedupeKey: `plan:${m.id}`,
+        priority: TAX_MESSAGE_PRIORITY.plan,
+      });
+    }
+
+    // Spec step 166: with a document partner, Jane collects the forms herself: a form that
+    // doesn't match the accounts, the ones collected, and one still missing a week after its
+    // date. Without one, she asks whether each has arrived (below).
+    const docs = tax.documents;
+    if (docs?.collecting) {
+      for (const f of docs.flagged) {
+        out.push({
+          kind: "decision",
+          ...flaggedMessage(f, docs.year),
+          dedupeKey: `doc:${docs.year}:${f.key}:differs`,
+          priority: TAX_MESSAGE_PRIORITY.doc_flagged,
+        });
+      }
+      const collected = collectedMessage(docs, acts);
+      if (collected) {
+        const n = docs.forms.filter((f) => f.document && f.usable).length;
+        out.push({
+          kind: collected.actions.some((a) => a.id === "tax.docs_tick") ? "decision" : "done",
+          ...collected,
+          dedupeKey: `docs:${docs.year}:${n}`,
+          priority: TAX_MESSAGE_PRIORITY.doc_collected,
+        });
+      }
+      for (const f of docs.missing) {
+        out.push({
+          kind: "heads_up",
+          ...missingMessage(f, docs.year),
+          dedupeKey: `docmissing:${docs.year}:${f.key}`,
+          priority: TAX_MESSAGE_PRIORITY.doc_missing,
+        });
+      }
+    }
+    for (const form of docs?.collecting ? [] : (tax.formsDue?.forms ?? [])) {
       out.push({
         kind: "heads_up",
         body: `Your ${form.form} from ${form.from} for ${tax.formsDue!.year} is usually sent by ${shortDate(form.by)}. Have you got it?`,

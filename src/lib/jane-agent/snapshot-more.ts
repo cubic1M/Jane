@@ -2,7 +2,10 @@ import type { PrismaClient } from "@/generated/prisma/client";
 import { switchOf } from "@/lib/agent/switch";
 import { autopilotOf } from "@/lib/autopilot";
 import { loadPayoff, type Payoff } from "@/lib/debt-plan";
+import { loadDebts } from "@/lib/debts";
 import { loadTransfers, type Transfers } from "@/lib/balance-transfers";
+import { loadStudentLoans, type StudentLoans } from "@/lib/student-loans";
+import { loadMortgage, type Mortgage } from "@/lib/mortgage";
 import { listApplications, type LoanApplicationView } from "@/lib/loan-applications";
 import { loadRefinance, type Refinance } from "@/lib/refinance";
 import type { DebtBook } from "@/insights/debts";
@@ -50,6 +53,10 @@ export type MoreSnapshot = {
   loanApplications?: LoanApplicationView[];
   // Spec step 113: 0% transfer offers for each card, and the transfers Jane keeps in view.
   transfers?: Transfers;
+  // Spec step 114: the student loan plans compared, and forgiveness tracking.
+  student?: StudentLoans;
+  // Spec step 115: the mortgage, watched.
+  mortgage?: Mortgage | null;
   // Insurance (spec Phase X), from the same loader as /insurance. Optional, so a snapshot
   // built without it (in tests) says nothing about insurance.
   insurance?: InsuranceSnapshot;
@@ -62,6 +69,9 @@ export async function loadMore(
   { client, now = new Date() }: { client: PrismaClient; now?: Date },
 ): Promise<MoreSnapshot> {
   const db = scopedFor(userId, client);
+  // Every debt loader below works from the same debt book, loaded once.
+  const book = await loadDebts(userId, { client, now });
+  const refinance = await loadRefinance(userId, { client, now, book });
   const [
     autopilot,
     proposals,
@@ -69,9 +79,10 @@ export async function loadMore(
     loans,
     owned,
     payoff,
-    refinance,
     loanApplications,
     transfers,
+    student,
+    mortgage,
   ] = await Promise.all([
     autopilotOf(userId, { client }),
     openProposals(userId, { client }),
@@ -96,10 +107,11 @@ export async function loadMore(
       orderBy: { id: "asc" },
     }),
     db.ownedAssets.findMany({ select: { loanAccountId: true } }),
-    loadPayoff(userId, { client, now }),
-    loadRefinance(userId, { client, now }),
+    loadPayoff(userId, { client, now, book }),
     listApplications(userId, { client }),
-    loadTransfers(userId, { client, now }),
+    loadTransfers(userId, { client, now, book }),
+    loadStudentLoans(userId, { client, now, book }),
+    loadMortgage(userId, { client, now, book, refinance }),
   ]);
   const insurance = await loadInsuranceSnapshot(userId, { client, now });
 
@@ -138,6 +150,8 @@ export async function loadMore(
     refinance,
     loanApplications,
     transfers,
+    student,
+    mortgage,
     insurance,
   };
 }

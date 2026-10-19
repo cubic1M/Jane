@@ -43,6 +43,7 @@ export const TABS: readonly Tab[] = [
       "/subscriptions",
       "/bills",
       "/transactions",
+      "/transfers",
       "/insights",
       "/documents",
       "/insurance",

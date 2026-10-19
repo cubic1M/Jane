@@ -4,6 +4,8 @@ import { loadDebts } from "@/lib/debts";
 import { formatCents } from "@/lib/money";
 import { loadPayoff } from "@/lib/debt-plan";
 import { loadTransfers } from "@/lib/balance-transfers";
+import { loadStudentLoans } from "@/lib/student-loans";
+import { loadMortgage } from "@/lib/mortgage";
 import { listApplications } from "@/lib/loan-applications";
 import { loadRefinance } from "@/lib/refinance";
 import {
@@ -14,6 +16,8 @@ import {
   refinanceToolOutput,
   applicationsToolOutput,
   transfersToolOutput,
+  studentToolOutput,
+  mortgageToolOutput,
 } from "./debt-tools";
 
 // Runs Claude's debt tools (./debt-tools.ts) for one person: read-only, scoped to them,
@@ -36,6 +40,10 @@ export async function runDebtTool(
   switch (name) {
     case "debts":
       return out(debtsToolOutput(await loadDebts(userId, { client, now }), money));
+    case "mortgage":
+      return out(mortgageToolOutput(await loadMortgage(userId, { client, now }), money));
+    case "student_loans":
+      return out(studentToolOutput(await loadStudentLoans(userId, { client, now }), money));
     case "balance_transfers":
       return out(transfersToolOutput(await loadTransfers(userId, { client, now }), money));
     case "loan_applications":

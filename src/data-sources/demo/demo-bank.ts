@@ -71,7 +71,9 @@ const MONTHLY: (Template & { days: number[] })[] = [
     name: "ROCKET MORTGAGE PAYMENT",
     merchant: "Rocket Mortgage",
     category: "LOAN_PAYMENTS_MORTGAGE_PAYMENT",
-    amount: 2141.54,
+    // Spec step 115: the escrow went up (taxes or insurance) 20 days before the demo bank was
+    // linked.
+    amount: (day, anchor) => (day >= addDays(anchor, -20) ? 2198.31 : 2141.54),
     days: [1],
   },
   {
@@ -650,16 +652,17 @@ export function demoLiabilities({ seed, anchor }: DemoSeed, today: string): Liab
         account_id: accountId(seed, "mortgage"),
         account_number: null,
         current_late_fee: null,
-        escrow_balance: null,
-        has_pmi: false,
+        // Spec step 115: PMI to remove once the home's value allows, and an escrow account.
+        escrow_balance: 4210.55,
+        has_pmi: true,
         has_prepayment_penalty: false,
         interest_rate: { percentage: 3.99, type: "fixed" },
-        last_payment_amount: 2141.54,
+        last_payment_amount: 2198.31,
         last_payment_date: null,
         loan_term: "30 year",
         loan_type_description: "Conventional 30 year fixed",
         maturity_date: yearsAfter(anchor, 26),
-        next_monthly_payment: 2141.54,
+        next_monthly_payment: 2198.31,
         next_payment_due_date: nextDayOfMonth(today, 1),
         origination_date: null,
         origination_principal_amount: 400000,
