@@ -54,7 +54,7 @@ const PROFILE =
 // Spec step 130: what investing costs. Only with an investing word, so "bank fees" and
 // "lower my fees" stay where they were.
 const FEES =
-  /\bexpense ratios?\b|\b(?:investment|investing|fund|401\(?k\)?|ira|brokerage|portfolio|advisory|adviser|advisor) (?:fees?|costs?|charges?)\b|\bwhat do (?:my )?(?:investments|funds|401\(?k\)?) cost\b|\bhow much (?:do|am) i pay(?:ing)? (?:in fees )?(?:for|on) (?:my )?(?:investments|funds|401\(?k\)?|ira|brokerage)\b|\bcheaper funds?\b|\blower[- ]cost funds?\b/;
+  /\bexpense ratios?\b|\b(?:investment|investing|fund|401\(?k\)?|ira|brokerage|portfolio|advisory|adviser|advisor) (?:fees?|costs?|charges?)\b|\bwhat do (?:my )?(?:investments|funds|401\(?k\)?) cost\b|\bhow much (?:do|am) i pay(?:ing)? (?:in fees )?(?:for|on) (?:my )?(?:investments|funds|401\(?k\)?|ira|brokerage)\b|\b(?:fees?|costs?|charges?)\b[^.?!]* (?:on|for|in) (?:my )?(?:investments|funds|401\(?k\)?|ira|brokerage|portfolio)\b|\bcheaper funds?\b|\blower[- ]cost funds?\b/;
 
 // Spec step 131: does it fit?
 const REVIEW =
