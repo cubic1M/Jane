@@ -3,10 +3,21 @@ import { connection } from "next/server";
 import { Suspense } from "react";
 import { AppHeader } from "@/components/app-header";
 import { ViewTracker } from "@/components/view-tracker";
-import { FILING_STATUSES, INCOME_KINDS, TAX_AUTOPILOT, TAX_YEAR } from "@/config/tax";
+import {
+  FILING_STATUSES,
+  INCOME_KINDS,
+  TAX_TAG_ORDER,
+  TAX_TAGS,
+  TAX_YEAR,
+  whatJaneDoes,
+} from "@/config/tax";
+import { formatCents } from "@/lib/money";
 import { requireUser } from "@/lib/session";
+import { loadTaxForms, loadTaxTags } from "@/lib/tax-organizer";
 import { loadWorkingProfile } from "@/lib/tax-profile";
+import { defaultTaxYear } from "@/planning/tax-pack";
 import { stateName, type FieldStatus } from "@/planning/tax-profile";
+import { FormToggle } from "./form-toggle";
 
 // Taxes (spec steps 118–127): Jane keeps the person's taxes organised all year. Step 118:
 // the tax profile, and what Jane does by herself at their autopilot level.
@@ -39,8 +50,14 @@ function Row({ label, value, status }: { label: string; value: string; status: F
 async function TaxesContent() {
   const user = await requireUser();
   await connection();
-  const { view, autopilot } = await loadWorkingProfile(user.id);
-  const level = (autopilot ?? "none") as keyof typeof TAX_AUTOPILOT;
+  const now = new Date();
+  // The year being gathered: last year until the end of April, then this one.
+  const year = defaultTaxYear(now.toISOString().slice(0, 10));
+  const [{ view, autopilot }, tags, forms] = await Promise.all([
+    loadWorkingProfile(user.id, { now }),
+    loadTaxTags(user.id, year),
+    loadTaxForms(user.id, year, { now }),
+  ]);
   const kids = view.dependants;
 
   return (
@@ -107,12 +124,74 @@ async function TaxesContent() {
         )}
       </section>
 
+      <section aria-labelledby="organised" className={CARD}>
+        <div className="flex flex-wrap items-baseline justify-between gap-2">
+          <h2 id="organised" className="text-xl font-semibold">
+            Tagged for {year}
+          </h2>
+          <Link href="/taxes/tags" className={LINK}>
+            See and change tags
+          </Link>
+        </div>
+        <dl className="grid grid-cols-1 gap-x-4 gap-y-1 text-sm sm:grid-cols-2">
+          {TAX_TAG_ORDER.map((tag) => (
+            <div key={tag} className="flex justify-between gap-2">
+              <dt className="text-zinc-600 dark:text-zinc-400">{TAX_TAGS[tag].label}</dt>
+              <dd className="whitespace-nowrap">{formatCents(tags.totals[tag].totalCents)}</dd>
+            </div>
+          ))}
+        </dl>
+        {tags.checks.length > 0 && (
+          <p className="text-sm text-amber-800 dark:text-amber-300">
+            Jane isn&apos;t sure about {tags.checks.length}{" "}
+            {tags.checks.length === 1 ? "merchant" : "merchants"}.{" "}
+            <Link href="/taxes/tags#checks" className={LINK}>
+              Check them
+            </Link>
+          </p>
+        )}
+      </section>
+
+      <section aria-labelledby="forms" className={CARD}>
+        <h2 id="forms" className="text-xl font-semibold">
+          Tax forms to expect for {year}
+        </h2>
+        {forms.forms.length === 0 ? (
+          <p className="text-sm text-zinc-600 dark:text-zinc-400">
+            None from what&apos;s in your accounts.
+          </p>
+        ) : (
+          <ul className="flex flex-col gap-3 text-sm">
+            {forms.forms.map((f) => (
+              <li key={f.key} className="flex flex-col gap-1">
+                <span className="[overflow-wrap:anywhere]">
+                  <strong>{f.form}</strong> from {f.from}, for {f.what}
+                </span>
+                <span className="text-zinc-600 dark:text-zinc-400">
+                  {f.received
+                    ? "Received"
+                    : f.mayNotSend
+                      ? "May not send one: below the reporting threshold. Your own records count."
+                      : `Usually sent by ${new Date(`${f.by}T00:00:00Z`).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric", timeZone: "UTC" })}`}
+                </span>
+                <FormToggle
+                  year={year}
+                  formKey={f.key}
+                  received={f.received}
+                  label={`${f.form} from ${f.from}`}
+                />
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+
       <section aria-labelledby="by-herself" className={CARD}>
         <h2 id="by-herself" className="text-xl font-semibold">
           What Jane does by herself
         </h2>
         <ul className="flex list-disc flex-col gap-1 pl-5 text-sm">
-          {(TAX_AUTOPILOT[level] ?? TAX_AUTOPILOT.none).map((line) => (
+          {whatJaneDoes(autopilot).map((line) => (
             <li key={line}>{line}</li>
           ))}
           <li>Nothing is ever filed, signed or paid without your tap.</li>

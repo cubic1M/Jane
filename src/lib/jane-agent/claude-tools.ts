@@ -68,6 +68,8 @@ export const CHAT_PAGES: Readonly<Record<string, { label: string; href: string }
   // Taxes (spec steps 118–127).
   taxes: { label: "See your taxes", href: "/taxes" },
   tax_profile: { label: "See my tax profile", href: "/taxes/profile" },
+  tax_tags: { label: "See tax tags", href: "/taxes/tags" },
+  tax_pack: { label: "Open the tax-time pack", href: "/tax-pack" },
 };
 
 const noInput = { type: "object" as const, properties: {}, additionalProperties: false };
@@ -180,7 +182,7 @@ export async function runChatTool(
 ): Promise<ToolOutput> {
   if (FROM_ASK.some((t) => t.name === name))
     return runAskTool(userId, name, input, { client, now });
-  if (isTaxTool(name)) return runTaxTool(userId, name, { client, now });
+  if (isTaxTool(name)) return runTaxTool(userId, name, input, { client, now });
   if (isInvestmentTool(name)) return runInvestmentTool(userId, name, input, { client, now });
   if (isInsuranceTool(name)) return runInsuranceTool(userId, name, input, { client, now });
   const cents: number[] = [];

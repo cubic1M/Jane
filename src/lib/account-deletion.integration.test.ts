@@ -230,6 +230,10 @@ describe.runIf(url)("deleting data against a real database", () => {
     await client.taxProfile.create({
       data: { userId, filingStatus: "single", answered: ["filingStatus"] },
     });
+    await client.taxTag.create({ data: { userId, merchantKey: "staples", tag: "work" } });
+    await client.taxForm.create({
+      data: { userId, year: 2026, key: "w2:acme", receivedAt: new Date("2027-02-01") },
+    });
     const agentAction = await client.action.findFirstOrThrow({ where: { userId } });
     await client.agentMessage.create({
       data: {
@@ -299,6 +303,8 @@ describe.runIf(url)("deleting data against a real database", () => {
       documents: await client.document.count(where),
       deadlines: await client.deadline.count(where),
       taxProfiles: await client.taxProfile.count(where),
+      taxTags: await client.taxTag.count(where),
+      taxForms: await client.taxForm.count(where),
     };
   }
 

@@ -16,6 +16,7 @@ import { setupAll, setupNo, setupYes } from "./setup";
 import { cancelDone, offerAccept, offerDecline } from "./steps";
 import { goalStart } from "./goal";
 import { TAX_PROFILE_HANDLERS, taxFoundYes, taxIncomeAdd, taxIncomeNo, taxStateSet } from "./taxes";
+import { taxFormGot, taxTagNo, taxTagSet, taxTagYes } from "./tax-organizer";
 import {
   investAnswer1,
   investAnswer2,
@@ -60,6 +61,11 @@ export const ACTION_HANDLERS: Readonly<Record<ActionId, ActionHandler>> = {
   "tax.income_add": taxIncomeAdd,
   "tax.income_no": taxIncomeNo,
   "tax.state_set": taxStateSet,
+  // Spec step 119.
+  "tax.tag_yes": taxTagYes,
+  "tax.tag_no": taxTagNo,
+  "tax.tag_set": taxTagSet,
+  "tax.form_got": taxFormGot,
   // Investments (spec step 129 on).
   "invest.answer.1": investAnswer1,
   "invest.answer.2": investAnswer2,
