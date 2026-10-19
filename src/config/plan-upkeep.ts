@@ -1,12 +1,5 @@
-import type { AutopilotChoice } from "@/config/autopilot";
-
 // Plans that keep up (spec step 101): budget tune-ups on the 1st, goal progress from
 // transfers, and the weekly review.
-
-// The autopilot levels at which Jane applies a budget tune-up and counts a transfer toward a
-// goal by herself. Below them ("Ask me first", custom rules or no choice yet) nothing
-// changes without a tap.
-export const UPKEEP_AUTO_LEVELS: readonly AutopilotChoice[] = ["safe", "all"];
 
 // A month's tune-up is offered from the 1st through this day of the month.
 export const TUNE_UP_DAYS = 7;

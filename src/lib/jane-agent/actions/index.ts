@@ -18,6 +18,7 @@ import {
   insuranceClaimStep,
 } from "./insurance";
 import { ChatActionError, linksOf, type ActionHandler } from "./handler";
+import { forgetPrimer } from "../primer-cache";
 import { planApproveSafe } from "./plan";
 import { undoNo, undoRule } from "./undo";
 import { autopilotAll, autopilotAsk, autopilotPause, autopilotSafe } from "./autopilot";
@@ -54,6 +55,7 @@ import { findingOptions, findingWhy } from "./explain";
 import { savedShare } from "./saved";
 import { prefSave, suggestNever } from "./remember";
 import { welcomeTour } from "./welcome";
+import { autopilotSectorSet } from "./sector";
 import { bundleYes1, bundleYes2, bundleYes3, bundleYes4, bundleYes5 } from "./bundle";
 
 // Every button action, by id (spec step 81). A new button is a new handler here; the
@@ -169,6 +171,8 @@ export const ACTION_HANDLERS: Readonly<Record<ActionId, ActionHandler>> = {
   "saved.share": savedShare,
   // Help inside the chat (spec step 140).
   "welcome.tour": welcomeTour,
+  // One autopilot, every sector (spec step 141).
+  "autopilot.sector_set": autopilotSectorSet,
 };
 
 const MESSAGE_ID = /^[a-z0-9]{1,40}$/i;
@@ -211,6 +215,8 @@ export async function takeChatAction(
   }
 
   const outcome = await handler.run({ userId, message, action, client, now });
+  // Spec step 93: a tap can change what's open, so Claude's copy of the numbers goes.
+  forgetPrimer(userId);
   const status = outcome.status ?? "answered";
   const refs = { ...(outcome.refs ?? message.refs) };
   if (outcome.note) refs.note = outcome.note;

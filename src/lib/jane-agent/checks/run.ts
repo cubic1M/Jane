@@ -36,6 +36,8 @@ export type QuestionResult = {
   firstWordsMs?: number;
   checks?: Check[];
   claude?: ClaudeGrade;
+  // Spec step 93: the guardrail rules that blocked Claude's answer, if any.
+  blockedBy?: string[];
 };
 
 export type CheckRun = {
@@ -52,6 +54,8 @@ export type CheckRun = {
   capCents: number;
   stoppedAtCap: boolean;
   firstWordsMs: { median: number; max: number } | null;
+  // Spec step 93: how many answers each guardrail rule blocked.
+  blockedBy: Record<string, number>;
   results: QuestionResult[];
 };
 
@@ -167,7 +171,7 @@ export async function runAnswerChecks(
 
       const started = performance.now();
       let firstWords: number | null = null;
-      const { reply, source } = await sendToJane(userId, question.text, {
+      const { reply, source, issues } = await sendToJane(userId, question.text, {
         client,
         now: new Date(now.getTime() + (tick += 1000)),
         claude: metered,
@@ -215,6 +219,7 @@ export async function runAnswerChecks(
         firstWordsMs,
         checks,
         claude: grade,
+        ...(issues ? { blockedBy: issues } : {}),
       });
       earlier.push(
         { role: "user", content: question.text },
@@ -243,6 +248,12 @@ export async function runAnswerChecks(
     capCents,
     stoppedAtCap,
     firstWordsMs: times.length ? { median: median(times), max: Math.max(...times) } : null,
+    blockedBy: graded
+      .flatMap((r) => r.blockedBy ?? [])
+      .reduce<Record<string, number>>(
+        (tally, code) => ({ ...tally, [code]: (tally[code] ?? 0) + 1 }),
+        {},
+      ),
     results,
   };
 }
