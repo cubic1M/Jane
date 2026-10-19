@@ -1,7 +1,8 @@
 import type { PrismaClient } from "@/generated/prisma/client";
+import { loadPayoff } from "@/lib/debt-plan";
 import { loadDebts } from "@/lib/debts";
 import type { DebtIntent } from "./debt-intents";
-import { debtReply } from "./debt-replies";
+import { debtReply, payoffReply } from "./debt-replies";
 import type { Reply } from "./replies";
 
 // Answers questions about debts by rules (spec Phase Y), with the same loaders as the
@@ -15,5 +16,10 @@ export async function answerDebt(
     case "debts":
     case "debt_detail":
       return debtReply(intent, await loadDebts(userId, { client, now }));
+    case "payoff_plan":
+      return payoffReply(
+        await loadPayoff(userId, { client, now, extraCents: intent.extraCents ?? undefined }),
+        now.toISOString().slice(0, 10),
+      );
   }
 }

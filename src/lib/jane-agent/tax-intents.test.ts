@@ -56,4 +56,22 @@ describe("tax intents", () => {
     expect(parse("how much did I spend on food last month").kind).toBe("spending");
     expect(parse("what's due this week").kind).toBe("coming_up");
   });
+
+  it.each([
+    "how much tax will I owe",
+    "how much will I owe in taxes",
+    "what will I owe the IRS",
+    "will I get a refund",
+    "tax estimate",
+  ])("%s asks for the estimate", (text) => {
+    expect(parse(text)).toEqual({ kind: "tax", ask: "estimate" });
+  });
+
+  // Owing without a tax word is about debts (./debt-intents.ts).
+  it.each(["How much do I owe?", "what do I owe on my car", "when is my car paid off"])(
+    "%s isn't a tax question",
+    (text) => {
+      expect(parse(text).kind).not.toBe("tax");
+    },
+  );
 });
