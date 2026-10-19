@@ -62,6 +62,8 @@ import { overviewReply, sectorChangeReply } from "./replies-autopilot";
 import { checkedReply } from "./replies-checked";
 import { rankedFor } from "./priorities";
 import { prioritiesReply } from "./replies-priorities";
+import { paycheckReply } from "./replies-paycheck";
+import { latestPaycheckPlan } from "@/lib/money-movement/paycheck";
 import { groupedHelpReply } from "./replies-help";
 import { lifeEventReply } from "./replies-life";
 import { savedReply } from "./replies-saved";
@@ -268,6 +270,8 @@ async function byIntent(
       const going = open.some((e) => e.kind === intent.event && e.completedAt === null);
       return lifeEventReply(intent.event, going);
     }
+    case "paycheck":
+      return paycheckReply(await latestPaycheckPlan(userId, { client, now }));
     case "priorities": {
       const snapshot = await loadSnapshot(userId, { client, now });
       return prioritiesReply(snapshot ? rankedFor(snapshot) : []);
