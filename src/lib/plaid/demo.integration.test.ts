@@ -8,7 +8,9 @@ vi.mock("@/lib/session", () => ({ requireUser: vi.fn() }));
 vi.mock("@/lib/analytics", () => ({ track: vi.fn() }));
 vi.mock("@/lib/audit", () => ({ logAudit: vi.fn(), SYSTEM_ACTOR: { type: "system", id: null } }));
 
+import { netWorth } from "@/insights/net-worth";
 import { decrypt } from "@/lib/crypto";
+import { loadInvestments } from "@/lib/investments/holdings";
 import { hasDemoBank, linkDemoBank } from "./demo";
 import { removePlaidItem } from "./remove";
 import { syncItem } from "./sync";
@@ -89,9 +91,35 @@ describe.runIf(url)("the demo bank, end to end", () => {
     }
   });
 
+  it("keeps what the investment accounts hold, adding up to net worth (spec step 128)", async () => {
+    const investments = await loadInvestments(userId, { client, now: LINKED });
+    const accounts = await client.account.findMany({
+      where: { userId },
+      select: { id: true, name: true, type: true, currentBalanceCents: true },
+    });
+    const worth = netWorth(accounts.map((a) => ({ ...a, balanceCents: a.currentBalanceCents })));
+    expect(investments.totalCents).toBe(worth.investmentsCents);
+    expect(investments.totalCents).toBe(9_673_055);
+    expect(investments.holdingCount).toBe(9);
+    for (const account of investments.accounts) {
+      expect(account.holdingsMatch, account.name).toBe(true);
+      for (const h of account.holdings) expect(h.source).toMatch(/^Demo Bank \(fake data\), /);
+    }
+    expect(investments.accounts.map((a) => a.label)).toEqual(["401(k)", "Brokerage"]);
+    // Two years of contributions, buys, dividends and fees, to the last payday.
+    const transactions = await client.investmentTransaction.findMany({
+      where: { userId },
+      select: { date: true },
+      orderBy: { date: "asc" },
+    });
+    expect(transactions.length).toBeGreaterThan(150);
+    expect(transactions.at(-1)!.date.toISOString().slice(0, 10)).toBe("2026-10-15");
+  });
+
   it("adds only the new days on a later sync", async () => {
     const item = await client.plaidItem.findFirstOrThrow({ where: { userId } });
     const before = await client.transaction.count({ where: { userId } });
+    const investmentsBefore = await client.investmentTransaction.count({ where: { userId } });
     const later = await syncItem(item.id, {
       client,
       api: plaid,
@@ -100,6 +128,9 @@ describe.runIf(url)("the demo bank, end to end", () => {
     expect(later.firstSync).toBe(false);
     expect(await client.transaction.count({ where: { userId } })).toBe(before + later.added);
     expect(later.added).toBeGreaterThan(0);
+    // The holdings are replaced and investment transactions read again, never doubled.
+    expect(await client.holding.count({ where: { userId } })).toBe(9);
+    expect(await client.investmentTransaction.count({ where: { userId } })).toBe(investmentsBefore);
     // Same day again: nothing new.
     expect(
       (await syncItem(item.id, { client, api: plaid, now: new Date("2026-10-25T18:00:00Z") }))
@@ -113,5 +144,7 @@ describe.runIf(url)("the demo bank, end to end", () => {
     expect(await hasDemoBank(userId, { client })).toBe(false);
     expect(await client.account.count({ where: { userId } })).toBe(0);
     expect(await client.transaction.count({ where: { userId } })).toBe(0);
+    expect(await client.holding.count({ where: { userId } })).toBe(0);
+    expect(await client.investmentTransaction.count({ where: { userId } })).toBe(0);
   });
 });

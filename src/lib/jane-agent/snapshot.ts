@@ -13,6 +13,7 @@ import { planFor } from "@/lib/plan";
 import { isNoRisk } from "@/lib/plan-links";
 import { savingsLine } from "@/lib/savings-text";
 import { recentRuleApprovals } from "@/lib/standing-rules";
+import { loadInvestmentSnapshot, type InvestmentSnapshot } from "./investments/snapshot";
 import { loadMore, type MoreSnapshot } from "./snapshot-more";
 
 // Everything Jane's brain looks at for one person (spec step 82), loaded with the same
@@ -69,6 +70,8 @@ export type Snapshot = {
   urgentAlerts: { id: string; title: string; body: string }[];
   // Spec step 83: every budget this month, for "nearly over".
   budgetProgress: HomeSummary["budgetProgress"];
+  // Spec step 128 on: what's in investment accounts.
+  investments?: InvestmentSnapshot;
 } & MoreSnapshot;
 
 // A finding as Jane describes it in the chat: its type, title, saving and evidence. A
@@ -172,5 +175,6 @@ export async function loadSnapshot(
       .map((a) => ({ id: a.id, title: a.title, body: a.body })),
     budgetProgress: home.budgetProgress,
     ...(await loadMore(userId, { client })),
+    investments: await loadInvestmentSnapshot(userId, { client, now }),
   };
 }
