@@ -14,7 +14,8 @@ import { listPolicies } from "./policies";
 
 type Options = { client?: PrismaClient; now?: Date };
 
-export type CheckupReason = "yearly" | "life_event" | "asked";
+// enrollment: the review before the employer's open enrollment (spec step 150).
+export type CheckupReason = "yearly" | "life_event" | "asked" | "enrollment";
 
 export type Checkup = {
   id: string;
@@ -69,9 +70,11 @@ async function inputFor(
 
 export async function latestCheckup(
   userId: string,
-  { client = defaultClient }: Options = {},
+  // The yearly schedule leaves out the review before open enrollment at work (spec step 150).
+  { client = defaultClient, checkupsOnly = false }: Options & { checkupsOnly?: boolean } = {},
 ): Promise<Checkup | null> {
   const row = await scopedFor(userId, client).insuranceCheckups.findFirst({
+    where: checkupsOnly ? { reason: { not: "enrollment" } } : {},
     select: SELECT,
     orderBy: { createdAt: "desc" },
   });
@@ -117,7 +120,7 @@ export async function checkupDue(
   { client = defaultClient, now = new Date() }: Options = {},
 ): Promise<{ reason: CheckupReason; lifeEvent: { id: string; kind: string } | null } | null> {
   const db = scopedFor(userId, client);
-  const last = await latestCheckup(userId, { client });
+  const last = await latestCheckup(userId, { client, checkupsOnly: true });
   const event = await db.lifeEvents.findFirst({
     where: last ? { createdAt: { gt: last.createdAt } } : {},
     select: { id: true, kind: true },

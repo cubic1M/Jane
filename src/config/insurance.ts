@@ -30,7 +30,15 @@ export const isPolicyKind = (value: unknown): value is PolicyKind =>
 // Where a policy came from: typed by the person, read from an uploaded policy document
 // (spec step 68), found from regular payments to an insurer (spec step 99), the demo
 // bank's sample policy, or bound by Jane through the insurance partner (spec step 105).
-export const POLICY_SOURCES = ["typed", "document", "payments", "demo", "switch"] as const;
+export const POLICY_SOURCES = [
+  "typed",
+  "document",
+  "payments",
+  "demo",
+  "switch",
+  // Spec step 150: a benefit through work, confirmed from a pay stub or the guided flow.
+  "employer",
+] as const;
 export type PolicySource = (typeof POLICY_SOURCES)[number];
 
 export const POLICY_SOURCE_LABELS: Record<PolicySource, string> = {
@@ -39,6 +47,7 @@ export const POLICY_SOURCE_LABELS: Record<PolicySource, string> = {
   payments: "Found from your payments",
   demo: "Demo policy",
   switch: "Bound by Jane",
+  employer: "Through your job",
 };
 
 // found: seen in payments, not confirmed yet (it doesn't count until it is). active: the

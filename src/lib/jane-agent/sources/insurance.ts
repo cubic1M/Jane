@@ -6,6 +6,7 @@ import type { Shop } from "@/lib/insurance/shop";
 import { formatCents } from "@/lib/money";
 import { reminderDue } from "@/lib/insurance/claim-rules";
 import { checkupBody } from "../insurance/checkup-words";
+import { BENEFITS_LINK, QUESTIONS, foundBody } from "../insurance/benefit-words";
 import { trackerActions, trackerBody } from "../insurance/claim-words";
 import type { InsuranceSnapshot } from "../insurance/snapshot";
 import type { Candidate } from "../types";
@@ -212,6 +213,40 @@ function claimReminders(insurance: InsuranceSnapshot, asOf: string): Candidate[]
   });
 }
 
+// Spec step 150: benefits found on the pay stub, to confirm in one tap; then the short guided
+// questions for cover the employer pays for, one at a time in the same message.
+function benefitMessages(insurance: InsuranceSnapshot): Candidate[] {
+  const found = (insurance.benefits ?? []).filter((b) => b.status === "found");
+  if (found.length > 0) {
+    return [
+      {
+        kind: "decision",
+        body: foundBody(found),
+        refs: {},
+        actions: [
+          { id: "benefits.confirm_all", label: "Yes, they're right", kind: "primary" },
+          { ...BENEFITS_LINK, label: "Review them" },
+          snoozeButton(),
+        ],
+        dedupeKey: `benefits:${found.map((b) => b.id).join(",")}`,
+        priority: MESSAGE_PRIORITY.benefits_found,
+      },
+    ];
+  }
+  const question = insurance.benefitQuestion;
+  if (!question) return [];
+  return [
+    {
+      kind: "decision",
+      body: QUESTIONS[question].body,
+      refs: { benefitQuestion: question },
+      actions: [...QUESTIONS[question].actions, BENEFITS_LINK],
+      dedupeKey: "benefit-questions",
+      priority: MESSAGE_PRIORITY.benefits_question,
+    },
+  ];
+}
+
 export const insuranceSource: MessageSource = {
   key: "insurance",
   gather: (snapshot) => {
@@ -224,6 +259,7 @@ export const insuranceSource: MessageSource = {
       ...gapMessages(insurance),
       ...checkedMessages(insurance),
       ...checkupMessages(insurance),
+      ...benefitMessages(insurance),
     ];
   },
 };

@@ -28,6 +28,7 @@ import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
 import { documentDates } from "@/lib/documents/dates";
 import { openEnrollmentDates } from "@/lib/insurance/health";
+import { listBenefits, openEnrollmentAtWork } from "@/lib/insurance/benefits";
 import { listPolicies, nextRenewal } from "@/lib/insurance/policies";
 import { loadInsurance } from "@/lib/insurance/profile";
 
@@ -173,6 +174,39 @@ export const openEnrollmentDeadlines: DeadlineSource = async (userId, { client, 
   );
 };
 
+// Spec step 150: the employer's open enrollment, for people with benefits through work on file.
+export const workEnrollmentDeadlines: DeadlineSource = async (userId, { client, now }) => {
+  const asOf = isoDate(now);
+  const until = addDays(asOf, DEADLINE_HORIZON_DAYS);
+  const window = await openEnrollmentAtWork(userId, { client, now });
+  if (!window) return [];
+  const benefits = await listBenefits(userId, { client });
+  if (!benefits.some((b) => b.status === "confirmed" || b.status === "found")) return [];
+  const dates = [
+    ...(window.start >= asOf ? [{ date: window.start, what: "start" }] : []),
+    { date: window.end, what: "end" },
+  ];
+  return dates.flatMap(({ date, what }): Deadline[] =>
+    date > until
+      ? []
+      : [
+          {
+            key: `work-enrollment:${window.end}:${what}`,
+            title:
+              what === "start"
+                ? `Open enrollment at ${window.employer} starts`
+                : `Last day of open enrollment at ${window.employer}`,
+            date,
+            kind: "renewal",
+            source: "insurance",
+            amountCents: null,
+            href: "/insurance/benefits",
+            detail: "Jane compares your benefits with buying the same cover yourself before it.",
+          },
+        ],
+  );
+};
+
 // Every source, in one list.
 export const DEADLINE_SOURCES: readonly DeadlineSource[] = [
   transactionDeadlines,
@@ -181,6 +215,7 @@ export const DEADLINE_SOURCES: readonly DeadlineSource[] = [
   documentDeadlines,
   insuranceDeadlines,
   openEnrollmentDeadlines,
+  workEnrollmentDeadlines,
 ];
 
 // Everything coming up, soonest first. A source that fails is left out (and logged) so
