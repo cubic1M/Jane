@@ -1,3 +1,6 @@
+import type { Topic } from "./context";
+import type { Intent } from "./intents";
+
 // Jane's chat messages (spec step 81): what a message is, what it's about and its buttons.
 // Stored in jane_messages; posted by Jane's brain (spec step 82) and, from step 84, typed
 // by the person.
@@ -45,6 +48,10 @@ export const ACTION_IDS = [
   // Typing to Jane (spec step 84).
   "goal.start",
   "autopilot.pause",
+  // Spec step 88: a clarifying question's answers, one per meaning (refs.choices).
+  "clarify.1",
+  "clarify.2",
+  "clarify.3",
   // Taxes (spec step 118): the tax profile, one question at a time.
   "tax.found_yes",
   "tax.filing_single",
@@ -131,6 +138,10 @@ export type MessageRefs = {
   // The goal "Start a goal for it" would add (spec step 84): money in cents, date
   // YYYY-MM-DD.
   goal?: { name: string; targetCents: number; targetDate: string };
+  // Spec step 88: what a reply was about, for a follow-up ("and Hulu?", "cancel it").
+  topic?: Topic;
+  // Spec step 88: a clarifying question's meanings, in button order (clarify.1, clarify.2…).
+  choices?: { label: string; intent: Intent }[];
   // Taxes (spec step 118): the tax profile question a message is asking, and the kind of
   // income "Add it" would add.
   taxField?: string;

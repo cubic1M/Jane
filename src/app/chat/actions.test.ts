@@ -53,6 +53,7 @@ describe("tapButton", () => {
       message: stored,
       agentJobIds: ["job1"],
       agentActionIds: [],
+      posted: false,
     });
     const state = await tapButton(previous, form({ messageId: "m1", actionId: "finding.yes" }));
     expect(takeChatAction).toHaveBeenCalledWith("u1", "m1", "finding.yes");
@@ -77,6 +78,7 @@ describe("tapButton", () => {
       message: { ...stored, answeredWith: "Handle the safe stuff" },
       agentJobIds: [],
       agentActionIds: ["a1", "a2"],
+      posted: false,
     });
     await tapButton(previous, form({ messageId: "m1", actionId: "autopilot.safe" }));
     expect(runQueuedFor).not.toHaveBeenCalled();
@@ -99,5 +101,26 @@ describe("tapButton", () => {
     await expect(tapButton(previous, form({ messageId: "m1", actionId: "x" }))).rejects.toThrow(
       "database down",
     );
+  });
+
+  // Spec step 88: a clarifying question's button posts an answer, so the chat reloads.
+  it("says when a tap posted a new message", async () => {
+    vi.mocked(takeChatAction).mockResolvedValue({
+      message: stored,
+      agentJobIds: [],
+      agentActionIds: [],
+      posted: true,
+    });
+    const state = await tapButton(previous, form({ messageId: "m1", actionId: "clarify.1" }));
+    expect(state.postedAt).toEqual(expect.any(Number));
+    vi.mocked(takeChatAction).mockResolvedValue({
+      message: stored,
+      agentJobIds: [],
+      agentActionIds: [],
+      posted: false,
+    });
+    expect(
+      (await tapButton(previous, form({ messageId: "m1", actionId: "finding.yes" }))).postedAt,
+    ).toBeUndefined();
   });
 });
