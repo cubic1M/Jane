@@ -220,3 +220,26 @@ export const DEMO_PRICING = {
     number
   >,
 } as const;
+
+// --- Shopped for you (spec step 104) ------------------------------------------------------
+// Jane reshops every policy by herself, at every autopilot level: this many days before it
+// renews, and whenever its price goes up. She picks the lowest price for the same cover,
+// weighted by the carrier's rating, and asks once. Nothing is bought without a tap.
+export const RESHOP_DAYS_BEFORE_RENEWAL = 45;
+// A carrier's price counts this much more for each rating point below 100 (0.5% a point),
+// so a much better-rated carrier can win at a slightly higher price.
+export const PICK_RATING_PENALTY_PER_POINT = 0.005;
+// Carriers rated below this score are never the pick.
+export const PICK_MIN_RATING_SCORE = 85;
+// The pick must save at least this much a year to be worth asking about.
+export const RESHOP_MIN_SAVING_CENTS = 5_000;
+// Options shown besides the pick.
+export const RESHOP_RUNNERS_UP = 2;
+// A charge from the insurer this much above the policy's price counts as a price rise,
+// looked for in the last this-many days.
+export const PRICE_UP_TOLERANCE_CENTS = 100;
+export const PRICE_UP_LOOKBACK_DAYS = 45;
+// People reshopped per daily run, the longest-waiting first.
+export const RESHOP_DAILY_LIMIT = 200;
+// "I checked: nothing better" is said for reshops from the last this-many days.
+export const RESHOP_NEWS_DAYS = 7;

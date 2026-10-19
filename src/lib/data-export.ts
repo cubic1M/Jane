@@ -425,6 +425,18 @@ export async function exportUserData(
     }),
     db.taxForms.findMany({ select: { year: true, key: true, receivedAt: true } }),
   ]);
+  // Terms they typed for debts their bank doesn't report (spec step 109).
+  const debtTerms = await db.debtTerms.findMany({
+    select: {
+      debtKey: true,
+      aprBps: true,
+      minimumPaymentCents: true,
+      balanceCents: true,
+      payoffDate: true,
+      updatedAt: true,
+    },
+    orderBy: { debtKey: "asc" },
+  });
   // What's in their investment accounts and its history (spec step 128).
   const investments = await investmentsExport(userId, client);
   // Insurance (spec Phase X): every policy on the profile and the household facts.
@@ -462,6 +474,7 @@ export async function exportUserData(
     checkIns,
     events,
     ownedAssets,
+    debtTerms,
     documents: {
       note: "The files themselves aren't in this download. Download each one from /documents.",
       files: documents,

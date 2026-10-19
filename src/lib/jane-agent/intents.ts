@@ -3,6 +3,7 @@ import { CHAT_WEEK_DAYS } from "@/config/agent-chat";
 import type { LifeEventKind } from "@/config/life-events";
 import { CATEGORY_LABELS, UNCATEGORIZED } from "@/insights/labels";
 import { parseMoneyToCents } from "@/lib/money";
+import { parseDebtIntent, type DebtIntent } from "./debt-intents";
 import { parseTaxIntent, type TaxIntent } from "./tax-intents";
 import { parseInvestmentIntent, type InvestmentIntent } from "./investments/intents";
 
@@ -15,6 +16,8 @@ export type ActVerb = "cancel" | "lower" | "refund";
 
 export type Intent =
   | { kind: "help" }
+  // Loans and debt (spec Phase Y, ./debt-intents.ts).
+  | DebtIntent
   // Insurance (spec Phase X): ./insurance/intents.ts.
   | InsuranceIntent
   // "hi", "thanks": answered at once, without Claude.
@@ -364,6 +367,10 @@ export function parseIntent(raw: string, asOf: string): Intent {
   if (WHAT_DID.test(text)) return { kind: "what_did" };
   if (APPROVE_ALL.test(text)) return { kind: "approve_all" };
   if (UNDO.test(text)) return { kind: "undo" };
+  // Loans and debt (spec Phase Y) before taxes: "how much do I owe?" is about debts;
+  // anything that mentions taxes is left to the tax questions.
+  const debt = parseDebtIntent(text, parseAmount(text));
+  if (debt) return debt;
   const tax = parseTaxIntent(text);
   if (tax) return tax;
 
