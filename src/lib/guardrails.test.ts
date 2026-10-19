@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { checkGuardrails, dollarFigures, unsupportedFigures } from "./guardrails";
+import {
+  checkGuardrails,
+  dollarFigures,
+  isAdvice,
+  recommendsAChoice,
+  unsupportedFigures,
+} from "./guardrails";
 
 const ALLOWED = [1549, 18588];
 
@@ -146,5 +152,72 @@ describe("unsupportedFigures", () => {
       ["$9.99", "40 dollars"],
     );
     expect(unsupportedFigures("No amounts here.", ALLOWED)).toEqual([]);
+  });
+});
+
+// Spec step 98: the demo advice profile, for people in demo advice mode only.
+describe("the demo advice profile", () => {
+  const demoIssues = (text: string, allowed: number[] = ALLOWED) => {
+    const result = checkGuardrails(text, allowed, undefined, "demo_advice");
+    return result.ok ? [] : result.issues;
+  };
+
+  it.each([
+    // Investments
+    "Put the money into an S&P 500 index fund instead.",
+    "I'd open a Roth IRA and invest $155 a month.",
+    "Rebalance toward bonds: your allocation is heavy in stocks.",
+    // Taxes
+    "Claim the home office deduction; it's tax deductible.",
+    "Bump your 401(k) to lower your taxable income.",
+    // Insurance
+    "I'd raise your deductible and switch carriers to lower the premium.",
+    "Add liability insurance to your car policy.",
+    // Loans
+    "I recommend refinancing the car loan at a lower interest rate.",
+    "You should pay the 24% APR card first: it's the best strategy.",
+  ])("lets %j through", (text) => {
+    expect(demoIssues(text, [15_500])).toEqual([]);
+    // And it's labelled as demo advice.
+    expect(isAdvice(text)).toBe(true);
+  });
+
+  it("still blocks unsupported figures, promised outcomes and legal advice", () => {
+    expect(demoIssues("An index fund could earn $9,999.")).toEqual(["unsupported_dollar_figure"]);
+    expect(demoIssues("This fund is guaranteed to beat inflation.")).toEqual([
+      "guaranteed_outcome",
+    ]);
+    expect(demoIssues("Refinance and you will save on interest.")).toEqual(["guaranteed_outcome"]);
+    expect(demoIssues("A risk-free return on bonds.")).toEqual(["guaranteed_outcome"]);
+    expect(demoIssues("Talk to a lawyer and sue the lender.")).toEqual(["tax_or_legal_advice"]);
+  });
+
+  it("still requires a card's wording", () => {
+    expect(checkGuardrails("Your bill is high.", [], "bill_negotiation", "demo_advice")).toEqual({
+      ok: false,
+      issues: ["missing_required_wording"],
+    });
+  });
+
+  it("lets a recommendation through only in the demo profile", () => {
+    expect(recommendsAChoice("I recommend the avalanche plan.")).toBe(true);
+    expect(recommendsAChoice("I recommend the avalanche plan.", "demo_advice")).toBe(false);
+  });
+});
+
+describe("isAdvice", () => {
+  it.each([
+    "Put it in an index fund.",
+    "Your taxes could be lower.",
+    "Your car insurance premium went up.",
+    "Refinance the mortgage.",
+    "I recommend the cheaper plan.",
+  ])("labels %j as advice", (text) => {
+    expect(isAdvice(text)).toBe(true);
+  });
+
+  it("leaves everyday answers unlabelled", () => {
+    expect(isAdvice("You spent $15.49 on Netflix this month.")).toBe(false);
+    expect(isAdvice("You have $1,234.56 to spend until Oct 30.")).toBe(false);
   });
 });

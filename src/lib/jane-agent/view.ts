@@ -16,6 +16,8 @@ export type MessageView = {
   status: MessageStatus;
   answeredWith: string | null;
   note: string | null;
+  // Demo advice (spec step 98): shown with DEMO_ADVICE_LABEL.
+  advice: boolean;
   buttons: { id: ActionId; label: string; kind: "primary" | "secondary" }[];
   links: { label: string; href: string }[];
   // Until when Undo works, so the page can hide it then.
@@ -58,6 +60,7 @@ export function toView(message: ChatMessage, now: Date, timezone: string | null)
     status: message.status,
     answeredWith: message.answeredWith,
     note: message.refs.note ?? null,
+    advice: message.refs.advice === true,
     buttons,
     links: message.actions.flatMap((a) =>
       a.kind === "link" ? [{ label: a.label, href: a.href }] : [],
