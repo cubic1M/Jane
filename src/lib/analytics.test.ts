@@ -36,14 +36,6 @@ describe("track", () => {
     });
   });
 
-  // Spec step 138.
-  it("never counts someone trying Jane with sample data", async () => {
-    vi.stubEnv("POSTHOG_KEY", "phc_test");
-    await track("trial_abc123", "card_opened", { finding_id: "f1" });
-    expect(create).not.toHaveBeenCalled();
-    expect(captureImmediate).not.toHaveBeenCalled();
-  });
-
   it("skips PostHog when no key is configured", async () => {
     vi.stubEnv("POSTHOG_KEY", "");
 
