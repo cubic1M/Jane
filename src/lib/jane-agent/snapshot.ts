@@ -43,6 +43,9 @@ export type SnapshotFinding = {
   // Jane's pick when the finding compares options (spec step 76): what it saves in the
   // first year (bills) or earns more a year (savings).
   pick: { optionId: string; name: string; savingCents: number; savings: boolean } | null;
+  // Spec step 143: how sure detection is, for the priority engine. Optional for snapshots
+  // built by hand.
+  confidence?: "high" | "medium" | "low";
 };
 
 export type Snapshot = {
