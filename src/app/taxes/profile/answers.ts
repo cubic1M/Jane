@@ -1,6 +1,7 @@
 import { INCOME_KIND_ORDER, isFilingStatus, type IncomeKind } from "@/config/tax";
 import { parseMoneyToCents } from "@/lib/money";
 import { TaxProfileError, type PayStubEntry, type TaxAnswer } from "@/lib/tax-profile";
+import { ResidencyError } from "@/lib/tax-states";
 
 // The tax profile form's answers (spec step 118). A field left empty stays unanswered.
 
@@ -55,5 +56,30 @@ export function payStubFrom(formData: FormData): PayStubEntry | null {
     stateCents: money("payState"),
     retirementCents: money("payRetirement"),
     pretaxCents: money("payPretax"),
+  };
+}
+
+// Spec step 165: where the person lived and worked. A move (date, from, to), or "one state
+// all year"; the employer's state ("" for the same state); the city income tax ("" leaves
+// it as it is, "none" for none).
+export type ResidencyEntry = {
+  move: { date: string; from: string; to: string } | null;
+  oneState: boolean;
+  workState: string | null;
+  locality: string | null;
+};
+
+export function residencyFrom(formData: FormData): ResidencyEntry {
+  const date = text(formData, "movedOn");
+  const from = text(formData, "movedFrom");
+  const to = text(formData, "movedTo");
+  if ((date || from || to) && !(date && from && to)) {
+    throw new ResidencyError("For a move, give the date and both states.");
+  }
+  return {
+    move: date ? { date, from, to } : null,
+    oneState: !date && Boolean(formData.get("oneState")),
+    workState: text(formData, "workState") || null,
+    locality: text(formData, "locality") || null,
   };
 }
