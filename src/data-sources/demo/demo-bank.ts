@@ -40,7 +40,16 @@ const primaryOf = (detailed: PfcDetailed): PfcPrimary =>
   )!;
 
 type AccountKey =
-  "checking" | "savings" | "card" | "mortgage" | "student" | "auto" | "retirement" | "brokerage";
+  | "checking"
+  | "savings"
+  | "card"
+  | "mortgage"
+  | "student"
+  | "auto"
+  | "retirement"
+  | "brokerage"
+  // Spec step 159: a demo HSA, only when the person links one (DemoExtra).
+  | "hsa";
 
 export const accountId = (seed: string, key: AccountKey) => `demo-${seed}-${key}`;
 
@@ -71,7 +80,9 @@ const MONTHLY: (Template & { days: number[] })[] = [
     name: "ROCKET MORTGAGE PAYMENT",
     merchant: "Rocket Mortgage",
     category: "LOAN_PAYMENTS_MORTGAGE_PAYMENT",
-    amount: 2141.54,
+    // Spec step 115: the escrow went up (taxes or insurance) 20 days before the demo bank was
+    // linked.
+    amount: (day, anchor) => (day >= addDays(anchor, -20) ? 2198.31 : 2141.54),
     days: [1],
   },
   {
@@ -137,14 +148,24 @@ const MONTHLY: (Template & { days: number[] })[] = [
     amount: [88, 141],
     days: [18],
   },
+  // Paid with the card, whose phone protection (spec step 152) makes Asurion a duplicate.
   {
     key: "phone",
-    account: "checking",
+    account: "card",
     name: "VERIZON WIRELESS",
     merchant: "Verizon Wireless",
     category: "RENT_AND_UTILITIES_TELEPHONE",
     amount: 145,
     days: [20],
+  },
+  {
+    key: "phone-protection",
+    account: "card",
+    name: "ASURION WIRELESS PROTECTION",
+    merchant: "Asurion",
+    category: "GENERAL_SERVICES_INSURANCE",
+    amount: 17,
+    days: [21],
   },
   {
     key: "card-payment",
@@ -582,7 +603,7 @@ const account = (
     balances: { current, available: null, limit: null, iso_currency_code: "USD" },
   }) as unknown as AccountBase;
 
-export function demoAccounts({ seed }: DemoSeed): AccountBase[] {
+export function demoAccounts({ seed }: DemoSeed, extras: readonly DemoExtra[] = []): AccountBase[] {
   return [
     account(seed, "checking", "Demo Checking", "0001", "depository", "checking", 3840.12),
     account(seed, "savings", "Demo Savings", "0002", "depository", "savings", 24310),
@@ -592,8 +613,16 @@ export function demoAccounts({ seed }: DemoSeed): AccountBase[] {
     account(seed, "auto", "Demo Car Loan", "0006", "loan", "auto", 18020),
     account(seed, "retirement", "Demo 401(k)", "0007", "investment", "401k", 84250.4),
     account(seed, "brokerage", "Demo Brokerage", "0008", "investment", "brokerage", 12480.15),
+    // Spec step 159: a demo HSA's balance is what it holds.
+    ...(extras.includes("hsa")
+      ? [account(seed, "hsa", "Demo HSA", "0009", "investment", "hsa", 4271.8)]
+      : []),
   ];
 }
+
+// Extra stand-in accounts a demo-bank person can link (spec step 159 on).
+export const DEMO_EXTRAS = ["hsa"] as const;
+export type DemoExtra = (typeof DEMO_EXTRAS)[number];
 
 // The next time a day of the month comes round, after `today`.
 function nextDayOfMonth(today: string, dayOfMonth: number): string {
@@ -640,16 +669,17 @@ export function demoLiabilities({ seed, anchor }: DemoSeed, today: string): Liab
         account_id: accountId(seed, "mortgage"),
         account_number: null,
         current_late_fee: null,
-        escrow_balance: null,
-        has_pmi: false,
+        // Spec step 115: PMI to remove once the home's value allows, and an escrow account.
+        escrow_balance: 4210.55,
+        has_pmi: true,
         has_prepayment_penalty: false,
         interest_rate: { percentage: 3.99, type: "fixed" },
-        last_payment_amount: 2141.54,
+        last_payment_amount: 2198.31,
         last_payment_date: null,
         loan_term: "30 year",
         loan_type_description: "Conventional 30 year fixed",
         maturity_date: yearsAfter(anchor, 26),
-        next_monthly_payment: 2141.54,
+        next_monthly_payment: 2198.31,
         next_payment_due_date: nextDayOfMonth(today, 1),
         origination_date: null,
         origination_principal_amount: 400000,

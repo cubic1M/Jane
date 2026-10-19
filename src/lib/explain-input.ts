@@ -142,6 +142,25 @@ export function prepareExplainInput(finding: ExplainableFinding): PreparedInput 
       };
       sent = charges(evidence.charges);
       break;
+    case "covered_by_card":
+      facts = {
+        ...stream(evidence),
+        card: text(evidence.card),
+        benefit: text(evidence.benefit),
+        condition: text(evidence.condition),
+        limits:
+          list(evidence.limits)
+            .map(obj)
+            .map((l) => {
+              const cents = num(l.cents);
+              return [text(l.label), cents === null ? null : money(cents), text(l.text)]
+                .filter(Boolean)
+                .join(" ");
+            })
+            .join(", ") || null,
+      };
+      sent = charges(evidence.charges);
+      break;
     case "bill_negotiation":
       facts = {
         ...stream(evidence),

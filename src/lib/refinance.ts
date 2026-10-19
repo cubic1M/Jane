@@ -1,10 +1,12 @@
 import { LENDER_PARTNER, REFI_CHECK_DAYS, type LoanProduct } from "@/config/debt";
-import type { Prisma, PrismaClient } from "@/generated/prisma/client";
+import { Prisma, type PrismaClient } from "@/generated/prisma/client";
 import { adviceMode } from "@/lib/advice-mode";
 import { track } from "@/lib/analytics";
 import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
-import { loadDebts } from "@/lib/debts";
+import { creditBandFor } from "@/lib/credit";
+import { debtsOr, loadDebts } from "@/lib/debts";
+import type { DebtBook } from "@/insights/debts";
 import { demoLender } from "@/lib/lenders/demo";
 import type {
   LenderPartner,
@@ -45,9 +47,6 @@ export async function lenderPartnerFor(
   return (await adviceMode(userId, { client })) ? { key: "demo", partner: demoLender } : null;
 }
 
-// Until a credit partner is connected (spec step 116), the stand-in band.
-export const STAND_IN_CREDIT_BAND: PrequalifyRequest["creditBand"] = "good";
-
 // Asks the partner now for every debt that can be refinanced, and keeps the offers.
 export async function checkRates(
   userId: string,
@@ -56,7 +55,11 @@ export async function checkRates(
   const found = await lenderPartnerFor(userId, { client });
   if (!found) return null;
   const asOf = isoDay(now);
-  const book = await loadDebts(userId, { client, now });
+  const [book, creditBand] = await Promise.all([
+    loadDebts(userId, { client, now }),
+    // Spec step 116: priced by the latest score's band.
+    creditBandFor(userId, { client }),
+  ]);
   const quotes: Quote[] = [];
   for (const debt of book.debts) {
     const what = refinanceable(debt, asOf);
@@ -65,7 +68,7 @@ export async function checkRates(
       product: what.product,
       amountCents: debt.balanceCents!,
       termMonths: what.termMonths,
-      creditBand: STAND_IN_CREDIT_BAND,
+      creditBand,
       month: asOf.slice(0, 7),
     };
     quotes.push({ debtKey: debt.key, ...request, offers: await found.partner.prequalify(request) });
@@ -76,7 +79,7 @@ export async function checkRates(
     if (debt.kind !== "card" || !debt.balanceCents || debt.balanceCents <= 0) continue;
     const request = {
       amountCents: debt.balanceCents,
-      creditBand: STAND_IN_CREDIT_BAND,
+      creditBand,
       month: asOf.slice(0, 7),
     };
     transfers.push({
@@ -91,10 +94,18 @@ export async function checkRates(
     quotes: quotes as unknown as Prisma.InputJsonArray,
     transfers: transfers as unknown as Prisma.InputJsonArray,
   };
-  await scopedFor(userId, client).refinanceChecks.upsert({
-    where: { userId },
-    create: { userId, ...data },
-    update: data,
+  const save = () =>
+    scopedFor(userId, client).refinanceChecks.upsert({
+      where: { userId },
+      create: { userId, ...data },
+      update: data,
+    });
+  // Two pages loading at once can both find no row and both create it: the second updates.
+  await save().catch((error) => {
+    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
+      return save();
+    }
+    throw error;
   });
   await track(userId, "refinance_checked", { debts: quotes.length });
   return quotes;
@@ -123,14 +134,14 @@ export type Refinance = {
 
 export async function loadRefinance(
   userId: string,
-  { client = defaultClient, now = new Date() }: Options = {},
+  { client = defaultClient, now = new Date(), book: given }: Options & { book?: DebtBook } = {},
 ): Promise<Refinance> {
   const [found, row, book] = await Promise.all([
     lenderPartnerFor(userId, { client }),
     scopedFor(userId, client).refinanceChecks.findFirst({
       select: { checkedOn: true, quotes: true },
     }),
-    loadDebts(userId, { client, now }),
+    debtsOr(given, userId, { client, now }),
   ]);
   if (!found) return { available: false, checkedOn: null, comparisons: [] };
   const quotes = (Array.isArray(row?.quotes) ? row.quotes : []) as unknown as Quote[];

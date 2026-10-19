@@ -40,6 +40,8 @@ export const DEBT_SOURCE_LIMITS = {
   loans: 2,
   transfers: 1,
   student: 1,
+  mortgage: 1,
+  credit: 1,
 } as const;
 export const DEBT_MESSAGE_PRIORITY = {
   // A buy now, pay later plan Jane found, then a debt with no rate: news that can wait,
@@ -68,6 +70,12 @@ export const DEBT_MESSAGE_PRIORITY = {
   // Spec step 114: a cheaper student loan plan, and studentaid.gov's steps, both can wait.
   student_pick: 31,
   student_steps: 27,
+  // Spec step 115: PMI that can come off is money every month; an escrow change is news.
+  mortgage_pmi: 62,
+  mortgage_escrow: 46,
+  // Spec step 116: card use high enough to hurt the score; a score that moved.
+  credit_utilisation: 47,
+  credit_moved: 34,
 } as const;
 
 // What Jane does about debts by herself at each autopilot level (src/config/autopilot.ts),
@@ -101,6 +109,14 @@ export const DEBT_AUTOPILOT: Readonly<
       step: 114,
       does: "Compares the federal student loan plans at your income, counts your qualifying payments toward forgiveness, and walks you through studentaid.gov's steps. Changing plans is done by you on studentaid.gov.",
     },
+    {
+      step: 115,
+      does: "Watches your mortgage: tells you once when your home's value lets PMI come off (and drafts the request), spots escrow changes in your payment, and works out refinance break-even and extra payments. Sending the request and paying more are yours.",
+    },
+    {
+      step: 116,
+      does: "Checks your credit score once a month with a soft pull (it never affects the score), explains what's helping and hurting, and tells you how much to pay on a card before the statement to bring your card use down.",
+    },
   ],
   safe: [
     {
@@ -127,6 +143,14 @@ export const DEBT_AUTOPILOT: Readonly<
       step: 114,
       does: "Compares the federal student loan plans at your income, counts your qualifying payments toward forgiveness, and walks you through studentaid.gov's steps. Changing plans is done by you on studentaid.gov.",
     },
+    {
+      step: 115,
+      does: "Watches your mortgage: tells you once when your home's value lets PMI come off (and drafts the request), spots escrow changes in your payment, and works out refinance break-even and extra payments. Sending the request and paying more are yours.",
+    },
+    {
+      step: 116,
+      does: "Checks your credit score once a month with a soft pull (it never affects the score), explains what's helping and hurting, and tells you how much to pay on a card before the statement to bring your card use down.",
+    },
   ],
   all: [
     {
@@ -152,6 +176,14 @@ export const DEBT_AUTOPILOT: Readonly<
     {
       step: 114,
       does: "Compares the federal student loan plans at your income, counts your qualifying payments toward forgiveness, and walks you through studentaid.gov's steps. Changing plans is done by you on studentaid.gov.",
+    },
+    {
+      step: 115,
+      does: "Watches your mortgage: tells you once when your home's value lets PMI come off (and drafts the request), spots escrow changes in your payment, and works out refinance break-even and extra payments. Sending the request and paying more are yours.",
+    },
+    {
+      step: 116,
+      does: "Checks your credit score once a month with a soft pull (it never affects the score), explains what's helping and hurting, and tells you how much to pay on a card before the statement to bring your card use down.",
     },
   ],
 };
@@ -231,3 +263,36 @@ export const BT_MIN_SAVING_CENTS = 10_000;
 export const BT_REMIND_DAYS: readonly number[] = [60, 30, 7];
 // The demo bank shows a moved card balance gone this many days after the transfer.
 export const DEMO_TRANSFER_DAYS = 2;
+
+// --- Step 115: mortgage ------------------------------------------------------------------
+
+// PMI (Homeowners Protection Act, as the CFPB explains it): you can ask your servicer to
+// cancel it once the balance is 80% of the home's original value, and it ends by itself at
+// 78%. Many lenders also take today's value (usually with an appraisal). Jane raises it
+// once the value the person gave (spec step 67) puts the loan under 80%.
+export const PMI_ASK_LTV = 0.8;
+export const PMI_AUTO_LTV = 0.78;
+export const PMI_SOURCE =
+  "https://www.consumerfinance.gov/ask-cfpb/when-can-i-remove-private-mortgage-insurance-pmi-from-my-loan-en-202/";
+// "What if I paid more on the mortgage?": extra principal a month.
+export const MORTGAGE_EXTRA_SCENARIOS_CENTS: readonly number[] = [10_000, 25_000, 50_000];
+// A mortgage payment that moves by at least this much is an escrow change (taxes or
+// insurance), when the rate is fixed.
+export const ESCROW_CHANGE_MIN_CENTS = 1_000;
+
+// --- Step 116: credit score ----------------------------------------------------------------
+
+// Which credit partner to use: "demo" is the stand-in (demo-bank people only, labelled, never
+// a real score); "none" turns it off. A real credit partner (a bureau or a licensed score
+// provider, soft pulls only) is a new value here and a new CreditPartner implementation.
+export const CREDIT_PARTNER: "demo" | "none" = "demo";
+// Jane pulls the score this often by herself (a soft pull: it never affects the score).
+export const CREDIT_CHECK_DAYS = 30;
+// Card utilisation: the share of card limits in use. Under the first is helping; over the
+// second is hurting. Paying down before the statement closes brings the reported share down.
+export const UTILISATION_GOOD = 0.1;
+export const UTILISATION_HIGH = 0.3;
+// Score bands the lender stand-ins price by (src/lib/lenders), from the score.
+export const CREDIT_BANDS = { excellent: 740, good: 670 } as const;
+// A move this big since the last pull is worth a message.
+export const CREDIT_SCORE_MOVE_POINTS = 10;

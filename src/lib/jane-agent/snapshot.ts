@@ -163,6 +163,7 @@ const CUTTING: readonly FindingType[] = [
   "subscription_review",
   "duplicate_subscription",
   "trial_conversion",
+  "covered_by_card",
 ];
 
 // The newest unread alerts the brain looks at for urgent ones.

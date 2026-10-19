@@ -116,6 +116,30 @@ describe("debt questions", () => {
     expect(intent("when is my student loan paid off")).toMatchObject({ kind: "debt_detail" });
   });
 
+  it("reads questions about the mortgage, PMI and escrow", () => {
+    for (const text of [
+      "can I get rid of PMI?",
+      "why did my escrow go up",
+      "tell me about my mortgage",
+      "what if I pay extra principal on my house",
+    ]) {
+      expect(intent(text), text).toEqual({ kind: "mortgage" });
+    }
+    expect(intent("when will my mortgage be paid off")).toMatchObject({ kind: "debt_detail" });
+    expect(intent("refinance my mortgage")).toMatchObject({ kind: "refinance" });
+  });
+
+  it("reads questions about the credit score", () => {
+    for (const text of [
+      "what's my credit score?",
+      "how do I improve my credit",
+      "credit report",
+      "my fico",
+    ]) {
+      expect(intent(text), text).toEqual({ kind: "credit_score" });
+    }
+  });
+
   it("leaves requests and other questions alone", () => {
     expect(intent("lower the rate on my card")).toMatchObject({ kind: "act", verb: "lower" });
     expect(intent("what's due this week")).toMatchObject({ kind: "coming_up" });
