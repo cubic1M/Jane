@@ -4,6 +4,7 @@ import { loadTaxEstimate } from "@/lib/tax-estimate";
 import { loadWithholding } from "@/lib/tax-withholding";
 import { loadTaxSavings } from "@/lib/tax-savings";
 import { loadSelfEmployed } from "@/lib/self-employed";
+import { loadRefunds } from "@/lib/tax-refund";
 import { loadTaxPack } from "@/lib/tax-pack";
 import { loadTaxForms, loadTaxTags } from "@/lib/tax-organizer";
 import { loadWorkingProfile } from "@/lib/tax-profile";
@@ -24,6 +25,7 @@ import {
   tagsReply,
   taxProfileReply,
   savingsReply,
+  refundReply,
   selfEmployedReply,
   withholdingReply,
 } from "./tax-replies";
@@ -109,6 +111,13 @@ export async function answerTaxIntent(
       return withholdingReply(await loadWithholding(userId, { client, now }));
     case "savings":
       return savingsReply(await loadTaxSavings(userId, { client, now }));
+    case "refund": {
+      const [refunds, estimate] = await Promise.all([
+        loadRefunds(userId, { client, now }),
+        loadTaxEstimate(userId, { client, now }),
+      ]);
+      return refundReply(refunds.refunds, estimate);
+    }
     case "quarterly":
     case "set_aside":
     case "home_office":

@@ -1784,6 +1784,8 @@ model TaxProfile {
   businessMiles         Int?      @map("business_miles")
   businessMilesYear     Int?      @map("business_miles_year")
   taxPayments           Json      @default("[]") @map("tax_payments")
+  // Spec step 125: refunds (transaction ids) whose plan the person set up, or said no to.
+  refundsHandled        String[]  @default([]) @map("refunds_handled")
   createdAt             DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt             DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
 
