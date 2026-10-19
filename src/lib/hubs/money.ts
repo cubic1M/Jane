@@ -57,7 +57,7 @@ export function moneyTiles(d: MoneyData): HubGroup[] {
   if (d.hasInvestmentAccounts) {
     have.push({
       label: "Investments",
-      href: "/net-worth",
+      href: "/investments",
       value: formatCents(d.netWorth.investmentsCents),
       status: "Retirement and investment accounts, at the balance they report",
     });

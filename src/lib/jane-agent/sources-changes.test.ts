@@ -76,7 +76,7 @@ describe("the changes source", () => {
     const s = snapshot([change({ finding: open })], { findings: [finding] });
     const [message] = fromChanges(s);
     expect(message).toMatchObject({
-      kind: "heads_up",
+      kind: "decision",
       body: "Netflix went up from $15.49 to $17.99. Want me to ask them for your old price?",
       refs: {
         findingId: "f1",
@@ -86,7 +86,7 @@ describe("the changes source", () => {
       dedupeKey: "changes:bill:merchant:netflix:1799",
       priority: MESSAGE_PRIORITY.change,
     });
-    expect(ids(message)).toEqual(["change.look", "change.expected"]);
+    expect(ids(message)).toEqual(["change.look", "change.expected", "open"]);
     expect(gather(s, MORNING, SYNC).filter((m) => m.source === "findings")).toEqual([]);
     // Without the change, the finding asks for itself as before.
     expect(

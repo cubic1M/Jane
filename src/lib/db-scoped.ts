@@ -122,6 +122,10 @@ export function scopedFor(userId: string, client: PrismaClient = db) {
     chatReplyLinks: scoped.chatReplyLink,
     // "That's expected" on a change (spec step 97).
     changeAcks: scoped.changeAck,
+    // What's in investment accounts (spec step 128).
+    securities: scoped.security,
+    holdings: scoped.holding,
+    investmentTransactions: scoped.investmentTransaction,
   };
 }
 

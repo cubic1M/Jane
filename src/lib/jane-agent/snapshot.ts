@@ -14,6 +14,7 @@ import { planFor } from "@/lib/plan";
 import { isNoRisk } from "@/lib/plan-links";
 import { savingsLine } from "@/lib/savings-text";
 import { recentRuleApprovals } from "@/lib/standing-rules";
+import { loadInvestmentSnapshot, type InvestmentSnapshot } from "./investments/snapshot";
 import { loadMore, type MoreSnapshot } from "./snapshot-more";
 
 // Everything Jane's brain looks at for one person (spec step 82), loaded with the same
@@ -73,6 +74,8 @@ export type Snapshot = {
   // Spec step 97: changes Jane noticed, not yet said to be expected. Optional so snapshots
   // built by hand in tests needn't list them.
   changes?: ChangeView[];
+  // Spec step 128 on: what's in investment accounts.
+  investments?: InvestmentSnapshot;
 } & MoreSnapshot;
 
 // A finding as Jane describes it in the chat: its type, title, saving and evidence. A
@@ -177,5 +180,6 @@ export async function loadSnapshot(
     budgetProgress: home.budgetProgress,
     ...(await loadMore(userId, { client })),
     changes: await loadChanges(userId, { client, now }),
+    investments: await loadInvestmentSnapshot(userId, { client, now }),
   };
 }

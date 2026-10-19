@@ -142,6 +142,7 @@ describe.runIf(url)("Jane notices changes, with the demo bank", () => {
     expect(parseActions(netflix.actions).map((a) => a.id)).toEqual([
       "change.look",
       "change.expected",
+      "open",
     ]);
     const findingId = parseRefs(netflix.refs).findingId!;
     // Nothing was decided before the tap.

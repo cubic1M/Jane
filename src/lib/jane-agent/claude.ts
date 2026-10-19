@@ -16,6 +16,7 @@ import {
 } from "@/lib/guardrails";
 import { CHAT_TOOLS, chatPrimer, proposeAction, runChatTool, type Proposal } from "./claude-tools";
 import { GuardedText } from "./guarded-text";
+import { INVESTMENT_TOOL_STATUS } from "./investments/tools";
 import { EXAMPLES, type Reply } from "./replies";
 
 // Free questions in Jane's chat, with an Anthropic key (spec step 84): Claude, the
@@ -95,7 +96,8 @@ const STATUS: Record<string, string> = {
   recent_changes: "Looking at what changed…",
   propose_action: "Getting a button ready…",
 };
-export const statusFor = (tool: string) => STATUS[tool] ?? "Looking that up…";
+export const statusFor = (tool: string) =>
+  STATUS[tool] ?? INVESTMENT_TOOL_STATUS[tool] ?? "Looking that up…";
 
 // Shown when Claude can't answer (an error, a refusal, too many lookups).
 export const CHAT_UNAVAILABLE_TEXT = `I couldn't look into that just now. Try one of these:\n${EXAMPLES.map((e) => `- ${e}`).join("\n")}`;

@@ -1,5 +1,10 @@
 import { CHAT_PAGE_SIZE } from "@/config/agent-chat";
-import type { Prisma, PrismaClient } from "@/generated/prisma/client";
+import type {
+  DecisionChoice,
+  DecisionSource,
+  Prisma,
+  PrismaClient,
+} from "@/generated/prisma/client";
 import { track } from "@/lib/analytics";
 import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
@@ -128,8 +133,10 @@ export async function closeSettled(
     select: { id: true, refs: true, actions: true },
   });
   const byFinding = open.flatMap((m) => {
-    const findingId = parseRefs(m.refs).findingId;
-    return findingId ? [{ id: m.id, findingId, actions: parseActions(m.actions) }] : [];
+    const refs = parseRefs(m.refs);
+    return refs.findingId
+      ? [{ id: m.id, findingId: refs.findingId, refs, actions: parseActions(m.actions) }]
+      : [];
   });
   if (byFinding.length === 0) return elsewhere;
   const stillOpen = new Set(
@@ -143,8 +150,19 @@ export async function closeSettled(
       })
     ).map((f) => f.id),
   );
+  const settled = byFinding.filter((m) => !stillOpen.has(m.findingId));
+  if (settled.length === 0) return elsewhere;
+  // Spec step 86: the answer given on the page (or the plan, a rule…) shows in the chat too.
+  const decisions = await db.decisions.findMany({
+    where: { findingId: { in: settled.map((m) => m.findingId) }, undoneAt: null },
+    orderBy: { createdAt: "desc" },
+    select: { findingId: true, choice: true, source: true },
+  });
+  const answerFor = new Map<string, (typeof decisions)[number]>();
+  for (const d of decisions) if (!answerFor.has(d.findingId)) answerFor.set(d.findingId, d);
   let closed = elsewhere;
-  for (const message of byFinding.filter((m) => !stillOpen.has(m.findingId))) {
+  for (const message of settled) {
+    const answer = answerFor.get(message.findingId);
     // Its Open link stays.
     const { count } = await db.janeMessages.updateMany({
       where: { id: message.id, status: "open" },
@@ -152,11 +170,44 @@ export async function closeSettled(
         status: "answered",
         answeredAt: now,
         actions: message.actions.filter((a) => a.kind === "link") as Prisma.InputJsonArray,
+        ...(answer
+          ? {
+              answeredWith: CHOICE_WORDS[answer.choice],
+              refs: {
+                ...message.refs,
+                note: answeredWhere(answer.source),
+              } as Prisma.InputJsonObject,
+            }
+          : {}),
       },
     });
     closed += count;
   }
   return closed;
+}
+
+// Spec step 86: how an answer given elsewhere reads in the chat.
+export const CHOICE_WORDS: Record<DecisionChoice, string> = {
+  yes: "Yes",
+  no: "No",
+  diy: "I'll do it myself",
+};
+
+export function answeredWhere(source: DecisionSource): string {
+  switch (source) {
+    case "card":
+      return "You answered this on its page.";
+    case "plan":
+      return "You answered this on your plan.";
+    case "rule":
+      return "Your standing rule answered this.";
+    case "link":
+      return "You answered this from a one-tap link.";
+    case "auto":
+      return "I answered this as part of something you'd already said yes to.";
+    case "chat":
+      return "You answered this in another message here.";
+  }
 }
 
 // Seeing the chat marks Jane's messages read.
@@ -168,4 +219,21 @@ export async function markChatRead(
     where: { readAt: null },
     data: { readAt: now },
   });
+}
+
+// Spec step 86: Jane's latest message about a finding, for its card to link back to.
+export async function messageAboutFinding(
+  userId: string,
+  findingId: string,
+  { client = defaultClient }: { client?: PrismaClient } = {},
+): Promise<string | null> {
+  const message = await scopedFor(userId, client).janeMessages.findFirst({
+    where: {
+      kind: { in: ["decision", "reply"] },
+      refs: { path: ["findingId"], equals: findingId },
+    },
+    orderBy: { createdAt: "desc" },
+    select: { id: true },
+  });
+  return message?.id ?? null;
 }

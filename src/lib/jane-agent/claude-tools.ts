@@ -20,6 +20,7 @@ import { formatCents } from "@/lib/money";
 import { affordWindow } from "@/planning/afford";
 import type { Scored } from "@/planning/compare";
 import { ACTION_HANDLERS } from "./actions";
+import { INVESTMENT_TOOLS, isInvestmentTool, runInvestmentTool } from "./investments/tools";
 import { monthLabel, type Reply } from "./replies";
 import { localTime } from "./quiet-hours";
 import { loadSnapshot } from "./snapshot";
@@ -53,6 +54,7 @@ export const CHAT_PAGES: Readonly<Record<string, { label: string; href: string }
   afford: { label: "Can I afford this?", href: "/afford" },
   actions: { label: "See actions", href: "/actions" },
   net_worth: { label: "See net worth", href: "/net-worth" },
+  investments: { label: "See what you own", href: "/investments" },
   settings: { label: "Settings", href: "/settings" },
 };
 
@@ -135,6 +137,8 @@ export const CHAT_TOOLS: Anthropic.Tool[] = [
       additionalProperties: false,
     },
   },
+  // Spec step 128 on.
+  ...INVESTMENT_TOOLS,
 ];
 
 const str = (value: unknown) => (typeof value === "string" ? value.trim() : "");
@@ -148,6 +152,7 @@ export async function runChatTool(
 ): Promise<ToolOutput> {
   if (FROM_ASK.some((t) => t.name === name))
     return runAskTool(userId, name, input, { client, now });
+  if (isInvestmentTool(name)) return runInvestmentTool(userId, name, input, { client, now });
   const cents: number[] = [];
   const money = (value: number) => {
     cents.push(Math.abs(value));

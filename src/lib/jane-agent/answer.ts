@@ -10,6 +10,7 @@ import { scopedFor } from "@/lib/db-scoped";
 import { homeSummary } from "@/lib/home";
 import { whatJaneDid } from "@/lib/what-jane-did";
 import type { Intent } from "./intents";
+import { answerInvestments } from "./investments/answer";
 import {
   actReply,
   affordReply,
@@ -92,5 +93,7 @@ export async function answerByRules(
       return undoReply(await loadSnapshot(userId, { client, now }), now);
     case "pause_autopilot":
       return pauseReply(await autopilotOf(userId, { client }));
+    case "investments":
+      return answerInvestments(userId, intent, { client, now });
   }
 }

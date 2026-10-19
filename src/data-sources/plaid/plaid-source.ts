@@ -41,6 +41,9 @@ export function normalizeAccount(account: PlaidAccount): NormalizedAccount | nul
     kind,
     mask: account.mask ?? null,
     currentBalanceCents: toCents(account.balances.current),
+    ...(kind === "retirement" || kind === "investment_account"
+      ? { plaidSubtype: account.subtype?.toLowerCase() ?? null }
+      : {}),
   };
 }
 

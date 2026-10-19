@@ -46,10 +46,12 @@ function candidate(change: ChangeView, snapshot: Snapshot): Candidate | null {
   if (planned && ask) {
     return {
       ...base,
-      kind: "heads_up",
+      // Something to say yes to, so it closes like a finding's own message when the
+      // finding is answered elsewhere (../messages.ts closeSettled).
+      kind: "decision",
       body: `${change.title} ${ask.offer}`,
       refs: { ...refs, findingId: planned.findingId, fingerprint: planned.fingerprint },
-      actions: [lookInto, expected],
+      actions: [lookInto, expected, open("Open", `/report/${planned.findingId}`)],
     };
   }
 
