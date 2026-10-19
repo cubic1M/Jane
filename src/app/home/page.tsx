@@ -55,7 +55,7 @@ function PlanCard({ plan }: { plan: HomeSummary["plan"] }) {
       </div>
       <Link
         href="/plan"
-        className="inline-flex h-11 items-center justify-center self-start rounded-full bg-white px-6 font-semibold text-emerald-800 hover:bg-emerald-50"
+        className="inline-flex h-11 items-center justify-center self-start rounded-full bg-white px-6 font-semibold text-emerald-900 hover:bg-emerald-50"
       >
         Review and approve
       </Link>
