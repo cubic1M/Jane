@@ -16,7 +16,6 @@ import { scopedFor } from "@/lib/db-scoped";
 import { appBase } from "@/lib/digest/links";
 import { unsubscribeToken } from "@/lib/digest/unsubscribe";
 import { sendEmail } from "@/lib/email";
-import { textAlert } from "@/lib/messaging/texts";
 import { pushEnabled, sendPush } from "@/lib/push";
 
 // Saving alerts and emailing the urgent ones. Which alerts exist is decided in
@@ -54,7 +53,6 @@ type Options = {
   now?: Date;
   send?: typeof sendEmail;
   push?: typeof sendPush;
-  text?: typeof textAlert;
 };
 
 // Stores the alerts the person hasn't turned off. An event already stored (same type and
@@ -63,13 +61,7 @@ type Options = {
 export async function raiseAlerts(
   userId: string,
   alerts: AlertCandidate[],
-  {
-    client = defaultClient,
-    now = new Date(),
-    send = sendEmail,
-    push = sendPush,
-    text = textAlert,
-  }: Options = {},
+  { client = defaultClient, now = new Date(), send = sendEmail, push = sendPush }: Options = {},
 ): Promise<{ raised: number; emailed: number }> {
   const user = await client.user.findUnique({
     where: { id: userId },
@@ -96,7 +88,7 @@ export async function raiseAlerts(
     for (const row of created) byType[row.type] += 1;
     await track(userId, "alerts_raised", { ...byType, total: created.length });
   }
-  const emailed = await emailUrgentAlerts(userId, { client, now, send, push, text });
+  const emailed = await emailUrgentAlerts(userId, { client, now, send, push });
   return { raised: created.length, emailed };
 }
 
@@ -104,16 +96,9 @@ export async function raiseAlerts(
 // person is under ALERT_EMAILS_PER_DAY in the last 24 hours: as a phone notification when
 // push is set up and they turned it on, by email otherwise (and if no device takes it).
 // emailed_at records either. Whatever doesn't fit, or fails, goes in the weekly email.
-// With texts on for alerts (spec step 78), it's a text instead, within the same cap.
 export async function emailUrgentAlerts(
   userId: string,
-  {
-    client = defaultClient,
-    now = new Date(),
-    send = sendEmail,
-    push = sendPush,
-    text = textAlert,
-  }: Options = {},
+  { client = defaultClient, now = new Date(), send = sendEmail, push = sendPush }: Options = {},
 ): Promise<number> {
   const user = await client.user.findUnique({
     where: { id: userId },
@@ -158,15 +143,6 @@ export async function emailUrgentAlerts(
       data: { emailedAt: now },
     });
     if (count === 0) continue;
-    const texted = await text(userId, alert, { client, now }).catch((error) => {
-      console.error("Alert text failed", { userId, alertId: alert.id, error: String(error) });
-      return false;
-    });
-    if (texted) {
-      await track(userId, "alert_texted", { type: alert.type });
-      emailed += 1;
-      continue;
-    }
     if (usePush) {
       const label = ALERT_LABELS[alert.type].label;
       const pushed = await push(

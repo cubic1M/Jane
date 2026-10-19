@@ -4,7 +4,6 @@ import { runDigests } from "@/lib/digest/send";
 import { recordRun, reportMissedJobs } from "@/lib/health";
 import { runDueJobs } from "@/lib/jobs";
 import { runJaneAgentForAll } from "@/lib/jane-agent/run";
-import { runPlanTexts } from "@/lib/messaging/texts";
 
 // Vercel Cron, daily: sends this week's digest to anyone whose Monday has arrived. With
 // ?dry_run=1 it renders every digest and returns them without sending or storing.
@@ -27,12 +26,6 @@ export async function GET(request: Request) {
         ...run,
         previews: undefined,
         checkIns: await runMonthlyCheckIns(),
-        // The weekly plan by text, for people who turned it on (spec step 78). A problem
-        // there never stops the rest of the run.
-        planTexts: await runPlanTexts().catch((error) => {
-          console.error("Plan texts failed", { error: String(error) });
-          return null;
-        }),
         // Jane's daily look at everyone's money, in the chat (spec step 82). A problem
         // there never stops the rest of the run.
         chat: await runJaneAgentForAll().catch((error) => {

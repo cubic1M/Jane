@@ -1,5 +1,4 @@
 import type { PrismaClient } from "@/generated/prisma/client";
-import { decrypt } from "@/lib/crypto";
 import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
 import { teamAccessFor } from "@/lib/team-access-loader";
@@ -49,8 +48,6 @@ export async function exportUserData(
     lifeEvents,
     janeMessages,
     teamAccess,
-    textSetting,
-    textMessages,
   ] = await Promise.all([
     client.user.findUniqueOrThrow({
       where: { id: userId },
@@ -376,34 +373,6 @@ export async function exportUserData(
     // When the team or Jane's agent viewed or acted on their data (spec step 74): every
     // entry, by role, never a team member's name or id.
     teamAccessFor(userId, { client, limit: null }),
-    // Texts (spec step 78): their number and choices, never the pending code's hash.
-    db.textSettings.findFirst({
-      select: {
-        phoneEncrypted: true,
-        consentAt: true,
-        consentVersion: true,
-        verifiedAt: true,
-        enabled: true,
-        optedOutAt: true,
-        alerts: true,
-        weeklyPlan: true,
-        needsYou: true,
-      },
-    }),
-    db.textMessages.findMany({
-      select: {
-        direction: true,
-        kind: true,
-        body: true,
-        status: true,
-        sentAt: true,
-        items: true,
-        decisionIds: true,
-        usedAt: true,
-        createdAt: true,
-      },
-      orderBy: { createdAt: "asc" },
-    }),
   ]);
 
   return {
@@ -451,10 +420,5 @@ export async function exportUserData(
       why,
       actionId,
     })),
-    // Their own number, decrypted for them.
-    texts: textSetting
-      ? { ...textSetting, phoneEncrypted: undefined, phone: decrypt(textSetting.phoneEncrypted) }
-      : null,
-    textMessages,
   };
 }

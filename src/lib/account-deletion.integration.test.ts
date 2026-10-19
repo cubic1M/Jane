@@ -252,19 +252,6 @@ describe.runIf(url)("deleting data against a real database", () => {
         encryptedBytes: Buffer.from("encrypted"),
       },
     });
-    await client.textSetting.create({
-      data: {
-        userId,
-        phoneEncrypted: "v1.encrypted",
-        phoneHmac: `hmac-${suffix}`,
-        consentAt: new Date(),
-        consentVersion: "test",
-        verifiedAt: new Date(),
-      },
-    });
-    await client.textMessage.create({
-      data: { userId, direction: "outbound", kind: "alert", body: "Jane: alert", status: "sent" },
-    });
     return { userId, itemId: item.id, accessToken: `access-${suffix}` };
   }
 
@@ -308,8 +295,6 @@ describe.runIf(url)("deleting data against a real database", () => {
       ownedAssets: await client.ownedAsset.count(where),
       documents: await client.document.count(where),
       deadlines: await client.deadline.count(where),
-      textSettings: await client.textSetting.count(where),
-      textMessages: await client.textMessage.count(where),
     };
   }
 

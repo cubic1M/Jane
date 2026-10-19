@@ -128,12 +128,6 @@ export const TEAM_ACCESS_RULES: Record<AuditEvent, EventRule> = {
   tax_pack_downloaded: own,
   session_signed_out: own,
   other_sessions_signed_out: own,
-  // Texts (spec step 78): the person's own number, their replies and STOP or START.
-  text_number_verified: own,
-  text_number_removed: own,
-  text_approval: own,
-  text_opt_out: own,
-  text_opt_in: own,
 };
 
 export const SHOWN_EVENTS = (Object.keys(TEAM_ACCESS_RULES) as AuditEvent[]).filter(

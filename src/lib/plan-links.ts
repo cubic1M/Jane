@@ -25,9 +25,8 @@ type Options = { client?: PrismaClient; now?: Date };
 
 export type LinkItem = { findingId: string; cardHash: string; title: string };
 
-// A ticked, no-risk plan item: one a one-tap link, the weekly plan text (spec step 78) or
-// "Approve all safe ones" in the chat (spec step 81) may approve. Never calls,
-// cancellations, moving money or insurance.
+// A ticked, no-risk plan item: one a one-tap link or "Approve all safe ones" in the chat
+// (spec step 81) may approve. Never calls, cancellations, moving money or insurance.
 export const isNoRisk = (item: PlanItem) =>
   item.preselected && !NEVER_BY_RULE.includes(item.card.actionType);
 
@@ -100,12 +99,11 @@ export async function viewPlanLink(
 export class LinkError extends Error {}
 
 // Approves each item as its own decision from this source, checked against the card as it
-// was; an item that changed or was answered meanwhile is skipped. Shared by one-tap links
-// and plan texts (spec step 78).
+// was; an item that changed or was answered meanwhile is skipped.
 export async function approveItems(
   userId: string,
   items: LinkItem[],
-  source: "link" | "text",
+  source: "link",
   { client = defaultClient }: Pick<Options, "client"> = {},
 ): Promise<{ decisionIds: string[]; skipped: number }> {
   const decisionIds: string[] = [];
@@ -126,12 +124,12 @@ export async function approveItems(
   return { decisionIds, skipped };
 }
 
-// Takes back what a link or a plan text approved, while the work hasn't started and within
+// Takes back what a link approved, while the work hasn't started and within
 // its hold (AGENT_HOLD_HOURS). Returns how many were taken back.
 export async function takeBackApprovals(
   userId: string,
   decisionIds: string[],
-  source: "link" | "text",
+  source: "link",
   { client = defaultClient, now = new Date() }: Options = {},
 ): Promise<number> {
   const hours = AGENT_HOLD_HOURS[source] ?? LINK_UNDO_HOURS;

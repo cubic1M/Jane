@@ -24,7 +24,6 @@ import { DeleteDataForm, DisconnectForm, RefreshForm } from "./data-forms";
 import { EmailForm } from "./email-form";
 import { TwoFactorOnForms } from "./two-factor-forms";
 import { RulesForm } from "./rules-form";
-import { TextsSection } from "./texts-section";
 import { cookies } from "next/headers";
 import { connection } from "next/server";
 import { sessionTokenFrom } from "@/lib/admin-gate";
@@ -33,7 +32,7 @@ import { SessionsList } from "./sessions-list";
 
 // Spec step 79: the sections sit in four groups, with a menu of them at the top. Each
 // section keeps its id (#banks, #alerts, #autopilot, #rules, #two-factor, ...): other
-// pages, emails and texts link straight to them.
+// pages and emails link straight to them.
 const GROUPS = [
   { id: "accounts", label: "Accounts" },
   { id: "notifications", label: "Notifications" },
@@ -256,8 +255,6 @@ async function SettingsContent() {
           />
           {vapidPublicKey() && <NotificationsToggle publicKey={vapidPublicKey() ?? ""} />}
         </section>
-
-        <TextsSection userId={user.id} />
       </Group>
 
       {/* The group is #autopilot, so links to it land on its heading. */}

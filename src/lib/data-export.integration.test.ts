@@ -314,41 +314,4 @@ describe.runIf(url)("data export against a real database", () => {
     expect(text).not.toContain("encryptedBytes");
     expect(text).not.toContain(Buffer.from("SECRETBYTES").toString("base64"));
   });
-
-  it("includes their texts and number, never the pending code (spec step 78)", async () => {
-    const me = await person("texts");
-    const other = await person("othertexts");
-    for (const { userId } of [me, other]) {
-      await client.textSetting.create({
-        data: {
-          userId,
-          phoneEncrypted: encrypt(userId === me.userId ? "+14155550142" : "+14155550199"),
-          phoneHmac: `hmac-${userId}`,
-          consentAt: new Date(),
-          consentVersion: "test",
-          verifiedAt: new Date(),
-          codeHash: `CODEHASH-${userId}`,
-        },
-      });
-      await client.textMessage.create({
-        data: {
-          userId,
-          direction: "outbound",
-          kind: "needs_you",
-          body: `Jane needs you ${userId}`,
-          status: "sent",
-        },
-      });
-    }
-
-    const data = await exportUserData(me.userId, { client });
-
-    expect(data.texts).toMatchObject({ phone: "+14155550142", consentVersion: "test" });
-    expect(data.textMessages).toHaveLength(1);
-    expect(data.textMessages[0].body).toBe(`Jane needs you ${me.userId}`);
-    const text = JSON.stringify(data);
-    expect(text).not.toContain("CODEHASH");
-    expect(text).not.toContain("phoneEncrypted");
-    expect(text).not.toContain("+14155550199");
-  });
 });
