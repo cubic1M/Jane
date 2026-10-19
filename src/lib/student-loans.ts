@@ -6,12 +6,12 @@ import {
   STUDENT_STEPS,
 } from "@/config/student-loans";
 import type { PrismaClient } from "@/generated/prisma/client";
-import type { Debt } from "@/insights/debts";
+import type { Debt, DebtBook } from "@/insights/debts";
 import { adviceMode } from "@/lib/advice-mode";
 import { track } from "@/lib/analytics";
 import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
-import { loadDebts } from "@/lib/debts";
+import { debtsOr } from "@/lib/debts";
 import { parseMoneyToCents } from "@/lib/money";
 import {
   compareStudentPlans,
@@ -82,13 +82,13 @@ async function profileOf(userId: string, client: PrismaClient): Promise<StudentP
 
 export async function loadStudentLoans(
   userId: string,
-  { client = defaultClient, now = new Date() }: Options = {},
+  { client = defaultClient, now = new Date(), book: given }: Options & { book?: DebtBook } = {},
 ): Promise<StudentLoans> {
   const db = scopedFor(userId, client);
   const since = new Date(now.getTime() - STUDENT_PAYMENT_LOOKBACK_DAYS * DAY_MS);
   const yearAgo = new Date(now.getTime() - 365 * DAY_MS);
   const [book, advice, profile, payments, pay] = await Promise.all([
-    loadDebts(userId, { client, now }),
+    debtsOr(given, userId, { client, now }),
     adviceMode(userId, { client }),
     profileOf(userId, client),
     db.transactions.findMany({

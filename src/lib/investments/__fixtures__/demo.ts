@@ -88,6 +88,7 @@ export function demoInvestmentSnapshot(over: Partial<InvestmentSnapshot> = {}): 
     returns: { asOf: "2026-10-18", periods: [], simulatedPrices: true },
     goalBuckets: { byHerself: false, buckets: null },
     college: { children: 0, plans: 0 },
+    hsa: { account: null, plan: null, savedCents: 0, demo: true, receipts: 0 },
     ...over,
   };
 }

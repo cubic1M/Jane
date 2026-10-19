@@ -15,6 +15,7 @@ import { loadAccountPlan } from "@/lib/investments/accounts";
 import { loadReturns } from "@/lib/investments/returns";
 import { loadGoalBuckets } from "@/lib/investments/goal-buckets";
 import { estimateCollege, loadCollege, type CollegeEstimate } from "@/lib/investments/college";
+import { loadHsa } from "@/lib/investments/hsa";
 import { formatReturn } from "@/insights/returns";
 import { loadAutoInvest } from "@/lib/investments/auto-invest";
 import { loadRebalance } from "@/lib/investments/rebalance";
@@ -111,6 +112,12 @@ export const INVESTMENT_TOOLS: Anthropic.Tool[] = [
     },
   },
   {
+    name: "hsa",
+    description:
+      "The person's HSA: balance, cash and invested, the cash cushion, how much of the cash is beyond it (demo advice: worth investing), the year's limit for their cover (self or family, catch-up from 55) and the room left, and the receipts vault: medical charges from their transactions saved to pay back tax-free later.",
+    input_schema: noInput,
+  },
+  {
     name: "explainer",
     description:
       "Jane's fixed plain-language explainer for a word (education, not advice; waiting for counsel's review): what it is and how it works, with sources. Use it when the person asks what something means, and quote it rather than writing your own definition.",
@@ -134,6 +141,7 @@ export const INVESTMENT_TOOL_STATUS: Readonly<Record<string, string>> = {
   auto_invest: "Checking automatic investing…",
   account_plan: "Working out which account first…",
   explainer: "Looking that up…",
+  hsa: "Checking your HSA…",
   college_plan: "Working out college costs…",
   goal_buckets: "Looking at your goals…",
   investment_returns: "Working out your returns…",
@@ -488,6 +496,36 @@ export async function runInvestmentTool(
         return out(describe(await estimateCollege(userId, { childAge: age, type }, { client })));
       }
       return out({ plans: plans.map((p) => ({ child: p.childName, ...describe(p.estimate) })) });
+    }
+    case "hsa": {
+      const view = await loadHsa(userId, { client, now });
+      return out({
+        account: view.account && {
+          name: view.account.name,
+          balance: money(view.account.balanceCents),
+        },
+        cover: view.coverage,
+        plan: view.plan && {
+          cash: money(view.plan.cashCents),
+          invested: money(view.plan.investedCents),
+          cushion: money(view.plan.cushionCents),
+          beyondTheCushion: view.advice
+            ? money(view.plan.toInvestCents)
+            : "advice only in demo advice mode",
+          limitThisYear: money(view.plan.limitCents),
+          roomLeft: money(view.plan.roomCents),
+          perPaycheck: money(view.plan.perPaycheckCents),
+        },
+        receiptsVault: {
+          saved: money(view.savedCents),
+          receipts: view.receipts.slice(0, 10).map((r) => ({
+            date: r.date,
+            merchant: r.merchant,
+            amount: money(r.amountCents),
+            status: r.status,
+          })),
+        },
+      });
     }
     case "explainer": {
       const slug =

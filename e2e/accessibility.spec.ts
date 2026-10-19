@@ -50,6 +50,7 @@ const SIGNED_IN = [
   "/investments/accounts",
   "/investments/goals",
   "/investments/college",
+  "/investments/hsa",
   "/learn",
   "/learn/index-funds",
   "/loans",
