@@ -2,7 +2,7 @@
 // normalized text in (./../intents.ts normalize), the topic out, or null when it isn't
 // about investments. Each investment step adds its topics here.
 
-export type InvestmentTopic = "holdings" | "profile";
+export type InvestmentTopic = "holdings" | "profile" | "fees";
 
 export type InvestmentIntent = {
   kind: "investments";
@@ -33,7 +33,15 @@ const HOLDINGS = new RegExp(
 const PROFILE =
   /\b(?:my )?(?:risk (?:profile|tolerance|level)|investor profile|investing profile)\b|\bhow much risk (?:should|can|do) i\b|\b(?:change|update|redo|set) (?:my )?(?:investing|investment|investor) (?:goals?|profile|answers)\b|\b(?:change|update|redo) my risk\b|\banswer (?:the |your )?(?:profile |investing )?questions\b|\bwhat (?:are|is) my (?:investing|investment) goals?\b/;
 
+// Spec step 130: what investing costs. Only with an investing word, so "bank fees" and
+// "lower my fees" stay where they were.
+const FEES =
+  /\bexpense ratios?\b|\b(?:investment|investing|fund|401\(?k\)?|ira|brokerage|portfolio|advisory|adviser|advisor) (?:fees?|costs?|charges?)\b|\bwhat do (?:my )?(?:investments|funds|401\(?k\)?) cost\b|\bhow much (?:do|am) i pay(?:ing)? (?:in fees )?(?:for|on) (?:my )?(?:investments|funds|401\(?k\)?|ira|brokerage)\b|\bcheaper funds?\b|\blower[- ]cost funds?\b/;
+
 export function parseInvestmentIntent(text: string): InvestmentIntent | null {
+  if (FEES.test(text)) {
+    return { kind: "investments", topic: "fees", account: ACCOUNT.exec(text)?.[1] ?? null };
+  }
   if (PROFILE.test(text)) return { kind: "investments", topic: "profile", account: null };
   if (!HOLDINGS.test(text)) return null;
   const account = ACCOUNT.exec(text)?.[1] ?? null;
