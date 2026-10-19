@@ -287,7 +287,7 @@ describe.runIf(url)("the tax profile against a real database", () => {
     expect(data.filingStatus).toBeNull();
     expect(data.state).toEqual({ name: "California", status: "found" });
     expect(data.income.seenInAccounts[0]).toMatchObject({ kind: "Wages from a job", form: "W-2" });
-    expect(data.janeDoesByHerself[0]).toContain("I work out what I can");
+    expect(data.janeDoesByHerself[0]).toContain("I work out your tax profile from your accounts");
     expect(result.cents.length).toBeGreaterThan(0);
   }, 60_000);
 });

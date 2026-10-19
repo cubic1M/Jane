@@ -65,6 +65,12 @@ export const RETENTION_PERIODS = {
     days: 0,
     policy: "Sign-in sessions and sign-in links, once they've expired",
   },
+  // Spec step 138.
+  trialPeople: {
+    days: 1,
+    policy:
+      "Sample people made when someone tries Jane without signing up, and everything done with them",
+  },
 } as const satisfies Record<string, { days: number; policy: string }>;
 
 export type RetainedKind = keyof typeof RETENTION_PERIODS;

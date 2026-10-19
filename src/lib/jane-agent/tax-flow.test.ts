@@ -7,7 +7,7 @@ import { findTaxFacts, taxProfileView, type StoredTaxProfile } from "@/planning/
 import { taxesSource } from "./sources/taxes";
 import type { Snapshot } from "./snapshot";
 import { PROFILE_DONE, nextQuestion } from "./tax-flow";
-import { taxReply } from "./tax-replies";
+import { setFilingReply, setKidsReply, setStateReply, taxProfileReply } from "./tax-replies";
 import { ACTION_IDS } from "./types";
 
 // Spec step 118: the tax profile in the chat, one question at a time.
@@ -194,7 +194,7 @@ describe("the taxes message source", () => {
 
 describe("tax replies", () => {
   it("reads the profile back, marks what Jane found, and asks the next question", () => {
-    const reply = taxReply({ kind: "tax", ask: "profile" }, view(null), "safe");
+    const reply = taxProfileReply(view(null), "safe");
     expect(reply.body).toContain("- How you file: not set yet");
     expect(reply.body).toContain("- State: California (found by me: check it)");
     expect(reply.body).toContain("- Income: wages from a job (found by me: check it)");
@@ -204,9 +204,7 @@ describe("tax replies", () => {
   });
 
   it("offers a button for what was typed, never changes it by itself", () => {
-    expect(
-      taxReply({ kind: "tax", ask: "set_filing", status: "single" }, view(null), null),
-    ).toEqual({
+    expect(setFilingReply("single")).toEqual({
       body: 'Want me to put "Single" on your tax profile?',
       actions: [
         { id: "tax.filing_single", label: "Yes, put it on", kind: "primary" },
@@ -214,21 +212,17 @@ describe("tax replies", () => {
       ],
       refs: { taxField: "filingStatus" },
     });
-    expect(
-      taxReply({ kind: "tax", ask: "set_filing", status: null }, view(null), null).actions.map(
-        (a) => a.id,
-      ),
-    ).toEqual(["tax.filing_joint", "tax.filing_separate", "open"]);
-    expect(
-      taxReply({ kind: "tax", ask: "set_kids", count: 2 }, view(null), null).actions[0].id,
-    ).toBe("tax.kids_2");
+    expect(setFilingReply(null).actions.map((a) => a.id)).toEqual([
+      "tax.filing_joint",
+      "tax.filing_separate",
+      "open",
+    ]);
+    expect(setKidsReply(2).actions[0].id).toBe("tax.kids_2");
     // More than the buttons go to: the page.
-    expect(taxReply({ kind: "tax", ask: "set_kids", count: 5 }, view(null), null).actions).toEqual([
+    expect(setKidsReply(5).actions).toEqual([
       { id: "open", label: "Open my tax profile", kind: "link", href: "/taxes/profile" },
     ]);
-    expect(
-      taxReply({ kind: "tax", ask: "set_state", state: "TX" }, view(null), null),
-    ).toMatchObject({
+    expect(setStateReply("TX")).toMatchObject({
       body: "Want me to put Texas on your tax profile as the state you file in?",
       refs: { taxField: "state", taxState: "TX" },
     });

@@ -1,3 +1,4 @@
+import { INSURANCE_TOOLS, isInsuranceTool, runInsuranceTool } from "./insurance/tools";
 import type Anthropic from "@anthropic-ai/sdk";
 import { BUDGET_SUGGESTION_MONTHS } from "@/config/budgets";
 import { MAX_AFFORD_CENTS } from "@/config/afford";
@@ -49,6 +50,7 @@ export const PROPOSABLE: readonly ActionId[] = ["finding.yes", "plan.approve_saf
 // Pages Claude may link to, by name.
 export const CHAT_PAGES: Readonly<Record<string, { label: string; href: string }>> = {
   today: { label: "See today", href: "/home" },
+  insurance: { label: "See your insurance", href: "/insurance" },
   plan: { label: "Open the plan", href: "/plan" },
   subscriptions: { label: "Open subscriptions", href: "/subscriptions" },
   bills: { label: "See bills", href: "/bills" },
@@ -64,12 +66,16 @@ export const CHAT_PAGES: Readonly<Record<string, { label: string; href: string }
   // Taxes (spec steps 118–127).
   taxes: { label: "See your taxes", href: "/taxes" },
   tax_profile: { label: "See my tax profile", href: "/taxes/profile" },
+  tax_tags: { label: "See tax tags", href: "/taxes/tags" },
+  tax_pack: { label: "Open the tax-time pack", href: "/tax-pack" },
 };
 
 const noInput = { type: "object" as const, properties: {}, additionalProperties: false };
 
 export const CHAT_TOOLS: Anthropic.Tool[] = [
   ...FROM_ASK,
+  // Insurance (spec Phase X).
+  ...INSURANCE_TOOLS,
   {
     name: "safe_to_spend",
     description:
@@ -174,8 +180,9 @@ export async function runChatTool(
 ): Promise<ToolOutput> {
   if (FROM_ASK.some((t) => t.name === name))
     return runAskTool(userId, name, input, { client, now });
-  if (isTaxTool(name)) return runTaxTool(userId, name, { client, now });
+  if (isTaxTool(name)) return runTaxTool(userId, name, input, { client, now });
   if (isInvestmentTool(name)) return runInvestmentTool(userId, name, input, { client, now });
+  if (isInsuranceTool(name)) return runInsuranceTool(userId, name, input, { client, now });
   const cents: number[] = [];
   const money = (value: number) => {
     cents.push(Math.abs(value));

@@ -304,6 +304,10 @@ model User {
   balanceSnapshots       BalanceSnapshot[]
   checkIns               CheckIn[]
   documents              Document[]
+  // Insurance (spec Phase X).
+  insurancePolicies      InsurancePolicy[]
+  insuranceProfile       InsuranceProfile?
+  insuranceQuotes        InsuranceQuote[]
   lifeEvents             LifeEvent[]
   // What's in investment accounts (spec step 128).
   securities             Security[]
@@ -314,6 +318,8 @@ model User {
   changeAcks             ChangeAck[]
   taxProfile             TaxProfile?
   lifeEventAnswers       LifeEventAnswer[]
+  taxTags                TaxTag[]
+  taxForms               TaxForm[]
   budgetTuneUps          BudgetTuneUp[]
   goalTransfers          GoalTransfer[]
 
@@ -452,8 +458,9 @@ model Transaction {
   createdAt          DateTime        @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt          DateTime        @updatedAt @map("updated_at") @db.Timestamptz(3)
 
-  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
-  account Account @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  user    User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  account Account  @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  taxTags TaxTag[]
 
   @@unique([accountId, dedupeKey])
   @@index([userId])
@@ -1374,10 +1381,104 @@ model Document {
   uploadedAt          DateTime  @default(now()) @map("uploaded_at") @db.Timestamptz(3)
   updatedAt           DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
 
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user              User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  insurancePolicies InsurancePolicy[]
 
   @@index([userId, uploadedAt])
   @@map("documents")
+}
+
+// One insurance policy on the person's profile (spec step 102): typed, read from a policy
+// document, found from payments (step 99) or bound by Jane (step 105). Kinds, sources,
+// statuses and the cover fields are in src/config/insurance.ts.
+model InsurancePolicy {
+  id               String    @id @default(cuid())
+  userId           String    @map("user_id")
+  kind             String
+  carrier          String
+  // active, found (not confirmed yet), pending, cancelled or removed.
+  status           String    @default("active")
+  source           String
+  premiumCents     Int?      @map("premium_cents")
+  // monthly, quarterly, semiannual or yearly (PREMIUM_FREQUENCIES in src/config/documents.ts).
+  premiumFrequency String?   @map("premium_frequency")
+  deductibleCents  Int?      @map("deductible_cents")
+  // The cover limits by key (COVERAGE_FIELDS): cents, true/false, years or a percent.
+  coverage         Json      @default("{}")
+  // What's covered, in one line; checked by the guardrails before it's shown.
+  covers           String?
+  renewalDate      DateTime? @map("renewal_date") @db.Date
+  // How long one term runs, in months (6 or 12).
+  termMonths       Int       @default(12) @map("term_months")
+  // The policy document it was read from, if any.
+  documentId       String?   @unique @map("document_id")
+  // The insurer's payments in the person's transactions (normalizeMerchant key), if known.
+  merchantKey      String?   @map("merchant_key")
+  cancelledAt      DateTime? @map("cancelled_at") @db.Timestamptz(3)
+  createdAt        DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt        DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  user     User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  document Document?        @relation(fields: [documentId], references: [id], onDelete: SetNull)
+  quotes   InsuranceQuote[]
+
+  @@index([userId, status])
+  @@map("insurance_policies")
+}
+
+// A quote for one of the person's policies from the insurance partner (spec step 103),
+// compared like for like. The newest request's quotes replace the last ones; a quote is
+// only good until it expires.
+model InsuranceQuote {
+  id                 String   @id @default(cuid())
+  userId             String   @map("user_id")
+  policyId           String   @map("policy_id")
+  // Which partner answered ("demo" for the stand-in) and its id for the quote.
+  partner            String
+  partnerQuoteId     String   @map("partner_quote_id")
+  carrierId          String   @map("carrier_id")
+  carrierName        String   @map("carrier_name")
+  rating             String
+  ratingScore        Int      @map("rating_score")
+  claimsPhone        String   @map("claims_phone")
+  claimsUrl          String   @map("claims_url")
+  kind               String
+  premiumCents       Int      @map("premium_cents")
+  premiumFrequency   String   @map("premium_frequency")
+  annualPremiumCents Int      @map("annual_premium_cents")
+  termMonths         Int      @map("term_months")
+  deductibleCents    Int?     @map("deductible_cents")
+  coverage           Json     @default("{}")
+  // Like for like with the policy: the same cover, or what's different.
+  sameCover          Boolean  @map("same_cover")
+  differences        String[] @default([])
+  demo               Boolean
+  expiresAt          DateTime @map("expires_at") @db.Timestamptz(3)
+  createdAt          DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  user   User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  policy InsurancePolicy @relation(fields: [policyId], references: [id], onDelete: Cascade)
+
+  @@index([userId, policyId])
+  @@map("insurance_quotes")
+}
+
+// The household facts that matter for cover (spec step 102), as the person typed them.
+// Null means not said: housing and cars are then read from the accounts.
+model InsuranceProfile {
+  userId        String   @id @map("user_id")
+  // own, rent or other.
+  housing       String?
+  vehicles      Int?
+  dependants    Int?
+  pets          Int?
+  // Gaps the person said they don't need (GAP_KEYS), never brought up again.
+  dismissedGaps String[] @default([]) @map("dismissed_gaps")
+  updatedAt     DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("insurance_profiles")
 }
 
 // What kind of hand-entered deadline it is (spec step 71).
@@ -1512,6 +1613,44 @@ model TaxProfile {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("tax_profiles")
+}
+
+// Tax tags the person chose (spec step 119): on one transaction, or on every transaction
+// from one merchant. Jane's own tags come from the spending category (src/config/tax.ts
+// TAX_TAGS) and aren't stored; these override them. tag is a TAX_TAGS key or "none" (not
+// for taxes). Tags never change the transaction or its category.
+model TaxTag {
+  id            String   @id @default(cuid())
+  userId        String   @map("user_id")
+  transactionId String?  @map("transaction_id")
+  // normalizeMerchant's key (src/data-sources/merchant.ts).
+  merchantKey   String?  @map("merchant_key")
+  tag           String
+  createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt     DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  user        User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  transaction Transaction? @relation(fields: [transactionId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, transactionId])
+  @@unique([userId, merchantKey])
+  @@index([userId])
+  @@map("tax_tags")
+}
+
+// Tax forms the person said have arrived (spec step 119), for a tax year: one row per form
+// Jane expected (src/planning/tax-documents.ts key), so she stops asking about it.
+model TaxForm {
+  id         String   @id @default(cuid())
+  userId     String   @map("user_id")
+  year       Int
+  key        String
+  receivedAt DateTime @map("received_at") @db.Timestamptz(3)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, year, key])
+  @@map("tax_forms")
 }
 
 // Spec step 128: a fund, share or cash position, as Plaid Investments (or the demo bank)
