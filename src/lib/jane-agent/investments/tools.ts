@@ -6,6 +6,7 @@ import { GOALS, HORIZONS } from "@/config/investing";
 import { adviceMode } from "@/lib/advice-mode";
 import { loadFees } from "@/lib/investments/fees";
 import { loadInvestments } from "@/lib/investments/holdings";
+import { loadAccountPlan } from "@/lib/investments/accounts";
 import { loadAutoInvest } from "@/lib/investments/auto-invest";
 import { loadRebalance } from "@/lib/investments/rebalance";
 import { loadRetirement } from "@/lib/investments/retirement";
@@ -63,6 +64,12 @@ export const INVESTMENT_TOOLS: Anthropic.Tool[] = [
       "Automatic investing (demo advice mode): whether it's on or paused, how much goes in each payday (a set amount, or the rest after bills and goals), which account, the last few paydays (invested, or paused and why), and Jane's suggested amount if it isn't set up. Contributions go through a simulated brokerage: no real money moves. Safe to spend always comes first.",
     input_schema: noInput,
   },
+  {
+    name: "account_plan",
+    description:
+      "Which account to put money into first (employer match, HSA, IRA (Roth or traditional by their tax bracket from the tax estimate), the rest of the workplace plan, a taxable account), each with its yearly room and why, changing with the investor profile (money needed soon goes somewhere flexible); which holdings in a taxable account would be better kept in a tax-deferred one and what they cost in tax a year; and gains and losses not yet taxed. The order and moves are demo advice only; the gains are facts.",
+    input_schema: noInput,
+  },
 ];
 
 // What the person sees while Jane looks it up.
@@ -74,6 +81,7 @@ export const INVESTMENT_TOOL_STATUS: Readonly<Record<string, string>> = {
   retirement_plan: "Looking at your retirement…",
   rebalance_plan: "Working out the orders…",
   auto_invest: "Checking automatic investing…",
+  account_plan: "Working out which account first…",
 };
 
 export const isInvestmentTool = (name: string) => INVESTMENT_TOOLS.some((t) => t.name === name);
@@ -308,6 +316,38 @@ export async function runInvestmentTool(
           why: r.reason,
         })),
         suggestedEachPayday: data.suggestion ? money(data.suggestion.amountCents) : null,
+      });
+    }
+    case "account_plan": {
+      const plan = await loadAccountPlan(userId, { client, now });
+      const gains = {
+        gainsNotYetTaxed: money(plan.gains.gainsCents),
+        lossesNotYetTaxed: money(plan.gains.lossesCents),
+        losers: plan.gains.losers.map((l) => ({
+          name: l.name,
+          account: l.accountName,
+          down: money(l.lossCents),
+        })),
+      };
+      if (!plan.advice)
+        return out({ ...gains, note: "The account order is for demo advice mode only." });
+      return out({
+        ...gains,
+        topFederalRate:
+          plan.marginalRate === null ? null : `${Math.round(plan.marginalRate * 100)}%`,
+        rothOrTraditional: plan.rothOrTraditional,
+        order:
+          plan.order?.map((s) => ({
+            account: s.title,
+            roomAYear: s.roomCents === null ? null : money(s.roomCents),
+            why: s.why,
+          })) ?? "The investor profile isn't finished.",
+        whereToHoldWhat: plan.location.map((m) => ({
+          holding: m.holding.name,
+          now: m.accountName,
+          better: m.better,
+          taxAYearWhereItIs: money(m.taxDragCents),
+        })),
       });
     }
     default:
