@@ -76,13 +76,7 @@ export type AuditEvent =
   | "tax_pack_downloaded"
   // Devices and sessions (spec step 73): one other session, or all the others, signed out.
   | "session_signed_out"
-  | "other_sessions_signed_out"
-  // Texts (spec step 78). Never the number or what a text said.
-  | "text_number_verified"
-  | "text_number_removed"
-  | "text_approval"
-  | "text_opt_out"
-  | "text_opt_in";
+  | "other_sessions_signed_out";
 
 export type AuditActor = { type: ActorType; id: string | null };
 

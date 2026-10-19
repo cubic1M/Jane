@@ -116,8 +116,6 @@ export function scopedFor(userId: string, client: PrismaClient = db) {
     documents: scoped.document,
     deadlines: scoped.deadline,
     lifeEvents: scoped.lifeEvent,
-    textSettings: scoped.textSetting,
-    textMessages: scoped.textMessage,
   };
 }
 
