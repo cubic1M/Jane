@@ -1,4 +1,5 @@
 import type { Prisma, PrismaClient } from "@/generated/prisma/client";
+import { startAgent } from "@/lib/agent/run";
 import { track } from "@/lib/analytics";
 import { logAudit } from "@/lib/audit";
 import { CARD_SELECT, buildCard } from "@/lib/cards";
@@ -12,7 +13,7 @@ import { shopById } from "./shop";
 // Yes to Jane's pick (spec step 104): the person's one tap. Recorded like every other yes:
 // a decision on the policy's insurance_reshop finding (the one detection found for this
 // insurer, or one made for the policy), with the pick kept in its options, and an action
-// for the switch. Spec step 105's agent does the switch itself; until then the team does.
+// for the switch, which Jane's agent then does by itself (spec step 105).
 
 type Options = { client?: PrismaClient; now?: Date };
 
@@ -41,7 +42,7 @@ export async function acceptShop(
   userId: string,
   shopId: string,
   { client = defaultClient, now = new Date() }: Options = {},
-): Promise<{ decisionId: string; actionId: string }> {
+): Promise<{ decisionId: string; actionId: string; agentJobId: string }> {
   const db = scopedFor(userId, client);
   const shop = await shopById(userId, shopId, { client });
   if (!shop || shop.status !== "open" || !shop.pick || shop.savingCents === null) {
@@ -141,5 +142,7 @@ export async function acceptShop(
     annual_savings_cents: shop.savingCents,
     source: "chat",
   });
-  return result;
+  // Spec step 105: Jane's agent does the switch itself (src/lib/insurance/switch.ts).
+  const agentJobId = await startAgent(userId, result.actionId, { client, now, source: "chat" });
+  return { ...result, agentJobId };
 }

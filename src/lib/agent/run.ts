@@ -37,6 +37,8 @@ import { findSupportContact } from "./find-contact";
 import { composeAnswer, whatIsAsked, type KnownFacts } from "./auto-answer";
 import { simulatedAddress } from "./simulated-company";
 import { confirmSwitches, startSwitch, switchOf } from "./switch";
+import { insuranceSwitchOf } from "@/lib/insurance/accept";
+import { confirmInsuranceSwitches, startInsuranceSwitch } from "@/lib/insurance/switch";
 import { isCallAction, startCall } from "@/lib/voice/calls";
 
 // The action agent (spec step 51). An approved action of a type in AGENT_ACTION_TYPES is
@@ -326,6 +328,10 @@ export async function agentStep(
 
   // A switch to an option the person picked (spec steps 76–77) replaces the usual request.
   if (switchOf(action.decision.options)) return startSwitch(userId, action, options);
+  // Spec step 105: an insurance switch is bound through the insurance partner.
+  if (insuranceSwitchOf(action.decision.options)) {
+    return startInsuranceSwitch(userId, action, options);
+  }
 
   // Bills are negotiated by phone (src/lib/voice/calls.ts), once.
   if (isCallAction(action.type)) {
@@ -739,7 +745,14 @@ export async function runAgentFollowUps({
   }
   const cancellations = await confirmCancellations({ client, now });
   const switches = await confirmSwitches({ client, now });
-  return { checked: due.length, ...cancellations, ...switches };
+  // Spec step 105: insurance switches whose first payment went through.
+  const insurance = await confirmInsuranceSwitches({ client, now });
+  return {
+    checked: due.length,
+    ...cancellations,
+    switched: switches.switched + insurance.switched,
+    handedOff: switches.handedOff + insurance.handedOff,
+  };
 }
 
 // Runs the agent's first steps right after a request, then the jobs they queued for the

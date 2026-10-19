@@ -9,6 +9,10 @@ export type AuditEvent =
   | "insurance_policy_saved"
   | "insurance_policy_removed"
   | "insurance_household_saved"
+  // Spec step 105: Jane bound a new policy through the insurance partner, and cancelled the
+  // old one once the new one's first payment went through.
+  | "insurance_policy_bound"
+  | "insurance_policy_cancelled"
   | "user_signed_in"
   | "import_completed"
   // Finding data was sent to Claude for card text.

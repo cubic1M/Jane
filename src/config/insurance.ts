@@ -243,3 +243,14 @@ export const PRICE_UP_LOOKBACK_DAYS = 45;
 export const RESHOP_DAILY_LIMIT = 200;
 // "I checked: nothing better" is said for reshops from the last this-many days.
 export const RESHOP_NEWS_DAYS = 7;
+
+// --- One-tap switch (spec step 105) --------------------------------------------------------
+// After the Yes, Jane does the rest by herself, at every autopilot level: she binds the pick
+// through the insurance partner to start the day the current policy renews (or tomorrow),
+// waits for its first payment, and only then cancels the old policy, from the same day, so
+// there's never a gap in cover. She stores the new policy's documents on /documents.
+// If the first payment hasn't gone through this many days after the start, the team takes
+// over (the old policy is still in place).
+export const SWITCH_PAYMENT_DAYS = 10;
+// Switches finished in the last this-many days are said in the chat.
+export const SWITCH_NEWS_DAYS = 7;
