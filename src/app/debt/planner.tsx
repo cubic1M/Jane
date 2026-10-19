@@ -39,6 +39,8 @@ export function DebtPlanner({
     balanceCents: number;
     aprBps: number | null;
     minimumCents: number | null;
+    // Whether the bank reported the rate and minimum (spec step 109 says where each came from).
+    fromBank?: boolean;
   }[];
   startYear: number;
   // 0-based, like Date.getUTCMonth.
@@ -53,7 +55,7 @@ export function DebtPlanner({
           balance: dollars(c.balanceCents),
           apr: c.aprBps === null ? "" : (c.aprBps / 100).toFixed(2),
           minimum: c.minimumCents === null ? "" : dollars(c.minimumCents),
-          fromBank: c.aprBps !== null && c.minimumCents !== null,
+          fromBank: c.fromBank ?? (c.aprBps !== null && c.minimumCents !== null),
         }))
       : [{ id: "manual-1", name: "Card 1", balance: "", apr: "", minimum: "", fromBank: false }],
   );

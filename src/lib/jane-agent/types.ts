@@ -2,6 +2,8 @@
 // Stored in jane_messages; posted by Jane's brain (spec step 82) and, from step 84, typed
 // by the person.
 
+import { DEBT_ACTION_IDS } from "./debt-action-ids";
+
 export const MESSAGE_KINDS = ["brief", "decision", "done", "heads_up", "reply", "user"] as const;
 // brief: the morning brief. decision: something to say yes or no to. done: something Jane
 // did. heads_up: something coming or gone wrong. reply: Jane's answer to what the person
@@ -15,6 +17,8 @@ export type MessageStatus = (typeof MESSAGE_STATUSES)[number];
 // src/lib/jane-agent/actions (the registry there); "open" is a plain link.
 export const ACTION_IDS = [
   "finding.yes",
+  // Loans and debt (spec Phase Y, ./debt-action-ids.ts).
+  ...DEBT_ACTION_IDS,
   "finding.no",
   "finding.pick",
   // Insurance (spec Phase X).
@@ -91,6 +95,8 @@ export type MessageAction =
 // What a message is about. Every field is optional; each source and action uses its own.
 export type MessageRefs = {
   findingId?: string;
+  // Spec step 110: the extra a month the payoff plan's buttons start it with, in cents.
+  debtPlanExtraCents?: number;
   // Insurance (spec Phase X): a coverage gap by its key (GAP_KEYS), and the policy a
   // message is about.
   insuranceGap?: string;
