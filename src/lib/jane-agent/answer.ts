@@ -26,6 +26,9 @@ import { matchCategory, type Intent } from "./intents";
 import { listGoals } from "@/lib/goals";
 import { comingUpBlock, spendingBlock } from "./block-data";
 import { flowReply } from "./flows/chat";
+import { timezoneOf } from "./open";
+import { searchChat } from "./search";
+import { searchReply } from "./search-reply";
 import { goalsReply } from "./goals-reply";
 import { listPreferences, paydayDays } from "./preferences";
 import { loadRecurring } from "./recurring";
@@ -155,6 +158,15 @@ async function byIntent(
     }
     case "remember":
       return rememberReply(intent.draft);
+    // Spec step 96.
+    case "search": {
+      const timezone = await timezoneOf(userId, { client });
+      return searchReply(
+        intent.query,
+        await searchChat(userId, intent.query, { client, now, timezone }),
+        timezone,
+      );
+    }
     // Spec step 95.
     case "flow":
       return flowReply(intent.flow, { userId, client, now });

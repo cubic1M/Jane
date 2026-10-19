@@ -63,6 +63,8 @@ export const MESSAGE_PRIORITY = {
   // Loans and debt (spec Phase Y, src/config/debt.ts).
   ...DEBT_MESSAGE_PRIORITY,
   brief: 1_000,
+  // Spec step 96: the week's summary comes first, at the top of the week.
+  week: 1_001,
   // Insurance (spec step 102): cover that looks missing, after budgets and goals.
   insurance_gap: 35,
   // Spec step 104: a cheaper policy for the same cover, after news (a change Jane noticed)
@@ -229,3 +231,6 @@ export const CHAT_BLOCK_ROWS = 8;
 
 // Spec step 95: guided flows in the chat show at most this many answers as buttons.
 export const CHAT_FLOW_OPTIONS = 5;
+
+// Spec step 96: chat search shows at most this many messages, newest first.
+export const CHAT_SEARCH_RESULTS = 30;

@@ -100,6 +100,8 @@ export type Snapshot = {
   // Spec step 91: suggestions the person said never to make again (preference keys);
   // findings among them are already left out of findings above.
   neverSuggest?: string[];
+  // Spec step 96: what the chat covered the week before this one.
+  lastWeek?: ChatWeek;
 } & MoreSnapshot &
   TaxSnapshot;
 
@@ -124,6 +126,25 @@ export function findingFingerprint(finding: {
       ]),
     )
     .digest("hex");
+}
+
+// Spec step 96: the chat's week before `start` (the person's Monday): what they asked, said
+// yes or no to, and what Jane finished.
+export type ChatWeek = { start: string; asked: number; yes: number; no: number; done: number };
+
+async function chatWeek(userId: string, client: PrismaClient, start: Date): Promise<ChatWeek> {
+  const rows = await scopedFor(userId, client).janeMessages.findMany({
+    where: { createdAt: { gte: new Date(start.getTime() - 7 * 86_400_000), lt: start } },
+    select: { kind: true, answeredWith: true },
+  });
+  return {
+    start: new Date(start.getTime() - 7 * 86_400_000).toISOString().slice(0, 10),
+    asked: rows.filter((r) => r.kind === "user").length,
+    yes: rows.filter((r) => r.answeredWith && /^(?:yes|switch|approve)/i.test(r.answeredWith))
+      .length,
+    no: rows.filter((r) => r.answeredWith === "No").length,
+    done: rows.filter((r) => r.kind === "done").length,
+  };
 }
 
 // Spec step 91: findings that suggest cutting something, which "I need my …" rules out.
@@ -259,5 +280,6 @@ export async function loadSnapshot(
     upkeep: await loadUpkeep(userId, { client, now }),
     investments: await loadInvestmentSnapshot(userId, { client, now }),
     neverSuggest: [...never],
+    lastWeek: await chatWeek(userId, client, weekStart(now, user?.timezone)),
   };
 }
