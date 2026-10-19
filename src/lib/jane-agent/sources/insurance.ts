@@ -62,8 +62,12 @@ export function shopBody(
   const policy = policies.find((p) => p.id === shop.policyId);
   if (!policy || !shop.pick || shop.savingCents === null) return null;
   const { pick } = shop;
+  const price = `${formatCents(pick.premiumCents)} ${PREMIUM_FREQUENCIES[pick.premiumFrequency].label}`;
   return [
-    `I found ${kindWords(policy.kind)} ${formatCents(shop.savingCents)} a year cheaper for the same cover: ${pick.carrier.name}, at ${formatCents(pick.premiumCents)} ${PREMIUM_FREQUENCIES[pick.premiumFrequency].label}.`,
+    // Spec step 149: health plans compare on a year's total cost with the usual care.
+    policy.kind === "health"
+      ? `I found a health plan that would cost ${formatCents(shop.savingCents)} less a year with your usual care: ${pick.plan ?? pick.carrier.name}, at ${price}.`
+      : `I found ${kindWords(policy.kind)} ${formatCents(shop.savingCents)} a year cheaper for the same cover: ${pick.carrier.name}, at ${price}.`,
     ...shop.why.map((line) => `- ${line}`),
     ...(shop.demo
       ? ["These are sample quotes from my demo carrier catalog, not real offers."]

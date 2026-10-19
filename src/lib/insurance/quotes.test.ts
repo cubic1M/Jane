@@ -95,7 +95,7 @@ describe("the stand-in partner's pricing", () => {
       expiresAt: "2026-11-18T12:00:00.000Z",
     });
     expect(await demoPartner.quote(request(), { now: NOW })).toEqual(quotes);
-    expect(await demoPartner.quote(request({ kind: "health" }), { now: NOW })).toEqual([]);
+    expect(await demoPartner.quote(request({ kind: "other" }), { now: NOW })).toEqual([]);
     expect(DEMO_CARRIERS.every((c) => c.name.endsWith("(demo)"))).toBe(true);
   });
 

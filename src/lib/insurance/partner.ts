@@ -50,6 +50,8 @@ export type QuoteCarrier = {
 export type PartnerQuote = {
   partnerQuoteId: string;
   carrier: QuoteCarrier;
+  // A health plan's name (spec step 149); other kinds are the carrier's standard policy.
+  plan?: string | null;
   kind: PolicyKind;
   // What the term costs a year, and per payment at the requested frequency.
   annualPremiumCents: number;
