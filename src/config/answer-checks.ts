@@ -25,4 +25,4 @@ export const FIXED_CHECKS_SHARE = 0.6;
 
 // The rules-only questions run in CI (src/lib/jane-agent/checks/checks.integration.test.ts)
 // and must score at least this overall: raised as the chat gets better, never lowered.
-export const RULES_SCORE_FLOOR = 80;
+export const RULES_SCORE_FLOOR = 97;

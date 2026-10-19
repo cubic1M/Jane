@@ -50,7 +50,21 @@ export type Intent =
   | { kind: "spending"; category: string | null; month: string }
   // days is null for the usual coming-up list.
   | { kind: "coming_up"; days: number | null }
-  | { kind: "act"; verb: ActVerb; target: string }
+  // findingId: one finding exactly (a clarifying question's button, spec step 88).
+  | { kind: "act"; verb: ActVerb; target: string; findingId?: string }
+  // Spec step 88. What one thing costs ("how much is Netflix"); a year's cost when asked.
+  | { kind: "cost"; target: string; year: boolean }
+  // What's charged on a schedule: subscriptions, or everything (all: bills too). total:
+  // "how much do I spend on subscriptions".
+  | { kind: "subscriptions"; total: boolean; all: boolean }
+  // The next paycheck.
+  | { kind: "payday" }
+  // A name on its own, or "tell me about …": a subscription or bill, something Jane found,
+  // or a spending category, whichever it is (src/lib/jane-agent/answer.ts).
+  | { kind: "about"; target: string; findingId?: string }
+  // A follow-up: "and Hulu?", "what about last month?" (target or month): resolved against
+  // what the conversation was about (./context.ts).
+  | { kind: "follow_up"; target: string | null; month: string | null }
   // Taxes (spec steps 118–127): ./tax-intents.ts.
   | TaxIntent
   // Spec step 128 on: what they own, and each later investment question.
@@ -139,6 +153,91 @@ export function normalize(text: string): string {
     .trim();
 }
 
+// Spec step 88: short forms and common slips, word for word.
+const SHORT_FORMS: Readonly<Record<string, string>> = {
+  hw: "how",
+  wat: "what",
+  wht: "what",
+  whats: "what's",
+  hows: "how's",
+  wheres: "where's",
+  u: "you",
+  ur: "your",
+  r: "are",
+  wk: "week",
+  wks: "weeks",
+  mo: "month",
+  mth: "month",
+  yr: "year",
+  subs: "subscriptions",
+  sub: "subscription",
+  thx: "thanks",
+  fod: "food",
+  spnd: "spend",
+  amt: "amount",
+  bc: "because",
+  "w/": "with",
+};
+
+// Words the rules look for, which a slip of one letter (a missing, extra, swapped or wrong
+// letter) still finds. Only words of five letters or more, and none a different word is one
+// letter from ("lower" and "power"), so a name or another word is never "corrected".
+const VOCABULARY = [
+  "afford",
+  "spend",
+  "spent",
+  "spending",
+  "cancel",
+  "subscription",
+  "subscriptions",
+  "refund",
+  "negotiate",
+  "payday",
+  "paycheck",
+  "budget",
+  "groceries",
+  "restaurants",
+  "upcoming",
+  "autopilot",
+  "approve",
+  "insurance",
+] as const;
+
+// Damerau–Levenshtein distance of at most one (one letter added, dropped, changed or two
+// swapped).
+export function oneSlip(a: string, b: string): boolean {
+  if (a === b) return true;
+  if (Math.abs(a.length - b.length) > 1) return false;
+  let i = 0;
+  while (i < a.length && i < b.length && a[i] === b[i]) i += 1;
+  const rest = (x: string, from: number) => x.slice(from);
+  return (
+    rest(a, i + 1) === rest(b, i + 1) ||
+    rest(a, i + 1) === rest(b, i) ||
+    rest(a, i) === rest(b, i + 1) ||
+    (a[i] === b[i + 1] && a[i + 1] === b[i] && rest(a, i + 2) === rest(b, i + 2))
+  );
+}
+
+// "safe 2 spend" → "safe to spend", "cancle hulu" → "cancel hulu", "hw much" → "how much".
+export function fixTypos(text: string): string {
+  return (
+    text
+      // "2" as "to" only before a verb, so "I have 2 kids" keeps its number.
+      .replace(
+        /(?<=[a-z]) 2 (?=(?:spend|pay|save|afford|cancel|get|go|buy|use|do|be|see)\b)/g,
+        " to ",
+      )
+      .split(" ")
+      .map((word) => {
+        if (Object.hasOwn(SHORT_FORMS, word)) return SHORT_FORMS[word];
+        if (word.length < 4 || (VOCABULARY as readonly string[]).includes(word)) return word;
+        return VOCABULARY.find((v) => oneSlip(word, v)) ?? word;
+      })
+      .join(" ")
+  );
+}
+
 // What to look for in the findings: no "my", no "subscription" or "bill" on the end.
 function cleanTarget(text: string): string {
   return text
@@ -210,17 +309,53 @@ const WEEK = /\b(?:this|a|per|each|every|next) week\b|\bweekly\b/;
 const CATEGORY_LIST = [...new Set([...Object.values(CATEGORY_LABELS), UNCATEGORIZED])];
 
 const SAFE =
-  /\bsafe to spend\b|\bhow much (?:can|could) i (?:still )?spend\b|\bwhat can i (?:still )?spend\b|\bspending money left\b/;
-const SPENDING = /\b(?:spent|spend|spending)\b/;
+  /\bsafe to spend\b|\bhow much (?:can|could) i (?:still )?spend\b|\bwhat can i (?:still )?spend\b|\bspending money left\b|\bhow much (?:money )?(?:do )?i (?:have|got) (?:left|to spend|left to spend)\b|\bhow much (?:money )?(?:is|do i have) left\b/;
+const SPENDING = /\b(?:spent|spend|spending)\b|\bwhere (?:does|did) (?:all )?my money go\b/;
 const COMING_UP =
   /\bwhat'?s (?:due|coming(?: up)?|next)\b|\bcoming up\b|\bupcoming\b|\bbills? (?:due|coming)\b|\bwhat do i (?:owe|have to pay)\b|\bdue (?:this|next) week\b/;
+// Spec step 88.
+const PAYDAY = /\b(?:pay ?days?|pay ?checks?|get(?:ting)? paid|salary|wages|next pay)\b/;
+const SUBSCRIPTIONS =
+  /\bsubscriptions\b|\bsubscription list\b|\bwhat (?:am i|do i) pay(?:ing)? for\b|\b(?:recurring|regular|monthly) (?:charges|payments|bills)\b|\bwhat (?:charges|bills) me\b/;
+const ALL_RECURRING =
+  /\bwhat (?:am i|do i) pay(?:ing)? for\b|\b(?:recurring|regular|monthly) (?:charges|payments|bills)\b|\bwhat (?:charges|bills) me\b/;
+const COST = [
+  /^how much (?:is|are|was|does|do) (?:i pay for |i spend for |i pay )?(.+?)(?: cost(?: me| us)?)?(?: (?:a|per|each|every) (month|year))?$/,
+  /^how much (?:am i paying|do i pay|i pay) (?:for )?(.+?)(?: (?:a|per|each|every) (month|year))?$/,
+  /^what (?:does|do|is|are) (.+?) cost(?: me| us)?(?: (?:a|per|each|every) (month|year))?$/,
+  /^what(?:'s| is) (?:the )?(?:cost|price) (?:of|for) (.+?)(?: (?:a|per|each|every) (month|year))?$/,
+  /^what do i pay (?:for )?(.+?)(?: (?:a|per|each|every) (month|year))?$/,
+];
+const ABOUT =
+  /^(?:tell me (?:more )?about|what(?:'s| is| was) (?:up with|going on with)|explain|what about|show me|details on|info on) (.+)$/;
+// "and Hulu?", "what about last month?", "same for Peacock".
+const FOLLOW =
+  /^(?:and|what about|how about|same for|same with|also|ok and|and what about|and how about)(?: for| on| at| with)? (.+)$/;
+// "last month", "in August", "september 2026": a month and nothing else.
+const MONTH_ONLY = new RegExp(
+  `^(?:(?:in|for|during) )?(?:(?:this|last|next) month|${MONTH_NAME}(?: \\d{4})?)$`,
+);
+// Words that point back at what the conversation was about.
+export const PRONOUNS: readonly string[] = [
+  "it",
+  "that",
+  "this",
+  "that one",
+  "this one",
+  "them",
+  "those",
+];
+// A name on its own is at most this many words.
+const ABOUT_MAX_WORDS = 3;
+
 const REFUND =
   /^(?:i )?(?:get|want|need|request|ask for|claim) (?:my |a |the )?(?:money back|refund) (?:from|for|on|at) (.+)$|^refund (?:from |for |my )?(.+)$/;
-const CANCEL = /^(?:cancel|unsubscribe(?: from)?|stop|end|get rid of|drop) (.+)$/;
+const CANCEL =
+  /^(?:cancel|unsubscribe(?: from)?|stop(?: paying(?: for)?)?|end|get rid of|drop|quit) (.+)$/;
 const LOWER = /^(?:lower|reduce|cut|negotiate|bring down|shrink) (.+)$/;
 
 export function parseIntent(raw: string, asOf: string): Intent {
-  const text = normalize(raw);
+  const text = fixTypos(normalize(raw));
   if (!text || HELP.test(text)) return { kind: "help" };
   if (GREETING.test(text)) return { kind: "greeting", thanks: false };
   if (THANKS.test(text)) return { kind: "greeting", thanks: true };
@@ -239,6 +374,21 @@ export function parseIntent(raw: string, asOf: string): Intent {
   const tax = parseTaxIntent(text);
   if (tax) return tax;
 
+  // Spec step 88: a follow-up to what was just said: another month, or another name.
+  const follow = FOLLOW.exec(text);
+  if (follow) {
+    const words = follow[1];
+    if (MONTH_ONLY.test(words)) {
+      const month = parseMonth(
+        /^(?:in|for|during) /.test(words) ? words : `in ${words}`,
+        asOf,
+        "past",
+      );
+      if (month) return { kind: "follow_up", target: null, month };
+    }
+    return { kind: "follow_up", target: cleanTarget(words), month: null };
+  }
+
   if (/\bafford\b/.test(text) || (AFFORD_ASK.test(text) && parseAmount(text) !== null)) {
     const what = purchaseOf(text);
     const recurring = RECURRING.test(text);
@@ -256,6 +406,30 @@ export function parseIntent(raw: string, asOf: string): Intent {
   // Spec step 128 on: after affording, so "can I afford … my 401(k)" stays a money question.
   const investments = parseInvestmentIntent(text);
   if (investments) return investments;
+  // Spec step 88: paydays, subscriptions and what one thing costs.
+  const acting = REFUND.test(text) || CANCEL.test(text) || LOWER.test(text);
+  if (!acting && PAYDAY.test(text)) return { kind: "payday" };
+  if (!acting && SUBSCRIPTIONS.test(text)) {
+    return {
+      kind: "subscriptions",
+      total: /\bhow much\b|\btotal\b|\bin all\b|\badd up\b/.test(text),
+      all: ALL_RECURRING.test(text),
+    };
+  }
+  // Insurance questions ("how much is my home insurance") are the insurance lane's own.
+  if (!acting && !SPENDING.test(text)) {
+    const insurance = parseInsurance(text);
+    if (insurance) return insurance;
+  }
+  for (const pattern of COST) {
+    const cost = pattern.exec(text);
+    if (!cost) continue;
+    const target = cleanTarget(cost[1]);
+    // "How much is safe to spend" and "how much do I owe" belong elsewhere.
+    if (target && !SPENDING.test(target) && !/^(?:due|coming up|left|owed?)$/.test(target)) {
+      return { kind: "cost", target, year: cost[2] === "year" };
+    }
+  }
   if (SPENDING.test(text)) {
     const on = /\b(?:on|for|at) (.+?)(?= (?:this|last|in|during|so far|since)\b|$)/.exec(text);
     const category = on ? cleanTarget(on[1]) : "";
@@ -279,6 +453,13 @@ export function parseIntent(raw: string, asOf: string): Intent {
   const insurance = parseInsurance(text);
   if (insurance) return insurance;
 
+  const about = ABOUT.exec(text);
+  if (about) return { kind: "about", target: cleanTarget(about[1]) };
+  // A name on its own ("netflix", "the bank fees").
+  if (/^[a-z][a-z0-9&+' -]*$/.test(text) && text.split(" ").length <= ABOUT_MAX_WORDS) {
+    const target = cleanTarget(text);
+    if (target) return { kind: "about", target };
+  }
   return { kind: "unknown" };
 }
 

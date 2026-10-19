@@ -386,11 +386,12 @@ export const QUESTIONS: readonly CheckQuestion[] = [
     needs: "rules",
     expect: { button: "finding.yes", mentions: /masterclass/i },
   },
+  // Two fee findings: it could mean either, so Jane asks which, a button each.
   {
     id: "act-10",
     text: "the bank fees",
     needs: "rules",
-    expect: { button: "finding.yes", mentions: /fees/i },
+    expect: { button: "clarify.1", mentions: /fees/i },
   },
 
   // Commands.

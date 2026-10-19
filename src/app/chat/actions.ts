@@ -11,14 +11,16 @@ import { requireUser } from "@/lib/session";
 // server (src/lib/jane-agent/actions): the message is the person's own, still open, and
 // offers that button. No revalidate: the message stays on screen with its answer.
 
-export type MessageState = { message: MessageView; error: string | null };
+// postedAt: when a tap posted a new message (spec step 88: a clarifying question's answer),
+// so the chat reloads to show it.
+export type MessageState = { message: MessageView; error: string | null; postedAt?: number };
 
 export async function tapButton(previous: MessageState, formData: FormData): Promise<MessageState> {
   const user = await requireUser();
   const messageId = String(formData.get("messageId") ?? "");
   const actionId = String(formData.get("actionId") ?? "");
   try {
-    const { message, agentJobIds, agentActionIds } = await takeChatAction(
+    const { message, agentJobIds, agentActionIds, posted } = await takeChatAction(
       user.id,
       messageId,
       actionId,
@@ -27,7 +29,11 @@ export async function tapButton(previous: MessageState, formData: FormData): Pro
     after(() => runAgentNow(agentJobIds));
     // Spec step 83: and what a new autopilot level approved at once, as Settings does.
     if (agentActionIds.length > 0) after(() => runQueuedFor(agentActionIds));
-    return { message: toView(message, new Date(), await timezoneOf(user.id)), error: null };
+    return {
+      message: toView(message, new Date(), await timezoneOf(user.id)),
+      error: null,
+      ...(posted ? { postedAt: Date.now() } : {}),
+    };
   } catch (error) {
     if (!(error instanceof ChatActionError)) throw error;
     return { message: previous.message, error: error.message };
