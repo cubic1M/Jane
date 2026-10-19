@@ -385,16 +385,20 @@ describe("fee questions, by rules", () => {
     ["401k fees", "401k"],
     ["how much am I paying for my brokerage", "brokerage"],
     ["are there cheaper funds", null],
+    ["what fees am I paying on my investments", null],
+    ["what fees do I pay on my 401k", "401k"],
   ])("reads %j as fees", (text, account) => {
     expect(parseIntent(text, ASOF)).toEqual({ kind: "investments", topic: "fees", account });
   });
 
-  it.each(["lower my bank fees", "how much did I spend on fees", "refund the overdraft fee"])(
-    "leaves %j to the other rules",
-    (text) => {
-      expect(parseIntent(text, ASOF).kind).not.toBe("investments");
-    },
-  );
+  it.each([
+    "lower my bank fees",
+    "how much did I spend on fees",
+    "refund the overdraft fee",
+    "what fees did I pay on my checking",
+  ])("leaves %j to the other rules", (text) => {
+    expect(parseIntent(text, ASOF).kind).not.toBe("investments");
+  });
 });
 
 describe("feesReply", () => {
