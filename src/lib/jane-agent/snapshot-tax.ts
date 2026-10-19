@@ -10,6 +10,8 @@ import { loadTaxEstimate, type TaxEstimateView } from "@/lib/tax-estimate";
 import { checkFrom } from "@/lib/tax-withholding";
 import { loadTaxSavings } from "@/lib/tax-savings";
 import { loadSelfEmployed, type SelfEmployedView } from "@/lib/self-employed";
+import { REFUND } from "@/config/tax";
+import { loadRefunds, recentRefund, type RefundView } from "@/lib/tax-refund";
 import type { TaxSaving } from "@/planning/tax-savings";
 import type { WithholdingCheck } from "@/planning/withholding";
 import { loadTaxForms, loadTaxTags } from "@/lib/tax-organizer";
@@ -42,6 +44,8 @@ export type TaxSnapshot = {
     savings?: TaxSaving[];
     // Spec step 123: freelancers' taxes.
     selfEmployed?: SelfEmployedView;
+    // Spec step 125: a refund that landed lately and hasn't been dealt with.
+    refund?: RefundView | null;
   } | null;
 };
 
@@ -88,6 +92,10 @@ export async function loadTaxSnapshot(
       savings: (await loadTaxSavings(userId, { client, now, loaded: { estimate, advice } }))
         .savings,
       selfEmployed: await loadSelfEmployed(userId, { client, now, loaded: { estimate, advice } }),
+      refund: recentRefund(
+        (await loadRefunds(userId, { client, now, days: REFUND.recentDays })).refunds,
+        now,
+      ),
       advice,
       formsDue: forms
         ? { year: forms.year, forms: forms.forms.filter((f) => !f.received && !f.mayNotSend) }

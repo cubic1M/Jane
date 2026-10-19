@@ -82,6 +82,9 @@ export const ACTION_IDS = [
   // Spec step 123: freelancers.
   "tax.quarter_paid",
   "tax.miles_add",
+  // Spec step 125: a tax refund's plan.
+  "tax.refund_apply",
+  "tax.refund_no",
   // Investments (spec step 129 on): the answer buttons on an investor-profile question,
   // by position (src/config/investing.ts PROFILE_QUESTIONS).
   "invest.answer.1",
@@ -180,6 +183,8 @@ export type MessageRefs = {
   // Spec step 123: the estimated payment "I've paid it" records, and miles to add.
   taxQuarter?: { date: string; cents: number; stateCents: number };
   taxMiles?: number;
+  // Spec step 125: the refund (its transaction id) a message is about.
+  taxRefund?: string;
   // Spec step 98: demo advice (src/lib/advice-mode.ts). The chat shows DEMO_ADVICE_LABEL
   // under it. Set it on every message that recommends investments, taxes, insurance or loans.
   advice?: true;

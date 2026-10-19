@@ -424,6 +424,7 @@ export async function exportUserData(
         businessMiles: true,
         businessMilesYear: true,
         taxPayments: true,
+        refundsHandled: true,
         updatedAt: true,
       },
     }),

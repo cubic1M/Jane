@@ -30,6 +30,11 @@ vi.mock("@/lib/tax-savings", async (importOriginal) => ({
     ],
   })),
 }));
+vi.mock("@/lib/tax-refund", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/tax-refund")>()),
+  applyRefundPlan: vi.fn(async () => ({ reminders: 2 })),
+  dismissRefund: vi.fn(),
+}));
 vi.mock("@/lib/tax-organizer", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/lib/tax-organizer")>()),
   markTaxForm: vi.fn(async () => ({ form: "W-2", from: "ACME" })),
@@ -40,7 +45,8 @@ import { TaxOrganizerError, markTaxForm } from "@/lib/tax-organizer";
 import { clearW4Change, keepRefund, recordW4Change } from "@/lib/tax-withholding";
 import { addDeadline } from "@/lib/deadlines";
 import { dismissSaving } from "@/lib/tax-savings";
-import { markForm, savingAction, w4Action } from "./actions";
+import { applyRefundPlan, dismissRefund } from "@/lib/tax-refund";
+import { markForm, refundAction, savingAction, w4Action } from "./actions";
 
 // Spec step 119: "I have it" and "Not yet" on /taxes.
 
@@ -142,5 +148,21 @@ describe("savingAction (spec step 122)", () => {
       ok: false,
       message: "That suggestion isn't open anymore.",
     });
+  });
+});
+
+describe("refundAction (spec step 125)", () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  it("sets up a refund's plan or leaves it, for the signed-in person", async () => {
+    expect(await refundAction(null, form({ intent: "apply", transactionId: "t1" }))).toEqual({
+      ok: true,
+      message: "Done: 2 reminders on your deadlines.",
+    });
+    expect(applyRefundPlan).toHaveBeenCalledWith("u1", "t1", { via: "page" });
+    expect(await refundAction(null, form({ intent: "no", transactionId: "t1" }))).toMatchObject({
+      ok: true,
+    });
+    expect(dismissRefund).toHaveBeenCalledWith("u1", "t1", { via: "page" });
   });
 });
