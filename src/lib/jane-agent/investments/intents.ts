@@ -18,7 +18,8 @@ export type InvestmentTopic =
   | "college"
   | "hsa"
   | "company_stock"
-  | "crypto";
+  | "crypto"
+  | "cash";
 
 export type InvestmentIntent = {
   kind: "investments";
@@ -108,7 +109,12 @@ const COMPANY_STOCK =
 const CRYPTO =
   /\b(?:crypto(?:currency|currencies)?|bitcoin|btc|ether(?:eum)?|eth|solana|coinbase|crypto wallet|stablecoins?|usdc)\b/;
 
+// Spec step 162: where cash should sit.
+const CASH =
+  /\bhigh[- ]yield savings\b|\bmoney market\b|\btreasur(?:y|ies) (?:ladder|bills?)\b|\bt[- ]?bills?\b|\bwhere should i (?:keep|put|park) (?:my )?(?:cash|savings|emergency fund)\b|\b(?:is|are) my (?:cash|savings) earning\b|\bcash (?:earning|interest|done right)\b/;
+
 export function parseInvestmentIntent(text: string): InvestmentIntent | null {
+  if (CASH.test(text)) return { kind: "investments", topic: "cash", account: null };
   if (CRYPTO.test(text)) return { kind: "investments", topic: "crypto", account: null };
   if (COMPANY_STOCK.test(text))
     return { kind: "investments", topic: "company_stock", account: null };

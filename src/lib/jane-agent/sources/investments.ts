@@ -26,6 +26,8 @@ import {
   SELL_WORDS,
 } from "../investments/company-copy";
 import type { Candidate } from "../types";
+import { CASH_MIN_GAIN_CENTS } from "@/config/cash";
+import { CASH_LINK, cashLine, moveButtons } from "../investments/cash-copy";
 import {
   CRYPTO_LINK,
   feeFlag,
@@ -295,6 +297,19 @@ export const investmentsSource: MessageSource = {
         actions: [{ id: "hsa.link", label: "Link a demo HSA", kind: "primary" }, snoozeButton()],
         dedupeKey: "hsa:link",
         priority: MESSAGE_PRIORITY.hsa,
+      });
+    }
+    // Step 162: cash earning what it should. Each move is a tap; with no move Jane can do,
+    // she says what the person could do (open a high-yield savings account).
+    const cash = inv.cash.plan;
+    if (inv.advice && cash && cash.gainCents >= CASH_MIN_GAIN_CENTS) {
+      out.push({
+        kind: cash.moves.length > 0 ? "decision" : "heads_up",
+        body: `${cashLine(cash)}${cash.moves.length > 0 ? " Each move is a tap; nothing moves until you say so." : ""}`,
+        refs: { advice: true, ...(cash.moves.length > 0 ? { cashPlan: cash.key } : {}) },
+        actions: [...moveButtons(cash), CASH_LINK, snoozeButton()],
+        dedupeKey: `cash:${cash.key}`,
+        priority: MESSAGE_PRIORITY.cash,
       });
     }
     // Step 161: crypto, read-only. Jane says once that she can see it (facts, for everyone);

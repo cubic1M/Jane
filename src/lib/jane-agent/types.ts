@@ -186,6 +186,9 @@ export const ACTION_IDS = [
   "company.sell",
   // Spec step 161: connect a demo exchange, read-only (crypto is never traded).
   "crypto.link",
+  // Spec step 162: cash moved where it earns more, one move a tap.
+  "cash.to_savings",
+  "cash.to_money_market",
   // Jane notices changes (spec step 97).
   "change.look",
   "change.budget",
@@ -348,6 +351,8 @@ export type MessageRefs = {
   college?: { childName: string; childAge: number; type: "public" | "private" };
   // Spec step 160: the company stock plan "Sell this part" sells from, by its key.
   companyPlan?: string;
+  // Spec step 162: the cash plan its move buttons belong to, by its key.
+  cashPlan?: string;
   // Spec step 97: a change Jane noticed (src/insights/changes.ts), by its key; for a
   // category's pace, the budget "Set a budget" would set (cents a month).
   change?: { key: string; kind: string; category?: string; budgetCents?: number };

@@ -12,6 +12,7 @@ import { estimateCollege, loadCollege } from "@/lib/investments/college";
 import { collectReceipts, loadHsa } from "@/lib/investments/hsa";
 import { loadCompanyStock } from "@/lib/investments/company-stock";
 import { loadCrypto } from "@/lib/crypto/crypto";
+import { loadCash } from "@/lib/investments/cash";
 import { autopilotOf } from "@/lib/autopilot";
 import { loadInvestmentSnapshot } from "./snapshot";
 import { loadAutoInvest } from "@/lib/investments/auto-invest";
@@ -30,6 +31,7 @@ import {
   hsaReply,
   companyStockReply,
   cryptoReply,
+  cashReply,
   feesReply,
   holdingsReply,
   profileReply,
@@ -86,6 +88,8 @@ export async function answerInvestments(
     case "hsa":
       await collectReceipts(userId, { client, now });
       return hsaReply(await loadHsa(userId, { client, now }));
+    case "cash":
+      return cashReply(await loadCash(userId, { client, now }));
     case "crypto":
       return cryptoReply(await loadCrypto(userId, { client, now }));
     case "company_stock":

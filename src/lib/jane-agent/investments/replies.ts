@@ -9,6 +9,8 @@ import type { CollegeEstimate } from "@/lib/investments/college";
 import type { HsaView } from "@/lib/investments/hsa";
 import type { CompanyStockView } from "@/lib/investments/company-stock";
 import type { CryptoView } from "@/lib/crypto/crypto";
+import type { CashView } from "@/lib/investments/cash";
+import { CASH_LINK, cashLine, moveButtons } from "./cash-copy";
 import { CRYPTO_LINK, feeFlag, NEVER_TRADES, shareFlag, sizeLine } from "./crypto-copy";
 import {
   COMPANY_LINK,
@@ -693,5 +695,31 @@ export function cryptoReply(view: CryptoView): Reply {
     body: [facts, ...flags, NEVER_TRADES].join(" "),
     actions: [CRYPTO_LINK],
     refs: flags.length > 0 ? { advice: true } : {},
+  };
+}
+
+// Spec step 162: where cash sits and what it earns; the plan and its taps in demo advice
+// mode. The emergency fund is always somewhere it can be reached in days.
+export function cashReply(view: CashView): Reply {
+  if (view.places.length === 0 || !view.plan) {
+    return {
+      body: "I don't see checking, savings or brokerage cash yet.",
+      actions: [CASH_LINK],
+      refs: {},
+    };
+  }
+  const plan = view.plan;
+  if (!view.advice) {
+    const where = view.places.map((p) => `${formatCents(p.balanceCents)} in ${p.name}`).join(", ");
+    return {
+      body: `Your cash: ${where}. I don't give recommendations on real accounts yet.`,
+      actions: [CASH_LINK],
+      refs: {},
+    };
+  }
+  return {
+    body: cashLine(plan),
+    actions: [...moveButtons(plan), CASH_LINK],
+    refs: { advice: true, ...(plan.moves.length > 0 ? { cashPlan: plan.key } : {}) },
   };
 }

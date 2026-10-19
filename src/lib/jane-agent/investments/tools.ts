@@ -18,6 +18,8 @@ import { estimateCollege, loadCollege, type CollegeEstimate } from "@/lib/invest
 import { loadHsa } from "@/lib/investments/hsa";
 import { loadCompanyStock } from "@/lib/investments/company-stock";
 import { loadCrypto } from "@/lib/crypto/crypto";
+import { loadCash } from "@/lib/investments/cash";
+import { CASH_HOMES, CASH_RATES_AS_OF } from "@/config/cash";
 import { formatReturn } from "@/insights/returns";
 import { loadAutoInvest } from "@/lib/investments/auto-invest";
 import { loadRebalance } from "@/lib/investments/rebalance";
@@ -126,6 +128,12 @@ export const INVESTMENT_TOOLS: Anthropic.Tool[] = [
     input_schema: noInput,
   },
   {
+    name: "cash_plan",
+    description:
+      "The person's cash in checking, savings and their brokerage's sweep, each with a typical rate (stand-ins with their date). In demo advice mode, the plan: a month of spending in checking, the emergency fund in high-yield savings (in reach within days, never anywhere slower), the rest in a money market fund or a Treasury ladder, with what each earns a year and the moves Jane can make with the person's tap.",
+    input_schema: noInput,
+  },
+  {
     name: "crypto",
     description:
       "The person's crypto, read-only from their exchanges and wallets: each connection with its source and when it was read, each asset's amount, price and value, the total and its share of everything invested. In demo advice mode, two flags: a share above about 5%, and exchange fees well above low-cost exchanges'. Jane never buys, sells or moves crypto, at any level: there's no way to, so never offer to.",
@@ -158,6 +166,7 @@ export const INVESTMENT_TOOL_STATUS: Readonly<Record<string, string>> = {
   hsa: "Checking your HSA…",
   company_stock: "Looking at your company stock…",
   crypto: "Reading your crypto balances…",
+  cash_plan: "Looking at where your cash sits…",
   college_plan: "Working out college costs…",
   goal_buckets: "Looking at your goals…",
   investment_returns: "Working out your returns…",
@@ -512,6 +521,43 @@ export async function runInvestmentTool(
         return out(describe(await estimateCollege(userId, { childAge: age, type }, { client })));
       }
       return out({ plans: plans.map((p) => ({ child: p.childName, ...describe(p.estimate) })) });
+    }
+    case "cash_plan": {
+      const view = await loadCash(userId, { client, now });
+      return out({
+        ratesAsOf: CASH_RATES_AS_OF,
+        places: view.places.map((p) => ({
+          name: p.name,
+          kind: p.kind,
+          balance: money(p.balanceCents),
+          ratePercent: p.rateBps / 100,
+        })),
+        monthlySpending: money(view.monthlySpendingCents),
+        emergencyFund: money(view.emergencyTargetCents),
+        emergencyFundFrom: view.emergencyFromGoal ? "their goal" : "3 months of their spending",
+        homes: CASH_HOMES.map((h) => ({
+          name: h.name,
+          ratePercent: h.rateBps / 100,
+          daysToReach: h.reachDays,
+        })),
+        plan: !view.advice
+          ? "advice only in demo advice mode"
+          : view.plan && {
+              buckets: view.plan.buckets.map((b) => ({
+                job: b.label,
+                amount: money(b.cents),
+                where: b.home?.name ?? "checking",
+              })),
+              earnsNowAYear: money(view.plan.nowYearlyCents),
+              wouldEarnAYear: money(view.plan.afterYearlyCents),
+              moves: view.plan.moves.map((m) => ({
+                from: m.fromName,
+                to: m.toName,
+                amount: money(m.cents),
+                moreAYear: money(m.gainCents),
+              })),
+            },
+      });
     }
     case "crypto": {
       const view = await loadCrypto(userId, { client, now });

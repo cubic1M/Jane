@@ -16,6 +16,8 @@ import { asking } from "../investments/profile-question";
 import { COMPANY_LINK } from "../investments/company-copy";
 import { CRYPTO_LINK, NEVER_TRADES } from "../investments/crypto-copy";
 import { CryptoError, linkDemoCrypto } from "@/lib/crypto/crypto";
+import { CashError, moveCash } from "@/lib/investments/cash";
+import { CASH_LINK } from "../investments/cash-copy";
 import { mixLine, SIMULATED_WORDS } from "../investments/rebalance-copy";
 import type { ActionId } from "../types";
 import { answeredElsewhere, ChatActionError, type ActionHandler } from "./handler";
@@ -280,3 +282,35 @@ export const cryptoLink: ActionHandler = {
     };
   },
 };
+
+// Spec step 162: one move of the cash plan, only while it's the plan the message showed.
+// Moving money is always the person's tap, at every autopilot level.
+function cashMove(
+  id: ActionId,
+  moveKey: "checking_to_savings" | "sweep_to_money_market",
+): ActionHandler {
+  return {
+    id,
+    on: "open",
+    async run({ userId, message, action, client, now }) {
+      const key = message.refs.cashPlan;
+      if (!key) throw new ChatActionError("not_offered", "That button isn't on this message.");
+      try {
+        const { move, runOn } = await moveCash(userId, key, moveKey, { client, now });
+        return {
+          answeredWith: action.label,
+          note:
+            move.key === "checking_to_savings"
+              ? `Scheduled through the money-movement stand-in (no real money moves): ${formatCents(move.cents)} from ${move.fromName} to ${move.toName} on ${runOn}. It stays in reach.`
+              : `Done ${SIMULATED_WORDS}: ${formatCents(move.cents)} of brokerage cash in the money market fund. It can be sold the next business day.`,
+          actions: [CASH_LINK],
+        };
+      } catch (error) {
+        if (error instanceof CashError) throw answeredElsewhere(error.message);
+        throw error;
+      }
+    },
+  };
+}
+export const cashToSavings = cashMove("cash.to_savings", "checking_to_savings");
+export const cashToMoneyMarket = cashMove("cash.to_money_market", "sweep_to_money_market");

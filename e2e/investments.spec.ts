@@ -198,4 +198,12 @@ test("the demo bank's holdings show with their sources, and Jane answers about t
   await expect(page.getByRole("button", { name: /sell|buy|trade/i })).toHaveCount(0);
   await page.goto("/net-worth");
   await expect(page.getByText(/in crypto, as your exchange or wallet last/)).toBeVisible();
+
+  // Step 162: cash with a job each, the emergency fund in reach, a move with a tap.
+  await page.goto("/investments/cash");
+  await expect(page.getByRole("heading", { name: "The plan" })).toBeVisible();
+  await expect(page.getByText(/^Emergency fund: High-yield savings/)).toBeVisible();
+  await expect(page.getByRole("row", { name: /Treasury ladder.*Never/ })).toBeVisible();
+  await page.getByRole("button", { name: /in the money market fund$/ }).click();
+  await expect(page.getByRole("status")).toContainText("It's moving through the stand-in");
 });
