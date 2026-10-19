@@ -241,3 +241,5 @@ export const PRICE_UP_TOLERANCE_CENTS = 100;
 export const PRICE_UP_LOOKBACK_DAYS = 45;
 // People reshopped per daily run, the longest-waiting first.
 export const RESHOP_DAILY_LIMIT = 200;
+// "I checked: nothing better" is said for reshops from the last this-many days.
+export const RESHOP_NEWS_DAYS = 7;

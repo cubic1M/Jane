@@ -54,7 +54,16 @@ function insurance(
   advice = false,
   canQuote = false,
 ): InsuranceSnapshot {
-  return { policies, household: facts, gaps: coverageGaps(facts, policies), advice, canQuote };
+  return {
+    policies,
+    household: facts,
+    gaps: coverageGaps(facts, policies),
+    advice,
+    canQuote,
+    shopsItself: advice && canQuote,
+    shops: [],
+    noBetter: [],
+  };
 }
 
 function snapshot(over: Partial<Snapshot> = {}): Snapshot {

@@ -3,6 +3,7 @@ import {
   PRICE_UP_TOLERANCE_CENTS,
   RESHOP_DAILY_LIMIT,
   RESHOP_DAYS_BEFORE_RENEWAL,
+  RESHOP_NEWS_DAYS,
 } from "@/config/insurance";
 import { daysBetween } from "@/detection/units";
 import type { Prisma, PrismaClient } from "@/generated/prisma/client";
@@ -285,7 +286,7 @@ export async function recentNoBetter(
     where: {
       status: "no_better",
       reason: { not: "asked" },
-      createdAt: { gte: new Date(now.getTime() - 7 * 86_400_000) },
+      createdAt: { gte: new Date(now.getTime() - RESHOP_NEWS_DAYS * 86_400_000) },
     },
     select: SHOP_SELECT,
     orderBy: { createdAt: "desc" },

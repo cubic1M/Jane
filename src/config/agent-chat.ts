@@ -8,7 +8,7 @@ export const CHAT_DAILY_LIMIT = 5;
 export const CHAT_SOURCE_LIMITS: Readonly<Record<string, number>> = {
   findings: 3,
   // Insurance (spec Phase X).
-  insurance: 1,
+  insurance: 2,
   heads_ups: 2,
   did: 2,
   plan: 1,
@@ -53,6 +53,10 @@ export const MESSAGE_PRIORITY = {
   brief: 1_000,
   // Insurance (spec step 102): cover that looks missing, after budgets and goals.
   insurance_gap: 35,
+  // Spec step 104: a cheaper policy for the same cover, like a finding with a pick; and a
+  // reshop that found nothing better, like something Jane finished.
+  insurance_shop: 68,
+  insurance_checked: 48,
   urgent_alert: 95,
   deadline: 90,
   waiting_on_you: 85,
