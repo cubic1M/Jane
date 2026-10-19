@@ -490,3 +490,17 @@ export const DEMO_ENDORSEMENT_FACTORS: Record<string, number> = {
   address: 1,
 };
 export const COVER_CHANGES_DAILY_LIMIT = 200;
+
+// --- Renewal negotiation and claims, done by Jane (spec step 155) ---------------------------
+// A renewal this much (share) above today's price is worth asking the carrier about.
+export const NEGOTIATE_MIN_RISE = 0.05;
+// The stand-in carrier meets a cheaper competing quote this close (share above it), or
+// takes off this share of the rise for a loyal customer, never below today's price.
+export const DEMO_NEGOTIATE = { matchMargin: 0.02, loyaltyShareOfRise: 0.5 } as const;
+// Jane files claims up to this amount herself through the partner; bigger ones stay with
+// the person and the claims helper.
+export const SMALL_CLAIM_MAX_CENTS = 250_000;
+// The stand-in carrier's claim, day by day after filing: received, then reviewing, then
+// approved (paying the claim less the deductible), then paid.
+export const DEMO_CLAIM_DAYS = { reviewing: 2, approved: 5, paid: 10 } as const;
+export const NEGOTIATIONS_DAILY_LIMIT = 200;
