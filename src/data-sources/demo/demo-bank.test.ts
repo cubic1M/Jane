@@ -86,6 +86,15 @@ describe("the demo bank", () => {
     ]);
   });
 
+  it("has a card minimum that covers a month of interest, so paying it never grows the balance", () => {
+    const [card] = demoLiabilities(DEMO, "2026-10-18").credit!;
+    const purchase = card.aprs!.find((a) => a.apr_type === "purchase_apr")!;
+    const monthlyInterest =
+      (purchase.balance_subject_to_apr! * purchase.apr_percentage!) / 100 / 12;
+    expect(monthlyInterest).toBeGreaterThan(46);
+    expect(card.minimum_payment_amount!).toBeGreaterThan(monthlyInterest);
+  });
+
   it("reports loans with due dates after today", () => {
     const loans = normalizeLiabilities(demoLiabilities(DEMO, "2026-10-18"));
     expect(loans.map((l) => l.kind)).toEqual(["credit", "mortgage", "student", "loan"]);
