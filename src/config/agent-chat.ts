@@ -218,3 +218,6 @@ export const CHAT_BLOCK_ROWS = 8;
 
 // Spec step 95: guided flows in the chat show at most this many answers as buttons.
 export const CHAT_FLOW_OPTIONS = 5;
+
+// Spec step 96: chat search shows at most this many messages, newest first.
+export const CHAT_SEARCH_RESULTS = 30;
