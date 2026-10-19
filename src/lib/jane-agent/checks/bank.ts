@@ -661,6 +661,8 @@ export const QUESTIONS: readonly CheckQuestion[] = [
     text: "what's the standard deduction",
     needs: "rules",
     expect: { intent: "tax", mentions: /\$16,100/ },
+  },
+
   // Insurance (spec step 108), over the demo bank's sample GEICO car policy
   // (DEMO_POLICY in src/lib/insurance/profile.ts: $142.00 a month, a $1,000.00 deductible).
   {
