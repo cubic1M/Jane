@@ -115,7 +115,9 @@ describe("the whole-picture answer", () => {
     const urgent = answer(
       snapshot({ urgentAlerts: [{ id: "a1", title: "Your checking balance is low", body: "" }] }),
     );
-    expect(urgent.body.split("\n")[0]).toBe("Not quite: Your checking balance is low.");
+    expect(urgent.body.split("\n")[0]).toBe(
+      "Not quite: Your checking balance is low. Otherwise you have $1,234.56 safe to spend until payday, Nov 1 (in 13 days).",
+    );
     expect(
       wholePicture(
         snapshot({ budgetsOver: [{ category: "Dining", overCents: 4_000, month: "2026-10" }] }),
@@ -159,7 +161,9 @@ describe("the whole-picture answer", () => {
   it("leads with the things to do for this month, and what's due by the month's end", () => {
     const s = snapshot({ findings: [finding({ findingId: "hulu" })] });
     const lines = answer(s, "month").body.split("\n");
-    expect(lines[0]).toBe("This month, one thing matters most:");
+    expect(lines[0]).toBe(
+      "This month, one thing matters most, starting with Review your Hulu subscription.",
+    );
     expect(lines[1]).toMatch(/^1\. Review your Hulu subscription\./);
     expect(lines).toContain("Due before the month ends: Netflix $17.99 in 3 days.");
   });

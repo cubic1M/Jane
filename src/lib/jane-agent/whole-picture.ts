@@ -72,7 +72,8 @@ export function wholePicture(snapshot: Snapshot, ranked: Ranked[], focus: Focus)
     headline = `Not quite: you're short by ${formatCents(-safe.safeCents)}${until}, after your bills.`;
   } else if (urgent.length > 0) {
     verdict = "act";
-    headline = `Not quite: ${sentence(urgent[0])}`;
+    const alert = urgent[0].replace(/[.!?]+$/, "");
+    headline = money ? `Not quite: ${alert}. Otherwise ${money}.` : `Not quite: ${alert}.`;
   } else if (worry) {
     verdict = "watch";
     headline = money ? `Mostly: ${money}, but ${worry}.` : `Mostly, but ${worry}.`;
@@ -147,7 +148,7 @@ export function wholePictureReply(
       ? [
           top.length === 0
             ? "Nothing needs doing this month. I'll tell you here when something does."
-            : `This month, ${top.length === 1 ? "one thing matters" : `${top.length} things matter`} most:`,
+            : `This month, ${top.length === 1 ? "one thing matters most" : `${top.length} things matter most`}, starting with ${top[0].title.replace(/[.!?]+$/, "")}.`,
           ...numbered,
           picture.headline,
           dueLine(picture, snapshot.asOf, focus),

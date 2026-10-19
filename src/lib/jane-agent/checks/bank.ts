@@ -326,7 +326,7 @@ export const QUESTIONS: readonly CheckQuestion[] = [
     id: "whole-8",
     text: "how am I doing",
     needs: "rules",
-    expect: { mentions: /\bpayday\b/i },
+    expect: { mentions: /\bpayday\b/i, list: true, maxChars: 900 },
   },
   {
     id: "whole-8b",
