@@ -1,4 +1,5 @@
 import { CHAT_WEEK_DAYS } from "@/config/agent-chat";
+import type { LifeEventKind } from "@/config/life-events";
 import { CATEGORY_LABELS, UNCATEGORIZED } from "@/insights/labels";
 import { parseMoneyToCents } from "@/lib/money";
 import { parseInvestmentIntent, type InvestmentIntent } from "./investments/intents";
@@ -17,6 +18,8 @@ export type Intent =
   | { kind: "what_did" }
   // Spec step 97: "what changed?"
   | { kind: "changes" }
+  // Spec step 100: "I'm moving", "I got a new job", "we're having a baby".
+  | { kind: "life_event"; event: LifeEventKind }
   | { kind: "approve_all" }
   | { kind: "undo" }
   | { kind: "pause_autopilot" }
@@ -165,6 +168,20 @@ const WHAT_DID =
   /\bwhat (?:did|have) you (?:do|done|been (?:doing|up to))\b|\bwhat'?s new\b|\banything new\b|\bwhat happened\b|\bwhat are you (?:doing|working on)\b/;
 const CHANGES =
   /\bwhat(?:'s| has| have)? changed\b|\b(?:has|have) (?:anything|something) changed\b|\bany(?:thing)? (?:changes?|different|unusual)\b|\bwhat'?s different\b|\bnoticed anything\b/;
+const LIFE: readonly [LifeEventKind, RegExp][] = [
+  [
+    "moving",
+    /\b(?:i'?m|i am|we'?re|we are) (?:moving|relocating)\b|\b(?:i|we) (?:just )?moved\b|\bmoving (?:house|out|home)\b/,
+  ],
+  [
+    "new_job",
+    /\b(?:got|started|start|landed|accepted|starting) (?:a |my )?new job\b|\bi'?m changing jobs\b/,
+  ],
+  [
+    "new_baby",
+    /\b(?:having|expecting|had) a baby\b|\b(?:i'?m|we'?re|i am|we are) (?:pregnant|expecting)\b|\bnew baby\b/,
+  ],
+];
 const APPROVE_ALL =
   /\b(?:yes to (?:all|everything)|approve (?:them all|all|everything|the safe ones|the safe stuff|safe ones))\b/;
 const UNDO = /^(?:undo|undo (?:that|it|the last one)|take (?:that|it) back)$/;
@@ -196,6 +213,8 @@ export function parseIntent(raw: string, asOf: string): Intent {
   if (THANKS.test(text)) return { kind: "greeting", thanks: true };
   if (PAUSE.test(text)) return { kind: "pause_autopilot" };
   if (CHANGES.test(text)) return { kind: "changes" };
+  const life = LIFE.find(([, pattern]) => pattern.test(text));
+  if (life) return { kind: "life_event", event: life[0] };
   if (WHAT_DID.test(text)) return { kind: "what_did" };
   if (APPROVE_ALL.test(text)) return { kind: "approve_all" };
   if (UNDO.test(text)) return { kind: "undo" };

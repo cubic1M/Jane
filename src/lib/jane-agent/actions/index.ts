@@ -22,6 +22,7 @@ import {
   investAnswer5,
 } from "./investments";
 import { changeBudget, changeExpected, changeLook } from "./changes";
+import { lifeNever, lifeNo, lifeYes } from "./life";
 
 // Every button action, by id (spec step 81). A new button is a new handler here; the
 // message sources offer it by id (src/lib/jane-agent/types.ts ACTION_IDS).
@@ -58,6 +59,10 @@ export const ACTION_HANDLERS: Readonly<Record<ActionId, ActionHandler>> = {
   "change.look": changeLook,
   "change.budget": changeBudget,
   "change.expected": changeExpected,
+  // Life events spotted (spec step 100).
+  "life.yes": lifeYes,
+  "life.no": lifeNo,
+  "life.never": lifeNever,
 };
 
 const MESSAGE_ID = /^[a-z0-9]{1,40}$/i;
