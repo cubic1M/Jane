@@ -37,6 +37,11 @@ const netflix = (f: Facts) => [charge(f, "Netflix")?.lastCents ?? null];
 const food = (month: (f: Facts) => string) => (f: Facts) => [
   spentOn(f, "Food and drink", month(f)),
 ];
+// Spec step 137: the investment figures a right answer gives.
+const invested = (f: Facts) => [f.investments?.totalCents ?? null];
+const inAccount = (name: string) => (f: Facts) => [
+  f.investments?.accounts.find((a) => a.name.includes(name))?.balanceCents ?? null,
+];
 const ADVICE = /\b(?:stocks?|invest\w*|tax(?:es)?|lawyer|legal)\b/i;
 
 export const QUESTIONS: readonly CheckQuestion[] = [
@@ -696,6 +701,107 @@ export const QUESTIONS: readonly CheckQuestion[] = [
     text: "what would raising my deductible save",
     needs: "claude",
     expect: { mentions: /deductible/i },
+  },
+
+  // Investments (spec steps 128–137), on the demo bank in demo advice mode.
+  {
+    id: "inv-1",
+    text: "what do I own",
+    needs: "rules",
+    expect: { intent: "investments", figures: invested, link: "/investments", list: true },
+  },
+  {
+    id: "inv-2",
+    text: "what's in my 401k",
+    needs: "rules",
+    expect: {
+      intent: "investments",
+      figures: inAccount("401(k)"),
+      list: true,
+      mentions: /401\(k\)/,
+    },
+  },
+  {
+    id: "inv-3",
+    text: "what are my investment fees",
+    needs: "rules",
+    expect: { intent: "investments", link: "/investments/fees", list: true, maxChars: 1_600 },
+  },
+  {
+    id: "inv-4",
+    text: "review my portfolio",
+    needs: "rules",
+    expect: { intent: "investments", link: "/investments/review", list: true, maxChars: 1_600 },
+  },
+  {
+    id: "inv-5",
+    text: "am I on track for retirement",
+    needs: "rules",
+    expect: {
+      intent: "investments",
+      link: "/investments/retirement",
+      list: true,
+      maxChars: 1_800,
+      mentions: /match/i,
+      avoid: /\b(?:guarantee|will have)\b/i,
+    },
+  },
+  {
+    id: "inv-6",
+    text: "rebalance",
+    needs: "rules",
+    expect: {
+      intent: "investments",
+      button: "invest.rebalance",
+      mentions: /simulated/i,
+      maxChars: 1_200,
+    },
+  },
+  {
+    id: "inv-7",
+    text: "which account should I invest in first",
+    needs: "rules",
+    expect: { intent: "investments", link: "/investments/accounts", list: true, maxChars: 2_400 },
+  },
+  {
+    id: "inv-8",
+    text: "invest automatically",
+    needs: "rules",
+    expect: { intent: "investments", button: "invest.auto_start", mentions: /safe to spend/i },
+  },
+  {
+    id: "inv-9",
+    text: "what's my risk profile",
+    needs: "rules",
+    expect: { intent: "investments", mentions: /moderate/i, link: "/investments/profile" },
+  },
+  {
+    id: "inv-10",
+    text: "what is an index fund",
+    needs: "rules",
+    expect: { intent: "learn", link: "/learn/index-funds" },
+  },
+  {
+    id: "inv-11",
+    text: "how are my investments doing",
+    needs: "rules",
+    expect: {
+      intent: "investments",
+      figures: invested,
+      avoid: /\b(?:will (?:rise|fall|go)|expect|forecast|predict)\w*/i,
+    },
+  },
+  {
+    id: "inv-12",
+    text: "what do you do with my investments",
+    needs: "rules",
+    expect: { intent: "investments", mentions: /by myself/i, link: "/settings" },
+  },
+  {
+    id: "inv-13",
+    text: "should I buy more of my company's stock",
+    needs: "claude",
+    expect: { avoid: /\byou should (?:buy|sell)\b/i },
   },
 
   // Outside what Jane does: brief, and never advice.

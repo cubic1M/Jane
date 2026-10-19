@@ -234,11 +234,16 @@ export async function loadTaxForms(
         account: { select: { name: true } },
       },
     }),
-    db.accounts.findMany({ select: { name: true, type: true, subtype: true } }),
+    // In a fixed order, so the forms always come out in the same order.
+    db.accounts.findMany({
+      select: { name: true, type: true, subtype: true },
+      orderBy: [{ name: "asc" }, { id: "asc" }],
+    }),
     // Banks report loan interest for the current year only.
     year === now.getUTCFullYear()
       ? db.liabilities.findMany({
           select: { kind: true, ytdInterestPaidCents: true, account: { select: { name: true } } },
+          orderBy: [{ account: { name: "asc" } }, { id: "asc" }],
         })
       : Promise.resolve([]),
     db.taxForms.findMany({ where: { year }, select: { key: true } }),
