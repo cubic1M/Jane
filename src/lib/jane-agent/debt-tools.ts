@@ -9,6 +9,7 @@ import type { Refinance } from "@/lib/refinance";
 import type { StudentLoans } from "@/lib/student-loans";
 import type { Mortgage } from "@/lib/mortgage";
 import type { Credit } from "@/lib/credit";
+import type { DebtAutopilot } from "@/lib/debt-autopilot";
 import { PMI_SOURCE } from "@/config/debt";
 import { PMI_STEPS } from "@/planning/mortgage";
 import { STUDENT_SOURCES, STUDENT_STEPS } from "@/config/student-loans";
@@ -53,6 +54,12 @@ export const DEBT_TOOLS: Anthropic.Tool[] = [
     },
   },
   REFINANCE_TOOL,
+  {
+    name: "debt_autopilot",
+    description:
+      "What Jane does about the person's debts by herself at their debt autopilot level (step by step), loan and card payments due in the next month (soonest first, overdue first), payments due just before payday with the drafted request to move the date, rate changes the bank reported, and whether Jane started the payoff plan herself. Jane never applies for credit, moves money or signs without a tap.",
+    input_schema: noInput,
+  },
   {
     name: "credit_score",
     description:
@@ -197,6 +204,7 @@ export const DEBT_TOOL_STATUS: Readonly<Record<string, string>> = {
   student_loans: "Comparing student loan plans…",
   mortgage: "Looking at your mortgage…",
   credit_score: "Checking your credit score…",
+  debt_autopilot: "Checking what's due on your debts…",
 };
 
 export function refinanceToolOutput(refi: Refinance, money: (cents: number) => string) {
@@ -392,5 +400,33 @@ export function creditToolOutput(credit: Credit, money: (cents: number) => strin
       payToGetUnder10: money(latest.utilisation.toUnderGoodCents),
     },
     janeIsDoing: latest.doing,
+  };
+}
+
+export function debtAutopilotToolOutput(data: DebtAutopilot, money: (cents: number) => string) {
+  return {
+    debtAutopilotLevel: data.level,
+    janeDoesByHerself: data.does.map((d) => d.does),
+    alwaysNeedsATap: "applying for credit, moving money, signing",
+    upcomingPayments: data.upcoming.map((d) => ({
+      debt: d.name,
+      due: d.due,
+      payment: d.paymentCents === null ? null : money(d.paymentCents),
+      overdue: d.overdue,
+    })),
+    dueDateMoves: data.dueMoves.map((m) => ({
+      debt: m.debtName,
+      dueDay: m.dueDay,
+      payday: m.payday,
+      suggestedDay: m.suggestedDay,
+      request: m.request,
+    })),
+    rateChanges: data.rateChanges.map((c) => ({
+      debt: c.name,
+      from: formatRate(c.fromBps),
+      to: formatRate(c.toBps),
+      on: c.on,
+    })),
+    payoffPlanStartedByJaneOn: data.planStartedOn,
   };
 }

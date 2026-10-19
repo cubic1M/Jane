@@ -16,6 +16,8 @@ import { localityMessage, movingEventMessage, spottedMoveMessage } from "../tax-
 import { collectedMessage, flaggedMessage, missingMessage } from "../tax-documents-message";
 import { planMoveMessage } from "../tax-plan-message";
 import { givingOptionsMessage, receiptMessage } from "../giving-message";
+import { familyChoiceMessage, statusOf } from "../family-taxes-message";
+import { worthSaying } from "@/planning/family-taxes";
 import { HARVEST_FROM } from "@/config/tax";
 import { formatCents } from "@/lib/money";
 import { incomeLine, listOf } from "@/planning/tax-profile";
@@ -342,6 +344,26 @@ export const taxesSource: MessageSource = {
           priority: TAX_MESSAGE_PRIORITY.giving,
         });
       }
+    }
+
+    // Spec step 169: a family tax choice where one side saves enough, once a year (demo
+    // advice). Filing status only when the better side isn't the one on the profile.
+    const family = tax.family;
+    for (const c of family?.choices ?? []) {
+      // Claiming one's own children is no choice to bring up; it's on the page and in answers.
+      if (!worthSaying(c) || c.key === "children") continue;
+      if (
+        c.key === "filing" &&
+        statusOf(c.sides[c.better!].label) === estimate?.input.filingStatus
+      ) {
+        continue;
+      }
+      out.push({
+        kind: c.key === "filing" ? "decision" : "heads_up",
+        ...familyChoiceMessage(c, family!.year),
+        dedupeKey: `family:${family!.year}:${c.key}`,
+        priority: TAX_MESSAGE_PRIORITY.family,
+      });
     }
 
     // Spec step 166: with a document partner, Jane collects the forms herself: a form that

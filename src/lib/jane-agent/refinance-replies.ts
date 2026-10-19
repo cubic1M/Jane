@@ -156,7 +156,7 @@ export function transferReply(data: Transfers): Reply {
   const picks = data.comparisons.filter((c) => c.pick);
   for (const c of picks) {
     lines.push(
-      `For your ${c.debtName} (${formatCents(c.balanceCents)} at ${formatRate(c.aprBps)}), I'd move it to ${c.pick!.offer.cardName}:`,
+      `I'd move your ${c.debtName} balance (${formatCents(c.balanceCents)} at ${formatRate(c.aprBps)}) to ${c.pick!.offer.cardName}.`,
       ...c.why,
     );
   }

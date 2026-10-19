@@ -6,7 +6,8 @@ import { TaxProfileError, savePayStub, saveTaxAnswers } from "@/lib/tax-profile"
 import { ResidencyError, saveLocality, saveMoves, saveWorkState } from "@/lib/tax-states";
 import { loadTaxProfile } from "@/lib/tax-profile";
 import { defaultTaxYear } from "@/planning/tax-pack";
-import { answersFrom, payStubFrom, residencyFrom } from "./answers";
+import { FamilyTaxesError, saveFamilyDetails } from "@/lib/family-taxes";
+import { answersFrom, familyFrom, payStubFrom, residencyFrom } from "./answers";
 
 // The tax profile page (spec step 118): saves every field the person filled in. A field
 // left empty stays unanswered, so nothing is assumed.
@@ -86,6 +87,23 @@ export async function saveResidencyAction(
     if (error instanceof ResidencyError || error instanceof TaxProfileError) {
       return { ok: false, message: error.message };
     }
+    throw error;
+  }
+}
+
+// Spec step 169: family details for the family tax choices.
+export async function saveFamilyAction(
+  _previous: TaxProfileState,
+  formData: FormData,
+): Promise<TaxProfileState> {
+  const user = await requireUser();
+  try {
+    await saveFamilyDetails(user.id, familyFrom(formData), { via: "page" });
+    revalidatePath("/taxes");
+    revalidatePath("/taxes/profile");
+    return { ok: true, message: "Saved. Your family tax choices use it now." };
+  } catch (error) {
+    if (error instanceof FamilyTaxesError) return { ok: false, message: error.message };
     throw error;
   }
 }

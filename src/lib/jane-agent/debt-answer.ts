@@ -5,6 +5,7 @@ import { loadTransfers } from "@/lib/balance-transfers";
 import { loadStudentLoans } from "@/lib/student-loans";
 import { loadMortgage } from "@/lib/mortgage";
 import { loadCredit } from "@/lib/credit";
+import { loadDebtAutopilot } from "@/lib/debt-autopilot";
 import { listApplications } from "@/lib/loan-applications";
 import { checkRates, loadRefinance } from "@/lib/refinance";
 import type { DebtIntent } from "./debt-intents";
@@ -13,6 +14,7 @@ import { loanStatusReply, refinanceReply, transferReply } from "./refinance-repl
 import { studentReply } from "./student-replies";
 import { mortgageReply } from "./mortgage-replies";
 import { creditReply } from "./credit-replies";
+import { debtAutopilotReply, debtDueReply } from "./debt-autopilot-replies";
 import type { Reply } from "./replies";
 
 // Answers questions about debts by rules (spec Phase Y), with the same loaders as the
@@ -40,6 +42,10 @@ export async function answerDebt(
       }
       return refinanceReply(intent.target, refi, await loadDebts(userId, { client, now }));
     }
+    case "debt_autopilot":
+      return debtAutopilotReply(await loadDebtAutopilot(userId, { client, now }));
+    case "debt_due":
+      return debtDueReply(await loadDebtAutopilot(userId, { client, now }));
     case "credit_score":
       return creditReply(await loadCredit(userId, { client, now }));
     case "mortgage":
