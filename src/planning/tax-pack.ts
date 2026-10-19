@@ -8,6 +8,8 @@ import {
 } from "@/config/tax-pack";
 import type { ExpectedForm } from "@/planning/tax-documents";
 import { TAX_PACK_COPY } from "@/planning/tax-pack-copy";
+import { LOCAL_TAXES, STATE_SOURCES } from "@/config/tax-states";
+import { residencePeriods, workStateTaxesRemoteWages, type Move } from "@/planning/tax-states";
 import { NO_OVERRIDES, tagAll, type TagOverrides, type TagSource } from "@/planning/tax-tags";
 
 // The tax-time pack (spec step 72): a year's charity gifts, spending people often show their
@@ -51,7 +53,56 @@ export type TaxPack = {
   reminders: string[];
   // Spec step 119: the forms to expect for the year, and whether each arrived.
   forms: (ExpectedForm & { received: boolean })[];
+  // Spec step 165: the states lived or worked in, and a city income tax.
+  states: PackState[];
 };
+
+export type PackState = {
+  code: string;
+  // A resident's dates in the year, or "nonresident" for the employer's state.
+  from: string | null;
+  to: string | null;
+  nonresident: boolean;
+  agency: string;
+  url: string;
+};
+
+// Where the person lived in the year (moves split it), then the employer's state when it
+// taxes their remote wages, then a city's income tax as its own line.
+export function packStates(input: {
+  year: number;
+  state: string | null;
+  moves: Move[];
+  workState: string | null;
+  locality: string | null;
+}): PackState[] {
+  const periods = residencePeriods(input.year, input.state, input.moves);
+  const source = (code: string) => STATE_SOURCES[code] ?? { agency: code, url: "" };
+  const out: PackState[] = periods.map((p) => ({
+    code: p.state,
+    from: periods.length > 1 ? p.from : null,
+    to: periods.length > 1 ? p.to : null,
+    nonresident: false,
+    agency: source(p.state).agency,
+    url: source(p.state).url,
+  }));
+  const work = input.workState;
+  if (work && periods.some((p) => workStateTaxesRemoteWages(work, p.state))) {
+    out.push({ code: work, from: null, to: null, nonresident: true, ...source(work) });
+  }
+  const local = input.locality ? LOCAL_TAXES[input.locality] : undefined;
+  if (local && periods.some((p) => p.state === local.state)) {
+    out.push({
+      code: input.locality!,
+      from: null,
+      to: null,
+      nonresident: false,
+      agency: local.label,
+      url: local.url,
+    });
+  }
+  return out;
+}
 
 const PREPARER_ORDER: readonly PreparerGroup[] = [
   "medical",
@@ -124,6 +175,7 @@ export function buildTaxPack({
   loans,
   overrides = NO_OVERRIDES,
   forms = [],
+  states = [],
 }: {
   year: number;
   today: string;
@@ -131,6 +183,7 @@ export function buildTaxPack({
   loans: PackLoan[];
   overrides?: TagOverrides;
   forms?: TaxPack["forms"];
+  states?: PackState[];
 }): TaxPack {
   const inYear = transactions.filter((t) => yearOf(t.date) === year);
   const incoming = inYear.filter((t) => t.amountCents < 0);
@@ -175,6 +228,7 @@ export function buildTaxPack({
     income: { ...income, quarterCents },
     reminders: estimatedTaxDates(year),
     forms,
+    states,
   };
 }
 
@@ -221,6 +275,19 @@ export function taxPackCsv(pack: TaxPack): string {
       `${label}: ${TAX_PACK_COPY.totalLabel.toLowerCase()}`,
       dollars(g.totalCents),
       "",
+    ]),
+    ...pack.states.map((st) => [
+      TAX_PACK_COPY.statesHeading,
+      st.from ? `${st.from} to ${st.to}` : "",
+      st.agency,
+      "",
+      st.nonresident
+        ? TAX_PACK_COPY.statesNonresident
+        : st.code.length > 2
+          ? TAX_PACK_COPY.statesLocal
+          : st.from
+            ? st.url
+            : `${TAX_PACK_COPY.statesAllYear}: ${st.url}`,
     ]),
     ...pack.forms.map((f) => [
       TAX_PACK_COPY.formsHeading,

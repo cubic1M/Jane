@@ -55,6 +55,7 @@ export async function exportUserData(
     savedShares,
     autopilotSectors,
     autopilotActs,
+    controllerRuns,
     janeMessages,
     janePreferences,
     teamAccess,
@@ -62,6 +63,7 @@ export async function exportUserData(
     taxTags,
     taxForms,
     taxReturns,
+    taxDocuments,
   ] = await Promise.all([
     client.user.findUniqueOrThrow({
       where: { id: userId },
@@ -401,6 +403,10 @@ export async function exportUserData(
     db.autopilotActs.findMany({
       select: { sector: true, cents: true, what: true, createdAt: true },
     }),
+    // The nightly controller run's log (spec step 142).
+    db.controllerRuns.findMany({
+      select: { day: true, startedAt: true, finishedAt: true, steps: true },
+    }),
     // Jane's chat (spec step 81): every message, with the buttons and what they answered.
     db.janeMessages.findMany({
       select: {
@@ -447,6 +453,11 @@ export async function exportUserData(
         businessMilesYear: true,
         taxPayments: true,
         refundsHandled: true,
+        // Spec step 165: where they lived and worked.
+        moves: true,
+        workState: true,
+        locality: true,
+        residencyYear: true,
         updatedAt: true,
       },
     }),
@@ -469,6 +480,18 @@ export async function exportUserData(
         acceptedAt: true,
       },
     }),
+    // Tax forms Jane collected (spec step 166), with their boxes.
+    db.taxDocuments.findMany({
+      select: {
+        year: true,
+        formKey: true,
+        payer: true,
+        partner: true,
+        boxes: true,
+        fetchedAt: true,
+        decision: true,
+      },
+    }),
   ]);
   // Terms they typed for debts their bank doesn't report (spec step 109).
   const debtTerms = await db.debtTerms.findMany({
@@ -484,32 +507,64 @@ export async function exportUserData(
   });
   // Their payoff plan, the refinance offers Jane checked, and their loan applications
   // (spec steps 110–112).
-  const [debtPlan, refinanceCheck, loanApplications] = await Promise.all([
-    db.debtPlans.findFirst({
-      select: { strategy: true, extraCents: true, startedOn: true, checkedOn: true, status: true },
-    }),
-    db.refinanceChecks.findFirst({ select: { checkedOn: true, partner: true, quotes: true } }),
-    db.loanApplications.findMany({
-      select: {
-        lender: true,
-        oldName: true,
-        product: true,
-        aprBps: true,
-        termMonths: true,
-        amountCents: true,
-        monthlyCents: true,
-        feeCents: true,
-        status: true,
-        applicant: true,
-        submittedAt: true,
-        acceptedAt: true,
-        fundedAt: true,
-        paidOffAt: true,
-        createdAt: true,
-      },
-      orderBy: { createdAt: "asc" },
-    }),
-  ]);
+  const [debtPlan, refinanceCheck, loanApplications, balanceTransfers, studentLoanProfile] =
+    await Promise.all([
+      db.debtPlans.findFirst({
+        select: {
+          strategy: true,
+          extraCents: true,
+          startedOn: true,
+          checkedOn: true,
+          status: true,
+        },
+      }),
+      db.refinanceChecks.findFirst({ select: { checkedOn: true, partner: true, quotes: true } }),
+      db.loanApplications.findMany({
+        select: {
+          lender: true,
+          oldName: true,
+          product: true,
+          aprBps: true,
+          termMonths: true,
+          amountCents: true,
+          monthlyCents: true,
+          feeCents: true,
+          status: true,
+          applicant: true,
+          submittedAt: true,
+          acceptedAt: true,
+          fundedAt: true,
+          paidOffAt: true,
+          createdAt: true,
+        },
+        orderBy: { createdAt: "asc" },
+      }),
+      // Spec steps 113–114.
+      db.balanceTransfers.findMany({
+        select: {
+          fromName: true,
+          cardName: true,
+          amountCents: true,
+          feeCents: true,
+          promoMonths: true,
+          startedOn: true,
+          promoEndsOn: true,
+          status: true,
+        },
+        orderBy: { createdAt: "asc" },
+      }),
+      db.studentLoanProfiles.findFirst({
+        select: {
+          agiCents: true,
+          familySize: true,
+          dependants: true,
+          borrower: true,
+          publicService: true,
+          countedBefore: true,
+          stepsDone: true,
+        },
+      }),
+    ]);
   // What's in their investment accounts and its history (spec step 128).
   const investments = await investmentsExport(userId, client);
   // Insurance (spec Phase X): every policy on the profile and the household facts.
@@ -551,6 +606,8 @@ export async function exportUserData(
     debtPlan,
     refinanceCheck,
     loanApplications,
+    balanceTransfers,
+    studentLoanProfile,
     documents: {
       note: "The files themselves aren't in this download. Download each one from /documents.",
       files: documents,
@@ -564,6 +621,7 @@ export async function exportUserData(
     savedShares,
     autopilotSectors,
     autopilotActs,
+    controllerRuns,
     janeMessages,
     janePreferences,
     investments,
@@ -578,5 +636,6 @@ export async function exportUserData(
     taxTags,
     taxForms,
     taxReturns,
+    taxDocuments,
   };
 }

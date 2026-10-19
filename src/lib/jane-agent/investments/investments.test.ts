@@ -17,6 +17,8 @@ vi.mock("@/lib/investments/retirement", () => ({ loadRetirement: vi.fn() }));
 vi.mock("@/lib/investments/rebalance", () => ({ loadRebalance: vi.fn() }));
 vi.mock("@/lib/investments/auto-invest", () => ({ loadAutoInvest: vi.fn() }));
 vi.mock("@/lib/investments/accounts", () => ({ loadAccountPlan: vi.fn() }));
+vi.mock("@/lib/investments/returns", () => ({ loadReturns: vi.fn() }));
+vi.mock("@/lib/investments/goal-buckets", () => ({ loadGoalBuckets: vi.fn() }));
 
 import { loadInvestments } from "@/lib/investments/holdings";
 import { profileOf } from "@/lib/investments/profile";
@@ -45,6 +47,9 @@ import {
   rebalanceReply,
   retirementReply,
   reviewReply,
+  returnsReply,
+  goalBucketsReply,
+  collegeReply,
 } from "./replies";
 import { gather } from "../brain";
 import { parseIntent } from "../intents";
@@ -54,6 +59,8 @@ import { holdingsReply, matchAccounts } from "./replies";
 import { INVESTMENT_TOOLS, runInvestmentTool } from "./tools";
 import { CHAT_PAGES, CHAT_TOOLS, proposeAction } from "../claude-tools";
 import { learnLink, learnReply } from "../learn";
+import { goalBuckets } from "@/planning/goal-buckets";
+import { comparePlans } from "@/planning/college";
 import type { PrismaClient } from "@/generated/prisma/client";
 
 // Spec step 128: what the person owns, in Jane's chat.
@@ -207,7 +214,7 @@ describe("Claude's holdings tool", () => {
     expect(parsed.accounts[0].holdings[0]).toMatchObject({
       name: "Northstar Target 2055 Fund",
       yearlyCost: "0.75%",
-      source: "Demo Bank (fake data), Demo 401(k), price as of Oct 18, 2026",
+      source: "Demo Bank (fake data), Demo 401(k), price as of Oct 17, 2026",
     });
     expect(out.cents).toEqual(expect.arrayContaining([9_673_055, 3_826_807]));
   });
@@ -1261,5 +1268,243 @@ describe("overviewReply and autopilotReply", () => {
       "Buying, selling and moving money always wait for your tap, at every level.",
     );
     expect(autopilotReply("ask").body).not.toMatch(/invest every payday/);
+  });
+});
+
+// Spec step 156: prices and real returns.
+const RETURNS = {
+  asOf: "2026-10-18",
+  simulatedPrices: true,
+  periods: [
+    {
+      key: "1m" as const,
+      label: "Last month",
+      from: "2026-09-18",
+      to: "2026-10-18",
+      startCents: 9_500_000,
+      endCents: 9_673_055,
+      timeWeighted: 0.0123,
+      moneyWeighted: 0.011,
+      benchmark: 0.009,
+      paidInCents: 40_800,
+      incomeCents: 3_120,
+    },
+    {
+      key: "1y" as const,
+      label: "Last 12 months",
+      from: "2025-10-18",
+      to: "2026-10-18",
+      startCents: 9_000_000,
+      endCents: 9_673_055,
+      timeWeighted: 0.0712,
+      moneyWeighted: 0.0688,
+      benchmark: 0.0654,
+      paidInCents: 489_600,
+      incomeCents: 37_440,
+    },
+  ],
+};
+
+describe("return questions, by rules", () => {
+  it.each([
+    "what's my investment return",
+    "how much have my investments made",
+    "portfolio performance",
+    "401k returns",
+  ])("reads %j as returns", (text) => {
+    expect(parseIntent(text, ASOF)).toMatchObject({ kind: "investments", topic: "returns" });
+  });
+
+  it("leaves a store's returns to the other rules", () => {
+    expect(parseIntent("what's Target's return policy", ASOF)).not.toMatchObject({
+      topic: "returns",
+    });
+  });
+});
+
+describe("returnsReply", () => {
+  it("leads with the longest period, against a similar mix, past results only", () => {
+    const reply = returnsReply(RETURNS);
+    expect(reply.body).toMatch(
+      /^Last 12 months, what you own returned \+7\.1% \(your own money: \+6\.9%\), against \+6\.5% for a similar mix of index funds, and paid \$374\.40 in dividends and interest\.\n- Last month: \+1\.2%; your money \+1\.1%; similar mix \+0\.9%/,
+    );
+    expect(reply.body).toContain("they don't say what comes next");
+    expect(reply.body).toContain("demo price feed's (made up)");
+    expect(reply.body).not.toMatch(/\b(?:will|expect|forecast|predict)\w*/i);
+  });
+
+  it("says when there isn't enough history yet", () => {
+    expect(returnsReply({ ...RETURNS, periods: [] }).body).toMatch(/^I can't work out returns yet/);
+  });
+
+  it("adds the year's return to how the investments are doing", () => {
+    const reply = overviewReply(demoInvestmentSnapshot({ advice: false, returns: RETURNS }));
+    expect(reply.body).toMatch(/Last 12 months, what you own returned \+7\.1%/);
+  });
+
+  it("gives Claude every figure", async () => {
+    const { loadReturns } = await import("@/lib/investments/returns");
+    vi.mocked(loadReturns).mockResolvedValue(RETURNS);
+    const out = await runInvestmentTool(
+      "u",
+      "investment_returns",
+      {},
+      {
+        client: {} as PrismaClient,
+        now: new Date("2026-10-19T12:00:00Z"),
+      },
+    );
+    expect(JSON.parse(out.content).periods[1]).toMatchObject({
+      investments: "+7.1%",
+      yourMoney: "+6.9%",
+    });
+    expect(out.cents).toEqual(expect.arrayContaining([9_673_055, 37_440, 489_600]));
+  });
+});
+
+// Spec step 157: every goal invested for its timeline.
+const BUCKETS = goalBuckets(
+  [
+    { id: "house", name: "House", targetDate: "2028-10-01", monthlyCents: 50_000 },
+    { id: "retirement", name: "Retirement", targetDate: "2048-10-19", monthlyCents: 0 },
+  ],
+  "2026-10-19",
+  3,
+);
+
+describe("goal questions, by rules", () => {
+  it.each([
+    "how should my house goal be invested",
+    "invest for my goals",
+    "glide path",
+    "should I invest my savings for a house",
+  ])("reads %j as goals", (text) => {
+    expect(parseIntent(text, ASOF)).toMatchObject({ kind: "investments", topic: "goals" });
+  });
+});
+
+describe("goalBucketsReply and the goals message", () => {
+  it("lists each goal's mix and why, and says who moves new money", () => {
+    const reply = goalBucketsReply({ advice: true, byHerself: true, buckets: BUCKETS });
+    expect(reply.body).toMatch(
+      /^Each goal is invested for when you need it\.\n- House: 2 years away: kept in cash/,
+    );
+    expect(reply.body).toMatch(/goes to each goal by itself, near-term goals first\.$/);
+    expect(reply.refs).toEqual({ advice: true });
+    expect(goalBucketsReply({ advice: true, byHerself: false, buckets: BUCKETS }).body).toMatch(
+      /Choose “Handle the safe stuff”/,
+    );
+    expect(goalBucketsReply({ advice: false, byHerself: false, buckets: null }).refs).toEqual({});
+  });
+
+  it("says once, in demo advice mode, how each goal is invested", () => {
+    const messages = (advice: boolean) =>
+      investmentsSource
+        .gather(
+          {
+            ...base,
+            investments: demoInvestmentSnapshot({
+              advice,
+              goalBuckets: { byHerself: true, buckets: BUCKETS },
+            }),
+          },
+          {} as never,
+        )
+        .filter((c) => c.dedupeKey.startsWith("goals:"));
+    const [message] = messages(true);
+    expect(message).toMatchObject({
+      dedupeKey: "goals:house:cash,retirement:invested",
+      priority: MESSAGE_PRIORITY.goal_buckets,
+    });
+    expect(message.body).toMatch(
+      /^I've given each goal its own mix, by when you need it: House \(2 years away\): cash, never stocks; Retirement \(22 years away\): \d+% stocks\./,
+    );
+    expect(messages(false)).toEqual([]);
+  });
+
+  it("gives Claude each goal's mix", async () => {
+    const { loadGoalBuckets } = await import("@/lib/investments/goal-buckets");
+    vi.mocked(loadGoalBuckets).mockResolvedValue({
+      advice: true,
+      byHerself: true,
+      buckets: BUCKETS,
+    });
+    const out = await runInvestmentTool(
+      "u",
+      "goal_buckets",
+      {},
+      { client: {} as PrismaClient, now: new Date() },
+    );
+    expect(JSON.parse(out.content).goals[0]).toMatchObject({
+      goal: "House",
+      stocks: "0%",
+      cash: "100%",
+    });
+  });
+});
+
+// Spec step 158: college savings.
+describe("college questions, by rules", () => {
+  it("reads the child's age and the kind of college", () => {
+    expect(parseIntent("save for college for my 5 year old", ASOF)).toEqual({
+      kind: "investments",
+      topic: "college",
+      account: null,
+      childAge: 5,
+    });
+    expect(parseIntent("how much for a private college for my 3-year-old", ASOF)).toMatchObject({
+      topic: "college",
+      childAge: 3,
+      collegeType: "private",
+    });
+    expect(parseIntent("should I open a 529", ASOF)).toMatchObject({ topic: "college" });
+    expect(parseIntent("pay off my student loan", ASOF)).not.toMatchObject({ topic: "college" });
+  });
+});
+
+describe("collegeReply and the college message", () => {
+  const estimate = {
+    childAge: 5,
+    type: "public" as const,
+    years: 13,
+    cost: { lowCents: 15_310_343, highCents: 20_253_440 },
+    monthly: { lowCents: 65_780, highCents: 106_611 },
+    plans: comparePlans("NY", "single", 1_000_000, 17_000_000),
+    state: "NY",
+  };
+
+  it("gives the cost and monthly amount as ranges, the best plan, and the button", () => {
+    const reply = collegeReply(true, estimate, 0);
+    expect(reply.body).toMatch(
+      /^For a 5-year-old at a public college in your state, four years could cost about \$153,103\.43 to \$202,534\.40 when they start in 13 years\. Putting aside about \$657\.80 to \$1,066\.11 a month gets there, depending on prices and returns\. The plan that comes out ahead: Your state's direct 529 plan \(demo\), with your state's tax break of about \$[\d,.]+ a year\./,
+    );
+    expect(reply.body).not.toMatch(/\bwill (?:have|cost|be)\b/);
+    expect(reply.actions[0]).toEqual({
+      id: "college.start",
+      label: "Start saving for college",
+      kind: "primary",
+    });
+    expect(reply.refs).toEqual({
+      advice: true,
+      college: { childName: "your child", childAge: 5, type: "public" },
+    });
+  });
+
+  it("asks for the age when it wasn't given, and never advises real accounts", () => {
+    expect(collegeReply(true, null, 0).body).toMatch(/^Tell me how old your child is/);
+    expect(collegeReply(false, estimate, 0).actions.map((a) => a.id)).toEqual(["open"]);
+  });
+
+  it("offers once when the tax profile has children and there's no plan", () => {
+    const offers = (college: InvestmentSnapshot["college"], advice = true) =>
+      investmentsSource
+        .gather({ ...base, investments: demoInvestmentSnapshot({ advice, college }) }, {} as never)
+        .filter((c) => c.dedupeKey === "college:offer");
+    expect(offers({ children: 2, plans: 0 })[0].body).toMatch(
+      /^Your tax profile has 2 children under 17\./,
+    );
+    expect(offers({ children: 2, plans: 1 })).toEqual([]);
+    expect(offers({ children: 0, plans: 0 })).toEqual([]);
+    expect(offers({ children: 1, plans: 0 }, false)).toEqual([]);
   });
 });

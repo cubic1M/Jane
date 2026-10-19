@@ -1,6 +1,7 @@
 import { MESSAGE_PRIORITY } from "@/config/agent-chat";
 import { AUTO_PAUSED_NUDGE_DAYS, PROFILE_QUESTIONS } from "@/config/investing";
 import { portfolioNote } from "@/insights/portfolio-note";
+import { bucketLine, byHerselfLine } from "../investments/goals-copy";
 import { formatCents } from "@/lib/money";
 import { nextQuestion, profileSummary } from "@/planning/investor-profile";
 import { equivalentLine, switchSummary } from "../investments/fees-copy";
@@ -41,6 +42,12 @@ import { snoozeButton, type MessageSource } from "./source";
 // - Step 135: in demo advice mode, once the profile is complete, says once which account to
 //   fill first and where each holding is best kept (again when that changes). Moving money
 //   between accounts is the person's step.
+// - Step 157: in demo advice mode, gives each goal a mix by when it's needed (cash under 3
+//   years) and says so once per set of goals; at "Handle the safe stuff" and above, splits
+//   automatic investing's new money by goal by herself.
+// - Step 158: in demo advice mode, when the tax profile has children and there's no college
+//   plan, offers once to plan for college; starting one is the person's tap, then the goal
+//   is funded by step 157's buckets and automatic investing.
 // - Step 137: a monthly note on how the investments stand (no predictions), with at most
 //   one decision (the orders when the mix has drifted); a nudge when automatic investing
 //   has been paused for a month; and what she does by herself at each autopilot level
@@ -202,6 +209,35 @@ export const investmentsSource: MessageSource = {
       dedupeKey: `monthly:${inv.month.month}`,
       priority: MESSAGE_PRIORITY.investment_monthly,
     });
+    // Step 157: each goal invested for its timeline, said once per set of goals.
+    const goalBuckets = inv.goalBuckets.buckets;
+    if (inv.advice && goalBuckets && goalBuckets.some((b) => b.id !== "retirement")) {
+      out.push({
+        kind: "heads_up",
+        body: `I've given each goal its own mix, by when you need it: ${goalBuckets.map(bucketLine).join("; ")}. ${byHerselfLine(inv.goalBuckets.byHerself)}`,
+        refs: { advice: true },
+        actions: [
+          { id: "open", label: "See each goal", kind: "link", href: "/investments/goals" },
+          snoozeButton(),
+        ],
+        dedupeKey: `goals:${goalBuckets.map((b) => `${b.id}:${b.nearTerm ? "cash" : "invested"}`).join(",")}`,
+        priority: MESSAGE_PRIORITY.goal_buckets,
+      });
+    }
+    // Step 158: children on the tax profile and no college plan yet: Jane offers once.
+    if (inv.advice && inv.college.children > 0 && inv.college.plans === 0) {
+      out.push({
+        kind: "heads_up",
+        body: `Your tax profile has ${inv.college.children === 1 ? "a child" : `${inv.college.children} children`} under 17. Want to start saving for college? Tell me their age, like "college for my 5 year old", and I'll work out what to put aside a month and the 529 plan that comes out ahead.`,
+        refs: { advice: true },
+        actions: [
+          { id: "open", label: "Plan for college", kind: "link", href: "/investments/college" },
+          snoozeButton(),
+        ],
+        dedupeKey: "college:offer",
+        priority: MESSAGE_PRIORITY.college,
+      });
+    }
     const auto = inv.autoInvest;
     // Step 137: contributions kept going: a plan the person paused a month ago comes up.
     if (

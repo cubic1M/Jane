@@ -34,6 +34,8 @@ export const CHAT_SOURCE_LIMITS: Readonly<Record<string, number>> = {
   found: 1,
   // Spec step 139.
   saved: 1,
+  // Spec step 142.
+  checked: 1,
   // Spec step 128 on.
   investments: 3,
 };
@@ -61,6 +63,8 @@ export const MESSAGE_PRIORITY = {
   // Loans and debt (spec Phase Y, src/config/debt.ts).
   ...DEBT_MESSAGE_PRIORITY,
   brief: 1_000,
+  // Spec step 96: the week's summary comes first, at the top of the week.
+  week: 1_001,
   // Insurance (spec step 102): cover that looks missing, after budgets and goals.
   insurance_gap: 35,
   // Spec step 104: a cheaper policy for the same cover, after news (a change Jane noticed)
@@ -113,6 +117,8 @@ export const MESSAGE_PRIORITY = {
   saved_milestone: 52,
   // Spec step 140: the first-run hello comes before everything, the brief included.
   welcome: 2_000,
+  // Spec step 142: what Jane checked last night, after what needs the person.
+  checked: 25,
   review: 900,
   // Spec step 128: what's in investment accounts, the first time Jane sees it.
   investments: 32,
@@ -130,6 +136,10 @@ export const MESSAGE_PRIORITY = {
   account_order: 37,
   // Spec step 137: the monthly portfolio note.
   investment_monthly: 41,
+  // Spec step 157: each goal invested for its timeline (demo advice).
+  goal_buckets: 35,
+  // Spec step 158: saving for college (demo advice).
+  college: 34,
   auto_invest_run: 31,
 } as const;
 
@@ -216,3 +226,15 @@ export const CHAT_CLAUDE_DEADLINE_MS = 20_000;
 export const CHAT_CLAUDE_COOLDOWN_SECONDS = 60;
 // /admin/chat looks back this many days for what Jane couldn't answer.
 export const CHAT_UNANSWERED_DAYS = 30;
+
+// Spec step 94: answer blocks (charts, tables, timelines, progress) are drawn in monospace
+// text at most this many characters wide, so they fit a 375px phone; and hold at most this
+// many rows.
+export const CHAT_BLOCK_WIDTH = 34;
+export const CHAT_BLOCK_ROWS = 8;
+
+// Spec step 95: guided flows in the chat show at most this many answers as buttons.
+export const CHAT_FLOW_OPTIONS = 5;
+
+// Spec step 96: chat search shows at most this many messages, newest first.
+export const CHAT_SEARCH_RESULTS = 30;

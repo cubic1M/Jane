@@ -245,21 +245,18 @@ export async function readingsFromDocuments(
   userId: string,
   { client = defaultClient, now = new Date() }: Options = {},
 ): Promise<number> {
-  const db = scopedFor(userId, client);
-  const [documents, linked] = await Promise.all([
-    db.documents.findMany({
-      where: { kind: "insurance_policy", policyReading: { is: null } },
-      select: { id: true },
-      orderBy: { uploadedAt: "asc" },
-    }),
-    db.insurancePolicies.findMany({
-      where: { documentId: { not: null } },
-      select: { documentId: true },
-    }),
-  ]);
-  const have = new Set(linked.map((l) => l.documentId));
+  // One query: policy documents with no reading and no policy made from them.
+  const documents = await scopedFor(userId, client).documents.findMany({
+    where: {
+      kind: "insurance_policy",
+      policyReading: { is: null },
+      insurancePolicies: { none: {} },
+    },
+    select: { id: true },
+    orderBy: { uploadedAt: "asc" },
+  });
   let read = 0;
-  for (const d of documents.filter((d) => !have.has(d.id))) {
+  for (const d of documents) {
     if (await readPolicyDocument(userId, d.id, { client, now })) read += 1;
   }
   return read;

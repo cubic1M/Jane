@@ -140,6 +140,14 @@ const ASKS: readonly [InsuranceAsk, RegExp][] = [
     /\bbenefits?\b|\bthrough (?:work|my job)\b|\bat work\b|\bmy (?:employer|job)\b|\bopen enrollment\b/,
   ],
   [
+    "documents",
+    /\b(?:read|upload\w*|scan\w*|sent you)\b.{0,30}\b(?:polic(?:y|ies)|declarations?|renewal notices?|documents?)\b|\bdeclarations? pages?\b|\brenewal notices?\b|\bpolicy documents?\b/,
+  ],
+  [
+    "benefits",
+    /\bbenefits?\b|\bthrough (?:work|my job)\b|\bat work\b|\bmy (?:employer|job)\b|\bopen enrollment\b/,
+  ],
+  [
     "autopilot",
     /\b(?:autopilot|on your own|by yourself|automatic(?:ally)?|without asking|what do you do|what will you do|what are you doing)\b/,
   ],

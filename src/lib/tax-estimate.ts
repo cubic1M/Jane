@@ -14,6 +14,9 @@ import { loadWorkingProfile } from "@/lib/tax-profile";
 import { estimateTaxes, type EstimateInput, type TaxEstimate } from "@/planning/tax-estimate";
 import { perPaycheckEffect, type W4Step } from "@/planning/withholding";
 import { homeOfficeDeduction, mileageDeduction } from "@/planning/self-employed";
+import { loadInvestmentTaxes } from "@/lib/investment-taxes";
+import { loadResidency, residencyFor, type ResidencyView } from "@/lib/tax-states";
+import { LOCAL_TAXES } from "@/config/tax-states";
 import {
   NO_PAY,
   payFrequency,
@@ -63,6 +66,8 @@ export type TaxEstimateView = {
   w4: { step: W4Step; amountCents: number; changedOn: string } | null;
   // Spec step 122: what the estimate was worked out from, for what-ifs.
   input: EstimateInput;
+  // Spec step 165: where the person lived and worked in the year.
+  residency: ResidencyView;
   keepRefundYear: number | null;
   lastYearRefundCents: number | null;
 };
@@ -89,57 +94,67 @@ export async function loadTaxEstimate(
     // Spec step 121: last year's refund, as it arrived this year.
     "INCOME_TAX_REFUND",
   ];
-  const [{ view, profile }, demo, transactions, accounts, investmentCash, loans, tags, stored] =
-    await Promise.all([
-      loadWorkingProfile(userId, { client, now }),
-      hasDemoBank(userId, { client }),
-      db.transactions.findMany({
-        where: {
-          pending: false,
-          pfcDetailed: { in: incomeCategories },
-          date: { gte: new Date(Date.UTC(year, 0, 1)), lt: new Date(Date.UTC(year + 1, 1, 1)) },
-        },
-        select: {
-          date: true,
-          amountCents: true,
-          pfcDetailed: true,
-          description: true,
-          merchantName: true,
-        },
-      }),
-      db.accounts.findMany({ where: { type: "investment" }, select: { id: true, subtype: true } }),
-      db.investmentTransactions.findMany({
-        where: {
-          type: "cash",
-          date: { gte: new Date(Date.UTC(year, 0, 1)), lt: new Date(Date.UTC(year + 1, 0, 1)) },
-        },
-        select: { date: true, amountCents: true, subtype: true, accountId: true },
-      }),
-      // Banks report loan interest for the current year only.
-      year === now.getUTCFullYear()
-        ? db.liabilities.findMany({ select: { kind: true, ytdInterestPaidCents: true } })
-        : Promise.resolve([]),
-      loadTaxTags(userId, year, { client }),
-      db.taxProfiles.findFirst({
-        select: {
-          payAsOf: true,
-          payGrossYtdCents: true,
-          payFederalYtdCents: true,
-          payStateYtdCents: true,
-          payRetirementYtdCents: true,
-          payPretaxYtdCents: true,
-          w4Step: true,
-          w4AmountCents: true,
-          w4ChangedOn: true,
-          w4Year: true,
-          keepRefundYear: true,
-          homeOfficeSqFt: true,
-          businessMiles: true,
-          businessMilesYear: true,
-          taxPayments: true,
-        },
-      }),
-    ]);
+  const [
+    { view, profile },
+    demo,
+    transactions,
+    accounts,
+    investmentCash,
+    loans,
+    tags,
+    stored,
+    residency,
+  ] = await Promise.all([
+    loadWorkingProfile(userId, { client, now }),
+    hasDemoBank(userId, { client }),
+    db.transactions.findMany({
+      where: {
+        pending: false,
+        pfcDetailed: { in: incomeCategories },
+        date: { gte: new Date(Date.UTC(year, 0, 1)), lt: new Date(Date.UTC(year + 1, 1, 1)) },
+      },
+      select: {
+        date: true,
+        amountCents: true,
+        pfcDetailed: true,
+        description: true,
+        merchantName: true,
+      },
+    }),
+    db.accounts.findMany({ where: { type: "investment" }, select: { id: true, subtype: true } }),
+    db.investmentTransactions.findMany({
+      where: {
+        type: "cash",
+        date: { gte: new Date(Date.UTC(year, 0, 1)), lt: new Date(Date.UTC(year + 1, 0, 1)) },
+      },
+      select: { date: true, amountCents: true, subtype: true, accountId: true },
+    }),
+    // Banks report loan interest for the current year only.
+    year === now.getUTCFullYear()
+      ? db.liabilities.findMany({ select: { kind: true, ytdInterestPaidCents: true } })
+      : Promise.resolve([]),
+    loadTaxTags(userId, year, { client }),
+    db.taxProfiles.findFirst({
+      select: {
+        payAsOf: true,
+        payGrossYtdCents: true,
+        payFederalYtdCents: true,
+        payStateYtdCents: true,
+        payRetirementYtdCents: true,
+        payPretaxYtdCents: true,
+        w4Step: true,
+        w4AmountCents: true,
+        w4ChangedOn: true,
+        w4Year: true,
+        keepRefundYear: true,
+        homeOfficeSqFt: true,
+        businessMiles: true,
+        businessMilesYear: true,
+        taxPayments: true,
+      },
+    }),
+    loadResidency(userId, year, { client }),
+  ]);
 
   const rows = transactions.map((t) => ({ ...t, date: iso(t.date) }));
   const taxable = new Set(
@@ -214,7 +229,13 @@ export async function loadTaxEstimate(
   const miles = stored?.businessMilesYear === year ? (stored.businessMiles ?? 0) : 0;
   const businessSoFar = tags.totals.business.totalCents + mileageDeduction(miles);
   const otherSoFar = otherIncomeSoFar(rows, cash, year, businessSoFar);
-  const paced = projectOther(otherSoFar, year, today);
+  // Spec step 124: gains realised this year in taxable investment accounts.
+  const gains = (await loadInvestmentTaxes(userId, year, { client, now })).realisedCents;
+  const paced = {
+    ...projectOther(otherSoFar, year, today),
+    shortTermGainsCents: gains.shortTerm,
+    longTermGainsCents: gains.longTerm,
+  };
   const homeOffice =
     paced.selfEmploymentCents > 0
       ? Math.min(homeOfficeDeduction(stored?.homeOfficeSqFt ?? null), paced.selfEmploymentCents)
@@ -241,6 +262,16 @@ export async function loadTaxEstimate(
   if (state && view.state.status !== "yours") {
     assumptions.push(`I've assumed you file in ${stateName(state)}; check your tax profile.`);
   }
+  for (const m of residency.inUse) {
+    assumptions.push(
+      `${residency.usingSpotted ? "I've assumed you moved" : "You moved"} from ${stateName(m.from)} to ${stateName(m.to)} on ${m.date}: wages count where you lived on each payday, other income by the days you lived in each state.`,
+    );
+  }
+  if (residency.workState && residency.workState !== state) {
+    assumptions.push(`You work for an employer in ${stateName(residency.workState)}.`);
+  }
+  const local = residency.locality ? LOCAL_TAXES[residency.locality] : undefined;
+  if (local) assumptions.push(`You live in ${local.label}, which has its own income tax.`);
   if (view.dependants.status !== "yours") {
     assumptions.push("You haven't told me about dependants, so I've counted none.");
   }
@@ -254,6 +285,10 @@ export async function loadTaxEstimate(
     childrenUnder17: profile.childrenUnder17,
     otherDependants: profile.otherDependants,
     state,
+    residency: residencyFor(
+      residency,
+      paychecks.map((t) => ({ date: t.date, cents: -t.amountCents })),
+    ),
     income: {
       ...other,
       wagesCents: wagesProjected,
@@ -330,6 +365,7 @@ export async function loadTaxEstimate(
     assumptions,
     unconfirmed: profile.unconfirmed,
     input,
+    residency,
     paychecks: {
       count: paychecks.filter((t) => t.date <= today).length,
       perYear: frequency?.perYear ?? null,

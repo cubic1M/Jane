@@ -144,6 +144,8 @@ export const TEAM_ACCESS_RULES: Record<AuditEvent, EventRule> = {
   tax_tag_changed: own,
   tax_return_started: own,
   tax_return_signed: own,
+  tax_document_collected: own,
+  tax_document_decided: own,
   session_signed_out: own,
   other_sessions_signed_out: own,
   // Jane's chat messages as notifications (spec step 85).
@@ -151,6 +153,7 @@ export const TEAM_ACCESS_RULES: Record<AuditEvent, EventRule> = {
   investor_profile_saved: own,
   brokerage_orders_placed: own,
   auto_invest_set: own,
+  college_plan_saved: own,
 };
 
 export const SHOWN_EVENTS = (Object.keys(TEAM_ACCESS_RULES) as AuditEvent[]).filter(
