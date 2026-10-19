@@ -132,6 +132,12 @@ export const ACTION_IDS = [
   "tax.local_1",
   "tax.local_2",
   "tax.local_no",
+  // Spec step 166: a collected form that doesn't match (use it, or ask the payer), a form
+  // still missing, and ticking off the collected ones.
+  "tax.doc_right",
+  "tax.doc_ask",
+  "tax.doc_chase",
+  "tax.docs_tick",
   // Investments (spec step 129 on): the answer buttons on an investor-profile question,
   // by position (src/config/investing.ts PROFILE_QUESTIONS).
   "invest.answer.1",
@@ -248,6 +254,8 @@ export type MessageRefs = {
   block?: AnswerBlock;
   // Spec step 95: where a guided flow is.
   flow?: FlowState;
+  // Spec step 96: pinned to the top of the chat.
+  pinned?: true;
   // Taxes (spec step 118): the tax profile question a message is asking, and the kind of
   // income "Add it" would add.
   taxField?: string;

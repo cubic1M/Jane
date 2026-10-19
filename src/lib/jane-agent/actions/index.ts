@@ -50,6 +50,7 @@ import {
   taxMoveYes,
   taxWorkSet,
 } from "./tax-states";
+import { taxDocAsk, taxDocChase, taxDocRight, taxDocsTick } from "./tax-documents";
 import {
   investAnswer1,
   investAnswer2,
@@ -175,6 +176,10 @@ export const ACTION_HANDLERS: Readonly<Record<ActionId, ActionHandler>> = {
   "tax.local_1": taxLocal1,
   "tax.local_2": taxLocal2,
   "tax.local_no": taxLocalNo,
+  "tax.doc_right": taxDocRight,
+  "tax.doc_ask": taxDocAsk,
+  "tax.doc_chase": taxDocChase,
+  "tax.docs_tick": taxDocsTick,
   // Investments (spec step 129 on).
   "invest.answer.1": investAnswer1,
   "invest.answer.2": investAnswer2,
