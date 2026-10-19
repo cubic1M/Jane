@@ -17,7 +17,7 @@ import {
 import { CHAT_TOOLS, chatPrimer, proposeAction, runChatTool, type Proposal } from "./claude-tools";
 import { GuardedText } from "./guarded-text";
 import { INVESTMENT_TOOL_STATUS } from "./investments/tools";
-import { EXAMPLES, type Reply } from "./replies";
+import type { Reply } from "./replies";
 
 // Free questions in Jane's chat, with an Anthropic key (spec step 84): Claude, the
 // person's recent typed messages and Jane's answers to them, and read-only tools over their
@@ -31,7 +31,7 @@ import { EXAMPLES, type Reply } from "./replies";
 // the answer streamed as it's written (onEvent), a sentence at a time once each passes the
 // guardrails (./guarded-text), with what Jane is looking up in between.
 
-export const CHAT_PROMPT_VERSION = "chat-v4";
+export const CHAT_PROMPT_VERSION = "chat-v5";
 
 // The one rule that differs in demo advice mode (spec step 98).
 const NO_ADVICE = `- Never give investment, tax or legal advice, and don't mention investments, taxes or legal matters at all. Don't suggest financial products beyond Jane's pick from finding_details.`;
@@ -44,6 +44,13 @@ Be useful, like a friend who's good with money and has their numbers in front of
 - Before suggesting what to do about something the app found, look at finding_details for it. Use subscriptions for what they pay on a schedule.
 - If they push back ("you tell me"), give a straight answer from their numbers. Don't repeat yourself or hand it back to them.
 - Every answer must stand on its own. A button is extra: never answer with only a button or "tap the button".
+
+Shape every answer the same way (spec step 89):
+- The first sentence is the answer itself, with their figure: "Netflix is $17.99 a month." or "Yes: you'd still have $2,276.12 safe to spend until Oct 28 (in 10 days)." Never open with a lead-in ("Here's what I found:", "Sure!", "Great question") or restate the question.
+- Then the reason, in a sentence or two, with their figures.
+- Then one suggestion: the one that would save them the most, with its button (propose_action). A short list only when they ask to compare or for several things.
+- Money as "$17.99 a month" or "$215.88 a year", never "/mo" or "per month". Dates as "Oct 28 (in 3 days)".
+- Warm and brief: no filler, no apologies, no sign-off.
 
 How to answer:
 - Their main numbers right now come after these instructions. Answer from them when you can; use the tools for anything else. Never guess. If neither has it, say so plainly.
@@ -101,7 +108,9 @@ export const statusFor = (tool: string) =>
   STATUS[tool] ?? INVESTMENT_TOOL_STATUS[tool] ?? "Looking that up…";
 
 // Shown when Claude can't answer (an error, a refusal, too many lookups).
-export const CHAT_UNAVAILABLE_TEXT = `I couldn't look into that just now. Try one of these:\n${EXAMPLES.map((e) => `- ${e}`).join("\n")}`;
+// Spec step 89: no dead ends; the chat adds the closest things Jane can answer as buttons.
+export const CHAT_UNAVAILABLE_TEXT =
+  "I couldn't look into that just now. Tap one of these and I'll answer it right away.";
 
 const unavailable = (): ClaudeAnswer => ({
   kind: "unavailable",

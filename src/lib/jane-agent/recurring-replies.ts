@@ -5,7 +5,7 @@ import { nameMatches } from "./names";
 import type { Charge, Recurring } from "./recurring";
 import { clarifyReply, findingReply, type Reply } from "./replies";
 import type { Snapshot } from "./snapshot";
-import { inDays, shortDate } from "./sources/source";
+import { dateAndDays } from "./sources/source";
 import type { MessageAction } from "./types";
 
 // Spec step 88: what one thing costs, the subscriptions list and the next payday, from the
@@ -28,13 +28,6 @@ const subscriptionsLink: MessageAction = {
   kind: "link",
   href: "/subscriptions",
 };
-
-const daysBetween = (from: string, to: string) =>
-  Math.round((Date.parse(`${to}T00:00:00Z`) - Date.parse(`${from}T00:00:00Z`)) / 86_400_000);
-
-// "Oct 28 (in 10 days)".
-export const dateAndDays = (date: string, asOf: string) =>
-  `${shortDate(date)} (${inDays(daysBetween(asOf, date))})`;
 
 // The charges a name could mean ("netflix", "my phone bill", "the gym").
 export function matchCharges(charges: readonly Charge[], target: string): Charge[] {

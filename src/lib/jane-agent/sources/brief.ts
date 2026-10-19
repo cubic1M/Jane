@@ -1,6 +1,6 @@
 import { BRIEF_BILL_DAYS, BRIEF_FROM_HOUR, MESSAGE_PRIORITY } from "@/config/agent-chat";
 import { formatCents } from "@/lib/money";
-import { inDays, shortDate, things, type MessageSource } from "./source";
+import { dateAndDays, inDays, things, type MessageSource } from "./source";
 
 // The morning brief (spec step 82): once a day, from 7am in the person's timezone (or
 // whenever they first open the chat that day). Safe to spend until payday, bills due in
@@ -19,7 +19,9 @@ export const briefSource: MessageSource = {
 
     const safe = snapshot.safeToSpend;
     if (safe) {
-      const until = safe.payday ? ` until payday on ${shortDate(safe.payday)}` : " this month";
+      const until = safe.payday
+        ? ` until payday, ${dateAndDays(safe.payday, local.date)}`
+        : " this month";
       lines.push(
         safe.safeCents < 0
           ? `You're short by ${formatCents(-safe.safeCents)}${until}, after your bills.`
