@@ -36,6 +36,19 @@ test("the demo bank lands in Jane's chat, and Yes answers a finding", async ({
   await expect(messages.filter({ hasText: "Your plan for this week is ready" })).toHaveCount(1);
   await expect(page.getByRole("button", { name: "Approve all safe ones" })).toBeVisible();
 
+  // Spec step 90: "Why?" answers in the chat from the finding's own evidence, and leaves the
+  // decision open.
+  const explained = messages.filter({ hasText: "Want me to handle it?" }).nth(1);
+  const explainedBody = (await explained.locator("p").nth(1).textContent()) ?? "";
+  await explained.getByRole("button", { name: "Why?" }).click();
+  await expect(messages.last()).toContainText("If you say yes:");
+  await expect(
+    messages.filter({ hasText: explainedBody }).getByRole("button", { name: "Why?" }),
+  ).toHaveCount(0);
+  await expect(
+    messages.filter({ hasText: explainedBody }).getByRole("button", { name: "Yes", exact: true }),
+  ).toBeVisible();
+
   // A finding, found again by its words once its buttons are gone.
   const first = messages.filter({ hasText: "Want me to handle it?" }).first();
   const body = (await first.locator("p").nth(1).textContent()) ?? "";
