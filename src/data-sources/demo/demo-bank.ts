@@ -446,6 +446,30 @@ const ONE_OFF: (Template & { offsets: number[] })[] = [
   },
 ];
 
+// Spec step 109: buy now, pay later. A monthly Affirm plan (its balance and rate aren't in
+// the payments, so Jane asks for them) and a Klarna Pay in 4 halfway through when the demo
+// bank is linked; later syncs bring the payments still to come.
+const BNPL: (Template & { offsets: number[] })[] = [
+  {
+    key: "affirm",
+    account: "checking",
+    name: "AFFIRM * PAYMENT",
+    merchant: "Affirm",
+    category: "LOAN_PAYMENTS_BNPL",
+    amount: 89.5,
+    offsets: [-140, -110, -79, -49, -18, 12, 42, 73],
+  },
+  {
+    key: "klarna",
+    account: "card",
+    name: "KLARNA* PAY IN 4",
+    merchant: "Klarna",
+    category: "LOAN_PAYMENTS_BNPL",
+    amount: 62.25,
+    offsets: [-17, -3, 11, 25],
+  },
+];
+
 // Spec step 70: holiday gifts every November and December, on these [month, day]s, so
 // the season shows as a yearly cost to set aside for.
 const SEASONAL: (Template & { dates: [month: number, day: number][] })[] = [
@@ -520,7 +544,7 @@ export function demoTransactions(
       }
     }
   }
-  for (const t of ONE_OFF) {
+  for (const t of [...ONE_OFF, ...BNPL]) {
     for (const offset of t.offsets) {
       const day = addDays(demo.anchor, offset);
       if (inRange(day)) out.push(transaction(t, day, demo));
