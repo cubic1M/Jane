@@ -30,6 +30,7 @@ import {
 import { changesReply } from "./replies-changes";
 import { lifeEventReply } from "./replies-life";
 import { loadSnapshot } from "./snapshot";
+import { answerTaxIntent } from "./tax-answer";
 
 // Answers a typed message by rules (spec step 84): loads only what the intent needs, with
 // the same loaders as the pages, all scoped to the person, and words it with ./replies.
@@ -100,6 +101,8 @@ export async function answerByRules(
       return undoReply(await loadSnapshot(userId, { client, now }), now);
     case "pause_autopilot":
       return pauseReply(await autopilotOf(userId, { client }));
+    case "tax":
+      return answerTaxIntent(userId, intent, { client, now });
     case "investments":
       return answerInvestments(userId, intent, { client, now });
   }

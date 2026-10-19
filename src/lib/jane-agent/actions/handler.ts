@@ -17,6 +17,8 @@ export type ActionContext = {
 export type ActionOutcome = {
   // "answered" unless said otherwise (an undone No opens the message again).
   status?: MessageStatus;
+  // Spec step 118: a guided question moves on to the next one in the same message.
+  body?: string;
   // What the person chose, shown in place of the buttons; null clears it.
   answeredWith: string | null;
   // One line on what happened.

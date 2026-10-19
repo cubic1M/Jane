@@ -61,6 +61,8 @@ const SIGNED_IN = [
   "/deadlines",
   "/life-events",
   "/tax-pack",
+  "/taxes",
+  "/taxes/profile",
   "/settings/team-access",
   "/jane",
   "/money",

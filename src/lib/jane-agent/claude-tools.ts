@@ -29,6 +29,7 @@ import { guessLine } from "./replies-life";
 import { localTime } from "./quiet-hours";
 import { loadSnapshot } from "./snapshot";
 import { findingsSource } from "./sources/findings";
+import { TAX_TOOLS, isTaxTool, runTaxTool } from "./tax-tools";
 import { ACTION_IDS, type ActionId, type MessageAction } from "./types";
 
 // The tools Claude gets in Jane's chat (spec step 84). Read-only tools over the person's
@@ -60,6 +61,9 @@ export const CHAT_PAGES: Readonly<Record<string, { label: string; href: string }
   net_worth: { label: "See net worth", href: "/net-worth" },
   investments: { label: "See what you own", href: "/investments" },
   settings: { label: "Settings", href: "/settings" },
+  // Taxes (spec steps 118–127).
+  taxes: { label: "See your taxes", href: "/taxes" },
+  tax_profile: { label: "See my tax profile", href: "/taxes/profile" },
 };
 
 const noInput = { type: "object" as const, properties: {}, additionalProperties: false };
@@ -147,6 +151,8 @@ export const CHAT_TOOLS: Anthropic.Tool[] = [
       additionalProperties: false,
     },
   },
+  // Taxes (spec steps 118–127): ./tax-tools.ts.
+  ...TAX_TOOLS,
   // Spec step 128 on.
   ...INVESTMENT_TOOLS,
 ];
@@ -162,6 +168,7 @@ export async function runChatTool(
 ): Promise<ToolOutput> {
   if (FROM_ASK.some((t) => t.name === name))
     return runAskTool(userId, name, input, { client, now });
+  if (isTaxTool(name)) return runTaxTool(userId, name, { client, now });
   if (isInvestmentTool(name)) return runInvestmentTool(userId, name, input, { client, now });
   const cents: number[] = [];
   const money = (value: number) => {

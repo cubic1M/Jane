@@ -16,6 +16,8 @@ export const CHAT_SOURCE_LIMITS: Readonly<Record<string, number>> = {
   steps: 2,
   budgets: 1,
   things: 1,
+  // Taxes (spec steps 118–127).
+  taxes: 2,
   // Spec step 97.
   changes: 2,
   // Spec step 100.

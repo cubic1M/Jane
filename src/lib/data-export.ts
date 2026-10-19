@@ -51,6 +51,7 @@ export async function exportUserData(
     lifeEventAnswers,
     janeMessages,
     teamAccess,
+    taxProfile,
   ] = await Promise.all([
     client.user.findUniqueOrThrow({
       where: { id: userId },
@@ -381,6 +382,18 @@ export async function exportUserData(
     // When the team or Jane's agent viewed or acted on their data (spec step 74): every
     // entry, by role, never a team member's name or id.
     teamAccessFor(userId, { client, limit: null }),
+    // Their tax profile (spec step 118): their answers.
+    db.taxProfiles.findFirst({
+      select: {
+        filingStatus: true,
+        childrenUnder17: true,
+        otherDependants: true,
+        state: true,
+        incomeKinds: true,
+        answered: true,
+        updatedAt: true,
+      },
+    }),
   ]);
   // What's in their investment accounts and its history (spec step 128).
   const investments = await investmentsExport(userId, client);
@@ -433,5 +446,6 @@ export async function exportUserData(
       why,
       actionId,
     })),
+    taxProfile,
   };
 }

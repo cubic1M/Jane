@@ -2,6 +2,7 @@ import { CHAT_WEEK_DAYS } from "@/config/agent-chat";
 import type { LifeEventKind } from "@/config/life-events";
 import { CATEGORY_LABELS, UNCATEGORIZED } from "@/insights/labels";
 import { parseMoneyToCents } from "@/lib/money";
+import { parseTaxIntent, type TaxIntent } from "./tax-intents";
 import { parseInvestmentIntent, type InvestmentIntent } from "./investments/intents";
 
 // What the person typed to Jane, understood by rules (spec step 84). Pure: the text and
@@ -42,6 +43,8 @@ export type Intent =
   // days is null for the usual coming-up list.
   | { kind: "coming_up"; days: number | null }
   | { kind: "act"; verb: ActVerb; target: string }
+  // Taxes (spec steps 118–127): ./tax-intents.ts.
+  | TaxIntent
   // Spec step 128 on: what they own, and each later investment question.
   | InvestmentIntent
   | { kind: "unknown" };
@@ -218,6 +221,8 @@ export function parseIntent(raw: string, asOf: string): Intent {
   if (WHAT_DID.test(text)) return { kind: "what_did" };
   if (APPROVE_ALL.test(text)) return { kind: "approve_all" };
   if (UNDO.test(text)) return { kind: "undo" };
+  const tax = parseTaxIntent(text);
+  if (tax) return tax;
 
   if (/\bafford\b/.test(text) || (AFFORD_ASK.test(text) && parseAmount(text) !== null)) {
     const what = purchaseOf(text);
