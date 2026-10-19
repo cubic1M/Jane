@@ -1,6 +1,7 @@
 import { CHAT_WEEK_DAYS } from "@/config/agent-chat";
 import { CATEGORY_LABELS, UNCATEGORIZED } from "@/insights/labels";
 import { parseMoneyToCents } from "@/lib/money";
+import { parseTaxIntent, type TaxIntent } from "./tax-intents";
 
 // What the person typed to Jane, understood by rules (spec step 84). Pure: the text and
 // today's date in, one intent out. Works with no Claude key at all; anything it can't
@@ -36,6 +37,8 @@ export type Intent =
   // days is null for the usual coming-up list.
   | { kind: "coming_up"; days: number | null }
   | { kind: "act"; verb: ActVerb; target: string }
+  // Taxes (spec steps 118–127): ./tax-intents.ts.
+  | TaxIntent
   | { kind: "unknown" };
 
 const MONTHS = [
@@ -191,6 +194,8 @@ export function parseIntent(raw: string, asOf: string): Intent {
   if (WHAT_DID.test(text)) return { kind: "what_did" };
   if (APPROVE_ALL.test(text)) return { kind: "approve_all" };
   if (UNDO.test(text)) return { kind: "undo" };
+  const tax = parseTaxIntent(text);
+  if (tax) return tax;
 
   if (/\bafford\b/.test(text) || (AFFORD_ASK.test(text) && parseAmount(text) !== null)) {
     const what = purchaseOf(text);

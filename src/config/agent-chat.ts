@@ -16,6 +16,8 @@ export const CHAT_SOURCE_LIMITS: Readonly<Record<string, number>> = {
   steps: 2,
   budgets: 1,
   things: 1,
+  // Taxes (spec steps 118–127).
+  taxes: 2,
 };
 
 // Quiet hours in the person's timezone (users.timezone): nothing is posted from 9pm to

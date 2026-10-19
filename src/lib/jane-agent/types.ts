@@ -36,6 +36,19 @@ export const ACTION_IDS = [
   // Typing to Jane (spec step 84).
   "goal.start",
   "autopilot.pause",
+  // Taxes (spec step 118): the tax profile, one question at a time.
+  "tax.found_yes",
+  "tax.filing_single",
+  "tax.filing_joint",
+  "tax.filing_separate",
+  "tax.filing_head",
+  "tax.kids_0",
+  "tax.kids_1",
+  "tax.kids_2",
+  "tax.kids_3",
+  "tax.income_add",
+  "tax.income_no",
+  "tax.state_set",
 ] as const;
 export type ActionId = (typeof ACTION_IDS)[number];
 
@@ -72,6 +85,12 @@ export type MessageRefs = {
   // The goal "Start a goal for it" would add (spec step 84): money in cents, date
   // YYYY-MM-DD.
   goal?: { name: string; targetCents: number; targetDate: string };
+  // Taxes (spec step 118): the tax profile question a message is asking, and the kind of
+  // income "Add it" would add.
+  taxField?: string;
+  incomeKind?: string;
+  // The state "Yes, set it" would put on the tax profile (two letters).
+  taxState?: string;
 };
 
 // A message the brain wants to post.

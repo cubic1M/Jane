@@ -76,6 +76,8 @@ export type AuditEvent =
   | "document_deleted"
   // The tax-time pack downloaded as a CSV (spec step 72).
   | "tax_pack_downloaded"
+  // Taxes (spec steps 118–127): which fields of the tax profile changed, never the answers.
+  | "tax_profile_changed"
   // Devices and sessions (spec step 73): one other session, or all the others, signed out.
   | "session_signed_out"
   | "other_sessions_signed_out"

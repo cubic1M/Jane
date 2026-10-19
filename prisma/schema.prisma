@@ -305,6 +305,7 @@ model User {
   checkIns            CheckIn[]
   documents           Document[]
   lifeEvents          LifeEvent[]
+  taxProfile          TaxProfile?
 
   @@map("users")
 }
@@ -1473,4 +1474,28 @@ model ChatReplyLink {
   @@index([userId])
   @@index([messageId])
   @@map("chat_reply_links")
+}
+
+// The tax profile (spec step 118): what Jane needs to know for the person's taxes. Every
+// value here is the person's own answer (picked, typed or a yes to what Jane found);
+// `answered` lists which fields they've answered, so nothing is assumed silently.
+model TaxProfile {
+  id              String   @id @default(cuid())
+  userId          String   @unique @map("user_id")
+  // single, married_joint, married_separate or head_of_household (src/config/tax.ts).
+  filingStatus    String?  @map("filing_status")
+  childrenUnder17 Int?     @map("children_under_17")
+  otherDependants Int?     @map("other_dependants")
+  // Two-letter US state they file in.
+  state           String?
+  // Kinds of income (src/config/tax.ts INCOME_KINDS).
+  incomeKinds     String[] @default([]) @map("income_kinds")
+  // incomeKinds, filingStatus, dependants, state: the fields the person has answered.
+  answered        String[] @default([])
+  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt       DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("tax_profiles")
 }

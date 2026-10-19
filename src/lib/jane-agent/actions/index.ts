@@ -14,6 +14,7 @@ import { alertGotIt, deadlineDone, snooze } from "./heads-ups";
 import { setupAll, setupNo, setupYes } from "./setup";
 import { cancelDone, offerAccept, offerDecline } from "./steps";
 import { goalStart } from "./goal";
+import { TAX_PROFILE_HANDLERS, taxFoundYes, taxIncomeAdd, taxIncomeNo, taxStateSet } from "./taxes";
 
 // Every button action, by id (spec step 81). A new button is a new handler here; the
 // message sources offer it by id (src/lib/jane-agent/types.ts ACTION_IDS).
@@ -40,6 +41,12 @@ export const ACTION_HANDLERS: Readonly<Record<ActionId, ActionHandler>> = {
   // Typing to Jane (spec step 84).
   "goal.start": goalStart,
   "autopilot.pause": autopilotPause,
+  // Taxes (spec step 118).
+  "tax.found_yes": taxFoundYes,
+  ...TAX_PROFILE_HANDLERS,
+  "tax.income_add": taxIncomeAdd,
+  "tax.income_no": taxIncomeNo,
+  "tax.state_set": taxStateSet,
 };
 
 const MESSAGE_ID = /^[a-z0-9]{1,40}$/i;
@@ -89,6 +96,7 @@ export async function takeChatAction(
     where: { id: message.id, status: message.status },
     data: {
       status,
+      ...(outcome.body ? { body: outcome.body } : {}),
       answeredWith: outcome.answeredWith,
       answeredAt: status === "open" ? null : now,
       refs: refs as Prisma.InputJsonObject,

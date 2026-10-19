@@ -14,6 +14,7 @@ import { isNoRisk } from "@/lib/plan-links";
 import { savingsLine } from "@/lib/savings-text";
 import { recentRuleApprovals } from "@/lib/standing-rules";
 import { loadMore, type MoreSnapshot } from "./snapshot-more";
+import { loadTaxSnapshot, type TaxSnapshot } from "./snapshot-tax";
 
 // Everything Jane's brain looks at for one person (spec step 82), loaded with the same
 // code as the pages that show it: Today (src/lib/home.ts), the plan, the comparisons, the
@@ -69,7 +70,8 @@ export type Snapshot = {
   urgentAlerts: { id: string; title: string; body: string }[];
   // Spec step 83: every budget this month, for "nearly over".
   budgetProgress: HomeSummary["budgetProgress"];
-} & MoreSnapshot;
+} & MoreSnapshot &
+  TaxSnapshot;
 
 // A finding as Jane describes it in the chat: its type, title, saving and evidence. A
 // button only acts while this is unchanged; newer card wording (Claude's explanation)
@@ -172,5 +174,6 @@ export async function loadSnapshot(
       .map((a) => ({ id: a.id, title: a.title, body: a.body })),
     budgetProgress: home.budgetProgress,
     ...(await loadMore(userId, { client })),
+    ...(await loadTaxSnapshot(userId, { client, now })),
   };
 }

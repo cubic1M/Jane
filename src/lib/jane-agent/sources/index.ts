@@ -9,6 +9,7 @@ import { budgetsSource } from "./budgets";
 import { setupSource } from "./setup";
 import { stepsSource } from "./steps";
 import { thingsSource } from "./things";
+import { taxesSource } from "./taxes";
 
 // Every message source Jane's brain gathers from (spec step 82). A new kind of message is a
 // new module here, registered in this one list; its daily limit is in
@@ -25,6 +26,8 @@ export const MESSAGE_SOURCES: readonly MessageSource[] = [
   stepsSource,
   budgetsSource,
   thingsSource,
+  // Taxes (spec steps 118–127).
+  taxesSource,
 ];
 
 export type { MessageSource, SourceContext, Trigger } from "./source";
