@@ -70,6 +70,7 @@ describe("tax intents", () => {
     ["what should I do with my tax refund", "refund"],
     ["file my taxes", "file"],
     ["when is the tax deadline", "file"],
+    ["what's the standard deduction", "standard_deduction"],
   ])("%s asks about %s (steps 120–121)", (text, ask) => {
     expect(parse(text)).toEqual({ kind: "tax", ask });
   });

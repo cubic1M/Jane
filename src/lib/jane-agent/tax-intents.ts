@@ -32,7 +32,9 @@ export type TaxIntent =
   // Spec step 125.
   | { kind: "tax"; ask: "refund" }
   // Spec step 126.
-  | { kind: "tax"; ask: "file" };
+  | { kind: "tax"; ask: "file" }
+  // Spec step 127.
+  | { kind: "tax"; ask: "standard_deduction" };
 
 const NUMBER_WORDS: Readonly<Record<string, number>> = {
   no: 0,
@@ -113,6 +115,7 @@ const REFUND_ASK =
   /\bwhere(?:'s| is) my (?:tax )?refund\b|\b(?:did|has) my (?:tax )?refund (?:come|arrive|land|come in)\b|\bwhat (?:should|could) i do with my (?:tax )?refund\b|\bmy tax refund\b/;
 const FILE =
   /\bfile (?:my |our )?(?:tax(?:es)?|return|tax return)\b|\b(?:my |our )?tax return\b|\btax deadline\b|\bwhen (?:are|is) (?:my |our )?tax(?:es)? due\b|\b(?:status of|where is) my return\b/;
+const STANDARD = /\bstandard deduction\b/;
 const PACK = /\btax(?:-| )?time pack\b|\btax pack\b|\byear-end pack\b/;
 
 function stateCode(words: string): string | null {
@@ -142,6 +145,7 @@ export function parseTaxIntent(text: string): TaxIntent | null {
   const untag = UNTAG.exec(text);
   if (untag) return { kind: "tax", ask: "tag", target: untag[1].trim(), tag: null };
   if (PACK.test(text)) return { kind: "tax", ask: "pack" };
+  if (STANDARD.test(text)) return { kind: "tax", ask: "standard_deduction" };
   if (REFUND_ASK.test(text)) return { kind: "tax", ask: "refund" };
   if (FILE.test(text)) return { kind: "tax", ask: "file" };
   if (WITHHOLDING.test(text)) return { kind: "tax", ask: "withholding" };

@@ -11,6 +11,7 @@ import { CHAT_PROMPT_VERSION } from "../claude";
 import { sendToJane, type AnswerSource } from "../typing";
 import { QUESTIONS, type CheckQuestion } from "./bank";
 import { loadFacts } from "./facts";
+import { adviceMode } from "@/lib/advice-mode";
 import { fixedChecks, fixedScore, reasonOf, type Check } from "./grade";
 import { GRADER_VERSION, gradeWithClaude, type ClaudeGrade, type Usage } from "./grader";
 
@@ -101,7 +102,10 @@ export async function runAnswerChecks(
   }: Options,
 ): Promise<CheckRun> {
   const full = llmEnabled();
-  const facts = await loadFacts(userId, { client, now });
+  const [facts, advice] = await Promise.all([
+    loadFacts(userId, { client, now }),
+    adviceMode(userId, { client }),
+  ]);
   let spent = 0;
   // Jane's own calls to Claude count toward the cap too.
   const metered = () => {
@@ -181,6 +185,7 @@ export async function runAnswerChecks(
         { body: reply.body, actions: reply.actions, source },
         facts,
         earlier.map((t) => t.content),
+        advice ? "demo_advice" : "standard",
       );
       const fixed = fixedScore(checks);
       let grade: ClaudeGrade | undefined;

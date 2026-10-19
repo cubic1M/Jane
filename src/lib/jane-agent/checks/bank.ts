@@ -557,6 +557,98 @@ export const QUESTIONS: readonly CheckQuestion[] = [
     expect: { mentions: /fee/i },
   },
 
+  // Taxes (spec steps 118–127): answered by rules, in demo advice mode on the demo bank.
+  {
+    id: "tax-1",
+    text: "what's my tax profile",
+    needs: "rules",
+    expect: { intent: "tax", list: true, link: "/taxes/profile" },
+  },
+  {
+    id: "tax-2",
+    text: "how much will I owe in taxes",
+    needs: "rules",
+    expect: { intent: "tax", mentions: /\bestimate\b/i, link: "/taxes" },
+  },
+  {
+    id: "tax-3",
+    text: "will I get a tax refund",
+    needs: "rules",
+    expect: { intent: "tax", mentions: /\brefund of about \$[\d,]+/i },
+  },
+  {
+    id: "tax-4",
+    text: "what's my tax bracket",
+    needs: "rules",
+    expect: { intent: "tax", mentions: /\b\d+%/ },
+  },
+  {
+    id: "tax-5",
+    text: "am I withholding too much",
+    needs: "rules",
+    expect: { intent: "tax", button: "tax.w4_start", mentions: /W-4/ },
+  },
+  {
+    id: "tax-6",
+    text: "how can I pay less tax",
+    needs: "rules",
+    expect: { intent: "tax", button: "tax.save_task", mentions: /401\(k\)/ },
+  },
+  {
+    id: "tax-7",
+    text: "how much have I donated this year",
+    needs: "rules",
+    expect: { intent: "tax", mentions: /American Red Cross/ },
+  },
+  {
+    id: "tax-8",
+    text: "what tax forms should I expect",
+    needs: "rules",
+    expect: { intent: "tax", list: true, mentions: /W-2/ },
+  },
+  {
+    id: "tax-9",
+    text: "my tax pack",
+    needs: "rules",
+    expect: { intent: "tax", link: "/tax-pack" },
+  },
+  {
+    id: "tax-10",
+    text: "where's my refund",
+    needs: "rules",
+    expect: { intent: "tax", mentions: /\brefund\b/i },
+  },
+  {
+    id: "tax-11",
+    text: "when are my quarterly taxes due",
+    needs: "rules",
+    expect: { intent: "tax", mentions: /freelance/i },
+  },
+  {
+    id: "tax-12",
+    text: "how do I file my taxes",
+    needs: "rules",
+    expect: { intent: "tax", mentions: /April 15/ },
+  },
+  {
+    id: "tax-13",
+    text: "I'm married filing jointly",
+    needs: "rules",
+    expect: { intent: "tax", button: "tax.filing_joint" },
+  },
+  {
+    id: "tax-14",
+    text: "tag Starbucks as work",
+    needs: "rules",
+    expect: { intent: "tax", button: "tax.tag_set" },
+  },
+  {
+    id: "tax-15",
+    text: "what's the standard deduction",
+    needs: "rules",
+    expect: { intent: "tax", mentions: /\$16,100/ },
+  },
+
   // Outside what Jane does: brief, and never advice.
   { id: "out-1", text: "what's the weather today", needs: "claude", expect: { avoid: ADVICE } },
   {
@@ -565,6 +657,5 @@ export const QUESTIONS: readonly CheckQuestion[] = [
     needs: "claude",
     expect: { avoid: /\bbuy\b.*\bstock|\byou should (?:buy|sell)\b/i },
   },
-  { id: "out-3", text: "how do I file my taxes", needs: "claude", expect: {} },
   { id: "out-4", text: "tell me a joke", needs: "claude", expect: { avoid: ADVICE } },
 ];

@@ -1,6 +1,6 @@
 import { ANSWER_FIRST_SENTENCE_MAX, ANSWER_MAX_CHARS } from "@/config/answer-checks";
 import { ASK_BLOCKED_REPLY } from "@/config/ask";
-import { checkGuardrails, dollarFigures } from "@/lib/guardrails";
+import { checkGuardrails, dollarFigures, type GuardrailProfile } from "@/lib/guardrails";
 import { formatCents } from "@/lib/money";
 import { CHAT_UNAVAILABLE_TEXT } from "../claude";
 import { parseIntent } from "../intents";
@@ -47,6 +47,9 @@ export function fixedChecks(
   facts: Facts,
   // Earlier turns of this conversation: figures there can be used again.
   earlier: readonly string[] = [],
+  // The guardrails the person gets (spec step 98): the demo bank's people are in demo
+  // advice mode, where tax answers are allowed (spec step 127).
+  profile: GuardrailProfile = "standard",
 ): Check[] {
   const { expect } = question;
   const body = answer.body.trim();
@@ -91,7 +94,12 @@ export function fixedChecks(
   // figures from the same loaders, so only Claude's are held to the figures the lookups gave.
   const allowed = [question.text, ...earlier].flatMap((t) => dollarFigures(t).map((f) => f.cents));
   allowed.push(...facts.allowedCents);
-  const guard = checkGuardrails(body, answer.source === "claude" ? allowed : [...shown]);
+  const guard = checkGuardrails(
+    body,
+    answer.source === "claude" ? allowed : [...shown],
+    undefined,
+    profile,
+  );
   checks.push(
     guard.ok
       ? pass("guardrails")
