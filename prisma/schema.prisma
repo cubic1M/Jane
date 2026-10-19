@@ -2048,6 +2048,15 @@ model TaxProfile {
   donorFundPartner      String?   @map("donor_fund_partner")
   donorFundName         String?   @map("donor_fund_name")
   donorFundOpenedAt     DateTime? @map("donor_fund_opened_at") @db.Timestamptz(3)
+  // Spec step 169: family details for the family tax choices: each child
+  // ([{ ageAtYearEnd, hasSsn, monthsLivedWithYou }]), a spouse's wages for the year, whether
+  // the person pays over half the cost of their home, and a student's years of college
+  // before this one and whether at least half-time.
+  familyChildren        Json      @default("[]") @map("family_children")
+  spouseWagesCents      Int?      @map("spouse_wages_cents")
+  paysOverHalfHome      Boolean?  @map("pays_over_half_home")
+  studentYearsBefore    Int?      @map("student_years_before")
+  studentHalfTime       Boolean?  @map("student_half_time")
   createdAt             DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt             DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
 
