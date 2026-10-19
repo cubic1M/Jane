@@ -23,6 +23,8 @@ import { profileOf, saveProfileForm } from "./profile";
 
 const url = process.env.TEST_DATABASE_URL;
 const LINKED = new Date("2026-10-18T15:00:00Z");
+// Each test links and syncs a demo bank, then talks to Jane: slower than most.
+const SLOW = { timeout: 60_000 };
 
 describe.runIf(url)("investments in Jane's chat, against a real database", () => {
   let client: PrismaClient;
@@ -59,7 +61,7 @@ describe.runIf(url)("investments in Jane's chat, against a real database", () =>
     vi.unstubAllEnvs();
   });
 
-  it("step 129: asks the four questions in one message and saves each tap", async () => {
+  it("step 129: asks the four questions in one message and saves each tap", SLOW, async () => {
     const userId = await demoPerson();
     const snapshot = await loadSnapshot(userId, { client, now: LINKED });
     expect(snapshot?.investments).toMatchObject({ advice: true, holdingCount: 9 });
@@ -124,7 +126,7 @@ describe.runIf(url)("investments in Jane's chat, against a real database", () =>
     });
   });
 
-  it("step 129: never asks someone with a real account, who gets no advice", async () => {
+  it("step 129: never asks someone with a real account, who gets no advice", SLOW, async () => {
     const userId = await demoPerson();
     await client.account.create({
       data: { userId, source: "csv", name: "Checking", type: "depository", subtype: "checking" },
