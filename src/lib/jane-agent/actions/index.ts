@@ -46,6 +46,8 @@ import {
   investAutoPause,
   investAutoResume,
   collegeStart,
+  hsaLink,
+  hsaInvest,
 } from "./investments";
 import { changeBudget, changeExpected, changeLook } from "./changes";
 import { lifeNever, lifeNo, lifeYes } from "./life";
@@ -152,6 +154,8 @@ export const ACTION_HANDLERS: Readonly<Record<ActionId, ActionHandler>> = {
   "invest.auto_pause": investAutoPause,
   "invest.auto_resume": investAutoResume,
   "college.start": collegeStart,
+  "hsa.link": hsaLink,
+  "hsa.invest": hsaInvest,
   // Jane notices changes (spec step 97).
   "change.look": changeLook,
   "change.budget": changeBudget,

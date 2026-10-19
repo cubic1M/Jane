@@ -40,7 +40,16 @@ const primaryOf = (detailed: PfcDetailed): PfcPrimary =>
   )!;
 
 type AccountKey =
-  "checking" | "savings" | "card" | "mortgage" | "student" | "auto" | "retirement" | "brokerage";
+  | "checking"
+  | "savings"
+  | "card"
+  | "mortgage"
+  | "student"
+  | "auto"
+  | "retirement"
+  | "brokerage"
+  // Spec step 159: a demo HSA, only when the person links one (DemoExtra).
+  | "hsa";
 
 export const accountId = (seed: string, key: AccountKey) => `demo-${seed}-${key}`;
 
@@ -582,7 +591,7 @@ const account = (
     balances: { current, available: null, limit: null, iso_currency_code: "USD" },
   }) as unknown as AccountBase;
 
-export function demoAccounts({ seed }: DemoSeed): AccountBase[] {
+export function demoAccounts({ seed }: DemoSeed, extras: readonly DemoExtra[] = []): AccountBase[] {
   return [
     account(seed, "checking", "Demo Checking", "0001", "depository", "checking", 3840.12),
     account(seed, "savings", "Demo Savings", "0002", "depository", "savings", 24310),
@@ -592,8 +601,16 @@ export function demoAccounts({ seed }: DemoSeed): AccountBase[] {
     account(seed, "auto", "Demo Car Loan", "0006", "loan", "auto", 18020),
     account(seed, "retirement", "Demo 401(k)", "0007", "investment", "401k", 84250.4),
     account(seed, "brokerage", "Demo Brokerage", "0008", "investment", "brokerage", 12480.15),
+    // Spec step 159: a demo HSA's balance is what it holds.
+    ...(extras.includes("hsa")
+      ? [account(seed, "hsa", "Demo HSA", "0009", "investment", "hsa", 4271.8)]
+      : []),
   ];
 }
+
+// Extra stand-in accounts a demo-bank person can link (spec step 159 on).
+export const DEMO_EXTRAS = ["hsa"] as const;
+export type DemoExtra = (typeof DEMO_EXTRAS)[number];
 
 // The next time a day of the month comes round, after `today`.
 function nextDayOfMonth(today: string, dayOfMonth: number): string {

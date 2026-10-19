@@ -342,6 +342,7 @@ model User {
   autopilotSectors AutopilotSector[]
   autopilotActs    AutopilotAct[]
   collegePlans     CollegePlan[]
+  hsaReceipts      HsaReceipt[]
 
   @@map("users")
 }
@@ -408,6 +409,9 @@ model PlaidItem {
   // retirement balances, holdings and investment transactions (spec step 128) are read on
   // each sync.
   investments          Boolean   @default(false)
+  // Demo bank only (spec step 159 on): extra stand-in accounts the person linked, e.g.
+  // "hsa" for a demo HSA.
+  demoExtras           String[]  @default([]) @map("demo_extras")
   lastSyncedAt         DateTime? @map("last_synced_at") @db.Timestamptz(3)
   createdAt            DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt            DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
@@ -480,9 +484,10 @@ model Transaction {
   createdAt          DateTime        @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt          DateTime        @updatedAt @map("updated_at") @db.Timestamptz(3)
 
-  user    User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  account Account  @relation(fields: [accountId], references: [id], onDelete: Cascade)
-  taxTags TaxTag[]
+  user       User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  account    Account     @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  taxTags    TaxTag[]
+  hsaReceipt HsaReceipt?
 
   @@unique([accountId, dedupeKey])
   @@index([userId])
@@ -2355,4 +2360,26 @@ model CollegePlan {
 
   @@index([userId])
   @@map("college_plans")
+}
+
+// Spec step 159: the HSA receipts vault. A medical charge Jane found in the person's
+// transactions, kept so it can be paid back from the HSA tax-free later (there's no
+// deadline while the HSA was open when the cost happened). Each links to its transaction.
+model HsaReceipt {
+  id            String    @id @default(cuid())
+  userId        String    @map("user_id")
+  transactionId String    @unique @map("transaction_id")
+  amountCents   Int       @map("amount_cents")
+  date          DateTime  @db.Date
+  merchant      String
+  // saved, or reimbursed once the person took the money back out.
+  status        String    @default("saved")
+  reimbursedAt  DateTime? @map("reimbursed_at") @db.Timestamptz(3)
+  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  transaction Transaction @relation(fields: [transactionId], references: [id], onDelete: Cascade)
+
+  @@index([userId, date])
+  @@map("hsa_receipts")
 }

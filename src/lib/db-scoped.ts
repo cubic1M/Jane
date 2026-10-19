@@ -164,6 +164,8 @@ export function scopedFor(userId: string, client: PrismaClient = db) {
     autoInvestRuns: scoped.autoInvestRun,
     // College savings (spec step 158).
     collegePlans: scoped.collegePlan,
+    // The HSA receipts vault (spec step 159).
+    hsaReceipts: scoped.hsaReceipt,
   };
 }
 

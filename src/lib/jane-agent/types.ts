@@ -121,6 +121,9 @@ export const ACTION_IDS = [
   "invest.auto_resume",
   // Spec step 158: start saving for college.
   "college.start",
+  // Spec step 159: the HSA.
+  "hsa.link",
+  "hsa.invest",
   // Jane notices changes (spec step 97).
   "change.look",
   "change.budget",

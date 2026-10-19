@@ -23,6 +23,7 @@ import { loadReview } from "./review";
 import { loadReturns } from "./returns";
 import { loadGoalBuckets } from "./goal-buckets";
 import { estimateCollege } from "./college";
+import { collectReceipts, investHsaCash, loadHsa } from "./hsa";
 import { setAutopilot } from "@/lib/autopilot";
 import { takeSnapshots } from "@/lib/snapshots";
 import { syncDemoInvestments } from "@/lib/plaid/sync";
@@ -532,6 +533,47 @@ describe.runIf(url)("investments in Jane's chat, against a real database", () =>
       // The goal joins the buckets (step 157): 13 years away, invested.
       const { buckets } = await loadGoalBuckets(userId, { client, now: LINKED });
       expect(buckets?.find((b) => b.id === goal.id)).toMatchObject({ nearTerm: false });
+    },
+  );
+
+  it(
+    "step 159: receipts saved by herself, a demo HSA, its extra cash invested with a tap",
+    SLOW,
+    async () => {
+      const userId = await demoPerson();
+      // The demo bank's pharmacy and dentist charges, saved by Jane's brain on the first
+      // sync by herself, once each.
+      expect(await client.hsaReceipt.count({ where: { userId } })).toBe(3);
+      expect(await collectReceipts(userId, { client, now: LINKED })).toBe(0);
+      const receipts = await client.hsaReceipt.findMany({
+        where: { userId },
+        include: { transaction: true },
+      });
+      expect(receipts.every((r) => r.transaction.amountCents === r.amountCents)).toBe(true);
+      expect(receipts.reduce((s, r) => s + r.amountCents, 0)).toBe(22_680);
+
+      const snapshot = await loadSnapshot(userId, { client, now: LINKED });
+      const offer = investmentsSource
+        .gather(snapshot!, {} as never)
+        .find((c) => c.dedupeKey === "hsa:link")!;
+      const posted = await client.janeMessage.create({
+        data: {
+          userId,
+          kind: offer.kind,
+          body: offer.body,
+          refs: offer.refs,
+          actions: offer.actions,
+          dedupeKey: "test:hsa:link",
+        },
+      });
+      await takeChatAction(userId, posted.id, "hsa.link", { client, now: LINKED });
+      const hsa = await loadHsa(userId, { client, now: LINKED });
+      expect(hsa.account).toMatchObject({ name: "Demo HSA", balanceCents: 427_180 });
+      expect(hsa.plan).toMatchObject({ cashCents: 285_000, toInvestCents: 85_000 });
+
+      const { amountCents } = await investHsaCash(userId, { client, now: LINKED });
+      expect(amountCents).toBe(85_000);
+      expect((await loadHsa(userId, { client, now: LINKED })).plan?.toInvestCents).toBe(0);
     },
   );
 });

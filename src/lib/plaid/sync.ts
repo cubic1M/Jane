@@ -37,7 +37,7 @@ import { ensureDemoPolicies } from "@/lib/insurance/profile";
 import { insuranceAfterSync } from "@/lib/insurance/daily";
 import { demoPayoffs } from "@/lib/loan-applications";
 import { confirmInsuranceSwitches } from "@/lib/insurance/switch";
-import { demoPlaidApi, isDemoToken } from "./demo";
+import { demoExtrasOf, demoPlaidApi, isDemoToken } from "./demo";
 import { runJaneAgentSafely } from "@/lib/jane-agent/run";
 
 // Brings one Plaid item up to date: accounts, transactions since the saved cursor
@@ -513,13 +513,20 @@ export async function syncDemoInvestments(
 ): Promise<void> {
   const item = await client.plaidItem.findUnique({
     where: { id: itemId },
-    select: { id: true, userId: true, accessTokenEncrypted: true },
+    select: { id: true, userId: true, accessTokenEncrypted: true, demoExtras: true },
   });
   if (!item) return;
   const accessToken = decrypt(item.accessTokenEncrypted);
   if (!isDemoToken(accessToken)) return;
   const db = scopedFor(item.userId, client);
-  const api = demoPlaidApi(accessToken, now, [], await demoOrders(db));
+  const api = demoPlaidApi(
+    accessToken,
+    now,
+    [],
+    await demoOrders(db),
+    [],
+    demoExtrasOf(item.demoExtras),
+  );
   await saveInvestments(db, api, accessToken, item.id, now);
 }
 
@@ -537,6 +544,7 @@ export async function syncItem(
       transactionsCursor: true,
       liabilities: true,
       investments: true,
+      demoExtras: true,
     },
   });
   if (!item) throw new Error("Plaid item not found");
@@ -551,6 +559,8 @@ export async function syncItem(
       await demoOrders(db),
       // Spec step 112: loans a refinance paid off.
       await demoPayoffs(item.userId, { client }),
+      // Spec step 159: extra stand-in accounts the person linked.
+      demoExtrasOf(item.demoExtras),
     );
     // Its example options to compare against (spec step 76).
     await ensureDemoOptions({ client, now });
