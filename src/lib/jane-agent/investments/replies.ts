@@ -7,6 +7,15 @@ import type { Bucket } from "@/planning/goal-buckets";
 import { COLLEGE_TYPES } from "@/config/college";
 import type { CollegeEstimate } from "@/lib/investments/college";
 import type { HsaView } from "@/lib/investments/hsa";
+import type { CompanyStockView } from "@/lib/investments/company-stock";
+import {
+  COMPANY_LINK,
+  concentrationLine,
+  planLine,
+  sellButton,
+  sellDue,
+  SELL_WORDS,
+} from "./company-copy";
 import { byHerselfLine } from "./goals-copy";
 import { formatBps, type InvestmentAccountView, type HoldingView } from "@/insights/investments";
 import type { FeeSummary } from "@/insights/investment-fees";
@@ -622,5 +631,28 @@ export function hsaReply(view: HsaView): Reply {
       link,
     ],
     refs: { advice: true },
+  };
+}
+
+// Spec step 160: company stock. Facts for everyone; the plan to sell down in demo advice mode.
+export function companyStockReply(view: CompanyStockView, today: string): Reply {
+  if (!view.company) {
+    return {
+      body: "I don't see stock from where you work. Add a grant (RSUs, an ESPP or options) and I'll keep an eye on how much of your investing is in it.",
+      actions:
+        view.demo && view.advice
+          ? [{ id: "company.link", label: "Link a demo stock plan", kind: "primary" }, COMPANY_LINK]
+          : [COMPANY_LINK],
+      refs: {},
+    };
+  }
+  const facts = concentrationLine(view);
+  const plan = view.advice ? planLine(view, today) : null;
+  if (!plan || !view.plan) return { body: facts, actions: [COMPANY_LINK], refs: {} };
+  const due = sellDue(view, today);
+  return {
+    body: `${facts} ${plan}${due ? ` ${SELL_WORDS}` : ""}`,
+    actions: due ? [sellButton(view), COMPANY_LINK] : [COMPANY_LINK],
+    refs: { advice: true, ...(due ? { companyPlan: view.plan.key } : {}) },
   };
 }

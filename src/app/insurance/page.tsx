@@ -213,6 +213,11 @@ async function InsuranceContent({
           <Link href="/insurance/benefits" className={`text-sm ${LINK}`}>
             Benefits through work
           </Link>
+          {advice && (
+            <Link href="/insurance/life" className={`text-sm ${LINK}`}>
+              Life cover
+            </Link>
+          )}
         </div>
       </div>
 

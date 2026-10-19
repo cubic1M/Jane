@@ -188,5 +188,27 @@ export async function investmentsExport(userId: string, client: PrismaClient = d
       reimbursedAt: true,
     },
   });
-  return { securities, holdings, transactions, profile, orders, collegePlans, hsaReceipts };
+  // Spec step 160: company stock grants.
+  const equityGrants = await db.equityGrants.findMany({
+    select: {
+      company: true,
+      ticker: true,
+      kind: true,
+      unvestedShares: true,
+      sharesPerVest: true,
+      everyMonths: true,
+      nextVestOn: true,
+      source: true,
+    },
+  });
+  return {
+    securities,
+    holdings,
+    transactions,
+    profile,
+    orders,
+    collegePlans,
+    hsaReceipts,
+    equityGrants,
+  };
 }

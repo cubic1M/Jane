@@ -16,6 +16,7 @@ import { loadReturns } from "@/lib/investments/returns";
 import { loadGoalBuckets } from "@/lib/investments/goal-buckets";
 import { estimateCollege, loadCollege, type CollegeEstimate } from "@/lib/investments/college";
 import { loadHsa } from "@/lib/investments/hsa";
+import { loadCompanyStock } from "@/lib/investments/company-stock";
 import { formatReturn } from "@/insights/returns";
 import { loadAutoInvest } from "@/lib/investments/auto-invest";
 import { loadRebalance } from "@/lib/investments/rebalance";
@@ -118,6 +119,12 @@ export const INVESTMENT_TOOLS: Anthropic.Tool[] = [
     input_schema: noInput,
   },
   {
+    name: "company_stock",
+    description:
+      "Stock from where the person works: shares held in each account, grants still to vest (RSUs, ESPP, options), and the share of what they've invested, against the common 10% limit. In demo advice mode, the plan to sell down in parts three months apart (oldest shares first), each part's estimated tax on the gain, and how much a 50% drop would cost before and after. Selling is the person's tap on Jane's message or the company stock page, never yours.",
+    input_schema: noInput,
+  },
+  {
     name: "explainer",
     description:
       "Jane's fixed plain-language explainer for a word (education, not advice; waiting for counsel's review): what it is and how it works, with sources. Use it when the person asks what something means, and quote it rather than writing your own definition.",
@@ -142,6 +149,7 @@ export const INVESTMENT_TOOL_STATUS: Readonly<Record<string, string>> = {
   account_plan: "Working out which account first…",
   explainer: "Looking that up…",
   hsa: "Checking your HSA…",
+  company_stock: "Looking at your company stock…",
   college_plan: "Working out college costs…",
   goal_buckets: "Looking at your goals…",
   investment_returns: "Working out your returns…",
@@ -496,6 +504,45 @@ export async function runInvestmentTool(
         return out(describe(await estimateCollege(userId, { childAge: age, type }, { client })));
       }
       return out({ plans: plans.map((p) => ({ child: p.childName, ...describe(p.estimate) })) });
+    }
+    case "company_stock": {
+      const view = await loadCompanyStock(userId, { client, now });
+      return out({
+        company: view.company,
+        ticker: view.ticker,
+        held: view.holdings.map((h) => ({
+          account: h.accountName,
+          shares: h.quantity,
+          value: money(h.valueCents),
+        })),
+        stillToVest: view.grants.map((g) => ({
+          kind: g.kind,
+          shares: g.unvestedShares,
+          everyMonths: g.everyMonths,
+          sharesEachTime: g.sharesPerVest,
+          nextVest: g.nextVestOn,
+        })),
+        shareOfInvested: Math.round(view.concentration.share * 1000) / 10,
+        shareWithUnvested: Math.round(view.concentration.shareWithUnvested * 1000) / 10,
+        overTheLimit: view.concentration.overLimit,
+        plan: !view.advice
+          ? "advice only in demo advice mode"
+          : view.plan && {
+              account: view.plan.accountName,
+              sellInAll: money(view.plan.sellCents),
+              estimatedTax: money(view.plan.taxCents),
+              shareAfter: Math.round(view.plan.shareAfter * 1000) / 10,
+              costOfAHalfDropBefore: money(view.plan.dropBeforeCents),
+              costOfAHalfDropAfter: money(view.plan.dropAfterCents),
+              parts: view.plan.parts.map((p) => ({
+                on: p.on,
+                sell: money(p.proceedsCents),
+                gain: money(p.gainCents),
+                estimatedTax: money(p.taxCents),
+              })),
+            },
+        taxRatesFromTheTaxEstimate: view.rates.fromEstimate,
+      });
     }
     case "hsa": {
       const view = await loadHsa(userId, { client, now });

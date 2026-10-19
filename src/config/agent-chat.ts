@@ -91,6 +91,9 @@ export const MESSAGE_PRIORITY = {
   benefits_question: 47,
   // Spec step 151: a policy read from a document, waiting for the confirm tap.
   policy_reading: 63,
+  // Spec step 153: life cover sized with quotes (demo advice), and the question before it.
+  life_sized: 49,
+  life_dependants: 45,
   urgent_alert: 95,
   deadline: 90,
   waiting_on_you: 85,
@@ -162,6 +165,8 @@ export const MESSAGE_PRIORITY = {
   college: 34,
   // Spec step 159: the HSA (demo advice) and its receipts vault.
   hsa: 33,
+  // Spec step 160: too much in the employer's stock (demo advice).
+  company_stock: 37,
   auto_invest_run: 31,
 } as const;
 

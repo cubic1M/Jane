@@ -5,6 +5,7 @@ import {
   DEFAULT_TERM_MONTHS,
   DEMO_PRICING,
   HEALTH_EXTRA_PERSON_SHARE,
+  LIFE_OFFER_DAYS,
   QUOTE_VALID_DAYS,
   type PolicyKind,
 } from "@/config/insurance";
@@ -14,6 +15,7 @@ import {
   type DemoCarrier,
 } from "@/data-sources/demo/demo-carriers";
 import type { Coverage } from "./coverage";
+import { standInDecision } from "./life-underwriting";
 import type { InsurancePartner, PartnerQuote, QuoteCarrier, QuoteRequest } from "./partner";
 
 // The stand-in insurance partner (spec step 103): quotes from the made-up carrier catalog,
@@ -258,6 +260,21 @@ export const demoPartner: InsurancePartner = {
   // The first payment is taken on the start day.
   async paymentStatus(_policyNumber, { startDate, now }) {
     return now.toISOString().slice(0, 10) >= startDate ? "paid" : "pending";
+  },
+
+  // Spec step 153: the stand-in decides at once from the answers (life-underwriting.ts).
+  async applyLife({ quote, answers }, { now }) {
+    const decision = standInDecision(
+      { ...quote, perYear: PREMIUM_FREQUENCIES[quote.premiumFrequency].perYear },
+      answers,
+    );
+    return {
+      ...decision,
+      offerExpiresAt:
+        decision.outcome === "offered"
+          ? new Date(now.getTime() + LIFE_OFFER_DAYS * DAY_MS).toISOString()
+          : null,
+    };
   },
 
   async cancel(policy, { effectiveDate }) {

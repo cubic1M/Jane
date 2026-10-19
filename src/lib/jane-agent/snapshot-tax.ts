@@ -22,6 +22,7 @@ import type { TaxSaving } from "@/planning/tax-savings";
 import type { WithholdingCheck } from "@/planning/withholding";
 import { loadTaxForms, loadTaxTags } from "@/lib/tax-organizer";
 import { loadTaxPlan, type TaxPlanView } from "@/lib/tax-plan";
+import { loadGiving, type GivingView } from "@/lib/giving";
 import { inDocumentSeason, loadTaxDocuments, type TaxDocumentsView } from "@/lib/tax-documents";
 import { loadTaxProfile } from "@/lib/tax-profile";
 import type { ExpectedForm } from "@/planning/tax-documents";
@@ -64,6 +65,8 @@ export type TaxSnapshot = {
     documents?: TaxDocumentsView | null;
     // Spec step 167: the year-round tax plan.
     plan?: TaxPlanView;
+    // Spec step 168: gifts, their receipts and the giving options.
+    giving?: GivingView;
   } | null;
 };
 
@@ -135,6 +138,7 @@ export async function loadTaxSnapshot(
         (await loadRefunds(userId, { client, now, days: REFUND.recentDays })).refunds,
         now,
       ),
+      giving: await loadGiving(userId, { client, now, loaded: { estimate, advice } }),
       plan: await loadTaxPlan(userId, {
         client,
         now,

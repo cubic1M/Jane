@@ -3,6 +3,7 @@ import { autopilotAnswer } from "./insurance/autopilot";
 import { benefitsAnswer } from "./insurance/benefits";
 import { readingsAnswer } from "./insurance/readings";
 import { cardCoverAnswer } from "./insurance/card-cover";
+import { lifeAnswer } from "./insurance/life";
 import { claimAnswer } from "./insurance/claim";
 import { quotesAnswer } from "./insurance/quotes";
 import { insuranceReply } from "./insurance/replies";
@@ -230,6 +231,8 @@ async function byIntent(
       if (intent.ask === "documents") return readingsAnswer(userId, { client, now });
       // Spec step 152: cover that comes with their cards.
       if (intent.ask === "cards") return cardCoverAnswer(userId, { client });
+      // Spec step 153: life cover sized and applied for.
+      if (intent.ask === "life") return lifeAnswer(userId, { client, now });
       return insuranceReply(intent, await loadInsuranceSnapshot(userId, { client, now }), asOf);
     case "greeting": {
       if (intent.thanks) return greetingReply(true, null);
