@@ -14,6 +14,7 @@ import { loadTaxEstimate } from "@/lib/tax-estimate";
 import { loadWithholding } from "@/lib/tax-withholding";
 import { loadTaxSavings } from "@/lib/tax-savings";
 import { loadSelfEmployed } from "@/lib/self-employed";
+import { loadRefunds } from "@/lib/tax-refund";
 import { loadTaxForms, loadTaxTags } from "@/lib/tax-organizer";
 import { loadWorkingProfile } from "@/lib/tax-profile";
 import { defaultTaxYear } from "@/planning/tax-pack";
@@ -72,6 +73,12 @@ export const TAX_TOOLS: Anthropic.Tool[] = [
     name: "tax_self_employed",
     description:
       "Freelance and gig taxes: freelance money in this year, business expenses tagged, the home office and business miles and what they take off, and in demo advice mode the share of each payment to set aside and the estimated tax payments left this year (dates and amounts that add up to what the estimate says is still owed). Say amounts as estimates.",
+    input_schema: noInput,
+  },
+  {
+    name: "tax_refunds",
+    description:
+      "Tax refunds seen in the person's accounts in the last year: federal or state, amount, date, the tax year, how it compares with Jane's estimate for that year, whether its plan was set up, and in demo advice mode only where it could go (emergency fund, high-rate debt, goals behind).",
     input_schema: noInput,
   },
   {
@@ -291,6 +298,24 @@ export async function runTaxTool(
               })),
             }
           : "Not available: set-aside and payment amounts are demo advice only. Due dates: Apr 15, Jun 15, Sep 15, Jan 15.",
+      });
+    }
+    case "tax_refunds": {
+      const { advice, refunds } = await loadRefunds(userId, { client, now });
+      return out({
+        refunds: refunds.map((r) => ({
+          to: r.refund.to,
+          amount: money(r.refund.cents),
+          landed: r.refund.date,
+          taxYear: r.refund.taxYear,
+          estimatedRefund: r.match ? money(r.match.estimatedCents) : null,
+          matchesEstimate: r.match?.matches ?? null,
+          planSetUp: r.handled,
+          demoAdvice:
+            advice && r.plan
+              ? r.plan.items.map((i) => ({ to: i.label, amount: money(i.cents) }))
+              : undefined,
+        })),
       });
     }
     case "tax_forms": {

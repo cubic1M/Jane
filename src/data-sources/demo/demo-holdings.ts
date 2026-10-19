@@ -404,7 +404,8 @@ export type DemoOrder = {
   // The demo account's Plaid id (accountId(seed, key)).
   accountRef: string;
   ticker: string;
-  side: "buy" | "sell";
+  // A deposit (spec step 134) is money paid into the account's cash from checking.
+  side: "buy" | "sell" | "deposit";
   quantity: number;
   amountCents: number;
   // YYYY-MM-DD the order filled.
@@ -426,6 +427,13 @@ export function applyDemoOrders(
     const cash = out.find(
       (h) => h.account_id === order.accountRef && SECURITIES[tickerOf(h.security_id) ?? ""]?.cash,
     );
+    if (cash && order.side === "deposit") {
+      const cashCents = cents(cash.institution_value) + order.amountCents;
+      cash.institution_value = cashCents / 100;
+      cash.quantity = cashCents / 100;
+      cash.cost_basis = cashCents / 100;
+      continue;
+    }
     const price = DEMO_PRICES[order.ticker];
     if (!cash || price === undefined) continue;
     let held = out.find(
@@ -479,22 +487,36 @@ export function demoOrderTransactions(
 ): InvestmentTransaction[] {
   return orders
     .filter((o) => o.day > start && o.day <= end)
-    .map(
-      (o): InvestmentTransaction =>
-        ({
-          investment_transaction_id: `demo-${demo.seed}-order-${o.id}`,
-          account_id: o.accountRef,
-          security_id: demoSecurityId(o.ticker),
-          date: o.day,
-          name: `${o.side === "buy" ? "BUY" : "SELL"} ${SECURITIES[o.ticker]?.name.toUpperCase() ?? o.ticker}`,
-          quantity: o.side === "buy" ? o.quantity : -o.quantity,
-          amount: (o.side === "buy" ? o.amountCents : -o.amountCents) / 100,
-          price: DEMO_PRICES[o.ticker] ?? 0,
-          fees: 0,
-          type: o.side as InvestmentTransaction["type"],
-          subtype: o.side as InvestmentTransaction["subtype"],
-          iso_currency_code: "USD",
-          unofficial_currency_code: null,
-        }) as InvestmentTransaction,
-    );
+    .map((o): InvestmentTransaction => {
+      const base = {
+        investment_transaction_id: `demo-${demo.seed}-order-${o.id}`,
+        account_id: o.accountRef,
+        date: o.day,
+        fees: 0,
+        iso_currency_code: "USD",
+        unofficial_currency_code: null,
+      };
+      if (o.side === "deposit") {
+        return {
+          ...base,
+          security_id: null,
+          name: "DEPOSIT FROM CHECKING",
+          quantity: 0,
+          amount: -o.amountCents / 100,
+          price: 0,
+          type: "cash" as InvestmentTransaction["type"],
+          subtype: "deposit" as InvestmentTransaction["subtype"],
+        } as InvestmentTransaction;
+      }
+      return {
+        ...base,
+        security_id: demoSecurityId(o.ticker),
+        name: `${o.side === "buy" ? "BUY" : "SELL"} ${SECURITIES[o.ticker]?.name.toUpperCase() ?? o.ticker}`,
+        quantity: o.side === "buy" ? o.quantity : -o.quantity,
+        amount: (o.side === "buy" ? o.amountCents : -o.amountCents) / 100,
+        price: DEMO_PRICES[o.ticker] ?? 0,
+        type: o.side as InvestmentTransaction["type"],
+        subtype: o.side as InvestmentTransaction["subtype"],
+      } as InvestmentTransaction;
+    });
 }

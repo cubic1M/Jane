@@ -121,6 +121,7 @@ export function plan(
   const out: PlannedMessage[] = [];
   for (const candidate of fresh) {
     if (seen.has(candidate.dedupeKey)) continue;
+    if (never.has(`message:${candidate.dedupeKey}`)) continue;
     if (uncapped(candidate)) {
       seen.add(candidate.dedupeKey);
       out.push(candidate);

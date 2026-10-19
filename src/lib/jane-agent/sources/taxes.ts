@@ -8,6 +8,7 @@ import { estimateMessage } from "../tax-replies";
 import { w4Suggestion, withholdingFacts } from "../tax-w4";
 import { savingMessage } from "../tax-saving-message";
 import { nextQuarter, quarterMessage, setAsideMessage } from "../tax-self-employed";
+import { refundMessage } from "../tax-refund-message";
 import { formatCents } from "@/lib/money";
 import { incomeLine, listOf } from "@/planning/tax-profile";
 import { PROFILE_HREF, PROFILE_INTRO, TAGS_HREF, nextQuestion } from "../tax-flow";
@@ -174,6 +175,18 @@ export const taxesSource: MessageSource = {
           });
         }
       }
+    }
+
+    // Spec step 125: a refund that landed, matched to the estimate; in demo advice mode with
+    // a plan for it, set up with one tap.
+    if (tax.refund) {
+      const message = refundMessage(tax.refund);
+      out.push({
+        kind: message.refs.advice ? "decision" : "heads_up",
+        ...message,
+        dedupeKey: `refund:${tax.refund.refund.transactionId}`,
+        priority: TAX_MESSAGE_PRIORITY.refund,
+      });
     }
 
     for (const form of tax.formsDue?.forms ?? []) {

@@ -486,7 +486,9 @@ export async function demoOrders(db: ScopedDb): Promise<DemoOrder[]> {
     orderBy: [{ filledAt: "asc" }, { id: "asc" }],
   });
   return orders.flatMap((o) =>
-    o.account.plaidAccountId && o.filledAt && (o.side === "buy" || o.side === "sell")
+    o.account.plaidAccountId &&
+    o.filledAt &&
+    (o.side === "buy" || o.side === "sell" || o.side === "deposit")
       ? [
           {
             id: o.id,

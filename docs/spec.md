@@ -21,7 +21,7 @@ The build runs in eleven steps, with Plaid added at step 7 after the founders te
 
 ## Status (Oct 19, 2026, morning)
 
-Steps 1–63 are built (24 came before 22, because do-it-yourself kits need its cancel links). On Oct 18, 2026 the roadmap was reordered: Phase M (Jane acts for you, steps 49–56), then Phase Q (Autopilot, steps 57–64), Phase N (the complete picture, 65–68), Phase O (plan ahead, 69–72), the rest of Phase L (73–74) and Phase P (regulated features through partners), which replaces the old Phase F. On Oct 19, 2026, after step 86, the founder's plan was added and deepened, sector by sector: Phase V (a professional chat, steps 87–96), Phase W (Jane does the thinking, 97–101, with demo advice mode as step 98), Phase X (insurance, 102–108), Phase Y (loans and debt, 109–117), Phase Z (taxes, 118–127), Phase AA (investments, 128–137) and Phase AB (show Jane to more people, 138–140). Every step is automation-first and built into Jane's chat in the same step; anything needing an outside account is a stand-in; advice runs on demo data only until licensed partners and counsel sign off. Steps are built in parallel lanes, one per sector, each lane's steps in order. Production deploys only when the founder asks (automatic Vercel deploys are off: the free plan allows 100 a day). Where the build differs from the original plan, the plan below has been kept and the difference is noted here.
+Steps 1–63 are built (24 came before 22, because do-it-yourself kits need its cancel links). On Oct 18, 2026 the roadmap was reordered: Phase M (Jane acts for you, steps 49–56), then Phase Q (Autopilot, steps 57–64), Phase N (the complete picture, 65–68), Phase O (plan ahead, 69–72), the rest of Phase L (73–74) and Phase P (regulated features through partners), which replaces the old Phase F. On Oct 19, 2026, after step 86, the founder's plan was added and deepened, sector by sector: Phase V (a professional chat, steps 87–96), Phase W (Jane does the thinking, 97–101, with demo advice mode as step 98), Phase X (insurance, 102–108), Phase Y (loans and debt, 109–117), Phase Z (taxes, 118–127), Phase AA (investments, 128–137) and Phase AB (show Jane to more people, 138–140), then Phase AC (Jane runs the money, 141–148: one autopilot, a nightly controller run, one ranked list, money and bills that move themselves through stand-ins, a health score, fewer asks and a monthly report). Every step is automation-first and built into Jane's chat in the same step; anything needing an outside account is a stand-in; advice runs on demo data only until licensed partners and counsel sign off. Steps are built in parallel lanes, one per sector, each lane's steps in order. Production deploys only when the founder asks (automatic Vercel deploys are off: the free plan allows 100 a day). Where the build differs from the original plan, the plan below has been kept and the difference is noted here.
 
 | Step | Shipped in | Notes |
 | --- | --- | --- |
@@ -2554,6 +2554,115 @@ and a registered adviser partner are connected.
 >
 > Acceptance criteria:
 > - First-run shows once; every link resolves
+
+## Phase AC: Jane runs the money (steps 141–148)
+
+With every sector built, Jane can see and do a lot, but each sector still runs on its own
+schedule and asks on its own. This phase makes her one controller: one nightly run across
+everything, one ranked list of what matters, money that goes where it should by itself
+(through stand-ins until a money-movement partner is connected), and fewer, better-timed
+asks. The goal stays the founder's: as little from the person as possible.
+
+### Step 141: One autopilot, every sector
+
+> Read CLAUDE.md. One place to say how much Jane may do by herself.
+>
+> Build:
+> 1. Autopilot per sector (subscriptions and bills, insurance, debt, taxes, investing,
+>    goals and budgets) on top of step 57's level, each with a dollar cap per action and
+>    per month, and "always ask" for anything over it.
+> 2. Every sector's automation reads it through one helper; the chat explains and changes
+>    it ("let Jane handle insurance up to $50 a month").
+>
+> Acceptance criteria:
+> - No sector acts above its level or cap; changes take effect at once and are audited
+
+### Step 142: The nightly controller run
+
+> Read CLAUDE.md. Every check, every night, in the right order.
+>
+> Build:
+> 1. One job per person each night that runs every sector's checks (sync, changes,
+>    reshops, rates, tax estimate, portfolio drift, goals) in a fixed order with a time
+>    budget, retries through the jobs table, and a log.
+> 2. "What I checked last night" in the chat and on /jane, one line per sector.
+>
+> Acceptance criteria:
+> - A failing sector never stops the others; the log shows what ran and what changed
+
+### Step 143: The next best thing to do
+
+> Read CLAUDE.md. One ranked list across everything.
+>
+> Build:
+> 1. A priority engine: every open finding, recommendation and task scored by money saved
+>    or gained per minute of the person's time, urgency and confidence (weights in config).
+> 2. The brain, the morning brief and /jane use it, so the person always sees the one or
+>    three things that matter most.
+>
+> Acceptance criteria:
+> - The order is explained ("first because it saves the most and takes one tap"); tests
+>   cover ties and deadlines
+
+### Step 144: Money that moves itself (stand-in)
+
+> Read CLAUDE.md. Paychecks split by themselves.
+>
+> Build:
+> 1. A money-movement partner interface with a stand-in (like the demo bank): transfers
+>    between the person's own accounts, scheduled and one-off.
+> 2. A paycheck plan: after each paycheck, the amounts for bills, goals, the emergency
+>    fund, debt extra payments, the tax set-aside and investing, kept above safe to
+>    spend's cushion; moved by itself at the right autopilot level, otherwise one tap.
+>
+> Acceptance criteria:
+> - Never moves money safe to spend needs; every transfer is visible and undoable while
+>   pending; real money never moves without the partner and counsel
+
+### Step 145: Bills paid on time (stand-in)
+
+> Read CLAUDE.md. No late fees, ever.
+>
+> Build:
+> 1. Bill pay through the money-movement stand-in: card minimums or statement balances and
+>    regular bills scheduled before their due dates, within autopilot caps; due-date moves
+>    suggested when a bill lands before payday.
+>
+> Acceptance criteria:
+> - A payment is never scheduled that would overdraw an account in the forecast
+
+### Step 146: Money health score
+
+> Read CLAUDE.md. How the person is doing, in one number and a few lines.
+>
+> Build:
+> 1. A score from cushion, debt, savings rate, cover, tax readiness and investing on track
+>    (weights in config, explained), monthly, with the changes that would move it most.
+>
+> Acceptance criteria:
+> - Every part of the score shows where it came from; it never shames, only says what helps
+
+### Step 147: Asking less, at the right time
+
+> Read CLAUDE.md. Jane learns when and how the person answers.
+>
+> Build:
+> 1. Which messages the person acts on, when, and on which channel; Jane times her asks
+>    and bundles to match, and stops kinds they never act on (with a note in Settings).
+>
+> Acceptance criteria:
+> - Learning never silences urgent alerts or deadlines
+
+### Step 148: The monthly money report
+
+> Read CLAUDE.md. Everything Jane did, in one place, every month.
+>
+> Build:
+> 1. A report in the chat and by email: saved, earned, paid down, moved, what's next, the
+>    health score's change, with receipts (step 139).
+>
+> Acceptance criteria:
+> - Every figure matches the pages it comes from
 
 ### Later, when the founder is ready
 

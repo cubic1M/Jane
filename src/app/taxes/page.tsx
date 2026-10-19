@@ -23,6 +23,8 @@ import { defaultTaxYear } from "@/planning/tax-pack";
 import { stateName, type FieldStatus } from "@/planning/tax-profile";
 import { EstimateSection } from "./estimate-section";
 import { SavingsSection } from "./savings-section";
+import { RefundSection } from "./refund-section";
+import { loadRefunds } from "@/lib/tax-refund";
 import { WithholdingSection } from "./withholding-section";
 import { FormToggle } from "./form-toggle";
 
@@ -81,6 +83,7 @@ async function TaxesContent() {
         </p>
       </div>
 
+      <RefundSection refunds={(await loadRefunds(user.id, { now })).refunds} />
       <EstimateSection view={estimate} />
       <WithholdingSection view={{ estimate, check: checkFrom(estimate), advice }} />
       <SavingsSection view={await loadTaxSavings(user.id, { now, loaded: { estimate, advice } })} />

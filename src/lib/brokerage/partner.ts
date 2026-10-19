@@ -13,7 +13,8 @@ export type OrderRequest = {
   accountId: string;
   ticker: string;
   securityName: string;
-  side: "buy" | "sell";
+  // A deposit (spec step 134) moves money into the account's cash.
+  side: "buy" | "sell" | "deposit";
   amountCents: number;
 };
 
