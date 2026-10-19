@@ -5,6 +5,8 @@ import { AppHeader } from "@/components/app-header";
 import { ViewTracker } from "@/components/view-tracker";
 import { formatBps, type HoldingView } from "@/insights/investments";
 import { loadInvestments } from "@/lib/investments/holdings";
+import { profileOf } from "@/lib/investments/profile";
+import { profileSummary } from "@/planning/investor-profile";
 import { formatCents } from "@/lib/money";
 import { requireUser } from "@/lib/session";
 
@@ -71,7 +73,8 @@ function HoldingRow({ h }: { h: HoldingView }) {
 async function InvestmentsContent() {
   const user = await requireUser();
   await connection();
-  const data = await loadInvestments(user.id);
+  const [data, answers] = await Promise.all([loadInvestments(user.id), profileOf(user.id)]);
+  const profile = profileSummary(answers, data.asOf);
   const max = Math.max(1, ...data.months.map((m) => m.totalCents ?? 0));
 
   return (
@@ -116,6 +119,19 @@ async function InvestmentsContent() {
               <span className="text-2xl font-semibold">{formatCents(data.byKind.investment)}</span>
             </div>
           </section>
+
+          <p className="text-sm text-zinc-600 dark:text-zinc-400">
+            {profile.complete ? (
+              <>
+                Your investor profile: <strong>{profile.label}</strong>.{" "}
+              </>
+            ) : (
+              <>Tell Jane what this money is for: four quick questions. </>
+            )}
+            <Link href="/investments/profile" className={LINK}>
+              {profile.complete ? "Change it" : "Answer them"}
+            </Link>
+          </p>
 
           {data.byAssetClass.length > 0 && (
             <section className="flex flex-col gap-2">

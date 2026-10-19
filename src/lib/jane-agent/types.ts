@@ -36,6 +36,21 @@ export const ACTION_IDS = [
   // Typing to Jane (spec step 84).
   "goal.start",
   "autopilot.pause",
+  // Investments (spec step 129 on): the answer buttons on an investor-profile question,
+  // by position (src/config/investing.ts PROFILE_QUESTIONS).
+  "invest.answer.1",
+  "invest.answer.2",
+  "invest.answer.3",
+  "invest.answer.4",
+  "invest.answer.5",
+  // Jane notices changes (spec step 97).
+  "change.look",
+  "change.budget",
+  "change.expected",
+  // Life events spotted (spec step 100).
+  "life.yes",
+  "life.no",
+  "life.never",
 ] as const;
 export type ActionId = (typeof ACTION_IDS)[number];
 
@@ -75,6 +90,15 @@ export type MessageRefs = {
   // Spec step 98: demo advice (src/lib/advice-mode.ts). The chat shows DEMO_ADVICE_LABEL
   // under it. Set it on every message that recommends investments, taxes, insurance or loans.
   advice?: true;
+  // Spec step 129: the investor-profile question the answer buttons answer, and whether
+  // Jane is going through all four again (the yearly check).
+  investQuestion?: string;
+  investAgain?: true;
+  // Spec step 97: a change Jane noticed (src/insights/changes.ts), by its key; for a
+  // category's pace, the budget "Set a budget" would set (cents a month).
+  change?: { key: string; kind: string; category?: string; budgetCents?: number };
+  // Spec step 100: the life event (moving, new_job, new_baby) Yes would start.
+  lifeKind?: string;
 };
 
 // A message the brain wants to post.
