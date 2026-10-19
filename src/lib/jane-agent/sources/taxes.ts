@@ -15,6 +15,7 @@ import { harvestMessage, washSaleMessage } from "../tax-investments";
 import { localityMessage, movingEventMessage, spottedMoveMessage } from "../tax-states-message";
 import { collectedMessage, flaggedMessage, missingMessage } from "../tax-documents-message";
 import { planMoveMessage } from "../tax-plan-message";
+import { givingOptionsMessage, receiptMessage } from "../giving-message";
 import { HARVEST_FROM } from "@/config/tax";
 import { formatCents } from "@/lib/money";
 import { incomeLine, listOf } from "@/planning/tax-profile";
@@ -318,6 +319,29 @@ export const taxesSource: MessageSource = {
         dedupeKey: `plan:${m.id}`,
         priority: TAX_MESSAGE_PRIORITY.plan,
       });
+    }
+
+    // Spec step 168: each gift that needs the charity's receipt, once; in demo advice mode
+    // and before the year ends, the giving options (unless said no to this year).
+    const giving = tax.giving;
+    if (giving) {
+      for (const g of giving.receiptsMissing) {
+        out.push({
+          kind: "heads_up",
+          ...receiptMessage(g),
+          dedupeKey: `receipt:${g.transactionId}`,
+          priority: TAX_MESSAGE_PRIORITY.receipt,
+        });
+      }
+      const options = giving.inSeason && !giving.dismissed ? givingOptionsMessage(giving) : null;
+      if (options) {
+        out.push({
+          kind: "decision",
+          ...options,
+          dedupeKey: `giving:${giving.year}`,
+          priority: TAX_MESSAGE_PRIORITY.giving,
+        });
+      }
     }
 
     // Spec step 166: with a document partner, Jane collects the forms herself: a form that

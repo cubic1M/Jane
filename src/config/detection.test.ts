@@ -39,12 +39,13 @@ describe("detection config", () => {
 
 // Acceptance criterion: no threshold or rate appears outside src/config/detection.ts.
 // Any number other than 0 or 1 written in detection code fails this test. units.ts holds
-// calendar facts (days per month, basis points) and is the one exception.
+// calendar facts (days per month, basis points) and business-days.ts the bank holidays'
+// dates; they are the exceptions.
 describe("detection code", () => {
   const root = join(process.cwd(), "src/detection");
   const files = (readdirSync(root, { recursive: true }) as string[])
     .filter((f) => f.endsWith(".ts") && !f.endsWith(".test.ts"))
-    .filter((f) => !f.startsWith("__fixtures__") && f !== "units.ts")
+    .filter((f) => !f.startsWith("__fixtures__") && !["units.ts", "business-days.ts"].includes(f))
     .map((f) => join(root, f));
 
   it("has files to check", () => {

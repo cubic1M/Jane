@@ -292,6 +292,7 @@ model User {
   refinanceCheck         RefinanceCheck?
   loanApplications       LoanApplication[]
   studentLoanProfile     StudentLoanProfile?
+  creditReports          CreditReport[]
   balanceTransfers       BalanceTransfer[]
   findings               Finding[]
   decisions              Decision[]
@@ -322,6 +323,7 @@ model User {
   insuranceClaims        InsuranceClaim[]
   employerBenefits       EmployerBenefit[]
   policyReadings         PolicyReading[]
+  lifeApplications       LifeApplication[]
   lifeEvents             LifeEvent[]
   // What's in investment accounts (spec step 128).
   securities             Security[]
@@ -744,6 +746,33 @@ model StudentLoanProfile {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("student_loan_profiles")
+}
+
+// A credit score Jane pulled (spec step 116), a soft pull once a month: the score and the
+// facts behind it from the credit partner. Kept to show how it moves. The stand-in's are
+// marked demo and never a real score.
+model CreditReport {
+  id               String   @id @default(cuid())
+  userId           String   @map("user_id")
+  partner          String
+  score            Int
+  model            String
+  rangeLow         Int      @map("range_low")
+  rangeHigh        Int      @map("range_high")
+  cardLimitCents   Int      @map("card_limit_cents")
+  averageAgeMonths Int      @map("average_age_months")
+  hardInquiries    Int      @map("hard_inquiries")
+  // What Jane saw when she pulled it, for the factors: card balances, an overdue loan,
+  // late fees in the last year, whether there's an installment loan.
+  inputs           Json     @default("{}")
+  demo             Boolean  @default(false)
+  pulledOn         DateTime @map("pulled_on") @db.Date
+  createdAt        DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, pulledOn])
+  @@map("credit_reports")
 }
 
 // A balance transfer the person made to a 0% card (spec step 113), so Jane can keep the
@@ -1843,6 +1872,37 @@ model PolicyReading {
   @@map("policy_readings")
 }
 
+// Life insurance, sized and applied for (spec step 153). Demo advice only. The amount and
+// term with the method behind them, the term quotes, the health answers, and the
+// carrier's decision. Nothing is applied for, and nothing bought, without the person's tap.
+model LifeApplication {
+  id          String    @id @default(cuid())
+  userId      String    @map("user_id")
+  // sized, asking, offered, referred, bought or dismissed.
+  status      String    @default("sized")
+  amountCents Int       @map("amount_cents")
+  termYears   Int       @map("term_years")
+  // The method, line by line (src/lib/insurance/life-need.ts), and why the term.
+  method      Json
+  termWhy     String    @map("term_why")
+  // The partner's term quotes, cheapest first.
+  quotes      Json      @default("[]")
+  // The quote applied for, and the health answers so far.
+  quoteId     String?   @map("quote_id")
+  answers     Json      @default("{}")
+  // The carrier's decision: an offer at a rate class, or a referral for its own review.
+  decision    Json?
+  policyId    String?   @map("policy_id")
+  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt   DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
+  submittedAt DateTime? @map("submitted_at") @db.Timestamptz(3)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, status])
+  @@map("life_applications")
+}
+
 // The household facts that matter for cover (spec step 102), as the person typed them.
 // Null means not said: housing and cars are then read from the accounts.
 model InsuranceProfile {
@@ -2050,6 +2110,14 @@ model TaxProfile {
   // Spec step 167: tax plan moves ("<year>:<key>") put on the deadlines, or said no to,
   // as "<year>:<key>:added" or "<year>:<key>:no".
   planHandled           String[]  @default([]) @map("plan_handled")
+  // Spec step 168: gifts (transaction ids) the person has the charity's receipt for; the
+  // year they said no to the giving options; and the donor-advised fund they opened with
+  // the stand-in (no money moves through Jane).
+  givingReceipts        String[]  @default([]) @map("giving_receipts")
+  givingDismissedYear   Int?      @map("giving_dismissed_year")
+  donorFundPartner      String?   @map("donor_fund_partner")
+  donorFundName         String?   @map("donor_fund_name")
+  donorFundOpenedAt     DateTime? @map("donor_fund_opened_at") @db.Timestamptz(3)
   createdAt             DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt             DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
 

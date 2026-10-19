@@ -1,7 +1,7 @@
 import { FORECAST_DAYS, FORECAST_SUBTYPES } from "@/config/detection";
-import { expectedDates, incomeStreams, upcomingBills, type Expected } from "@/detection/forecast";
+import { upcomingBills, type Expected } from "@/detection/forecast";
+import { nextPayday } from "@/detection/paydays";
 import type { DetectionInput } from "@/detection/types";
-import { addDays } from "@/detection/units";
 
 // "Safe to spend until payday": checking balance today, minus regular bills from
 // checking before the next expected deposit, minus what's left in this month's budgets,
@@ -10,7 +10,7 @@ import { addDays } from "@/detection/units";
 // goals), so the number reconciles with them. Math only.
 
 export type SafeToSpend = {
-  // The next expected deposit, or null when none is expected in the forecast window.
+  // The next expected paycheck, or null when none is expected in the forecast window.
   payday: string | null;
   balanceCents: number;
   bills: Expected[];
@@ -38,13 +38,8 @@ export function safeToSpend(
   const checkingIds = new Set(checking.map((a) => a.id));
   const balance = checking.reduce((sum, a) => sum + (a.currentBalanceCents ?? 0), 0);
 
-  const until = addDays(input.asOf, FORECAST_DAYS);
-  const payday =
-    incomeStreams(input)
-      .filter((s) => s.active)
-      .flatMap((s) => expectedDates(s, input.asOf, until))
-      .filter((date) => date > input.asOf)
-      .sort()[0] ?? null;
+  // The next paycheck (spec step 182): payroll deposits only, never interest or a refund.
+  const payday = nextPayday(input, FORECAST_DAYS)?.date ?? null;
 
   // Bills from checking up to the day before payday (or across the window without one).
   const bills = upcomingBills(input, FORECAST_DAYS).filter(

@@ -10,6 +10,7 @@ import { RefundError, applyRefundPlan, dismissRefund } from "@/lib/tax-refund";
 import { TaxOrganizerError, markTaxForm } from "@/lib/tax-organizer";
 import { TaxDocumentError, decideDocument } from "@/lib/tax-documents";
 import { TaxPlanError, addPlanMove, dismissPlanMove } from "@/lib/tax-plan";
+import { GivingError, markReceipt, openDonorFund } from "@/lib/giving";
 import { WithholdingError, clearW4Change, keepRefund, recordW4Change } from "@/lib/tax-withholding";
 
 // /taxes (spec step 119): "I have it" on a tax form Jane expects, or "Not yet" to undo it.
@@ -190,6 +191,33 @@ export async function planAction(_previous: FormState, formData: FormData): Prom
     return { ok: true, message: "OK. Jane won't bring it up again this year." };
   } catch (error) {
     if (error instanceof TaxPlanError) return { ok: false, message: error.message };
+    throw error;
+  }
+}
+
+// Spec step 168: a gift's receipt, or a donor-advised fund through the stand-in.
+export async function givingAction(_previous: FormState, formData: FormData): Promise<FormState> {
+  const user = await requireUser();
+  const intent = String(formData.get("intent") ?? "");
+  try {
+    if (intent === "receipt") {
+      const gift = await markReceipt(user.id, String(formData.get("gift") ?? ""), {
+        via: "page",
+      });
+      revalidatePath("/taxes");
+      return { ok: true, message: `Got it: your gift to ${gift.payee} has its receipt.` };
+    }
+    if (intent === "fund") {
+      const fund = await openDonorFund(user.id, { via: "page" });
+      revalidatePath("/taxes");
+      return {
+        ok: true,
+        message: `${fund.fundName} is open. Putting money in is on your deadlines.`,
+      };
+    }
+    return { ok: false, message: "Something went wrong. Try again." };
+  } catch (error) {
+    if (error instanceof GivingError) return { ok: false, message: error.message };
     throw error;
   }
 }
