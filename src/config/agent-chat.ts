@@ -94,6 +94,8 @@ export const MESSAGE_PRIORITY = {
   investment_profile: 34,
   // Spec step 130: costly funds with a lower-cost equivalent (demo advice).
   investment_fees: 36,
+  // Spec step 131: the portfolio review's changes (demo advice).
+  investment_review: 38,
 } as const;
 
 // The chat page shows the last this-many messages, with "Show earlier" for more.

@@ -15,7 +15,7 @@ export async function acceptTerms(
     client = defaultClient,
     now = new Date(),
     via,
-  }: { client?: PrismaClient; now?: Date; via: "signup" | "prompt" },
+  }: { client?: PrismaClient; now?: Date; via: "signup" | "prompt" | "trial" },
 ): Promise<void> {
   await client.user.update({
     where: { id: userId },
