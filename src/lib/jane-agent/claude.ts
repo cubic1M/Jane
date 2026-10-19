@@ -123,6 +123,7 @@ const STATUS: Record<string, string> = {
   life_events: "Looking at your checklists…",
   plan_upkeep: "Looking at your week…",
   proven_savings: "Adding up what I saved you…",
+  autopilot_settings: "Checking what I may do by myself…",
   propose_action: "Getting a button ready…",
   show_block: "Drawing it…",
 };

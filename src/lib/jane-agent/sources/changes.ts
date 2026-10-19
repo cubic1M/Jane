@@ -1,6 +1,5 @@
 import { MESSAGE_PRIORITY } from "@/config/agent-chat";
 import { BUDGET_SUGGESTION_ROUNDING_CENTS } from "@/config/budgets";
-import type { FindingType } from "@/generated/prisma/client";
 import type { ChangeView } from "@/lib/changes";
 import type { Snapshot } from "../snapshot";
 import type { Candidate, MessageAction } from "../types";

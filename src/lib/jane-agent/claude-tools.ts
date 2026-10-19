@@ -17,6 +17,8 @@ import { loadChanges } from "@/lib/changes";
 import { listGoals } from "@/lib/goals";
 import { lifeGuessesFor } from "@/lib/life-guesses";
 import { loadUpkeep } from "@/lib/plan-upkeep";
+import { sectorAutopilots } from "@/lib/sector-autopilot";
+import { SECTOR_LABELS, SECTOR_LEVEL_LABELS } from "@/config/autopilot-sectors";
 import { provenSavings } from "@/lib/savings-proof";
 import { listLifeEvents } from "@/lib/life-events";
 import { homeSummary } from "@/lib/home";
@@ -167,6 +169,12 @@ export const CHAT_TOOLS: Anthropic.Tool[] = [
     name: "proven_savings",
     description:
       "What Jane has saved the person (spec step 139): the confirmed total, each saving with the transaction that proves it (a refund that came back, a lower bill, a new plan's first bill, a cancelled charge that stopped), and apart from it what's still an estimate. Only the confirmed total counts as saved.",
+    input_schema: noInput,
+  },
+  {
+    name: "autopilot_settings",
+    description:
+      'How much Jane may do by herself in each area (spec step 141): subscriptions and bills, insurance, debt, taxes, investing, goals and budgets. Each area\'s level (always ask, the safe stuff, everything allowed), its caps each time and each month, and what it used this month. Over a cap Jane asks. To change an area, the person types it ("let Jane handle insurance up to $50 a month") or uses Settings.',
     input_schema: noInput,
   },
   {
@@ -405,6 +413,19 @@ export async function runChatTool(
           what: e.title,
           about: money(e.cents),
           why: e.why,
+        })),
+      });
+    }
+    case "autopilot_settings": {
+      const sectors = await sectorAutopilots(userId, { client, now });
+      return out({
+        areas: sectors.map((s) => ({
+          area: SECTOR_LABELS[s.sector],
+          level: SECTOR_LEVEL_LABELS[s.level],
+          eachTime: money(s.actionCapCents),
+          eachMonth: money(s.monthlyCapCents),
+          usedThisMonth: money(s.usedThisMonthCents),
+          setBy: s.source === "set" ? "the person" : "their autopilot level's default",
         })),
       });
     }

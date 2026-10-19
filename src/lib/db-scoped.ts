@@ -146,6 +146,9 @@ export function scopedFor(userId: string, client: PrismaClient = db) {
     budgetTuneUps: scoped.budgetTuneUp,
     goalTransfers: scoped.goalTransfer,
     // Shared "What Jane saved me" totals (spec step 139).
+    // One autopilot, every sector (spec step 141).
+    autopilotSectors: scoped.autopilotSector,
+    autopilotActs: scoped.autopilotAct,
     savedShares: scoped.savedShare,
     // What's in investment accounts (spec step 128).
     securities: scoped.security,

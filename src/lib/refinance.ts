@@ -125,3 +125,14 @@ export async function loadRefinance(
     ),
   };
 }
+
+// Before Jane's first monthly check (her runs skip quiet hours), asking now: when the
+// person opens the offers. Returns whether it asked.
+export async function ensureChecked(
+  userId: string,
+  { client = defaultClient, now = new Date() }: Options = {},
+): Promise<boolean> {
+  const row = await scopedFor(userId, client).refinanceChecks.findFirst({ select: { id: true } });
+  if (row) return false;
+  return (await checkRates(userId, { client, now })) !== null;
+}
