@@ -43,6 +43,9 @@ export type SnapshotFinding = {
   // Jane's pick when the finding compares options (spec step 76): what it saves in the
   // first year (bills) or earns more a year (savings).
   pick: { optionId: string; name: string; savingCents: number; savings: boolean } | null;
+  // Spec step 143: how sure detection is, for the priority engine. Optional for snapshots
+  // built by hand.
+  confidence?: "high" | "medium" | "low";
 };
 
 export type Snapshot = {
@@ -209,6 +212,7 @@ export async function loadSnapshot(
       title: true,
       annualSavingsCents: true,
       evidence: true,
+      confidence: true,
     },
   });
   // Spec step 91: never a finding the person said not to suggest again, nor cutting
@@ -247,6 +251,7 @@ export async function loadSnapshot(
         savings: savingsLine(finding.type, finding.annualSavingsCents),
         fingerprint: findingFingerprint(finding),
         urgent: PLAN_URGENT_FINDING_TYPES.includes(finding.type),
+        confidence: finding.confidence,
         pick: comparison
           ? {
               optionId: comparison.pick.option.id,

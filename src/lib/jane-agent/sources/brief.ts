@@ -1,6 +1,7 @@
 import { BRIEF_BILL_DAYS, BRIEF_FROM_HOUR, MESSAGE_PRIORITY } from "@/config/agent-chat";
 import { formatCents } from "@/lib/money";
 import { dateAndDays, inDays, things, type MessageSource } from "./source";
+import { rankedFor } from "../priorities";
 
 // The morning brief (spec step 82): once a day, from 7am in the person's timezone (or
 // whenever they first open the chat that day). Safe to spend until payday, bills due in
@@ -49,6 +50,9 @@ export const briefSource: MessageSource = {
         ? "Nothing is waiting on you. I'll keep watching."
         : `${things(waiting)} ${waiting === 1 ? "is" : "are"} waiting for you.`,
     );
+    // Spec step 143: the one thing that matters most, and why.
+    const [first] = rankedFor(snapshot);
+    if (first) lines.push(`Start with: ${first.title}. ${first.why}`);
 
     return [
       {
