@@ -48,6 +48,8 @@ const SIGNED_IN = [
   "/investments/rebalance",
   "/investments/auto",
   "/investments/accounts",
+  "/learn",
+  "/learn/index-funds",
   "/loans",
   "/bills",
   "/alerts",

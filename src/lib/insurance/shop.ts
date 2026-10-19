@@ -4,7 +4,9 @@ import {
   RESHOP_DAILY_LIMIT,
   RESHOP_DAYS_BEFORE_RENEWAL,
   RESHOP_NEWS_DAYS,
+  PICK_REFRESH_DAYS,
 } from "@/config/insurance";
+import { autopilotOf } from "@/lib/autopilot";
 import { daysBetween } from "@/detection/units";
 import type { Prisma, PrismaClient } from "@/generated/prisma/client";
 import { adviceMode } from "@/lib/advice-mode";
@@ -192,6 +194,48 @@ export async function reshopDue(
   return null;
 }
 
+// Spec step 108: at "handle everything", Jane keeps her open picks ready for the one tap:
+// quotes about to expire are asked for again and the same pick is updated in place (no new
+// message). A pick that's no longer the best, or gone, is left to expire.
+export async function refreshPicks(
+  userId: string,
+  { client = defaultClient, now = new Date(), partner }: Options = {},
+): Promise<number> {
+  if ((await autopilotOf(userId, { client })) !== "all") return 0;
+  const db = scopedFor(userId, client);
+  const soon = new Date(now.getTime() + PICK_REFRESH_DAYS * 86_400_000);
+  const due = await db.insuranceShops.findMany({
+    where: { status: "open", expiresAt: { gt: now, lte: soon } },
+    select: SHOP_SELECT,
+  });
+  let refreshed = 0;
+  for (const shop of due.map(toShop)) {
+    const row = await db.insurancePolicies.findFirst({
+      where: { id: shop.policyId, status: "active" },
+      select: POLICY_SELECT,
+    });
+    if (!row || !shop.pick) continue;
+    const policy = toPolicy(row);
+    const result = await requestQuotes(userId, policy.id, { client, now, partner });
+    if (result.kind !== "quotes") continue;
+    const chosen = pickQuote(policy, shop.currentAnnualCents, result.quotes);
+    if (!chosen || chosen.pick.carrier.id !== shop.pick.carrier.id) continue;
+    await db.insuranceShops.updateMany({
+      where: { id: shop.id, status: "open" },
+      data: {
+        pick: json(chosen.pick),
+        runnersUp: chosen.runnersUp.map(json),
+        savingCents: chosen.savingCents,
+        why: chosen.why,
+        quoteCount: result.quotes.length,
+        expiresAt: chosen.pick.expiresAt,
+      },
+    });
+    refreshed += 1;
+  }
+  return refreshed;
+}
+
 // Every policy of this person that's due, reshopped now. Returns the new shops.
 export async function reshopPerson(
   userId: string,
@@ -203,6 +247,7 @@ export async function reshopPerson(
     where: { status: "active" },
     select: POLICY_SELECT,
   });
+  await refreshPicks(userId, { client, now, partner: quoting });
   const shops: Shop[] = [];
   for (const policy of rows.map(toPolicy)) {
     const due = await reshopDue(userId, policy, { client, now });

@@ -12,6 +12,7 @@ import { gather, type BrainSettings } from "../brain";
 import { normalize, parseIntent } from "../intents";
 import type { Snapshot } from "../snapshot";
 import { parseInsurance } from "./intents";
+import { autopilotReply } from "./autopilot";
 import { insuranceReply } from "./replies";
 import type { InsuranceSnapshot } from "./snapshot";
 
@@ -124,7 +125,7 @@ describe("insurance answers", () => {
     const reply = insuranceReply(ask("what does my car insurance cover"), insurance(), ASOF);
     expect(reply.body).toBe(
       [
-        "Your GEICO car insurance:",
+        "Your GEICO car insurance covers what's below, from its record.",
         "- One car, two drivers.",
         "- Injury liability, per person: $50,000.00",
         "- Collision (damage to your car in a crash): Yes",
@@ -198,10 +199,10 @@ describe("insurance answers", () => {
     );
     expect(reply.body).toBe(
       [
-        "You have 2 policies on file:",
+        "You have 2 policies on file.",
         "- GEICO car insurance: $142.00 a month ($1,704.00 a year), renews Nov 28, 2026, in 40 days",
         "- Haven life insurance (found from your payments, not confirmed yet)",
-        'One thing looks missing from your cover: ask me "what am I missing?"',
+        'One thing looks missing from your cover. Ask me "what am I missing?"',
       ].join("\n"),
     );
   });
@@ -213,7 +214,7 @@ describe("insurance answers", () => {
       ASOF,
     );
     expect(gaps.body).toMatch(
-      /^One thing looks missing from your cover:\n- No renters insurance on file\. You told me you rent/,
+      /^One thing looks missing from your cover\.\n- No renters insurance on file\. You told me you rent/,
     );
     const advised = insuranceReply(
       ask("am I missing any insurance"),
@@ -495,4 +496,40 @@ describe("the coverage checkup in the chat (spec step 106)", () => {
 
 it("leaves a check-up on other things alone", () => {
   expect(parseIntent("can you check up on my budget", ASOF).kind).not.toBe("insurance");
+});
+
+describe("insurance on autopilot (spec step 108)", () => {
+  it("reads what Jane does by herself and how to reach the insurer", () => {
+    expect(parseIntent("what do you do with my insurance on your own", ASOF)).toMatchObject({
+      kind: "insurance",
+      ask: "autopilot",
+    });
+    expect(parseIntent("what's my claims number for my car insurance", ASOF)).toMatchObject({
+      ask: "contact",
+      policyKind: "auto",
+    });
+  });
+
+  it("says the level and that buying always takes a tap", () => {
+    expect(autopilotReply("safe").body).toMatch(
+      /^With insurance, I do this by myself at "Handle the safe stuff"\. I watch every renewal/,
+    );
+    expect(autopilotReply(null).body).toContain("at no autopilot level yet");
+    for (const level of ["ask", "safe", "all", "custom", null]) {
+      expect(autopilotReply(level).body).toMatch(
+        /I never buy, change or cancel cover without your tap\.$/,
+      );
+    }
+  });
+
+  it("gives a catalog carrier's claims line", () => {
+    const reply = insuranceReply(
+      { kind: "insurance", ask: "contact", policyKind: null },
+      insurance([policy({ carrier: "Lighthouse Insurance (demo)" })]),
+      ASOF,
+    );
+    expect(reply.body).toContain(
+      "- Lighthouse Insurance (demo) car insurance: claims line 1-800-555-0101",
+    );
+  });
 });

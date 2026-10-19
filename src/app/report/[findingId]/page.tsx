@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
 import { AppHeader } from "@/components/app-header";
+import { FINDING_EXPLAINERS, explainer } from "@/config/learn";
 import { ViewTracker } from "@/components/view-tracker";
 import { ACTION_FOR_FINDING, CARD_SELECT, buildCard, cardHash } from "@/lib/cards";
 import { partnerForUser } from "@/lib/referrals";
@@ -136,6 +137,16 @@ async function Card({ params }: { params: PageProps<"/report/[findingId]">["para
         {card.findingType === "card_interest" && (
           <Link href="/debt" className="font-medium text-emerald-700 hover:underline">
             See what paying off your cards could look like
+          </Link>
+        )}
+
+        {/* Spec step 136: the plain explainer for the words on this card. */}
+        {FINDING_EXPLAINERS[card.findingType] && (
+          <Link
+            href={`/learn/${FINDING_EXPLAINERS[card.findingType]}`}
+            className="text-sm font-medium text-emerald-700 hover:underline"
+          >
+            Learn: {explainer(FINDING_EXPLAINERS[card.findingType])?.title.toLowerCase()}
           </Link>
         )}
 

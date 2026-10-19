@@ -51,6 +51,7 @@ import { investmentsSource } from "../sources/investments";
 import { holdingsReply, matchAccounts } from "./replies";
 import { INVESTMENT_TOOLS, runInvestmentTool } from "./tools";
 import { CHAT_PAGES, CHAT_TOOLS, proposeAction } from "../claude-tools";
+import { learnLink, learnReply } from "../learn";
 import type { PrismaClient } from "@/generated/prisma/client";
 
 // Spec step 128: what the person owns, in Jane's chat.
@@ -744,7 +745,12 @@ describe("the review message with orders ready", () => {
       kind: "decision",
       refs: { advice: true, rebalanceKey: PLAN.key },
     });
-    expect(message.actions.map((a) => a.id)).toEqual(["invest.rebalance", "open", "snooze"]);
+    expect(message.actions.map((a) => a.id)).toEqual([
+      "invest.rebalance",
+      "open",
+      "open",
+      "snooze",
+    ]);
     expect(message.body).toContain(
       "Tap and I'll place them in the simulated brokerage (no real money moves).",
     );
@@ -1085,5 +1091,69 @@ describe("Claude's account_plan tool", () => {
     expect(parsed.order[0].account).toBe("Your 401(k), up to the full match (6% of pay)");
     expect(parsed.topFederalRate).toBe("22%");
     expect(out.cents).toContain(ACCOUNT_PLAN.location[0].taxDragCents);
+  });
+});
+
+// Spec step 136: learn.
+describe("what-is questions, by rules", () => {
+  it.each([
+    ["what is an index fund", "index-funds"],
+    ["what's an expense ratio", "fees"],
+    ["how does the match work", "the-match"],
+    ["explain roth vs traditional", "roth-vs-traditional"],
+    ["what does rebalancing mean", "rebalancing"],
+    ["what is refinancing", "refinancing"],
+    ["what's a deductible", "deductibles"],
+    ["what is the standard deduction", "standard-deduction"],
+  ])("reads %j as learning about %s", (text, slug) => {
+    expect(parseIntent(text, ASOF)).toEqual({ kind: "learn", slug });
+  });
+
+  it.each(["what's my deductible", "what are my investment fees", "what is safe to spend"])(
+    "leaves %j to the other rules",
+    (text) => {
+      expect(parseIntent(text, ASOF).kind).not.toBe("learn");
+    },
+  );
+});
+
+describe("learnReply and learn links", () => {
+  it("answers with the explainer's summary and first paragraph, and a link to the rest", () => {
+    const reply = learnReply("index-funds");
+    expect(reply.body).toMatch(/^An index fund owns every company in a market list/);
+    expect(reply.actions).toEqual([
+      { id: "open", label: "Read more", kind: "link", href: "/learn/index-funds" },
+    ]);
+    expect(reply.refs).toEqual({});
+    expect(learnReply("nope").body).toMatch(/^I can explain: index funds, /);
+  });
+
+  it("puts a Learn link under Jane's investment answers", () => {
+    expect(learnLink("the-match")).toEqual({
+      id: "open",
+      label: "Learn: the employer match",
+      kind: "link",
+      href: "/learn/the-match",
+    });
+    const reply = rebalanceReply(true, PLAN, profileSummary(FULL, ASOF));
+    expect(reply.actions.map((a) => (a.kind === "link" ? a.href : a.id))).toContain(
+      "/learn/rebalancing",
+    );
+  });
+
+  it("gives Claude the fixed text", async () => {
+    const out = await runInvestmentTool(
+      "u",
+      "explainer",
+      { slug: "deductibles" },
+      {
+        client: {} as PrismaClient,
+        now: new Date(),
+      },
+    );
+    expect(JSON.parse(out.content)).toMatchObject({
+      title: "Deductibles",
+      page: "/learn/deductibles",
+    });
   });
 });
