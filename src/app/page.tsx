@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { GetStartedButton } from "@/components/get-started-button";
-import { MoneySurfaceLazy } from "@/components/money-surface-lazy";
+import { AsciiHeroBackground } from "@/components/ascii-hero-background";
 import { ViewTracker } from "@/components/view-tracker";
 
 const POINTS = [
@@ -18,26 +18,23 @@ const POINTS = [
   },
 ];
 
-// The kind of thing Jane does, shown as small cards beside the headline. Examples of the
+// The kind of thing Jane does, shown as a short log under the headline. Examples of the
 // product, not results or promises.
 const MOMENTS = [
   {
     label: "Refund back",
     detail: "Charged twice at Target",
     amount: "+$64.20",
-    position: "right-0 top-6",
   },
   {
     label: "Price rise caught",
     detail: "Netflix went from $15.49 to $17.99",
     amount: "$30/yr",
-    position: "-right-6 top-40",
   },
   {
     label: "Jane's pick",
     detail: "A cheaper phone plan, same service",
     amount: "$1,320/yr",
-    position: "right-10 top-72",
   },
 ];
 
@@ -47,47 +44,48 @@ export default function Home() {
       <ViewTracker event="landing_viewed" />
 
       <section className="relative isolate overflow-hidden">
-        <MoneySurfaceLazy className="-z-10" />
-        {/* Keeps the words readable over the wave. */}
-        <div
-          aria-hidden="true"
-          className="absolute inset-0 -z-10 bg-gradient-to-b from-[var(--background)] from-15% via-[var(--background)]/40 via-40% to-transparent to-60%"
-        />
-        <div className="mx-auto grid min-h-[80vh] w-full max-w-5xl items-center gap-10 px-6 py-20 lg:grid-cols-[minmax(0,1fr)_20rem]">
-          <div className="flex flex-col gap-6">
-            <p className="w-fit rounded-full border border-emerald-700/30 bg-emerald-50/80 px-3 py-1 text-sm font-medium text-emerald-800 backdrop-blur dark:border-emerald-400/30 dark:bg-emerald-950/60">
-              Your money, looked after
-            </p>
-            <h1 className="text-4xl font-semibold tracking-tight text-balance sm:text-6xl">
-              See how much money you&apos;re losing
-            </h1>
-            <p className="max-w-xl text-lg text-zinc-600 dark:text-zinc-400">
-              We find the subscriptions, fees, idle cash and interest quietly costing you, and help
-              you fix them.
-            </p>
-            <div className="flex flex-wrap items-center gap-6">
-              <GetStartedButton />
-              <Link href="/login" className="font-medium text-emerald-700 hover:underline">
-                Sign in
-              </Link>
-            </div>
+        <AsciiHeroBackground />
+        <div className="mx-auto flex min-h-[85vh] w-full max-w-5xl flex-col justify-center gap-7 px-6 py-20">
+          <p className="w-fit text-sm text-emerald-700">
+            <span aria-hidden="true">[ </span>your money, looked after
+            <span aria-hidden="true"> ]</span>
+          </p>
+          <h1 className="max-w-2xl text-4xl font-semibold tracking-tight text-balance sm:text-6xl">
+            See how much money you&apos;re losing
+            <span aria-hidden="true" className="ascii-cursor text-emerald-700">
+              _
+            </span>
+          </h1>
+          <p className="max-w-xl text-lg text-zinc-600 dark:text-zinc-400">
+            We find the subscriptions, fees, idle cash and interest quietly costing you, and help
+            you fix them.
+          </p>
+          <div className="flex flex-wrap items-center gap-6">
+            <GetStartedButton />
+            <Link href="/login" className="font-medium text-emerald-700 hover:underline">
+              Sign in
+            </Link>
           </div>
-
-          <ul aria-label="Examples of what Jane does" className="relative hidden h-96 lg:block">
+          <ul
+            aria-label="Examples of what Jane does"
+            className="flex max-w-md flex-col gap-1 text-sm text-zinc-600 dark:text-zinc-400"
+          >
             {MOMENTS.map((moment) => (
-              <li
-                key={moment.label}
-                className={`absolute ${moment.position} w-64 rounded-2xl border border-zinc-200 bg-white/85 p-4 shadow-sm backdrop-blur dark:border-zinc-800 dark:bg-zinc-950/80`}
-              >
-                <div className="flex items-baseline justify-between gap-3">
-                  <span className="text-xs font-medium tracking-wide text-zinc-500 uppercase">
-                    {moment.label}
-                  </span>
-                  <span className="font-semibold text-emerald-700 tabular-nums">
-                    {moment.amount}
-                  </span>
-                </div>
-                <p className="mt-1 text-sm">{moment.detail}</p>
+              <li key={moment.label} className="flex items-baseline gap-2">
+                <span aria-hidden="true" className="text-emerald-700">
+                  &gt;
+                </span>
+                <span className="shrink-0">{moment.label.toLowerCase()}</span>
+                <span
+                  aria-hidden="true"
+                  className="min-w-4 flex-1 overflow-hidden whitespace-nowrap text-zinc-400 dark:text-zinc-600"
+                >
+                  ................................................
+                </span>
+                <span className="shrink-0 font-semibold text-emerald-700 tabular-nums">
+                  {moment.amount}
+                </span>
+                <span className="sr-only">: {moment.detail}</span>
               </li>
             ))}
           </ul>

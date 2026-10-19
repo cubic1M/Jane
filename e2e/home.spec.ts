@@ -53,7 +53,12 @@ test("new people land on Connect; once data is in, Home matches the report", asy
   // Spec step 79: on a phone the main menu is a tab bar along the bottom, with Today lit
   // up, and the end of the page scrolls clear of it.
   const nav = page.getByRole("navigation", { name: "Main" });
-  await expect(nav.getByRole("link")).toHaveText(["Today", "Jane", "Money", "Ahead", "Ask"]);
+  // What screen readers hear: the ASCII glyphs and brackets are hidden from them.
+  const tabs = nav.getByRole("link");
+  await expect(tabs).toHaveCount(5);
+  for (const [i, name] of ["Today", "Jane", "Money", "Ahead", "Ask"].entries()) {
+    await expect(tabs.nth(i)).toHaveAccessibleName(name);
+  }
   await expect(nav.getByRole("link", { name: "Today" })).toHaveAttribute("aria-current", "page");
   await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
   const navTop = (await nav.boundingBox())?.y ?? 0;
