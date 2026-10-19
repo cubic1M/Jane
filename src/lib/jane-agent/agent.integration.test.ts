@@ -85,8 +85,10 @@ describe.runIf(url)("Jane's chat against a real database", () => {
 
     it("posts a brief, findings with buttons and the week's plan after the first sync", async () => {
       const messages = await messagesOf(userId);
-      expect(messages[0]).toMatchObject({ kind: "brief", dedupeKey: "brief:2026-10-18" });
-      expect(messages[0].body).toMatch(/^Good morning!\n/);
+      // Spec step 140: the first-run hello comes first, once; then the brief.
+      expect(messages[0]).toMatchObject({ kind: "brief", dedupeKey: "welcome:hello" });
+      expect(messages[1]).toMatchObject({ kind: "brief", dedupeKey: "brief:2026-10-18" });
+      expect(messages[1].body).toMatch(/^Good morning!\n/);
       const plan = messages.find((m) => m.dedupeKey.startsWith("plan:"));
       expect(plan?.body).toMatch(/^Your plan for this week is ready: \d+ things, could save/);
       expect(buttonIds(plan!)).toEqual(["plan.approve_safe", "open"]);
@@ -95,9 +97,9 @@ describe.runIf(url)("Jane's chat against a real database", () => {
       for (const f of findings) {
         expect(buttonIds(f)).toEqual(expect.arrayContaining(["finding.yes", "finding.no", "open"]));
       }
-      // Within the day's limit, besides the brief and the autopilot question (spec step 83),
-      // and all open.
-      expect(messages.length).toBeLessThanOrEqual(CHAT_DAILY_LIMIT + 2);
+      // Within the day's limit, besides the brief, the autopilot question (spec step 83) and
+      // the first-run hello (spec step 140), and all open.
+      expect(messages.length).toBeLessThanOrEqual(CHAT_DAILY_LIMIT + 3);
       expect(messages.every((m) => m.status === "open")).toBe(true);
     });
 
@@ -118,6 +120,8 @@ describe.runIf(url)("Jane's chat against a real database", () => {
       expect(after).toHaveLength(before.length + posted);
       expect(new Set(after.map((m) => m.dedupeKey)).size).toBe(after.length);
       expect(after.filter((m) => m.kind === "brief").map((m) => m.dedupeKey)).toEqual([
+        // Spec step 140: the first-run hello, once.
+        "welcome:hello",
         "brief:2026-10-18",
         "brief:2026-10-19",
       ]);
@@ -274,8 +278,10 @@ describe.runIf(url)("Jane's chat against a real database", () => {
         posted: 0,
       });
       const chat = await openChat(userId, { client, now: night });
-      // The brief, the autopilot question (spec step 83), the plan and the finding.
+      // The first-run hello (spec step 140), the brief, the autopilot question (spec step
+      // 83), the plan and the finding.
       expect(chat?.messages.map((m) => m.kind)).toEqual([
+        "brief",
         "brief",
         "decision",
         "decision",

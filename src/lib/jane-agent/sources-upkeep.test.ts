@@ -175,7 +175,7 @@ describe("the weekly review", () => {
     });
     expect(m.body).toBe(
       [
-        "Your week with Jane:",
+        "Here's your week with Jane.",
         '- Done: I finished 1 thing ("Refund the overdraft fee"); said yes to 1 thing under your rules; tuned your budgets for the month.',
         "- Saved: $34.00 confirmed back or saved.",
         "- Next week: 1 bill due, 2 things on your plan.",
@@ -204,7 +204,7 @@ describe("the weekly review", () => {
     const review = weeklyReview(snapshot(), SUNDAY);
     expect(review.body).toBe(
       [
-        "Your week with Jane:",
+        "Here's your week with Jane.",
         "- Done: nothing finished this week. I'm still watching.",
         "- Saved: nothing confirmed yet this week.",
         "- Next week: nothing due that I know of.",

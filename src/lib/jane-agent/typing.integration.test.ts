@@ -152,7 +152,7 @@ describe.runIf(url)("typing to Jane against a real database", () => {
       /^You spent \$[\d,]+\.\d\d on Food and drink in September 2026\.$/,
     );
     expect((await send("what did you do")).reply.actions[0]).toMatchObject({ href: "/actions" });
-    expect((await send("help")).reply.body).toMatch(/^You can ask me things like:/);
+    expect((await send("help")).reply.body).toMatch(/^Here's what I can help with\./);
     // Without a key, a free question gets what Jane can do.
     expect((await send("is my rent too high?")).reply.body).toMatch(/^I can help with your money/);
   });
