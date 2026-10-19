@@ -42,18 +42,17 @@ const INVESTMENT = [
   /\b(outperform\w*|underperform\w*|beat the market|market timing|capital gains?)\b/i,
 ];
 
-// (b) Tax or legal advice.
-const TAX_OR_LEGAL = [
+// (b) Tax or legal advice. Demo advice (below) allows the tax part, never the legal part.
+const TAX = [
   /\btax(es|ed|able)?\b/i,
   // Tax deductions. An insurance deductible is fine, so "deductible" alone is allowed.
   /\bdeductions?\b/i,
   /\bwrite[- ]off\b/i,
   /\birs\b/i,
-  /\blegal(ly)?\b/i,
-  /\b(lawyer|attorney|lawsuit|litigation|court)s?\b/i,
-  /\bsue\b/i,
+  // Also liability insurance and a loan's liability, which demo advice may talk about.
   /\bliab(le|ility)\b/i,
 ];
+const LEGAL = [/\blegal(ly)?\b/i, /\b(lawyer|attorney|lawsuit|litigation|court)s?\b/i, /\bsue\b/i];
 
 // (d) Promised outcomes. Savings are estimates: "could save about", never "will save".
 const GUARANTEE = [
@@ -114,16 +113,26 @@ export function unsupportedFigures(text: string, allowedCents: readonly number[]
   return figures;
 }
 
+// Which rules apply (spec step 98). "standard" is everyone with real data. "demo_advice" is
+// for people in demo advice mode (src/lib/advice-mode.ts) only: recommendations on
+// investments, taxes, insurance and loans may pass, while unsupported figures, promised
+// outcomes and legal advice stay blocked. Text it passes carries DEMO_ADVICE_LABEL.
+export type GuardrailProfile = "standard" | "demo_advice";
+
 export function checkGuardrails(
   text: string,
   allowedCents: readonly number[],
   findingType?: FindingType,
+  profile: GuardrailProfile = "standard",
 ): GuardrailResult {
   const issues: GuardrailIssue[] = [];
+  const advice = profile === "demo_advice";
   const required = findingType && REQUIRED_WORDING[findingType];
   if (required && !required.test(text)) issues.push("missing_required_wording");
-  if (INVESTMENT.some((p) => p.test(text))) issues.push("investment_advice");
-  if (TAX_OR_LEGAL.some((p) => p.test(text))) issues.push("tax_or_legal_advice");
+  if (!advice && INVESTMENT.some((p) => p.test(text))) issues.push("investment_advice");
+  if ((!advice && TAX.some((p) => p.test(text))) || LEGAL.some((p) => p.test(text))) {
+    issues.push("tax_or_legal_advice");
+  }
   if (dollarFigures(text).some((f) => !supported(f, allowedCents))) {
     issues.push("unsupported_dollar_figure");
   }
@@ -144,6 +153,22 @@ const RECOMMENDATION = [
   /\bpick (the )?(avalanche|snowball)\b/i,
 ];
 
-export function recommendsAChoice(text: string): boolean {
+export function recommendsAChoice(text: string, profile: GuardrailProfile = "standard"): boolean {
+  if (profile === "demo_advice") return false;
   return RECOMMENDATION.some((pattern) => pattern.test(text));
+}
+
+// Insurance and loans, the two advice sectors the standard rules don't block by word.
+const INSURANCE_OR_LOANS = [
+  /\binsur/i,
+  /\b(polic(y|ies)|premiums?|coverage|deductibles?|carriers?)\b/i,
+  /\b(loans?|mortgages?|refinanc\w*|apr|interest rates?|lenders?|debt)\b/i,
+];
+
+// Whether text is advice that needs DEMO_ADVICE_LABEL (spec step 98): it talks about
+// investments, taxes, insurance or loans, or recommends one choice over another.
+export function isAdvice(text: string): boolean {
+  return [...INVESTMENT, ...TAX, ...INSURANCE_OR_LOANS, ...RECOMMENDATION].some((p) =>
+    p.test(text),
+  );
 }
