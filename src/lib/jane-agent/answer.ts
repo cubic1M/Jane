@@ -286,8 +286,16 @@ async function byIntent(
       const going = open.some((e) => e.kind === intent.event && e.completedAt === null);
       return lifeEventReply(intent.event, going);
     }
-    case "paycheck":
-      return paycheckReply(await latestPaycheckPlan(userId, { client, now }));
+    case "paycheck": {
+      const plan = await latestPaycheckPlan(userId, { client, now });
+      if (plan) return paycheckReply(plan);
+      const next = (await loadRecurring(userId, { client, now })).nextIncome;
+      return paycheckReply(
+        null,
+        true,
+        next && { date: next.date, cents: next.amountCents, from: next.from, asOf },
+      );
+    }
     case "bills_paid": {
       const partner = await moneyPartnerFor(userId, { client });
       return billsReply(partner ? await loadBillPay(userId, { client, now }) : null, asOf);
