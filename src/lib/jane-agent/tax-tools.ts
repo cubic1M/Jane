@@ -10,6 +10,7 @@ import {
 import type { PrismaClient } from "@/generated/prisma/client";
 import type { ToolOutput } from "@/lib/ask/tools";
 import { formatCents } from "@/lib/money";
+import { loadTaxEstimate } from "@/lib/tax-estimate";
 import { loadTaxForms, loadTaxTags } from "@/lib/tax-organizer";
 import { loadWorkingProfile } from "@/lib/tax-profile";
 import { defaultTaxYear } from "@/planning/tax-pack";
@@ -45,6 +46,12 @@ export const TAX_TOOLS: Anthropic.Tool[] = [
       },
       additionalProperties: false,
     },
+  },
+  {
+    name: "tax_estimate",
+    description:
+      "Jane's estimate of the person's federal and state tax for the tax year, from their income so far projected to the year's end, their pay stubs and their tax profile: income, adjustments, AGI, the deduction (standard or itemized, with its parts), taxable income, income tax, other taxes, credits, total tax, what's been withheld and paid, and the refund or amount owed; the state's the same way. Every figure is an estimate; also lists what Jane assumed. Say figures as estimates.",
+    input_schema: noInput,
   },
   {
     name: "tax_forms",
@@ -129,6 +136,51 @@ export async function runTaxTool(
                       : "Jane, unsure",
               }))
           : undefined,
+      });
+    }
+    case "tax_estimate": {
+      const view = await loadTaxEstimate(userId, { client, now });
+      const e = view.estimate;
+      return out({
+        year: view.year,
+        isAnEstimate: true,
+        shareOfYearGone: Math.round(view.elapsed * 100) / 100,
+        incomeSoFar: money(view.incomeSoFarCents),
+        payFrom: view.pay.source,
+        withholdingKnown: view.withholdingKnown,
+        federal: {
+          filingStatus: FILING_STATUSES[e.filingStatus],
+          incomeForTheYear: money(e.totalIncomeCents),
+          adjustedGrossIncome: money(e.agiCents),
+          deduction: e.deduction.kind,
+          deductionAmount: money(
+            e.deduction.kind === "itemized" ? e.deduction.itemizedCents : e.deduction.standardCents,
+          ),
+          taxableIncome: money(e.taxableCents),
+          topRate: `${Math.round(e.marginalRate * 100)}%`,
+          incomeTax: money(e.incomeTaxCents),
+          selfEmploymentTax: money(e.selfEmploymentTaxCents),
+          credits: money(
+            e.credits.childTaxCreditCents +
+              e.credits.otherDependantCreditCents +
+              e.credits.additionalChildTaxCreditCents +
+              e.credits.earnedIncomeCreditCents,
+          ),
+          totalTax: money(e.totalTaxCents),
+          withheldAndPaid: view.withholdingKnown ? money(e.paidCents) : null,
+          refund: view.withholdingKnown && e.refundCents > 0 ? money(e.refundCents) : null,
+          owed: view.withholdingKnown && e.refundCents < 0 ? money(-e.refundCents) : null,
+        },
+        state: e.state && {
+          code: e.state.code,
+          tax: money(e.state.taxCents),
+          refund:
+            view.withholdingKnown && e.state.refundCents > 0 ? money(e.state.refundCents) : null,
+          owed:
+            view.withholdingKnown && e.state.refundCents < 0 ? money(-e.state.refundCents) : null,
+          rough: e.state.rough,
+        },
+        assumptions: view.assumptions,
       });
     }
     case "tax_forms": {

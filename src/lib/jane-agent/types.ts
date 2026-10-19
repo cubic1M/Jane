@@ -42,6 +42,14 @@ export const ACTION_IDS = [
   // Typing to Jane (spec step 84).
   "goal.start",
   "autopilot.pause",
+  // Spec step 88: a clarifying question's answers, one per meaning (refs.choices).
+  "clarify.1",
+  "clarify.2",
+  "clarify.3",
+  // Spec step 90: a budget the answer named, and the quick replies on a finding.
+  "budget.set",
+  "finding.why",
+  "finding.options",
   // Taxes (spec step 118): the tax profile, one question at a time.
   "tax.found_yes",
   "tax.filing_single",
@@ -81,14 +89,9 @@ export const ACTION_IDS = [
   "tuneup.undo",
   "transfer.count",
   "transfer.skip",
-  // Spec step 88: a clarifying question's answers, one per meaning (refs.choices).
-  "clarify.1",
-  "clarify.2",
-  "clarify.3",
-  // Spec step 90: a budget the answer named, and the quick replies on a finding.
-  "budget.set",
-  "finding.why",
-  "finding.options",
+  // Insurance found from payments (spec step 99).
+  "policy.confirm",
+  "policy.not_insurance",
 ] as const;
 export type ActionId = (typeof ACTION_IDS)[number];
 
@@ -131,6 +134,12 @@ export type MessageRefs = {
   // The goal "Start a goal for it" would add (spec step 84): money in cents, date
   // YYYY-MM-DD.
   goal?: { name: string; targetCents: number; targetDate: string };
+  // Spec step 88: what a reply was about, for a follow-up ("and Hulu?", "cancel it").
+  topic?: Topic;
+  // Spec step 88: a clarifying question's meanings, in button order (clarify.1, clarify.2…).
+  choices?: { label: string; intent: Intent }[];
+  // Spec step 90: the budget "Set a budget" would set (cents a month).
+  budget?: { category: string; amountCents: number };
   // Taxes (spec step 118): the tax profile question a message is asking, and the kind of
   // income "Add it" would add.
   taxField?: string;
@@ -158,12 +167,6 @@ export type MessageRefs = {
   // Spec step 101: a budget tune-up's month (YYYY-MM), and a transfer to count toward a goal.
   tuneUpMonth?: string;
   transactionId?: string;
-  // Spec step 88: what a reply was about, for a follow-up ("and Hulu?", "cancel it").
-  topic?: Topic;
-  // Spec step 88: a clarifying question's meanings, in button order (clarify.1, clarify.2…).
-  choices?: { label: string; intent: Intent }[];
-  // Spec step 90: the budget "Set a budget" would set (cents a month).
-  budget?: { category: string; amountCents: number };
 };
 
 // A message the brain wants to post.

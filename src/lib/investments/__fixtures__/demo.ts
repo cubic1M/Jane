@@ -80,6 +80,7 @@ export function demoInvestmentSnapshot(over: Partial<InvestmentSnapshot> = {}): 
       years: fees.years,
     },
     review: null,
+    retirement: null,
     ...over,
   };
 }

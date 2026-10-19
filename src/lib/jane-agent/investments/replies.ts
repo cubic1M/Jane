@@ -11,7 +11,9 @@ import {
 } from "@/planning/investor-profile";
 import type { Reply } from "../replies";
 import type { MessageAction } from "../types";
+import { ROTH_WORDS, type RetirementPlan } from "@/planning/retirement";
 import { equivalentLine, feeRange, switchSummary } from "./fees-copy";
+import { matchLine, projectionLine } from "./retirement-copy";
 import { asking, PROFILE_INTRO } from "./profile-question";
 
 // Jane's rule answers about investments (spec step 128 on). Pure: the numbers in, fixed
@@ -207,4 +209,52 @@ export function reviewReply(
     actions: [link],
     refs: { advice: true },
   };
+}
+
+// Spec step 132: on track for retirement? Demo advice only, once the profile is in.
+export function retirementReply(
+  data: {
+    profile: ProfileSummary;
+    balanceCents: number;
+    accounts: string[];
+    retirement: RetirementPlan | null;
+  },
+  advice: boolean,
+): Reply {
+  const link: MessageAction = {
+    id: "open",
+    label: "See your retirement plan",
+    kind: "link",
+    href: "/investments/retirement",
+  };
+  if (data.accounts.length === 0) {
+    return {
+      body: "I don't see a retirement account yet. Link your 401(k) or IRA and I'll show where you're headed.",
+      actions: [CONNECT],
+      refs: {},
+    };
+  }
+  if (!advice) {
+    return {
+      body: `You have ${formatCents(data.balanceCents)} in ${data.accounts.join(" and ")}. My retirement planner is only in demo advice mode for now.`,
+      actions: [SEE],
+      refs: {},
+    };
+  }
+  if (!data.profile.complete || !data.retirement) {
+    const ask = asking(data.profile.complete ? PROFILE_QUESTIONS[0] : data.profile.next);
+    return {
+      body: `You have ${formatCents(data.balanceCents)} in ${data.accounts.join(" and ")}. To plan from here I need your age and three more quick answers.`,
+      actions: ask.actions,
+      refs: ask.refs,
+    };
+  }
+  const plan = data.retirement;
+  const lines = [projectionLine(plan), matchLine(plan)].filter(Boolean).join(" ");
+  const changes =
+    plan.changes.length === 0
+      ? "Nothing to change: keep going as you are."
+      : `What I'd change:\n${plan.changes.map((c, i) => `${i + 1}. ${c.what} ${c.why}`).join("\n")}`;
+  const roth = plan.rothOrTraditional ? `\n${ROTH_WORDS[plan.rothOrTraditional]}` : "";
+  return { body: `${lines}\n${changes}${roth}`, actions: [link], refs: { advice: true } };
 }

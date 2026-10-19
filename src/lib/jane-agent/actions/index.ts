@@ -15,6 +15,7 @@ import { alertGotIt, deadlineDone, snooze } from "./heads-ups";
 import { setupAll, setupNo, setupYes } from "./setup";
 import { cancelDone, offerAccept, offerDecline } from "./steps";
 import { goalStart } from "./goal";
+import { clarifyOne, clarifyThree, clarifyTwo } from "./clarify";
 import { TAX_PROFILE_HANDLERS, taxFoundYes, taxIncomeAdd, taxIncomeNo, taxStateSet } from "./taxes";
 import { taxFormGot, taxTagNo, taxTagSet, taxTagYes } from "./tax-organizer";
 import {
@@ -27,7 +28,7 @@ import {
 import { changeBudget, changeExpected, changeLook } from "./changes";
 import { lifeNever, lifeNo, lifeYes } from "./life";
 import { transferCount, transferSkip, tuneUpAccept, tuneUpKeep, tuneUpUndo } from "./upkeep";
-import { clarifyOne, clarifyThree, clarifyTwo } from "./clarify";
+import { policyConfirm, policyNotInsurance } from "./found-policies";
 import { budgetSet } from "./budget";
 import { findingOptions, findingWhy } from "./explain";
 
@@ -59,6 +60,14 @@ export const ACTION_HANDLERS: Readonly<Record<ActionId, ActionHandler>> = {
   // Typing to Jane (spec step 84).
   "goal.start": goalStart,
   "autopilot.pause": autopilotPause,
+  // Spec step 88.
+  "clarify.1": clarifyOne,
+  "clarify.2": clarifyTwo,
+  "clarify.3": clarifyThree,
+  // Spec step 90.
+  "budget.set": budgetSet,
+  "finding.why": findingWhy,
+  "finding.options": findingOptions,
   // Taxes (spec step 118).
   "tax.found_yes": taxFoundYes,
   ...TAX_PROFILE_HANDLERS,
@@ -90,14 +99,9 @@ export const ACTION_HANDLERS: Readonly<Record<ActionId, ActionHandler>> = {
   "tuneup.undo": tuneUpUndo,
   "transfer.count": transferCount,
   "transfer.skip": transferSkip,
-  // Spec step 88.
-  "clarify.1": clarifyOne,
-  "clarify.2": clarifyTwo,
-  "clarify.3": clarifyThree,
-  // Spec step 90.
-  "budget.set": budgetSet,
-  "finding.why": findingWhy,
-  "finding.options": findingOptions,
+  // Insurance found from payments (spec step 99).
+  "policy.confirm": policyConfirm,
+  "policy.not_insurance": policyNotInsurance,
 };
 
 const MESSAGE_ID = /^[a-z0-9]{1,40}$/i;
