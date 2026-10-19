@@ -5,8 +5,9 @@ import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
 import { closeSettled } from "../messages";
 import { MESSAGE_SELECT, toChatMessage, type ActionId, type ChatMessage } from "../types";
+import { DEBT_ACTION_HANDLERS } from "./debt-handlers";
 import { findingNo, findingPick, findingYes } from "./finding";
-import { insuranceGapNo, insuranceQuotes } from "./insurance";
+import { insuranceGapNo, insuranceQuotes, insuranceShopNo, insuranceShopYes } from "./insurance";
 import { ChatActionError, linksOf, type ActionHandler } from "./handler";
 import { planApproveSafe } from "./plan";
 import { undoNo, undoRule } from "./undo";
@@ -34,11 +35,15 @@ import { policyConfirm, policyNotInsurance } from "./found-policies";
 // message sources offer it by id (src/lib/jane-agent/types.ts ACTION_IDS).
 export const ACTION_HANDLERS: Readonly<Record<ActionId, ActionHandler>> = {
   "finding.yes": findingYes,
+  // Loans and debt (spec Phase Y, ./debt-handlers.ts).
+  ...DEBT_ACTION_HANDLERS,
   "finding.no": findingNo,
   "finding.pick": findingPick,
   // Insurance (spec Phase X).
   "insurance.gap_no": insuranceGapNo,
   "insurance.quotes": insuranceQuotes,
+  "insurance.shop_yes": insuranceShopYes,
+  "insurance.shop_no": insuranceShopNo,
   "plan.approve_safe": planApproveSafe,
   "undo.rule": undoRule,
   "undo.no": undoNo,

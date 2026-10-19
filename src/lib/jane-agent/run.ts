@@ -1,6 +1,7 @@
 import { CHAT_CRON_LIMIT, CHAT_HISTORY_HOURS } from "@/config/agent-chat";
 import type { PrismaClient } from "@/generated/prisma/client";
 import { db as defaultClient } from "@/lib/db";
+import { refreshDebts } from "@/lib/debt-refresh";
 import { scopedFor } from "@/lib/db-scoped";
 import { loadDetectionInput } from "@/detection/engine";
 import { policiesFromPayments } from "@/lib/found-policies";
@@ -35,6 +36,8 @@ export async function runJaneAgent(
   await runPlanUpkeep(userId, { client, now }).catch((error) =>
     console.error("Plan upkeep failed", { userId, error: String(error) }),
   );
+  // Loans and debt (spec Phase Y): what Jane keeps current by herself, before she looks.
+  await refreshDebts(userId, { client, now });
   // The bank data, loaded once for what follows.
   const input = await loadDetectionInput(userId, { client, now });
   // Spec step 99: insurance found from payments joins the profile (as found) by itself.

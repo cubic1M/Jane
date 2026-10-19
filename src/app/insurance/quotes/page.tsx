@@ -11,7 +11,10 @@ import { quotesFor, type StoredQuote } from "@/lib/insurance/quotes";
 import { scopedFor } from "@/lib/db-scoped";
 import { formatCents } from "@/lib/money";
 import { requireUser } from "@/lib/session";
-import { getQuotes } from "./actions";
+import { DemoAdviceLabel } from "@/components/demo-advice-label";
+import { RESHOP_DAYS_BEFORE_RENEWAL } from "@/config/insurance";
+import { openShops, type Shop } from "@/lib/insurance/shop";
+import { getQuotes, keepPolicy, switchToPick } from "./actions";
 
 // Quotes for one policy (spec step 103), like for like: same cover and deductible, or each
 // difference spelled out. From the stand-in carrier catalog until a licensed partner is
@@ -75,6 +78,55 @@ function QuoteCard({
   );
 }
 
+// Jane's pick from her last reshop (spec step 104): demo advice, labelled, with Yes.
+function PickCard({ shop, policyCarrier }: { shop: Shop; policyCarrier: string }) {
+  if (!shop.pick || shop.savingCents === null) return null;
+  return (
+    <section
+      aria-labelledby="pick"
+      className="flex flex-col gap-3 rounded-xl border-2 border-emerald-700 p-4 [overflow-wrap:anywhere]"
+    >
+      <h2 id="pick" className="text-xl font-semibold">
+        Jane&apos;s pick: {shop.pick.carrier.name}
+      </h2>
+      <p className="font-medium">
+        {formatCents(shop.pick.premiumCents)}{" "}
+        {PREMIUM_FREQUENCIES[shop.pick.premiumFrequency].label}, {formatCents(shop.savingCents)} a
+        year less for the same cover.
+      </p>
+      <ul className="list-disc pl-5 text-sm">
+        {shop.why.map((line) => (
+          <li key={line}>{line}</li>
+        ))}
+      </ul>
+      <DemoAdviceLabel />
+      <p className="text-sm text-zinc-600 dark:text-zinc-400">
+        Say yes and Jane switches you. Your {policyCarrier} policy stays in place until the new one
+        is.
+      </p>
+      <div className="flex flex-wrap gap-3">
+        <form action={switchToPick}>
+          <input type="hidden" name="shopId" value={shop.id} />
+          <input type="hidden" name="policyId" value={shop.policyId} />
+          <button type="submit" className={BUTTON}>
+            Yes, switch
+          </button>
+        </form>
+        <form action={keepPolicy}>
+          <input type="hidden" name="shopId" value={shop.id} />
+          <input type="hidden" name="policyId" value={shop.policyId} />
+          <button
+            type="submit"
+            className="inline-flex h-11 items-center justify-center rounded-full border border-zinc-300 px-6 font-semibold dark:border-zinc-700"
+          >
+            Not now
+          </button>
+        </form>
+      </div>
+    </section>
+  );
+}
+
 async function QuotesContent({
   searchParams,
 }: {
@@ -92,9 +144,14 @@ async function QuotesContent({
       })
     : null;
   const policy = row ? toPolicy(row) : null;
-  const [partner, quotes] = policy
-    ? await Promise.all([partnerFor(user.id), quotesFor(user.id, policy.id, { now })])
-    : [null, []];
+  const [partner, quotes, shops] = policy
+    ? await Promise.all([
+        partnerFor(user.id),
+        quotesFor(user.id, policy.id, { now }),
+        openShops(user.id, { now }),
+      ])
+    : [null, [], []];
+  const shop = shops.find((s) => policy && s.policyId === policy.id) ?? null;
   const current = policy ? yearlyPremium(policy) : null;
   const unknown = policy && quotes[0] ? compareCover(policy.kind, policy, quotes[0]).unknown : [];
 
@@ -115,7 +172,9 @@ async function QuotesContent({
             <p className="text-zinc-600 dark:text-zinc-400">
               Asked for with the same cover and deductible as your policy
               {current !== null && `, which costs ${formatCents(current)} a year`}. Getting quotes
-              costs nothing and changes nothing: nothing is bought without your tap.
+              costs nothing and changes nothing: nothing is bought without your tap. Jane shops it
+              by herself {RESHOP_DAYS_BEFORE_RENEWAL} days before it renews and whenever its price
+              goes up.
             </p>
           </div>
           {partner?.demo && (
@@ -146,6 +205,12 @@ async function QuotesContent({
                   </Link>
                 </p>
               )}
+              {params.answered && (
+                <p role="status" className="text-sm">
+                  That pick was already answered, or its quotes expired.
+                </p>
+              )}
+              {shop && <PickCard shop={shop} policyCarrier={policy.carrier} />}
               {quotes.length > 0 && (
                 <ul className="flex flex-col gap-3">
                   {quotes.map((q) => (

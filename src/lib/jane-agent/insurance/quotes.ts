@@ -2,7 +2,9 @@ import { PREMIUM_FREQUENCIES } from "@/config/documents";
 import { QUOTABLE_KINDS } from "@/config/insurance";
 import type { PrismaClient } from "@/generated/prisma/client";
 import { kindWords } from "@/lib/insurance/gaps";
-import { requestQuotes, type QuotesResult } from "@/lib/insurance/quotes";
+import { quotesFor, requestQuotes, type QuotesResult } from "@/lib/insurance/quotes";
+import { shopNow } from "@/lib/insurance/shop";
+import { shopBody } from "../sources/insurance";
 import { formatCents } from "@/lib/money";
 import type { Reply } from "../replies";
 import type { MessageAction } from "../types";
@@ -78,7 +80,7 @@ export async function quotesAnswer(
   intent: InsuranceIntent,
   { client, now }: { client: PrismaClient; now: Date },
 ): Promise<Reply> {
-  const { policies } = await loadInsuranceSnapshot(userId, { client, now });
+  const { policies, shopsItself } = await loadInsuranceSnapshot(userId, { client, now });
   const candidates = policies.filter(
     (p) =>
       p.status === "active" &&
@@ -97,5 +99,40 @@ export async function quotesAnswer(
       refs: {},
     };
   }
-  return quotesReply(await requestQuotes(userId, candidates[0].id, { client, now }));
+  const [policy] = candidates;
+  // Spec step 104: in demo advice mode Jane shops it, with her pick and why.
+  if (shopsItself) {
+    const shop = await shopNow(userId, policy.id, { client, now });
+    if (shop?.status === "open") {
+      const body = shopBody(shop, policies);
+      if (body) {
+        return {
+          body,
+          actions: [
+            { id: "insurance.shop_yes", label: "Yes, switch", kind: "primary" },
+            link("Show options", `/insurance/quotes?policy=${policy.id}`),
+            { id: "insurance.shop_no", label: "Not now", kind: "secondary" },
+          ],
+          refs: { insuranceShopId: shop.id, policyId: policy.id, advice: true },
+        };
+      }
+    }
+    if (shop?.status === "no_better") {
+      const reply = quotesReply({
+        kind: "quotes",
+        policy,
+        currentAnnualCents: shop.currentAnnualCents,
+        quotes: await quotesFor(userId, policy.id, { client, now }),
+      });
+      return {
+        ...reply,
+        body: reply.body.replace(
+          "Nothing changes unless you say so.",
+          "None with the same cover saves enough to be worth switching, so I'd keep what you have.",
+        ),
+        refs: { ...reply.refs, advice: true },
+      };
+    }
+  }
+  return quotesReply(await requestQuotes(userId, policy.id, { client, now }));
 }
