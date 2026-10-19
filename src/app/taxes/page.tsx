@@ -30,6 +30,8 @@ import { loadRefunds } from "@/lib/tax-refund";
 import { WithholdingSection } from "./withholding-section";
 import { FormToggle } from "./form-toggle";
 import { DocumentButtons } from "./document-buttons";
+import { PlanSection } from "./plan-section";
+import { loadTaxPlan } from "@/lib/tax-plan";
 import { loadTaxDocuments } from "@/lib/tax-documents";
 import { COMPARED } from "@/planning/tax-document-check";
 
@@ -98,6 +100,10 @@ async function TaxesContent() {
         advice={advice}
       />
       <SavingsSection view={await loadTaxSavings(user.id, { now, loaded: { estimate, advice } })} />
+      <PlanSection
+        view={await loadTaxPlan(user.id, { now, loaded: { estimate, advice } })}
+        today={now.toISOString().slice(0, 10)}
+      />
 
       <section aria-labelledby="profile" className={CARD}>
         <div className="flex flex-wrap items-baseline justify-between gap-2">

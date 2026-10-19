@@ -141,6 +141,9 @@ export const ACTION_IDS = [
   "tax.doc_ask",
   "tax.doc_chase",
   "tax.docs_tick",
+  // Spec step 167: a tax move's reminder on the deadlines, or not for me.
+  "tax.plan_add",
+  "tax.plan_no",
   // Investments (spec step 129 on): the answer buttons on an investor-profile question,
   // by position (src/config/investing.ts PROFILE_QUESTIONS).
   "invest.answer.1",
@@ -186,6 +189,10 @@ export const ACTION_IDS = [
   "welcome.tour",
   // One autopilot, every sector (spec step 141).
   "autopilot.sector_set",
+  // Money that moves itself (spec step 144).
+  "paycheck.move",
+  "paycheck.skip",
+  "paycheck.undo",
 ] as const;
 export type ActionId = (typeof ACTION_IDS)[number];
 
@@ -296,6 +303,8 @@ export type MessageRefs = {
   taxMove?: { date: string; from: string; to: string };
   taxWorkState?: string;
   taxLocals?: string[];
+  // Spec step 167: the tax plan move ("<year>:<key>") a message is about.
+  taxPlanMove?: string;
   // Spec step 98: demo advice (src/lib/advice-mode.ts). The chat shows DEMO_ADVICE_LABEL
   // under it. Set it on every message that recommends investments, taxes, insurance or loans.
   advice?: true;
@@ -319,6 +328,8 @@ export type MessageRefs = {
   // Spec step 101: a budget tune-up's month (YYYY-MM), and a transfer to count toward a goal.
   tuneUpMonth?: string;
   transactionId?: string;
+  // Spec step 144: a paycheck's plan.
+  paycheckPlanId?: string;
   // Spec step 141: a sector's autopilot change typed in the chat, set on "Set it".
   sectorChange?: {
     sector: string;
