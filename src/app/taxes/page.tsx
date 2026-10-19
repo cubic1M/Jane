@@ -14,9 +14,11 @@ import {
 import { formatCents } from "@/lib/money";
 import { requireUser } from "@/lib/session";
 import { loadTaxForms, loadTaxTags } from "@/lib/tax-organizer";
+import { loadTaxEstimate } from "@/lib/tax-estimate";
 import { loadWorkingProfile } from "@/lib/tax-profile";
 import { defaultTaxYear } from "@/planning/tax-pack";
 import { stateName, type FieldStatus } from "@/planning/tax-profile";
+import { EstimateSection } from "./estimate-section";
 import { FormToggle } from "./form-toggle";
 
 // Taxes (spec steps 118–127): Jane keeps the person's taxes organised all year. Step 118:
@@ -53,10 +55,11 @@ async function TaxesContent() {
   const now = new Date();
   // The year being gathered: last year until the end of April, then this one.
   const year = defaultTaxYear(now.toISOString().slice(0, 10));
-  const [{ view, autopilot }, tags, forms] = await Promise.all([
+  const [{ view, autopilot }, tags, forms, estimate] = await Promise.all([
     loadWorkingProfile(user.id, { now }),
     loadTaxTags(user.id, year),
     loadTaxForms(user.id, year, { now }),
+    loadTaxEstimate(user.id, { now }),
   ]);
   const kids = view.dependants;
 
@@ -71,6 +74,8 @@ async function TaxesContent() {
           can&apos;t work out.
         </p>
       </div>
+
+      <EstimateSection view={estimate} />
 
       <section aria-labelledby="profile" className={CARD}>
         <div className="flex flex-wrap items-baseline justify-between gap-2">
