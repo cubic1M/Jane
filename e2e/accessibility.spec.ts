@@ -18,7 +18,17 @@ async function violations(page: Page, path: string) {
     .map((v) => `${path} ${v.id}: ${v.nodes.map((n) => n.target.join(" ")).join(", ")}`);
 }
 
-const SIGNED_OUT = ["/", "/login", "/signup", "/privacy", "/terms", "/security", "/offline"];
+const SIGNED_OUT = [
+  "/",
+  "/login",
+  "/signup",
+  "/privacy",
+  "/terms",
+  "/security",
+  "/offline",
+  // The confirm page for a button in Jane's email (spec step 85).
+  "/chat/reply",
+];
 const SIGNED_IN = [
   "/chat",
   "/home",

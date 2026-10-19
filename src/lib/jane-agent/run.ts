@@ -4,6 +4,7 @@ import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
 import { gather, plan, type BrainSettings } from "./brain";
 import { closeSettled, postMessages } from "./messages";
+import { queueChatNotificationsSafely } from "./notify";
 import { inQuietHours } from "./quiet-hours";
 import { loadSnapshot } from "./snapshot";
 import type { Trigger } from "./sources";
@@ -59,7 +60,10 @@ export async function runJaneAgent(
     now,
     settings,
   );
-  return { posted: await postMessages(userId, planned, { client, now }) };
+  const posted = await postMessages(userId, planned, { client, now });
+  // What's important goes out as a notification, unless the person is looking (spec step 85).
+  await queueChatNotificationsSafely(userId, { client, now, trigger });
+  return { posted };
 }
 
 // Never lets Jane's chat fail what called it (a sync, an import): logs and moves on.
