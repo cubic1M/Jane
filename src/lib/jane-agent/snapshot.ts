@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 import { PLAN_URGENT_FINDING_TYPES } from "@/config/plan";
 import { loadDetectionInput } from "@/detection/engine";
+import type { DetectionInput } from "@/detection/types";
 import type { AlertType, FindingType, PrismaClient } from "@/generated/prisma/client";
 import type { ComingUpRow } from "@/insights/coming-up";
 import type { Deadline } from "@/insights/deadlines";
@@ -118,8 +119,13 @@ const ALERTS_LOOKED_AT = 10;
 // double charge as its finding (with Yes and No).
 const ALERTS_SAID_ELSEWHERE: readonly AlertType[] = ["deadline_soon", "duplicate_charge"];
 
-async function thinking(userId: string, client: PrismaClient, now: Date) {
-  const input = await loadDetectionInput(userId, { client, now });
+async function thinking(
+  userId: string,
+  client: PrismaClient,
+  now: Date,
+  given: DetectionInput | undefined,
+) {
+  const input = given ?? (await loadDetectionInput(userId, { client, now }));
   const [changes, lifeGuesses] = await Promise.all([
     loadChanges(userId, { client, now, input }),
     lifeGuessesFor(userId, { client, now, input }),
@@ -129,7 +135,16 @@ async function thinking(userId: string, client: PrismaClient, now: Date) {
 
 export async function loadSnapshot(
   userId: string,
-  { client = defaultClient, now = new Date() }: { client?: PrismaClient; now?: Date } = {},
+  {
+    client = defaultClient,
+    now = new Date(),
+    input,
+  }: {
+    client?: PrismaClient;
+    now?: Date;
+    // The bank data, when the caller already loaded it (Jane's run does).
+    input?: DetectionInput;
+  } = {},
 ): Promise<Snapshot | null> {
   const home = await homeSummary(userId, { client, now });
   if (!home) return null;
@@ -201,7 +216,7 @@ export async function loadSnapshot(
     ...(await loadMore(userId, { client, now })),
     ...(await loadTaxSnapshot(userId, { client, now })),
     // Spec steps 97 and 100 read the same bank data, so it's loaded once for both.
-    ...(await thinking(userId, client, now)),
+    ...(await thinking(userId, client, now, input)),
     upkeep: await loadUpkeep(userId, { client, now }),
     investments: await loadInvestmentSnapshot(userId, { client, now }),
   };
