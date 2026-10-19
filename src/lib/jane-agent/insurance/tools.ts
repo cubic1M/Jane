@@ -220,6 +220,9 @@ async function quotesTool(
             const pays = current(policy);
             return {
               carrier: q.carrier.name,
+              // Spec step 149: health plans, by name and a year's cost with the usual care.
+              plan: q.plan,
+              aYearWithUsualCare: q.expectedCostCents === null ? null : money(q.expectedCostCents),
               rating: q.carrier.rating,
               price: money(q.premiumCents),
               paid: PREMIUM_FREQUENCIES[q.premiumFrequency].label,

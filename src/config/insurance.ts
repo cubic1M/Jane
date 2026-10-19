@@ -14,6 +14,11 @@ export const POLICY_KINDS = {
   life: "Life",
   pet: "Pet",
   health: "Health",
+  // Spec step 149: every kind of cover.
+  disability: "Disability",
+  umbrella: "Umbrella",
+  travel: "Travel",
+  device: "Device protection",
   other: "Other",
 } as const;
 
@@ -44,7 +49,7 @@ export const POLICY_STATUSES = ["found", "active", "pending", "cancelled", "remo
 export type PolicyStatus = (typeof POLICY_STATUSES)[number];
 
 // A cover limit: money (cents), yes or no, a number of years, or a share in percent.
-export type CoverageFieldType = "money" | "yesno" | "years" | "percent";
+export type CoverageFieldType = "money" | "yesno" | "years" | "percent" | "days";
 export type CoverageField = { key: string; label: string; type: CoverageFieldType };
 
 // The cover limits that matter for each kind, in the order they're shown. Stored in
@@ -79,7 +84,21 @@ export const COVERAGE_FIELDS: Record<PolicyKind, readonly CoverageField[]> = {
     { key: "annualLimit", label: "Yearly limit", type: "money" },
     { key: "reimbursement", label: "Pays back", type: "percent" },
   ],
-  health: [{ key: "outOfPocketMax", label: "Most you pay in a year", type: "money" }],
+  health: [
+    { key: "outOfPocketMax", label: "Most you pay in a year", type: "money" },
+    { key: "coinsurance", label: "Your share after the deductible", type: "percent" },
+  ],
+  disability: [
+    { key: "monthlyBenefit", label: "Pays a month", type: "money" },
+    { key: "waitingDays", label: "Starts paying after", type: "days" },
+    { key: "benefitYears", label: "Pays for up to", type: "years" },
+  ],
+  umbrella: [{ key: "liability", label: "Extra liability", type: "money" }],
+  travel: [
+    { key: "tripCost", label: "Trip cancellation, up to", type: "money" },
+    { key: "medical", label: "Medical care abroad, up to", type: "money" },
+  ],
+  device: [{ key: "perClaimLimit", label: "Pays per claim, up to", type: "money" }],
   other: [],
 };
 
@@ -88,6 +107,8 @@ export const MAX_PREMIUM_CENTS = 10_000_000;
 export const MAX_DEDUCTIBLE_CENTS = 10_000_000;
 export const MAX_LIMIT_CENTS = 10_000_000_000;
 export const MAX_TERM_YEARS = 40;
+// A disability policy's wait before it pays, in days.
+export const MAX_WAITING_DAYS = 730;
 export const MAX_CARRIER_LENGTH = 80;
 export const MAX_COVERS_LENGTH = 160;
 // Policies a person can keep on the profile.
@@ -107,7 +128,19 @@ export const RENT_CATEGORY = "RENT_AND_UTILITIES_RENT";
 export const MAX_HOUSEHOLD_COUNT = 20;
 
 // Coverage gaps (spec step 102), each found by a rule in src/lib/insurance/gaps.ts.
-export const GAP_KEYS = ["renters", "home", "auto", "life", "liability_only"] as const;
+export const GAP_KEYS = [
+  "renters",
+  "home",
+  "auto",
+  "life",
+  "liability_only",
+  // Spec step 149.
+  "health",
+  "disability",
+  "umbrella",
+  "pet",
+  "travel",
+] as const;
 export type GapKey = (typeof GAP_KEYS)[number];
 
 // "Renews soon": the profile and the chat say so this many days ahead.
@@ -137,7 +170,39 @@ export const GAP_ADVICE: Record<GapKey, { text: string; cents: number[] }> = {
     text: "If replacing your car would cost more than you could pay from savings, add collision and comprehensive cover. If it's worth little, liability only can make sense.",
     cents: [],
   },
+  health: {
+    text: "Get a health plan: compare marketplace plans on what you'd pay in a year, premium plus your likely costs, not the premium alone. Open enrollment runs Nov 1 to Jan 15.",
+    cents: [],
+  },
+  disability: {
+    text: "Add long-term disability insurance that pays about 60 percent of your pay after a 90-day wait, until retirement age. Check your job's benefits first: many include it.",
+    cents: [],
+  },
+  umbrella: {
+    text: "Add a $1,000,000 umbrella policy. It usually costs a few hundred dollars a year, and your car and home policies need high enough liability limits under it.",
+    cents: [100_000_000],
+  },
+  pet: {
+    text: "If a vet bill of a few thousand dollars would be hard to pay, a pet policy that pays back 80 percent after a $250 deductible is a common middle choice.",
+    cents: [25_000],
+  },
+  travel: {
+    text: "Cover the trip's non-refundable cost and medical care abroad, but check your card's travel benefits first: some already cover cancellation.",
+    cents: [],
+  },
 };
+
+// Gap rules for the kinds added in spec step 149, read from the accounts.
+// An umbrella policy matters once what someone has is worth protecting from a lawsuit.
+export const UMBRELLA_ASSETS_CENTS = 50_000_000;
+// A paycheck in this many days means the person earns, so losing it to illness matters.
+export const INCOME_LOOKBACK_DAYS = 45;
+export const INCOME_CATEGORY = "INCOME_SALARY";
+// Recent trips worth insuring: this much spent on flights and hotels in this many days.
+export const TRAVEL_GAP_MIN_CENTS = 100_000;
+export const TRAVEL_LOOKBACK_DAYS = 60;
+// Medical spending over this many days stands for what someone usually spends on care.
+export const MEDICAL_LOOKBACK_DAYS = 365;
 
 // --- Quotes (spec step 103) --------------------------------------------------------------
 // Quotes come from an insurance partner (src/lib/insurance/partner.ts). Until a licensed
@@ -154,7 +219,19 @@ export const INSURANCE_PARTNER_ENV = "INSURANCE_PARTNER";
 // A quote is good for this many days.
 export const QUOTE_VALID_DAYS = 30;
 // Kinds the partner quotes. Health insurance goes through the marketplace, not a carrier.
-export const QUOTABLE_KINDS: readonly PolicyKind[] = ["auto", "home", "renters", "life", "pet"];
+export const QUOTABLE_KINDS: readonly PolicyKind[] = [
+  "auto",
+  "home",
+  "renters",
+  "life",
+  "pet",
+  // Spec step 149.
+  "health",
+  "disability",
+  "umbrella",
+  "travel",
+  "device",
+];
 
 // The stand-in's pricing, a year, in cents, before the carrier's own factor. Fixed rules
 // from the person's profile: what's insured, the cover and deductible asked for, and their
@@ -206,6 +283,19 @@ export const DEMO_PRICING = {
     reimbursementFactors: { 70: 0.85, 80: 1, 90: 1.2 } as Record<number, number>,
     defaults: { annualLimit: 1_000_000, reimbursement: 80 },
   },
+  // Spec step 149. Disability: a year's price per $100 of monthly benefit, cheaper with a
+  // longer wait.
+  disability: {
+    perHundredMonthlyCents: 2_400,
+    waitingFactors: { 30: 1.3, 60: 1.1, 90: 1, 180: 0.85 } as Record<number, number>,
+    defaults: { monthlyBenefit: 300_000, waitingDays: 90, benefitYears: 30 },
+  },
+  // Umbrella: a year per $1,000,000 of extra liability.
+  umbrella: { perMillionCents: 30_000, defaults: { liability: 100_000_000 } },
+  // Travel: a share of the trip's cost, in basis points.
+  travel: { tripCostBps: 600, defaults: { tripCost: 300_000, medical: 5_000_000 } },
+  // Device protection: a year per device.
+  device: { perDeviceCents: 12_000, defaults: { perClaimLimit: 150_000 } },
   // A higher deductible lowers the price (cents → factor); the nearest one counts.
   deductibleFactors: [
     { cents: 25_000, factor: 1.1 },
@@ -297,3 +387,14 @@ export const INSURANCE_AUTOPILOT: Record<"ask" | "safe" | "all" | "custom" | "no
 // At "handle everything", a ready pick's quotes are refreshed this many days before they
 // expire, so the one tap always works.
 export const PICK_REFRESH_DAYS = 5;
+
+// --- Health plans (spec step 149) ----------------------------------------------------------
+// Marketplace plans are compared on what they'd cost in a year: the premium plus what the
+// person would likely pay for care under the plan (expected out of pocket), from their own
+// medical spending over MEDICAL_LOOKBACK_DAYS, or this much when there's none.
+export const HEALTH_DEFAULT_SPEND_CENTS = 150_000;
+// Open enrollment for marketplace plans (month-day), said as a deadline to people with a
+// marketplace plan or no health cover.
+export const OPEN_ENROLLMENT = { start: "11-01", end: "01-15" } as const;
+// Each extra person on a health plan costs this share of the first person's premium.
+export const HEALTH_EXTRA_PERSON_SHARE = 0.8;

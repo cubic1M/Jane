@@ -4,6 +4,10 @@ import {
   MAX_HOUSEHOLD_COUNT,
   RENT_CATEGORY,
   RENT_LOOKBACK_DAYS,
+  INCOME_CATEGORY,
+  INCOME_LOOKBACK_DAYS,
+  MEDICAL_LOOKBACK_DAYS,
+  TRAVEL_LOOKBACK_DAYS,
   type GapKey,
   type Housing,
 } from "@/config/insurance";
@@ -34,6 +38,20 @@ export type Household = {
   dependants: Fact<number>;
   pets: Fact<number>;
   dismissedGaps: GapKey[];
+  // Spec step 149: what the accounts say about income, what there is to protect, recent
+  // trips and care.
+  signals: Signals;
+};
+
+export type Signals = {
+  // A paycheck in the last INCOME_LOOKBACK_DAYS.
+  paycheck: boolean;
+  // Cash and investments plus the things they own, by their values; null with no balances.
+  assetsCents: number | null;
+  // Flights and hotels in the last TRAVEL_LOOKBACK_DAYS.
+  travelCents: number;
+  // Medical spending in the last MEDICAL_LOOKBACK_DAYS; null when there are no transactions.
+  medicalCents: number | null;
 };
 
 // What the accounts say, for the facts not typed.
@@ -42,7 +60,7 @@ export type AccountSigns = {
   homeOwned: boolean;
   rentPaid: boolean;
   cars: number;
-};
+} & Partial<Signals>;
 
 const typed = <T>(value: T | null): Fact<T> => ({ value, from: value === null ? null : "you" });
 
@@ -78,6 +96,12 @@ export function resolveHousehold(
     dismissedGaps: (saved?.dismissedGaps ?? []).filter((g): g is GapKey =>
       (GAP_KEYS as readonly string[]).includes(g),
     ),
+    signals: {
+      paycheck: signs.paycheck ?? false,
+      assetsCents: signs.assetsCents ?? null,
+      travelCents: signs.travelCents ?? 0,
+      medicalCents: signs.medicalCents ?? null,
+    },
   };
 }
 
@@ -87,16 +111,53 @@ export async function loadHousehold(
 ): Promise<Household> {
   const db = scopedFor(userId, client);
   const since = new Date(now.getTime() - RENT_LOOKBACK_DAYS * 86_400_000);
-  const [saved, loans, owned, rent] = await Promise.all([
-    db.insuranceProfiles.findFirst({
-      select: { housing: true, vehicles: true, dependants: true, pets: true, dismissedGaps: true },
-    }),
-    db.accounts.findMany({ where: { type: "loan" }, select: { id: true, subtype: true } }),
-    db.ownedAssets.findMany({ select: { kind: true, loanAccountId: true } }),
-    db.transactions.count({
-      where: { pfcDetailed: RENT_CATEGORY, date: { gte: since }, amountCents: { gt: 0 } },
-    }),
-  ]);
+  const days = (n: number) => new Date(now.getTime() - n * 86_400_000);
+  const [saved, loans, owned, rent, paychecks, balances, travel, medical, anyTransactions] =
+    await Promise.all([
+      db.insuranceProfiles.findFirst({
+        select: {
+          housing: true,
+          vehicles: true,
+          dependants: true,
+          pets: true,
+          dismissedGaps: true,
+        },
+      }),
+      db.accounts.findMany({ where: { type: "loan" }, select: { id: true, subtype: true } }),
+      db.ownedAssets.findMany({ select: { kind: true, loanAccountId: true, valueCents: true } }),
+      db.transactions.count({
+        where: { pfcDetailed: RENT_CATEGORY, date: { gte: since }, amountCents: { gt: 0 } },
+      }),
+      // Spec step 149.
+      db.transactions.count({
+        where: {
+          pfcDetailed: INCOME_CATEGORY,
+          date: { gte: days(INCOME_LOOKBACK_DAYS) },
+          amountCents: { lt: 0 },
+        },
+      }),
+      db.accounts.findMany({
+        where: { type: { in: ["depository", "investment"] } },
+        select: { currentBalanceCents: true },
+      }),
+      db.transactions.aggregate({
+        where: {
+          pfcPrimary: "TRAVEL",
+          date: { gte: days(TRAVEL_LOOKBACK_DAYS) },
+          amountCents: { gt: 0 },
+        },
+        _sum: { amountCents: true },
+      }),
+      db.transactions.aggregate({
+        where: {
+          pfcPrimary: "MEDICAL",
+          date: { gte: days(MEDICAL_LOOKBACK_DAYS) },
+          amountCents: { gt: 0 },
+        },
+        _sum: { amountCents: true },
+      }),
+      db.transactions.count({ where: { date: { gte: days(MEDICAL_LOOKBACK_DAYS) } } }),
+    ]);
   // A car loan and the car it's linked to are one car.
   const carLoans = loans.filter((l) => l.subtype === "auto").map((l) => l.id);
   const ownedCars = owned.filter((o) => o.kind === "vehicle");
@@ -107,6 +168,14 @@ export async function loadHousehold(
     homeOwned: owned.some((o) => o.kind === "home"),
     rentPaid: rent > 0,
     cars,
+    paycheck: paychecks > 0,
+    assetsCents:
+      balances.some((b) => b.currentBalanceCents !== null) || owned.length > 0
+        ? balances.reduce((sum, b) => sum + Math.max(0, b.currentBalanceCents ?? 0), 0) +
+          owned.reduce((sum, o) => sum + o.valueCents, 0)
+        : null,
+    travelCents: travel._sum.amountCents ?? 0,
+    medicalCents: anyTransactions > 0 ? (medical._sum.amountCents ?? 0) : null,
   });
 }
 
