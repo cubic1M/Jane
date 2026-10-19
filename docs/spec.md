@@ -21,7 +21,7 @@ The build runs in eleven steps, with Plaid added at step 7 after the founders te
 
 ## Status (Oct 19, 2026)
 
-Steps 1–63 are built (24 came before 22, because do-it-yourself kits need its cancel links). On Oct 18, 2026 the roadmap was reordered: Phase M (Jane acts for you, steps 49–56), then Phase Q (Autopilot, steps 57–64), Phase N (the complete picture, 65–68), Phase O (plan ahead, 69–72), the rest of Phase L (73–74) and Phase P (regulated features through partners), which replaces the old Phase F. On Oct 19, 2026, after Phase U, two phases were added: Phase V (Jane does the thinking, steps 87–94: she remembers, notices changes, fills things in from payments and keeps plans up to date by herself) and Phase W (show Jane to more people, steps 95–97). Production deploys only when the founder asks (automatic Vercel deploys are off: the free plan allows 100 a day). Where the build differs from the original plan, the plan below has been kept and the difference is noted here.
+Steps 1–63 are built (24 came before 22, because do-it-yourself kits need its cancel links). On Oct 18, 2026 the roadmap was reordered: Phase M (Jane acts for you, steps 49–56), then Phase Q (Autopilot, steps 57–64), Phase N (the complete picture, 65–68), Phase O (plan ahead, 69–72), the rest of Phase L (73–74) and Phase P (regulated features through partners), which replaces the old Phase F. On Oct 19, 2026, after step 86, the founder's plan was added: Phase V (a professional chat, steps 87–93: answer checks first, then understanding, one answer shape, the right buttons, memory, no interruptions, speed), Phase W (Jane does the thinking, 94–97), Phase X (the best insurance and loans found for you, with demo advice mode, 98–100), Phase Y (taxes, 101–102), Phase Z (investments, 103–106) and Phase AA (show Jane to more people, 107–109). Advice runs on demo data only until licensed partners and counsel sign off. Production deploys only when the founder asks (automatic Vercel deploys are off: the free plan allows 100 a day). Where the build differs from the original plan, the plan below has been kept and the difference is noted here.
 
 | Step | Shipped in | Notes |
 | --- | --- | --- |
@@ -676,7 +676,7 @@ The MVP proves people will link accounts and say yes. The full Jane is a financi
 
 Principles that still hold:
 
-- **Read-only until counsel says otherwise.** No money movement, investing, investment advice, or tax and legal advice. Phase P lists what needs licenses; it goes through licensed partners, built against their sandboxes, and doesn't go live until the partner and counsel sign off.
+- **Read-only until counsel says otherwise.** No money movement, investing, investment advice, or tax and legal advice. Phase P lists what needs licenses; it goes through licensed partners, built against their sandboxes, and doesn't go live until the partner and counsel sign off. The one exception is demo advice mode (step 98): recommendations on the demo bank's sample data only, always labelled, never for real accounts.
 - **Rules decide, the LLM explains.** Every new finding type is a tested rule with thresholds in config; Claude only writes text and classifies edge cases, behind the guardrails.
 - **Every step is shippable alone.** One PR per step, tests for every rule and route, and nothing that blocks on an outside account: when a step needs one, build a working stand-in and note what to swap in later.
 - **Measure, then automate.** Minutes per action decide which concierge work to automate first.
@@ -1814,199 +1814,378 @@ Ground rules for every step in this phase:
 > - Every page is reachable from the chat or the Details menu (tested against src/app)
 > - Answering on a page or in the chat shows the same answer in both
 
-## Phase V: Jane does the thinking (steps 87–94)
+## Phase V: a professional chat (steps 87–93)
 
-After Phase U, Jane talks to the person, but much of what she knows still has to be typed
-in or looked up by them: insurance from a document, goals updated by hand, life events
-started from a page. And she forgets: a "no" today can come back as the same suggestion
-next week. This phase makes her notice things by herself and keep what she knows up to date,
-so the person's part is a yes or a no. Nothing here needs an outside account.
+The founder's verdict after using the chat: it needs a lot of refinement. Jane should
+understand what people mean, answer like a professional (the answer first, the reason
+with their numbers, one clear suggestion), offer the right button every time, and never
+interrupt. Each step is measured by step 87's answer checks: a change stays only if the
+score goes up and every test passes. Runs of the checks cost API usage, so they run on
+demand within a budget the founder sets.
 
-Ground rules, as in Phase U: rules decide and Claude only words things, through the
-guardrails; every suggestion is a chat message with buttons through the feature's own code;
-thresholds in config; no investment, tax or legal advice.
+### Step 87: Jane's answer checks
 
-### Step 87: Jane remembers
+> Read CLAUDE.md. Measure how good Jane's chat answers are, before changing them.
+>
+> Build:
+> 1. A bank of about 100 real questions over the demo bank (what people ask: "should I
+>    cancel Netflix", "can I spend $500 on food this week", "hi", "what's due", "where's my
+>    money going", "and Hulu?" after a Netflix answer), each with what a good answer has:
+>    answered (not a fallback), the right figures, the shape of step 89, the right button,
+>    nothing the guardrails refuse, a length limit.
+> 2. A runner that asks Jane each question (rules and Claude), grades it (fixed checks
+>    first, then a Claude grader for tone and usefulness with a written rubric) and writes
+>    a score per question and overall; a spending cap per run.
+> 3. The rules-only questions run in CI; the full run on demand.
+>
+> Acceptance criteria:
+> - Every question has a grade and a reason; the overall score is comparable across runs
+> - A run stops at its spending cap
+
+### Step 88: Jane understands more
+
+> Read CLAUDE.md. Fewer misunderstandings, more instant answers.
+>
+> Build:
+> 1. More rule answers for what people type most: a merchant's cost ("how much is
+>    Netflix"), the next paycheck, the subscription list, the biggest spending this month,
+>    a finding by name; typos and short forms ("netflx", "subs").
+> 2. Follow-ups: the last finding, merchant or month talked about is remembered for the
+>    conversation, so "and Hulu?", "what about last month?" and "cancel it" work.
+> 3. One short clarifying question when a message could mean two things, with buttons for
+>    each meaning, instead of guessing or giving up.
+>
+> Acceptance criteria:
+> - Each new rule and follow-up has tests; "it" never points at something from another day
+
+### Step 89: Answers in one professional shape
+
+> Read CLAUDE.md. Every answer looks and sounds the same.
+>
+> Build:
+> 1. The shape: the direct answer in the first sentence, then the reason with the person's
+>    figures, then one suggestion (ranked by what it saves) with its button. A short list
+>    only when comparing options.
+> 2. One voice: warm but brief, no filler or apologies, money as "$17.99 a month", dates as
+>    "Oct 28 (in 3 days)".
+> 3. No dead ends: when Jane can't answer, she says what she can do instead, with buttons
+>    for the closest things.
+>
+> Acceptance criteria:
+> - Step 87's shape and tone grades go up; rule answers follow the same shape
+
+### Step 90: The right button, every time
+
+> Read CLAUDE.md. Every answer that implies an action offers it.
+>
+> Build:
+> 1. Buttons for everything the pages can do: Yes on a finding, "Set a budget"
+>    (prefilled), "Start a goal", "Remind me later" (a date), "Don't suggest again".
+> 2. Quick replies under answers: "Why?" (the evidence and the options compared, as fixed
+>    wording from finding_details), "Show options", "Do it".
+> 3. After a tap, a plain confirmation of what happens next.
+>
+> Acceptance criteria:
+> - Every button goes through its feature's own code and the chat's server checks
+> - "Why?" works without an Anthropic key; every figure in it comes from the finding
+
+### Step 91: Jane remembers
 
 > Read CLAUDE.md. Jane remembers what the person tells her.
 >
 > Build:
-> 1. jane_preferences (user-owned, exported, deleted with the account): "don't suggest this
->    again" on any suggestion (by finding fingerprint or merchant), things they've said in
->    the chat ("I need my car", "I'm not cancelling Netflix", "payday is the 15th"), each
->    with where it came from and when.
-> 2. A "Don't suggest again" button on Jane's own messages; typed preferences saved only
->    after a confirm button ("Got it: I won't suggest cancelling Netflix again. [Save]").
-> 3. The brain and the chat read them: a dismissed suggestion never comes back, and Claude
->    gets them with the person's numbers. Settings lists them, each one deletable.
+> 1. jane_preferences (user-owned, exported, deleted with the account): "don't suggest
+>    this again" (by finding fingerprint or merchant) and things said in the chat ("I need
+>    my car", "payday is the 15th"), saved only after a confirm button.
+> 2. The brain and the chat read them; Settings lists them, each deletable.
 >
 > Acceptance criteria:
 > - A dismissed suggestion never returns, even when the finding is found again
-> - Nothing typed is saved without the confirm tap; deleting one takes effect at once
+> - Nothing typed is saved without the confirm tap
 
-### Step 88: Jane notices changes
+### Step 92: Never interrupt
+
+> Read CLAUDE.md. Jane's own messages wait their turn.
+>
+> Build:
+> 1. While the person is chatting (a message in the last 10 minutes), Jane's own posts are
+>    held and come after, bundled.
+> 2. Fewer, bundled posts: related suggestions become one message with a short list and a
+>    button each; a cap on Jane's own posts per day, most valuable first.
+>
+> Acceptance criteria:
+> - Nothing Jane posts on her own lands between a question and its answer
+> - Bundles keep every item's own buttons and checks
+
+### Step 93: Fast and reliable
+
+> Read CLAUDE.md. Quick, and never stuck.
+>
+> Build:
+> 1. First words on screen in under 2 seconds: the person's numbers cached for a minute,
+>    the cached instructions and tools, the rules answer shown at once when one fits.
+> 2. When Claude is slow or down, an instant answer from the rules and the pages, never a
+>    spinner.
+> 3. Fewer false blocks: measure which guardrail rules block good answers (issue codes
+>    only) and narrow them, with the real limits kept; /admin shows the questions Jane
+>    couldn't answer, by kind, to target next.
+>
+> Acceptance criteria:
+> - Step 87's run reports time to first words; blocked answers fall run over run
+
+## Phase W: Jane does the thinking (steps 94–97)
+
+Jane notices things by herself and keeps what she knows up to date, so the person's part is
+a yes or a no. Nothing here needs an outside account.
+
+### Step 94: Jane notices changes
 
 > Read CLAUDE.md. Jane spots what changed, before the person does.
 >
 > Build:
-> 1. New heads-ups, each a rule in src/config/changes.ts: any regular bill whose amount
->    changed (utilities, insurance, phone, not only subscriptions), a new subscription
->    started, a paycheck that's late, smaller or from a new employer, and a category
->    running well above its usual pace for the month.
-> 2. Each with the right buttons: "Set a budget" (prefilled), "Look into it" (opens the
->    finding), "That's expected" (stops it for this merchant or month).
+> 1. Heads-ups, each a rule in src/config/changes.ts: any regular bill whose amount
+>    changed (utilities, insurance, phone), a new subscription, a paycheck late, smaller or
+>    from a new employer, a category running well above its usual pace.
+> 2. Buttons: "Set a budget", "Look into it", "That's expected" (stops it for that
+>    merchant or month).
 >
 > Acceptance criteria:
-> - Each rule has tests with the demo bank and with edge cases (one-off big months,
->   annual bills, a paycheck moved by a holiday)
-> - "That's expected" stops that heads-up for that merchant or month
+> - Each rule is tested with the demo bank and edge cases (one-off big months, annual
+>   bills, a paycheck moved by a holiday)
 
-### Step 89: Insurance and renewals from payments
+### Step 95: Insurance and renewals from payments
 
 > Read CLAUDE.md. Jane fills in what she can see in the payments.
 >
 > Build:
-> 1. Insurance policies found from regular payments to insurers (a merchant list in
->    config): insurer, kind when the name says it (auto, home, renters, life), premium and
->    how often, a renewal estimated from the payment pattern; added as "found from your
->    payments" with Confirm and Not insurance buttons. Documents (step 68) still add detail.
-> 2. Deadlines filled in by themselves: yearly renewals and card annual fees from the
->    payment history, and trials that end (a small or free charge followed by a sign-up),
->    each a deadline with a heads-up a week before.
+> 1. Policies found from regular payments to insurers (insurer, kind when the name says
+>    it, premium, how often, an estimated renewal), added as "found from your payments"
+>    with Confirm and Not insurance.
+> 2. Deadlines by themselves: yearly renewals, card annual fees and trials that end, each
+>    with a heads-up a week before.
 >
 > Acceptance criteria:
-> - Nothing found from payments counts until the person confirms it, and "Not insurance"
->   sticks
-> - A renewal date is always shown as an estimate
+> - Nothing counts until confirmed; a renewal date is always shown as an estimate
 
-### Step 90: Life events spotted
+### Step 96: Life events spotted
 
-> Read CLAUDE.md. Jane notices big changes in someone's life from their money.
+> Read CLAUDE.md. Jane notices big changes from someone's money.
 >
 > Build:
-> 1. Rules in config for moving (movers, a new utility account, a deposit, a new rent
->    amount), a new job (a new employer's paycheck, the old one stopping) and a new baby
->    (several baby-store charges); each needs two or more signals.
-> 2. Jane asks once, kindly: "Looks like you might be moving. Want my moving checklist?"
->    with Yes (starts the life-events checklist), Not me and Don't ask again.
+> 1. Rules for moving, a new job and a new baby, each needing two or more signals.
+> 2. Jane asks once: "Looks like you might be moving. Want my moving checklist?" with Yes,
+>    Not me and Don't ask again.
 >
 > Acceptance criteria:
-> - One signal alone never asks; Not me and Don't ask again stop it
-> - The question never says what it's based on beyond the person's own charges
+> - One signal never asks; Not me and Don't ask again stop it
 
-### Step 91: Goals and budgets that keep up
+### Step 97: Goals and budgets that keep up
 
 > Read CLAUDE.md. Plans update themselves.
 >
 > Build:
-> 1. Goal progress counts transfers into the goal's savings account by itself; Jane says
->    when a goal is ahead or behind, with buttons to change the monthly amount or the date.
-> 2. On the 1st, Jane proposes a budget tune-up from last month (categories over or well
->    under), as one message with Accept all, Change and Keep as is.
+> 1. Goal progress from transfers into the goal's account; Jane says when a goal is ahead
+>    or behind, with buttons to change the amount or date.
+> 2. On the 1st, a budget tune-up proposal from last month: Accept all, Change, Keep.
 >
 > Acceptance criteria:
-> - Nothing about a goal or budget changes without a tap
-> - Proposals use the same math and wording as the Goals and Budgets pages
+> - Nothing changes without a tap; the math matches the Goals and Budgets pages
 
-### Step 92: "Why?" in the chat
+## Phase X: the best deal, found for you (steps 98–100)
 
-> Read CLAUDE.md. Every suggestion can explain itself, in the chat.
+The founder's vision: for insurance and loans, Jane searches the options, picks the best
+one for the person, says why in a few lines, and they approve with one tap or a few simple
+steps. And Jane gives real advice. Advice is legal for real people only through licensed
+partners (a registered investment adviser, licensed insurance agents, lenders and tax
+professionals), so it starts in demo advice mode: real recommendations on demo data, with
+every live switch waiting for a partner and counsel.
+
+### Step 98: Demo advice mode
+
+> Read CLAUDE.md. Let Jane advise, for the demo only.
 >
 > Build:
-> 1. A "Why?" button on Jane's suggestions: a reply with the evidence (the charges and
->    dates), what would change, what they'd give up, and the options compared with Jane's
->    pick, from finding_details, as fixed wording (no Claude needed).
-> 2. Typed follow-ups ("why that one?", "what else is there?") answered from the same
->    details.
+> 1. A switch: advice is on for people whose data is the demo bank (and only when
+>    DEMO_ADVICE=1 in production); real accounts keep today's rules.
+> 2. A demo guardrail profile: investment, tax, insurance and loan recommendations allowed;
+>    unsupported figures and promised outcomes still blocked. Every advice message and page
+>    carries a "Demo advice: sample data, not financial advice" label.
+> 3. CLAUDE.md's rules updated to say so; the switch for real accounts names what it needs
+>    (the partner, counsel's sign-off) and stays off in code until then.
 >
 > Acceptance criteria:
-> - Every figure in a "Why?" reply comes from the finding or its comparison
-> - Works without an Anthropic key
+> - A real account never gets advice, whatever it types; every advice answer is labelled
+> - Tests cover both profiles
 
-### Step 93: Jane's answer checks
+### Step 99: Insurance, shopped for you
 
-> Read CLAUDE.md. Make sure Jane's chat answers stay good.
+> Read CLAUDE.md. Jane finds a better policy and says why.
 >
 > Build:
-> 1. A fixed set of questions over the demo bank (what people really ask: "should I cancel
->    Netflix", "can I spend $500 on food this week", "hi", "what's due", "where's my money
->    going"), each with what a good answer has: answered (not the fallback), the right
->    figures, a suggestion and a button where one fits, nothing the guardrails refuse.
-> 2. A script that runs them against Claude and scores each, run on demand before a deploy
->    (it costs a little per run, so not on every push), plus a rules-only part in the
->    normal tests.
-> 3. Blocked answers counted per day on /admin/metrics (issue codes only).
+> 1. For each policy (step 95 or a document), Jane compares quotes for the same cover:
+>    demo quotes from an options catalog now, live quotes through a licensed insurance
+>    partner's API later (a stand-in behind a switch, like the demo bank).
+> 2. A card and chat message: the best option, what it saves, what's different (deductible,
+>    cover), why it's the pick in three lines, and the runners-up.
+> 3. Approve with one tap: the switch is an action (step 77's machinery): Jane starts the
+>    new policy's sign-up, confirms it from the first payment and only then cancels the
+>    old one.
 >
 > Acceptance criteria:
-> - The rules-only questions run in CI; the Claude run reports a score per question
-> - A change that makes Jane answer worse shows up as a lower score
+> - The same cover is compared like for like, or the difference is spelled out
+> - The old policy is never cancelled before the new one is confirmed
 
-### Step 94: Faster, cheaper answers
+### Step 100: Loans: better rates and payoff plans
 
-> Read CLAUDE.md. Answer more questions instantly, without Claude.
+> Read CLAUDE.md. Jane finds a better loan and the fastest way out of debt.
 >
 > Build:
-> 1. More rule answers from the questions people type most (from chat_message_sent
->    intents marked "unknown"): a merchant's cost ("how much is Netflix"), the next
->    paycheck, the subscription list, the biggest spending this month, a finding by name.
-> 2. The numbers sent with a free question are cached for a minute per person, so a
->    follow-up starts at once.
+> 1. Refinance offers for each loan and card balance (student, car, mortgage, personal):
+>    demo offers now, a loan marketplace partner's API later; the best one by total cost
+>    with fees, why in three lines, and what changes (term, monthly payment).
+> 2. Payoff plans for every loan: "pay $100 more a month: done 2 years sooner, $X less
+>    interest", and the order to pay debts in (demo advice).
+> 3. Approve: start the application through the partner (a stand-in now), then Jane
+>    watches for the new loan and the old one closing.
 >
 > Acceptance criteria:
-> - Each new rule answer has tests and matches the page it comes from
-> - A follow-up question within a minute doesn't reload the numbers
+> - Offers compare total cost over the same term, fees included
+> - Nothing is applied for without the person's tap and their review of the terms
 
-## Phase W: show Jane to more people (steps 95–97)
+## Phase Y: taxes (steps 101–102)
 
-### Step 95: Try Jane without signing up
+### Step 101: Tax organizer
 
-> Read CLAUDE.md. Let visitors see Jane before they sign up.
+> Read CLAUDE.md. Everything for tax time, organized (for everyone, no advice).
+>
+> Build:
+> 1. Tax tags on transactions (donations, medical, education, work expenses), by rules
+>    and correctable.
+> 2. The tax-time pack (step 72) gains a year-end summary and a spreadsheet for an
+>    accountant or tax software; a refund tracker; quarterly due dates when freelance
+>    income shows up.
+>
+> Acceptance criteria:
+> - Tags never change the spending totals; the pack matches the tagged transactions
+
+### Step 102: Tax savings finder
+
+> Read CLAUDE.md. Where the person could pay less tax (demo advice).
+>
+> Build:
+> 1. Rules over the year's income and spending, with 2026 rates and limits in config
+>    (marked for review): retirement contributions that lower taxable income, HSA room,
+>    itemizing vs the standard deduction, student loan interest, freelance expenses,
+>    withholding that's too high (a big refund every year), quarterly payments to avoid
+>    penalties.
+> 2. Each a finding with an estimate ("could save about $X"), why, and a button: start a
+>    goal for the contribution, open the tax pack, or a task for the person.
+>
+> Acceptance criteria:
+> - Every estimate uses the config's rates and says it's an estimate
+> - Real accounts get only step 101 until a tax partner and counsel sign off
+
+## Phase Z: investments (steps 103–106)
+
+### Step 103: Your investments, in one picture
+
+> Read CLAUDE.md. See what the person owns and what it costs.
+>
+> Build:
+> 1. Holdings in the demo bank (accounts, funds, shares, cost basis, fees, shaped like
+>    Plaid Investments) and, later, from real accounts through Plaid Investments.
+> 2. An investments page and chat answers: balances by type (retirement, taxable, cash),
+>    change over time, and a fee finder ("you paid $X in fund and advisory fees this year").
+>
+> Acceptance criteria:
+> - Totals match net worth; every fee shown comes from the holdings data
+
+### Step 104: Investment advice (demo)
+
+> Read CLAUDE.md. Jane reviews the portfolio and recommends changes.
+>
+> Build:
+> 1. A short risk and goals check (age, when they need the money, how they'd feel about a
+>    drop), saved as a preference.
+> 2. Rules, then Claude's words: high-fee funds vs low-cost index alternatives, a mix that
+>    fits their risk and timeline, the 401(k) match, Roth or traditional, emergency fund
+>    first, rebalancing. Each a recommendation with what it changes and why, labelled demo
+>    advice.
+>
+> Acceptance criteria:
+> - Recommendations follow the person's risk answers; nothing is promised about returns
+> - Real accounts never see this until a registered adviser partner and counsel sign off
+
+### Step 105: Invest with one tap (stand-in)
+
+> Read CLAUDE.md. Approve a recommendation and it happens.
+>
+> Build:
+> 1. A brokerage partner stand-in (like the demo bank): accounts, orders, confirmations;
+>    approving "move to the recommended mix" places simulated orders and shows the result.
+> 2. The real version later: a brokerage API and a registered adviser partner; every order
+>    needs the person's explicit yes.
+>
+> Acceptance criteria:
+> - The stand-in never touches real money and says so on every screen
+
+### Step 106: Learn
+
+> Read CLAUDE.md. Plain explanations, one tap from the chat.
+>
+> Build:
+> 1. Short fixed explainers: index funds, fees, 401(k) match, Roth vs traditional,
+>    refinancing, deductibles, standard deduction; marked for counsel's review.
+> 2. Linked from the related answers and cards ("What's an expense ratio?").
+>
+> Acceptance criteria:
+> - Each explainer is reviewed text, not Claude's; every link resolves
+
+## Phase AA: show Jane to more people (steps 107–109)
+
+### Step 107: Try Jane without signing up
+
+> Read CLAUDE.md. Visitors see Jane before they sign up.
 >
 > Build:
 > 1. "Try it with sample data" on the landing page: a temporary demo person with the demo
->    bank, the chat and every page, read-only for anything that would contact a company,
->    deleted after a day; "Sign up to use your own accounts" everywhere.
-> 2. Rate-limited per visitor, no email collected, never mixed into metrics.
+>    bank (demo advice included), deleted after a day; nothing contacts a company.
+> 2. Rate-limited per visitor, no email collected, never in metrics.
 >
 > Acceptance criteria:
-> - A demo visitor can't reach anyone else's data or send anything outside the app
-> - Demo people are deleted on time
+> - A demo visitor can't reach anyone else's data; demo people are deleted on time
 
-### Step 96: What Jane saved you
+### Step 108: What Jane saved you
 
 > Read CLAUDE.md. Show the savings Jane can prove.
 >
 > Build:
-> 1. A page with the confirmed savings (confirmedAnnualCents and refunds that arrived),
->    each with its receipt (the old charge, the new one, the refund), separate from
->    estimates, which are labelled as estimates.
-> 2. A shareable card with the total only (no merchants or amounts unless the person picks
->    them).
+> 1. Confirmed savings (from the person's own transactions) with receipts, separate from
+>    estimates.
+> 2. A shareable card with the total only, unless the person picks more.
 >
 > Acceptance criteria:
-> - Only savings seen in the person's own transactions count as confirmed
-> - Nothing personal is shared without the person choosing it
+> - Only savings seen in the person's transactions count as confirmed
 
-### Step 97: Help inside the chat
+### Step 109: Help inside the chat
 
 > Read CLAUDE.md. New people learn Jane by using her.
 >
 > Build:
-> 1. A short first-run conversation in the chat: what Jane does, what she never does,
->    autopilot levels, and three example questions to tap.
-> 2. "help" and "what can you do" answer with the features grouped, each a link.
+> 1. A short first-run conversation: what Jane does and never does, autopilot levels, three
+>    example questions to tap; skippable.
+> 2. "help" answers with the features grouped, each a link.
 >
 > Acceptance criteria:
-> - The first-run messages show once and can be skipped
-> - Every link in help goes to a real page (tested against src/app)
+> - The first-run messages show once; every help link resolves
 
 ### Later, when the founder is ready
 
-These need an outside account or a decision, so they wait for the founder: Plaid
-Production (real banks instead of the demo bank), counsel's review (privacy policy,
-terms, insurance referrals), a native iPhone app (an Apple developer account), Phase P
-partners (moving money, credit score, tax filing, investing), and Vercel Pro if 100
-deploys a day is ever too few.
+These need an outside account, a partner or a decision: Plaid Production (real banks) and
+Plaid Investments, counsel's review (privacy policy, terms, the education text, advice
+for real accounts), licensed partners to take demo advice live (a registered investment
+adviser and brokerage, an insurance agency, a loan marketplace, tax filing), a native
+iPhone app (an Apple developer account), and Vercel Pro if 100 deploys a day is too few.
 
 ## Phase P: regulated features through partners
 
