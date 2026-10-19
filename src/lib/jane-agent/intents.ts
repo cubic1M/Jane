@@ -367,9 +367,6 @@ export function parseIntent(raw: string, asOf: string): Intent {
   if (WHAT_DID.test(text)) return { kind: "what_did" };
   if (APPROVE_ALL.test(text)) return { kind: "approve_all" };
   if (UNDO.test(text)) return { kind: "undo" };
-  // "How much do I owe?" is about debts (spec step 109) unless it says taxes (step 120).
-  const owed = /\btax(?:es)?\b|\birs\b|\brefund\b/.test(text) ? null : parseDebtIntent(text);
-  if (owed) return owed;
   const tax = parseTaxIntent(text);
   if (tax) return tax;
 
