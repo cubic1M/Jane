@@ -16,6 +16,8 @@ export const CHAT_SOURCE_LIMITS: Readonly<Record<string, number>> = {
   steps: 2,
   budgets: 1,
   things: 1,
+  // Taxes (spec steps 118–127).
+  taxes: 2,
   // Spec step 97.
   changes: 2,
   // Spec step 100.
@@ -78,6 +80,8 @@ export const MESSAGE_PRIORITY = {
   investments: 32,
   // Spec step 129: the investor-profile questions, which later investment steps wait on.
   investment_profile: 34,
+  // Spec step 130: costly funds with a lower-cost equivalent (demo advice).
+  investment_fees: 36,
   // Insurance (spec step 102): cover that looks missing, after budgets and goals.
   insurance_gap: 35,
 } as const;

@@ -9,6 +9,7 @@ import { budgetsSource } from "./budgets";
 import { setupSource } from "./setup";
 import { stepsSource } from "./steps";
 import { thingsSource } from "./things";
+import { taxesSource } from "./taxes";
 import { changesSource } from "./changes";
 import { lifeSource } from "./life";
 import { investmentsSource } from "./investments";
@@ -29,6 +30,8 @@ export const MESSAGE_SOURCES: readonly MessageSource[] = [
   stepsSource,
   budgetsSource,
   thingsSource,
+  // Taxes (spec steps 118–127).
+  taxesSource,
   // Spec step 97.
   changesSource,
   // Spec step 100.

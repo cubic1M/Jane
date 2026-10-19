@@ -86,7 +86,15 @@ describe("navigation", () => {
     for (const path of ["/money", "/net-worth", "/bills", "/household", "/household/join"]) {
       expect(tabFor(path), path).toBe("money");
     }
-    for (const path of ["/ahead", "/afford", "/deadlines", "/debt", "/year", "/tax-pack"]) {
+    for (const path of [
+      "/ahead",
+      "/afford",
+      "/deadlines",
+      "/debt",
+      "/year",
+      "/tax-pack",
+      "/taxes",
+    ]) {
       expect(tabFor(path), path).toBe("ahead");
     }
     // Spec step 81: Ask is opened from the chat, and lights up Chat.

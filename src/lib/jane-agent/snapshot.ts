@@ -19,6 +19,7 @@ import { savingsLine } from "@/lib/savings-text";
 import { recentRuleApprovals } from "@/lib/standing-rules";
 import { loadInvestmentSnapshot, type InvestmentSnapshot } from "./investments/snapshot";
 import { loadMore, type MoreSnapshot } from "./snapshot-more";
+import { loadTaxSnapshot, type TaxSnapshot } from "./snapshot-tax";
 
 // Everything Jane's brain looks at for one person (spec step 82), loaded with the same
 // code as the pages that show it: Today (src/lib/home.ts), the plan, the comparisons, the
@@ -81,7 +82,8 @@ export type Snapshot = {
   lifeGuesses?: LifeGuess[];
   // Spec step 128 on: what's in investment accounts.
   investments?: InvestmentSnapshot;
-} & MoreSnapshot;
+} & MoreSnapshot &
+  TaxSnapshot;
 
 // A finding as Jane describes it in the chat: its type, title, saving and evidence. A
 // button only acts while this is unchanged; newer card wording (Claude's explanation)
@@ -193,6 +195,7 @@ export async function loadSnapshot(
       .map((a) => ({ id: a.id, title: a.title, body: a.body })),
     budgetProgress: home.budgetProgress,
     ...(await loadMore(userId, { client, now })),
+    ...(await loadTaxSnapshot(userId, { client, now })),
     // Spec steps 97 and 100 read the same bank data, so it's loaded once for both.
     ...(await thinking(userId, client, now)),
     investments: await loadInvestmentSnapshot(userId, { client, now }),

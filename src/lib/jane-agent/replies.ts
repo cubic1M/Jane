@@ -69,6 +69,7 @@ export const EXAMPLES = [
   "safe to spend",
   "cancel Hulu, lower my phone bill, or get my refund from Target",
   "what did you do",
+  "what's my tax profile",
 ];
 
 const exampleList = () => EXAMPLES.map((e) => `- ${e}`).join("\n");

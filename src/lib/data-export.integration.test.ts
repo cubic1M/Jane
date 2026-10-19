@@ -114,6 +114,9 @@ describe.runIf(url)("data export against a real database", () => {
     await client.lifeEvent.create({
       data: { userId, kind: "moving", startedOn: new Date("2026-10-01"), checkedItems: ["mail"] },
     });
+    await client.taxProfile.create({
+      data: { userId, state: name === "me" ? "CA" : "TX", answered: ["state"] },
+    });
     await client.janeMessage.create({
       data: { userId, kind: "brief", body: `${name} brief`, dedupeKey: "brief:2026-10-18" },
     });
@@ -219,13 +222,15 @@ describe.runIf(url)("data export against a real database", () => {
       expect(data[key], key).toHaveLength(1);
     }
     expect(data.profile.id).toBe(me.userId);
+    expect(data.taxProfile).toMatchObject({ state: "CA", answered: ["state"] });
     expect(data.investments.securities).toHaveLength(1);
     expect(data.investments.holdings).toHaveLength(1);
     expect(data.investments.transactions).toHaveLength(1);
     const text = JSON.stringify(data);
     expect(text).toContain("me purchase");
     expect(text).not.toContain(other.suffix);
-    expect(text).not.toContain("other");
+    // As a word: "otherDependants" is a field name.
+    expect(text).not.toMatch(/\bother\b/);
   });
 
   it("includes their side of shared bills, not the partner's charges", async () => {
