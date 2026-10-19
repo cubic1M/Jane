@@ -26,7 +26,7 @@ export const INSURANCE_TOOLS: Anthropic.Tool[] = [
   {
     name: "insurance_quotes",
     description:
-      "Quotes Jane already got for the person's policies from the insurance partner (spec step 103), cheapest first: carrier, rating, price per payment and a year, the saving against what they pay now, and whether the cover and deductible are the same or what's different. Demo quotes are sample prices from a made-up catalog, not real offers; say so. It never asks for new quotes: the person can ask Jane \"find me cheaper car insurance\" for that.",
+      "Quotes Jane already got for the person's policies from the insurance partner (spec step 103), cheapest first, and Jane's own pick with why when she reshopped it (demo advice): carrier, rating, price per payment and a year, the saving against what they pay now, and whether the cover and deductible are the same or what's different. Demo quotes are sample prices from a made-up catalog, not real offers; say so. It never asks for new quotes: the person can ask Jane \"find me cheaper car insurance\" for that.",
     input_schema: noInput,
   },
 ];
@@ -110,7 +110,7 @@ async function quotesTool(
   money: (value: number | null) => string | null,
   cents: number[],
 ): Promise<ToolOutput> {
-  const { policies, canQuote } = await loadInsuranceSnapshot(userId, { client, now });
+  const { policies, canQuote, shops } = await loadInsuranceSnapshot(userId, { client, now });
   const active = policies.filter((p) => p.status === "active");
   const withQuotes = await Promise.all(
     active.map(async (p) => ({
@@ -123,10 +123,22 @@ async function quotesTool(
     content: JSON.stringify({
       partnerAvailable: canQuote,
       policies: withQuotes
-        .filter((w) => w.quotes.length > 0)
+        .filter((w) => w.quotes.length > 0 || shops.some((s) => s.policyId === w.policy.id))
         .map(({ policy, quotes }) => ({
           policy: `${policy.carrier} ${kindWords(policy.kind)}`,
           paysNowAYear: money(current(policy)),
+          // Spec step 104: Jane's own pick, only in demo advice mode (shops exist only then).
+          janesPick: (() => {
+            const shop = shops.find((s) => s.policyId === policy.id && s.pick);
+            if (!shop?.pick) return null;
+            return {
+              carrier: shop.pick.carrier.name,
+              aYear: money(shop.pick.annualPremiumCents),
+              savingAYear: money(shop.savingCents),
+              why: shop.why,
+              demoAdvice: true,
+            };
+          })(),
           quotes: quotes.map((q) => {
             const pays = current(policy);
             return {
