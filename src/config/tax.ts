@@ -223,6 +223,21 @@ export const IRS_WITHHOLDING_ESTIMATOR_URL =
   "https://www.irs.gov/individuals/tax-withholding-estimator";
 export const IRS_W4_URL = "https://www.irs.gov/forms-pubs/about-form-w-4";
 
+// Spec step 122: the tax savings finder (demo advice). Savings under this many cents a year
+// aren't shown. Purchases that look like tuition or home energy work are spotted by these
+// words in the payee.
+export const TAX_SAVINGS_MIN_CENTS = 2_500;
+export const TUITION_PAYEE =
+  /\b(?:UNIV(?:ERSITY)?|COLLEGE|TUITION|BURSAR|COMMUNITY COLL|SCHOOL OF)\b/i;
+export const ENERGY_PAYEE =
+  /\b(?:SOLAR|SUNRUN|SUNPOWER|SUNNOVA|TESLA ENERGY|HEAT PUMP|MITSUBISHI ELECTRIC|INSULATION|ENERGY STAR|GEOTHERMAL|POWERWALL)\b/i;
+// Health FSA: suggested when out-of-pocket medical spending this year is over this.
+export const FSA_SUGGEST_FROM_CENTS = 50_000;
+// When open enrollment usually ends (MM-DD): the reminder Jane sets for it.
+export const OPEN_ENROLLMENT_BY = "11-30";
+// Bunching gifts: suggested when doubling a year's gifts would take itemized deductions
+// past the standard deduction.
+
 // The estimate tells the person when it has moved by at least this much (in cents) since
 // Jane last said it.
 export const TAX_ESTIMATE_STEP_CENTS = 50_000;
@@ -241,6 +256,8 @@ export const TAX_MESSAGE_PRIORITY = {
   estimate: 30,
   // Spec step 121.
   withholding: 37,
+  // Spec step 122.
+  saving: 34,
 } as const;
 
 // What Jane does about taxes by herself at each autopilot level (spec step 57), shown on
@@ -264,6 +281,11 @@ export const TAX_AUTOPILOT: readonly { feature: string; ask: string; auto: strin
     feature: "withholding",
     ask: "I check your withholding against your estimate and, with demo advice, show what to put on a new W-4. Only you can send it to your employer.",
     auto: "I check your withholding after every sync and bring up a W-4 change when you're heading for a big refund or a bill. Only you can send it to your employer.",
+  },
+  {
+    feature: "savings",
+    ask: "With demo advice, I look for ways to pay less (retirement and health accounts, deductions, credits) and show each with an estimate; you pick which to act on.",
+    auto: "With demo advice, I look for ways to pay less after every sync and bring up each new one with the goal or reminder ready to set with one tap. I never change your contributions myself.",
   },
   {
     feature: "tags",

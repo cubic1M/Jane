@@ -11,7 +11,7 @@ import { demoPayroll } from "@/lib/payroll/demo";
 import { hasDemoBank } from "@/lib/plaid/demo";
 import { loadTaxTags } from "@/lib/tax-organizer";
 import { loadWorkingProfile } from "@/lib/tax-profile";
-import { estimateTaxes, type TaxEstimate } from "@/planning/tax-estimate";
+import { estimateTaxes, type EstimateInput, type TaxEstimate } from "@/planning/tax-estimate";
 import { perPaycheckEffect, type W4Step } from "@/planning/withholding";
 import {
   NO_PAY,
@@ -52,12 +52,16 @@ export type TaxEstimateView = {
   // Spec step 121: paydays, the W-4 change the person sent, their choice to keep a refund
   // this year, and last year's federal refund as it arrived.
   paychecks: {
+    // Paychecks so far this year.
+    count: number;
     perYear: number | null;
     left: number;
     last: string | null;
     withheldPerPaycheckCents: number;
   };
   w4: { step: W4Step; amountCents: number; changedOn: string } | null;
+  // Spec step 122: what the estimate was worked out from, for what-ifs.
+  input: EstimateInput;
   keepRefundYear: number | null;
   lastYearRefundCents: number | null;
 };
@@ -218,7 +222,7 @@ export async function loadTaxEstimate(
     assumptions.push(`Income so far is projected to the end of ${year} at the same pace.`);
   }
 
-  const base = estimateTaxes({
+  const input: EstimateInput = {
     year,
     filingStatus,
     childrenUnder17: profile.childrenUnder17,
@@ -239,7 +243,8 @@ export async function loadTaxEstimate(
     federalEstimatedPaidCents: payments.federalCents,
     stateWithheldCents: pay.projected.stateWithheldCents,
     stateEstimatedPaidCents: payments.stateCents,
-  });
+  };
+  const base = estimateTaxes(input);
   // Paydays: how often, and how many are left this year.
   const frequency = payFrequency(paychecks.map((t) => t.date));
   const lastPay =
@@ -298,7 +303,9 @@ export async function loadTaxEstimate(
     withholdingKnown,
     assumptions,
     unconfirmed: profile.unconfirmed,
+    input,
     paychecks: {
+      count: paychecks.filter((t) => t.date <= today).length,
       perYear: frequency?.perYear ?? null,
       left,
       last: lastPay,

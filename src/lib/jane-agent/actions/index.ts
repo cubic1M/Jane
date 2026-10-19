@@ -20,6 +20,7 @@ import { clarifyOne, clarifyThree, clarifyTwo } from "./clarify";
 import { TAX_PROFILE_HANDLERS, taxFoundYes, taxIncomeAdd, taxIncomeNo, taxStateSet } from "./taxes";
 import { taxFormGot, taxTagNo, taxTagSet, taxTagYes } from "./tax-organizer";
 import { taxW4Keep, taxW4Next, taxW4Sent, taxW4Start, taxW4Stop } from "./tax-w4";
+import { taxSaveNo, taxSaveTask } from "./tax-savings";
 import {
   investAnswer1,
   investAnswer2,
@@ -86,6 +87,9 @@ export const ACTION_HANDLERS: Readonly<Record<ActionId, ActionHandler>> = {
   "tax.w4_sent": taxW4Sent,
   "tax.w4_stop": taxW4Stop,
   "tax.w4_keep": taxW4Keep,
+  // Spec step 122.
+  "tax.save_task": taxSaveTask,
+  "tax.save_no": taxSaveNo,
   // Investments (spec step 129 on).
   "invest.answer.1": investAnswer1,
   "invest.answer.2": investAnswer2,

@@ -8,6 +8,8 @@ import type { PrismaClient } from "@/generated/prisma/client";
 import { adviceMode } from "@/lib/advice-mode";
 import { loadTaxEstimate, type TaxEstimateView } from "@/lib/tax-estimate";
 import { checkFrom } from "@/lib/tax-withholding";
+import { loadTaxSavings } from "@/lib/tax-savings";
+import type { TaxSaving } from "@/planning/tax-savings";
 import type { WithholdingCheck } from "@/planning/withholding";
 import { loadTaxForms, loadTaxTags } from "@/lib/tax-organizer";
 import { loadTaxProfile } from "@/lib/tax-profile";
@@ -35,6 +37,8 @@ export type TaxSnapshot = {
     // Spec step 121: the withholding checkup, and whether the W-4 suggestion may be shown.
     withholding?: WithholdingCheck;
     advice?: boolean;
+    // Spec step 122: ways to pay less (demo advice only; empty otherwise).
+    savings?: TaxSaving[];
   } | null;
 };
 
@@ -78,6 +82,8 @@ export async function loadTaxSnapshot(
       },
       estimate,
       withholding: checkFrom(estimate),
+      savings: (await loadTaxSavings(userId, { client, now, loaded: { estimate, advice } }))
+        .savings,
       advice,
       formsDue: forms
         ? { year: forms.year, forms: forms.forms.filter((f) => !f.received && !f.mayNotSend) }

@@ -1745,6 +1745,8 @@ model TaxProfile {
   w4ChangedOn           DateTime? @map("w4_changed_on") @db.Date
   w4Year                Int?      @map("w4_year")
   keepRefundYear        Int?      @map("keep_refund_year")
+  // Spec step 122: ways to pay less the person said no to, as "<year>:<key>".
+  savingsDismissed      String[]  @default([]) @map("savings_dismissed")
   createdAt             DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt             DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
 
