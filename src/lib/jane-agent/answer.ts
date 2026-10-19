@@ -10,6 +10,7 @@ import { loadAffordNumbers } from "@/lib/afford";
 import { autopilotOf } from "@/lib/autopilot";
 import { loadChanges } from "@/lib/changes";
 import { provenSavings } from "@/lib/savings-proof";
+import { autopilotFor, sectorAutopilots } from "@/lib/sector-autopilot";
 import { listLifeEvents } from "@/lib/life-events";
 import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
@@ -41,6 +42,7 @@ import {
   type Reply,
 } from "./replies";
 import { changesReply } from "./replies-changes";
+import { overviewReply, sectorChangeReply } from "./replies-autopilot";
 import { groupedHelpReply } from "./replies-help";
 import { lifeEventReply } from "./replies-life";
 import { savedReply } from "./replies-saved";
@@ -203,6 +205,17 @@ async function byIntent(
       const going = open.some((e) => e.kind === intent.event && e.completedAt === null);
       return lifeEventReply(intent.event, going);
     }
+    case "autopilot_overview":
+      return overviewReply(
+        await sectorAutopilots(userId, { client, now }),
+        await autopilotOf(userId, { client }),
+      );
+    case "autopilot_sector":
+      return sectorChangeReply(
+        intent,
+        await autopilotFor(userId, intent.sector, { client, now }),
+        await autopilotOf(userId, { client }),
+      );
     case "saved":
       return savedReply(await provenSavings(userId, { client, now }));
     case "review": {

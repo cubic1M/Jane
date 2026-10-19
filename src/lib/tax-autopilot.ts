@@ -1,9 +1,9 @@
 import type { PrismaClient } from "@/generated/prisma/client";
 import { track } from "@/lib/analytics";
-import { autopilotOf } from "@/lib/autopilot";
 import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
 import { addGoal } from "@/lib/goals";
+import { mayAct, recordAct } from "@/lib/sector-autopilot";
 import { loadSelfEmployed } from "@/lib/self-employed";
 
 // What Jane does about taxes by herself before she talks (spec steps 123–127), at the
@@ -15,16 +15,16 @@ import { loadSelfEmployed } from "@/lib/self-employed";
 
 type Options = { client?: PrismaClient; now?: Date };
 
-const ACTS = ["safe", "all", "custom"];
-
 export const setAsideGoalName = (year: number) => `Taxes set aside for ${year}`;
 
 export async function runTaxAutopilot(
   userId: string,
   { client = defaultClient, now = new Date() }: Options = {},
 ): Promise<{ goalStarted: boolean }> {
-  const level = await autopilotOf(userId, { client });
-  if (!ACTS.includes(level ?? "")) return { goalStarted: false };
+  // Spec step 141: Taxes' autopilot. Starting a goal moves no money: the level is enough.
+  if (!(await mayAct(userId, "taxes", { needs: "safe", cents: 0 }, { client, now })).ok) {
+    return { goalStarted: false };
+  }
   const self = await loadSelfEmployed(userId, { client, now });
   if (!self.advice || !self.active || !self.federal.needed) return { goalStarted: false };
   const name = setAsideGoalName(self.year);
@@ -38,6 +38,7 @@ export async function runTaxAutopilot(
     { client },
   );
   await track(userId, "tax_set_aside_goal_started", { by: "autopilot" });
+  await recordAct(userId, "taxes", 0, `Started the goal "${name}"`, { client, now });
   return { goalStarted: true };
 }
 

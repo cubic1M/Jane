@@ -6,6 +6,7 @@ import { parseMoneyToCents } from "@/lib/money";
 import { parseDebtIntent, type DebtIntent } from "./debt-intents";
 import { parseTaxIntent, type TaxIntent } from "./tax-intents";
 import { parseInvestmentIntent, type InvestmentIntent } from "./investments/intents";
+import { parseSectorIntent, type SectorIntent } from "./autopilot-intents";
 
 // What the person typed to Jane, understood by rules (spec step 84). Pure: the text and
 // today's date in, one intent out. Works with no Claude key at all; anything it can't
@@ -71,6 +72,8 @@ export type Intent =
   | TaxIntent
   // Spec step 128 on: what they own, and each later investment question.
   | InvestmentIntent
+  // Spec step 141: one autopilot, every sector.
+  | SectorIntent
   | { kind: "unknown" };
 
 const MONTHS = [
@@ -364,6 +367,8 @@ export function parseIntent(raw: string, asOf: string): Intent {
   if (GREETING.test(text)) return { kind: "greeting", thanks: false };
   if (THANKS.test(text)) return { kind: "greeting", thanks: true };
   if (PAUSE.test(text)) return { kind: "pause_autopilot" };
+  const sector = parseSectorIntent(text);
+  if (sector) return sector;
   if (SAVED.test(text)) return { kind: "saved" };
   if (REVIEW.test(text)) return { kind: "review" };
   if (CHANGES.test(text)) return { kind: "changes" };

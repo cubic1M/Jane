@@ -5,22 +5,21 @@ import {
   GOAL_TRANSFER_MIN_CENTS,
   REVIEW_DAYS,
   TUNE_UP_DAYS,
-  UPKEEP_AUTO_LEVELS,
 } from "@/config/plan-upkeep";
 import type { Prisma, PrismaClient } from "@/generated/prisma/client";
 import { addDays } from "@/detection/units";
 import { budgetSummary } from "@/insights/budgets";
 import { loadInsightTransactions } from "@/insights/load";
 import { track } from "@/lib/analytics";
-import { autopilotOf } from "@/lib/autopilot";
 import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
+import { mayAct, recordAct } from "@/lib/sector-autopilot";
 import { listGoals } from "@/lib/goals";
 import { tuneUpChanges, type TuneUpChange } from "@/planning/tune-up";
 
 // Plans that keep up (spec step 101): a budget tune-up in the first days of each month and
 // transfers to savings counted toward a goal tracked by hand. At "Handle the safe stuff"
-// and "Handle everything allowed" (UPKEEP_AUTO_LEVELS) Jane applies both by herself, with
+// and "Handle everything allowed" (Goals and budgets' autopilot, spec step 141) Jane applies both by herself, with
 // Undo on the tune-up; below that nothing changes without a tap (Accept all, Count it).
 
 type Options = { client?: PrismaClient; now?: Date };
@@ -296,16 +295,26 @@ export async function runPlanUpkeep(
   userId: string,
   { client = defaultClient, now = new Date() }: Options = {},
 ): Promise<{ tuned: number; counted: number }> {
-  const level = await autopilotOf(userId, { client });
-  if (!UPKEEP_AUTO_LEVELS.some((l) => l === level)) return { tuned: 0, counted: 0 };
+  // Spec step 141: Goals and budgets' autopilot. Neither moves money, so the level is enough.
+  if (!(await mayAct(userId, "goals", { needs: "safe", cents: 0 }, { client, now })).ok) {
+    return { tuned: 0, counted: 0 };
+  }
   let tuned = 0;
   const tuneUp = await currentTuneUp(userId, { client, now });
   if (tuneUp?.status === "proposed") {
     tuned = (await applyTuneUp(userId, tuneUp.month, "auto", { client, now })).length;
+    await recordAct(userId, "goals", 0, `Tuned ${tuned} budgets for ${tuneUp.month}`, {
+      client,
+      now,
+    });
   }
   let counted = 0;
   for (const t of await pendingGoalTransfers(userId, { client, now })) {
     await countGoalTransfer(userId, t.transactionId, "auto", { client, now });
+    await recordAct(userId, "goals", 0, `Counted a transfer toward "${t.goal.name}"`, {
+      client,
+      now,
+    });
     counted += 1;
   }
   return { tuned, counted };

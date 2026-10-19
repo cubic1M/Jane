@@ -37,6 +37,9 @@ import {
 import { QUIET_END_HOUR, QUIET_START_HOUR } from "@/config/agent-chat";
 import { chatNotifyPrefs } from "@/lib/jane-agent/notify-prefs";
 import { ChatNotifyForm } from "./chat-notify-form";
+import { SECTOR_ALL_MEANS, SECTOR_LABELS } from "@/config/autopilot-sectors";
+import { sectorAutopilots } from "@/lib/sector-autopilot";
+import { SectorsForm } from "./sectors-form";
 
 // "9pm", "8am".
 const clock = (hour: number) => `${hour % 12 || 12}${hour < 12 ? "am" : "pm"}`;
@@ -89,51 +92,54 @@ async function SessionsSection({ userId }: { userId: string }) {
 async function SettingsContent() {
   const user = await requireUser();
   const mine = await scopedDb();
-  const [prefs, items, accounts, lastCsv, twoFactor, rules, autopilot] = await Promise.all([
-    db.user.findUniqueOrThrow({
-      where: { id: user.id },
-      select: {
-        digestEnabled: true,
-        timezone: true,
-        alertPrefs: true,
-        state: true,
-        calendarCreatedAt: true,
-        acceptSimpleOffers: true,
-        chatNotifyPrefs: true,
-      },
-    }),
-    mine.plaidItems.findMany({
-      select: {
-        id: true,
-        institutionName: true,
-        lastSyncedAt: true,
-        accounts: { select: { name: true, mask: true } },
-      },
-      orderBy: { createdAt: "asc" },
-    }),
-    mine.accounts.findMany({
-      select: {
-        id: true,
-        name: true,
-        mask: true,
-        source: true,
-        type: true,
-        currentBalanceCents: true,
-        item: { select: { lastSyncedAt: true, institutionName: true } },
-      },
-      orderBy: [{ source: "asc" }, { name: "asc" }],
-    }),
-    // The newest CSV row per account: when that account was last imported.
-    mine.transactions.findMany({
-      where: { source: "csv" },
-      distinct: ["accountId"],
-      orderBy: [{ accountId: "asc" }, { createdAt: "desc" }],
-      select: { accountId: true, createdAt: true },
-    }),
-    twoFactorStatus(user.id),
-    rulesFor(user.id),
-    autopilotOf(user.id),
-  ]);
+  const [prefs, items, accounts, lastCsv, twoFactor, rules, autopilot, sectors] = await Promise.all(
+    [
+      db.user.findUniqueOrThrow({
+        where: { id: user.id },
+        select: {
+          digestEnabled: true,
+          timezone: true,
+          alertPrefs: true,
+          state: true,
+          calendarCreatedAt: true,
+          acceptSimpleOffers: true,
+          chatNotifyPrefs: true,
+        },
+      }),
+      mine.plaidItems.findMany({
+        select: {
+          id: true,
+          institutionName: true,
+          lastSyncedAt: true,
+          accounts: { select: { name: true, mask: true } },
+        },
+        orderBy: { createdAt: "asc" },
+      }),
+      mine.accounts.findMany({
+        select: {
+          id: true,
+          name: true,
+          mask: true,
+          source: true,
+          type: true,
+          currentBalanceCents: true,
+          item: { select: { lastSyncedAt: true, institutionName: true } },
+        },
+        orderBy: [{ source: "asc" }, { name: "asc" }],
+      }),
+      // The newest CSV row per account: when that account was last imported.
+      mine.transactions.findMany({
+        where: { source: "csv" },
+        distinct: ["accountId"],
+        orderBy: [{ accountId: "asc" }, { createdAt: "desc" }],
+        select: { accountId: true, createdAt: true },
+      }),
+      twoFactorStatus(user.id),
+      rulesFor(user.id),
+      autopilotOf(user.id),
+      sectorAutopilots(user.id),
+    ],
+  );
   const csvUpdated = new Map(lastCsv.map((row) => [row.accountId, row.createdAt]));
   const alerts = alertPrefs(prefs.alertPrefs);
   const chatNotify = chatNotifyPrefs(prefs.chatNotifyPrefs);
@@ -305,6 +311,26 @@ async function SettingsContent() {
           </p>
           <AutopilotChooser compact />
           <CallOffersForm accept={prefs.acceptSimpleOffers} />
+        </section>
+
+        <section id="sectors" className={SECTION}>
+          <h3 className={H3}>Area by area</h3>
+          <p className={MUTED}>
+            How much Jane may do by herself in each area, and up to how many dollars each time and
+            each month. Over a cap, she asks. Free checks (reshopping, rate checks) run in every
+            area.
+          </p>
+          <SectorsForm
+            rows={sectors.map((s) => ({
+              sector: s.sector,
+              label: SECTOR_LABELS[s.sector],
+              level: s.level,
+              actionCap: String(s.actionCapCents / 100),
+              monthlyCap: String(s.monthlyCapCents / 100),
+              used: formatCents(s.usedThisMonthCents),
+              allMeans: SECTOR_ALL_MEANS[s.sector],
+            }))}
+          />
         </section>
 
         <section id="rules" className={SECTION}>

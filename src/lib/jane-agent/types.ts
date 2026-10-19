@@ -117,6 +117,8 @@ export const ACTION_IDS = [
   "saved.share",
   // Help inside the chat (spec step 140).
   "welcome.tour",
+  // One autopilot, every sector (spec step 141).
+  "autopilot.sector_set",
 ] as const;
 export type ActionId = (typeof ACTION_IDS)[number];
 
@@ -212,6 +214,13 @@ export type MessageRefs = {
   // Spec step 101: a budget tune-up's month (YYYY-MM), and a transfer to count toward a goal.
   tuneUpMonth?: string;
   transactionId?: string;
+  // Spec step 141: a sector's autopilot change typed in the chat, set on "Set it".
+  sectorChange?: {
+    sector: string;
+    level: string;
+    actionCapCents?: number;
+    monthlyCapCents?: number;
+  };
 };
 
 // A message the brain wants to post.
