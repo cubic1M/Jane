@@ -37,6 +37,10 @@ import {
   investAnswer4,
   investAnswer5,
   investRebalance,
+  investAutoStart,
+  investAutoLeftover,
+  investAutoPause,
+  investAutoResume,
 } from "./investments";
 import { changeBudget, changeExpected, changeLook } from "./changes";
 import { lifeNever, lifeNo, lifeYes } from "./life";
@@ -45,6 +49,7 @@ import { policyConfirm, policyNotInsurance } from "./found-policies";
 import { budgetSet } from "./budget";
 import { findingOptions, findingWhy } from "./explain";
 import { savedShare } from "./saved";
+import { welcomeTour } from "./welcome";
 
 // Every button action, by id (spec step 81). A new button is a new handler here; the
 // message sources offer it by id (src/lib/jane-agent/types.ts ACTION_IDS).
@@ -122,6 +127,10 @@ export const ACTION_HANDLERS: Readonly<Record<ActionId, ActionHandler>> = {
   "invest.answer.4": investAnswer4,
   "invest.answer.5": investAnswer5,
   "invest.rebalance": investRebalance,
+  "invest.auto_start": investAutoStart,
+  "invest.auto_leftover": investAutoLeftover,
+  "invest.auto_pause": investAutoPause,
+  "invest.auto_resume": investAutoResume,
   // Jane notices changes (spec step 97).
   "change.look": changeLook,
   "change.budget": changeBudget,
@@ -141,6 +150,8 @@ export const ACTION_HANDLERS: Readonly<Record<ActionId, ActionHandler>> = {
   "policy.not_insurance": policyNotInsurance,
   // What Jane saved you (spec step 139).
   "saved.share": savedShare,
+  // Help inside the chat (spec step 140).
+  "welcome.tour": welcomeTour,
 };
 
 const MESSAGE_ID = /^[a-z0-9]{1,40}$/i;

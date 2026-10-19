@@ -1,6 +1,12 @@
 import { PROFILE_QUESTIONS } from "@/config/investing";
 import { answerProfileQuestion } from "@/lib/investments/profile";
 import { placeRebalance, RebalanceError } from "@/lib/investments/rebalance";
+import {
+  AutoInvestError,
+  setAutoInvestStatus,
+  startAutoInvest,
+} from "@/lib/investments/auto-invest";
+import { AUTO_LINK, runLine } from "../investments/auto-copy";
 import { nextQuestion, profileSummary, questionAfter } from "@/planning/investor-profile";
 import { asking } from "../investments/profile-question";
 import { mixLine, SIMULATED_WORDS } from "../investments/rebalance-copy";
@@ -84,3 +90,64 @@ export const investRebalance: ActionHandler = {
     }
   },
 };
+
+// Automatic investing (spec step 134): starting it is the person's one tap; after that Jane
+// runs it on every payday herself. Through automatic investing's own code, like its page.
+function autoStart(id: ActionId, mode: "fixed" | "leftover"): ActionHandler {
+  return {
+    id,
+    on: "open",
+    async run({ userId, message, action, client, now }) {
+      const offer = message.refs.autoInvest;
+      if (!offer) throw new ChatActionError("not_offered", "That button isn't on this message.");
+      try {
+        const run = await startAutoInvest(
+          userId,
+          {
+            mode,
+            amountCents: mode === "fixed" ? offer.amountCents : null,
+            accountId: offer.accountId,
+          },
+          { client, now },
+        );
+        return {
+          answeredWith: action.label,
+          note: `It's on. ${run ? runLine(run) : "I'll start with your next paycheck."}`,
+          actions: [AUTO_LINK],
+        };
+      } catch (error) {
+        if (error instanceof AutoInvestError) throw answeredElsewhere(error.message);
+        throw error;
+      }
+    },
+  };
+}
+
+export const investAutoStart = autoStart("invest.auto_start", "fixed");
+export const investAutoLeftover = autoStart("invest.auto_leftover", "leftover");
+
+function autoStatus(id: ActionId, status: "active" | "paused"): ActionHandler {
+  return {
+    id,
+    on: "open",
+    async run({ userId, action, client }) {
+      try {
+        await setAutoInvestStatus(userId, status, { client });
+      } catch (error) {
+        if (error instanceof AutoInvestError) throw answeredElsewhere(error.message);
+        throw error;
+      }
+      return {
+        answeredWith: action.label,
+        note:
+          status === "paused"
+            ? "Paused. I won't invest from your paychecks until you turn it back on."
+            : "Back on from your next paycheck.",
+        actions: [AUTO_LINK],
+      };
+    },
+  };
+}
+
+export const investAutoPause = autoStatus("invest.auto_pause", "paused");
+export const investAutoResume = autoStatus("invest.auto_resume", "active");

@@ -193,7 +193,7 @@ describe("'what changed?'", () => {
       change({ kind: "new_fee", key: "fee:tx1", title: "A late fee of $40.00." }),
     ]);
     expect(reply.body).toBe(
-      "Here's what changed lately:\n- Netflix went up from $15.49 to $17.99. I've already asked them for your old price. (autopilot)\n- A late fee of $40.00.",
+      "2 things changed lately.\n- Netflix went up from $15.49 to $17.99. I've already asked them for your old price. (autopilot)\n- A late fee of $40.00.",
     );
     expect(reply.actions).toEqual([
       { id: "open", label: "See insights", kind: "link", href: "/insights" },
