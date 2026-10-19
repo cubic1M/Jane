@@ -9,6 +9,7 @@ import { budgetsSource } from "./budgets";
 import { setupSource } from "./setup";
 import { stepsSource } from "./steps";
 import { thingsSource } from "./things";
+import { changesSource } from "./changes";
 import { investmentsSource } from "./investments";
 
 // Every message source Jane's brain gathers from (spec step 82). A new kind of message is a
@@ -26,6 +27,8 @@ export const MESSAGE_SOURCES: readonly MessageSource[] = [
   stepsSource,
   budgetsSource,
   thingsSource,
+  // Spec step 97.
+  changesSource,
   // Spec step 128 on.
   investmentsSource,
 ];

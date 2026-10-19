@@ -43,6 +43,10 @@ export const ACTION_IDS = [
   "invest.answer.3",
   "invest.answer.4",
   "invest.answer.5",
+  // Jane notices changes (spec step 97).
+  "change.look",
+  "change.budget",
+  "change.expected",
 ] as const;
 export type ActionId = (typeof ACTION_IDS)[number];
 
@@ -86,6 +90,9 @@ export type MessageRefs = {
   // Jane is going through all four again (the yearly check).
   investQuestion?: string;
   investAgain?: true;
+  // Spec step 97: a change Jane noticed (src/insights/changes.ts), by its key; for a
+  // category's pace, the budget "Set a budget" would set (cents a month).
+  change?: { key: string; kind: string; category?: string; budgetCents?: number };
 };
 
 // A message the brain wants to post.
