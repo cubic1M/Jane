@@ -12,6 +12,7 @@ import { ChatActionError, takeChatAction } from "./actions";
 import { createCheckPerson, deleteCheckPerson } from "./checks/person";
 import { chatFeed } from "./messages";
 import { openChat } from "./open";
+import { AS_THEY_COME } from "./preferences";
 import { runJaneAgent } from "./run";
 import { sendToJane } from "./typing";
 
@@ -67,6 +68,10 @@ describe.runIf(url)("never interrupt, against a real database", () => {
   });
 
   it("shows findings of one kind as one message, and each Yes is that finding's own", async () => {
+    // Bundles are for things as they come (spec step 184's agenda lists them itself).
+    await client.janePreference.create({
+      data: { userId, ...AS_THEY_COME, value: AS_THEY_COME.value },
+    });
     // On the demo bank, more urgent things take the first days' slots: the daily job runs
     // each morning until the subscriptions to review come up, together.
     let tomorrow = at(0);
