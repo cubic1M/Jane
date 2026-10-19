@@ -1,10 +1,12 @@
 import { GOALS, PROFILE_QUESTIONS } from "@/config/investing";
-import type { InvestmentAccountView, HoldingView } from "@/insights/investments";
+import { formatBps, type InvestmentAccountView, type HoldingView } from "@/insights/investments";
+import type { FeeSummary } from "@/insights/investment-fees";
 import type { Investments } from "@/lib/investments/holdings";
 import { formatCents } from "@/lib/money";
 import { profileSummary, type ProfileAnswers } from "@/planning/investor-profile";
 import type { Reply } from "../replies";
 import type { MessageAction } from "../types";
+import { equivalentLine, feeRange, switchSummary } from "./fees-copy";
 import { asking, PROFILE_INTRO } from "./profile-question";
 
 // Jane's rule answers about investments (spec step 128 on). Pure: the numbers in, fixed
@@ -116,4 +118,38 @@ export function profileReply(answers: ProfileAnswers, asOf: string): Reply {
     actions: [{ id: "open", label: "Change it", kind: "link", href: "/investments/profile" }],
     refs: {},
   };
+}
+
+// Spec step 130: what investing costs; in demo advice mode, the lower-cost equivalents.
+export function feesReply(fees: FeeSummary, advice: boolean): Reply {
+  const link: MessageAction = {
+    id: "open",
+    label: "See the fees",
+    kind: "link",
+    href: "/investments/fees",
+  };
+  if (fees.funds.length === 0 && fees.advisoryCents + fees.accountFeesCents === 0) {
+    return {
+      body: "I don't see any investment fees yet. When your accounts report what they hold, I'll show each fund's yearly cost.",
+      actions: [SEE],
+      refs: {},
+    };
+  }
+  const parts = [
+    `Your investments cost about ${formatCents(fees.totalYearlyCents)} a year: ${formatCents(fees.fundsYearlyCents)} in fund costs`,
+  ];
+  if (fees.advisoryCents > 0) parts.push(`${formatCents(fees.advisoryCents)} in advisory fees`);
+  if (fees.accountFeesCents > 0)
+    parts.push(`${formatCents(fees.accountFeesCents)} in account fees`);
+  const top = fees.funds
+    .slice(0, 3)
+    .map(
+      (f) =>
+        `- ${f.holding.name}: ${formatBps(f.expenseRatioBps)}, ${formatCents(f.yearlyCents)} a year`,
+    )
+    .join("\n");
+  let body = `${parts.join(", ")}. Over ${fees.years} years that's roughly ${feeRange(fees.overYears)} with growth, depending on returns.\nThe costliest:\n${top}`;
+  if (!advice || fees.equivalents.length === 0) return { body, actions: [link], refs: {} };
+  body += `\n\nLower-cost equivalents:\n${fees.equivalents.map((e) => `- ${equivalentLine(e)}`).join("\n")}\n${switchSummary(fees.equivalents, fees.years)}`;
+  return { body, actions: [link], refs: { advice: true } };
 }

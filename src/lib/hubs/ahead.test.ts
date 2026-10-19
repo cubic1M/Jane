@@ -66,7 +66,7 @@ describe("aheadTiles", () => {
   it("groups every planning page", () => {
     expect(aheadTiles(FULL).map((g) => [g.title, g.tiles.map((t) => t.href)])).toEqual([
       ["Coming up", ["/deadlines", "/budgets#yearly", "/debt"]],
-      ["Get ready", ["/afford", "/life-events", "/tax-pack"]],
+      ["Get ready", ["/afford", "/life-events", "/taxes", "/tax-pack"]],
       ["Look back", ["/check-in", "/year"]],
     ]);
   });
@@ -111,7 +111,7 @@ describe("aheadTiles", () => {
     expect(t["Deadlines"]).toMatchObject({ value: null, status: "Nothing coming up" });
     expect(t["Paying off debt"]).toMatchObject({ value: null });
     expect(t["Life events"]).toMatchObject({ value: null });
-    expect(Object.keys(t)).toHaveLength(8);
+    expect(Object.keys(t)).toHaveLength(9);
   });
 
   it("never gives advice or recommends in its copy", () => {

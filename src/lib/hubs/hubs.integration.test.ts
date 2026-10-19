@@ -288,6 +288,6 @@ describe.runIf(url)("the hubs against a real database", () => {
       debt: { accounts: 0, owedCents: 0 },
       lifeEvents: { open: 0, newest: null },
     });
-    expect(aheadTiles(ahead).flatMap((g) => g.tiles)).toHaveLength(8);
+    expect(aheadTiles(ahead).flatMap((g) => g.tiles)).toHaveLength(9);
   });
 });

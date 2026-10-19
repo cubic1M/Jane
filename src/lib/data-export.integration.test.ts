@@ -114,11 +114,18 @@ describe.runIf(url)("data export against a real database", () => {
     await client.lifeEvent.create({
       data: { userId, kind: "moving", startedOn: new Date("2026-10-01"), checkedItems: ["mail"] },
     });
+    await client.taxProfile.create({
+      data: { userId, state: name === "me" ? "CA" : "TX", answered: ["state"] },
+    });
     await client.janeMessage.create({
       data: { userId, kind: "brief", body: `${name} brief`, dedupeKey: "brief:2026-10-18" },
     });
     await client.changeAck.create({ data: { userId, key: "fee:tx_1", kind: "new_fee" } });
     await client.lifeEventAnswer.create({ data: { userId, kind: "moving", answer: "not_me" } });
+    await client.budgetTuneUp.create({ data: { userId, month: "2026-10", changes: [] } });
+    await client.goalTransfer.create({
+      data: { userId, transactionId: "tx_1", amountCents: 100, status: "skipped" },
+    });
     await client.askConversation.create({
       data: {
         userId,
@@ -214,18 +221,22 @@ describe.runIf(url)("data export against a real database", () => {
       "lifeEvents",
       "changeAcks",
       "lifeEventAnswers",
+      "budgetTuneUps",
+      "goalTransfers",
       "janeMessages",
     ] as const) {
       expect(data[key], key).toHaveLength(1);
     }
     expect(data.profile.id).toBe(me.userId);
+    expect(data.taxProfile).toMatchObject({ state: "CA", answered: ["state"] });
     expect(data.investments.securities).toHaveLength(1);
     expect(data.investments.holdings).toHaveLength(1);
     expect(data.investments.transactions).toHaveLength(1);
     const text = JSON.stringify(data);
     expect(text).toContain("me purchase");
     expect(text).not.toContain(other.suffix);
-    expect(text).not.toContain("other");
+    // As a word: "otherDependants" is a field name.
+    expect(text).not.toMatch(/\bother\b/);
   });
 
   it("includes their side of shared bills, not the partner's charges", async () => {

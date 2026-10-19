@@ -15,6 +15,7 @@ import { scopedFor } from "@/lib/db-scoped";
 import { loadChanges } from "@/lib/changes";
 import { listGoals } from "@/lib/goals";
 import { lifeGuessesFor } from "@/lib/life-guesses";
+import { loadUpkeep } from "@/lib/plan-upkeep";
 import { listLifeEvents } from "@/lib/life-events";
 import { homeSummary } from "@/lib/home";
 import { formatCents } from "@/lib/money";
@@ -25,8 +26,10 @@ import { INVESTMENT_TOOLS, isInvestmentTool, runInvestmentTool } from "./investm
 import { monthLabel, type Reply } from "./replies";
 import { guessLine } from "./replies-life";
 import { loadRecurring } from "./recurring";
+import { weeklyReview } from "./replies-review";
 import { loadSnapshot } from "./snapshot";
 import { findingCandidate } from "./sources/findings";
+import { TAX_TOOLS, isTaxTool, runTaxTool } from "./tax-tools";
 import { ACTION_IDS, type ActionId, type MessageAction } from "./types";
 
 // The tools Claude gets in Jane's chat (spec step 84). Read-only tools over the person's
@@ -58,6 +61,9 @@ export const CHAT_PAGES: Readonly<Record<string, { label: string; href: string }
   net_worth: { label: "See net worth", href: "/net-worth" },
   investments: { label: "See what you own", href: "/investments" },
   settings: { label: "Settings", href: "/settings" },
+  // Taxes (spec steps 118–127).
+  taxes: { label: "See your taxes", href: "/taxes" },
+  tax_profile: { label: "See my tax profile", href: "/taxes/profile" },
 };
 
 const noInput = { type: "object" as const, properties: {}, additionalProperties: false };
@@ -128,6 +134,12 @@ export const CHAT_TOOLS: Anthropic.Tool[] = [
     input_schema: noInput,
   },
   {
+    name: "plan_upkeep",
+    description:
+      "Plans that keep up (spec step 101): this month's budget tune-up (each budget, its amount and its usual month), transfers to savings Jane could count toward a goal, and the weekly review: what Jane did, what it saved and what's next.",
+    input_schema: noInput,
+  },
+  {
     name: "propose_action",
     description:
       "Offer the person a button under your answer. You can't do anything yourself; the person decides by tapping. Use it at most once: when your answer suggests something that can be done, or the person asked for it. Actions: finding.yes (Yes and No on one open finding; give finding_id from open_findings), plan.approve_safe (approve the plan's safe items together), goal.start (start a savings goal; give goal_name, goal_amount in dollars and goal_month as YYYY-MM within the next 12 months), open (a link to a page; give page).",
@@ -145,6 +157,8 @@ export const CHAT_TOOLS: Anthropic.Tool[] = [
       additionalProperties: false,
     },
   },
+  // Taxes (spec steps 118–127): ./tax-tools.ts.
+  ...TAX_TOOLS,
   // Spec step 128 on.
   ...INVESTMENT_TOOLS,
 ];
@@ -160,6 +174,7 @@ export async function runChatTool(
 ): Promise<ToolOutput> {
   if (FROM_ASK.some((t) => t.name === name))
     return runAskTool(userId, name, input, { client, now });
+  if (isTaxTool(name)) return runTaxTool(userId, name, { client, now });
   if (isInvestmentTool(name)) return runInvestmentTool(userId, name, input, { client, now });
   const cents: number[] = [];
   const money = (value: number) => {
@@ -301,6 +316,29 @@ export async function runChatTool(
           done: c.completedAt !== null,
           ticked: `${c.checkedItems.length} of ${LIFE_EVENTS[c.kind].items.length}`,
         })),
+      });
+    }
+    case "plan_upkeep": {
+      const [upkeep, snapshot] = await Promise.all([
+        loadUpkeep(userId, { client, now }),
+        loadSnapshot(userId, { client, now }),
+      ]);
+      return out({
+        tuneUp: upkeep.tuneUp && {
+          month: upkeep.tuneUp.month,
+          status: upkeep.tuneUp.status,
+          budgets: upkeep.tuneUp.changes.map((c) => ({
+            category: c.category,
+            now: money(c.fromCents),
+            usual: money(c.toCents),
+          })),
+        },
+        transfersToCount: upkeep.transfers.map((t) => ({
+          amount: money(t.amountCents),
+          date: t.date,
+          goal: t.goal.name,
+        })),
+        weeklyReview: snapshot ? weeklyReview(snapshot, now).body : null,
       });
     }
     case "goals": {

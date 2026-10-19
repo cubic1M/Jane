@@ -70,6 +70,8 @@ export type InvestmentAccountView = {
   kind: "retirement" | "investment";
   // Plaid's subtype in plain words: "401(k)", "Brokerage".
   label: string;
+  // Plaid's own subtype, e.g. "401k" (spec step 130: an employer plan's menu applies).
+  subtype: string | null;
   balanceCents: number | null;
   holdingsCents: number;
   // Whether the holdings add up to the balance (to the cent).
@@ -194,6 +196,7 @@ export function investmentSummary(
       name: account.name,
       kind,
       label: subtypeLabel(account.subtype),
+      subtype: account.subtype,
       balanceCents: account.balanceCents,
       holdingsCents,
       holdingsMatch: rows.length > 0 && holdingsCents === account.balanceCents,

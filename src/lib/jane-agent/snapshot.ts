@@ -8,6 +8,7 @@ import type { LifeGuess } from "@/insights/life-signals";
 import { isUrgent, newestUnreadAlerts } from "@/lib/alerts";
 import { loadChanges, type ChangeView } from "@/lib/changes";
 import { lifeGuessesFor } from "@/lib/life-guesses";
+import { loadUpkeep, type UpkeepSnapshot } from "@/lib/plan-upkeep";
 import { comparisonsFor } from "@/lib/compare";
 import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
@@ -19,6 +20,7 @@ import { savingsLine } from "@/lib/savings-text";
 import { recentRuleApprovals } from "@/lib/standing-rules";
 import { loadInvestmentSnapshot, type InvestmentSnapshot } from "./investments/snapshot";
 import { loadMore, type MoreSnapshot } from "./snapshot-more";
+import { loadTaxSnapshot, type TaxSnapshot } from "./snapshot-tax";
 
 // Everything Jane's brain looks at for one person (spec step 82), loaded with the same
 // code as the pages that show it: Today (src/lib/home.ts), the plan, the comparisons, the
@@ -79,9 +81,13 @@ export type Snapshot = {
   changes?: ChangeView[];
   // Spec step 100: life events Jane spotted and hasn't asked about. Optional, like changes.
   lifeGuesses?: LifeGuess[];
+  // Spec step 101: this month's budget tune-up, transfers to count toward a goal, and what
+  // autopilot counted lately. Optional, like changes.
+  upkeep?: UpkeepSnapshot;
   // Spec step 128 on: what's in investment accounts.
   investments?: InvestmentSnapshot;
-} & MoreSnapshot;
+} & MoreSnapshot &
+  TaxSnapshot;
 
 // A finding as Jane describes it in the chat: its type, title, saving and evidence. A
 // button only acts while this is unchanged; newer card wording (Claude's explanation)
@@ -193,8 +199,10 @@ export async function loadSnapshot(
       .map((a) => ({ id: a.id, title: a.title, body: a.body })),
     budgetProgress: home.budgetProgress,
     ...(await loadMore(userId, { client })),
+    ...(await loadTaxSnapshot(userId, { client, now })),
     // Spec steps 97 and 100 read the same bank data, so it's loaded once for both.
     ...(await thinking(userId, client, now)),
+    upkeep: await loadUpkeep(userId, { client, now }),
     investments: await loadInvestmentSnapshot(userId, { client, now }),
   };
 }

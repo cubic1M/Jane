@@ -3,6 +3,8 @@ import type { PrismaClient } from "@/generated/prisma/client";
 import { formatBps } from "@/insights/investments";
 import type { ToolOutput } from "@/lib/ask/tools";
 import { GOALS, HORIZONS } from "@/config/investing";
+import { adviceMode } from "@/lib/advice-mode";
+import { loadFees } from "@/lib/investments/fees";
 import { loadInvestments } from "@/lib/investments/holdings";
 import { profileOf } from "@/lib/investments/profile";
 import { profileSummary } from "@/planning/investor-profile";
@@ -27,12 +29,19 @@ export const INVESTMENT_TOOLS: Anthropic.Tool[] = [
       "What the person's investments are for, from their own answers: age, when they need the money, how they'd feel about a drop, their goals, and the risk level that follows (the lower of what their timeline allows and what they're comfortable with). Says which questions are still unanswered; nothing should be recommended from it until it's complete.",
     input_schema: noInput,
   },
+  {
+    name: "investment_fees",
+    description:
+      "What investing costs the person, from their holdings and fee records: each fund's yearly cost (expense ratio times what's in it), advisory and account fees from the last 12 months, the total a year, and what it costs over 30 years as a low-to-high range (with growth). In demo advice mode, also each costly fund's lower-cost equivalent with the yearly saving and the 30-year range. Quote ranges as ranges.",
+    input_schema: noInput,
+  },
 ];
 
 // What the person sees while Jane looks it up.
 export const INVESTMENT_TOOL_STATUS: Readonly<Record<string, string>> = {
   holdings: "Looking at what you own…",
   investor_profile: "Checking your investor profile…",
+  investment_fees: "Adding up your investment fees…",
 };
 
 export const isInvestmentTool = (name: string) => INVESTMENT_TOOLS.some((t) => t.name === name);
@@ -103,6 +112,43 @@ export async function runInvestmentTool(
         needsTheMoney: HORIZONS[summary.horizon].label,
         goals: summary.goals.map((g) => GOALS[g]),
         answeredOverAYearAgo: summary.stale,
+      });
+    }
+    case "investment_fees": {
+      const [{ fees }, advice] = await Promise.all([
+        loadFees(userId, { client, now }),
+        adviceMode(userId, { client }),
+      ]);
+      const span = (r: { lowCents: number; highCents: number }) => ({
+        low: money(r.lowCents),
+        high: money(r.highCents),
+      });
+      return out({
+        aYear: money(fees.totalYearlyCents),
+        fundCostsAYear: money(fees.fundsYearlyCents),
+        advisoryFeesLast12Months: money(fees.advisoryCents),
+        accountFeesLast12Months: money(fees.accountFeesCents),
+        [`over${fees.years}Years`]: span(fees.overYears),
+        funds: fees.funds.map((f) => ({
+          name: f.holding.name,
+          account: f.accountName,
+          yearlyCost: formatBps(f.expenseRatioBps),
+          aYear: money(f.yearlyCents),
+        })),
+        costNotKnown: fees.unknown,
+        lowerCostEquivalents: advice
+          ? fees.equivalents.map((e) => ({
+              instead: e.holding.name,
+              account: e.accountName,
+              hold: e.name,
+              ticker: e.ticker,
+              kind: e.category,
+              itsYearlyCost: formatBps(e.expenseRatioBps),
+              offeredInPlan: e.inPlanMenu,
+              savingAYear: money(e.yearlySavingCents),
+              [`savingOver${fees.years}Years`]: span(e.overYears),
+            }))
+          : "Not shown: recommendations are for demo advice mode only.",
       });
     }
     default:

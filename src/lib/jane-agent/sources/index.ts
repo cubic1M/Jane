@@ -9,8 +9,11 @@ import { budgetsSource } from "./budgets";
 import { setupSource } from "./setup";
 import { stepsSource } from "./steps";
 import { thingsSource } from "./things";
+import { taxesSource } from "./taxes";
 import { changesSource } from "./changes";
 import { lifeSource } from "./life";
+import { reviewSource } from "./review";
+import { upkeepSource } from "./upkeep";
 import { investmentsSource } from "./investments";
 
 // Every message source Jane's brain gathers from (spec step 82). A new kind of message is a
@@ -28,10 +31,15 @@ export const MESSAGE_SOURCES: readonly MessageSource[] = [
   stepsSource,
   budgetsSource,
   thingsSource,
+  // Taxes (spec steps 118–127).
+  taxesSource,
   // Spec step 97.
   changesSource,
   // Spec step 100.
   lifeSource,
+  // Spec step 101.
+  upkeepSource,
+  reviewSource,
   // Spec step 128 on.
   investmentsSource,
 ];
