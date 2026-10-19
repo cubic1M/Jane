@@ -136,6 +136,8 @@ export const MESSAGE_PRIORITY = {
   investment_monthly: 41,
   // Spec step 157: each goal invested for its timeline (demo advice).
   goal_buckets: 35,
+  // Spec step 158: saving for college (demo advice).
+  college: 34,
   auto_invest_run: 31,
 } as const;
 
