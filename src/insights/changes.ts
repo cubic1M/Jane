@@ -154,13 +154,13 @@ export function newSubscriptions(input: DetectionInput, streams: Stream[]): Chan
   });
 }
 
-type Employer = { key: string; name: string; deposits: DetectionTransaction[] };
+export type Employer = { key: string; name: string; deposits: DetectionTransaction[] };
 
 // "ACME CORP PAYROLL" is Acme Corp: the words banks add to a paycheck aren't the employer.
 const PAY_WORDS = /\b(?:payroll|direct ?dep(?:osit)?|dir ?dep|salary|ppd|ach|pay)\b/gi;
 const employerOf = (text: string) => text.replace(PAY_WORDS, " ").replace(/\s+/g, " ").trim();
 
-function employers(input: DetectionInput): Employer[] {
+export function employers(input: DetectionInput): Employer[] {
   const groups = new Map<string, Employer>();
   for (const t of [...input.transactions].sort(byDate)) {
     if (t.amountCents >= 0 || !inList(t.pfcDetailed, PAYCHECK_CATEGORIES)) continue;

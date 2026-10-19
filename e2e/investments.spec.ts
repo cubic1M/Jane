@@ -48,4 +48,23 @@ test("the demo bank's holdings show with their sources, and Jane answers about t
   await page.getByRole("textbox", { name: "Message Jane" }).fill("what's in my 401k");
   await page.getByRole("button", { name: "Send" }).click();
   await expect(page.getByText(/Your Demo 401\(k\) has \$84,250\.40 in 5 holdings/)).toBeVisible();
+
+  // Step 129: the investor profile, answered in the chat a tap at a time.
+  await page.getByRole("textbox", { name: "Message Jane" }).fill("what's my risk profile");
+  await page.getByRole("button", { name: "Send" }).click();
+  await expect(page.getByText("1 of 4: How old are you?")).toBeVisible();
+  await page.getByRole("button", { name: "40s" }).click();
+  await expect(page.getByText("2 of 4: When will you need most of this money?")).toBeVisible();
+  await page.getByRole("button", { name: "In 20 years or more" }).click();
+  await page.getByRole("button", { name: "I'd worry, but wait it out" }).click();
+  await page.getByRole("button", { name: "Retirement" }).click();
+  await expect(page.getByText(/Thanks\. Your profile: Moderate/)).toBeVisible();
+
+  // And changed on its page.
+  await page.goto("/investments/profile");
+  await expect(page.getByText("Moderate", { exact: true })).toBeVisible();
+  await page.getByLabel("I'd put more in").check();
+  await page.getByRole("button", { name: "Save" }).click();
+  await expect(page.getByRole("status")).toHaveText("Saved.");
+  await expect(page.getByText("Aggressive", { exact: true })).toBeVisible();
 });

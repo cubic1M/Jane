@@ -41,6 +41,7 @@ const SIGNED_IN = [
   "/goals",
   "/net-worth",
   "/investments",
+  "/investments/profile",
   "/loans",
   "/bills",
   "/alerts",
