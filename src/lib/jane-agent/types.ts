@@ -184,6 +184,8 @@ export const ACTION_IDS = [
   // Spec step 160: company stock, sold down in parts.
   "company.link",
   "company.sell",
+  // Spec step 161: connect a demo exchange, read-only (crypto is never traded).
+  "crypto.link",
   // Jane notices changes (spec step 97).
   "change.look",
   "change.budget",
@@ -288,8 +290,10 @@ export type MessageRefs = {
   budget?: { category: string; amountCents: number };
   // Spec step 91: what "Remember this" would save.
   preference?: PreferenceDraft;
-  // Spec step 92: the messages a bundle stands for, by dedupeKey, in button order.
-  items?: { dedupeKey: string; label: string }[];
+  // Spec step 92: the messages a bundle stands for, by dedupeKey, in button order. Spec
+  // step 184: the morning agenda's too, each with the button its Yes stands for (a finding's
+  // Yes when left out).
+  items?: { dedupeKey: string; label: string; action?: ActionId }[];
   // Spec step 94: a chart, table, timeline or progress bars shown with the answer.
   block?: AnswerBlock;
   // Spec step 95: where a guided flow is.

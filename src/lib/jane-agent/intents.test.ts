@@ -137,6 +137,9 @@ describe("parseIntent", () => {
     ["what's due this week", 7],
     ["any upcoming bills", null],
     ["bills due", null],
+    ["what bills are due", null],
+    ["which bills are due this week", 7],
+    ["when are my bills due", null],
   ])("understands %s as coming up", (text, days) => {
     expect(parse(text)).toEqual({ kind: "coming_up", days });
   });

@@ -6,7 +6,8 @@ import { E2E_DATABASE_URL, deleteUser, signedInUser } from "./db";
 // and Jane answering about it in the chat.
 
 test.skip(!E2E_DATABASE_URL, "needs E2E_DATABASE_URL pointing at a scratch database");
-test.setTimeout(120_000);
+// One long journey through every investments step (128 on), so more than the default.
+test.setTimeout(300_000);
 
 let userId: string | undefined;
 test.afterEach(async () => {
@@ -184,4 +185,17 @@ test("the demo bank's holdings show with their sources, and Jane answers about t
   await expect(page.getByRole("button", { name: "Sell the first part (simulated)" })).toHaveCount(
     0,
   );
+
+  // Step 161: crypto, read-only, with its source and time, counted in net worth.
+  await page.goto("/investments/crypto");
+  await page.getByRole("button", { name: "Connect a demo exchange" }).click();
+  await expect(page.getByRole("status")).toHaveText("Connected, read-only.");
+  await expect(page.getByRole("heading", { name: /^Demo Exchange: \$/ })).toBeVisible();
+  await expect(
+    page.getByText(/From Demo Exchange \(demo, sample data\), read-only, as of /),
+  ).toBeVisible();
+  await expect(page.getByText(/a common rule of thumb keeps a speculative holding/)).toBeVisible();
+  await expect(page.getByRole("button", { name: /sell|buy|trade/i })).toHaveCount(0);
+  await page.goto("/net-worth");
+  await expect(page.getByText(/in crypto, as your exchange or wallet last/)).toBeVisible();
 });

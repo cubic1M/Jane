@@ -348,15 +348,17 @@ model User {
 
   savedShares SavedShare[]
 
-  autopilotSectors AutopilotSector[]
-  autopilotActs    AutopilotAct[]
-  collegePlans     CollegePlan[]
-  hsaReceipts      HsaReceipt[]
-  equityGrants     EquityGrant[]
-  controllerRuns   ControllerRun[]
-  moneyTransfers   MoneyTransfer[]
-  paycheckPlans    PaycheckPlan[]
-  healthScores     HealthScore[]
+  autopilotSectors  AutopilotSector[]
+  autopilotActs     AutopilotAct[]
+  collegePlans      CollegePlan[]
+  hsaReceipts       HsaReceipt[]
+  equityGrants      EquityGrant[]
+  cryptoConnections CryptoConnection[]
+  cryptoHoldings    CryptoHolding[]
+  controllerRuns    ControllerRun[]
+  moneyTransfers    MoneyTransfer[]
+  paycheckPlans     PaycheckPlan[]
+  healthScores      HealthScore[]
 
   @@map("users")
 }
@@ -2652,6 +2654,53 @@ model EquityGrant {
 
   @@index([userId])
   @@map("equity_grants")
+}
+
+// Spec step 161: crypto, read-only. An exchange account or a public wallet address, read
+// through a crypto source (a stand-in until a crypto data partner is connected). Jane never
+// holds keys and never trades: there is no order path for crypto. The last year's trading
+// fees and amounts, for the fee flag.
+model CryptoConnection {
+  id           String    @id @default(cuid())
+  userId       String    @map("user_id")
+  // exchange or wallet (src/config/crypto.ts).
+  kind         String
+  name         String
+  // The source behind it: demo (the stand-in) until a partner is connected.
+  partner      String
+  // A wallet's public address (never a key).
+  address      String?
+  lastSyncedAt DateTime? @map("last_synced_at") @db.Timestamptz(3)
+  feesCents    Int       @default(0) @map("fees_cents")
+  tradedCents  Int       @default(0) @map("traded_cents")
+  createdAt    DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  user     User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  holdings CryptoHolding[]
+
+  @@index([userId])
+  @@map("crypto_connections")
+}
+
+// One asset in one connection, as the source last reported it, with when.
+model CryptoHolding {
+  id             String   @id @default(cuid())
+  userId         String   @map("user_id")
+  connectionId   String   @map("connection_id")
+  asset          String
+  name           String
+  quantity       Float
+  priceCents     Int      @map("price_cents")
+  valueCents     Int      @map("value_cents")
+  costBasisCents Int?     @map("cost_basis_cents")
+  asOf           DateTime @map("as_of") @db.Timestamptz(3)
+
+  user       User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  connection CryptoConnection @relation(fields: [connectionId], references: [id], onDelete: Cascade)
+
+  @@unique([connectionId, asset])
+  @@index([userId])
+  @@map("crypto_holdings")
 }
 
 // One person's nightly controller run (spec step 142): when it ran and, for each sector's

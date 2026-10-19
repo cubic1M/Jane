@@ -26,6 +26,13 @@ import {
   SELL_WORDS,
 } from "../investments/company-copy";
 import type { Candidate } from "../types";
+import {
+  CRYPTO_LINK,
+  feeFlag,
+  NEVER_TRADES,
+  shareFlag,
+  sizeLine,
+} from "../investments/crypto-copy";
 import { learnLink } from "../learn";
 import { snoozeButton, type MessageSource } from "./source";
 
@@ -288,6 +295,40 @@ export const investmentsSource: MessageSource = {
         actions: [{ id: "hsa.link", label: "Link a demo HSA", kind: "primary" }, snoozeButton()],
         dedupeKey: "hsa:link",
         priority: MESSAGE_PRIORITY.hsa,
+      });
+    }
+    // Step 161: crypto, read-only. Jane says once that she can see it (facts, for everyone);
+    // in demo advice mode, too big a share and costly fees are flagged once each. Nothing is
+    // ever traded, at any level.
+    const crypto = inv.crypto;
+    if (crypto.size.totalCents > 0) {
+      out.push({
+        kind: "done",
+        body: `${sizeLine(crypto.size, crypto.sources)} It now counts in your net worth. ${NEVER_TRADES}`,
+        refs: {},
+        actions: [CRYPTO_LINK],
+        dedupeKey: "crypto:seen",
+        priority: MESSAGE_PRIORITY.crypto,
+      });
+      if (inv.advice && crypto.size.overShare) {
+        out.push({
+          kind: "heads_up",
+          body: `${sizeLine(crypto.size, crypto.sources)} ${shareFlag(crypto.size)} Any change is yours to make at your exchange.`,
+          refs: { advice: true },
+          actions: [CRYPTO_LINK, snoozeButton()],
+          dedupeKey: "crypto:share",
+          priority: MESSAGE_PRIORITY.crypto,
+        });
+      }
+    }
+    if (inv.advice && crypto.fees?.flag) {
+      out.push({
+        kind: "heads_up",
+        body: `${feeFlag(crypto.fees)} Switching exchanges is yours to do; ${NEVER_TRADES.charAt(0).toLowerCase()}${NEVER_TRADES.slice(1)}`,
+        refs: { advice: true },
+        actions: [CRYPTO_LINK, snoozeButton()],
+        dedupeKey: "crypto:fees",
+        priority: MESSAGE_PRIORITY.crypto,
       });
     }
     // Step 160: too much in the employer's stock. Jane says so with the plan, its tax cost
