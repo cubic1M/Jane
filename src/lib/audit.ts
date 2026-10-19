@@ -82,6 +82,8 @@ export type AuditEvent =
   // One of Jane's chat messages went out as a notification (spec step 85): the channel
   // and the kind of message, never its text.
   | "chat_notification_sent"
+  // What the investments are for (spec step 129): which answer changed, never the answers.
+  | "investor_profile_saved"
   // Insurance (spec Phase X): a policy saved or removed, the household facts saved.
   | "insurance_policy_saved"
   | "insurance_policy_removed"

@@ -418,24 +418,49 @@ async function saveInvestmentTransactions(
     console.warn("Plaid investment transactions unavailable", { code });
     return;
   }
-  for (const t of rows.map(normalizeInvestmentTransaction)) {
+  const data = rows.flatMap((row) => {
+    const t = normalizeInvestmentTransaction(row);
     const accountId = t && accountIds.get(t.accountRef);
-    if (!t || !accountId) continue;
-    const data = {
-      securityId: t.securityRef ? (securityIds.get(t.securityRef) ?? null) : null,
-      date: new Date(`${t.date}T00:00:00Z`),
-      name: t.name,
-      quantity: t.quantity,
-      amountCents: t.amountCents,
-      priceCents: t.priceCents,
-      feesCents: t.feesCents,
-      type: t.type,
-      subtype: t.subtype,
-    };
-    await db.investmentTransactions.upsert({
-      where: { plaidInvestmentTransactionId: t.ref },
-      create: { userId: db.userId, accountId, plaidInvestmentTransactionId: t.ref, ...data },
-      update: data,
+    if (!t || !accountId) return [];
+    return [
+      {
+        plaidInvestmentTransactionId: t.ref,
+        accountId,
+        securityId: t.securityRef ? (securityIds.get(t.securityRef) ?? null) : null,
+        date: new Date(`${t.date}T00:00:00Z`),
+        name: t.name,
+        quantity: t.quantity,
+        amountCents: t.amountCents,
+        priceCents: t.priceCents,
+        feesCents: t.feesCents,
+        type: t.type,
+        subtype: t.subtype,
+      },
+    ];
+  });
+  // New ones in one go (two years of them on the first sync); ones already saved are
+  // updated, since Plaid can correct them.
+  const saved = new Set(
+    (
+      await db.investmentTransactions.findMany({
+        where: {
+          plaidInvestmentTransactionId: { in: data.map((d) => d.plaidInvestmentTransactionId) },
+        },
+        select: { plaidInvestmentTransactionId: true },
+      })
+    ).map((t) => t.plaidInvestmentTransactionId),
+  );
+  await db.investmentTransactions.createMany({
+    data: data
+      .filter((d) => !saved.has(d.plaidInvestmentTransactionId))
+      .map((d) => ({ userId: db.userId, ...d })),
+    skipDuplicates: true,
+  });
+  for (const { plaidInvestmentTransactionId, ...rest } of data) {
+    if (!saved.has(plaidInvestmentTransactionId)) continue;
+    await db.investmentTransactions.updateMany({
+      where: { plaidInvestmentTransactionId },
+      data: rest,
     });
   }
 }

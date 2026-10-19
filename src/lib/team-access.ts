@@ -130,6 +130,7 @@ export const TEAM_ACCESS_RULES: Record<AuditEvent, EventRule> = {
   other_sessions_signed_out: own,
   // Jane's chat messages as notifications (spec step 85).
   chat_notification_sent: automatic,
+  investor_profile_saved: own,
   // Insurance (spec Phase X): the person's own edits to their profile.
   insurance_policy_saved: own,
   insurance_policy_removed: own,
