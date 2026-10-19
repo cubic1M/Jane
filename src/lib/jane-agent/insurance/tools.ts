@@ -18,6 +18,7 @@ import { latestCheckup } from "@/lib/insurance/checkups";
 import { BENEFIT_LABELS } from "@/config/benefits";
 import { loadInsurance } from "@/lib/insurance/profile";
 import { listReadings } from "@/lib/insurance/readings";
+import { cardCover, conditionWords } from "@/lib/insurance/card-cover";
 import { noteLines, readingLines } from "./reading-words";
 import { listBenefits, openEnrollmentAtWork, yearlyCost } from "@/lib/insurance/benefits";
 import { autopilotOf } from "@/lib/autopilot";
@@ -63,6 +64,12 @@ export const INSURANCE_TOOLS: Anthropic.Tool[] = [
     input_schema: noInput,
   },
   {
+    name: "insurance_card_cover",
+    description:
+      "Cover that comes with the person's credit cards (spec step 152), from a card-benefits catalog our team reviewed: each card's phone protection, rental car cover, extended warranty and trip cover, with the limits and what they must do for it to apply (like paying the phone bill with the card), and any plan they pay for that a card already covers. A card not in the catalog is never assumed to cover anything. Cancelling a duplicate is the finding's own Yes.",
+    input_schema: noInput,
+  },
+  {
     name: "insurance_documents",
     description:
       "Policies Jane read from the person's uploaded declarations pages and renewal notices (spec step 151): each field she read (insurer, kind, price, deductible, cover limits, renewal date) with where it came from (the document, what they typed, their payments, or the policy already on file), what the rules left out, and whether they've confirmed it. Nothing read is on their insurance until they confirm.",
@@ -85,6 +92,32 @@ export async function runInsuranceTool(
     return formatCents(value);
   };
   if (name === "insurance_quotes") return quotesTool(userId, { client, now }, money, cents);
+  if (name === "insurance_card_cover") {
+    const { cards, duplicates } = await cardCover(userId, { client });
+    return {
+      content: JSON.stringify({
+        cards: cards.map((c) => ({
+          card: c.card,
+          cover: c.benefits.map((b) => ({
+            what: b.label,
+            limits: b.limits.map((l) => ({
+              label: l.label,
+              amount: money(l.cents),
+              ...(l.text ? { detail: l.text } : {}),
+            })),
+            when: conditionWords(b),
+          })),
+        })),
+        payingTwice: duplicates.map((d) => ({
+          plan: d.merchant,
+          coveredBy: `${d.card} ${d.benefit.toLowerCase()}`,
+          aYear: money(d.annualSavingsCents),
+          status: d.status,
+        })),
+      }),
+      cents,
+    };
+  }
   if (name === "insurance_documents") {
     await loadInsurance(userId, { client, now });
     const readings = await listReadings(userId, { client });

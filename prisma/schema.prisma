@@ -31,6 +31,8 @@ enum FindingType {
   charge_after_cancel
   trial_conversion
   bill_negotiation
+  // Spec step 152: a plan the person pays for that a card of theirs already covers.
+  covered_by_card
 
   @@map("finding_type")
 }
