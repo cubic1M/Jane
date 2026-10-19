@@ -393,9 +393,9 @@ export function parseIntent(raw: string, asOf: string): Intent {
   if (CHECKED.test(text)) return { kind: "checked" };
   if (PRIORITIES.test(text)) return { kind: "priorities" };
   if (PAYCHECK.test(text)) return { kind: "paycheck" };
-  if (BILLS_PAID.test(text)) return { kind: "bills_paid" };
   const sector = parseSectorIntent(text);
   if (sector) return sector;
+  if (BILLS_PAID.test(text)) return { kind: "bills_paid" };
   if (SAVED.test(text)) return { kind: "saved" };
   if (REVIEW.test(text)) return { kind: "review" };
   if (CHANGES.test(text)) return { kind: "changes" };
