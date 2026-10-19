@@ -19,6 +19,7 @@ import { BENEFIT_LABELS } from "@/config/benefits";
 import { loadInsurance } from "@/lib/insurance/profile";
 import { listReadings } from "@/lib/insurance/readings";
 import { cardCover, conditionWords } from "@/lib/insurance/card-cover";
+import { latestLife } from "@/lib/insurance/life";
 import { noteLines, readingLines } from "./reading-words";
 import { listBenefits, openEnrollmentAtWork, yearlyCost } from "@/lib/insurance/benefits";
 import { autopilotOf } from "@/lib/autopilot";
@@ -64,6 +65,12 @@ export const INSURANCE_TOOLS: Anthropic.Tool[] = [
     input_schema: noInput,
   },
   {
+    name: "insurance_life",
+    description:
+      "Life insurance sized for the person and applied for (spec step 153), demo advice only: the amount and term with the method (years of pay, debts, final expenses, schooling, less savings and cover they have), the term quotes, and where an application stands (health questions, the carrier's offer or review). Jane never applies or buys without the person's tap; to start, they tap Apply in the chat or on /insurance/life.",
+    input_schema: noInput,
+  },
+  {
     name: "insurance_card_cover",
     description:
       "Cover that comes with the person's credit cards (spec step 152), from a card-benefits catalog our team reviewed: each card's phone protection, rental car cover, extended warranty and trip cover, with the limits and what they must do for it to apply (like paying the phone bill with the card), and any plan they pay for that a card already covers. A card not in the catalog is never assumed to cover anything. Cancelling a duplicate is the finding's own Yes.",
@@ -92,6 +99,48 @@ export async function runInsuranceTool(
     return formatCents(value);
   };
   if (name === "insurance_quotes") return quotesTool(userId, { client, now }, money, cents);
+  if (name === "insurance_life") {
+    if (!(await adviceMode(userId, { client }))) {
+      return {
+        content: JSON.stringify({
+          available: false,
+          why: "Sizing life cover is advice: only on the demo bank's sample data until a licensed partner is connected.",
+        }),
+        cents,
+      };
+    }
+    const application = await latestLife(userId, { client });
+    return {
+      content: JSON.stringify({
+        available: true,
+        demoAdvice: true,
+        application: application && {
+          status: application.status,
+          amount: money(application.amountCents),
+          termYears: application.termYears,
+          termWhy: application.termWhy,
+          method: application.method.map((l) => ({
+            what: l.label,
+            amount: money(l.cents),
+            adds: l.adds,
+          })),
+          quotes: application.quotes.map((q) => ({
+            carrier: q.carrier.name,
+            aMonth: money(q.premiumCents),
+            aYear: money(q.annualPremiumCents),
+          })),
+          decision:
+            application.decision?.outcome === "offered"
+              ? {
+                  offer: money(application.decision.premiumCents),
+                  rateClass: application.decision.rateClass,
+                }
+              : application.decision,
+        },
+      }),
+      cents,
+    };
+  }
   if (name === "insurance_card_cover") {
     const { cards, duplicates } = await cardCover(userId, { client });
     return {

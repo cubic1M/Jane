@@ -20,6 +20,7 @@ export type AuditEvent =
   | "insurance_claim_started"
   // Spec step 150: a benefit through work confirmed (its kind, never the amounts).
   | "employer_benefit_confirmed"
+  | "life_application_submitted"
   | "user_signed_in"
   | "import_completed"
   // Finding data was sent to Claude for card text.

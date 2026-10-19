@@ -9,6 +9,7 @@ import { checkupBody } from "../insurance/checkup-words";
 import { BENEFITS_LINK, QUESTIONS, foundBody } from "../insurance/benefit-words";
 import { trackerActions, trackerBody } from "../insurance/claim-words";
 import { readingBody, readingLink } from "../insurance/reading-words";
+import { DEPENDANTS_QUESTION, sizedActions, sizedBody } from "../insurance/life-words";
 import type { InsuranceSnapshot } from "../insurance/snapshot";
 import type { Candidate } from "../types";
 import { shortDate, snoozeButton, type MessageSource } from "./source";
@@ -265,6 +266,36 @@ function readingMessages(insurance: InsuranceSnapshot): Candidate[] {
   }));
 }
 
+// Spec step 153 (demo advice): the dependants question, then the amount and term with the
+// method and the best quote. Applying and buying happen in the same message, a tap each;
+// at no autopilot level does Jane apply or buy by herself.
+function lifeMessages(insurance: InsuranceSnapshot, asOf: string): Candidate[] {
+  if (insurance.lifeAsk === "dependants") {
+    return [
+      {
+        kind: "decision",
+        body: DEPENDANTS_QUESTION.body,
+        refs: {},
+        actions: DEPENDANTS_QUESTION.actions,
+        dedupeKey: "life-dependants",
+        priority: MESSAGE_PRIORITY.life_dependants,
+      },
+    ];
+  }
+  const life = insurance.life;
+  if (!life || life.status !== "sized" || !insurance.advice) return [];
+  return [
+    {
+      kind: "decision",
+      body: sizedBody(life, asOf),
+      refs: { lifeApplicationId: life.id, advice: true },
+      actions: sizedActions(life, asOf),
+      dedupeKey: `life:${life.id}:${life.amountCents}:${life.termYears}`,
+      priority: MESSAGE_PRIORITY.life_sized,
+    },
+  ];
+}
+
 export const insuranceSource: MessageSource = {
   key: "insurance",
   gather: (snapshot) => {
@@ -279,6 +310,7 @@ export const insuranceSource: MessageSource = {
       ...checkupMessages(insurance),
       ...benefitMessages(insurance),
       ...readingMessages(insurance),
+      ...lifeMessages(insurance, snapshot.asOf),
     ];
   },
 };
