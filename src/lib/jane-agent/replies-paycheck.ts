@@ -1,6 +1,7 @@
 import { formatCents } from "@/lib/money";
 import type { PaycheckPlanView, PlanMove } from "@/lib/money-movement/paycheck";
 import type { Reply } from "./replies";
+import { dateAndDays } from "./sources/source";
 import type { MessageAction } from "./types";
 
 // A paycheck's plan in the chat (spec step 144): what Jane moved by herself, what she'd
@@ -15,12 +16,21 @@ export const moveWords = (m: Pick<PlanMove, "cents" | "label" | "purpose">) =>
 
 export const STAND_IN_NOTE = "These are sample transfers: no real money moves.";
 
-export function paycheckReply(plan: PaycheckPlanView | null, simulated = true): Reply {
+// With no plan yet, the next paycheck (the same one as "when is payday") says when there will be.
+export type NextPaycheck = { date: string; cents: number; from: string; asOf: string };
+
+export function paycheckReply(
+  plan: PaycheckPlanView | null,
+  simulated = true,
+  next: NextPaycheck | null = null,
+): Reply {
   if (!plan || plan.moves.length === 0) {
     return {
       body: plan
         ? `Your ${formatCents(plan.paycheckCents)} paycheck stays in checking: nothing needed moving.`
-        : "I haven't seen a paycheck lately to split.",
+        : next
+          ? `I split each paycheck when it lands. Your next one is ${dateAndDays(next.date, next.asOf)}: about ${formatCents(next.cents)} from ${next.from}. I'll show you the plan then.`
+          : "I haven't seen a paycheck lately to split.",
       actions: [],
       refs: {},
     };

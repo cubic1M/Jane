@@ -90,6 +90,8 @@ export const MESSAGE_PRIORITY = {
   // Spec step 153: life cover sized with quotes (demo advice), and the question before it.
   life_sized: 49,
   life_dependants: 45,
+  // Spec step 154: cover changes after a life event, worth doing soon.
+  cover_change: 72,
   urgent_alert: 95,
   deadline: 90,
   waiting_on_you: 85,

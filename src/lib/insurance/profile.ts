@@ -6,6 +6,7 @@ import { coverageGaps, type Gap } from "./gaps";
 import { loadHousehold, type Household } from "./household";
 import { listPolicies, type Policy } from "./policies";
 import { readingsFromDocuments } from "./readings";
+import { prepareCoverChanges } from "./cover-changes";
 
 // The person's insurance profile (spec step 102): every policy, the household facts and
 // the gaps, from the same code as /insurance. Jane's chat, its Claude tools and the page
@@ -27,6 +28,8 @@ export async function loadInsurance(
 ): Promise<InsuranceProfile> {
   // Policy documents not read yet are read for the person to confirm (spec step 151).
   await readingsFromDocuments(userId, { client, now });
+  // Cover changes for a life event started since (spec step 154), asked about once.
+  await prepareCoverChanges(userId, { client, now });
   const [policies, household, advice] = await Promise.all([
     listPolicies(userId, { client }),
     loadHousehold(userId, { client, now }),
