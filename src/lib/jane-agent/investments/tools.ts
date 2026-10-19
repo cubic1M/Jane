@@ -6,6 +6,7 @@ import { GOALS, HORIZONS } from "@/config/investing";
 import { adviceMode } from "@/lib/advice-mode";
 import { loadFees } from "@/lib/investments/fees";
 import { loadInvestments } from "@/lib/investments/holdings";
+import { loadRebalance } from "@/lib/investments/rebalance";
 import { loadRetirement } from "@/lib/investments/retirement";
 import { loadReview } from "@/lib/investments/review";
 import { profileOf } from "@/lib/investments/profile";
@@ -49,6 +50,12 @@ export const INVESTMENT_TOOLS: Anthropic.Tool[] = [
       "In demo advice mode, once the investor profile is complete: what the person's retirement accounts could grow to by 67 as a low-to-high range in today's dollars, what that could pay out a year, the target (10 times pay) and whether they're on track, the employer match captured or missed, room left under this year's limit and any catch-up, Roth or traditional, and what to change. Always quote ranges; never promise.",
     input_schema: noInput,
   },
+  {
+    name: "rebalance_plan",
+    description:
+      "In demo advice mode, once the investor profile is complete: the orders that would move each account to the recommended mix (sell and buy, amounts, which account), the mix before and after, and the gain or loss the sales would realise in a taxable account (an estimate). Orders go to a simulated brokerage: say no real money moves. To let the person place them, use propose_action with invest.rebalance.",
+    input_schema: noInput,
+  },
 ];
 
 // What the person sees while Jane looks it up.
@@ -58,6 +65,7 @@ export const INVESTMENT_TOOL_STATUS: Readonly<Record<string, string>> = {
   investment_fees: "Adding up your investment fees…",
   portfolio_review: "Reviewing your investments…",
   retirement_plan: "Looking at your retirement…",
+  rebalance_plan: "Working out the orders…",
 };
 
 export const isInvestmentTool = (name: string) => INVESTMENT_TOOLS.some((t) => t.name === name);
@@ -242,6 +250,34 @@ export async function runInvestmentTool(
           c.figures.forEach(money);
           return { what: c.what, why: c.why, extraAYear: money(c.extraYearlyCents) };
         }),
+      });
+    }
+    case "rebalance_plan": {
+      const { advice, plan } = await loadRebalance(userId, { client, now });
+      if (!advice) return out({ note: "Trading is for demo advice mode only." });
+      if (!plan)
+        return out({ note: "The investor profile isn't finished, so there's no target mix." });
+      const pct = (s: number) => `${Math.round(s * 100)}%`;
+      return out({
+        brokerage: "simulated: no real money moves",
+        orders: plan.orders.map((o) => ({
+          account: o.accountName,
+          side: o.side,
+          fund: o.name,
+          amount: money(o.amountCents),
+          realisedGainEstimate: o.gainCents === null ? null : money(o.gainCents),
+        })),
+        before: plan.before.map((m) => ({
+          kind: m.label,
+          share: pct(m.share),
+          target: pct(m.target),
+        })),
+        after: plan.after.map((m) => ({
+          kind: m.label,
+          share: pct(m.share),
+          target: pct(m.target),
+        })),
+        realisedGainEstimate: money(plan.realisedGainCents),
       });
     }
     default:

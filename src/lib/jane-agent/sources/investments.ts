@@ -3,6 +3,7 @@ import { PROFILE_QUESTIONS } from "@/config/investing";
 import { formatCents } from "@/lib/money";
 import { nextQuestion, profileSummary } from "@/planning/investor-profile";
 import { equivalentLine, switchSummary } from "../investments/fees-copy";
+import { planSummary, rebalanceButton, SIMULATED_WORDS } from "../investments/rebalance-copy";
 import { matchLine, projectionLine } from "../investments/retirement-copy";
 import { asking, PROFILE_INTRO } from "../investments/profile-question";
 import type { Candidate } from "../types";
@@ -20,6 +21,9 @@ import { snoozeButton, type MessageSource } from "./source";
 //   money, so it always waits for the person's tap (step 133).
 // - Step 131: in demo advice mode, once the profile is complete, reviews the mix against
 //   its target and says what to change and why (again when that changes).
+//   Step 133: with the orders that move to the target mix ready, so one tap places them
+//   (with the simulated brokerage until a real one is connected). Trading moves money, so
+//   it always waits for that tap, at every autopilot level.
 // - Step 132: in demo advice mode, once the profile is complete, checks the retirement
 //   projection and the employer match, and says so when the person is behind or missing
 //   match money (again when that changes). Raising a contribution is done at the
@@ -86,11 +90,14 @@ export const investmentsSource: MessageSource = {
     const review = inv.review;
     if (inv.advice && review && review.recommendations.length > 0) {
       const [first, ...rest] = review.recommendations;
+      // Spec step 133: the orders are ready; one tap places them.
+      const plan = inv.rebalance && inv.rebalance.orders.length > 0 ? inv.rebalance : null;
       out.push({
-        kind: "heads_up",
-        body: `I've reviewed your investments against your ${review.riskLabel.toLowerCase()} profile. ${first.what} ${first.why}${rest.length > 0 ? ` And ${rest.length} more ${rest.length === 1 ? "change" : "changes"} on the review.` : ""}`,
-        refs: { advice: true },
+        kind: plan ? "decision" : "heads_up",
+        body: `I've reviewed your investments against your ${review.riskLabel.toLowerCase()} profile. ${first.what} ${first.why}${rest.length > 0 ? ` And ${rest.length} more ${rest.length === 1 ? "change" : "changes"} on the review.` : ""}${plan ? `\nI've got the orders ready: ${planSummary(plan)} Tap and I'll place them ${SIMULATED_WORDS}.` : ""}`,
+        refs: { advice: true, ...(plan ? { rebalanceKey: plan.key } : {}) },
         actions: [
+          ...(plan ? [rebalanceButton()] : []),
           { id: "open", label: "See the review", kind: "link", href: "/investments/review" },
           snoozeButton(),
         ],

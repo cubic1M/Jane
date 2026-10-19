@@ -30,6 +30,7 @@ export const ACTION_IDS = [
   "insurance.quotes",
   "insurance.shop_yes",
   "insurance.shop_no",
+  "insurance.checkup_seen",
   "plan.approve_safe",
   "undo.rule",
   "undo.no",
@@ -87,6 +88,9 @@ export const ACTION_IDS = [
   // Spec step 122: a way to pay less, as a reminder to set or not for me.
   "tax.save_task",
   "tax.save_no",
+  // Spec step 123: freelancers.
+  "tax.quarter_paid",
+  "tax.miles_add",
   // Investments (spec step 129 on): the answer buttons on an investor-profile question,
   // by position (src/config/investing.ts PROFILE_QUESTIONS).
   "invest.answer.1",
@@ -94,6 +98,8 @@ export const ACTION_IDS = [
   "invest.answer.3",
   "invest.answer.4",
   "invest.answer.5",
+  // Spec step 133: move to the recommended mix, through the brokerage partner.
+  "invest.rebalance",
   // Jane notices changes (spec step 97).
   "change.look",
   "change.budget",
@@ -133,6 +139,8 @@ export type MessageRefs = {
   policyId?: string;
   // Spec step 104: a reshop of a policy (src/lib/insurance/shop.ts), by id.
   insuranceShopId?: string;
+  // Spec step 106: a coverage checkup, by id.
+  insuranceCheckupId?: string;
   // The finding as Jane described it (src/lib/jane-agent/fingerprint.ts): a button only
   // acts while the finding is still what the message said.
   fingerprint?: string;
@@ -188,6 +196,9 @@ export type MessageRefs = {
   // Spec step 122: the way to pay less a message is about, and the reminder it would set.
   taxSaving?: string;
   taxTask?: { title: string; dueOn: string; note: string };
+  // Spec step 123: the estimated payment "I've paid it" records, and miles to add.
+  taxQuarter?: { date: string; cents: number; stateCents: number };
+  taxMiles?: number;
   // Spec step 98: demo advice (src/lib/advice-mode.ts). The chat shows DEMO_ADVICE_LABEL
   // under it. Set it on every message that recommends investments, taxes, insurance or loans.
   advice?: true;
@@ -195,6 +206,8 @@ export type MessageRefs = {
   // Jane is going through all four again (the yearly check).
   investQuestion?: string;
   investAgain?: true;
+  // Spec step 133: the rebalancing plan the button places, by its key.
+  rebalanceKey?: string;
   // Spec step 97: a change Jane noticed (src/insights/changes.ts), by its key; for a
   // category's pace, the budget "Set a budget" would set (cents a month).
   change?: { key: string; kind: string; category?: string; budgetCents?: number };

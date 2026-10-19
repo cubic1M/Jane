@@ -7,6 +7,10 @@ import type { TaxEstimateView } from "@/lib/tax-estimate";
 import type { WithholdingView } from "@/lib/tax-withholding";
 import type { TaxSavingsView } from "@/lib/tax-savings";
 import { savingMessage } from "./tax-saving-message";
+import type { SelfEmployedView } from "@/lib/self-employed";
+import { mileageDeduction } from "@/planning/self-employed";
+import type { TaxIntent } from "./tax-intents";
+import { quarterMessage, setAsideMessage } from "./tax-self-employed";
 import { onTrackLine, w4Suggestion, withholdingFacts } from "./tax-w4";
 import { federalLine, roundDollars, stateLine } from "@/planning/tax-estimate-copy";
 import type { TaxPack } from "@/planning/tax-pack";
@@ -329,4 +333,74 @@ export function savingsReply(view: TaxSavingsView): Reply {
     actions: [...top.actions, link("All of them", "/taxes#savings")],
     refs: top.refs,
   };
+}
+
+// Spec step 123: freelancers' questions.
+export function selfEmployedReply(intent: TaxIntent, view: SelfEmployedView, now: Date): Reply {
+  const page = link("Freelance taxes", "/taxes/self-employed");
+  if (intent.ask === "miles") {
+    if (intent.miles !== null && intent.miles > 0) {
+      return {
+        body: `Want me to add ${intent.miles.toLocaleString("en-US")} business miles to this year's? At the 2026 rate that's about ${roundDollars(mileageDeduction(intent.miles))} off your freelance income.`,
+        actions: [{ id: "tax.miles_add", label: "Add them", kind: "primary" }, page],
+        refs: { taxMiles: intent.miles },
+      };
+    }
+    return {
+      body: `You've logged ${view.mileage.miles.toLocaleString("en-US")} business miles this year, worth about ${roundDollars(view.mileage.deductionCents)} off your freelance income. Tell me "I drove 40 business miles" to add more.`,
+      actions: [page],
+      refs: {},
+    };
+  }
+  if (intent.ask === "home_office") {
+    return {
+      body: view.homeOffice.sqft
+        ? `Your home office is ${view.homeOffice.sqft} square feet: about ${roundDollars(view.homeOffice.deductionCents)} off your freelance income (the simplified method, $5 a square foot up to 300).`
+        : "If you use part of your home only for your freelance work, the simplified method takes $5 a square foot off your freelance income, up to 300 square feet. Tell me its size on your freelance taxes page.",
+      actions: [page],
+      refs: {},
+    };
+  }
+  if (!view.active) {
+    return {
+      body: "I don't see freelance or gig income in your accounts this year, so there's nothing to pay ahead.",
+      actions: [page],
+      refs: {},
+    };
+  }
+  if (!view.advice) {
+    return {
+      body: "Estimated tax is usually due April 15, June 15, September 15 and January 15. The IRS's estimated tax page explains who pays and how much.",
+      actions: [
+        link(
+          "Estimated taxes on irs.gov",
+          "https://www.irs.gov/businesses/small-businesses-self-employed/estimated-taxes",
+        ),
+        page,
+      ],
+      refs: {},
+    };
+  }
+  if (intent.ask === "set_aside") {
+    const last = view.recent[0];
+    if (last) return setAsideMessage(view, last);
+    return {
+      body: `Set aside about ${Math.round(view.setAsideRate * 100)}% of each freelance payment for its taxes, by my estimate.`,
+      actions: [page],
+      refs: { advice: true },
+    };
+  }
+  const today = now.toISOString().slice(0, 10);
+  const next = view.federal.payments.find((p) => p.date >= today);
+  if (!next) {
+    return {
+      body: view.federal.needed
+        ? `No estimated payment dates are left for ${view.year}; I estimate about ${roundDollars(view.federal.owedCents)} still to pay with your return.`
+        : `By my estimate you won't owe enough for ${view.year} to need estimated payments (under $1,000).`,
+      actions: [page],
+      refs: { advice: true },
+    };
+  }
+  const state = view.state?.payments.find((p) => p.date === next.date)?.cents ?? 0;
+  return quarterMessage(view, { ...next, stateCents: state });
 }

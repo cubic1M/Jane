@@ -4,6 +4,8 @@ import type { FeeSummary } from "@/insights/investment-fees";
 import type { PortfolioReview } from "@/insights/portfolio-review";
 import { loadFees } from "@/lib/investments/fees";
 import { loadInvestments } from "@/lib/investments/holdings";
+import type { RebalancePlan } from "@/insights/rebalance";
+import { loadRebalance } from "@/lib/investments/rebalance";
 import { loadRetirement } from "@/lib/investments/retirement";
 import { loadReview } from "@/lib/investments/review";
 import type { RetirementPlan } from "@/planning/retirement";
@@ -27,6 +29,9 @@ export type InvestmentSnapshot = {
   review: PortfolioReview | null;
   // Spec step 132: on track for retirement; null until the profile is done.
   retirement: RetirementPlan | null;
+  // Spec step 133: the orders that move to the recommended mix; null until the profile is
+  // done (or outside demo advice mode).
+  rebalance: RebalancePlan | null;
 };
 
 export async function loadInvestmentSnapshot(
@@ -34,13 +39,15 @@ export async function loadInvestmentSnapshot(
   { client, now }: { client: PrismaClient; now: Date },
 ): Promise<InvestmentSnapshot> {
   const investments = await loadInvestments(userId, { client, now });
-  const [{ fees }, { review }, { retirement }, advice, profile] = await Promise.all([
-    loadFees(userId, { client, now, investments }),
-    loadReview(userId, { client, now, investments }),
-    loadRetirement(userId, { client, now, investments }),
-    adviceMode(userId, { client }),
-    profileOf(userId, { client }),
-  ]);
+  const [{ fees }, { review }, { retirement }, { plan: rebalance }, advice, profile] =
+    await Promise.all([
+      loadFees(userId, { client, now, investments }),
+      loadReview(userId, { client, now, investments }),
+      loadRetirement(userId, { client, now, investments }),
+      loadRebalance(userId, { client, now, investments }),
+      adviceMode(userId, { client }),
+      profileOf(userId, { client }),
+    ]);
   return {
     totalCents: investments.totalCents,
     holdingCount: investments.holdingCount,
@@ -60,5 +67,6 @@ export async function loadInvestmentSnapshot(
     },
     review,
     retirement,
+    rebalance,
   };
 }

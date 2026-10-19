@@ -2,7 +2,8 @@
 // normalized text in (./../intents.ts normalize), the topic out, or null when it isn't
 // about investments. Each investment step adds its topics here.
 
-export type InvestmentTopic = "holdings" | "profile" | "fees" | "review" | "retirement";
+export type InvestmentTopic =
+  "holdings" | "profile" | "fees" | "review" | "retirement" | "rebalance";
 
 export type InvestmentIntent = {
   kind: "investments";
@@ -46,7 +47,12 @@ const REVIEW =
 const RETIREMENT =
   /\bretire(?:ment)?\b(?! account)|\b(?:401\(?k\)?|employer) match\b|\bmatch(?:ing)? (?:on|in|from) my 401\(?k\)?\b|\broth (?:or|vs\.?|versus) traditional\b|\btraditional (?:or|vs\.?|versus) roth\b|\bcatch[- ]up contributions?\b|\bhow much should i (?:put|contribute|save) (?:in|into|to) my (?:401\(?k\)?|ira)\b|\bnest egg\b/;
 
+// Spec step 133: move to the recommended mix.
+const REBALANCE =
+  /\brebalanc\w*\b|\b(?:move|get) (?:me |my (?:money|investments) )?(?:to|back to) (?:the |my )?(?:recommended|target|right) mix\b|\bfix my (?:mix|portfolio|allocation)\b/;
+
 export function parseInvestmentIntent(text: string): InvestmentIntent | null {
+  if (REBALANCE.test(text)) return { kind: "investments", topic: "rebalance", account: null };
   if (RETIREMENT.test(text)) return { kind: "investments", topic: "retirement", account: null };
   if (REVIEW.test(text)) return { kind: "investments", topic: "review", account: null };
   if (FEES.test(text)) {

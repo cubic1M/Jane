@@ -9,6 +9,7 @@ import { adviceMode } from "@/lib/advice-mode";
 import { loadTaxEstimate, type TaxEstimateView } from "@/lib/tax-estimate";
 import { checkFrom } from "@/lib/tax-withholding";
 import { loadTaxSavings } from "@/lib/tax-savings";
+import { loadSelfEmployed, type SelfEmployedView } from "@/lib/self-employed";
 import type { TaxSaving } from "@/planning/tax-savings";
 import type { WithholdingCheck } from "@/planning/withholding";
 import { loadTaxForms, loadTaxTags } from "@/lib/tax-organizer";
@@ -39,6 +40,8 @@ export type TaxSnapshot = {
     advice?: boolean;
     // Spec step 122: ways to pay less (demo advice only; empty otherwise).
     savings?: TaxSaving[];
+    // Spec step 123: freelancers' taxes.
+    selfEmployed?: SelfEmployedView;
   } | null;
 };
 
@@ -84,6 +87,7 @@ export async function loadTaxSnapshot(
       withholding: checkFrom(estimate),
       savings: (await loadTaxSavings(userId, { client, now, loaded: { estimate, advice } }))
         .savings,
+      selfEmployed: await loadSelfEmployed(userId, { client, now, loaded: { estimate, advice } }),
       advice,
       formsDue: forms
         ? { year: forms.year, forms: forms.forms.filter((f) => !f.received && !f.mayNotSend) }

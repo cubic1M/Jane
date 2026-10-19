@@ -2,6 +2,7 @@ import { GAP_KEYS, type GapKey } from "@/config/insurance";
 import { dismissGap } from "@/lib/insurance/household";
 import { AcceptShopError, acceptShop } from "@/lib/insurance/accept";
 import { requestQuotes } from "@/lib/insurance/quotes";
+import { markCheckupSeen } from "@/lib/insurance/checkups";
 import { declineShop } from "@/lib/insurance/shop";
 import { quotesReply } from "../insurance/quotes";
 import { ChatActionError, answeredElsewhere, type ActionHandler } from "./handler";
@@ -86,6 +87,25 @@ export const insuranceShopNo: ActionHandler = {
     return {
       answeredWith: action.label,
       note: "OK, you'll keep your current policy. I'll shop it again before it next renews.",
+    };
+  },
+};
+
+// "Got it" on the coverage checkup (spec step 106): seen, so Jane doesn't bring it up again.
+export const insuranceCheckupSeen: ActionHandler = {
+  id: "insurance.checkup_seen",
+  on: "open",
+  async run({ userId, message, action, client, now }) {
+    const { insuranceCheckupId } = message.refs;
+    if (!insuranceCheckupId) {
+      throw new ChatActionError("failed", "Something went wrong. Open it instead.");
+    }
+    if (!(await markCheckupSeen(userId, insuranceCheckupId, { client, now }))) {
+      throw answeredElsewhere("You've already seen this checkup.");
+    }
+    return {
+      answeredWith: action.label,
+      note: "OK. I'll check your cover again in a year, or sooner if your life changes.",
     };
   },
 };

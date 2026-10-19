@@ -1,4 +1,11 @@
-import { TAX_TAG_ORDER, TAX_TAGS, UNTAGGED, isTaxTagKind, type TaxTagKind } from "@/config/tax";
+import {
+  BUSINESS_HINT_CATEGORIES,
+  TAX_TAG_ORDER,
+  TAX_TAGS,
+  UNTAGGED,
+  isTaxTagKind,
+  type TaxTagKind,
+} from "@/config/tax";
 import { normalizeMerchant } from "@/data-sources/merchant";
 
 // Tax tags (spec step 119). Pure. Jane tags spending by its category (src/config/tax.ts
@@ -19,6 +26,9 @@ export type TagTransaction = {
 export type TagOverrides = {
   byTransaction: ReadonlyMap<string, string>;
   byMerchant: ReadonlyMap<string, string>;
+  // Spec step 123: the person has freelance income, so Jane suggests likely business
+  // expenses (and asks about them).
+  businessHints?: boolean;
 };
 
 export const NO_OVERRIDES: TagOverrides = { byTransaction: new Map(), byMerchant: new Map() };
@@ -40,8 +50,14 @@ export const merchantKeyOf = (t: Pick<TagTransaction, "merchantName" | "descript
 export const payeeOf = (t: Pick<TagTransaction, "merchantName" | "description">) =>
   (t.merchantName ?? t.description).trim();
 
-function automatic(t: TagTransaction): { tag: TaxTagKind; check: boolean } | null {
+function automatic(
+  t: TagTransaction,
+  businessHints: boolean,
+): { tag: TaxTagKind; check: boolean } | null {
   if (t.pfcDetailed === null) return null;
+  if (businessHints && (BUSINESS_HINT_CATEGORIES as readonly string[]).includes(t.pfcDetailed)) {
+    return { tag: "business", check: true };
+  }
   for (const tag of TAX_TAG_ORDER) {
     if ((TAX_TAGS[tag].categories as readonly string[]).includes(t.pfcDetailed)) {
       return { tag, check: TAX_TAGS[tag].check };
@@ -63,7 +79,7 @@ export function tagOf(t: TagTransaction, overrides: TagOverrides): Tagged | null
       ? { ...base, tag: chosen, source: "yours" }
       : null;
   }
-  const auto = automatic(t);
+  const auto = automatic(t, overrides.businessHints ?? false);
   return auto ? { ...base, tag: auto.tag, source: auto.check ? "check" : "jane" } : null;
 }
 

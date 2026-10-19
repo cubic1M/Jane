@@ -152,6 +152,10 @@ export const EMPLOYER_PLAN_SUBTYPES: readonly string[] = [
   "profit sharing plan",
 ];
 
+// What a fund Jane may buy holds, by ticker (spec step 133).
+export const mixOfTicker = (ticker: string): AssetMix =>
+  FUND_FACTS[ticker.toUpperCase()]?.mix ?? { other: 1 };
+
 // A security Plaid describes but the table doesn't know: classed by its Plaid type.
 export function mixOfType(type: string | null, isCashEquivalent: boolean): AssetMix {
   if (isCashEquivalent || type === "cash") return { cash: 1 };
