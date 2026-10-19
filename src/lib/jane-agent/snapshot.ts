@@ -8,6 +8,7 @@ import type { Deadline } from "@/insights/deadlines";
 import type { LifeGuess } from "@/insights/life-signals";
 import { isUrgent, newestUnreadAlerts } from "@/lib/alerts";
 import { loadChanges, type ChangeView } from "@/lib/changes";
+import { lastControllerRun, type LastRun } from "@/lib/controller-log";
 import { lifeGuessesFor } from "@/lib/life-guesses";
 import { loadUpkeep, type UpkeepSnapshot } from "@/lib/plan-upkeep";
 import { provenSavings } from "@/lib/savings-proof";
@@ -92,6 +93,8 @@ export type Snapshot = {
   saved?: { confirmedCents: number };
   // Spec step 140: Jane hasn't said anything to this person yet (the first-run hello).
   firstChat?: boolean;
+  // Spec step 142: last night's controller run, if recent. Optional, like changes.
+  lastRun?: LastRun | null;
   // Spec step 128 on: what's in investment accounts.
   investments?: InvestmentSnapshot;
   // Spec step 91: suggestions the person said never to make again (preference keys);
@@ -252,6 +255,7 @@ export async function loadSnapshot(
     // Spec steps 97, 100 and 139 read the same bank data, so it's loaded once for them.
     ...(await thinking(userId, client, now, input)),
     firstChat: said === 0,
+    lastRun: await lastControllerRun(userId, { client, now }),
     upkeep: await loadUpkeep(userId, { client, now }),
     investments: await loadInvestmentSnapshot(userId, { client, now }),
     neverSuggest: [...never],

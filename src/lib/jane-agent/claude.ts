@@ -109,6 +109,7 @@ const STATUS: Record<string, string> = {
   plan_upkeep: "Looking at your week…",
   proven_savings: "Adding up what I saved you…",
   autopilot_settings: "Checking what I may do by myself…",
+  nightly_log: "Looking at last night's checks…",
   propose_action: "Getting a button ready…",
 };
 export const statusFor = (tool: string) =>

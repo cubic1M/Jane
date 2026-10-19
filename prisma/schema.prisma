@@ -340,6 +340,7 @@ model User {
 
   autopilotSectors AutopilotSector[]
   autopilotActs    AutopilotAct[]
+  controllerRuns   ControllerRun[]
 
   @@map("users")
 }
@@ -2296,4 +2297,22 @@ model AutoInvestRun {
   @@unique([userId, paydayOn])
   @@index([userId, createdAt])
   @@map("auto_invest_runs")
+}
+
+// One person's nightly controller run (spec step 142): when it ran and, for each sector's
+// step in order, whether it ran, what it did and how much changed. One per person per day.
+model ControllerRun {
+  id         String    @id @default(cuid())
+  userId     String    @map("user_id")
+  // The UTC day it ran for, YYYY-MM-DD.
+  day        String
+  startedAt  DateTime  @map("started_at") @db.Timestamptz(3)
+  finishedAt DateTime? @map("finished_at") @db.Timestamptz(3)
+  // [{ step, status: "ok" | "failed" | "skipped", did, changed, ms }].
+  steps      Json      @default("[]")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, day])
+  @@map("controller_runs")
 }
