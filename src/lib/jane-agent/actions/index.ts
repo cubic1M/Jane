@@ -13,6 +13,9 @@ import {
   insuranceShopNo,
   insuranceShopYes,
   insuranceCheckupSeen,
+  insuranceClaimClose,
+  insuranceClaimStart,
+  insuranceClaimStep,
 } from "./insurance";
 import { ChatActionError, linksOf, type ActionHandler } from "./handler";
 import { planApproveSafe } from "./plan";
@@ -65,6 +68,9 @@ export const ACTION_HANDLERS: Readonly<Record<ActionId, ActionHandler>> = {
   "insurance.shop_yes": insuranceShopYes,
   "insurance.shop_no": insuranceShopNo,
   "insurance.checkup_seen": insuranceCheckupSeen,
+  "insurance.claim_start": insuranceClaimStart,
+  "insurance.claim_step": insuranceClaimStep,
+  "insurance.claim_close": insuranceClaimClose,
   "plan.approve_safe": planApproveSafe,
   "undo.rule": undoRule,
   "undo.no": undoNo,

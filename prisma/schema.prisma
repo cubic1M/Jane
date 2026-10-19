@@ -314,6 +314,7 @@ model User {
   insuranceQuotes        InsuranceQuote[]
   insuranceShops         InsuranceShop[]
   insuranceCheckups      InsuranceCheckup[]
+  insuranceClaims        InsuranceClaim[]
   lifeEvents             LifeEvent[]
   // What's in investment accounts (spec step 128).
   securities             Security[]
@@ -1514,6 +1515,7 @@ model InsurancePolicy {
   document Document?        @relation(fields: [documentId], references: [id], onDelete: SetNull)
   quotes   InsuranceQuote[]
   shops    InsuranceShop[]
+  claims   InsuranceClaim[]
 
   @@index([userId, status])
   @@map("insurance_policies")
@@ -1613,6 +1615,37 @@ model InsuranceCheckup {
 
   @@index([userId, createdAt])
   @@map("insurance_checkups")
+}
+
+// A claim the person is making (spec step 107), with its steps (CLAIM_GUIDES in
+// src/config/claims.ts) as they were when it started. A step is only ever marked done,
+// never removed, so the tracker never loses one.
+model InsuranceClaim {
+  id          String    @id @default(cuid())
+  userId      String    @map("user_id")
+  policyId    String?   @map("policy_id")
+  // The kind of policy (POLICY_KINDS) and what happened (the guide's event key).
+  kind        String
+  event       String
+  happenedOn  DateTime  @map("happened_on") @db.Date
+  // open or closed.
+  status      String    @default("open")
+  // [{ key, label, dueOn: YYYY-MM-DD, doneAt: ISO time or null }].
+  steps       Json      @default("[]")
+  carrier     String?
+  // The insurer's claims line and page, from the partner's catalog when known.
+  claimsPhone String?   @map("claims_phone")
+  claimsUrl   String?   @map("claims_url")
+  claimNumber String?   @map("claim_number")
+  closedAt    DateTime? @map("closed_at") @db.Timestamptz(3)
+  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt   DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  user   User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  policy InsurancePolicy? @relation(fields: [policyId], references: [id], onDelete: SetNull)
+
+  @@index([userId, status])
+  @@map("insurance_claims")
 }
 
 // The household facts that matter for cover (spec step 102), as the person typed them.

@@ -31,6 +31,9 @@ export const ACTION_IDS = [
   "insurance.shop_yes",
   "insurance.shop_no",
   "insurance.checkup_seen",
+  "insurance.claim_start",
+  "insurance.claim_step",
+  "insurance.claim_close",
   "plan.approve_safe",
   "undo.rule",
   "undo.no",
@@ -151,6 +154,11 @@ export type MessageRefs = {
   insuranceShopId?: string;
   // Spec step 106: a coverage checkup, by id.
   insuranceCheckupId?: string;
+  // Spec step 107: a claim to start (what happened, on which policy) and one being tracked,
+  // with the step its Done button marks.
+  claim?: { kind: string; event: string; policyId: string | null };
+  claimId?: string;
+  claimStep?: string;
   // The finding as Jane described it (src/lib/jane-agent/fingerprint.ts): a button only
   // acts while the finding is still what the message said.
   fingerprint?: string;

@@ -108,3 +108,28 @@ test("a demo-bank person says yes to Jane's pick (step 104)", async ({
   await page.getByRole("button", { name: "Yes, switch" }).click();
   await expect(page).toHaveURL("/actions");
 });
+
+test("a person starts a claim tracker and ticks off a step (step 107)", async ({
+  context,
+  page,
+  baseURL,
+}) => {
+  const user = await signedInUser("user");
+  userId = user.userId;
+  await context.addCookies([
+    { name: "authjs.session-token", value: user.sessionToken, url: baseURL ?? "" },
+  ]);
+  await page.goto("/insurance/claims");
+  await expect(page.getByRole("heading", { name: "Claims", level: 1 })).toBeVisible();
+  await page.getByLabel("It's on").selectOption("kind:auto");
+  await page.getByLabel("What happened").selectOption("accident");
+  await page.getByRole("button", { name: "Start the tracker" }).click();
+  await expect(page.getByRole("heading", { name: /^A car accident,/ })).toBeVisible();
+  await expect(page.getByText("0 of 6 steps done")).toBeVisible();
+  await page.getByRole("button", { name: "Done", exact: true }).click();
+  await expect(page.getByText("1 of 6 steps done")).toBeVisible();
+  const overflow = await page.evaluate(
+    () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
+  );
+  expect(overflow).toBeLessThanOrEqual(0);
+});
