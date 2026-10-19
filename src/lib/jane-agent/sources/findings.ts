@@ -30,6 +30,11 @@ export function findingCandidate(finding: SnapshotFinding): Candidate {
   }
   actions.push(
     { id: "finding.no", label: "No", kind: "secondary" },
+    // Spec step 90: quick replies, answered in the chat.
+    { id: "finding.why", label: "Why?", kind: "quick" },
+    ...(finding.pick
+      ? [{ id: "finding.options" as const, label: "Show options", kind: "quick" as const }]
+      : []),
     { id: "open", label: "Open", kind: "link", href: `/report/${finding.findingId}` },
   );
   return {

@@ -7,6 +7,7 @@ import {
 import { estimateMessage } from "../tax-replies";
 import { w4Suggestion, withholdingFacts } from "../tax-w4";
 import { savingMessage } from "../tax-saving-message";
+import { nextQuarter, quarterMessage, setAsideMessage } from "../tax-self-employed";
 import { formatCents } from "@/lib/money";
 import { incomeLine, listOf } from "@/planning/tax-profile";
 import { PROFILE_HREF, PROFILE_INTRO, TAGS_HREF, nextQuestion } from "../tax-flow";
@@ -32,7 +33,7 @@ const tagPhrase = (tag: TaxTagKind, count: number, cents: number) =>
 
 export const taxesSource: MessageSource = {
   key: "taxes",
-  gather(snapshot) {
+  gather(snapshot, context) {
     const tax = snapshot.tax;
     if (!tax) return [];
     const profile = tax.profile;
@@ -147,6 +148,31 @@ export const taxesSource: MessageSource = {
           dedupeKey: `saving:${estimate.year}:${saving.key}`,
           priority: TAX_MESSAGE_PRIORITY.saving,
         });
+      }
+    }
+
+    // Spec step 123: freelancers, in demo advice mode: the next estimated payment with its
+    // amount, before it's due; and what to set aside from each new payment.
+    const self = tax.selfEmployed;
+    if (self && self.advice && self.active) {
+      const q = nextQuarter(self, context.local.date);
+      if (q) {
+        out.push({
+          kind: "heads_up",
+          ...quarterMessage(self, q),
+          dedupeKey: `quarter:${q.date}`,
+          priority: TAX_MESSAGE_PRIORITY.quarterly,
+        });
+      }
+      if (self.setAsideRate > 0) {
+        for (const payment of self.recent) {
+          out.push({
+            kind: "heads_up",
+            ...setAsideMessage(self, payment),
+            dedupeKey: `setaside:${payment.id}`,
+            priority: TAX_MESSAGE_PRIORITY.set_aside,
+          });
+        }
       }
     }
 

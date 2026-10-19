@@ -419,6 +419,11 @@ export async function exportUserData(
         payStateYtdCents: true,
         payRetirementYtdCents: true,
         payPretaxYtdCents: true,
+        // Spec step 123: the freelance helpers.
+        homeOfficeSqFt: true,
+        businessMiles: true,
+        businessMilesYear: true,
+        taxPayments: true,
         updatedAt: true,
       },
     }),

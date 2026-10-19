@@ -27,6 +27,7 @@ import { TAX_PROFILE_HANDLERS, taxFoundYes, taxIncomeAdd, taxIncomeNo, taxStateS
 import { taxFormGot, taxTagNo, taxTagSet, taxTagYes } from "./tax-organizer";
 import { taxW4Keep, taxW4Next, taxW4Sent, taxW4Start, taxW4Stop } from "./tax-w4";
 import { taxSaveNo, taxSaveTask } from "./tax-savings";
+import { taxMilesAdd, taxQuarterPaid } from "./tax-self-employed";
 import {
   investAnswer1,
   investAnswer2,
@@ -39,6 +40,8 @@ import { changeBudget, changeExpected, changeLook } from "./changes";
 import { lifeNever, lifeNo, lifeYes } from "./life";
 import { transferCount, transferSkip, tuneUpAccept, tuneUpKeep, tuneUpUndo } from "./upkeep";
 import { policyConfirm, policyNotInsurance } from "./found-policies";
+import { budgetSet } from "./budget";
+import { findingOptions, findingWhy } from "./explain";
 import { savedShare } from "./saved";
 
 // Every button action, by id (spec step 81). A new button is a new handler here; the
@@ -78,6 +81,10 @@ export const ACTION_HANDLERS: Readonly<Record<ActionId, ActionHandler>> = {
   "clarify.1": clarifyOne,
   "clarify.2": clarifyTwo,
   "clarify.3": clarifyThree,
+  // Spec step 90.
+  "budget.set": budgetSet,
+  "finding.why": findingWhy,
+  "finding.options": findingOptions,
   // Taxes (spec step 118).
   "tax.found_yes": taxFoundYes,
   ...TAX_PROFILE_HANDLERS,
@@ -98,6 +105,9 @@ export const ACTION_HANDLERS: Readonly<Record<ActionId, ActionHandler>> = {
   // Spec step 122.
   "tax.save_task": taxSaveTask,
   "tax.save_no": taxSaveNo,
+  // Spec step 123.
+  "tax.quarter_paid": taxQuarterPaid,
+  "tax.miles_add": taxMilesAdd,
   // Investments (spec step 129 on).
   "invest.answer.1": investAnswer1,
   "invest.answer.2": investAnswer2,

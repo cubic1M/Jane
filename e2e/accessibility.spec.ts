@@ -68,6 +68,7 @@ const SIGNED_IN = [
   "/taxes",
   "/taxes/profile",
   "/taxes/tags",
+  "/taxes/self-employed",
   "/settings/team-access",
   "/jane",
   "/money",
