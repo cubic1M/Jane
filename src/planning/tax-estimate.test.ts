@@ -247,7 +247,10 @@ describe("the estimate", () => {
   it("phases out student loan interest by income", () => {
     const at = (wages: number) =>
       estimateTaxes(
-        input({ income: { ...NO_INCOME, wagesCents: $(wages) }, studentLoanInterestCents: $(805.5) }),
+        input({
+          income: { ...NO_INCOME, wagesCents: $(wages) },
+          studentLoanInterestCents: $(805.5),
+        }),
       ).adjustments.studentLoanInterestCents;
     expect(at(80_000)).toBe($(805.5));
     // A tenth of the way through the $85,000–$100,000 range.

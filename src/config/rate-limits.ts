@@ -35,6 +35,8 @@ export const RATE_LIMITS = {
   // Messages typed to Jane in the chat, per user (spec step 84). Free questions that go
   // to Claude also count against "ask".
   chat: { limit: 60, windowSeconds: 60 * 60 },
+  // Trying Jane with sample data, per IP (spec step 138): each makes a sample person.
+  trial: { limit: 5, windowSeconds: 60 * 60 },
 } satisfies Record<string, Limit>;
 
 export type LimitName = keyof typeof RATE_LIMITS;

@@ -11,6 +11,7 @@ import type {
 import { logAudit } from "@/lib/audit";
 import type { Admin } from "@/lib/concierge";
 import { db as defaultClient } from "@/lib/db";
+import { TRIAL_ID_PREFIX } from "@/config/trial";
 
 // The spec's success metrics, for /admin/metrics. computeMetrics is pure (rows in,
 // numbers out) so each definition is tested; loadMetrics reads the rows.
@@ -221,6 +222,9 @@ export function automateNext(actions: MetricRows["actions"]): AutomateRow[] {
 
 // Reads every row the metrics need: the reference data for computeMetrics in tests. The
 // page uses metrics-sql.ts instead.
+// Spec step 138: people trying Jane with sample data are never counted.
+const REAL = { not: { startsWith: TRIAL_ID_PREFIX } };
+
 export async function loadMetricRows({
   client = defaultClient,
 }: { client?: PrismaClient } = {}): Promise<MetricRows> {
@@ -236,9 +240,10 @@ export async function loadMetricRows({
     digests,
     conversions,
   ] = await Promise.all([
-    client.user.findMany({ select: { id: true, createdAt: true } }),
-    client.account.groupBy({ by: ["userId"], _min: { createdAt: true } }),
+    client.user.findMany({ where: { id: REAL }, select: { id: true, createdAt: true } }),
+    client.account.groupBy({ by: ["userId"], where: { userId: REAL }, _min: { createdAt: true } }),
     client.finding.findMany({
+      where: { userId: REAL },
       select: {
         id: true,
         userId: true,
@@ -253,10 +258,11 @@ export async function loadMetricRows({
       select: { properties: true, createdAt: true },
     }),
     client.decision.findMany({
-      where: { undoneAt: null },
+      where: { undoneAt: null, userId: REAL },
       select: { choice: true, createdAt: true, finding: { select: { type: true } } },
     }),
     client.action.findMany({
+      where: { userId: REAL },
       select: {
         userId: true,
         type: true,
@@ -266,13 +272,16 @@ export async function loadMetricRows({
         minutesSpent: true,
       },
     }),
-    client.membershipIntent.findMany({ select: { userId: true, createdAt: true } }),
+    client.membershipIntent.findMany({
+      where: { userId: REAL },
+      select: { userId: true, createdAt: true },
+    }),
     client.analyticsEvent.findMany({
       where: { userId: { not: null } },
       select: { userId: true, createdAt: true },
     }),
     client.digest.findMany({
-      where: { openedAt: { not: null } },
+      where: { openedAt: { not: null }, userId: REAL },
       select: { userId: true, openedAt: true },
     }),
     client.referralConversion.findMany({
