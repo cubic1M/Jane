@@ -28,6 +28,9 @@ vi.mock("@/lib/insurance/daily", () => ({
     checkups: { people: 1, checkups: 0 },
   })),
 }));
+vi.mock("@/lib/investments/hsa", () => ({
+  collectAllReceipts: vi.fn(async () => ({ people: 1, saved: 2 })),
+}));
 vi.mock("@/lib/investments/prices", () => ({
   refreshDemoPrices: vi.fn(async () => ({ refreshed: 1, failed: 0 })),
 }));
@@ -90,6 +93,7 @@ describe("GET /api/cron/plaid-sync", () => {
       autoInvest: { invested: 1, paused: 0, failed: 0 },
       controller: { queued: 3, done: 3 },
       prices: { refreshed: 1, failed: 0 },
+      hsaReceipts: { people: 1, saved: 2 },
     });
     expect(syncItem).toHaveBeenCalledWith("a");
     expect(syncItem).toHaveBeenCalledWith("b");
@@ -115,6 +119,7 @@ describe("GET /api/cron/plaid-sync", () => {
       autoInvest: { invested: 1, paused: 0, failed: 0 },
       controller: { queued: 3, done: 3 },
       prices: { refreshed: 1, failed: 0 },
+      hsaReceipts: { people: 1, saved: 2 },
     });
     expect(syncItem).not.toHaveBeenCalled();
   });
