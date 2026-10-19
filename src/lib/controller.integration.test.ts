@@ -7,13 +7,8 @@ import { PrismaClient } from "@/generated/prisma/client";
 vi.mock("@/lib/session", () => ({ requireUser: vi.fn() }));
 vi.mock("@/lib/analytics", () => ({ track: vi.fn() }));
 vi.mock("@/lib/audit", () => ({ logAudit: vi.fn(), SYSTEM_ACTOR: { type: "system", id: null } }));
-vi.mock("@/lib/insurance/shop", async (importOriginal) => {
-  const real = await importOriginal<typeof import("@/lib/insurance/shop")>();
-  return { ...real, reshopPerson: vi.fn(real.reshopPerson) };
-});
 
 import { CONTROLLER_STEPS } from "@/config/controller";
-import { reshopPerson } from "@/lib/insurance/shop";
 import { answerByRules } from "@/lib/jane-agent/answer";
 import { gather } from "@/lib/jane-agent/brain";
 import { runChatTool } from "@/lib/jane-agent/claude-tools";
@@ -83,21 +78,27 @@ describe.runIf(url)("the nightly controller run", { timeout: 120_000 }, () => {
     expect(run).toMatchObject({ day: "2026-10-19" });
     expect(run!.steps.map((s) => s.step)).toEqual([...CONTROLLER_STEPS]);
     // Again the same night: nothing runs twice.
-    const spy = vi.mocked(reshopPerson);
-    spy.mockClear();
-    expect(await runController(userId, { client, now: NIGHT, api })).toEqual(run!.steps);
-    expect(spy).not.toHaveBeenCalled();
+    const insurance = vi.fn(async () => ({ did: "x", changed: 0 }));
+    expect(await runController(userId, { client, now: NIGHT, api, steps: { insurance } })).toEqual(
+      run!.steps,
+    );
+    expect(insurance).not.toHaveBeenCalled();
   });
 
   it("never lets a failing sector stop the others, and retries it through the jobs table", async () => {
     const userId = await demoPerson("controller-fail");
-    // The insurance partner is down all night.
-    const real = vi.mocked(reshopPerson).getMockImplementation()!;
-    vi.mocked(reshopPerson).mockRejectedValue(new Error("partner down"));
+    // The insurance partner is down tonight.
+    const down = vi.fn(async () => {
+      throw new Error("partner down");
+    });
     const errors = vi.spyOn(console, "error").mockImplementation(() => {});
-    const logs = await runController(userId, { client, now: NIGHT, api });
+    const logs = await runController(userId, {
+      client,
+      now: NIGHT,
+      api,
+      steps: { insurance: down },
+    });
     errors.mockRestore();
-    vi.mocked(reshopPerson).mockImplementation(real);
     expect(logs.find((l) => l.step === "insurance")).toMatchObject({
       status: "failed",
       did: "Couldn't check tonight; I'll try again.",

@@ -126,14 +126,17 @@ const STEPS: Record<
   },
 };
 
+type StepRunner = (typeof STEPS)[ControllerStep];
+
 async function runStep(
   userId: string,
   step: ControllerStep,
   options: Required<Pick<Options, "client" | "now">> & Options,
+  run: StepRunner = STEPS[step],
 ): Promise<StepLog> {
   const started = Date.now();
   try {
-    const result = await STEPS[step](userId, options);
+    const result = await run(userId, options);
     return { step, status: "ok", ...result, ms: Date.now() - started };
   } catch (error) {
     console.error("Controller step failed", { userId, step, error: scrub(String(error)) });
@@ -156,7 +159,12 @@ export async function runController(
     now = new Date(),
     api,
     budgetMs = CONTROLLER_BUDGET_MS,
-  }: Options & { budgetMs?: number } = {},
+    steps: overrides = {},
+  }: Options & {
+    budgetMs?: number;
+    // Tests replace a step to make it fail or count its calls.
+    steps?: Partial<Record<ControllerStep, StepRunner>>;
+  } = {},
 ): Promise<StepLog[]> {
   const db = scopedFor(userId, client);
   const today = day(now);
@@ -181,7 +189,7 @@ export async function runController(
       });
       continue;
     }
-    const log = await runStep(userId, step, { client, now, api });
+    const log = await runStep(userId, step, { client, now, api }, overrides[step]);
     logs.push(log);
     // A failed step is retried on its own, with the jobs table's waits.
     if (log.status === "failed") {
