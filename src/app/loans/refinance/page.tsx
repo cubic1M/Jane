@@ -6,7 +6,7 @@ import { DemoAdviceLabel } from "@/components/demo-advice-label";
 import { REFI_MIN_SAVING_CENTS } from "@/config/debt";
 import { formatRate } from "@/insights/loans";
 import { formatCents } from "@/lib/money";
-import { loadRefinance } from "@/lib/refinance";
+import { ensureChecked, loadRefinance } from "@/lib/refinance";
 import { requireUser } from "@/lib/session";
 import type { RefinanceComparison } from "@/planning/refinance";
 import { listApplications, statusLine } from "@/lib/loan-applications";
@@ -238,6 +238,8 @@ async function RefinanceContent({
   const user = await requireUser();
   await connection();
   const params = await searchParams;
+  // Opened before Jane's first monthly check: she checks now.
+  await ensureChecked(user.id);
   const [refi, apps, transfers] = await Promise.all([
     loadRefinance(user.id),
     listApplications(user.id),

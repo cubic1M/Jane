@@ -5,6 +5,7 @@ import { AppHeader } from "@/components/app-header";
 import { SimulatedBanner } from "@/components/simulated-banner";
 import { ViewTracker } from "@/components/view-tracker";
 import { SIMULATED_PARTNER } from "@/config/brokerage";
+import { explainer } from "@/config/learn";
 import { scopedFor } from "@/lib/db-scoped";
 import { formatBps, type HoldingView } from "@/insights/investments";
 import { loadInvestments } from "@/lib/investments/holdings";
@@ -164,6 +165,25 @@ async function InvestmentsContent() {
               Automatic investing
             </Link>
             : every payday, only what safe to spend doesn&apos;t need.
+          </p>
+          <p className="text-sm text-zinc-600 dark:text-zinc-400">
+            <Link href="/investments/accounts" className={LINK}>
+              Which account first
+            </Link>
+            : the match, HSA, IRA or taxable, and where to hold what.
+          </p>
+          <p className="text-sm text-zinc-600 dark:text-zinc-400">
+            Learn:{" "}
+            {["index-funds", "fees", "the-match", "roth-vs-traditional", "rebalancing"].map(
+              (slug, i) => (
+                <span key={slug}>
+                  {i > 0 && " · "}
+                  <Link href={`/learn/${slug}`} className={LINK}>
+                    {explainer(slug)?.title.toLowerCase()}
+                  </Link>
+                </span>
+              ),
+            )}
           </p>
 
           {data.byAssetClass.length > 0 && (

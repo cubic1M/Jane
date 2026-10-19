@@ -359,9 +359,17 @@ describe("heads-ups", () => {
 
 describe("plan (the limits)", () => {
   const busy = snapshot({
-    findings: Array.from({ length: 6 }, (_, i) =>
-      finding({ findingId: `f${i}`, annualSavingsCents: 1_000 * (6 - i) }),
-    ),
+    // Each of a different kind, so none go together in one message (spec step 92).
+    findings: (
+      [
+        "price_increase",
+        "bank_fees",
+        "subscription_review",
+        "bill_negotiation",
+        "idle_cash",
+        "card_interest",
+      ] as const
+    ).map((type, i) => finding({ findingId: `f${i}`, type, annualSavingsCents: 1_000 * (6 - i) })),
     plan: { items: 6, annualSavingsCents: 21_000, safeItems: 3 },
     urgentAlerts: [
       { id: "al1", title: "A", body: "a" },
@@ -465,5 +473,76 @@ describe("plan (the limits)", () => {
       ],
     });
     expect(keys(custom)).toEqual(["hello:x"]);
+  });
+});
+
+// Spec step 92: related suggestions become one message with a list and a Yes each, which
+// counts as one toward the day; the findings behind it are posted hidden, so they never come
+// on their own later.
+describe("bundles", () => {
+  const subs = ["Netflix", "Hulu", "Peacock"].map((name, i) =>
+    finding({
+      findingId: `s${i}`,
+      type: "subscription_review",
+      title: `Review your ${name} subscription`,
+      annualSavingsCents: 10_000 - i * 1_000,
+      savings: `Could save about $${100 - i * 10}.00 a year`,
+    }),
+  );
+
+  it("puts findings of one kind in one message, a Yes each, in the first one's place", () => {
+    const out = plan(
+      snapshot({ findings: [...subs, finding({ findingId: "p1" })] }),
+      NONE,
+      MORNING,
+      {
+        ...SYNC,
+        dailyLimit: 2,
+      },
+    );
+    const shown = out.filter((m) => !m.hidden);
+    expect(shown.map((m) => m.kind)).toEqual(["brief", "decision", "decision"]);
+    const bundle = shown[1];
+    expect(bundle.dedupeKey).toMatch(/^findings:bundle:/);
+    expect(bundle.body).toBe(
+      [
+        "I found 3 subscriptions you could cancel, about $270.00 a year in all.",
+        "- Review your Netflix subscription: could save about $100.00 a year",
+        "- Review your Hulu subscription: could save about $90.00 a year",
+        "- Review your Peacock subscription: could save about $80.00 a year",
+        "Want me to handle any of them?",
+      ].join("\n"),
+    );
+    expect(bundle.actions.map((a) => a.label)).toEqual([
+      "Yes: Netflix",
+      "Yes: Hulu",
+      "Yes: Peacock",
+      "Review the plan",
+    ]);
+    expect(bundle.refs.items?.map((i) => i.dedupeKey)).toEqual([
+      "findings:s0",
+      "findings:s1",
+      "findings:s2",
+    ]);
+    // The three findings, hidden behind it; the price rise on its own.
+    expect(keys(out.filter((m) => m.hidden))).toEqual([
+      "findings:s0",
+      "findings:s1",
+      "findings:s2",
+    ]);
+    expect(shown[2].dedupeKey).toBe("findings:p1");
+  });
+
+  it("leaves a kind of one on its own, and never re-bundles what was posted", () => {
+    expect(plan(snapshot({ findings: [subs[0]] }), NONE, MORNING, SYNC).some((m) => m.hidden)).toBe(
+      false,
+    );
+    const again = plan(
+      snapshot({ findings: subs }),
+      { recent: [], seenKeys: ["findings:s0", "findings:s1"] },
+      MORNING,
+      SYNC,
+    );
+    expect(keys(again).filter((k) => k.startsWith("findings:"))).toEqual(["findings:s2"]);
   });
 });

@@ -16,6 +16,7 @@ vi.mock("@/lib/investments/review", () => ({ loadReview: vi.fn() }));
 vi.mock("@/lib/investments/retirement", () => ({ loadRetirement: vi.fn() }));
 vi.mock("@/lib/investments/rebalance", () => ({ loadRebalance: vi.fn() }));
 vi.mock("@/lib/investments/auto-invest", () => ({ loadAutoInvest: vi.fn() }));
+vi.mock("@/lib/investments/accounts", () => ({ loadAccountPlan: vi.fn() }));
 
 import { loadInvestments } from "@/lib/investments/holdings";
 import { profileOf } from "@/lib/investments/profile";
@@ -28,11 +29,14 @@ import { loadRetirement } from "@/lib/investments/retirement";
 import { retirementPlan } from "@/planning/retirement";
 import { loadRebalance } from "@/lib/investments/rebalance";
 import { loadAutoInvest } from "@/lib/investments/auto-invest";
+import { loadAccountPlan } from "@/lib/investments/accounts";
+import { accountOrder, assetLocation, unrealisedGains } from "@/planning/account-order";
 import type { InvestmentSnapshot } from "./snapshot";
 import { rebalancePlan } from "@/insights/rebalance";
 import { FUND_FACTS } from "@/config/funds";
 import { EMPTY_ANSWERS, profileSummary, type ProfileAnswers } from "@/planning/investor-profile";
 import {
+  accountsReply,
   autoInvestReply,
   feesReply,
   profileReply,
@@ -47,6 +51,7 @@ import { investmentsSource } from "../sources/investments";
 import { holdingsReply, matchAccounts } from "./replies";
 import { INVESTMENT_TOOLS, runInvestmentTool } from "./tools";
 import { CHAT_PAGES, CHAT_TOOLS, proposeAction } from "../claude-tools";
+import { learnLink, learnReply } from "../learn";
 import type { PrismaClient } from "@/generated/prisma/client";
 
 // Spec step 128: what the person owns, in Jane's chat.
@@ -740,7 +745,12 @@ describe("the review message with orders ready", () => {
       kind: "decision",
       refs: { advice: true, rebalanceKey: PLAN.key },
     });
-    expect(message.actions.map((a) => a.id)).toEqual(["invest.rebalance", "open", "snooze"]);
+    expect(message.actions.map((a) => a.id)).toEqual([
+      "invest.rebalance",
+      "open",
+      "open",
+      "snooze",
+    ]);
     expect(message.body).toContain(
       "Tap and I'll place them in the simulated brokerage (no real money moves).",
     );
@@ -966,5 +976,184 @@ describe("Claude's auto_invest tool", () => {
     });
     expect(parsed.brokerage).toBe("simulated: no real money moves");
     expect(out.cents).toEqual(expect.arrayContaining([10_000, 277_512]));
+  });
+});
+
+// Spec step 135: which account first.
+const ORDER = accountOrder({
+  age: 45,
+  horizon: "over_20",
+  goals: ["retirement"],
+  marginalRate: 0.22,
+  match: { captured: false, missedCents: 81_600, fullMatchRate: 0.06, employeeRate: 0.04 },
+  employeeCents: 326_400,
+  catchUpCents: 0,
+  hasHsa: false,
+});
+const ACCOUNT_PLAN = {
+  advice: true,
+  profile: profileSummary(FULL, ASOF),
+  marginalRate: 0.22,
+  rothOrTraditional: "mix" as const,
+  order: ORDER,
+  location: assetLocation(demoInvestments().accounts, 0.22),
+  gains: unrealisedGains(demoInvestments().accounts),
+};
+
+describe("account questions, by rules", () => {
+  it.each([
+    "which account should I invest in first",
+    "where should I put my extra money",
+    "401k or roth ira",
+    "should I open an IRA",
+    "should I max out my HSA",
+    "asset location",
+    "do I have capital gains",
+    "tax loss harvesting",
+  ])("reads %j as accounts", (text) => {
+    expect(parseIntent(text, ASOF)).toMatchObject({ kind: "investments", topic: "accounts" });
+  });
+});
+
+describe("accountsReply", () => {
+  it("gives the order with room and reasons, where to hold what, and the gains", () => {
+    const reply = accountsReply(ACCOUNT_PLAN);
+    expect(reply.body).toMatch(
+      /^Here's the order I'd fill your accounts in:\n1\. Your 401\(k\), up to the full match \(6% of pay\)\. You put in 4%/,
+    );
+    expect(reply.body).toContain("3. A Roth IRA (up to $7,500.00 a year).");
+    expect(reply.body).toContain("- Pinnacle Dividend Income Fund is better in your Demo 401(k).");
+    expect(reply.body).toMatch(/of losses not yet taxed\.$/);
+    expect(reply.refs).toEqual({ advice: true });
+  });
+
+  it("gives real accounts the gains only, and asks for the profile first", () => {
+    const real = accountsReply({ ...ACCOUNT_PLAN, advice: false });
+    expect(real.body).toMatch(
+      /not yet taxed\. I don't recommend an account order on real accounts yet\.$/,
+    );
+    expect(real.refs).toEqual({});
+    expect(
+      accountsReply({ ...ACCOUNT_PLAN, order: null, profile: profileSummary(EMPTY_ANSWERS, ASOF) })
+        .refs.investQuestion,
+    ).toBe("age");
+  });
+});
+
+describe("the account order message", () => {
+  it("says the order once in demo advice mode, with the costliest move", () => {
+    const [message] = investmentsSource
+      .gather(
+        {
+          ...base,
+          investments: demoInvestmentSnapshot({
+            accountPlan: { order: ORDER, location: ACCOUNT_PLAN.location },
+          }),
+        },
+        {} as never,
+      )
+      .filter((c) => c.dedupeKey.startsWith("accounts:"));
+    expect(message).toMatchObject({
+      dedupeKey: "accounts:match,hsa,ira,workplace,taxable:PDIFX",
+      refs: { advice: true },
+      priority: MESSAGE_PRIORITY.account_order,
+    });
+    expect(message.body).toMatch(
+      /^Here's the order I'd fill your accounts in: 1\. Your 401\(k\), up to the full match \(6% of pay\); 2\. An HSA, if your health plan has a high deductible; 3\. A Roth IRA; 4\. Back to your 401\(k\), up to the limit; 5\. A taxable account for the rest\. And Pinnacle Dividend Income Fund is better held in your Demo 401\(k\): about \$[\d.]+ a year in tax where it is\.$/,
+    );
+    expect(
+      investmentsSource
+        .gather(
+          {
+            ...base,
+            investments: demoInvestmentSnapshot({
+              advice: false,
+              accountPlan: { order: ORDER, location: [] },
+            }),
+          },
+          {} as never,
+        )
+        .filter((c) => c.dedupeKey.startsWith("accounts:")),
+    ).toEqual([]);
+  });
+});
+
+describe("Claude's account_plan tool", () => {
+  it("gives the order and moves in demo advice mode, and the gains to everyone", async () => {
+    const options = { client: {} as PrismaClient, now: new Date("2026-10-19T12:00:00Z") };
+    vi.mocked(loadAccountPlan).mockResolvedValue({ ...ACCOUNT_PLAN, advice: false });
+    const real = JSON.parse((await runInvestmentTool("u", "account_plan", {}, options)).content);
+    expect(real.note).toBe("The account order is for demo advice mode only.");
+    expect(real.lossesNotYetTaxed).toBe("$548.87");
+    vi.mocked(loadAccountPlan).mockResolvedValue(ACCOUNT_PLAN);
+    const out = await runInvestmentTool("u", "account_plan", {}, options);
+    const parsed = JSON.parse(out.content);
+    expect(parsed.order[0].account).toBe("Your 401(k), up to the full match (6% of pay)");
+    expect(parsed.topFederalRate).toBe("22%");
+    expect(out.cents).toContain(ACCOUNT_PLAN.location[0].taxDragCents);
+  });
+});
+
+// Spec step 136: learn.
+describe("what-is questions, by rules", () => {
+  it.each([
+    ["what is an index fund", "index-funds"],
+    ["what's an expense ratio", "fees"],
+    ["how does the match work", "the-match"],
+    ["explain roth vs traditional", "roth-vs-traditional"],
+    ["what does rebalancing mean", "rebalancing"],
+    ["what is refinancing", "refinancing"],
+    ["what's a deductible", "deductibles"],
+    ["what is the standard deduction", "standard-deduction"],
+  ])("reads %j as learning about %s", (text, slug) => {
+    expect(parseIntent(text, ASOF)).toEqual({ kind: "learn", slug });
+  });
+
+  it.each(["what's my deductible", "what are my investment fees", "what is safe to spend"])(
+    "leaves %j to the other rules",
+    (text) => {
+      expect(parseIntent(text, ASOF).kind).not.toBe("learn");
+    },
+  );
+});
+
+describe("learnReply and learn links", () => {
+  it("answers with the explainer's summary and first paragraph, and a link to the rest", () => {
+    const reply = learnReply("index-funds");
+    expect(reply.body).toMatch(/^An index fund owns every company in a market list/);
+    expect(reply.actions).toEqual([
+      { id: "open", label: "Read more", kind: "link", href: "/learn/index-funds" },
+    ]);
+    expect(reply.refs).toEqual({});
+    expect(learnReply("nope").body).toMatch(/^I can explain: index funds, /);
+  });
+
+  it("puts a Learn link under Jane's investment answers", () => {
+    expect(learnLink("the-match")).toEqual({
+      id: "open",
+      label: "Learn: the employer match",
+      kind: "link",
+      href: "/learn/the-match",
+    });
+    const reply = rebalanceReply(true, PLAN, profileSummary(FULL, ASOF));
+    expect(reply.actions.map((a) => (a.kind === "link" ? a.href : a.id))).toContain(
+      "/learn/rebalancing",
+    );
+  });
+
+  it("gives Claude the fixed text", async () => {
+    const out = await runInvestmentTool(
+      "u",
+      "explainer",
+      { slug: "deductibles" },
+      {
+        client: {} as PrismaClient,
+        now: new Date(),
+      },
+    );
+    expect(JSON.parse(out.content)).toMatchObject({
+      title: "Deductibles",
+      page: "/learn/deductibles",
+    });
   });
 });

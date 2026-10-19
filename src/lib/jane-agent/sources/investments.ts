@@ -14,6 +14,7 @@ import {
 import { matchLine, projectionLine } from "../investments/retirement-copy";
 import { asking, PROFILE_INTRO } from "../investments/profile-question";
 import type { Candidate } from "../types";
+import { learnLink } from "../learn";
 import { snoozeButton, type MessageSource } from "./source";
 
 // Investments in the chat (spec step 128 on). What Jane does by herself, at every autopilot
@@ -35,6 +36,9 @@ import { snoozeButton, type MessageSource } from "./source";
 //   automatically every payday (starting it is the person's tap); then on each payday
 //   invests by herself, at every autopilot level, says what she invested, and pauses that
 //   payday by herself when safe to spend is low, saying why.
+// - Step 135: in demo advice mode, once the profile is complete, says once which account to
+//   fill first and where each holding is best kept (again when that changes). Moving money
+//   between accounts is the person's step.
 // - Step 132: in demo advice mode, once the profile is complete, checks the retirement
 //   projection and the employer match, and says so when the person is behind or missing
 //   match money (again when that changes). Raising a contribution is done at the
@@ -92,6 +96,7 @@ export const investmentsSource: MessageSource = {
         refs: { advice: true },
         actions: [
           { id: "open", label: "See the fees", kind: "link", href: "/investments/fees" },
+          learnLink("index-funds"),
           snoozeButton(),
         ],
         dedupeKey: `fees:${tickers.join(",")}`,
@@ -110,6 +115,7 @@ export const investmentsSource: MessageSource = {
         actions: [
           ...(plan ? [rebalanceButton()] : []),
           { id: "open", label: "See the review", kind: "link", href: "/investments/review" },
+          learnLink("rebalancing"),
           snoozeButton(),
         ],
         dedupeKey: `review:${review.riskLevel}:${review.recommendations.map((r) => r.kind).join(",")}`,
@@ -139,10 +145,27 @@ export const investmentsSource: MessageSource = {
             kind: "link",
             href: "/investments/retirement",
           },
+          learnLink("the-match"),
           snoozeButton(),
         ],
         dedupeKey: `retirement:${retirement.status}:${retirement.match?.captured ?? "none"}`,
         priority: MESSAGE_PRIORITY.retirement,
+      });
+    }
+    const order = inv.accountPlan.order;
+    if (inv.advice && order) {
+      const move = inv.accountPlan.location[0];
+      out.push({
+        kind: "heads_up",
+        body: `Here's the order I'd fill your accounts in: ${order.map((s, i) => `${i + 1}. ${s.title}`).join("; ")}.${move ? ` And ${move.holding.name} is better held in ${move.better}: about ${formatCents(move.taxDragCents)} a year in tax where it is.` : ""}`,
+        refs: { advice: true },
+        actions: [
+          { id: "open", label: "See why", kind: "link", href: "/investments/accounts" },
+          learnLink("roth-vs-traditional"),
+          snoozeButton(),
+        ],
+        dedupeKey: `accounts:${order.map((s) => s.key).join(",")}:${inv.accountPlan.location.map((m) => m.holding.ticker).join(",")}`,
+        priority: MESSAGE_PRIORITY.account_order,
       });
     }
     const auto = inv.autoInvest;

@@ -161,14 +161,20 @@ describe.runIf(url)("freelancers' taxes against a real database", () => {
   });
 
   it("starts the set-aside goal by itself at Handle the safe stuff, never at Ask me first", async () => {
-    expect(await runTaxAutopilot(userId, { client, now: LINKED })).toEqual({ goalStarted: false });
+    expect(await runTaxAutopilot(userId, { client, now: LINKED })).toMatchObject({
+      goalStarted: false,
+    });
     await setAutopilot(userId, "safe", { client, now: LINKED });
-    expect(await runTaxAutopilot(userId, { client, now: LINKED })).toEqual({ goalStarted: true });
+    expect(await runTaxAutopilot(userId, { client, now: LINKED })).toMatchObject({
+      goalStarted: true,
+    });
     expect(
       await client.savingsGoal.count({ where: { userId, name: setAsideGoalName(2026) } }),
     ).toBe(1);
     // Once.
-    expect(await runTaxAutopilot(userId, { client, now: LINKED })).toEqual({ goalStarted: false });
+    expect(await runTaxAutopilot(userId, { client, now: LINKED })).toMatchObject({
+      goalStarted: false,
+    });
     await setAutopilot(userId, "ask", { client, now: LINKED });
   });
 

@@ -15,6 +15,9 @@ import { yearlyPremium } from "@/lib/insurance/policies";
 import { quotesFor } from "@/lib/insurance/quotes";
 import { adviceMode } from "@/lib/advice-mode";
 import { latestCheckup } from "@/lib/insurance/checkups";
+import { autopilotOf } from "@/lib/autopilot";
+import { autopilotReply } from "./autopilot";
+import { eventLabel, listClaims } from "@/lib/insurance/claims";
 import { formatCents } from "@/lib/money";
 import { loadInsuranceSnapshot } from "./snapshot";
 
@@ -27,7 +30,7 @@ export const INSURANCE_TOOLS: Anthropic.Tool[] = [
   {
     name: "insurance_policies",
     description:
-      "The person's insurance profile: every policy on file (kind, insurer, price, how often it's paid, deductible, cover limits, what it covers, next renewal date and where it came from), their household facts (own or rent, cars, dependants, pets) and coverage gaps Jane found, each with why it matters. Figures only come from these records; when something isn't on file, say so.",
+      "The person's insurance profile, and what Jane does with it by herself at their autopilot level: every policy on file (kind, insurer, price, how often it's paid, deductible, cover limits, what it covers, next renewal date and where it came from), their household facts (own or rent, cars, dependants, pets) and coverage gaps Jane found, each with why it matters. Figures only come from these records; when something isn't on file, say so.",
     input_schema: noInput,
   },
   {
@@ -40,6 +43,12 @@ export const INSURANCE_TOOLS: Anthropic.Tool[] = [
     name: "insurance_checkup",
     description:
       'Jane\'s latest coverage checkup (demo advice; empty for real accounts): each recommendation (a deductible to raise or lower against their savings, too little or too much cover, bundling, full cover on a car worth little, life cover after a new baby) with what it costs or saves a year and the risk it changes. It never runs a new checkup: the person can ask Jane "check my insurance".',
+    input_schema: noInput,
+  },
+  {
+    name: "insurance_claims",
+    description:
+      "Claims the person is tracking with Jane (spec step 107): what happened and when, the insurer and its claims line when known, the claim number, and every step with when it's due and whether it's done. Jane reminds the person; she never files a claim or talks to the insurer for them. For something that just happened, the person can tell Jane, like \"I had a car accident\", for what to do now.",
     input_schema: noInput,
   },
 ];
@@ -59,6 +68,23 @@ export async function runInsuranceTool(
     return formatCents(value);
   };
   if (name === "insurance_quotes") return quotesTool(userId, { client, now }, money, cents);
+  if (name === "insurance_claims") {
+    const claims = await listClaims(userId, { client });
+    return {
+      content: JSON.stringify({
+        claims: claims.map((c) => ({
+          what: eventLabel(c.kind, c.event),
+          happenedOn: c.happenedOn,
+          status: c.status,
+          insurer: c.carrier,
+          claimsLine: c.claimsPhone,
+          claimNumber: c.claimNumber,
+          steps: c.steps.map((s) => ({ step: s.label, dueOn: s.dueOn, done: s.doneAt !== null })),
+        })),
+      }),
+      cents,
+    };
+  }
   if (name === "insurance_checkup") {
     const checkup = (await adviceMode(userId, { client }))
       ? await latestCheckup(userId, { client })
@@ -131,6 +157,8 @@ export async function runInsuranceTool(
         dependants: fact(household.dependants),
         pets: fact(household.pets),
       },
+      // Spec step 108: what Jane does with insurance by herself at their autopilot level.
+      whatJaneDoesByHerself: autopilotReply(await autopilotOf(userId, { client })).body,
       // Spec step 105: switches Jane is doing, and ones finished lately.
       switches: switches.map((sw) => ({
         newPolicy: `${sw.carrier} ${kindWords(sw.kind as PolicyKind)}`,

@@ -13,6 +13,8 @@ import type { TaxIntent } from "./tax-intents";
 import { quarterMessage, setAsideMessage } from "./tax-self-employed";
 import type { RefundView } from "@/lib/tax-refund";
 import { refundMessage } from "./tax-refund-message";
+import type { ReturnView } from "@/lib/tax-filing";
+import { filingAccepted, filingOffer, filingReady } from "./tax-filing-message";
 import { onTrackLine, w4Suggestion, withholdingFacts } from "./tax-w4";
 import {
   balancePhrase as balancePhraseOf,
@@ -425,4 +427,40 @@ export function refundReply(refunds: RefundView[], estimate: TaxEstimateView): R
     actions: [link("See the estimate", "/taxes#estimate")],
     refs: {},
   };
+}
+
+// Spec step 126: "file my taxes", "when are taxes due".
+export function fileReply(f: {
+  year: number;
+  inSeason: boolean;
+  available: boolean;
+  ret: ReturnView | null;
+  profile: TaxProfileView;
+}): Reply {
+  const deadline = `Returns for ${f.year} are due April 15, ${f.year + 1} (October 15 with an extension).`;
+  if (!f.available) {
+    return {
+      body: `${deadline} Filing through Jane isn't available for your accounts yet; your tax-time pack is ready for whoever does your taxes.`,
+      actions: [link("Open the tax-time pack", `/tax-pack?year=${f.year}`)],
+      refs: {},
+    };
+  }
+  if (f.ret?.status === "ready_for_review") return filingReady(f.ret);
+  if (f.ret?.status === "accepted") return filingAccepted(f.ret);
+  if (f.ret?.status === "submitted") {
+    return {
+      body: `Your ${f.year} return is signed and sent; I'm waiting for it to be accepted.`,
+      actions: [link("See your return", "/taxes/file")],
+      refs: {},
+    };
+  }
+  if (!f.inSeason) {
+    return {
+      body: `${deadline} Filing opens in late January ${f.year + 1}; I'll have everything ready.`,
+      actions: [link("See your taxes", "/taxes")],
+      refs: {},
+    };
+  }
+  const offer = filingOffer(f.year, f.profile, 0);
+  return { ...offer, actions: offer.actions.filter((a) => a.id !== "snooze") };
 }

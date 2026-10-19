@@ -5,6 +5,7 @@ import type { PortfolioReview } from "@/insights/portfolio-review";
 import { loadFees } from "@/lib/investments/fees";
 import { loadInvestments } from "@/lib/investments/holdings";
 import type { RebalancePlan } from "@/insights/rebalance";
+import { loadAccountPlan, type AccountPlan } from "@/lib/investments/accounts";
 import { loadAutoInvest } from "@/lib/investments/auto-invest";
 import { loadRebalance } from "@/lib/investments/rebalance";
 import { loadRetirement } from "@/lib/investments/retirement";
@@ -33,6 +34,9 @@ export type InvestmentSnapshot = {
   // Spec step 133: the orders that move to the recommended mix; null until the profile is
   // done (or outside demo advice mode).
   rebalance: RebalancePlan | null;
+  // Spec step 135: which account first and where to hold what; order null until the
+  // profile is done.
+  accountPlan: Pick<AccountPlan, "order" | "location">;
   // Spec step 134: automatic investing, its recent paydays and Jane's suggestion.
   autoInvest: Pick<
     Awaited<ReturnType<typeof loadAutoInvest>>,
@@ -45,16 +49,25 @@ export async function loadInvestmentSnapshot(
   { client, now }: { client: PrismaClient; now: Date },
 ): Promise<InvestmentSnapshot> {
   const investments = await loadInvestments(userId, { client, now });
-  const [{ fees }, { review }, { retirement }, { plan: rebalance }, auto, advice, profile] =
-    await Promise.all([
-      loadFees(userId, { client, now, investments }),
-      loadReview(userId, { client, now, investments }),
-      loadRetirement(userId, { client, now, investments }),
-      loadRebalance(userId, { client, now, investments }),
-      loadAutoInvest(userId, { client, now }),
-      adviceMode(userId, { client }),
-      profileOf(userId, { client }),
-    ]);
+  const [
+    { fees },
+    { review },
+    { retirement },
+    { plan: rebalance },
+    auto,
+    accountPlan,
+    advice,
+    profile,
+  ] = await Promise.all([
+    loadFees(userId, { client, now, investments }),
+    loadReview(userId, { client, now, investments }),
+    loadRetirement(userId, { client, now, investments }),
+    loadRebalance(userId, { client, now, investments }),
+    loadAutoInvest(userId, { client, now }),
+    loadAccountPlan(userId, { client, now, investments }),
+    adviceMode(userId, { client }),
+    profileOf(userId, { client }),
+  ]);
   return {
     totalCents: investments.totalCents,
     holdingCount: investments.holdingCount,
@@ -75,6 +88,7 @@ export async function loadInvestmentSnapshot(
     review,
     retirement,
     rebalance,
+    accountPlan: { order: accountPlan.order, location: accountPlan.location },
     autoInvest: {
       plan: auto.plan,
       runs: auto.runs,

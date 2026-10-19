@@ -31,6 +31,9 @@ export const ACTION_IDS = [
   "insurance.shop_yes",
   "insurance.shop_no",
   "insurance.checkup_seen",
+  "insurance.claim_start",
+  "insurance.claim_step",
+  "insurance.claim_close",
   "plan.approve_safe",
   "undo.rule",
   "undo.no",
@@ -61,6 +64,12 @@ export const ACTION_IDS = [
   // Spec step 91: saving what the person told Jane, and a suggestion never to make again.
   "pref.save",
   "suggest.never",
+  // Spec step 92: a Yes each on a message bundling findings of one kind (refs.items).
+  "bundle.1",
+  "bundle.2",
+  "bundle.3",
+  "bundle.4",
+  "bundle.5",
   // Taxes (spec step 118): the tax profile, one question at a time.
   "tax.found_yes",
   "tax.filing_single",
@@ -94,6 +103,8 @@ export const ACTION_IDS = [
   // Spec step 125: a tax refund's plan.
   "tax.refund_apply",
   "tax.refund_no",
+  // Spec step 126: start the return with the filing partner (signing is on the page).
+  "tax.file_start",
   // Investments (spec step 129 on): the answer buttons on an investor-profile question,
   // by position (src/config/investing.ts PROFILE_QUESTIONS).
   "invest.answer.1",
@@ -157,6 +168,11 @@ export type MessageRefs = {
   insuranceShopId?: string;
   // Spec step 106: a coverage checkup, by id.
   insuranceCheckupId?: string;
+  // Spec step 107: a claim to start (what happened, on which policy) and one being tracked,
+  // with the step its Done button marks.
+  claim?: { kind: string; event: string; policyId: string | null };
+  claimId?: string;
+  claimStep?: string;
   // The finding as Jane described it (src/lib/jane-agent/fingerprint.ts): a button only
   // acts while the finding is still what the message said.
   fingerprint?: string;
@@ -191,6 +207,8 @@ export type MessageRefs = {
   budget?: { category: string; amountCents: number };
   // Spec step 91: what "Remember this" would save.
   preference?: PreferenceDraft;
+  // Spec step 92: the messages a bundle stands for, by dedupeKey, in button order.
+  items?: { dedupeKey: string; label: string }[];
   // Taxes (spec step 118): the tax profile question a message is asking, and the kind of
   // income "Add it" would add.
   taxField?: string;
@@ -247,6 +265,8 @@ export type Candidate = {
   // Never posted twice for the same person (jane_messages has a unique index on it).
   dedupeKey: string;
   priority: number;
+  // Spec step 92: how it goes into one message with others like it (findings of a kind).
+  bundle?: { group: string; name: string; line: string; cents: number | null };
 };
 
 // A stored message, as the chat and the button actions read it.

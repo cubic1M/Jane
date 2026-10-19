@@ -59,6 +59,7 @@ export async function exportUserData(
     taxProfile,
     taxTags,
     taxForms,
+    taxReturns,
   ] = await Promise.all([
     client.user.findUniqueOrThrow({
       where: { id: userId },
@@ -439,6 +440,20 @@ export async function exportUserData(
       select: { transactionId: true, merchantKey: true, tag: true, updatedAt: true },
     }),
     db.taxForms.findMany({ select: { year: true, key: true, receivedAt: true } }),
+    // Returns filed through the filing partner (spec step 126), with what was handed over.
+    db.taxReturns.findMany({
+      select: {
+        year: true,
+        partner: true,
+        status: true,
+        package: true,
+        preview: true,
+        signerName: true,
+        signedAt: true,
+        submittedAt: true,
+        acceptedAt: true,
+      },
+    }),
   ]);
   // Terms they typed for debts their bank doesn't report (spec step 109).
   const debtTerms = await db.debtTerms.findMany({
@@ -579,5 +594,6 @@ export async function exportUserData(
     taxProfile,
     taxTags,
     taxForms,
+    taxReturns,
   };
 }

@@ -4,7 +4,9 @@ import { gapAdvice, kindWords } from "@/lib/insurance/gaps";
 import type { PolicyKind } from "@/config/insurance";
 import type { Shop } from "@/lib/insurance/shop";
 import { formatCents } from "@/lib/money";
+import { reminderDue } from "@/lib/insurance/claim-rules";
 import { checkupBody } from "../insurance/checkup-words";
+import { trackerActions, trackerBody } from "../insurance/claim-words";
 import type { InsuranceSnapshot } from "../insurance/snapshot";
 import type { Candidate } from "../types";
 import { shortDate, snoozeButton, type MessageSource } from "./source";
@@ -52,7 +54,11 @@ function gapMessages(insurance: InsuranceSnapshot): Candidate[] {
 
 // "I found car insurance $408.00 a year cheaper for the same cover", with the pick, why in
 // three lines, and what Yes does.
-export function shopBody(shop: Shop, policies: Policies): string | null {
+export function shopBody(
+  shop: Shop,
+  policies: Policies,
+  autopilot: string | null = null,
+): string | null {
   const policy = policies.find((p) => p.id === shop.policyId);
   if (!policy || !shop.pick || shop.savingCents === null) return null;
   const { pick } = shop;
@@ -62,13 +68,16 @@ export function shopBody(shop: Shop, policies: Policies): string | null {
     ...(shop.demo
       ? ["These are sample quotes from my demo carrier catalog, not real offers."]
       : []),
-    `Say yes and I'll switch you. Your ${policy.carrier} policy stays in place until the new one is.`,
+    // Spec step 108: at "handle everything" the switch is ready to go.
+    autopilot === "all"
+      ? `It's ready: tap Yes and I'll do the rest. I buy it, confirm its first payment, then cancel ${policy.carrier} from the same day.`
+      : `Say yes and I'll switch you. Your ${policy.carrier} policy stays in place until the new one is.`,
   ].join("\n");
 }
 
-function shopMessages(insurance: InsuranceSnapshot): Candidate[] {
+function shopMessages(insurance: InsuranceSnapshot, autopilot: string | null): Candidate[] {
   return (insurance.shops ?? []).flatMap((shop): Candidate[] => {
-    const body = shopBody(shop, insurance.policies);
+    const body = shopBody(shop, insurance.policies, autopilot);
     if (!body) return [];
     return [
       {
@@ -180,13 +189,33 @@ function checkupMessages(insurance: InsuranceSnapshot): Candidate[] {
   ];
 }
 
+// Spec step 107: a claim's next step, once it's due and every few days while it waits, with
+// Done right there. Jane reminds; the person files.
+function claimReminders(insurance: InsuranceSnapshot, asOf: string): Candidate[] {
+  return (insurance.claims ?? []).flatMap((claim): Candidate[] => {
+    const due = reminderDue(claim, asOf);
+    if (!due) return [];
+    return [
+      {
+        kind: "heads_up",
+        body: `A reminder for your claim: ${trackerBody(claim)}`,
+        refs: { claimId: claim.id, claimStep: due.step.key },
+        actions: trackerActions(claim),
+        dedupeKey: `claim:${claim.id}:${due.step.key}:${due.round}`,
+        priority: MESSAGE_PRIORITY.insurance_claim,
+      },
+    ];
+  });
+}
+
 export const insuranceSource: MessageSource = {
   key: "insurance",
   gather: (snapshot) => {
     const insurance = snapshot.insurance;
     if (!insurance) return [];
     return [
-      ...shopMessages(insurance),
+      ...claimReminders(insurance, snapshot.asOf),
+      ...shopMessages(insurance, snapshot.autopilot),
       ...switchMessages(insurance),
       ...gapMessages(insurance),
       ...checkedMessages(insurance),

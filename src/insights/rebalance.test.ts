@@ -4,7 +4,7 @@ import { DEMO_EMPLOYER_PLAN_MENU } from "@/config/funds";
 import { TARGET_MIXES } from "@/config/investing";
 import { demoInvestments } from "@/lib/investments/__fixtures__/demo";
 import { mixOfTicker as mixOf } from "@/config/funds";
-import { rebalancePlan } from "./rebalance";
+import { accountTargets, rebalancePlan } from "./rebalance";
 
 // Spec step 133: "move to the recommended mix" as orders, with the mix before and after.
 
@@ -63,11 +63,27 @@ describe("rebalancePlan on the demo bank", () => {
   });
 
   it("has nothing to do on target or without holdings", () => {
-    const onTarget = accounts.map((a) => ({
-      ...a,
-      holdings: a.holdings.map((h) => ({ ...h, mix: TARGET_MIXES[3] })),
-    }));
+    // One account holding exactly the target mix.
+    const brokerage = accounts.find((a) => a.subtype === "brokerage")!;
+    const onTarget = [
+      { ...brokerage, holdings: brokerage.holdings.map((h) => ({ ...h, mix: TARGET_MIXES[3] })) },
+    ];
     expect(rebalancePlan(onTarget, 3, mixOf).orders).toEqual([]);
     expect(rebalancePlan([], 3, mixOf)).toMatchObject({ orders: [], realisedGainCents: 0 });
+  });
+
+  it("puts bonds in the 401(k), not the taxable account (spec step 135)", () => {
+    for (const level of [1, 3, 5] as const) {
+      const p = rebalancePlan(accounts, level, mixOf);
+      const bondBuys = p.orders.filter((o) => o.side === "buy" && o.ticker === "KTBIX");
+      expect(
+        bondBuys.every((o) => o.accountName === "Demo 401(k)"),
+        `level ${level}`,
+      ).toBe(true);
+      for (const m of p.after) expect(m.share, `${level} ${m.assetClass}`).toBeCloseTo(m.target, 2);
+    }
+    const targets = accountTargets(accounts, 3);
+    const brokerage = accounts.find((a) => a.subtype === "brokerage")!;
+    expect(targets.get(brokerage.id)!.bonds).toBe(0);
   });
 });

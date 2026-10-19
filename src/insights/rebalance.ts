@@ -87,13 +87,58 @@ function shares(positions: Position[], riskLevel: RiskLevel): MixShare[] {
     }));
 }
 
-function planAccount(account: InvestmentAccountView, riskLevel: RiskLevel): PlannedOrder[] {
+type Targets = Record<"us_stocks" | "intl_stocks" | "bonds" | "cash", number>;
+
+// Spec step 135 (asset location): what each account should hold so that, together, they
+// reach the risk level's mix. Each keeps its own share of cash; bonds, whose interest is
+// taxed every year in a taxable account, go into tax-advantaged accounts first; stocks fill
+// what's left, in the target's US/international split.
+export function accountTargets(
+  accounts: InvestmentAccountView[],
+  riskLevel: RiskLevel,
+): Map<string, Targets> {
   const target = TARGET_MIXES[riskLevel];
+  const totals = accounts.map((a) => ({
+    a,
+    total: a.holdings.reduce((s, h) => s + h.valueCents, 0),
+  }));
+  const all = totals.reduce((s, t) => s + t.total, 0);
+  let bonds = all * target.bonds;
+  const out = new Map<string, Targets>();
+  const stockShare = target.us_stocks + target.intl_stocks;
+  // Tax-advantaged accounts first.
+  const ordered = [...totals].sort(
+    (x, y) => Number(isTaxable(x.a.subtype)) - Number(isTaxable(y.a.subtype)),
+  );
+  const taxableRoom = ordered
+    .filter((t) => isTaxable(t.a.subtype))
+    .reduce((s, t) => s + t.total * (1 - target.cash), 0);
+  for (const { a, total } of ordered) {
+    const cash = total * target.cash;
+    const room = total - cash;
+    // Taxable accounts share whatever bonds are left, in proportion to their size.
+    const b = isTaxable(a.subtype)
+      ? taxableRoom > 0
+        ? Math.min(room, (bonds * room) / taxableRoom)
+        : 0
+      : Math.min(room, bonds);
+    if (!isTaxable(a.subtype)) bonds -= b;
+    const stocks = room - b;
+    out.set(a.id, {
+      cash,
+      bonds: b,
+      us_stocks: stockShare > 0 ? (stocks * target.us_stocks) / stockShare : 0,
+      intl_stocks: stockShare > 0 ? (stocks * target.intl_stocks) / stockShare : 0,
+    });
+  }
+  return out;
+}
+
+function planAccount(account: InvestmentAccountView, target: Targets): PlannedOrder[] {
   const total = account.holdings.reduce((s, h) => s + h.valueCents, 0);
   if (total === 0) return [];
   const values = classValues(account.holdings);
-  const gap = (c: AssetClass) =>
-    total * (target[c as keyof typeof target] ?? 0) - (values.get(c) ?? 0);
+  const gap = (c: AssetClass) => (target[c as keyof Targets] ?? 0) - (values.get(c) ?? 0);
   const taxable = isTaxable(account.subtype);
   const menu = isEmployerPlan(account.subtype) ? DEMO_EMPLOYER_PLAN_MENU : null;
 
@@ -135,7 +180,7 @@ function planAccount(account: InvestmentAccountView, riskLevel: RiskLevel): Plan
   }
 
   // Buys: the kinds there's too little of, paid for from the cash, leaving the cash target.
-  const spendable = Math.max(0, (values.get("cash") ?? 0) - total * target.cash);
+  const spendable = Math.max(0, (values.get("cash") ?? 0) - target.cash);
   const needs = (Object.keys(CORE_FUNDS) as (keyof typeof CORE_FUNDS)[])
     .filter((c) => c !== "cash")
     .map((c) => ({ c, need: Math.max(0, gap(c)), ticker: CORE_FUNDS[c] }))
@@ -196,7 +241,8 @@ export function rebalancePlan(
   mixOf: (ticker: string) => HoldingView["mix"],
 ): RebalancePlan {
   const withHoldings = accounts.filter((a) => a.holdings.length > 0);
-  const orders = withHoldings.flatMap((a) => planAccount(a, riskLevel));
+  const targets = accountTargets(withHoldings, riskLevel);
+  const orders = withHoldings.flatMap((a) => planAccount(a, targets.get(a.id)!));
   const before = withHoldings.flatMap((a) =>
     a.holdings.map((h) => ({
       name: h.name,

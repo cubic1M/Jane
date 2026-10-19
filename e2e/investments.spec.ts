@@ -114,4 +114,22 @@ test("the demo bank's holdings show with their sources, and Jane answers about t
   await expect(page.getByText("On: $100.00 every payday into Demo Brokerage.")).toBeVisible();
   await page.getByRole("button", { name: "Pause" }).click();
   await expect(page.getByText("Paused: $100.00 every payday into Demo Brokerage.")).toBeVisible();
+
+  // Step 135: which account first, where to hold what, gains not yet taxed.
+  await page.goto("/investments/accounts");
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText("Which account first");
+  await expect(page.getByRole("heading", { name: "Fill them in this order" })).toBeVisible();
+  await expect(page.getByText(/Your 401\(k\), up to the full match/)).toBeVisible();
+  // After the rebalance above, no bond fund sits in the taxable account.
+  await expect(page.getByText(/Keystone Total Bond Index Fund \(Demo Brokerage\)/)).toHaveCount(0);
+  await expect(page.getByRole("heading", { name: "Gains and losses not yet taxed" })).toBeVisible();
+
+  // Step 136: plain explainers, one tap from the investments page, marked for review.
+  await page.goto("/investments");
+  await page.getByRole("link", { name: "index funds" }).click();
+  await expect(page).toHaveURL("/learn/index-funds");
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText("Index funds");
+  await expect(page.getByText(/waiting for review by counsel/)).toBeVisible();
+  await page.getByRole("link", { name: "← Learn" }).click();
+  await expect(page.getByRole("link", { name: "Standard deduction" })).toBeVisible();
 });
