@@ -51,7 +51,14 @@ vi.mock("@/lib/tax-plan", async (importOriginal) => ({
   dismissPlanMove: vi.fn(),
 }));
 
+vi.mock("@/lib/giving", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/giving")>()),
+  markReceipt: vi.fn(async () => ({ payee: "American Red Cross" })),
+  openDonorFund: vi.fn(async () => ({ fundName: "Demo Giving Fund" })),
+}));
+
 import { adviceMode } from "@/lib/advice-mode";
+import { GivingError, markReceipt, openDonorFund } from "@/lib/giving";
 import { TaxPlanError, addPlanMove, dismissPlanMove } from "@/lib/tax-plan";
 import { TaxDocumentError, decideDocument } from "@/lib/tax-documents";
 import { TaxOrganizerError, markTaxForm } from "@/lib/tax-organizer";
@@ -61,6 +68,7 @@ import { dismissSaving } from "@/lib/tax-savings";
 import { applyRefundPlan, dismissRefund } from "@/lib/tax-refund";
 import {
   documentAction,
+  givingAction,
   planAction,
   markForm,
   refundAction,
@@ -240,5 +248,33 @@ describe("a tax plan move (spec step 167)", () => {
     expect(await planAction(null, form({ move: "2026:ira", intent: "pay" }))).toMatchObject({
       ok: false,
     });
+  });
+});
+
+describe("giving (spec step 168)", () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  it("records a receipt, and opens a donor-advised fund", async () => {
+    expect(await givingAction(null, form({ intent: "receipt", gift: "t1" }))).toEqual({
+      ok: true,
+      message: "Got it: your gift to American Red Cross has its receipt.",
+    });
+    expect(markReceipt).toHaveBeenCalledWith("u1", "t1", { via: "page" });
+    expect(await givingAction(null, form({ intent: "fund" }))).toEqual({
+      ok: true,
+      message: "Demo Giving Fund is open. Putting money in is on your deadlines.",
+    });
+    expect(openDonorFund).toHaveBeenCalledWith("u1", { via: "page" });
+  });
+
+  it("says what's wrong", async () => {
+    vi.mocked(openDonorFund).mockRejectedValueOnce(
+      new GivingError("A donor-advised fund is only offered in demo advice mode for now."),
+    );
+    expect(await givingAction(null, form({ intent: "fund" }))).toEqual({
+      ok: false,
+      message: "A donor-advised fund is only offered in demo advice mode for now.",
+    });
+    expect(await givingAction(null, form({ intent: "give" }))).toMatchObject({ ok: false });
   });
 });

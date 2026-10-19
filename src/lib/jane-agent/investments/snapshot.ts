@@ -11,6 +11,7 @@ import { loadReturns, type Returns } from "@/lib/investments/returns";
 import { loadGoalBuckets } from "@/lib/investments/goal-buckets";
 import { loadCollege } from "@/lib/investments/college";
 import { collectReceipts, loadHsa, type HsaView } from "@/lib/investments/hsa";
+import { loadCompanyStock, type CompanyStockView } from "@/lib/investments/company-stock";
 import type { Bucket } from "@/planning/goal-buckets";
 import { loadAutoInvest } from "@/lib/investments/auto-invest";
 import { loadRebalance } from "@/lib/investments/rebalance";
@@ -51,6 +52,8 @@ export type InvestmentSnapshot = {
   college: { children: number; plans: number };
   // Spec step 159: the HSA and its receipts vault.
   hsa: Pick<HsaView, "account" | "plan" | "savedCents" | "demo"> & { receipts: number };
+  // Spec step 160: the employer's stock and the plan to sell it down.
+  companyStock: Pick<CompanyStockView, "company" | "concentration" | "plan" | "demo">;
   // Spec step 156: how they've done.
   returns: Returns;
   // Spec step 134: automatic investing, its recent paydays and Jane's suggestion.
@@ -116,6 +119,12 @@ export async function loadInvestmentSnapshot(
         demo: h.demo,
         receipts: h.receipts.filter((r) => r.status === "saved").length,
       })),
+    companyStock: await loadCompanyStock(userId, { client, now }).then((c) => ({
+      company: c.company,
+      concentration: c.concentration,
+      plan: c.plan,
+      demo: c.demo,
+    })),
     college: await loadCollege(userId, { client, now }).then((c) => ({
       children: c.children,
       plans: c.plans.length,

@@ -104,6 +104,7 @@ export function scopedFor(userId: string, client: PrismaClient = db) {
     insuranceClaims: scoped.insuranceClaim,
     employerBenefits: scoped.employerBenefit,
     policyReadings: scoped.policyReading,
+    lifeApplications: scoped.lifeApplication,
     refinanceChecks: scoped.refinanceCheck,
     loanApplications: scoped.loanApplication,
     studentLoanProfiles: scoped.studentLoanProfile,
@@ -178,6 +179,8 @@ export function scopedFor(userId: string, client: PrismaClient = db) {
     collegePlans: scoped.collegePlan,
     // The HSA receipts vault (spec step 159).
     hsaReceipts: scoped.hsaReceipt,
+    // Company stock grants (spec step 160).
+    equityGrants: scoped.equityGrant,
   };
 }
 

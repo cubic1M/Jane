@@ -16,7 +16,8 @@ export type InvestmentTopic =
   | "returns"
   | "goals"
   | "college"
-  | "hsa";
+  | "hsa"
+  | "company_stock";
 
 export type InvestmentIntent = {
   kind: "investments";
@@ -98,7 +99,13 @@ const CHILD_AGE =
 const HSA =
   /\bhsa\b|\bhealth savings account\b|\b(?:medical )?receipts? vault\b|\bmedical receipts?\b/;
 
+// Spec step 160: stock from where the person works.
+const COMPANY_STOCK =
+  /\brsus?\b|\bespp\b|\bstock options?\b|\b(?:company|employer|employer's|company's) (?:stock|shares)\b|\b(?:restricted stock|stock plan|equity grants?|vesting schedule|vested shares|unvested shares)\b/;
+
 export function parseInvestmentIntent(text: string): InvestmentIntent | null {
+  if (COMPANY_STOCK.test(text))
+    return { kind: "investments", topic: "company_stock", account: null };
   if (HSA.test(text) && !/\bshould i (?:open|get|start|use|max out|fund|contribute)\b/.test(text)) {
     return { kind: "investments", topic: "hsa", account: null };
   }

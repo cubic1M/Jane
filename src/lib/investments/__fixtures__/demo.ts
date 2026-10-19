@@ -1,3 +1,4 @@
+import { concentration } from "@/planning/company-stock";
 import { demoAccounts, DEMO_INSTITUTION } from "@/data-sources/demo/demo-bank";
 import {
   demoHoldings,
@@ -89,6 +90,17 @@ export function demoInvestmentSnapshot(over: Partial<InvestmentSnapshot> = {}): 
     goalBuckets: { byHerself: false, buckets: null },
     college: { children: 0, plans: 0 },
     hsa: { account: null, plan: null, savedCents: 0, demo: true, receipts: 0 },
+    // The demo brokerage's 38 Acme shares, under the limit: no plan.
+    companyStock: {
+      company: "Acme Corp",
+      concentration: concentration({
+        heldCents: 518_320,
+        unvestedCents: 0,
+        totalInvestedCents: data.totalCents,
+      }),
+      plan: null,
+      demo: true,
+    },
     ...over,
   };
 }

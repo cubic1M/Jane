@@ -172,4 +172,16 @@ test("the demo bank's holdings show with their sources, and Jane answers about t
   await expect(page.getByText(/^Simulated brokerage: these orders are pretend/)).toBeVisible();
   await expect(page.getByRole("heading", { name: "Receipts vault" })).toBeVisible();
   await expect(page.getByText("BRIGHT SMILES DENTAL", { exact: false })).toBeVisible();
+
+  // Step 160: a demo stock plan, the plan to sell down with its tax, the first part sold.
+  await page.goto("/investments/company-stock");
+  await page.getByRole("button", { name: "Link a demo stock plan" }).click();
+  await expect(page.getByRole("status")).toHaveText("Demo stock plan linked.");
+  await expect(page.getByRole("heading", { name: /^Sell down in \d parts$/ })).toBeVisible();
+  await expect(page.getByText(/Estimated tax on the gains: about \$[\d,.]+/)).toBeVisible();
+  await page.getByRole("button", { name: "Sell the first part (simulated)" }).click();
+  await expect(page.getByRole("status")).toContainText("Sold the first part");
+  await expect(page.getByRole("button", { name: "Sell the first part (simulated)" })).toHaveCount(
+    0,
+  );
 });

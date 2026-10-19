@@ -19,6 +19,16 @@ import {
   benefitsConfirmAll,
   readingConfirm,
   readingDismiss,
+  lifeCoverDependants0,
+  lifeCoverDependants1,
+  lifeCoverDependants2,
+  lifeCoverDependants3,
+  lifeCoverApply,
+  lifeCoverYes,
+  lifeCoverNo,
+  lifeCoverSubmit,
+  lifeCoverBuy,
+  lifeCoverDismiss,
   benefitsDisabilityNone,
   benefitsDisabilityYes,
   benefitsLife1x,
@@ -54,6 +64,7 @@ import {
 } from "./tax-states";
 import { taxDocAsk, taxDocChase, taxDocRight, taxDocsTick } from "./tax-documents";
 import { taxPlanAdd, taxPlanNo } from "./tax-plan";
+import { taxFundOpen, taxGivingNo, taxReceiptGot } from "./giving";
 import {
   investAnswer1,
   investAnswer2,
@@ -68,6 +79,8 @@ import {
   collegeStart,
   hsaLink,
   hsaInvest,
+  companyLink,
+  companySell,
 } from "./investments";
 import { changeBudget, changeExpected, changeLook } from "./changes";
 import { lifeNever, lifeNo, lifeYes } from "./life";
@@ -104,6 +117,16 @@ export const ACTION_HANDLERS: Readonly<Record<ActionId, ActionHandler>> = {
   "benefits.confirm_all": benefitsConfirmAll,
   "reading.confirm": readingConfirm,
   "reading.dismiss": readingDismiss,
+  "lifecover.dependants_0": lifeCoverDependants0,
+  "lifecover.dependants_1": lifeCoverDependants1,
+  "lifecover.dependants_2": lifeCoverDependants2,
+  "lifecover.dependants_3": lifeCoverDependants3,
+  "lifecover.apply": lifeCoverApply,
+  "lifecover.yes": lifeCoverYes,
+  "lifecover.no": lifeCoverNo,
+  "lifecover.submit": lifeCoverSubmit,
+  "lifecover.buy": lifeCoverBuy,
+  "lifecover.dismiss": lifeCoverDismiss,
   "benefits.life_1x": benefitsLife1x,
   "benefits.life_2x": benefitsLife2x,
   "benefits.life_none": benefitsLifeNone,
@@ -191,6 +214,9 @@ export const ACTION_HANDLERS: Readonly<Record<ActionId, ActionHandler>> = {
   "tax.docs_tick": taxDocsTick,
   "tax.plan_add": taxPlanAdd,
   "tax.plan_no": taxPlanNo,
+  "tax.receipt_got": taxReceiptGot,
+  "tax.fund_open": taxFundOpen,
+  "tax.giving_no": taxGivingNo,
   // Investments (spec step 129 on).
   "invest.answer.1": investAnswer1,
   "invest.answer.2": investAnswer2,
@@ -205,6 +231,8 @@ export const ACTION_HANDLERS: Readonly<Record<ActionId, ActionHandler>> = {
   "college.start": collegeStart,
   "hsa.link": hsaLink,
   "hsa.invest": hsaInvest,
+  "company.link": companyLink,
+  "company.sell": companySell,
   // Jane notices changes (spec step 97).
   "change.look": changeLook,
   "change.budget": changeBudget,
