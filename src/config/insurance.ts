@@ -720,3 +720,41 @@ export const MAX_PERSON_NAME_LENGTH = 40;
 // A family health plan has to cost this much less a year, with the care the household
 // usually needs, before Jane says to look at the other employer's plan.
 export const FAMILY_HEALTH_MIN_SAVING_CENTS = 60_000;
+
+// --- Claim or pay yourself? (spec step 199) ---------------------------------------------------
+// What a claim typically costs in higher premiums: a share of the yearly premium added for
+// CLAIM_SURCHARGE_YEARS years, by kind of policy and what happened (the claim guide's event
+// key), and the claims-free discount lost for the same years. Estimates from typical carrier
+// practice, said as "about"; never a promise of what a carrier will do.
+export const CLAIM_SURCHARGE_YEARS = 3;
+export const CLAIM_SURCHARGE: Record<
+  PolicyKind,
+  { default: number; events?: Record<string, number> }
+> = {
+  auto: { default: 0.1, events: { accident: 0.3, theft: 0.08, damage: 0.05 } },
+  home: { default: 0.12, events: { break_in: 0.1, damage: 0.18, theft: 0.1 } },
+  renters: { default: 0.06 },
+  life: { default: 0 },
+  pet: { default: 0.05 },
+  health: { default: 0 },
+  disability: { default: 0 },
+  umbrella: { default: 0.1 },
+  travel: { default: 0 },
+  device: { default: 0 },
+  rideshare: { default: 0.15, events: { accident: 0.3 } },
+  business: { default: 0.12 },
+  valuables: { default: 0.05 },
+  boat: { default: 0.12, events: { theft: 0.1 } },
+  rental_property: { default: 0.15 },
+  other: { default: 0 },
+};
+// The claims-free discount a claim puts at risk, as a share of the yearly premium.
+export const CLAIMS_FREE_DISCOUNT: Partial<Record<PolicyKind, number>> = {
+  auto: 0.1,
+  home: 0.05,
+  renters: 0.03,
+  rideshare: 0.05,
+  boat: 0.05,
+};
+// A difference this small either way is a close call, not a clear answer.
+export const CLAIM_CLOSE_CALL_CENTS = 5_000;

@@ -1471,6 +1471,20 @@ const BASE_QUESTIONS: readonly CheckQuestion[] = [
     expect: { intent: "insurance", mentions: /autopay/i, list: true, maxChars: 1_100 },
   },
 
+  // Claim or pay yourself (spec step 199): the payout is a fact; the comparison is demo advice.
+  {
+    id: "claim-1",
+    text: "is it worth claiming a $1,200 repair on my car",
+    needs: "rules",
+    expect: { intent: "insurance", mentions: /deductible/i, maxChars: 700 },
+  },
+  {
+    id: "claim-2",
+    text: "should I file a claim for $300 of damage",
+    needs: "rules",
+    expect: { intent: "insurance", mentions: /under your .* deductible/i, maxChars: 700 },
+  },
+
   // Outside what Jane does: brief, and never advice.
   { id: "out-1", text: "what's the weather today", needs: "claude", expect: { avoid: ADVICE } },
   {
@@ -1509,3 +1523,24 @@ const MORE_QUESTIONS: readonly CheckQuestion[] = MORE_ROWS.map(
 );
 
 export const QUESTIONS: readonly CheckQuestion[] = [...BASE_QUESTIONS, ...MORE_QUESTIONS];
+
+// Spec step 189: the sector a question belongs to: its own, or for the older ones the start
+// of its id.
+const GROUPS: Record<string, string> = {
+  safe: "safe",
+  due: "bills",
+  pay: "income",
+  act: "subs",
+  follow: "follow",
+  free: "free",
+  out: "edge",
+  tax: "taxes",
+  ins: "insurance",
+  inv: "investing",
+  whole: "whole",
+  multi: "multi",
+  timeline: "timeline",
+};
+
+const sectorOf = (id: string) => GROUPS[id.split("-")[0]] ?? id.split("-")[0];
+export const sectorOfQuestion = (q: CheckQuestion) => q.sector ?? sectorOf(q.id);

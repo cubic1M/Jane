@@ -18,7 +18,7 @@ describe("life event and household detectors", () => {
   it("sees the Reyes family's job change two months ago, as a guess", () => {
     const { life } = run("family", { householdMembers: 0 });
     expect(life?.title).toMatch(/new-job checklist/);
-    expect(life?.why).toMatch(/MERIDIAN MEDICAL/);
+    expect(life?.why).toMatch(/Meridian Medical/);
     expect(life?.confidence.percent).toBeLessThanOrEqual(75);
     expect(life?.action.href).toBe("/life-events");
   });
