@@ -20,12 +20,12 @@ import { dayLabel } from "@/lib/day-label";
 import { appBase } from "@/lib/digest/links";
 import { formatCents } from "@/lib/money";
 import { loadAuditRecords } from "@/lib/audit-records";
-import { loadEquityTax } from "@/lib/equity-tax";
-import { loadSideIncome } from "@/lib/side-income";
-import { loadIdentity } from "@/lib/tax-identity";
+import { loadEquityTax, type EquityTaxView } from "@/lib/equity-tax";
+import { loadSideIncome, type SideIncomeView } from "@/lib/side-income";
+import { loadIdentity, type IdentityView } from "@/lib/tax-identity";
 import { loadTaxDocuments } from "@/lib/tax-documents";
-import { loadTaxEstimate } from "@/lib/tax-estimate";
-import { listTaxNotices } from "@/lib/tax-notices";
+import { loadTaxEstimate, type TaxEstimateView } from "@/lib/tax-estimate";
+import { listTaxNotices, type NoticeView } from "@/lib/tax-notices";
 import { loadTaxPack } from "@/lib/tax-pack";
 import { complexity, linkState, type LinkState, type Question } from "@/planning/accountant";
 import type { TaxPack } from "@/planning/tax-pack";
@@ -117,19 +117,34 @@ export async function loadQuestions(
 }
 
 // Whether the return is the kind people usually bring an accountant to: facts only.
+// What a caller that already loaded these (Jane's snapshot) passes in, so they are not loaded
+// twice.
+export type ComplexityLoaded = {
+  estimate: TaxEstimateView;
+  advice: boolean;
+  equity?: EquityTaxView;
+  identity?: IdentityView;
+  notices?: NoticeView[];
+  side?: SideIncomeView;
+};
+
 export async function loadComplexity(
   userId: string,
-  { client = defaultClient, now = new Date() }: Options = {},
+  {
+    client = defaultClient,
+    now = new Date(),
+    loaded,
+  }: Options & { loaded?: ComplexityLoaded } = {},
 ): Promise<ReturnType<typeof complexity>> {
-  const estimate = await loadTaxEstimate(userId, { client, now });
+  const estimate = loaded?.estimate ?? (await loadTaxEstimate(userId, { client, now }));
   const db = scopedFor(userId, client);
-  const advice = await adviceMode(userId, { client });
+  const advice = loaded ? loaded.advice : await adviceMode(userId, { client });
   const [equity, identity, notices, profile, side] = await Promise.all([
-    loadEquityTax(userId, { client, now, loaded: { estimate, advice } }),
-    loadIdentity(userId, { client, now }),
-    listTaxNotices(userId, { client }),
+    loaded?.equity ?? loadEquityTax(userId, { client, now, loaded: { estimate, advice } }),
+    loaded?.identity ?? loadIdentity(userId, { client, now }),
+    loaded?.notices ?? listTaxNotices(userId, { client }),
     db.taxProfiles.findFirst({ select: { homeSoldOn: true } }),
-    loadSideIncome(userId, { client, now, loaded: { estimate } }),
+    loaded?.side ?? loadSideIncome(userId, { client, now, loaded: { estimate } }),
   ]);
   const i = estimate.input;
   const r = i.residency;
@@ -149,15 +164,20 @@ export async function loadComplexity(
 
 export async function loadAccountantPage(
   userId: string,
-  { client = defaultClient, now = new Date() }: Options = {},
+  {
+    client = defaultClient,
+    now = new Date(),
+    loaded,
+    withQuestions = true,
+  }: Options & { loaded?: ComplexityLoaded; withQuestions?: boolean } = {},
 ): Promise<AccountantPageView> {
-  const estimate = await loadTaxEstimate(userId, { client, now });
+  const estimate = loaded?.estimate ?? (await loadTaxEstimate(userId, { client, now }));
   const db = scopedFor(userId, client);
   const [links, notes, comp, questions] = await Promise.all([
     db.accountantLinks.findMany({ orderBy: [{ createdAt: "desc" }, { id: "asc" }] }),
     db.accountantNotes.findMany({ orderBy: [{ createdAt: "desc" }, { id: "asc" }] }),
-    loadComplexity(userId, { client, now }),
-    loadQuestions(userId, estimate.year, { client, now }),
+    loadComplexity(userId, { client, now, loaded: loaded && { ...loaded, estimate } }),
+    withQuestions ? loadQuestions(userId, estimate.year, { client, now }) : Promise.resolve([]),
   ]);
   const views = links.map((l) => ({
     id: l.id,

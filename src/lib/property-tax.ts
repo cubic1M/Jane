@@ -6,9 +6,9 @@ import { logAudit } from "@/lib/audit";
 import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
 import { addDeadline } from "@/lib/deadlines";
-import { loadHomeTaxes } from "@/lib/home-taxes";
+import { loadHomeTaxes, type HomeTaxesView } from "@/lib/home-taxes";
 import { propertyPartnerFor } from "@/lib/property";
-import { loadTaxEstimate } from "@/lib/tax-estimate";
+import { loadTaxEstimate, type TaxEstimateView } from "@/lib/tax-estimate";
 import {
   appealWindow,
   assessmentGap,
@@ -70,14 +70,20 @@ const windowTitle = (year: number) => `Appeal your ${year} property tax assessme
 
 export async function loadPropertyTax(
   userId: string,
-  { client = defaultClient, now = new Date() }: Options = {},
+  {
+    client = defaultClient,
+    now = new Date(),
+    loaded,
+  }: Options & {
+    loaded?: { estimate: TaxEstimateView; advice: boolean; home?: HomeTaxesView };
+  } = {},
 ): Promise<PropertyTaxView> {
-  const estimate = await loadTaxEstimate(userId, { client, now });
+  const estimate = loaded?.estimate ?? (await loadTaxEstimate(userId, { client, now }));
   const db = scopedFor(userId, client);
   const today = iso(now);
   const [advice, home, loans, profile, appeal, partner] = await Promise.all([
-    adviceMode(userId, { client }),
-    loadHomeTaxes(userId, { client, now, loaded: { estimate } }),
+    loaded ? loaded.advice : adviceMode(userId, { client }),
+    loaded?.home ?? loadHomeTaxes(userId, { client, now, loaded: { estimate } }),
     db.liabilities.findMany({
       where: { kind: "mortgage" },
       select: { account: { select: { currentBalanceCents: true } } },
