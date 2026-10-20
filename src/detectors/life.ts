@@ -9,6 +9,7 @@ const addDays = (day: string, days: number) =>
   new Date(Date.parse(`${day}T00:00:00Z`) + days * 86_400_000).toISOString().slice(0, 10);
 
 const lifeChecklist: Detector = {
+  covers: ["life_events"],
   capability: "life_event",
   topic: "life_checklist",
   needs: [],
@@ -76,6 +77,7 @@ const lifeChecklist: Detector = {
 };
 
 const householdSetup: Detector = {
+  covers: [],
   capability: "life_event",
   topic: "household_setup",
   needs: ["household"],

@@ -33,7 +33,6 @@ export const MISSING_DETECTOR: readonly string[] = [
   "insurance_cover_changes",
   "insurance_card_cover",
   "insurance_documents",
-  "life_events",
   "tax_profile",
   "tax_tags",
   "tax_withholding",
