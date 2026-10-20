@@ -2,8 +2,7 @@ import { NOTICE_KINDS, NOTICE_REMIND_DAYS } from "@/config/tax-notices";
 import { dayLabel } from "@/lib/day-label";
 import { formatCents } from "@/lib/money";
 import type { NoticeView } from "@/lib/tax-notices";
-import { noticeAmountCents } from "@/lib/tax-notices";
-import type { Check } from "@/planning/tax-notice";
+import { centsOf, type Check } from "@/planning/tax-notice";
 import type { MessageAction, MessageRefs } from "./types";
 
 // Letters from the IRS and the state in the chat (spec step 217): a notice Jane read, to
@@ -61,7 +60,7 @@ export function noticeOpenMessage(
   today: string,
 ): Message {
   const rule = NOTICE_KINDS[n.kind];
-  const amount = noticeAmountCents(n);
+  const amount = centsOf(n.fields, "amount");
   const days = n.dueOn ? Math.round((Date.parse(n.dueOn) - Date.parse(today)) / 86_400_000) : null;
   const when = n.dueOn
     ? days !== null && days < 0

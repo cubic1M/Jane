@@ -77,6 +77,21 @@ export async function userExists(userId: string): Promise<boolean> {
   }
 }
 
+// Pushes a person's checking balance down (cents), so the forecast dips under its cushion.
+export async function setCheckingBalance(userId: string, cents: number): Promise<void> {
+  const client = new Client({ connectionString: E2E_DATABASE_URL });
+  await client.connect();
+  try {
+    await client.query(
+      `UPDATE accounts SET current_balance_cents = $2, available_balance_cents = $2
+       WHERE user_id = $1 AND subtype = 'checking'`,
+      [userId, cents],
+    );
+  } finally {
+    await client.end();
+  }
+}
+
 export async function addAlert(
   userId: string,
   alert: { type: string; title: string; body: string },

@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { E2E_DATABASE_URL, deleteUser, signedInUser } from "./db";
+import { E2E_DATABASE_URL, deleteUser, setCheckingBalance, signedInUser } from "./db";
 
 // Spec step 109: every debt in one place, from the demo bank: loans and cards with where
 // each rate came from, the buy now, pay later plans found from payments, terms typed for
@@ -325,4 +325,86 @@ test("building credit shows the simulator as an estimate and the statement payme
   await expect(build.getByRole("group", { name: "Before the statement" })).toContainText(
     "statement closes on",
   );
+});
+
+// Spec step 176: every buy now, pay later installment from the plans' own schedules.
+test("buy now, pay later installments are listed from the plans' schedules", async ({
+  context,
+  page,
+  baseURL,
+}) => {
+  const user = await signedInUser("user");
+  userId = user.userId;
+  await context.addCookies([
+    { name: "authjs.session-token", value: user.sessionToken, url: baseURL ?? "" },
+  ]);
+  await page.goto("/connect");
+  await page.getByRole("button", { name: "Link a demo bank" }).click();
+  await expect(page).toHaveURL("/chat", { timeout: 60_000 });
+
+  await page.goto("/loans");
+  const list = page.getByRole("list", { name: "Installments coming" });
+  await expect(list).toBeVisible();
+  await expect(list).toContainText("$62.25 to Klarna Pay in 4");
+  await expect(list).toContainText("$89.50 to Affirm plan");
+});
+
+// Spec step 177: a tight month's plan, with essentials first and each request sent on a tap.
+test("a tight month shows the plan, and a request is sent only on the tap", async ({
+  context,
+  page,
+  baseURL,
+}) => {
+  const user = await signedInUser("user");
+  userId = user.userId;
+  await context.addCookies([
+    { name: "authjs.session-token", value: user.sessionToken, url: baseURL ?? "" },
+  ]);
+  await page.goto("/connect");
+  await page.getByRole("button", { name: "Link a demo bank" }).click();
+  await expect(page).toHaveURL("/chat", { timeout: 60_000 });
+  await setCheckingBalance(user.userId, 30_000);
+
+  await page.goto("/loans/tight");
+  await expect(page.getByRole("heading", { level: 1, name: "When money is tight" })).toBeVisible();
+  await expect(page.getByRole("status").first()).toContainText("Checking is forecast to be");
+  await expect(page.getByRole("list", { name: "Bills in order" })).toBeVisible();
+  const requests = page.getByRole("list", { name: "Requests" }).getByRole("listitem");
+  await expect(requests.first()).toBeVisible();
+  const send = page.getByRole("button", { name: "Send this request" }).first();
+  await send.scrollIntoViewIfNeeded();
+  // Keyboard, so the fixed bottom nav on phones never takes the tap.
+  await send.focus();
+  await send.press("Enter");
+  await expect(page.getByText("Sent just now.")).toBeVisible();
+  await expect(requests.first()).toContainText("Sent, answer in about 2 days");
+});
+
+// Spec step 178: what car fits, with insurance and running costs in, and a dealer's offer
+// checked against the preapprovals.
+test("buying a car shows the all-in cost, preapprovals and a dealer check", async ({
+  context,
+  page,
+  baseURL,
+}) => {
+  const user = await signedInUser("user");
+  userId = user.userId;
+  await context.addCookies([
+    { name: "authjs.session-token", value: user.sessionToken, url: baseURL ?? "" },
+  ]);
+  await page.goto("/connect");
+  await page.getByRole("button", { name: "Link a demo bank" }).click();
+  await expect(page).toHaveURL("/chat", { timeout: 60_000 });
+
+  await page.goto("/loans/car?price=30000&dealerApr=8.99&dealerMonths=60");
+  await expect(page.getByRole("heading", { level: 1, name: "Buying a car" })).toBeVisible();
+  const costs = page.getByRole("table", { name: "Monthly cost" });
+  await expect(costs).toContainText("Insurance");
+  await expect(costs).toContainText("Fuel");
+  await expect(costs).toContainText("All in");
+  await expect(
+    page.getByRole("list", { name: "Offers" }).getByRole("listitem").first(),
+  ).toContainText("cheapest");
+  await expect(page.getByRole("status")).toContainText("more than the best preapproval");
+  await expect(page.getByRole("region", { name: "Assumptions" })).toContainText("Income:");
 });
