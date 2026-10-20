@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { connection } from "next/server";
 import { Suspense } from "react";
 import { AppHeader } from "@/components/app-header";
@@ -146,6 +147,8 @@ async function QuotesContent({
   await connection();
   const params = await searchParams;
   const policyId = typeof params.policy === "string" ? params.policy : "";
+  // Opened without a policy (an old link, a typed address): the policies list is where to pick one.
+  if (!policyId) redirect("/insurance");
   const now = new Date();
   const row = policyId
     ? await scopedFor(user.id).insurancePolicies.findFirst({

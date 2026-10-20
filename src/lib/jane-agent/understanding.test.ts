@@ -58,6 +58,12 @@ describe("new questions", () => {
     expect(parse("how much do I have to spend").kind).toBe("safe_to_spend");
   });
 
+  it("reads the monthly report (spec step 148)", () => {
+    for (const text of ["show me my monthly report", "my money report", "month in review"]) {
+      expect(parse(text), text).toEqual({ kind: "monthly_report" });
+    }
+  });
+
   it("reads the money health score (spec step 146)", () => {
     for (const text of [
       "what's my health score",

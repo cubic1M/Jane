@@ -1,5 +1,6 @@
 import type { Session } from "next-auth";
 import { cookies, headers } from "next/headers";
+import { cache } from "react";
 import { notFound, redirect } from "next/navigation";
 import { after, connection } from "next/server";
 import { auth } from "@/auth";
@@ -29,7 +30,10 @@ export async function getSessionState(): Promise<SessionState | null> {
 
 // Which device this session is on and when it was last used (spec step 73), written after
 // the response so pages don't wait for it. A failure here never breaks the page.
-async function noteDevice(): Promise<void> {
+// Once per request: a page often looks the person up more than once (requireUser, then
+// scopedDb), and reading cookies() again after the first after() is registered makes Next.js
+// reject the render ("used cookies() inside after()").
+const noteDevice = cache(async (): Promise<void> => {
   const token = sessionTokenFrom(await cookies());
   if (!token) return;
   const userAgent = (await headers()).get("user-agent");
@@ -38,7 +42,7 @@ async function noteDevice(): Promise<void> {
       console.error("Couldn't note the session's device", { error }),
     ),
   );
-}
+});
 
 // Signed in, with the two-factor code entered if two-factor is on. Null otherwise, so
 // API routes treat a session that still owes a code as signed out.

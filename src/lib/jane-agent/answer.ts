@@ -68,6 +68,7 @@ import { checkedReply } from "./replies-checked";
 import { rankedFor } from "./priorities";
 import { prioritiesReply } from "./replies-priorities";
 import { wholePictureReply } from "./whole-picture";
+import { planReply } from "./multi";
 import { paycheckReply } from "./replies-paycheck";
 import { latestPaycheckPlan } from "@/lib/money-movement/paycheck";
 import { loadBillPay } from "@/lib/money-movement/bill-pay";
@@ -75,6 +76,8 @@ import { moneyPartnerFor } from "@/lib/money-movement/partner";
 import { billsReply } from "./replies-billpay";
 import { healthFor } from "@/lib/health-score";
 import { healthReply } from "./replies-health";
+import { storedReport } from "@/lib/monthly-report-store";
+import { reportReply } from "./replies-report";
 import { groupedHelpReply } from "./replies-help";
 import { lifeEventReply } from "./replies-life";
 import { savedReply } from "./replies-saved";
@@ -302,6 +305,8 @@ async function byIntent(
         next && { date: next.date, cents: next.amountCents, from: next.from, asOf },
       );
     }
+    case "monthly_report":
+      return reportReply(await storedReport(userId, null, { client }));
     case "health":
       return healthReply(await healthFor(userId, { client, now }));
     case "bills_paid": {
@@ -312,6 +317,19 @@ async function byIntent(
       const snapshot = await loadSnapshot(userId, { client, now });
       return prioritiesReply(snapshot ? rankedFor(snapshot) : []);
     }
+    // Spec step 185: one plan for several actions, or money into a goal.
+    case "move_to_goal":
+      return planReply(userId, [intent], {
+        client,
+        now,
+        answer: (part) => byIntent(userId, part, { client, now }),
+      });
+    case "multi":
+      return planReply(userId, intent.parts, {
+        client,
+        now,
+        answer: (part) => byIntent(userId, part, { client, now }),
+      });
     // Spec step 183.
     case "whole_picture": {
       const snapshot = await loadSnapshot(userId, { client, now });

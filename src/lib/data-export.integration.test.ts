@@ -142,6 +142,7 @@ describe.runIf(url)("data export against a real database", () => {
         moves: [],
       },
     });
+    await client.monthlyReport.create({ data: { userId, month: "2026-09", figures: {} } });
     await client.healthScore.create({
       data: { userId, month: "2026-10", score: 70, band: "Steady", parts: [] },
     });
@@ -262,6 +263,7 @@ describe.runIf(url)("data export against a real database", () => {
       "controllerRuns",
       "paycheckPlans",
       "healthScores",
+      "monthlyReports",
       "janeMessages",
       "janePreferences",
       "taxTags",

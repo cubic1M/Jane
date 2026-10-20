@@ -10,7 +10,7 @@ import { scopedFor } from "@/lib/db-scoped";
 import { listGoals, type GoalView } from "@/lib/goals";
 import { homeSummary } from "@/lib/home";
 import { formatCents } from "@/lib/money";
-import type { Comparison } from "@/planning/compare";
+import { optionLabel, type Comparison } from "@/planning/compare";
 import type { AnswerBlock } from "./blocks";
 
 // Spec step 94: blocks from the same numbers as the pages (Insights, Today, Goals and a
@@ -86,7 +86,7 @@ export function optionsBlock(comparison: Comparison): AnswerBlock {
     title: savings ? "What each would earn" : "What each would cost",
     columns: ["Option", "1st year", savings ? "More" : "Saves"],
     rows: [comparison.pick, ...comparison.runnersUp].map((s) => [
-      `${s.option.provider} ${s.option.name}`,
+      optionLabel(s.option),
       formatCents(s.firstYearCents),
       formatCents(s.savingCents),
     ]),

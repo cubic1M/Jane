@@ -1,3 +1,4 @@
+import { DEBT_PAYMENT_PRIMARY } from "@/config/monthly-report";
 import { spendingInsights, type InsightTransaction } from "./spending";
 
 // The monthly check-in's numbers for one month: spending against the month before,
@@ -8,6 +9,8 @@ export type CheckInData = {
   month: string;
   spendingCents: number;
   incomeCents: number;
+  // Spec step 148: payments toward cards and loans (money out in LOAN_PAYMENTS).
+  debtPaymentsCents: number;
   previousSpendingCents: number;
   budgets: { category: string; budgetCents: number; spentCents: number; kept: boolean }[];
   changes: { category: string; beforeCents: number; afterCents: number; changeCents: number }[];
@@ -37,6 +40,15 @@ export function checkInData(
     month,
     spendingCents: after.spendingCents,
     incomeCents: after.incomeCents,
+    debtPaymentsCents: transactions
+      .filter(
+        (t) =>
+          !t.pending &&
+          t.date.startsWith(month) &&
+          t.amountCents > 0 &&
+          t.pfcPrimary === DEBT_PAYMENT_PRIMARY,
+      )
+      .reduce((sum, t) => sum + t.amountCents, 0),
     previousSpendingCents: before.spendingCents,
     budgets: budgets
       .map((b) => ({

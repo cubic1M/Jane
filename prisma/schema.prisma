@@ -362,6 +362,7 @@ model User {
   moneyTransfers    MoneyTransfer[]
   paycheckPlans     PaycheckPlan[]
   healthScores      HealthScore[]
+  monthlyReports    MonthlyReport[]
 
   @@map("users")
 }
@@ -2889,4 +2890,22 @@ model HealthScore {
 
   @@unique([userId, month])
   @@map("health_scores")
+}
+
+// The monthly money report (spec step 148): a month's figures as made in the first days of
+// the next, kept so the chat, the email and the page say the same. figures is a
+// MonthlyReport (src/planning/monthly-report.ts).
+model MonthlyReport {
+  id        String    @id @default(cuid())
+  userId    String    @map("user_id")
+  // YYYY-MM: the month reported on.
+  month     String
+  figures   Json
+  emailedAt DateTime? @map("emailed_at") @db.Timestamptz(3)
+  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, month])
+  @@map("monthly_reports")
 }
