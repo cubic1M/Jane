@@ -1,5 +1,6 @@
 import Link from "next/link";
 import type { HomeTaxesView } from "@/lib/home-taxes";
+import { dayLabel } from "@/lib/day-label";
 import { formatCents } from "@/lib/money";
 import { figuresOf, type Source } from "@/planning/home-taxes";
 
@@ -14,7 +15,7 @@ function SourceLink({ s }: { s: Source }) {
     case "transaction":
       return (
         <Link href={`/transactions?q=${encodeURIComponent(s.payee)}`} className={LINK}>
-          {s.payee}, {s.date}, {formatCents(s.cents)}
+          {s.payee}, {dayLabel(s.date, { year: true })}, {formatCents(s.cents)}
         </Link>
       );
     case "loan":
