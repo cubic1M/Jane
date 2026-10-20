@@ -167,6 +167,20 @@ export const DETECTOR_RATES = {
     filingFrom: "01-15",
     filingUntil: "04-15",
     filingNowDays: 14,
+    // Identity protection PIN: few people are ever targeted. The figure shown is the average
+    // refund times this chance (ESTIMATE TO VERIFY against the IRS's identity theft statistics).
+    ipPinTheftChance: 0.02,
+    // Late filing costs money only if tax is owed: about this share of filers owe a balance
+    // (ESTIMATE TO VERIFY, IRS filing season statistics).
+    lateFilingOweShare: 0.2,
+    // A bill the person must pay anyway (tax on stock that vests) can't be saved, only planned
+    // for and the penalty avoided: it counts for this share of its size in ranking.
+    rankShareOfBill: 0.3,
+    // Year-end 401(k) top-ups: never suggest more than this share of gross income.
+    yearEndMaxIncomeShare: 0.1,
+    // A shop's deposits are sales, not profit: assume this share is what's taxed
+    // (ESTIMATE TO VERIFY; small retail runs roughly 5% to 15% net).
+    businessProfitShare: 0.15,
     // Estimated payments: urgency by days to the next due date.
     estimatedNowDays: 14,
     estimatedSoonDays: 45,
