@@ -155,6 +155,7 @@ export const TEAM_ACCESS_RULES: Record<AuditEvent, EventRule> = {
   tax_amendment_started: own,
   tax_amendment_signed: own,
   tax_notice_confirmed: own,
+  tax_identity_case_opened: own,
   tax_notice_response_sent: own,
   tax_profile_changed: own,
   tax_tag_changed: own,

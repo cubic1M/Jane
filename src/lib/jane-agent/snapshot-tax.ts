@@ -28,6 +28,7 @@ import { listPriorReturns, type PriorReturnView } from "@/lib/prior-return";
 import { loadReturnReviews, type ReturnReview } from "@/lib/prior-return/review";
 import { checkNoticeFor, listTaxNotices, type NoticeView } from "@/lib/tax-notices";
 import type { Check } from "@/planning/tax-notice";
+import { loadIdentity, type IdentityView } from "@/lib/tax-identity";
 import { loadSideIncome, type SideIncomeView } from "@/lib/side-income";
 import { loadAuditRecords, type AuditRecordsView } from "@/lib/audit-records";
 import { loadHomeTaxes, type HomeTaxesView } from "@/lib/home-taxes";
@@ -83,6 +84,8 @@ export type TaxSnapshot = {
     records?: AuditRecordsView;
     // Spec step 173: rentals and gig platforms.
     sideIncome?: SideIncomeView;
+    // Spec step 218: the IP PIN and any sign of identity theft.
+    identity?: IdentityView;
     // Spec step 217: tax notices read from uploads, with what Jane found against them.
     notices?: { notice: NoticeView; check: (Check & { advice: boolean }) | null }[];
     // Spec step 172: returns read from uploads, and what their review found.
@@ -172,6 +175,7 @@ export async function loadTaxSnapshot(
               : null,
         })),
       ),
+      identity: await loadIdentity(userId, { client, now }),
       sideIncome: await loadSideIncome(userId, { client, now, loaded: { estimate } }),
       records: await loadAuditRecords(userId, estimate.year, { client, now }),
       home: await loadHomeTaxes(userId, { client, now, loaded: { estimate } }),

@@ -117,6 +117,8 @@ export type AuditEvent =
   | "tax_amendment_signed"
   // Spec step 217: a tax notice confirmed; its response handed to the team or the person.
   | "tax_notice_confirmed"
+  // Spec step 218: a case opened on a sign of tax identity theft.
+  | "tax_identity_case_opened"
   | "tax_notice_response_sent"
   // Taxes (spec steps 118–127): which fields of the tax profile changed, never the answers.
   | "tax_profile_changed"

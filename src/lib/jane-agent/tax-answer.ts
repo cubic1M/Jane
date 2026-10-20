@@ -13,6 +13,8 @@ import { givingReply } from "./giving-message";
 import { loadFamilyTaxes } from "@/lib/family-taxes";
 import { familyReply } from "./family-taxes-message";
 import { loadHomeTaxes } from "@/lib/home-taxes";
+import { loadIdentity } from "@/lib/tax-identity";
+import { identityReply } from "./tax-identity-message";
 import { listTaxNotices } from "@/lib/tax-notices";
 import { noticesReply } from "./tax-notice-message";
 import { loadSideIncome } from "@/lib/side-income";
@@ -120,6 +122,8 @@ export async function answerTaxIntent(
         ? moveReply(intent, view.state.value, now)
         : workStateReply(intent.state, view.state.value);
     }
+    case "identity":
+      return identityReply(await loadIdentity(userId, { client, now }), intent.sign);
     case "notice":
       return noticesReply(await listTaxNotices(userId, { client }));
     case "side_income":

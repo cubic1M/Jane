@@ -10,6 +10,7 @@ import { FilingError, filingYear, inFilingSeason, startReturn } from "@/lib/tax-
 import { loadTaxForms } from "@/lib/tax-organizer";
 import { collectTaxDocuments } from "@/lib/tax-documents";
 import { addOpenPlanMoves } from "@/lib/tax-plan";
+import { remindIpPinWhenDue } from "@/lib/tax-identity";
 import { remindDueRecords } from "@/lib/audit-records";
 import { remindReceipts } from "@/lib/giving";
 
@@ -34,6 +35,7 @@ export async function runTaxAutopilot(
   planAdded: number;
   receiptsReminded: number;
   recordsReminded: number;
+  ipPinReminded: boolean;
 }> {
   // Spec step 141: Taxes' autopilot. Starting a return or a goal moves no money: the level
   // is enough.
@@ -49,6 +51,7 @@ export async function runTaxAutopilot(
       planAdded: 0,
       receiptsReminded: 0,
       recordsReminded: 0,
+      ipPinReminded: false,
     };
   }
   return {
@@ -61,6 +64,8 @@ export async function runTaxAutopilot(
     receiptsReminded: await remindReceipts(userId, { client, now }),
     // Spec step 171: a reminder before a year's records can be thrown away.
     recordsReminded: await remindDueRecords(userId, { client, now }),
+    // Spec step 218: the January IP PIN reminder.
+    ipPinReminded: await remindIpPinWhenDue(userId, { client, now }),
   };
 }
 

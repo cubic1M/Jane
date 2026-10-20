@@ -346,6 +346,7 @@ model User {
   priorReturns           PriorReturn[]
   taxAmendments          TaxAmendment[]
   taxNotices             TaxNotice[]
+  taxIdentityCases       TaxIdentityCase[]
   taxForms               TaxForm[]
   taxReturns             TaxReturn[]
   budgetTuneUps          BudgetTuneUp[]
@@ -2302,6 +2303,10 @@ model TaxProfile {
   rentalPriceCents      Int?      @map("rental_price_cents")
   rentalPlacedOn        DateTime? @map("rental_placed_on") @db.Date
   sideIncomeKind        String?   @map("side_income_kind")
+  // Spec step 218: the tax year the person says they have an IP PIN for, and the year Jane
+  // put the January reminder on their deadlines.
+  ipPinHaveYear         Int?      @map("ip_pin_have_year")
+  ipPinRemindedYear     Int?      @map("ip_pin_reminded_year")
   createdAt             DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt             DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
 
@@ -2733,6 +2738,25 @@ model TaxNotice {
 
   @@index([userId])
   @@map("tax_notices")
+}
+
+// Spec step 218: a sign of tax identity theft and the steps taken, in order. steps maps a
+// step key (src/config/tax-identity.ts) to the day it was done. source: told (the person),
+// rejected (their e-file) or notice (a letter they uploaded).
+model TaxIdentityCase {
+  id        String    @id @default(cuid())
+  userId    String    @map("user_id")
+  sign      String
+  source    String
+  openedOn  DateTime  @map("opened_on") @db.Date
+  steps     Json      @default("{}")
+  closedAt  DateTime? @map("closed_at") @db.Timestamptz(3)
+  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("tax_identity_cases")
 }
 
 model TaxReturn {
