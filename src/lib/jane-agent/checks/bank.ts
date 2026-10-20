@@ -1203,6 +1203,45 @@ const BASE_QUESTIONS: readonly CheckQuestion[] = [
       maxChars: 1_000,
     },
   },
+  // Spec step 230: the yearly debt review, one message with a button for each item.
+  {
+    id: "debt-33",
+    text: "do my yearly debt review",
+    needs: "rules",
+    expect: {
+      intent: "debt_review",
+      mentions: /statement/i,
+      link: "/loans/review",
+      list: true,
+      maxChars: 1_600,
+    },
+  },
+  // Spec step 229: when debt is too much, the facts without advice.
+  {
+    id: "debt-32",
+    text: "I have too much debt, what are my options",
+    needs: "rules",
+    expect: {
+      intent: "debt_trouble",
+      mentions: /hardship/i,
+      link: "/loans/help",
+      list: true,
+      maxChars: 3_200,
+    },
+  },
+  // Spec step 228: a home's equity, used well.
+  {
+    id: "debt-31",
+    text: "heloc or cash-out refinance for a $40,000 kitchen",
+    needs: "rules",
+    expect: {
+      intent: "home_equity",
+      mentions: /total cost/i,
+      link: "/loans/equity",
+      list: true,
+      maxChars: 1_400,
+    },
+  },
   // Spec step 226: money between family and friends, kept kindly.
   {
     id: "debt-29",
@@ -1222,7 +1261,7 @@ const BASE_QUESTIONS: readonly CheckQuestion[] = [
     needs: "rules",
     expect: {
       intent: "student_long",
-      mentions: /qualifying payments counted/i,
+      mentions: /Public Service Loan Forgiveness/i,
       link: "/loans/student",
       list: true,
       maxChars: 1_600,

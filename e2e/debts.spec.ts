@@ -684,3 +684,135 @@ test("a credit score goal is previewed, started on the tap, and ticked off month
   await expect(page.getByText("Ticked off.")).toBeVisible();
   await expect(list.getByText("Done", { exact: true })).toHaveCount(1);
 });
+
+// Spec step 228: PMI against the original value with a drafted request, escrow against the
+// real bills, and a home project compared three ways with total cost.
+test("a home loan's PMI, escrow and project are worked out from what the person tells Jane", async ({
+  context,
+  page,
+  baseURL,
+}) => {
+  const user = await signedInUser("user");
+  userId = user.userId;
+  await context.addCookies([
+    { name: "authjs.session-token", value: user.sessionToken, url: baseURL ?? "" },
+  ]);
+  await page.goto("/connect");
+  await page.getByRole("button", { name: "Link a demo bank" }).click();
+  await expect(page).toHaveURL("/chat", { timeout: 60_000 });
+
+  await page.goto("/loans/equity");
+  await expect(
+    page.getByRole("heading", { level: 1, name: "Your home loan, used well" }),
+  ).toBeVisible();
+  const facts = page.getByRole("region", { name: "What you know" });
+  await facts.getByLabel("Home's value when the loan began").fill("395000");
+  await facts.getByLabel("Property tax, a year").fill("1800");
+  await facts.getByLabel("Homeowners insurance, a year").fill("800");
+  const save = facts.getByRole("button", { name: "Save", exact: true });
+  await save.focus();
+  await save.press("Enter");
+  await expect(page.getByText("Saved.")).toBeVisible();
+
+  const pmi = page.getByRole("region", { name: "PMI" });
+  await expect(pmi).toContainText("79.1% of the home's original value of $395,000.00");
+  await expect(pmi.getByLabel("Drafted PMI request")).toContainText(
+    "cancel the private mortgage insurance",
+  );
+  const escrow = page.getByRole("region", { name: "Escrow" });
+  await expect(escrow).toContainText("Your tax and insurance bills come to $2,600.00 a year");
+  await expect(escrow.getByLabel("Drafted escrow request")).toContainText("refund");
+
+  const sent = pmi.getByRole("button", { name: "I sent the PMI request" });
+  await sent.scrollIntoViewIfNeeded();
+  await sent.focus();
+  await sent.press("Enter");
+  await expect(page.getByText("Noted that you sent it.")).toBeVisible();
+  await expect(page.getByRole("region", { name: "PMI" })).toContainText("You sent this on");
+
+  const project = page.getByRole("region", { name: "A home project" });
+  await project.getByLabel("What it costs").fill("40000");
+  const compare = project.getByRole("button", { name: "Compare" });
+  await compare.focus();
+  await compare.press("Enter");
+  const table = page.getByRole("table", { name: "Ways to pay" });
+  await expect(table.getByRole("row")).toHaveCount(4);
+  await expect(table).toContainText("Home equity line of credit (HELOC)");
+  await expect(table).toContainText("Cash-out refinance");
+  await expect(table).toContainText("Personal loan");
+  await expect(page.getByText("stand-in lender terms, not offers", { exact: false })).toBeVisible();
+});
+
+// Spec step 229: the options when debt is too much, as facts, without advice.
+test("the options when debt is too much are laid out as facts, with the pointer to counsel", async ({
+  context,
+  page,
+  baseURL,
+}) => {
+  const user = await signedInUser("user");
+  userId = user.userId;
+  await context.addCookies([
+    { name: "authjs.session-token", value: user.sessionToken, url: baseURL ?? "" },
+  ]);
+  await page.goto("/connect");
+  await page.getByRole("button", { name: "Link a demo bank" }).click();
+  await expect(page).toHaveURL("/chat", { timeout: 60_000 });
+
+  await page.goto("/loans/help");
+  await expect(
+    page.getByRole("heading", { level: 1, name: "When debt is too much" }),
+  ).toBeVisible();
+  await expect(page.getByRole("status")).toContainText("of your");
+  const hardship = page.getByRole("region", { name: "Hardship programs" });
+  await expect(hardship).toContainText("hardship program");
+  await expect(hardship).toContainText("forbearance");
+  const plan = page.getByRole("region", { name: "Debt management plan" });
+  await expect(plan).toContainText("nonprofit credit counselor");
+  await expect(
+    plan.getByRole("link", { name: /National Foundation for Credit Counseling/ }),
+  ).toBeVisible();
+  const facts = page.getByRole("region", { name: "Settlement and bankruptcy" });
+  await expect(facts.getByRole("list", { name: "Bankruptcy" }).getByRole("listitem")).toHaveCount(
+    3,
+  );
+  await expect(facts.getByRole("list", { name: "Taxes on forgiven debt" })).toContainText("$600");
+  await expect(facts.getByRole("note")).toContainText("ask a bankruptcy attorney");
+  // Facts only: nothing to send, nothing to apply for.
+  await expect(page.getByRole("button", { name: /send|apply|file/i })).toHaveCount(0);
+});
+
+// Spec step 230: the yearly debt review: every item with its status, and in the chat one
+// message whose buttons each stay until used.
+test("the debt review lists every item, and the chat message keeps each button until it's used", async ({
+  context,
+  page,
+  baseURL,
+}) => {
+  const user = await signedInUser("user");
+  userId = user.userId;
+  await context.addCookies([
+    { name: "authjs.session-token", value: user.sessionToken, url: baseURL ?? "" },
+  ]);
+  await page.goto("/connect");
+  await page.getByRole("button", { name: "Link a demo bank" }).click();
+  await expect(page).toHaveURL("/chat", { timeout: 60_000 });
+
+  await page.goto("/loans/review");
+  await expect(page.getByRole("heading", { level: 1, name: "Your debt review" })).toBeVisible();
+  // Linking the bank did the first review (or it's about to be: Jane's pass may still be running).
+  await expect(page.getByRole("status")).toContainText(/first debt review/i);
+  const items = page.getByRole("list", { name: "Review items" }).getByRole("listitem");
+  await expect(items.first()).toContainText("Payments timed to statement dates");
+  await expect(items.getByRole("heading", { name: "0% promotions on pace" })).toBeVisible();
+  await expect(items.getByRole("heading", { name: "Lower-rate requests" })).toBeVisible();
+  await expect(items.getByRole("heading", { name: "PMI and escrow" })).toBeVisible();
+  await expect(page.getByRole("note").filter({ hasText: "At your level" })).toBeVisible();
+
+  // Asking in the chat shows the same items.
+  await page.goto("/chat");
+  const box = page.getByRole("textbox", { name: "Message Jane" });
+  await box.fill("do my yearly debt review");
+  await box.press("Enter");
+  await expect(page.getByText("Your debt review:").last()).toBeVisible({ timeout: 30_000 });
+  await expect(page.getByText(/Payments timed to statement dates/).last()).toBeVisible();
+});

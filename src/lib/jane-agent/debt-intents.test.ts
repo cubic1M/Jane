@@ -353,6 +353,83 @@ describe("debt questions", () => {
     expect(intent("best 0% card")).toEqual({ kind: "balance_transfer" });
   });
 
+  it("reads PMI's automatic end, an escrow check and a home project (spec step 228)", () => {
+    for (const text of [
+      "when does my PMI end by itself",
+      "will my pmi drop off at 78%",
+      "what's the original value rule for pmi",
+    ]) {
+      expect(intent(text), text).toEqual({
+        kind: "home_equity",
+        topic: "pmi",
+        projectCents: null,
+        years: null,
+      });
+    }
+    for (const text of [
+      "is my escrow too high",
+      "is my escrow right for my tax and insurance bills",
+      "am I overpaying into escrow",
+      "can I get an escrow refund",
+    ]) {
+      expect(intent(text), text).toEqual({
+        kind: "home_equity",
+        topic: "escrow",
+        projectCents: null,
+        years: null,
+      });
+    }
+    expect(intent("HELOC or cash-out refinance for a $40,000 kitchen")).toEqual({
+      kind: "home_equity",
+      topic: "project",
+      projectCents: 4_000_000,
+      years: null,
+    });
+    expect(intent("how should I pay for a $30,000 roof over 7 years")).toEqual({
+      kind: "home_equity",
+      topic: "project",
+      projectCents: 3_000_000,
+      years: 7,
+    });
+    // Plain PMI and escrow questions stay with step 115; tax questions stay tax.
+    expect(intent("can I get rid of PMI")).toEqual({ kind: "mortgage" });
+    expect(intent("did my escrow go up")).toEqual({ kind: "mortgage" });
+    expect(intent("is my HELOC interest deductible")).not.toMatchObject({ kind: "home_equity" });
+  });
+
+  it("reads too much debt, settlement, bankruptcy and counseling (spec step 229)", () => {
+    for (const text of [
+      "I have too much debt",
+      "I'm drowning in debt",
+      "what are my options with my debt",
+      "should I file for bankruptcy",
+      "what about debt settlement",
+      "tell me about a debt management plan",
+      "is credit counseling worth it",
+      "I can't keep up with my debts",
+      "will bankruptcy forgive my taxes",
+    ]) {
+      expect(intent(text), text).toEqual({ kind: "debt_trouble" });
+    }
+    // A short month is the tight-money flow, not this one.
+    expect(intent("money is tight this month")).toMatchObject({ kind: "tight_money" });
+  });
+
+  it("reads a request for the debt review (spec step 230)", () => {
+    for (const text of [
+      "do my yearly debt review",
+      "give me a debt checkup",
+      "annual credit review",
+      "review my debts",
+      "how are my debts doing",
+      "go over my loans",
+    ]) {
+      expect(intent(text), text).toEqual({ kind: "debt_review" });
+    }
+    // What the autopilot does stays its own question.
+    expect(intent("what do you do about my debts")).toEqual({ kind: "debt_autopilot" });
+  });
+
   it("leaves requests and other questions alone", () => {
     expect(intent("lower the rate on my card")).toMatchObject({ kind: "act", verb: "lower" });
     expect(intent("what's due this week")).toMatchObject({ kind: "coming_up" });

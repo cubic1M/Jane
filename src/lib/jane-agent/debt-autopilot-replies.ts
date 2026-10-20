@@ -1,3 +1,4 @@
+import { DEBT_AUTOPILOT_SHORT } from "@/config/debt";
 import { SECTOR_LEVEL_LABELS } from "@/config/autopilot-sectors";
 import { formatRate } from "@/insights/loans";
 import type { DebtAutopilot } from "@/lib/debt-autopilot";
@@ -21,8 +22,8 @@ const LOANS: MessageAction = { id: "open", label: "See every debt", kind: "link"
 export function debtAutopilotReply(data: DebtAutopilot): Reply {
   const lines = [
     `Your debt autopilot is set to "${SECTOR_LEVEL_LABELS[data.level]}", so here's what I do by myself.`,
-    // The first sentence of each step; Settings has the whole list.
-    ...data.does.map((d) => `- ${d.does.split(/(?<=\.) /)[0]}`),
+    // One short line for each step; Settings has the whole text for the person's level.
+    ...data.does.map((d) => `- ${DEBT_AUTOPILOT_SHORT[d.step] ?? d.does.split(/(?<=\.) /)[0]}`),
     "Applying for credit, moving money and signing always wait for your tap.",
   ];
   if (data.planStartedOn)

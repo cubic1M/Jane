@@ -419,6 +419,27 @@ async function LoansContent({
             .
           </p>
           <p className="text-sm text-zinc-600 dark:text-zinc-400">
+            Everything about your debts and credit, checked at once:{" "}
+            <Link href="/loans/review" className={LINK}>
+              Your debt review
+            </Link>
+            .
+          </p>
+          <p className="text-sm text-zinc-600 dark:text-zinc-400">
+            Is the debt getting too much?{" "}
+            <Link href="/loans/help" className={LINK}>
+              See the options, plainly
+            </Link>
+            .
+          </p>
+          <p className="text-sm text-zinc-600 dark:text-zinc-400">
+            PMI, escrow or a home project?{" "}
+            <Link href="/loans/equity" className={LINK}>
+              Your home loan, used well
+            </Link>
+            .
+          </p>
+          <p className="text-sm text-zinc-600 dark:text-zinc-400">
             Need a credit score by a date?{" "}
             <Link href="/loans/goal" className={LINK}>
               Plan it month by month

@@ -6,6 +6,7 @@ import { refreshTightMoney } from "@/lib/tight-money";
 import { refreshMedicalBills } from "@/lib/medical-bills";
 import { refreshReportFixes } from "@/lib/credit-report-fixes";
 import { refreshCardInterest } from "@/lib/card-interest";
+import { runDebtReview } from "@/lib/debt-review";
 import { syncStudentDeadlines } from "@/lib/student-long-game";
 import { refreshFamilyLoans } from "@/lib/family-loans";
 import { refreshDebtPlan } from "@/lib/debt-plan";
@@ -41,6 +42,8 @@ export async function refreshDebts(
     ["student loan dates", () => syncStudentDeadlines(userId, { client, now })],
     // Spec step 226: loans paid back in full by the transfers that came back are settled.
     ["family loans", () => refreshFamilyLoans(userId, { client, now })],
+    // Spec step 230: the yearly review, after everything it looks at has been refreshed.
+    ["debt review", () => runDebtReview(userId, { client, now })],
     ["refinance rates", () => refreshRefinance(userId, { client, now })],
     // Spec step 112: loans funding, and old loans reaching zero.
     ["loan applications", () => refreshLoanApplications(userId, { client, now })],
