@@ -25,7 +25,13 @@ const estimatedTaxes: Detector = {
       (t) => t.pfc === "GOVERNMENT_AND_NON_PROFIT_TAX_PAYMENT" && !/SALES TAX/i.test(t.description),
     );
     if (paid.length > 0) return null;
-    const owed = Math.round(annualIncome(income.value) * R.selfEmployedTaxRate);
+    // A shop's deposits are sales, not profit: tax is owed on what's left after costs, which
+    // Jane can't see, so she assumes a share and says so.
+    const business = pattern.value === "business";
+    const taxable = Math.round(
+      annualIncome(income.value) * (business ? R.tax.businessProfitShare : 1),
+    );
+    const owed = Math.round(taxable * R.selfEmployedTaxRate);
     return {
       id: suggestionId("taxes", "estimated_taxes"),
       capability: "taxes",
@@ -33,10 +39,21 @@ const estimatedTaxes: Detector = {
       title: "Pay estimated taxes each quarter",
       worthCents: Math.round(owed * R.underpaymentPenaltyRate),
       worthKind: "risk",
+      // The tax is owed whatever she does; planning for it avoids the penalty and the surprise,
+      // so it counts for a share of the bill in ranking.
+      rankCents: Math.round(owed * R.tax.rankShareOfBill),
       confidence: weakest([
         factEvidence(pattern),
         factEvidence(income),
         evidence("seen", profile.months, 0, "income-tax payments"),
+        ...(business
+          ? [
+              {
+                percent: 60,
+                reason: `your deposits are sales, so I assumed ${Math.round(R.tax.businessProfitShare * 100)}% is profit`,
+              },
+            ]
+          : []),
       ]),
       // The next quarterly date drives it: now within two weeks, soon within six.
       urgency: urgencyForEstimated(profile.today),
