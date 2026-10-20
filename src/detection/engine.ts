@@ -1,3 +1,4 @@
+import { loadTaught, missingRefundAlerts } from "@/lib/unusual";
 import {
   COUNT_ONLY_WHEN_APPROVED,
   LOOKBACK_MONTHS,
@@ -379,6 +380,7 @@ export async function runDetection(
     const alerts = detectAlerts(input, candidates, {
       knownFindings: new Set(existing.map(idOf)),
       firstScan: firstRun.count > 0,
+      taught: await loadTaught(userId, { client }),
     });
     const budgets = await db.budgets.findMany({ select: { category: true, amountCents: true } });
     const overBudget =
@@ -391,7 +393,9 @@ export async function runDetection(
               input.asOf,
             ),
           );
-    await raise(userId, [...alerts, ...overBudget], { client, now });
+    // Spec step 208: refunds that never arrived come from the team's actions.
+    const refunds = await missingRefundAlerts(userId, { client, now });
+    await raise(userId, [...alerts, ...overBudget, ...refunds], { client, now });
   } catch (error) {
     console.error("Alerts failed", { userId, error: String(error) });
   }

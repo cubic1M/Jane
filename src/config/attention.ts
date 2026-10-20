@@ -26,6 +26,10 @@ export const ATTENTION_ALWAYS: readonly string[] = [
   "review",
   "autopilot",
   "attention",
+  // Spec step 204: income stopped; never held or stopped.
+  "lean",
+  // Spec step 208: never held or stopped.
+  "unusual",
   // Spec step 148: the monthly report comes once a month; it's never stopped.
   "report",
 ];

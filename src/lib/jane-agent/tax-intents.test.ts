@@ -234,3 +234,73 @@ describe("homeowner taxes in the chat", () => {
     expect(parse(text)).toEqual({ kind: "tax", ask: "home" });
   });
 });
+
+// Spec step 171.
+describe("audit-ready records in the chat", () => {
+  it.each([
+    "am I ready for an audit",
+    "give me my audit pack",
+    "how long should I keep my tax records",
+    "what records do I need if I get audited",
+  ])("%s asks about records", (text) => {
+    expect(parse(text)).toEqual({ kind: "tax", ask: "records" });
+  });
+});
+
+// Spec step 172.
+describe("last year's return in the chat", () => {
+  it.each([
+    "review my tax return",
+    "did I miss anything on my return",
+    "can I amend my return",
+    "check last year's return",
+    "did I leave money on the table",
+  ])("%s asks about the return", (text) => {
+    expect(parse(text)).toEqual({ kind: "tax", ask: "last_return" });
+  });
+});
+
+// Spec step 173.
+describe("side income and rentals in the chat", () => {
+  it.each([
+    "what are the taxes on my rental income",
+    "how does depreciation work on my rental",
+    "is my side gig a hobby or business",
+    "where is my platform 1099",
+    "tag Ace Plumbing as rental expenses",
+  ])("%s", (text) => {
+    const intent = parse(text);
+    if (text.startsWith("tag")) {
+      expect(intent).toEqual({ kind: "tax", ask: "tag", target: "ace plumbing", tag: "rental" });
+    } else {
+      expect(intent).toEqual({ kind: "tax", ask: "side_income" });
+    }
+  });
+});
+
+// Spec step 217.
+describe("tax notices in the chat", () => {
+  it.each([
+    "I got a letter from the IRS",
+    "what is a CP2000",
+    "I have a CP14 notice",
+    "I received an IRS notice",
+    "got a scary notice about my taxes",
+  ])("%s asks about a notice", (text) => {
+    expect(parse(text)).toEqual({ kind: "tax", ask: "notice" });
+  });
+});
+
+// Spec step 218.
+describe("tax identity in the chat", () => {
+  it.each([
+    ["how do I get an IP PIN", null],
+    ["I want to protect my tax identity", null],
+    ["someone already filed my taxes", "efile_rejected"],
+    ["my return was rejected because someone already filed", "efile_rejected"],
+    ["I got a W-2 from a company I never worked for", "unknown_form"],
+    ["I got an IRS letter about a return I didn't file", "irs_letter"],
+  ])("%s", (text, sign) => {
+    expect(parse(text)).toEqual({ kind: "tax", ask: "identity", sign });
+  });
+});

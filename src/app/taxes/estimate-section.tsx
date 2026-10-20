@@ -2,6 +2,7 @@ import { formatCents } from "@/lib/money";
 import type { TaxEstimateView } from "@/lib/tax-estimate";
 import { FILING_STATUSES } from "@/config/tax";
 import { ESTIMATE_NOTE, federalLine, stateLine, stateSource } from "@/planning/tax-estimate-copy";
+import { dayLabel } from "@/lib/day-label";
 import { STATE_SOURCES } from "@/config/tax-states";
 import { stateName } from "@/planning/tax-profile";
 
@@ -105,7 +106,7 @@ export function EstimateSection({ view }: { view: TaxEstimateView }) {
                     p.residence === "nonresident"
                       ? "nonresident, wages from your employer there"
                       : p.residence === "part_year"
-                        ? `lived there ${p.from} to ${p.to}`
+                        ? `lived there ${dayLabel(p.from!, { year: true })} to ${dayLabel(p.to!, { year: true })}`
                         : `all of ${view.year}`
                   }${p.creditCents > 0 ? ", after credit for other states" : ""}`}
                   cents={p.taxCents}
