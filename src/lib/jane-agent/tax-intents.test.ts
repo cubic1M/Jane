@@ -307,10 +307,14 @@ describe("tax identity in the chat", () => {
 
 // Spec step 219.
 describe("crypto and equity pay in the chat", () => {
+  it("leaves a bare ESPP question to company stock", () => {
+    expect(parse("my espp")).not.toEqual({ kind: "tax", ask: "equity" });
+  });
+
   it.each([
     "how are my crypto gains taxed",
     "do I owe tax on my bitcoin",
-    "what about my ESPP",
+    "how is my ESPP taxed",
     "will exercising my ISOs trigger AMT",
     "my RSU withholding is too low",
     "what's a disqualifying disposition",
