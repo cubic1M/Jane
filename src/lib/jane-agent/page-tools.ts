@@ -47,5 +47,6 @@ export const PAGE_TOOLS: Readonly<Record<string, readonly string[]>> = {
   things: ["net_worth"],
   transactions: ["search_transactions", "spending_by_category", "show_block"],
   transfers: ["money_moves"],
+  "what-if": ["what_if"],
   year: ["monthly_totals", "spending_by_category", "show_block"],
 };
