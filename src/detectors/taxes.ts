@@ -61,6 +61,7 @@ export function urgencyForEstimated(today: string): Urgency {
 const withholdingGap: Detector = {
   capability: "taxes",
   topic: "withholding_gap",
+  covers: ["tax_equity", "tax_withholding"],
   needs: ["has_stock_plan", "monthly_income", "household"],
   detect({ profile, data }) {
     const plan = profile.facts.has_stock_plan;
@@ -103,6 +104,7 @@ const PRETAX = /^(401k|403b|457b|ira|sep ira|simple ira|traditional ira|thrift s
 const rothConversion: Detector = {
   capability: "taxes",
   topic: "roth_conversion",
+  covers: ["tax_years"],
   needs: ["life_stage", "has_401k"],
   detect({ profile, data }) {
     const stage = profile.facts.life_stage;
@@ -141,6 +143,7 @@ const rothConversion: Detector = {
 const childcareTaxBreak: Detector = {
   capability: "taxes",
   topic: "childcare_tax_break",
+  covers: ["tax_family", "tax_savings"],
   needs: ["has_children", "monthly_income", "household"],
   detect({ profile, data }) {
     const kids = profile.facts.has_children;
@@ -189,6 +192,7 @@ const inIpPinSeason = (today: string) => {
 const identityPin: Detector = {
   capability: "taxes",
   topic: "identity_ip_pin",
+  covers: ["tax_identity"],
   needs: ["income_pattern"],
   detect({ profile }) {
     const pattern = profile.facts.income_pattern;
