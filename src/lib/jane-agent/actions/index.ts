@@ -94,6 +94,18 @@ import {
   taxIpPinRemind,
 } from "./tax-identity";
 import { taxEquityAside } from "./tax-equity";
+import { taxYearsPlan } from "./tax-years";
+import { taxAccountantSeen } from "./tax-accountant";
+import { taxEstimatePay, taxYearEndPlan } from "./tax-calendar";
+import {
+  taxExemptionClaimed,
+  taxExemptionRemind,
+  taxPropertyDraft,
+  taxPropertyDrop,
+  taxPropertyRemind,
+  taxPropertySelf,
+  taxPropertyTeam,
+} from "./tax-property";
 import { taxSideBusiness, taxSideHobby } from "./side-income";
 import { taxFundOpen, taxGivingNo, taxReceiptGot } from "./giving";
 import {
@@ -115,6 +127,17 @@ import {
   cryptoLink,
   cashToSavings,
   cashToMoneyMarket,
+  retireMatch,
+  retireIra,
+  oldPlanYes,
+  oldPlanNo,
+  oldPlanRollover,
+  familyGiftLink,
+  familyChildRoth,
+  costlyYes,
+  costlyNo,
+  reviewHarvest,
+  locationFree,
 } from "./investments";
 import { changeBudget, changeExpected, changeLook } from "./changes";
 import { lifeNever, lifeNo, lifeYes } from "./life";
@@ -131,6 +154,7 @@ import { billPay, billSkip } from "./billpay";
 import { attentionResume } from "./attention";
 import { whatIfAdopt } from "./whatif";
 import { leanNotNow, leanStart } from "./lean";
+import { steadyOn, steadyPay, steadySkip } from "./steady";
 import { unusualMe, unusualNotMe } from "./unusual";
 import { bundleYes1, bundleYes2, bundleYes3, bundleYes4, bundleYes5 } from "./bundle";
 import { multiCancel, multiConfirm, multiUndo } from "./multi";
@@ -289,6 +313,17 @@ export const ACTION_HANDLERS: Readonly<Record<ActionId, ActionHandler>> = {
   "tax.identity_not": taxIdentityNot,
   "tax.identity_step": taxIdentityStep,
   "tax.equity_aside": taxEquityAside,
+  "tax.years_plan": taxYearsPlan,
+  "tax.accountant_seen": taxAccountantSeen,
+  "tax.estimate_pay": taxEstimatePay,
+  "tax.yearend_plan": taxYearEndPlan,
+  "tax.property_draft": taxPropertyDraft,
+  "tax.property_remind": taxPropertyRemind,
+  "tax.property_team": taxPropertyTeam,
+  "tax.property_self": taxPropertySelf,
+  "tax.property_drop": taxPropertyDrop,
+  "tax.exemption_remind": taxExemptionRemind,
+  "tax.exemption_claimed": taxExemptionClaimed,
   "tax.records_remind": taxRecordsRemind,
   // Investments (spec step 129 on).
   "invest.answer.1": investAnswer1,
@@ -309,6 +344,17 @@ export const ACTION_HANDLERS: Readonly<Record<ActionId, ActionHandler>> = {
   "crypto.link": cryptoLink,
   "cash.to_savings": cashToSavings,
   "cash.to_money_market": cashToMoneyMarket,
+  "retire.match": retireMatch,
+  "retire.ira": retireIra,
+  "oldplan.yes": oldPlanYes,
+  "oldplan.no": oldPlanNo,
+  "oldplan.rollover": oldPlanRollover,
+  "family.gift_link": familyGiftLink,
+  "family.child_roth": familyChildRoth,
+  "costly.yes": costlyYes,
+  "costly.no": costlyNo,
+  "review.harvest": reviewHarvest,
+  "location.free": locationFree,
   // Jane notices changes (spec step 97).
   "change.look": changeLook,
   "change.budget": changeBudget,
@@ -342,6 +388,9 @@ export const ACTION_HANDLERS: Readonly<Record<ActionId, ActionHandler>> = {
   "whatif.adopt": whatIfAdopt,
   "lean.start": leanStart,
   "lean.not_now": leanNotNow,
+  "steady.pay": steadyPay,
+  "steady.skip": steadySkip,
+  "steady.on": steadyOn,
   "unusual.me": unusualMe,
   "unusual.not_me": unusualNotMe,
 };
@@ -388,7 +437,18 @@ export async function takeChatAction(
   const outcome = await handler.run({ userId, message, action, client, now });
   // Spec step 93: a tap can change what's open, so Claude's copy of the numbers goes.
   forgetPrimer(userId);
-  const status = outcome.status ?? "answered";
+  // Spec step 230: each button of a debt review is its own item. The message stays open,
+  // without the button just used, until every item has been dealt with.
+  const review = message.refs.reviewButtons ?? [];
+  const reviewTap = review.includes(actionId) && !outcome.status && !outcome.actions;
+  const left = reviewTap
+    ? message.actions.filter((a) => a.id !== actionId || a.kind === "link")
+    : [];
+  const status = reviewTap
+    ? left.some((a) => a.kind !== "link" && review.includes(a.id))
+      ? "open"
+      : "answered"
+    : (outcome.status ?? "answered");
   const refs = { ...(outcome.refs ?? message.refs) };
   if (outcome.note) refs.note = outcome.note;
   // Only if no other tap changed it meanwhile.
@@ -400,7 +460,9 @@ export async function takeChatAction(
       answeredWith: outcome.answeredWith,
       answeredAt: status === "open" ? null : now,
       refs: refs as Prisma.InputJsonObject,
-      actions: (outcome.actions ?? linksOf(message.actions)) as Prisma.InputJsonArray,
+      actions: (reviewTap
+        ? left
+        : (outcome.actions ?? linksOf(message.actions))) as Prisma.InputJsonArray,
       // Spec step 83: "Not now" hides it until then; any other answer clears that.
       snoozedUntil: outcome.snoozedUntil ?? null,
     },

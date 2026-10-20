@@ -1,3 +1,10 @@
+import {
+  COUNSELOR_REFERRALS,
+  COUNSEL_POINTER,
+  DEBT_FACTS,
+  DMP_NOTE,
+  HARDSHIP_PROGRAMS,
+} from "@/config/debt-trouble";
 import type Anthropic from "@anthropic-ai/sdk";
 import { sourceLabel, type DebtBook } from "@/insights/debts";
 import { formatRate } from "@/insights/loans";
@@ -22,6 +29,10 @@ import type { CardInterest } from "@/lib/card-interest";
 import type { LongGame } from "@/lib/student-long-game";
 import type { FamilyLoans } from "@/lib/family-loans";
 import type { CreditGoals } from "@/lib/credit-goals";
+import type { CarLoan } from "@/lib/car-loan";
+import type { DebtReview } from "@/lib/debt-review";
+import type { DebtTrouble } from "@/lib/debt-trouble";
+import type { HomeEquity, ProjectComparison } from "@/lib/home-equity";
 import { REWARD_CATEGORY_LABELS } from "@/config/credit-cards";
 import type { DebtAutopilot } from "@/lib/debt-autopilot";
 import { PMI_SOURCE } from "@/config/debt";
@@ -186,6 +197,42 @@ export const DEBT_TOOLS: Anthropic.Tool[] = [
     input_schema: noInput,
   },
   {
+    name: "car_loan",
+    description:
+      "The car loan the person already has: its balance, rate and payment; in demo advice mode the best refinance offer compared by TOTAL cost (not the payment) with fees and break-even, and whether rates fell or the credit band improved since the last check; and dealer add-ons financed into it (GAP, extended warranty, service contract) found in the payments or typed in, each with the estimated refund if cancelled (unused months of the term, less the usual cancellation fee) and the drafted cancellation letter. The person confirms what a payment was (caraddon.yes) and sends the cancellation themselves (caraddon.mine) or asks the concierge team to (caraddon.team); Jane sends nothing. Refunds are estimates; the contract has the final say.",
+    input_schema: noInput,
+  },
+  {
+    name: "debt_review",
+    description:
+      "The yearly debt review (once a year, and after a raise, a new loan or a missed payment): when the last one was done and why, whether one is due now, and each item with whether Jane did it herself, it waits for the person's tap, or it is fine: payments timed to statement dates, 0% promotions on pace, lower-rate requests, PMI and escrow, and credit score goals. Jane acts by herself only within the debt autopilot level and caps (a payment before a statement at Handle the safe stuff; also a lower-rate request at Handle everything) and nothing above a cap happens without the person's tap; the buttons are credit_build.pay, cardrate.send, homeeq.sent and creditgoal.done.",
+    input_schema: noInput,
+  },
+  {
+    name: "debt_trouble",
+    description:
+      "When debt is too much: the person's monthly debt payments as a share of their income (and whether that is over the share where Jane brings it up), what to ask each lender for (hardship programs, by debt), a sketch of a debt management plan through a nonprofit credit counselor from their own cards (months and interest at a typical negotiated rate, an assumption and not an offer) with a referral list, and the reviewed facts about debt settlement, bankruptcy and tax on forgiven debt. These are facts and doors to knock on: never tell the person to file for bankruptcy, settle or stop paying, never give legal or tax advice, repeat the facts word for word, and point legal questions to a bankruptcy attorney or nonprofit legal aid. Jane sends nothing.",
+    input_schema: noInput,
+  },
+  {
+    name: "home_equity",
+    description:
+      "A home's equity, used well: PMI measured against the home's original value (what the person told Jane; the balance that lets them ask to cancel at 80% and the 78% where it ends by itself, with dates at the current payment, and the drafted request), the escrow in the payment checked against the property tax and insurance bills the person gave (the surplus above a year of bills and the two-month cushion, or a shortage, with the drafted refund request), and, in demo advice mode, a HELOC, a cash-out refinance and a personal loan compared for a project (pass project_cents and optionally years) with the total cost of each (stand-in lender terms, not offers). Jane never sends a request to a servicer or applies for anything: the person sends it and taps homeeq.sent. Rules from the CFPB and Regulation X.",
+    input_schema: {
+      type: "object" as const,
+      properties: {
+        project_cents: {
+          type: "integer" as const,
+          description: "A home project's cost in cents, to compare ways to pay for it (optional).",
+        },
+        years: {
+          type: "integer" as const,
+          description: "Years to pay a HELOC or personal loan back (optional, default 10).",
+        },
+      },
+    },
+  },
+  {
     name: "mortgage",
     description:
       "The person's mortgage, watched: balance, rate, payment; whether it has PMI and the loan as a share of the home's value (from the value they gave), with whether PMI can come off and the steps (rules from the CFPB); escrow balance and any escrow change in the payment; what extra principal each month would save; the best refinance offer's monthly saving, closing costs and break-even months.",
@@ -337,6 +384,10 @@ export const DEBT_TOOL_STATUS: Readonly<Record<string, string>> = {
   student_long_game: "Looking at your student loan's long game…",
   family_loans: "Looking at who owes whom…",
   credit_goals: "Looking at your credit plan…",
+  home_equity: "Checking your home loan…",
+  debt_trouble: "Looking at your options…",
+  debt_review: "Going over your debts…",
+  car_loan: "Looking at your car loan…",
 };
 
 export function refinanceToolOutput(refi: Refinance, money: (cents: number) => string) {
@@ -949,6 +1000,159 @@ export function familyLoansToolOutput(data: FamilyLoans, money: (cents: number) 
       monthly: s.paymentCents === null ? null : money(s.paymentCents),
       yourHalf: s.yourShareCents === null ? null : money(s.yourShareCents),
     })),
+  };
+}
+
+export function carLoanToolOutput(data: CarLoan, money: (cents: number) => string) {
+  if (!data.available || !data.loan) return { note: "No car loan with a balance." };
+  const addon = (a: CarLoan["addons"][number]) => ({
+    kind: a.label,
+    seller: a.name,
+    paid: money(a.paidCents),
+    termMonths: a.termMonths,
+    boughtOn: a.startedOn,
+    status: a.status,
+    estimatedRefund: money(a.refund.refundCents),
+    monthsUnused: a.refund.monthsLeft,
+    cancellationFee: money(a.refund.feeCents),
+    letter: a.letter,
+  });
+  return {
+    loan: data.loan.name,
+    balance: money(data.loan.balanceCents),
+    ratePercent: data.loan.aprBps === null ? null : data.loan.aprBps / 100,
+    refinance:
+      data.advice && data.refi
+        ? {
+            lender: data.refi.lender,
+            ratePercent: data.refi.aprBps / 100,
+            totalCostIfKept: money(data.refi.currentTotalCents),
+            totalCostIfRefinanced: money(data.refi.newTotalCents),
+            saving: money(data.refi.savingCents),
+            fees: money(data.refi.feeCents),
+            breakEvenMonths: data.refi.breakEvenMonths,
+            standInLenderCatalogNotOffers: true,
+            sinceLastCheck: data.change,
+          }
+        : null,
+    confirmedAddOns: data.addons.map(addon),
+    maybeAddOns: data.candidates.map((a) => ({
+      kind: a.label,
+      seller: a.name,
+      paid: money(a.paidCents),
+      estimatedRefundIfSo: money(a.refund.refundCents),
+    })),
+  };
+}
+
+export function debtReviewToolOutput(data: DebtReview) {
+  if (!data.available) return { note: "No debt with a balance to review." };
+  return {
+    autopilotLevel: data.level,
+    lastReview: data.review,
+    reviewDueNow: data.due,
+    items: data.items.map((i) => ({
+      item: i.title,
+      status:
+        i.status === "done"
+          ? "Jane did it"
+          : i.status === "tap"
+            ? "needs the person's tap"
+            : "fine",
+      what: i.text,
+    })),
+  };
+}
+
+export function debtTroubleToolOutput(data: DebtTrouble, money: (cents: number) => string) {
+  if (!data.available) return { note: "No debt with a balance." };
+  return {
+    monthlyDebtPayments: money(data.monthlyPaymentsCents),
+    monthlyIncome: data.incomeCents === null ? null : money(data.incomeCents),
+    shareOfIncomePercent: data.share === null ? null : Math.round(data.share * 100),
+    overTheMarkWhereJaneBringsItUp: data.over,
+    hardshipProgramsByDebt: data.debts.map((d) => ({
+      debt: d.name,
+      kind: d.kindLabel,
+      balance: money(d.balanceCents ?? 0),
+      whatToAsk: HARDSHIP_PROGRAMS[d.kind],
+    })),
+    debtManagementPlanSketch: data.dmp && {
+      cardBalance: money(data.dmp.cardBalanceCents),
+      cardPaymentsAMonth: money(data.dmp.cardPaymentCents),
+      assumedRatePercent: data.dmp.assumedAprBps / 100,
+      assumptionNotAnOffer: true,
+      monthsAtTheAssumedRate: data.dmp.monthsAssumed,
+      monthsAtTodaysRates: data.dmp.monthsNow,
+      interestCutAbout: money(data.dmp.interestCutCents),
+    },
+    debtManagementPlan: DMP_NOTE,
+    nonprofitCounselors: COUNSELOR_REFERRALS.map((c) => ({ name: c.name, url: c.url })),
+    reviewedFacts: [...DEBT_FACTS.settlement, ...DEBT_FACTS.bankruptcy, ...DEBT_FACTS.taxes].map(
+      (f) => ({ fact: f.text, source: f.source.label }),
+    ),
+    forLegalQuestions: COUNSEL_POINTER,
+  };
+}
+
+export function homeEquityToolOutput(
+  data: HomeEquity,
+  project: ProjectComparison | null,
+  money: (cents: number) => string,
+) {
+  if (!data.available) return { note: "No mortgage with a balance." };
+  const e = data.escrow;
+  return {
+    loan: data.loanName,
+    balance: money(data.balanceCents),
+    hasPmi: data.hasPmi,
+    originalValueGiven:
+      data.facts.originalValueCents === null ? null : money(data.facts.originalValueCents),
+    pmi: data.pmi && {
+      loanAsShareOfOriginalValue: Math.round(data.pmi.ltv * 1000) / 10,
+      canAskToCancelNow: data.pmi.canAskNow,
+      balanceToAsk: money(data.pmi.askBalanceCents),
+      endsByItselfNow: data.pmi.endsNow,
+      balanceWhereItEnds: money(data.pmi.autoBalanceCents),
+      canAskAround: data.pmi.askOn,
+      endsAround: data.pmi.autoOn,
+      requestSentOn: data.facts.pmiLetterSentOn,
+    },
+    pmiRequestLetter: data.pmiLetter,
+    escrow:
+      e === null
+        ? null
+        : e.kind === "unknown"
+          ? { unknown: e.why }
+          : {
+              verdict: e.kind,
+              billsAYear: money(e.billsCents),
+              escrowInPaymentAYear: money(e.collectedYearlyCents),
+              mostTheServicerMayHold: money(e.allowedBalanceCents),
+              surplus: money(e.surplusCents),
+              requestSentOn: data.facts.escrowRequestSentOn,
+            },
+    escrowRefundRequestLetter: data.escrowLetter,
+    projectComparison:
+      project === null
+        ? data.advice
+          ? "Give project_cents to compare."
+          : "Only for the demo bank."
+        : {
+            project: money(project.projectCents),
+            years: project.years,
+            standInLenderTermsNotOffers: true,
+            options: project.options.map((o) => ({
+              product: o.label,
+              available: o.available,
+              why: o.why,
+              ratePercent: o.aprBps / 100,
+              years: o.years,
+              monthly: money(o.monthlyCents),
+              upFront: money(o.upfrontCents),
+              totalCost: money(o.totalCostCents),
+            })),
+          },
   };
 }
 

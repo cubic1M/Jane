@@ -20,11 +20,89 @@ const rows: Row[] = [
   ["debt", "/debt", "debts", "how much card interest am I paying"],
   ["budgets", "/budgets", "budgets", "how's my budget"],
 
+  // Investing, round three (steps 160–216).
+  ["crypto", "/investments/crypto", "crypto", "how much crypto do i have"],
+  ["crypto", "/investments/crypto", "crypto", "whats my bitcoin worth"],
+  ["cash", "/investments/cash", "cash_plan", "is my cash earning enough"],
+  ["cash", "/investments/cash", "cash_plan", "should i open a high yield savings account"],
+  ["cash", "/investments/cash", "cash_plan", "is a money market fund safe for my emergency fund"],
+  [
+    "retirement",
+    "/investments/retirement-accounts",
+    "retirement_accounts",
+    "am i getting the full employer match",
+  ],
+  [
+    "retirement",
+    "/investments/retirement-accounts",
+    "retirement_accounts",
+    "what are the contribution limits this year",
+  ],
+  [
+    "retirement",
+    "/investments/retirement-accounts",
+    "retirement_accounts",
+    "what is a backdoor roth",
+  ],
+  [
+    "retirement",
+    "/investments/retirement-income",
+    "retirement_income",
+    "when should i claim social security",
+  ],
+  ["retirement", "/investments/retirement-income", "retirement_income", "what is an rmd"],
+  [
+    "retirement",
+    "/investments/retirement-income",
+    "retirement_income",
+    "how long will my money last in retirement",
+  ],
+  [
+    "oldaccounts",
+    "/investments/old-accounts",
+    "old_accounts",
+    "i left a 401k at my old job what do i do",
+  ],
+  ["oldaccounts", "/investments/old-accounts", "old_accounts", "how do i roll over my old 401k"],
+  [
+    "family",
+    "/investments/family",
+    "family_investing",
+    "can i open a custodial account for my kid",
+  ],
+  ["family", "/investments/family", "family_investing", "can grandparents gift to my kids 529"],
+  ["property", "/investments/property", "property", "how much equity do i have in my home"],
+  ["property", "/investments/property", "property", "is my rental making money"],
+  ["costly", "/investments/costly-products", "costly_products", "what does my annuity really cost"],
+  ["costly", "/investments/costly-products", "costly_products", "what is a surrender charge"],
+  ["invreview", "/investments", "yearly_review", "do my yearly investing review"],
+  ["location", "/investments/location", "asset_location", "which accounts should hold my bonds"],
+  ["invreview", "/investments", "steady_hand", "should i sell everything the market is crashing"],
+
   // What if (spec step 203).
   ["scenarios", "/what-if", "what_if", "what if i lose my job"],
   ["scenarios", "/what-if", "what_if", "what would happen if i got laid off for 4 months"],
   ["scenarios", "/what-if", "what_if", "what if we have a baby"],
   ["scenarios", "/what-if", "what_if", "what if i buy a house"],
+
+  // The long view (spec step 209).
+  ["longview", "/long-view", "long_view", "where will my money be in 30 years"],
+  ["longview", "/long-view", "long_view", "what will my net worth be in 20 years"],
+  ["longview", "/long-view", "long_view", "how much will i have when i retire"],
+
+  // The picture of you (spec step 253).
+  ["profile", "/profile", "my_profile", "what do you know about me"],
+  ["profile", "/profile", "my_profile", "show me my profile"],
+  ["profile", "/profile", "my_profile", "what have you learned about me"],
+  // A steady paycheck from uneven income (spec step 240).
+  [
+    "steady",
+    "/transfers",
+    "steady_pay",
+    "can you give me a steady paycheck from my freelance income",
+  ],
+  ["steady", "/transfers", "steady_pay", "my income is uneven"],
+  ["steady", "/transfers", "steady_pay", "what is my steady pay"],
 
   // Safe to spend and the day.
   ["safe", "/home", "safe_to_spend", "how much do i have left to spend"],
@@ -384,6 +462,15 @@ const rows: Row[] = [
   ["loans", "/loans/car", "car_purchase", "the dealer offered 7.9% for 72 months"],
   ["credit", "/loans/goal", "credit_goals", "i need a 740 credit score for a mortgage in 6 months"],
   ["credit", "/loans/goal", "credit_goals", "what's my credit plan"],
+  ["debt", "/loans/equity", "home_equity", "when does my pmi end by itself"],
+  ["debt", "/loans/equity", "home_equity", "is my escrow too high"],
+  ["debt", "/loans/equity", "home_equity", "heloc or cash-out refinance for a $40,000 kitchen"],
+  ["loans", "/loans/auto", "car_loan", "can i cancel the extended warranty on my car loan"],
+  ["loans", "/loans/auto", "car_loan", "do i have gap insurance on my car loan"],
+  ["debt", "/loans/review", "debt_review", "do my yearly debt review"],
+  ["debt", "/loans/review", "debt_review", "how are my debts doing"],
+  ["debt", "/loans/help", "debt_trouble", "i have too much debt, what are my options"],
+  ["debt", "/loans/help", "debt_trouble", "what about debt settlement or bankruptcy"],
   ["debt", "/loans/family", "family_loans", "who owes me money"],
   ["debt", "/loans/family", "family_loans", "did sam pay me back"],
   ["student", "/loans/student", "student_long_game", "how many pslf payments have i made"],
@@ -412,6 +499,23 @@ const rows: Row[] = [
   ["whatif", "/what-if", "what_if", "what if i go part time"],
   ["whatif", "/what-if", "what_if", "what if i save $200 more a month"],
   ["spending", "/monthly", "monthly_report", "how did i do this month"],
+
+  // Gifts to family, and the long view.
+  [
+    "investing",
+    "/gift",
+    "family_investing",
+    "can i gift my daughter some money for her investments",
+  ],
+  ["investing", "/gift", "family_investing", "how do i put money in an account for my kid"],
+  ["investing", "/long-view", "long_view", "where will i be in 20 years"],
+  ["investing", "/long-view", "long_view", "show me the long view"],
+
+  // The accountant's view and the profile.
+  ["taxes", "/accountant", "tax_return", "what should my accountant see"],
+  ["taxes", "/accountant", "tax_forms", "can i share my tax documents with my accountant"],
+  ["settings", "/profile", "investor_profile", "what do you know about me"],
+  ["settings", "/profile", "tax_profile", "what's in my profile"],
 
   // Two questions in one message.
   ["two", "/home", "safe_to_spend", "how much can i spend and when is payday"],

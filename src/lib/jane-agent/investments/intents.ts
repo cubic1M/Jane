@@ -20,7 +20,15 @@ export type InvestmentTopic =
   | "company_stock"
   | "crypto"
   | "cash"
-  | "steady";
+  | "steady"
+  | "retirement_accounts"
+  | "old_accounts"
+  | "retirement_income"
+  | "family"
+  | "property"
+  | "costly_products"
+  | "yearly_review"
+  | "location";
 
 export type InvestmentIntent = {
   kind: "investments";
@@ -118,7 +126,50 @@ const CASH =
 const STEADY =
   /\bshould i sell (?:everything|all|my (?:stocks|investments|funds|portfolio))\b|\b(?:market|stocks?|portfolio|investments?) (?:is |are )?(?:crash\w*|tank\w*|plung\w*|down a lot|dropping|falling)\b|\bwhy (?:are|is) my (?:investments?|portfolio|stocks) down\b|\bpanic\b.*\b(?:sell|invest)\w*|\bget out of the market\b|\bsell (?:everything|it all) now\b/;
 
+// Spec step 210: limits, the match, Roth or traditional, the backdoor Roth.
+const RETIREMENT_ACCOUNTS =
+  /\bbackdoor roth\b|\b(?:contribution|contribute) limits?\b|\bhow much can i (?:put|contribute|save) (?:in|into|to) (?:my |an? )?(?:401\(?k\)?|403\(?b\)?|ira|roth|retirement)\b|\b(?:am i|are we) (?:getting|getting all of|missing) (?:the |my )?(?:full |whole )?(?:employer )?match\b|\bmax(?:ing)? out my (?:401\(?k\)?|ira|roth)\b/;
+
+// Spec step 211: forgotten 401(k)s and rollovers.
+const OLD_ACCOUNTS =
+  /\b(?:old|previous|prior|past|former|forgotten|lost) (?:401\(?k\)?|403\(?b\)?|retirement (?:plan|account)|employer plan)\b|\b401\(?k\)? (?:from|at) (?:a |my |an )?(?:old|previous|prior|past|former)\b|\broll(?:ing)? ?over\b|\brollover\b|\bleft (?:a |my )?401\(?k\)? (?:at|with)\b/;
+
+// Spec step 212: Social Security, minimum distributions and the retirement paycheck.
+const RETIREMENT_INCOME =
+  /\bsocial security\b|\brmds?\b|\brequired minimum distributions?\b|\bretirement (?:paycheck|income)\b|\bwhen (?:should|can) i (?:claim|take|start)\b.*\b(?:social security|benefits?)\b|\bhow long will my (?:money|savings|retirement) last\b|\bwhich accounts? (?:do i |should i )?(?:draw|withdraw|take) (?:from )?first\b|\bdrawdown\b/;
+
+// Spec step 213: children's accounts and gifts to a child's college fund.
+const FAMILY =
+  /\bcustodial (?:account|ira|roth)\b|\butma\b|\bugma\b|\b(?:roth ira|roth|investing|account) for (?:my |a )?(?:kid|child|teen|teenager|son|daughter)s?\b|\bgrandparents?\b.*\b(?:gift|give|contribute|529)\b|\bgift(?:s|ing)? (?:to|into) (?:a |my |the )?(?:529|college fund)\b|\bkiddie tax\b|\binvest(?:ing)? for (?:my )?(?:kids?|children|family)\b/;
+
+// Spec step 214: home equity, rentals and paying the mortgage down against investing.
+const PROPERTY =
+  /\binvestment propert(?:y|ies)\b|\bmy rental\b|\bhome equity\b|\b(?:pay|paying) (?:off |down )?(?:my |the )?mortgage (?:early |down |off )?(?:or|vs\.?|versus|instead of) invest|\b(?:should i )?(?:pay|paying) (?:down |off )?(?:my |the )?mortgage (?:faster|early)\b|\bpay(?:ing)? extra (?:on|toward|towards) (?:my |the )?mortgage\b|\bcash on cash\b|\blandlord\b/;
+
+// Spec step 215: variable annuities, whole life and advisory fees.
+const COSTLY =
+  /\b(?:variable |fixed |indexed )?annuit(?:y|ies)\b|\bsurrender (?:charge|fee|period|schedule)s?\b|\bwhole life\b|\bcash value\b|\badvisory fees?\b|\b(?:financial |investment )?advisor fees?\b|\bwhat (?:does|is) (?:my )?(?:annuity|whole life|advisor) (?:really )?cost/;
+
+// Spec step 216: the yearly investing review on request.
+const YEARLY_REVIEW =
+  /\b(?:yearly|annual|year[- ]end|once[- ]a[- ]year) (?:investing |investment |portfolio )?(?:review|checkup|check[- ]up)\b|\b(?:review|check up on|check over) (?:all of )?my (?:investing|investments)(?: for the year)?\b|\bwhat (?:did|have) you (?:do|done|handled)\b.*\b(?:invest|portfolio)/;
+
+// Spec step 231: asset location.
+const LOCATION =
+  /\b(?:which|what) (?:account|accounts) (?:should|do i) (?:hold|keep|put) (?:my )?(?:bonds|stocks|funds)\b|\bwhere should i (?:hold|keep) (?:my )?(?:bonds|stocks)\b|\btax[- ]efficient (?:placement|investing|fund placement)\b|\bbonds? in (?:my )?(?:401\(?k\)?|ira|taxable)\b|\bright (?:investment|investments) in the right account\b/;
+
 export function parseInvestmentIntent(text: string): InvestmentIntent | null {
+  if (LOCATION.test(text)) return { kind: "investments", topic: "location", account: null };
+  if (YEARLY_REVIEW.test(text))
+    return { kind: "investments", topic: "yearly_review", account: null };
+  if (COSTLY.test(text)) return { kind: "investments", topic: "costly_products", account: null };
+  if (PROPERTY.test(text)) return { kind: "investments", topic: "property", account: null };
+  if (FAMILY.test(text)) return { kind: "investments", topic: "family", account: null };
+  if (RETIREMENT_INCOME.test(text))
+    return { kind: "investments", topic: "retirement_income", account: null };
+  if (OLD_ACCOUNTS.test(text)) return { kind: "investments", topic: "old_accounts", account: null };
+  if (RETIREMENT_ACCOUNTS.test(text))
+    return { kind: "investments", topic: "retirement_accounts", account: null };
   if (STEADY.test(text)) return { kind: "investments", topic: "steady", account: null };
   if (CASH.test(text)) return { kind: "investments", topic: "cash", account: null };
   if (CRYPTO.test(text)) return { kind: "investments", topic: "crypto", account: null };

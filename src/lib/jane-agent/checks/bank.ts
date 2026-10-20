@@ -886,9 +886,33 @@ const BASE_QUESTIONS: readonly CheckQuestion[] = [
     needs: "rules",
     expect: { intent: "tax", mentions: /crypto|exchange/i },
   },
+  {
+    id: "tax-28",
+    text: "how will my taxes look over the next few years",
+    needs: "rules",
+    expect: { intent: "tax", mentions: /federal tax over the next/, list: true },
+  },
 
   // Insurance (spec step 108), over the demo bank's sample GEICO car policy
   // (DEMO_POLICY in src/lib/insurance/profile.ts: $142.00 a month, a $1,000.00 deductible).
+  {
+    id: "tax-29",
+    text: "is my property tax too high",
+    needs: "rules",
+    expect: { intent: "tax", mentions: /assessed at/, list: true },
+  },
+  {
+    id: "tax-30",
+    text: "how do I share my taxes with my accountant",
+    needs: "rules",
+    expect: { intent: "tax", mentions: /link/, list: true },
+  },
+  {
+    id: "tax-31",
+    text: "what's happening with my taxes this month",
+    needs: "rules",
+    expect: { intent: "tax", mentions: /tax calendar for/, list: true },
+  },
   {
     id: "ins-1",
     text: "what insurance do I have",
@@ -1259,6 +1283,57 @@ const BASE_QUESTIONS: readonly CheckQuestion[] = [
       maxChars: 1_000,
     },
   },
+  // Spec step 245: the car loan you already have.
+  {
+    id: "debt-34",
+    text: "can I cancel the extended warranty on my car loan",
+    needs: "rules",
+    expect: {
+      intent: "car_loan",
+      mentions: /car loan|refinanc/i,
+      link: "/loans/auto",
+      maxChars: 1_500,
+    },
+  },
+  // Spec step 230: the yearly debt review, one message with a button for each item.
+  {
+    id: "debt-33",
+    text: "do my yearly debt review",
+    needs: "rules",
+    expect: {
+      intent: "debt_review",
+      mentions: /statement/i,
+      link: "/loans/review",
+      list: true,
+      maxChars: 1_600,
+    },
+  },
+  // Spec step 229: when debt is too much, the facts without advice.
+  {
+    id: "debt-32",
+    text: "I have too much debt, what are my options",
+    needs: "rules",
+    expect: {
+      intent: "debt_trouble",
+      mentions: /hardship/i,
+      link: "/loans/help",
+      list: true,
+      maxChars: 3_200,
+    },
+  },
+  // Spec step 228: a home's equity, used well.
+  {
+    id: "debt-31",
+    text: "heloc or cash-out refinance for a $40,000 kitchen",
+    needs: "rules",
+    expect: {
+      intent: "home_equity",
+      mentions: /total cost/i,
+      link: "/loans/equity",
+      list: true,
+      maxChars: 1_400,
+    },
+  },
   // Spec step 226: money between family and friends, kept kindly.
   {
     id: "debt-29",
@@ -1278,7 +1353,7 @@ const BASE_QUESTIONS: readonly CheckQuestion[] = [
     needs: "rules",
     expect: {
       intent: "student_long",
-      mentions: /qualifying payments counted/i,
+      mentions: /Public Service Loan Forgiveness/i,
       link: "/loans/student",
       list: true,
       maxChars: 1_600,

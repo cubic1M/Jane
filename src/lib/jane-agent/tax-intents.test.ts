@@ -322,3 +322,63 @@ describe("crypto and equity pay in the chat", () => {
     expect(parse(text)).toEqual({ kind: "tax", ask: "equity" });
   });
 });
+
+describe("taxes over the years in the chat", () => {
+  it.each([
+    "how will my taxes look over the next several years",
+    "should I do a roth conversion",
+    "what is my multi-year tax plan",
+    "should I bunch my deductions into alternate years",
+  ])("%s asks about the years", (text) => {
+    expect(parse(text)).toEqual({ kind: "tax", ask: "years" });
+  });
+
+  it("reads the year they plan to retire", () => {
+    expect(parse("i plan to retire in 2045")).toEqual({
+      kind: "tax",
+      ask: "retire_year",
+      year: 2045,
+    });
+  });
+});
+
+describe("property tax in the chat", () => {
+  it.each([
+    "is my property tax too high",
+    "should I appeal my property taxes",
+    "my house is over-assessed",
+    "what is the homestead exemption",
+    "do I get a senior discount on my property tax exemption",
+  ])("%s asks about property tax", (text) => {
+    expect(parse(text)).toEqual({ kind: "tax", ask: "property" });
+  });
+
+  it("leaves the deduction question to the home answer", () => {
+    expect(parse("how much property tax can I deduct")).not.toEqual({
+      kind: "tax",
+      ask: "property",
+    });
+  });
+});
+
+describe("working with an accountant in the chat", () => {
+  it.each([
+    "how do I share my taxes with my accountant",
+    "send my accountant a link",
+    "do I need an accountant",
+    "my accountant answered",
+  ])("%s asks about the accountant", (text) => {
+    expect(parse(text)).toEqual({ kind: "tax", ask: "accountant" });
+  });
+});
+
+describe("the tax calendar in the chat", () => {
+  it.each([
+    "show me my tax year calendar",
+    "what are my taxes this month",
+    "what's due for my taxes",
+    "how does jane handle my taxes",
+  ])("%s asks about the calendar", (text) => {
+    expect(parse(text)).toEqual({ kind: "tax", ask: "calendar" });
+  });
+});

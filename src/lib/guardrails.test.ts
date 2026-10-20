@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { APPROVED_DEBT_SENTENCES, COUNSEL_POINTER, DEBT_FACTS } from "@/config/debt-trouble";
 import {
   checkGuardrails,
   dollarFigures,
@@ -251,5 +252,49 @@ describe("narrowed rules", () => {
     expect(issues("Take them to small claims court.")).toEqual(["tax_or_legal_advice"]);
     expect(issues("You could sue them for it.")).toEqual(["tax_or_legal_advice"]);
     expect(issues("You'll get your money back.")).toEqual(["guaranteed_outcome"]);
+  });
+});
+
+// Spec step 229: facts about settlement and bankruptcy pass only as the reviewed sentences;
+// advice about them, legal advice and promised outcomes never do.
+describe("debt trouble facts", () => {
+  const standard = (text: string) => issuesOf(text, []);
+  const demo = (text: string) => {
+    const result = checkGuardrails(text, [], undefined, "demo_advice");
+    return result.ok ? [] : result.issues;
+  };
+
+  it("lets each reviewed sentence through, in every profile", () => {
+    for (const sentence of APPROVED_DEBT_SENTENCES) {
+      expect(standard(sentence), sentence).toEqual([]);
+      expect(demo(sentence), sentence).toEqual([]);
+    }
+    expect(standard(`Here is what it means. - ${DEBT_FACTS.bankruptcy[0].text}`)).toEqual([]);
+  });
+
+  it("blocks legal advice about bankruptcy and settlement", () => {
+    for (const text of [
+      "You should file for bankruptcy.",
+      "Chapter 7 is the right move for you.",
+      "Stop paying your cards and settle for less.",
+      "You don't need a lawyer for this.",
+      "A debt settlement company can get this cleared.",
+      "The lender can't take you to court over it.",
+      "You can't be sued for this debt.",
+    ]) {
+      expect(standard(text), text).toContain("tax_or_legal_advice");
+      expect(demo(text), text).toContain("tax_or_legal_advice");
+    }
+  });
+
+  it("checks anything added to or changed in a reviewed sentence", () => {
+    const [first] = DEBT_FACTS.bankruptcy;
+    expect(standard(`${first.text} Chapter 13 is right for you.`)).toContain("tax_or_legal_advice");
+    expect(standard(first.text.replace("many debts", "all your debts"))).toContain(
+      "tax_or_legal_advice",
+    );
+    expect(standard(`${COUNSEL_POINTER} It's definitely the answer.`)).toContain(
+      "guaranteed_outcome",
+    );
   });
 });
