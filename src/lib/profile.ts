@@ -28,7 +28,7 @@ export async function loadProfileInput(
   const db = scopedFor(userId, client);
   const today = dayOf(now);
   const since = new Date(now.getTime() - (PROFILE_MONTHS * 31 + 2) * 86_400_000);
-  const [transactions, accounts, liabilities, prefs, tax, insurance, investor, unread] =
+  const [transactions, accounts, liabilities, holdings, prefs, tax, insurance, investor, unread] =
     await Promise.all([
       db.transactions.findMany({
         where: { date: { gt: since, lte: now } },
@@ -46,6 +46,7 @@ export async function loadProfileInput(
       db.liabilities.findMany({
         select: { accountId: true, kind: true, aprBps: true, hasPmi: true, payoffDate: true },
       }),
+      db.holdings.findMany({ select: { accountId: true, valueCents: true, costBasisCents: true } }),
       db.janePreferences.findMany({
         where: { kind: "fact", key: { startsWith: PREF_PREFIX } },
         select: { key: true, value: true },
@@ -105,6 +106,11 @@ export async function loadProfileInput(
       type: a.type,
       subtype: a.subtype,
       balanceCents: a.currentBalanceCents ?? 0,
+    })),
+    holdings: holdings.map((h) => ({
+      accountId: h.accountId,
+      valueCents: h.valueCents,
+      basisCents: h.costBasisCents,
     })),
     liabilities: liabilities.map((l) => ({
       accountId: l.accountId,

@@ -122,6 +122,22 @@ export const DETECTOR_RATES = {
     // this share of the yearly limit is still unused (the confidence says so).
     yearEndFrom: "11-15",
     yearEndUnusedRoomShare: 0.25,
+    // Gifts: a charity gift of $250 or more needs the charity's written receipt to deduct
+    // (src/config/giving.ts GIVING.receiptFromCents).
+    // Property tax: worth a look from this much a year; an appeal saves about the gap
+    // between the assessment and the market (src/config/property-tax.ts APPEAL_GAP_RATE).
+    propertyTaxMinCents: 200_000,
+    // Losses: at least this much below cost in a taxable account before harvesting is raised;
+    // a loss offsets gains, then up to this much of other income a year.
+    harvestMinLossCents: 100_000,
+    harvestOrdinaryOffsetCents: 300_000,
+    // Filing: the IRS's minimum penalty for a return more than 60 days late is about this
+    // much (the lesser of it or the tax owed), ESTIMATE TO VERIFY. Filing season opens
+    // January 15 and closes April 15.
+    lateFilingPenaltyCents: 48_500,
+    filingFrom: "01-15",
+    filingUntil: "04-15",
+    filingNowDays: 14,
     // Estimated payments: urgency by days to the next due date.
     estimatedNowDays: 14,
     estimatedSoonDays: 45,

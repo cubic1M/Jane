@@ -20,6 +20,11 @@ export function inputFor(person: string, told: ProfileInput["told"] = {}): Profi
     today: SAMPLE_TODAY,
     told,
     unreadPolicyDocuments: UNREAD_DOCUMENTS[person] ?? 0,
+    holdings: holdings.map((h) => ({
+      accountId: h.account_id,
+      valueCents: Math.round(h.institution_value * 100),
+      basisCents: h.cost_basis == null ? null : Math.round(h.cost_basis * 100),
+    })),
     transactions: demoTransactions(demo, null, SAMPLE_TODAY).map((t) => ({
       date: t.date,
       amountCents: Math.round(t.amount * 100),

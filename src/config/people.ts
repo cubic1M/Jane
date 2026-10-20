@@ -68,6 +68,10 @@ export const SUGGESTION_TOPICS = [
   "childcare_tax_break",
   "identity_ip_pin",
   "year_end_moves",
+  "charity_receipts",
+  "property_tax_check",
+  "tax_loss_harvest",
+  "file_return",
 ] as const;
 export type SuggestionTopic = (typeof SUGGESTION_TOPICS)[number];
 
@@ -151,6 +155,9 @@ export const PEOPLE: readonly Person[] = [
       "catch_up",
       "backdoor_roth",
       "hsa",
+      "charity_receipts",
+      "property_tax_check",
+      "tax_loss_harvest",
     ],
     firstQuestion: "employer_match",
   },
@@ -180,6 +187,8 @@ export const PEOPLE: readonly Person[] = [
       "childcare_tax_break",
 
       "insurance_claim",
+      "charity_receipts",
+      "property_tax_check",
     ],
     mustNot: [
       "renters_insurance",
@@ -228,6 +237,8 @@ export const PEOPLE: readonly Person[] = [
       "hardship_plan",
       "roth_conversion",
       "childcare_tax_break",
+      "property_tax_check",
+      "tax_loss_harvest",
     ],
     firstQuestion: "filing_status",
   },
@@ -253,6 +264,9 @@ export const PEOPLE: readonly Person[] = [
       "mortgage_extra",
 
       "card_cover",
+      "tax_loss_harvest",
+      "charity_receipts",
+      "property_tax_check",
     ],
     mustNot: [
       "bank_fees",
@@ -290,6 +304,8 @@ export const PEOPLE: readonly Person[] = [
       "roth_conversion",
 
       "employer_benefits",
+      "property_tax_check",
+      "charity_receipts",
     ],
     mustNot: [
       "education_529",
@@ -324,6 +340,8 @@ export const PEOPLE: readonly Person[] = [
       "subscriptions",
       "bill_negotiation",
       "policy_documents",
+      "property_tax_check",
+      "charity_receipts",
     ],
     mustNot: [
       "renters_insurance",
@@ -387,6 +405,9 @@ export const PEOPLE: readonly Person[] = [
       "childcare_tax_break",
 
       "card_cover",
+      "charity_receipts",
+      "property_tax_check",
+      "tax_loss_harvest",
     ],
     firstQuestion: "hardship_reason",
   },
@@ -417,6 +438,8 @@ export const PEOPLE: readonly Person[] = [
       "hardship_plan",
       "roth_conversion",
       "childcare_tax_break",
+      "property_tax_check",
+      "tax_loss_harvest",
     ],
     firstQuestion: "business_structure",
   },
