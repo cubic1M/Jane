@@ -50,7 +50,7 @@ test("every debt shows with its source, and missing terms can be typed in", asyn
   await affirm.getByText("Add what your bank doesn't report").click();
   await affirm.getByLabel("Rate (APR %)").fill("15");
   await affirm.getByLabel("Left to pay ($)").fill("537");
-  await affirm.getByRole("button", { name: "Save" }).click();
+  await affirm.getByRole("button", { name: "Save", exact: true }).click();
   await expect(page.getByRole("status")).toHaveText("Saved. Jane counts it from now on.");
   await expect(affirm).toContainText("15.00%");
   await expect(affirm).toContainText("you typed it on");
@@ -205,7 +205,7 @@ test("student loan plans are compared, and every step links to studentaid.gov", 
   }
   await page.getByLabel("Income from your last tax return ($)").fill("45000");
   await page.getByLabel("I work full time in public service").press("Space");
-  await page.getByRole("button", { name: "Save" }).press("Enter");
+  await page.getByRole("button", { name: "Save", exact: true }).press("Enter");
   await expect(page.getByRole("status")).toHaveText(
     "Saved. The plans are worked out again with it.",
   );
@@ -556,4 +556,45 @@ test("card interest shows the cost, a promotion off pace, and a request sent on 
   await send.press("Enter");
   await expect(page.getByText("Sent just now.")).toBeVisible();
   await expect(cards).toContainText("Asked");
+});
+
+// Spec step 225: the long game on student loans: PSLF month by month, the dates that become
+// deadlines, and what a refinance would give up.
+test("student loans show PSLF month by month, save dates as deadlines, and warn about refinancing", async ({
+  context,
+  page,
+  baseURL,
+}) => {
+  const user = await signedInUser("user");
+  userId = user.userId;
+  await context.addCookies([
+    { name: "authjs.session-token", value: user.sessionToken, url: baseURL ?? "" },
+  ]);
+  await page.goto("/connect");
+  await page.getByRole("button", { name: "Link a demo bank" }).click();
+  await expect(page).toHaveURL("/chat", { timeout: 60_000 });
+
+  await page.goto("/loans/student");
+  await page.getByLabel("I work full time in public service").check();
+  await page.getByLabel("Qualifying payments already counted").fill("90");
+  await page.getByRole("button", { name: "Save", exact: true }).press("Enter");
+  await expect(page.getByText("Saved. The plans are worked out again with it.")).toBeVisible();
+
+  const game = page.getByRole("region", { name: "The long game" });
+  await expect(game).toContainText("qualifying payments counted for PSLF");
+  await expect(game.getByRole("list", { name: "PSLF months" }).getByRole("listitem")).toHaveCount(
+    13,
+  );
+  await expect(game.getByRole("note")).toContainText("Don't refinance a federal loan");
+  await expect(game.getByRole("list", { name: "What a refinance would give up" })).toBeVisible();
+
+  await game.getByLabel("Employer last certified").fill("2025-01-15");
+  const inSixMonths = new Date(Date.now() + 183 * 86_400_000).toISOString().slice(0, 10);
+  await game.getByLabel("Income-driven plan recertified by").fill(inSixMonths);
+  await game.getByRole("button", { name: "Save my dates" }).press("Enter");
+  await expect(page.getByText("Saved. The dates are on your deadlines.")).toBeVisible();
+  await page.goto("/deadlines");
+  await expect(
+    page.getByText("Certify your employer for Public Service Loan Forgiveness"),
+  ).toBeVisible();
 });

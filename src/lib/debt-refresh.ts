@@ -6,6 +6,7 @@ import { refreshTightMoney } from "@/lib/tight-money";
 import { refreshMedicalBills } from "@/lib/medical-bills";
 import { refreshReportFixes } from "@/lib/credit-report-fixes";
 import { refreshCardInterest } from "@/lib/card-interest";
+import { syncStudentDeadlines } from "@/lib/student-long-game";
 import { refreshDebtPlan } from "@/lib/debt-plan";
 import { refreshLoanApplications } from "@/lib/loan-applications";
 import { refreshRefinance } from "@/lib/refinance";
@@ -35,6 +36,8 @@ export async function refreshDebts(
     ["credit report letters", () => refreshReportFixes(userId, { client, now })],
     // Spec step 224: lender answers to rate requests, and a deadline on each promotion off pace.
     ["card interest", () => refreshCardInterest(userId, { client, now })],
+    // Spec step 225: the PSLF certification, recertification and forgiven-debt tax dates.
+    ["student loan dates", () => syncStudentDeadlines(userId, { client, now })],
     ["refinance rates", () => refreshRefinance(userId, { client, now })],
     // Spec step 112: loans funding, and old loans reaching zero.
     ["loan applications", () => refreshLoanApplications(userId, { client, now })],

@@ -42,6 +42,7 @@ export type DebtIntent =
   // Spec step 177: "I'm short this month", "what if I can't pay my bills?".
   | { kind: "tight_money" }
   // Spec step 178: "how much car can I afford?", "the dealer offered 7.9% for 72 months".
+  | { kind: "student_long" }
   | { kind: "card_interest" }
   | { kind: "report_fixes" }
   | { kind: "medical_bills" }
@@ -80,6 +81,7 @@ const DEBT_KINDS = new Set<string>([
   "medical_bills",
   "report_fixes",
   "card_interest",
+  "student_long",
 ]);
 export const isDebtIntent = (intent: { kind: string }): intent is DebtIntent =>
   DEBT_KINDS.has(intent.kind);
@@ -184,6 +186,10 @@ const REPORT_FIX =
 const CARD_INTEREST =
   /\b(?:how much )?interest\b.*\b(?:cards?|credit cards?)\b|\b(?:cards?|credit cards?)\b.*\binterest\b|\b(?:pay|paying) less interest\b|\b(?:cut|reduce|lower|lowering) (?:my )?(?:card |credit card )?(?:interest|apr)\b|\bdeferred interest\b|\b0 ?% (?:promo|promotion|offer|intro)\b|\bpromo(?:tional)? (?:balance|rate|period|ends)\b/;
 
+// Spec step 225: PSLF, recertifying, tax on forgiven loans, refinancing student loans.
+const STUDENT_LONG =
+  /\b(?:pslf|public service loan\w*)\b.*\b(?:payments?|counted?|count|how many|how long|when|date|done|left|remaining|progress|certif\w+|recertif\w+)\b|\b(?:payments?|counted?|how many|when|date|progress)\b.*\bpslf\b|\brecertif\w+\b.*\b(?:income|plan|idr|loans?)\b|\b(?:income|idr|income-driven)\b.*\brecertif\w+\b|\bemployer certif\w+\b|\bcertify my employer\b|\b(?:taxed|taxable)\b.*\bforgiven (?:student|loans?|debt)\b|\bforgiven (?:student )?(?:loans?|debt)\b.*\b(?:taxed|taxable)\b|\b(?:refinanc\w*|consolidat\w*)\b.*\bstudent\b|\bstudent\b.*\b(?:refinanc\w*)\b/;
+
 const clean = (target: string) =>
   target
     .replace(/\b(?:paid off|off|in full)\b/g, "")
@@ -209,6 +215,7 @@ export function parseDebtIntent(
   ) {
     return { kind: "card_interest" };
   }
+  if (STUDENT_LONG.test(text)) return { kind: "student_long" };
   if (REPORT_FIX.test(text) && !/\b(?:tax|taxes)\b/.test(text)) return { kind: "report_fixes" };
   if (MEDICAL_BILL.test(text) && !MEDICAL_NOT.test(text)) return { kind: "medical_bills" };
   if (

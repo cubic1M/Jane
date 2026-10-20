@@ -249,6 +249,20 @@ describe("debt questions", () => {
     });
   });
 
+  it("reads the long game on student loans: PSLF progress, recertifying, refinancing", () => {
+    for (const text of [
+      "how many PSLF payments have I made",
+      "when will my PSLF be done",
+      "when do I recertify my income-driven plan",
+      "should I refinance my student loans",
+      "is my forgiven student loan taxable",
+    ]) {
+      expect(intent(text), text).toEqual({ kind: "student_long" });
+    }
+    // The plan questions stay where they were.
+    expect(intent("am I eligible for PSLF")).toEqual({ kind: "student_loans" });
+  });
+
   it("reads a tight month", () => {
     for (const text of [
       "money is tight this month",

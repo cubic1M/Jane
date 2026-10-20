@@ -19,6 +19,7 @@ import type { HomeBuying } from "@/lib/home-buying";
 import type { MedicalBills } from "@/lib/medical-bills";
 import type { ReportFixes } from "@/lib/credit-report-fixes";
 import type { CardInterest } from "@/lib/card-interest";
+import type { LongGame } from "@/lib/student-long-game";
 import { REWARD_CATEGORY_LABELS } from "@/config/credit-cards";
 import type { DebtAutopilot } from "@/lib/debt-autopilot";
 import { PMI_SOURCE } from "@/config/debt";
@@ -162,6 +163,12 @@ export const DEBT_TOOLS: Anthropic.Tool[] = [
     name: "card_interest",
     description:
       "How much interest the person's cards cost and how to cut it (demo-bank people only; nothing for real accounts): each card's balance, rate, a year of interest, what paying its usual payment now instead of on the due date saves, when its statement closes; any 0% promotions they typed in with the days left, the monthly amount that clears the balance by the end, whether they're on pace, and (for deferred interest) what missing the end would cost, with the deadline Jane raised when off pace; and for each card at 15% or more with a balance the written request for a lower rate with a call script and the yearly saving, whether it was sent and what the lender answered. Sending a request needs the person's tap (the cardrate.send button); Jane never sends one by herself.",
+    input_schema: noInput,
+  },
+  {
+    name: "student_long_game",
+    description:
+      "The long game on the person's student loan: Public Service Loan Forgiveness counted month by month (qualifying payments counted of 120, remaining, the date it's forgiven if they keep paying on time, and the grid of months seen), the next dates to certify their employer and to recertify an income-driven plan (both on their deadlines list), when the plan they're on forgives what's left and how much, the tax on forgiven debt (PSLF forgiveness isn't taxed; income-driven forgiveness is generally taxed federally from 2026; an estimate sized for their tax plan), and whether refinancing makes sense: a private loan can be worth refinancing when an offer is at least a point lower; a federal loan is never refinanced away from forgiveness without saying what's lost (PSLF and income-driven forgiveness, income-based payments, deferment and discharge). Plan rules and their sources are in config.",
     input_schema: noInput,
   },
   {
@@ -313,6 +320,7 @@ export const DEBT_TOOL_STATUS: Readonly<Record<string, string>> = {
   medical_bills: "Looking at your medical bills…",
   credit_report_fixes: "Checking your credit report…",
   card_interest: "Looking at your card interest…",
+  student_long_game: "Looking at your student loan's long game…",
 };
 
 export function refinanceToolOutput(refi: Refinance, money: (cents: number) => string) {
@@ -854,6 +862,41 @@ export function cardInterestToolOutput(data: CardInterest, money: (cents: number
       deadlineOnDeadlinesList: p.deadlineRaised,
     })),
     alwaysNeedsATap: "sending any request",
+  };
+}
+
+export function studentLongGameToolOutput(g: LongGame, money: (cents: number) => string) {
+  if (!g.available) return { note: "No student loan with a balance and a rate for this person." };
+  return {
+    demoAdvice: g.advice,
+    loanType: g.loanType,
+    inPublicService: g.publicService,
+    pslf: g.pslf && {
+      counted: g.pslf.counted,
+      of: 120,
+      remaining: g.pslf.remaining,
+      forgivenAround: g.pslf.forgivenOn,
+      months: g.pslf.grid,
+    },
+    nextCertifyEmployerBy: g.certifyOn,
+    nextRecertifyIncomeBy: g.recertifyOn,
+    forgiveness: g.forgiveness && {
+      plan: g.forgiveness.plan,
+      around: g.forgiveness.on,
+      amount: money(g.forgiveness.forgivenCents),
+      viaPslf: g.forgiveness.viaPslf,
+    },
+    taxOnForgiven: g.tax && {
+      taxable: g.tax.taxable,
+      estimate: money(g.tax.estimateCents),
+      note: g.tax.note,
+    },
+    refinancing: g.refi && {
+      verdict: g.refi.verdict,
+      whatYouWouldLose: g.refi.lost,
+      text: g.refi.text,
+    },
+    assumptions: g.assumptions,
   };
 }
 

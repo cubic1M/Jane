@@ -50,6 +50,7 @@ export const DEBT_SOURCE_LIMITS = {
   medical_bills: 2,
   credit_report_fixes: 2,
   card_interest: 2,
+  student_long_game: 1,
 } as const;
 export const DEBT_MESSAGE_PRIORITY = {
   // A buy now, pay later plan Jane found, then a debt with no rate: news that can wait,
@@ -121,6 +122,8 @@ export const DEBT_MESSAGE_PRIORITY = {
   promo_off_pace: 59,
   card_rate_ask: 37,
   card_rate_answer: 62,
+  // Spec step 225: student loan paperwork due within a month has a date.
+  student_paperwork: 64,
 } as const;
 
 // What Jane does about debts by herself at each autopilot level (src/config/autopilot.ts),
@@ -202,6 +205,10 @@ export const DEBT_AUTOPILOT: Readonly<
       step: 224,
       does: "Shows what each card costs in interest, what paying early saves, and how a 0% promotion is pacing (a deadline with the monthly amount if it's off pace), and writes a request and call script for a lower rate. Each request is sent only on your tap.",
     },
+    {
+      step: 225,
+      does: "Counts Public Service Loan Forgiveness month by month, puts the employer certification and income-driven recertification dates on your deadlines, sizes the tax on forgiven debt for your tax plan, and tells you what a refinance would give up.",
+    },
   ],
   safe: [
     {
@@ -276,6 +283,10 @@ export const DEBT_AUTOPILOT: Readonly<
       step: 224,
       does: "Shows what each card costs in interest, what paying early saves, and how a 0% promotion is pacing (a deadline with the monthly amount if it's off pace), and writes a request and call script for a lower rate. Each request is sent only on your tap.",
     },
+    {
+      step: 225,
+      does: "Counts Public Service Loan Forgiveness month by month, puts the employer certification and income-driven recertification dates on your deadlines, sizes the tax on forgiven debt for your tax plan, and tells you what a refinance would give up.",
+    },
   ],
   all: [
     {
@@ -349,6 +360,10 @@ export const DEBT_AUTOPILOT: Readonly<
     {
       step: 224,
       does: "Shows what each card costs in interest, what paying early saves, and how a 0% promotion is pacing (a deadline with the monthly amount if it's off pace), and writes a request and call script for a lower rate. Each request is sent only on your tap.",
+    },
+    {
+      step: 225,
+      does: "Counts Public Service Loan Forgiveness month by month, puts the employer certification and income-driven recertification dates on your deadlines, sizes the tax on forgiven debt for your tax plan, and tells you what a refinance would give up.",
     },
   ],
 };

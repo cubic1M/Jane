@@ -1171,6 +1171,19 @@ const BASE_QUESTIONS: readonly CheckQuestion[] = [
       link: "/loans/cards",
     },
   },
+  // Spec step 225: the long game on student loans.
+  {
+    id: "debt-28",
+    text: "how many PSLF payments have I made",
+    needs: "rules",
+    expect: {
+      intent: "student_long",
+      mentions: /qualifying payments counted/i,
+      link: "/loans/student",
+      list: true,
+      maxChars: 1_600,
+    },
+  },
   // Spec step 224: less interest on every card.
   {
     id: "debt-27",

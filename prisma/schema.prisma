@@ -750,21 +750,30 @@ model LoanApplication {
 // family for the income-driven plans, public service work for PSLF, qualifying payments
 // counted before Jane could see them, and how far through studentaid.gov's steps they are.
 model StudentLoanProfile {
-  id            String   @id @default(cuid())
-  userId        String   @unique @map("user_id")
+  id                  String    @id @default(cuid())
+  userId              String    @unique @map("user_id")
   // Adjusted gross income from the last tax return; null means Jane estimates it.
-  agiCents      Int?     @map("agi_cents")
-  familySize    Int      @default(1) @map("family_size")
-  dependants    Int      @default(0)
+  agiCents            Int?      @map("agi_cents")
+  familySize          Int       @default(1) @map("family_size")
+  dependants          Int       @default(0)
   // new (first loans on or after July 1, 2014) or old.
-  borrower      String   @default("new")
-  publicService Boolean  @default(false) @map("public_service")
+  borrower            String    @default("new")
+  publicService       Boolean   @default(false) @map("public_service")
   // Qualifying payments studentaid.gov counted before the ones Jane sees.
-  countedBefore Int      @default(0) @map("counted_before")
+  countedBefore       Int       @default(0) @map("counted_before")
   // How many of the guided steps (STUDENT_STEPS) are done.
-  stepsDone     Int      @default(0) @map("steps_done")
-  createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
-  updatedAt     DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+  stepsDone           Int       @default(0) @map("steps_done")
+  // Spec step 225: federal or private, the day the employer was last certified for PSLF,
+  // the day the income-driven plan must be recertified, and the deadlines Jane put on the
+  // deadlines list for them and for the tax on forgiven debt.
+  loanType            String    @default("federal") @map("loan_type")
+  lastCertifiedOn     DateTime? @map("last_certified_on") @db.Date
+  recertifyOn         DateTime? @map("recertify_on") @db.Date
+  certifyDeadlineId   String?   @map("certify_deadline_id")
+  recertifyDeadlineId String?   @map("recertify_deadline_id")
+  taxDeadlineId       String?   @map("tax_deadline_id")
+  createdAt           DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt           DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
