@@ -65,6 +65,10 @@ type Options = {
   questions?: readonly CheckQuestion[];
   claude?: () => Pick<Anthropic, "messages">;
   capCents?: number;
+  // Spec step 195: a rotating share of the Claude questions each night, so the whole bank is
+  // covered over a few weeks within a small budget: this many conversations starting at
+  // `day` times `count` around the bank. The rules questions always run (they're free).
+  rotate?: { day: number; count: number };
 };
 
 export const NO_KEY = "Needs Claude, and there's no ANTHROPIC_API_KEY: skipped.";
@@ -89,6 +93,21 @@ export function conversations(questions: readonly CheckQuestion[]): CheckQuestio
     .map((lead) => [lead, ...questions.filter((q) => q.after === lead.id)]);
 }
 
+// The conversations to run: every one that needs only the rules, and a window of those that
+// need Claude, moving along the bank each night (spec step 195). Without `rotate`, all.
+export function rotated(all: CheckQuestion[][], rotate: Options["rotate"]): CheckQuestion[][] {
+  if (!rotate) return all;
+  const claude = all.filter((c) => c[0].needs === "claude");
+  const start = claude.length === 0 ? 0 : (rotate.day * rotate.count) % claude.length;
+  const window = new Set(
+    Array.from(
+      { length: Math.min(rotate.count, claude.length) },
+      (_, i) => claude[(start + i) % claude.length],
+    ),
+  );
+  return all.filter((c) => c[0].needs !== "claude" || window.has(c));
+}
+
 const median = (values: number[]) => {
   const sorted = [...values].sort((a, b) => a - b);
   return sorted[Math.floor((sorted.length - 1) / 2)];
@@ -102,6 +121,7 @@ export async function runAnswerChecks(
     questions = QUESTIONS,
     claude = anthropic,
     capCents = ANSWER_CHECK_CAP_CENTS,
+    rotate,
   }: Options,
 ): Promise<CheckRun> {
   const full = llmEnabled();
@@ -134,12 +154,12 @@ export async function runAnswerChecks(
   const results: QuestionResult[] = [];
   let stoppedAtCap = false;
   let tick = 0;
-  for (const conversation of conversations(questions)) {
+  for (const conversation of rotated(conversations(questions), rotate)) {
     // A fresh conversation: no earlier questions, and the chat's hourly limits reset.
     const db = scopedFor(userId, client);
     await db.janeMessages.deleteMany({ where: { kind: { in: ["user", "reply"] } } });
     await client.rateLimit.deleteMany({
-      where: { key: { in: [`chat:${userId}`, `ask:${userId}`] } },
+      where: { key: { in: [`chat:${userId}`, `ask:${userId}`, `chatspend:${userId}`] } },
     });
     const earlier: { role: "user" | "assistant"; content: string }[] = [];
     let leadSkipped = false;
