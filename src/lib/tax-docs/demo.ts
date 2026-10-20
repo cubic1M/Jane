@@ -1,5 +1,6 @@
 import { DEMO_PAY_STUB, INCOME_KINDS } from "@/config/tax";
 import { scopedFor } from "@/lib/db-scoped";
+import { loadEquityIncome } from "@/lib/equity-income";
 import { loadInvestmentTaxes } from "@/lib/investment-taxes";
 import { DIVIDENDS, QUALIFIED } from "@/planning/tax-income";
 import type { DocumentBoxes } from "@/planning/tax-document-check";
@@ -87,7 +88,7 @@ export const demoDocumentPartner: TaxDocumentPartner = {
 
     const out: FetchedForm[] = [];
     for (const form of ready) {
-      const boxes = ((): DocumentBoxes | null => {
+      const boxes = await (async (): Promise<DocumentBoxes | null> => {
         switch (form.formKey) {
           case "w2": {
             const net = paid(INCOME_KINDS.w2.categories, payer)(form);
@@ -118,6 +119,12 @@ export const demoDocumentPartner: TaxDocumentPartner = {
               longTermGain: total((r) => r.longTermCents),
               washDisallowed: total((r) => r.washDisallowedCents),
             };
+          }
+          case "da": {
+            const x = (
+              await loadEquityIncome(userId, year, { client, now: new Date(`${today}T12:00:00Z`) })
+            ).crypto.exchangesSold.find((s) => s.name === form.from);
+            return x ? { proceeds: x.proceedsCents, costBasis: x.costCents } : null;
           }
           case "mortgage":
           case "student": {

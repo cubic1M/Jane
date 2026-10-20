@@ -34,6 +34,7 @@ import { SIMULATED_PARTNER } from "@/config/brokerage";
 import { confirmSwitches, switchOf } from "@/lib/agent/switch";
 import { ensureDemoOptions } from "@/lib/compare";
 import { ensureDemoPolicies } from "@/lib/insurance/profile";
+import { ensureDemoAssets } from "@/lib/plaid/demo-assets";
 import { insuranceAfterSync } from "@/lib/insurance/daily";
 import { demoPayoffs } from "@/lib/loan-applications";
 import { confirmInsuranceSwitches } from "@/lib/insurance/switch";
@@ -575,6 +576,8 @@ export async function syncItem(
 
   const sync = await new PlaidDataSource(api, accessToken, item.transactionsCursor).load();
   const accountIds = await saveAccounts(db, item.id, sync);
+  // The demo bank's home and car, once its loans are saved (spec step 67).
+  if (isDemoToken(accessToken)) await ensureDemoAssets(item.userId, item.id, { client, now });
   const counts = await saveTransactions(db, accountIds, sync);
   const recurring = await saveRecurringStreams(db, api, accessToken, accountIds);
   const liabilities = item.liabilities

@@ -28,6 +28,7 @@ import { listPriorReturns, type PriorReturnView } from "@/lib/prior-return";
 import { loadReturnReviews, type ReturnReview } from "@/lib/prior-return/review";
 import { checkNoticeFor, listTaxNotices, type NoticeView } from "@/lib/tax-notices";
 import type { Check } from "@/planning/tax-notice";
+import { loadEquityTax, type EquityTaxView } from "@/lib/equity-tax";
 import { loadIdentity, type IdentityView } from "@/lib/tax-identity";
 import { loadSideIncome, type SideIncomeView } from "@/lib/side-income";
 import { loadAuditRecords, type AuditRecordsView } from "@/lib/audit-records";
@@ -86,6 +87,8 @@ export type TaxSnapshot = {
     sideIncome?: SideIncomeView;
     // Spec step 218: the IP PIN and any sign of identity theft.
     identity?: IdentityView;
+    // Spec step 219: crypto and equity pay.
+    equity?: EquityTaxView;
     // Spec step 217: tax notices read from uploads, with what Jane found against them.
     notices?: { notice: NoticeView; check: (Check & { advice: boolean }) | null }[];
     // Spec step 172: returns read from uploads, and what their review found.
@@ -175,6 +178,7 @@ export async function loadTaxSnapshot(
               : null,
         })),
       ),
+      equity: await loadEquityTax(userId, { client, now, loaded: { estimate, advice } }),
       identity: await loadIdentity(userId, { client, now }),
       sideIncome: await loadSideIncome(userId, { client, now, loaded: { estimate } }),
       records: await loadAuditRecords(userId, estimate.year, { client, now }),

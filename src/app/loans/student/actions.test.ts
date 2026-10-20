@@ -6,14 +6,13 @@ vi.mock("next/navigation", () => ({
   }),
 }));
 vi.mock("@/lib/session", () => ({ requireUser: vi.fn(async () => ({ id: "u1" })) }));
-vi.mock("@/lib/student-loans", async (importOriginal) => ({
-  ...(await importOriginal<typeof import("@/lib/student-loans")>()),
-  saveStudentProfile: vi.fn(),
-  markStudentStep: vi.fn(),
+vi.mock("@/lib/student-long-game", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/student-long-game")>()),
+  saveStudentDates: vi.fn(),
 }));
 
-import { StudentProfileError, markStudentStep, saveStudentProfile } from "@/lib/student-loans";
-import { saveProfile, stepDone } from "./actions";
+import { StudentDatesError, saveStudentDates } from "@/lib/student-long-game";
+import { saveDates } from "./actions";
 
 const form = (fields: Record<string, string>) => {
   const data = new FormData();
@@ -21,39 +20,24 @@ const form = (fields: Record<string, string>) => {
   return data;
 };
 
-describe("the student loan page", () => {
-  it("saves what the plans are compared with, for the signed-in person", async () => {
+describe("save the student loan dates", () => {
+  it("saves them for the signed-in person", async () => {
+    vi.mocked(saveStudentDates).mockResolvedValueOnce();
     await expect(
-      saveProfile(
-        form({
-          agi: "52000",
-          familySize: "2",
-          dependants: "1",
-          borrower: "new",
-          publicService: "on",
-          countedBefore: "30",
-        }),
+      saveDates(
+        form({ loanType: "federal", lastCertifiedOn: "2025-12-15", recertifyOn: "2026-11-30" }),
       ),
-    ).rejects.toThrow("REDIRECT /loans/student?saved=1");
-    expect(saveStudentProfile).toHaveBeenCalledWith("u1", {
-      agi: "52000",
-      familySize: "2",
-      dependants: "1",
-      borrower: "new",
-      publicService: true,
-      countedBefore: "30",
+    ).rejects.toThrow("REDIRECT /loans/student?dates=1#long-game");
+    expect(saveStudentDates).toHaveBeenCalledWith("u1", {
+      loanType: "federal",
+      lastCertifiedOn: "2025-12-15",
+      recertifyOn: "2026-11-30",
     });
   });
-
-  it("shows a problem", async () => {
-    vi.mocked(saveStudentProfile).mockRejectedValueOnce(new StudentProfileError("Enter it."));
-    await expect(saveProfile(form({}))).rejects.toThrow(
-      "REDIRECT /loans/student?error=Enter+it.#about-you",
+  it("shows why when it can't", async () => {
+    vi.mocked(saveStudentDates).mockRejectedValueOnce(new StudentDatesError("Pick the date."));
+    await expect(saveDates(form({}))).rejects.toThrow(
+      "REDIRECT /loans/student?error=Pick+the+date.#long-game",
     );
-  });
-
-  it("marks a step done", async () => {
-    await expect(stepDone()).rejects.toThrow("REDIRECT /loans/student#steps");
-    expect(markStudentStep).toHaveBeenCalledWith("u1");
   });
 });
