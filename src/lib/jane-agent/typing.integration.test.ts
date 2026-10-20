@@ -15,7 +15,10 @@ import { track } from "@/lib/analytics";
 import { exportUserData } from "@/lib/data-export";
 import { linkDemoBank } from "@/lib/plaid/demo";
 import { syncItem } from "@/lib/plaid/sync";
+import Anthropic from "@anthropic-ai/sdk";
 import { ChatActionError, takeChatAction } from "./actions";
+import { resetClaudeHealth } from "./claude";
+import { addSpend, overDailyCap, spentTodayCents } from "./spend";
 import { runChatTool } from "./claude-tools";
 import { chatFeed, closeSettled, postedToday } from "./messages";
 import { parseActions } from "./types";
@@ -269,7 +272,8 @@ describe.runIf(url)("typing to Jane against a real database", () => {
     );
   });
 
-  describe("with a key", () => {
+  // Each test sends several messages through the chat, so they get more time than usual.
+  describe("with a key", { timeout: 60_000 }, () => {
     const create = vi.fn();
     // The chat streams; this plays back what create returns, all at once.
     const claude = () =>
@@ -304,15 +308,73 @@ describe.runIf(url)("typing to Jane against a real database", () => {
       expect(turns.length).toBeLessThanOrEqual(10);
       expect(turns.at(-1)).toEqual({ role: "assistant", content: ASK_BLOCKED_REPLY });
       expect(turns.some((t) => /^Good morning/.test(t.content))).toBe(false);
-      // The rules still answer what they understand, without Claude.
+      // Spec step 191: a question the rules understand goes to Claude first too.
+      create.mockReset().mockResolvedValue({
+        stop_reason: "end_turn",
+        content: [{ type: "text", text: "You have plenty." }],
+      });
+      expect((await send("safe to spend", { claude })).reply.body).toBe("You have plenty.");
+      expect(create).toHaveBeenCalledTimes(1);
+      // Exact commands and greetings keep the instant rules path, without Claude.
       create.mockClear();
-      await send("safe to spend", { claude });
-      // So do greetings, at once.
       expect((await send("hi", { claude })).reply.body).toMatch(
         /^Hi! You have \$[\d,]+\.\d\d safe to spend/,
       );
       expect((await send("thanks!", { claude })).reply.body).toMatch(/^You're welcome/);
+      expect((await send("yes to all", { claude })).reply.body).toMatch(/on your plan/);
       expect(create).not.toHaveBeenCalled();
+
+      // Spec step 191: Claude over its limit (a 429 or the account's spend limit) or down:
+      // the rules answer, never a broken message.
+      const warn2 = vi.spyOn(console, "error").mockImplementation(() => {});
+      for (const status of [429, 400]) {
+        resetClaudeHealth();
+        create
+          .mockReset()
+          .mockRejectedValue(
+            new Anthropic.APIError(
+              status,
+              { error: { message: "spend limit reached" } },
+              "x",
+              new Headers(),
+            ),
+          );
+        const fallback = await send("safe to spend", { claude });
+        expect(fallback.reply.body).toMatch(/You have \$[\d,]+\.\d\d safe to spend/);
+        expect(fallback.source).toBe("claude_unavailable");
+      }
+      warn2.mockRestore();
+      resetClaudeHealth();
+    });
+
+    // Spec step 191: a daily cost cap per person; past it Claude isn't asked.
+    it("stops asking Claude once the person's day has cost its cap, and the rules answer", async () => {
+      const capped = await person("typing-capped");
+      await client.account.create({
+        data: { userId: capped, source: "csv", name: "Checking", type: "depository" },
+      });
+      const when = later();
+      expect(await spentTodayCents(capped, { client, now: when })).toBe(0);
+      // One call that costs more than the whole cap.
+      await addSpend(
+        capped,
+        { model: "claude-sonnet-5-5", inputTokens: 0, outputTokens: 2_000_000 },
+        { client, now: when },
+      );
+      expect(await overDailyCap(capped, { client, now: when })).toBe(true);
+      create.mockReset();
+      const { reply, source } = await sendToJane(capped, "what is my net worth", {
+        client,
+        now: when,
+        claude,
+      });
+      expect(create).not.toHaveBeenCalled();
+      expect(source).toBe("claude_unavailable");
+      expect(reply.body.length).toBeGreaterThan(0);
+      // The next day it's asked again.
+      expect(
+        await overDailyCap(capped, { client, now: new Date(when.getTime() + 24 * 60 * 60 * 1000) }),
+      ).toBe(false);
     });
 
     it("sends the person's main numbers with the question, from the real database", async () => {

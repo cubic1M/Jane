@@ -1150,7 +1150,7 @@ const BASE_QUESTIONS: readonly CheckQuestion[] = [
       mentions: /by myself/i,
       link: "/settings",
       list: true,
-      maxChars: 1_600,
+      maxChars: 2_200,
     },
   },
   // Spec step 174: which card for what, whether a fee pays for itself, a better card.
@@ -1175,6 +1175,47 @@ const BASE_QUESTIONS: readonly CheckQuestion[] = [
       mentions: /hard credit check/i,
       button: "credit_card.apply",
       link: "/loans/cards",
+    },
+  },
+  // Spec step 224: less interest on every card.
+  {
+    id: "debt-27",
+    text: "how much interest am I paying on my cards",
+    needs: "rules",
+    expect: {
+      intent: "card_interest",
+      mentions: /interest/i,
+      button: "cardrate.send",
+      link: "/loans/interest",
+      list: true,
+      maxChars: 1_200,
+    },
+  },
+  // Spec step 181: collections and credit report errors, with letters to fix them.
+  {
+    id: "debt-26",
+    text: "there's a collection on my credit report",
+    needs: "rules",
+    expect: {
+      intent: "report_fixes",
+      mentions: /credit report/i,
+      button: "creditfix.send",
+      link: "/loans/report",
+      list: true,
+      maxChars: 1_000,
+    },
+  },
+  // Spec step 180: medical bills found and the requests written for them.
+  {
+    id: "debt-25",
+    text: "can you check my medical bills",
+    needs: "rules",
+    expect: {
+      intent: "medical_bills",
+      mentions: /medical bills?/i,
+      link: "/loans/medical",
+      list: true,
+      maxChars: 1_000,
     },
   },
   // Spec step 179: buying a home, from saving to closing.

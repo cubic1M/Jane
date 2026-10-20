@@ -107,7 +107,12 @@ export async function savedToDate(
   const finished = between ? { gte: between.from, lt: between.to } : undefined;
   const [done, diy] = await Promise.all([
     db.actions.findMany({
-      where: { status: "done", ...(finished ? { completedAt: finished } : {}) },
+      where: {
+        status: "done",
+        // Spec step 207: a saving that never showed up in the transactions doesn't count.
+        savingMissedAt: null,
+        ...(finished ? { completedAt: finished } : {}),
+      },
       select: {
         refundCents: true,
         confirmedAnnualCents: true,
