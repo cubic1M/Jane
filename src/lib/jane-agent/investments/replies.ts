@@ -30,6 +30,8 @@ import type { FamilyView } from "@/lib/investments/family";
 import { FAMILY_LINK, familyLine } from "./family-copy";
 import type { PropertyView } from "@/lib/investments/property";
 import { homeLine, paydownLine, PROPERTY_LINK, rentalLine } from "./property-copy";
+import type { CostlyProductsView } from "@/lib/investments/costly-products";
+import { advisoryLine, COSTLY_LINK, productLine } from "./costly-copy";
 import { STEADY_LINK, steadyMessage, timelines } from "./steady-copy";
 import { CRYPTO_LINK, feeFlag, NEVER_TRADES, shareFlag, sizeLine } from "./crypto-copy";
 import {
@@ -855,5 +857,35 @@ export function propertyReply(view: PropertyView): Reply {
       "I don't see a home with a value or a rental yet. Add your home under Things you own, or a rental on the property page.",
     actions: [PROPERTY_LINK],
     refs: advice.length > 0 ? { advice: true } : {},
+  };
+}
+
+// Spec step 215: what each costly product costs a year, in dollars, and what leaving would
+// cost, in demo advice mode; just the yearly dollars otherwise. Never a recommendation to
+// leave, and never any exit figure without its surrender charge.
+export function costlyReply(view: CostlyProductsView): Reply {
+  if (!view.advice) {
+    const facts = [
+      ...view.products.map((p) => `${p.name}: about ${formatCents(p.yearlyCostCents ?? 0)} a year`),
+      ...(view.advisory
+        ? [`advisory fees: ${formatCents(view.advisory.yearlyCents)} in the last 12 months`]
+        : []),
+    ];
+    return {
+      body: `${facts.length > 0 ? `${facts.join("; ")}. ` : ""}I don't give recommendations on real accounts yet.`,
+      actions: [COSTLY_LINK],
+      refs: {},
+    };
+  }
+  const parts = [
+    ...view.products.map(productLine),
+    ...(view.advisory ? [advisoryLine(view.advisory)] : []),
+  ];
+  return {
+    body:
+      parts.join(" ") ||
+      "I haven't found an annuity, whole life policy or advisory fees. Add one from a statement on the costly products page and I'll show what it really costs, and what leaving would cost, before anything else.",
+    actions: [COSTLY_LINK],
+    refs: parts.length > 0 ? { advice: true } : {},
   };
 }

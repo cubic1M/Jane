@@ -24,6 +24,7 @@ import { loadOldAccounts } from "@/lib/investments/old-accounts";
 import { loadRetirementIncome } from "@/lib/investments/retirement-income";
 import { loadFamily } from "@/lib/investments/family";
 import { loadProperty } from "@/lib/investments/property";
+import { loadCostlyProducts } from "@/lib/investments/costly-products";
 import { loadSteadyHand } from "@/lib/investments/steady-hand";
 import { CASH_HOMES, CASH_RATES_AS_OF } from "@/config/cash";
 import { formatReturn } from "@/insights/returns";
@@ -164,6 +165,12 @@ export const INVESTMENT_TOOLS: Anthropic.Tool[] = [
     input_schema: noInput,
   },
   {
+    name: "costly_products",
+    description:
+      "Variable annuities, whole life policies and advisory fees the person has (found from their payments and fee transactions, or entered from a statement): the yearly cost in dollars, the surrender charge now, in dollars, and the date it reaches zero, what the same money could be worth in a low-cost fund as a range (a cost difference, not a forecast), and in demo advice mode when leaving costs less than staying. NEVER tell the person to leave, cancel or surrender without quoting the surrender charge and when it ends; on real accounts report the facts only.",
+    input_schema: noInput,
+  },
+  {
     name: "steady_hand",
     description:
       "Whether the person's investments have had a big drop lately (down 8% over a month or 15% over three, their own return, money in and out left out) and, in demo advice mode, how each goal's timeline sits (near goals are already in cash). Report only these past facts and the plan to stay the course. NEVER say or imply what markets will do, when they will recover, or that now is a good or bad time: no one can know.",
@@ -210,6 +217,7 @@ export const INVESTMENT_TOOL_STATUS: Readonly<Record<string, string>> = {
   crypto: "Reading your crypto balances…",
   cash_plan: "Looking at where your cash sits…",
   steady_hand: "Looking at how your investments have moved…",
+  costly_products: "Adding up what your products cost…",
   property: "Looking at your property…",
   family_investing: "Looking at your children's accounts…",
   retirement_income: "Working out your retirement income…",
@@ -687,6 +695,51 @@ export async function runInvestmentTool(
               },
               verdict: v.paydown.verdict,
             },
+      });
+    }
+    case "costly_products": {
+      const v = await loadCostlyProducts(userId, { client, now });
+      return out({
+        products: v.products.map((p) => ({
+          name: p.name,
+          kind: p.kind,
+          provider: p.provider,
+          value: money(p.valueCents),
+          costAYear: p.yearlyCostCents === null ? null : money(p.yearlyCostCents),
+          surrenderChargeNow: p.surrender && {
+            percent: p.surrender.pctNow,
+            dollars: money(p.surrender.cents),
+            reachesZeroOn: p.surrender.endsOn,
+          },
+          sameMoneyInLowCostFund: v.advice
+            ? p.gap
+              ? {
+                  extraAfterYears: p.gap.years,
+                  low: money(p.gap.lowCents),
+                  high: money(p.gap.highCents),
+                }
+              : p.wholeLife && {
+                  low: money(p.wholeLife.inFundsCents.lowCents),
+                  high: money(p.wholeLife.inFundsCents.highCents),
+                  paidIn: money(p.wholeLife.paidCents),
+                }
+            : "advice only in demo advice mode",
+          leavingVsStaying:
+            v.advice && p.exit
+              ? {
+                  verdict: p.exit.verdict,
+                  stayCost: money(p.exit.stayCents),
+                  leaveNowCost: money(p.exit.leaveNowCents),
+                  surrenderIncluded: money(p.exit.surrenderNowCents),
+                  waitYears: p.exit.bestWaitYears,
+                }
+              : null,
+        })),
+        advisory: v.advisory && {
+          paidLast12Months: money(v.advisory.yearlyCents),
+          assets: money(v.advisory.assetsCents),
+          percent: v.advisory.feeBps / 100,
+        },
       });
     }
     case "steady_hand": {

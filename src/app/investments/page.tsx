@@ -257,6 +257,12 @@ async function InvestmentsContent() {
             : home equity and rentals, from their own transactions.
           </p>
           <p className="text-sm text-zinc-600 dark:text-zinc-400">
+            <Link href="/investments/costly-products" className={LINK}>
+              Costly products
+            </Link>
+            : annuities, whole life and advisory fees in dollars, with the charge for leaving.
+          </p>
+          <p className="text-sm text-zinc-600 dark:text-zinc-400">
             Learn:{" "}
             {["index-funds", "fees", "the-match", "roth-vs-traditional", "rebalancing"].map(
               (slug, i) => (

@@ -91,6 +91,7 @@ export function demoInvestmentSnapshot(over: Partial<InvestmentSnapshot> = {}): 
     college: { children: 0, plans: 0 },
     hsa: { account: null, plan: null, savedCents: 0, demo: true, receipts: 0 },
     automatic: { did: [], asked: [] },
+    costly: { advice: true, demo: true, products: [], asked: [], advisory: null },
     property: { advice: true, demo: true, year: 2026, homes: [], rentals: [], paydown: null },
     family: { advice: true, demo: true, children: [] },
     retirementIncome: {

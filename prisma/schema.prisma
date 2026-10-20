@@ -398,6 +398,8 @@ model User {
 
   rentalProperties RentalProperty[]
 
+  costlyProducts   CostlyProduct[]
+
   @@map("users")
 }
 
@@ -3602,4 +3604,35 @@ model RentalProperty {
 
   @@index([userId])
   @@map("rental_properties")
+}
+
+// Spec step 215: a variable annuity, a whole life policy or an advisory account found from
+// the person's payments or statements (or entered by them), with what it costs and its
+// surrender schedule. status: asked (a premium that may be whole life, to confirm), active
+// or dismissed. Advisory accounts aren't stored: they are read from fee transactions.
+model CostlyProduct {
+  id                 String   @id @default(cuid())
+  userId             String   @map("user_id")
+  // annuity or whole_life (src/config/costly-products.ts).
+  kind               String
+  name               String
+  provider           String
+  status             String   @default("active")
+  // An annuity's value, or a policy's cash value.
+  valueCents         Int      @default(0) @map("value_cents")
+  // An annuity's total yearly cost in basis points (insurance charge, administration, funds, riders).
+  feeBps             Int      @default(0) @map("fee_bps")
+  // Whole life: the premium a year.
+  premiumYearlyCents Int      @default(0) @map("premium_yearly_cents")
+  purchasedOn        DateTime @map("purchased_on") @db.Date
+  // The share charged for leaving in contract year 1, 2, ... (percent), e.g. [7, 6, 5].
+  surrenderSchedule  Json     @default("[]") @map("surrender_schedule")
+  // you, payments (found) or demo.
+  source             String
+  createdAt          DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("costly_products")
 }

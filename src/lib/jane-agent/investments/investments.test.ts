@@ -60,6 +60,7 @@ import {
   retirementIncomeReply,
   familyReply,
   propertyReply,
+  costlyReply,
 } from "./replies";
 import { gather } from "../brain";
 import { parseIntent } from "../intents";
@@ -68,6 +69,13 @@ import { investmentsSource } from "../sources/investments";
 import { concentration, diversifyPlan } from "@/planning/company-stock";
 import { cryptoFees, cryptoSize } from "@/insights/crypto";
 import { cashPlan } from "@/planning/cash";
+import {
+  exitComparison,
+  feeGap,
+  surrenderByYear,
+  wholeLifeCompare,
+} from "@/planning/costly-products";
+import { productLine } from "./costly-copy";
 import { holdingsReply, matchAccounts } from "./replies";
 import { INVESTMENT_TOOLS, runInvestmentTool } from "./tools";
 import { CHAT_PAGES, CHAT_TOOLS, proposeAction } from "../claude-tools";
@@ -2437,5 +2445,133 @@ describe("propertyReply and the property messages", () => {
       "property:paydown:2026",
     ]);
     expect(gather(PROP_VIEW, false)).toEqual([]);
+  });
+});
+
+// Spec step 215: what costly products really cost.
+const SCHED = [7, 6, 5, 4, 3, 2, 1];
+const ANNUITY = {
+  id: "a1",
+  kind: "annuity" as const,
+  name: "Lifetrust variable annuity",
+  provider: "Lifetrust Insurance",
+  status: "active",
+  source: "demo",
+  valueCents: 8_500_000,
+  yearlyCostCents: 216_750,
+  feeBps: 255,
+  gap: feeGap(8_500_000, 255),
+  surrender: {
+    pctNow: 4,
+    cents: 340_000,
+    endsOn: "2030-10-01",
+    byYear: surrenderByYear(8_500_000, SCHED, 4),
+  },
+  exit: exitComparison({
+    valueCents: 8_500_000,
+    feeBps: 255,
+    schedule: SCHED,
+    purchasedOn: "2023-10-01",
+    today: "2026-10-18",
+  }),
+  wholeLife: null,
+  note: "Gains taken out of an annuity are taxed as ordinary income.",
+  premiumYearlyCents: 0,
+};
+const WHOLE = {
+  ...ANNUITY,
+  id: "w1",
+  kind: "whole_life" as const,
+  name: "Whole life policy",
+  valueCents: 2_840_000,
+  yearlyCostCents: 600_000,
+  feeBps: null,
+  gap: null,
+  exit: null,
+  wholeLife: wholeLifeCompare({
+    premiumYearlyCents: 600_000,
+    years: 6,
+    cashValueCents: 2_840_000,
+    surrenderPctNow: 5,
+  }),
+  premiumYearlyCents: 600_000,
+};
+const COSTLY_VIEW = {
+  advice: true,
+  demo: true,
+  products: [ANNUITY, WHOLE],
+  asked: [],
+  advisory: null,
+};
+
+describe("costly product questions, by rules", () => {
+  it.each([
+    "what does my annuity really cost",
+    "what is a surrender charge",
+    "is whole life worth it",
+    "my advisory fees",
+  ])("reads %j as costly products", (text) => {
+    expect(parseIntent(text, ASOF)).toMatchObject({
+      kind: "investments",
+      topic: "costly_products",
+    });
+  });
+});
+
+describe("costlyReply and the costly product messages", () => {
+  it("gives the yearly cost in dollars with the surrender charge and when it ends", () => {
+    const reply = costlyReply(COSTLY_VIEW);
+    expect(reply.body).toMatch(/costs about \$2,167\.50 a year \(2\.55% of \$85,000\.00\)\./);
+    expect(reply.body).toMatch(
+      /Leaving now would carry a 4% surrender charge \(\$3,400\.00\), which reaches zero on Oct 1, 2030\./,
+    );
+    expect(reply.body).toMatch(
+      /Whole life policy takes \$6,000\.00 a year in premiums, and its cash value is \$28,400\.00/,
+    );
+    expect(reply.refs).toEqual({ advice: true });
+  });
+  it("never says to leave without the surrender figures, and recommends nothing on real accounts", () => {
+    for (const p of [ANNUITY, WHOLE]) {
+      const line = productLine(p);
+      if (/\b(leav\w+|leave|exit|get out|surrender)\b/i.test(line)) {
+        expect(line).toMatch(/surrender charge/);
+        expect(line).toMatch(/reaches zero on/);
+      }
+      expect(line).not.toMatch(/\b(cancel|you should (?:leave|sell|surrender))\b/i);
+    }
+    const real = costlyReply({ ...COSTLY_VIEW, advice: false });
+    expect(real.body).toMatch(/I don't give recommendations on real accounts yet\.$/);
+    expect(real.body).not.toMatch(/leav|surrender|low-cost fund/i);
+    expect(real.refs).toEqual({});
+  });
+  it("asks about a premium once, and posts each costly product once a year, in demo advice mode", () => {
+    const gather = (costly: InvestmentSnapshot["costly"], advice = true) =>
+      investmentsSource
+        .gather({ ...base, investments: demoInvestmentSnapshot({ advice, costly }) }, {} as never)
+        .filter((c) => c.dedupeKey.startsWith("costly:"));
+    const asked = gather({
+      ...COSTLY_VIEW,
+      products: [],
+      asked: [{ id: "q1", provider: "NORTHWESTERN MUTUAL", yearlyCents: 600_000 }],
+    });
+    expect(asked[0].actions.map((a) => a.id)).toEqual([
+      "costly.yes",
+      "costly.no",
+      "open",
+      "snooze",
+    ]);
+    expect(asked[0].refs).toEqual({ productId: "q1" });
+    expect(gather(COSTLY_VIEW).map((m) => m.dedupeKey)).toEqual([
+      "costly:product:a1:2026",
+      "costly:product:w1:2026",
+    ]);
+    // No message carries a button that leaves or cancels anything.
+    expect(gather(COSTLY_VIEW).flatMap((m) => m.actions.map((a) => a.id))).toEqual([
+      "open",
+      "snooze",
+      "open",
+      "snooze",
+    ]);
+    expect(gather(COSTLY_VIEW, false)).toEqual([]);
   });
 });

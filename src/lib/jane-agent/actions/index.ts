@@ -123,6 +123,8 @@ import {
   oldPlanRollover,
   familyGiftLink,
   familyChildRoth,
+  costlyYes,
+  costlyNo,
 } from "./investments";
 import { changeBudget, changeExpected, changeLook } from "./changes";
 import { lifeNever, lifeNo, lifeYes } from "./life";
@@ -325,6 +327,8 @@ export const ACTION_HANDLERS: Readonly<Record<ActionId, ActionHandler>> = {
   "oldplan.rollover": oldPlanRollover,
   "family.gift_link": familyGiftLink,
   "family.child_roth": familyChildRoth,
+  "costly.yes": costlyYes,
+  "costly.no": costlyNo,
   // Jane notices changes (spec step 97).
   "change.look": changeLook,
   "change.budget": changeBudget,

@@ -204,6 +204,8 @@ export const MESSAGE_PRIORITY = {
   family: 33,
   // Spec step 214: a rental's year, and paying down against investing (demo advice).
   property: 32,
+  // Spec step 215: what a costly product costs, and the question that finds one (demo advice).
+  costly_products: 31,
   // Spec step 164: the month's summary of what Jane did by herself in investing.
   investing_summary: 40,
   auto_invest_run: 31,

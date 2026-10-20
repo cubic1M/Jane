@@ -29,6 +29,8 @@ import {
 } from "@/lib/investments/retirement-accounts";
 import { answerOldPlan, OldAccountsError, startRollover } from "@/lib/investments/old-accounts";
 import { contributeForChild, createGiftLink, FamilyError } from "@/lib/investments/family";
+import { answerPremium, CostlyProductError } from "@/lib/investments/costly-products";
+import { COSTLY_LINK } from "../investments/costly-copy";
 import { FAMILY_LINK } from "../investments/family-copy";
 import { OLD_LINK } from "../investments/old-accounts-copy";
 import { RA_LINK } from "../investments/retirement-accounts-copy";
@@ -500,3 +502,32 @@ export const familyChildRoth: ActionHandler = {
     }
   },
 };
+
+// Spec step 215: is this premium a whole life policy? Yes shows what it costs; nothing is
+// cancelled or left by either button.
+function costlyAnswer(id: ActionId, yes: boolean): ActionHandler {
+  return {
+    id,
+    on: "open",
+    async run({ userId, message, action, client }) {
+      const productId = message.refs.productId;
+      if (!productId)
+        throw new ChatActionError("not_offered", "That button isn't on this message.");
+      try {
+        await answerPremium(userId, productId, yes, { client });
+        return {
+          answeredWith: action.label,
+          note: yes
+            ? "Thanks. Add its cash value and surrender schedule from your statement and I'll show what it really costs. I'll never tell you to leave it without those figures."
+            : "Thanks. I won't ask about that one again.",
+          actions: [COSTLY_LINK],
+        };
+      } catch (error) {
+        if (error instanceof CostlyProductError) throw answeredElsewhere(error.message);
+        throw error;
+      }
+    },
+  };
+}
+export const costlyYes = costlyAnswer("costly.yes", true);
+export const costlyNo = costlyAnswer("costly.no", false);

@@ -54,6 +54,13 @@ import {
 } from "../investments/retirement-income-copy";
 import { FAMILY_LINK, giftOffer, rothOffer } from "../investments/family-copy";
 import { PROPERTY_LINK, paydownLine, rentalLine } from "../investments/property-copy";
+import { MIN_YEARLY_COST_CENTS } from "@/config/costly-products";
+import {
+  advisoryLine,
+  COSTLY_LINK,
+  premiumQuestion,
+  productLine,
+} from "../investments/costly-copy";
 import { AUTO_LOG_LINK, summaryBody } from "../investments/automatic-copy";
 import { CASH_MIN_GAIN_CENTS } from "@/config/cash";
 import { CASH_LINK, cashLine, moveButtons } from "../investments/cash-copy";
@@ -327,6 +334,47 @@ export const investmentsSource: MessageSource = {
         dedupeKey: "hsa:link",
         priority: MESSAGE_PRIORITY.hsa,
       });
+    }
+    // Step 215: a premium that may be whole life is asked about once; a costly product's
+    // yearly cost with its surrender charge (never "leave" without it), once a year.
+    const costly = inv.costly;
+    for (const q of costly.asked) {
+      out.push({
+        kind: "decision",
+        body: premiumQuestion(q),
+        refs: { productId: q.id },
+        actions: [
+          { id: "costly.yes", label: "Yes, whole life", kind: "primary" },
+          { id: "costly.no", label: "No", kind: "secondary" },
+          COSTLY_LINK,
+          snoozeButton(),
+        ],
+        dedupeKey: `costly:ask:${q.id}`,
+        priority: MESSAGE_PRIORITY.costly_products,
+      });
+    }
+    if (inv.advice) {
+      for (const p of costly.products) {
+        if ((p.yearlyCostCents ?? 0) < MIN_YEARLY_COST_CENTS) continue;
+        out.push({
+          kind: "heads_up",
+          body: productLine(p),
+          refs: { advice: true },
+          actions: [COSTLY_LINK, snoozeButton()],
+          dedupeKey: `costly:product:${p.id}:${new Date(snapshot.asOf).getUTCFullYear()}`,
+          priority: MESSAGE_PRIORITY.costly_products,
+        });
+      }
+      if (costly.advisory && costly.advisory.yearlyCents >= MIN_YEARLY_COST_CENTS) {
+        out.push({
+          kind: "heads_up",
+          body: advisoryLine(costly.advisory),
+          refs: { advice: true },
+          actions: [COSTLY_LINK, snoozeButton()],
+          dedupeKey: `costly:advisory:${new Date(snapshot.asOf).getUTCFullYear()}`,
+          priority: MESSAGE_PRIORITY.costly_products,
+        });
+      }
     }
     // Step 214: each rental's year in its own transactions, once a year; paying the
     // mortgage down against investing (both sides), once a year. Analysis, no buttons.

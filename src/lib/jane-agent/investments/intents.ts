@@ -25,7 +25,8 @@ export type InvestmentTopic =
   | "old_accounts"
   | "retirement_income"
   | "family"
-  | "property";
+  | "property"
+  | "costly_products";
 
 export type InvestmentIntent = {
   kind: "investments";
@@ -143,7 +144,12 @@ const FAMILY =
 const PROPERTY =
   /\binvestment propert(?:y|ies)\b|\bmy rental\b|\bhome equity\b|\b(?:pay|paying) (?:off |down )?(?:my |the )?mortgage (?:early |down |off )?(?:or|vs\.?|versus|instead of) invest|\b(?:should i )?(?:pay|paying) (?:down |off )?(?:my |the )?mortgage (?:faster|early)\b|\bpay(?:ing)? extra (?:on|toward|towards) (?:my |the )?mortgage\b|\bcash on cash\b|\blandlord\b/;
 
+// Spec step 215: variable annuities, whole life and advisory fees.
+const COSTLY =
+  /\b(?:variable |fixed |indexed )?annuit(?:y|ies)\b|\bsurrender (?:charge|fee|period|schedule)s?\b|\bwhole life\b|\bcash value\b|\badvisory fees?\b|\b(?:financial |investment )?advisor fees?\b|\bwhat (?:does|is) (?:my )?(?:annuity|whole life|advisor) (?:really )?cost/;
+
 export function parseInvestmentIntent(text: string): InvestmentIntent | null {
+  if (COSTLY.test(text)) return { kind: "investments", topic: "costly_products", account: null };
   if (PROPERTY.test(text)) return { kind: "investments", topic: "property", account: null };
   if (FAMILY.test(text)) return { kind: "investments", topic: "family", account: null };
   if (RETIREMENT_INCOME.test(text))

@@ -200,6 +200,7 @@ export const TEAM_ACCESS_RULES: Record<AuditEvent, EventRule> = {
   gift_link_revoked: own,
   gift_received: own,
   rental_added: own,
+  costly_product_saved: own,
 };
 
 export const SHOWN_EVENTS = (Object.keys(TEAM_ACCESS_RULES) as AuditEvent[]).filter(

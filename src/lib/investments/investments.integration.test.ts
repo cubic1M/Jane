@@ -39,6 +39,13 @@ import {
   revokeGiftLinks,
 } from "./family";
 import { startCollegePlan } from "./college";
+import {
+  answerPremium,
+  loadCostlyProducts,
+  linkDemoProducts,
+  saveProduct,
+  CostlyProductError,
+} from "./costly-products";
 import { addRental, linkDemoRental, loadProperty, PropertyError } from "./property";
 import { automaticLog, runAutomaticInvesting } from "./automatic";
 import {
@@ -1242,6 +1249,79 @@ describe.runIf(url)("investments in Jane's chat, against a real database", () =>
           { client },
         ),
       ).rejects.toThrow(PropertyError);
+    },
+  );
+
+  it(
+    "step 215: a premium found in payments asked once, annuity and whole life in dollars with surrender charges, advisory fees",
+    SLOW,
+    async () => {
+      const userId = await demoPerson();
+      // The advisory fees in the demo bank's brokerage are read from its fee transactions.
+      const none = await loadCostlyProducts(userId, { client, now: LINKED });
+      expect(none.advisory!.yearlyCents).toBeGreaterThan(0);
+      expect(none.advisory!.gap.highCents).toBeGreaterThan(none.advisory!.gap.lowCents);
+
+      // A life insurer's premiums in the checking account are asked about once.
+      const checking = await client.account.findFirstOrThrow({
+        where: { userId, subtype: "checking" },
+      });
+      await client.transaction.create({
+        data: {
+          userId,
+          accountId: checking.id,
+          source: "plaid",
+          plaidTransactionId: `test-wl-${userId}`,
+          date: new Date("2026-09-01T00:00:00Z"),
+          amountCents: 600_000,
+          description: "NORTHWESTERN MUTUAL LIFE INS PREMIUM",
+          pfcPrimary: "GENERAL_SERVICES",
+          pfcDetailed: "GENERAL_SERVICES_INSURANCE",
+          categorySource: "plaid",
+          pending: false,
+        },
+      });
+      const asked = await loadCostlyProducts(userId, { client, now: LINKED });
+      expect(asked.asked).toMatchObject([
+        { provider: "NORTHWESTERN MUTUAL", yearlyCents: 600_000 },
+      ]);
+      expect((await loadCostlyProducts(userId, { client, now: LINKED })).asked).toHaveLength(1);
+      await answerPremium(userId, asked.asked[0].id, false, { client });
+      expect((await loadCostlyProducts(userId, { client, now: LINKED })).asked).toEqual([]);
+      await expect(answerPremium(userId, asked.asked[0].id, false, { client })).rejects.toThrow(
+        /already answered/,
+      );
+
+      // The demo annuity and whole life, with every exit figure carrying its surrender charge.
+      await linkDemoProducts(userId, { client, now: LINKED });
+      const v = await loadCostlyProducts(userId, { client, now: LINKED });
+      const annuity = v.products.find((p) => p.kind === "annuity")!;
+      expect(annuity.yearlyCostCents).toBe(216_750);
+      expect(annuity.surrender!.pctNow).toBe(4);
+      expect(annuity.surrender!.cents).toBe(340_000);
+      expect(annuity.surrender!.endsOn).toBe("2030-10-01");
+      expect(annuity.exit!.surrenderNowCents).toBe(340_000);
+      expect(annuity.gap!.highCents).toBeGreaterThan(annuity.gap!.lowCents);
+      const whole = v.products.find((p) => p.kind === "whole_life")!;
+      expect(whole.wholeLife!.paidCents).toBe(6 * 600_000);
+      // The form checks what it takes.
+      await expect(
+        saveProduct(
+          userId,
+          {
+            kind: "annuity",
+            name: "X",
+            provider: "Y",
+            value: "1000",
+            feePercent: "2",
+            premiumYearly: "",
+            purchasedYear: "2020",
+            purchasedMonth: "1",
+            schedule: "7,abc",
+          },
+          { client, now: LINKED },
+        ),
+      ).rejects.toThrow(CostlyProductError);
     },
   );
 });

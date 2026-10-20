@@ -187,7 +187,9 @@ export type AuditEvent =
   | "gift_link_revoked"
   | "gift_received"
   // Spec step 214: a rental property added (never its figures).
-  | "rental_added";
+  | "rental_added"
+  // Spec step 215: a costly product entered or confirmed (never its figures).
+  | "costly_product_saved";
 
 export type AuditActor = { type: ActorType; id: string | null };
 

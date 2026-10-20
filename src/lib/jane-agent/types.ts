@@ -242,6 +242,9 @@ export const ACTION_IDS = [
   // Spec step 213: a gift link for a child's college fund, and money into their Roth IRA.
   "family.gift_link",
   "family.child_roth",
+  // Spec step 215: whether a premium found in the payments is whole life.
+  "costly.yes",
+  "costly.no",
   // Jane notices changes (spec step 97).
   "change.look",
   "change.budget",
@@ -466,6 +469,8 @@ export type MessageRefs = {
   // Spec step 213: the child (and amount, cents) a button is about.
   familyChild?: string;
   familyPlan?: string;
+  // Spec step 215: the product a question is about.
+  productId?: string;
   // Spec step 97: a change Jane noticed (src/insights/changes.ts), by its key; for a
   // category's pace, the budget "Set a budget" would set (cents a month).
   change?: { key: string; kind: string; category?: string; budgetCents?: number };
