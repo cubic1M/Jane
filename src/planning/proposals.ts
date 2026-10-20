@@ -1,8 +1,6 @@
 import {
   CATEGORY_PROPOSAL_MIN_TRANSACTIONS,
-  EMERGENCY_FUND_MONTHS,
   EMERGENCY_FUND_ROUNDING_CENTS,
-  EMERGENCY_FUND_TARGET_MONTHS,
   PROPOSAL_BUDGET_COUNT,
   PROPOSAL_MIN_BUDGET_CENTS,
 } from "@/config/proposals";
@@ -12,6 +10,7 @@ import {
   YEARLY_BILLS_GOAL_PATTERN,
 } from "@/config/irregular";
 import { UNCATEGORIZED } from "@/insights/labels";
+import { emergencyTarget } from "./emergency-fund";
 
 // What Jane proposes to set up, from the person's own numbers. Pure.
 
@@ -54,6 +53,8 @@ export type ProposalInput = {
   budgetedCategories: string[];
   goalNames: string[];
   monthlySpendingCents: number;
+  // Spec step 263: what the profile says, so the emergency fund is sized for this person.
+  profile?: { pattern: string | null; debtTrouble: boolean; incomeCents: number | null };
   // The monthly set-aside for yearly and irregular bills (spec step 70).
   yearlyBillsMonthlyCents?: number;
   uncategorized: {
@@ -86,17 +87,20 @@ export function proposals(input: ProposalInput): Proposal[] {
       out.push({ kind: "budget", key: `budget:${category}`, category, amountCents }),
     );
 
-  if (input.monthlySpendingCents > 0 && !input.goalNames.some((n) => /emergency/i.test(n))) {
-    const target =
-      Math.ceil(
-        (input.monthlySpendingCents * EMERGENCY_FUND_MONTHS) / EMERGENCY_FUND_ROUNDING_CENTS,
-      ) * EMERGENCY_FUND_ROUNDING_CENTS;
+  const fund = emergencyTarget({
+    spendingCents: input.monthlySpendingCents,
+    incomeCents: input.profile?.incomeCents ?? null,
+    pattern: input.profile?.pattern ?? null,
+    debtTrouble: input.profile?.debtTrouble ?? false,
+  });
+  if (fund && !input.goalNames.some((n) => /emergency/i.test(n))) {
     out.push({
       kind: "goal",
       key: "goal:emergency_fund",
-      name: "Emergency fund",
-      targetCents: target,
-      targetDate: addMonths(input.asOf, EMERGENCY_FUND_TARGET_MONTHS),
+      name: fund.name,
+      targetCents:
+        Math.ceil(fund.targetCents / EMERGENCY_FUND_ROUNDING_CENTS) * EMERGENCY_FUND_ROUNDING_CENTS,
+      targetDate: addMonths(input.asOf, fund.targetMonths),
       monthlySpendingCents: input.monthlySpendingCents,
     });
   }

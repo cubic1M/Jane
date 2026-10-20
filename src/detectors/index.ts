@@ -1,8 +1,10 @@
 import { DEBT_DETECTORS } from "./debt";
 import { HOME_DETECTORS } from "./home";
 import { LIFE_DETECTORS } from "./life";
+import { INSURANCE_DETECTORS } from "./insurance";
 import { INVESTING_DETECTORS } from "./investing";
 import { MONEY_DETECTORS } from "./money";
+import { SPENDING_DETECTORS } from "./spending";
 import { TAX_DETECTORS } from "./taxes";
 import { WORK_DETECTORS } from "./work";
 import type { Detector, DetectorContext, Suggestion } from "./contract";
@@ -16,7 +18,9 @@ export const DETECTORS: readonly Detector[] = [
   ...HOME_DETECTORS,
   ...WORK_DETECTORS,
   ...LIFE_DETECTORS,
+  ...INSURANCE_DETECTORS,
   ...DEBT_DETECTORS,
+  ...SPENDING_DETECTORS,
   ...TAX_DETECTORS,
   ...INVESTING_DETECTORS,
 ];

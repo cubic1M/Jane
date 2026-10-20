@@ -41,7 +41,9 @@ export type InsuranceAsk =
   // savings: cheaper ways to pay for the same cover (spec step 196).
   | "savings"
   // risks: what Jane noticed in how they live that their cover may miss (spec step 197).
-  | "risks";
+  | "risks"
+  // household: who is covered by what across the household (spec step 198).
+  | "household";
 
 export type InsuranceIntent = {
   kind: "insurance";
@@ -160,6 +162,10 @@ const SAVINGS =
 const RISKS =
   /\b(?:risks?|what am i missing|what(?:'s| is) not covered|am i covered for (?:uber|lyft|my (?:business|boat|dog|ring|camera))|exposed)\b/;
 
+// Who in the household is covered by what (spec step 198).
+const HOUSEHOLD =
+  /\bwho(?:'s| is| are)?\b.{0,25}\b(?:covered|insured|on my (?:car |health |home )?(?:insurance|plan|policy))\b|\b(?:family|household|kids?|children|teen\w*|spouse|wife|husband|partner)\b.{0,30}\b(?:covered|insured|health plan)\b|\bfamily (?:health )?(?:plan|insurance|cover\w*)\b|\b(?:partner|spouse|wife|husband)'?s (?:employer|work|job)\b.{0,30}\b(?:plan|insurance)\b/;
+
 const ASKS: readonly [InsuranceAsk, RegExp][] = [
   ["cards", CARD_COVER],
   [
@@ -222,6 +228,7 @@ export function parseInsurance(text: string): InsuranceIntent | null {
     !COVER_AMOUNT.test(text) &&
     !CARD_COVER.test(text) &&
     !LIFE.test(text) &&
+    !HOUSEHOLD.test(text) &&
     !MARRIED.test(text) &&
     !CAR.test(text)
   ) {
@@ -234,6 +241,7 @@ export function parseInsurance(text: string): InsuranceIntent | null {
   if (LIFE.test(text)) return { kind: "insurance", ask: "life", policyKind };
   if (SAVINGS.test(text)) return { kind: "insurance", ask: "savings", policyKind };
   if (RISKS.test(text)) return { kind: "insurance", ask: "risks", policyKind };
+  if (HOUSEHOLD.test(text)) return { kind: "insurance", ask: "household", policyKind };
   // Spec step 149: whether they need a kind of cover, from their numbers.
   if (policyKind && NEED.test(text)) return { kind: "insurance", ask: "need", policyKind };
   const ask = ASKS.find(([, words]) => words.test(text))?.[0] ?? "list";
