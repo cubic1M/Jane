@@ -10,6 +10,7 @@ import { RefundError, applyRefundPlan, dismissRefund } from "@/lib/tax-refund";
 import { TaxOrganizerError, markTaxForm } from "@/lib/tax-organizer";
 import { TaxDocumentError, decideDocument } from "@/lib/tax-documents";
 import { TaxPlanError, addPlanMove, dismissPlanMove } from "@/lib/tax-plan";
+import { AuditRecordsError, remindRetention } from "@/lib/audit-records";
 import { GivingError, markReceipt, openDonorFund } from "@/lib/giving";
 import { WithholdingError, clearW4Change, keepRefund, recordW4Change } from "@/lib/tax-withholding";
 
@@ -218,6 +219,21 @@ export async function givingAction(_previous: FormState, formData: FormData): Pr
     return { ok: false, message: "Something went wrong. Try again." };
   } catch (error) {
     if (error instanceof GivingError) return { ok: false, message: error.message };
+    throw error;
+  }
+}
+
+// Spec step 171: a reminder before a year's records can be thrown away.
+export async function recordsAction(_previous: FormState, formData: FormData): Promise<FormState> {
+  const user = await requireUser();
+  const year = Number(formData.get("year"));
+  if (!Number.isInteger(year)) return { ok: false, message: "Something went wrong. Try again." };
+  try {
+    const r = await remindRetention(user.id, year, { via: "page" });
+    revalidatePath("/taxes");
+    return { ok: true, message: `A reminder about your ${r.year} records is on your deadlines.` };
+  } catch (error) {
+    if (error instanceof AuditRecordsError) return { ok: false, message: error.message };
     throw error;
   }
 }

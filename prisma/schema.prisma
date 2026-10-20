@@ -2257,6 +2257,8 @@ model TaxProfile {
   homeSaleCents         Int?      @map("home_sale_cents")
   homeSaleCostsCents    Int?      @map("home_sale_costs_cents")
   homeDaysLivedIn       Int?      @map("home_days_lived_in")
+  // Spec step 171: tax years whose "records can go" reminder is on the deadlines.
+  retentionReminded     String[]  @default([]) @map("retention_reminded")
   createdAt             DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt             DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
 

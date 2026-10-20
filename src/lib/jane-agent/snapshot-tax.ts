@@ -24,6 +24,7 @@ import { loadTaxForms, loadTaxTags } from "@/lib/tax-organizer";
 import { loadTaxPlan, type TaxPlanView } from "@/lib/tax-plan";
 import { loadGiving, type GivingView } from "@/lib/giving";
 import { loadFamilyTaxes, type FamilyView } from "@/lib/family-taxes";
+import { loadAuditRecords, type AuditRecordsView } from "@/lib/audit-records";
 import { loadHomeTaxes, type HomeTaxesView } from "@/lib/home-taxes";
 import { inDocumentSeason, loadTaxDocuments, type TaxDocumentsView } from "@/lib/tax-documents";
 import { loadTaxProfile } from "@/lib/tax-profile";
@@ -73,6 +74,8 @@ export type TaxSnapshot = {
     family?: FamilyView;
     // Spec step 170: what a home changes at tax time.
     home?: HomeTaxesView;
+    // Spec step 171: records that can be thrown away soon.
+    records?: AuditRecordsView;
   } | null;
 };
 
@@ -146,6 +149,7 @@ export async function loadTaxSnapshot(
       ),
       giving: await loadGiving(userId, { client, now, loaded: { estimate, advice } }),
       family: await loadFamilyTaxes(userId, { client, now, loaded: { estimate, advice } }),
+      records: await loadAuditRecords(userId, estimate.year, { client, now }),
       home: await loadHomeTaxes(userId, { client, now, loaded: { estimate } }),
       plan: await loadTaxPlan(userId, {
         client,

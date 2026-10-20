@@ -148,6 +148,7 @@ export const TEAM_ACCESS_RULES: Record<AuditEvent, EventRule> = {
   document_facts_saved: own,
   document_deleted: own,
   tax_pack_downloaded: own,
+  audit_pack_downloaded: own,
   tax_profile_changed: own,
   tax_tag_changed: own,
   tax_return_started: own,

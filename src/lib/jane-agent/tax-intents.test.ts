@@ -234,3 +234,15 @@ describe("homeowner taxes in the chat", () => {
     expect(parse(text)).toEqual({ kind: "tax", ask: "home" });
   });
 });
+
+// Spec step 171.
+describe("audit-ready records in the chat", () => {
+  it.each([
+    "am I ready for an audit",
+    "give me my audit pack",
+    "how long should I keep my tax records",
+    "what records do I need if I get audited",
+  ])("%s asks about records", (text) => {
+    expect(parse(text)).toEqual({ kind: "tax", ask: "records" });
+  });
+});

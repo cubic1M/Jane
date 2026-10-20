@@ -170,6 +170,8 @@ export const ACTION_IDS = [
   "tax.receipt_got",
   "tax.fund_open",
   "tax.giving_no",
+  // Spec step 171: a reminder before a year's records can be thrown away.
+  "tax.records_remind",
   // Investments (spec step 129 on): the answer buttons on an investor-profile question,
   // by position (src/config/investing.ts PROFILE_QUESTIONS).
   "invest.answer.1",

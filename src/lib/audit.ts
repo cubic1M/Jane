@@ -105,6 +105,8 @@ export type AuditEvent =
   | "document_deleted"
   // The tax-time pack downloaded as a CSV (spec step 72).
   | "tax_pack_downloaded"
+  // Spec step 171: the audit pack for a year downloaded.
+  | "audit_pack_downloaded"
   // Taxes (spec steps 118–127): which fields of the tax profile changed, never the answers.
   | "tax_profile_changed"
   // A tax tag the person changed (spec step 119): the tag and whether on one transaction or

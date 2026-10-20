@@ -13,6 +13,8 @@ import { givingReply } from "./giving-message";
 import { loadFamilyTaxes } from "@/lib/family-taxes";
 import { familyReply } from "./family-taxes-message";
 import { loadHomeTaxes } from "@/lib/home-taxes";
+import { loadAuditRecords } from "@/lib/audit-records";
+import { recordsReply } from "./audit-records-message";
 import { homeReply } from "./home-taxes-message";
 import { moveReply, statesReply, workStateReply } from "./tax-states-message";
 import { loadWithholding } from "@/lib/tax-withholding";
@@ -111,6 +113,8 @@ export async function answerTaxIntent(
         ? moveReply(intent, view.state.value, now)
         : workStateReply(intent.state, view.state.value);
     }
+    case "records":
+      return recordsReply(await loadAuditRecords(userId, year, { client, now }));
     case "home":
       return homeReply(await loadHomeTaxes(userId, { client, now }));
     case "family":
