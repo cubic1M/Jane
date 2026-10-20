@@ -9,6 +9,7 @@ import {
   paychecksLeft,
   projectOther,
   taxPaymentsFor,
+  propertyTaxFor,
   yearElapsed,
   type IncomeTransaction,
 } from "./tax-income";
@@ -186,6 +187,19 @@ describe("other income", () => {
         2026,
       ),
     ).toEqual({ federalCents: 200_000, stateCents: 30_000 });
+  });
+
+  it("counts property tax for the deduction, not as income tax paid (spec step 170)", () => {
+    const pay = (date: string, description: string, amountCents = 100_000) =>
+      tx({ date, description, amountCents, pfcDetailed: "GOVERNMENT_AND_NON_PROFIT_TAX_PAYMENT" });
+    const rows = [
+      pay("2026-04-10", "SANTA CLARA COUNTY TAX COLLECTOR", 450_000),
+      pay("2026-06-15", "FRANCHISE TAX BD PAYMENTS", 30_000),
+      pay("2026-12-10", "PROPERTY TAX PAYMENT", 450_000),
+      pay("2027-01-10", "PROPERTY TAX PAYMENT", 450_000),
+    ];
+    expect(taxPaymentsFor(rows, 2026)).toEqual({ federalCents: 0, stateCents: 30_000 });
+    expect(propertyTaxFor(rows, 2026)).toBe(900_000);
   });
 
   it("knows how much of the year has gone", () => {

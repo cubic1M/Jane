@@ -1,3 +1,4 @@
+import { PROPERTY_TAX_PAYEE } from "@/config/home-taxes";
 import { INCOME_KINDS, PAY_FREQUENCIES } from "@/config/tax";
 import type { PayStub } from "@/lib/payroll/types";
 import type { EstimateIncome } from "./tax-estimate";
@@ -276,9 +277,25 @@ export function taxPaymentsFor(
   for (const t of transactions) {
     if (t.pfcDetailed !== "GOVERNMENT_AND_NON_PROFIT_TAX_PAYMENT" || t.amountCents <= 0) continue;
     if (t.date < from || t.date > to) continue;
+    // Spec step 170: property tax goes to the county, not toward the year's income tax.
+    if (PROPERTY_TAX_PAYEE.test(`${t.description} ${t.merchantName ?? ""}`)) continue;
     if (FEDERAL_PAYEE.test(`${t.description} ${t.merchantName ?? ""}`))
       federalCents += t.amountCents;
     else stateCents += t.amountCents;
   }
   return { federalCents, stateCents };
+}
+
+// Spec step 170: property tax paid in the year (to a county or city tax office), for the
+// state and local tax deduction.
+export function propertyTaxFor(transactions: IncomeTransaction[], year: number): number {
+  return transactions
+    .filter(
+      (t) =>
+        t.pfcDetailed === "GOVERNMENT_AND_NON_PROFIT_TAX_PAYMENT" &&
+        t.amountCents > 0 &&
+        t.date.startsWith(String(year)) &&
+        PROPERTY_TAX_PAYEE.test(`${t.description} ${t.merchantName ?? ""}`),
+    )
+    .reduce((s, t) => s + t.amountCents, 0);
 }
