@@ -361,7 +361,11 @@ function doneByJaneMessages(insurance: InsuranceSnapshot): Candidate[] {
   );
   const drafts = (insurance.draftClaims ?? []).map((c): Candidate => ({
     kind: "decision",
-    body: draftBody(c),
+    body: draftBody(
+      c,
+      insurance.policies.find((p) => p.id === c.policyId),
+      insurance.advice,
+    ),
     refs: { claimId: c.id },
     actions: draftActions(c),
     dedupeKey: `claim-draft:${c.id}:${c.amountCents}`,

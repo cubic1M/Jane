@@ -5,6 +5,9 @@ import { evidence, factEvidence, tx, weakest } from "./helpers";
 
 // Detectors for life events and households (spec step 264). Pure; see ./contract.ts.
 
+// "MERIDIAN MEDICAL" as people say it: "Meridian Medical".
+const nice = (name: string) => name.toLowerCase().replace(/\b[a-z]/g, (c) => c.toUpperCase());
+
 const addDays = (day: string, days: number) =>
   new Date(Date.parse(`${day}T00:00:00Z`) + days * 86_400_000).toISOString().slice(0, 10);
 
@@ -47,7 +50,7 @@ const lifeChecklist: Detector = {
           "paychecks from the new employer",
         ),
         urgency: "soon",
-        why: `Your pay now comes from ${newJob[0]}, and your old paycheck stopped. A new job usually means enrolling in benefits, the 401(k) match, a new W-4 and an old 401(k) to move; the checklist is typically worth about ${formatCents(R.newJobTypicalCents)} in the first year.`,
+        why: `Your pay now comes from ${nice(newJob[0])}, and your old paycheck stopped. A new job usually means enrolling in benefits, the 401(k) match, a new W-4 and an old 401(k) to move; the checklist is typically worth about ${formatCents(R.newJobTypicalCents)} in the first year.`,
         action: { label: "Open the checklist", href: "/life-events" },
       };
     }
