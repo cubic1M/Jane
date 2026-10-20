@@ -90,6 +90,37 @@ const SECURITIES: Readonly<Record<string, DemoSecurity>> = {
     subtype: "mutual fund",
   },
   KDVX: { ticker: "KDVX", name: "Keystone US Dividend Index ETF", type: "etf", subtype: "etf" },
+  // Spec step 236: screened funds, for investing by your values.
+  KUFFX: {
+    ticker: "KUFFX",
+    name: "Keystone US Fossil-Free Index Fund",
+    type: "mutual fund",
+    subtype: "mutual fund",
+  },
+  KUSEX: {
+    ticker: "KUSEX",
+    name: "Keystone US Screened Index Fund",
+    type: "mutual fund",
+    subtype: "mutual fund",
+  },
+  KUCEX: {
+    ticker: "KUCEX",
+    name: "Keystone US Clean Energy Tilt Fund",
+    type: "mutual fund",
+    subtype: "mutual fund",
+  },
+  KISEX: {
+    ticker: "KISEX",
+    name: "Keystone International Screened Index Fund",
+    type: "mutual fund",
+    subtype: "mutual fund",
+  },
+  KBSEX: {
+    ticker: "KBSEX",
+    name: "Keystone Screened Bond Index Fund",
+    type: "mutual fund",
+    subtype: "mutual fund",
+  },
   CASH: { ticker: null, name: "Cash", type: "cash", subtype: "cash", cash: true },
 };
 
@@ -169,6 +200,11 @@ export const DEMO_PRICES: Readonly<Record<string, number>> = {
   KDVX: 41.25,
   // Spec step 162: the money market fund, a dollar a share.
   KMMXX: 1,
+  KUFFX: 61.1,
+  KUSEX: 33.8,
+  KUCEX: 27.6,
+  KISEX: 22.4,
+  KBSEX: 10.2,
 };
 
 // A demo security's price on `day` for a demo bank linked on `anchor`.

@@ -205,6 +205,14 @@ export const TEAM_ACCESS_RULES: Record<AuditEvent, EventRule> = {
   gift_received: own,
   rental_added: own,
   costly_product_saved: own,
+  plan_menu_confirmed: own,
+  plan_change_requested: own,
+  ladder_started: own,
+  ladder_rolled: own,
+  sudden_money_classed: own,
+  sudden_money_stage: own,
+  values_saved: own,
+  values_switch: own,
 };
 
 export const SHOWN_EVENTS = (Object.keys(TEAM_ACCESS_RULES) as AuditEvent[]).filter(
