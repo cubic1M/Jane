@@ -70,6 +70,8 @@ import { rankedFor } from "./priorities";
 import { prioritiesReply } from "./replies-priorities";
 import { wholePictureReply } from "./whole-picture";
 import { planReply } from "./multi";
+import { loadTimeline } from "@/lib/timeline";
+import { timelineReply } from "./replies-timeline";
 import { paycheckReply } from "./replies-paycheck";
 import { latestPaycheckPlan } from "@/lib/money-movement/paycheck";
 import { loadBillPay } from "@/lib/money-movement/bill-pay";
@@ -365,6 +367,9 @@ async function byIntent(
     }
     case "changes":
       return changesReply(await loadChanges(userId, { client, now }));
+    // Spec step 187.
+    case "timeline":
+      return timelineReply(await loadTimeline(userId, { client, limit: 20 }), intent.why, asOf);
     case "what_did":
       return whatDidReply(await whatJaneDid(userId, { client, now }));
     case "act":
