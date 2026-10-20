@@ -33,6 +33,17 @@ export function inputFor(person: string, told: ProfileInput["told"] = {}): Profi
               .reduce((s, h) => s + Math.round(h.institution_value * 100), 0)
           : Math.round((a.balances.current ?? 0) * 100),
     })),
+    holdings: holdings.map((h) => {
+      const ticker = h.security_id.replace("demo-sec-", "").toUpperCase();
+      const isCash = ticker === "CASH";
+      return {
+        accountId: h.account_id,
+        ticker: isCash ? null : ticker,
+        valueCents: Math.round(h.institution_value * 100),
+        costBasisCents: h.cost_basis == null ? null : Math.round(h.cost_basis * 100),
+        isCash,
+      };
+    }),
     liabilities: [
       ...(demoLiabilities(demo, SAMPLE_TODAY).mortgage ?? []).map((m) => ({
         accountId: m.account_id,

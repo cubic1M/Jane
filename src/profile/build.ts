@@ -37,6 +37,15 @@ export type ProfileAccount = {
   subtype: string | null;
   balanceCents: number;
 };
+// A holding (spec step 262): what the fund detectors read. Optional on the input, so a
+// loader that has none still works and the detectors simply don't fire.
+export type ProfileHolding = {
+  accountId: string;
+  ticker: string | null;
+  valueCents: number;
+  costBasisCents: number | null;
+  isCash: boolean;
+};
 export type ProfileLiability = {
   accountId: string;
   kind: string;
@@ -52,6 +61,7 @@ export type ProfileInput = {
   transactions: readonly ProfileTx[];
   accounts: readonly ProfileAccount[];
   liabilities: readonly ProfileLiability[];
+  holdings?: readonly ProfileHolding[];
   told: Told;
 };
 
