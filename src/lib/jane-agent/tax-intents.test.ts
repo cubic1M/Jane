@@ -277,3 +277,16 @@ describe("side income and rentals in the chat", () => {
     }
   });
 });
+
+// Spec step 217.
+describe("tax notices in the chat", () => {
+  it.each([
+    "I got a letter from the IRS",
+    "what is a CP2000",
+    "I have a CP14 notice",
+    "I received an IRS notice",
+    "got a scary notice about my taxes",
+  ])("%s asks about a notice", (text) => {
+    expect(parse(text)).toEqual({ kind: "tax", ask: "notice" });
+  });
+});

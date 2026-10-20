@@ -110,6 +110,19 @@ async function TaxesContent() {
         advice={advice}
       />
       <SavingsSection view={await loadTaxSavings(user.id, { now, loaded: { estimate, advice } })} />
+      <section aria-labelledby="letters-heading" id="letters" className={CARD}>
+        <h2 id="letters-heading" className="text-xl font-semibold">
+          Letters from the IRS or your state
+        </h2>
+        <p className="text-sm text-zinc-600 dark:text-zinc-400">
+          Photograph a notice and Jane explains it, puts its date on your deadlines, checks it
+          against your records and drafts a reply for you to send.
+        </p>
+        <Link href="/taxes/letters" className={LINK}>
+          Open my letters
+        </Link>
+      </section>
+
       <section aria-labelledby="last-return-heading" id="last-return" className={CARD}>
         <h2 id="last-return-heading" className="text-xl font-semibold">
           Last year&apos;s return

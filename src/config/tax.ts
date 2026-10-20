@@ -383,6 +383,8 @@ export const TAX_MESSAGE_PRIORITY = {
   // Spec step 173: a rental to set up, and hobby or business.
   rental_setup: 37,
   side_kind: 36,
+  // Spec step 217: a tax notice is urgent.
+  notice: 82,
 } as const;
 
 // What Jane does about taxes by herself at each autopilot level (spec step 57), shown on
@@ -436,6 +438,11 @@ export const TAX_AUTOPILOT: readonly { feature: string; ask: string; auto: strin
     feature: "investments",
     ask: "I work out your gains and losses from your holdings, warn you about wash sales and, with demo advice, show losses worth harvesting and what's better held in your 401(k) or IRA.",
     auto: "I work out your gains and losses after every sync, warn you about wash sales and, with demo advice, bring up losses worth harvesting before the year ends. I never sell anything myself.",
+  },
+  {
+    feature: "notices",
+    ask: "When you upload a letter from the IRS or your state, I read it for you to confirm, put its date on your deadlines, check it against your records and draft a reply. You choose agree, pay or disagree, and whether my team or you sends it. I never pay or send anything myself.",
+    auto: "When you upload a letter from the IRS or your state, I read it for you to confirm, put its date on your deadlines, check it against your records, draft a reply and remind you as the date gets close. You choose agree, pay or disagree, and whether my team or you sends it. I never pay or send anything myself.",
   },
   {
     feature: "side_income",
