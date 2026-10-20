@@ -1,3 +1,7 @@
+import { FORECAST_DAYS } from "@/config/detection";
+import { loadDetectionInput } from "@/detection/engine";
+import { forecastAccounts } from "@/detection/forecast";
+import { forecastReply } from "../replies-forecast";
 import { whatIf } from "@/lib/what-if";
 import { saveMoreReply } from "../replies-savemore";
 import { whatIfReply } from "../replies-whatif";
@@ -209,6 +213,10 @@ async function answer(ctx: CapabilityContext): Promise<Reply | null> {
     }
     case "save_more":
       return saveMoreReply(intent.monthlyCents, await listGoals(userId, { client, now }));
+    case "balance_forecast": {
+      const input = await loadDetectionInput(userId, { client, now });
+      return forecastReply(forecastAccounts(input, FORECAST_DAYS));
+    }
     default:
       return null;
   }

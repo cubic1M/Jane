@@ -48,3 +48,29 @@ describe("saving more a month", () => {
     expect(saveMoreReply(10_000, []).actions[0]).toMatchObject({ id: "goal.start" });
   });
 });
+
+describe("questions QA found failing", () => {
+  it("reads where the balance is heading", () => {
+    for (const text of [
+      "why is my checking going negative",
+      "will my checking dip below zero this month",
+      "am i going to run out of money",
+    ]) {
+      expect(parseIntent(text, "2026-10-20"), text).toEqual({ kind: "balance_forecast" });
+    }
+  });
+
+  it("reads 'set a budget for restaurants' as that category's spending, with the budget button", () => {
+    expect(parseIntent("set a budget for restaurants", "2026-10-20")).toMatchObject({
+      kind: "spending",
+      category: "Food and drink",
+    });
+  });
+
+  it("sends 'what about my student loans' to the student loans, not a name lookup", () => {
+    expect(parseIntent("what about my student loans", "2026-10-20")).toEqual({
+      kind: "student_loans",
+    });
+    expect(parseIntent("and Hulu?", "2026-10-20")).toMatchObject({ kind: "follow_up" });
+  });
+});

@@ -401,6 +401,26 @@ const BASE_QUESTIONS: readonly CheckQuestion[] = [
     expect: { intent: "monthly_report" },
   },
 
+  // Where the balance is heading, a budget for a category, and a sector follow-up (QA).
+  {
+    id: "fc-1",
+    text: "why is my checking going negative",
+    needs: "rules",
+    expect: { intent: "balance_forecast", link: "/bills", list: true, maxChars: 900 },
+  },
+  {
+    id: "fc-2",
+    text: "set a budget for restaurants",
+    needs: "rules",
+    expect: { intent: "spending", button: "budget.set" },
+  },
+  {
+    id: "fc-3",
+    text: "what about my student loans",
+    needs: "rules",
+    expect: { intent: "student_loans", list: true, maxChars: 1_200 },
+  },
+
   // Net worth, answered at once from the net worth page's own math.
   {
     id: "nw-1",

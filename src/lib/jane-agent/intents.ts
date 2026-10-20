@@ -93,6 +93,8 @@ export type Intent =
   | { kind: "whole_picture"; focus: "now" | "month" }
   // What they own and owe, from the net worth page.
   | { kind: "net_worth" }
+  // "Why is my checking going negative": where the balance is heading.
+  | { kind: "balance_forecast" }
   // Spec step 203: "what if I lose my job for 4 months"; and "what if I save $200 more a month".
   | WhatIfIntent
   | { kind: "save_more"; monthlyCents: number }
@@ -373,6 +375,11 @@ function whatIfIntent(text: string): Intent | null {
   return parseWhatIf(text);
 }
 
+const BALANCE_FORECAST =
+  /\b(?:why|will|would|am i going to|is) (?:is |will )?(?:my )?(?:checking|account|balance)\b.{0,30}\b(?:negative|overdr\w+|below zero|under zero|zero|low|short)\b|\b(?:run|running) (?:out of money|short)\b|\b(?:dip|go|fall|drop) (?:below|under) zero\b|\bwhere is my (?:checking|balance) (?:heading|going)\b/;
+// "set a budget for restaurants": what they spend there, with the button that sets it.
+const BUDGET_FOR =
+  /^(?:set|make|create|add|start)(?: me)?(?: a| my)? budget (?:for|on) (.+)$|^budget (?:for|on) (.+)$/;
 const NET_WORTH =
   /\bnet ?worth\b|\bhow much (?:am i|are we) worth\b|\bwhat do (?:i|we) own and owe\b|\bassets? (?:and|vs\.?|minus) (?:debts?|liabilities)\b/;
 // Spec step 187.
@@ -531,6 +538,12 @@ export function parseIntent(
   const hypothetical = whatIfIntent(text);
   if (hypothetical) return hypothetical;
   if (NET_WORTH.test(text)) return { kind: "net_worth" };
+  if (BALANCE_FORECAST.test(text)) return { kind: "balance_forecast" };
+  const budgetFor = BUDGET_FOR.exec(text);
+  if (budgetFor) {
+    const category = matchCategory(cleanTarget(budgetFor[1] ?? budgetFor[2]), CATEGORY_LIST);
+    if (category) return { kind: "spending", category, month: asOf.slice(0, 7) };
+  }
   if (WHY_DID.test(text)) return { kind: "timeline", why: true };
   if (TIMELINE.test(text)) return { kind: "timeline", why: false };
   if (WHOLE_MONTH.test(text)) return { kind: "whole_picture", focus: "month" };
@@ -586,6 +599,13 @@ export function parseIntent(
         "past",
       );
       if (month) return { kind: "follow_up", target: null, month };
+    }
+    // "What about my student loans?" is a question of its own, not a name to look up.
+    for (const asked of [`how are ${words}`, words]) {
+      const own = parseIntent(asked, asOf, { single: true });
+      if (!["unknown", "follow_up", "about", "help", "greeting", "remember"].includes(own.kind)) {
+        return own;
+      }
     }
     return { kind: "follow_up", target: cleanTarget(words), month: null };
   }
