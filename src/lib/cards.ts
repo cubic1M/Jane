@@ -79,6 +79,9 @@ function whatChanges(type: FindingType, evidence: Json): string {
     case "charge_after_cancel":
       return `We show ${merchant} the cancellation and ask for these charges back, and make sure it's really cancelled.`;
     case "bill_negotiation":
+      if (evidence.dispute === true) {
+        return `We ask ${merchant} and your health plan to check this bill against what your plan should have paid, and tell you what they say before you pay any more.`;
+      }
       return `We call ${merchant}, ask for a lower rate or a cheaper plan with the same service, and tell you what they offer before anything changes.`;
     case "trial_conversion":
       return `We ask ${merchant} to refund the charge and cancel, before the next one.`;

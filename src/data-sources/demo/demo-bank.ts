@@ -527,6 +527,17 @@ const ONE_OFF: (Template & { offsets: number[] })[] = [
     amount: 23.4,
     offsets: [-75, -18],
   },
+  // Spec step 200: a scan billed above the demo plan's share, for the dispute card. Last
+  // year, so this year's tax figures stay as they were.
+  {
+    key: "imaging",
+    account: "checking",
+    name: "BAYVIEW IMAGING CENTER",
+    merchant: null,
+    category: "MEDICAL_PRIMARY_CARE",
+    amount: 700,
+    offsets: [-310],
+  },
   {
     key: "dentist",
     account: "checking",
