@@ -1,5 +1,6 @@
 import { INCOME_KINDS, UNTAGGED, isTaxTagKind, type TaxTagKind } from "@/config/tax";
 import type { PrismaClient } from "@/generated/prisma/client";
+import { loadEquityIncome } from "@/lib/equity-income";
 import { track } from "@/lib/analytics";
 import { logAudit } from "@/lib/audit";
 import { db as defaultClient } from "@/lib/db";
@@ -266,6 +267,8 @@ export async function loadTaxForms(
       kind: l.kind,
       ytdInterestPaidCents: year === now.getUTCFullYear() ? l.ytdInterestPaidCents : null,
     })),
+    // Spec step 219: an exchange that sold crypto sends a 1099-DA.
+    cryptoSales: (await loadEquityIncome(userId, year, { client, now })).crypto.exchangesSold,
   });
   return { year, forms: forms.map((f) => ({ ...f, received: got.has(f.key) })) };
 }

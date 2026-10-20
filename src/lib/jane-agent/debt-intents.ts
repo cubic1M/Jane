@@ -54,7 +54,7 @@ export type DebtIntent =
       priceCents: number | null;
     };
 
-const DEBT_KINDS = new Set<string>([
+export const DEBT_KINDS = new Set<string>([
   "debts",
   "debt_detail",
   "payoff_plan",

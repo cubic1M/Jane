@@ -177,6 +177,8 @@ enum AlertType {
   // The IRS estimated-payment date is coming up, for people with contracting or gig
   // income (spec step 72).
   estimated_tax
+  // Spec step 208: a charge, bill or refund that doesn't look right ("this was me" / "not me").
+  unusual_activity
 
   @@map("alert_type")
 }
@@ -353,6 +355,7 @@ model User {
   taxAmendments          TaxAmendment[]
   taxNotices             TaxNotice[]
   taxIdentityCases       TaxIdentityCase[]
+  equityEvents           EquityEvent[]
   taxForms               TaxForm[]
   taxReturns             TaxReturn[]
   budgetTuneUps          BudgetTuneUp[]
@@ -377,6 +380,7 @@ model User {
   whatIfPlans       WhatIfPlan[]
   leanPlans         LeanPlan[]
   yearPlans         YearPlan[]
+  unusualAnswers    UnusualAnswer[]
 
   @@map("users")
 }
@@ -2924,6 +2928,31 @@ model TaxIdentityCase {
   @@map("tax_identity_cases")
 }
 
+// Spec step 219: an equity pay event the person told Jane about, for taxes: RSUs vested,
+// ESPP shares bought (and maybe sold) or ISOs exercised. Prices are per share in cents.
+// kind: rsu, espp or iso (src/config/equity-tax.ts).
+model EquityEvent {
+  id                 String    @id @default(cuid())
+  userId             String    @map("user_id")
+  kind               String
+  company            String
+  shares             Float
+  occurredOn         DateTime  @map("occurred_on") @db.Date
+  grantedOn          DateTime? @map("granted_on") @db.Date
+  priceCents         Int       @default(0) @map("price_cents")
+  fmvCents           Int       @map("fmv_cents")
+  withheldCents      Int?      @map("withheld_cents")
+  soldOn             DateTime? @map("sold_on") @db.Date
+  soldPriceCents     Int?      @map("sold_price_cents")
+  grantDiscountCents Int?      @map("grant_discount_cents")
+  createdAt          DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("equity_events")
+}
+
 model TaxReturn {
   id              String    @id @default(cuid())
   userId          String    @map("user_id")
@@ -3283,4 +3312,26 @@ model YearPlan {
 
   @@unique([userId, startMonth])
   @@map("year_plans")
+}
+
+// "This was me" / "not me" on an unusual-activity alert (spec step 208). "me" teaches the
+// merchant: later charges up to twice the amount stay quiet. "not me" opens a dispute card.
+model UnusualAnswer {
+  id          String   @id @default(cuid())
+  userId      String   @map("user_id")
+  alertId     String   @map("alert_id")
+  merchantKey String   @map("merchant_key")
+  rule        String
+  // me or not_me.
+  answer      String
+  amountCents Int      @map("amount_cents")
+  // The dispute card's finding, for "not me".
+  findingId   String?  @map("finding_id")
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, alertId])
+  @@index([userId, merchantKey])
+  @@map("unusual_answers")
 }

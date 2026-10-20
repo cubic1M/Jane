@@ -157,6 +157,7 @@ export function scopedFor(userId: string, client: PrismaClient = db) {
     taxAmendments: scoped.taxAmendment,
     taxNotices: scoped.taxNotice,
     taxIdentityCases: scoped.taxIdentityCase,
+    equityEvents: scoped.equityEvent,
     taxReturns: scoped.taxReturn,
     // One-tap answers from Jane's emails (spec step 85).
     chatReplyLinks: scoped.chatReplyLink,
@@ -186,6 +187,8 @@ export function scopedFor(userId: string, client: PrismaClient = db) {
     leanPlans: scoped.leanPlan,
     // The year's money plan (spec step 205).
     yearPlans: scoped.yearPlan,
+    // "This was me" / "not me" on unusual activity (spec step 208).
+    unusualAnswers: scoped.unusualAnswer,
     savedShares: scoped.savedShare,
     // What's in investment accounts (spec step 128).
     securities: scoped.security,

@@ -73,3 +73,11 @@ describe("checking a tax form against the accounts", () => {
     }
   });
 });
+
+describe("the 1099-DA (spec step 219)", () => {
+  it("compares its proceeds with the sales Jane worked out", () => {
+    expect(formAmount("da", { proceeds: 2_090_000, costBasis: 108_706 })).toBe(2_090_000);
+    expect(checkDocument("da", { proceeds: 2_090_000 }, 2_090_000).status).toBe("matches");
+    expect(checkDocument("da", { proceeds: 1_500_000 }, 2_090_000).status).toBe("differs");
+  });
+});

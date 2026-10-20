@@ -46,6 +46,8 @@ export const CHAT_SOURCE_LIMITS: Readonly<Record<string, number>> = {
   attention: 1,
   // Spec step 204.
   lean: 1,
+  // Spec step 208.
+  unusual: 2,
   // Spec step 148.
   report: 1,
   // Spec step 128 on.
@@ -155,6 +157,8 @@ export const MESSAGE_PRIORITY = {
   attention: 30,
   // Spec step 204: income stopped; right after urgent things.
   lean: 92,
+  // Spec step 208: a charge that may not be theirs; as urgent as an alert.
+  unusual: 95,
   // Spec step 148: the monthly money report, once a month, after what needs the person.
   report: 40,
   review: 900,
@@ -203,7 +207,16 @@ export const CHAT_HISTORY_HOURS = 48;
 
 // Spec step 83: sources whose messages don't count toward the daily limit, like the brief:
 // the one-time autopilot question, so it never pushes a finding out on the first day.
-export const CHAT_UNCAPPED_SOURCES: readonly string[] = ["autopilot", "review", "welcome"];
+export const CHAT_UNCAPPED_SOURCES: readonly string[] = [
+  "autopilot",
+  "review",
+  "welcome",
+  // Spec step 208: a charge that may not be theirs shouldn't wait for a quiet day; the source
+  // itself brings up at most UNUSUAL_CHAT_MAX at a time.
+  "unusual",
+];
+// Unusual-activity questions in the chat at one time.
+export const UNUSUAL_CHAT_MAX = 2;
 
 // Spec step 184: the morning brief is the day's agenda. Anything less urgent than this
 // waits for it and becomes one of its lines; urgent alerts and deadlines come at once.
@@ -286,6 +299,31 @@ export const CHAT_CLAUDE_DEADLINE_MS = 20_000;
 // After Claude fails, free questions get the rules' answer at once for this long, instead
 // of waiting on Claude again.
 export const CHAT_CLAUDE_COOLDOWN_SECONDS = 60;
+
+// Spec step 191: Claude reads every free-text message. These kinds of message keep the
+// instant rules path, because they are exact commands, tapped-for answers or fixed content:
+// approving, undoing and pausing, changing an autopilot level, a plan of several steps,
+// guided flows, what the person tells Jane to remember, searching the chat, the glossary,
+// help and hellos. Everything else is a question for Claude with all the tools.
+export const CHAT_RULES_ONLY_KINDS: readonly string[] = [
+  "greeting",
+  "help",
+  "approve_all",
+  "undo",
+  "pause_autopilot",
+  "autopilot_sector",
+  "autopilot_overview",
+  "act",
+  "multi",
+  "move_to_goal",
+  "flow",
+  "remember",
+  "search",
+  "learn",
+];
+// The most Claude may spend answering one person's messages in a day, in cents, at the model's
+// listed price (MODEL_PRICES_CENTS in src/config/answer-checks.ts). Past it, the rules answer.
+export const CHAT_CLAUDE_DAILY_CAP_CENTS = 25;
 // /admin/chat looks back this many days for what Jane couldn't answer.
 export const CHAT_UNANSWERED_DAYS = 30;
 
