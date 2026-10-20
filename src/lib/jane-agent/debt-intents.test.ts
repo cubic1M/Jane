@@ -183,6 +183,27 @@ describe("debt questions", () => {
     expect(intent("how much do I owe on my car")).toEqual({ kind: "debt_detail", target: "car" });
   });
 
+  it("reads buying a home, but not a mortgage already owned or home insurance", () => {
+    expect(intent("how much house can I afford")).toEqual({
+      kind: "home_afford",
+      priceCents: null,
+    });
+    expect(intent("can I afford a $400,000 home")).toEqual({
+      kind: "home_afford",
+      priceCents: 40_000_000,
+    });
+    expect(intent("how much should I save for a down payment")).toEqual({
+      kind: "home_afford",
+      priceCents: null,
+    });
+    expect(intent("what are closing costs")).toEqual({ kind: "home_afford", priceCents: null });
+    expect(intent("when does my home insurance renew")).not.toMatchObject({ kind: "home_afford" });
+    expect(intent("when will my mortgage be paid off")).toMatchObject({ kind: "debt_detail" });
+    expect(intent("can I afford $900 for a home repair")).not.toMatchObject({
+      kind: "home_afford",
+    });
+  });
+
   it("reads a tight month", () => {
     for (const text of [
       "money is tight this month",

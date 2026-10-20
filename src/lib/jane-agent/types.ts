@@ -271,6 +271,8 @@ export type MessageRefs = {
   bnplPlan?: { key: string };
   // Spec step 177: the request "Send" sends when money is tight.
   tightItem?: { id: string };
+  // Spec step 179: the home price the down payment goal is sized for.
+  homeGoal?: { priceCents: number };
   // Insurance (spec Phase X): a coverage gap by its key (GAP_KEYS), and the policy a
   // message is about.
   insuranceGap?: string;
