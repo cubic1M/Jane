@@ -33,6 +33,10 @@ import { DocumentButtons } from "./document-buttons";
 import { PlanSection } from "./plan-section";
 import { GivingSection } from "./giving-section";
 import { FamilySection } from "./family-section";
+import { SideIncomeSection } from "./side-income-section";
+import { loadSideIncome } from "@/lib/side-income";
+import { RecordsSection } from "./records-section";
+import { loadAuditRecords } from "@/lib/audit-records";
 import { HomeSection } from "./home-section";
 import { loadHomeTaxes } from "@/lib/home-taxes";
 import { loadFamilyTaxes } from "@/lib/family-taxes";
@@ -106,6 +110,50 @@ async function TaxesContent() {
         advice={advice}
       />
       <SavingsSection view={await loadTaxSavings(user.id, { now, loaded: { estimate, advice } })} />
+      <section aria-labelledby="identity-heading" id="identity" className={CARD}>
+        <h2 id="identity-heading" className="text-xl font-semibold">
+          Your tax identity
+        </h2>
+        <p className="text-sm text-zinc-600 dark:text-zinc-400">
+          An IRS Identity Protection PIN keeps anyone else from filing with your Social Security
+          number. If a sign of theft shows up, Jane gives you the steps in order.
+        </p>
+        <Link href="/taxes/identity" className={LINK}>
+          Protect my tax identity
+        </Link>
+      </section>
+
+      <section aria-labelledby="letters-heading" id="letters" className={CARD}>
+        <h2 id="letters-heading" className="text-xl font-semibold">
+          Letters from the IRS or your state
+        </h2>
+        <p className="text-sm text-zinc-600 dark:text-zinc-400">
+          Photograph a notice and Jane explains it, puts its date on your deadlines, checks it
+          against your records and drafts a reply for you to send.
+        </p>
+        <Link href="/taxes/letters" className={LINK}>
+          Open my letters
+        </Link>
+      </section>
+
+      <section aria-labelledby="last-return-heading" id="last-return" className={CARD}>
+        <h2 id="last-return-heading" className="text-xl font-semibold">
+          Last year&apos;s return
+        </h2>
+        <p className="text-sm text-zinc-600 dark:text-zinc-400">
+          Upload a return you filed and Jane reads it, checks it against your accounts for money
+          left behind, and prepares an amended return for you to review and sign.
+        </p>
+        <Link href="/taxes/last-return" className={LINK}>
+          Review a past return
+        </Link>
+      </section>
+
+      <SideIncomeSection
+        view={await loadSideIncome(user.id, { now, loaded: { estimate } })}
+        advice={advice}
+      />
+      <RecordsSection view={await loadAuditRecords(user.id, year, { now })} />
       <HomeSection view={await loadHomeTaxes(user.id, { now, loaded: { estimate } })} />
       <FamilySection view={await loadFamilyTaxes(user.id, { now, loaded: { estimate, advice } })} />
       <GivingSection view={await loadGiving(user.id, { now, loaded: { estimate, advice } })} />

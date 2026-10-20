@@ -1,4 +1,10 @@
 import type { DEBT_ACTION_IDS } from "../debt-action-ids";
+import { bnplPayoff } from "./bnpl";
+import { cardRateSend } from "./card-interest";
+import { creditFixSend } from "./credit-report-fixes";
+import { homeGoal } from "./home-buying";
+import { medicalSend } from "./medical-bills";
+import { tightSend } from "./tight-money";
 import { creditBuilderOpen, creditBuildPay } from "./credit-building";
 import { creditCardApply } from "./credit-cards";
 import { debtPlanAvalanche, debtPlanSnowball } from "./debt-plan";
@@ -24,4 +30,10 @@ export const DEBT_ACTION_HANDLERS: Readonly<
   "credit_card.apply": creditCardApply,
   "credit_build.pay": creditBuildPay,
   "credit_builder.open": creditBuilderOpen,
+  "bnpl.payoff": bnplPayoff,
+  "tight.send": tightSend,
+  "home.goal": homeGoal,
+  "medical.send": medicalSend,
+  "creditfix.send": creditFixSend,
+  "cardrate.send": cardRateSend,
 };

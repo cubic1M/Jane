@@ -20,6 +20,8 @@ import {
   type MonthlyReport,
 } from "@/planning/monthly-report";
 import { storedReport, type StoredReport } from "./monthly-report-store";
+import { loadYearPlan } from "./year-plan";
+import { resultsByKind } from "./worked";
 
 // The monthly money report (spec step 148): in the first days of a month, what the month
 // just ended came to (saved, earned, paid down, moved), the health score's change, what's
@@ -50,6 +52,10 @@ export async function buildMonthlyReport(
     loadSnapshot(userId, { client, now }),
     healthFor(userId, { client, now }),
   ]);
+  const yearPlanView = await loadYearPlan(userId, { client, now }).catch(() => null);
+  const planned = yearPlanView?.months.find((m) => m.month === month);
+  const upcoming = yearPlanView?.months.find((m) => m.month === yearPlanView.currentMonth);
+  const kinds = await resultsByKind(userId, { client, now });
   const receipts = saved.confirmed.filter((r) => r.seen.date.startsWith(month));
   const [next] = snapshot ? rankedFor(snapshot) : [];
   return {
@@ -67,6 +73,26 @@ export async function buildMonthlyReport(
       band: health.band,
       change: health.change?.delta ?? null,
     },
+    worked: {
+      confirmed: receipts.length,
+      notShown: kinds.reduce((s, k) => s + k.notShown, 0),
+    },
+    plan:
+      planned && upcoming
+        ? {
+            planned: {
+              saving: planned.targets.saving,
+              debt: planned.targets.debt,
+              investing: planned.targets.investing,
+            },
+            did: planned.actual,
+            nextTargets: {
+              saving: upcoming.targets.saving,
+              debt: upcoming.targets.debt,
+              investing: upcoming.targets.investing,
+            },
+          }
+        : null,
     receipts: receipts.map((r) => ({
       title: r.title,
       cents: r.cents,

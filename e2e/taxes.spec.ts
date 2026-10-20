@@ -169,7 +169,7 @@ test("state taxes: a mid-year move splits the estimate, each state with its sour
     estimate.getByRole("link", { name: "New York State Department of Taxation and Finance" }),
   ).toHaveAttribute("href", "https://www.tax.ny.gov");
   await expect(
-    estimate.getByText(/^California: lived there 2026-01-01 to 2026-06-30/),
+    estimate.getByText(/^California: lived there Jan 1, 2026 to Jun 30, 2026/),
   ).toBeVisible();
   expect(await axe(page)).toEqual([]);
 

@@ -170,7 +170,7 @@ describe.runIf(url)("homeowner taxes against a real database", { timeout: 60_000
       now: LINKED,
     });
     expect(reply.body).toMatch(
-      /^Your home's taxes for 2026:\n• Mortgage interest: \$[\d,.]+ \(from Demo Home Loan, as your lender reports it\)/,
+      /^Here is what your home changes on your 2026 taxes\.\n• Mortgage interest: \$[\d,.]+ \(from Demo Home Loan, as your lender reports it\)/,
     );
     const tool = JSON.parse(
       (await runChatTool(userId, "tax_home", {}, { client, now: LINKED })).content,

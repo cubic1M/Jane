@@ -55,6 +55,15 @@ export type TaxPack = {
   forms: (ExpectedForm & { received: boolean })[];
   // Spec step 165: the states lived or worked in, and a city income tax.
   states: PackState[];
+  // Spec step 173: a rental's rent, tagged expenses, depreciation and net.
+  rental: PackRental | null;
+};
+
+export type PackRental = {
+  rentCents: number;
+  expensesCents: number;
+  depreciationCents: number;
+  netCents: number;
 };
 
 export type PackState = {
@@ -110,6 +119,7 @@ const PREPARER_ORDER: readonly PreparerGroup[] = [
   "education",
   "work",
   "business",
+  "rental",
 ];
 
 const yearOf = (day: string) => Number(day.slice(0, 4));
@@ -176,6 +186,7 @@ export function buildTaxPack({
   overrides = NO_OVERRIDES,
   forms = [],
   states = [],
+  rental = null,
 }: {
   year: number;
   today: string;
@@ -184,6 +195,7 @@ export function buildTaxPack({
   overrides?: TagOverrides;
   forms?: TaxPack["forms"];
   states?: PackState[];
+  rental?: PackRental | null;
 }): TaxPack {
   const inYear = transactions.filter((t) => yearOf(t.date) === year);
   const incoming = inYear.filter((t) => t.amountCents < 0);
@@ -229,6 +241,7 @@ export function buildTaxPack({
     reminders: estimatedTaxDates(year),
     forms,
     states,
+    rental,
   };
 }
 
@@ -276,6 +289,16 @@ export function taxPackCsv(pack: TaxPack): string {
       dollars(g.totalCents),
       "",
     ]),
+    ...(pack.rental
+      ? (
+          [
+            ["Rent in", pack.rental.rentCents],
+            ["Expenses", pack.rental.expensesCents],
+            ["Depreciation", pack.rental.depreciationCents],
+            ["Net", pack.rental.netCents],
+          ] as const
+        ).map(([label, cents]) => [TAX_PACK_COPY.rentalHeading, "", label, dollars(cents), ""])
+      : []),
     ...pack.states.map((st) => [
       TAX_PACK_COPY.statesHeading,
       st.from ? `${st.from} to ${st.to}` : "",

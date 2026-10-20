@@ -231,8 +231,8 @@ function Totals({ home }: { home: HomeSummary }) {
         home.moneyFoundCents > 0 && (
           <>
             Jane is most sure of{" "}
-            <span className="font-semibold">{formatCents(home.moneyFoundCents)}</span> a year of
-            that
+            <span className="font-semibold">{formatCents(home.moneyFoundCents)}</span> a year in her
+            plan below
           </>
         )
       ) : (

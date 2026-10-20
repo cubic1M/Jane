@@ -134,7 +134,7 @@ describe("the pack", () => {
     expect(lines).toContain("Education,2026-03-10,SOMETHING,120.00,Tagged by Jane: check it");
     expect(lines).toContain("Income from contracting or gig work,2026-11-02,SOMETHING,400.00,");
     expect(lines).toContain("Summary,,Medical: total,203.40,");
-    expect(lines).toHaveLength(1 + 2 + 2 + 1 + 1 + 3 + 7);
+    expect(lines).toHaveLength(1 + 2 + 2 + 1 + 1 + 3 + 8);
   });
 });
 
