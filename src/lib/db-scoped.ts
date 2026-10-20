@@ -114,6 +114,7 @@ export function scopedFor(userId: string, client: PrismaClient = db) {
     creditReports: scoped.creditReport,
     debtWatches: scoped.debtWatch,
     cardApplications: scoped.cardApplication,
+    tightRequests: scoped.tightRequest,
     balanceTransfers: scoped.balanceTransfer,
     findings: scoped.finding,
     decisions: scoped.decision,
@@ -147,6 +148,8 @@ export function scopedFor(userId: string, client: PrismaClient = db) {
     taxTags: scoped.taxTag,
     taxForms: scoped.taxForm,
     taxDocuments: scoped.taxDocument,
+    priorReturns: scoped.priorReturn,
+    taxAmendments: scoped.taxAmendment,
     taxReturns: scoped.taxReturn,
     // One-tap answers from Jane's emails (spec step 85).
     chatReplyLinks: scoped.chatReplyLink,

@@ -26,6 +26,7 @@ import { estimateCollege } from "./college";
 import { collectReceipts, investHsaCash, loadHsa } from "./hsa";
 import { CompanyStockError, loadCompanyStock, saveGrant, sellPart } from "./company-stock";
 import { cryptoTotal, loadCrypto, syncAllCrypto } from "@/lib/crypto/crypto";
+import { CashError, loadCash, moveCash } from "./cash";
 import { brokeragePartner, NoCryptoOrders } from "@/lib/brokerage/partner";
 import { loadMoneyHub } from "@/lib/hubs/money";
 import { setAutopilot } from "@/lib/autopilot";
@@ -777,6 +778,71 @@ describe.runIf(url)("investments in Jane's chat, against a real database", () =>
       expect((await syncAllCrypto({ client, now: tomorrow })).synced).toBeGreaterThan(0);
       const later = await loadCrypto(userId, { client, now: tomorrow });
       expect(later.connections[0].asOf).toEqual(tomorrow);
+    },
+  );
+
+  it(
+    "step 162: cash with a job each, the emergency fund in reach, each move a tap",
+    SLOW,
+    async () => {
+      const userId = await demoPerson();
+      const view = await loadCash(userId, { client, now: LINKED });
+      expect(view.places.map((p) => [p.name, p.kind])).toEqual([
+        ["Demo Checking", "checking"],
+        ["Demo Savings", "savings"],
+        ["Demo Brokerage cash", "sweep"],
+      ]);
+      const plan = view.plan!;
+      expect(plan.buckets.find((b) => b.key === "emergency")!.home!.reachDays).toBeLessThanOrEqual(
+        3,
+      );
+      expect(plan.gainCents).toBeGreaterThan(0);
+      expect(plan.moves.map((m) => m.key)).toContain("sweep_to_money_market");
+      // Nothing moved yet.
+      expect(await client.moneyTransfer.count({ where: { userId, purpose: "cash" } })).toBe(0);
+
+      // Jane's message, then the money market tap.
+      const snapshot = await loadSnapshot(userId, { client, now: LINKED });
+      const offer = investmentsSource
+        .gather(snapshot!, {} as never)
+        .find((c) => c.dedupeKey.startsWith("cash:"))!;
+      expect(offer.refs).toEqual({ advice: true, cashPlan: plan.key });
+      const posted = await client.janeMessage.create({
+        data: {
+          userId,
+          kind: offer.kind,
+          body: offer.body,
+          refs: offer.refs,
+          actions: offer.actions,
+          dedupeKey: "test:cash",
+        },
+      });
+      const { message } = await takeChatAction(userId, posted.id, "cash.to_money_market", {
+        client,
+        now: LINKED,
+      });
+      expect(message.refs.note).toMatch(
+        /money market fund\. It can be sold the next business day\.$/,
+      );
+      const after = await loadCash(userId, { client, now: LINKED });
+      expect(after.places.find((p) => p.kind === "sweep")).toBeUndefined();
+      const held = await loadInvestments(userId, { client, now: LINKED });
+      expect(
+        held.accounts.flatMap((a) => a.holdings).find((h) => h.ticker === "KMMXX"),
+      ).toBeTruthy();
+
+      // A checking move, when there is one, goes through the money-movement stand-in.
+      const move = after.plan!.moves.find((m) => m.key === "checking_to_savings");
+      if (move) {
+        await moveCash(userId, after.plan!.key, move.key, { client, now: LINKED });
+        expect(
+          await client.moneyTransfer.findFirst({ where: { userId, purpose: "cash" } }),
+        ).toMatchObject({ amountCents: move.cents, by: "person" });
+      }
+      // A plan that changed is refused.
+      await expect(
+        moveCash(userId, plan.key, "sweep_to_money_market", { client, now: LINKED }),
+      ).rejects.toThrow(CashError);
     },
   );
 });

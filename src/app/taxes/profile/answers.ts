@@ -3,6 +3,8 @@ import { parseMoneyToCents } from "@/lib/money";
 import { TaxProfileError, type PayStubEntry, type TaxAnswer } from "@/lib/tax-profile";
 import { ResidencyError } from "@/lib/tax-states";
 import { FamilyTaxesError, type FamilyDetails } from "@/lib/family-taxes";
+import { HomeTaxesError, type HomeAnswers } from "@/lib/home-taxes";
+import { SideIncomeError, type SideIncomeAnswers } from "@/lib/side-income";
 
 // The tax profile form's answers (spec step 118). A field left empty stays unanswered.
 
@@ -115,5 +117,50 @@ export function familyFrom(formData: FormData): FamilyDetails {
     student: years
       ? { yearsOfCollegeBefore: Number(years), halfTime: Boolean(formData.get("studentHalfTime")) }
       : null,
+  };
+}
+
+// Spec step 170: points and a home sale. Empty points or sale price clears that part.
+export function homeFrom(formData: FormData, year: number): HomeAnswers {
+  const cents = (name: string) => {
+    const value = text(formData, name);
+    if (!value) return 0;
+    const parsed = parseMoneyToCents(value);
+    if (parsed === null) throw new HomeTaxesError("Amounts must be dollars and cents.");
+    return parsed;
+  };
+  const points = text(formData, "points");
+  const sale = text(formData, "sale");
+  return {
+    points: points
+      ? {
+          cents: cents("points"),
+          year,
+          purchase: Boolean(formData.get("pointsPurchase")),
+          loanYears: Number(text(formData, "pointsLoanYears") || "30"),
+        }
+      : null,
+    sale: sale
+      ? {
+          boughtOn: text(formData, "boughtOn"),
+          priceCents: cents("price"),
+          soldOn: text(formData, "soldOn"),
+          saleCents: cents("sale"),
+          costsCents: cents("costs"),
+          daysLivedIn: Number(text(formData, "daysLivedIn") || "0"),
+        }
+      : null,
+  };
+}
+
+// Spec step 173: the rental property and hobby or business. Empty price clears the rental.
+export function sideIncomeFrom(formData: FormData): SideIncomeAnswers {
+  const price = text(formData, "rentalPrice");
+  const cents = price ? parseMoneyToCents(price) : null;
+  if (price && cents === null) throw new SideIncomeError("Give the price in dollars and cents.");
+  const kind = text(formData, "sideIncomeKind");
+  return {
+    rental: cents ? { priceCents: cents, placedOn: text(formData, "rentalPlacedOn") } : null,
+    kind: kind === "business" || kind === "hobby" ? kind : null,
   };
 }

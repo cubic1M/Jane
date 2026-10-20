@@ -142,6 +142,14 @@ export const TAX_TAGS = {
     categories: [],
     check: false,
   },
+  // Spec step 173: costs of a rental property (repairs, management, insurance, advertising).
+  // Tagged by the person; they come off the rent before it's taxed.
+  rental: {
+    label: "Rental expense",
+    plural: "rental expenses",
+    categories: [],
+    check: false,
+  },
 } as const satisfies Record<
   string,
   { label: string; plural: string; categories: readonly PfcDetailed[]; check: boolean }
@@ -364,6 +372,17 @@ export const TAX_MESSAGE_PRIORITY = {
   receipt: 32,
   // Spec step 169: a family tax choice worth making.
   family: 35,
+  // Spec step 170: the state and local tax cap biting, and a home sale.
+  salt_cap: 29,
+  home_sale: 45,
+  // Spec step 171: a year's records can be thrown away.
+  records: 28,
+  // Spec step 172: a return read from a document, and what its review found.
+  prior_return: 47,
+  prior_review: 43,
+  // Spec step 173: a rental to set up, and hobby or business.
+  rental_setup: 37,
+  side_kind: 36,
 } as const;
 
 // What Jane does about taxes by herself at each autopilot level (spec step 57), shown on
@@ -417,6 +436,26 @@ export const TAX_AUTOPILOT: readonly { feature: string; ask: string; auto: strin
     feature: "investments",
     ask: "I work out your gains and losses from your holdings, warn you about wash sales and, with demo advice, show losses worth harvesting and what's better held in your 401(k) or IRA.",
     auto: "I work out your gains and losses after every sync, warn you about wash sales and, with demo advice, bring up losses worth harvesting before the year ends. I never sell anything myself.",
+  },
+  {
+    feature: "side_income",
+    ask: "I count rent less the expenses you tag and depreciation on the building, match each gig platform's payouts to its 1099, and with demo advice show your side income taxed as a business and as a hobby. Which it is is your call.",
+    auto: "I count rent less tagged expenses and depreciation, match each gig platform's payouts to its 1099, put rental profit on your quarterly amounts, and with demo advice show your side income taxed as a business and as a hobby. Which it is is your call.",
+  },
+  {
+    feature: "last_return",
+    ask: "When you upload a return you filed, I read it for you to confirm and, with demo advice, check it against your accounts for money left behind. If an amended return is worth it, I prepare it; you review and sign.",
+    auto: "When you upload a return you filed, I read it for you to confirm and, with demo advice, check it against your accounts for money left behind. If an amended return is worth it, I have it ready for you to review. Only you can confirm a reading or sign an amended return.",
+  },
+  {
+    feature: "records",
+    ask: "I tie every deduction and credit to its transactions, receipts and forms in an audit pack for each year, list what's still needed, and tell you when a year's records can be thrown away, with a reminder if you want one.",
+    auto: "I tie every deduction and credit to its transactions, receipts and forms in an audit pack for each year, list what's still needed, and put a reminder on your deadlines a month before a year's records can be thrown away. I never delete anything.",
+  },
+  {
+    feature: "home",
+    ask: "I find your mortgage interest (from your 1098 or your lender), property tax payments and energy work, apply the state and local tax cap, and work out the gain on a home sale against the exclusion, each figure linked to where it came from.",
+    auto: "I find your mortgage interest, property tax payments and energy work after every sync, apply the state and local tax cap, count property tax in your estimate, and work out the gain on a home sale against the exclusion, each figure linked to where it came from.",
   },
   {
     feature: "family",

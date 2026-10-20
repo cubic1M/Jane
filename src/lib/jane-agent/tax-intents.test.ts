@@ -222,3 +222,58 @@ describe("family taxes in the chat", () => {
     });
   });
 });
+
+// Spec step 170.
+describe("homeowner taxes in the chat", () => {
+  it.each([
+    "mortgage interest deduction on my taxes",
+    "do my property taxes hit the salt cap",
+    "I sold my house, what do I owe in tax",
+    "taxes on my home sale",
+  ])("%s asks about the home", (text) => {
+    expect(parse(text)).toEqual({ kind: "tax", ask: "home" });
+  });
+});
+
+// Spec step 171.
+describe("audit-ready records in the chat", () => {
+  it.each([
+    "am I ready for an audit",
+    "give me my audit pack",
+    "how long should I keep my tax records",
+    "what records do I need if I get audited",
+  ])("%s asks about records", (text) => {
+    expect(parse(text)).toEqual({ kind: "tax", ask: "records" });
+  });
+});
+
+// Spec step 172.
+describe("last year's return in the chat", () => {
+  it.each([
+    "review my tax return",
+    "did I miss anything on my return",
+    "can I amend my return",
+    "check last year's return",
+    "did I leave money on the table",
+  ])("%s asks about the return", (text) => {
+    expect(parse(text)).toEqual({ kind: "tax", ask: "last_return" });
+  });
+});
+
+// Spec step 173.
+describe("side income and rentals in the chat", () => {
+  it.each([
+    "what are the taxes on my rental income",
+    "how does depreciation work on my rental",
+    "is my side gig a hobby or business",
+    "where is my platform 1099",
+    "tag Ace Plumbing as rental expenses",
+  ])("%s", (text) => {
+    const intent = parse(text);
+    if (text.startsWith("tag")) {
+      expect(intent).toEqual({ kind: "tax", ask: "tag", target: "ace plumbing", tag: "rental" });
+    } else {
+      expect(intent).toEqual({ kind: "tax", ask: "side_income" });
+    }
+  });
+});

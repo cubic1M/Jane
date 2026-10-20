@@ -81,6 +81,15 @@ export const FUND_FACTS: Readonly<Record<string, FundFacts>> = {
     yieldBps: 310,
     interest: true,
   },
+  // Spec step 162: the demo brokerage's money market fund, for cash beyond the emergency fund.
+  KMMXX: {
+    expenseRatioBps: 11,
+    mix: { cash: 1 },
+    category: "Money market",
+    source: DEMO_SOURCE,
+    yieldBps: 420,
+    interest: true,
+  },
   KLCX: {
     expenseRatioBps: 4,
     mix: { us_stocks: 1 },
@@ -120,6 +129,7 @@ export const FUND_NAMES: Readonly<Record<string, string>> = {
   KTBIX: "Keystone Total Bond Index Fund",
   KTIIX: "Keystone Total International Index Fund",
   DSVXX: "Demo Stable Value Fund",
+  KMMXX: "Keystone Money Market Fund",
   KLCX: "Keystone US Large Cap Index ETF",
   PDIFX: "Pinnacle Dividend Income Fund",
   KTRGX: "Keystone Target 2055 Index Fund",

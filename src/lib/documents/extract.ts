@@ -49,6 +49,8 @@ const PROMPT_FOR: Record<DocumentKind, string> = {
     "provider: the company that gives the warranty. coverageSummary: what it covers. warrantyEndsOn: when it ends. purchaseDate and purchaseAmount: when the item was bought and for how much.",
   receipt:
     "provider: the store. coverageSummary: what was bought. purchaseDate and purchaseAmount: the date and the total paid.",
+  tax_return:
+    "provider: the tax preparer or software, if shown. coverageSummary: which tax year it is for.",
   other: "provider: who it's from. coverageSummary: what it is.",
 };
 

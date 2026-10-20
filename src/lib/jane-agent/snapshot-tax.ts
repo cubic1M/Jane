@@ -24,6 +24,11 @@ import { loadTaxForms, loadTaxTags } from "@/lib/tax-organizer";
 import { loadTaxPlan, type TaxPlanView } from "@/lib/tax-plan";
 import { loadGiving, type GivingView } from "@/lib/giving";
 import { loadFamilyTaxes, type FamilyView } from "@/lib/family-taxes";
+import { listPriorReturns, type PriorReturnView } from "@/lib/prior-return";
+import { loadReturnReviews, type ReturnReview } from "@/lib/prior-return/review";
+import { loadSideIncome, type SideIncomeView } from "@/lib/side-income";
+import { loadAuditRecords, type AuditRecordsView } from "@/lib/audit-records";
+import { loadHomeTaxes, type HomeTaxesView } from "@/lib/home-taxes";
 import { inDocumentSeason, loadTaxDocuments, type TaxDocumentsView } from "@/lib/tax-documents";
 import { loadTaxProfile } from "@/lib/tax-profile";
 import type { ExpectedForm } from "@/planning/tax-documents";
@@ -70,6 +75,15 @@ export type TaxSnapshot = {
     giving?: GivingView;
     // Spec step 169: family tax choices (demo advice).
     family?: FamilyView;
+    // Spec step 170: what a home changes at tax time.
+    home?: HomeTaxesView;
+    // Spec step 171: records that can be thrown away soon.
+    records?: AuditRecordsView;
+    // Spec step 173: rentals and gig platforms.
+    sideIncome?: SideIncomeView;
+    // Spec step 172: returns read from uploads, and what their review found.
+    priorReturns?: PriorReturnView[];
+    returnReviews?: ReturnReview[];
   } | null;
 };
 
@@ -143,6 +157,11 @@ export async function loadTaxSnapshot(
       ),
       giving: await loadGiving(userId, { client, now, loaded: { estimate, advice } }),
       family: await loadFamilyTaxes(userId, { client, now, loaded: { estimate, advice } }),
+      priorReturns: await listPriorReturns(userId, { client, status: "waiting" }),
+      returnReviews: (await loadReturnReviews(userId, { client, now })).reviews,
+      sideIncome: await loadSideIncome(userId, { client, now, loaded: { estimate } }),
+      records: await loadAuditRecords(userId, estimate.year, { client, now }),
+      home: await loadHomeTaxes(userId, { client, now, loaded: { estimate } }),
       plan: await loadTaxPlan(userId, {
         client,
         now,
