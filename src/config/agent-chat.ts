@@ -105,6 +105,8 @@ export const MESSAGE_PRIORITY = {
   // Spec step 196: ways to pay less for the cover the person keeps.
   saving_group: 54,
   saving_deductible: 50,
+  // Spec step 197: one question about how they live, asked once.
+  risk_question: 58,
   urgent_alert: 95,
   deadline: 90,
   waiting_on_you: 85,

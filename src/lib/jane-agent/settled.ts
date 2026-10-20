@@ -42,6 +42,7 @@ export async function closeAnsweredElsewhere(
   const coverRefs = ids((m) => m.refs.coverEvent);
   const negotiationIds = ids((m) => m.refs.negotiationId);
   const anySaving = open.some((m) => m.refs.savingGroup || m.refs.savingId);
+  const riskIds = ids((m) => m.refs.riskId);
   const anyAutopilot = open.some(asksAutopilot);
   const anyProposal = open.some((m) => m.refs.proposalKey);
   if (
@@ -53,7 +54,8 @@ export async function closeAnsweredElsewhere(
     !readingIds.length &&
     !coverRefs.length &&
     !negotiationIds.length &&
-    !anySaving
+    !anySaving &&
+    !riskIds.length
   )
     return 0;
 
@@ -105,6 +107,13 @@ export async function closeAnsweredElsewhere(
         select: { id: true, kind: true },
       })
     : [];
+  const askedRisks = riskIds.length
+    ? await db.insuranceRisks.findMany({
+        where: { id: { in: riskIds }, status: "asked" },
+        select: { id: true },
+      })
+    : [];
+  const stillAskedRisks = new Set(askedRisks.map((r) => r.id));
   const offeredIds = new Set(offers.map((o) => o.id));
   const sameOffered = offers.some((o) => o.kind !== "higher_deductible");
   const openProposalKeys = new Set(proposals.map((p) => p.key));
@@ -127,6 +136,7 @@ export async function closeAnsweredElsewhere(
       negotiationId,
       savingGroup,
       savingId,
+      riskId,
     } = m.refs;
     return (
       (asksAutopilot(m) && autopilot !== null) ||
@@ -138,7 +148,8 @@ export async function closeAnsweredElsewhere(
       (coverEvent !== undefined && !preparedCovers.has(coverEvent)) ||
       (negotiationId !== undefined && !stillAsked.has(negotiationId)) ||
       (savingId !== undefined && !offeredIds.has(savingId)) ||
-      (savingGroup !== undefined && !sameOffered)
+      (savingGroup !== undefined && !sameOffered) ||
+      (riskId !== undefined && !stillAskedRisks.has(riskId))
     );
   };
 
