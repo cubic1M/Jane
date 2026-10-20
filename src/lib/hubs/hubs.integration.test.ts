@@ -154,11 +154,16 @@ describe.runIf(url)("the hubs against a real database", () => {
         .filter((a) => keep(a.type))
         .reduce((sum, a) => sum + (a.currentBalanceCents ?? 0), 0);
     expect(data.hasAccounts).toBe(true);
-    expect(data.netWorth.netCents).toBe(balance((t) => !debt(t)) - balance(debt));
+    // The demo bank's home and car count at their values (spec step 67).
+    const owned = (await client.ownedAsset.findMany({ where: { userId } })).reduce(
+      (sum, a) => sum + a.valueCents,
+      0,
+    );
+    expect(data.netWorth.netCents).toBe(balance((t) => !debt(t)) + owned - balance(debt));
     expect(data.netWorth.investmentsCents).toBe(balance((t) => t === "investment"));
     expect(data.hasInvestmentAccounts).toBe(true);
-    // The demo mortgage has no home linked yet.
-    expect(data.assetPrompt?.kind).toBe("home");
+    // The demo bank has its home and car, so nothing to add.
+    expect(data.assetPrompt).toBeFalsy();
     expect(data.debt.accounts).toBe(4);
     expect(data.debt.owedCents).toBe(balance(debt));
     expect(data.spendingCents).toBeGreaterThan(0);
@@ -166,7 +171,7 @@ describe.runIf(url)("the hubs against a real database", () => {
     expect(data.documents).toBe(0);
 
     const tiles = moneyTiles(data).flatMap((g) => g.tiles);
-    expect(tiles.find((t) => t.label === "Things you own")?.status).toBe("Add your home");
+    expect(tiles.find((t) => t.label === "Things you own")?.status).not.toBe("Add your home");
     expect(tiles.find((t) => t.label === "Investments")?.value).not.toBeNull();
   });
 

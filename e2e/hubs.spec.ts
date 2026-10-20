@@ -59,7 +59,6 @@ test("the hubs gather every page, with live numbers from the demo bank", async (
     DOLLARS,
   );
   await expect(page.getByRole("link", { name: "Things you own" })).toBeVisible();
-  await expect(page.getByText("Add your home")).toBeVisible();
   await page.getByRole("link", { name: "Coming up" }).click();
   await expect(page).toHaveURL("/bills");
 

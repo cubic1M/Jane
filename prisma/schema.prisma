@@ -303,6 +303,8 @@ model User {
   creditDisputes         CreditDispute[]
   cardPromos             CardPromo[]
   cardRateRequests       CardRateRequest[]
+  personalLoans          PersonalLoan[]
+  creditGoals            CreditGoal[]
   balanceTransfers       BalanceTransfer[]
   findings               Finding[]
   decisions              Decision[]
@@ -337,6 +339,7 @@ model User {
   coverChanges           CoverChange[]
   renewalNegotiations    RenewalNegotiation[]
   insuranceSavings       InsuranceSaving[]
+  insuranceRisks         InsuranceRisk[]
   lifeEvents             LifeEvent[]
   // What's in investment accounts (spec step 128).
   securities             Security[]
@@ -355,6 +358,7 @@ model User {
   taxAmendments          TaxAmendment[]
   taxNotices             TaxNotice[]
   taxIdentityCases       TaxIdentityCase[]
+  equityEvents           EquityEvent[]
   taxForms               TaxForm[]
   taxReturns             TaxReturn[]
   budgetTuneUps          BudgetTuneUp[]
@@ -756,21 +760,30 @@ model LoanApplication {
 // family for the income-driven plans, public service work for PSLF, qualifying payments
 // counted before Jane could see them, and how far through studentaid.gov's steps they are.
 model StudentLoanProfile {
-  id            String   @id @default(cuid())
-  userId        String   @unique @map("user_id")
+  id                  String    @id @default(cuid())
+  userId              String    @unique @map("user_id")
   // Adjusted gross income from the last tax return; null means Jane estimates it.
-  agiCents      Int?     @map("agi_cents")
-  familySize    Int      @default(1) @map("family_size")
-  dependants    Int      @default(0)
+  agiCents            Int?      @map("agi_cents")
+  familySize          Int       @default(1) @map("family_size")
+  dependants          Int       @default(0)
   // new (first loans on or after July 1, 2014) or old.
-  borrower      String   @default("new")
-  publicService Boolean  @default(false) @map("public_service")
+  borrower            String    @default("new")
+  publicService       Boolean   @default(false) @map("public_service")
   // Qualifying payments studentaid.gov counted before the ones Jane sees.
-  countedBefore Int      @default(0) @map("counted_before")
+  countedBefore       Int       @default(0) @map("counted_before")
   // How many of the guided steps (STUDENT_STEPS) are done.
-  stepsDone     Int      @default(0) @map("steps_done")
-  createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
-  updatedAt     DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+  stepsDone           Int       @default(0) @map("steps_done")
+  // Spec step 225: federal or private, the day the employer was last certified for PSLF,
+  // the day the income-driven plan must be recertified, and the deadlines Jane put on the
+  // deadlines list for them and for the tax on forgiven debt.
+  loanType            String    @default("federal") @map("loan_type")
+  lastCertifiedOn     DateTime? @map("last_certified_on") @db.Date
+  recertifyOn         DateTime? @map("recertify_on") @db.Date
+  certifyDeadlineId   String?   @map("certify_deadline_id")
+  recertifyDeadlineId String?   @map("recertify_deadline_id")
+  taxDeadlineId       String?   @map("tax_deadline_id")
+  createdAt           DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt           DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
@@ -994,6 +1007,56 @@ model CardRateRequest {
 
   @@unique([userId, key])
   @@map("card_rate_requests")
+}
+
+// Money lent to or borrowed from family and friends, or a loan the person co-signed (spec
+// step 226). A transfer in a payment app becomes a loan only after the person says so; a
+// co-signed loan is one of their own debts, watched for missed payments. Jane never messages
+// the other person.
+model PersonalLoan {
+  id             String    @id @default(cuid())
+  userId         String    @map("user_id")
+  // lent, borrowed or cosigned.
+  kind           String
+  counterparty   String
+  // The first transfer's amount (lent, borrowed); 0 for a co-signed loan.
+  principalCents Int       @map("principal_cents")
+  openedOn       DateTime  @map("opened_on") @db.Date
+  // The payment-app transfer it came from ("tx:<id>"), or the co-signed debt ("account:<id>").
+  sourceKey      String    @map("source_key")
+  note           String?
+  // open, settled or dismissed (the person said it isn't a loan).
+  status         String    @default("open")
+  settledOn      DateTime? @map("settled_on") @db.Date
+  createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, sourceKey])
+  @@index([userId])
+  @@map("personal_loans")
+}
+
+// A credit score the person needs by a date (spec step 227): a mortgage next spring, a car in
+// six months. Jane builds a monthly plan from the credit partner's score simulator; each
+// month's checklist items the person has done are kept here.
+model CreditGoal {
+  id          String    @id @default(cuid())
+  userId      String    @map("user_id")
+  name        String
+  // mortgage, car or other.
+  kind        String
+  targetScore Int       @map("target_score")
+  targetDate  DateTime  @map("target_date") @db.Date
+  // The checklist items done so far, as "<month>:<item key>".
+  done        Json      @default("[]")
+  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  endedOn     DateTime? @map("ended_on") @db.Date
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("credit_goals")
 }
 
 // A balance transfer the person made to a 0% card (spec step 113), so Jane can keep the
@@ -2230,6 +2293,30 @@ model InsuranceSaving {
   @@map("insurance_savings")
 }
 
+// A risk Jane saw in how the person lives (spec step 197): rideshare or delivery income, a
+// home business, a new dog, an expensive ring or camera, a boat, renting the home out. One
+// question per kind, asked once: yes opens a gap (or adds the pet), a no is remembered.
+model InsuranceRisk {
+  id          String    @id @default(cuid())
+  userId      String    @map("user_id")
+  // rideshare, home_business, new_dog, valuable, boat or rental_out (RISK_KINDS).
+  kind        String
+  // asked, yes or no.
+  status      String    @default("asked")
+  // What was seen: the merchant, the amount and the day.
+  merchant    String
+  amountCents Int       @map("amount_cents")
+  seenOn      DateTime  @map("seen_on") @db.Date
+  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  answeredAt  DateTime? @map("answered_at") @db.Timestamptz(3)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, kind])
+  @@index([userId, status])
+  @@map("insurance_risks")
+}
+
 // The household facts that matter for cover (spec step 102), as the person typed them.
 // Null means not said: housing and cars are then read from the accounts.
 model InsuranceProfile {
@@ -2928,6 +3015,31 @@ model TaxIdentityCase {
 
   @@index([userId])
   @@map("tax_identity_cases")
+}
+
+// Spec step 219: an equity pay event the person told Jane about, for taxes: RSUs vested,
+// ESPP shares bought (and maybe sold) or ISOs exercised. Prices are per share in cents.
+// kind: rsu, espp or iso (src/config/equity-tax.ts).
+model EquityEvent {
+  id                 String    @id @default(cuid())
+  userId             String    @map("user_id")
+  kind               String
+  company            String
+  shares             Float
+  occurredOn         DateTime  @map("occurred_on") @db.Date
+  grantedOn          DateTime? @map("granted_on") @db.Date
+  priceCents         Int       @default(0) @map("price_cents")
+  fmvCents           Int       @map("fmv_cents")
+  withheldCents      Int?      @map("withheld_cents")
+  soldOn             DateTime? @map("sold_on") @db.Date
+  soldPriceCents     Int?      @map("sold_price_cents")
+  grantDiscountCents Int?      @map("grant_discount_cents")
+  createdAt          DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("equity_events")
 }
 
 model TaxReturn {

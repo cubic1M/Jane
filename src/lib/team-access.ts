@@ -61,6 +61,10 @@ export const TEAM_ACCESS_RULES: Record<AuditEvent, EventRule> = {
   credit_dispute_sent: own,
   // Spec step 224: the person's own request for a lower card rate.
   card_rate_requested: own,
+  // Spec step 226: the person's own answer about a loan to or from someone they know.
+  personal_loan_confirmed: own,
+  // Spec step 227: the person's own credit score plan.
+  credit_goal_started: own,
   // Insurance (spec Phase X): the person's own edits to their profile.
   insurance_policy_saved: own,
   insurance_policy_removed: own,
