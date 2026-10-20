@@ -30,6 +30,11 @@ export const SUGGESTION_TOPICS = [
   "long_term_care",
   "medigap",
   "business_insurance",
+  // Insurance (spec step 259).
+  "renters_insurance",
+  "auto_insurance",
+  "umbrella",
+  "insurance_shopping",
   "business_separation",
   "cash_flow",
   "pmi_removal",
