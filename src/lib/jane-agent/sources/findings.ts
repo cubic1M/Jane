@@ -1,4 +1,5 @@
 import { MESSAGE_PRIORITY } from "@/config/agent-chat";
+import { WORKED_MIN_SAMPLE, WORKED_QUIET_PER_RUN } from "@/config/worked";
 import { formatCents } from "@/lib/money";
 import type { Candidate, MessageAction } from "../types";
 import type { Snapshot, SnapshotFinding } from "../snapshot";
@@ -102,10 +103,24 @@ export const findingsSource: MessageSource = {
     // Spec step 104: when Jane shops insurance herself, her own reshop asks instead of the
     // generic "could cost less" finding.
     const shopsInsurance = snapshot.insurance?.shopsItself ?? false;
+    // Spec step 207 read by step 147: a kind whose finished actions never showed a saving is
+    // asked about one at a time, not all at once.
+    const quiet = new Set(
+      (snapshot.worked ?? [])
+        .filter((k) => k.done >= WORKED_MIN_SAMPLE && k.worked === 0 && k.notShown > 0)
+        .map((k) => k.type),
+    );
+    const askedQuiet = new Map<string, number>();
     return [...snapshot.findings]
       .filter((finding) => !askedByChange.has(finding.findingId))
       .filter((finding) => !(shopsInsurance && finding.type === "insurance_reshop"))
       .sort(byPriority(snapshot))
+      .filter((finding) => {
+        if (!quiet.has(finding.type)) return true;
+        const asked = askedQuiet.get(finding.type) ?? 0;
+        askedQuiet.set(finding.type, asked + 1);
+        return asked < WORKED_QUIET_PER_RUN;
+      })
       .map(findingCandidate);
   },
 };

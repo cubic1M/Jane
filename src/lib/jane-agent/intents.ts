@@ -10,6 +10,9 @@ import type { PreferenceDraft } from "./preferences";
 import { parseFact } from "./remember";
 import { parseInvestmentIntent, type InvestmentIntent } from "./investments/intents";
 import { parseSectorIntent, type SectorIntent } from "./autopilot-intents";
+import { parseLongView, type LongViewIntent } from "./long-view-intents";
+import { parseProfile, type ProfileIntent } from "./profile-intents";
+import { parseWhatIf, type WhatIfIntent } from "./what-if-intents";
 import { parseLearnIntent, type LearnIntent } from "./learn";
 
 // What the person typed to Jane, understood by rules (spec step 84). Pure: the text and
@@ -105,6 +108,13 @@ export type Intent =
   | { kind: "health" }
   // Spec step 148: "my monthly report".
   | { kind: "monthly_report" }
+  // Spec step 240: "my steady paycheck", "my income is uneven".
+  | { kind: "steady_pay" }
+  // Spec step 203: "what if I lose my job?"; step 209: "where will I be in 30 years?"
+  | WhatIfIntent
+  | LongViewIntent
+  // Spec step 253: "what do you know about me?"
+  | ProfileIntent
   // Spec step 141: one autopilot, every sector.
   | SectorIntent
   // Spec step 136: what a word means.
@@ -344,6 +354,8 @@ const HEALTH =
   /\b(?:health score|money health|financial health|financial wellness)\b|\bhow healthy (?:are|is) my (?:money|finances)\b/;
 const MONTHLY_REPORT =
   /\b(?:monthly|money|month'?s) report\b|\bmonth in review\b|\breport (?:for|on) (?:last|this) month\b/;
+const STEADY =
+  /\bsteady (?:paycheck|pay|income)\b|\b(?:my|the) (?:income|pay|paychecks?) (?:is|are) (?:uneven|irregular|unpredictable|all over the place)\b|\b(?:uneven|irregular|freelance|variable) income\b|\bpay myself (?:a )?(?:steady|regular)\b/;
 const PRIORITIES =
   /\bwhat should i do (?:first|next|now)\b|\bwhat matters (?:most|now)\b|\bwhat'?s (?:most )?important\b|\bwhere (?:do|should) i start\b|\bmy (?:top )?priorities\b|\bnext best thing\b/;
 // Spec step 183. "Am I OK to buy …" is a purchase question, and goals have their own answer.
@@ -504,6 +516,13 @@ export function parseIntent(
   if (THANKS.test(text)) return { kind: "greeting", thanks: true };
   if (PAUSE.test(text)) return { kind: "pause_autopilot" };
   if (CHECKED.test(text)) return { kind: "checked" };
+  const whatIf = parseWhatIf(text);
+  if (whatIf) return whatIf;
+  const longView = parseLongView(text);
+  if (longView) return longView;
+  const profile = parseProfile(text);
+  if (profile) return profile;
+  if (STEADY.test(text)) return { kind: "steady_pay" };
   if (WHY_DID.test(text)) return { kind: "timeline", why: true };
   if (TIMELINE.test(text)) return { kind: "timeline", why: false };
   if (WHOLE_MONTH.test(text)) return { kind: "whole_picture", focus: "month" };

@@ -41,6 +41,10 @@ const OUTSIDE = [
   "/scanning",
   // Spec step 139: a shared savings total.
   "/s/[token]",
+  // Spec step 222: a read-only link for an accountant.
+  "/accountant/[token]",
+  // Spec step 213: a gift link to a child's college fund.
+  "/gift/[token]",
 ];
 const outside = (route: string) => OUTSIDE.includes(route) || route.startsWith("/admin");
 

@@ -31,6 +31,11 @@ const unavailable: Reply = {
 
 export function longGameLines(g: LongGame): string[] {
   const lines: string[] = [];
+  if (!g.pslf) {
+    lines.push(
+      "You haven't said you work in public service, so I'm not counting payments toward Public Service Loan Forgiveness.",
+    );
+  }
   if (g.pslf) {
     lines.push(
       g.pslf.remaining === 0

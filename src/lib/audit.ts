@@ -21,6 +21,11 @@ export type AuditEvent =
   | "personal_loan_confirmed"
   // Spec step 227: the person started a plan for a credit score goal.
   | "credit_goal_started"
+  | "home_equity_updated"
+  | "debt_review_done"
+  | "car_addon_confirmed"
+  | "car_addon_cancel_requested"
+  | "home_request_sent"
   | "user_signed_up"
   // Insurance (spec Phase X): a policy saved or removed, the household facts saved.
   | "insurance_policy_saved"
@@ -139,6 +144,15 @@ export type AuditEvent =
   // Spec step 218: a case opened on a sign of tax identity theft.
   | "tax_identity_case_opened"
   | "tax_notice_response_sent"
+  // Spec step 221: who files a drafted property tax appeal (the team or the person).
+  | "property_appeal_handled"
+  // Spec step 222: a read-only link for an accountant made, viewed, answered on and revoked.
+  // Spec step 223: an estimated tax payment made through the stand-in.
+  | "tax_payment_made"
+  | "accountant_link_created"
+  | "accountant_link_viewed"
+  | "accountant_link_answered"
+  | "accountant_link_revoked"
   // Taxes (spec steps 118–127): which fields of the tax profile changed, never the answers.
   | "tax_profile_changed"
   // A tax tag the person changed (spec step 119): the tag and whether on one transaction or
@@ -171,7 +185,25 @@ export type AuditEvent =
   // A company stock grant from the guided form (spec step 160): its kind, never amounts.
   | "equity_grant_saved"
   // A read-only crypto connection (spec step 161): exchange or wallet, never a key.
-  | "crypto_connected";
+  | "crypto_connected"
+  // Spec step 164: Jane acted on her own in the investing sector, within the person's caps.
+  | "autopilot_investing_acted"
+  // Spec step 210: a change to a contribution at work, sent to the payroll partner.
+  | "payroll_change_requested"
+  // Spec step 211: an old retirement plan found, and its direct rollover.
+  | "old_plan_found"
+  | "rollover_started"
+  | "rollover_completed"
+  // Spec step 212: the person's retirement income answers saved (never the amounts).
+  | "retirement_income_saved"
+  // Spec step 213: a gift link made or taken down (never the link itself), and a gift received.
+  | "gift_link_created"
+  | "gift_link_revoked"
+  | "gift_received"
+  // Spec step 214: a rental property added (never its figures).
+  | "rental_added"
+  // Spec step 215: a costly product entered or confirmed (never its figures).
+  | "costly_product_saved";
 
 export type AuditActor = { type: ActorType; id: string | null };
 

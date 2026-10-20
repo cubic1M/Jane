@@ -13,6 +13,28 @@ import type { CashView } from "@/lib/investments/cash";
 import { CASH_LINK, cashLine, moveButtons } from "./cash-copy";
 import type { SteadyView } from "@/lib/investments/steady-hand";
 import { NO_PREDICTION } from "@/config/steady-hand";
+import type { RetirementAccountsView } from "@/lib/investments/retirement-accounts";
+import {
+  iraButton,
+  limitsLine,
+  matchButton,
+  raMatchLine,
+  RA_LINK,
+  rothLine,
+} from "./retirement-accounts-copy";
+import type { OldAccountsView } from "@/lib/investments/old-accounts";
+import { foundLine, OLD_LINK, rollButton, summaryLine } from "./old-accounts-copy";
+import type { RetirementIncomeView } from "@/lib/investments/retirement-income";
+import { drawLine, paycheckLine, RI_LINK, rmdLine, ssLine } from "./retirement-income-copy";
+import type { FamilyView } from "@/lib/investments/family";
+import { FAMILY_LINK, familyLine } from "./family-copy";
+import type { PropertyView } from "@/lib/investments/property";
+import { homeLine, paydownLine, PROPERTY_LINK, rentalLine } from "./property-copy";
+import type { CostlyProductsView } from "@/lib/investments/costly-products";
+import { advisoryLine, COSTLY_LINK, productLine } from "./costly-copy";
+import { REVIEW_LINK, reviewFor } from "./review-copy";
+import type { LocationView } from "@/lib/investments/location";
+import { freeButton, LOCATION_LINK, locationLine } from "./location-copy";
 import { STEADY_LINK, steadyMessage, timelines } from "./steady-copy";
 import { CRYPTO_LINK, feeFlag, NEVER_TRADES, shareFlag, sizeLine } from "./crypto-copy";
 import {
@@ -748,5 +770,177 @@ export function steadyReply(view: SteadyView): Reply {
     body: steadyMessage(view.drop, view.buckets),
     actions: [STEADY_LINK],
     refs: { advice: true },
+  };
+}
+
+// Spec step 210: every limit with what's used, then (in demo advice mode) the match, Roth or
+// traditional and the taps. Facts for everyone; advice only in demo advice mode.
+export function retirementAccountsReply(view: RetirementAccountsView): Reply {
+  const limits = view.limits.length > 0 ? `This year: ${limitsLine(view)}.` : "";
+  if (!view.advice) {
+    return {
+      body: `${limits || "I don't see retirement accounts yet."} I don't give recommendations on real accounts yet.`,
+      actions: [RA_LINK],
+      refs: {},
+    };
+  }
+  const parts = [
+    limits,
+    raMatchLine(view) ?? "You're getting the whole match.",
+    rothLine(view),
+  ].filter(Boolean);
+  const buttons = [matchButton(view), iraButton(view)].filter(
+    (b): b is NonNullable<typeof b> => b !== null,
+  );
+  return {
+    body: parts.join(" "),
+    actions: [...buttons, RA_LINK],
+    refs: { advice: true, ...(iraButton(view) ? { iraCents: view.iraAllowedCents } : {}) },
+  };
+}
+
+// Spec step 211: where each past employer's plan stands; a found plan's fees and the
+// rollover tap in demo advice mode.
+export function oldAccountsReply(view: OldAccountsView): Reply {
+  const found = view.plans.find((p) => p.status === "found");
+  const base = summaryLine(view.plans);
+  if (view.advice && found) {
+    return {
+      body: `${base}. ${foundLine(found)}`,
+      actions: [rollButton(), OLD_LINK],
+      refs: { advice: true, oldPlanId: found.id },
+    };
+  }
+  return { body: base.endsWith(".") ? base : `${base}.`, actions: [OLD_LINK], refs: {} };
+}
+
+// Spec step 212: Social Security options, the minimums, the order to draw and the paycheck
+// with how long it lasts, in demo advice mode; just the Social Security and minimum facts
+// otherwise. Ranges, never a promise.
+export function retirementIncomeReply(view: RetirementIncomeView): Reply {
+  const facts = [ssLine(view), rmdLine(view)].filter(Boolean);
+  if (!view.advice) {
+    return {
+      body: `${facts.join(" ") || "Tell me your Social Security statement's amount and when you plan to retire."} I don't give recommendations on real accounts yet.`,
+      actions: [RI_LINK],
+      refs: {},
+    };
+  }
+  const parts = [paycheckLine(view), ...facts, drawLine(view)].filter(Boolean);
+  return {
+    body:
+      parts.join(" ") ||
+      "Tell me your Social Security statement's amount and when you plan to retire, and I'll work out a paycheck that lasts.",
+    actions: [RI_LINK],
+    refs: { advice: true },
+  };
+}
+
+// Spec step 213: where each child stands. Facts for everyone; the gift link and the Roth
+// IRA only in demo advice mode (and a link is never put in a reply, only on the family page).
+export function familyReply(view: FamilyView): Reply {
+  return {
+    body: view.advice
+      ? familyLine(view)
+      : "I don't give recommendations on real accounts yet. You can still add your children on the family page.",
+    actions: [FAMILY_LINK],
+    refs: view.advice ? { advice: true } : {},
+  };
+}
+
+// Spec step 214: home equity and rentals (facts), and paying down against investing with
+// both sides (demo advice mode).
+export function propertyReply(view: PropertyView): Reply {
+  const facts = [...view.homes.map(homeLine), ...view.rentals.map(rentalLine)];
+  const advice = view.advice && view.paydown ? [paydownLine(view.paydown)] : [];
+  const body = [...facts, ...advice].join(" ");
+  return {
+    body:
+      body ||
+      "I don't see a home with a value or a rental yet. Add your home under Things you own, or a rental on the property page.",
+    actions: [PROPERTY_LINK],
+    refs: advice.length > 0 ? { advice: true } : {},
+  };
+}
+
+// Spec step 215: what each costly product costs a year, in dollars, and what leaving would
+// cost, in demo advice mode; just the yearly dollars otherwise. Never a recommendation to
+// leave, and never any exit figure without its surrender charge.
+export function costlyReply(view: CostlyProductsView): Reply {
+  if (!view.advice) {
+    const facts = [
+      ...view.products.map((p) => `${p.name}: about ${formatCents(p.yearlyCostCents ?? 0)} a year`),
+      ...(view.advisory
+        ? [`advisory fees: ${formatCents(view.advisory.yearlyCents)} in the last 12 months`]
+        : []),
+    ];
+    return {
+      body: `${facts.length > 0 ? `${facts.join("; ")}. ` : ""}I don't give recommendations on real accounts yet.`,
+      actions: [COSTLY_LINK],
+      refs: {},
+    };
+  }
+  const parts = [
+    ...view.products.map(productLine),
+    ...(view.advisory ? [advisoryLine(view.advisory)] : []),
+  ];
+  return {
+    body:
+      parts.join(" ") ||
+      "I haven't found an annuity, whole life policy or advisory fees. Add one from a statement on the costly products page and I'll show what it really costs, and what leaving would cost, before anything else.",
+    actions: [COSTLY_LINK],
+    refs: parts.length > 0 ? { advice: true } : {},
+  };
+}
+
+// Spec step 216: the yearly review on request: the same one message as the yearly post,
+// every item with its own button. Facts only outside demo advice mode.
+export function yearlyReviewReply(inv: InvestmentSnapshot, year: number): Reply {
+  if (!inv.advice) {
+    return {
+      body: "I don't give investing recommendations on real accounts yet. Your holdings, fees and returns are on the investments page.",
+      actions: [REVIEW_LINK],
+      refs: {},
+    };
+  }
+  const review = reviewFor(inv, year);
+  return {
+    body: review.body,
+    actions: [...review.buttons, REVIEW_LINK],
+    refs: {
+      advice: true,
+      ...(inv.rebalance ? { rebalanceKey: inv.rebalance.key } : {}),
+      ...(inv.retirementAccounts.iraAllowedCents > 0
+        ? { iraCents: inv.retirementAccounts.iraAllowedCents }
+        : {}),
+      ...(inv.review2.harvestKey ? { harvestKey: inv.review2.harvestKey } : {}),
+    },
+  };
+}
+
+// Spec step 231: where each kind of investment sits, and the swaps (demo advice mode).
+export function locationReply(view: LocationView): Reply {
+  if (!view.advice) {
+    return {
+      body: "I don't give recommendations on real accounts yet. Your holdings by account are on the investments page.",
+      actions: [LOCATION_LINK],
+      refs: {},
+    };
+  }
+  const plan = view.plan;
+  if (!plan || plan.swaps.length === 0) {
+    return {
+      body: plan
+        ? "Your investments are already in the right accounts for tax: nothing to swap."
+        : "I need two or more investment accounts to place them across.",
+      actions: [LOCATION_LINK],
+      refs: { advice: true },
+    };
+  }
+  const button = freeButton(plan);
+  return {
+    body: locationLine(plan),
+    actions: [...(button ? [button] : []), LOCATION_LINK],
+    refs: { advice: true, ...(button ? { locationKey: plan.key } : {}) },
   };
 }

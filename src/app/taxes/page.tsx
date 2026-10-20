@@ -123,6 +123,57 @@ async function TaxesContent() {
         </Link>
       </section>
 
+      <section aria-labelledby="years-heading" id="years" className={CARD}>
+        <h2 id="years-heading" className="text-xl font-semibold">
+          Taxes over the years
+        </h2>
+        <p className="text-sm text-zinc-600 dark:text-zinc-400">
+          Your federal tax for each year ahead, and the moves, like a Roth conversion in a low year,
+          that save the most over all of them.
+        </p>
+        <Link href="/taxes/years" className={LINK}>
+          See my tax years
+        </Link>
+      </section>
+
+      <section aria-labelledby="property-heading" id="property" className={CARD}>
+        <h2 id="property-heading" className="text-xl font-semibold">
+          Property tax
+        </h2>
+        <p className="text-sm text-zinc-600 dark:text-zinc-400">
+          Is your home assessed for more than it&apos;s worth? An appeal drafted with comparable
+          sales, the county&apos;s deadline, and exemptions you may not have claimed.
+        </p>
+        <Link href="/taxes/property" className={LINK}>
+          Check my property tax
+        </Link>
+      </section>
+
+      <section aria-labelledby="accountant-heading" id="accountant" className={CARD}>
+        <h2 id="accountant-heading" className="text-xl font-semibold">
+          Working with an accountant
+        </h2>
+        <p className="text-sm text-zinc-600 dark:text-zinc-400">
+          One read-only link with your tax pack, the forms Jane collected and her questions. It ends
+          when you say, and their answers come back here.
+        </p>
+        <Link href="/taxes/accountant" className={LINK}>
+          Make a link for my accountant
+        </Link>
+      </section>
+
+      <section aria-labelledby="calendar-heading" id="calendar" className={CARD}>
+        <h2 id="calendar-heading" className="text-xl font-semibold">
+          Your tax calendar
+        </h2>
+        <p className="text-sm text-zinc-600 dark:text-zinc-400">
+          What Jane does each month of the tax year, by herself within your caps or with your tap.
+        </p>
+        <Link href="/taxes/calendar" className={LINK}>
+          See my tax calendar
+        </Link>
+      </section>
+
       <section aria-labelledby="identity-heading" id="identity" className={CARD}>
         <h2 id="identity-heading" className="text-xl font-semibold">
           Your tax identity

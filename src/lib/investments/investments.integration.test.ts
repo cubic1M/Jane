@@ -27,6 +27,43 @@ import { collectReceipts, investHsaCash, loadHsa } from "./hsa";
 import { CompanyStockError, loadCompanyStock, saveGrant, sellPart } from "./company-stock";
 import { cryptoTotal, loadCrypto, syncAllCrypto } from "@/lib/crypto/crypto";
 import { CashError, loadCash, moveCash } from "./cash";
+import {
+  addChild,
+  contributeForChild,
+  createGiftLink,
+  FamilyError,
+  giftPage,
+  giveGift,
+  loadFamily,
+  openChildAccount,
+  revokeGiftLinks,
+} from "./family";
+import { startCollegePlan } from "./college";
+import { loadLocation, makeSwaps, LocationError } from "./location";
+import { harvestFromReview, loadReviewExtras, ReviewError } from "./yearly-review";
+import {
+  answerPremium,
+  loadCostlyProducts,
+  linkDemoProducts,
+  saveProduct,
+  CostlyProductError,
+} from "./costly-products";
+import { addRental, linkDemoRental, loadProperty, PropertyError } from "./property";
+import { automaticLog, runAutomaticInvesting } from "./automatic";
+import {
+  loadRetirementIncome,
+  saveRetirementIncome,
+  RetirementIncomeError,
+} from "./retirement-income";
+import { answerOldPlan, loadOldAccounts, startRollover, settleRollovers } from "./old-accounts";
+import {
+  contributeToIra,
+  linkDemoRothIra,
+  loadRetirementAccounts,
+  requestMatchRaise,
+  RetirementAccountsError,
+} from "./retirement-accounts";
+import { setSectorAutopilot } from "@/lib/sector-autopilot";
 import { brokeragePartner, NoCryptoOrders } from "@/lib/brokerage/partner";
 import { loadMoneyHub } from "@/lib/hubs/money";
 import { setAutopilot } from "@/lib/autopilot";
@@ -843,6 +880,533 @@ describe.runIf(url)("investments in Jane's chat, against a real database", () =>
       await expect(
         moveCash(userId, plan.key, "sweep_to_money_market", { client, now: LINKED }),
       ).rejects.toThrow(CashError);
+    },
+  );
+
+  it(
+    "step 164: nothing below Everything allowed, a cap bounds every move, each is in the log with its reason",
+    SLOW,
+    async () => {
+      const userId = await demoPerson();
+      await saveProfileForm(
+        userId,
+        { age: "45", horizon: "over_20", dropReaction: "worry", goals: ["retirement"] },
+        { client, now: LINKED },
+      );
+      const orders = () => client.brokerageOrder.count({ where: { userId } });
+      // At "Always ask" (the default), "The safe stuff", nothing happens by itself.
+      expect(await runAutomaticInvesting(userId, { client, now: LINKED })).toBeNull();
+      await setSectorAutopilot(
+        userId,
+        "investing",
+        { level: "safe", actionCapCents: 5_000_000, monthlyCapCents: 5_000_000 },
+        { client, now: LINKED },
+      );
+      expect(await runAutomaticInvesting(userId, { client, now: LINKED })).toBeNull();
+      expect(await orders()).toBe(0);
+
+      // Step 57's level wins over a sector's: "Ask me first" asks everywhere.
+      await setAutopilot(userId, "safe", { client, now: LINKED });
+      // Everything allowed, but a cap of $1: the rebalance is asked about, once, and not done.
+      await setSectorAutopilot(
+        userId,
+        "investing",
+        { level: "all", actionCapCents: 100, monthlyCapCents: 100 },
+        { client, now: LINKED },
+      );
+      const over = await runAutomaticInvesting(userId, { client, now: LINKED });
+      expect(over!.did).toEqual([]);
+      expect(over!.asked[0]).toMatch(/^Asked first, over the cap on one move: Rebalanced \$/);
+      await runAutomaticInvesting(userId, { client, now: LINKED });
+      expect(await orders()).toBe(0);
+      expect((await automaticLog(userId, { client, now: LINKED })).asked).toHaveLength(1);
+
+      // With room under the caps, she does it, and the log says what and why.
+      await setSectorAutopilot(
+        userId,
+        "investing",
+        { actionCapCents: 5_000_000, monthlyCapCents: 5_000_000 },
+        { client, now: LINKED },
+      );
+      const done = await runAutomaticInvesting(userId, { client, now: LINKED });
+      expect(done!.did[0]).toMatch(
+        /^Rebalanced \$[\d,.]+ to your target mix \(it had drifted off target\)$/,
+      );
+      expect(await orders()).toBeGreaterThan(0);
+      const log = await automaticLog(userId, { client, now: LINKED });
+      expect(log.did.map((d) => d.what)).toEqual(done!.did);
+      expect(log.did[0].cents).toBeGreaterThan(0);
+
+      // Jane's monthly summary says it, with the simulated-money line.
+      const snapshot = await loadSnapshot(userId, { client, now: LINKED });
+      const summary = investmentsSource
+        .gather(snapshot!, {} as never)
+        .find((c) => c.dedupeKey.startsWith("investing:summary:"))!;
+      expect(summary.body).toMatch(/^This month I handled 1 thing in your investments by myself/);
+      expect(summary.body).toMatch(/Over your caps, so waiting for your tap: Rebalanced/);
+      expect(summary.body).toMatch(/no real money moved\.$/);
+    },
+  );
+
+  it(
+    "step 210: limits across accounts, the missed match in dollars, a payroll request and an IRA contribution, each a tap",
+    SLOW,
+    async () => {
+      const userId = await demoPerson();
+      const before = await loadRetirementAccounts(userId, { client, now: LINKED });
+      expect(before.limits.map((l) => l.key)).toEqual(["workplace", "ira"]);
+      expect(before.limits[0].usedCents).toBeGreaterThan(0);
+      expect(before.limits[0].roomCents).toBe(
+        before.limits[0].limitCents - before.limits[0].usedCents,
+      );
+      expect(before.match!.missedCents).toBeGreaterThan(0);
+      expect(before.ira).toBeNull();
+      expect(await client.payrollChange.count({ where: { userId } })).toBe(0);
+
+      // Chat: the message, then the tap, through the payroll stand-in.
+      const snapshot = await loadSnapshot(userId, { client, now: LINKED });
+      const offer = investmentsSource
+        .gather(snapshot!, {} as never)
+        .find((c) => c.dedupeKey.startsWith("retire:match:"))!;
+      const posted = await client.janeMessage.create({
+        data: {
+          userId,
+          kind: offer.kind,
+          body: offer.body,
+          refs: offer.refs,
+          actions: offer.actions,
+          dedupeKey: "test:retire:match",
+        },
+      });
+      const { message } = await takeChatAction(userId, posted.id, "retire.match", {
+        client,
+        now: LINKED,
+      });
+      expect(message.refs.note).toMatch(
+        /^Requested through the payroll stand-in \(no real pay changes yet\): 6% of pay from 2026-10-25/,
+      );
+      const change = await client.payrollChange.findFirstOrThrow({ where: { userId } });
+      expect(change).toMatchObject({ partner: "stand-in", status: "requested", toRate: 0.06 });
+      await expect(requestMatchRaise(userId, { client, now: LINKED })).rejects.toThrow(
+        RetirementAccountsError,
+      );
+
+      // A demo Roth IRA, and money in it through the simulated brokerage.
+      await linkDemoRothIra(userId, { client, now: LINKED });
+      const withIra = await loadRetirementAccounts(userId, { client, now: LINKED });
+      expect(withIra.ira).toMatchObject({ name: "Demo Roth IRA", roth: true });
+      const room = withIra.limits[1].roomCents;
+      expect(withIra.iraAllowedCents).toBeLessThanOrEqual(room);
+      await expect(contributeToIra(userId, room + 1, { client, now: LINKED })).rejects.toThrow(
+        /more than you can/,
+      );
+      await contributeToIra(userId, 100_000, { client, now: LINKED });
+      const after = await loadRetirementAccounts(userId, { client, now: LINKED });
+      expect(after.limits[1].usedCents).toBe(100_000);
+      expect(after.limits[1].roomCents).toBe(room - 100_000);
+      expect(
+        await client.brokerageOrder.count({ where: { userId, reason: "ira_contribution" } }),
+      ).toBe(2);
+    },
+  );
+
+  it(
+    "step 211: a past employer asked once, its fees compared, a direct rollover tracked and never a withdrawal",
+    SLOW,
+    async () => {
+      const userId = await demoPerson();
+      const first = await loadOldAccounts(userId, { client, now: LINKED });
+      expect(first.plans).toMatchObject([{ employer: "Globex Industries", status: "asked" }]);
+      // Asked once: loading again adds nothing.
+      expect((await loadOldAccounts(userId, { client, now: LINKED })).plans).toHaveLength(1);
+
+      // The question in the chat, answered Yes.
+      const snapshot = await loadSnapshot(userId, { client, now: LINKED });
+      const ask = investmentsSource
+        .gather(snapshot!, {} as never)
+        .find((c) => c.dedupeKey.startsWith("oldplan:ask:"))!;
+      const posted = await client.janeMessage.create({
+        data: {
+          userId,
+          kind: ask.kind,
+          body: ask.body,
+          refs: ask.refs,
+          actions: ask.actions,
+          dedupeKey: "test:oldplan",
+        },
+      });
+      await takeChatAction(userId, posted.id, "oldplan.yes", { client, now: LINKED });
+      const found = (await loadOldAccounts(userId, { client, now: LINKED })).plans[0];
+      expect(found).toMatchObject({ status: "found", balanceCents: 3_820_000 });
+      expect(found.fees).toEqual({ beforeCents: 42_784, afterCents: 1_146, savedCents: 41_638 });
+      await expect(answerOldPlan(userId, found.id, true, { client })).rejects.toThrow(
+        /already answered/,
+      );
+
+      // The tap starts a direct rollover: nothing arrives yet.
+      const started = await startRollover(userId, found.id, { client, now: LINKED });
+      expect(started.arrivesOn).toBe("2026-10-21");
+      const rolling = (await loadOldAccounts(userId, { client, now: LINKED })).plans[0];
+      expect(rolling.steps.map((s) => s.doneOn)).toEqual(["2026-10-18", "2026-10-18", null, null]);
+      expect(await client.brokerageOrder.count({ where: { userId, reason: "rollover" } })).toBe(0);
+
+      // Three days later the money lands in the IRA, invested; it is a transfer.
+      const later = new Date("2026-10-21T15:00:00Z");
+      expect(await settleRollovers(userId, { client, now: later })).toBe(1);
+      expect(await settleRollovers(userId, { client, now: later })).toBe(0);
+      const rolled = (await loadOldAccounts(userId, { client, now: later })).plans[0];
+      expect(rolled.status).toBe("rolled");
+      const txs = await client.investmentTransaction.findMany({
+        where: { userId, name: "ROLLOVER FROM PRIOR EMPLOYER PLAN" },
+        select: { subtype: true, amountCents: true },
+      });
+      expect(txs).toEqual([{ subtype: "transfer", amountCents: -3_820_000 }]);
+      // Neither a withdrawal nor a contribution against this year's limits.
+      expect(
+        await client.investmentTransaction.count({ where: { userId, subtype: "withdrawal" } }),
+      ).toBe(0);
+      const limits = (await loadRetirementAccounts(userId, { client, now: later })).limits;
+      expect(limits.find((l) => l.key === "ira")!.usedCents).toBe(0);
+    },
+  );
+
+  it(
+    "step 212: Social Security from pay then from the statement, minimums, the order to draw, how long it lasts",
+    SLOW,
+    async () => {
+      const userId = await demoPerson();
+      await saveProfileForm(
+        userId,
+        { age: "45", horizon: "over_20", dropReaction: "worry", goals: ["retirement"] },
+        { client, now: LINKED },
+      );
+      const est = await loadRetirementIncome(userId, { client, now: LINKED });
+      // Pay is $81,600: the estimate, labelled as one.
+      expect(est.ss).toMatchObject({ source: "estimate", fullMonthlyCents: 292_188 });
+      expect(est.ss.options.map((o) => o.age)).toEqual([62, 67, 70]);
+      expect(est.balances.preTaxCents).toBeGreaterThan(0);
+      expect(est.draw.map((d) => d.key)).toEqual(["taxableCents", "preTaxCents"]);
+      expect(est.spendFrom).toBe("pay");
+      expect(est.applies).toBe(false);
+      // The paycheck always says how long the money lasts.
+      expect(est.paycheck!.lasts.lowAge).toBeLessThanOrEqual(est.paycheck!.lasts.highAge);
+
+      await saveRetirementIncome(
+        userId,
+        { ssMonthly: "3,100", retireAge: "62", ssStartAge: "67", spendMonthly: "4000" },
+        { client },
+      );
+      const saved = await loadRetirementIncome(userId, { client, now: LINKED });
+      expect(saved.ss).toMatchObject({
+        source: "statement",
+        fullMonthlyCents: 310_000,
+        startAge: 67,
+      });
+      expect(saved).toMatchObject({ retireAge: 62, spendMonthlyCents: 400_000, spendFrom: "you" });
+      await expect(
+        saveRetirementIncome(
+          userId,
+          { ssMonthly: "", retireAge: "20", ssStartAge: "", spendMonthly: "" },
+          { client },
+        ),
+      ).rejects.toThrow(RetirementIncomeError);
+      const { reply } = await sendToJane(userId, "when should I claim social security", {
+        client,
+        now: LINKED,
+      });
+      expect(reply.body).toMatch(/\$2,170\.00 a month if you start at 62, \$3,100\.00 at 67/);
+    },
+  );
+
+  it(
+    "step 213: a child's accounts, a Roth limited by earnings, and a gift link that shows only the goal",
+    SLOW,
+    async () => {
+      const userId = await demoPerson();
+      await addChild(userId, { name: "Sam", age: 15, earnedCents: 300_000 }, { client });
+      await startCollegePlan(
+        userId,
+        { childName: "Sam", childAge: 15, type: "public" },
+        { client, now: LINKED },
+      );
+      const before = await loadFamily(userId, { client, now: LINKED });
+      expect(before.children[0]).toMatchObject({
+        name: "Sam",
+        custodial: null,
+        roth: null,
+        gift: null,
+      });
+
+      await openChildAccount(userId, "custodial", { client, now: LINKED });
+      await openChildAccount(userId, "child_roth", { client, now: LINKED });
+      const kid = (await loadFamily(userId, { client, now: LINKED })).children[0];
+      expect(kid.roth!.roomCents).toBe(300_000);
+      // The Roth is limited by what Sam earned; the custodial account isn't.
+      await expect(
+        contributeForChild(userId, kid.id, "child_roth", 300_001, { client, now: LINKED }),
+      ).rejects.toThrow(/more than they can/);
+      await contributeForChild(userId, kid.id, "child_roth", 100_000, { client, now: LINKED });
+      await contributeForChild(userId, kid.id, "custodial", 50_000, { client, now: LINKED });
+      const after = (await loadFamily(userId, { client, now: LINKED })).children[0];
+      expect(after.roth).toMatchObject({ usedCents: 100_000, roomCents: 200_000 });
+      expect(after.custodial!.balanceCents).toBe(50_000);
+
+      // A gift link: the public page has the goal and a percent, and nothing of the family's.
+      const token = await createGiftLink(userId, kid.college!.planId, { client });
+      const page = await giftPage(token, { client });
+      expect(Object.keys(page!).sort()).toEqual([
+        "childName",
+        "goalName",
+        "percent",
+        "targetCents",
+      ]);
+      expect(page!.goalName).toBe("College for Sam");
+      expect(page!.percent).toBe(0);
+      expect(JSON.stringify(page)).not.toMatch(new RegExp(userId));
+      await giveGift(token, { giverName: "Grandma", amountCents: 500_000 }, { client });
+      await expect(
+        giveGift(token, { giverName: "Grandma", amountCents: 2_000_000 }, { client }),
+      ).rejects.toThrow(FamilyError);
+      await expect(
+        giveGift("nope-not-a-token-xx", { giverName: "x", amountCents: 1000 }, { client }),
+      ).rejects.toThrow(/isn't taking gifts/);
+      const funded = (await loadFamily(userId, { client, now: LINKED })).children[0];
+      expect(funded.gift!.gifts).toEqual([{ giverName: "Grandma", amountCents: 500_000 }]);
+      expect(funded.college!.savedCents).toBe(500_000);
+      expect((await giftPage(token, { client }))!.percent).toBeGreaterThan(0);
+      // Taken down, the link stops working.
+      expect(await revokeGiftLinks(userId, { client })).toBe(1);
+      expect(await giftPage(token, { client })).toBeNull();
+    },
+  );
+
+  it(
+    "step 214: a rental's figures match its transactions, depreciation goes to the taxes side",
+    SLOW,
+    async () => {
+      const userId = await demoPerson();
+      await linkDemoRental(userId, { client, now: LINKED });
+      await linkDemoRental(userId, { client, now: LINKED });
+      // The home, with its mortgage from the demo bank, as the person adds it under Things you own.
+      const mortgage = await client.account.findFirstOrThrow({
+        where: { userId, subtype: "mortgage" },
+      });
+      await client.ownedAsset.create({
+        data: {
+          userId,
+          kind: "home",
+          name: "Home",
+          valueCents: 45_000_000,
+          valuedOn: new Date("2026-09-01T00:00:00Z"),
+          loanAccountId: mortgage.id,
+        },
+      });
+      const view = await loadProperty(userId, { client, now: LINKED });
+      expect(view.rentals).toHaveLength(1);
+      const r = view.rentals[0];
+      // Re-add the same sums straight from the transactions.
+      const txs = await client.transaction.findMany({
+        where: { userId, plaidTransactionId: { startsWith: "demo-rental-" } },
+      });
+      const sum = (needle: string, sign: number) =>
+        txs
+          .filter((t) => t.description.includes(needle))
+          .reduce((s, t) => s + sign * t.amountCents, 0);
+      expect(r.counts.rent).toBe(12);
+      expect(r.figures.rentCents).toBe(sum("TENANT RENT", -1));
+      expect(r.figures.rentCents).toBe(12 * 185_000);
+      expect(r.figures.mortgagePaidCents).toBe(sum("MAPLE ST RENTAL LOAN", 1));
+      expect(r.figures.propertyTaxCents).toBe(sum("COUNTY TREASURER", 1));
+      expect(r.figures.otherExpensesCents).toBe(sum("REPAIR", 1) + sum("LANDLORD INSURANCE", 1));
+      expect(r.figures.cashFlowCents).toBe(
+        r.figures.rentCents -
+          r.figures.mortgagePaidCents -
+          r.figures.propertyTaxCents -
+          r.figures.otherExpensesCents,
+      );
+      // Depreciation is step 173's: $208,000 building, 3.636% in 2026.
+      expect(r.figures.depreciationCents).toBe(756_288);
+      // Both sides of the paydown question, from the demo mortgage.
+      expect(view.homes.find((h) => h.valueCents === 45_000_000)!.equityCents).toBe(
+        45_000_000 - (mortgage.currentBalanceCents ?? 0),
+      );
+      expect(view.paydown!.paydown.interestSavedCents).toBeGreaterThan(0);
+      expect(view.paydown!.invest.highGainCents).toBeGreaterThan(view.paydown!.invest.lowGainCents);
+      // The form checks what it takes.
+      await expect(
+        addRental(
+          userId,
+          {
+            name: "X",
+            purchase: "100000",
+            placedInServiceMonth: "13",
+            placedInServiceYear: "2020",
+            cashInvested: "",
+            loanBalance: "",
+            loanRate: "",
+            monthlyPayment: "",
+            rentMatch: "RENT",
+            mortgageMatch: "",
+            taxMatch: "",
+            expenseMatch: "",
+          },
+          { client },
+        ),
+      ).rejects.toThrow(PropertyError);
+    },
+  );
+
+  it(
+    "step 215: a premium found in payments asked once, annuity and whole life in dollars with surrender charges, advisory fees",
+    SLOW,
+    async () => {
+      const userId = await demoPerson();
+      // The advisory fees in the demo bank's brokerage are read from its fee transactions.
+      const none = await loadCostlyProducts(userId, { client, now: LINKED });
+      expect(none.advisory!.yearlyCents).toBeGreaterThan(0);
+      expect(none.advisory!.gap.highCents).toBeGreaterThan(none.advisory!.gap.lowCents);
+
+      // A life insurer's premiums in the checking account are asked about once.
+      const checking = await client.account.findFirstOrThrow({
+        where: { userId, subtype: "checking" },
+      });
+      await client.transaction.create({
+        data: {
+          userId,
+          accountId: checking.id,
+          source: "plaid",
+          plaidTransactionId: `test-wl-${userId}`,
+          date: new Date("2026-09-01T00:00:00Z"),
+          amountCents: 600_000,
+          description: "NORTHWESTERN MUTUAL LIFE INS PREMIUM",
+          pfcPrimary: "GENERAL_SERVICES",
+          pfcDetailed: "GENERAL_SERVICES_INSURANCE",
+          categorySource: "plaid",
+          pending: false,
+        },
+      });
+      const asked = await loadCostlyProducts(userId, { client, now: LINKED });
+      expect(asked.asked).toMatchObject([
+        { provider: "NORTHWESTERN MUTUAL", yearlyCents: 600_000 },
+      ]);
+      expect((await loadCostlyProducts(userId, { client, now: LINKED })).asked).toHaveLength(1);
+      await answerPremium(userId, asked.asked[0].id, false, { client });
+      expect((await loadCostlyProducts(userId, { client, now: LINKED })).asked).toEqual([]);
+      await expect(answerPremium(userId, asked.asked[0].id, false, { client })).rejects.toThrow(
+        /already answered/,
+      );
+
+      // The demo annuity and whole life, with every exit figure carrying its surrender charge.
+      await linkDemoProducts(userId, { client, now: LINKED });
+      const v = await loadCostlyProducts(userId, { client, now: LINKED });
+      const annuity = v.products.find((p) => p.kind === "annuity")!;
+      expect(annuity.yearlyCostCents).toBe(216_750);
+      expect(annuity.surrender!.pctNow).toBe(4);
+      expect(annuity.surrender!.cents).toBe(340_000);
+      expect(annuity.surrender!.endsOn).toBe("2030-10-01");
+      expect(annuity.exit!.surrenderNowCents).toBe(340_000);
+      expect(annuity.gap!.highCents).toBeGreaterThan(annuity.gap!.lowCents);
+      const whole = v.products.find((p) => p.kind === "whole_life")!;
+      expect(whole.wholeLife!.paidCents).toBe(6 * 600_000);
+      // The form checks what it takes.
+      await expect(
+        saveProduct(
+          userId,
+          {
+            kind: "annuity",
+            name: "X",
+            provider: "Y",
+            value: "1000",
+            feePercent: "2",
+            premiumYearly: "",
+            purchasedYear: "2020",
+            purchasedMonth: "1",
+            schedule: "7,abc",
+          },
+          { client, now: LINKED },
+        ),
+      ).rejects.toThrow(CostlyProductError);
+    },
+  );
+
+  it(
+    "step 216: one yearly review message with every item's button; nothing happens until a tap",
+    SLOW,
+    async () => {
+      const userId = await demoPerson();
+      await saveProfileForm(
+        userId,
+        { age: "45", horizon: "over_20", dropReaction: "worry", goals: ["retirement"] },
+        { client, now: LINKED },
+      );
+      const ordersBefore = await client.brokerageOrder.count({ where: { userId } });
+      const snapshot = await loadSnapshot(userId, { client, now: LINKED });
+      const review = investmentsSource
+        .gather(snapshot!, {} as never)
+        .find((c) => c.dedupeKey === "review:2026")!;
+      expect(review).toBeTruthy();
+      expect(review.body).toMatch(/^Your 2026 investing review, all in one place:/);
+      // Items the demo person has: the match left on the table, a drifted mix, the goals.
+      expect(review.actions.map((a) => a.id)).toEqual(
+        expect.arrayContaining(["retire.match", "invest.rebalance"]),
+      );
+      // Reading and gathering it moved nothing.
+      expect(await client.brokerageOrder.count({ where: { userId } })).toBe(ordersBefore);
+      expect(await client.payrollChange.count({ where: { userId } })).toBe(0);
+
+      // One of its buttons works as it does anywhere: the match raise, through the stand-in.
+      const posted = await client.janeMessage.create({
+        data: {
+          userId,
+          kind: review.kind,
+          body: review.body,
+          refs: review.refs,
+          actions: review.actions,
+          dedupeKey: "test:review",
+        },
+      });
+      await takeChatAction(userId, posted.id, "retire.match", { client, now: LINKED });
+      expect(await client.payrollChange.count({ where: { userId } })).toBe(1);
+
+      // The harvest button only acts on the list it showed.
+      const extras = await loadReviewExtras(userId, { client, now: LINKED });
+      await expect(
+        harvestFromReview(userId, "not-the-key", { client, now: LINKED }),
+      ).rejects.toThrow(ReviewError);
+      expect(extras.raise).toBe(false);
+    },
+  );
+
+  it(
+    "step 231: swaps leave the overall mix the same, and only the plan the person saw is acted on",
+    SLOW,
+    async () => {
+      const userId = await demoPerson();
+      const before = await loadLocation(userId, { client, now: LINKED });
+      const plan = before.plan!;
+      expect(plan).toBeTruthy();
+      await expect(makeSwaps(userId, "stale", "free", { client, now: LINKED })).rejects.toThrow(
+        LocationError,
+      );
+      expect(
+        await client.brokerageOrder.count({ where: { userId, reason: "asset_location" } }),
+      ).toBe(0);
+      const free = plan.swaps.filter((s) => s.taxCents === 0);
+      if (free.length > 0) {
+        await makeSwaps(userId, plan.key, "free", { client, now: LINKED });
+        const after = await loadLocation(userId, { client, now: LINKED });
+        // The overall mix is the same to the cent after the swaps.
+        for (const c of ["bonds", "us_stocks", "intl_stocks"] as const) {
+          expect(after.plan!.totals[c]).toBe(plan.totals[c]);
+        }
+        expect(
+          await client.brokerageOrder.count({ where: { userId, reason: "asset_location" } }),
+        ).toBeGreaterThan(0);
+      } else {
+        await expect(makeSwaps(userId, plan.key, "free", { client, now: LINKED })).rejects.toThrow(
+          /nothing to swap/,
+        );
+      }
     },
   );
 });
