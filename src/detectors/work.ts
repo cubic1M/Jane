@@ -12,6 +12,7 @@ const selfPaid = (pattern: unknown) => pattern === "uneven" || pattern === "busi
 const annualIncome = (monthly: unknown) => (typeof monthly === "number" ? monthly * 12 : 0);
 
 const estimatedTaxes: Detector = {
+  covers: ["tax_estimate", "tax_self_employed"],
   capability: "taxes",
   topic: "estimated_taxes",
   needs: ["income_pattern", "monthly_income"],
@@ -46,6 +47,7 @@ const estimatedTaxes: Detector = {
 };
 
 const selfRetirement: Detector = {
+  covers: ["retirement_accounts"],
   capability: "investing",
   topic: "retirement_self_employed",
   needs: ["income_pattern", "has_401k"],
@@ -71,6 +73,7 @@ const selfRetirement: Detector = {
 };
 
 const incomeSmoothing: Detector = {
+  covers: ["steady_pay"],
   capability: "steady_pay",
   topic: "income_smoothing",
   needs: ["income_pattern"],
@@ -106,6 +109,7 @@ const incomeSmoothing: Detector = {
 };
 
 const businessSeparation: Detector = {
+  covers: ["tax_side_income"],
   capability: "taxes",
   topic: "business_separation",
   needs: ["income_pattern"],
@@ -144,6 +148,7 @@ const businessSeparation: Detector = {
 };
 
 const businessInsurance: Detector = {
+  covers: ["insurance_risks"],
   capability: "insurance",
   topic: "business_insurance",
   needs: ["income_pattern"],
@@ -177,6 +182,7 @@ const businessInsurance: Detector = {
 };
 
 const concentration: Detector = {
+  covers: ["company_stock"],
   capability: "investing",
   topic: "concentration",
   needs: ["has_stock_plan"],
