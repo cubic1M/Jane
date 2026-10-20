@@ -18,6 +18,7 @@ import { formatCents } from "@/lib/money";
 import { nextEstimatedTaxDate } from "@/planning/tax-pack";
 import { estimatedTaxAlertCopy } from "@/planning/tax-pack-copy";
 import { byDate, inList, inLookback } from "./helpers";
+import { unusualAlerts } from "./unusual";
 import { expectedDates, forecastAccounts, upcomingBills } from "./forecast";
 import { duplicatePairs } from "./rules/duplicate-charge";
 import { buildStreams, merchantOf, type Stream } from "./streams";
@@ -43,6 +44,8 @@ export type AlertContext = {
   knownFindings: ReadonlySet<string>;
   // The person's first scan: everything is new, so "new subscription" would be noise.
   firstScan: boolean;
+  // Spec step 208: merchants the person said charges were theirs, with the amount.
+  taught?: ReadonlyMap<string, number>;
 };
 
 const shortDate = (date: string) =>
@@ -268,5 +271,6 @@ export function detectAlerts(
     ...billReminderAlerts(input),
     ...renewalAlerts(input, streams),
     ...estimatedTaxAlerts(input),
+    ...unusualAlerts(input, streams, context.taught),
   ];
 }

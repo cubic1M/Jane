@@ -10,6 +10,7 @@ import {
 import { ASK_BLOCKED_REPLY } from "@/config/ask";
 import type { PrismaClient } from "@/generated/prisma/client";
 import { anthropic, chatModel } from "@/lib/anthropic";
+import { addSpend, overDailyCap } from "./spend";
 import {
   checkGuardrails,
   dollarFigures,
@@ -133,6 +134,7 @@ const STATUS: Record<string, string> = {
   money_moves: "Checking what money moved…",
   health_score: "Working out your money health score…",
   monthly_report: "Reading your monthly report…",
+  what_if: "Running the what-if…",
   propose_action: "Getting a button ready…",
   show_block: "Drawing it…",
 };
@@ -205,6 +207,8 @@ export async function askClaudeInChat(
 ): Promise<ClaudeAnswer> {
   // Spec step 93: Claude failed a moment ago: answer from the rules now, never a spinner.
   if (Date.now() < claudeDownUntil) return unavailable();
+  // Spec step 191: today's cost cap for this person.
+  if (await overDailyCap(userId, { client, now })) return unavailable();
   const started = Date.now();
   const profile = advice ? "demo_advice" : "standard";
   onEvent({ type: "status", text: "Looking at your numbers…" });
@@ -289,6 +293,17 @@ export async function askClaudeInChat(
       clearTimeout(timer);
     }
 
+    await addSpend(
+      userId,
+      {
+        model: chatModel(),
+        inputTokens: response.usage?.input_tokens ?? 0,
+        outputTokens: response.usage?.output_tokens ?? 0,
+        cacheReadTokens: response.usage?.cache_read_input_tokens ?? 0,
+        cacheWriteTokens: response.usage?.cache_creation_input_tokens ?? 0,
+      },
+      { client, now },
+    );
     if (response.stop_reason === "tool_use") {
       // Any text so far led into the lookup; the answer comes after it.
       draft.reset();

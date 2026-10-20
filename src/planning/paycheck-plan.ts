@@ -31,6 +31,11 @@ export type PaycheckPlanInput = {
   safeCents: number;
   cushionCents: number;
   goals: PlanGoal[];
+  // Spec step 206: the most that can leave checking so its forecast low stays above the
+  // buffer margin (the forecast's lowest balance less the margin). Null when unknown.
+  forecastRoomCents?: number | null;
+  // Invested for this payday by auto-invest (step 134), for the account of where it went.
+  investedCents?: number;
   debt: { accountId: string; name: string; extraCents: number } | null;
 };
 
@@ -54,8 +59,53 @@ export type PaycheckPlanResult = {
   billsCents: number;
   movedCents: number;
   // Why less moved than the plan wanted, if it did.
-  heldBack: "cushion" | "paycheck" | null;
+  heldBack: "cushion" | "paycheck" | "buffer" | null;
+  // Spec step 206: where every dollar of the paycheck went. The parts add up to it.
+  wentTo: WentTo;
 };
+
+export type WentTo = {
+  paycheckCents: number;
+  billsCents: number;
+  bufferCents: number;
+  goalsCents: number;
+  debtCents: number;
+  investingCents: number;
+  yoursCents: number;
+};
+
+// What actually moved (goals, debt, investing) is counted first, then what stays for bills
+// and the buffer; what's left is theirs. The buffer and bills were protected when the moves
+// were planned (the forecast room caps them), so this never takes a move back.
+export function whereItWent(input: {
+  paycheckCents: number;
+  billsCents: number;
+  bufferCents: number;
+  goalsCents: number;
+  debtCents: number;
+  investingCents: number;
+}): WentTo {
+  let left = input.paycheckCents;
+  const take = (cents: number) => {
+    const t = Math.max(0, Math.min(cents, left));
+    left -= t;
+    return t;
+  };
+  const goals = take(input.goalsCents);
+  const debt = take(input.debtCents);
+  const investing = take(input.investingCents);
+  const bills = take(input.billsCents);
+  const buffer = take(input.bufferCents);
+  return {
+    paycheckCents: input.paycheckCents,
+    bufferCents: buffer,
+    billsCents: bills,
+    goalsCents: goals,
+    debtCents: debt,
+    investingCents: investing,
+    yoursCents: left,
+  };
+}
 
 export function paycheckPlan(input: PaycheckPlanInput): PaycheckPlanResult {
   const per = Math.max(1, input.paychecksPerMonth);
@@ -67,10 +117,20 @@ export function paycheckPlan(input: PaycheckPlanInput): PaycheckPlanResult {
   let extraRoom = Math.max(0, input.safeCents - input.cushionCents);
   let heldBack: PaycheckPlanResult["heldBack"] = null;
   const moves: PlannedMove[] = [];
+  // Spec step 206: the forecast's buffer caps everything that leaves checking together.
+  let forecastLeft = input.forecastRoomCents ?? Number.POSITIVE_INFINITY;
 
   const take = (want: number, room: number) => {
-    const cents = Math.min(want, room, left);
-    if (cents < want) heldBack = cents < Math.min(want, room) ? "paycheck" : "cushion";
+    const cents = Math.max(0, Math.min(want, room, left, forecastLeft));
+    if (cents < want) {
+      heldBack =
+        cents < Math.min(want, room, left) && forecastLeft <= Math.min(want, room, left)
+          ? "buffer"
+          : cents < Math.min(want, room)
+            ? "paycheck"
+            : "cushion";
+    }
+    forecastLeft -= cents;
     return cents;
   };
 
@@ -116,10 +176,19 @@ export function paycheckPlan(input: PaycheckPlanInput): PaycheckPlanResult {
     }
   }
 
+  const movedCents = moves.reduce((sum, m) => sum + m.cents, 0);
   return {
     moves,
     billsCents: input.billsCents,
-    movedCents: moves.reduce((sum, m) => sum + m.cents, 0),
+    movedCents,
     heldBack,
+    wentTo: whereItWent({
+      paycheckCents: input.paycheckCents,
+      billsCents: input.billsCents,
+      bufferCents: input.cushionCents,
+      goalsCents: moves.filter((m) => m.purpose === "goal").reduce((s, m) => s + m.cents, 0),
+      debtCents: moves.filter((m) => m.purpose === "debt").reduce((s, m) => s + m.cents, 0),
+      investingCents: input.investedCents ?? 0,
+    }),
   };
 }

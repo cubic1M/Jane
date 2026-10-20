@@ -54,7 +54,19 @@ export type TaxIntent =
   // Spec step 168.
   | { kind: "tax"; ask: "giving" }
   // Spec step 169.
-  | { kind: "tax"; ask: "family" };
+  | { kind: "tax"; ask: "family" }
+  // Spec step 170.
+  | { kind: "tax"; ask: "home" }
+  // Spec step 171.
+  | { kind: "tax"; ask: "records" }
+  // Spec step 172.
+  | { kind: "tax"; ask: "last_return" }
+  // Spec step 173.
+  | { kind: "tax"; ask: "side_income" }
+  // Spec step 217.
+  | { kind: "tax"; ask: "notice" }
+  // Spec step 218: a sign of identity theft, or the IP PIN.
+  | { kind: "tax"; ask: "identity"; sign: "efile_rejected" | "unknown_form" | "irs_letter" | null };
 
 const NUMBER_WORDS: Readonly<Record<string, number>> = {
   no: 0,
@@ -104,9 +116,12 @@ const TAG_WORDS: Readonly<Record<string, TaxTagKind>> = {
   work: "work",
   "work expense": "work",
   "work expenses": "work",
+  rental: "rental",
+  "rental expense": "rental",
+  "rental expenses": "rental",
 };
 const TAG =
-  /^tag (?:my |the |all )?(?:charges? (?:from|at) )?(.+?) (?:charges? |payments? |purchases? )?as (?:a |an )?(donations?|charity|medical|childcare|education|work(?: expenses?)?)$/;
+  /^tag (?:my |the |all )?(?:charges? (?:from|at) )?(.+?) (?:charges? |payments? |purchases? )?as (?:a |an )?(donations?|charity|medical|childcare|education|work(?: expenses?)?|rental(?: expenses?)?)$/;
 const UNTAG =
   /^(?:untag|don't tag|do not tag|stop tagging) (?:my |the |all )?(.+?)(?: for tax(?:es)?)?$/;
 const FORMS =
@@ -175,6 +190,24 @@ const GIVING_ASK =
 // jointly" sets the profile (FILING).
 const FAMILY_ASK =
   /\b(?:jointly or separately|separately or jointly|joint or separate|separate or joint)\b|\bhead of household or single\b|\bsingle or head of household\b|\bchild tax credit\b|\bdependent care (?:fsa|credit|account)\b|\bfsa or (?:the )?(?:care |childcare )?credit\b|\bamerican opportunity\b|\blifetime learning\b|\b(?:aotc|llc credit)\b|\beducation credits?\b|\b529 (?:tax|deduction|break|benefits?)\b|\bfamily tax(?:es)?\b|\btax(?:es)? (?:for|with) (?:my |our )?(?:kids|children|family)\b/;
+const HOME_ASK =
+  /\bmortgage interest\b|\bproperty tax(?:es)?\b|\bsalt (?:cap|deduction)\b|\bstate and local tax (?:cap|deduction)\b|\b(?:sold|selling|sell) (?:my |our )?(?:house|home)\b|\bhome sale\b|\bcapital gains? on (?:my |our |the )?(?:house|home)\b|\bmortgage points\b|\bhome(?:owner)? tax(?:es)?\b|\btax(?:es)? on (?:my |our )?(?:house|home)\b/;
+const RECORDS_ASK =
+  /\baudit pack\b|\baudit(?:-| )ready\b|\b(?:tax )?records? (?:for|if|in) (?:an )?audit\b|\bhow long (?:should|do) (?:i|we) (?:keep|hold on to)\b.*\b(?:tax|records?|receipts?|papers)\b|\bwhat if (?:i|the irs) (?:get|gets|am|audits?)\b.*\baudit|\bam i ready for an audit\b|\b(?:get|got|am|being) audited\b|\bkeep (?:my )?(?:tax )?(?:records|receipts|papers)\b/;
+const LAST_RETURN =
+  /\b(?:last year'?s|my (?:old|prior|previous)) (?:tax )?return\b|\b(?:review|check|look at|read) my (?:tax )?return\b|\bamend(?:ed)? (?:my |a )?(?:tax )?return\b|\b1040-?x\b|\b(?:did i|have i) miss(?:ed)? (?:anything|any|a) (?:deductions?|credits?|on my (?:tax )?return)\b|\b(?:left|leave|leaving) money on the table\b/;
+const SIDE_INCOME =
+  /\brental (?:income|property|properties|expenses?|taxes|losses?)\b|\b(?:my )?(?:airbnb|rental)\b.*\btax(?:es)?\b|\bdepreciat(?:e|ion)\b|\b(?:gig|side|freelance) (?:income|hustle|work|gig)\b.*\b(?:tax|1099|hobby|business)\b|\bhobby (?:or|vs\.?|versus) business\b|\bis (?:my|this) (?:side )?(?:gig|income|hustle) a (?:hobby|business)\b|\bplatform (?:payouts?|1099)\b|\b1099-?k\b|\bpassive loss\b/;
+const NOTICE_ASK =
+  /\b(?:irs|tax|state tax|franchise tax board) (?:notice|letter)\b|\b(?:notice|letter) from the (?:irs|state|franchise tax board|department of revenue)\b|\bcp2000\b|\bcp14\b|\bcp501\b|\bcp503\b|\bcp504\b|\bthe irs (?:sent|says|wrote)\b|\bgot a (?:scary )?(?:letter|notice) (?:about|from)\b.*\b(?:tax|irs)/;
+const IDENTITY_REJECTED =
+  /\b(?:return|e-?file|filing) (?:was |got |has been )?rejected\b.*\b(?:already|duplicate|someone)\b|\b(?:someone|somebody) (?:already )?(?:filed|used)\b.*\b(?:my|taxes|return|social)\b|\balready (?:been )?filed (?:a return )?(?:for me|with my|under my)\b/;
+const IDENTITY_FORM =
+  /\b(?:w-?2|1099)\b.*\b(?:don'?t|do not|never) (?:know|recogni[sz]e|worked)\b|\b(?:w-?2|1099) from (?:a |an )?(?:company|employer|payer) (?:i|that i) (?:don'?t|never|didn'?t)\b|\bunknown (?:employer|payer)\b/;
+const IDENTITY_LETTER =
+  /\b(?:irs|tax) (?:letter|notice)\b.*\b(?:return|refund) (?:i|that i) (?:didn'?t|did not|never) file\b|\bletter about a return i (?:didn'?t|did not|never) file\b/;
+const IDENTITY_ASK =
+  /\bip pin\b|\bidentity protection pin\b|\btax identity theft\b|\bidentity theft\b.*\b(?:tax|irs|return)\b|\b(?:tax|irs|return)\b.*\bidentity theft\b|\bform 14039\b|\bprotect my (?:tax )?identity\b|\bstolen (?:social security|ssn)\b.*\b(?:tax|irs)\b/;
 const PACK = /\btax(?:-| )?time pack\b|\btax pack\b|\byear-end pack\b/;
 
 function stateCode(words: string): string | null {
@@ -185,6 +218,16 @@ function stateCode(words: string): string | null {
 
 export function parseTaxIntent(text: string): TaxIntent | null {
   if (FAMILY_ASK.test(text)) return { kind: "tax", ask: "family" };
+  if (IDENTITY_REJECTED.test(text)) return { kind: "tax", ask: "identity", sign: "efile_rejected" };
+  if (IDENTITY_FORM.test(text)) return { kind: "tax", ask: "identity", sign: "unknown_form" };
+  if (IDENTITY_LETTER.test(text)) return { kind: "tax", ask: "identity", sign: "irs_letter" };
+  if (IDENTITY_ASK.test(text)) return { kind: "tax", ask: "identity", sign: null };
+  if (NOTICE_ASK.test(text)) return { kind: "tax", ask: "notice" };
+  if (!/^(?:tag|untag) /.test(text) && SIDE_INCOME.test(text))
+    return { kind: "tax", ask: "side_income" };
+  if (LAST_RETURN.test(text)) return { kind: "tax", ask: "last_return" };
+  if (RECORDS_ASK.test(text)) return { kind: "tax", ask: "records" };
+  if (HOME_ASK.test(text)) return { kind: "tax", ask: "home" };
   for (const [pattern, status] of FILING) {
     if (pattern.test(text)) return { kind: "tax", ask: "set_filing", status };
   }

@@ -1,93 +1,10 @@
-import { checkupAnswer } from "./insurance/checkup";
-import { autopilotAnswer } from "./insurance/autopilot";
-import { benefitsAnswer } from "./insurance/benefits";
-import { readingsAnswer } from "./insurance/readings";
-import { cardCoverAnswer } from "./insurance/card-cover";
-import { lifeAnswer } from "./insurance/life";
-import { lifeChangeAnswer } from "./insurance/cover-changes";
-import { fileClaimAnswer, renewalCallAnswer } from "./insurance/done-by-jane";
-import { savingsAnswer } from "./insurance/savings";
-import { risksAnswer } from "./insurance/risks";
-import type { CoverEvent } from "@/config/insurance";
-import { claimAnswer } from "./insurance/claim";
-import { quotesAnswer } from "./insurance/quotes";
-import { insuranceReply } from "./insurance/replies";
-import { loadInsuranceSnapshot } from "./insurance/snapshot";
-import { AFFORD_USUAL_MONTHS } from "@/config/agent-chat";
-import { INSIGHT_MONTHS } from "@/config/insights";
 import type { PrismaClient } from "@/generated/prisma/client";
-import { loadInsightTransactions } from "@/insights/load";
-import { loadAffordNumbers } from "@/lib/afford";
-import { autopilotOf } from "@/lib/autopilot";
-import { loadChanges } from "@/lib/changes";
-import { provenSavings } from "@/lib/savings-proof";
-import { lastControllerRun } from "@/lib/controller-log";
-import { autopilotFor, sectorAutopilots } from "@/lib/sector-autopilot";
-import { listLifeEvents } from "@/lib/life-events";
 import { db as defaultClient } from "@/lib/db";
-import { scopedFor } from "@/lib/db-scoped";
-import { homeSummary } from "@/lib/home";
-import { whatJaneDid } from "@/lib/what-jane-did";
-import { CATEGORY_LABELS, UNCATEGORIZED } from "@/insights/labels";
+import { capabilityFor } from "./capabilities";
 import { topicOf, withTopic, type Topic } from "./context";
-import { matchCategory, type Intent } from "./intents";
-import { listGoals } from "@/lib/goals";
-import { comingUpBlock, spendingBlock } from "./block-data";
-import { flowReply } from "./flows/chat";
-import { timezoneOf } from "./open";
-import { searchChat } from "./search";
-import { searchReply } from "./search-reply";
-import { goalsReply } from "./goals-reply";
-import { listPreferences, paydayDays } from "./preferences";
-import { loadRecurring } from "./recurring";
-import { paydayLine } from "./remember";
-import { costReply, paydayReply, subscriptionsReply } from "./recurring-replies";
-import { answerDebt } from "./debt-answer";
-import { isDebtIntent } from "./debt-intents";
-import { answerInvestments } from "./investments/answer";
-import { learnReply } from "./learn";
-import {
-  actReply,
-  affordReply,
-  clarifyReply,
-  rememberReply,
-  findingReply,
-  rankFindings,
-  categoryContext,
-  approveAllReply,
-  comingUpReply,
-  greetingReply,
-  pauseReply,
-  safeReply,
-  spendingReply,
-  undoReply,
-  whatDidReply,
-  type Reply,
-} from "./replies";
-import { changesReply } from "./replies-changes";
-import { overviewReply, sectorChangeReply } from "./replies-autopilot";
-import { checkedReply } from "./replies-checked";
-import { rankedFor } from "./priorities";
-import { prioritiesReply } from "./replies-priorities";
-import { wholePictureReply } from "./whole-picture";
-import { planReply } from "./multi";
-import { loadTimeline } from "@/lib/timeline";
-import { timelineReply } from "./replies-timeline";
-import { paycheckReply } from "./replies-paycheck";
-import { latestPaycheckPlan } from "@/lib/money-movement/paycheck";
-import { loadBillPay } from "@/lib/money-movement/bill-pay";
-import { moneyPartnerFor } from "@/lib/money-movement/partner";
-import { billsReply } from "./replies-billpay";
-import { healthFor } from "@/lib/health-score";
-import { healthReply } from "./replies-health";
-import { storedReport } from "@/lib/monthly-report-store";
-import { reportReply } from "./replies-report";
-import { groupedHelpReply } from "./replies-help";
-import { lifeEventReply } from "./replies-life";
-import { savedReply } from "./replies-saved";
-import { weeklyReview } from "./replies-review";
+import type { Intent } from "./intents";
+import { clarifyReply, type Reply } from "./replies";
 import { loadSnapshot } from "./snapshot";
-import { answerTaxIntent } from "./tax-answer";
 
 // Answers a typed message by rules (spec step 84): loads only what the intent needs, with
 // the same loaders as the pages, all scoped to the person, and words it with ./replies.
@@ -96,8 +13,6 @@ import { answerTaxIntent } from "./tax-answer";
 // each answer says what it was about, for the next one.
 
 type Options = { client?: PrismaClient; now?: Date; topic?: Topic | null };
-
-const CATEGORY_LIST = [...new Set([...Object.values(CATEGORY_LABELS), UNCATEGORIZED])];
 
 export async function answerByRules(
   userId: string,
@@ -133,261 +48,21 @@ async function whichReply(
     ? clarifyReply("Which one do you mean?", top)
     : { body: 'Which one do you mean? Try its name, like "Netflix".', actions: [], refs: {} };
 }
-
 async function byIntent(
   userId: string,
   intent: Intent,
   { client, now }: { client: PrismaClient; now: Date },
 ): Promise<Reply | null> {
-  const asOf = now.toISOString().slice(0, 10);
-  const spendingOn = async (category: string) =>
-    spendingReply(
-      { kind: "spending", category, month: asOf.slice(0, 7) },
-      await loadInsightTransactions(scopedFor(userId, client), asOf, INSIGHT_MONTHS),
-      asOf,
-    );
-  // Loans and debt (spec Phase Y, ./debt-answer.ts).
-  if (isDebtIntent(intent)) return answerDebt(userId, intent, { client, now });
-  switch (intent.kind) {
-    case "follow_up":
-      return null;
-    // Spec step 88.
-    case "cost": {
-      const [recurring, snapshot] = await Promise.all([
-        loadRecurring(userId, { client, now }),
-        loadSnapshot(userId, { client, now }),
-      ]);
-      // Not a regular charge: what was spent there this month.
-      return costReply(intent, recurring, snapshot, asOf) ?? (await spendingOn(intent.target));
-    }
-    case "subscriptions": {
-      const [recurring, snapshot] = await Promise.all([
-        loadRecurring(userId, { client, now }),
-        loadSnapshot(userId, { client, now }),
-      ]);
-      return subscriptionsReply(intent, recurring, snapshot);
-    }
-    case "payday": {
-      // Spec step 91: what they told Jane comes first.
-      const days = paydayDays(await listPreferences(userId, { client }));
-      if (days) {
-        return {
-          body: paydayLine(days, asOf),
-          actions: [{ id: "open", label: "See today", kind: "link", href: "/home" }],
-          refs: {},
-        };
-      }
-      return paydayReply(await loadRecurring(userId, { client, now }), asOf);
-    }
-    case "remember":
-      return rememberReply(intent.draft);
-    // Spec step 96.
-    case "search": {
-      const timezone = await timezoneOf(userId, { client });
-      return searchReply(
-        intent.query,
-        await searchChat(userId, intent.query, { client, now, timezone }),
-        timezone,
-      );
-    }
-    // Spec step 95.
-    case "flow":
-      return flowReply(intent.flow, { userId, client, now });
-    // Spec step 94.
-    case "goals":
-      return goalsReply(await listGoals(userId, { client, now }));
-    case "about": {
-      const [recurring, snapshot] = await Promise.all([
-        loadRecurring(userId, { client, now }),
-        loadSnapshot(userId, { client, now }),
-      ]);
-      const exact = intent.findingId
-        ? snapshot?.findings.find((f) => f.findingId === intent.findingId)
-        : undefined;
-      if (snapshot && exact) return findingReply(exact);
-      const cost = costReply({ target: intent.target, year: false }, recurring, snapshot, asOf);
-      if (cost) return cost;
-      const ranked = snapshot ? rankFindings(snapshot.findings, null, intent.target) : [];
-      if (snapshot && ranked.length === 1) return findingReply(ranked[0].finding);
-      if (ranked.length > 1) {
-        return clarifyReply(
-          `I found ${ranked.length} things about "${intent.target}". Which one do you mean?`,
-          ranked.map(({ finding }) => ({
-            label: finding.title,
-            intent: { kind: "about", target: finding.title, findingId: finding.findingId },
-          })),
-        );
-      }
-      if (matchCategory(intent.target, CATEGORY_LIST)) return spendingOn(intent.target);
-      return null;
-    }
-    case "unknown":
-      return null;
-    case "help":
-      return groupedHelpReply();
-    case "insurance":
-      // Spec step 103: quotes ask the partner, the rest read the profile.
-      if (intent.ask === "quotes") return quotesAnswer(userId, intent, { client, now });
-      // Spec step 106: the coverage checkup, run when asked.
-      if (intent.ask === "checkup") return checkupAnswer(userId, { client, now });
-      // Spec step 107: something happened.
-      if (intent.ask === "claim") return claimAnswer(userId, intent, { client, now });
-      // Spec step 108: what Jane does with insurance by herself.
-      if (intent.ask === "autopilot") return autopilotAnswer(userId, { client });
-      // Spec step 150: cover through work.
-      if (intent.ask === "benefits") return benefitsAnswer(userId, { client, now });
-      // Spec step 151: policies read from documents.
-      if (intent.ask === "documents") return readingsAnswer(userId, { client, now });
-      // Spec step 152: cover that comes with their cards.
-      if (intent.ask === "cards") return cardCoverAnswer(userId, { client });
-      // Spec step 153: life cover sized and applied for.
-      if (intent.ask === "life") return lifeAnswer(userId, { client, now });
-      // Spec step 154: a life change told to Jane.
-      // Spec step 155: renewal calls and claims done by Jane.
-      if (intent.ask === "renewal_call") return renewalCallAnswer(userId, { client, now });
-      if (intent.ask === "file_claim") return fileClaimAnswer(userId, { client, now });
-      // Spec step 196: cheaper ways to pay for the same cover.
-      if (intent.ask === "savings") return savingsAnswer(userId, { client, now });
-      // Spec step 197: risks seen in how they live.
-      if (intent.ask === "risks") return risksAnswer(userId, { client, now });
-      if (intent.ask === "life_change") {
-        return lifeChangeAnswer(userId, intent.event as CoverEvent, { client, now });
-      }
-      return insuranceReply(intent, await loadInsuranceSnapshot(userId, { client, now }), asOf);
-    case "greeting": {
-      if (intent.thanks) return greetingReply(true, null);
-      const home = await homeSummary(userId, { client, now });
-      return greetingReply(false, home?.safeToSpend ?? null, asOf);
-    }
-    case "afford": {
-      const numbers = await loadAffordNumbers(userId, { client, now });
-      if (!intent.category) return affordReply(intent, numbers);
-      const db = scopedFor(userId, client);
-      const [transactions, budgets] = await Promise.all([
-        loadInsightTransactions(db, asOf, AFFORD_USUAL_MONTHS + 1),
-        db.budgets.findMany({ select: { category: true, amountCents: true } }),
-      ]);
-      return affordReply(
-        intent,
-        numbers,
-        categoryContext(intent.category, transactions, budgets, asOf),
-      );
-    }
-    case "spending": {
-      const db = scopedFor(userId, client);
-      const [transactions, budgets] = await Promise.all([
-        loadInsightTransactions(db, asOf, INSIGHT_MONTHS),
-        db.budgets.findMany({ select: { category: true, amountCents: true } }),
-      ]);
-      const answer = spendingReply(intent, transactions, asOf, budgets);
-      // Spec step 94: where it went, as a chart, when no one category was asked about.
-      const block = intent.category ? null : spendingBlock(transactions, asOf, intent.month);
-      return block ? { ...answer, refs: { ...answer.refs, block } } : answer;
-    }
-    case "coming_up": {
-      const home = await homeSummary(userId, { client, now });
-      const answer = comingUpReply(intent, home?.comingUp ?? []);
-      // Spec step 94: the same rows, as a timeline.
-      const rows = (home?.comingUp ?? []).filter(
-        (r) => intent.days === null || r.daysLeft <= intent.days,
-      );
-      const block = comingUpBlock(rows, intent.days === null ? "Coming up" : "Due this week");
-      return block ? { ...answer, refs: { ...answer.refs, block } } : answer;
-    }
-    case "safe_to_spend": {
-      const home = await homeSummary(userId, { client, now });
-      return safeReply(home?.safeToSpend ?? null, asOf);
-    }
-    case "life_event": {
-      const open = await listLifeEvents(userId, { client });
-      const going = open.some((e) => e.kind === intent.event && e.completedAt === null);
-      return lifeEventReply(intent.event, going);
-    }
-    case "paycheck": {
-      const plan = await latestPaycheckPlan(userId, { client, now });
-      if (plan) return paycheckReply(plan);
-      const next = (await loadRecurring(userId, { client, now })).nextIncome;
-      return paycheckReply(
-        null,
-        true,
-        next && { date: next.date, cents: next.amountCents, from: next.from, asOf },
-      );
-    }
-    case "monthly_report":
-      return reportReply(await storedReport(userId, null, { client }));
-    case "health":
-      return healthReply(await healthFor(userId, { client, now }));
-    case "bills_paid": {
-      const partner = await moneyPartnerFor(userId, { client });
-      return billsReply(partner ? await loadBillPay(userId, { client, now }) : null, asOf);
-    }
-    case "priorities": {
-      const snapshot = await loadSnapshot(userId, { client, now });
-      return prioritiesReply(snapshot ? rankedFor(snapshot) : []);
-    }
-    // Spec step 185: one plan for several actions, or money into a goal.
-    case "move_to_goal":
-      return planReply(userId, [intent], {
-        client,
-        now,
-        answer: (part) => byIntent(userId, part, { client, now }),
-      });
-    case "multi":
-      return planReply(userId, intent.parts, {
-        client,
-        now,
-        answer: (part) => byIntent(userId, part, { client, now }),
-      });
-    // Spec step 183.
-    case "whole_picture": {
-      const snapshot = await loadSnapshot(userId, { client, now });
-      return wholePictureReply(snapshot, snapshot ? rankedFor(snapshot) : [], intent.focus);
-    }
-    case "checked":
-      return checkedReply(await lastControllerRun(userId, { client, now }));
-    case "autopilot_overview":
-      return overviewReply(
-        await sectorAutopilots(userId, { client, now }),
-        await autopilotOf(userId, { client }),
-      );
-    case "autopilot_sector":
-      return sectorChangeReply(
-        intent,
-        await autopilotFor(userId, intent.sector, { client, now }),
-        await autopilotOf(userId, { client }),
-      );
-    case "saved":
-      return savedReply(await provenSavings(userId, { client, now }));
-    case "review": {
-      const snapshot = await loadSnapshot(userId, { client, now });
-      return snapshot
-        ? weeklyReview(snapshot, now)
-        : {
-            body: "Link a bank or import a CSV, and I'll review your weeks here.",
-            actions: [],
-            refs: {},
-          };
-    }
-    case "changes":
-      return changesReply(await loadChanges(userId, { client, now }));
-    // Spec step 187.
-    case "timeline":
-      return timelineReply(await loadTimeline(userId, { client, limit: 20 }), intent.why, asOf);
-    case "what_did":
-      return whatDidReply(await whatJaneDid(userId, { client, now }));
-    case "act":
-      return actReply(intent, await loadSnapshot(userId, { client, now }));
-    case "approve_all":
-      return approveAllReply(await loadSnapshot(userId, { client, now }));
-    case "undo":
-      return undoReply(await loadSnapshot(userId, { client, now }), now);
-    case "pause_autopilot":
-      return pauseReply(await autopilotOf(userId, { client }));
-    case "tax":
-      return answerTaxIntent(userId, intent, { client, now });
-    case "learn":
-      return learnReply(intent.slug);
-    case "investments":
-      return answerInvestments(userId, intent, { client, now });
-  }
+  // Spec step 190: each kind of question is answered by its registered capability
+  // (./capabilities/index.ts).
+  const capability = capabilityFor(intent);
+  if (!capability) return null;
+  return capability.answer({
+    userId,
+    intent,
+    client,
+    now,
+    asOf: now.toISOString().slice(0, 10),
+    ask: (part) => byIntent(userId, part, { client, now }),
+  });
 }
