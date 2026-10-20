@@ -141,6 +141,23 @@ test("the demo bank's holdings show with their sources, and Jane answers about t
   await page.getByRole("textbox", { name: "Message Jane" }).fill("how are my investments doing");
   await page.getByRole("button", { name: "Send" }).click();
   await expect(page.getByText(/^Your investments start \w+ at \$/)).toBeVisible();
+});
+
+// Phase AE (steps 156 on), with a person of its own: the journey above spends the demo
+// brokerage's cash.
+test("prices, goals, college, HSA, company stock, crypto and cash, each with its taps", async ({
+  context,
+  page,
+  baseURL,
+}) => {
+  const user = await signedInUser("user");
+  userId = user.userId;
+  await context.addCookies([
+    { name: "authjs.session-token", value: user.sessionToken, url: baseURL ?? "" },
+  ]);
+  await page.goto("/connect");
+  await page.getByRole("button", { name: "Link a demo bank" }).click();
+  await expect(page).toHaveURL("/chat", { timeout: 60_000 });
 
   // Step 156: how they've done, past results only, prices from the demo feed.
   await page.goto("/investments");
