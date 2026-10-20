@@ -959,6 +959,9 @@ model Action {
   // Yearly savings confirmed on a call (a lower monthly price, times twelve). Counted as
   // saved instead of the card's estimate.
   confirmedAnnualCents Int?         @map("confirmed_annual_cents")
+  // Spec step 207: when Jane checked the person's transactions long after it was done and
+  // the saving never showed up. Set, the action no longer counts as saved.
+  savingMissedAt       DateTime?    @map("saving_missed_at") @db.Timestamptz(3)
   startedAt            DateTime?    @map("started_at") @db.Timestamptz(3)
   completedAt          DateTime?    @map("completed_at") @db.Timestamptz(3)
   createdAt            DateTime     @default(now()) @map("created_at") @db.Timestamptz(3)
