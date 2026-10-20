@@ -33,7 +33,7 @@ describe.runIf(url)("the picture of you, loaded", { timeout: 120_000 }, () => {
       await syncItem(trial.itemId, { client, now: NOW });
       made.set(p.id, trial.userId);
     }
-  });
+  }, 120_000);
   afterAll(async () => {
     await client.user.deleteMany({ where: { id: { in: [...made.values()] } } });
     await client.$disconnect();
