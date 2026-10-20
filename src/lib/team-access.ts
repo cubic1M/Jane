@@ -66,6 +66,7 @@ export const TEAM_ACCESS_RULES: Record<AuditEvent, EventRule> = {
   // Spec step 227: the person's own credit score plan.
   credit_goal_started: own,
   home_equity_updated: own,
+  debt_review_done: own,
   home_request_sent: own,
   // Insurance (spec Phase X): the person's own edits to their profile.
   insurance_policy_saved: own,

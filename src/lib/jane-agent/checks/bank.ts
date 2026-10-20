@@ -1185,6 +1185,19 @@ const BASE_QUESTIONS: readonly CheckQuestion[] = [
       maxChars: 1_000,
     },
   },
+  // Spec step 230: the yearly debt review, one message with a button for each item.
+  {
+    id: "debt-33",
+    text: "do my yearly debt review",
+    needs: "rules",
+    expect: {
+      intent: "debt_review",
+      mentions: /statement/i,
+      link: "/loans/review",
+      list: true,
+      maxChars: 1_600,
+    },
+  },
   // Spec step 229: when debt is too much, the facts without advice.
   {
     id: "debt-32",
@@ -1230,7 +1243,7 @@ const BASE_QUESTIONS: readonly CheckQuestion[] = [
     needs: "rules",
     expect: {
       intent: "student_long",
-      mentions: /qualifying payments counted/i,
+      mentions: /Public Service Loan Forgiveness/i,
       link: "/loans/student",
       list: true,
       maxChars: 1_600,

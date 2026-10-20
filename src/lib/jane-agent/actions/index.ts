@@ -380,7 +380,18 @@ export async function takeChatAction(
   const outcome = await handler.run({ userId, message, action, client, now });
   // Spec step 93: a tap can change what's open, so Claude's copy of the numbers goes.
   forgetPrimer(userId);
-  const status = outcome.status ?? "answered";
+  // Spec step 230: each button of a debt review is its own item. The message stays open,
+  // without the button just used, until every item has been dealt with.
+  const review = message.refs.reviewButtons ?? [];
+  const reviewTap = review.includes(actionId) && !outcome.status && !outcome.actions;
+  const left = reviewTap
+    ? message.actions.filter((a) => a.id !== actionId || a.kind === "link")
+    : [];
+  const status = reviewTap
+    ? left.some((a) => a.kind !== "link" && review.includes(a.id))
+      ? "open"
+      : "answered"
+    : (outcome.status ?? "answered");
   const refs = { ...(outcome.refs ?? message.refs) };
   if (outcome.note) refs.note = outcome.note;
   // Only if no other tap changed it meanwhile.
@@ -392,7 +403,9 @@ export async function takeChatAction(
       answeredWith: outcome.answeredWith,
       answeredAt: status === "open" ? null : now,
       refs: refs as Prisma.InputJsonObject,
-      actions: (outcome.actions ?? linksOf(message.actions)) as Prisma.InputJsonArray,
+      actions: (reviewTap
+        ? left
+        : (outcome.actions ?? linksOf(message.actions))) as Prisma.InputJsonArray,
       // Spec step 83: "Not now" hides it until then; any other answer clears that.
       snoozedUntil: outcome.snoozedUntil ?? null,
     },

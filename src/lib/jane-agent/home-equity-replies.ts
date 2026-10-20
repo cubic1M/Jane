@@ -1,5 +1,5 @@
 import { PMI_ASK_LTV, PMI_AUTO_LTV } from "@/config/home-equity";
-import { PROJECT_NOTES } from "@/config/home-equity";
+import { PROJECT_NOTES, PROJECT_PRODUCTS } from "@/config/home-equity";
 import { dayLabel } from "@/lib/day-label";
 import type { HomeEquity, ProjectComparison } from "@/lib/home-equity";
 import { formatCents } from "@/lib/money";
@@ -80,7 +80,10 @@ export function escrowLines(data: HomeEquity): string[] {
 function projectLines(c: ProjectComparison): string[] {
   const best = cheapest(c.options);
   const lines = [
-    `Paying for ${formatCents(c.projectCents)} of work over ${c.years} years, with the total cost of each way (interest and fees):`,
+    best
+      ? `For ${formatCents(c.projectCents)} of work over ${c.years} years, the ${PROJECT_PRODUCTS[best.product].name} has the lowest total cost, ${formatCents(best.totalCostCents)} in interest and fees.`
+      : `For ${formatCents(c.projectCents)} of work over ${c.years} years, none of the three ways fits your home and loans.`,
+    "The total cost of each way, interest and fees included:",
   ];
   for (const o of c.options) {
     lines.push(
@@ -89,10 +92,7 @@ function projectLines(c: ProjectComparison): string[] {
         : `- ${o.label}: not an option here. ${o.why}`,
     );
   }
-  if (best)
-    lines.push(
-      `The lowest total cost is the ${best.label.toLowerCase()}. ${PROJECT_NOTES[best.product]}`,
-    );
+  if (best) lines.push(PROJECT_NOTES[best.product]);
   lines.push("These are stand-in lender terms, not offers.");
   return lines;
 }

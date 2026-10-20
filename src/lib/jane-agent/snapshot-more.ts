@@ -17,6 +17,7 @@ import { loadCardInterest, type CardInterest } from "@/lib/card-interest";
 import { loadStudentLongGame, type LongGame } from "@/lib/student-long-game";
 import { loadFamilyLoans, type FamilyLoans } from "@/lib/family-loans";
 import { loadCreditGoals, type CreditGoals } from "@/lib/credit-goals";
+import { loadDebtReview, type DebtReview } from "@/lib/debt-review";
 import { loadDebtTrouble, type DebtTrouble } from "@/lib/debt-trouble";
 import { loadHomeEquity, type HomeEquity } from "@/lib/home-equity";
 import type { DetectionInput } from "@/detection/types";
@@ -98,6 +99,7 @@ export type MoreSnapshot = {
   creditGoals?: CreditGoals;
   homeEquity?: HomeEquity;
   debtTrouble?: DebtTrouble;
+  debtReview?: DebtReview;
   // Insurance (spec Phase X), from the same loader as /insurance. Optional, so a snapshot
   // built without it (in tests) says nothing about insurance.
   insurance?: InsuranceSnapshot;
@@ -181,6 +183,12 @@ export async function loadMore(
     loadDebtTrouble(userId, { client, now, book, input }),
   ]);
   const homeEquity = await loadHomeEquity(userId, { client, now, mortgage });
+  const debtReview = await loadDebtReview(userId, {
+    client,
+    now,
+    book,
+    parts: { creditBuilding, cardInterest, homeEquity, creditGoals },
+  });
   const insurance = await loadInsuranceSnapshot(userId, { client, now });
 
   return {
@@ -234,6 +242,7 @@ export async function loadMore(
     creditGoals,
     homeEquity,
     debtTrouble,
+    debtReview,
     insurance,
   };
 }

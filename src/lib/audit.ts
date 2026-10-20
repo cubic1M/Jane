@@ -22,6 +22,7 @@ export type AuditEvent =
   // Spec step 227: the person started a plan for a credit score goal.
   | "credit_goal_started"
   | "home_equity_updated"
+  | "debt_review_done"
   | "home_request_sent"
   | "user_signed_up"
   // Insurance (spec Phase X): a policy saved or removed, the household facts saved.

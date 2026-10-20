@@ -29,6 +29,7 @@ import type { CardInterest } from "@/lib/card-interest";
 import type { LongGame } from "@/lib/student-long-game";
 import type { FamilyLoans } from "@/lib/family-loans";
 import type { CreditGoals } from "@/lib/credit-goals";
+import type { DebtReview } from "@/lib/debt-review";
 import type { DebtTrouble } from "@/lib/debt-trouble";
 import type { HomeEquity, ProjectComparison } from "@/lib/home-equity";
 import { REWARD_CATEGORY_LABELS } from "@/config/credit-cards";
@@ -192,6 +193,12 @@ export const DEBT_TOOLS: Anthropic.Tool[] = [
     name: "credit_goals",
     description:
       "The credit score plans the person has for a goal (demo-bank people only, a stand-in score; every figure is an estimate from the score simulator, never a promise): for each, the target score and date, what the goal is for (a mortgage, a car), the score now, whether the plan reaches the target and the best it shows if not, the month-by-month plan (what to pay toward cards and the estimated score after each month), this month's checklist with what's done (pay before the statement closes, keep card accounts open, no new applications, on-time payments, and a rapid rescore before a mortgage application), and the total to pay down. Starting a plan and ticking off a month are the person's taps (the creditgoal.start and creditgoal.done buttons).",
+    input_schema: noInput,
+  },
+  {
+    name: "debt_review",
+    description:
+      "The yearly debt review (once a year, and after a raise, a new loan or a missed payment): when the last one was done and why, whether one is due now, and each item with whether Jane did it herself, it waits for the person's tap, or it is fine: payments timed to statement dates, 0% promotions on pace, lower-rate requests, PMI and escrow, and credit score goals. Jane acts by herself only within the debt autopilot level and caps (a payment before a statement at Handle the safe stuff; also a lower-rate request at Handle everything) and nothing above a cap happens without the person's tap; the buttons are credit_build.pay, cardrate.send, homeeq.sent and creditgoal.done.",
     input_schema: noInput,
   },
   {
@@ -372,6 +379,7 @@ export const DEBT_TOOL_STATUS: Readonly<Record<string, string>> = {
   credit_goals: "Looking at your credit plan…",
   home_equity: "Checking your home loan…",
   debt_trouble: "Looking at your options…",
+  debt_review: "Going over your debts…",
 };
 
 export function refinanceToolOutput(refi: Refinance, money: (cents: number) => string) {
@@ -983,6 +991,25 @@ export function familyLoansToolOutput(data: FamilyLoans, money: (cents: number) 
       debt: s.name,
       monthly: s.paymentCents === null ? null : money(s.paymentCents),
       yourHalf: s.yourShareCents === null ? null : money(s.yourShareCents),
+    })),
+  };
+}
+
+export function debtReviewToolOutput(data: DebtReview) {
+  if (!data.available) return { note: "No debt with a balance to review." };
+  return {
+    autopilotLevel: data.level,
+    lastReview: data.review,
+    reviewDueNow: data.due,
+    items: data.items.map((i) => ({
+      item: i.title,
+      status:
+        i.status === "done"
+          ? "Jane did it"
+          : i.status === "tap"
+            ? "needs the person's tap"
+            : "fine",
+      what: i.text,
     })),
   };
 }

@@ -204,7 +204,7 @@ describe.runIf(url)("a home's equity against a real database", { timeout: 30_000
       now: later(),
     });
     expect(reply.body).toMatch(
-      /^Paying for \$40,000\.00 of work over 10 years, with the total cost/,
+      /^For \$40,000\.00 of work over 10 years, the HELOC has the lowest total cost/,
     );
     expect(reply.body).toContain("total cost");
     expect(reply.body).toContain("stand-in lender terms, not offers");

@@ -38,6 +38,7 @@ export const DEFAULT_TERM_YEARS = 30;
 export const PROJECT_PRODUCTS = {
   heloc: {
     label: "Home equity line of credit (HELOC)",
+    name: "HELOC",
     aprBps: 850,
     variable: true,
     // Closing costs, flat.
@@ -47,6 +48,7 @@ export const PROJECT_PRODUCTS = {
   },
   cash_out: {
     label: "Cash-out refinance",
+    name: "cash-out refinance",
     aprBps: 650,
     variable: false,
     // Closing costs as a share of the new loan.
@@ -56,6 +58,7 @@ export const PROJECT_PRODUCTS = {
   },
   personal: {
     label: "Personal loan",
+    name: "personal loan",
     aprBps: 1150,
     variable: false,
     // An origination fee as a share of the amount.

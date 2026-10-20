@@ -55,6 +55,7 @@ export const DEBT_SOURCE_LIMITS = {
   credit_goal: 2,
   home_equity: 2,
   debt_trouble: 1,
+  debt_review: 1,
 } as const;
 export const DEBT_MESSAGE_PRIORITY = {
   // A buy now, pay later plan Jane found, then a debt with no rate: news that can wait,
@@ -143,7 +144,39 @@ export const DEBT_MESSAGE_PRIORITY = {
   home_pmi_auto: 54,
   // Spec step 229: said once a quarter, after the things with a date.
   debt_trouble: 52,
+  // Spec step 230: the yearly review, with a button for each thing that needs a tap.
+  debt_review: 53,
 } as const;
+
+// One short line for each step above, for the chat's answer to "what do you do about my
+// debts?" (the full text for the person's level is in Settings). Neutral about the level:
+// where a step differs by level the line says "as your level allows".
+export const DEBT_AUTOPILOT_SHORT: Readonly<Record<number, string>> = {
+  109: "Keeps every loan, card and pay-later plan up to date.",
+  110: "Rechecks your payoff plan every month and tells you when you're off track.",
+  111: "Checks refinance rates monthly and speaks up only when a switch pays.",
+  112: "Prepares the loan application you pick and follows it through.",
+  113: "Looks for 0% transfer offers and keeps the promo's end on your deadlines.",
+  114: "Compares student loan plans and counts your qualifying payments.",
+  115: "Watches your mortgage: PMI, escrow changes and extra payments.",
+  116: "Checks your credit score monthly with a soft pull and says what's moving it.",
+  117: "Watches your rates and drafts a request to move a payment due before payday.",
+  174: "Works out what each card earns on your spending and which to use.",
+  175: "Handles the payment before a card's statement closes, as your level allows.",
+  176: "Puts pay-later installments in your forecast and warns before a new plan.",
+  177: "Prepares a plan with bills in order and written requests when money is tight.",
+  178: "Works out the car you can afford and checks a dealer's financing.",
+  179: "Works out the home you can afford and compares mortgage offers.",
+  180: "Finds medical bills and writes the requests that can lower them.",
+  181: "Checks your credit report monthly and writes letters for errors and collections.",
+  224: "Shows what each card costs in interest and writes lower-rate requests.",
+  225: "Counts your PSLF payments and keeps your certification dates.",
+  226: "Spots payment-app transfers that might be loans and asks you once.",
+  227: "Plans a credit score goal month by month and brings up each month's list.",
+  228: "Checks PMI and escrow against real figures and compares ways to fund a home project.",
+  229: "Lays out your options as facts when debt payments pass 40% of your income.",
+  230: "Reviews all of this once a year, in one message.",
+};
 
 // What Jane does about debts by herself at each autopilot level (src/config/autopilot.ts),
 // step by step. Applying for credit, moving money and signing always need the person's tap,
@@ -244,6 +277,10 @@ export const DEBT_AUTOPILOT: Readonly<
       step: 229,
       does: "When your debt payments pass 40% of your income, tells you once a quarter and lays out the options as facts: hardship programs by lender, a debt management plan through a nonprofit credit counselor (with a sketch from your own cards), and plain facts on settlement and bankruptcy, including the credit effect and taxes on forgiven debt. I don't advise you to settle or file, I give no legal advice, and I contact no one.",
     },
+    {
+      step: 230,
+      does: "Once a year, and after a raise, a new loan or a missed payment, goes over your debts and credit in one message: payments timed to statement dates, 0% promotions on pace, lower-rate requests, PMI and escrow, and score goals. Each item that needs you has its own button, and nothing happens until you tap.",
+    },
   ],
   safe: [
     {
@@ -338,6 +375,10 @@ export const DEBT_AUTOPILOT: Readonly<
       step: 229,
       does: "When your debt payments pass 40% of your income, tells you once a quarter and lays out the options as facts: hardship programs by lender, a debt management plan through a nonprofit credit counselor (with a sketch from your own cards), and plain facts on settlement and bankruptcy, including the credit effect and taxes on forgiven debt. I don't advise you to settle or file, I give no legal advice, and I contact no one.",
     },
+    {
+      step: 230,
+      does: "Once a year, and after a raise, a new loan or a missed payment, goes over your debts and credit in one message. Pays toward a card before its statement closes on my own, within your debt caps (a payment above a cap waits for your tap); every other item has its own button.",
+    },
   ],
   all: [
     {
@@ -431,6 +472,10 @@ export const DEBT_AUTOPILOT: Readonly<
     {
       step: 229,
       does: "When your debt payments pass 40% of your income, tells you once a quarter and lays out the options as facts: hardship programs by lender, a debt management plan through a nonprofit credit counselor (with a sketch from your own cards), and plain facts on settlement and bankruptcy, including the credit effect and taxes on forgiven debt. I don't advise you to settle or file, I give no legal advice, and I contact no one.",
+    },
+    {
+      step: 230,
+      does: "Once a year, and after a raise, a new loan or a missed payment, goes over your debts and credit in one message. Pays toward a card before its statement closes and sends the next lower-rate request on my own, within your debt caps; anything above a cap, PMI and escrow requests and score goal checklists have their own buttons.",
     },
   ],
 };

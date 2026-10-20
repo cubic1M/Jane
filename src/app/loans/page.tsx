@@ -419,6 +419,13 @@ async function LoansContent({
             .
           </p>
           <p className="text-sm text-zinc-600 dark:text-zinc-400">
+            Everything about your debts and credit, checked at once:{" "}
+            <Link href="/loans/review" className={LINK}>
+              Your debt review
+            </Link>
+            .
+          </p>
+          <p className="text-sm text-zinc-600 dark:text-zinc-400">
             Is the debt getting too much?{" "}
             <Link href="/loans/help" className={LINK}>
               See the options, plainly

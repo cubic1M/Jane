@@ -304,6 +304,9 @@ export type MessageRefs = {
   creditGoalId?: string;
   // Spec step 228: which drafted request the "I sent it" button records.
   homeRequest?: "pmi" | "escrow";
+  // Spec step 230: the buttons of a debt review. Each is its own item, so the message stays
+  // open, minus the button just used, until every one has been.
+  reviewButtons?: string[];
   // Insurance (spec Phase X): a coverage gap by its key (GAP_KEYS), and the policy a
   // message is about.
   insuranceGap?: string;

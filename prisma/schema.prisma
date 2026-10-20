@@ -816,14 +816,20 @@ model CreditReport {
 // Debt on autopilot (spec step 117): the rates Jane last saw on each debt, so she can say
 // when the bank changes one, and when she started the payoff plan by herself.
 model DebtWatch {
-  id            String    @id @default(cuid())
-  userId        String    @unique @map("user_id")
+  id             String    @id @default(cuid())
+  userId         String    @unique @map("user_id")
   // { debtKey: aprBps } as last seen.
-  rates         Json      @default("{}")
+  rates          Json      @default("{}")
   // The latest changes, newest first: [{ debtKey, name, fromBps, toBps, on }].
-  changes       Json      @default("[]")
-  planStartedOn DateTime? @map("plan_started_on") @db.Date
-  updatedAt     DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
+  changes        Json      @default("[]")
+  planStartedOn  DateTime? @map("plan_started_on") @db.Date
+  // Spec step 230, the yearly debt review: the day of the last one and why it was done, the
+  // debts there were then (a new one starts a review), and the paycheck then (a raise does).
+  reviewOn       DateTime? @map("review_on") @db.Date
+  reviewReason   String?   @map("review_reason")
+  reviewKeys     Json      @default("[]") @map("review_keys")
+  reviewPayCents Int?      @map("review_pay_cents")
+  updatedAt      DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 

@@ -53,6 +53,8 @@ export type DebtIntent =
   // Spec step 229: "I have too much debt", "what about debt settlement?", "should I file for
   // bankruptcy?": the options laid out as facts, never advice.
   | { kind: "debt_trouble" }
+  // Spec step 230: "do my debt review", "how are my debts doing?".
+  | { kind: "debt_review" }
   // Spec step 228: "when does my PMI end by itself?", "is my escrow too high?", "HELOC or
   // cash-out refinance for a $40,000 kitchen?".
   | {
@@ -104,6 +106,7 @@ export const DEBT_KINDS = new Set<string>([
   "credit_goal",
   "home_equity",
   "debt_trouble",
+  "debt_review",
 ]);
 export const isDebtIntent = (intent: { kind: string }): intent is DebtIntent =>
   DEBT_KINDS.has(intent.kind);
@@ -242,6 +245,9 @@ const EQUITY_PMI =
 // part of these answers.
 const DEBT_TROUBLE =
   /\b(?:too much debt|drowning in debt|buried in debt|overwhelmed by (?:my )?debts?|(?:can'?t|cannot|unable to) (?:keep up with|manage|handle|pay off) (?:all )?(?:my |the )?debts?|debts? (?:is |are )?(?:out of control|too (?:high|much|big))|bankruptcy|debt settlement|settle (?:my |the |some of my )?debts?|debt management plans?|debt relief|debt consolidation counsel\w*|(?:non-?profit )?credit counsel\w*|hardship (?:programs?|plans?) (?:for|on|with) (?:my )?(?:cards?|debts?|loans?)|what are my options with (?:my )?debts?)\b/;
+// Spec step 230.
+const DEBT_REVIEW =
+  /\b(?:(?:yearly|annual|year-?end|full|quick)\s+)?(?:debt|loan|credit)s?\s+(?:review|check-?up|health ?check)\b|\breview (?:all )?(?:of )?my (?:debts?|loans?)\b|\bhow are my (?:debts?|loans?) doing\b|\bgo over my (?:debts?|loans?)\b/;
 const EQUITY_TAXY = /\b(?:deduct\w*|write[- ]?offs?|1098|schedule a|itemiz\w*)\b/;
 function equityIntent(text: string, amountCents: number | null): DebtIntent | null {
   if (EQUITY_TAXY.test(text)) return null;
@@ -323,6 +329,7 @@ export function parseDebtIntent(
   const equity = equityIntent(text, amountCents);
   if (equity) return equity;
   if (DEBT_TROUBLE.test(text)) return { kind: "debt_trouble" };
+  if (DEBT_REVIEW.test(text)) return { kind: "debt_review" };
   // Taxes owed are the tax questions' (./tax-intents.ts).
   if (/\b(?:tax|taxes|irs|tax refund)\b/.test(text)) return null;
   // "Lower the rate on my card" is a request, not a question (./intents.ts act).

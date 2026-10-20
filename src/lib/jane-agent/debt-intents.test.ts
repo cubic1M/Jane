@@ -415,6 +415,21 @@ describe("debt questions", () => {
     expect(intent("money is tight this month")).toMatchObject({ kind: "tight_money" });
   });
 
+  it("reads a request for the debt review (spec step 230)", () => {
+    for (const text of [
+      "do my yearly debt review",
+      "give me a debt checkup",
+      "annual credit review",
+      "review my debts",
+      "how are my debts doing",
+      "go over my loans",
+    ]) {
+      expect(intent(text), text).toEqual({ kind: "debt_review" });
+    }
+    // What the autopilot does stays its own question.
+    expect(intent("what do you do about my debts")).toEqual({ kind: "debt_autopilot" });
+  });
+
   it("leaves requests and other questions alone", () => {
     expect(intent("lower the rate on my card")).toMatchObject({ kind: "act", verb: "lower" });
     expect(intent("what's due this week")).toMatchObject({ kind: "coming_up" });

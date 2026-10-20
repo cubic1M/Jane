@@ -20,6 +20,7 @@ import { loadCardInterest } from "@/lib/card-interest";
 import { loadStudentLongGame } from "@/lib/student-long-game";
 import { loadFamilyLoans } from "@/lib/family-loans";
 import { loadCreditGoals } from "@/lib/credit-goals";
+import { loadDebtReview } from "@/lib/debt-review";
 import { loadDebtTrouble } from "@/lib/debt-trouble";
 import { PROJECT_YEARS_DEFAULT } from "@/config/home-equity";
 import { compareHomeProject, loadHomeEquity } from "@/lib/home-equity";
@@ -51,6 +52,7 @@ import {
   creditGoalsToolOutput,
   homeEquityToolOutput,
   debtTroubleToolOutput,
+  debtReviewToolOutput,
 } from "./debt-tools";
 
 // Runs Claude's debt tools (./debt-tools.ts) for one person: read-only, scoped to them,
@@ -75,6 +77,8 @@ export async function runDebtTool(
       return out(debtsToolOutput(await loadDebts(userId, { client, now }), money));
     case "debt_autopilot":
       return out(debtAutopilotToolOutput(await loadDebtAutopilot(userId, { client, now }), money));
+    case "debt_review":
+      return out(debtReviewToolOutput(await loadDebtReview(userId, { client, now })));
     case "debt_trouble":
       return out(debtTroubleToolOutput(await loadDebtTrouble(userId, { client, now }), money));
     case "home_equity": {

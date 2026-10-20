@@ -779,3 +779,39 @@ test("the options when debt is too much are laid out as facts, with the pointer 
   // Facts only: nothing to send, nothing to apply for.
   await expect(page.getByRole("button", { name: /send|apply|file/i })).toHaveCount(0);
 });
+
+// Spec step 230: the yearly debt review: every item with its status, and in the chat one
+// message whose buttons each stay until used.
+test("the debt review lists every item, and the chat message keeps each button until it's used", async ({
+  context,
+  page,
+  baseURL,
+}) => {
+  const user = await signedInUser("user");
+  userId = user.userId;
+  await context.addCookies([
+    { name: "authjs.session-token", value: user.sessionToken, url: baseURL ?? "" },
+  ]);
+  await page.goto("/connect");
+  await page.getByRole("button", { name: "Link a demo bank" }).click();
+  await expect(page).toHaveURL("/chat", { timeout: 60_000 });
+
+  await page.goto("/loans/review");
+  await expect(page.getByRole("heading", { level: 1, name: "Your debt review" })).toBeVisible();
+  // Linking the bank did the first review (or it's about to be: Jane's pass may still be running).
+  await expect(page.getByRole("status")).toContainText(/first debt review/i);
+  const items = page.getByRole("list", { name: "Review items" }).getByRole("listitem");
+  await expect(items.first()).toContainText("Payments timed to statement dates");
+  await expect(items.getByRole("heading", { name: "0% promotions on pace" })).toBeVisible();
+  await expect(items.getByRole("heading", { name: "Lower-rate requests" })).toBeVisible();
+  await expect(items.getByRole("heading", { name: "PMI and escrow" })).toBeVisible();
+  await expect(page.getByRole("note").filter({ hasText: "At your level" })).toBeVisible();
+
+  // Asking in the chat shows the same items.
+  await page.goto("/chat");
+  const box = page.getByRole("textbox", { name: "Message Jane" });
+  await box.fill("do my yearly debt review");
+  await box.press("Enter");
+  await expect(page.getByText("Your debt review:").last()).toBeVisible({ timeout: 30_000 });
+  await expect(page.getByText(/Payments timed to statement dates/).last()).toBeVisible();
+});
