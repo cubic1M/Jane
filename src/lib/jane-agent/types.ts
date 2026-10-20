@@ -203,6 +203,21 @@ export const ACTION_IDS = [
   "tax.identity_step",
   // Spec step 219: a goal for the tax crypto and equity pay will bring.
   "tax.equity_aside",
+  // Spec step 220: put a multi-year tax move on the person's deadlines.
+  "tax.years_plan",
+  // Spec step 221: property tax: draft an appeal, say who files it, an exemption.
+  "tax.property_draft",
+  "tax.property_remind",
+  "tax.property_team",
+  "tax.property_self",
+  "tax.property_drop",
+  "tax.exemption_remind",
+  "tax.exemption_claimed",
+  // Spec step 222: the accountant's answers read.
+  "tax.accountant_seen",
+  // Spec step 223: pay an estimated payment, and December's moves on the deadlines.
+  "tax.estimate_pay",
+  "tax.yearend_plan",
   // Investments (spec step 129 on): the answer buttons on an investor-profile question,
   // by position (src/config/investing.ts PROFILE_QUESTIONS).
   "invest.answer.1",
@@ -230,6 +245,23 @@ export const ACTION_IDS = [
   // Spec step 162: cash moved where it earns more, one move a tap.
   "cash.to_savings",
   "cash.to_money_market",
+  // Spec step 210: raise the contribution for the match, or put money in an IRA.
+  "retire.match",
+  "retire.ira",
+  // Spec step 211: the question about a past employer's 401(k), and the rollover.
+  "oldplan.yes",
+  "oldplan.no",
+  "oldplan.rollover",
+  // Spec step 213: a gift link for a child's college fund, and money into their Roth IRA.
+  "family.gift_link",
+  "family.child_roth",
+  // Spec step 215: whether a premium found in the payments is whole life.
+  "costly.yes",
+  "costly.no",
+  // Spec step 216: harvest the losses the yearly review showed.
+  "review.harvest",
+  // Spec step 231: the swaps that put each investment in the right account, free of tax.
+  "location.free",
   // Jane notices changes (spec step 97).
   "change.look",
   "change.budget",
@@ -263,6 +295,9 @@ export const ACTION_IDS = [
   "whatif.adopt",
   "lean.start",
   "lean.not_now",
+  "steady.pay",
+  "steady.skip",
+  "steady.on",
   "unusual.me",
   "unusual.not_me",
 ] as const;
@@ -308,6 +343,13 @@ export type MessageRefs = {
   // Spec step 227: the plan "Start" saves, and the goal "I've done this month's list" ticks.
   creditGoalDraft?: { kind: string; targetScore: number; targetDate: string };
   creditGoalId?: string;
+  // Spec step 228: which drafted request the "I sent it" button records.
+  homeRequest?: "pmi" | "escrow";
+  // Spec step 230: the buttons of a debt review. Each is its own item, so the message stays
+  // open, minus the button just used, until every one has been.
+  reviewButtons?: string[];
+  // Spec step 245: the add-on found in the payments (key) or confirmed (id) a button is about.
+  carAddon?: { key?: string; id?: string };
   // Insurance (spec Phase X): a coverage gap by its key (GAP_KEYS), and the policy a
   // message is about.
   insuranceGap?: string;
@@ -421,6 +463,12 @@ export type MessageRefs = {
   priorReturn?: string;
   // Spec step 217: the tax notice (its id) a message is about.
   taxNotice?: string;
+  // Spec step 220: the multi-year tax move (its key) a message is about.
+  yearsMove?: string;
+  // Spec step 221: the property tax exemption (its key) a message is about.
+  propertyExemption?: string;
+  // Spec step 223: the estimated-tax due date a message is about.
+  estimateDue?: string;
   // Spec step 218: the sign of identity theft (and where Jane learned of it), and the step a
   // message is about.
   identitySign?: string;
@@ -445,6 +493,19 @@ export type MessageRefs = {
   cashPlan?: string;
   // Spec step 163: the pause before a sell has been shown; the next tap sells.
   paused?: true;
+  // Spec step 210: the IRA amount (cents) the button puts in.
+  iraCents?: number;
+  // Spec step 211: the old plan a question or rollover button is about.
+  oldPlanId?: string;
+  // Spec step 213: the child (and amount, cents) a button is about.
+  familyChild?: string;
+  familyPlan?: string;
+  // Spec step 215: the product a question is about.
+  productId?: string;
+  // Spec step 216: the harvesting list the yearly review showed, by its key.
+  harvestKey?: string;
+  // Spec step 231: the location plan the swap button belongs to, by its key.
+  locationKey?: string;
   // Spec step 97: a change Jane noticed (src/insights/changes.ts), by its key; for a
   // category's pace, the budget "Set a budget" would set (cents a month).
   change?: { key: string; kind: string; category?: string; budgetCents?: number };

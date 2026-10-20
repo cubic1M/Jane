@@ -46,6 +46,8 @@ export const CHAT_SOURCE_LIMITS: Readonly<Record<string, number>> = {
   attention: 1,
   // Spec step 204.
   lean: 1,
+  // Spec step 240.
+  steady: 1,
   // Spec step 208.
   unusual: 2,
   // Spec step 148.
@@ -159,6 +161,8 @@ export const MESSAGE_PRIORITY = {
   attention: 30,
   // Spec step 204: income stopped; right after urgent things.
   lean: 92,
+  // Spec step 240: a steady paycheck, once a month.
+  steady: 86,
   // Spec step 208: a charge that may not be theirs; as urgent as an alert.
   unusual: 95,
   // Spec step 148: the monthly money report, once a month, after what needs the person.
@@ -194,6 +198,24 @@ export const MESSAGE_PRIORITY = {
   cash: 38,
   // Spec step 163: one calm message in a big drop, ahead of the other investing messages.
   steady_hand: 44,
+  // Spec step 210: the match left on the table, and IRA room (demo advice).
+  retirement_accounts: 40,
+  // Spec step 211: the question about a past employer's 401(k), then the rollover.
+  old_plan: 39,
+  // Spec step 212: the retirement paycheck, from 15 years out (demo advice).
+  retirement_income: 35,
+  // Spec step 213: a gift link offer, and a child's Roth IRA (demo advice).
+  family: 33,
+  // Spec step 214: a rental's year, and paying down against investing (demo advice).
+  property: 32,
+  // Spec step 215: what a costly product costs, and the question that finds one (demo advice).
+  costly_products: 31,
+  // Spec step 216: the yearly investing review, one message (a raise puts it first).
+  yearly_review: 43,
+  // Spec step 231: the right investment in the right account (demo advice).
+  location: 34,
+  // Spec step 164: the month's summary of what Jane did by herself in investing.
+  investing_summary: 40,
   auto_invest_run: 31,
 } as const;
 

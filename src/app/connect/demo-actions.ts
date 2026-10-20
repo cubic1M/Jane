@@ -23,7 +23,7 @@ export async function linkDemo(): Promise<void> {
   if (created) {
     after(async () => {
       try {
-        await syncItem(itemId);
+        await syncItem(itemId, { progressive: true });
       } catch (error) {
         console.error("First demo bank sync failed", { itemId, error: String(error) });
       }

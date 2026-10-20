@@ -110,7 +110,7 @@ describe("POST /api/plaid/exchange", () => {
     expect(exchangePublicToken).toHaveBeenCalledWith("user_1", "public-sandbox-1", "Platypus");
     expect(syncItem).not.toHaveBeenCalled();
     for (const callback of afterCallbacks) await callback();
-    expect(syncItem).toHaveBeenCalledWith("item_row_1");
+    expect(syncItem).toHaveBeenCalledWith("item_row_1", { progressive: true });
   });
 
   it("rejects anything that isn't a public token", async () => {

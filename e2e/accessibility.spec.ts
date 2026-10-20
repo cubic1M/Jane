@@ -54,6 +54,13 @@ const SIGNED_IN = [
   "/investments/company-stock",
   "/investments/crypto",
   "/investments/cash",
+  "/investments/retirement-accounts",
+  "/investments/old-accounts",
+  "/investments/retirement-income",
+  "/investments/family",
+  "/investments/property",
+  "/investments/costly-products",
+  "/investments/location",
   "/learn",
   "/learn/index-funds",
   "/loans",
@@ -69,6 +76,9 @@ const SIGNED_IN = [
   // Spec steps 144 and 148.
   "/transfers",
   "/monthly",
+  // Spec steps 203 and 209.
+  "/what-if",
+  "/long-view",
   "/connect",
   "/import",
   "/things",

@@ -10,6 +10,8 @@ export const RATE_LIMITS = {
   auth: { limit: 10, windowSeconds: 10 * 60 },
   // Plaid link tokens and token exchanges, per user.
   plaid: { limit: 20, windowSeconds: 10 * 60 },
+  // Gifts through a share link (spec step 213), per IP.
+  gift: { limit: 10, windowSeconds: 10 * 60 },
   // Yes, no and undo on decision cards, per user.
   decisions: { limit: 60, windowSeconds: 60 },
   // Membership buttons, per user.

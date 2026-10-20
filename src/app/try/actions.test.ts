@@ -76,7 +76,7 @@ describe("tryJane", () => {
     expect(cleanUpTrials).not.toHaveBeenCalled();
     expect(afterJobs).toHaveLength(1);
     await afterJobs[0]();
-    expect(syncItem).toHaveBeenCalledWith("item_1");
+    expect(syncItem).toHaveBeenCalledWith("item_1", { progressive: true });
     expect(cleanUpTrials).toHaveBeenCalled();
   });
 
@@ -85,6 +85,17 @@ describe("tryJane", () => {
     await expect(tryJane(null, agreed())).rejects.toThrow("NEXT_REDIRECT");
     await afterJobs[0]();
     expect(cleanUpTrials).toHaveBeenCalled();
+  });
+
+  it("lets the visitor pick a life, or picks one for them (spec step 252)", async () => {
+    const data = agreed();
+    data.set("person", "retiree");
+    await expect(tryJane(null, data)).rejects.toThrow("NEXT_REDIRECT");
+    expect(startTrial).toHaveBeenLastCalledWith(expect.objectContaining({ person: "retiree" }));
+    const any = agreed();
+    any.set("person", "any");
+    await expect(tryJane(null, any)).rejects.toThrow("NEXT_REDIRECT");
+    expect(vi.mocked(startTrial).mock.lastCall?.[0]?.person).toMatch(/^[a-z]+$/);
   });
 
   it("uses the secure cookie on HTTPS", async () => {

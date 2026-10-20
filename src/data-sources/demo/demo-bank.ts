@@ -1,4 +1,5 @@
 import type { AccountBase, LiabilitiesObject, Transaction } from "plaid";
+import { isPersonSeed, personAccounts, personLiabilities, personTransactions } from "./demo-people";
 import { PFC_TAXONOMY, type PfcDetailed, type PfcPrimary } from "@/categorize/taxonomy";
 
 // A fake bank (spec step 75) that stands in for Plaid until there are keys. It produces
@@ -14,14 +15,20 @@ export const DEMO_INSTITUTION = "Demo Bank (fake data)";
 
 // The anchor is the day the demo bank was linked; one-off events are placed around it so
 // they always look recent on the first scan.
-export type DemoSeed = { seed: string; anchor: string };
+export type DemoSeed = {
+  seed: string;
+  anchor: string;
+  // Spec step 252: which sample person this bank is (src/config/people.ts); the original
+  // demo bank when left out.
+  person?: string;
+};
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 export const addDays = (day: string, days: number) =>
   new Date(Date.parse(`${day}T00:00:00Z`) + days * DAY_MS).toISOString().slice(0, 10);
 
 // A small seeded random number in [0, 1), so amounts vary but never change between syncs.
-function random(key: string): number {
+export function random(key: string): number {
   let h = 2166136261;
   for (let i = 0; i < key.length; i += 1) {
     h ^= key.charCodeAt(i);
@@ -34,7 +41,7 @@ function random(key: string): number {
   return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
 }
 
-const primaryOf = (detailed: PfcDetailed): PfcPrimary =>
+export const primaryOf = (detailed: PfcDetailed): PfcPrimary =>
   (Object.keys(PFC_TAXONOMY) as PfcPrimary[]).find((p) =>
     (PFC_TAXONOMY[p] as readonly string[]).includes(detailed),
   )!;
@@ -51,9 +58,16 @@ type AccountKey =
   // Spec step 159: a demo HSA, only when the person links one (DemoExtra).
   | "hsa"
   // Spec step 160: a demo employer stock plan (vested RSUs).
-  | "stock_plan";
+  | "stock_plan"
+  // Spec step 210: a demo Roth IRA.
+  | "roth_ira"
+  // Spec step 211: a demo traditional IRA to roll an old 401(k) into.
+  | "rollover_ira"
+  // Spec step 213: a child's demo custodial account and Roth IRA.
+  | "custodial"
+  | "child_roth";
 
-export const accountId = (seed: string, key: AccountKey) => `demo-${seed}-${key}`;
+export const accountId = (seed: string, key: AccountKey | (string & {})) => `demo-${seed}-${key}`;
 
 type Template = {
   key: string;
@@ -605,7 +619,7 @@ function transaction(t: Template, day: string, demo: DemoSeed): Transaction {
   } as unknown as Transaction;
 }
 
-const lastDayOfMonth = (year: number, month: number) =>
+export const lastDayOfMonth = (year: number, month: number) =>
   new Date(Date.UTC(year, month + 1, 0)).getUTCDate();
 
 // Transactions dated after `after` (exclusive; null for the first sync) through `through`.
@@ -614,6 +628,7 @@ export function demoTransactions(
   after: string | null,
   through: string,
 ): Transaction[] {
+  if (isPersonSeed(demo)) return personTransactions(demo, after, through);
   const start = after ?? addDays(through, -DEMO_HISTORY_DAYS);
   const inRange = (day: string) => day > start && day <= through;
   const out: Transaction[] = [];
@@ -670,7 +685,9 @@ const account = (
     balances: { current, available: null, limit: null, iso_currency_code: "USD" },
   }) as unknown as AccountBase;
 
-export function demoAccounts({ seed }: DemoSeed, extras: readonly DemoExtra[] = []): AccountBase[] {
+export function demoAccounts(demo: DemoSeed, extras: readonly DemoExtra[] = []): AccountBase[] {
+  if (isPersonSeed(demo)) return personAccounts(demo);
+  const { seed } = demo;
   return [
     account(seed, "checking", "Demo Checking", "0001", "depository", "checking", 3840.12),
     account(seed, "savings", "Demo Savings", "0002", "depository", "savings", 24310),
@@ -685,6 +702,28 @@ export function demoAccounts({ seed }: DemoSeed, extras: readonly DemoExtra[] = 
       ? [account(seed, "hsa", "Demo HSA", "0009", "investment", "hsa", 4271.8)]
       : []),
     // Spec step 160: vested Acme shares from work, at the demo price.
+    ...(extras.includes("custodial")
+      ? [
+          account(
+            seed,
+            "custodial",
+            "Demo Custodial Account (child's)",
+            "0013",
+            "investment",
+            "custodial",
+            0,
+          ),
+        ]
+      : []),
+    ...(extras.includes("child_roth")
+      ? [account(seed, "child_roth", "Demo Child Roth IRA", "0014", "investment", "child roth", 0)]
+      : []),
+    ...(extras.includes("rollover_ira")
+      ? [account(seed, "rollover_ira", "Demo Rollover IRA", "0012", "investment", "ira", 0)]
+      : []),
+    ...(extras.includes("roth_ira")
+      ? [account(seed, "roth_ira", "Demo Roth IRA", "0011", "investment", "roth", 6400)]
+      : []),
     ...(extras.includes("stock_plan")
       ? [account(seed, "stock_plan", "Demo Stock Plan", "0010", "investment", "stock plan", 20460)]
       : []),
@@ -692,11 +731,18 @@ export function demoAccounts({ seed }: DemoSeed, extras: readonly DemoExtra[] = 
 }
 
 // Extra stand-in accounts a demo-bank person can link (spec step 159 on).
-export const DEMO_EXTRAS = ["hsa", "stock_plan"] as const;
+export const DEMO_EXTRAS = [
+  "hsa",
+  "stock_plan",
+  "roth_ira",
+  "rollover_ira",
+  "custodial",
+  "child_roth",
+] as const;
 export type DemoExtra = (typeof DEMO_EXTRAS)[number];
 
 // The next time a day of the month comes round, after `today`.
-function nextDayOfMonth(today: string, dayOfMonth: number): string {
+export function nextDayOfMonth(today: string, dayOfMonth: number): string {
   for (let i = 1; i <= 31; i += 1) {
     const day = addDays(today, i);
     if (Number(day.slice(8)) === dayOfMonth) return day;
@@ -705,7 +751,7 @@ function nextDayOfMonth(today: string, dayOfMonth: number): string {
 }
 
 // The last time a day of the month came round, on or before `today`.
-function lastDayOfMonthOn(today: string, dayOfMonth: number): string {
+export function lastDayOfMonthOn(today: string, dayOfMonth: number): string {
   for (let i = 0; i <= 31; i += 1) {
     const day = addDays(today, -i);
     if (Number(day.slice(8)) === dayOfMonth) return day;
@@ -713,10 +759,12 @@ function lastDayOfMonthOn(today: string, dayOfMonth: number): string {
   return addDays(today, -30);
 }
 
-const yearsAfter = (day: string, years: number) =>
+export const yearsAfter = (day: string, years: number) =>
   `${Number(day.slice(0, 4)) + years}${day.slice(4, 7)}-01`;
 
-export function demoLiabilities({ seed, anchor }: DemoSeed, today: string): LiabilitiesObject {
+export function demoLiabilities(demo: DemoSeed, today: string): LiabilitiesObject {
+  if (isPersonSeed(demo)) return personLiabilities(demo, today);
+  const { seed, anchor } = demo;
   return {
     credit: [
       {
