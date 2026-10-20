@@ -71,6 +71,8 @@ export type TaxIntent =
   | { kind: "tax"; ask: "years" }
   // Spec step 221: property tax too high, and exemptions.
   | { kind: "tax"; ask: "property" }
+  // Spec step 222: working with an accountant.
+  | { kind: "tax"; ask: "accountant" }
   | { kind: "tax"; ask: "retire_year"; year: number }
   // Spec step 218: a sign of identity theft, or the IP PIN.
   | { kind: "tax"; ask: "identity"; sign: "efile_rejected" | "unknown_form" | "irs_letter" | null };
@@ -221,6 +223,8 @@ const YEARS_ASK =
   /\b(?:taxes|tax bill)\b.*\b(?:over (?:the )?(?:next )?(?:several |many |few |\d+ )?years|in retirement|multi[- ]?year)\b|\bmulti[- ]?year (?:tax|plan)\b|\broth conversions?\b|\bconvert (?:my )?(?:401k|401\(k\)|ira|traditional \w+)\b.*\broth\b|\bbunch(?:ing)? (?:my )?deductions\b|\b0% (?:capital gains )?(?:tax )?bracket\b|\bwhen (?:should|do) i (?:take|time) (?:my |the |a )?(?:bonus|withdrawal)\b.*\btax/;
 const PROPERTY_ASK =
   /\bproperty tax(?:es)?\b.*\b(?:too high|appeal|assess\w*|lower|reduce|exempt\w*|protest)\b|\b(?:appeal|protest|contest|challenge)\b.*\b(?:property tax(?:es)?|assessment|assessed value)\b|\bover-?assessed\b|\bassessed (?:value|too high)\b|\bhomestead exemption\b|\b(?:senior|veteran|veterans)\b.*\bproperty tax\b/;
+const ACCOUNTANT_ASK =
+  /\baccountants?\b.*\b(?:link|share|send|give|hand|access|answer)\w*\b|\b(?:share|send|give|hand)\b.*\b(?:accountant|cpa|tax (?:preparer|pro|professional))\b|\b(?:do|should) i (?:need|use|hire|get) (?:an? )?(?:accountant|cpa|tax (?:preparer|pro|professional))\b|\bwork(?:ing)? with (?:an? |my )?(?:accountant|cpa)\b|\bmy (?:accountant|cpa) (?:wrote|answered|replied|said)\b/;
 const RETIRE_YEAR = /\b(?:plan|expect|want|hope|aim) to retire (?:in|by) (\d{4})\b/;
 const PACK = /\btax(?:-| )?time pack\b|\btax pack\b|\byear-end pack\b/;
 
@@ -235,6 +239,7 @@ export function parseTaxIntent(text: string): TaxIntent | null {
   if (EQUITY_ASK.test(text)) return { kind: "tax", ask: "equity" };
   const retire = text.match(RETIRE_YEAR);
   if (retire) return { kind: "tax", ask: "retire_year", year: Number(retire[1]) };
+  if (ACCOUNTANT_ASK.test(text)) return { kind: "tax", ask: "accountant" };
   if (PROPERTY_ASK.test(text)) return { kind: "tax", ask: "property" };
   if (YEARS_ASK.test(text)) return { kind: "tax", ask: "years" };
   if (IDENTITY_REJECTED.test(text)) return { kind: "tax", ask: "identity", sign: "efile_rejected" };

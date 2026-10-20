@@ -102,6 +102,14 @@ export const CAPABILITIES: readonly Capability[] = [
     tools: ["my_profile"],
     answer: janeAnswer,
   },
+  // Spec step 240: a steady paycheck from uneven income.
+  {
+    id: "steady_pay",
+    bank: ["steady"],
+    kinds: ["steady_pay"],
+    tools: ["steady_pay"],
+    answer: janeAnswer,
+  },
   {
     id: "did",
     bank: ["timeline", "settings"],

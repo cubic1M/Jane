@@ -11,6 +11,7 @@ import { QUESTIONS } from "./bank";
 const tools = new Set(CHAT_TOOLS.map((t) => t.name));
 // Pages with nothing to ask about: sign-in, legal, the admin area, redirects and plumbing.
 const NOT_ASKABLE = new Set([
+  "accountant",
   "admin",
   "gift",
   "api",

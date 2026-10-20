@@ -108,6 +108,8 @@ export type Intent =
   | { kind: "health" }
   // Spec step 148: "my monthly report".
   | { kind: "monthly_report" }
+  // Spec step 240: "my steady paycheck", "my income is uneven".
+  | { kind: "steady_pay" }
   // Spec step 203: "what if I lose my job?"; step 209: "where will I be in 30 years?"
   | WhatIfIntent
   | LongViewIntent
@@ -352,6 +354,8 @@ const HEALTH =
   /\b(?:health score|money health|financial health|financial wellness)\b|\bhow healthy (?:are|is) my (?:money|finances)\b/;
 const MONTHLY_REPORT =
   /\b(?:monthly|money|month'?s) report\b|\bmonth in review\b|\breport (?:for|on) (?:last|this) month\b/;
+const STEADY =
+  /\bsteady (?:paycheck|pay|income)\b|\b(?:my|the) (?:income|pay|paychecks?) (?:is|are) (?:uneven|irregular|unpredictable|all over the place)\b|\b(?:uneven|irregular|freelance|variable) income\b|\bpay myself (?:a )?(?:steady|regular)\b/;
 const PRIORITIES =
   /\bwhat should i do (?:first|next|now)\b|\bwhat matters (?:most|now)\b|\bwhat'?s (?:most )?important\b|\bwhere (?:do|should) i start\b|\bmy (?:top )?priorities\b|\bnext best thing\b/;
 // Spec step 183. "Am I OK to buy …" is a purchase question, and goals have their own answer.
@@ -518,6 +522,7 @@ export function parseIntent(
   if (longView) return longView;
   const profile = parseProfile(text);
   if (profile) return profile;
+  if (STEADY.test(text)) return { kind: "steady_pay" };
   if (WHY_DID.test(text)) return { kind: "timeline", why: true };
   if (TIMELINE.test(text)) return { kind: "timeline", why: false };
   if (WHOLE_MONTH.test(text)) return { kind: "whole_picture", focus: "month" };

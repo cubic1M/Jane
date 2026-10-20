@@ -29,6 +29,8 @@ import { loadTimeline } from "@/lib/timeline";
 import { timelineReply } from "../replies-timeline";
 import { healthFor } from "@/lib/health-score";
 import { healthReply } from "../replies-health";
+import { loadSteady } from "@/lib/steady-pay";
+import { steadyReply } from "../replies-steady";
 import { whatIf } from "@/lib/what-if";
 import { loadLongView } from "@/lib/long-view";
 import { loadProfile } from "@/lib/profile";
@@ -98,6 +100,9 @@ async function answer(ctx: CapabilityContext): Promise<Reply | null> {
     // Spec step 253.
     case "profile":
       return profileReply(await loadProfile(userId, { client, now }));
+    // Spec step 240.
+    case "steady_pay":
+      return steadyReply(await loadSteady(userId, { client, now }));
     case "health":
       return healthReply(await healthFor(userId, { client, now }));
     case "checked":
