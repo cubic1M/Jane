@@ -19,6 +19,9 @@ export const BUSINESS_DEPOSITS_MIN = 24;
 export const PENSION_PATTERN =
   /SSA TREAS|SOCIAL SEC|PENSION|RETIREMENT SYSTEM|TEACHERS RETIREMENT/i;
 
+// An employer that has paid in this many days is still an earner in the household.
+export const EARNER_ACTIVE_DAYS = 45;
+
 // Debt trouble: this many overdraft, insufficient-funds or late fees in the year, card debt
 // of this many months of income, or any payday loan.
 export const TROUBLE_FEES_MIN = 4;

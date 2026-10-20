@@ -18,5 +18,4 @@ export const DETECTOR_EXEMPT: Readonly<Record<string, string>> = {
   act: "carries out a button the person tapped",
   autopilot: "settings for what Jane may do alone",
   memory: "what Jane remembers",
-  life_event: "checklists the person opens; suggestions arrive through the detectors",
 };

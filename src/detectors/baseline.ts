@@ -8,7 +8,14 @@ import type { PersonId } from "@/config/people";
 
 export const BASELINE: Readonly<Record<PersonId, readonly string[]>> = {
   renter: ["bank_fees", "card_interest", "emergency_fund", "subscriptions"],
-  family: ["emergency_fund", "life_insurance", "pmi_removal", "subscriptions"],
+  family: [
+    "emergency_fund",
+    "household_setup",
+    "life_checklist",
+    "life_insurance",
+    "pmi_removal",
+    "subscriptions",
+  ],
   freelancer: [
     "emergency_fund",
     "estimated_taxes",
@@ -17,7 +24,7 @@ export const BASELINE: Readonly<Record<PersonId, readonly string[]>> = {
     "subscriptions",
   ],
   equity: ["concentration", "idle_cash", "refinance", "subscriptions"],
-  preretire: ["idle_cash"],
+  preretire: ["household_setup", "idle_cash"],
   retiree: ["idle_cash", "subscriptions"],
   debt: [
     "bank_fees",

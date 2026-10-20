@@ -15,6 +15,7 @@ export function inputFor(person: string, told: ProfileInput["told"] = {}): Profi
   return {
     today: SAMPLE_TODAY,
     told,
+    extras: { householdMembers: 0 },
     transactions: demoTransactions(demo, null, SAMPLE_TODAY).map((t) => ({
       date: t.date,
       amountCents: Math.round(t.amount * 100),
