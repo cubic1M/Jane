@@ -22,6 +22,7 @@ import type { CardInterest } from "@/lib/card-interest";
 import type { LongGame } from "@/lib/student-long-game";
 import type { FamilyLoans } from "@/lib/family-loans";
 import type { CreditGoals } from "@/lib/credit-goals";
+import type { HomeEquity, ProjectComparison } from "@/lib/home-equity";
 import { REWARD_CATEGORY_LABELS } from "@/config/credit-cards";
 import type { DebtAutopilot } from "@/lib/debt-autopilot";
 import { PMI_SOURCE } from "@/config/debt";
@@ -186,6 +187,24 @@ export const DEBT_TOOLS: Anthropic.Tool[] = [
     input_schema: noInput,
   },
   {
+    name: "home_equity",
+    description:
+      "A home's equity, used well: PMI measured against the home's original value (what the person told Jane; the balance that lets them ask to cancel at 80% and the 78% where it ends by itself, with dates at the current payment, and the drafted request), the escrow in the payment checked against the property tax and insurance bills the person gave (the surplus above a year of bills and the two-month cushion, or a shortage, with the drafted refund request), and, in demo advice mode, a HELOC, a cash-out refinance and a personal loan compared for a project (pass project_cents and optionally years) with the total cost of each (stand-in lender terms, not offers). Jane never sends a request to a servicer or applies for anything: the person sends it and taps homeeq.sent. Rules from the CFPB and Regulation X.",
+    input_schema: {
+      type: "object" as const,
+      properties: {
+        project_cents: {
+          type: "integer" as const,
+          description: "A home project's cost in cents, to compare ways to pay for it (optional).",
+        },
+        years: {
+          type: "integer" as const,
+          description: "Years to pay a HELOC or personal loan back (optional, default 10).",
+        },
+      },
+    },
+  },
+  {
     name: "mortgage",
     description:
       "The person's mortgage, watched: balance, rate, payment; whether it has PMI and the loan as a share of the home's value (from the value they gave), with whether PMI can come off and the steps (rules from the CFPB); escrow balance and any escrow change in the payment; what extra principal each month would save; the best refinance offer's monthly saving, closing costs and break-even months.",
@@ -337,6 +356,7 @@ export const DEBT_TOOL_STATUS: Readonly<Record<string, string>> = {
   student_long_game: "Looking at your student loan's long game…",
   family_loans: "Looking at who owes whom…",
   credit_goals: "Looking at your credit plan…",
+  home_equity: "Checking your home loan…",
 };
 
 export function refinanceToolOutput(refi: Refinance, money: (cents: number) => string) {
@@ -949,6 +969,67 @@ export function familyLoansToolOutput(data: FamilyLoans, money: (cents: number) 
       monthly: s.paymentCents === null ? null : money(s.paymentCents),
       yourHalf: s.yourShareCents === null ? null : money(s.yourShareCents),
     })),
+  };
+}
+
+export function homeEquityToolOutput(
+  data: HomeEquity,
+  project: ProjectComparison | null,
+  money: (cents: number) => string,
+) {
+  if (!data.available) return { note: "No mortgage with a balance." };
+  const e = data.escrow;
+  return {
+    loan: data.loanName,
+    balance: money(data.balanceCents),
+    hasPmi: data.hasPmi,
+    originalValueGiven:
+      data.facts.originalValueCents === null ? null : money(data.facts.originalValueCents),
+    pmi: data.pmi && {
+      loanAsShareOfOriginalValue: Math.round(data.pmi.ltv * 1000) / 10,
+      canAskToCancelNow: data.pmi.canAskNow,
+      balanceToAsk: money(data.pmi.askBalanceCents),
+      endsByItselfNow: data.pmi.endsNow,
+      balanceWhereItEnds: money(data.pmi.autoBalanceCents),
+      canAskAround: data.pmi.askOn,
+      endsAround: data.pmi.autoOn,
+      requestSentOn: data.facts.pmiLetterSentOn,
+    },
+    pmiRequestLetter: data.pmiLetter,
+    escrow:
+      e === null
+        ? null
+        : e.kind === "unknown"
+          ? { unknown: e.why }
+          : {
+              verdict: e.kind,
+              billsAYear: money(e.billsCents),
+              escrowInPaymentAYear: money(e.collectedYearlyCents),
+              mostTheServicerMayHold: money(e.allowedBalanceCents),
+              surplus: money(e.surplusCents),
+              requestSentOn: data.facts.escrowRequestSentOn,
+            },
+    escrowRefundRequestLetter: data.escrowLetter,
+    projectComparison:
+      project === null
+        ? data.advice
+          ? "Give project_cents to compare."
+          : "Only for the demo bank."
+        : {
+            project: money(project.projectCents),
+            years: project.years,
+            standInLenderTermsNotOffers: true,
+            options: project.options.map((o) => ({
+              product: o.label,
+              available: o.available,
+              why: o.why,
+              ratePercent: o.aprBps / 100,
+              years: o.years,
+              monthly: money(o.monthlyCents),
+              upFront: money(o.upfrontCents),
+              totalCost: money(o.totalCostCents),
+            })),
+          },
   };
 }
 

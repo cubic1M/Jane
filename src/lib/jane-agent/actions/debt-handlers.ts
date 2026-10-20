@@ -2,6 +2,7 @@ import type { DEBT_ACTION_IDS } from "../debt-action-ids";
 import { bnplPayoff } from "./bnpl";
 import { cardRateSend } from "./card-interest";
 import { creditGoalDone, creditGoalStart } from "./credit-goal";
+import { homeEquitySent } from "./home-equity";
 import { famLoanNo, famLoanYes } from "./family-loans";
 import { creditFixSend } from "./credit-report-fixes";
 import { homeGoal } from "./home-buying";
@@ -42,4 +43,5 @@ export const DEBT_ACTION_HANDLERS: Readonly<
   "famloan.no": famLoanNo,
   "creditgoal.start": creditGoalStart,
   "creditgoal.done": creditGoalDone,
+  "homeeq.sent": homeEquitySent,
 };

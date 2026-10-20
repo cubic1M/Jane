@@ -419,6 +419,13 @@ async function LoansContent({
             .
           </p>
           <p className="text-sm text-zinc-600 dark:text-zinc-400">
+            PMI, escrow or a home project?{" "}
+            <Link href="/loans/equity" className={LINK}>
+              Your home loan, used well
+            </Link>
+            .
+          </p>
+          <p className="text-sm text-zinc-600 dark:text-zinc-400">
             Need a credit score by a date?{" "}
             <Link href="/loans/goal" className={LINK}>
               Plan it month by month

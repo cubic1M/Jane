@@ -53,6 +53,7 @@ export const DEBT_SOURCE_LIMITS = {
   student_long_game: 1,
   family_loans: 1,
   credit_goal: 2,
+  home_equity: 2,
 } as const;
 export const DEBT_MESSAGE_PRIORITY = {
   // A buy now, pay later plan Jane found, then a debt with no rate: news that can wait,
@@ -134,6 +135,11 @@ export const DEBT_MESSAGE_PRIORITY = {
   // Spec step 227: a month's credit checklist has a date; a plan out of reach comes after.
   credit_goal_month: 57,
   credit_goal_short: 39,
+  // Spec step 228: PMI that can come off is money every month, and escrow held beyond the
+  // bills is money back; a payment that ignored the 78% rule comes after.
+  home_pmi_ask: 56,
+  home_escrow_over: 55,
+  home_pmi_auto: 54,
 } as const;
 
 // What Jane does about debts by herself at each autopilot level (src/config/autopilot.ts),
@@ -227,6 +233,10 @@ export const DEBT_AUTOPILOT: Readonly<
       step: 227,
       does: "When you tell me the credit score you need and by when, builds a month-by-month plan from the score simulator (what to pay down, accounts to keep open, no new applications, a rapid rescore before a mortgage), and brings up each month's checklist. Starting the plan is your tap; the scores are estimates.",
     },
+    {
+      step: 228,
+      does: "Measures PMI against your home's original value and drafts the request when you can ask (80%), watches for it to end by itself (78%), checks your escrow against your real tax and insurance bills and drafts a refund request when it's overfunded, and compares a HELOC, a cash-out refinance and a personal loan for a home project with each one's total cost. I never send a request to your servicer or apply for anything.",
+    },
   ],
   safe: [
     {
@@ -313,6 +323,10 @@ export const DEBT_AUTOPILOT: Readonly<
       step: 227,
       does: "When you tell me the credit score you need and by when, builds a month-by-month plan from the score simulator (what to pay down, accounts to keep open, no new applications, a rapid rescore before a mortgage), and brings up each month's checklist. Starting the plan is your tap; the scores are estimates.",
     },
+    {
+      step: 228,
+      does: "Measures PMI against your home's original value and drafts the request when you can ask (80%), watches for it to end by itself (78%), checks your escrow against your real tax and insurance bills and drafts a refund request when it's overfunded, and compares a HELOC, a cash-out refinance and a personal loan for a home project with each one's total cost. I never send a request to your servicer or apply for anything.",
+    },
   ],
   all: [
     {
@@ -398,6 +412,10 @@ export const DEBT_AUTOPILOT: Readonly<
     {
       step: 227,
       does: "When you tell me the credit score you need and by when, builds a month-by-month plan from the score simulator (what to pay down, accounts to keep open, no new applications, a rapid rescore before a mortgage), and brings up each month's checklist. Starting the plan is your tap; the scores are estimates.",
+    },
+    {
+      step: 228,
+      does: "Measures PMI against your home's original value and drafts the request when you can ask (80%), watches for it to end by itself (78%), checks your escrow against your real tax and insurance bills and drafts a refund request when it's overfunded, and compares a HELOC, a cash-out refinance and a personal loan for a home project with each one's total cost. I never send a request to your servicer or apply for anything.",
     },
   ],
 };

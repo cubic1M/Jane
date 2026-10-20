@@ -20,6 +20,8 @@ import { loadCardInterest } from "@/lib/card-interest";
 import { loadStudentLongGame } from "@/lib/student-long-game";
 import { loadFamilyLoans } from "@/lib/family-loans";
 import { loadCreditGoals } from "@/lib/credit-goals";
+import { PROJECT_YEARS_DEFAULT } from "@/config/home-equity";
+import { compareHomeProject, loadHomeEquity } from "@/lib/home-equity";
 import { listApplications } from "@/lib/loan-applications";
 import { loadRefinance } from "@/lib/refinance";
 import {
@@ -46,6 +48,7 @@ import {
   studentLongGameToolOutput,
   familyLoansToolOutput,
   creditGoalsToolOutput,
+  homeEquityToolOutput,
 } from "./debt-tools";
 
 // Runs Claude's debt tools (./debt-tools.ts) for one person: read-only, scoped to them,
@@ -70,6 +73,23 @@ export async function runDebtTool(
       return out(debtsToolOutput(await loadDebts(userId, { client, now }), money));
     case "debt_autopilot":
       return out(debtAutopilotToolOutput(await loadDebtAutopilot(userId, { client, now }), money));
+    case "home_equity": {
+      const args = (input ?? {}) as { project_cents?: unknown; years?: unknown };
+      const project =
+        typeof args.project_cents === "number"
+          ? await compareHomeProject(
+              userId,
+              {
+                projectCents: args.project_cents,
+                years: typeof args.years === "number" ? args.years : PROJECT_YEARS_DEFAULT,
+              },
+              { client, now },
+            ).catch(() => null)
+          : null;
+      return out(
+        homeEquityToolOutput(await loadHomeEquity(userId, { client, now }), project, money),
+      );
+    }
     case "credit_goals":
       return out(creditGoalsToolOutput(await loadCreditGoals(userId, { client, now }), money));
     case "family_loans":

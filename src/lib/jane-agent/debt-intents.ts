@@ -50,6 +50,14 @@ export type DebtIntent =
       goalKind: "mortgage" | "car" | "other";
     }
   | { kind: "student_long" }
+  // Spec step 228: "when does my PMI end by itself?", "is my escrow too high?", "HELOC or
+  // cash-out refinance for a $40,000 kitchen?".
+  | {
+      kind: "home_equity";
+      topic: "pmi" | "escrow" | "project";
+      projectCents: number | null;
+      years: number | null;
+    }
   | { kind: "card_interest" }
   | { kind: "report_fixes" }
   | { kind: "medical_bills" }
@@ -91,6 +99,7 @@ export const DEBT_KINDS = new Set<string>([
   "student_long",
   "family_loans",
   "credit_goal",
+  "home_equity",
 ]);
 export const isDebtIntent = (intent: { kind: string }): intent is DebtIntent =>
   DEBT_KINDS.has(intent.kind);
@@ -218,6 +227,34 @@ const MONTH_NAMES = [
   "november",
   "december",
 ];
+// Spec step 228. Checked before the tax words are turned away, and only on these words.
+const EQUITY_PROJECT =
+  /\bhelocs?\b|\bhome equity (?:loan|line)s?\b|\bcash[- ]out (?:refinanc\w*|refi)\b|\b(?:pay for|finance|fund|borrow for|afford)\b.*\b(?:kitchen|bathroom|renovat\w*|remodel\w*|home addition|roof|home (?:project|improvement|repair)s?)\b/;
+const EQUITY_ESCROW =
+  /\bescrow\b.*\b(?:too (?:high|much)|overfund\w*|overpa\w+|over paying|refund|surplus|shortage|analysis|enough|right|correct|match|bills|tax(?:es)? and insurance)\b|\b(?:overfund\w*|overpa\w+|over paying)\b.*\bescrow\b/;
+const EQUITY_PMI =
+  /\bpmi\b.*\b(?:78|automatic\w*|by itself|drop off|fall off|original (?:value|appraisal|price)|how long|when (?:will|does|do))\b|\b(?:78|automatic\w*|original (?:value|appraisal|price))\b.*\bpmi\b|\bwhen (?:will|does|do) (?:my )?pmi (?:end|stop|go|drop|cancel)\b/;
+const EQUITY_TAXY = /\b(?:deduct\w*|write[- ]?offs?|1098|schedule a|itemiz\w*)\b/;
+function equityIntent(text: string, amountCents: number | null): DebtIntent | null {
+  if (EQUITY_TAXY.test(text)) return null;
+  const years = /\b(?:over|in|for|across) (\d{1,2}) years?\b/.exec(text);
+  if (EQUITY_PROJECT.test(text)) {
+    return {
+      kind: "home_equity",
+      topic: "project",
+      projectCents: amountCents,
+      years: years ? Number(years[1]) : null,
+    };
+  }
+  if (EQUITY_ESCROW.test(text)) {
+    return { kind: "home_equity", topic: "escrow", projectCents: null, years: null };
+  }
+  if (EQUITY_PMI.test(text)) {
+    return { kind: "home_equity", topic: "pmi", projectCents: null, years: null };
+  }
+  return null;
+}
+
 const CREDIT_GOAL =
   /\b(?:credit )?score\b.*\b(?:need|want|get|reach|hit|raise|goal|target|by|in)\b|\b(?:need|want|get|reach|hit|raise)\b.*\b(?:credit )?score\b|\bcredit (?:goal|plan)\b/;
 function goalFrom(text: string, asOf: string) {
@@ -275,6 +312,8 @@ export function parseDebtIntent(
   amountCents: number | null = null,
   asOf: string = new Date().toISOString().slice(0, 10),
 ): DebtIntent | null {
+  const equity = equityIntent(text, amountCents);
+  if (equity) return equity;
   // Taxes owed are the tax questions' (./tax-intents.ts).
   if (/\b(?:tax|taxes|irs|tax refund)\b/.test(text)) return null;
   // "Lower the rate on my card" is a request, not a question (./intents.ts act).

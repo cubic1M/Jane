@@ -17,7 +17,9 @@ import { loadReportFixes } from "@/lib/credit-report-fixes";
 import { loadCardInterest } from "@/lib/card-interest";
 import { loadStudentLongGame } from "@/lib/student-long-game";
 import { loadFamilyLoans } from "@/lib/family-loans";
+import { PROJECT_YEARS_DEFAULT } from "@/config/home-equity";
 import { checkGoalDraft, loadCreditGoals, planFor } from "@/lib/credit-goals";
+import { compareHomeProject, loadHomeEquity } from "@/lib/home-equity";
 import { pullCredit } from "@/lib/credit";
 import { listApplications } from "@/lib/loan-applications";
 import { checkRates, loadRefinance } from "@/lib/refinance";
@@ -40,6 +42,7 @@ import { cardInterestReply } from "./card-interest-replies";
 import { longGameReply } from "./student-long-game-replies";
 import { familyLoansReply } from "./family-loans-replies";
 import { creditGoalReply } from "./credit-goal-replies";
+import { homeEquityReply } from "./home-equity-replies";
 import type { Reply } from "./replies";
 
 // Answers questions about debts by rules (spec Phase Y), with the same loaders as the
@@ -107,6 +110,18 @@ export async function answerDebt(
         }
       }
       return creditGoalReply(goals, null, { score: intent.targetScore });
+    }
+    case "home_equity": {
+      const data = await loadHomeEquity(userId, { client, now });
+      const project =
+        intent.topic === "project" && intent.projectCents !== null
+          ? await compareHomeProject(
+              userId,
+              { projectCents: intent.projectCents, years: intent.years ?? PROJECT_YEARS_DEFAULT },
+              { client, now },
+            ).catch(() => null)
+          : null;
+      return homeEquityReply(data, intent.topic, project);
     }
     case "family_loans":
       return familyLoansReply(await loadFamilyLoans(userId, { client, now }));

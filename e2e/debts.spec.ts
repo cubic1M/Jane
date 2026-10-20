@@ -683,3 +683,61 @@ test("a credit score goal is previewed, started on the tap, and ticked off month
   await expect(page.getByText("Ticked off.")).toBeVisible();
   await expect(list.getByText("Done", { exact: true })).toHaveCount(1);
 });
+
+// Spec step 228: PMI against the original value with a drafted request, escrow against the
+// real bills, and a home project compared three ways with total cost.
+test("a home loan's PMI, escrow and project are worked out from what the person tells Jane", async ({
+  context,
+  page,
+  baseURL,
+}) => {
+  const user = await signedInUser("user");
+  userId = user.userId;
+  await context.addCookies([
+    { name: "authjs.session-token", value: user.sessionToken, url: baseURL ?? "" },
+  ]);
+  await page.goto("/connect");
+  await page.getByRole("button", { name: "Link a demo bank" }).click();
+  await expect(page).toHaveURL("/chat", { timeout: 60_000 });
+
+  await page.goto("/loans/equity");
+  await expect(
+    page.getByRole("heading", { level: 1, name: "Your home loan, used well" }),
+  ).toBeVisible();
+  const facts = page.getByRole("region", { name: "What you know" });
+  await facts.getByLabel("Home's value when the loan began").fill("395000");
+  await facts.getByLabel("Property tax, a year").fill("1800");
+  await facts.getByLabel("Homeowners insurance, a year").fill("800");
+  const save = facts.getByRole("button", { name: "Save", exact: true });
+  await save.focus();
+  await save.press("Enter");
+  await expect(page.getByText("Saved.")).toBeVisible();
+
+  const pmi = page.getByRole("region", { name: "PMI" });
+  await expect(pmi).toContainText("79.1% of the home's original value of $395,000.00");
+  await expect(pmi.getByLabel("Drafted PMI request")).toContainText(
+    "cancel the private mortgage insurance",
+  );
+  const escrow = page.getByRole("region", { name: "Escrow" });
+  await expect(escrow).toContainText("Your tax and insurance bills come to $2,600.00 a year");
+  await expect(escrow.getByLabel("Drafted escrow request")).toContainText("refund");
+
+  const sent = pmi.getByRole("button", { name: "I sent the PMI request" });
+  await sent.scrollIntoViewIfNeeded();
+  await sent.focus();
+  await sent.press("Enter");
+  await expect(page.getByText("Noted that you sent it.")).toBeVisible();
+  await expect(page.getByRole("region", { name: "PMI" })).toContainText("You sent this on");
+
+  const project = page.getByRole("region", { name: "A home project" });
+  await project.getByLabel("What it costs").fill("40000");
+  const compare = project.getByRole("button", { name: "Compare" });
+  await compare.focus();
+  await compare.press("Enter");
+  const table = page.getByRole("table", { name: "Ways to pay" });
+  await expect(table.getByRole("row")).toHaveCount(4);
+  await expect(table).toContainText("Home equity line of credit (HELOC)");
+  await expect(table).toContainText("Cash-out refinance");
+  await expect(table).toContainText("Personal loan");
+  await expect(page.getByText("stand-in lender terms, not offers", { exact: false })).toBeVisible();
+});

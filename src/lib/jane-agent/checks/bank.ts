@@ -1185,6 +1185,19 @@ const BASE_QUESTIONS: readonly CheckQuestion[] = [
       maxChars: 1_000,
     },
   },
+  // Spec step 228: a home's equity, used well.
+  {
+    id: "debt-31",
+    text: "heloc or cash-out refinance for a $40,000 kitchen",
+    needs: "rules",
+    expect: {
+      intent: "home_equity",
+      mentions: /total cost/i,
+      link: "/loans/equity",
+      list: true,
+      maxChars: 1_400,
+    },
+  },
   // Spec step 226: money between family and friends, kept kindly.
   {
     id: "debt-29",

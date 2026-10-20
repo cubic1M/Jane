@@ -305,6 +305,7 @@ model User {
   cardRateRequests       CardRateRequest[]
   personalLoans          PersonalLoan[]
   creditGoals            CreditGoal[]
+  homeEquityFacts        HomeEquityFacts?
   balanceTransfers       BalanceTransfer[]
   findings               Finding[]
   decisions              Decision[]
@@ -1052,6 +1053,24 @@ model CreditGoal {
 
   @@index([userId])
   @@map("credit_goals")
+}
+
+// What the person told Jane about their home loan (spec step 228): the home's value when the
+// loan began (PMI is measured against it), the yearly property tax and insurance bills they
+// read off their bills, and when they sent each drafted request.
+model HomeEquityFacts {
+  id                   String    @id @default(cuid())
+  userId               String    @unique @map("user_id")
+  originalValueCents   Int?      @map("original_value_cents")
+  yearlyTaxCents       Int?      @map("yearly_tax_cents")
+  yearlyInsuranceCents Int?      @map("yearly_insurance_cents")
+  pmiLetterSentOn      DateTime? @map("pmi_letter_sent_on") @db.Date
+  escrowRequestSentOn  DateTime? @map("escrow_request_sent_on") @db.Date
+  updatedAt            DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("home_equity_facts")
 }
 
 // A balance transfer the person made to a 0% card (spec step 113), so Jane can keep the
