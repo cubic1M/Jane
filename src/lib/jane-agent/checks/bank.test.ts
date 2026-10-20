@@ -13,6 +13,7 @@ const tools = new Set(CHAT_TOOLS.map((t) => t.name));
 const NOT_ASKABLE = new Set([
   "accountant",
   "admin",
+  "gift",
   "api",
   "goodbye",
   "icons",

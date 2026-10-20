@@ -198,6 +198,18 @@ export const MESSAGE_PRIORITY = {
   retirement_accounts: 40,
   // Spec step 211: the question about a past employer's 401(k), then the rollover.
   old_plan: 39,
+  // Spec step 212: the retirement paycheck, from 15 years out (demo advice).
+  retirement_income: 35,
+  // Spec step 213: a gift link offer, and a child's Roth IRA (demo advice).
+  family: 33,
+  // Spec step 214: a rental's year, and paying down against investing (demo advice).
+  property: 32,
+  // Spec step 215: what a costly product costs, and the question that finds one (demo advice).
+  costly_products: 31,
+  // Spec step 216: the yearly investing review, one message (a raise puts it first).
+  yearly_review: 43,
+  // Spec step 231: the right investment in the right account (demo advice).
+  location: 34,
   // Spec step 164: the month's summary of what Jane did by herself in investing.
   investing_summary: 40,
   auto_invest_run: 31,

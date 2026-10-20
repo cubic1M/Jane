@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from "vitest";
 vi.mock("@/lib/session", () => ({ requireUser: vi.fn() }));
 
 import { CHAT_TOOLS } from "../claude-tools";
+import { MORE_ROWS } from "../checks/bank-more";
 import { QUESTIONS } from "../checks/bank";
 import { parseIntent } from "../intents";
 import { CAPABILITIES, capabilityFor } from "./index";
@@ -37,5 +38,14 @@ describe("the capability registry", () => {
       if (!capabilityFor(intent) && !["which"].includes(intent.kind)) unclaimed.add(intent.kind);
     }
     expect([...unclaimed]).toEqual([]);
+  });
+
+  // Spec step 230: every debt and credit capability has questions in the bank.
+  it("has bank questions for every tool and every kind of question the debt capability has", () => {
+    const debt = CAPABILITIES.find((c) => c.id === "debt")!;
+    const asked = new Set(MORE_ROWS.map((r) => r[2]));
+    expect(debt.tools.filter((t) => !asked.has(t))).toEqual([]);
+    const understood = new Set(QUESTIONS.map((q) => parseIntent(q.text, "2026-10-19").kind));
+    expect(debt.kinds.filter((k) => !understood.has(k as never))).toEqual([]);
   });
 });

@@ -103,6 +103,9 @@ const SUBTYPE_LABELS: Readonly<Record<string, string>> = {
   hsa: "HSA",
   "529": "529 college savings",
   brokerage: "Brokerage",
+  // Spec step 213: a child's accounts.
+  custodial: "Custodial (child's)",
+  "child roth": "Child's Roth IRA",
   retirement: "Retirement",
 };
 

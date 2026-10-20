@@ -21,6 +21,11 @@ export type AuditEvent =
   | "personal_loan_confirmed"
   // Spec step 227: the person started a plan for a credit score goal.
   | "credit_goal_started"
+  | "home_equity_updated"
+  | "debt_review_done"
+  | "car_addon_confirmed"
+  | "car_addon_cancel_requested"
+  | "home_request_sent"
   | "user_signed_up"
   // Insurance (spec Phase X): a policy saved or removed, the household facts saved.
   | "insurance_policy_saved"
@@ -188,7 +193,17 @@ export type AuditEvent =
   // Spec step 211: an old retirement plan found, and its direct rollover.
   | "old_plan_found"
   | "rollover_started"
-  | "rollover_completed";
+  | "rollover_completed"
+  // Spec step 212: the person's retirement income answers saved (never the amounts).
+  | "retirement_income_saved"
+  // Spec step 213: a gift link made or taken down (never the link itself), and a gift received.
+  | "gift_link_created"
+  | "gift_link_revoked"
+  | "gift_received"
+  // Spec step 214: a rental property added (never its figures).
+  | "rental_added"
+  // Spec step 215: a costly product entered or confirmed (never its figures).
+  | "costly_product_saved";
 
 export type AuditActor = { type: ActorType; id: string | null };
 

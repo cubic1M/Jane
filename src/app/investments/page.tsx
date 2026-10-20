@@ -239,6 +239,36 @@ async function InvestmentsContent() {
             : a forgotten 401(k) at a past employer, found and rolled over.
           </p>
           <p className="text-sm text-zinc-600 dark:text-zinc-400">
+            <Link href="/investments/retirement-income" className={LINK}>
+              Income in retirement
+            </Link>
+            : Social Security, the order to draw, and a paycheck that lasts.
+          </p>
+          <p className="text-sm text-zinc-600 dark:text-zinc-400">
+            <Link href="/investments/family" className={LINK}>
+              Family
+            </Link>
+            : a child&apos;s custodial account and Roth IRA, and gifts to their college fund.
+          </p>
+          <p className="text-sm text-zinc-600 dark:text-zinc-400">
+            <Link href="/investments/property" className={LINK}>
+              Property
+            </Link>
+            : home equity and rentals, from their own transactions.
+          </p>
+          <p className="text-sm text-zinc-600 dark:text-zinc-400">
+            <Link href="/investments/costly-products" className={LINK}>
+              Costly products
+            </Link>
+            : annuities, whole life and advisory fees in dollars, with the charge for leaving.
+          </p>
+          <p className="text-sm text-zinc-600 dark:text-zinc-400">
+            <Link href="/investments/location" className={LINK}>
+              The right account for each investment
+            </Link>
+            : bonds where interest isn&apos;t taxed, without changing your mix.
+          </p>
+          <p className="text-sm text-zinc-600 dark:text-zinc-400">
             Learn:{" "}
             {["index-funds", "fees", "the-match", "roth-vs-traditional", "rebalancing"].map(
               (slug, i) => (
