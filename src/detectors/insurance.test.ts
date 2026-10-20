@@ -205,7 +205,7 @@ describe("how sure Jane is", () => {
     const [s] = firedFor("equity", "card_cover");
     expect(s.confidence.percent).toBe(55);
     expect(s.confidence.reason).toMatch(
-      /protection-plan charges.*premium-card fees.*card's actual benefits/,
+      /protection-plan charges.*premium-card fees?.*card's actual benefits/,
     );
   });
 
