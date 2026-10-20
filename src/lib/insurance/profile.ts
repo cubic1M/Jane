@@ -6,6 +6,7 @@ import { coverageGaps, type Gap } from "./gaps";
 import { loadHousehold, type Household } from "./household";
 import { listPolicies, type Policy } from "./policies";
 import { readingsFromDocuments } from "./readings";
+import { familyGapsOf, loadFamily } from "./family";
 import { prepareCoverChanges } from "./cover-changes";
 
 // The person's insurance profile (spec step 102): every policy, the household facts and
@@ -35,8 +36,20 @@ export async function loadInsurance(
     loadHousehold(userId, { client, now }),
     adviceMode(userId, { client }),
   ]);
+  // Spec step 198: what the household shares counts as cover, and each person gets their own gaps.
+  const family = await loadFamily(userId, { client, now, given: { policies, household } });
+  const shared = family.policies
+    .filter((p) => p.owner !== "You")
+    .map((p) => ({ kind: p.kind, status: "active" as const }));
   // Found policies don't count until the person confirms them (spec step 99).
-  return { policies, household, gaps: coverageGaps(household, policies), advice };
+  return {
+    policies,
+    household,
+    gaps: [...coverageGaps(household, policies, shared), ...familyGapsOf(family)].filter(
+      (g) => !household.dismissedGaps.includes(g.key),
+    ),
+    advice,
+  };
 }
 
 // The demo bank's sample policy (spec step 75): the GEICO car insurance its payments show,

@@ -179,6 +179,10 @@ export const GAP_KEYS = [
   "valuables",
   "boat",
   "short_term_rental",
+  // Spec step 198: per person in the household.
+  "teen_driver",
+  "spouse_health",
+  "family_health_plan",
 ] as const;
 export type GapKey = (typeof GAP_KEYS)[number];
 
@@ -243,6 +247,18 @@ export const GAP_ADVICE: Record<GapKey, { text: string; cents: number[] }> = {
   },
   boat: {
     text: "Add boat insurance that pays for the boat itself and for damage you cause to others on the water. Your home policy usually caps or excludes boats.",
+    cents: [],
+  },
+  teen_driver: {
+    text: "Add the new driver to your car policy before they drive. Carriers price a teen driver in, and an unlisted one can leave a claim disputed. Good-student and driver-training discounts are common.",
+    cents: [],
+  },
+  spouse_health: {
+    text: "Add your spouse to a health plan: yours, or their employer's if it has one. Open enrollment and a recent life event are the usual times to switch.",
+    cents: [],
+  },
+  family_health_plan: {
+    text: "Compare the two plans for the whole family, with the care you usually need, and move to the cheaper one at the next open enrollment or after a life event.",
     cents: [],
   },
   short_term_rental: {
@@ -687,3 +703,20 @@ export const RISK_SIGNALS: Record<
 // many days ago, so a long-time pet owner isn't asked.
 export const RISK_LOOKBACK_DAYS = 60;
 export const RISK_NEW_PET_QUIET_DAYS = 120;
+
+// --- The whole household's cover (spec step 198) ---------------------------------------------
+export const HOUSEHOLD_RELATIONS = {
+  spouse: "Spouse or partner",
+  child: "Child",
+  other: "Someone else",
+} as const;
+export type HouseholdRelation = keyof typeof HOUSEHOLD_RELATIONS;
+export const isHouseholdRelation = (value: unknown): value is HouseholdRelation =>
+  typeof value === "string" && Object.hasOwn(HOUSEHOLD_RELATIONS, value);
+// A driver this age or younger is a teen driver, who needs to be on a car policy.
+export const TEEN_DRIVER_MAX_AGE = 19;
+export const MAX_HOUSEHOLD_PEOPLE = 10;
+export const MAX_PERSON_NAME_LENGTH = 40;
+// A family health plan has to cost this much less a year, with the care the household
+// usually needs, before Jane says to look at the other employer's plan.
+export const FAMILY_HEALTH_MIN_SAVING_CENTS = 60_000;

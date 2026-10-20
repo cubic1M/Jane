@@ -24,6 +24,7 @@ import { listCoverChanges } from "@/lib/insurance/cover-changes";
 import { listNegotiations } from "@/lib/insurance/negotiate";
 import { listSavings } from "@/lib/insurance/savings";
 import { listRisks } from "@/lib/insurance/risks";
+import { loadFamily } from "@/lib/insurance/family";
 import { noteLines, readingLines } from "./reading-words";
 import { listBenefits, openEnrollmentAtWork, yearlyCost } from "@/lib/insurance/benefits";
 import { autopilotOf } from "@/lib/autopilot";
@@ -72,6 +73,12 @@ export const INSURANCE_TOOLS: Anthropic.Tool[] = [
     name: "insurance_life",
     description:
       "Life insurance sized for the person and applied for (spec step 153), demo advice only: the amount and term with the method (years of pay, debts, final expenses, schooling, less savings and cover they have), the term quotes, and where an application stands (health questions, the carrier's offer or review). Jane never applies or buys without the person's tap; to start, they tap Apply in the chat or on /insurance/life.",
+    input_schema: noInput,
+  },
+  {
+    name: "insurance_household",
+    description:
+      "The whole household's cover (spec step 198): who is covered by what (the person, each household member's shared policies, and the people they listed), the gaps for each person (a teen driver not on a car policy, a spouse with no health plan), and the health plans compared for the whole household with both employers' plans counted. A partner's policy is only here if they chose to share it.",
     input_schema: noInput,
   },
   {
@@ -165,6 +172,25 @@ export async function runInsuranceTool(
                 }
               : application.decision,
         },
+      }),
+      cents,
+    };
+  }
+  if (name === "insurance_household") {
+    const family = await loadFamily(userId, { client, now });
+    return {
+      content: JSON.stringify({
+        covered: family.rows.map((r) => ({
+          who: r.name,
+          policies: r.policies.map(
+            (p) => `${p.carrier} ${p.kind}${p.owner === "You" ? "" : ` (${p.owner}'s, shared)`}`,
+          ),
+        })),
+        gaps: family.gaps.map((g) => ({ gap: g.title, why: g.why })),
+        healthPlansForTheWholeHousehold: family.healthPlans.map((r) => ({
+          plan: r.label,
+          aYearWithUsualCare: money(r.familyYearlyCents),
+        })),
       }),
       cents,
     };
