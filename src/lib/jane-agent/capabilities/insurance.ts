@@ -10,6 +10,7 @@ import { fileClaimAnswer, renewalCallAnswer } from "../insurance/done-by-jane";
 import type { CoverEvent } from "@/config/insurance";
 import { claimAnswer } from "../insurance/claim";
 import { quotesAnswer } from "../insurance/quotes";
+import { savingsAnswer } from "../insurance/savings";
 import { insuranceReply } from "../insurance/replies";
 import { loadInsuranceSnapshot } from "../insurance/snapshot";
 import { type CapabilityContext } from "./shared";
@@ -43,6 +44,8 @@ async function answer(ctx: CapabilityContext): Promise<Reply | null> {
       // Spec step 155: renewal calls and claims done by Jane.
       if (intent.ask === "renewal_call") return renewalCallAnswer(userId, { client, now });
       if (intent.ask === "file_claim") return fileClaimAnswer(userId, { client, now });
+      // Spec step 196: cheaper ways to pay for the same cover.
+      if (intent.ask === "savings") return savingsAnswer(userId, { client, now });
       if (intent.ask === "life_change") {
         return lifeChangeAnswer(userId, intent.event as CoverEvent, { client, now });
       }
