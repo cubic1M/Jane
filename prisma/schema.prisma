@@ -232,6 +232,9 @@ model User {
   deletedAt                  DateTime?       @map("deleted_at") @db.Timestamptz(3)
   // Set when detection first finishes for this user, so /scanning knows it can move on.
   firstDetectionAt           DateTime?       @map("first_detection_at") @db.Timestamptz(3)
+  // When the first scan after linking a bank finished completely (detection, the sectors'
+  // work and Jane's first run). Until then the chat opens early and says she's still looking.
+  firstScanDoneAt            DateTime?       @map("first_scan_done_at") @db.Timestamptz(3)
   // Email preferences, changed on /settings or by the unsubscribe link.
   digestEnabled              Boolean         @default(true) @map("digest_enabled")
   // IANA name, e.g. America/New_York. Null means US Pacific.

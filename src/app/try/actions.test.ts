@@ -76,7 +76,7 @@ describe("tryJane", () => {
     expect(cleanUpTrials).not.toHaveBeenCalled();
     expect(afterJobs).toHaveLength(1);
     await afterJobs[0]();
-    expect(syncItem).toHaveBeenCalledWith("item_1");
+    expect(syncItem).toHaveBeenCalledWith("item_1", { progressive: true });
     expect(cleanUpTrials).toHaveBeenCalled();
   });
 
