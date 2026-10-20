@@ -23,9 +23,6 @@ function capped(c: Confidence, max: number, note: string): Confidence {
 }
 const CAPS = R.insuranceCaps;
 
-// A name as people say it: "COUNTY LIBRARY" -> "County Library".
-const plain = (name: string) => name.toLowerCase().replace(/\b\w/g, (c) => c.toUpperCase());
-
 const OPEN_ENROLLMENT_FROM = "11-01";
 const OPEN_ENROLLMENT_TO = "01-15";
 
@@ -332,7 +329,7 @@ const insuranceNegotiation: Detector = {
           "a call may not change the price",
         ),
         urgency: "soon",
-        why: `${plain(name)} went from ${formatCents(before)} to ${formatCents(last.cents)} a month, ${formatCents(yearly)} more a year. A call, with a same-cover quote from another insurer in hand, often brings it back down.`,
+        why: `${name.toLowerCase().replace(/\b\w/g, (c) => c.toUpperCase())} went from ${formatCents(before)} to ${formatCents(last.cents)} a month, ${formatCents(yearly)} more a year. A call, with a same-cover quote from another insurer in hand, often brings it back down.`,
         action: { label: "Call them for me", href: "/insurance" },
       };
     }
@@ -377,7 +374,7 @@ const insuranceClaim: Detector = {
         "it depends on what your policy covers",
       ),
       urgency: "now",
-      why: `You paid ${formatCents(top.amountCents)} to ${plain(top.description)} on ${top.date} and I see no insurance payout. After a typical ${formatCents(R.claimDeductibleCents)} deductible a claim could return about ${formatCents(recover)}; claims have notice deadlines.`,
+      why: `You paid ${formatCents(top.amountCents)} to ${top.description.toLowerCase().replace(/\b\w/g, (c) => c.toUpperCase())} on ${top.date} and I see no insurance payout. After a typical ${formatCents(R.claimDeductibleCents)} deductible a claim could return about ${formatCents(recover)}; claims have notice deadlines.`,
       action: { label: "Start a claim", href: "/insurance/claims" },
     };
   },
@@ -411,7 +408,7 @@ const coverChange: Detector = {
         evidence("seen", profile.months, events.length, "moving or car-purchase charges"),
       ]),
       urgency: "soon",
-      why: `You paid ${plain(event.description)} ${formatCents(event.amountCents)} on ${event.date}. A policy with your old address or without your new car can leave a claim in doubt, and the change is usually free.`,
+      why: `You paid ${event.description.toLowerCase().replace(/\b\w/g, (c) => c.toUpperCase())} ${formatCents(event.amountCents)} on ${event.date}. A policy with your old address or without your new car can leave a claim in doubt, and the change is usually free.`,
       action: { label: "See the changes", href: "/insurance" },
     };
   },
@@ -487,7 +484,7 @@ const employerBenefits: Detector = {
         "I can't see your employer's plan",
       ),
       urgency: "later",
-      why: `You pay ${formatCents(yearly)} a year for private cover and work for ${plain(String(employer.value))}. Employers usually pay about ${Math.round(R.employerPlanShare * 100)}% of a plan's cost, so the same cover through work can cost up to ${formatCents(saves)} a year less. Their open enrollment is the time to move.`,
+      why: `You pay ${formatCents(yearly)} a year for private cover and work for ${String(employer.value)}. Employers usually pay about ${Math.round(R.employerPlanShare * 100)}% of a plan's cost, so the same cover through work can cost up to ${formatCents(saves)} a year less. Their open enrollment is the time to move.`,
       action: { label: "Review my work benefits", href: "/insurance/benefits" },
     };
   },

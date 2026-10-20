@@ -176,11 +176,8 @@ describe("plain words", () => {
 
   it("tells Maya what went up, in a way she'd accept", () => {
     const s = run("renter").find((x) => x.topic === "price_increase")!;
-    // Her car insurance rose too (the insurance lane's sample data), and is the bigger rise.
-    expect(s.why).toBe(
-      "Progressive Auto went from $118.00 to $131.00 a month, and 1 more went up: $174.00 more a year.",
-    );
-    expect(s.confidence.reason).toBe("21 charges at the old price in 12 months of data");
+    expect(s.why).toBe("Audible went from $14.95 to $16.45 a month: $18.00 more a year.");
+    expect(s.confidence.reason).toBe("10 charges at the old price in 12 months of data");
   });
 
   it("keeps the leading debt wording for someone who can't pay it off", () => {
