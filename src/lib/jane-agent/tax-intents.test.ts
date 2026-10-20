@@ -318,3 +318,22 @@ describe("crypto and equity pay in the chat", () => {
     expect(parse(text)).toEqual({ kind: "tax", ask: "equity" });
   });
 });
+
+describe("taxes over the years in the chat", () => {
+  it.each([
+    "how will my taxes look over the next several years",
+    "should I do a roth conversion",
+    "what is my multi-year tax plan",
+    "should I bunch my deductions into alternate years",
+  ])("%s asks about the years", (text) => {
+    expect(parse(text)).toEqual({ kind: "tax", ask: "years" });
+  });
+
+  it("reads the year they plan to retire", () => {
+    expect(parse("i plan to retire in 2045")).toEqual({
+      kind: "tax",
+      ask: "retire_year",
+      year: 2045,
+    });
+  });
+});

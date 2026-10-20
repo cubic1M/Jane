@@ -818,6 +818,12 @@ const BASE_QUESTIONS: readonly CheckQuestion[] = [
     needs: "rules",
     expect: { intent: "tax", mentions: /crypto|exchange/i },
   },
+  {
+    id: "tax-28",
+    text: "how will my taxes look over the next few years",
+    needs: "rules",
+    expect: { intent: "tax", mentions: /federal tax over the next/, list: true },
+  },
 
   // Insurance (spec step 108), over the demo bank's sample GEICO car policy
   // (DEMO_POLICY in src/lib/insurance/profile.ts: $142.00 a month, a $1,000.00 deductible).

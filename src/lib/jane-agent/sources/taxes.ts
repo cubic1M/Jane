@@ -19,6 +19,7 @@ import { givingOptionsMessage, receiptMessage } from "../giving-message";
 import { familyChoiceMessage, statusOf } from "../family-taxes-message";
 import { worthSaying } from "@/planning/family-taxes";
 import { equitySetAsideMessage } from "../equity-tax-message";
+import { yearsMoveMessage } from "../multi-year-message";
 import { caseMessage, ipPinMessage, signMessage } from "../tax-identity-message";
 import {
   noticeDraftMessage,
@@ -387,6 +388,18 @@ export const taxesSource: MessageSource = {
         ...equitySetAsideMessage(equity),
         dedupeKey: `equity:${equity.year}:${Math.round(equity.setAside.cents / 100_000)}`,
         priority: TAX_MESSAGE_PRIORITY.equity,
+      });
+    }
+
+    // Spec step 220: the move that saves the most over the years (demo advice).
+    const years = tax.years;
+    const move = years?.advice ? years.moves[0] : undefined;
+    if (years && move) {
+      out.push({
+        kind: "decision",
+        ...yearsMoveMessage(years, move),
+        dedupeKey: `years:${move.key}`,
+        priority: TAX_MESSAGE_PRIORITY.years,
       });
     }
 

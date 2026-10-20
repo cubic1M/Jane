@@ -393,6 +393,8 @@ export const TAX_MESSAGE_PRIORITY = {
   ip_pin: 48,
   // Spec step 219: crypto and equity pay will add tax nothing withholds.
   equity: 40,
+  // Spec step 220: a move that saves tax over several years.
+  years: 35,
 } as const;
 
 // What Jane does about taxes by herself at each autopilot level (spec step 57), shown on
@@ -451,6 +453,11 @@ export const TAX_AUTOPILOT: readonly { feature: string; ask: string; auto: strin
     feature: "equity",
     ask: "I work out crypto gains by lot, ESPP sales that lost their special treatment, ISO exercises with the alternative minimum tax and RSU withholding that falls short, all in your estimate. With demo advice I say how much to set aside.",
     auto: "I work out crypto gains by lot, ESPP sales that lost their special treatment, ISO exercises with the alternative minimum tax and RSU withholding that falls short, all in your estimate, and with demo advice have a goal ready for what to set aside. Putting money in is always yours.",
+  },
+  {
+    feature: "years",
+    ask: "I project your federal tax for each year ahead from your estimate and your plans, and with demo advice find moves like a Roth conversion in a low-income year, each with what it saves over the years. You decide which to put on your plan.",
+    auto: "I keep your multi-year tax projection up to date and, with demo advice, bring up the move that saves the most over the years with a button to put it on your deadlines. I never convert, sell or give anything myself.",
   },
   {
     feature: "identity",

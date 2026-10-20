@@ -67,6 +67,9 @@ export type TaxIntent =
   | { kind: "tax"; ask: "notice" }
   // Spec step 219.
   | { kind: "tax"; ask: "equity" }
+  // Spec step 220: taxes over the years, and the year the person plans to retire.
+  | { kind: "tax"; ask: "years" }
+  | { kind: "tax"; ask: "retire_year"; year: number }
   // Spec step 218: a sign of identity theft, or the IP PIN.
   | { kind: "tax"; ask: "identity"; sign: "efile_rejected" | "unknown_form" | "irs_letter" | null };
 
@@ -212,6 +215,9 @@ const IDENTITY_ASK =
   /\bip pin\b|\bidentity protection pin\b|\btax identity theft\b|\bidentity theft\b.*\b(?:tax|irs|return)\b|\b(?:tax|irs|return)\b.*\bidentity theft\b|\bform 14039\b|\bprotect my (?:tax )?identity\b|\bstolen (?:social security|ssn)\b.*\b(?:tax|irs)\b/;
 const EQUITY_ASK =
   /\b(?:crypto|bitcoin|ethereum)\b.*\b(?:tax|taxes|gains?|losses|1099)\b|\b(?:tax|taxes)\b.*\b(?:crypto|bitcoin|ethereum)\b|\bespp\b|\brsus?\b.*\b(?:tax|taxes|withh)|\b(?:tax|taxes|withh)\w*\b.*\brsus?\b|\b(?:iso|isos|incentive stock options?)\b|\bamt\b|\balternative minimum tax\b|\b1099-da\b|\bdisqualifying disposition\b|\bstock options?\b.*\btax/;
+const YEARS_ASK =
+  /\b(?:taxes|tax bill)\b.*\b(?:over (?:the )?(?:next )?(?:several |many |few |\d+ )?years|in retirement|multi[- ]?year)\b|\bmulti[- ]?year (?:tax|plan)\b|\broth conversions?\b|\bconvert (?:my )?(?:401k|401\(k\)|ira|traditional \w+)\b.*\broth\b|\bbunch(?:ing)? (?:my )?deductions\b|\b0% (?:capital gains )?(?:tax )?bracket\b|\bwhen (?:should|do) i (?:take|time) (?:my |the |a )?(?:bonus|withdrawal)\b.*\btax/;
+const RETIRE_YEAR = /\b(?:plan|expect|want|hope|aim) to retire (?:in|by) (\d{4})\b/;
 const PACK = /\btax(?:-| )?time pack\b|\btax pack\b|\byear-end pack\b/;
 
 function stateCode(words: string): string | null {
@@ -223,6 +229,9 @@ function stateCode(words: string): string | null {
 export function parseTaxIntent(text: string): TaxIntent | null {
   if (FAMILY_ASK.test(text)) return { kind: "tax", ask: "family" };
   if (EQUITY_ASK.test(text)) return { kind: "tax", ask: "equity" };
+  const retire = text.match(RETIRE_YEAR);
+  if (retire) return { kind: "tax", ask: "retire_year", year: Number(retire[1]) };
+  if (YEARS_ASK.test(text)) return { kind: "tax", ask: "years" };
   if (IDENTITY_REJECTED.test(text)) return { kind: "tax", ask: "identity", sign: "efile_rejected" };
   if (IDENTITY_FORM.test(text)) return { kind: "tax", ask: "identity", sign: "unknown_form" };
   if (IDENTITY_LETTER.test(text)) return { kind: "tax", ask: "identity", sign: "irs_letter" };
