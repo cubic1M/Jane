@@ -27,7 +27,8 @@ export type InvestmentTopic =
   | "family"
   | "property"
   | "costly_products"
-  | "yearly_review";
+  | "yearly_review"
+  | "location";
 
 export type InvestmentIntent = {
   kind: "investments";
@@ -153,7 +154,12 @@ const COSTLY =
 const YEARLY_REVIEW =
   /\b(?:yearly|annual|year[- ]end|once[- ]a[- ]year) (?:investing |investment |portfolio )?(?:review|checkup|check[- ]up)\b|\b(?:review|check up on|check over) (?:all of )?my (?:investing|investments)(?: for the year)?\b|\bwhat (?:did|have) you (?:do|done|handled)\b.*\b(?:invest|portfolio)/;
 
+// Spec step 231: asset location.
+const LOCATION =
+  /\b(?:which|what) (?:account|accounts) (?:should|do i) (?:hold|keep|put) (?:my )?(?:bonds|stocks|funds)\b|\bwhere should i (?:hold|keep) (?:my )?(?:bonds|stocks)\b|\btax[- ]efficient (?:placement|investing|fund placement)\b|\bbonds? in (?:my )?(?:401\(?k\)?|ira|taxable)\b|\bright (?:investment|investments) in the right account\b/;
+
 export function parseInvestmentIntent(text: string): InvestmentIntent | null {
+  if (LOCATION.test(text)) return { kind: "investments", topic: "location", account: null };
   if (YEARLY_REVIEW.test(text))
     return { kind: "investments", topic: "yearly_review", account: null };
   if (COSTLY.test(text)) return { kind: "investments", topic: "costly_products", account: null };

@@ -62,6 +62,7 @@ import {
   propertyReply,
   costlyReply,
   yearlyReviewReply,
+  locationReply,
 } from "./replies";
 import { gather } from "../brain";
 import { parseIntent } from "../intents";
@@ -77,6 +78,7 @@ import {
   wholeLifeCompare,
 } from "@/planning/costly-products";
 import { productLine } from "./costly-copy";
+import { locationPlan, type PlanAccount } from "@/planning/location";
 import { holdingsReply, matchAccounts } from "./replies";
 import { INVESTMENT_TOOLS, runInvestmentTool } from "./tools";
 import { CHAT_PAGES, CHAT_TOOLS, proposeAction } from "../claude-tools";
@@ -2661,5 +2663,93 @@ describe("the yearly review", () => {
     expect(
       yearlyReviewReply(REVIEW_SNAP({ advice: false }), 2026).actions.map((a) => a.id),
     ).toEqual(["open"]);
+  });
+});
+
+// Spec step 231: the right investment in the right account.
+const LOC_H = (
+  ticker: string,
+  valueCents: number,
+  moveClass: "bonds" | "us_stocks" | null,
+  gainCents = 0,
+) => ({
+  ticker,
+  name: ticker,
+  valueCents,
+  moveClass,
+  gainCents,
+});
+const LOC_ACCOUNTS: PlanAccount[] = [
+  { id: "k", name: "401(k)", kind: "pre_tax", holdings: [LOC_H("KTSIX", 10_000_000, "us_stocks")] },
+  {
+    id: "t",
+    name: "Brokerage",
+    kind: "taxable",
+    holdings: [LOC_H("KTBIX", 10_000_000, "bonds", 0)],
+  },
+];
+const LOC_PLAN = locationPlan({
+  accounts: LOC_ACCOUNTS,
+  yieldBps: { bonds: 380, us_stocks: 170, intl_stocks: 290 },
+  payoutRate: { bonds: 0.22, us_stocks: 0.15, intl_stocks: 0.15 },
+  gainRate: 0.15,
+});
+
+describe("asset location questions, by rules", () => {
+  it.each(["which accounts should hold my bonds", "where should i keep my bonds"])(
+    "reads %j as asset location",
+    (text) => {
+      expect(parseIntent(text, ASOF)).toMatchObject({ kind: "investments", topic: "location" });
+    },
+  );
+});
+
+describe("locationReply and the location message", () => {
+  const view = {
+    advice: true,
+    plan: LOC_PLAN,
+    accounts: [],
+    ordinaryRate: 0.22,
+    gainRate: 0.15,
+    fromEstimate: true,
+  };
+  it("says the tax saved, that the mix stays the same, and gives a tap for the swaps that cost no tax", () => {
+    const reply = locationReply(view);
+    expect(reply.body).toMatch(
+      /from about \$836\.00 to \$255\.00 a year: \$581\.00 less\. Your overall mix stays exactly the same\./,
+    );
+    expect(reply.body).toMatch(/1 of 1 swap costs no tax/);
+    expect(reply.actions.map((a) => a.id)).toEqual(["location.free", "open"]);
+    expect(reply.refs).toEqual({ advice: true, locationKey: LOC_PLAN.key });
+    expect(locationReply({ ...view, advice: false }).actions.map((a) => a.id)).toEqual(["open"]);
+  });
+  it("names the tax on a swap that sells at a gain, and gives it no button", () => {
+    const gainy = locationPlan({
+      accounts: [
+        LOC_ACCOUNTS[0],
+        { ...LOC_ACCOUNTS[1], holdings: [LOC_H("KTBIX", 10_000_000, "bonds", 1_000_000)] },
+      ],
+      yieldBps: { bonds: 380, us_stocks: 170, intl_stocks: 290 },
+      payoutRate: { bonds: 0.22, us_stocks: 0.15, intl_stocks: 0.15 },
+      gainRate: 0.15,
+    });
+    const reply = locationReply({ ...view, plan: gainy });
+    expect(reply.body).toMatch(/\$1,500\.00 in tax\)/);
+    expect(reply.actions.map((a) => a.id)).toEqual(["open"]);
+  });
+  it("posts once per plan, in demo advice mode only", () => {
+    const gather = (plan: InvestmentSnapshot["location"]["plan"], advice = true) =>
+      investmentsSource
+        .gather(
+          { ...base, investments: demoInvestmentSnapshot({ advice, location: { plan } }) },
+          {} as never,
+        )
+        .filter((c) => c.dedupeKey.startsWith("location:"));
+    expect(gather(LOC_PLAN)[0]).toMatchObject({
+      kind: "decision",
+      dedupeKey: `location:${LOC_PLAN.key}`,
+    });
+    expect(gather(LOC_PLAN, false)).toEqual([]);
+    expect(gather(null)).toEqual([]);
   });
 });

@@ -208,6 +208,8 @@ export const MESSAGE_PRIORITY = {
   costly_products: 31,
   // Spec step 216: the yearly investing review, one message (a raise puts it first).
   yearly_review: 43,
+  // Spec step 231: the right investment in the right account (demo advice).
+  location: 34,
   // Spec step 164: the month's summary of what Jane did by herself in investing.
   investing_summary: 40,
   auto_invest_run: 31,

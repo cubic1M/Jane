@@ -19,6 +19,7 @@ import { loadRetirementIncome } from "@/lib/investments/retirement-income";
 import { loadFamily } from "@/lib/investments/family";
 import { loadProperty } from "@/lib/investments/property";
 import { loadCostlyProducts } from "@/lib/investments/costly-products";
+import { loadLocation } from "@/lib/investments/location";
 import { loadSteadyHand } from "@/lib/investments/steady-hand";
 import { autopilotOf } from "@/lib/autopilot";
 import { loadInvestmentSnapshot } from "./snapshot";
@@ -40,6 +41,7 @@ import {
   cryptoReply,
   cashReply,
   steadyReply,
+  locationReply,
   yearlyReviewReply,
   costlyReply,
   propertyReply,
@@ -119,6 +121,8 @@ export async function answerInvestments(
       const snapshot = await loadInvestmentSnapshot(userId, { client, now });
       return yearlyReviewReply(snapshot, now.getUTCFullYear());
     }
+    case "location":
+      return locationReply(await loadLocation(userId, { client, now }));
     case "steady":
       return steadyReply(await loadSteadyHand(userId, { client, now }));
     case "cash":
