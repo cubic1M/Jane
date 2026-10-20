@@ -46,6 +46,7 @@ const TAG_ITEMS: readonly TaxTagKind[] = [
   "childcare",
   "education",
   "business",
+  "rental",
 ];
 const TAG_KEY: Readonly<Record<string, string>> = {
   donation: "charity",
@@ -53,6 +54,7 @@ const TAG_KEY: Readonly<Record<string, string>> = {
   childcare: "childcare",
   education: "education",
   business: "business",
+  rental: "rental",
 };
 
 export async function loadAuditRecords(

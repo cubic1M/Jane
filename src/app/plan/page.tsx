@@ -21,6 +21,8 @@ import { UseAllSuggestions } from "./use-all";
 import { AutopilotChooser } from "@/components/autopilot-chooser";
 import { autopilotOf } from "@/lib/autopilot";
 import { YesToAll } from "./yes-to-all";
+import { loadYearPlan } from "@/lib/year-plan";
+import { YearPlanSection } from "./year-plan-section";
 
 async function Plan({ searchParams }: { searchParams: PageProps<"/plan">["searchParams"] }) {
   const user = await requireUser();
@@ -34,6 +36,7 @@ async function Plan({ searchParams }: { searchParams: PageProps<"/plan">["search
     autopilotOf(user.id),
     recentAutoCategories(user.id),
   ]);
+  const year = await loadYearPlan(user.id).catch(() => null);
   const setupMoney = setup.filter((p) => p.kind !== "category").length;
   await markPlanShown(
     user.id,
@@ -135,6 +138,7 @@ async function Plan({ searchParams }: { searchParams: PageProps<"/plan">["search
           </Link>
         </p>
       )}
+      {year && <YearPlanSection plan={year} />}
       {items.length > 0 && <h2 className="text-xl font-semibold">Each item</h2>}
       <ul className="flex flex-col gap-3">
         {items.map((i) => (

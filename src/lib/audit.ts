@@ -9,6 +9,8 @@ export type AuditEvent =
   | "loan_accepted"
   // Spec step 174: applying for a credit card through Jane, only on the person's tap.
   | "card_application_submitted"
+  // Spec step 177: a request for help when money is tight, sent on the person's tap.
+  | "tight_request_sent"
   | "user_signed_up"
   // Insurance (spec Phase X): a policy saved or removed, the household facts saved.
   | "insurance_policy_saved"
@@ -84,6 +86,9 @@ export type AuditEvent =
   | "money_transfer_cancelled"
   // A what-if plan the person adopted (spec step 203).
   | "what_if_adopted"
+  // The lean plan switched on or off (spec step 204).
+  | "lean_plan_started"
+  | "lean_plan_ended"
   | "plan_link_used"
   | "support_contact_suggested"
   | "support_contact_confirmed"
@@ -115,6 +120,9 @@ export type AuditEvent =
   | "tax_return_read_confirmed"
   | "tax_amendment_started"
   | "tax_amendment_signed"
+  // Spec step 217: a tax notice confirmed; its response handed to the team or the person.
+  | "tax_notice_confirmed"
+  | "tax_notice_response_sent"
   // Taxes (spec steps 118–127): which fields of the tax profile changed, never the answers.
   | "tax_profile_changed"
   // A tax tag the person changed (spec step 119): the tag and whether on one transaction or

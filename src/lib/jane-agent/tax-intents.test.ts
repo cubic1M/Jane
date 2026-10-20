@@ -259,3 +259,34 @@ describe("last year's return in the chat", () => {
     expect(parse(text)).toEqual({ kind: "tax", ask: "last_return" });
   });
 });
+
+// Spec step 173.
+describe("side income and rentals in the chat", () => {
+  it.each([
+    "what are the taxes on my rental income",
+    "how does depreciation work on my rental",
+    "is my side gig a hobby or business",
+    "where is my platform 1099",
+    "tag Ace Plumbing as rental expenses",
+  ])("%s", (text) => {
+    const intent = parse(text);
+    if (text.startsWith("tag")) {
+      expect(intent).toEqual({ kind: "tax", ask: "tag", target: "ace plumbing", tag: "rental" });
+    } else {
+      expect(intent).toEqual({ kind: "tax", ask: "side_income" });
+    }
+  });
+});
+
+// Spec step 217.
+describe("tax notices in the chat", () => {
+  it.each([
+    "I got a letter from the IRS",
+    "what is a CP2000",
+    "I have a CP14 notice",
+    "I received an IRS notice",
+    "got a scary notice about my taxes",
+  ])("%s asks about a notice", (text) => {
+    expect(parse(text)).toEqual({ kind: "tax", ask: "notice" });
+  });
+});

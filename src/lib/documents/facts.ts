@@ -57,6 +57,7 @@ export const KIND_FIELDS: Record<DocumentKind, (keyof DocumentFacts)[]> = {
   ],
   receipt: ["provider", "coverageSummary", "purchaseDate", "purchaseAmountCents"],
   tax_return: ["provider", "coverageSummary"],
+  tax_notice: ["provider", "coverageSummary"],
   other: ["provider", "coverageSummary"],
 };
 
@@ -146,6 +147,7 @@ export const PROVIDER_LABELS: Record<DocumentKind, string> = {
   warranty: "Company",
   receipt: "Store",
   tax_return: "Prepared by",
+  tax_notice: "Sent by",
   other: "From",
 };
 

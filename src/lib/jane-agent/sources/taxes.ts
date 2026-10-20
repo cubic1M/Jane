@@ -18,6 +18,13 @@ import { planMoveMessage } from "../tax-plan-message";
 import { givingOptionsMessage, receiptMessage } from "../giving-message";
 import { familyChoiceMessage, statusOf } from "../family-taxes-message";
 import { worthSaying } from "@/planning/family-taxes";
+import {
+  noticeDraftMessage,
+  noticeOpenMessage,
+  noticeReadingMessage,
+  remindDays,
+} from "../tax-notice-message";
+import { hobbyMessage, rentalSetupMessage } from "../side-income-message";
 import { readingMessage, reviewMessage } from "../prior-return-message";
 import { retentionMessage } from "../audit-records-message";
 import { homeSaleMessage, saltCapMessage } from "../home-taxes-message";
@@ -367,6 +374,58 @@ export const taxesSource: MessageSource = {
         dedupeKey: `family:${family!.year}:${c.key}`,
         priority: TAX_MESSAGE_PRIORITY.family,
       });
+    }
+
+    // Spec step 217: tax notices. Urgent: a notice to confirm, then one to answer (again
+    // as the date nears), then the draft to hand over.
+    for (const { notice: n, check } of tax.notices ?? []) {
+      if (n.status === "waiting") {
+        out.push({
+          kind: "decision",
+          ...noticeReadingMessage(n),
+          dedupeKey: `notice:${n.id}`,
+          priority: TAX_MESSAGE_PRIORITY.notice,
+        });
+      } else if (n.status === "confirmed" && !n.handledBy) {
+        if (n.draft) {
+          out.push({
+            kind: "decision",
+            ...noticeDraftMessage(n),
+            dedupeKey: `notice-draft:${n.id}:${n.response}`,
+            priority: TAX_MESSAGE_PRIORITY.notice,
+          });
+        } else if (check) {
+          out.push({
+            kind: "decision",
+            ...noticeOpenMessage(n, check, context.local.date),
+            dedupeKey: `notice-open:${n.id}:${remindDays(n, context.local.date) ?? 0}`,
+            priority: TAX_MESSAGE_PRIORITY.notice,
+          });
+        }
+      }
+    }
+
+    // Spec step 173: a rental that needs its property for depreciation; hobby or business
+    // (demo advice, with both taxes shown).
+    if (tax.sideIncome) {
+      const setup = rentalSetupMessage(tax.sideIncome);
+      if (setup) {
+        out.push({
+          kind: "heads_up",
+          ...setup,
+          dedupeKey: `rental:${tax.sideIncome.year}`,
+          priority: TAX_MESSAGE_PRIORITY.rental_setup,
+        });
+      }
+      const kind = tax.advice ? hobbyMessage(tax.sideIncome) : null;
+      if (kind) {
+        out.push({
+          kind: "decision",
+          ...kind,
+          dedupeKey: `sidekind:${tax.sideIncome.year}`,
+          priority: TAX_MESSAGE_PRIORITY.side_kind,
+        });
+      }
     }
 
     // Spec step 172: a return Jane read, to confirm; and what its review found.

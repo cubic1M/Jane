@@ -295,6 +295,7 @@ model User {
   creditReports          CreditReport[]
   debtWatch              DebtWatch?
   cardApplications       CardApplication[]
+  tightRequests          TightRequest[]
   balanceTransfers       BalanceTransfer[]
   findings               Finding[]
   decisions              Decision[]
@@ -345,6 +346,7 @@ model User {
   taxDocuments           TaxDocument[]
   priorReturns           PriorReturn[]
   taxAmendments          TaxAmendment[]
+  taxNotices             TaxNotice[]
   taxForms               TaxForm[]
   taxReturns             TaxReturn[]
   budgetTuneUps          BudgetTuneUp[]
@@ -369,6 +371,8 @@ model User {
   healthScores      HealthScore[]
   monthlyReports    MonthlyReport[]
   whatIfPlans       WhatIfPlan[]
+  leanPlans         LeanPlan[]
+  yearPlans         YearPlan[]
 
   @@map("users")
 }
@@ -826,6 +830,32 @@ model CardApplication {
 
   @@index([userId])
   @@map("card_applications")
+}
+
+// A request Jane sent for someone whose money is tight (spec step 177), each only after the
+// person's tap: a due-date move, a hardship program, a lower rate or a late fee waived. The
+// lender stand-in answers it.
+model TightRequest {
+  id          String    @id @default(cuid())
+  userId      String    @map("user_id")
+  // "<kind>:<debt key>:<the shortfall's date>", so one is sent once for each shortfall.
+  key         String
+  kind        String
+  targetKey   String    @map("target_key")
+  targetName  String    @map("target_name")
+  body        String
+  // sent, granted or declined.
+  status      String
+  partner     String
+  shortfallOn DateTime  @map("shortfall_on") @db.Date
+  sentAt      DateTime  @default(now()) @map("sent_at") @db.Timestamptz(3)
+  resolvedAt  DateTime? @map("resolved_at") @db.Timestamptz(3)
+  outcome     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, key])
+  @@map("tight_requests")
 }
 
 // A balance transfer the person made to a 0% card (spec step 113), so Jane can keep the
@@ -1654,6 +1684,7 @@ model PlanLink {
 // is AES-256-GCM encrypted (src/lib/crypto.ts); the key facts are read by Claude or typed
 // by the person, and they can always correct them.
 model Document {
+  taxNotice           TaxNotice?
   priorReturn         PriorReturn?
   id                  String       @id @default(cuid())
   userId              String       @map("user_id")
@@ -2297,6 +2328,11 @@ model TaxProfile {
   homeDaysLivedIn       Int?      @map("home_days_lived_in")
   // Spec step 171: tax years whose "records can go" reminder is on the deadlines.
   retentionReminded     String[]  @default([]) @map("retention_reminded")
+  // Spec step 173: the rental property (price and when it was ready to rent), and whether
+  // the side income is a "business" or a "hobby" (null: not said).
+  rentalPriceCents      Int?      @map("rental_price_cents")
+  rentalPlacedOn        DateTime? @map("rental_placed_on") @db.Date
+  sideIncomeKind        String?   @map("side_income_kind")
   createdAt             DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt             DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
 
@@ -2705,6 +2741,31 @@ model TaxAmendment {
   @@map("tax_amendments")
 }
 
+// Spec step 217: a letter from the IRS or the state, read from an uploaded copy for the
+// person to confirm (like a prior return, step 172). response is what they chose (agree,
+// pay or dispute) with its draft; handledBy says who sends it: "team" (queued for Jane's
+// team) or "you". Nothing is paid or sent without the person's tap.
+model TaxNotice {
+  id         String    @id @default(cuid())
+  userId     String    @map("user_id")
+  documentId String    @unique @map("document_id")
+  fields     Json
+  sources    Json
+  notes      Json
+  status     String    @default("waiting")
+  response   String?
+  draft      String?
+  handledBy  String?   @map("handled_by")
+  handledAt  DateTime? @map("handled_at") @db.Timestamptz(3)
+  createdAt  DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  document Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("tax_notices")
+}
+
 model TaxReturn {
   id              String    @id @default(cuid())
   userId          String    @map("user_id")
@@ -3023,6 +3084,45 @@ model WhatIfPlan {
 
   @@index([userId, status])
   @@map("what_if_plans")
+}
+
+// The lean plan after a paycheck didn't come (spec step 204): asked once per late paycheck,
+// then active until pay resumes. While active, automatic transfers from paychecks pause.
+model LeanPlan {
+  id        String    @id @default(cuid())
+  userId    String    @map("user_id")
+  // The late-paycheck change it answers: "late:<employer>:<due date>".
+  changeKey String    @map("change_key")
+  employer  String
+  // YYYY-MM-DD: the day the paycheck was due.
+  dueOn     String    @map("due_on")
+  // proposed, active, declined or ended.
+  status    String    @default("proposed")
+  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  startedAt DateTime? @map("started_at") @db.Timestamptz(3)
+  endedAt   DateTime? @map("ended_at") @db.Timestamptz(3)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, changeKey])
+  @@map("lean_plans")
+}
+
+// The year's money plan (spec step 205): twelve months of targets, kept so a month that has
+// passed never changes. months is a YearMonth[] (src/planning/year-plan.ts).
+model YearPlan {
+  id         String   @id @default(cuid())
+  userId     String   @map("user_id")
+  // YYYY-MM: the first month of the twelve.
+  startMonth String   @map("start_month")
+  months     Json
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt  DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, startMonth])
+  @@map("year_plans")
 }
 
 // Spec step 210: a change to the person's retirement contribution at work, sent to the

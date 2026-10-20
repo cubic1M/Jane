@@ -28,6 +28,9 @@ import { loadTaxDocuments } from "@/lib/tax-documents";
 import { loadTaxPlan } from "@/lib/tax-plan";
 import { loadGiving } from "@/lib/giving";
 import { loadFamilyTaxes } from "@/lib/family-taxes";
+import { NOTICE_KINDS } from "@/config/tax-notices";
+import { checkNoticeFor, listTaxNotices, noticeAmountCents } from "@/lib/tax-notices";
+import { loadSideIncome } from "@/lib/side-income";
 import { loadReturnReviews } from "@/lib/prior-return/review";
 import { loadAuditRecords } from "@/lib/audit-records";
 import { loadHomeTaxes } from "@/lib/home-taxes";
@@ -148,6 +151,18 @@ export const TAX_TOOLS: Anthropic.Tool[] = [
     name: "tax_last_return",
     description:
       "Prior-year returns the person uploaded and confirmed, and in demo advice mode what a review against their accounts found for each: money left behind (itemizing instead of the standard deduction, student loan interest, an education credit, the child and dependent care credit) with the federal tax each would have saved, the last day to amend, whether an amended return is worth preparing, and the state of any amended return (ready for them to review and sign, submitted, accepted). Returns not confirmed aren't used. Amending needs the person's review and signature.",
+    input_schema: noInput,
+  },
+  {
+    name: "tax_side_income",
+    description:
+      "The person's side income for the tax year: a rental (rent in, expenses they tagged, depreciation on the building over 27.5 years, the net, how much of a loss counts under the passive loss allowance and how much carries forward); each gig platform's payouts matched to its 1099 (matched, differs, waiting for the form); whether they treat the income as a business or a hobby; and in demo advice mode the federal tax both ways. All of it is in the estimate, quarterly amounts and tax-time pack.",
+    input_schema: noInput,
+  },
+  {
+    name: "tax_notices",
+    description:
+      "Letters from the IRS or the state the person uploaded: which notice each is (CP2000, CP14, CP501, CP503, CP504, a state notice), what it means in plain words, the amount and the date to respond or pay by, what Jane found against the person's own records (forms collected, income in their accounts, payments seen), in demo advice mode which reply that points to (agree, pay or disagree), and whether a reply is drafted or handed over. Notices not confirmed aren't used. Nothing is paid or sent without the person's tap.",
     input_schema: noInput,
   },
   {
@@ -595,6 +610,59 @@ export async function runTaxTool(
           },
         })),
       });
+    }
+    case "tax_side_income": {
+      const view = await loadSideIncome(userId, { client, now });
+      const r = view.rental;
+      return out({
+        year: view.year,
+        rental: r && {
+          rentIn: money(r.rentCents),
+          expenses: money(r.expensesCents),
+          depreciation: money(r.depreciationCents),
+          net: money(Math.abs(r.netCents)),
+          isLoss: r.netCents < 0,
+          countsThisYear: money(Math.abs(r.countedCents)),
+          carriesForward: money(r.suspendedCents),
+        },
+        platforms: view.platforms.map((p) => ({
+          platform: p.payer,
+          payouts: money(p.payoutsCents),
+          form1099: p.formCents === null ? null : money(p.formCents),
+          status: p.status,
+        })),
+        treatedAs: view.kind,
+        taxBothWays: view.bothWays && {
+          asBusiness: money(view.bothWays.business),
+          asHobby: money(view.bothWays.hobby),
+        },
+      });
+    }
+    case "tax_notices": {
+      const notices = (await listTaxNotices(userId, { client })).filter(
+        (n) => n.status === "confirmed",
+      );
+      const out_ = await Promise.all(
+        notices.map(async (n) => {
+          const check = await checkNoticeFor(userId, n, { client, now });
+          return {
+            notice: NOTICE_KINDS[n.kind].title,
+            means: NOTICE_KINDS[n.kind].what,
+            taxYear: n.fields.taxYear ?? null,
+            amount: noticeAmountCents(n) > 0 ? money(noticeAmountCents(n)) : null,
+            dueBy: n.dueOn,
+            foundInYourRecords: check.lines,
+            looksLike: check.advice ? check.points : null,
+            why: check.advice && check.points ? check.why : null,
+            reply: n.handledBy
+              ? `sent by ${n.handledBy === "team" ? "Jane's team" : "the person"}`
+              : n.draft
+                ? "drafted"
+                : "not yet",
+          };
+        }),
+      );
+      return out({ notices: out_ });
     }
     case "tax_forms": {
       // Spec step 166: with what Jane collected and how each checked against the accounts.

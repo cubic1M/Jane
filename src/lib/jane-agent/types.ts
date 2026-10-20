@@ -180,6 +180,17 @@ export const ACTION_IDS = [
   "tax.prior_confirm",
   "tax.prior_no",
   "tax.amend_prepare",
+  // Spec step 173: hobby or business.
+  "tax.side_business",
+  "tax.side_hobby",
+  // Spec step 217: a tax notice read from an upload, its response drafted and handed over.
+  "tax.notice_confirm",
+  "tax.notice_no",
+  "tax.notice_agree",
+  "tax.notice_pay",
+  "tax.notice_dispute",
+  "tax.notice_team",
+  "tax.notice_mine",
   // Investments (spec step 129 on): the answer buttons on an investor-profile question,
   // by position (src/config/investing.ts PROFILE_QUESTIONS).
   "invest.answer.1",
@@ -245,6 +256,8 @@ export const ACTION_IDS = [
   "bill.skip",
   "attention.resume",
   "whatif.adopt",
+  "lean.start",
+  "lean.not_now",
 ] as const;
 export type ActionId = (typeof ACTION_IDS)[number];
 
@@ -271,6 +284,12 @@ export type MessageRefs = {
   // credit-builder stand-in to open.
   creditStatement?: { accountId: string; closesOn: string };
   creditBuilder?: { productId: string };
+  // Spec step 176: the buy now, pay later plan "Pay it off" pays.
+  bnplPlan?: { key: string };
+  // Spec step 177: the request "Send" sends when money is tight.
+  tightItem?: { id: string };
+  // Spec step 179: the home price the down payment goal is sized for.
+  homeGoal?: { priceCents: number };
   // Insurance (spec Phase X): a coverage gap by its key (GAP_KEYS), and the policy a
   // message is about.
   insuranceGap?: string;
@@ -380,6 +399,8 @@ export type MessageRefs = {
   taxGift?: string;
   // Spec step 172: the return read from a document (its id) a message is about.
   priorReturn?: string;
+  // Spec step 217: the tax notice (its id) a message is about.
+  taxNotice?: string;
   // Spec step 98: demo advice (src/lib/advice-mode.ts). The chat shows DEMO_ADVICE_LABEL
   // under it. Set it on every message that recommends investments, taxes, insurance or loans.
   advice?: true;
@@ -418,6 +439,8 @@ export type MessageRefs = {
   // Spec step 147: a kind of message Jane stopped bringing up, by its source.
   attentionSource?: string;
   // Spec step 203: the what-if a message offers to adopt.
+  // Spec step 204: the lean-plan question.
+  leanId?: string;
   whatIf?: { scenario: string; months: number; extraMonthlyCents: number };
   // Spec step 141: a sector's autopilot change typed in the chat, set on "Set it".
   sectorChange?: {
