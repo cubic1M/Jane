@@ -371,3 +371,14 @@ describe("working with an accountant in the chat", () => {
     expect(parse(text)).toEqual({ kind: "tax", ask: "accountant" });
   });
 });
+
+describe("the tax calendar in the chat", () => {
+  it.each([
+    "show me my tax year calendar",
+    "what are my taxes this month",
+    "what's due for my taxes",
+    "how does jane handle my taxes",
+  ])("%s asks about the calendar", (text) => {
+    expect(parse(text)).toEqual({ kind: "tax", ask: "calendar" });
+  });
+});
