@@ -12,6 +12,7 @@ import type { MessageAction } from "../types";
 import type { InsuranceIntent } from "./intents";
 import { decide } from "./decisions";
 import { businessReply } from "./business";
+import { keepCoveredReply } from "./review-words";
 import { needReply } from "./need";
 import type { InsuranceSnapshot } from "./snapshot";
 
@@ -140,6 +141,9 @@ export function insuranceReply(
 
   // Spec step 149: whether they need a kind of cover, from their numbers.
   if (intent.ask === "business") return businessReply(insurance);
+  if (intent.ask === "keep_covered" || intent.ask === "review") {
+    return keepCoveredReply(insurance, intent.ask === "review");
+  }
   if (intent.ask === "need" && intent.policyKind && insurance) {
     return needReply(intent.policyKind, insurance);
   }

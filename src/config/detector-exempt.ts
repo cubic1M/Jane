@@ -25,6 +25,8 @@ export const DETECTOR_EXEMPT: Readonly<Record<string, string>> = {
 // never suggest by themselves, and why (spec step 254). Every other tool is covered by a
 // detector (`covers` on src/detectors) or is on the shrinking list in src/detectors/missing.ts.
 export const TOOL_EXEMPT: Readonly<Record<string, string>> = {
+  insurance_review:
+    "reports the yearly insurance review when asked; the review itself is the checkup's message, which the insurance checkup detector brings",
   insurance_decision:
     "answers an insurance decision the person asks about, from their own numbers; the suggestions come from the insurance detectors",
   tax_decide:
