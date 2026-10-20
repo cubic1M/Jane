@@ -28,6 +28,15 @@ import {
 import type { Candidate } from "../types";
 import { detectDrop } from "@/planning/steady-hand";
 import { STEADY_LINK, steadyMessage } from "../investments/steady-copy";
+import { MATCH_MIN_MISSED_CENTS, ROOM_MIN_CENTS } from "@/config/retirement-accounts";
+import {
+  iraButton,
+  limitsLine,
+  matchButton,
+  raMatchLine,
+  RA_LINK,
+  rothLine,
+} from "../investments/retirement-accounts-copy";
 import { AUTO_LOG_LINK, summaryBody } from "../investments/automatic-copy";
 import { CASH_MIN_GAIN_CENTS } from "@/config/cash";
 import { CASH_LINK, cashLine, moveButtons } from "../investments/cash-copy";
@@ -300,6 +309,32 @@ export const investmentsSource: MessageSource = {
         actions: [{ id: "hsa.link", label: "Link a demo HSA", kind: "primary" }, snoozeButton()],
         dedupeKey: "hsa:link",
         priority: MESSAGE_PRIORITY.hsa,
+      });
+    }
+    // Step 210: the match left on the table, then IRA room (each a tap).
+    const ra = inv.retirementAccounts;
+    const matchText = raMatchLine(ra);
+    if (inv.advice && matchText && (ra.match?.missedCents ?? 0) >= MATCH_MIN_MISSED_CENTS) {
+      const button = matchButton(ra);
+      out.push({
+        kind: button ? "decision" : "heads_up",
+        body: `${matchText} Nothing changes in your pay until you tap.`,
+        refs: { advice: true },
+        actions: [...(button ? [button] : []), RA_LINK, snoozeButton()],
+        dedupeKey: `retire:match:${Math.round((ra.match?.missedCents ?? 0) / 100)}`,
+        priority: MESSAGE_PRIORITY.retirement_accounts,
+      });
+    }
+    const iraRoom = ra.limits.find((l) => l.key === "ira")?.roomCents ?? 0;
+    const iraTap = iraButton(ra);
+    if (inv.advice && iraTap && iraRoom >= ROOM_MIN_CENTS) {
+      out.push({
+        kind: "decision",
+        body: `You can still put ${formatCents(ra.iraAllowedCents)} in your IRA this year. ${rothLine(ra)} Tap and I'll put it in ${SIMULATED_WORDS}.`,
+        refs: { advice: true, iraCents: ra.iraAllowedCents },
+        actions: [iraTap, RA_LINK, snoozeButton()],
+        dedupeKey: `retire:ira:${new Date(snapshot.asOf).getUTCFullYear()}`,
+        priority: MESSAGE_PRIORITY.retirement_accounts,
       });
     }
     // Step 164: once a month, what Jane did by herself in investing within the person's

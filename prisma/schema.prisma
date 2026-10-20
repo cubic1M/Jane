@@ -362,6 +362,7 @@ model User {
   controllerRuns    ControllerRun[]
   moneyTransfers    MoneyTransfer[]
   paycheckPlans     PaycheckPlan[]
+  payrollChanges    PayrollChange[]
   healthScores      HealthScore[]
   monthlyReports    MonthlyReport[]
 
@@ -2949,4 +2950,26 @@ model MonthlyReport {
 
   @@unique([userId, month])
   @@map("monthly_reports")
+}
+
+// Spec step 210: a change to the person's retirement contribution at work, sent to the
+// payroll partner (a stand-in until one is connected) or the team. It only records the
+// request; the person's pay changes when their employer does it.
+model PayrollChange {
+  id          String   @id @default(cuid())
+  userId      String   @map("user_id")
+  // Where the request went: "stand-in" until a payroll partner is connected.
+  partner     String
+  partnerRef  String   @map("partner_ref")
+  fromRate    Float    @map("from_rate")
+  toRate      Float    @map("to_rate")
+  // requested, then confirmed once the stand-in sees the next paycheck.
+  status      String   @default("requested")
+  effectiveOn DateTime @map("effective_on") @db.Date
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+  @@map("payroll_changes")
 }

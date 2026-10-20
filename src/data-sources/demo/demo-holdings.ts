@@ -100,7 +100,7 @@ type Position = { key: Key; quantity: number; price: number; costBasis: number }
 
 // The cash position (last in each list) is filled in from the account's balance.
 const POSITIONS: Readonly<
-  Record<"retirement" | "brokerage" | "hsa" | "stock_plan", readonly Position[]>
+  Record<"retirement" | "brokerage" | "hsa" | "stock_plan" | "roth_ira", readonly Position[]>
 > = {
   retirement: [
     { key: "NSTDX", quantity: 1520.384, price: 25.17, costBasis: 31_900 },
@@ -121,6 +121,11 @@ const POSITIONS: Readonly<
     { key: "CASH", quantity: 0, price: 1, costBasis: 0 },
   ],
   // Spec step 160: 150 vested Acme shares, at the prices they vested at (DEMO_VESTS).
+  // Spec step 210: a demo Roth IRA, mostly in a stock index fund.
+  roth_ira: [
+    { key: "KTSIX", quantity: 40, price: 142.18, costBasis: 4_800 },
+    { key: "CASH", quantity: 0, price: 1, costBasis: 0 },
+  ],
   stock_plan: [
     { key: "ACME", quantity: 150, price: 136.4, costBasis: 14_700 },
     { key: "CASH", quantity: 0, price: 1, costBasis: 0 },
@@ -251,6 +256,7 @@ export function demoLedger(
     "brokerage",
     ...(extras.includes("hsa") ? ["hsa" as const] : []),
     ...(extras.includes("stock_plan") ? ["stock_plan" as const] : []),
+    ...(extras.includes("roth_ira") ? ["roth_ira" as const] : []),
   ] as const;
   const rows: LedgerRow[] = accounts.flatMap((account) => {
     const id = accountId(demo.seed, account);
@@ -304,7 +310,7 @@ export const DEMO_MATCH_UP_TO = 0.06;
 
 type Event = {
   key: string;
-  account: "retirement" | "brokerage" | "hsa" | "stock_plan";
+  account: "retirement" | "brokerage" | "hsa" | "stock_plan" | "roth_ira";
   security: Key | null;
   name: string;
   quantity: number;

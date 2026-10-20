@@ -28,6 +28,13 @@ import { CompanyStockError, loadCompanyStock, saveGrant, sellPart } from "./comp
 import { cryptoTotal, loadCrypto, syncAllCrypto } from "@/lib/crypto/crypto";
 import { CashError, loadCash, moveCash } from "./cash";
 import { automaticLog, runAutomaticInvesting } from "./automatic";
+import {
+  contributeToIra,
+  linkDemoRothIra,
+  loadRetirementAccounts,
+  requestMatchRaise,
+  RetirementAccountsError,
+} from "./retirement-accounts";
 import { setSectorAutopilot } from "@/lib/sector-autopilot";
 import { brokeragePartner, NoCryptoOrders } from "@/lib/brokerage/partner";
 import { loadMoneyHub } from "@/lib/hubs/money";
@@ -910,6 +917,68 @@ describe.runIf(url)("investments in Jane's chat, against a real database", () =>
       expect(summary.body).toMatch(/^This month I handled 1 thing in your investments by myself/);
       expect(summary.body).toMatch(/Over your caps, so waiting for your tap: Rebalanced/);
       expect(summary.body).toMatch(/no real money moved\.$/);
+    },
+  );
+
+  it(
+    "step 210: limits across accounts, the missed match in dollars, a payroll request and an IRA contribution, each a tap",
+    SLOW,
+    async () => {
+      const userId = await demoPerson();
+      const before = await loadRetirementAccounts(userId, { client, now: LINKED });
+      expect(before.limits.map((l) => l.key)).toEqual(["workplace", "ira"]);
+      expect(before.limits[0].usedCents).toBeGreaterThan(0);
+      expect(before.limits[0].roomCents).toBe(
+        before.limits[0].limitCents - before.limits[0].usedCents,
+      );
+      expect(before.match!.missedCents).toBeGreaterThan(0);
+      expect(before.ira).toBeNull();
+      expect(await client.payrollChange.count({ where: { userId } })).toBe(0);
+
+      // Chat: the message, then the tap, through the payroll stand-in.
+      const snapshot = await loadSnapshot(userId, { client, now: LINKED });
+      const offer = investmentsSource
+        .gather(snapshot!, {} as never)
+        .find((c) => c.dedupeKey.startsWith("retire:match:"))!;
+      const posted = await client.janeMessage.create({
+        data: {
+          userId,
+          kind: offer.kind,
+          body: offer.body,
+          refs: offer.refs,
+          actions: offer.actions,
+          dedupeKey: "test:retire:match",
+        },
+      });
+      const { message } = await takeChatAction(userId, posted.id, "retire.match", {
+        client,
+        now: LINKED,
+      });
+      expect(message.refs.note).toMatch(
+        /^Requested through the payroll stand-in \(no real pay changes yet\): 6% of pay from 2026-10-25/,
+      );
+      const change = await client.payrollChange.findFirstOrThrow({ where: { userId } });
+      expect(change).toMatchObject({ partner: "stand-in", status: "requested", toRate: 0.06 });
+      await expect(requestMatchRaise(userId, { client, now: LINKED })).rejects.toThrow(
+        RetirementAccountsError,
+      );
+
+      // A demo Roth IRA, and money in it through the simulated brokerage.
+      await linkDemoRothIra(userId, { client, now: LINKED });
+      const withIra = await loadRetirementAccounts(userId, { client, now: LINKED });
+      expect(withIra.ira).toMatchObject({ name: "Demo Roth IRA", roth: true });
+      const room = withIra.limits[1].roomCents;
+      expect(withIra.iraAllowedCents).toBeLessThanOrEqual(room);
+      await expect(contributeToIra(userId, room + 1, { client, now: LINKED })).rejects.toThrow(
+        /more than you can/,
+      );
+      await contributeToIra(userId, 100_000, { client, now: LINKED });
+      const after = await loadRetirementAccounts(userId, { client, now: LINKED });
+      expect(after.limits[1].usedCents).toBe(100_000);
+      expect(after.limits[1].roomCents).toBe(room - 100_000);
+      expect(
+        await client.brokerageOrder.count({ where: { userId, reason: "ira_contribution" } }),
+      ).toBe(2);
     },
   );
 });
