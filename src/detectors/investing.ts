@@ -104,9 +104,13 @@ const backdoorRoth: Detector = {
   detect({ profile }) {
     const income = profile.facts.monthly_income;
     const pay = annual(income.value);
-    if (profile.facts.income_pattern.value !== "salary" || pay < R.backdoorIncomeMinCents) {
-      return null;
-    }
+    // A joint return's Roth limit is about double a single filer's, so a couple needs about
+    // twice the pay before this applies.
+    const limit =
+      profile.facts.household.value === "single"
+        ? R.backdoorIncomeMinCents
+        : R.backdoorIncomeMinCents * 2;
+    if (profile.facts.income_pattern.value !== "salary" || pay < limit) return null;
     const growth = Math.round(
       R.iraLimitCents * ((1 + R.assumedGrowthBps / 10_000) ** R.growthYears - 1),
     );
