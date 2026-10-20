@@ -14,6 +14,7 @@ import {
   STUDENT_LOAN_INTEREST,
   type Bracket,
 } from "@/config/tax-rates";
+import { amt } from "@/planning/equity-tax";
 import { bracketTax } from "@/planning/tax-brackets";
 import {
   residentTax,
@@ -83,6 +84,8 @@ export type EstimateInput = {
   otherAdjustmentsCents?: number;
   // Credits Jane works out elsewhere (education, dependent care), not refundable.
   otherCreditsCents?: number;
+  // Spec step 219: the alternative minimum tax preference from ISOs exercised and held.
+  amtPreferenceCents?: number;
   mortgageInterestCents: number;
   charityCents: number;
   medicalCents: number;
@@ -139,6 +142,8 @@ export type TaxEstimate = {
   selfEmploymentTaxCents: number;
   additionalMedicareCents: number;
   netInvestmentIncomeTaxCents: number;
+  // Spec step 219: the alternative minimum tax, on top of the regular tax.
+  amtCents: number;
   credits: {
     childTaxCreditCents: number;
     otherDependantCreditCents: number;
@@ -397,7 +402,19 @@ export function estimateTaxes(input: EstimateInput): TaxEstimate {
     input.otherCreditsCents ?? 0,
     clamp0(ordinaryTax - child.childCents - child.otherCents),
   );
+  // Spec step 219: the alternative minimum tax, when there's a preference to count.
+  const amtResult =
+    (input.amtPreferenceCents ?? 0) > 0
+      ? amt({
+          status,
+          taxableCents: taxable,
+          addBackCents: itemizes ? itemized.stateLocalTaxCents : standard,
+          preferenceCents: input.amtPreferenceCents!,
+          regularTaxCents: ordinaryTax,
+        })
+      : { amtCents: 0 };
   const totalTax =
+    amtResult.amtCents +
     ordinaryTax -
     child.childCents -
     child.otherCents -
@@ -432,6 +449,7 @@ export function estimateTaxes(input: EstimateInput): TaxEstimate {
     selfEmploymentTaxCents: seTax,
     additionalMedicareCents: addlMedicare,
     netInvestmentIncomeTaxCents: niit,
+    amtCents: amtResult.amtCents,
     credits: {
       childTaxCreditCents: child.childCents,
       otherDependantCreditCents: child.otherCents,

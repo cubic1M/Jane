@@ -53,10 +53,11 @@ export type DemoCryptoTrade = {
   side: "buy" | "sell";
   amountCents: number;
   feeCents: number;
+  quantity?: number;
 };
 
 // The exchange's buys from `from` to `to` (inclusive), oldest first.
-export function demoCryptoTrades(from: string, to: string): DemoCryptoTrade[] {
+export function demoCryptoTrades(from: string, to: string, anchor?: string): DemoCryptoTrade[] {
   const out: DemoCryptoTrade[] = [];
   for (let day = from; day <= to; day = addDays(day, 1)) {
     if (day.slice(8) !== DEMO_CRYPTO_BUY.dayOfMonth) continue;
@@ -66,6 +67,13 @@ export function demoCryptoTrades(from: string, to: string): DemoCryptoTrade[] {
       side: "buy",
       amountCents: DEMO_CRYPTO_BUY.amount * 100,
       feeCents: Math.round(DEMO_CRYPTO_BUY.fee * 100),
+      // The coins that amount bought at the day's price, when the anchor's known.
+      ...(anchor
+        ? (() => {
+            const price = demoCryptoPrice(DEMO_CRYPTO_BUY.asset, day, anchor);
+            return price ? { quantity: DEMO_CRYPTO_BUY.amount / price } : {};
+          })()
+        : {}),
     });
   }
   return out;

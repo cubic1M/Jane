@@ -19,6 +19,12 @@ export const POLICY_KINDS = {
   umbrella: "Umbrella",
   travel: "Travel",
   device: "Device protection",
+  // Spec step 197: cover for how they live.
+  rideshare: "Rideshare",
+  business: "Business",
+  valuables: "Valuables",
+  boat: "Boat",
+  rental_property: "Rental property",
   other: "Other",
 } as const;
 
@@ -108,6 +114,24 @@ export const COVERAGE_FIELDS: Record<PolicyKind, readonly CoverageField[]> = {
     { key: "medical", label: "Medical care abroad, up to", type: "money" },
   ],
   device: [{ key: "perClaimLimit", label: "Pays per claim, up to", type: "money" }],
+  rideshare: [
+    { key: "liability", label: "Liability while you drive for pay", type: "money" },
+    { key: "collision", label: "Damage to your car while you drive for pay", type: "yesno" },
+  ],
+  business: [
+    { key: "generalLiability", label: "General liability", type: "money" },
+    { key: "businessProperty", label: "Business equipment and stock", type: "money" },
+  ],
+  valuables: [{ key: "listedValue", label: "Value of the items listed", type: "money" }],
+  boat: [
+    { key: "hullValue", label: "Boat value covered", type: "money" },
+    { key: "liability", label: "Liability", type: "money" },
+  ],
+  rental_property: [
+    { key: "dwelling", label: "Home rebuild cost", type: "money" },
+    { key: "liability", label: "Liability while renting it out", type: "money" },
+    { key: "lossOfRent", label: "Lost rent after damage", type: "yesno" },
+  ],
   other: [],
 };
 
@@ -149,6 +173,12 @@ export const GAP_KEYS = [
   "umbrella",
   "pet",
   "travel",
+  // Spec step 197: risks seen in how they live, after they said yes.
+  "rideshare",
+  "home_business",
+  "valuables",
+  "boat",
+  "short_term_rental",
 ] as const;
 export type GapKey = (typeof GAP_KEYS)[number];
 
@@ -199,6 +229,26 @@ export const GAP_ADVICE: Record<GapKey, { text: string; cents: number[] }> = {
     text: "Cover the trip's non-refundable cost and medical care abroad, but check your card's travel benefits first: some already cover cancellation.",
     cents: [],
   },
+  rideshare: {
+    text: "Ask for a rideshare endorsement, or a policy that covers you while you drive for pay, so your own car policy isn't the only thing between you and a claim. It usually adds a few hundred dollars a year.",
+    cents: [],
+  },
+  home_business: {
+    text: "Add business insurance: general liability with at least $1,000,000 of cover, and cover for your equipment and stock. A home policy pays little for a business.",
+    cents: [100_000_000],
+  },
+  valuables: {
+    text: "List the ring or camera on your policy by name. Listed items are paid at their full value, while unlisted ones are usually capped at a small limit.",
+    cents: [],
+  },
+  boat: {
+    text: "Add boat insurance that pays for the boat itself and for damage you cause to others on the water. Your home policy usually caps or excludes boats.",
+    cents: [],
+  },
+  short_term_rental: {
+    text: "Switch to a policy written for renting a home out, with liability for guests and lost rent after damage. A regular home policy often excludes paying guests.",
+    cents: [],
+  },
 };
 
 // Gap rules for the kinds added in spec step 149, read from the accounts.
@@ -240,6 +290,11 @@ export const QUOTABLE_KINDS: readonly PolicyKind[] = [
   "umbrella",
   "travel",
   "device",
+  "rideshare",
+  "business",
+  "valuables",
+  "boat",
+  "rental_property",
 ];
 
 // The stand-in's pricing, a year, in cents, before the carrier's own factor. Fixed rules
@@ -305,6 +360,22 @@ export const DEMO_PRICING = {
   travel: { tripCostBps: 600, defaults: { tripCost: 300_000, medical: 5_000_000 } },
   // Device protection: a year per device.
   device: { perDeviceCents: 12_000, defaults: { perClaimLimit: 150_000 } },
+  // Spec step 197. Rideshare: a year on top of a car policy. Business: a base and a share
+  // of the equipment. Valuables: a share of the listed value. Boat: a base and a share of
+  // the hull value. Rental property: a share of the rebuild cost.
+  rideshare: { perYearCents: 36_000, defaults: { liability: 10_000_000 } },
+  business: {
+    baseCents: 42_000,
+    propertyBps: 150,
+    defaults: { generalLiability: 100_000_000, businessProperty: 1_000_000 },
+  },
+  valuables: { listedBps: 110, defaults: { listedValue: 500_000 } },
+  boat: {
+    baseCents: 18_000,
+    hullBps: 160,
+    defaults: { hullValue: 2_000_000, liability: 30_000_000 },
+  },
+  rental_property: { dwellingBps: 70, defaults: { dwelling: 40_000_000, liability: 30_000_000 } },
   // A higher deductible lowers the price (cents → factor); the nearest one counts.
   deductibleFactors: [
     { cents: 25_000, factor: 1.1 },
@@ -543,3 +614,76 @@ export const DEDUCTIBLE_SAVINGS_COVER = 2;
 export const MIN_SAVING_CENTS = 2_000;
 // Kinds that carry monthly installment fees and discounts like these.
 export const SAVING_POLICY_KINDS: readonly PolicyKind[] = ["auto", "home", "renters"];
+
+// --- Risks seen in how they live (spec step 197) -----------------------------------------------
+// Signals in the person's transactions that a policy they have may not cover something. Each
+// is a rule: a merchant pattern, which way the money goes, how recent, and (for purchases)
+// how big. Each becomes one question in the chat, asked once; a no is remembered for good.
+export const RISK_KINDS = [
+  "rideshare",
+  "home_business",
+  "new_dog",
+  "valuable",
+  "boat",
+  "rental_out",
+] as const;
+export type RiskKind = (typeof RISK_KINDS)[number];
+
+export const RISK_SIGNALS: Record<
+  RiskKind,
+  {
+    // "in" is money coming in (a payout), "out" is spending.
+    direction: "in" | "out";
+    pattern: RegExp;
+    // Only charges this big count (a ring, not a ring cleaner).
+    minCents: number;
+    // The gap a yes opens, and the policy kind that closes it; null when a yes updates the
+    // household instead (a new dog adds a pet).
+    gap: { key: GapKey; kind: PolicyKind } | null;
+  }
+> = {
+  rideshare: {
+    direction: "in",
+    pattern:
+      /\b(?:uber|lyft)\b.*\b(?:driver|payout|earnings)\b|\b(?:doordash|dasher|grubhub|instacart|shipt)\b.*\b(?:payout|earnings|deposit)\b|\buber eats\b.*\bpayout\b/i,
+    minCents: 0,
+    gap: { key: "rideshare", kind: "rideshare" },
+  },
+  home_business: {
+    direction: "in",
+    pattern:
+      /\b(?:shopify|square|stripe|etsy|gumroad|squarespace)\b.*\b(?:payout|transfer|deposit)\b/i,
+    minCents: 0,
+    gap: { key: "home_business", kind: "business" },
+  },
+  new_dog: {
+    direction: "out",
+    pattern:
+      /\b(?:vca|banfield|animal hospital|animal clinic|veterinar\w*|vet clinic|petco|petsmart|chewy)\b/i,
+    minCents: 0,
+    gap: null,
+  },
+  valuable: {
+    direction: "out",
+    pattern:
+      /\b(?:zales|kay jewelers|jared|tiffany|blue nile|brilliant earth|b&h|bhphoto|adorama)\b/i,
+    minCents: 150_000,
+    gap: { key: "valuables", kind: "valuables" },
+  },
+  boat: {
+    direction: "out",
+    pattern: /\b(?:west marine|boatus|marina|boat (?:dealer|sales|storage))\b/i,
+    minCents: 0,
+    gap: { key: "boat", kind: "boat" },
+  },
+  rental_out: {
+    direction: "in",
+    pattern: /\b(?:airbnb|vrbo|homeaway)\b/i,
+    minCents: 0,
+    gap: { key: "short_term_rental", kind: "rental_property" },
+  },
+};
+// How far back a signal counts; a new dog needs no vet or pet-store charge before this
+// many days ago, so a long-time pet owner isn't asked.
+export const RISK_LOOKBACK_DAYS = 60;
+export const RISK_NEW_PET_QUIET_DAYS = 120;

@@ -19,6 +19,7 @@ import { latestLife, type LifeApplication } from "@/lib/insurance/life";
 import { listCoverChanges, type CoverChange } from "@/lib/insurance/cover-changes";
 import { listNegotiations, type Negotiation } from "@/lib/insurance/negotiate";
 import { listSavings, type Saving } from "@/lib/insurance/savings";
+import { listRisks, type Risk } from "@/lib/insurance/risks";
 import { SWITCH_NEWS_DAYS, SWITCH_PAYMENT_DAYS } from "@/config/insurance";
 
 // What Jane's brain knows about the person's insurance (spec Phase X), from the same loader
@@ -62,6 +63,8 @@ export type InsuranceSnapshot = {
   draftClaims?: Claim[];
   // Spec step 196: cheaper ways to pay for the same cover, offered and waiting.
   savings?: Saving[];
+  // Spec step 197: risks seen in how they live, waiting for a yes or no.
+  risks?: Risk[];
 };
 
 export type Switch = Awaited<ReturnType<typeof switchesFor>>[number];
@@ -83,6 +86,7 @@ export async function loadInsuranceSnapshot(
     coverChanges,
     negotiations,
     savings,
+    risks,
     switches,
   ] = await Promise.all([
     // Reads any policy document not read yet, so the readings below come after it.
@@ -100,6 +104,7 @@ export async function loadInsuranceSnapshot(
     listCoverChanges(userId, { client, status: "prepared" }),
     listNegotiations(userId, { client }),
     listSavings(userId, { client, status: "offered" }),
+    listRisks(userId, { client, status: "asked" }),
     switchesFor(userId, {
       client,
       since: new Date(now.getTime() - (SWITCH_NEWS_DAYS + SWITCH_PAYMENT_DAYS) * 86_400_000),
@@ -136,6 +141,7 @@ export async function loadInsuranceSnapshot(
     coverChanges,
     negotiations: negotiations.filter((n) => n.status !== "declined"),
     savings,
+    risks,
     // Asked of people in demo advice mode with a paycheck, no life cover and no answer yet.
     lifeAsk:
       advice &&
