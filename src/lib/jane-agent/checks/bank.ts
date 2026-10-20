@@ -1148,12 +1148,12 @@ const BASE_QUESTIONS: readonly CheckQuestion[] = [
   },
   {
     id: "sav-2",
-    text: "should I raise my deductible",
+    text: "is it cheaper to pay my car insurance yearly",
     needs: "rules",
     expect: {
       intent: "insurance",
-      figures: () => [17_040],
-      mentions: /lowers your cover/,
+      figures: () => [13_320],
+      mentions: /once a year/,
       list: true,
       maxChars: 1_100,
     },

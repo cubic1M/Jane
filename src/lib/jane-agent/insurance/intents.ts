@@ -126,7 +126,7 @@ const KIND_WORDS: readonly [PolicyKind, RegExp][] = [
 // Words that make it about insurance on their own, and cover words that need a kind too
 // ("does my budget cover rent" isn't about insurance; "am I covered if my car is stolen" is).
 const INSURANCE =
-  /\b(?:insurance|insured|insurer|insurers|polic(?:y|ies)|deductibles?|premiums?|(?:under|over)-?insured|(?:health|medical) plans?|benefits?\b.{0,30}\b(?:work|job|employer)|(?:work|job|employer) benefits|open enrollment|declarations? pages?|renewal notices?)\b/;
+  /\b(?:insurance|insured|insurer|insurers|polic(?:y|ies)|deductibles?|premiums?|(?:under|over)-?insured|(?:health|medical) plans?|benefits?\b.{0,30}\b(?:work|job|employer)|(?:work|job|employer) benefits|open enrollment|declarations? pages?|renewal notices?|safe[- ]driver)\b/;
 // Cover that comes with a card (spec step 152): about insurance even without the word.
 const CARD_COVER =
   /\bcards?\b.{0,30}\b(?:covers?|covered|coverage|protection|benefits?|warrant(?:y|ies)|insurance)\b|\b(?:cell )?phone protection\b|\brental car (?:cover|coverage|insurance)\b|\bextended warrant(?:y|ies)\b|\bpaying twice\b/;
