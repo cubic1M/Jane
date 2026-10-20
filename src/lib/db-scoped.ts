@@ -115,6 +115,11 @@ export function scopedFor(userId: string, client: PrismaClient = db) {
     debtWatches: scoped.debtWatch,
     cardApplications: scoped.cardApplication,
     tightRequests: scoped.tightRequest,
+    medicalBills: scoped.medicalBill,
+    medicalRequests: scoped.medicalRequest,
+    creditDisputes: scoped.creditDispute,
+    cardPromos: scoped.cardPromo,
+    cardRateRequests: scoped.cardRateRequest,
     balanceTransfers: scoped.balanceTransfer,
     findings: scoped.finding,
     decisions: scoped.decision,
@@ -181,6 +186,10 @@ export function scopedFor(userId: string, client: PrismaClient = db) {
     whatIfPlans: scoped.whatIfPlan,
     // The lean plan when income stops (spec step 204).
     leanPlans: scoped.leanPlan,
+    // The year's money plan (spec step 205).
+    yearPlans: scoped.yearPlan,
+    // "This was me" / "not me" on unusual activity (spec step 208).
+    unusualAnswers: scoped.unusualAnswer,
     savedShares: scoped.savedShare,
     // What's in investment accounts (spec step 128).
     securities: scoped.security,

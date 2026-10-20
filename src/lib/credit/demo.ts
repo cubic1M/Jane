@@ -1,4 +1,10 @@
-import type { CreditChange, CreditPartner, CreditReport, CreditRequest } from "./partner";
+import type {
+  CreditChange,
+  CreditPartner,
+  CreditReport,
+  CreditRequest,
+  ReportItem,
+} from "./partner";
 
 // The stand-in credit partner (spec step 116), for the demo bank only: a made-up score in
 // the usual 300–850 range, worked out from what Jane can see (card balances against a
@@ -37,5 +43,36 @@ export const demoCredit: CreditPartner = {
   },
   async estimate(request, change) {
     return demoScore(request, change);
+  },
+  // Two made-up items for the demo bank: a medical collection whose notice came 12 days
+  // before Jane first looked, and a late payment on the demo card that the person's payments
+  // don't show.
+  async reportItems(_request, anchor) {
+    const ago = (days: number) =>
+      new Date(Date.parse(`${anchor}T00:00:00Z`) - days * 86_400_000).toISOString().slice(0, 10);
+    const items: ReportItem[] = [
+      {
+        id: "demo-collection-northstar",
+        kind: "collection",
+        creditor: "Northstar Recovery",
+        originalCreditor: "CareFirst Medical Group",
+        amountCents: 74_200,
+        firstSeenOn: ago(12),
+        detail: "A medical collection for $742.00.",
+        medical: true,
+      },
+      {
+        id: "demo-error-late-card",
+        kind: "error",
+        creditor: "Demo Credit Card",
+        originalCreditor: null,
+        amountCents: null,
+        firstSeenOn: ago(40),
+        detail:
+          "Shows a payment 30 days late in the spring, but your payments to this card that month were on time.",
+        medical: false,
+      },
+    ];
+    return items;
   },
 };
