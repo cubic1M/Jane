@@ -24,6 +24,7 @@ const SUBSCRIPTION_CATEGORIES = new Set([
 ]);
 
 const subscriptions: Detector = {
+  covers: ["subscriptions"],
   capability: "subscriptions",
   topic: "subscriptions",
   needs: [],
@@ -62,6 +63,7 @@ const subscriptions: Detector = {
 };
 
 const bankFees: Detector = {
+  covers: [],
   capability: "cost",
   topic: "bank_fees",
   needs: [],
@@ -91,6 +93,7 @@ const bankFees: Detector = {
 };
 
 const lateFees: Detector = {
+  covers: [],
   capability: "cost",
   topic: "late_fees",
   needs: [],
@@ -114,6 +117,7 @@ const lateFees: Detector = {
 };
 
 const cardInterest: Detector = {
+  covers: ["card_interest", "credit_cards"],
   capability: "debt",
   topic: "card_interest",
   needs: [],
@@ -137,6 +141,7 @@ const cardInterest: Detector = {
 };
 
 const idleCash: Detector = {
+  covers: ["cash_plan"],
   capability: "investing",
   topic: "idle_cash",
   needs: [],
@@ -161,6 +166,7 @@ const idleCash: Detector = {
 };
 
 const emergencyFund: Detector = {
+  covers: ["goals"],
   capability: "safe_to_spend",
   topic: "emergency_fund",
   needs: ["income_pattern"],
@@ -193,6 +199,7 @@ const emergencyFund: Detector = {
 };
 
 const highCostLoans: Detector = {
+  covers: ["debt_trouble"],
   capability: "debt",
   topic: "high_cost_loans",
   needs: [],
@@ -219,6 +226,7 @@ const highCostLoans: Detector = {
 };
 
 const debtPlan: Detector = {
+  covers: ["payoff_plan", "debts"],
   capability: "debt",
   topic: "debt_plan",
   needs: [],
@@ -242,6 +250,7 @@ const debtPlan: Detector = {
 };
 
 const hardshipPlan: Detector = {
+  covers: ["debt_trouble"],
   capability: "debt",
   topic: "hardship_plan",
   needs: [],
