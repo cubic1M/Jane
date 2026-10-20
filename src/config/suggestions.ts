@@ -19,12 +19,24 @@ export const WORTH_WEIGHT = { saves: 1, earns: 1, risk: 0.02 } as const;
 // suggestions; the loss shown to the person is the full amount). A topic not listed uses
 // WORTH_WEIGHT.risk.
 export const RISK_ANNUAL_PROBABILITY: Readonly<Record<string, number>> = {
-  // A working-age parent dying or being disabled in a year is rare.
-  life_insurance: 0.005,
-  // A claim on a home or renters policy, or a business loss.
+  // Typical figures, all marked for review; none is sourced to a publication yet. Insurance
+  // chances are from the insurance lane.
+  // Adult mortality, ages 35 to 55.
+  life_insurance: 0.003,
+  // The share of renters who file a claim in a year.
+  renters_insurance: 0.03,
   home_insurance: 0.05,
-  renters_insurance: 0.05,
-  business_insurance: 0.03,
+  // An at-fault accident.
+  auto_insurance: 0.05,
+  // A hospital stay, for someone without health cover.
+  health_insurance: 0.08,
+  // A judgment above the limits of other cover.
+  umbrella: 0.002,
+  // Needing long-term care (about 20% over 10 years).
+  long_term_care: 0.02,
+  business_insurance: 0.04,
+  // A claim while the insurer has stale information.
+  cover_change: 0.01,
   // A large fall in one company's stock, or a stretch without pay.
   concentration: 0.1,
   emergency_fund: 0.15,
