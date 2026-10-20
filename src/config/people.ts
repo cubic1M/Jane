@@ -30,6 +30,11 @@ export const SUGGESTION_TOPICS = [
   "long_term_care",
   "medigap",
   "business_insurance",
+  // Insurance (spec step 259).
+  "renters_insurance",
+  "auto_insurance",
+  "umbrella",
+  "insurance_shopping",
   "business_separation",
   "cash_flow",
   "pmi_removal",
@@ -114,6 +119,7 @@ export const PEOPLE: readonly Person[] = [
       "card_interest",
       "employer_match",
       "emergency_fund",
+      "renters_insurance",
       "balance_transfer",
       "duplicate_subscription",
       "low_balance",
@@ -121,6 +127,9 @@ export const PEOPLE: readonly Person[] = [
       "trial_conversion",
     ],
     mustNot: [
+      "umbrella",
+      "long_term_care",
+      "medigap",
       "pmi_removal",
       "refinance",
       "rmd",
@@ -158,9 +167,13 @@ export const PEOPLE: readonly Person[] = [
       "duplicate_charge",
       "car_addons",
       "budget_overrun",
+      "insurance_shopping",
       "childcare_tax_break",
     ],
     mustNot: [
+      "renters_insurance",
+      "medigap",
+      "long_term_care",
       "refinance",
       "rmd",
       "medicare",
@@ -192,6 +205,7 @@ export const PEOPLE: readonly Person[] = [
       "health_insurance",
       "emergency_fund",
       "student_repayment",
+      "renters_insurance",
     ],
     mustNot: [
       "employer_match",
@@ -257,6 +271,7 @@ export const PEOPLE: readonly Person[] = [
       "long_term_care",
       "catch_up",
       "idle_cash",
+      "umbrella",
       "roth_conversion",
     ],
     mustNot: [
@@ -287,6 +302,9 @@ export const PEOPLE: readonly Person[] = [
     },
     should: ["rmd", "medigap", "idle_cash", "subscriptions", "bill_negotiation"],
     mustNot: [
+      "renters_insurance",
+      "health_insurance",
+      "umbrella",
       "employer_match",
       "education_529",
       "estimated_taxes",
@@ -334,6 +352,8 @@ export const PEOPLE: readonly Person[] = [
       "refinance",
       "catch_up",
       "rmd",
+      "umbrella",
+      "insurance_shopping",
       // Spec step 260: extra money on a mortgage they don't have.
       "mortgage_extra",
       "roth_conversion",
