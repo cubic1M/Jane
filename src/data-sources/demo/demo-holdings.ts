@@ -54,6 +54,14 @@ const SECURITIES: Readonly<Record<string, DemoSecurity>> = {
     subtype: "mutual fund",
     cash: true,
   },
+  // Spec step 162: a money market fund, bought with brokerage cash (a fund, not the
+  // account's own cash row).
+  KMMXX: {
+    ticker: "KMMXX",
+    name: "Keystone Money Market Fund",
+    type: "mutual fund",
+    subtype: "money market",
+  },
   ACME: {
     ticker: "ACME",
     name: "Acme Corp",
@@ -139,6 +147,8 @@ export const DEMO_PRICES: Readonly<Record<string, number>> = {
   KTIIX: 34.12,
   KTRGX: 18.4,
   KDVX: 41.25,
+  // Spec step 162: the money market fund, a dollar a share.
+  KMMXX: 1,
 };
 
 // A demo security's price on `day` for a demo bank linked on `anchor`.

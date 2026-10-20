@@ -3512,6 +3512,107 @@ is built into the chat through the step 190 registry, with questions in step 189
 > - Assumptions shown and editable; rates in config; real accounts get the facts without
 >   advice
 
+## Phase AL: investing, round three (steps 210–216)
+
+Phases AA and AE hold, review, rebalance and invest automatically for every goal. This
+round covers the accounts and decisions that decide most people's retirement: workplace
+plans and IRAs used fully, old accounts brought home, income in retirement, family
+accounts, property as an investment, what costly products really cost, and one yearly
+review done for them. Recommendations are demo advice; limits and rates live in config with
+sources. Each step is built into the chat through the step 190 registry, with questions in
+step 189's bank.
+
+### Step 210: Retirement accounts used fully
+
+> Read CLAUDE.md. Every match and every limit, used.
+>
+> Build:
+> 1. From pay (step 150's benefits and paychecks) and contributions: the employer match
+>    left on the table, traditional or Roth by bracket (step 120's estimate), contribution
+>    limits tracked across every account with catch-up at 50, and backdoor Roth when income
+>    is over the limit. Each is a card: the change to the payroll percentage goes to the
+>    team or the payroll stand-in, and IRA contributions go through the stand-in brokerage.
+>
+> Acceptance criteria:
+> - Limits from config with the year and source; a missed match shows the yearly dollars
+
+### Step 211: Old accounts brought home
+
+> Read CLAUDE.md. Forgotten 401(k)s found and rolled over.
+>
+> Build:
+> 1. Past employers from payroll history and the person's answers, each asked once ("Did
+>    you have a 401(k) at Acme?"). Found accounts are added read-only, with their fees
+>    compared (step 130), and a rollover guide plus a stand-in rollover (direct, never a
+>    check to the person) with every step tracked.
+>
+> Acceptance criteria:
+> - A rollover never counts as a withdrawal; fees compared before and after
+
+### Step 212: Income in retirement
+
+> Read CLAUDE.md. Turning savings into a paycheck.
+>
+> Build:
+> 1. For people within 15 years of retirement or in it: Social Security at 62, full age and
+>    70 (from their statement or an estimate they enter), the order to draw from accounts,
+>    required minimum distributions, and a monthly retirement paycheck that lasts, with
+>    the forecast and taxes (demo advice).
+>
+> Acceptance criteria:
+> - RMD ages and tables from config with sources; each plan shows how long the money lasts
+
+### Step 213: Investing for the family
+
+> Read CLAUDE.md. Children's and family accounts.
+>
+> Build:
+> 1. Custodial accounts, a Roth IRA for a teenager with earned income, and gifts from
+>    grandparents into a child's 529 (step 158) through a share link that never shows the
+>    parents' money. Each sits under the household's goals.
+>
+> Acceptance criteria:
+> - A gift link shows only the goal and its progress; the household sharing rules hold
+
+### Step 214: Property as an investment
+
+> Read CLAUDE.md. Homes and rentals counted properly.
+>
+> Build:
+> 1. Home equity in net worth and in the long view, and rental properties from
+>    transactions (rent in, mortgage, repairs, property tax): profit per property, the
+>    return on the cash put in, depreciation handed to the taxes side (step 173), and
+>    whether paying the mortgage down beats investing (demo advice).
+>
+> Acceptance criteria:
+> - A rental's figures match its transactions; the comparison shows both sides
+
+### Step 215: What costly products really cost
+
+> Read CLAUDE.md. Annuities, whole life and advisor fees, in dollars.
+>
+> Build:
+> 1. Variable annuities, whole life cash value and advisory accounts found from statements
+>    and payments: the yearly cost in dollars, surrender charges by year, what the same
+>    money would do in low-cost funds, and when getting out costs less than staying.
+>    Never "cancel now" without the surrender figures.
+>
+> Acceptance criteria:
+> - The fee and surrender math has tests; nothing is recommended on real accounts
+
+### Step 216: Investing on autopilot, round two
+
+> Read CLAUDE.md. One yearly investing review, done for them.
+>
+> Build:
+> 1. Once a year (and after a raise or a new job) one message covering contributions
+>    against limits, the match, rollovers, rebalancing, tax-loss harvesting, fees and every
+>    goal on track: what Jane did within the caps and what needs a tap.
+> 2. Every investing capability in the registry, with bank questions that score well.
+>
+> Acceptance criteria:
+> - One message with every item's button; nothing above the cap without a tap
+
 ### Later, when the founder is ready
 
 These need an outside account, a partner or a decision: Plaid Production (real banks) and
