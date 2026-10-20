@@ -105,7 +105,9 @@ describe("ranking suggestions", () => {
     }
     // At least their very first suggestion is on the list, and most of the day's are.
     expect(person.should).toContain(top[0].suggestion.topic);
-    const onList = top.filter((t) => (person.should as readonly string[]).includes(t.suggestion.topic)).length;
+    const onList = top.filter((t) =>
+      (person.should as readonly string[]).includes(t.suggestion.topic),
+    ).length;
     expect(onList, top.map((t) => t.suggestion.topic).join(",")).toBeGreaterThanOrEqual(
       Math.min(2, top.length),
     );
