@@ -168,6 +168,8 @@ export function scopedFor(userId: string, client: PrismaClient = db) {
     paycheckPlans: scoped.paycheckPlan,
     // Money health score by month (spec step 146).
     healthScores: scoped.healthScore,
+    // The monthly money report (spec step 148).
+    monthlyReports: scoped.monthlyReport,
     savedShares: scoped.savedShare,
     // What's in investment accounts (spec step 128).
     securities: scoped.security,

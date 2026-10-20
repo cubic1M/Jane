@@ -51,8 +51,8 @@ test("new people land on Connect; once data is in, Home matches the report", asy
   expect(overflow).toBeLessThanOrEqual(0);
 
   // Spec step 79: on a phone the main menu is a bar along the bottom, and the end of the
-  // page scrolls clear of it. Spec step 86: it's Chat and a Details menu holding Today,
-  // Jane, Money and Ahead with their pages; on Today, Details and Today are lit up.
+  // page scrolls clear of it. Spec step 86: it's Chat and a Details menu with one entry per
+  // place; on Today, Details and Today are lit up.
   const nav = page.getByRole("navigation", { name: "Main" });
   // What screen readers hear: the ASCII glyphs and brackets are hidden from them.
   await expect(nav.getByRole("link")).toHaveCount(1);
@@ -61,7 +61,16 @@ test("new people land on Connect; once data is in, Home matches the report", asy
   await expect(details).toHaveAttribute("aria-current", "true");
   await details.click();
   await expect(details).toHaveAttribute("aria-expanded", "true");
-  for (const name of ["Today", "Jane", "Money", "Ahead", "Net worth", "Can I afford it?"]) {
+  for (const name of [
+    "Today",
+    "Money",
+    "Investments",
+    "Loans and debt",
+    "Insurance",
+    "Taxes",
+    "Ahead",
+    "What Jane did",
+  ]) {
     await expect(nav.getByRole("link", { name, exact: true })).toBeVisible();
   }
   await expect(nav.getByRole("link", { name: "Today", exact: true })).toHaveAttribute(

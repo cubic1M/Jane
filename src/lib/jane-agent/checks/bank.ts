@@ -336,6 +336,20 @@ export const QUESTIONS: readonly CheckQuestion[] = [
     expect: {},
   },
 
+  // Requests that span sectors (spec step 185): one plan, one confirmation.
+  {
+    id: "multi-1",
+    text: "cancel Hulu and Netflix",
+    needs: "rules",
+    expect: { intent: "multi", button: "multi.confirm", list: true },
+  },
+  {
+    id: "multi-2",
+    text: "cancel Hulu and put $50 in my emergency fund",
+    needs: "rules",
+    expect: { intent: "multi", avoid: /\bdone\b/i },
+  },
+
   // What's due.
   {
     id: "due-1",

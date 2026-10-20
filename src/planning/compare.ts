@@ -132,6 +132,15 @@ function scoreSavings(current: Extract<Current, { kind: "savings" }>, options: C
     );
 }
 
+// An option as people read it: "Pine Mobile Unlimited", not "Pine Mobile Pine Mobile
+// Unlimited", when the plan's name already starts with the company's.
+export function optionLabel(option: Pick<CompareOption, "provider" | "name">): string {
+  const first = option.provider.split(/\s+/)[0].toLowerCase();
+  return option.name.toLowerCase().startsWith(first)
+    ? option.name
+    : `${option.provider} ${option.name}`;
+}
+
 export function compareOptions(current: Current, options: CompareOption[]): Comparison | null {
   const scored = (
     current.kind === "bill" ? scoreBill(current, options) : scoreSavings(current, options)
@@ -144,7 +153,11 @@ export function compareOptions(current: Current, options: CompareOption[]): Comp
       : Math.round((current.amountCents * current.currentRateBps) / BASIS_POINTS);
   const why =
     current.kind === "bill"
-      ? `Of the ${scored.length === 1 ? "option" : `${scored.length} options`} we compared for the same kind of service, it costs the least in the first year, fees included.`
-      : `Of the ${scored.length === 1 ? "account" : `${scored.length} accounts`} we compared that you qualify for, it earns the most on ${dollars(current.amountCents)}.`;
+      ? scored.length === 1
+        ? "It's the one option we compared for the same kind of service that costs less in the first year, fees included."
+        : `Of the ${scored.length} options we compared for the same kind of service, it costs the least in the first year, fees included.`
+      : scored.length === 1
+        ? `It's the one account we compared that you qualify for that earns more on ${dollars(current.amountCents)}.`
+        : `Of the ${scored.length} accounts we compared that you qualify for, it earns the most on ${dollars(current.amountCents)}.`;
   return { current, currentYearCents, pick, runnersUp: rest.slice(0, COMPARE_RUNNERS_UP), why };
 }

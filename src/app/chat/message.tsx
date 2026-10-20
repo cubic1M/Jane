@@ -6,6 +6,7 @@ import { useActionState, useEffect, useState } from "react";
 import { DemoAdviceLabel } from "@/components/demo-advice-label";
 import type { MessageView } from "@/lib/jane-agent/view";
 import { tapButton, type MessageState } from "./actions";
+import { ReadAloud } from "./read-aloud";
 import { togglePin } from "./pin";
 
 // One message in Jane's chat (spec step 81). Jane's sit on the left with their buttons; a
@@ -142,17 +143,21 @@ export function ChatMessageItem({ initial }: { initial: MessageView }) {
         </p>
       )}
 
-      {/* Spec step 96: pin it to the top of the chat, or unpin it. */}
-      <form action={togglePin} className="-mb-2 self-end">
-        <input type="hidden" name="messageId" value={message.id} />
-        <input type="hidden" name="pinned" value={message.pinned ? "false" : "true"} />
-        <button
-          type="submit"
-          className="inline-flex min-h-11 items-center px-1 text-xs font-medium text-zinc-500 hover:underline"
-        >
-          {message.pinned ? "Unpin" : "Pin"}
-        </button>
-      </form>
+      <div className="-mb-2 flex items-center gap-2 self-end">
+        {/* Spec step 186: read it aloud, on request. */}
+        <ReadAloud parts={[message.body, message.block?.alt, message.note]} />
+        {/* Spec step 96: pin it to the top of the chat, or unpin it. */}
+        <form action={togglePin}>
+          <input type="hidden" name="messageId" value={message.id} />
+          <input type="hidden" name="pinned" value={message.pinned ? "false" : "true"} />
+          <button
+            type="submit"
+            className="inline-flex min-h-11 items-center px-1 text-xs font-medium text-zinc-500 hover:underline"
+          >
+            {message.pinned ? "Unpin" : "Pin"}
+          </button>
+        </form>
+      </div>
       {(buttons.length > 0 || message.links.length > 0) && (
         <div className="flex flex-wrap items-center gap-2">
           {buttons.length > 0 && (
