@@ -34,6 +34,13 @@ export const SUGGESTION_TOPICS = [
   "cash_flow",
   "pmi_removal",
   "refinance",
+  // Spec step 260: debt and credit.
+  "student_repayment",
+  "auto_refinance",
+  "car_addons",
+  "cash_advance",
+  "mortgage_extra",
+  "balance_transfer",
   "education_529",
   "social_security_timing",
   "medicare",
@@ -91,7 +98,14 @@ export const PEOPLE: readonly Person[] = [
       owns: "rent",
       hasDebtTrouble: false,
     },
-    should: ["subscriptions", "bank_fees", "card_interest", "employer_match", "emergency_fund"],
+    should: [
+      "subscriptions",
+      "bank_fees",
+      "card_interest",
+      "employer_match",
+      "emergency_fund",
+      "balance_transfer",
+    ],
     mustNot: [
       "pmi_removal",
       "refinance",
@@ -180,7 +194,15 @@ export const PEOPLE: readonly Person[] = [
       owns: "home",
       hasDebtTrouble: false,
     },
-    should: ["idle_cash", "concentration", "withholding_gap", "hsa", "backdoor_roth", "refinance"],
+    should: [
+      "idle_cash",
+      "concentration",
+      "withholding_gap",
+      "hsa",
+      "backdoor_roth",
+      "refinance",
+      "mortgage_extra",
+    ],
     mustNot: [
       "bank_fees",
       "late_fees",
@@ -264,6 +286,7 @@ export const PEOPLE: readonly Person[] = [
       "high_cost_loans",
       "debt_plan",
       "hardship_plan",
+      "balance_transfer",
     ],
     mustNot: [
       "concentration",
@@ -273,6 +296,8 @@ export const PEOPLE: readonly Person[] = [
       "refinance",
       "catch_up",
       "rmd",
+      // Spec step 260: extra money on a mortgage they don't have.
+      "mortgage_extra",
       "roth_conversion",
       "childcare_tax_break",
     ],
