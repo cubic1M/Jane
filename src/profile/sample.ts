@@ -21,6 +21,11 @@ export function inputFor(person: string, told: ProfileInput["told"] = {}): Profi
     told,
     unreadPolicyDocuments: UNREAD_DOCUMENTS[person] ?? 0,
     holdings: holdings.map((h) => ({
+      ticker:
+        h.security_id.replace("demo-sec-", "").toUpperCase() === "CASH"
+          ? null
+          : h.security_id.replace("demo-sec-", "").toUpperCase(),
+      isCash: h.security_id === "demo-sec-cash",
       accountId: h.account_id,
       valueCents: Math.round(h.institution_value * 100),
       basisCents: h.cost_basis == null ? null : Math.round(h.cost_basis * 100),
