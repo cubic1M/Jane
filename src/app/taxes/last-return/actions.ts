@@ -1,25 +1,15 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { PRIOR_RETURN_FIELDS } from "@/config/prior-return";
 import { PriorReturnError, confirmPriorReturn, dismissPriorReturn } from "@/lib/prior-return";
 import { requireUser } from "@/lib/session";
 import { AmendmentError, prepareAmendment, signAmendment } from "@/lib/tax-amendment";
-import type { Fields } from "@/planning/prior-return";
+import { fieldsFrom } from "./fields";
 
 // Last year's return (spec step 172): confirming what Jane read, saying it isn't a return,
 // preparing an amended return, and the person's review and signature on it.
 
 export type ReturnState = { ok: boolean; message: string } | null;
-
-export function fieldsFrom(formData: FormData): Fields {
-  const fields: Fields = {};
-  for (const f of PRIOR_RETURN_FIELDS) {
-    const value = String(formData.get(f.key) ?? "").trim();
-    if (value) fields[f.key] = value;
-  }
-  return fields;
-}
 
 export async function returnAction(
   _previous: ReturnState,
