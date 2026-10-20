@@ -35,17 +35,18 @@ const tx = (
 
 describe("on the eight sample people", () => {
   it("fires only for the people the signal is in", () => {
-    const by = Object.fromEntries(PEOPLE.map((p) => [p.id, topics(p.id)]));
+    const by = Object.fromEntries(PEOPLE.map((p) => [p.id, topics(p.id).sort()]));
     // Card interest on a $1,940 balance: a 0% transfer would save more than its fee.
     expect(by.renter).toEqual(["balance_transfer"]);
+    // A GAP add-on bought with the car loan (the refund is a guess until they say yes).
+    expect(by.family).toEqual(["car_addons"]);
+    // A $450 student loan payment against $4,538 a month of income.
+    expect(by.freelancer).toEqual(["student_repayment"]);
     // 6.9% on $910,000 with $106,000 of cash: pay down or compare.
     expect(by.equity).toEqual(["mortgage_extra"]);
-    // Three cards at 74%: approval isn't certain. And a car payment 16% of income.
-    expect(by.debt.sort()).toEqual(["auto_refinance", "balance_transfer"]);
-    // Everyone else has no card interest, a cheap mortgage or no loan to speak of.
-    for (const id of ["family", "freelancer", "preretire", "retiree", "owner"]) {
-      expect(by[id], id).toEqual([]);
-    }
+    // A cash advance, three cards at 74% (approval isn't certain), a car payment 16% of income.
+    expect(by.debt).toEqual(["auto_refinance", "balance_transfer", "cash_advance"]);
+    for (const id of ["preretire", "retiree", "owner"]) expect(by[id], id).toEqual([]);
   });
 
   it("gives each its dollars, a percentage with the reason, an urgency, why and the button", () => {
@@ -78,6 +79,7 @@ describe("on the eight sample people", () => {
   });
 });
 
+// The sample people carry the signal for every detector; these try the edges on made-up people.
 describe("a student loan", () => {
   const withStudent =
     (monthly: number, income: number) =>

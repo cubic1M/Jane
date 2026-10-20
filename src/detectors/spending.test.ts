@@ -39,10 +39,23 @@ const t = (
 describe("on the eight sample people", () => {
   it("tells each only what their own charges show", () => {
     const by = Object.fromEntries(PEOPLE.map((p) => [p.id, topics(p.id).sort()]));
-    // Netflix and Hulu; Xfinity at $75; cash that doesn't cover a month's bills.
-    expect(by.renter).toEqual(["bill_negotiation", "duplicate_subscription", "low_balance"]);
-    // Netflix, Hulu and Disney+; Xfinity and a $148 phone.
-    expect(by.family).toEqual(["bill_negotiation", "duplicate_subscription"]);
+    // Netflix and Hulu; Xfinity at $75; cash under a month of bills; Audible went up in September
+    // and a Skillshare trial became $13.99 charges.
+    expect(by.renter).toEqual([
+      "bill_negotiation",
+      "duplicate_subscription",
+      "low_balance",
+      "price_increase",
+      "trial_conversion",
+    ]);
+    // Netflix, Hulu and Disney+; Xfinity and a $148 phone; dinner charged twice; a catered party
+    // that put last month's food well over the usual.
+    expect(by.family).toEqual([
+      "bill_negotiation",
+      "budget_overrun",
+      "duplicate_charge",
+      "duplicate_subscription",
+    ]);
     // A $70 phone bill is under the line, and no two streaming services.
     expect(by.freelancer).toEqual([]);
     expect(by.equity).toEqual(["bill_negotiation", "duplicate_subscription"]);

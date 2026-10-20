@@ -111,6 +111,8 @@ export const PEOPLE: readonly Person[] = [
       "balance_transfer",
       "duplicate_subscription",
       "low_balance",
+      "price_increase",
+      "trial_conversion",
     ],
     mustNot: [
       "pmi_removal",
@@ -141,6 +143,9 @@ export const PEOPLE: readonly Person[] = [
       "subscriptions",
       "emergency_fund",
       "duplicate_subscription",
+      "duplicate_charge",
+      "car_addons",
+      "budget_overrun",
     ],
     mustNot: [
       "refinance",
@@ -169,6 +174,7 @@ export const PEOPLE: readonly Person[] = [
       "income_smoothing",
       "health_insurance",
       "emergency_fund",
+      "student_repayment",
     ],
     mustNot: ["employer_match", "rmd", "pmi_removal", "medicare", "hardship_plan"],
   },
@@ -193,7 +199,16 @@ export const PEOPLE: readonly Person[] = [
       "refinance",
       "mortgage_extra",
     ],
-    mustNot: ["bank_fees", "late_fees", "hardship_plan", "medicare", "rmd", "credit_building"],
+    mustNot: [
+      "bank_fees",
+      "late_fees",
+      "hardship_plan",
+      "medicare",
+      "rmd",
+      "credit_building",
+      "student_repayment",
+      "cash_advance",
+    ],
   },
   {
     id: "preretire",
@@ -215,6 +230,9 @@ export const PEOPLE: readonly Person[] = [
       "hardship_plan",
       "employer_match",
       "low_balance",
+      "student_repayment",
+      "cash_advance",
+      "trial_conversion",
     ],
   },
   {
@@ -239,6 +257,10 @@ export const PEOPLE: readonly Person[] = [
       "refinance",
       "credit_building",
       "low_balance",
+      "student_repayment",
+      "cash_advance",
+      "car_addons",
+      "trial_conversion",
     ],
   },
   {
@@ -263,6 +285,7 @@ export const PEOPLE: readonly Person[] = [
       "balance_transfer",
       "low_balance",
       "low_balance",
+      "cash_advance",
     ],
     mustNot: [
       "concentration",
