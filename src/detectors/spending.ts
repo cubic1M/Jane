@@ -37,6 +37,7 @@ const last = (s: Series) => s.txs[s.txs.length - 1].amountCents;
 const duplicateSubscription: Detector = {
   capability: "subscriptions",
   topic: "duplicate_subscription",
+  covers: ["subscriptions"],
   needs: [],
   detect({ profile, data }) {
     const dupCats: readonly string[] = S.duplicateCategories;
@@ -74,6 +75,7 @@ const duplicateSubscription: Detector = {
 const priceIncrease: Detector = {
   capability: "subscriptions",
   topic: "price_increase",
+  covers: [],
   needs: [],
   detect({ profile, data }) {
     const rises = regular(data)
@@ -122,6 +124,7 @@ const PHONE = "RENT_AND_UTILITIES_TELEPHONE";
 const billNegotiation: Detector = {
   capability: "cost",
   topic: "bill_negotiation",
+  covers: [],
   needs: [],
   detect({ profile, data }) {
     const bills = regular(data)
@@ -158,6 +161,7 @@ const DAY_MS = 86_400_000;
 const duplicateCharge: Detector = {
   capability: "cost",
   topic: "duplicate_charge",
+  covers: [],
   needs: [],
   detect({ profile, data }) {
     const out = tx(data, (t) => t.amountCents >= S.duplicateChargeMinCents).sort((a, b) =>
@@ -195,6 +199,7 @@ const duplicateCharge: Detector = {
 const trialConversion: Detector = {
   capability: "subscriptions",
   topic: "trial_conversion",
+  covers: [],
   needs: [],
   detect({ profile, data }) {
     const by = new Map<string, ProfileTx[]>();
@@ -236,6 +241,7 @@ const trialConversion: Detector = {
 const lowBalance: Detector = {
   capability: "safe_to_spend",
   topic: "low_balance",
+  covers: ["safe_to_spend"],
   needs: [],
   detect({ profile, data }) {
     // Cash in checking and savings: what could pay the month's bills.
@@ -271,6 +277,7 @@ const lowBalance: Detector = {
 const budgetOverrun: Detector = {
   capability: "spending",
   topic: "budget_overrun",
+  covers: [],
   needs: [],
   detect({ profile, data }) {
     const excluded: readonly string[] = S.budgetExcludedPrefixes;
