@@ -318,8 +318,8 @@ export const CHAT_BUNDLE_MAX = 5;
 export const CHAT_PRIMER_CACHE_SECONDS = 60;
 // If Claude hasn't started (a word, a lookup or its thinking) within this many
 // milliseconds, or isn't done within the deadline, Jane answers from the rules instead.
-export const CHAT_CLAUDE_FIRST_WORDS_MS = 6_000;
-export const CHAT_CLAUDE_DEADLINE_MS = 20_000;
+export const CHAT_CLAUDE_FIRST_WORDS_MS = 4_000;
+export const CHAT_CLAUDE_DEADLINE_MS = 10_000;
 // After Claude fails, free questions get the rules' answer at once for this long, instead
 // of waiting on Claude again.
 export const CHAT_CLAUDE_COOLDOWN_SECONDS = 60;

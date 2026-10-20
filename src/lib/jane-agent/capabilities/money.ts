@@ -1,3 +1,6 @@
+import { netWorth } from "@/insights/net-worth";
+import { cryptoTotal } from "@/lib/crypto/crypto";
+import { netWorthReply } from "../replies-networth";
 import { storedReport } from "@/lib/monthly-report-store";
 import { reportReply } from "../replies-report";
 import type { Reply } from "../replies";
@@ -173,6 +176,24 @@ async function answer(ctx: CapabilityContext): Promise<Reply | null> {
     // Spec step 148: the monthly money report.
     case "monthly_report":
       return reportReply(await storedReport(userId, null, { client }));
+    // What they own and owe, from the net worth page's own math.
+    case "net_worth": {
+      const db = scopedFor(userId, client);
+      const [accounts, owned, crypto] = await Promise.all([
+        db.accounts.findMany({
+          select: { id: true, name: true, type: true, subtype: true, currentBalanceCents: true },
+        }),
+        db.ownedAssets.findMany({ select: { id: true, valueCents: true, valuedOn: true } }),
+        cryptoTotal(userId, { client }),
+      ]);
+      return netWorthReply(
+        netWorth(
+          accounts.map((a) => ({ ...a, balanceCents: a.currentBalanceCents })),
+          owned.map((o) => ({ ...o, valuedOn: o.valuedOn.toISOString().slice(0, 10) })),
+          crypto,
+        ),
+      );
+    }
     default:
       return null;
   }
