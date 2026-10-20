@@ -274,6 +274,8 @@ export const ACTION_IDS = [
   "whatif.adopt",
   "lean.start",
   "lean.not_now",
+  "unusual.me",
+  "unusual.not_me",
 ] as const;
 export type ActionId = (typeof ACTION_IDS)[number];
 
@@ -306,6 +308,12 @@ export type MessageRefs = {
   tightItem?: { id: string };
   // Spec step 179: the home price the down payment goal is sized for.
   homeGoal?: { priceCents: number };
+  // Spec step 180: the request "Send" sends about a medical bill.
+  medicalItem?: { id: string };
+  // Spec step 181: the letter "Send" sends about a collection or a credit report error.
+  creditFix?: { id: string };
+  // Spec step 224: the card whose lower rate "Ask" asks for.
+  cardRate?: { id: string };
   // Insurance (spec Phase X): a coverage gap by its key (GAP_KEYS), and the policy a
   // message is about.
   insuranceGap?: string;

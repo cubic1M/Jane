@@ -192,7 +192,9 @@ describe.runIf(url)("building credit against a real database", { timeout: 30_000
       now: later(),
     });
     expect(reply.body).toMatch(/^Pay your cards .* would take your score from \d+ to about \d+/);
-    expect(reply.body).toMatch(/estimates from the stand-in score's simulator, not promises/);
+    expect(reply.body).toMatch(
+      /estimates from the stand-in score's simulator, and nothing changes until you act/,
+    );
     const before = await client.creditReport.count({ where: { userId: id } });
     await sendToJane(id, "credit score simulator", { client, now: later() });
     expect(await client.creditReport.count({ where: { userId: id } })).toBe(before);

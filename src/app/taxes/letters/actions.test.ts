@@ -17,7 +17,8 @@ import {
   dismissTaxNotice,
   sendResponse,
 } from "@/lib/tax-notices";
-import { fieldsFrom, letterAction } from "./actions";
+import { letterAction } from "./actions";
+import { fieldsFrom } from "./fields";
 
 // Spec step 217: confirming a notice, choosing a reply and handing it over, each a tap.
 
