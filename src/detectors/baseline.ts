@@ -9,6 +9,7 @@ import type { PersonId } from "@/config/people";
 export const BASELINE: Readonly<Record<PersonId, readonly string[]>> = {
   renter: ["bank_fees", "card_interest", "emergency_fund", "employer_match", "subscriptions"],
   family: [
+    "childcare_tax_break",
     "education_529",
     "emergency_fund",
     "household_setup",
@@ -24,9 +25,17 @@ export const BASELINE: Readonly<Record<PersonId, readonly string[]>> = {
     "retirement_self_employed",
     "subscriptions",
   ],
-  equity: ["backdoor_roth", "concentration", "hsa", "idle_cash", "refinance", "subscriptions"],
-  preretire: ["catch_up", "household_setup", "idle_cash"],
-  retiree: ["idle_cash", "rmd", "subscriptions"],
+  equity: [
+    "backdoor_roth",
+    "concentration",
+    "hsa",
+    "idle_cash",
+    "refinance",
+    "subscriptions",
+    "withholding_gap",
+  ],
+  preretire: ["catch_up", "household_setup", "idle_cash", "roth_conversion"],
+  retiree: ["idle_cash", "rmd", "roth_conversion", "subscriptions"],
   debt: [
     "bank_fees",
     "card_interest",
