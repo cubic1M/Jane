@@ -6,8 +6,6 @@
 // tool is never added to this list: it arrives with its detector or an exemption.
 
 export const MISSING_DETECTOR: readonly string[] = [
-  // Arrived in step 223 (merged while this ratchet was in review); the taxes lane covers it.
-  "tax_calendar",
   "debt_autopilot",
   "credit_score",
   "credit_building",
@@ -37,22 +35,15 @@ export const MISSING_DETECTOR: readonly string[] = [
   "insurance_documents",
   "tax_profile",
   "tax_tags",
-  "tax_withholding",
-  "tax_savings",
   "tax_refunds",
   "tax_return",
   "tax_investments",
   "tax_states",
-  "tax_plan",
   "tax_giving",
-  "tax_family",
   "tax_home",
   "tax_records",
   "tax_last_return",
   "tax_notices",
-  "tax_identity",
-  "tax_equity",
-  "tax_years",
   "tax_property",
   "tax_accountant",
   "tax_forms",
