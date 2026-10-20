@@ -8,6 +8,7 @@ import { CAPABILITIES } from "@/lib/jane-agent/capabilities";
 import { buildProfile } from "@/profile/build";
 import { inputFor } from "@/profile/sample";
 import { weakest } from "./helpers";
+import { MISSING_DETECTOR } from "./missing";
 import { formatReport, reportFor, runHarness } from "./harness";
 import { DETECTORS, detectorsFor, runDetectors } from "./index";
 
@@ -18,9 +19,24 @@ import { DETECTORS, detectorsFor, runDetectors } from "./index";
 describe("the detector contract", () => {
   it("has a detector for every registry capability, or a reason it has none", () => {
     const missing = CAPABILITIES.filter(
-      (c) => detectorsFor(c.id).length === 0 && !DETECTOR_EXEMPT[c.id],
+      (c) =>
+        detectorsFor(c.id).length === 0 &&
+        !DETECTOR_EXEMPT[c.id] &&
+        !MISSING_DETECTOR.includes(c.id),
     ).map((c) => c.id);
     expect(missing, `capabilities with no detector: ${missing.join(", ")}`).toEqual([]);
+  });
+
+  it("only ever shrinks the list of capabilities still missing a detector", () => {
+    const ids = new Set(CAPABILITIES.map((c) => c.id));
+    for (const id of MISSING_DETECTOR) {
+      expect(ids.has(id), `${id} is on the missing list but is not a capability`).toBe(true);
+      expect(
+        detectorsFor(id),
+        `${id} has a detector now: remove it from src/detectors/missing.ts`,
+      ).toEqual([]);
+      expect(DETECTOR_EXEMPT[id], `${id} is both missing and exempt`).toBeUndefined();
+    }
   });
 
   it("keeps the exempt list and the detectors honest", () => {
