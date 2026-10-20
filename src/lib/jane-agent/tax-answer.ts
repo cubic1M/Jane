@@ -13,6 +13,8 @@ import { givingReply } from "./giving-message";
 import { loadFamilyTaxes } from "@/lib/family-taxes";
 import { familyReply } from "./family-taxes-message";
 import { loadHomeTaxes } from "@/lib/home-taxes";
+import { loadSideIncome } from "@/lib/side-income";
+import { sideIncomeReply } from "./side-income-message";
 import { listPriorReturns } from "@/lib/prior-return";
 import { loadReturnReviews } from "@/lib/prior-return/review";
 import { lastReturnReply } from "./prior-return-message";
@@ -116,6 +118,8 @@ export async function answerTaxIntent(
         ? moveReply(intent, view.state.value, now)
         : workStateReply(intent.state, view.state.value);
     }
+    case "side_income":
+      return sideIncomeReply(await loadSideIncome(userId, { client, now }));
     case "last_return": {
       const [waiting, reviewed] = await Promise.all([
         listPriorReturns(userId, { client, status: "waiting" }),

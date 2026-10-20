@@ -39,7 +39,7 @@ export function recordsReply(view: AuditRecordsView): Message {
     body: [
       view.items.length === 0
         ? `I don't have any deductions or credits for ${view.year} to back up yet.`
-        : `Your ${view.year} audit pack covers ${formatCents(total)} of deductions and credits, each tied to its sources:\n${lines.join("\n")}`,
+        : `Your ${view.year} audit pack covers ${formatCents(total)} of deductions and credits, each tied to its sources.\n${lines.join("\n")}`,
       ...(gaps.length > 0
         ? [`Counted but not in the pack for lack of a source:\n${gaps.join("\n")}`]
         : []),

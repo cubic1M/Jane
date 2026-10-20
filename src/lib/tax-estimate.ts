@@ -15,6 +15,8 @@ import { estimateTaxes, type EstimateInput, type TaxEstimate } from "@/planning/
 import { perPaycheckEffect, type W4Step } from "@/planning/withholding";
 import { homeOfficeDeduction, mileageDeduction } from "@/planning/self-employed";
 import { loadInvestmentTaxes } from "@/lib/investment-taxes";
+import { rentalDepreciation, rentalNet } from "@/planning/side-income";
+import { formatCents } from "@/lib/money";
 import { loadResidency, residencyFor, type ResidencyView } from "@/lib/tax-states";
 import { LOCAL_TAXES } from "@/config/tax-states";
 import {
@@ -153,6 +155,9 @@ export async function loadTaxEstimate(
         businessMiles: true,
         businessMilesYear: true,
         taxPayments: true,
+        rentalPriceCents: true,
+        rentalPlacedOn: true,
+        sideIncomeKind: true,
       },
     }),
     loadResidency(userId, year, { client }),
@@ -238,6 +243,51 @@ export async function loadTaxEstimate(
     shortTermGainsCents: gains.shortTerm,
     longTermGainsCents: gains.longTerm,
   };
+  // Spec step 173: a rental's net (rent less tagged expenses less depreciation, with the
+  // passive loss allowance), and a hobby's income without its expenses.
+  const sideStored = stored;
+  const rentalExpenses =
+    elapsed > 0 && elapsed < 1
+      ? Math.round(tags.totals.rental.totalCents / elapsed)
+      : tags.totals.rental.totalCents;
+  const depreciation =
+    sideStored?.rentalPriceCents && sideStored.rentalPlacedOn
+      ? rentalDepreciation({
+          year,
+          priceCents: sideStored.rentalPriceCents,
+          placedOn: iso(sideStored.rentalPlacedOn),
+        }).cents
+      : 0;
+  if (paced.rentalCents > 0 || rentalExpenses > 0 || depreciation > 0) {
+    const net = rentalNet({
+      rentCents: paced.rentalCents,
+      expensesCents: rentalExpenses,
+      depreciationCents: depreciation,
+      otherIncomeCents:
+        wagesProjected + paced.selfEmploymentCents + paced.interestCents + paced.dividendsCents,
+    });
+    paced.rentalCents = net.countedCents;
+    if (net.expensesCents + net.depreciationCents > 0) {
+      assumptions.push(
+        `Your rental: rent less expenses and depreciation comes to ${net.netCents < 0 ? "a loss of " : ""}${formatCents(Math.abs(net.netCents))}${net.suspendedCents > 0 ? `; ${formatCents(net.suspendedCents)} of the loss carries forward` : ""}.`,
+      );
+    }
+  }
+  const hobby =
+    sideStored?.sideIncomeKind === "hobby" && paced.selfEmploymentCents + businessSoFar > 0;
+  const hobbyIncome = hobby
+    ? projectOther(
+        { ...otherSoFar, selfEmploymentCents: otherSoFar.selfEmploymentCents + businessSoFar },
+        year,
+        today,
+      ).selfEmploymentCents
+    : 0;
+  if (hobby) {
+    paced.selfEmploymentCents = 0;
+    assumptions.push(
+      "You said your side income is a hobby, so it's taxed with no expenses and no self-employment tax.",
+    );
+  }
   const homeOffice =
     paced.selfEmploymentCents > 0
       ? Math.min(homeOfficeDeduction(stored?.homeOfficeSqFt ?? null), paced.selfEmploymentCents)
@@ -293,6 +343,7 @@ export async function loadTaxEstimate(
     ),
     income: {
       ...other,
+      otherCents: hobbyIncome,
       wagesCents: wagesProjected,
       socialSecurityWagesCents:
         pay.source === "none" ? wagesProjected : pay.projected.socialSecurityWagesCents,
