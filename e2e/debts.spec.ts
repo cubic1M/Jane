@@ -232,7 +232,8 @@ test("the mortgage page shows PMI, the escrow change and extra principal", async
   await page.getByRole("link", { name: "See PMI, escrow and extra payments" }).click();
   await expect(page.getByRole("heading", { level: 1, name: "Your mortgage" })).toBeVisible();
   const pmi = page.getByRole("region", { name: "Private mortgage insurance (PMI)" });
-  await expect(pmi).toContainText("Your loan has PMI.");
+  // The demo home is worth $380,000, so the page says when the PMI can come off.
+  await expect(pmi).toContainText("PMI can come off under 80%");
   await expect(pmi.getByRole("link", { name: "the CFPB" })).toHaveAttribute(
     "href",
     /consumerfinance\.gov/,

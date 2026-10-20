@@ -249,8 +249,11 @@ test("a move gets its insurance changes ready, made on one tap (step 154)", asyn
   await expect(
     changes.getByText("Update the address on your GEICO car policy (the price stays the same)"),
   ).toBeVisible();
-  await changes.getByRole("button", { name: "Make the changes" }).click();
+  // The demo bank's car is also ready to add to the policy (listed first); make the move's.
+  const apply = changes.getByRole("button", { name: "Make the changes" });
+  await apply.last().click();
   await expect(page.getByText("Done. Your insurance is up to date.")).toBeVisible();
+  await apply.first().click();
   await expect(page.getByRole("region", { name: "After life events" })).toHaveCount(0);
 });
 
