@@ -16,6 +16,8 @@ import { warnNewPlan } from "@/planning/bnpl";
 import type { TightMoney } from "@/lib/tight-money";
 import type { Car } from "@/lib/car";
 import type { HomeBuying } from "@/lib/home-buying";
+import type { MedicalBills } from "@/lib/medical-bills";
+import type { ReportFixes } from "@/lib/credit-report-fixes";
 import { REWARD_CATEGORY_LABELS } from "@/config/credit-cards";
 import type { DebtAutopilot } from "@/lib/debt-autopilot";
 import { PMI_SOURCE } from "@/config/debt";
@@ -142,6 +144,18 @@ export const DEBT_TOOLS: Anthropic.Tool[] = [
         },
       },
     },
+  },
+  {
+    name: "medical_bills",
+    description:
+      "The person's medical bills (demo-bank people only; nothing for real accounts): bills of $100 or more found in recent payments to doctors, dentists and hospitals (pharmacy left out) plus any they typed in, whether they have an active health plan on file, and for each bill the requests Jane has written (an itemized bill, a check against their insurance, a financial assistance application for bills of $500 or more, and a payment plan with no interest for bills of $300 or more) with the exact letter, whether it was sent and what the provider answered, including what assistance took off. Amounts are the bills' own. Sending any request needs the person's tap (the medical.send button); Jane never sends one by herself.",
+    input_schema: noInput,
+  },
+  {
+    name: "credit_report_fixes",
+    description:
+      "Collections and possible errors on the person's credit report, from a monthly soft pull (demo-bank people only, a stand-in report; nothing for real accounts): each item with its creditor, amount and what's wrong, whether a dispute already fixed it, and the letters Jane wrote for it (a debt validation letter to a collector under the Fair Debt Collection Practices Act, section 809(b), with the last day to ask; a dispute to the three bureaus under the Fair Credit Reporting Act, section 611, which they must answer within 30 days) with the exact text, whether each was sent and what came back. Sending a letter needs the person's tap (the creditfix.send button); Jane never sends one by herself.",
+    input_schema: noInput,
   },
   {
     name: "mortgage",
@@ -289,6 +303,8 @@ export const DEBT_TOOL_STATUS: Readonly<Record<string, string>> = {
   tight_money: "Looking at your month ahead…",
   car_purchase: "Working out what car you can afford…",
   home_purchase: "Working out what home you can afford…",
+  medical_bills: "Looking at your medical bills…",
+  credit_report_fixes: "Checking your credit report…",
 };
 
 export function refinanceToolOutput(refi: Refinance, money: (cents: number) => string) {
@@ -731,6 +747,61 @@ export function homeToolOutput(home: HomeBuying, money: (cents: number) => strin
       closing: o.offer.feeLabel,
     })),
     assumptions: home.assumptions,
+  };
+}
+
+export function medicalToolOutput(data: MedicalBills, money: (cents: number) => string) {
+  if (!data.available) return { note: "No provider partner for this person's accounts yet." };
+  return {
+    demoAdvice: true,
+    hasActiveHealthPlan: data.hasInsurance,
+    bills: data.bills.map((b) => ({
+      provider: b.provider,
+      amount: money(b.amountCents),
+      billedOn: b.billedOn,
+      source: b.source,
+      requests: b.items.map((i) => ({
+        id: i.id,
+        what: i.label,
+        letter: i.body,
+        sent: i.sent && {
+          on: i.sent.sentOn,
+          status: i.sent.status,
+          answer: i.sent.outcome,
+          tookOff: money(i.sent.savedCents),
+        },
+      })),
+    })),
+    alwaysNeedsATap: "sending any request",
+  };
+}
+
+export function reportFixesToolOutput(data: ReportFixes, money: (cents: number) => string) {
+  if (!data.available) return { note: "No credit partner for this person's accounts yet." };
+  return {
+    demoAdvice: true,
+    standIn: true,
+    items: data.fixes.map((f) => ({
+      creditor: f.item.creditor,
+      kind: f.item.kind,
+      amount: f.item.amountCents === null ? null : money(f.item.amountCents),
+      detail: f.item.detail,
+      fixedByADispute: f.fixed,
+      letters: f.letters.map((l) => ({
+        id: l.id,
+        what: l.label,
+        lastDayToAsk: l.windowEndsOn,
+        letter: l.body,
+        sent: l.sent && {
+          on: l.sent.sentOn,
+          answerDueBy: l.sent.deadlineOn,
+          status: l.sent.status,
+          removedOrCorrected: l.sent.removed,
+          answer: l.sent.outcome,
+        },
+      })),
+    })),
+    alwaysNeedsATap: "sending any letter",
   };
 }
 

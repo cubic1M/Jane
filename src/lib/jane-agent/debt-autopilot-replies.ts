@@ -21,7 +21,8 @@ const LOANS: MessageAction = { id: "open", label: "See every debt", kind: "link"
 export function debtAutopilotReply(data: DebtAutopilot): Reply {
   const lines = [
     `Your debt autopilot is set to "${SECTOR_LEVEL_LABELS[data.level]}", so here's what I do by myself.`,
-    ...data.does.map((d) => `- ${d.does}`),
+    // The first sentence of each step; Settings has the whole list.
+    ...data.does.map((d) => `- ${d.does.split(/(?<=\.) /)[0]}`),
     "Applying for credit, moving money and signing always wait for your tap.",
   ];
   if (data.planStartedOn)

@@ -14,6 +14,8 @@ import { loadBnpl } from "@/lib/bnpl";
 import { loadTightMoney } from "@/lib/tight-money";
 import { loadCar } from "@/lib/car";
 import { loadHomeBuying } from "@/lib/home-buying";
+import { loadMedicalBills } from "@/lib/medical-bills";
+import { loadReportFixes } from "@/lib/credit-report-fixes";
 import { listApplications } from "@/lib/loan-applications";
 import { loadRefinance } from "@/lib/refinance";
 import {
@@ -34,6 +36,8 @@ import {
   tightMoneyToolOutput,
   carToolOutput,
   homeToolOutput,
+  medicalToolOutput,
+  reportFixesToolOutput,
 } from "./debt-tools";
 
 // Runs Claude's debt tools (./debt-tools.ts) for one person: read-only, scoped to them,
@@ -58,6 +62,10 @@ export async function runDebtTool(
       return out(debtsToolOutput(await loadDebts(userId, { client, now }), money));
     case "debt_autopilot":
       return out(debtAutopilotToolOutput(await loadDebtAutopilot(userId, { client, now }), money));
+    case "credit_report_fixes":
+      return out(reportFixesToolOutput(await loadReportFixes(userId, { client, now }), money));
+    case "medical_bills":
+      return out(medicalToolOutput(await loadMedicalBills(userId, { client, now }), money));
     case "home_purchase": {
       const price = (input as { price_cents?: unknown } | null)?.price_cents;
       return out(
