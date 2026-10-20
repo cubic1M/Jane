@@ -88,6 +88,8 @@ export type AuditEvent =
   // Money that moves itself (spec steps 144–145): a transfer or payment scheduled or undone.
   | "money_transfer_scheduled"
   | "money_transfer_cancelled"
+  // A what-if plan the person adopted (spec step 203).
+  | "what_if_adopted"
   | "plan_link_used"
   | "support_contact_suggested"
   | "support_contact_confirmed"
@@ -112,6 +114,13 @@ export type AuditEvent =
   | "document_deleted"
   // The tax-time pack downloaded as a CSV (spec step 72).
   | "tax_pack_downloaded"
+  // Spec step 171: the audit pack for a year downloaded.
+  | "audit_pack_downloaded"
+  // Spec step 172: a prior-year return read from a document was confirmed; an amended
+  // return was prepared and signed.
+  | "tax_return_read_confirmed"
+  | "tax_amendment_started"
+  | "tax_amendment_signed"
   // Taxes (spec steps 118–127): which fields of the tax profile changed, never the answers.
   | "tax_profile_changed"
   // A tax tag the person changed (spec step 119): the tag and whether on one transaction or

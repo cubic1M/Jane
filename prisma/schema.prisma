@@ -347,6 +347,8 @@ model User {
   lifeEventAnswers       LifeEventAnswer[]
   taxTags                TaxTag[]
   taxDocuments           TaxDocument[]
+  priorReturns           PriorReturn[]
+  taxAmendments          TaxAmendment[]
   taxForms               TaxForm[]
   taxReturns             TaxReturn[]
   budgetTuneUps          BudgetTuneUp[]
@@ -368,6 +370,7 @@ model User {
   paycheckPlans     PaycheckPlan[]
   healthScores      HealthScore[]
   monthlyReports    MonthlyReport[]
+  whatIfPlans       WhatIfPlan[]
 
   @@map("users")
 }
@@ -1756,32 +1759,33 @@ model PlanLink {
 // is AES-256-GCM encrypted (src/lib/crypto.ts); the key facts are read by Claude or typed
 // by the person, and they can always correct them.
 model Document {
-  id                  String    @id @default(cuid())
-  userId              String    @map("user_id")
+  priorReturn         PriorReturn?
+  id                  String       @id @default(cuid())
+  userId              String       @map("user_id")
   // insurance_policy, warranty, receipt or other (src/config/documents.ts).
   kind                String
-  fileName            String    @map("file_name")
+  fileName            String       @map("file_name")
   // One of the allowed types, checked against the file's first bytes.
-  contentType         String    @map("content_type")
-  sizeBytes           Int       @map("size_bytes")
+  contentType         String       @map("content_type")
+  sizeBytes           Int          @map("size_bytes")
   // "v1" + iv + auth tag + ciphertext; never the plain file.
-  encryptedBytes      Bytes     @map("encrypted_bytes")
+  encryptedBytes      Bytes        @map("encrypted_bytes")
   provider            String?
   // Policies only: auto, home, renters, life, health or other.
-  policyType          String?   @map("policy_type")
+  policyType          String?      @map("policy_type")
   // One line, checked by the guardrails before it's shown.
-  coverageSummary     String?   @map("coverage_summary")
-  premiumCents        Int?      @map("premium_cents")
+  coverageSummary     String?      @map("coverage_summary")
+  premiumCents        Int?         @map("premium_cents")
   // monthly, quarterly, every 6 months or yearly.
-  premiumFrequency    String?   @map("premium_frequency")
-  renewalDate         DateTime? @map("renewal_date") @db.Date
-  warrantyEndsOn      DateTime? @map("warranty_ends_on") @db.Date
-  purchaseDate        DateTime? @map("purchase_date") @db.Date
-  purchaseAmountCents Int?      @map("purchase_amount_cents")
+  premiumFrequency    String?      @map("premium_frequency")
+  renewalDate         DateTime?    @map("renewal_date") @db.Date
+  warrantyEndsOn      DateTime?    @map("warranty_ends_on") @db.Date
+  purchaseDate        DateTime?    @map("purchase_date") @db.Date
+  purchaseAmountCents Int?         @map("purchase_amount_cents")
   // Who wrote the facts: claude, you (the person) or none yet.
-  extractionSource    String    @default("none") @map("extraction_source")
-  uploadedAt          DateTime  @default(now()) @map("uploaded_at") @db.Timestamptz(3)
-  updatedAt           DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
+  extractionSource    String       @default("none") @map("extraction_source")
+  uploadedAt          DateTime     @default(now()) @map("uploaded_at") @db.Timestamptz(3)
+  updatedAt           DateTime     @updatedAt @map("updated_at") @db.Timestamptz(3)
 
   user              User              @relation(fields: [userId], references: [id], onDelete: Cascade)
   insurancePolicies InsurancePolicy[]
@@ -2396,6 +2400,8 @@ model TaxProfile {
   homeSaleCents         Int?      @map("home_sale_cents")
   homeSaleCostsCents    Int?      @map("home_sale_costs_cents")
   homeDaysLivedIn       Int?      @map("home_days_lived_in")
+  // Spec step 171: tax years whose "records can go" reminder is on the deadlines.
+  retentionReminded     String[]  @default([]) @map("retention_reminded")
   createdAt             DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt             DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
 
@@ -2758,6 +2764,52 @@ model AutopilotAct {
 // hands over what she has (package: the profile, income, tags and forms, never account
 // numbers or tokens); the partner prepares it; the person reviews it and signs; only then is
 // it submitted. status: ready_for_review, submitted, accepted or rejected.
+// Spec step 172: a prior-year return read from an uploaded document, for the person to
+// confirm (like a policy read, step 151). fields/sources/notes are keyed by
+// PRIOR_RETURN_FIELDS; nothing in it is used until status is "confirmed".
+model PriorReturn {
+  id          String    @id @default(cuid())
+  userId      String    @map("user_id")
+  documentId  String    @unique @map("document_id")
+  fields      Json
+  sources     Json
+  notes       Json
+  status      String    @default("waiting")
+  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  confirmedAt DateTime? @map("confirmed_at") @db.Timestamptz(3)
+
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  document Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("prior_returns")
+}
+
+// Spec step 172: an amended return (1040-X) prepared through the filing stand-in for what a
+// prior-year review found. Never submitted without the person's review and signature.
+model TaxAmendment {
+  id              String    @id @default(cuid())
+  userId          String    @map("user_id")
+  year            Int
+  partner         String
+  partnerReturnId String    @map("partner_return_id")
+  status          String
+  // What changes: [{ key, title, savesCents }].
+  changes         Json
+  refundCents     Int       @map("refund_cents")
+  signerName      String?   @map("signer_name")
+  signedAt        DateTime? @map("signed_at") @db.Timestamptz(3)
+  submittedAt     DateTime? @map("submitted_at") @db.Timestamptz(3)
+  acceptedAt      DateTime? @map("accepted_at") @db.Timestamptz(3)
+  createdAt       DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt       DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, year])
+  @@map("tax_amendments")
+}
+
 model TaxReturn {
   id              String    @id @default(cuid())
   userId          String    @map("user_id")
@@ -3056,4 +3108,24 @@ model MonthlyReport {
 
   @@unique([userId, month])
   @@map("monthly_reports")
+}
+
+// A what-if plan the person adopted (spec step 203): the scenario, its assumptions and the
+// changes Jane proposed, which show up among the next best things until they're done.
+model WhatIfPlan {
+  id        String   @id @default(cuid())
+  userId    String   @map("user_id")
+  scenario  String
+  params    Json
+  // [{ key, title, detail }].
+  changes   Json
+  // adopted, then done or dropped.
+  status    String   @default("adopted")
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, status])
+  @@map("what_if_plans")
 }
