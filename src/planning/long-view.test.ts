@@ -84,6 +84,13 @@ describe("longView", () => {
     expect(stuck.parts.debtsCents).toBeGreaterThan(300_000);
   });
 
+  it("invests an extra amount the person chose even when nothing is left over", () => {
+    const none = longView({ ...base, marginCents: 0 }, rates)[0].lowCents;
+    const extra = longView({ ...base, marginCents: 0 }, rates, 50_000)[0].lowCents;
+    // Moved from cash, so it only earns the growth, but it does earn it.
+    expect(extra).toBeGreaterThan(none);
+  });
+
   it("ranks what moves the 30-year low end most", () => {
     const input: LongViewInput = {
       ...base,

@@ -93,10 +93,11 @@ function run(input: LongViewInput, rates: Rates, investedRate: number, extraInve
     const saved = Math.max(0, input.marginCents - cardPayments + paidOffOutsideMargin);
     const toInvest = Math.min(
       saved,
-      input.investMonthlyCents + extraInvest + (ROLL_FREED_PAYMENTS ? paidOff : 0),
+      input.investMonthlyCents + (ROLL_FREED_PAYMENTS ? paidOff : 0),
     );
-    invested += toInvest;
-    cash += saved - toInvest;
+    // An extra amount the person chose to invest is moved from cash whatever the margin.
+    invested += toInvest + extraInvest;
+    cash += saved - toInvest - extraInvest;
     if (month % MONTHS === 0 && horizons.includes(month / MONTHS)) {
       out.set(month / MONTHS, {
         cash,
@@ -123,7 +124,7 @@ export function longView(input: LongViewInput, rates: Rates, extraInvest = 0): H
       lowCents: Math.round(lowNet),
       highCents: Math.round(highNet),
       parts: {
-        cashCents: Math.round(l.cash),
+        cashCents: Math.max(0, Math.round(l.cash)),
         investedLowCents: Math.round(l.invested),
         investedHighCents: Math.round(h.invested),
         homeCents: Math.round(l.home),
