@@ -136,6 +136,19 @@ async function TaxesContent() {
         </Link>
       </section>
 
+      <section aria-labelledby="property-heading" id="property" className={CARD}>
+        <h2 id="property-heading" className="text-xl font-semibold">
+          Property tax
+        </h2>
+        <p className="text-sm text-zinc-600 dark:text-zinc-400">
+          Is your home assessed for more than it&apos;s worth? An appeal drafted with comparable
+          sales, the county&apos;s deadline, and exemptions you may not have claimed.
+        </p>
+        <Link href="/taxes/property" className={LINK}>
+          Check my property tax
+        </Link>
+      </section>
+
       <section aria-labelledby="identity-heading" id="identity" className={CARD}>
         <h2 id="identity-heading" className="text-xl font-semibold">
           Your tax identity

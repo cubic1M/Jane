@@ -30,6 +30,7 @@ import { checkNoticeFor, listTaxNotices, type NoticeView } from "@/lib/tax-notic
 import type { Check } from "@/planning/tax-notice";
 import { loadEquityTax, type EquityTaxView } from "@/lib/equity-tax";
 import { loadMultiYear, type MultiYearView } from "@/lib/multi-year";
+import { loadPropertyTax, type PropertyTaxView } from "@/lib/property-tax";
 import { loadIdentity, type IdentityView } from "@/lib/tax-identity";
 import { loadSideIncome, type SideIncomeView } from "@/lib/side-income";
 import { loadAuditRecords, type AuditRecordsView } from "@/lib/audit-records";
@@ -92,6 +93,8 @@ export type TaxSnapshot = {
     equity?: EquityTaxView;
     // Spec step 220: taxes over several years and the moves found.
     years?: MultiYearView;
+    // Spec step 221: the assessment, the appeal and exemptions.
+    property?: PropertyTaxView;
     // Spec step 217: tax notices read from uploads, with what Jane found against them.
     notices?: { notice: NoticeView; check: (Check & { advice: boolean }) | null }[];
     // Spec step 172: returns read from uploads, and what their review found.
@@ -183,6 +186,7 @@ export async function loadTaxSnapshot(
       ),
       equity: await loadEquityTax(userId, { client, now, loaded: { estimate, advice } }),
       years: await loadMultiYear(userId, { client, now }),
+      property: await loadPropertyTax(userId, { client, now }),
       identity: await loadIdentity(userId, { client, now }),
       sideIncome: await loadSideIncome(userId, { client, now, loaded: { estimate } }),
       records: await loadAuditRecords(userId, estimate.year, { client, now }),

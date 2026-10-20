@@ -122,6 +122,8 @@ export type AuditEvent =
   // Spec step 218: a case opened on a sign of tax identity theft.
   | "tax_identity_case_opened"
   | "tax_notice_response_sent"
+  // Spec step 221: who files a drafted property tax appeal (the team or the person).
+  | "property_appeal_handled"
   // Taxes (spec steps 118–127): which fields of the tax profile changed, never the answers.
   | "tax_profile_changed"
   // A tax tag the person changed (spec step 119): the tag and whether on one transaction or

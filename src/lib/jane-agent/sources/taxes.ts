@@ -20,6 +20,11 @@ import { familyChoiceMessage, statusOf } from "../family-taxes-message";
 import { worthSaying } from "@/planning/family-taxes";
 import { equitySetAsideMessage } from "../equity-tax-message";
 import { yearsMoveMessage } from "../multi-year-message";
+import {
+  appealDraftedMessage,
+  appealSuggestedMessage,
+  exemptionMessage,
+} from "../property-tax-message";
 import { caseMessage, ipPinMessage, signMessage } from "../tax-identity-message";
 import {
   noticeDraftMessage,
@@ -401,6 +406,36 @@ export const taxesSource: MessageSource = {
         dedupeKey: `years:${move.key}`,
         priority: TAX_MESSAGE_PRIORITY.years,
       });
+    }
+
+    // Spec step 221: an assessment worth appealing, the drafted appeal waiting for a filer,
+    // and an exemption not yet claimed (demo advice).
+    const property = tax.property;
+    if (property?.advice) {
+      if (property.appeal?.status === "drafted") {
+        out.push({
+          kind: "decision",
+          ...appealDraftedMessage(property),
+          dedupeKey: `property_filer:${property.year}`,
+          priority: TAX_MESSAGE_PRIORITY.property,
+        });
+      } else if (property.suggested && !property.appeal) {
+        out.push({
+          kind: "decision",
+          ...appealSuggestedMessage(property),
+          dedupeKey: `property:${property.year}`,
+          priority: TAX_MESSAGE_PRIORITY.property,
+        });
+      }
+      const exemption = exemptionMessage(property);
+      if (exemption) {
+        out.push({
+          kind: "decision",
+          ...exemption,
+          dedupeKey: `exemption:${exemption.refs.propertyExemption}`,
+          priority: TAX_MESSAGE_PRIORITY.exemption,
+        });
+      }
     }
 
     // Spec step 218: the IP PIN in January (already on the deadlines at the levels that let

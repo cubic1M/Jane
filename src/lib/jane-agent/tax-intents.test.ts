@@ -337,3 +337,22 @@ describe("taxes over the years in the chat", () => {
     });
   });
 });
+
+describe("property tax in the chat", () => {
+  it.each([
+    "is my property tax too high",
+    "should I appeal my property taxes",
+    "my house is over-assessed",
+    "what is the homestead exemption",
+    "do I get a senior discount on my property tax exemption",
+  ])("%s asks about property tax", (text) => {
+    expect(parse(text)).toEqual({ kind: "tax", ask: "property" });
+  });
+
+  it("leaves the deduction question to the home answer", () => {
+    expect(parse("how much property tax can I deduct")).not.toEqual({
+      kind: "tax",
+      ask: "property",
+    });
+  });
+});

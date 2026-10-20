@@ -154,6 +154,7 @@ export function scopedFor(userId: string, client: PrismaClient = db) {
     taxIdentityCases: scoped.taxIdentityCase,
     equityEvents: scoped.equityEvent,
     taxPlanEvents: scoped.taxPlanEvent,
+    propertyAppeals: scoped.propertyAppeal,
     taxReturns: scoped.taxReturn,
     // One-tap answers from Jane's emails (spec step 85).
     chatReplyLinks: scoped.chatReplyLink,

@@ -92,6 +92,15 @@ import {
 } from "./tax-identity";
 import { taxEquityAside } from "./tax-equity";
 import { taxYearsPlan } from "./tax-years";
+import {
+  taxExemptionClaimed,
+  taxExemptionRemind,
+  taxPropertyDraft,
+  taxPropertyDrop,
+  taxPropertyRemind,
+  taxPropertySelf,
+  taxPropertyTeam,
+} from "./tax-property";
 import { taxSideBusiness, taxSideHobby } from "./side-income";
 import { taxFundOpen, taxGivingNo, taxReceiptGot } from "./giving";
 import {
@@ -283,6 +292,13 @@ export const ACTION_HANDLERS: Readonly<Record<ActionId, ActionHandler>> = {
   "tax.identity_step": taxIdentityStep,
   "tax.equity_aside": taxEquityAside,
   "tax.years_plan": taxYearsPlan,
+  "tax.property_draft": taxPropertyDraft,
+  "tax.property_remind": taxPropertyRemind,
+  "tax.property_team": taxPropertyTeam,
+  "tax.property_self": taxPropertySelf,
+  "tax.property_drop": taxPropertyDrop,
+  "tax.exemption_remind": taxExemptionRemind,
+  "tax.exemption_claimed": taxExemptionClaimed,
   "tax.records_remind": taxRecordsRemind,
   // Investments (spec step 129 on).
   "invest.answer.1": investAnswer1,
