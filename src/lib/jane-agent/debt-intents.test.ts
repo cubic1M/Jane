@@ -465,6 +465,21 @@ describe("debt questions", () => {
     });
   });
 
+  it("reads costly short-term borrowing (spec step 247)", () => {
+    for (const text of [
+      "how much have payday loans cost me",
+      "what is a payday alternative loan",
+      "should I use a cash advance",
+      "I keep overdrafting every month",
+      "are pay advance apps like EarnIn worth it",
+      "what's a small-dollar loan",
+    ]) {
+      expect(intent(text), text).toEqual({ kind: "costly_borrowing" });
+    }
+    // An overdraft fee on a statement is a fee question, not this one.
+    expect(intent("what is an overdraft fee")).not.toEqual({ kind: "costly_borrowing" });
+  });
+
   it("leaves requests and other questions alone", () => {
     expect(intent("lower the rate on my card")).toMatchObject({ kind: "act", verb: "lower" });
     expect(intent("what's due this week")).toMatchObject({ kind: "coming_up" });
