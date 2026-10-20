@@ -10,6 +10,7 @@ const mortgageBalance = (accounts: readonly { subtype: string | null; balanceCen
   accounts.filter((a) => a.subtype === "mortgage").reduce((s, a) => s + a.balanceCents, 0);
 
 const pmiRemoval: Detector = {
+  covers: ["mortgage", "home_equity"],
   capability: "debt",
   topic: "pmi_removal",
   needs: ["has_pmi"],
@@ -33,6 +34,7 @@ const pmiRemoval: Detector = {
 };
 
 const refinance: Detector = {
+  covers: ["refinance_offers"],
   capability: "debt",
   topic: "refinance",
   needs: ["mortgage_rate_bps"],
@@ -58,6 +60,7 @@ const refinance: Detector = {
 };
 
 const lifeInsurance: Detector = {
+  covers: ["insurance_life"],
   capability: "insurance",
   topic: "life_insurance",
   needs: ["has_children", "insurance_life", "monthly_income"],
