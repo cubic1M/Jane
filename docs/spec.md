@@ -3719,6 +3719,110 @@ through the step 190 registry, with questions in step 189's bank.
 > Acceptance criteria:
 > - Nothing is paid above the cap without a tap; every month of the calendar has a test
 
+## Phase AN: credit and borrowing, round three (steps 224–230)
+
+Phases Y and AG plan payoffs, refinance, apply, build credit, buy cars and homes, and fix
+reports. This round cuts the interest people keep paying without noticing, plays the long
+game on student loans and credit scores, tracks money lent between family and friends,
+gets the most out of a home's equity, and lays out the facts when debt becomes too much.
+Recommendations are demo advice; legal questions go to counsel or nonprofit counselors.
+Each step is built into the chat through the step 190 registry, with questions in step 189's
+bank.
+
+### Step 224: Less interest on every card
+
+> Read CLAUDE.md. Interest cut without a new card.
+>
+> Build:
+> 1. Paying before the statement date so reported balances stay low, 0% promotions with
+>    their end dates as deadlines and the pace that clears them before deferred interest
+>    hits, and a request for a lower rate on each card (a call script, or the team through
+>    the stand-in), with the yearly saving.
+>
+> Acceptance criteria:
+> - A deferred-interest promo off pace raises a deadline with the monthly amount needed;
+>   the statement-date timing has tests
+
+### Step 225: Student loans, the long game
+
+> Read CLAUDE.md. Forgiveness and repayment over the years.
+>
+> Build:
+> 1. Public Service Loan Forgiveness counted month by month with the employer
+>    certification reminder, income-driven plan recertification dates as deadlines, the
+>    forgiveness date and the tax on forgiven amounts (handed to the taxes side), and when
+>    refinancing private loans makes sense; federal loans are never refinanced away from
+>    forgiveness without saying what's lost.
+>
+> Acceptance criteria:
+> - Plan rules from config with sources; the forgiveness count has tests
+
+### Step 226: Money between family and friends
+
+> Read CLAUDE.md. Who owes whom, kept kindly.
+>
+> Build:
+> 1. Loans to and from family and friends spotted from payment apps (Venmo, Zelle, Cash App
+>    transfers with notes) and confirmed once, with a balance and a gentle reminder the
+>    person can send themselves. Co-signed loans are watched for missed payments, and the
+>    household's shared debts are split (step 46).
+>
+> Acceptance criteria:
+> - Jane never messages the other person; a transfer is a loan only after the person says so
+
+### Step 227: A credit score for a goal
+
+> Read CLAUDE.md. The score needed, by the date it's needed.
+>
+> Build:
+> 1. A target score and date for a goal (a mortgage next spring, a car in six months), with
+>    a monthly plan from step 116's simulator: what to pay down and when, accounts to
+>    keep open, inquiries to avoid, and a rapid rescore before a mortgage application.
+>
+> Acceptance criteria:
+> - The plan's months reach the target in the simulator; each month is a checklist with
+>   buttons
+
+### Step 228: A home's equity, used well
+
+> Read CLAUDE.md. Equity, PMI and escrow.
+>
+> Build:
+> 1. PMI removal when the loan reaches 80% of the original value (a drafted request letter)
+>    and the automatic end at 78%; escrow checked against the real tax and insurance bills,
+>    with a refund request when it's overfunded; and HELOC, cash-out refinance and personal
+>    loan compared for a project (demo advice).
+>
+> Acceptance criteria:
+> - PMI and escrow rules from config with sources; each comparison shows total cost
+
+### Step 229: When debt is too much: the facts
+
+> Read CLAUDE.md. Every option laid out plainly, without legal advice.
+>
+> Build:
+> 1. When debt payments pass a config share of income: hardship programs per lender, a
+>    debt management plan through a nonprofit credit counselor (referral list), and the
+>    facts of settlement and bankruptcy (effect on credit, taxes on forgiven debt, how long
+>    each lasts), with a pointer to counsel for legal questions.
+>
+> Acceptance criteria:
+> - The guardrail blocks legal advice in these answers (tests); figures come from the
+>   person's own debts
+
+### Step 230: Debt on autopilot, round two
+
+> Read CLAUDE.md. One yearly debt review, done for them.
+>
+> Build:
+> 1. Once a year (and after a raise, a new loan or a missed payment): one message with
+>    payments timed to statement dates, promos on pace, rate requests made, PMI and escrow
+>    checked, score goals on track. Jane does what's within the caps; the rest gets a tap.
+> 2. Every debt and credit capability in the registry, with bank questions that score well.
+>
+> Acceptance criteria:
+> - One message with every item's button; nothing above the cap without a tap
+
 ### Later, when the founder is ready
 
 These need an outside account, a partner or a decision: Plaid Production (real banks) and
