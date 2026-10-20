@@ -154,3 +154,13 @@ describe("a loss avoided is worth its expected value in a year", () => {
     expect(scoreOf(likely)).toBeGreaterThan(scoreOf(renters));
   });
 });
+
+describe("expected values and requirements in ranking", () => {
+  it("counts a worth that is already an expected yearly value in full, and boosts what is required", () => {
+    const loss = make({ topic: "life_insurance", worthKind: "risk", worthCents: 500_000 });
+    const expected = { ...loss, worthIsExpected: true };
+    expect(scoreOf(expected)).toBeGreaterThan(scoreOf(loss));
+    expect(scoreOf(expected)).toBe(Math.round(500_000 * 0.8 * 2));
+    expect(scoreOf({ ...expected, required: true })).toBe(scoreOf(expected) * 3);
+  });
+});

@@ -9,6 +9,7 @@ import {
   WORKED_DOWN_FACTOR,
   WORKED_MIN_DONE,
   WORKED_UP_FACTOR,
+  REQUIRED_BOOST,
   rankValue,
   YES_BOOST,
 } from "@/config/suggestions";
@@ -53,7 +54,9 @@ export function scoreOf(
   results: KindResults = [],
 ): number {
   return Math.round(
-    (s.rankCents ?? rankValue(s.topic, s.worthKind, s.worthCents)) *
+    (s.rankCents ??
+      (s.worthIsExpected ? s.worthCents : rankValue(s.topic, s.worthKind, s.worthCents))) *
+      (s.required ? REQUIRED_BOOST : 1) *
       (s.confidence.percent / 100) *
       URGENCY_WEIGHT[s.urgency] *
       historyFactor(s.topic, history) *

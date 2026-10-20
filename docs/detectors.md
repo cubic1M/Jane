@@ -131,7 +131,10 @@ A suggestion that avoids a loss (`worthKind: "risk"`) shows the full loss ("$30,
 ranked by its expected value in a year: the loss times how likely it is in a year
 (`RISK_ANNUAL_PROBABILITY` in `src/config/suggestions.ts`, a topic not listed uses 2%). So a rare
 big loss does not outrank a real saving. The chances are rough and only order suggestions; the
-sector lanes agree them for their topics.
+sector lanes agree them for their topics. A detector that already reports an expected yearly
+value sets `worthIsExpected: true` and is ranked in full; one for something the law or a
+lender requires (car liability), or no cover at all for a business, sets `required: true` and
+ranks `REQUIRED_BOOST` times higher.
 
 ## The nightly scan (step 255)
 

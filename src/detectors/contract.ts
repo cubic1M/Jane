@@ -45,6 +45,12 @@ export type Suggestion = {
   parts?: string[];
   // What ranking counts it for, in cents: its parts' worth, risk at its reduced weight.
   rankCents?: number;
+  // The worth is already an expected yearly value (loss x chance, as the insurance detectors
+  // report it), so ranking counts it in full rather than discounting it again.
+  worthIsExpected?: boolean;
+  // Cover or action the law or a lender requires (car liability), or no cover at all for a
+  // business: ranked above its dollars alone (REQUIRED_BOOST).
+  required?: boolean;
   more?: { label: string; href: string }[];
 };
 

@@ -34,6 +34,10 @@ export const RISK_ANNUAL_PROBABILITY: Readonly<Record<string, number>> = {
   hardship_plan: 0.3,
 };
 
+// A required action (a legal requirement, no cover at all for a business) ranks this many
+// times higher than its dollars alone.
+export const REQUIRED_BOOST = 3;
+
 // What a suggestion counts for in ranking, in cents a year.
 export function rankValue(
   topic: string,
