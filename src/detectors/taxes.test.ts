@@ -27,7 +27,7 @@ describe("who the tax detectors reach", () => {
     expect(s.worthCents).toBeGreaterThan(0);
     expect(s.confidence.percent).toBeLessThanOrEqual(70);
     expect(s.confidence.reason).toContain("no vest schedule");
-    expect(s.why).toMatch(/withheld at 22%.*bracket.*to pay when you file/);
+    expect(s.why).toMatch(/withheld at 22 cents.*bracket.*to pay when you file/);
     // Without the plan there is nothing to suggest.
     expect(
       topics("equity", (d) => ({
@@ -43,7 +43,7 @@ describe("who the tax detectors reach", () => {
     const s = run("preretire").find((x) => x.topic === "roth_conversion")!;
     expect(s.worthKind).toBe("saves");
     expect(s.confidence.percent).toBeLessThanOrEqual(65);
-    expect(s.confidence.reason).toMatch(/12 months of data/);
+    expect(s.confidence.reason).toMatch(/pre-tax account/);
     // A small balance isn't worth raising.
     expect(
       topics("preretire", (d) => ({
@@ -86,7 +86,9 @@ describe("who the tax detectors reach", () => {
       expect(topics(id, inJanuary), `${id} in January`).toContain("identity_ip_pin");
     }
     const s = run("renter", inJanuary).find((x) => x.topic === "identity_ip_pin")!;
-    expect(s.worthCents).toBe(DETECTOR_RATES.tax.typicalRefundCents);
+    expect(s.worthCents).toBe(
+      Math.round(DETECTOR_RATES.tax.typicalRefundCents * DETECTOR_RATES.tax.ipPinTheftChance),
+    );
     expect(s.urgency).toBe("soon");
     expect(topics("renter", (d) => ({ ...d, today: "2027-04-16" }))).not.toContain(
       "identity_ip_pin",
