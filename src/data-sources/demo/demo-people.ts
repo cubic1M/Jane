@@ -213,26 +213,6 @@ const DEFS: Record<PersonId, Def> = {
       },
     ],
     monthly: [
-      R(
-        "audible-old",
-        "card",
-        "AUDIBLE",
-        "ENTERTAINMENT_OTHER_ENTERTAINMENT",
-        14.95,
-        [8],
-        "Audible",
-        [11, 12, 1, 2, 3, 4, 5, 6, 7, 8],
-      ),
-      R(
-        "audible-new",
-        "card",
-        "AUDIBLE",
-        "ENTERTAINMENT_OTHER_ENTERTAINMENT",
-        16.45,
-        [8],
-        "Audible",
-        [9],
-      ),
       R("pay", "checking", "BRIGHTLY INC PAYROLL", "INCOME_SALARY", -1640, [1, 15], null),
       R(
         "rent",
@@ -284,26 +264,6 @@ const DEFS: Record<PersonId, Def> = {
       ...streaming("card", "netflix", "spotify", "hulu", "gym", "icloud"),
     ],
     once: [
-      // Spec step 266: Audible went up in September ($14.95 to $16.45); a Skillshare trial
-      // ($0.99) turned into $13.99 charges.
-      O(
-        "skill-trial",
-        "card",
-        "SKILLSHARE",
-        "GENERAL_SERVICES_EDUCATION",
-        0.99,
-        [-50],
-        "Skillshare",
-      ),
-      O(
-        "skill-paid",
-        "card",
-        "SKILLSHARE",
-        "GENERAL_SERVICES_EDUCATION",
-        13.99,
-        [-43, -13],
-        "Skillshare",
-      ),
       O(
         "overdraft",
         "checking",
@@ -471,37 +431,7 @@ const DEFS: Record<PersonId, Def> = {
       ...streaming("card", "netflix", "spotify", "hulu", "gym"),
       R("disney", "card", "DISNEY PLUS", "ENTERTAINMENT_TV_AND_MOVIES", 13.99, [17], "Disney+"),
     ],
-    once: [
-      // Spec step 266: dinner charged twice, a GAP add-on bought with the car loan, and a catered
-      // party that put last month's food spending well over the usual.
-      O(
-        "dup-dinner",
-        "card",
-        "OLIVE GARDEN",
-        "FOOD_AND_DRINK_RESTAURANT",
-        68.4,
-        [-21, -20],
-        "Olive Garden",
-      ),
-      O(
-        "gap",
-        "checking",
-        "DEALER GAP INSURANCE",
-        "GENERAL_MERCHANDISE_OTHER_GENERAL_MERCHANDISE",
-        695,
-        [-300],
-        null,
-      ),
-      O(
-        "party",
-        "card",
-        "PARTY CATERING CO",
-        "FOOD_AND_DRINK_RESTAURANT",
-        1100,
-        [-30],
-        "Party Catering Co",
-      ),
-    ],
+    once: [],
     cards: [{ account: "card", apr: 21.49, balance: 3120, minimum: 78 }],
     mortgage: {
       account: "mortgage",
@@ -554,25 +484,8 @@ const DEFS: Record<PersonId, Def> = {
         balance: 1180,
         limit: 9000,
       },
-      {
-        key: "student",
-        name: "Demo Student Loan",
-        mask: "3004",
-        type: "loan",
-        subtype: "student",
-        balance: 38000,
-      },
     ],
     monthly: [
-      R(
-        "student",
-        "checking",
-        "NELNET STUDENT LOAN",
-        "LOAN_PAYMENTS_STUDENT_LOAN_PAYMENT",
-        450,
-        [20],
-        "Nelnet",
-      ),
       R(
         "client1",
         "checking",
@@ -655,7 +568,6 @@ const DEFS: Record<PersonId, Def> = {
     ],
     once: [],
     cards: [{ account: "card", apr: 19.99, balance: 1180, minimum: 35 }],
-    student: { account: "student", rate: 6.5, original: 42000, minimum: 450, yearsLeft: 9 },
     positions: [],
   },
   // Big salary, RSUs, a big house, idle cash.
@@ -1120,9 +1032,6 @@ const DEFS: Record<PersonId, Def> = {
       ...streaming("card2", "netflix", "hulu", "gym"),
     ],
     once: [
-      // Spec step 266: a cash advance on a card, with its fee.
-      O("cashadv", "card", "ATM CASH ADVANCE", "TRANSFER_OUT_WITHDRAWAL", 200, [-33], null),
-      O("cashadvfee", "card", "CASH ADVANCE FEE", "BANK_FEES_CASH_ADVANCE", 10, [-33], null),
       O(
         "overdraft",
         "checking",
