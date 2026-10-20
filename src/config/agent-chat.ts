@@ -286,6 +286,31 @@ export const CHAT_CLAUDE_DEADLINE_MS = 20_000;
 // After Claude fails, free questions get the rules' answer at once for this long, instead
 // of waiting on Claude again.
 export const CHAT_CLAUDE_COOLDOWN_SECONDS = 60;
+
+// Spec step 191: Claude reads every free-text message. These kinds of message keep the
+// instant rules path, because they are exact commands, tapped-for answers or fixed content:
+// approving, undoing and pausing, changing an autopilot level, a plan of several steps,
+// guided flows, what the person tells Jane to remember, searching the chat, the glossary,
+// help and hellos. Everything else is a question for Claude with all the tools.
+export const CHAT_RULES_ONLY_KINDS: readonly string[] = [
+  "greeting",
+  "help",
+  "approve_all",
+  "undo",
+  "pause_autopilot",
+  "autopilot_sector",
+  "autopilot_overview",
+  "act",
+  "multi",
+  "move_to_goal",
+  "flow",
+  "remember",
+  "search",
+  "learn",
+];
+// The most Claude may spend answering one person's messages in a day, in cents, at the model's
+// listed price (MODEL_PRICES_CENTS in src/config/answer-checks.ts). Past it, the rules answer.
+export const CHAT_CLAUDE_DAILY_CAP_CENTS = 25;
 // /admin/chat looks back this many days for what Jane couldn't answer.
 export const CHAT_UNANSWERED_DAYS = 30;
 
