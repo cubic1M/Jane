@@ -102,6 +102,9 @@ export const MESSAGE_PRIORITY = {
   renewal_result: 52,
   claim_draft: 82,
   claim_status: 68,
+  // Spec step 196: ways to pay less for the cover the person keeps.
+  saving_group: 54,
+  saving_deductible: 50,
   urgent_alert: 95,
   deadline: 90,
   waiting_on_you: 85,

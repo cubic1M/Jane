@@ -37,7 +37,9 @@ export type InsuranceAsk =
   | "life_change"
   // Spec step 155: asking the insurer for a better renewal rate, and a claim Jane files.
   | "renewal_call"
-  | "file_claim";
+  | "file_claim"
+  // savings: cheaper ways to pay for the same cover (spec step 196).
+  | "savings";
 
 export type InsuranceIntent = {
   kind: "insurance";
@@ -124,7 +126,7 @@ const KIND_WORDS: readonly [PolicyKind, RegExp][] = [
 // Words that make it about insurance on their own, and cover words that need a kind too
 // ("does my budget cover rent" isn't about insurance; "am I covered if my car is stolen" is).
 const INSURANCE =
-  /\b(?:insurance|insured|insurer|insurers|polic(?:y|ies)|deductibles?|premiums?|(?:under|over)-?insured|(?:health|medical) plans?|benefits?\b.{0,30}\b(?:work|job|employer)|(?:work|job|employer) benefits|open enrollment|declarations? pages?|renewal notices?)\b/;
+  /\b(?:insurance|insured|insurer|insurers|polic(?:y|ies)|deductibles?|premiums?|(?:under|over)-?insured|(?:health|medical) plans?|benefits?\b.{0,30}\b(?:work|job|employer)|(?:work|job|employer) benefits|open enrollment|declarations? pages?|renewal notices?|safe[- ]driver)\b/;
 // Cover that comes with a card (spec step 152): about insurance even without the word.
 const CARD_COVER =
   /\bcards?\b.{0,30}\b(?:covers?|covered|coverage|protection|benefits?|warrant(?:y|ies)|insurance)\b|\b(?:cell )?phone protection\b|\brental car (?:cover|coverage|insurance)\b|\bextended warrant(?:y|ies)\b|\bpaying twice\b/;
@@ -146,6 +148,11 @@ const CAR =
 // Sizing, applying for or buying life cover (spec step 153), even with "need" in it.
 const LIFE =
   /\b(?:how much|apply(?:ing)?|buy(?:ing)?|get(?:ting)?|sign up)\b.{0,30}\b(?:life (?:insurance|cover|policy)|term life)\b|\b(?:life (?:insurance|cover)|term life)\b.{0,30}\b(?:how much|enough|apply|buy|should i get)\b/;
+
+// Paying less for the cover they keep (spec step 196). Only checked once the question is
+// about insurance, so "discounts on Netflix" is not.
+const SAVINGS =
+  /\b(?:pay|spend) less\b|\bcheaper way to pay\b|\bdiscounts?\b|\b(?:raise|raising|increase|increasing|higher|bump)\b.{0,15}\bdeductibles?\b|\bbundl(?:e|ing)\b|\bpay(?:ing)? (?:it |my (?:insurance|premium) )?(?:in full|yearly|annually|up front)\b|\b(?:lower|cut|reduce|save on)\b.{0,15}\b(?:insurance|premiums?)\b|\bsafe[- ]driver\b|\btelematics\b|\bautopay\b|\bpaperless\b/;
 
 const ASKS: readonly [InsuranceAsk, RegExp][] = [
   ["cards", CARD_COVER],
@@ -219,6 +226,7 @@ export function parseInsurance(text: string): InsuranceIntent | null {
   if (CAR.test(text))
     return { kind: "insurance", ask: "life_change", policyKind: null, event: "car_bought" };
   if (LIFE.test(text)) return { kind: "insurance", ask: "life", policyKind };
+  if (SAVINGS.test(text)) return { kind: "insurance", ask: "savings", policyKind };
   // Spec step 149: whether they need a kind of cover, from their numbers.
   if (policyKind && NEED.test(text)) return { kind: "insurance", ask: "need", policyKind };
   const ask = ASKS.find(([, words]) => words.test(text))?.[0] ?? "list";
