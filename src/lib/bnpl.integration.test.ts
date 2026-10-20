@@ -101,7 +101,7 @@ describe.runIf(url)(
         now: later(),
       });
       expect(reply.body).toMatch(
-        /^You have 2 buy now, pay later plans, with \$[\d,.]+ in installments over the next month:/,
+        /^You have 2 buy now, pay later plans, with \$[\d,.]+ in installments over the next month\./,
       );
       expect(reply.body).toMatch(/- \w{3} \d+: \$[\d,.]+ to /);
       const tool = JSON.parse((await runChatTool(id, "bnpl_installments", {}, opts())).content);

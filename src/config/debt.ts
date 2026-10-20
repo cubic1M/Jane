@@ -47,6 +47,7 @@ export const DEBT_SOURCE_LIMITS = {
   credit_building: 2,
   bnpl: 2,
   tight_money: 2,
+  medical_bills: 2,
 } as const;
 export const DEBT_MESSAGE_PRIORITY = {
   // A buy now, pay later plan Jane found, then a debt with no rate: news that can wait,
@@ -104,11 +105,14 @@ export const DEBT_MESSAGE_PRIORITY = {
   // Spec step 177: a plan for a tight month is time-sensitive; a lender's answer follows.
   tight_plan: 88,
   tight_answer: 66,
+  // Spec step 180: a medical bill can wait a little; a provider's answer follows.
+  medical_bill: 36,
+  medical_answer: 60,
 } as const;
 
 // What Jane does about debts by herself at each autopilot level (src/config/autopilot.ts),
 // step by step. Applying for credit, moving money and signing always need the person's tap,
-// at every level. Steps 110–117 and 174–179 add to this list.
+// at every level. Steps 110–117 and 174–180 add to this list.
 export const DEBT_AUTOPILOT: Readonly<
   Record<"ask" | "safe" | "all", readonly { step: number; does: string }[]>
 > = {
@@ -173,6 +177,10 @@ export const DEBT_AUTOPILOT: Readonly<
       step: 179,
       does: "When you ask about buying a home, works out what you can afford from your real income and debts, the cash needed up front, how long saving takes, and compares mortgage offers. Starting the down payment goal waits for your tap.",
     },
+    {
+      step: 180,
+      does: "Finds medical bills in your payments, and writes the requests that can lower them (an itemized bill, a check against your insurance, financial assistance, a plan with no interest). Each is sent only on your tap.",
+    },
   ],
   safe: [
     {
@@ -235,6 +243,10 @@ export const DEBT_AUTOPILOT: Readonly<
       step: 179,
       does: "When you ask about buying a home, works out what you can afford from your real income and debts, the cash needed up front, how long saving takes, and compares mortgage offers. Starting the down payment goal waits for your tap.",
     },
+    {
+      step: 180,
+      does: "Finds medical bills in your payments, and writes the requests that can lower them (an itemized bill, a check against your insurance, financial assistance, a plan with no interest). Each is sent only on your tap.",
+    },
   ],
   all: [
     {
@@ -296,6 +308,10 @@ export const DEBT_AUTOPILOT: Readonly<
     {
       step: 179,
       does: "When you ask about buying a home, works out what you can afford from your real income and debts, the cash needed up front, how long saving takes, and compares mortgage offers. Starting the down payment goal waits for your tap.",
+    },
+    {
+      step: 180,
+      does: "Finds medical bills in your payments, and writes the requests that can lower them (an itemized bill, a check against your insurance, financial assistance, a plan with no interest). Each is sent only on your tap.",
     },
   ],
 };

@@ -204,6 +204,21 @@ describe("debt questions", () => {
     });
   });
 
+  it("reads medical bills, but not medical tax questions or insurance claims", () => {
+    for (const text of [
+      "I have a hospital bill I can't pay",
+      "can you check my medical bills",
+      "ask the dentist for an itemized bill",
+      "financial assistance for my er bill",
+    ]) {
+      expect(intent(text), text).toEqual({ kind: "medical_bills" });
+    }
+    expect(intent("are my medical bills tax deductible")).not.toMatchObject({
+      kind: "medical_bills",
+    });
+    expect(intent("file a claim for my doctor visit")).not.toMatchObject({ kind: "medical_bills" });
+  });
+
   it("reads a tight month", () => {
     for (const text of [
       "money is tight this month",

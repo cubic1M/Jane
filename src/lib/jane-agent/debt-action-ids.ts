@@ -26,4 +26,6 @@ export const DEBT_ACTION_IDS = [
   "tight.send",
   // Spec step 179: start the home down payment goal.
   "home.goal",
+  // Spec step 180: send one prepared request about a medical bill.
+  "medical.send",
 ] as const;

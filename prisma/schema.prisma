@@ -296,6 +296,8 @@ model User {
   debtWatch              DebtWatch?
   cardApplications       CardApplication[]
   tightRequests          TightRequest[]
+  medicalBills           MedicalBill[]
+  medicalRequests        MedicalRequest[]
   balanceTransfers       BalanceTransfer[]
   findings               Finding[]
   decisions              Decision[]
@@ -848,6 +850,50 @@ model TightRequest {
 
   @@unique([userId, key])
   @@map("tight_requests")
+}
+
+// A medical bill the person typed in (spec step 180), for care that didn't show up in their
+// payments. Bills found from payments are not stored.
+model MedicalBill {
+  id          String   @id @default(cuid())
+  userId      String   @map("user_id")
+  provider    String
+  amountCents Int      @map("amount_cents")
+  billedOn    DateTime @map("billed_on") @db.Date
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("medical_bills")
+}
+
+// A request sent about a medical bill (spec step 180), only after the person's tap: an
+// itemized bill, a check with their insurance, a financial assistance application or a
+// payment plan at no interest. The provider stand-in answers it.
+model MedicalRequest {
+  id          String    @id @default(cuid())
+  userId      String    @map("user_id")
+  // "<kind>:<bill key>", once for each bill.
+  key         String
+  kind        String
+  billKey     String    @map("bill_key")
+  provider    String
+  amountCents Int       @map("amount_cents")
+  body        String
+  // sent, granted or declined.
+  status      String
+  partner     String
+  sentAt      DateTime  @default(now()) @map("sent_at") @db.Timestamptz(3)
+  resolvedAt  DateTime? @map("resolved_at") @db.Timestamptz(3)
+  outcome     String?
+  // What the answer takes off the bill, when it does (assistance), else 0.
+  savedCents  Int       @default(0) @map("saved_cents")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, key])
+  @@map("medical_requests")
 }
 
 // A balance transfer the person made to a 0% card (spec step 113), so Jane can keep the

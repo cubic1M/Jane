@@ -260,6 +260,8 @@ export type MessageRefs = {
   tightItem?: { id: string };
   // Spec step 179: the home price the down payment goal is sized for.
   homeGoal?: { priceCents: number };
+  // Spec step 180: the request "Send" sends about a medical bill.
+  medicalItem?: { id: string };
   // Insurance (spec Phase X): a coverage gap by its key (GAP_KEYS), and the policy a
   // message is about.
   insuranceGap?: string;

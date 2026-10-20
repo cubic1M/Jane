@@ -42,6 +42,7 @@ export type DebtIntent =
   // Spec step 177: "I'm short this month", "what if I can't pay my bills?".
   | { kind: "tight_money" }
   // Spec step 178: "how much car can I afford?", "the dealer offered 7.9% for 72 months".
+  | { kind: "medical_bills" }
   | { kind: "home_afford"; priceCents: number | null }
   | { kind: "car_afford"; priceCents: number | null }
   | {
@@ -74,6 +75,7 @@ const DEBT_KINDS = new Set<string>([
   "car_afford",
   "car_dealer",
   "home_afford",
+  "medical_bills",
 ]);
 export const isDebtIntent = (intent: { kind: string }): intent is DebtIntent =>
   DEBT_KINDS.has(intent.kind);
@@ -163,6 +165,11 @@ const HOME_BUY =
   /\b(?:afford|buy|buying|purchase|purchasing|down payment|closing costs?|pre-?approv\w*|mortgage offers?|price range|budget|first[- ]time)\b|\bhow much (?:house|home)\b|\bsave for (?:a |my )?(?:house|home)\b/;
 const HOME_NOT = /\b(?:insurance|equity|my mortgage|refinanc\w*|pay off|payoff|rent)\b/;
 
+// Spec step 180: medical bills (not medical expenses for taxes, nor insurance claims).
+const MEDICAL_BILL =
+  /\b(?:medical|hospital|doctor'?s?|dentist|dental|er|ambulance|surgery|lab|clinic)\b.*\b(?:bills?|charges?|debt|invoice|owe)\b|\b(?:bills?|charges?)\b.*\b(?:from|for) (?:the |my )?(?:hospital|doctor|dentist|er|clinic|ambulance|surgery|lab)\b|\bitemi[sz]ed bill\b|\bfinancial assistance\b|\bcharity care\b/;
+const MEDICAL_NOT = /\b(?:claim|claims|insurance claim|deduct\w*|hsa|fsa|tax|taxes|premium)\b/;
+
 const clean = (target: string) =>
   target
     .replace(/\b(?:paid off|off|in full)\b/g, "")
@@ -182,6 +189,7 @@ export function parseDebtIntent(
   if (PAYOFF.test(text)) return { kind: "payoff_plan", extraCents: null };
   if (DEBT_AUTOPILOT.test(text)) return { kind: "debt_autopilot" };
   if (TIGHT.test(text)) return { kind: "tight_money" };
+  if (MEDICAL_BILL.test(text) && !MEDICAL_NOT.test(text)) return { kind: "medical_bills" };
   if (
     HOME_WORD.test(text) &&
     HOME_BUY.test(text) &&

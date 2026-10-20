@@ -1,6 +1,7 @@
 import type { DEBT_ACTION_IDS } from "../debt-action-ids";
 import { bnplPayoff } from "./bnpl";
 import { homeGoal } from "./home-buying";
+import { medicalSend } from "./medical-bills";
 import { tightSend } from "./tight-money";
 import { creditBuilderOpen, creditBuildPay } from "./credit-building";
 import { creditCardApply } from "./credit-cards";
@@ -30,4 +31,5 @@ export const DEBT_ACTION_HANDLERS: Readonly<
   "bnpl.payoff": bnplPayoff,
   "tight.send": tightSend,
   "home.goal": homeGoal,
+  "medical.send": medicalSend,
 };

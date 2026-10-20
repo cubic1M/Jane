@@ -38,7 +38,8 @@ export function bnplReply(data: Bnpl): Reply {
   const total = data.installments.reduce((s, i) => s + i.cents, 0);
   const missing = data.missing.reduce((s, i) => s + i.cents, 0);
   const lines = [
-    `You have ${data.plans.length} buy now, pay later ${data.plans.length === 1 ? "plan" : "plans"}, with ${formatCents(total)} in installments over the next month:`,
+    `You have ${data.plans.length} buy now, pay later ${data.plans.length === 1 ? "plan" : "plans"}, with ${formatCents(total)} in installments over the next month.`,
+    "The next ones:",
     ...installmentLines(data),
   ];
   if (missing > 0) {
