@@ -105,6 +105,8 @@ export type Intent =
   | { kind: "health" }
   // Spec step 148: "my monthly report".
   | { kind: "monthly_report" }
+  // Spec step 238: "are my numbers right?"
+  | { kind: "books" }
   // Spec step 141: one autopilot, every sector.
   | SectorIntent
   // Spec step 136: what a word means.
@@ -344,6 +346,8 @@ const HEALTH =
   /\b(?:health score|money health|financial health|financial wellness)\b|\bhow healthy (?:are|is) my (?:money|finances)\b/;
 const MONTHLY_REPORT =
   /\b(?:monthly|money|month'?s) report\b|\bmonth in review\b|\breport (?:for|on) (?:last|this) month\b/;
+const BOOKS =
+  /\b(?:is|are) my (?:data|numbers|figures|balances|books|accounts) (?:all )?(?:right|correct|accurate|up to date|ok|okay)\b|\bdo my (?:books|numbers|balances) (?:balance|add up)\b|\bany (?:problems|issues) with my (?:data|accounts|numbers)\b|\bhow (?:accurate|reliable) (?:is|are) (?:my|the) (?:data|numbers|figures)\b/;
 const PRIORITIES =
   /\bwhat should i do (?:first|next|now)\b|\bwhat matters (?:most|now)\b|\bwhat'?s (?:most )?important\b|\bwhere (?:do|should) i start\b|\bmy (?:top )?priorities\b|\bnext best thing\b/;
 // Spec step 183. "Am I OK to buy …" is a purchase question, and goals have their own answer.
@@ -504,6 +508,7 @@ export function parseIntent(
   if (THANKS.test(text)) return { kind: "greeting", thanks: true };
   if (PAUSE.test(text)) return { kind: "pause_autopilot" };
   if (CHECKED.test(text)) return { kind: "checked" };
+  if (BOOKS.test(text)) return { kind: "books" };
   if (WHY_DID.test(text)) return { kind: "timeline", why: true };
   if (TIMELINE.test(text)) return { kind: "timeline", why: false };
   if (WHOLE_MONTH.test(text)) return { kind: "whole_picture", focus: "month" };

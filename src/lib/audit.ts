@@ -101,6 +101,8 @@ export type AuditEvent =
   | "what_if_adopted"
   // The lean plan switched on or off (spec step 204).
   | "lean_plan_started"
+  // The same account linked twice, merged after both sides were proven to match (spec step 238).
+  | "books_merged"
   // A finished action whose saving never showed up (spec step 207).
   | "saving_marked_not_shown"
   // Unusual activity answered: this was me, or not me (spec step 208).

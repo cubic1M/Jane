@@ -191,6 +191,8 @@ export function scopedFor(userId: string, client: PrismaClient = db) {
     whatIfPlans: scoped.whatIfPlan,
     // The lean plan when income stops (spec step 204).
     leanPlans: scoped.leanPlan,
+    // Data that doesn't add up (spec step 238).
+    booksIssues: scoped.booksIssue,
     // The year's money plan (spec step 205).
     yearPlans: scoped.yearPlan,
     // "This was me" / "not me" on unusual activity (spec step 208).

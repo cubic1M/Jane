@@ -132,6 +132,7 @@ const STATUS: Record<string, string> = {
   priorities: "Working out what matters most…",
   whole_picture: "Looking across everything…",
   money_moves: "Checking what money moved…",
+  books_check: "Checking your numbers add up…",
   health_score: "Working out your money health score…",
   monthly_report: "Reading your monthly report…",
   what_if: "Running the what-if…",

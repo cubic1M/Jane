@@ -29,6 +29,8 @@ import { loadTimeline } from "@/lib/timeline";
 import { timelineReply } from "../replies-timeline";
 import { healthFor } from "@/lib/health-score";
 import { healthReply } from "../replies-health";
+import { openBooks } from "@/lib/books";
+import { booksReply } from "../replies-books";
 import { groupedHelpReply } from "../replies-help";
 import { lifeEventReply } from "../replies-life";
 import { loadSnapshot } from "../snapshot";
@@ -76,6 +78,9 @@ async function answer(ctx: CapabilityContext): Promise<Reply | null> {
       const snapshot = await loadSnapshot(userId, { client, now });
       return prioritiesReply(snapshot ? rankedFor(snapshot) : []);
     }
+    // Spec step 238.
+    case "books":
+      return booksReply(await openBooks(userId, { client }));
     case "health":
       return healthReply(await healthFor(userId, { client, now }));
     case "checked":

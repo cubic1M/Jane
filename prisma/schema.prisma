@@ -388,6 +388,7 @@ model User {
   taxPlanEvents     TaxPlanEvent[]
   propertyAppeals   PropertyAppeal[]
   leanPlans         LeanPlan[]
+  booksIssues       BooksIssue[]
   yearPlans         YearPlan[]
   unusualAnswers    UnusualAnswer[]
 
@@ -402,7 +403,7 @@ model User {
 
   rentalProperties RentalProperty[]
 
-  costlyProducts   CostlyProduct[]
+  costlyProducts CostlyProduct[]
 
   @@map("users")
 }
@@ -3698,3 +3699,27 @@ model CostlyProduct {
   @@map("costly_products")
 }
 
+// Something in the person's data that doesn't add up (spec step 238): a balance off from its
+// transactions, transactions that stopped, a stale or broken bank link, the same account
+// linked twice, a transfer with no other side. Open until it clears.
+model BooksIssue {
+  id        String    @id @default(cuid())
+  userId    String    @map("user_id")
+  // off, gap, stale, broken, duplicate or transfer.
+  kind      String
+  // Stable per problem: "balance:<account>", "stale:<item>", "dup:<account>"...
+  key       String
+  accountId String?   @map("account_id")
+  itemId    String?   @map("item_id")
+  detail    Json
+  // open or fixed.
+  status    String    @default("open")
+  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  fixedAt   DateTime? @map("fixed_at") @db.Timestamptz(3)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, key])
+  @@index([userId, status])
+  @@map("books_issues")
+}

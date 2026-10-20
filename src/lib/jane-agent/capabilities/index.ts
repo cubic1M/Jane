@@ -79,6 +79,14 @@ export const CAPABILITIES: readonly Capability[] = [
     tools: ["whole_picture", "priorities", "health_score"],
     answer: janeAnswer,
   },
+  // Spec step 238: are the numbers right.
+  {
+    id: "books",
+    bank: ["books"],
+    kinds: ["books"],
+    tools: ["books_check"],
+    answer: janeAnswer,
+  },
   {
     id: "did",
     bank: ["timeline", "settings"],

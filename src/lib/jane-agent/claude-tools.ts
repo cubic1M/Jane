@@ -12,6 +12,7 @@ import { ASK_TOOLS, runAskTool, type ToolOutput } from "@/lib/ask/tools";
 import { CARD_SELECT, buildCard } from "@/lib/cards";
 import { comparisonFor } from "@/lib/compare";
 import { frequencyWords } from "@/lib/explain-input";
+import { openBooks } from "@/lib/books";
 import { scopedFor } from "@/lib/db-scoped";
 import { loadChanges } from "@/lib/changes";
 import { listGoals } from "@/lib/goals";
@@ -239,6 +240,12 @@ export const CHAT_TOOLS: Anthropic.Tool[] = [
     name: "whole_picture",
     description:
       'How the person is doing across every sector at once (spec step 183), for "am I OK?", "how am I doing" and "what should I do this month": a verdict (ok, watch or act) with its one-sentence headline, safe to spend until payday, bills and deadlines due this week and this month, budgets over, goals behind, urgent alerts, what Jane\'s agent is working on, the steps waiting on the person, and the one to three things that matter most (from the ranked list) with why. Lead with the headline, then the things that matter; use the same figures.',
+    input_schema: noInput,
+  },
+  {
+    name: "books_check",
+    description:
+      "Whether the person's data adds up (spec step 238): what Jane checks every day (balances against transactions, the same account linked twice, a link that stopped updating or needs a sign-in, transfers between their own accounts) and the problems still open, in words. Figures that rely on a problem account are marked until it's fixed. Use it for \"are my numbers right?\" and before standing behind a figure from an account with a problem.",
     input_schema: noInput,
   },
   {
@@ -589,6 +596,14 @@ export async function runChatTool(
             }
           : { score: null, why: "No accounts linked yet." },
       );
+    }
+    case "books_check": {
+      const books = await openBooks(userId, { client });
+      return out({
+        allAddUp: books.open.filter((o) => o.kind !== "transfer").length === 0,
+        problems: books.open.map((o) => ({ what: o.label, detail: o.words })),
+        accountsWithMarkedFigures: books.markedAccountIds.length,
+      });
     }
     case "money_moves": {
       const [plan, transfers, partner] = await Promise.all([

@@ -26,6 +26,7 @@ import { billPaySource } from "./billpay";
 import { healthSource } from "./health";
 import { attentionSource } from "./attention";
 import { leanSource } from "./lean";
+import { booksSource } from "./books";
 import { unusualSource } from "./unusual";
 import { reportSource } from "./report";
 import { investmentsSource } from "./investments";
@@ -74,6 +75,7 @@ export const MESSAGE_SOURCES: readonly MessageSource[] = [
   healthSource,
   attentionSource,
   leanSource,
+  booksSource,
   unusualSource,
   reportSource,
   // Spec step 128 on.

@@ -16,6 +16,7 @@ import { healthFor } from "@/lib/health-score";
 import { monthlyReportFor } from "@/lib/monthly-report";
 import { runLeanCheck } from "@/lib/lean-plan";
 import { checkResults } from "@/lib/worked";
+import { runBooksCheck } from "@/lib/books";
 import { loadYearPlan } from "@/lib/year-plan";
 import { runPlanUpkeep } from "@/lib/plan-upkeep";
 import { runTaxAutopilotSafely } from "@/lib/tax-autopilot";
@@ -80,6 +81,8 @@ export async function runJaneAgent(
     })(),
     // Spec step 205: the year's plan, re-planned from what happened and kept.
     safely("Year plan", () => loadYearPlan(userId, { client, now, input, keep: true })),
+    // Spec step 238: balances against transactions, duplicate links, stale or broken links.
+    safely("Books check", () => runBooksCheck(userId, { client, now })),
     // Spec step 207: finished actions checked against the transactions; a saving that never
     // showed up is marked and stops counting.
     safely("Checking results", () => checkResults(userId, { client, now, input })),

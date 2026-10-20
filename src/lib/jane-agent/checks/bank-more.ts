@@ -89,6 +89,11 @@ const rows: Row[] = [
   ["longview", "/long-view", "long_view", "what will my net worth be in 20 years"],
   ["longview", "/long-view", "long_view", "how much will i have when i retire"],
 
+  // Books that balance (spec step 238).
+  ["books", "/net-worth", "books_check", "are my numbers right"],
+  ["books", "/net-worth", "books_check", "do my books balance"],
+  ["books", "/net-worth", "books_check", "any problems with my accounts"],
+
   // Safe to spend and the day.
   ["safe", "/home", "safe_to_spend", "how much do i have left to spend"],
   ["safe", "/home", "safe_to_spend", "can i afford to eat out tonight"],

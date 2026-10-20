@@ -62,6 +62,7 @@ export async function exportUserData(
     monthlyReports,
     whatIfPlans,
     leanPlans,
+    booksIssues,
     yearPlans,
     unusualAnswers,
     janeMessages,
@@ -443,6 +444,10 @@ export async function exportUserData(
       orderBy: { startMonth: "asc" },
       select: { startMonth: true, months: true, updatedAt: true },
     }),
+    db.booksIssues.findMany({
+      orderBy: { createdAt: "asc" },
+      select: { kind: true, key: true, detail: true, status: true, createdAt: true, fixedAt: true },
+    }),
     db.leanPlans.findMany({
       orderBy: { createdAt: "asc" },
       select: {
@@ -683,6 +688,7 @@ export async function exportUserData(
     monthlyReports,
     whatIfPlans,
     leanPlans,
+    booksIssues,
     yearPlans,
     unusualAnswers,
     janeMessages,

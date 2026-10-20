@@ -142,6 +142,7 @@ export const TEAM_ACCESS_RULES: Record<AuditEvent, EventRule> = {
   money_transfer_cancelled: own,
   what_if_adopted: own,
   lean_plan_started: own,
+  books_merged: own,
   saving_marked_not_shown: own,
   unusual_answered: own,
   lean_plan_ended: own,
