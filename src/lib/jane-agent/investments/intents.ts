@@ -26,7 +26,8 @@ export type InvestmentTopic =
   | "retirement_income"
   | "family"
   | "property"
-  | "costly_products";
+  | "costly_products"
+  | "yearly_review";
 
 export type InvestmentIntent = {
   kind: "investments";
@@ -148,7 +149,13 @@ const PROPERTY =
 const COSTLY =
   /\b(?:variable |fixed |indexed )?annuit(?:y|ies)\b|\bsurrender (?:charge|fee|period|schedule)s?\b|\bwhole life\b|\bcash value\b|\badvisory fees?\b|\b(?:financial |investment )?advisor fees?\b|\bwhat (?:does|is) (?:my )?(?:annuity|whole life|advisor) (?:really )?cost/;
 
+// Spec step 216: the yearly investing review on request.
+const YEARLY_REVIEW =
+  /\b(?:yearly|annual|year[- ]end|once[- ]a[- ]year) (?:investing |investment |portfolio )?(?:review|checkup|check[- ]up)\b|\b(?:review|check up on|check over) (?:all of )?my (?:investing|investments)(?: for the year)?\b|\bwhat (?:did|have) you (?:do|done|handled)\b.*\b(?:invest|portfolio)/;
+
 export function parseInvestmentIntent(text: string): InvestmentIntent | null {
+  if (YEARLY_REVIEW.test(text))
+    return { kind: "investments", topic: "yearly_review", account: null };
   if (COSTLY.test(text)) return { kind: "investments", topic: "costly_products", account: null };
   if (PROPERTY.test(text)) return { kind: "investments", topic: "property", account: null };
   if (FAMILY.test(text)) return { kind: "investments", topic: "family", account: null };

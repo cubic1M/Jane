@@ -30,6 +30,8 @@ import {
 import { answerOldPlan, OldAccountsError, startRollover } from "@/lib/investments/old-accounts";
 import { contributeForChild, createGiftLink, FamilyError } from "@/lib/investments/family";
 import { answerPremium, CostlyProductError } from "@/lib/investments/costly-products";
+import { harvestFromReview, ReviewError } from "@/lib/investments/yearly-review";
+import { REVIEW_LINK } from "../investments/review-copy";
 import { COSTLY_LINK } from "../investments/costly-copy";
 import { FAMILY_LINK } from "../investments/family-copy";
 import { OLD_LINK } from "../investments/old-accounts-copy";
@@ -531,3 +533,25 @@ function costlyAnswer(id: ActionId, yes: boolean): ActionHandler {
 }
 export const costlyYes = costlyAnswer("costly.yes", true);
 export const costlyNo = costlyAnswer("costly.no", false);
+
+// Spec step 216: harvest the losses the yearly review showed (a sell into a similar fund),
+// only the same list the person saw. A tap, at every autopilot level.
+export const reviewHarvest: ActionHandler = {
+  id: "review.harvest",
+  on: "open",
+  async run({ userId, message, action, client, now }) {
+    const key = message.refs.harvestKey;
+    if (!key) throw new ChatActionError("not_offered", "That button isn't on this message.");
+    try {
+      const done = await harvestFromReview(userId, key, { client, now });
+      return {
+        answeredWith: action.label,
+        note: `Done ${SIMULATED_WORDS}. ${done.join(". ")}.`,
+        actions: [REVIEW_LINK],
+      };
+    } catch (error) {
+      if (error instanceof ReviewError) throw answeredElsewhere(error.message);
+      throw error;
+    }
+  },
+};

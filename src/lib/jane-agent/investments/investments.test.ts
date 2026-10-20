@@ -61,6 +61,7 @@ import {
   familyReply,
   propertyReply,
   costlyReply,
+  yearlyReviewReply,
 } from "./replies";
 import { gather } from "../brain";
 import { parseIntent } from "../intents";
@@ -2573,5 +2574,92 @@ describe("costlyReply and the costly product messages", () => {
       "snooze",
     ]);
     expect(gather(COSTLY_VIEW, false)).toEqual([]);
+  });
+});
+
+// Spec step 216: the yearly investing review.
+const REVIEW_SNAP = (over: Partial<InvestmentSnapshot> = {}) =>
+  demoInvestmentSnapshot({
+    advice: true,
+    profile: {
+      age: 45,
+      ageOn: "2026-10-01",
+      horizon: "over_20",
+      dropReaction: "worry",
+      goals: ["retirement"],
+      answeredAt: new Date("2026-10-01"),
+      updatedAt: new Date("2026-10-01"),
+    } as never,
+    retirementAccounts: RA_VIEW,
+    oldAccounts: { advice: true, demo: true, plans: [OLD_FOUND as never] },
+    automatic: {
+      did: [{ what: "Invested $250.00 of new cash", cents: 25_000, createdAt: new Date() }],
+      asked: [],
+    },
+    review2: {
+      harvest: [],
+      harvestKey: null,
+      goals: [{ name: "House", percent: 62, monthlyCents: 85_000, monthsLeft: 14 }],
+      raise: false,
+    },
+    ...over,
+  });
+
+describe("the yearly review", () => {
+  it("is one message with every item's button, once a year", () => {
+    const messages = investmentsSource
+      .gather({ ...base, investments: REVIEW_SNAP() }, {} as never)
+      .filter((c) => c.dedupeKey.startsWith("review:"));
+    expect(messages).toHaveLength(1);
+    const m = messages[0];
+    expect(m.dedupeKey).toBe("review:2026");
+    expect(m.kind).toBe("decision");
+    expect(m.actions.map((a) => a.id)).toEqual([
+      "retire.ira",
+      "retire.match",
+      "oldplan.rollover",
+      "open",
+      "snooze",
+    ]);
+    expect(m.body).toMatch(/^Your 2026 investing review, all in one place:/);
+    expect(m.body).toMatch(/Done: What I did within your caps: Invested \$250\.00 of new cash\./);
+    expect(m.body).toMatch(/Nothing moves until you tap/);
+    expect(m.refs).toMatchObject({ advice: true, iraCents: 550_000, oldPlanId: "p1" });
+  });
+  it("comes after a raise as its own message, and only in demo advice mode", () => {
+    const raise = investmentsSource
+      .gather(
+        {
+          ...base,
+          investments: REVIEW_SNAP({
+            review2: { harvest: [], harvestKey: null, goals: [], raise: true },
+          }),
+        },
+        {} as never,
+      )
+      .find((c) => c.dedupeKey.startsWith("review:"))!;
+    expect(raise.dedupeKey).toBe("review:raise:2026-10");
+    expect(raise.body).toMatch(/Congratulations on the raise/);
+    expect(
+      investmentsSource
+        .gather({ ...base, investments: REVIEW_SNAP({ advice: false }) }, {} as never)
+        .filter((c) => c.dedupeKey.startsWith("review:")),
+    ).toEqual([]);
+  });
+  it("answers on request with the same list, and gathering it moves nothing", () => {
+    expect(parseIntent("do my yearly investing review", ASOF)).toMatchObject({
+      kind: "investments",
+      topic: "yearly_review",
+    });
+    const reply = yearlyReviewReply(REVIEW_SNAP(), 2026);
+    expect(reply.actions.map((a) => a.id)).toEqual([
+      "retire.ira",
+      "retire.match",
+      "oldplan.rollover",
+      "open",
+    ]);
+    expect(
+      yearlyReviewReply(REVIEW_SNAP({ advice: false }), 2026).actions.map((a) => a.id),
+    ).toEqual(["open"]);
   });
 });

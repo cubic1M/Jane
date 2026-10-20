@@ -3636,3 +3636,4 @@ model CostlyProduct {
   @@index([userId])
   @@map("costly_products")
 }
+

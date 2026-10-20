@@ -61,6 +61,7 @@ import {
   premiumQuestion,
   productLine,
 } from "../investments/costly-copy";
+import { REVIEW_LINK, reviewFor } from "../investments/review-copy";
 import { AUTO_LOG_LINK, summaryBody } from "../investments/automatic-copy";
 import { CASH_MIN_GAIN_CENTS } from "@/config/cash";
 import { CASH_LINK, cashLine, moveButtons } from "../investments/cash-copy";
@@ -334,6 +335,36 @@ export const investmentsSource: MessageSource = {
         dedupeKey: "hsa:link",
         priority: MESSAGE_PRIORITY.hsa,
       });
+    }
+    // Step 216: once a year (and after a raise or a new job) one message with the whole
+    // investing picture: what Jane did within the caps, what waits for a tap, every item
+    // with its own button. The review moves nothing itself.
+    if (inv.advice && inv.holdingCount > 0 && profileSummary(inv.profile, snapshot.asOf).complete) {
+      const year = new Date(snapshot.asOf).getUTCFullYear();
+      const review = reviewFor(inv, year);
+      const onlyOk = review.items.every((i) => i.status === "ok");
+      if (!onlyOk) {
+        out.push({
+          kind: review.buttons.length > 0 ? "decision" : "heads_up",
+          body: review.body,
+          refs: {
+            advice: true,
+            ...(inv.rebalance ? { rebalanceKey: inv.rebalance.key } : {}),
+            ...(inv.retirementAccounts.iraAllowedCents > 0
+              ? { iraCents: inv.retirementAccounts.iraAllowedCents }
+              : {}),
+            ...(inv.review2.harvestKey ? { harvestKey: inv.review2.harvestKey } : {}),
+            ...(inv.oldAccounts.plans.find((p) => p.status === "found")
+              ? { oldPlanId: inv.oldAccounts.plans.find((p) => p.status === "found")!.id }
+              : {}),
+          },
+          actions: [...review.buttons, REVIEW_LINK, snoozeButton()],
+          dedupeKey: inv.review2.raise
+            ? `review:raise:${snapshot.asOf.slice(0, 7)}`
+            : `review:${year}`,
+          priority: MESSAGE_PRIORITY.yearly_review,
+        });
+      }
     }
     // Step 215: a premium that may be whole life is asked about once; a costly product's
     // yearly cost with its surrender charge (never "leave" without it), once a year.

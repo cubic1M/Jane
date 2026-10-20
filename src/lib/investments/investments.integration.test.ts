@@ -39,6 +39,7 @@ import {
   revokeGiftLinks,
 } from "./family";
 import { startCollegePlan } from "./college";
+import { harvestFromReview, loadReviewExtras, ReviewError } from "./yearly-review";
 import {
   answerPremium,
   loadCostlyProducts,
@@ -1322,6 +1323,54 @@ describe.runIf(url)("investments in Jane's chat, against a real database", () =>
           { client, now: LINKED },
         ),
       ).rejects.toThrow(CostlyProductError);
+    },
+  );
+
+  it(
+    "step 216: one yearly review message with every item's button; nothing happens until a tap",
+    SLOW,
+    async () => {
+      const userId = await demoPerson();
+      await saveProfileForm(
+        userId,
+        { age: "45", horizon: "over_20", dropReaction: "worry", goals: ["retirement"] },
+        { client, now: LINKED },
+      );
+      const ordersBefore = await client.brokerageOrder.count({ where: { userId } });
+      const snapshot = await loadSnapshot(userId, { client, now: LINKED });
+      const review = investmentsSource
+        .gather(snapshot!, {} as never)
+        .find((c) => c.dedupeKey === "review:2026")!;
+      expect(review).toBeTruthy();
+      expect(review.body).toMatch(/^Your 2026 investing review, all in one place:/);
+      // Items the demo person has: the match left on the table, a drifted mix, the goals.
+      expect(review.actions.map((a) => a.id)).toEqual(
+        expect.arrayContaining(["retire.match", "invest.rebalance"]),
+      );
+      // Reading and gathering it moved nothing.
+      expect(await client.brokerageOrder.count({ where: { userId } })).toBe(ordersBefore);
+      expect(await client.payrollChange.count({ where: { userId } })).toBe(0);
+
+      // One of its buttons works as it does anywhere: the match raise, through the stand-in.
+      const posted = await client.janeMessage.create({
+        data: {
+          userId,
+          kind: review.kind,
+          body: review.body,
+          refs: review.refs,
+          actions: review.actions,
+          dedupeKey: "test:review",
+        },
+      });
+      await takeChatAction(userId, posted.id, "retire.match", { client, now: LINKED });
+      expect(await client.payrollChange.count({ where: { userId } })).toBe(1);
+
+      // The harvest button only acts on the list it showed.
+      const extras = await loadReviewExtras(userId, { client, now: LINKED });
+      await expect(
+        harvestFromReview(userId, "not-the-key", { client, now: LINKED }),
+      ).rejects.toThrow(ReviewError);
+      expect(extras.raise).toBe(false);
     },
   );
 });

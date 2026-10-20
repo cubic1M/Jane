@@ -245,6 +245,8 @@ export const ACTION_IDS = [
   // Spec step 215: whether a premium found in the payments is whole life.
   "costly.yes",
   "costly.no",
+  // Spec step 216: harvest the losses the yearly review showed.
+  "review.harvest",
   // Jane notices changes (spec step 97).
   "change.look",
   "change.budget",
@@ -471,6 +473,8 @@ export type MessageRefs = {
   familyPlan?: string;
   // Spec step 215: the product a question is about.
   productId?: string;
+  // Spec step 216: the harvesting list the yearly review showed, by its key.
+  harvestKey?: string;
   // Spec step 97: a change Jane noticed (src/insights/changes.ts), by its key; for a
   // category's pace, the budget "Set a budget" would set (cents a month).
   change?: { key: string; kind: string; category?: string; budgetCents?: number };

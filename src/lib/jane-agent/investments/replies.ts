@@ -32,6 +32,7 @@ import type { PropertyView } from "@/lib/investments/property";
 import { homeLine, paydownLine, PROPERTY_LINK, rentalLine } from "./property-copy";
 import type { CostlyProductsView } from "@/lib/investments/costly-products";
 import { advisoryLine, COSTLY_LINK, productLine } from "./costly-copy";
+import { REVIEW_LINK, reviewFor } from "./review-copy";
 import { STEADY_LINK, steadyMessage, timelines } from "./steady-copy";
 import { CRYPTO_LINK, feeFlag, NEVER_TRADES, shareFlag, sizeLine } from "./crypto-copy";
 import {
@@ -887,5 +888,30 @@ export function costlyReply(view: CostlyProductsView): Reply {
       "I haven't found an annuity, whole life policy or advisory fees. Add one from a statement on the costly products page and I'll show what it really costs, and what leaving would cost, before anything else.",
     actions: [COSTLY_LINK],
     refs: parts.length > 0 ? { advice: true } : {},
+  };
+}
+
+// Spec step 216: the yearly review on request: the same one message as the yearly post,
+// every item with its own button. Facts only outside demo advice mode.
+export function yearlyReviewReply(inv: InvestmentSnapshot, year: number): Reply {
+  if (!inv.advice) {
+    return {
+      body: "I don't give investing recommendations on real accounts yet. Your holdings, fees and returns are on the investments page.",
+      actions: [REVIEW_LINK],
+      refs: {},
+    };
+  }
+  const review = reviewFor(inv, year);
+  return {
+    body: review.body,
+    actions: [...review.buttons, REVIEW_LINK],
+    refs: {
+      advice: true,
+      ...(inv.rebalance ? { rebalanceKey: inv.rebalance.key } : {}),
+      ...(inv.retirementAccounts.iraAllowedCents > 0
+        ? { iraCents: inv.retirementAccounts.iraAllowedCents }
+        : {}),
+      ...(inv.review2.harvestKey ? { harvestKey: inv.review2.harvestKey } : {}),
+    },
   };
 }

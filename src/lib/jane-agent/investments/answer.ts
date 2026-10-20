@@ -40,6 +40,7 @@ import {
   cryptoReply,
   cashReply,
   steadyReply,
+  yearlyReviewReply,
   costlyReply,
   propertyReply,
   familyReply,
@@ -114,6 +115,10 @@ export async function answerInvestments(
       return propertyReply(await loadProperty(userId, { client, now }));
     case "costly_products":
       return costlyReply(await loadCostlyProducts(userId, { client, now }));
+    case "yearly_review": {
+      const snapshot = await loadInvestmentSnapshot(userId, { client, now });
+      return yearlyReviewReply(snapshot, now.getUTCFullYear());
+    }
     case "steady":
       return steadyReply(await loadSteadyHand(userId, { client, now }));
     case "cash":
