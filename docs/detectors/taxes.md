@@ -176,6 +176,7 @@ the signal. In `src/detectors/taxes.ts`, all under the `taxes` capability:
 | `roth_conversion` | Multi-year moves (220) | C, T | 10% of pre-tax balance × (22% − 12%) | soon from November |
 | `childcare_tax_break` | Family taxes (169), ways to pay less (122) | F | FSA at marginal + payroll tax, less the credit | later |
 | `identity_ip_pin` | Identity protection (218) | everyone paid, January 1 to April 15 only | the average refund a thief takes | soon |
+| `year_end_moves` | Tax calendar (223) and tax plan (167): the December message | R, F, H, C with a workplace plan, from November 15 only | unused 401(k) room (assumed a quarter of the limit) × marginal rate; confidence capped at 50% | soon, now from December 10 |
 | `estimated_taxes` (already in `work.ts`) | Estimated payments (223) | L, B | penalty on unpaid tax | now within 14 days of a quarter date, soon within 45, else later |
 
 The date is `profile.today`, so the harness and tests set it; nothing reads a clock. Every
@@ -198,7 +199,7 @@ harness reports these capabilities as having no detector for the sample people.
 
 The tax calendar (223) is covered by the detectors for its dated tasks: `identity_ip_pin` (January)
 and `estimated_taxes` (each quarter), both urgent as their date nears. Its December year-end
-message has no detector yet: the moves in it come from the tax plan, harvesting and giving, which
-the sample people's rows cannot show (above). The accountant link (222) shares what the others find, so it
+message is covered by `year_end_moves` for the one move a profile can show (a workplace plan's
+room); the losses to harvest and gifts in the same message need rows the sample people lack (above). The accountant link (222) shares what the others find, so it
 takes no detector of its own; the accountant's "people usually bring one" message is derived from the factors the other detectors
 already see, and has no dollar value.

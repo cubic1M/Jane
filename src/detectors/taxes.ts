@@ -212,7 +212,46 @@ const identityPin: Detector = {
   },
 };
 
+// November 15 to December 31: the year's last chances to cut this year's tax (steps 167 and
+// 223). The one a profile can show is a workplace plan: contributions go through payroll, so
+// the room left has to be used before the last paycheck. The calendar's December message carries
+// the rest (losses to harvest, gifts) from the tax plan, giving and investment loaders.
+const yearEndMoves: Detector = {
+  capability: "taxes",
+  topic: "year_end_moves",
+  covers: ["tax_plan", "tax_calendar"],
+  needs: ["has_401k", "monthly_income", "household"],
+  detect({ profile }) {
+    const plan = profile.facts.has_401k;
+    const income = profile.facts.monthly_income;
+    if (plan.value !== true || profile.today.slice(5) < T.yearEndFrom) return null;
+    const room = Math.round(CONTRIBUTION_LIMITS.workplace * T.yearEndUnusedRoomShare);
+    const rate = marginalRate(annual(income.value), 0, profile.facts.household.value);
+    const saves = Math.round(room * rate);
+    return {
+      id: suggestionId("taxes", "year_end_moves"),
+      capability: "taxes",
+      topic: "year_end_moves",
+      title: "Use your 401(k) room before your last paycheck of the year",
+      worthCents: saves,
+      worthKind: "saves",
+      confidence: weakest([
+        factEvidence(plan),
+        factEvidence(income),
+        {
+          percent: Math.min(plan.confidence, 50),
+          reason: `I can't see what you've put in this year, so I assumed ${Math.round(T.yearEndUnusedRoomShare * 100)}% of the ${formatCents(CONTRIBUTION_LIMITS.workplace)} limit is unused`,
+        },
+      ]),
+      urgency: profile.today.slice(5) >= "12-10" ? "now" : "soon",
+      why: `Money you put into your 401(k) before December 31 is out of this year's income. About ${formatCents(room)} more, at your ${Math.round(rate * 100)}% bracket, would save roughly ${formatCents(saves)}. Payroll needs a few days, so ask HR before the last paycheck.`,
+      action: { label: "See your tax plan", href: "/taxes#plan" },
+    };
+  },
+};
+
 export const TAX_DETECTORS: readonly Detector[] = [
+  yearEndMoves,
   withholdingGap,
   rothConversion,
   childcareTaxBreak,

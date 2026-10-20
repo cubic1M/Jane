@@ -93,6 +93,11 @@ export const DETECTOR_RATES = {
     ipPinFrom: "01-01",
     ipPinUntil: "04-15",
     typicalRefundCents: 320_000,
+    // Year end: from this day of November to December 31, a pre-tax contribution made through
+    // payroll must happen before the last paycheck. Without seeing what has been put in, assume
+    // this share of the yearly limit is still unused (the confidence says so).
+    yearEndFrom: "11-15",
+    yearEndUnusedRoomShare: 0.25,
     // Estimated payments: urgency by days to the next due date.
     estimatedNowDays: 14,
     estimatedSoonDays: 45,

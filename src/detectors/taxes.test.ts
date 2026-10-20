@@ -143,3 +143,33 @@ describe("percentages come from evidence", () => {
     }
   });
 });
+
+describe("year-end moves", () => {
+  const december = (d: ProfileInput): ProfileInput => ({ ...d, today: "2026-12-05" });
+
+  it("fire from November 15 for people with a workplace plan, and not before", () => {
+    for (const id of PERSON_IDS) {
+      expect(topics(id).includes("year_end_moves"), `${id} in October`).toBe(false);
+    }
+    const withPlan = PERSON_IDS.filter((id) => topics(id, december).includes("year_end_moves"));
+    expect(withPlan).toEqual(["renter", "family", "equity", "preretire"]);
+    expect(topics("renter", (d) => ({ ...d, today: "2026-11-14" }))).not.toContain(
+      "year_end_moves",
+    );
+    expect(topics("renter", (d) => ({ ...d, today: "2026-11-15" }))).toContain("year_end_moves");
+  });
+
+  it("is urgent as the date nears, and says what it can't see", () => {
+    const early = run("family", (d) => ({ ...d, today: "2026-11-20" })).find(
+      (s) => s.topic === "year_end_moves",
+    )!;
+    const late = run("family", (d) => ({ ...d, today: "2026-12-15" })).find(
+      (s) => s.topic === "year_end_moves",
+    )!;
+    expect(early.urgency).toBe("soon");
+    expect(late.urgency).toBe("now");
+    expect(late.confidence.percent).toBeLessThanOrEqual(50);
+    expect(late.confidence.reason).toMatch(/can't see what you've put in/);
+    expect(late.worthCents).toBeGreaterThan(0);
+  });
+});

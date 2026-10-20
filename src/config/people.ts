@@ -41,6 +41,7 @@ export const SUGGESTION_TOPICS = [
   "roth_conversion",
   "childcare_tax_break",
   "identity_ip_pin",
+  "year_end_moves",
 ] as const;
 export type SuggestionTopic = (typeof SUGGESTION_TOPICS)[number];
 

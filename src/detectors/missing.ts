@@ -40,7 +40,6 @@ export const MISSING_DETECTOR: readonly string[] = [
   "tax_return",
   "tax_investments",
   "tax_states",
-  "tax_plan",
   "tax_giving",
   "tax_home",
   "tax_records",
