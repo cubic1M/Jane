@@ -57,6 +57,11 @@ export type Detector = {
   // Facts the profile must know for this to be judged. When one is missing and the rest fit,
   // the question worth asking (step 257) is built from it.
   needs: readonly FactKey[];
+  // The registry tools (the features Claude can look at, src/lib/jane-agent/claude-tools.ts)
+  // this detector brings to the person unasked. Every tool is covered by at least one detector
+  // or exempt with a reason (src/config/detector-exempt.ts), or is on the shrinking list in
+  // ./missing.ts. [] when it surfaces something no tool covers.
+  covers: readonly string[];
   detect: (ctx: DetectorContext) => Suggestion | null;
 };
 
