@@ -3,7 +3,7 @@ import { STATUS_WORDS, type Claim } from "@/lib/insurance/claim-rules";
 import type { Negotiation } from "@/lib/insurance/negotiate";
 import type { Policy } from "@/lib/insurance/policies";
 import { adviceLines, claimWorth, payoutLine } from "@/lib/insurance/claim-worth";
-import { yearlyPremium } from "@/lib/insurance/policies";
+import { PREMIUM_FREQUENCIES } from "@/config/documents";
 import { formatCents } from "@/lib/money";
 import type { MessageAction } from "../types";
 
@@ -62,7 +62,10 @@ export function draftBody(
           event: claim.event,
           estimateCents: claim.amountCents,
           deductibleCents: policy.deductibleCents,
-          yearlyPremiumCents: yearlyPremium(policy),
+          yearlyPremiumCents:
+            policy.premiumCents !== null && policy.premiumFrequency
+              ? policy.premiumCents * PREMIUM_FREQUENCIES[policy.premiumFrequency].perYear
+              : null,
         })
       : null;
   return [
