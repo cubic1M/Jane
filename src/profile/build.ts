@@ -204,7 +204,7 @@ export function buildProfile(input: ProfileInput): Profile {
 
   // --- Household and home -----------------------------------------------------------
   const childcare = count((t) => t.pfc === "GENERAL_SERVICES_CHILDCARE");
-  if (childcare > 0) set("has_children", true, "guessed", "childcare payments", childcare);
+  if (childcare > 0) set("has_children", true, "seen", "childcare payments", childcare);
   else set("has_children", false, "guessed", "childcare payments", 0);
   const hasChildren = facts.has_children.value === true;
   const household = hasChildren ? "family" : earners >= 2 ? "couple" : "single";

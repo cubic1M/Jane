@@ -33,7 +33,7 @@ describe("the picture of you", () => {
     expect(facts.income_pattern).toMatchObject({ source: "seen" });
     expect(facts.income_pattern.confidence).toBe(confidenceOf("seen", { months: 12, matches: 48 }));
     expect(facts.has_pmi).toMatchObject({ value: true, source: "seen" });
-    expect(facts.has_children).toMatchObject({ value: true, source: "guessed" });
+    expect(facts.has_children).toMatchObject({ value: true, source: "seen" });
   });
 
   it("reads the details that detectors will need", () => {
