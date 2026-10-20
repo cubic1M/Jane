@@ -41,6 +41,9 @@ export const SUGGESTION_TOPICS = [
   "card_cover",
   "employer_benefits",
   "policy_documents",
+  "fsa_deadline",
+  "deductible_met",
+  "medical_bill_dispute",
   "business_separation",
   "cash_flow",
   "pmi_removal",
@@ -210,6 +213,10 @@ export const PEOPLE: readonly Person[] = [
       "student_forgiveness",
       "charity_receipts",
       "property_tax_check",
+
+      "fsa_deadline",
+      "deductible_met",
+      "medical_bill_dispute",
     ],
     mustNot: [
       "renters_insurance",

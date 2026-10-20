@@ -1,6 +1,7 @@
 import { DETECTOR_RATES as R } from "@/config/detectors";
 import { formatCents } from "@/lib/money";
 import type { ProfileInput } from "@/profile/build";
+import { HEALTH_YEAR_DETECTORS } from "./health-year";
 import { type Detector, suggestionId } from "./contract";
 import type { Confidence } from "./contract";
 import { evidence, factEvidence, nice, outCents, tx } from "./helpers";
@@ -538,4 +539,5 @@ export const INSURANCE_DETECTORS: readonly Detector[] = [
   cardCover,
   employerBenefits,
   policyDocuments,
+  ...HEALTH_YEAR_DETECTORS,
 ];

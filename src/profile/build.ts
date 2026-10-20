@@ -68,6 +68,15 @@ export type ProfileInput = {
   told: Told;
   // Policies read from uploaded documents that wait for the person's confirm (spec step 259).
   unreadPolicyDocuments?: number;
+  // The person's health plan terms and FSA election, where Jane has them (spec step 259):
+  // from a confirmed policy and the pay stub. null/absent when she hasn't.
+  healthPlan?: {
+    label: string;
+    deductibleCents: number;
+    outOfPocketMaxCents: number | null;
+    coinsurance: number;
+  } | null;
+  fsaElectionCents?: number | null;
 };
 
 export type FactValue = string | number | boolean | null;

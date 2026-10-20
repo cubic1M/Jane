@@ -123,6 +123,9 @@ export const DETECTOR_RATES = {
     cardCover: 55,
     employerBenefits: 60,
     documents: 75,
+    fsaDeadline: 70,
+    deductibleMet: 60,
+    billDispute: 65,
   },
   // Umbrella cover matters when assets pass this (src/config/insurance.ts UMBRELLA_ASSETS_CENTS).
   umbrellaAssetsCents: 50_000_000,
@@ -214,6 +217,14 @@ export const DETECTOR_RATES = {
   // An employer usually pays this share of a plan's premium, so a private one costs that
   // much more than the work plan (stated as "up to").
   employerPlanShare: 0.5,
+  // Health year (spec step 259): planned care that waits for the deductible to reset costs
+  // the whole deductible again in January; a typical planned visit or procedure, and the
+  // months at the end of the year when it is worth saying so.
+  plannedCareCents: 50_000,
+  deductibleMetFromMonth: 10,
+  // Urgency of the FSA deadline: now inside this many days, soon inside the next.
+  fsaNowDays: 30,
+  fsaSoonDays: 60,
   // Urgency scores: now, soon, later.
   urgency: { now: 3, soon: 2, later: 1 },
 } as const;

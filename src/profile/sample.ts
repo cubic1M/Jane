@@ -13,6 +13,21 @@ export const SAMPLE_TODAY = "2026-10-17";
 // in her Medicare supplement's renewal notice.
 const UNREAD_DOCUMENTS: Readonly<Record<string, number>> = { retiree: 1 };
 
+// Sample people with a health plan whose terms Jane has, and an FSA election (spec step 259).
+const HEALTH_PLANS: Readonly<
+  Record<string, { plan: NonNullable<ProfileInput["healthPlan"]>; fsaElectionCents: number | null }>
+> = {
+  family: {
+    plan: {
+      label: "Acme PPO",
+      deductibleCents: 150_000,
+      outOfPocketMaxCents: 450_000,
+      coinsurance: 20,
+    },
+    fsaElectionCents: 240_000,
+  },
+};
+
 export function inputFor(person: string, told: ProfileInput["told"] = {}): ProfileInput {
   const demo = { seed: `seed${person}`, anchor: SAMPLE_ANCHOR, person };
   const holdings = demoHoldings(demo, SAMPLE_TODAY);
@@ -20,6 +35,8 @@ export function inputFor(person: string, told: ProfileInput["told"] = {}): Profi
     today: SAMPLE_TODAY,
     told,
     unreadPolicyDocuments: UNREAD_DOCUMENTS[person] ?? 0,
+    healthPlan: HEALTH_PLANS[person]?.plan ?? null,
+    fsaElectionCents: HEALTH_PLANS[person]?.fsaElectionCents ?? null,
     holdings: holdings.map((h) => ({
       ticker:
         h.security_id.replace("demo-sec-", "").toUpperCase() === "CASH"
