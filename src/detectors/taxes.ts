@@ -192,7 +192,7 @@ const inIpPinSeason = (today: string) => {
 const identityPin: Detector = {
   capability: "taxes",
   topic: "identity_ip_pin",
-  covers: ["tax_identity"],
+  covers: ["tax_identity", "tax_calendar"],
   needs: ["income_pattern"],
   detect({ profile }) {
     const pattern = profile.facts.income_pattern;

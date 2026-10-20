@@ -25,8 +25,6 @@ export const DETECTOR_EXEMPT: Readonly<Record<string, string>> = {
 // never suggest by themselves, and why (spec step 254). Every other tool is covered by a
 // detector (`covers` on src/detectors) or is on the shrinking list in src/detectors/missing.ts.
 export const TOOL_EXEMPT: Readonly<Record<string, string>> = {
-  tax_calendar:
-    "shows what Jane does each month for taxes and pays estimated payments within the caps; what it surfaces reaches people through the estimated-taxes and withholding detectors and the year-end message",
   search_transactions: "looks up transactions the person asks about",
   spending_by_category: "answers what was spent where",
   monthly_totals: "answers month totals",

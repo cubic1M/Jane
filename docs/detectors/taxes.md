@@ -196,7 +196,9 @@ the eight sample people the matching data; the formulas are in the tables above.
 the existing loaders and chat messages (steps 166 to 223) are what reach people, and the
 harness reports these capabilities as having no detector for the sample people.
 
-Capabilities that are not suggestions in themselves: the tax calendar (223) and the accountant
-link (222) carry out and share what the others find, so they take no detector of their own; the
-accountant's "people usually bring one" message is derived from the factors the other detectors
+The tax calendar (223) is covered by the detectors for its dated tasks: `identity_ip_pin` (January)
+and `estimated_taxes` (each quarter), both urgent as their date nears. Its December year-end
+message has no detector yet: the moves in it come from the tax plan, harvesting and giving, which
+the sample people's rows cannot show (above). The accountant link (222) shares what the others find, so it
+takes no detector of its own; the accountant's "people usually bring one" message is derived from the factors the other detectors
 already see, and has no dollar value.

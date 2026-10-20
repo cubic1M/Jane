@@ -12,7 +12,7 @@ const selfPaid = (pattern: unknown) => pattern === "uneven" || pattern === "busi
 const annualIncome = (monthly: unknown) => (typeof monthly === "number" ? monthly * 12 : 0);
 
 const estimatedTaxes: Detector = {
-  covers: ["tax_estimate", "tax_self_employed"],
+  covers: ["tax_estimate", "tax_self_employed", "tax_calendar"],
   capability: "taxes",
   topic: "estimated_taxes",
   needs: ["income_pattern", "monthly_income"],
