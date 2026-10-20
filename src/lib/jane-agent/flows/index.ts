@@ -6,6 +6,7 @@ import { monthsEnding, spendingInsights } from "@/insights/spending";
 import { setBudget } from "@/lib/budgets";
 import { CARD_SELECT } from "@/lib/cards";
 import { comparisonFor } from "@/lib/compare";
+import { optionLabel } from "@/planning/compare";
 import { scopedFor } from "@/lib/db-scoped";
 import { addGoal } from "@/lib/goals";
 import { formatCents } from "@/lib/money";
@@ -190,7 +191,7 @@ const switchFlow: FlowDef<SwitchData> = {
       options = comparison
         ? [comparison.pick, ...comparison.runnersUp].map((s) => ({
             value: s.option.id,
-            name: `${s.option.provider} ${s.option.name}`,
+            name: optionLabel(s.option),
             label: `${s.option.name}: saves ${formatCents(s.savingCents)}`,
           }))
         : [];
