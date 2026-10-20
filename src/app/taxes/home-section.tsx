@@ -1,6 +1,5 @@
 import Link from "next/link";
 import type { HomeTaxesView } from "@/lib/home-taxes";
-import { dayLabel } from "@/lib/day-label";
 import { formatCents } from "@/lib/money";
 import { figuresOf, type Source } from "@/planning/home-taxes";
 

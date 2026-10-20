@@ -42,6 +42,10 @@ export const CHAT_SOURCE_LIMITS: Readonly<Record<string, number>> = {
   billpay: 1,
   // Spec step 146.
   health: 1,
+  // Spec step 147.
+  attention: 1,
+  // Spec step 148.
+  report: 1,
   // Spec step 128 on.
   investments: 3,
 };
@@ -98,6 +102,9 @@ export const MESSAGE_PRIORITY = {
   renewal_result: 52,
   claim_draft: 82,
   claim_status: 68,
+  // Spec step 196: ways to pay less for the cover the person keeps.
+  saving_group: 54,
+  saving_deductible: 50,
   urgent_alert: 95,
   deadline: 90,
   waiting_on_you: 85,
@@ -142,6 +149,10 @@ export const MESSAGE_PRIORITY = {
   billpay: 87,
   // Spec step 146: the money health score, after what needs the person.
   health: 28,
+  // Spec step 147: a kind Jane stopped bringing up, said once.
+  attention: 30,
+  // Spec step 148: the monthly money report, once a month, after what needs the person.
+  report: 40,
   review: 900,
   // Spec step 128: what's in investment accounts, the first time Jane sees it.
   investments: 32,
@@ -193,6 +204,8 @@ export const AGENDA_URGENT_PRIORITY = 90;
 // bundle's: bundle.1 to bundle.5) and this many other things worth knowing.
 export const AGENDA_MAX_YES = 5;
 export const AGENDA_MAX_LINES = 3;
+// Spec step 188: a short answer keeps at most this many list lines.
+export const STYLE_LIST_LINES_SHORT = 2;
 
 // Spec step 83: a budget counts as nearly over once this share of it is spent this month.
 export const BUDGET_NEARLY_OVER_SHARE = 0.9;

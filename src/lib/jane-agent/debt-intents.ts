@@ -32,7 +32,10 @@ export type DebtIntent =
   // "what's the best credit card for me?".
   | { kind: "card_for"; category: RewardCategory | null }
   | { kind: "card_fee" }
-  | { kind: "card_better" };
+  | { kind: "card_better" }
+  // Spec step 175: "how do I build my credit?", "what would my score be if I paid my card off?".
+  | { kind: "build_credit" }
+  | { kind: "credit_simulate" };
 
 const DEBT_KINDS = new Set<string>([
   "debts",
@@ -49,6 +52,8 @@ const DEBT_KINDS = new Set<string>([
   "card_for",
   "card_fee",
   "card_better",
+  "build_credit",
+  "credit_simulate",
 ]);
 export const isDebtIntent = (intent: { kind: string }): intent is DebtIntent =>
   DEBT_KINDS.has(intent.kind);
@@ -79,8 +84,12 @@ const STUDENT =
   /\b(?:idr|ibr|rap|pslf|income[- ]driven|income[- ]based|repayment assistance plan|public service loan forgiveness|studentaid)\b|\bstudent loans?\b.*\b(?:plans?|repay\w*|forgiv\w*|options?|lower|cheaper|best|income|switch)\b|\b(?:plans?|repay\w*|forgiv\w*|lower|reduce|cut)\b.*\bstudent loans?\b/;
 const MORTGAGE =
   /\b(?:pmi|escrow|private mortgage insurance)\b|\bmortgage\b|\b(?:extra|more) (?:principal|payments?)\b.*\b(?:house|home)\b/;
-const CREDIT =
-  /\bcredit (?:score|rating|report)\b|\bfico\b|\b(?:improve|raise|boost|build|fix) (?:my )?credit\b|\bcredit utili[sz]ation\b/;
+const CREDIT = /\bcredit (?:score|rating|report)\b|\bfico\b|\bcredit utili[sz]ation\b/;
+// Spec step 175.
+const BUILD_CREDIT =
+  /\b(?:improve|raise|boost|build|rebuild|fix|grow|help) (?:my |our )?(?:credit|score|credit score)\b|\bbuilding (?:my )?credit\b|\bcredit[- ]builder\b|\bthin (?:credit )?file\b|\bon[- ]time streak\b|\bstatement (?:date|close|closes|closing)\b/;
+const SIMULATE =
+  /\bwhat (?:would|will|happens to) (?:my |our )?(?:credit )?score\b|\b(?:score|credit) simulator\b|\bsimulate (?:my )?(?:credit|score)\b|\bhow (?:much|many points) (?:would|will|could) (?:my )?(?:credit )?score\b|\bwhat if (?:i|we)\b.*\bscore\b/;
 const DEBT_AUTOPILOT =
   /\bwhat (?:do|will|can) you do (?:about|with|for) (?:my )?(?:debts?|loans|cards)\b|\b(?:debt|loan) autopilot\b|\bautopilot (?:for|on) (?:my )?(?:debts?|loans)\b/;
 const DEBT_DUE =
@@ -126,6 +135,8 @@ export function parseDebtIntent(
     return { kind: "payoff_plan", extraCents: amountCents };
   if (PAYOFF.test(text)) return { kind: "payoff_plan", extraCents: null };
   if (DEBT_AUTOPILOT.test(text)) return { kind: "debt_autopilot" };
+  if (SIMULATE.test(text)) return { kind: "credit_simulate" };
+  if (BUILD_CREDIT.test(text)) return { kind: "build_credit" };
   if (CARD_FOR.test(text)) return { kind: "card_for", category: cardKind(text) };
   if (CARD_FEE.test(text)) return { kind: "card_fee" };
   if (CARD_BETTER.test(text) && !/\b0 ?%|balance transfer/.test(text)) {

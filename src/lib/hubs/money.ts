@@ -128,6 +128,7 @@ export function moneyTiles(d: MoneyData): HubGroup[] {
       href: "/transactions",
       value: null,
       status: "Search them and fix a category",
+      more: { href: "/transfers", label: "Transfers" },
     },
   ];
 

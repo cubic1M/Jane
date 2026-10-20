@@ -65,6 +65,10 @@ export const ACTION_IDS = [
   "renewal.call",
   "renewal.no",
   "claim.file",
+  // Spec step 196: paying less for the same cover.
+  "saving.apply_all",
+  "saving.apply",
+  "saving.no",
   "plan.approve_safe",
   "undo.rule",
   "undo.no",
@@ -223,6 +227,7 @@ export const ACTION_IDS = [
   "paycheck.undo",
   "bill.pay",
   "bill.skip",
+  "attention.resume",
 ] as const;
 export type ActionId = (typeof ACTION_IDS)[number];
 
@@ -245,6 +250,10 @@ export type MessageRefs = {
   transferId?: string;
   // Spec step 174: the card "Apply" applies for.
   creditCard?: { productId: string };
+  // Spec step 175: the statement "Pay it before the statement" pays toward, and the
+  // credit-builder stand-in to open.
+  creditStatement?: { accountId: string; closesOn: string };
+  creditBuilder?: { productId: string };
   // Insurance (spec Phase X): a coverage gap by its key (GAP_KEYS), and the policy a
   // message is about.
   insuranceGap?: string;
@@ -268,6 +277,9 @@ export type MessageRefs = {
   coverEvent?: string;
   // Spec step 155: the renewal negotiation a message asks about.
   negotiationId?: string;
+  // Spec step 196: "same" for the savings that keep the cover, or one saving's id.
+  savingGroup?: string;
+  savingId?: string;
   // The finding as Jane described it (src/lib/jane-agent/fingerprint.ts): a button only
   // acts while the finding is still what the message said.
   fingerprint?: string;
@@ -376,6 +388,8 @@ export type MessageRefs = {
   paycheckPlanId?: string;
   // Spec step 145: a bill to pay, by its plan key (bill:<accountId>:<due date>).
   billKey?: string;
+  // Spec step 147: a kind of message Jane stopped bringing up, by its source.
+  attentionSource?: string;
   // Spec step 141: a sector's autopilot change typed in the chat, set on "Set it".
   sectorChange?: {
     sector: string;

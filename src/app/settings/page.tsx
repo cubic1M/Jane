@@ -37,8 +37,12 @@ import {
 import { QUIET_END_HOUR, QUIET_START_HOUR } from "@/config/agent-chat";
 import { chatNotifyPrefs } from "@/lib/jane-agent/notify-prefs";
 import { ChatNotifyForm } from "./chat-notify-form";
-import { listPreferences } from "@/lib/jane-agent/preferences";
+import { listPreferences, postingOf } from "@/lib/jane-agent/preferences";
+import { styleOf } from "@/lib/jane-agent/style";
+import { StyleForm } from "./style-form";
 import { MemoryList } from "./memory-list";
+import { loadAttention } from "@/lib/jane-agent/attention-load";
+import { AttentionList } from "./attention-list";
 import { SECTOR_ALL_MEANS, SECTOR_LABELS } from "@/config/autopilot-sectors";
 import { sectorAutopilots } from "@/lib/sector-autopilot";
 import { SectorsForm } from "./sectors-form";
@@ -95,54 +99,65 @@ async function SessionsSection({ userId }: { userId: string }) {
 async function SettingsContent() {
   const user = await requireUser();
   const mine = await scopedDb();
-  const [prefs, items, accounts, lastCsv, twoFactor, rules, autopilot, remembered, sectors] =
-    await Promise.all([
-      db.user.findUniqueOrThrow({
-        where: { id: user.id },
-        select: {
-          digestEnabled: true,
-          timezone: true,
-          alertPrefs: true,
-          state: true,
-          calendarCreatedAt: true,
-          acceptSimpleOffers: true,
-          chatNotifyPrefs: true,
-        },
-      }),
-      mine.plaidItems.findMany({
-        select: {
-          id: true,
-          institutionName: true,
-          lastSyncedAt: true,
-          accounts: { select: { name: true, mask: true } },
-        },
-        orderBy: { createdAt: "asc" },
-      }),
-      mine.accounts.findMany({
-        select: {
-          id: true,
-          name: true,
-          mask: true,
-          source: true,
-          type: true,
-          currentBalanceCents: true,
-          item: { select: { lastSyncedAt: true, institutionName: true } },
-        },
-        orderBy: [{ source: "asc" }, { name: "asc" }],
-      }),
-      // The newest CSV row per account: when that account was last imported.
-      mine.transactions.findMany({
-        where: { source: "csv" },
-        distinct: ["accountId"],
-        orderBy: [{ accountId: "asc" }, { createdAt: "desc" }],
-        select: { accountId: true, createdAt: true },
-      }),
-      twoFactorStatus(user.id),
-      rulesFor(user.id),
-      autopilotOf(user.id),
-      listPreferences(user.id),
-      sectorAutopilots(user.id),
-    ]);
+  const [
+    prefs,
+    items,
+    accounts,
+    lastCsv,
+    twoFactor,
+    rules,
+    autopilot,
+    remembered,
+    sectors,
+    attention,
+  ] = await Promise.all([
+    db.user.findUniqueOrThrow({
+      where: { id: user.id },
+      select: {
+        digestEnabled: true,
+        timezone: true,
+        alertPrefs: true,
+        state: true,
+        calendarCreatedAt: true,
+        acceptSimpleOffers: true,
+        chatNotifyPrefs: true,
+      },
+    }),
+    mine.plaidItems.findMany({
+      select: {
+        id: true,
+        institutionName: true,
+        lastSyncedAt: true,
+        accounts: { select: { name: true, mask: true } },
+      },
+      orderBy: { createdAt: "asc" },
+    }),
+    mine.accounts.findMany({
+      select: {
+        id: true,
+        name: true,
+        mask: true,
+        source: true,
+        type: true,
+        currentBalanceCents: true,
+        item: { select: { lastSyncedAt: true, institutionName: true } },
+      },
+      orderBy: [{ source: "asc" }, { name: "asc" }],
+    }),
+    // The newest CSV row per account: when that account was last imported.
+    mine.transactions.findMany({
+      where: { source: "csv" },
+      distinct: ["accountId"],
+      orderBy: [{ accountId: "asc" }, { createdAt: "desc" }],
+      select: { accountId: true, createdAt: true },
+    }),
+    twoFactorStatus(user.id),
+    rulesFor(user.id),
+    autopilotOf(user.id),
+    listPreferences(user.id),
+    sectorAutopilots(user.id),
+    loadAttention(user.id),
+  ]);
   const csvUpdated = new Map(lastCsv.map((row) => [row.accountId, row.createdAt]));
   const alerts = alertPrefs(prefs.alertPrefs);
   const chatNotify = chatNotifyPrefs(prefs.chatNotifyPrefs);
@@ -271,6 +286,12 @@ async function SettingsContent() {
           />
         </section>
 
+        {/* Spec step 147: when Jane asks, and what she stopped bringing up. */}
+        <section id="asking-less" className={SECTION}>
+          <h3 className={H3}>Asking less</h3>
+          <AttentionList attention={attention} />
+        </section>
+
         <section id="email" className={SECTION}>
           <h3 className={H3}>Email</h3>
           <EmailForm
@@ -364,6 +385,11 @@ async function SettingsContent() {
             She uses these in her answers and suggestions.
           </p>
           <MemoryList preferences={remembered} />
+          <h3 className="mt-2 text-lg font-semibold">How Jane talks</h3>
+          <p className={MUTED}>
+            Or say it in the chat, like &quot;keep it short&quot;, and tap Remember this.
+          </p>
+          <StyleForm style={styleOf(remembered)} posting={postingOf(remembered)} />
         </section>
       </Group>
 

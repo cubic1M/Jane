@@ -78,6 +78,10 @@ test("a demo-bank person sees the sample policy, like-for-like quotes and Jane's
     /^\/report\//,
   );
 
+  // Without a policy, the quotes page sends you to pick one instead of saying it's gone.
+  await page.goto("/insurance/quotes");
+  await expect(page).toHaveURL("/insurance");
+
   await page.getByRole("link", { name: "Compare quotes" }).click();
   await expect(page.getByText("Sample quotes from Jane's demo carrier catalog")).toBeVisible();
   // The policy renews in 40 days, so Jane shopped it by herself when the bank linked
@@ -284,4 +288,36 @@ test("Jane files a small claim only after the person checks it (step 155)", asyn
   await expect(
     page.getByText(/^Filed by Jane: GEICO has your claim, number DEMO-CLM-/),
   ).toBeVisible();
+});
+
+test("a demo-bank person pays less for the same cover with one tap (step 196)", async ({
+  context,
+  page,
+  baseURL,
+}) => {
+  const user = await signedInUser("user");
+  userId = user.userId;
+  await context.addCookies([
+    { name: "authjs.session-token", value: user.sessionToken, url: baseURL ?? "" },
+  ]);
+  await page.goto("/connect");
+  await page.getByRole("button", { name: "Link a demo bank" }).click();
+  await expect(page).toHaveURL("/chat", { timeout: 60_000 });
+
+  await page.goto("/insurance");
+  const savings = page.getByRole("region", { name: "Pay less for the same cover" });
+  await expect(
+    savings.getByText(/Turn on autopay for your GEICO car policy: about \$51\.12 a year less/),
+  ).toBeVisible();
+  // A higher deductible lowers the cover, so it says what a claim would cost.
+  await expect(savings.getByText(/if you claim, you pay \$1,000\.00 more yourself/)).toBeVisible();
+  await savings
+    .getByRole("listitem")
+    .filter({ hasText: "Turn on autopay" })
+    .getByRole("button", { name: "Do it" })
+    .click();
+  await expect(
+    page.getByText("Done. Your policy is updated and your insurer confirmed it."),
+  ).toBeVisible();
+  await expect(savings.getByText(/Turn on autopay/)).toHaveCount(0);
 });

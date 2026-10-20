@@ -3,6 +3,8 @@ import { connection } from "next/server";
 import { Suspense } from "react";
 import { AppHeader } from "@/components/app-header";
 import { loadCredit, pullCredit } from "@/lib/credit";
+import { loadCreditBuilding } from "@/lib/credit-building";
+import { BuildCredit } from "./build-credit";
 import { formatCents } from "@/lib/money";
 import { requireUser } from "@/lib/session";
 import { percent } from "@/planning/credit";
@@ -20,7 +22,7 @@ const IMPACT = {
   neutral: { word: "Neither", tone: "text-zinc-600 dark:text-zinc-400" },
 } as const;
 
-async function CreditContent() {
+async function CreditContent({ searchParams }: Pick<PageProps<"/loans/credit">, "searchParams">) {
   const user = await requireUser();
   await connection();
   let credit = await loadCredit(user.id);
@@ -30,6 +32,12 @@ async function CreditContent() {
     credit = await loadCredit(user.id);
   }
   const latest = credit.latest;
+  // Spec step 175: building credit, from the same pull.
+  const [building, raw] = await Promise.all([loadCreditBuilding(user.id), searchParams]);
+  const param = (k: string) => {
+    const v = raw[k];
+    return Array.isArray(v) ? v[0] : v;
+  };
 
   return (
     <>
@@ -112,17 +120,20 @@ async function CreditContent() {
               ))}
             </ul>
           </section>
+          {building.available && (
+            <BuildCredit data={building} done={param("done")} error={param("error")} />
+          )}
         </>
       )}
     </>
   );
 }
 
-export default function CreditPage() {
+export default function CreditPage({ searchParams }: PageProps<"/loans/credit">) {
   return (
     <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-6 px-4 py-10 sm:px-6 sm:py-12">
       <Suspense fallback={<p className="text-zinc-500">Loading…</p>}>
-        <CreditContent />
+        <CreditContent searchParams={searchParams} />
       </Suspense>
     </main>
   );

@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useActionState, useEffect, useRef, useState, useTransition, type FormEvent } from "react";
+import { MicButton } from "./mic-button";
 import { sendMessage, type SendState } from "./send";
 
 // The message box at the bottom of Jane's chat (spec step 84). What the person typed shows
@@ -30,6 +31,8 @@ export function ChatComposer({ id, maxLength }: { id: string; maxLength: number 
   const router = useRouter();
   const [draft, setDraft] = useState<Draft | null>(null);
   const [error, setError] = useState<string | null>(null);
+  // Spec step 186: what the microphone is doing, said for screen readers and shown.
+  const [heard, setHeard] = useState("");
   const [refreshing, startRefresh] = useTransition();
   const form = useRef<HTMLFormElement>(null);
   const input = useRef<HTMLInputElement>(null);
@@ -60,6 +63,7 @@ export function ChatComposer({ id, maxLength }: { id: string; maxLength: number 
     const question = input.current?.value.trim() ?? "";
     if (!question || pending) return;
     setError(null);
+    setHeard("");
     sent.current = true;
     setDraft({ question, status: null, answer: "" });
     form.current?.reset();
@@ -172,6 +176,15 @@ export function ChatComposer({ id, maxLength }: { id: string; maxLength: number 
             disabled={pending}
             className="min-h-11 min-w-0 flex-1 bg-transparent text-base outline-none placeholder:text-zinc-500 disabled:opacity-60"
           />
+          <MicButton
+            disabled={pending}
+            onStatus={setHeard}
+            onText={(text, final) => {
+              if (!input.current) return;
+              input.current.value = text.slice(0, maxLength);
+              if (final) input.current.focus();
+            }}
+          />
           <button
             type="submit"
             disabled={pending}
@@ -182,6 +195,11 @@ export function ChatComposer({ id, maxLength }: { id: string; maxLength: number 
             <span aria-hidden="true">]</span>
           </button>
         </div>
+        {heard && !pending && (
+          <p role="status" className="text-sm text-zinc-500">
+            {heard}
+          </p>
+        )}
         {actionPending && (
           <p role="status" className="text-sm text-zinc-500">
             Jane is looking…

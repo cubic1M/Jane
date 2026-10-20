@@ -17,4 +17,7 @@ export const DEBT_ACTION_IDS = [
   "student.next",
   // Spec step 174: apply for the card Jane found (a hard credit check, only on this tap).
   "credit_card.apply",
+  // Spec step 175: pay before a card's statement closes; open a credit-builder stand-in.
+  "credit_build.pay",
+  "credit_builder.open",
 ] as const;
