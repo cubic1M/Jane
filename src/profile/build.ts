@@ -40,7 +40,14 @@ export type ProfileAccount = {
   limitCents?: number | null;
 };
 // A holding with what it cost, for taxes on gains and losses (step 261).
-export type ProfileHolding = { accountId: string; valueCents: number; basisCents: number | null };
+export type ProfileHolding = {
+  accountId: string;
+  valueCents: number;
+  basisCents: number | null;
+  // Spec step 262: which fund it is, and whether it is cash, for the fund detectors.
+  ticker?: string | null;
+  isCash?: boolean;
+};
 export type ProfileLiability = {
   accountId: string;
   kind: string;
