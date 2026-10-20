@@ -11,6 +11,7 @@ import { TOP_THINGS } from "@/config/priorities";
 import { checkedLine } from "@/lib/jane-agent/replies-checked";
 import { changeLine, scoreLine } from "@/lib/jane-agent/replies-health";
 import { formatCents } from "@/lib/money";
+import { loadTimeline } from "@/lib/timeline";
 import { requireUser } from "@/lib/session";
 
 // The Jane hub (spec step 80): everything Jane found and is doing, each list a short
@@ -52,11 +53,12 @@ async function JaneContent() {
   const user = await requireUser();
   await connection();
   const db = await scopedDb();
-  const [hub, accounts, lastRun, snapshot] = await Promise.all([
+  const [hub, accounts, lastRun, snapshot, timeline] = await Promise.all([
     loadJaneHub(user.id),
     db.accounts.count(),
     lastControllerRun(user.id),
     loadSnapshot(user.id),
+    loadTimeline(user.id, { limit: 20 }),
   ]);
   // Spec step 143: the one to three things that matter most, and why.
   const top = snapshot ? rankedFor(snapshot).slice(0, TOP_THINGS) : [];
@@ -119,6 +121,45 @@ async function JaneContent() {
           </p>
         </Section>
       )}
+
+      {/* Spec step 187: everything Jane did, with why and the money involved. */}
+      <section id="activity" className="flex scroll-mt-8 flex-col gap-3">
+        <h2 className="text-xl font-semibold">Everything Jane did</h2>
+        {timeline.length === 0 ? (
+          <p className={MUTED}>
+            Nothing yet. Whatever Jane does by herself, or for you with a tap, is listed here with
+            why.
+          </p>
+        ) : (
+          <ol aria-label="Activity" className="flex flex-col gap-2">
+            {timeline.map((e) => (
+              <li key={e.id} className={ROW}>
+                <span className="font-semibold [overflow-wrap:anywhere]">{e.what}</span>
+                <span className={`text-sm ${MUTED}`}>
+                  <time dateTime={e.at.toISOString()}>
+                    {e.at.toLocaleDateString("en-US", {
+                      month: "short",
+                      day: "numeric",
+                      timeZone: "UTC",
+                    })}
+                  </time>
+                  {" · "}
+                  {e.sectorLabel}
+                  {" · "}
+                  {e.by === "jane" ? "Jane, by herself" : "At your tap"}
+                  {e.cents ? ` · ${formatCents(e.cents)}` : ""}
+                </span>
+                <span className={`text-sm ${MUTED}`}>Why: {e.why}</span>
+                {e.undoHref && (
+                  <Link href={e.undoHref} className={`${LINK} text-sm`}>
+                    Undo while it&apos;s pending
+                  </Link>
+                )}
+              </li>
+            ))}
+          </ol>
+        )}
+      </section>
 
       <Section
         title="To decide"
@@ -211,7 +252,13 @@ async function JaneContent() {
         )}
       </Section>
 
-      <Section title="Done" links={[{ href: "/actions", label: "See all" }]}>
+      <Section
+        title="Done"
+        links={[
+          { href: "/actions", label: "See all" },
+          { href: "/saved", label: "What Jane saved you" },
+        ]}
+      >
         {done.savedToDateCents > 0 && (
           <p className="text-lg">
             Saved so far: <strong>{formatCents(done.savedToDateCents)}</strong>

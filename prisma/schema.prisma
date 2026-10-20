@@ -328,6 +328,7 @@ model User {
   lifeApplications       LifeApplication[]
   coverChanges           CoverChange[]
   renewalNegotiations    RenewalNegotiation[]
+  insuranceSavings       InsuranceSaving[]
   lifeEvents             LifeEvent[]
   // What's in investment accounts (spec step 128).
   securities             Security[]
@@ -362,6 +363,7 @@ model User {
   moneyTransfers    MoneyTransfer[]
   paycheckPlans     PaycheckPlan[]
   healthScores      HealthScore[]
+  monthlyReports    MonthlyReport[]
 
   @@map("users")
 }
@@ -578,6 +580,9 @@ model Liability {
   hasPmi                    Boolean?  @map("has_pmi")
   escrowBalanceCents        Int?      @map("escrow_balance_cents")
   hasPrepaymentPenalty      Boolean?  @map("has_prepayment_penalty")
+  // Cards (spec step 175): the last statement's date and balance, as Plaid reports them.
+  lastStatementIssueDate    DateTime? @map("last_statement_issue_date") @db.Date
+  lastStatementBalanceCents Int?      @map("last_statement_balance_cents")
   createdAt                 DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt                 DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
 
@@ -2020,6 +2025,33 @@ model RenewalNegotiation {
   @@map("renewal_negotiations")
 }
 
+// A cheaper way to pay for the same cover (spec step 196): pay in full, autopay, paperless,
+// bundling, a safe-driver program, or a higher deductible. Found by rules from the policy
+// and the person's cash, applied through the insurance partner on their tap.
+model InsuranceSaving {
+  id                 String    @id @default(cuid())
+  userId             String    @map("user_id")
+  policyId           String    @map("policy_id")
+  // pay_in_full, autopay, paperless, bundle, telematics or higher_deductible.
+  kind               String
+  // offered, applied or dismissed. Applied and dismissed ones are not offered again.
+  status             String    @default("offered")
+  yearlySavingCents  Int       @map("yearly_saving_cents")
+  currentYearlyCents Int       @map("current_yearly_cents")
+  newYearlyCents     Int       @map("new_yearly_cents")
+  // What changes, in the rules' own fields (the new deductible, the other policy bundled...).
+  detail             Json      @default("{}")
+  confirmation       String?
+  createdAt          DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  answeredAt         DateTime? @map("answered_at") @db.Timestamptz(3)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, policyId, kind])
+  @@index([userId, status])
+  @@map("insurance_savings")
+}
+
 // The household facts that matter for cover (spec step 102), as the person typed them.
 // Null means not said: housing and cars are then read from the accounts.
 model InsuranceProfile {
@@ -2901,4 +2933,22 @@ model HealthScore {
 
   @@unique([userId, month])
   @@map("health_scores")
+}
+
+// The monthly money report (spec step 148): a month's figures as made in the first days of
+// the next, kept so the chat, the email and the page say the same. figures is a
+// MonthlyReport (src/planning/monthly-report.ts).
+model MonthlyReport {
+  id        String    @id @default(cuid())
+  userId    String    @map("user_id")
+  // YYYY-MM: the month reported on.
+  month     String
+  figures   Json
+  emailedAt DateTime? @map("emailed_at") @db.Timestamptz(3)
+  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, month])
+  @@map("monthly_reports")
 }

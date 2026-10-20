@@ -11,8 +11,9 @@ test.setTimeout(120_000);
 test.use({ viewport: { width: 375, height: 812 } });
 
 let userId: string | undefined;
-// Every button but Pin (spec step 96), which every message of Jane's has.
-const NOT_PIN = /^(?!(?:Pin|Unpin)$)/;
+// Every button but Pin (spec step 96) and Read aloud (spec step 186), which every message of
+// Jane's has.
+const NOT_PIN = /^(?!(?:Pin|Unpin|Read aloud|Stop reading)$)/;
 test.afterEach(async () => {
   if (userId) await deleteUser(userId);
 });
@@ -29,9 +30,18 @@ test("the demo bank lands in Jane's chat, and Yes answers a finding", async ({
   ]);
 
   await page.goto("/connect");
-  await page.getByRole("button", { name: "Link a demo bank" }).click();
-  await expect(page).toHaveURL("/chat", { timeout: 60_000 });
-  await expect(page.getByRole("heading", { level: 1, name: "Chat with Jane" })).toBeVisible();
+  // A click that lands before the page has hydrated can be lost, so click until it takes
+  // (linking the demo bank twice is harmless: the second one finds the first).
+  await expect(async () => {
+    if (page.url().endsWith("/connect")) {
+      await page.getByRole("button", { name: "Link a demo bank" }).click({ timeout: 5_000 });
+    }
+    await expect(page).toHaveURL("/chat", { timeout: 15_000 });
+  }).toPass({ timeout: 90_000 });
+  // The first visit runs Jane's whole pass over the new bank, which can take a while.
+  await expect(page.getByRole("heading", { level: 1, name: "Chat with Jane" })).toBeVisible({
+    timeout: 60_000,
+  });
 
   const messages = page.getByRole("list", { name: "Messages" }).getByRole("listitem");
   const ask = page.getByRole("textbox", { name: "Message Jane" });
@@ -72,8 +82,16 @@ test("the demo bank lands in Jane's chat, and Yes answers a finding", async ({
   await expect(messages.filter({ hasText: body }).getByText("You chose:")).toBeVisible();
 
   // Spec step 86: the finding's page shows the same answer and links back to its message.
-  await messages.filter({ hasText: body }).getByRole("link", { name: /Open/ }).click();
-  await expect(page).toHaveURL(/\/report\/[^?]+\?from=/);
+  // The same: a click on the link before the reloaded page has hydrated can be lost.
+  await expect(async () => {
+    if (!/\/report\//.test(page.url())) {
+      await messages
+        .filter({ hasText: body })
+        .getByRole("link", { name: /Open/ })
+        .click({ timeout: 5_000 });
+    }
+    await expect(page).toHaveURL(/\/report\/[^?]+\?from=/, { timeout: 10_000 });
+  }).toPass({ timeout: 60_000 });
   await expect(page.getByText("You chose: Yes, in the chat.")).toBeVisible();
   await page.getByRole("link", { name: /Back to the chat/ }).click();
   await expect(page).toHaveURL(/\/chat#/);

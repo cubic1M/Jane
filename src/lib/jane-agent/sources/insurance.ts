@@ -12,6 +12,14 @@ import { readingBody, readingLink } from "../insurance/reading-words";
 import { DEPENDANTS_QUESTION, sizedActions, sizedBody } from "../insurance/life-words";
 import { coverActions, coverBody, coverEventRef } from "../insurance/cover-words";
 import {
+  deductibleActions,
+  deductibleBody,
+  lowering,
+  sameCover,
+  sameCoverActions,
+  sameCoverBody,
+} from "../insurance/saving-words";
+import {
   ASK_CALL_ACTIONS,
   askCallBody,
   callResultBody,
@@ -364,6 +372,41 @@ function doneByJaneMessages(insurance: InsuranceSnapshot): Candidate[] {
   return [...negotiations, ...drafts, ...statuses];
 }
 
+// Spec step 196: the savings that keep the cover as it is, in one message with one tap; a
+// higher deductible, which lowers the cover, on its own. Applying is always the person's tap.
+function savingMessages(insurance: InsuranceSnapshot): Candidate[] {
+  const savings = insurance.savings ?? [];
+  const same = sameCover(savings);
+  return [
+    ...(same.length > 0
+      ? [
+          {
+            kind: "decision" as const,
+            body: sameCoverBody(same, insurance.policies),
+            refs: { savingGroup: "same", advice: true as const },
+            actions: sameCoverActions(same),
+            dedupeKey: `savings:same:${same
+              .map((s) => s.id)
+              .sort()
+              .join(",")}`,
+            priority: MESSAGE_PRIORITY.saving_group,
+          },
+        ]
+      : []),
+    ...lowering(savings).map((s): Candidate => ({
+      kind: "decision",
+      body: deductibleBody(
+        s,
+        insurance.policies.find((p) => p.id === s.policyId),
+      ),
+      refs: { savingId: s.id, advice: true as const },
+      actions: deductibleActions(),
+      dedupeKey: `saving:${s.id}`,
+      priority: MESSAGE_PRIORITY.saving_deductible,
+    })),
+  ];
+}
+
 export const insuranceSource: MessageSource = {
   key: "insurance",
   gather: (snapshot) => {
@@ -381,6 +424,7 @@ export const insuranceSource: MessageSource = {
       ...lifeMessages(insurance, snapshot.asOf),
       ...coverChangeMessages(insurance),
       ...doneByJaneMessages(insurance),
+      ...savingMessages(insurance),
     ];
   },
 };

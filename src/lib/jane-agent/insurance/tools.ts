@@ -22,6 +22,7 @@ import { cardCover, conditionWords } from "@/lib/insurance/card-cover";
 import { latestLife } from "@/lib/insurance/life";
 import { listCoverChanges } from "@/lib/insurance/cover-changes";
 import { listNegotiations } from "@/lib/insurance/negotiate";
+import { listSavings } from "@/lib/insurance/savings";
 import { noteLines, readingLines } from "./reading-words";
 import { listBenefits, openEnrollmentAtWork, yearlyCost } from "@/lib/insurance/benefits";
 import { autopilotOf } from "@/lib/autopilot";
@@ -70,6 +71,12 @@ export const INSURANCE_TOOLS: Anthropic.Tool[] = [
     name: "insurance_life",
     description:
       "Life insurance sized for the person and applied for (spec step 153), demo advice only: the amount and term with the method (years of pay, debts, final expenses, schooling, less savings and cover they have), the term quotes, and where an application stands (health questions, the carrier's offer or review). Jane never applies or buys without the person's tap; to start, they tap Apply in the chat or on /insurance/life.",
+    input_schema: noInput,
+  },
+  {
+    name: "insurance_savings",
+    description:
+      "Cheaper ways to pay for the cover the person keeps (spec step 196): pay in full, autopay, paperless, one carrier for car and home, a safe-driver program, and a higher deductible. Each has its yearly saving and what changes; only a higher deductible lowers the cover. Jane applies one through the insurance partner only on the person's tap.",
     input_schema: noInput,
   },
   {
@@ -151,6 +158,30 @@ export async function runInsuranceTool(
                 }
               : application.decision,
         },
+      }),
+      cents,
+    };
+  }
+  if (name === "insurance_savings") {
+    const savings = await listSavings(userId, { client });
+    return {
+      content: JSON.stringify({
+        savings: savings
+          .filter((s) => s.status !== "dismissed")
+          .map((s) => ({
+            what: s.kind,
+            status: s.status === "offered" ? "waiting for their tap" : s.status,
+            aYearLess: money(s.yearlySavingCents),
+            lowersCover: s.kind === "higher_deductible",
+            ...(s.detail.toDeductibleCents
+              ? {
+                  deductibleFrom: money(s.detail.fromDeductibleCents ?? null),
+                  deductibleTo: money(s.detail.toDeductibleCents),
+                }
+              : {}),
+            ...(s.detail.payNowCents ? { payUpFront: money(s.detail.payNowCents) } : {}),
+            ...(s.confirmation ? { confirmation: s.confirmation } : {}),
+          })),
       }),
       cents,
     };

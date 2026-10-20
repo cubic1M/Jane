@@ -99,7 +99,7 @@ describe.runIf(url)("Jane's chat against a real database", () => {
         expect.arrayContaining(["bundle.1", "plan.approve_safe", "open"]),
       );
       const plan = messages.find((m) => m.dedupeKey.startsWith("plan:"));
-      expect(plan?.body).toMatch(/^Your plan for this week is ready: \d+ things, could save/);
+      expect(plan?.body).toMatch(/^Your plan for this week is ready: \d+ things, worth up to/);
       expect(buttonIds(plan!)).toEqual(["plan.approve_safe", "open"]);
       const findings = messages.filter((m) => m.dedupeKey.startsWith("findings:"));
       expect(findings.length).toBeGreaterThanOrEqual(2);
