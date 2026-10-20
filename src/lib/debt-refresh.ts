@@ -5,6 +5,7 @@ import { runCreditBuilding } from "@/lib/credit-building";
 import { refreshTightMoney } from "@/lib/tight-money";
 import { refreshMedicalBills } from "@/lib/medical-bills";
 import { refreshReportFixes } from "@/lib/credit-report-fixes";
+import { refreshCardInterest } from "@/lib/card-interest";
 import { refreshDebtPlan } from "@/lib/debt-plan";
 import { refreshLoanApplications } from "@/lib/loan-applications";
 import { refreshRefinance } from "@/lib/refinance";
@@ -32,6 +33,8 @@ export async function refreshDebts(
     ["medical bill requests", () => refreshMedicalBills(userId, { client, now })],
     // Spec step 181: the collector and the bureaus answer letters after a few days.
     ["credit report letters", () => refreshReportFixes(userId, { client, now })],
+    // Spec step 224: lender answers to rate requests, and a deadline on each promotion off pace.
+    ["card interest", () => refreshCardInterest(userId, { client, now })],
     ["refinance rates", () => refreshRefinance(userId, { client, now })],
     // Spec step 112: loans funding, and old loans reaching zero.
     ["loan applications", () => refreshLoanApplications(userId, { client, now })],

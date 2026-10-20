@@ -232,6 +232,23 @@ describe("debt questions", () => {
     expect(intent("what's my credit score")).toEqual({ kind: "credit_score" });
   });
 
+  it("reads card interest, promotions and asking for a lower rate", () => {
+    for (const text of [
+      "how much interest am I paying on my cards",
+      "how can I pay less interest on my credit cards",
+      "when does my 0% promotion end",
+      "what is deferred interest",
+    ]) {
+      expect(intent(text), text).toEqual({ kind: "card_interest" });
+    }
+    // A loan's or a transfer's interest is its own question.
+    expect(intent("how much interest on my mortgage")).not.toMatchObject({ kind: "card_interest" });
+    expect(intent("what's the rate on my credit card")).toEqual({
+      kind: "debt_detail",
+      target: "credit card",
+    });
+  });
+
   it("reads a tight month", () => {
     for (const text of [
       "money is tight this month",

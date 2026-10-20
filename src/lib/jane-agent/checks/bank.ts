@@ -1171,6 +1171,20 @@ const BASE_QUESTIONS: readonly CheckQuestion[] = [
       link: "/loans/cards",
     },
   },
+  // Spec step 224: less interest on every card.
+  {
+    id: "debt-27",
+    text: "how much interest am I paying on my cards",
+    needs: "rules",
+    expect: {
+      intent: "card_interest",
+      mentions: /interest/i,
+      button: "cardrate.send",
+      link: "/loans/interest",
+      list: true,
+      maxChars: 1_200,
+    },
+  },
   // Spec step 181: collections and credit report errors, with letters to fix them.
   {
     id: "debt-26",

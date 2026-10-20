@@ -49,6 +49,7 @@ export const DEBT_SOURCE_LIMITS = {
   tight_money: 2,
   medical_bills: 2,
   credit_report_fixes: 2,
+  card_interest: 2,
 } as const;
 export const DEBT_MESSAGE_PRIORITY = {
   // A buy now, pay later plan Jane found, then a debt with no rate: news that can wait,
@@ -115,11 +116,16 @@ export const DEBT_MESSAGE_PRIORITY = {
   report_fix_window: 59,
   report_fix: 40,
   report_fix_answer: 61,
+  // Spec step 224: a promotion off pace has a date, so it comes just under the findings
+  // (60); a rate request and the answers can wait a little.
+  promo_off_pace: 59,
+  card_rate_ask: 37,
+  card_rate_answer: 62,
 } as const;
 
 // What Jane does about debts by herself at each autopilot level (src/config/autopilot.ts),
 // step by step. Applying for credit, moving money and signing always need the person's tap,
-// at every level. Steps 110–117 and 174–181 add to this list.
+// at every level. Steps 110–117, 174–181 and 224–230 add to this list.
 export const DEBT_AUTOPILOT: Readonly<
   Record<"ask" | "safe" | "all", readonly { step: number; does: string }[]>
 > = {
@@ -192,6 +198,10 @@ export const DEBT_AUTOPILOT: Readonly<
       step: 181,
       does: "Checks your credit report every month for collections and errors, writes the validation letter or bureau dispute that fits (citing the rule and its deadline), puts the answer dates on your deadlines and tells you what comes back. Each letter is sent only on your tap.",
     },
+    {
+      step: 224,
+      does: "Shows what each card costs in interest, what paying early saves, and how a 0% promotion is pacing (a deadline with the monthly amount if it's off pace), and writes a request and call script for a lower rate. Each request is sent only on your tap.",
+    },
   ],
   safe: [
     {
@@ -262,6 +272,10 @@ export const DEBT_AUTOPILOT: Readonly<
       step: 181,
       does: "Checks your credit report every month for collections and errors, writes the validation letter or bureau dispute that fits (citing the rule and its deadline), puts the answer dates on your deadlines and tells you what comes back. Each letter is sent only on your tap.",
     },
+    {
+      step: 224,
+      does: "Shows what each card costs in interest, what paying early saves, and how a 0% promotion is pacing (a deadline with the monthly amount if it's off pace), and writes a request and call script for a lower rate. Each request is sent only on your tap.",
+    },
   ],
   all: [
     {
@@ -331,6 +345,10 @@ export const DEBT_AUTOPILOT: Readonly<
     {
       step: 181,
       does: "Checks your credit report every month for collections and errors, writes the validation letter or bureau dispute that fits (citing the rule and its deadline), puts the answer dates on your deadlines and tells you what comes back. Each letter is sent only on your tap.",
+    },
+    {
+      step: 224,
+      does: "Shows what each card costs in interest, what paying early saves, and how a 0% promotion is pacing (a deadline with the monthly amount if it's off pace), and writes a request and call script for a lower rate. Each request is sent only on your tap.",
     },
   ],
 };

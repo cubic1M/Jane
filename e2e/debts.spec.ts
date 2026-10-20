@@ -517,3 +517,43 @@ test("report fixes show the letters with their rules, and a letter is sent only 
   await page.goto("/deadlines");
   await expect(page.getByText("Collector's validation due: Northstar Recovery")).toBeVisible();
 });
+
+// Spec step 224: card interest, a 0% promotion off pace, and a request for a lower rate sent
+// only on the tap.
+test("card interest shows the cost, a promotion off pace, and a request sent on the tap", async ({
+  context,
+  page,
+  baseURL,
+}) => {
+  const user = await signedInUser("user");
+  userId = user.userId;
+  await context.addCookies([
+    { name: "authjs.session-token", value: user.sessionToken, url: baseURL ?? "" },
+  ]);
+  await page.goto("/connect");
+  await page.getByRole("button", { name: "Link a demo bank" }).click();
+  await expect(page).toHaveURL("/chat", { timeout: 60_000 });
+
+  await page.goto("/loans/interest");
+  await expect(page.getByRole("heading", { level: 1, name: "Less card interest" })).toBeVisible();
+  const cards = page.getByRole("list", { name: "Cards" });
+  await expect(cards).toContainText("$2,410.50 at 22.99%");
+  await expect(cards).toContainText("a year in interest");
+
+  await page.getByLabel("Card", { exact: true }).fill("Home Goods Store Card");
+  await page.getByLabel("Left to clear").fill("5000");
+  await page.getByLabel("Rate after the promotion %").fill("26.99");
+  await page.getByLabel("Started").fill("2026-06-01");
+  await page.getByLabel("Ends").fill("2099-02-01");
+  await page.getByRole("button", { name: "Add this promotion" }).press("Enter");
+  await expect(page.getByText("Promotion added.")).toBeVisible();
+  await expect(page.getByRole("list", { name: "Promotions" })).toContainText("0% ends on");
+
+  const send = page.getByRole("button", { name: "Send this request" }).first();
+  await send.scrollIntoViewIfNeeded();
+  // Keyboard, so the fixed bottom nav on phones never takes the tap.
+  await send.focus();
+  await send.press("Enter");
+  await expect(page.getByText("Sent just now.")).toBeVisible();
+  await expect(cards).toContainText("Asked");
+});

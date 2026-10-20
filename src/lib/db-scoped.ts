@@ -118,6 +118,8 @@ export function scopedFor(userId: string, client: PrismaClient = db) {
     medicalBills: scoped.medicalBill,
     medicalRequests: scoped.medicalRequest,
     creditDisputes: scoped.creditDispute,
+    cardPromos: scoped.cardPromo,
+    cardRateRequests: scoped.cardRateRequest,
     balanceTransfers: scoped.balanceTransfer,
     findings: scoped.finding,
     decisions: scoped.decision,
