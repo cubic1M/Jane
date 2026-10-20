@@ -152,6 +152,20 @@ is asked once: answered, skipped, or already put to them, never again. To add on
 `src/profile/facts.ts`, an entry in `QUESTIONS`, an `unlockOf` case, and the detector that
 needs it lists the fact in `needs`.
 
+## The reach scoreboard (step 258)
+
+`/admin/reach` shows, for each sample person, what fired and what it was worth, which
+capabilities reach whom, and, in totals only, what real people and Try Jane people were offered
+and said yes and no to. Confidence is checked for honesty: of the suggestions Jane was about 80%
+sure of, about 80% should be said yes to (`src/planning/calibration.ts`); a detector that runs
+high or low by 15 points over at least 10 answers is listed so it can be corrected.
+
+The unit tests run on every CI run, the nightly one included: `src/detectors/reach.test.ts`
+fails on a new wrong suggestion, or a person losing a right one (`src/detectors/baseline.ts`
+is each person's suggestions today; update it on purpose and say why in the PR), and for a
+capability that reaches no sample person and is not listed in `UNREACHABLE`
+(`src/config/reach.ts`).
+
 ## Where it is going
 
 - Step 255 runs every detector for everyone each night and ranks by
