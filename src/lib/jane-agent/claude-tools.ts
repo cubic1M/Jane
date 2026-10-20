@@ -12,6 +12,7 @@ import { ASK_TOOLS, runAskTool, type ToolOutput } from "@/lib/ask/tools";
 import { CARD_SELECT, buildCard } from "@/lib/cards";
 import { comparisonFor } from "@/lib/compare";
 import { frequencyWords } from "@/lib/explain-input";
+import { loadSteady } from "@/lib/steady-pay";
 import { scopedFor } from "@/lib/db-scoped";
 import { loadChanges } from "@/lib/changes";
 import { listGoals } from "@/lib/goals";
@@ -246,6 +247,12 @@ export const CHAT_TOOLS: Anthropic.Tool[] = [
     name: "whole_picture",
     description:
       'How the person is doing across every sector at once (spec step 183), for "am I OK?", "how am I doing" and "what should I do this month": a verdict (ok, watch or act) with its one-sentence headline, safe to spend until payday, bills and deadlines due this week and this month, budgets over, goals behind, urgent alerts, what Jane\'s agent is working on, the steps waiting on the person, and the one to three things that matter most (from the ranked list) with why. Lead with the headline, then the things that matter; use the same figures.',
+    input_schema: noInput,
+  },
+  {
+    name: "steady_pay",
+    description:
+      "A steady paycheck from uneven income (spec step 240): whether the person has uneven (contracting, gig or freelance) income; if so this month's steady paycheck from the buffer (savings) to checking, why it is what it is (the buffer above or below its target, never under its floor), the buffer's target and floor, the tax share set aside from each deposit, and whether this month's has gone. Moves happen only by autopilot within its caps or the person's tap.",
     input_schema: noInput,
   },
   {
@@ -609,6 +616,27 @@ export async function runChatTool(
             }
           : { score: null, why: "No accounts linked yet." },
       );
+    }
+    case "steady_pay": {
+      const view = await loadSteady(userId, { client, now });
+      if (!view) return out({ view: null, why: "No accounts linked yet." });
+      return out({
+        unevenIncome: view.uneven,
+        steadyPaycheck:
+          view.plan && view.plan.status !== "not_enough_history"
+            ? money(view.plan.paycheckCents)
+            : null,
+        why: view.plan?.reason ?? null,
+        buffer: money(view.bufferCents),
+        bufferTarget: view.plan ? money(view.plan.targetCents) : null,
+        bufferFloor: view.plan ? money(view.plan.floorCents) : null,
+        taxSetAsideRate: view.setAsideRate,
+        thisMonthSent: view.sent && {
+          amount: money(view.sent.amountCents),
+          on: view.sent.runOn,
+          by: view.sent.by,
+        },
+      });
     }
     case "money_moves": {
       const [plan, transfers, partner] = await Promise.all([

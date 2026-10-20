@@ -33,6 +33,7 @@ import { checkNoticeFor, listTaxNotices, noticeAmountCents } from "@/lib/tax-not
 import { loadEquityTax } from "@/lib/equity-tax";
 import { loadMultiYear } from "@/lib/multi-year";
 import { loadPropertyTax } from "@/lib/property-tax";
+import { loadAccountantPage } from "@/lib/accountant";
 import { loadIdentity } from "@/lib/tax-identity";
 import { loadSideIncome } from "@/lib/side-income";
 import { loadReturnReviews } from "@/lib/prior-return/review";
@@ -191,6 +192,12 @@ export const TAX_TOOLS: Anthropic.Tool[] = [
     name: "tax_property",
     description:
       "The person's property tax check: their home's assessed value against its market value (their own figures, or sample data), how far over it is and what that costs a year, the county's appeal window and deadline, and in demo advice mode whether an appeal is worth making, the comparable sales behind a drafted appeal, who files it, and exemptions (homestead, senior, veteran, disabled) they may not have claimed with what each does. Jane files and applies for nothing herself.",
+    input_schema: noInput,
+  },
+  {
+    name: "tax_accountant",
+    description:
+      "Where working with an accountant stands: whether the person's taxes include things people usually bring an accountant to (self-employment, rental income, stock options or crypto, income in more than one state, a home sale, an open IRS letter, a tax identity problem, large gains), their read-only accountant links (live, expired or revoked, how many times each was opened), the questions Jane has for an accountant, and the answers that came back. A link shows only tax information, ends on a date the person picks, can be revoked, and every view is logged. Jane never sends a link herself: the person makes and shares it.",
     input_schema: noInput,
   },
   {
@@ -729,6 +736,26 @@ export async function runTaxTool(
           ? v.exemptions.eligible.map((e) => ({ name: e.name, who: e.who, benefit: e.benefit }))
           : [],
         needToKnow: v.exemptions.ask,
+      });
+    }
+    case "tax_accountant": {
+      const v = await loadAccountantPage(userId, { client, now });
+      return out({
+        situationUsuallyNeedsAnAccountant: v.complexity.complex,
+        factors: v.complexity.factors,
+        links: v.links.map((l) => ({
+          for: l.label,
+          state: l.state,
+          endsOn: l.expiresOn,
+          timesOpened: l.viewCount,
+        })),
+        questionsForThem: v.questions.map((q) => q.text),
+        theirAnswers: v.notes.map((n) => ({
+          from: n.fromName,
+          about: n.questionText,
+          said: n.body,
+          seenByPerson: n.seen,
+        })),
       });
     }
     case "tax_years": {

@@ -94,6 +94,15 @@ const rows: Row[] = [
   ["profile", "/profile", "my_profile", "what do you know about me"],
   ["profile", "/profile", "my_profile", "show me my profile"],
   ["profile", "/profile", "my_profile", "what have you learned about me"],
+  // A steady paycheck from uneven income (spec step 240).
+  [
+    "steady",
+    "/transfers",
+    "steady_pay",
+    "can you give me a steady paycheck from my freelance income",
+  ],
+  ["steady", "/transfers", "steady_pay", "my income is uneven"],
+  ["steady", "/transfers", "steady_pay", "what is my steady pay"],
 
   // Safe to spend and the day.
   ["safe", "/home", "safe_to_spend", "how much do i have left to spend"],
