@@ -1,5 +1,6 @@
 import type { Holding, InvestmentTransaction, Security } from "plaid";
 import { accountId, addDays, demoAccounts, type DemoExtra, type DemoSeed } from "./demo-bank";
+import { isPersonSeed, personPositions } from "./demo-people";
 import { demoPrice } from "./demo-prices";
 
 // What the demo bank's investment accounts hold (spec step 128), shaped like Plaid
@@ -266,6 +267,16 @@ export function demoLedger(
   const balances = new Map(
     demoAccounts(demo, extras).map((a) => [a.account_id, a.balances.current ?? 0]),
   );
+  // Spec step 252: a sample person holds what their definition says.
+  const personRows: LedgerRow[] | null = isPersonSeed(demo)
+    ? personPositions(demo).map((p) => ({
+        account: p.account,
+        key: p.key,
+        quantity: p.quantity,
+        basis: p.basis,
+        cashCents: cents(p.cash ?? 0),
+      }))
+    : null;
   const accounts = [
     "retirement",
     "brokerage",
@@ -276,20 +287,22 @@ export function demoLedger(
     ...(extras.includes("custodial") ? ["custodial" as const] : []),
     ...(extras.includes("child_roth") ? ["child_roth" as const] : []),
   ] as const;
-  const rows: LedgerRow[] = accounts.flatMap((account) => {
-    const id = accountId(demo.seed, account);
-    const positions = POSITIONS[account];
-    const invested = positions
-      .slice(0, -1)
-      .reduce((sum, p) => sum + cents(p.quantity * p.price), 0);
-    return positions.map((p, i) => ({
-      account: id,
-      key: p.key,
-      quantity: p.quantity,
-      basis: p.costBasis,
-      cashCents: i === positions.length - 1 ? cents(balances.get(id) ?? 0) - invested : 0,
-    }));
-  });
+  const rows: LedgerRow[] =
+    personRows ??
+    accounts.flatMap((account) => {
+      const id = accountId(demo.seed, account);
+      const positions = POSITIONS[account];
+      const invested = positions
+        .slice(0, -1)
+        .reduce((sum, p) => sum + cents(p.quantity * p.price), 0);
+      return positions.map((p, i) => ({
+        account: id,
+        key: p.key,
+        quantity: p.quantity,
+        basis: p.costBasis,
+        cashCents: i === positions.length - 1 ? cents(balances.get(id) ?? 0) - invested : 0,
+      }));
+    });
   for (const order of orders) {
     const cash = rows.find((r) => r.account === order.accountRef && SECURITIES[r.key]?.cash);
     if (!cash) continue;
@@ -542,6 +555,7 @@ export function demoInvestmentTransactions(
   end: string,
   extras: readonly DemoExtra[] = [],
 ): InvestmentTransaction[] {
+  if (isPersonSeed(demo)) return [];
   return days(start, end).flatMap((day) =>
     eventsOn(day, demo.anchor, extras).map(
       (e): InvestmentTransaction =>

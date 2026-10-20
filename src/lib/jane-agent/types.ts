@@ -295,6 +295,9 @@ export const ACTION_IDS = [
   "whatif.adopt",
   "lean.start",
   "lean.not_now",
+  "steady.pay",
+  "steady.skip",
+  "steady.on",
   "unusual.me",
   "unusual.not_me",
 ] as const;

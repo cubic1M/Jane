@@ -1,4 +1,5 @@
 import { randomBytes } from "node:crypto";
+import { personById, type PersonId } from "@/config/people";
 import { TRIAL_EMAIL_DOMAIN, TRIAL_HOURS, TRIAL_ID_PREFIX } from "@/config/trial";
 import type { PrismaClient } from "@/generated/prisma/client";
 import { db as defaultClient } from "@/lib/db";
@@ -51,7 +52,8 @@ export async function startTrial({
   now = new Date(),
   userAgent = null,
   defer = false,
-}: Options & { userAgent?: string | null; defer?: boolean } = {}): Promise<{
+  person,
+}: Options & { userAgent?: string | null; defer?: boolean; person?: PersonId } = {}): Promise<{
   userId: string;
   itemId: string;
   sessionToken: string;
@@ -66,13 +68,13 @@ export async function startTrial({
     data: {
       id,
       email: `${id}@${TRIAL_EMAIL_DOMAIN}`,
-      name: "Sample person",
+      name: person ? (personById(person)?.name ?? "Sample person") : "Sample person",
       createdAt: now,
     },
   });
   // The visitor ticked "I agree" to try it (src/app/try/actions.ts), as at sign-up.
   await acceptTerms(id, { client, now, via: "trial" });
-  const { itemId } = await linkDemoBank(id, { client, now });
+  const { itemId } = await linkDemoBank(id, { client, now, person });
   if (!defer) await syncItem(itemId, { client, now });
   const expires = new Date(now.getTime() + TRIAL_HOURS * HOUR_MS);
   const sessionToken = randomBytes(32).toString("hex");
