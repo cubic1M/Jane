@@ -13,6 +13,7 @@ import { DEPENDANTS_QUESTION, sizedActions, sizedBody } from "../insurance/life-
 import { coverActions, coverBody, coverEventRef } from "../insurance/cover-words";
 import { RISK_GAP_KINDS } from "@/lib/insurance/risk-signals";
 import { riskActions, riskQuestion } from "../insurance/risk-words";
+import { reviewActions, reviewBody } from "../insurance/review-words";
 import {
   deductibleActions,
   deductibleBody,
@@ -204,6 +205,19 @@ function switchMessages(insurance: InsuranceSnapshot): Candidate[] {
 function checkupMessages(insurance: InsuranceSnapshot): Candidate[] {
   const checkup = insurance.checkup;
   if (!checkup) return [];
+  // Spec step 202: the yearly review is the checkup, with everything else in one message.
+  if (insurance.review) {
+    return [
+      {
+        kind: "decision",
+        body: reviewBody(insurance.review),
+        refs: { insuranceCheckupId: checkup.id, advice: true },
+        actions: reviewActions(insurance.review),
+        dedupeKey: `checkup:${checkup.id}`,
+        priority: MESSAGE_PRIORITY.insurance_checkup,
+      },
+    ];
+  }
   return [
     {
       kind: checkup.recommendations.length === 0 ? "done" : "heads_up",

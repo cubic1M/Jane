@@ -1507,6 +1507,20 @@ const BASE_QUESTIONS: readonly CheckQuestion[] = [
     expect: { intent: "insurance", mentions: /work|business|pay/i, maxChars: 900 },
   },
 
+  // Insurance on autopilot, round two (spec step 202): keeping covered and the yearly review.
+  {
+    id: "rev-1",
+    text: "keep me covered",
+    needs: "rules",
+    expect: { intent: "insurance", mentions: /cover/i, list: true, maxChars: 700 },
+  },
+  {
+    id: "rev-2",
+    text: "show me my yearly insurance review",
+    needs: "rules",
+    expect: { intent: "insurance", mentions: /cover|review|insurance/i, list: true, maxChars: 900 },
+  },
+
   // Outside what Jane does: brief, and never advice.
   { id: "out-1", text: "what's the weather today", needs: "claude", expect: { avoid: ADVICE } },
   {

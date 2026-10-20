@@ -20,6 +20,8 @@ import { listCoverChanges, type CoverChange } from "@/lib/insurance/cover-change
 import { listNegotiations, type Negotiation } from "@/lib/insurance/negotiate";
 import { listSavings, type Saving } from "@/lib/insurance/savings";
 import { listRisks, type Risk } from "@/lib/insurance/risks";
+import { loadReview } from "@/lib/insurance/review";
+import type { ReviewInput } from "@/lib/insurance/review-rules";
 import { loadHealthYear, type HealthYear } from "@/lib/insurance/health-year";
 import { SWITCH_NEWS_DAYS, SWITCH_PAYMENT_DAYS } from "@/config/insurance";
 
@@ -68,6 +70,8 @@ export type InsuranceSnapshot = {
   risks?: Risk[];
   // Spec step 200: the health plan's year, when its terms are known.
   healthYear?: HealthYear | null;
+  // Spec step 202: the yearly review, when a checkup is waiting to be seen.
+  review?: ReviewInput | null;
 };
 
 export type Switch = Awaited<ReturnType<typeof switchesFor>>[number];
@@ -115,7 +119,12 @@ export async function loadInsuranceSnapshot(
       since: new Date(now.getTime() - (SWITCH_NEWS_DAYS + SWITCH_PAYMENT_DAYS) * 86_400_000),
     }),
   ]);
+  const review =
+    checkup && !checkup.seenAt
+      ? await loadReview(userId, checkup, gaps.length, { client, now })
+      : null;
   return {
+    review,
     policies: policies.map((p) => ({ ...p, nextRenewal: nextRenewal(p, asOf) })),
     gaps,
     household,

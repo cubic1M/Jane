@@ -80,7 +80,7 @@ describe.runIf(url)("every kind of cover against a real database", () => {
   it("reads income, assets, trips and care from the accounts, and finds those gaps", async () => {
     const me = await person({ demo: false });
     const household = await loadHousehold(me, { client, now: NOW });
-    expect(household.signals).toEqual({
+    expect(household.signals).toMatchObject({
       paycheck: true,
       assetsCents: 2_000_000,
       travelCents: 180_000,

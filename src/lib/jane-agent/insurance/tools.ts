@@ -25,6 +25,8 @@ import { listNegotiations } from "@/lib/insurance/negotiate";
 import { listSavings } from "@/lib/insurance/savings";
 import { listRisks } from "@/lib/insurance/risks";
 import { loadFamily } from "@/lib/insurance/family";
+import { loadReview } from "@/lib/insurance/review";
+import { reviewBody, reviewCents, reviewItems } from "@/lib/insurance/review-rules";
 import { loadHealthYear, openDisputeCards } from "@/lib/insurance/health-year";
 import { healthYearLines } from "./health-year";
 import { claimWorthFor } from "@/lib/insurance/claim-worth-for";
@@ -78,6 +80,12 @@ export const INSURANCE_TOOLS: Anthropic.Tool[] = [
     description:
       "Life insurance sized for the person and applied for (spec step 153), demo advice only: the amount and term with the method (years of pay, debts, final expenses, schooling, less savings and cover they have), the term quotes, and where an application stands (health questions, the carrier's offer or review). Jane never applies or buys without the person's tap; to start, they tap Apply in the chat or on /insurance/life.",
     input_schema: noInput,
+  },
+  {
+    name: "insurance_review",
+    description:
+      "The yearly insurance review (spec step 202): what Jane did by herself within the person's autopilot caps, what still needs their tap, and the yearly money involved. Say it as an estimate. 'Keep me covered' is a button the person taps: you never do it for them.",
+    input_schema: { type: "object", properties: {} },
   },
   {
     name: "insurance_health_year",
@@ -201,6 +209,25 @@ export async function runInsuranceTool(
         },
       }),
       cents,
+    };
+  }
+  if (name === "insurance_review") {
+    const [latest, profile] = await Promise.all([
+      latestCheckup(userId, { client }),
+      loadInsurance(userId, { client, now }),
+    ]);
+    const review = await loadReview(
+      userId,
+      latest ?? { recommendations: [], createdAt: now },
+      profile.gaps.length,
+      { client, now },
+    );
+    return {
+      content: JSON.stringify({
+        review: reviewBody(review).split("\n"),
+        needsATap: reviewItems(review).map((i) => i.text),
+      }),
+      cents: reviewCents(review),
     };
   }
   if (name === "insurance_health_year") {

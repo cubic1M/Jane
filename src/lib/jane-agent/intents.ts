@@ -554,7 +554,8 @@ export function parseIntent(
   if (search) return { kind: "search", query: (search[1] ?? search[2] ?? search[3]).trim() };
 
   // Spec step 91: something they're telling Jane, not asking.
-  const fact = parseFact(text);
+  // ("keep me covered" is the insurance lane's, spec step 202, not something to keep.)
+  const fact = /\bkeep me covered\b/.test(text) ? null : parseFact(text);
   if (fact) return { kind: "remember", draft: fact };
 
   // Spec step 88: a follow-up to what was just said: another month, or another name.
