@@ -366,6 +366,7 @@ model User {
   monthlyReports    MonthlyReport[]
   whatIfPlans       WhatIfPlan[]
   leanPlans         LeanPlan[]
+  yearPlans         YearPlan[]
 
   @@map("users")
 }
@@ -2980,4 +2981,21 @@ model LeanPlan {
 
   @@unique([userId, changeKey])
   @@map("lean_plans")
+}
+
+// The year's money plan (spec step 205): twelve months of targets, kept so a month that has
+// passed never changes. months is a YearMonth[] (src/planning/year-plan.ts).
+model YearPlan {
+  id         String   @id @default(cuid())
+  userId     String   @map("user_id")
+  // YYYY-MM: the first month of the twelve.
+  startMonth String   @map("start_month")
+  months     Json
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt  DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, startMonth])
+  @@map("year_plans")
 }
