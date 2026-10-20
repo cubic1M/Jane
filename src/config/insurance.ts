@@ -505,3 +505,41 @@ export const SMALL_CLAIM_MAX_CENTS = 250_000;
 export const DEMO_CLAIM_DAYS = { reviewing: 2, approved: 5, paid: 10 } as const;
 export const NEGOTIATIONS_DAILY_LIMIT = 200;
 export const CLAIMS_DAILY_LIMIT = 200;
+
+// --- Paying less for the same cover (spec step 196) -----------------------------------------
+// Rates are estimates from typical carrier programs, said as "about". Every one is shown with
+// what changes; none drops cover unless it says so (a higher deductible).
+export const SAVING_KINDS = [
+  "pay_in_full",
+  "autopay",
+  "paperless",
+  "bundle",
+  "telematics",
+  "higher_deductible",
+] as const;
+export type SavingKind = (typeof SAVING_KINDS)[number];
+
+export const SAVING_RATES = {
+  // Paying a year up front: the installment fee on each payment, and the carrier's discount.
+  payInFull: { installmentFeeCents: 400, discountShare: 0.05 },
+  autopay: { discountShare: 0.03 },
+  paperless: { discountShare: 0.02 },
+  // One carrier for car and home (or renters): off both.
+  bundle: { discountShare: BUNDLE_DISCOUNT_SHARE },
+  // A usage-based safe-driver program on a car policy.
+  telematics: { discountShare: 0.1 },
+  // Each step up the ladder is worth this much of the premium.
+  deductibleStepShare: 0.1,
+} as const;
+// Deductibles a carrier offers, per kind; a higher one is suggested only when the person's
+// savings cover it this many times over.
+export const DEDUCTIBLE_LADDERS: Partial<Record<PolicyKind, readonly number[]>> = {
+  auto: [25_000, 50_000, 100_000, 200_000],
+  home: [100_000, 250_000, 500_000, 1_000_000],
+  renters: [25_000, 50_000, 100_000, 250_000],
+};
+export const DEDUCTIBLE_SAVINGS_COVER = 2;
+// Kinds with a premium that these apply to; a saving under this is not worth a message.
+export const MIN_SAVING_CENTS = 2_000;
+// Kinds that carry monthly installment fees and discounts like these.
+export const SAVING_POLICY_KINDS: readonly PolicyKind[] = ["auto", "home", "renters"];
