@@ -347,6 +347,7 @@ model User {
   taxAmendments          TaxAmendment[]
   taxNotices             TaxNotice[]
   taxIdentityCases       TaxIdentityCase[]
+  equityEvents           EquityEvent[]
   taxForms               TaxForm[]
   taxReturns             TaxReturn[]
   budgetTuneUps          BudgetTuneUp[]
@@ -2757,6 +2758,31 @@ model TaxIdentityCase {
 
   @@index([userId])
   @@map("tax_identity_cases")
+}
+
+// Spec step 219: an equity pay event the person told Jane about, for taxes: RSUs vested,
+// ESPP shares bought (and maybe sold) or ISOs exercised. Prices are per share in cents.
+// kind: rsu, espp or iso (src/config/equity-tax.ts).
+model EquityEvent {
+  id                 String    @id @default(cuid())
+  userId             String    @map("user_id")
+  kind               String
+  company            String
+  shares             Float
+  occurredOn         DateTime  @map("occurred_on") @db.Date
+  grantedOn          DateTime? @map("granted_on") @db.Date
+  priceCents         Int       @default(0) @map("price_cents")
+  fmvCents           Int       @map("fmv_cents")
+  withheldCents      Int?      @map("withheld_cents")
+  soldOn             DateTime? @map("sold_on") @db.Date
+  soldPriceCents     Int?      @map("sold_price_cents")
+  grantDiscountCents Int?      @map("grant_discount_cents")
+  createdAt          DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("equity_events")
 }
 
 model TaxReturn {

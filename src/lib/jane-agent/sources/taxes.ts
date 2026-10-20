@@ -18,6 +18,7 @@ import { planMoveMessage } from "../tax-plan-message";
 import { givingOptionsMessage, receiptMessage } from "../giving-message";
 import { familyChoiceMessage, statusOf } from "../family-taxes-message";
 import { worthSaying } from "@/planning/family-taxes";
+import { equitySetAsideMessage } from "../equity-tax-message";
 import { caseMessage, ipPinMessage, signMessage } from "../tax-identity-message";
 import {
   noticeDraftMessage,
@@ -374,6 +375,18 @@ export const taxesSource: MessageSource = {
         ...familyChoiceMessage(c, family!.year),
         dedupeKey: `family:${family!.year}:${c.key}`,
         priority: TAX_MESSAGE_PRIORITY.family,
+      });
+    }
+
+    // Spec step 219: crypto and equity pay add tax nothing withholds: what to set aside, with
+    // its goal (demo advice).
+    const equity = tax.equity;
+    if (equity?.advice && equity.setAside.cents >= 20_000 && !equity.setAside.goalStarted) {
+      out.push({
+        kind: "decision",
+        ...equitySetAsideMessage(equity),
+        dedupeKey: `equity:${equity.year}:${Math.round(equity.setAside.cents / 100_000)}`,
+        priority: TAX_MESSAGE_PRIORITY.equity,
       });
     }
 

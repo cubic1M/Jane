@@ -197,6 +197,8 @@ export const ACTION_IDS = [
   "tax.identity_open",
   "tax.identity_not",
   "tax.identity_step",
+  // Spec step 219: a goal for the tax crypto and equity pay will bring.
+  "tax.equity_aside",
   // Investments (spec step 129 on): the answer buttons on an investor-profile question,
   // by position (src/config/investing.ts PROFILE_QUESTIONS).
   "invest.answer.1",

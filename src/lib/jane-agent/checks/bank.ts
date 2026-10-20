@@ -812,6 +812,12 @@ const BASE_QUESTIONS: readonly CheckQuestion[] = [
     needs: "rules",
     expect: { intent: "tax", mentions: /Identity Protection PIN/ },
   },
+  {
+    id: "tax-27",
+    text: "how are my crypto gains taxed",
+    needs: "rules",
+    expect: { intent: "tax", mentions: /crypto|exchange/i },
+  },
 
   // Insurance (spec step 108), over the demo bank's sample GEICO car policy
   // (DEMO_POLICY in src/lib/insurance/profile.ts: $142.00 a month, a $1,000.00 deductible).

@@ -65,6 +65,8 @@ export type TaxIntent =
   | { kind: "tax"; ask: "side_income" }
   // Spec step 217.
   | { kind: "tax"; ask: "notice" }
+  // Spec step 219.
+  | { kind: "tax"; ask: "equity" }
   // Spec step 218: a sign of identity theft, or the IP PIN.
   | { kind: "tax"; ask: "identity"; sign: "efile_rejected" | "unknown_form" | "irs_letter" | null };
 
@@ -208,6 +210,8 @@ const IDENTITY_LETTER =
   /\b(?:irs|tax) (?:letter|notice)\b.*\b(?:return|refund) (?:i|that i) (?:didn'?t|did not|never) file\b|\bletter about a return i (?:didn'?t|did not|never) file\b/;
 const IDENTITY_ASK =
   /\bip pin\b|\bidentity protection pin\b|\btax identity theft\b|\bidentity theft\b.*\b(?:tax|irs|return)\b|\b(?:tax|irs|return)\b.*\bidentity theft\b|\bform 14039\b|\bprotect my (?:tax )?identity\b|\bstolen (?:social security|ssn)\b.*\b(?:tax|irs)\b/;
+const EQUITY_ASK =
+  /\b(?:crypto|bitcoin|ethereum)\b.*\b(?:tax|taxes|gains?|losses|1099)\b|\b(?:tax|taxes)\b.*\b(?:crypto|bitcoin|ethereum)\b|\bespp\b|\brsus?\b.*\b(?:tax|taxes|withh)|\b(?:tax|taxes|withh)\w*\b.*\brsus?\b|\b(?:iso|isos|incentive stock options?)\b|\bamt\b|\balternative minimum tax\b|\b1099-da\b|\bdisqualifying disposition\b|\bstock options?\b.*\btax/;
 const PACK = /\btax(?:-| )?time pack\b|\btax pack\b|\byear-end pack\b/;
 
 function stateCode(words: string): string | null {
@@ -218,6 +222,7 @@ function stateCode(words: string): string | null {
 
 export function parseTaxIntent(text: string): TaxIntent | null {
   if (FAMILY_ASK.test(text)) return { kind: "tax", ask: "family" };
+  if (EQUITY_ASK.test(text)) return { kind: "tax", ask: "equity" };
   if (IDENTITY_REJECTED.test(text)) return { kind: "tax", ask: "identity", sign: "efile_rejected" };
   if (IDENTITY_FORM.test(text)) return { kind: "tax", ask: "identity", sign: "unknown_form" };
   if (IDENTITY_LETTER.test(text)) return { kind: "tax", ask: "identity", sign: "irs_letter" };
