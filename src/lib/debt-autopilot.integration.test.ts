@@ -69,7 +69,9 @@ describe.runIf(url)("debt on autopilot against a real database", () => {
     expect(await client.debtPlan.count({ where: { userId } })).toBe(0);
     const data = await loadDebtAutopilot(userId, opts());
     expect(data.level).toBe("ask");
-    expect(data.does.map((d) => d.step)).toEqual([109, 110, 111, 112, 113, 114, 115, 116, 117]);
+    expect(data.does.map((d) => d.step)).toEqual([
+      109, 110, 111, 112, 113, 114, 115, 116, 117, 174, 175,
+    ]);
   });
 
   it("drafts the request to move a payment due just before payday", async () => {

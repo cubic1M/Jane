@@ -38,7 +38,23 @@ export type CreditRequest = {
   month: string;
 };
 
+// Spec step 175: a change to try in the score simulator, on top of what's there now.
+export type CreditChange = {
+  // Card balances after the change (a payment before the statement closes, say).
+  cardBalanceCents?: number;
+  // A year of on-time payments: no late fees in the last year.
+  lateFeesLastYear?: number;
+  // A new card's limit, and the hard inquiry applying for it adds.
+  extraLimitCents?: number;
+  extraInquiries?: number;
+  // A credit-builder loan adds an installment loan to the mix.
+  hasInstallmentLoan?: boolean;
+};
+
 export type CreditPartner = {
   name: string;
   softPull(request: CreditRequest): Promise<CreditReport>;
+  // Spec step 175: the score simulator. An estimate of the score after a change; it pulls
+  // nothing and changes nothing.
+  estimate(request: CreditRequest, change: CreditChange): Promise<number>;
 };
