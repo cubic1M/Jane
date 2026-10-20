@@ -179,6 +179,8 @@ export function scopedFor(userId: string, client: PrismaClient = db) {
     monthlyReports: scoped.monthlyReport,
     // Adopted what-if plans (spec step 203).
     whatIfPlans: scoped.whatIfPlan,
+    // The lean plan when income stops (spec step 204).
+    leanPlans: scoped.leanPlan,
     savedShares: scoped.savedShare,
     // What's in investment accounts (spec step 128).
     securities: scoped.security,
