@@ -125,6 +125,8 @@ export async function loadTaxEstimate(
         description: true,
         merchantName: true,
       },
+      // In a fixed order: the last paycheck decides how many are left in the year.
+      orderBy: [{ date: "asc" }, { amountCents: "asc" }, { id: "asc" }],
     }),
     db.accounts.findMany({ where: { type: "investment" }, select: { id: true, subtype: true } }),
     db.investmentTransactions.findMany({

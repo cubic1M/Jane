@@ -112,6 +112,8 @@ export function paychecksLeft(lastPayDate: string, perYear: number): number {
 
 // From pay stubs: the year so far, and the rest of the year's paychecks like the average.
 export function payFromStubs(stubs: PayStub[], year: number, today: string): PayPicture {
+  // By date, whatever order they came in: the last one decides how many paychecks are left.
+  stubs = [...stubs].sort((a, b) => a.payDate.localeCompare(b.payDate));
   const inYear = stubs.filter((s) => Number(s.payDate.slice(0, 4)) === year && s.payDate <= today);
   const soFar = inYear.map(fromStub).reduce(add, ZERO_PAY);
   const frequency = payFrequency(stubs.map((s) => s.payDate));
