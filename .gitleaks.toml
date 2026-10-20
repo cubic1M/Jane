@@ -25,9 +25,3 @@ description = "Made-up account and position labels in the sample people's per-la
 condition = "AND"
 paths = ['''src/data-sources/demo/people-extras/[a-z]+\.ts''']
 regexes = ['''^(loans|taxes|insurance|investing|thinking)-[a-z0-9-]+$''']
-
-[[allowlists]]
-description = "A sample account's key name in src/data-sources/demo/people-extras/investing.ts (step 262), \"investing-old401k\": a label for a made-up former-employer 401(k) in the demo data. Not a key."
-regexes = [
-  '''^investing-old401k$''',
-]
