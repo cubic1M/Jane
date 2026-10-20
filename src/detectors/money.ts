@@ -138,7 +138,7 @@ const cardInterest: Detector = {
       confidence: evidence("seen", profile.months, charges.length, "interest charges"),
       urgency: "soon",
       why: `You paid ${formatCents(total)} in card interest over ${profile.months} months; paying the balance off ends it.`,
-      action: { label: "Cut your card interest", href: "/loans/interest" },
+      action: { label: "Plan the payoff", href: "/debt" },
     };
   },
 };
@@ -241,7 +241,7 @@ const highCostLoans: Detector = {
       confidence: evidence("seen", profile.months, payments.length, "cash-advance repayments"),
       urgency: "now",
       why: `You repaid ${formatCents(repaid)} in cash-advance loans in ${profile.months} months; their fees are typically about a quarter of that.`,
-      action: { label: "See cheaper options", href: "/loans/costly" },
+      action: { label: "See cheaper options", href: "/debt" },
     };
   },
 };
@@ -289,7 +289,7 @@ const hardshipPlan: Detector = {
       confidence: factEvidence(trouble),
       urgency: "now",
       why: `Fees and interest cost you ${formatCents(costs)} in ${profile.months} months. Lenders often lower rates or waive fees for people who ask.`,
-      action: { label: "See your options", href: "/loans/help" },
+      action: { label: "Ask for a hardship plan", href: "/debt" },
     };
   },
 };
