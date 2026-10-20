@@ -272,7 +272,8 @@ describe.runIf(url)("typing to Jane against a real database", () => {
     );
   });
 
-  describe("with a key", () => {
+  // Each test sends several messages through the chat, so they get more time than usual.
+  describe("with a key", { timeout: 60_000 }, () => {
     const create = vi.fn();
     // The chat streams; this plays back what create returns, all at once.
     const claude = () =>
