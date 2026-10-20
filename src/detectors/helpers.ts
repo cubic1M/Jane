@@ -1,5 +1,5 @@
 import { DETECTOR_RATES } from "@/config/detectors";
-import { confidenceOf, type Source } from "@/profile/confidence";
+import { confidenceOf, counted, type Source } from "@/profile/confidence";
 import type { Fact, ProfileInput, ProfileTx } from "@/profile/build";
 import type { Confidence } from "./contract";
 
@@ -41,7 +41,7 @@ export function evidence(
   const span = `${months} month${months === 1 ? "" : "s"} of data`;
   return {
     percent,
-    reason: matches > 0 ? `${matches} ${what} in ${span}` : `no ${what} in ${span}`,
+    reason: matches > 0 ? `${counted(matches, what)} in ${span}` : `no ${what} in ${span}`,
   };
 }
 
@@ -59,3 +59,19 @@ export function weakest(parts: readonly Confidence[]): Confidence {
 }
 
 export const urgencyScore = (u: keyof typeof DETECTOR_RATES.urgency) => DETECTOR_RATES.urgency[u];
+
+// A payee as a person would say it: "NETFLIX.COM" is Netflix, "DISNEY PLUS" is Disney Plus.
+export function nice(description: string): string {
+  return description
+    .replace(/\.com$/i, "")
+    .replace(/\*.*$/, "")
+    .trim()
+    .toLowerCase()
+    .replace(/\b([a-z])/g, (c) => c.toUpperCase());
+}
+
+// "Netflix, Hulu and Disney Plus".
+export function listOf(names: readonly string[]): string {
+  const n = names.map(nice);
+  return n.length <= 1 ? (n[0] ?? "") : `${n.slice(0, -1).join(", ")} and ${n.at(-1)}`;
+}
