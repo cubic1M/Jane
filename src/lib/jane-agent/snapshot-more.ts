@@ -9,6 +9,9 @@ import { loadMortgage, type Mortgage } from "@/lib/mortgage";
 import { loadCredit, type Credit } from "@/lib/credit";
 import { loadCreditCards, type CreditCards } from "@/lib/credit-cards";
 import { loadCreditBuilding, type CreditBuilding } from "@/lib/credit-building";
+import { loadBnpl, type Bnpl } from "@/lib/bnpl";
+import { loadTightMoney, type TightMoney } from "@/lib/tight-money";
+import type { DetectionInput } from "@/detection/types";
 import { loadDebtAutopilot, type DebtAutopilot } from "@/lib/debt-autopilot";
 import { listApplications, type LoanApplicationView } from "@/lib/loan-applications";
 import { loadRefinance, type Refinance } from "@/lib/refinance";
@@ -69,6 +72,10 @@ export type MoreSnapshot = {
   creditCards?: CreditCards;
   // Spec step 175: paying before the statement, the on-time streak, the simulator.
   creditBuilding?: CreditBuilding;
+  // Spec step 176: buy now, pay later plans, their installments and the forecast.
+  bnpl?: Bnpl;
+  // Spec step 177: a tight month's plan, and the requests sent.
+  tightMoney?: TightMoney;
   // Insurance (spec Phase X), from the same loader as /insurance. Optional, so a snapshot
   // built without it (in tests) says nothing about insurance.
   insurance?: InsuranceSnapshot;
@@ -78,7 +85,7 @@ const text = (v: unknown) => (typeof v === "string" && v.trim() ? v.trim() : nul
 
 export async function loadMore(
   userId: string,
-  { client, now = new Date() }: { client: PrismaClient; now?: Date },
+  { client, now = new Date(), input }: { client: PrismaClient; now?: Date; input?: DetectionInput },
 ): Promise<MoreSnapshot> {
   const db = scopedFor(userId, client);
   // Every debt loader below works from the same debt book, loaded once.
@@ -99,6 +106,8 @@ export async function loadMore(
     debtAutopilot,
     creditCards,
     creditBuilding,
+    bnpl,
+    tightMoney,
   ] = await Promise.all([
     autopilotOf(userId, { client }),
     openProposals(userId, { client }),
@@ -132,6 +141,8 @@ export async function loadMore(
     loadDebtAutopilot(userId, { client, now, book }),
     loadCreditCards(userId, { client, now, book }),
     loadCreditBuilding(userId, { client, now, book }),
+    loadBnpl(userId, { client, now, book, input }),
+    loadTightMoney(userId, { client, now, book, input }),
   ]);
   const insurance = await loadInsuranceSnapshot(userId, { client, now });
 
@@ -176,6 +187,8 @@ export async function loadMore(
     debtAutopilot,
     creditCards,
     creditBuilding,
+    bnpl,
+    tightMoney,
     insurance,
   };
 }
