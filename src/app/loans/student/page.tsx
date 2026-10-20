@@ -9,7 +9,9 @@ import { formatCents } from "@/lib/money";
 import { requireUser } from "@/lib/session";
 import { loadStudentLoans } from "@/lib/student-loans";
 import { PLAN_NAMES } from "@/planning/student-loans";
+import { loadStudentLongGame } from "@/lib/student-long-game";
 import { saveProfile, stepDone } from "./actions";
+import { LongGameSection } from "./long-game";
 
 // Student loans (spec step 114): the federal plans compared at the person's income, from
 // the plans' published rules; forgiveness tracking; and studentaid.gov's steps, each with
@@ -27,7 +29,7 @@ async function StudentContent({
   const user = await requireUser();
   await connection();
   const params = await searchParams;
-  const data = await loadStudentLoans(user.id);
+  const [data, game] = await Promise.all([loadStudentLoans(user.id), loadStudentLongGame(user.id)]);
   const error = typeof params.error === "string" ? params.error : "";
   const { loan, comparison, profile } = data;
 
@@ -141,6 +143,8 @@ async function StudentContent({
           </section>
         </>
       )}
+
+      {game.available && <LongGameSection game={game} saved={params.dates === "1"} error={error} />}
 
       <section id="about-you" aria-labelledby="about" className="flex flex-col gap-3">
         <h2 id="about" className="text-xl font-semibold">

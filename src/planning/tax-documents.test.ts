@@ -109,3 +109,27 @@ describe("expectedForms", () => {
     expect(form).toMatchObject({ key: "nec:uber", mayNotSend: false, by: "2026-01-31" });
   });
 });
+
+// Spec step 219: an exchange that sold crypto sends a 1099-DA.
+describe("the 1099-DA", () => {
+  it("is expected from each exchange that sold in the year, with its proceeds", () => {
+    const forms = expectedForms({
+      year: 2026,
+      transactions: [],
+      accounts: [],
+      loans: [],
+      cryptoSales: [{ name: "Demo Exchange", proceedsCents: 2_090_000 }],
+    });
+    expect(forms).toEqual([
+      expect.objectContaining({
+        key: "da:demo-exchange",
+        form: "1099-DA",
+        from: "Demo Exchange",
+        by: "2027-02-15",
+        amountCents: 2_090_000,
+        mayNotSend: false,
+      }),
+    ]);
+    expect(expectedForms({ year: 2026, transactions: [], accounts: [], loans: [] })).toEqual([]);
+  });
+});

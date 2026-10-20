@@ -118,7 +118,7 @@ describe("policies", () => {
   });
 
   it("checks every field", () => {
-    expect(() => checkPolicy({ ...input, kind: "boat" })).toThrow(PolicyError);
+    expect(() => checkPolicy({ ...input, kind: "spaceship" })).toThrow(PolicyError);
     expect(() => checkPolicy({ ...input, carrier: "" })).toThrow("insurance company");
     expect(() => checkPolicy({ ...input, premium: "142" })).toThrow("how often");
     expect(() => checkPolicy({ ...input, premium: "lots", premiumFrequency: "monthly" })).toThrow(

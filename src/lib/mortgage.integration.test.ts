@@ -16,7 +16,6 @@ import { linkDemoBank } from "@/lib/plaid/demo";
 import { syncItem } from "@/lib/plaid/sync";
 import { checkRates } from "./refinance";
 import { loadMortgage } from "./mortgage";
-import { addAsset } from "./owned-assets";
 
 // Spec step 115 against a real, migrated Postgres, on the demo bank: the mortgage's PMI and
 // escrow from Plaid Liabilities, PMI removal raised once the home's value the person gives
@@ -72,7 +71,8 @@ describe.runIf(url)("the mortgage, watched, against a real database", () => {
       escrowBalanceCents: 421_055,
       hasPrepaymentPenalty: false,
     });
-    expect(m.pmi).toEqual({ kind: "unknown", why: "no_value" });
+    // The demo bank gives its sample person a $380,000 home: 82.2% of it is still owed.
+    expect(m.pmi).toMatchObject({ kind: "not_yet" });
     expect(m.escrow).toMatchObject({ fromCents: 214_154, toCents: 219_831, changeCents: 5_677 });
     // A 3.99% mortgage: nothing in the catalog is cheaper, so refinancing never pays back.
     expect(m.refi?.breakEvenMonths).toBeNull();
@@ -87,23 +87,15 @@ describe.runIf(url)("the mortgage, watched, against a real database", () => {
   });
 
   it("raises PMI removal once the home's value puts the loan under 80%, with a drafted request", async () => {
-    const m = (await loadMortgage(userId, opts()))!;
-    await addAsset(
-      userId,
-      {
-        kind: "home",
-        name: "Our house",
-        value: "380000",
-        valuedOn: "2026-10-01",
-        loanAccountId: m.loan.accountId!,
-      },
-      opts(),
-    );
+    // The demo home is $380,000.
     // $312,400 of $380,000 is 82.2%: not yet.
     expect((await loadMortgage(userId, opts()))!.pmi).toMatchObject({ kind: "not_yet" });
     expect((await fromSource()).filter((x) => x.dedupeKey.includes("pmi"))).toEqual([]);
 
-    await client.ownedAsset.updateMany({ where: { userId }, data: { valueCents: 45_000_000 } });
+    await client.ownedAsset.updateMany({
+      where: { userId, kind: "home" },
+      data: { valueCents: 45_000_000 },
+    });
     const now = (await loadMortgage(userId, opts()))!;
     expect(now.pmi).toMatchObject({ kind: "can_ask" });
     expect(now.letter).toContain("69.4% of my home's current value of about $450,000.00");

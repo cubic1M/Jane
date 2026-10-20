@@ -25,6 +25,7 @@ import {
 import { parseCoverEventRef } from "@/lib/jane-agent/insurance/cover-words";
 import { NegotiationError, callCarrier, declineNegotiation } from "@/lib/insurance/negotiate";
 import { SavingError, applySaving, dismissSaving } from "@/lib/insurance/savings";
+import { RiskError, answerRisk } from "@/lib/insurance/risks";
 import { requireUser } from "@/lib/session";
 
 // Insurance (spec step 102). A save goes back to /insurance with ?saved=, so the
@@ -169,6 +170,18 @@ export async function skipSaving(formData: FormData): Promise<void> {
   }
   refreshOthers();
   redirect("/insurance");
+}
+
+// Spec step 197: a question about how they live, answered on the page.
+export async function answerRiskForm(formData: FormData): Promise<void> {
+  const user = await requireUser();
+  try {
+    await answerRisk(user.id, text(formData, "riskId"), text(formData, "answer") === "yes");
+  } catch (error) {
+    if (!(error instanceof RiskError)) throw error;
+  }
+  refreshOthers();
+  redirect("/insurance?saved=risk");
 }
 
 export async function deletePolicy(formData: FormData): Promise<void> {
