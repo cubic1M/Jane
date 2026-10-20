@@ -321,3 +321,37 @@ test("a demo-bank person pays less for the same cover with one tap (step 196)", 
   ).toBeVisible();
   await expect(savings.getByText(/Turn on autopay/)).toHaveCount(0);
 });
+
+test("a demo-bank person answers a question about how they live, and a yes opens a gap (step 197)", async ({
+  context,
+  page,
+  baseURL,
+}) => {
+  const user = await signedInUser("user");
+  userId = user.userId;
+  await context.addCookies([
+    { name: "authjs.session-token", value: user.sessionToken, url: baseURL ?? "" },
+  ]);
+  await page.goto("/connect");
+  await page.getByRole("button", { name: "Link a demo bank" }).click();
+  await expect(page).toHaveURL("/chat", { timeout: 60_000 });
+
+  await page.goto("/insurance");
+  const questions = page.getByRole("region", { name: "A few questions about how you live" });
+  const uber = questions.getByRole("listitem").filter({ hasText: "Are you driving for Uber?" });
+  await expect(uber.getByText(/I saw \$412\.00 come in from Uber Driver/)).toBeVisible();
+  await uber.getByRole("button", { name: "Yes" }).click();
+  await expect(page.getByText("Thanks. Jane has noted it.")).toBeVisible();
+  await expect(questions.getByText("Are you driving for Uber?")).toHaveCount(0);
+  await expect(
+    page.getByRole("heading", {
+      name: "Your car policy may not cover you while you drive for pay",
+    }),
+  ).toBeVisible();
+
+  // A no is remembered: the boat question never comes back.
+  const boat = questions.getByRole("listitem").filter({ hasText: "Do you have a boat?" });
+  await boat.getByRole("button", { name: "No" }).click();
+  await page.goto("/insurance");
+  await expect(page.getByText("Do you have a boat?")).toHaveCount(0);
+});

@@ -25,6 +25,8 @@ import { listReadings } from "@/lib/insurance/readings";
 import { listCoverChanges } from "@/lib/insurance/cover-changes";
 import { listNegotiations } from "@/lib/insurance/negotiate";
 import { refreshSavings } from "@/lib/insurance/savings";
+import { listRisks, refreshRisks } from "@/lib/insurance/risks";
+import { riskQuestion } from "@/lib/jane-agent/insurance/risk-words";
 import { lowering, savingLine } from "@/lib/jane-agent/insurance/saving-words";
 import { askCallBody, callResultBody } from "@/lib/jane-agent/insurance/done-by-jane-words";
 import { partnerFor } from "@/lib/insurance/partner";
@@ -35,6 +37,7 @@ import { requireUser } from "@/lib/session";
 import { autopilotOf } from "@/lib/autopilot";
 import { autopilotReply } from "@/lib/jane-agent/insurance/autopilot";
 import {
+  answerRiskForm,
   applyChanges,
   applyOneSaving,
   skipSaving,
@@ -61,6 +64,7 @@ const SAVED: Record<string, string> = {
   changes: "Done. Your insurance is up to date.",
   called: "Jane called your insurer. What they said is below and in the chat.",
   saving: "Done. Your policy is updated and your insurer confirmed it.",
+  risk: "Thanks. Jane has noted it.",
 };
 
 const dateLabel = (day: string) =>
@@ -198,6 +202,9 @@ async function InsuranceContent({
   ]);
   // Spec step 196: looked at again whenever the page opens.
   const savings = await refreshSavings(user.id);
+  // Spec step 197: the questions about how they live, read from their payments.
+  await refreshRisks(user.id);
+  const risks = await listRisks(user.id, { status: "asked" });
   const policyById = (id: string) => policies.find((p) => p.id === id);
   const renewals = negotiations.filter((n) => n.status !== "declined").slice(-3);
   // Spec step 154: one group per life event.
@@ -262,6 +269,43 @@ async function InsuranceContent({
         >
           {saved}
         </p>
+      )}
+
+      {risks.length > 0 && (
+        <section id="risks" className="flex flex-col gap-3" aria-labelledby="risks-heading">
+          <h2 id="risks-heading" className="text-xl font-semibold">
+            A few questions about how you live
+          </h2>
+          <ul className="flex flex-col gap-3">
+            {risks.map((r) => (
+              <li
+                key={r.id}
+                className="flex flex-col gap-2 rounded-xl border border-zinc-200 p-4 text-sm dark:border-zinc-800"
+              >
+                <p>{riskQuestion(r)}</p>
+                <form action={answerRiskForm} className="flex gap-3">
+                  <input type="hidden" name="riskId" value={r.id} />
+                  <button
+                    type="submit"
+                    name="answer"
+                    value="yes"
+                    className="inline-flex h-10 items-center rounded-full bg-emerald-700 px-5 font-semibold text-white hover:bg-emerald-800"
+                  >
+                    Yes
+                  </button>
+                  <button
+                    type="submit"
+                    name="answer"
+                    value="no"
+                    className="inline-flex h-10 items-center rounded-full border border-zinc-300 px-5 font-medium dark:border-zinc-700"
+                  >
+                    No
+                  </button>
+                </form>
+              </li>
+            ))}
+          </ul>
+        </section>
       )}
 
       {savings.length > 0 && (
