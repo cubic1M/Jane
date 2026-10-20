@@ -3041,6 +3041,8 @@ model PaycheckPlan {
   paidOn        DateTime @map("paid_on") @db.Date
   // [{ purpose, sector, label, goalId?, toAccountId, toName, cents, status }].
   moves         Json
+  // Spec step 206: where every dollar of the paycheck went (WentTo).
+  summary       Json?
   status        String   @default("proposed")
   createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
 
