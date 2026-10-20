@@ -105,9 +105,7 @@ describe.runIf(url)("Jane notices changes, with the demo bank", { timeout: 30_00
     expect(fee?.finding).toMatchObject({ type: "bank_fees" });
     // The $1,349 Apple Store purchase two days ago.
     const shopping = changes.find((c) => c.kind === "category_pace" && c.category === "Shopping");
-    expect(shopping?.title).toMatch(
-      /^You've spent \$[\d,]+\.\d\d on Shopping so far this month\./,
-    );
+    expect(shopping?.title).toMatch(/^You've spent \$[\d,]+\.\d\d on Shopping so far this month\./);
     expect(shopping?.amountCents).toBeGreaterThan(134_900);
     // Peacock started two months ago.
     expect(changes.find((c) => c.kind === "new_subscription")?.merchant).toBe("Peacock");
