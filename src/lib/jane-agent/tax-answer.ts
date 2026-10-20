@@ -14,6 +14,8 @@ import { loadFamilyTaxes } from "@/lib/family-taxes";
 import { familyReply } from "./family-taxes-message";
 import { loadHomeTaxes } from "@/lib/home-taxes";
 import { loadEquityTax } from "@/lib/equity-tax";
+import { MultiYearError, loadMultiYear, setRetireYear } from "@/lib/multi-year";
+import { yearsReply } from "./multi-year-message";
 import { equityReply } from "./equity-tax-message";
 import { loadIdentity } from "@/lib/tax-identity";
 import { identityReply } from "./tax-identity-message";
@@ -123,6 +125,20 @@ export async function answerTaxIntent(
       return intent.ask === "move"
         ? moveReply(intent, view.state.value, now)
         : workStateReply(intent.state, view.state.value);
+    }
+    case "years":
+      return yearsReply(await loadMultiYear(userId, { client, now }));
+    case "retire_year": {
+      try {
+        await setRetireYear(userId, intent.year, { client, now, via: "chat" });
+      } catch (error) {
+        if (error instanceof MultiYearError) return { body: error.message, refs: {}, actions: [] };
+        throw error;
+      }
+      return {
+        ...yearsReply(await loadMultiYear(userId, { client, now })),
+        body: `Got it: you plan to retire in ${intent.year}. ${yearsReply(await loadMultiYear(userId, { client, now })).body}`,
+      };
     }
     case "equity":
       return equityReply(await loadEquityTax(userId, { client, now }));

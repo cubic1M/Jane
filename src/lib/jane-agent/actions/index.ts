@@ -94,6 +94,7 @@ import {
   taxIpPinRemind,
 } from "./tax-identity";
 import { taxEquityAside } from "./tax-equity";
+import { taxYearsPlan } from "./tax-years";
 import { taxSideBusiness, taxSideHobby } from "./side-income";
 import { taxFundOpen, taxGivingNo, taxReceiptGot } from "./giving";
 import {
@@ -289,6 +290,7 @@ export const ACTION_HANDLERS: Readonly<Record<ActionId, ActionHandler>> = {
   "tax.identity_not": taxIdentityNot,
   "tax.identity_step": taxIdentityStep,
   "tax.equity_aside": taxEquityAside,
+  "tax.years_plan": taxYearsPlan,
   "tax.records_remind": taxRecordsRemind,
   // Investments (spec step 129 on).
   "invest.answer.1": investAnswer1,

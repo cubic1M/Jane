@@ -384,6 +384,7 @@ model User {
   healthScores      HealthScore[]
   monthlyReports    MonthlyReport[]
   whatIfPlans       WhatIfPlan[]
+  taxPlanEvents     TaxPlanEvent[]
   leanPlans         LeanPlan[]
   yearPlans         YearPlan[]
   unusualAnswers    UnusualAnswer[]
@@ -2565,6 +2566,10 @@ model TaxProfile {
   // put the January reminder on their deadlines.
   ipPinHaveYear         Int?      @map("ip_pin_have_year")
   ipPinRemindedYear     Int?      @map("ip_pin_reminded_year")
+  // Spec step 220: the year the person plans to retire (empty: Jane assumes one), and the
+  // multi-year moves (keys like "roth:2027") already put on their deadlines.
+  retireYear            Int?      @map("retire_year")
+  multiYearHandled      String[]  @default([]) @map("multi_year_handled")
   createdAt             DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt             DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
 
@@ -3040,6 +3045,22 @@ model EquityEvent {
 
   @@index([userId])
   @@map("equity_events")
+}
+
+// Spec step 220: a bonus, a sale or a retirement withdrawal the person plans, so Jane can
+// find the best year for it.
+model TaxPlanEvent {
+  id          String   @id @default(cuid())
+  userId      String   @map("user_id")
+  kind        String
+  year        Int
+  amountCents Int      @map("amount_cents")
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("tax_plan_events")
 }
 
 model TaxReturn {

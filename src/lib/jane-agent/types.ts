@@ -203,6 +203,8 @@ export const ACTION_IDS = [
   "tax.identity_step",
   // Spec step 219: a goal for the tax crypto and equity pay will bring.
   "tax.equity_aside",
+  // Spec step 220: put a multi-year tax move on the person's deadlines.
+  "tax.years_plan",
   // Investments (spec step 129 on): the answer buttons on an investor-profile question,
   // by position (src/config/investing.ts PROFILE_QUESTIONS).
   "invest.answer.1",
@@ -421,6 +423,8 @@ export type MessageRefs = {
   priorReturn?: string;
   // Spec step 217: the tax notice (its id) a message is about.
   taxNotice?: string;
+  // Spec step 220: the multi-year tax move (its key) a message is about.
+  yearsMove?: string;
   // Spec step 218: the sign of identity theft (and where Jane learned of it), and the step a
   // message is about.
   identitySign?: string;

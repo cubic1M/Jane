@@ -31,6 +31,7 @@ import { loadFamilyTaxes } from "@/lib/family-taxes";
 import { NOTICE_KINDS } from "@/config/tax-notices";
 import { checkNoticeFor, listTaxNotices, noticeAmountCents } from "@/lib/tax-notices";
 import { loadEquityTax } from "@/lib/equity-tax";
+import { loadMultiYear } from "@/lib/multi-year";
 import { loadIdentity } from "@/lib/tax-identity";
 import { loadSideIncome } from "@/lib/side-income";
 import { loadReturnReviews } from "@/lib/prior-return/review";
@@ -177,6 +178,12 @@ export const TAX_TOOLS: Anthropic.Tool[] = [
     name: "tax_equity",
     description:
       "The tax on the person's crypto and equity pay for the tax year: crypto sold (proceeds, cost by lot, short- and long-term gain), what they hold and its unrealised gain, the 1099-DA from an exchange that sold; ESPP sales and whether each was qualifying or a disqualifying disposition that lost its special treatment; ISOs exercised and the alternative minimum tax; RSU vests with the tax withheld against their real rate and the shortfall; and in demo advice mode how much to set aside and whether a goal exists. Holding-period and AMT rules are in config with sources.",
+    input_schema: noInput,
+  },
+  {
+    name: "tax_years",
+    description:
+      "The person's federal tax projected over the next years: each year's income, tax and top rate (the first is their estimate, the rest assume pay grows until the retirement year they gave, or one Jane assumed, and that the brackets rise with inflation), the total over the years; and in demo advice mode the moves that save tax over the years (a Roth conversion in a low-income year, realising gains in the 0% bracket, bunching charity into alternate years, timing a planned bonus, sale or withdrawal), each with the tax it saves in all. Jane moves no money; a move can be put on the person's deadlines.",
     input_schema: noInput,
   },
   {
@@ -690,6 +697,28 @@ export async function runTaxTool(
           steps: v.case.steps.map((s) => ({ step: s.title, doneOn: s.doneOn })),
           next: v.case.next,
         },
+      });
+    }
+    case "tax_years": {
+      const v = await loadMultiYear(userId, { client, now });
+      return out({
+        startYear: v.year,
+        retireYear: v.retireYear,
+        retireYearAssumed: v.retireAssumed,
+        assumptions: v.assumptions,
+        years: v.rows.map((r) => ({
+          year: r.year,
+          income: money(r.incomeCents),
+          federalTax: money(r.totalTaxCents),
+          topRate: `${Math.round(r.marginalRate * 100)}%`,
+        })),
+        totalFederalTax: money(v.lifetimeTaxCents),
+        moves: v.moves.map((m) => ({
+          move: m.title,
+          why: m.why,
+          savesOverTheYears: money(m.effectCents),
+        })),
+        advice: v.advice,
       });
     }
     case "tax_equity": {

@@ -123,6 +123,19 @@ async function TaxesContent() {
         </Link>
       </section>
 
+      <section aria-labelledby="years-heading" id="years" className={CARD}>
+        <h2 id="years-heading" className="text-xl font-semibold">
+          Taxes over the years
+        </h2>
+        <p className="text-sm text-zinc-600 dark:text-zinc-400">
+          Your federal tax for each year ahead, and the moves, like a Roth conversion in a low year,
+          that save the most over all of them.
+        </p>
+        <Link href="/taxes/years" className={LINK}>
+          See my tax years
+        </Link>
+      </section>
+
       <section aria-labelledby="identity-heading" id="identity" className={CARD}>
         <h2 id="identity-heading" className="text-xl font-semibold">
           Your tax identity
