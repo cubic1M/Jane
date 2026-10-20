@@ -741,7 +741,9 @@ export function demoLiabilities({ seed, anchor }: DemoSeed, today: string): Liab
         // Spec step 175: the statement closes on the 1st, 25 days before the payment's due.
         last_statement_issue_date: lastDayOfMonthOn(today, 1),
         last_statement_balance: 2410.5,
-        minimum_payment_amount: 35,
+        // Covers a month of interest on the balance (22.99% of $2,410.50 is about $46) and a
+        // little of the principal, as a real minimum does.
+        minimum_payment_amount: 72,
         next_payment_due_date: nextDayOfMonth(today, 26),
       },
     ],
