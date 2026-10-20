@@ -295,6 +295,8 @@ export const ACTION_IDS = [
   "whatif.adopt",
   "lean.start",
   "lean.not_now",
+  "suggestion.yes",
+  "suggestion.no",
   "steady.pay",
   "steady.skip",
   "steady.on",
@@ -350,6 +352,8 @@ export type MessageRefs = {
   reviewButtons?: string[];
   // Spec step 245: the add-on found in the payments (key) or confirmed (id) a button is about.
   carAddon?: { key?: string; id?: string };
+  // Spec step 255: the suggestion (by its key) a button is about.
+  suggestion?: string;
   // Insurance (spec Phase X): a coverage gap by its key (GAP_KEYS), and the policy a
   // message is about.
   insuranceGap?: string;
