@@ -22,6 +22,7 @@ import { runPlanUpkeep } from "@/lib/plan-upkeep";
 import { ITEM_STATUS, syncItem } from "@/lib/plaid/sync";
 import { scrub } from "@/lib/scrub";
 import { runTaxAutopilot } from "@/lib/tax-autopilot";
+import { scanSuggestions } from "@/lib/suggestions";
 
 // The nightly controller run (spec step 142): one run per person each night that does every
 // sector's checks, in CONTROLLER_STEPS' order, through the sectors' own code: sync the
@@ -148,6 +149,14 @@ const STEPS: Record<
         .replace(/^./, (c) => c.toUpperCase())
         .concat("."),
       changed: settled + auto + asked + bills,
+    };
+  },
+  async suggestions(userId, { client, now }) {
+    const { fired, selected } = await scanSuggestions(userId, { client, now });
+    if (fired === 0) return { did: "Nothing new to suggest.", changed: 0 };
+    return {
+      did: `Checked everything for you: ${plural(fired, "idea")} fit, ${selected.length} worth your attention today.`,
+      changed: selected.length,
     };
   },
 };

@@ -14,6 +14,7 @@ import { healthFor, type HealthView } from "@/lib/health-score";
 import type { Attention } from "./attention";
 import { loadAttention } from "./attention-load";
 import { resultsByKind, type KindResult } from "@/lib/worked";
+import { offeredToday, type OfferedSuggestion } from "@/lib/suggestions";
 import { adoptedPlans, type AdoptedPlan } from "@/lib/what-if";
 import { openLean, recentlyEnded, type LeanState } from "@/lib/lean-plan";
 import { recentReport, type StoredReport } from "@/lib/monthly-report-store";
@@ -122,6 +123,8 @@ export type Snapshot = {
   attention?: Attention;
   // Spec step 203: what-if plans the person adopted. Optional, like changes.
   whatIf?: AdoptedPlan[];
+  // Spec step 255: the suggestions chosen for today. Optional, like changes.
+  suggestions?: OfferedSuggestion[];
   // Spec step 208: unusual-activity alerts waiting for "this was me" or "not me".
   unusual?: { id: string; key: string; title: string; body: string }[];
   // Spec step 207: what the person says yes to and what worked, by kind of finding.
@@ -296,6 +299,7 @@ export async function loadSnapshot(
     attention,
     monthlyReport,
     whatIf,
+    suggestions,
   ] = await Promise.all([
     loadMore(userId, { client, now, input }),
     loadTaxSnapshot(userId, { client, now }),
@@ -309,6 +313,7 @@ export async function loadSnapshot(
     loadAttention(userId, { client, now, timezone: user?.timezone ?? null }),
     recentReport(userId, { client, now }),
     adoptedPlans(userId, { client }),
+    offeredToday(userId, { client, now }),
   ]);
 
   return {
@@ -372,6 +377,7 @@ export async function loadSnapshot(
     attention,
     monthlyReport,
     whatIf,
+    suggestions,
     lean: {
       open: await openLean(userId, { client }),
       ended: await recentlyEnded(userId, { client, now }),

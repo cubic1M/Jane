@@ -61,6 +61,7 @@ export async function exportUserData(
     healthScores,
     monthlyReports,
     whatIfPlans,
+    suggestions,
     leanPlans,
     yearPlans,
     unusualAnswers,
@@ -443,6 +444,20 @@ export async function exportUserData(
       orderBy: { startMonth: "asc" },
       select: { startMonth: true, months: true, updatedAt: true },
     }),
+    db.suggestions.findMany({
+      orderBy: { firstSeenAt: "asc" },
+      select: {
+        key: true,
+        title: true,
+        worthCents: true,
+        confidencePercent: true,
+        confidenceReason: true,
+        why: true,
+        status: true,
+        firstSeenAt: true,
+        answeredAt: true,
+      },
+    }),
     db.leanPlans.findMany({
       orderBy: { createdAt: "asc" },
       select: {
@@ -682,6 +697,7 @@ export async function exportUserData(
     healthScores,
     monthlyReports,
     whatIfPlans,
+    suggestions,
     leanPlans,
     yearPlans,
     unusualAnswers,
