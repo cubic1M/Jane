@@ -1,4 +1,4 @@
-import { MESSAGE_PRIORITY } from "@/config/agent-chat";
+import { MESSAGE_PRIORITY, UNUSUAL_CHAT_MAX } from "@/config/agent-chat";
 import { parseKey } from "@/detection/unusual";
 import type { MessageSource } from "./source";
 
@@ -7,7 +7,7 @@ import type { MessageSource } from "./source";
 export const unusualSource: MessageSource = {
   key: "unusual",
   gather(snapshot) {
-    return (snapshot.unusual ?? []).map((alert) => {
+    return (snapshot.unusual ?? []).slice(0, UNUSUAL_CHAT_MAX).map((alert) => {
       const refund = parseKey(alert.key)?.rule === "refund";
       return {
         kind: "decision" as const,
