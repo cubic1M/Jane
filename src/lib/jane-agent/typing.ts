@@ -16,6 +16,7 @@ import { hit } from "@/lib/rate-limit";
 import { answerByRules } from "./answer";
 import { listPreferences } from "./preferences";
 import { shapeReply, styleInstructions, styleOf } from "./style";
+import { joinReplies, splitQuestions } from "./two-parts";
 import { askClaudeInChat, type ChatStreamEvent, type ChatTurn } from "./claude";
 import type { Topic } from "./context";
 import { typedFlowReply } from "./flows/chat";
@@ -128,6 +129,16 @@ async function answer(
   // Spec step 188: how the person likes Jane to talk.
   const style = styleOf(await listPreferences(userId, { client }));
   const rules = async () => {
+    // Spec step 193: two questions in one message get both answers.
+    const two = splitQuestions(text, asOf);
+    if (two) {
+      const replies = await Promise.all(
+        two.map((part) => answerByRules(userId, part, { client, now, topic })),
+      );
+      if (replies.every((r) => r !== null)) {
+        return shapeReply(joinReplies(replies as Reply[]), style);
+      }
+    }
     const reply = await answerByRules(userId, intent, { client, now, topic });
     return reply ? shapeReply(reply, style) : null;
   };
@@ -155,6 +166,7 @@ async function answer(
     onEvent,
     advice: await adviceMode(userId, { client }),
     style: styleInstructions(style),
+    topic,
   });
   if (result.kind === "answer") {
     return { reply: result.reply, intent: intent.kind, source: "claude" };

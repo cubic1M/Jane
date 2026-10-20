@@ -149,7 +149,11 @@ describe("askClaudeInChat", () => {
       "suggest.never",
       "open",
     ]);
-    expect(result.reply.refs).toEqual({ findingId: "f1", fingerprint: "fp1" });
+    expect(result.reply.refs).toEqual({
+      findingId: "f1",
+      fingerprint: "fp1",
+      topic: { kind: "about", findingId: "f1" },
+    });
     // Jane's own wording for the finding follows Claude's text.
     expect(result.reply.body).toMatch(/\n\nReview your Hulu subscription\. Could save about/);
     expect(lastToolResult(1)).toMatchObject({

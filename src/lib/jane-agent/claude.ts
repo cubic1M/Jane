@@ -11,6 +11,7 @@ import { ASK_BLOCKED_REPLY } from "@/config/ask";
 import type { PrismaClient } from "@/generated/prisma/client";
 import { anthropic, chatModel } from "@/lib/anthropic";
 import { addSpend, overDailyCap } from "./spend";
+import type { Topic } from "./context";
 import {
   checkGuardrails,
   dollarFigures,
@@ -38,7 +39,7 @@ import type { Reply } from "./replies";
 // the answer streamed as it's written (onEvent), a sentence at a time once each passes the
 // guardrails (./guarded-text), with what Jane is looking up in between.
 
-export const CHAT_PROMPT_VERSION = "chat-v8";
+export const CHAT_PROMPT_VERSION = "chat-v9";
 
 // The one rule that differs in demo advice mode (spec step 98).
 const NO_ADVICE = `- Never give investment, tax or legal advice, and don't mention investments, taxes or legal matters at all. Don't suggest financial products beyond Jane's pick from finding_details.`;
@@ -51,6 +52,8 @@ Be useful, like a friend who's good with money and has their numbers in front of
 - Before suggesting what to do about something the app found, look at finding_details for it. Use subscriptions for what they pay on a schedule.
 - For "am I OK?", "how am I doing" or "what should I do this month", use whole_picture: start with its headline, then the one to three things that matter most, with the first one's button.
 - What they've told you is under "remembered" in their numbers. Respect it: never suggest anything they said not to suggest, or cutting something they said they need.
+- Follow the conversation (spec step 193): "it", "that one", "the other one", "do it" and "and for my wife's car?" mean what was just said or what the last answer was about (given with their numbers). Don't ask again what they already told you.
+- When they ask two things in one message, answer both, in order, each with its figure; the first sentence still gives the first answer. When you really can't tell what they mean, ask one short question that names the likely choices ("Do you mean your Netflix or your Hulu?"). Never a generic list of things you can do when one of your tools fits.
 - If they push back ("you tell me"), give a straight answer from their numbers. Don't repeat yourself or hand it back to them.
 - Every answer must stand on its own. A button is extra: never answer with only a button or "tap the button".
 
@@ -93,6 +96,8 @@ type Options = {
   // Demo advice mode (src/lib/advice-mode.ts, spec step 98): the demo guardrail profile,
   // and advice labelled. Off unless the caller checked adviceMode.
   advice?: boolean;
+  // Spec step 193: what the last answer was about, so "it" and "the other one" mean something.
+  topic?: Topic | null;
   // Spec step 188: how the person likes answers (src/lib/jane-agent/style.ts).
   style?: string | null;
   // Spec step 93: how long to wait for Claude to start, and to finish, in milliseconds.
@@ -191,6 +196,12 @@ function rewriteRequest(
   return `(From the app, not the person.) That answer can't be shown yet:\n- ${reasons.join("\n- ")}\nWrite the whole answer again for the person: fix only those parts and keep the rest, your suggestion and the other figures included. Don't mention this note.`;
 }
 
+// What the last answer was about, in words for Claude (spec step 193).
+export function topicLine(topic: Topic): string {
+  const what = [topic.target, topic.category, topic.month].filter(Boolean).join(", ");
+  return `Your last answer was about ${what || topic.kind}${topic.verb ? ` (they were asking to ${topic.verb} it)` : ""}. "It", "that one" and "the other one" mean that or what you just said.`;
+}
+
 export async function askClaudeInChat(
   userId: string,
   history: ChatTurn[],
@@ -203,6 +214,7 @@ export async function askClaudeInChat(
     onEvent = () => {},
     advice = false,
     style = null,
+    topic = null,
     firstWordsMs = CHAT_CLAUDE_FIRST_WORDS_MS,
     deadlineMs = CHAT_CLAUDE_DEADLINE_MS,
   }: Options,
@@ -240,7 +252,7 @@ export async function askClaudeInChat(
     },
     {
       type: "text",
-      text: `The person's numbers right now (today is ${now.toISOString().slice(0, 10)}):\n${primer.text || "None available."}${style ? `\n\n${style}` : ""}`,
+      text: `The person's numbers right now (today is ${now.toISOString().slice(0, 10)}):\n${primer.text || "None available."}${topic ? `\n\n${topicLine(topic)}` : ""}${style ? `\n\n${style}` : ""}`,
     },
   ];
 
@@ -400,6 +412,10 @@ export async function askClaudeInChat(
       };
     }
     const refs: Reply["refs"] = { ...(proposal?.refs ?? {}) };
+    // Spec step 193: a finding it offered a button for is what the next message is about.
+    if (proposal?.refs.findingId) {
+      refs.topic = { kind: "about", findingId: proposal.refs.findingId };
+    }
     // Its words pass the same guardrails as the answer, or it isn't shown.
     if (shown && checkGuardrails(drawBlock(shown).alt, allowedCents, undefined, profile).ok) {
       refs.block = shown;
