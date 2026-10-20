@@ -2,6 +2,9 @@ import type { PrismaClient } from "@/generated/prisma/client";
 import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
 import { chatFeed, closeSettled, postedToday } from "./messages";
+import { SCANNING_HELLO, SCANNING_HELLO_KEY } from "@/config/scan";
+import { scanInProgress } from "@/lib/scan";
+import { postMessages } from "./messages";
 import { runJaneAgentSafely } from "./run";
 import { toView, type MessageView } from "./view";
 
@@ -44,9 +47,36 @@ export async function openChat(
     now = new Date(),
     pages = 1,
   }: { client?: PrismaClient; now?: Date; pages?: number } = {},
-): Promise<{ messages: MessageView[]; hasEarlier: boolean } | null> {
+): Promise<{ messages: MessageView[]; hasEarlier: boolean; scanning: boolean } | null> {
   if ((await scopedFor(userId, client).accounts.count()) === 0) return null;
   const timezone = await timezoneOf(userId, { client });
+  // The first scan is still running (the sample person's, or a bank just linked): the chat
+  // opens at once with Jane saying she's still looking, instead of waiting for the whole
+  // run; the scan's own run posts her findings as it finishes.
+  const scanning = await scanInProgress(userId, { client, now });
+  if (scanning) {
+    await postMessages(
+      userId,
+      [
+        {
+          kind: "brief",
+          body: SCANNING_HELLO,
+          refs: {},
+          actions: [],
+          dedupeKey: `scanning:${SCANNING_HELLO_KEY}`,
+          priority: 0,
+          source: "scanning",
+        },
+      ],
+      { client, now },
+    );
+    const feed = await chatFeed(userId, { client, pages, now });
+    return {
+      messages: feed.messages.map((m) => toView(m, now, timezone)),
+      hasEarlier: feed.hasEarlier,
+      scanning: true,
+    };
+  }
   // Jane looks again on the first visit of the day, and (spec step 92) after a
   // conversation, when what she held back while the person was typing can come.
   if (
@@ -61,5 +91,6 @@ export async function openChat(
   return {
     messages: feed.messages.map((m) => toView(m, now, timezone)),
     hasEarlier: feed.hasEarlier,
+    scanning: false,
   };
 }

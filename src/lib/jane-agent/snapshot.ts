@@ -242,7 +242,8 @@ export async function loadSnapshot(
     planFor(userId, { client }),
     recentRuleApprovals(userId, { client, now }),
     newestUnreadAlerts(userId, { client, limit: ALERTS_LOOKED_AT }),
-    db.janeMessages.count(),
+    // The "still looking" line doesn't count as Jane having said hello.
+    db.janeMessages.count({ where: { NOT: { dedupeKey: "scanning:hello" } } }),
     listPreferences(userId, { client }),
   ]);
   const findings = await db.findings.findMany({

@@ -39,6 +39,7 @@ import { demoPayoffs } from "@/lib/loan-applications";
 import { confirmInsuranceSwitches } from "@/lib/insurance/switch";
 import { demoExtrasOf, demoPlaidApi, isDemoToken } from "./demo";
 import { runJaneAgentSafely } from "@/lib/jane-agent/run";
+import { markScanDone } from "@/lib/scan";
 
 // Brings one Plaid item up to date: accounts, transactions since the saved cursor
 // (added, modified and removed), recurring streams, loans and card rates (Liabilities,
@@ -608,6 +609,9 @@ export async function syncItem(
   }
 
   await runDetection(item.userId, { client, now });
+  // The first scan after linking: what people see first (the findings) is posted right after
+  // detection, before the slower sector work below; the chat is already open and fills in.
+  if (result.firstSync) await runJaneAgentSafely(item.userId, { client, now, trigger: "sync" });
   // After detection these don't depend on each other, so they run together; the sample
   // person's first screen is waiting on this sync.
   await Promise.all([
@@ -627,5 +631,6 @@ export async function syncItem(
   ]);
   // Jane says what's new in the chat (spec step 82); a problem there never fails the sync.
   await runJaneAgentSafely(item.userId, { client, now, trigger: "sync" });
+  await markScanDone(item.userId, { client, now });
   return result;
 }
