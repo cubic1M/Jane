@@ -213,6 +213,8 @@ export const ACTION_IDS = [
   "tax.property_drop",
   "tax.exemption_remind",
   "tax.exemption_claimed",
+  // Spec step 222: the accountant's answers read.
+  "tax.accountant_seen",
   // Investments (spec step 129 on): the answer buttons on an investor-profile question,
   // by position (src/config/investing.ts PROFILE_QUESTIONS).
   "invest.answer.1",
@@ -290,8 +292,14 @@ export const ACTION_IDS = [
   "whatif.adopt",
   "lean.start",
   "lean.not_now",
+<<<<<<< HEAD
   "suggestion.yes",
   "suggestion.no",
+=======
+  "steady.pay",
+  "steady.skip",
+  "steady.on",
+>>>>>>> claude/step-254-detectors
   "unusual.me",
   "unusual.not_me",
 ] as const;

@@ -26,7 +26,11 @@ import { billPaySource } from "./billpay";
 import { healthSource } from "./health";
 import { attentionSource } from "./attention";
 import { leanSource } from "./lean";
+<<<<<<< HEAD
 import { suggestionsSource } from "./suggestions";
+=======
+import { steadySource } from "./steady";
+>>>>>>> claude/step-254-detectors
 import { unusualSource } from "./unusual";
 import { reportSource } from "./report";
 import { investmentsSource } from "./investments";
@@ -75,7 +79,11 @@ export const MESSAGE_SOURCES: readonly MessageSource[] = [
   healthSource,
   attentionSource,
   leanSource,
+<<<<<<< HEAD
   suggestionsSource,
+=======
+  steadySource,
+>>>>>>> claude/step-254-detectors
   unusualSource,
   reportSource,
   // Spec step 128 on.
