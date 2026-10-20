@@ -404,6 +404,7 @@ model User {
   costlyProducts CostlyProduct[]
   planMenus      PlanMenu[]
   planChanges    PlanChange[]
+  billLadders    BillLadder[]
 
   @@map("users")
 }
@@ -3711,4 +3712,30 @@ model PlanChange {
 
   @@index([userId])
   @@map("plan_changes")
+}
+
+// Spec step 234: a ladder of Treasury bills for money needed by a date, bought through a
+// stand-in (nothing real is bought). Every bill matures by endsOn; when one matures before
+// then, the stand-in rolls it into the next, and each roll is recorded in events.
+model BillLadder {
+  id          String   @id @default(cuid())
+  userId      String   @map("user_id")
+  // goal (a savings goal) or emergency (the part above its floor).
+  purpose     String
+  goalId      String?  @map("goal_id")
+  name        String
+  amountCents Int      @map("amount_cents")
+  startOn     DateTime @map("start_on") @db.Date
+  endsOn      DateTime @map("ends_on") @db.Date
+  // [{ amountCents, bills: [{ term, startMonth, endMonth, rateBps }] }].
+  rungs       Json
+  // [{ on, rung, term, amountCents }]: each roll the stand-in made.
+  events      Json     @default("[]")
+  status      String   @default("active")
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("bill_ladders")
 }

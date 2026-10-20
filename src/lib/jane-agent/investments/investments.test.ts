@@ -65,6 +65,7 @@ import {
   locationReply,
   planMenuReply,
   honestReply,
+  shortTermReply,
 } from "./replies";
 import { gather } from "../brain";
 import { parseIntent } from "../intents";
@@ -81,6 +82,7 @@ import {
 } from "@/planning/costly-products";
 import { productLine } from "./costly-copy";
 import { honestPeriod } from "@/planning/honest";
+import { compare as compareShort, ladder as shortLadder } from "@/planning/short-term";
 import { PREDICTION_WORDS } from "@/config/steady-hand";
 import { locationPlan, type PlanAccount } from "@/planning/location";
 import { holdingsReply, matchAccounts } from "./replies";
@@ -2927,5 +2929,71 @@ describe("honestReply", () => {
         simulatedPrices: false,
       }).body,
     ).toMatch(/finished/);
+  });
+});
+
+// Spec step 234: short-term money.
+const SHORT_OPTIONS = compareShort({ amountCents: 2_000_000, months: 12, fed: 0.22, state: 0.06 });
+const SHORT_CANDIDATE = {
+  key: "goal:g1",
+  purpose: "goal" as const,
+  goalId: "g1",
+  name: "House down payment",
+  amountCents: 2_000_000,
+  months: 12,
+  endsOn: "2027-10-18",
+  options: SHORT_OPTIONS,
+  best: SHORT_OPTIONS[0],
+  ladder: shortLadder(2_000_000, 12),
+  gainCents: 4_000,
+  hasLadder: false,
+};
+
+describe("short-term money questions, by rules", () => {
+  it.each(["what is a cd ladder", "what is an i bond", "short term money"])(
+    "reads %j as short-term money",
+    (text) => {
+      expect(parseIntent(text, ASOF)).toMatchObject({ kind: "investments", topic: "short_term" });
+    },
+  );
+});
+
+describe("shortTermReply and the short-term message", () => {
+  const view = {
+    advice: true,
+    fed: 0.22,
+    state: 0.06,
+    stateCode: "NY",
+    fromProfile: true,
+    candidates: [SHORT_CANDIDATE],
+    ladders: [],
+  };
+  it("compares after tax, lists only what can't lock the money past the date, and gives a tap", () => {
+    const reply = shortTermReply(view);
+    expect(reply.body).toMatch(
+      /^House down payment \(\$20,000\.00, needed by Oct 18, 2027\): after tax, /,
+    );
+    expect(reply.body).toMatch(
+      /Only places that can't lock your money past that date are on the list\./,
+    );
+    expect(reply.body).toMatch(
+      /A ladder of 4 rungs of Treasury bills, each maturing by Oct 18, 2027/,
+    );
+    expect(reply.actions.map((a) => a.id)).toEqual(["ladder.build", "open"]);
+    expect(reply.refs).toEqual({ advice: true, ladderKey: "goal:g1" });
+    expect(shortTermReply({ ...view, advice: false }).actions.map((a) => a.id)).toEqual(["open"]);
+  });
+  it("posts when the gain is worth it, never when a ladder already runs", () => {
+    const gather = (candidates: InvestmentSnapshot["shortTerm"]["candidates"], advice = true) =>
+      investmentsSource
+        .gather(
+          { ...base, investments: demoInvestmentSnapshot({ advice, shortTerm: { candidates } }) },
+          {} as never,
+        )
+        .filter((c) => c.dedupeKey.startsWith("short:"));
+    expect(gather([SHORT_CANDIDATE]).map((m) => m.kind)).toEqual(["decision"]);
+    expect(gather([{ ...SHORT_CANDIDATE, hasLadder: true }])).toEqual([]);
+    expect(gather([{ ...SHORT_CANDIDATE, gainCents: 100 }])).toEqual([]);
+    expect(gather([SHORT_CANDIDATE], false)).toEqual([]);
   });
 });

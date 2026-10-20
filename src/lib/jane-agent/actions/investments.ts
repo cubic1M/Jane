@@ -30,6 +30,8 @@ import {
 import { answerOldPlan, OldAccountsError, startRollover } from "@/lib/investments/old-accounts";
 import { contributeForChild, createGiftLink, FamilyError } from "@/lib/investments/family";
 import { answerPremium, CostlyProductError } from "@/lib/investments/costly-products";
+import { ShortTermError, startLadder } from "@/lib/investments/short-term";
+import { SHORT_LINK } from "../investments/short-term-copy";
 import { confirmMenu, PlanMenuError, requestPlanChange } from "@/lib/investments/plan-menu";
 import { MENU_LINK } from "../investments/menu-copy";
 import { LocationError, makeSwaps } from "@/lib/investments/location";
@@ -616,6 +618,27 @@ export const menuChange: ActionHandler = {
       };
     } catch (error) {
       if (error instanceof PlanMenuError) throw answeredElsewhere(error.message);
+      throw error;
+    }
+  },
+};
+
+// Spec step 234: start the ladder the message showed, a tap. Every bill matures by the date.
+export const ladderBuild: ActionHandler = {
+  id: "ladder.build",
+  on: "open",
+  async run({ userId, message, action, client, now }) {
+    const key = message.refs.ladderKey;
+    if (!key) throw new ChatActionError("not_offered", "That button isn't on this message.");
+    try {
+      const r = await startLadder(userId, key, { client, now });
+      return {
+        answeredWith: action.label,
+        note: `Started in the stand-in (no real bills are bought): ${r.rungs} ${r.rungs === 1 ? "rung" : "rungs"} for ${r.name}, every bill maturing by ${r.endsOn} and rolling over until then.`,
+        actions: [SHORT_LINK],
+      };
+    } catch (error) {
+      if (error instanceof ShortTermError) throw answeredElsewhere(error.message);
       throw error;
     }
   },

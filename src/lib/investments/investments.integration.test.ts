@@ -41,6 +41,7 @@ import {
 import { startCollegePlan } from "./college";
 import { loadLocation, makeSwaps, LocationError } from "./location";
 import { loadHonest } from "./honest";
+import { loadShortTerm, settleLadders, ShortTermError, startLadder } from "./short-term";
 import {
   confirmMenu,
   loadPlanMenu,
@@ -1513,6 +1514,65 @@ describe.runIf(url)("investments in Jane's chat, against a real database", () =>
       });
       expect(reply.body).toMatch(/Over 1 year: /);
       expect(reply.body).toMatch(/Over 5 years/);
+    },
+  );
+
+  it(
+    "step 234: a goal's money compared after tax, a ladder that never runs past the date and rolls itself over",
+    SLOW,
+    async () => {
+      const userId = await demoPerson();
+      await client.savingsGoal.create({
+        data: {
+          userId,
+          name: "House down payment",
+          targetCents: 3_000_000,
+          targetDate: new Date("2027-10-18T00:00:00Z"),
+          manualSavedCents: 2_000_000,
+        },
+      });
+      // A goal five years out isn't short-term.
+      await client.savingsGoal.create({
+        data: {
+          userId,
+          name: "Retirement trip",
+          targetCents: 3_000_000,
+          targetDate: new Date("2031-10-18T00:00:00Z"),
+          manualSavedCents: 500_000,
+        },
+      });
+      const view = await loadShortTerm(userId, { client, now: LINKED });
+      expect(view.candidates.map((c) => c.name)).not.toContain("Retirement trip");
+      const goal = view.candidates.find((c) => c.name === "House down payment")!;
+      expect(goal.months).toBe(12);
+      // Only places that can't lock the money past the date.
+      expect(goal.options.every((o) => o.product.lockMonths <= 12)).toBe(true);
+      expect(goal.options.map((o) => o.afterTaxBps)).toEqual(
+        [...goal.options.map((o) => o.afterTaxBps)].sort((a, b) => b - a),
+      );
+
+      await expect(startLadder(userId, "goal:nope", { client, now: LINKED })).rejects.toThrow(
+        ShortTermError,
+      );
+      if (goal.ladder) {
+        await startLadder(userId, goal.key, { client, now: LINKED });
+        await expect(startLadder(userId, goal.key, { client, now: LINKED })).rejects.toThrow(
+          /already has a ladder/,
+        );
+        const row = await client.billLadder.findFirstOrThrow({ where: { userId } });
+        // Nothing matures after the goal date.
+        const rungs = row.rungs as unknown as { bills: { endMonth: number }[] }[];
+        expect(rungs.every((r) => r.bills.every((b) => b.endMonth <= 12))).toBe(true);
+        // Six months later the short bills have rolled; a year later it's cash again.
+        const mid = new Date("2027-04-19T12:00:00Z");
+        const rolled = await settleLadders(userId, { client, now: mid });
+        expect(rolled).toBeGreaterThan(0);
+        expect(await settleLadders(userId, { client, now: mid })).toBe(0);
+        await settleLadders(userId, { client, now: new Date("2027-10-19T12:00:00Z") });
+        expect((await client.billLadder.findFirstOrThrow({ where: { userId } })).status).toBe(
+          "closed",
+        );
+      }
     },
   );
 });

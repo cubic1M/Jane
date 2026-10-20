@@ -90,6 +90,19 @@ const rows: Row[] = [
     "honest_performance",
     "what is my 3 year return against a benchmark",
   ],
+  [
+    "shortterm",
+    "/investments/short-term",
+    "short_term_money",
+    "where should i put money i need in a year",
+  ],
+  [
+    "shortterm",
+    "/investments/short-term",
+    "short_term_money",
+    "are treasury bills better than a cd",
+  ],
+  ["shortterm", "/investments/short-term", "short_term_money", "what is a cd ladder"],
   ["planmenu", "/investments/plan-menu", "plan_menu", "is my target date fund fee too high"],
   ["invreview", "/investments", "steady_hand", "should i sell everything the market is crashing"],
 

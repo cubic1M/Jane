@@ -72,6 +72,8 @@ import {
   proposedLine,
   savingLine,
 } from "../investments/menu-copy";
+import { MIN_GAIN_CENTS } from "@/config/short-term";
+import { candidateLine, ladderButton, SHORT_LINK } from "../investments/short-term-copy";
 import { AUTO_LOG_LINK, summaryBody } from "../investments/automatic-copy";
 import { CASH_MIN_GAIN_CENTS } from "@/config/cash";
 import { CASH_LINK, cashLine, moveButtons } from "../investments/cash-copy";
@@ -345,6 +347,21 @@ export const investmentsSource: MessageSource = {
         dedupeKey: "hsa:link",
         priority: MESSAGE_PRIORITY.hsa,
       });
+    }
+    // Step 234: money needed within three years, compared after tax; a ladder when bills win
+    // by enough, one tap, every bill maturing by the date.
+    if (inv.advice) {
+      for (const c of inv.shortTerm.candidates) {
+        if (c.hasLadder || c.gainCents < MIN_GAIN_CENTS) continue;
+        out.push({
+          kind: c.ladder ? "decision" : "heads_up",
+          body: candidateLine(c),
+          refs: { advice: true, ...(c.ladder ? { ladderKey: c.key } : {}) },
+          actions: [...(c.ladder ? [ladderButton(c)] : []), SHORT_LINK, snoozeButton()],
+          dedupeKey: `short:${c.key}:${Math.round(c.amountCents / 100_000)}`,
+          priority: MESSAGE_PRIORITY.short_term,
+        });
+      }
     }
     // Step 232: a plan fund list Jane read is confirmed before it is used; once it is, the
     // cheapest mix of the plan's own funds is one tap to send.

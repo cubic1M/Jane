@@ -281,6 +281,13 @@ async function InvestmentsContent() {
             : 1, 3 and 5 years, after fees and taxes, against a simple mix with your risk.
           </p>
           <p className="text-sm text-zinc-600 dark:text-zinc-400">
+            <Link href="/investments/short-term" className={LINK}>
+              Short-term money
+            </Link>
+            : bills, CDs, I bonds and savings compared after tax, with a ladder that matures on
+            time.
+          </p>
+          <p className="text-sm text-zinc-600 dark:text-zinc-400">
             Learn:{" "}
             {["index-funds", "fees", "the-match", "roth-vs-traditional", "rebalancing"].map(
               (slug, i) => (

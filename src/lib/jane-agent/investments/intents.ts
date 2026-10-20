@@ -30,7 +30,8 @@ export type InvestmentTopic =
   | "yearly_review"
   | "location"
   | "plan_menu"
-  | "honest_performance";
+  | "honest_performance"
+  | "short_term";
 
 export type InvestmentIntent = {
   kind: "investments";
@@ -168,7 +169,12 @@ const PLAN_MENU =
 const HONEST =
   /\b(?:beat|beating|beaten) the market\b|\bbenchmark\b|\bafter[- ](?:fees|tax|taxes) (?:return|performance)\b|\breal (?:return|performance)\b|\b(?:3|three|5|five)[- ]?year (?:return|performance)\b|\bwhy (?:did|have) my investments (?:underperform|lag)\w*\b/;
 
+// Spec step 234: money needed soon, and Treasury bills, CDs and I bonds.
+const SHORT_TERM =
+  /\bcd ladder\b|\bi[- ]bonds?\b|\bwhere (?:should|can) i (?:put|park|keep) (?:money|cash) (?:i|that i|for something i) (?:need|will need) (?:soon|in|within)\b|\bshort[- ]term (?:money|savings|investing)\b|\bsafest place (?:for|to) (?:money|cash)\b/;
+
 export function parseInvestmentIntent(text: string): InvestmentIntent | null {
+  if (SHORT_TERM.test(text)) return { kind: "investments", topic: "short_term", account: null };
   if (HONEST.test(text)) return { kind: "investments", topic: "honest_performance", account: null };
   if (PLAN_MENU.test(text)) return { kind: "investments", topic: "plan_menu", account: null };
   if (LOCATION.test(text)) return { kind: "investments", topic: "location", account: null };

@@ -212,6 +212,8 @@ export const MESSAGE_PRIORITY = {
   location: 34,
   // Spec step 232: the plan's fund list to confirm, and its cheapest mix (demo advice).
   plan_menu: 35,
+  // Spec step 234: short-term money placed safely (demo advice).
+  short_term: 36,
   // Spec step 164: the month's summary of what Jane did by herself in investing.
   investing_summary: 40,
   auto_invest_run: 31,

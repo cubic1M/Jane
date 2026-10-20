@@ -29,6 +29,7 @@ import { reviewFor } from "./review-copy";
 import { loadLocation } from "@/lib/investments/location";
 import { loadPlanMenu } from "@/lib/investments/plan-menu";
 import { loadHonest } from "@/lib/investments/honest";
+import { loadShortTerm } from "@/lib/investments/short-term";
 import { loadSteadyHand } from "@/lib/investments/steady-hand";
 import { CASH_HOMES, CASH_RATES_AS_OF } from "@/config/cash";
 import { formatReturn } from "@/insights/returns";
@@ -199,6 +200,12 @@ export const INVESTMENT_TOOLS: Anthropic.Tool[] = [
     input_schema: noInput,
   },
   {
+    name: "short_term_money",
+    description:
+      "Money the person needs within three years (goals due soon with money saved, and the emergency fund above its floor): high-yield savings, Treasury bills, CDs and I bonds compared after tax at their own federal and state rates (Treasury interest is free of state tax), listing only places that can't lock the money past its date, and a Treasury bill ladder that matures when it's needed and rolls itself over until then. The emergency fund's floor stays in savings. The person taps to build a ladder; never do it yourself.",
+    input_schema: noInput,
+  },
+  {
     name: "steady_hand",
     description:
       "Whether the person's investments have had a big drop lately (down 8% over a month or 15% over three, their own return, money in and out left out) and, in demo advice mode, how each goal's timeline sits (near goals are already in cash). Report only these past facts and the plan to stay the course. NEVER say or imply what markets will do, when they will recover, or that now is a good or bad time: no one can know.",
@@ -245,6 +252,7 @@ export const INVESTMENT_TOOL_STATUS: Readonly<Record<string, string>> = {
   crypto: "Reading your crypto balances…",
   cash_plan: "Looking at where your cash sits…",
   steady_hand: "Looking at how your investments have moved…",
+  short_term_money: "Comparing safe places for money you need soon…",
   honest_performance: "Comparing you with a benchmark…",
   plan_menu: "Looking at your plan's funds…",
   asset_location: "Checking which account holds what…",
@@ -850,6 +858,34 @@ export async function runInvestmentTool(
           })),
         })),
         forecast: "never",
+      });
+    }
+    case "short_term_money": {
+      const v = await loadShortTerm(userId, { client, now });
+      if (!v.advice) return out({ advice: "only in demo advice mode" });
+      return out({
+        yourRates: {
+          federalPercent: Math.round(v.fed * 100),
+          statePercent: Math.round(v.state * 100),
+        },
+        money: v.candidates.map((c) => ({
+          for: c.name,
+          amount: money(c.amountCents),
+          neededBy: c.endsOn,
+          afterTaxPercent: c.options.map((o) => ({
+            where: o.product.name,
+            percent: o.afterTaxBps / 100,
+          })),
+          ladderExtraAYear: c.ladder ? money(c.gainCents) : null,
+          alreadyLaddered: c.hasLadder,
+        })),
+        ladders: v.ladders.map((l) => ({
+          name: l.name,
+          amount: money(l.amountCents),
+          cashOn: l.endsOn,
+          rolledOver: l.events.length,
+          status: l.status,
+        })),
       });
     }
     case "steady_hand": {

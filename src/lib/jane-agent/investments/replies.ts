@@ -39,6 +39,8 @@ import type { PlanMenuView } from "@/lib/investments/plan-menu";
 import { changeButton, confirmButtons, MENU_LINK, proposedLine, savingLine } from "./menu-copy";
 import type { HonestView } from "@/lib/investments/honest";
 import { HONEST_LINK, honestLine } from "./honest-copy";
+import type { ShortTermView } from "@/lib/investments/short-term";
+import { candidateLine, ladderButton, SHORT_LINK } from "./short-term-copy";
 import { STEADY_LINK, steadyMessage, timelines } from "./steady-copy";
 import { CRYPTO_LINK, feeFlag, NEVER_TRADES, shareFlag, sizeLine } from "./crypto-copy";
 import {
@@ -990,5 +992,25 @@ export function honestReply(view: HonestView): Reply {
     body: `${honestLine(view)}${view.rows.length > 0 ? " That's what happened, not what will." : ""}`,
     actions: [HONEST_LINK],
     refs: {},
+  };
+}
+
+// Spec step 234: where money needed soon does best after tax, for each goal due within three
+// years and the emergency fund above its floor (demo advice mode).
+export function shortTermReply(view: ShortTermView): Reply {
+  if (!view.advice) {
+    return {
+      body: "I don't give recommendations on real accounts yet. The options and their after-tax rates are on the short-term money page.",
+      actions: [SHORT_LINK],
+      refs: {},
+    };
+  }
+  const withLadder = view.candidates.find((c) => c.ladder && !c.hasLadder);
+  return {
+    body:
+      view.candidates.map(candidateLine).join(" ") ||
+      "None of your goals is due within three years with money saved, and there's no emergency money above its floor.",
+    actions: [...(withLadder ? [ladderButton(withLadder)] : []), SHORT_LINK],
+    refs: { advice: true, ...(withLadder ? { ladderKey: withLadder.key } : {}) },
   };
 }

@@ -194,7 +194,10 @@ export type AuditEvent =
   | "costly_product_saved"
   // Spec step 232: a plan's fund menu confirmed, and a change to the plan's funds requested.
   | "plan_menu_confirmed"
-  | "plan_change_requested";
+  | "plan_change_requested"
+  // Spec step 234: a Treasury bill ladder started, and a bill rolled into the next.
+  | "ladder_started"
+  | "ladder_rolled";
 
 export type AuditActor = { type: ActorType; id: string | null };
 
