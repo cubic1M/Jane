@@ -45,6 +45,35 @@ export const DETECTOR_RATES = {
   paydayFeeShare: 0.25,
   // Income that moves around by this much month to month is worth smoothing.
   smoothingMinMonthlySwingShare: 0.3,
+  // Taxes (step 261). ESTIMATES TO VERIFY, like the rest of this file; the dated figures
+  // (brackets, limits, payroll tax) come from src/config/tax-rates.ts, not from here.
+  tax: {
+    // Pay on deposits is take-home; gross is about this many times it.
+    netToGross: 1.3,
+    // Company stock paid as RSUs is withheld at this flat federal rate (supplemental wages).
+    rsuFlatWithholding: 0.22,
+    // Without a vest schedule: one year's vesting is about this share of the stock plan.
+    stockVestShare: 0.25,
+    // Roth conversions: worth raising with at least this much in pre-tax retirement accounts,
+    // for people close to or in retirement; converting this share a year at the 12% bracket
+    // against an assumed 22% later.
+    rothMinBalanceCents: 20_000_000,
+    rothConvertShare: 0.1,
+    rothNowRate: 0.12,
+    rothLaterRate: 0.22,
+    // From this month of the year a conversion is urgent (it must be done by December 31).
+    rothUrgentFromMonth: 11,
+    // Childcare: at least this much a year before the dependent care FSA is worth raising.
+    childcareMinCents: 100_000,
+    // Identity protection PIN: the IRS's January to filing season window, and the average
+    // refund a thief would take (IRS filing season statistics, about $3,200), ESTIMATE.
+    ipPinFrom: "01-01",
+    ipPinUntil: "04-15",
+    typicalRefundCents: 320_000,
+    // Estimated payments: urgency by days to the next due date.
+    estimatedNowDays: 14,
+    estimatedSoonDays: 45,
+  },
   // Urgency scores: now, soon, later.
   urgency: { now: 3, soon: 2, later: 1 },
 } as const;

@@ -2,6 +2,7 @@ import { DETECTOR_RATES as R } from "@/config/detectors";
 import { formatCents } from "@/lib/money";
 import { type Detector, suggestionId } from "./contract";
 import { evidence, factEvidence, tx, weakest } from "./helpers";
+import { daysToEstimatedDate, urgencyForEstimated } from "./taxes";
 
 // Detectors for how a person earns (spec step 254): taxes with no employer, saving for
 // retirement alone, uneven pay, a business mixed with home, company stock. Pure; see
@@ -36,8 +37,9 @@ const estimatedTaxes: Detector = {
         factEvidence(income),
         evidence("seen", profile.months, 0, "income-tax payments"),
       ]),
-      urgency: "soon",
-      why: `Nobody withholds tax from your pay and I see no tax payments in ${profile.months} months. On about ${formatCents(owed)} of tax a year, late payment penalties could reach ${formatCents(Math.round(owed * R.underpaymentPenaltyRate))}.`,
+      // The next quarterly date drives it: now within two weeks, soon within six.
+      urgency: urgencyForEstimated(profile.today),
+      why: `Nobody withholds tax from your pay and I see no tax payments in ${profile.months} months. On about ${formatCents(owed)} of tax a year, late payment penalties could reach ${formatCents(Math.round(owed * R.underpaymentPenaltyRate))}. The next payment is due in ${daysToEstimatedDate(profile.today)} days.`,
       action: { label: "Set aside tax", href: "/taxes" },
     };
   },
