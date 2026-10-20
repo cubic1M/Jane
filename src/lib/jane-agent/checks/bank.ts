@@ -745,6 +745,61 @@ const BASE_QUESTIONS: readonly CheckQuestion[] = [
     needs: "rules",
     expect: { intent: "tax", mentions: /\$16,100/ },
   },
+  // Phase AF (spec steps 165–173).
+  {
+    id: "tax-16",
+    text: "what state taxes do I pay",
+    needs: "rules",
+    expect: { intent: "tax", mentions: /state taxes come to/i },
+  },
+  {
+    id: "tax-17",
+    text: "what's my tax plan",
+    needs: "rules",
+    expect: { intent: "tax", mentions: /tax moves? left/i, list: true },
+  },
+  {
+    id: "tax-18",
+    text: "am I ready for an audit",
+    needs: "rules",
+    expect: { intent: "tax", mentions: /audit pack/i },
+  },
+  {
+    id: "tax-19",
+    text: "should we file jointly or separately",
+    needs: "rules",
+    expect: { intent: "tax", mentions: /family tax/i },
+  },
+  {
+    id: "tax-20",
+    text: "should I use a donor-advised fund",
+    needs: "rules",
+    expect: { intent: "tax", mentions: /charity/i },
+  },
+  {
+    id: "tax-21",
+    text: "does the salt cap limit my property tax deduction",
+    needs: "rules",
+    expect: { intent: "tax", mentions: /state and local tax/i },
+  },
+  {
+    id: "tax-22",
+    text: "did I miss anything on my return",
+    needs: "rules",
+    expect: { intent: "tax", mentions: /return/i },
+  },
+  {
+    id: "tax-23",
+    text: "what are the taxes on my rental income",
+    needs: "rules",
+    expect: { intent: "tax", mentions: /rent|rental/i },
+  },
+  {
+    id: "tax-24",
+    text: "what tax forms do I need",
+    needs: "rules",
+    expect: { intent: "tax", mentions: /W-2/, list: true },
+  },
 
   // Insurance (spec step 108), over the demo bank's sample GEICO car policy
   // (DEMO_POLICY in src/lib/insurance/profile.ts: $142.00 a month, a $1,000.00 deductible).
