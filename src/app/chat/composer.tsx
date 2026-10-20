@@ -37,6 +37,8 @@ export function ChatComposer({ id, maxLength }: { id: string; maxLength: number 
   const form = useRef<HTMLFormElement>(null);
   const input = useRef<HTMLInputElement>(null);
   const pending = actionPending || draft !== null || refreshing;
+  // Spec step 194: a second tap or Enter in the same instant never sends it twice.
+  const sending = useRef(false);
 
   useEffect(() => {
     if (state.sentAt === 0) return;
@@ -61,7 +63,8 @@ export function ChatComposer({ id, maxLength }: { id: string; maxLength: number 
   async function send(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const question = input.current?.value.trim() ?? "";
-    if (!question || pending) return;
+    if (!question || pending || sending.current) return;
+    sending.current = true;
     setError(null);
     setHeard("");
     sent.current = true;
@@ -69,6 +72,7 @@ export function ChatComposer({ id, maxLength }: { id: string; maxLength: number 
     form.current?.reset();
 
     const fail = (text: string) => {
+      sending.current = false;
       setDraft(null);
       setError(text);
       if (input.current) input.current.value = question;
@@ -116,6 +120,7 @@ export function ChatComposer({ id, maxLength }: { id: string; maxLength: number 
     }
     if (!finished) return fail(FAILED);
     // The stored messages replace the draft in the same render.
+    sending.current = false;
     startRefresh(() => {
       router.refresh();
       setDraft(null);
@@ -206,8 +211,17 @@ export function ChatComposer({ id, maxLength }: { id: string; maxLength: number 
           </p>
         )}
         {shownError && !pending && (
-          <p role="alert" className="text-sm text-red-700">
+          <p role="alert" className="flex flex-wrap items-center gap-x-3 text-sm text-red-700">
             {shownError}
+            {/* Spec step 194: a plain error with a way to try again; the words are still in
+                the box. */}
+            <button
+              type="button"
+              onClick={() => form.current?.requestSubmit()}
+              className="inline-flex min-h-11 items-center font-semibold underline"
+            >
+              Try again
+            </button>
           </p>
         )}
       </form>
