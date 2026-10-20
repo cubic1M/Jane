@@ -69,6 +69,10 @@ export const ACTION_IDS = [
   "saving.apply_all",
   "saving.apply",
   "saving.no",
+  // Spec step 197: risks seen in how they live, and sample prices for the gap a yes opens.
+  "risk.yes",
+  "risk.no",
+  "insurance.gap_quotes",
   "plan.approve_safe",
   "undo.rule",
   "undo.no",
@@ -197,6 +201,8 @@ export const ACTION_IDS = [
   "tax.identity_open",
   "tax.identity_not",
   "tax.identity_step",
+  // Spec step 219: a goal for the tax crypto and equity pay will bring.
+  "tax.equity_aside",
   // Investments (spec step 129 on): the answer buttons on an investor-profile question,
   // by position (src/config/investing.ts PROFILE_QUESTIONS).
   "invest.answer.1",
@@ -333,6 +339,8 @@ export type MessageRefs = {
   // Spec step 196: "same" for the savings that keep the cover, or one saving's id.
   savingGroup?: string;
   savingId?: string;
+  // Spec step 197: the risk a question asks about.
+  riskId?: string;
   // The finding as Jane described it (src/lib/jane-agent/fingerprint.ts): a button only
   // acts while the finding is still what the message said.
   fingerprint?: string;

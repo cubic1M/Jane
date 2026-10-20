@@ -409,6 +409,71 @@ const ONE_OFF: (Template & { offsets: number[] })[] = [
     amount: 64.2,
     offsets: [-2],
   },
+  // Spec step 197: one signal of each kind of risk Jane asks about, kept apart from the
+  // paycheck and the tax lane (neutral income category, one-off events).
+  {
+    key: "uber-driver",
+    account: "checking",
+    name: "UBER DRIVER PAYOUT",
+    merchant: "Uber Driver",
+    category: "INCOME_OTHER",
+    amount: -412,
+    offsets: [-12],
+  },
+  {
+    key: "shopify-payout",
+    account: "checking",
+    name: "SHOPIFY PAYOUT",
+    merchant: "Shopify",
+    category: "INCOME_OTHER",
+    amount: -640,
+    offsets: [-20],
+  },
+  {
+    key: "airbnb-payout",
+    account: "checking",
+    name: "AIRBNB PAYOUT",
+    merchant: "Airbnb",
+    category: "INCOME_OTHER",
+    amount: -1150,
+    offsets: [-7],
+  },
+  {
+    key: "vet",
+    account: "card",
+    name: "VCA ANIMAL HOSPITAL",
+    merchant: "VCA",
+    category: "GENERAL_MERCHANDISE_PET_SUPPLIES",
+    amount: 184,
+    offsets: [-18],
+  },
+  {
+    key: "petco",
+    account: "card",
+    name: "PETCO #1043",
+    merchant: "Petco",
+    category: "GENERAL_MERCHANDISE_PET_SUPPLIES",
+    amount: 96,
+    offsets: [-16],
+  },
+  {
+    key: "jeweler",
+    account: "card",
+    name: "ZALES #2041",
+    merchant: "Zales",
+    category: "GENERAL_MERCHANDISE_OTHER_GENERAL_MERCHANDISE",
+    amount: 2480,
+    offsets: [-9],
+  },
+  {
+    key: "marine",
+    account: "card",
+    name: "WEST MARINE #112",
+    merchant: "West Marine",
+    category: "GENERAL_MERCHANDISE_SPORTING_GOODS",
+    amount: 640,
+    offsets: [-30],
+  },
   // A big recent purchase, for a return window on /deadlines (spec step 71).
   {
     key: "apple-store",
@@ -676,7 +741,9 @@ export function demoLiabilities({ seed, anchor }: DemoSeed, today: string): Liab
         // Spec step 175: the statement closes on the 1st, 25 days before the payment's due.
         last_statement_issue_date: lastDayOfMonthOn(today, 1),
         last_statement_balance: 2410.5,
-        minimum_payment_amount: 35,
+        // Covers a month of interest on the balance (22.99% of $2,410.50 is about $46) and a
+        // little of the principal, as a real minimum does.
+        minimum_payment_amount: 72,
         next_payment_due_date: nextDayOfMonth(today, 26),
       },
     ],

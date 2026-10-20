@@ -107,9 +107,10 @@ describe.runIf(url)("Jane's chat against a real database", () => {
         expect(buttonIds(f)).toEqual(expect.arrayContaining(["finding.yes", "finding.no", "open"]));
         expect(f.snoozedUntil).toEqual(BUNDLED_UNTIL);
       }
-      // What shows: the hello, the agenda, the autopilot question (spec step 83) and anything
-      // urgent; all open.
-      expect(visible(messages).length).toBeLessThanOrEqual(CHAT_DAILY_LIMIT + 3);
+      // What shows: the hello, the agenda, the autopilot question (spec step 83), an unusual
+      // charge (step 208, uncapped; the demo bank's Apple Store charge is one) and
+      // anything urgent; all open.
+      expect(visible(messages).length).toBeLessThanOrEqual(CHAT_DAILY_LIMIT + 4);
       expect(messages.every((m) => m.status === "open")).toBe(true);
     });
 

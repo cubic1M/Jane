@@ -24,7 +24,6 @@ import {
   markHomeRequestSent,
   saveHomeFacts,
 } from "./home-equity";
-import { addAsset } from "./owned-assets";
 
 // Spec step 228 against a real, migrated Postgres, on the demo bank (a $312,400 mortgage at
 // 3.99% that began at $400,000, PMI, $4,210.55 in escrow and a $2,198.31 payment): PMI measured
@@ -185,17 +184,11 @@ describe.runIf(url)("a home's equity against a real database", { timeout: 30_000
   it("compares a HELOC, a cash-out refinance and a personal loan with total cost, in demo advice only", async () => {
     const id = await demoPerson("eq-project");
     const m = await loadHomeEquity(id, opts());
-    await addAsset(
-      id,
-      {
-        kind: "home",
-        name: "Our house",
-        value: "450000",
-        valuedOn: "2026-10-01",
-        loanAccountId: m.accountId!,
-      },
-      opts(),
-    );
+    // The demo bank has its own home; give it a value that leaves room to borrow against.
+    await client.ownedAsset.updateMany({
+      where: { userId: id, kind: "home" },
+      data: { valueCents: 45_000_000 },
+    });
     const c = (await compareHomeProject(id, { projectCents: 4_000_000, years: 10 }, opts()))!;
     expect(c.options.map((o) => o.product)).toEqual(["heloc", "cash_out", "personal"]);
     expect(c.options.every((o) => o.available && o.totalCostCents > 0)).toBe(true);

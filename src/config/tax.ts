@@ -203,6 +203,9 @@ export const TAX_FORMS = {
   g: { form: "1099-G", what: "unemployment benefits", by: "01-31" },
   mortgage: { form: "1098", what: "mortgage interest", by: "01-31" },
   student: { form: "1098-E", what: "student loan interest", by: "01-31" },
+  // Spec step 219: an exchange that sold crypto in the year reports the proceeds (brokers
+  // report from 2025; cost basis from 2026).
+  da: { form: "1099-DA", what: "crypto sales", by: "02-15" },
 } as const;
 export type TaxFormKey = keyof typeof TAX_FORMS;
 // For review: 1099-NEC/MISC, by the year the money was paid.
@@ -388,6 +391,8 @@ export const TAX_MESSAGE_PRIORITY = {
   // Spec step 218: a sign of identity theft is urgent; the IP PIN is January's.
   identity: 83,
   ip_pin: 48,
+  // Spec step 219: crypto and equity pay will add tax nothing withholds.
+  equity: 40,
 } as const;
 
 // What Jane does about taxes by herself at each autopilot level (spec step 57), shown on
@@ -441,6 +446,11 @@ export const TAX_AUTOPILOT: readonly { feature: string; ask: string; auto: strin
     feature: "investments",
     ask: "I work out your gains and losses from your holdings, warn you about wash sales and, with demo advice, show losses worth harvesting and what's better held in your 401(k) or IRA.",
     auto: "I work out your gains and losses after every sync, warn you about wash sales and, with demo advice, bring up losses worth harvesting before the year ends. I never sell anything myself.",
+  },
+  {
+    feature: "equity",
+    ask: "I work out crypto gains by lot, ESPP sales that lost their special treatment, ISO exercises with the alternative minimum tax and RSU withholding that falls short, all in your estimate. With demo advice I say how much to set aside.",
+    auto: "I work out crypto gains by lot, ESPP sales that lost their special treatment, ISO exercises with the alternative minimum tax and RSU withholding that falls short, all in your estimate, and with demo advice have a goal ready for what to set aside. Putting money in is always yours.",
   },
   {
     feature: "identity",

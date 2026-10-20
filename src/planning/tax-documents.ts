@@ -61,6 +61,8 @@ export function expectedForms(input: {
   // Loans with this year's interest; for a past year, with null (banks only report the
   // current year's).
   loans: FormLoan[];
+  // Spec step 219: exchanges that sold crypto in the year, with the proceeds Jane worked out.
+  cryptoSales?: { name: string; proceedsCents: number }[];
 }): ExpectedForm[] {
   const inYear = input.transactions.filter(
     (t) => Number(t.date.slice(0, 4)) === input.year && t.amountCents < 0,
@@ -108,6 +110,7 @@ export function expectedForms(input: {
       forms.push(make("brokerage", a.name, null));
     }
   }
+  for (const x of input.cryptoSales ?? []) forms.push(make("da", x.name, x.proceedsCents));
   for (const loan of input.loans) {
     // A past year's interest isn't reported any more (null): the lender still sends the form.
     if (

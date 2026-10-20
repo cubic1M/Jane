@@ -812,6 +812,12 @@ const BASE_QUESTIONS: readonly CheckQuestion[] = [
     needs: "rules",
     expect: { intent: "tax", mentions: /Identity Protection PIN/ },
   },
+  {
+    id: "tax-27",
+    text: "how are my crypto gains taxed",
+    needs: "rules",
+    expect: { intent: "tax", mentions: /crypto|exchange/i },
+  },
 
   // Insurance (spec step 108), over the demo bank's sample GEICO car policy
   // (DEMO_POLICY in src/lib/insurance/profile.ts: $142.00 a month, a $1,000.00 deductible).
@@ -1407,6 +1413,20 @@ const BASE_QUESTIONS: readonly CheckQuestion[] = [
       list: true,
       maxChars: 1_100,
     },
+  },
+  // Risks seen in how they live (spec step 197): the demo bank has one signal of each kind,
+  // asked one at a time, newest first.
+  {
+    id: "risk-1",
+    text: "what risks do you see in my insurance",
+    needs: "rules",
+    expect: { intent: "insurance", mentions: /I saw \$[\d,.]+/, maxChars: 500 },
+  },
+  {
+    id: "risk-2",
+    text: "what am i missing in my insurance",
+    needs: "rules",
+    expect: { intent: "insurance", mentions: /\?/, maxChars: 500 },
   },
   {
     id: "sav-3",
