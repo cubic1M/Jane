@@ -147,6 +147,8 @@ export type AuditEvent =
   // Spec step 221: who files a drafted property tax appeal (the team or the person).
   | "property_appeal_handled"
   // Spec step 222: a read-only link for an accountant made, viewed, answered on and revoked.
+  // Spec step 223: an estimated tax payment made through the stand-in.
+  | "tax_payment_made"
   | "accountant_link_created"
   | "accountant_link_viewed"
   | "accountant_link_answered"
