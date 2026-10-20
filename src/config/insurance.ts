@@ -179,6 +179,10 @@ export const GAP_KEYS = [
   "valuables",
   "boat",
   "short_term_rental",
+  // Spec step 198: per person in the household.
+  "teen_driver",
+  "spouse_health",
+  "family_health_plan",
 ] as const;
 export type GapKey = (typeof GAP_KEYS)[number];
 
@@ -243,6 +247,18 @@ export const GAP_ADVICE: Record<GapKey, { text: string; cents: number[] }> = {
   },
   boat: {
     text: "Add boat insurance that pays for the boat itself and for damage you cause to others on the water. Your home policy usually caps or excludes boats.",
+    cents: [],
+  },
+  teen_driver: {
+    text: "Add the new driver to your car policy before they drive. Carriers price a teen driver in, and an unlisted one can leave a claim disputed. Good-student and driver-training discounts are common.",
+    cents: [],
+  },
+  spouse_health: {
+    text: "Add your spouse to a health plan: yours, or their employer's if it has one. Open enrollment and a recent life event are the usual times to switch.",
+    cents: [],
+  },
+  family_health_plan: {
+    text: "Compare the two plans for the whole family, with the care you usually need, and move to the cheaper one at the next open enrollment or after a life event.",
     cents: [],
   },
   short_term_rental: {
@@ -687,3 +703,58 @@ export const RISK_SIGNALS: Record<
 // many days ago, so a long-time pet owner isn't asked.
 export const RISK_LOOKBACK_DAYS = 60;
 export const RISK_NEW_PET_QUIET_DAYS = 120;
+
+// --- The whole household's cover (spec step 198) ---------------------------------------------
+export const HOUSEHOLD_RELATIONS = {
+  spouse: "Spouse or partner",
+  child: "Child",
+  other: "Someone else",
+} as const;
+export type HouseholdRelation = keyof typeof HOUSEHOLD_RELATIONS;
+export const isHouseholdRelation = (value: unknown): value is HouseholdRelation =>
+  typeof value === "string" && Object.hasOwn(HOUSEHOLD_RELATIONS, value);
+// A driver this age or younger is a teen driver, who needs to be on a car policy.
+export const TEEN_DRIVER_MAX_AGE = 19;
+export const MAX_HOUSEHOLD_PEOPLE = 10;
+export const MAX_PERSON_NAME_LENGTH = 40;
+// A family health plan has to cost this much less a year, with the care the household
+// usually needs, before Jane says to look at the other employer's plan.
+export const FAMILY_HEALTH_MIN_SAVING_CENTS = 60_000;
+
+// --- Claim or pay yourself? (spec step 199) ---------------------------------------------------
+// What a claim typically costs in higher premiums: a share of the yearly premium added for
+// CLAIM_SURCHARGE_YEARS years, by kind of policy and what happened (the claim guide's event
+// key), and the claims-free discount lost for the same years. Estimates from typical carrier
+// practice, said as "about"; never a promise of what a carrier will do.
+export const CLAIM_SURCHARGE_YEARS = 3;
+export const CLAIM_SURCHARGE: Record<
+  PolicyKind,
+  { default: number; events?: Record<string, number> }
+> = {
+  auto: { default: 0.1, events: { accident: 0.3, theft: 0.08, damage: 0.05 } },
+  home: { default: 0.12, events: { break_in: 0.1, damage: 0.18, theft: 0.1 } },
+  renters: { default: 0.06 },
+  life: { default: 0 },
+  pet: { default: 0.05 },
+  health: { default: 0 },
+  disability: { default: 0 },
+  umbrella: { default: 0.1 },
+  travel: { default: 0 },
+  device: { default: 0 },
+  rideshare: { default: 0.15, events: { accident: 0.3 } },
+  business: { default: 0.12 },
+  valuables: { default: 0.05 },
+  boat: { default: 0.12, events: { theft: 0.1 } },
+  rental_property: { default: 0.15 },
+  other: { default: 0 },
+};
+// The claims-free discount a claim puts at risk, as a share of the yearly premium.
+export const CLAIMS_FREE_DISCOUNT: Partial<Record<PolicyKind, number>> = {
+  auto: 0.1,
+  home: 0.05,
+  renters: 0.03,
+  rideshare: 0.05,
+  boat: 0.05,
+};
+// A difference this small either way is a close call, not a clear answer.
+export const CLAIM_CLOSE_CALL_CENTS = 5_000;

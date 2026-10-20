@@ -17,7 +17,7 @@ import { ESTIMATED_TAX_ALERT_DAYS, SELF_EMPLOYED_INCOME_CATEGORIES } from "@/con
 import { formatCents } from "@/lib/money";
 import { nextEstimatedTaxDate } from "@/planning/tax-pack";
 import { estimatedTaxAlertCopy } from "@/planning/tax-pack-copy";
-import { byDate, inList, inLookback } from "./helpers";
+import { byDate, inList, inLookback, isProcessorFee, isRenewable } from "./helpers";
 import { unusualAlerts } from "./unusual";
 import { expectedDates, forecastAccounts, upcomingBills } from "./forecast";
 import { duplicatePairs } from "./rules/duplicate-charge";
@@ -123,6 +123,7 @@ export function feeAlerts(input: DetectionInput): AlertCandidate[] {
   return input.transactions
     .filter((t) => t.amountCents > 0 && isRecent(t.date, input.asOf))
     .filter((t) => inList(t.pfcDetailed, [...BANK_FEE_CATEGORIES, ...CARD_INTEREST_CATEGORIES]))
+    .filter((t) => !isProcessorFee(t.description))
     .sort(byDate)
     .map((t): AlertCandidate => ({
       type: "fee_charged",
@@ -228,7 +229,13 @@ export function billReminderAlerts(input: DetectionInput): AlertCandidate[] {
 export function renewalAlerts(input: DetectionInput, streams: Stream[]): AlertCandidate[] {
   const until = addDays(input.asOf, RENEWAL_ALERT_DAYS);
   return streams
-    .filter((s) => s.active && s.frequency !== null && RENEWAL_FREQUENCIES.includes(s.frequency))
+    .filter(
+      (s) =>
+        s.active &&
+        s.frequency !== null &&
+        RENEWAL_FREQUENCIES.includes(s.frequency) &&
+        isRenewable(s),
+    )
     .flatMap((s) =>
       expectedDates(s, input.asOf, until)
         .filter((date) => date > input.asOf)

@@ -41,7 +41,11 @@ export type InsuranceAsk =
   // savings: cheaper ways to pay for the same cover (spec step 196).
   | "savings"
   // risks: what Jane noticed in how they live that their cover may miss (spec step 197).
-  | "risks";
+  | "risks"
+  // household: who is covered by what across the household (spec step 198).
+  | "household"
+  // claim_worth: "is it worth claiming a $1,200 repair?" (spec step 199).
+  | "claim_worth";
 
 export type InsuranceIntent = {
   kind: "insurance";
@@ -50,6 +54,8 @@ export type InsuranceIntent = {
   policyKind: PolicyKind | null;
   // Spec step 107: what happened, by the claim guide's event key (src/config/claims.ts).
   event?: string;
+  // Spec step 199: how much the damage is, when they said.
+  amountCents?: number;
 };
 
 // Something happened (spec step 107): the kind of policy it's for and the guide's event.
@@ -160,6 +166,10 @@ const SAVINGS =
 const RISKS =
   /\b(?:risks?|what am i missing|what(?:'s| is) not covered|am i covered for (?:uber|lyft|my (?:business|boat|dog|ring|camera))|exposed)\b/;
 
+// Who in the household is covered by what (spec step 198).
+const HOUSEHOLD =
+  /\bwho(?:'s| is| are)?\b.{0,25}\b(?:covered|insured|on my (?:car |health |home )?(?:insurance|plan|policy))\b|\b(?:family|household|kids?|children|teen\w*|spouse|wife|husband|partner)\b.{0,30}\b(?:covered|insured|health plan)\b|\bfamily (?:health )?(?:plan|insurance|cover\w*)\b|\b(?:partner|spouse|wife|husband)'?s (?:employer|work|job)\b.{0,30}\b(?:plan|insurance)\b/;
+
 const ASKS: readonly [InsuranceAsk, RegExp][] = [
   ["cards", CARD_COVER],
   [
@@ -207,7 +217,38 @@ const FILE_FOR_ME =
 const RENEWAL_CALL =
   /\b(?:negotiate|haggle|bargain)\b|\b(?:call|ring|phone|ask) (?:my |the )?(?:insurer|insurance(?: company)?|carrier)\b.{0,40}\b(?:better|lower|cheaper|rate|price|renewal)\b|\bbetter (?:renewal )?rate\b.{0,30}\brenew/;
 
+// Whether a claim is worth making against paying it themselves (spec step 199).
+const CLAIM_WORTH =
+  /\b(?:worth|should i|do i need to|is it worth)\b.{0,30}\b(?:claim|claiming|filing a claim|file a claim|make a claim|making a claim)\b|\bclaim (?:or|vs\.?|versus) (?:pay|paying|cover|out of pocket)\b|\b(?:claim|insurance)\b.{0,40}\bpay (?:it )?(?:out of pocket|myself)\b|\bpay (?:it )?(?:out of pocket|myself)\b.{0,40}\b(?:claim|insurance)\b/;
+
+// "$1,200" or "$1.2k" in the text, in cents.
+function amountIn(text: string): number | undefined {
+  const m =
+    /\$\s?(\d[\d,]*(?:\.\d{1,2})?)\s?(k\b)?/i.exec(text) ??
+    /\b(\d[\d,]*(?:\.\d{1,2})?)\s?(k\b)?\s?(?:dollars|bucks)\b/i.exec(text);
+  if (!m) return undefined;
+  const dollars = Number(m[1].replace(/,/g, "")) * (m[2] ? 1000 : 1);
+  return Number.isFinite(dollars) && dollars > 0 ? Math.round(dollars * 100) : undefined;
+}
+
+// What happened, as a claim guide's event key.
+function eventIn(text: string): string | undefined {
+  if (/\b(?:stolen|theft|broke into|break-?in|burglar)\w*/.test(text)) return "theft";
+  if (/\b(?:accident|crash|fender|collision|rear-?ended|hit)\b/.test(text)) return "accident";
+  if (/\b(?:hail|storm|windshield|glass|flood|fire|water|tree)\b/.test(text)) return "damage";
+  return undefined;
+}
+
 export function parseInsurance(text: string): InsuranceIntent | null {
+  if (CLAIM_WORTH.test(text)) {
+    return {
+      kind: "insurance",
+      ask: "claim_worth",
+      policyKind: kindIn(text),
+      amountCents: amountIn(text),
+      event: eventIn(text),
+    };
+  }
   if (FILE_FOR_ME.test(text)) return { kind: "insurance", ask: "file_claim", policyKind: null };
   if (RENEWAL_CALL.test(text)) {
     return { kind: "insurance", ask: "renewal_call", policyKind: kindIn(text) };
@@ -222,6 +263,7 @@ export function parseInsurance(text: string): InsuranceIntent | null {
     !COVER_AMOUNT.test(text) &&
     !CARD_COVER.test(text) &&
     !LIFE.test(text) &&
+    !HOUSEHOLD.test(text) &&
     !MARRIED.test(text) &&
     !CAR.test(text)
   ) {
@@ -234,6 +276,7 @@ export function parseInsurance(text: string): InsuranceIntent | null {
   if (LIFE.test(text)) return { kind: "insurance", ask: "life", policyKind };
   if (SAVINGS.test(text)) return { kind: "insurance", ask: "savings", policyKind };
   if (RISKS.test(text)) return { kind: "insurance", ask: "risks", policyKind };
+  if (HOUSEHOLD.test(text)) return { kind: "insurance", ask: "household", policyKind };
   // Spec step 149: whether they need a kind of cover, from their numbers.
   if (policyKind && NEED.test(text)) return { kind: "insurance", ask: "need", policyKind };
   const ask = ASKS.find(([, words]) => words.test(text))?.[0] ?? "list";

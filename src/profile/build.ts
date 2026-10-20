@@ -1,4 +1,5 @@
 import {
+  AGE_BAND_FROM,
   APPROACHING_ASSETS_CENTS,
   APPROACHING_PAYOFF_YEARS,
   BUSINESS_DEPOSITS_MIN,
@@ -35,7 +36,11 @@ export type ProfileAccount = {
   type: string;
   subtype: string | null;
   balanceCents: number;
+  // A card's limit, when the bank says (spec step 260); undefined or null when unknown.
+  limitCents?: number | null;
 };
+// A holding with what it cost, for taxes on gains and losses (step 261).
+export type ProfileHolding = { accountId: string; valueCents: number; basisCents: number | null };
 export type ProfileLiability = {
   accountId: string;
   kind: string;
@@ -51,7 +56,11 @@ export type ProfileInput = {
   transactions: readonly ProfileTx[];
   accounts: readonly ProfileAccount[];
   liabilities: readonly ProfileLiability[];
+  // Optional: what each account holds. Absent when the loader did not read holdings.
+  holdings?: readonly ProfileHolding[];
   told: Told;
+  // Policies read from uploaded documents that wait for the person's confirm (spec step 259).
+  unreadPolicyDocuments?: number;
 };
 
 export type FactValue = string | number | boolean | null;
@@ -298,17 +307,28 @@ export function buildProfile(input: ProfileInput): Profile {
   }
 
   // --- Told: age and risk -----------------------------------------------------------
-  if (told.age === undefined) unknown("age");
-  else set("age", told.age, "told", "answers", 0);
-  if (told.risk === undefined) unknown("risk");
-  else set("risk", told.risk, "told", "answers", 0);
+  // Told-only facts: not in the data, so unknown until the person says (steps 253 and 257).
+  for (const key of [
+    "age",
+    "age_band",
+    "risk",
+    "employer_match",
+    "filing_status",
+    "business_structure",
+    "hardship_reason",
+  ] as const) {
+    if (told[key] === undefined) unknown(key);
+    else set(key, told[key], "told", "answers", 0);
+  }
 
   // --- Life stage -------------------------------------------------------------------
   const invested = accounts
     .filter((a) => a.type === "investment")
     .reduce((s, a) => s + a.balanceCents, 0);
   const payoffYears = mortgageLiab?.payoffDate ? yearsUntil(today, mortgageLiab.payoffDate) : null;
-  const age = typeof told.age === "number" ? told.age : null;
+  // An exact age wins; otherwise the band they picked.
+  const band = typeof told.age_band === "string" ? AGE_BAND_FROM[told.age_band] : undefined;
+  const age = typeof told.age === "number" ? told.age : (band ?? null);
   let stage: "starting" | "raising" | "peak" | "approaching" | "retired";
   let stageMatches = 1;
   if (age !== null) {
