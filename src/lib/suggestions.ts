@@ -1,4 +1,5 @@
-import { ADVICE_TOPICS, RESELECT_AFTER_DAYS } from "@/config/suggestions";
+import { STRATEGIST_CAPABILITY, STRATEGIST_IDEA_DAYS, STRATEGIST_TOPIC } from "@/config/strategist";
+import { ADVICE_TOPICS, RESELECT_AFTER_DAYS, WORTH_WEIGHT } from "@/config/suggestions";
 import { runDetectors } from "@/detectors";
 import type { Suggestion } from "@/detectors/contract";
 import type { PrismaClient } from "@/generated/prisma/client";
@@ -35,11 +36,83 @@ export type OfferedSuggestion = {
   confidenceReason: string;
   actionLabel: string;
   actionHref: string;
+  // A strategist idea (step 256) ends in the buttons of every suggestion it combines.
+  more: { label: string; href: string }[];
   // Whether it is a recommendation on investments, taxes, insurance or loans (demo advice).
   advice: boolean;
 };
 
 export type ScanResult = { fired: number; selected: string[] };
+
+// Every detector for one person, tonight: what applies to them and what Jane may show them
+// (no recommendations on investments, taxes, insurance or loans outside demo advice mode).
+export async function detectFor(
+  userId: string,
+  { client = defaultClient, now = new Date() }: Options = {},
+): Promise<{ suggestions: Suggestion[]; advice: boolean }> {
+  const [input, advice] = await Promise.all([
+    loadProfileInput(userId, { client, now }),
+    adviceMode(userId, { client }),
+  ]);
+  const profile = buildProfile(input);
+  const suggestions = runDetectors({ profile, data: input }, undefined, (d, error) =>
+    console.error("Detector failed", {
+      userId,
+      detector: `${d.capability}:${d.topic}`,
+      error: scrub(String(error)),
+    }),
+  ).filter((s) => advice || !(ADVICE_TOPICS as readonly string[]).includes(s.topic));
+  return { suggestions, advice };
+}
+
+const isIdea = (key: string) => key.startsWith(`${STRATEGIST_CAPABILITY}:`);
+const partsOfIdea = (key: string) => key.slice(STRATEGIST_CAPABILITY.length + 1).split("+");
+
+// Strategist ideas (step 256) still open and still resting on suggestions that fire tonight,
+// as suggestions again: their confidence is the weakest of those parts', as tonight stands.
+function openIdeas(
+  existing: readonly {
+    key: string;
+    title: string;
+    why: string;
+    worthCents: number;
+    worthKind: string;
+    urgency: string;
+    status: string;
+    lastSeenAt: Date;
+  }[],
+  fired: ReadonlyMap<string, Suggestion>,
+  now: Date,
+): Suggestion[] {
+  return existing.flatMap((e) => {
+    if (!isIdea(e.key) || (e.status !== "waiting" && e.status !== "selected")) return [];
+    if (now.getTime() - e.lastSeenAt.getTime() > STRATEGIST_IDEA_DAYS * DAY_MS) return [];
+    const parts = partsOfIdea(e.key).map((id) => fired.get(id));
+    if (parts.some((p) => !p)) return [];
+    const have = parts as Suggestion[];
+    const weakest = have.reduce((a, b) => (b.confidence.percent < a.confidence.percent ? b : a));
+    return [
+      {
+        id: e.key,
+        capability: STRATEGIST_CAPABILITY,
+        topic: STRATEGIST_TOPIC,
+        title: e.title,
+        worthCents: e.worthCents,
+        worthKind: e.worthKind as Suggestion["worthKind"],
+        confidence: {
+          percent: weakest.confidence.percent,
+          reason: `the weakest part of this idea: ${weakest.confidence.reason}`,
+        },
+        urgency: e.urgency as Suggestion["urgency"],
+        why: e.why,
+        action: have[0].action,
+        more: have.slice(1).map((p) => p.action),
+        parts: have.map((p) => p.id),
+        rankCents: have.reduce((s, p) => s + p.worthCents * WORTH_WEIGHT[p.worthKind], 0),
+      },
+    ];
+  });
+}
 
 export async function scanSuggestions(
   userId: string,
@@ -47,19 +120,10 @@ export async function scanSuggestions(
 ): Promise<ScanResult> {
   const db = scopedFor(userId, client);
   const today = dayOf(now);
-  const [input, advice, existing] = await Promise.all([
-    loadProfileInput(userId, { client, now }),
-    adviceMode(userId, { client }),
+  const [{ suggestions: found }, existing] = await Promise.all([
+    detectFor(userId, { client, now }),
     db.suggestions.findMany(),
   ]);
-  const profile = buildProfile(input);
-  const found: Suggestion[] = runDetectors({ profile, data: input }, undefined, (d, error) =>
-    console.error("Detector failed", {
-      userId,
-      detector: `${d.capability}:${d.topic}`,
-      error: scrub(String(error)),
-    }),
-  ).filter((s) => advice || !(ADVICE_TOPICS as readonly string[]).includes(s.topic));
   const byKey = new Map(existing.map((e) => [e.key, e]));
 
   // Already chosen for today: the scan is safe to run twice.
@@ -88,8 +152,14 @@ export async function scanSuggestions(
       blocked.add(e.key);
     }
   }
-  const ranked = rankSuggestions(found, { history: history as TopicHistory, results, blocked });
-  const picked = new Set(pickForToday(ranked).map((r) => r.suggestion.id));
+  const ideas = openIdeas(existing, new Map(found.map((s) => [s.id, s])), now);
+  const ranked = rankSuggestions([...found, ...ideas], {
+    history: history as TopicHistory,
+    results,
+    blocked,
+  });
+  const picked = pickForToday(ranked);
+  const pickedIds = new Set(picked.map((r) => r.suggestion.id));
   const scores = new Map(ranked.map((r) => [r.suggestion.id, r.score]));
 
   for (const s of found) {
@@ -110,7 +180,7 @@ export async function scanSuggestions(
     };
     const have = byKey.get(s.id);
     const answered = have?.status === "yes" || have?.status === "no";
-    const selected = picked.has(s.id);
+    const selected = pickedIds.has(s.id);
     await client.suggestion.upsert({
       where: { userId_key: { userId, key: s.id } },
       create: {
@@ -130,10 +200,27 @@ export async function scanSuggestions(
       },
     });
   }
-  // What stopped applying is gone (unless the person already answered it).
+  // Ideas keep their own text; only whether they were picked, and their score, change.
+  for (const idea of ideas) {
+    const selected = pickedIds.has(idea.id);
+    await db.suggestions.updateMany({
+      where: { key: idea.id },
+      data: {
+        score: scores.get(idea.id) ?? 0,
+        confidencePercent: idea.confidence.percent,
+        confidenceReason: idea.confidence.reason,
+        ...(selected ? { status: "selected", selectedOn: new Date(today) } : { status: "waiting" }),
+      },
+    });
+  }
+  // What stopped applying is gone (unless the person already answered it); an idea goes
+  // when a suggestion it rests on does, or when it gets old.
   const firedKeys = new Set(found.map((s) => s.id));
+  const liveIdeas = new Set(ideas.map((i) => i.id));
   const stale = existing.filter(
-    (e) => !firedKeys.has(e.key) && (e.status === "waiting" || e.status === "selected"),
+    (e) =>
+      (e.status === "waiting" || e.status === "selected") &&
+      (isIdea(e.key) ? !liveIdeas.has(e.key) : !firedKeys.has(e.key)),
   );
   if (stale.length > 0) {
     await db.suggestions.updateMany({
@@ -141,7 +228,7 @@ export async function scanSuggestions(
       data: { status: "gone" },
     });
   }
-  return { fired: found.length, selected: [...picked] };
+  return { fired: found.length, selected: [...pickedIds] };
 }
 
 // The ones chosen for today and not answered, for the chat to offer.
@@ -153,20 +240,35 @@ export async function offeredToday(
     where: { status: "selected", selectedOn: new Date(dayOf(now)) },
     orderBy: [{ score: "desc" }, { key: "asc" }],
   });
-  return rows.map((r) => ({
-    id: r.id,
-    key: r.key,
-    topic: r.topic,
-    title: r.title,
-    why: r.why,
-    worthCents: r.worthCents,
-    worthKind: r.worthKind,
-    confidencePercent: r.confidencePercent,
-    confidenceReason: r.confidenceReason,
-    actionLabel: r.actionLabel,
-    actionHref: r.actionHref,
-    advice: ADVICE_TOPICS.some((t) => t === r.topic),
-  }));
+  // An idea's buttons are those of the suggestions it combines.
+  const partKeys = rows.filter((r) => isIdea(r.key)).flatMap((r) => partsOfIdea(r.key));
+  const parts =
+    partKeys.length > 0
+      ? await scopedFor(userId, client).suggestions.findMany({
+          where: { key: { in: partKeys } },
+          select: { key: true, topic: true, actionLabel: true, actionHref: true },
+        })
+      : [];
+  const partOf = new Map(parts.map((p) => [p.key, p]));
+  return rows.map((r) => {
+    const mine = isIdea(r.key) ? partsOfIdea(r.key).flatMap((k) => partOf.get(k) ?? []) : [];
+    const topics = mine.length > 0 ? mine.map((p) => p.topic) : [r.topic];
+    return {
+      id: r.id,
+      key: r.key,
+      topic: r.topic,
+      title: r.title,
+      why: r.why,
+      worthCents: r.worthCents,
+      worthKind: r.worthKind,
+      confidencePercent: r.confidencePercent,
+      confidenceReason: r.confidenceReason,
+      actionLabel: mine[0]?.actionLabel ?? r.actionLabel,
+      actionHref: mine[0]?.actionHref ?? r.actionHref,
+      more: mine.slice(1).map((p) => ({ label: p.actionLabel, href: p.actionHref })),
+      advice: topics.some((t) => (ADVICE_TOPICS as readonly string[]).includes(t)),
+    };
+  });
 }
 
 export class SuggestionError extends Error {}

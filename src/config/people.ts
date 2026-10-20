@@ -316,7 +316,6 @@ export const PEOPLE: readonly Person[] = [
       "hardship_plan",
       "balance_transfer",
       "low_balance",
-      "low_balance",
       "cash_advance",
     ],
     mustNot: [

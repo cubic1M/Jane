@@ -52,8 +52,7 @@ export function scoreOf(
   results: KindResults = [],
 ): number {
   return Math.round(
-    s.worthCents *
-      WORTH_WEIGHT[s.worthKind] *
+    (s.rankCents ?? s.worthCents * WORTH_WEIGHT[s.worthKind]) *
       (s.confidence.percent / 100) *
       URGENCY_WEIGHT[s.urgency] *
       historyFactor(s.topic, history) *
@@ -78,5 +77,19 @@ export function rankSuggestions(
 }
 
 // The ones that reach the person today.
-export const pickForToday = (ranked: readonly Ranked[], perDay: number = SUGGESTIONS_PER_DAY) =>
-  ranked.slice(0, perDay);
+// An idea that combines suggestions and one of them are never both offered on one day.
+export function pickForToday(
+  ranked: readonly Ranked[],
+  perDay: number = SUGGESTIONS_PER_DAY,
+): Ranked[] {
+  const out: Ranked[] = [];
+  const taken = new Set<string>();
+  for (const r of ranked) {
+    if (out.length >= perDay) break;
+    const ids = [r.suggestion.id, ...(r.suggestion.parts ?? [])];
+    if (ids.some((id) => taken.has(id))) continue;
+    out.push(r);
+    for (const id of ids) taken.add(id);
+  }
+  return out;
+}

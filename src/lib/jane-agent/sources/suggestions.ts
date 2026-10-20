@@ -29,6 +29,12 @@ export const suggestionsSource: MessageSource = {
         { id: "suggestion.yes" as const, label: s.actionLabel, kind: "primary" as const },
         { id: "suggestion.no" as const, label: "Not for me", kind: "secondary" as const },
         { id: "open" as const, label: "Open", kind: "link" as const, href: s.actionHref },
+        ...s.more.map((m) => ({
+          id: "open" as const,
+          label: m.label,
+          kind: "link" as const,
+          href: m.href,
+        })),
       ],
       dedupeKey: `${s.key}:${snapshot.asOf}`,
       priority: MESSAGE_PRIORITY.suggestions,
