@@ -34,7 +34,7 @@ export const DEMO_PRICE_PROFILES: Readonly<Record<string, Profile>> = {
 };
 
 // Cash-like holdings always cost a dollar.
-export const CASH_TICKERS: readonly string[] = ["DSVXX", "CASH"];
+export const CASH_TICKERS: readonly string[] = ["DSVXX", "CASH", "KMMXX"];
 
 // A seeded number in [0, 1).
 function unit(key: string): number {

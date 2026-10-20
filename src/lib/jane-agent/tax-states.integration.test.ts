@@ -158,7 +158,7 @@ describe.runIf(url)("state and local taxes against a real database", { timeout: 
       "https://www.tax.ny.gov",
     ]);
     expect(view.assumptions).toContain(
-      "You moved from California to New York on 2026-08-03: wages count where you lived on each payday, other income by the days you lived in each state.",
+      "You moved from California to New York on Aug 3, 2026: wages count where you lived on each payday, other income by the days you lived in each state.",
     );
     // Asked once a year.
     expect((await gather(userId)).some((c) => c.dedupeKey.startsWith("move:"))).toBe(false);
@@ -171,7 +171,7 @@ describe.runIf(url)("state and local taxes against a real database", { timeout: 
     expect(view.residency.usingSpotted).toBe(true);
     expect(view.estimate.state!.parts.map((p) => p.code)).toEqual(["CA", "NY"]);
     expect(view.assumptions).toContain(
-      "I've assumed you moved from California to New York on 2026-08-03: wages count where you lived on each payday, other income by the days you lived in each state.",
+      "I've assumed you moved from California to New York on Aug 3, 2026: wages count where you lived on each payday, other income by the days you lived in each state.",
     );
     const message = await post(userId, "move:2026:2026-08-03");
     expect(message.body).toContain("I've counted your 2026 state taxes that way");
@@ -277,7 +277,9 @@ describe.runIf(url)("state and local taxes against a real database", { timeout: 
 
     const states = (await sendToJane(userId, "what state taxes do I pay", { client, now: later() }))
       .reply;
-    expect(states.body).toMatch(/^Your 2026 state taxes, estimated:\n• California \(lived there/);
+    expect(states.body).toMatch(
+      /^Your 2026 state taxes come to about \$[\d,]+, estimated\.\n• California \(lived there/,
+    );
     expect(states.body).toContain("Figures from California Franchise Tax Board;");
 
     const tool = JSON.parse(

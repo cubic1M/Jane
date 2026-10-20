@@ -745,6 +745,73 @@ const BASE_QUESTIONS: readonly CheckQuestion[] = [
     needs: "rules",
     expect: { intent: "tax", mentions: /\$16,100/ },
   },
+  // Phase AF (spec steps 165–173).
+  {
+    id: "tax-16",
+    text: "what state taxes do I pay",
+    needs: "rules",
+    expect: { intent: "tax", mentions: /state taxes come to/i },
+  },
+  {
+    id: "tax-17",
+    text: "what's my tax plan",
+    needs: "rules",
+    expect: { intent: "tax", mentions: /tax moves? left/i, list: true },
+  },
+  {
+    id: "tax-18",
+    text: "am I ready for an audit",
+    needs: "rules",
+    expect: { intent: "tax", mentions: /audit pack/i },
+  },
+  {
+    id: "tax-19",
+    text: "should we file jointly or separately",
+    needs: "rules",
+    expect: { intent: "tax", mentions: /family tax/i },
+  },
+  {
+    id: "tax-20",
+    text: "should I use a donor-advised fund",
+    needs: "rules",
+    expect: { intent: "tax", mentions: /charity/i },
+  },
+  {
+    id: "tax-21",
+    text: "does the salt cap limit my property tax deduction",
+    needs: "rules",
+    expect: { intent: "tax", mentions: /state and local tax/i },
+  },
+  {
+    id: "tax-22",
+    text: "did I miss anything on my return",
+    needs: "rules",
+    expect: { intent: "tax", mentions: /return/i },
+  },
+  {
+    id: "tax-23",
+    text: "what are the taxes on my rental income",
+    needs: "rules",
+    expect: { intent: "tax", mentions: /rent|rental/i },
+  },
+  {
+    id: "tax-24",
+    text: "what tax forms do I need",
+    needs: "rules",
+    expect: { intent: "tax", mentions: /W-2/, list: true },
+  },
+  {
+    id: "tax-25",
+    text: "I got a letter from the IRS",
+    needs: "rules",
+    expect: { intent: "tax", mentions: /letter from the IRS|tax notice/i },
+  },
+  {
+    id: "tax-26",
+    text: "how do I get an IP PIN",
+    needs: "rules",
+    expect: { intent: "tax", mentions: /Identity Protection PIN/ },
+  },
 
   // Insurance (spec step 108), over the demo bank's sample GEICO car policy
   // (DEMO_POLICY in src/lib/insurance/profile.ts: $142.00 a month, a $1,000.00 deductible).
@@ -1103,6 +1170,70 @@ const BASE_QUESTIONS: readonly CheckQuestion[] = [
       button: "credit_card.apply",
       link: "/loans/cards",
     },
+  },
+  // Spec step 179: buying a home, from saving to closing.
+  {
+    id: "debt-24",
+    text: "how much house can I afford",
+    needs: "rules",
+    expect: {
+      intent: "home_afford",
+      mentions: /28\/36/i,
+      button: "home.goal",
+      link: "/loans/home",
+      list: true,
+      maxChars: 1_600,
+    },
+  },
+  // Spec step 178: buying a car, and a dealer's financing checked against preapprovals.
+  {
+    id: "debt-22",
+    text: "how much car can I afford",
+    needs: "rules",
+    expect: {
+      intent: "car_afford",
+      mentions: /cheapest preapproval/i,
+      link: "/loans/car",
+      list: true,
+      maxChars: 1_000,
+    },
+  },
+  {
+    id: "debt-23",
+    text: "the dealer offered 8.99% for 60 months on $30,000",
+    needs: "rules",
+    expect: {
+      intent: "car_dealer",
+      mentions: /dealer's financing/i,
+      link: "/loans/car",
+      list: true,
+    },
+  },
+  // Spec step 177: a tight month.
+  {
+    id: "debt-21",
+    text: "money is tight this month",
+    needs: "rules",
+    expect: { intent: "tight_money", mentions: /cushion/i, link: "/loans/tight", maxChars: 1_000 },
+  },
+  // Spec step 176: buy now, pay later installments and a new plan's warning.
+  {
+    id: "debt-19",
+    text: "what buy now pay later payments do I have coming",
+    needs: "rules",
+    expect: {
+      intent: "bnpl",
+      mentions: /installments over the next month/i,
+      link: "/loans",
+      list: true,
+      maxChars: 1_200,
+    },
+  },
+  {
+    id: "debt-20",
+    text: "can I afford a $300 Klarna plan",
+    needs: "rules",
+    expect: { intent: "bnpl_new", mentions: /four payments of/i, link: "/loans" },
   },
   // Spec step 175: building credit and the labelled score simulator.
   {

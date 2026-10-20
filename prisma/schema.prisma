@@ -295,6 +295,7 @@ model User {
   creditReports          CreditReport[]
   debtWatch              DebtWatch?
   cardApplications       CardApplication[]
+  tightRequests          TightRequest[]
   balanceTransfers       BalanceTransfer[]
   findings               Finding[]
   decisions              Decision[]
@@ -343,6 +344,10 @@ model User {
   lifeEventAnswers       LifeEventAnswer[]
   taxTags                TaxTag[]
   taxDocuments           TaxDocument[]
+  priorReturns           PriorReturn[]
+  taxAmendments          TaxAmendment[]
+  taxNotices             TaxNotice[]
+  taxIdentityCases       TaxIdentityCase[]
   taxForms               TaxForm[]
   taxReturns             TaxReturn[]
   budgetTuneUps          BudgetTuneUp[]
@@ -824,6 +829,32 @@ model CardApplication {
 
   @@index([userId])
   @@map("card_applications")
+}
+
+// A request Jane sent for someone whose money is tight (spec step 177), each only after the
+// person's tap: a due-date move, a hardship program, a lower rate or a late fee waived. The
+// lender stand-in answers it.
+model TightRequest {
+  id          String    @id @default(cuid())
+  userId      String    @map("user_id")
+  // "<kind>:<debt key>:<the shortfall's date>", so one is sent once for each shortfall.
+  key         String
+  kind        String
+  targetKey   String    @map("target_key")
+  targetName  String    @map("target_name")
+  body        String
+  // sent, granted or declined.
+  status      String
+  partner     String
+  shortfallOn DateTime  @map("shortfall_on") @db.Date
+  sentAt      DateTime  @default(now()) @map("sent_at") @db.Timestamptz(3)
+  resolvedAt  DateTime? @map("resolved_at") @db.Timestamptz(3)
+  outcome     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, key])
+  @@map("tight_requests")
 }
 
 // A balance transfer the person made to a 0% card (spec step 113), so Jane can keep the
@@ -1655,32 +1686,34 @@ model PlanLink {
 // is AES-256-GCM encrypted (src/lib/crypto.ts); the key facts are read by Claude or typed
 // by the person, and they can always correct them.
 model Document {
-  id                  String    @id @default(cuid())
-  userId              String    @map("user_id")
+  taxNotice           TaxNotice?
+  priorReturn         PriorReturn?
+  id                  String       @id @default(cuid())
+  userId              String       @map("user_id")
   // insurance_policy, warranty, receipt or other (src/config/documents.ts).
   kind                String
-  fileName            String    @map("file_name")
+  fileName            String       @map("file_name")
   // One of the allowed types, checked against the file's first bytes.
-  contentType         String    @map("content_type")
-  sizeBytes           Int       @map("size_bytes")
+  contentType         String       @map("content_type")
+  sizeBytes           Int          @map("size_bytes")
   // "v1" + iv + auth tag + ciphertext; never the plain file.
-  encryptedBytes      Bytes     @map("encrypted_bytes")
+  encryptedBytes      Bytes        @map("encrypted_bytes")
   provider            String?
   // Policies only: auto, home, renters, life, health or other.
-  policyType          String?   @map("policy_type")
+  policyType          String?      @map("policy_type")
   // One line, checked by the guardrails before it's shown.
-  coverageSummary     String?   @map("coverage_summary")
-  premiumCents        Int?      @map("premium_cents")
+  coverageSummary     String?      @map("coverage_summary")
+  premiumCents        Int?         @map("premium_cents")
   // monthly, quarterly, every 6 months or yearly.
-  premiumFrequency    String?   @map("premium_frequency")
-  renewalDate         DateTime? @map("renewal_date") @db.Date
-  warrantyEndsOn      DateTime? @map("warranty_ends_on") @db.Date
-  purchaseDate        DateTime? @map("purchase_date") @db.Date
-  purchaseAmountCents Int?      @map("purchase_amount_cents")
+  premiumFrequency    String?      @map("premium_frequency")
+  renewalDate         DateTime?    @map("renewal_date") @db.Date
+  warrantyEndsOn      DateTime?    @map("warranty_ends_on") @db.Date
+  purchaseDate        DateTime?    @map("purchase_date") @db.Date
+  purchaseAmountCents Int?         @map("purchase_amount_cents")
   // Who wrote the facts: claude, you (the person) or none yet.
-  extractionSource    String    @default("none") @map("extraction_source")
-  uploadedAt          DateTime  @default(now()) @map("uploaded_at") @db.Timestamptz(3)
-  updatedAt           DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
+  extractionSource    String       @default("none") @map("extraction_source")
+  uploadedAt          DateTime     @default(now()) @map("uploaded_at") @db.Timestamptz(3)
+  updatedAt           DateTime     @updatedAt @map("updated_at") @db.Timestamptz(3)
 
   user              User              @relation(fields: [userId], references: [id], onDelete: Cascade)
   insurancePolicies InsurancePolicy[]
@@ -2282,6 +2315,30 @@ model TaxProfile {
   paysOverHalfHome      Boolean?  @map("pays_over_half_home")
   studentYearsBefore    Int?      @map("student_years_before")
   studentHalfTime       Boolean?  @map("student_half_time")
+  // Spec step 170: points paid on the mortgage in pointsYear (on a purchase, or a refinance
+  // spread over pointsLoanYears), and the home sale: when bought and for how much, when sold,
+  // for how much, the selling costs, and the days lived in it in the 5 years before.
+  pointsCents           Int?      @map("points_cents")
+  pointsYear            Int?      @map("points_year")
+  pointsPurchase        Boolean?  @map("points_purchase")
+  pointsLoanYears       Int?      @map("points_loan_years")
+  homeBoughtOn          DateTime? @map("home_bought_on") @db.Date
+  homePriceCents        Int?      @map("home_price_cents")
+  homeSoldOn            DateTime? @map("home_sold_on") @db.Date
+  homeSaleCents         Int?      @map("home_sale_cents")
+  homeSaleCostsCents    Int?      @map("home_sale_costs_cents")
+  homeDaysLivedIn       Int?      @map("home_days_lived_in")
+  // Spec step 171: tax years whose "records can go" reminder is on the deadlines.
+  retentionReminded     String[]  @default([]) @map("retention_reminded")
+  // Spec step 173: the rental property (price and when it was ready to rent), and whether
+  // the side income is a "business" or a "hobby" (null: not said).
+  rentalPriceCents      Int?      @map("rental_price_cents")
+  rentalPlacedOn        DateTime? @map("rental_placed_on") @db.Date
+  sideIncomeKind        String?   @map("side_income_kind")
+  // Spec step 218: the tax year the person says they have an IP PIN for, and the year Jane
+  // put the January reminder on their deadlines.
+  ipPinHaveYear         Int?      @map("ip_pin_have_year")
+  ipPinRemindedYear     Int?      @map("ip_pin_reminded_year")
   createdAt             DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt             DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
 
@@ -2644,6 +2701,96 @@ model AutopilotAct {
 // hands over what she has (package: the profile, income, tags and forms, never account
 // numbers or tokens); the partner prepares it; the person reviews it and signs; only then is
 // it submitted. status: ready_for_review, submitted, accepted or rejected.
+// Spec step 172: a prior-year return read from an uploaded document, for the person to
+// confirm (like a policy read, step 151). fields/sources/notes are keyed by
+// PRIOR_RETURN_FIELDS; nothing in it is used until status is "confirmed".
+model PriorReturn {
+  id          String    @id @default(cuid())
+  userId      String    @map("user_id")
+  documentId  String    @unique @map("document_id")
+  fields      Json
+  sources     Json
+  notes       Json
+  status      String    @default("waiting")
+  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  confirmedAt DateTime? @map("confirmed_at") @db.Timestamptz(3)
+
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  document Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("prior_returns")
+}
+
+// Spec step 172: an amended return (1040-X) prepared through the filing stand-in for what a
+// prior-year review found. Never submitted without the person's review and signature.
+model TaxAmendment {
+  id              String    @id @default(cuid())
+  userId          String    @map("user_id")
+  year            Int
+  partner         String
+  partnerReturnId String    @map("partner_return_id")
+  status          String
+  // What changes: [{ key, title, savesCents }].
+  changes         Json
+  refundCents     Int       @map("refund_cents")
+  signerName      String?   @map("signer_name")
+  signedAt        DateTime? @map("signed_at") @db.Timestamptz(3)
+  submittedAt     DateTime? @map("submitted_at") @db.Timestamptz(3)
+  acceptedAt      DateTime? @map("accepted_at") @db.Timestamptz(3)
+  createdAt       DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt       DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, year])
+  @@map("tax_amendments")
+}
+
+// Spec step 217: a letter from the IRS or the state, read from an uploaded copy for the
+// person to confirm (like a prior return, step 172). response is what they chose (agree,
+// pay or dispute) with its draft; handledBy says who sends it: "team" (queued for Jane's
+// team) or "you". Nothing is paid or sent without the person's tap.
+model TaxNotice {
+  id         String    @id @default(cuid())
+  userId     String    @map("user_id")
+  documentId String    @unique @map("document_id")
+  fields     Json
+  sources    Json
+  notes      Json
+  status     String    @default("waiting")
+  response   String?
+  draft      String?
+  handledBy  String?   @map("handled_by")
+  handledAt  DateTime? @map("handled_at") @db.Timestamptz(3)
+  createdAt  DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  document Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("tax_notices")
+}
+
+// Spec step 218: a sign of tax identity theft and the steps taken, in order. steps maps a
+// step key (src/config/tax-identity.ts) to the day it was done. source: told (the person),
+// rejected (their e-file) or notice (a letter they uploaded).
+model TaxIdentityCase {
+  id        String    @id @default(cuid())
+  userId    String    @map("user_id")
+  sign      String
+  source    String
+  openedOn  DateTime  @map("opened_on") @db.Date
+  steps     Json      @default("{}")
+  closedAt  DateTime? @map("closed_at") @db.Timestamptz(3)
+  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("tax_identity_cases")
+}
+
 model TaxReturn {
   id              String    @id @default(cuid())
   userId          String    @map("user_id")
@@ -2897,6 +3044,8 @@ model PaycheckPlan {
   paidOn        DateTime @map("paid_on") @db.Date
   // [{ purpose, sector, label, goalId?, toAccountId, toName, cents, status }].
   moves         Json
+  // Spec step 206: where every dollar of the paycheck went (WentTo).
+  summary       Json?
   status        String   @default("proposed")
   createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
 

@@ -10,6 +10,12 @@ export const demoFilingPartner: FilingPartner = {
   async createReturn(_pkg, preview) {
     return { partnerReturnId: `demo-return-${crypto.randomUUID()}`, preview };
   },
+  async createAmendment({ taxYear, changes }) {
+    return {
+      partnerReturnId: `demo-amendment-${taxYear}-${crypto.randomUUID()}`,
+      refundCents: changes.reduce((s, c) => s + c.savesCents, 0),
+    };
+  },
   async submitReturn(_id, signature) {
     if (!signature.name.trim()) throw new Error("A return needs a signature.");
     return { status: "submitted" };

@@ -184,6 +184,10 @@ export const MESSAGE_PRIORITY = {
   company_stock: 37,
   // Spec step 161: crypto seen, and its flags (demo advice).
   crypto: 36,
+  // Spec step 162: cash earning what it should (demo advice).
+  cash: 38,
+  // Spec step 163: one calm message in a big drop, ahead of the other investing messages.
+  steady_hand: 44,
   auto_invest_run: 31,
 } as const;
 
