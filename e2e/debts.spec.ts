@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { E2E_DATABASE_URL, deleteUser, signedInUser } from "./db";
+import { E2E_DATABASE_URL, deleteUser, setCheckingBalance, signedInUser } from "./db";
 
 // Spec step 109: every debt in one place, from the demo bank: loans and cards with where
 // each rate came from, the buy now, pay later plans found from payments, terms typed for
@@ -262,7 +262,9 @@ test("the credit score is a labelled stand-in, with its factors and card use", a
   await page.goto("/loans");
   await page.getByRole("link", { name: "See your credit score" }).click();
   await expect(page.getByRole("heading", { level: 1, name: "Credit score" })).toBeVisible();
-  await expect(page.getByRole("note").filter({ hasText: "stand-in score" })).toBeVisible();
+  await expect(
+    page.getByRole("note").filter({ hasText: "not your real credit score" }),
+  ).toBeVisible();
   await expect(page.getByRole("list", { name: "Factors" }).getByRole("listitem")).toHaveCount(5);
   await expect(page.getByRole("region", { name: "Card use" })).toContainText("of your card limits");
 });
@@ -297,4 +299,261 @@ test("card rewards count the fee, and a better card is applied for with one tap"
   await apply.press("Enter");
   await expect(page.getByRole("status")).toHaveText("Sent just now.");
   await expect(page.getByRole("region", { name: "Your applications" })).toContainText("Approved");
+});
+
+// Spec step 175: the score simulator is labelled an estimate, and the payment before the
+// statement closes is shown with its tap.
+test("building credit shows the simulator as an estimate and the statement payment", async ({
+  context,
+  page,
+  baseURL,
+}) => {
+  const user = await signedInUser("user");
+  userId = user.userId;
+  await context.addCookies([
+    { name: "authjs.session-token", value: user.sessionToken, url: baseURL ?? "" },
+  ]);
+  await page.goto("/connect");
+  await page.getByRole("button", { name: "Link a demo bank" }).click();
+  await expect(page).toHaveURL("/chat", { timeout: 60_000 });
+
+  await page.goto("/loans/credit");
+  const build = page.getByRole("region", { name: "Build your credit" });
+  await expect(build).toBeVisible();
+  await expect(build.getByRole("table", { name: "Score simulator" })).toBeVisible();
+  await expect(build.getByRole("note")).toContainText("nothing changes until you act");
+  await expect(build.getByRole("group", { name: "Before the statement" })).toContainText(
+    "statement closes on",
+  );
+});
+
+// Spec step 176: every buy now, pay later installment from the plans' own schedules.
+test("buy now, pay later installments are listed from the plans' schedules", async ({
+  context,
+  page,
+  baseURL,
+}) => {
+  const user = await signedInUser("user");
+  userId = user.userId;
+  await context.addCookies([
+    { name: "authjs.session-token", value: user.sessionToken, url: baseURL ?? "" },
+  ]);
+  await page.goto("/connect");
+  await page.getByRole("button", { name: "Link a demo bank" }).click();
+  await expect(page).toHaveURL("/chat", { timeout: 60_000 });
+
+  await page.goto("/loans");
+  const list = page.getByRole("list", { name: "Installments coming" });
+  await expect(list).toBeVisible();
+  await expect(list).toContainText("$62.25 to Klarna Pay in 4");
+  await expect(list).toContainText("$89.50 to Affirm plan");
+});
+
+// Spec step 177: a tight month's plan, with essentials first and each request sent on a tap.
+test("a tight month shows the plan, and a request is sent only on the tap", async ({
+  context,
+  page,
+  baseURL,
+}) => {
+  const user = await signedInUser("user");
+  userId = user.userId;
+  await context.addCookies([
+    { name: "authjs.session-token", value: user.sessionToken, url: baseURL ?? "" },
+  ]);
+  await page.goto("/connect");
+  await page.getByRole("button", { name: "Link a demo bank" }).click();
+  await expect(page).toHaveURL("/chat", { timeout: 60_000 });
+  await setCheckingBalance(user.userId, 30_000);
+
+  await page.goto("/loans/tight");
+  await expect(page.getByRole("heading", { level: 1, name: "When money is tight" })).toBeVisible();
+  await expect(page.getByRole("status").first()).toContainText("Checking is forecast to be");
+  await expect(page.getByRole("list", { name: "Bills in order" })).toBeVisible();
+  const requests = page.getByRole("list", { name: "Requests" }).getByRole("listitem");
+  await expect(requests.first()).toBeVisible();
+  const send = page.getByRole("button", { name: "Send this request" }).first();
+  await send.scrollIntoViewIfNeeded();
+  // Keyboard, so the fixed bottom nav on phones never takes the tap.
+  await send.focus();
+  await send.press("Enter");
+  await expect(page.getByText("Sent just now.")).toBeVisible();
+  await expect(requests.first()).toContainText("Sent, answer in about 2 days");
+});
+
+// Spec step 178: what car fits, with insurance and running costs in, and a dealer's offer
+// checked against the preapprovals.
+test("buying a car shows the all-in cost, preapprovals and a dealer check", async ({
+  context,
+  page,
+  baseURL,
+}) => {
+  const user = await signedInUser("user");
+  userId = user.userId;
+  await context.addCookies([
+    { name: "authjs.session-token", value: user.sessionToken, url: baseURL ?? "" },
+  ]);
+  await page.goto("/connect");
+  await page.getByRole("button", { name: "Link a demo bank" }).click();
+  await expect(page).toHaveURL("/chat", { timeout: 60_000 });
+
+  await page.goto("/loans/car?price=30000&dealerApr=8.99&dealerMonths=60");
+  await expect(page.getByRole("heading", { level: 1, name: "Buying a car" })).toBeVisible();
+  const costs = page.getByRole("table", { name: "Monthly cost" });
+  await expect(costs).toContainText("Insurance");
+  await expect(costs).toContainText("Fuel");
+  await expect(costs).toContainText("All in");
+  await expect(
+    page.getByRole("list", { name: "Offers" }).getByRole("listitem").first(),
+  ).toContainText("cheapest");
+  await expect(page.getByRole("status")).toContainText("more than the best preapproval");
+  await expect(page.getByRole("region", { name: "Assumptions" })).toContainText("Income:");
+});
+
+// Spec step 179: from saving to closing, with every assumption shown and the goal started
+// only on the tap.
+test("buying a home shows the plan, its assumptions, and starts the goal on the tap", async ({
+  context,
+  page,
+  baseURL,
+}) => {
+  const user = await signedInUser("user");
+  userId = user.userId;
+  await context.addCookies([
+    { name: "authjs.session-token", value: user.sessionToken, url: baseURL ?? "" },
+  ]);
+  await page.goto("/connect");
+  await page.getByRole("button", { name: "Link a demo bank" }).click();
+  await expect(page).toHaveURL("/chat", { timeout: 60_000 });
+
+  await page.goto("/loans/home?price=400000");
+  await expect(page.getByRole("heading", { level: 1, name: "Buying a home" })).toBeVisible();
+  const costs = page.getByRole("table", { name: "Monthly cost" });
+  await expect(costs).toContainText("Mortgage insurance (PMI)");
+  await expect(page.getByRole("region", { name: "Saving for it" })).toContainText("$52,000.00");
+  await expect(page.getByRole("region", { name: "Assumptions" })).toContainText("28%");
+  const start = page.getByRole("button", { name: /^Start a \$52,000\.00 goal/ });
+  await start.scrollIntoViewIfNeeded();
+  // Keyboard, so the fixed bottom nav on phones never takes the tap.
+  await start.focus();
+  await start.press("Enter");
+  await expect(page.getByText("Started just now.")).toBeVisible();
+  await page.goto("/goals");
+  await expect(page.getByText("Home down payment")).toBeVisible();
+});
+
+// Spec step 180: a medical bill found in payments plus one typed in, with the letters
+// written and sent only on the tap.
+test("medical bills are found, letters are written, and a request is sent only on the tap", async ({
+  context,
+  page,
+  baseURL,
+}) => {
+  const user = await signedInUser("user");
+  userId = user.userId;
+  await context.addCookies([
+    { name: "authjs.session-token", value: user.sessionToken, url: baseURL ?? "" },
+  ]);
+  await page.goto("/connect");
+  await page.getByRole("button", { name: "Link a demo bank" }).click();
+  await expect(page).toHaveURL("/chat", { timeout: 60_000 });
+
+  await page.goto("/loans/medical");
+  await expect(page.getByRole("heading", { level: 1, name: "Medical bills" })).toBeVisible();
+  await expect(page.getByRole("list", { name: "Bills" })).toContainText("$180.00");
+
+  await page.getByLabel("From").fill("Mercy Hospital");
+  await page.getByLabel("Amount").fill("2400");
+  await page.getByLabel("Date on the bill").fill("2026-09-01");
+  await page.getByRole("button", { name: "Add this bill" }).press("Enter");
+  await expect(page.getByText("Added.")).toBeVisible();
+  const mercy = page.getByRole("list", { name: "Requests for Mercy Hospital" });
+  await expect(mercy).toContainText("financial assistance");
+  await expect(mercy).toContainText("no interest");
+
+  const send = mercy.getByRole("button", { name: "Send this request" }).first();
+  await send.scrollIntoViewIfNeeded();
+  // Keyboard, so the fixed bottom nav on phones never takes the tap.
+  await send.focus();
+  await send.press("Enter");
+  await expect(page.getByText("Sent just now.")).toBeVisible();
+  await expect(mercy).toContainText("Sent, answer in about 2 days");
+});
+
+// Spec step 181: a collection and an error found on the stand-in report, with letters citing
+// the rule and deadline, sent only on the tap.
+test("report fixes show the letters with their rules, and a letter is sent only on the tap", async ({
+  context,
+  page,
+  baseURL,
+}) => {
+  const user = await signedInUser("user");
+  userId = user.userId;
+  await context.addCookies([
+    { name: "authjs.session-token", value: user.sessionToken, url: baseURL ?? "" },
+  ]);
+  await page.goto("/connect");
+  await page.getByRole("button", { name: "Link a demo bank" }).click();
+  await expect(page).toHaveURL("/chat", { timeout: 60_000 });
+
+  await page.goto("/loans/report");
+  await expect(
+    page.getByRole("heading", { level: 1, name: "Fix your credit report" }),
+  ).toBeVisible();
+  await expect(page.getByRole("note").filter({ hasText: "stand-in report" })).toBeVisible();
+  const items = page.getByRole("list", { name: "Items" });
+  await expect(items).toContainText("Northstar Recovery");
+  await expect(items).toContainText("Fair Debt Collection Practices Act");
+  await expect(items).toContainText("Fair Credit Reporting Act");
+  await expect(items).toContainText("The last day to ask is");
+
+  const letters = page.getByRole("list", { name: "Letters for Northstar Recovery" });
+  const send = letters.getByRole("button", { name: "Send this letter" }).first();
+  await send.scrollIntoViewIfNeeded();
+  // Keyboard, so the fixed bottom nav on phones never takes the tap.
+  await send.focus();
+  await send.press("Enter");
+  await expect(page.getByText("Sent just now.")).toBeVisible();
+  await expect(letters).toContainText("answer due by");
+  await page.goto("/deadlines");
+  await expect(page.getByText("Collector's validation due: Northstar Recovery")).toBeVisible();
+});
+
+// Spec step 224: card interest, a 0% promotion off pace, and a request for a lower rate sent
+// only on the tap.
+test("card interest shows the cost, a promotion off pace, and a request sent on the tap", async ({
+  context,
+  page,
+  baseURL,
+}) => {
+  const user = await signedInUser("user");
+  userId = user.userId;
+  await context.addCookies([
+    { name: "authjs.session-token", value: user.sessionToken, url: baseURL ?? "" },
+  ]);
+  await page.goto("/connect");
+  await page.getByRole("button", { name: "Link a demo bank" }).click();
+  await expect(page).toHaveURL("/chat", { timeout: 60_000 });
+
+  await page.goto("/loans/interest");
+  await expect(page.getByRole("heading", { level: 1, name: "Less card interest" })).toBeVisible();
+  const cards = page.getByRole("list", { name: "Cards" });
+  await expect(cards).toContainText("$2,410.50 at 22.99%");
+  await expect(cards).toContainText("a year in interest");
+
+  await page.getByLabel("Card", { exact: true }).fill("Home Goods Store Card");
+  await page.getByLabel("Left to clear").fill("5000");
+  await page.getByLabel("Rate after the promotion %").fill("26.99");
+  await page.getByLabel("Started").fill("2026-06-01");
+  await page.getByLabel("Ends").fill("2099-02-01");
+  await page.getByRole("button", { name: "Add this promotion" }).press("Enter");
+  await expect(page.getByText("Promotion added.")).toBeVisible();
+  await expect(page.getByRole("list", { name: "Promotions" })).toContainText("0% ends on");
+
+  const send = page.getByRole("button", { name: "Send this request" }).first();
+  await send.scrollIntoViewIfNeeded();
+  // Keyboard, so the fixed bottom nav on phones never takes the tap.
+  await send.focus();
+  await send.press("Enter");
+  await expect(page.getByText("Sent just now.")).toBeVisible();
+  await expect(cards).toContainText("Asked");
 });

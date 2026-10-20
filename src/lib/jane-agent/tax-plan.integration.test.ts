@@ -164,7 +164,7 @@ describe.runIf(url)("the year-round tax plan against a real database", { timeout
     const userId = await demoPerson("tax-plan-chat");
     const { reply } = await sendToJane(userId, "what's my tax plan", { client, now: LINKED });
     expect(reply.body).toBe(
-      "Your 2026 tax plan, by deadline:\n- By Dec 31: Put more into your 401(k) before your last paycheck (open now)\n- By Dec 31: Sell at a loss before the year ends (open now)\n- By Dec 31: Make this year's gifts before December 31 (I'll bring it up Nov 1)\n- By Apr 15: File your return (I'll bring it up Jan 20)",
+      "You have 4 tax moves left for 2026, by deadline.\n- By Dec 31: Put more into your 401(k) before your last paycheck (open now)\n- By Dec 31: Sell at a loss before the year ends (open now)\n- By Dec 31: Make this year's gifts before December 31 (I'll bring it up Nov 1)\n- By Apr 15: File your return (I'll bring it up Jan 20)",
     );
     const tool = JSON.parse(
       (await runChatTool(userId, "tax_plan", {}, { client, now: LINKED })).content,

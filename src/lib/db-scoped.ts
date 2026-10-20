@@ -107,12 +107,19 @@ export function scopedFor(userId: string, client: PrismaClient = db) {
     lifeApplications: scoped.lifeApplication,
     coverChanges: scoped.coverChange,
     renewalNegotiations: scoped.renewalNegotiation,
+    insuranceSavings: scoped.insuranceSaving,
     refinanceChecks: scoped.refinanceCheck,
     loanApplications: scoped.loanApplication,
     studentLoanProfiles: scoped.studentLoanProfile,
     creditReports: scoped.creditReport,
     debtWatches: scoped.debtWatch,
     cardApplications: scoped.cardApplication,
+    tightRequests: scoped.tightRequest,
+    medicalBills: scoped.medicalBill,
+    medicalRequests: scoped.medicalRequest,
+    creditDisputes: scoped.creditDispute,
+    cardPromos: scoped.cardPromo,
+    cardRateRequests: scoped.cardRateRequest,
     balanceTransfers: scoped.balanceTransfer,
     findings: scoped.finding,
     decisions: scoped.decision,
@@ -146,6 +153,10 @@ export function scopedFor(userId: string, client: PrismaClient = db) {
     taxTags: scoped.taxTag,
     taxForms: scoped.taxForm,
     taxDocuments: scoped.taxDocument,
+    priorReturns: scoped.priorReturn,
+    taxAmendments: scoped.taxAmendment,
+    taxNotices: scoped.taxNotice,
+    taxIdentityCases: scoped.taxIdentityCase,
     taxReturns: scoped.taxReturn,
     // One-tap answers from Jane's emails (spec step 85).
     chatReplyLinks: scoped.chatReplyLink,
@@ -167,6 +178,14 @@ export function scopedFor(userId: string, client: PrismaClient = db) {
     paycheckPlans: scoped.paycheckPlan,
     // Money health score by month (spec step 146).
     healthScores: scoped.healthScore,
+    // The monthly money report (spec step 148).
+    monthlyReports: scoped.monthlyReport,
+    // Adopted what-if plans (spec step 203).
+    whatIfPlans: scoped.whatIfPlan,
+    // The lean plan when income stops (spec step 204).
+    leanPlans: scoped.leanPlan,
+    // The year's money plan (spec step 205).
+    yearPlans: scoped.yearPlan,
     savedShares: scoped.savedShare,
     // What's in investment accounts (spec step 128).
     securities: scoped.security,

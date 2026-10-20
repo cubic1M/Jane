@@ -8,6 +8,13 @@ import { loadStudentLoans, type StudentLoans } from "@/lib/student-loans";
 import { loadMortgage, type Mortgage } from "@/lib/mortgage";
 import { loadCredit, type Credit } from "@/lib/credit";
 import { loadCreditCards, type CreditCards } from "@/lib/credit-cards";
+import { loadCreditBuilding, type CreditBuilding } from "@/lib/credit-building";
+import { loadBnpl, type Bnpl } from "@/lib/bnpl";
+import { loadTightMoney, type TightMoney } from "@/lib/tight-money";
+import { loadMedicalBills, type MedicalBills } from "@/lib/medical-bills";
+import { loadReportFixes, type ReportFixes } from "@/lib/credit-report-fixes";
+import { loadCardInterest, type CardInterest } from "@/lib/card-interest";
+import type { DetectionInput } from "@/detection/types";
 import { loadDebtAutopilot, type DebtAutopilot } from "@/lib/debt-autopilot";
 import { listApplications, type LoanApplicationView } from "@/lib/loan-applications";
 import { loadRefinance, type Refinance } from "@/lib/refinance";
@@ -66,6 +73,18 @@ export type MoreSnapshot = {
   debtAutopilot?: DebtAutopilot;
   // Spec step 174: what each card earns on the person's spending, and a card that'd earn more.
   creditCards?: CreditCards;
+  // Spec step 175: paying before the statement, the on-time streak, the simulator.
+  creditBuilding?: CreditBuilding;
+  // Spec step 176: buy now, pay later plans, their installments and the forecast.
+  bnpl?: Bnpl;
+  // Spec step 177: a tight month's plan, and the requests sent.
+  tightMoney?: TightMoney;
+  // Spec step 180: medical bills found, and the requests sent about them.
+  medicalBills?: MedicalBills;
+  // Spec step 181: collections and errors on the credit report, and the letters sent.
+  reportFixes?: ReportFixes;
+  // Spec step 224: card interest, promotions and rate requests.
+  cardInterest?: CardInterest;
   // Insurance (spec Phase X), from the same loader as /insurance. Optional, so a snapshot
   // built without it (in tests) says nothing about insurance.
   insurance?: InsuranceSnapshot;
@@ -75,7 +94,7 @@ const text = (v: unknown) => (typeof v === "string" && v.trim() ? v.trim() : nul
 
 export async function loadMore(
   userId: string,
-  { client, now = new Date() }: { client: PrismaClient; now?: Date },
+  { client, now = new Date(), input }: { client: PrismaClient; now?: Date; input?: DetectionInput },
 ): Promise<MoreSnapshot> {
   const db = scopedFor(userId, client);
   // Every debt loader below works from the same debt book, loaded once.
@@ -95,6 +114,12 @@ export async function loadMore(
     credit,
     debtAutopilot,
     creditCards,
+    creditBuilding,
+    bnpl,
+    tightMoney,
+    medicalBills,
+    reportFixes,
+    cardInterest,
   ] = await Promise.all([
     autopilotOf(userId, { client }),
     openProposals(userId, { client }),
@@ -127,6 +152,12 @@ export async function loadMore(
     loadCredit(userId, { client, now, book }),
     loadDebtAutopilot(userId, { client, now, book }),
     loadCreditCards(userId, { client, now, book }),
+    loadCreditBuilding(userId, { client, now, book }),
+    loadBnpl(userId, { client, now, book, input }),
+    loadTightMoney(userId, { client, now, book, input }),
+    loadMedicalBills(userId, { client, now }),
+    loadReportFixes(userId, { client, now }),
+    loadCardInterest(userId, { client, now, book }),
   ]);
   const insurance = await loadInsuranceSnapshot(userId, { client, now });
 
@@ -170,6 +201,12 @@ export async function loadMore(
     credit,
     debtAutopilot,
     creditCards,
+    creditBuilding,
+    bnpl,
+    tightMoney,
+    medicalBills,
+    reportFixes,
+    cardInterest,
     insurance,
   };
 }

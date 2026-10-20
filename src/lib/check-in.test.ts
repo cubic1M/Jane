@@ -9,6 +9,7 @@ const checkIn: CheckIn = {
   month: "2026-09",
   spendingCents: 34_000,
   incomeCents: 300_000,
+  debtPaymentsCents: 0,
   previousSpendingCents: 30_000,
   budgets: [{ category: "Food and drink", budgetCents: 20_000, spentCents: 25_000, kept: false }],
   changes: [],

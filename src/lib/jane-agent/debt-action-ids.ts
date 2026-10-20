@@ -17,4 +17,19 @@ export const DEBT_ACTION_IDS = [
   "student.next",
   // Spec step 174: apply for the card Jane found (a hard credit check, only on this tap).
   "credit_card.apply",
+  // Spec step 175: pay before a card's statement closes; open a credit-builder stand-in.
+  "credit_build.pay",
+  "credit_builder.open",
+  // Spec step 176: pay a buy now, pay later plan off early when that's free.
+  "bnpl.payoff",
+  // Spec step 177: send one prepared request when money is tight.
+  "tight.send",
+  // Spec step 179: start the home down payment goal.
+  "home.goal",
+  // Spec step 180: send one prepared request about a medical bill.
+  "medical.send",
+  // Spec step 181: send one validation letter or bureau dispute.
+  "creditfix.send",
+  // Spec step 224: ask one card for a lower rate.
+  "cardrate.send",
 ] as const;

@@ -10,6 +10,15 @@ import type { StudentLoans } from "@/lib/student-loans";
 import type { Mortgage } from "@/lib/mortgage";
 import type { Credit } from "@/lib/credit";
 import type { CreditCards } from "@/lib/credit-cards";
+import type { CreditBuilding } from "@/lib/credit-building";
+import type { Bnpl } from "@/lib/bnpl";
+import { warnNewPlan } from "@/planning/bnpl";
+import type { TightMoney } from "@/lib/tight-money";
+import type { Car } from "@/lib/car";
+import type { HomeBuying } from "@/lib/home-buying";
+import type { MedicalBills } from "@/lib/medical-bills";
+import type { ReportFixes } from "@/lib/credit-report-fixes";
+import type { CardInterest } from "@/lib/card-interest";
 import { REWARD_CATEGORY_LABELS } from "@/config/credit-cards";
 import type { DebtAutopilot } from "@/lib/debt-autopilot";
 import { PMI_SOURCE } from "@/config/debt";
@@ -72,6 +81,87 @@ export const DEBT_TOOLS: Anthropic.Tool[] = [
     name: "credit_cards",
     description:
       "The person's credit cards and their rewards, from a year of their own spending (demo-bank people only, from a stand-in card catalog; nothing for real accounts until a card partner is connected): spending by kind (dining, groceries, gas, travel, streaming, online, everything else), each card's rewards, what it earns and its annual fee, whether each fee pays for itself against the best no-fee card, which card to use for each kind, and up to three cards that would earn more after their fee, with any sign-up bonus. Applying is a hard credit check and only ever the person's tap (the credit_card.apply button); Jane never applies by herself. Demo advice.",
+    input_schema: noInput,
+  },
+  {
+    name: "credit_building",
+    description:
+      "Building the person's credit (demo-bank people only; nothing for real accounts): the card whose statement closes next, the day it closes, what to pay before then so card use reported is under 30% or 10%, whether Jane or the person already scheduled it (through the money-movement stand-in), the on-time payment streak in months, whether the credit file is thin with credit-builder stand-ins (a secured card, a credit-builder loan), and the score simulator's estimate after each change (paying cards down, a year on time, a new card, a builder loan). Every simulator figure is an estimate, never a promise. Paying from the chat and opening a builder account each need the person's tap.",
+    input_schema: noInput,
+  },
+  {
+    name: "bnpl_installments",
+    description:
+      "The person's buy now, pay later plans and their installments: each plan's payment, how often, next due date and balance when known, every installment over the next month (soonest first) from the plans' own schedules, which of them the checking forecast does not count yet (Jane takes those off safe to spend), and which Pay in 4 plans are free to pay off now (no interest or fee for paying early). With total_cents, also whether a new Pay in 4 plan of that total (four payments two weeks apart) would take checking under its cushion, from the checking forecast. Paying a plan off needs the person's tap (the bnpl.payoff button).",
+    input_schema: {
+      type: "object" as const,
+      properties: {
+        total_cents: {
+          type: "integer" as const,
+          description:
+            "The total of a new plan to check against the forecast, in cents (optional).",
+        },
+      },
+    },
+  },
+  {
+    name: "tight_money",
+    description:
+      "Help when the person's money is tight (demo-bank people only): whether the checking forecast dips under its cushion in the next month and when, the bills before then in the order to pay them (housing, utilities and insurance first, never delayed), the requests Jane has prepared (moving a due date after payday, a hardship program, a lower card rate, a late fee waived) with the exact text of each and whether it was sent, and what each lender answered. Sending any request needs the person's tap (the tight.send button); Jane never sends one by herself.",
+    input_schema: noInput,
+  },
+  {
+    name: "car_purchase",
+    description:
+      "Planning a car purchase (demo-bank people only; nothing for real accounts): what the person can afford from their own income (all-in monthly cost, including the loan payment, insurance scaled from their auto policy, fuel from their gas spending, upkeep and registration, at most 20% of income), the highest price that fits, the preapproval loan offers compared by total cost with fees (cheapest first), and, with the dealer's rate and months, whether the dealer's financing costs more than the best preapproval. Every assumption is listed. Nothing is applied for here.",
+    input_schema: {
+      type: "object" as const,
+      properties: {
+        price_cents: {
+          type: "integer" as const,
+          description: "A car's price in cents (optional).",
+        },
+        dealer_apr_percent: {
+          type: "number" as const,
+          description: "The dealer's APR, e.g. 7.9 (optional).",
+        },
+        dealer_months: {
+          type: "integer" as const,
+          description: "The dealer's loan term in months (optional).",
+        },
+      },
+    },
+  },
+  {
+    name: "home_purchase",
+    description:
+      "Planning a home purchase (demo-bank people only; nothing for real accounts): the most home the person can afford under the usual rules (housing at most 28% of gross income, all debt at most 36%, gross estimated from take-home), the monthly cost at a price (loan, property tax, insurance, mortgage insurance/PMI while the down payment is under 20%), the cash needed up front (down payment and estimated closing costs), a savings plan from their real monthly cash flow and savings (how many months, or what to save a month by a date), the mortgage offers compared by total cost with closing costs, and every assumption. Starting the down payment goal needs the person's tap (the home.goal button).",
+    input_schema: {
+      type: "object" as const,
+      properties: {
+        price_cents: {
+          type: "integer" as const,
+          description: "A home's price in cents (optional).",
+        },
+      },
+    },
+  },
+  {
+    name: "medical_bills",
+    description:
+      "The person's medical bills (demo-bank people only; nothing for real accounts): bills of $100 or more found in recent payments to doctors, dentists and hospitals (pharmacy left out) plus any they typed in, whether they have an active health plan on file, and for each bill the requests Jane has written (an itemized bill, a check against their insurance, a financial assistance application for bills of $500 or more, and a payment plan with no interest for bills of $300 or more) with the exact letter, whether it was sent and what the provider answered, including what assistance took off. Amounts are the bills' own. Sending any request needs the person's tap (the medical.send button); Jane never sends one by herself.",
+    input_schema: noInput,
+  },
+  {
+    name: "credit_report_fixes",
+    description:
+      "Collections and possible errors on the person's credit report, from a monthly soft pull (demo-bank people only, a stand-in report; nothing for real accounts): each item with its creditor, amount and what's wrong, whether a dispute already fixed it, and the letters Jane wrote for it (a debt validation letter to a collector under the Fair Debt Collection Practices Act, section 809(b), with the last day to ask; a dispute to the three bureaus under the Fair Credit Reporting Act, section 611, which they must answer within 30 days) with the exact text, whether each was sent and what came back. Sending a letter needs the person's tap (the creditfix.send button); Jane never sends one by herself.",
+    input_schema: noInput,
+  },
+  {
+    name: "card_interest",
+    description:
+      "How much interest the person's cards cost and how to cut it (demo-bank people only; nothing for real accounts): each card's balance, rate, a year of interest, what paying its usual payment now instead of on the due date saves, when its statement closes; any 0% promotions they typed in with the days left, the monthly amount that clears the balance by the end, whether they're on pace, and (for deferred interest) what missing the end would cost, with the deadline Jane raised when off pace; and for each card at 15% or more with a balance the written request for a lower rate with a call script and the yearly saving, whether it was sent and what the lender answered. Sending a request needs the person's tap (the cardrate.send button); Jane never sends one by herself.",
     input_schema: noInput,
   },
   {
@@ -215,6 +305,14 @@ export const DEBT_TOOL_STATUS: Readonly<Record<string, string>> = {
   credit_score: "Checking your credit score…",
   debt_autopilot: "Checking what's due on your debts…",
   credit_cards: "Checking your card rewards…",
+  credit_building: "Working out how to build your credit…",
+  bnpl_installments: "Checking your buy now, pay later installments…",
+  tight_money: "Looking at your month ahead…",
+  car_purchase: "Working out what car you can afford…",
+  home_purchase: "Working out what home you can afford…",
+  medical_bills: "Looking at your medical bills…",
+  credit_report_fixes: "Checking your credit report…",
+  card_interest: "Looking at your card interest…",
 };
 
 export function refinanceToolOutput(refi: Refinance, money: (cents: number) => string) {
@@ -471,6 +569,291 @@ export function creditCardsToolOutput(cards: CreditCards, money: (cents: number)
       status: a.status,
       on: a.createdOn,
     })),
+  };
+}
+
+export function creditBuildingToolOutput(data: CreditBuilding, money: (cents: number) => string) {
+  if (!data.available) return { note: "No credit partner for this person's accounts." };
+  const s = data.statement;
+  return {
+    demoAdvice: true,
+    debtAutopilotLevel: data.level,
+    score: data.score,
+    nextStatement: s && {
+      card: s.cardName,
+      closesOn: s.closesOn,
+      payBy: s.payOn,
+      payToGetUnder30: money(s.toUnderHighCents),
+      payToGetUnder10: money(s.toUnderGoodCents),
+      suggested: s.suggested && {
+        amount: money(s.suggested.amountCents),
+        under: s.suggested.target === "good" ? "10%" : "30%",
+      },
+      alreadyScheduled: s.scheduled && {
+        amount: money(s.scheduled.amountCents),
+        on: s.scheduled.runOn,
+        by: s.scheduled.by,
+      },
+    },
+    onTimeStreak: data.streak && {
+      months: data.streak.months,
+      since: data.streak.since,
+      noLatePaymentsSeen: data.streak.clean,
+    },
+    thinFile: data.thin,
+    creditBuilders: data.builders.map((b) => ({
+      name: b.name,
+      issuer: b.issuer,
+      summary: b.summary,
+      cost: money(b.costCents),
+    })),
+    simulatorEstimates: data.estimates.map((e) => ({
+      change: e.label,
+      estimatedScore: e.score,
+      points: e.change,
+    })),
+    note: "Simulator figures are estimates from the stand-in score, not promises.",
+  };
+}
+
+export function bnplToolOutput(
+  data: Bnpl,
+  totalCents: number | null,
+  money: (cents: number) => string,
+) {
+  const strain = totalCents ? warnNewPlan(data, totalCents) : null;
+  return {
+    plans: data.plans.map((p) => ({
+      name: p.name,
+      payment: money(p.paymentCents),
+      every: p.every === "two_weeks" ? "two weeks" : "month",
+      nextDue: p.nextDue,
+      balance: p.balanceCents === null ? null : money(p.balanceCents),
+      freeToPayOffNow: p.freePayoff && p.canCoverPayoff && !p.payoffScheduled,
+    })),
+    installmentsNextMonth: data.installments.map((i) => ({
+      on: i.date,
+      plan: i.name,
+      amount: money(i.cents),
+    })),
+    notInForecastYet: data.missing.map((i) => ({
+      on: i.date,
+      plan: i.name,
+      amount: money(i.cents),
+    })),
+    newPlanCheck: strain && {
+      total: money(totalCents!),
+      strainsTheMonth: strain.strained,
+      lowestCheckingWithPlan: money(strain.lowestWith.balanceCents),
+      on: strain.lowestWith.date,
+      lowestCheckingWithout: money(strain.lowestWithout.balanceCents),
+      underTheCushionBy: money(strain.shortCents),
+    },
+    alwaysNeedsATap: "paying a plan off",
+  };
+}
+
+export function tightMoneyToolOutput(data: TightMoney, money: (cents: number) => string) {
+  if (!data.available) return { note: "No lender partner for this person's accounts yet." };
+  return {
+    demoAdvice: true,
+    shortfall: data.shortfall && {
+      on: data.shortfall.date,
+      forecastBalance: money(data.shortfall.balanceCents),
+      underTheCushionBy: money(data.shortfall.shortCents),
+    },
+    payInThisOrder: data.billsFirst.map((b) => ({
+      payee: b.payee,
+      on: b.date,
+      amount: money(b.amountCents),
+      essential: b.essential,
+    })),
+    requests: data.items.map((i) => ({
+      id: i.id,
+      what: i.label,
+      text: i.body,
+      couldFree: i.freesCents === null ? null : money(i.freesCents),
+      sent: i.sent && { on: i.sent.sentOn, status: i.sent.status, answer: i.sent.outcome },
+    })),
+    alwaysNeedsATap: "sending any request",
+  };
+}
+
+export function carToolOutput(car: Car, money: (cents: number) => string) {
+  if (!car.available) return { note: "No lending partner for this person's accounts yet." };
+  if (!car.costs) return { note: "Not enough income history to say what car fits." };
+  const c = car.costs;
+  return {
+    demoAdvice: true,
+    maxPrice: money(car.maxPriceCents!),
+    allInBudgetPerMonth: money(car.allowanceCents!),
+    atPrice: money(c.priceCents),
+    withinBudget: car.withinBudget,
+    monthly: {
+      loanPayment: money(c.paymentCents),
+      insurance: money(c.insuranceCents),
+      fuel: money(c.fuelCents),
+      upkeep: money(c.maintenanceCents),
+      registration: money(c.registrationCents),
+      allIn: money(c.allInCents),
+    },
+    preapprovals: car.offers.map((o) => ({
+      lender: o.offer.lender,
+      rate: `${(o.offer.aprBps / 100).toFixed(2)}%`,
+      monthly: money(o.monthlyCents),
+      totalCost: money(o.totalCents),
+      fees: o.offer.feeLabel,
+    })),
+    dealer: car.dealer && {
+      verdict: car.dealer.verdict,
+      monthly: money(car.dealer.monthlyCents),
+      totalCost: money(car.dealer.totalCents),
+      costsMoreThanBestPreapproval: money(car.dealer.extraCents),
+    },
+    assumptions: car.assumptions,
+  };
+}
+
+export function homeToolOutput(home: HomeBuying, money: (cents: number) => string) {
+  if (!home.available) return { note: "No lending partner for this person's accounts yet." };
+  if (!home.costs || !home.affordability || !home.saving) {
+    return { note: "Not enough income history to say what home fits." };
+  }
+  const c = home.costs;
+  return {
+    demoAdvice: true,
+    maxPrice: money(home.affordability.maxPriceCents),
+    allowedHousingPerMonth: money(home.affordability.allowedHousingCents),
+    atPrice: money(c.priceCents),
+    monthly: {
+      loan: money(c.principalAndInterestCents),
+      propertyTax: money(c.propertyTaxCents),
+      insurance: money(c.insuranceCents),
+      pmi: money(c.pmiCents),
+      total: money(c.housingCents),
+    },
+    cashNeeded: {
+      downPayment: money(c.downCents),
+      closingCosts: money(c.closingCents),
+      total: money(c.cashNeededCents),
+    },
+    saving: {
+      saved: money(home.savedCents),
+      keepsPerMonth: money(home.monthlySavingCents),
+      stillNeeded: money(home.saving.stillNeededCents),
+      monthsAtCurrentPace: home.saving.monthsAtCurrentPace,
+      targetDate: home.targetDate,
+      neededPerMonthForTargetDate: money(home.saving.monthlyNeededCents),
+      onTrack: home.saving.onTrack,
+      goalStarted: home.hasGoal,
+    },
+    mortgageOffers: home.offers.map((o) => ({
+      lender: o.offer.lender,
+      rate: `${(o.offer.aprBps / 100).toFixed(2)}%`,
+      monthlyForLoan: money(o.monthlyCents),
+      totalCostWithClosing: money(o.totalCents),
+      closing: o.offer.feeLabel,
+    })),
+    assumptions: home.assumptions,
+  };
+}
+
+export function medicalToolOutput(data: MedicalBills, money: (cents: number) => string) {
+  if (!data.available) return { note: "No provider partner for this person's accounts yet." };
+  return {
+    demoAdvice: true,
+    hasActiveHealthPlan: data.hasInsurance,
+    bills: data.bills.map((b) => ({
+      provider: b.provider,
+      amount: money(b.amountCents),
+      billedOn: b.billedOn,
+      source: b.source,
+      requests: b.items.map((i) => ({
+        id: i.id,
+        what: i.label,
+        letter: i.body,
+        sent: i.sent && {
+          on: i.sent.sentOn,
+          status: i.sent.status,
+          answer: i.sent.outcome,
+          tookOff: money(i.sent.savedCents),
+        },
+      })),
+    })),
+    alwaysNeedsATap: "sending any request",
+  };
+}
+
+export function reportFixesToolOutput(data: ReportFixes, money: (cents: number) => string) {
+  if (!data.available) return { note: "No credit partner for this person's accounts yet." };
+  return {
+    demoAdvice: true,
+    standIn: true,
+    items: data.fixes.map((f) => ({
+      creditor: f.item.creditor,
+      kind: f.item.kind,
+      amount: f.item.amountCents === null ? null : money(f.item.amountCents),
+      detail: f.item.detail,
+      fixedByADispute: f.fixed,
+      letters: f.letters.map((l) => ({
+        id: l.id,
+        what: l.label,
+        lastDayToAsk: l.windowEndsOn,
+        letter: l.body,
+        sent: l.sent && {
+          on: l.sent.sentOn,
+          answerDueBy: l.sent.deadlineOn,
+          status: l.sent.status,
+          removedOrCorrected: l.sent.removed,
+          answer: l.sent.outcome,
+        },
+      })),
+    })),
+    alwaysNeedsATap: "sending any letter",
+  };
+}
+
+export function cardInterestToolOutput(data: CardInterest, money: (cents: number) => string) {
+  if (!data.available) return { note: "No lending partner for this person's accounts yet." };
+  return {
+    demoAdvice: true,
+    interestPerYear: money(data.interestYearCents),
+    rateCutsWonPerYear: money(data.grantedSavingCents),
+    cards: data.cards.map((c) => ({
+      card: c.name,
+      balance: money(c.balanceCents),
+      rate: `${(c.aprBps / 100).toFixed(2)}%`,
+      interestPerYear: money(c.interestYearCents),
+      payNowInsteadOfOnDueDate: c.payEarly && {
+        amount: money(c.payEarly.amountCents),
+        saves: money(c.payEarly.savedCents),
+      },
+      statementCloses: c.statementClosesOn,
+      lowerRateRequest: c.rate && {
+        id: c.rate.id,
+        wouldSavePerYear: money(c.rate.savingYearlyCents),
+        letter: c.rate.body,
+        callScript: c.rate.script,
+        sent: c.rate.sent && {
+          on: c.rate.sent.sentOn,
+          status: c.rate.sent.status,
+          answer: c.rate.sent.outcome,
+        },
+      },
+    })),
+    promotions: data.promos.map((p) => ({
+      card: p.cardName,
+      balance: money(p.balanceCents),
+      ends: p.endsOn,
+      daysLeft: p.plan.daysLeft,
+      deferredInterest: p.deferred,
+      monthlyNeededToClear: money(p.plan.monthlyNeededCents),
+      payingNow: money(p.plan.monthlyPaidCents),
+      onPace: p.plan.onPace,
+      costIfMissed: money(p.plan.costIfMissedCents),
+      deadlineOnDeadlinesList: p.deadlineRaised,
+    })),
+    alwaysNeedsATap: "sending any request",
   };
 }
 

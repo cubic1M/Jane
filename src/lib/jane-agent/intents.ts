@@ -90,6 +90,8 @@ export type Intent =
   | { kind: "priorities" }
   // Spec step 183: "am I OK?" and "what should I do this month?", across every sector.
   | { kind: "whole_picture"; focus: "now" | "month" }
+  // Spec step 187: everything Jane did, or why she did the last thing.
+  | { kind: "timeline"; why: boolean }
   // Spec step 185: money into a goal ("put the savings in my emergency fund"); "savings" is
   // what the steps before it save, a month's worth.
   | { kind: "move_to_goal"; amountCents: number | "savings"; goal: string }
@@ -101,6 +103,8 @@ export type Intent =
   | { kind: "bills_paid" }
   // Spec step 146: "what's my money health score?"
   | { kind: "health" }
+  // Spec step 148: "my monthly report".
+  | { kind: "monthly_report" }
   // Spec step 141: one autopilot, every sector.
   | SectorIntent
   // Spec step 136: what a word means.
@@ -338,6 +342,8 @@ const BILLS_PAID =
   /\b(?:are|is) my (?:bills?|card|credit card|loan)(?: payments?)? (?:paid|covered|set|on time)\b|\bpay my (?:bills?|card|credit card)(?: on time)?\b|\bbills? (?:paid )?on time\b|\bbill pay\b/;
 const HEALTH =
   /\b(?:health score|money health|financial health|financial wellness)\b|\bhow healthy (?:are|is) my (?:money|finances)\b/;
+const MONTHLY_REPORT =
+  /\b(?:monthly|money|month'?s) report\b|\bmonth in review\b|\breport (?:for|on) (?:last|this) month\b/;
 const PRIORITIES =
   /\bwhat should i do (?:first|next|now)\b|\bwhat matters (?:most|now)\b|\bwhat'?s (?:most )?important\b|\bwhere (?:do|should) i start\b|\bmy (?:top )?priorities\b|\bnext best thing\b/;
 // Spec step 183. "Am I OK to buy …" is a purchase question, and goals have their own answer.
@@ -345,6 +351,11 @@ const WHOLE_NOW =
   /\bam i (?:ok|okay|alright|all right|fine|good)\b(?! (?:to|if|for|with|on)\b)|\bhow am i doing\b(?! (?:on|with)\b)|\bhow (?:are|is) (?:my|our) (?:money|finances?)(?: doing| looking)?\b|\bhow'?s (?:my|our) (?:money|finances?)\b|\b(?:the )?(?:big|whole|full) picture\b|\bis (?:my|our) money (?:ok|okay|alright|fine)\b|\bam i on track\b(?! (?:for|with)\b)|\b(?:overall|in general),? how am i\b/;
 const WHOLE_MONTH =
   /\bwhat (?:should|do|can) (?:i|we) (?:need to )?(?:do|focus on|work on) this month\b|\bthis month'?s (?:plan|priorities|to ?do)\b|\bwhat matters this month\b|\bplan for this month\b/;
+// Spec step 187.
+const WHY_DID =
+  /\bwhy did you (?:do|did) that\b|\bwhy did you (?:do|move|pay|switch|cancel|change|pick|choose)\b|\bwhy (?:did|was) (?:that|it) done\b/;
+const TIMELINE =
+  /\b(?:everything|all|list of) (?:you(?:'ve| have)? (?:did|done)|jane (?:did|has done))\b|\bactivity (?:log|timeline|history)\b|\bwhat (?:have )?you (?:done|did) (?:for me )?(?:so far|lately|recently|all)\b|\byour activity\b|\btimeline\b/;
 const CHECKED =
   /\bwhat did you check\b|\b(?:checked|check) (?:last night|overnight)\b|\bnightly (?:check|run|log)s?\b/;
 const APPROVE_ALL =
@@ -493,11 +504,14 @@ export function parseIntent(
   if (THANKS.test(text)) return { kind: "greeting", thanks: true };
   if (PAUSE.test(text)) return { kind: "pause_autopilot" };
   if (CHECKED.test(text)) return { kind: "checked" };
+  if (WHY_DID.test(text)) return { kind: "timeline", why: true };
+  if (TIMELINE.test(text)) return { kind: "timeline", why: false };
   if (WHOLE_MONTH.test(text)) return { kind: "whole_picture", focus: "month" };
   if (WHOLE_NOW.test(text)) return { kind: "whole_picture", focus: "now" };
   if (PRIORITIES.test(text)) return { kind: "priorities" };
   if (PAYCHECK.test(text)) return { kind: "paycheck" };
   if (HEALTH.test(text)) return { kind: "health" };
+  if (MONTHLY_REPORT.test(text)) return { kind: "monthly_report" };
   const sector = parseSectorIntent(text);
   if (sector) return sector;
   if (BILLS_PAID.test(text)) return { kind: "bills_paid" };

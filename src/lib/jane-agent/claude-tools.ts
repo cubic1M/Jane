@@ -27,6 +27,9 @@ import { listTransfers } from "@/lib/money-movement/transfers";
 import { loadBillPay } from "@/lib/money-movement/bill-pay";
 import { moneyPartnerFor } from "@/lib/money-movement/partner";
 import { healthFor } from "@/lib/health-score";
+import { SCENARIOS } from "@/config/what-if";
+import { isScenario, whatIf } from "@/lib/what-if";
+import { storedReport } from "@/lib/monthly-report-store";
 import { SECTOR_LABELS, SECTOR_LEVEL_LABELS } from "@/config/autopilot-sectors";
 import { provenSavings } from "@/lib/savings-proof";
 import { listLifeEvents } from "@/lib/life-events";
@@ -197,6 +200,26 @@ export const CHAT_TOOLS: Anthropic.Tool[] = [
     name: "priorities",
     description:
       'The person\'s next best things to do (spec step 143), ranked across everything Jane found and is waiting on: findings, insurance picks, refinance offers, steps only they can do and dated deadlines. Each with the money it saves a year, the minutes it takes, its urgency and why it ranks where it does. Use it for "what should I do first" and to put the most important first.',
+    input_schema: noInput,
+  },
+  {
+    name: "what_if",
+    description:
+      "Runs a what-if through the person's own numbers (spec step 203): job loss, a raise, a baby, moving, buying a car or a home, going part-time. Returns month-by-month cash with and without it, the debt-free month, goals that slip, tax change, what to check on insurance, what's left for investing, and Jane's plan. Running it changes nothing; the person adopts the plan with a button. Give scenario and, if they said how long, months.",
+    input_schema: {
+      type: "object",
+      properties: {
+        scenario: { type: "string", enum: [...SCENARIOS] },
+        months: { type: "number", description: "How many months it lasts, if said." },
+      },
+      required: ["scenario"],
+      additionalProperties: false,
+    },
+  },
+  {
+    name: "monthly_report",
+    description:
+      "The person's newest monthly money report (spec step 148): for the month just ended, savings confirmed (that month and in all), what came in, payments toward cards and loans, transfers that went through (sample transfers), the money health score and its change, the next best thing, and the receipts that prove the savings. Each figure is the same as on the page it links to.",
     input_schema: noInput,
   },
   {
@@ -453,6 +476,53 @@ export async function runChatTool(
           what: e.title,
           about: money(e.cents),
           why: e.why,
+        })),
+      });
+    }
+    case "what_if": {
+      const scenario = (input as { scenario?: unknown }).scenario;
+      if (!isScenario(scenario)) return out({ error: "Unknown scenario." });
+      const months = (input as { months?: unknown }).months;
+      const run = await whatIf(
+        userId,
+        scenario,
+        { months: typeof months === "number" ? months : undefined },
+        { client, now },
+      );
+      if (!run) return out({ run: null, why: "No accounts linked yet." });
+      return out({
+        scenario: run.label,
+        lowestWith: money(run.after.lowestCents),
+        lowestWithout: money(run.before.lowestCents),
+        cashRunsOutInMonth: run.after.runsOutMonth,
+        forecast: run.sectors.forecast,
+        debt: run.sectors.debt,
+        goals: run.sectors.goals.map((g) => ({ goal: g.name, status: g.status, note: g.note })),
+        taxes: run.sectors.taxes,
+        investing: run.sectors.investing,
+        toCheck: run.sectors.insurance,
+        plan: run.plan.map((c) => c.title),
+        changedAnything: false,
+      });
+    }
+    case "monthly_report": {
+      const stored = await storedReport(userId, null, { client });
+      if (!stored)
+        return out({ report: null, why: "The first report comes at the start of next month." });
+      const r = stored.report;
+      return out({
+        month: r.month,
+        saved: { thisMonth: money(r.saved.monthCents), inAll: money(r.saved.totalCents) },
+        earned: money(r.earnedCents),
+        paidDown: money(r.paidDownCents),
+        moved: { amount: money(r.moved.cents), transfers: r.moved.count, sampleOnly: true },
+        health: r.health,
+        next: r.next?.title ?? null,
+        receipts: r.receipts.map((x) => ({
+          what: x.title,
+          amount: money(x.cents),
+          yearly: x.yearly,
+          proof: x.proof,
         })),
       });
     }

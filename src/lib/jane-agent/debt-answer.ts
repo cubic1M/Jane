@@ -7,6 +7,15 @@ import { loadMortgage } from "@/lib/mortgage";
 import { loadCredit } from "@/lib/credit";
 import { loadDebtAutopilot } from "@/lib/debt-autopilot";
 import { loadCreditCards } from "@/lib/credit-cards";
+import { loadCreditBuilding } from "@/lib/credit-building";
+import { loadBnpl } from "@/lib/bnpl";
+import { loadTightMoney } from "@/lib/tight-money";
+import { loadCar } from "@/lib/car";
+import { loadHomeBuying } from "@/lib/home-buying";
+import { loadMedicalBills } from "@/lib/medical-bills";
+import { loadReportFixes } from "@/lib/credit-report-fixes";
+import { loadCardInterest } from "@/lib/card-interest";
+import { pullCredit } from "@/lib/credit";
 import { listApplications } from "@/lib/loan-applications";
 import { checkRates, loadRefinance } from "@/lib/refinance";
 import type { DebtIntent } from "./debt-intents";
@@ -17,6 +26,14 @@ import { mortgageReply } from "./mortgage-replies";
 import { creditReply } from "./credit-replies";
 import { debtAutopilotReply, debtDueReply } from "./debt-autopilot-replies";
 import { betterCardReply, cardFeeReply, cardForReply } from "./credit-card-replies";
+import { buildCreditReply, simulateReply } from "./credit-building-replies";
+import { bnplNewPlanReply, bnplReply } from "./bnpl-replies";
+import { tightReply } from "./tight-money-replies";
+import { carDealerReply, carReply } from "./car-replies";
+import { homeReply } from "./home-buying-replies";
+import { medicalReply } from "./medical-bills-replies";
+import { reportFixReply } from "./credit-report-fixes-replies";
+import { cardInterestReply } from "./card-interest-replies";
 import type { Reply } from "./replies";
 
 // Answers questions about debts by rules (spec Phase Y), with the same loaders as the
@@ -48,6 +65,67 @@ export async function answerDebt(
       return debtAutopilotReply(await loadDebtAutopilot(userId, { client, now }));
     case "debt_due":
       return debtDueReply(await loadDebtAutopilot(userId, { client, now }));
+    case "build_credit":
+    case "credit_simulate": {
+      let data = await loadCreditBuilding(userId, { client, now });
+      // Asked before Jane's first monthly pull: she pulls now (a soft pull).
+      if (data.available && data.score === null) {
+        await pullCredit(userId, { client, now });
+        data = await loadCreditBuilding(userId, { client, now });
+      }
+      return intent.kind === "build_credit" ? buildCreditReply(data) : simulateReply(data);
+    }
+    case "card_interest":
+      return cardInterestReply(await loadCardInterest(userId, { client, now }));
+    case "report_fixes":
+      return reportFixReply(await loadReportFixes(userId, { client, now }));
+    case "medical_bills":
+      return medicalReply(await loadMedicalBills(userId, { client, now }));
+    case "home_afford":
+      return homeReply(
+        await loadHomeBuying(
+          userId,
+          { priceCents: intent.priceCents ?? undefined },
+          { client, now },
+        ),
+        intent.priceCents !== null,
+      );
+    case "car_afford":
+      return carReply(
+        await loadCar(userId, { priceCents: intent.priceCents ?? undefined }, { client, now }),
+        intent.priceCents !== null,
+      );
+    case "car_dealer": {
+      const price = intent.priceCents ?? undefined;
+      return carDealerReply(
+        await loadCar(
+          userId,
+          {
+            priceCents: price,
+            dealer:
+              intent.aprBps !== null && intent.termMonths !== null
+                ? { aprBps: intent.aprBps, termMonths: intent.termMonths, feesCents: 0 }
+                : undefined,
+          },
+          { client, now },
+        ),
+      );
+    }
+    case "tight_money":
+      return tightReply(await loadTightMoney(userId, { client, now }));
+    case "bnpl":
+      return bnplReply(await loadBnpl(userId, { client, now }));
+    case "bnpl_new": {
+      const data = await loadBnpl(userId, { client, now });
+      if (intent.totalCents === null) {
+        return {
+          body: 'How much is the plan? Tell me the total, like "can I afford a $300 Klarna plan", and I\'ll check it against your forecast.',
+          actions: [],
+          refs: {},
+        };
+      }
+      return bnplNewPlanReply(data, intent.totalCents);
+    }
     case "card_for":
       return cardForReply(await loadCreditCards(userId, { client, now }), intent.category);
     case "card_fee":

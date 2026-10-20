@@ -24,6 +24,8 @@ import { loadInsurance } from "@/lib/insurance/profile";
 import { listReadings } from "@/lib/insurance/readings";
 import { listCoverChanges } from "@/lib/insurance/cover-changes";
 import { listNegotiations } from "@/lib/insurance/negotiate";
+import { refreshSavings } from "@/lib/insurance/savings";
+import { lowering, savingLine } from "@/lib/jane-agent/insurance/saving-words";
 import { askCallBody, callResultBody } from "@/lib/jane-agent/insurance/done-by-jane-words";
 import { partnerFor } from "@/lib/insurance/partner";
 import { coverBody, coverActions, coverEventRef } from "@/lib/jane-agent/insurance/cover-words";
@@ -34,6 +36,8 @@ import { autopilotOf } from "@/lib/autopilot";
 import { autopilotReply } from "@/lib/jane-agent/insurance/autopilot";
 import {
   applyChanges,
+  applyOneSaving,
+  skipSaving,
   callRenewal,
   deletePolicy,
   dismissChanges,
@@ -56,6 +60,7 @@ const SAVED: Record<string, string> = {
   read: "Confirmed. It's on your insurance now.",
   changes: "Done. Your insurance is up to date.",
   called: "Jane called your insurer. What they said is below and in the chat.",
+  saving: "Done. Your policy is updated and your insurer confirmed it.",
 };
 
 const dateLabel = (day: string) =>
@@ -191,6 +196,8 @@ async function InsuranceContent({
     partnerFor(user.id),
     listNegotiations(user.id),
   ]);
+  // Spec step 196: looked at again whenever the page opens.
+  const savings = await refreshSavings(user.id);
   const policyById = (id: string) => policies.find((p) => p.id === id);
   const renewals = negotiations.filter((n) => n.status !== "declined").slice(-3);
   // Spec step 154: one group per life event.
@@ -255,6 +262,51 @@ async function InsuranceContent({
         >
           {saved}
         </p>
+      )}
+
+      {savings.length > 0 && (
+        <section id="savings" className="flex flex-col gap-3" aria-labelledby="savings-heading">
+          <h2 id="savings-heading" className="text-xl font-semibold">
+            Pay less for the same cover
+          </h2>
+          <ul className="flex flex-col gap-3">
+            {savings.map((s) => (
+              <li
+                key={s.id}
+                className="flex flex-col gap-2 rounded-xl border border-zinc-200 p-4 text-sm dark:border-zinc-800"
+              >
+                <p>{savingLine(s, policyById(s.policyId))}</p>
+                {lowering([s]).length > 0 && (
+                  <p className="text-zinc-600 dark:text-zinc-400">
+                    This one lowers your cover: if you claim, you pay{" "}
+                    {formatCents(
+                      (s.detail.toDeductibleCents ?? 0) - (s.detail.fromDeductibleCents ?? 0),
+                    )}{" "}
+                    more yourself.
+                  </p>
+                )}
+                <div className="flex flex-wrap gap-3">
+                  <form action={applyOneSaving}>
+                    <input type="hidden" name="savingId" value={s.id} />
+                    <button
+                      type="submit"
+                      className="inline-flex h-10 items-center rounded-full bg-emerald-700 px-5 font-semibold text-white hover:bg-emerald-800"
+                    >
+                      {lowering([s]).length > 0 ? "Raise it" : "Do it"}
+                    </button>
+                  </form>
+                  <form action={skipSaving}>
+                    <input type="hidden" name="savingId" value={s.id} />
+                    <button type="submit" className={`h-10 ${LINK}`}>
+                      No thanks
+                    </button>
+                  </form>
+                </div>
+              </li>
+            ))}
+          </ul>
+          <DemoAdviceLabel />
+        </section>
       )}
 
       {renewals.length > 0 && (

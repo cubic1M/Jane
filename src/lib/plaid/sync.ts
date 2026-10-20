@@ -257,6 +257,8 @@ async function saveLiabilities(
       hasPmi: l.hasPmi,
       escrowBalanceCents: l.escrowBalanceCents,
       hasPrepaymentPenalty: l.hasPrepaymentPenalty,
+      lastStatementIssueDate: day(l.lastStatementIssueDate),
+      lastStatementBalanceCents: l.lastStatementBalanceCents,
     };
     await db.liabilities.upsert({
       where: { accountId },
@@ -609,18 +611,23 @@ export async function syncItem(
   }
 
   await runDetection(item.userId, { client, now });
-  // New charges may show that a switch went through (spec step 77).
-  await confirmSwitches({ client, now, userId: item.userId });
-  // Spec step 105: an insurance switch whose first payment went through.
-  await confirmInsuranceSwitches({ client, now, userId: item.userId });
-  // Spec step 104: Jane reshops insurance that renews soon or went up, by herself. A
-  // problem there never fails the sync; the daily run tries again.
-  // Spec step 106: and checks the cover once a year and after a life event.
-  await insuranceAfterSync(item.userId, { client, now });
-  // Card text from Claude, as a job: retried later if it fails, without failing the sync.
-  await runJob(await enqueueJob("explain_findings", { userId: item.userId }, { client }), {
-    client,
-  });
+  // After detection these don't depend on each other, so they run together; the sample
+  // person's first screen is waiting on this sync.
+  await Promise.all([
+    // New charges may show that a switch went through (spec step 77).
+    confirmSwitches({ client, now, userId: item.userId }),
+    // Spec step 105: an insurance switch whose first payment went through.
+    confirmInsuranceSwitches({ client, now, userId: item.userId }),
+    // Spec step 104: Jane reshops insurance that renews soon or went up, by herself. A
+    // problem there never fails the sync; the daily run tries again.
+    // Spec step 106: and checks the cover once a year and after a life event.
+    insuranceAfterSync(item.userId, { client, now }),
+    // Card text from Claude, as a job: retried later if it fails, without failing the sync.
+    (async () =>
+      runJob(await enqueueJob("explain_findings", { userId: item.userId }, { client }), {
+        client,
+      }))(),
+  ]);
   // Jane says what's new in the chat (spec step 82); a problem there never fails the sync.
   await runJaneAgentSafely(item.userId, { client, now, trigger: "sync" });
   return result;

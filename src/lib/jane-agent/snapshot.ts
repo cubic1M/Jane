@@ -11,6 +11,12 @@ import { loadChanges, type ChangeView } from "@/lib/changes";
 import { lastControllerRun, type LastRun } from "@/lib/controller-log";
 import { loadBillPay, type BillPayView } from "@/lib/money-movement/bill-pay";
 import { healthFor, type HealthView } from "@/lib/health-score";
+import type { Attention } from "./attention";
+import { loadAttention } from "./attention-load";
+import { resultsByKind, type KindResult } from "@/lib/worked";
+import { adoptedPlans, type AdoptedPlan } from "@/lib/what-if";
+import { openLean, recentlyEnded, type LeanState } from "@/lib/lean-plan";
+import { recentReport, type StoredReport } from "@/lib/monthly-report-store";
 import { moneyPartnerFor } from "@/lib/money-movement/partner";
 import { latestPaycheckPlan, type PaycheckPlanView } from "@/lib/money-movement/paycheck";
 import { lifeGuessesFor } from "@/lib/life-guesses";
@@ -111,6 +117,17 @@ export type Snapshot = {
   billPay?: BillPayView | null;
   // Spec step 146: the money health score this month. Optional, like changes.
   health?: HealthView | null;
+  // Spec step 147: when the person answers, and what Jane stopped bringing up. Optional,
+  // like changes.
+  attention?: Attention;
+  // Spec step 203: what-if plans the person adopted. Optional, like changes.
+  whatIf?: AdoptedPlan[];
+  // Spec step 207: what the person says yes to and what worked, by kind of finding.
+  worked?: KindResult[];
+  // Spec step 204: the lean-plan question or plan in force, and plans that just ended.
+  lean?: { open: LeanState[]; ended: { id: string; employer: string }[] };
+  // Spec step 148: the monthly money report, while it's new. Optional, like changes.
+  monthlyReport?: StoredReport | null;
   // Spec step 128 on: what's in investment accounts.
   investments?: InvestmentSnapshot;
   // Spec step 91: suggestions the person said never to make again (preference keys);
@@ -192,7 +209,9 @@ async function thinking(
     healthFor(userId, { client, now, input }),
   ]);
   const billPay = partner ? await loadBillPay(userId, { client, now, input }) : null;
+  const worked = await resultsByKind(userId, { client, now, input });
   return {
+    worked,
     changes,
     lifeGuesses,
     saved: { confirmedCents: saved.confirmedCents },
@@ -255,6 +274,35 @@ export async function loadSnapshot(
     { userId, client, now },
   );
 
+  // The sectors' parts are independent reads: loaded together, not one after another (the
+  // sample person's first screen waits on this).
+  const [
+    more,
+    taxPart,
+    thinkingPart,
+    lastRun,
+    paycheck,
+    upkeep,
+    investments,
+    lastWeek,
+    attention,
+    monthlyReport,
+    whatIf,
+  ] = await Promise.all([
+    loadMore(userId, { client, now, input }),
+    loadTaxSnapshot(userId, { client, now }),
+    // Spec steps 97, 100, 139, 145 and 146 read the same bank data, so it's loaded once.
+    thinking(userId, client, now, input),
+    lastControllerRun(userId, { client, now }),
+    latestPaycheckPlan(userId, { client, now }),
+    loadUpkeep(userId, { client, now }),
+    loadInvestmentSnapshot(userId, { client, now }),
+    chatWeek(userId, client, weekStart(now, user?.timezone)),
+    loadAttention(userId, { client, now, timezone: user?.timezone ?? null }),
+    recentReport(userId, { client, now }),
+    adoptedPlans(userId, { client }),
+  ]);
+
   return {
     timezone: user?.timezone ?? null,
     asOf: now.toISOString().slice(0, 10),
@@ -300,16 +348,22 @@ export async function loadSnapshot(
       .filter((a) => isUrgent(a.type) && !ALERTS_SAID_ELSEWHERE.includes(a.type))
       .map((a) => ({ id: a.id, title: a.title, body: a.body })),
     budgetProgress: home.budgetProgress,
-    ...(await loadMore(userId, { client, now })),
-    ...(await loadTaxSnapshot(userId, { client, now })),
-    // Spec steps 97, 100, 139, 145 and 146 read the same bank data, so it's loaded once for them.
-    ...(await thinking(userId, client, now, input)),
+    ...more,
+    ...taxPart,
+    ...thinkingPart,
     firstChat: said === 0,
-    lastRun: await lastControllerRun(userId, { client, now }),
-    paycheck: await latestPaycheckPlan(userId, { client, now }),
-    upkeep: await loadUpkeep(userId, { client, now }),
-    investments: await loadInvestmentSnapshot(userId, { client, now }),
+    lastRun,
+    paycheck,
+    upkeep,
+    investments,
     neverSuggest: [...never],
-    lastWeek: await chatWeek(userId, client, weekStart(now, user?.timezone)),
+    lastWeek,
+    attention,
+    monthlyReport,
+    whatIf,
+    lean: {
+      open: await openLean(userId, { client }),
+      ended: await recentlyEnded(userId, { client, now }),
+    },
   };
 }

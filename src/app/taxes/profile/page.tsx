@@ -13,6 +13,8 @@ import { TaxProfileForm } from "./form";
 import { PayStubForm } from "./pay-stub-form";
 import { ResidencyForm } from "./residency-form";
 import { FamilyForm } from "./family-form";
+import { HomeForm } from "./home-form";
+import { SideIncomeForm } from "./side-income-form";
 import { FAMILY_FORM_CHILDREN } from "./answers";
 import { parseChildren } from "@/lib/family-taxes";
 import { loadResidency } from "@/lib/tax-states";
@@ -42,6 +44,19 @@ async function ProfileContent() {
         paysOverHalfHome: true,
         studentYearsBefore: true,
         studentHalfTime: true,
+        pointsCents: true,
+        pointsYear: true,
+        pointsPurchase: true,
+        pointsLoanYears: true,
+        homeBoughtOn: true,
+        homePriceCents: true,
+        homeSoldOn: true,
+        homeSaleCents: true,
+        homeSaleCostsCents: true,
+        homeDaysLivedIn: true,
+        rentalPriceCents: true,
+        rentalPlacedOn: true,
+        sideIncomeKind: true,
       },
     }),
     loadResidency(user.id, year),
@@ -116,6 +131,30 @@ async function ProfileContent() {
               ? ""
               : String(pay.studentYearsBefore),
           studentHalfTime: pay?.studentHalfTime ?? true,
+        }}
+      />
+      <HomeForm
+        values={{
+          year,
+          points: pay?.pointsYear === year ? dollars(pay.pointsCents) : "",
+          pointsPurchase: pay?.pointsPurchase ?? true,
+          pointsLoanYears: pay?.pointsLoanYears ? String(pay.pointsLoanYears) : "30",
+          boughtOn: pay?.homeBoughtOn ? pay.homeBoughtOn.toISOString().slice(0, 10) : "",
+          price: dollars(pay?.homePriceCents),
+          soldOn: pay?.homeSoldOn ? pay.homeSoldOn.toISOString().slice(0, 10) : "",
+          sale: dollars(pay?.homeSaleCents),
+          costs: dollars(pay?.homeSaleCostsCents),
+          daysLivedIn:
+            pay?.homeDaysLivedIn === null || pay?.homeDaysLivedIn === undefined
+              ? ""
+              : String(pay.homeDaysLivedIn),
+        }}
+      />
+      <SideIncomeForm
+        values={{
+          price: dollars(pay?.rentalPriceCents),
+          placedOn: pay?.rentalPlacedOn ? pay.rentalPlacedOn.toISOString().slice(0, 10) : "",
+          kind: pay?.sideIncomeKind ?? "",
         }}
       />
       <PayStubForm

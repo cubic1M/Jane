@@ -32,7 +32,27 @@ export type DebtIntent =
   // "what's the best credit card for me?".
   | { kind: "card_for"; category: RewardCategory | null }
   | { kind: "card_fee" }
-  | { kind: "card_better" };
+  | { kind: "card_better" }
+  // Spec step 175: "how do I build my credit?", "what would my score be if I paid my card off?".
+  | { kind: "build_credit" }
+  | { kind: "credit_simulate" }
+  // Spec step 176: "what buy now pay later payments do I have?", "can I afford a $300 Klarna?".
+  | { kind: "bnpl" }
+  | { kind: "bnpl_new"; totalCents: number | null }
+  // Spec step 177: "I'm short this month", "what if I can't pay my bills?".
+  | { kind: "tight_money" }
+  // Spec step 178: "how much car can I afford?", "the dealer offered 7.9% for 72 months".
+  | { kind: "card_interest" }
+  | { kind: "report_fixes" }
+  | { kind: "medical_bills" }
+  | { kind: "home_afford"; priceCents: number | null }
+  | { kind: "car_afford"; priceCents: number | null }
+  | {
+      kind: "car_dealer";
+      aprBps: number | null;
+      termMonths: number | null;
+      priceCents: number | null;
+    };
 
 const DEBT_KINDS = new Set<string>([
   "debts",
@@ -49,6 +69,17 @@ const DEBT_KINDS = new Set<string>([
   "card_for",
   "card_fee",
   "card_better",
+  "build_credit",
+  "credit_simulate",
+  "bnpl",
+  "bnpl_new",
+  "tight_money",
+  "car_afford",
+  "car_dealer",
+  "home_afford",
+  "medical_bills",
+  "report_fixes",
+  "card_interest",
 ]);
 export const isDebtIntent = (intent: { kind: string }): intent is DebtIntent =>
   DEBT_KINDS.has(intent.kind);
@@ -79,8 +110,12 @@ const STUDENT =
   /\b(?:idr|ibr|rap|pslf|income[- ]driven|income[- ]based|repayment assistance plan|public service loan forgiveness|studentaid)\b|\bstudent loans?\b.*\b(?:plans?|repay\w*|forgiv\w*|options?|lower|cheaper|best|income|switch)\b|\b(?:plans?|repay\w*|forgiv\w*|lower|reduce|cut)\b.*\bstudent loans?\b/;
 const MORTGAGE =
   /\b(?:pmi|escrow|private mortgage insurance)\b|\bmortgage\b|\b(?:extra|more) (?:principal|payments?)\b.*\b(?:house|home)\b/;
-const CREDIT =
-  /\bcredit (?:score|rating|report)\b|\bfico\b|\b(?:improve|raise|boost|build|fix) (?:my )?credit\b|\bcredit utili[sz]ation\b/;
+const CREDIT = /\bcredit (?:score|rating|report)\b|\bfico\b|\bcredit utili[sz]ation\b/;
+// Spec step 175.
+const BUILD_CREDIT =
+  /\b(?:improve|raise|boost|build|rebuild|fix|grow|help) (?:my |our )?(?:credit|score|credit score)\b|\bbuilding (?:my )?credit\b|\bcredit[- ]builder\b|\bthin (?:credit )?file\b|\bon[- ]time streak\b|\bstatement (?:date|close|closes|closing)\b/;
+const SIMULATE =
+  /\bwhat (?:would|will|happens to) (?:my |our )?(?:credit )?score\b|\b(?:score|credit) simulator\b|\bsimulate (?:my )?(?:credit|score)\b|\bhow (?:much|many points) (?:would|will|could) (?:my )?(?:credit )?score\b|\bwhat if (?:i|we)\b.*\bscore\b/;
 const DEBT_AUTOPILOT =
   /\bwhat (?:do|will|can) you do (?:about|with|for) (?:my )?(?:debts?|loans|cards)\b|\b(?:debt|loan) autopilot\b|\bautopilot (?:for|on) (?:my )?(?:debts?|loans)\b/;
 const DEBT_DUE =
@@ -108,6 +143,47 @@ const CARD_KINDS: readonly [RegExp, RewardCategory][] = [
 ];
 const cardKind = (text: string) => CARD_KINDS.find(([re]) => re.test(text))?.[1] ?? null;
 
+// Spec step 176.
+const BNPL_WORD = /\b(?:klarna|affirm|afterpay|buy now,? pay later|bnpl|pay in 4|pay in four)\b/;
+const BNPL_NEW =
+  /\b(?:afford|take on|start|open|add|get|use|worth)\b.*\b(?:klarna|affirm|afterpay|buy now,? pay later|bnpl|pay in 4|pay in four|installments?)\b|\b(?:klarna|affirm|afterpay|buy now,? pay later|bnpl|pay in 4)\b.*\b(?:afford|strain|squeeze)\b/;
+const BNPL_LIST =
+  /\b(?:installments?|buy now,? pay later|bnpl|klarna|affirm|afterpay|pay in 4)\b.*\b(?:coming|due|next|payments?|plans?|do i have|owe|list|all)\b|\b(?:coming|due|next|my)\b.*\b(?:installments?|buy now,? pay later|bnpl|klarna|affirm|afterpay)\b/;
+
+// Spec step 177.
+const TIGHT =
+  /\b(?:money is tight|money'?s tight|tight (?:month|on money)|i'?m (?:short|broke|strapped)|(?:can'?t|cannot|won'?t be able to|unable to) (?:afford|pay|make) (?:my |the |all my |this month'?s )?(?:bills?|rent|payments?|mortgage|cards?)|short on (?:cash|money)|running out of money|hardship (?:program|help|plan)|(?:behind|struggling) (?:on|with) (?:my )?(?:bills|payments|debts?))\b/;
+
+// Spec step 178.
+const CAR_WORD = /\b(?:car|cars|vehicle|truck|suv|minivan|sedan)\b/;
+const CAR_DEALER =
+  /\bdealer(?:ship)?(?:'s)?\b.*\b(?:financ\w*|loan|offer\w*|rate|apr|quot\w*)\b|\b(?:financ\w*|loan|offer\w*|rate|apr)\b.*\bdealer(?:ship)?\b/;
+const CAR_AFFORD =
+  /\b(?:afford|buy|buying|get|getting|budget|price range)\b|\bhow much (?:car|truck|suv|vehicle)\b|\b(?:car|auto|vehicle) loan\b.*\b(?:preapprov\w*|pre-approv\w*|offers?|compare|quotes?|rates?)\b|\bpre-?approv\w*\b/;
+const PERCENT = /(\d+(?:\.\d+)?)\s*(?:%|percent|apr)/;
+const MONTHS = /(\d{2,3})\s*(?:months?|mos?\b)/;
+
+// Spec step 179: buying a home (not a mortgage already owned, nor home insurance or equity).
+const HOME_WORD = /\b(?:house|home|condo|townhouse|townhome|first home|apartment)\b/;
+const HOME_BUY =
+  /\b(?:afford|buy|buying|purchase|purchasing|down payment|closing costs?|pre-?approv\w*|mortgage offers?|price range|budget|first[- ]time)\b|\bhow much (?:house|home)\b|\bsave for (?:a |my )?(?:house|home)\b/;
+const HOME_NOT = /\b(?:insurance|equity|my mortgage|refinanc\w*|pay off|payoff|rent)\b/;
+
+// Spec step 180: medical bills (not medical expenses for taxes, nor insurance claims).
+const MEDICAL_BILL =
+  /\b(?:medical|hospital|doctor'?s?|dentist|dental|er|ambulance|surgery|lab|clinic)\b.*\b(?:bills?|charges?|debt|invoice|owe)\b|\b(?:bills?|charges?)\b.*\b(?:from|for) (?:the |my )?(?:hospital|doctor|dentist|er|clinic|ambulance|surgery|lab)\b|\bitemi[sz]ed bill\b|\bfinancial assistance\b|\bcharity care\b/;
+// A surprise or denied bill is an insurance claim (its own intent).
+const MEDICAL_NOT =
+  /\b(?:claim|claims|insurance claim|surprise|denied|deduct\w*|hsa|fsa|tax|taxes|premium)\b/;
+
+// Spec step 181: collections and errors on the credit report.
+const REPORT_FIX =
+  /\b(?:collections?|collection agency|debt collector|collector)\b|\b(?:error|errors|mistake|mistakes|wrong|incorrect|inaccurate)\b.*\b(?:credit report|credit file)\b|\bcredit report\b.*\b(?:error|errors|mistake|mistakes|wrong|incorrect|inaccurate|dispute)\b|\bdispute\b.*\b(?:credit|bureau|bureaus|equifax|experian|transunion)\b|\bdebt validation\b|\bvalidat\w+ (?:the |a |this )?debt\b|\bfix my credit report\b/;
+
+// Spec step 224: card interest, 0% promotions and asking for a lower card rate.
+const CARD_INTEREST =
+  /\b(?:how much )?interest\b.*\b(?:cards?|credit cards?)\b|\b(?:cards?|credit cards?)\b.*\binterest\b|\b(?:pay|paying) less interest\b|\b(?:cut|reduce|lower|lowering) (?:my )?(?:card |credit card )?(?:interest|apr)\b|\bdeferred interest\b|\b0 ?% (?:promo|promotion|offer|intro)\b|\bpromo(?:tional)? (?:balance|rate|period|ends)\b/;
+
 const clean = (target: string) =>
   target
     .replace(/\b(?:paid off|off|in full)\b/g, "")
@@ -126,6 +202,56 @@ export function parseDebtIntent(
     return { kind: "payoff_plan", extraCents: amountCents };
   if (PAYOFF.test(text)) return { kind: "payoff_plan", extraCents: null };
   if (DEBT_AUTOPILOT.test(text)) return { kind: "debt_autopilot" };
+  if (TIGHT.test(text)) return { kind: "tight_money" };
+  if (
+    CARD_INTEREST.test(text) &&
+    !/\b(?:mortgage|student|car loan|auto|home|transfer|balance transfer)\b/.test(text)
+  ) {
+    return { kind: "card_interest" };
+  }
+  if (REPORT_FIX.test(text) && !/\b(?:tax|taxes)\b/.test(text)) return { kind: "report_fixes" };
+  if (MEDICAL_BILL.test(text) && !MEDICAL_NOT.test(text)) return { kind: "medical_bills" };
+  if (
+    HOME_WORD.test(text) &&
+    HOME_BUY.test(text) &&
+    !HOME_NOT.test(text) &&
+    (amountCents === null || amountCents >= 5_000_000)
+  ) {
+    return { kind: "home_afford", priceCents: amountCents };
+  }
+  if (
+    /\b(?:down payment|closing costs?|pre-?approv\w* for a mortgage|mortgage pre-?approv\w*)\b/.test(
+      text,
+    ) &&
+    !HOME_NOT.test(text)
+  ) {
+    return { kind: "home_afford", priceCents: amountCents };
+  }
+  if (CAR_DEALER.test(text) && (CAR_WORD.test(text) || PERCENT.test(text))) {
+    const apr = PERCENT.exec(text);
+    const months = MONTHS.exec(text);
+    return {
+      kind: "car_dealer",
+      aprBps: apr ? Math.round(Number(apr[1]) * 100) : null,
+      termMonths: months ? Number(months[1]) : null,
+      priceCents: amountCents,
+    };
+  }
+  if (
+    CAR_WORD.test(text) &&
+    !/\b(?:insurance|refinanc\w*|payoff|pay off)\b/.test(text) &&
+    CAR_AFFORD.test(text) &&
+    // A small amount is a "can I afford" question (a used car, a repair), not a purchase plan.
+    (amountCents === null || amountCents >= 500_000)
+  ) {
+    return { kind: "car_afford", priceCents: amountCents };
+  }
+  if (BNPL_WORD.test(text) || /\binstallments?\b/.test(text)) {
+    if (BNPL_NEW.test(text)) return { kind: "bnpl_new", totalCents: amountCents };
+    if (BNPL_LIST.test(text)) return { kind: "bnpl" };
+  }
+  if (SIMULATE.test(text)) return { kind: "credit_simulate" };
+  if (BUILD_CREDIT.test(text)) return { kind: "build_credit" };
   if (CARD_FOR.test(text)) return { kind: "card_for", category: cardKind(text) };
   if (CARD_FEE.test(text)) return { kind: "card_fee" };
   if (CARD_BETTER.test(text) && !/\b0 ?%|balance transfer/.test(text)) {

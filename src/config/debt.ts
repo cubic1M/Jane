@@ -44,6 +44,12 @@ export const DEBT_SOURCE_LIMITS = {
   credit: 1,
   debt_autopilot: 1,
   credit_cards: 2,
+  credit_building: 2,
+  bnpl: 2,
+  tight_money: 2,
+  medical_bills: 2,
+  credit_report_fixes: 2,
+  card_interest: 2,
 } as const;
 export const DEBT_MESSAGE_PRIORITY = {
   // A buy now, pay later plan Jane found, then a debt with no rate: news that can wait,
@@ -88,11 +94,38 @@ export const DEBT_MESSAGE_PRIORITY = {
   card_fee: 30,
   card_better: 30,
   card_picks: 26,
+  // Spec step 175: a payment before a statement closes has a date; one Jane scheduled is
+  // news; a streak milestone and a credit-builder offer can wait.
+  statement_pay: 70,
+  statement_paid: 51,
+  credit_streak: 30,
+  credit_builder: 29,
+  // Spec step 176: installments before payday that the forecast missed come just under the
+  // findings (60), so a first day still shows them; a free early payoff can wait.
+  bnpl_due: 58,
+  bnpl_payoff: 31,
+  // Spec step 177: a plan for a tight month is time-sensitive; a lender's answer follows.
+  tight_plan: 88,
+  tight_answer: 66,
+  // Spec step 180: a medical bill can wait a little; a provider's answer follows.
+  medical_bill: 36,
+  medical_answer: 60,
+  // Spec step 181: a collection's validation window closes in 30 days, so it comes just
+  // under the findings (60), which a first day must still show; a bureau dispute and the
+  // answers can wait a little.
+  report_fix_window: 59,
+  report_fix: 40,
+  report_fix_answer: 61,
+  // Spec step 224: a promotion off pace has a date, so it comes just under the findings
+  // (60); a rate request and the answers can wait a little.
+  promo_off_pace: 59,
+  card_rate_ask: 37,
+  card_rate_answer: 62,
 } as const;
 
 // What Jane does about debts by herself at each autopilot level (src/config/autopilot.ts),
 // step by step. Applying for credit, moving money and signing always need the person's tap,
-// at every level. Steps 110–117 and 174 add to this list.
+// at every level. Steps 110–117, 174–181 and 224–230 add to this list.
 export const DEBT_AUTOPILOT: Readonly<
   Record<"ask" | "safe" | "all", readonly { step: number; does: string }[]>
 > = {
@@ -137,6 +170,38 @@ export const DEBT_AUTOPILOT: Readonly<
       step: 174,
       does: "Works out what each of your cards earns on your own spending, fee included, and tells you when a fee doesn't pay for itself or another card would earn more. Applying is always your tap.",
     },
+    {
+      step: 175,
+      does: "Reminds you before a card's statement closes with what to pay so a lower balance is reported, counts your on-time streak, and estimates what each change would do to your score. Paying waits for your tap.",
+    },
+    {
+      step: 176,
+      does: "Puts every buy now, pay later installment in your forecast and safe to spend, warns you before a new plan would strain the month, and tells you when paying a Pay in 4 plan off early is free. Paying waits for your tap.",
+    },
+    {
+      step: 177,
+      does: "When your forecast shows a tight month, prepares one plan: bills in order (housing, utilities and insurance first), and written requests to move a due date, ask for hardship help, a lower rate or a late fee waived. Every request waits for your tap.",
+    },
+    {
+      step: 178,
+      does: "When you ask about a car, works out what you can afford with insurance and running costs in, compares preapproval offers by what they cost in all, and checks a dealer's financing against them. Nothing is applied for without your tap.",
+    },
+    {
+      step: 179,
+      does: "When you ask about buying a home, works out what you can afford from your real income and debts, the cash needed up front, how long saving takes, and compares mortgage offers. Starting the down payment goal waits for your tap.",
+    },
+    {
+      step: 180,
+      does: "Finds medical bills in your payments, and writes the requests that can lower them (an itemized bill, a check against your insurance, financial assistance, a plan with no interest). Each is sent only on your tap.",
+    },
+    {
+      step: 181,
+      does: "Checks your credit report every month for collections and errors, writes the validation letter or bureau dispute that fits (citing the rule and its deadline), puts the answer dates on your deadlines and tells you what comes back. Each letter is sent only on your tap.",
+    },
+    {
+      step: 224,
+      does: "Shows what each card costs in interest, what paying early saves, and how a 0% promotion is pacing (a deadline with the monthly amount if it's off pace), and writes a request and call script for a lower rate. Each request is sent only on your tap.",
+    },
   ],
   safe: [
     {
@@ -179,6 +244,38 @@ export const DEBT_AUTOPILOT: Readonly<
       step: 174,
       does: "Works out what each of your cards earns on your own spending, fee included, tells you which card to use for each kind of spending whenever that changes, and when another card would earn more. Applying is always your tap.",
     },
+    {
+      step: 175,
+      does: "Pays the amount that brings card use down before a card's statement closes, by itself through the money-movement stand-in within your debt limits, counts your on-time streak, and estimates what each change would do to your score. Opening a credit-builder account is always your tap.",
+    },
+    {
+      step: 176,
+      does: "Puts every buy now, pay later installment in your forecast and safe to spend, warns you before a new plan would strain the month, and pays a Pay in 4 plan off early when that's free, with your tap.",
+    },
+    {
+      step: 177,
+      does: "When your forecast shows a tight month, prepares one plan: bills in order (housing, utilities and insurance first), and written requests to move a due date, ask for hardship help, a lower rate or a late fee waived. Every request waits for your tap.",
+    },
+    {
+      step: 178,
+      does: "When you ask about a car, works out what you can afford with insurance and running costs in, compares preapproval offers by what they cost in all, and checks a dealer's financing against them. Nothing is applied for without your tap.",
+    },
+    {
+      step: 179,
+      does: "When you ask about buying a home, works out what you can afford from your real income and debts, the cash needed up front, how long saving takes, and compares mortgage offers. Starting the down payment goal waits for your tap.",
+    },
+    {
+      step: 180,
+      does: "Finds medical bills in your payments, and writes the requests that can lower them (an itemized bill, a check against your insurance, financial assistance, a plan with no interest). Each is sent only on your tap.",
+    },
+    {
+      step: 181,
+      does: "Checks your credit report every month for collections and errors, writes the validation letter or bureau dispute that fits (citing the rule and its deadline), puts the answer dates on your deadlines and tells you what comes back. Each letter is sent only on your tap.",
+    },
+    {
+      step: 224,
+      does: "Shows what each card costs in interest, what paying early saves, and how a 0% promotion is pacing (a deadline with the monthly amount if it's off pace), and writes a request and call script for a lower rate. Each request is sent only on your tap.",
+    },
   ],
   all: [
     {
@@ -220,6 +317,38 @@ export const DEBT_AUTOPILOT: Readonly<
     {
       step: 174,
       does: "Works out what each of your cards earns on your own spending, fee included, tells you which card to use for each kind of spending whenever that changes, and when another card would earn more. Applying is always your tap.",
+    },
+    {
+      step: 175,
+      does: "Pays the amount that brings card use down before a card's statement closes, by itself through the money-movement stand-in within your debt limits, counts your on-time streak, and estimates what each change would do to your score. Opening a credit-builder account is always your tap.",
+    },
+    {
+      step: 176,
+      does: "Puts every buy now, pay later installment in your forecast and safe to spend, warns you before a new plan would strain the month, and pays a Pay in 4 plan off early when that's free, with your tap.",
+    },
+    {
+      step: 177,
+      does: "When your forecast shows a tight month, prepares one plan: bills in order (housing, utilities and insurance first), and written requests to move a due date, ask for hardship help, a lower rate or a late fee waived. Every request waits for your tap.",
+    },
+    {
+      step: 178,
+      does: "When you ask about a car, works out what you can afford with insurance and running costs in, compares preapproval offers by what they cost in all, and checks a dealer's financing against them. Nothing is applied for without your tap.",
+    },
+    {
+      step: 179,
+      does: "When you ask about buying a home, works out what you can afford from your real income and debts, the cash needed up front, how long saving takes, and compares mortgage offers. Starting the down payment goal waits for your tap.",
+    },
+    {
+      step: 180,
+      does: "Finds medical bills in your payments, and writes the requests that can lower them (an itemized bill, a check against your insurance, financial assistance, a plan with no interest). Each is sent only on your tap.",
+    },
+    {
+      step: 181,
+      does: "Checks your credit report every month for collections and errors, writes the validation letter or bureau dispute that fits (citing the rule and its deadline), puts the answer dates on your deadlines and tells you what comes back. Each letter is sent only on your tap.",
+    },
+    {
+      step: 224,
+      does: "Shows what each card costs in interest, what paying early saves, and how a 0% promotion is pacing (a deadline with the monthly amount if it's off pace), and writes a request and call script for a lower rate. Each request is sent only on your tap.",
     },
   ],
 };

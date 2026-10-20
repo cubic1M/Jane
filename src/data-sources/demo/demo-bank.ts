@@ -639,6 +639,15 @@ function nextDayOfMonth(today: string, dayOfMonth: number): string {
   return addDays(today, 30);
 }
 
+// The last time a day of the month came round, on or before `today`.
+function lastDayOfMonthOn(today: string, dayOfMonth: number): string {
+  for (let i = 0; i <= 31; i += 1) {
+    const day = addDays(today, -i);
+    if (Number(day.slice(8)) === dayOfMonth) return day;
+  }
+  return addDays(today, -30);
+}
+
 const yearsAfter = (day: string, years: number) =>
   `${Number(day.slice(0, 4)) + years}${day.slice(4, 7)}-01`;
 
@@ -664,7 +673,8 @@ export function demoLiabilities({ seed, anchor }: DemoSeed, today: string): Liab
         is_overdue: false,
         last_payment_amount: 850,
         last_payment_date: null,
-        last_statement_issue_date: null,
+        // Spec step 175: the statement closes on the 1st, 25 days before the payment's due.
+        last_statement_issue_date: lastDayOfMonthOn(today, 1),
         last_statement_balance: 2410.5,
         // Covers a month of interest on the balance (22.99% of $2,410.50 is about $46) and a
         // little of the principal, as a real minimum does.

@@ -59,6 +59,10 @@ export async function exportUserData(
     moneyTransfers,
     paycheckPlans,
     healthScores,
+    monthlyReports,
+    whatIfPlans,
+    leanPlans,
+    yearPlans,
     janeMessages,
     janePreferences,
     teamAccess,
@@ -430,6 +434,29 @@ export async function exportUserData(
       orderBy: { month: "asc" },
       select: { month: true, score: true, band: true, parts: true },
     }),
+    db.yearPlans.findMany({
+      orderBy: { startMonth: "asc" },
+      select: { startMonth: true, months: true, updatedAt: true },
+    }),
+    db.leanPlans.findMany({
+      orderBy: { createdAt: "asc" },
+      select: {
+        employer: true,
+        dueOn: true,
+        status: true,
+        createdAt: true,
+        startedAt: true,
+        endedAt: true,
+      },
+    }),
+    db.whatIfPlans.findMany({
+      orderBy: { createdAt: "asc" },
+      select: { scenario: true, params: true, changes: true, status: true, createdAt: true },
+    }),
+    db.monthlyReports.findMany({
+      orderBy: { month: "asc" },
+      select: { month: true, figures: true, emailedAt: true, createdAt: true },
+    }),
     // Jane's chat (spec step 81): every message, with the buttons and what they answered.
     db.janeMessages.findMany({
       select: {
@@ -648,6 +675,10 @@ export async function exportUserData(
     moneyTransfers,
     paycheckPlans,
     healthScores,
+    monthlyReports,
+    whatIfPlans,
+    leanPlans,
+    yearPlans,
     janeMessages,
     janePreferences,
     investments,

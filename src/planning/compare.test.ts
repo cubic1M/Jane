@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { checkGuardrails } from "@/lib/guardrails";
-import { compareOptions, type CompareOption } from "./compare";
+import { compareOptions, optionLabel, type CompareOption } from "./compare";
 
 const option = (overrides: Partial<CompareOption>): CompareOption => ({
   id: "o",
@@ -134,5 +134,24 @@ describe("comparing options", () => {
       ])!;
       expect(checkGuardrails(result.why, [1_500_000]), result.why).toEqual({ ok: true });
     }
+  });
+});
+
+describe("how an option reads", () => {
+  it("doesn't say the company twice when the plan's name starts with it", () => {
+    expect(optionLabel({ provider: "Netflix", name: "Netflix Standard with ads" })).toBe(
+      "Netflix Standard with ads",
+    );
+    expect(optionLabel({ provider: "Meadow Bank", name: "Meadow High-Yield Savings" })).toBe(
+      "Meadow High-Yield Savings",
+    );
+    expect(optionLabel({ provider: "Pine", name: "Unlimited" })).toBe("Pine Unlimited");
+  });
+
+  it("says 'the one option' when only one was cheaper", () => {
+    const result = compareOptions(phone, [option({ id: "only" })])!;
+    expect(result.why).toBe(
+      "It's the one option we compared for the same kind of service that costs less in the first year, fees included.",
+    );
   });
 });

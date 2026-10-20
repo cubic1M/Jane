@@ -53,6 +53,7 @@ const SIGNED_IN = [
   "/investments/hsa",
   "/investments/company-stock",
   "/investments/crypto",
+  "/investments/cash",
   "/learn",
   "/learn/index-funds",
   "/loans",
@@ -65,6 +66,9 @@ const SIGNED_IN = [
   "/year",
   "/subscriptions",
   "/check-in",
+  // Spec steps 144 and 148.
+  "/transfers",
+  "/monthly",
   "/connect",
   "/import",
   "/things",
