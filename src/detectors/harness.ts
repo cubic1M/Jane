@@ -19,8 +19,10 @@ export type PersonReport = {
   // On the must-not list and fired: a wrong suggestion.
   wrong: Suggestion[];
   // Fired, and on neither list.
-  extra: SuggestionTopic[];
+  extra: string[];
 };
+
+const listed = (list: readonly string[], topic: string) => list.includes(topic);
 
 const covered = (topic: SuggestionTopic, detectors: readonly Detector[]) =>
   detectors.some((d) => d.topic === topic);
@@ -36,7 +38,7 @@ export function reportFor(
       `Detector ${d.capability}:${d.topic} failed for ${person.id}: ${String(error)}`,
     );
   });
-  const topics = new Set(fired.map((s) => s.topic));
+  const topics = new Set<string>(fired.map((s) => s.topic));
   return {
     person,
     fired,
@@ -44,8 +46,8 @@ export function reportFor(
     missed: person.should
       .filter((t) => !topics.has(t))
       .map((topic) => ({ topic, covered: covered(topic, detectors) })),
-    wrong: fired.filter((s) => person.mustNot.includes(s.topic)),
-    extra: [...topics].filter((t) => !person.should.includes(t) && !person.mustNot.includes(t)),
+    wrong: fired.filter((s) => listed(person.mustNot, s.topic)),
+    extra: [...topics].filter((t) => !listed(person.should, t) && !listed(person.mustNot, t)),
   };
 }
 
