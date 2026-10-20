@@ -109,9 +109,10 @@ export const DEBT_MESSAGE_PRIORITY = {
   // Spec step 180: a medical bill can wait a little; a provider's answer follows.
   medical_bill: 36,
   medical_answer: 60,
-  // Spec step 181: a collection's validation window closes in 30 days, so it comes early; a
-  // bureau dispute and the answers can wait a little.
-  report_fix_window: 72,
+  // Spec step 181: a collection's validation window closes in 30 days, so it comes just
+  // under the findings (60), which a first day must still show; a bureau dispute and the
+  // answers can wait a little.
+  report_fix_window: 59,
   report_fix: 40,
   report_fix_answer: 61,
 } as const;
