@@ -120,6 +120,7 @@ export const COVERAGE_FIELDS: Record<PolicyKind, readonly CoverageField[]> = {
   ],
   business: [
     { key: "generalLiability", label: "General liability", type: "money" },
+    { key: "professionalLiability", label: "Professional liability", type: "money" },
     { key: "businessProperty", label: "Business equipment and stock", type: "money" },
   ],
   valuables: [{ key: "listedValue", label: "Value of the items listed", type: "money" }],
@@ -183,6 +184,11 @@ export const GAP_KEYS = [
   "teen_driver",
   "spouse_health",
   "family_health_plan",
+  // Spec step 201: cover for what they earn on the side.
+  "business_liability",
+  "professional_liability",
+  "car_business_use",
+  "business_equipment",
 ] as const;
 export type GapKey = (typeof GAP_KEYS)[number];
 
@@ -235,6 +241,22 @@ export const GAP_ADVICE: Record<GapKey, { text: string; cents: number[] }> = {
   },
   rideshare: {
     text: "Ask for a rideshare endorsement, or a policy that covers you while you drive for pay, so your own car policy isn't the only thing between you and a claim. It usually adds a few hundred dollars a year.",
+    cents: [],
+  },
+  business_liability: {
+    text: "Add general liability insurance with at least $1,000,000 of cover. It pays if a customer or client is hurt or their property is damaged by your work, which a home or renters policy won't.",
+    cents: [100_000_000],
+  },
+  professional_liability: {
+    text: "Add professional liability (errors and omissions) cover. It pays if a client says your advice or work cost them money, which general liability and personal policies don't.",
+    cents: [],
+  },
+  car_business_use: {
+    text: "Ask your car insurer to add business use, or take a policy that covers driving for work. Personal policies cover commuting and personal trips, not work driving.",
+    cents: [],
+  },
+  business_equipment: {
+    text: "Add business property cover for your equipment. A home or renters policy usually caps work equipment at a small limit, or excludes it when it's used for business.",
     cents: [],
   },
   home_business: {
@@ -795,3 +817,18 @@ export const DEMO_NETWORK_DIRECTORY: readonly {
   { match: /bayview imaging/i, name: "Bayview Imaging Center", inNetwork: true },
   { match: /lakeside urgent/i, name: "Lakeside Urgent Care", inNetwork: false },
 ];
+
+// --- Business and side-gig cover (spec Step 201) --------------------------------------------
+// Self-employed or gig income (the tax lane's signals, step 123) brings business cover into the
+// profile. Counted over the last BUSINESS_LOOKBACK_DAYS days.
+export const BUSINESS_LOOKBACK_DAYS = 365;
+// Freelance or gig money in this big, or the tax profile saying self-employed, means a business.
+export const BUSINESS_MIN_INCOME_CENTS = 50_000;
+export const BUSINESS_LIABILITY_TARGET_CENTS = 100_000_000;
+// Work driving that needs business use on the car, from the tax profile's mileage.
+export const BUSINESS_MILES_MIN = 1_000;
+// Electronics bought in the period that count as work equipment worth covering.
+export const BUSINESS_EQUIPMENT_MIN_CENTS = 50_000;
+// Stand-in yearly prices for the checkup (the partner quotes the policy itself).
+export const BUSINESS_PROFESSIONAL_YEARLY_CENTS = 60_000;
+export const BUSINESS_CAR_USE_YEARLY_CENTS = 30_000;

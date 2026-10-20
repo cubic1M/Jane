@@ -1493,6 +1493,20 @@ const BASE_QUESTIONS: readonly CheckQuestion[] = [
     expect: { intent: "insurance", mentions: /out-of-pocket maximum/i, maxChars: 900 },
   },
 
+  // Business and side-gig cover (spec step 201): from their freelance and gig signals.
+  {
+    id: "biz-1",
+    text: "do I need business insurance for my side gig",
+    needs: "rules",
+    expect: { intent: "insurance", mentions: /business/i, maxChars: 900 },
+  },
+  {
+    id: "biz-2",
+    text: "does my car insurance cover driving for work",
+    needs: "rules",
+    expect: { intent: "insurance", mentions: /work|business|pay/i, maxChars: 900 },
+  },
+
   // Outside what Jane does: brief, and never advice.
   { id: "out-1", text: "what's the weather today", needs: "claude", expect: { avoid: ADVICE } },
   {

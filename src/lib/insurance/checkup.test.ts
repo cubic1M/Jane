@@ -172,3 +172,46 @@ describe("the coverage checkup", () => {
     }
   });
 });
+
+describe("business and side-gig cover (spec step 201)", () => {
+  const freelancer = () =>
+    input({
+      household: resolveHousehold(null, {
+        mortgage: false,
+        homeOwned: false,
+        rentPaid: false,
+        cars: 1,
+        selfEmployment: {
+          declared: true,
+          serviceCents: 800_000,
+          gigCents: 0,
+          miles: 3_000,
+          equipmentCents: 134_900,
+        },
+      }),
+    });
+
+  it("recommends each missing business cover, with its cost and the risk", () => {
+    const keys = coverageCheckup(freelancer()).map((r) => r.key);
+    expect(keys).toEqual(
+      expect.arrayContaining([
+        "business_liability",
+        "professional_liability",
+        "car_business_use",
+        "business_equipment",
+      ]),
+    );
+    for (const r of coverageCheckup(freelancer()).filter(
+      (r) => r.key.includes("business") || r.key.includes("professional"),
+    )) {
+      expect(r.costCents).toBeGreaterThan(0);
+      expect(r.risk.length).toBeGreaterThan(20);
+      const text = `${r.title} ${r.cost}. ${r.risk}`;
+      expect(checkGuardrails(text, r.cents, undefined, "demo_advice"), text).toEqual({ ok: true });
+    }
+  });
+
+  it("says nothing for someone with a paycheck and no side work", () => {
+    expect(coverageCheckup(input()).map((r) => r.key)).not.toContain("business_liability");
+  });
+});

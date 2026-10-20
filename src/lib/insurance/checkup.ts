@@ -1,5 +1,8 @@
 import {
   BUNDLE_DISCOUNT_SHARE,
+  BUSINESS_CAR_USE_YEARLY_CENTS,
+  BUSINESS_LIABILITY_TARGET_CENTS,
+  BUSINESS_PROFESSIONAL_YEARLY_CENTS,
   DEDUCTIBLE_SAVINGS_MULTIPLE,
   DEMO_PRICING,
   FULL_COVER_MIN_CAR_VALUE_CENTS,
@@ -13,6 +16,7 @@ import {
 import { sameCompany } from "@/lib/documents/dates";
 import { formatCents } from "@/lib/money";
 import type { Coverage } from "./coverage";
+import { businessGaps } from "./business-rules";
 import { basePremium } from "./demo-partner";
 import { kindWords } from "./gaps";
 import type { Household } from "./household";
@@ -26,6 +30,11 @@ import { yearlyPremium, type Policy } from "./policies";
 // advice: shown in demo advice mode only (spec step 98).
 
 export type CheckupKey =
+  // Spec step 201: cover for what they earn on the side.
+  | "business_liability"
+  | "professional_liability"
+  | "car_business_use"
+  | "business_equipment"
   | "deductible_up"
   | "deductible_down"
   | "liability_up"
@@ -285,6 +294,66 @@ function lifeAfterBaby(input: CheckupInput): Recommendation[] {
   ];
 }
 
+// Spec step 201: each business gap as a recommendation, priced by the same fixed rules as the
+// stand-in quotes. Business cover is never assumed to come from a personal policy.
+function businessCover(input: CheckupInput): Recommendation[] {
+  const facts = {
+    state: null,
+    household: {
+      housing: input.household.housing.value,
+      vehicles: input.household.vehicles.value,
+      dependants: input.household.dependants.value,
+      pets: input.household.pets.value,
+    },
+  };
+  const price = (key: string): number => {
+    if (key === "business_liability" || key === "business_equipment") {
+      return Math.round(
+        basePremium("business", {}, DEMO_PRICING.defaultDeductibleCents, facts) ??
+          DEMO_PRICING.business.baseCents,
+      );
+    }
+    return key === "professional_liability"
+      ? BUSINESS_PROFESSIONAL_YEARLY_CENTS
+      : BUSINESS_CAR_USE_YEARLY_CENTS;
+  };
+  const words: Record<string, { title: string; kind: PolicyKind }> = {
+    business_liability: {
+      title: `Add general liability insurance of ${formatCents(BUSINESS_LIABILITY_TARGET_CENTS)}.`,
+      kind: "business",
+    },
+    professional_liability: { title: "Add professional liability insurance.", kind: "business" },
+    car_business_use: { title: "Add business use to your car insurance.", kind: "auto" },
+    business_equipment: {
+      title: "Add business property cover for your equipment.",
+      kind: "business",
+    },
+  };
+  return businessGaps(input.household.signals.selfEmployment, input.policies).flatMap(
+    (gap): Recommendation[] => {
+      const rule = words[gap.key];
+      if (!rule) return [];
+      const cost = price(gap.key);
+      return [
+        {
+          key: gap.key as CheckupKey,
+          policyId: gap.policyId,
+          kind: rule.kind,
+          title: rule.title,
+          costCents: cost,
+          cost: costWords(cost),
+          risk: gap.why,
+          cents: [
+            cost,
+            ...gap.cents,
+            ...(gap.key === "business_liability" ? [BUSINESS_LIABILITY_TARGET_CENTS] : []),
+          ],
+        },
+      ];
+    },
+  );
+}
+
 export function coverageCheckup(input: CheckupInput): Recommendation[] {
   const active = { ...input, policies: input.policies.filter((p) => p.status === "active") };
   return [
@@ -295,5 +364,6 @@ export function coverageCheckup(input: CheckupInput): Recommendation[] {
     ]),
     ...bundle(active),
     ...lifeAfterBaby(active),
+    ...businessCover(active),
   ];
 }
