@@ -14,6 +14,9 @@ import { settleTransfers } from "@/lib/money-movement/transfers";
 import { runBillPay } from "@/lib/money-movement/bill-pay";
 import { healthFor } from "@/lib/health-score";
 import { monthlyReportFor } from "@/lib/monthly-report";
+import { runLeanCheck } from "@/lib/lean-plan";
+import { checkResults } from "@/lib/worked";
+import { loadYearPlan } from "@/lib/year-plan";
 import { runPlanUpkeep } from "@/lib/plan-upkeep";
 import { runTaxAutopilotSafely } from "@/lib/tax-autopilot";
 import { gather, plan, type BrainSettings } from "./brain";
@@ -53,32 +56,38 @@ export async function runJaneAgent(
   await refreshDebts(userId, { client, now });
   // The bank data, loaded once for what follows.
   const input = await loadDetectionInput(userId, { client, now });
-  // Spec step 99: insurance found from payments joins the profile (as found) by itself.
-  await policiesFromPayments(userId, { client, now, input }).catch((error) =>
-    console.error("Finding policies from payments failed", { userId, error: String(error) }),
-  );
-  // Spec step 144: transfers whose day came have gone through, and a new paycheck gets its
-  // plan (moved by itself where autopilot allows).
-  await settleTransfers(userId, { client, now }).catch((error) =>
-    console.error("Settling transfers failed", { userId, error: String(error) }),
-  );
-  await runPaycheckPlan(userId, { client, now, input }).catch((error) =>
-    console.error("Paycheck plan failed", { userId, error: String(error) }),
-  );
-  // Spec step 145: bills due soon that autopilot may pay, scheduled on time.
-  await runBillPay(userId, { client, now, input }).catch((error) =>
-    console.error("Bill pay failed", { userId, error: String(error) }),
-  );
-  // Spec step 146: this month's money health score, kept for next month's comparison.
-  await healthFor(userId, { client, now, input, keep: true }).catch((error) =>
-    console.error("Health score failed", { userId, error: String(error) }),
-  );
-  // Spec step 148: in the first days of a month, last month's report, made once.
-  await monthlyReportFor(userId, { client, now }).catch((error) =>
-    console.error("Monthly report failed", { userId, error: String(error) }),
-  );
-  // Taxes (spec steps 123–127): what Jane sets up by herself, at the person's level.
-  await runTaxAutopilotSafely(userId, { client, now });
+  // What Jane keeps current by herself, before she looks. These don't depend on each other
+  // (except money moving, which runs in order), so they run together: a new person's first
+  // run waits on all of it.
+  const safely = (what: string, run: () => Promise<unknown>) =>
+    run().catch((error) => console.error(`${what} failed`, { userId, error: String(error) }));
+  await Promise.all([
+    // Spec step 99: insurance found from payments joins the profile (as found) by itself.
+    safely("Finding policies from payments", () =>
+      policiesFromPayments(userId, { client, now, input }),
+    ),
+    // Spec steps 144–145: transfers whose day came have gone through, a new paycheck gets its
+    // plan (moved by itself where autopilot allows), then bills due soon are scheduled.
+    (async () => {
+      await safely("Settling transfers", () => settleTransfers(userId, { client, now }));
+      await safely("Paycheck plan", () => runPaycheckPlan(userId, { client, now, input }));
+      await safely("Bill pay", () => runBillPay(userId, { client, now, input }));
+    })(),
+    // Spec steps 146 and 148: this month's score, kept; then last month's report, once.
+    (async () => {
+      await safely("Health score", () => healthFor(userId, { client, now, input, keep: true }));
+      await safely("Monthly report", () => monthlyReportFor(userId, { client, now }));
+    })(),
+    // Spec step 205: the year's plan, re-planned from what happened and kept.
+    safely("Year plan", () => loadYearPlan(userId, { client, now, input, keep: true })),
+    // Spec step 207: finished actions checked against the transactions; a saving that never
+    // showed up is marked and stops counting.
+    safely("Checking results", () => checkResults(userId, { client, now, input })),
+    // Spec step 204: a paycheck that hasn't come in gets one question; pay back ends the plan.
+    safely("Lean check", () => runLeanCheck(userId, { client, now, input })),
+    // Taxes (spec steps 123–127): what Jane sets up by herself, at the person's level.
+    runTaxAutopilotSafely(userId, { client, now }),
+  ]);
   const snapshot = await loadSnapshot(userId, { client, now, input });
   if (!snapshot) return { posted: 0 };
   await closeSettled(userId, { client, now });

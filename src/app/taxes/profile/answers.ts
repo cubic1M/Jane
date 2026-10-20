@@ -4,6 +4,7 @@ import { TaxProfileError, type PayStubEntry, type TaxAnswer } from "@/lib/tax-pr
 import { ResidencyError } from "@/lib/tax-states";
 import { FamilyTaxesError, type FamilyDetails } from "@/lib/family-taxes";
 import { HomeTaxesError, type HomeAnswers } from "@/lib/home-taxes";
+import { SideIncomeError, type SideIncomeAnswers } from "@/lib/side-income";
 
 // The tax profile form's answers (spec step 118). A field left empty stays unanswered.
 
@@ -149,5 +150,17 @@ export function homeFrom(formData: FormData, year: number): HomeAnswers {
           daysLivedIn: Number(text(formData, "daysLivedIn") || "0"),
         }
       : null,
+  };
+}
+
+// Spec step 173: the rental property and hobby or business. Empty price clears the rental.
+export function sideIncomeFrom(formData: FormData): SideIncomeAnswers {
+  const price = text(formData, "rentalPrice");
+  const cents = price ? parseMoneyToCents(price) : null;
+  if (price && cents === null) throw new SideIncomeError("Give the price in dollars and cents.");
+  const kind = text(formData, "sideIncomeKind");
+  return {
+    rental: cents ? { priceCents: cents, placedOn: text(formData, "rentalPlacedOn") } : null,
+    kind: kind === "business" || kind === "hobby" ? kind : null,
   };
 }

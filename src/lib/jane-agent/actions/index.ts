@@ -72,6 +72,25 @@ import {
 } from "./tax-states";
 import { taxDocAsk, taxDocChase, taxDocRight, taxDocsTick } from "./tax-documents";
 import { taxPlanAdd, taxPlanNo } from "./tax-plan";
+import { taxRecordsRemind } from "./audit-records";
+import { taxAmendPrepare, taxPriorConfirm, taxPriorNo } from "./prior-return";
+import {
+  taxNoticeAgree,
+  taxNoticeConfirm,
+  taxNoticeDispute,
+  taxNoticeMine,
+  taxNoticeNo,
+  taxNoticePay,
+  taxNoticeTeam,
+} from "./tax-notice";
+import {
+  taxIdentityNot,
+  taxIdentityOpen,
+  taxIdentityStep,
+  taxIpPinHave,
+  taxIpPinRemind,
+} from "./tax-identity";
+import { taxSideBusiness, taxSideHobby } from "./side-income";
 import { taxFundOpen, taxGivingNo, taxReceiptGot } from "./giving";
 import {
   investAnswer1,
@@ -106,6 +125,9 @@ import { autopilotSectorSet } from "./sector";
 import { paycheckMove, paycheckSkip, paycheckUndo } from "./paycheck";
 import { billPay, billSkip } from "./billpay";
 import { attentionResume } from "./attention";
+import { whatIfAdopt } from "./whatif";
+import { leanNotNow, leanStart } from "./lean";
+import { unusualMe, unusualNotMe } from "./unusual";
 import { bundleYes1, bundleYes2, bundleYes3, bundleYes4, bundleYes5 } from "./bundle";
 import { multiCancel, multiConfirm, multiUndo } from "./multi";
 import { FLOW_PICKS, flowBack, flowCancel } from "./flows";
@@ -242,6 +264,24 @@ export const ACTION_HANDLERS: Readonly<Record<ActionId, ActionHandler>> = {
   "tax.receipt_got": taxReceiptGot,
   "tax.fund_open": taxFundOpen,
   "tax.giving_no": taxGivingNo,
+  "tax.prior_confirm": taxPriorConfirm,
+  "tax.prior_no": taxPriorNo,
+  "tax.amend_prepare": taxAmendPrepare,
+  "tax.side_business": taxSideBusiness,
+  "tax.side_hobby": taxSideHobby,
+  "tax.notice_confirm": taxNoticeConfirm,
+  "tax.notice_no": taxNoticeNo,
+  "tax.notice_agree": taxNoticeAgree,
+  "tax.notice_pay": taxNoticePay,
+  "tax.notice_dispute": taxNoticeDispute,
+  "tax.notice_team": taxNoticeTeam,
+  "tax.notice_mine": taxNoticeMine,
+  "tax.ippin_remind": taxIpPinRemind,
+  "tax.ippin_have": taxIpPinHave,
+  "tax.identity_open": taxIdentityOpen,
+  "tax.identity_not": taxIdentityNot,
+  "tax.identity_step": taxIdentityStep,
+  "tax.records_remind": taxRecordsRemind,
   // Investments (spec step 129 on).
   "invest.answer.1": investAnswer1,
   "invest.answer.2": investAnswer2,
@@ -291,6 +331,11 @@ export const ACTION_HANDLERS: Readonly<Record<ActionId, ActionHandler>> = {
   "bill.pay": billPay,
   "bill.skip": billSkip,
   "attention.resume": attentionResume,
+  "whatif.adopt": whatIfAdopt,
+  "lean.start": leanStart,
+  "lean.not_now": leanNotNow,
+  "unusual.me": unusualMe,
+  "unusual.not_me": unusualNotMe,
 };
 
 const MESSAGE_ID = /^[a-z0-9]{1,40}$/i;

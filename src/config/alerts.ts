@@ -19,6 +19,7 @@ export const ALERT_TYPES: readonly AlertType[] = [
   "renews_soon",
   "deadline_soon",
   "estimated_tax",
+  "unusual_activity",
 ];
 
 // Time-sensitive alerts: these can be emailed right away. A bill reminder is only urgent
@@ -29,6 +30,7 @@ export const URGENT_ALERT_TYPES: readonly AlertType[] = [
   "low_balance",
   "bill_due",
   "deadline_soon",
+  "unusual_activity",
 ];
 
 export const ALERT_LABELS: Record<AlertType, { label: string; description: string }> = {
@@ -74,6 +76,11 @@ export const ALERT_LABELS: Record<AlertType, { label: string; description: strin
     description:
       "A return window, a trial, or a date you added (like an FSA deadline) is a few days away.",
   },
+  unusual_activity: {
+    label: "Something unusual",
+    description:
+      "A charge far above usual, a big first charge, a bill much higher than usual, a missing refund or a subscription charged twice.",
+  },
   estimated_tax: {
     label: "IRS estimated-payment date",
     description:
@@ -93,6 +100,7 @@ export const DEFAULT_ALERT_DELIVERY: Record<AlertType, AlertDelivery> = {
   renews_soon: "app",
   deadline_soon: "email",
   estimated_tax: "app",
+  unusual_activity: "email",
 };
 
 // At most this many alert emails per person in any 24 hours. The rest wait for the

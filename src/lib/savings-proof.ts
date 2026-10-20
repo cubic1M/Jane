@@ -43,6 +43,8 @@ export type ProvenSavings = {
   confirmedCents: number;
   estimated: Estimate[];
   estimatedCents: number;
+  // Spec step 207: finished long ago and the saving never showed up. Not counted.
+  notShown: Estimate[];
 };
 
 const shortDate = (date: string) =>
@@ -88,6 +90,7 @@ export async function provenSavings(
         refundCents: true,
         cancelledOn: true,
         confirmedAnnualCents: true,
+        savingMissedAt: true,
         decision: {
           select: { cardSnapshot: true, options: true, finding: { select: { evidence: true } } },
         },
@@ -103,6 +106,7 @@ export async function provenSavings(
 
   const confirmed: Receipt[] = [];
   const estimated: Estimate[] = [];
+  const notShown: Estimate[] = [];
   for (const action of actions) {
     const title = snapshotTitle(action.decision.cardSnapshot);
     const estimate = estimateOf(action.decision.cardSnapshot);
@@ -192,15 +196,18 @@ export async function provenSavings(
     if (estimate <= 0 && action.confirmedAnnualCents === null && action.refundCents === null) {
       continue;
     }
-    estimated.push({
+    (action.savingMissedAt && done ? notShown : estimated).push({
       actionId: action.id,
       title,
       cents: action.confirmedAnnualCents ?? action.refundCents ?? estimate,
-      why: !done
-        ? "Jane is still working on it."
-        : action.confirmedAnnualCents !== null
-          ? "The company confirmed it. It counts once the lower bill shows up in your transactions."
-          : "Done. It counts once your transactions show it.",
+      why:
+        action.savingMissedAt && done
+          ? "It never showed up in your transactions, so it doesn't count as saved."
+          : !done
+            ? "Jane is still working on it."
+            : action.confirmedAnnualCents !== null
+              ? "The company confirmed it. It counts once the lower bill shows up in your transactions."
+              : "Done. It counts once your transactions show it.",
     });
   }
   return {
@@ -208,6 +215,7 @@ export async function provenSavings(
     confirmedCents: confirmed.reduce((sum, r) => sum + r.cents, 0),
     estimated,
     estimatedCents: estimated.reduce((sum, e) => sum + e.cents, 0),
+    notShown,
   };
 }
 
