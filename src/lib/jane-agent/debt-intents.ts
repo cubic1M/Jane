@@ -168,7 +168,9 @@ const HOME_NOT = /\b(?:insurance|equity|my mortgage|refinanc\w*|pay off|payoff|r
 // Spec step 180: medical bills (not medical expenses for taxes, nor insurance claims).
 const MEDICAL_BILL =
   /\b(?:medical|hospital|doctor'?s?|dentist|dental|er|ambulance|surgery|lab|clinic)\b.*\b(?:bills?|charges?|debt|invoice|owe)\b|\b(?:bills?|charges?)\b.*\b(?:from|for) (?:the |my )?(?:hospital|doctor|dentist|er|clinic|ambulance|surgery|lab)\b|\bitemi[sz]ed bill\b|\bfinancial assistance\b|\bcharity care\b/;
-const MEDICAL_NOT = /\b(?:claim|claims|insurance claim|deduct\w*|hsa|fsa|tax|taxes|premium)\b/;
+// A surprise or denied bill is an insurance claim (its own intent).
+const MEDICAL_NOT =
+  /\b(?:claim|claims|insurance claim|surprise|denied|deduct\w*|hsa|fsa|tax|taxes|premium)\b/;
 
 const clean = (target: string) =>
   target
