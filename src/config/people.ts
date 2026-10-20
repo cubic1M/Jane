@@ -72,6 +72,8 @@ export type Person = {
   facts: PersonFacts;
   should: readonly SuggestionTopic[];
   mustNot: readonly SuggestionTopic[];
+  // The question worth asking them first (step 257): the fact whose answer unlocks most.
+  firstQuestion: string;
 };
 
 export const PEOPLE: readonly Person[] = [
@@ -97,6 +99,7 @@ export const PEOPLE: readonly Person[] = [
       "concentration",
       "education_529",
     ],
+    firstQuestion: "employer_match",
   },
   {
     id: "family",
@@ -119,6 +122,7 @@ export const PEOPLE: readonly Person[] = [
       "hardship_plan",
       "social_security_timing",
     ],
+    firstQuestion: "employer_match",
   },
   {
     id: "freelancer",
@@ -140,6 +144,7 @@ export const PEOPLE: readonly Person[] = [
       "emergency_fund",
     ],
     mustNot: ["employer_match", "rmd", "pmi_removal", "medicare", "hardship_plan"],
+    firstQuestion: "filing_status",
   },
   {
     id: "equity",
@@ -155,6 +160,7 @@ export const PEOPLE: readonly Person[] = [
     },
     should: ["idle_cash", "concentration", "withholding_gap", "hsa", "backdoor_roth", "refinance"],
     mustNot: ["bank_fees", "late_fees", "hardship_plan", "medicare", "rmd", "credit_building"],
+    firstQuestion: "employer_match",
   },
   {
     id: "preretire",
@@ -176,6 +182,7 @@ export const PEOPLE: readonly Person[] = [
       "hardship_plan",
       "employer_match",
     ],
+    firstQuestion: "age_band",
   },
   {
     id: "retiree",
@@ -199,6 +206,7 @@ export const PEOPLE: readonly Person[] = [
       "refinance",
       "credit_building",
     ],
+    firstQuestion: "age_band",
   },
   {
     id: "debt",
@@ -221,6 +229,7 @@ export const PEOPLE: readonly Person[] = [
       "hardship_plan",
     ],
     mustNot: ["concentration", "backdoor_roth", "hsa", "idle_cash", "refinance", "catch_up", "rmd"],
+    firstQuestion: "hardship_reason",
   },
   {
     id: "owner",
@@ -242,6 +251,7 @@ export const PEOPLE: readonly Person[] = [
       "cash_flow",
     ],
     mustNot: ["employer_match", "rmd", "pmi_removal", "medicare", "hardship_plan"],
+    firstQuestion: "business_structure",
   },
 ];
 

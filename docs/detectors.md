@@ -140,6 +140,18 @@ detector's result and propose combinations. An idea must rest on two to four rea
 is the weakest part's. Ideas are tagged `capability: "strategist"`. Without a key nothing is
 proposed; the run counts toward the same daily cost cap as the chat.
 
+## The one question worth asking (step 257)
+
+When a detector could fire but needs a fact the data cannot show (does the job match the
+401(k)? how old are you?), `nextQuestion` (`src/lib/questions.ts`) scores each missing fact by
+what an answer could unlock (`src/profile/questions.ts`, typical rates in
+`src/config/questions.ts`; the figures only order the questions and are never shown as a claim)
+and asks the best one in the chat, one at a time, with tap answers and a Skip. The answer goes
+into the profile as a told fact (100%), the same path as a correction on `/profile`. A question
+is asked once: answered, skipped, or already put to them, never again. To add one: a fact in
+`src/profile/facts.ts`, an entry in `QUESTIONS`, an `unlockOf` case, and the detector that
+needs it lists the fact in `needs`.
+
 ## Where it is going
 
 - Step 255 runs every detector for everyone each night and ranks by
