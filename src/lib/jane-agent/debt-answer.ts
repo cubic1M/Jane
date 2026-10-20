@@ -192,8 +192,15 @@ export async function answerDebt(
       return cardFeeReply(await loadCreditCards(userId, { client, now }));
     case "card_better":
       return betterCardReply(await loadCreditCards(userId, { client, now }));
-    case "credit_score":
-      return creditReply(await loadCredit(userId, { client, now }));
+    case "credit_score": {
+      let credit = await loadCredit(userId, { client, now });
+      // Asked before Jane's first monthly pull: she pulls now (a soft pull), then answers.
+      if (credit.available && !credit.latest) {
+        await pullCredit(userId, { client, now });
+        credit = await loadCredit(userId, { client, now });
+      }
+      return creditReply(credit);
+    }
     case "mortgage":
       return mortgageReply(await loadMortgage(userId, { client, now }));
     case "student_loans":

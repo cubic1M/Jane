@@ -229,6 +229,21 @@ describe.runIf(url)("the yearly debt review against a real database", { timeout:
     });
   });
 
+  it("pulls the stand-in score when asked before the first pull, instead of saying it hasn't checked", async () => {
+    const user = await client.user.create({
+      data: { email: `rev-score-${crypto.randomUUID()}@example.com` },
+    });
+    created.push(user.id);
+    const { itemId } = await linkDemoBank(user.id, { client, now: LINKED });
+    await syncItem(itemId, { client, api: plaid, now: LINKED });
+    const { reply } = await sendToJane(user.id, "what's my credit score", {
+      client,
+      now: later(),
+    });
+    expect(reply.body).not.toContain("haven't checked");
+    expect(reply.body).toMatch(/\b\d{3}\b/);
+  });
+
   it("gives Claude the same items, and has nothing for someone without a debt", async () => {
     const id = await demoPerson("rev-tool");
     await fresh(id);
