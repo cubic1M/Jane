@@ -640,3 +640,46 @@ test("a payment-app transfer is a loan only after the tap, and the reminder is o
   await expect(loans.getByRole("note")).toContainText("A kind reminder, for you to send");
   await expect(loans.getByRole("note")).toContainText("Hi Jordan");
 });
+
+// Spec step 227: a credit score needed by a date: a monthly plan from the simulator, labelled
+// an estimate, started on a tap, with a checklist to tick off.
+test("a credit score goal is previewed, started on the tap, and ticked off month by month", async ({
+  context,
+  page,
+  baseURL,
+}) => {
+  const user = await signedInUser("user");
+  userId = user.userId;
+  await context.addCookies([
+    { name: "authjs.session-token", value: user.sessionToken, url: baseURL ?? "" },
+  ]);
+  await page.goto("/connect");
+  await page.getByRole("button", { name: "Link a demo bank" }).click();
+  await expect(page).toHaveURL("/chat", { timeout: 60_000 });
+  const inSix = new Date(Date.now() + 183 * 86_400_000).toISOString().slice(0, 10);
+
+  await page.goto("/loans/credit");
+  await expect(page.getByRole("heading", { level: 1, name: "Credit score" })).toBeVisible();
+  await page.goto(`/loans/goal?kind=mortgage&score=740&date=${inSix}`);
+  await expect(
+    page.getByRole("note").filter({ hasText: "estimates from the stand-in" }),
+  ).toBeVisible();
+  const preview = page.getByRole("region", { name: "Preview" });
+  await expect(preview.getByRole("status")).toContainText("Reachable");
+  await expect(preview.getByRole("table", { name: "Plan by month" })).toBeVisible();
+
+  const start = page.getByRole("button", { name: "Start this plan" });
+  await start.scrollIntoViewIfNeeded();
+  // Keyboard, so the fixed bottom nav on phones never takes the tap.
+  await start.focus();
+  await start.press("Enter");
+  await expect(page.getByText("Plan started.")).toBeVisible();
+  const list = page.getByRole("list", { name: "This month's list" });
+  await expect(list.getByRole("listitem")).toHaveCount(4);
+  const mark = list.getByRole("button", { name: "Mark done" }).first();
+  await mark.scrollIntoViewIfNeeded();
+  await mark.focus();
+  await mark.press("Enter");
+  await expect(page.getByText("Ticked off.")).toBeVisible();
+  await expect(list.getByText("Done", { exact: true })).toHaveCount(1);
+});

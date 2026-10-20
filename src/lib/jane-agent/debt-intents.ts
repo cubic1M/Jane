@@ -43,6 +43,12 @@ export type DebtIntent =
   | { kind: "tight_money" }
   // Spec step 178: "how much car can I afford?", "the dealer offered 7.9% for 72 months".
   | { kind: "family_loans" }
+  | {
+      kind: "credit_goal";
+      targetScore: number | null;
+      months: number | null;
+      goalKind: "mortgage" | "car" | "other";
+    }
   | { kind: "student_long" }
   | { kind: "card_interest" }
   | { kind: "report_fixes" }
@@ -84,6 +90,7 @@ export const DEBT_KINDS = new Set<string>([
   "card_interest",
   "student_long",
   "family_loans",
+  "credit_goal",
 ]);
 export const isDebtIntent = (intent: { kind: string }): intent is DebtIntent =>
   DEBT_KINDS.has(intent.kind);
@@ -196,6 +203,67 @@ const STUDENT_LONG =
 const FAMILY_LOANS =
   /\bwho owes me\b|\bwho do i owe\b|\bowes? me (?:money|\$|back)\b|\b(?:did|has|have) \w+(?: \w+)? (?:pay|paid|paying) me back\b|\bmoney (?:i |i've |ive )?(?:lent|loaned|borrowed)\b|\b(?:i|we) (?:lent|loaned)\b|\blent (?:out|money)\b|\bloans? to (?:family|friends?)\b|\b(?:family|friends?) (?:loans?|owe)\b|\bi owe (?:my )?(?:mom|dad|mother|father|sister|brother|friend|friends|aunt|uncle|cousin|parents|family)\b|\bco-?sign(?:ed|er)?\b|\bshared (?:debt|debts|loan|loans)\b/;
 
+// Spec step 227: "I need a 740 credit score for a mortgage in 6 months".
+const MONTH_NAMES = [
+  "january",
+  "february",
+  "march",
+  "april",
+  "may",
+  "june",
+  "july",
+  "august",
+  "september",
+  "october",
+  "november",
+  "december",
+];
+const CREDIT_GOAL =
+  /\b(?:credit )?score\b.*\b(?:need|want|get|reach|hit|raise|goal|target|by|in)\b|\b(?:need|want|get|reach|hit|raise)\b.*\b(?:credit )?score\b|\bcredit (?:goal|plan)\b/;
+function goalFrom(text: string, asOf: string) {
+  const score = /\b([5-8]\d{2})\b/.exec(text);
+  const targetScore =
+    score && Number(score[1]) >= 500 && Number(score[1]) <= 850 ? Number(score[1]) : null;
+  let months: number | null = null;
+  const inN =
+    /\bin (\d{1,2}|a|one|two|three|four|five|six|seven|eight|nine|ten|twelve) (month|months|year|years)\b/.exec(
+      text,
+    );
+  if (inN) {
+    const words: Record<string, number> = {
+      a: 1,
+      one: 1,
+      two: 2,
+      three: 3,
+      four: 4,
+      five: 5,
+      six: 6,
+      seven: 7,
+      eight: 8,
+      nine: 9,
+      ten: 10,
+      twelve: 12,
+    };
+    const n = /^\d+$/.test(inN[1]) ? Number(inN[1]) : words[inN[1]];
+    months = inN[2].startsWith("year") ? n * 12 : n;
+  } else if (/\bnext year\b/.test(text)) months = 12;
+  else {
+    const m = MONTH_NAMES.findIndex((name) =>
+      new RegExp(`\\b(?:by|in|before) ${name}\\b`).test(text),
+    );
+    if (m >= 0) {
+      const now = Number(asOf.slice(5, 7)) - 1;
+      months = (m - now + 12) % 12 || 12;
+    }
+  }
+  const goalKind = /\b(?:mortgage|home|house)\b/.test(text)
+    ? "mortgage"
+    : /\b(?:car|auto|vehicle)\b/.test(text)
+      ? "car"
+      : "other";
+  return { targetScore, months, goalKind } as const;
+}
+
 const clean = (target: string) =>
   target
     .replace(/\b(?:paid off|off|in full)\b/g, "")
@@ -205,6 +273,7 @@ const clean = (target: string) =>
 export function parseDebtIntent(
   text: string,
   amountCents: number | null = null,
+  asOf: string = new Date().toISOString().slice(0, 10),
 ): DebtIntent | null {
   // Taxes owed are the tax questions' (./tax-intents.ts).
   if (/\b(?:tax|taxes|irs|tax refund)\b/.test(text)) return null;
@@ -222,6 +291,13 @@ export function parseDebtIntent(
     return { kind: "card_interest" };
   }
   if (FAMILY_LOANS.test(text)) return { kind: "family_loans" };
+  if (CREDIT_GOAL.test(text) && /\bscore\b|\bcredit (?:goal|plan)\b/.test(text)) {
+    const g = goalFrom(text, asOf);
+    // A score with a target (or a plan asked for) is a goal; "what is my score" is not.
+    if (g.targetScore !== null || /\bgoal\b|\bplan\b|\btarget\b/.test(text)) {
+      return { kind: "credit_goal", ...g };
+    }
+  }
   if (STUDENT_LONG.test(text)) return { kind: "student_long" };
   if (REPORT_FIX.test(text) && !/\b(?:tax|taxes)\b/.test(text)) return { kind: "report_fixes" };
   if (MEDICAL_BILL.test(text) && !MEDICAL_NOT.test(text)) return { kind: "medical_bills" };

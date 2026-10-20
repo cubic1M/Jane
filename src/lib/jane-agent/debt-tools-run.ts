@@ -19,6 +19,7 @@ import { loadReportFixes } from "@/lib/credit-report-fixes";
 import { loadCardInterest } from "@/lib/card-interest";
 import { loadStudentLongGame } from "@/lib/student-long-game";
 import { loadFamilyLoans } from "@/lib/family-loans";
+import { loadCreditGoals } from "@/lib/credit-goals";
 import { listApplications } from "@/lib/loan-applications";
 import { loadRefinance } from "@/lib/refinance";
 import {
@@ -44,6 +45,7 @@ import {
   cardInterestToolOutput,
   studentLongGameToolOutput,
   familyLoansToolOutput,
+  creditGoalsToolOutput,
 } from "./debt-tools";
 
 // Runs Claude's debt tools (./debt-tools.ts) for one person: read-only, scoped to them,
@@ -68,6 +70,8 @@ export async function runDebtTool(
       return out(debtsToolOutput(await loadDebts(userId, { client, now }), money));
     case "debt_autopilot":
       return out(debtAutopilotToolOutput(await loadDebtAutopilot(userId, { client, now }), money));
+    case "credit_goals":
+      return out(creditGoalsToolOutput(await loadCreditGoals(userId, { client, now }), money));
     case "family_loans":
       return out(familyLoansToolOutput(await loadFamilyLoans(userId, { client, now }), money));
     case "student_long_game":

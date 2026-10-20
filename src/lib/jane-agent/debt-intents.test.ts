@@ -278,6 +278,26 @@ describe("debt questions", () => {
     expect(intent("how much do I owe")).toEqual({ kind: "debts" });
   });
 
+  it("reads a credit score needed by a date", () => {
+    expect(intent("I need a 740 credit score for a mortgage in 6 months")).toEqual({
+      kind: "credit_goal",
+      targetScore: 740,
+      months: 6,
+      goalKind: "mortgage",
+    });
+    expect(intent("how do I get my score to 720 for a car by june")).toMatchObject({
+      kind: "credit_goal",
+      targetScore: 720,
+      goalKind: "car",
+    });
+    expect(intent("what's my credit plan")).toMatchObject({
+      kind: "credit_goal",
+      targetScore: null,
+    });
+    // Asking the score itself, or a year with a number in it, isn't a goal.
+    expect(intent("what's my credit score")).toEqual({ kind: "credit_score" });
+  });
+
   it("reads a tight month", () => {
     for (const text of [
       "money is tight this month",

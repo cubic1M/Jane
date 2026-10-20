@@ -52,6 +52,7 @@ export const DEBT_SOURCE_LIMITS = {
   card_interest: 2,
   student_long_game: 1,
   family_loans: 1,
+  credit_goal: 2,
 } as const;
 export const DEBT_MESSAGE_PRIORITY = {
   // A buy now, pay later plan Jane found, then a debt with no rate: news that can wait,
@@ -130,6 +131,9 @@ export const DEBT_MESSAGE_PRIORITY = {
   family_candidate: 38,
   family_reminder: 35,
   cosigned_late: 68,
+  // Spec step 227: a month's credit checklist has a date; a plan out of reach comes after.
+  credit_goal_month: 57,
+  credit_goal_short: 39,
 } as const;
 
 // What Jane does about debts by herself at each autopilot level (src/config/autopilot.ts),
@@ -219,6 +223,10 @@ export const DEBT_AUTOPILOT: Readonly<
       step: 226,
       does: "Spots large payment-app transfers (Venmo, Zelle, Cash App) that might be a loan and asks you once, tracks what comes back, drafts a kind reminder for you to send yourself, and warns about a late payment on a loan you co-signed. A transfer is a loan only after you say so; I never message the other person.",
     },
+    {
+      step: 227,
+      does: "When you tell me the credit score you need and by when, builds a month-by-month plan from the score simulator (what to pay down, accounts to keep open, no new applications, a rapid rescore before a mortgage), and brings up each month's checklist. Starting the plan is your tap; the scores are estimates.",
+    },
   ],
   safe: [
     {
@@ -301,6 +309,10 @@ export const DEBT_AUTOPILOT: Readonly<
       step: 226,
       does: "Spots large payment-app transfers (Venmo, Zelle, Cash App) that might be a loan and asks you once, tracks what comes back, drafts a kind reminder for you to send yourself, and warns about a late payment on a loan you co-signed. A transfer is a loan only after you say so; I never message the other person.",
     },
+    {
+      step: 227,
+      does: "When you tell me the credit score you need and by when, builds a month-by-month plan from the score simulator (what to pay down, accounts to keep open, no new applications, a rapid rescore before a mortgage), and brings up each month's checklist. Starting the plan is your tap; the scores are estimates.",
+    },
   ],
   all: [
     {
@@ -382,6 +394,10 @@ export const DEBT_AUTOPILOT: Readonly<
     {
       step: 226,
       does: "Spots large payment-app transfers (Venmo, Zelle, Cash App) that might be a loan and asks you once, tracks what comes back, drafts a kind reminder for you to send yourself, and warns about a late payment on a loan you co-signed. A transfer is a loan only after you say so; I never message the other person.",
+    },
+    {
+      step: 227,
+      does: "When you tell me the credit score you need and by when, builds a month-by-month plan from the score simulator (what to pay down, accounts to keep open, no new applications, a rapid rescore before a mortgage), and brings up each month's checklist. Starting the plan is your tap; the scores are estimates.",
     },
   ],
 };

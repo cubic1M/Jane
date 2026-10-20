@@ -35,4 +35,7 @@ export const DEBT_ACTION_IDS = [
   // Spec step 226: whether a payment-app transfer was a loan.
   "famloan.yes",
   "famloan.no",
+  // Spec step 227: start a credit score plan; tick off a month's list.
+  "creditgoal.start",
+  "creditgoal.done",
 ] as const;

@@ -21,6 +21,7 @@ import type { ReportFixes } from "@/lib/credit-report-fixes";
 import type { CardInterest } from "@/lib/card-interest";
 import type { LongGame } from "@/lib/student-long-game";
 import type { FamilyLoans } from "@/lib/family-loans";
+import type { CreditGoals } from "@/lib/credit-goals";
 import { REWARD_CATEGORY_LABELS } from "@/config/credit-cards";
 import type { DebtAutopilot } from "@/lib/debt-autopilot";
 import { PMI_SOURCE } from "@/config/debt";
@@ -179,6 +180,12 @@ export const DEBT_TOOLS: Anthropic.Tool[] = [
     input_schema: noInput,
   },
   {
+    name: "credit_goals",
+    description:
+      "The credit score plans the person has for a goal (demo-bank people only, a stand-in score; every figure is an estimate from the score simulator, never a promise): for each, the target score and date, what the goal is for (a mortgage, a car), the score now, whether the plan reaches the target and the best it shows if not, the month-by-month plan (what to pay toward cards and the estimated score after each month), this month's checklist with what's done (pay before the statement closes, keep card accounts open, no new applications, on-time payments, and a rapid rescore before a mortgage application), and the total to pay down. Starting a plan and ticking off a month are the person's taps (the creditgoal.start and creditgoal.done buttons).",
+    input_schema: noInput,
+  },
+  {
     name: "mortgage",
     description:
       "The person's mortgage, watched: balance, rate, payment; whether it has PMI and the loan as a share of the home's value (from the value they gave), with whether PMI can come off and the steps (rules from the CFPB); escrow balance and any escrow change in the payment; what extra principal each month would save; the best refinance offer's monthly saving, closing costs and break-even months.",
@@ -329,6 +336,7 @@ export const DEBT_TOOL_STATUS: Readonly<Record<string, string>> = {
   card_interest: "Looking at your card interest…",
   student_long_game: "Looking at your student loan's long game…",
   family_loans: "Looking at who owes whom…",
+  credit_goals: "Looking at your credit plan…",
 };
 
 export function refinanceToolOutput(refi: Refinance, money: (cents: number) => string) {
@@ -940,6 +948,29 @@ export function familyLoansToolOutput(data: FamilyLoans, money: (cents: number) 
       debt: s.name,
       monthly: s.paymentCents === null ? null : money(s.paymentCents),
       yourHalf: s.yourShareCents === null ? null : money(s.yourShareCents),
+    })),
+  };
+}
+
+export function creditGoalsToolOutput(data: CreditGoals, money: (cents: number) => string) {
+  if (!data.available) return { note: "No credit partner for this person's accounts yet." };
+  return {
+    estimatesFromAStandInSimulator: true,
+    scoreNow: data.scoreNow,
+    plans: data.goals.map((g) => ({
+      goal: g.title,
+      target: g.targetScore,
+      by: g.targetDate,
+      reachesTarget: g.plan.reaches,
+      endsAt: g.plan.endScore,
+      bestPossible: g.plan.best,
+      totalToPayDown: money(g.plan.totalPayCents),
+      months: g.plan.months.map((m) => ({
+        month: m.month,
+        pay: money(m.payCents),
+        estimatedScore: m.projectedScore,
+      })),
+      thisMonth: g.thisMonth.map((i) => ({ item: i.text, done: i.done })),
     })),
   };
 }

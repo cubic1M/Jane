@@ -304,6 +304,7 @@ model User {
   cardPromos             CardPromo[]
   cardRateRequests       CardRateRequest[]
   personalLoans          PersonalLoan[]
+  creditGoals            CreditGoal[]
   balanceTransfers       BalanceTransfer[]
   findings               Finding[]
   decisions              Decision[]
@@ -1029,6 +1030,28 @@ model PersonalLoan {
   @@unique([userId, sourceKey])
   @@index([userId])
   @@map("personal_loans")
+}
+
+// A credit score the person needs by a date (spec step 227): a mortgage next spring, a car in
+// six months. Jane builds a monthly plan from the credit partner's score simulator; each
+// month's checklist items the person has done are kept here.
+model CreditGoal {
+  id          String    @id @default(cuid())
+  userId      String    @map("user_id")
+  name        String
+  // mortgage, car or other.
+  kind        String
+  targetScore Int       @map("target_score")
+  targetDate  DateTime  @map("target_date") @db.Date
+  // The checklist items done so far, as "<month>:<item key>".
+  done        Json      @default("[]")
+  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  endedOn     DateTime? @map("ended_on") @db.Date
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("credit_goals")
 }
 
 // A balance transfer the person made to a 0% card (spec step 113), so Jane can keep the

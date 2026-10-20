@@ -1171,6 +1171,20 @@ const BASE_QUESTIONS: readonly CheckQuestion[] = [
       link: "/loans/cards",
     },
   },
+  // Spec step 227: a credit score needed by a date.
+  {
+    id: "debt-30",
+    text: "I need a 740 credit score for a mortgage in 6 months",
+    needs: "rules",
+    expect: {
+      intent: "credit_goal",
+      mentions: /simulator/i,
+      button: "creditgoal.start",
+      link: "/loans/goal",
+      list: true,
+      maxChars: 1_000,
+    },
+  },
   // Spec step 226: money between family and friends, kept kindly.
   {
     id: "debt-29",

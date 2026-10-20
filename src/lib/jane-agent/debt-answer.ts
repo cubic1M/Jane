@@ -17,6 +17,7 @@ import { loadReportFixes } from "@/lib/credit-report-fixes";
 import { loadCardInterest } from "@/lib/card-interest";
 import { loadStudentLongGame } from "@/lib/student-long-game";
 import { loadFamilyLoans } from "@/lib/family-loans";
+import { checkGoalDraft, loadCreditGoals, planFor } from "@/lib/credit-goals";
 import { pullCredit } from "@/lib/credit";
 import { listApplications } from "@/lib/loan-applications";
 import { checkRates, loadRefinance } from "@/lib/refinance";
@@ -38,6 +39,7 @@ import { reportFixReply } from "./credit-report-fixes-replies";
 import { cardInterestReply } from "./card-interest-replies";
 import { longGameReply } from "./student-long-game-replies";
 import { familyLoansReply } from "./family-loans-replies";
+import { creditGoalReply } from "./credit-goal-replies";
 import type { Reply } from "./replies";
 
 // Answers questions about debts by rules (spec Phase Y), with the same loaders as the
@@ -78,6 +80,33 @@ export async function answerDebt(
         data = await loadCreditBuilding(userId, { client, now });
       }
       return intent.kind === "build_credit" ? buildCreditReply(data) : simulateReply(data);
+    }
+    case "credit_goal": {
+      const goals = await loadCreditGoals(userId, { client, now });
+      // A target and a time: preview the plan, ready to start on a tap.
+      if (intent.targetScore !== null && intent.months !== null) {
+        const asOf = now.toISOString().slice(0, 10);
+        const d = new Date(now.getTime());
+        d.setUTCMonth(d.getUTCMonth() + intent.months);
+        try {
+          const draft = checkGoalDraft(
+            {
+              kind: intent.goalKind,
+              targetScore: intent.targetScore,
+              targetDate: d.toISOString().slice(0, 10),
+            },
+            asOf,
+          );
+          return creditGoalReply(
+            goals,
+            { ...draft, view: await planFor(userId, draft, { client, now }) },
+            { score: intent.targetScore },
+          );
+        } catch {
+          // An out-of-range score falls through to the plan or the prompt.
+        }
+      }
+      return creditGoalReply(goals, null, { score: intent.targetScore });
     }
     case "family_loans":
       return familyLoansReply(await loadFamilyLoans(userId, { client, now }));

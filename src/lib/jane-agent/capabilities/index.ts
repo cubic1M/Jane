@@ -158,6 +158,7 @@ export const CAPABILITIES: readonly Capability[] = [
       "card_interest",
       "student_long_game",
       "family_loans",
+      "credit_goals",
     ],
     answer: debtAnswer,
   },
