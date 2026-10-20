@@ -281,7 +281,7 @@ export async function loadSnapshot(
     monthlyReport,
     whatIf,
   ] = await Promise.all([
-    loadMore(userId, { client, now }),
+    loadMore(userId, { client, now, input }),
     loadTaxSnapshot(userId, { client, now }),
     // Spec steps 97, 100, 139, 145 and 146 read the same bank data, so it's loaded once.
     thinking(userId, client, now, input),

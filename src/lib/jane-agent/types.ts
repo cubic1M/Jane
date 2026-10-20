@@ -174,6 +174,12 @@ export const ACTION_IDS = [
   "tax.receipt_got",
   "tax.fund_open",
   "tax.giving_no",
+  // Spec step 171: a reminder before a year's records can be thrown away.
+  "tax.records_remind",
+  // Spec step 172: confirm a return Jane read, say it isn't one, prepare an amended return.
+  "tax.prior_confirm",
+  "tax.prior_no",
+  "tax.amend_prepare",
   // Investments (spec step 129 on): the answer buttons on an investor-profile question,
   // by position (src/config/investing.ts PROFILE_QUESTIONS).
   "invest.answer.1",
@@ -258,6 +264,10 @@ export type MessageRefs = {
   // credit-builder stand-in to open.
   creditStatement?: { accountId: string; closesOn: string };
   creditBuilder?: { productId: string };
+  // Spec step 176: the buy now, pay later plan "Pay it off" pays.
+  bnplPlan?: { key: string };
+  // Spec step 177: the request "Send" sends when money is tight.
+  tightItem?: { id: string };
   // Insurance (spec Phase X): a coverage gap by its key (GAP_KEYS), and the policy a
   // message is about.
   insuranceGap?: string;
@@ -365,6 +375,8 @@ export type MessageRefs = {
   taxPlanMove?: string;
   // Spec step 168: the gift (its transaction id) a receipt message is about.
   taxGift?: string;
+  // Spec step 172: the return read from a document (its id) a message is about.
+  priorReturn?: string;
   // Spec step 98: demo advice (src/lib/advice-mode.ts). The chat shows DEMO_ADVICE_LABEL
   // under it. Set it on every message that recommends investments, taxes, insurance or loans.
   advice?: true;

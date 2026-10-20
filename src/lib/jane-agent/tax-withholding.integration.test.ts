@@ -136,7 +136,7 @@ describe.runIf(url)("the withholding checkup against a real database", () => {
     expect(view.estimate.refundCents).toBeGreaterThanOrEqual(0);
     expect(planned).not.toBeNull();
     expect(Math.abs(view.estimate.refundCents - planned!)).toBeLessThan(1_000);
-    expect(view.assumptions).toContain("It includes the W-4 change you sent on 2026-10-18.");
+    expect(view.assumptions).toContain("It includes the W-4 change you sent on Oct 18, 2026.");
     // Sent: Jane doesn't bring it up again this year.
     expect(await post(demoId, "withholding:2026:big_refund")).toBeNull();
     await clearW4Change(demoId, { client, via: "page" });

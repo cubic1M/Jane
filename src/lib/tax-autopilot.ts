@@ -10,6 +10,7 @@ import { FilingError, filingYear, inFilingSeason, startReturn } from "@/lib/tax-
 import { loadTaxForms } from "@/lib/tax-organizer";
 import { collectTaxDocuments } from "@/lib/tax-documents";
 import { addOpenPlanMoves } from "@/lib/tax-plan";
+import { remindDueRecords } from "@/lib/audit-records";
 import { remindReceipts } from "@/lib/giving";
 
 // What Jane does about taxes by herself before she talks (spec steps 123–127), at the
@@ -32,6 +33,7 @@ export async function runTaxAutopilot(
   documents: { collected: number; ticked: number };
   planAdded: number;
   receiptsReminded: number;
+  recordsReminded: number;
 }> {
   // Spec step 141: Taxes' autopilot. Starting a return or a goal moves no money: the level
   // is enough.
@@ -46,6 +48,7 @@ export async function runTaxAutopilot(
       documents,
       planAdded: 0,
       receiptsReminded: 0,
+      recordsReminded: 0,
     };
   }
   return {
@@ -56,6 +59,8 @@ export async function runTaxAutopilot(
     planAdded: (await addOpenPlanMoves(userId, { client, now })).length,
     // Spec step 168: a reminder to get each gift's missing receipt.
     receiptsReminded: await remindReceipts(userId, { client, now }),
+    // Spec step 171: a reminder before a year's records can be thrown away.
+    recordsReminded: await remindDueRecords(userId, { client, now }),
   };
 }
 
