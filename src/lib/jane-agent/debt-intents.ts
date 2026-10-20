@@ -35,7 +35,20 @@ export type DebtIntent =
   | { kind: "card_better" }
   // Spec step 175: "how do I build my credit?", "what would my score be if I paid my card off?".
   | { kind: "build_credit" }
-  | { kind: "credit_simulate" };
+  | { kind: "credit_simulate" }
+  // Spec step 176: "what buy now pay later payments do I have?", "can I afford a $300 Klarna?".
+  | { kind: "bnpl" }
+  | { kind: "bnpl_new"; totalCents: number | null }
+  // Spec step 177: "I'm short this month", "what if I can't pay my bills?".
+  | { kind: "tight_money" }
+  // Spec step 178: "how much car can I afford?", "the dealer offered 7.9% for 72 months".
+  | { kind: "car_afford"; priceCents: number | null }
+  | {
+      kind: "car_dealer";
+      aprBps: number | null;
+      termMonths: number | null;
+      priceCents: number | null;
+    };
 
 const DEBT_KINDS = new Set<string>([
   "debts",
@@ -54,6 +67,11 @@ const DEBT_KINDS = new Set<string>([
   "card_better",
   "build_credit",
   "credit_simulate",
+  "bnpl",
+  "bnpl_new",
+  "tight_money",
+  "car_afford",
+  "car_dealer",
 ]);
 export const isDebtIntent = (intent: { kind: string }): intent is DebtIntent =>
   DEBT_KINDS.has(intent.kind);
@@ -117,6 +135,26 @@ const CARD_KINDS: readonly [RegExp, RewardCategory][] = [
 ];
 const cardKind = (text: string) => CARD_KINDS.find(([re]) => re.test(text))?.[1] ?? null;
 
+// Spec step 176.
+const BNPL_WORD = /\b(?:klarna|affirm|afterpay|buy now,? pay later|bnpl|pay in 4|pay in four)\b/;
+const BNPL_NEW =
+  /\b(?:afford|take on|start|open|add|get|use|worth)\b.*\b(?:klarna|affirm|afterpay|buy now,? pay later|bnpl|pay in 4|pay in four|installments?)\b|\b(?:klarna|affirm|afterpay|buy now,? pay later|bnpl|pay in 4)\b.*\b(?:afford|strain|squeeze)\b/;
+const BNPL_LIST =
+  /\b(?:installments?|buy now,? pay later|bnpl|klarna|affirm|afterpay|pay in 4)\b.*\b(?:coming|due|next|payments?|plans?|do i have|owe|list|all)\b|\b(?:coming|due|next|my)\b.*\b(?:installments?|buy now,? pay later|bnpl|klarna|affirm|afterpay)\b/;
+
+// Spec step 177.
+const TIGHT =
+  /\b(?:money is tight|money'?s tight|tight (?:month|on money)|i'?m (?:short|broke|strapped)|(?:can'?t|cannot|won'?t be able to|unable to) (?:afford|pay|make) (?:my |the |all my |this month'?s )?(?:bills?|rent|payments?|mortgage|cards?)|short on (?:cash|money)|running out of money|hardship (?:program|help|plan)|(?:behind|struggling) (?:on|with) (?:my )?(?:bills|payments|debts?))\b/;
+
+// Spec step 178.
+const CAR_WORD = /\b(?:car|cars|vehicle|truck|suv|minivan|sedan)\b/;
+const CAR_DEALER =
+  /\bdealer(?:ship)?(?:'s)?\b.*\b(?:financ\w*|loan|offer\w*|rate|apr|quot\w*)\b|\b(?:financ\w*|loan|offer\w*|rate|apr)\b.*\bdealer(?:ship)?\b/;
+const CAR_AFFORD =
+  /\b(?:afford|buy|buying|get|getting|budget|price range)\b|\bhow much (?:car|truck|suv|vehicle)\b|\b(?:car|auto|vehicle) loan\b.*\b(?:preapprov\w*|pre-approv\w*|offers?|compare|quotes?|rates?)\b|\bpre-?approv\w*\b/;
+const PERCENT = /(\d+(?:\.\d+)?)\s*(?:%|percent|apr)/;
+const MONTHS = /(\d{2,3})\s*(?:months?|mos?\b)/;
+
 const clean = (target: string) =>
   target
     .replace(/\b(?:paid off|off|in full)\b/g, "")
@@ -135,6 +173,30 @@ export function parseDebtIntent(
     return { kind: "payoff_plan", extraCents: amountCents };
   if (PAYOFF.test(text)) return { kind: "payoff_plan", extraCents: null };
   if (DEBT_AUTOPILOT.test(text)) return { kind: "debt_autopilot" };
+  if (TIGHT.test(text)) return { kind: "tight_money" };
+  if (CAR_DEALER.test(text) && (CAR_WORD.test(text) || PERCENT.test(text))) {
+    const apr = PERCENT.exec(text);
+    const months = MONTHS.exec(text);
+    return {
+      kind: "car_dealer",
+      aprBps: apr ? Math.round(Number(apr[1]) * 100) : null,
+      termMonths: months ? Number(months[1]) : null,
+      priceCents: amountCents,
+    };
+  }
+  if (
+    CAR_WORD.test(text) &&
+    !/\b(?:insurance|refinanc\w*|payoff|pay off)\b/.test(text) &&
+    CAR_AFFORD.test(text) &&
+    // A small amount is a "can I afford" question (a used car, a repair), not a purchase plan.
+    (amountCents === null || amountCents >= 500_000)
+  ) {
+    return { kind: "car_afford", priceCents: amountCents };
+  }
+  if (BNPL_WORD.test(text) || /\binstallments?\b/.test(text)) {
+    if (BNPL_NEW.test(text)) return { kind: "bnpl_new", totalCents: amountCents };
+    if (BNPL_LIST.test(text)) return { kind: "bnpl" };
+  }
   if (SIMULATE.test(text)) return { kind: "credit_simulate" };
   if (BUILD_CREDIT.test(text)) return { kind: "build_credit" };
   if (CARD_FOR.test(text)) return { kind: "card_for", category: cardKind(text) };
