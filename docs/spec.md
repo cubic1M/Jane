@@ -3823,6 +3823,111 @@ bank.
 > Acceptance criteria:
 > - One message with every item's button; nothing above the cap without a tap
 
+## Phase AO: investing, round four (steps 231–237)
+
+Phases AA, AE and AL cover every account and goal. This round makes the whole portfolio
+work as one: the right investments in the right accounts across the household, the
+workplace plan's own fund menu used well, honest performance, short-term money placed
+safely, sudden money handled with a plan, investing that matches the person's values, and
+the accounts set up so the family is looked after. Recommendations are demo advice; legal
+questions go to counsel. Each step is built into the chat through the step 190 registry,
+with questions in step 189's bank.
+
+### Step 231: The right investment in the right account
+
+> Read CLAUDE.md. Asset location across every account and both partners.
+>
+> Build:
+> 1. One allocation across all of the household's accounts (shared only as step 25
+>    allows), with tax-inefficient holdings placed in tax-advantaged accounts and
+>    tax-efficient ones in taxable accounts, the yearly tax saved (step 120's rates), and the
+>    moves to get there through the stand-in brokerage without selling at a gain where it
+>    can be avoided.
+>
+> Acceptance criteria:
+> - The overall mix stays the same before and after; no sale at a gain without showing its
+>   tax
+
+### Step 232: The workplace plan's menu, used well
+
+> Read CLAUDE.md. The cheapest good mix from the funds the plan offers.
+>
+> Build:
+> 1. The 401(k) or 403(b) fund list read from a statement or the plan's fee disclosure
+>    (step 151's document reading pattern, confirm before saving): each fund's cost and
+>    asset class, the cheapest mix that matches the person's target, and a target-date
+>    fund's fee checked against building it by hand. Changes go to the payroll stand-in
+>    or the team.
+>
+> Acceptance criteria:
+> - Only funds on the plan's menu are suggested; the fee saving is in dollars a year
+
+### Step 233: Honest performance
+
+> Read CLAUDE.md. How the money really did.
+>
+> Build:
+> 1. Returns weighted by when money went in and out, after fees and taxes, against a simple
+>    benchmark mix with the same risk, for one, three and five years, with why they
+>    differ (fees, cash drag, timing). No forecasts, only what happened.
+>
+> Acceptance criteria:
+> - The money-weighted return math has tests; benchmarks from config with sources
+
+### Step 234: Short-term money, placed safely
+
+> Read CLAUDE.md. Money needed within three years.
+>
+> Build:
+> 1. For goals under three years and the emergency fund above its floor: Treasury bills, a
+>    CD ladder, I bonds and high-yield savings compared after tax (Treasury interest is
+>    free of state tax, step 165), with a ladder that matures when the money is needed and
+>    rolls itself over through the stand-in.
+>
+> Acceptance criteria:
+> - Nothing locks money past its goal date; after-tax yields use the person's own state
+
+### Step 235: Sudden money
+
+> Read CLAUDE.md. A bonus, an inheritance or a home sale, with a plan.
+>
+> Build:
+> 1. A large deposit that isn't pay gets one question ("Is this a bonus, an inheritance, a
+>    sale?"). Then comes a staged plan across every sector: taxes set aside, high-interest
+>    debt, the emergency fund, the match and limits, goals, then investing, using step
+>    203's scenarios, each part a tap.
+>
+> Acceptance criteria:
+> - The tax set-aside comes first and is figured by kind; nothing moves without a tap below
+>   "handle everything"
+
+### Step 236: Investing by your values
+
+> Read CLAUDE.md. What the money is invested in, matching what the person cares about.
+>
+> Build:
+> 1. Exclusions and preferences (fossil fuels, weapons, tobacco, or favouring certain
+>    themes) applied to fund choices and rebalancing through a tagged stand-in fund
+>    catalog, with the cost and the difference in diversification shown honestly.
+>
+> Acceptance criteria:
+> - Preferences never break the person's risk target; the fee difference is in dollars
+
+### Step 237: The family looked after
+
+> Read CLAUDE.md. Beneficiaries and access, set up before they're needed.
+>
+> Build:
+> 1. Every account's beneficiaries checked (missing, or out of date after a marriage, a
+>    divorce or a birth, from step 100's life events), transfer-on-death set-ups where the
+>    account allows, and a "what my family would need" file of accounts and contacts the
+>    person can share. Wills and trusts get the facts and a pointer to counsel, never
+>    legal advice.
+>
+> Acceptance criteria:
+> - The guardrail blocks legal advice here (tests); the family file shares only what the
+>   person picks
+
 ### Later, when the founder is ready
 
 These need an outside account, a partner or a decision: Plaid Production (real banks) and
