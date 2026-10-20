@@ -10,7 +10,7 @@ import { scopedFor } from "@/lib/db-scoped";
 import { CHAT_PROMPT_VERSION } from "../claude";
 import { sendToJane, type AnswerSource } from "../typing";
 import { QUESTIONS, type CheckQuestion } from "./bank";
-import { loadFacts } from "./facts";
+import { loadFacts, type Facts } from "./facts";
 import { fixedChecks, fixedScore, reasonOf, type Check } from "./grade";
 import { GRADER_VERSION, gradeWithClaude, type ClaudeGrade, type Usage } from "./grader";
 
@@ -65,6 +65,9 @@ type Options = {
   questions?: readonly CheckQuestion[];
   claude?: () => Pick<Anthropic, "messages">;
   capCents?: number;
+  // The person's numbers, when the caller already loaded them (a test running the bank in
+  // chunks loads them once).
+  facts?: Facts;
 };
 
 export const NO_KEY = "Needs Claude, and there's no ANTHROPIC_API_KEY: skipped.";
@@ -102,10 +105,11 @@ export async function runAnswerChecks(
     questions = QUESTIONS,
     claude = anthropic,
     capCents = ANSWER_CHECK_CAP_CENTS,
+    facts: given,
   }: Options,
 ): Promise<CheckRun> {
   const full = llmEnabled();
-  const facts = await loadFacts(userId, { client, now });
+  const facts = given ?? (await loadFacts(userId, { client, now }));
   let spent = 0;
   // Jane's own calls to Claude count toward the cap too.
   const metered = () => {
