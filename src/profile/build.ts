@@ -269,12 +269,20 @@ export function buildProfile(input: ProfileInput): Profile {
   );
   set("has_payday_loan", payday > 0, "seen", "cash-advance repayments", payday);
   const overweight = monthlyIncome > 0 && cardDebt >= monthlyIncome * TROUBLE_DEBT_MONTHS;
+  // The evidence is the signal that decided it, counted once (overdraft and late fees, else
+  // cash-advance repayments, else the card debt), not all of them added together.
+  const troubleSignal =
+    fees >= TROUBLE_FEES_MIN
+      ? { what: "overdraft, insufficient-funds or late fees", n: fees }
+      : payday > 0
+        ? { what: "cash-advance repayments", n: payday }
+        : { what: "months of income owed on cards", n: overweight ? TROUBLE_DEBT_MONTHS : 0 };
   set(
     "debt_trouble",
     fees >= TROUBLE_FEES_MIN || payday > 0 || overweight,
     "guessed",
-    "overdraft or late fees",
-    fees + payday + (overweight ? 1 : 0),
+    troubleSignal.what,
+    troubleSignal.n,
   );
 
   // --- Accounts and cover -----------------------------------------------------------

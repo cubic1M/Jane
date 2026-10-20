@@ -1,4 +1,4 @@
-import { CONFIDENCE } from "@/config/profile";
+import { CONFIDENCE, UNSURE_BELOW } from "@/config/profile";
 
 export type Source = "seen" | "told" | "guessed";
 
@@ -15,6 +15,11 @@ export function confidenceOf(
     Math.max(0, evidence.months) * c.perMonth +
     Math.min(Math.max(0, evidence.matches), c.matchCap) * c.perMatch;
   return Math.min(c.max, Math.round(raw));
+}
+
+// How a percentage is said: "I'm 85% sure" or, below UNSURE_BELOW, "I'm not sure (45%)".
+export function sureWords(percent: number): string {
+  return percent < UNSURE_BELOW ? `I'm not sure (${percent}%)` : `I'm ${percent}% sure`;
 }
 
 // The sentence shown next to a percentage: "based on 12 months of charges".

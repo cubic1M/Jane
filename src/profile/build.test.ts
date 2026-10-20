@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { PEOPLE } from "@/config/people";
 import { buildProfile } from "./build";
-import { confidenceOf } from "./confidence";
+import { confidenceOf, sureWords } from "./confidence";
 import { FACT_KEYS } from "./facts";
 import { inputFor, SAMPLE_TODAY } from "./sample";
 
@@ -87,5 +87,35 @@ describe("confidence", () => {
     expect(confidenceOf("seen", { months: 5, matches: 3 })).toBe(
       confidenceOf("seen", { months: 5, matches: 3 }),
     );
+  });
+});
+
+describe("how the percentage spreads with the evidence", () => {
+  it("is high for a fact clearly counted over many months, middling for little, and unsure for a guess", () => {
+    expect(confidenceOf("seen", { months: 12, matches: 12 })).toBeGreaterThanOrEqual(90);
+    expect(confidenceOf("seen", { months: 12, matches: 12 })).toBeLessThanOrEqual(95);
+    const little = confidenceOf("seen", { months: 1, matches: 1 });
+    expect(little).toBeGreaterThanOrEqual(50);
+    expect(little).toBeLessThanOrEqual(65);
+    expect(confidenceOf("guessed", { months: 12, matches: 50 })).toBeLessThan(50);
+    expect(sureWords(85)).toBe("I'm 85% sure");
+    expect(sureWords(45)).toBe("I'm not sure (45%)");
+  });
+
+  it("spreads across the sample people's facts", () => {
+    const all = Object.values(buildProfile(inputFor("debt")).facts)
+      .filter((f) => f.value !== null && f.source !== "told")
+      .map((f) => f.confidence);
+    expect(Math.max(...all) - Math.min(...all)).toBeGreaterThanOrEqual(25);
+    // Guesses are below 50%.
+    for (const f of Object.values(buildProfile(inputFor("family")).facts)) {
+      if (f.source === "guessed" && f.value !== null) expect(f.confidence, f.key).toBeLessThan(50);
+    }
+  });
+
+  it("counts debt trouble's evidence once: Chris has 11 fees, not all his signals added up", () => {
+    const fact = buildProfile(inputFor("debt")).facts.debt_trouble;
+    expect(fact.value).toBe(true);
+    expect(fact.evidence).toMatch(/^11 overdraft, insufficient-funds or late fees in 12 months/);
   });
 });

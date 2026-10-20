@@ -1,4 +1,5 @@
 import { MESSAGE_PRIORITY } from "@/config/agent-chat";
+import { sureWords } from "@/profile/confidence";
 import { formatCents } from "@/lib/money";
 import { sentence, type MessageSource } from "./source";
 
@@ -21,7 +22,7 @@ export const suggestionsSource: MessageSource = {
         sentence(s.title),
         `This ${WORTH[s.worthKind as keyof typeof WORTH]?.(s.worthCents) ?? "is worth a look"}.`,
         sentence(s.why),
-        `I'm ${s.confidencePercent}% sure, based on ${s.confidenceReason}.`,
+        `${sureWords(s.confidencePercent)}, based on ${s.confidenceReason}.`,
         "Want to do it?",
       ].join(" "),
       refs: { suggestion: s.key, ...(s.advice ? { advice: true as const } : {}) },

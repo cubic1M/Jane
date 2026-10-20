@@ -143,3 +143,14 @@ describe("money that two suggestions touch is counted once", () => {
     expect(worthOnce([a, make({ topic: "idle_cash", worthCents: 7_000 })])).toBe(57_000);
   });
 });
+
+describe("a loss avoided is worth its expected value in a year", () => {
+  it("ranks a $30,000 loss that is unlikely below a real $2,000 saving", () => {
+    const renters = make({ topic: "life_insurance", worthKind: "risk", worthCents: 3_000_000 });
+    const saving = make({ topic: "bank_fees", worthCents: 200_000 });
+    expect(scoreOf(renters)).toBeLessThan(scoreOf(saving));
+    // A likelier loss counts for more: the same amount at a higher annual chance.
+    const likely = make({ topic: "estimated_taxes", worthKind: "risk", worthCents: 3_000_000 });
+    expect(scoreOf(likely)).toBeGreaterThan(scoreOf(renters));
+  });
+});

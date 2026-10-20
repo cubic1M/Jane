@@ -1,5 +1,5 @@
 import { STRATEGIST_CAPABILITY, STRATEGIST_IDEA_DAYS, STRATEGIST_TOPIC } from "@/config/strategist";
-import { ADVICE_TOPICS, RESELECT_AFTER_DAYS, WORTH_WEIGHT } from "@/config/suggestions";
+import { ADVICE_TOPICS, RESELECT_AFTER_DAYS, rankValue } from "@/config/suggestions";
 import { runDetectors } from "@/detectors";
 import type { Suggestion } from "@/detectors/contract";
 import type { PrismaClient } from "@/generated/prisma/client";
@@ -113,7 +113,7 @@ function openIdeas(
         action: have[0].action,
         more: have.slice(1).map((p) => p.action),
         parts: have.map((p) => p.id),
-        rankCents: have.reduce((s, p) => s + p.worthCents * WORTH_WEIGHT[p.worthKind], 0),
+        rankCents: have.reduce((s, p) => s + rankValue(p.topic, p.worthKind, p.worthCents), 0),
       },
     ];
   });

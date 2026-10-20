@@ -12,7 +12,38 @@ export const SUGGESTIONS_PER_DAY = 3;
 // answers say. Risk avoided counts for a fraction of a saving: a large exposure still
 // outranks small savings, but a made-up headline figure cannot bury everything else.
 export const URGENCY_WEIGHT = { now: 3, soon: 2, later: 1 } as const;
-export const WORTH_WEIGHT = { saves: 1, earns: 1, risk: 0.05 } as const;
+export const WORTH_WEIGHT = { saves: 1, earns: 1, risk: 0.02 } as const;
+
+// A loss avoided is ranked by its expected value in a year: the loss times how likely it is in
+// a year. These are rough annual chances, to be agreed with each sector (they only order
+// suggestions; the loss shown to the person is the full amount). A topic not listed uses
+// WORTH_WEIGHT.risk.
+export const RISK_ANNUAL_PROBABILITY: Readonly<Record<string, number>> = {
+  // A working-age parent dying or being disabled in a year is rare.
+  life_insurance: 0.005,
+  // A claim on a home or renters policy, or a business loss.
+  home_insurance: 0.05,
+  renters_insurance: 0.05,
+  business_insurance: 0.03,
+  // A large fall in one company's stock, or a stretch without pay.
+  concentration: 0.1,
+  emergency_fund: 0.15,
+  income_smoothing: 0.5,
+  estimated_taxes: 0.3,
+  business_separation: 0.1,
+  hardship_plan: 0.3,
+};
+
+// What a suggestion counts for in ranking, in cents a year.
+export function rankValue(
+  topic: string,
+  kind: keyof typeof WORTH_WEIGHT,
+  worthCents: number,
+): number {
+  return kind === "risk"
+    ? worthCents * (RISK_ANNUAL_PROBABILITY[topic] ?? WORTH_WEIGHT.risk)
+    : worthCents * WORTH_WEIGHT[kind];
+}
 
 // What the person has said to suggestions of the same topic before (step 207): each yes
 // raises it, each no lowers it, within these bounds.

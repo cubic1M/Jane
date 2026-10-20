@@ -9,7 +9,7 @@ import {
   WORKED_DOWN_FACTOR,
   WORKED_MIN_DONE,
   WORKED_UP_FACTOR,
-  WORTH_WEIGHT,
+  rankValue,
   YES_BOOST,
 } from "@/config/suggestions";
 import type { Suggestion } from "@/detectors/contract";
@@ -53,7 +53,7 @@ export function scoreOf(
   results: KindResults = [],
 ): number {
   return Math.round(
-    (s.rankCents ?? s.worthCents * WORTH_WEIGHT[s.worthKind]) *
+    (s.rankCents ?? rankValue(s.topic, s.worthKind, s.worthCents)) *
       (s.confidence.percent / 100) *
       URGENCY_WEIGHT[s.urgency] *
       historyFactor(s.topic, history) *
