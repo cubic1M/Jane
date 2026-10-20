@@ -299,6 +299,8 @@ model User {
   medicalBills           MedicalBill[]
   medicalRequests        MedicalRequest[]
   creditDisputes         CreditDispute[]
+  cardPromos             CardPromo[]
+  cardRateRequests       CardRateRequest[]
   balanceTransfers       BalanceTransfer[]
   findings               Finding[]
   decisions              Decision[]
@@ -935,6 +937,57 @@ model CreditDispute {
 
   @@unique([userId, key])
   @@map("credit_disputes")
+}
+
+// A 0% promotion on a card the person typed in (spec step 224): the balance it covers, when
+// it ends, and whether unpaid interest from the start is charged if it isn't cleared by then
+// (deferred interest). Jane turns the end into a deadline when the pace is short.
+model CardPromo {
+  id           String   @id @default(cuid())
+  userId       String   @map("user_id")
+  cardName     String   @map("card_name")
+  // What's left to clear, as the person typed it.
+  balanceCents Int      @map("balance_cents")
+  startedOn    DateTime @map("started_on") @db.Date
+  endsOn       DateTime @map("ends_on") @db.Date
+  // The rate charged after the promotion, or from the start if interest is deferred.
+  goToAprBps   Int      @map("go_to_apr_bps")
+  deferred     Boolean  @default(false)
+  // The deadline Jane put on the deadlines list when the pace fell short.
+  deadlineId   String?  @map("deadline_id")
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("card_promos")
+}
+
+// A request for a lower rate on a card (spec step 224), written out with a call script and
+// sent to the lender stand-in only after the person's tap.
+model CardRateRequest {
+  id                String    @id @default(cuid())
+  userId            String    @map("user_id")
+  // "account:<id>", once for each card and month.
+  key               String
+  debtKey           String    @map("debt_key")
+  cardName          String    @map("card_name")
+  oldAprBps         Int       @map("old_apr_bps")
+  body              String
+  // sent, granted or declined.
+  status            String
+  partner           String
+  sentAt            DateTime  @default(now()) @map("sent_at") @db.Timestamptz(3)
+  resolvedAt        DateTime? @map("resolved_at") @db.Timestamptz(3)
+  newAprBps         Int?      @map("new_apr_bps")
+  // What the new rate saves a year on the card's balance when it was asked.
+  savingYearlyCents Int       @default(0) @map("saving_yearly_cents")
+  outcome           String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, key])
+  @@map("card_rate_requests")
 }
 
 // A balance transfer the person made to a 0% card (spec step 113), so Jane can keep the

@@ -18,6 +18,7 @@ import type { Car } from "@/lib/car";
 import type { HomeBuying } from "@/lib/home-buying";
 import type { MedicalBills } from "@/lib/medical-bills";
 import type { ReportFixes } from "@/lib/credit-report-fixes";
+import type { CardInterest } from "@/lib/card-interest";
 import { REWARD_CATEGORY_LABELS } from "@/config/credit-cards";
 import type { DebtAutopilot } from "@/lib/debt-autopilot";
 import { PMI_SOURCE } from "@/config/debt";
@@ -155,6 +156,12 @@ export const DEBT_TOOLS: Anthropic.Tool[] = [
     name: "credit_report_fixes",
     description:
       "Collections and possible errors on the person's credit report, from a monthly soft pull (demo-bank people only, a stand-in report; nothing for real accounts): each item with its creditor, amount and what's wrong, whether a dispute already fixed it, and the letters Jane wrote for it (a debt validation letter to a collector under the Fair Debt Collection Practices Act, section 809(b), with the last day to ask; a dispute to the three bureaus under the Fair Credit Reporting Act, section 611, which they must answer within 30 days) with the exact text, whether each was sent and what came back. Sending a letter needs the person's tap (the creditfix.send button); Jane never sends one by herself.",
+    input_schema: noInput,
+  },
+  {
+    name: "card_interest",
+    description:
+      "How much interest the person's cards cost and how to cut it (demo-bank people only; nothing for real accounts): each card's balance, rate, a year of interest, what paying its usual payment now instead of on the due date saves, when its statement closes; any 0% promotions they typed in with the days left, the monthly amount that clears the balance by the end, whether they're on pace, and (for deferred interest) what missing the end would cost, with the deadline Jane raised when off pace; and for each card at 15% or more with a balance the written request for a lower rate with a call script and the yearly saving, whether it was sent and what the lender answered. Sending a request needs the person's tap (the cardrate.send button); Jane never sends one by herself.",
     input_schema: noInput,
   },
   {
@@ -305,6 +312,7 @@ export const DEBT_TOOL_STATUS: Readonly<Record<string, string>> = {
   home_purchase: "Working out what home you can afford…",
   medical_bills: "Looking at your medical bills…",
   credit_report_fixes: "Checking your credit report…",
+  card_interest: "Looking at your card interest…",
 };
 
 export function refinanceToolOutput(refi: Refinance, money: (cents: number) => string) {
@@ -802,6 +810,50 @@ export function reportFixesToolOutput(data: ReportFixes, money: (cents: number) 
       })),
     })),
     alwaysNeedsATap: "sending any letter",
+  };
+}
+
+export function cardInterestToolOutput(data: CardInterest, money: (cents: number) => string) {
+  if (!data.available) return { note: "No lending partner for this person's accounts yet." };
+  return {
+    demoAdvice: true,
+    interestPerYear: money(data.interestYearCents),
+    rateCutsWonPerYear: money(data.grantedSavingCents),
+    cards: data.cards.map((c) => ({
+      card: c.name,
+      balance: money(c.balanceCents),
+      rate: `${(c.aprBps / 100).toFixed(2)}%`,
+      interestPerYear: money(c.interestYearCents),
+      payNowInsteadOfOnDueDate: c.payEarly && {
+        amount: money(c.payEarly.amountCents),
+        saves: money(c.payEarly.savedCents),
+      },
+      statementCloses: c.statementClosesOn,
+      lowerRateRequest: c.rate && {
+        id: c.rate.id,
+        wouldSavePerYear: money(c.rate.savingYearlyCents),
+        letter: c.rate.body,
+        callScript: c.rate.script,
+        sent: c.rate.sent && {
+          on: c.rate.sent.sentOn,
+          status: c.rate.sent.status,
+          answer: c.rate.sent.outcome,
+        },
+      },
+    })),
+    promotions: data.promos.map((p) => ({
+      card: p.cardName,
+      balance: money(p.balanceCents),
+      ends: p.endsOn,
+      daysLeft: p.plan.daysLeft,
+      deferredInterest: p.deferred,
+      monthlyNeededToClear: money(p.plan.monthlyNeededCents),
+      payingNow: money(p.plan.monthlyPaidCents),
+      onPace: p.plan.onPace,
+      costIfMissed: money(p.plan.costIfMissedCents),
+      deadlineOnDeadlinesList: p.deadlineRaised,
+    })),
+    alwaysNeedsATap: "sending any request",
   };
 }
 

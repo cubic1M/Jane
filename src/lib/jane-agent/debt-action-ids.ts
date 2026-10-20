@@ -30,4 +30,6 @@ export const DEBT_ACTION_IDS = [
   "medical.send",
   // Spec step 181: send one validation letter or bureau dispute.
   "creditfix.send",
+  // Spec step 224: ask one card for a lower rate.
+  "cardrate.send",
 ] as const;

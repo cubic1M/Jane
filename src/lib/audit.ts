@@ -15,6 +15,8 @@ export type AuditEvent =
   | "medical_request_sent"
   // Spec step 181: a validation letter or a bureau dispute, sent on the person's tap.
   | "credit_dispute_sent"
+  // Spec step 224: a request for a lower card rate, sent on the person's tap.
+  | "card_rate_requested"
   | "user_signed_up"
   // Insurance (spec Phase X): a policy saved or removed, the household facts saved.
   | "insurance_policy_saved"
