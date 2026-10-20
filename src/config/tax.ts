@@ -397,6 +397,9 @@ export const TAX_MESSAGE_PRIORITY = {
   years: 35,
   // Spec step 221: an assessment worth appealing, and exemptions not yet claimed.
   property: 38,
+  // Spec step 222: an accountant's answers, and a return people usually bring one to.
+  accountant_answer: 60,
+  accountant: 28,
   exemption: 30,
 } as const;
 
@@ -466,6 +469,11 @@ export const TAX_AUTOPILOT: readonly { feature: string; ask: string; auto: strin
     feature: "property",
     ask: "I compare your home's assessed value with its market value and, with demo advice, tell you when the gap is worth an appeal, draft it with comparable sales and name exemptions you may not have claimed. You decide who files it.",
     auto: "I compare your home's assessed value with its market value, put the appeal deadline on your plan when the gap is worth an appeal, and with demo advice draft it with comparable sales and name exemptions you may not have claimed. Filing is always on your tap: my team's or yours.",
+  },
+  {
+    feature: "accountant",
+    ask: "When your taxes include things people usually bring an accountant to, I say so. If you make a read-only link, I put your tax pack, the forms I collected and my questions on it, and bring their answers back here. The link ends when you say and every time it is opened is logged.",
+    auto: "When your taxes include things people usually bring an accountant to, I say so, and I keep my questions for them up to date. Making and sharing a link is always your tap. It ends when you say, you can revoke it any time, and every time it is opened is logged.",
   },
   {
     feature: "identity",
