@@ -40,7 +40,12 @@ export const duplicateSubscription: Rule = (_input, streams) => {
         annualSavingsCents: cheapest,
         amountCents: cheapest,
         confidence: lowest(DUPLICATE_MAX_CONFIDENCE, ...services.map((s) => s.confidence)),
-        evidence: { group: group.label, services: services.map(streamEvidence) },
+        evidence: {
+          group: group.label,
+          services: services.map(streamEvidence),
+          // The streams it covers, so a single review of each isn't raised beside it (step 263).
+          streamKeys: services.map((s) => s.key),
+        },
       },
     ];
   });

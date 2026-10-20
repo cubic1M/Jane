@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { AS_OF, CARD, input, plaidStream, sampleYear } from "./__fixtures__/build";
 import { renewalAlerts } from "./alerts";
+import { subscriptionReview } from "./rules/subscription-review";
 import { detect } from "./detect";
 import { upcomingBills } from "./forecast";
 import { buildStreams } from "./streams";
@@ -12,7 +13,8 @@ describe("recurringCharges", () => {
   const rows = recurringCharges(data);
 
   it("agrees with the subscription findings on yearly cost", () => {
-    const findings = detect(data).filter((f) => f.type === "subscription_review");
+    // The rule itself: detect() folds a group member into its duplicate finding (step 263).
+    const findings = subscriptionReview(data, buildStreams(data));
     expect(findings.length).toBeGreaterThan(0);
     for (const f of findings) {
       const row = rows.find((r) => r.key === f.key);
