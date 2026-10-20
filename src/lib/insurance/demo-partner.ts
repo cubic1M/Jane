@@ -329,6 +329,14 @@ export const demoPartner: InsurancePartner = {
     };
   },
 
+  // Spec step 196: the stand-in takes the figure asked for and confirms it.
+  async applySaving(policy, saving, { now }) {
+    return {
+      premiumCents: saving.newPremiumCents,
+      confirmation: `DEMO-SAV-${hashOf(policy, saving, now.toISOString().slice(0, 10)).slice(0, 8).toUpperCase()}`,
+    };
+  },
+
   async fileClaim(claim, { now }) {
     return {
       claimNumber: `DEMO-CLM-${hashOf(claim, now.toISOString().slice(0, 10)).slice(0, 8).toUpperCase()}`,

@@ -65,6 +65,10 @@ export const ACTION_IDS = [
   "renewal.call",
   "renewal.no",
   "claim.file",
+  // Spec step 196: paying less for the same cover.
+  "saving.apply_all",
+  "saving.apply",
+  "saving.no",
   "plan.approve_safe",
   "undo.rule",
   "undo.no",
@@ -277,6 +281,9 @@ export type MessageRefs = {
   coverEvent?: string;
   // Spec step 155: the renewal negotiation a message asks about.
   negotiationId?: string;
+  // Spec step 196: "same" for the savings that keep the cover, or one saving's id.
+  savingGroup?: string;
+  savingId?: string;
   // The finding as Jane described it (src/lib/jane-agent/fingerprint.ts): a button only
   // acts while the finding is still what the message said.
   fingerprint?: string;
