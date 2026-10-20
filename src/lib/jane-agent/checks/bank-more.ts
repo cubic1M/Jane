@@ -493,6 +493,23 @@ const rows: Row[] = [
   // What if (spec step 203).
   ["whatif", "/what-if", "what_if", "what if i lose my job"],
 
+  // Gifts to family, and the long view.
+  [
+    "investing",
+    "/gift",
+    "family_investing",
+    "can i gift my daughter some money for her investments",
+  ],
+  ["investing", "/gift", "family_investing", "how do i put money in an account for my kid"],
+  ["investing", "/long-view", "long_view", "where will i be in 20 years"],
+  ["investing", "/long-view", "long_view", "show me the long view"],
+
+  // The accountant's view and the profile.
+  ["taxes", "/accountant", "tax_return", "what should my accountant see"],
+  ["taxes", "/accountant", "tax_forms", "can i share my tax documents with my accountant"],
+  ["settings", "/profile", "investor_profile", "what do you know about me"],
+  ["settings", "/profile", "tax_profile", "what's in my profile"],
+
   // Two questions in one message.
   ["two", "/home", "safe_to_spend", "how much can i spend and when is payday"],
   ["two", "/subscriptions", "subscriptions", "what's netflix cost and when does it renew"],
