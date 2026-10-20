@@ -1523,3 +1523,24 @@ const MORE_QUESTIONS: readonly CheckQuestion[] = MORE_ROWS.map(
 );
 
 export const QUESTIONS: readonly CheckQuestion[] = [...BASE_QUESTIONS, ...MORE_QUESTIONS];
+
+// Spec step 189: the sector a question belongs to: its own, or for the older ones the start
+// of its id.
+const GROUPS: Record<string, string> = {
+  safe: "safe",
+  due: "bills",
+  pay: "income",
+  act: "subs",
+  follow: "follow",
+  free: "free",
+  out: "edge",
+  tax: "taxes",
+  ins: "insurance",
+  inv: "investing",
+  whole: "whole",
+  multi: "multi",
+  timeline: "timeline",
+};
+
+const sectorOf = (id: string) => GROUPS[id.split("-")[0]] ?? id.split("-")[0];
+export const sectorOfQuestion = (q: CheckQuestion) => q.sector ?? sectorOf(q.id);
