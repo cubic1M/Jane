@@ -1185,6 +1185,19 @@ const BASE_QUESTIONS: readonly CheckQuestion[] = [
       maxChars: 1_000,
     },
   },
+  // Spec step 229: when debt is too much, the facts without advice.
+  {
+    id: "debt-32",
+    text: "I have too much debt, what are my options",
+    needs: "rules",
+    expect: {
+      intent: "debt_trouble",
+      mentions: /hardship/i,
+      link: "/loans/help",
+      list: true,
+      maxChars: 3_200,
+    },
+  },
   // Spec step 228: a home's equity, used well.
   {
     id: "debt-31",

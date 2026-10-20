@@ -397,6 +397,24 @@ describe("debt questions", () => {
     expect(intent("is my HELOC interest deductible")).not.toMatchObject({ kind: "home_equity" });
   });
 
+  it("reads too much debt, settlement, bankruptcy and counseling (spec step 229)", () => {
+    for (const text of [
+      "I have too much debt",
+      "I'm drowning in debt",
+      "what are my options with my debt",
+      "should I file for bankruptcy",
+      "what about debt settlement",
+      "tell me about a debt management plan",
+      "is credit counseling worth it",
+      "I can't keep up with my debts",
+      "will bankruptcy forgive my taxes",
+    ]) {
+      expect(intent(text), text).toEqual({ kind: "debt_trouble" });
+    }
+    // A short month is the tight-money flow, not this one.
+    expect(intent("money is tight this month")).toMatchObject({ kind: "tight_money" });
+  });
+
   it("leaves requests and other questions alone", () => {
     expect(intent("lower the rate on my card")).toMatchObject({ kind: "act", verb: "lower" });
     expect(intent("what's due this week")).toMatchObject({ kind: "coming_up" });

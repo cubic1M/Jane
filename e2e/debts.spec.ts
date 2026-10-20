@@ -741,3 +741,41 @@ test("a home loan's PMI, escrow and project are worked out from what the person 
   await expect(table).toContainText("Personal loan");
   await expect(page.getByText("stand-in lender terms, not offers", { exact: false })).toBeVisible();
 });
+
+// Spec step 229: the options when debt is too much, as facts, without advice.
+test("the options when debt is too much are laid out as facts, with the pointer to counsel", async ({
+  context,
+  page,
+  baseURL,
+}) => {
+  const user = await signedInUser("user");
+  userId = user.userId;
+  await context.addCookies([
+    { name: "authjs.session-token", value: user.sessionToken, url: baseURL ?? "" },
+  ]);
+  await page.goto("/connect");
+  await page.getByRole("button", { name: "Link a demo bank" }).click();
+  await expect(page).toHaveURL("/chat", { timeout: 60_000 });
+
+  await page.goto("/loans/help");
+  await expect(
+    page.getByRole("heading", { level: 1, name: "When debt is too much" }),
+  ).toBeVisible();
+  await expect(page.getByRole("status")).toContainText("of your");
+  const hardship = page.getByRole("region", { name: "Hardship programs" });
+  await expect(hardship).toContainText("hardship program");
+  await expect(hardship).toContainText("forbearance");
+  const plan = page.getByRole("region", { name: "Debt management plan" });
+  await expect(plan).toContainText("nonprofit credit counselor");
+  await expect(
+    plan.getByRole("link", { name: /National Foundation for Credit Counseling/ }),
+  ).toBeVisible();
+  const facts = page.getByRole("region", { name: "Settlement and bankruptcy" });
+  await expect(facts.getByRole("list", { name: "Bankruptcy" }).getByRole("listitem")).toHaveCount(
+    3,
+  );
+  await expect(facts.getByRole("list", { name: "Taxes on forgiven debt" })).toContainText("$600");
+  await expect(facts.getByRole("note")).toContainText("ask a bankruptcy attorney");
+  // Facts only: nothing to send, nothing to apply for.
+  await expect(page.getByRole("button", { name: /send|apply|file/i })).toHaveCount(0);
+});

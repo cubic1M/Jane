@@ -1,3 +1,10 @@
+import {
+  COUNSELOR_REFERRALS,
+  COUNSEL_POINTER,
+  DEBT_FACTS,
+  DMP_NOTE,
+  HARDSHIP_PROGRAMS,
+} from "@/config/debt-trouble";
 import type Anthropic from "@anthropic-ai/sdk";
 import { sourceLabel, type DebtBook } from "@/insights/debts";
 import { formatRate } from "@/insights/loans";
@@ -22,6 +29,7 @@ import type { CardInterest } from "@/lib/card-interest";
 import type { LongGame } from "@/lib/student-long-game";
 import type { FamilyLoans } from "@/lib/family-loans";
 import type { CreditGoals } from "@/lib/credit-goals";
+import type { DebtTrouble } from "@/lib/debt-trouble";
 import type { HomeEquity, ProjectComparison } from "@/lib/home-equity";
 import { REWARD_CATEGORY_LABELS } from "@/config/credit-cards";
 import type { DebtAutopilot } from "@/lib/debt-autopilot";
@@ -184,6 +192,12 @@ export const DEBT_TOOLS: Anthropic.Tool[] = [
     name: "credit_goals",
     description:
       "The credit score plans the person has for a goal (demo-bank people only, a stand-in score; every figure is an estimate from the score simulator, never a promise): for each, the target score and date, what the goal is for (a mortgage, a car), the score now, whether the plan reaches the target and the best it shows if not, the month-by-month plan (what to pay toward cards and the estimated score after each month), this month's checklist with what's done (pay before the statement closes, keep card accounts open, no new applications, on-time payments, and a rapid rescore before a mortgage application), and the total to pay down. Starting a plan and ticking off a month are the person's taps (the creditgoal.start and creditgoal.done buttons).",
+    input_schema: noInput,
+  },
+  {
+    name: "debt_trouble",
+    description:
+      "When debt is too much: the person's monthly debt payments as a share of their income (and whether that is over the share where Jane brings it up), what to ask each lender for (hardship programs, by debt), a sketch of a debt management plan through a nonprofit credit counselor from their own cards (months and interest at a typical negotiated rate, an assumption and not an offer) with a referral list, and the reviewed facts about debt settlement, bankruptcy and tax on forgiven debt. These are facts and doors to knock on: never tell the person to file for bankruptcy, settle or stop paying, never give legal or tax advice, repeat the facts word for word, and point legal questions to a bankruptcy attorney or nonprofit legal aid. Jane sends nothing.",
     input_schema: noInput,
   },
   {
@@ -357,6 +371,7 @@ export const DEBT_TOOL_STATUS: Readonly<Record<string, string>> = {
   family_loans: "Looking at who owes whom…",
   credit_goals: "Looking at your credit plan…",
   home_equity: "Checking your home loan…",
+  debt_trouble: "Looking at your options…",
 };
 
 export function refinanceToolOutput(refi: Refinance, money: (cents: number) => string) {
@@ -969,6 +984,37 @@ export function familyLoansToolOutput(data: FamilyLoans, money: (cents: number) 
       monthly: s.paymentCents === null ? null : money(s.paymentCents),
       yourHalf: s.yourShareCents === null ? null : money(s.yourShareCents),
     })),
+  };
+}
+
+export function debtTroubleToolOutput(data: DebtTrouble, money: (cents: number) => string) {
+  if (!data.available) return { note: "No debt with a balance." };
+  return {
+    monthlyDebtPayments: money(data.monthlyPaymentsCents),
+    monthlyIncome: data.incomeCents === null ? null : money(data.incomeCents),
+    shareOfIncomePercent: data.share === null ? null : Math.round(data.share * 100),
+    overTheMarkWhereJaneBringsItUp: data.over,
+    hardshipProgramsByDebt: data.debts.map((d) => ({
+      debt: d.name,
+      kind: d.kindLabel,
+      balance: money(d.balanceCents ?? 0),
+      whatToAsk: HARDSHIP_PROGRAMS[d.kind],
+    })),
+    debtManagementPlanSketch: data.dmp && {
+      cardBalance: money(data.dmp.cardBalanceCents),
+      cardPaymentsAMonth: money(data.dmp.cardPaymentCents),
+      assumedRatePercent: data.dmp.assumedAprBps / 100,
+      assumptionNotAnOffer: true,
+      monthsAtTheAssumedRate: data.dmp.monthsAssumed,
+      monthsAtTodaysRates: data.dmp.monthsNow,
+      interestCutAbout: money(data.dmp.interestCutCents),
+    },
+    debtManagementPlan: DMP_NOTE,
+    nonprofitCounselors: COUNSELOR_REFERRALS.map((c) => ({ name: c.name, url: c.url })),
+    reviewedFacts: [...DEBT_FACTS.settlement, ...DEBT_FACTS.bankruptcy, ...DEBT_FACTS.taxes].map(
+      (f) => ({ fact: f.text, source: f.source.label }),
+    ),
+    forLegalQuestions: COUNSEL_POINTER,
   };
 }
 

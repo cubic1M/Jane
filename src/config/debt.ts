@@ -54,6 +54,7 @@ export const DEBT_SOURCE_LIMITS = {
   family_loans: 1,
   credit_goal: 2,
   home_equity: 2,
+  debt_trouble: 1,
 } as const;
 export const DEBT_MESSAGE_PRIORITY = {
   // A buy now, pay later plan Jane found, then a debt with no rate: news that can wait,
@@ -140,6 +141,8 @@ export const DEBT_MESSAGE_PRIORITY = {
   home_pmi_ask: 56,
   home_escrow_over: 55,
   home_pmi_auto: 54,
+  // Spec step 229: said once a quarter, after the things with a date.
+  debt_trouble: 52,
 } as const;
 
 // What Jane does about debts by herself at each autopilot level (src/config/autopilot.ts),
@@ -237,6 +240,10 @@ export const DEBT_AUTOPILOT: Readonly<
       step: 228,
       does: "Measures PMI against your home's original value and drafts the request when you can ask (80%), watches for it to end by itself (78%), checks your escrow against your real tax and insurance bills and drafts a refund request when it's overfunded, and compares a HELOC, a cash-out refinance and a personal loan for a home project with each one's total cost. I never send a request to your servicer or apply for anything.",
     },
+    {
+      step: 229,
+      does: "When your debt payments pass 40% of your income, tells you once a quarter and lays out the options as facts: hardship programs by lender, a debt management plan through a nonprofit credit counselor (with a sketch from your own cards), and plain facts on settlement and bankruptcy, including the credit effect and taxes on forgiven debt. I don't advise you to settle or file, I give no legal advice, and I contact no one.",
+    },
   ],
   safe: [
     {
@@ -327,6 +334,10 @@ export const DEBT_AUTOPILOT: Readonly<
       step: 228,
       does: "Measures PMI against your home's original value and drafts the request when you can ask (80%), watches for it to end by itself (78%), checks your escrow against your real tax and insurance bills and drafts a refund request when it's overfunded, and compares a HELOC, a cash-out refinance and a personal loan for a home project with each one's total cost. I never send a request to your servicer or apply for anything.",
     },
+    {
+      step: 229,
+      does: "When your debt payments pass 40% of your income, tells you once a quarter and lays out the options as facts: hardship programs by lender, a debt management plan through a nonprofit credit counselor (with a sketch from your own cards), and plain facts on settlement and bankruptcy, including the credit effect and taxes on forgiven debt. I don't advise you to settle or file, I give no legal advice, and I contact no one.",
+    },
   ],
   all: [
     {
@@ -416,6 +427,10 @@ export const DEBT_AUTOPILOT: Readonly<
     {
       step: 228,
       does: "Measures PMI against your home's original value and drafts the request when you can ask (80%), watches for it to end by itself (78%), checks your escrow against your real tax and insurance bills and drafts a refund request when it's overfunded, and compares a HELOC, a cash-out refinance and a personal loan for a home project with each one's total cost. I never send a request to your servicer or apply for anything.",
+    },
+    {
+      step: 229,
+      does: "When your debt payments pass 40% of your income, tells you once a quarter and lays out the options as facts: hardship programs by lender, a debt management plan through a nonprofit credit counselor (with a sketch from your own cards), and plain facts on settlement and bankruptcy, including the credit effect and taxes on forgiven debt. I don't advise you to settle or file, I give no legal advice, and I contact no one.",
     },
   ],
 };

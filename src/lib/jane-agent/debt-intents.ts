@@ -50,6 +50,9 @@ export type DebtIntent =
       goalKind: "mortgage" | "car" | "other";
     }
   | { kind: "student_long" }
+  // Spec step 229: "I have too much debt", "what about debt settlement?", "should I file for
+  // bankruptcy?": the options laid out as facts, never advice.
+  | { kind: "debt_trouble" }
   // Spec step 228: "when does my PMI end by itself?", "is my escrow too high?", "HELOC or
   // cash-out refinance for a $40,000 kitchen?".
   | {
@@ -100,6 +103,7 @@ export const DEBT_KINDS = new Set<string>([
   "family_loans",
   "credit_goal",
   "home_equity",
+  "debt_trouble",
 ]);
 export const isDebtIntent = (intent: { kind: string }): intent is DebtIntent =>
   DEBT_KINDS.has(intent.kind);
@@ -234,6 +238,10 @@ const EQUITY_ESCROW =
   /\bescrow\b.*\b(?:too (?:high|much)|overfund\w*|overpa\w+|over paying|refund|surplus|shortage|analysis|enough|right|correct|match|bills|tax(?:es)? and insurance)\b|\b(?:overfund\w*|overpa\w+|over paying)\b.*\bescrow\b/;
 const EQUITY_PMI =
   /\bpmi\b.*\b(?:78|automatic\w*|by itself|drop off|fall off|original (?:value|appraisal|price)|how long|when (?:will|does|do))\b|\b(?:78|automatic\w*|original (?:value|appraisal|price))\b.*\bpmi\b|\bwhen (?:will|does|do) (?:my )?pmi (?:end|stop|go|drop|cancel)\b/;
+// Spec step 229. Checked before the tax words are turned away: "taxes on forgiven debt" is
+// part of these answers.
+const DEBT_TROUBLE =
+  /\b(?:too much debt|drowning in debt|buried in debt|overwhelmed by (?:my )?debts?|(?:can'?t|cannot|unable to) (?:keep up with|manage|handle|pay off) (?:all )?(?:my |the )?debts?|debts? (?:is |are )?(?:out of control|too (?:high|much|big))|bankruptcy|debt settlement|settle (?:my |the |some of my )?debts?|debt management plans?|debt relief|debt consolidation counsel\w*|(?:non-?profit )?credit counsel\w*|hardship (?:programs?|plans?) (?:for|on|with) (?:my )?(?:cards?|debts?|loans?)|what are my options with (?:my )?debts?)\b/;
 const EQUITY_TAXY = /\b(?:deduct\w*|write[- ]?offs?|1098|schedule a|itemiz\w*)\b/;
 function equityIntent(text: string, amountCents: number | null): DebtIntent | null {
   if (EQUITY_TAXY.test(text)) return null;
@@ -314,6 +322,7 @@ export function parseDebtIntent(
 ): DebtIntent | null {
   const equity = equityIntent(text, amountCents);
   if (equity) return equity;
+  if (DEBT_TROUBLE.test(text)) return { kind: "debt_trouble" };
   // Taxes owed are the tax questions' (./tax-intents.ts).
   if (/\b(?:tax|taxes|irs|tax refund)\b/.test(text)) return null;
   // "Lower the rate on my card" is a request, not a question (./intents.ts act).
