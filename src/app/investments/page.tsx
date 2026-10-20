@@ -221,6 +221,12 @@ async function InvestmentsContent() {
             : exchanges and wallets, read-only. Jane never trades crypto.
           </p>
           <p className="text-sm text-zinc-600 dark:text-zinc-400">
+            <Link href="/investments/cash" className={LINK}>
+              Cash
+            </Link>
+            : every dollar earning what it should, with the emergency fund in reach.
+          </p>
+          <p className="text-sm text-zinc-600 dark:text-zinc-400">
             Learn:{" "}
             {["index-funds", "fees", "the-match", "roth-vs-traditional", "rebalancing"].map(
               (slug, i) => (

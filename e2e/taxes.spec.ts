@@ -227,6 +227,15 @@ test("family details: saved on the profile, and the choices on /taxes", async ({
   await expect(form.getByRole("status")).toHaveText("Saved. Your family tax choices use it now.");
   expect(await axe(page)).toEqual([]);
 
+  // Spec step 170: the demo bank's home loan, each figure linked to where it came from.
+  await page.goto("/taxes#home");
+  const home = page.getByRole("region", { name: "Your home" });
+  await expect(home.getByRole("link", { name: /^Demo Home Loan/ })).toHaveAttribute(
+    "href",
+    "/loans",
+  );
+  await expect(home.getByText(/^State and local taxes: /)).toBeVisible();
+
   await page.goto("/taxes#family");
   const family = page.getByRole("region", { name: "Family tax choices" });
   await expect(family.getByRole("heading", { name: "Claiming your children" })).toBeVisible();

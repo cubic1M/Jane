@@ -26,6 +26,7 @@ import {
   payFromYtd,
   projectOther,
   taxPaymentsFor,
+  propertyTaxFor,
   yearElapsed,
   type PayPicture,
 } from "@/planning/tax-income";
@@ -299,7 +300,8 @@ export async function loadTaxEstimate(
     mortgageInterestCents: loanInterest("mortgage"),
     charityCents: tags.totals.donation.totalCents,
     medicalCents: tags.totals.medical.totalCents,
-    otherStateLocalTaxCents: 0,
+    // Spec step 170: property tax paid this year.
+    otherStateLocalTaxCents: propertyTaxFor(rows, year),
     federalWithheldCents: pay.projected.federalWithheldCents,
     federalEstimatedPaidCents: payments.federalCents,
     stateWithheldCents: pay.projected.stateWithheldCents,

@@ -141,6 +141,23 @@ test("the demo bank's holdings show with their sources, and Jane answers about t
   await page.getByRole("textbox", { name: "Message Jane" }).fill("how are my investments doing");
   await page.getByRole("button", { name: "Send" }).click();
   await expect(page.getByText(/^Your investments start \w+ at \$/)).toBeVisible();
+});
+
+// Phase AE (steps 156 on), with a person of its own: the journey above spends the demo
+// brokerage's cash.
+test("prices, goals, college, HSA, company stock, crypto and cash, each with its taps", async ({
+  context,
+  page,
+  baseURL,
+}) => {
+  const user = await signedInUser("user");
+  userId = user.userId;
+  await context.addCookies([
+    { name: "authjs.session-token", value: user.sessionToken, url: baseURL ?? "" },
+  ]);
+  await page.goto("/connect");
+  await page.getByRole("button", { name: "Link a demo bank" }).click();
+  await expect(page).toHaveURL("/chat", { timeout: 60_000 });
 
   // Step 156: how they've done, past results only, prices from the demo feed.
   await page.goto("/investments");
@@ -198,4 +215,12 @@ test("the demo bank's holdings show with their sources, and Jane answers about t
   await expect(page.getByRole("button", { name: /sell|buy|trade/i })).toHaveCount(0);
   await page.goto("/net-worth");
   await expect(page.getByText(/in crypto, as your exchange or wallet last/)).toBeVisible();
+
+  // Step 162: cash with a job each, the emergency fund in reach, a move with a tap.
+  await page.goto("/investments/cash");
+  await expect(page.getByRole("heading", { name: "The plan" })).toBeVisible();
+  await expect(page.getByText(/^Emergency fund: High-yield savings/)).toBeVisible();
+  await expect(page.getByRole("row", { name: /Treasury ladder.*Never/ })).toBeVisible();
+  await page.getByRole("button", { name: /in the money market fund$/ }).click();
+  await expect(page.getByRole("status")).toContainText("It's moving through the stand-in");
 });
