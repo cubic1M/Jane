@@ -21,6 +21,7 @@ import { worthSaying } from "@/planning/family-taxes";
 import { equitySetAsideMessage } from "../equity-tax-message";
 import { yearsMoveMessage } from "../multi-year-message";
 import { answersMessage, complexMessage } from "../accountant-message";
+import { estimateDueMessage, yearEndMessage } from "../tax-calendar-message";
 import {
   appealDraftedMessage,
   appealSuggestedMessage,
@@ -459,6 +460,28 @@ export const taxesSource: MessageSource = {
           ...complex,
           dedupeKey: `accountant:${accountant.year}`,
           priority: TAX_MESSAGE_PRIORITY.accountant,
+        });
+      }
+    }
+
+    // Spec step 223: an estimated payment that needs the person's tap, and December's
+    // year-end moves in one message.
+    const calendar = tax.calendar;
+    if (calendar) {
+      for (const d of calendar.due.filter((x) => x.needsTap && x.needsTap !== "no_partner")) {
+        out.push({
+          kind: "decision",
+          ...estimateDueMessage(d, calendar.year),
+          dedupeKey: `estimate_due:${d.dueOn}`,
+          priority: TAX_MESSAGE_PRIORITY.estimate_due,
+        });
+      }
+      if (calendar.yearEnd && calendar.advice) {
+        out.push({
+          kind: "decision",
+          ...yearEndMessage(calendar.yearEnd, calendar.acts),
+          dedupeKey: `yearend:${calendar.yearEnd.year}`,
+          priority: TAX_MESSAGE_PRIORITY.year_end,
         });
       }
     }

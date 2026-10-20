@@ -391,7 +391,9 @@ model User {
   propertyAppeals   PropertyAppeal[]
   accountantLinks   AccountantLink[]
   accountantNotes   AccountantNote[]
+  taxPayments       TaxPayment[]
   leanPlans         LeanPlan[]
+  suggestions       Suggestion[]
   yearPlans         YearPlan[]
   unusualAnswers    UnusualAnswer[]
 
@@ -3227,6 +3229,27 @@ model AccountantNote {
   @@map("accountant_notes")
 }
 
+// Spec step 223: an estimated tax payment made through the payment stand-in (src/lib/tax-
+// payments), by Jane within the caps or on the person's tap. Nothing leaves any account.
+model TaxPayment {
+  id           String   @id @default(cuid())
+  userId       String   @map("user_id")
+  year         Int
+  // The estimated-tax due date it pays.
+  dueOn        DateTime @map("due_on") @db.Date
+  cents        Int
+  partner      String
+  confirmation String
+  // "autopilot" (within the caps) or "tap" (the person said pay it).
+  via          String
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, dueOn])
+  @@map("tax_payments")
+}
+
 model TaxReturn {
   id              String    @id @default(cuid())
   userId          String    @map("user_id")
@@ -3788,4 +3811,41 @@ model CostlyProduct {
 
   @@index([userId])
   @@map("costly_products")
+}
+
+// What Jane suggests to a person (spec step 255), one row per detector (src/detectors) that
+// fires for them. The nightly scan refreshes it, ranks the open ones by dollars x confidence x
+// urgency and selects the top few for today; the chat offers those. status: waiting (fired,
+// not selected), selected (offered today), yes, no (never offered again) or gone (stopped
+// firing). Kept for the reach scoreboard (step 258).
+model Suggestion {
+  id                String    @id @default(cuid())
+  userId            String    @map("user_id")
+  // "<capability>:<topic>", the detector's id.
+  key               String
+  capability        String
+  topic             String
+  title             String
+  worthCents        Int       @map("worth_cents")
+  worthKind         String    @map("worth_kind")
+  confidencePercent Int       @map("confidence_percent")
+  confidenceReason  String    @map("confidence_reason")
+  urgency           String
+  why               String
+  actionLabel       String    @map("action_label")
+  actionHref        String    @map("action_href")
+  // The ranking score at the last scan.
+  score             Int       @default(0)
+  status            String    @default("waiting")
+  // The day it was last selected for the chat.
+  selectedOn        DateTime? @map("selected_on") @db.Date
+  answeredAt        DateTime? @map("answered_at") @db.Timestamptz(3)
+  firstSeenAt       DateTime  @default(now()) @map("first_seen_at") @db.Timestamptz(3)
+  lastSeenAt        DateTime  @default(now()) @map("last_seen_at") @db.Timestamptz(3)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, key])
+  @@index([userId, status])
+  @@map("suggestions")
 }
