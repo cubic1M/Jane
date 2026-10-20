@@ -199,4 +199,39 @@ describe.runIf(url)("requests that span sectors, against a real database", () =>
     ).rejects.toBeInstanceOf(ChatActionError);
     expect(await client.moneyTransfer.count({ where: { userId } })).toBe(0);
   });
+
+  it("moves money to the savings account through the stand-in, and guides people without a partner", async () => {
+    const userId = await demoPerson("multi-savings");
+    const { reply } = await sendToJane(userId, "move $200 to savings", { client, now: later() });
+    expect(reply.actions[0].id).toBe("multi.confirm");
+    expect(reply.body).toMatch(/Move \$200\.00 from .+ to .*[Ss]avings/);
+    expect(await client.moneyTransfer.count({ where: { userId } })).toBe(0);
+    await takeChatAction(userId, reply.id, "multi.confirm", { client, now: later() });
+    expect(await client.moneyTransfer.findFirst({ where: { userId } })).toMatchObject({
+      amountCents: 20_000,
+      goalId: null,
+      status: "pending",
+    });
+
+    // A real account (no money-movement partner): how to do it themselves, never a team request.
+    const real = await client.user.create({
+      data: { email: `multi-real-${crypto.randomUUID()}@example.com` },
+    });
+    created.push(real.id);
+    await client.account.create({
+      data: {
+        userId: real.id,
+        source: "csv",
+        name: "Checking (CSV)",
+        type: "depository",
+        subtype: "checking",
+      },
+    });
+    const guide = await sendToJane(real.id, "move $200 to savings", { client, now: later() });
+    expect(guide.reply.body).toMatch(/^I can't move money in your bank yet/);
+    expect(guide.reply.body).toContain("Once a money-movement partner is connected");
+    expect(guide.reply.actions.map((a) => a.label)).toContain("Remind me tomorrow");
+    expect(guide.reply.actions.some((a) => a.id === "multi.confirm")).toBe(false);
+    expect(await client.moneyTransfer.count({ where: { userId: real.id } })).toBe(0);
+  });
 });
