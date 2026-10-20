@@ -39,3 +39,10 @@ export const BILL_PAYMENT_CATEGORIES: Readonly<Record<string, string>> = {
 // Checking keeps at least this much on every day of the forecast after a payment: a
 // payment is never scheduled that would overdraw it, nor eat the safe-to-spend cushion.
 export const BILL_PAY_MIN_LEFT_CENTS = PAYCHECK_CUSHION_CENTS;
+
+// --- Every paycheck sent where it should go (spec step 206) -------------------------------
+// Checking keeps at least this much above the forecast's lowest point over the coming month
+// after a paycheck's moves, so a dip before the next paycheck never overdraws it.
+export const PAYCHECK_BUFFER_MARGIN_CENTS = 20_000;
+// The forecast looked at when working out that lowest point.
+export const PAYCHECK_FORECAST_DAYS = 30;

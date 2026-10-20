@@ -54,6 +54,7 @@ describe("savedReply", () => {
       confirmedCents: 0,
       estimated: [],
       estimatedCents: 9_000,
+      notShown: [],
     });
     expect(reply.body).toBe(
       "Nothing's confirmed in your transactions yet. About $90.00 a year more is still an estimate until your transactions show it.",

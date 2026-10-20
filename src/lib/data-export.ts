@@ -62,6 +62,8 @@ export async function exportUserData(
     monthlyReports,
     whatIfPlans,
     leanPlans,
+    yearPlans,
+    unusualAnswers,
     janeMessages,
     janePreferences,
     teamAccess,
@@ -433,6 +435,14 @@ export async function exportUserData(
       orderBy: { month: "asc" },
       select: { month: true, score: true, band: true, parts: true },
     }),
+    db.unusualAnswers.findMany({
+      orderBy: { createdAt: "asc" },
+      select: { merchantKey: true, rule: true, answer: true, amountCents: true, createdAt: true },
+    }),
+    db.yearPlans.findMany({
+      orderBy: { startMonth: "asc" },
+      select: { startMonth: true, months: true, updatedAt: true },
+    }),
     db.leanPlans.findMany({
       orderBy: { createdAt: "asc" },
       select: {
@@ -673,6 +683,8 @@ export async function exportUserData(
     monthlyReports,
     whatIfPlans,
     leanPlans,
+    yearPlans,
+    unusualAnswers,
     janeMessages,
     janePreferences,
     investments,

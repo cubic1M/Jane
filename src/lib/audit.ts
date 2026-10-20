@@ -11,6 +11,12 @@ export type AuditEvent =
   | "card_application_submitted"
   // Spec step 177: a request for help when money is tight, sent on the person's tap.
   | "tight_request_sent"
+  // Spec step 180: a request about a medical bill, sent on the person's tap.
+  | "medical_request_sent"
+  // Spec step 181: a validation letter or a bureau dispute, sent on the person's tap.
+  | "credit_dispute_sent"
+  // Spec step 224: a request for a lower card rate, sent on the person's tap.
+  | "card_rate_requested"
   | "user_signed_up"
   // Insurance (spec Phase X): a policy saved or removed, the household facts saved.
   | "insurance_policy_saved"
@@ -88,6 +94,10 @@ export type AuditEvent =
   | "what_if_adopted"
   // The lean plan switched on or off (spec step 204).
   | "lean_plan_started"
+  // A finished action whose saving never showed up (spec step 207).
+  | "saving_marked_not_shown"
+  // Unusual activity answered: this was me, or not me (spec step 208).
+  | "unusual_answered"
   | "lean_plan_ended"
   | "plan_link_used"
   | "support_contact_suggested"

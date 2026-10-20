@@ -42,6 +42,9 @@ export type DebtIntent =
   // Spec step 177: "I'm short this month", "what if I can't pay my bills?".
   | { kind: "tight_money" }
   // Spec step 178: "how much car can I afford?", "the dealer offered 7.9% for 72 months".
+  | { kind: "card_interest" }
+  | { kind: "report_fixes" }
+  | { kind: "medical_bills" }
   | { kind: "home_afford"; priceCents: number | null }
   | { kind: "car_afford"; priceCents: number | null }
   | {
@@ -51,7 +54,7 @@ export type DebtIntent =
       priceCents: number | null;
     };
 
-const DEBT_KINDS = new Set<string>([
+export const DEBT_KINDS = new Set<string>([
   "debts",
   "debt_detail",
   "payoff_plan",
@@ -74,6 +77,9 @@ const DEBT_KINDS = new Set<string>([
   "car_afford",
   "car_dealer",
   "home_afford",
+  "medical_bills",
+  "report_fixes",
+  "card_interest",
 ]);
 export const isDebtIntent = (intent: { kind: string }): intent is DebtIntent =>
   DEBT_KINDS.has(intent.kind);
@@ -163,6 +169,21 @@ const HOME_BUY =
   /\b(?:afford|buy|buying|purchase|purchasing|down payment|closing costs?|pre-?approv\w*|mortgage offers?|price range|budget|first[- ]time)\b|\bhow much (?:house|home)\b|\bsave for (?:a |my )?(?:house|home)\b/;
 const HOME_NOT = /\b(?:insurance|equity|my mortgage|refinanc\w*|pay off|payoff|rent)\b/;
 
+// Spec step 180: medical bills (not medical expenses for taxes, nor insurance claims).
+const MEDICAL_BILL =
+  /\b(?:medical|hospital|doctor'?s?|dentist|dental|er|ambulance|surgery|lab|clinic)\b.*\b(?:bills?|charges?|debt|invoice|owe)\b|\b(?:bills?|charges?)\b.*\b(?:from|for) (?:the |my )?(?:hospital|doctor|dentist|er|clinic|ambulance|surgery|lab)\b|\bitemi[sz]ed bill\b|\bfinancial assistance\b|\bcharity care\b/;
+// A surprise or denied bill is an insurance claim (its own intent).
+const MEDICAL_NOT =
+  /\b(?:claim|claims|insurance claim|surprise|denied|deduct\w*|hsa|fsa|tax|taxes|premium)\b/;
+
+// Spec step 181: collections and errors on the credit report.
+const REPORT_FIX =
+  /\b(?:collections?|collection agency|debt collector|collector)\b|\b(?:error|errors|mistake|mistakes|wrong|incorrect|inaccurate)\b.*\b(?:credit report|credit file)\b|\bcredit report\b.*\b(?:error|errors|mistake|mistakes|wrong|incorrect|inaccurate|dispute)\b|\bdispute\b.*\b(?:credit|bureau|bureaus|equifax|experian|transunion)\b|\bdebt validation\b|\bvalidat\w+ (?:the |a |this )?debt\b|\bfix my credit report\b/;
+
+// Spec step 224: card interest, 0% promotions and asking for a lower card rate.
+const CARD_INTEREST =
+  /\b(?:how much )?interest\b.*\b(?:cards?|credit cards?)\b|\b(?:cards?|credit cards?)\b.*\binterest\b|\b(?:pay|paying) less interest\b|\b(?:cut|reduce|lower|lowering) (?:my )?(?:card |credit card )?(?:interest|apr)\b|\bdeferred interest\b|\b0 ?% (?:promo|promotion|offer|intro)\b|\bpromo(?:tional)? (?:balance|rate|period|ends)\b/;
+
 const clean = (target: string) =>
   target
     .replace(/\b(?:paid off|off|in full)\b/g, "")
@@ -182,6 +203,14 @@ export function parseDebtIntent(
   if (PAYOFF.test(text)) return { kind: "payoff_plan", extraCents: null };
   if (DEBT_AUTOPILOT.test(text)) return { kind: "debt_autopilot" };
   if (TIGHT.test(text)) return { kind: "tight_money" };
+  if (
+    CARD_INTEREST.test(text) &&
+    !/\b(?:mortgage|student|car loan|auto|home|transfer|balance transfer)\b/.test(text)
+  ) {
+    return { kind: "card_interest" };
+  }
+  if (REPORT_FIX.test(text) && !/\b(?:tax|taxes)\b/.test(text)) return { kind: "report_fixes" };
+  if (MEDICAL_BILL.test(text) && !MEDICAL_NOT.test(text)) return { kind: "medical_bills" };
   if (
     HOME_WORD.test(text) &&
     HOME_BUY.test(text) &&

@@ -10,7 +10,7 @@ import type { MessageAction, MessageRefs } from "./types";
 // Pure. The simulator's figures are always called estimates.
 
 export const ESTIMATE_LABEL =
-  "These are estimates from the stand-in score's simulator, not promises: nothing changes until you act.";
+  "These are estimates from the stand-in score's simulator, and nothing changes until you act.";
 
 const months = (n: number) => `${n} ${n === 1 ? "month" : "months"}`;
 const signed = (n: number) =>
