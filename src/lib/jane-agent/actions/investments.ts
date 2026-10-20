@@ -28,6 +28,8 @@ import {
   RetirementAccountsError,
 } from "@/lib/investments/retirement-accounts";
 import { answerOldPlan, OldAccountsError, startRollover } from "@/lib/investments/old-accounts";
+import { contributeForChild, createGiftLink, FamilyError } from "@/lib/investments/family";
+import { FAMILY_LINK } from "../investments/family-copy";
 import { OLD_LINK } from "../investments/old-accounts-copy";
 import { RA_LINK } from "../investments/retirement-accounts-copy";
 import { loadSteadyHand } from "@/lib/investments/steady-hand";
@@ -451,6 +453,49 @@ export const oldPlanRollover: ActionHandler = {
       };
     } catch (error) {
       if (error instanceof OldAccountsError) throw answeredElsewhere(error.message);
+      throw error;
+    }
+  },
+};
+
+// Spec step 213: a gift link for a child's college fund, and money into a child's Roth IRA.
+export const familyGiftLink: ActionHandler = {
+  id: "family.gift_link",
+  on: "open",
+  async run({ userId, message, action, client }) {
+    const plan = message.refs.familyPlan;
+    if (!plan) throw new ChatActionError("not_offered", "That button isn't on this message.");
+    try {
+      const token = await createGiftLink(userId, plan, { client });
+      return {
+        answeredWith: action.label,
+        note: `Here's the link to share: /gift/${token}. It shows only the goal and how far along it is. You can take it down any time on the family page.`,
+        actions: [FAMILY_LINK],
+      };
+    } catch (error) {
+      if (error instanceof FamilyError) throw answeredElsewhere(error.message);
+      throw error;
+    }
+  },
+};
+
+export const familyChildRoth: ActionHandler = {
+  id: "family.child_roth",
+  on: "open",
+  async run({ userId, message, action, client, now }) {
+    const child = message.refs.familyChild;
+    const cents = message.refs.iraCents;
+    if (!child || !cents)
+      throw new ChatActionError("not_offered", "That button isn't on this message.");
+    try {
+      const r = await contributeForChild(userId, child, "child_roth", cents, { client, now });
+      return {
+        answeredWith: action.label,
+        note: `Done ${SIMULATED_WORDS}: ${formatCents(cents)} put in ${r.accountName}.`,
+        actions: [FAMILY_LINK],
+      };
+    } catch (error) {
+      if (error instanceof FamilyError) throw answeredElsewhere(error.message);
       throw error;
     }
   },

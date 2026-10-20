@@ -215,6 +215,8 @@ export function scopedFor(userId: string, client: PrismaClient = db) {
     payrollChanges: scoped.payrollChange,
     oldPlans: scoped.oldPlan,
     retirementIncomes: scoped.retirementIncome,
+    familyChildren: scoped.familyChild,
+    giftLinks: scoped.giftLink,
     cryptoConnections: scoped.cryptoConnection,
     cryptoHoldings: scoped.cryptoHolding,
   };

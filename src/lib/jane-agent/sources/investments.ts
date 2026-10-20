@@ -52,6 +52,7 @@ import {
   rmdLine,
   ssLine,
 } from "../investments/retirement-income-copy";
+import { FAMILY_LINK, giftOffer, rothOffer } from "../investments/family-copy";
 import { AUTO_LOG_LINK, summaryBody } from "../investments/automatic-copy";
 import { CASH_MIN_GAIN_CENTS } from "@/config/cash";
 import { CASH_LINK, cashLine, moveButtons } from "../investments/cash-copy";
@@ -325,6 +326,41 @@ export const investmentsSource: MessageSource = {
         dedupeKey: "hsa:link",
         priority: MESSAGE_PRIORITY.hsa,
       });
+    }
+    // Step 213: a gift link for a child's college fund; a Roth IRA for a child who earns.
+    for (const kid of inv.family.children) {
+      if (inv.advice && kid.college && !kid.gift) {
+        out.push({
+          kind: "decision",
+          body: giftOffer(kid),
+          refs: { advice: true, familyPlan: kid.college.planId },
+          actions: [
+            { id: "family.gift_link", label: "Make a gift link", kind: "primary" },
+            FAMILY_LINK,
+            snoozeButton(),
+          ],
+          dedupeKey: `family:gift:${kid.college.planId}`,
+          priority: MESSAGE_PRIORITY.family,
+        });
+      }
+      if (inv.advice && kid.roth && kid.roth.roomCents >= 10_000) {
+        out.push({
+          kind: "decision",
+          body: `${rothOffer(kid)} Tap and I'll put it in ${SIMULATED_WORDS}.`,
+          refs: { advice: true, familyChild: kid.id, iraCents: kid.roth.roomCents },
+          actions: [
+            {
+              id: "family.child_roth",
+              label: `Put ${formatCents(kid.roth.roomCents)} in ${kid.name}'s Roth`,
+              kind: "primary",
+            },
+            FAMILY_LINK,
+            snoozeButton(),
+          ],
+          dedupeKey: `family:roth:${kid.id}:${new Date(snapshot.asOf).getUTCFullYear()}`,
+          priority: MESSAGE_PRIORITY.family,
+        });
+      }
     }
     // Step 212: from 15 years before retiring, one message a year with the claiming ages, the
     // paycheck and how long it lasts. Past facts and ranges, never a promise.

@@ -22,6 +22,7 @@ import { loadCash } from "@/lib/investments/cash";
 import { loadRetirementAccounts } from "@/lib/investments/retirement-accounts";
 import { loadOldAccounts } from "@/lib/investments/old-accounts";
 import { loadRetirementIncome } from "@/lib/investments/retirement-income";
+import { loadFamily } from "@/lib/investments/family";
 import { loadSteadyHand } from "@/lib/investments/steady-hand";
 import { CASH_HOMES, CASH_RATES_AS_OF } from "@/config/cash";
 import { formatReturn } from "@/insights/returns";
@@ -150,6 +151,12 @@ export const INVESTMENT_TOOLS: Anthropic.Tool[] = [
     input_schema: noInput,
   },
   {
+    name: "family_investing",
+    description:
+      "The person's children in investing: each child's custodial account balance, whether they have earned income for a Roth IRA and the room this year (the lower of what they earned and the IRA limit), the college fund's progress, and whether a gift link is active with the gifts received. Never repeat or invent a gift link: it lives only on the family page.",
+    input_schema: noInput,
+  },
+  {
     name: "steady_hand",
     description:
       "Whether the person's investments have had a big drop lately (down 8% over a month or 15% over three, their own return, money in and out left out) and, in demo advice mode, how each goal's timeline sits (near goals are already in cash). Report only these past facts and the plan to stay the course. NEVER say or imply what markets will do, when they will recover, or that now is a good or bad time: no one can know.",
@@ -196,6 +203,7 @@ export const INVESTMENT_TOOL_STATUS: Readonly<Record<string, string>> = {
   crypto: "Reading your crypto balances…",
   cash_plan: "Looking at where your cash sits…",
   steady_hand: "Looking at how your investments have moved…",
+  family_investing: "Looking at your children's accounts…",
   retirement_income: "Working out your retirement income…",
   old_accounts: "Looking for old retirement accounts…",
   retirement_accounts: "Checking your retirement limits…",
@@ -619,6 +627,21 @@ export async function runInvestmentTool(
                 high: money(v.paycheck.sustainableMonthly.highCents),
               },
             },
+      });
+    }
+    case "family_investing": {
+      const v = await loadFamily(userId, { client, now });
+      return out({
+        children: v.children.map((c) => ({
+          name: c.name,
+          age: c.age,
+          earnedIncome: money(c.earnedCents),
+          custodialBalance: c.custodial ? money(c.custodial.balanceCents) : null,
+          rothRoomThisYear: v.advice && c.roth ? money(c.roth.roomCents) : null,
+          collegeFundPercent: c.college?.percent ?? null,
+          giftLinkActive: c.gift !== null,
+          giftsReceived: c.gift ? c.gift.gifts.length : 0,
+        })),
       });
     }
     case "steady_hand": {

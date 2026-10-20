@@ -181,7 +181,11 @@ export type AuditEvent =
   | "rollover_started"
   | "rollover_completed"
   // Spec step 212: the person's retirement income answers saved (never the amounts).
-  | "retirement_income_saved";
+  | "retirement_income_saved"
+  // Spec step 213: a gift link made or taken down (never the link itself), and a gift received.
+  | "gift_link_created"
+  | "gift_link_revoked"
+  | "gift_received";
 
 export type AuditActor = { type: ActorType; id: string | null };
 

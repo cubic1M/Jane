@@ -57,6 +57,7 @@ const SIGNED_IN = [
   "/investments/retirement-accounts",
   "/investments/old-accounts",
   "/investments/retirement-income",
+  "/investments/family",
   "/learn",
   "/learn/index-funds",
   "/loans",

@@ -58,6 +58,7 @@ import {
   retirementAccountsReply,
   oldAccountsReply,
   retirementIncomeReply,
+  familyReply,
 } from "./replies";
 import { gather } from "../brain";
 import { parseIntent } from "../intents";
@@ -2265,5 +2266,84 @@ describe("retirementIncomeReply and the retirement income message", () => {
     expect(gather(RI_VIEW).map((m) => m.dedupeKey)).toEqual(["retire:income:2026"]);
     expect(gather({ ...RI_VIEW, applies: false })).toEqual([]);
     expect(gather(RI_VIEW, false)).toEqual([]);
+  });
+});
+
+// Spec step 213: investing for the family.
+const FAMILY_VIEW = {
+  advice: true,
+  demo: true,
+  children: [
+    {
+      id: "c1",
+      name: "Sam",
+      age: 15,
+      earnedCents: 300_000,
+      custodial: {
+        accountId: "a1",
+        name: "Demo Custodial Account (child's)",
+        balanceCents: 120_000,
+      },
+      roth: {
+        accountId: "a2",
+        name: "Demo Child Roth IRA",
+        usedCents: 100_000,
+        roomCents: 200_000,
+      },
+      college: {
+        planId: "p1",
+        goalName: "College for Sam",
+        targetCents: 15_000_000,
+        savedCents: 3_000_000,
+        percent: 20,
+      },
+      gift: null,
+    },
+  ],
+};
+
+describe("family questions, by rules", () => {
+  it.each([
+    "a custodial account for my kid",
+    "what is a UTMA",
+    "can grandparents gift to a 529",
+    "the kiddie tax",
+    "roth ira for my teenager",
+  ])("reads %j as family investing", (text) => {
+    expect(parseIntent(text, ASOF)).toMatchObject({ kind: "investments", topic: "family" });
+  });
+});
+
+describe("familyReply and the family messages", () => {
+  it("says where each child stands, and never puts a gift link in a reply", () => {
+    const reply = familyReply(FAMILY_VIEW);
+    expect(reply.body).toMatch(
+      /^Sam: custodial account \$1,200\.00; Roth IRA with \$2,000\.00 of room this year; college fund 20% funded\./,
+    );
+    expect(reply.body).toMatch(/can't be taken back/);
+    expect(reply.body).not.toMatch(/\/gift\//);
+    expect(familyReply({ ...FAMILY_VIEW, advice: false }).body).toMatch(
+      /don't give recommendations on real accounts/,
+    );
+  });
+  it("offers a gift link and a Roth for a child who earns, each a tap, in demo advice mode", () => {
+    const gather = (family: InvestmentSnapshot["family"], advice = true) =>
+      investmentsSource
+        .gather({ ...base, investments: demoInvestmentSnapshot({ advice, family }) }, {} as never)
+        .filter((c) => c.dedupeKey.startsWith("family:"));
+    const messages = gather(FAMILY_VIEW);
+    expect(messages.map((m) => m.dedupeKey)).toEqual(["family:gift:p1", "family:roth:c1:2026"]);
+    expect(messages[0].body).toMatch(
+      /shows only the goal and how far along it is, never your money/,
+    );
+    expect(messages[0].actions[0].id).toBe("family.gift_link");
+    expect(messages[1].refs).toEqual({ advice: true, familyChild: "c1", iraCents: 200_000 });
+    expect(gather(FAMILY_VIEW, false)).toEqual([]);
+    // With a link already made, only the Roth is offered.
+    const withLink = {
+      ...FAMILY_VIEW,
+      children: [{ ...FAMILY_VIEW.children[0], gift: { token: "t", gifts: [] } }],
+    };
+    expect(gather(withLink).map((m) => m.dedupeKey)).toEqual(["family:roth:c1:2026"]);
   });
 });

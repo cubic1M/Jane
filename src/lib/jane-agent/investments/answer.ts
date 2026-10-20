@@ -16,6 +16,7 @@ import { loadCash } from "@/lib/investments/cash";
 import { loadRetirementAccounts } from "@/lib/investments/retirement-accounts";
 import { loadOldAccounts } from "@/lib/investments/old-accounts";
 import { loadRetirementIncome } from "@/lib/investments/retirement-income";
+import { loadFamily } from "@/lib/investments/family";
 import { loadSteadyHand } from "@/lib/investments/steady-hand";
 import { autopilotOf } from "@/lib/autopilot";
 import { loadInvestmentSnapshot } from "./snapshot";
@@ -37,6 +38,7 @@ import {
   cryptoReply,
   cashReply,
   steadyReply,
+  familyReply,
   retirementIncomeReply,
   oldAccountsReply,
   retirementAccountsReply,
@@ -102,6 +104,8 @@ export async function answerInvestments(
       return oldAccountsReply(await loadOldAccounts(userId, { client, now }));
     case "retirement_income":
       return retirementIncomeReply(await loadRetirementIncome(userId, { client, now }));
+    case "family":
+      return familyReply(await loadFamily(userId, { client, now }));
     case "steady":
       return steadyReply(await loadSteadyHand(userId, { client, now }));
     case "cash":

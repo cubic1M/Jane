@@ -394,6 +394,8 @@ model User {
 
   retirementIncome RetirementIncome?
 
+  giftLinks        GiftLink[]
+
   @@map("users")
 }
 
@@ -3518,4 +3520,53 @@ model RetirementIncome {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("retirement_incomes")
+}
+
+// Spec step 213: a child in the family's investing: their earned income (for a Roth IRA
+// they can fund) and the demo accounts Jane opened for them. The child's college fund is
+// the college plan (step 158) with the same name.
+model FamilyChild {
+  id          String   @id @default(cuid())
+  userId      String   @map("user_id")
+  name        String
+  age         Int
+  earnedCents Int      @default(0) @map("earned_cents")
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, name])
+  @@map("family_children")
+}
+
+// A link that lets relatives give to a child's college fund. The token is the permission;
+// the public page shows only the goal and how far along it is, never the parents' money.
+model GiftLink {
+  id            String    @id @default(cuid())
+  userId        String    @map("user_id")
+  collegePlanId String    @map("college_plan_id")
+  token         String    @unique
+  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  revokedAt     DateTime? @map("revoked_at") @db.Timestamptz(3)
+
+  user  User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  gifts Gift[]
+
+  @@index([userId])
+  @@map("gift_links")
+}
+
+// One gift through a link: a stand-in (no real money moves) until a payments partner is
+// connected. It counts toward the goal's progress.
+model Gift {
+  id          String   @id @default(cuid())
+  giftLinkId  String   @map("gift_link_id")
+  giverName   String   @map("giver_name")
+  amountCents Int      @map("amount_cents")
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  link GiftLink @relation(fields: [giftLinkId], references: [id], onDelete: Cascade)
+
+  @@index([giftLinkId])
+  @@map("gifts")
 }

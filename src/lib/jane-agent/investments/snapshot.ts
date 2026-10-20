@@ -23,6 +23,7 @@ import {
   loadRetirementIncome,
   type RetirementIncomeView,
 } from "@/lib/investments/retirement-income";
+import { loadFamily, type FamilyView } from "@/lib/investments/family";
 import { automaticLog } from "@/lib/investments/automatic";
 import type { Bucket } from "@/planning/goal-buckets";
 import { loadAutoInvest } from "@/lib/investments/auto-invest";
@@ -77,6 +78,8 @@ export type InvestmentSnapshot = {
   oldAccounts: OldAccountsView;
   // Spec step 212: income in retirement.
   retirementIncome: RetirementIncomeView;
+  // Spec step 213: the children in the family's investing.
+  family: FamilyView;
   // Spec step 164: what Jane did by herself in the last month, and what she asked about.
   automatic: Awaited<ReturnType<typeof automaticLog>>;
   // Spec step 162: the cash plan.
@@ -149,6 +152,7 @@ export async function loadInvestmentSnapshot(
     retirementAccounts: await loadRetirementAccounts(userId, { client, now }),
     oldAccounts: await loadOldAccounts(userId, { client, now }),
     retirementIncome: await loadRetirementIncome(userId, { client, now, investments }),
+    family: await loadFamily(userId, { client, now }),
     automatic: await automaticLog(userId, { client, now }),
     cash: await loadCash(userId, { client, now, investments }).then((c) => ({ plan: c.plan })),
     crypto: await loadCrypto(userId, {

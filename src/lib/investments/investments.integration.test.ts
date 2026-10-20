@@ -27,6 +27,18 @@ import { collectReceipts, investHsaCash, loadHsa } from "./hsa";
 import { CompanyStockError, loadCompanyStock, saveGrant, sellPart } from "./company-stock";
 import { cryptoTotal, loadCrypto, syncAllCrypto } from "@/lib/crypto/crypto";
 import { CashError, loadCash, moveCash } from "./cash";
+import {
+  addChild,
+  contributeForChild,
+  createGiftLink,
+  FamilyError,
+  giftPage,
+  giveGift,
+  loadFamily,
+  openChildAccount,
+  revokeGiftLinks,
+} from "./family";
+import { startCollegePlan } from "./college";
 import { automaticLog, runAutomaticInvesting } from "./automatic";
 import {
   loadRetirementIncome,
@@ -1093,6 +1105,68 @@ describe.runIf(url)("investments in Jane's chat, against a real database", () =>
         now: LINKED,
       });
       expect(reply.body).toMatch(/\$2,170\.00 a month if you start at 62, \$3,100\.00 at 67/);
+    },
+  );
+
+  it(
+    "step 213: a child's accounts, a Roth limited by earnings, and a gift link that shows only the goal",
+    SLOW,
+    async () => {
+      const userId = await demoPerson();
+      await addChild(userId, { name: "Sam", age: 15, earnedCents: 300_000 }, { client });
+      await startCollegePlan(
+        userId,
+        { childName: "Sam", childAge: 15, type: "public" },
+        { client, now: LINKED },
+      );
+      const before = await loadFamily(userId, { client, now: LINKED });
+      expect(before.children[0]).toMatchObject({
+        name: "Sam",
+        custodial: null,
+        roth: null,
+        gift: null,
+      });
+
+      await openChildAccount(userId, "custodial", { client, now: LINKED });
+      await openChildAccount(userId, "child_roth", { client, now: LINKED });
+      const kid = (await loadFamily(userId, { client, now: LINKED })).children[0];
+      expect(kid.roth!.roomCents).toBe(300_000);
+      // The Roth is limited by what Sam earned; the custodial account isn't.
+      await expect(
+        contributeForChild(userId, kid.id, "child_roth", 300_001, { client, now: LINKED }),
+      ).rejects.toThrow(/more than they can/);
+      await contributeForChild(userId, kid.id, "child_roth", 100_000, { client, now: LINKED });
+      await contributeForChild(userId, kid.id, "custodial", 50_000, { client, now: LINKED });
+      const after = (await loadFamily(userId, { client, now: LINKED })).children[0];
+      expect(after.roth).toMatchObject({ usedCents: 100_000, roomCents: 200_000 });
+      expect(after.custodial!.balanceCents).toBe(50_000);
+
+      // A gift link: the public page has the goal and a percent, and nothing of the family's.
+      const token = await createGiftLink(userId, kid.college!.planId, { client });
+      const page = await giftPage(token, { client });
+      expect(Object.keys(page!).sort()).toEqual([
+        "childName",
+        "goalName",
+        "percent",
+        "targetCents",
+      ]);
+      expect(page!.goalName).toBe("College for Sam");
+      expect(page!.percent).toBe(0);
+      expect(JSON.stringify(page)).not.toMatch(new RegExp(userId));
+      await giveGift(token, { giverName: "Grandma", amountCents: 500_000 }, { client });
+      await expect(
+        giveGift(token, { giverName: "Grandma", amountCents: 2_000_000 }, { client }),
+      ).rejects.toThrow(FamilyError);
+      await expect(
+        giveGift("nope-not-a-token-xx", { giverName: "x", amountCents: 1000 }, { client }),
+      ).rejects.toThrow(/isn't taking gifts/);
+      const funded = (await loadFamily(userId, { client, now: LINKED })).children[0];
+      expect(funded.gift!.gifts).toEqual([{ giverName: "Grandma", amountCents: 500_000 }]);
+      expect(funded.college!.savedCents).toBe(500_000);
+      expect((await giftPage(token, { client }))!.percent).toBeGreaterThan(0);
+      // Taken down, the link stops working.
+      expect(await revokeGiftLinks(userId, { client })).toBe(1);
+      expect(await giftPage(token, { client })).toBeNull();
     },
   );
 });

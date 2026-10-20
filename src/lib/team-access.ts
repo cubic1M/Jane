@@ -196,6 +196,9 @@ export const TEAM_ACCESS_RULES: Record<AuditEvent, EventRule> = {
   rollover_started: own,
   rollover_completed: own,
   retirement_income_saved: own,
+  gift_link_created: own,
+  gift_link_revoked: own,
+  gift_received: own,
 };
 
 export const SHOWN_EVENTS = (Object.keys(TEAM_ACCESS_RULES) as AuditEvent[]).filter(

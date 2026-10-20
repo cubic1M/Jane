@@ -23,7 +23,8 @@ export type InvestmentTopic =
   | "steady"
   | "retirement_accounts"
   | "old_accounts"
-  | "retirement_income";
+  | "retirement_income"
+  | "family";
 
 export type InvestmentIntent = {
   kind: "investments";
@@ -133,7 +134,12 @@ const OLD_ACCOUNTS =
 const RETIREMENT_INCOME =
   /\bsocial security\b|\brmds?\b|\brequired minimum distributions?\b|\bretirement (?:paycheck|income)\b|\bwhen (?:should|can) i (?:claim|take|start)\b.*\b(?:social security|benefits?)\b|\bhow long will my (?:money|savings|retirement) last\b|\bwhich accounts? (?:do i |should i )?(?:draw|withdraw|take) (?:from )?first\b|\bdrawdown\b/;
 
+// Spec step 213: children's accounts and gifts to a child's college fund.
+const FAMILY =
+  /\bcustodial (?:account|ira|roth)\b|\butma\b|\bugma\b|\b(?:roth ira|roth|investing|account) for (?:my |a )?(?:kid|child|teen|teenager|son|daughter)s?\b|\bgrandparents?\b.*\b(?:gift|give|contribute|529)\b|\bgift(?:s|ing)? (?:to|into) (?:a |my |the )?(?:529|college fund)\b|\bkiddie tax\b|\binvest(?:ing)? for (?:my )?(?:kids?|children|family)\b/;
+
 export function parseInvestmentIntent(text: string): InvestmentIntent | null {
+  if (FAMILY.test(text)) return { kind: "investments", topic: "family", account: null };
   if (RETIREMENT_INCOME.test(text))
     return { kind: "investments", topic: "retirement_income", account: null };
   if (OLD_ACCOUNTS.test(text)) return { kind: "investments", topic: "old_accounts", account: null };

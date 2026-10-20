@@ -245,6 +245,12 @@ async function InvestmentsContent() {
             : Social Security, the order to draw, and a paycheck that lasts.
           </p>
           <p className="text-sm text-zinc-600 dark:text-zinc-400">
+            <Link href="/investments/family" className={LINK}>
+              Family
+            </Link>
+            : a child&apos;s custodial account and Roth IRA, and gifts to their college fund.
+          </p>
+          <p className="text-sm text-zinc-600 dark:text-zinc-400">
             Learn:{" "}
             {["index-funds", "fees", "the-match", "roth-vs-traditional", "rebalancing"].map(
               (slug, i) => (

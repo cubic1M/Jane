@@ -26,6 +26,8 @@ import type { OldAccountsView } from "@/lib/investments/old-accounts";
 import { foundLine, OLD_LINK, rollButton, summaryLine } from "./old-accounts-copy";
 import type { RetirementIncomeView } from "@/lib/investments/retirement-income";
 import { drawLine, paycheckLine, RI_LINK, rmdLine, ssLine } from "./retirement-income-copy";
+import type { FamilyView } from "@/lib/investments/family";
+import { FAMILY_LINK, familyLine } from "./family-copy";
 import { STEADY_LINK, steadyMessage, timelines } from "./steady-copy";
 import { CRYPTO_LINK, feeFlag, NEVER_TRADES, shareFlag, sizeLine } from "./crypto-copy";
 import {
@@ -824,5 +826,17 @@ export function retirementIncomeReply(view: RetirementIncomeView): Reply {
       "Tell me your Social Security statement's amount and when you plan to retire, and I'll work out a paycheck that lasts.",
     actions: [RI_LINK],
     refs: { advice: true },
+  };
+}
+
+// Spec step 213: where each child stands. Facts for everyone; the gift link and the Roth
+// IRA only in demo advice mode (and a link is never put in a reply, only on the family page).
+export function familyReply(view: FamilyView): Reply {
+  return {
+    body: view.advice
+      ? familyLine(view)
+      : "I don't give recommendations on real accounts yet. You can still add your children on the family page.",
+    actions: [FAMILY_LINK],
+    refs: view.advice ? { advice: true } : {},
   };
 }
