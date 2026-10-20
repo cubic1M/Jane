@@ -32,6 +32,7 @@ const income = (profile: Profile) =>
 const studentRepayment: Detector = {
   capability: "debt",
   topic: "student_repayment",
+  covers: ["student_loans"],
   needs: ["monthly_income"],
   detect({ profile, data }) {
     const payments = tx(data, (t) => t.pfc === "LOAN_PAYMENTS_STUDENT_LOAN_PAYMENT");
@@ -64,6 +65,7 @@ const studentRepayment: Detector = {
 const autoRefinance: Detector = {
   capability: "debt",
   topic: "auto_refinance",
+  covers: ["car_loan"],
   needs: ["monthly_income"],
   detect({ profile, data }) {
     const payments = tx(data, (t) => t.pfc === "LOAN_PAYMENTS_CAR_PAYMENT");
@@ -95,6 +97,7 @@ const autoRefinance: Detector = {
 const carAddons: Detector = {
   capability: "debt",
   topic: "car_addons",
+  covers: ["car_loan"],
   needs: [],
   detect({ profile, data }) {
     if (balanceOf(data.accounts, "auto") <= 0) return null;
@@ -146,6 +149,7 @@ const carAddons: Detector = {
 const cashAdvance: Detector = {
   capability: "debt",
   topic: "cash_advance",
+  covers: [],
   needs: [],
   detect({ profile, data }) {
     const cards = new Set(
@@ -186,6 +190,7 @@ const cashAdvance: Detector = {
 const mortgageExtra: Detector = {
   capability: "debt",
   topic: "mortgage_extra",
+  covers: [],
   needs: ["mortgage_rate_bps"],
   detect({ profile, data }) {
     const rate = profile.facts.mortgage_rate_bps;
@@ -218,6 +223,7 @@ const mortgageExtra: Detector = {
 const balanceTransfer: Detector = {
   capability: "debt",
   topic: "balance_transfer",
+  covers: ["balance_transfers"],
   needs: ["card_debt_cents"],
   detect({ profile, data }) {
     const debt = profile.facts.card_debt_cents;
