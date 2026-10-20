@@ -39,12 +39,69 @@ export const DETECTOR_RATES = {
   // Company stock: too much in one company when it is this share of what they invest.
   concentrationShare: 0.3,
   concentrationDropShare: 0.3,
+  // Employer match (step 262): a 401(k) balance under this share of a year's pay says the
+  // match probably isn't being fully used (a year at the typical 4% each side is 8%); a
+  // typical match is this share of pay.
+  matchHealthyShare: 0.08,
+  matchTypicalShare: 0.03,
+  // Catch-up contributions for people close to retirement, and the tax rate they save at.
+  catchUpCents: 750_000,
+  // An HSA holding more than this is worth putting to work.
+  hsaMinCents: 100_000,
+  // Backdoor Roth: pay (a year) from here up, with a bonus or stock pay on top, usually reaches
+  // the income limit for a direct Roth IRA; the IRA
+  // limit, the growth assumed, the tax rate on that growth and the years shown.
+  backdoorIncomeMinCents: 12_000_000,
+  iraLimitCents: 700_000,
+  assumedGrowthBps: 600,
+  growthTaxRate: 0.24,
+  growthYears: 10,
+  // 529 plan: a yearly contribution worth showing and a typical state tax rate on it.
+  college529Cents: 500_000,
+  college529StateRate: 0.05,
+  // Required withdrawals: the divisor for a person's early 70s, and the penalty on a miss.
+  rmdDivisor: 26.5,
+  rmdPenaltyRate: 0.25,
   // Late fees: one is enough to mention.
   lateFeesMin: 1,
   // Payday and cash-advance loans: fees are about this share of what's repaid.
   paydayFeeShare: 0.25,
   // Income that moves around by this much month to month is worth smoothing.
   smoothingMinMonthlySwingShare: 0.3,
+  // Taxes (step 261). ESTIMATES TO VERIFY, like the rest of this file; the dated figures
+  // (brackets, limits, payroll tax) come from src/config/tax-rates.ts, not from here.
+  tax: {
+    // Pay on deposits is take-home; gross is about this many times it.
+    netToGross: 1.3,
+    // Company stock paid as RSUs is withheld at this flat federal rate (supplemental wages).
+    rsuFlatWithholding: 0.22,
+    // Without a vest schedule: one year's vesting is about this share of the stock plan.
+    stockVestShare: 0.25,
+    // Roth conversions: worth raising with at least this much in pre-tax retirement accounts,
+    // for people close to or in retirement; converting this share a year at the 12% bracket
+    // against an assumed 22% later.
+    rothMinBalanceCents: 20_000_000,
+    rothConvertShare: 0.1,
+    rothNowRate: 0.12,
+    rothLaterRate: 0.22,
+    // From this month of the year a conversion is urgent (it must be done by December 31).
+    rothUrgentFromMonth: 11,
+    // Childcare: at least this much a year before the dependent care FSA is worth raising.
+    childcareMinCents: 100_000,
+    // Identity protection PIN: the IRS's January to filing season window, and the average
+    // refund a thief would take (IRS filing season statistics, about $3,200), ESTIMATE.
+    ipPinFrom: "01-01",
+    ipPinUntil: "04-15",
+    typicalRefundCents: 320_000,
+    // Year end: from this day of November to December 31, a pre-tax contribution made through
+    // payroll must happen before the last paycheck. Without seeing what has been put in, assume
+    // this share of the yearly limit is still unused (the confidence says so).
+    yearEndFrom: "11-15",
+    yearEndUnusedRoomShare: 0.25,
+    // Estimated payments: urgency by days to the next due date.
+    estimatedNowDays: 14,
+    estimatedSoonDays: 45,
+  },
   // Urgency scores: now, soon, later.
   urgency: { now: 3, soon: 2, later: 1 },
 } as const;

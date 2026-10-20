@@ -53,6 +53,10 @@ export const SUGGESTION_TOPICS = [
   "social_security_timing",
   "medicare",
   "rmd",
+  "roth_conversion",
+  "childcare_tax_break",
+  "identity_ip_pin",
+  "year_end_moves",
 ] as const;
 export type SuggestionTopic = (typeof SUGGESTION_TOPICS)[number];
 
@@ -122,6 +126,11 @@ export const PEOPLE: readonly Person[] = [
       "estimated_taxes",
       "concentration",
       "education_529",
+      "roth_conversion",
+      "childcare_tax_break",
+      "catch_up",
+      "backdoor_roth",
+      "hsa",
     ],
   },
   {
@@ -146,6 +155,7 @@ export const PEOPLE: readonly Person[] = [
       "duplicate_charge",
       "car_addons",
       "budget_overrun",
+      "childcare_tax_break",
     ],
     mustNot: [
       "refinance",
@@ -154,6 +164,9 @@ export const PEOPLE: readonly Person[] = [
       "estimated_taxes",
       "hardship_plan",
       "social_security_timing",
+      "roth_conversion",
+      "backdoor_roth",
+      "catch_up",
     ],
   },
   {
@@ -176,7 +189,15 @@ export const PEOPLE: readonly Person[] = [
       "emergency_fund",
       "student_repayment",
     ],
-    mustNot: ["employer_match", "rmd", "pmi_removal", "medicare", "hardship_plan"],
+    mustNot: [
+      "employer_match",
+      "rmd",
+      "pmi_removal",
+      "medicare",
+      "hardship_plan",
+      "roth_conversion",
+      "childcare_tax_break",
+    ],
   },
   {
     id: "equity",
@@ -208,6 +229,8 @@ export const PEOPLE: readonly Person[] = [
       "credit_building",
       "student_repayment",
       "cash_advance",
+      "roth_conversion",
+      "childcare_tax_break",
     ],
   },
   {
@@ -222,7 +245,14 @@ export const PEOPLE: readonly Person[] = [
       owns: "home",
       hasDebtTrouble: false,
     },
-    should: ["social_security_timing", "medicare", "long_term_care", "catch_up", "idle_cash"],
+    should: [
+      "social_security_timing",
+      "medicare",
+      "long_term_care",
+      "catch_up",
+      "idle_cash",
+      "roth_conversion",
+    ],
     mustNot: [
       "education_529",
       "credit_building",
@@ -233,6 +263,7 @@ export const PEOPLE: readonly Person[] = [
       "student_repayment",
       "cash_advance",
       "trial_conversion",
+      "childcare_tax_break",
     ],
   },
   {
@@ -247,7 +278,7 @@ export const PEOPLE: readonly Person[] = [
       owns: "home",
       hasDebtTrouble: false,
     },
-    should: ["rmd", "medigap", "idle_cash", "subscriptions"],
+    should: ["rmd", "medigap", "idle_cash", "subscriptions", "bill_negotiation"],
     mustNot: [
       "employer_match",
       "education_529",
@@ -261,6 +292,7 @@ export const PEOPLE: readonly Person[] = [
       "cash_advance",
       "car_addons",
       "trial_conversion",
+      "childcare_tax_break",
     ],
   },
   {
@@ -297,6 +329,8 @@ export const PEOPLE: readonly Person[] = [
       "rmd",
       // Spec step 260: extra money on a mortgage they don't have.
       "mortgage_extra",
+      "roth_conversion",
+      "childcare_tax_break",
     ],
   },
   {
@@ -318,7 +352,15 @@ export const PEOPLE: readonly Person[] = [
       "retirement_self_employed",
       "cash_flow",
     ],
-    mustNot: ["employer_match", "rmd", "pmi_removal", "medicare", "hardship_plan"],
+    mustNot: [
+      "employer_match",
+      "rmd",
+      "pmi_removal",
+      "medicare",
+      "hardship_plan",
+      "roth_conversion",
+      "childcare_tax_break",
+    ],
   },
 ];
 

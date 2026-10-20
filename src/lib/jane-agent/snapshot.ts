@@ -14,6 +14,7 @@ import { healthFor, type HealthView } from "@/lib/health-score";
 import type { Attention } from "./attention";
 import { loadAttention } from "./attention-load";
 import { resultsByKind, type KindResult } from "@/lib/worked";
+import { offeredToday, type OfferedSuggestion } from "@/lib/suggestions";
 import { loadSteady, type SteadyView } from "@/lib/steady-pay";
 import { adoptedPlans, type AdoptedPlan } from "@/lib/what-if";
 import { openLean, recentlyEnded, type LeanState } from "@/lib/lean-plan";
@@ -123,6 +124,8 @@ export type Snapshot = {
   attention?: Attention;
   // Spec step 203: what-if plans the person adopted. Optional, like changes.
   whatIf?: AdoptedPlan[];
+  // Spec step 255: the suggestions chosen for today. Optional, like changes.
+  suggestions?: OfferedSuggestion[];
   // Spec step 240: the steady paycheck from uneven income. Optional, like changes.
   steady?: SteadyView | null;
   // Spec step 208: unusual-activity alerts waiting for "this was me" or "not me".
@@ -299,6 +302,7 @@ export async function loadSnapshot(
     attention,
     monthlyReport,
     whatIf,
+    suggestions,
     steady,
   ] = await Promise.all([
     loadMore(userId, { client, now, input }),
@@ -313,6 +317,7 @@ export async function loadSnapshot(
     loadAttention(userId, { client, now, timezone: user?.timezone ?? null }),
     recentReport(userId, { client, now }),
     adoptedPlans(userId, { client }),
+    offeredToday(userId, { client, now }),
     loadSteady(userId, { client, now, input }),
   ]);
 
@@ -377,6 +382,7 @@ export async function loadSnapshot(
     attention,
     monthlyReport,
     whatIf,
+    suggestions,
     steady,
     lean: {
       open: await openLean(userId, { client }),

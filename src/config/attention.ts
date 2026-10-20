@@ -56,6 +56,7 @@ export const ATTENTION_LABELS: Readonly<Record<string, string>> = {
   health: "money health notes",
   saved: "savings milestones",
   checked: "nightly check notes",
+  suggestions: "suggestions made for you",
 };
 // A message only counts as never acted on once it's had this long to be answered.
 export const ATTENTION_GRACE_HOURS = 48;
