@@ -148,6 +148,119 @@ describe("debt questions", () => {
     }
   });
 
+  it("reads buy now, pay later questions: what's coming, and whether a new plan fits", () => {
+    for (const text of [
+      "what buy now pay later payments do I have coming",
+      "my klarna installments",
+      "when is my next affirm payment due",
+    ]) {
+      expect(intent(text), text).toEqual({ kind: "bnpl" });
+    }
+    expect(intent("can I afford a $300 Klarna plan")).toEqual({
+      kind: "bnpl_new",
+      totalCents: 30_000,
+    });
+    expect(intent("should I start an affirm plan")).toEqual({ kind: "bnpl_new", totalCents: null });
+  });
+
+  it("reads buying a car: what's affordable, preapprovals, and a dealer's offer", () => {
+    expect(intent("how much car can I afford")).toEqual({ kind: "car_afford", priceCents: null });
+    expect(intent("can I afford a $30,000 car")).toEqual({
+      kind: "car_afford",
+      priceCents: 3_000_000,
+    });
+    expect(intent("compare car loan preapproval offers")).toEqual({
+      kind: "car_afford",
+      priceCents: null,
+    });
+    expect(intent("the dealer offered 7.9% for 72 months on $28,000")).toEqual({
+      kind: "car_dealer",
+      aprBps: 790,
+      termMonths: 72,
+      priceCents: 2_800_000,
+    });
+    // Debt questions about a car already owned stay debt questions.
+    expect(intent("how much do I owe on my car")).toEqual({ kind: "debt_detail", target: "car" });
+  });
+
+  it("reads buying a home, but not a mortgage already owned or home insurance", () => {
+    expect(intent("how much house can I afford")).toEqual({
+      kind: "home_afford",
+      priceCents: null,
+    });
+    expect(intent("can I afford a $400,000 home")).toEqual({
+      kind: "home_afford",
+      priceCents: 40_000_000,
+    });
+    expect(intent("how much should I save for a down payment")).toEqual({
+      kind: "home_afford",
+      priceCents: null,
+    });
+    expect(intent("what are closing costs")).toEqual({ kind: "home_afford", priceCents: null });
+    expect(intent("when does my home insurance renew")).not.toMatchObject({ kind: "home_afford" });
+    expect(intent("when will my mortgage be paid off")).toMatchObject({ kind: "debt_detail" });
+    expect(intent("can I afford $900 for a home repair")).not.toMatchObject({
+      kind: "home_afford",
+    });
+  });
+
+  it("reads medical bills, but not medical tax questions or insurance claims", () => {
+    for (const text of [
+      "I have a hospital bill I can't pay",
+      "can you check my medical bills",
+      "ask the dentist for an itemized bill",
+      "financial assistance for my er bill",
+    ]) {
+      expect(intent(text), text).toEqual({ kind: "medical_bills" });
+    }
+    expect(intent("are my medical bills tax deductible")).not.toMatchObject({
+      kind: "medical_bills",
+    });
+    expect(intent("file a claim for my doctor visit")).not.toMatchObject({ kind: "medical_bills" });
+  });
+
+  it("reads collections and credit report errors, but not taxes owed", () => {
+    for (const text of [
+      "there's a collection on my credit report",
+      "a debt collector keeps calling me",
+      "there is an error on my credit report",
+      "how do I dispute something with the credit bureaus",
+      "I need debt validation",
+    ]) {
+      expect(intent(text), text).toEqual({ kind: "report_fixes" });
+    }
+    expect(intent("what's my credit score")).toEqual({ kind: "credit_score" });
+  });
+
+  it("reads card interest, promotions and asking for a lower rate", () => {
+    for (const text of [
+      "how much interest am I paying on my cards",
+      "how can I pay less interest on my credit cards",
+      "when does my 0% promotion end",
+      "what is deferred interest",
+    ]) {
+      expect(intent(text), text).toEqual({ kind: "card_interest" });
+    }
+    // A loan's or a transfer's interest is its own question.
+    expect(intent("how much interest on my mortgage")).not.toMatchObject({ kind: "card_interest" });
+    expect(intent("what's the rate on my credit card")).toEqual({
+      kind: "debt_detail",
+      target: "credit card",
+    });
+  });
+
+  it("reads a tight month", () => {
+    for (const text of [
+      "money is tight this month",
+      "I'm short on money",
+      "I'm struggling with my bills",
+      "I can't afford my rent",
+      "hardship help",
+    ]) {
+      expect(intent(text), text).toEqual({ kind: "tight_money" });
+    }
+  });
+
   it("reads building credit, and the score simulator", () => {
     for (const text of [
       "how do I improve my credit",

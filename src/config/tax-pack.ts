@@ -23,7 +23,7 @@ export const PREPARER_GROUPS = {
 
 // Spec step 119: the pack's groups come from the tax tags (src/config/tax.ts TAX_TAGS), which
 // start from these categories; work expenses are tagged by the person.
-export type PreparerGroup = keyof typeof PREPARER_GROUPS | "work" | "business";
+export type PreparerGroup = keyof typeof PREPARER_GROUPS | "work" | "business" | "rental";
 
 // Income from contracting or gig work, totalled by quarter.
 export const SELF_EMPLOYED_INCOME_CATEGORIES: readonly PfcDetailed[] = [

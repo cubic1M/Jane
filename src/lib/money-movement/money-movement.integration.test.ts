@@ -8,7 +8,9 @@ vi.mock("@/lib/session", () => ({ requireUser: vi.fn() }));
 vi.mock("@/lib/analytics", () => ({ track: vi.fn() }));
 vi.mock("@/lib/audit", () => ({ logAudit: vi.fn(), SYSTEM_ACTOR: { type: "system", id: null } }));
 
-import { PAYCHECK_CUSHION_CENTS } from "@/config/money-movement";
+import { PAYCHECK_BUFFER_MARGIN_CENTS, PAYCHECK_CUSHION_CENTS } from "@/config/money-movement";
+import { loadDetectionInput } from "@/detection/engine";
+import { forecastAccounts } from "@/detection/forecast";
 import { logAudit } from "@/lib/audit";
 import { setAutopilot } from "@/lib/autopilot";
 import { homeSummary } from "@/lib/home";
@@ -113,6 +115,12 @@ describe.runIf(url)("money that moves itself", { timeout: 120_000 }, () => {
       { type: "money_transfer", id: transfer.id },
       expect.objectContaining({ by: "autopilot", simulated: true }),
     );
+    // Spec step 206: what moved never takes checking's forecast low below the margin.
+    const input = await loadDetectionInput(userId, { client, now: LINKED });
+    const checking = forecastAccounts(input, 30).find((f) => f.accountName.match(/Checking/))!;
+    expect(
+      checking.lowest.balanceCents - plan.moves.reduce((sum, m) => sum + m.cents, 0),
+    ).toBeGreaterThanOrEqual(PAYCHECK_BUFFER_MARGIN_CENTS);
     // Once per paycheck.
     expect((await runPaycheckPlan(userId, { client, now: LINKED }))!.id).toBe(plan.id);
     expect(await client.moneyTransfer.count({ where: { userId } })).toBe(
@@ -151,6 +159,8 @@ describe.runIf(url)("money that moves itself", { timeout: 120_000 }, () => {
       /^Your \$[\d,]+\.\d\d paycheck came in\. Want me to move \$[\d,]+\.\d\d to "Emergency fund"/,
     );
     expect(message.body).toContain("These are sample transfers: no real money moves.");
+    // Spec step 206: one line on where every dollar went.
+    expect(message.body).toMatch(/Where it went: .*yours to spend\./);
     const { message: answered } = await takeChatAction(userId, message.id, "paycheck.move", {
       client,
       now: LINKED,

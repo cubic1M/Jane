@@ -46,6 +46,9 @@ export type EstimateIncome = {
   rentalCents: number;
   retirementCents: number;
   unemploymentCents: number;
+  // Spec step 173: side income that is a hobby: taxed, with no expenses and no
+  // self-employment tax.
+  otherCents?: number;
 };
 
 export const NO_INCOME: EstimateIncome = {
@@ -320,7 +323,8 @@ export function estimateTaxes(input: EstimateInput): TaxEstimate {
     capital.incomeCents +
     inc.rentalCents +
     inc.retirementCents +
-    inc.unemploymentCents;
+    inc.unemploymentCents +
+    (inc.otherCents ?? 0);
   const beforeStudent = totalIncome - halfSe;
   const studentLoan = studentLoanDeduction(input.studentLoanInterestCents, beforeStudent, status);
   const agi = beforeStudent - studentLoan - (input.otherAdjustmentsCents ?? 0);
