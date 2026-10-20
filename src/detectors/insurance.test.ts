@@ -34,6 +34,13 @@ describe("the insurance detectors", () => {
     ["retiree", "medigap"],
     ["family", "insurance_shopping"],
     ["preretire", "umbrella"],
+    ["renter", "insurance_negotiation"],
+    ["family", "insurance_claim"],
+    ["renter", "cover_change"],
+    ["equity", "card_cover"],
+    ["preretire", "employer_benefits"],
+    ["retiree", "policy_documents"],
+    ["freelancer", "auto_insurance"],
   ] as const)("reaches %s with %s", (person, topic) => {
     const [s] = firedFor(person, topic);
     expect(s, `${person} ${topic}`).toBeDefined();
@@ -54,6 +61,15 @@ describe("the insurance detectors", () => {
     ["debt", "auto_insurance"],
     ["owner", "auto_insurance"],
     ["family", "health_insurance"],
+    ["family", "insurance_negotiation"],
+    ["retiree", "insurance_claim"],
+    ["renter", "insurance_claim"],
+    ["family", "cover_change"],
+    ["retiree", "card_cover"],
+    ["debt", "card_cover"],
+    ["retiree", "employer_benefits"],
+    ["freelancer", "employer_benefits"],
+    ["family", "policy_documents"],
   ] as const)("does not reach %s with %s", (person, topic) => {
     expect(firedFor(person, topic)).toEqual([]);
   });
@@ -96,5 +112,54 @@ describe("the insurance detectors", () => {
     expect(s.title).toMatch(/Compare health plans/);
     expect(s.why).toMatch(/Nov 1 to Jan 15/);
     expect(s.urgency).toBe("soon");
+  });
+});
+
+describe("the policy-by-policy detectors in their own words", () => {
+  it("asks for a better rate only when the premium rose", () => {
+    const [s] = firedFor("renter", "insurance_negotiation");
+    expect(s.worthCents).toBe((13_100 - 11_800) * 12);
+    expect(s.why).toMatch(/\$118\.00 to \$131\.00 a month/);
+  });
+
+  it("raises an unclaimed repair after the deductible, urgently", () => {
+    const [s] = firedFor("family", "insurance_claim");
+    expect(s.worthCents).toBe(310_000 - 100_000);
+    expect(s.urgency).toBe("now");
+  });
+
+  it("is quiet about a repair once a claim payout is seen", () => {
+    const data = inputFor("family");
+    data.transactions = [
+      ...data.transactions,
+      {
+        date: "2026-10-10",
+        amountCents: -250_000,
+        description: "STATE FARM CLAIM PAYMENT",
+        pfc: "INCOME_OTHER_INCOME",
+        accountId: data.accounts[0].id,
+      },
+    ];
+    const profile = buildProfile(data);
+    const d = INSURANCE_DETECTORS.find((x) => x.topic === "insurance_claim")!;
+    expect(d.detect({ profile, data })).toBeNull();
+  });
+
+  it("cancels a protection plan a premium card likely covers", () => {
+    const [s] = firedFor("equity", "card_cover");
+    expect(s.worthCents).toBe(1_700 * 12);
+  });
+
+  it("compares private cover with the employer's, up to half", () => {
+    const [s] = firedFor("preretire", "employer_benefits");
+    expect(s.worthCents).toBe(Math.round(11_000 * 12 * 0.5));
+  });
+
+  it("raises an unread policy document only with insurance charges to compare", () => {
+    const [s] = firedFor("retiree", "policy_documents");
+    expect(s.confidence.reason).toMatch(/1 document you uploaded|insurance charges/);
+    const data = { ...inputFor("retiree"), unreadPolicyDocuments: 0 };
+    const d = INSURANCE_DETECTORS.find((x) => x.topic === "policy_documents")!;
+    expect(d.detect({ profile: buildProfile(data), data })).toBeNull();
   });
 });

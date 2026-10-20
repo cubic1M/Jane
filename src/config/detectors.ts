@@ -126,6 +126,19 @@ export const DETECTOR_RATES = {
     estimatedNowDays: 14,
     estimatedSoonDays: 45,
   },
+  // Insurance, the policy-by-policy checks (spec step 259). A renewal is worth a call when
+  // the charge rose by at least this share over the earlier ones.
+  negotiationMinRise: 0.05,
+  negotiationMinCharges: 3,
+  // A repair or loss this big, paid by the person with cover and no payout seen, is worth a
+  // claim; the deductible is a typical one until the real one is known.
+  claimDeductibleCents: 100_000,
+  claimWindowDays: 90,
+  // A move or a car bought this recently means the insurer should be told.
+  coverChangeWindowDays: 60,
+  // An employer usually pays this share of a plan's premium, so a private one costs that
+  // much more than the work plan (stated as "up to").
+  employerPlanShare: 0.5,
   // Urgency scores: now, soon, later.
   urgency: { now: 3, soon: 2, later: 1 },
 } as const;

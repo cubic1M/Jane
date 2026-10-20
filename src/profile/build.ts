@@ -53,6 +53,8 @@ export type ProfileInput = {
   accounts: readonly ProfileAccount[];
   liabilities: readonly ProfileLiability[];
   told: Told;
+  // Policies read from uploaded documents that wait for the person's confirm (spec step 259).
+  unreadPolicyDocuments?: number;
 };
 
 export type FactValue = string | number | boolean | null;

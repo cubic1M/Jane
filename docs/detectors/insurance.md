@@ -88,12 +88,20 @@ eight people by `src/detectors/insurance.test.ts` and the harness:
 | `health_insurance` | AD1 | the self-paid: compare plans, or get one | up to a tenth of the premium, or a hospital stay |
 | `medigap` | AD1 (Medicare) | retired, with a supplement | up to the compare share of the premium |
 | `long_term_care` | X1 (older life stages) | approaching retirement with enough saved | two years of care |
+| `insurance_negotiation` | AD7 (renewals) | a car or home premium whose last charge rose 5% or more | the monthly rise × 12 |
+| `insurance_claim` | X6, AJ4 | a repair of $1,000+ in 90 days, insured, no claim payout seen | the repair less a $1,000 deductible |
+| `cover_change` | AD6 | a move or car purchase in 60 days, with cover charges | contents at risk |
+| `card_cover` | AD4 | a protection plan plus a premium-card fee | the plan's yearly cost |
+| `employer_benefits` | AD2 | salary, an employer, and private life or health charges | half the private premium |
+| `policy_documents` | AD3 | an uploaded policy document waiting to be confirmed | up to a tenth of insurance charges |
 | `life_insurance`, `business_insurance` | X1, AJ6 | already in `home.ts` and `work.ts` | as there |
 
-The rest of this inventory (reshop of a known policy, checkup, claims, renewals, savings
-kinds, household, business gaps, health year, the yearly review) needs the policies
-themselves, which the profile does not carry. They keep running from the insurance lane's
-snapshot; a later step can pass the policies into the profile so they get detectors too.
+Every insurance tool in the registry now has a detector (none are left on
+`src/detectors/missing.ts`). The finer checks inside them (reshop of a known policy,
+household, business gaps, health year, the yearly review) need the policies themselves,
+which the profile does not carry; they keep running from the insurance lane's snapshot.
+The profile input gained `unreadPolicyDocuments` (policy readings waiting for a confirm) for
+`policy_documents`.
 
 ---
 
