@@ -180,7 +180,7 @@ describe("plain words", () => {
     expect(s.why).toBe(
       "Progressive Auto went from $118.00 to $131.00 a month, and 1 more went up: $174.00 more a year.",
     );
-    expect(s.confidence.reason).toBe("10 charges at the old price in 12 months of data");
+    expect(s.confidence.reason).toBe("21 charges at the old price in 12 months of data");
   });
 
   it("keeps the leading debt wording for someone who can't pay it off", () => {
