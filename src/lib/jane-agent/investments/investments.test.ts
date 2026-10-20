@@ -53,6 +53,8 @@ import {
   hsaReply,
   companyStockReply,
   cryptoReply,
+  cashReply,
+  steadyReply,
 } from "./replies";
 import { gather } from "../brain";
 import { parseIntent } from "../intents";
@@ -60,6 +62,7 @@ import type { Snapshot } from "../snapshot";
 import { investmentsSource } from "../sources/investments";
 import { concentration, diversifyPlan } from "@/planning/company-stock";
 import { cryptoFees, cryptoSize } from "@/insights/crypto";
+import { cashPlan } from "@/planning/cash";
 import { holdingsReply, matchAccounts } from "./replies";
 import { INVESTMENT_TOOLS, runInvestmentTool } from "./tools";
 import { CHAT_PAGES, CHAT_TOOLS, proposeAction } from "../claude-tools";
@@ -1819,5 +1822,174 @@ describe("cryptoReply and the crypto messages", () => {
     );
     expect(gatherCrypto(all, false).map((m) => m.dedupeKey)).toEqual(["crypto:seen"]);
     expect(gatherCrypto(demoInvestmentSnapshot().crypto)).toEqual([]);
+  });
+});
+
+// Spec step 162: cash done right.
+const CASH_PLACES = [
+  {
+    id: "chk",
+    name: "Demo Checking",
+    kind: "checking" as const,
+    balanceCents: 384_012,
+    rateBps: 7,
+  },
+  {
+    id: "sav",
+    name: "Demo Savings",
+    kind: "savings" as const,
+    balanceCents: 2_431_000,
+    rateBps: 39,
+  },
+  {
+    id: "brk",
+    name: "Demo Brokerage cash",
+    kind: "sweep" as const,
+    balanceCents: 81_357,
+    rateBps: 50,
+  },
+];
+const CASH_PLAN = {
+  ...cashPlan({
+    places: CASH_PLACES,
+    monthlySpendingCents: 300_000,
+    emergencyTargetCents: 900_000,
+  }),
+  key: "cash-key",
+};
+const CASH_VIEW = {
+  advice: true,
+  places: CASH_PLACES,
+  monthlySpendingCents: 300_000,
+  emergencyTargetCents: 900_000,
+  emergencyFromGoal: false,
+  plan: CASH_PLAN,
+};
+
+describe("cash questions, by rules", () => {
+  it.each([
+    "where should i keep my cash",
+    "should I open a high yield savings account",
+    "money market",
+    "treasury ladder",
+    "are t-bills worth it",
+    "is my savings earning enough",
+  ])("reads %j as cash", (text) => {
+    expect(parseIntent(text, ASOF)).toMatchObject({ kind: "investments", topic: "cash" });
+  });
+});
+
+describe("cashReply and the cash message", () => {
+  it("gives the plan with what it earns, the emergency fund in reach, and a tap per move", () => {
+    const reply = cashReply(CASH_VIEW);
+    expect(reply.body).toBe(
+      "Your cash is $28,963.69 and earns about $101.57 a year. Keeping $3,000.00 in checking, the $9,000.00 emergency fund in high-yield savings (in reach within 3 days) and the other $16,963.69 in a money market fund would earn about $1,074.57: $973.00 more a year at stand-in rates.",
+    );
+    expect(reply.actions.map((a) => [a.id, a.label])).toEqual([
+      ["cash.to_savings", "Move $840.12 to savings"],
+      ["cash.to_money_market", "Put $813.57 in a money market fund"],
+      ["open", "See your cash"],
+    ]);
+    expect(reply.refs).toEqual({ advice: true, cashPlan: "cash-key" });
+  });
+
+  it("gives only the facts outside demo advice mode", () => {
+    const reply = cashReply({ ...CASH_VIEW, advice: false });
+    expect(reply.body).toMatch(/^Your cash: \$3,840\.12 in Demo Checking, /);
+    expect(reply.actions.map((a) => a.id)).toEqual(["open"]);
+    expect(reply.refs).toEqual({});
+  });
+
+  it("posts the plan with its taps when it earns enough more, once per plan", () => {
+    const gatherCash = (plan: InvestmentSnapshot["cash"]["plan"], advice = true) =>
+      investmentsSource
+        .gather(
+          { ...base, investments: demoInvestmentSnapshot({ advice, cash: { plan } }) },
+          {} as never,
+        )
+        .filter((c) => c.dedupeKey.startsWith("cash:"));
+    const [message] = gatherCash(CASH_PLAN);
+    expect(message).toMatchObject({
+      kind: "decision",
+      dedupeKey: "cash:cash-key",
+      refs: { advice: true, cashPlan: "cash-key" },
+      priority: MESSAGE_PRIORITY.cash,
+    });
+    expect(message.body).toMatch(/nothing moves until you say so\.$/);
+    expect(gatherCash({ ...CASH_PLAN, moves: [] })[0]).toMatchObject({
+      kind: "heads_up",
+      refs: { advice: true },
+    });
+    expect(gatherCash({ ...CASH_PLAN, gainCents: 4_999 })).toEqual([]);
+    expect(gatherCash(CASH_PLAN, false)).toEqual([]);
+  });
+});
+
+// Spec step 163: a steady hand.
+const STEADY_DROP = { key: "1m", windowLabel: "the last month", rate: -0.1 };
+const dropPeriods = (r: number) => [
+  {
+    key: "1m" as const,
+    label: "Last month",
+    from: "",
+    to: "",
+    startCents: 0,
+    endCents: 0,
+    timeWeighted: r,
+    moneyWeighted: null,
+    benchmark: null,
+    paidInCents: 0,
+    incomeCents: 0,
+  },
+];
+
+describe("steady hand questions, by rules", () => {
+  it.each([
+    "should I sell everything",
+    "the market is crashing",
+    "why are my investments down",
+    "I want to get out of the market",
+  ])("reads %j as a steady-hand question", (text) => {
+    expect(parseIntent(text, ASOF)).toMatchObject({ kind: "investments", topic: "steady" });
+  });
+});
+
+describe("steadyReply and the drop message", () => {
+  it("answers with what changed, the goals' timelines and the plan, never a prediction", () => {
+    const reply = steadyReply({ advice: true, drop: STEADY_DROP, buckets: [] });
+    expect(reply.body).toMatch(/^Your investments are down 10\.0% over the last month/);
+    expect(reply.body).toMatch(/I can't tell you what markets will do/);
+    expect(reply.refs).toEqual({ advice: true });
+    expect(steadyReply({ advice: true, drop: null, buckets: [] }).body).toMatch(
+      /haven't had a big drop lately/,
+    );
+    expect(steadyReply({ advice: false, drop: STEADY_DROP, buckets: [] }).body).toMatch(
+      /don't give recommendations on real accounts/,
+    );
+  });
+
+  it("posts one calm message per month while a drop is on, in demo advice mode only", () => {
+    const gatherSteady = (r: number, advice = true) =>
+      investmentsSource
+        .gather(
+          {
+            ...base,
+            investments: demoInvestmentSnapshot({
+              advice,
+              returns: { asOf: ASOF, simulatedPrices: true, periods: dropPeriods(r) },
+            }),
+          },
+          {} as never,
+        )
+        .filter((c) => c.dedupeKey.startsWith("steady:"));
+    const [m] = gatherSteady(-0.1);
+    expect(m).toMatchObject({
+      kind: "heads_up",
+      dedupeKey: "steady:1m:2026-10",
+      priority: MESSAGE_PRIORITY.steady_hand,
+    });
+    expect(m.actions.map((a) => a.id)).toEqual(["open", "snooze"]);
+    expect(gatherSteady(-0.05)).toEqual([]);
+    expect(gatherSteady(-0.1, false)).toEqual([]);
   });
 });

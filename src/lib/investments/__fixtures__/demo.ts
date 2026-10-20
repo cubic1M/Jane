@@ -90,6 +90,7 @@ export function demoInvestmentSnapshot(over: Partial<InvestmentSnapshot> = {}): 
     goalBuckets: { byHerself: false, buckets: null },
     college: { children: 0, plans: 0 },
     hsa: { account: null, plan: null, savedCents: 0, demo: true, receipts: 0 },
+    cash: { plan: null },
     // No crypto connected.
     crypto: {
       size: { totalCents: 0, share: 0, overShare: false, gainCents: null },
