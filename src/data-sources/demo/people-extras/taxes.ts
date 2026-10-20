@@ -1,0 +1,60 @@
+import type { PersonId } from "@/config/people";
+import type { PersonExtra, Recurring } from "../demo-people";
+
+// What the taxes lane adds to the sample people's lives so its detectors (src/detectors) have
+// signals to find. Add entries to a person's list; use keys unique to this lane (prefix them
+// "taxes-"). Don't edit ../demo-people.ts. Every sample person's written lists are in
+// src/config/people.ts; a detector must fire for the people it is for and for no one on a
+// must-not list.
+
+// Property tax, paid to the county in two instalments (April and December).
+const propertyTax = (dollars: number): Recurring => ({
+  key: "taxes-property-tax",
+  account: "checking",
+  name: "COUNTY TAX COLLECTOR PROPERTY TAX",
+  merchant: "County Tax Collector",
+  category: "GOVERNMENT_AND_NON_PROFIT_TAX_PAYMENT",
+  amount: dollars,
+  days: [10],
+  months: [4, 12],
+});
+
+// A gift to a charity: a single one big enough to need the charity's written receipt.
+const gift = (key: string, name: string, dollars: number, offset: number): PersonExtra => ({
+  once: [
+    {
+      key,
+      account: "checking",
+      name,
+      merchant: name,
+      category: "GOVERNMENT_AND_NON_PROFIT_DONATIONS",
+      amount: dollars,
+      offsets: [offset],
+    },
+  ],
+});
+
+export const TAXES_EXTRAS: Partial<Record<PersonId, PersonExtra>> = {
+  // The Reyes family: a mortgage, property tax and a year-end gift.
+  family: {
+    monthly: [propertyTax(2900)],
+    ...gift("taxes-gift", "UNITED WAY", 300, -45),
+  },
+  // Priya: a big house, a gift of stock-sale proceeds, and a bond fund bought when rates were
+  // lower, now worth less than she paid, in her taxable account.
+  equity: {
+    monthly: [propertyTax(6800)],
+    ...gift("taxes-gift", "AMERICAN RED CROSS", 1000, -60),
+    positions: [{ account: "brokerage", key: "KTBIX", quantity: 1500, basis: 19000 }],
+  },
+  // Dan and Lena: a nearly paid-off home, property tax, a gift.
+  preretire: {
+    monthly: [propertyTax(3600)],
+    ...gift("taxes-gift", "HABITAT FOR HUMANITY", 500, -30),
+  },
+  // Ruth owns her home outright and gives to her church.
+  retiree: {
+    monthly: [propertyTax(2400)],
+    ...gift("taxes-gift", "ST MARKS CHURCH", 400, -20),
+  },
+};

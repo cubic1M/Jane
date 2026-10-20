@@ -371,3 +371,40 @@ describe("reminders", () => {
     expect(deadlineAlerts([renewal, payment, trial], AS_OF).map((a) => a.key)).toEqual([trial.key]);
   });
 });
+
+// Spec step 263 (QA sweep): a tax payment isn't a renewal deadline either.
+describe("renewal deadlines and taxes", () => {
+  const run = (data: DetectionInput) => renewalDeadlines(data, buildStreams(data));
+  const yearly = (merchantName: string, pfcPrimary: string, pfcDetailed: string) =>
+    input({
+      recurringStreams: [
+        plaidStream({
+          id: merchantName,
+          plaidStreamId: merchantName,
+          merchantName,
+          frequency: "ANNUALLY",
+          lastAmountCents: 119_200,
+          lastDate: addDays(AS_OF, -340),
+          predictedNextDate: addDays(AS_OF, 25),
+          pfcPrimary,
+          pfcDetailed,
+        }),
+      ],
+    });
+  it("leaves out the State Dept of Revenue and keeps Adobe", () => {
+    expect(
+      run(
+        yearly(
+          "State Dept of Revenue",
+          "GOVERNMENT_AND_NON_PROFIT",
+          "GOVERNMENT_AND_NON_PROFIT_TAX_PAYMENT",
+        ),
+      ),
+    ).toEqual([]);
+    expect(
+      run(yearly("Adobe", "GENERAL_SERVICES", "GENERAL_SERVICES_OTHER_GENERAL_SERVICES")).map(
+        (d) => d.title,
+      ),
+    ).toEqual(["Adobe renews"]);
+  });
+});

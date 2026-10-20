@@ -1,4 +1,7 @@
+import { DEBT_DETECTOR_RATES as D } from "@/config/detectors-debt";
+import { PROCESSOR_FEE_PAYEE } from "@/config/detection";
 import { DETECTOR_RATES as R } from "@/config/detectors";
+import { emergencyTarget } from "@/planning/emergency-fund";
 import { formatCents } from "@/lib/money";
 import { type Detector, suggestionId } from "./contract";
 import {
@@ -71,9 +74,10 @@ const bankFees: Detector = {
     const fees = tx(
       data,
       (t) =>
-        t.pfc === "BANK_FEES_OVERDRAFT_FEES" ||
-        t.pfc === "BANK_FEES_INSUFFICIENT_FUNDS" ||
-        t.pfc === "BANK_FEES_ATM_FEES",
+        (t.pfc === "BANK_FEES_OVERDRAFT_FEES" ||
+          t.pfc === "BANK_FEES_INSUFFICIENT_FUNDS" ||
+          t.pfc === "BANK_FEES_ATM_FEES") &&
+        !PROCESSOR_FEE_PAYEE.test(t.description),
     );
     if (fees.length < R.feesMin) return null;
     const total = outCents(fees);
@@ -134,8 +138,15 @@ const cardInterest: Detector = {
       worthKind: "saves",
       confidence: evidence("seen", profile.months, charges.length, "interest charges"),
       urgency: "soon",
-      why: `You paid ${formatCents(total)} in card interest over ${profile.months} months; paying the balance off ends it.`,
-      action: { label: "Plan the payoff", href: "/debt" },
+      ...(profile.facts.debt_trouble.value === true
+        ? { rankCents: Math.round(total * D.troubleDiscount) }
+        : {}),
+      why: `You paid ${formatCents(total)} in card interest over ${profile.months} months; ${
+        profile.facts.debt_trouble.value === true
+          ? "a payoff plan that starts with the highest rate stops it, a card at a time"
+          : "paying the balance off ends it"
+      }.`,
+      action: { label: "Cut your card interest", href: "/loans/interest" },
     };
   },
 };
@@ -173,26 +184,44 @@ const emergencyFund: Detector = {
   detect({ profile, data }) {
     const spend = monthlySpendCents(data, profile.months);
     const pattern = profile.facts.income_pattern;
-    const months =
-      pattern.value === "uneven" || pattern.value === "business"
-        ? R.emergencyMonthsUneven
-        : R.emergencyMonthsSteady;
-    const need = spend * months;
-    const short = need - liquidCents(data);
-    if (spend === 0 || short <= 0) return null;
+    const trouble = profile.facts.debt_trouble;
+    const incomeFact = profile.facts.monthly_income;
+    // Sized for this person (src/planning/emergency-fund.ts): more when pay moves around, a
+    // small starter buffer in debt trouble, the spending gap for a pension, never one size.
+    const target = emergencyTarget({
+      spendingCents: spend,
+      incomeCents: typeof incomeFact.value === "number" ? incomeFact.value : null,
+      pattern: typeof pattern.value === "string" ? pattern.value : null,
+      debtTrouble: trouble.value === true,
+    });
+    if (!target) return null;
+    const short = target.targetCents - liquidCents(data);
+    if (short <= 0) return null;
+    const starter = target.kind === "starter";
+    const gap = target.kind === "gap";
     return {
       id: suggestionId("safe_to_spend", "emergency_fund"),
       capability: "safe_to_spend",
       topic: "emergency_fund",
-      title: "Build a cushion for emergencies",
+      title: starter
+        ? "Put a small starter buffer aside before you tackle the debt"
+        : gap
+          ? "Keep cash for the gap between your income and your spending"
+          : "Build a cushion for emergencies",
       worthCents: short,
       worthKind: "risk",
       confidence: weakest([
         evidence("seen", profile.months, data.accounts.length, "accounts"),
         factEvidence(pattern),
+        ...(starter ? [factEvidence(trouble)] : []),
+        ...(gap ? [factEvidence(incomeFact)] : []),
       ]),
       urgency: "soon",
-      why: `You spend about ${formatCents(spend)} a month and keep ${formatCents(liquidCents(data))} in cash; ${months} months is ${formatCents(need)}.`,
+      why: starter
+        ? `Your cash is ${formatCents(liquidCents(data))} and your debts are the priority, so start with a ${formatCents(target.targetCents)} buffer so a surprise doesn't go on a card; then the debt plan.`
+        : gap
+          ? `You spend about ${formatCents(spend)} a month against ${formatCents(Number(incomeFact.value))} coming in, a gap of ${formatCents(spend - Number(incomeFact.value))}; ${target.months} months of it is ${formatCents(target.targetCents)}, and you keep ${formatCents(liquidCents(data))}.`
+          : `You spend about ${formatCents(spend)} a month and keep ${formatCents(liquidCents(data))} in cash; ${target.months} months is ${formatCents(target.targetCents)}.`,
       action: { label: "Set a savings goal", href: "/goals" },
     };
   },
@@ -220,7 +249,7 @@ const highCostLoans: Detector = {
       confidence: evidence("seen", profile.months, payments.length, "cash-advance repayments"),
       urgency: "now",
       why: `You repaid ${formatCents(repaid)} in cash-advance loans in ${profile.months} months; their fees are typically about a quarter of that.`,
-      action: { label: "See cheaper options", href: "/debt" },
+      action: { label: "See cheaper options", href: "/loans/costly" },
     };
   },
 };
@@ -243,6 +272,7 @@ const debtPlan: Detector = {
       worthKind: "saves",
       confidence: factEvidence(trouble),
       urgency: "now",
+      rankCents: Math.round(interest * D.troublePlanRank),
       why: `Your cards hold ${formatCents(profile.facts.card_debt_cents.value as number)} and cost you ${formatCents(interest)} in interest a year.`,
       action: { label: "Plan the payoff", href: "/debt" },
     };
@@ -267,8 +297,9 @@ const hardshipPlan: Detector = {
       worthKind: "risk",
       confidence: factEvidence(trouble),
       urgency: "now",
+      rankCents: Math.round(costs * D.troubleHardshipRank),
       why: `Fees and interest cost you ${formatCents(costs)} in ${profile.months} months. Lenders often lower rates or waive fees for people who ask.`,
-      action: { label: "Ask for a hardship plan", href: "/debt" },
+      action: { label: "See your options", href: "/loans/help" },
     };
   },
 };

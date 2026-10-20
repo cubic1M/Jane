@@ -122,6 +122,50 @@ Capability `debt`, topic `pmi_removal` (`src/detectors/home.ts`).
 On the sample people it fires only for the Reyes family (the one with PMI); the harness
 confirms it does not fire for the renter, the retiree or anyone else.
 
+## The nightly scan (step 255)
+
+The controller's `suggestions` step runs `scanSuggestions` (`src/lib/suggestions.ts`) for each
+person: every detector, ranked by dollars x confidence x urgency (risk avoided counts for a
+fraction of a saving), adjusted by what the person said yes and no to before and by step 207's
+results. The top three (`SUGGESTIONS_PER_DAY`) are offered in the chat; the rest wait and are
+ranked again tomorrow. Nothing is offered again after a no. Recommendations on investments,
+taxes, insurance and loans (`ADVICE_TOPICS`) are only for demo advice mode.
+
+## Claude as strategist (step 256)
+
+Once a week `runStrategist` (`src/lib/strategist.ts`) lets Claude look at the profile and every
+detector's result and propose combinations. An idea must rest on two to four real suggestions
+(by key), every dollar figure must come from a tool result, it passes the guardrails (the
+`demo_advice` profile in advice mode) and it ends in those suggestions' buttons. Its confidence
+is the weakest part's. Ideas are tagged `capability: "strategist"`. Without a key nothing is
+proposed; the run counts toward the same daily cost cap as the chat.
+
+## The one question worth asking (step 257)
+
+When a detector could fire but needs a fact the data cannot show (does the job match the
+401(k)? how old are you?), `nextQuestion` (`src/lib/questions.ts`) scores each missing fact by
+what an answer could unlock (`src/profile/questions.ts`, typical rates in
+`src/config/questions.ts`; the figures only order the questions and are never shown as a claim)
+and asks the best one in the chat, one at a time, with tap answers and a Skip. The answer goes
+into the profile as a told fact (100%), the same path as a correction on `/profile`. A question
+is asked once: answered, skipped, or already put to them, never again. To add one: a fact in
+`src/profile/facts.ts`, an entry in `QUESTIONS`, an `unlockOf` case, and the detector that
+needs it lists the fact in `needs`.
+
+## The reach scoreboard (step 258)
+
+`/admin/reach` shows, for each sample person, what fired and what it was worth, which
+capabilities reach whom, and, in totals only, what real people and Try Jane people were offered
+and said yes and no to. Confidence is checked for honesty: of the suggestions Jane was about 80%
+sure of, about 80% should be said yes to (`src/planning/calibration.ts`); a detector that runs
+high or low by 15 points over at least 10 answers is listed so it can be corrected.
+
+The unit tests run on every CI run, the nightly one included: `src/detectors/reach.test.ts`
+fails on a new wrong suggestion, or a person losing a right one (`src/detectors/baseline.ts`
+is each person's suggestions today; update it on purpose and say why in the PR), and for a
+capability that reaches no sample person and is not listed in `UNREACHABLE`
+(`src/config/reach.ts`).
+
 ## Where it is going
 
 - Step 255 runs every detector for everyone each night and ranks by

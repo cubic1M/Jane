@@ -840,6 +840,12 @@ const BASE_QUESTIONS: readonly CheckQuestion[] = [
     expect: { intent: "tax", mentions: /link/, list: true },
   },
   {
+    id: "tax-31",
+    text: "what's happening with my taxes this month",
+    needs: "rules",
+    expect: { intent: "tax", mentions: /tax calendar for/, list: true },
+  },
+  {
     id: "ins-1",
     text: "what insurance do I have",
     needs: "rules",
@@ -1463,6 +1469,20 @@ const BASE_QUESTIONS: readonly CheckQuestion[] = [
     text: "are there any discounts on my insurance",
     needs: "rules",
     expect: { intent: "insurance", mentions: /autopay/i, list: true, maxChars: 1_100 },
+  },
+
+  // Claim or pay yourself (spec step 199): the payout is a fact; the comparison is demo advice.
+  {
+    id: "claim-1",
+    text: "is it worth claiming a $1,200 repair on my car",
+    needs: "rules",
+    expect: { intent: "insurance", mentions: /deductible/i, maxChars: 700 },
+  },
+  {
+    id: "claim-2",
+    text: "should I file a claim for $300 of damage",
+    needs: "rules",
+    expect: { intent: "insurance", mentions: /under your .* deductible/i, maxChars: 700 },
   },
 
   // Outside what Jane does: brief, and never advice.

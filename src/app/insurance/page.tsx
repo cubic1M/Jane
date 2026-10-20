@@ -5,7 +5,14 @@ import { AppHeader } from "@/components/app-header";
 import { DemoAdviceLabel } from "@/components/demo-advice-label";
 import { ViewTracker } from "@/components/view-tracker";
 import { PREMIUM_FREQUENCIES } from "@/config/documents";
-import { HOUSING, POLICY_SOURCE_LABELS, RENEWAL_SOON_DAYS, isPolicyKind } from "@/config/insurance";
+import {
+  HOUSEHOLD_RELATIONS,
+  HOUSING,
+  POLICY_KINDS,
+  POLICY_SOURCE_LABELS,
+  RENEWAL_SOON_DAYS,
+  isPolicyKind,
+} from "@/config/insurance";
 import { daysBetween } from "@/detection/units";
 import { checkGuardrails } from "@/lib/guardrails";
 import { coverageLines } from "@/lib/insurance/coverage";
@@ -26,6 +33,7 @@ import { listCoverChanges } from "@/lib/insurance/cover-changes";
 import { listNegotiations } from "@/lib/insurance/negotiate";
 import { refreshSavings } from "@/lib/insurance/savings";
 import { listRisks, refreshRisks } from "@/lib/insurance/risks";
+import { loadFamily } from "@/lib/insurance/family";
 import { riskQuestion } from "@/lib/jane-agent/insurance/risk-words";
 import { lowering, savingLine } from "@/lib/jane-agent/insurance/saving-words";
 import { askCallBody, callResultBody } from "@/lib/jane-agent/insurance/done-by-jane-words";
@@ -37,6 +45,10 @@ import { requireUser } from "@/lib/session";
 import { autopilotOf } from "@/lib/autopilot";
 import { autopilotReply } from "@/lib/jane-agent/insurance/autopilot";
 import {
+  addPersonForm,
+  removePersonForm,
+  setCoveredForm,
+  setSharedForm,
   answerRiskForm,
   applyChanges,
   applyOneSaving,
@@ -53,6 +65,9 @@ import { HouseholdForm, PolicyForm } from "./forms";
 // and the gaps, in plain words. Every figure comes from a policy record.
 
 const LINK = "font-medium text-emerald-700 hover:underline";
+const kindName = (kind: keyof typeof POLICY_KINDS) => POLICY_KINDS[kind].toLowerCase();
+const INPUT =
+  "h-11 min-w-0 rounded-lg border border-zinc-300 bg-transparent px-3 text-base dark:border-zinc-700";
 
 const SAVED: Record<string, string> = {
   added: "Added to your insurance.",
@@ -202,6 +217,9 @@ async function InsuranceContent({
   ]);
   // Spec step 196: looked at again whenever the page opens.
   const savings = await refreshSavings(user.id);
+  // Spec step 198: the household's cover, what's shared with them and who is covered.
+  const family = await loadFamily(user.id);
+  const familyError = one("family");
   // Spec step 197: the questions about how they live, read from their payments.
   await refreshRisks(user.id);
   const risks = await listRisks(user.id, { status: "asked" });
@@ -270,6 +288,145 @@ async function InsuranceContent({
           {saved}
         </p>
       )}
+
+      <section id="household" className="flex flex-col gap-3" aria-labelledby="household-heading">
+        <h2 id="household-heading" className="text-xl font-semibold">
+          Your household&apos;s cover
+        </h2>
+        <p className="text-sm text-zinc-600 dark:text-zinc-400">
+          Who is covered by what. A partner in your household sees only the policies you choose to
+          share, and only to read.
+        </p>
+        {familyError && (
+          <p role="alert" className="text-red-700 dark:text-red-400">
+            {familyError}
+          </p>
+        )}
+        <ul className="flex flex-col gap-2 text-sm">
+          {family.rows.map((row) => (
+            <li
+              key={row.name}
+              className="rounded-xl border border-zinc-200 p-3 dark:border-zinc-800"
+            >
+              <span className="font-medium">{row.name}</span>
+              {row.relation !== "you" && row.relation !== "spouse" && (
+                <span className="text-zinc-600 dark:text-zinc-400">
+                  {" "}
+                  ({HOUSEHOLD_RELATIONS[row.relation].toLowerCase()})
+                </span>
+              )}
+              :{" "}
+              {row.policies.length > 0
+                ? row.policies
+                    .map(
+                      (p) =>
+                        `${p.carrier} ${kindName(p.kind)}${p.owner === "You" ? "" : ` (${p.owner}'s)`}`,
+                    )
+                    .join(", ")
+                : "no policy on file"}
+              {family.people.some((p) => p.name === row.name) && (
+                <form action={removePersonForm} className="mt-1 inline-block pl-2">
+                  <input type="hidden" name="name" value={row.name} />
+                  <button type="submit" className={`text-xs ${LINK}`}>
+                    Remove
+                  </button>
+                </form>
+              )}
+            </li>
+          ))}
+        </ul>
+        {family.healthPlans.length > 1 && (
+          <div className="rounded-xl border border-zinc-200 p-3 text-sm dark:border-zinc-800">
+            <p className="font-medium">Health plans for the whole household, a year</p>
+            <ul>
+              {family.healthPlans.map((r) => (
+                <li key={r.policyId}>
+                  {r.label}: about {formatCents(r.familyYearlyCents)}
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+        <details className="text-sm">
+          <summary className={`cursor-pointer ${LINK}`}>
+            Add someone, or choose what to share
+          </summary>
+          <form action={addPersonForm} className="mt-3 flex flex-wrap items-end gap-3">
+            <label className="flex flex-col gap-1 font-medium" htmlFor="person-name">
+              Name
+              <input id="person-name" name="name" className={INPUT} />
+            </label>
+            <label className="flex flex-col gap-1 font-medium" htmlFor="person-relation">
+              Who they are to you
+              <select id="person-relation" name="relation" className={INPUT} defaultValue="child">
+                {Object.entries(HOUSEHOLD_RELATIONS).map(([k, label]) => (
+                  <option key={k} value={k}>
+                    {label}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="flex flex-col gap-1 font-medium" htmlFor="person-age">
+              Age
+              <input id="person-age" name="age" inputMode="numeric" className={`${INPUT} w-20`} />
+            </label>
+            <label className="flex items-center gap-2 pb-3 font-medium">
+              <input type="checkbox" name="driver" /> Drives
+            </label>
+            <button
+              type="submit"
+              className="inline-flex h-11 items-center rounded-full bg-emerald-700 px-5 font-semibold text-white"
+            >
+              Add them
+            </button>
+          </form>
+          <ul className="mt-3 flex flex-col gap-2">
+            {policies
+              .filter((p) => p.status === "active")
+              .map((p) => {
+                const mine = family.policies.find((f) => f.id === p.id);
+                return (
+                  <li
+                    key={p.id}
+                    className="rounded-xl border border-zinc-200 p-3 dark:border-zinc-800"
+                  >
+                    <span className="font-medium">
+                      {p.carrier} {kindName(p.kind)}
+                    </span>
+                    <form action={setSharedForm} className="inline-block pl-3">
+                      <input type="hidden" name="policyId" value={p.id} />
+                      <input
+                        type="hidden"
+                        name="shared"
+                        value={p.sharedWithHousehold ? "no" : "yes"}
+                      />
+                      <button type="submit" className={LINK}>
+                        {p.sharedWithHousehold ? "Shared: stop sharing" : "Share with my household"}
+                      </button>
+                    </form>
+                    {family.people.map((person) => {
+                      const covers = (mine?.covered ?? []).some((c) => c.name === person.name);
+                      return (
+                        <form
+                          key={person.name}
+                          action={setCoveredForm}
+                          className="inline-block pl-3"
+                        >
+                          <input type="hidden" name="policyId" value={p.id} />
+                          <input type="hidden" name="name" value={person.name} />
+                          <input type="hidden" name="covered" value={covers ? "no" : "yes"} />
+                          <button type="submit" className={LINK}>
+                            {covers ? `Covers ${person.name}: remove` : `Add ${person.name}`}
+                          </button>
+                        </form>
+                      );
+                    })}
+                  </li>
+                );
+              })}
+          </ul>
+        </details>
+      </section>
 
       {risks.length > 0 && (
         <section id="risks" className="flex flex-col gap-3" aria-labelledby="risks-heading">

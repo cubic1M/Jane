@@ -29,7 +29,7 @@ export type Suggestion = {
   // "<capability>:<topic>": stable, so the same suggestion is never shown twice after a no.
   id: string;
   capability: string;
-  topic: SuggestionTopic;
+  topic: SuggestionTopic | "strategist";
   // One sentence: what Jane suggests.
   title: string;
   worthCents: number;
@@ -40,6 +40,12 @@ export type Suggestion = {
   why: string;
   // The button: where it goes (a page or a registered chat action).
   action: { label: string; href: string };
+  // A strategist idea (step 256) combines several detectors' suggestions: their ids, and
+  // every button they offer. Detectors leave both out.
+  parts?: string[];
+  // What ranking counts it for, in cents: its parts' worth, risk at its reduced weight.
+  rankCents?: number;
+  more?: { label: string; href: string }[];
 };
 
 export type DetectorContext = { profile: Profile; data: ProfileInput };

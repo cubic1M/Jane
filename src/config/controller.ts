@@ -11,6 +11,8 @@ export const CONTROLLER_STEPS = [
   "goals",
   // Spec step 144: transfers that went through, and paychecks' plans.
   "money",
+  // Spec step 255: every detector for the person, ranked; the best few reach them.
+  "suggestions",
 ] as const;
 export type ControllerStep = (typeof CONTROLLER_STEPS)[number];
 
@@ -23,6 +25,7 @@ export const CONTROLLER_STEP_LABELS: Record<ControllerStep, string> = {
   investing: "Investing",
   goals: "Goals and budgets",
   money: "Money moves",
+  suggestions: "Suggestions for you",
 };
 
 // One person's run stops starting new steps after this long; the rest wait for the next

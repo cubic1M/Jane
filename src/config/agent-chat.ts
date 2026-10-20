@@ -46,8 +46,12 @@ export const CHAT_SOURCE_LIMITS: Readonly<Record<string, number>> = {
   attention: 1,
   // Spec step 204.
   lean: 1,
+  // Spec step 255: the top few suggestions of the day (src/config/suggestions.ts).
+  suggestions: 3,
   // Spec step 240.
   steady: 1,
+  // Spec step 257: one question about the person at a time.
+  questions: 1,
   // Spec step 208.
   unusual: 2,
   // Spec step 148.
@@ -161,8 +165,12 @@ export const MESSAGE_PRIORITY = {
   attention: 30,
   // Spec step 204: income stopped; right after urgent things.
   lean: 92,
+  // Spec step 255: what Jane worked out for this person, just below a finding to decide.
+  suggestions: 58,
   // Spec step 240: a steady paycheck, once a month.
   steady: 86,
+  // Spec step 257: a question that unlocks suggestions, after those it would unlock.
+  questions: 36,
   // Spec step 208: a charge that may not be theirs; as urgent as an alert.
   unusual: 95,
   // Spec step 148: the monthly money report, once a month, after what needs the person.

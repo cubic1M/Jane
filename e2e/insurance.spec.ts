@@ -358,3 +358,28 @@ test("a demo-bank person answers a question about how they live, and a yes opens
   await page.goto("/insurance");
   await expect(page.getByText("Do you have a boat?")).toHaveCount(0);
 });
+
+test("a person lists their household and sees who is covered by what (step 198)", async ({
+  context,
+  page,
+  baseURL,
+}) => {
+  const user = await signedInUser("user");
+  userId = user.userId;
+  await context.addCookies([
+    { name: "authjs.session-token", value: user.sessionToken, url: baseURL ?? "" },
+  ]);
+  await page.goto("/insurance");
+  const household = page.getByRole("region", { name: "Your household's cover" });
+  await expect(household.getByText("You: no policy on file")).toBeVisible();
+  await household.getByText("Add someone, or choose what to share").click();
+  await household.getByLabel("Name").fill("Sam");
+  await household.getByLabel("Who they are to you").selectOption("child");
+  await household.getByLabel("Age").fill("16");
+  await household.getByLabel("Drives").check();
+  await household.getByRole("button", { name: "Add them" }).click();
+  await expect(household.getByText("Sam", { exact: false }).first()).toBeVisible();
+  await expect(household.getByText(/no policy on file/).nth(1)).toBeVisible();
+  // No car policy covers a 16-year-old driver: a gap, with the usual "I don't need it".
+  await expect(page.getByRole("heading", { name: "Sam isn't on a car policy" })).toBeVisible();
+});

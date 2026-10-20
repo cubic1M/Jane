@@ -163,3 +163,49 @@ Security benefit taxation timing for C and T; payroll tax filings and S-corporat
 B; the earned income credit as a prompt for D (the engine computes it, but nothing brings it up on
 its own); a student loan interest deduction prompt for R. Each is worth noting for the people
 checks in step 252, but none is a detector to build in this phase.
+
+## What step 261 built, and what it could not
+
+Detectors are pure over a person's profile and rows (`ProfileInput`: transactions, accounts,
+liabilities, what they told Jane), so a capability gets a detector only where those rows show
+the signal. In `src/detectors/taxes.ts`, all under the `taxes` capability:
+
+| Topic | From the inventory | Fires for (sample people) | Value | Urgency |
+|---|---|---|---|---|
+| `withholding_gap` | Crypto and equity pay (219): RSU flat withholding | H | vested stock × (marginal rate − 22%) | soon from October |
+| `roth_conversion` | Multi-year moves (220) | C, T | 10% of pre-tax balance × (22% − 12%) | soon from November |
+| `childcare_tax_break` | Family taxes (169), ways to pay less (122) | F | FSA at marginal + payroll tax, less the credit | later |
+| `identity_ip_pin` | Identity protection (218) | everyone paid, January 1 to April 15 only | the average refund a thief takes | soon |
+| `year_end_moves` | Tax calendar (223) and tax plan (167): the December message | R, F, H, C with a workplace plan, from November 15 only | unused 401(k) room (assumed a quarter of the limit) × marginal rate; confidence capped at 50% | soon, now from December 10 |
+| `estimated_taxes` (already in `work.ts`) | Estimated payments (223) | L, B | penalty on unpaid tax | now within 14 days of a quarter date, soon within 45, else later |
+
+The date is `profile.today`, so the harness and tests set it; nothing reads a clock. Every
+percentage is the weakest of the facts and counts behind it, and where a figure rests on an
+assumption (no vest schedule, future income) the percentage is capped for it and the reason says
+so. Rates are in `DETECTOR_RATES.tax`; the dated brackets, limits and payroll tax come from
+`src/config/tax-rates.ts`.
+
+**Added later in step 261** (also in `src/detectors/taxes.ts`): `charity_receipts` (gifts of $250 or
+more need the charity's receipt; covers giving, records and tags), `property_tax_check` (property
+tax paid, with the 7% appeal gap as the stake; covers property and home), `tax_loss_harvest` (a
+taxable account below cost; covers investments, and `ProfileInput` now carries `holdings` with
+cost basis) and `file_return` (January 15 to April 15; covers return and forms). The sample
+people got the rows they need in `people-extras/taxes.ts`: property tax for the family, Priya,
+Dan and Lena and Ruth, a gift each for those four, and a bond fund bought above today's price in
+Priya's brokerage.
+
+**Tools with no detector, and why** (`TOOL_EXEMPT` in `src/config/detector-exempt.ts`): the tax
+profile (shows and sets answers), refunds (the plan arrives when a deposit lands), states (needs
+the person to say they moved), the last return and notices (react to an upload) and the accountant
+(a link is a credential, so Jane never makes one by herself).
+
+**Seasonal detectors never fire on the sample date** (October 17): `identity_ip_pin` and
+`file_return` run in January to April, `year_end_moves` from November 15. The tests set the date
+to prove them.
+
+The tax calendar (223) is covered by the detectors for its dated tasks: `identity_ip_pin` (January)
+and `estimated_taxes` (each quarter), both urgent as their date nears. Its December year-end
+message is covered by `year_end_moves` for the one move a profile can show (a workplace plan's
+room); the losses to harvest and gifts in the same message need rows the sample people lack (above). The accountant link (222) shares what the others find, so it
+takes no detector of its own; the accountant's "people usually bring one" message is derived from the factors the other detectors
+already see, and has no dollar value.
