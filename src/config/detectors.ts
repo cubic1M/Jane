@@ -68,6 +68,30 @@ export const DETECTOR_RATES = {
   paydayFeeShare: 0.25,
   // Income that moves around by this much month to month is worth smoothing.
   smoothingMinMonthlySwingShare: 0.3,
+  // Insurance (spec step 259). The yearly cost avoided if the cover is missing when it is
+  // needed, as typical figures from the insurance lane's gap advice: contents a renter loses,
+  // a liability claim a car can face.
+  rentersContentsCents: 3_000_000,
+  autoLiabilityCents: 10_000_000,
+  // A hospital stay with no health cover.
+  uninsuredStayCents: 2_700_000,
+  // Long-term care: a typical year in a care home, and the years a couple near retirement
+  // is told to plan for.
+  longTermCareYearCents: 10_800_000,
+  longTermCareYears: 2,
+  // Umbrella cover matters when assets pass this (src/config/insurance.ts UMBRELLA_ASSETS_CENTS).
+  umbrellaAssetsCents: 50_000_000,
+  // Comparing a health plan, a Medicare supplement or car and home cover usually finds this
+  // share of the premium, stated as "up to".
+  healthCompareShare: 0.1,
+  medigapCompareShare: 0.12,
+  insuranceShopShare: 0.1,
+  // Shopping car and home cover is only worth a message above this yearly premium, with at
+  // least this many monthly charges seen.
+  insuranceShopMinCents: 100_000,
+  insuranceShopMinCharges: 6,
+  // Long-term care is raised for people this close to retirement with at least this much.
+  longTermCareMinAssetsCents: 40_000_000,
   // Taxes (step 261). ESTIMATES TO VERIFY, like the rest of this file; the dated figures
   // (brackets, limits, payroll tax) come from src/config/tax-rates.ts, not from here.
   tax: {
