@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useActionState } from "react";
+import { PEOPLE } from "@/config/people";
 import { tryJane, type TryState } from "@/app/try/actions";
 
 // "Try it with sample data" on the landing page (spec step 138): a sample person with fake
@@ -23,6 +24,21 @@ export function TryButton() {
           </Link>
           .
         </span>
+      </label>
+      <label className="flex flex-col gap-1 text-sm text-zinc-600 dark:text-zinc-400">
+        Whose money to try
+        <select
+          name="person"
+          defaultValue="any"
+          className="h-11 rounded-lg border border-zinc-300 bg-white px-3 text-base dark:border-zinc-700 dark:bg-zinc-900"
+        >
+          <option value="any">Surprise me</option>
+          {PEOPLE.map((p) => (
+            <option key={p.id} value={p.id}>
+              {p.label}: {p.blurb}
+            </option>
+          ))}
+        </select>
       </label>
       <button
         type="submit"

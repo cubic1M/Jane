@@ -31,6 +31,10 @@ import { loadFamilyTaxes } from "@/lib/family-taxes";
 import { NOTICE_KINDS } from "@/config/tax-notices";
 import { checkNoticeFor, listTaxNotices, noticeAmountCents } from "@/lib/tax-notices";
 import { loadEquityTax } from "@/lib/equity-tax";
+import { loadMultiYear } from "@/lib/multi-year";
+import { loadPropertyTax } from "@/lib/property-tax";
+import { loadAccountantPage } from "@/lib/accountant";
+import { loadTaxCalendar } from "@/lib/tax-calendar";
 import { loadIdentity } from "@/lib/tax-identity";
 import { loadSideIncome } from "@/lib/side-income";
 import { loadReturnReviews } from "@/lib/prior-return/review";
@@ -177,6 +181,30 @@ export const TAX_TOOLS: Anthropic.Tool[] = [
     name: "tax_equity",
     description:
       "The tax on the person's crypto and equity pay for the tax year: crypto sold (proceeds, cost by lot, short- and long-term gain), what they hold and its unrealised gain, the 1099-DA from an exchange that sold; ESPP sales and whether each was qualifying or a disqualifying disposition that lost its special treatment; ISOs exercised and the alternative minimum tax; RSU vests with the tax withheld against their real rate and the shortfall; and in demo advice mode how much to set aside and whether a goal exists. Holding-period and AMT rules are in config with sources.",
+    input_schema: noInput,
+  },
+  {
+    name: "tax_years",
+    description:
+      "The person's federal tax projected over the next years: each year's income, tax and top rate (the first is their estimate, the rest assume pay grows until the retirement year they gave, or one Jane assumed, and that the brackets rise with inflation), the total over the years; and in demo advice mode the moves that save tax over the years (a Roth conversion in a low-income year, realising gains in the 0% bracket, bunching charity into alternate years, timing a planned bonus, sale or withdrawal), each with the tax it saves in all. Jane moves no money; a move can be put on the person's deadlines.",
+    input_schema: noInput,
+  },
+  {
+    name: "tax_property",
+    description:
+      "The person's property tax check: their home's assessed value against its market value (their own figures, or sample data), how far over it is and what that costs a year, the county's appeal window and deadline, and in demo advice mode whether an appeal is worth making, the comparable sales behind a drafted appeal, who files it, and exemptions (homestead, senior, veteran, disabled) they may not have claimed with what each does. Jane files and applies for nothing herself.",
+    input_schema: noInput,
+  },
+  {
+    name: "tax_accountant",
+    description:
+      "Where working with an accountant stands: whether the person's taxes include things people usually bring an accountant to (self-employment, rental income, stock options or crypto, income in more than one state, a home sale, an open IRS letter, a tax identity problem, large gains), their read-only accountant links (live, expired or revoked, how many times each was opened), the questions Jane has for an accountant, and the answers that came back. A link shows only tax information, ends on a date the person picks, can be revoked, and every view is logged. Jane never sends a link herself: the person makes and shares it.",
+    input_schema: noInput,
+  },
+  {
+    name: "tax_calendar",
+    description:
+      "The person's tax calendar for this month and the year: what Jane does each month (the January IRS Identity Protection PIN reminder and form chase, estimated payments paid through the payment stand-in a few days before they are due when they fit the person's cap for taxes, the June withholding check, December's year-end moves in one message, filing day and the refund tracked), where each item stands now (done, needs the person's tap, coming, nothing to do), any estimated payment that needs a tap and why (over the cap, over the monthly cap, or the person asked Jane to ask first), and the year-end moves. Nothing is paid above the cap without a tap; signing and filing a return are always the person's.",
     input_schema: noInput,
   },
   {
@@ -690,6 +718,86 @@ export async function runTaxTool(
           steps: v.case.steps.map((s) => ({ step: s.title, doneOn: s.doneOn })),
           next: v.case.next,
         },
+      });
+    }
+    case "tax_property": {
+      const v = await loadPropertyTax(userId, { client, now });
+      return out({
+        homeowner: v.homeowner,
+        assessed: v.assessedCents === null ? null : money(v.assessedCents),
+        marketValue: v.marketCents === null ? null : money(v.marketCents),
+        figuresFrom: v.figuresFrom,
+        overBy: v.gap
+          ? { percent: Math.round(v.gap.gapRate * 100), perYear: money(v.gap.savingCents) }
+          : null,
+        appealWindow: { status: v.window.status, closes: v.window.closesOn, text: v.window.text },
+        advice: v.advice,
+        worthAppealing: v.advice ? v.suggested : null,
+        comparableSales: v.comps.map((c) => ({
+          address: c.address,
+          soldOn: c.soldOn,
+          price: money(c.priceCents),
+        })),
+        appeal: v.appeal && { status: v.appeal.status, saves: money(v.appeal.savingCents) },
+        exemptions: v.advice
+          ? v.exemptions.eligible.map((e) => ({ name: e.name, who: e.who, benefit: e.benefit }))
+          : [],
+        needToKnow: v.exemptions.ask,
+      });
+    }
+    case "tax_accountant": {
+      const v = await loadAccountantPage(userId, { client, now });
+      return out({
+        situationUsuallyNeedsAnAccountant: v.complexity.complex,
+        factors: v.complexity.factors,
+        links: v.links.map((l) => ({
+          for: l.label,
+          state: l.state,
+          endsOn: l.expiresOn,
+          timesOpened: l.viewCount,
+        })),
+        questionsForThem: v.questions.map((q) => q.text),
+        theirAnswers: v.notes.map((n) => ({
+          from: n.fromName,
+          about: n.questionText,
+          said: n.body,
+          seenByPerson: n.seen,
+        })),
+      });
+    }
+    case "tax_calendar": {
+      const v = await loadTaxCalendar(userId, { client, now });
+      return out({
+        month: v.label,
+        janeActsByHerself: v.acts,
+        thisMonth: v.items.map((i) => ({ item: i.title, status: i.status, detail: i.detail })),
+        estimatedPaymentsNeedingATap: v.due
+          .filter((d) => d.needsTap)
+          .map((d) => ({ dueOn: d.dueOn, amount: money(d.cents), why: d.needsTap })),
+        yearEndMoves: v.yearEnd?.lines ?? [],
+        wholeYear: v.months.map((m) => ({ month: m.label, items: m.items.map((i) => i.title) })),
+      });
+    }
+    case "tax_years": {
+      const v = await loadMultiYear(userId, { client, now });
+      return out({
+        startYear: v.year,
+        retireYear: v.retireYear,
+        retireYearAssumed: v.retireAssumed,
+        assumptions: v.assumptions,
+        years: v.rows.map((r) => ({
+          year: r.year,
+          income: money(r.incomeCents),
+          federalTax: money(r.totalTaxCents),
+          topRate: `${Math.round(r.marginalRate * 100)}%`,
+        })),
+        totalFederalTax: money(v.lifetimeTaxCents),
+        moves: v.moves.map((m) => ({
+          move: m.title,
+          why: m.why,
+          savesOverTheYears: money(m.effectCents),
+        })),
+        advice: v.advice,
       });
     }
     case "tax_equity": {

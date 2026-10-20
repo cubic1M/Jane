@@ -123,6 +123,9 @@ export function scopedFor(userId: string, client: PrismaClient = db) {
     cardRateRequests: scoped.cardRateRequest,
     personalLoans: scoped.personalLoan,
     creditGoals: scoped.creditGoal,
+    homeEquityFacts: scoped.homeEquityFacts,
+    carAddons: scoped.carAddon,
+    carLoanWatches: scoped.carLoanWatch,
     balanceTransfers: scoped.balanceTransfer,
     findings: scoped.finding,
     decisions: scoped.decision,
@@ -161,6 +164,11 @@ export function scopedFor(userId: string, client: PrismaClient = db) {
     taxNotices: scoped.taxNotice,
     taxIdentityCases: scoped.taxIdentityCase,
     equityEvents: scoped.equityEvent,
+    taxPlanEvents: scoped.taxPlanEvent,
+    propertyAppeals: scoped.propertyAppeal,
+    taxPayments: scoped.taxPayment,
+    accountantLinks: scoped.accountantLink,
+    accountantNotes: scoped.accountantNote,
     taxReturns: scoped.taxReturn,
     // One-tap answers from Jane's emails (spec step 85).
     chatReplyLinks: scoped.chatReplyLink,
@@ -211,6 +219,13 @@ export function scopedFor(userId: string, client: PrismaClient = db) {
     // Company stock grants (spec step 160).
     equityGrants: scoped.equityGrant,
     // Crypto, read-only (spec step 161).
+    payrollChanges: scoped.payrollChange,
+    oldPlans: scoped.oldPlan,
+    retirementIncomes: scoped.retirementIncome,
+    familyChildren: scoped.familyChild,
+    rentalProperties: scoped.rentalProperty,
+    costlyProducts: scoped.costlyProduct,
+    giftLinks: scoped.giftLink,
     cryptoConnections: scoped.cryptoConnection,
     cryptoHoldings: scoped.cryptoHolding,
   };

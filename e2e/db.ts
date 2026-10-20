@@ -118,6 +118,27 @@ export async function addTransfer(
   }
 }
 
+// A payment on the person's checking account, with the description a dealer add-on would have
+// (positive is money out), for the car loan add-on tests.
+export async function addPayment(
+  userId: string,
+  payment: { date: string; amountCents: number; description: string },
+): Promise<void> {
+  const client = new Client({ connectionString: E2E_DATABASE_URL });
+  await client.connect();
+  try {
+    await client.query(
+      `INSERT INTO transactions (id, user_id, account_id, source, date, amount_cents, description,
+                                 pfc_primary, pfc_detailed, pending, updated_at)
+       SELECT $1, $2, a.id, 'plaid', $3::date, $4, $5, 'GENERAL_MERCHANDISE', 'GENERAL_MERCHANDISE_OTHER_GENERAL_MERCHANDISE', false, now()
+       FROM accounts a WHERE a.user_id = $2 AND a.subtype = 'checking' LIMIT 1`,
+      [`t${crypto.randomUUID()}`, userId, payment.date, payment.amountCents, payment.description],
+    );
+  } finally {
+    await client.end();
+  }
+}
+
 export async function addAlert(
   userId: string,
   alert: { type: string; title: string; body: string },

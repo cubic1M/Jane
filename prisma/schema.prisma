@@ -232,6 +232,9 @@ model User {
   deletedAt                  DateTime?       @map("deleted_at") @db.Timestamptz(3)
   // Set when detection first finishes for this user, so /scanning knows it can move on.
   firstDetectionAt           DateTime?       @map("first_detection_at") @db.Timestamptz(3)
+  // When the first scan after linking a bank finished completely (detection, the sectors'
+  // work and Jane's first run). Until then the chat opens early and says she's still looking.
+  firstScanDoneAt            DateTime?       @map("first_scan_done_at") @db.Timestamptz(3)
   // Email preferences, changed on /settings or by the unsubscribe link.
   digestEnabled              Boolean         @default(true) @map("digest_enabled")
   // IANA name, e.g. America/New_York. Null means US Pacific.
@@ -305,6 +308,9 @@ model User {
   cardRateRequests       CardRateRequest[]
   personalLoans          PersonalLoan[]
   creditGoals            CreditGoal[]
+  homeEquityFacts        HomeEquityFacts?
+  carAddons              CarAddon[]
+  carLoanWatch           CarLoanWatch?
   balanceTransfers       BalanceTransfer[]
   findings               Finding[]
   decisions              Decision[]
@@ -381,9 +387,27 @@ model User {
   healthScores      HealthScore[]
   monthlyReports    MonthlyReport[]
   whatIfPlans       WhatIfPlan[]
+  taxPlanEvents     TaxPlanEvent[]
+  propertyAppeals   PropertyAppeal[]
+  accountantLinks   AccountantLink[]
+  accountantNotes   AccountantNote[]
+  taxPayments       TaxPayment[]
   leanPlans         LeanPlan[]
   yearPlans         YearPlan[]
   unusualAnswers    UnusualAnswer[]
+
+  payrollChanges PayrollChange[]
+  oldPlans       OldPlan[]
+
+  retirementIncome RetirementIncome?
+
+  giftLinks GiftLink[]
+
+  familyChildren FamilyChild[]
+
+  rentalProperties RentalProperty[]
+
+  costlyProducts CostlyProduct[]
 
   @@map("users")
 }
@@ -817,14 +841,20 @@ model CreditReport {
 // Debt on autopilot (spec step 117): the rates Jane last saw on each debt, so she can say
 // when the bank changes one, and when she started the payoff plan by herself.
 model DebtWatch {
-  id            String    @id @default(cuid())
-  userId        String    @unique @map("user_id")
+  id             String    @id @default(cuid())
+  userId         String    @unique @map("user_id")
   // { debtKey: aprBps } as last seen.
-  rates         Json      @default("{}")
+  rates          Json      @default("{}")
   // The latest changes, newest first: [{ debtKey, name, fromBps, toBps, on }].
-  changes       Json      @default("[]")
-  planStartedOn DateTime? @map("plan_started_on") @db.Date
-  updatedAt     DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
+  changes        Json      @default("[]")
+  planStartedOn  DateTime? @map("plan_started_on") @db.Date
+  // Spec step 230, the yearly debt review: the day of the last one and why it was done, the
+  // debts there were then (a new one starts a review), and the paycheck then (a raise does).
+  reviewOn       DateTime? @map("review_on") @db.Date
+  reviewReason   String?   @map("review_reason")
+  reviewKeys     Json      @default("[]") @map("review_keys")
+  reviewPayCents Int?      @map("review_pay_cents")
+  updatedAt      DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
@@ -1054,6 +1084,69 @@ model CreditGoal {
 
   @@index([userId])
   @@map("credit_goals")
+}
+
+// What the person told Jane about their home loan (spec step 228): the home's value when the
+// loan began (PMI is measured against it), the yearly property tax and insurance bills they
+// read off their bills, and when they sent each drafted request.
+model HomeEquityFacts {
+  id                   String    @id @default(cuid())
+  userId               String    @unique @map("user_id")
+  originalValueCents   Int?      @map("original_value_cents")
+  yearlyTaxCents       Int?      @map("yearly_tax_cents")
+  yearlyInsuranceCents Int?      @map("yearly_insurance_cents")
+  pmiLetterSentOn      DateTime? @map("pmi_letter_sent_on") @db.Date
+  escrowRequestSentOn  DateTime? @map("escrow_request_sent_on") @db.Date
+  updatedAt            DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("home_equity_facts")
+}
+
+// A dealer add-on financed into the car loan (spec step 245): GAP, an extended warranty or
+// a service contract, found in the payments or typed in, with the refund each would give.
+model CarAddon {
+  id         String   @id @default(cuid())
+  userId     String   @map("user_id")
+  // "tx:<transaction id>" for one found in the payments, else "typed:<id>".
+  key        String
+  // gap, warranty or service.
+  kind       String
+  name       String
+  paidCents  Int      @map("paid_cents")
+  termMonths Int      @map("term_months")
+  startedOn  DateTime @map("started_on") @db.Date
+  // found (asked once), confirmed, dismissed, mine (the person sends the cancellation),
+  // team (the concierge team does).
+  status     String   @default("found")
+  source     String
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt  DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, key])
+  @@index([userId])
+  @@map("car_addons")
+}
+
+// What Jane saw when she last checked the car loan's rates (spec step 245), so she can say
+// when rates fell or the score moved into a better band.
+model CarLoanWatch {
+  id         String    @id @default(cuid())
+  userId     String    @unique @map("user_id")
+  bestAprBps Int?      @map("best_apr_bps")
+  band       String?
+  // rates_fell or score_rose at the last check that saw it, and the day.
+  change     String?
+  changedOn  DateTime? @map("changed_on") @db.Date
+  checkedOn  DateTime? @map("checked_on") @db.Date
+  updatedAt  DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("car_loan_watches")
 }
 
 // A balance transfer the person made to a 0% card (spec step 113), so Jane can keep the
@@ -2562,6 +2655,20 @@ model TaxProfile {
   // put the January reminder on their deadlines.
   ipPinHaveYear         Int?      @map("ip_pin_have_year")
   ipPinRemindedYear     Int?      @map("ip_pin_reminded_year")
+  // Spec step 220: the year the person plans to retire (empty: Jane assumes one), and the
+  // multi-year moves (keys like "roth:2027") already put on their deadlines.
+  retireYear            Int?      @map("retire_year")
+  multiYearHandled      String[]  @default([]) @map("multi_year_handled")
+  // Spec step 221: what the person told Jane about their home and themselves, for the
+  // assessment check and the exemptions (the county's own figures win over a guess).
+  homeMarketCents       Int?      @map("home_market_cents")
+  homeAssessedCents     Int?      @map("home_assessed_cents")
+  homeAssessedYear      Int?      @map("home_assessed_year")
+  homeNoticeOn          DateTime? @map("home_notice_on") @db.Date
+  ownerAge              Int?      @map("owner_age")
+  ownerVeteran          Boolean?  @map("owner_veteran")
+  ownerDisabled         Boolean?  @map("owner_disabled")
+  exemptionsClaimed     String[]  @default([]) @map("exemptions_claimed")
   createdAt             DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt             DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
 
@@ -3039,6 +3146,109 @@ model EquityEvent {
   @@map("equity_events")
 }
 
+// Spec step 220: a bonus, a sale or a retirement withdrawal the person plans, so Jane can
+// find the best year for it.
+model TaxPlanEvent {
+  id          String   @id @default(cuid())
+  userId      String   @map("user_id")
+  kind        String
+  year        Int
+  amountCents Int      @map("amount_cents")
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("tax_plan_events")
+}
+
+// Spec step 221: a drafted property tax appeal. Filed by the team or the person, on their
+// tap; Jane files nothing herself.
+model PropertyAppeal {
+  id            String    @id @default(cuid())
+  userId        String    @map("user_id")
+  year          Int
+  assessedCents Int       @map("assessed_cents")
+  marketCents   Int       @map("market_cents")
+  savingCents   Int       @map("saving_cents")
+  board         String
+  comps         Json
+  draft         String
+  // "drafted", then "team" or "self" once the person says who files it, or "dropped".
+  status        String    @default("drafted")
+  handledAt     DateTime? @map("handled_at") @db.Timestamptz(3)
+  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, year])
+  @@map("property_appeals")
+}
+
+// Spec step 222: a read-only link for the person's accountant. Only the hash of the token is
+// stored; the link expires and can be revoked, and every view is in the audit log.
+model AccountantLink {
+  id           String    @id @default(cuid())
+  userId       String    @map("user_id")
+  tokenHash    String    @unique @map("token_hash")
+  // What the person calls this accountant ("Dana at Hill & Co").
+  label        String
+  expiresAt    DateTime  @map("expires_at") @db.Timestamptz(3)
+  revokedAt    DateTime? @map("revoked_at") @db.Timestamptz(3)
+  viewCount    Int       @default(0) @map("view_count")
+  lastViewedAt DateTime? @map("last_viewed_at") @db.Timestamptz(3)
+  createdAt    DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  user  User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  notes AccountantNote[]
+
+  @@index([userId])
+  @@map("accountant_links")
+}
+
+// An answer (or a note) from the accountant, which comes back into Jane.
+model AccountantNote {
+  id           String    @id @default(cuid())
+  userId       String    @map("user_id")
+  linkId       String    @map("link_id")
+  // Which of Jane's questions this answers, or null for a note of their own.
+  questionKey  String?   @map("question_key")
+  questionText String?   @map("question_text")
+  fromName     String    @map("from_name")
+  body         String
+  // Set when the person has seen it.
+  seenAt       DateTime? @map("seen_at") @db.Timestamptz(3)
+  createdAt    DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  user User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  link AccountantLink @relation(fields: [linkId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([linkId])
+  @@map("accountant_notes")
+}
+
+// Spec step 223: an estimated tax payment made through the payment stand-in (src/lib/tax-
+// payments), by Jane within the caps or on the person's tap. Nothing leaves any account.
+model TaxPayment {
+  id           String   @id @default(cuid())
+  userId       String   @map("user_id")
+  year         Int
+  // The estimated-tax due date it pays.
+  dueOn        DateTime @map("due_on") @db.Date
+  cents        Int
+  partner      String
+  confirmation String
+  // "autopilot" (within the caps) or "tap" (the person said pay it).
+  via          String
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, dueOn])
+  @@map("tax_payments")
+}
+
 model TaxReturn {
   id              String    @id @default(cuid())
   userId          String    @map("user_id")
@@ -3420,4 +3630,184 @@ model UnusualAnswer {
   @@unique([userId, alertId])
   @@index([userId, merchantKey])
   @@map("unusual_answers")
+}
+
+// Spec step 210: a change to the person's retirement contribution at work, sent to the
+// payroll partner (a stand-in until one is connected) or the team. It only records the
+// request; the person's pay changes when their employer does it.
+model PayrollChange {
+  id          String   @id @default(cuid())
+  userId      String   @map("user_id")
+  // Where the request went: "stand-in" until a payroll partner is connected.
+  partner     String
+  partnerRef  String   @map("partner_ref")
+  fromRate    Float    @map("from_rate")
+  toRate      Float    @map("to_rate")
+  // requested, then confirmed once the stand-in sees the next paycheck.
+  status      String   @default("requested")
+  effectiveOn DateTime @map("effective_on") @db.Date
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+  @@map("payroll_changes")
+}
+
+// Spec step 211: a retirement plan at a past employer. One row per employer, asked about
+// once. Found plans are read-only until the person rolls one over (a direct rollover, never
+// a check to them); the steps are tracked in `steps`.
+model OldPlan {
+  id              String    @id @default(cuid())
+  userId          String    @map("user_id")
+  employer        String
+  // payroll (history), you (added by the person) or demo (the stand-in history).
+  source          String
+  // asked, no_plan, found, not_found, rolling, rolled or skipped.
+  status          String    @default("asked")
+  planName        String?   @map("plan_name")
+  balanceCents    Int?      @map("balance_cents")
+  expenseRatioBps Int?      @map("expense_ratio_bps")
+  // The plan's records came from this partner (the stand-in locator is "demo").
+  locator         String?
+  destinationId   String?   @map("destination_id")
+  // [{ key, label, doneOn: YYYY-MM-DD | null }].
+  steps           Json      @default("[]")
+  rollingSince    DateTime? @map("rolling_since") @db.Timestamptz(3)
+  rolledAt        DateTime? @map("rolled_at") @db.Timestamptz(3)
+  createdAt       DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, employer])
+  @@map("old_plans")
+}
+
+// Spec step 212: what the person has told Jane for the retirement paycheck: their Social
+// Security statement's monthly benefit at full retirement age, when they plan to retire,
+// when to start Social Security, and what they expect to spend a month. All optional;
+// Jane estimates what's missing and says so.
+model RetirementIncome {
+  id                String   @id @default(cuid())
+  userId            String   @unique @map("user_id")
+  ssMonthlyCents    Int?     @map("ss_monthly_cents")
+  retireAge         Int?     @map("retire_age")
+  ssStartAge        Int?     @map("ss_start_age")
+  spendMonthlyCents Int?     @map("spend_monthly_cents")
+  updatedAt         DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("retirement_incomes")
+}
+
+// Spec step 213: a child in the family's investing: their earned income (for a Roth IRA
+// they can fund) and the demo accounts Jane opened for them. The child's college fund is
+// the college plan (step 158) with the same name.
+model FamilyChild {
+  id          String   @id @default(cuid())
+  userId      String   @map("user_id")
+  name        String
+  age         Int
+  earnedCents Int      @default(0) @map("earned_cents")
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, name])
+  @@map("family_children")
+}
+
+// A link that lets relatives give to a child's college fund. The token is the permission;
+// the public page shows only the goal and how far along it is, never the parents' money.
+model GiftLink {
+  id            String    @id @default(cuid())
+  userId        String    @map("user_id")
+  collegePlanId String    @map("college_plan_id")
+  token         String    @unique
+  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  revokedAt     DateTime? @map("revoked_at") @db.Timestamptz(3)
+
+  user  User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  gifts Gift[]
+
+  @@index([userId])
+  @@map("gift_links")
+}
+
+// One gift through a link: a stand-in (no real money moves) until a payments partner is
+// connected. It counts toward the goal's progress.
+model Gift {
+  id          String   @id @default(cuid())
+  giftLinkId  String   @map("gift_link_id")
+  giverName   String   @map("giver_name")
+  amountCents Int      @map("amount_cents")
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  link GiftLink @relation(fields: [giftLinkId], references: [id], onDelete: Cascade)
+
+  @@index([giftLinkId])
+  @@map("gifts")
+}
+
+// Spec step 214: a rental property, with the text its transactions are matched on (rent
+// in, the mortgage payment, property tax and other costs). Figures come from the person's
+// own transactions in the last 12 months; the loan's balance and rate are what they told
+// Jane (or the demo's) because a rental loan is often at a lender the bank link doesn't see.
+model RentalProperty {
+  id                   String   @id @default(cuid())
+  userId               String   @map("user_id")
+  name                 String
+  purchaseCents        Int      @map("purchase_cents")
+  landShare            Float    @map("land_share")
+  placedInServiceYear  Int      @map("placed_in_service_year")
+  placedInServiceMonth Int      @map("placed_in_service_month")
+  cashInvestedCents    Int      @map("cash_invested_cents")
+  loanBalanceCents     Int      @default(0) @map("loan_balance_cents")
+  loanRateBps          Int      @default(0) @map("loan_rate_bps")
+  monthlyPaymentCents  Int      @default(0) @map("monthly_payment_cents")
+  // Comma-separated text found in a transaction's description.
+  rentMatch            String   @map("rent_match")
+  mortgageMatch        String   @default("") @map("mortgage_match")
+  taxMatch             String   @default("") @map("tax_match")
+  expenseMatch         String   @default("") @map("expense_match")
+  // you (the form) or demo (the demo rental).
+  source               String   @default("you")
+  createdAt            DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("rental_properties")
+}
+
+// Spec step 215: a variable annuity, a whole life policy or an advisory account found from
+// the person's payments or statements (or entered by them), with what it costs and its
+// surrender schedule. status: asked (a premium that may be whole life, to confirm), active
+// or dismissed. Advisory accounts aren't stored: they are read from fee transactions.
+model CostlyProduct {
+  id                 String   @id @default(cuid())
+  userId             String   @map("user_id")
+  // annuity or whole_life (src/config/costly-products.ts).
+  kind               String
+  name               String
+  provider           String
+  status             String   @default("active")
+  // An annuity's value, or a policy's cash value.
+  valueCents         Int      @default(0) @map("value_cents")
+  // An annuity's total yearly cost in basis points (insurance charge, administration, funds, riders).
+  feeBps             Int      @default(0) @map("fee_bps")
+  // Whole life: the premium a year.
+  premiumYearlyCents Int      @default(0) @map("premium_yearly_cents")
+  purchasedOn        DateTime @map("purchased_on") @db.Date
+  // The share charged for leaving in contract year 1, 2, ... (percent), e.g. [7, 6, 5].
+  surrenderSchedule  Json     @default("[]") @map("surrender_schedule")
+  // you, payments (found) or demo.
+  source             String
+  createdAt          DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("costly_products")
 }
