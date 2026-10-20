@@ -20,7 +20,9 @@ export type InvestmentTopic =
   | "company_stock"
   | "crypto"
   | "cash"
-  | "steady";
+  | "steady"
+  | "retirement_accounts"
+  | "old_accounts";
 
 export type InvestmentIntent = {
   kind: "investments";
@@ -118,7 +120,18 @@ const CASH =
 const STEADY =
   /\bshould i sell (?:everything|all|my (?:stocks|investments|funds|portfolio))\b|\b(?:market|stocks?|portfolio|investments?) (?:is |are )?(?:crash\w*|tank\w*|plung\w*|down a lot|dropping|falling)\b|\bwhy (?:are|is) my (?:investments?|portfolio|stocks) down\b|\bpanic\b.*\b(?:sell|invest)\w*|\bget out of the market\b|\bsell (?:everything|it all) now\b/;
 
+// Spec step 210: limits, the match, Roth or traditional, the backdoor Roth.
+const RETIREMENT_ACCOUNTS =
+  /\bbackdoor roth\b|\b(?:contribution|contribute) limits?\b|\bhow much can i (?:put|contribute|save) (?:in|into|to) (?:my |an? )?(?:401\(?k\)?|403\(?b\)?|ira|roth|retirement)\b|\b(?:am i|are we) (?:getting|getting all of|missing) (?:the |my )?(?:full |whole )?(?:employer )?match\b|\bmax(?:ing)? out my (?:401\(?k\)?|ira|roth)\b/;
+
+// Spec step 211: forgotten 401(k)s and rollovers.
+const OLD_ACCOUNTS =
+  /\b(?:old|previous|prior|past|former|forgotten|lost) (?:401\(?k\)?|403\(?b\)?|retirement (?:plan|account)|employer plan)\b|\b401\(?k\)? (?:from|at) (?:a |my |an )?(?:old|previous|prior|past|former)\b|\broll(?:ing)? ?over\b|\brollover\b|\bleft (?:a |my )?401\(?k\)? (?:at|with)\b/;
+
 export function parseInvestmentIntent(text: string): InvestmentIntent | null {
+  if (OLD_ACCOUNTS.test(text)) return { kind: "investments", topic: "old_accounts", account: null };
+  if (RETIREMENT_ACCOUNTS.test(text))
+    return { kind: "investments", topic: "retirement_accounts", account: null };
   if (STEADY.test(text)) return { kind: "investments", topic: "steady", account: null };
   if (CASH.test(text)) return { kind: "investments", topic: "cash", account: null };
   if (CRYPTO.test(text)) return { kind: "investments", topic: "crypto", account: null };

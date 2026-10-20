@@ -28,6 +28,24 @@ import {
 import type { Candidate } from "../types";
 import { detectDrop } from "@/planning/steady-hand";
 import { STEADY_LINK, steadyMessage } from "../investments/steady-copy";
+import { MATCH_MIN_MISSED_CENTS, ROOM_MIN_CENTS } from "@/config/retirement-accounts";
+import {
+  iraButton,
+  limitsLine,
+  matchButton,
+  raMatchLine,
+  RA_LINK,
+  rothLine,
+} from "../investments/retirement-accounts-copy";
+import { OLD_PLAN_MIN_SAVING_CENTS } from "@/config/old-accounts";
+import {
+  foundLine,
+  OLD_LINK,
+  questionButtons,
+  questionLine,
+  rollButton,
+} from "../investments/old-accounts-copy";
+import { AUTO_LOG_LINK, summaryBody } from "../investments/automatic-copy";
 import { CASH_MIN_GAIN_CENTS } from "@/config/cash";
 import { CASH_LINK, cashLine, moveButtons } from "../investments/cash-copy";
 import {
@@ -299,6 +317,69 @@ export const investmentsSource: MessageSource = {
         actions: [{ id: "hsa.link", label: "Link a demo HSA", kind: "primary" }, snoozeButton()],
         dedupeKey: "hsa:link",
         priority: MESSAGE_PRIORITY.hsa,
+      });
+    }
+    // Step 211: each past employer is asked about once; a found plan with fees worth saving
+    // gets a rollover offer (a tap).
+    const askedPlan = inv.oldAccounts.plans.find((p) => p.status === "asked");
+    if (askedPlan) {
+      out.push({
+        kind: "decision",
+        body: questionLine(askedPlan),
+        refs: { oldPlanId: askedPlan.id },
+        actions: [...questionButtons(), OLD_LINK, snoozeButton()],
+        dedupeKey: `oldplan:ask:${askedPlan.id}`,
+        priority: MESSAGE_PRIORITY.old_plan,
+      });
+    }
+    for (const found of inv.oldAccounts.plans.filter((p) => p.status === "found")) {
+      if (!inv.advice || (found.fees?.savedCents ?? 0) < OLD_PLAN_MIN_SAVING_CENTS) continue;
+      out.push({
+        kind: "decision",
+        body: `${foundLine(found)} Tap and I'll start a direct rollover ${SIMULATED_WORDS}.`,
+        refs: { advice: true, oldPlanId: found.id },
+        actions: [rollButton(), OLD_LINK, snoozeButton()],
+        dedupeKey: `oldplan:roll:${found.id}`,
+        priority: MESSAGE_PRIORITY.old_plan,
+      });
+    }
+    // Step 210: the match left on the table, then IRA room (each a tap).
+    const ra = inv.retirementAccounts;
+    const matchText = raMatchLine(ra);
+    if (inv.advice && matchText && (ra.match?.missedCents ?? 0) >= MATCH_MIN_MISSED_CENTS) {
+      const button = matchButton(ra);
+      out.push({
+        kind: button ? "decision" : "heads_up",
+        body: `${matchText} Nothing changes in your pay until you tap.`,
+        refs: { advice: true },
+        actions: [...(button ? [button] : []), RA_LINK, snoozeButton()],
+        dedupeKey: `retire:match:${Math.round((ra.match?.missedCents ?? 0) / 100)}`,
+        priority: MESSAGE_PRIORITY.retirement_accounts,
+      });
+    }
+    const iraRoom = ra.limits.find((l) => l.key === "ira")?.roomCents ?? 0;
+    const iraTap = iraButton(ra);
+    if (inv.advice && iraTap && iraRoom >= ROOM_MIN_CENTS) {
+      out.push({
+        kind: "decision",
+        body: `You can still put ${formatCents(ra.iraAllowedCents)} in your IRA this year. ${rothLine(ra)} Tap and I'll put it in ${SIMULATED_WORDS}.`,
+        refs: { advice: true, iraCents: ra.iraAllowedCents },
+        actions: [iraTap, RA_LINK, snoozeButton()],
+        dedupeKey: `retire:ira:${new Date(snapshot.asOf).getUTCFullYear()}`,
+        priority: MESSAGE_PRIORITY.retirement_accounts,
+      });
+    }
+    // Step 164: once a month, what Jane did by herself in investing within the person's
+    // caps (one line each, from the log), and what she's waiting on a tap for.
+    const handled = inv.automatic;
+    if (inv.advice && handled.did.length + handled.asked.length > 0) {
+      out.push({
+        kind: "done",
+        body: summaryBody(handled.did, handled.asked),
+        refs: { advice: true },
+        actions: [AUTO_LOG_LINK],
+        dedupeKey: `investing:summary:${snapshot.asOf.slice(0, 7)}`,
+        priority: MESSAGE_PRIORITY.investing_summary,
       });
     }
     // Step 163: a big drop gets one calm message a month: what changed, what it means for

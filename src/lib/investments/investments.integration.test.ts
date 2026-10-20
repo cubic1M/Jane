@@ -27,6 +27,16 @@ import { collectReceipts, investHsaCash, loadHsa } from "./hsa";
 import { CompanyStockError, loadCompanyStock, saveGrant, sellPart } from "./company-stock";
 import { cryptoTotal, loadCrypto, syncAllCrypto } from "@/lib/crypto/crypto";
 import { CashError, loadCash, moveCash } from "./cash";
+import { automaticLog, runAutomaticInvesting } from "./automatic";
+import { answerOldPlan, loadOldAccounts, startRollover, settleRollovers } from "./old-accounts";
+import {
+  contributeToIra,
+  linkDemoRothIra,
+  loadRetirementAccounts,
+  requestMatchRaise,
+  RetirementAccountsError,
+} from "./retirement-accounts";
+import { setSectorAutopilot } from "@/lib/sector-autopilot";
 import { brokeragePartner, NoCryptoOrders } from "@/lib/brokerage/partner";
 import { loadMoneyHub } from "@/lib/hubs/money";
 import { setAutopilot } from "@/lib/autopilot";
@@ -843,6 +853,193 @@ describe.runIf(url)("investments in Jane's chat, against a real database", () =>
       await expect(
         moveCash(userId, plan.key, "sweep_to_money_market", { client, now: LINKED }),
       ).rejects.toThrow(CashError);
+    },
+  );
+
+  it(
+    "step 164: nothing below Everything allowed, a cap bounds every move, each is in the log with its reason",
+    SLOW,
+    async () => {
+      const userId = await demoPerson();
+      await saveProfileForm(
+        userId,
+        { age: "45", horizon: "over_20", dropReaction: "worry", goals: ["retirement"] },
+        { client, now: LINKED },
+      );
+      const orders = () => client.brokerageOrder.count({ where: { userId } });
+      // At "Always ask" (the default), "The safe stuff", nothing happens by itself.
+      expect(await runAutomaticInvesting(userId, { client, now: LINKED })).toBeNull();
+      await setSectorAutopilot(
+        userId,
+        "investing",
+        { level: "safe", actionCapCents: 5_000_000, monthlyCapCents: 5_000_000 },
+        { client, now: LINKED },
+      );
+      expect(await runAutomaticInvesting(userId, { client, now: LINKED })).toBeNull();
+      expect(await orders()).toBe(0);
+
+      // Step 57's level wins over a sector's: "Ask me first" asks everywhere.
+      await setAutopilot(userId, "safe", { client, now: LINKED });
+      // Everything allowed, but a cap of $1: the rebalance is asked about, once, and not done.
+      await setSectorAutopilot(
+        userId,
+        "investing",
+        { level: "all", actionCapCents: 100, monthlyCapCents: 100 },
+        { client, now: LINKED },
+      );
+      const over = await runAutomaticInvesting(userId, { client, now: LINKED });
+      expect(over!.did).toEqual([]);
+      expect(over!.asked[0]).toMatch(/^Asked first, over the cap on one move: Rebalanced \$/);
+      await runAutomaticInvesting(userId, { client, now: LINKED });
+      expect(await orders()).toBe(0);
+      expect((await automaticLog(userId, { client, now: LINKED })).asked).toHaveLength(1);
+
+      // With room under the caps, she does it, and the log says what and why.
+      await setSectorAutopilot(
+        userId,
+        "investing",
+        { actionCapCents: 5_000_000, monthlyCapCents: 5_000_000 },
+        { client, now: LINKED },
+      );
+      const done = await runAutomaticInvesting(userId, { client, now: LINKED });
+      expect(done!.did[0]).toMatch(
+        /^Rebalanced \$[\d,.]+ to your target mix \(it had drifted off target\)$/,
+      );
+      expect(await orders()).toBeGreaterThan(0);
+      const log = await automaticLog(userId, { client, now: LINKED });
+      expect(log.did.map((d) => d.what)).toEqual(done!.did);
+      expect(log.did[0].cents).toBeGreaterThan(0);
+
+      // Jane's monthly summary says it, with the simulated-money line.
+      const snapshot = await loadSnapshot(userId, { client, now: LINKED });
+      const summary = investmentsSource
+        .gather(snapshot!, {} as never)
+        .find((c) => c.dedupeKey.startsWith("investing:summary:"))!;
+      expect(summary.body).toMatch(/^This month I handled 1 thing in your investments by myself/);
+      expect(summary.body).toMatch(/Over your caps, so waiting for your tap: Rebalanced/);
+      expect(summary.body).toMatch(/no real money moved\.$/);
+    },
+  );
+
+  it(
+    "step 210: limits across accounts, the missed match in dollars, a payroll request and an IRA contribution, each a tap",
+    SLOW,
+    async () => {
+      const userId = await demoPerson();
+      const before = await loadRetirementAccounts(userId, { client, now: LINKED });
+      expect(before.limits.map((l) => l.key)).toEqual(["workplace", "ira"]);
+      expect(before.limits[0].usedCents).toBeGreaterThan(0);
+      expect(before.limits[0].roomCents).toBe(
+        before.limits[0].limitCents - before.limits[0].usedCents,
+      );
+      expect(before.match!.missedCents).toBeGreaterThan(0);
+      expect(before.ira).toBeNull();
+      expect(await client.payrollChange.count({ where: { userId } })).toBe(0);
+
+      // Chat: the message, then the tap, through the payroll stand-in.
+      const snapshot = await loadSnapshot(userId, { client, now: LINKED });
+      const offer = investmentsSource
+        .gather(snapshot!, {} as never)
+        .find((c) => c.dedupeKey.startsWith("retire:match:"))!;
+      const posted = await client.janeMessage.create({
+        data: {
+          userId,
+          kind: offer.kind,
+          body: offer.body,
+          refs: offer.refs,
+          actions: offer.actions,
+          dedupeKey: "test:retire:match",
+        },
+      });
+      const { message } = await takeChatAction(userId, posted.id, "retire.match", {
+        client,
+        now: LINKED,
+      });
+      expect(message.refs.note).toMatch(
+        /^Requested through the payroll stand-in \(no real pay changes yet\): 6% of pay from 2026-10-25/,
+      );
+      const change = await client.payrollChange.findFirstOrThrow({ where: { userId } });
+      expect(change).toMatchObject({ partner: "stand-in", status: "requested", toRate: 0.06 });
+      await expect(requestMatchRaise(userId, { client, now: LINKED })).rejects.toThrow(
+        RetirementAccountsError,
+      );
+
+      // A demo Roth IRA, and money in it through the simulated brokerage.
+      await linkDemoRothIra(userId, { client, now: LINKED });
+      const withIra = await loadRetirementAccounts(userId, { client, now: LINKED });
+      expect(withIra.ira).toMatchObject({ name: "Demo Roth IRA", roth: true });
+      const room = withIra.limits[1].roomCents;
+      expect(withIra.iraAllowedCents).toBeLessThanOrEqual(room);
+      await expect(contributeToIra(userId, room + 1, { client, now: LINKED })).rejects.toThrow(
+        /more than you can/,
+      );
+      await contributeToIra(userId, 100_000, { client, now: LINKED });
+      const after = await loadRetirementAccounts(userId, { client, now: LINKED });
+      expect(after.limits[1].usedCents).toBe(100_000);
+      expect(after.limits[1].roomCents).toBe(room - 100_000);
+      expect(
+        await client.brokerageOrder.count({ where: { userId, reason: "ira_contribution" } }),
+      ).toBe(2);
+    },
+  );
+
+  it(
+    "step 211: a past employer asked once, its fees compared, a direct rollover tracked and never a withdrawal",
+    SLOW,
+    async () => {
+      const userId = await demoPerson();
+      const first = await loadOldAccounts(userId, { client, now: LINKED });
+      expect(first.plans).toMatchObject([{ employer: "Globex Industries", status: "asked" }]);
+      // Asked once: loading again adds nothing.
+      expect((await loadOldAccounts(userId, { client, now: LINKED })).plans).toHaveLength(1);
+
+      // The question in the chat, answered Yes.
+      const snapshot = await loadSnapshot(userId, { client, now: LINKED });
+      const ask = investmentsSource
+        .gather(snapshot!, {} as never)
+        .find((c) => c.dedupeKey.startsWith("oldplan:ask:"))!;
+      const posted = await client.janeMessage.create({
+        data: {
+          userId,
+          kind: ask.kind,
+          body: ask.body,
+          refs: ask.refs,
+          actions: ask.actions,
+          dedupeKey: "test:oldplan",
+        },
+      });
+      await takeChatAction(userId, posted.id, "oldplan.yes", { client, now: LINKED });
+      const found = (await loadOldAccounts(userId, { client, now: LINKED })).plans[0];
+      expect(found).toMatchObject({ status: "found", balanceCents: 3_820_000 });
+      expect(found.fees).toEqual({ beforeCents: 42_784, afterCents: 1_146, savedCents: 41_638 });
+      await expect(answerOldPlan(userId, found.id, true, { client })).rejects.toThrow(
+        /already answered/,
+      );
+
+      // The tap starts a direct rollover: nothing arrives yet.
+      const started = await startRollover(userId, found.id, { client, now: LINKED });
+      expect(started.arrivesOn).toBe("2026-10-21");
+      const rolling = (await loadOldAccounts(userId, { client, now: LINKED })).plans[0];
+      expect(rolling.steps.map((s) => s.doneOn)).toEqual(["2026-10-18", "2026-10-18", null, null]);
+      expect(await client.brokerageOrder.count({ where: { userId, reason: "rollover" } })).toBe(0);
+
+      // Three days later the money lands in the IRA, invested; it is a transfer.
+      const later = new Date("2026-10-21T15:00:00Z");
+      expect(await settleRollovers(userId, { client, now: later })).toBe(1);
+      expect(await settleRollovers(userId, { client, now: later })).toBe(0);
+      const rolled = (await loadOldAccounts(userId, { client, now: later })).plans[0];
+      expect(rolled.status).toBe("rolled");
+      const txs = await client.investmentTransaction.findMany({
+        where: { userId, name: "ROLLOVER FROM PRIOR EMPLOYER PLAN" },
+        select: { subtype: true, amountCents: true },
+      });
+      expect(txs).toEqual([{ subtype: "transfer", amountCents: -3_820_000 }]);
+      // Neither a withdrawal nor a contribution against this year's limits.
+      expect(
+        await client.investmentTransaction.count({ where: { userId, subtype: "withdrawal" } }),
+      ).toBe(0);
+      const limits = (await loadRetirementAccounts(userId, { client, now: later })).limits;
+      expect(limits.find((l) => l.key === "ira")!.usedCents).toBe(0);
     },
   );
 });

@@ -39,8 +39,12 @@ export function ScanningProgress({ next = "/report" }: { next?: "/report" | "/ch
     async function check() {
       try {
         const response = await fetch("/api/detection/status", { cache: "no-store" });
-        const body = response.ok ? ((await response.json()) as { complete?: boolean }) : null;
-        if (body?.complete) {
+        const body = response.ok
+          ? ((await response.json()) as { complete?: boolean; ready?: boolean })
+          : null;
+        // The chat opens as soon as the accounts and transactions are in (it says Jane is
+        // still looking and fills in); the report waits for detection.
+        if (body?.complete || (next === "/chat" && body?.ready)) {
           if (!cancelled) setDetected(true);
           return;
         }
@@ -57,7 +61,7 @@ export function ScanningProgress({ next = "/report" }: { next?: "/report" | "/ch
       cancelled = true;
       clearTimeout(timer);
     };
-  }, [detected]);
+  }, [detected, next]);
 
   return (
     <div className="flex flex-col gap-6">

@@ -146,8 +146,9 @@ describe.runIf(url)("everything from Jane's chat, against a real database", () =
         "autopilot.ask",
         "open",
       ]);
-      // Alongside the findings, not instead of them.
-      expect((await withButton(userId, "finding.yes")).length).toBeGreaterThanOrEqual(2);
+      // Alongside the findings, not instead of them. (The demo card's minimum now covers its
+      // interest, so one fewer finding than before.)
+      expect((await withButton(userId, "finding.yes")).length).toBeGreaterThanOrEqual(1);
 
       const stranger = await person("chat83-stranger");
       await expect(

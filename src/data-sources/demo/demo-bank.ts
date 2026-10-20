@@ -51,7 +51,11 @@ type AccountKey =
   // Spec step 159: a demo HSA, only when the person links one (DemoExtra).
   | "hsa"
   // Spec step 160: a demo employer stock plan (vested RSUs).
-  | "stock_plan";
+  | "stock_plan"
+  // Spec step 210: a demo Roth IRA.
+  | "roth_ira"
+  // Spec step 211: a demo traditional IRA to roll an old 401(k) into.
+  | "rollover_ira";
 
 export const accountId = (seed: string, key: AccountKey) => `demo-${seed}-${key}`;
 
@@ -685,6 +689,12 @@ export function demoAccounts({ seed }: DemoSeed, extras: readonly DemoExtra[] = 
       ? [account(seed, "hsa", "Demo HSA", "0009", "investment", "hsa", 4271.8)]
       : []),
     // Spec step 160: vested Acme shares from work, at the demo price.
+    ...(extras.includes("rollover_ira")
+      ? [account(seed, "rollover_ira", "Demo Rollover IRA", "0012", "investment", "ira", 0)]
+      : []),
+    ...(extras.includes("roth_ira")
+      ? [account(seed, "roth_ira", "Demo Roth IRA", "0011", "investment", "roth", 6400)]
+      : []),
     ...(extras.includes("stock_plan")
       ? [account(seed, "stock_plan", "Demo Stock Plan", "0010", "investment", "stock plan", 20460)]
       : []),
@@ -692,7 +702,7 @@ export function demoAccounts({ seed }: DemoSeed, extras: readonly DemoExtra[] = 
 }
 
 // Extra stand-in accounts a demo-bank person can link (spec step 159 on).
-export const DEMO_EXTRAS = ["hsa", "stock_plan"] as const;
+export const DEMO_EXTRAS = ["hsa", "stock_plan", "roth_ira", "rollover_ira"] as const;
 export type DemoExtra = (typeof DEMO_EXTRAS)[number];
 
 // The next time a day of the month comes round, after `today`.
@@ -741,7 +751,9 @@ export function demoLiabilities({ seed, anchor }: DemoSeed, today: string): Liab
         // Spec step 175: the statement closes on the 1st, 25 days before the payment's due.
         last_statement_issue_date: lastDayOfMonthOn(today, 1),
         last_statement_balance: 2410.5,
-        minimum_payment_amount: 35,
+        // Covers a month of interest on the balance (22.99% of $2,410.50 is about $46) and a
+        // little of the principal, as a real minimum does.
+        minimum_payment_amount: 72,
         next_payment_due_date: nextDayOfMonth(today, 26),
       },
     ],
