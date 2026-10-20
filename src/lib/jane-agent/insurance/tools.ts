@@ -25,6 +25,8 @@ import { listNegotiations } from "@/lib/insurance/negotiate";
 import { listSavings } from "@/lib/insurance/savings";
 import { listRisks } from "@/lib/insurance/risks";
 import { loadFamily } from "@/lib/insurance/family";
+import { claimWorthFor } from "@/lib/insurance/claim-worth-for";
+import { isPolicyKind } from "@/config/insurance";
 import { noteLines, readingLines } from "./reading-words";
 import { listBenefits, openEnrollmentAtWork, yearlyCost } from "@/lib/insurance/benefits";
 import { autopilotOf } from "@/lib/autopilot";
@@ -76,6 +78,23 @@ export const INSURANCE_TOOLS: Anthropic.Tool[] = [
     input_schema: noInput,
   },
   {
+    name: "insurance_claim_worth",
+    description:
+      "Whether a claim is worth making against paying it themselves (spec step 199), for an estimate in dollars: what the insurer would pay after the deductible (a fact), and, in demo advice mode only, the typical three-year premium rise and claims-free discount lost, with the net. Say it as an estimate, never a promise of what the carrier will do. Pass the policy kind (auto, home, renters...) and what happened (accident, theft, damage) when known.",
+    input_schema: {
+      type: "object",
+      properties: {
+        estimateDollars: {
+          type: "number",
+          description: "What the damage or loss costs, in dollars.",
+        },
+        policyKind: { type: "string", description: "auto, home, renters, ..." },
+        event: { type: "string", description: "accident, theft or damage, when known." },
+      },
+      required: ["estimateDollars"],
+    },
+  },
+  {
     name: "insurance_household",
     description:
       "The whole household's cover (spec step 198): who is covered by what (the person, each household member's shared policies, and the people they listed), the gaps for each person (a teen driver not on a car policy, a spouse with no health plan), and the health plans compared for the whole household with both employers' plans counted. A partner's policy is only here if they chose to share it.",
@@ -124,7 +143,7 @@ export const isInsuranceTool = (name: string) => INSURANCE_TOOLS.some((t) => t.n
 export async function runInsuranceTool(
   userId: string,
   name: string,
-  _input: unknown,
+  input: unknown,
   { client, now }: { client: PrismaClient; now: Date },
 ): Promise<ToolOutput> {
   const cents: number[] = [];
@@ -172,6 +191,48 @@ export async function runInsuranceTool(
                 }
               : application.decision,
         },
+      }),
+      cents,
+    };
+  }
+  if (name === "insurance_claim_worth") {
+    const asked = input as { estimateDollars?: unknown; policyKind?: unknown; event?: unknown };
+    const dollars = Number(asked.estimateDollars);
+    if (!Number.isFinite(dollars) || dollars <= 0) {
+      return { content: JSON.stringify({ error: "Give the estimate in dollars." }), cents };
+    }
+    const result = await claimWorthFor(
+      userId,
+      {
+        amountCents: Math.round(dollars * 100),
+        kind: isPolicyKind(asked.policyKind) ? asked.policyKind : null,
+        event: typeof asked.event === "string" ? asked.event : null,
+      },
+      { client },
+    );
+    if (!result.found) {
+      return {
+        content: JSON.stringify({ found: false, why: "no policy for that on their profile" }),
+        cents,
+      };
+    }
+    const w = result.worth;
+    return {
+      content: JSON.stringify({
+        policy: `${result.policy.carrier} ${w.kind}`,
+        estimate: money(w.estimateCents),
+        deductible: money(w.deductibleCents),
+        insurerWouldPay: money(w.payoutCents),
+        underTheDeductible: w.underDeductible,
+        ...(result.advice
+          ? {
+              demoAdvice: true,
+              premiumRiseOverThreeYears: money(w.riseCents),
+              claimsFreeDiscountLost: money(w.discountAtRiskCents),
+              netIfTheyClaim: money(w.netCents),
+              looksCheaperTo: w.verdict,
+            }
+          : {}),
       }),
       cents,
     };
