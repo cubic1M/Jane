@@ -1,6 +1,8 @@
 import {
   DEFAULT_PAYCHECKS_PER_MONTH,
+  PAYCHECK_BUFFER_MARGIN_CENTS,
   PAYCHECK_CUSHION_CENTS,
+  PAYCHECK_FORECAST_DAYS,
   PAYCHECK_PLAN_DAYS,
 } from "@/config/money-movement";
 import type { Prisma, PrismaClient } from "@/generated/prisma/client";
@@ -12,6 +14,7 @@ import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
 import { loadPayoff } from "@/lib/debt-plan";
 import { leanActive } from "@/lib/lean-plan";
+import { forecastAccounts } from "@/detection/forecast";
 import { listGoals } from "@/lib/goals";
 import { homeSummary } from "@/lib/home";
 import { mayAct, recordAct } from "@/lib/sector-autopilot";
@@ -40,6 +43,8 @@ export type PaycheckPlanView = {
   paidOn: string;
   status: string;
   moves: PlanMove[];
+  // Spec step 206: what stayed for bills, the buffer, and went to investing.
+  kept: { billsCents: number; bufferCents: number; investingCents: number } | null;
 };
 
 const iso = (d: Date) => d.toISOString().slice(0, 10);
@@ -108,7 +113,28 @@ export async function runPaycheckPlan(
     listGoals(userId, { client, now }),
     payoffDebt(userId, client, now),
   ]);
+  // Spec step 206: what can leave checking and still keep its forecast low above the margin
+  // (transfers already pending count as gone).
+  const lowest = forecastAccounts(loaded, PAYCHECK_FORECAST_DAYS).find(
+    (f) => f.accountId === checking.id,
+  )?.lowest.balanceCents;
+  const pendingOut = (
+    await db.moneyTransfers.findMany({
+      where: { status: "pending", fromAccountId: checking.id },
+      select: { amountCents: true },
+    })
+  ).reduce((s, t) => s + t.amountCents, 0);
+  const invested =
+    (
+      await db.autoInvestRuns.findFirst({
+        where: { status: "invested", paydayOn: new Date(`${paycheck.date}T00:00:00Z`) },
+        select: { amountCents: true },
+      })
+    )?.amountCents ?? 0;
   const plan = paycheckPlan({
+    forecastRoomCents:
+      lowest === undefined ? null : Math.max(0, lowest - pendingOut - PAYCHECK_BUFFER_MARGIN_CENTS),
+    investedCents: invested,
     paycheckCents: paycheck.cents,
     paychecksPerMonth: paycheck.perMonth,
     checkingAccountId: checking.id,
@@ -173,6 +199,11 @@ export async function runPaycheckPlan(
       paycheckCents: paycheck.cents,
       paidOn: new Date(`${paycheck.date}T00:00:00Z`),
       moves: moves as unknown as Prisma.InputJsonArray,
+      summary: {
+        billsCents: plan.wentTo.billsCents,
+        bufferCents: plan.wentTo.bufferCents,
+        investingCents: plan.wentTo.investingCents,
+      },
       status,
       createdAt: now,
     },
@@ -187,6 +218,7 @@ function viewOf(row: {
   paidOn: Date;
   status: string;
   moves: Prisma.JsonValue;
+  summary?: Prisma.JsonValue;
 }): PaycheckPlanView {
   return {
     id: row.id,
@@ -195,6 +227,10 @@ function viewOf(row: {
     paidOn: iso(row.paidOn),
     status: row.status,
     moves: movesOf(row.moves),
+    kept:
+      row.summary && typeof row.summary === "object" && !Array.isArray(row.summary)
+        ? (row.summary as unknown as PaycheckPlanView["kept"])
+        : null,
   };
 }
 

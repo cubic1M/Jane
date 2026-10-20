@@ -72,3 +72,68 @@ describe("paycheckPlan", () => {
     expect(toChecking.moves).toEqual([]);
   });
 });
+
+// Spec step 206: the forecast's buffer caps what leaves checking, and the account of where
+// every dollar went adds up to the paycheck.
+import { whereItWent } from "./paycheck-plan";
+
+describe("every paycheck sent where it should go (step 206)", () => {
+  const base = {
+    paycheckCents: 245_000,
+    paychecksPerMonth: 2,
+    checkingAccountId: "chk",
+    savingsAccount: { id: "sav", name: "Savings" },
+    accountNames: {},
+    balanceCents: 900_000,
+    billsCents: 100_000,
+    budgetsLeftCents: 50_000,
+    safeCents: 600_000,
+    cushionCents: 10_000,
+    goals: [
+      { id: "g1", name: "Trip", monthlyCents: 100_000, accountId: null, onTheWay: true },
+      { id: "g2", name: "Car", monthlyCents: 60_000, accountId: null, onTheWay: true },
+    ],
+    debt: { accountId: "card", name: "Card", extraCents: 80_000 },
+  };
+
+  it("never moves more than the forecast leaves above its low point plus the margin", () => {
+    const wide = paycheckPlan({ ...base, forecastRoomCents: 1_000_000 });
+    expect(wide.movedCents).toBe(50_000 + 30_000 + 40_000);
+    const tight = paycheckPlan({ ...base, forecastRoomCents: 60_000 });
+    expect(tight.movedCents).toBeLessThanOrEqual(60_000);
+    expect(tight.heldBack).toBe("buffer");
+    expect(paycheckPlan({ ...base, forecastRoomCents: 0 }).moves).toEqual([]);
+  });
+
+  it("accounts for every dollar, summing to the paycheck", () => {
+    const plan = paycheckPlan({
+      ...base,
+      billsCents: 50_000,
+      forecastRoomCents: 1_000_000,
+      investedCents: 20_000,
+    });
+    const w = plan.wentTo;
+    expect(
+      w.billsCents + w.bufferCents + w.goalsCents + w.debtCents + w.investingCents + w.yoursCents,
+    ).toBe(base.paycheckCents);
+    expect(w.goalsCents).toBe(80_000);
+    expect(w.debtCents).toBe(40_000);
+    expect(w.investingCents).toBe(20_000);
+    expect(w.yoursCents).toBe(245_000 - 80_000 - 40_000 - 20_000 - 50_000 - 10_000);
+  });
+
+  it("never reports more than the paycheck when the parts are larger", () => {
+    const w = whereItWent({
+      paycheckCents: 1_000,
+      billsCents: 900,
+      bufferCents: 900,
+      goalsCents: 500,
+      debtCents: 0,
+      investingCents: 0,
+    });
+    expect(w.goalsCents).toBe(500);
+    expect(w.billsCents).toBe(500);
+    expect(w.bufferCents).toBe(0);
+    expect(w.yoursCents).toBe(0);
+  });
+});

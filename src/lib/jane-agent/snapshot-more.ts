@@ -11,6 +11,9 @@ import { loadCreditCards, type CreditCards } from "@/lib/credit-cards";
 import { loadCreditBuilding, type CreditBuilding } from "@/lib/credit-building";
 import { loadBnpl, type Bnpl } from "@/lib/bnpl";
 import { loadTightMoney, type TightMoney } from "@/lib/tight-money";
+import { loadMedicalBills, type MedicalBills } from "@/lib/medical-bills";
+import { loadReportFixes, type ReportFixes } from "@/lib/credit-report-fixes";
+import { loadCardInterest, type CardInterest } from "@/lib/card-interest";
 import type { DetectionInput } from "@/detection/types";
 import { loadDebtAutopilot, type DebtAutopilot } from "@/lib/debt-autopilot";
 import { listApplications, type LoanApplicationView } from "@/lib/loan-applications";
@@ -76,6 +79,12 @@ export type MoreSnapshot = {
   bnpl?: Bnpl;
   // Spec step 177: a tight month's plan, and the requests sent.
   tightMoney?: TightMoney;
+  // Spec step 180: medical bills found, and the requests sent about them.
+  medicalBills?: MedicalBills;
+  // Spec step 181: collections and errors on the credit report, and the letters sent.
+  reportFixes?: ReportFixes;
+  // Spec step 224: card interest, promotions and rate requests.
+  cardInterest?: CardInterest;
   // Insurance (spec Phase X), from the same loader as /insurance. Optional, so a snapshot
   // built without it (in tests) says nothing about insurance.
   insurance?: InsuranceSnapshot;
@@ -108,6 +117,9 @@ export async function loadMore(
     creditBuilding,
     bnpl,
     tightMoney,
+    medicalBills,
+    reportFixes,
+    cardInterest,
   ] = await Promise.all([
     autopilotOf(userId, { client }),
     openProposals(userId, { client }),
@@ -143,6 +155,9 @@ export async function loadMore(
     loadCreditBuilding(userId, { client, now, book }),
     loadBnpl(userId, { client, now, book, input }),
     loadTightMoney(userId, { client, now, book, input }),
+    loadMedicalBills(userId, { client, now }),
+    loadReportFixes(userId, { client, now }),
+    loadCardInterest(userId, { client, now, book }),
   ]);
   const insurance = await loadInsuranceSnapshot(userId, { client, now });
 
@@ -189,6 +204,9 @@ export async function loadMore(
     creditBuilding,
     bnpl,
     tightMoney,
+    medicalBills,
+    reportFixes,
+    cardInterest,
     insurance,
   };
 }
