@@ -26,6 +26,8 @@ export type CryptoTrade = {
   side: "buy" | "sell";
   amountCents: number;
   feeCents: number;
+  // Coins bought or sold, when the source says (spec step 219: taxes need lots).
+  quantity?: number;
 };
 
 export interface CryptoSource {
@@ -51,7 +53,7 @@ export function demoCryptoSource(anchor: string): CryptoSource {
       return demoCryptoBalances(connection.kind, anchor, today);
     },
     async trades(connection, from, to) {
-      return connection.kind === "exchange" ? demoCryptoTrades(from, to) : [];
+      return connection.kind === "exchange" ? demoCryptoTrades(from, to, anchor) : [];
     },
   };
 }

@@ -214,6 +214,7 @@ describe("in the chat", () => {
       "should I raise my deductible",
       "should I bundle my car and home insurance",
       "is it cheaper to pay my insurance yearly",
+      "is it cheaper to pay my car insurance yearly",
     ]) {
       expect(parseIntent(text, "2026-10-19"), text).toMatchObject({
         kind: "insurance",

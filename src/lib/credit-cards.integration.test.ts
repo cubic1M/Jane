@@ -195,7 +195,7 @@ describe.runIf(url)("credit card rewards against a real database", () => {
     const [message] = await picks();
     expect(message.body).toMatch(/^I've worked out which card to use for each kind of spending/);
     expect(message.body).toContain(best.card.name);
-  });
+  }, 60_000);
 
   it("never has a catalog, a pick or an application for a real account", async () => {
     const realId = await person("cards-real");
