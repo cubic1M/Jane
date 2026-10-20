@@ -90,6 +90,21 @@ export function priorityItems(snapshot: Snapshot): PriorityItem[] {
       href: d.href ?? "/deadlines",
     });
   }
+  // Spec step 203: the changes of a what-if plan the person adopted.
+  for (const plan of snapshot.whatIf ?? []) {
+    for (const change of plan.changes) {
+      items.push({
+        key: `plan:${plan.id}:${change.key}`,
+        kind: "plan",
+        title: change.title,
+        valueCents: null,
+        minutes: MINUTES.task,
+        urgency: TASK_URGENCY,
+        confidence: "medium",
+        href: `/what-if?s=${plan.scenario}`,
+      });
+    }
+  }
   return items;
 }
 

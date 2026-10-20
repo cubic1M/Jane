@@ -228,6 +228,7 @@ export const ACTION_IDS = [
   "bill.pay",
   "bill.skip",
   "attention.resume",
+  "whatif.adopt",
 ] as const;
 export type ActionId = (typeof ACTION_IDS)[number];
 
@@ -390,6 +391,8 @@ export type MessageRefs = {
   billKey?: string;
   // Spec step 147: a kind of message Jane stopped bringing up, by its source.
   attentionSource?: string;
+  // Spec step 203: the what-if a message offers to adopt.
+  whatIf?: { scenario: string; months: number; extraMonthlyCents: number };
   // Spec step 141: a sector's autopilot change typed in the chat, set on "Set it".
   sectorChange?: {
     sector: string;
