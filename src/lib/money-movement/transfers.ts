@@ -19,7 +19,8 @@ export type NewTransfer = {
   toAccountId: string | null;
   toName: string;
   amountCents: number;
-  purpose: "goal" | "debt" | "bill";
+  // cash: spec step 162, cash moved to where it earns more (between own accounts).
+  purpose: "goal" | "debt" | "bill" | "cash";
   sector: Sector;
   goalId?: string | null;
   planKey?: string | null;
