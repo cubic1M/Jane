@@ -394,7 +394,9 @@ model User {
 
   retirementIncome RetirementIncome?
 
-  giftLinks        GiftLink[]
+  giftLinks GiftLink[]
+
+  familyChildren FamilyChild[]
 
   @@map("users")
 }
