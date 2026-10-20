@@ -69,6 +69,9 @@ const SIGNED_IN = [
   // Spec steps 144 and 148.
   "/transfers",
   "/monthly",
+  // Spec steps 203 and 209.
+  "/what-if",
+  "/long-view",
   "/connect",
   "/import",
   "/things",

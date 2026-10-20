@@ -135,6 +135,7 @@ const STATUS: Record<string, string> = {
   health_score: "Working out your money health score…",
   monthly_report: "Reading your monthly report…",
   what_if: "Running the what-if…",
+  long_view: "Looking ahead…",
   propose_action: "Getting a button ready…",
   show_block: "Drawing it…",
 };

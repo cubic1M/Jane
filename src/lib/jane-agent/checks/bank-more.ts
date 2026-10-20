@@ -26,6 +26,11 @@ const rows: Row[] = [
   ["scenarios", "/what-if", "what_if", "what if we have a baby"],
   ["scenarios", "/what-if", "what_if", "what if i buy a house"],
 
+  // The long view (spec step 209).
+  ["longview", "/long-view", "long_view", "where will my money be in 30 years"],
+  ["longview", "/long-view", "long_view", "what will my net worth be in 20 years"],
+  ["longview", "/long-view", "long_view", "how much will i have when i retire"],
+
   // Safe to spend and the day.
   ["safe", "/home", "safe_to_spend", "how much do i have left to spend"],
   ["safe", "/home", "safe_to_spend", "can i afford to eat out tonight"],
