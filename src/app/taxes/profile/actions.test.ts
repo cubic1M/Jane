@@ -16,6 +16,10 @@ vi.mock("@/lib/home-taxes", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/lib/home-taxes")>()),
   saveHomeAnswers: vi.fn(),
 }));
+vi.mock("@/lib/side-income", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/side-income")>()),
+  saveSideIncomeAnswers: vi.fn(),
+}));
 vi.mock("@/lib/tax-states", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/lib/tax-states")>()),
   saveMoves: vi.fn(),
@@ -28,14 +32,23 @@ import { TaxProfileError, savePayStub, saveTaxAnswers } from "@/lib/tax-profile"
 import { ResidencyError, saveLocality, saveMoves, saveWorkState } from "@/lib/tax-states";
 import { FamilyTaxesError, saveFamilyDetails } from "@/lib/family-taxes";
 import { HomeTaxesError, saveHomeAnswers } from "@/lib/home-taxes";
+import { SideIncomeError, saveSideIncomeAnswers } from "@/lib/side-income";
 import {
   saveFamilyAction,
   saveHomeAction,
+  saveSideIncomeAction,
   savePayStubAction,
   saveResidencyAction,
   saveTaxProfile,
 } from "./actions";
-import { answersFrom, familyFrom, homeFrom, payStubFrom, residencyFrom } from "./answers";
+import {
+  answersFrom,
+  familyFrom,
+  homeFrom,
+  payStubFrom,
+  residencyFrom,
+  sideIncomeFrom,
+} from "./answers";
 
 // Spec step 118: the tax profile page saves only what was filled in.
 
@@ -330,6 +343,46 @@ describe("points and a home sale (spec step 170)", () => {
     expect(await saveHomeAction(null, form([]))).toEqual({
       ok: false,
       message: "The sale is before the purchase.",
+    });
+  });
+});
+
+describe("a rental and hobby or business (spec step 173)", () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  it("reads the property and the kind, and clears an empty one", () => {
+    expect(
+      sideIncomeFrom(
+        form([
+          ["rentalPrice", "300,000"],
+          ["rentalPlacedOn", "2026-03-01"],
+          ["sideIncomeKind", "hobby"],
+        ]),
+      ),
+    ).toEqual({ rental: { priceCents: 30_000_000, placedOn: "2026-03-01" }, kind: "hobby" });
+    expect(sideIncomeFrom(form([["sideIncomeKind", "other"]]))).toEqual({
+      rental: null,
+      kind: null,
+    });
+    expect(() => sideIncomeFrom(form([["rentalPrice", "lots"]]))).toThrow(SideIncomeError);
+  });
+
+  it("saves for the signed-in person and says what's wrong instead", async () => {
+    expect(await saveSideIncomeAction(null, form([]))).toEqual({
+      ok: true,
+      message: "Saved. Your estimate uses it now.",
+    });
+    expect(saveSideIncomeAnswers).toHaveBeenCalledWith(
+      "u1",
+      { rental: null, kind: null },
+      expect.objectContaining({ via: "page" }),
+    );
+    vi.mocked(saveSideIncomeAnswers).mockRejectedValueOnce(
+      new SideIncomeError("Give the date it was ready to rent."),
+    );
+    expect(await saveSideIncomeAction(null, form([]))).toEqual({
+      ok: false,
+      message: "Give the date it was ready to rent.",
     });
   });
 });

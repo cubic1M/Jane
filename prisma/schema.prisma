@@ -2322,6 +2322,11 @@ model TaxProfile {
   homeDaysLivedIn       Int?      @map("home_days_lived_in")
   // Spec step 171: tax years whose "records can go" reminder is on the deadlines.
   retentionReminded     String[]  @default([]) @map("retention_reminded")
+  // Spec step 173: the rental property (price and when it was ready to rent), and whether
+  // the side income is a "business" or a "hobby" (null: not said).
+  rentalPriceCents      Int?      @map("rental_price_cents")
+  rentalPlacedOn        DateTime? @map("rental_placed_on") @db.Date
+  sideIncomeKind        String?   @map("side_income_kind")
   createdAt             DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt             DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
 

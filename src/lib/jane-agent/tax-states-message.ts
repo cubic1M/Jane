@@ -116,7 +116,7 @@ export function statesReply(view: TaxEstimateView): Message {
       ? " Moved or work for an employer in another state? Tell me and I'll split it."
       : "";
   return {
-    body: `Your ${view.year} state taxes, estimated:\n${lines.map((l) => `• ${l}`).join("\n")}\nFigures from ${sources.join("; ")}, for review.${told}`,
+    body: `Your ${view.year} state taxes come to about ${roundDollars(state.taxCents)}, estimated.\n${lines.map((l) => `• ${l}`).join("\n")}\nFigures from ${sources.join("; ")}, for review.${told}`,
     refs: {},
     actions: [{ id: "open", label: "Where I lived", kind: "link", href: STATES_HREF }],
   };

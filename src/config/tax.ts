@@ -142,6 +142,14 @@ export const TAX_TAGS = {
     categories: [],
     check: false,
   },
+  // Spec step 173: costs of a rental property (repairs, management, insurance, advertising).
+  // Tagged by the person; they come off the rent before it's taxed.
+  rental: {
+    label: "Rental expense",
+    plural: "rental expenses",
+    categories: [],
+    check: false,
+  },
 } as const satisfies Record<
   string,
   { label: string; plural: string; categories: readonly PfcDetailed[]; check: boolean }
@@ -372,6 +380,9 @@ export const TAX_MESSAGE_PRIORITY = {
   // Spec step 172: a return read from a document, and what its review found.
   prior_return: 47,
   prior_review: 43,
+  // Spec step 173: a rental to set up, and hobby or business.
+  rental_setup: 37,
+  side_kind: 36,
 } as const;
 
 // What Jane does about taxes by herself at each autopilot level (spec step 57), shown on
@@ -425,6 +436,11 @@ export const TAX_AUTOPILOT: readonly { feature: string; ask: string; auto: strin
     feature: "investments",
     ask: "I work out your gains and losses from your holdings, warn you about wash sales and, with demo advice, show losses worth harvesting and what's better held in your 401(k) or IRA.",
     auto: "I work out your gains and losses after every sync, warn you about wash sales and, with demo advice, bring up losses worth harvesting before the year ends. I never sell anything myself.",
+  },
+  {
+    feature: "side_income",
+    ask: "I count rent less the expenses you tag and depreciation on the building, match each gig platform's payouts to its 1099, and with demo advice show your side income taxed as a business and as a hobby. Which it is is your call.",
+    auto: "I count rent less tagged expenses and depreciation, match each gig platform's payouts to its 1099, put rental profit on your quarterly amounts, and with demo advice show your side income taxed as a business and as a hobby. Which it is is your call.",
   },
   {
     feature: "last_return",

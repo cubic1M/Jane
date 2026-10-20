@@ -33,6 +33,8 @@ import { DocumentButtons } from "./document-buttons";
 import { PlanSection } from "./plan-section";
 import { GivingSection } from "./giving-section";
 import { FamilySection } from "./family-section";
+import { SideIncomeSection } from "./side-income-section";
+import { loadSideIncome } from "@/lib/side-income";
 import { RecordsSection } from "./records-section";
 import { loadAuditRecords } from "@/lib/audit-records";
 import { HomeSection } from "./home-section";
@@ -121,6 +123,10 @@ async function TaxesContent() {
         </Link>
       </section>
 
+      <SideIncomeSection
+        view={await loadSideIncome(user.id, { now, loaded: { estimate } })}
+        advice={advice}
+      />
       <RecordsSection view={await loadAuditRecords(user.id, year, { now })} />
       <HomeSection view={await loadHomeTaxes(user.id, { now, loaded: { estimate } })} />
       <FamilySection view={await loadFamilyTaxes(user.id, { now, loaded: { estimate, advice } })} />

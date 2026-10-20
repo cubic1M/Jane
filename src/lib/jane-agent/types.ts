@@ -180,6 +180,9 @@ export const ACTION_IDS = [
   "tax.prior_confirm",
   "tax.prior_no",
   "tax.amend_prepare",
+  // Spec step 173: hobby or business.
+  "tax.side_business",
+  "tax.side_hobby",
   // Investments (spec step 129 on): the answer buttons on an investor-profile question,
   // by position (src/config/investing.ts PROFILE_QUESTIONS).
   "invest.answer.1",

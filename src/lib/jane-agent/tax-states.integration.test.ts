@@ -277,7 +277,9 @@ describe.runIf(url)("state and local taxes against a real database", { timeout: 
 
     const states = (await sendToJane(userId, "what state taxes do I pay", { client, now: later() }))
       .reply;
-    expect(states.body).toMatch(/^Your 2026 state taxes, estimated:\n• California \(lived there/);
+    expect(states.body).toMatch(
+      /^Your 2026 state taxes come to about \$[\d,]+, estimated\.\n• California \(lived there/,
+    );
     expect(states.body).toContain("Figures from California Franchise Tax Board;");
 
     const tool = JSON.parse(
