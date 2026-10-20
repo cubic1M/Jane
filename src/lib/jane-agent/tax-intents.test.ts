@@ -222,3 +222,15 @@ describe("family taxes in the chat", () => {
     });
   });
 });
+
+// Spec step 170.
+describe("homeowner taxes in the chat", () => {
+  it.each([
+    "mortgage interest deduction on my taxes",
+    "do my property taxes hit the salt cap",
+    "I sold my house, what do I owe in tax",
+    "taxes on my home sale",
+  ])("%s asks about the home", (text) => {
+    expect(parse(text)).toEqual({ kind: "tax", ask: "home" });
+  });
+});
