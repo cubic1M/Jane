@@ -37,6 +37,8 @@ export type ProfileAccount = {
   subtype: string | null;
   balanceCents: number;
 };
+// A holding with what it cost, for taxes on gains and losses (step 261).
+export type ProfileHolding = { accountId: string; valueCents: number; basisCents: number | null };
 export type ProfileLiability = {
   accountId: string;
   kind: string;
@@ -52,6 +54,8 @@ export type ProfileInput = {
   transactions: readonly ProfileTx[];
   accounts: readonly ProfileAccount[];
   liabilities: readonly ProfileLiability[];
+  // Optional: what each account holds. Absent when the loader did not read holdings.
+  holdings?: readonly ProfileHolding[];
   told: Told;
 };
 

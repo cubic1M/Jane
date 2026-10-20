@@ -1,4 +1,8 @@
 import { DETECTOR_RATES } from "@/config/detectors";
+import { GIVING } from "@/config/giving";
+import { PROPERTY_TAX_PAYEE } from "@/config/home-taxes";
+import { APPEAL_GAP_RATE } from "@/config/property-tax";
+import { TAXABLE_INVESTMENT_SUBTYPES } from "@/config/tax";
 import { ESTIMATED_TAX_DATES } from "@/config/tax-pack";
 import {
   CONTRIBUTION_LIMITS,
@@ -250,8 +254,179 @@ const yearEndMoves: Detector = {
   },
 };
 
+// Big gifts need the charity's written receipt to be deducted (steps 168 and 171).
+const charityReceipts: Detector = {
+  capability: "taxes",
+  topic: "charity_receipts",
+  covers: ["tax_giving", "tax_records", "tax_tags"],
+  needs: ["monthly_income", "household"],
+  detect({ profile, data }) {
+    const income = profile.facts.monthly_income;
+    const gifts = tx(
+      data,
+      (t) =>
+        t.pfc === "GOVERNMENT_AND_NON_PROFIT_DONATIONS" && t.amountCents >= GIVING.receiptFromCents,
+    );
+    if (gifts.length === 0) return null;
+    const total = gifts.reduce((s, t) => s + t.amountCents, 0);
+    const rate = marginalRate(annual(income.value), 0, profile.facts.household.value);
+    return {
+      id: suggestionId("taxes", "charity_receipts"),
+      capability: "taxes",
+      topic: "charity_receipts",
+      title: "Get the written receipt for your larger gifts",
+      worthCents: Math.round(total * rate),
+      worthKind: "risk",
+      confidence: weakest([
+        factEvidence(income),
+        evidence(
+          "seen",
+          profile.months,
+          gifts.length,
+          `gifts of ${formatCents(GIVING.receiptFromCents)} or more`,
+        ),
+        {
+          percent: 70,
+          reason: "I can't see whether the charity already sent you a receipt",
+        },
+      ]),
+      urgency: inFilingWindow(profile.today) ? "soon" : "later",
+      why: `You gave ${formatCents(total)} in ${gifts.length === 1 ? "one gift" : `${gifts.length} gifts`} of ${formatCents(GIVING.receiptFromCents)} or more. Without the charity's written receipt the deduction can be disallowed, which would cost about ${formatCents(Math.round(total * rate))} at your ${Math.round(rate * 100)}% bracket.`,
+      action: { label: "Check your gifts", href: "/taxes#giving" },
+    };
+  },
+};
+
+// Property tax is worth checking against the home's market value; the county's window is a
+// deadline (steps 170 and 221). Seen from the payments to the county.
+const propertyTaxCheck: Detector = {
+  capability: "taxes",
+  topic: "property_tax_check",
+  covers: ["tax_property", "tax_home"],
+  needs: ["housing"],
+  detect({ profile, data }) {
+    const housing = profile.facts.housing;
+    if (housing.value !== "own") return null;
+    const bills = tx(
+      data,
+      (t) =>
+        t.pfc === "GOVERNMENT_AND_NON_PROFIT_TAX_PAYMENT" &&
+        t.amountCents > 0 &&
+        PROPERTY_TAX_PAYEE.test(t.description),
+    );
+    const paid = bills.reduce((s, t) => s + t.amountCents, 0);
+    if (paid < T.propertyTaxMinCents) return null;
+    const worth = Math.round(paid * APPEAL_GAP_RATE);
+    return {
+      id: suggestionId("taxes", "property_tax_check"),
+      capability: "taxes",
+      topic: "property_tax_check",
+      title: "Check whether your home is assessed for more than it's worth",
+      worthCents: worth,
+      worthKind: "saves",
+      confidence: weakest([
+        factEvidence(housing),
+        evidence("seen", profile.months, bills.length, "property tax payments"),
+        {
+          percent: 45,
+          reason: "I haven't seen your assessment, so I don't know if it's over the market value",
+        },
+      ]),
+      urgency: "later",
+      why: `You paid ${formatCents(paid)} in property tax. If your assessment is ${Math.round(APPEAL_GAP_RATE * 100)}% or more over what the home would sell for, an appeal would save about ${formatCents(worth)} a year, and the county's window to appeal is short.`,
+      action: { label: "Check your property tax", href: "/taxes/property" },
+    };
+  },
+};
+
+// A loss in a taxable account offsets gains, then some other income (step 124). Never in a
+// retirement account, where a loss isn't deductible.
+const lossHarvest: Detector = {
+  capability: "taxes",
+  topic: "tax_loss_harvest",
+  covers: ["tax_investments"],
+  needs: ["monthly_income", "household"],
+  detect({ profile, data }) {
+    const income = profile.facts.monthly_income;
+    const taxable = new Set(
+      data.accounts
+        .filter(
+          (a) => a.type === "investment" && TAXABLE_INVESTMENT_SUBTYPES.includes(a.subtype ?? ""),
+        )
+        .map((a) => a.id),
+    );
+    const losing = (data.holdings ?? []).filter(
+      (h) => taxable.has(h.accountId) && h.basisCents !== null && h.basisCents > h.valueCents,
+    );
+    const loss = losing.reduce((s, h) => s + (h.basisCents! - h.valueCents), 0);
+    if (loss < T.harvestMinLossCents) return null;
+    const offset = Math.min(loss, T.harvestOrdinaryOffsetCents);
+    const rate = marginalRate(annual(income.value), 0, profile.facts.household.value);
+    const saves = Math.round(offset * rate);
+    return {
+      id: suggestionId("taxes", "tax_loss_harvest"),
+      capability: "taxes",
+      topic: "tax_loss_harvest",
+      title: "Sell a holding at a loss to lower this year's tax",
+      worthCents: saves,
+      worthKind: "saves",
+      confidence: weakest([
+        factEvidence(income),
+        evidence("seen", profile.months, losing.length, "holdings below cost in a taxable account"),
+        { percent: 80, reason: "the savings depend on your gains elsewhere, which I can't see" },
+      ]),
+      urgency: month(profile.today) >= 11 ? "soon" : "later",
+      why: `A taxable account holds ${formatCents(loss)} less than you paid for it. Selling at a loss offsets gains and up to ${formatCents(T.harvestOrdinaryOffsetCents)} of other income, about ${formatCents(saves)} off your tax. Don't buy the same thing back for 30 days (the wash-sale rule).`,
+      action: { label: "See your investment taxes", href: "/taxes#investments" },
+    };
+  },
+};
+
+const inFilingWindow = (today: string) => {
+  const md = today.slice(5);
+  return md >= T.filingFrom && md <= T.filingUntil;
+};
+
+// From January 15 to April 15, a return not filed: the forms are coming in and the date is
+// fixed (steps 126, 166 and 223). Everyone with income.
+const fileReturn: Detector = {
+  capability: "taxes",
+  topic: "file_return",
+  covers: ["tax_return", "tax_forms"],
+  needs: ["income_pattern"],
+  detect({ profile, data }) {
+    const pattern = profile.facts.income_pattern;
+    if (!inFilingWindow(profile.today) || pattern.value === "unknown") return null;
+    const refund = tx(
+      data,
+      (t) => t.pfc === "INCOME_TAX_REFUND" && t.date > `${profile.today.slice(0, 4)}-01-01`,
+    );
+    if (refund.length > 0) return null;
+    const year = Number(profile.today.slice(0, 4));
+    const days = Math.round(
+      (Date.parse(`${year}-${T.filingUntil}`) - Date.parse(profile.today)) / 86_400_000,
+    );
+    return {
+      id: suggestionId("taxes", "file_return"),
+      capability: "taxes",
+      topic: "file_return",
+      title: "Get your tax forms in and your return ready",
+      worthCents: T.lateFilingPenaltyCents,
+      worthKind: "risk",
+      confidence: factEvidence(pattern as Fact),
+      urgency: days <= T.filingNowDays ? "now" : "soon",
+      why: `Your return is due April 15, ${days} ${days === 1 ? "day" : "days"} from now. Filing more than 60 days late costs at least ${formatCents(T.lateFilingPenaltyCents)} (or all the tax owed, if less), even with a refund coming; I collect your forms and get the return ready for you to review and sign.`,
+      action: { label: "See your forms", href: "/taxes#forms" },
+    };
+  },
+};
+
 export const TAX_DETECTORS: readonly Detector[] = [
   yearEndMoves,
+  charityReceipts,
+  propertyTaxCheck,
+  lossHarvest,
+  fileReturn,
   withholdingGap,
   rothConversion,
   childcareTaxBreak,
