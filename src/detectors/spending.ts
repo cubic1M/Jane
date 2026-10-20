@@ -241,7 +241,7 @@ const trialConversion: Detector = {
 const lowBalance: Detector = {
   capability: "safe_to_spend",
   topic: "low_balance",
-  covers: ["safe_to_spend"],
+  covers: [],
   needs: [],
   detect({ profile, data }) {
     // Cash in checking and savings: what could pay the month's bills.
