@@ -13,6 +13,7 @@ import { quotesAnswer } from "../insurance/quotes";
 import { savingsAnswer } from "../insurance/savings";
 import { risksAnswer } from "../insurance/risks";
 import { familyAnswer } from "../insurance/family";
+import { healthYearAnswer } from "../insurance/health-year";
 import { claimWorthAnswer } from "../insurance/claim-worth";
 import { insuranceReply } from "../insurance/replies";
 import { loadInsuranceSnapshot } from "../insurance/snapshot";
@@ -53,6 +54,8 @@ async function answer(ctx: CapabilityContext): Promise<Reply | null> {
       if (intent.ask === "risks") return risksAnswer(userId, { client, now });
       // Spec step 198: the whole household's cover.
       if (intent.ask === "household") return familyAnswer(userId, { client, now });
+      // Spec step 200: where they are in their health plan's year.
+      if (intent.ask === "health_year") return healthYearAnswer(userId, { client, now });
       // Spec step 199: claim or pay yourself?
       if (intent.ask === "claim_worth") {
         return claimWorthAnswer(
