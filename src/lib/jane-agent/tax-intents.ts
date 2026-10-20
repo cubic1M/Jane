@@ -214,7 +214,7 @@ const IDENTITY_LETTER =
 const IDENTITY_ASK =
   /\bip pin\b|\bidentity protection pin\b|\btax identity theft\b|\bidentity theft\b.*\b(?:tax|irs|return)\b|\b(?:tax|irs|return)\b.*\bidentity theft\b|\bform 14039\b|\bprotect my (?:tax )?identity\b|\bstolen (?:social security|ssn)\b.*\b(?:tax|irs)\b/;
 const EQUITY_ASK =
-  /\b(?:crypto|bitcoin|ethereum)\b.*\b(?:tax|taxes|gains?|losses|1099)\b|\b(?:tax|taxes)\b.*\b(?:crypto|bitcoin|ethereum)\b|\bespp\b|\brsus?\b.*\b(?:tax|taxes|withh)|\b(?:tax|taxes|withh)\w*\b.*\brsus?\b|\b(?:iso|isos|incentive stock options?)\b|\bamt\b|\balternative minimum tax\b|\b1099-da\b|\bdisqualifying disposition\b|\bstock options?\b.*\btax/;
+  /\b(?:crypto|bitcoin|ethereum)\b.*\b(?:tax|taxes|gains?|losses|1099)\b|\b(?:tax|taxes)\b.*\b(?:crypto|bitcoin|ethereum)\b|\bespp\b.*\b(?:tax|taxes|taxed|taxable|disqualif\w*|qualifying)\b|\b(?:tax|taxes|taxed)\b.*\bespp\b|\brsus?\b.*\b(?:tax|taxes|withh)|\b(?:tax|taxes|withh)\w*\b.*\brsus?\b|\b(?:iso|isos|incentive stock options?)\b|\bamt\b|\balternative minimum tax\b|\b1099-da\b|\bdisqualifying disposition\b|\bstock options?\b.*\btax/;
 const YEARS_ASK =
   /\b(?:taxes|tax bill)\b.*\b(?:over (?:the )?(?:next )?(?:several |many |few |\d+ )?years|in retirement|multi[- ]?year)\b|\bmulti[- ]?year (?:tax|plan)\b|\broth conversions?\b|\bconvert (?:my )?(?:401k|401\(k\)|ira|traditional \w+)\b.*\broth\b|\bbunch(?:ing)? (?:my )?deductions\b|\b0% (?:capital gains )?(?:tax )?bracket\b|\bwhen (?:should|do) i (?:take|time) (?:my |the |a )?(?:bonus|withdrawal)\b.*\btax/;
 const RETIRE_YEAR = /\b(?:plan|expect|want|hope|aim) to retire (?:in|by) (\d{4})\b/;
