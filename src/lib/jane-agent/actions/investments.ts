@@ -1,6 +1,6 @@
 import { PROFILE_QUESTIONS } from "@/config/investing";
 import { answerProfileQuestion } from "@/lib/investments/profile";
-import { placeRebalance, RebalanceError } from "@/lib/investments/rebalance";
+import { loadRebalance, placeRebalance, RebalanceError } from "@/lib/investments/rebalance";
 import {
   AutoInvestError,
   setAutoInvestStatus,
@@ -9,13 +9,22 @@ import {
 import { AUTO_LINK, runLine } from "../investments/auto-copy";
 import { CollegeError, startCollegePlan } from "@/lib/investments/college";
 import { HsaError, investHsaCash, linkDemoHsa } from "@/lib/investments/hsa";
-import { CompanyStockError, linkDemoStockPlan, sellPart } from "@/lib/investments/company-stock";
+import {
+  CompanyStockError,
+  linkDemoStockPlan,
+  loadCompanyStock,
+  sellPart,
+} from "@/lib/investments/company-stock";
 import { formatCents } from "@/lib/money";
 import { nextQuestion, profileSummary, questionAfter } from "@/planning/investor-profile";
 import { asking } from "../investments/profile-question";
 import { COMPANY_LINK } from "../investments/company-copy";
 import { CRYPTO_LINK, NEVER_TRADES } from "../investments/crypto-copy";
 import { CryptoError, linkDemoCrypto } from "@/lib/crypto/crypto";
+import { CashError, moveCash } from "@/lib/investments/cash";
+import { loadSteadyHand } from "@/lib/investments/steady-hand";
+import { pauseNote } from "../investments/steady-copy";
+import { CASH_LINK } from "../investments/cash-copy";
 import { mixLine, SIMULATED_WORDS } from "../investments/rebalance-copy";
 import type { ActionId } from "../types";
 import { answeredElsewhere, ChatActionError, type ActionHandler } from "./handler";
@@ -82,6 +91,13 @@ export const investRebalance: ActionHandler = {
     const key = message.refs.rebalanceKey;
     if (!key) throw new ChatActionError("not_offered", "That button isn't on this message.");
     try {
+      const planned = (await loadRebalance(userId, { client, now })).plan;
+      const sells = (planned?.orders ?? [])
+        .filter((o) => o.side === "sell")
+        .reduce((s, o) => s + o.amountCents, 0);
+      const paused =
+        sells > 0 ? await pauseFirst({ userId, message, action, client, now }, sells) : null;
+      if (paused) return paused;
       const { confirmations, plan } = await placeRebalance(userId, key, { client, now });
       const filled = confirmations.filter((c) => c.status === "filled").length;
       return {
@@ -249,6 +265,11 @@ export const companySell: ActionHandler = {
     const key = message.refs.companyPlan;
     if (!key) throw new ChatActionError("not_offered", "That button isn't on this message.");
     try {
+      const first = (await loadCompanyStock(userId, { client, now })).plan?.parts[0];
+      const paused = first
+        ? await pauseFirst({ userId, message, action, client, now }, first.proceedsCents)
+        : null;
+      if (paused) return paused;
       const { part } = await sellPart(userId, key, { client, now });
       return {
         answeredWith: action.label,
@@ -280,3 +301,60 @@ export const cryptoLink: ActionHandler = {
     };
   },
 };
+
+// Spec step 162: one move of the cash plan, only while it's the plan the message showed.
+// Moving money is always the person's tap, at every autopilot level.
+function cashMove(
+  id: ActionId,
+  moveKey: "checking_to_savings" | "sweep_to_money_market",
+): ActionHandler {
+  return {
+    id,
+    on: "open",
+    async run({ userId, message, action, client, now }) {
+      const key = message.refs.cashPlan;
+      if (!key) throw new ChatActionError("not_offered", "That button isn't on this message.");
+      try {
+        const { move, runOn } = await moveCash(userId, key, moveKey, { client, now });
+        return {
+          answeredWith: action.label,
+          note:
+            move.key === "checking_to_savings"
+              ? `Scheduled through the money-movement stand-in (no real money moves): ${formatCents(move.cents)} from ${move.fromName} to ${move.toName} on ${runOn}. It stays in reach.`
+              : `Done ${SIMULATED_WORDS}: ${formatCents(move.cents)} of brokerage cash in the money market fund. It can be sold the next business day.`,
+          actions: [CASH_LINK],
+        };
+      } catch (error) {
+        if (error instanceof CashError) throw answeredElsewhere(error.message);
+        throw error;
+      }
+    },
+  };
+}
+export const cashToSavings = cashMove("cash.to_savings", "checking_to_savings");
+export const cashToMoneyMarket = cashMove("cash.to_money_market", "sweep_to_money_market");
+
+// Spec step 163: a sell the person starts pauses once while a big drop is on, with what it
+// gives up over the long run. The same button, relabelled "Sell anyway", goes straight
+// through: the pause can always be skipped, and a sell never waits on a clock.
+async function pauseFirst(
+  { userId, message, action, client, now }: Parameters<ActionHandler["run"]>[0],
+  sellCents: number,
+): Promise<ReturnType<ActionHandler["run"]> | null> {
+  if (message.refs.paused === true) return null;
+  const steady = await loadSteadyHand(userId, { client, now });
+  if (!steady.advice || !steady.drop) return null;
+  return Promise.resolve({
+    status: "open" as const,
+    answeredWith: null,
+    refs: { ...message.refs, paused: true as const },
+    note: pauseNote(sellCents, steady.drop),
+    actions: [
+      ...message.actions
+        .filter((a) => a.id === action.id)
+        .map((a) => ({ ...a, label: "Sell anyway" })),
+      ...message.actions.filter((a) => a.kind === "link"),
+      { id: "snooze" as const, label: "Leave it a few days", kind: "secondary" as const },
+    ],
+  });
+}

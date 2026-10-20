@@ -28,6 +28,9 @@ import { loadTaxDocuments } from "@/lib/tax-documents";
 import { loadTaxPlan } from "@/lib/tax-plan";
 import { loadGiving } from "@/lib/giving";
 import { loadFamilyTaxes } from "@/lib/family-taxes";
+import { loadHomeTaxes } from "@/lib/home-taxes";
+import { figuresOf, type Source } from "@/planning/home-taxes";
+import { sourceText } from "./home-taxes-message";
 import { COMPARED } from "@/planning/tax-document-check";
 
 // Claude's tax tools in Jane's chat (spec steps 118–127): read-only, over the person's own
@@ -125,6 +128,12 @@ export const TAX_TOOLS: Anthropic.Tool[] = [
     name: "tax_family",
     description:
       "Demo advice only: the person's family tax choices for the tax year, each with both sides' federal tax and whether each side is open to them (with the eligibility rules): claiming their children, a dependent care FSA or the care credit, the American Opportunity or Lifetime Learning credit, a 529's state tax break, and married filing jointly or separately (or head of household or single); plus what Jane assumed. Choosing is the person's.",
+    input_schema: noInput,
+  },
+  {
+    name: "tax_home",
+    description:
+      "What the person's home changes at tax time for the tax year, each figure with where it came from (transactions, the lender's 1098 or loan, or their answers): mortgage interest (on up to the debt limit), property tax paid, the state and local tax cap applied to state income tax and property tax (total, cap, what counts, what doesn't), points, the home office, energy credits from work paid for, and a home sale's gain against the exclusion (with whether it qualifies and why).",
     input_schema: noInput,
   },
   {
@@ -504,6 +513,32 @@ export async function runTaxTool(
           saves: c.better === null ? null : money(c.savesCents),
         })),
         assumed: view.assumptions,
+      });
+    }
+    case "tax_home": {
+      const view = await loadHomeTaxes(userId, { client, now });
+      const figure = (f: { label: string; cents: number; sources: Source[]; note?: string }) => ({
+        figure: f.label,
+        amount: money(f.cents),
+        from: f.sources.map(sourceText),
+        note: f.note ?? null,
+      });
+      return out({
+        year: view.year,
+        figures: figuresOf(view).map(figure),
+        stateAndLocalTaxCap: {
+          total: money(view.salt.totalCents),
+          cap: money(view.salt.capCents),
+          counts: money(view.salt.allowedCents),
+          doesntCount: money(view.salt.overCents),
+        },
+        sale: view.sale && {
+          gain: money(Math.max(0, view.sale.gainCents)),
+          exclusion: money(view.sale.exclusionCents),
+          taxed: money(view.sale.taxableGainCents),
+          qualifies: view.sale.qualifies,
+          why: view.sale.why,
+        },
       });
     }
     case "tax_forms": {

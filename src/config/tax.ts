@@ -364,6 +364,9 @@ export const TAX_MESSAGE_PRIORITY = {
   receipt: 32,
   // Spec step 169: a family tax choice worth making.
   family: 35,
+  // Spec step 170: the state and local tax cap biting, and a home sale.
+  salt_cap: 29,
+  home_sale: 45,
 } as const;
 
 // What Jane does about taxes by herself at each autopilot level (spec step 57), shown on
@@ -417,6 +420,11 @@ export const TAX_AUTOPILOT: readonly { feature: string; ask: string; auto: strin
     feature: "investments",
     ask: "I work out your gains and losses from your holdings, warn you about wash sales and, with demo advice, show losses worth harvesting and what's better held in your 401(k) or IRA.",
     auto: "I work out your gains and losses after every sync, warn you about wash sales and, with demo advice, bring up losses worth harvesting before the year ends. I never sell anything myself.",
+  },
+  {
+    feature: "home",
+    ask: "I find your mortgage interest (from your 1098 or your lender), property tax payments and energy work, apply the state and local tax cap, and work out the gain on a home sale against the exclusion, each figure linked to where it came from.",
+    auto: "I find your mortgage interest, property tax payments and energy work after every sync, apply the state and local tax cap, count property tax in your estimate, and work out the gain on a home sale against the exclusion, each figure linked to where it came from.",
   },
   {
     feature: "family",
