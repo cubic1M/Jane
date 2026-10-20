@@ -87,6 +87,17 @@ describe("tryJane", () => {
     expect(cleanUpTrials).toHaveBeenCalled();
   });
 
+  it("lets the visitor pick a life, or picks one for them (spec step 252)", async () => {
+    const data = agreed();
+    data.set("person", "retiree");
+    await expect(tryJane(null, data)).rejects.toThrow("NEXT_REDIRECT");
+    expect(startTrial).toHaveBeenLastCalledWith(expect.objectContaining({ person: "retiree" }));
+    const any = agreed();
+    any.set("person", "any");
+    await expect(tryJane(null, any)).rejects.toThrow("NEXT_REDIRECT");
+    expect(vi.mocked(startTrial).mock.lastCall?.[0]?.person).toMatch(/^[a-z]+$/);
+  });
+
   it("uses the secure cookie on HTTPS", async () => {
     headerValues.set("x-forwarded-proto", "https");
     await expect(tryJane(null, agreed())).rejects.toThrow("NEXT_REDIRECT");
