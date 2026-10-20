@@ -36,17 +36,29 @@ const tx = (
 describe("on the eight sample people", () => {
   it("fires only for the people the signal is in", () => {
     const by = Object.fromEntries(PEOPLE.map((p) => [p.id, topics(p.id).sort()]));
-    // Card interest on a $1,940 balance: a 0% transfer would save more than its fee.
-    expect(by.renter).toEqual(["balance_transfer"]);
-    // A GAP add-on bought with the car loan (the refund is a guess until they say yes).
-    expect(by.family).toEqual(["car_addons"]);
+    // Card interest on a $1,940 balance (a 0% transfer would save more than its fee), 65% of her
+    // card limit in use, and six Klarna installments.
+    expect(by.renter).toEqual(["balance_transfer", "bnpl", "credit_building"]);
+    // A GAP add-on bought with the car loan, and a teacher's $62,000 student loan.
+    expect(by.family).toEqual(["car_addons", "student_forgiveness"]);
     // A $450 student loan payment against $4,538 a month of income.
     expect(by.freelancer).toEqual(["student_repayment"]);
     // 6.9% on $910,000 with $106,000 of cash: pay down or compare.
     expect(by.equity).toEqual(["mortgage_extra"]);
-    // A cash advance, three cards at 74% (approval isn't certain), a car payment 16% of income.
-    expect(by.debt).toEqual(["auto_refinance", "balance_transfer", "cash_advance"]);
-    for (const id of ["preretire", "retiree", "owner"]) expect(by[id], id).toEqual([]);
+    // $2,400 sent to their son by Zelle and not sent back.
+    expect(by.preretire).toEqual(["family_loans"]);
+    // A $1,240 hospital bill.
+    expect(by.retiree).toEqual(["medical_bills"]);
+    // A cash advance, three cards at 96% of their limits, a collector, a car payment 16% of
+    // income, and a transfer (approval isn't certain).
+    expect(by.debt).toEqual([
+      "auto_refinance",
+      "balance_transfer",
+      "cash_advance",
+      "credit_building",
+      "credit_report_errors",
+    ]);
+    expect(by.owner).toEqual(["credit_building"]);
   });
 
   it("gives each its dollars, a percentage with the reason, an urgency, why and the button", () => {
@@ -164,5 +176,100 @@ describe("dealer add-ons and cash advances", () => {
     // $10 fee plus 29.99% for 30 days on $200.
     expect(s.worthCents).toBe(1_493);
     expect(s.urgency).toBe("soon");
+  });
+});
+
+// Spec step 260, the rest of the debt tools.
+describe("card use, pay-later plans, medical bills, collections, forgiveness and money lent", () => {
+  it("works out the pay-down that brings Chris's cards under 30% of their limits", () => {
+    const s = fire("debt").find((x) => x.topic === "credit_building")!;
+    // What getting under the line is usually worth: 1.5 points off the rate on $10,090 owed.
+    expect(s.worthCents).toBe(Math.round(1_009_000 * 0.015));
+    expect(s.worthKind).toBe("saves");
+    expect(s.why).toContain("96%");
+    // $3,150 would get him under 30%; he has $38.20, so it says to pay what he can.
+    expect(s.why).toContain("would take $6,940.00, more than the $38.20 you have in cash");
+    expect(s.action.href).toBe("/loans/credit");
+  });
+
+  it("is quiet about card use for those below 30%", () => {
+    for (const id of ["family", "freelancer", "equity", "preretire", "retiree"]) {
+      expect(topics(id), id).not.toContain("credit_building");
+    }
+  });
+
+  it("counts Maya's Klarna installments, and needs at least three", () => {
+    const s = fire("renter").find((x) => x.topic === "bnpl")!;
+    expect(s.worthCents).toBe(6 * 3_750);
+    const few = (d: ProfileInput): ProfileInput => ({
+      ...d,
+      transactions: d.transactions
+        .filter((t) => t.pfc !== "LOAN_PAYMENTS_BNPL")
+        .concat(
+          tx("2026-09-01", 3_750, "KLARNA PAYMENT", "LOAN_PAYMENTS_BNPL", "x"),
+          tx("2026-09-15", 3_750, "KLARNA PAYMENT", "LOAN_PAYMENTS_BNPL", "x"),
+        ),
+    });
+    expect(topics("renter", few)).not.toContain("bnpl");
+  });
+
+  it("asks Ruth to question her hospital bill for about a fifth of it, and leaves pharmacies out", () => {
+    const s = fire("retiree").find((x) => x.topic === "medical_bills")!;
+    // Her care over the year, the $1,240 hospital bill among it.
+    const care = inputFor("retiree")
+      .transactions.filter(
+        (t) =>
+          (t.pfc ?? "").startsWith("MEDICAL_") &&
+          t.pfc !== "MEDICAL_PHARMACIES_AND_SUPPLEMENTS" &&
+          t.amountCents > 0,
+      )
+      .reduce((n, t) => n + t.amountCents, 0);
+    expect(care).toBeGreaterThanOrEqual(124_000);
+    expect(s.worthCents).toBe(Math.round(care * 0.2));
+    const drugsOnly = (d: ProfileInput): ProfileInput => ({
+      ...d,
+      transactions: d.transactions
+        .filter((t) => !(t.pfc ?? "").startsWith("MEDICAL_"))
+        .concat(
+          tx("2026-08-01", 90_000, "CVS PHARMACY", "MEDICAL_PHARMACIES_AND_SUPPLEMENTS", "x"),
+        ),
+    });
+    expect(topics("retiree", drugsOnly)).not.toContain("medical_bills");
+  });
+
+  it("raises the collection for Chris, now, and for no one who pays none", () => {
+    const s = fire("debt").find((x) => x.topic === "credit_report_errors")!;
+    expect(s.urgency).toBe("now");
+    expect(s.worthCents).toBe(12 * 8_500);
+    for (const id of ["renter", "family", "retiree", "owner"]) {
+      expect(topics(id), id).not.toContain("credit_report_errors");
+    }
+  });
+
+  it("finds Public Service Loan Forgiveness for the Reyes: a school employer and a student loan", () => {
+    const s = fire("family").find((x) => x.topic === "student_forgiveness")!;
+    // $62,000 less 120 payments of $450.
+    expect(s.worthCents).toBe(6_200_000 - 120 * 45_000);
+    expect(s.confidence.percent).toBeLessThanOrEqual(75);
+    expect(s.why).toContain("You work for Springfield Schools");
+    // Not for a private employer, even with the same loan.
+    expect(
+      topics("family", (d) => ({ ...d, told: { ...d.told, employer: "ACME CORP" } })),
+    ).not.toContain("student_forgiveness");
+  });
+
+  it("notes the money Dan and Lena sent their son, and goes quiet once some comes back", () => {
+    const s = fire("preretire").find((x) => x.topic === "family_loans")!;
+    expect(s.worthCents).toBe(60_000);
+    expect(s.confidence.percent).toBeLessThanOrEqual(75);
+    expect(
+      topics("preretire", (d) => ({
+        ...d,
+        transactions: [
+          ...d.transactions,
+          tx("2026-09-20", -20_000, "ZELLE FROM DANIEL", "TRANSFER_IN_ACCOUNT_TRANSFER", "x"),
+        ],
+      })),
+    ).not.toContain("family_loans");
   });
 });

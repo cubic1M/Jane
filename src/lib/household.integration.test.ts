@@ -107,7 +107,14 @@ describe.runIf(url)("households against a real database", () => {
   it("is read-only: the shared view has no way to write", async () => {
     const { b } = await household();
     const view = await sharedReadFor(b.id, client);
-    expect(Object.keys(view).sort()).toEqual(["accounts", "findings", "partners", "transactions"]);
+    // Spec step 198 adds the policies a partner chose to share.
+    expect(Object.keys(view).sort()).toEqual([
+      "accounts",
+      "findings",
+      "partners",
+      "policies",
+      "transactions",
+    ]);
     expect(Object.isFrozen(view)).toBe(true);
   });
 

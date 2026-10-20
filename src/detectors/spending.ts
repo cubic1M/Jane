@@ -3,7 +3,7 @@ import { categoryOf } from "@/categorize/taxonomy";
 import { formatCents } from "@/lib/money";
 import type { ProfileInput, ProfileTx } from "@/profile/build";
 import { type Detector, suggestionId } from "./contract";
-import { evidence, liquidCents, outCents, tx } from "./helpers";
+import { evidence, liquidCents, listOf, nice, outCents, tx, weakest } from "./helpers";
 
 // Detectors for spending, bills and cash (spec step 263): duplicate subscriptions, price
 // rises, bills worth negotiating, the same charge twice, a trial that turned into a
@@ -66,7 +66,7 @@ const duplicateSubscription: Detector = {
         "charges from overlapping subscriptions",
       ),
       urgency: "later",
-      why: `You pay for ${names.join(", ")} every month. Dropping the cheapest of each kind saves about ${formatCents(worth)} a year.`,
+      why: `You pay for ${listOf(names)} every month. Dropping the cheapest of each kind saves about ${formatCents(worth)} a year.`,
       action: { label: "Review subscriptions", href: "/subscriptions" },
     };
   },
@@ -108,11 +108,11 @@ const priceIncrease: Detector = {
       confidence: evidence(
         "seen",
         profile.months,
-        rises.reduce((n, r) => n + r.s.txs.length, 0),
-        "charges showing the rise",
+        rises.reduce((n, r) => n + r.s.txs.length - 1, 0),
+        "charges at the old price",
       ),
       urgency: "soon",
-      why: `${top.s.description} went from ${formatCents(top.before)} to ${formatCents(top.now)} a month${rises.length > 1 ? `, and ${rises.length - 1} more went up` : ""}: ${formatCents(worth)} more a year.`,
+      why: `${nice(top.s.description)} went from ${formatCents(top.before)} to ${formatCents(top.now)} a month${rises.length > 1 ? `, and ${rises.length - 1} more went up` : ""}: ${formatCents(worth)} more a year.`,
       action: { label: "See what changed", href: "/alerts" },
     };
   },
@@ -150,7 +150,7 @@ const billNegotiation: Detector = {
         "bill payments",
       ),
       urgency: "later",
-      why: `You pay ${bills.map((b) => `${b.s.description} ${formatCents(last(b.s))} a month`).join(" and ")}, ${formatCents(yearly)} a year. People who ask usually get about ${Math.round(S.negotiationShare * 100)}% off.`,
+      why: `You pay ${bills.map((b) => `${nice(b.s.description)} ${formatCents(last(b.s))} a month`).join(" and ")}, ${formatCents(yearly)} a year. People who ask usually get about ${Math.round(S.negotiationShare * 100)}% off.`,
       action: { label: "See your bills", href: "/bills" },
     };
   },
@@ -190,7 +190,7 @@ const duplicateCharge: Detector = {
       worthKind: "earns",
       confidence: evidence("seen", profile.months, doubles.length, "identical charges within days"),
       urgency: "now",
-      why: `${doubles.map((d) => `${d.description} ${formatCents(d.amountCents)}`).join(", ")} appeared twice within ${S.duplicateChargeDays} days.`,
+      why: `${doubles.map((d) => `${nice(d.description)} ${formatCents(d.amountCents)}`).join(", ")} appeared twice within ${S.duplicateChargeDays} days.`,
       action: { label: "See the charges", href: "/alerts" },
     };
   },
@@ -232,7 +232,7 @@ const trialConversion: Detector = {
         "charges after a trial",
       ),
       urgency: "soon",
-      why: `${converted.map((c) => `${c.description} started with a small trial charge and now costs ${formatCents(c.price)}`).join("; ")}: ${formatCents(worth)} a year.`,
+      why: `${converted.map((c) => `${nice(c.description)} started with a small trial charge and now costs ${formatCents(c.price)}`).join("; ")}: ${formatCents(worth)} a year.`,
       action: { label: "Review subscriptions", href: "/subscriptions" },
     };
   },
@@ -241,7 +241,7 @@ const trialConversion: Detector = {
 const lowBalance: Detector = {
   capability: "safe_to_spend",
   topic: "low_balance",
-  covers: [],
+  covers: ["tight_money"],
   needs: [],
   detect({ profile, data }) {
     // Cash in checking and savings: what could pay the month's bills.
@@ -267,9 +267,14 @@ const lowBalance: Detector = {
       worthCents: Math.max(fees, monthly - checking),
       worthKind: "risk",
       confidence: evidence("seen", profile.months, bills.length, "regular bills"),
-      urgency: "soon",
+      // Under half a month of bills in cash is urgent, and ranks by what's short (risk is
+      // otherwise a fraction of its dollars).
+      urgency: checking < monthly * S.lowCashUrgentShare ? "now" : "soon",
+      ...(checking < monthly * S.lowCashUrgentShare
+        ? { rankCents: Math.round((monthly - checking) * S.lowCashRank) }
+        : {}),
       why: `Your checking and savings hold ${formatCents(checking)} and your regular bills come to about ${formatCents(monthly)} a month${fees ? `; overdraft fees have cost you ${formatCents(fees)}` : ""}.`,
-      action: { label: "See what's safe to spend", href: "/home" },
+      action: { label: "Plan a tight month", href: "/loans/tight" },
     };
   },
 };
@@ -323,7 +328,11 @@ const budgetOverrun: Detector = {
       title: `Set a budget for ${label}: last month ran well over your usual`,
       worthCents: Math.round(top.extra),
       worthKind: "saves",
-      confidence: evidence("seen", profile.months, prior.length + 1, `months of ${label} spending`),
+      confidence: weakest([
+        evidence("seen", profile.months, prior.length + 1, `months of ${label} spending`),
+        // One month over isn't a pattern: a party or a trip looks the same.
+        evidence("guessed", profile.months, 1, "month over your usual (one month isn't a pattern)"),
+      ]),
       urgency: "later",
       why: `You spent ${formatCents(top.now)} on ${label} last month against about ${formatCents(Math.round(top.avg))} in the three months before.`,
       action: { label: "Set a budget", href: "/budgets" },

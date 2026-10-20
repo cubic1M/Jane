@@ -107,7 +107,7 @@ describe("a price rise", () => {
       (x) => x.topic === "price_increase",
     )!;
     expect(s.worthCents).toBe(300 * 12);
-    expect(s.why).toContain("STREAMCO went from $9.99 to $12.99");
+    expect(s.why).toContain("Streamco went from $9.99 to $12.99");
     expect(s.urgency).toBe("soon");
   });
   it("is not raised for a bill that moves every month", () => {

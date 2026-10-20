@@ -35,6 +35,12 @@ export const SUGGESTION_TOPICS = [
   "auto_insurance",
   "umbrella",
   "insurance_shopping",
+  "insurance_negotiation",
+  "insurance_claim",
+  "cover_change",
+  "card_cover",
+  "employer_benefits",
+  "policy_documents",
   "business_separation",
   "cash_flow",
   "pmi_removal",
@@ -46,6 +52,12 @@ export const SUGGESTION_TOPICS = [
   "cash_advance",
   "mortgage_extra",
   "balance_transfer",
+  // Spec step 260, the rest of the debt tools.
+  "bnpl",
+  "medical_bills",
+  "credit_report_errors",
+  "student_forgiveness",
+  "family_loans",
   // Spec step 263: spending, bills and cash.
   "duplicate_subscription",
   "price_increase",
@@ -69,6 +81,10 @@ export const SUGGESTION_TOPICS = [
   "old_accounts",
   "asset_location",
   "costly_products",
+  "charity_receipts",
+  "property_tax_check",
+  "tax_loss_harvest",
+  "file_return",
 ] as const;
 export type SuggestionTopic = (typeof SUGGESTION_TOPICS)[number];
 
@@ -132,6 +148,11 @@ export const PEOPLE: readonly Person[] = [
       "low_balance",
       "price_increase",
       "trial_conversion",
+
+      "insurance_negotiation",
+      "cover_change",
+      "credit_building",
+      "bnpl",
     ],
     mustNot: [
       "umbrella",
@@ -152,6 +173,9 @@ export const PEOPLE: readonly Person[] = [
       "old_accounts",
       "costly_products",
       "asset_location",
+      "charity_receipts",
+      "property_tax_check",
+      "tax_loss_harvest",
     ],
     firstQuestion: "employer_match",
   },
@@ -180,6 +204,11 @@ export const PEOPLE: readonly Person[] = [
       "insurance_shopping",
       "childcare_tax_break",
       "investment_fees",
+
+      "insurance_claim",
+      "student_forgiveness",
+      "charity_receipts",
+      "property_tax_check",
     ],
     mustNot: [
       "renters_insurance",
@@ -217,6 +246,8 @@ export const PEOPLE: readonly Person[] = [
       "emergency_fund",
       "student_repayment",
       "renters_insurance",
+
+      "auto_insurance",
     ],
     mustNot: [
       "employer_match",
@@ -230,6 +261,8 @@ export const PEOPLE: readonly Person[] = [
       "costly_products",
       "asset_location",
       "auto_invest",
+      "property_tax_check",
+      "tax_loss_harvest",
     ],
     firstQuestion: "filing_status",
   },
@@ -256,6 +289,11 @@ export const PEOPLE: readonly Person[] = [
       "asset_location",
       "investment_fees",
       "auto_invest",
+
+      "card_cover",
+      "tax_loss_harvest",
+      "charity_receipts",
+      "property_tax_check",
     ],
     mustNot: [
       "bank_fees",
@@ -294,6 +332,11 @@ export const PEOPLE: readonly Person[] = [
       "old_accounts",
       "investment_fees",
       "rebalance",
+
+      "employer_benefits",
+      "family_loans",
+      "property_tax_check",
+      "charity_receipts",
     ],
     mustNot: [
       "education_529",
@@ -330,6 +373,10 @@ export const PEOPLE: readonly Person[] = [
       "costly_products",
       "investment_fees",
       "rebalance",
+      "policy_documents",
+      "property_tax_check",
+      "charity_receipts",
+      "medical_bills",
     ],
     mustNot: [
       "renters_insurance",
@@ -349,6 +396,11 @@ export const PEOPLE: readonly Person[] = [
       "trial_conversion",
       "childcare_tax_break",
       "auto_invest",
+
+      "employer_benefits",
+      "card_cover",
+      "student_forgiveness",
+      "credit_report_errors",
     ],
     firstQuestion: "age_band",
   },
@@ -374,6 +426,8 @@ export const PEOPLE: readonly Person[] = [
       "balance_transfer",
       "low_balance",
       "cash_advance",
+      "credit_building",
+      "credit_report_errors",
     ],
     mustNot: [
       "concentration",
@@ -394,6 +448,11 @@ export const PEOPLE: readonly Person[] = [
       "asset_location",
       "auto_invest",
       "rebalance",
+
+      "card_cover",
+      "charity_receipts",
+      "property_tax_check",
+      "tax_loss_harvest",
     ],
     firstQuestion: "hardship_reason",
   },
@@ -428,6 +487,8 @@ export const PEOPLE: readonly Person[] = [
       "costly_products",
       "asset_location",
       "auto_invest",
+      "property_tax_check",
+      "tax_loss_harvest",
     ],
     firstQuestion: "business_structure",
   },

@@ -30,6 +30,10 @@ export const SPENDING_DETECTOR_RATES = {
   trialConvertedMinCents: 500,
   // Low balance: checking and savings hold less than this share of a month's regular bills.
   lowBalanceShare: 1,
+  // Under this share of a month's bills in cash is urgent, and counts for this share of what is
+  // short when ranking.
+  lowCashUrgentShare: 0.5,
+  lowCashRank: 0.25,
   // Budgets: a category's last full month is this much over its three-month average, and at
   // least this much more, outside housing, loans and transfers.
   budgetOverrunShare: 0.4,
