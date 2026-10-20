@@ -367,6 +367,20 @@ const BASE_QUESTIONS: readonly CheckQuestion[] = [
   },
   { id: "timeline-2", text: "why did you do that", needs: "rules", expect: { intent: "timeline" } },
 
+  // Two questions in one message get both answers (spec step 193).
+  {
+    id: "two-1",
+    text: "how much can I spend and when is payday",
+    needs: "rules",
+    expect: { figures: safe, mentions: /acme|payday/i, list: true, maxChars: 900 },
+  },
+  {
+    id: "two-2",
+    text: "what subscriptions do I have and what's due this week",
+    needs: "rules",
+    expect: { list: true, maxChars: 1_400 },
+  },
+
   // What's due.
   {
     id: "due-1",
