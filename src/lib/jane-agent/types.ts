@@ -303,6 +303,11 @@ export type MessageRefs = {
   creditFix?: { id: string };
   // Spec step 224: the card whose lower rate "Ask" asks for.
   cardRate?: { id: string };
+  // Spec step 226: the payment-app transfer asked about ("tx:<id>").
+  familyLoan?: { id: string };
+  // Spec step 227: the plan "Start" saves, and the goal "I've done this month's list" ticks.
+  creditGoalDraft?: { kind: string; targetScore: number; targetDate: string };
+  creditGoalId?: string;
   // Insurance (spec Phase X): a coverage gap by its key (GAP_KEYS), and the policy a
   // message is about.
   insuranceGap?: string;
