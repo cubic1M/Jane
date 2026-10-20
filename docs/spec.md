@@ -4033,6 +4033,104 @@ bank.
 > - A month closes with no taps when nothing is uncertain; a closed month's figures don't
 >   change unless a correction is made
 
+## Phase AQ: credit and borrowing, round four (steps 245–251)
+
+Phases Y, AG and AN plan, refinance, buy and repair credit. This round covers the loans
+people already have and rarely revisit, the costly short-term borrowing that traps them,
+renters, families helping each other with credit, and a standing answer to "what could I
+borrow, and at what rate?". Recommendations are demo advice; legal questions go to counsel.
+Each step is built into the chat through the step 190 registry, with questions in step 189's
+bank.
+
+### Step 245: The car loan you already have
+
+> Read CLAUDE.md. Lower payments and refunds on an existing car loan.
+>
+> Build:
+> 1. Auto refinancing checked when rates fall or the score rises (lender stand-in, total
+>    cost compared), and dealer add-ons found in the loan (GAP, extended warranty, service
+>    contracts) with the refund each would give if cancelled, plus a drafted cancellation
+>    for the team or the person.
+>
+> Acceptance criteria:
+> - Refinancing compares total cost, not the payment; refund math has tests per add-on kind
+
+### Step 246: Recast, refinance or pay extra
+
+> Read CLAUDE.md. The best use of extra money on a mortgage.
+>
+> Build:
+> 1. For a lump sum or extra monthly money: a recast (lower payment, same rate), a
+>    refinance (step 111) and extra principal compared over the loan's life, against
+>    investing it instead (step 214's comparison), each with its fees and the date it pays
+>    back.
+>
+> Acceptance criteria:
+> - Each option's total interest and break-even date has tests; fees from config
+
+### Step 247: Out of costly short-term borrowing
+
+> Read CLAUDE.md. Payday loans, cash advances and overdrafts replaced.
+>
+> Build:
+> 1. Payday loans, card cash advances, repeated overdrafts and high-fee pay advance apps
+>    spotted in transactions, with the yearly cost in dollars. Then the cheaper way out:
+>    a credit union small-dollar loan, an employer pay advance, a 0% card, or a buffer built
+>    from the forecast, and a plan to stop the cycle.
+>
+> Acceptance criteria:
+> - Each kind is spotted in the demo bank; the cost shows as an annual rate and in dollars
+
+### Step 248: Renting, counted
+
+> Read CLAUDE.md. Rent that builds credit, and deposits that come back.
+>
+> Build:
+> 1. Rent payments reported to the credit bureaus through a stand-in reporting partner (the
+>    person opts in), a rent increase checked against stand-in local rents, and the
+>    security deposit tracked to its return deadline after a move (state rules from config,
+>    facts only).
+>
+> Acceptance criteria:
+> - Reporting needs the person's opt-in; deposit deadlines from config with sources
+
+### Step 249: Helping family with credit
+
+> Read CLAUDE.md. Authorized users, first cards and co-signing, with the risks shown.
+>
+> Build:
+> 1. Adding a teen or partner as an authorized user (the score effect for both), a first
+>    card for a student, and co-signing (what happens to the person's own credit and debt
+>    load if the other misses), with step 226's family loans for money lent instead.
+>
+> Acceptance criteria:
+> - Co-signed debt counts in the person's own debt-to-income (tests)
+
+### Step 250: What you could borrow
+
+> Read CLAUDE.md. A standing answer to "what could I get, and at what rate?".
+>
+> Build:
+> 1. Kept current from the score (step 116), income and debts: the likely rate and amount for
+>    a mortgage, car loan, personal loan and card, with soft-pull prequalification through
+>    the lender stand-in, and what would improve each.
+>
+> Acceptance criteria:
+> - Only soft pulls run without a tap; every figure says when it was last checked
+
+### Step 251: Credit on autopilot, round three
+
+> Read CLAUDE.md. Borrowing kept cheap by itself.
+>
+> Build:
+> 1. Every month Jane checks for a cheaper rate on each loan, add-ons worth cancelling,
+>    costly borrowing creeping back, and the rent and deposit deadlines, then acts within
+>    the caps and asks for the rest in one message.
+> 2. Every credit capability in the registry, with bank questions that score well.
+>
+> Acceptance criteria:
+> - Nothing that runs a hard pull or opens an account happens without a tap
+
 ### Later, when the founder is ready
 
 These need an outside account, a partner or a decision: Plaid Production (real banks) and
