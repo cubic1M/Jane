@@ -337,6 +337,7 @@ model User {
   coverChanges           CoverChange[]
   renewalNegotiations    RenewalNegotiation[]
   insuranceSavings       InsuranceSaving[]
+  insuranceRisks         InsuranceRisk[]
   lifeEvents             LifeEvent[]
   // What's in investment accounts (spec step 128).
   securities             Security[]
@@ -2226,6 +2227,30 @@ model InsuranceSaving {
   @@unique([userId, policyId, kind])
   @@index([userId, status])
   @@map("insurance_savings")
+}
+
+// A risk Jane saw in how the person lives (spec step 197): rideshare or delivery income, a
+// home business, a new dog, an expensive ring or camera, a boat, renting the home out. One
+// question per kind, asked once: yes opens a gap (or adds the pet), a no is remembered.
+model InsuranceRisk {
+  id          String    @id @default(cuid())
+  userId      String    @map("user_id")
+  // rideshare, home_business, new_dog, valuable, boat or rental_out (RISK_KINDS).
+  kind        String
+  // asked, yes or no.
+  status      String    @default("asked")
+  // What was seen: the merchant, the amount and the day.
+  merchant    String
+  amountCents Int       @map("amount_cents")
+  seenOn      DateTime  @map("seen_on") @db.Date
+  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  answeredAt  DateTime? @map("answered_at") @db.Timestamptz(3)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, kind])
+  @@index([userId, status])
+  @@map("insurance_risks")
 }
 
 // The household facts that matter for cover (spec step 102), as the person typed them.

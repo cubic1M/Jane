@@ -1336,6 +1336,20 @@ const BASE_QUESTIONS: readonly CheckQuestion[] = [
       maxChars: 1_100,
     },
   },
+  // Risks seen in how they live (spec step 197): the demo bank has one signal of each kind,
+  // asked one at a time, newest first.
+  {
+    id: "risk-1",
+    text: "what risks do you see in my insurance",
+    needs: "rules",
+    expect: { intent: "insurance", mentions: /I saw \$[\d,.]+/, maxChars: 500 },
+  },
+  {
+    id: "risk-2",
+    text: "what am i missing in my insurance",
+    needs: "rules",
+    expect: { intent: "insurance", mentions: /\?/, maxChars: 500 },
+  },
   {
     id: "sav-3",
     text: "are there any discounts on my insurance",
