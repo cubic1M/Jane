@@ -1485,6 +1485,26 @@ const BASE_QUESTIONS: readonly CheckQuestion[] = [
     expect: { intent: "insurance", mentions: /under your .* deductible/i, maxChars: 700 },
   },
 
+  // Health cover all year (spec step 200): facts from the plan's terms and their spending.
+  {
+    id: "hy-1",
+    text: "how much of my deductible have I met",
+    needs: "rules",
+    expect: { intent: "insurance", mentions: /of your .* deductible/i, maxChars: 900 },
+  },
+  {
+    id: "hy-2",
+    text: "how much is left in my fsa",
+    needs: "rules",
+    expect: { intent: "insurance", mentions: /FSA/, maxChars: 900 },
+  },
+  {
+    id: "hy-3",
+    text: "when will I hit my out of pocket max",
+    needs: "rules",
+    expect: { intent: "insurance", mentions: /out-of-pocket maximum/i, maxChars: 900 },
+  },
+
   // Outside what Jane does: brief, and never advice.
   { id: "out-1", text: "what's the weather today", needs: "claude", expect: { avoid: ADVICE } },
   {
