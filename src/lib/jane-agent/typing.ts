@@ -1,6 +1,11 @@
 import { randomUUID } from "node:crypto";
 import type Anthropic from "@anthropic-ai/sdk";
-import { CHAT_CLAUDE_HISTORY, CHAT_CONTEXT_MINUTES, CHAT_MAX_MESSAGE } from "@/config/agent-chat";
+import {
+  CHAT_CLAUDE_HISTORY,
+  CHAT_CONTEXT_MINUTES,
+  CHAT_MAX_MESSAGE,
+  CHAT_RULES_ONLY_KINDS,
+} from "@/config/agent-chat";
 import type { PrismaClient } from "@/generated/prisma/client";
 import { adviceMode } from "@/lib/advice-mode";
 import { track } from "@/lib/analytics";
@@ -122,19 +127,25 @@ async function answer(
   const topic = await lastTopic(userId, { client, now });
   // Spec step 188: how the person likes Jane to talk.
   const style = styleOf(await listPreferences(userId, { client }));
-  const byRules = await answerByRules(userId, intent, { client, now, topic });
-  if (byRules) {
-    return { reply: shapeReply(byRules, style), intent: intent.kind, source: "rules" };
-  }
-  if (!llmEnabled()) {
+  const rules = async () => {
+    const reply = await answerByRules(userId, intent, { client, now, topic });
+    return reply ? shapeReply(reply, style) : null;
+  };
+  // Spec step 191: exact commands, and everything when Claude isn't there, keep the instant
+  // rules path.
+  if (!llmEnabled() || CHAT_RULES_ONLY_KINDS.includes(intent.kind)) {
+    const byRules = await rules();
+    if (byRules) return { reply: byRules, intent: intent.kind, source: "rules" };
     return { reply: unknownReply(text, asOf), intent: intent.kind, source: "fallback" };
   }
-  // Free questions count against Ask's limit too: the same tools and limits.
+  // Free text goes to Claude with every tool. Free questions count against Ask's limit too:
+  // the same tools and limits; past it the rules answer.
   if (!(await hit("ask", userId, { client, now })).ok) {
+    const byRules = await rules();
     return {
-      reply: withNearby({ body: CHAT_ASK_LIMITED_TEXT, actions: [], refs: {} }),
+      reply: byRules ?? withNearby({ body: CHAT_ASK_LIMITED_TEXT, actions: [], refs: {} }),
       intent: intent.kind,
-      source: "fallback",
+      source: byRules ? "rules" : "fallback",
     };
   }
   const result = await askClaudeInChat(userId, history, text, {
@@ -145,16 +156,16 @@ async function answer(
     advice: await adviceMode(userId, { client }),
     style: styleInstructions(style),
   });
-  const source: Source =
-    result.kind === "answer"
-      ? "claude"
-      : result.kind === "blocked"
-        ? "claude_blocked"
-        : "claude_unavailable";
+  if (result.kind === "answer") {
+    return { reply: result.reply, intent: intent.kind, source: "claude" };
+  }
+  // Claude is slow, down, over its daily cap or blocked: the rules answer as they did before
+  // Claude read everything, never a broken message.
+  const fallback = await rules();
   return {
-    reply: result.kind === "answer" ? result.reply : withNearby(result.reply),
+    reply: fallback ?? withNearby(result.reply),
     intent: intent.kind,
-    source,
+    source: result.kind === "blocked" ? "claude_blocked" : "claude_unavailable",
     // Spec step 93: which guardrail rules blocked it, codes only, never the text.
     ...(result.kind === "blocked" ? { issues: result.issues } : {}),
   };

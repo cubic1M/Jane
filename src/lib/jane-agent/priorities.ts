@@ -5,6 +5,7 @@ import {
   URGENCY_HORIZON_DAYS,
   URGENT_FINDING_URGENCY,
 } from "@/config/priorities";
+import { WORKED_MIN_SAMPLE } from "@/config/worked";
 import { isRefund } from "@/lib/savings-text";
 import { rankPriorities, type PriorityItem, type Ranked } from "@/planning/priorities";
 import type { Snapshot } from "./snapshot";
@@ -20,6 +21,21 @@ const within = (date: string, asOf: string) =>
 // Deadlines that are something to do (a renewal is only a date to know).
 const DOING = new Set(["payment", "trial", "return", "fsa", "card_benefit", "warranty", "other"]);
 
+// Spec step 207: a kind of finding the person keeps saying no to, or whose finished actions
+// never showed a saving, ranks as uncertain; one that has worked ranks as sure.
+export function confidenceFor(
+  type: string,
+  base: "high" | "medium" | "low",
+  worked: Snapshot["worked"],
+): "high" | "medium" | "low" {
+  const k = worked?.find((w) => w.type === type);
+  if (!k) return base;
+  if (k.worked > 0) return "high";
+  if (k.done >= WORKED_MIN_SAMPLE && k.worked === 0) return "low";
+  if (k.no >= WORKED_MIN_SAMPLE && k.yes === 0) return "low";
+  return base;
+}
+
 export function priorityItems(snapshot: Snapshot): PriorityItem[] {
   const items: PriorityItem[] = [];
   for (const f of snapshot.findings) {
@@ -31,7 +47,7 @@ export function priorityItems(snapshot: Snapshot): PriorityItem[] {
       once: !f.pick && isRefund(f.type),
       minutes: FINDING_MINUTES[f.type] ?? MINUTES.tap,
       urgency: f.urgent ? URGENT_FINDING_URGENCY : 0,
-      confidence: f.confidence ?? "medium",
+      confidence: confidenceFor(f.type, f.confidence ?? "medium", snapshot.worked),
       href: `/report/${f.findingId}`,
       ref: f.findingId,
     });

@@ -13,6 +13,7 @@ import { loadBillPay, type BillPayView } from "@/lib/money-movement/bill-pay";
 import { healthFor, type HealthView } from "@/lib/health-score";
 import type { Attention } from "./attention";
 import { loadAttention } from "./attention-load";
+import { resultsByKind, type KindResult } from "@/lib/worked";
 import { adoptedPlans, type AdoptedPlan } from "@/lib/what-if";
 import { openLean, recentlyEnded, type LeanState } from "@/lib/lean-plan";
 import { recentReport, type StoredReport } from "@/lib/monthly-report-store";
@@ -121,6 +122,10 @@ export type Snapshot = {
   attention?: Attention;
   // Spec step 203: what-if plans the person adopted. Optional, like changes.
   whatIf?: AdoptedPlan[];
+  // Spec step 208: unusual-activity alerts waiting for "this was me" or "not me".
+  unusual?: { id: string; key: string; title: string; body: string }[];
+  // Spec step 207: what the person says yes to and what worked, by kind of finding.
+  worked?: KindResult[];
   // Spec step 204: the lean-plan question or plan in force, and plans that just ended.
   lean?: { open: LeanState[]; ended: { id: string; employer: string }[] };
   // Spec step 148: the monthly money report, while it's new. Optional, like changes.
@@ -189,7 +194,12 @@ const CUTTING: readonly FindingType[] = [
 const ALERTS_LOOKED_AT = 10;
 // Urgent alerts Jane says another way: a deadline reminder as the deadline's heads-up, a
 // double charge as its finding (with Yes and No).
-const ALERTS_SAID_ELSEWHERE: readonly AlertType[] = ["deadline_soon", "duplicate_charge"];
+const ALERTS_SAID_ELSEWHERE: readonly AlertType[] = [
+  "deadline_soon",
+  "duplicate_charge",
+  // Spec step 208: unusual activity has its own message, with its two buttons.
+  "unusual_activity",
+];
 
 async function thinking(
   userId: string,
@@ -206,7 +216,9 @@ async function thinking(
     healthFor(userId, { client, now, input }),
   ]);
   const billPay = partner ? await loadBillPay(userId, { client, now, input }) : null;
+  const worked = await resultsByKind(userId, { client, now, input });
   return {
+    worked,
     changes,
     lifeGuesses,
     saved: { confirmedCents: saved.confirmedCents },
@@ -342,6 +354,9 @@ export async function loadSnapshot(
     urgentAlerts: alerts
       .filter((a) => isUrgent(a.type) && !ALERTS_SAID_ELSEWHERE.includes(a.type))
       .map((a) => ({ id: a.id, title: a.title, body: a.body })),
+    unusual: alerts
+      .filter((a) => a.type === "unusual_activity")
+      .map((a) => ({ id: a.id, key: a.key, title: a.title, body: a.body })),
     budgetProgress: home.budgetProgress,
     ...more,
     ...taxPart,
