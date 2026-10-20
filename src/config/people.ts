@@ -43,6 +43,10 @@ export const SUGGESTION_TOPICS = [
   "social_security_timing",
   "medicare",
   "rmd",
+  "roth_conversion",
+  "childcare_tax_break",
+  "identity_ip_pin",
+  "year_end_moves",
 ] as const;
 export type SuggestionTopic = (typeof SUGGESTION_TOPICS)[number];
 
@@ -111,6 +115,8 @@ export const PEOPLE: readonly Person[] = [
       "estimated_taxes",
       "concentration",
       "education_529",
+      "roth_conversion",
+      "childcare_tax_break",
       "catch_up",
       "backdoor_roth",
       "hsa",
@@ -135,6 +141,7 @@ export const PEOPLE: readonly Person[] = [
       "subscriptions",
       "emergency_fund",
       "insurance_shopping",
+      "childcare_tax_break",
     ],
     mustNot: [
       "renters_insurance",
@@ -146,6 +153,7 @@ export const PEOPLE: readonly Person[] = [
       "estimated_taxes",
       "hardship_plan",
       "social_security_timing",
+      "roth_conversion",
       "backdoor_roth",
       "catch_up",
     ],
@@ -169,7 +177,15 @@ export const PEOPLE: readonly Person[] = [
       "health_insurance",
       "emergency_fund",
     ],
-    mustNot: ["employer_match", "rmd", "pmi_removal", "medicare", "hardship_plan"],
+    mustNot: [
+      "employer_match",
+      "rmd",
+      "pmi_removal",
+      "medicare",
+      "hardship_plan",
+      "roth_conversion",
+      "childcare_tax_break",
+    ],
   },
   {
     id: "equity",
@@ -184,7 +200,16 @@ export const PEOPLE: readonly Person[] = [
       hasDebtTrouble: false,
     },
     should: ["idle_cash", "concentration", "withholding_gap", "hsa", "backdoor_roth", "refinance"],
-    mustNot: ["bank_fees", "late_fees", "hardship_plan", "medicare", "rmd", "credit_building"],
+    mustNot: [
+      "bank_fees",
+      "late_fees",
+      "hardship_plan",
+      "medicare",
+      "rmd",
+      "credit_building",
+      "roth_conversion",
+      "childcare_tax_break",
+    ],
   },
   {
     id: "preretire",
@@ -205,6 +230,7 @@ export const PEOPLE: readonly Person[] = [
       "catch_up",
       "idle_cash",
       "umbrella",
+      "roth_conversion",
     ],
     mustNot: [
       "education_529",
@@ -212,6 +238,7 @@ export const PEOPLE: readonly Person[] = [
       "estimated_taxes",
       "hardship_plan",
       "employer_match",
+      "childcare_tax_break",
     ],
   },
   {
@@ -238,6 +265,7 @@ export const PEOPLE: readonly Person[] = [
       "hsa",
       "refinance",
       "credit_building",
+      "childcare_tax_break",
     ],
   },
   {
@@ -270,6 +298,8 @@ export const PEOPLE: readonly Person[] = [
       "rmd",
       "umbrella",
       "insurance_shopping",
+      "roth_conversion",
+      "childcare_tax_break",
     ],
   },
   {
@@ -291,7 +321,15 @@ export const PEOPLE: readonly Person[] = [
       "retirement_self_employed",
       "cash_flow",
     ],
-    mustNot: ["employer_match", "rmd", "pmi_removal", "medicare", "hardship_plan"],
+    mustNot: [
+      "employer_match",
+      "rmd",
+      "pmi_removal",
+      "medicare",
+      "hardship_plan",
+      "roth_conversion",
+      "childcare_tax_break",
+    ],
   },
 ];
 
