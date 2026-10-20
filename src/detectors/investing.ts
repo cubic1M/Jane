@@ -15,6 +15,7 @@ const annual = (monthly: unknown) => (typeof monthly === "number" ? monthly * 12
 const employerMatch: Detector = {
   capability: "investing",
   topic: "employer_match",
+  covers: ["retirement_plan", "account_plan"],
   needs: ["income_pattern", "has_401k", "monthly_income"],
   detect({ profile, data }) {
     const pattern = profile.facts.income_pattern;
@@ -49,6 +50,7 @@ const employerMatch: Detector = {
 const catchUp: Detector = {
   capability: "investing",
   topic: "catch_up",
+  covers: ["retirement_plan"],
   needs: ["life_stage", "has_401k"],
   detect({ profile }) {
     const stage = profile.facts.life_stage;
@@ -72,6 +74,7 @@ const catchUp: Detector = {
 const hsaIdle: Detector = {
   capability: "investing",
   topic: "hsa",
+  covers: ["hsa"],
   needs: ["has_hsa"],
   detect({ profile, data }) {
     const has = profile.facts.has_hsa;
@@ -96,6 +99,7 @@ const hsaIdle: Detector = {
 const backdoorRoth: Detector = {
   capability: "investing",
   topic: "backdoor_roth",
+  covers: ["retirement_plan"],
   needs: ["monthly_income", "has_401k"],
   detect({ profile }) {
     const income = profile.facts.monthly_income;
@@ -127,6 +131,7 @@ const backdoorRoth: Detector = {
 const education529: Detector = {
   capability: "investing",
   topic: "education_529",
+  covers: ["college_plan"],
   needs: ["has_children"],
   detect({ profile }) {
     const kids = profile.facts.has_children;
@@ -149,6 +154,7 @@ const education529: Detector = {
 const requiredWithdrawals: Detector = {
   capability: "investing",
   topic: "rmd",
+  covers: ["retirement_income"],
   needs: ["life_stage"],
   detect({ profile, data }) {
     const stage = profile.facts.life_stage;
