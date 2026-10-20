@@ -2016,37 +2016,41 @@ model Document {
 // document, found from payments (step 99) or bound by Jane (step 105). Kinds, sources,
 // statuses and the cover fields are in src/config/insurance.ts.
 model InsurancePolicy {
-  id               String    @id @default(cuid())
-  userId           String    @map("user_id")
-  kind             String
-  carrier          String
+  id                  String    @id @default(cuid())
+  userId              String    @map("user_id")
+  kind                String
+  carrier             String
   // active, found (not confirmed yet), pending, cancelled or removed.
-  status           String    @default("active")
-  source           String
-  premiumCents     Int?      @map("premium_cents")
+  status              String    @default("active")
+  source              String
+  premiumCents        Int?      @map("premium_cents")
   // monthly, quarterly, semiannual or yearly (PREMIUM_FREQUENCIES in src/config/documents.ts).
-  premiumFrequency String?   @map("premium_frequency")
-  deductibleCents  Int?      @map("deductible_cents")
+  premiumFrequency    String?   @map("premium_frequency")
+  deductibleCents     Int?      @map("deductible_cents")
   // The cover limits by key (COVERAGE_FIELDS): cents, true/false, years or a percent.
-  coverage         Json      @default("{}")
+  coverage            Json      @default("{}")
   // What's covered, in one line; checked by the guardrails before it's shown.
-  covers           String?
-  renewalDate      DateTime? @map("renewal_date") @db.Date
+  covers              String?
+  renewalDate         DateTime? @map("renewal_date") @db.Date
   // How long one term runs, in months (6 or 12).
-  termMonths       Int       @default(12) @map("term_months")
+  termMonths          Int       @default(12) @map("term_months")
   // The policy document it was read from, if any.
-  documentId       String?   @unique @map("document_id")
+  documentId          String?   @unique @map("document_id")
   // The insurer's payments in the person's transactions (normalizeMerchant key), if known.
-  merchantKey      String?   @map("merchant_key")
+  merchantKey         String?   @map("merchant_key")
+  // Spec step 198: shown (read-only) to the people in their household when on; and who else
+  // the policy covers: [{ name, relation, driver, age }], besides the policy holder.
+  sharedWithHousehold Boolean   @default(false) @map("shared_with_household")
+  covered             Json      @default("[]")
   // Spec step 105, for a policy Jane bound: its number at the carrier, the day it starts,
   // the policy it replaces and the switch action.
-  policyNumber     String?   @map("policy_number")
-  startsOn         DateTime? @map("starts_on") @db.Date
-  replacesPolicyId String?   @map("replaces_policy_id")
-  actionId         String?   @map("action_id")
-  cancelledAt      DateTime? @map("cancelled_at") @db.Timestamptz(3)
-  createdAt        DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
-  updatedAt        DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
+  policyNumber        String?   @map("policy_number")
+  startsOn            DateTime? @map("starts_on") @db.Date
+  replacesPolicyId    String?   @map("replaces_policy_id")
+  actionId            String?   @map("action_id")
+  cancelledAt         DateTime? @map("cancelled_at") @db.Timestamptz(3)
+  createdAt           DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt           DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
 
   user     User             @relation(fields: [userId], references: [id], onDelete: Cascade)
   document Document?        @relation(fields: [documentId], references: [id], onDelete: SetNull)
@@ -2415,6 +2419,9 @@ model InsuranceProfile {
   pets          Int?
   // Gaps the person said they don't need (GAP_KEYS), never brought up again.
   dismissedGaps String[] @default([]) @map("dismissed_gaps")
+  // Spec step 198: the people in the household besides the person: [{ name, relation, driver,
+  // age }], so cover can be matched to each of them.
+  people        Json     @default("[]")
   updatedAt     DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)

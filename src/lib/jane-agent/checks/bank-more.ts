@@ -305,6 +305,17 @@ const rows: Row[] = [
   ["insurance", "/insurance", "insurance_risks", "what is not covered by my car insurance"],
   ["insurance", "/insurance", "insurance_risks", "any risks my insurance doesnt cover"],
   ["insurance", "/insurance", "insurance_risks", "am i exposed with my insurance"],
+  // The whole household's cover (spec step 198).
+  ["insurance", "/insurance", "insurance_household", "who is covered on my car insurance"],
+  ["insurance", "/insurance", "insurance_household", "who's on my health plan"],
+  ["insurance", "/insurance", "insurance_household", "is my family covered"],
+  ["insurance", "/insurance", "insurance_household", "are my kids covered by my insurance"],
+  [
+    "insurance",
+    "/insurance",
+    "insurance_household",
+    "is my wife's work health plan cheaper for the family",
+  ],
   ["insurance", "/insurance", "insurance_checkup", "am i covered enough"],
   ["insurance", "/insurance", "insurance_checkup", "am i missing any insurance"],
   ["insurance", "/insurance", "insurance_checkup", "is my deductible too high"],
