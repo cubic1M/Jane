@@ -9,7 +9,7 @@ export const RETURN_PERIODS = [
 
 export type ReturnPeriodKey = (typeof RETURN_PERIODS)[number]["key"];
 
-export const MONEY_IN_SUBTYPES: readonly string[] = ["contribution", "deposit"];
+export const MONEY_IN_SUBTYPES: readonly string[] = ["contribution", "deposit", "transfer"];
 export const MONEY_OUT_SUBTYPES: readonly string[] = ["withdrawal", "distribution"];
 export const INCOME_SUBTYPES: readonly string[] = [
   "dividend",

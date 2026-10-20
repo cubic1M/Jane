@@ -186,6 +186,8 @@ export const MESSAGE_PRIORITY = {
   steady_hand: 44,
   // Spec step 210: the match left on the table, and IRA room (demo advice).
   retirement_accounts: 40,
+  // Spec step 211: the question about a past employer's 401(k), then the rollover.
+  old_plan: 39,
   // Spec step 164: the month's summary of what Jane did by herself in investing.
   investing_summary: 40,
   auto_invest_run: 31,

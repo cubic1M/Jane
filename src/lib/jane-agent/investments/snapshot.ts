@@ -18,6 +18,7 @@ import {
   loadRetirementAccounts,
   type RetirementAccountsView,
 } from "@/lib/investments/retirement-accounts";
+import { loadOldAccounts, type OldAccountsView } from "@/lib/investments/old-accounts";
 import { automaticLog } from "@/lib/investments/automatic";
 import type { Bucket } from "@/planning/goal-buckets";
 import { loadAutoInvest } from "@/lib/investments/auto-invest";
@@ -68,6 +69,8 @@ export type InvestmentSnapshot = {
     RetirementAccountsView,
     "match" | "limits" | "roth" | "ira" | "iraAllowedCents" | "pending" | "demo"
   >;
+  // Spec step 211: past employers' plans.
+  oldAccounts: OldAccountsView;
   // Spec step 164: what Jane did by herself in the last month, and what she asked about.
   automatic: Awaited<ReturnType<typeof automaticLog>>;
   // Spec step 162: the cash plan.
@@ -138,6 +141,7 @@ export async function loadInvestmentSnapshot(
         receipts: h.receipts.filter((r) => r.status === "saved").length,
       })),
     retirementAccounts: await loadRetirementAccounts(userId, { client, now }),
+    oldAccounts: await loadOldAccounts(userId, { client, now }),
     automatic: await automaticLog(userId, { client, now }),
     cash: await loadCash(userId, { client, now, investments }).then((c) => ({ plan: c.plan })),
     crypto: await loadCrypto(userId, {

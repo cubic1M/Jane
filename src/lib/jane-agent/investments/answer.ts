@@ -14,6 +14,7 @@ import { loadCompanyStock } from "@/lib/investments/company-stock";
 import { loadCrypto } from "@/lib/crypto/crypto";
 import { loadCash } from "@/lib/investments/cash";
 import { loadRetirementAccounts } from "@/lib/investments/retirement-accounts";
+import { loadOldAccounts } from "@/lib/investments/old-accounts";
 import { loadSteadyHand } from "@/lib/investments/steady-hand";
 import { autopilotOf } from "@/lib/autopilot";
 import { loadInvestmentSnapshot } from "./snapshot";
@@ -35,6 +36,7 @@ import {
   cryptoReply,
   cashReply,
   steadyReply,
+  oldAccountsReply,
   retirementAccountsReply,
   feesReply,
   holdingsReply,
@@ -94,6 +96,8 @@ export async function answerInvestments(
       return hsaReply(await loadHsa(userId, { client, now }));
     case "retirement_accounts":
       return retirementAccountsReply(await loadRetirementAccounts(userId, { client, now }));
+    case "old_accounts":
+      return oldAccountsReply(await loadOldAccounts(userId, { client, now }));
     case "steady":
       return steadyReply(await loadSteadyHand(userId, { client, now }));
     case "cash":
