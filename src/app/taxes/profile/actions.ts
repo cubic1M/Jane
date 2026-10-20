@@ -8,7 +8,15 @@ import { loadTaxProfile } from "@/lib/tax-profile";
 import { defaultTaxYear } from "@/planning/tax-pack";
 import { FamilyTaxesError, saveFamilyDetails } from "@/lib/family-taxes";
 import { HomeTaxesError, saveHomeAnswers } from "@/lib/home-taxes";
-import { answersFrom, familyFrom, homeFrom, payStubFrom, residencyFrom } from "./answers";
+import { SideIncomeError, saveSideIncomeAnswers } from "@/lib/side-income";
+import {
+  answersFrom,
+  familyFrom,
+  homeFrom,
+  payStubFrom,
+  residencyFrom,
+  sideIncomeFrom,
+} from "./answers";
 
 // The tax profile page (spec step 118): saves every field the person filled in. A field
 // left empty stays unanswered, so nothing is assumed.
@@ -124,6 +132,26 @@ export async function saveHomeAction(
     return { ok: true, message: "Saved. Your home's taxes use it now." };
   } catch (error) {
     if (error instanceof HomeTaxesError) return { ok: false, message: error.message };
+    throw error;
+  }
+}
+
+// Spec step 173: a rental's property, and hobby or business.
+export async function saveSideIncomeAction(
+  _previous: TaxProfileState,
+  formData: FormData,
+): Promise<TaxProfileState> {
+  const user = await requireUser();
+  try {
+    await saveSideIncomeAnswers(user.id, sideIncomeFrom(formData), {
+      now: new Date(),
+      via: "page",
+    });
+    revalidatePath("/taxes");
+    revalidatePath("/taxes/profile");
+    return { ok: true, message: "Saved. Your estimate uses it now." };
+  } catch (error) {
+    if (error instanceof SideIncomeError) return { ok: false, message: error.message };
     throw error;
   }
 }

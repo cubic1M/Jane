@@ -67,7 +67,7 @@ export function homeReply(view: HomeTaxesView): Message {
   const cap = `State and local taxes: ${formatCents(salt.totalCents)}, of which ${formatCents(salt.allowedCents)} counts under the ${formatCents(salt.capCents)} cap.`;
   const sale = view.sale ? `\n${homeSaleMessage(view)!.body}` : "";
   return {
-    body: `Your home's taxes for ${view.year}:\n${figures.map(figureLine).join("\n")}\n${cap}${sale}`,
+    body: `Here is what your home changes on your ${view.year} taxes.\n${figures.map(figureLine).join("\n")}\n${cap}${sale}`,
     refs: {},
     actions: [{ id: "open", label: "See your home's taxes", kind: "link", href: HOME_HREF }],
   };

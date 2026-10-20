@@ -21,6 +21,8 @@ export const TAX_PACK_COPY = {
     work: "Work expenses",
     // Spec step 123.
     business: "Business expenses",
+    // Spec step 173.
+    rental: "Rental expenses",
   },
   groupEmpty: "None found for this year.",
   interestHeading: "Interest paid on loans",
@@ -58,6 +60,9 @@ export const TAX_PACK_COPY = {
   formMayNotSend: "May not send one: below the reporting threshold",
   noteLabel: "Note",
   // Spec step 165: the states (and city) the year's income was taxed in.
+  // Spec step 173.
+  rentalHeading: "Rental property",
+  rentalNote: "Rent in, the expenses you tagged, and depreciation on the building.",
   statesHeading: "States you lived or worked in",
   statesNote:
     "From your tax profile. Each state's tax agency, linked, is where its figures come from.",

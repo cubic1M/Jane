@@ -5,6 +5,8 @@ import { MAX_DOCUMENT_BYTES, type DocumentContentType } from "@/config/documents
 import { track } from "@/lib/analytics";
 import { isDocumentKind, type RawFacts } from "@/lib/documents/facts";
 import { addDocument, removeDocument, saveDocumentFacts } from "@/lib/documents/store";
+import { readTaxNotice } from "@/lib/tax-notices";
+import { readPriorReturn } from "@/lib/prior-return";
 import { readPolicyDocument } from "@/lib/insurance/readings";
 import { hit } from "@/lib/rate-limit";
 import { requireUser } from "@/lib/session";
@@ -42,6 +44,36 @@ export async function uploadDocument(_previous: FormState, formData: FormData): 
   await track(user.id, "document_uploaded", { kind, read: result.read });
   // A policy is read into one for the person to confirm (spec step 151). The upload's
   // stated type matched its bytes, or it wasn't saved.
+  if (kind === "tax_notice") {
+    const reading = await readTaxNotice(user.id, result.id, {
+      file: { bytes, contentType: file.type as DocumentContentType },
+    }).catch((error) => {
+      console.error("Reading a tax notice failed", { error: String(error) });
+      return null;
+    });
+    if (reading) {
+      return {
+        ok: true,
+        message:
+          "Saved. Check what Jane read on Letters from the IRS (Taxes) or in the chat, and confirm it.",
+      };
+    }
+  }
+  if (kind === "tax_return") {
+    const reading = await readPriorReturn(user.id, result.id, {
+      file: { bytes, contentType: file.type as DocumentContentType },
+    }).catch((error) => {
+      console.error("Reading a tax return failed", { error: String(error) });
+      return null;
+    });
+    if (reading) {
+      return {
+        ok: true,
+        message:
+          "Saved. Check what Jane read on Last year's return (Taxes) or in the chat, and confirm it.",
+      };
+    }
+  }
   if (kind === "insurance_policy") {
     const reading = await readPolicyDocument(user.id, result.id, {
       file: { bytes, contentType: file.type as DocumentContentType },

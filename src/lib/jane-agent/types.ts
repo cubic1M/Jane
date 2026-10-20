@@ -174,6 +174,29 @@ export const ACTION_IDS = [
   "tax.receipt_got",
   "tax.fund_open",
   "tax.giving_no",
+  // Spec step 171: a reminder before a year's records can be thrown away.
+  "tax.records_remind",
+  // Spec step 172: confirm a return Jane read, say it isn't one, prepare an amended return.
+  "tax.prior_confirm",
+  "tax.prior_no",
+  "tax.amend_prepare",
+  // Spec step 173: hobby or business.
+  "tax.side_business",
+  "tax.side_hobby",
+  // Spec step 217: a tax notice read from an upload, its response drafted and handed over.
+  "tax.notice_confirm",
+  "tax.notice_no",
+  "tax.notice_agree",
+  "tax.notice_pay",
+  "tax.notice_dispute",
+  "tax.notice_team",
+  "tax.notice_mine",
+  // Spec step 218: the IP PIN, and the steps after a sign of tax identity theft.
+  "tax.ippin_remind",
+  "tax.ippin_have",
+  "tax.identity_open",
+  "tax.identity_not",
+  "tax.identity_step",
   // Investments (spec step 129 on): the answer buttons on an investor-profile question,
   // by position (src/config/investing.ts PROFILE_QUESTIONS).
   "invest.answer.1",
@@ -231,6 +254,9 @@ export const ACTION_IDS = [
   "bill.pay",
   "bill.skip",
   "attention.resume",
+  "whatif.adopt",
+  "lean.start",
+  "lean.not_now",
 ] as const;
 export type ActionId = (typeof ACTION_IDS)[number];
 
@@ -257,6 +283,18 @@ export type MessageRefs = {
   // credit-builder stand-in to open.
   creditStatement?: { accountId: string; closesOn: string };
   creditBuilder?: { productId: string };
+  // Spec step 176: the buy now, pay later plan "Pay it off" pays.
+  bnplPlan?: { key: string };
+  // Spec step 177: the request "Send" sends when money is tight.
+  tightItem?: { id: string };
+  // Spec step 179: the home price the down payment goal is sized for.
+  homeGoal?: { priceCents: number };
+  // Spec step 180: the request "Send" sends about a medical bill.
+  medicalItem?: { id: string };
+  // Spec step 181: the letter "Send" sends about a collection or a credit report error.
+  creditFix?: { id: string };
+  // Spec step 224: the card whose lower rate "Ask" asks for.
+  cardRate?: { id: string };
   // Insurance (spec Phase X): a coverage gap by its key (GAP_KEYS), and the policy a
   // message is about.
   insuranceGap?: string;
@@ -364,6 +402,15 @@ export type MessageRefs = {
   taxPlanMove?: string;
   // Spec step 168: the gift (its transaction id) a receipt message is about.
   taxGift?: string;
+  // Spec step 172: the return read from a document (its id) a message is about.
+  priorReturn?: string;
+  // Spec step 217: the tax notice (its id) a message is about.
+  taxNotice?: string;
+  // Spec step 218: the sign of identity theft (and where Jane learned of it), and the step a
+  // message is about.
+  identitySign?: string;
+  identitySource?: string;
+  identityStep?: string;
   // Spec step 98: demo advice (src/lib/advice-mode.ts). The chat shows DEMO_ADVICE_LABEL
   // under it. Set it on every message that recommends investments, taxes, insurance or loans.
   advice?: true;
@@ -397,6 +444,10 @@ export type MessageRefs = {
   billKey?: string;
   // Spec step 147: a kind of message Jane stopped bringing up, by its source.
   attentionSource?: string;
+  // Spec step 203: the what-if a message offers to adopt.
+  // Spec step 204: the lean-plan question.
+  leanId?: string;
+  whatIf?: { scenario: string; months: number; extraMonthlyCents: number };
   // Spec step 141: a sector's autopilot change typed in the chat, set on "Set it".
   sectorChange?: {
     sector: string;

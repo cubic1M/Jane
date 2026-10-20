@@ -18,6 +18,16 @@ import { planMoveMessage } from "../tax-plan-message";
 import { givingOptionsMessage, receiptMessage } from "../giving-message";
 import { familyChoiceMessage, statusOf } from "../family-taxes-message";
 import { worthSaying } from "@/planning/family-taxes";
+import { caseMessage, ipPinMessage, signMessage } from "../tax-identity-message";
+import {
+  noticeDraftMessage,
+  noticeOpenMessage,
+  noticeReadingMessage,
+  remindDays,
+} from "../tax-notice-message";
+import { hobbyMessage, rentalSetupMessage } from "../side-income-message";
+import { readingMessage, reviewMessage } from "../prior-return-message";
+import { retentionMessage } from "../audit-records-message";
 import { homeSaleMessage, saltCapMessage } from "../home-taxes-message";
 import { HARVEST_FROM } from "@/config/tax";
 import { formatCents } from "@/lib/money";
@@ -365,6 +375,121 @@ export const taxesSource: MessageSource = {
         dedupeKey: `family:${family!.year}:${c.key}`,
         priority: TAX_MESSAGE_PRIORITY.family,
       });
+    }
+
+    // Spec step 218: the IP PIN in January (already on the deadlines at the levels that let
+    // Jane act); a sign of identity theft she noticed; and an open case's next step.
+    const identity = tax.identity;
+    if (identity) {
+      if (identity.season && !identity.havePin) {
+        out.push({
+          kind: acts && identity.reminded ? "done" : "decision",
+          ...ipPinMessage(identity, acts && identity.reminded),
+          dedupeKey: `ippin:${identity.year}`,
+          priority: TAX_MESSAGE_PRIORITY.ip_pin,
+        });
+      }
+      for (const c of identity.candidates) {
+        out.push({
+          kind: "decision",
+          ...signMessage(c),
+          dedupeKey: `identity-sign:${c.key}`,
+          priority: TAX_MESSAGE_PRIORITY.identity,
+        });
+      }
+      const step = caseMessage(identity);
+      if (step) {
+        out.push({
+          kind: "decision",
+          ...step,
+          dedupeKey: `identity-step:${identity.case!.id}:${identity.case!.next}`,
+          priority: TAX_MESSAGE_PRIORITY.identity,
+        });
+      }
+    }
+
+    // Spec step 217: tax notices. Urgent: a notice to confirm, then one to answer (again
+    // as the date nears), then the draft to hand over.
+    for (const { notice: n, check } of tax.notices ?? []) {
+      if (n.status === "waiting") {
+        out.push({
+          kind: "decision",
+          ...noticeReadingMessage(n),
+          dedupeKey: `notice:${n.id}`,
+          priority: TAX_MESSAGE_PRIORITY.notice,
+        });
+      } else if (n.status === "confirmed" && !n.handledBy) {
+        if (n.draft) {
+          out.push({
+            kind: "decision",
+            ...noticeDraftMessage(n),
+            dedupeKey: `notice-draft:${n.id}:${n.response}`,
+            priority: TAX_MESSAGE_PRIORITY.notice,
+          });
+        } else if (check) {
+          out.push({
+            kind: "decision",
+            ...noticeOpenMessage(n, check, context.local.date),
+            dedupeKey: `notice-open:${n.id}:${remindDays(n, context.local.date) ?? 0}`,
+            priority: TAX_MESSAGE_PRIORITY.notice,
+          });
+        }
+      }
+    }
+
+    // Spec step 173: a rental that needs its property for depreciation; hobby or business
+    // (demo advice, with both taxes shown).
+    if (tax.sideIncome) {
+      const setup = rentalSetupMessage(tax.sideIncome);
+      if (setup) {
+        out.push({
+          kind: "heads_up",
+          ...setup,
+          dedupeKey: `rental:${tax.sideIncome.year}`,
+          priority: TAX_MESSAGE_PRIORITY.rental_setup,
+        });
+      }
+      const kind = tax.advice ? hobbyMessage(tax.sideIncome) : null;
+      if (kind) {
+        out.push({
+          kind: "decision",
+          ...kind,
+          dedupeKey: `sidekind:${tax.sideIncome.year}`,
+          priority: TAX_MESSAGE_PRIORITY.side_kind,
+        });
+      }
+    }
+
+    // Spec step 172: a return Jane read, to confirm; and what its review found.
+    for (const r of tax.priorReturns ?? []) {
+      out.push({
+        kind: "decision",
+        ...readingMessage(r),
+        dedupeKey: `prior:${r.id}`,
+        priority: TAX_MESSAGE_PRIORITY.prior_return,
+      });
+    }
+    for (const r of tax.returnReviews ?? []) {
+      if (!r.worthAmending && !r.amendment) continue;
+      out.push({
+        kind: "decision",
+        ...reviewMessage(r),
+        dedupeKey: `review-return:${r.year}:${r.amendment?.status ?? "open"}`,
+        priority: TAX_MESSAGE_PRIORITY.prior_review,
+      });
+    }
+
+    // Spec step 171: a year's records that can be thrown away soon (the reminder is on the
+    // deadlines already at the levels that let Jane act).
+    if (!acts) {
+      for (const r of tax.records?.due ?? []) {
+        out.push({
+          kind: "heads_up",
+          ...retentionMessage(r),
+          dedupeKey: `records:${r.year}`,
+          priority: TAX_MESSAGE_PRIORITY.records,
+        });
+      }
     }
 
     // Spec step 170: the state and local tax cap biting once property tax is paid, and a
