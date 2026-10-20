@@ -192,6 +192,7 @@ export const PEOPLE: readonly Person[] = [
       hasDebtTrouble: false,
     },
     should: [
+      "rebalance",
       "pmi_removal",
       "life_insurance",
       "education_529",
