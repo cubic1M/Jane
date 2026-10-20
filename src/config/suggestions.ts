@@ -39,7 +39,7 @@ export const RISK_ANNUAL_PROBABILITY: Readonly<Record<string, number>> = {
   cover_change: 0.01,
   // A large fall in one company's stock, or a stretch without pay.
   concentration: 0.1,
-  emergency_fund: 0.15,
+  emergency_fund: 0.05,
   income_smoothing: 0.5,
   estimated_taxes: 0.3,
   business_separation: 0.1,

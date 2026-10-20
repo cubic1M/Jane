@@ -22,6 +22,16 @@ export function sureWords(percent: number): string {
   return percent < UNSURE_BELOW ? `I'm not sure (${percent}%)` : `I'm ${percent}% sure`;
 }
 
+// "1 cards linked" reads wrong: with one match, the first plural word becomes singular
+// ("1 card linked", "1 interest charge"). Words ending ss, us, is, as or os are left alone.
+export function counted(n: number, what: string): string {
+  if (n !== 1) return `${n} ${what}`;
+  const words = what.split(" ");
+  const i = words.findIndex((w) => /[^s]s$/.test(w) && !/(us|is|as|os)$/.test(w));
+  if (i >= 0) words[i] = words[i].slice(0, -1);
+  return `1 ${words.join(" ")}`;
+}
+
 // The sentence shown next to a percentage: "based on 12 months of charges".
 export function evidenceText(
   source: Source,
@@ -31,6 +41,6 @@ export function evidenceText(
   if (source === "told") return "you told me";
   const months = `${evidence.months} month${evidence.months === 1 ? "" : "s"}`;
   return evidence.matches > 0
-    ? `${evidence.matches} ${what} in ${months} of data`
+    ? `${counted(evidence.matches, what)} in ${months} of data`
     : `no ${what} in ${months} of data`;
 }

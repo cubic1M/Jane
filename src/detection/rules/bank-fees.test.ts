@@ -64,3 +64,35 @@ describe("bank_fees", () => {
     expect(bankFees(input({ transactions: [tx(GROCERIES)] }), [])).toEqual([]);
   });
 });
+
+// Spec step 263 (QA sweep): Jo's payment processor fees are a business cost, not a bank fee.
+describe("bank_fees and a payment processor", () => {
+  const processor = (description: string, date: string) =>
+    tx({
+      accountId: CHECKING.id,
+      date,
+      amountCents: 22_000,
+      description,
+      pfcPrimary: "BANK_FEES",
+      pfcDetailed: "BANK_FEES_OTHER_BANK_FEES",
+    });
+
+  it("never counts Square, Stripe or other processing fees as bank fees", () => {
+    const transactions = [
+      "SQUARE PROCESSING FEES",
+      "STRIPE FEE",
+      "PAYPAL PROCESSING FEES",
+      "MERCHANT SERVICES",
+    ].map((d, i) => processor(d, `2026-0${i + 3}-05`));
+    expect(bankFees(input({ transactions }), [])).toEqual([]);
+  });
+
+  it("still finds a real bank fee beside them", () => {
+    const transactions = [
+      processor("SQUARE PROCESSING FEES", "2026-03-05"),
+      fee("BANK_FEES_OVERDRAFT_FEES", 3_400, "2026-04-02"),
+    ];
+    const findings = bankFees(input({ transactions }), []);
+    expect(findings.map((f) => f.annualSavingsCents)).toEqual([3_400]);
+  });
+});

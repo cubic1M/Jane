@@ -36,11 +36,18 @@ const has = (policies: Policy[], ...kinds: PolicyKind[]) =>
 const from = (fact: { from: "you" | "accounts" | null }, typed: string, accounts: string) =>
   fact.from === "you" ? typed : accounts;
 
-export function coverageGaps(household: Household, policies: Policy[]): Gap[] {
+export function coverageGaps(
+  household: Household,
+  policies: Policy[],
+  // Spec step 198: policies a household partner shares count as cover for the household
+  // (the "no X on file" gaps), but are never edited and never have gaps of their own.
+  householdPolicies: Pick<Policy, "status" | "kind">[] = [],
+): Gap[] {
   const gaps: Gap[] = [];
+  const everyone = [...policies, ...householdPolicies] as Policy[];
   const { housing, vehicles, dependants } = household;
 
-  if (housing.value === "rent" && !has(policies, "renters", "home")) {
+  if (housing.value === "rent" && !has(everyone, "renters", "home")) {
     gaps.push({
       key: "renters",
       kind: "renters",
@@ -49,7 +56,7 @@ export function coverageGaps(household: Household, policies: Policy[]): Gap[] {
       why: `${from(housing, "You told me you rent", "Your payments show rent")}, and there's no renters policy on your profile. Your landlord's insurance covers the building, not your things or damage you cause to others.`,
     });
   }
-  if (housing.value === "own" && !has(policies, "home")) {
+  if (housing.value === "own" && !has(everyone, "home")) {
     gaps.push({
       key: "home",
       kind: "home",
@@ -58,7 +65,7 @@ export function coverageGaps(household: Household, policies: Policy[]): Gap[] {
       why: `${from(housing, "You told me you own your home", "You have a mortgage or a home on your profile")}, and there's no home policy on it. If your mortgage pays it from escrow, add it here so I can keep an eye on it too.`,
     });
   }
-  if ((vehicles.value ?? 0) > 0 && !has(policies, "auto")) {
+  if ((vehicles.value ?? 0) > 0 && !has(everyone, "auto")) {
     gaps.push({
       key: "auto",
       kind: "auto",
@@ -67,7 +74,7 @@ export function coverageGaps(household: Household, policies: Policy[]): Gap[] {
       why: `${from(vehicles, "You told me you have a car", "You have a car loan or a car on your profile")}, and there's no car policy on file. Almost every state requires car insurance to drive.`,
     });
   }
-  if ((dependants.value ?? 0) > 0 && !has(policies, "life")) {
+  if ((dependants.value ?? 0) > 0 && !has(everyone, "life")) {
     gaps.push({
       key: "life",
       kind: "life",
@@ -88,7 +95,7 @@ export function coverageGaps(household: Household, policies: Policy[]): Gap[] {
       why: "It has no collision or comprehensive cover, so it pays for damage you cause to other people and their cars, not for damage to your own car or if it's stolen.",
     });
   }
-  gaps.push(...moreGaps(household, policies), ...riskGaps(household, policies));
+  gaps.push(...moreGaps(household, everyone), ...riskGaps(household, everyone));
   return gaps.filter((g) => !household.dismissedGaps.includes(g.key));
 }
 

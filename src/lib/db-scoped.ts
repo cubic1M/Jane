@@ -327,6 +327,31 @@ export async function sharedReadFor(viewerId: string, client: PrismaClient = db)
           annualSavingsCents: f.annualSavingsCents,
         }));
     },
+    // Spec step 198: the policies a household partner switched on for sharing, with the terms
+    // a family comparison needs. Never an unshared policy, never a removed one.
+    policies: () =>
+      partnerIds.length === 0
+        ? Promise.resolve([])
+        : client.insurancePolicy.findMany({
+            where: {
+              userId: { in: partnerIds },
+              sharedWithHousehold: true,
+              status: { in: ["active", "pending"] },
+            },
+            select: {
+              id: true,
+              userId: true,
+              kind: true,
+              carrier: true,
+              source: true,
+              premiumCents: true,
+              premiumFrequency: true,
+              deductibleCents: true,
+              coverage: true,
+              covered: true,
+            },
+            orderBy: [{ userId: "asc" }, { createdAt: "asc" }],
+          }),
   });
 }
 
