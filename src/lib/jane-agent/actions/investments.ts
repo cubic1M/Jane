@@ -28,6 +28,14 @@ import {
   RetirementAccountsError,
 } from "@/lib/investments/retirement-accounts";
 import { answerOldPlan, OldAccountsError, startRollover } from "@/lib/investments/old-accounts";
+import { contributeForChild, createGiftLink, FamilyError } from "@/lib/investments/family";
+import { answerPremium, CostlyProductError } from "@/lib/investments/costly-products";
+import { LocationError, makeSwaps } from "@/lib/investments/location";
+import { LOCATION_LINK } from "../investments/location-copy";
+import { harvestFromReview, ReviewError } from "@/lib/investments/yearly-review";
+import { REVIEW_LINK } from "../investments/review-copy";
+import { COSTLY_LINK } from "../investments/costly-copy";
+import { FAMILY_LINK } from "../investments/family-copy";
 import { OLD_LINK } from "../investments/old-accounts-copy";
 import { RA_LINK } from "../investments/retirement-accounts-copy";
 import { loadSteadyHand } from "@/lib/investments/steady-hand";
@@ -451,6 +459,121 @@ export const oldPlanRollover: ActionHandler = {
       };
     } catch (error) {
       if (error instanceof OldAccountsError) throw answeredElsewhere(error.message);
+      throw error;
+    }
+  },
+};
+
+// Spec step 213: a gift link for a child's college fund, and money into a child's Roth IRA.
+export const familyGiftLink: ActionHandler = {
+  id: "family.gift_link",
+  on: "open",
+  async run({ userId, message, action, client }) {
+    const plan = message.refs.familyPlan;
+    if (!plan) throw new ChatActionError("not_offered", "That button isn't on this message.");
+    try {
+      const token = await createGiftLink(userId, plan, { client });
+      return {
+        answeredWith: action.label,
+        note: `Here's the link to share: /gift/${token}. It shows only the goal and how far along it is. You can take it down any time on the family page.`,
+        actions: [FAMILY_LINK],
+      };
+    } catch (error) {
+      if (error instanceof FamilyError) throw answeredElsewhere(error.message);
+      throw error;
+    }
+  },
+};
+
+export const familyChildRoth: ActionHandler = {
+  id: "family.child_roth",
+  on: "open",
+  async run({ userId, message, action, client, now }) {
+    const child = message.refs.familyChild;
+    const cents = message.refs.iraCents;
+    if (!child || !cents)
+      throw new ChatActionError("not_offered", "That button isn't on this message.");
+    try {
+      const r = await contributeForChild(userId, child, "child_roth", cents, { client, now });
+      return {
+        answeredWith: action.label,
+        note: `Done ${SIMULATED_WORDS}: ${formatCents(cents)} put in ${r.accountName}.`,
+        actions: [FAMILY_LINK],
+      };
+    } catch (error) {
+      if (error instanceof FamilyError) throw answeredElsewhere(error.message);
+      throw error;
+    }
+  },
+};
+
+// Spec step 215: is this premium a whole life policy? Yes shows what it costs; nothing is
+// cancelled or left by either button.
+function costlyAnswer(id: ActionId, yes: boolean): ActionHandler {
+  return {
+    id,
+    on: "open",
+    async run({ userId, message, action, client }) {
+      const productId = message.refs.productId;
+      if (!productId)
+        throw new ChatActionError("not_offered", "That button isn't on this message.");
+      try {
+        await answerPremium(userId, productId, yes, { client });
+        return {
+          answeredWith: action.label,
+          note: yes
+            ? "Thanks. Add its cash value and surrender schedule from your statement and I'll show what it really costs. I'll never tell you to leave it without those figures."
+            : "Thanks. I won't ask about that one again.",
+          actions: [COSTLY_LINK],
+        };
+      } catch (error) {
+        if (error instanceof CostlyProductError) throw answeredElsewhere(error.message);
+        throw error;
+      }
+    },
+  };
+}
+export const costlyYes = costlyAnswer("costly.yes", true);
+export const costlyNo = costlyAnswer("costly.no", false);
+
+// Spec step 216: harvest the losses the yearly review showed (a sell into a similar fund),
+// only the same list the person saw. A tap, at every autopilot level.
+export const reviewHarvest: ActionHandler = {
+  id: "review.harvest",
+  on: "open",
+  async run({ userId, message, action, client, now }) {
+    const key = message.refs.harvestKey;
+    if (!key) throw new ChatActionError("not_offered", "That button isn't on this message.");
+    try {
+      const done = await harvestFromReview(userId, key, { client, now });
+      return {
+        answeredWith: action.label,
+        note: `Done ${SIMULATED_WORDS}. ${done.join(". ")}.`,
+        actions: [REVIEW_LINK],
+      };
+    } catch (error) {
+      if (error instanceof ReviewError) throw answeredElsewhere(error.message);
+      throw error;
+    }
+  },
+};
+
+// Spec step 231: the swaps that cost no tax, together (the mix never changes), a tap.
+export const locationFree: ActionHandler = {
+  id: "location.free",
+  on: "open",
+  async run({ userId, message, action, client, now }) {
+    const key = message.refs.locationKey;
+    if (!key) throw new ChatActionError("not_offered", "That button isn't on this message.");
+    try {
+      const r = await makeSwaps(userId, key, "free", { client, now });
+      return {
+        answeredWith: action.label,
+        note: `Done ${SIMULATED_WORDS}: ${r.swaps} ${r.swaps === 1 ? "swap" : "swaps"}, no tax, and your overall mix is unchanged.`,
+        actions: [LOCATION_LINK],
+      };
+    } catch (error) {
+      if (error instanceof LocationError) throw answeredElsewhere(error.message);
       throw error;
     }
   },

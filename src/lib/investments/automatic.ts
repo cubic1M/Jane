@@ -1,21 +1,19 @@
 import { randomUUID } from "node:crypto";
 import {
   AUTO_CASH_BUFFER_CENTS,
-  AUTO_HARVEST_FROM,
   AUTO_MIN_INVEST_CENTS,
   AUTO_SECTOR,
   AUTO_SUMMARY_DAYS,
 } from "@/config/automatic-investing";
-import { CORE_FUNDS, FUND_FACTS, FUND_NAMES } from "@/config/funds";
+import { FUND_NAMES } from "@/config/funds";
 import { MONEY_MARKET_TICKER } from "@/config/cash";
-import type { AssetClass } from "@/config/funds";
 import type { PrismaClient } from "@/generated/prisma/client";
 import { adviceMode } from "@/lib/advice-mode";
 import { logAudit } from "@/lib/audit";
 import { brokeragePartner } from "@/lib/brokerage/partner";
 import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
-import { loadInvestmentTaxes } from "@/lib/investment-taxes";
+import { describeHarvest, harvestCandidates, placeHarvest } from "./harvest";
 import { syncDemoInvestments } from "@/lib/plaid/sync";
 import { mayAct, recordAct } from "@/lib/sector-autopilot";
 import { contributionBuys } from "@/planning/auto-invest";
@@ -37,13 +35,6 @@ const iso = (d: Date) => d.toISOString().slice(0, 10);
 const money = formatCents;
 
 export type AutomaticResult = { did: string[]; asked: string[] };
-
-const dominantClass = (ticker: string | null): Exclude<AssetClass, "other"> | null => {
-  const mix = ticker ? FUND_FACTS[ticker]?.mix : undefined;
-  if (!mix) return null;
-  const top = (Object.entries(mix) as [AssetClass, number][]).sort((a, b) => b[1] - a[1])[0];
-  return top && top[0] !== "other" ? (top[0] as Exclude<AssetClass, "other">) : null;
-};
 
 export async function runAutomaticInvesting(
   userId: string,
@@ -110,47 +101,8 @@ export async function runAutomaticInvesting(
 
   // 2. Harvest losses (step 124), only without a wash-sale risk, into a similar fund.
   try {
-    if (iso(now).slice(5) >= AUTO_HARVEST_FROM) {
-      const taxes = await loadInvestmentTaxes(userId, now.getUTCFullYear(), { client, now });
-      for (const chance of taxes.harvest.filter(
-        (h) => !h.washRisk.boughtRecently && !h.washRisk.reinvests,
-      )) {
-        const h = chance.holding;
-        const cls = dominantClass(h.ticker);
-        const into = cls ? CORE_FUNDS[cls] : null;
-        if (!h.ticker || !into || into === h.ticker) continue;
-        await act(
-          h.valueCents,
-          `Harvested a ${money(chance.lossCents)} loss: sold ${h.name} (${money(h.valueCents)}) and bought ${FUND_NAMES[into] ?? into}, a similar fund that isn't the same one, so the loss counts`,
-          async () => {
-            const batchId = randomUUID();
-            await brokeragePartner().placeOrders(
-              userId,
-              {
-                batchId,
-                reason: "harvest",
-                orders: [
-                  {
-                    accountId: h.accountId,
-                    ticker: h.ticker!,
-                    securityName: h.name,
-                    side: "sell",
-                    amountCents: h.valueCents,
-                  },
-                  {
-                    accountId: h.accountId,
-                    ticker: into,
-                    securityName: FUND_NAMES[into] ?? into,
-                    side: "buy",
-                    amountCents: h.valueCents,
-                  },
-                ],
-              },
-              { client, now },
-            );
-          },
-        );
-      }
+    for (const c of await harvestCandidates(userId, { client, now })) {
+      await act(c.valueCents, describeHarvest(c), () => placeHarvest(userId, c, { client, now }));
     }
   } catch (error) {
     console.error("Automatic harvest failed", { error: String(error) });

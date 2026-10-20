@@ -19,6 +19,15 @@ import {
   type RetirementAccountsView,
 } from "@/lib/investments/retirement-accounts";
 import { loadOldAccounts, type OldAccountsView } from "@/lib/investments/old-accounts";
+import {
+  loadRetirementIncome,
+  type RetirementIncomeView,
+} from "@/lib/investments/retirement-income";
+import { loadFamily, type FamilyView } from "@/lib/investments/family";
+import { loadProperty, type PropertyView } from "@/lib/investments/property";
+import { loadCostlyProducts, type CostlyProductsView } from "@/lib/investments/costly-products";
+import { loadReviewExtras, type ReviewExtras } from "@/lib/investments/yearly-review";
+import { loadLocation, type LocationView } from "@/lib/investments/location";
 import { automaticLog } from "@/lib/investments/automatic";
 import type { Bucket } from "@/planning/goal-buckets";
 import { loadAutoInvest } from "@/lib/investments/auto-invest";
@@ -71,6 +80,18 @@ export type InvestmentSnapshot = {
   >;
   // Spec step 211: past employers' plans.
   oldAccounts: OldAccountsView;
+  // Spec step 212: income in retirement.
+  retirementIncome: RetirementIncomeView;
+  // Spec step 213: the children in the family's investing.
+  family: FamilyView;
+  // Spec step 214: homes and rentals.
+  property: PropertyView;
+  // Spec step 215: annuities, whole life and advisory fees.
+  costly: CostlyProductsView;
+  // Spec step 216: the yearly review's extra facts (harvesting, goals, a raise).
+  review2: ReviewExtras;
+  // Spec step 231: the swaps that put each investment in the right account.
+  location: Pick<LocationView, "plan">;
   // Spec step 164: what Jane did by herself in the last month, and what she asked about.
   automatic: Awaited<ReturnType<typeof automaticLog>>;
   // Spec step 162: the cash plan.
@@ -142,6 +163,14 @@ export async function loadInvestmentSnapshot(
       })),
     retirementAccounts: await loadRetirementAccounts(userId, { client, now }),
     oldAccounts: await loadOldAccounts(userId, { client, now }),
+    retirementIncome: await loadRetirementIncome(userId, { client, now, investments }),
+    family: await loadFamily(userId, { client, now }),
+    property: await loadProperty(userId, { client, now }),
+    costly: await loadCostlyProducts(userId, { client, now }),
+    review2: await loadReviewExtras(userId, { client, now }),
+    location: await loadLocation(userId, { client, now, investments }).then((l) => ({
+      plan: l.plan,
+    })),
     automatic: await automaticLog(userId, { client, now }),
     cash: await loadCash(userId, { client, now, investments }).then((c) => ({ plan: c.plan })),
     crypto: await loadCrypto(userId, {

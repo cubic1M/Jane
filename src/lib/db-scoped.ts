@@ -123,6 +123,9 @@ export function scopedFor(userId: string, client: PrismaClient = db) {
     cardRateRequests: scoped.cardRateRequest,
     personalLoans: scoped.personalLoan,
     creditGoals: scoped.creditGoal,
+    homeEquityFacts: scoped.homeEquityFacts,
+    carAddons: scoped.carAddon,
+    carLoanWatches: scoped.carLoanWatch,
     balanceTransfers: scoped.balanceTransfer,
     findings: scoped.finding,
     decisions: scoped.decision,
@@ -217,6 +220,11 @@ export function scopedFor(userId: string, client: PrismaClient = db) {
     // Crypto, read-only (spec step 161).
     payrollChanges: scoped.payrollChange,
     oldPlans: scoped.oldPlan,
+    retirementIncomes: scoped.retirementIncome,
+    familyChildren: scoped.familyChild,
+    rentalProperties: scoped.rentalProperty,
+    costlyProducts: scoped.costlyProduct,
+    giftLinks: scoped.giftLink,
     cryptoConnections: scoped.cryptoConnection,
     cryptoHoldings: scoped.cryptoHolding,
   };

@@ -93,6 +93,7 @@ export const TABS: readonly Tab[] = [
       "/check-in",
       "/monthly",
       "/what-if",
+      "/long-view",
       "/year",
     ],
   },

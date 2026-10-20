@@ -50,6 +50,21 @@ export type DebtIntent =
       goalKind: "mortgage" | "car" | "other";
     }
   | { kind: "student_long" }
+  // Spec step 229: "I have too much debt", "what about debt settlement?", "should I file for
+  // bankruptcy?": the options laid out as facts, never advice.
+  | { kind: "debt_trouble" }
+  // Spec step 230: "do my debt review", "how are my debts doing?".
+  | { kind: "debt_review" }
+  // Spec step 245: "do I have GAP on my car loan?", "can I cancel the extended warranty?".
+  | { kind: "car_loan" }
+  // Spec step 228: "when does my PMI end by itself?", "is my escrow too high?", "HELOC or
+  // cash-out refinance for a $40,000 kitchen?".
+  | {
+      kind: "home_equity";
+      topic: "pmi" | "escrow" | "project";
+      projectCents: number | null;
+      years: number | null;
+    }
   | { kind: "card_interest" }
   | { kind: "report_fixes" }
   | { kind: "medical_bills" }
@@ -91,6 +106,10 @@ export const DEBT_KINDS = new Set<string>([
   "student_long",
   "family_loans",
   "credit_goal",
+  "home_equity",
+  "debt_trouble",
+  "debt_review",
+  "car_loan",
 ]);
 export const isDebtIntent = (intent: { kind: string }): intent is DebtIntent =>
   DEBT_KINDS.has(intent.kind);
@@ -218,6 +237,44 @@ const MONTH_NAMES = [
   "november",
   "december",
 ];
+// Spec step 228. Checked before the tax words are turned away, and only on these words.
+const EQUITY_PROJECT =
+  /\bhelocs?\b|\bhome equity (?:loan|line)s?\b|\bcash[- ]out (?:refinanc\w*|refi)\b|\b(?:pay for|finance|fund|borrow for|afford)\b.*\b(?:kitchen|bathroom|renovat\w*|remodel\w*|home addition|roof|home (?:project|improvement|repair)s?)\b/;
+const EQUITY_ESCROW =
+  /\bescrow\b.*\b(?:too (?:high|much)|overfund\w*|overpa\w+|over paying|refund|surplus|shortage|analysis|enough|right|correct|match|bills|tax(?:es)? and insurance)\b|\b(?:overfund\w*|overpa\w+|over paying)\b.*\bescrow\b/;
+const EQUITY_PMI =
+  /\bpmi\b.*\b(?:78|automatic\w*|by itself|drop off|fall off|original (?:value|appraisal|price)|how long|when (?:will|does|do))\b|\b(?:78|automatic\w*|original (?:value|appraisal|price))\b.*\bpmi\b|\bwhen (?:will|does|do) (?:my )?pmi (?:end|stop|go|drop|cancel)\b/;
+// Spec step 229. Checked before the tax words are turned away: "taxes on forgiven debt" is
+// part of these answers.
+const DEBT_TROUBLE =
+  /\b(?:too much debt|drowning in debt|buried in debt|overwhelmed by (?:my )?debts?|(?:can'?t|cannot|unable to) (?:keep up with|manage|handle|pay off) (?:all )?(?:my |the )?debts?|debts? (?:is |are )?(?:out of control|too (?:high|much|big))|bankruptcy|debt settlement|settle (?:my |the |some of my )?debts?|debt management plans?|debt relief|debt consolidation counsel\w*|(?:non-?profit )?credit counsel\w*|hardship (?:programs?|plans?) (?:for|on|with) (?:my )?(?:cards?|debts?|loans?)|what are my options with (?:my )?debts?)\b/;
+// Spec step 245.
+const CAR_LOAN =
+  /\b(?:gap (?:insurance|coverage|cover|waiver)|(?:extended (?:car )?warranty|service contract)\b[^.]*\b(?:car|auto|loan|dealer)|\b(?:car|auto|loan|dealer)\b[^.]*\b(?:extended (?:car )?warranty|service contract)|vehicle service contract|dealer add-?ons?|add-?ons? (?:in|on|to) my (?:car|auto) loan)\b|\b(?:car|auto) loan\b.*\b(?:rates? (?:fell|dropped|are down|came down)|(?:score|credit) (?:went up|improved|rose))\b/;
+// Spec step 230.
+const DEBT_REVIEW =
+  /\b(?:(?:yearly|annual|year-?end|full|quick)\s+)?(?:debt|loan|credit)s?\s+(?:review|check-?up|health ?check)\b|\breview (?:all )?(?:of )?my (?:debts?|loans?)\b|\bhow are my (?:debts?|loans?) doing\b|\bgo over my (?:debts?|loans?)\b/;
+const EQUITY_TAXY = /\b(?:deduct\w*|write[- ]?offs?|1098|schedule a|itemiz\w*)\b/;
+function equityIntent(text: string, amountCents: number | null): DebtIntent | null {
+  if (EQUITY_TAXY.test(text)) return null;
+  const years = /\b(?:over|in|for|across) (\d{1,2}) years?\b/.exec(text);
+  if (EQUITY_PROJECT.test(text)) {
+    return {
+      kind: "home_equity",
+      topic: "project",
+      projectCents: amountCents,
+      years: years ? Number(years[1]) : null,
+    };
+  }
+  if (EQUITY_ESCROW.test(text)) {
+    return { kind: "home_equity", topic: "escrow", projectCents: null, years: null };
+  }
+  if (EQUITY_PMI.test(text)) {
+    return { kind: "home_equity", topic: "pmi", projectCents: null, years: null };
+  }
+  return null;
+}
+
 const CREDIT_GOAL =
   /\b(?:credit )?score\b.*\b(?:need|want|get|reach|hit|raise|goal|target|by|in)\b|\b(?:need|want|get|reach|hit|raise)\b.*\b(?:credit )?score\b|\bcredit (?:goal|plan)\b/;
 function goalFrom(text: string, asOf: string) {
@@ -249,7 +306,7 @@ function goalFrom(text: string, asOf: string) {
   } else if (/\bnext year\b/.test(text)) months = 12;
   else {
     const m = MONTH_NAMES.findIndex((name) =>
-      new RegExp(`\\b(?:by|in|before) ${name}\\b`).test(text),
+      new RegExp(`\b(?:by|in|before) ${name}\b`).test(text),
     );
     if (m >= 0) {
       const now = Number(asOf.slice(5, 7)) - 1;
@@ -275,6 +332,11 @@ export function parseDebtIntent(
   amountCents: number | null = null,
   asOf: string = new Date().toISOString().slice(0, 10),
 ): DebtIntent | null {
+  const equity = equityIntent(text, amountCents);
+  if (equity) return equity;
+  if (DEBT_TROUBLE.test(text)) return { kind: "debt_trouble" };
+  if (DEBT_REVIEW.test(text)) return { kind: "debt_review" };
+  if (CAR_LOAN.test(text)) return { kind: "car_loan" };
   // Taxes owed are the tax questions' (./tax-intents.ts).
   if (/\b(?:tax|taxes|irs|tax refund)\b/.test(text)) return null;
   // "Lower the rate on my card" is a request, not a question (./intents.ts act).

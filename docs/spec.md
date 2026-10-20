@@ -3613,6 +3613,112 @@ step 189's bank.
 > Acceptance criteria:
 > - One message with every item's button; nothing above the cap without a tap
 
+## Phase AM: taxes, round three (steps 217–223)
+
+Phases Z and AF estimate, plan, organize and file, for every common situation. This round
+handles what goes wrong and what pays off over years: letters from the IRS, a stolen tax
+identity, crypto and equity pay, moves planned across several years, property tax that's
+too high, working with an accountant, and a tax year that runs itself. Recommendations are
+demo advice; figures live in config with sources. Each step is built into the chat
+through the step 190 registry, with questions in step 189's bank.
+
+### Step 217: Letters from the IRS and the state
+
+> Read CLAUDE.md. A scary letter, explained and answered.
+>
+> Build:
+> 1. A photographed or uploaded notice (step 166's tax documents) read by Claude: which notice it
+>    is (CP2000, CP14, CP501, state equivalents), what it says is owed and by when, and a
+>    check against what Jane knows (the return, forms, payments). It becomes a deadline
+>    and a drafted response (agree, pay, or dispute with the documents attached), sent by
+>    the team or by the person.
+>
+> Acceptance criteria:
+> - Notice kinds and deadlines from config with sources; nothing is paid or sent without
+>   a tap
+
+### Step 218: A protected tax identity
+
+> Read CLAUDE.md. Tax identity theft caught and handled.
+>
+> Build:
+> 1. Every January, a reminder and guide to get an IRS Identity Protection PIN. When there's
+>    a sign of theft (a rejected e-file because a return was already filed, a W-2 or 1099
+>    from an unknown payer, an IRS letter about a return they didn't file), Jane gives the
+>    steps in order (Form 14039 guide, a credit freeze through the loans lane's credit
+>    pages, the IRS phone line) and tracks each one.
+>
+> Acceptance criteria:
+> - Each sign has a test; the steps are tracked to done
+
+### Step 219: Crypto and equity pay, taxed right
+
+> Read CLAUDE.md. The tricky income, worked out.
+>
+> Build:
+> 1. Crypto gains and losses from step 161's holdings (cost basis by lot, the 1099-DA once it
+>    arrives), ESPP sales that lost their special treatment, ISO exercises with an AMT
+>    estimate, and RSU withholding that falls short of the real rate, all in the tax
+>    estimate with a "set aside" amount and its button.
+>
+> Acceptance criteria:
+> - AMT and holding-period rules from config with sources; each case has tests
+
+### Step 220: Tax moves over several years
+
+> Read CLAUDE.md. Paying less tax over a decade, not just this year.
+>
+> Build:
+> 1. A multi-year projection from every sector's plan, with the moves it finds: Roth
+>    conversions in low-income years, filling the 0% capital gains bracket, bunching
+>    deductions into alternate years, timing a bonus, a sale or a retirement withdrawal.
+>    Each move shows its lifetime tax effect, and the investing side carries it out (demo
+>    advice).
+>
+> Acceptance criteria:
+> - Brackets per year from config; the projection's first year matches step 120's estimate
+
+### Step 221: Property tax that's too high
+
+> Read CLAUDE.md. Appeal the assessment, claim the exemptions.
+>
+> Build:
+> 1. The home's assessed value against its market value (the home value from the demo
+>    bank's home or the person's own figure, and stand-in comparable sales), the county's
+>    appeal window as a deadline, a drafted appeal with the comparables, and exemptions
+>    not yet claimed (homestead, senior, veteran) from a config table per state.
+>
+> Acceptance criteria:
+> - An appeal is suggested only when the gap is over the config threshold; nothing is
+>   filed without a tap
+
+### Step 222: Working with an accountant
+
+> Read CLAUDE.md. Hand everything over in one link.
+>
+> Build:
+> 1. A read-only link for the person's accountant: the tax pack, documents, the questions
+>    Jane has, and a place for the accountant's answers, which come back into Jane. It
+>    expires, can be revoked, and every view is in the audit log. Jane says plainly when a
+>    situation is complex enough that people usually use one (facts only).
+>
+> Acceptance criteria:
+> - The link shows only tax data; expiry and revocation are tested; views are logged
+
+### Step 223: Taxes on autopilot, round two
+
+> Read CLAUDE.md. A tax year that runs itself.
+>
+> Build:
+> 1. The year's tax calendar run by Jane: January IP PIN and document chase, quarterly
+>    estimates paid through the stand-in within the caps, mid-year withholding check,
+>    December's year-end moves in one message, filing day, then the refund tracked. Each
+>    item is done by Jane within the caps, or it gets a tap.
+> 2. Every tax capability in the registry, with bank questions that score well.
+>
+> Acceptance criteria:
+> - Nothing is paid above the cap without a tap; every month of the calendar has a test
+
 ### Later, when the founder is ready
 
 These need an outside account, a partner or a decision: Plaid Production (real banks) and
