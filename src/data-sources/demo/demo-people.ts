@@ -1,6 +1,7 @@
 import type { AccountBase, LiabilitiesObject, Transaction } from "plaid";
 import type { PfcDetailed } from "@/categorize/taxonomy";
 import type { PersonId } from "@/config/people";
+import { PEOPLE_EXTRAS } from "./people-extras";
 import {
   accountId,
   addDays,
@@ -18,7 +19,7 @@ import {
 // same path. Deterministic and pure, like the rest of the demo bank. Who each person is and
 // what Jane should and must not suggest is in src/config/people.ts.
 
-type Recurring = {
+export type Recurring = {
   key: string;
   account: string;
   name: string;
@@ -34,9 +35,9 @@ type Recurring = {
   span?: { from?: number; until?: number };
 };
 
-type Once = Omit<Recurring, "days" | "months"> & { offsets: number[] };
+export type Once = Omit<Recurring, "days" | "months"> & { offsets: number[] };
 
-type Acct = {
+export type Acct = {
   key: string;
   name: string;
   mask: string;
@@ -46,9 +47,21 @@ type Acct = {
   limit?: number;
 };
 
-type Position = { account: string; key: string; quantity: number; basis: number; cash?: number };
+export type Position = {
+  account: string;
+  key: string;
+  quantity: number;
+  basis: number;
+  cash?: number;
+};
 
-type Card = { account: string; apr: number; balance: number; minimum: number; overdue?: boolean };
+export type Card = {
+  account: string;
+  apr: number;
+  balance: number;
+  minimum: number;
+  overdue?: boolean;
+};
 type Mortgage = {
   account: string;
   rate: number;
@@ -1225,7 +1238,29 @@ const DEFS: Record<PersonId, Def> = {
   },
 };
 
-const defOf = (demo: DemoSeed): Def => DEFS[(demo.person ?? "family") as PersonId] ?? DEFS.family;
+// What a lane adds to a person's life, so the lanes' detectors have signals to find without
+// editing this file together: one file per lane in ./people-extras, each a map from person id
+// to extra recurring charges, one-offs, accounts, cards and holdings, merged here. Keys
+// (transaction keys, account keys) must be unique across all files.
+export type PersonExtra = Partial<
+  Pick<Def, "accounts" | "monthly" | "once" | "cards" | "positions">
+>;
+
+const merged = (id: PersonId): Def => {
+  const base = DEFS[id];
+  const extras = PEOPLE_EXTRAS.flatMap((lane) => lane[id] ?? []);
+  return {
+    ...base,
+    accounts: [...base.accounts, ...extras.flatMap((e) => e.accounts ?? [])],
+    monthly: [...base.monthly, ...extras.flatMap((e) => e.monthly ?? [])],
+    once: [...base.once, ...extras.flatMap((e) => e.once ?? [])],
+    cards: [...base.cards, ...extras.flatMap((e) => e.cards ?? [])],
+    positions: [...base.positions, ...extras.flatMap((e) => e.positions ?? [])],
+  };
+};
+
+const defOf = (demo: DemoSeed): Def =>
+  merged(((demo.person ?? "family") in DEFS ? demo.person : "family") as PersonId);
 
 export const isPersonSeed = (demo: DemoSeed) => Boolean(demo.person && demo.person in DEFS);
 

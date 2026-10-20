@@ -13,7 +13,7 @@ import { questionsSource } from "@/lib/jane-agent/sources/questions";
 import { syncItem } from "@/lib/plaid/sync";
 import { startTrial } from "@/lib/trial";
 import { loadProfile } from "./profile";
-import { answerQuestion, nextQuestion, QuestionError } from "./questions";
+import { answerQuestion, nextQuestion, planQuestion, QuestionError } from "./questions";
 
 // Runs against a real, migrated Postgres (see src/detection/engine.integration.test.ts).
 const url = process.env.TEST_DATABASE_URL;
@@ -48,6 +48,7 @@ describe.runIf(url)(
       "$id is asked their highest-value question first, as a message with buttons",
       async (person) => {
         const userId = made.get(person.id)!;
+        await planQuestion(userId, { client, now: NOW });
         const q = await nextQuestion(userId, { client, now: NOW });
         expect(q?.fact).toBe(person.firstQuestion);
         const snapshot = await loadSnapshot(userId, { client, now: NOW });
@@ -62,6 +63,7 @@ describe.runIf(url)(
       const userId = made.get("renter")!;
       const asked: string[] = [];
       for (let round = 0; round < 6; round += 1) {
+        await planQuestion(userId, { client, now: NOW });
         const q = await nextQuestion(userId, { client, now: NOW });
         if (!q) break;
         expect(asked).not.toContain(q.fact);
@@ -72,6 +74,7 @@ describe.runIf(url)(
       expect(asked[0]).toBe("employer_match");
       const { facts } = await loadProfile(userId, { client, now: NOW });
       expect(facts.employer_match).toMatchObject({ value: "yes", source: "told", confidence: 100 });
+      await planQuestion(userId, { client, now: NOW });
       expect(await nextQuestion(userId, { client, now: NOW })).toBeNull();
       // A skipped question stays unknown and is not asked again.
       await expect(
@@ -81,6 +84,7 @@ describe.runIf(url)(
 
     it("asks one at a time: while one is waiting in the chat, no other is offered", async () => {
       const userId = made.get("owner")!;
+      await planQuestion(userId, { client, now: NOW });
       await client.janeMessage.create({
         data: {
           userId,
@@ -96,6 +100,7 @@ describe.runIf(url)(
         data: { status: "dismissed" },
       });
       // Put to them once already, so it's not asked again; the next best is.
+      await planQuestion(userId, { client, now: NOW });
       const next = await nextQuestion(userId, { client, now: NOW });
       expect(next?.fact).not.toBe("business_structure");
     });
