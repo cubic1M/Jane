@@ -17,7 +17,7 @@ vi.mock("@/lib/insurance/daily", async (importOriginal) => {
     insuranceAfterSync: vi.fn(
       async (userId: string, options: Parameters<typeof original.insuranceAfterSync>[1]) => {
         seenBySlowWork.push(
-          await options.client!.janeMessage.count({ where: { userId, kind: "decision" } }),
+          await options!.client!.janeMessage.count({ where: { userId, kind: "decision" } }),
         );
         return original.insuranceAfterSync(userId, options);
       },
