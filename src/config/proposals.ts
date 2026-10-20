@@ -16,3 +16,14 @@ export const EMERGENCY_FUND_ROUNDING_CENTS = 10_000;
 // A merchant with no category gets one proposed (from the merchant directory) once it has
 // at least this many charges.
 export const CATEGORY_PROPOSAL_MIN_TRANSACTIONS = 2;
+
+// How big the emergency fund should be depends on the person (spec step 263, from the QA sweep):
+// - income that moves around (freelance, a business): this many months of spending;
+export const EMERGENCY_FUND_MONTHS_UNEVEN = 6;
+// - someone in debt trouble: a small starter buffer before the debt plan, not months of spending,
+//   reached in this many months;
+export const EMERGENCY_STARTER_CENTS = 100_000;
+export const EMERGENCY_STARTER_TARGET_MONTHS = 6;
+// - a retiree on a pension: this many months of the gap between spending and income, and nothing
+//   when income covers spending.
+export const EMERGENCY_FUND_GAP_MONTHS = 12;

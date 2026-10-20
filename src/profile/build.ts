@@ -36,7 +36,11 @@ export type ProfileAccount = {
   type: string;
   subtype: string | null;
   balanceCents: number;
+  // A card's limit, when the bank says (spec step 260); undefined or null when unknown.
+  limitCents?: number | null;
 };
+// A holding with what it cost, for taxes on gains and losses (step 261).
+export type ProfileHolding = { accountId: string; valueCents: number; basisCents: number | null };
 export type ProfileLiability = {
   accountId: string;
   kind: string;
@@ -52,7 +56,11 @@ export type ProfileInput = {
   transactions: readonly ProfileTx[];
   accounts: readonly ProfileAccount[];
   liabilities: readonly ProfileLiability[];
+  // Optional: what each account holds. Absent when the loader did not read holdings.
+  holdings?: readonly ProfileHolding[];
   told: Told;
+  // Policies read from uploaded documents that wait for the person's confirm (spec step 259).
+  unreadPolicyDocuments?: number;
 };
 
 export type FactValue = string | number | boolean | null;

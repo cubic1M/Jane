@@ -12,6 +12,7 @@ import { claimAnswer } from "../insurance/claim";
 import { quotesAnswer } from "../insurance/quotes";
 import { savingsAnswer } from "../insurance/savings";
 import { risksAnswer } from "../insurance/risks";
+import { familyAnswer } from "../insurance/family";
 import { insuranceReply } from "../insurance/replies";
 import { loadInsuranceSnapshot } from "../insurance/snapshot";
 import { type CapabilityContext } from "./shared";
@@ -49,6 +50,8 @@ async function answer(ctx: CapabilityContext): Promise<Reply | null> {
       if (intent.ask === "savings") return savingsAnswer(userId, { client, now });
       // Spec step 197: risks seen in how they live.
       if (intent.ask === "risks") return risksAnswer(userId, { client, now });
+      // Spec step 198: the whole household's cover.
+      if (intent.ask === "household") return familyAnswer(userId, { client, now });
       if (intent.ask === "life_change") {
         return lifeChangeAnswer(userId, intent.event as CoverEvent, { client, now });
       }

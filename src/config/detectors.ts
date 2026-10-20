@@ -68,6 +68,59 @@ export const DETECTOR_RATES = {
   paydayFeeShare: 0.25,
   // Income that moves around by this much month to month is worth smoothing.
   smoothingMinMonthlySwingShare: 0.3,
+  // Insurance (spec step 259). The yearly cost avoided if the cover is missing when it is
+  // needed, as typical figures from the insurance lane's gap advice: contents a renter loses,
+  // a liability claim a car can face.
+  rentersContentsCents: 3_000_000,
+  autoLiabilityCents: 10_000_000,
+  // A hospital stay with no health cover.
+  uninsuredStayCents: 2_700_000,
+  // Long-term care: a typical year in a care home, and the years a couple near retirement
+  // is told to plan for.
+  longTermCareYearCents: 10_800_000,
+  longTermCareYears: 2,
+  // What a risk is worth a year is the expected loss: the chance it happens in a year times
+  // what it costs, never the whole loss. Typical figures from public insurance statistics, to be
+  // checked against a published source before real accounts see them (marked for review).
+  rentersClaimChance: 0.03,
+  autoAtFaultChance: 0.05,
+  hospitalStayChance: 0.08,
+  umbrellaLawsuitChance: 0.002,
+  longTermCareChanceOverWindow: 0.2,
+  longTermCareWindowYears: 10,
+  coverChangeClaimChance: 0.01,
+  // Life cover: the chance a working adult dies in a year (a typical figure for ages 35 to 55,
+  // marked for review), against the cover a household would need.
+  lifeDeathChancePerYear: 0.003,
+  // A small business facing a liability claim in a year, and what one costs.
+  businessClaimChance: 0.04,
+  businessClaimCents: 5_000_000,
+  // Confidence ceilings for suggestions whose amount is typical, not quoted, or that depend on
+  // something Jane can't see (the card's real benefits, the employer's real plan). Without a
+  // ceiling a clean run of charges would make a guess look certain.
+  insuranceCaps: {
+    shopping: 70,
+    health: 70,
+    medigap: 70,
+    negotiation: 75,
+    claim: 65,
+    cardCover: 55,
+    employerBenefits: 60,
+    documents: 75,
+  },
+  // Umbrella cover matters when assets pass this (src/config/insurance.ts UMBRELLA_ASSETS_CENTS).
+  umbrellaAssetsCents: 50_000_000,
+  // Comparing a health plan, a Medicare supplement or car and home cover usually finds this
+  // share of the premium, stated as "up to".
+  healthCompareShare: 0.1,
+  medigapCompareShare: 0.12,
+  insuranceShopShare: 0.1,
+  // Shopping car and home cover is only worth a message above this yearly premium, with at
+  // least this many monthly charges seen.
+  insuranceShopMinCents: 100_000,
+  insuranceShopMinCharges: 6,
+  // Long-term care is raised for people this close to retirement with at least this much.
+  longTermCareMinAssetsCents: 40_000_000,
   // Taxes (step 261). ESTIMATES TO VERIFY, like the rest of this file; the dated figures
   // (brackets, limits, payroll tax) come from src/config/tax-rates.ts, not from here.
   tax: {
@@ -98,10 +151,39 @@ export const DETECTOR_RATES = {
     // this share of the yearly limit is still unused (the confidence says so).
     yearEndFrom: "11-15",
     yearEndUnusedRoomShare: 0.25,
+    // Gifts: a charity gift of $250 or more needs the charity's written receipt to deduct
+    // (src/config/giving.ts GIVING.receiptFromCents).
+    // Property tax: worth a look from this much a year; an appeal saves about the gap
+    // between the assessment and the market (src/config/property-tax.ts APPEAL_GAP_RATE).
+    propertyTaxMinCents: 200_000,
+    // Losses: at least this much below cost in a taxable account before harvesting is raised;
+    // a loss offsets gains, then up to this much of other income a year.
+    harvestMinLossCents: 100_000,
+    harvestOrdinaryOffsetCents: 300_000,
+    // Filing: the IRS's minimum penalty for a return more than 60 days late is about this
+    // much (the lesser of it or the tax owed), ESTIMATE TO VERIFY. Filing season opens
+    // January 15 and closes April 15.
+    lateFilingPenaltyCents: 48_500,
+    filingFrom: "01-15",
+    filingUntil: "04-15",
+    filingNowDays: 14,
     // Estimated payments: urgency by days to the next due date.
     estimatedNowDays: 14,
     estimatedSoonDays: 45,
   },
+  // Insurance, the policy-by-policy checks (spec step 259). A renewal is worth a call when
+  // the charge rose by at least this share over the earlier ones.
+  negotiationMinRise: 0.05,
+  negotiationMinCharges: 3,
+  // A repair or loss this big, paid by the person with cover and no payout seen, is worth a
+  // claim; the deductible is a typical one until the real one is known.
+  claimDeductibleCents: 100_000,
+  claimWindowDays: 90,
+  // A move or a car bought this recently means the insurer should be told.
+  coverChangeWindowDays: 60,
+  // An employer usually pays this share of a plan's premium, so a private one costs that
+  // much more than the work plan (stated as "up to").
+  employerPlanShare: 0.5,
   // Urgency scores: now, soon, later.
   urgency: { now: 3, soon: 2, later: 1 },
 } as const;

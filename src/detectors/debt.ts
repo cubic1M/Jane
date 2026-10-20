@@ -8,7 +8,9 @@ import { type Detector, suggestionId } from "./contract";
 import {
   evidence,
   factEvidence,
+  listOf,
   liquidCents,
+  nice,
   monthlySpendCents,
   outCents,
   tx,
@@ -53,9 +55,16 @@ const studentRepayment: Detector = {
       confidence: weakest([
         evidence("seen", profile.months, payments.length, "student loan payments"),
         factEvidence(profile.facts.monthly_income),
+        // Income-driven plans are for federal loans, and the payments don't say which this is.
+        evidence(
+          "guessed",
+          profile.months,
+          payments.length,
+          "student loan payments (I can't tell if it's federal)",
+        ),
       ]),
       urgency: "later",
-      why: `You pay about ${formatCents(Math.round(monthly))} a month on student loans; an income-driven plan on ${formatCents(income(profile))} a month would ask roughly ${formatCents(idr)}.`,
+      why: `You pay about ${formatCents(Math.round(monthly))} a month on student loans. If they're federal, an income-driven plan on your ${formatCents(income(profile))} a month would ask roughly ${formatCents(idr)}.`,
       action: { label: "Compare repayment plans", href: "/loans/student" },
     };
   },
@@ -136,10 +145,10 @@ const carAddons: Detector = {
         "guessed",
         profile.months,
         found.length,
-        "payments that look like dealer add-ons",
+        "payments that look like dealer add-ons (only you can say)",
       ),
       urgency: "soon",
-      why: `You paid ${formatCents(refunds.reduce((s, r) => s + r.a.paidCents, 0))} for ${found.map((f) => ADDON_RULES[f.kind].label.toLowerCase()).join(" and ")}; the unused part could refund about ${formatCents(worth)}.`,
+      why: `You paid ${formatCents(refunds.reduce((s, r) => s + r.a.paidCents, 0))} for ${found.map((f) => ADDON_RULES[f.kind].label.replace(/^(?!GAP)\w/, (c) => c.toLowerCase())).join(" and ")}; the unused part could refund about ${formatCents(worth)}.`,
       action: { label: "See the refund", href: "/loans/auto" },
     };
   },
@@ -262,8 +271,224 @@ const balanceTransfer: Detector = {
           : []),
       ]),
       urgency: "soon",
+      ...(trouble ? { rankCents: Math.round(saving * D.troubleDiscount) } : {}),
       why: `You owe ${formatCents(debt.value)} on cards and paid ${formatCents(interest)} in interest over ${profile.months} months. A 0% transfer with a ${Math.round(D.transferFeeShare * 100)}% fee (${formatCents(Math.round(debt.value * D.transferFeeShare))}) could save about ${formatCents(saving)}.`,
       action: { label: "See transfer offers", href: "/loans/refinance" },
+    };
+  },
+};
+
+// Cards in use above 30% of their limits: the balance the card reports lowers the score, and
+// paying down before the statement closes brings it under.
+const creditUtilisation: Detector = {
+  covers: ["credit_score", "credit_building"],
+  capability: "debt",
+  topic: "credit_building",
+  needs: ["card_debt_cents"],
+  detect({ profile, data }) {
+    const cards = data.accounts.filter(
+      (a) => a.subtype === "credit card" && typeof a.limitCents === "number" && a.limitCents > 0,
+    );
+    const limit = cards.reduce((n, a) => n + (a.limitCents ?? 0), 0);
+    const owed = cards.reduce((n, a) => n + Math.max(0, Math.abs(a.balanceCents)), 0);
+    if (limit <= 0 || owed / limit < D.utilisationHigh) return null;
+    const toThirty = Math.ceil(owed - limit * D.utilisationHigh);
+    const trouble = profile.facts.debt_trouble.value === true;
+    const cash = liquidCents(data);
+    const share = Math.round((owed / limit) * 100);
+    return {
+      id: suggestionId("debt", "credit_building"),
+      capability: "debt",
+      topic: "credit_building",
+      title: "Pay your cards down before the statement closes, so a lower balance is reported",
+      // What getting under the line is usually worth: a better pricing tier, about 1.5 points off
+      // the rate on what's owed. An estimate, so not what the pay-down itself costs.
+      worthCents: Math.round((owed * D.utilisationRateBenefitBps) / 10_000),
+      worthKind: "saves",
+      confidence: weakest([
+        evidence("seen", profile.months, cards.length, "cards with a limit"),
+        factEvidence(profile.facts.card_debt_cents),
+        // The pricing tier a lender offers isn't something Jane can see.
+        evidence(
+          "guessed",
+          profile.months,
+          cards.length,
+          "cards (the rate you're offered is up to the lender)",
+        ),
+      ]),
+      urgency: "soon",
+      ...(trouble
+        ? {
+            rankCents: Math.round(
+              ((owed * D.utilisationRateBenefitBps) / 10_000) * D.troubleDiscount,
+            ),
+          }
+        : {}),
+      why: `Your cards hold ${formatCents(owed)} of ${formatCents(limit)} in limits, ${share}%. ${
+        cash >= toThirty
+          ? `Paying ${formatCents(toThirty)} before the statement closes brings the balance reported under ${Math.round(D.utilisationHigh * 100)}%`
+          : `Under ${Math.round(D.utilisationHigh * 100)}% would take ${formatCents(toThirty)}, more than the ${formatCents(cash)} you have in cash, so pay what you can before each statement closes; every dollar off the balance reported helps`
+      }, which helps your score and the rates you're offered.`,
+      action: { label: "See your credit score", href: "/loans/credit" },
+    };
+  },
+};
+
+// Pay in 4 and other pay-later plans paid over and over.
+const bnplPlans: Detector = {
+  covers: ["bnpl_installments"],
+  capability: "debt",
+  topic: "bnpl",
+  needs: [],
+  detect({ profile, data }) {
+    const payments = tx(data, (t) => t.pfc === "LOAN_PAYMENTS_BNPL" && t.amountCents > 0);
+    if (payments.length < D.bnplPaymentsMin) return null;
+    const total = outCents(payments);
+    return {
+      id: suggestionId("debt", "bnpl"),
+      capability: "debt",
+      topic: "bnpl",
+      title: "Put your pay-later installments in your forecast so they never catch you short",
+      worthCents: total,
+      worthKind: "risk",
+      confidence: evidence("seen", profile.months, payments.length, "pay-later installments"),
+      urgency: "soon",
+      why: `You've paid ${formatCents(total)} in ${payments.length} pay-later installments over ${profile.months} months. Jane can count the next ones against what's safe to spend, and tell you before a new plan strains the month.`,
+      action: { label: "See your installments", href: "/loans" },
+    };
+  },
+};
+
+// Medical care paid for out of pocket: an itemized bill, financial assistance or a no-interest
+// plan can lower it.
+const medicalBills: Detector = {
+  covers: ["medical_bills"],
+  capability: "debt",
+  topic: "medical_bills",
+  needs: [],
+  detect({ profile, data }) {
+    const care = tx(
+      data,
+      (t) =>
+        (t.pfc ?? "").startsWith("MEDICAL_") &&
+        t.pfc !== "MEDICAL_PHARMACIES_AND_SUPPLEMENTS" &&
+        t.pfc !== "MEDICAL_VETERINARY_SERVICES" &&
+        t.amountCents > 0,
+    );
+    const total = outCents(care);
+    if (total < D.medicalMinCents) return null;
+    return {
+      id: suggestionId("debt", "medical_bills"),
+      capability: "debt",
+      topic: "medical_bills",
+      title:
+        "Ask for an itemized bill, and for financial help or a no-interest plan, on your medical bills",
+      worthCents: Math.round(total * D.medicalAskShare),
+      worthKind: "saves",
+      confidence: evidence("seen", profile.months, care.length, "medical bills"),
+      urgency: "soon",
+      why: `You paid ${formatCents(total)} for medical care in ${profile.months} months. Bills often have errors, and nonprofit hospitals must offer financial assistance; people who ask usually get about ${Math.round(D.medicalAskShare * 100)}% off.`,
+      action: { label: "Check your medical bills", href: "/loans/medical" },
+    };
+  },
+};
+
+// Payments to a collection agency: a debt on the credit report that can be checked.
+const collections: Detector = {
+  covers: ["credit_report_fixes"],
+  capability: "debt",
+  topic: "credit_report_errors",
+  needs: [],
+  detect({ profile, data }) {
+    const paid = tx(data, (t) => t.amountCents > 0 && D.collectorPayee.test(t.description));
+    if (paid.length === 0) return null;
+    const total = outCents(paid);
+    return {
+      id: suggestionId("debt", "credit_report_errors"),
+      capability: "debt",
+      topic: "credit_report_errors",
+      title:
+        "Check the collection on your credit report before you pay more, and ask for it in writing",
+      worthCents: total,
+      worthKind: "risk",
+      confidence: evidence("seen", profile.months, paid.length, "payments to a collector"),
+      urgency: "now",
+      why: `You've paid ${formatCents(total)} to a collection agency in ${profile.months} months. Collections can be wrong or too old to collect, and a validation letter makes the collector prove the debt; Jane writes it.`,
+      action: { label: "Check your report", href: "/loans/report" },
+    };
+  },
+};
+
+// A student loan and a public-service employer: Public Service Loan Forgiveness could forgive
+// what ten years of payments leave.
+const studentForgiveness: Detector = {
+  covers: ["student_long_game"],
+  capability: "debt",
+  topic: "student_forgiveness",
+  needs: ["employer"],
+  detect({ profile, data }) {
+    const employer = profile.facts.employer;
+    if (typeof employer.value !== "string" || !D.publicEmployer.test(employer.value)) return null;
+    const payments = tx(data, (t) => t.pfc === "LOAN_PAYMENTS_STUDENT_LOAN_PAYMENT");
+    const balance = balanceOf(data.accounts, "student");
+    if (payments.length < D.studentPaymentsMin || balance <= 0) return null;
+    const monthly = outCents(payments) / Math.max(1, profile.months);
+    const left = Math.round(balance - monthly * D.pslfPayments);
+    if (left <= 0) return null;
+    return {
+      id: suggestionId("debt", "student_forgiveness"),
+      capability: "debt",
+      topic: "student_forgiveness",
+      title: "Check Public Service Loan Forgiveness: you work for a public employer",
+      worthCents: left,
+      worthKind: "earns",
+      confidence: weakest([
+        factEvidence(employer),
+        evidence("seen", profile.months, payments.length, "student loan payments"),
+        // Eligibility turns on the loan type, the plan and the employer's status.
+        evidence(
+          "guessed",
+          profile.months,
+          payments.length,
+          "payments (eligibility isn't certain)",
+        ),
+      ]),
+      urgency: "later",
+      why: `You work for ${nice(employer.value)} and owe ${formatCents(balance)} on student loans at about ${formatCents(Math.round(monthly))} a month. After ${D.pslfPayments} qualifying payments the rest, about ${formatCents(left)} at these payments, can be forgiven if the loan and the plan qualify.`,
+      action: { label: "Track your qualifying payments", href: "/loans/student" },
+    };
+  },
+};
+
+// Money sent to a person through a payment app that no one has sent back: possibly a loan.
+const familyLoans: Detector = {
+  covers: ["family_loans"],
+  capability: "debt",
+  topic: "family_loans",
+  needs: [],
+  detect({ profile, data }) {
+    const sent = tx(
+      data,
+      (t) =>
+        t.amountCents >= D.familyLoanMinCents &&
+        D.paymentApp.test(t.description) &&
+        !/\bfrom\b/i.test(t.description),
+    );
+    const back = tx(data, (t) => t.amountCents < 0 && D.paymentApp.test(t.description));
+    if (sent.length === 0 || back.length > 0) return null;
+    const total = outCents(sent);
+    return {
+      id: suggestionId("debt", "family_loans"),
+      capability: "debt",
+      topic: "family_loans",
+      title: "Note down money you lent, so it's remembered and a kind reminder is easy",
+      worthCents: total,
+      worthKind: "risk",
+      // The payment alone doesn't say it was a loan; only the person can.
+      confidence: evidence("guessed", profile.months, sent.length, "large payment-app transfers"),
+      urgency: "later",
+      why: `You sent ${formatCents(total)} through a payment app and nothing has come back. If it was a loan, Jane can keep track of it and draft a kind reminder for you to send; she never messages the other person.`,
+      action: { label: "Who owes whom", href: "/loans/family" },
     };
   },
 };
@@ -275,4 +500,10 @@ export const DEBT_DETECTORS: readonly Detector[] = [
   cashAdvance,
   mortgageExtra,
   balanceTransfer,
+  creditUtilisation,
+  bnplPlans,
+  medicalBills,
+  collections,
+  studentForgiveness,
+  familyLoans,
 ];
