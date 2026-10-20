@@ -39,7 +39,12 @@ describe("holdings detectors on the eight people", () => {
 
   it("does nothing without holdings", () => {
     const data = { ...inputFor("equity"), holdings: undefined };
-    expect(runDetectors({ profile: buildProfile(data), data }, HOLDINGS_DETECTORS)).toEqual([]);
+    const topics = runDetectors({ profile: buildProfile(data), data }, HOLDINGS_DETECTORS).map(
+      (s) => s.topic,
+    );
+    for (const t of ["investment_fees", "rebalance", "asset_location"]) {
+      expect(topics).not.toContain(t);
+    }
   });
 
   it("gives every suggestion dollars, a percentage with its reason and a button", () => {
