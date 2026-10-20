@@ -42,18 +42,24 @@ export async function cleanUpTrials({
   return count;
 }
 
-// A new trial person with the demo bank synced, and a session for them.
+// A new trial person with the demo bank linked and a session for them. With `defer` only
+// the minimum is done (the user, the Terms, the linked demo item and the session) and the
+// first sync is left to the caller to run afterwards (the response must not wait on it:
+// /scanning shows progress while it runs); without it the first sync runs here too.
 export async function startTrial({
   client = defaultClient,
   now = new Date(),
   userAgent = null,
-}: Options & { userAgent?: string | null } = {}): Promise<{
+  defer = false,
+}: Options & { userAgent?: string | null; defer?: boolean } = {}): Promise<{
   userId: string;
+  itemId: string;
   sessionToken: string;
   expires: Date;
 }> {
   if (!trialEnabled()) throw new TrialError("Trying Jane isn't available here.");
-  await cleanUpTrials({ client, now });
+  // Cleaning up other people's finished trials isn't this visitor's wait.
+  if (!defer) await cleanUpTrials({ client, now });
   const id = `${TRIAL_ID_PREFIX}${randomBytes(12).toString("hex")}`;
   // Users have their own helpers; a trial person is made here and nowhere else.
   await client.user.create({
@@ -67,11 +73,11 @@ export async function startTrial({
   // The visitor ticked "I agree" to try it (src/app/try/actions.ts), as at sign-up.
   await acceptTerms(id, { client, now, via: "trial" });
   const { itemId } = await linkDemoBank(id, { client, now });
-  await syncItem(itemId, { client, now });
+  if (!defer) await syncItem(itemId, { client, now });
   const expires = new Date(now.getTime() + TRIAL_HOURS * HOUR_MS);
   const sessionToken = randomBytes(32).toString("hex");
   await client.session.create({
     data: { sessionToken, userId: id, expires, userAgent: userAgent?.slice(0, 200) ?? null },
   });
-  return { userId: id, sessionToken, expires };
+  return { userId: id, itemId, sessionToken, expires };
 }
