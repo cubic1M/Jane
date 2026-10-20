@@ -24,6 +24,7 @@ import { loadTaxForms, loadTaxTags } from "@/lib/tax-organizer";
 import { loadTaxPlan, type TaxPlanView } from "@/lib/tax-plan";
 import { loadGiving, type GivingView } from "@/lib/giving";
 import { loadFamilyTaxes, type FamilyView } from "@/lib/family-taxes";
+import { loadHomeTaxes, type HomeTaxesView } from "@/lib/home-taxes";
 import { inDocumentSeason, loadTaxDocuments, type TaxDocumentsView } from "@/lib/tax-documents";
 import { loadTaxProfile } from "@/lib/tax-profile";
 import type { ExpectedForm } from "@/planning/tax-documents";
@@ -70,6 +71,8 @@ export type TaxSnapshot = {
     giving?: GivingView;
     // Spec step 169: family tax choices (demo advice).
     family?: FamilyView;
+    // Spec step 170: what a home changes at tax time.
+    home?: HomeTaxesView;
   } | null;
 };
 
@@ -143,6 +146,7 @@ export async function loadTaxSnapshot(
       ),
       giving: await loadGiving(userId, { client, now, loaded: { estimate, advice } }),
       family: await loadFamilyTaxes(userId, { client, now, loaded: { estimate, advice } }),
+      home: await loadHomeTaxes(userId, { client, now, loaded: { estimate } }),
       plan: await loadTaxPlan(userId, {
         client,
         now,
