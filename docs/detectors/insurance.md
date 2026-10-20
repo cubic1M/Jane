@@ -73,6 +73,28 @@ record supports: the saving is "up to", from a sample quote.
 written list. "Must not" means a suggestion would be wrong for them (and is part of the
 person's "what she must not" list).
 
+## What is built so far
+
+`src/detectors/insurance.ts` (capability `insurance`) holds the detectors that can be judged
+from the profile alone (steps 252–254: charges seen, accounts, the facts), proven on the
+eight people by `src/detectors/insurance.test.ts` and the harness:
+
+| Topic | Inventory entry | Reaches | Worth |
+| --- | --- | --- | --- |
+| `renters_insurance` | X1 (`renters`) | renters with no cover charge | contents at risk |
+| `auto_insurance` | X1 (`auto`) | a car and no car-cover charge, and no car loan | liability at risk |
+| `umbrella` | X1 (`umbrella`) | assets over $500,000 | assets at risk |
+| `insurance_shopping` | X3, AJ1 | six or more car/home charges over $1,000 a year | up to a tenth of the premium |
+| `health_insurance` | AD1 | the self-paid: compare plans, or get one | up to a tenth of the premium, or a hospital stay |
+| `medigap` | AD1 (Medicare) | retired, with a supplement | up to the compare share of the premium |
+| `long_term_care` | X1 (older life stages) | approaching retirement with enough saved | two years of care |
+| `life_insurance`, `business_insurance` | X1, AJ6 | already in `home.ts` and `work.ts` | as there |
+
+The rest of this inventory (reshop of a known policy, checkup, claims, renewals, savings
+kinds, household, business gaps, health year, the yearly review) needs the policies
+themselves, which the profile does not carry. They keep running from the insurance lane's
+snapshot; a later step can pass the policies into the profile so they get detectors too.
+
 ---
 
 # Phase X: insurance basics (steps 102–108)
