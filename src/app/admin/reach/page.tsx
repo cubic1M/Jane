@@ -97,6 +97,33 @@ async function Reach() {
       </section>
 
       <section className="flex flex-col gap-2">
+        <h2 className="text-xl font-semibold">Coverage per feature</h2>
+        <p className={MUTED}>
+          {report.coverage.covered.length} of {report.coverage.total} tools have a detector,{" "}
+          {report.coverage.exempt.length} never suggest by themselves,{" "}
+          {report.coverage.missing.length} still have none.
+        </p>
+        <details>
+          <summary className="cursor-pointer text-sm font-medium">Covered</summary>
+          <ul className="list-disc pl-5 text-sm">
+            {report.coverage.covered.map((c) => (
+              <li key={c.tool}>
+                {c.tool}: {c.detectors.join(", ")}
+              </li>
+            ))}
+          </ul>
+        </details>
+        <details>
+          <summary className="cursor-pointer text-sm font-medium">Still missing a detector</summary>
+          <ul className="list-disc pl-5 text-sm">
+            {report.coverage.missing.map((t) => (
+              <li key={t}>{t}</li>
+            ))}
+          </ul>
+        </details>
+      </section>
+
+      <section className="flex flex-col gap-2">
         <h2 className="text-xl font-semibold">Capabilities</h2>
         <ul className="list-disc pl-5 text-sm">
           {report.capabilities.map((c) => (
