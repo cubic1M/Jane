@@ -4,7 +4,7 @@ import type { MessageAction } from "../types";
 import { things, type MessageSource } from "./source";
 
 // The week's plan (spec step 82), once a week when there's something on it: "N things,
-// could save $X a year", with "Approve all safe ones" (the same no-risk items a one-tap
+// worth up to $X a year if you say yes to all" (the same words as /plan), with "Approve all safe ones" (the same no-risk items a one-tap
 // link covers: never calls, cancellations, moving money or insurance) and Review.
 
 export const planSource: MessageSource = {
@@ -14,7 +14,7 @@ export const planSource: MessageSource = {
     if (items === 0) return [];
     const headline =
       annualSavingsCents > 0
-        ? `Your plan for this week is ready: ${things(items)}, could save ${formatCents(annualSavingsCents)} a year.`
+        ? `Your plan for this week is ready: ${things(items)}, worth up to ${formatCents(annualSavingsCents)} a year if you say yes to all.`
         : `Your plan for this week is ready: ${things(items)}.`;
     const safe =
       safeItems === 0
