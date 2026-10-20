@@ -28,6 +28,7 @@ import { loadTaxDocuments } from "@/lib/tax-documents";
 import { loadTaxPlan } from "@/lib/tax-plan";
 import { loadGiving } from "@/lib/giving";
 import { loadFamilyTaxes } from "@/lib/family-taxes";
+import { loadReturnReviews } from "@/lib/prior-return/review";
 import { loadAuditRecords } from "@/lib/audit-records";
 import { loadHomeTaxes } from "@/lib/home-taxes";
 import { figuresOf, type Source } from "@/planning/home-taxes";
@@ -141,6 +142,12 @@ export const TAX_TOOLS: Anthropic.Tool[] = [
     name: "tax_records",
     description:
       "The person's audit-ready records for a tax year: every deduction and credit Jane counts (donations, medical, childcare, education, business, mortgage interest, property tax, energy, student loan interest, home office, miles), each with the transactions, receipts in their document vault, collected forms and answers that support it and what's still needed (for example a charity's receipt for a gift of $250 or more); amounts counted with no source yet (not in the pack); and how long to keep each year's records and when they can be thrown away. Jane never deletes records.",
+    input_schema: noInput,
+  },
+  {
+    name: "tax_last_return",
+    description:
+      "Prior-year returns the person uploaded and confirmed, and in demo advice mode what a review against their accounts found for each: money left behind (itemizing instead of the standard deduction, student loan interest, an education credit, the child and dependent care credit) with the federal tax each would have saved, the last day to amend, whether an amended return is worth preparing, and the state of any amended return (ready for them to review and sign, submitted, accepted). Returns not confirmed aren't used. Amending needs the person's review and signature.",
     input_schema: noInput,
   },
   {
@@ -566,6 +573,27 @@ export async function runTaxTool(
           status: r.status,
         })),
         rule: view.retention[0]?.rule ?? null,
+      });
+    }
+    case "tax_last_return": {
+      const { advice, reviews } = await loadReturnReviews(userId, { client, now });
+      return out({
+        demoAdvice: advice,
+        returns: reviews.map((r) => ({
+          taxYear: r.year,
+          found: r.findings.map((f) => ({
+            what: f.title,
+            why: f.why,
+            wouldHaveSaved: money(f.savesCents),
+          })),
+          total: money(r.totalCents),
+          amendBy: r.amendBy,
+          worthAmending: r.worthAmending,
+          amendedReturn: r.amendment && {
+            status: r.amendment.status,
+            refund: money(r.amendment.refundCents),
+          },
+        })),
       });
     }
     case "tax_forms": {

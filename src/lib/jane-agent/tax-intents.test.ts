@@ -246,3 +246,16 @@ describe("audit-ready records in the chat", () => {
     expect(parse(text)).toEqual({ kind: "tax", ask: "records" });
   });
 });
+
+// Spec step 172.
+describe("last year's return in the chat", () => {
+  it.each([
+    "review my tax return",
+    "did I miss anything on my return",
+    "can I amend my return",
+    "check last year's return",
+    "did I leave money on the table",
+  ])("%s asks about the return", (text) => {
+    expect(parse(text)).toEqual({ kind: "tax", ask: "last_return" });
+  });
+});

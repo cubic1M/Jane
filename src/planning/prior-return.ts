@@ -6,7 +6,7 @@ import {
   PRIOR_RETURN_YEARS_BACK,
   type PriorReturnFieldKey,
 } from "@/config/prior-return";
-import { FILING_STATUSES, TUITION_PAYEE, type FilingStatus } from "@/config/tax";
+import { FILING_STATUSES } from "@/config/tax";
 import { parseMoneyToCents } from "@/lib/money";
 import { careChoice, educationChoice, type Child } from "@/planning/family-taxes";
 import { estimateTaxes, type EstimateInput } from "@/planning/tax-estimate";
@@ -154,7 +154,9 @@ export function reviewReturn(r: ReviewInput): Review {
       key: "student_loan_interest",
       title: "Student loan interest wasn't deducted",
       why: `Your lender reported about ${dollars(r.studentLoanInterestCents)} of interest for ${r.year}; up to $2,500 comes off your income.`,
-      savesCents: tax({ ...input, studentLoanInterestCents: 0 }) - base,
+      savesCents:
+        tax({ ...input, studentLoanInterestCents: 0 }) -
+        tax({ ...input, studentLoanInterestCents: r.studentLoanInterestCents }),
     });
   }
 
@@ -200,6 +202,3 @@ export function reviewReturn(r: ReviewInput): Review {
     worthAmending: canAmend && totalCents >= AMEND_MIN_CENTS,
   };
 }
-
-export { TUITION_PAYEE };
-export type { FilingStatus };

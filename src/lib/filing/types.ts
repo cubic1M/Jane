@@ -38,6 +38,11 @@ export interface FilingPartner {
     pkg: ReturnPackage,
     preview: ReturnPreview,
   ): Promise<{ partnerReturnId: string; preview: ReturnPreview }>;
+  // Spec step 172: an amended return (1040-X) for a past year, with the changes found.
+  createAmendment(input: {
+    taxYear: number;
+    changes: { key: string; title: string; savesCents: number }[];
+  }): Promise<{ partnerReturnId: string; refundCents: number }>;
   submitReturn(
     partnerReturnId: string,
     signature: { name: string; signedAt: Date },

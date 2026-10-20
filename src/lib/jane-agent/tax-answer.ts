@@ -13,6 +13,9 @@ import { givingReply } from "./giving-message";
 import { loadFamilyTaxes } from "@/lib/family-taxes";
 import { familyReply } from "./family-taxes-message";
 import { loadHomeTaxes } from "@/lib/home-taxes";
+import { listPriorReturns } from "@/lib/prior-return";
+import { loadReturnReviews } from "@/lib/prior-return/review";
+import { lastReturnReply } from "./prior-return-message";
 import { loadAuditRecords } from "@/lib/audit-records";
 import { recordsReply } from "./audit-records-message";
 import { homeReply } from "./home-taxes-message";
@@ -112,6 +115,13 @@ export async function answerTaxIntent(
       return intent.ask === "move"
         ? moveReply(intent, view.state.value, now)
         : workStateReply(intent.state, view.state.value);
+    }
+    case "last_return": {
+      const [waiting, reviewed] = await Promise.all([
+        listPriorReturns(userId, { client, status: "waiting" }),
+        loadReturnReviews(userId, { client, now }),
+      ]);
+      return lastReturnReply(reviewed.reviews, waiting, reviewed.advice);
     }
     case "records":
       return recordsReply(await loadAuditRecords(userId, year, { client, now }));
