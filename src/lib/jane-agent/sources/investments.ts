@@ -53,6 +53,7 @@ import {
   ssLine,
 } from "../investments/retirement-income-copy";
 import { FAMILY_LINK, giftOffer, rothOffer } from "../investments/family-copy";
+import { PROPERTY_LINK, paydownLine, rentalLine } from "../investments/property-copy";
 import { AUTO_LOG_LINK, summaryBody } from "../investments/automatic-copy";
 import { CASH_MIN_GAIN_CENTS } from "@/config/cash";
 import { CASH_LINK, cashLine, moveButtons } from "../investments/cash-copy";
@@ -325,6 +326,30 @@ export const investmentsSource: MessageSource = {
         actions: [{ id: "hsa.link", label: "Link a demo HSA", kind: "primary" }, snoozeButton()],
         dedupeKey: "hsa:link",
         priority: MESSAGE_PRIORITY.hsa,
+      });
+    }
+    // Step 214: each rental's year in its own transactions, once a year; paying the
+    // mortgage down against investing (both sides), once a year. Analysis, no buttons.
+    for (const rental of inv.property.rentals) {
+      if (inv.advice && rental.counts.rent > 0) {
+        out.push({
+          kind: "heads_up",
+          body: rentalLine(rental),
+          refs: { advice: true },
+          actions: [PROPERTY_LINK, snoozeButton()],
+          dedupeKey: `property:rental:${rental.id}:${inv.property.year}`,
+          priority: MESSAGE_PRIORITY.property,
+        });
+      }
+    }
+    if (inv.advice && inv.property.paydown) {
+      out.push({
+        kind: "heads_up",
+        body: paydownLine(inv.property.paydown),
+        refs: { advice: true },
+        actions: [PROPERTY_LINK, snoozeButton()],
+        dedupeKey: `property:paydown:${inv.property.year}`,
+        priority: MESSAGE_PRIORITY.property,
       });
     }
     // Step 213: a gift link for a child's college fund; a Roth IRA for a child who earns.

@@ -39,6 +39,7 @@ import {
   revokeGiftLinks,
 } from "./family";
 import { startCollegePlan } from "./college";
+import { addRental, linkDemoRental, loadProperty, PropertyError } from "./property";
 import { automaticLog, runAutomaticInvesting } from "./automatic";
 import {
   loadRetirementIncome,
@@ -1167,6 +1168,80 @@ describe.runIf(url)("investments in Jane's chat, against a real database", () =>
       // Taken down, the link stops working.
       expect(await revokeGiftLinks(userId, { client })).toBe(1);
       expect(await giftPage(token, { client })).toBeNull();
+    },
+  );
+
+  it(
+    "step 214: a rental's figures match its transactions, depreciation goes to the taxes side",
+    SLOW,
+    async () => {
+      const userId = await demoPerson();
+      await linkDemoRental(userId, { client, now: LINKED });
+      await linkDemoRental(userId, { client, now: LINKED });
+      // The home, with its mortgage from the demo bank, as the person adds it under Things you own.
+      const mortgage = await client.account.findFirstOrThrow({
+        where: { userId, subtype: "mortgage" },
+      });
+      await client.ownedAsset.create({
+        data: {
+          userId,
+          kind: "home",
+          name: "Home",
+          valueCents: 45_000_000,
+          valuedOn: new Date("2026-09-01T00:00:00Z"),
+          loanAccountId: mortgage.id,
+        },
+      });
+      const view = await loadProperty(userId, { client, now: LINKED });
+      expect(view.rentals).toHaveLength(1);
+      const r = view.rentals[0];
+      // Re-add the same sums straight from the transactions.
+      const txs = await client.transaction.findMany({
+        where: { userId, plaidTransactionId: { startsWith: "demo-rental-" } },
+      });
+      const sum = (needle: string, sign: number) =>
+        txs
+          .filter((t) => t.description.includes(needle))
+          .reduce((s, t) => s + sign * t.amountCents, 0);
+      expect(r.counts.rent).toBe(12);
+      expect(r.figures.rentCents).toBe(sum("TENANT RENT", -1));
+      expect(r.figures.rentCents).toBe(12 * 185_000);
+      expect(r.figures.mortgagePaidCents).toBe(sum("MAPLE ST RENTAL LOAN", 1));
+      expect(r.figures.propertyTaxCents).toBe(sum("COUNTY TREASURER", 1));
+      expect(r.figures.otherExpensesCents).toBe(sum("REPAIR", 1) + sum("LANDLORD INSURANCE", 1));
+      expect(r.figures.cashFlowCents).toBe(
+        r.figures.rentCents -
+          r.figures.mortgagePaidCents -
+          r.figures.propertyTaxCents -
+          r.figures.otherExpensesCents,
+      );
+      // Depreciation is step 173's: $208,000 building, 3.636% in 2026.
+      expect(r.figures.depreciationCents).toBe(756_288);
+      // Both sides of the paydown question, from the demo mortgage.
+      expect(view.homes[0].equityCents).toBe(45_000_000 - (mortgage.currentBalanceCents ?? 0));
+      expect(view.paydown!.paydown.interestSavedCents).toBeGreaterThan(0);
+      expect(view.paydown!.invest.highGainCents).toBeGreaterThan(view.paydown!.invest.lowGainCents);
+      // The form checks what it takes.
+      await expect(
+        addRental(
+          userId,
+          {
+            name: "X",
+            purchase: "100000",
+            placedInServiceMonth: "13",
+            placedInServiceYear: "2020",
+            cashInvested: "",
+            loanBalance: "",
+            loanRate: "",
+            monthlyPayment: "",
+            rentMatch: "RENT",
+            mortgageMatch: "",
+            taxMatch: "",
+            expenseMatch: "",
+          },
+          { client },
+        ),
+      ).rejects.toThrow(PropertyError);
     },
   );
 });

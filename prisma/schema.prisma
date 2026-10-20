@@ -396,6 +396,8 @@ model User {
 
   giftLinks        GiftLink[]
 
+  rentalProperties RentalProperty[]
+
   @@map("users")
 }
 
@@ -3569,4 +3571,35 @@ model Gift {
 
   @@index([giftLinkId])
   @@map("gifts")
+}
+
+// Spec step 214: a rental property, with the text its transactions are matched on (rent
+// in, the mortgage payment, property tax and other costs). Figures come from the person's
+// own transactions in the last 12 months; the loan's balance and rate are what they told
+// Jane (or the demo's) because a rental loan is often at a lender the bank link doesn't see.
+model RentalProperty {
+  id                   String   @id @default(cuid())
+  userId               String   @map("user_id")
+  name                 String
+  purchaseCents        Int      @map("purchase_cents")
+  landShare            Float    @map("land_share")
+  placedInServiceYear  Int      @map("placed_in_service_year")
+  placedInServiceMonth Int      @map("placed_in_service_month")
+  cashInvestedCents    Int      @map("cash_invested_cents")
+  loanBalanceCents     Int      @default(0) @map("loan_balance_cents")
+  loanRateBps          Int      @default(0) @map("loan_rate_bps")
+  monthlyPaymentCents  Int      @default(0) @map("monthly_payment_cents")
+  // Comma-separated text found in a transaction's description.
+  rentMatch            String   @map("rent_match")
+  mortgageMatch        String   @default("") @map("mortgage_match")
+  taxMatch             String   @default("") @map("tax_match")
+  expenseMatch         String   @default("") @map("expense_match")
+  // you (the form) or demo (the demo rental).
+  source               String   @default("you")
+  createdAt            DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("rental_properties")
 }

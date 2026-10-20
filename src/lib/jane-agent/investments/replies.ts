@@ -28,6 +28,8 @@ import type { RetirementIncomeView } from "@/lib/investments/retirement-income";
 import { drawLine, paycheckLine, RI_LINK, rmdLine, ssLine } from "./retirement-income-copy";
 import type { FamilyView } from "@/lib/investments/family";
 import { FAMILY_LINK, familyLine } from "./family-copy";
+import type { PropertyView } from "@/lib/investments/property";
+import { homeLine, paydownLine, PROPERTY_LINK, rentalLine } from "./property-copy";
 import { STEADY_LINK, steadyMessage, timelines } from "./steady-copy";
 import { CRYPTO_LINK, feeFlag, NEVER_TRADES, shareFlag, sizeLine } from "./crypto-copy";
 import {
@@ -838,5 +840,20 @@ export function familyReply(view: FamilyView): Reply {
       : "I don't give recommendations on real accounts yet. You can still add your children on the family page.",
     actions: [FAMILY_LINK],
     refs: view.advice ? { advice: true } : {},
+  };
+}
+
+// Spec step 214: home equity and rentals (facts), and paying down against investing with
+// both sides (demo advice mode).
+export function propertyReply(view: PropertyView): Reply {
+  const facts = [...view.homes.map(homeLine), ...view.rentals.map(rentalLine)];
+  const advice = view.advice && view.paydown ? [paydownLine(view.paydown)] : [];
+  const body = [...facts, ...advice].join(" ");
+  return {
+    body:
+      body ||
+      "I don't see a home with a value or a rental yet. Add your home under Things you own, or a rental on the property page.",
+    actions: [PROPERTY_LINK],
+    refs: advice.length > 0 ? { advice: true } : {},
   };
 }

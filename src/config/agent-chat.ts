@@ -202,6 +202,8 @@ export const MESSAGE_PRIORITY = {
   retirement_income: 35,
   // Spec step 213: a gift link offer, and a child's Roth IRA (demo advice).
   family: 33,
+  // Spec step 214: a rental's year, and paying down against investing (demo advice).
+  property: 32,
   // Spec step 164: the month's summary of what Jane did by herself in investing.
   investing_summary: 40,
   auto_invest_run: 31,

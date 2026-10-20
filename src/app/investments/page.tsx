@@ -251,6 +251,12 @@ async function InvestmentsContent() {
             : a child&apos;s custodial account and Roth IRA, and gifts to their college fund.
           </p>
           <p className="text-sm text-zinc-600 dark:text-zinc-400">
+            <Link href="/investments/property" className={LINK}>
+              Property
+            </Link>
+            : home equity and rentals, from their own transactions.
+          </p>
+          <p className="text-sm text-zinc-600 dark:text-zinc-400">
             Learn:{" "}
             {["index-funds", "fees", "the-match", "roth-vs-traditional", "rebalancing"].map(
               (slug, i) => (

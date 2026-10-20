@@ -24,7 +24,8 @@ export type InvestmentTopic =
   | "retirement_accounts"
   | "old_accounts"
   | "retirement_income"
-  | "family";
+  | "family"
+  | "property";
 
 export type InvestmentIntent = {
   kind: "investments";
@@ -138,7 +139,12 @@ const RETIREMENT_INCOME =
 const FAMILY =
   /\bcustodial (?:account|ira|roth)\b|\butma\b|\bugma\b|\b(?:roth ira|roth|investing|account) for (?:my |a )?(?:kid|child|teen|teenager|son|daughter)s?\b|\bgrandparents?\b.*\b(?:gift|give|contribute|529)\b|\bgift(?:s|ing)? (?:to|into) (?:a |my |the )?(?:529|college fund)\b|\bkiddie tax\b|\binvest(?:ing)? for (?:my )?(?:kids?|children|family)\b/;
 
+// Spec step 214: home equity, rentals and paying the mortgage down against investing.
+const PROPERTY =
+  /\binvestment propert(?:y|ies)\b|\bmy rental\b|\bhome equity\b|\b(?:pay|paying) (?:off |down )?(?:my |the )?mortgage (?:early |down |off )?(?:or|vs\.?|versus|instead of) invest|\b(?:should i )?(?:pay|paying) (?:down |off )?(?:my |the )?mortgage (?:faster|early)\b|\bpay(?:ing)? extra (?:on|toward|towards) (?:my |the )?mortgage\b|\bcash on cash\b|\blandlord\b/;
+
 export function parseInvestmentIntent(text: string): InvestmentIntent | null {
+  if (PROPERTY.test(text)) return { kind: "investments", topic: "property", account: null };
   if (FAMILY.test(text)) return { kind: "investments", topic: "family", account: null };
   if (RETIREMENT_INCOME.test(text))
     return { kind: "investments", topic: "retirement_income", account: null };

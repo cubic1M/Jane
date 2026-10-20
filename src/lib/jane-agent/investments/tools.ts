@@ -23,6 +23,7 @@ import { loadRetirementAccounts } from "@/lib/investments/retirement-accounts";
 import { loadOldAccounts } from "@/lib/investments/old-accounts";
 import { loadRetirementIncome } from "@/lib/investments/retirement-income";
 import { loadFamily } from "@/lib/investments/family";
+import { loadProperty } from "@/lib/investments/property";
 import { loadSteadyHand } from "@/lib/investments/steady-hand";
 import { CASH_HOMES, CASH_RATES_AS_OF } from "@/config/cash";
 import { formatReturn } from "@/insights/returns";
@@ -157,6 +158,12 @@ export const INVESTMENT_TOOLS: Anthropic.Tool[] = [
     input_schema: noInput,
   },
   {
+    name: "property",
+    description:
+      "Homes and rentals as investments: each home's value (the person's own), what's owed and the equity; each rental's last 12 months from its own transactions (rent in, mortgage paid, property tax, repairs and insurance, cash flow, profit, depreciation for the year and the taxable profit, cash-on-cash return); and, in demo advice mode, paying the mortgage down against investing an extra amount a month, always with both sides (interest saved for certain; investing as a range with no guarantee). Report both sides; don't pick one unless the tool's verdict is clear.",
+    input_schema: noInput,
+  },
+  {
     name: "steady_hand",
     description:
       "Whether the person's investments have had a big drop lately (down 8% over a month or 15% over three, their own return, money in and out left out) and, in demo advice mode, how each goal's timeline sits (near goals are already in cash). Report only these past facts and the plan to stay the course. NEVER say or imply what markets will do, when they will recover, or that now is a good or bad time: no one can know.",
@@ -203,6 +210,7 @@ export const INVESTMENT_TOOL_STATUS: Readonly<Record<string, string>> = {
   crypto: "Reading your crypto balances…",
   cash_plan: "Looking at where your cash sits…",
   steady_hand: "Looking at how your investments have moved…",
+  property: "Looking at your property…",
   family_investing: "Looking at your children's accounts…",
   retirement_income: "Working out your retirement income…",
   old_accounts: "Looking for old retirement accounts…",
@@ -642,6 +650,43 @@ export async function runInvestmentTool(
           giftLinkActive: c.gift !== null,
           giftsReceived: c.gift ? c.gift.gifts.length : 0,
         })),
+      });
+    }
+    case "property": {
+      const v = await loadProperty(userId, { client, now });
+      return out({
+        homes: v.homes.map((h) => ({
+          name: h.name,
+          value: money(h.valueCents),
+          owed: h.loanCents === null ? null : money(h.loanCents),
+          equity: money(h.equityCents),
+        })),
+        rentals: v.rentals.map((r) => ({
+          name: r.name,
+          depositsCounted: r.counts.rent,
+          rent: money(r.figures.rentCents),
+          mortgagePaid: money(r.figures.mortgagePaidCents),
+          propertyTax: money(r.figures.propertyTaxCents),
+          repairsAndInsurance: money(r.figures.otherExpensesCents),
+          cashFlow: money(r.figures.cashFlowCents),
+          profit: money(r.figures.profitCents),
+          depreciation: money(r.figures.depreciationCents),
+          taxableProfit: money(r.figures.taxableCents),
+          cashOnCashPercent:
+            r.figures.cashOnCash === null ? null : Math.round(r.figures.cashOnCash * 1000) / 10,
+        })),
+        paydownVsInvesting: !v.advice
+          ? "advice only in demo advice mode"
+          : v.paydown && {
+              extraAMonth: money(v.paydown.extraMonthlyCents),
+              years: v.paydown.years,
+              payingDownSavesInterest: money(v.paydown.paydown.interestSavedCents),
+              investingCouldGain: {
+                low: money(v.paydown.invest.lowGainCents),
+                high: money(v.paydown.invest.highGainCents),
+              },
+              verdict: v.paydown.verdict,
+            },
       });
     }
     case "steady_hand": {

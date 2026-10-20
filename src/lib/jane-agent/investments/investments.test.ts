@@ -59,6 +59,7 @@ import {
   oldAccountsReply,
   retirementIncomeReply,
   familyReply,
+  propertyReply,
 } from "./replies";
 import { gather } from "../brain";
 import { parseIntent } from "../intents";
@@ -2345,5 +2346,96 @@ describe("familyReply and the family messages", () => {
       children: [{ ...FAMILY_VIEW.children[0], gift: { token: "t", gifts: [] } }],
     };
     expect(gather(withLink).map((m) => m.dedupeKey)).toEqual(["family:roth:c1:2026"]);
+  });
+});
+
+// Spec step 214: property as an investment.
+const PROP_VIEW = {
+  advice: true,
+  demo: true,
+  year: 2026,
+  homes: [
+    {
+      id: "h",
+      name: "Home",
+      valueCents: 45_000_000,
+      valuedOn: "2026-09-01",
+      loanCents: 31_240_000,
+      equityCents: 13_760_000,
+      rateBps: 625,
+      paymentCents: 214_000,
+    },
+  ],
+  rentals: [
+    {
+      id: "r1",
+      name: "Maple St rental",
+      figures: {
+        rentCents: 2_220_000,
+        mortgagePaidCents: 1_344_000,
+        mortgageInterestCents: 1_130_000,
+        principalCents: 214_000,
+        propertyTaxCents: 230_000,
+        otherExpensesCents: 150_000,
+        cashFlowCents: 496_000,
+        profitCents: 710_000,
+        depreciationCents: 756_288,
+        taxableCents: -46_288,
+        cashOnCash: 0.0763,
+        returnWithPrincipal: 0.1092,
+      },
+      counts: { rent: 12, mortgage: 12, tax: 2, other: 3 },
+      depreciationYear: 2026,
+      cashInvestedCents: 6_500_000,
+      loanBalanceCents: 18_200_000,
+      source: "demo",
+    },
+  ],
+  paydown: {
+    extraMonthlyCents: 50_000,
+    years: 10,
+    paydown: { interestSavedCents: 2_100_000 },
+    invest: { lowGainCents: 1_300_000, highGainCents: 3_000_000 },
+    verdict: "close" as const,
+    homeName: "Home",
+    rateBps: 625,
+  },
+};
+
+describe("property questions, by rules", () => {
+  it.each(["my rental", "my investment property", "my home equity", "cash on cash return"])(
+    "reads %j as property",
+    (text) => {
+      expect(parseIntent(text, ASOF)).toMatchObject({ kind: "investments", topic: "property" });
+    },
+  );
+});
+
+describe("propertyReply and the property messages", () => {
+  it("gives equity, the rental from its own deposits, and both sides of paying down", () => {
+    const reply = propertyReply(PROP_VIEW);
+    expect(reply.body).toMatch(
+      /^Home is worth \$450,000\.00 \(your value\) and you owe \$312,400\.00, so your equity is \$137,600\.00\./,
+    );
+    expect(reply.body).toMatch(
+      /Maple St rental, last 12 months: rent \$22,200\.00 from 12 deposits, cash flow \$4,960\.00 \(7\.6% on the \$65,000\.00 you put in\), taxable profit -\$462\.88 after \$7,562\.88 of depreciation\./,
+    );
+    expect(reply.body).toMatch(
+      /saves about \$21,000\.00 in interest for certain; investing it could grow by about \$13,000\.00 to \$30,000\.00, with no guarantee\./,
+    );
+    expect(reply.refs).toEqual({ advice: true });
+    const facts = propertyReply({ ...PROP_VIEW, advice: false });
+    expect(facts.body).not.toMatch(/no guarantee/);
+  });
+  it("posts each rental's year and the paydown question once a year, in demo advice mode only", () => {
+    const gather = (property: InvestmentSnapshot["property"], advice = true) =>
+      investmentsSource
+        .gather({ ...base, investments: demoInvestmentSnapshot({ advice, property }) }, {} as never)
+        .filter((c) => c.dedupeKey.startsWith("property:"));
+    expect(gather(PROP_VIEW).map((m) => m.dedupeKey)).toEqual([
+      "property:rental:r1:2026",
+      "property:paydown:2026",
+    ]);
+    expect(gather(PROP_VIEW, false)).toEqual([]);
   });
 });

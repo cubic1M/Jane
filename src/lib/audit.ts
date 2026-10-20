@@ -185,7 +185,9 @@ export type AuditEvent =
   // Spec step 213: a gift link made or taken down (never the link itself), and a gift received.
   | "gift_link_created"
   | "gift_link_revoked"
-  | "gift_received";
+  | "gift_received"
+  // Spec step 214: a rental property added (never its figures).
+  | "rental_added";
 
 export type AuditActor = { type: ActorType; id: string | null };
 
