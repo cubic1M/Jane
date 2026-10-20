@@ -1,8 +1,12 @@
+import { TOOL_EXEMPT } from "@/config/detector-exempt";
 import { UNREACHABLE } from "@/config/reach";
 import { TRIAL_ID_PREFIX } from "@/config/trial";
+import { DETECTORS } from "@/detectors";
 import { runHarness } from "@/detectors/harness";
+import { MISSING_DETECTOR } from "@/detectors/missing";
 import type { PrismaClient } from "@/generated/prisma/client";
 import { db as defaultClient } from "@/lib/db";
+import { CHAT_TOOLS } from "@/lib/jane-agent/claude-tools";
 import { type Answered, bandsOf, offDetectors } from "@/planning/calibration";
 
 // The reach scoreboard (spec step 258): which capabilities fired for whom, the dollars shown,
@@ -102,7 +106,23 @@ export async function reachReport({ client = defaultClient }: { client?: PrismaC
     a.capability.localeCompare(b.capability),
   );
 
+  // Coverage per feature: which registry tools a detector brings to people unasked.
+  const tools = CHAT_TOOLS.map((t) => t.name);
+  const by = new Map<string, string[]>();
+  for (const d of DETECTORS) {
+    for (const t of d.covers) by.set(t, [...(by.get(t) ?? []), `${d.capability}:${d.topic}`]);
+  }
+  const coverage = {
+    total: tools.length,
+    covered: tools.filter((t) => by.has(t)).map((tool) => ({ tool, detectors: by.get(tool)! })),
+    exempt: tools
+      .filter((t) => TOOL_EXEMPT[t])
+      .map((tool) => ({ tool, reason: TOOL_EXEMPT[tool] })),
+    missing: tools.filter((t) => MISSING_DETECTOR.includes(t)),
+  };
+
   return {
+    coverage,
     people,
     capabilities: [...reached.entries()]
       .map(([capability, who]) => ({ capability, people: who }))
