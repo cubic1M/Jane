@@ -36,7 +36,7 @@ whether insurance reaches the person unasked. Insurance rows are rank / suggesti
 | Dan and Lena | Roth conversion, catch-up, idle cash | employer benefits $660 (60%, #4); shop cover $342 (70%, #5); long-term care $4,320 risk (58%, #8); umbrella $1,060 risk (85%, #9) | Right. Long-term care is rightly low confidence: age is guessed (no age told), so it is 58%. |
 | Ruth (retiree) | idle cash, Roth conversion, medical bills | confirm the policy document $493 (75%, #4, soon); Medicare supplement comparison $347 (58%, #6); shop cover $158 (70%, #10) | Right. The document is the one with a concrete next step. |
 | Chris (debt) | debt plan, card interest, balance transfer | renters cover $900 risk (79%, #15/16) | Right: insurance stays out of the way of the debt plan. |
-| Jo (owner) | self-employed retirement, emergency fund, estimated taxes | business cover $2,000 risk (79%, #6, soon); health plan $2,160 risk (70%, #8); renters cover $900 (79%, #9) | Questionable: a business with no liability cover and $4,099,000 of yearly income deserves more than #6. See open question 2. |
+| Jo (owner) | self-employed retirement, emergency fund, estimated taxes | business cover $2,000 risk (79%, #6, soon); health plan $2,160 risk (70%, #8); renters cover $900 (79%, #9) | Questionable: a business with no liability cover and about $492,000 of yearly income deserves more than #6. See open question 2. |
 
 ## Confidence spread
 
