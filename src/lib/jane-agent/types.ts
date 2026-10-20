@@ -183,6 +183,14 @@ export const ACTION_IDS = [
   // Spec step 173: hobby or business.
   "tax.side_business",
   "tax.side_hobby",
+  // Spec step 217: a tax notice read from an upload, its response drafted and handed over.
+  "tax.notice_confirm",
+  "tax.notice_no",
+  "tax.notice_agree",
+  "tax.notice_pay",
+  "tax.notice_dispute",
+  "tax.notice_team",
+  "tax.notice_mine",
   // Investments (spec step 129 on): the answer buttons on an investor-profile question,
   // by position (src/config/investing.ts PROFILE_QUESTIONS).
   "invest.answer.1",
@@ -375,6 +383,8 @@ export type MessageRefs = {
   taxGift?: string;
   // Spec step 172: the return read from a document (its id) a message is about.
   priorReturn?: string;
+  // Spec step 217: the tax notice (its id) a message is about.
+  taxNotice?: string;
   // Spec step 98: demo advice (src/lib/advice-mode.ts). The chat shows DEMO_ADVICE_LABEL
   // under it. Set it on every message that recommends investments, taxes, insurance or loans.
   advice?: true;

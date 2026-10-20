@@ -26,6 +26,8 @@ import { loadGiving, type GivingView } from "@/lib/giving";
 import { loadFamilyTaxes, type FamilyView } from "@/lib/family-taxes";
 import { listPriorReturns, type PriorReturnView } from "@/lib/prior-return";
 import { loadReturnReviews, type ReturnReview } from "@/lib/prior-return/review";
+import { checkNoticeFor, listTaxNotices, type NoticeView } from "@/lib/tax-notices";
+import type { Check } from "@/planning/tax-notice";
 import { loadSideIncome, type SideIncomeView } from "@/lib/side-income";
 import { loadAuditRecords, type AuditRecordsView } from "@/lib/audit-records";
 import { loadHomeTaxes, type HomeTaxesView } from "@/lib/home-taxes";
@@ -81,6 +83,8 @@ export type TaxSnapshot = {
     records?: AuditRecordsView;
     // Spec step 173: rentals and gig platforms.
     sideIncome?: SideIncomeView;
+    // Spec step 217: tax notices read from uploads, with what Jane found against them.
+    notices?: { notice: NoticeView; check: (Check & { advice: boolean }) | null }[];
     // Spec step 172: returns read from uploads, and what their review found.
     priorReturns?: PriorReturnView[];
     returnReviews?: ReturnReview[];
@@ -159,6 +163,15 @@ export async function loadTaxSnapshot(
       family: await loadFamilyTaxes(userId, { client, now, loaded: { estimate, advice } }),
       priorReturns: await listPriorReturns(userId, { client, status: "waiting" }),
       returnReviews: (await loadReturnReviews(userId, { client, now })).reviews,
+      notices: await Promise.all(
+        (await listTaxNotices(userId, { client })).map(async (notice) => ({
+          notice,
+          check:
+            notice.status === "confirmed"
+              ? await checkNoticeFor(userId, notice, { client, now })
+              : null,
+        })),
+      ),
       sideIncome: await loadSideIncome(userId, { client, now, loaded: { estimate } }),
       records: await loadAuditRecords(userId, estimate.year, { client, now }),
       home: await loadHomeTaxes(userId, { client, now, loaded: { estimate } }),

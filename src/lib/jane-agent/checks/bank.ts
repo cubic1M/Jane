@@ -800,6 +800,12 @@ const BASE_QUESTIONS: readonly CheckQuestion[] = [
     needs: "rules",
     expect: { intent: "tax", mentions: /W-2/, list: true },
   },
+  {
+    id: "tax-25",
+    text: "I got a letter from the IRS",
+    needs: "rules",
+    expect: { intent: "tax", mentions: /letter from the IRS|tax notice/i },
+  },
 
   // Insurance (spec step 108), over the demo bank's sample GEICO car policy
   // (DEMO_POLICY in src/lib/insurance/profile.ts: $142.00 a month, a $1,000.00 deductible).

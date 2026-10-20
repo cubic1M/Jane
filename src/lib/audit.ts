@@ -113,6 +113,9 @@ export type AuditEvent =
   | "tax_return_read_confirmed"
   | "tax_amendment_started"
   | "tax_amendment_signed"
+  // Spec step 217: a tax notice confirmed; its response handed to the team or the person.
+  | "tax_notice_confirmed"
+  | "tax_notice_response_sent"
   // Taxes (spec steps 118–127): which fields of the tax profile changed, never the answers.
   | "tax_profile_changed"
   // A tax tag the person changed (spec step 119): the tag and whether on one transaction or

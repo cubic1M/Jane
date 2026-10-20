@@ -62,7 +62,9 @@ export type TaxIntent =
   // Spec step 172.
   | { kind: "tax"; ask: "last_return" }
   // Spec step 173.
-  | { kind: "tax"; ask: "side_income" };
+  | { kind: "tax"; ask: "side_income" }
+  // Spec step 217.
+  | { kind: "tax"; ask: "notice" };
 
 const NUMBER_WORDS: Readonly<Record<string, number>> = {
   no: 0,
@@ -194,6 +196,8 @@ const LAST_RETURN =
   /\b(?:last year'?s|my (?:old|prior|previous)) (?:tax )?return\b|\b(?:review|check|look at|read) my (?:tax )?return\b|\bamend(?:ed)? (?:my |a )?(?:tax )?return\b|\b1040-?x\b|\b(?:did i|have i) miss(?:ed)? (?:anything|any|a) (?:deductions?|credits?|on my (?:tax )?return)\b|\b(?:left|leave|leaving) money on the table\b/;
 const SIDE_INCOME =
   /\brental (?:income|property|properties|expenses?|taxes|losses?)\b|\b(?:my )?(?:airbnb|rental)\b.*\btax(?:es)?\b|\bdepreciat(?:e|ion)\b|\b(?:gig|side|freelance) (?:income|hustle|work|gig)\b.*\b(?:tax|1099|hobby|business)\b|\bhobby (?:or|vs\.?|versus) business\b|\bis (?:my|this) (?:side )?(?:gig|income|hustle) a (?:hobby|business)\b|\bplatform (?:payouts?|1099)\b|\b1099-?k\b|\bpassive loss\b/;
+const NOTICE_ASK =
+  /\b(?:irs|tax|state tax|franchise tax board) (?:notice|letter)\b|\b(?:notice|letter) from the (?:irs|state|franchise tax board|department of revenue)\b|\bcp2000\b|\bcp14\b|\bcp501\b|\bcp503\b|\bcp504\b|\bthe irs (?:sent|says|wrote)\b|\bgot a (?:scary )?(?:letter|notice) (?:about|from)\b.*\b(?:tax|irs)/;
 const PACK = /\btax(?:-| )?time pack\b|\btax pack\b|\byear-end pack\b/;
 
 function stateCode(words: string): string | null {
@@ -204,6 +208,7 @@ function stateCode(words: string): string | null {
 
 export function parseTaxIntent(text: string): TaxIntent | null {
   if (FAMILY_ASK.test(text)) return { kind: "tax", ask: "family" };
+  if (NOTICE_ASK.test(text)) return { kind: "tax", ask: "notice" };
   if (!/^(?:tag|untag) /.test(text) && SIDE_INCOME.test(text))
     return { kind: "tax", ask: "side_income" };
   if (LAST_RETURN.test(text)) return { kind: "tax", ask: "last_return" };
