@@ -4,6 +4,7 @@ import type { LifeEventKind } from "@/config/life-events";
 import { CATEGORY_LABELS, UNCATEGORIZED } from "@/insights/labels";
 import { parseMoneyToCents } from "@/lib/money";
 import { parseDebtIntent, type DebtIntent } from "./debt-intents";
+import { parseWhatIf, type WhatIfIntent } from "./what-if-intents";
 import { parseTaxIntent, type TaxIntent } from "./tax-intents";
 import type { FlowId } from "./flows/engine";
 import type { PreferenceDraft } from "./preferences";
@@ -92,6 +93,9 @@ export type Intent =
   | { kind: "whole_picture"; focus: "now" | "month" }
   // What they own and owe, from the net worth page.
   | { kind: "net_worth" }
+  // Spec step 203: "what if I lose my job for 4 months"; and "what if I save $200 more a month".
+  | WhatIfIntent
+  | { kind: "save_more"; monthlyCents: number }
   // Spec step 187: everything Jane did, or why she did the last thing.
   | { kind: "timeline"; why: boolean }
   // Spec step 185: money into a goal ("put the savings in my emergency fund"); "savings" is
@@ -345,7 +349,7 @@ const BILLS_PAID =
 const HEALTH =
   /\b(?:health score|money health|financial health|financial wellness)\b|\bhow healthy (?:are|is) my (?:money|finances)\b/;
 const MONTHLY_REPORT =
-  /\b(?:monthly|money|month'?s) report\b|\bmonth in review\b|\breport (?:for|on) (?:last|this) month\b/;
+  /\b(?:monthly|money|month'?s) report\b|\bmonth in review\b|\breport (?:for|on) (?:last|this) month\b|\bhow did (?:i|we) do (?:this|last) month\b|\bhow (?:was|did) (?:my|our|last) month\b|\bhow did last month go\b/;
 const PRIORITIES =
   /\bwhat should i do (?:first|next|now)\b|\bwhat matters (?:most|now)\b|\bwhat'?s (?:most )?important\b|\bwhere (?:do|should) i start\b|\bmy (?:top )?priorities\b|\bnext best thing\b/;
 // Spec step 183. "Am I OK to buy …" is a purchase question, and goals have their own answer.
@@ -353,6 +357,22 @@ const WHOLE_NOW =
   /\bam i (?:ok|okay|alright|all right|fine|good)\b(?! (?:to|if|for|with|on)\b)|\bhow am i doing\b(?! (?:on|with)\b)|\bhow (?:are|is) (?:my|our) (?:money|finances?)(?: doing| looking)?\b|\bhow'?s (?:my|our) (?:money|finances?)\b|\b(?:the )?(?:big|whole|full) picture\b|\bis (?:my|our) money (?:ok|okay|alright|fine)\b|\bam i on track\b(?! (?:for|with)\b)|\b(?:overall|in general),? how am i\b/;
 const WHOLE_MONTH =
   /\bwhat (?:should|do|can) (?:i|we) (?:need to )?(?:do|focus on|work on) this month\b|\bthis month'?s (?:plan|priorities|to ?do)\b|\bwhat matters this month\b|\bplan for this month\b/;
+const WHAT_IF = /^(?:what if|what happens if|what would happen if|suppose|say) /;
+const SAVE_MORE =
+  /\b(?:save|saving|put away|set aside|stash)\b[^\d]{0,12}(\d[\d,]*(?:\.\d{1,2})?)\b.{0,12}\b(?:more|extra)\b.{0,16}\b(?:a|each|per|every) month\b/;
+
+// Spec step 203: a thought experiment ("what if I lose my job for 4 months"), or saving more.
+function whatIfIntent(text: string): Intent | null {
+  if (WHAT_IF.test(text)) {
+    const save = SAVE_MORE.exec(text);
+    if (save) {
+      const cents = Math.round(Number(save[1].replace(/,/g, "")) * 100);
+      if (cents > 0) return { kind: "save_more", monthlyCents: cents };
+    }
+  }
+  return parseWhatIf(text);
+}
+
 const NET_WORTH =
   /\bnet ?worth\b|\bhow much (?:am i|are we) worth\b|\bwhat do (?:i|we) own and owe\b|\bassets? (?:and|vs\.?|minus) (?:debts?|liabilities)\b/;
 // Spec step 187.
@@ -508,6 +528,8 @@ export function parseIntent(
   if (THANKS.test(text)) return { kind: "greeting", thanks: true };
   if (PAUSE.test(text)) return { kind: "pause_autopilot" };
   if (CHECKED.test(text)) return { kind: "checked" };
+  const hypothetical = whatIfIntent(text);
+  if (hypothetical) return hypothetical;
   if (NET_WORTH.test(text)) return { kind: "net_worth" };
   if (WHY_DID.test(text)) return { kind: "timeline", why: true };
   if (TIMELINE.test(text)) return { kind: "timeline", why: false };

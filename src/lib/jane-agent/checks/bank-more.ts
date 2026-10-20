@@ -391,6 +391,16 @@ const rows: Row[] = [
   ["loans", "/loans/home", "home_purchase", "can i afford a $400,000 home"],
   ["loans", "/loans/home", "home_purchase", "how much should i save for a down payment"],
 
+  // What if (spec step 203).
+  ["whatif", "/what-if", "what_if", "what if i lose my job"],
+  ["whatif", "/what-if", "what_if", "what if i lose my job for 4 months"],
+  ["whatif", "/what-if", "what_if", "what if i get a raise"],
+  ["whatif", "/what-if", "what_if", "what happens if we have a baby"],
+  ["whatif", "/what-if", "what_if", "what if i buy a house"],
+  ["whatif", "/what-if", "what_if", "what if i go part time"],
+  ["whatif", "/what-if", "what_if", "what if i save $200 more a month"],
+  ["spending", "/monthly", "monthly_report", "how did i do this month"],
+
   // Two questions in one message.
   ["two", "/home", "safe_to_spend", "how much can i spend and when is payday"],
   ["two", "/subscriptions", "subscriptions", "what's netflix cost and when does it renew"],

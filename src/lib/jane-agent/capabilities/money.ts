@@ -1,3 +1,6 @@
+import { whatIf } from "@/lib/what-if";
+import { saveMoreReply } from "../replies-savemore";
+import { whatIfReply } from "../replies-whatif";
 import { netWorth } from "@/insights/net-worth";
 import { cryptoTotal } from "@/lib/crypto/crypto";
 import { netWorthReply } from "../replies-networth";
@@ -194,6 +197,18 @@ async function answer(ctx: CapabilityContext): Promise<Reply | null> {
         ),
       );
     }
+    // Spec step 203: a what-if through every sector, run by the page's own code.
+    case "what_if": {
+      const run = await whatIf(
+        userId,
+        intent.scenario,
+        { months: intent.months ?? undefined },
+        { client, now },
+      );
+      return whatIfReply(run);
+    }
+    case "save_more":
+      return saveMoreReply(intent.monthlyCents, await listGoals(userId, { client, now }));
     default:
       return null;
   }

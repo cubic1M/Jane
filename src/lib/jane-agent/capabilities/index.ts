@@ -69,6 +69,13 @@ export const CAPABILITIES: readonly Capability[] = [
     tools: ["net_worth"],
     answer: moneyAnswer,
   },
+  {
+    id: "what_if",
+    bank: ["whatif", "goals"],
+    kinds: ["what_if", "save_more"],
+    tools: ["what_if"],
+    answer: moneyAnswer,
+  },
   { id: "goals", bank: ["goals"], kinds: ["goals"], tools: ["goals"], answer: moneyAnswer },
   {
     id: "saved",

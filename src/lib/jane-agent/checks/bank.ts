@@ -381,6 +381,26 @@ const BASE_QUESTIONS: readonly CheckQuestion[] = [
     expect: { list: true, maxChars: 1_400 },
   },
 
+  // What if, and the month so far, answered from the pages' own code.
+  {
+    id: "wi-1",
+    text: "what if I lose my job for 4 months",
+    needs: "rules",
+    expect: { intent: "what_if", link: "/what-if", list: true, maxChars: 900 },
+  },
+  {
+    id: "wi-2",
+    text: "what if I save $200 more a month",
+    needs: "rules",
+    expect: { intent: "save_more", mentions: /\$2,400\.00 a year/ },
+  },
+  {
+    id: "wi-3",
+    text: "how did I do this month",
+    needs: "rules",
+    expect: { intent: "monthly_report" },
+  },
+
   // Net worth, answered at once from the net worth page's own math.
   {
     id: "nw-1",
