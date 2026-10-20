@@ -95,7 +95,7 @@ describe.runIf(url)("the picture of you, loaded", { timeout: 120_000 }, () => {
     ]) {
       expect(() => parseAnswer(key, text), `${key}: ${text}`).toThrow(ProfileError);
     }
-    expect(parseIntent("What do you know about me?")).toEqual({ kind: "profile" });
+    expect(parseIntent("What do you know about me?", "2026-10-18")).toEqual({ kind: "profile" });
     const reply = profileReply(await loadProfile(made.get("retiree")!, { client, now: NOW }));
     expect(reply.body).toMatch(/% sure/);
     expect(reply.actions[0]).toMatchObject({ kind: "link", href: "/profile" });
