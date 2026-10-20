@@ -145,6 +145,7 @@ export const CAPABILITIES: readonly Capability[] = [
       "invreview",
       "location",
       "planmenu",
+      "performance",
     ],
     kinds: ["investments"],
     // Every investing tool Claude has: the overview first, then one per topic.
@@ -163,6 +164,7 @@ export const CAPABILITIES: readonly Capability[] = [
       "yearly_review",
       "asset_location",
       "plan_menu",
+      "honest_performance",
     ],
     answer: investingAnswer,
   },

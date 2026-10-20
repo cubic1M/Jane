@@ -37,6 +37,8 @@ import type { LocationView } from "@/lib/investments/location";
 import { freeButton, LOCATION_LINK, locationLine } from "./location-copy";
 import type { PlanMenuView } from "@/lib/investments/plan-menu";
 import { changeButton, confirmButtons, MENU_LINK, proposedLine, savingLine } from "./menu-copy";
+import type { HonestView } from "@/lib/investments/honest";
+import { HONEST_LINK, honestLine } from "./honest-copy";
 import { STEADY_LINK, steadyMessage, timelines } from "./steady-copy";
 import { CRYPTO_LINK, feeFlag, NEVER_TRADES, shareFlag, sizeLine } from "./crypto-copy";
 import {
@@ -978,5 +980,15 @@ export function planMenuReply(view: PlanMenuView): Reply {
         ? [changeButton(view.plan), MENU_LINK]
         : [MENU_LINK],
     refs: { advice: true },
+  };
+}
+
+// Spec step 233: how the money really did, after fees and taxes, against a benchmark, with
+// the biggest reason for each gap. Facts about the past; never a forecast.
+export function honestReply(view: HonestView): Reply {
+  return {
+    body: `${honestLine(view)}${view.rows.length > 0 ? " That's what happened, not what will." : ""}`,
+    actions: [HONEST_LINK],
+    refs: {},
   };
 }

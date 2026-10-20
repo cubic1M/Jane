@@ -29,7 +29,8 @@ export type InvestmentTopic =
   | "costly_products"
   | "yearly_review"
   | "location"
-  | "plan_menu";
+  | "plan_menu"
+  | "honest_performance";
 
 export type InvestmentIntent = {
   kind: "investments";
@@ -163,7 +164,12 @@ const LOCATION =
 const PLAN_MENU =
   /\b(?:401\(?k\)?|403\(?b\)?|plan|workplace plan)(?:'s)? (?:fund (?:list|menu|options|lineup)|funds|investment options|menu)\b|\bwhich funds? (?:should|do) i (?:pick|choose|use|buy) (?:in|for) (?:my )?(?:401\(?k\)?|403\(?b\)?|plan)\b|\btarget[- ]date fund (?:fees?|vs|versus|or)\b|\bfee disclosure\b|\bcheapest (?:mix|funds?) (?:in|for|from) (?:my )?(?:401\(?k\)?|plan)\b/;
 
+// Spec step 233: how the money really did, against a benchmark.
+const HONEST =
+  /\b(?:beat|beating|beaten) the market\b|\bbenchmark\b|\bafter[- ](?:fees|tax|taxes) (?:return|performance)\b|\breal (?:return|performance)\b|\b(?:3|three|5|five)[- ]?year (?:return|performance)\b|\bwhy (?:did|have) my investments (?:underperform|lag)\w*\b/;
+
 export function parseInvestmentIntent(text: string): InvestmentIntent | null {
+  if (HONEST.test(text)) return { kind: "investments", topic: "honest_performance", account: null };
   if (PLAN_MENU.test(text)) return { kind: "investments", topic: "plan_menu", account: null };
   if (LOCATION.test(text)) return { kind: "investments", topic: "location", account: null };
   if (YEARLY_REVIEW.test(text))

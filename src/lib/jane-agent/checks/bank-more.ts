@@ -78,6 +78,18 @@ const rows: Row[] = [
   ["invreview", "/investments", "yearly_review", "do my yearly investing review"],
   ["location", "/investments/location", "asset_location", "which accounts should hold my bonds"],
   ["planmenu", "/investments/plan-menu", "plan_menu", "which funds should i pick in my 401k"],
+  [
+    "performance",
+    "/investments/performance",
+    "honest_performance",
+    "am i beating the market after fees and taxes",
+  ],
+  [
+    "performance",
+    "/investments/performance",
+    "honest_performance",
+    "what is my 3 year return against a benchmark",
+  ],
   ["planmenu", "/investments/plan-menu", "plan_menu", "is my target date fund fee too high"],
   ["invreview", "/investments", "steady_hand", "should i sell everything the market is crashing"],
 

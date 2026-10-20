@@ -40,6 +40,7 @@ import {
 } from "./family";
 import { startCollegePlan } from "./college";
 import { loadLocation, makeSwaps, LocationError } from "./location";
+import { loadHonest } from "./honest";
 import {
   confirmMenu,
   loadPlanMenu,
@@ -1485,6 +1486,33 @@ describe.runIf(url)("investments in Jane's chat, against a real database", () =>
       await expect(requestPlanChange(userId, { client, now: LINKED })).rejects.toThrow(
         /already requested/,
       );
+    },
+  );
+
+  it(
+    "step 233: 1, 3 and 5 years after fees and taxes against a benchmark, the reasons adding up",
+    SLOW,
+    async () => {
+      const userId = await demoPerson();
+      await saveProfileForm(
+        userId,
+        { age: "45", horizon: "over_20", dropReaction: "worry", goals: ["retirement"] },
+        { client, now: LINKED },
+      );
+      const v = await loadHonest(userId, { client, now: LINKED });
+      expect(v.rows.map((r) => r.key)).toEqual(["1y", "3y", "5y"]);
+      for (const r of v.rows) {
+        // After fees and taxes can only be at or below before; the reasons add up to the gap.
+        expect(r.afterTaxes).toBeLessThanOrEqual(r.beforeFees);
+        expect(r.reasons.reduce((s, x) => s + x.points, 0)).toBeCloseTo(r.gap, 10);
+        expect(r.from < r.to).toBe(true);
+      }
+      const { reply } = await sendToJane(userId, "am i beating the market", {
+        client,
+        now: LINKED,
+      });
+      expect(reply.body).toMatch(/Over 1 year: /);
+      expect(reply.body).toMatch(/Over 5 years/);
     },
   );
 });

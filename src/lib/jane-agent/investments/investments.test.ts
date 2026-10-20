@@ -64,6 +64,7 @@ import {
   yearlyReviewReply,
   locationReply,
   planMenuReply,
+  honestReply,
 } from "./replies";
 import { gather } from "../brain";
 import { parseIntent } from "../intents";
@@ -79,6 +80,8 @@ import {
   wholeLifeCompare,
 } from "@/planning/costly-products";
 import { productLine } from "./costly-copy";
+import { honestPeriod } from "@/planning/honest";
+import { PREDICTION_WORDS } from "@/config/steady-hand";
 import { locationPlan, type PlanAccount } from "@/planning/location";
 import { holdingsReply, matchAccounts } from "./replies";
 import { INVESTMENT_TOOLS, runInvestmentTool } from "./tools";
@@ -2860,5 +2863,69 @@ describe("planMenuReply and the plan menu messages", () => {
     expect(sugg.map((m) => m.dedupeKey)).toEqual(["menu:change:480227"]);
     expect(gather({ proposed: null, plan: MENU_PLAN, pending: true })).toEqual([]);
     expect(gather({ proposed: null, plan: MENU_PLAN, pending: false }, false)).toEqual([]);
+  });
+});
+
+// Spec step 233: honest performance.
+const HONEST_ROW = {
+  ...honestPeriod({
+    years: 3,
+    twr: 0.3,
+    mwr: 0.27,
+    benchmark: 0.34,
+    ownFeeBps: 60,
+    benchFeeBps: 5,
+    ownCashShare: 0.1,
+    benchCashShare: 0.05,
+    taxDragBps: 20,
+  }),
+  key: "3y",
+  label: "3 years",
+  from: "2023-10-18",
+  to: "2026-10-18",
+  shorter: false,
+};
+
+describe("honest performance questions, by rules", () => {
+  it.each([
+    "am i beating the market",
+    "what is my 3 year return",
+    "how do i compare to a benchmark",
+  ])("reads %j as honest performance", (text) => {
+    expect(parseIntent(text, ASOF)).toMatchObject({
+      kind: "investments",
+      topic: "honest_performance",
+    });
+  });
+});
+
+describe("honestReply", () => {
+  it("gives after-fee-and-tax returns against the benchmark with the biggest reason, never a forecast", () => {
+    const reply = honestReply({
+      advice: true,
+      riskLevel: 3,
+      rows: [HONEST_ROW],
+      ownFeeBps: 60,
+      taxDragBps: 20,
+      simulatedPrices: true,
+    });
+    expect(reply.body).toMatch(
+      /^Over 3 years: \+27\.6% after fees and taxes against \+33\.9% for a simple mix with your risk, −6\.3 points\./,
+    );
+    expect(reply.body).toMatch(/The biggest reason: .* \(−/);
+    expect(reply.body).toMatch(/That's what happened, not what will\.$/);
+    expect(reply.body).not.toMatch(PREDICTION_WORDS);
+  });
+  it("asks for the profile when there is nothing to compare", () => {
+    expect(
+      honestReply({
+        advice: true,
+        riskLevel: null,
+        rows: [],
+        ownFeeBps: 0,
+        taxDragBps: 0,
+        simulatedPrices: false,
+      }).body,
+    ).toMatch(/finished/);
   });
 });

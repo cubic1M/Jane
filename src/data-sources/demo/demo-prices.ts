@@ -8,7 +8,7 @@ import { addDays } from "./demo-bank";
 // the familiar numbers and prices move from there, forwards and back. Pure.
 
 // The feed starts here; earlier days use the first price.
-export const PRICE_HISTORY_START = "2024-01-01";
+export const PRICE_HISTORY_START = "2020-10-01";
 
 type Profile = {
   // Price on the anchor's eve, in dollars.

@@ -28,6 +28,7 @@ import { loadCostlyProducts } from "@/lib/investments/costly-products";
 import { reviewFor } from "./review-copy";
 import { loadLocation } from "@/lib/investments/location";
 import { loadPlanMenu } from "@/lib/investments/plan-menu";
+import { loadHonest } from "@/lib/investments/honest";
 import { loadSteadyHand } from "@/lib/investments/steady-hand";
 import { CASH_HOMES, CASH_RATES_AS_OF } from "@/config/cash";
 import { formatReturn } from "@/insights/returns";
@@ -192,6 +193,12 @@ export const INVESTMENT_TOOLS: Anthropic.Tool[] = [
     input_schema: noInput,
   },
   {
+    name: "honest_performance",
+    description:
+      "How the person's investments really did over 1, 3 and 5 years: before fees, after fees, after fees and taxes, their money's return counting when it went in and out, a simple benchmark mix with their risk level (index funds, from config), the gap, and the reasons it adds up from: fund costs, cash held, tax on payouts, timing, and the mix itself. Report only what happened. NEVER forecast, predict or imply future returns.",
+    input_schema: noInput,
+  },
+  {
     name: "steady_hand",
     description:
       "Whether the person's investments have had a big drop lately (down 8% over a month or 15% over three, their own return, money in and out left out) and, in demo advice mode, how each goal's timeline sits (near goals are already in cash). Report only these past facts and the plan to stay the course. NEVER say or imply what markets will do, when they will recover, or that now is a good or bad time: no one can know.",
@@ -238,6 +245,7 @@ export const INVESTMENT_TOOL_STATUS: Readonly<Record<string, string>> = {
   crypto: "Reading your crypto balances…",
   cash_plan: "Looking at where your cash sits…",
   steady_hand: "Looking at how your investments have moved…",
+  honest_performance: "Comparing you with a benchmark…",
   plan_menu: "Looking at your plan's funds…",
   asset_location: "Checking which account holds what…",
   yearly_review: "Putting your investing review together…",
@@ -821,6 +829,27 @@ export async function runInvestmentTool(
                 .filter(Boolean)
                 .map((t) => ({ ticker: t!.ticker, savingBuildingItByHand: money(t!.savingCents) })),
             },
+      });
+    }
+    case "honest_performance": {
+      const v = await loadHonest(userId, { client, now });
+      return out({
+        periods: v.rows.map((r) => ({
+          period: r.label,
+          from: r.from,
+          shorterHistory: r.shorter,
+          beforeFeesPercent: Math.round(r.beforeFees * 1000) / 10,
+          afterFeesAndTaxesPercent: Math.round(r.afterTaxes * 1000) / 10,
+          yourMoneyPercent:
+            r.moneyWeighted === null ? null : Math.round(r.moneyWeighted * 1000) / 10,
+          benchmarkPercent: Math.round(r.benchmark * 1000) / 10,
+          gapPoints: Math.round(r.gap * 1000) / 10,
+          reasonsPoints: r.reasons.map((x) => ({
+            reason: x.label,
+            points: Math.round(x.points * 1000) / 10,
+          })),
+        })),
+        forecast: "never",
       });
     }
     case "steady_hand": {
