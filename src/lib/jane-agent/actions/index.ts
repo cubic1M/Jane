@@ -95,6 +95,7 @@ import {
 } from "./tax-identity";
 import { taxEquityAside } from "./tax-equity";
 import { taxYearsPlan } from "./tax-years";
+import { taxAccountantSeen } from "./tax-accountant";
 import {
   taxExemptionClaimed,
   taxExemptionRemind,
@@ -312,6 +313,7 @@ export const ACTION_HANDLERS: Readonly<Record<ActionId, ActionHandler>> = {
   "tax.identity_step": taxIdentityStep,
   "tax.equity_aside": taxEquityAside,
   "tax.years_plan": taxYearsPlan,
+  "tax.accountant_seen": taxAccountantSeen,
   "tax.property_draft": taxPropertyDraft,
   "tax.property_remind": taxPropertyRemind,
   "tax.property_team": taxPropertyTeam,
