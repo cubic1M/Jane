@@ -67,7 +67,7 @@ export const CAPABILITIES: readonly Capability[] = [
     id: "saved",
     bank: ["spending"],
     kinds: ["saved", "changes", "review"],
-    tools: ["proven_savings", "recent_changes", "plan_upkeep"],
+    tools: ["proven_savings", "recent_changes", "plan_upkeep", "monthly_report"],
     answer: moneyAnswer,
   },
 

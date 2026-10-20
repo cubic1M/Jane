@@ -27,6 +27,7 @@ import { listTransfers } from "@/lib/money-movement/transfers";
 import { loadBillPay } from "@/lib/money-movement/bill-pay";
 import { moneyPartnerFor } from "@/lib/money-movement/partner";
 import { healthFor } from "@/lib/health-score";
+import { storedReport } from "@/lib/monthly-report-store";
 import { SECTOR_LABELS, SECTOR_LEVEL_LABELS } from "@/config/autopilot-sectors";
 import { provenSavings } from "@/lib/savings-proof";
 import { listLifeEvents } from "@/lib/life-events";
@@ -197,6 +198,12 @@ export const CHAT_TOOLS: Anthropic.Tool[] = [
     name: "priorities",
     description:
       'The person\'s next best things to do (spec step 143), ranked across everything Jane found and is waiting on: findings, insurance picks, refinance offers, steps only they can do and dated deadlines. Each with the money it saves a year, the minutes it takes, its urgency and why it ranks where it does. Use it for "what should I do first" and to put the most important first.',
+    input_schema: noInput,
+  },
+  {
+    name: "monthly_report",
+    description:
+      "The person's newest monthly money report (spec step 148): for the month just ended, savings confirmed (that month and in all), what came in, payments toward cards and loans, transfers that went through (sample transfers), the money health score and its change, the next best thing, and the receipts that prove the savings. Each figure is the same as on the page it links to.",
     input_schema: noInput,
   },
   {
@@ -453,6 +460,27 @@ export async function runChatTool(
           what: e.title,
           about: money(e.cents),
           why: e.why,
+        })),
+      });
+    }
+    case "monthly_report": {
+      const stored = await storedReport(userId, null, { client });
+      if (!stored)
+        return out({ report: null, why: "The first report comes at the start of next month." });
+      const r = stored.report;
+      return out({
+        month: r.month,
+        saved: { thisMonth: money(r.saved.monthCents), inAll: money(r.saved.totalCents) },
+        earned: money(r.earnedCents),
+        paidDown: money(r.paidDownCents),
+        moved: { amount: money(r.moved.cents), transfers: r.moved.count, sampleOnly: true },
+        health: r.health,
+        next: r.next?.title ?? null,
+        receipts: r.receipts.map((x) => ({
+          what: x.title,
+          amount: money(x.cents),
+          yearly: x.yearly,
+          proof: x.proof,
         })),
       });
     }

@@ -1,3 +1,5 @@
+import { storedReport } from "@/lib/monthly-report-store";
+import { reportReply } from "../replies-report";
 import type { Reply } from "../replies";
 import { AFFORD_USUAL_MONTHS } from "@/config/agent-chat";
 import { INSIGHT_MONTHS } from "@/config/insights";
@@ -168,6 +170,9 @@ async function answer(ctx: CapabilityContext): Promise<Reply | null> {
             refs: {},
           };
     }
+    // Spec step 148: the monthly money report.
+    case "monthly_report":
+      return reportReply(await storedReport(userId, null, { client }));
     default:
       return null;
   }

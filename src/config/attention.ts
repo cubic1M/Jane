@@ -26,6 +26,8 @@ export const ATTENTION_ALWAYS: readonly string[] = [
   "review",
   "autopilot",
   "attention",
+  // Spec step 148: the monthly report comes once a month; it's never stopped.
+  "report",
 ];
 // How Settings and the chat name each kind of message, by source.
 export const ATTENTION_LABELS: Readonly<Record<string, string>> = {

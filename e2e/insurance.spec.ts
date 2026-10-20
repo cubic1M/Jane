@@ -78,6 +78,10 @@ test("a demo-bank person sees the sample policy, like-for-like quotes and Jane's
     /^\/report\//,
   );
 
+  // Without a policy, the quotes page sends you to pick one instead of saying it's gone.
+  await page.goto("/insurance/quotes");
+  await expect(page).toHaveURL("/insurance");
+
   await page.getByRole("link", { name: "Compare quotes" }).click();
   await expect(page.getByText("Sample quotes from Jane's demo carrier catalog")).toBeVisible();
   // The policy renews in 40 days, so Jane shopped it by herself when the bank linked

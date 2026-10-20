@@ -108,6 +108,8 @@ async function CheckInContent({
           this month. Changes finished this month save about {formatCents(checkIn.savedCents)} a
           year.
         </p>
+        {/* Spec step 148: the monthly report's "paid down" comes from here. */}
+        <p>You paid {formatCents(checkIn.debtPaymentsCents)} toward cards and loans this month.</p>
       </section>
     </>
   );
