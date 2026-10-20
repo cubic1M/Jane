@@ -74,6 +74,7 @@ import { taxDocAsk, taxDocChase, taxDocRight, taxDocsTick } from "./tax-document
 import { taxPlanAdd, taxPlanNo } from "./tax-plan";
 import { taxRecordsRemind } from "./audit-records";
 import { taxAmendPrepare, taxPriorConfirm, taxPriorNo } from "./prior-return";
+import { taxSideBusiness, taxSideHobby } from "./side-income";
 import { taxFundOpen, taxGivingNo, taxReceiptGot } from "./giving";
 import {
   investAnswer1,
@@ -245,6 +246,8 @@ export const ACTION_HANDLERS: Readonly<Record<ActionId, ActionHandler>> = {
   "tax.prior_confirm": taxPriorConfirm,
   "tax.prior_no": taxPriorNo,
   "tax.amend_prepare": taxAmendPrepare,
+  "tax.side_business": taxSideBusiness,
+  "tax.side_hobby": taxSideHobby,
   "tax.records_remind": taxRecordsRemind,
   // Investments (spec step 129 on).
   "invest.answer.1": investAnswer1,

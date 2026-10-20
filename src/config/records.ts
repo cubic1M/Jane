@@ -30,6 +30,7 @@ export const ITEM_RETENTION: Readonly<Record<string, RetentionKey>> = {
   childcare: "return",
   education: "return",
   business: "return",
+  rental: "property",
   property_tax: "return",
   mortgage_interest: "property",
   student_loan_interest: "return",
