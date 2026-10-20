@@ -121,6 +121,8 @@ const rows: Row[] = [
   ["spending", "/saved", "proven_savings", "how much have you saved me"],
   ["spending", "/saved", "proven_savings", "what has jane saved so far"],
   ["spending", "/saved", "proven_savings", "show me the money you found"],
+  ["spending", "/monthly", "monthly_report", "show me my monthly report"],
+  ["spending", "/monthly", "monthly_report", "how did last month go"],
 
   // Budgets and goals.
   ["budgets", "/budgets", "budgets", "am i over budget"],
