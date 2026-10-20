@@ -241,7 +241,7 @@ const trialConversion: Detector = {
 const lowBalance: Detector = {
   capability: "safe_to_spend",
   topic: "low_balance",
-  covers: [],
+  covers: ["tight_money"],
   needs: [],
   detect({ profile, data }) {
     // Cash in checking and savings: what could pay the month's bills.
@@ -269,7 +269,7 @@ const lowBalance: Detector = {
       confidence: evidence("seen", profile.months, bills.length, "regular bills"),
       urgency: "soon",
       why: `Your checking and savings hold ${formatCents(checking)} and your regular bills come to about ${formatCents(monthly)} a month${fees ? `; overdraft fees have cost you ${formatCents(fees)}` : ""}.`,
-      action: { label: "See what's safe to spend", href: "/home" },
+      action: { label: "Plan a tight month", href: "/loans/tight" },
     };
   },
 };

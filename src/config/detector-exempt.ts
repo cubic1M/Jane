@@ -63,4 +63,13 @@ export const TOOL_EXEMPT: Readonly<Record<string, string>> = {
   plan_upkeep: "reports budget upkeep",
   budgets: "shows budgets the person set",
   safe_to_spend: "answers how much is safe to spend",
+  debt_autopilot: "reports what Jane does by herself for debts at the person's level",
+  debt_review:
+    "gathers the debt items the other detectors already raise, once a year, into one message",
+  credit_goals: "a score plan the person asks for with their own target and date",
+  car_purchase: "works out a car the person asks about; nothing in their data says they're buying",
+  home_purchase:
+    "works out a home the person asks about; nothing in their data says they're buying",
+  loan_applications:
+    "tracks an application the person started; the refinance and transfer detectors suggest them",
 };

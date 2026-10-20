@@ -37,6 +37,7 @@ export function inputFor(person: string, told: ProfileInput["told"] = {}): Profi
               .filter((h) => h.account_id === a.account_id)
               .reduce((s, h) => s + Math.round(h.institution_value * 100), 0)
           : Math.round((a.balances.current ?? 0) * 100),
+      limitCents: a.balances.limit != null ? Math.round(a.balances.limit * 100) : null,
     })),
     liabilities: [
       ...(demoLiabilities(demo, SAMPLE_TODAY).mortgage ?? []).map((m) => ({

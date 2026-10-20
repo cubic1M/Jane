@@ -27,6 +27,9 @@ const O = (
   merchant: string | null = name,
 ) => ({ key, account, name, merchant, category, amount, offsets }) as never;
 
+// Spec step 260, the rest of the debt tools: pay-later installments for Maya, a collection for
+// Chris, a hospital bill for Ruth, a student loan for a teacher (the Reyes) and a payment-app
+// loan from Dan and Lena. See the detectors in src/detectors/debt.ts.
 export const LOANS_EXTRAS: Partial<Record<PersonId, PersonExtra>> = {
   // Maya: Audible went up in September ($14.95 to $16.45), and a Skillshare trial ($0.99)
   // turned into $13.99 charges.
@@ -55,6 +58,15 @@ export const LOANS_EXTRAS: Partial<Record<PersonId, PersonExtra>> = {
     ],
     once: [
       O(
+        "loans-klarna",
+        "checking",
+        "KLARNA PAYMENT",
+        "LOAN_PAYMENTS_BNPL",
+        37.5,
+        [-75, -61, -47, -33, -19, -5],
+        "Klarna",
+      ),
+      O(
         "loans-skill-trial",
         "card",
         "SKILLSHARE",
@@ -77,6 +89,27 @@ export const LOANS_EXTRAS: Partial<Record<PersonId, PersonExtra>> = {
   // The Reyes: dinner charged twice, a GAP add-on bought with the car loan, and a catered party
   // that put last month's food spending well over the usual.
   family: {
+    accounts: [
+      {
+        key: "loans-student",
+        name: "Demo Student Loan",
+        mask: "2005",
+        type: "loan",
+        subtype: "student",
+        balance: 62000,
+      },
+    ],
+    monthly: [
+      R(
+        "loans-student",
+        "checking",
+        "NELNET STUDENT LOAN",
+        "LOAN_PAYMENTS_STUDENT_LOAN_PAYMENT",
+        450,
+        [20],
+        "Nelnet",
+      ),
+    ],
     once: [
       O(
         "loans-dup-dinner",
@@ -133,9 +166,48 @@ export const LOANS_EXTRAS: Partial<Record<PersonId, PersonExtra>> = {
   },
   // Chris: a cash advance on a card, with its fee.
   debt: {
+    monthly: [
+      R(
+        "loans-collector",
+        "checking",
+        "PORTFOLIO RECOVERY ASSOC",
+        "LOAN_PAYMENTS_OTHER_PAYMENT",
+        85,
+        [14],
+        null,
+      ),
+    ],
     once: [
       O("loans-cashadv", "card", "ATM CASH ADVANCE", "TRANSFER_OUT_WITHDRAWAL", 200, [-33], null),
       O("loans-cashadvfee", "card", "CASH ADVANCE FEE", "BANK_FEES_CASH_ADVANCE", 10, [-33], null),
+    ],
+  },
+  // Ruth: a hospital bill paid in full.
+  retiree: {
+    once: [
+      O(
+        "loans-hospital",
+        "checking",
+        "MERCY HOSPITAL BILLING",
+        "MEDICAL_PRIMARY_CARE",
+        1240,
+        [-95],
+        "Mercy Hospital",
+      ),
+    ],
+  },
+  // Dan and Lena: money sent to their son by Zelle, not sent back.
+  preretire: {
+    once: [
+      O(
+        "loans-zelle",
+        "checking",
+        "ZELLE TO DANIEL",
+        "TRANSFER_OUT_ACCOUNT_TRANSFER",
+        600,
+        [-120],
+        null,
+      ),
     ],
   },
 };
