@@ -12,6 +12,7 @@ import type { Credit } from "@/lib/credit";
 import type { CreditCards } from "@/lib/credit-cards";
 import type { CreditBuilding } from "@/lib/credit-building";
 import { warnNewPlan, type Bnpl } from "@/lib/bnpl";
+import type { TightMoney } from "@/lib/tight-money";
 import { REWARD_CATEGORY_LABELS } from "@/config/credit-cards";
 import type { DebtAutopilot } from "@/lib/debt-autopilot";
 import { PMI_SOURCE } from "@/config/debt";
@@ -96,6 +97,12 @@ export const DEBT_TOOLS: Anthropic.Tool[] = [
         },
       },
     },
+  },
+  {
+    name: "tight_money",
+    description:
+      "Help when the person's money is tight (demo-bank people only): whether the checking forecast dips under its cushion in the next month and when, the bills before then in the order to pay them (housing, utilities and insurance first, never delayed), the requests Jane has prepared (moving a due date after payday, a hardship program, a lower card rate, a late fee waived) with the exact text of each and whether it was sent, and what each lender answered. Sending any request needs the person's tap (the tight.send button); Jane never sends one by herself.",
+    input_schema: noInput,
   },
   {
     name: "mortgage",
@@ -240,6 +247,7 @@ export const DEBT_TOOL_STATUS: Readonly<Record<string, string>> = {
   credit_cards: "Checking your card rewards…",
   credit_building: "Working out how to build your credit…",
   bnpl_installments: "Checking your buy now, pay later installments…",
+  tight_money: "Looking at your month ahead…",
 };
 
 export function refinanceToolOutput(refi: Refinance, money: (cents: number) => string) {
@@ -577,6 +585,32 @@ export function bnplToolOutput(
       underTheCushionBy: money(strain.shortCents),
     },
     alwaysNeedsATap: "paying a plan off",
+  };
+}
+
+export function tightMoneyToolOutput(data: TightMoney, money: (cents: number) => string) {
+  if (!data.available) return { note: "No lender partner for this person's accounts yet." };
+  return {
+    demoAdvice: true,
+    shortfall: data.shortfall && {
+      on: data.shortfall.date,
+      forecastBalance: money(data.shortfall.balanceCents),
+      underTheCushionBy: money(data.shortfall.shortCents),
+    },
+    payInThisOrder: data.billsFirst.map((b) => ({
+      payee: b.payee,
+      on: b.date,
+      amount: money(b.amountCents),
+      essential: b.essential,
+    })),
+    requests: data.items.map((i) => ({
+      id: i.id,
+      what: i.label,
+      text: i.body,
+      couldFree: i.freesCents === null ? null : money(i.freesCents),
+      sent: i.sent && { on: i.sent.sentOn, status: i.sent.status, answer: i.sent.outcome },
+    })),
+    alwaysNeedsATap: "sending any request",
   };
 }
 

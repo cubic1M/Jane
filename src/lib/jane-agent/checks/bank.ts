@@ -1073,6 +1073,13 @@ export const QUESTIONS: readonly CheckQuestion[] = [
       link: "/loans/cards",
     },
   },
+  // Spec step 177: a tight month.
+  {
+    id: "debt-21",
+    text: "money is tight this month",
+    needs: "rules",
+    expect: { intent: "tight_money", mentions: /cushion/i, link: "/loans/tight", maxChars: 1_000 },
+  },
   // Spec step 176: buy now, pay later installments and a new plan's warning.
   {
     id: "debt-19",

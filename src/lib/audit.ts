@@ -9,6 +9,8 @@ export type AuditEvent =
   | "loan_accepted"
   // Spec step 174: applying for a credit card through Jane, only on the person's tap.
   | "card_application_submitted"
+  // Spec step 177: a request for help when money is tight, sent on the person's tap.
+  | "tight_request_sent"
   | "user_signed_up"
   // Insurance (spec Phase X): a policy saved or removed, the household facts saved.
   | "insurance_policy_saved"

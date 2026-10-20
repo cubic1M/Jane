@@ -38,7 +38,9 @@ export type DebtIntent =
   | { kind: "credit_simulate" }
   // Spec step 176: "what buy now pay later payments do I have?", "can I afford a $300 Klarna?".
   | { kind: "bnpl" }
-  | { kind: "bnpl_new"; totalCents: number | null };
+  | { kind: "bnpl_new"; totalCents: number | null }
+  // Spec step 177: "I'm short this month", "what if I can't pay my bills?".
+  | { kind: "tight_money" };
 
 const DEBT_KINDS = new Set<string>([
   "debts",
@@ -59,6 +61,7 @@ const DEBT_KINDS = new Set<string>([
   "credit_simulate",
   "bnpl",
   "bnpl_new",
+  "tight_money",
 ]);
 export const isDebtIntent = (intent: { kind: string }): intent is DebtIntent =>
   DEBT_KINDS.has(intent.kind);
@@ -129,6 +132,10 @@ const BNPL_NEW =
 const BNPL_LIST =
   /\b(?:installments?|buy now,? pay later|bnpl|klarna|affirm|afterpay|pay in 4)\b.*\b(?:coming|due|next|payments?|plans?|do i have|owe|list|all)\b|\b(?:coming|due|next|my)\b.*\b(?:installments?|buy now,? pay later|bnpl|klarna|affirm|afterpay)\b/;
 
+// Spec step 177.
+const TIGHT =
+  /\b(?:money is tight|money'?s tight|tight (?:month|on money)|i'?m (?:short|broke|strapped)|(?:can'?t|cannot|won'?t be able to|unable to) (?:afford|pay|make) (?:my |the |all my |this month'?s )?(?:bills?|rent|payments?|mortgage|cards?)|short on (?:cash|money)|running out of money|hardship (?:program|help|plan)|(?:behind|struggling) (?:on|with) (?:my )?(?:bills|payments|debts?))\b/;
+
 const clean = (target: string) =>
   target
     .replace(/\b(?:paid off|off|in full)\b/g, "")
@@ -147,6 +154,7 @@ export function parseDebtIntent(
     return { kind: "payoff_plan", extraCents: amountCents };
   if (PAYOFF.test(text)) return { kind: "payoff_plan", extraCents: null };
   if (DEBT_AUTOPILOT.test(text)) return { kind: "debt_autopilot" };
+  if (TIGHT.test(text)) return { kind: "tight_money" };
   if (BNPL_WORD.test(text) || /\binstallments?\b/.test(text)) {
     if (BNPL_NEW.test(text)) return { kind: "bnpl_new", totalCents: amountCents };
     if (BNPL_LIST.test(text)) return { kind: "bnpl" };

@@ -10,6 +10,7 @@ import { loadCredit, type Credit } from "@/lib/credit";
 import { loadCreditCards, type CreditCards } from "@/lib/credit-cards";
 import { loadCreditBuilding, type CreditBuilding } from "@/lib/credit-building";
 import { loadBnpl, type Bnpl } from "@/lib/bnpl";
+import { loadTightMoney, type TightMoney } from "@/lib/tight-money";
 import type { DetectionInput } from "@/detection/types";
 import { loadDebtAutopilot, type DebtAutopilot } from "@/lib/debt-autopilot";
 import { listApplications, type LoanApplicationView } from "@/lib/loan-applications";
@@ -73,6 +74,8 @@ export type MoreSnapshot = {
   creditBuilding?: CreditBuilding;
   // Spec step 176: buy now, pay later plans, their installments and the forecast.
   bnpl?: Bnpl;
+  // Spec step 177: a tight month's plan, and the requests sent.
+  tightMoney?: TightMoney;
   // Insurance (spec Phase X), from the same loader as /insurance. Optional, so a snapshot
   // built without it (in tests) says nothing about insurance.
   insurance?: InsuranceSnapshot;
@@ -104,6 +107,7 @@ export async function loadMore(
     creditCards,
     creditBuilding,
     bnpl,
+    tightMoney,
   ] = await Promise.all([
     autopilotOf(userId, { client }),
     openProposals(userId, { client }),
@@ -138,6 +142,7 @@ export async function loadMore(
     loadCreditCards(userId, { client, now, book }),
     loadCreditBuilding(userId, { client, now, book }),
     loadBnpl(userId, { client, now, book, input }),
+    loadTightMoney(userId, { client, now, book, input }),
   ]);
   const insurance = await loadInsuranceSnapshot(userId, { client, now });
 
@@ -183,6 +188,7 @@ export async function loadMore(
     creditCards,
     creditBuilding,
     bnpl,
+    tightMoney,
     insurance,
   };
 }

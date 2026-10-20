@@ -163,6 +163,18 @@ describe("debt questions", () => {
     expect(intent("should I start an affirm plan")).toEqual({ kind: "bnpl_new", totalCents: null });
   });
 
+  it("reads a tight month", () => {
+    for (const text of [
+      "money is tight this month",
+      "I'm short on money",
+      "I'm struggling with my bills",
+      "I can't afford my rent",
+      "hardship help",
+    ]) {
+      expect(intent(text), text).toEqual({ kind: "tight_money" });
+    }
+  });
+
   it("reads building credit, and the score simulator", () => {
     for (const text of [
       "how do I improve my credit",

@@ -295,6 +295,7 @@ model User {
   creditReports          CreditReport[]
   debtWatch              DebtWatch?
   cardApplications       CardApplication[]
+  tightRequests          TightRequest[]
   balanceTransfers       BalanceTransfer[]
   findings               Finding[]
   decisions              Decision[]
@@ -819,6 +820,32 @@ model CardApplication {
 
   @@index([userId])
   @@map("card_applications")
+}
+
+// A request Jane sent for someone whose money is tight (spec step 177), each only after the
+// person's tap: a due-date move, a hardship program, a lower rate or a late fee waived. The
+// lender stand-in answers it.
+model TightRequest {
+  id          String    @id @default(cuid())
+  userId      String    @map("user_id")
+  // "<kind>:<debt key>:<the shortfall's date>", so one is sent once for each shortfall.
+  key         String
+  kind        String
+  targetKey   String    @map("target_key")
+  targetName  String    @map("target_name")
+  body        String
+  // sent, granted or declined.
+  status      String
+  partner     String
+  shortfallOn DateTime  @map("shortfall_on") @db.Date
+  sentAt      DateTime  @default(now()) @map("sent_at") @db.Timestamptz(3)
+  resolvedAt  DateTime? @map("resolved_at") @db.Timestamptz(3)
+  outcome     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, key])
+  @@map("tight_requests")
 }
 
 // A balance transfer the person made to a 0% card (spec step 113), so Jane can keep the

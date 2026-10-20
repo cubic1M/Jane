@@ -46,6 +46,7 @@ export const DEBT_SOURCE_LIMITS = {
   credit_cards: 2,
   credit_building: 2,
   bnpl: 2,
+  tight_money: 2,
 } as const;
 export const DEBT_MESSAGE_PRIORITY = {
   // A buy now, pay later plan Jane found, then a debt with no rate: news that can wait,
@@ -100,11 +101,14 @@ export const DEBT_MESSAGE_PRIORITY = {
   // a free early payoff can wait.
   bnpl_due: 74,
   bnpl_payoff: 31,
+  // Spec step 177: a plan for a tight month is time-sensitive; a lender's answer follows.
+  tight_plan: 88,
+  tight_answer: 66,
 } as const;
 
 // What Jane does about debts by herself at each autopilot level (src/config/autopilot.ts),
 // step by step. Applying for credit, moving money and signing always need the person's tap,
-// at every level. Steps 110–117 and 174–176 add to this list.
+// at every level. Steps 110–117 and 174–177 add to this list.
 export const DEBT_AUTOPILOT: Readonly<
   Record<"ask" | "safe" | "all", readonly { step: number; does: string }[]>
 > = {
@@ -157,6 +161,10 @@ export const DEBT_AUTOPILOT: Readonly<
       step: 176,
       does: "Puts every buy now, pay later installment in your forecast and safe to spend, warns you before a new plan would strain the month, and tells you when paying a Pay in 4 plan off early is free. Paying waits for your tap.",
     },
+    {
+      step: 177,
+      does: "When your forecast shows a tight month, prepares one plan: bills in order (housing, utilities and insurance first), and written requests to move a due date, ask for hardship help, a lower rate or a late fee waived. Every request waits for your tap.",
+    },
   ],
   safe: [
     {
@@ -207,6 +215,10 @@ export const DEBT_AUTOPILOT: Readonly<
       step: 176,
       does: "Puts every buy now, pay later installment in your forecast and safe to spend, warns you before a new plan would strain the month, and pays a Pay in 4 plan off early when that's free, with your tap.",
     },
+    {
+      step: 177,
+      does: "When your forecast shows a tight month, prepares one plan: bills in order (housing, utilities and insurance first), and written requests to move a due date, ask for hardship help, a lower rate or a late fee waived. Every request waits for your tap.",
+    },
   ],
   all: [
     {
@@ -256,6 +268,10 @@ export const DEBT_AUTOPILOT: Readonly<
     {
       step: 176,
       does: "Puts every buy now, pay later installment in your forecast and safe to spend, warns you before a new plan would strain the month, and pays a Pay in 4 plan off early when that's free, with your tap.",
+    },
+    {
+      step: 177,
+      does: "When your forecast shows a tight month, prepares one plan: bills in order (housing, utilities and insurance first), and written requests to move a due date, ask for hardship help, a lower rate or a late fee waived. Every request waits for your tap.",
     },
   ],
 };
