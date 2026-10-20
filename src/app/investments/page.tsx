@@ -294,6 +294,12 @@ async function InvestmentsContent() {
             : a bonus, an inheritance or a sale, with tax first and a plan in order.
           </p>
           <p className="text-sm text-zinc-600 dark:text-zinc-400">
+            <Link href="/investments/values" className={LINK}>
+              Investing by your values
+            </Link>
+            : leave out fossil fuels, weapons or tobacco, with the cost and diversification shown.
+          </p>
+          <p className="text-sm text-zinc-600 dark:text-zinc-400">
             Learn:{" "}
             {["index-funds", "fees", "the-match", "roth-vs-traditional", "rebalancing"].map(
               (slug, i) => (

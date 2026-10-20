@@ -1,3 +1,5 @@
+import { coreFundsFor } from "@/planning/values";
+import { loadPrefs } from "./values";
 import { randomUUID } from "node:crypto";
 import {
   NOT_SUDDEN_DETAILED,
@@ -289,7 +291,11 @@ export async function doStage(
       if (!brokerage) throw new SuddenMoneyError("I need a brokerage account to invest in.");
       const profile = profileSummary(await profileOf(userId, { client }), iso(now));
       const partner = brokeragePartner();
-      const buys = contributionBuys(stage.cents, profile.complete ? profile.riskLevel : 3);
+      const buys = contributionBuys(
+        stage.cents,
+        profile.complete ? profile.riskLevel : 3,
+        coreFundsFor(await loadPrefs(userId, { client })),
+      );
       await partner.placeOrders(
         userId,
         {
