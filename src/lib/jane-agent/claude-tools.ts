@@ -29,6 +29,7 @@ import { moneyPartnerFor } from "@/lib/money-movement/partner";
 import { healthFor } from "@/lib/health-score";
 import { SCENARIOS } from "@/config/what-if";
 import { isScenario, whatIf } from "@/lib/what-if";
+import { loadLongView } from "@/lib/long-view";
 import { storedReport } from "@/lib/monthly-report-store";
 import { SECTOR_LABELS, SECTOR_LEVEL_LABELS } from "@/config/autopilot-sectors";
 import { provenSavings } from "@/lib/savings-proof";
@@ -200,6 +201,12 @@ export const CHAT_TOOLS: Anthropic.Tool[] = [
     name: "priorities",
     description:
       'The person\'s next best things to do (spec step 143), ranked across everything Jane found and is waiting on: findings, insurance picks, refinance offers, steps only they can do and dated deadlines. Each with the money it saves a year, the minutes it takes, its urgency and why it ranks where it does. Use it for "what should I do first" and to put the most important first.',
+    input_schema: noInput,
+  },
+  {
+    name: "long_view",
+    description:
+      "Where the person's net worth could be in 10, 20 and 30 years (spec step 209), as a range from a low to a high return in today's dollars, from their balances, debts, home value and what they save; with every assumption (returns, inflation, home growth, what is invested each month). In demo advice mode it also gives what moves it most (more investing, or paying a debt faster) and whether retirement is on track; for real accounts give the projection and its assumptions only, with no advice. It is a range, never a promise.",
     input_schema: noInput,
   },
   {
@@ -477,6 +484,38 @@ export async function runChatTool(
           about: money(e.cents),
           why: e.why,
         })),
+      });
+    }
+    case "long_view": {
+      const view = await loadLongView(userId, {}, { client, now });
+      if (!view) return out({ view: null, why: "No accounts linked yet." });
+      return out({
+        inTodaysDollars: true,
+        range: view.horizons.map((h) => ({
+          years: h.years,
+          low: money(h.lowCents),
+          high: money(h.highCents),
+          owing: money(h.parts.debtsCents),
+        })),
+        assumptions: view.assumptions.map((a) => ({
+          what: a.label,
+          value: a.value,
+          source: a.source,
+        })),
+        ...(view.advice
+          ? {
+              demoAdviceLabelRequired: true,
+              whatMovesItMost: view.levers.map((l) => ({
+                what: l.words,
+                adds30YearLow: money(l.deltaCents),
+              })),
+              retirement: view.retirement && {
+                low: money(view.retirement.projection.lowCents),
+                high: money(view.retirement.projection.highCents),
+                status: view.retirement.status,
+              },
+            }
+          : {}),
       });
     }
     case "what_if": {
