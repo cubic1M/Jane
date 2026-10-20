@@ -13,6 +13,7 @@ import {
   cardHash,
   type DecisionCard,
 } from "@/lib/cards";
+import { groupsCountedElsewhere } from "@/detection/overlap";
 import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
 import { DecisionError, recordDecision, type DecisionResult } from "@/lib/decisions";
@@ -32,6 +33,9 @@ export type PlanItem = {
   // Ticked for the week's one tap: what Jane would do. Low-confidence findings,
   // cancellations and moving money start unticked (step 59).
   preselected: boolean;
+  // Spec step 263: a duplicate group whose dollars are already in the reviews of its services;
+  // the total leaves it out.
+  countedElsewhere: boolean;
 };
 
 export async function planFor(
@@ -51,6 +55,7 @@ export async function planFor(
     const index = PLAN_URGENT_FINDING_TYPES.indexOf(type);
     return index === -1 ? PLAN_URGENT_FINDING_TYPES.length : index;
   };
+  const overlapping = groupsCountedElsewhere(findings);
   const items: { item: PlanItem; urgency: number; createdAt: Date }[] = [];
   for (const finding of findings) {
     const actionType = ACTION_FOR_FINDING[finding.type];
@@ -65,6 +70,7 @@ export async function planFor(
         urgent: PLAN_URGENT_FINDING_TYPES.includes(finding.type),
         options: PLAN_OPTIONS[actionType],
         preselected: finding.confidence !== "low" && !PLAN_NEVER_PRESELECTED.includes(actionType),
+        countedElsewhere: overlapping.has(finding),
       },
       urgency: urgency(finding.type),
       createdAt: finding.createdAt,
