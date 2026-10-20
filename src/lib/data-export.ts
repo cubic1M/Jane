@@ -61,6 +61,7 @@ export async function exportUserData(
     healthScores,
     monthlyReports,
     whatIfPlans,
+    leanPlans,
     janeMessages,
     janePreferences,
     teamAccess,
@@ -432,6 +433,17 @@ export async function exportUserData(
       orderBy: { month: "asc" },
       select: { month: true, score: true, band: true, parts: true },
     }),
+    db.leanPlans.findMany({
+      orderBy: { createdAt: "asc" },
+      select: {
+        employer: true,
+        dueOn: true,
+        status: true,
+        createdAt: true,
+        startedAt: true,
+        endedAt: true,
+      },
+    }),
     db.whatIfPlans.findMany({
       orderBy: { createdAt: "asc" },
       select: { scenario: true, params: true, changes: true, status: true, createdAt: true },
@@ -660,6 +672,7 @@ export async function exportUserData(
     healthScores,
     monthlyReports,
     whatIfPlans,
+    leanPlans,
     janeMessages,
     janePreferences,
     investments,

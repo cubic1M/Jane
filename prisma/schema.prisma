@@ -376,6 +376,7 @@ model User {
   accountantLinks   AccountantLink[]
   accountantNotes   AccountantNote[]
   taxPayments       TaxPayment[]
+  leanPlans         LeanPlan[]
 
   @@map("users")
 }
@@ -3252,4 +3253,26 @@ model WhatIfPlan {
 
   @@index([userId, status])
   @@map("what_if_plans")
+}
+
+// The lean plan after a paycheck didn't come (spec step 204): asked once per late paycheck,
+// then active until pay resumes. While active, automatic transfers from paychecks pause.
+model LeanPlan {
+  id        String    @id @default(cuid())
+  userId    String    @map("user_id")
+  // The late-paycheck change it answers: "late:<employer>:<due date>".
+  changeKey String    @map("change_key")
+  employer  String
+  // YYYY-MM-DD: the day the paycheck was due.
+  dueOn     String    @map("due_on")
+  // proposed, active, declined or ended.
+  status    String    @default("proposed")
+  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  startedAt DateTime? @map("started_at") @db.Timestamptz(3)
+  endedAt   DateTime? @map("ended_at") @db.Timestamptz(3)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, changeKey])
+  @@map("lean_plans")
 }
