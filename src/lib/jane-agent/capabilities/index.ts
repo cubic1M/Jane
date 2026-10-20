@@ -79,6 +79,21 @@ export const CAPABILITIES: readonly Capability[] = [
     tools: ["whole_picture", "priorities", "health_score"],
     answer: janeAnswer,
   },
+  // Spec step 203: what-if scenarios; step 209: the long view.
+  {
+    id: "what_if",
+    bank: ["scenarios"],
+    kinds: ["what_if"],
+    tools: ["what_if"],
+    answer: janeAnswer,
+  },
+  {
+    id: "long_view",
+    bank: ["longview"],
+    kinds: ["long_view"],
+    tools: ["long_view"],
+    answer: janeAnswer,
+  },
   {
     id: "did",
     bank: ["timeline", "settings"],
