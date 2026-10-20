@@ -17,6 +17,10 @@ import { loadCardInterest, type CardInterest } from "@/lib/card-interest";
 import { loadStudentLongGame, type LongGame } from "@/lib/student-long-game";
 import { loadFamilyLoans, type FamilyLoans } from "@/lib/family-loans";
 import { loadCreditGoals, type CreditGoals } from "@/lib/credit-goals";
+import { loadCarLoan, type CarLoan } from "@/lib/car-loan";
+import { loadDebtReview, type DebtReview } from "@/lib/debt-review";
+import { loadDebtTrouble, type DebtTrouble } from "@/lib/debt-trouble";
+import { loadHomeEquity, type HomeEquity } from "@/lib/home-equity";
 import type { DetectionInput } from "@/detection/types";
 import { loadDebtAutopilot, type DebtAutopilot } from "@/lib/debt-autopilot";
 import { listApplications, type LoanApplicationView } from "@/lib/loan-applications";
@@ -94,6 +98,10 @@ export type MoreSnapshot = {
   familyLoans?: FamilyLoans;
   // Spec step 227: credit score plans for a goal.
   creditGoals?: CreditGoals;
+  homeEquity?: HomeEquity;
+  debtTrouble?: DebtTrouble;
+  debtReview?: DebtReview;
+  carLoan?: CarLoan;
   // Insurance (spec Phase X), from the same loader as /insurance. Optional, so a snapshot
   // built without it (in tests) says nothing about insurance.
   insurance?: InsuranceSnapshot;
@@ -132,6 +140,8 @@ export async function loadMore(
     studentLongGame,
     familyLoans,
     creditGoals,
+    debtTrouble,
+    carLoan,
   ] = await Promise.all([
     autopilotOf(userId, { client }),
     openProposals(userId, { client }),
@@ -173,7 +183,16 @@ export async function loadMore(
     loadStudentLongGame(userId, { client, now, book }),
     loadFamilyLoans(userId, { client, now, book }),
     loadCreditGoals(userId, { client, now, book }),
+    loadDebtTrouble(userId, { client, now, book, input }),
+    loadCarLoan(userId, { client, now, book, refinance }),
   ]);
+  const homeEquity = await loadHomeEquity(userId, { client, now, mortgage });
+  const debtReview = await loadDebtReview(userId, {
+    client,
+    now,
+    book,
+    parts: { creditBuilding, cardInterest, homeEquity, creditGoals },
+  });
   const insurance = await loadInsuranceSnapshot(userId, { client, now });
 
   return {
@@ -225,6 +244,10 @@ export async function loadMore(
     studentLongGame,
     familyLoans,
     creditGoals,
+    homeEquity,
+    debtTrouble,
+    debtReview,
+    carLoan,
     insurance,
   };
 }

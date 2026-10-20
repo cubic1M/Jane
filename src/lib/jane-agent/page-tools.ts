@@ -5,6 +5,7 @@
 // has an entry whose tools exist, and a bank question reaching one of them.
 
 export const PAGE_TOOLS: Readonly<Record<string, readonly string[]>> = {
+  accountant: ["tax_return", "tax_forms"],
   actions: ["list_actions", "open_findings"],
   afford: ["safe_to_spend"],
   ahead: ["coming_up", "tax_plan"],
@@ -17,6 +18,7 @@ export const PAGE_TOOLS: Readonly<Record<string, readonly string[]>> = {
   deadlines: ["coming_up"],
   debt: ["debts", "payoff_plan", "balance_transfers"],
   documents: ["tax_forms", "insurance_documents"],
+  gift: ["family_investing"],
   goals: ["goals", "goal_buckets", "college_plan"],
   home: ["safe_to_spend", "whole_picture", "priorities", "health_score"],
   household: ["household"],
@@ -26,6 +28,7 @@ export const PAGE_TOOLS: Readonly<Record<string, readonly string[]>> = {
   investments: ["investments_overview", "holdings", "hsa", "crypto", "retirement_plan"],
   jane: ["nightly_log", "whole_picture"],
   learn: ["explainer"],
+  "long-view": ["long_view"],
   "life-events": ["life_events"],
   loans: [
     "debts",
@@ -39,6 +42,7 @@ export const PAGE_TOOLS: Readonly<Record<string, readonly string[]>> = {
   money: ["net_worth"],
   "net-worth": ["net_worth"],
   plan: ["open_findings"],
+  profile: ["investor_profile", "tax_profile"],
   report: ["open_findings", "finding_details"],
   saved: ["proven_savings"],
   subscriptions: ["subscriptions", "open_findings"],

@@ -18,6 +18,7 @@ import {
   type DemoSeed,
   type DemoSwitch,
 } from "@/data-sources/demo/demo-bank";
+import { isPersonId, type PersonId } from "@/config/people";
 import type { PrismaClient } from "@/generated/prisma/client";
 import { track } from "@/lib/analytics";
 import { logAudit } from "@/lib/audit";
@@ -45,9 +46,10 @@ export function demoBankEnabled(): boolean {
 }
 
 function seedOf(accessToken: string): DemoSeed {
-  const [, seed, anchor] = accessToken.split(":");
+  const [, seed, anchor, person] = accessToken.split(":");
   if (!seed || !/^\d{4}-\d{2}-\d{2}$/.test(anchor ?? "")) throw new Error("Not a demo token");
-  return { seed, anchor };
+  // The fourth part is a sample person (spec step 252); the original demo bank has none.
+  return person && isPersonId(person) ? { seed, anchor, person } : { seed, anchor };
 }
 
 const today = (now: Date) => now.toISOString().slice(0, 10);
@@ -177,7 +179,11 @@ export class DemoBankError extends Error {}
 // the first sync.
 export async function linkDemoBank(
   userId: string,
-  { client = defaultClient, now = new Date() }: { client?: PrismaClient; now?: Date } = {},
+  {
+    client = defaultClient,
+    now = new Date(),
+    person,
+  }: { client?: PrismaClient; now?: Date; person?: PersonId } = {},
 ): Promise<{ itemId: string; created: boolean }> {
   if (!demoBankEnabled()) throw new DemoBankError("The demo bank isn't available here.");
   const db = scopedFor(userId, client);
@@ -191,7 +197,9 @@ export async function linkDemoBank(
     data: {
       userId,
       plaidItemId: `${DEMO_ITEM_PREFIX}${seed}`,
-      accessTokenEncrypted: encrypt(`${DEMO_TOKEN_PREFIX}${seed}:${today(now)}`),
+      accessTokenEncrypted: encrypt(
+        `${DEMO_TOKEN_PREFIX}${seed}:${today(now)}${person ? `:${person}` : ""}`,
+      ),
       institutionName: DEMO_INSTITUTION,
       liabilities: true,
       investments: true,
