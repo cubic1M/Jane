@@ -72,6 +72,18 @@ import {
 } from "./tax-states";
 import { taxDocAsk, taxDocChase, taxDocRight, taxDocsTick } from "./tax-documents";
 import { taxPlanAdd, taxPlanNo } from "./tax-plan";
+import { taxRecordsRemind } from "./audit-records";
+import { taxAmendPrepare, taxPriorConfirm, taxPriorNo } from "./prior-return";
+import {
+  taxNoticeAgree,
+  taxNoticeConfirm,
+  taxNoticeDispute,
+  taxNoticeMine,
+  taxNoticeNo,
+  taxNoticePay,
+  taxNoticeTeam,
+} from "./tax-notice";
+import { taxSideBusiness, taxSideHobby } from "./side-income";
 import { taxFundOpen, taxGivingNo, taxReceiptGot } from "./giving";
 import {
   investAnswer1,
@@ -90,6 +102,8 @@ import {
   companyLink,
   companySell,
   cryptoLink,
+  cashToSavings,
+  cashToMoneyMarket,
 } from "./investments";
 import { changeBudget, changeExpected, changeLook } from "./changes";
 import { lifeNever, lifeNo, lifeYes } from "./life";
@@ -242,6 +256,19 @@ export const ACTION_HANDLERS: Readonly<Record<ActionId, ActionHandler>> = {
   "tax.receipt_got": taxReceiptGot,
   "tax.fund_open": taxFundOpen,
   "tax.giving_no": taxGivingNo,
+  "tax.prior_confirm": taxPriorConfirm,
+  "tax.prior_no": taxPriorNo,
+  "tax.amend_prepare": taxAmendPrepare,
+  "tax.side_business": taxSideBusiness,
+  "tax.side_hobby": taxSideHobby,
+  "tax.notice_confirm": taxNoticeConfirm,
+  "tax.notice_no": taxNoticeNo,
+  "tax.notice_agree": taxNoticeAgree,
+  "tax.notice_pay": taxNoticePay,
+  "tax.notice_dispute": taxNoticeDispute,
+  "tax.notice_team": taxNoticeTeam,
+  "tax.notice_mine": taxNoticeMine,
+  "tax.records_remind": taxRecordsRemind,
   // Investments (spec step 129 on).
   "invest.answer.1": investAnswer1,
   "invest.answer.2": investAnswer2,
@@ -259,6 +286,8 @@ export const ACTION_HANDLERS: Readonly<Record<ActionId, ActionHandler>> = {
   "company.link": companyLink,
   "company.sell": companySell,
   "crypto.link": cryptoLink,
+  "cash.to_savings": cashToSavings,
+  "cash.to_money_market": cashToMoneyMarket,
   // Jane notices changes (spec step 97).
   "change.look": changeLook,
   "change.budget": changeBudget,

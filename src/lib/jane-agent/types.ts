@@ -174,6 +174,23 @@ export const ACTION_IDS = [
   "tax.receipt_got",
   "tax.fund_open",
   "tax.giving_no",
+  // Spec step 171: a reminder before a year's records can be thrown away.
+  "tax.records_remind",
+  // Spec step 172: confirm a return Jane read, say it isn't one, prepare an amended return.
+  "tax.prior_confirm",
+  "tax.prior_no",
+  "tax.amend_prepare",
+  // Spec step 173: hobby or business.
+  "tax.side_business",
+  "tax.side_hobby",
+  // Spec step 217: a tax notice read from an upload, its response drafted and handed over.
+  "tax.notice_confirm",
+  "tax.notice_no",
+  "tax.notice_agree",
+  "tax.notice_pay",
+  "tax.notice_dispute",
+  "tax.notice_team",
+  "tax.notice_mine",
   // Investments (spec step 129 on): the answer buttons on an investor-profile question,
   // by position (src/config/investing.ts PROFILE_QUESTIONS).
   "invest.answer.1",
@@ -198,6 +215,9 @@ export const ACTION_IDS = [
   "company.sell",
   // Spec step 161: connect a demo exchange, read-only (crypto is never traded).
   "crypto.link",
+  // Spec step 162: cash moved where it earns more, one move a tap.
+  "cash.to_savings",
+  "cash.to_money_market",
   // Jane notices changes (spec step 97).
   "change.look",
   "change.budget",
@@ -257,6 +277,12 @@ export type MessageRefs = {
   // credit-builder stand-in to open.
   creditStatement?: { accountId: string; closesOn: string };
   creditBuilder?: { productId: string };
+  // Spec step 176: the buy now, pay later plan "Pay it off" pays.
+  bnplPlan?: { key: string };
+  // Spec step 177: the request "Send" sends when money is tight.
+  tightItem?: { id: string };
+  // Spec step 179: the home price the down payment goal is sized for.
+  homeGoal?: { priceCents: number };
   // Insurance (spec Phase X): a coverage gap by its key (GAP_KEYS), and the policy a
   // message is about.
   insuranceGap?: string;
@@ -364,6 +390,10 @@ export type MessageRefs = {
   taxPlanMove?: string;
   // Spec step 168: the gift (its transaction id) a receipt message is about.
   taxGift?: string;
+  // Spec step 172: the return read from a document (its id) a message is about.
+  priorReturn?: string;
+  // Spec step 217: the tax notice (its id) a message is about.
+  taxNotice?: string;
   // Spec step 98: demo advice (src/lib/advice-mode.ts). The chat shows DEMO_ADVICE_LABEL
   // under it. Set it on every message that recommends investments, taxes, insurance or loans.
   advice?: true;
@@ -379,6 +409,10 @@ export type MessageRefs = {
   college?: { childName: string; childAge: number; type: "public" | "private" };
   // Spec step 160: the company stock plan "Sell this part" sells from, by its key.
   companyPlan?: string;
+  // Spec step 162: the cash plan its move buttons belong to, by its key.
+  cashPlan?: string;
+  // Spec step 163: the pause before a sell has been shown; the next tap sells.
+  paused?: true;
   // Spec step 97: a change Jane noticed (src/insights/changes.ts), by its key; for a
   // category's pace, the budget "Set a budget" would set (cents a month).
   change?: { key: string; kind: string; category?: string; budgetCents?: number };

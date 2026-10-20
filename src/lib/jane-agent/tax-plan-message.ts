@@ -55,7 +55,7 @@ export function planReply(plan: TaxPlanView, today: string): Message {
     (m) => `- By ${shortDate(m.deadline)}: ${m.title} (${status(m, today)})`,
   );
   return {
-    body: `Your ${plan.year} tax plan, by deadline:\n${lines.join("\n")}`,
+    body: `You have ${plan.moves.length} tax ${plan.moves.length === 1 ? "move" : "moves"} left for ${plan.year}, by deadline.\n${lines.join("\n")}`,
     refs: plan.moves.some((m) => m.advice) ? { advice: true } : {},
     actions: [{ id: "open", label: "See your tax plan", kind: "link", href: PLAN_HREF }],
   };

@@ -53,6 +53,8 @@ export const TEAM_ACCESS_RULES: Record<AuditEvent, EventRule> = {
   loan_accepted: own,
   // Spec step 174: the person's own card application.
   card_application_submitted: own,
+  // Spec step 177: the person's own request for a due-date move, hardship help and so on.
+  tight_request_sent: own,
   // Insurance (spec Phase X): the person's own edits to their profile.
   insurance_policy_saved: own,
   insurance_policy_removed: own,
@@ -152,6 +154,12 @@ export const TEAM_ACCESS_RULES: Record<AuditEvent, EventRule> = {
   document_facts_saved: own,
   document_deleted: own,
   tax_pack_downloaded: own,
+  audit_pack_downloaded: own,
+  tax_return_read_confirmed: own,
+  tax_amendment_started: own,
+  tax_amendment_signed: own,
+  tax_notice_confirmed: own,
+  tax_notice_response_sent: own,
   tax_profile_changed: own,
   tax_tag_changed: own,
   tax_return_started: own,

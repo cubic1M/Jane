@@ -8,6 +8,10 @@ import { loadCredit } from "@/lib/credit";
 import { loadDebtAutopilot } from "@/lib/debt-autopilot";
 import { loadCreditCards } from "@/lib/credit-cards";
 import { loadCreditBuilding } from "@/lib/credit-building";
+import { loadBnpl } from "@/lib/bnpl";
+import { loadTightMoney } from "@/lib/tight-money";
+import { loadCar } from "@/lib/car";
+import { loadHomeBuying } from "@/lib/home-buying";
 import { pullCredit } from "@/lib/credit";
 import { listApplications } from "@/lib/loan-applications";
 import { checkRates, loadRefinance } from "@/lib/refinance";
@@ -20,6 +24,10 @@ import { creditReply } from "./credit-replies";
 import { debtAutopilotReply, debtDueReply } from "./debt-autopilot-replies";
 import { betterCardReply, cardFeeReply, cardForReply } from "./credit-card-replies";
 import { buildCreditReply, simulateReply } from "./credit-building-replies";
+import { bnplNewPlanReply, bnplReply } from "./bnpl-replies";
+import { tightReply } from "./tight-money-replies";
+import { carDealerReply, carReply } from "./car-replies";
+import { homeReply } from "./home-buying-replies";
 import type { Reply } from "./replies";
 
 // Answers questions about debts by rules (spec Phase Y), with the same loaders as the
@@ -60,6 +68,51 @@ export async function answerDebt(
         data = await loadCreditBuilding(userId, { client, now });
       }
       return intent.kind === "build_credit" ? buildCreditReply(data) : simulateReply(data);
+    }
+    case "home_afford":
+      return homeReply(
+        await loadHomeBuying(
+          userId,
+          { priceCents: intent.priceCents ?? undefined },
+          { client, now },
+        ),
+        intent.priceCents !== null,
+      );
+    case "car_afford":
+      return carReply(
+        await loadCar(userId, { priceCents: intent.priceCents ?? undefined }, { client, now }),
+        intent.priceCents !== null,
+      );
+    case "car_dealer": {
+      const price = intent.priceCents ?? undefined;
+      return carDealerReply(
+        await loadCar(
+          userId,
+          {
+            priceCents: price,
+            dealer:
+              intent.aprBps !== null && intent.termMonths !== null
+                ? { aprBps: intent.aprBps, termMonths: intent.termMonths, feesCents: 0 }
+                : undefined,
+          },
+          { client, now },
+        ),
+      );
+    }
+    case "tight_money":
+      return tightReply(await loadTightMoney(userId, { client, now }));
+    case "bnpl":
+      return bnplReply(await loadBnpl(userId, { client, now }));
+    case "bnpl_new": {
+      const data = await loadBnpl(userId, { client, now });
+      if (intent.totalCents === null) {
+        return {
+          body: 'How much is the plan? Tell me the total, like "can I afford a $300 Klarna plan", and I\'ll check it against your forecast.',
+          actions: [],
+          refs: {},
+        };
+      }
+      return bnplNewPlanReply(data, intent.totalCents);
     }
     case "card_for":
       return cardForReply(await loadCreditCards(userId, { client, now }), intent.category);

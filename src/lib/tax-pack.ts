@@ -5,6 +5,7 @@ import { scopedFor } from "@/lib/db-scoped";
 import { loadOverrides, loadTaxForms } from "@/lib/tax-organizer";
 import { buildTaxPack, packStates, type TaxPack } from "@/planning/tax-pack";
 import { loadTaxProfile } from "@/lib/tax-profile";
+import { loadSideIncome } from "@/lib/side-income";
 import { loadResidency } from "@/lib/tax-states";
 
 // Loads one person's tax-time pack for a year (spec step 72). Only their own accounts, never
@@ -19,7 +20,7 @@ export async function loadTaxPack(
   { client = defaultClient, now = new Date() }: { client?: PrismaClient; now?: Date } = {},
 ): Promise<TaxPack> {
   const db = scopedFor(userId, client);
-  const [transactions, loans, overrides, forms, profile, residency] = await Promise.all([
+  const [transactions, loans, overrides, forms, profile, residency, side] = await Promise.all([
     db.transactions.findMany({
       where: {
         pending: false,
@@ -50,7 +51,9 @@ export async function loadTaxPack(
     loadTaxForms(userId, year, { client, now }),
     loadTaxProfile(userId, { client, now }),
     loadResidency(userId, year, { client }),
+    loadSideIncome(userId, { client, now }),
   ]);
+  const rental = side.year === year ? side.rental : null;
   return buildTaxPack({
     year,
     today: iso(now),
@@ -63,6 +66,14 @@ export async function loadTaxPack(
     overrides,
     forms: forms.forms,
     // Spec step 165: the states lived or worked in.
+    rental: rental
+      ? {
+          rentCents: rental.rentCents,
+          expensesCents: rental.expensesCents,
+          depreciationCents: rental.depreciationCents,
+          netCents: rental.netCents,
+        }
+      : null,
     states: packStates({
       year,
       state: profile.state.value,

@@ -171,6 +171,33 @@ async function TaxPackContent({
         <p className="text-xs text-zinc-500">{COPY.formsNote}</p>
       </section>
 
+      {pack.rental && (
+        <section aria-labelledby="rental" className={CARD}>
+          <h2 id="rental" className="text-xl font-semibold">
+            {COPY.rentalHeading}
+          </h2>
+          <ul className="flex flex-col gap-1 text-sm">
+            <li className="flex justify-between gap-3">
+              <span>Rent in</span>
+              <span>{formatCents(pack.rental.rentCents)}</span>
+            </li>
+            <li className="flex justify-between gap-3">
+              <span>Expenses you tagged</span>
+              <span>{formatCents(pack.rental.expensesCents)}</span>
+            </li>
+            <li className="flex justify-between gap-3">
+              <span>Depreciation</span>
+              <span>{formatCents(pack.rental.depreciationCents)}</span>
+            </li>
+            <li className="flex justify-between gap-3 font-semibold">
+              <span>Net</span>
+              <span>{formatCents(pack.rental.netCents)}</span>
+            </li>
+          </ul>
+          <p className="text-xs text-zinc-500">{COPY.rentalNote}</p>
+        </section>
+      )}
+
       <section aria-labelledby="states" className={CARD}>
         <h2 id="states" className="text-xl font-semibold">
           {COPY.statesHeading}

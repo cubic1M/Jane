@@ -32,6 +32,7 @@ export const RATE_LIMITS = {
   documents: { limit: 20, windowSeconds: 60 * 60 },
   // Tax-time pack CSV downloads, per user (spec step 72).
   taxPack: { limit: 30, windowSeconds: 60 * 60 },
+  auditPack: { limit: 30, windowSeconds: 60 * 60 },
   // Messages typed to Jane in the chat, per user (spec step 84). Free questions that go
   // to Claude also count against "ask".
   chat: { limit: 60, windowSeconds: 60 * 60 },
