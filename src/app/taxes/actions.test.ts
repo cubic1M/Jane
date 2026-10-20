@@ -57,6 +57,12 @@ vi.mock("@/lib/giving", async (importOriginal) => ({
   openDonorFund: vi.fn(async () => ({ fundName: "Demo Giving Fund" })),
 }));
 
+vi.mock("@/lib/audit-records", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/audit-records")>()),
+  remindRetention: vi.fn(async () => ({ year: 2022 })),
+}));
+
+import { AuditRecordsError, remindRetention } from "@/lib/audit-records";
 import { adviceMode } from "@/lib/advice-mode";
 import { GivingError, markReceipt, openDonorFund } from "@/lib/giving";
 import { TaxPlanError, addPlanMove, dismissPlanMove } from "@/lib/tax-plan";
@@ -68,6 +74,7 @@ import { dismissSaving } from "@/lib/tax-savings";
 import { applyRefundPlan, dismissRefund } from "@/lib/tax-refund";
 import {
   documentAction,
+  recordsAction,
   givingAction,
   planAction,
   markForm,
@@ -276,5 +283,25 @@ describe("giving (spec step 168)", () => {
       message: "A donor-advised fund is only offered in demo advice mode for now.",
     });
     expect(await givingAction(null, form({ intent: "give" }))).toMatchObject({ ok: false });
+  });
+});
+
+describe("records retention (spec step 171)", () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  it("puts a reminder on the deadlines, and says what's wrong", async () => {
+    expect(await recordsAction(null, form({ year: "2022" }))).toEqual({
+      ok: true,
+      message: "A reminder about your 2022 records is on your deadlines.",
+    });
+    expect(remindRetention).toHaveBeenCalledWith("u1", 2022, { via: "page" });
+    vi.mocked(remindRetention).mockRejectedValueOnce(
+      new AuditRecordsError("That year isn't on your list."),
+    );
+    expect(await recordsAction(null, form({ year: "1999" }))).toEqual({
+      ok: false,
+      message: "That year isn't on your list.",
+    });
+    expect(await recordsAction(null, form({ year: "x" }))).toMatchObject({ ok: false });
   });
 });

@@ -101,7 +101,11 @@ export async function loadSelfEmployed(
   const setAsideGoal =
     (await db.savingsGoals.count({ where: { name: `Taxes set aside for ${year}` } })) > 0;
   const freelanceIn = freelance.reduce((s, t) => s - t.amountCents, 0);
-  const active = freelanceIn > 0 || (profile?.incomeKinds.includes("self_employed") ?? false);
+  // Spec step 173: rental profit has no tax taken out either, so it's on the quarterly plan.
+  const active =
+    freelanceIn > 0 ||
+    estimate.input.income.rentalCents > 0 ||
+    (profile?.incomeKinds.some((k) => k === "self_employed" || k === "rental") ?? false);
 
   // The tax freelance income adds, from running the estimate without it.
   const input = estimate.input;

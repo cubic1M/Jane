@@ -2,6 +2,7 @@ import type { PrismaClient } from "@/generated/prisma/client";
 import { refreshCredit } from "@/lib/credit";
 import { runDebtAutopilot } from "@/lib/debt-autopilot";
 import { runCreditBuilding } from "@/lib/credit-building";
+import { refreshTightMoney } from "@/lib/tight-money";
 import { refreshDebtPlan } from "@/lib/debt-plan";
 import { refreshLoanApplications } from "@/lib/loan-applications";
 import { refreshRefinance } from "@/lib/refinance";
@@ -23,6 +24,8 @@ export async function refreshDebts(
     ["credit score", () => refreshCredit(userId, { client, now })],
     // Spec step 175: from "Handle the safe stuff", the payment before a card's statement.
     ["statement payment", () => runCreditBuilding(userId, { client, now })],
+    // Spec step 177: the lender stand-in answers requests after a couple of days.
+    ["tight money requests", () => refreshTightMoney(userId, { client, now })],
     ["refinance rates", () => refreshRefinance(userId, { client, now })],
     // Spec step 112: loans funding, and old loans reaching zero.
     ["loan applications", () => refreshLoanApplications(userId, { client, now })],

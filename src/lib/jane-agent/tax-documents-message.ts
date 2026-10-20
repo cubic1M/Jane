@@ -99,7 +99,7 @@ export function documentsReply(view: TaxDocumentsView): Message {
     return `- ${formName(f)}: usually ready by ${shortDate(f.by)}${view.collecting ? ", I'll collect it" : ""}`;
   };
   return {
-    body: `Your tax forms for ${view.year}:\n${view.forms.map(line).join("\n")}`,
+    body: `You have ${view.forms.length} tax ${view.forms.length === 1 ? "form" : "forms"} to expect for ${view.year}.\n${view.forms.map(line).join("\n")}`,
     refs: {},
     actions: [{ id: "open", label: "See tax forms", kind: "link", href: FORMS_HREF }],
   };
