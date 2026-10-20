@@ -18,7 +18,9 @@ export type InvestmentTopic =
   | "college"
   | "hsa"
   | "company_stock"
-  | "crypto";
+  | "crypto"
+  | "cash"
+  | "steady";
 
 export type InvestmentIntent = {
   kind: "investments";
@@ -108,7 +110,17 @@ const COMPANY_STOCK =
 const CRYPTO =
   /\b(?:crypto(?:currency|currencies)?|bitcoin|btc|ether(?:eum)?|eth|solana|coinbase|crypto wallet|stablecoins?|usdc)\b/;
 
+// Spec step 162: where cash should sit.
+const CASH =
+  /\bhigh[- ]yield savings\b|\bmoney market\b|\btreasur(?:y|ies) (?:ladder|bills?)\b|\bt[- ]?bills?\b|\bwhere should i (?:keep|put|park) (?:my )?(?:cash|savings|emergency fund)\b|\b(?:is|are) my (?:cash|savings) earning\b|\bcash (?:earning|interest|done right)\b/;
+
+// Spec step 163: worry in a drop, and wanting to sell because of it.
+const STEADY =
+  /\bshould i sell (?:everything|all|my (?:stocks|investments|funds|portfolio))\b|\b(?:market|stocks?|portfolio|investments?) (?:is |are )?(?:crash\w*|tank\w*|plung\w*|down a lot|dropping|falling)\b|\bwhy (?:are|is) my (?:investments?|portfolio|stocks) down\b|\bpanic\b.*\b(?:sell|invest)\w*|\bget out of the market\b|\bsell (?:everything|it all) now\b/;
+
 export function parseInvestmentIntent(text: string): InvestmentIntent | null {
+  if (STEADY.test(text)) return { kind: "investments", topic: "steady", account: null };
+  if (CASH.test(text)) return { kind: "investments", topic: "cash", account: null };
   if (CRYPTO.test(text)) return { kind: "investments", topic: "crypto", account: null };
   if (COMPANY_STOCK.test(text))
     return { kind: "investments", topic: "company_stock", account: null };
