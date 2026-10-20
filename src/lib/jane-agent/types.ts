@@ -292,14 +292,11 @@ export const ACTION_IDS = [
   "whatif.adopt",
   "lean.start",
   "lean.not_now",
-<<<<<<< HEAD
   "suggestion.yes",
   "suggestion.no",
-=======
   "steady.pay",
   "steady.skip",
   "steady.on",
->>>>>>> claude/step-254-detectors
   "unusual.me",
   "unusual.not_me",
 ] as const;

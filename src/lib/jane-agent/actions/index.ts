@@ -153,11 +153,8 @@ import { billPay, billSkip } from "./billpay";
 import { attentionResume } from "./attention";
 import { whatIfAdopt } from "./whatif";
 import { leanNotNow, leanStart } from "./lean";
-<<<<<<< HEAD
 import { suggestionNo, suggestionYes } from "./suggestion";
-=======
 import { steadyOn, steadyPay, steadySkip } from "./steady";
->>>>>>> claude/step-254-detectors
 import { unusualMe, unusualNotMe } from "./unusual";
 import { bundleYes1, bundleYes2, bundleYes3, bundleYes4, bundleYes5 } from "./bundle";
 import { multiCancel, multiConfirm, multiUndo } from "./multi";
@@ -389,14 +386,11 @@ export const ACTION_HANDLERS: Readonly<Record<ActionId, ActionHandler>> = {
   "whatif.adopt": whatIfAdopt,
   "lean.start": leanStart,
   "lean.not_now": leanNotNow,
-<<<<<<< HEAD
   "suggestion.yes": suggestionYes,
   "suggestion.no": suggestionNo,
-=======
   "steady.pay": steadyPay,
   "steady.skip": steadySkip,
   "steady.on": steadyOn,
->>>>>>> claude/step-254-detectors
   "unusual.me": unusualMe,
   "unusual.not_me": unusualNotMe,
 };
