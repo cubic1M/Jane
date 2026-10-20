@@ -15,6 +15,7 @@ import { runBillPay } from "@/lib/money-movement/bill-pay";
 import { healthFor } from "@/lib/health-score";
 import { monthlyReportFor } from "@/lib/monthly-report";
 import { runLeanCheck } from "@/lib/lean-plan";
+import { loadYearPlan } from "@/lib/year-plan";
 import { runPlanUpkeep } from "@/lib/plan-upkeep";
 import { runTaxAutopilotSafely } from "@/lib/tax-autopilot";
 import { gather, plan, type BrainSettings } from "./brain";
@@ -76,6 +77,8 @@ export async function runJaneAgent(
       await safely("Health score", () => healthFor(userId, { client, now, input, keep: true }));
       await safely("Monthly report", () => monthlyReportFor(userId, { client, now }));
     })(),
+    // Spec step 205: the year's plan, re-planned from what happened and kept.
+    safely("Year plan", () => loadYearPlan(userId, { client, now, input, keep: true })),
     // Spec step 204: a paycheck that hasn't come in gets one question; pay back ends the plan.
     safely("Lean check", () => runLeanCheck(userId, { client, now, input })),
     // Taxes (spec steps 123–127): what Jane sets up by herself, at the person's level.

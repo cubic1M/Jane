@@ -20,6 +20,12 @@ export type MonthlyReport = {
   next: { title: string; href: string } | null;
   // The money health score now and its change since the month's own, as on /jane.
   health: { score: number; band: string; change: number | null } | null;
+  // Spec step 205: how the month went against the year's plan, and next month's targets.
+  plan?: {
+    planned: { saving: number; debt: number; investing: number };
+    did: { saving: number; debt: number; investing: number } | null;
+    nextTargets: { saving: number; debt: number; investing: number };
+  } | null;
   receipts: ReportReceipt[];
 };
 
@@ -76,6 +82,19 @@ export function reportLines(report: MonthlyReport): ReportLine[] {
               : `, ${-change} lower than last month.`
       }`,
       href: "/jane#health",
+    });
+  }
+  if (report.plan) {
+    const t = report.plan.nextTargets;
+    const planned =
+      report.plan.planned.saving + report.plan.planned.debt + report.plan.planned.investing;
+    const did = report.plan.did
+      ? report.plan.did.saving + report.plan.did.debt + report.plan.did.investing
+      : null;
+    lines.push({
+      label: "Your plan",
+      text: `${did === null ? "" : `You did ${formatCents(did)} of ${formatCents(planned)} planned. `}This month: saving ${formatCents(t.saving)}, extra debt ${formatCents(t.debt)}, investing ${formatCents(t.investing)}.`,
+      href: "/plan",
     });
   }
   lines.push({

@@ -142,6 +142,7 @@ describe.runIf(url)("data export against a real database", () => {
         moves: [],
       },
     });
+    await client.yearPlan.create({ data: { userId, startMonth: "2026-10", months: [] } });
     await client.leanPlan.create({
       data: { userId, changeKey: "late:acme:2026-10-15", employer: "Acme", dueOn: "2026-10-15" },
     });
@@ -272,6 +273,7 @@ describe.runIf(url)("data export against a real database", () => {
       "monthlyReports",
       "whatIfPlans",
       "leanPlans",
+      "yearPlans",
       "janeMessages",
       "janePreferences",
       "taxTags",
