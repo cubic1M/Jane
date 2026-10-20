@@ -141,6 +141,24 @@ describe.runIf(url)("the long view", { timeout: 120_000 }, () => {
     ).toBeNull();
   });
 
+  it("answers the typed questions by the rules, through the registry", async () => {
+    const { answerByRules } = await import("@/lib/jane-agent/answer");
+    const { parseIntent } = await import("@/lib/jane-agent/intents");
+    const whatIfAnswer = await answerByRules(
+      userId,
+      parseIntent("what if i lose my job for 4 months", "2026-10-16"),
+      { client, now: NOW },
+    );
+    expect(whatIfAnswer?.body).toMatch(/^Losing your job for 4 months: /);
+    expect(whatIfAnswer?.actions.map((a) => a.id)).toContain("whatif.adopt");
+    const longAnswer = await answerByRules(
+      userId,
+      parseIntent("where will i be in 30 years", "2026-10-16"),
+      { client, now: NOW },
+    );
+    expect(longAnswer?.body).toMatch(/in 30 years, in today's dollars\./);
+  });
+
   it("reads the typed question", () => {
     for (const text of [
       "where will i be in 30 years",

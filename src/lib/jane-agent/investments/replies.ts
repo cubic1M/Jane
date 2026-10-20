@@ -33,6 +33,8 @@ import { homeLine, paydownLine, PROPERTY_LINK, rentalLine } from "./property-cop
 import type { CostlyProductsView } from "@/lib/investments/costly-products";
 import { advisoryLine, COSTLY_LINK, productLine } from "./costly-copy";
 import { REVIEW_LINK, reviewFor } from "./review-copy";
+import type { LocationView } from "@/lib/investments/location";
+import { freeButton, LOCATION_LINK, locationLine } from "./location-copy";
 import { STEADY_LINK, steadyMessage, timelines } from "./steady-copy";
 import { CRYPTO_LINK, feeFlag, NEVER_TRADES, shareFlag, sizeLine } from "./crypto-copy";
 import {
@@ -913,5 +915,32 @@ export function yearlyReviewReply(inv: InvestmentSnapshot, year: number): Reply 
         : {}),
       ...(inv.review2.harvestKey ? { harvestKey: inv.review2.harvestKey } : {}),
     },
+  };
+}
+
+// Spec step 231: where each kind of investment sits, and the swaps (demo advice mode).
+export function locationReply(view: LocationView): Reply {
+  if (!view.advice) {
+    return {
+      body: "I don't give recommendations on real accounts yet. Your holdings by account are on the investments page.",
+      actions: [LOCATION_LINK],
+      refs: {},
+    };
+  }
+  const plan = view.plan;
+  if (!plan || plan.swaps.length === 0) {
+    return {
+      body: plan
+        ? "Your investments are already in the right accounts for tax: nothing to swap."
+        : "I need two or more investment accounts to place them across.",
+      actions: [LOCATION_LINK],
+      refs: { advice: true },
+    };
+  }
+  const button = freeButton(plan);
+  return {
+    body: locationLine(plan),
+    actions: [...(button ? [button] : []), LOCATION_LINK],
+    refs: { advice: true, ...(button ? { locationKey: plan.key } : {}) },
   };
 }

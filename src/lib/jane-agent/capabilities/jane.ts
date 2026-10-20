@@ -31,6 +31,10 @@ import { healthFor } from "@/lib/health-score";
 import { healthReply } from "../replies-health";
 import { explainFigure } from "@/lib/figures";
 import { figureReply, whichFigureReply } from "../replies-figures";
+import { whatIf } from "@/lib/what-if";
+import { loadLongView } from "@/lib/long-view";
+import { longViewReply } from "../replies-longview";
+import { whatIfReply } from "../replies-whatif";
 import { groupedHelpReply } from "../replies-help";
 import { lifeEventReply } from "../replies-life";
 import { loadSnapshot } from "../snapshot";
@@ -83,6 +87,19 @@ async function answer(ctx: CapabilityContext): Promise<Reply | null> {
       return intent.figure
         ? figureReply(await explainFigure(userId, intent.figure, { client, now }))
         : whichFigureReply();
+    // Spec step 203.
+    case "what_if":
+      return whatIfReply(
+        await whatIf(
+          userId,
+          intent.scenario,
+          { months: intent.months ?? undefined },
+          { client, now },
+        ),
+      );
+    // Spec step 209.
+    case "long_view":
+      return longViewReply(await loadLongView(userId, {}, { client, now }));
     case "health":
       return healthReply(await healthFor(userId, { client, now }));
     case "checked":

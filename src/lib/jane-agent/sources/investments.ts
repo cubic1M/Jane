@@ -62,6 +62,8 @@ import {
   productLine,
 } from "../investments/costly-copy";
 import { REVIEW_LINK, reviewFor } from "../investments/review-copy";
+import { MIN_SAVING_CENTS } from "@/config/location";
+import { freeButton, LOCATION_LINK, locationLine } from "../investments/location-copy";
 import { AUTO_LOG_LINK, summaryBody } from "../investments/automatic-copy";
 import { CASH_MIN_GAIN_CENTS } from "@/config/cash";
 import { CASH_LINK, cashLine, moveButtons } from "../investments/cash-copy";
@@ -334,6 +336,20 @@ export const investmentsSource: MessageSource = {
         actions: [{ id: "hsa.link", label: "Link a demo HSA", kind: "primary" }, snoozeButton()],
         dedupeKey: "hsa:link",
         priority: MESSAGE_PRIORITY.hsa,
+      });
+    }
+    // Step 231: the right investment in the right account, when the tax saved is worth it:
+    // the free swaps are one tap (the mix never changes); the taxed ones are on the page.
+    const loc = inv.location.plan;
+    if (inv.advice && loc && loc.savedCents >= MIN_SAVING_CENTS && loc.swaps.length > 0) {
+      const button = freeButton(loc);
+      out.push({
+        kind: button ? "decision" : "heads_up",
+        body: locationLine(loc),
+        refs: { advice: true, ...(button ? { locationKey: loc.key } : {}) },
+        actions: [...(button ? [button] : []), LOCATION_LINK, snoozeButton()],
+        dedupeKey: `location:${loc.key}`,
+        priority: MESSAGE_PRIORITY.location,
       });
     }
     // Step 216: once a year (and after a raise or a new job) one message with the whole

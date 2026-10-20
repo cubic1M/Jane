@@ -30,6 +30,8 @@ import {
 import { answerOldPlan, OldAccountsError, startRollover } from "@/lib/investments/old-accounts";
 import { contributeForChild, createGiftLink, FamilyError } from "@/lib/investments/family";
 import { answerPremium, CostlyProductError } from "@/lib/investments/costly-products";
+import { LocationError, makeSwaps } from "@/lib/investments/location";
+import { LOCATION_LINK } from "../investments/location-copy";
 import { harvestFromReview, ReviewError } from "@/lib/investments/yearly-review";
 import { REVIEW_LINK } from "../investments/review-copy";
 import { COSTLY_LINK } from "../investments/costly-copy";
@@ -551,6 +553,27 @@ export const reviewHarvest: ActionHandler = {
       };
     } catch (error) {
       if (error instanceof ReviewError) throw answeredElsewhere(error.message);
+      throw error;
+    }
+  },
+};
+
+// Spec step 231: the swaps that cost no tax, together (the mix never changes), a tap.
+export const locationFree: ActionHandler = {
+  id: "location.free",
+  on: "open",
+  async run({ userId, message, action, client, now }) {
+    const key = message.refs.locationKey;
+    if (!key) throw new ChatActionError("not_offered", "That button isn't on this message.");
+    try {
+      const r = await makeSwaps(userId, key, "free", { client, now });
+      return {
+        answeredWith: action.label,
+        note: `Done ${SIMULATED_WORDS}: ${r.swaps} ${r.swaps === 1 ? "swap" : "swaps"}, no tax, and your overall mix is unchanged.`,
+        actions: [LOCATION_LINK],
+      };
+    } catch (error) {
+      if (error instanceof LocationError) throw answeredElsewhere(error.message);
       throw error;
     }
   },

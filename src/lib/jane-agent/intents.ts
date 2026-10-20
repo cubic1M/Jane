@@ -11,6 +11,8 @@ import { parseFact } from "./remember";
 import { parseInvestmentIntent, type InvestmentIntent } from "./investments/intents";
 import { parseFigureHow, type FigureIntent } from "./figure-intents";
 import { parseSectorIntent, type SectorIntent } from "./autopilot-intents";
+import { parseLongView, type LongViewIntent } from "./long-view-intents";
+import { parseWhatIf, type WhatIfIntent } from "./what-if-intents";
 import { parseLearnIntent, type LearnIntent } from "./learn";
 
 // What the person typed to Jane, understood by rules (spec step 84). Pure: the text and
@@ -108,6 +110,9 @@ export type Intent =
   | { kind: "monthly_report" }
   // Spec step 239: "how did you get my safe to spend?"
   | FigureIntent
+  // Spec step 203: "what if I lose my job?"; step 209: "where will I be in 30 years?"
+  | WhatIfIntent
+  | LongViewIntent
   // Spec step 141: one autopilot, every sector.
   | SectorIntent
   // Spec step 136: what a word means.
@@ -509,6 +514,10 @@ export function parseIntent(
   if (CHECKED.test(text)) return { kind: "checked" };
   const figureHow = parseFigureHow(text);
   if (figureHow) return figureHow;
+  const whatIf = parseWhatIf(text);
+  if (whatIf) return whatIf;
+  const longView = parseLongView(text);
+  if (longView) return longView;
   if (WHY_DID.test(text)) return { kind: "timeline", why: true };
   if (TIMELINE.test(text)) return { kind: "timeline", why: false };
   if (WHOLE_MONTH.test(text)) return { kind: "whole_picture", focus: "month" };
