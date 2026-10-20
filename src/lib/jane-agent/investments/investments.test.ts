@@ -54,6 +54,7 @@ import {
   companyStockReply,
   cryptoReply,
   cashReply,
+  steadyReply,
 } from "./replies";
 import { gather } from "../brain";
 import { parseIntent } from "../intents";
@@ -1921,5 +1922,74 @@ describe("cashReply and the cash message", () => {
     });
     expect(gatherCash({ ...CASH_PLAN, gainCents: 4_999 })).toEqual([]);
     expect(gatherCash(CASH_PLAN, false)).toEqual([]);
+  });
+});
+
+// Spec step 163: a steady hand.
+const STEADY_DROP = { key: "1m", windowLabel: "the last month", rate: -0.1 };
+const dropPeriods = (r: number) => [
+  {
+    key: "1m" as const,
+    label: "Last month",
+    from: "",
+    to: "",
+    startCents: 0,
+    endCents: 0,
+    timeWeighted: r,
+    moneyWeighted: null,
+    benchmark: null,
+    paidInCents: 0,
+    incomeCents: 0,
+  },
+];
+
+describe("steady hand questions, by rules", () => {
+  it.each([
+    "should I sell everything",
+    "the market is crashing",
+    "why are my investments down",
+    "I want to get out of the market",
+  ])("reads %j as a steady-hand question", (text) => {
+    expect(parseIntent(text, ASOF)).toMatchObject({ kind: "investments", topic: "steady" });
+  });
+});
+
+describe("steadyReply and the drop message", () => {
+  it("answers with what changed, the goals' timelines and the plan, never a prediction", () => {
+    const reply = steadyReply({ advice: true, drop: STEADY_DROP, buckets: [] });
+    expect(reply.body).toMatch(/^Your investments are down 10\.0% over the last month/);
+    expect(reply.body).toMatch(/I can't tell you what markets will do/);
+    expect(reply.refs).toEqual({ advice: true });
+    expect(steadyReply({ advice: true, drop: null, buckets: [] }).body).toMatch(
+      /haven't had a big drop lately/,
+    );
+    expect(steadyReply({ advice: false, drop: STEADY_DROP, buckets: [] }).body).toMatch(
+      /don't give recommendations on real accounts/,
+    );
+  });
+
+  it("posts one calm message per month while a drop is on, in demo advice mode only", () => {
+    const gatherSteady = (r: number, advice = true) =>
+      investmentsSource
+        .gather(
+          {
+            ...base,
+            investments: demoInvestmentSnapshot({
+              advice,
+              returns: { asOf: ASOF, simulatedPrices: true, periods: dropPeriods(r) },
+            }),
+          },
+          {} as never,
+        )
+        .filter((c) => c.dedupeKey.startsWith("steady:"));
+    const [m] = gatherSteady(-0.1);
+    expect(m).toMatchObject({
+      kind: "heads_up",
+      dedupeKey: "steady:1m:2026-10",
+      priority: MESSAGE_PRIORITY.steady_hand,
+    });
+    expect(m.actions.map((a) => a.id)).toEqual(["open", "snooze"]);
+    expect(gatherSteady(-0.05)).toEqual([]);
+    expect(gatherSteady(-0.1, false)).toEqual([]);
   });
 });

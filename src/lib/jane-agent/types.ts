@@ -381,6 +381,8 @@ export type MessageRefs = {
   companyPlan?: string;
   // Spec step 162: the cash plan its move buttons belong to, by its key.
   cashPlan?: string;
+  // Spec step 163: the pause before a sell has been shown; the next tap sells.
+  paused?: true;
   // Spec step 97: a change Jane noticed (src/insights/changes.ts), by its key; for a
   // category's pace, the budget "Set a budget" would set (cents a month).
   change?: { key: string; kind: string; category?: string; budgetCents?: number };
