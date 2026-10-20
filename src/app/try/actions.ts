@@ -2,8 +2,10 @@
 
 import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
+import { after } from "next/server";
 import { hit, ipKey } from "@/lib/rate-limit";
-import { TrialError, startTrial } from "@/lib/trial";
+import { syncItem } from "@/lib/plaid/sync";
+import { TrialError, cleanUpTrials, startTrial } from "@/lib/trial";
 
 // "Try it with sample data" (spec step 138): a sample person with the demo bank, signed in
 // for a day with an ordinary Auth.js database session, then on to Jane's chat. Limited per
@@ -24,9 +26,10 @@ export async function tryJane(_previous: TryState, formData: FormData): Promise<
   if (!(await hit("trial", ipKey(h))).ok) {
     return { error: "Lots of people are trying Jane from here. Please try again in an hour." };
   }
-  let session: { sessionToken: string; expires: Date };
+  let session: { itemId: string; sessionToken: string; expires: Date };
   try {
-    session = await startTrial({ userAgent: h.get("user-agent") });
+    // Only the minimum before the redirect; the scan runs after the response.
+    session = await startTrial({ userAgent: h.get("user-agent"), defer: true });
   } catch (error) {
     if (error instanceof TrialError) return { error: error.message };
     throw error;
@@ -39,5 +42,15 @@ export async function tryJane(_previous: TryState, formData: FormData): Promise<
     path: "/",
     expires: session.expires,
   });
-  redirect("/chat");
+  after(async () => {
+    try {
+      await syncItem(session.itemId);
+    } catch (error) {
+      console.error("Sample person's first sync failed", { error: String(error) });
+    }
+    await cleanUpTrials().catch((error) =>
+      console.error("Cleaning up trials failed", { error: String(error) }),
+    );
+  });
+  redirect("/scanning?then=chat");
 }

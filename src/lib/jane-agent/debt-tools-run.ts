@@ -13,6 +13,7 @@ import { loadCreditBuilding } from "@/lib/credit-building";
 import { loadBnpl } from "@/lib/bnpl";
 import { loadTightMoney } from "@/lib/tight-money";
 import { loadCar } from "@/lib/car";
+import { loadHomeBuying } from "@/lib/home-buying";
 import { listApplications } from "@/lib/loan-applications";
 import { loadRefinance } from "@/lib/refinance";
 import {
@@ -32,6 +33,7 @@ import {
   bnplToolOutput,
   tightMoneyToolOutput,
   carToolOutput,
+  homeToolOutput,
 } from "./debt-tools";
 
 // Runs Claude's debt tools (./debt-tools.ts) for one person: read-only, scoped to them,
@@ -56,6 +58,19 @@ export async function runDebtTool(
       return out(debtsToolOutput(await loadDebts(userId, { client, now }), money));
     case "debt_autopilot":
       return out(debtAutopilotToolOutput(await loadDebtAutopilot(userId, { client, now }), money));
+    case "home_purchase": {
+      const price = (input as { price_cents?: unknown } | null)?.price_cents;
+      return out(
+        homeToolOutput(
+          await loadHomeBuying(
+            userId,
+            { priceCents: typeof price === "number" && price > 0 ? Math.round(price) : undefined },
+            { client, now },
+          ),
+          money,
+        ),
+      );
+    }
     case "car_purchase": {
       const i = (input ?? {}) as Record<string, unknown>;
       const num = (v: unknown) => (typeof v === "number" && v > 0 ? v : undefined);

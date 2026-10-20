@@ -1171,6 +1171,20 @@ const BASE_QUESTIONS: readonly CheckQuestion[] = [
       link: "/loans/cards",
     },
   },
+  // Spec step 179: buying a home, from saving to closing.
+  {
+    id: "debt-24",
+    text: "how much house can I afford",
+    needs: "rules",
+    expect: {
+      intent: "home_afford",
+      mentions: /28\/36/i,
+      button: "home.goal",
+      link: "/loans/home",
+      list: true,
+      maxChars: 1_600,
+    },
+  },
   // Spec step 178: buying a car, and a dealer's financing checked against preapprovals.
   {
     id: "debt-22",
