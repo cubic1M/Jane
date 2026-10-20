@@ -408,3 +408,35 @@ test("buying a car shows the all-in cost, preapprovals and a dealer check", asyn
   await expect(page.getByRole("status")).toContainText("more than the best preapproval");
   await expect(page.getByRole("region", { name: "Assumptions" })).toContainText("Income:");
 });
+
+// Spec step 179: from saving to closing, with every assumption shown and the goal started
+// only on the tap.
+test("buying a home shows the plan, its assumptions, and starts the goal on the tap", async ({
+  context,
+  page,
+  baseURL,
+}) => {
+  const user = await signedInUser("user");
+  userId = user.userId;
+  await context.addCookies([
+    { name: "authjs.session-token", value: user.sessionToken, url: baseURL ?? "" },
+  ]);
+  await page.goto("/connect");
+  await page.getByRole("button", { name: "Link a demo bank" }).click();
+  await expect(page).toHaveURL("/chat", { timeout: 60_000 });
+
+  await page.goto("/loans/home?price=400000");
+  await expect(page.getByRole("heading", { level: 1, name: "Buying a home" })).toBeVisible();
+  const costs = page.getByRole("table", { name: "Monthly cost" });
+  await expect(costs).toContainText("Mortgage insurance (PMI)");
+  await expect(page.getByRole("region", { name: "Saving for it" })).toContainText("$52,000.00");
+  await expect(page.getByRole("region", { name: "Assumptions" })).toContainText("28%");
+  const start = page.getByRole("button", { name: /^Start a \$52,000\.00 goal/ });
+  await start.scrollIntoViewIfNeeded();
+  // Keyboard, so the fixed bottom nav on phones never takes the tap.
+  await start.focus();
+  await start.press("Enter");
+  await expect(page.getByText("Started just now.")).toBeVisible();
+  await page.goto("/goals");
+  await expect(page.getByText("Home down payment")).toBeVisible();
+});
