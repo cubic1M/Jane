@@ -1,8 +1,80 @@
-// Registry capabilities that still have no detector (spec step 254), a ratchet: the list
-// only shrinks. src/detectors/detectors.test.ts fails for a capability that has no detector
-// and is not here (or in src/config/detector-exempt.ts, for those that never suggest), and
-// for one that is here and now has a detector (remove it). A new capability is never added
-// to this list: it arrives with its detector. Phase AS lanes remove their entries as they
-// add detectors.
+// Registry tools (the features Claude can look at, src/lib/jane-agent/claude-tools.ts) that no
+// detector covers yet and that are not exempt (src/config/detector-exempt.ts), a ratchet: the
+// list only shrinks (spec step 254). Each sector lane removes its tools as it adds detectors
+// with `covers: [toolName]`. src/detectors/detectors.test.ts fails for a tool that is covered
+// but still listed here, and for a tool that is not covered, not exempt and not listed. A new
+// tool is never added to this list: it arrives with its detector or an exemption.
 
-export const MISSING_DETECTOR: readonly string[] = [];
+export const MISSING_DETECTOR: readonly string[] = [
+  "debt_autopilot",
+  "credit_score",
+  "credit_building",
+  "bnpl_installments",
+  "tight_money",
+  "car_purchase",
+  "home_purchase",
+  "medical_bills",
+  "credit_report_fixes",
+  "student_long_game",
+  "family_loans",
+  "credit_goals",
+  "car_loan",
+  "debt_review",
+  "student_loans",
+  "balance_transfers",
+  "loan_applications",
+  "insurance_policies",
+  "insurance_quotes",
+  "insurance_checkup",
+  "insurance_claims",
+  "insurance_benefits",
+  "insurance_savings",
+  "insurance_negotiations",
+  "insurance_cover_changes",
+  "insurance_card_cover",
+  "insurance_documents",
+  "life_events",
+  "tax_profile",
+  "tax_tags",
+  "tax_withholding",
+  "tax_savings",
+  "tax_refunds",
+  "tax_return",
+  "tax_investments",
+  "tax_states",
+  "tax_plan",
+  "tax_giving",
+  "tax_family",
+  "tax_home",
+  "tax_records",
+  "tax_last_return",
+  "tax_notices",
+  "tax_identity",
+  "tax_equity",
+  "tax_years",
+  "tax_property",
+  "tax_accountant",
+  "tax_forms",
+  "holdings",
+  "investor_profile",
+  "investment_fees",
+  "portfolio_review",
+  "retirement_plan",
+  "rebalance_plan",
+  "auto_invest",
+  "account_plan",
+  "investments_overview",
+  "investment_returns",
+  "goal_buckets",
+  "college_plan",
+  "hsa",
+  "old_accounts",
+  "retirement_income",
+  "family_investing",
+  "property",
+  "costly_products",
+  "yearly_review",
+  "asset_location",
+  "steady_hand",
+  "crypto",
+];
