@@ -3,6 +3,7 @@
 import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { after } from "next/server";
+import { pickPerson } from "@/lib/people";
 import { hit, ipKey } from "@/lib/rate-limit";
 import { syncItem } from "@/lib/plaid/sync";
 import { TrialError, cleanUpTrials, startTrial } from "@/lib/trial";
@@ -29,7 +30,11 @@ export async function tryJane(_previous: TryState, formData: FormData): Promise<
   let session: { itemId: string; sessionToken: string; expires: Date };
   try {
     // Only the minimum before the redirect; the scan runs after the response.
-    session = await startTrial({ userAgent: h.get("user-agent"), defer: true });
+    session = await startTrial({
+      userAgent: h.get("user-agent"),
+      defer: true,
+      person: pickPerson(formData.get("person")),
+    });
   } catch (error) {
     if (error instanceof TrialError) return { error: error.message };
     throw error;
