@@ -1,4 +1,6 @@
 import type { DEBT_ACTION_IDS } from "../debt-action-ids";
+import { creditBuilderOpen, creditBuildPay } from "./credit-building";
+import { creditCardApply } from "./credit-cards";
 import { debtPlanAvalanche, debtPlanSnowball } from "./debt-plan";
 import type { ActionHandler } from "./handler";
 import { loanAccept, loanPrepare, loanSubmit, loanWithdraw } from "./loans";
@@ -19,4 +21,7 @@ export const DEBT_ACTION_HANDLERS: Readonly<
   "transfer.start": transferStart,
   "transfer.done": transferDone,
   "student.next": studentNext,
+  "credit_card.apply": creditCardApply,
+  "credit_build.pay": creditBuildPay,
+  "credit_builder.open": creditBuilderOpen,
 };

@@ -3,12 +3,11 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useId, useRef, useState } from "react";
-import { DETAIL_PAGES, DETAIL_TABS, TABS, isDetail, tabFor } from "@/config/navigation";
+import { DETAIL_TABS, TABS, isDetail, tabFor } from "@/config/navigation";
 
 // The main menu (spec step 79): a bar along the bottom on phones, a row at the top on
 // bigger screens. Spec step 86: the chat is where things happen, so the menu is Chat and a
-// "Details" menu holding Today, Jane, Money and Ahead, each with every page under it
-// (src/config/navigation.ts). The place you're on is highlighted.
+// "Details" menu with one entry per place (src/config/navigation.ts). The place you're on is highlighted.
 
 const ITEM =
   "flex min-h-14 w-full flex-col items-center justify-center gap-0.5 text-xs sm:min-h-11 sm:w-auto sm:flex-row sm:gap-1.5 sm:rounded-full sm:px-3 sm:text-sm";
@@ -58,8 +57,6 @@ export function MainNav() {
     };
   }, [open]);
 
-  const current = (href: string) => pathname === href || pathname.startsWith(`${href}/`);
-
   return (
     <nav
       ref={wrapper}
@@ -103,32 +100,25 @@ export function MainNav() {
         hidden={!open}
         className="fixed inset-x-0 bottom-[calc(3.5rem+env(safe-area-inset-bottom))] z-50 max-h-[70vh] flex-col gap-3 overflow-y-auto border-t border-zinc-200 bg-white p-3 text-sm shadow-lg [&:not([hidden])]:flex sm:absolute sm:inset-x-auto sm:top-full sm:bottom-auto sm:left-0 sm:mt-2 sm:w-96 sm:max-w-[calc(100vw-2rem)] sm:rounded-xl sm:border dark:border-zinc-800 dark:bg-zinc-900"
       >
-        {DETAIL_TABS.map((tab) => (
-          <section key={tab.key} aria-label={tab.label} className="flex flex-col">
-            <Link
-              href={tab.href}
-              aria-current={pathname === tab.href ? "page" : undefined}
-              className={`${PAGE_LINK} font-semibold ${active === tab.key ? "text-emerald-700" : ""}`}
-            >
-              <Label text={tab.label} current={pathname === tab.href} />
-            </Link>
-            {DETAIL_PAGES[tab.key].length > 0 && (
-              <ul className="flex flex-wrap gap-x-1 pl-2">
-                {DETAIL_PAGES[tab.key].map((page) => (
-                  <li key={page.href}>
-                    <Link
-                      href={page.href}
-                      aria-current={current(page.href) ? "page" : undefined}
-                      className={`${PAGE_LINK} ${current(page.href) ? "font-semibold text-emerald-700" : "text-zinc-700 dark:text-zinc-300"}`}
-                    >
-                      <Label text={page.label} current={current(page.href)} />
-                    </Link>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </section>
-        ))}
+        <ul className="flex flex-col">
+          {DETAIL_TABS.map((tab, i) => {
+            const heading = tab.group && tab.group !== DETAIL_TABS[i - 1]?.group;
+            return (
+              <li key={tab.key}>
+                {heading && (
+                  <p className="px-2 pt-2 text-xs font-medium text-zinc-500">{tab.group}</p>
+                )}
+                <Link
+                  href={tab.href}
+                  aria-current={pathname === tab.href ? "page" : undefined}
+                  className={`${PAGE_LINK} ${active === tab.key ? "font-semibold text-emerald-700" : "text-zinc-700 dark:text-zinc-300"}`}
+                >
+                  <Label text={tab.label} current={active === tab.key} />
+                </Link>
+              </li>
+            );
+          })}
+        </ul>
       </div>
     </nav>
   );

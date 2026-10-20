@@ -1072,6 +1072,55 @@ export const QUESTIONS: readonly CheckQuestion[] = [
       maxChars: 1_600,
     },
   },
+  // Spec step 174: which card for what, whether a fee pays for itself, a better card.
+  {
+    id: "debt-14",
+    text: "which card should I use for groceries",
+    needs: "rules",
+    expect: { intent: "card_for", mentions: /for groceries/i, link: "/loans/cards" },
+  },
+  {
+    id: "debt-15",
+    text: "is my annual fee worth it",
+    needs: "rules",
+    expect: { intent: "card_fee", mentions: /pay for itself/i, link: "/loans/cards" },
+  },
+  {
+    id: "debt-16",
+    text: "what's the best credit card for me",
+    needs: "rules",
+    expect: {
+      intent: "card_better",
+      mentions: /hard credit check/i,
+      button: "credit_card.apply",
+      link: "/loans/cards",
+    },
+  },
+  // Spec step 175: building credit and the labelled score simulator.
+  {
+    id: "debt-17",
+    text: "how do I build my credit",
+    needs: "rules",
+    expect: {
+      intent: "build_credit",
+      mentions: /statement closes/i,
+      link: "/loans/credit",
+      list: true,
+      maxChars: 1_000,
+    },
+  },
+  {
+    id: "debt-18",
+    text: "what would my score be if I paid off my card",
+    needs: "rules",
+    expect: {
+      intent: "credit_simulate",
+      mentions: /estimates/i,
+      link: "/loans/credit",
+      list: true,
+      maxChars: 1_200,
+    },
+  },
 
   // Outside what Jane does: brief, and never advice.
   { id: "out-1", text: "what's the weather today", needs: "claude", expect: { avoid: ADVICE } },

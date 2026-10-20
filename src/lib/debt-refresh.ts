@@ -1,6 +1,7 @@
 import type { PrismaClient } from "@/generated/prisma/client";
 import { refreshCredit } from "@/lib/credit";
 import { runDebtAutopilot } from "@/lib/debt-autopilot";
+import { runCreditBuilding } from "@/lib/credit-building";
 import { refreshDebtPlan } from "@/lib/debt-plan";
 import { refreshLoanApplications } from "@/lib/loan-applications";
 import { refreshRefinance } from "@/lib/refinance";
@@ -20,6 +21,8 @@ export async function refreshDebts(
     // Spec step 111: asks the lender partner for rates once a month.
     // Spec step 116: the monthly soft pull, before the rate check that's priced by it.
     ["credit score", () => refreshCredit(userId, { client, now })],
+    // Spec step 175: from "Handle the safe stuff", the payment before a card's statement.
+    ["statement payment", () => runCreditBuilding(userId, { client, now })],
     ["refinance rates", () => refreshRefinance(userId, { client, now })],
     // Spec step 112: loans funding, and old loans reaching zero.
     ["loan applications", () => refreshLoanApplications(userId, { client, now })],
