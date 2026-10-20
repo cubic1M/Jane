@@ -250,7 +250,7 @@ const DEBT_TROUBLE =
   /\b(?:too much debt|drowning in debt|buried in debt|overwhelmed by (?:my )?debts?|(?:can'?t|cannot|unable to) (?:keep up with|manage|handle|pay off) (?:all )?(?:my |the )?debts?|debts? (?:is |are )?(?:out of control|too (?:high|much|big))|bankruptcy|debt settlement|settle (?:my |the |some of my )?debts?|debt management plans?|debt relief|debt consolidation counsel\w*|(?:non-?profit )?credit counsel\w*|hardship (?:programs?|plans?) (?:for|on|with) (?:my )?(?:cards?|debts?|loans?)|what are my options with (?:my )?debts?)\b/;
 // Spec step 245.
 const CAR_LOAN =
-  /\b(?:gap (?:insurance|coverage|cover|waiver)|extended (?:car )?warranty|vehicle service contract|service contract|dealer add-?ons?|add-?ons? (?:in|on|to) my (?:car|auto) loan)\b|\b(?:car|auto) loan\b.*\b(?:rates? (?:fell|dropped|are down|came down)|(?:score|credit) (?:went up|improved|rose))\b/;
+  /\b(?:gap (?:insurance|coverage|cover|waiver)|(?:extended (?:car )?warranty|service contract)\b[^.]*\b(?:car|auto|loan|dealer)|\b(?:car|auto|loan|dealer)\b[^.]*\b(?:extended (?:car )?warranty|service contract)|vehicle service contract|dealer add-?ons?|add-?ons? (?:in|on|to) my (?:car|auto) loan)\b|\b(?:car|auto) loan\b.*\b(?:rates? (?:fell|dropped|are down|came down)|(?:score|credit) (?:went up|improved|rose))\b/;
 // Spec step 230.
 const DEBT_REVIEW =
   /\b(?:(?:yearly|annual|year-?end|full|quick)\s+)?(?:debt|loan|credit)s?\s+(?:review|check-?up|health ?check)\b|\breview (?:all )?(?:of )?my (?:debts?|loans?)\b|\bhow are my (?:debts?|loans?) doing\b|\bgo over my (?:debts?|loans?)\b/;
@@ -306,7 +306,7 @@ function goalFrom(text: string, asOf: string) {
   } else if (/\bnext year\b/.test(text)) months = 12;
   else {
     const m = MONTH_NAMES.findIndex((name) =>
-      new RegExp(`\\b(?:by|in|before) ${name}\\b`).test(text),
+      new RegExp(`\b(?:by|in|before) ${name}\b`).test(text),
     );
     if (m >= 0) {
       const now = Number(asOf.slice(5, 7)) - 1;
