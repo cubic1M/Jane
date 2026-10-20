@@ -385,6 +385,9 @@ export const TAX_MESSAGE_PRIORITY = {
   side_kind: 36,
   // Spec step 217: a tax notice is urgent.
   notice: 82,
+  // Spec step 218: a sign of identity theft is urgent; the IP PIN is January's.
+  identity: 83,
+  ip_pin: 48,
 } as const;
 
 // What Jane does about taxes by herself at each autopilot level (spec step 57), shown on
@@ -438,6 +441,11 @@ export const TAX_AUTOPILOT: readonly { feature: string; ask: string; auto: strin
     feature: "investments",
     ask: "I work out your gains and losses from your holdings, warn you about wash sales and, with demo advice, show losses worth harvesting and what's better held in your 401(k) or IRA.",
     auto: "I work out your gains and losses after every sync, warn you about wash sales and, with demo advice, bring up losses worth harvesting before the year ends. I never sell anything myself.",
+  },
+  {
+    feature: "identity",
+    ask: "Every January I remind you to get an IRS Identity Protection PIN. If your return is rejected because one was already filed, or a letter reads like an identity problem, I ask, and if it is I give you the steps in order and keep track of each.",
+    auto: "Every January I put getting your IRS Identity Protection PIN on your deadlines. If your return is rejected because one was already filed, or a letter reads like an identity problem, I ask, and if it is I give you the steps in order and keep track of each. The steps are yours: I never contact the IRS or a bureau.",
   },
   {
     feature: "notices",

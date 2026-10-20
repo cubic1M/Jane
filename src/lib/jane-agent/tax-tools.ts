@@ -30,6 +30,7 @@ import { loadGiving } from "@/lib/giving";
 import { loadFamilyTaxes } from "@/lib/family-taxes";
 import { NOTICE_KINDS } from "@/config/tax-notices";
 import { checkNoticeFor, listTaxNotices, noticeAmountCents } from "@/lib/tax-notices";
+import { loadIdentity } from "@/lib/tax-identity";
 import { loadSideIncome } from "@/lib/side-income";
 import { loadReturnReviews } from "@/lib/prior-return/review";
 import { loadAuditRecords } from "@/lib/audit-records";
@@ -163,6 +164,12 @@ export const TAX_TOOLS: Anthropic.Tool[] = [
     name: "tax_notices",
     description:
       "Letters from the IRS or the state the person uploaded: which notice each is (CP2000, CP14, CP501, CP503, CP504, a state notice), what it means in plain words, the amount and the date to respond or pay by, what Jane found against the person's own records (forms collected, income in their accounts, payments seen), in demo advice mode which reply that points to (agree, pay or disagree), and whether a reply is drafted or handed over. Notices not confirmed aren't used. Nothing is paid or sent without the person's tap.",
+    input_schema: noInput,
+  },
+  {
+    name: "tax_identity",
+    description:
+      "The person's tax identity protection: whether they have an IRS Identity Protection PIN for the year and whether Jane put the January reminder on their deadlines; any sign of tax identity theft Jane noticed (a rejected return, a letter that reads like one) or that they reported; and an open case's steps in order (report to the FTC, Form 14039, credit freeze, call the IRS, paper return if the e-file was rejected, IP PIN) with which are done. The steps are the person's own: Jane never contacts the IRS or a bureau.",
     input_schema: noInput,
   },
   {
@@ -663,6 +670,20 @@ export async function runTaxTool(
         }),
       );
       return out({ notices: out_ });
+    }
+    case "tax_identity": {
+      const v = await loadIdentity(userId, { client, now });
+      return out({
+        year: v.year,
+        ipPin: { have: v.havePin, reminderOnDeadlines: v.reminded, inSeason: v.season },
+        signsNoticed: v.candidates.map((c) => ({ sign: c.sign, detail: c.detail })),
+        case: v.case && {
+          sign: v.case.sign,
+          openedOn: v.case.openedOn,
+          steps: v.case.steps.map((s) => ({ step: s.title, doneOn: s.doneOn })),
+          next: v.case.next,
+        },
+      });
     }
     case "tax_forms": {
       // Spec step 166: with what Jane collected and how each checked against the accounts.

@@ -191,6 +191,12 @@ export const ACTION_IDS = [
   "tax.notice_dispute",
   "tax.notice_team",
   "tax.notice_mine",
+  // Spec step 218: the IP PIN, and the steps after a sign of tax identity theft.
+  "tax.ippin_remind",
+  "tax.ippin_have",
+  "tax.identity_open",
+  "tax.identity_not",
+  "tax.identity_step",
   // Investments (spec step 129 on): the answer buttons on an investor-profile question,
   // by position (src/config/investing.ts PROFILE_QUESTIONS).
   "invest.answer.1",
@@ -258,6 +264,8 @@ export const ACTION_IDS = [
   "whatif.adopt",
   "lean.start",
   "lean.not_now",
+  "unusual.me",
+  "unusual.not_me",
 ] as const;
 export type ActionId = (typeof ACTION_IDS)[number];
 
@@ -290,6 +298,12 @@ export type MessageRefs = {
   tightItem?: { id: string };
   // Spec step 179: the home price the down payment goal is sized for.
   homeGoal?: { priceCents: number };
+  // Spec step 180: the request "Send" sends about a medical bill.
+  medicalItem?: { id: string };
+  // Spec step 181: the letter "Send" sends about a collection or a credit report error.
+  creditFix?: { id: string };
+  // Spec step 224: the card whose lower rate "Ask" asks for.
+  cardRate?: { id: string };
   // Insurance (spec Phase X): a coverage gap by its key (GAP_KEYS), and the policy a
   // message is about.
   insuranceGap?: string;
@@ -401,6 +415,11 @@ export type MessageRefs = {
   priorReturn?: string;
   // Spec step 217: the tax notice (its id) a message is about.
   taxNotice?: string;
+  // Spec step 218: the sign of identity theft (and where Jane learned of it), and the step a
+  // message is about.
+  identitySign?: string;
+  identitySource?: string;
+  identityStep?: string;
   // Spec step 98: demo advice (src/lib/advice-mode.ts). The chat shows DEMO_ADVICE_LABEL
   // under it. Set it on every message that recommends investments, taxes, insurance or loans.
   advice?: true;

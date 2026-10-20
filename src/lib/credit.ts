@@ -32,7 +32,11 @@ export async function creditPartnerFor(
 }
 
 // What Jane sees that the score depends on.
-async function requestFor(userId: string, client: PrismaClient, now: Date): Promise<CreditRequest> {
+export async function requestFor(
+  userId: string,
+  client: PrismaClient,
+  now: Date,
+): Promise<CreditRequest> {
   const [book, lateFees] = await Promise.all([
     loadDebts(userId, { client, now }),
     scopedFor(userId, client).transactions.count({

@@ -290,3 +290,17 @@ describe("tax notices in the chat", () => {
     expect(parse(text)).toEqual({ kind: "tax", ask: "notice" });
   });
 });
+
+// Spec step 218.
+describe("tax identity in the chat", () => {
+  it.each([
+    ["how do I get an IP PIN", null],
+    ["I want to protect my tax identity", null],
+    ["someone already filed my taxes", "efile_rejected"],
+    ["my return was rejected because someone already filed", "efile_rejected"],
+    ["I got a W-2 from a company I never worked for", "unknown_form"],
+    ["I got an IRS letter about a return I didn't file", "irs_letter"],
+  ])("%s", (text, sign) => {
+    expect(parse(text)).toEqual({ kind: "tax", ask: "identity", sign });
+  });
+});

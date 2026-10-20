@@ -83,6 +83,13 @@ import {
   taxNoticePay,
   taxNoticeTeam,
 } from "./tax-notice";
+import {
+  taxIdentityNot,
+  taxIdentityOpen,
+  taxIdentityStep,
+  taxIpPinHave,
+  taxIpPinRemind,
+} from "./tax-identity";
 import { taxSideBusiness, taxSideHobby } from "./side-income";
 import { taxFundOpen, taxGivingNo, taxReceiptGot } from "./giving";
 import {
@@ -125,6 +132,7 @@ import { billPay, billSkip } from "./billpay";
 import { attentionResume } from "./attention";
 import { whatIfAdopt } from "./whatif";
 import { leanNotNow, leanStart } from "./lean";
+import { unusualMe, unusualNotMe } from "./unusual";
 import { bundleYes1, bundleYes2, bundleYes3, bundleYes4, bundleYes5 } from "./bundle";
 import { multiCancel, multiConfirm, multiUndo } from "./multi";
 import { FLOW_PICKS, flowBack, flowCancel } from "./flows";
@@ -273,6 +281,11 @@ export const ACTION_HANDLERS: Readonly<Record<ActionId, ActionHandler>> = {
   "tax.notice_dispute": taxNoticeDispute,
   "tax.notice_team": taxNoticeTeam,
   "tax.notice_mine": taxNoticeMine,
+  "tax.ippin_remind": taxIpPinRemind,
+  "tax.ippin_have": taxIpPinHave,
+  "tax.identity_open": taxIdentityOpen,
+  "tax.identity_not": taxIdentityNot,
+  "tax.identity_step": taxIdentityStep,
   "tax.records_remind": taxRecordsRemind,
   // Investments (spec step 129 on).
   "invest.answer.1": investAnswer1,
@@ -331,6 +344,8 @@ export const ACTION_HANDLERS: Readonly<Record<ActionId, ActionHandler>> = {
   "whatif.adopt": whatIfAdopt,
   "lean.start": leanStart,
   "lean.not_now": leanNotNow,
+  "unusual.me": unusualMe,
+  "unusual.not_me": unusualNotMe,
 };
 
 const MESSAGE_ID = /^[a-z0-9]{1,40}$/i;

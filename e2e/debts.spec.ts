@@ -321,7 +321,7 @@ test("building credit shows the simulator as an estimate and the statement payme
   const build = page.getByRole("region", { name: "Build your credit" });
   await expect(build).toBeVisible();
   await expect(build.getByRole("table", { name: "Score simulator" })).toBeVisible();
-  await expect(build.getByRole("note")).toContainText("not promises");
+  await expect(build.getByRole("note")).toContainText("nothing changes until you act");
   await expect(build.getByRole("group", { name: "Before the statement" })).toContainText(
     "statement closes on",
   );
@@ -439,4 +439,121 @@ test("buying a home shows the plan, its assumptions, and starts the goal on the 
   await expect(page.getByText("Started just now.")).toBeVisible();
   await page.goto("/goals");
   await expect(page.getByText("Home down payment")).toBeVisible();
+});
+
+// Spec step 180: a medical bill found in payments plus one typed in, with the letters
+// written and sent only on the tap.
+test("medical bills are found, letters are written, and a request is sent only on the tap", async ({
+  context,
+  page,
+  baseURL,
+}) => {
+  const user = await signedInUser("user");
+  userId = user.userId;
+  await context.addCookies([
+    { name: "authjs.session-token", value: user.sessionToken, url: baseURL ?? "" },
+  ]);
+  await page.goto("/connect");
+  await page.getByRole("button", { name: "Link a demo bank" }).click();
+  await expect(page).toHaveURL("/chat", { timeout: 60_000 });
+
+  await page.goto("/loans/medical");
+  await expect(page.getByRole("heading", { level: 1, name: "Medical bills" })).toBeVisible();
+  await expect(page.getByRole("list", { name: "Bills" })).toContainText("$180.00");
+
+  await page.getByLabel("From").fill("Mercy Hospital");
+  await page.getByLabel("Amount").fill("2400");
+  await page.getByLabel("Date on the bill").fill("2026-09-01");
+  await page.getByRole("button", { name: "Add this bill" }).press("Enter");
+  await expect(page.getByText("Added.")).toBeVisible();
+  const mercy = page.getByRole("list", { name: "Requests for Mercy Hospital" });
+  await expect(mercy).toContainText("financial assistance");
+  await expect(mercy).toContainText("no interest");
+
+  const send = mercy.getByRole("button", { name: "Send this request" }).first();
+  await send.scrollIntoViewIfNeeded();
+  // Keyboard, so the fixed bottom nav on phones never takes the tap.
+  await send.focus();
+  await send.press("Enter");
+  await expect(page.getByText("Sent just now.")).toBeVisible();
+  await expect(mercy).toContainText("Sent, answer in about 2 days");
+});
+
+// Spec step 181: a collection and an error found on the stand-in report, with letters citing
+// the rule and deadline, sent only on the tap.
+test("report fixes show the letters with their rules, and a letter is sent only on the tap", async ({
+  context,
+  page,
+  baseURL,
+}) => {
+  const user = await signedInUser("user");
+  userId = user.userId;
+  await context.addCookies([
+    { name: "authjs.session-token", value: user.sessionToken, url: baseURL ?? "" },
+  ]);
+  await page.goto("/connect");
+  await page.getByRole("button", { name: "Link a demo bank" }).click();
+  await expect(page).toHaveURL("/chat", { timeout: 60_000 });
+
+  await page.goto("/loans/report");
+  await expect(
+    page.getByRole("heading", { level: 1, name: "Fix your credit report" }),
+  ).toBeVisible();
+  await expect(page.getByRole("note").filter({ hasText: "stand-in report" })).toBeVisible();
+  const items = page.getByRole("list", { name: "Items" });
+  await expect(items).toContainText("Northstar Recovery");
+  await expect(items).toContainText("Fair Debt Collection Practices Act");
+  await expect(items).toContainText("Fair Credit Reporting Act");
+  await expect(items).toContainText("The last day to ask is");
+
+  const letters = page.getByRole("list", { name: "Letters for Northstar Recovery" });
+  const send = letters.getByRole("button", { name: "Send this letter" }).first();
+  await send.scrollIntoViewIfNeeded();
+  // Keyboard, so the fixed bottom nav on phones never takes the tap.
+  await send.focus();
+  await send.press("Enter");
+  await expect(page.getByText("Sent just now.")).toBeVisible();
+  await expect(letters).toContainText("answer due by");
+  await page.goto("/deadlines");
+  await expect(page.getByText("Collector's validation due: Northstar Recovery")).toBeVisible();
+});
+
+// Spec step 224: card interest, a 0% promotion off pace, and a request for a lower rate sent
+// only on the tap.
+test("card interest shows the cost, a promotion off pace, and a request sent on the tap", async ({
+  context,
+  page,
+  baseURL,
+}) => {
+  const user = await signedInUser("user");
+  userId = user.userId;
+  await context.addCookies([
+    { name: "authjs.session-token", value: user.sessionToken, url: baseURL ?? "" },
+  ]);
+  await page.goto("/connect");
+  await page.getByRole("button", { name: "Link a demo bank" }).click();
+  await expect(page).toHaveURL("/chat", { timeout: 60_000 });
+
+  await page.goto("/loans/interest");
+  await expect(page.getByRole("heading", { level: 1, name: "Less card interest" })).toBeVisible();
+  const cards = page.getByRole("list", { name: "Cards" });
+  await expect(cards).toContainText("$2,410.50 at 22.99%");
+  await expect(cards).toContainText("a year in interest");
+
+  await page.getByLabel("Card", { exact: true }).fill("Home Goods Store Card");
+  await page.getByLabel("Left to clear").fill("5000");
+  await page.getByLabel("Rate after the promotion %").fill("26.99");
+  await page.getByLabel("Started").fill("2026-06-01");
+  await page.getByLabel("Ends").fill("2099-02-01");
+  await page.getByRole("button", { name: "Add this promotion" }).press("Enter");
+  await expect(page.getByText("Promotion added.")).toBeVisible();
+  await expect(page.getByRole("list", { name: "Promotions" })).toContainText("0% ends on");
+
+  const send = page.getByRole("button", { name: "Send this request" }).first();
+  await send.scrollIntoViewIfNeeded();
+  // Keyboard, so the fixed bottom nav on phones never takes the tap.
+  await send.focus();
+  await send.press("Enter");
+  await expect(page.getByText("Sent just now.")).toBeVisible();
+  await expect(cards).toContainText("Asked");
 });
