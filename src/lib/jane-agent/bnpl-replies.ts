@@ -1,8 +1,9 @@
 import { BNPL_EARLY_PAYOFF_SOURCE } from "@/config/bnpl";
 import { LOW_BALANCE_CUSHION_CENTS } from "@/config/detection";
-import { warnNewPlan, type Bnpl } from "@/lib/bnpl";
+import type { Bnpl } from "@/lib/bnpl";
 import { dayLabel } from "@/lib/day-label";
 import { formatCents } from "@/lib/money";
+import { warnNewPlan } from "@/planning/bnpl";
 import type { Reply } from "./replies";
 import type { MessageAction } from "./types";
 

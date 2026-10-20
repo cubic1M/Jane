@@ -1,4 +1,4 @@
-import { NEW_PLAN_EVERY_DAYS, NEW_PLAN_INSTALLMENTS, PAYOFF_CUSHION_CENTS } from "@/config/bnpl";
+import { PAYOFF_CUSHION_CENTS } from "@/config/bnpl";
 import { FORECAST_DAYS } from "@/config/detection";
 import { loadDetectionInput } from "@/detection/engine";
 import { forecastAccounts, upcomingBills } from "@/detection/forecast";
@@ -16,11 +16,10 @@ import {
   addDays,
   freePayoff,
   installments,
-  newPlanStrain,
   notInForecast,
+  warnNewPlan,
   type Installment,
   type PlanSchedule,
-  type Strain,
 } from "@/planning/bnpl";
 
 // Buy now, pay later under control (spec step 176). Every plan with its next installments
@@ -140,16 +139,9 @@ export async function loadBnpl(
   };
 }
 
-// "Can I afford a $300 Klarna plan?": a new Pay in 4 plan against the checking forecast.
-export function warnNewPlan(data: Bnpl, totalCents: number): Strain | null {
-  // The forecast already counts the installments of plans the person has.
-  return newPlanStrain(data.forecastDays, {
-    totalCents,
-    installments: NEW_PLAN_INSTALLMENTS,
-    everyDays: NEW_PLAN_EVERY_DAYS,
-    firstDate: data.asOf,
-  });
-}
+// "Can I afford a $300 Klarna plan?": a new Pay in 4 plan against the checking forecast
+// (pure, in src/planning/bnpl.ts, so chat replies can use it without the database).
+export { warnNewPlan };
 
 // The person tapped Pay it off: the plan's balance, through the money-movement stand-in.
 export async function payOffPlan(

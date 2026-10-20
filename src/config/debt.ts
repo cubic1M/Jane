@@ -98,9 +98,9 @@ export const DEBT_MESSAGE_PRIORITY = {
   statement_paid: 51,
   credit_streak: 30,
   credit_builder: 29,
-  // Spec step 176: installments before payday that the forecast missed are time-sensitive;
-  // a free early payoff can wait.
-  bnpl_due: 74,
+  // Spec step 176: installments before payday that the forecast missed come just under the
+  // findings (60), so a first day still shows them; a free early payoff can wait.
+  bnpl_due: 58,
   bnpl_payoff: 31,
   // Spec step 177: a plan for a tight month is time-sensitive; a lender's answer follows.
   tight_plan: 88,

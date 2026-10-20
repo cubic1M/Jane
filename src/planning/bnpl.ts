@@ -1,4 +1,9 @@
-import { INSTALLMENT_MATCH_CENTS, INSTALLMENT_MATCH_DAYS } from "@/config/bnpl";
+import {
+  INSTALLMENT_MATCH_CENTS,
+  INSTALLMENT_MATCH_DAYS,
+  NEW_PLAN_EVERY_DAYS,
+  NEW_PLAN_INSTALLMENTS,
+} from "@/config/bnpl";
 import { LOW_BALANCE_CUSHION_CENTS } from "@/config/detection";
 
 // Buy now, pay later under control (spec step 176). Pure: each plan's next installments
@@ -104,6 +109,20 @@ export function newPlanStrain(
     shortCents: short,
     installments: list,
   };
+}
+
+// A new Pay in 4 plan of `totalCents` against the checking forecast's days, the first
+// payment today.
+export function warnNewPlan(
+  data: { forecastDays: readonly { date: string; balanceCents: number }[]; asOf: string },
+  totalCents: number,
+): Strain | null {
+  return newPlanStrain(data.forecastDays, {
+    totalCents,
+    installments: NEW_PLAN_INSTALLMENTS,
+    everyDays: NEW_PLAN_EVERY_DAYS,
+    firstDate: data.asOf,
+  });
 }
 
 // Whether paying a plan off now is free: a Pay in 4 plan charges no interest or fee, so
