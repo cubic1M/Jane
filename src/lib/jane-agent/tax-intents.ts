@@ -64,7 +64,9 @@ export type TaxIntent =
   // Spec step 173.
   | { kind: "tax"; ask: "side_income" }
   // Spec step 217.
-  | { kind: "tax"; ask: "notice" };
+  | { kind: "tax"; ask: "notice" }
+  // Spec step 218: a sign of identity theft, or the IP PIN.
+  | { kind: "tax"; ask: "identity"; sign: "efile_rejected" | "unknown_form" | "irs_letter" | null };
 
 const NUMBER_WORDS: Readonly<Record<string, number>> = {
   no: 0,
@@ -198,6 +200,14 @@ const SIDE_INCOME =
   /\brental (?:income|property|properties|expenses?|taxes|losses?)\b|\b(?:my )?(?:airbnb|rental)\b.*\btax(?:es)?\b|\bdepreciat(?:e|ion)\b|\b(?:gig|side|freelance) (?:income|hustle|work|gig)\b.*\b(?:tax|1099|hobby|business)\b|\bhobby (?:or|vs\.?|versus) business\b|\bis (?:my|this) (?:side )?(?:gig|income|hustle) a (?:hobby|business)\b|\bplatform (?:payouts?|1099)\b|\b1099-?k\b|\bpassive loss\b/;
 const NOTICE_ASK =
   /\b(?:irs|tax|state tax|franchise tax board) (?:notice|letter)\b|\b(?:notice|letter) from the (?:irs|state|franchise tax board|department of revenue)\b|\bcp2000\b|\bcp14\b|\bcp501\b|\bcp503\b|\bcp504\b|\bthe irs (?:sent|says|wrote)\b|\bgot a (?:scary )?(?:letter|notice) (?:about|from)\b.*\b(?:tax|irs)/;
+const IDENTITY_REJECTED =
+  /\b(?:return|e-?file|filing) (?:was |got |has been )?rejected\b.*\b(?:already|duplicate|someone)\b|\b(?:someone|somebody) (?:already )?(?:filed|used)\b.*\b(?:my|taxes|return|social)\b|\balready (?:been )?filed (?:a return )?(?:for me|with my|under my)\b/;
+const IDENTITY_FORM =
+  /\b(?:w-?2|1099)\b.*\b(?:don'?t|do not|never) (?:know|recogni[sz]e|worked)\b|\b(?:w-?2|1099) from (?:a |an )?(?:company|employer|payer) (?:i|that i) (?:don'?t|never|didn'?t)\b|\bunknown (?:employer|payer)\b/;
+const IDENTITY_LETTER =
+  /\b(?:irs|tax) (?:letter|notice)\b.*\b(?:return|refund) (?:i|that i) (?:didn'?t|did not|never) file\b|\bletter about a return i (?:didn'?t|did not|never) file\b/;
+const IDENTITY_ASK =
+  /\bip pin\b|\bidentity protection pin\b|\btax identity theft\b|\bidentity theft\b.*\b(?:tax|irs|return)\b|\b(?:tax|irs|return)\b.*\bidentity theft\b|\bform 14039\b|\bprotect my (?:tax )?identity\b|\bstolen (?:social security|ssn)\b.*\b(?:tax|irs)\b/;
 const PACK = /\btax(?:-| )?time pack\b|\btax pack\b|\byear-end pack\b/;
 
 function stateCode(words: string): string | null {
@@ -208,6 +218,10 @@ function stateCode(words: string): string | null {
 
 export function parseTaxIntent(text: string): TaxIntent | null {
   if (FAMILY_ASK.test(text)) return { kind: "tax", ask: "family" };
+  if (IDENTITY_REJECTED.test(text)) return { kind: "tax", ask: "identity", sign: "efile_rejected" };
+  if (IDENTITY_FORM.test(text)) return { kind: "tax", ask: "identity", sign: "unknown_form" };
+  if (IDENTITY_LETTER.test(text)) return { kind: "tax", ask: "identity", sign: "irs_letter" };
+  if (IDENTITY_ASK.test(text)) return { kind: "tax", ask: "identity", sign: null };
   if (NOTICE_ASK.test(text)) return { kind: "tax", ask: "notice" };
   if (!/^(?:tag|untag) /.test(text) && SIDE_INCOME.test(text))
     return { kind: "tax", ask: "side_income" };

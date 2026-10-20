@@ -18,6 +18,7 @@ import { planMoveMessage } from "../tax-plan-message";
 import { givingOptionsMessage, receiptMessage } from "../giving-message";
 import { familyChoiceMessage, statusOf } from "../family-taxes-message";
 import { worthSaying } from "@/planning/family-taxes";
+import { caseMessage, ipPinMessage, signMessage } from "../tax-identity-message";
 import {
   noticeDraftMessage,
   noticeOpenMessage,
@@ -374,6 +375,37 @@ export const taxesSource: MessageSource = {
         dedupeKey: `family:${family!.year}:${c.key}`,
         priority: TAX_MESSAGE_PRIORITY.family,
       });
+    }
+
+    // Spec step 218: the IP PIN in January (already on the deadlines at the levels that let
+    // Jane act); a sign of identity theft she noticed; and an open case's next step.
+    const identity = tax.identity;
+    if (identity) {
+      if (identity.season && !identity.havePin) {
+        out.push({
+          kind: acts && identity.reminded ? "done" : "decision",
+          ...ipPinMessage(identity, acts && identity.reminded),
+          dedupeKey: `ippin:${identity.year}`,
+          priority: TAX_MESSAGE_PRIORITY.ip_pin,
+        });
+      }
+      for (const c of identity.candidates) {
+        out.push({
+          kind: "decision",
+          ...signMessage(c),
+          dedupeKey: `identity-sign:${c.key}`,
+          priority: TAX_MESSAGE_PRIORITY.identity,
+        });
+      }
+      const step = caseMessage(identity);
+      if (step) {
+        out.push({
+          kind: "decision",
+          ...step,
+          dedupeKey: `identity-step:${identity.case!.id}:${identity.case!.next}`,
+          priority: TAX_MESSAGE_PRIORITY.identity,
+        });
+      }
     }
 
     // Spec step 217: tax notices. Urgent: a notice to confirm, then one to answer (again

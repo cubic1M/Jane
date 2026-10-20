@@ -110,6 +110,19 @@ async function TaxesContent() {
         advice={advice}
       />
       <SavingsSection view={await loadTaxSavings(user.id, { now, loaded: { estimate, advice } })} />
+      <section aria-labelledby="identity-heading" id="identity" className={CARD}>
+        <h2 id="identity-heading" className="text-xl font-semibold">
+          Your tax identity
+        </h2>
+        <p className="text-sm text-zinc-600 dark:text-zinc-400">
+          An IRS Identity Protection PIN keeps anyone else from filing with your Social Security
+          number. If a sign of theft shows up, Jane gives you the steps in order.
+        </p>
+        <Link href="/taxes/identity" className={LINK}>
+          Protect my tax identity
+        </Link>
+      </section>
+
       <section aria-labelledby="letters-heading" id="letters" className={CARD}>
         <h2 id="letters-heading" className="text-xl font-semibold">
           Letters from the IRS or your state

@@ -7,7 +7,15 @@
 // /understanding-your-cp504-notice; each state's tax agency (src/config/tax-states.ts).
 
 export type NoticeKind =
-  "CP2000" | "CP14" | "CP501" | "CP503" | "CP504" | "STATE_PROPOSED" | "STATE_BALANCE" | "OTHER";
+  | "ID_VERIFY"
+  | "CP2000"
+  | "CP14"
+  | "CP501"
+  | "CP503"
+  | "CP504"
+  | "STATE_PROPOSED"
+  | "STATE_BALANCE"
+  | "OTHER";
 
 export const NOTICE_KINDS: Readonly<
   Record<
@@ -88,6 +96,15 @@ export const NOTICE_KINDS: Readonly<
     amount: "owed",
     responses: ["pay", "dispute"],
     source: "Your state's tax agency (see Taxes, state sources)",
+  },
+  ID_VERIFY: {
+    title: "Identity verification letter (5071C, 4883C, 6331C)",
+    issuer: "irs",
+    what: "The IRS holds a return until you confirm it's yours. If you did file it, verify your identity online or by phone; if you didn't, someone may have used your number.",
+    days: 30,
+    amount: "none",
+    responses: ["dispute"],
+    source: "https://www.irs.gov/identity-theft-fraud-scams/understanding-your-letter-5071c",
   },
   OTHER: {
     title: "A tax notice",

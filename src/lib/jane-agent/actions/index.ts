@@ -83,6 +83,13 @@ import {
   taxNoticePay,
   taxNoticeTeam,
 } from "./tax-notice";
+import {
+  taxIdentityNot,
+  taxIdentityOpen,
+  taxIdentityStep,
+  taxIpPinHave,
+  taxIpPinRemind,
+} from "./tax-identity";
 import { taxSideBusiness, taxSideHobby } from "./side-income";
 import { taxFundOpen, taxGivingNo, taxReceiptGot } from "./giving";
 import {
@@ -268,6 +275,11 @@ export const ACTION_HANDLERS: Readonly<Record<ActionId, ActionHandler>> = {
   "tax.notice_dispute": taxNoticeDispute,
   "tax.notice_team": taxNoticeTeam,
   "tax.notice_mine": taxNoticeMine,
+  "tax.ippin_remind": taxIpPinRemind,
+  "tax.ippin_have": taxIpPinHave,
+  "tax.identity_open": taxIdentityOpen,
+  "tax.identity_not": taxIdentityNot,
+  "tax.identity_step": taxIdentityStep,
   "tax.records_remind": taxRecordsRemind,
   // Investments (spec step 129 on).
   "invest.answer.1": investAnswer1,

@@ -806,6 +806,12 @@ const BASE_QUESTIONS: readonly CheckQuestion[] = [
     needs: "rules",
     expect: { intent: "tax", mentions: /letter from the IRS|tax notice/i },
   },
+  {
+    id: "tax-26",
+    text: "how do I get an IP PIN",
+    needs: "rules",
+    expect: { intent: "tax", mentions: /Identity Protection PIN/ },
+  },
 
   // Insurance (spec step 108), over the demo bank's sample GEICO car policy
   // (DEMO_POLICY in src/lib/insurance/profile.ts: $142.00 a month, a $1,000.00 deductible).
