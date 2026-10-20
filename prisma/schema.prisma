@@ -367,6 +367,7 @@ model User {
   paycheckPlans     PaycheckPlan[]
   healthScores      HealthScore[]
   monthlyReports    MonthlyReport[]
+  whatIfPlans       WhatIfPlan[]
 
   @@map("users")
 }
@@ -3032,4 +3033,24 @@ model MonthlyReport {
 
   @@unique([userId, month])
   @@map("monthly_reports")
+}
+
+// A what-if plan the person adopted (spec step 203): the scenario, its assumptions and the
+// changes Jane proposed, which show up among the next best things until they're done.
+model WhatIfPlan {
+  id        String   @id @default(cuid())
+  userId    String   @map("user_id")
+  scenario  String
+  params    Json
+  // [{ key, title, detail }].
+  changes   Json
+  // adopted, then done or dropped.
+  status    String   @default("adopted")
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, status])
+  @@map("what_if_plans")
 }

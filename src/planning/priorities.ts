@@ -9,7 +9,7 @@ import { formatCents } from "@/lib/money";
 // The next best thing to do (spec step 143). Pure: candidates in, ranked with their scores
 // and the reason each sits where it does. Weights in src/config/priorities.ts.
 
-export type PriorityKind = "finding" | "offer" | "task" | "deadline";
+export type PriorityKind = "finding" | "offer" | "task" | "deadline" | "plan";
 
 export type PriorityItem = {
   key: string;
