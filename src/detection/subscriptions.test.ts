@@ -81,3 +81,64 @@ describe("renews_soon", () => {
     expect(run(monthly)).toEqual([]);
   });
 });
+
+// Spec step 263 (QA sweep): Jo's "State Dept of Revenue renews" was a tax payment.
+describe("renews_soon and taxes", () => {
+  const yearlyPayee = (
+    merchantName: string,
+    pfcPrimary: string,
+    pfcDetailed: string,
+  ): DetectionInput =>
+    input({
+      recurringStreams: [
+        plaidStream({
+          accountId: CARD.id,
+          plaidStreamId: merchantName,
+          merchantName,
+          frequency: "ANNUALLY",
+          lastAmountCents: 119_200,
+          averageAmountCents: 119_200,
+          lastDate: "2025-10-20",
+          pfcPrimary,
+          pfcDetailed,
+        }),
+      ],
+    });
+  const run = (data: DetectionInput) => renewalAlerts(data, buildStreams(data));
+
+  it("never calls a tax or government payment a renewal, by category or by name", () => {
+    expect(
+      run(
+        yearlyPayee(
+          "State Dept of Revenue",
+          "GOVERNMENT_AND_NON_PROFIT",
+          "GOVERNMENT_AND_NON_PROFIT_TAX_PAYMENT",
+        ),
+      ),
+    ).toEqual([]);
+    expect(
+      run(
+        yearlyPayee(
+          "State Dept of Revenue",
+          "GENERAL_SERVICES",
+          "GENERAL_SERVICES_OTHER_GENERAL_SERVICES",
+        ),
+      ),
+    ).toEqual([]);
+    expect(
+      run(
+        yearlyPayee(
+          "IRS USATAXPYMT",
+          "GENERAL_SERVICES",
+          "GENERAL_SERVICES_OTHER_GENERAL_SERVICES",
+        ),
+      ),
+    ).toEqual([]);
+  });
+
+  it("still alerts for a real yearly subscription", () => {
+    expect(
+      run(yearlyPayee("Cloudbox", "GENERAL_SERVICES", "GENERAL_SERVICES_STORAGE")),
+    ).toHaveLength(1);
+  });
+});

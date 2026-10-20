@@ -5,7 +5,7 @@ vi.mock("@/lib/session", () => ({ requireUser: vi.fn() }));
 import { PEOPLE } from "@/config/people";
 import { buildProfile, type ProfileInput } from "@/profile/build";
 import { inputFor } from "@/profile/sample";
-import { runDetectors } from "./index";
+import { DETECTORS, runDetectors } from "./index";
 import { SPENDING_DETECTORS } from "./spending";
 
 // Spec step 263: spending, bills and cash detectors, on the eight sample people and on made-up
@@ -198,5 +198,69 @@ describe("a category running over", () => {
         ),
       ),
     ).not.toContain("budget_overrun");
+  });
+});
+
+// Spec step 263 (QA sweep): the old spending rules, held to the person.
+describe("fees and the emergency fund, for the people the QA sweep named", () => {
+  const all = (id: string, change: (d: ProfileInput) => ProfileInput = (d) => d) => {
+    const data = change(inputFor(id));
+    return runDetectors({ profile: buildProfile(data), data }, DETECTORS);
+  };
+  const find = (list: ReturnType<typeof all>, topic: string) => list.find((s) => s.topic === topic);
+
+  it("never calls Jo's Square processing fees bank fees", () => {
+    const asFees =
+      (description: string) =>
+      (d: ProfileInput): ProfileInput => ({
+        ...d,
+        transactions: [
+          ...d.transactions.filter((x) => !/SQUARE/.test(x.description)),
+          ...["2026-03", "2026-04", "2026-05", "2026-06"].map((m) =>
+            t(`${m}-05`, 22_000, description, "BANK_FEES_ATM_FEES"),
+          ),
+        ],
+      });
+    expect(find(all("owner", asFees("SQUARE PROCESSING FEES")), "bank_fees")).toBeUndefined();
+    // The same lines from a bank are fees.
+    expect(find(all("owner", asFees("ATM FEE")), "bank_fees")).toBeDefined();
+  });
+
+  it("suggests a small starter buffer for Chris, who is overdrawn, not three months", () => {
+    const s = find(all("debt"), "emergency_fund")!;
+    expect(s.title).toMatch(/starter buffer/i);
+    expect(s.worthCents).toBeLessThanOrEqual(100_000);
+    expect(s.why).toContain("debt plan");
+  });
+
+  it("suggests six months for Sam, whose income moves around, and three for Maya", () => {
+    const sam = find(
+      all("freelancer", (d) => ({
+        ...d,
+        accounts: d.accounts.map((a) => ({ ...a, balanceCents: 0 })),
+      })),
+      "emergency_fund",
+    )!;
+    const maya = find(
+      all("renter", (d) => ({
+        ...d,
+        accounts: d.accounts.map((a) => ({ ...a, balanceCents: 0 })),
+      })),
+      "emergency_fund",
+    )!;
+    expect(sam.why).toContain("6 months");
+    expect(maya.why).toContain("3 months");
+  });
+
+  it("suggests nothing for Ruth even with no cash, since her pension covers her spending", () => {
+    expect(
+      find(
+        all("retiree", (d) => ({
+          ...d,
+          accounts: d.accounts.map((a) => ({ ...a, balanceCents: 0 })),
+        })),
+        "emergency_fund",
+      ),
+    ).toBeUndefined();
   });
 });
