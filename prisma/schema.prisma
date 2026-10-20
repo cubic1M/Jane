@@ -295,6 +295,7 @@ model User {
   creditReports          CreditReport[]
   debtWatch              DebtWatch?
   cardApplications       CardApplication[]
+  tightRequests          TightRequest[]
   balanceTransfers       BalanceTransfer[]
   findings               Finding[]
   decisions              Decision[]
@@ -366,6 +367,7 @@ model User {
   paycheckPlans     PaycheckPlan[]
   healthScores      HealthScore[]
   monthlyReports    MonthlyReport[]
+  whatIfPlans       WhatIfPlan[]
 
   @@map("users")
 }
@@ -823,6 +825,32 @@ model CardApplication {
 
   @@index([userId])
   @@map("card_applications")
+}
+
+// A request Jane sent for someone whose money is tight (spec step 177), each only after the
+// person's tap: a due-date move, a hardship program, a lower rate or a late fee waived. The
+// lender stand-in answers it.
+model TightRequest {
+  id          String    @id @default(cuid())
+  userId      String    @map("user_id")
+  // "<kind>:<debt key>:<the shortfall's date>", so one is sent once for each shortfall.
+  key         String
+  kind        String
+  targetKey   String    @map("target_key")
+  targetName  String    @map("target_name")
+  body        String
+  // sent, granted or declined.
+  status      String
+  partner     String
+  shortfallOn DateTime  @map("shortfall_on") @db.Date
+  sentAt      DateTime  @default(now()) @map("sent_at") @db.Timestamptz(3)
+  resolvedAt  DateTime? @map("resolved_at") @db.Timestamptz(3)
+  outcome     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, key])
+  @@map("tight_requests")
 }
 
 // A balance transfer the person made to a 0% card (spec step 113), so Jane can keep the
@@ -3005,4 +3033,24 @@ model MonthlyReport {
 
   @@unique([userId, month])
   @@map("monthly_reports")
+}
+
+// A what-if plan the person adopted (spec step 203): the scenario, its assumptions and the
+// changes Jane proposed, which show up among the next best things until they're done.
+model WhatIfPlan {
+  id        String   @id @default(cuid())
+  userId    String   @map("user_id")
+  scenario  String
+  params    Json
+  // [{ key, title, detail }].
+  changes   Json
+  // adopted, then done or dropped.
+  status    String   @default("adopted")
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, status])
+  @@map("what_if_plans")
 }

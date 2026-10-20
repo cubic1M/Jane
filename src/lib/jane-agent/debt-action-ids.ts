@@ -20,4 +20,8 @@ export const DEBT_ACTION_IDS = [
   // Spec step 175: pay before a card's statement closes; open a credit-builder stand-in.
   "credit_build.pay",
   "credit_builder.open",
+  // Spec step 176: pay a buy now, pay later plan off early when that's free.
+  "bnpl.payoff",
+  // Spec step 177: send one prepared request when money is tight.
+  "tight.send",
 ] as const;

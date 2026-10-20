@@ -240,6 +240,7 @@ export const ACTION_IDS = [
   "bill.pay",
   "bill.skip",
   "attention.resume",
+  "whatif.adopt",
 ] as const;
 export type ActionId = (typeof ACTION_IDS)[number];
 
@@ -266,6 +267,10 @@ export type MessageRefs = {
   // credit-builder stand-in to open.
   creditStatement?: { accountId: string; closesOn: string };
   creditBuilder?: { productId: string };
+  // Spec step 176: the buy now, pay later plan "Pay it off" pays.
+  bnplPlan?: { key: string };
+  // Spec step 177: the request "Send" sends when money is tight.
+  tightItem?: { id: string };
   // Insurance (spec Phase X): a coverage gap by its key (GAP_KEYS), and the policy a
   // message is about.
   insuranceGap?: string;
@@ -408,6 +413,8 @@ export type MessageRefs = {
   billKey?: string;
   // Spec step 147: a kind of message Jane stopped bringing up, by its source.
   attentionSource?: string;
+  // Spec step 203: the what-if a message offers to adopt.
+  whatIf?: { scenario: string; months: number; extraMonthlyCents: number };
   // Spec step 141: a sector's autopilot change typed in the chat, set on "Set it".
   sectorChange?: {
     sector: string;

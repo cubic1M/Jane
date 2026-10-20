@@ -148,6 +148,53 @@ describe("debt questions", () => {
     }
   });
 
+  it("reads buy now, pay later questions: what's coming, and whether a new plan fits", () => {
+    for (const text of [
+      "what buy now pay later payments do I have coming",
+      "my klarna installments",
+      "when is my next affirm payment due",
+    ]) {
+      expect(intent(text), text).toEqual({ kind: "bnpl" });
+    }
+    expect(intent("can I afford a $300 Klarna plan")).toEqual({
+      kind: "bnpl_new",
+      totalCents: 30_000,
+    });
+    expect(intent("should I start an affirm plan")).toEqual({ kind: "bnpl_new", totalCents: null });
+  });
+
+  it("reads buying a car: what's affordable, preapprovals, and a dealer's offer", () => {
+    expect(intent("how much car can I afford")).toEqual({ kind: "car_afford", priceCents: null });
+    expect(intent("can I afford a $30,000 car")).toEqual({
+      kind: "car_afford",
+      priceCents: 3_000_000,
+    });
+    expect(intent("compare car loan preapproval offers")).toEqual({
+      kind: "car_afford",
+      priceCents: null,
+    });
+    expect(intent("the dealer offered 7.9% for 72 months on $28,000")).toEqual({
+      kind: "car_dealer",
+      aprBps: 790,
+      termMonths: 72,
+      priceCents: 2_800_000,
+    });
+    // Debt questions about a car already owned stay debt questions.
+    expect(intent("how much do I owe on my car")).toEqual({ kind: "debt_detail", target: "car" });
+  });
+
+  it("reads a tight month", () => {
+    for (const text of [
+      "money is tight this month",
+      "I'm short on money",
+      "I'm struggling with my bills",
+      "I can't afford my rent",
+      "hardship help",
+    ]) {
+      expect(intent(text), text).toEqual({ kind: "tight_money" });
+    }
+  });
+
   it("reads building credit, and the score simulator", () => {
     for (const text of [
       "how do I improve my credit",

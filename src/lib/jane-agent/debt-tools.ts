@@ -11,6 +11,10 @@ import type { Mortgage } from "@/lib/mortgage";
 import type { Credit } from "@/lib/credit";
 import type { CreditCards } from "@/lib/credit-cards";
 import type { CreditBuilding } from "@/lib/credit-building";
+import type { Bnpl } from "@/lib/bnpl";
+import { warnNewPlan } from "@/planning/bnpl";
+import type { TightMoney } from "@/lib/tight-money";
+import type { Car } from "@/lib/car";
 import { REWARD_CATEGORY_LABELS } from "@/config/credit-cards";
 import type { DebtAutopilot } from "@/lib/debt-autopilot";
 import { PMI_SOURCE } from "@/config/debt";
@@ -80,6 +84,49 @@ export const DEBT_TOOLS: Anthropic.Tool[] = [
     description:
       "Building the person's credit (demo-bank people only; nothing for real accounts): the card whose statement closes next, the day it closes, what to pay before then so card use reported is under 30% or 10%, whether Jane or the person already scheduled it (through the money-movement stand-in), the on-time payment streak in months, whether the credit file is thin with credit-builder stand-ins (a secured card, a credit-builder loan), and the score simulator's estimate after each change (paying cards down, a year on time, a new card, a builder loan). Every simulator figure is an estimate, never a promise. Paying from the chat and opening a builder account each need the person's tap.",
     input_schema: noInput,
+  },
+  {
+    name: "bnpl_installments",
+    description:
+      "The person's buy now, pay later plans and their installments: each plan's payment, how often, next due date and balance when known, every installment over the next month (soonest first) from the plans' own schedules, which of them the checking forecast does not count yet (Jane takes those off safe to spend), and which Pay in 4 plans are free to pay off now (no interest or fee for paying early). With total_cents, also whether a new Pay in 4 plan of that total (four payments two weeks apart) would take checking under its cushion, from the checking forecast. Paying a plan off needs the person's tap (the bnpl.payoff button).",
+    input_schema: {
+      type: "object" as const,
+      properties: {
+        total_cents: {
+          type: "integer" as const,
+          description:
+            "The total of a new plan to check against the forecast, in cents (optional).",
+        },
+      },
+    },
+  },
+  {
+    name: "tight_money",
+    description:
+      "Help when the person's money is tight (demo-bank people only): whether the checking forecast dips under its cushion in the next month and when, the bills before then in the order to pay them (housing, utilities and insurance first, never delayed), the requests Jane has prepared (moving a due date after payday, a hardship program, a lower card rate, a late fee waived) with the exact text of each and whether it was sent, and what each lender answered. Sending any request needs the person's tap (the tight.send button); Jane never sends one by herself.",
+    input_schema: noInput,
+  },
+  {
+    name: "car_purchase",
+    description:
+      "Planning a car purchase (demo-bank people only; nothing for real accounts): what the person can afford from their own income (all-in monthly cost, including the loan payment, insurance scaled from their auto policy, fuel from their gas spending, upkeep and registration, at most 20% of income), the highest price that fits, the preapproval loan offers compared by total cost with fees (cheapest first), and, with the dealer's rate and months, whether the dealer's financing costs more than the best preapproval. Every assumption is listed. Nothing is applied for here.",
+    input_schema: {
+      type: "object" as const,
+      properties: {
+        price_cents: {
+          type: "integer" as const,
+          description: "A car's price in cents (optional).",
+        },
+        dealer_apr_percent: {
+          type: "number" as const,
+          description: "The dealer's APR, e.g. 7.9 (optional).",
+        },
+        dealer_months: {
+          type: "integer" as const,
+          description: "The dealer's loan term in months (optional).",
+        },
+      },
+    },
   },
   {
     name: "mortgage",
@@ -223,6 +270,9 @@ export const DEBT_TOOL_STATUS: Readonly<Record<string, string>> = {
   debt_autopilot: "Checking what's due on your debts…",
   credit_cards: "Checking your card rewards…",
   credit_building: "Working out how to build your credit…",
+  bnpl_installments: "Checking your buy now, pay later installments…",
+  tight_money: "Looking at your month ahead…",
+  car_purchase: "Working out what car you can afford…",
 };
 
 export function refinanceToolOutput(refi: Refinance, money: (cents: number) => string) {
@@ -523,6 +573,104 @@ export function creditBuildingToolOutput(data: CreditBuilding, money: (cents: nu
       points: e.change,
     })),
     note: "Simulator figures are estimates from the stand-in score, not promises.",
+  };
+}
+
+export function bnplToolOutput(
+  data: Bnpl,
+  totalCents: number | null,
+  money: (cents: number) => string,
+) {
+  const strain = totalCents ? warnNewPlan(data, totalCents) : null;
+  return {
+    plans: data.plans.map((p) => ({
+      name: p.name,
+      payment: money(p.paymentCents),
+      every: p.every === "two_weeks" ? "two weeks" : "month",
+      nextDue: p.nextDue,
+      balance: p.balanceCents === null ? null : money(p.balanceCents),
+      freeToPayOffNow: p.freePayoff && p.canCoverPayoff && !p.payoffScheduled,
+    })),
+    installmentsNextMonth: data.installments.map((i) => ({
+      on: i.date,
+      plan: i.name,
+      amount: money(i.cents),
+    })),
+    notInForecastYet: data.missing.map((i) => ({
+      on: i.date,
+      plan: i.name,
+      amount: money(i.cents),
+    })),
+    newPlanCheck: strain && {
+      total: money(totalCents!),
+      strainsTheMonth: strain.strained,
+      lowestCheckingWithPlan: money(strain.lowestWith.balanceCents),
+      on: strain.lowestWith.date,
+      lowestCheckingWithout: money(strain.lowestWithout.balanceCents),
+      underTheCushionBy: money(strain.shortCents),
+    },
+    alwaysNeedsATap: "paying a plan off",
+  };
+}
+
+export function tightMoneyToolOutput(data: TightMoney, money: (cents: number) => string) {
+  if (!data.available) return { note: "No lender partner for this person's accounts yet." };
+  return {
+    demoAdvice: true,
+    shortfall: data.shortfall && {
+      on: data.shortfall.date,
+      forecastBalance: money(data.shortfall.balanceCents),
+      underTheCushionBy: money(data.shortfall.shortCents),
+    },
+    payInThisOrder: data.billsFirst.map((b) => ({
+      payee: b.payee,
+      on: b.date,
+      amount: money(b.amountCents),
+      essential: b.essential,
+    })),
+    requests: data.items.map((i) => ({
+      id: i.id,
+      what: i.label,
+      text: i.body,
+      couldFree: i.freesCents === null ? null : money(i.freesCents),
+      sent: i.sent && { on: i.sent.sentOn, status: i.sent.status, answer: i.sent.outcome },
+    })),
+    alwaysNeedsATap: "sending any request",
+  };
+}
+
+export function carToolOutput(car: Car, money: (cents: number) => string) {
+  if (!car.available) return { note: "No lending partner for this person's accounts yet." };
+  if (!car.costs) return { note: "Not enough income history to say what car fits." };
+  const c = car.costs;
+  return {
+    demoAdvice: true,
+    maxPrice: money(car.maxPriceCents!),
+    allInBudgetPerMonth: money(car.allowanceCents!),
+    atPrice: money(c.priceCents),
+    withinBudget: car.withinBudget,
+    monthly: {
+      loanPayment: money(c.paymentCents),
+      insurance: money(c.insuranceCents),
+      fuel: money(c.fuelCents),
+      upkeep: money(c.maintenanceCents),
+      registration: money(c.registrationCents),
+      allIn: money(c.allInCents),
+    },
+    preapprovals: car.offers.map((o) => ({
+      lender: o.offer.lender,
+      rate: `${(o.offer.aprBps / 100).toFixed(2)}%`,
+      monthly: money(o.monthlyCents),
+      totalCost: money(o.totalCents),
+      fees: o.offer.feeLabel,
+    })),
+    dealer: car.dealer && {
+      verdict: car.dealer.verdict,
+      monthly: money(car.dealer.monthlyCents),
+      totalCost: money(car.dealer.totalCents),
+      costsMoreThanBestPreapproval: money(car.dealer.extraCents),
+    },
+    assumptions: car.assumptions,
   };
 }
 

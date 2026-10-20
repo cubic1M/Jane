@@ -1159,6 +1159,56 @@ const BASE_QUESTIONS: readonly CheckQuestion[] = [
       link: "/loans/cards",
     },
   },
+  // Spec step 178: buying a car, and a dealer's financing checked against preapprovals.
+  {
+    id: "debt-22",
+    text: "how much car can I afford",
+    needs: "rules",
+    expect: {
+      intent: "car_afford",
+      mentions: /cheapest preapproval/i,
+      link: "/loans/car",
+      list: true,
+      maxChars: 1_000,
+    },
+  },
+  {
+    id: "debt-23",
+    text: "the dealer offered 8.99% for 60 months on $30,000",
+    needs: "rules",
+    expect: {
+      intent: "car_dealer",
+      mentions: /dealer's financing/i,
+      link: "/loans/car",
+      list: true,
+    },
+  },
+  // Spec step 177: a tight month.
+  {
+    id: "debt-21",
+    text: "money is tight this month",
+    needs: "rules",
+    expect: { intent: "tight_money", mentions: /cushion/i, link: "/loans/tight", maxChars: 1_000 },
+  },
+  // Spec step 176: buy now, pay later installments and a new plan's warning.
+  {
+    id: "debt-19",
+    text: "what buy now pay later payments do I have coming",
+    needs: "rules",
+    expect: {
+      intent: "bnpl",
+      mentions: /installments over the next month/i,
+      link: "/loans",
+      list: true,
+      maxChars: 1_200,
+    },
+  },
+  {
+    id: "debt-20",
+    text: "can I afford a $300 Klarna plan",
+    needs: "rules",
+    expect: { intent: "bnpl_new", mentions: /four payments of/i, link: "/loans" },
+  },
   // Spec step 175: building credit and the labelled score simulator.
   {
     id: "debt-17",
