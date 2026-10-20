@@ -41,6 +41,14 @@ export const SUGGESTION_TOPICS = [
   "cash_advance",
   "mortgage_extra",
   "balance_transfer",
+  // Spec step 263: spending, bills and cash.
+  "duplicate_subscription",
+  "price_increase",
+  "trial_conversion",
+  "bill_negotiation",
+  "duplicate_charge",
+  "low_balance",
+  "budget_overrun",
   "education_529",
   "social_security_timing",
   "medicare",
@@ -101,6 +109,8 @@ export const PEOPLE: readonly Person[] = [
       "employer_match",
       "emergency_fund",
       "balance_transfer",
+      "duplicate_subscription",
+      "low_balance",
     ],
     mustNot: [
       "pmi_removal",
@@ -124,7 +134,14 @@ export const PEOPLE: readonly Person[] = [
       owns: "home",
       hasDebtTrouble: false,
     },
-    should: ["pmi_removal", "life_insurance", "education_529", "subscriptions", "emergency_fund"],
+    should: [
+      "pmi_removal",
+      "life_insurance",
+      "education_529",
+      "subscriptions",
+      "emergency_fund",
+      "duplicate_subscription",
+    ],
     mustNot: [
       "refinance",
       "rmd",
@@ -197,6 +214,7 @@ export const PEOPLE: readonly Person[] = [
       "estimated_taxes",
       "hardship_plan",
       "employer_match",
+      "low_balance",
     ],
   },
   {
@@ -220,6 +238,7 @@ export const PEOPLE: readonly Person[] = [
       "hsa",
       "refinance",
       "credit_building",
+      "low_balance",
     ],
   },
   {
@@ -242,6 +261,8 @@ export const PEOPLE: readonly Person[] = [
       "debt_plan",
       "hardship_plan",
       "balance_transfer",
+      "low_balance",
+      "low_balance",
     ],
     mustNot: [
       "concentration",
