@@ -125,7 +125,6 @@ const rows: Row[] = [
   ["spending", "/saved", "proven_savings", "show me the money you found"],
   ["spending", "/monthly", "monthly_report", "show me my monthly report"],
   ["spending", "/monthly", "monthly_report", "how did last month go"],
-  ["spending", "/monthly", "monthly_report", "send me my monthly money report"],
 
   // Budgets and goals.
   ["budgets", "/budgets", "budgets", "am i over budget"],
@@ -223,6 +222,15 @@ const rows: Row[] = [
   ["insurance", "/insurance", "insurance_quotes", "find me cheaper car insurance"],
   ["insurance", "/insurance", "insurance_quotes", "compare insurance quotes"],
   ["insurance", "/insurance", "insurance_quotes", "switch my car insurance"],
+  // Paying less for the same cover (spec step 196).
+  ["insurance", "/insurance", "insurance_savings", "how can i pay less for my car insurance"],
+  ["insurance", "/insurance", "insurance_savings", "any discounts on my insurance"],
+  ["insurance", "/insurance", "insurance_savings", "is raising my deductible worth it"],
+  ["insurance", "/insurance", "insurance_savings", "is it cheaper to pay my insurance up front"],
+  ["insurance", "/insurance", "insurance_savings", "should i bundle my car and home insurance"],
+  ["insurance", "/insurance", "insurance_savings", "how do i lower my premium"],
+  ["insurance", "/insurance", "insurance_savings", "is there a safe driver discount"],
+  ["insurance", "/insurance", "insurance_savings", "turn on autopay for my insurance"],
   ["insurance", "/insurance", "insurance_checkup", "am i covered enough"],
   ["insurance", "/insurance", "insurance_checkup", "am i missing any insurance"],
   ["insurance", "/insurance", "insurance_checkup", "is my deductible too high"],

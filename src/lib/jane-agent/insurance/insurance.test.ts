@@ -487,12 +487,13 @@ describe("the coverage checkup in the chat (spec step 106)", () => {
       "check my insurance",
       "insurance checkup",
       "am I over-insured",
-      "should I raise my deductible",
       "do I have the right amount of coverage",
     ]) {
       expect(parseIntent(text, ASOF), text).toMatchObject({ kind: "insurance", ask: "checkup" });
     }
     expect(parseIntent("what's my deductible", ASOF)).toMatchObject({ ask: "deductible" });
+    // Raising it is a saving (spec step 196), shown both ways with a tap, not just a checkup line.
+    expect(parseIntent("should I raise my deductible", ASOF)).toMatchObject({ ask: "savings" });
   });
 });
 
