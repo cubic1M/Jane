@@ -583,9 +583,9 @@ describe.runIf(url)("investments in Jane's chat, against a real database", () =>
     SLOW,
     async () => {
       const userId = await demoPerson();
-      // The demo bank's pharmacy and dentist charges, saved by Jane's brain on the first
-      // sync by herself, once each.
-      expect(await client.hsaReceipt.count({ where: { userId } })).toBe(3);
+      // The demo bank's pharmacy, dentist and imaging charges (the imaging bill is from last
+      // year, spec step 200), saved by Jane's brain on the first sync by herself, once each.
+      expect(await client.hsaReceipt.count({ where: { userId } })).toBe(4);
       expect(await collectReceipts(userId, { client, now: LINKED })).toBe(0);
       // Two collections at once (a page and the brain) save each charge once, without error.
       await client.hsaReceipt.deleteMany({ where: { userId } });
@@ -593,14 +593,14 @@ describe.runIf(url)("investments in Jane's chat, against a real database", () =>
         collectReceipts(userId, { client, now: LINKED }),
         collectReceipts(userId, { client, now: LINKED }),
       ]);
-      expect(both[0] + both[1]).toBe(3);
-      expect(await client.hsaReceipt.count({ where: { userId } })).toBe(3);
+      expect(both[0] + both[1]).toBe(4);
+      expect(await client.hsaReceipt.count({ where: { userId } })).toBe(4);
       const receipts = await client.hsaReceipt.findMany({
         where: { userId },
         include: { transaction: true },
       });
       expect(receipts.every((r) => r.transaction.amountCents === r.amountCents)).toBe(true);
-      expect(receipts.reduce((s, r) => s + r.amountCents, 0)).toBe(22_680);
+      expect(receipts.reduce((s, r) => s + r.amountCents, 0)).toBe(92_680);
 
       const snapshot = await loadSnapshot(userId, { client, now: LINKED });
       const offer = investmentsSource

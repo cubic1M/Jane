@@ -118,7 +118,7 @@ export const MESSAGE_PRIORITY = {
   // Spec step 197: one question about how they live, asked once.
   risk_question: 58,
   // Spec step 200: FSA money about to be lost.
-  fsa_deadline: 66,
+  fsa_deadline: 55,
   urgent_alert: 95,
   deadline: 90,
   waiting_on_you: 85,
