@@ -44,8 +44,8 @@ export const CAPABILITIES: readonly Capability[] = [
   {
     id: "safe_to_spend",
     bank: ["safe"],
-    kinds: ["safe_to_spend", "afford"],
-    tools: ["safe_to_spend"],
+    kinds: ["safe_to_spend", "afford", "balance_forecast", "save_more"],
+    tools: ["safe_to_spend", "balance_forecast"],
     answer: moneyAnswer,
   },
   {

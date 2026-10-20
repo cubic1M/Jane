@@ -381,6 +381,39 @@ const BASE_QUESTIONS: readonly CheckQuestion[] = [
     expect: { list: true, maxChars: 1_400 },
   },
 
+  // Where the balance is heading, a budget for a category, a sector follow-up, saving more and
+  // the month so far (QA's live sweep).
+  {
+    id: "fc-1",
+    text: "why is my checking going negative",
+    needs: "rules",
+    expect: { intent: "balance_forecast", link: "/bills", list: true, maxChars: 900 },
+  },
+  {
+    id: "fc-2",
+    text: "set a budget for restaurants",
+    needs: "rules",
+    expect: { intent: "spending", button: "budget.set" },
+  },
+  {
+    id: "fc-3",
+    text: "what about my student loans",
+    needs: "rules",
+    expect: { intent: "student_loans", list: true, maxChars: 1_200 },
+  },
+  {
+    id: "wi-2",
+    text: "what if I save $200 more a month",
+    needs: "rules",
+    expect: { intent: "save_more", mentions: /\$2,400\.00 a year/ },
+  },
+  {
+    id: "wi-3",
+    text: "how did I do this month",
+    needs: "rules",
+    expect: { intent: "monthly_report" },
+  },
+
   // Net worth, answered at once from the net worth page's own math.
   {
     id: "nw-1",

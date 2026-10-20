@@ -95,6 +95,10 @@ export type Intent =
   | { kind: "whole_picture"; focus: "now" | "month" }
   // What they own and owe, from the net worth page.
   | { kind: "net_worth" }
+  // "Why is my checking going negative": where the balance is heading.
+  | { kind: "balance_forecast" }
+  // "What if I save $200 more a month".
+  | { kind: "save_more"; monthlyCents: number }
   // Spec step 187: everything Jane did, or why she did the last thing.
   | { kind: "timeline"; why: boolean }
   // Spec step 185: money into a goal ("put the savings in my emergency fund"); "savings" is
@@ -355,7 +359,7 @@ const BILLS_PAID =
 const HEALTH =
   /\b(?:health score|money health|financial health|financial wellness)\b|\bhow healthy (?:are|is) my (?:money|finances)\b/;
 const MONTHLY_REPORT =
-  /\b(?:monthly|money|month'?s) report\b|\bmonth in review\b|\breport (?:for|on) (?:last|this) month\b/;
+  /\b(?:monthly|money|month'?s) report\b|\bmonth in review\b|\breport (?:for|on) (?:last|this) month\b|\bhow did (?:i|we) do (?:this|last) month\b|\bhow (?:was|did) (?:my|our|last) month\b|\bhow did last month go\b/;
 const STEADY =
   /\bsteady (?:paycheck|pay|income)\b|\b(?:my|the) (?:income|pay|paychecks?) (?:is|are) (?:uneven|irregular|unpredictable|all over the place)\b|\b(?:uneven|irregular|freelance|variable) income\b|\bpay myself (?:a )?(?:steady|regular)\b/;
 const PRIORITIES =
@@ -365,6 +369,13 @@ const WHOLE_NOW =
   /\bam i (?:ok|okay|alright|all right|fine|good)\b(?! (?:to|if|for|with|on)\b)|\bhow am i doing\b(?! (?:on|with)\b)|\bhow (?:are|is) (?:my|our) (?:money|finances?)(?: doing| looking)?\b|\bhow'?s (?:my|our) (?:money|finances?)\b|\b(?:the )?(?:big|whole|full) picture\b|\bis (?:my|our) money (?:ok|okay|alright|fine)\b|\bam i on track\b(?! (?:for|with)\b)|\b(?:overall|in general),? how am i\b/;
 const WHOLE_MONTH =
   /\bwhat (?:should|do|can) (?:i|we) (?:need to )?(?:do|focus on|work on) this month\b|\bthis month'?s (?:plan|priorities|to ?do)\b|\bwhat matters this month\b|\bplan for this month\b/;
+const BALANCE_FORECAST =
+  /\b(?:why|will|would|am i going to|is) (?:is |will )?(?:my )?(?:checking|account|balance)\b.{0,30}\b(?:negative|overdr\w+|below zero|under zero|zero|low|short)\b|\b(?:run|running) (?:out of money|short)\b|\b(?:dip|go|fall|drop) (?:below|under) zero\b|\bwhere is my (?:checking|balance) (?:heading|going)\b/;
+// "set a budget for restaurants": what they spend there, with the button that sets it.
+const BUDGET_FOR =
+  /^(?:set|make|create|add|start)(?: me)?(?: a| my)? budget (?:for|on) (.+)$|^budget (?:for|on) (.+)$/;
+const SAVE_MORE =
+  /^(?:what if|what happens if|suppose|say) .*\b(?:save|saving|put away|set aside|stash)\b[^\d]{0,12}(\d[\d,]*(?:\.\d{1,2})?)\b.{0,12}\b(?:more|extra)\b.{0,16}\b(?:a|each|per|every) month\b/;
 const NET_WORTH =
   /\bnet ?worth\b|\bhow much (?:am i|are we) worth\b|\bwhat do (?:i|we) own and owe\b|\bassets? (?:and|vs\.?|minus) (?:debts?|liabilities)\b/;
 // Spec step 187.
@@ -520,6 +531,11 @@ export function parseIntent(
   if (THANKS.test(text)) return { kind: "greeting", thanks: true };
   if (PAUSE.test(text)) return { kind: "pause_autopilot" };
   if (CHECKED.test(text)) return { kind: "checked" };
+  const saveMore = SAVE_MORE.exec(text);
+  if (saveMore) {
+    const cents = Math.round(Number(saveMore[1].replace(/,/g, "")) * 100);
+    if (cents > 0) return { kind: "save_more", monthlyCents: cents };
+  }
   const whatIf = parseWhatIf(text);
   if (whatIf) return whatIf;
   const longView = parseLongView(text);
@@ -528,6 +544,12 @@ export function parseIntent(
   if (profile) return profile;
   if (STEADY.test(text)) return { kind: "steady_pay" };
   if (NET_WORTH.test(text)) return { kind: "net_worth" };
+  if (BALANCE_FORECAST.test(text)) return { kind: "balance_forecast" };
+  const budgetFor = BUDGET_FOR.exec(text);
+  if (budgetFor) {
+    const category = matchCategory(cleanTarget(budgetFor[1] ?? budgetFor[2]), CATEGORY_LIST);
+    if (category) return { kind: "spending", category, month: asOf.slice(0, 7) };
+  }
   if (WHY_DID.test(text)) return { kind: "timeline", why: true };
   if (TIMELINE.test(text)) return { kind: "timeline", why: false };
   if (WHOLE_MONTH.test(text)) return { kind: "whole_picture", focus: "month" };
@@ -583,6 +605,13 @@ export function parseIntent(
         "past",
       );
       if (month) return { kind: "follow_up", target: null, month };
+    }
+    // "What about my student loans?" is a question of its own, not a name to look up.
+    for (const asked of [`how are ${words}`, words]) {
+      const own = parseIntent(asked, asOf, { single: true });
+      if (!["unknown", "follow_up", "about", "help", "greeting", "remember"].includes(own.kind)) {
+        return own;
+      }
     }
     return { kind: "follow_up", target: cleanTarget(words), month: null };
   }

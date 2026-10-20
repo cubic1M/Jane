@@ -1,3 +1,8 @@
+import { FORECAST_DAYS } from "@/config/detection";
+import { loadDetectionInput } from "@/detection/engine";
+import { forecastAccounts } from "@/detection/forecast";
+import { forecastReply } from "../replies-forecast";
+import { saveMoreReply } from "../replies-savemore";
 import { netWorth } from "@/insights/net-worth";
 import { cryptoTotal } from "@/lib/crypto/crypto";
 import { netWorthReply } from "../replies-networth";
@@ -193,6 +198,12 @@ async function answer(ctx: CapabilityContext): Promise<Reply | null> {
           crypto,
         ),
       );
+    }
+    case "save_more":
+      return saveMoreReply(intent.monthlyCents, await listGoals(userId, { client, now }));
+    case "balance_forecast": {
+      const input = await loadDetectionInput(userId, { client, now });
+      return forecastReply(forecastAccounts(input, FORECAST_DAYS));
     }
     default:
       return null;
