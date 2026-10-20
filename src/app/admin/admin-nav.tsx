@@ -38,6 +38,9 @@ export function AdminNav({ email }: { email: string | null | undefined }) {
         <Link href="/admin/chat" className="hover:underline">
           Chat
         </Link>
+        <Link href="/admin/chat-quality" className="hover:underline">
+          Chat quality
+        </Link>
         <Link href="/admin/launch" className="hover:underline">
           Launch check
         </Link>
