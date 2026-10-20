@@ -3,6 +3,7 @@ import {
   QUOTABLE_KINDS,
   type CoverChangeKind,
   type PolicyKind,
+  type SavingKind,
 } from "@/config/insurance";
 import type { PremiumFrequency } from "@/config/documents";
 import type { PrismaClient } from "@/generated/prisma/client";
@@ -162,6 +163,20 @@ export interface InsurancePartner {
     },
     options: { now: Date },
   ): Promise<{ claimNumber: string }>;
+  // Spec step 196: a cheaper way to pay for the same cover, applied with the carrier. The
+  // new price comes back with the carrier's confirmation (a real partner may differ from
+  // the figure asked for).
+  applySaving(
+    policy: { carrier: string; kind: PolicyKind; premiumCents: number | null },
+    saving: {
+      kind: SavingKind;
+      newPremiumCents: number;
+      newFrequency: PremiumFrequency;
+      newDeductibleCents: number | null;
+      withCarrier: string | null;
+    },
+    options: { now: Date },
+  ): Promise<{ premiumCents: number; confirmation: string }>;
   claimStatus(
     claim: {
       claimNumber: string;
