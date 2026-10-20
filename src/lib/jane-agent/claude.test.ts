@@ -4,6 +4,8 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 vi.mock("@/lib/session", () => ({ requireUser: vi.fn() }));
 vi.mock("@/lib/home", () => ({ homeSummary: vi.fn() }));
 vi.mock("./snapshot", () => ({ loadSnapshot: vi.fn() }));
+// The cost cap has its own tests (./spend.test.ts); here Claude is always under it.
+vi.mock("./spend", () => ({ overDailyCap: vi.fn(async () => false), addSpend: vi.fn() }));
 
 import { CHAT_CLAUDE_MAX_TURNS } from "@/config/agent-chat";
 import { ASK_BLOCKED_REPLY } from "@/config/ask";
