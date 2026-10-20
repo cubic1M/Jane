@@ -13,6 +13,8 @@ import { runChatTool } from "@/lib/jane-agent/claude-tools";
 import { postMessages } from "@/lib/jane-agent/messages";
 import { loadSnapshot } from "@/lib/jane-agent/snapshot";
 import { savedSource } from "@/lib/jane-agent/sources/saved";
+import { checkResults, resultsByKind } from "@/lib/worked";
+import { savedToDate } from "@/lib/membership/service";
 import { provenSavings, revokeSavedShares, shareSavedTotal, sharedTotal } from "./savings-proof";
 
 // Spec step 139 against a real, migrated Postgres: only savings the person's transactions
@@ -197,6 +199,53 @@ describe.runIf(url)("what Jane saved you, against a real database", { timeout: 6
       ],
       ["Get your bank fees back", 7_400, "Jane is still working on it."],
     ]);
+  });
+
+  // Spec step 207.
+  it("marks a saving that never showed up after the grace, stops counting it, and takes the mark off when it does", async () => {
+    const who = await seeded("saved-worked");
+    // Done in May on a bill that never dropped.
+    await charge(who, "2026-05-03", "ACME INTERNET", 7_000, "Acme");
+    await charge(who, "2026-09-03", "ACME INTERNET", 7_000, "Acme");
+    const stale = await action(who.userId, {
+      title: "Lower your Acme bill",
+      type: "negotiate_bill",
+      findingType: "bill_negotiation",
+      estimate: 20_000,
+      evidence: { merchant: "Acme", frequency: "MONTHLY", lastAmountCents: 7_000 },
+      data: { completedAt: new Date("2026-05-05T12:00:00Z"), confirmedAnnualCents: 18_000 },
+    });
+    const before = await savedToDate(who.userId, { client });
+    expect(await checkResults(who.userId, { client, now: NOW })).toEqual({
+      marked: 1,
+      restored: 0,
+    });
+    // Marked once; not counted as saved; shown as not showing up, apart from estimates.
+    expect(await checkResults(who.userId, { client, now: NOW })).toEqual({
+      marked: 0,
+      restored: 0,
+    });
+    expect(await savedToDate(who.userId, { client })).toBe(before - 18_000);
+    const proven = await provenSavings(who.userId, { client, now: NOW });
+    expect(proven.notShown.map((e) => e.title)).toEqual(["Lower your Acme bill"]);
+    expect(proven.estimated.map((e) => e.title)).not.toContain("Lower your Acme bill");
+    const kinds = await resultsByKind(who.userId, { client, now: NOW });
+    expect(kinds.find((k) => k.type === "bill_negotiation")).toMatchObject({
+      done: 3,
+      worked: 1,
+      notShown: 1,
+    });
+
+    // The lower bill does arrive later: it counts again and the mark comes off.
+    await charge(who, "2026-06-03", "ACME INTERNET", 5_000, "Acme");
+    expect(await checkResults(who.userId, { client, now: NOW })).toEqual({
+      marked: 0,
+      restored: 1,
+    });
+    expect(
+      (await client.action.findUniqueOrThrow({ where: { id: stale.id } })).savingMissedAt,
+    ).toBeNull();
+    expect(await savedToDate(who.userId, { client })).toBe(before);
   });
 
   it("doesn't count a cancellation before its next charge was due, or one charged again", async () => {

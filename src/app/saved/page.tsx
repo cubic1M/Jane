@@ -83,6 +83,23 @@ async function SavedContent() {
         )}
       </section>
 
+      {saved.notShown.length > 0 && (
+        <section className="flex flex-col gap-3">
+          <h2 className="text-xl font-semibold">Didn&apos;t show up</h2>
+          <p className="text-sm text-zinc-600 dark:text-zinc-400">
+            These were finished a while ago and the saving never appeared in your transactions, so
+            they don&apos;t count as saved. If it does show up later, it comes back.
+          </p>
+          <ul className="flex flex-col gap-2 text-sm">
+            {saved.notShown.map((e) => (
+              <li key={e.actionId}>
+                <span className="font-medium">{e.title}</span>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+
       <section className="flex flex-col gap-3">
         <h2 className="text-xl font-semibold">Share it</h2>
         <p className="text-sm text-zinc-600 dark:text-zinc-400">

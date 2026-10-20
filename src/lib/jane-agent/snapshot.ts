@@ -13,6 +13,7 @@ import { loadBillPay, type BillPayView } from "@/lib/money-movement/bill-pay";
 import { healthFor, type HealthView } from "@/lib/health-score";
 import type { Attention } from "./attention";
 import { loadAttention } from "./attention-load";
+import { resultsByKind, type KindResult } from "@/lib/worked";
 import { adoptedPlans, type AdoptedPlan } from "@/lib/what-if";
 import { openLean, recentlyEnded, type LeanState } from "@/lib/lean-plan";
 import { recentReport, type StoredReport } from "@/lib/monthly-report-store";
@@ -121,6 +122,8 @@ export type Snapshot = {
   attention?: Attention;
   // Spec step 203: what-if plans the person adopted. Optional, like changes.
   whatIf?: AdoptedPlan[];
+  // Spec step 207: what the person says yes to and what worked, by kind of finding.
+  worked?: KindResult[];
   // Spec step 204: the lean-plan question or plan in force, and plans that just ended.
   lean?: { open: LeanState[]; ended: { id: string; employer: string }[] };
   // Spec step 148: the monthly money report, while it's new. Optional, like changes.
@@ -206,7 +209,9 @@ async function thinking(
     healthFor(userId, { client, now, input }),
   ]);
   const billPay = partner ? await loadBillPay(userId, { client, now, input }) : null;
+  const worked = await resultsByKind(userId, { client, now, input });
   return {
+    worked,
     changes,
     lifeGuesses,
     saved: { confirmedCents: saved.confirmedCents },

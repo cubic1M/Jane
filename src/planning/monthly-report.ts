@@ -21,6 +21,8 @@ export type MonthlyReport = {
   // The money health score now and its change since the month's own, as on /jane.
   health: { score: number; band: string; change: number | null } | null;
   // Spec step 205: how the month went against the year's plan, and next month's targets.
+  // Spec step 207: what worked this month and what didn't show.
+  worked?: { confirmed: number; notShown: number } | null;
   plan?: {
     planned: { saving: number; debt: number; investing: number };
     did: { saving: number; debt: number; investing: number } | null;
@@ -82,6 +84,14 @@ export function reportLines(report: MonthlyReport): ReportLine[] {
               : `, ${-change} lower than last month.`
       }`,
       href: "/jane#health",
+    });
+  }
+  if (report.worked && (report.worked.confirmed > 0 || report.worked.notShown > 0)) {
+    const { confirmed, notShown } = report.worked;
+    lines.push({
+      label: "What worked",
+      text: `${confirmed} ${confirmed === 1 ? "change" : "changes"} showed up in your transactions${notShown > 0 ? `; ${notShown} ${notShown === 1 ? "never did, so it no longer counts" : "never did, so they no longer count"}` : ""}.`,
+      href: "/saved",
     });
   }
   if (report.plan) {
