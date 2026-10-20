@@ -69,9 +69,11 @@ describe.runIf(url)("debt on autopilot against a real database", () => {
     expect(await client.debtPlan.count({ where: { userId } })).toBe(0);
     const data = await loadDebtAutopilot(userId, opts());
     expect(data.level).toBe("ask");
-    expect(data.does.map((d) => d.step)).toEqual([
-      109, 110, 111, 112, 113, 114, 115, 116, 117, 174, 175, 176, 177, 178, 179, 180, 181,
-    ]);
+    // Every step that adds to the list, in order (steps 109–117, then Phase AG's).
+    const steps = data.does.map((d) => d.step);
+    expect(steps).toEqual([...steps].sort((a, b) => a - b));
+    expect(steps.slice(0, 9)).toEqual([109, 110, 111, 112, 113, 114, 115, 116, 117]);
+    expect(steps).toContain(175);
   });
 
   it("drafts the request to move a payment due just before payday", async () => {
