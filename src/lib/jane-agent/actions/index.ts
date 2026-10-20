@@ -96,6 +96,7 @@ import {
 import { taxEquityAside } from "./tax-equity";
 import { taxYearsPlan } from "./tax-years";
 import { taxAccountantSeen } from "./tax-accountant";
+import { taxEstimatePay, taxYearEndPlan } from "./tax-calendar";
 import {
   taxExemptionClaimed,
   taxExemptionRemind,
@@ -153,6 +154,7 @@ import { billPay, billSkip } from "./billpay";
 import { attentionResume } from "./attention";
 import { whatIfAdopt } from "./whatif";
 import { leanNotNow, leanStart } from "./lean";
+import { suggestionNo, suggestionYes } from "./suggestion";
 import { steadyOn, steadyPay, steadySkip } from "./steady";
 import { unusualMe, unusualNotMe } from "./unusual";
 import { bundleYes1, bundleYes2, bundleYes3, bundleYes4, bundleYes5 } from "./bundle";
@@ -314,6 +316,8 @@ export const ACTION_HANDLERS: Readonly<Record<ActionId, ActionHandler>> = {
   "tax.equity_aside": taxEquityAside,
   "tax.years_plan": taxYearsPlan,
   "tax.accountant_seen": taxAccountantSeen,
+  "tax.estimate_pay": taxEstimatePay,
+  "tax.yearend_plan": taxYearEndPlan,
   "tax.property_draft": taxPropertyDraft,
   "tax.property_remind": taxPropertyRemind,
   "tax.property_team": taxPropertyTeam,
@@ -385,6 +389,8 @@ export const ACTION_HANDLERS: Readonly<Record<ActionId, ActionHandler>> = {
   "whatif.adopt": whatIfAdopt,
   "lean.start": leanStart,
   "lean.not_now": leanNotNow,
+  "suggestion.yes": suggestionYes,
+  "suggestion.no": suggestionNo,
   "steady.pay": steadyPay,
   "steady.skip": steadySkip,
   "steady.on": steadyOn,

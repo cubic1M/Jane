@@ -11,7 +11,7 @@ import { detectorsFor } from "./index";
 
 // Insurance, proactive (spec step 259): each detector on the eight sample people.
 
-const topics = INSURANCE_DETECTORS.map((d) => d.topic);
+const topics: string[] = INSURANCE_DETECTORS.map((d) => d.topic);
 const firedFor = (id: string, topic: string, told: ProfileInput["told"] = {}) => {
   const data = inputFor(id, told);
   const profile = buildProfile(data);

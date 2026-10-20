@@ -39,6 +39,29 @@ export const DETECTOR_RATES = {
   // Company stock: too much in one company when it is this share of what they invest.
   concentrationShare: 0.3,
   concentrationDropShare: 0.3,
+  // Employer match (step 262): a 401(k) balance under this share of a year's pay says the
+  // match probably isn't being fully used (a year at the typical 4% each side is 8%); a
+  // typical match is this share of pay.
+  matchHealthyShare: 0.08,
+  matchTypicalShare: 0.03,
+  // Catch-up contributions for people close to retirement, and the tax rate they save at.
+  catchUpCents: 750_000,
+  // An HSA holding more than this is worth putting to work.
+  hsaMinCents: 100_000,
+  // Backdoor Roth: pay (a year) from here up, with a bonus or stock pay on top, usually reaches
+  // the income limit for a direct Roth IRA; the IRA
+  // limit, the growth assumed, the tax rate on that growth and the years shown.
+  backdoorIncomeMinCents: 12_000_000,
+  iraLimitCents: 700_000,
+  assumedGrowthBps: 600,
+  growthTaxRate: 0.24,
+  growthYears: 10,
+  // 529 plan: a yearly contribution worth showing and a typical state tax rate on it.
+  college529Cents: 500_000,
+  college529StateRate: 0.05,
+  // Required withdrawals: the divisor for a person's early 70s, and the penalty on a miss.
+  rmdDivisor: 26.5,
+  rmdPenaltyRate: 0.25,
   // Late fees: one is enough to mention.
   lateFeesMin: 1,
   // Payday and cash-advance loans: fees are about this share of what's repaid.
