@@ -25,6 +25,7 @@ import { BUNDLED_UNTIL, closeSettled, postMessages } from "./messages";
 import { queueChatNotificationsSafely } from "./notify";
 import { inQuietHours } from "./quiet-hours";
 import { listPreferences, postingOf } from "./preferences";
+import { scanSuggestions } from "@/lib/suggestions";
 import { loadSnapshot } from "./snapshot";
 import type { Trigger } from "./sources";
 
@@ -91,6 +92,11 @@ export async function runJaneAgent(
     // Taxes (spec steps 123–127): what Jane sets up by herself, at the person's level.
     runTaxAutopilotSafely(userId, { client, now }),
   ]);
+  // Spec step 265: a first chat leads with suggestions, so a person Jane has said nothing to
+  // yet is scanned now rather than at tonight's run.
+  if ((await scopedFor(userId, client).janeMessages.count()) === 0) {
+    await safely("The first scan for suggestions", () => scanSuggestions(userId, { client, now }));
+  }
   const snapshot = await loadSnapshot(userId, { client, now, input });
   if (!snapshot) return { posted: 0 };
   await closeSettled(userId, { client, now });
