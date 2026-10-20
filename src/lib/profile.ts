@@ -41,7 +41,13 @@ export async function loadProfileInput(
         },
       }),
       db.accounts.findMany({
-        select: { id: true, type: true, subtype: true, currentBalanceCents: true },
+        select: {
+          id: true,
+          type: true,
+          subtype: true,
+          currentBalanceCents: true,
+          availableBalanceCents: true,
+        },
       }),
       db.liabilities.findMany({
         select: { accountId: true, kind: true, aprBps: true, hasPmi: true, payoffDate: true },
@@ -106,6 +112,11 @@ export async function loadProfileInput(
       type: a.type,
       subtype: a.subtype,
       balanceCents: a.currentBalanceCents ?? 0,
+      // A card's limit is what is owed plus what is still available.
+      limitCents:
+        a.type === "credit" && a.currentBalanceCents != null && a.availableBalanceCents != null
+          ? a.currentBalanceCents + a.availableBalanceCents
+          : null,
     })),
     holdings: holdings.map((h) => ({
       accountId: h.accountId,
