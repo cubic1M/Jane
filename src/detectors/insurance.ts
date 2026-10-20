@@ -3,7 +3,7 @@ import { formatCents } from "@/lib/money";
 import type { ProfileInput } from "@/profile/build";
 import { type Detector, suggestionId } from "./contract";
 import type { Confidence } from "./contract";
-import { evidence, factEvidence, outCents, tx } from "./helpers";
+import { evidence, factEvidence, nice, outCents, tx } from "./helpers";
 
 // Detectors for insurance (spec step 259), from what the profile knows: the covers whose
 // charges are seen, the home, the car, the people and the assets. Each says what it is worth
@@ -484,7 +484,7 @@ const employerBenefits: Detector = {
         "I can't see your employer's plan",
       ),
       urgency: "later",
-      why: `You pay ${formatCents(yearly)} a year for private cover and work for ${String(employer.value)}. Employers usually pay about ${Math.round(R.employerPlanShare * 100)}% of a plan's cost, so the same cover through work can cost up to ${formatCents(saves)} a year less. Their open enrollment is the time to move.`,
+      why: `You pay ${formatCents(yearly)} a year for private cover and work for ${nice(String(employer.value))}. Employers usually pay about ${Math.round(R.employerPlanShare * 100)}% of a plan's cost, so the same cover through work can cost up to ${formatCents(saves)} a year less. Their open enrollment is the time to move.`,
       action: { label: "Review my work benefits", href: "/insurance/benefits" },
     };
   },
