@@ -31,6 +31,7 @@ import { healthFor } from "@/lib/health-score";
 import { SCENARIOS } from "@/config/what-if";
 import { isScenario, whatIf } from "@/lib/what-if";
 import { loadLongView } from "@/lib/long-view";
+import { loadProfile, sayFact } from "@/lib/profile";
 import { storedReport } from "@/lib/monthly-report-store";
 import { SECTOR_LABELS, SECTOR_LEVEL_LABELS } from "@/config/autopilot-sectors";
 import { provenSavings } from "@/lib/savings-proof";
@@ -202,6 +203,12 @@ export const CHAT_TOOLS: Anthropic.Tool[] = [
     name: "priorities",
     description:
       'The person\'s next best things to do (spec step 143), ranked across everything Jane found and is waiting on: findings, insurance picks, refinance offers, steps only they can do and dated deadlines. Each with the money it saves a year, the minutes it takes, its urgency and why it ranks where it does. Use it for "what should I do first" and to put the most important first.',
+    input_schema: noInput,
+  },
+  {
+    name: "my_profile",
+    description:
+      'What Jane knows about the person (spec step 253): income pattern and employer, household, home, car, debts, cover, accounts and life stage, each with where it came from (seen in their data, told by them, or a guess), how sure Jane is as a percentage with the reason, and whether they corrected it. Use it for "what do you know about me" and to check a fact before relying on it.',
     input_schema: noInput,
   },
   {
@@ -490,6 +497,19 @@ export async function runChatTool(
           what: e.title,
           about: money(e.cents),
           why: e.why,
+        })),
+      });
+    }
+    case "my_profile": {
+      const profile = await loadProfile(userId, { client, now });
+      return out({
+        months: profile.months,
+        facts: Object.values(profile.facts).map((f) => ({
+          fact: f.label,
+          value: sayFact(f.key, f.value),
+          source: f.source,
+          sureness: `${f.confidence}%`,
+          because: f.evidence,
         })),
       });
     }

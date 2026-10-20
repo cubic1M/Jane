@@ -11,6 +11,7 @@ import { parseFact } from "./remember";
 import { parseInvestmentIntent, type InvestmentIntent } from "./investments/intents";
 import { parseSectorIntent, type SectorIntent } from "./autopilot-intents";
 import { parseLongView, type LongViewIntent } from "./long-view-intents";
+import { parseProfile, type ProfileIntent } from "./profile-intents";
 import { parseWhatIf, type WhatIfIntent } from "./what-if-intents";
 import { parseLearnIntent, type LearnIntent } from "./learn";
 
@@ -112,6 +113,8 @@ export type Intent =
   // Spec step 203: "what if I lose my job?"; step 209: "where will I be in 30 years?"
   | WhatIfIntent
   | LongViewIntent
+  // Spec step 253: "what do you know about me?"
+  | ProfileIntent
   // Spec step 141: one autopilot, every sector.
   | SectorIntent
   // Spec step 136: what a word means.
@@ -517,6 +520,8 @@ export function parseIntent(
   if (whatIf) return whatIf;
   const longView = parseLongView(text);
   if (longView) return longView;
+  const profile = parseProfile(text);
+  if (profile) return profile;
   if (STEADY.test(text)) return { kind: "steady_pay" };
   if (WHY_DID.test(text)) return { kind: "timeline", why: true };
   if (TIMELINE.test(text)) return { kind: "timeline", why: false };

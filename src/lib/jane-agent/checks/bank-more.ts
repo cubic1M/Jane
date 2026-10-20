@@ -90,6 +90,10 @@ const rows: Row[] = [
   ["longview", "/long-view", "long_view", "what will my net worth be in 20 years"],
   ["longview", "/long-view", "long_view", "how much will i have when i retire"],
 
+  // The picture of you (spec step 253).
+  ["profile", "/profile", "my_profile", "what do you know about me"],
+  ["profile", "/profile", "my_profile", "show me my profile"],
+  ["profile", "/profile", "my_profile", "what have you learned about me"],
   // A steady paycheck from uneven income (spec step 240).
   [
     "steady",

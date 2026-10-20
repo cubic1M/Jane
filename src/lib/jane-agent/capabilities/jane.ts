@@ -33,6 +33,8 @@ import { loadSteady } from "@/lib/steady-pay";
 import { steadyReply } from "../replies-steady";
 import { whatIf } from "@/lib/what-if";
 import { loadLongView } from "@/lib/long-view";
+import { loadProfile } from "@/lib/profile";
+import { profileReply } from "../replies-profile";
 import { longViewReply } from "../replies-longview";
 import { whatIfReply } from "../replies-whatif";
 import { groupedHelpReply } from "../replies-help";
@@ -95,6 +97,9 @@ async function answer(ctx: CapabilityContext): Promise<Reply | null> {
     // Spec step 209.
     case "long_view":
       return longViewReply(await loadLongView(userId, {}, { client, now }));
+    // Spec step 253.
+    case "profile":
+      return profileReply(await loadProfile(userId, { client, now }));
     // Spec step 240.
     case "steady_pay":
       return steadyReply(await loadSteady(userId, { client, now }));
