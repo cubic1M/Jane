@@ -373,6 +373,8 @@ model User {
   whatIfPlans       WhatIfPlan[]
   taxPlanEvents     TaxPlanEvent[]
   propertyAppeals   PropertyAppeal[]
+  accountantLinks   AccountantLink[]
+  accountantNotes   AccountantNote[]
 
   @@map("users")
 }
@@ -2865,6 +2867,49 @@ model PropertyAppeal {
 
   @@unique([userId, year])
   @@map("property_appeals")
+}
+
+// Spec step 222: a read-only link for the person's accountant. Only the hash of the token is
+// stored; the link expires and can be revoked, and every view is in the audit log.
+model AccountantLink {
+  id           String    @id @default(cuid())
+  userId       String    @map("user_id")
+  tokenHash    String    @unique @map("token_hash")
+  // What the person calls this accountant ("Dana at Hill & Co").
+  label        String
+  expiresAt    DateTime  @map("expires_at") @db.Timestamptz(3)
+  revokedAt    DateTime? @map("revoked_at") @db.Timestamptz(3)
+  viewCount    Int       @default(0) @map("view_count")
+  lastViewedAt DateTime? @map("last_viewed_at") @db.Timestamptz(3)
+  createdAt    DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  user  User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  notes AccountantNote[]
+
+  @@index([userId])
+  @@map("accountant_links")
+}
+
+// An answer (or a note) from the accountant, which comes back into Jane.
+model AccountantNote {
+  id           String    @id @default(cuid())
+  userId       String    @map("user_id")
+  linkId       String    @map("link_id")
+  // Which of Jane's questions this answers, or null for a note of their own.
+  questionKey  String?   @map("question_key")
+  questionText String?   @map("question_text")
+  fromName     String    @map("from_name")
+  body         String
+  // Set when the person has seen it.
+  seenAt       DateTime? @map("seen_at") @db.Timestamptz(3)
+  createdAt    DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  user User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  link AccountantLink @relation(fields: [linkId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([linkId])
+  @@map("accountant_notes")
 }
 
 model TaxReturn {
