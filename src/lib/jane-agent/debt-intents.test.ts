@@ -441,6 +441,30 @@ describe("debt questions", () => {
     }
   });
 
+  it("reads recasting and extra money for the mortgage (spec step 246)", () => {
+    expect(intent("I have $20,000, should I recast my mortgage")).toEqual({
+      kind: "mortgage_money",
+      lumpCents: 2_000_000,
+      extraMonthlyCents: null,
+    });
+    expect(intent("should I put $500 a month toward my mortgage or invest it instead")).toEqual({
+      kind: "mortgage_money",
+      lumpCents: null,
+      extraMonthlyCents: 50_000,
+    });
+    expect(intent("recast vs refinance")).toEqual({
+      kind: "mortgage_money",
+      lumpCents: null,
+      extraMonthlyCents: null,
+    });
+    // The plain mortgage questions stay with step 115.
+    expect(intent("can I get rid of PMI")).toEqual({ kind: "mortgage" });
+    expect(intent("when will my mortgage be paid off")).toEqual({
+      kind: "debt_detail",
+      target: "mortgage",
+    });
+  });
+
   it("leaves requests and other questions alone", () => {
     expect(intent("lower the rate on my card")).toMatchObject({ kind: "act", verb: "lower" });
     expect(intent("what's due this week")).toMatchObject({ kind: "coming_up" });

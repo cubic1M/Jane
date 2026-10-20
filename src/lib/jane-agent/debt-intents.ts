@@ -57,6 +57,9 @@ export type DebtIntent =
   | { kind: "debt_review" }
   // Spec step 245: "do I have GAP on my car loan?", "can I cancel the extended warranty?".
   | { kind: "car_loan" }
+  // Spec step 246: "I have $20,000, pay down my mortgage or recast?", "$500 a month extra on my
+  // mortgage". lumpCents or extraMonthlyCents is the amount named, or both null.
+  | { kind: "mortgage_money"; lumpCents: number | null; extraMonthlyCents: number | null }
   // Spec step 228: "when does my PMI end by itself?", "is my escrow too high?", "HELOC or
   // cash-out refinance for a $40,000 kitchen?".
   | {
@@ -110,6 +113,7 @@ export const DEBT_KINDS = new Set<string>([
   "debt_trouble",
   "debt_review",
   "car_loan",
+  "mortgage_money",
 ]);
 export const isDebtIntent = (intent: { kind: string }): intent is DebtIntent =>
   DEBT_KINDS.has(intent.kind);
@@ -248,6 +252,10 @@ const EQUITY_PMI =
 // part of these answers.
 const DEBT_TROUBLE =
   /\b(?:too much debt|drowning in debt|buried in debt|overwhelmed by (?:my )?debts?|(?:can'?t|cannot|unable to) (?:keep up with|manage|handle|pay off) (?:all )?(?:my |the )?debts?|debts? (?:is |are )?(?:out of control|too (?:high|much|big))|bankruptcy|debt settlement|settle (?:my |the |some of my )?debts?|debt management plans?|debt relief|debt consolidation counsel\w*|(?:non-?profit )?credit counsel\w*|hardship (?:programs?|plans?) (?:for|on|with) (?:my )?(?:cards?|debts?|loans?)|what are my options with (?:my )?debts?)\b/;
+// Spec step 246.
+const MORTGAGE_MONEY =
+  /\brecast\w*\b|\b(?:put|add|throw)\b[^.]*\b(?:toward|towards|to|on|against) (?:my |the )?(?:mortgage|home loan)\b|\bextra\b[^.]*\b(?:on|toward|towards|to) (?:my |the )?(?:mortgage|home loan)\b|\b(?:mortgage|home loan)\b.*\b(?:pay(?:ing)? (?:it )?down|pay(?:ing)? extra|extra (?:principal|payments?)|put\b[^.]*\btoward|invest(?:ing)? (?:it )?instead|instead of invest\w*|or invest\w*|vs\.? invest\w*|lump sum)\b|\b(?:bonus|windfall|inheritance|lump sum)\b.*\b(?:mortgage|home loan)\b/;
+const PER_MONTH = /\b(?:a|per|each|every) month\b|\bmonthly\b|\/ ?mo\b/;
 // Spec step 245.
 const CAR_LOAN =
   /\b(?:gap (?:insurance|coverage|cover|waiver)|(?:extended (?:car )?warranty|service contract)\b[^.]*\b(?:car|auto|loan|dealer)|\b(?:car|auto|loan|dealer)\b[^.]*\b(?:extended (?:car )?warranty|service contract)|vehicle service contract|dealer add-?ons?|add-?ons? (?:in|on|to) my (?:car|auto) loan)\b|\b(?:car|auto) loan\b.*\b(?:rates? (?:fell|dropped|are down|came down)|(?:score|credit) (?:went up|improved|rose))\b/;
@@ -337,6 +345,14 @@ export function parseDebtIntent(
   if (DEBT_TROUBLE.test(text)) return { kind: "debt_trouble" };
   if (DEBT_REVIEW.test(text)) return { kind: "debt_review" };
   if (CAR_LOAN.test(text)) return { kind: "car_loan" };
+  if (MORTGAGE_MONEY.test(text) && !/\b(?:paid off|payoff date|when will)\b/.test(text)) {
+    const monthly = PER_MONTH.test(text);
+    return {
+      kind: "mortgage_money",
+      lumpCents: monthly ? null : amountCents,
+      extraMonthlyCents: monthly ? amountCents : null,
+    };
+  }
   // Taxes owed are the tax questions' (./tax-intents.ts).
   if (/\b(?:tax|taxes|irs|tax refund)\b/.test(text)) return null;
   // "Lower the rate on my card" is a request, not a question (./intents.ts act).
