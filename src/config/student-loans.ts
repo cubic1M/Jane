@@ -96,3 +96,48 @@ export type StudentStepKey = (typeof STUDENT_STEPS)[number]["key"];
 
 // Payments seen this long ago or less count toward forgiveness tracking from transactions.
 export const STUDENT_PAYMENT_LOOKBACK_DAYS = 400;
+
+// --- The long game (spec step 225) ----------------------------------------------------------
+
+export const LONG_GAME = {
+  // PSLF needs the employer certified (the PSLF Help Tool's employment certification form) at
+  // least this often, and every employer change; an income-driven plan is recertified yearly.
+  certifyEveryMonths: 12,
+  recertifyEveryMonths: 12,
+  // A reminder this many days before either date.
+  remindDays: 30,
+  // A private loan is worth refinancing when an offer's rate is at least this much lower.
+  refiMinDropBps: 100,
+  // How many months of the PSLF count the page shows on each side of today.
+  gridMonthsEachSide: 6,
+  // An assumed share of forgiven debt paid as federal income tax, to size a plan for it.
+  forgivenTaxRate: 0.22,
+  // The tax on forgiven debt goes on the deadlines list this many years before forgiveness
+  // (the deadlines list only holds dates a few years ahead).
+  taxPlanYearsAhead: 2,
+} as const;
+
+export const LONG_GAME_SOURCES = {
+  pslfCertify: "https://studentaid.gov/pslf/",
+  forgivenTax: "https://studentaid.gov/manage-loans/forgiveness-cancellation",
+  refinance: "https://studentaid.gov/understand-aid/types/loans/federal-vs-private",
+  recertify: "https://studentaid.gov/manage-loans/repayment/plans/income-driven/recertify",
+} as const;
+
+// What a federal loan has that a private refinance gives up for good.
+export const FEDERAL_PROTECTIONS = [
+  "Public Service Loan Forgiveness and income-driven forgiveness",
+  "payments tied to your income, and the option to lower them if you lose a job",
+  "deferment and forbearance, and discharge if you die or become disabled",
+] as const;
+
+// The tax on forgiven debt: PSLF forgiveness isn't taxed; forgiveness under an income-driven
+// plan is generally taxable as income federally from 2026 (the exclusion for it ended after
+// 2025), and states may tax it too.
+export const FORGIVEN_TAX = {
+  pslf: { taxable: false, text: "Public Service Loan Forgiveness isn't taxed." },
+  idr: {
+    taxable: true,
+    text: "Forgiveness under an income-driven plan is generally taxed as income federally from 2026, and some states tax it too.",
+  },
+} as const;

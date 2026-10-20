@@ -532,7 +532,7 @@ export function parseIntent(
   if (learn) return learn;
   // Loans and debt (spec Phase Y) before taxes: "how much do I owe?" is about debts;
   // anything that mentions taxes is left to the tax questions.
-  const debt = parseDebtIntent(text, parseAmount(text));
+  const debt = parseDebtIntent(text, parseAmount(text), asOf);
   if (debt) return debt;
   const tax = parseTaxIntent(text);
   if (tax) return tax;
