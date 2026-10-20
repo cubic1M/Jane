@@ -22,6 +22,14 @@ import { COMPANY_LINK } from "../investments/company-copy";
 import { CRYPTO_LINK, NEVER_TRADES } from "../investments/crypto-copy";
 import { CryptoError, linkDemoCrypto } from "@/lib/crypto/crypto";
 import { CashError, moveCash } from "@/lib/investments/cash";
+import {
+  contributeToIra,
+  requestMatchRaise,
+  RetirementAccountsError,
+} from "@/lib/investments/retirement-accounts";
+import { answerOldPlan, OldAccountsError, startRollover } from "@/lib/investments/old-accounts";
+import { OLD_LINK } from "../investments/old-accounts-copy";
+import { RA_LINK } from "../investments/retirement-accounts-copy";
 import { loadSteadyHand } from "@/lib/investments/steady-hand";
 import { pauseNote } from "../investments/steady-copy";
 import { CASH_LINK } from "../investments/cash-copy";
@@ -358,3 +366,92 @@ async function pauseFirst(
     ],
   });
 }
+
+// Spec step 210: raise the contribution at work for the whole match (through the payroll
+// stand-in), or put money in an IRA (through the simulated brokerage). Each is a tap.
+export const retireMatch: ActionHandler = {
+  id: "retire.match",
+  on: "open",
+  async run({ userId, action, client, now }) {
+    try {
+      const r = await requestMatchRaise(userId, { client, now });
+      return {
+        answeredWith: action.label,
+        note: `Requested through the payroll stand-in (no real pay changes yet): ${Math.round(r.toRate * 1000) / 10}% of pay from ${r.effectiveOn}, to get about ${formatCents(r.missedCents)} a year more from your employer.`,
+        actions: [RA_LINK],
+      };
+    } catch (error) {
+      if (error instanceof RetirementAccountsError) throw answeredElsewhere(error.message);
+      throw error;
+    }
+  },
+};
+
+export const retireIra: ActionHandler = {
+  id: "retire.ira",
+  on: "open",
+  async run({ userId, message, action, client, now }) {
+    const cents = message.refs.iraCents;
+    if (!cents) throw new ChatActionError("not_offered", "That button isn't on this message.");
+    try {
+      const r = await contributeToIra(userId, cents, { client, now });
+      return {
+        answeredWith: action.label,
+        note: `Done ${SIMULATED_WORDS}: ${formatCents(r.amountCents)} put in ${r.accountName}.`,
+        actions: [RA_LINK],
+      };
+    } catch (error) {
+      if (error instanceof RetirementAccountsError) throw answeredElsewhere(error.message);
+      throw error;
+    }
+  },
+};
+
+// Spec step 211: the question about a past employer's 401(k), and the rollover (a tap).
+function oldPlanAnswer(id: ActionId, had: boolean): ActionHandler {
+  return {
+    id,
+    on: "open",
+    async run({ userId, message, action, client }) {
+      const planId = message.refs.oldPlanId;
+      if (!planId) throw new ChatActionError("not_offered", "That button isn't on this message.");
+      try {
+        const r = await answerOldPlan(userId, planId, had, { client });
+        return {
+          answeredWith: action.label,
+          note: !had
+            ? "Thanks. I won't ask about that one again."
+            : r.found
+              ? `Found it: ${r.planName}, ${formatCents(r.balanceCents)}. I'll show what it costs and how to bring it home.`
+              : "I couldn't find it. The old accounts page lists ways to look.",
+          actions: [OLD_LINK],
+        };
+      } catch (error) {
+        if (error instanceof OldAccountsError) throw answeredElsewhere(error.message);
+        throw error;
+      }
+    },
+  };
+}
+export const oldPlanYes = oldPlanAnswer("oldplan.yes", true);
+export const oldPlanNo = oldPlanAnswer("oldplan.no", false);
+
+export const oldPlanRollover: ActionHandler = {
+  id: "oldplan.rollover",
+  on: "open",
+  async run({ userId, message, action, client, now }) {
+    const planId = message.refs.oldPlanId;
+    if (!planId) throw new ChatActionError("not_offered", "That button isn't on this message.");
+    try {
+      const r = await startRollover(userId, planId, { client, now });
+      return {
+        answeredWith: action.label,
+        note: `Direct rollover requested ${SIMULATED_WORDS}: the old plan sends ${formatCents(r.balanceCents)} to your IRA itself (never a check to you, so it isn't a withdrawal), arriving about ${r.arrivesOn}. I'll tell you when it's invested.`,
+        actions: [OLD_LINK],
+      };
+    } catch (error) {
+      if (error instanceof OldAccountsError) throw answeredElsewhere(error.message);
+      throw error;
+    }
+  },
+};

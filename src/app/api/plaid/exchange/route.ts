@@ -43,7 +43,7 @@ export async function POST(request: Request) {
   }
   after(async () => {
     try {
-      await syncItem(itemId);
+      await syncItem(itemId, { progressive: true });
     } catch (error) {
       console.error("First Plaid sync failed", { itemId, error: String(error) });
     }

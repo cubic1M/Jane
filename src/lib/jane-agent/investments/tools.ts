@@ -19,6 +19,8 @@ import { loadHsa } from "@/lib/investments/hsa";
 import { loadCompanyStock } from "@/lib/investments/company-stock";
 import { loadCrypto } from "@/lib/crypto/crypto";
 import { loadCash } from "@/lib/investments/cash";
+import { loadRetirementAccounts } from "@/lib/investments/retirement-accounts";
+import { loadOldAccounts } from "@/lib/investments/old-accounts";
 import { loadSteadyHand } from "@/lib/investments/steady-hand";
 import { CASH_HOMES, CASH_RATES_AS_OF } from "@/config/cash";
 import { formatReturn } from "@/insights/returns";
@@ -129,6 +131,18 @@ export const INVESTMENT_TOOLS: Anthropic.Tool[] = [
     input_schema: noInput,
   },
   {
+    name: "retirement_accounts",
+    description:
+      "Every retirement contribution limit this year (workplace plan and IRAs, with catch-up from 50) with what the person has put in and the room left; in demo advice mode also the employer match left on the table in dollars a year, Roth or traditional by their bracket (from their tax estimate), whether a Roth IRA is open to their income or needs the backdoor route, and the taps Jane can do (raise the payroll contribution through the payroll stand-in; put money in an IRA). The backdoor Roth is explained, never done for them.",
+    input_schema: noInput,
+  },
+  {
+    name: "old_accounts",
+    description:
+      "Retirement plans left at past employers: each employer (from payroll history or what the person told Jane) with where it stands (asked once, found, rolling over, rolled over), a found plan's balance and its yearly fees now versus in a low-cost index fund, and the rollover's tracked steps. A rollover is a direct transfer to an IRA: never a withdrawal, never a check to the person. The person taps to start one; never suggest rolling into a Roth (it's taxed).",
+    input_schema: noInput,
+  },
+  {
     name: "steady_hand",
     description:
       "Whether the person's investments have had a big drop lately (down 8% over a month or 15% over three, their own return, money in and out left out) and, in demo advice mode, how each goal's timeline sits (near goals are already in cash). Report only these past facts and the plan to stay the course. NEVER say or imply what markets will do, when they will recover, or that now is a good or bad time: no one can know.",
@@ -175,6 +189,8 @@ export const INVESTMENT_TOOL_STATUS: Readonly<Record<string, string>> = {
   crypto: "Reading your crypto balances…",
   cash_plan: "Looking at where your cash sits…",
   steady_hand: "Looking at how your investments have moved…",
+  old_accounts: "Looking for old retirement accounts…",
+  retirement_accounts: "Checking your retirement limits…",
   college_plan: "Working out college costs…",
   goal_buckets: "Looking at your goals…",
   investment_returns: "Working out your returns…",
@@ -529,6 +545,42 @@ export async function runInvestmentTool(
         return out(describe(await estimateCollege(userId, { childAge: age, type }, { client })));
       }
       return out({ plans: plans.map((p) => ({ child: p.childName, ...describe(p.estimate) })) });
+    }
+    case "retirement_accounts": {
+      const v = await loadRetirementAccounts(userId, { client, now });
+      return out({
+        limits: v.limits.map((l) => ({
+          account: l.label,
+          limit: money(l.limitCents),
+          catchUp: money(l.catchUpCents),
+          putIn: money(l.usedCents),
+          roomLeft: money(l.roomCents),
+        })),
+        advice: !v.advice
+          ? "only in demo advice mode"
+          : {
+              matchLeftOnTheTableAYear: v.match ? money(v.match.missedCents) : null,
+              rothOrTraditional: v.roth.choice,
+              nextDollarTaxPercent:
+                v.roth.marginalRate === null ? null : Math.round(v.roth.marginalRate * 1000) / 10,
+              rothIraAccess: v.roth.access?.kind ?? null,
+              canPutInAnIraNow: money(v.iraAllowedCents),
+            },
+      });
+    }
+    case "old_accounts": {
+      const v = await loadOldAccounts(userId, { client, now });
+      return out({
+        employers: v.plans.map((p) => ({
+          employer: p.employer,
+          status: p.status,
+          balance: p.balanceCents === null ? null : money(p.balanceCents),
+          feesAYearNow: p.fees ? money(p.fees.beforeCents) : null,
+          feesAYearInIndexFund: p.fees && v.advice ? money(p.fees.afterCents) : null,
+          steps: p.steps.map((s) => ({ step: s.label, done: s.doneOn })),
+        })),
+        rolloverIsAWithdrawal: false,
+      });
     }
     case "steady_hand": {
       const view = await loadSteadyHand(userId, { client, now });

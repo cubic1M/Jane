@@ -232,6 +232,9 @@ model User {
   deletedAt                  DateTime?       @map("deleted_at") @db.Timestamptz(3)
   // Set when detection first finishes for this user, so /scanning knows it can move on.
   firstDetectionAt           DateTime?       @map("first_detection_at") @db.Timestamptz(3)
+  // When the first scan after linking a bank finished completely (detection, the sectors'
+  // work and Jane's first run). Until then the chat opens early and says she's still looking.
+  firstScanDoneAt            DateTime?       @map("first_scan_done_at") @db.Timestamptz(3)
   // Email preferences, changed on /settings or by the unsubscribe link.
   digestEnabled              Boolean         @default(true) @map("digest_enabled")
   // IANA name, e.g. America/New_York. Null means US Pacific.
@@ -386,6 +389,9 @@ model User {
   leanPlans         LeanPlan[]
   yearPlans         YearPlan[]
   unusualAnswers    UnusualAnswer[]
+
+  payrollChanges PayrollChange[]
+  oldPlans       OldPlan[]
 
   @@map("users")
 }
@@ -3475,4 +3481,55 @@ model UnusualAnswer {
   @@unique([userId, alertId])
   @@index([userId, merchantKey])
   @@map("unusual_answers")
+}
+
+// Spec step 210: a change to the person's retirement contribution at work, sent to the
+// payroll partner (a stand-in until one is connected) or the team. It only records the
+// request; the person's pay changes when their employer does it.
+model PayrollChange {
+  id          String   @id @default(cuid())
+  userId      String   @map("user_id")
+  // Where the request went: "stand-in" until a payroll partner is connected.
+  partner     String
+  partnerRef  String   @map("partner_ref")
+  fromRate    Float    @map("from_rate")
+  toRate      Float    @map("to_rate")
+  // requested, then confirmed once the stand-in sees the next paycheck.
+  status      String   @default("requested")
+  effectiveOn DateTime @map("effective_on") @db.Date
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+  @@map("payroll_changes")
+}
+
+// Spec step 211: a retirement plan at a past employer. One row per employer, asked about
+// once. Found plans are read-only until the person rolls one over (a direct rollover, never
+// a check to them); the steps are tracked in `steps`.
+model OldPlan {
+  id              String    @id @default(cuid())
+  userId          String    @map("user_id")
+  employer        String
+  // payroll (history), you (added by the person) or demo (the stand-in history).
+  source          String
+  // asked, no_plan, found, not_found, rolling, rolled or skipped.
+  status          String    @default("asked")
+  planName        String?   @map("plan_name")
+  balanceCents    Int?      @map("balance_cents")
+  expenseRatioBps Int?      @map("expense_ratio_bps")
+  // The plan's records came from this partner (the stand-in locator is "demo").
+  locator         String?
+  destinationId   String?   @map("destination_id")
+  // [{ key, label, doneOn: YYYY-MM-DD | null }].
+  steps           Json      @default("[]")
+  rollingSince    DateTime? @map("rolling_since") @db.Timestamptz(3)
+  rolledAt        DateTime? @map("rolled_at") @db.Timestamptz(3)
+  createdAt       DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, employer])
+  @@map("old_plans")
 }

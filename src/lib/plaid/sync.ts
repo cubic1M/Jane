@@ -34,11 +34,13 @@ import { SIMULATED_PARTNER } from "@/config/brokerage";
 import { confirmSwitches, switchOf } from "@/lib/agent/switch";
 import { ensureDemoOptions } from "@/lib/compare";
 import { ensureDemoPolicies } from "@/lib/insurance/profile";
+import { ensureDemoAssets } from "@/lib/plaid/demo-assets";
 import { insuranceAfterSync } from "@/lib/insurance/daily";
 import { demoPayoffs } from "@/lib/loan-applications";
 import { confirmInsuranceSwitches } from "@/lib/insurance/switch";
 import { demoExtrasOf, demoPlaidApi, isDemoToken } from "./demo";
 import { runJaneAgentSafely } from "@/lib/jane-agent/run";
+import { markScanDone } from "@/lib/scan";
 
 // Brings one Plaid item up to date: accounts, transactions since the saved cursor
 // (added, modified and removed), recurring streams, loans and card rates (Liabilities,
@@ -66,7 +68,15 @@ export type SyncResult = {
   investments: "updated" | "unavailable" | "off";
 };
 
-type Options = { client?: PrismaClient; api?: PlaidApi; now?: Date };
+type Options = {
+  client?: PrismaClient;
+  api?: PlaidApi;
+  now?: Date;
+  // The first scan of a bank someone is waiting on (a link, the sample person): Jane's
+  // findings are posted right after detection, before the slower sector work, and again
+  // after it. Other syncs run Jane once, at the end.
+  progressive?: boolean;
+};
 
 async function saveAccounts(db: ScopedDb, itemId: string, sync: { accounts: NormalizedAccount[] }) {
   const ids = new Map<string, string>();
@@ -537,7 +547,7 @@ export async function syncDemoInvestments(
 
 export async function syncItem(
   itemId: string,
-  { client = defaultClient, api = plaid(), now = new Date() }: Options = {},
+  { client = defaultClient, api = plaid(), now = new Date(), progressive = false }: Options = {},
 ): Promise<SyncResult> {
   // The one unscoped read: finds the item's owner so everything after is scoped to them.
   const item = await client.plaidItem.findUnique({
@@ -575,6 +585,8 @@ export async function syncItem(
 
   const sync = await new PlaidDataSource(api, accessToken, item.transactionsCursor).load();
   const accountIds = await saveAccounts(db, item.id, sync);
+  // The demo bank's home and car, once its loans are saved (spec step 67).
+  if (isDemoToken(accessToken)) await ensureDemoAssets(item.userId, item.id, { client, now });
   const counts = await saveTransactions(db, accountIds, sync);
   const recurring = await saveRecurringStreams(db, api, accessToken, accountIds);
   const liabilities = item.liabilities
@@ -608,6 +620,10 @@ export async function syncItem(
   }
 
   await runDetection(item.userId, { client, now });
+  // The first scan after linking: what people see first (the findings) is posted right after
+  // detection, before the slower sector work below; the chat is already open and fills in.
+  if (progressive && result.firstSync)
+    await runJaneAgentSafely(item.userId, { client, now, trigger: "sync" });
   // After detection these don't depend on each other, so they run together; the sample
   // person's first screen is waiting on this sync.
   await Promise.all([
@@ -627,5 +643,6 @@ export async function syncItem(
   ]);
   // Jane says what's new in the chat (spec step 82); a problem there never fails the sync.
   await runJaneAgentSafely(item.userId, { client, now, trigger: "sync" });
+  await markScanDone(item.userId, { client, now });
   return result;
 }
