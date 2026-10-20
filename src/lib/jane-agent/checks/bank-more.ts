@@ -374,6 +374,8 @@ const rows: Row[] = [
   ["loans", "/loans/car", "car_purchase", "how much car can i afford"],
   ["loans", "/loans/car", "car_purchase", "can i afford a $32,000 car"],
   ["loans", "/loans/car", "car_purchase", "the dealer offered 7.9% for 72 months"],
+  ["debt", "/loans/family", "family_loans", "who owes me money"],
+  ["debt", "/loans/family", "family_loans", "did sam pay me back"],
   ["student", "/loans/student", "student_long_game", "how many pslf payments have i made"],
   ["student", "/loans/student", "student_long_game", "should i refinance my student loans"],
   ["debt", "/loans/interest", "card_interest", "how can i pay less interest on my cards"],

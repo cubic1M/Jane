@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { E2E_DATABASE_URL, deleteUser, setCheckingBalance, signedInUser } from "./db";
+import { E2E_DATABASE_URL, addTransfer, deleteUser, setCheckingBalance, signedInUser } from "./db";
 
 // Spec step 109: every debt in one place, from the demo bank: loans and cards with where
 // each rate came from, the buy now, pay later plans found from payments, terms typed for
@@ -597,4 +597,46 @@ test("student loans show PSLF month by month, save dates as deadlines, and warn 
   await expect(
     page.getByText("Certify your employer for Public Service Loan Forgiveness"),
   ).toBeVisible();
+});
+
+// Spec step 226: a payment-app transfer is a loan only after the person says so; Jane drafts
+// a reminder but never messages the other person.
+test("a payment-app transfer is a loan only after the tap, and the reminder is only text", async ({
+  context,
+  page,
+  baseURL,
+}) => {
+  const user = await signedInUser("user");
+  userId = user.userId;
+  await context.addCookies([
+    { name: "authjs.session-token", value: user.sessionToken, url: baseURL ?? "" },
+  ]);
+  await page.goto("/connect");
+  await page.getByRole("button", { name: "Link a demo bank" }).click();
+  await expect(page).toHaveURL("/chat", { timeout: 60_000 });
+  const day = (daysAgo: number) =>
+    new Date(Date.now() - daysAgo * 86_400_000).toISOString().slice(0, 10);
+  await addTransfer(user.userId, {
+    date: day(45),
+    amountCents: 40_000,
+    description: "VENMO PAYMENT TO JORDAN LEE - rent loan",
+  });
+
+  await page.goto("/loans/family");
+  await expect(page.getByRole("heading", { level: 1, name: "Family and friends" })).toBeVisible();
+  const asks = page.getByRole("list", { name: "Transfers" });
+  await expect(asks).toContainText("You sent Jordan Lee $400.00 on Venmo");
+  await expect(asks).toContainText("I won't contact Jordan");
+  await expect(page.getByRole("list", { name: "Loans" })).toHaveCount(0);
+
+  const yes = asks.getByRole("button", { name: "Yes, I lent it" });
+  await yes.scrollIntoViewIfNeeded();
+  // Keyboard, so the fixed bottom nav on phones never takes the tap.
+  await yes.focus();
+  await yes.press("Enter");
+  await expect(page.getByText("Noted.")).toBeVisible();
+  const loans = page.getByRole("list", { name: "Loans" });
+  await expect(loans).toContainText("Jordan Lee owes you $400.00");
+  await expect(loans.getByRole("note")).toContainText("A kind reminder, for you to send");
+  await expect(loans.getByRole("note")).toContainText("Hi Jordan");
 });

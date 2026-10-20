@@ -16,6 +16,7 @@ import { loadMedicalBills } from "@/lib/medical-bills";
 import { loadReportFixes } from "@/lib/credit-report-fixes";
 import { loadCardInterest } from "@/lib/card-interest";
 import { loadStudentLongGame } from "@/lib/student-long-game";
+import { loadFamilyLoans } from "@/lib/family-loans";
 import { pullCredit } from "@/lib/credit";
 import { listApplications } from "@/lib/loan-applications";
 import { checkRates, loadRefinance } from "@/lib/refinance";
@@ -36,6 +37,7 @@ import { medicalReply } from "./medical-bills-replies";
 import { reportFixReply } from "./credit-report-fixes-replies";
 import { cardInterestReply } from "./card-interest-replies";
 import { longGameReply } from "./student-long-game-replies";
+import { familyLoansReply } from "./family-loans-replies";
 import type { Reply } from "./replies";
 
 // Answers questions about debts by rules (spec Phase Y), with the same loaders as the
@@ -77,6 +79,8 @@ export async function answerDebt(
       }
       return intent.kind === "build_credit" ? buildCreditReply(data) : simulateReply(data);
     }
+    case "family_loans":
+      return familyLoansReply(await loadFamilyLoans(userId, { client, now }));
     case "student_long":
       return longGameReply(await loadStudentLongGame(userId, { client, now }));
     case "card_interest":

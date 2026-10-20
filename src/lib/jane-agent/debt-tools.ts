@@ -20,6 +20,7 @@ import type { MedicalBills } from "@/lib/medical-bills";
 import type { ReportFixes } from "@/lib/credit-report-fixes";
 import type { CardInterest } from "@/lib/card-interest";
 import type { LongGame } from "@/lib/student-long-game";
+import type { FamilyLoans } from "@/lib/family-loans";
 import { REWARD_CATEGORY_LABELS } from "@/config/credit-cards";
 import type { DebtAutopilot } from "@/lib/debt-autopilot";
 import { PMI_SOURCE } from "@/config/debt";
@@ -172,6 +173,12 @@ export const DEBT_TOOLS: Anthropic.Tool[] = [
     input_schema: noInput,
   },
   {
+    name: "family_loans",
+    description:
+      "Money between the person and family or friends: payment-app transfers (Venmo, Zelle, Cash App) of $100 or more, or noted like a loan, that Jane asked about and haven't been answered (a transfer is a loan only after the person says so); loans the person confirmed, lent or borrowed, with the balance after the transfers that came back and the kind reminder drafted for them to send themselves once a loan has been open a month; loans they co-signed with whether a payment looks late; and the household's shared debts with each person's half of the monthly payment. Jane never messages the other person. Confirming or dismissing a transfer is the person's tap (the famloan.yes and famloan.no buttons).",
+    input_schema: noInput,
+  },
+  {
     name: "mortgage",
     description:
       "The person's mortgage, watched: balance, rate, payment; whether it has PMI and the loan as a share of the home's value (from the value they gave), with whether PMI can come off and the steps (rules from the CFPB); escrow balance and any escrow change in the payment; what extra principal each month would save; the best refinance offer's monthly saving, closing costs and break-even months.",
@@ -321,6 +328,7 @@ export const DEBT_TOOL_STATUS: Readonly<Record<string, string>> = {
   credit_report_fixes: "Checking your credit report…",
   card_interest: "Looking at your card interest…",
   student_long_game: "Looking at your student loan's long game…",
+  family_loans: "Looking at who owes whom…",
 };
 
 export function refinanceToolOutput(refi: Refinance, money: (cents: number) => string) {
@@ -897,6 +905,42 @@ export function studentLongGameToolOutput(g: LongGame, money: (cents: number) =>
       text: g.refi.text,
     },
     assumptions: g.assumptions,
+  };
+}
+
+export function familyLoansToolOutput(data: FamilyLoans, money: (cents: number) => string) {
+  return {
+    janeNeverMessagesTheOtherPerson: true,
+    waitingForYourAnswer: data.candidates.map((c) => ({
+      id: c.id,
+      app: c.parsed.app,
+      with: c.parsed.counterparty,
+      amount: money(Math.abs(c.transfer.amountCents)),
+      on: c.transfer.date,
+      note: c.parsed.note,
+      wouldBe: c.kind,
+    })),
+    loans: data.loans.map((l) => ({
+      kind: l.kind,
+      with: l.counterparty,
+      lentOrBorrowed: money(l.principalCents),
+      stillOwed: money(l.balanceCents),
+      openedOn: l.openedOn,
+      paidBack: l.repaid.map((r) => ({ on: r.date, amount: money(r.cents) })),
+      reminderToSendYourself: l.reminder?.text ?? null,
+    })),
+    cosigned: data.cosigned.map((c) => ({
+      loan: c.debtName,
+      for: c.counterparty,
+      looksLate: c.missed,
+      pastDue: c.pastDueCents === null ? null : money(c.pastDueCents),
+      noteToSendYourself: c.text,
+    })),
+    sharedDebts: data.shared.map((s) => ({
+      debt: s.name,
+      monthly: s.paymentCents === null ? null : money(s.paymentCents),
+      yourHalf: s.yourShareCents === null ? null : money(s.yourShareCents),
+    })),
   };
 }
 

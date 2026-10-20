@@ -1171,6 +1171,18 @@ const BASE_QUESTIONS: readonly CheckQuestion[] = [
       link: "/loans/cards",
     },
   },
+  // Spec step 226: money between family and friends, kept kindly.
+  {
+    id: "debt-29",
+    text: "who owes me money",
+    needs: "rules",
+    expect: {
+      intent: "family_loans",
+      mentions: /owe|lent|loan/i,
+      link: "/loans/family",
+      maxChars: 1_200,
+    },
+  },
   // Spec step 225: the long game on student loans.
   {
     id: "debt-28",

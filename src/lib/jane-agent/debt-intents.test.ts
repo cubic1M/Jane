@@ -263,6 +263,21 @@ describe("debt questions", () => {
     expect(intent("am I eligible for PSLF")).toEqual({ kind: "student_loans" });
   });
 
+  it("reads money lent to or borrowed from family and friends, co-signing and shared debts", () => {
+    for (const text of [
+      "who owes me money",
+      "did Sam pay me back",
+      "money I lent my brother",
+      "I owe my sister",
+      "I co-signed a loan",
+      "what are our shared debts",
+    ]) {
+      expect(intent(text), text).toEqual({ kind: "family_loans" });
+    }
+    // Plain debt questions stay debt questions.
+    expect(intent("how much do I owe")).toEqual({ kind: "debts" });
+  });
+
   it("reads a tight month", () => {
     for (const text of [
       "money is tight this month",

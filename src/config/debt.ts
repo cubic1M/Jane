@@ -51,6 +51,7 @@ export const DEBT_SOURCE_LIMITS = {
   credit_report_fixes: 2,
   card_interest: 2,
   student_long_game: 1,
+  family_loans: 1,
 } as const;
 export const DEBT_MESSAGE_PRIORITY = {
   // A buy now, pay later plan Jane found, then a debt with no rate: news that can wait,
@@ -124,6 +125,11 @@ export const DEBT_MESSAGE_PRIORITY = {
   card_rate_answer: 62,
   // Spec step 225: student loan paperwork due within a month has a date.
   student_paperwork: 64,
+  // Spec step 226: a loan to a friend is asked about once, under the findings; a reminder
+  // and a co-signed loan going late can wait a little longer or come earlier.
+  family_candidate: 38,
+  family_reminder: 35,
+  cosigned_late: 68,
 } as const;
 
 // What Jane does about debts by herself at each autopilot level (src/config/autopilot.ts),
@@ -209,6 +215,10 @@ export const DEBT_AUTOPILOT: Readonly<
       step: 225,
       does: "Counts Public Service Loan Forgiveness month by month, puts the employer certification and income-driven recertification dates on your deadlines, sizes the tax on forgiven debt for your tax plan, and tells you what a refinance would give up.",
     },
+    {
+      step: 226,
+      does: "Spots large payment-app transfers (Venmo, Zelle, Cash App) that might be a loan and asks you once, tracks what comes back, drafts a kind reminder for you to send yourself, and warns about a late payment on a loan you co-signed. A transfer is a loan only after you say so; I never message the other person.",
+    },
   ],
   safe: [
     {
@@ -287,6 +297,10 @@ export const DEBT_AUTOPILOT: Readonly<
       step: 225,
       does: "Counts Public Service Loan Forgiveness month by month, puts the employer certification and income-driven recertification dates on your deadlines, sizes the tax on forgiven debt for your tax plan, and tells you what a refinance would give up.",
     },
+    {
+      step: 226,
+      does: "Spots large payment-app transfers (Venmo, Zelle, Cash App) that might be a loan and asks you once, tracks what comes back, drafts a kind reminder for you to send yourself, and warns about a late payment on a loan you co-signed. A transfer is a loan only after you say so; I never message the other person.",
+    },
   ],
   all: [
     {
@@ -364,6 +378,10 @@ export const DEBT_AUTOPILOT: Readonly<
     {
       step: 225,
       does: "Counts Public Service Loan Forgiveness month by month, puts the employer certification and income-driven recertification dates on your deadlines, sizes the tax on forgiven debt for your tax plan, and tells you what a refinance would give up.",
+    },
+    {
+      step: 226,
+      does: "Spots large payment-app transfers (Venmo, Zelle, Cash App) that might be a loan and asks you once, tracks what comes back, drafts a kind reminder for you to send yourself, and warns about a late payment on a loan you co-signed. A transfer is a loan only after you say so; I never message the other person.",
     },
   ],
 };

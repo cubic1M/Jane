@@ -411,6 +411,13 @@ async function LoansContent({
             </Link>
             .
           </p>
+          <p className="text-sm text-zinc-600 dark:text-zinc-400">
+            Lent or borrowed money with family or friends?{" "}
+            <Link href="/loans/family" className={LINK}>
+              Keep track kindly
+            </Link>
+            .
+          </p>
 
           <p className="text-sm text-zinc-600 dark:text-zinc-400">
             Own a home with a mortgage?{" "}

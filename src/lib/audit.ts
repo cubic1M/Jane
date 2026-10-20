@@ -17,6 +17,8 @@ export type AuditEvent =
   | "credit_dispute_sent"
   // Spec step 224: a request for a lower card rate, sent on the person's tap.
   | "card_rate_requested"
+  // Spec step 226: the person said a payment-app transfer was a loan.
+  | "personal_loan_confirmed"
   | "user_signed_up"
   // Insurance (spec Phase X): a policy saved or removed, the household facts saved.
   | "insurance_policy_saved"

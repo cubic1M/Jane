@@ -303,6 +303,7 @@ model User {
   creditDisputes         CreditDispute[]
   cardPromos             CardPromo[]
   cardRateRequests       CardRateRequest[]
+  personalLoans          PersonalLoan[]
   balanceTransfers       BalanceTransfer[]
   findings               Finding[]
   decisions              Decision[]
@@ -1000,6 +1001,34 @@ model CardRateRequest {
 
   @@unique([userId, key])
   @@map("card_rate_requests")
+}
+
+// Money lent to or borrowed from family and friends, or a loan the person co-signed (spec
+// step 226). A transfer in a payment app becomes a loan only after the person says so; a
+// co-signed loan is one of their own debts, watched for missed payments. Jane never messages
+// the other person.
+model PersonalLoan {
+  id             String    @id @default(cuid())
+  userId         String    @map("user_id")
+  // lent, borrowed or cosigned.
+  kind           String
+  counterparty   String
+  // The first transfer's amount (lent, borrowed); 0 for a co-signed loan.
+  principalCents Int       @map("principal_cents")
+  openedOn       DateTime  @map("opened_on") @db.Date
+  // The payment-app transfer it came from ("tx:<id>"), or the co-signed debt ("account:<id>").
+  sourceKey      String    @map("source_key")
+  note           String?
+  // open, settled or dismissed (the person said it isn't a loan).
+  status         String    @default("open")
+  settledOn      DateTime? @map("settled_on") @db.Date
+  createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, sourceKey])
+  @@index([userId])
+  @@map("personal_loans")
 }
 
 // A balance transfer the person made to a 0% card (spec step 113), so Jane can keep the

@@ -1,6 +1,7 @@
 import type { DEBT_ACTION_IDS } from "../debt-action-ids";
 import { bnplPayoff } from "./bnpl";
 import { cardRateSend } from "./card-interest";
+import { famLoanNo, famLoanYes } from "./family-loans";
 import { creditFixSend } from "./credit-report-fixes";
 import { homeGoal } from "./home-buying";
 import { medicalSend } from "./medical-bills";
@@ -36,4 +37,6 @@ export const DEBT_ACTION_HANDLERS: Readonly<
   "medical.send": medicalSend,
   "creditfix.send": creditFixSend,
   "cardrate.send": cardRateSend,
+  "famloan.yes": famLoanYes,
+  "famloan.no": famLoanNo,
 };
