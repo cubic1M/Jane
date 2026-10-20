@@ -101,6 +101,9 @@ export const PEOPLE: readonly Person[] = [
       "education_529",
       "roth_conversion",
       "childcare_tax_break",
+      "catch_up",
+      "backdoor_roth",
+      "hsa",
     ],
   },
   {
@@ -131,6 +134,8 @@ export const PEOPLE: readonly Person[] = [
       "hardship_plan",
       "social_security_timing",
       "roth_conversion",
+      "backdoor_roth",
+      "catch_up",
     ],
   },
   {
