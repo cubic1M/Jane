@@ -15,6 +15,7 @@ import { runBillPay } from "@/lib/money-movement/bill-pay";
 import { healthFor } from "@/lib/health-score";
 import { monthlyReportFor } from "@/lib/monthly-report";
 import { runLeanCheck } from "@/lib/lean-plan";
+import { loadYearPlan } from "@/lib/year-plan";
 import { runPlanUpkeep } from "@/lib/plan-upkeep";
 import { runTaxAutopilotSafely } from "@/lib/tax-autopilot";
 import { gather, plan, type BrainSettings } from "./brain";
@@ -57,6 +58,10 @@ export async function runJaneAgent(
   // Spec step 99: insurance found from payments joins the profile (as found) by itself.
   await policiesFromPayments(userId, { client, now, input }).catch((error) =>
     console.error("Finding policies from payments failed", { userId, error: String(error) }),
+  );
+  // Spec step 205: the year's plan, re-planned from what happened and kept.
+  await loadYearPlan(userId, { client, now, input, keep: true }).catch((error) =>
+    console.error("Year plan failed", { userId, error: String(error) }),
   );
   // Spec step 204: a paycheck that hasn't come in gets one question; pay back ends the plan.
   await runLeanCheck(userId, { client, now, input }).catch((error) =>
