@@ -215,6 +215,11 @@ export function scopedFor(userId: string, client: PrismaClient = db) {
     // Crypto, read-only (spec step 161).
     payrollChanges: scoped.payrollChange,
     oldPlans: scoped.oldPlan,
+    retirementIncomes: scoped.retirementIncome,
+    familyChildren: scoped.familyChild,
+    rentalProperties: scoped.rentalProperty,
+    costlyProducts: scoped.costlyProduct,
+    giftLinks: scoped.giftLink,
     cryptoConnections: scoped.cryptoConnection,
     cryptoHoldings: scoped.cryptoHolding,
   };

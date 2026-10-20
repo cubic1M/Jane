@@ -45,6 +45,23 @@ import {
   questionLine,
   rollButton,
 } from "../investments/old-accounts-copy";
+import {
+  drawLine,
+  paycheckLine,
+  RI_LINK,
+  rmdLine,
+  ssLine,
+} from "../investments/retirement-income-copy";
+import { FAMILY_LINK, giftOffer, rothOffer } from "../investments/family-copy";
+import { PROPERTY_LINK, paydownLine, rentalLine } from "../investments/property-copy";
+import { MIN_YEARLY_COST_CENTS } from "@/config/costly-products";
+import {
+  advisoryLine,
+  COSTLY_LINK,
+  premiumQuestion,
+  productLine,
+} from "../investments/costly-copy";
+import { REVIEW_LINK, reviewFor } from "../investments/review-copy";
 import { AUTO_LOG_LINK, summaryBody } from "../investments/automatic-copy";
 import { CASH_MIN_GAIN_CENTS } from "@/config/cash";
 import { CASH_LINK, cashLine, moveButtons } from "../investments/cash-copy";
@@ -317,6 +334,151 @@ export const investmentsSource: MessageSource = {
         actions: [{ id: "hsa.link", label: "Link a demo HSA", kind: "primary" }, snoozeButton()],
         dedupeKey: "hsa:link",
         priority: MESSAGE_PRIORITY.hsa,
+      });
+    }
+    // Step 216: once a year (and after a raise or a new job) one message with the whole
+    // investing picture: what Jane did within the caps, what waits for a tap, every item
+    // with its own button. The review moves nothing itself.
+    if (inv.advice && inv.holdingCount > 0 && profileSummary(inv.profile, snapshot.asOf).complete) {
+      const year = new Date(snapshot.asOf).getUTCFullYear();
+      const review = reviewFor(inv, year);
+      const onlyOk = review.items.every((i) => i.status === "ok");
+      if (!onlyOk) {
+        out.push({
+          kind: review.buttons.length > 0 ? "decision" : "heads_up",
+          body: review.body,
+          refs: {
+            advice: true,
+            ...(inv.rebalance ? { rebalanceKey: inv.rebalance.key } : {}),
+            ...(inv.retirementAccounts.iraAllowedCents > 0
+              ? { iraCents: inv.retirementAccounts.iraAllowedCents }
+              : {}),
+            ...(inv.review2.harvestKey ? { harvestKey: inv.review2.harvestKey } : {}),
+            ...(inv.oldAccounts.plans.find((p) => p.status === "found")
+              ? { oldPlanId: inv.oldAccounts.plans.find((p) => p.status === "found")!.id }
+              : {}),
+          },
+          actions: [...review.buttons, REVIEW_LINK, snoozeButton()],
+          dedupeKey: inv.review2.raise
+            ? `review:raise:${snapshot.asOf.slice(0, 7)}`
+            : `review:${year}`,
+          priority: MESSAGE_PRIORITY.yearly_review,
+        });
+      }
+    }
+    // Step 215: a premium that may be whole life is asked about once; a costly product's
+    // yearly cost with its surrender charge (never "leave" without it), once a year.
+    const costly = inv.costly;
+    for (const q of costly.asked) {
+      out.push({
+        kind: "decision",
+        body: premiumQuestion(q),
+        refs: { productId: q.id },
+        actions: [
+          { id: "costly.yes", label: "Yes, whole life", kind: "primary" },
+          { id: "costly.no", label: "No", kind: "secondary" },
+          COSTLY_LINK,
+          snoozeButton(),
+        ],
+        dedupeKey: `costly:ask:${q.id}`,
+        priority: MESSAGE_PRIORITY.costly_products,
+      });
+    }
+    if (inv.advice) {
+      for (const p of costly.products) {
+        if ((p.yearlyCostCents ?? 0) < MIN_YEARLY_COST_CENTS) continue;
+        out.push({
+          kind: "heads_up",
+          body: productLine(p),
+          refs: { advice: true },
+          actions: [COSTLY_LINK, snoozeButton()],
+          dedupeKey: `costly:product:${p.id}:${new Date(snapshot.asOf).getUTCFullYear()}`,
+          priority: MESSAGE_PRIORITY.costly_products,
+        });
+      }
+      if (costly.advisory && costly.advisory.yearlyCents >= MIN_YEARLY_COST_CENTS) {
+        out.push({
+          kind: "heads_up",
+          body: advisoryLine(costly.advisory),
+          refs: { advice: true },
+          actions: [COSTLY_LINK, snoozeButton()],
+          dedupeKey: `costly:advisory:${new Date(snapshot.asOf).getUTCFullYear()}`,
+          priority: MESSAGE_PRIORITY.costly_products,
+        });
+      }
+    }
+    // Step 214: each rental's year in its own transactions, once a year; paying the
+    // mortgage down against investing (both sides), once a year. Analysis, no buttons.
+    for (const rental of inv.property.rentals) {
+      if (inv.advice && rental.counts.rent > 0) {
+        out.push({
+          kind: "heads_up",
+          body: rentalLine(rental),
+          refs: { advice: true },
+          actions: [PROPERTY_LINK, snoozeButton()],
+          dedupeKey: `property:rental:${rental.id}:${inv.property.year}`,
+          priority: MESSAGE_PRIORITY.property,
+        });
+      }
+    }
+    if (inv.advice && inv.property.paydown) {
+      out.push({
+        kind: "heads_up",
+        body: paydownLine(inv.property.paydown),
+        refs: { advice: true },
+        actions: [PROPERTY_LINK, snoozeButton()],
+        dedupeKey: `property:paydown:${inv.property.year}`,
+        priority: MESSAGE_PRIORITY.property,
+      });
+    }
+    // Step 213: a gift link for a child's college fund; a Roth IRA for a child who earns.
+    for (const kid of inv.family.children) {
+      if (inv.advice && kid.college && !kid.gift) {
+        out.push({
+          kind: "decision",
+          body: giftOffer(kid),
+          refs: { advice: true, familyPlan: kid.college.planId },
+          actions: [
+            { id: "family.gift_link", label: "Make a gift link", kind: "primary" },
+            FAMILY_LINK,
+            snoozeButton(),
+          ],
+          dedupeKey: `family:gift:${kid.college.planId}`,
+          priority: MESSAGE_PRIORITY.family,
+        });
+      }
+      if (inv.advice && kid.roth && kid.roth.roomCents >= 10_000) {
+        out.push({
+          kind: "decision",
+          body: `${rothOffer(kid)} Tap and I'll put it in ${SIMULATED_WORDS}.`,
+          refs: { advice: true, familyChild: kid.id, iraCents: kid.roth.roomCents },
+          actions: [
+            {
+              id: "family.child_roth",
+              label: `Put ${formatCents(kid.roth.roomCents)} in ${kid.name}'s Roth`,
+              kind: "primary",
+            },
+            FAMILY_LINK,
+            snoozeButton(),
+          ],
+          dedupeKey: `family:roth:${kid.id}:${new Date(snapshot.asOf).getUTCFullYear()}`,
+          priority: MESSAGE_PRIORITY.family,
+        });
+      }
+    }
+    // Step 212: from 15 years before retiring, one message a year with the claiming ages, the
+    // paycheck and how long it lasts. Past facts and ranges, never a promise.
+    const income = inv.retirementIncome;
+    if (inv.advice && income.applies && income.paycheck) {
+      out.push({
+        kind: "heads_up",
+        body: [paycheckLine(income), ssLine(income), rmdLine(income), drawLine(income)]
+          .filter(Boolean)
+          .join(" "),
+        refs: { advice: true },
+        actions: [RI_LINK, snoozeButton()],
+        dedupeKey: `retire:income:${new Date(snapshot.asOf).getUTCFullYear()}`,
+        priority: MESSAGE_PRIORITY.retirement_income,
       });
     }
     // Step 211: each past employer is asked about once; a found plan with fees worth saving

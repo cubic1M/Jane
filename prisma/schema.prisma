@@ -393,6 +393,16 @@ model User {
   payrollChanges PayrollChange[]
   oldPlans       OldPlan[]
 
+  retirementIncome RetirementIncome?
+
+  giftLinks GiftLink[]
+
+  familyChildren FamilyChild[]
+
+  rentalProperties RentalProperty[]
+
+  costlyProducts   CostlyProduct[]
+
   @@map("users")
 }
 
@@ -3533,3 +3543,133 @@ model OldPlan {
   @@unique([userId, employer])
   @@map("old_plans")
 }
+
+// Spec step 212: what the person has told Jane for the retirement paycheck: their Social
+// Security statement's monthly benefit at full retirement age, when they plan to retire,
+// when to start Social Security, and what they expect to spend a month. All optional;
+// Jane estimates what's missing and says so.
+model RetirementIncome {
+  id                String   @id @default(cuid())
+  userId            String   @unique @map("user_id")
+  ssMonthlyCents    Int?     @map("ss_monthly_cents")
+  retireAge         Int?     @map("retire_age")
+  ssStartAge        Int?     @map("ss_start_age")
+  spendMonthlyCents Int?     @map("spend_monthly_cents")
+  updatedAt         DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("retirement_incomes")
+}
+
+// Spec step 213: a child in the family's investing: their earned income (for a Roth IRA
+// they can fund) and the demo accounts Jane opened for them. The child's college fund is
+// the college plan (step 158) with the same name.
+model FamilyChild {
+  id          String   @id @default(cuid())
+  userId      String   @map("user_id")
+  name        String
+  age         Int
+  earnedCents Int      @default(0) @map("earned_cents")
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, name])
+  @@map("family_children")
+}
+
+// A link that lets relatives give to a child's college fund. The token is the permission;
+// the public page shows only the goal and how far along it is, never the parents' money.
+model GiftLink {
+  id            String    @id @default(cuid())
+  userId        String    @map("user_id")
+  collegePlanId String    @map("college_plan_id")
+  token         String    @unique
+  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  revokedAt     DateTime? @map("revoked_at") @db.Timestamptz(3)
+
+  user  User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  gifts Gift[]
+
+  @@index([userId])
+  @@map("gift_links")
+}
+
+// One gift through a link: a stand-in (no real money moves) until a payments partner is
+// connected. It counts toward the goal's progress.
+model Gift {
+  id          String   @id @default(cuid())
+  giftLinkId  String   @map("gift_link_id")
+  giverName   String   @map("giver_name")
+  amountCents Int      @map("amount_cents")
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  link GiftLink @relation(fields: [giftLinkId], references: [id], onDelete: Cascade)
+
+  @@index([giftLinkId])
+  @@map("gifts")
+}
+
+// Spec step 214: a rental property, with the text its transactions are matched on (rent
+// in, the mortgage payment, property tax and other costs). Figures come from the person's
+// own transactions in the last 12 months; the loan's balance and rate are what they told
+// Jane (or the demo's) because a rental loan is often at a lender the bank link doesn't see.
+model RentalProperty {
+  id                   String   @id @default(cuid())
+  userId               String   @map("user_id")
+  name                 String
+  purchaseCents        Int      @map("purchase_cents")
+  landShare            Float    @map("land_share")
+  placedInServiceYear  Int      @map("placed_in_service_year")
+  placedInServiceMonth Int      @map("placed_in_service_month")
+  cashInvestedCents    Int      @map("cash_invested_cents")
+  loanBalanceCents     Int      @default(0) @map("loan_balance_cents")
+  loanRateBps          Int      @default(0) @map("loan_rate_bps")
+  monthlyPaymentCents  Int      @default(0) @map("monthly_payment_cents")
+  // Comma-separated text found in a transaction's description.
+  rentMatch            String   @map("rent_match")
+  mortgageMatch        String   @default("") @map("mortgage_match")
+  taxMatch             String   @default("") @map("tax_match")
+  expenseMatch         String   @default("") @map("expense_match")
+  // you (the form) or demo (the demo rental).
+  source               String   @default("you")
+  createdAt            DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("rental_properties")
+}
+
+// Spec step 215: a variable annuity, a whole life policy or an advisory account found from
+// the person's payments or statements (or entered by them), with what it costs and its
+// surrender schedule. status: asked (a premium that may be whole life, to confirm), active
+// or dismissed. Advisory accounts aren't stored: they are read from fee transactions.
+model CostlyProduct {
+  id                 String   @id @default(cuid())
+  userId             String   @map("user_id")
+  // annuity or whole_life (src/config/costly-products.ts).
+  kind               String
+  name               String
+  provider           String
+  status             String   @default("active")
+  // An annuity's value, or a policy's cash value.
+  valueCents         Int      @default(0) @map("value_cents")
+  // An annuity's total yearly cost in basis points (insurance charge, administration, funds, riders).
+  feeBps             Int      @default(0) @map("fee_bps")
+  // Whole life: the premium a year.
+  premiumYearlyCents Int      @default(0) @map("premium_yearly_cents")
+  purchasedOn        DateTime @map("purchased_on") @db.Date
+  // The share charged for leaving in contract year 1, 2, ... (percent), e.g. [7, 6, 5].
+  surrenderSchedule  Json     @default("[]") @map("surrender_schedule")
+  // you, payments (found) or demo.
+  source             String
+  createdAt          DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("costly_products")
+}
+

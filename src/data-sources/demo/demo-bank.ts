@@ -55,7 +55,10 @@ type AccountKey =
   // Spec step 210: a demo Roth IRA.
   | "roth_ira"
   // Spec step 211: a demo traditional IRA to roll an old 401(k) into.
-  | "rollover_ira";
+  | "rollover_ira"
+  // Spec step 213: a child's demo custodial account and Roth IRA.
+  | "custodial"
+  | "child_roth";
 
 export const accountId = (seed: string, key: AccountKey) => `demo-${seed}-${key}`;
 
@@ -689,6 +692,22 @@ export function demoAccounts({ seed }: DemoSeed, extras: readonly DemoExtra[] = 
       ? [account(seed, "hsa", "Demo HSA", "0009", "investment", "hsa", 4271.8)]
       : []),
     // Spec step 160: vested Acme shares from work, at the demo price.
+    ...(extras.includes("custodial")
+      ? [
+          account(
+            seed,
+            "custodial",
+            "Demo Custodial Account (child's)",
+            "0013",
+            "investment",
+            "custodial",
+            0,
+          ),
+        ]
+      : []),
+    ...(extras.includes("child_roth")
+      ? [account(seed, "child_roth", "Demo Child Roth IRA", "0014", "investment", "child roth", 0)]
+      : []),
     ...(extras.includes("rollover_ira")
       ? [account(seed, "rollover_ira", "Demo Rollover IRA", "0012", "investment", "ira", 0)]
       : []),
@@ -702,7 +721,14 @@ export function demoAccounts({ seed }: DemoSeed, extras: readonly DemoExtra[] = 
 }
 
 // Extra stand-in accounts a demo-bank person can link (spec step 159 on).
-export const DEMO_EXTRAS = ["hsa", "stock_plan", "roth_ira", "rollover_ira"] as const;
+export const DEMO_EXTRAS = [
+  "hsa",
+  "stock_plan",
+  "roth_ira",
+  "rollover_ira",
+  "custodial",
+  "child_roth",
+] as const;
 export type DemoExtra = (typeof DEMO_EXTRAS)[number];
 
 // The next time a day of the month comes round, after `today`.

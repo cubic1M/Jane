@@ -22,7 +22,12 @@ export type InvestmentTopic =
   | "cash"
   | "steady"
   | "retirement_accounts"
-  | "old_accounts";
+  | "old_accounts"
+  | "retirement_income"
+  | "family"
+  | "property"
+  | "costly_products"
+  | "yearly_review";
 
 export type InvestmentIntent = {
   kind: "investments";
@@ -128,7 +133,34 @@ const RETIREMENT_ACCOUNTS =
 const OLD_ACCOUNTS =
   /\b(?:old|previous|prior|past|former|forgotten|lost) (?:401\(?k\)?|403\(?b\)?|retirement (?:plan|account)|employer plan)\b|\b401\(?k\)? (?:from|at) (?:a |my |an )?(?:old|previous|prior|past|former)\b|\broll(?:ing)? ?over\b|\brollover\b|\bleft (?:a |my )?401\(?k\)? (?:at|with)\b/;
 
+// Spec step 212: Social Security, minimum distributions and the retirement paycheck.
+const RETIREMENT_INCOME =
+  /\bsocial security\b|\brmds?\b|\brequired minimum distributions?\b|\bretirement (?:paycheck|income)\b|\bwhen (?:should|can) i (?:claim|take|start)\b.*\b(?:social security|benefits?)\b|\bhow long will my (?:money|savings|retirement) last\b|\bwhich accounts? (?:do i |should i )?(?:draw|withdraw|take) (?:from )?first\b|\bdrawdown\b/;
+
+// Spec step 213: children's accounts and gifts to a child's college fund.
+const FAMILY =
+  /\bcustodial (?:account|ira|roth)\b|\butma\b|\bugma\b|\b(?:roth ira|roth|investing|account) for (?:my |a )?(?:kid|child|teen|teenager|son|daughter)s?\b|\bgrandparents?\b.*\b(?:gift|give|contribute|529)\b|\bgift(?:s|ing)? (?:to|into) (?:a |my |the )?(?:529|college fund)\b|\bkiddie tax\b|\binvest(?:ing)? for (?:my )?(?:kids?|children|family)\b/;
+
+// Spec step 214: home equity, rentals and paying the mortgage down against investing.
+const PROPERTY =
+  /\binvestment propert(?:y|ies)\b|\bmy rental\b|\bhome equity\b|\b(?:pay|paying) (?:off |down )?(?:my |the )?mortgage (?:early |down |off )?(?:or|vs\.?|versus|instead of) invest|\b(?:should i )?(?:pay|paying) (?:down |off )?(?:my |the )?mortgage (?:faster|early)\b|\bpay(?:ing)? extra (?:on|toward|towards) (?:my |the )?mortgage\b|\bcash on cash\b|\blandlord\b/;
+
+// Spec step 215: variable annuities, whole life and advisory fees.
+const COSTLY =
+  /\b(?:variable |fixed |indexed )?annuit(?:y|ies)\b|\bsurrender (?:charge|fee|period|schedule)s?\b|\bwhole life\b|\bcash value\b|\badvisory fees?\b|\b(?:financial |investment )?advisor fees?\b|\bwhat (?:does|is) (?:my )?(?:annuity|whole life|advisor) (?:really )?cost/;
+
+// Spec step 216: the yearly investing review on request.
+const YEARLY_REVIEW =
+  /\b(?:yearly|annual|year[- ]end|once[- ]a[- ]year) (?:investing |investment |portfolio )?(?:review|checkup|check[- ]up)\b|\b(?:review|check up on|check over) (?:all of )?my (?:investing|investments)(?: for the year)?\b|\bwhat (?:did|have) you (?:do|done|handled)\b.*\b(?:invest|portfolio)/;
+
 export function parseInvestmentIntent(text: string): InvestmentIntent | null {
+  if (YEARLY_REVIEW.test(text))
+    return { kind: "investments", topic: "yearly_review", account: null };
+  if (COSTLY.test(text)) return { kind: "investments", topic: "costly_products", account: null };
+  if (PROPERTY.test(text)) return { kind: "investments", topic: "property", account: null };
+  if (FAMILY.test(text)) return { kind: "investments", topic: "family", account: null };
+  if (RETIREMENT_INCOME.test(text))
+    return { kind: "investments", topic: "retirement_income", account: null };
   if (OLD_ACCOUNTS.test(text)) return { kind: "investments", topic: "old_accounts", account: null };
   if (RETIREMENT_ACCOUNTS.test(text))
     return { kind: "investments", topic: "retirement_accounts", account: null };

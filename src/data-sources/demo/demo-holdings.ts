@@ -101,7 +101,14 @@ type Position = { key: Key; quantity: number; price: number; costBasis: number }
 // The cash position (last in each list) is filled in from the account's balance.
 const POSITIONS: Readonly<
   Record<
-    "retirement" | "brokerage" | "hsa" | "stock_plan" | "roth_ira" | "rollover_ira",
+    | "retirement"
+    | "brokerage"
+    | "hsa"
+    | "stock_plan"
+    | "roth_ira"
+    | "rollover_ira"
+    | "custodial"
+    | "child_roth",
     readonly Position[]
   >
 > = {
@@ -131,6 +138,9 @@ const POSITIONS: Readonly<
   ],
   // Spec step 211: starts empty; the rollover fills it.
   rollover_ira: [{ key: "CASH", quantity: 0, price: 1, costBasis: 0 }],
+  // Spec step 213: a child's accounts start empty; contributions fill them.
+  custodial: [{ key: "CASH", quantity: 0, price: 1, costBasis: 0 }],
+  child_roth: [{ key: "CASH", quantity: 0, price: 1, costBasis: 0 }],
   stock_plan: [
     { key: "ACME", quantity: 150, price: 136.4, costBasis: 14_700 },
     { key: "CASH", quantity: 0, price: 1, costBasis: 0 },
@@ -263,6 +273,8 @@ export function demoLedger(
     ...(extras.includes("stock_plan") ? ["stock_plan" as const] : []),
     ...(extras.includes("roth_ira") ? ["roth_ira" as const] : []),
     ...(extras.includes("rollover_ira") ? ["rollover_ira" as const] : []),
+    ...(extras.includes("custodial") ? ["custodial" as const] : []),
+    ...(extras.includes("child_roth") ? ["child_roth" as const] : []),
   ] as const;
   const rows: LedgerRow[] = accounts.flatMap((account) => {
     const id = accountId(demo.seed, account);
@@ -316,7 +328,15 @@ export const DEMO_MATCH_UP_TO = 0.06;
 
 type Event = {
   key: string;
-  account: "retirement" | "brokerage" | "hsa" | "stock_plan" | "roth_ira" | "rollover_ira";
+  account:
+    | "retirement"
+    | "brokerage"
+    | "hsa"
+    | "stock_plan"
+    | "roth_ira"
+    | "rollover_ira"
+    | "custodial"
+    | "child_roth";
   security: Key | null;
   name: string;
   quantity: number;

@@ -27,7 +27,33 @@ import { collectReceipts, investHsaCash, loadHsa } from "./hsa";
 import { CompanyStockError, loadCompanyStock, saveGrant, sellPart } from "./company-stock";
 import { cryptoTotal, loadCrypto, syncAllCrypto } from "@/lib/crypto/crypto";
 import { CashError, loadCash, moveCash } from "./cash";
+import {
+  addChild,
+  contributeForChild,
+  createGiftLink,
+  FamilyError,
+  giftPage,
+  giveGift,
+  loadFamily,
+  openChildAccount,
+  revokeGiftLinks,
+} from "./family";
+import { startCollegePlan } from "./college";
+import { harvestFromReview, loadReviewExtras, ReviewError } from "./yearly-review";
+import {
+  answerPremium,
+  loadCostlyProducts,
+  linkDemoProducts,
+  saveProduct,
+  CostlyProductError,
+} from "./costly-products";
+import { addRental, linkDemoRental, loadProperty, PropertyError } from "./property";
 import { automaticLog, runAutomaticInvesting } from "./automatic";
+import {
+  loadRetirementIncome,
+  saveRetirementIncome,
+  RetirementIncomeError,
+} from "./retirement-income";
 import { answerOldPlan, loadOldAccounts, startRollover, settleRollovers } from "./old-accounts";
 import {
   contributeToIra,
@@ -1040,6 +1066,313 @@ describe.runIf(url)("investments in Jane's chat, against a real database", () =>
       ).toBe(0);
       const limits = (await loadRetirementAccounts(userId, { client, now: later })).limits;
       expect(limits.find((l) => l.key === "ira")!.usedCents).toBe(0);
+    },
+  );
+
+  it(
+    "step 212: Social Security from pay then from the statement, minimums, the order to draw, how long it lasts",
+    SLOW,
+    async () => {
+      const userId = await demoPerson();
+      await saveProfileForm(
+        userId,
+        { age: "45", horizon: "over_20", dropReaction: "worry", goals: ["retirement"] },
+        { client, now: LINKED },
+      );
+      const est = await loadRetirementIncome(userId, { client, now: LINKED });
+      // Pay is $81,600: the estimate, labelled as one.
+      expect(est.ss).toMatchObject({ source: "estimate", fullMonthlyCents: 292_188 });
+      expect(est.ss.options.map((o) => o.age)).toEqual([62, 67, 70]);
+      expect(est.balances.preTaxCents).toBeGreaterThan(0);
+      expect(est.draw.map((d) => d.key)).toEqual(["taxableCents", "preTaxCents"]);
+      expect(est.spendFrom).toBe("pay");
+      expect(est.applies).toBe(false);
+      // The paycheck always says how long the money lasts.
+      expect(est.paycheck!.lasts.lowAge).toBeLessThanOrEqual(est.paycheck!.lasts.highAge);
+
+      await saveRetirementIncome(
+        userId,
+        { ssMonthly: "3,100", retireAge: "62", ssStartAge: "67", spendMonthly: "4000" },
+        { client },
+      );
+      const saved = await loadRetirementIncome(userId, { client, now: LINKED });
+      expect(saved.ss).toMatchObject({
+        source: "statement",
+        fullMonthlyCents: 310_000,
+        startAge: 67,
+      });
+      expect(saved).toMatchObject({ retireAge: 62, spendMonthlyCents: 400_000, spendFrom: "you" });
+      await expect(
+        saveRetirementIncome(
+          userId,
+          { ssMonthly: "", retireAge: "20", ssStartAge: "", spendMonthly: "" },
+          { client },
+        ),
+      ).rejects.toThrow(RetirementIncomeError);
+      const { reply } = await sendToJane(userId, "when should I claim social security", {
+        client,
+        now: LINKED,
+      });
+      expect(reply.body).toMatch(/\$2,170\.00 a month if you start at 62, \$3,100\.00 at 67/);
+    },
+  );
+
+  it(
+    "step 213: a child's accounts, a Roth limited by earnings, and a gift link that shows only the goal",
+    SLOW,
+    async () => {
+      const userId = await demoPerson();
+      await addChild(userId, { name: "Sam", age: 15, earnedCents: 300_000 }, { client });
+      await startCollegePlan(
+        userId,
+        { childName: "Sam", childAge: 15, type: "public" },
+        { client, now: LINKED },
+      );
+      const before = await loadFamily(userId, { client, now: LINKED });
+      expect(before.children[0]).toMatchObject({
+        name: "Sam",
+        custodial: null,
+        roth: null,
+        gift: null,
+      });
+
+      await openChildAccount(userId, "custodial", { client, now: LINKED });
+      await openChildAccount(userId, "child_roth", { client, now: LINKED });
+      const kid = (await loadFamily(userId, { client, now: LINKED })).children[0];
+      expect(kid.roth!.roomCents).toBe(300_000);
+      // The Roth is limited by what Sam earned; the custodial account isn't.
+      await expect(
+        contributeForChild(userId, kid.id, "child_roth", 300_001, { client, now: LINKED }),
+      ).rejects.toThrow(/more than they can/);
+      await contributeForChild(userId, kid.id, "child_roth", 100_000, { client, now: LINKED });
+      await contributeForChild(userId, kid.id, "custodial", 50_000, { client, now: LINKED });
+      const after = (await loadFamily(userId, { client, now: LINKED })).children[0];
+      expect(after.roth).toMatchObject({ usedCents: 100_000, roomCents: 200_000 });
+      expect(after.custodial!.balanceCents).toBe(50_000);
+
+      // A gift link: the public page has the goal and a percent, and nothing of the family's.
+      const token = await createGiftLink(userId, kid.college!.planId, { client });
+      const page = await giftPage(token, { client });
+      expect(Object.keys(page!).sort()).toEqual([
+        "childName",
+        "goalName",
+        "percent",
+        "targetCents",
+      ]);
+      expect(page!.goalName).toBe("College for Sam");
+      expect(page!.percent).toBe(0);
+      expect(JSON.stringify(page)).not.toMatch(new RegExp(userId));
+      await giveGift(token, { giverName: "Grandma", amountCents: 500_000 }, { client });
+      await expect(
+        giveGift(token, { giverName: "Grandma", amountCents: 2_000_000 }, { client }),
+      ).rejects.toThrow(FamilyError);
+      await expect(
+        giveGift("nope-not-a-token-xx", { giverName: "x", amountCents: 1000 }, { client }),
+      ).rejects.toThrow(/isn't taking gifts/);
+      const funded = (await loadFamily(userId, { client, now: LINKED })).children[0];
+      expect(funded.gift!.gifts).toEqual([{ giverName: "Grandma", amountCents: 500_000 }]);
+      expect(funded.college!.savedCents).toBe(500_000);
+      expect((await giftPage(token, { client }))!.percent).toBeGreaterThan(0);
+      // Taken down, the link stops working.
+      expect(await revokeGiftLinks(userId, { client })).toBe(1);
+      expect(await giftPage(token, { client })).toBeNull();
+    },
+  );
+
+  it(
+    "step 214: a rental's figures match its transactions, depreciation goes to the taxes side",
+    SLOW,
+    async () => {
+      const userId = await demoPerson();
+      await linkDemoRental(userId, { client, now: LINKED });
+      await linkDemoRental(userId, { client, now: LINKED });
+      // The home, with its mortgage from the demo bank, as the person adds it under Things you own.
+      const mortgage = await client.account.findFirstOrThrow({
+        where: { userId, subtype: "mortgage" },
+      });
+      await client.ownedAsset.create({
+        data: {
+          userId,
+          kind: "home",
+          name: "Home",
+          valueCents: 45_000_000,
+          valuedOn: new Date("2026-09-01T00:00:00Z"),
+          loanAccountId: mortgage.id,
+        },
+      });
+      const view = await loadProperty(userId, { client, now: LINKED });
+      expect(view.rentals).toHaveLength(1);
+      const r = view.rentals[0];
+      // Re-add the same sums straight from the transactions.
+      const txs = await client.transaction.findMany({
+        where: { userId, plaidTransactionId: { startsWith: "demo-rental-" } },
+      });
+      const sum = (needle: string, sign: number) =>
+        txs
+          .filter((t) => t.description.includes(needle))
+          .reduce((s, t) => s + sign * t.amountCents, 0);
+      expect(r.counts.rent).toBe(12);
+      expect(r.figures.rentCents).toBe(sum("TENANT RENT", -1));
+      expect(r.figures.rentCents).toBe(12 * 185_000);
+      expect(r.figures.mortgagePaidCents).toBe(sum("MAPLE ST RENTAL LOAN", 1));
+      expect(r.figures.propertyTaxCents).toBe(sum("COUNTY TREASURER", 1));
+      expect(r.figures.otherExpensesCents).toBe(sum("REPAIR", 1) + sum("LANDLORD INSURANCE", 1));
+      expect(r.figures.cashFlowCents).toBe(
+        r.figures.rentCents -
+          r.figures.mortgagePaidCents -
+          r.figures.propertyTaxCents -
+          r.figures.otherExpensesCents,
+      );
+      // Depreciation is step 173's: $208,000 building, 3.636% in 2026.
+      expect(r.figures.depreciationCents).toBe(756_288);
+      // Both sides of the paydown question, from the demo mortgage.
+      expect(view.homes.find((h) => h.valueCents === 45_000_000)!.equityCents).toBe(
+        45_000_000 - (mortgage.currentBalanceCents ?? 0),
+      );
+      expect(view.paydown!.paydown.interestSavedCents).toBeGreaterThan(0);
+      expect(view.paydown!.invest.highGainCents).toBeGreaterThan(view.paydown!.invest.lowGainCents);
+      // The form checks what it takes.
+      await expect(
+        addRental(
+          userId,
+          {
+            name: "X",
+            purchase: "100000",
+            placedInServiceMonth: "13",
+            placedInServiceYear: "2020",
+            cashInvested: "",
+            loanBalance: "",
+            loanRate: "",
+            monthlyPayment: "",
+            rentMatch: "RENT",
+            mortgageMatch: "",
+            taxMatch: "",
+            expenseMatch: "",
+          },
+          { client },
+        ),
+      ).rejects.toThrow(PropertyError);
+    },
+  );
+
+  it(
+    "step 215: a premium found in payments asked once, annuity and whole life in dollars with surrender charges, advisory fees",
+    SLOW,
+    async () => {
+      const userId = await demoPerson();
+      // The advisory fees in the demo bank's brokerage are read from its fee transactions.
+      const none = await loadCostlyProducts(userId, { client, now: LINKED });
+      expect(none.advisory!.yearlyCents).toBeGreaterThan(0);
+      expect(none.advisory!.gap.highCents).toBeGreaterThan(none.advisory!.gap.lowCents);
+
+      // A life insurer's premiums in the checking account are asked about once.
+      const checking = await client.account.findFirstOrThrow({
+        where: { userId, subtype: "checking" },
+      });
+      await client.transaction.create({
+        data: {
+          userId,
+          accountId: checking.id,
+          source: "plaid",
+          plaidTransactionId: `test-wl-${userId}`,
+          date: new Date("2026-09-01T00:00:00Z"),
+          amountCents: 600_000,
+          description: "NORTHWESTERN MUTUAL LIFE INS PREMIUM",
+          pfcPrimary: "GENERAL_SERVICES",
+          pfcDetailed: "GENERAL_SERVICES_INSURANCE",
+          categorySource: "plaid",
+          pending: false,
+        },
+      });
+      const asked = await loadCostlyProducts(userId, { client, now: LINKED });
+      expect(asked.asked).toMatchObject([
+        { provider: "NORTHWESTERN MUTUAL", yearlyCents: 600_000 },
+      ]);
+      expect((await loadCostlyProducts(userId, { client, now: LINKED })).asked).toHaveLength(1);
+      await answerPremium(userId, asked.asked[0].id, false, { client });
+      expect((await loadCostlyProducts(userId, { client, now: LINKED })).asked).toEqual([]);
+      await expect(answerPremium(userId, asked.asked[0].id, false, { client })).rejects.toThrow(
+        /already answered/,
+      );
+
+      // The demo annuity and whole life, with every exit figure carrying its surrender charge.
+      await linkDemoProducts(userId, { client, now: LINKED });
+      const v = await loadCostlyProducts(userId, { client, now: LINKED });
+      const annuity = v.products.find((p) => p.kind === "annuity")!;
+      expect(annuity.yearlyCostCents).toBe(216_750);
+      expect(annuity.surrender!.pctNow).toBe(4);
+      expect(annuity.surrender!.cents).toBe(340_000);
+      expect(annuity.surrender!.endsOn).toBe("2030-10-01");
+      expect(annuity.exit!.surrenderNowCents).toBe(340_000);
+      expect(annuity.gap!.highCents).toBeGreaterThan(annuity.gap!.lowCents);
+      const whole = v.products.find((p) => p.kind === "whole_life")!;
+      expect(whole.wholeLife!.paidCents).toBe(6 * 600_000);
+      // The form checks what it takes.
+      await expect(
+        saveProduct(
+          userId,
+          {
+            kind: "annuity",
+            name: "X",
+            provider: "Y",
+            value: "1000",
+            feePercent: "2",
+            premiumYearly: "",
+            purchasedYear: "2020",
+            purchasedMonth: "1",
+            schedule: "7,abc",
+          },
+          { client, now: LINKED },
+        ),
+      ).rejects.toThrow(CostlyProductError);
+    },
+  );
+
+  it(
+    "step 216: one yearly review message with every item's button; nothing happens until a tap",
+    SLOW,
+    async () => {
+      const userId = await demoPerson();
+      await saveProfileForm(
+        userId,
+        { age: "45", horizon: "over_20", dropReaction: "worry", goals: ["retirement"] },
+        { client, now: LINKED },
+      );
+      const ordersBefore = await client.brokerageOrder.count({ where: { userId } });
+      const snapshot = await loadSnapshot(userId, { client, now: LINKED });
+      const review = investmentsSource
+        .gather(snapshot!, {} as never)
+        .find((c) => c.dedupeKey === "review:2026")!;
+      expect(review).toBeTruthy();
+      expect(review.body).toMatch(/^Your 2026 investing review, all in one place:/);
+      // Items the demo person has: the match left on the table, a drifted mix, the goals.
+      expect(review.actions.map((a) => a.id)).toEqual(
+        expect.arrayContaining(["retire.match", "invest.rebalance"]),
+      );
+      // Reading and gathering it moved nothing.
+      expect(await client.brokerageOrder.count({ where: { userId } })).toBe(ordersBefore);
+      expect(await client.payrollChange.count({ where: { userId } })).toBe(0);
+
+      // One of its buttons works as it does anywhere: the match raise, through the stand-in.
+      const posted = await client.janeMessage.create({
+        data: {
+          userId,
+          kind: review.kind,
+          body: review.body,
+          refs: review.refs,
+          actions: review.actions,
+          dedupeKey: "test:review",
+        },
+      });
+      await takeChatAction(userId, posted.id, "retire.match", { client, now: LINKED });
+      expect(await client.payrollChange.count({ where: { userId } })).toBe(1);
+
+      // The harvest button only acts on the list it showed.
+      const extras = await loadReviewExtras(userId, { client, now: LINKED });
+      await expect(
+        harvestFromReview(userId, "not-the-key", { client, now: LINKED }),
+      ).rejects.toThrow(ReviewError);
+      expect(extras.raise).toBe(false);
     },
   );
 });
