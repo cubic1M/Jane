@@ -89,11 +89,15 @@ describe.runIf(url)("a home's equity against a real database", { timeout: 30_000
 
   it("dates the 80% ask and the 78% end, then drafts the request once it can be asked", async () => {
     const id = await demoPerson("eq-pmi");
-    await saveHomeFacts(id, {
-      originalValueCents: 50_000_000,
-      yearlyTaxCents: null,
-      yearlyInsuranceCents: null,
-    });
+    await saveHomeFacts(
+      id,
+      {
+        originalValueCents: 50_000_000,
+        yearlyTaxCents: null,
+        yearlyInsuranceCents: null,
+      },
+      opts(),
+    );
     const before = await loadHomeEquity(id, opts());
     // $312,400 of $500,000 is 62.5%: already under both lines.
     expect(before.pmi).toMatchObject({ canAskNow: true, endsNow: true });
@@ -104,11 +108,15 @@ describe.runIf(url)("a home's equity against a real database", { timeout: 30_000
     });
 
     // $395,000: 79.1%, askable but not yet ending by itself.
-    await saveHomeFacts(id, {
-      originalValueCents: 39_500_000,
-      yearlyTaxCents: null,
-      yearlyInsuranceCents: null,
-    });
+    await saveHomeFacts(
+      id,
+      {
+        originalValueCents: 39_500_000,
+        yearlyTaxCents: null,
+        yearlyInsuranceCents: null,
+      },
+      opts(),
+    );
     const e = await loadHomeEquity(id, opts());
     expect(e.pmi).toMatchObject({ canAskNow: true, endsNow: false });
     expect(e.pmi!.autoOn! > "2026-10-18").toBe(true);
@@ -151,11 +159,15 @@ describe.runIf(url)("a home's equity against a real database", { timeout: 30_000
     const id = await demoPerson("eq-escrow");
     // $2,198.31 less $1,907.30 of principal and interest leaves about $291 a month in escrow,
     // $3,492 a year. Bills of $2,600 a year leave it over.
-    await saveHomeFacts(id, {
-      originalValueCents: null,
-      yearlyTaxCents: 180_000,
-      yearlyInsuranceCents: 80_000,
-    });
+    await saveHomeFacts(
+      id,
+      {
+        originalValueCents: null,
+        yearlyTaxCents: 180_000,
+        yearlyInsuranceCents: 80_000,
+      },
+      opts(),
+    );
     const e = await loadHomeEquity(id, opts());
     expect(e.escrow).toMatchObject({ kind: "over", billsCents: 260_000 });
     expect(e.escrowLetter).toContain("$2,600.00 a year ($1,800.00 tax and $800.00 insurance)");
@@ -168,11 +180,15 @@ describe.runIf(url)("a home's equity against a real database", { timeout: 30_000
     expect(await fromSource(id)).toEqual([]);
 
     // Bills bigger than what's collected: a warning in the answer, no request to send.
-    await saveHomeFacts(id, {
-      originalValueCents: null,
-      yearlyTaxCents: 400_000,
-      yearlyInsuranceCents: 150_000,
-    });
+    await saveHomeFacts(
+      id,
+      {
+        originalValueCents: null,
+        yearlyTaxCents: 400_000,
+        yearlyInsuranceCents: 150_000,
+      },
+      opts(),
+    );
     const short = await loadHomeEquity(id, opts());
     expect(short.escrow).toMatchObject({ kind: "short" });
     expect(short.escrowLetter).toBeNull();
@@ -230,11 +246,15 @@ describe.runIf(url)("a home's equity against a real database", { timeout: 30_000
     const { reply } = await sendToJane(user.id, "is my escrow too high?", { client, now: later() });
     expect(reply.body).toMatch(/^I don't see a mortgage with a balance/);
     await expect(
-      saveHomeFacts(user.id, {
-        originalValueCents: -5,
-        yearlyTaxCents: null,
-        yearlyInsuranceCents: null,
-      }),
+      saveHomeFacts(
+        user.id,
+        {
+          originalValueCents: -5,
+          yearlyTaxCents: null,
+          yearlyInsuranceCents: null,
+        },
+        opts(),
+      ),
     ).rejects.toThrow(HomeEquityError);
     await markHomeRequestSent(user.id, "pmi", opts());
     expect(
