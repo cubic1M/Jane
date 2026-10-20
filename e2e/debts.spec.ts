@@ -1,5 +1,12 @@
 import { expect, test } from "@playwright/test";
-import { E2E_DATABASE_URL, addTransfer, deleteUser, setCheckingBalance, signedInUser } from "./db";
+import {
+  E2E_DATABASE_URL,
+  addPayment,
+  addTransfer,
+  deleteUser,
+  setCheckingBalance,
+  signedInUser,
+} from "./db";
 
 // Spec step 109: every debt in one place, from the demo bank: loans and cards with where
 // each rate came from, the buy now, pay later plans found from payments, terms typed for
@@ -815,4 +822,45 @@ test("the debt review lists every item, and the chat message keeps each button u
   await box.press("Enter");
   await expect(page.getByText("Your debt review:").last()).toBeVisible({ timeout: 30_000 });
   await expect(page.getByText(/Payments timed to statement dates/).last()).toBeVisible();
+});
+
+// Spec step 245: a dealer add-on found in the payments, confirmed, with the refund and the
+// cancellation to send or hand to the team.
+test("a dealer add-on is confirmed, with its refund and a cancellation the team can send", async ({
+  context,
+  page,
+  baseURL,
+}) => {
+  const user = await signedInUser("user");
+  userId = user.userId;
+  await context.addCookies([
+    { name: "authjs.session-token", value: user.sessionToken, url: baseURL ?? "" },
+  ]);
+  await page.goto("/connect");
+  await page.getByRole("button", { name: "Link a demo bank" }).click();
+  await expect(page).toHaveURL("/chat", { timeout: 60_000 });
+  const yearAgo = new Date(Date.now() - 365 * 86_400_000).toISOString().slice(0, 10);
+  await addPayment(user.userId, {
+    date: yearAgo,
+    amountCents: 69_500,
+    description: "BIG DEALER GAP INSURANCE",
+  });
+
+  await page.goto("/loans/auto");
+  await expect(page.getByRole("heading", { level: 1, name: "Your car loan" })).toBeVisible();
+  const section = page.getByRole("region", { name: "Dealer add-ons" });
+  await expect(section).toContainText("$695.00 to BIG DEALER GAP INSURANCE");
+  const yes = section.getByRole("button", { name: "Yes, it was" });
+  await yes.scrollIntoViewIfNeeded();
+  await yes.focus();
+  await yes.press("Enter");
+  await expect(page.getByText("Done.")).toBeVisible();
+  const addons = page.getByRole("list", { name: "Your add-ons" });
+  await expect(addons).toContainText("Cancelling now could refund about");
+  await expect(addons.getByLabel(/Cancellation letter/)).toContainText("cancel my GAP cover");
+  const team = addons.getByRole("button", { name: "Have the team send it" });
+  await team.scrollIntoViewIfNeeded();
+  await team.focus();
+  await team.press("Enter");
+  await expect(page.getByText("The team has this request.")).toBeVisible();
 });

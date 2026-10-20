@@ -23,6 +23,8 @@ export type AuditEvent =
   | "credit_goal_started"
   | "home_equity_updated"
   | "debt_review_done"
+  | "car_addon_confirmed"
+  | "car_addon_cancel_requested"
   | "home_request_sent"
   | "user_signed_up"
   // Insurance (spec Phase X): a policy saved or removed, the household facts saved.
