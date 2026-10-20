@@ -72,4 +72,6 @@ export const MISSING_DETECTOR: readonly string[] = [
   "asset_location",
   "steady_hand",
   "crypto",
+  // Step 223 merged just after the per-tool check; the taxes lane adds its detector in #335.
+  "tax_calendar",
 ];
