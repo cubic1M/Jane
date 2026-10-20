@@ -23,6 +23,7 @@ import { ITEM_STATUS, syncItem } from "@/lib/plaid/sync";
 import { scrub } from "@/lib/scrub";
 import { runTaxAutopilot } from "@/lib/tax-autopilot";
 import { runStrategist } from "@/lib/strategist";
+import { planQuestion } from "@/lib/questions";
 import { scanSuggestions } from "@/lib/suggestions";
 
 // The nightly controller run (spec step 142): one run per person each night that does every
@@ -159,6 +160,8 @@ const STEPS: Record<
       console.error("Strategist failed", { userId, error: scrub(String(error)) }),
     );
     const { fired, selected } = await scanSuggestions(userId, { client, now });
+    // Spec step 257: which question to ask next, kept for the chat to read.
+    await planQuestion(userId, { client, now });
     if (fired === 0) return { did: "Nothing new to suggest.", changed: 0 };
     return {
       did: `Checked everything for you: ${plural(fired, "idea")} fit, ${selected.length} worth your attention today.`,

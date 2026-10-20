@@ -88,6 +88,8 @@ export type Person = {
   facts: PersonFacts;
   should: readonly SuggestionTopic[];
   mustNot: readonly SuggestionTopic[];
+  // The question worth asking them first (step 257): the fact whose answer unlocks most.
+  firstQuestion: string;
 };
 
 export const PEOPLE: readonly Person[] = [
@@ -129,6 +131,7 @@ export const PEOPLE: readonly Person[] = [
       "backdoor_roth",
       "hsa",
     ],
+    firstQuestion: "employer_match",
   },
   {
     id: "family",
@@ -165,6 +168,7 @@ export const PEOPLE: readonly Person[] = [
       "backdoor_roth",
       "catch_up",
     ],
+    firstQuestion: "employer_match",
   },
   {
     id: "freelancer",
@@ -195,6 +199,7 @@ export const PEOPLE: readonly Person[] = [
       "roth_conversion",
       "childcare_tax_break",
     ],
+    firstQuestion: "filing_status",
   },
   {
     id: "equity",
@@ -227,6 +232,7 @@ export const PEOPLE: readonly Person[] = [
       "roth_conversion",
       "childcare_tax_break",
     ],
+    firstQuestion: "employer_match",
   },
   {
     id: "preretire",
@@ -257,6 +263,7 @@ export const PEOPLE: readonly Person[] = [
       "employer_match",
       "childcare_tax_break",
     ],
+    firstQuestion: "age_band",
   },
   {
     id: "retiree",
@@ -284,6 +291,7 @@ export const PEOPLE: readonly Person[] = [
       "credit_building",
       "childcare_tax_break",
     ],
+    firstQuestion: "age_band",
   },
   {
     id: "debt",
@@ -321,6 +329,7 @@ export const PEOPLE: readonly Person[] = [
       "roth_conversion",
       "childcare_tax_break",
     ],
+    firstQuestion: "hardship_reason",
   },
   {
     id: "owner",
@@ -350,6 +359,7 @@ export const PEOPLE: readonly Person[] = [
       "roth_conversion",
       "childcare_tax_break",
     ],
+    firstQuestion: "business_structure",
   },
 ];
 
