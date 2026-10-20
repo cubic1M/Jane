@@ -37,7 +37,9 @@ export type InsuranceAsk =
   | "life_change"
   // Spec step 155: asking the insurer for a better renewal rate, and a claim Jane files.
   | "renewal_call"
-  | "file_claim";
+  | "file_claim"
+  // savings: cheaper ways to pay for the same cover (spec step 196).
+  | "savings";
 
 export type InsuranceIntent = {
   kind: "insurance";
@@ -147,6 +149,11 @@ const CAR =
 const LIFE =
   /\b(?:how much|apply(?:ing)?|buy(?:ing)?|get(?:ting)?|sign up)\b.{0,30}\b(?:life (?:insurance|cover|policy)|term life)\b|\b(?:life (?:insurance|cover)|term life)\b.{0,30}\b(?:how much|enough|apply|buy|should i get)\b/;
 
+// Paying less for the cover they keep (spec step 196). Only checked once the question is
+// about insurance, so "discounts on Netflix" is not.
+const SAVINGS =
+  /\b(?:pay|spend) less\b|\bcheaper way to pay\b|\bdiscounts?\b|\b(?:raise|raising|increase|increasing|higher|bump)\b.{0,15}\bdeductibles?\b|\bbundl(?:e|ing)\b|\bpay(?:ing)? (?:it |my (?:insurance|premium) )?(?:in full|yearly|annually|up front)\b|\b(?:lower|cut|reduce|save on)\b.{0,15}\b(?:insurance|premiums?)\b|\bsafe[- ]driver\b|\btelematics\b|\bautopay\b|\bpaperless\b/;
+
 const ASKS: readonly [InsuranceAsk, RegExp][] = [
   ["cards", CARD_COVER],
   [
@@ -219,6 +226,7 @@ export function parseInsurance(text: string): InsuranceIntent | null {
   if (CAR.test(text))
     return { kind: "insurance", ask: "life_change", policyKind: null, event: "car_bought" };
   if (LIFE.test(text)) return { kind: "insurance", ask: "life", policyKind };
+  if (SAVINGS.test(text)) return { kind: "insurance", ask: "savings", policyKind };
   // Spec step 149: whether they need a kind of cover, from their numbers.
   if (policyKind && NEED.test(text)) return { kind: "insurance", ask: "need", policyKind };
   const ask = ASKS.find(([, words]) => words.test(text))?.[0] ?? "list";

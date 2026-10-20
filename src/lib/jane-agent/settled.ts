@@ -41,6 +41,7 @@ export async function closeAnsweredElsewhere(
   const readingIds = ids((m) => m.refs.readingId);
   const coverRefs = ids((m) => m.refs.coverEvent);
   const negotiationIds = ids((m) => m.refs.negotiationId);
+  const anySaving = open.some((m) => m.refs.savingGroup || m.refs.savingId);
   const anyAutopilot = open.some(asksAutopilot);
   const anyProposal = open.some((m) => m.refs.proposalKey);
   if (
@@ -51,7 +52,8 @@ export async function closeAnsweredElsewhere(
     !alertIds.length &&
     !readingIds.length &&
     !coverRefs.length &&
-    !negotiationIds.length
+    !negotiationIds.length &&
+    !anySaving
   )
     return 0;
 
@@ -96,6 +98,15 @@ export async function closeAnsweredElsewhere(
           })
         : [],
     ]);
+  // Spec step 196: savings still offered; one applied or dismissed elsewhere closes its message.
+  const offers = anySaving
+    ? await db.insuranceSavings.findMany({
+        where: { status: "offered" },
+        select: { id: true, kind: true },
+      })
+    : [];
+  const offeredIds = new Set(offers.map((o) => o.id));
+  const sameOffered = offers.some((o) => o.kind !== "higher_deductible");
   const openProposalKeys = new Set(proposals.map((p) => p.key));
   const stepNow = new Map(actions.map((a) => [a.id, stepOf(a)]));
   const openDeadlines = new Set(deadlines.map((d) => d.id));
@@ -114,6 +125,8 @@ export async function closeAnsweredElsewhere(
       readingId,
       coverEvent,
       negotiationId,
+      savingGroup,
+      savingId,
     } = m.refs;
     return (
       (asksAutopilot(m) && autopilot !== null) ||
@@ -123,7 +136,9 @@ export async function closeAnsweredElsewhere(
       (alertId !== undefined && !unreadAlerts.has(alertId)) ||
       (readingId !== undefined && !waitingReadings.has(readingId)) ||
       (coverEvent !== undefined && !preparedCovers.has(coverEvent)) ||
-      (negotiationId !== undefined && !stillAsked.has(negotiationId))
+      (negotiationId !== undefined && !stillAsked.has(negotiationId)) ||
+      (savingId !== undefined && !offeredIds.has(savingId)) ||
+      (savingGroup !== undefined && !sameOffered)
     );
   };
 

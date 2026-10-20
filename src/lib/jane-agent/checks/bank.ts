@@ -1113,6 +1113,41 @@ export const QUESTIONS: readonly CheckQuestion[] = [
     },
   },
 
+  // Insurance: paying less for the same cover (spec step 196), over the demo person's GEICO
+  // policy: four ways that keep the cover (about $388.80 a year added up) and a higher
+  // deductible that lowers it ($170.40).
+  {
+    id: "sav-1",
+    text: "how can I pay less for my car insurance",
+    needs: "rules",
+    expect: {
+      intent: "insurance",
+      figures: () => [38_880],
+      mentions: /your cover stays exactly as it is/,
+      link: "/insurance",
+      list: true,
+      maxChars: 1_100,
+    },
+  },
+  {
+    id: "sav-2",
+    text: "should I raise my deductible",
+    needs: "rules",
+    expect: {
+      intent: "insurance",
+      figures: () => [17_040],
+      mentions: /lowers your cover/,
+      list: true,
+      maxChars: 1_100,
+    },
+  },
+  {
+    id: "sav-3",
+    text: "are there any discounts on my insurance",
+    needs: "rules",
+    expect: { intent: "insurance", mentions: /autopay/i, list: true, maxChars: 1_100 },
+  },
+
   // Outside what Jane does: brief, and never advice.
   { id: "out-1", text: "what's the weather today", needs: "claude", expect: { avoid: ADVICE } },
   {
