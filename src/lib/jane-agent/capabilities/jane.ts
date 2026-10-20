@@ -29,6 +29,8 @@ import { loadTimeline } from "@/lib/timeline";
 import { timelineReply } from "../replies-timeline";
 import { healthFor } from "@/lib/health-score";
 import { healthReply } from "../replies-health";
+import { explainFigure } from "@/lib/figures";
+import { figureReply, whichFigureReply } from "../replies-figures";
 import { groupedHelpReply } from "../replies-help";
 import { lifeEventReply } from "../replies-life";
 import { loadSnapshot } from "../snapshot";
@@ -76,6 +78,11 @@ async function answer(ctx: CapabilityContext): Promise<Reply | null> {
       const snapshot = await loadSnapshot(userId, { client, now });
       return prioritiesReply(snapshot ? rankedFor(snapshot) : []);
     }
+    // Spec step 239.
+    case "figure_how":
+      return intent.figure
+        ? figureReply(await explainFigure(userId, intent.figure, { client, now }))
+        : whichFigureReply();
     case "health":
       return healthReply(await healthFor(userId, { client, now }));
     case "checked":

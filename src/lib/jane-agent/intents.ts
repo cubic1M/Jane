@@ -9,6 +9,7 @@ import type { FlowId } from "./flows/engine";
 import type { PreferenceDraft } from "./preferences";
 import { parseFact } from "./remember";
 import { parseInvestmentIntent, type InvestmentIntent } from "./investments/intents";
+import { parseFigureHow, type FigureIntent } from "./figure-intents";
 import { parseSectorIntent, type SectorIntent } from "./autopilot-intents";
 import { parseLearnIntent, type LearnIntent } from "./learn";
 
@@ -105,6 +106,8 @@ export type Intent =
   | { kind: "health" }
   // Spec step 148: "my monthly report".
   | { kind: "monthly_report" }
+  // Spec step 239: "how did you get my safe to spend?"
+  | FigureIntent
   // Spec step 141: one autopilot, every sector.
   | SectorIntent
   // Spec step 136: what a word means.
@@ -504,6 +507,8 @@ export function parseIntent(
   if (THANKS.test(text)) return { kind: "greeting", thanks: true };
   if (PAUSE.test(text)) return { kind: "pause_autopilot" };
   if (CHECKED.test(text)) return { kind: "checked" };
+  const figureHow = parseFigureHow(text);
+  if (figureHow) return figureHow;
   if (WHY_DID.test(text)) return { kind: "timeline", why: true };
   if (TIMELINE.test(text)) return { kind: "timeline", why: false };
   if (WHOLE_MONTH.test(text)) return { kind: "whole_picture", focus: "month" };
