@@ -186,6 +186,8 @@ export function scopedFor(userId: string, client: PrismaClient = db) {
     leanPlans: scoped.leanPlan,
     // The year's money plan (spec step 205).
     yearPlans: scoped.yearPlan,
+    // "This was me" / "not me" on unusual activity (spec step 208).
+    unusualAnswers: scoped.unusualAnswer,
     savedShares: scoped.savedShare,
     // What's in investment accounts (spec step 128).
     securities: scoped.security,

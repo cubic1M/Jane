@@ -46,6 +46,8 @@ export const CHAT_SOURCE_LIMITS: Readonly<Record<string, number>> = {
   attention: 1,
   // Spec step 204.
   lean: 1,
+  // Spec step 208.
+  unusual: 2,
   // Spec step 148.
   report: 1,
   // Spec step 128 on.
@@ -155,6 +157,8 @@ export const MESSAGE_PRIORITY = {
   attention: 30,
   // Spec step 204: income stopped; right after urgent things.
   lean: 92,
+  // Spec step 208: a charge that may not be theirs; as urgent as an alert.
+  unusual: 95,
   // Spec step 148: the monthly money report, once a month, after what needs the person.
   report: 40,
   review: 900,
@@ -203,7 +207,16 @@ export const CHAT_HISTORY_HOURS = 48;
 
 // Spec step 83: sources whose messages don't count toward the daily limit, like the brief:
 // the one-time autopilot question, so it never pushes a finding out on the first day.
-export const CHAT_UNCAPPED_SOURCES: readonly string[] = ["autopilot", "review", "welcome"];
+export const CHAT_UNCAPPED_SOURCES: readonly string[] = [
+  "autopilot",
+  "review",
+  "welcome",
+  // Spec step 208: a charge that may not be theirs shouldn't wait for a quiet day; the source
+  // itself brings up at most UNUSUAL_CHAT_MAX at a time.
+  "unusual",
+];
+// Unusual-activity questions in the chat at one time.
+export const UNUSUAL_CHAT_MAX = 2;
 
 // Spec step 184: the morning brief is the day's agenda. Anything less urgent than this
 // waits for it and becomes one of its lines; urgent alerts and deadlines come at once.
