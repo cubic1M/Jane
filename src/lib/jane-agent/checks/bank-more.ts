@@ -76,6 +76,7 @@ const rows: Row[] = [
   ["costly", "/investments/costly-products", "costly_products", "what does my annuity really cost"],
   ["costly", "/investments/costly-products", "costly_products", "what is a surrender charge"],
   ["invreview", "/investments", "yearly_review", "do my yearly investing review"],
+  ["location", "/investments/location", "asset_location", "which accounts should hold my bonds"],
   ["invreview", "/investments", "steady_hand", "should i sell everything the market is crashing"],
 
   // What if (spec step 203).

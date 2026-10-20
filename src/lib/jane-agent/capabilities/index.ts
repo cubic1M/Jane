@@ -87,6 +87,21 @@ export const CAPABILITIES: readonly Capability[] = [
     tools: ["books_check"],
     answer: janeAnswer,
   },
+  // Spec step 203: what-if scenarios; step 209: the long view.
+  {
+    id: "what_if",
+    bank: ["scenarios"],
+    kinds: ["what_if"],
+    tools: ["what_if"],
+    answer: janeAnswer,
+  },
+  {
+    id: "long_view",
+    bank: ["longview"],
+    kinds: ["long_view"],
+    tools: ["long_view"],
+    answer: janeAnswer,
+  },
   {
     id: "did",
     bank: ["timeline", "settings"],
@@ -151,6 +166,7 @@ export const CAPABILITIES: readonly Capability[] = [
       "property",
       "costly",
       "invreview",
+      "location",
     ],
     kinds: ["investments"],
     // Every investing tool Claude has: the overview first, then one per topic.
@@ -167,6 +183,7 @@ export const CAPABILITIES: readonly Capability[] = [
       "property",
       "costly_products",
       "yearly_review",
+      "asset_location",
     ],
     answer: investingAnswer,
   },

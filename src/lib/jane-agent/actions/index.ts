@@ -135,6 +135,7 @@ import {
   costlyYes,
   costlyNo,
   reviewHarvest,
+  locationFree,
 } from "./investments";
 import { changeBudget, changeExpected, changeLook } from "./changes";
 import { lifeNever, lifeNo, lifeYes } from "./life";
@@ -347,6 +348,7 @@ export const ACTION_HANDLERS: Readonly<Record<ActionId, ActionHandler>> = {
   "costly.yes": costlyYes,
   "costly.no": costlyNo,
   "review.harvest": reviewHarvest,
+  "location.free": locationFree,
   // Jane notices changes (spec step 97).
   "change.look": changeLook,
   "change.budget": changeBudget,

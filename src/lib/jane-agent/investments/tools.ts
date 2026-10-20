@@ -26,6 +26,7 @@ import { loadFamily } from "@/lib/investments/family";
 import { loadProperty } from "@/lib/investments/property";
 import { loadCostlyProducts } from "@/lib/investments/costly-products";
 import { reviewFor } from "./review-copy";
+import { loadLocation } from "@/lib/investments/location";
 import { loadSteadyHand } from "@/lib/investments/steady-hand";
 import { CASH_HOMES, CASH_RATES_AS_OF } from "@/config/cash";
 import { formatReturn } from "@/insights/returns";
@@ -178,6 +179,12 @@ export const INVESTMENT_TOOLS: Anthropic.Tool[] = [
     input_schema: noInput,
   },
   {
+    name: "asset_location",
+    description:
+      "Where each kind of investment sits across the person's accounts and, in demo advice mode, the swaps that would put bonds where interest isn't taxed each year and stocks in taxable or Roth accounts: each swap's amount, the tax it would cost if it sells at a gain, the yearly tax saved, and that the overall mix stays exactly the same. The person taps to make the tax-free swaps; never do it yourself.",
+    input_schema: noInput,
+  },
+  {
     name: "steady_hand",
     description:
       "Whether the person's investments have had a big drop lately (down 8% over a month or 15% over three, their own return, money in and out left out) and, in demo advice mode, how each goal's timeline sits (near goals are already in cash). Report only these past facts and the plan to stay the course. NEVER say or imply what markets will do, when they will recover, or that now is a good or bad time: no one can know.",
@@ -224,6 +231,7 @@ export const INVESTMENT_TOOL_STATUS: Readonly<Record<string, string>> = {
   crypto: "Reading your crypto balances…",
   cash_plan: "Looking at where your cash sits…",
   steady_hand: "Looking at how your investments have moved…",
+  asset_location: "Checking which account holds what…",
   yearly_review: "Putting your investing review together…",
   costly_products: "Adding up what your products cost…",
   property: "Looking at your property…",
@@ -759,6 +767,25 @@ export async function runInvestmentTool(
         items: review.items.map((i) => ({ item: i.key, status: i.status, line: i.line })),
         needsATap: review.buttons.map((b) => b.label),
       });
+    }
+    case "asset_location": {
+      const v = await loadLocation(userId, { client, now });
+      if (!v.advice) return out({ advice: "only in demo advice mode" });
+      return out(
+        v.plan
+          ? {
+              overallMixUnchanged: true,
+              taxOnPayoutsNowAYear: money(v.plan.taxNowCents),
+              afterAYear: money(v.plan.taxAfterCents),
+              savedAYear: money(v.plan.savedCents),
+              swaps: v.plan.swaps.map((s) => ({
+                between: [s.a.accountName, s.b.accountName],
+                each: money(s.amountCents),
+                taxIfItSellsAtAGain: money(s.taxCents),
+              })),
+            }
+          : { note: "needs two or more investment accounts" },
+      );
     }
     case "steady_hand": {
       const view = await loadSteadyHand(userId, { client, now });

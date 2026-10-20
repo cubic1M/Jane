@@ -39,6 +39,7 @@ import {
   revokeGiftLinks,
 } from "./family";
 import { startCollegePlan } from "./college";
+import { loadLocation, makeSwaps, LocationError } from "./location";
 import { harvestFromReview, loadReviewExtras, ReviewError } from "./yearly-review";
 import {
   answerPremium,
@@ -1373,6 +1374,39 @@ describe.runIf(url)("investments in Jane's chat, against a real database", () =>
         harvestFromReview(userId, "not-the-key", { client, now: LINKED }),
       ).rejects.toThrow(ReviewError);
       expect(extras.raise).toBe(false);
+    },
+  );
+
+  it(
+    "step 231: swaps leave the overall mix the same, and only the plan the person saw is acted on",
+    SLOW,
+    async () => {
+      const userId = await demoPerson();
+      const before = await loadLocation(userId, { client, now: LINKED });
+      const plan = before.plan!;
+      expect(plan).toBeTruthy();
+      await expect(makeSwaps(userId, "stale", "free", { client, now: LINKED })).rejects.toThrow(
+        LocationError,
+      );
+      expect(
+        await client.brokerageOrder.count({ where: { userId, reason: "asset_location" } }),
+      ).toBe(0);
+      const free = plan.swaps.filter((s) => s.taxCents === 0);
+      if (free.length > 0) {
+        await makeSwaps(userId, plan.key, "free", { client, now: LINKED });
+        const after = await loadLocation(userId, { client, now: LINKED });
+        // The overall mix is the same to the cent after the swaps.
+        for (const c of ["bonds", "us_stocks", "intl_stocks"] as const) {
+          expect(after.plan!.totals[c]).toBe(plan.totals[c]);
+        }
+        expect(
+          await client.brokerageOrder.count({ where: { userId, reason: "asset_location" } }),
+        ).toBeGreaterThan(0);
+      } else {
+        await expect(makeSwaps(userId, plan.key, "free", { client, now: LINKED })).rejects.toThrow(
+          /nothing to swap/,
+        );
+      }
     },
   );
 });

@@ -263,6 +263,12 @@ async function InvestmentsContent() {
             : annuities, whole life and advisory fees in dollars, with the charge for leaving.
           </p>
           <p className="text-sm text-zinc-600 dark:text-zinc-400">
+            <Link href="/investments/location" className={LINK}>
+              The right account for each investment
+            </Link>
+            : bonds where interest isn&apos;t taxed, without changing your mix.
+          </p>
+          <p className="text-sm text-zinc-600 dark:text-zinc-400">
             Learn:{" "}
             {["index-funds", "fees", "the-match", "roth-vs-traditional", "rebalancing"].map(
               (slug, i) => (
