@@ -94,6 +94,14 @@ export const CAPABILITIES: readonly Capability[] = [
     tools: ["long_view"],
     answer: janeAnswer,
   },
+  // Spec step 253: the picture of you.
+  {
+    id: "profile",
+    bank: ["profile"],
+    kinds: ["profile"],
+    tools: ["my_profile"],
+    answer: janeAnswer,
+  },
   {
     id: "did",
     bank: ["timeline", "settings"],

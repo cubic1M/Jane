@@ -136,6 +136,7 @@ const STATUS: Record<string, string> = {
   monthly_report: "Reading your monthly report…",
   what_if: "Running the what-if…",
   long_view: "Looking ahead…",
+  my_profile: "Remembering what I know about you…",
   propose_action: "Getting a button ready…",
   show_block: "Drawing it…",
 };
