@@ -6,6 +6,9 @@ import { loadStudentLoans } from "@/lib/student-loans";
 import { loadMortgage } from "@/lib/mortgage";
 import { loadCredit } from "@/lib/credit";
 import { loadDebtAutopilot } from "@/lib/debt-autopilot";
+import { loadCreditCards } from "@/lib/credit-cards";
+import { loadCreditBuilding } from "@/lib/credit-building";
+import { pullCredit } from "@/lib/credit";
 import { listApplications } from "@/lib/loan-applications";
 import { checkRates, loadRefinance } from "@/lib/refinance";
 import type { DebtIntent } from "./debt-intents";
@@ -15,6 +18,8 @@ import { studentReply } from "./student-replies";
 import { mortgageReply } from "./mortgage-replies";
 import { creditReply } from "./credit-replies";
 import { debtAutopilotReply, debtDueReply } from "./debt-autopilot-replies";
+import { betterCardReply, cardFeeReply, cardForReply } from "./credit-card-replies";
+import { buildCreditReply, simulateReply } from "./credit-building-replies";
 import type { Reply } from "./replies";
 
 // Answers questions about debts by rules (spec Phase Y), with the same loaders as the
@@ -46,6 +51,22 @@ export async function answerDebt(
       return debtAutopilotReply(await loadDebtAutopilot(userId, { client, now }));
     case "debt_due":
       return debtDueReply(await loadDebtAutopilot(userId, { client, now }));
+    case "build_credit":
+    case "credit_simulate": {
+      let data = await loadCreditBuilding(userId, { client, now });
+      // Asked before Jane's first monthly pull: she pulls now (a soft pull).
+      if (data.available && data.score === null) {
+        await pullCredit(userId, { client, now });
+        data = await loadCreditBuilding(userId, { client, now });
+      }
+      return intent.kind === "build_credit" ? buildCreditReply(data) : simulateReply(data);
+    }
+    case "card_for":
+      return cardForReply(await loadCreditCards(userId, { client, now }), intent.category);
+    case "card_fee":
+      return cardFeeReply(await loadCreditCards(userId, { client, now }));
+    case "card_better":
+      return betterCardReply(await loadCreditCards(userId, { client, now }));
     case "credit_score":
       return creditReply(await loadCredit(userId, { client, now }));
     case "mortgage":

@@ -223,6 +223,7 @@ export const ACTION_IDS = [
   "paycheck.undo",
   "bill.pay",
   "bill.skip",
+  "attention.resume",
 ] as const;
 export type ActionId = (typeof ACTION_IDS)[number];
 
@@ -243,6 +244,12 @@ export type MessageRefs = {
   // Spec step 113: the 0% offer a transfer was made to, and the transfer Jane tracks.
   transfer?: { debtKey: string; offerId: string };
   transferId?: string;
+  // Spec step 174: the card "Apply" applies for.
+  creditCard?: { productId: string };
+  // Spec step 175: the statement "Pay it before the statement" pays toward, and the
+  // credit-builder stand-in to open.
+  creditStatement?: { accountId: string; closesOn: string };
+  creditBuilder?: { productId: string };
   // Insurance (spec Phase X): a coverage gap by its key (GAP_KEYS), and the policy a
   // message is about.
   insuranceGap?: string;
@@ -374,6 +381,8 @@ export type MessageRefs = {
   paycheckPlanId?: string;
   // Spec step 145: a bill to pay, by its plan key (bill:<accountId>:<due date>).
   billKey?: string;
+  // Spec step 147: a kind of message Jane stopped bringing up, by its source.
+  attentionSource?: string;
   // Spec step 141: a sector's autopilot change typed in the chat, set on "Set it".
   sectorChange?: {
     sector: string;

@@ -294,6 +294,7 @@ model User {
   studentLoanProfile     StudentLoanProfile?
   creditReports          CreditReport[]
   debtWatch              DebtWatch?
+  cardApplications       CardApplication[]
   balanceTransfers       BalanceTransfer[]
   findings               Finding[]
   decisions              Decision[]
@@ -577,6 +578,9 @@ model Liability {
   hasPmi                    Boolean?  @map("has_pmi")
   escrowBalanceCents        Int?      @map("escrow_balance_cents")
   hasPrepaymentPenalty      Boolean?  @map("has_prepayment_penalty")
+  // Cards (spec step 175): the last statement's date and balance, as Plaid reports them.
+  lastStatementIssueDate    DateTime? @map("last_statement_issue_date") @db.Date
+  lastStatementBalanceCents Int?      @map("last_statement_balance_cents")
   createdAt                 DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt                 DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
 
@@ -794,6 +798,27 @@ model DebtWatch {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("debt_watches")
+}
+
+// A credit card applied for through Jane (spec step 174), only after the person tapped
+// Apply: the card, and what the issuer said.
+model CardApplication {
+  id                   String   @id @default(cuid())
+  userId               String   @map("user_id")
+  partner              String
+  productId            String   @map("product_id")
+  issuer               String
+  cardName             String   @map("card_name")
+  annualFeeCents       Int      @map("annual_fee_cents")
+  // pending, approved or declined.
+  status               String
+  partnerApplicationId String?  @map("partner_application_id")
+  createdAt            DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("card_applications")
 }
 
 // A balance transfer the person made to a 0% card (spec step 113), so Jane can keep the

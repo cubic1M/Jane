@@ -31,6 +31,10 @@ export type NormalizedLiability = {
   hasPmi: boolean | null;
   escrowBalanceCents: number | null;
   hasPrepaymentPenalty: boolean | null;
+  // Cards only (spec step 175): the last statement's date and balance, for paying before
+  // the next one closes; null for everything else.
+  lastStatementIssueDate: string | null;
+  lastStatementBalanceCents: number | null;
 };
 
 // 15.24 (percent) -> 1524. Anything that can't be a real yearly rate is missing.
@@ -64,6 +68,8 @@ const EMPTY = {
   hasPmi: null,
   escrowBalanceCents: null,
   hasPrepaymentPenalty: null,
+  lastStatementIssueDate: null,
+  lastStatementBalanceCents: null,
 } as const;
 
 export function normalizeLiabilities(liabilities: LiabilitiesObject): NormalizedLiability[] {
@@ -80,6 +86,8 @@ export function normalizeLiabilities(liabilities: LiabilitiesObject): Normalized
       lastPaymentCents: toCents(c.last_payment_amount),
       lastPaymentDate: day(c.last_payment_date),
       isOverdue: c.is_overdue,
+      lastStatementIssueDate: day(c.last_statement_issue_date),
+      lastStatementBalanceCents: toCents(c.last_statement_balance),
     });
   }
   for (const m of liabilities.mortgage ?? []) {
@@ -105,6 +113,8 @@ export function normalizeLiabilities(liabilities: LiabilitiesObject): Normalized
       escrowBalanceCents: toCents(m.escrow_balance),
       hasPrepaymentPenalty:
         typeof m.has_prepayment_penalty === "boolean" ? m.has_prepayment_penalty : null,
+      lastStatementIssueDate: null,
+      lastStatementBalanceCents: null,
     });
   }
   for (const s of liabilities.student ?? []) {
