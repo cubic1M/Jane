@@ -15,7 +15,8 @@ vi.mock("@/lib/tax-amendment", async (importOriginal) => ({
 
 import { PriorReturnError, confirmPriorReturn, dismissPriorReturn } from "@/lib/prior-return";
 import { AmendmentError, prepareAmendment, signAmendment } from "@/lib/tax-amendment";
-import { fieldsFrom, returnAction } from "./actions";
+import { returnAction } from "./actions";
+import { fieldsFrom } from "./fields";
 
 // Spec step 172: confirming a reading, preparing an amended return, and the review and
 // signature the person must give.
