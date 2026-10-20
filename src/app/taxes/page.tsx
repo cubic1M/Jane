@@ -33,6 +33,8 @@ import { DocumentButtons } from "./document-buttons";
 import { PlanSection } from "./plan-section";
 import { GivingSection } from "./giving-section";
 import { FamilySection } from "./family-section";
+import { RecordsSection } from "./records-section";
+import { loadAuditRecords } from "@/lib/audit-records";
 import { HomeSection } from "./home-section";
 import { loadHomeTaxes } from "@/lib/home-taxes";
 import { loadFamilyTaxes } from "@/lib/family-taxes";
@@ -106,6 +108,20 @@ async function TaxesContent() {
         advice={advice}
       />
       <SavingsSection view={await loadTaxSavings(user.id, { now, loaded: { estimate, advice } })} />
+      <section aria-labelledby="last-return-heading" id="last-return" className={CARD}>
+        <h2 id="last-return-heading" className="text-xl font-semibold">
+          Last year&apos;s return
+        </h2>
+        <p className="text-sm text-zinc-600 dark:text-zinc-400">
+          Upload a return you filed and Jane reads it, checks it against your accounts for money
+          left behind, and prepares an amended return for you to review and sign.
+        </p>
+        <Link href="/taxes/last-return" className={LINK}>
+          Review a past return
+        </Link>
+      </section>
+
+      <RecordsSection view={await loadAuditRecords(user.id, year, { now })} />
       <HomeSection view={await loadHomeTaxes(user.id, { now, loaded: { estimate } })} />
       <FamilySection view={await loadFamilyTaxes(user.id, { now, loaded: { estimate, advice } })} />
       <GivingSection view={await loadGiving(user.id, { now, loaded: { estimate, advice } })} />

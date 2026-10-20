@@ -234,3 +234,28 @@ describe("homeowner taxes in the chat", () => {
     expect(parse(text)).toEqual({ kind: "tax", ask: "home" });
   });
 });
+
+// Spec step 171.
+describe("audit-ready records in the chat", () => {
+  it.each([
+    "am I ready for an audit",
+    "give me my audit pack",
+    "how long should I keep my tax records",
+    "what records do I need if I get audited",
+  ])("%s asks about records", (text) => {
+    expect(parse(text)).toEqual({ kind: "tax", ask: "records" });
+  });
+});
+
+// Spec step 172.
+describe("last year's return in the chat", () => {
+  it.each([
+    "review my tax return",
+    "did I miss anything on my return",
+    "can I amend my return",
+    "check last year's return",
+    "did I leave money on the table",
+  ])("%s asks about the return", (text) => {
+    expect(parse(text)).toEqual({ kind: "tax", ask: "last_return" });
+  });
+});
