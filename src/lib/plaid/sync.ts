@@ -67,7 +67,15 @@ export type SyncResult = {
   investments: "updated" | "unavailable" | "off";
 };
 
-type Options = { client?: PrismaClient; api?: PlaidApi; now?: Date };
+type Options = {
+  client?: PrismaClient;
+  api?: PlaidApi;
+  now?: Date;
+  // The first scan of a bank someone is waiting on (a link, the sample person): Jane's
+  // findings are posted right after detection, before the slower sector work, and again
+  // after it. Other syncs run Jane once, at the end.
+  progressive?: boolean;
+};
 
 async function saveAccounts(db: ScopedDb, itemId: string, sync: { accounts: NormalizedAccount[] }) {
   const ids = new Map<string, string>();
@@ -538,7 +546,7 @@ export async function syncDemoInvestments(
 
 export async function syncItem(
   itemId: string,
-  { client = defaultClient, api = plaid(), now = new Date() }: Options = {},
+  { client = defaultClient, api = plaid(), now = new Date(), progressive = false }: Options = {},
 ): Promise<SyncResult> {
   // The one unscoped read: finds the item's owner so everything after is scoped to them.
   const item = await client.plaidItem.findUnique({
@@ -611,7 +619,8 @@ export async function syncItem(
   await runDetection(item.userId, { client, now });
   // The first scan after linking: what people see first (the findings) is posted right after
   // detection, before the slower sector work below; the chat is already open and fills in.
-  if (result.firstSync) await runJaneAgentSafely(item.userId, { client, now, trigger: "sync" });
+  if (progressive && result.firstSync)
+    await runJaneAgentSafely(item.userId, { client, now, trigger: "sync" });
   // After detection these don't depend on each other, so they run together; the sample
   // person's first screen is waiting on this sync.
   await Promise.all([

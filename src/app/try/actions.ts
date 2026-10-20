@@ -44,7 +44,7 @@ export async function tryJane(_previous: TryState, formData: FormData): Promise<
   });
   after(async () => {
     try {
-      await syncItem(session.itemId);
+      await syncItem(session.itemId, { progressive: true });
     } catch (error) {
       console.error("Sample person's first sync failed", { error: String(error) });
     }

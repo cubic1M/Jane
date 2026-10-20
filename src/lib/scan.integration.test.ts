@@ -64,7 +64,7 @@ describe.runIf(url)("the chat opens during the first scan", { timeout: 120_000 }
     expect(await scanInProgress(trial.userId, { client })).toBe(true);
     seenBySlowWork.length = 0;
 
-    await syncItem(trial.itemId, { client, now: NOW });
+    await syncItem(trial.itemId, { client, now: NOW, progressive: true });
     // The findings were posted before the slow sector work started.
     expect(seenBySlowWork[0]).toBeGreaterThan(0);
     expect(await scanReady(trial.userId, { client })).toBe(true);
