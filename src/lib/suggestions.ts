@@ -59,7 +59,7 @@ export async function scanSuggestions(
       detector: `${d.capability}:${d.topic}`,
       error: scrub(String(error)),
     }),
-  ).filter((s) => advice || !ADVICE_TOPICS.includes(s.topic));
+  ).filter((s) => advice || !(ADVICE_TOPICS as readonly string[]).includes(s.topic));
   const byKey = new Map(existing.map((e) => [e.key, e]));
 
   // Already chosen for today: the scan is safe to run twice.
