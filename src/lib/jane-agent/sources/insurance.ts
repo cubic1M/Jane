@@ -418,6 +418,24 @@ function savingMessages(insurance: InsuranceSnapshot): Candidate[] {
 }
 
 // Spec step 197: one question about how they live, asked once; yes or no ends it.
+// Spec step 200: FSA money that will be lost, said once a year when the deadline is close.
+function fsaMessages(insurance: InsuranceSnapshot): Candidate[] {
+  const fsa = insurance.healthYear?.fsa;
+  if (!fsa || !fsa.warn) return [];
+  return [
+    {
+      kind: "heads_up",
+      body: `You have ${formatCents(fsa.leftCents)} left in your FSA, and it's lost after ${shortDate(fsa.deadline)} (${fsa.daysLeft} days), unless your employer allows a carryover. Eligible care and medicine count, like prescriptions, glasses and dental work.`,
+      refs: {},
+      actions: [
+        { id: "open", label: "Your health year", kind: "link", href: "/insurance#health-year" },
+      ],
+      dedupeKey: `fsa-deadline:${fsa.deadline}`,
+      priority: MESSAGE_PRIORITY.fsa_deadline,
+    },
+  ];
+}
+
 function riskMessages(insurance: InsuranceSnapshot): Candidate[] {
   return (insurance.risks ?? []).map((risk) => ({
     kind: "decision",
@@ -448,6 +466,7 @@ export const insuranceSource: MessageSource = {
       ...doneByJaneMessages(insurance),
       ...savingMessages(insurance),
       ...riskMessages(insurance),
+      ...fsaMessages(insurance),
     ];
   },
 };

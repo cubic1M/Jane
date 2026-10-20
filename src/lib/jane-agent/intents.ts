@@ -585,7 +585,10 @@ export function parseIntent(
       recurring,
     };
   }
-  if (SAFE.test(text)) return { kind: "safe_to_spend" };
+  // "how much is left in my FSA" is the insurance lane's (spec step 200), not spending money.
+  if (SAFE.test(text) && !/\b(?:fsa|deductible|out[- ]of[- ]pocket)\b/.test(text)) {
+    return { kind: "safe_to_spend" };
+  }
   // Spec step 128 on: after affording, so "can I afford … my 401(k)" stays a money question.
   const investments = parseInvestmentIntent(text);
   if (investments) return investments;

@@ -94,7 +94,7 @@ describe.runIf(url)("benefits through work against a real database", () => {
       ["life", 850, "found"],
       ["disability", 620, "found"],
       ["hsa", 10_000, "found"],
-      ["fsa", 5_000, "found"],
+      ["fsa", 10_000, "found"],
     ]);
     expect(await listPolicies(me, { client })).toEqual([]);
 

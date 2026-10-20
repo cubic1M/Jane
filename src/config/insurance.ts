@@ -758,3 +758,40 @@ export const CLAIMS_FREE_DISCOUNT: Partial<Record<PolicyKind, number>> = {
 };
 // A difference this small either way is a close call, not a clear answer.
 export const CLAIM_CLOSE_CALL_CENTS = 5_000;
+
+// --- Health cover all year (spec step 200) --------------------------------------------------
+// Medical spending counted toward the plan: Plaid's MEDICAL_ detailed categories, less the
+// ones a separate dental or vision plan pays (they still count toward an FSA).
+export const HEALTH_PLAN_EXCLUDED_CATEGORIES: readonly string[] = [
+  "MEDICAL_DENTAL_CARE",
+  "MEDICAL_EYE_CARE",
+];
+// The day an FSA's unused money is lost: December 31, unless the employer allows a carryover.
+export const FSA_DEADLINE = { month: 12, day: 31 } as const;
+// Say the FSA is running out from this many days before the deadline, with this much left.
+export const FSA_WARN_DAYS = 90;
+export const FSA_WARN_MIN_CENTS = 5_000;
+// A bill is checked against what the plan should have paid from this size.
+export const BIG_BILL_MIN_CENTS = 50_000;
+// And opens a dispute card when it was this much more than the person's share.
+export const DISPUTE_TOLERANCE_CENTS = 10_000;
+// The sample plan the demo bank's health year uses (nothing stored): an employer PPO.
+export const DEMO_HEALTH_PLAN = {
+  name: "Acme PPO",
+  deductibleCents: 50_000,
+  outOfPocketMaxCents: 300_000,
+  coinsurance: 20,
+} as const;
+// The demo FSA election when no pay stub benefit is on file (the demo payroll's $100 a pay).
+export const DEMO_FSA_ELECTION_CENTS = 240_000;
+// The stand-in plan directory (spec step 200): who is in the plan's network. Matched on the
+// name as it appears on a statement; anything not listed is "can't tell", never "out".
+export const DEMO_NETWORK_DIRECTORY: readonly {
+  match: RegExp;
+  name: string;
+  inNetwork: boolean;
+}[] = [
+  { match: /cvs/i, name: "CVS Pharmacy", inNetwork: true },
+  { match: /bayview imaging/i, name: "Bayview Imaging Center", inNetwork: true },
+  { match: /lakeside urgent/i, name: "Lakeside Urgent Care", inNetwork: false },
+];
