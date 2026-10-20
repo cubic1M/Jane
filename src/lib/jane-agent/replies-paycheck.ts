@@ -1,5 +1,6 @@
 import { formatCents } from "@/lib/money";
 import type { PaycheckPlanView, PlanMove } from "@/lib/money-movement/paycheck";
+import { whereItWent } from "@/planning/paycheck-plan";
 import type { Reply } from "./replies";
 import { dateAndDays } from "./sources/source";
 import type { MessageAction } from "./types";
@@ -47,6 +48,32 @@ export function paycheckReply(
   if (moved.length > 0) lines.push(`Moving ${and(moved.map(moveWords))}, as you said.`);
   const open = plan.status === "proposed" || plan.status === "partial";
   if (asked.length > 0 && open) lines.push(`Want me to move ${and(asked.map(moveWords))} too?`);
+  // Spec step 206: where every dollar went, in one line that adds up to the paycheck.
+  if (plan.kept) {
+    const moved = (purpose: string) =>
+      plan.moves
+        .filter((m) => m.purpose === purpose && (m.status === "auto" || m.status === "moved"))
+        .reduce((s, m) => s + m.cents, 0);
+    const waiting = asked.reduce((s, m) => s + m.cents, 0);
+    const went = whereItWent({
+      paycheckCents: plan.paycheckCents,
+      billsCents: plan.kept.billsCents,
+      bufferCents: plan.kept.bufferCents,
+      goalsCents: moved("goal"),
+      debtCents: moved("debt"),
+      investingCents: plan.kept.investingCents,
+    });
+    const parts = [
+      went.billsCents > 0 ? `${formatCents(went.billsCents)} stays for bills` : null,
+      went.bufferCents > 0 ? `${formatCents(went.bufferCents)} buffer` : null,
+      went.goalsCents > 0 ? `${formatCents(went.goalsCents)} to goals` : null,
+      went.debtCents > 0 ? `${formatCents(went.debtCents)} to debt` : null,
+      went.investingCents > 0 ? `${formatCents(went.investingCents)} invested` : null,
+      waiting > 0 ? `${formatCents(waiting)} waiting for your OK` : null,
+      `${formatCents(Math.max(0, went.yoursCents - waiting))} yours to spend`,
+    ].filter(Boolean);
+    lines.push(`Where it went: ${parts.join(", ")}.`);
+  }
   if (simulated) lines.push(STAND_IN_NOTE);
   const actions: MessageAction[] = [
     ...(asked.length > 0 && open

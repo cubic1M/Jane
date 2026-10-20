@@ -9,6 +9,14 @@ export type AuditEvent =
   | "loan_accepted"
   // Spec step 174: applying for a credit card through Jane, only on the person's tap.
   | "card_application_submitted"
+  // Spec step 177: a request for help when money is tight, sent on the person's tap.
+  | "tight_request_sent"
+  // Spec step 180: a request about a medical bill, sent on the person's tap.
+  | "medical_request_sent"
+  // Spec step 181: a validation letter or a bureau dispute, sent on the person's tap.
+  | "credit_dispute_sent"
+  // Spec step 224: a request for a lower card rate, sent on the person's tap.
+  | "card_rate_requested"
   | "user_signed_up"
   // Insurance (spec Phase X): a policy saved or removed, the household facts saved.
   | "insurance_policy_saved"
@@ -82,6 +90,15 @@ export type AuditEvent =
   // Money that moves itself (spec steps 144–145): a transfer or payment scheduled or undone.
   | "money_transfer_scheduled"
   | "money_transfer_cancelled"
+  // A what-if plan the person adopted (spec step 203).
+  | "what_if_adopted"
+  // The lean plan switched on or off (spec step 204).
+  | "lean_plan_started"
+  // A finished action whose saving never showed up (spec step 207).
+  | "saving_marked_not_shown"
+  // Unusual activity answered: this was me, or not me (spec step 208).
+  | "unusual_answered"
+  | "lean_plan_ended"
   | "plan_link_used"
   | "support_contact_suggested"
   | "support_contact_confirmed"
@@ -106,6 +123,18 @@ export type AuditEvent =
   | "document_deleted"
   // The tax-time pack downloaded as a CSV (spec step 72).
   | "tax_pack_downloaded"
+  // Spec step 171: the audit pack for a year downloaded.
+  | "audit_pack_downloaded"
+  // Spec step 172: a prior-year return read from a document was confirmed; an amended
+  // return was prepared and signed.
+  | "tax_return_read_confirmed"
+  | "tax_amendment_started"
+  | "tax_amendment_signed"
+  // Spec step 217: a tax notice confirmed; its response handed to the team or the person.
+  | "tax_notice_confirmed"
+  // Spec step 218: a case opened on a sign of tax identity theft.
+  | "tax_identity_case_opened"
+  | "tax_notice_response_sent"
   // Taxes (spec steps 118–127): which fields of the tax profile changed, never the answers.
   | "tax_profile_changed"
   // A tax tag the person changed (spec step 119): the tag and whether on one transaction or
