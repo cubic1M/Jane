@@ -96,6 +96,9 @@ export const PEOPLE: readonly Person[] = [
       "estimated_taxes",
       "concentration",
       "education_529",
+      "catch_up",
+      "backdoor_roth",
+      "hsa",
     ],
   },
   {
@@ -118,6 +121,8 @@ export const PEOPLE: readonly Person[] = [
       "estimated_taxes",
       "hardship_plan",
       "social_security_timing",
+      "backdoor_roth",
+      "catch_up",
     ],
   },
   {
