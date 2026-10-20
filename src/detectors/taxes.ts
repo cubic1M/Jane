@@ -41,6 +41,34 @@ function marginalRate(netAnnualCents: number, extraCents: number, household: unk
   return marginalRateOf(Math.max(0, gross - STANDARD_DEDUCTION[status]), FEDERAL_BRACKETS[status]);
 }
 
+// Gross income for brackets: take-home pay grossed up (pensions and Social Security arrive
+// gross), plus a year's vesting when there is a stock plan (about a quarter of it).
+function grossIncome(
+  profile: { facts: Record<string, { value: unknown }> },
+  data: { accounts: readonly { subtype: string | null; balanceCents: number }[] },
+): number {
+  const net = annual(profile.facts.monthly_income.value);
+  const gross =
+    profile.facts.income_pattern.value === "pension" ? net : Math.round(net * T.netToGross);
+  const stock =
+    profile.facts.has_stock_plan.value === true
+      ? data.accounts
+          .filter((a) => a.subtype === "stock plan")
+          .reduce((s, a) => s + a.balanceCents, 0)
+      : 0;
+  return gross + Math.round(stock * T.stockVestShare);
+}
+const bracketOf = (
+  profile: Parameters<typeof grossIncome>[0],
+  data: Parameters<typeof grossIncome>[1],
+) => {
+  const status = statusOf(profile.facts.household.value);
+  return marginalRateOf(
+    Math.max(0, grossIncome(profile, data) - STANDARD_DEDUCTION[status]),
+    FEDERAL_BRACKETS[status],
+  );
+};
+
 // Days from today to the next estimated-payment date (April 15, June 15, September 15,
 // January 15), counting this year's and next year's.
 export function daysToEstimatedDate(today: string): number {
@@ -84,8 +112,11 @@ const withholdingGap: Detector = {
       capability: "taxes",
       topic: "withholding_gap",
       title: "Set aside the tax your stock vests won't have withheld",
+      // The bill itself can't be saved; planning for it avoids the penalty and the surprise,
+      // so it counts for a share of its size in ranking.
       worthCents: short,
       worthKind: "risk",
+      rankCents: Math.round(short * T.rankShareOfBill),
       confidence: weakest([
         factEvidence(plan),
         factEvidence(income),
@@ -95,7 +126,7 @@ const withholdingGap: Detector = {
         },
       ]),
       urgency: month(profile.today) >= 10 ? "soon" : "later",
-      why: `Stock that vests is withheld at ${Math.round(T.rsuFlatWithholding * 100)}%, but your income puts you in the ${Math.round(rate * 100)}% bracket. On about ${formatCents(vested)} vesting, that leaves roughly ${formatCents(short)} to pay when you file.`,
+      why: `Your company stock is withheld at ${Math.round(T.rsuFlatWithholding * 100)} cents on the dollar when it vests, but with your pay plus the vesting you're in the ${Math.round(rate * 100)}% bracket. On about ${formatCents(vested)} vesting, that leaves roughly ${formatCents(short)} to pay when you file. Setting it aside through the year, or paying an estimate, avoids a penalty of about ${formatCents(Math.round(short * DETECTOR_RATES.underpaymentPenaltyRate))} on top.`,
       action: { label: "See what to set aside", href: "/taxes/equity" },
     };
   },
@@ -109,7 +140,7 @@ const rothConversion: Detector = {
   capability: "taxes",
   topic: "roth_conversion",
   covers: ["tax_years"],
-  needs: ["life_stage", "has_401k"],
+  needs: ["life_stage", "has_401k", "monthly_income", "household"],
   detect({ profile, data }) {
     const stage = profile.facts.life_stage;
     if (stage.value !== "approaching" && stage.value !== "retired") return null;
@@ -118,8 +149,24 @@ const rothConversion: Detector = {
     );
     const balance = accounts.reduce((s, a) => s + a.balanceCents, 0);
     if (balance < T.rothMinBalanceCents) return null;
-    const convert = Math.round(balance * T.rothConvertShare);
-    const saves = Math.round(convert * (T.rothLaterRate - T.rothNowRate));
+    const retired = stage.value === "retired";
+    const status = statusOf(profile.facts.household.value);
+    let convert = Math.round(balance * T.rothConvertShare);
+    let nowRate: number = T.rothNowRate;
+    let how: string;
+    if (retired) {
+      // Their income is known: convert only what fits in the bracket they're in now.
+      const taxable = Math.max(0, grossIncome(profile, data) - STANDARD_DEDUCTION[status]);
+      nowRate = marginalRateOf(taxable, FEDERAL_BRACKETS[status]);
+      if (nowRate >= T.rothLaterRate) return null;
+      const next = FEDERAL_BRACKETS[status].find((b) => b.over > taxable);
+      convert = Math.min(convert, next ? next.over - taxable : convert);
+      how = `Your income puts you in the ${Math.round(nowRate * 100)}% bracket now, with about ${formatCents(next ? next.over - taxable : 0)} of room before the next one. Converting ${formatCents(convert)} of your ${formatCents(balance)} in pre-tax accounts this year, instead of taking it out later at about ${Math.round(T.rothLaterRate * 100)}%, would save roughly ${formatCents(Math.round(convert * (T.rothLaterRate - nowRate)))}. Money you must withdraw this year can't be converted, so do this after that.`;
+    } else {
+      how = `You have ${formatCents(balance)} in pre-tax retirement accounts. In the years after you stop working and before required withdrawals begin, your income may drop into the ${Math.round(T.rothNowRate * 100)}% bracket. Converting ${formatCents(convert)} (a tenth) then, instead of withdrawing it later at about ${Math.round(T.rothLaterRate * 100)}%, would save roughly ${formatCents(Math.round(convert * (T.rothLaterRate - nowRate)))}.`;
+    }
+    const saves = Math.round(convert * (T.rothLaterRate - nowRate));
+    if (saves <= 0) return null;
     return {
       id: suggestionId("taxes", "roth_conversion"),
       capability: "taxes",
@@ -128,15 +175,15 @@ const rothConversion: Detector = {
       worthCents: saves,
       worthKind: "saves",
       confidence: weakest([
-        factEvidence(stage),
-        evidence("seen", profile.months, accounts.length, "pre-tax retirement accounts"),
         {
-          percent: Math.min(stage.confidence, 65),
-          reason: `your income in the years ahead is an assumption (${Math.round(T.rothLaterRate * 100)}% later against ${Math.round(T.rothNowRate * 100)}% now)`,
+          percent: Math.min(stage.confidence, retired ? 65 : 55),
+          reason: retired
+            ? `${formatCents(balance)} in ${accounts.length === 1 ? "one pre-tax account" : `${accounts.length} pre-tax accounts`}; I don't know your age or other income, and later tax rates are an assumption`
+            : `${formatCents(balance)} in ${accounts.length === 1 ? "one pre-tax account" : `${accounts.length} pre-tax accounts`}; when you'll stop working and your income then are assumptions`,
         },
       ]),
       urgency: month(profile.today) >= T.rothUrgentFromMonth ? "soon" : "later",
-      why: `You have ${formatCents(balance)} in pre-tax retirement accounts. Converting ${formatCents(convert)} (a tenth) in a year with room in the ${Math.round(T.rothNowRate * 100)}% bracket, instead of withdrawing it later at about ${Math.round(T.rothLaterRate * 100)}%, would save roughly ${formatCents(saves)}.`,
+      why: how,
       action: { label: "See your tax years", href: "/taxes/years" },
     };
   },
@@ -158,7 +205,7 @@ const childcareTaxBreak: Detector = {
     if (spent < T.childcareMinCents) return null;
     const household = profile.facts.household.value;
     const fsa = Math.min(spent, CONTRIBUTION_LIMITS.dependentCareFsa);
-    const rate = marginalRate(annual(income.value), 0, household);
+    const rate = bracketOf(profile, data);
     const payroll = PAYROLL_TAX.socialSecurityRate + PAYROLL_TAX.medicareRate;
     const gross = Math.round(annual(income.value) * T.netToGross);
     const credit = Math.round(
@@ -178,9 +225,13 @@ const childcareTaxBreak: Detector = {
         factEvidence(kids),
         factEvidence(income),
         evidence("seen", profile.months, care.length, "childcare payments"),
+        {
+          percent: 65,
+          reason: "I can't tell whether your employer offers a dependent care FSA",
+        },
       ]),
       urgency: "later",
-      why: `You paid ${formatCents(spent)} for childcare in ${profile.months} months. Paying ${formatCents(fsa)} of it from a dependent care FSA skips income and payroll tax, about ${formatCents(Math.round(fsa * (rate + payroll)))}, which beats the credit's ${formatCents(credit)} at your income. Your employer has to offer one, and you choose the amount at enrolment.`,
+      why: `You paid ${formatCents(spent)} for childcare in ${profile.months} months. Paying ${formatCents(fsa)} of it from a dependent care FSA skips income and payroll tax, about ${formatCents(Math.round(fsa * (rate + payroll)))}, which beats the credit's ${formatCents(credit)} at your income. This is only open if your employer offers one, and you choose the amount when you enrol.`,
       action: { label: "See family tax choices", href: "/taxes#family" },
     };
   },
@@ -206,11 +257,15 @@ const identityPin: Detector = {
       capability: "taxes",
       topic: "identity_ip_pin",
       title: "Get an IRS Identity Protection PIN before you file",
-      worthCents: T.typicalRefundCents,
+      // The average refund times the small chance of being targeted: not the whole refund.
+      worthCents: Math.round(T.typicalRefundCents * T.ipPinTheftChance),
       worthKind: "risk",
-      confidence: factEvidence(pattern as Fact),
+      confidence: {
+        percent: Math.min((pattern as Fact).confidence, 60),
+        reason: `you're paid regularly so you'll file; the figure is the average refund times a ${Math.round(T.ipPinTheftChance * 100)}% chance of being targeted`,
+      },
       urgency: "soon",
-      why: `Someone who files first with your Social Security number can take your refund, about ${formatCents(T.typicalRefundCents)} for the average filer. A free IP PIN from the IRS stops that.`,
+      why: `Few people are ever targeted, but someone who files first with your Social Security number can take your refund (about ${formatCents(T.typicalRefundCents)} for the average filer) and it takes months to sort out. A free IP PIN from the IRS stops it, so the cost of asking is a few minutes.`,
       action: { label: "Get your IP PIN", href: "/taxes/identity" },
     };
   },
@@ -225,12 +280,17 @@ const yearEndMoves: Detector = {
   topic: "year_end_moves",
   covers: ["tax_plan", "tax_calendar"],
   needs: ["has_401k", "monthly_income", "household"],
-  detect({ profile }) {
+  detect({ profile, data }) {
     const plan = profile.facts.has_401k;
     const income = profile.facts.monthly_income;
     if (plan.value !== true || profile.today.slice(5) < T.yearEndFrom) return null;
-    const room = Math.round(CONTRIBUTION_LIMITS.workplace * T.yearEndUnusedRoomShare);
-    const rate = marginalRate(annual(income.value), 0, profile.facts.household.value);
+    // Someone short of cash or in debt trouble has better uses for the money first.
+    if (profile.facts.debt_trouble.value === true) return null;
+    const room = Math.min(
+      Math.round(CONTRIBUTION_LIMITS.workplace * T.yearEndUnusedRoomShare),
+      Math.round(grossIncome(profile, data) * T.yearEndMaxIncomeShare),
+    );
+    const rate = bracketOf(profile, data);
     const saves = Math.round(room * rate);
     return {
       id: suggestionId("taxes", "year_end_moves"),
@@ -269,7 +329,7 @@ const charityReceipts: Detector = {
     );
     if (gifts.length === 0) return null;
     const total = gifts.reduce((s, t) => s + t.amountCents, 0);
-    const rate = marginalRate(annual(income.value), 0, profile.facts.household.value);
+    const rate = bracketOf(profile, data);
     return {
       id: suggestionId("taxes", "charity_receipts"),
       capability: "taxes",
@@ -286,12 +346,12 @@ const charityReceipts: Detector = {
           `gifts of ${formatCents(GIVING.receiptFromCents)} or more`,
         ),
         {
-          percent: 70,
-          reason: "I can't see whether the charity already sent you a receipt",
+          percent: 60,
+          reason: "I can't see whether you already have the receipt, or whether you itemize",
         },
       ]),
       urgency: inFilingWindow(profile.today) ? "soon" : "later",
-      why: `You gave ${formatCents(total)} in ${gifts.length === 1 ? "one gift" : `${gifts.length} gifts`} of ${formatCents(GIVING.receiptFromCents)} or more. Without the charity's written receipt the deduction can be disallowed, which would cost about ${formatCents(Math.round(total * rate))} at your ${Math.round(rate * 100)}% bracket.`,
+      why: `You gave ${formatCents(total)} in ${gifts.length === 1 ? "one gift" : `${gifts.length} gifts`} of ${formatCents(GIVING.receiptFromCents)} or more. If you itemize, a gift without the charity's written receipt can be disallowed, which would cost about ${formatCents(Math.round(total * rate))} at your ${Math.round(rate * 100)}% bracket.`,
       action: { label: "Check your gifts", href: "/taxes#giving" },
     };
   },
@@ -361,7 +421,7 @@ const lossHarvest: Detector = {
     const loss = losing.reduce((s, h) => s + (h.basisCents! - h.valueCents), 0);
     if (loss < T.harvestMinLossCents) return null;
     const offset = Math.min(loss, T.harvestOrdinaryOffsetCents);
-    const rate = marginalRate(annual(income.value), 0, profile.facts.household.value);
+    const rate = bracketOf(profile, data);
     const saves = Math.round(offset * rate);
     return {
       id: suggestionId("taxes", "tax_loss_harvest"),
@@ -372,7 +432,10 @@ const lossHarvest: Detector = {
       worthKind: "saves",
       confidence: weakest([
         factEvidence(income),
-        evidence("seen", profile.months, losing.length, "holdings below cost in a taxable account"),
+        {
+          percent: evidence("seen", profile.months, losing.length, "holdings").percent,
+          reason: `${formatCents(loss)} below cost in ${losing.length === 1 ? "one holding" : `${losing.length} holdings`} in a taxable account`,
+        },
         { percent: 80, reason: "the savings depend on your gains elsewhere, which I can't see" },
       ]),
       urgency: month(profile.today) >= 11 ? "soon" : "later",
@@ -411,11 +474,16 @@ const fileReturn: Detector = {
       capability: "taxes",
       topic: "file_return",
       title: "Get your tax forms in and your return ready",
-      worthCents: T.lateFilingPenaltyCents,
+      // The penalty only applies if tax is owed, which about a fifth of filers do.
+      worthCents: Math.round(T.lateFilingPenaltyCents * T.lateFilingOweShare),
       worthKind: "risk",
-      confidence: factEvidence(pattern as Fact),
+      confidence: {
+        percent: Math.min((pattern as Fact).confidence, 60),
+        reason:
+          "I can't see whether you owe tax or are due a refund; the late penalty only applies if you owe",
+      },
       urgency: days <= T.filingNowDays ? "now" : "soon",
-      why: `Your return is due April 15, ${days} ${days === 1 ? "day" : "days"} from now. Filing more than 60 days late costs at least ${formatCents(T.lateFilingPenaltyCents)} (or all the tax owed, if less), even with a refund coming; I collect your forms and get the return ready for you to review and sign.`,
+      why: `Your return is due April 15, ${days} ${days === 1 ? "day" : "days"} from now. If you owe tax, filing more than 60 days late costs at least ${formatCents(T.lateFilingPenaltyCents)} (or all of it, if less); if you're due a refund there's no penalty, but it waits until you file. I collect your forms and get the return ready for you to review and sign.`,
       action: { label: "See your forms", href: "/taxes#forms" },
     };
   },
