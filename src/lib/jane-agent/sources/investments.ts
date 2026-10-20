@@ -26,6 +26,8 @@ import {
   SELL_WORDS,
 } from "../investments/company-copy";
 import type { Candidate } from "../types";
+import { detectDrop } from "@/planning/steady-hand";
+import { STEADY_LINK, steadyMessage } from "../investments/steady-copy";
 import { CASH_MIN_GAIN_CENTS } from "@/config/cash";
 import { CASH_LINK, cashLine, moveButtons } from "../investments/cash-copy";
 import {
@@ -297,6 +299,19 @@ export const investmentsSource: MessageSource = {
         actions: [{ id: "hsa.link", label: "Link a demo HSA", kind: "primary" }, snoozeButton()],
         dedupeKey: "hsa:link",
         priority: MESSAGE_PRIORITY.hsa,
+      });
+    }
+    // Step 163: a big drop gets one calm message a month: what changed, what it means for
+    // each goal's timeline, the plan. Never a word about what markets will do.
+    const drop = detectDrop(inv.returns.periods);
+    if (inv.advice && drop) {
+      out.push({
+        kind: "heads_up",
+        body: steadyMessage(drop, inv.goalBuckets.buckets ?? []),
+        refs: { advice: true },
+        actions: [STEADY_LINK, snoozeButton()],
+        dedupeKey: `steady:${drop.key}:${snapshot.asOf.slice(0, 7)}`,
+        priority: MESSAGE_PRIORITY.steady_hand,
       });
     }
     // Step 162: cash earning what it should. Each move is a tap; with no move Jane can do,

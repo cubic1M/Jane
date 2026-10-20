@@ -19,6 +19,7 @@ import { loadHsa } from "@/lib/investments/hsa";
 import { loadCompanyStock } from "@/lib/investments/company-stock";
 import { loadCrypto } from "@/lib/crypto/crypto";
 import { loadCash } from "@/lib/investments/cash";
+import { loadSteadyHand } from "@/lib/investments/steady-hand";
 import { CASH_HOMES, CASH_RATES_AS_OF } from "@/config/cash";
 import { formatReturn } from "@/insights/returns";
 import { loadAutoInvest } from "@/lib/investments/auto-invest";
@@ -128,6 +129,12 @@ export const INVESTMENT_TOOLS: Anthropic.Tool[] = [
     input_schema: noInput,
   },
   {
+    name: "steady_hand",
+    description:
+      "Whether the person's investments have had a big drop lately (down 8% over a month or 15% over three, their own return, money in and out left out) and, in demo advice mode, how each goal's timeline sits (near goals are already in cash). Report only these past facts and the plan to stay the course. NEVER say or imply what markets will do, when they will recover, or that now is a good or bad time: no one can know.",
+    input_schema: noInput,
+  },
+  {
     name: "cash_plan",
     description:
       "The person's cash in checking, savings and their brokerage's sweep, each with a typical rate (stand-ins with their date). In demo advice mode, the plan: a month of spending in checking, the emergency fund in high-yield savings (in reach within days, never anywhere slower), the rest in a money market fund or a Treasury ladder, with what each earns a year and the moves Jane can make with the person's tap.",
@@ -167,6 +174,7 @@ export const INVESTMENT_TOOL_STATUS: Readonly<Record<string, string>> = {
   company_stock: "Looking at your company stock…",
   crypto: "Reading your crypto balances…",
   cash_plan: "Looking at where your cash sits…",
+  steady_hand: "Looking at how your investments have moved…",
   college_plan: "Working out college costs…",
   goal_buckets: "Looking at your goals…",
   investment_returns: "Working out your returns…",
@@ -521,6 +529,26 @@ export async function runInvestmentTool(
         return out(describe(await estimateCollege(userId, { childAge: age, type }, { client })));
       }
       return out({ plans: plans.map((p) => ({ child: p.childName, ...describe(p.estimate) })) });
+    }
+    case "steady_hand": {
+      const view = await loadSteadyHand(userId, { client, now });
+      return out(
+        !view.advice
+          ? { advice: "only in demo advice mode" }
+          : {
+              bigDrop: view.drop && {
+                over: view.drop.windowLabel,
+                returnPercent: Math.round(view.drop.rate * 1000) / 10,
+              },
+              goals: view.buckets.map((b) => ({
+                goal: b.name,
+                yearsAway: Math.round(b.yearsLeft * 10) / 10,
+                alreadyInCash: b.nearTerm,
+              })),
+              plan: "stay the course: automatic investing and each goal's mix carry on",
+              markets: "never predicted",
+            },
+      );
     }
     case "cash_plan": {
       const view = await loadCash(userId, { client, now });

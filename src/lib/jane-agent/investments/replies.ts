@@ -11,6 +11,9 @@ import type { CompanyStockView } from "@/lib/investments/company-stock";
 import type { CryptoView } from "@/lib/crypto/crypto";
 import type { CashView } from "@/lib/investments/cash";
 import { CASH_LINK, cashLine, moveButtons } from "./cash-copy";
+import type { SteadyView } from "@/lib/investments/steady-hand";
+import { NO_PREDICTION } from "@/config/steady-hand";
+import { STEADY_LINK, steadyMessage, timelines } from "./steady-copy";
 import { CRYPTO_LINK, feeFlag, NEVER_TRADES, shareFlag, sizeLine } from "./crypto-copy";
 import {
   COMPANY_LINK,
@@ -721,5 +724,29 @@ export function cashReply(view: CashView): Reply {
     body: cashLine(plan),
     actions: [...moveButtons(plan), CASH_LINK],
     refs: { advice: true, ...(plan.moves.length > 0 ? { cashPlan: plan.key } : {}) },
+  };
+}
+
+// Spec step 163: asked about a drop or about selling, in demo advice mode. Facts about the
+// past and the person's own plan; never what markets will do.
+export function steadyReply(view: SteadyView): Reply {
+  if (!view.advice) {
+    return {
+      body: `I don't give recommendations on real accounts yet. ${NO_PREDICTION}`,
+      actions: [STEADY_LINK],
+      refs: {},
+    };
+  }
+  if (!view.drop) {
+    return {
+      body: `Your investments haven't had a big drop lately. ${timelines(view.buckets)} ${NO_PREDICTION} If you ever want to sell, I'll show what it would cost before you do.`,
+      actions: [STEADY_LINK],
+      refs: { advice: true },
+    };
+  }
+  return {
+    body: steadyMessage(view.drop, view.buckets),
+    actions: [STEADY_LINK],
+    refs: { advice: true },
   };
 }
