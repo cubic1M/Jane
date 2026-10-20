@@ -42,7 +42,10 @@ async function Plan({ searchParams }: { searchParams: PageProps<"/plan">["search
     user.id,
     items.map((i) => i.card.findingId),
   );
-  const total = items.reduce((sum, i) => sum + (i.card.annualSavingsCents ?? 0), 0);
+  const total = items.reduce(
+    (sum, i) => sum + (i.countedElsewhere ? 0 : (i.card.annualSavingsCents ?? 0)),
+    0,
+  );
   // After "Yes to all".
   const params = await searchParams;
   const count = (value: unknown) => {

@@ -185,17 +185,23 @@ assumption (no vest schedule, future income) the percentage is capped for it and
 so. Rates are in `DETECTOR_RATES.tax`; the dated brackets, limits and payroll tax come from
 `src/config/tax-rates.ts`.
 
-**Not detectors yet, because the profile cannot see the signal.** Property tax and exemptions
-(221), giving and bunching (168), the audit-pack gaps (171), notices (217), side income and
-rentals (173), the last return's review (172), investment taxes and harvesting (124, needs lots
-and basis), crypto (219, needs the exchange), the W-4 checkup (121, needs pay stub withholding),
-the tax plan's contribution moves (167, 122) and the forms chase (166). Each needs rows the
-eight sample people do not have, or a loader (`src/lib/tax-*.ts`) that reads the database. To
-add them, extend `ProfileInput` (step 253) with the rows they need (property tax payments,
-donation transactions, holdings with basis, pay stub withholding, uploaded notices) and give
-the eight sample people the matching data; the formulas are in the tables above. Until then
-the existing loaders and chat messages (steps 166 to 223) are what reach people, and the
-harness reports these capabilities as having no detector for the sample people.
+**Added later in step 261** (also in `src/detectors/taxes.ts`): `charity_receipts` (gifts of $250 or
+more need the charity's receipt; covers giving, records and tags), `property_tax_check` (property
+tax paid, with the 7% appeal gap as the stake; covers property and home), `tax_loss_harvest` (a
+taxable account below cost; covers investments, and `ProfileInput` now carries `holdings` with
+cost basis) and `file_return` (January 15 to April 15; covers return and forms). The sample
+people got the rows they need in `people-extras/taxes.ts`: property tax for the family, Priya,
+Dan and Lena and Ruth, a gift each for those four, and a bond fund bought above today's price in
+Priya's brokerage.
+
+**Tools with no detector, and why** (`TOOL_EXEMPT` in `src/config/detector-exempt.ts`): the tax
+profile (shows and sets answers), refunds (the plan arrives when a deposit lands), states (needs
+the person to say they moved), the last return and notices (react to an upload) and the accountant
+(a link is a credential, so Jane never makes one by herself).
+
+**Seasonal detectors never fire on the sample date** (October 17): `identity_ip_pin` and
+`file_return` run in January to April, `year_end_moves` from November 15. The tests set the date
+to prove them.
 
 The tax calendar (223) is covered by the detectors for its dated tasks: `identity_ip_pin` (January)
 and `estimated_taxes` (each quarter), both urgent as their date nears. Its December year-end

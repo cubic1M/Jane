@@ -351,32 +351,25 @@ const DEFS: Record<PersonId, Def> = {
       },
     ],
     monthly: [
-      R("pay1", "checking", "NORTHWIND HEALTH PAYROLL", "INCOME_SALARY", -2850, [1, 15], null),
-      // The second earner changed jobs 60 days before the sample was linked (a life event).
+      // The first earner changed jobs 60 days before the sample was linked (a life event); the
+      // second earner stays at the school.
       {
-        ...R(
-          "pay2",
-          "checking",
-          "SPRINGFIELD SCHOOLS PAYROLL",
-          "INCOME_SALARY",
-          -2480,
-          [5, 20],
-          null,
-        ),
+        ...R("pay1", "checking", "NORTHWIND HEALTH PAYROLL", "INCOME_SALARY", -2850, [1, 15], null),
         span: { until: -60 },
       },
       {
         ...R(
-          "pay2b",
+          "pay1b",
           "checking",
-          "RIVERSIDE ACADEMY PAYROLL",
+          "MERIDIAN MEDICAL PAYROLL",
           "INCOME_SALARY",
-          -2680,
-          [5, 20],
+          -3050,
+          [1, 15],
           null,
         ),
         span: { from: -60 },
       },
+      R("pay2", "checking", "SPRINGFIELD SCHOOLS PAYROLL", "INCOME_SALARY", -2480, [5, 20], null),
       R(
         "mortgage",
         "checking",
