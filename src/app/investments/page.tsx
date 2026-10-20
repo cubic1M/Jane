@@ -288,6 +288,12 @@ async function InvestmentsContent() {
             time.
           </p>
           <p className="text-sm text-zinc-600 dark:text-zinc-400">
+            <Link href="/investments/sudden-money" className={LINK}>
+              Sudden money
+            </Link>
+            : a bonus, an inheritance or a sale, with tax first and a plan in order.
+          </p>
+          <p className="text-sm text-zinc-600 dark:text-zinc-400">
             Learn:{" "}
             {["index-funds", "fees", "the-match", "roth-vs-traditional", "rebalancing"].map(
               (slug, i) => (

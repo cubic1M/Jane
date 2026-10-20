@@ -64,6 +64,7 @@ const SIGNED_IN = [
   "/investments/plan-menu",
   "/investments/performance",
   "/investments/short-term",
+  "/investments/sudden-money",
   "/learn",
   "/learn/index-funds",
   "/loans",

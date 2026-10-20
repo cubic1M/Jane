@@ -221,6 +221,7 @@ export function scopedFor(userId: string, client: PrismaClient = db) {
     costlyProducts: scoped.costlyProduct,
     planMenus: scoped.planMenu,
     billLadders: scoped.billLadder,
+    suddenMoneys: scoped.suddenMoney,
     planChanges: scoped.planChange,
     giftLinks: scoped.giftLink,
     cryptoConnections: scoped.cryptoConnection,

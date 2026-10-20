@@ -206,6 +206,8 @@ export const TEAM_ACCESS_RULES: Record<AuditEvent, EventRule> = {
   plan_change_requested: own,
   ladder_started: own,
   ladder_rolled: own,
+  sudden_money_classed: own,
+  sudden_money_stage: own,
 };
 
 export const SHOWN_EVENTS = (Object.keys(TEAM_ACCESS_RULES) as AuditEvent[]).filter(

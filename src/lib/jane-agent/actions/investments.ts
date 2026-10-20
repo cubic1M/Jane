@@ -30,6 +30,14 @@ import {
 import { answerOldPlan, OldAccountsError, startRollover } from "@/lib/investments/old-accounts";
 import { contributeForChild, createGiftLink, FamilyError } from "@/lib/investments/family";
 import { answerPremium, CostlyProductError } from "@/lib/investments/costly-products";
+import {
+  classify,
+  doStage,
+  loadSuddenMoney,
+  SuddenMoneyError,
+} from "@/lib/investments/sudden-money";
+import { ACTION_KIND, planBody, stageButton, SUDDEN_LINK } from "../investments/sudden-copy";
+import type { StageKey } from "@/planning/sudden-money";
 import { ShortTermError, startLadder } from "@/lib/investments/short-term";
 import { SHORT_LINK } from "../investments/short-term-copy";
 import { confirmMenu, PlanMenuError, requestPlanChange } from "@/lib/investments/plan-menu";
@@ -639,6 +647,102 @@ export const ladderBuild: ActionHandler = {
       };
     } catch (error) {
       if (error instanceof ShortTermError) throw answeredElsewhere(error.message);
+      throw error;
+    }
+  },
+};
+
+// Spec step 235: what the deposit was (one question), then the plan one stage at a time in
+// the same message. Each stage is a tap; nothing moves by itself.
+const planOutcome = async (
+  userId: string,
+  id: string,
+  label: string,
+  client: Parameters<typeof loadSuddenMoney>[1] extends infer O
+    ? NonNullable<O> extends { client?: infer C }
+      ? C
+      : never
+    : never,
+  now: Date,
+) => {
+  const view = await loadSuddenMoney(userId, { client, now });
+  const item = view.items.find((i) => i.id === id);
+  const button = item ? stageButton(item) : null;
+  if (!item || !button) {
+    return { answeredWith: label, note: "That's all of the plan.", actions: [SUDDEN_LINK] };
+  }
+  const next = item.stages.find((s) => !s.done)!;
+  return {
+    status: "open" as const,
+    answeredWith: null,
+    body: planBody(item),
+    refs: { advice: true as const, suddenId: id, suddenStage: next.key },
+    actions: [button, SUDDEN_LINK],
+  };
+};
+
+function suddenKind(id: ActionId): ActionHandler {
+  return {
+    id,
+    on: "open",
+    async run({ userId, message, action, client, now }) {
+      const suddenId = message.refs.suddenId;
+      if (!suddenId) throw new ChatActionError("not_offered", "That button isn't on this message.");
+      try {
+        await classify(userId, suddenId, ACTION_KIND[id], { client });
+        if (ACTION_KIND[id] === "transfer") {
+          return {
+            answeredWith: action.label,
+            note: "Thanks. I won't plan around it.",
+            actions: [],
+          };
+        }
+        return await planOutcome(userId, suddenId, action.label, client, now);
+      } catch (error) {
+        if (error instanceof SuddenMoneyError) throw answeredElsewhere(error.message);
+        throw error;
+      }
+    },
+  };
+}
+export const suddenKinds = Object.fromEntries(
+  (
+    [
+      "sudden.bonus",
+      "sudden.inheritance",
+      "sudden.home_sale",
+      "sudden.other_sale",
+      "sudden.gift",
+      "sudden.transfer",
+    ] as const
+  ).map((id) => [id, suddenKind(id)]),
+) as Record<
+  | "sudden.bonus"
+  | "sudden.inheritance"
+  | "sudden.home_sale"
+  | "sudden.other_sale"
+  | "sudden.gift"
+  | "sudden.transfer",
+  ActionHandler
+>;
+
+export const suddenStage: ActionHandler = {
+  id: "sudden.stage",
+  on: "open",
+  async run({ userId, message, action, client, now }) {
+    const id = message.refs.suddenId;
+    const stage = message.refs.suddenStage as StageKey | undefined;
+    if (!id || !stage)
+      throw new ChatActionError("not_offered", "That button isn't on this message.");
+    try {
+      const r = await doStage(userId, id, stage, { client, now });
+      const out = await planOutcome(userId, id, action.label, client, now);
+      return {
+        ...out,
+        note: `Done through the stand-ins (no real money moves): ${formatCents(r.cents)}.`,
+      };
+    } catch (error) {
+      if (error instanceof SuddenMoneyError) throw answeredElsewhere(error.message);
       throw error;
     }
   },

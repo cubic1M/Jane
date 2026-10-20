@@ -262,6 +262,14 @@ export const ACTION_IDS = [
   "menu.change",
   // Spec step 234: build a Treasury bill ladder that matures when the money is needed.
   "ladder.build",
+  // Spec step 235: what a large deposit was, and the plan's stages one tap at a time.
+  "sudden.bonus",
+  "sudden.inheritance",
+  "sudden.home_sale",
+  "sudden.other_sale",
+  "sudden.gift",
+  "sudden.transfer",
+  "sudden.stage",
   // Jane notices changes (spec step 97).
   "change.look",
   "change.budget",
@@ -498,6 +506,9 @@ export type MessageRefs = {
   menuId?: string;
   // Spec step 234: the short-term money candidate (a goal or the emergency fund) a button is about.
   ladderKey?: string;
+  // Spec step 235: the large deposit a message is about, and its next stage.
+  suddenId?: string;
+  suddenStage?: string;
   // Spec step 97: a change Jane noticed (src/insights/changes.ts), by its key; for a
   // category's pace, the budget "Set a budget" would set (cents a month).
   change?: { key: string; kind: string; category?: string; budgetCents?: number };

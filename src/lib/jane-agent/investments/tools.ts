@@ -30,6 +30,7 @@ import { loadLocation } from "@/lib/investments/location";
 import { loadPlanMenu } from "@/lib/investments/plan-menu";
 import { loadHonest } from "@/lib/investments/honest";
 import { loadShortTerm } from "@/lib/investments/short-term";
+import { loadSuddenMoney } from "@/lib/investments/sudden-money";
 import { loadSteadyHand } from "@/lib/investments/steady-hand";
 import { CASH_HOMES, CASH_RATES_AS_OF } from "@/config/cash";
 import { formatReturn } from "@/insights/returns";
@@ -206,6 +207,12 @@ export const INVESTMENT_TOOLS: Anthropic.Tool[] = [
     input_schema: noInput,
   },
   {
+    name: "sudden_money",
+    description:
+      "A large deposit that isn't pay (a bonus, inheritance, home or other sale, gift), once the person has said which, and its staged plan in order: the tax to set aside first (figured by kind, with its source), high-interest debt, the emergency fund, retirement limits, goals, then investing, each part with its amount. Every part is the person's own tap on Jane's message; never move money yourself. No tax advice beyond the set-aside shown.",
+    input_schema: noInput,
+  },
+  {
     name: "steady_hand",
     description:
       "Whether the person's investments have had a big drop lately (down 8% over a month or 15% over three, their own return, money in and out left out) and, in demo advice mode, how each goal's timeline sits (near goals are already in cash). Report only these past facts and the plan to stay the course. NEVER say or imply what markets will do, when they will recover, or that now is a good or bad time: no one can know.",
@@ -252,6 +259,7 @@ export const INVESTMENT_TOOL_STATUS: Readonly<Record<string, string>> = {
   crypto: "Reading your crypto balances…",
   cash_plan: "Looking at where your cash sits…",
   steady_hand: "Looking at how your investments have moved…",
+  sudden_money: "Planning your windfall…",
   short_term_money: "Comparing safe places for money you need soon…",
   honest_performance: "Comparing you with a benchmark…",
   plan_menu: "Looking at your plan's funds…",
@@ -885,6 +893,23 @@ export async function runInvestmentTool(
           cashOn: l.endsOn,
           rolledOver: l.events.length,
           status: l.status,
+        })),
+      });
+    }
+    case "sudden_money": {
+      const v = await loadSuddenMoney(userId, { client, now });
+      return out({
+        deposits: v.items.map((i) => ({
+          amount: money(i.amountCents),
+          on: i.depositedOn,
+          kind: i.kind ?? "not yet said",
+          taxSetAside:
+            i.tax && v.advice
+              ? { amount: money(i.tax.cents), note: i.tax.note, source: i.tax.source }
+              : null,
+          stages: v.advice
+            ? i.stages.map((s) => ({ stage: s.title, amount: money(s.cents), done: s.done }))
+            : "advice only in demo advice mode",
         })),
       });
     }

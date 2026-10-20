@@ -41,6 +41,14 @@ import type { HonestView } from "@/lib/investments/honest";
 import { HONEST_LINK, honestLine } from "./honest-copy";
 import type { ShortTermView } from "@/lib/investments/short-term";
 import { candidateLine, ladderButton, SHORT_LINK } from "./short-term-copy";
+import type { SuddenMoneyView } from "@/lib/investments/sudden-money";
+import {
+  planBody,
+  suddenQuestionButtons,
+  suddenQuestionLine,
+  stageButton,
+  SUDDEN_LINK,
+} from "./sudden-copy";
 import { STEADY_LINK, steadyMessage, timelines } from "./steady-copy";
 import { CRYPTO_LINK, feeFlag, NEVER_TRADES, shareFlag, sizeLine } from "./crypto-copy";
 import {
@@ -1012,5 +1020,32 @@ export function shortTermReply(view: ShortTermView): Reply {
       "None of your goals is due within three years with money saved, and there's no emergency money above its floor.",
     actions: [...(withLadder ? [ladderButton(withLadder)] : []), SHORT_LINK],
     refs: { advice: true, ...(withLadder ? { ladderKey: withLadder.key } : {}) },
+  };
+}
+
+// Spec step 235: sudden money. The question if a deposit is waiting, else its plan, else how
+// it works. Tax first, always; every part is a tap.
+export function suddenMoneyReply(view: SuddenMoneyView): Reply {
+  const asked = view.items.find((i) => i.status === "asked");
+  if (asked) {
+    return {
+      body: suddenQuestionLine(asked),
+      actions: [...suddenQuestionButtons(), SUDDEN_LINK],
+      refs: { suddenId: asked.id },
+    };
+  }
+  const planned = view.items.find((i) => i.status === "planned" && stageButton(i));
+  if (planned && view.advice) {
+    const next = planned.stages.find((s) => !s.done)!;
+    return {
+      body: planBody(planned),
+      actions: [stageButton(planned)!, SUDDEN_LINK],
+      refs: { advice: true, suddenId: planned.id, suddenStage: next.key },
+    };
+  }
+  return {
+    body: "When a lot of money arrives that isn't pay, like a bonus, an inheritance or a sale, I work out the tax to set aside first (it depends on which it was), then a plan in order: high-interest debt, your emergency fund, your retirement limits, your goals, and last investing. Each part is a tap. I don't see a large deposit waiting right now.",
+    actions: [SUDDEN_LINK],
+    refs: {},
   };
 }

@@ -31,7 +31,8 @@ export type InvestmentTopic =
   | "location"
   | "plan_menu"
   | "honest_performance"
-  | "short_term";
+  | "short_term"
+  | "sudden_money";
 
 export type InvestmentIntent = {
   kind: "investments";
@@ -173,7 +174,12 @@ const HONEST =
 const SHORT_TERM =
   /\bcd ladder\b|\bi[- ]bonds?\b|\bwhere (?:should|can) i (?:put|park|keep) (?:money|cash) (?:i|that i|for something i) (?:need|will need) (?:soon|in|within)\b|\bshort[- ]term (?:money|savings|investing)\b|\bsafest place (?:for|to) (?:money|cash)\b/;
 
+// Spec step 235: a bonus, an inheritance or a sale.
+const SUDDEN =
+  /\b(?:i )?(?:got|received|just got|came into|am getting|will get|inherited) (?:a |an |some )?(?:big |large )?(?:bonus|inheritance|windfall|lump sum|settlement)\b|\bwhat (?:should|do) i do with (?:a |my |the )?(?:bonus|inheritance|windfall|lump sum|settlement|money from (?:the sale|selling))\b|\bsudden money\b|\bwindfall\b|\bi (?:sold|am selling) (?:my |the )?(?:house|home|business|stock)\b/;
+
 export function parseInvestmentIntent(text: string): InvestmentIntent | null {
+  if (SUDDEN.test(text)) return { kind: "investments", topic: "sudden_money", account: null };
   if (SHORT_TERM.test(text)) return { kind: "investments", topic: "short_term", account: null };
   if (HONEST.test(text)) return { kind: "investments", topic: "honest_performance", account: null };
   if (PLAN_MENU.test(text)) return { kind: "investments", topic: "plan_menu", account: null };

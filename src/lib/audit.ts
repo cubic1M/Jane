@@ -197,7 +197,10 @@ export type AuditEvent =
   | "plan_change_requested"
   // Spec step 234: a Treasury bill ladder started, and a bill rolled into the next.
   | "ladder_started"
-  | "ladder_rolled";
+  | "ladder_rolled"
+  // Spec step 235: sudden money classed (the kind, never the amount), and a stage done.
+  | "sudden_money_classed"
+  | "sudden_money_stage";
 
 export type AuditActor = { type: ActorType; id: string | null };
 

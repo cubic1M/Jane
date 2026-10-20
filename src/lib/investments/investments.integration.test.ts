@@ -41,6 +41,13 @@ import {
 import { startCollegePlan } from "./college";
 import { loadLocation, makeSwaps, LocationError } from "./location";
 import { loadHonest } from "./honest";
+import {
+  addDemoDeposit,
+  classify,
+  doStage,
+  loadSuddenMoney,
+  SuddenMoneyError,
+} from "./sudden-money";
 import { loadShortTerm, settleLadders, ShortTermError, startLadder } from "./short-term";
 import {
   confirmMenu,
@@ -1573,6 +1580,49 @@ describe.runIf(url)("investments in Jane's chat, against a real database", () =>
           "closed",
         );
       }
+    },
+  );
+
+  it(
+    "step 235: a big deposit is asked about once, tax comes first, and each stage waits for a tap",
+    SLOW,
+    async () => {
+      const userId = await demoPerson();
+      await addDemoDeposit(userId, { client, now: LINKED });
+      const first = await loadSuddenMoney(userId, { client, now: LINKED });
+      expect(first.items).toHaveLength(1);
+      expect(first.items[0].status).toBe("asked");
+      // Asked once: loading again doesn't ask again.
+      expect((await loadSuddenMoney(userId, { client, now: LINKED })).items).toHaveLength(1);
+      const id = first.items[0].id;
+      await classify(userId, id, "bonus", { client });
+      await expect(classify(userId, id, "gift", { client })).rejects.toThrow(SuddenMoneyError);
+
+      const planned = (await loadSuddenMoney(userId, { client, now: LINKED })).items[0];
+      // Tax comes first whenever there is any to set aside (a bonus at or under 22% has none).
+      expect(planned.tax).not.toBeNull();
+      if (planned.tax!.cents > 0) expect(planned.stages[0].key).toBe("taxes");
+      expect(planned.stages.length).toBeGreaterThan(1);
+      expect(planned.stages.every((s) => !s.done)).toBe(true);
+      // Out of order is refused; nothing has moved without a tap.
+      const last = planned.stages[planned.stages.length - 1].key;
+      await expect(doStage(userId, id, last, { client, now: LINKED })).rejects.toThrow(
+        SuddenMoneyError,
+      );
+      const firstKey = planned.stages[0].key;
+      const done = await doStage(userId, id, firstKey, { client, now: LINKED });
+      expect(done.stage).toBe(firstKey);
+      await expect(doStage(userId, id, firstKey, { client, now: LINKED })).rejects.toThrow(
+        SuddenMoneyError,
+      );
+      const after = (await loadSuddenMoney(userId, { client, now: LINKED })).items[0];
+      expect(after.stages[0].done).toBe(true);
+
+      const { reply } = await sendToJane(userId, "what should i do with my bonus", {
+        client,
+        now: LINKED,
+      });
+      expect(reply.body).toMatch(/Nothing moves until you tap|All done/);
     },
   );
 });

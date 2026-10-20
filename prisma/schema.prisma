@@ -405,6 +405,7 @@ model User {
   planMenus      PlanMenu[]
   planChanges    PlanChange[]
   billLadders    BillLadder[]
+  suddenMoneys   SuddenMoney[]
 
   @@map("users")
 }
@@ -546,10 +547,11 @@ model Transaction {
   createdAt          DateTime        @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt          DateTime        @updatedAt @map("updated_at") @db.Timestamptz(3)
 
-  user       User        @relation(fields: [userId], references: [id], onDelete: Cascade)
-  account    Account     @relation(fields: [accountId], references: [id], onDelete: Cascade)
-  taxTags    TaxTag[]
-  hsaReceipt HsaReceipt?
+  user        User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  account     Account      @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  taxTags     TaxTag[]
+  hsaReceipt  HsaReceipt?
+  suddenMoney SuddenMoney?
 
   @@unique([accountId, dedupeKey])
   @@index([userId])
@@ -3738,4 +3740,27 @@ model BillLadder {
 
   @@index([userId])
   @@map("bill_ladders")
+}
+
+// Spec step 235: a large deposit that isn't pay, asked about once ("a bonus, an inheritance,
+// a sale?") and then given a staged plan. status: asked, planned or dismissed. `done` holds the
+// stage keys the person has tapped.
+model SuddenMoney {
+  id            String   @id @default(cuid())
+  userId        String   @map("user_id")
+  transactionId String   @unique @map("transaction_id")
+  amountCents   Int      @map("amount_cents")
+  depositedOn   DateTime @map("deposited_on") @db.Date
+  kind          String?
+  // A sale's cost basis, when the person has said it.
+  basisCents    Int?     @map("basis_cents")
+  status        String   @default("asked")
+  done          Json     @default("[]")
+  createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  transaction Transaction @relation(fields: [transactionId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("sudden_moneys")
 }

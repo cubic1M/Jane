@@ -66,6 +66,7 @@ import {
   planMenuReply,
   honestReply,
   shortTermReply,
+  suddenMoneyReply,
 } from "./replies";
 import { gather } from "../brain";
 import { parseIntent } from "../intents";
@@ -2995,5 +2996,77 @@ describe("shortTermReply and the short-term message", () => {
     expect(gather([{ ...SHORT_CANDIDATE, hasLadder: true }])).toEqual([]);
     expect(gather([{ ...SHORT_CANDIDATE, gainCents: 100 }])).toEqual([]);
     expect(gather([SHORT_CANDIDATE], false)).toEqual([]);
+  });
+});
+
+// Spec step 235: sudden money.
+const SUDDEN_ITEM = {
+  id: "s1",
+  amountCents: 1_200_000,
+  depositedOn: "2026-10-15",
+  status: "asked",
+  kind: null,
+  tax: null,
+  stages: [],
+  cushionMonths: null,
+};
+const SUDDEN_PLANNED = {
+  ...SUDDEN_ITEM,
+  status: "planned",
+  kind: "bonus" as const,
+  tax: { cents: 264_000, note: "Bonuses are withheld at 22%.", source: "IRS Pub. 15" },
+  stages: [
+    { key: "taxes" as const, title: "Set aside the tax", cents: 264_000, note: "", done: false },
+    { key: "investing" as const, title: "Invest the rest", cents: 936_000, note: "", done: false },
+  ],
+};
+
+describe("sudden money questions, by rules", () => {
+  it.each(["I got a bonus", "what should i do with my inheritance", "i sold my business"])(
+    "reads %j as sudden money",
+    (text) => {
+      expect(parseIntent(text, ASOF)).toMatchObject({ kind: "investments", topic: "sudden_money" });
+    },
+  );
+});
+
+describe("suddenMoneyReply and the sudden-money message", () => {
+  it("asks what the deposit was before anything else, with the kinds as buttons", () => {
+    const reply = suddenMoneyReply({ advice: true, demo: true, items: [SUDDEN_ITEM] });
+    expect(reply.body).toMatch(/\$12,000\.00 came into your account on 2026-10-15/);
+    expect(reply.actions.map((a) => a.id)).toEqual([
+      "sudden.bonus",
+      "sudden.inheritance",
+      "sudden.home_sale",
+      "sudden.other_sale",
+      "sudden.gift",
+      "sudden.transfer",
+      "open",
+    ]);
+    expect(reply.refs).toEqual({ suddenId: "s1" });
+  });
+  it("puts the tax first and offers one stage, a tap, only in demo advice", () => {
+    const reply = suddenMoneyReply({ advice: true, demo: true, items: [SUDDEN_PLANNED] });
+    expect(reply.body).toMatch(/1\. Set aside the tax: \$2,640\.00/);
+    expect(reply.body).toMatch(/Nothing moves until you tap\./);
+    expect(reply.actions.map((a) => a.id)).toEqual(["sudden.stage", "open"]);
+    expect(reply.refs).toMatchObject({ advice: true, suddenId: "s1", suddenStage: "taxes" });
+    const real = suddenMoneyReply({ advice: false, demo: false, items: [SUDDEN_PLANNED] });
+    expect(real.actions.map((a) => a.id)).toEqual(["open"]);
+  });
+  it("posts the question for everyone, the plan only with advice", () => {
+    const gather = (items: unknown[], advice = true) =>
+      investmentsSource
+        .gather(
+          {
+            ...base,
+            investments: demoInvestmentSnapshot({ advice, sudden: { items } as never }),
+          },
+          {} as never,
+        )
+        .filter((c) => c.dedupeKey.startsWith("sudden:"));
+    expect(gather([SUDDEN_ITEM], false).map((m) => m.kind)).toEqual(["decision"]);
+    expect(gather([SUDDEN_PLANNED]).map((m) => m.actions[0].id)).toEqual(["sudden.stage"]);
+    expect(gather([SUDDEN_PLANNED], false)).toEqual([]);
   });
 });

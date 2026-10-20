@@ -74,6 +74,13 @@ import {
 } from "../investments/menu-copy";
 import { MIN_GAIN_CENTS } from "@/config/short-term";
 import { candidateLine, ladderButton, SHORT_LINK } from "../investments/short-term-copy";
+import {
+  planBody,
+  suddenQuestionButtons,
+  suddenQuestionLine,
+  stageButton,
+  SUDDEN_LINK,
+} from "../investments/sudden-copy";
 import { AUTO_LOG_LINK, summaryBody } from "../investments/automatic-copy";
 import { CASH_MIN_GAIN_CENTS } from "@/config/cash";
 import { CASH_LINK, cashLine, moveButtons } from "../investments/cash-copy";
@@ -347,6 +354,30 @@ export const investmentsSource: MessageSource = {
         dedupeKey: "hsa:link",
         priority: MESSAGE_PRIORITY.hsa,
       });
+    }
+    // Step 235: a large deposit that isn't pay is asked about once; the plan then walks
+    // through its stages in the same message, a tap each.
+    for (const item of inv.sudden.items) {
+      if (item.status === "asked") {
+        out.push({
+          kind: "decision",
+          body: suddenQuestionLine(item),
+          refs: { suddenId: item.id },
+          actions: [...suddenQuestionButtons(), SUDDEN_LINK, snoozeButton()],
+          dedupeKey: `sudden:${item.id}`,
+          priority: MESSAGE_PRIORITY.sudden_money,
+        });
+      } else if (inv.advice && item.status === "planned" && stageButton(item)) {
+        const next = item.stages.find((s) => !s.done)!;
+        out.push({
+          kind: "decision",
+          body: planBody(item),
+          refs: { advice: true, suddenId: item.id, suddenStage: next.key },
+          actions: [stageButton(item)!, SUDDEN_LINK, snoozeButton()],
+          dedupeKey: `sudden:${item.id}`,
+          priority: MESSAGE_PRIORITY.sudden_money,
+        });
+      }
     }
     // Step 234: money needed within three years, compared after tax; a ladder when bills win
     // by enough, one tap, every bill maturing by the date.
