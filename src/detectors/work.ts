@@ -69,7 +69,7 @@ const selfRetirement: Detector = {
 };
 
 const incomeSmoothing: Detector = {
-  capability: "payday",
+  capability: "steady_pay",
   topic: "income_smoothing",
   needs: ["income_pattern"],
   detect({ profile, data }) {
@@ -86,8 +86,8 @@ const incomeSmoothing: Detector = {
     const lowest = Math.min(...totals);
     if ((average - lowest) / average < R.smoothingMinMonthlySwingShare) return null;
     return {
-      id: suggestionId("payday", "income_smoothing"),
-      capability: "payday",
+      id: suggestionId("steady_pay", "income_smoothing"),
+      capability: "steady_pay",
       topic: "income_smoothing",
       title: "Pay yourself a steady amount from your uneven income",
       worthCents: Math.round(average - lowest),
@@ -98,7 +98,7 @@ const incomeSmoothing: Detector = {
       ]),
       urgency: "later",
       why: `Your income averages ${formatCents(Math.round(average))} a month but your lowest month was ${formatCents(Math.round(lowest))}. A steady monthly pay from a buffer evens that out.`,
-      action: { label: "Set up steady pay", href: "/plan" },
+      action: { label: "Set up steady pay", href: "/transfers" },
     };
   },
 };
