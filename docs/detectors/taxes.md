@@ -163,3 +163,40 @@ Security benefit taxation timing for C and T; payroll tax filings and S-corporat
 B; the earned income credit as a prompt for D (the engine computes it, but nothing brings it up on
 its own); a student loan interest deduction prompt for R. Each is worth noting for the people
 checks in step 252, but none is a detector to build in this phase.
+
+## What step 261 built, and what it could not
+
+Detectors are pure over a person's profile and rows (`ProfileInput`: transactions, accounts,
+liabilities, what they told Jane), so a capability gets a detector only where those rows show
+the signal. In `src/detectors/taxes.ts`, all under the `taxes` capability:
+
+| Topic | From the inventory | Fires for (sample people) | Value | Urgency |
+|---|---|---|---|---|
+| `withholding_gap` | Crypto and equity pay (219): RSU flat withholding | H | vested stock × (marginal rate − 22%) | soon from October |
+| `roth_conversion` | Multi-year moves (220) | C, T | 10% of pre-tax balance × (22% − 12%) | soon from November |
+| `childcare_tax_break` | Family taxes (169), ways to pay less (122) | F | FSA at marginal + payroll tax, less the credit | later |
+| `identity_ip_pin` | Identity protection (218) | everyone paid, January 1 to April 15 only | the average refund a thief takes | soon |
+| `estimated_taxes` (already in `work.ts`) | Estimated payments (223) | L, B | penalty on unpaid tax | now within 14 days of a quarter date, soon within 45, else later |
+
+The date is `profile.today`, so the harness and tests set it; nothing reads a clock. Every
+percentage is the weakest of the facts and counts behind it, and where a figure rests on an
+assumption (no vest schedule, future income) the percentage is capped for it and the reason says
+so. Rates are in `DETECTOR_RATES.tax`; the dated brackets, limits and payroll tax come from
+`src/config/tax-rates.ts`.
+
+**Not detectors yet, because the profile cannot see the signal.** Property tax and exemptions
+(221), giving and bunching (168), the audit-pack gaps (171), notices (217), side income and
+rentals (173), the last return's review (172), investment taxes and harvesting (124, needs lots
+and basis), crypto (219, needs the exchange), the W-4 checkup (121, needs pay stub withholding),
+the tax plan's contribution moves (167, 122) and the forms chase (166). Each needs rows the
+eight sample people do not have, or a loader (`src/lib/tax-*.ts`) that reads the database. To
+add them, extend `ProfileInput` (step 253) with the rows they need (property tax payments,
+donation transactions, holdings with basis, pay stub withholding, uploaded notices) and give
+the eight sample people the matching data; the formulas are in the tables above. Until then
+the existing loaders and chat messages (steps 166 to 223) are what reach people, and the
+harness reports these capabilities as having no detector for the sample people.
+
+Capabilities that are not suggestions in themselves: the tax calendar (223) and the accountant
+link (222) carry out and share what the others find, so they take no detector of their own; the
+accountant's "people usually bring one" message is derived from the factors the other detectors
+already see, and has no dollar value.
