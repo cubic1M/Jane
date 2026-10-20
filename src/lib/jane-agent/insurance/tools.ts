@@ -23,6 +23,7 @@ import { latestLife } from "@/lib/insurance/life";
 import { listCoverChanges } from "@/lib/insurance/cover-changes";
 import { listNegotiations } from "@/lib/insurance/negotiate";
 import { listSavings } from "@/lib/insurance/savings";
+import { listRisks } from "@/lib/insurance/risks";
 import { noteLines, readingLines } from "./reading-words";
 import { listBenefits, openEnrollmentAtWork, yearlyCost } from "@/lib/insurance/benefits";
 import { autopilotOf } from "@/lib/autopilot";
@@ -71,6 +72,12 @@ export const INSURANCE_TOOLS: Anthropic.Tool[] = [
     name: "insurance_life",
     description:
       "Life insurance sized for the person and applied for (spec step 153), demo advice only: the amount and term with the method (years of pay, debts, final expenses, schooling, less savings and cover they have), the term quotes, and where an application stands (health questions, the carrier's offer or review). Jane never applies or buys without the person's tap; to start, they tap Apply in the chat or on /insurance/life.",
+    input_schema: noInput,
+  },
+  {
+    name: "insurance_risks",
+    description:
+      "Risks Jane noticed in how the person lives that their cover may miss (spec step 197): rideshare or delivery income, a home business, a new dog, an expensive ring or camera, a boat, renting the home out. Each is one question, asked once; says what she saw, whether they've answered (a no is never asked again), and the gap a yes opened.",
     input_schema: noInput,
   },
   {
@@ -158,6 +165,19 @@ export async function runInsuranceTool(
                 }
               : application.decision,
         },
+      }),
+      cents,
+    };
+  }
+  if (name === "insurance_risks") {
+    const risks = await listRisks(userId, { client });
+    return {
+      content: JSON.stringify({
+        risks: risks.map((r) => ({
+          kind: r.kind,
+          status: r.status === "asked" ? "not asked about yet" : r.status === "yes" ? "yes" : "no",
+          saw: `${money(r.amountCents)} with ${r.merchant} on ${r.seenOn}`,
+        })),
       }),
       cents,
     };

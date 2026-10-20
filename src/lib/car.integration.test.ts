@@ -105,9 +105,9 @@ describe.runIf(url)("buying a car against a real database", { timeout: 30_000 },
     });
     const withPolicy = await loadCar(id, { priceCents: 3_000_000 }, opts());
     expect(withPolicy.insuranceFromPolicy).toBe(true);
-    // $2,400 a year on a $25,000 car, scaled to $30,000.
+    // $2,400 a year on the demo bank's $24,500 car, scaled to $30,000.
     expect(withPolicy.costs!.insuranceCents).toBe(
-      Math.round(Math.round(240_000 * (3_000_000 / 2_500_000) ** 0.5) / 12),
+      Math.round(Math.round(240_000 * (3_000_000 / 2_450_000) ** 0.5) / 12),
     );
   });
 

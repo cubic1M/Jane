@@ -32,4 +32,10 @@ export const DEBT_ACTION_IDS = [
   "creditfix.send",
   // Spec step 224: ask one card for a lower rate.
   "cardrate.send",
+  // Spec step 226: whether a payment-app transfer was a loan.
+  "famloan.yes",
+  "famloan.no",
+  // Spec step 227: start a credit score plan; tick off a month's list.
+  "creditgoal.start",
+  "creditgoal.done",
 ] as const;

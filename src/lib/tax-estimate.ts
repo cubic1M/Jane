@@ -14,6 +14,7 @@ import { loadWorkingProfile } from "@/lib/tax-profile";
 import { estimateTaxes, type EstimateInput, type TaxEstimate } from "@/planning/tax-estimate";
 import { perPaycheckEffect, type W4Step } from "@/planning/withholding";
 import { homeOfficeDeduction, mileageDeduction } from "@/planning/self-employed";
+import { loadEquityIncome } from "@/lib/equity-income";
 import { loadInvestmentTaxes } from "@/lib/investment-taxes";
 import { rentalDepreciation, rentalNet } from "@/planning/side-income";
 import { formatCents } from "@/lib/money";
@@ -238,10 +239,12 @@ export async function loadTaxEstimate(
   const otherSoFar = otherIncomeSoFar(rows, cash, year, businessSoFar);
   // Spec step 124: gains realised this year in taxable investment accounts.
   const gains = (await loadInvestmentTaxes(userId, year, { client, now })).realisedCents;
+  // Spec step 219: crypto sold by lot, ESPP sales and ISO exercises.
+  const equity = await loadEquityIncome(userId, year, { client, now });
   const paced = {
     ...projectOther(otherSoFar, year, today),
-    shortTermGainsCents: gains.shortTerm,
-    longTermGainsCents: gains.longTerm,
+    shortTermGainsCents: gains.shortTerm + equity.shortTermGainsCents,
+    longTermGainsCents: gains.longTerm + equity.longTermGainsCents,
   };
   // Spec step 173: a rental's net (rent less tagged expenses less depreciation, with the
   // passive loss allowance), and a hobby's income without its expenses.
@@ -344,11 +347,12 @@ export async function loadTaxEstimate(
     income: {
       ...other,
       otherCents: hobbyIncome,
-      wagesCents: wagesProjected,
+      wagesCents: wagesProjected + equity.ordinaryCents,
       socialSecurityWagesCents:
         pay.source === "none" ? wagesProjected : pay.projected.socialSecurityWagesCents,
     },
     studentLoanInterestCents: loanInterest("student"),
+    amtPreferenceCents: equity.amtPreferenceCents,
     mortgageInterestCents: loanInterest("mortgage"),
     charityCents: tags.totals.donation.totalCents,
     medicalCents: tags.totals.medical.totalCents,
@@ -360,6 +364,17 @@ export async function loadTaxEstimate(
     stateEstimatedPaidCents: payments.stateCents,
   };
   const base = estimateTaxes(input);
+  // Spec step 219: crypto, ESPP and ISO income, said plainly.
+  if (equity.ordinaryCents > 0) {
+    assumptions.push(
+      `I've added ${formatCents(equity.ordinaryCents)} of ESPP and option sale income to your wages. If your W-2 already includes it, your estimate is that much too high.`,
+    );
+  }
+  if (base.amtCents > 0) {
+    assumptions.push(
+      `Options you exercised and still hold count toward the alternative minimum tax: about ${formatCents(base.amtCents)}.`,
+    );
+  }
   // Paydays: how often, and how many are left this year.
   const frequency = payFrequency(paychecks.map((t) => t.date));
   const lastPay =

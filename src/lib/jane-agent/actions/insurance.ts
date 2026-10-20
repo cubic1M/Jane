@@ -47,6 +47,10 @@ import {
   type Saving,
 } from "@/lib/insurance/savings";
 import { appliedNote, sameCover } from "../insurance/saving-words";
+import { RiskError, answerRisk, gapQuotes } from "@/lib/insurance/risks";
+import { gapQuotesLines, riskAnswerNote } from "../insurance/risk-words";
+import { RISK_GAP_KINDS } from "@/lib/insurance/risks";
+import { parseActions } from "../types";
 import {
   askingStep,
   boughtNote,
@@ -598,5 +602,45 @@ export const savingNo: ActionHandler = {
     if (ids.length === 0) throw answeredElsewhere("You've already answered this.");
     for (const id of ids) await savingStep(() => dismissSaving(userId, id, { client, now }));
     return { answeredWith: action.label, note: "Okay, I won't bring those up again." };
+  },
+};
+
+// Spec step 197: the question about how they live. Yes opens a gap (or adds the pet); No is
+// remembered and never asked again. "Get quotes" on a gap it opened shows sample prices.
+const riskAnswer = (id: ActionHandler["id"], yes: boolean): ActionHandler => ({
+  id,
+  on: "open",
+  async run({ userId, message, action, client, now }) {
+    const riskId = message.refs.riskId;
+    if (!riskId) throw new ChatActionError("failed", "Something went wrong. Open it instead.");
+    try {
+      const risk = await answerRisk(userId, riskId, yes, { client, now });
+      return { answeredWith: action.label, note: riskAnswerNote(risk.kind, yes) };
+    } catch (error) {
+      if (error instanceof RiskError) throw answeredElsewhere(error.message);
+      throw error;
+    }
+  },
+});
+
+export const riskYes = riskAnswer("risk.yes", true);
+export const riskNo = riskAnswer("risk.no", false);
+
+export const insuranceGapQuotes: ActionHandler = {
+  id: "insurance.gap_quotes",
+  on: "open",
+  async run({ userId, message, client, now }) {
+    const key = message.refs.insuranceGap;
+    const kind = key ? RISK_GAP_KINDS[key] : undefined;
+    if (!kind) throw new ChatActionError("failed", "Something went wrong. Open it instead.");
+    const quotes = await gapQuotes(userId, kind, { client, now });
+    return {
+      status: "open",
+      answeredWith: null,
+      body: `${message.body}\n${gapQuotesLines(quotes)}`,
+      refs: { ...message.refs, advice: true },
+      // The prices are shown once; the other buttons stay.
+      actions: parseActions(message.actions).filter((a) => a.id !== "insurance.gap_quotes"),
+    };
   },
 };

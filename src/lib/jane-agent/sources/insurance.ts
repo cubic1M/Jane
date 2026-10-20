@@ -11,6 +11,8 @@ import { trackerActions, trackerBody } from "../insurance/claim-words";
 import { readingBody, readingLink } from "../insurance/reading-words";
 import { DEPENDANTS_QUESTION, sizedActions, sizedBody } from "../insurance/life-words";
 import { coverActions, coverBody, coverEventRef } from "../insurance/cover-words";
+import { RISK_GAP_KINDS } from "@/lib/insurance/risk-signals";
+import { riskActions, riskQuestion } from "../insurance/risk-words";
 import {
   deductibleActions,
   deductibleBody,
@@ -64,6 +66,10 @@ function gapMessages(insurance: InsuranceSnapshot): Candidate[] {
             kind: "link",
             href: `/insurance?add=${gap.kind}#add`,
           },
+      // Spec step 197: sample prices for the cover a yes to a risk question opened.
+      ...(insurance.canQuote && gap.key in RISK_GAP_KINDS
+        ? [{ id: "insurance.gap_quotes" as const, label: "Get quotes", kind: "primary" as const }]
+        : []),
       { id: "insurance.gap_no", label: "I don't need it", kind: "secondary" },
       snoozeButton(),
     ],
@@ -407,6 +413,18 @@ function savingMessages(insurance: InsuranceSnapshot): Candidate[] {
   ];
 }
 
+// Spec step 197: one question about how they live, asked once; yes or no ends it.
+function riskMessages(insurance: InsuranceSnapshot): Candidate[] {
+  return (insurance.risks ?? []).map((risk) => ({
+    kind: "decision",
+    body: riskQuestion(risk),
+    refs: { riskId: risk.id },
+    actions: riskActions(),
+    dedupeKey: `risk:${risk.id}`,
+    priority: MESSAGE_PRIORITY.risk_question,
+  }));
+}
+
 export const insuranceSource: MessageSource = {
   key: "insurance",
   gather: (snapshot) => {
@@ -425,6 +443,7 @@ export const insuranceSource: MessageSource = {
       ...coverChangeMessages(insurance),
       ...doneByJaneMessages(insurance),
       ...savingMessages(insurance),
+      ...riskMessages(insurance),
     ];
   },
 };

@@ -244,6 +244,107 @@ export const CLAIM_GUIDES: Record<PolicyKind, ClaimGuide> = {
       PAID,
     ],
   },
+  rideshare: {
+    events: { accident: "I had an accident while driving for pay" },
+    now: [
+      "Make sure everyone is safe and call 911 if anyone is hurt.",
+      "Tell the rideshare company about the accident through its app, as well as your insurer.",
+    ],
+    collect: [
+      "The trip's details from the app: when it started and who was in the car",
+      "Photos, the other driver's details and a police report number",
+    ],
+    steps: [
+      { key: "app", label: "Report the accident to the rideshare company in its app", dueDays: 1 },
+      FILE,
+      { key: "repair", label: "Get a repair estimate and book the repair", dueDays: 7 },
+      PAID,
+    ],
+  },
+  business: {
+    events: {
+      liability: "Someone says my business hurt them or their property",
+      property: "My business equipment was damaged or stolen",
+    },
+    now: ["Don't admit fault or promise to pay anything before you speak to your insurer."],
+    collect: [
+      "Photos, receipts and any messages from the other person",
+      "A police report number if it was stolen",
+    ],
+    steps: [
+      {
+        key: "police",
+        label: "Report a theft to the police and get the report number",
+        dueDays: 1,
+      },
+      FILE,
+      {
+        key: "documents",
+        label: "Send your insurer the receipts and photos it asks for",
+        dueDays: 7,
+      },
+      PAID,
+    ],
+  },
+  valuables: {
+    events: { lost: "A listed item was lost or stolen", damaged: "A listed item was damaged" },
+    now: ["Report a theft to the police right away."],
+    collect: [
+      "The item's appraisal or receipt",
+      "Photos of the item before and after, if you have them",
+    ],
+    steps: [
+      {
+        key: "police",
+        label: "Report a theft to the police and get the report number",
+        dueDays: 1,
+      },
+      FILE,
+      {
+        key: "appraisal",
+        label: "Send the appraisal or receipt your insurer asks for",
+        dueDays: 7,
+      },
+      PAID,
+    ],
+  },
+  boat: {
+    events: {
+      damaged: "My boat was damaged",
+      theft: "My boat or its engine was stolen",
+      liability: "I damaged someone else's boat or hurt someone",
+    },
+    now: ["Get everyone safely ashore, and call the coast guard or 911 if anyone is hurt."],
+    collect: [
+      "Photos of the damage and the other boat, if any",
+      "The boat's registration and hull number",
+    ],
+    steps: [
+      { key: "police", label: "Report a theft or a collision to the authorities", dueDays: 1 },
+      FILE,
+      {
+        key: "survey",
+        label: "Arrange the survey or repair estimate your insurer asks for",
+        dueDays: 14,
+      },
+      PAID,
+    ],
+  },
+  rental_property: {
+    events: {
+      damage: "A guest or tenant damaged the home",
+      injury: "A guest was hurt",
+      theft: "Something was stolen during a stay",
+    },
+    now: ["Document the damage with photos before anything is cleaned up or repaired."],
+    collect: ["Photos and the booking record", "Messages with the guest or tenant"],
+    steps: [
+      { key: "photos", label: "Take photos and save the booking record", dueDays: 1 },
+      FILE,
+      { key: "estimate", label: "Get a repair estimate", dueDays: 7 },
+      PAID,
+    ],
+  },
   device: {
     events: { broken: "My phone or device broke", theft: "My phone or device was lost or stolen" },
     now: ["Back up what you can, and lock or wipe a lost phone from another device."],

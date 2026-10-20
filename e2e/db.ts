@@ -92,6 +92,32 @@ export async function setCheckingBalance(userId: string, cents: number): Promise
   }
 }
 
+// A payment-app transfer on the person's checking account (positive is money out).
+export async function addTransfer(
+  userId: string,
+  transfer: { date: string; amountCents: number; description: string },
+): Promise<void> {
+  const client = new Client({ connectionString: E2E_DATABASE_URL });
+  await client.connect();
+  try {
+    await client.query(
+      `INSERT INTO transactions (id, user_id, account_id, source, date, amount_cents, description,
+                                 pfc_primary, pfc_detailed, pending, updated_at)
+       SELECT $1, $2, a.id, 'plaid', $3::date, $4, $5, 'TRANSFER_OUT', 'TRANSFER_OUT_ACCOUNT_TRANSFER', false, now()
+       FROM accounts a WHERE a.user_id = $2 AND a.subtype = 'checking' LIMIT 1`,
+      [
+        `t${crypto.randomUUID()}`,
+        userId,
+        transfer.date,
+        transfer.amountCents,
+        transfer.description,
+      ],
+    );
+  } finally {
+    await client.end();
+  }
+}
+
 export async function addAlert(
   userId: string,
   alert: { type: string; title: string; body: string },

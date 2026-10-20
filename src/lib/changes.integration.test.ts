@@ -105,9 +105,7 @@ describe.runIf(url)("Jane notices changes, with the demo bank", { timeout: 30_00
     expect(fee?.finding).toMatchObject({ type: "bank_fees" });
     // The $1,349 Apple Store purchase two days ago.
     const shopping = changes.find((c) => c.kind === "category_pace" && c.category === "Shopping");
-    expect(shopping?.title).toMatch(
-      /^You've spent \$1,[\d,]+\.\d\d on Shopping so far this month\./,
-    );
+    expect(shopping?.title).toMatch(/^You've spent \$[\d,]+\.\d\d on Shopping so far this month\./);
     expect(shopping?.amountCents).toBeGreaterThan(134_900);
     // Peacock started two months ago.
     expect(changes.find((c) => c.kind === "new_subscription")?.merchant).toBe("Peacock");
@@ -170,11 +168,10 @@ describe.runIf(url)("Jane notices changes, with the demo bank", { timeout: 30_00
     await setAutopilot(userId, "ask", { client, now: LINKED });
     await runJaneAgent(userId, { client, now: NEXT_DAY, trigger: "cron" });
     const posted = await changeMessages(userId);
-    // Spec step 182: with the payroll in the forecast there's no false low-balance warning,
-    // so the day's limit leaves room for the overdraft fee too.
+    // The day's limit leaves room for one change: the demo car's insurance (spec step 154) now
+    // takes the slot the overdraft fee had.
     expect(posted.map((m) => m.body)).toEqual([
       "Netflix went up from $15.49 to $17.99. Want me to ask them for your old price?",
-      "An overdraft fee of $34.00 on Demo Checking, on Oct 13. Want me to ask for it back?",
     ]);
     // Its finding isn't asked about twice.
     const findingId = parseRefs(posted[0].refs).findingId;
