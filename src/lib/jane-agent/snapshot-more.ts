@@ -14,6 +14,9 @@ import { loadTightMoney, type TightMoney } from "@/lib/tight-money";
 import { loadMedicalBills, type MedicalBills } from "@/lib/medical-bills";
 import { loadReportFixes, type ReportFixes } from "@/lib/credit-report-fixes";
 import { loadCardInterest, type CardInterest } from "@/lib/card-interest";
+import { loadStudentLongGame, type LongGame } from "@/lib/student-long-game";
+import { loadFamilyLoans, type FamilyLoans } from "@/lib/family-loans";
+import { loadCreditGoals, type CreditGoals } from "@/lib/credit-goals";
 import type { DetectionInput } from "@/detection/types";
 import { loadDebtAutopilot, type DebtAutopilot } from "@/lib/debt-autopilot";
 import { listApplications, type LoanApplicationView } from "@/lib/loan-applications";
@@ -85,6 +88,12 @@ export type MoreSnapshot = {
   reportFixes?: ReportFixes;
   // Spec step 224: card interest, promotions and rate requests.
   cardInterest?: CardInterest;
+  // Spec step 225: the long game on student loans.
+  studentLongGame?: LongGame;
+  // Spec step 226: money between family and friends.
+  familyLoans?: FamilyLoans;
+  // Spec step 227: credit score plans for a goal.
+  creditGoals?: CreditGoals;
   // Insurance (spec Phase X), from the same loader as /insurance. Optional, so a snapshot
   // built without it (in tests) says nothing about insurance.
   insurance?: InsuranceSnapshot;
@@ -120,6 +129,9 @@ export async function loadMore(
     medicalBills,
     reportFixes,
     cardInterest,
+    studentLongGame,
+    familyLoans,
+    creditGoals,
   ] = await Promise.all([
     autopilotOf(userId, { client }),
     openProposals(userId, { client }),
@@ -158,6 +170,9 @@ export async function loadMore(
     loadMedicalBills(userId, { client, now }),
     loadReportFixes(userId, { client, now }),
     loadCardInterest(userId, { client, now, book }),
+    loadStudentLongGame(userId, { client, now, book }),
+    loadFamilyLoans(userId, { client, now, book }),
+    loadCreditGoals(userId, { client, now, book }),
   ]);
   const insurance = await loadInsuranceSnapshot(userId, { client, now });
 
@@ -207,6 +222,9 @@ export async function loadMore(
     medicalBills,
     reportFixes,
     cardInterest,
+    studentLongGame,
+    familyLoans,
+    creditGoals,
     insurance,
   };
 }

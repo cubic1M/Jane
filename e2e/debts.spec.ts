@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { E2E_DATABASE_URL, deleteUser, setCheckingBalance, signedInUser } from "./db";
+import { E2E_DATABASE_URL, addTransfer, deleteUser, setCheckingBalance, signedInUser } from "./db";
 
 // Spec step 109: every debt in one place, from the demo bank: loans and cards with where
 // each rate came from, the buy now, pay later plans found from payments, terms typed for
@@ -50,7 +50,7 @@ test("every debt shows with its source, and missing terms can be typed in", asyn
   await affirm.getByText("Add what your bank doesn't report").click();
   await affirm.getByLabel("Rate (APR %)").fill("15");
   await affirm.getByLabel("Left to pay ($)").fill("537");
-  await affirm.getByRole("button", { name: "Save" }).click();
+  await affirm.getByRole("button", { name: "Save", exact: true }).click();
   await expect(page.getByRole("status")).toHaveText("Saved. Jane counts it from now on.");
   await expect(affirm).toContainText("15.00%");
   await expect(affirm).toContainText("you typed it on");
@@ -205,7 +205,7 @@ test("student loan plans are compared, and every step links to studentaid.gov", 
   }
   await page.getByLabel("Income from your last tax return ($)").fill("45000");
   await page.getByLabel("I work full time in public service").press("Space");
-  await page.getByRole("button", { name: "Save" }).press("Enter");
+  await page.getByRole("button", { name: "Save", exact: true }).press("Enter");
   await expect(page.getByRole("status")).toHaveText(
     "Saved. The plans are worked out again with it.",
   );
@@ -556,4 +556,130 @@ test("card interest shows the cost, a promotion off pace, and a request sent on 
   await send.press("Enter");
   await expect(page.getByText("Sent just now.")).toBeVisible();
   await expect(cards).toContainText("Asked");
+});
+
+// Spec step 225: the long game on student loans: PSLF month by month, the dates that become
+// deadlines, and what a refinance would give up.
+test("student loans show PSLF month by month, save dates as deadlines, and warn about refinancing", async ({
+  context,
+  page,
+  baseURL,
+}) => {
+  const user = await signedInUser("user");
+  userId = user.userId;
+  await context.addCookies([
+    { name: "authjs.session-token", value: user.sessionToken, url: baseURL ?? "" },
+  ]);
+  await page.goto("/connect");
+  await page.getByRole("button", { name: "Link a demo bank" }).click();
+  await expect(page).toHaveURL("/chat", { timeout: 60_000 });
+
+  await page.goto("/loans/student");
+  await page.getByLabel("I work full time in public service").check();
+  await page.getByLabel("Qualifying payments already counted").fill("90");
+  await page.getByRole("button", { name: "Save", exact: true }).press("Enter");
+  await expect(page.getByText("Saved. The plans are worked out again with it.")).toBeVisible();
+
+  const game = page.getByRole("region", { name: "The long game" });
+  await expect(game).toContainText("qualifying payments counted for PSLF");
+  await expect(game.getByRole("list", { name: "PSLF months" }).getByRole("listitem")).toHaveCount(
+    13,
+  );
+  await expect(game.getByRole("note")).toContainText("Don't refinance a federal loan");
+  await expect(game.getByRole("list", { name: "What a refinance would give up" })).toBeVisible();
+
+  await game.getByLabel("Employer last certified").fill("2025-01-15");
+  const inSixMonths = new Date(Date.now() + 183 * 86_400_000).toISOString().slice(0, 10);
+  await game.getByLabel("Income-driven plan recertified by").fill(inSixMonths);
+  await game.getByRole("button", { name: "Save my dates" }).press("Enter");
+  await expect(page.getByText("Saved. The dates are on your deadlines.")).toBeVisible();
+  await page.goto("/deadlines");
+  await expect(
+    page.getByText("Certify your employer for Public Service Loan Forgiveness"),
+  ).toBeVisible();
+});
+
+// Spec step 226: a payment-app transfer is a loan only after the person says so; Jane drafts
+// a reminder but never messages the other person.
+test("a payment-app transfer is a loan only after the tap, and the reminder is only text", async ({
+  context,
+  page,
+  baseURL,
+}) => {
+  const user = await signedInUser("user");
+  userId = user.userId;
+  await context.addCookies([
+    { name: "authjs.session-token", value: user.sessionToken, url: baseURL ?? "" },
+  ]);
+  await page.goto("/connect");
+  await page.getByRole("button", { name: "Link a demo bank" }).click();
+  await expect(page).toHaveURL("/chat", { timeout: 60_000 });
+  const day = (daysAgo: number) =>
+    new Date(Date.now() - daysAgo * 86_400_000).toISOString().slice(0, 10);
+  await addTransfer(user.userId, {
+    date: day(45),
+    amountCents: 40_000,
+    description: "VENMO PAYMENT TO JORDAN LEE - rent loan",
+  });
+
+  await page.goto("/loans/family");
+  await expect(page.getByRole("heading", { level: 1, name: "Family and friends" })).toBeVisible();
+  const asks = page.getByRole("list", { name: "Transfers" });
+  await expect(asks).toContainText("You sent Jordan Lee $400.00 on Venmo");
+  await expect(asks).toContainText("I won't contact Jordan");
+  await expect(page.getByRole("list", { name: "Loans" })).toHaveCount(0);
+
+  const yes = asks.getByRole("button", { name: "Yes, I lent it" });
+  await yes.scrollIntoViewIfNeeded();
+  // Keyboard, so the fixed bottom nav on phones never takes the tap.
+  await yes.focus();
+  await yes.press("Enter");
+  await expect(page.getByText("Noted.")).toBeVisible();
+  const loans = page.getByRole("list", { name: "Loans" });
+  await expect(loans).toContainText("Jordan Lee owes you $400.00");
+  await expect(loans.getByRole("note")).toContainText("A kind reminder, for you to send");
+  await expect(loans.getByRole("note")).toContainText("Hi Jordan");
+});
+
+// Spec step 227: a credit score needed by a date: a monthly plan from the simulator, labelled
+// an estimate, started on a tap, with a checklist to tick off.
+test("a credit score goal is previewed, started on the tap, and ticked off month by month", async ({
+  context,
+  page,
+  baseURL,
+}) => {
+  const user = await signedInUser("user");
+  userId = user.userId;
+  await context.addCookies([
+    { name: "authjs.session-token", value: user.sessionToken, url: baseURL ?? "" },
+  ]);
+  await page.goto("/connect");
+  await page.getByRole("button", { name: "Link a demo bank" }).click();
+  await expect(page).toHaveURL("/chat", { timeout: 60_000 });
+  const inSix = new Date(Date.now() + 183 * 86_400_000).toISOString().slice(0, 10);
+
+  await page.goto("/loans/credit");
+  await expect(page.getByRole("heading", { level: 1, name: "Credit score" })).toBeVisible();
+  await page.goto(`/loans/goal?kind=mortgage&score=740&date=${inSix}`);
+  await expect(
+    page.getByRole("note").filter({ hasText: "estimates from the stand-in" }),
+  ).toBeVisible();
+  const preview = page.getByRole("region", { name: "Preview" });
+  await expect(preview.getByRole("status")).toContainText("Reachable");
+  await expect(preview.getByRole("table", { name: "Plan by month" })).toBeVisible();
+
+  const start = page.getByRole("button", { name: "Start this plan" });
+  await start.scrollIntoViewIfNeeded();
+  // Keyboard, so the fixed bottom nav on phones never takes the tap.
+  await start.focus();
+  await start.press("Enter");
+  await expect(page.getByText("Plan started.")).toBeVisible();
+  const list = page.getByRole("list", { name: "This month's list" });
+  await expect(list.getByRole("listitem")).toHaveCount(4);
+  const mark = list.getByRole("button", { name: "Mark done" }).first();
+  await mark.scrollIntoViewIfNeeded();
+  await mark.focus();
+  await mark.press("Enter");
+  await expect(page.getByText("Ticked off.")).toBeVisible();
+  await expect(list.getByText("Done", { exact: true })).toHaveCount(1);
 });

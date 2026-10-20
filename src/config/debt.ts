@@ -50,6 +50,9 @@ export const DEBT_SOURCE_LIMITS = {
   medical_bills: 2,
   credit_report_fixes: 2,
   card_interest: 2,
+  student_long_game: 1,
+  family_loans: 1,
+  credit_goal: 2,
 } as const;
 export const DEBT_MESSAGE_PRIORITY = {
   // A buy now, pay later plan Jane found, then a debt with no rate: news that can wait,
@@ -121,6 +124,16 @@ export const DEBT_MESSAGE_PRIORITY = {
   promo_off_pace: 59,
   card_rate_ask: 37,
   card_rate_answer: 62,
+  // Spec step 225: student loan paperwork due within a month has a date.
+  student_paperwork: 64,
+  // Spec step 226: a loan to a friend is asked about once, under the findings; a reminder
+  // and a co-signed loan going late can wait a little longer or come earlier.
+  family_candidate: 38,
+  family_reminder: 35,
+  cosigned_late: 68,
+  // Spec step 227: a month's credit checklist has a date; a plan out of reach comes after.
+  credit_goal_month: 57,
+  credit_goal_short: 39,
 } as const;
 
 // What Jane does about debts by herself at each autopilot level (src/config/autopilot.ts),
@@ -202,6 +215,18 @@ export const DEBT_AUTOPILOT: Readonly<
       step: 224,
       does: "Shows what each card costs in interest, what paying early saves, and how a 0% promotion is pacing (a deadline with the monthly amount if it's off pace), and writes a request and call script for a lower rate. Each request is sent only on your tap.",
     },
+    {
+      step: 225,
+      does: "Counts Public Service Loan Forgiveness month by month, puts the employer certification and income-driven recertification dates on your deadlines, sizes the tax on forgiven debt for your tax plan, and tells you what a refinance would give up.",
+    },
+    {
+      step: 226,
+      does: "Spots large payment-app transfers (Venmo, Zelle, Cash App) that might be a loan and asks you once, tracks what comes back, drafts a kind reminder for you to send yourself, and warns about a late payment on a loan you co-signed. A transfer is a loan only after you say so; I never message the other person.",
+    },
+    {
+      step: 227,
+      does: "When you tell me the credit score you need and by when, builds a month-by-month plan from the score simulator (what to pay down, accounts to keep open, no new applications, a rapid rescore before a mortgage), and brings up each month's checklist. Starting the plan is your tap; the scores are estimates.",
+    },
   ],
   safe: [
     {
@@ -276,6 +301,18 @@ export const DEBT_AUTOPILOT: Readonly<
       step: 224,
       does: "Shows what each card costs in interest, what paying early saves, and how a 0% promotion is pacing (a deadline with the monthly amount if it's off pace), and writes a request and call script for a lower rate. Each request is sent only on your tap.",
     },
+    {
+      step: 225,
+      does: "Counts Public Service Loan Forgiveness month by month, puts the employer certification and income-driven recertification dates on your deadlines, sizes the tax on forgiven debt for your tax plan, and tells you what a refinance would give up.",
+    },
+    {
+      step: 226,
+      does: "Spots large payment-app transfers (Venmo, Zelle, Cash App) that might be a loan and asks you once, tracks what comes back, drafts a kind reminder for you to send yourself, and warns about a late payment on a loan you co-signed. A transfer is a loan only after you say so; I never message the other person.",
+    },
+    {
+      step: 227,
+      does: "When you tell me the credit score you need and by when, builds a month-by-month plan from the score simulator (what to pay down, accounts to keep open, no new applications, a rapid rescore before a mortgage), and brings up each month's checklist. Starting the plan is your tap; the scores are estimates.",
+    },
   ],
   all: [
     {
@@ -349,6 +386,18 @@ export const DEBT_AUTOPILOT: Readonly<
     {
       step: 224,
       does: "Shows what each card costs in interest, what paying early saves, and how a 0% promotion is pacing (a deadline with the monthly amount if it's off pace), and writes a request and call script for a lower rate. Each request is sent only on your tap.",
+    },
+    {
+      step: 225,
+      does: "Counts Public Service Loan Forgiveness month by month, puts the employer certification and income-driven recertification dates on your deadlines, sizes the tax on forgiven debt for your tax plan, and tells you what a refinance would give up.",
+    },
+    {
+      step: 226,
+      does: "Spots large payment-app transfers (Venmo, Zelle, Cash App) that might be a loan and asks you once, tracks what comes back, drafts a kind reminder for you to send yourself, and warns about a late payment on a loan you co-signed. A transfer is a loan only after you say so; I never message the other person.",
+    },
+    {
+      step: 227,
+      does: "When you tell me the credit score you need and by when, builds a month-by-month plan from the score simulator (what to pay down, accounts to keep open, no new applications, a rapid rescore before a mortgage), and brings up each month's checklist. Starting the plan is your tap; the scores are estimates.",
     },
   ],
 };

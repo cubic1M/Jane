@@ -9,6 +9,7 @@ import {
   MEDICAL_LOOKBACK_DAYS,
   TRAVEL_LOOKBACK_DAYS,
   type GapKey,
+  type RiskKind,
   type Housing,
 } from "@/config/insurance";
 import type { PrismaClient } from "@/generated/prisma/client";
@@ -41,6 +42,8 @@ export type Household = {
   // Spec step 149: what the accounts say about income, what there is to protect, recent
   // trips and care.
   signals: Signals;
+  // Spec step 197: risks they said yes to ("Are you driving for Uber?").
+  risks?: RiskKind[];
 };
 
 export type Signals = {
@@ -163,7 +166,11 @@ export async function loadHousehold(
   const ownedCars = owned.filter((o) => o.kind === "vehicle");
   const linked = new Set(ownedCars.map((o) => o.loanAccountId));
   const cars = ownedCars.length + carLoans.filter((id) => !linked.has(id)).length;
-  return resolveHousehold(saved, {
+  const yes = await db.insuranceRisks.findMany({
+    where: { status: "yes" },
+    select: { kind: true },
+  });
+  const household = resolveHousehold(saved, {
     mortgage: loans.some((l) => l.subtype === "mortgage"),
     homeOwned: owned.some((o) => o.kind === "home"),
     rentPaid: rent > 0,
@@ -177,6 +184,7 @@ export async function loadHousehold(
     travelCents: travel._sum.amountCents ?? 0,
     medicalCents: anyTransactions > 0 ? (medical._sum.amountCents ?? 0) : null,
   });
+  return { ...household, risks: yes.map((r) => r.kind as RiskKind) };
 }
 
 export type HouseholdInput = {
