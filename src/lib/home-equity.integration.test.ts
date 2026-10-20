@@ -183,7 +183,6 @@ describe.runIf(url)("a home's equity against a real database", { timeout: 30_000
 
   it("compares a HELOC, a cash-out refinance and a personal loan with total cost, in demo advice only", async () => {
     const id = await demoPerson("eq-project");
-    const m = await loadHomeEquity(id, opts());
     // The demo bank has its own home; give it a value that leaves room to borrow against.
     await client.ownedAsset.updateMany({
       where: { userId: id, kind: "home" },
