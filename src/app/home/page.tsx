@@ -50,7 +50,7 @@ function PlanCard({ plan }: { plan: HomeSummary["plan"] }) {
         <h2 className="text-sm font-medium text-emerald-50">Jane&apos;s plan this week</h2>
         <p className="text-2xl font-semibold">
           {plan.annualSavingsCents > 0
-            ? `${things(plan.items)}, could save ${formatCents(plan.annualSavingsCents)} a year`
+            ? `${things(plan.items)}, worth up to ${formatCents(plan.annualSavingsCents)} a year if you say yes to all`
             : things(plan.items)}
         </p>
       </div>
@@ -225,9 +225,36 @@ function JaneDidCard({ did }: { did: JaneDid }) {
 function Totals({ home }: { home: HomeSummary }) {
   return (
     <p className="text-sm text-zinc-600 dark:text-zinc-400">
-      Jane found <span className="font-semibold">{formatCents(home.moneyFoundCents)}</span> a year
-      to look at · <span className="font-semibold">{formatCents(home.savedToDateCents)}</span> a
-      year saved so far
+      {/* One set of figures: the plan above is the most it could be ("up to"); this is the part
+          Jane is most sure of, and what's actually been saved, which is left out on day one. */}
+      {home.plan.items > 0 ? (
+        home.moneyFoundCents > 0 && (
+          <>
+            Jane is most sure of{" "}
+            <span className="font-semibold">{formatCents(home.moneyFoundCents)}</span> a year of
+            that
+          </>
+        )
+      ) : (
+        <>
+          Jane found <span className="font-semibold">{formatCents(home.moneyFoundCents)}</span> a
+          year to look at
+        </>
+      )}
+      {home.savedToDateCents > 0 ? (
+        <>
+          {(home.plan.items > 0 ? home.moneyFoundCents > 0 : true) && " · "}
+          <span className="font-semibold">{formatCents(home.savedToDateCents)}</span> a year saved
+          so far
+        </>
+      ) : (
+        home.plan.items > 0 && (
+          <>
+            {home.moneyFoundCents > 0 && " · "}
+            nothing saved yet: your first yes starts it
+          </>
+        )
+      )}
       {home.openActions > 0 && (
         <>
           {" "}

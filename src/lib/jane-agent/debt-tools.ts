@@ -9,6 +9,10 @@ import type { Refinance } from "@/lib/refinance";
 import type { StudentLoans } from "@/lib/student-loans";
 import type { Mortgage } from "@/lib/mortgage";
 import type { Credit } from "@/lib/credit";
+import type { CreditCards } from "@/lib/credit-cards";
+import type { CreditBuilding } from "@/lib/credit-building";
+import { REWARD_CATEGORY_LABELS } from "@/config/credit-cards";
+import type { DebtAutopilot } from "@/lib/debt-autopilot";
 import { PMI_SOURCE } from "@/config/debt";
 import { PMI_STEPS } from "@/planning/mortgage";
 import { STUDENT_SOURCES, STUDENT_STEPS } from "@/config/student-loans";
@@ -54,9 +58,27 @@ export const DEBT_TOOLS: Anthropic.Tool[] = [
   },
   REFINANCE_TOOL,
   {
+    name: "debt_autopilot",
+    description:
+      "What Jane does about the person's debts by herself at their debt autopilot level (step by step), loan and card payments due in the next month (soonest first, overdue first), payments due just before payday with the drafted request to move the date, rate changes the bank reported, and whether Jane started the payoff plan herself. Jane never applies for credit, moves money or signs without a tap.",
+    input_schema: noInput,
+  },
+  {
     name: "credit_score",
     description:
       "The person's credit score from Jane's monthly soft pull (a stand-in score for demo-bank people, never a real one; nothing for real accounts until a credit partner is connected): the score and range, the move since last month, each factor helping or hurting (payment history, card use, age of accounts, new credit, kinds of credit), card use against limits with what to pay to bring it under 30% and 10%, and what Jane is doing about it.",
+    input_schema: noInput,
+  },
+  {
+    name: "credit_cards",
+    description:
+      "The person's credit cards and their rewards, from a year of their own spending (demo-bank people only, from a stand-in card catalog; nothing for real accounts until a card partner is connected): spending by kind (dining, groceries, gas, travel, streaming, online, everything else), each card's rewards, what it earns and its annual fee, whether each fee pays for itself against the best no-fee card, which card to use for each kind, and up to three cards that would earn more after their fee, with any sign-up bonus. Applying is a hard credit check and only ever the person's tap (the credit_card.apply button); Jane never applies by herself. Demo advice.",
+    input_schema: noInput,
+  },
+  {
+    name: "credit_building",
+    description:
+      "Building the person's credit (demo-bank people only; nothing for real accounts): the card whose statement closes next, the day it closes, what to pay before then so card use reported is under 30% or 10%, whether Jane or the person already scheduled it (through the money-movement stand-in), the on-time payment streak in months, whether the credit file is thin with credit-builder stand-ins (a secured card, a credit-builder loan), and the score simulator's estimate after each change (paying cards down, a year on time, a new card, a builder loan). Every simulator figure is an estimate, never a promise. Paying from the chat and opening a builder account each need the person's tap.",
     input_schema: noInput,
   },
   {
@@ -121,8 +143,12 @@ export function payoffToolOutput(payoff: Payoff, asOf: string, money: (cents: nu
       extraAMonth: money(s.extraCents),
       debtFree: monthAfter(asOf, s.months),
       interest: money(s.interestCents),
-      interestSavedVsMinimums: s.interestSavedCents === null ? null : money(s.interestSavedCents),
+      interestSaved: s.interestSavedCents === null ? null : money(s.interestSavedCents),
     })),
+    // What payingMore's interestSaved is against: each debt's own minimum, or this plan with
+    // nothing more a month (when the minimums alone never pay everything off).
+    interestSavedAgainst:
+      summary.savedAgainst === "minimums" ? "each debt's minimum alone" : "this plan, nothing more",
     janesPick: summary.pick,
     // What the two orders differ by in interest, so it can be quoted.
     interestDifference:
@@ -181,6 +207,7 @@ export const DEBT_CHAT_PAGES: Readonly<Record<string, { label: string; href: str
   student: { label: "See student loan plans", href: "/loans/student" },
   mortgage: { label: "See your mortgage", href: "/loans/mortgage" },
   credit: { label: "See your credit score", href: "/loans/credit" },
+  cards: { label: "See your cards", href: "/loans/cards" },
 };
 
 // What the chat shows while Claude looks each one up (./claude.ts).
@@ -193,6 +220,9 @@ export const DEBT_TOOL_STATUS: Readonly<Record<string, string>> = {
   student_loans: "Comparing student loan plans…",
   mortgage: "Looking at your mortgage…",
   credit_score: "Checking your credit score…",
+  debt_autopilot: "Checking what's due on your debts…",
+  credit_cards: "Checking your card rewards…",
+  credit_building: "Working out how to build your credit…",
 };
 
 export function refinanceToolOutput(refi: Refinance, money: (cents: number) => string) {
@@ -388,5 +418,138 @@ export function creditToolOutput(credit: Credit, money: (cents: number) => strin
       payToGetUnder10: money(latest.utilisation.toUnderGoodCents),
     },
     janeIsDoing: latest.doing,
+  };
+}
+
+export function creditCardsToolOutput(cards: CreditCards, money: (cents: number) => string) {
+  if (!cards.available) {
+    return { note: "No card partner for this person's accounts, so no rewards or card offers." };
+  }
+  const label = (c: keyof typeof REWARD_CATEGORY_LABELS) => REWARD_CATEGORY_LABELS[c];
+  const nameOf = (id: string) => cards.cards.find((c) => c.product?.id === id)?.name ?? id;
+  return {
+    demoAdvice: true,
+    daysOfSpending: cards.spend.days,
+    firstLook: cards.firstLook,
+    yearlySpending: Object.fromEntries(
+      Object.entries(cards.spend.byCategory).map(([k, v]) => [label(k as never), money(v)]),
+    ),
+    cards: cards.cards.map((c) => ({
+      name: c.name,
+      notLinkedYet: c.fromApplication,
+      rewards: c.product?.rewardsLabel ?? "not known",
+      annualFee: c.product ? money(c.product.annualFeeCents) : null,
+      earnsAfterFeeOnAllSpending: c.earnsCents === null ? null : money(c.earnsCents),
+      feeCheck: c.fee && {
+        earns: money(c.fee.earnsCents),
+        afterFee: money(c.fee.netCents),
+        paysForItself: c.fee.paysForItself,
+        bestNoFeeCard: c.fee.noFee && {
+          name: c.fee.noFee.card.name,
+          wouldEarn: money(c.fee.noFee.earnsCents),
+        },
+      },
+    })),
+    useForEachKind: cards.wallet.picks
+      .filter((p) => cards.spend.byCategory[p.category] > 0)
+      .map((p) => ({
+        kind: label(p.category),
+        card: nameOf(p.cardId),
+        earns: money(p.earnsCents),
+      })),
+    yearlyRewards: money(cards.wallet.earnsCents),
+    annualFees: money(cards.wallet.feesCents),
+    afterFees: money(cards.wallet.netCents),
+    betterCards: cards.better.map((b) => ({
+      name: b.card.name,
+      issuer: b.card.issuer,
+      annualFee: money(b.card.annualFeeCents),
+      addsAYearAfterFee: money(b.gainCents),
+      usedFor: b.usedFor.map(label),
+      signUpBonus: b.card.intro && {
+        bonus: money(b.card.intro.bonusCents),
+        afterSpending: money(b.card.intro.spendCents),
+        months: b.card.intro.months,
+        withinUsualSpending: b.introReachable,
+      },
+    })),
+    applications: cards.applications.map((a) => ({
+      card: a.cardName,
+      issuer: a.issuer,
+      status: a.status,
+      on: a.createdOn,
+    })),
+  };
+}
+
+export function creditBuildingToolOutput(data: CreditBuilding, money: (cents: number) => string) {
+  if (!data.available) return { note: "No credit partner for this person's accounts." };
+  const s = data.statement;
+  return {
+    demoAdvice: true,
+    debtAutopilotLevel: data.level,
+    score: data.score,
+    nextStatement: s && {
+      card: s.cardName,
+      closesOn: s.closesOn,
+      payBy: s.payOn,
+      payToGetUnder30: money(s.toUnderHighCents),
+      payToGetUnder10: money(s.toUnderGoodCents),
+      suggested: s.suggested && {
+        amount: money(s.suggested.amountCents),
+        under: s.suggested.target === "good" ? "10%" : "30%",
+      },
+      alreadyScheduled: s.scheduled && {
+        amount: money(s.scheduled.amountCents),
+        on: s.scheduled.runOn,
+        by: s.scheduled.by,
+      },
+    },
+    onTimeStreak: data.streak && {
+      months: data.streak.months,
+      since: data.streak.since,
+      noLatePaymentsSeen: data.streak.clean,
+    },
+    thinFile: data.thin,
+    creditBuilders: data.builders.map((b) => ({
+      name: b.name,
+      issuer: b.issuer,
+      summary: b.summary,
+      cost: money(b.costCents),
+    })),
+    simulatorEstimates: data.estimates.map((e) => ({
+      change: e.label,
+      estimatedScore: e.score,
+      points: e.change,
+    })),
+    note: "Simulator figures are estimates from the stand-in score, not promises.",
+  };
+}
+
+export function debtAutopilotToolOutput(data: DebtAutopilot, money: (cents: number) => string) {
+  return {
+    debtAutopilotLevel: data.level,
+    janeDoesByHerself: data.does.map((d) => d.does),
+    alwaysNeedsATap: "applying for credit, moving money, signing",
+    upcomingPayments: data.upcoming.map((d) => ({
+      debt: d.name,
+      due: d.due,
+      payment: d.paymentCents === null ? null : money(d.paymentCents),
+      overdue: d.overdue,
+    })),
+    dueDateMoves: data.dueMoves.map((m) => ({
+      debt: m.debtName,
+      dueDay: m.dueDay,
+      payday: m.payday,
+      suggestedDay: m.suggestedDay,
+      request: m.request,
+    })),
+    rateChanges: data.rateChanges.map((c) => ({
+      debt: c.name,
+      from: formatRate(c.fromBps),
+      to: formatRate(c.toBps),
+      on: c.on,
+    })),
+    payoffPlanStartedByJaneOn: data.planStartedOn,
   };
 }

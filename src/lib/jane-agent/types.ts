@@ -61,6 +61,14 @@ export const ACTION_IDS = [
   // Spec step 154: cover changes after a life event.
   "cover.apply",
   "cover.dismiss",
+  // Spec step 155: renewal negotiation and claims, done by Jane.
+  "renewal.call",
+  "renewal.no",
+  "claim.file",
+  // Spec step 196: paying less for the same cover.
+  "saving.apply_all",
+  "saving.apply",
+  "saving.no",
   "plan.approve_safe",
   "undo.rule",
   "undo.no",
@@ -97,6 +105,10 @@ export const ACTION_IDS = [
   "bundle.3",
   "bundle.4",
   "bundle.5",
+  // Spec step 185: a plan of several steps, confirmed once; undo its transfers.
+  "multi.confirm",
+  "multi.cancel",
+  "multi.undo",
   // Spec step 95: a guided flow's answers, Back and Cancel (refs.flow).
   "flow.pick.1",
   "flow.pick.2",
@@ -218,6 +230,7 @@ export const ACTION_IDS = [
   "paycheck.undo",
   "bill.pay",
   "bill.skip",
+  "attention.resume",
 ] as const;
 export type ActionId = (typeof ACTION_IDS)[number];
 
@@ -238,6 +251,12 @@ export type MessageRefs = {
   // Spec step 113: the 0% offer a transfer was made to, and the transfer Jane tracks.
   transfer?: { debtKey: string; offerId: string };
   transferId?: string;
+  // Spec step 174: the card "Apply" applies for.
+  creditCard?: { productId: string };
+  // Spec step 175: the statement "Pay it before the statement" pays toward, and the
+  // credit-builder stand-in to open.
+  creditStatement?: { accountId: string; closesOn: string };
+  creditBuilder?: { productId: string };
   // Insurance (spec Phase X): a coverage gap by its key (GAP_KEYS), and the policy a
   // message is about.
   insuranceGap?: string;
@@ -259,6 +278,11 @@ export type MessageRefs = {
   lifeApplicationId?: string;
   // Spec step 154: the life event ("event|key") whose cover changes a message asks about.
   coverEvent?: string;
+  // Spec step 155: the renewal negotiation a message asks about.
+  negotiationId?: string;
+  // Spec step 196: "same" for the savings that keep the cover, or one saving's id.
+  savingGroup?: string;
+  savingId?: string;
   // The finding as Jane described it (src/lib/jane-agent/fingerprint.ts): a button only
   // acts while the finding is still what the message said.
   fingerprint?: string;
@@ -293,8 +317,12 @@ export type MessageRefs = {
   budget?: { category: string; amountCents: number };
   // Spec step 91: what "Remember this" would save.
   preference?: PreferenceDraft;
-  // Spec step 92: the messages a bundle stands for, by dedupeKey, in button order.
-  items?: { dedupeKey: string; label: string }[];
+  // Spec step 92: the messages a bundle stands for, by dedupeKey, in button order. Spec
+  // step 184: the morning agenda's too, each with the button its Yes stands for (a finding's
+  // Yes when left out).
+  items?: { dedupeKey: string; label: string; action?: ActionId }[];
+  // Spec step 185: a plan's steps, and once confirmed what happened to each.
+  multi?: { steps: MultiStep[]; results?: MultiResult[] };
   // Spec step 94: a chart, table, timeline or progress bars shown with the answer.
   block?: AnswerBlock;
   // Spec step 95: where a guided flow is.
@@ -365,6 +393,8 @@ export type MessageRefs = {
   paycheckPlanId?: string;
   // Spec step 145: a bill to pay, by its plan key (bill:<accountId>:<due date>).
   billKey?: string;
+  // Spec step 147: a kind of message Jane stopped bringing up, by its source.
+  attentionSource?: string;
   // Spec step 141: a sector's autopilot change typed in the chat, set on "Set it".
   sectorChange?: {
     sector: string;
@@ -375,6 +405,34 @@ export type MessageRefs = {
 };
 
 // A message the brain wants to post.
+// Spec step 185: one step of a plan. "chat" is what a feature's own answer offered (its
+// Yes, run on its own message); "transfer" is money into a goal through the partner.
+export type MultiStep =
+  | {
+      kind: "chat";
+      label: string;
+      action: ActionId;
+      actionLabel: string;
+      body: string;
+      refs: MessageRefs;
+      actions: MessageAction[];
+    }
+  | {
+      kind: "transfer";
+      label: string;
+      goalId: string;
+      goalName: string;
+      fromAccountId: string;
+      toAccountId: string | null;
+      amountCents: number;
+    };
+// What happened to each step once confirmed, in order.
+export type MultiResult = {
+  status: "done" | "failed" | "not_done";
+  note: string;
+  transferId?: string;
+};
+
 export type Candidate = {
   kind: MessageKind;
   body: string;

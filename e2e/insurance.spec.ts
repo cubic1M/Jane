@@ -78,6 +78,10 @@ test("a demo-bank person sees the sample policy, like-for-like quotes and Jane's
     /^\/report\//,
   );
 
+  // Without a policy, the quotes page sends you to pick one instead of saying it's gone.
+  await page.goto("/insurance/quotes");
+  await expect(page).toHaveURL("/insurance");
+
   await page.getByRole("link", { name: "Compare quotes" }).click();
   await expect(page.getByText("Sample quotes from Jane's demo carrier catalog")).toBeVisible();
   // The policy renews in 40 days, so Jane shopped it by herself when the bank linked
@@ -248,4 +252,72 @@ test("a move gets its insurance changes ready, made on one tap (step 154)", asyn
   await changes.getByRole("button", { name: "Make the changes" }).click();
   await expect(page.getByText("Done. Your insurance is up to date.")).toBeVisible();
   await expect(page.getByRole("region", { name: "After life events" })).toHaveCount(0);
+});
+
+test("Jane files a small claim only after the person checks it (step 155)", async ({
+  context,
+  page,
+  baseURL,
+}) => {
+  const user = await signedInUser("user");
+  userId = user.userId;
+  await context.addCookies([
+    { name: "authjs.session-token", value: user.sessionToken, url: baseURL ?? "" },
+  ]);
+  await page.goto("/connect");
+  await page.getByRole("button", { name: "Link a demo bank" }).click();
+  await expect(page).toHaveURL("/chat", { timeout: 60_000 });
+
+  await page.goto("/insurance/claims");
+  await page.getByLabel("It's on").selectOption({ label: "GEICO car insurance" });
+  await page.getByRole("combobox", { name: "What happened" }).selectOption("accident");
+  await page.getByRole("button", { name: "Start the tracker" }).click();
+  await expect(page.getByText("Jane can file this claim for you.")).toBeVisible();
+  await page.getByLabel("How much it cost ($)").fill("900");
+  await page
+    .getByRole("textbox", { name: "What happened" })
+    .fill("Backed into a pole in a car park; the bumper is dented.");
+  await page.getByRole("button", { name: "Write it up" }).click();
+
+  // The draft, before anything goes to the insurer.
+  await expect(
+    page.getByText("Here's the claim I'd file with GEICO. Nothing goes until you tap File it."),
+  ).toBeVisible();
+  await expect(page.getByText("Claiming: $900.00")).toBeVisible();
+  await page.getByRole("button", { name: "File it" }).click();
+  await expect(
+    page.getByText(/^Filed by Jane: GEICO has your claim, number DEMO-CLM-/),
+  ).toBeVisible();
+});
+
+test("a demo-bank person pays less for the same cover with one tap (step 196)", async ({
+  context,
+  page,
+  baseURL,
+}) => {
+  const user = await signedInUser("user");
+  userId = user.userId;
+  await context.addCookies([
+    { name: "authjs.session-token", value: user.sessionToken, url: baseURL ?? "" },
+  ]);
+  await page.goto("/connect");
+  await page.getByRole("button", { name: "Link a demo bank" }).click();
+  await expect(page).toHaveURL("/chat", { timeout: 60_000 });
+
+  await page.goto("/insurance");
+  const savings = page.getByRole("region", { name: "Pay less for the same cover" });
+  await expect(
+    savings.getByText(/Turn on autopay for your GEICO car policy: about \$51\.12 a year less/),
+  ).toBeVisible();
+  // A higher deductible lowers the cover, so it says what a claim would cost.
+  await expect(savings.getByText(/if you claim, you pay \$1,000\.00 more yourself/)).toBeVisible();
+  await savings
+    .getByRole("listitem")
+    .filter({ hasText: "Turn on autopay" })
+    .getByRole("button", { name: "Do it" })
+    .click();
+  await expect(
+    page.getByText("Done. Your policy is updated and your insurer confirmed it."),
+  ).toBeVisible();
+  await expect(savings.getByText(/Turn on autopay/)).toHaveCount(0);
 });

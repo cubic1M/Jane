@@ -23,6 +23,8 @@ import {
   dismissCoverEvent,
 } from "@/lib/insurance/cover-changes";
 import { parseCoverEventRef } from "@/lib/jane-agent/insurance/cover-words";
+import { NegotiationError, callCarrier, declineNegotiation } from "@/lib/insurance/negotiate";
+import { SavingError, applySaving, dismissSaving } from "@/lib/insurance/savings";
 import { requireUser } from "@/lib/session";
 
 // Insurance (spec step 102). A save goes back to /insurance with ?saved=, so the
@@ -118,6 +120,52 @@ export async function dismissChanges(formData: FormData): Promise<void> {
     if (parsed) await dismissCoverEvent(user.id, parsed.event, parsed.eventKey);
   } catch (error) {
     if (!(error instanceof CoverChangeError)) throw error;
+  }
+  refreshOthers();
+  redirect("/insurance");
+}
+
+// Spec step 155: the renewal call, on the person's tap, or not.
+export async function callRenewal(formData: FormData): Promise<void> {
+  const user = await requireUser();
+  try {
+    await callCarrier(user.id, text(formData, "negotiationId"));
+  } catch (error) {
+    if (!(error instanceof NegotiationError)) throw error;
+  }
+  refreshOthers();
+  redirect("/insurance?saved=called#renewals");
+}
+
+export async function skipRenewal(formData: FormData): Promise<void> {
+  const user = await requireUser();
+  try {
+    await declineNegotiation(user.id, text(formData, "negotiationId"));
+  } catch (error) {
+    if (!(error instanceof NegotiationError)) throw error;
+  }
+  refreshOthers();
+  redirect("/insurance");
+}
+
+// Spec step 196: a cheaper way to pay for the same cover, on the person's tap, or not.
+export async function applyOneSaving(formData: FormData): Promise<void> {
+  const user = await requireUser();
+  try {
+    await applySaving(user.id, text(formData, "savingId"));
+  } catch (error) {
+    if (!(error instanceof SavingError)) throw error;
+  }
+  refreshOthers();
+  redirect("/insurance?saved=saving#savings");
+}
+
+export async function skipSaving(formData: FormData): Promise<void> {
+  const user = await requireUser();
+  try {
+    await dismissSaving(user.id, text(formData, "savingId"));
+  } catch (error) {
+    if (!(error instanceof SavingError)) throw error;
   }
   refreshOthers();
   redirect("/insurance");

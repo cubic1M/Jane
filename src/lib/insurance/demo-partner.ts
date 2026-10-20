@@ -3,7 +3,9 @@ import { PREMIUM_FREQUENCIES } from "@/config/documents";
 import {
   COVERAGE_FIELDS,
   DEFAULT_TERM_MONTHS,
+  DEMO_CLAIM_DAYS,
   DEMO_ENDORSEMENT_FACTORS,
+  DEMO_NEGOTIATE,
   DEMO_PRICING,
   HEALTH_EXTRA_PERSON_SHARE,
   LIFE_OFFER_DAYS,
@@ -290,6 +292,65 @@ export const demoPartner: InsurancePartner = {
       effectiveDate,
       confirmation: `DEMO-END-${hashOf(policy, change, effectiveDate).slice(0, 8).toUpperCase()}`,
     };
+  },
+
+  // Spec step 155: the stand-in carrier's answer to "can you do better on my renewal?". It
+  // meets a cheaper like-for-like quote closely, or else takes off part of the rise for a
+  // loyal customer; never below today's price. A higher deductible is offered, never taken.
+  async negotiateRenewal(request) {
+    const { currentAnnualCents: now_, renewalAnnualCents: renewal } = request;
+    const competing = request.competingAnnualCents;
+    const target =
+      competing !== null && competing < renewal
+        ? Math.round(competing * (1 + DEMO_NEGOTIATE.matchMargin))
+        : Math.round(renewal - (renewal - now_) * DEMO_NEGOTIATE.loyaltyShareOfRise);
+    const lowered = Math.max(now_, Math.min(renewal, Math.round(target / 100) * 100));
+    const dollars = (c: number) => `$${(c / 100).toFixed(2)}`;
+    const transcript = [
+      `Jane: Hi, I'm calling for your customer about their ${request.kind} policy. It renews at ${dollars(renewal)} a year, up from ${dollars(now_)}.${competing !== null && competing < renewal ? ` They have a quote for the same cover at ${dollars(competing)}.` : ""} Can you do better?`,
+      lowered < renewal
+        ? `${request.carrier}: We can renew it at ${dollars(lowered)} a year with the same cover.`
+        : `${request.carrier}: I'm sorry, ${dollars(renewal)} is the best we can do on that cover.`,
+    ];
+    const offer = ["auto", "home", "renters"].includes(request.kind)
+      ? "a higher deductible for a lower price"
+      : null;
+    if (offer) {
+      transcript.push(
+        `${request.carrier}: We could also take more off with ${offer}.`,
+        "Jane: Thanks, I'll pass that on; I can't change the cover on this call.",
+      );
+    }
+    return {
+      outcome: lowered < renewal ? "lowered" : "kept",
+      annualPremiumCents: lowered,
+      transcript,
+      offer,
+    };
+  },
+
+  // Spec step 196: the stand-in takes the figure asked for and confirms it.
+  async applySaving(policy, saving, { now }) {
+    return {
+      premiumCents: saving.newPremiumCents,
+      confirmation: `DEMO-SAV-${hashOf(policy, saving, now.toISOString().slice(0, 10)).slice(0, 8).toUpperCase()}`,
+    };
+  },
+
+  async fileClaim(claim, { now }) {
+    return {
+      claimNumber: `DEMO-CLM-${hashOf(claim, now.toISOString().slice(0, 10)).slice(0, 8).toUpperCase()}`,
+    };
+  },
+
+  // Day by day after filing: received, reviewing, approved (less the deductible), paid.
+  async claimStatus(claim, { now }) {
+    const days = (now.getTime() - claim.filedAt.getTime()) / DAY_MS;
+    const payout = Math.max(0, claim.amountCents - (claim.deductibleCents ?? 0));
+    if (days >= DEMO_CLAIM_DAYS.paid) return { status: "paid", payoutCents: payout };
+    if (days >= DEMO_CLAIM_DAYS.approved) return { status: "approved", payoutCents: payout };
+    if (days >= DEMO_CLAIM_DAYS.reviewing) return { status: "reviewing", payoutCents: null };
+    return { status: "received", payoutCents: null };
   },
 
   async cancel(policy, { effectiveDate }) {

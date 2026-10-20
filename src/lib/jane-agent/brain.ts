@@ -8,7 +8,9 @@ import {
 import { inQuietHours, localTime } from "./quiet-hours";
 import type { Snapshot } from "./snapshot";
 import { MESSAGE_SOURCES, type MessageSource, type Trigger } from "./sources";
+import { agendaOf, outsideAgenda } from "./agenda";
 import { bundleGroups, bundleOf } from "./bundle";
+import { holds } from "./attention";
 import type { Candidate, MessageKind } from "./types";
 
 // Jane's daily brain (spec step 82): decides what to say. Pure: the snapshot of the
@@ -18,6 +20,8 @@ import type { Candidate, MessageKind } from "./types";
 // The rules: nothing during quiet hours (9pm–8am in the person's timezone) unless they
 // opened the chat themselves; never the same thing twice (dedupeKey); at most
 // CHAT_DAILY_LIMIT messages a day besides the brief, and at most each source's own limit.
+// Spec step 184: with settings.agenda, the day is one agenda message plus whatever is
+// urgent (./agenda.ts), and the limits don't apply.
 
 export type BrainSettings = {
   trigger: Trigger;
@@ -25,6 +29,9 @@ export type BrainSettings = {
   sourceLimits?: Readonly<Record<string, number>>;
   quietHours?: { start: number; end: number };
   sources?: readonly MessageSource[];
+  // Spec step 184: the day as one agenda message (./agenda.ts) plus whatever is urgent.
+  // Jane's runner turns it on; off, each thing is its own message within the limits.
+  agenda?: boolean;
 };
 
 // What Jane already said: the recent messages (to count today's) and which of today's
@@ -106,9 +113,36 @@ export function plan(
 
   // Spec step 91: never what the person said not to suggest again.
   const never = new Set(snapshot.neverSuggest ?? []);
+  // Spec step 147: never a kind the person never acts on, and what isn't urgent waits for
+  // the hour they usually answer (never more than a day).
+  const stopped = new Set((snapshot.attention?.stopped ?? []).map((s) => s.source));
+  const clock = { now, timezone, trigger: settings.trigger };
   const fresh = candidates.filter(
-    (c) => !seen.has(c.dedupeKey) && !never.has(`message:${c.dedupeKey}`),
+    (c) =>
+      !seen.has(c.dedupeKey) &&
+      !never.has(`message:${c.dedupeKey}`) &&
+      !stopped.has(c.source) &&
+      !holds(snapshot.attention, c.source, clock),
   );
+  // Spec step 184: the brief is the day's agenda. Everything less urgent waits for it and
+  // goes in as a line, posted hidden behind it; until the next agenda, only urgent things
+  // come.
+  if (settings.agenda) {
+    const now_ = fresh.filter(outsideAgenda);
+    const held = fresh.filter((c) => !outsideAgenda(c));
+    const at = now_.findIndex((c) => c.source === "brief" && c.kind === "brief");
+    const out: PlannedMessage[] = [];
+    for (const [index, candidate] of now_.entries()) {
+      if (index === at) {
+        const { agenda, folded } = agendaOf(candidate, held, snapshot, localTime(now, timezone));
+        out.push(agenda, ...folded.map((f) => ({ ...f, hidden: true })));
+      } else {
+        out.push(candidate);
+      }
+    }
+    return out;
+  }
+
   // Spec step 92: findings of one kind become one message, in the first one's place.
   const behind = new Map<string, PlannedMessage[]>();
   for (const group of bundleGroups(fresh)) {

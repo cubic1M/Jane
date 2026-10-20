@@ -130,14 +130,65 @@ describe("debt questions", () => {
   });
 
   it("reads questions about the credit score", () => {
-    for (const text of [
-      "what's my credit score?",
-      "how do I improve my credit",
-      "credit report",
-      "my fico",
-    ]) {
+    for (const text of ["what's my credit score?", "credit report", "my fico"]) {
       expect(intent(text), text).toEqual({ kind: "credit_score" });
     }
+  });
+
+  it("reads what Jane does about debts, and what's due on them", () => {
+    for (const text of [
+      "what do you do about my debts",
+      "debt autopilot",
+      "autopilot for my loans",
+    ]) {
+      expect(intent(text), text).toEqual({ kind: "debt_autopilot" });
+    }
+    for (const text of ["when are my loan payments due", "next card payment", "move my due date"]) {
+      expect(intent(text), text).toEqual({ kind: "debt_due" });
+    }
+  });
+
+  it("reads building credit, and the score simulator", () => {
+    for (const text of [
+      "how do I improve my credit",
+      "how can I build my credit score",
+      "raise my score",
+      "do I need a credit builder",
+      "when does my statement close",
+    ]) {
+      expect(intent(text), text).toEqual({ kind: "build_credit" });
+    }
+    for (const text of [
+      "what would my score be if I paid off my card",
+      "what if I open a new card, what happens to my score",
+      "credit score simulator",
+      "how many points would my score go up",
+    ]) {
+      expect(intent(text), text).toEqual({ kind: "credit_simulate" });
+    }
+  });
+
+  it("reads which card to use, whether a fee is worth it, and the best card", () => {
+    expect(intent("Which card should I use for groceries?")).toEqual({
+      kind: "card_for",
+      category: "groceries",
+    });
+    expect(intent("what card should I use for gas")).toEqual({ kind: "card_for", category: "gas" });
+    expect(intent("best card for eating out")).toEqual({ kind: "card_for", category: "dining" });
+    expect(intent("which card should I use")).toEqual({ kind: "card_for", category: null });
+    for (const text of ["is my annual fee worth it", "is my credit card worth the fee"]) {
+      expect(intent(text), text).toEqual({ kind: "card_fee" });
+    }
+    for (const text of [
+      "what's the best credit card for me",
+      "should I get a new credit card",
+      "which credit card should I apply for",
+      "credit card rewards",
+    ]) {
+      expect(intent(text), text).toEqual({ kind: "card_better" });
+    }
+    // A 0% card is a balance transfer question.
+    expect(intent("best 0% card")).toEqual({ kind: "balance_transfer" });
   });
 
   it("leaves requests and other questions alone", () => {

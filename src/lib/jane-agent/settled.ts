@@ -40,6 +40,8 @@ export async function closeAnsweredElsewhere(
   const alertIds = ids((m) => m.refs.alertId);
   const readingIds = ids((m) => m.refs.readingId);
   const coverRefs = ids((m) => m.refs.coverEvent);
+  const negotiationIds = ids((m) => m.refs.negotiationId);
+  const anySaving = open.some((m) => m.refs.savingGroup || m.refs.savingId);
   const anyAutopilot = open.some(asksAutopilot);
   const anyProposal = open.some((m) => m.refs.proposalKey);
   if (
@@ -49,50 +51,83 @@ export async function closeAnsweredElsewhere(
     !deadlineIds.length &&
     !alertIds.length &&
     !readingIds.length &&
-    !coverRefs.length
+    !coverRefs.length &&
+    !negotiationIds.length &&
+    !anySaving
   )
     return 0;
 
-  const [autopilot, proposals, actions, deadlines, alerts, readings, covers] = await Promise.all([
-    anyAutopilot ? autopilotOf(userId, { client }) : null,
-    anyProposal ? openProposals(userId, { client }) : [],
-    actionIds.length
-      ? db.actions.findMany({
-          where: { id: { in: actionIds } },
-          select: { id: true, status: true, agentState: true, type: true, selfServiceUrl: true },
-        })
-      : [],
-    deadlineIds.length
-      ? db.deadlines.findMany({
-          where: { id: { in: deadlineIds }, doneAt: null },
-          select: { id: true },
-        })
-      : [],
-    alertIds.length
-      ? db.alerts.findMany({ where: { id: { in: alertIds }, readAt: null }, select: { id: true } })
-      : [],
-    readingIds.length
-      ? db.policyReadings.findMany({
-          where: { id: { in: readingIds }, status: "waiting" },
-          select: { id: true },
-        })
-      : [],
-    coverRefs.length
-      ? db.coverChanges.findMany({
-          where: { status: "prepared" },
-          select: { event: true, eventKey: true },
-        })
-      : [],
-  ]);
+  const [autopilot, proposals, actions, deadlines, alerts, readings, covers, asked] =
+    await Promise.all([
+      anyAutopilot ? autopilotOf(userId, { client }) : null,
+      anyProposal ? openProposals(userId, { client }) : [],
+      actionIds.length
+        ? db.actions.findMany({
+            where: { id: { in: actionIds } },
+            select: { id: true, status: true, agentState: true, type: true, selfServiceUrl: true },
+          })
+        : [],
+      deadlineIds.length
+        ? db.deadlines.findMany({
+            where: { id: { in: deadlineIds }, doneAt: null },
+            select: { id: true },
+          })
+        : [],
+      alertIds.length
+        ? db.alerts.findMany({
+            where: { id: { in: alertIds }, readAt: null },
+            select: { id: true },
+          })
+        : [],
+      readingIds.length
+        ? db.policyReadings.findMany({
+            where: { id: { in: readingIds }, status: "waiting" },
+            select: { id: true },
+          })
+        : [],
+      coverRefs.length
+        ? db.coverChanges.findMany({
+            where: { status: "prepared" },
+            select: { event: true, eventKey: true },
+          })
+        : [],
+      negotiationIds.length
+        ? db.renewalNegotiations.findMany({
+            where: { id: { in: negotiationIds }, status: "asked" },
+            select: { id: true },
+          })
+        : [],
+    ]);
+  // Spec step 196: savings still offered; one applied or dismissed elsewhere closes its message.
+  const offers = anySaving
+    ? await db.insuranceSavings.findMany({
+        where: { status: "offered" },
+        select: { id: true, kind: true },
+      })
+    : [];
+  const offeredIds = new Set(offers.map((o) => o.id));
+  const sameOffered = offers.some((o) => o.kind !== "higher_deductible");
   const openProposalKeys = new Set(proposals.map((p) => p.key));
   const stepNow = new Map(actions.map((a) => [a.id, stepOf(a)]));
   const openDeadlines = new Set(deadlines.map((d) => d.id));
   const unreadAlerts = new Set(alerts.map((a) => a.id));
   const waitingReadings = new Set(readings.map((r) => r.id));
   const preparedCovers = new Set(covers.map((c) => `${c.event}|${c.eventKey}`));
+  const stillAsked = new Set(asked.map((n) => n.id));
 
   const settled = (m: Open) => {
-    const { proposalKey, step, actionId, deadlineEntryId, alertId, readingId, coverEvent } = m.refs;
+    const {
+      proposalKey,
+      step,
+      actionId,
+      deadlineEntryId,
+      alertId,
+      readingId,
+      coverEvent,
+      negotiationId,
+      savingGroup,
+      savingId,
+    } = m.refs;
     return (
       (asksAutopilot(m) && autopilot !== null) ||
       (proposalKey !== undefined && !openProposalKeys.has(proposalKey)) ||
@@ -100,7 +135,10 @@ export async function closeAnsweredElsewhere(
       (deadlineEntryId !== undefined && !openDeadlines.has(deadlineEntryId)) ||
       (alertId !== undefined && !unreadAlerts.has(alertId)) ||
       (readingId !== undefined && !waitingReadings.has(readingId)) ||
-      (coverEvent !== undefined && !preparedCovers.has(coverEvent))
+      (coverEvent !== undefined && !preparedCovers.has(coverEvent)) ||
+      (negotiationId !== undefined && !stillAsked.has(negotiationId)) ||
+      (savingId !== undefined && !offeredIds.has(savingId)) ||
+      (savingGroup !== undefined && !sameOffered)
     );
   };
 

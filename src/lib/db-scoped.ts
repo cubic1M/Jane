@@ -106,10 +106,14 @@ export function scopedFor(userId: string, client: PrismaClient = db) {
     policyReadings: scoped.policyReading,
     lifeApplications: scoped.lifeApplication,
     coverChanges: scoped.coverChange,
+    renewalNegotiations: scoped.renewalNegotiation,
+    insuranceSavings: scoped.insuranceSaving,
     refinanceChecks: scoped.refinanceCheck,
     loanApplications: scoped.loanApplication,
     studentLoanProfiles: scoped.studentLoanProfile,
     creditReports: scoped.creditReport,
+    debtWatches: scoped.debtWatch,
+    cardApplications: scoped.cardApplication,
     balanceTransfers: scoped.balanceTransfer,
     findings: scoped.finding,
     decisions: scoped.decision,
@@ -162,6 +166,10 @@ export function scopedFor(userId: string, client: PrismaClient = db) {
     // Money that moves itself (spec steps 144–145).
     moneyTransfers: scoped.moneyTransfer,
     paycheckPlans: scoped.paycheckPlan,
+    // Money health score by month (spec step 146).
+    healthScores: scoped.healthScore,
+    // The monthly money report (spec step 148).
+    monthlyReports: scoped.monthlyReport,
     savedShares: scoped.savedShare,
     // What's in investment accounts (spec step 128).
     securities: scoped.security,

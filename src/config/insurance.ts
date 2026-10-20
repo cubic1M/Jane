@@ -386,12 +386,12 @@ export const CHECKUP_DAILY_LIMIT = 200;
 // Insurance is never approved by a standing rule (NEVER_BY_RULE): buying, changing or
 // cancelling cover always takes the person's own tap.
 export const INSURANCE_AUTOPILOT: Record<"ask" | "safe" | "all" | "custom" | "none", string> = {
-  none: "I watch every renewal and price rise, reshop each policy 45 days before it renews, check your cover once a year and after a life event, and remind you of claim steps. I read every policy document you upload and ask you to confirm it. I ask you before buying anything.",
-  ask: "I watch every renewal and price rise, reshop each policy 45 days before it renews, check your cover once a year and after a life event, and remind you of claim steps. I read every policy document you upload and ask you to confirm it. I ask you before buying anything.",
-  safe: "I watch every renewal and price rise, reshop each policy 45 days before it renews, check your cover once a year and after a life event, and remind you of claim steps. I read every policy document you upload and ask you to confirm it. I ask you before buying anything.",
+  none: "I watch every renewal and price rise, reshop each policy 45 days before it renews, check your cover once a year and after a life event, and remind you of claim steps. I read every policy document you upload and ask you to confirm it, and I ask before calling an insurer about a renewal that's going up. I file small claims for you once you've checked them. I ask you before buying anything.",
+  ask: "I watch every renewal and price rise, reshop each policy 45 days before it renews, check your cover once a year and after a life event, and remind you of claim steps. I read every policy document you upload and ask you to confirm it, and I ask before calling an insurer about a renewal that's going up. I file small claims for you once you've checked them. I ask you before buying anything.",
+  safe: "I watch every renewal and price rise, reshop each policy 45 days before it renews, check your cover once a year and after a life event, and remind you of claim steps. I read every policy document you upload and ask you to confirm it, and I ask before calling an insurer about a renewal that's going up. I file small claims for you once you've checked them. I ask you before buying anything.",
   custom:
-    "I watch every renewal and price rise, reshop each policy 45 days before it renews, check your cover once a year and after a life event, and remind you of claim steps. I read every policy document you upload and ask you to confirm it. I ask you before buying anything.",
-  all: "I watch every renewal and price rise, reshop each policy 45 days before it renews, and keep the best switch ready so it's one tap: I refresh its quotes before they expire. I also check your cover once a year, read every policy document you upload and remind you of claim steps. What I read and buying still take your tap.",
+    "I watch every renewal and price rise, reshop each policy 45 days before it renews, check your cover once a year and after a life event, and remind you of claim steps. I read every policy document you upload and ask you to confirm it, and I ask before calling an insurer about a renewal that's going up. I file small claims for you once you've checked them. I ask you before buying anything.",
+  all: "I watch every renewal and price rise, reshop each policy 45 days before it renews, and keep the best switch ready so it's one tap: I refresh its quotes before they expire. I also check your cover once a year, read every policy document you upload, remind you of claim steps, and call your insurer for a better rate before a renewal that's going up, within your limits. What I read, filing a claim and buying still take your tap.",
 };
 // At "handle everything", a ready pick's quotes are refreshed this many days before they
 // expire, so the one tap always works.
@@ -490,3 +490,56 @@ export const DEMO_ENDORSEMENT_FACTORS: Record<string, number> = {
   address: 1,
 };
 export const COVER_CHANGES_DAILY_LIMIT = 200;
+
+// --- Renewal negotiation and claims, done by Jane (spec step 155) ---------------------------
+// A renewal this much (share) above today's price is worth asking the carrier about.
+export const NEGOTIATE_MIN_RISE = 0.05;
+// The stand-in carrier meets a cheaper competing quote this close (share above it), or
+// takes off this share of the rise for a loyal customer, never below today's price.
+export const DEMO_NEGOTIATE = { matchMargin: 0.02, loyaltyShareOfRise: 0.5 } as const;
+// Jane files claims up to this amount herself through the partner; bigger ones stay with
+// the person and the claims helper.
+export const SMALL_CLAIM_MAX_CENTS = 250_000;
+// The stand-in carrier's claim, day by day after filing: received, then reviewing, then
+// approved (paying the claim less the deductible), then paid.
+export const DEMO_CLAIM_DAYS = { reviewing: 2, approved: 5, paid: 10 } as const;
+export const NEGOTIATIONS_DAILY_LIMIT = 200;
+export const CLAIMS_DAILY_LIMIT = 200;
+
+// --- Paying less for the same cover (spec step 196) -----------------------------------------
+// Rates are estimates from typical carrier programs, said as "about". Every one is shown with
+// what changes; none drops cover unless it says so (a higher deductible).
+export const SAVING_KINDS = [
+  "pay_in_full",
+  "autopay",
+  "paperless",
+  "bundle",
+  "telematics",
+  "higher_deductible",
+] as const;
+export type SavingKind = (typeof SAVING_KINDS)[number];
+
+export const SAVING_RATES = {
+  // Paying a year up front: the installment fee on each payment, and the carrier's discount.
+  payInFull: { installmentFeeCents: 400, discountShare: 0.05 },
+  autopay: { discountShare: 0.03 },
+  paperless: { discountShare: 0.02 },
+  // One carrier for car and home (or renters): off both.
+  bundle: { discountShare: BUNDLE_DISCOUNT_SHARE },
+  // A usage-based safe-driver program on a car policy.
+  telematics: { discountShare: 0.1 },
+  // Each step up the ladder is worth this much of the premium.
+  deductibleStepShare: 0.1,
+} as const;
+// Deductibles a carrier offers, per kind; a higher one is suggested only when the person's
+// savings cover it this many times over.
+export const DEDUCTIBLE_LADDERS: Partial<Record<PolicyKind, readonly number[]>> = {
+  auto: [25_000, 50_000, 100_000, 200_000],
+  home: [100_000, 250_000, 500_000, 1_000_000],
+  renters: [25_000, 50_000, 100_000, 250_000],
+};
+export const DEDUCTIBLE_SAVINGS_COVER = 2;
+// Kinds with a premium that these apply to; a saving under this is not worth a message.
+export const MIN_SAVING_CENTS = 2_000;
+// Kinds that carry monthly installment fees and discounts like these.
+export const SAVING_POLICY_KINDS: readonly PolicyKind[] = ["auto", "home", "renters"];

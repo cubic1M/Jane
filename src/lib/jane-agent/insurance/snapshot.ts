@@ -17,6 +17,8 @@ import {
 import { listReadings, type Reading } from "@/lib/insurance/readings";
 import { latestLife, type LifeApplication } from "@/lib/insurance/life";
 import { listCoverChanges, type CoverChange } from "@/lib/insurance/cover-changes";
+import { listNegotiations, type Negotiation } from "@/lib/insurance/negotiate";
+import { listSavings, type Saving } from "@/lib/insurance/savings";
 import { SWITCH_NEWS_DAYS, SWITCH_PAYMENT_DAYS } from "@/config/insurance";
 
 // What Jane's brain knows about the person's insurance (spec Phase X), from the same loader
@@ -54,6 +56,12 @@ export type InsuranceSnapshot = {
   lifeAsk?: "dependants" | null;
   // Spec step 154: cover changes prepared after a life event, waiting for the person.
   coverChanges?: CoverChange[];
+  // Spec step 155: renewal calls (to ask about, or done lately) and claims Jane filed.
+  negotiations?: Negotiation[];
+  filedClaims?: Claim[];
+  draftClaims?: Claim[];
+  // Spec step 196: cheaper ways to pay for the same cover, offered and waiting.
+  savings?: Saving[];
 };
 
 export type Switch = Awaited<ReturnType<typeof switchesFor>>[number];
@@ -73,6 +81,8 @@ export async function loadInsuranceSnapshot(
     benefits,
     life,
     coverChanges,
+    negotiations,
+    savings,
     switches,
   ] = await Promise.all([
     // Reads any policy document not read yet, so the readings below come after it.
@@ -88,6 +98,8 @@ export async function loadInsuranceSnapshot(
     listBenefits(userId, { client }),
     latestLife(userId, { client }),
     listCoverChanges(userId, { client, status: "prepared" }),
+    listNegotiations(userId, { client }),
+    listSavings(userId, { client, status: "offered" }),
     switchesFor(userId, {
       client,
       since: new Date(now.getTime() - (SWITCH_NEWS_DAYS + SWITCH_PAYMENT_DAYS) * 86_400_000),
@@ -105,6 +117,12 @@ export async function loadInsuranceSnapshot(
     switches,
     checkup: checkup && !checkup.seenAt ? checkup : null,
     claims: claims.filter((c) => c.status === "open"),
+    // Filed by Jane in the last couple of months, open or just paid.
+    filedClaims: claims.filter(
+      (c) =>
+        c.filing === "filed" && c.filedAt && now.getTime() - c.filedAt.getTime() < 60 * 86_400_000,
+    ),
+    draftClaims: claims.filter((c) => c.status === "open" && c.filing === "draft"),
     benefits,
     // Asked once the pay-stub benefits are answered (or there are none to answer), for people
     // with a job: a paycheck in their accounts or a benefit on file.
@@ -116,6 +134,8 @@ export async function loadInsuranceSnapshot(
     readings,
     life: life && life.status !== "bought" ? life : null,
     coverChanges,
+    negotiations: negotiations.filter((n) => n.status !== "declined"),
+    savings,
     // Asked of people in demo advice mode with a paycheck, no life cover and no answer yet.
     lifeAsk:
       advice &&

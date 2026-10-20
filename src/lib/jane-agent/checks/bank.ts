@@ -1,6 +1,7 @@
 import type { Intent } from "../intents";
 import type { ActionId } from "../types";
 import { charge, lastMonth, spentOn, thisMonth, type Facts } from "./facts";
+import { MORE_ROWS } from "./bank-more";
 
 // Jane's answer checks (spec step 87): about 100 things people really type, over the demo
 // bank, each with what a good answer has. "rules" questions must be answered without
@@ -30,6 +31,13 @@ export type CheckQuestion = {
   needs: "rules" | "claude";
   after?: string;
   expect: Expect;
+  // Spec step 189: where it belongs (a sector and the page it's about), the Claude tool it
+  // should reach, and the guardrail profile its answer is checked with. Questions from
+  // bank-more.ts carry all four.
+  sector?: string;
+  page?: string;
+  tool?: string;
+  profile?: "standard" | "demo_advice";
 };
 
 const safe = (f: Facts) => [f.safeCents];
@@ -48,7 +56,7 @@ const inAccount = (name: string) => (f: Facts) => [
 ];
 const ADVICE = /\b(?:stocks?|invest\w*|tax(?:es)?|lawyer|legal)\b/i;
 
-export const QUESTIONS: readonly CheckQuestion[] = [
+const BASE_QUESTIONS: readonly CheckQuestion[] = [
   // Safe to spend.
   {
     id: "safe-1",
@@ -335,6 +343,29 @@ export const QUESTIONS: readonly CheckQuestion[] = [
     after: "whole-8",
     expect: {},
   },
+
+  // Requests that span sectors (spec step 185): one plan, one confirmation.
+  {
+    id: "multi-1",
+    text: "cancel Hulu and Netflix",
+    needs: "rules",
+    expect: { intent: "multi", button: "multi.confirm", list: true },
+  },
+  {
+    id: "multi-2",
+    text: "cancel Hulu and put $50 in my emergency fund",
+    needs: "rules",
+    expect: { intent: "multi", avoid: /\bdone\b/i },
+  },
+
+  // Everything Jane did (spec step 187).
+  {
+    id: "timeline-1",
+    text: "show me everything you did",
+    needs: "rules",
+    expect: { intent: "timeline" },
+  },
+  { id: "timeline-2", text: "why did you do that", needs: "rules", expect: { intent: "timeline" } },
 
   // What's due.
   {
@@ -929,6 +960,211 @@ export const QUESTIONS: readonly CheckQuestion[] = [
     expect: { avoid: /\byou should (?:buy|sell)\b/i },
   },
 
+  // Loans and debt (spec steps 109–117): every debt question answered by the rules.
+  {
+    id: "debt-1",
+    text: "how much do I owe",
+    needs: "rules",
+    expect: {
+      intent: "debts",
+      mentions: /net worth/i,
+      link: "/loans",
+      list: true,
+      maxChars: 1_400,
+    },
+  },
+  {
+    id: "debt-2",
+    text: "when is my car paid off",
+    needs: "rules",
+    expect: { intent: "debt_detail", mentions: /paid off by/i, link: "/loans" },
+  },
+  {
+    id: "debt-3",
+    text: "what's the rate on my student loan",
+    needs: "rules",
+    expect: { intent: "debt_detail", mentions: /5\.25%.*from your bank/i },
+  },
+  {
+    id: "debt-4",
+    text: "what's the fastest way out of debt",
+    needs: "rules",
+    expect: {
+      intent: "payoff_plan",
+      mentions: /debt-free by/i,
+      button: "debt_plan.avalanche",
+      list: true,
+      maxChars: 1_200,
+    },
+  },
+  {
+    id: "debt-5",
+    text: "what if I pay $200 more a month on my debts",
+    needs: "rules",
+    expect: { intent: "payoff_plan", mentions: /\$200\.00 extra/i, list: true, maxChars: 1_200 },
+  },
+  {
+    id: "debt-6",
+    text: "can I refinance my car loan",
+    needs: "rules",
+    expect: { intent: "refinance", mentions: /same/i, button: "loan.prepare", maxChars: 1_200 },
+  },
+  {
+    id: "debt-7",
+    text: "should I do a balance transfer",
+    needs: "rules",
+    expect: {
+      intent: "balance_transfer",
+      mentions: /fee/i,
+      button: "transfer.start",
+      maxChars: 900,
+    },
+  },
+  {
+    id: "debt-8",
+    text: "which student loan plan should I be on",
+    needs: "rules",
+    expect: {
+      intent: "student_loans",
+      mentions: /forgiveness/i,
+      link: "https://studentaid.gov/",
+      list: true,
+      maxChars: 1_200,
+    },
+  },
+  {
+    id: "debt-9",
+    text: "can I get rid of PMI",
+    needs: "rules",
+    expect: { intent: "mortgage", mentions: /PMI/, link: "/loans/mortgage", maxChars: 1_200 },
+  },
+  {
+    id: "debt-10",
+    text: "what's my credit score",
+    needs: "rules",
+    expect: {
+      intent: "credit_score",
+      mentions: /stand-in/i,
+      link: "/loans/credit",
+      list: true,
+      maxChars: 1_200,
+    },
+  },
+  {
+    id: "debt-11",
+    text: "how's my loan application",
+    needs: "rules",
+    expect: { intent: "loan_status", mentions: /application/i },
+  },
+  {
+    id: "debt-12",
+    text: "when are my loan payments due",
+    needs: "rules",
+    expect: {
+      intent: "debt_due",
+      mentions: /next debt payment/i,
+      link: "/loans",
+      list: true,
+      maxChars: 1_000,
+    },
+  },
+  {
+    id: "debt-13",
+    text: "what do you do about my debts",
+    needs: "rules",
+    expect: {
+      intent: "debt_autopilot",
+      mentions: /by myself/i,
+      link: "/settings",
+      list: true,
+      maxChars: 1_600,
+    },
+  },
+  // Spec step 174: which card for what, whether a fee pays for itself, a better card.
+  {
+    id: "debt-14",
+    text: "which card should I use for groceries",
+    needs: "rules",
+    expect: { intent: "card_for", mentions: /for groceries/i, link: "/loans/cards" },
+  },
+  {
+    id: "debt-15",
+    text: "is my annual fee worth it",
+    needs: "rules",
+    expect: { intent: "card_fee", mentions: /pay for itself/i, link: "/loans/cards" },
+  },
+  {
+    id: "debt-16",
+    text: "what's the best credit card for me",
+    needs: "rules",
+    expect: {
+      intent: "card_better",
+      mentions: /hard credit check/i,
+      button: "credit_card.apply",
+      link: "/loans/cards",
+    },
+  },
+  // Spec step 175: building credit and the labelled score simulator.
+  {
+    id: "debt-17",
+    text: "how do I build my credit",
+    needs: "rules",
+    expect: {
+      intent: "build_credit",
+      mentions: /statement closes/i,
+      link: "/loans/credit",
+      list: true,
+      maxChars: 1_000,
+    },
+  },
+  {
+    id: "debt-18",
+    text: "what would my score be if I paid off my card",
+    needs: "rules",
+    expect: {
+      intent: "credit_simulate",
+      mentions: /estimates/i,
+      link: "/loans/credit",
+      list: true,
+      maxChars: 1_200,
+    },
+  },
+
+  // Insurance: paying less for the same cover (spec step 196), over the demo person's GEICO
+  // policy: four ways that keep the cover (about $388.80 a year added up) and a higher
+  // deductible that lowers it ($170.40).
+  {
+    id: "sav-1",
+    text: "how can I pay less for my car insurance",
+    needs: "rules",
+    expect: {
+      intent: "insurance",
+      figures: () => [38_880],
+      mentions: /your cover stays exactly as it is/,
+      link: "/insurance",
+      list: true,
+      maxChars: 1_100,
+    },
+  },
+  {
+    id: "sav-2",
+    text: "is it cheaper to pay my car insurance yearly",
+    needs: "rules",
+    expect: {
+      intent: "insurance",
+      figures: () => [13_320],
+      mentions: /once a year/,
+      list: true,
+      maxChars: 1_100,
+    },
+  },
+  {
+    id: "sav-3",
+    text: "are there any discounts on my insurance",
+    needs: "rules",
+    expect: { intent: "insurance", mentions: /autopay/i, list: true, maxChars: 1_100 },
+  },
+
   // Outside what Jane does: brief, and never advice.
   { id: "out-1", text: "what's the weather today", needs: "claude", expect: { avoid: ADVICE } },
   {
@@ -939,3 +1175,31 @@ export const QUESTIONS: readonly CheckQuestion[] = [
   },
   { id: "out-4", text: "tell me a joke", needs: "claude", expect: { avoid: ADVICE } },
 ];
+
+// Sectors whose answers may give recommendations in demo advice mode (CLAUDE.md, step 98),
+// so their answers are checked with the "demo_advice" guardrail profile.
+const ADVICE_SECTORS = new Set([
+  "insurance",
+  "taxes",
+  "investing",
+  "hsa",
+  "giving",
+  "student",
+  "loans",
+  "credit",
+]);
+
+const MORE_QUESTIONS: readonly CheckQuestion[] = MORE_ROWS.map(
+  ([sector, page, tool, text], index): CheckQuestion => ({
+    id: `more-${String(index + 1).padStart(3, "0")}`,
+    text,
+    needs: "claude",
+    expect: sector === "edge" ? { avoid: ADVICE } : {},
+    sector,
+    page,
+    tool,
+    profile: ADVICE_SECTORS.has(sector) ? "demo_advice" : "standard",
+  }),
+);
+
+export const QUESTIONS: readonly CheckQuestion[] = [...BASE_QUESTIONS, ...MORE_QUESTIONS];

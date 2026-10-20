@@ -37,7 +37,7 @@ import type { Reply } from "./replies";
 // the answer streamed as it's written (onEvent), a sentence at a time once each passes the
 // guardrails (./guarded-text), with what Jane is looking up in between.
 
-export const CHAT_PROMPT_VERSION = "chat-v7";
+export const CHAT_PROMPT_VERSION = "chat-v8";
 
 // The one rule that differs in demo advice mode (spec step 98).
 const NO_ADVICE = `- Never give investment, tax or legal advice, and don't mention investments, taxes or legal matters at all. Don't suggest financial products beyond Jane's pick from finding_details.`;
@@ -92,6 +92,8 @@ type Options = {
   // Demo advice mode (src/lib/advice-mode.ts, spec step 98): the demo guardrail profile,
   // and advice labelled. Off unless the caller checked adviceMode.
   advice?: boolean;
+  // Spec step 188: how the person likes answers (src/lib/jane-agent/style.ts).
+  style?: string | null;
   // Spec step 93: how long to wait for Claude to start, and to finish, in milliseconds.
   firstWordsMs?: number;
   deadlineMs?: number;
@@ -129,6 +131,8 @@ const STATUS: Record<string, string> = {
   priorities: "Working out what matters most…",
   whole_picture: "Looking across everything…",
   money_moves: "Checking what money moved…",
+  health_score: "Working out your money health score…",
+  monthly_report: "Reading your monthly report…",
   propose_action: "Getting a button ready…",
   show_block: "Drawing it…",
 };
@@ -194,6 +198,7 @@ export async function askClaudeInChat(
     maxTurns = CHAT_CLAUDE_MAX_TURNS,
     onEvent = () => {},
     advice = false,
+    style = null,
     firstWordsMs = CHAT_CLAUDE_FIRST_WORDS_MS,
     deadlineMs = CHAT_CLAUDE_DEADLINE_MS,
   }: Options,
@@ -229,7 +234,7 @@ export async function askClaudeInChat(
     },
     {
       type: "text",
-      text: `The person's numbers right now (today is ${now.toISOString().slice(0, 10)}):\n${primer.text || "None available."}`,
+      text: `The person's numbers right now (today is ${now.toISOString().slice(0, 10)}):\n${primer.text || "None available."}${style ? `\n\n${style}` : ""}`,
     },
   ];
 

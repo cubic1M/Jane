@@ -7,6 +7,8 @@ export type AuditEvent =
   // Loans (spec step 112): applying for credit and accepting a loan.
   | "loan_application_submitted"
   | "loan_accepted"
+  // Spec step 174: applying for a credit card through Jane, only on the person's tap.
+  | "card_application_submitted"
   | "user_signed_up"
   // Insurance (spec Phase X): a policy saved or removed, the household facts saved.
   | "insurance_policy_saved"
@@ -22,6 +24,9 @@ export type AuditEvent =
   | "employer_benefit_confirmed"
   | "life_application_submitted"
   | "insurance_cover_changed"
+  | "insurance_renewal_negotiated"
+  | "insurance_claim_filed"
+  | "insurance_saving_applied"
   | "user_signed_in"
   | "import_completed"
   // Finding data was sent to Claude for card text.

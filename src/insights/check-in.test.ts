@@ -49,6 +49,18 @@ describe("checkInData", () => {
     ]);
   });
 
+  it("counts payments toward cards and loans that month (spec step 148)", () => {
+    const withPayments = [
+      ...transactions,
+      tx("2026-09-25", 85_000, "LOAN_PAYMENTS"),
+      // The card's side of the same payment, and last month's.
+      tx("2026-09-26", -85_000, "LOAN_PAYMENTS"),
+      tx("2026-08-25", 85_000, "LOAN_PAYMENTS"),
+    ];
+    expect(checkInData(withPayments, [], "2026-09").debtPaymentsCents).toBe(85_000);
+    expect(data.debtPaymentsCents).toBe(0);
+  });
+
   it("finds the month before, across a year", () => {
     expect(previousMonth("2026-10-03")).toBe("2026-09");
     expect(previousMonth("2027-01-01")).toBe("2026-12");

@@ -11,8 +11,10 @@ import { scopedFor } from "@/lib/db-scoped";
 // Keys: kind "never" is a suggestion not to make again: "finding:<the finding's key>" or
 // "message:<a message's dedupeKey>". kind "fact" is something they said: "payday" (value
 // { days: [1, 15] }), "keep:<name>" ("I need my car", value { target }), "note:<words>".
+// kind "style" is how they like Jane to talk and post (spec steps 184 and 188): "posting"
+// (value { posting: "daily" | "as_they_come" }).
 
-export type PreferenceKind = "never" | "fact";
+export type PreferenceKind = "never" | "fact" | "style";
 
 // Plain JSON, so it can sit on a message's refs.
 export type PreferenceValue = { [key: string]: string | number | boolean | number[] };
@@ -44,7 +46,7 @@ export async function listPreferences(
     select: { id: true, kind: true, key: true, value: true, label: true, createdAt: true },
   });
   return rows.flatMap((r) =>
-    r.kind === "never" || r.kind === "fact"
+    r.kind === "never" || r.kind === "fact" || r.kind === "style"
       ? [{ ...r, kind: r.kind, value: isObject(r.value) ? r.value : {} }]
       : [],
   );
@@ -94,6 +96,20 @@ export async function deletePreference(
 }
 
 // --- For the code that reads them ----------------------------------------------------
+
+// Spec step 184: how often Jane posts. "daily" (the default) is the day in one agenda
+// message plus whatever is urgent; "as_they_come" is each thing as its own message.
+export type Posting = "daily" | "as_they_come";
+export function postingOf(prefs: readonly Preference[]): Posting {
+  const style = prefs.find((p) => p.kind === "style" && p.key === "posting");
+  return style?.value.posting === "as_they_come" ? "as_they_come" : "daily";
+}
+export const AS_THEY_COME: PreferenceDraft = {
+  kind: "style",
+  key: "posting",
+  value: { posting: "as_they_come" },
+  label: "Tell me things as they come, not in one morning message",
+};
 
 // Suggestions not to make again, by key.
 export const neverKeys = (prefs: readonly Preference[]) =>
