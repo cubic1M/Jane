@@ -91,6 +91,15 @@ export function demoInvestmentSnapshot(over: Partial<InvestmentSnapshot> = {}): 
     college: { children: 0, plans: 0 },
     hsa: { account: null, plan: null, savedCents: 0, demo: true, receipts: 0 },
     automatic: { did: [], asked: [] },
+    retirementAccounts: {
+      match: null,
+      limits: [],
+      roth: { choice: null, marginalRate: null, fromEstimate: false, access: null, magiCents: null },
+      ira: null,
+      iraAllowedCents: 0,
+      pending: null,
+      demo: true,
+    },
     cash: { plan: null },
     // No crypto connected.
     crypto: {

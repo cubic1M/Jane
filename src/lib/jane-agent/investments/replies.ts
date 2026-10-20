@@ -13,6 +13,15 @@ import type { CashView } from "@/lib/investments/cash";
 import { CASH_LINK, cashLine, moveButtons } from "./cash-copy";
 import type { SteadyView } from "@/lib/investments/steady-hand";
 import { NO_PREDICTION } from "@/config/steady-hand";
+import type { RetirementAccountsView } from "@/lib/investments/retirement-accounts";
+import {
+  iraButton,
+  limitsLine,
+  matchButton,
+  raMatchLine,
+  RA_LINK,
+  rothLine,
+} from "./retirement-accounts-copy";
 import { STEADY_LINK, steadyMessage, timelines } from "./steady-copy";
 import { CRYPTO_LINK, feeFlag, NEVER_TRADES, shareFlag, sizeLine } from "./crypto-copy";
 import {
@@ -748,5 +757,31 @@ export function steadyReply(view: SteadyView): Reply {
     body: steadyMessage(view.drop, view.buckets),
     actions: [STEADY_LINK],
     refs: { advice: true },
+  };
+}
+
+// Spec step 210: every limit with what's used, then (in demo advice mode) the match, Roth or
+// traditional and the taps. Facts for everyone; advice only in demo advice mode.
+export function retirementAccountsReply(view: RetirementAccountsView): Reply {
+  const limits = view.limits.length > 0 ? `This year: ${limitsLine(view)}.` : "";
+  if (!view.advice) {
+    return {
+      body: `${limits || "I don't see retirement accounts yet."} I don't give recommendations on real accounts yet.`,
+      actions: [RA_LINK],
+      refs: {},
+    };
+  }
+  const parts = [
+    limits,
+    raMatchLine(view) ?? "You're getting the whole match.",
+    rothLine(view),
+  ].filter(Boolean);
+  const buttons = [matchButton(view), iraButton(view)].filter(
+    (b): b is NonNullable<typeof b> => b !== null,
+  );
+  return {
+    body: parts.join(" "),
+    actions: [...buttons, RA_LINK],
+    refs: { advice: true, ...(iraButton(view) ? { iraCents: view.iraAllowedCents } : {}) },
   };
 }

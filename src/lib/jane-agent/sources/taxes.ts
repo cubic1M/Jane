@@ -18,6 +18,7 @@ import { planMoveMessage } from "../tax-plan-message";
 import { givingOptionsMessage, receiptMessage } from "../giving-message";
 import { familyChoiceMessage, statusOf } from "../family-taxes-message";
 import { worthSaying } from "@/planning/family-taxes";
+import { homeSaleMessage, saltCapMessage } from "../home-taxes-message";
 import { HARVEST_FROM } from "@/config/tax";
 import { formatCents } from "@/lib/money";
 import { incomeLine, listOf } from "@/planning/tax-profile";
@@ -364,6 +365,30 @@ export const taxesSource: MessageSource = {
         dedupeKey: `family:${family!.year}:${c.key}`,
         priority: TAX_MESSAGE_PRIORITY.family,
       });
+    }
+
+    // Spec step 170: the state and local tax cap biting once property tax is paid, and a
+    // home sale against the exclusion, once each a year.
+    const homeTax = tax.home;
+    if (homeTax) {
+      const cap = saltCapMessage(homeTax);
+      if (cap) {
+        out.push({
+          kind: "heads_up",
+          ...cap,
+          dedupeKey: `salt:${homeTax.year}`,
+          priority: TAX_MESSAGE_PRIORITY.salt_cap,
+        });
+      }
+      const sale = homeSaleMessage(homeTax);
+      if (sale) {
+        out.push({
+          kind: "heads_up",
+          ...sale,
+          dedupeKey: `homesale:${homeTax.year}:${homeTax.sale!.sale.cents}`,
+          priority: TAX_MESSAGE_PRIORITY.home_sale,
+        });
+      }
     }
 
     // Spec step 166: with a document partner, Jane collects the forms herself: a form that

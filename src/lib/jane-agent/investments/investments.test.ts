@@ -55,6 +55,7 @@ import {
   cryptoReply,
   cashReply,
   steadyReply,
+  retirementAccountsReply,
 } from "./replies";
 import { gather } from "../brain";
 import { parseIntent } from "../intents";
@@ -1991,5 +1992,109 @@ describe("steadyReply and the drop message", () => {
     expect(m.actions.map((a) => a.id)).toEqual(["open", "snooze"]);
     expect(gatherSteady(-0.05)).toEqual([]);
     expect(gatherSteady(-0.1, false)).toEqual([]);
+  });
+});
+
+// Spec step 210: retirement accounts used fully.
+const RA_VIEW = {
+  advice: true,
+  age: 45,
+  limits: [
+    {
+      key: "workplace" as const,
+      label: "401(k), 403(b) or 457 at work",
+      limitCents: 2_450_000,
+      catchUpCents: 0,
+      usedCents: 1_632_000,
+      roomCents: 818_000,
+    },
+    {
+      key: "ira" as const,
+      label: "IRAs (traditional and Roth together)",
+      limitCents: 750_000,
+      catchUpCents: 0,
+      usedCents: 200_000,
+      roomCents: 550_000,
+    },
+  ],
+  match: {
+    employeeRate: 0.04,
+    fullMatchRate: 0.06,
+    missedCents: 81_600,
+    extraEmployeeCents: 163_200,
+    matchRate: 0.5,
+  },
+  roth: {
+    choice: "roth" as const,
+    marginalRate: 0.12,
+    fromEstimate: true,
+    access: { kind: "direct" as const, allowedShare: 1 as const },
+    magiCents: 8_000_000,
+  },
+  ira: { id: "ira", name: "Demo Roth IRA", roth: true },
+  iraAllowedCents: 550_000,
+  demo: true,
+  pending: null,
+};
+
+describe("retirement accounts questions, by rules", () => {
+  it.each([
+    "what is a backdoor roth",
+    "what are the contribution limits",
+    "am I getting the full match",
+    "how much can I put in my IRA",
+  ])("reads %j as retirement accounts", (text) => {
+    expect(parseIntent(text, ASOF)).toMatchObject({
+      kind: "investments",
+      topic: "retirement_accounts",
+    });
+  });
+});
+
+describe("retirementAccountsReply and the retirement messages", () => {
+  it("gives the limits, the missed match in dollars, Roth by bracket and a tap for each", () => {
+    const reply = retirementAccountsReply(RA_VIEW);
+    expect(reply.body).toMatch(
+      /^This year: 401\(k\), 403\(b\) or 457 at work: \$16,320\.00 of \$24,500\.00 \(\$8,180\.00 left\)/,
+    );
+    expect(reply.body).toMatch(/leaving about \$816\.00 a year of their money on the table/);
+    expect(reply.body).toMatch(/Roth usually wins at your bracket/);
+    expect(reply.actions.map((a) => a.id)).toEqual(["retire.match", "retire.ira", "open"]);
+    expect(reply.refs).toEqual({ advice: true, iraCents: 550_000 });
+  });
+  it("explains the backdoor Roth without a button for it, and only facts outside demo advice", () => {
+    const backdoor = retirementAccountsReply({
+      ...RA_VIEW,
+      roth: {
+        ...RA_VIEW.roth,
+        access: { kind: "backdoor", allowedShare: 0, steps: ["a", "b", "c"], note: "pro-rata" },
+      },
+    });
+    expect(backdoor.body).toMatch(
+      /The backdoor route: a b c pro-rata I don't do this one for you\./,
+    );
+    expect(backdoor.actions.map((a) => a.id)).toEqual(["retire.match", "open"]);
+    const facts = retirementAccountsReply({ ...RA_VIEW, advice: false });
+    expect(facts.body).not.toMatch(/employer|bracket|backdoor/);
+    expect(facts.actions.map((a) => a.id)).toEqual(["open"]);
+  });
+  it("posts the missed match and the IRA room, each with its tap", () => {
+    const gather = (retirementAccounts: InvestmentSnapshot["retirementAccounts"], advice = true) =>
+      investmentsSource
+        .gather(
+          { ...base, investments: demoInvestmentSnapshot({ advice, retirementAccounts }) },
+          {} as never,
+        )
+        .filter((c) => c.dedupeKey.startsWith("retire:"));
+    const messages = gather(RA_VIEW);
+    expect(messages.map((m) => [m.kind, m.dedupeKey])).toEqual([
+      ["decision", "retire:match:816"],
+      ["decision", "retire:ira:2026"],
+    ]);
+    expect(messages[1].refs).toEqual({ advice: true, iraCents: 550_000 });
+    expect(gather(RA_VIEW, false)).toEqual([]);
+    expect(gather({ ...RA_VIEW, match: { ...RA_VIEW.match, missedCents: 0 }, ira: null })).toEqual(
+      [],
+    );
   });
 });

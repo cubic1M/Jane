@@ -140,7 +140,9 @@ export type AuditEvent =
   // A read-only crypto connection (spec step 161): exchange or wallet, never a key.
   | "crypto_connected"
   // Spec step 164: Jane acted on her own in the investing sector, within the person's caps.
-  | "autopilot_investing_acted";
+  | "autopilot_investing_acted"
+  // Spec step 210: a change to a contribution at work, sent to the payroll partner.
+  | "payroll_change_requested";
 
 export type AuditActor = { type: ActorType; id: string | null };
 

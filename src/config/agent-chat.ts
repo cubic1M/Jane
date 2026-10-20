@@ -184,6 +184,8 @@ export const MESSAGE_PRIORITY = {
   cash: 38,
   // Spec step 163: one calm message in a big drop, ahead of the other investing messages.
   steady_hand: 44,
+  // Spec step 210: the match left on the table, and IRA room (demo advice).
+  retirement_accounts: 40,
   // Spec step 164: the month's summary of what Jane did by herself in investing.
   investing_summary: 40,
   auto_invest_run: 31,
