@@ -350,6 +350,15 @@ export const QUESTIONS: readonly CheckQuestion[] = [
     expect: { intent: "multi", avoid: /\bdone\b/i },
   },
 
+  // Everything Jane did (spec step 187).
+  {
+    id: "timeline-1",
+    text: "show me everything you did",
+    needs: "rules",
+    expect: { intent: "timeline" },
+  },
+  { id: "timeline-2", text: "why did you do that", needs: "rules", expect: { intent: "timeline" } },
+
   // What's due.
   {
     id: "due-1",
