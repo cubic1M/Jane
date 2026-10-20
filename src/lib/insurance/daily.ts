@@ -12,6 +12,7 @@ import { coverChangesAll, prepareCoverChanges } from "./cover-changes";
 import { negotiationsAll, negotiationsDue } from "./negotiate";
 import { refreshClaimStatuses } from "./claim-filing";
 import { refreshSavings } from "./savings";
+import { refreshRisks } from "./risks";
 
 // Insurance that runs itself (spec Phase X), at every autopilot level: reshops 45 days before
 // renewal and on a price rise (step 104), and the coverage checkup once a year and after a
@@ -97,6 +98,8 @@ export async function insuranceAfterSync(
     await refreshClaimStatuses(userId, { client, now });
     // Spec step 196.
     await refreshSavings(userId, { client, now });
+    // Spec step 197.
+    await refreshRisks(userId, { client, now });
   } catch (error) {
     console.error("Insurance after sync failed", { userId, error: String(error) });
   }

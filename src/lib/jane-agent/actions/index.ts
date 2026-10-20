@@ -37,6 +37,9 @@ import {
   savingApplyAll,
   savingApply,
   savingNo,
+  riskYes,
+  riskNo,
+  insuranceGapQuotes,
   benefitsDisabilityNone,
   benefitsDisabilityYes,
   benefitsLife1x,
@@ -90,6 +93,7 @@ import {
   taxIpPinHave,
   taxIpPinRemind,
 } from "./tax-identity";
+import { taxEquityAside } from "./tax-equity";
 import { taxSideBusiness, taxSideHobby } from "./side-income";
 import { taxFundOpen, taxGivingNo, taxReceiptGot } from "./giving";
 import {
@@ -170,6 +174,9 @@ export const ACTION_HANDLERS: Readonly<Record<ActionId, ActionHandler>> = {
   "saving.apply_all": savingApplyAll,
   "saving.apply": savingApply,
   "saving.no": savingNo,
+  "risk.yes": riskYes,
+  "risk.no": riskNo,
+  "insurance.gap_quotes": insuranceGapQuotes,
   "benefits.life_1x": benefitsLife1x,
   "benefits.life_2x": benefitsLife2x,
   "benefits.life_none": benefitsLifeNone,
@@ -281,6 +288,7 @@ export const ACTION_HANDLERS: Readonly<Record<ActionId, ActionHandler>> = {
   "tax.identity_open": taxIdentityOpen,
   "tax.identity_not": taxIdentityNot,
   "tax.identity_step": taxIdentityStep,
+  "tax.equity_aside": taxEquityAside,
   "tax.records_remind": taxRecordsRemind,
   // Investments (spec step 129 on).
   "invest.answer.1": investAnswer1,

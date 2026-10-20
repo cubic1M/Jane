@@ -3,6 +3,8 @@ import {
   POLICY_KINDS,
   TRAVEL_GAP_MIN_CENTS,
   UMBRELLA_ASSETS_CENTS,
+  RISK_KINDS,
+  RISK_SIGNALS,
   type GapKey,
   type PolicyKind,
 } from "@/config/insurance";
@@ -86,7 +88,7 @@ export function coverageGaps(household: Household, policies: Policy[]): Gap[] {
       why: "It has no collision or comprehensive cover, so it pays for damage you cause to other people and their cars, not for damage to your own car or if it's stolen.",
     });
   }
-  gaps.push(...moreGaps(household, policies));
+  gaps.push(...moreGaps(household, policies), ...riskGaps(household, policies));
   return gaps.filter((g) => !household.dismissedGaps.includes(g.key));
 }
 
@@ -100,6 +102,39 @@ export const gapAdvice = (gap: Pick<Gap, "key">) => GAP_ADVICE[gap.key];
 // Spec step 149: health, disability, umbrella, pet and travel cover, read from the accounts.
 // Device protection is never a gap: it's for the person to choose (and cards often include
 // it, spec step 152).
+// Spec step 197: what a risk they said yes to leaves uncovered, in plain words.
+const RISK_WHY: Record<(typeof RISK_KINDS)[number], { title: string; why: string }> = {
+  rideshare: {
+    title: "Your car policy may not cover you while you drive for pay",
+    why: "You told me you drive for a rideshare or delivery company. Personal car policies often exclude driving for pay, so an accident on a trip could leave you with the bill.",
+  },
+  home_business: {
+    title: "No business insurance on file",
+    why: "You told me you run a business from home. A home policy pays little for business equipment, stock or a customer who's hurt, and usually excludes business liability.",
+  },
+  new_dog: { title: "", why: "" },
+  valuable: {
+    title: "A valuable item may not be fully covered",
+    why: "You told me you bought a ring or a camera. Home and renters policies usually cap jewelry and cameras at a small limit unless the item is listed by name.",
+  },
+  boat: {
+    title: "No boat insurance on file",
+    why: "You told me you have a boat. Home and renters policies usually cap or exclude boats, and don't cover damage you cause to others on the water.",
+  },
+  rental_out: {
+    title: "Your home policy may not cover renting it out",
+    why: "You told me you rent your home out. A regular home policy often excludes paying guests, so damage or an injured guest might not be covered.",
+  },
+};
+
+function riskGaps(household: Household, policies: Policy[]): Gap[] {
+  return (household.risks ?? []).flatMap((risk): Gap[] => {
+    const gap = RISK_SIGNALS[risk].gap;
+    if (!gap || has(policies, gap.kind)) return [];
+    return [{ key: gap.key, kind: gap.kind, policyId: null, ...RISK_WHY[risk] }];
+  });
+}
+
 function moreGaps(household: Household, policies: Policy[]): Gap[] {
   const gaps: Gap[] = [];
   const { signals, pets } = household;

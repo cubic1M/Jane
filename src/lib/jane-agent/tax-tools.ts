@@ -30,6 +30,7 @@ import { loadGiving } from "@/lib/giving";
 import { loadFamilyTaxes } from "@/lib/family-taxes";
 import { NOTICE_KINDS } from "@/config/tax-notices";
 import { checkNoticeFor, listTaxNotices, noticeAmountCents } from "@/lib/tax-notices";
+import { loadEquityTax } from "@/lib/equity-tax";
 import { loadIdentity } from "@/lib/tax-identity";
 import { loadSideIncome } from "@/lib/side-income";
 import { loadReturnReviews } from "@/lib/prior-return/review";
@@ -170,6 +171,12 @@ export const TAX_TOOLS: Anthropic.Tool[] = [
     name: "tax_identity",
     description:
       "The person's tax identity protection: whether they have an IRS Identity Protection PIN for the year and whether Jane put the January reminder on their deadlines; any sign of tax identity theft Jane noticed (a rejected return, a letter that reads like one) or that they reported; and an open case's steps in order (report to the FTC, Form 14039, credit freeze, call the IRS, paper return if the e-file was rejected, IP PIN) with which are done. The steps are the person's own: Jane never contacts the IRS or a bureau.",
+    input_schema: noInput,
+  },
+  {
+    name: "tax_equity",
+    description:
+      "The tax on the person's crypto and equity pay for the tax year: crypto sold (proceeds, cost by lot, short- and long-term gain), what they hold and its unrealised gain, the 1099-DA from an exchange that sold; ESPP sales and whether each was qualifying or a disqualifying disposition that lost its special treatment; ISOs exercised and the alternative minimum tax; RSU vests with the tax withheld against their real rate and the shortfall; and in demo advice mode how much to set aside and whether a goal exists. Holding-period and AMT rules are in config with sources.",
     input_schema: noInput,
   },
   {
@@ -683,6 +690,56 @@ export async function runTaxTool(
           steps: v.case.steps.map((s) => ({ step: s.title, doneOn: s.doneOn })),
           next: v.case.next,
         },
+      });
+    }
+    case "tax_equity": {
+      const v = await loadEquityTax(userId, { client, now });
+      return out({
+        year: v.year,
+        crypto: {
+          sold: {
+            proceeds: money(v.cryptoYear.proceedsCents),
+            cost: money(v.cryptoYear.costCents),
+            shortTermGain: money(Math.abs(v.cryptoYear.shortTermCents)),
+            shortTermIsLoss: v.cryptoYear.shortTermCents < 0,
+            longTermGain: money(Math.abs(v.cryptoYear.longTermCents)),
+            longTermIsLoss: v.cryptoYear.longTermCents < 0,
+          },
+          held: v.income.crypto.holdings.map((h) => ({
+            asset: h.asset,
+            where: h.connection,
+            value: money(h.valueCents),
+            basis: money(h.basisCents),
+            unrealisedGain: money(Math.abs(h.gainCents)),
+            isLoss: h.gainCents < 0,
+          })),
+          form1099DA: v.forms1099DA,
+        },
+        equityEvents: v.income.events.map((e) => ({
+          kind: e.event.kind,
+          company: e.event.company,
+          shares: e.event.shares,
+          on: e.event.occurredOn,
+          espp: e.espp && {
+            qualifying: e.espp.qualifying,
+            ordinaryIncome: money(e.espp.ordinaryCents),
+          },
+          isoAmtPreference: e.iso ? money(e.iso.preferenceCents) : null,
+        })),
+        rsu: v.rsu.map((r) => ({
+          company: r.company,
+          income: money(r.incomeCents),
+          withheld: money(r.withheldCents),
+          shortfall: money(r.shortfallCents),
+        })),
+        alternativeMinimumTax: money(v.amtCents),
+        setAside: v.advice
+          ? {
+              amount: money(v.setAside.cents),
+              parts: v.setAside.parts,
+              goalStarted: v.setAside.goalStarted,
+            }
+          : undefined,
       });
     }
     case "tax_forms": {
