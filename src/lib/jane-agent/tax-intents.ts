@@ -60,7 +60,9 @@ export type TaxIntent =
   // Spec step 171.
   | { kind: "tax"; ask: "records" }
   // Spec step 172.
-  | { kind: "tax"; ask: "last_return" };
+  | { kind: "tax"; ask: "last_return" }
+  // Spec step 173.
+  | { kind: "tax"; ask: "side_income" };
 
 const NUMBER_WORDS: Readonly<Record<string, number>> = {
   no: 0,
@@ -110,9 +112,12 @@ const TAG_WORDS: Readonly<Record<string, TaxTagKind>> = {
   work: "work",
   "work expense": "work",
   "work expenses": "work",
+  rental: "rental",
+  "rental expense": "rental",
+  "rental expenses": "rental",
 };
 const TAG =
-  /^tag (?:my |the |all )?(?:charges? (?:from|at) )?(.+?) (?:charges? |payments? |purchases? )?as (?:a |an )?(donations?|charity|medical|childcare|education|work(?: expenses?)?)$/;
+  /^tag (?:my |the |all )?(?:charges? (?:from|at) )?(.+?) (?:charges? |payments? |purchases? )?as (?:a |an )?(donations?|charity|medical|childcare|education|work(?: expenses?)?|rental(?: expenses?)?)$/;
 const UNTAG =
   /^(?:untag|don't tag|do not tag|stop tagging) (?:my |the |all )?(.+?)(?: for tax(?:es)?)?$/;
 const FORMS =
@@ -187,6 +192,8 @@ const RECORDS_ASK =
   /\baudit pack\b|\baudit(?:-| )ready\b|\b(?:tax )?records? (?:for|if|in) (?:an )?audit\b|\bhow long (?:should|do) (?:i|we) (?:keep|hold on to)\b.*\b(?:tax|records?|receipts?|papers)\b|\bwhat if (?:i|the irs) (?:get|gets|am|audits?)\b.*\baudit|\bam i ready for an audit\b|\b(?:get|got|am|being) audited\b|\bkeep (?:my )?(?:tax )?(?:records|receipts|papers)\b/;
 const LAST_RETURN =
   /\b(?:last year'?s|my (?:old|prior|previous)) (?:tax )?return\b|\b(?:review|check|look at|read) my (?:tax )?return\b|\bamend(?:ed)? (?:my |a )?(?:tax )?return\b|\b1040-?x\b|\b(?:did i|have i) miss(?:ed)? (?:anything|any|a) (?:deductions?|credits?|on my (?:tax )?return)\b|\b(?:left|leave|leaving) money on the table\b/;
+const SIDE_INCOME =
+  /\brental (?:income|property|properties|expenses?|taxes|losses?)\b|\b(?:my )?(?:airbnb|rental)\b.*\btax(?:es)?\b|\bdepreciat(?:e|ion)\b|\b(?:gig|side|freelance) (?:income|hustle|work|gig)\b.*\b(?:tax|1099|hobby|business)\b|\bhobby (?:or|vs\.?|versus) business\b|\bis (?:my|this) (?:side )?(?:gig|income|hustle) a (?:hobby|business)\b|\bplatform (?:payouts?|1099)\b|\b1099-?k\b|\bpassive loss\b/;
 const PACK = /\btax(?:-| )?time pack\b|\btax pack\b|\byear-end pack\b/;
 
 function stateCode(words: string): string | null {
@@ -197,6 +204,8 @@ function stateCode(words: string): string | null {
 
 export function parseTaxIntent(text: string): TaxIntent | null {
   if (FAMILY_ASK.test(text)) return { kind: "tax", ask: "family" };
+  if (!/^(?:tag|untag) /.test(text) && SIDE_INCOME.test(text))
+    return { kind: "tax", ask: "side_income" };
   if (LAST_RETURN.test(text)) return { kind: "tax", ask: "last_return" };
   if (RECORDS_ASK.test(text)) return { kind: "tax", ask: "records" };
   if (HOME_ASK.test(text)) return { kind: "tax", ask: "home" };

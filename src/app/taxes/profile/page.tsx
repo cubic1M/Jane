@@ -14,6 +14,7 @@ import { PayStubForm } from "./pay-stub-form";
 import { ResidencyForm } from "./residency-form";
 import { FamilyForm } from "./family-form";
 import { HomeForm } from "./home-form";
+import { SideIncomeForm } from "./side-income-form";
 import { FAMILY_FORM_CHILDREN } from "./answers";
 import { parseChildren } from "@/lib/family-taxes";
 import { loadResidency } from "@/lib/tax-states";
@@ -53,6 +54,9 @@ async function ProfileContent() {
         homeSaleCents: true,
         homeSaleCostsCents: true,
         homeDaysLivedIn: true,
+        rentalPriceCents: true,
+        rentalPlacedOn: true,
+        sideIncomeKind: true,
       },
     }),
     loadResidency(user.id, year),
@@ -144,6 +148,13 @@ async function ProfileContent() {
             pay?.homeDaysLivedIn === null || pay?.homeDaysLivedIn === undefined
               ? ""
               : String(pay.homeDaysLivedIn),
+        }}
+      />
+      <SideIncomeForm
+        values={{
+          price: dollars(pay?.rentalPriceCents),
+          placedOn: pay?.rentalPlacedOn ? pay.rentalPlacedOn.toISOString().slice(0, 10) : "",
+          kind: pay?.sideIncomeKind ?? "",
         }}
       />
       <PayStubForm

@@ -18,6 +18,7 @@ import { planMoveMessage } from "../tax-plan-message";
 import { givingOptionsMessage, receiptMessage } from "../giving-message";
 import { familyChoiceMessage, statusOf } from "../family-taxes-message";
 import { worthSaying } from "@/planning/family-taxes";
+import { hobbyMessage, rentalSetupMessage } from "../side-income-message";
 import { readingMessage, reviewMessage } from "../prior-return-message";
 import { retentionMessage } from "../audit-records-message";
 import { homeSaleMessage, saltCapMessage } from "../home-taxes-message";
@@ -367,6 +368,29 @@ export const taxesSource: MessageSource = {
         dedupeKey: `family:${family!.year}:${c.key}`,
         priority: TAX_MESSAGE_PRIORITY.family,
       });
+    }
+
+    // Spec step 173: a rental that needs its property for depreciation; hobby or business
+    // (demo advice, with both taxes shown).
+    if (tax.sideIncome) {
+      const setup = rentalSetupMessage(tax.sideIncome);
+      if (setup) {
+        out.push({
+          kind: "heads_up",
+          ...setup,
+          dedupeKey: `rental:${tax.sideIncome.year}`,
+          priority: TAX_MESSAGE_PRIORITY.rental_setup,
+        });
+      }
+      const kind = tax.advice ? hobbyMessage(tax.sideIncome) : null;
+      if (kind) {
+        out.push({
+          kind: "decision",
+          ...kind,
+          dedupeKey: `sidekind:${tax.sideIncome.year}`,
+          priority: TAX_MESSAGE_PRIORITY.side_kind,
+        });
+      }
     }
 
     // Spec step 172: a return Jane read, to confirm; and what its review found.

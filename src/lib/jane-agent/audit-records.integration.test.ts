@@ -213,7 +213,7 @@ describe.runIf(url)("audit-ready records against a real database", { timeout: 60
     const { userId } = await person("records-chat");
     const { reply } = await sendToJane(userId, "am I ready for an audit", { client, now: LINKED });
     expect(reply.body).toMatch(
-      /^Your 2026 audit pack covers \$[\d,.]+ of deductions and credits, each tied to its sources:/,
+      /^Your 2026 audit pack covers \$[\d,.]+ of deductions and credits, each tied to its sources\./,
     );
     expect(reply.body).toContain(
       "still needed: The charity's receipt for your gift to American Red Cross.",

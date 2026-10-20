@@ -40,6 +40,10 @@ const MOMENTS = [
   },
 ];
 
+// "Try Jane" runs its first scan after the response (src/app/try/actions.ts); this is how
+// long that may take.
+export const maxDuration = 60;
+
 export default function Home() {
   return (
     <main className="flex w-full flex-1 flex-col">

@@ -266,6 +266,35 @@ export async function loadSnapshot(
     { userId, client, now },
   );
 
+  // The sectors' parts are independent reads: loaded together, not one after another (the
+  // sample person's first screen waits on this).
+  const [
+    more,
+    taxPart,
+    thinkingPart,
+    lastRun,
+    paycheck,
+    upkeep,
+    investments,
+    lastWeek,
+    attention,
+    monthlyReport,
+    whatIf,
+  ] = await Promise.all([
+    loadMore(userId, { client, now, input }),
+    loadTaxSnapshot(userId, { client, now }),
+    // Spec steps 97, 100, 139, 145 and 146 read the same bank data, so it's loaded once.
+    thinking(userId, client, now, input),
+    lastControllerRun(userId, { client, now }),
+    latestPaycheckPlan(userId, { client, now }),
+    loadUpkeep(userId, { client, now }),
+    loadInvestmentSnapshot(userId, { client, now }),
+    chatWeek(userId, client, weekStart(now, user?.timezone)),
+    loadAttention(userId, { client, now, timezone: user?.timezone ?? null }),
+    recentReport(userId, { client, now }),
+    adoptedPlans(userId, { client }),
+  ]);
+
   return {
     timezone: user?.timezone ?? null,
     asOf: now.toISOString().slice(0, 10),
@@ -311,19 +340,18 @@ export async function loadSnapshot(
       .filter((a) => isUrgent(a.type) && !ALERTS_SAID_ELSEWHERE.includes(a.type))
       .map((a) => ({ id: a.id, title: a.title, body: a.body })),
     budgetProgress: home.budgetProgress,
-    ...(await loadMore(userId, { client, now, input })),
-    ...(await loadTaxSnapshot(userId, { client, now })),
-    // Spec steps 97, 100, 139, 145 and 146 read the same bank data, so it's loaded once for them.
-    ...(await thinking(userId, client, now, input)),
+    ...more,
+    ...taxPart,
+    ...thinkingPart,
     firstChat: said === 0,
-    lastRun: await lastControllerRun(userId, { client, now }),
-    paycheck: await latestPaycheckPlan(userId, { client, now }),
-    upkeep: await loadUpkeep(userId, { client, now }),
-    investments: await loadInvestmentSnapshot(userId, { client, now }),
+    lastRun,
+    paycheck,
+    upkeep,
+    investments,
     neverSuggest: [...never],
-    lastWeek: await chatWeek(userId, client, weekStart(now, user?.timezone)),
-    whatIf: await adoptedPlans(userId, { client }),
-    attention: await loadAttention(userId, { client, now, timezone: user?.timezone ?? null }),
-    monthlyReport: await recentReport(userId, { client, now }),
+    lastWeek,
+    attention,
+    monthlyReport,
+    whatIf,
   };
 }
