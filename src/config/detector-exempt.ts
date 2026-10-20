@@ -5,6 +5,8 @@
 
 export const DETECTOR_EXEMPT: Readonly<Record<string, string>> = {
   goals: "shows and sets the goals the person chose; the emergency-fund detector suggests one",
+  payday:
+    "answers when and how much the paycheck is; the steady-paycheck detector (steady_pay) covers uneven pay",
   spending: "answers what was spent; the suggestions come from the detectors behind it",
   coming_up: "lists bills and dates; nothing to suggest",
   saved: "reports what Jane already saved",
