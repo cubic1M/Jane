@@ -26,3 +26,7 @@ export const FIXED_CHECKS_SHARE = 0.6;
 // The rules-only questions run in CI (src/lib/jane-agent/checks/checks.integration.test.ts)
 // and must score at least this overall: raised as the chat gets better, never lowered.
 export const RULES_SCORE_FLOOR = 100;
+
+// Spec step 189: each sector's rules questions must also average at least this, so a slip in
+// one sector is named by its own test even while the overall score holds the floor.
+export const SECTOR_SCORE_FLOOR = 95;
