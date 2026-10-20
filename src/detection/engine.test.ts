@@ -19,6 +19,11 @@ vi.mock("@/lib/db", () => ({ db: {} }));
 vi.mock("@/lib/db-scoped", () => ({ scopedFor: vi.fn(() => scoped) }));
 vi.mock("@/lib/analytics", () => ({ track: vi.fn() }));
 vi.mock("@/lib/alerts", () => ({ raiseAlerts: vi.fn() }));
+// Spec step 208: what the person said is theirs, and refunds that never arrived (own tests).
+vi.mock("@/lib/unusual", () => ({
+  loadTaught: vi.fn(async () => new Map()),
+  missingRefundAlerts: vi.fn(async () => []),
+}));
 
 import { REFUND_FINDING_TYPES } from "@/config/detection";
 import type { PrismaClient } from "@/generated/prisma/client";
