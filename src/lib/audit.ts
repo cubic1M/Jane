@@ -26,6 +26,7 @@ export type AuditEvent =
   | "insurance_cover_changed"
   | "insurance_renewal_negotiated"
   | "insurance_claim_filed"
+  | "insurance_saving_applied"
   | "user_signed_in"
   | "import_completed"
   // Finding data was sent to Claude for card text.

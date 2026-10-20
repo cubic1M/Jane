@@ -3304,6 +3304,114 @@ commands and when Claude is unavailable. Every change is measured on one questio
 > Acceptance criteria:
 > - A deliberately broken intent fails the PR check; a night's scores appear on /admin
 
+## Phase AJ: insurance, round three (steps 196–202)
+
+Phases X and AD find, buy, switch and claim on every kind of cover. This round makes Jane
+cut what the person pays for the cover they keep, spot risks from how they actually live,
+cover the whole household, and help decide when to claim. Each step is built into the chat
+through the registry from step 190 (one entry per capability, with bank questions from
+step 189).
+
+### Step 196: Paying less for the same cover
+
+> Read CLAUDE.md. Savings without switching.
+>
+> Build:
+> 1. For each policy, rules find the cheaper way to pay for the same cover: pay in full vs
+>    monthly (installment fees from payments), autopay and paperless discounts, bundling
+>    car and home with one carrier, safe-driver or telematics offers, a higher deductible
+>    when savings cover it (shown both ways, rates in src/config/insurance.ts). The partner
+>    stand-in applies each change; a tap confirms.
+>
+> Acceptance criteria:
+> - Each saving shows the yearly figure and what changes; cover never drops without saying
+>   so; every rule has tests
+
+### Step 197: Risks seen in how you live
+
+> Read CLAUDE.md. Gaps spotted from transactions, asked about once.
+>
+> Build:
+> 1. Signals in transactions, each a rule: rideshare or delivery income (personal car
+>    policy may not cover it), a home business, a new dog, an expensive ring or camera
+>    (worth listing on the policy), a boat or second home, renting the home out. Each
+>    becomes one question in the chat ("Are you driving for Uber?"), then a gap with quotes
+>    if the answer is yes. A no is remembered.
+>
+> Acceptance criteria:
+> - The demo bank has one signal of each kind; each is asked once and never again after a
+>   no
+
+### Step 198: The whole household's cover
+
+> Read CLAUDE.md. Everyone in the house in one view.
+>
+> Build:
+> 1. Household members (step 25) see shared policies once, each person's own policies, and
+>    who is covered by what (spouse on the health plan, teen drivers on the car). Gaps per
+>    person: a new teen driver, a dependant with no life cover behind them, a partner's
+>    employer plan that's cheaper for the family.
+> 2. Partners only see what they share, as today.
+>
+> Acceptance criteria:
+> - The sharing rules hold (tests); a family health plan comparison counts both employers'
+>   plans
+
+### Step 199: Claim or pay yourself?
+
+> Read CLAUDE.md. Help deciding whether a claim is worth it.
+>
+> Build:
+> 1. Before a claim (step 107 and 155's filing), Jane shows the payout after deductible
+>    against the likely premium rise over three years (config surcharge rates per claim
+>    kind), and the claims-free discount at risk; demo advice only, the facts on real
+>    accounts.
+>
+> Acceptance criteria:
+> - A small claim under the deductible says so; the three-year figure is tested for each
+>   kind
+
+### Step 200: Health cover all year
+
+> Read CLAUDE.md. Get the most out of the health plan they have.
+>
+> Build:
+> 1. From transactions and the plan: deductible and out-of-pocket so far this year, the
+>    month they'll hit the maximum, HSA or FSA money left and the use-it-or-lose-it date,
+>    in-network checks against the plan's stand-in directory, and big bills checked
+>    against what the plan should have paid (a dispute card for the team).
+>
+> Acceptance criteria:
+> - The demo year shows deductible progress and an FSA deadline; a bill above the plan's
+>   share opens a dispute card
+
+### Step 201: Business and side-gig cover
+
+> Read CLAUDE.md. Cover for what people earn on the side.
+>
+> Build:
+> 1. Self-employed or gig income (step 123's signals) brings business cover into the
+>    profile: general liability, professional liability, business use on the car, equipment;
+>    quotes from the stand-in partner, gaps by rules, in the checkup.
+>
+> Acceptance criteria:
+> - Personal policies are never presented as covering business use; each kind has tests
+
+### Step 202: Insurance on autopilot, round two
+
+> Read CLAUDE.md. One yearly insurance review, done for them.
+>
+> Build:
+> 1. Once a year (and after a life event) Jane runs every check from this phase and
+>    Phase AD together and sends one message: what she did by herself within the caps,
+>    what needs a tap, and the yearly money involved. "Keep me covered" handles renewals,
+>    payment plans and discounts at "Everything allowed".
+> 2. Every insurance capability in the registry, with bank questions that score well.
+>
+> Acceptance criteria:
+> - The review message is one message with every item's button; nothing price-changing
+>   happens without a tap below "Everything allowed"
+
 ### Later, when the founder is ready
 
 These need an outside account, a partner or a decision: Plaid Production (real banks) and
@@ -3311,7 +3419,8 @@ Plaid Investments and Liabilities, counsel's review (privacy policy, terms, the 
 text, advice for real accounts), licensed partners to take the stand-ins live (a
 registered investment adviser and brokerage, an insurance agency, a loan marketplace, a
 credit bureau partner, tax filing), a native iPhone app (an Apple developer account), and
-Vercel Pro if 100 deploys a day is too few.
+Vercel Pro if 100 deploys a day is too few, and a transcription service for speaking to
+Jane in browsers without speech recognition (step 186).
 
 ## Phase P: regulated features through partners
 
