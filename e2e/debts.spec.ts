@@ -379,3 +379,32 @@ test("a tight month shows the plan, and a request is sent only on the tap", asyn
   await expect(page.getByText("Sent just now.")).toBeVisible();
   await expect(requests.first()).toContainText("Sent, answer in about 2 days");
 });
+
+// Spec step 178: what car fits, with insurance and running costs in, and a dealer's offer
+// checked against the preapprovals.
+test("buying a car shows the all-in cost, preapprovals and a dealer check", async ({
+  context,
+  page,
+  baseURL,
+}) => {
+  const user = await signedInUser("user");
+  userId = user.userId;
+  await context.addCookies([
+    { name: "authjs.session-token", value: user.sessionToken, url: baseURL ?? "" },
+  ]);
+  await page.goto("/connect");
+  await page.getByRole("button", { name: "Link a demo bank" }).click();
+  await expect(page).toHaveURL("/chat", { timeout: 60_000 });
+
+  await page.goto("/loans/car?price=30000&dealerApr=8.99&dealerMonths=60");
+  await expect(page.getByRole("heading", { level: 1, name: "Buying a car" })).toBeVisible();
+  const costs = page.getByRole("table", { name: "Monthly cost" });
+  await expect(costs).toContainText("Insurance");
+  await expect(costs).toContainText("Fuel");
+  await expect(costs).toContainText("All in");
+  await expect(
+    page.getByRole("list", { name: "Offers" }).getByRole("listitem").first(),
+  ).toContainText("cheapest");
+  await expect(page.getByRole("status")).toContainText("more than the best preapproval");
+  await expect(page.getByRole("region", { name: "Assumptions" })).toContainText("Income:");
+});

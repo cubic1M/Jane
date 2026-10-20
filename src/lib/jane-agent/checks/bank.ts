@@ -1104,6 +1104,30 @@ const BASE_QUESTIONS: readonly CheckQuestion[] = [
       link: "/loans/cards",
     },
   },
+  // Spec step 178: buying a car, and a dealer's financing checked against preapprovals.
+  {
+    id: "debt-22",
+    text: "how much car can I afford",
+    needs: "rules",
+    expect: {
+      intent: "car_afford",
+      mentions: /cheapest preapproval/i,
+      link: "/loans/car",
+      list: true,
+      maxChars: 1_000,
+    },
+  },
+  {
+    id: "debt-23",
+    text: "the dealer offered 8.99% for 60 months on $30,000",
+    needs: "rules",
+    expect: {
+      intent: "car_dealer",
+      mentions: /dealer's financing/i,
+      link: "/loans/car",
+      list: true,
+    },
+  },
   // Spec step 177: a tight month.
   {
     id: "debt-21",

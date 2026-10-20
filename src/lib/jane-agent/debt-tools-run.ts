@@ -12,6 +12,7 @@ import { loadCreditCards } from "@/lib/credit-cards";
 import { loadCreditBuilding } from "@/lib/credit-building";
 import { loadBnpl } from "@/lib/bnpl";
 import { loadTightMoney } from "@/lib/tight-money";
+import { loadCar } from "@/lib/car";
 import { listApplications } from "@/lib/loan-applications";
 import { loadRefinance } from "@/lib/refinance";
 import {
@@ -30,6 +31,7 @@ import {
   creditBuildingToolOutput,
   bnplToolOutput,
   tightMoneyToolOutput,
+  carToolOutput,
 } from "./debt-tools";
 
 // Runs Claude's debt tools (./debt-tools.ts) for one person: read-only, scoped to them,
@@ -54,6 +56,24 @@ export async function runDebtTool(
       return out(debtsToolOutput(await loadDebts(userId, { client, now }), money));
     case "debt_autopilot":
       return out(debtAutopilotToolOutput(await loadDebtAutopilot(userId, { client, now }), money));
+    case "car_purchase": {
+      const i = (input ?? {}) as Record<string, unknown>;
+      const num = (v: unknown) => (typeof v === "number" && v > 0 ? v : undefined);
+      const apr = num(i.dealer_apr_percent);
+      const months = num(i.dealer_months);
+      const car = await loadCar(
+        userId,
+        {
+          priceCents: num(i.price_cents) && Math.round(num(i.price_cents)!),
+          dealer:
+            apr !== undefined && months !== undefined
+              ? { aprBps: Math.round(apr * 100), termMonths: Math.round(months), feesCents: 0 }
+              : undefined,
+        },
+        { client, now },
+      );
+      return out(carToolOutput(car, money));
+    }
     case "tight_money":
       return out(tightMoneyToolOutput(await loadTightMoney(userId, { client, now }), money));
     case "bnpl_installments": {

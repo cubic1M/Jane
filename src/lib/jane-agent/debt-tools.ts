@@ -13,6 +13,7 @@ import type { CreditCards } from "@/lib/credit-cards";
 import type { CreditBuilding } from "@/lib/credit-building";
 import { warnNewPlan, type Bnpl } from "@/lib/bnpl";
 import type { TightMoney } from "@/lib/tight-money";
+import type { Car } from "@/lib/car";
 import { REWARD_CATEGORY_LABELS } from "@/config/credit-cards";
 import type { DebtAutopilot } from "@/lib/debt-autopilot";
 import { PMI_SOURCE } from "@/config/debt";
@@ -103,6 +104,28 @@ export const DEBT_TOOLS: Anthropic.Tool[] = [
     description:
       "Help when the person's money is tight (demo-bank people only): whether the checking forecast dips under its cushion in the next month and when, the bills before then in the order to pay them (housing, utilities and insurance first, never delayed), the requests Jane has prepared (moving a due date after payday, a hardship program, a lower card rate, a late fee waived) with the exact text of each and whether it was sent, and what each lender answered. Sending any request needs the person's tap (the tight.send button); Jane never sends one by herself.",
     input_schema: noInput,
+  },
+  {
+    name: "car_purchase",
+    description:
+      "Planning a car purchase (demo-bank people only; nothing for real accounts): what the person can afford from their own income (all-in monthly cost, including the loan payment, insurance scaled from their auto policy, fuel from their gas spending, upkeep and registration, at most 20% of income), the highest price that fits, the preapproval loan offers compared by total cost with fees (cheapest first), and, with the dealer's rate and months, whether the dealer's financing costs more than the best preapproval. Every assumption is listed. Nothing is applied for here.",
+    input_schema: {
+      type: "object" as const,
+      properties: {
+        price_cents: {
+          type: "integer" as const,
+          description: "A car's price in cents (optional).",
+        },
+        dealer_apr_percent: {
+          type: "number" as const,
+          description: "The dealer's APR, e.g. 7.9 (optional).",
+        },
+        dealer_months: {
+          type: "integer" as const,
+          description: "The dealer's loan term in months (optional).",
+        },
+      },
+    },
   },
   {
     name: "mortgage",
@@ -248,6 +271,7 @@ export const DEBT_TOOL_STATUS: Readonly<Record<string, string>> = {
   credit_building: "Working out how to build your credit…",
   bnpl_installments: "Checking your buy now, pay later installments…",
   tight_money: "Looking at your month ahead…",
+  car_purchase: "Working out what car you can afford…",
 };
 
 export function refinanceToolOutput(refi: Refinance, money: (cents: number) => string) {
@@ -611,6 +635,41 @@ export function tightMoneyToolOutput(data: TightMoney, money: (cents: number) =>
       sent: i.sent && { on: i.sent.sentOn, status: i.sent.status, answer: i.sent.outcome },
     })),
     alwaysNeedsATap: "sending any request",
+  };
+}
+
+export function carToolOutput(car: Car, money: (cents: number) => string) {
+  if (!car.available) return { note: "No lending partner for this person's accounts yet." };
+  if (!car.costs) return { note: "Not enough income history to say what car fits." };
+  const c = car.costs;
+  return {
+    demoAdvice: true,
+    maxPrice: money(car.maxPriceCents!),
+    allInBudgetPerMonth: money(car.allowanceCents!),
+    atPrice: money(c.priceCents),
+    withinBudget: car.withinBudget,
+    monthly: {
+      loanPayment: money(c.paymentCents),
+      insurance: money(c.insuranceCents),
+      fuel: money(c.fuelCents),
+      upkeep: money(c.maintenanceCents),
+      registration: money(c.registrationCents),
+      allIn: money(c.allInCents),
+    },
+    preapprovals: car.offers.map((o) => ({
+      lender: o.offer.lender,
+      rate: `${(o.offer.aprBps / 100).toFixed(2)}%`,
+      monthly: money(o.monthlyCents),
+      totalCost: money(o.totalCents),
+      fees: o.offer.feeLabel,
+    })),
+    dealer: car.dealer && {
+      verdict: car.dealer.verdict,
+      monthly: money(car.dealer.monthlyCents),
+      totalCost: money(car.dealer.totalCents),
+      costsMoreThanBestPreapproval: money(car.dealer.extraCents),
+    },
+    assumptions: car.assumptions,
   };
 }
 

@@ -163,6 +163,26 @@ describe("debt questions", () => {
     expect(intent("should I start an affirm plan")).toEqual({ kind: "bnpl_new", totalCents: null });
   });
 
+  it("reads buying a car: what's affordable, preapprovals, and a dealer's offer", () => {
+    expect(intent("how much car can I afford")).toEqual({ kind: "car_afford", priceCents: null });
+    expect(intent("can I afford a $30,000 car")).toEqual({
+      kind: "car_afford",
+      priceCents: 3_000_000,
+    });
+    expect(intent("compare car loan preapproval offers")).toEqual({
+      kind: "car_afford",
+      priceCents: null,
+    });
+    expect(intent("the dealer offered 7.9% for 72 months on $28,000")).toEqual({
+      kind: "car_dealer",
+      aprBps: 790,
+      termMonths: 72,
+      priceCents: 2_800_000,
+    });
+    // Debt questions about a car already owned stay debt questions.
+    expect(intent("how much do I owe on my car")).toEqual({ kind: "debt_detail", target: "car" });
+  });
+
   it("reads a tight month", () => {
     for (const text of [
       "money is tight this month",

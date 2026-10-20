@@ -10,6 +10,7 @@ import { loadCreditCards } from "@/lib/credit-cards";
 import { loadCreditBuilding } from "@/lib/credit-building";
 import { loadBnpl } from "@/lib/bnpl";
 import { loadTightMoney } from "@/lib/tight-money";
+import { loadCar } from "@/lib/car";
 import { pullCredit } from "@/lib/credit";
 import { listApplications } from "@/lib/loan-applications";
 import { checkRates, loadRefinance } from "@/lib/refinance";
@@ -24,6 +25,7 @@ import { betterCardReply, cardFeeReply, cardForReply } from "./credit-card-repli
 import { buildCreditReply, simulateReply } from "./credit-building-replies";
 import { bnplNewPlanReply, bnplReply } from "./bnpl-replies";
 import { tightReply } from "./tight-money-replies";
+import { carDealerReply, carReply } from "./car-replies";
 import type { Reply } from "./replies";
 
 // Answers questions about debts by rules (spec Phase Y), with the same loaders as the
@@ -64,6 +66,27 @@ export async function answerDebt(
         data = await loadCreditBuilding(userId, { client, now });
       }
       return intent.kind === "build_credit" ? buildCreditReply(data) : simulateReply(data);
+    }
+    case "car_afford":
+      return carReply(
+        await loadCar(userId, { priceCents: intent.priceCents ?? undefined }, { client, now }),
+        intent.priceCents !== null,
+      );
+    case "car_dealer": {
+      const price = intent.priceCents ?? undefined;
+      return carDealerReply(
+        await loadCar(
+          userId,
+          {
+            priceCents: price,
+            dealer:
+              intent.aprBps !== null && intent.termMonths !== null
+                ? { aprBps: intent.aprBps, termMonths: intent.termMonths, feesCents: 0 }
+                : undefined,
+          },
+          { client, now },
+        ),
+      );
     }
     case "tight_money":
       return tightReply(await loadTightMoney(userId, { client, now }));

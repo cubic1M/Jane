@@ -376,6 +376,13 @@ async function LoansContent({
             </Link>
             .
           </p>
+          <p className="text-sm text-zinc-600 dark:text-zinc-400">
+            Thinking of buying a car?{" "}
+            <Link href="/loans/car" className={LINK}>
+              Plan it before the dealer
+            </Link>
+            .
+          </p>
 
           <p className="text-sm text-zinc-600 dark:text-zinc-400">
             Own a home with a mortgage?{" "}

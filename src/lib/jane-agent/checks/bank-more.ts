@@ -354,6 +354,21 @@ const rows: Row[] = [
   ["ask", "/ask", "explainer", "can i ask you anything about my money"],
   ["connect", "/connect", "explainer", "do you work with my bank"],
 
+  // Credit and borrowing (spec Phase AG, steps 174–178).
+  ["loans", "/loans/cards", "credit_cards", "which card should i use for gas"],
+  ["loans", "/loans/cards", "credit_cards", "is my annual fee worth it"],
+  ["loans", "/loans/cards", "credit_cards", "what's the best credit card for me"],
+  ["credit", "/loans/credit", "credit_building", "how do i build my credit"],
+  ["credit", "/loans/credit", "credit_building", "when does my statement close"],
+  ["credit", "/loans/credit", "credit_building", "what would my score be if i paid off my card"],
+  ["debt", "/loans", "bnpl_installments", "what klarna payments do i have coming"],
+  ["debt", "/loans", "bnpl_installments", "can i afford a $300 affirm plan"],
+  ["debt", "/loans/tight", "tight_money", "money is tight this month"],
+  ["debt", "/loans/tight", "tight_money", "i'm short on money"],
+  ["loans", "/loans/car", "car_purchase", "how much car can i afford"],
+  ["loans", "/loans/car", "car_purchase", "can i afford a $32,000 car"],
+  ["loans", "/loans/car", "car_purchase", "the dealer offered 7.9% for 72 months"],
+
   // Two questions in one message.
   ["two", "/home", "safe_to_spend", "how much can i spend and when is payday"],
   ["two", "/subscriptions", "subscriptions", "what's netflix cost and when does it renew"],

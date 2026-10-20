@@ -108,7 +108,7 @@ export const DEBT_MESSAGE_PRIORITY = {
 
 // What Jane does about debts by herself at each autopilot level (src/config/autopilot.ts),
 // step by step. Applying for credit, moving money and signing always need the person's tap,
-// at every level. Steps 110–117 and 174–177 add to this list.
+// at every level. Steps 110–117 and 174–178 add to this list.
 export const DEBT_AUTOPILOT: Readonly<
   Record<"ask" | "safe" | "all", readonly { step: number; does: string }[]>
 > = {
@@ -165,6 +165,10 @@ export const DEBT_AUTOPILOT: Readonly<
       step: 177,
       does: "When your forecast shows a tight month, prepares one plan: bills in order (housing, utilities and insurance first), and written requests to move a due date, ask for hardship help, a lower rate or a late fee waived. Every request waits for your tap.",
     },
+    {
+      step: 178,
+      does: "When you ask about a car, works out what you can afford with insurance and running costs in, compares preapproval offers by what they cost in all, and checks a dealer's financing against them. Nothing is applied for without your tap.",
+    },
   ],
   safe: [
     {
@@ -219,6 +223,10 @@ export const DEBT_AUTOPILOT: Readonly<
       step: 177,
       does: "When your forecast shows a tight month, prepares one plan: bills in order (housing, utilities and insurance first), and written requests to move a due date, ask for hardship help, a lower rate or a late fee waived. Every request waits for your tap.",
     },
+    {
+      step: 178,
+      does: "When you ask about a car, works out what you can afford with insurance and running costs in, compares preapproval offers by what they cost in all, and checks a dealer's financing against them. Nothing is applied for without your tap.",
+    },
   ],
   all: [
     {
@@ -272,6 +280,10 @@ export const DEBT_AUTOPILOT: Readonly<
     {
       step: 177,
       does: "When your forecast shows a tight month, prepares one plan: bills in order (housing, utilities and insurance first), and written requests to move a due date, ask for hardship help, a lower rate or a late fee waived. Every request waits for your tap.",
+    },
+    {
+      step: 178,
+      does: "When you ask about a car, works out what you can afford with insurance and running costs in, compares preapproval offers by what they cost in all, and checks a dealer's financing against them. Nothing is applied for without your tap.",
     },
   ],
 };
