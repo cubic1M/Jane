@@ -26,6 +26,8 @@ export const DETECTOR_EXEMPT: Readonly<Record<string, string>> = {
 export const TOOL_EXEMPT: Readonly<Record<string, string>> = {
   insurance_claim_worth:
     "answers a question that comes with an amount the person gives, and adds its line to a claim draft; the claim detector (insurance_claim) covers a repair Jane sees",
+  insurance_health_year:
+    "tracks a plan's deductible, out-of-pocket maximum and FSA from the plan's terms, which only the person's insurance page holds; its dispute card and FSA deadline arrive as messages",
   insurance_household:
     "needs the people the person lists on their insurance page and the policies they share; the profile holds neither, so a household gap can't be judged from the bank",
   tax_profile:
@@ -67,6 +69,15 @@ export const TOOL_EXEMPT: Readonly<Record<string, string>> = {
   plan_upkeep: "reports budget upkeep",
   budgets: "shows budgets the person set",
   safe_to_spend: "answers how much is safe to spend",
+  holdings: "lists what the person holds; the fee, rebalance and location detectors read it",
+  investments_overview: "reports totals; the detectors behind it make the suggestions",
+  investment_returns: "reports returns after fees and taxes (step 233); a report, never a promise",
+  goal_buckets: "shows which investments belong to which goal the person set",
+  family_investing: "shows custodial and family accounts the person set up",
+  property: "reports a rental property's numbers the person entered",
+  yearly_review: "rolls up what the other investing detectors found, once a year",
+  steady_hand: "a calm message after a market drop; it follows an event, not a profile",
+  crypto: "reports linked crypto read-only; nothing to suggest",
   debt_autopilot: "reports what Jane does by herself for debts at the person's level",
   debt_review:
     "gathers the debt items the other detectors already raise, once a year, into one message",

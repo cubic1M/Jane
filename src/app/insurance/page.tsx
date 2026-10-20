@@ -34,6 +34,8 @@ import { listNegotiations } from "@/lib/insurance/negotiate";
 import { refreshSavings } from "@/lib/insurance/savings";
 import { listRisks, refreshRisks } from "@/lib/insurance/risks";
 import { loadFamily } from "@/lib/insurance/family";
+import { loadHealthYear } from "@/lib/insurance/health-year";
+import { healthYearLines } from "@/lib/jane-agent/insurance/health-year";
 import { riskQuestion } from "@/lib/jane-agent/insurance/risk-words";
 import { lowering, savingLine } from "@/lib/jane-agent/insurance/saving-words";
 import { askCallBody, callResultBody } from "@/lib/jane-agent/insurance/done-by-jane-words";
@@ -219,6 +221,7 @@ async function InsuranceContent({
   const savings = await refreshSavings(user.id);
   // Spec step 198: the household's cover, what's shared with them and who is covered.
   const family = await loadFamily(user.id);
+  const healthYear = await loadHealthYear(user.id);
   const familyError = one("family");
   // Spec step 197: the questions about how they live, read from their payments.
   await refreshRisks(user.id);
@@ -287,6 +290,25 @@ async function InsuranceContent({
         >
           {saved}
         </p>
+      )}
+
+      {healthYear && (
+        <section id="health-year" className="flex flex-col gap-3" aria-labelledby="health-year-h">
+          <h2 id="health-year-h" className="text-xl font-semibold">
+            Your health plan this year
+          </h2>
+          <progress
+            className="w-full"
+            aria-label="Deductible met"
+            value={healthYear.progress.deductibleMetCents}
+            max={healthYear.plan.deductibleCents}
+          />
+          <ul className="flex flex-col gap-1 text-sm">
+            {healthYearLines(healthYear).map((line) => (
+              <li key={line}>{line}</li>
+            ))}
+          </ul>
+        </section>
       )}
 
       <section id="household" className="flex flex-col gap-3" aria-labelledby="household-heading">
