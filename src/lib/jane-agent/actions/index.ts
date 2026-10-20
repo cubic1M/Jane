@@ -154,6 +154,7 @@ import { billPay, billSkip } from "./billpay";
 import { attentionResume } from "./attention";
 import { whatIfAdopt } from "./whatif";
 import { leanNotNow, leanStart } from "./lean";
+import { askAnswer } from "./ask";
 import { suggestionNo, suggestionYes } from "./suggestion";
 import { steadyOn, steadyPay, steadySkip } from "./steady";
 import { unusualMe, unusualNotMe } from "./unusual";
@@ -389,6 +390,11 @@ export const ACTION_HANDLERS: Readonly<Record<ActionId, ActionHandler>> = {
   "whatif.adopt": whatIfAdopt,
   "lean.start": leanStart,
   "lean.not_now": leanNotNow,
+  "ask.answer.1": askAnswer(1),
+  "ask.answer.2": askAnswer(2),
+  "ask.answer.3": askAnswer(3),
+  "ask.answer.4": askAnswer(4),
+  "ask.answer.5": askAnswer(5),
   "suggestion.yes": suggestionYes,
   "suggestion.no": suggestionNo,
   "steady.pay": steadyPay,

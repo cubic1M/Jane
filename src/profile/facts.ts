@@ -52,6 +52,21 @@ export const FACT_SPECS = [
   F("insurance_health", "You pay for health insurance yourself", "boolean"),
   F("insurance_medigap", "You pay for Medicare supplement cover", "boolean"),
   F("age", "Your age", "number"),
+  F("age_band", "Your age, roughly", "choice", {
+    choices: ["under_30", "30_to_49", "50_to_57", "58_to_65", "66_to_72", "73_plus"],
+  }),
+  F("employer_match", "Your job matches your 401(k) contributions", "choice", {
+    choices: ["yes", "no"],
+  }),
+  F("filing_status", "How you file taxes", "choice", {
+    choices: ["single", "married_joint", "married_separate", "head_of_household"],
+  }),
+  F("business_structure", "How your business is set up", "choice", {
+    choices: ["sole_proprietor", "llc", "s_corp", "other"],
+  }),
+  F("hardship_reason", "What put you in debt trouble", "choice", {
+    choices: ["job_loss", "medical", "overspending", "other"],
+  }),
   F("risk", "How you feel about investment ups and downs", "text"),
   F("life_stage", "Where you are in life", "choice", {
     choices: ["starting", "raising", "peak", "approaching", "retired"],

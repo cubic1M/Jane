@@ -32,6 +32,16 @@ export const APPROACHING_PAYOFF_YEARS = 8;
 export const TOLD_AGE_STARTING_BELOW = 30;
 export const TOLD_AGE_APPROACHING_FROM = 58;
 export const TOLD_AGE_RETIRED_FROM = 66;
+// The youngest age in each age band the person can pick (the band, not a made-up age, is what
+// they told Jane; this is only what the life stage reads from it).
+export const AGE_BAND_FROM: Readonly<Record<string, number>> = {
+  under_30: 0,
+  "30_to_49": 30,
+  "50_to_57": 50,
+  "58_to_65": 58,
+  "66_to_72": 66,
+  "73_plus": 73,
+};
 
 // Small recurring things seen in the year before Jane calls it a pet or a car.
 export const PET_PURCHASES_MIN = 3;
