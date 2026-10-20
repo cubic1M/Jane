@@ -872,7 +872,7 @@ function build(kind: DecisionKind, ins: InsuranceSnapshot, asOf: string): Out {
         : {
             advice: "Probably, if you earn on the side.",
             facts:
-              "I don't see freelance or gig income in your accounts. Your home, renters and car policies cover your personal life, not work: mark yourself self-employed on your tax profile and I'll look again.",
+              "I don't see freelance or gig income in your accounts. Your home, renters and car policies cover your personal life, not work or a business: mark yourself self-employed on your tax profile and I'll look again.",
           };
     }
   }

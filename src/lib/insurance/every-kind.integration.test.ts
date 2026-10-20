@@ -80,11 +80,17 @@ describe.runIf(url)("every kind of cover against a real database", () => {
   it("reads income, assets, trips and care from the accounts, and finds those gaps", async () => {
     const me = await person({ demo: false });
     const household = await loadHousehold(me, { client, now: NOW });
-    expect(household.signals).toEqual({
+    expect(household.signals).toMatchObject({
       paycheck: true,
       assetsCents: 2_000_000,
       travelCents: 180_000,
       medicalCents: 60_000,
+    });
+    // No side work in these accounts (spec step 201): no business cover asked for.
+    expect(household.signals.selfEmployment).toMatchObject({
+      declared: false,
+      serviceCents: 0,
+      gigCents: 0,
     });
     const { gaps } = await loadInsurance(me, { client, now: NOW });
     expect(gaps.map((g) => g.key)).toEqual(["health", "disability", "travel"]);

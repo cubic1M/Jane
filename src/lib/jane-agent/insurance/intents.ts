@@ -52,7 +52,9 @@ export type InsuranceAsk =
   | "health_year"
   // decide: "should I get umbrella insurance?", "do I need life insurance?" and the like,
   // answered directly in a few sentences (./decisions.ts).
-  | "decide";
+  | "decide"
+  // business: cover for freelance, gig and side-business work (spec step 201).
+  | "business";
 
 export type InsuranceIntent = {
   kind: "insurance";
@@ -183,6 +185,10 @@ const HOUSEHOLD =
 const HEALTH_YEAR =
   /\b(?:fsa|flex(?:ible)? spending|use it or lose it)\b|\b(?:how much|how far|where am i|have i met|did i meet|when (?:will|do) i (?:hit|reach|meet))\b.{0,30}\b(?:deductible|out[- ]of[- ]pocket(?: max\w*)?)\b|\bdeductible\b.{0,20}\b(?:met|so far|left|remaining|progress)\b|\bout[- ]of[- ]pocket (?:max\w*|limit)\b|\bin[- ]network\b|\b(?:is|was) (?:my|this|that|the) (?:\w+ )?bill (?:right|correct|too (?:high|much))\b|\boverbill\w*|\bhealth plan\b.{0,20}\b(?:this year|so far)\b/;
 
+// Cover for what they earn on the side (spec step 201).
+const BUSINESS =
+  /\b(?:side (?:gig|hustle|job|business)|freelanc\w*|self[- ]employed|gig work|business (?:insurance|liability|use|equipment)|professional liability|errors and omissions|(?:driv\w+|drive) for work|work driving|work equipment)\b/;
+
 const ASKS: readonly [InsuranceAsk, RegExp][] = [
   ["cards", CARD_COVER],
   [
@@ -283,6 +289,7 @@ export function parseInsurance(text: string): InsuranceIntent | null {
     !LIFE.test(text) &&
     !HOUSEHOLD.test(text) &&
     !HEALTH_YEAR.test(text) &&
+    !BUSINESS.test(text) &&
     !MARRIED.test(text) &&
     !CAR.test(text)
   ) {
@@ -294,6 +301,7 @@ export function parseInsurance(text: string): InsuranceIntent | null {
     return { kind: "insurance", ask: "life_change", policyKind: null, event: "car_bought" };
   if (LIFE.test(text)) return { kind: "insurance", ask: "life", policyKind };
   if (HEALTH_YEAR.test(text)) return { kind: "insurance", ask: "health_year", policyKind };
+  if (BUSINESS.test(text)) return { kind: "insurance", ask: "business", policyKind };
   if (SAVINGS.test(text)) return { kind: "insurance", ask: "savings", policyKind };
   if (RISKS.test(text)) return { kind: "insurance", ask: "risks", policyKind };
   if (HOUSEHOLD.test(text)) return { kind: "insurance", ask: "household", policyKind };
