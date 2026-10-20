@@ -392,6 +392,8 @@ model User {
   payrollChanges PayrollChange[]
   oldPlans       OldPlan[]
 
+  retirementIncome RetirementIncome?
+
   @@map("users")
 }
 
@@ -3498,4 +3500,22 @@ model OldPlan {
 
   @@unique([userId, employer])
   @@map("old_plans")
+}
+
+// Spec step 212: what the person has told Jane for the retirement paycheck: their Social
+// Security statement's monthly benefit at full retirement age, when they plan to retire,
+// when to start Social Security, and what they expect to spend a month. All optional;
+// Jane estimates what's missing and says so.
+model RetirementIncome {
+  id                String   @id @default(cuid())
+  userId            String   @unique @map("user_id")
+  ssMonthlyCents    Int?     @map("ss_monthly_cents")
+  retireAge         Int?     @map("retire_age")
+  ssStartAge        Int?     @map("ss_start_age")
+  spendMonthlyCents Int?     @map("spend_monthly_cents")
+  updatedAt         DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("retirement_incomes")
 }

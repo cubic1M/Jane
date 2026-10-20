@@ -24,6 +24,8 @@ import {
 } from "./retirement-accounts-copy";
 import type { OldAccountsView } from "@/lib/investments/old-accounts";
 import { foundLine, OLD_LINK, rollButton, summaryLine } from "./old-accounts-copy";
+import type { RetirementIncomeView } from "@/lib/investments/retirement-income";
+import { drawLine, paycheckLine, RI_LINK, rmdLine, ssLine } from "./retirement-income-copy";
 import { STEADY_LINK, steadyMessage, timelines } from "./steady-copy";
 import { CRYPTO_LINK, feeFlag, NEVER_TRADES, shareFlag, sizeLine } from "./crypto-copy";
 import {
@@ -801,4 +803,26 @@ export function oldAccountsReply(view: OldAccountsView): Reply {
     };
   }
   return { body: base.endsWith(".") ? base : `${base}.`, actions: [OLD_LINK], refs: {} };
+}
+
+// Spec step 212: Social Security options, the minimums, the order to draw and the paycheck
+// with how long it lasts, in demo advice mode; just the Social Security and minimum facts
+// otherwise. Ranges, never a promise.
+export function retirementIncomeReply(view: RetirementIncomeView): Reply {
+  const facts = [ssLine(view), rmdLine(view)].filter(Boolean);
+  if (!view.advice) {
+    return {
+      body: `${facts.join(" ") || "Tell me your Social Security statement's amount and when you plan to retire."} I don't give recommendations on real accounts yet.`,
+      actions: [RI_LINK],
+      refs: {},
+    };
+  }
+  const parts = [paycheckLine(view), ...facts, drawLine(view)].filter(Boolean);
+  return {
+    body:
+      parts.join(" ") ||
+      "Tell me your Social Security statement's amount and when you plan to retire, and I'll work out a paycheck that lasts.",
+    actions: [RI_LINK],
+    refs: { advice: true },
+  };
 }

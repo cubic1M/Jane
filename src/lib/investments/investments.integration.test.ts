@@ -28,6 +28,11 @@ import { CompanyStockError, loadCompanyStock, saveGrant, sellPart } from "./comp
 import { cryptoTotal, loadCrypto, syncAllCrypto } from "@/lib/crypto/crypto";
 import { CashError, loadCash, moveCash } from "./cash";
 import { automaticLog, runAutomaticInvesting } from "./automatic";
+import {
+  loadRetirementIncome,
+  saveRetirementIncome,
+  RetirementIncomeError,
+} from "./retirement-income";
 import { answerOldPlan, loadOldAccounts, startRollover, settleRollovers } from "./old-accounts";
 import {
   contributeToIra,
@@ -1040,6 +1045,54 @@ describe.runIf(url)("investments in Jane's chat, against a real database", () =>
       ).toBe(0);
       const limits = (await loadRetirementAccounts(userId, { client, now: later })).limits;
       expect(limits.find((l) => l.key === "ira")!.usedCents).toBe(0);
+    },
+  );
+
+  it(
+    "step 212: Social Security from pay then from the statement, minimums, the order to draw, how long it lasts",
+    SLOW,
+    async () => {
+      const userId = await demoPerson();
+      await saveProfileForm(
+        userId,
+        { age: "45", horizon: "over_20", dropReaction: "worry", goals: ["retirement"] },
+        { client, now: LINKED },
+      );
+      const est = await loadRetirementIncome(userId, { client, now: LINKED });
+      // Pay is $81,600: the estimate, labelled as one.
+      expect(est.ss).toMatchObject({ source: "estimate", fullMonthlyCents: 292_188 });
+      expect(est.ss.options.map((o) => o.age)).toEqual([62, 67, 70]);
+      expect(est.balances.preTaxCents).toBeGreaterThan(0);
+      expect(est.draw.map((d) => d.key)).toEqual(["taxableCents", "preTaxCents"]);
+      expect(est.spendFrom).toBe("pay");
+      expect(est.applies).toBe(false);
+      // The paycheck always says how long the money lasts.
+      expect(est.paycheck!.lasts.lowAge).toBeLessThanOrEqual(est.paycheck!.lasts.highAge);
+
+      await saveRetirementIncome(
+        userId,
+        { ssMonthly: "3,100", retireAge: "62", ssStartAge: "67", spendMonthly: "4000" },
+        { client },
+      );
+      const saved = await loadRetirementIncome(userId, { client, now: LINKED });
+      expect(saved.ss).toMatchObject({
+        source: "statement",
+        fullMonthlyCents: 310_000,
+        startAge: 67,
+      });
+      expect(saved).toMatchObject({ retireAge: 62, spendMonthlyCents: 400_000, spendFrom: "you" });
+      await expect(
+        saveRetirementIncome(
+          userId,
+          { ssMonthly: "", retireAge: "20", ssStartAge: "", spendMonthly: "" },
+          { client },
+        ),
+      ).rejects.toThrow(RetirementIncomeError);
+      const { reply } = await sendToJane(userId, "when should I claim social security", {
+        client,
+        now: LINKED,
+      });
+      expect(reply.body).toMatch(/\$2,170\.00 a month if you start at 62, \$3,100\.00 at 67/);
     },
   );
 });

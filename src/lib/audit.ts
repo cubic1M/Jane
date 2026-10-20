@@ -179,7 +179,9 @@ export type AuditEvent =
   // Spec step 211: an old retirement plan found, and its direct rollover.
   | "old_plan_found"
   | "rollover_started"
-  | "rollover_completed";
+  | "rollover_completed"
+  // Spec step 212: the person's retirement income answers saved (never the amounts).
+  | "retirement_income_saved";
 
 export type AuditActor = { type: ActorType; id: string | null };
 

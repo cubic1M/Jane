@@ -239,6 +239,12 @@ async function InvestmentsContent() {
             : a forgotten 401(k) at a past employer, found and rolled over.
           </p>
           <p className="text-sm text-zinc-600 dark:text-zinc-400">
+            <Link href="/investments/retirement-income" className={LINK}>
+              Income in retirement
+            </Link>
+            : Social Security, the order to draw, and a paycheck that lasts.
+          </p>
+          <p className="text-sm text-zinc-600 dark:text-zinc-400">
             Learn:{" "}
             {["index-funds", "fees", "the-match", "roth-vs-traditional", "rebalancing"].map(
               (slug, i) => (

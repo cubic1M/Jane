@@ -21,6 +21,7 @@ import { loadCrypto } from "@/lib/crypto/crypto";
 import { loadCash } from "@/lib/investments/cash";
 import { loadRetirementAccounts } from "@/lib/investments/retirement-accounts";
 import { loadOldAccounts } from "@/lib/investments/old-accounts";
+import { loadRetirementIncome } from "@/lib/investments/retirement-income";
 import { loadSteadyHand } from "@/lib/investments/steady-hand";
 import { CASH_HOMES, CASH_RATES_AS_OF } from "@/config/cash";
 import { formatReturn } from "@/insights/returns";
@@ -143,6 +144,12 @@ export const INVESTMENT_TOOLS: Anthropic.Tool[] = [
     input_schema: noInput,
   },
   {
+    name: "retirement_income",
+    description:
+      "Turning savings into a retirement paycheck: Social Security's monthly benefit if started at 62, 67 or 70 (from the person's statement or an estimate from pay, with which) and the age waiting has paid more by; the age required minimum distributions start (73 or 75) and the first year's minimum; the order to draw from accounts; and, in demo advice mode, how long the money lasts at their spending as a range and the most a month that lasts to 95. In today's dollars. State only these ranges: never promise income or say what markets will do.",
+    input_schema: noInput,
+  },
+  {
     name: "steady_hand",
     description:
       "Whether the person's investments have had a big drop lately (down 8% over a month or 15% over three, their own return, money in and out left out) and, in demo advice mode, how each goal's timeline sits (near goals are already in cash). Report only these past facts and the plan to stay the course. NEVER say or imply what markets will do, when they will recover, or that now is a good or bad time: no one can know.",
@@ -189,6 +196,7 @@ export const INVESTMENT_TOOL_STATUS: Readonly<Record<string, string>> = {
   crypto: "Reading your crypto balances…",
   cash_plan: "Looking at where your cash sits…",
   steady_hand: "Looking at how your investments have moved…",
+  retirement_income: "Working out your retirement income…",
   old_accounts: "Looking for old retirement accounts…",
   retirement_accounts: "Checking your retirement limits…",
   college_plan: "Working out college costs…",
@@ -580,6 +588,37 @@ export async function runInvestmentTool(
           steps: p.steps.map((s) => ({ step: s.label, done: s.doneOn })),
         })),
         rolloverIsAWithdrawal: false,
+      });
+    }
+    case "retirement_income": {
+      const v = await loadRetirementIncome(userId, { client, now });
+      return out({
+        socialSecurity: {
+          source: v.ss.source,
+          options: v.ss.options.map((o) => ({
+            startAge: o.age,
+            monthly: money(o.monthlyCents),
+            totalByAge85: money(o.lifetimeToAgeCents),
+          })),
+          waitingFrom62To67PaidMoreByAge: v.ss.breakeven62to67,
+          waitingFrom67To70PaidMoreByAge: v.ss.breakeven67to70,
+        },
+        requiredMinimumDistributions: v.rmd && {
+          startAge: v.rmd.startAge,
+          firstYearMinimum: v.rmd.firstYearCents === null ? null : money(v.rmd.firstYearCents),
+        },
+        orderToDraw: v.draw.map((d) => d.label),
+        plan: !v.advice
+          ? "advice only in demo advice mode"
+          : v.paycheck && {
+              spendingAMonth: money(v.spendMonthlyCents),
+              retireAge: v.retireAge,
+              moneyLastsToAge: { low: v.paycheck.lasts.lowAge, high: v.paycheck.lasts.highAge },
+              mostAMonthThatLastsTo95: {
+                low: money(v.paycheck.sustainableMonthly.lowCents),
+                high: money(v.paycheck.sustainableMonthly.highCents),
+              },
+            },
       });
     }
     case "steady_hand": {

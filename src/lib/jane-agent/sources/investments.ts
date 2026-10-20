@@ -45,6 +45,13 @@ import {
   questionLine,
   rollButton,
 } from "../investments/old-accounts-copy";
+import {
+  drawLine,
+  paycheckLine,
+  RI_LINK,
+  rmdLine,
+  ssLine,
+} from "../investments/retirement-income-copy";
 import { AUTO_LOG_LINK, summaryBody } from "../investments/automatic-copy";
 import { CASH_MIN_GAIN_CENTS } from "@/config/cash";
 import { CASH_LINK, cashLine, moveButtons } from "../investments/cash-copy";
@@ -317,6 +324,21 @@ export const investmentsSource: MessageSource = {
         actions: [{ id: "hsa.link", label: "Link a demo HSA", kind: "primary" }, snoozeButton()],
         dedupeKey: "hsa:link",
         priority: MESSAGE_PRIORITY.hsa,
+      });
+    }
+    // Step 212: from 15 years before retiring, one message a year with the claiming ages, the
+    // paycheck and how long it lasts. Past facts and ranges, never a promise.
+    const income = inv.retirementIncome;
+    if (inv.advice && income.applies && income.paycheck) {
+      out.push({
+        kind: "heads_up",
+        body: [paycheckLine(income), ssLine(income), rmdLine(income), drawLine(income)]
+          .filter(Boolean)
+          .join(" "),
+        refs: { advice: true },
+        actions: [RI_LINK, snoozeButton()],
+        dedupeKey: `retire:income:${new Date(snapshot.asOf).getUTCFullYear()}`,
+        priority: MESSAGE_PRIORITY.retirement_income,
       });
     }
     // Step 211: each past employer is asked about once; a found plan with fees worth saving

@@ -22,7 +22,8 @@ export type InvestmentTopic =
   | "cash"
   | "steady"
   | "retirement_accounts"
-  | "old_accounts";
+  | "old_accounts"
+  | "retirement_income";
 
 export type InvestmentIntent = {
   kind: "investments";
@@ -128,7 +129,13 @@ const RETIREMENT_ACCOUNTS =
 const OLD_ACCOUNTS =
   /\b(?:old|previous|prior|past|former|forgotten|lost) (?:401\(?k\)?|403\(?b\)?|retirement (?:plan|account)|employer plan)\b|\b401\(?k\)? (?:from|at) (?:a |my |an )?(?:old|previous|prior|past|former)\b|\broll(?:ing)? ?over\b|\brollover\b|\bleft (?:a |my )?401\(?k\)? (?:at|with)\b/;
 
+// Spec step 212: Social Security, minimum distributions and the retirement paycheck.
+const RETIREMENT_INCOME =
+  /\bsocial security\b|\brmds?\b|\brequired minimum distributions?\b|\bretirement (?:paycheck|income)\b|\bwhen (?:should|can) i (?:claim|take|start)\b.*\b(?:social security|benefits?)\b|\bhow long will my (?:money|savings|retirement) last\b|\bwhich accounts? (?:do i |should i )?(?:draw|withdraw|take) (?:from )?first\b|\bdrawdown\b/;
+
 export function parseInvestmentIntent(text: string): InvestmentIntent | null {
+  if (RETIREMENT_INCOME.test(text))
+    return { kind: "investments", topic: "retirement_income", account: null };
   if (OLD_ACCOUNTS.test(text)) return { kind: "investments", topic: "old_accounts", account: null };
   if (RETIREMENT_ACCOUNTS.test(text))
     return { kind: "investments", topic: "retirement_accounts", account: null };

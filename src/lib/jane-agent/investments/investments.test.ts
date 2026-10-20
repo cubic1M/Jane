@@ -57,6 +57,7 @@ import {
   steadyReply,
   retirementAccountsReply,
   oldAccountsReply,
+  retirementIncomeReply,
 } from "./replies";
 import { gather } from "../brain";
 import { parseIntent } from "../intents";
@@ -2169,5 +2170,100 @@ describe("the old account question, the found plan and the rollover", () => {
         (a) => a.id,
       ),
     ).toEqual(["open"]);
+  });
+});
+
+// Spec step 212: income in retirement.
+const RI_VIEW = {
+  advice: true,
+  age: 58,
+  applies: true,
+  retireAge: 65,
+  balances: { taxableCents: 10_000_000, preTaxCents: 60_000_000, rothCents: 10_000_000 },
+  ss: {
+    fullMonthlyCents: 300_000,
+    source: "statement" as const,
+    options: [
+      { age: 62, monthlyCents: 210_000, lifetimeToAgeCents: 57_960_000 },
+      { age: 67, monthlyCents: 300_000, lifetimeToAgeCents: 64_800_000 },
+      { age: 70, monthlyCents: 372_000, lifetimeToAgeCents: 66_960_000 },
+    ],
+    breakeven62to67: 78.7,
+    breakeven67to70: 82.5,
+    startAge: 67,
+  },
+  rmd: { startAge: 75, birthYear: 1968, firstYearCents: 2_439_024 },
+  draw: [
+    {
+      key: "taxableCents" as const,
+      label: "Taxable accounts first: only the gains are taxed",
+      cents: 10_000_000,
+    },
+    {
+      key: "preTaxCents" as const,
+      label: "Then pre-tax accounts (401(k), traditional IRA): taxed as income",
+      cents: 60_000_000,
+    },
+  ],
+  spendMonthlyCents: 500_000,
+  spendFrom: "you" as const,
+  taxRate: 0.12,
+  paycheck: {
+    sustainableMonthly: { lowCents: 480_000, highCents: 640_000 },
+    lasts: { lowAge: 93, highAge: 95 },
+    lastsToPlan: false,
+  },
+  inputs: { ssMonthlyCents: 300_000, retireAge: 65, ssStartAge: null, spendMonthlyCents: 500_000 },
+};
+
+describe("retirement income questions, by rules", () => {
+  it.each([
+    "when should I claim social security",
+    "what is an RMD",
+    "how long will my money last",
+    "my retirement paycheck",
+    "which accounts should I draw from first",
+  ])("reads %j as retirement income", (text) => {
+    expect(parseIntent(text, ASOF)).toMatchObject({
+      kind: "investments",
+      topic: "retirement_income",
+    });
+  });
+});
+
+describe("retirementIncomeReply and the retirement income message", () => {
+  it("gives the paycheck with how long it lasts, Social Security at 62, 67 and 70, the minimums, the order", () => {
+    const reply = retirementIncomeReply(RI_VIEW);
+    expect(reply.body).toMatch(
+      /^Spending \$5,000\.00 a month from 65, your money would last to about age 93 to 95 \(the plan runs to 95\)\./,
+    );
+    expect(reply.body).toMatch(/\$4,800\.00 to \$6,400\.00 a month before tax/);
+    expect(reply.body).toMatch(
+      /\$2,100\.00 a month if you start at 62, \$3,000\.00 at 67, \$3,720\.00 at 70 \(from your statement\)/,
+    );
+    expect(reply.body).toMatch(
+      /Required minimum distributions start at 75; on today's pre-tax balance the first year's minimum would be about \$24,390\.24/,
+    );
+    expect(reply.body).toMatch(
+      /The order to draw: 1\. taxable accounts first, 2\. then pre-tax accounts \(401\(k\)/,
+    );
+    expect(reply.refs).toEqual({ advice: true });
+  });
+  it("gives only Social Security and minimum facts outside demo advice mode", () => {
+    const reply = retirementIncomeReply({ ...RI_VIEW, advice: false });
+    expect(reply.body).not.toMatch(/Spending|order to draw/);
+    expect(reply.body).toMatch(/I don't give recommendations on real accounts yet\.$/);
+  });
+  it("posts one message a year from 15 years out, in demo advice mode only", () => {
+    const gather = (retirementIncome: InvestmentSnapshot["retirementIncome"], advice = true) =>
+      investmentsSource
+        .gather(
+          { ...base, investments: demoInvestmentSnapshot({ advice, retirementIncome }) },
+          {} as never,
+        )
+        .filter((c) => c.dedupeKey.startsWith("retire:income:"));
+    expect(gather(RI_VIEW).map((m) => m.dedupeKey)).toEqual(["retire:income:2026"]);
+    expect(gather({ ...RI_VIEW, applies: false })).toEqual([]);
+    expect(gather(RI_VIEW, false)).toEqual([]);
   });
 });

@@ -198,6 +198,8 @@ export const MESSAGE_PRIORITY = {
   retirement_accounts: 40,
   // Spec step 211: the question about a past employer's 401(k), then the rollover.
   old_plan: 39,
+  // Spec step 212: the retirement paycheck, from 15 years out (demo advice).
+  retirement_income: 35,
   // Spec step 164: the month's summary of what Jane did by herself in investing.
   investing_summary: 40,
   auto_invest_run: 31,
