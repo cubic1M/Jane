@@ -11,6 +11,7 @@ import { employers } from "@/insights/changes";
 import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
 import { loadPayoff } from "@/lib/debt-plan";
+import { leanActive } from "@/lib/lean-plan";
 import { listGoals } from "@/lib/goals";
 import { homeSummary } from "@/lib/home";
 import { mayAct, recordAct } from "@/lib/sector-autopilot";
@@ -88,6 +89,8 @@ export async function runPaycheckPlan(
 ): Promise<PaycheckPlanView | null> {
   const movement = partner === undefined ? await moneyPartnerFor(userId, { client }) : partner;
   if (!movement) return null;
+  // Spec step 204: while the lean plan is in force, nothing moves by itself.
+  if (await leanActive(userId, { client })) return null;
   const loaded = input ?? (await loadDetectionInput(userId, { client, now }));
   const paycheck = latestPaycheck(loaded);
   if (!paycheck) return null;
