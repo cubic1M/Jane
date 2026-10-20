@@ -40,6 +40,14 @@ import { NegotiationError, callCarrier, declineNegotiation } from "@/lib/insuran
 import { fileClaim as fileClaimNow } from "@/lib/insurance/claim-filing";
 import { callResultBody } from "../insurance/done-by-jane-words";
 import {
+  SavingError,
+  applySaving,
+  dismissSaving,
+  listSavings,
+  type Saving,
+} from "@/lib/insurance/savings";
+import { appliedNote, sameCover } from "../insurance/saving-words";
+import {
   askingStep,
   boughtNote,
   decisionStep,
@@ -535,5 +543,60 @@ export const claimFile: ActionHandler = {
       answeredWith: action.label,
       note: `Filed. ${claim.carrier ?? "Your insurer"} has your claim, number ${claim.claimNumber}. I'll tell you here as it moves.`,
     };
+  },
+};
+
+// Spec step 196: paying less for the same cover. One tap applies the savings that keep the
+// cover (through the partner); a higher deductible is its own tap. Nothing changes without it.
+async function savingStep<T>(run: () => Promise<T>): Promise<T> {
+  try {
+    return await run();
+  } catch (error) {
+    if (error instanceof SavingError) throw answeredElsewhere(error.message);
+    throw error;
+  }
+}
+
+export const savingApplyAll: ActionHandler = {
+  id: "saving.apply_all",
+  on: "open",
+  async run({ userId, action, client, now }) {
+    const offered = sameCover(await listSavings(userId, { client, status: "offered" }));
+    if (offered.length === 0) throw answeredElsewhere("You've already answered this.");
+    const done: Saving[] = [];
+    for (const s of offered) {
+      try {
+        done.push(await applySaving(userId, s.id, { client, now }));
+      } catch (error) {
+        // One that no longer applies doesn't stop the others.
+        if (!(error instanceof SavingError)) throw error;
+      }
+    }
+    if (done.length === 0) throw answeredElsewhere("Those don't apply anymore.");
+    return { answeredWith: action.label, note: appliedNote(done) };
+  },
+};
+
+export const savingApply: ActionHandler = {
+  id: "saving.apply",
+  on: "open",
+  async run({ userId, message, action, client, now }) {
+    const id = message.refs.savingId;
+    if (!id) throw new ChatActionError("failed", "Something went wrong. Open it instead.");
+    const done = await savingStep(() => applySaving(userId, id, { client, now }));
+    return { answeredWith: action.label, note: appliedNote([done]) };
+  },
+};
+
+export const savingNo: ActionHandler = {
+  id: "saving.no",
+  on: "open",
+  async run({ userId, message, action, client, now }) {
+    const ids = message.refs.savingId
+      ? [message.refs.savingId]
+      : sameCover(await listSavings(userId, { client, status: "offered" })).map((s) => s.id);
+    if (ids.length === 0) throw answeredElsewhere("You've already answered this.");
+    for (const id of ids) await savingStep(() => dismissSaving(userId, id, { client, now }));
+    return { answeredWith: action.label, note: "Okay, I won't bring those up again." };
   },
 };

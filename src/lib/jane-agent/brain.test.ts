@@ -212,7 +212,7 @@ describe("the week's plan", () => {
     expect(message).toMatchObject({
       kind: "decision",
       dedupeKey: "plan:2026-10-19",
-      body: "Your plan for this week is ready: 4 things, could save $520.00 a year. 2 of them are safe for me to just do; the rest need a look from you.",
+      body: "Your plan for this week is ready: 4 things, worth up to $520.00 a year if you say yes to all. 2 of them are safe for me to just do; the rest need a look from you.",
       actions: [
         { id: "plan.approve_safe", label: "Approve all safe ones", kind: "primary" },
         { id: "open", label: "Review", kind: "link", href: "/plan" },

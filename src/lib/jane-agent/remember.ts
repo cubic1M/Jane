@@ -1,4 +1,5 @@
 import type { PreferenceDraft } from "./preferences";
+import { parseStyle } from "./style";
 import { dateAndDays } from "./sources/source";
 
 // Things the person tells Jane about themselves (spec step 91), understood by rules: their
@@ -29,6 +30,9 @@ const sentence = (text: string) => {
 // What the person told Jane, as what "Remember this" would save, or null.
 export function parseFact(text: string): PreferenceDraft | null {
   const inner = REMEMBER.exec(text)?.[1] ?? text;
+  // Spec step 188: how they like Jane to talk.
+  const style = parseStyle(inner);
+  if (style) return style;
   const pay = PAYDAY.exec(inner);
   if (pay) {
     const days = [...new Set(pay.slice(1).filter(Boolean).map(Number))]

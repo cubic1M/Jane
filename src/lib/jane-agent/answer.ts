@@ -6,6 +6,7 @@ import { cardCoverAnswer } from "./insurance/card-cover";
 import { lifeAnswer } from "./insurance/life";
 import { lifeChangeAnswer } from "./insurance/cover-changes";
 import { fileClaimAnswer, renewalCallAnswer } from "./insurance/done-by-jane";
+import { savingsAnswer } from "./insurance/savings";
 import type { CoverEvent } from "@/config/insurance";
 import { claimAnswer } from "./insurance/claim";
 import { quotesAnswer } from "./insurance/quotes";
@@ -69,6 +70,8 @@ import { rankedFor } from "./priorities";
 import { prioritiesReply } from "./replies-priorities";
 import { wholePictureReply } from "./whole-picture";
 import { planReply } from "./multi";
+import { loadTimeline } from "@/lib/timeline";
+import { timelineReply } from "./replies-timeline";
 import { paycheckReply } from "./replies-paycheck";
 import { latestPaycheckPlan } from "@/lib/money-movement/paycheck";
 import { loadBillPay } from "@/lib/money-movement/bill-pay";
@@ -242,6 +245,8 @@ async function byIntent(
       // Spec step 155: renewal calls and claims done by Jane.
       if (intent.ask === "renewal_call") return renewalCallAnswer(userId, { client, now });
       if (intent.ask === "file_claim") return fileClaimAnswer(userId, { client, now });
+      // Spec step 196: cheaper ways to pay for the same cover.
+      if (intent.ask === "savings") return savingsAnswer(userId, { client, now });
       if (intent.ask === "life_change") {
         return lifeChangeAnswer(userId, intent.event as CoverEvent, { client, now });
       }
@@ -362,6 +367,9 @@ async function byIntent(
     }
     case "changes":
       return changesReply(await loadChanges(userId, { client, now }));
+    // Spec step 187.
+    case "timeline":
+      return timelineReply(await loadTimeline(userId, { client, limit: 20 }), intent.why, asOf);
     case "what_did":
       return whatDidReply(await whatJaneDid(userId, { client, now }));
     case "act":
