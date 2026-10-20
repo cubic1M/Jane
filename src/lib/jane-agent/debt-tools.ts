@@ -14,6 +14,7 @@ import type { CreditBuilding } from "@/lib/credit-building";
 import { warnNewPlan, type Bnpl } from "@/lib/bnpl";
 import type { TightMoney } from "@/lib/tight-money";
 import type { Car } from "@/lib/car";
+import type { HomeBuying } from "@/lib/home-buying";
 import { REWARD_CATEGORY_LABELS } from "@/config/credit-cards";
 import type { DebtAutopilot } from "@/lib/debt-autopilot";
 import { PMI_SOURCE } from "@/config/debt";
@@ -123,6 +124,20 @@ export const DEBT_TOOLS: Anthropic.Tool[] = [
         dealer_months: {
           type: "integer" as const,
           description: "The dealer's loan term in months (optional).",
+        },
+      },
+    },
+  },
+  {
+    name: "home_purchase",
+    description:
+      "Planning a home purchase (demo-bank people only; nothing for real accounts): the most home the person can afford under the usual rules (housing at most 28% of gross income, all debt at most 36%, gross estimated from take-home), the monthly cost at a price (loan, property tax, insurance, mortgage insurance/PMI while the down payment is under 20%), the cash needed up front (down payment and estimated closing costs), a savings plan from their real monthly cash flow and savings (how many months, or what to save a month by a date), the mortgage offers compared by total cost with closing costs, and every assumption. Starting the down payment goal needs the person's tap (the home.goal button).",
+    input_schema: {
+      type: "object" as const,
+      properties: {
+        price_cents: {
+          type: "integer" as const,
+          description: "A home's price in cents (optional).",
         },
       },
     },
@@ -272,6 +287,7 @@ export const DEBT_TOOL_STATUS: Readonly<Record<string, string>> = {
   bnpl_installments: "Checking your buy now, pay later installments…",
   tight_money: "Looking at your month ahead…",
   car_purchase: "Working out what car you can afford…",
+  home_purchase: "Working out what home you can afford…",
 };
 
 export function refinanceToolOutput(refi: Refinance, money: (cents: number) => string) {
@@ -670,6 +686,50 @@ export function carToolOutput(car: Car, money: (cents: number) => string) {
       costsMoreThanBestPreapproval: money(car.dealer.extraCents),
     },
     assumptions: car.assumptions,
+  };
+}
+
+export function homeToolOutput(home: HomeBuying, money: (cents: number) => string) {
+  if (!home.available) return { note: "No lending partner for this person's accounts yet." };
+  if (!home.costs || !home.affordability || !home.saving) {
+    return { note: "Not enough income history to say what home fits." };
+  }
+  const c = home.costs;
+  return {
+    demoAdvice: true,
+    maxPrice: money(home.affordability.maxPriceCents),
+    allowedHousingPerMonth: money(home.affordability.allowedHousingCents),
+    atPrice: money(c.priceCents),
+    monthly: {
+      loan: money(c.principalAndInterestCents),
+      propertyTax: money(c.propertyTaxCents),
+      insurance: money(c.insuranceCents),
+      pmi: money(c.pmiCents),
+      total: money(c.housingCents),
+    },
+    cashNeeded: {
+      downPayment: money(c.downCents),
+      closingCosts: money(c.closingCents),
+      total: money(c.cashNeededCents),
+    },
+    saving: {
+      saved: money(home.savedCents),
+      keepsPerMonth: money(home.monthlySavingCents),
+      stillNeeded: money(home.saving.stillNeededCents),
+      monthsAtCurrentPace: home.saving.monthsAtCurrentPace,
+      targetDate: home.targetDate,
+      neededPerMonthForTargetDate: money(home.saving.monthlyNeededCents),
+      onTrack: home.saving.onTrack,
+      goalStarted: home.hasGoal,
+    },
+    mortgageOffers: home.offers.map((o) => ({
+      lender: o.offer.lender,
+      rate: `${(o.offer.aprBps / 100).toFixed(2)}%`,
+      monthlyForLoan: money(o.monthlyCents),
+      totalCostWithClosing: money(o.totalCents),
+      closing: o.offer.feeLabel,
+    })),
+    assumptions: home.assumptions,
   };
 }
 

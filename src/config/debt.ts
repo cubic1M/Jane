@@ -108,7 +108,7 @@ export const DEBT_MESSAGE_PRIORITY = {
 
 // What Jane does about debts by herself at each autopilot level (src/config/autopilot.ts),
 // step by step. Applying for credit, moving money and signing always need the person's tap,
-// at every level. Steps 110–117 and 174–178 add to this list.
+// at every level. Steps 110–117 and 174–179 add to this list.
 export const DEBT_AUTOPILOT: Readonly<
   Record<"ask" | "safe" | "all", readonly { step: number; does: string }[]>
 > = {
@@ -169,6 +169,10 @@ export const DEBT_AUTOPILOT: Readonly<
       step: 178,
       does: "When you ask about a car, works out what you can afford with insurance and running costs in, compares preapproval offers by what they cost in all, and checks a dealer's financing against them. Nothing is applied for without your tap.",
     },
+    {
+      step: 179,
+      does: "When you ask about buying a home, works out what you can afford from your real income and debts, the cash needed up front, how long saving takes, and compares mortgage offers. Starting the down payment goal waits for your tap.",
+    },
   ],
   safe: [
     {
@@ -227,6 +231,10 @@ export const DEBT_AUTOPILOT: Readonly<
       step: 178,
       does: "When you ask about a car, works out what you can afford with insurance and running costs in, compares preapproval offers by what they cost in all, and checks a dealer's financing against them. Nothing is applied for without your tap.",
     },
+    {
+      step: 179,
+      does: "When you ask about buying a home, works out what you can afford from your real income and debts, the cash needed up front, how long saving takes, and compares mortgage offers. Starting the down payment goal waits for your tap.",
+    },
   ],
   all: [
     {
@@ -284,6 +292,10 @@ export const DEBT_AUTOPILOT: Readonly<
     {
       step: 178,
       does: "When you ask about a car, works out what you can afford with insurance and running costs in, compares preapproval offers by what they cost in all, and checks a dealer's financing against them. Nothing is applied for without your tap.",
+    },
+    {
+      step: 179,
+      does: "When you ask about buying a home, works out what you can afford from your real income and debts, the cash needed up front, how long saving takes, and compares mortgage offers. Starting the down payment goal waits for your tap.",
     },
   ],
 };
