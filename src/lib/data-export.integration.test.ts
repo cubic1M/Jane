@@ -142,6 +142,9 @@ describe.runIf(url)("data export against a real database", () => {
         moves: [],
       },
     });
+    await client.whatIfPlan.create({
+      data: { userId, scenario: "job_loss", params: {}, changes: [] },
+    });
     await client.monthlyReport.create({ data: { userId, month: "2026-09", figures: {} } });
     await client.healthScore.create({
       data: { userId, month: "2026-10", score: 70, band: "Steady", parts: [] },
@@ -264,6 +267,7 @@ describe.runIf(url)("data export against a real database", () => {
       "paycheckPlans",
       "healthScores",
       "monthlyReports",
+      "whatIfPlans",
       "janeMessages",
       "janePreferences",
       "taxTags",

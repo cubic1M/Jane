@@ -13,6 +13,7 @@ import { loadBillPay, type BillPayView } from "@/lib/money-movement/bill-pay";
 import { healthFor, type HealthView } from "@/lib/health-score";
 import type { Attention } from "./attention";
 import { loadAttention } from "./attention-load";
+import { adoptedPlans, type AdoptedPlan } from "@/lib/what-if";
 import { recentReport, type StoredReport } from "@/lib/monthly-report-store";
 import { moneyPartnerFor } from "@/lib/money-movement/partner";
 import { latestPaycheckPlan, type PaycheckPlanView } from "@/lib/money-movement/paycheck";
@@ -117,6 +118,8 @@ export type Snapshot = {
   // Spec step 147: when the person answers, and what Jane stopped bringing up. Optional,
   // like changes.
   attention?: Attention;
+  // Spec step 203: what-if plans the person adopted. Optional, like changes.
+  whatIf?: AdoptedPlan[];
   // Spec step 148: the monthly money report, while it's new. Optional, like changes.
   monthlyReport?: StoredReport | null;
   // Spec step 128 on: what's in investment accounts.
@@ -276,6 +279,7 @@ export async function loadSnapshot(
     lastWeek,
     attention,
     monthlyReport,
+    whatIf,
   ] = await Promise.all([
     loadMore(userId, { client, now }),
     loadTaxSnapshot(userId, { client, now }),
@@ -288,6 +292,7 @@ export async function loadSnapshot(
     chatWeek(userId, client, weekStart(now, user?.timezone)),
     loadAttention(userId, { client, now, timezone: user?.timezone ?? null }),
     recentReport(userId, { client, now }),
+    adoptedPlans(userId, { client }),
   ]);
 
   return {
@@ -347,5 +352,6 @@ export async function loadSnapshot(
     lastWeek,
     attention,
     monthlyReport,
+    whatIf,
   };
 }
