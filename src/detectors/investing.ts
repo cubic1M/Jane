@@ -39,6 +39,7 @@ const employerMatch: Detector = {
         factEvidence(has),
         factEvidence(income),
         evidence("seen", profile.months, 1, "401(k) account"),
+        { percent: 75, reason: "whether and how much your employer matches is a guess" },
       ]),
       urgency: "soon",
       why: `Your 401(k) holds ${formatCents(saved)} against pay of about ${formatCents(pay)} a year. A typical match is ${Math.round(R.matchTypicalShare * 100)}% of pay, about ${formatCents(match)} a year, and it is lost if you don't contribute enough to get it.`,
@@ -63,9 +64,12 @@ const catchUp: Detector = {
       title: "Use the catch-up contribution for people over 50",
       worthCents: Math.round(R.catchUpCents * R.selfRetireTaxRate),
       worthKind: "saves",
-      confidence: weakest([factEvidence(stage), factEvidence(has)]),
+      confidence: weakest([
+        { percent: stage.confidence, reason: "your age is a guess from your accounts and income" },
+        factEvidence(has),
+      ]),
       urgency: "soon",
-      why: `You are close to retirement and have a 401(k). People over 50 can put in about ${formatCents(R.catchUpCents)} more a year, which at a ${Math.round(R.selfRetireTaxRate * 100)}% tax rate cuts the tax bill by about ${formatCents(Math.round(R.catchUpCents * R.selfRetireTaxRate))}.`,
+      why: `You are close to retirement and have a 401(k). People over 50 can put in about ${formatCents(R.catchUpCents)} more a year, if you are not already using it, which at a ${Math.round(R.selfRetireTaxRate * 100)}% tax rate cuts the tax bill by about ${formatCents(Math.round(R.catchUpCents * R.selfRetireTaxRate))}.`,
       action: { label: "See your limits", href: "/investments/retirement-accounts" },
     };
   },
@@ -175,7 +179,7 @@ const requiredWithdrawals: Detector = {
       worthCents: Math.round(rmd * R.rmdPenaltyRate),
       worthKind: "risk",
       confidence: weakest([
-        factEvidence(stage),
+        { percent: stage.confidence, reason: "your age is a guess from your accounts and income" },
         evidence("seen", profile.months, pre.length, "pre-tax retirement accounts"),
       ]),
       urgency: "soon",
