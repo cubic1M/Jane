@@ -363,6 +363,7 @@ model User {
   moneyTransfers    MoneyTransfer[]
   paycheckPlans     PaycheckPlan[]
   payrollChanges    PayrollChange[]
+  oldPlans          OldPlan[]
   healthScores      HealthScore[]
   monthlyReports    MonthlyReport[]
 
@@ -2972,4 +2973,33 @@ model PayrollChange {
 
   @@index([userId, createdAt])
   @@map("payroll_changes")
+}
+
+// Spec step 211: a retirement plan at a past employer. One row per employer, asked about
+// once. Found plans are read-only until the person rolls one over (a direct rollover, never
+// a check to them); the steps are tracked in `steps`.
+model OldPlan {
+  id              String    @id @default(cuid())
+  userId          String    @map("user_id")
+  employer        String
+  // payroll (history), you (added by the person) or demo (the stand-in history).
+  source          String
+  // asked, no_plan, found, not_found, rolling, rolled or skipped.
+  status          String    @default("asked")
+  planName        String?   @map("plan_name")
+  balanceCents    Int?      @map("balance_cents")
+  expenseRatioBps Int?      @map("expense_ratio_bps")
+  // The plan's records came from this partner (the stand-in locator is "demo").
+  locator         String?
+  destinationId   String?   @map("destination_id")
+  // [{ key, label, doneOn: YYYY-MM-DD | null }].
+  steps           Json      @default("[]")
+  rollingSince    DateTime? @map("rolling_since") @db.Timestamptz(3)
+  rolledAt        DateTime? @map("rolled_at") @db.Timestamptz(3)
+  createdAt       DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, employer])
+  @@map("old_plans")
 }

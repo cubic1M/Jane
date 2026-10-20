@@ -142,7 +142,11 @@ export type AuditEvent =
   // Spec step 164: Jane acted on her own in the investing sector, within the person's caps.
   | "autopilot_investing_acted"
   // Spec step 210: a change to a contribution at work, sent to the payroll partner.
-  | "payroll_change_requested";
+  | "payroll_change_requested"
+  // Spec step 211: an old retirement plan found, and its direct rollover.
+  | "old_plan_found"
+  | "rollover_started"
+  | "rollover_completed";
 
 export type AuditActor = { type: ActorType; id: string | null };
 

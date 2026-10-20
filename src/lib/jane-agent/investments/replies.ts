@@ -22,6 +22,8 @@ import {
   RA_LINK,
   rothLine,
 } from "./retirement-accounts-copy";
+import type { OldAccountsView } from "@/lib/investments/old-accounts";
+import { foundLine, OLD_LINK, rollButton, summaryLine } from "./old-accounts-copy";
 import { STEADY_LINK, steadyMessage, timelines } from "./steady-copy";
 import { CRYPTO_LINK, feeFlag, NEVER_TRADES, shareFlag, sizeLine } from "./crypto-copy";
 import {
@@ -784,4 +786,19 @@ export function retirementAccountsReply(view: RetirementAccountsView): Reply {
     actions: [...buttons, RA_LINK],
     refs: { advice: true, ...(iraButton(view) ? { iraCents: view.iraAllowedCents } : {}) },
   };
+}
+
+// Spec step 211: where each past employer's plan stands; a found plan's fees and the
+// rollover tap in demo advice mode.
+export function oldAccountsReply(view: OldAccountsView): Reply {
+  const found = view.plans.find((p) => p.status === "found");
+  const base = summaryLine(view.plans);
+  if (view.advice && found) {
+    return {
+      body: `${base}. ${foundLine(found)}`,
+      actions: [rollButton(), OLD_LINK],
+      refs: { advice: true, oldPlanId: found.id },
+    };
+  }
+  return { body: base.endsWith(".") ? base : `${base}.`, actions: [OLD_LINK], refs: {} };
 }

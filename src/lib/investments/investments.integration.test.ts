@@ -28,6 +28,7 @@ import { CompanyStockError, loadCompanyStock, saveGrant, sellPart } from "./comp
 import { cryptoTotal, loadCrypto, syncAllCrypto } from "@/lib/crypto/crypto";
 import { CashError, loadCash, moveCash } from "./cash";
 import { automaticLog, runAutomaticInvesting } from "./automatic";
+import { answerOldPlan, loadOldAccounts, startRollover, settleRollovers } from "./old-accounts";
 import {
   contributeToIra,
   linkDemoRothIra,
@@ -979,6 +980,66 @@ describe.runIf(url)("investments in Jane's chat, against a real database", () =>
       expect(
         await client.brokerageOrder.count({ where: { userId, reason: "ira_contribution" } }),
       ).toBe(2);
+    },
+  );
+
+  it(
+    "step 211: a past employer asked once, its fees compared, a direct rollover tracked and never a withdrawal",
+    SLOW,
+    async () => {
+      const userId = await demoPerson();
+      const first = await loadOldAccounts(userId, { client, now: LINKED });
+      expect(first.plans).toMatchObject([{ employer: "Globex Industries", status: "asked" }]);
+      // Asked once: loading again adds nothing.
+      expect((await loadOldAccounts(userId, { client, now: LINKED })).plans).toHaveLength(1);
+
+      // The question in the chat, answered Yes.
+      const snapshot = await loadSnapshot(userId, { client, now: LINKED });
+      const ask = investmentsSource
+        .gather(snapshot!, {} as never)
+        .find((c) => c.dedupeKey.startsWith("oldplan:ask:"))!;
+      const posted = await client.janeMessage.create({
+        data: {
+          userId,
+          kind: ask.kind,
+          body: ask.body,
+          refs: ask.refs,
+          actions: ask.actions,
+          dedupeKey: "test:oldplan",
+        },
+      });
+      await takeChatAction(userId, posted.id, "oldplan.yes", { client, now: LINKED });
+      const found = (await loadOldAccounts(userId, { client, now: LINKED })).plans[0];
+      expect(found).toMatchObject({ status: "found", balanceCents: 3_820_000 });
+      expect(found.fees).toEqual({ beforeCents: 42_784, afterCents: 1_146, savedCents: 41_638 });
+      await expect(answerOldPlan(userId, found.id, true, { client })).rejects.toThrow(
+        /already answered/,
+      );
+
+      // The tap starts a direct rollover: nothing arrives yet.
+      const started = await startRollover(userId, found.id, { client, now: LINKED });
+      expect(started.arrivesOn).toBe("2026-10-21");
+      const rolling = (await loadOldAccounts(userId, { client, now: LINKED })).plans[0];
+      expect(rolling.steps.map((s) => s.doneOn)).toEqual(["2026-10-18", "2026-10-18", null, null]);
+      expect(await client.brokerageOrder.count({ where: { userId, reason: "rollover" } })).toBe(0);
+
+      // Three days later the money lands in the IRA, invested; it is a transfer.
+      const later = new Date("2026-10-21T15:00:00Z");
+      expect(await settleRollovers(userId, { client, now: later })).toBe(1);
+      expect(await settleRollovers(userId, { client, now: later })).toBe(0);
+      const rolled = (await loadOldAccounts(userId, { client, now: later })).plans[0];
+      expect(rolled.status).toBe("rolled");
+      const txs = await client.investmentTransaction.findMany({
+        where: { userId, name: "ROLLOVER FROM PRIOR EMPLOYER PLAN" },
+        select: { subtype: true, amountCents: true },
+      });
+      expect(txs).toEqual([{ subtype: "transfer", amountCents: -3_820_000 }]);
+      // Neither a withdrawal nor a contribution against this year's limits.
+      expect(
+        await client.investmentTransaction.count({ where: { userId, subtype: "withdrawal" } }),
+      ).toBe(0);
+      const limits = (await loadRetirementAccounts(userId, { client, now: later })).limits;
+      expect(limits.find((l) => l.key === "ira")!.usedCents).toBe(0);
     },
   );
 });

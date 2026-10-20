@@ -94,6 +94,9 @@ import {
   cashToMoneyMarket,
   retireMatch,
   retireIra,
+  oldPlanYes,
+  oldPlanNo,
+  oldPlanRollover,
 } from "./investments";
 import { changeBudget, changeExpected, changeLook } from "./changes";
 import { lifeNever, lifeNo, lifeYes } from "./life";
@@ -265,6 +268,9 @@ export const ACTION_HANDLERS: Readonly<Record<ActionId, ActionHandler>> = {
   "cash.to_money_market": cashToMoneyMarket,
   "retire.match": retireMatch,
   "retire.ira": retireIra,
+  "oldplan.yes": oldPlanYes,
+  "oldplan.no": oldPlanNo,
+  "oldplan.rollover": oldPlanRollover,
   // Jane notices changes (spec step 97).
   "change.look": changeLook,
   "change.budget": changeBudget,

@@ -56,6 +56,7 @@ import {
   cashReply,
   steadyReply,
   retirementAccountsReply,
+  oldAccountsReply,
 } from "./replies";
 import { gather } from "../brain";
 import { parseIntent } from "../intents";
@@ -2096,5 +2097,77 @@ describe("retirementAccountsReply and the retirement messages", () => {
     expect(gather({ ...RA_VIEW, match: { ...RA_VIEW.match, missedCents: 0 }, ira: null })).toEqual(
       [],
     );
+  });
+});
+
+// Spec step 211: old accounts brought home.
+const OLD_ASKED = {
+  id: "p1",
+  employer: "Globex Industries",
+  status: "asked",
+  planName: null,
+  balanceCents: null,
+  fees: null,
+  steps: [],
+  arrivesOn: null,
+};
+const OLD_FOUND = {
+  ...OLD_ASKED,
+  status: "found",
+  planName: "Globex Industries 401(k) Plan",
+  balanceCents: 3_820_000,
+  fees: { beforeCents: 42_784, afterCents: 1_146, savedCents: 41_638 },
+};
+
+describe("old account questions, by rules", () => {
+  it.each([
+    "my old 401k",
+    "I left a 401k at my last job",
+    "how do I roll over my 401k",
+    "forgotten 401k",
+    "rollover",
+  ])("reads %j as old accounts", (text) => {
+    expect(parseIntent(text, ASOF)).toMatchObject({ kind: "investments", topic: "old_accounts" });
+  });
+});
+
+describe("the old account question, the found plan and the rollover", () => {
+  it("asks once per employer with Yes and No, then offers the rollover with fees compared", () => {
+    const gather = (plans: unknown[], advice = true) =>
+      investmentsSource
+        .gather(
+          {
+            ...base,
+            investments: demoInvestmentSnapshot({
+              advice,
+              oldAccounts: { advice, plans: plans as never, demo: true },
+            }),
+          },
+          {} as never,
+        )
+        .filter((c) => c.dedupeKey.startsWith("oldplan:"));
+    const [ask] = gather([OLD_ASKED]);
+    expect(ask.body).toMatch(/^Did you have a 401\(k\) at Globex Industries\?/);
+    expect(ask.actions.map((a) => a.id)).toEqual(["oldplan.yes", "oldplan.no", "open", "snooze"]);
+    expect(ask.refs).toEqual({ oldPlanId: "p1" });
+    const [roll] = gather([OLD_FOUND]);
+    expect(roll.body).toMatch(
+      /It costs about \$427\.84 a year in fees; in a low-cost index fund the same money would cost about \$11\.46, \$416\.38 a year less\./,
+    );
+    expect(roll.body).toMatch(/isn't a withdrawal and isn't taxed/);
+    expect(roll.actions[0]).toMatchObject({ id: "oldplan.rollover", label: "Roll it over" });
+    expect(gather([OLD_FOUND], false)).toEqual([]);
+  });
+  it("answers where each plan stands", () => {
+    const reply = oldAccountsReply({ advice: true, plans: [OLD_FOUND] as never, demo: true });
+    expect(reply.body).toMatch(
+      /^Globex Industries \(\$38,200\.00\): found, read-only, ready to roll over\./,
+    );
+    expect(reply.actions[0].id).toBe("oldplan.rollover");
+    expect(
+      oldAccountsReply({ advice: false, plans: [OLD_FOUND] as never, demo: true }).actions.map(
+        (a) => a.id,
+      ),
+    ).toEqual(["open"]);
   });
 });

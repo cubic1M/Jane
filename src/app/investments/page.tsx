@@ -233,6 +233,12 @@ async function InvestmentsContent() {
             : every limit and every dollar of match used.
           </p>
           <p className="text-sm text-zinc-600 dark:text-zinc-400">
+            <Link href="/investments/old-accounts" className={LINK}>
+              Old accounts
+            </Link>
+            : a forgotten 401(k) at a past employer, found and rolled over.
+          </p>
+          <p className="text-sm text-zinc-600 dark:text-zinc-400">
             Learn:{" "}
             {["index-funds", "fees", "the-match", "roth-vs-traditional", "rebalancing"].map(
               (slug, i) => (

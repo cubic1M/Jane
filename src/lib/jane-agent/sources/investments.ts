@@ -37,6 +37,14 @@ import {
   RA_LINK,
   rothLine,
 } from "../investments/retirement-accounts-copy";
+import { OLD_PLAN_MIN_SAVING_CENTS } from "@/config/old-accounts";
+import {
+  foundLine,
+  OLD_LINK,
+  questionButtons,
+  questionLine,
+  rollButton,
+} from "../investments/old-accounts-copy";
 import { AUTO_LOG_LINK, summaryBody } from "../investments/automatic-copy";
 import { CASH_MIN_GAIN_CENTS } from "@/config/cash";
 import { CASH_LINK, cashLine, moveButtons } from "../investments/cash-copy";
@@ -309,6 +317,30 @@ export const investmentsSource: MessageSource = {
         actions: [{ id: "hsa.link", label: "Link a demo HSA", kind: "primary" }, snoozeButton()],
         dedupeKey: "hsa:link",
         priority: MESSAGE_PRIORITY.hsa,
+      });
+    }
+    // Step 211: each past employer is asked about once; a found plan with fees worth saving
+    // gets a rollover offer (a tap).
+    const askedPlan = inv.oldAccounts.plans.find((p) => p.status === "asked");
+    if (askedPlan) {
+      out.push({
+        kind: "decision",
+        body: questionLine(askedPlan),
+        refs: { oldPlanId: askedPlan.id },
+        actions: [...questionButtons(), OLD_LINK, snoozeButton()],
+        dedupeKey: `oldplan:ask:${askedPlan.id}`,
+        priority: MESSAGE_PRIORITY.old_plan,
+      });
+    }
+    for (const found of inv.oldAccounts.plans.filter((p) => p.status === "found")) {
+      if (!inv.advice || (found.fees?.savedCents ?? 0) < OLD_PLAN_MIN_SAVING_CENTS) continue;
+      out.push({
+        kind: "decision",
+        body: `${foundLine(found)} Tap and I'll start a direct rollover ${SIMULATED_WORDS}.`,
+        refs: { advice: true, oldPlanId: found.id },
+        actions: [rollButton(), OLD_LINK, snoozeButton()],
+        dedupeKey: `oldplan:roll:${found.id}`,
+        priority: MESSAGE_PRIORITY.old_plan,
       });
     }
     // Step 210: the match left on the table, then IRA room (each a tap).

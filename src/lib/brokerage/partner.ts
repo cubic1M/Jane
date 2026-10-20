@@ -61,7 +61,11 @@ export const simulatedBrokerage: BrokeragePartner = {
     const db = scopedFor(userId, client);
     const out: Confirmation[] = [];
     for (const order of orders) {
-      const priceCents = await this.priceOf(order.ticker, { userId, client, now });
+      // A deposit (or a rollover in) is cash: a dollar a dollar, whatever it's labelled.
+      const priceCents =
+        order.side === "deposit" && !isCryptoTicker(order.ticker)
+          ? 100
+          : await this.priceOf(order.ticker, { userId, client, now });
       const filled = priceCents !== null && order.amountCents > 0;
       const quantity = filled ? Number((order.amountCents / priceCents).toFixed(6)) : 0;
       const confirmation = filled ? `SIM-${randomUUID().slice(0, 8).toUpperCase()}` : null;
