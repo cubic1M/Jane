@@ -183,10 +183,12 @@ describe("dealer add-ons and cash advances", () => {
 describe("card use, pay-later plans, medical bills, collections, forgiveness and money lent", () => {
   it("works out the pay-down that brings Chris's cards under 30% of their limits", () => {
     const s = fire("debt").find((x) => x.topic === "credit_building")!;
-    // $10,090 owed of $10,500 in limits; 30% is $3,150.
-    expect(s.worthCents).toBe(1_009_000 - 315_000);
-    expect(s.worthKind).toBe("risk");
+    // What getting under the line is usually worth: 1.5 points off the rate on $10,090 owed.
+    expect(s.worthCents).toBe(Math.round(1_009_000 * 0.015));
+    expect(s.worthKind).toBe("saves");
     expect(s.why).toContain("96%");
+    // $3,150 would get him under 30%; he has $38.20, so it says to pay what he can.
+    expect(s.why).toContain("would take $6,940.00, more than the $38.20 you have in cash");
     expect(s.action.href).toBe("/loans/credit");
   });
 
@@ -249,7 +251,7 @@ describe("card use, pay-later plans, medical bills, collections, forgiveness and
     // $62,000 less 120 payments of $450.
     expect(s.worthCents).toBe(6_200_000 - 120 * 45_000);
     expect(s.confidence.percent).toBeLessThanOrEqual(75);
-    expect(s.why).toContain("SPRINGFIELD SCHOOLS");
+    expect(s.why).toContain("You work for Springfield Schools");
     // Not for a private employer, even with the same loan.
     expect(
       topics("family", (d) => ({ ...d, told: { ...d.told, employer: "ACME CORP" } })),

@@ -8,7 +8,9 @@ import { type Detector, suggestionId } from "./contract";
 import {
   evidence,
   factEvidence,
+  listOf,
   liquidCents,
+  nice,
   monthlySpendCents,
   outCents,
   tx,
@@ -53,9 +55,16 @@ const studentRepayment: Detector = {
       confidence: weakest([
         evidence("seen", profile.months, payments.length, "student loan payments"),
         factEvidence(profile.facts.monthly_income),
+        // Income-driven plans are for federal loans, and the payments don't say which this is.
+        evidence(
+          "guessed",
+          profile.months,
+          payments.length,
+          "student loan payments (I can't tell if it's federal)",
+        ),
       ]),
       urgency: "later",
-      why: `You pay about ${formatCents(Math.round(monthly))} a month on student loans; an income-driven plan on ${formatCents(income(profile))} a month would ask roughly ${formatCents(idr)}.`,
+      why: `You pay about ${formatCents(Math.round(monthly))} a month on student loans. If they're federal, an income-driven plan on your ${formatCents(income(profile))} a month would ask roughly ${formatCents(idr)}.`,
       action: { label: "Compare repayment plans", href: "/loans/student" },
     };
   },
@@ -136,10 +145,10 @@ const carAddons: Detector = {
         "guessed",
         profile.months,
         found.length,
-        "payments that look like dealer add-ons",
+        "payments that look like dealer add-ons (only you can say)",
       ),
       urgency: "soon",
-      why: `You paid ${formatCents(refunds.reduce((s, r) => s + r.a.paidCents, 0))} for ${found.map((f) => ADDON_RULES[f.kind].label.toLowerCase()).join(" and ")}; the unused part could refund about ${formatCents(worth)}.`,
+      why: `You paid ${formatCents(refunds.reduce((s, r) => s + r.a.paidCents, 0))} for ${found.map((f) => ADDON_RULES[f.kind].label.replace(/^(?!GAP)\w/, (c) => c.toLowerCase())).join(" and ")}; the unused part could refund about ${formatCents(worth)}.`,
       action: { label: "See the refund", href: "/loans/auto" },
     };
   },
@@ -262,6 +271,7 @@ const balanceTransfer: Detector = {
           : []),
       ]),
       urgency: "soon",
+      ...(trouble ? { rankCents: Math.round(saving * D.troubleDiscount) } : {}),
       why: `You owe ${formatCents(debt.value)} on cards and paid ${formatCents(interest)} in interest over ${profile.months} months. A 0% transfer with a ${Math.round(D.transferFeeShare * 100)}% fee (${formatCents(Math.round(debt.value * D.transferFeeShare))}) could save about ${formatCents(saving)}.`,
       action: { label: "See transfer offers", href: "/loans/refinance" },
     };
@@ -283,19 +293,42 @@ const creditUtilisation: Detector = {
     const owed = cards.reduce((n, a) => n + Math.max(0, Math.abs(a.balanceCents)), 0);
     if (limit <= 0 || owed / limit < D.utilisationHigh) return null;
     const toThirty = Math.ceil(owed - limit * D.utilisationHigh);
+    const trouble = profile.facts.debt_trouble.value === true;
+    const cash = liquidCents(data);
+    const share = Math.round((owed / limit) * 100);
     return {
       id: suggestionId("debt", "credit_building"),
       capability: "debt",
       topic: "credit_building",
       title: "Pay your cards down before the statement closes, so a lower balance is reported",
-      worthCents: toThirty,
-      worthKind: "risk",
+      // What getting under the line is usually worth: a better pricing tier, about 1.5 points off
+      // the rate on what's owed. An estimate, so not what the pay-down itself costs.
+      worthCents: Math.round((owed * D.utilisationRateBenefitBps) / 10_000),
+      worthKind: "saves",
       confidence: weakest([
         evidence("seen", profile.months, cards.length, "cards with a limit"),
         factEvidence(profile.facts.card_debt_cents),
+        // The pricing tier a lender offers isn't something Jane can see.
+        evidence(
+          "guessed",
+          profile.months,
+          cards.length,
+          "cards (the rate you're offered is up to the lender)",
+        ),
       ]),
       urgency: "soon",
-      why: `Your cards hold ${formatCents(owed)} of ${formatCents(limit)} in limits, ${Math.round((owed / limit) * 100)}%. Paying ${formatCents(toThirty)} before the statement closes brings the balance reported under ${Math.round(D.utilisationHigh * 100)}%, which helps your score and the rates you're offered.`,
+      ...(trouble
+        ? {
+            rankCents: Math.round(
+              ((owed * D.utilisationRateBenefitBps) / 10_000) * D.troubleDiscount,
+            ),
+          }
+        : {}),
+      why: `Your cards hold ${formatCents(owed)} of ${formatCents(limit)} in limits, ${share}%. ${
+        cash >= toThirty
+          ? `Paying ${formatCents(toThirty)} before the statement closes brings the balance reported under ${Math.round(D.utilisationHigh * 100)}%`
+          : `Under ${Math.round(D.utilisationHigh * 100)}% would take ${formatCents(toThirty)}, more than the ${formatCents(cash)} you have in cash, so pay what you can before each statement closes; every dollar off the balance reported helps`
+      }, which helps your score and the rates you're offered.`,
       action: { label: "See your credit score", href: "/loans/credit" },
     };
   },
@@ -421,7 +454,7 @@ const studentForgiveness: Detector = {
         ),
       ]),
       urgency: "later",
-      why: `You work for ${employer.value} and owe ${formatCents(balance)} on student loans at about ${formatCents(Math.round(monthly))} a month. After ${D.pslfPayments} qualifying payments the rest, about ${formatCents(left)} at these payments, can be forgiven if the loan and the plan qualify.`,
+      why: `You work for ${nice(employer.value)} and owe ${formatCents(balance)} on student loans at about ${formatCents(Math.round(monthly))} a month. After ${D.pslfPayments} qualifying payments the rest, about ${formatCents(left)} at these payments, can be forgiven if the loan and the plan qualify.`,
       action: { label: "Track your qualifying payments", href: "/loans/student" },
     };
   },

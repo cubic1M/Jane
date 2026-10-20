@@ -1,3 +1,4 @@
+import { DEBT_DETECTOR_RATES as D } from "@/config/detectors-debt";
 import { PROCESSOR_FEE_PAYEE } from "@/config/detection";
 import { DETECTOR_RATES as R } from "@/config/detectors";
 import { emergencyTarget } from "@/planning/emergency-fund";
@@ -137,8 +138,15 @@ const cardInterest: Detector = {
       worthKind: "saves",
       confidence: evidence("seen", profile.months, charges.length, "interest charges"),
       urgency: "soon",
-      why: `You paid ${formatCents(total)} in card interest over ${profile.months} months; paying the balance off ends it.`,
-      action: { label: "Plan the payoff", href: "/debt" },
+      ...(profile.facts.debt_trouble.value === true
+        ? { rankCents: Math.round(total * D.troubleDiscount) }
+        : {}),
+      why: `You paid ${formatCents(total)} in card interest over ${profile.months} months; ${
+        profile.facts.debt_trouble.value === true
+          ? "a payoff plan that starts with the highest rate stops it, a card at a time"
+          : "paying the balance off ends it"
+      }.`,
+      action: { label: "Cut your card interest", href: "/loans/interest" },
     };
   },
 };
@@ -241,7 +249,7 @@ const highCostLoans: Detector = {
       confidence: evidence("seen", profile.months, payments.length, "cash-advance repayments"),
       urgency: "now",
       why: `You repaid ${formatCents(repaid)} in cash-advance loans in ${profile.months} months; their fees are typically about a quarter of that.`,
-      action: { label: "See cheaper options", href: "/debt" },
+      action: { label: "See cheaper options", href: "/loans/costly" },
     };
   },
 };
@@ -264,6 +272,7 @@ const debtPlan: Detector = {
       worthKind: "saves",
       confidence: factEvidence(trouble),
       urgency: "now",
+      rankCents: Math.round(interest * D.troublePlanRank),
       why: `Your cards hold ${formatCents(profile.facts.card_debt_cents.value as number)} and cost you ${formatCents(interest)} in interest a year.`,
       action: { label: "Plan the payoff", href: "/debt" },
     };
@@ -288,8 +297,9 @@ const hardshipPlan: Detector = {
       worthKind: "risk",
       confidence: factEvidence(trouble),
       urgency: "now",
+      rankCents: Math.round(costs * D.troubleHardshipRank),
       why: `Fees and interest cost you ${formatCents(costs)} in ${profile.months} months. Lenders often lower rates or waive fees for people who ask.`,
-      action: { label: "Ask for a hardship plan", href: "/debt" },
+      action: { label: "See your options", href: "/loans/help" },
     };
   },
 };
