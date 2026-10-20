@@ -16,12 +16,17 @@ vi.mock("next/navigation", () => ({
 vi.mock("@/lib/rate-limit", () => ({ hit: vi.fn(), ipKey: vi.fn(() => "iphash") }));
 vi.mock("@/lib/trial", () => ({
   startTrial: vi.fn(),
+  cleanUpTrials: vi.fn(async () => 0),
   TrialError: class TrialError extends Error {},
 }));
+const { afterJobs } = vi.hoisted(() => ({ afterJobs: [] as (() => Promise<void>)[] }));
+vi.mock("next/server", () => ({ after: (job: () => Promise<void>) => afterJobs.push(job) }));
+vi.mock("@/lib/plaid/sync", () => ({ syncItem: vi.fn(async () => ({})) }));
 
 import { redirect } from "next/navigation";
 import { hit } from "@/lib/rate-limit";
-import { TrialError, startTrial } from "@/lib/trial";
+import { syncItem } from "@/lib/plaid/sync";
+import { TrialError, cleanUpTrials, startTrial } from "@/lib/trial";
 import { tryJane } from "./actions";
 
 // Spec step 138: "Try it with sample data" signs the visitor in as their own sample person
@@ -37,10 +42,12 @@ const agreed = (consent = true) => {
 describe("tryJane", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    afterJobs.length = 0;
     headerValues.clear();
     vi.mocked(hit).mockResolvedValue({ ok: true, remaining: 4, retryAfterSeconds: 0 });
     vi.mocked(startTrial).mockResolvedValue({
       userId: "trial_1",
+      itemId: "item_1",
       sessionToken: "tok",
       expires: EXPIRES,
     });
@@ -50,7 +57,7 @@ describe("tryJane", () => {
     headerValues.set("user-agent", "Browser");
     await expect(tryJane(null, agreed())).rejects.toThrow("NEXT_REDIRECT");
     expect(hit).toHaveBeenCalledWith("trial", "iphash");
-    expect(startTrial).toHaveBeenCalledWith({ userAgent: "Browser" });
+    expect(startTrial).toHaveBeenCalledWith({ userAgent: "Browser", defer: true });
     expect(set).toHaveBeenCalledWith("authjs.session-token", "tok", {
       httpOnly: true,
       sameSite: "lax",
@@ -58,7 +65,26 @@ describe("tryJane", () => {
       path: "/",
       expires: EXPIRES,
     });
-    expect(redirect).toHaveBeenCalledWith("/chat");
+    expect(redirect).toHaveBeenCalledWith("/scanning?then=chat");
+  });
+
+  // The first scan is the slow part: the response must not wait for it.
+  it("returns before the heavy work runs, which happens after the response", async () => {
+    await expect(tryJane(null, agreed())).rejects.toThrow("NEXT_REDIRECT");
+    expect(redirect).toHaveBeenCalledWith("/scanning?then=chat");
+    expect(syncItem).not.toHaveBeenCalled();
+    expect(cleanUpTrials).not.toHaveBeenCalled();
+    expect(afterJobs).toHaveLength(1);
+    await afterJobs[0]();
+    expect(syncItem).toHaveBeenCalledWith("item_1");
+    expect(cleanUpTrials).toHaveBeenCalled();
+  });
+
+  it("still cleans up when the first sync fails", async () => {
+    vi.mocked(syncItem).mockRejectedValueOnce(new Error("boom"));
+    await expect(tryJane(null, agreed())).rejects.toThrow("NEXT_REDIRECT");
+    await afterJobs[0]();
+    expect(cleanUpTrials).toHaveBeenCalled();
   });
 
   it("uses the secure cookie on HTTPS", async () => {
