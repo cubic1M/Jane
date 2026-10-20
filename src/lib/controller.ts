@@ -22,6 +22,7 @@ import { runPlanUpkeep } from "@/lib/plan-upkeep";
 import { ITEM_STATUS, syncItem } from "@/lib/plaid/sync";
 import { scrub } from "@/lib/scrub";
 import { runTaxAutopilot } from "@/lib/tax-autopilot";
+import { runStrategist } from "@/lib/strategist";
 import { scanSuggestions } from "@/lib/suggestions";
 
 // The nightly controller run (spec step 142): one run per person each night that does every
@@ -152,6 +153,11 @@ const STEPS: Record<
     };
   },
   async suggestions(userId, { client, now }) {
+    // Spec step 256: once a week Claude looks for combinations; its ideas join tonight's
+    // ranking. It's optional (no key, past the cost cap, any failure) and never stops the scan.
+    await runStrategist(userId, { client, now }).catch((error) =>
+      console.error("Strategist failed", { userId, error: scrub(String(error)) }),
+    );
     const { fired, selected } = await scanSuggestions(userId, { client, now });
     if (fired === 0) return { did: "Nothing new to suggest.", changed: 0 };
     return {

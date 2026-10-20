@@ -122,6 +122,24 @@ Capability `debt`, topic `pmi_removal` (`src/detectors/home.ts`).
 On the sample people it fires only for the Reyes family (the one with PMI); the harness
 confirms it does not fire for the renter, the retiree or anyone else.
 
+## The nightly scan (step 255)
+
+The controller's `suggestions` step runs `scanSuggestions` (`src/lib/suggestions.ts`) for each
+person: every detector, ranked by dollars x confidence x urgency (risk avoided counts for a
+fraction of a saving), adjusted by what the person said yes and no to before and by step 207's
+results. The top three (`SUGGESTIONS_PER_DAY`) are offered in the chat; the rest wait and are
+ranked again tomorrow. Nothing is offered again after a no. Recommendations on investments,
+taxes, insurance and loans (`ADVICE_TOPICS`) are only for demo advice mode.
+
+## Claude as strategist (step 256)
+
+Once a week `runStrategist` (`src/lib/strategist.ts`) lets Claude look at the profile and every
+detector's result and propose combinations. An idea must rest on two to four real suggestions
+(by key), every dollar figure must come from a tool result, it passes the guardrails (the
+`demo_advice` profile in advice mode) and it ends in those suggestions' buttons. Its confidence
+is the weakest part's. Ideas are tagged `capability: "strategist"`. Without a key nothing is
+proposed; the run counts toward the same daily cost cap as the chat.
+
 ## Where it is going
 
 - Step 255 runs every detector for everyone each night and ranks by
