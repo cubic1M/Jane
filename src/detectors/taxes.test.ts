@@ -173,3 +173,89 @@ describe("year-end moves", () => {
     expect(late.worthCents).toBeGreaterThan(0);
   });
 });
+
+describe("the rest of the tax tools find their people", () => {
+  it("receipts for big gifts: whoever gave one, never the renter or the person in debt", () => {
+    const who = PERSON_IDS.filter((id) => topics(id).includes("charity_receipts"));
+    expect(who).toEqual(["family", "equity", "preretire", "retiree"]);
+    const s = run("equity").find((x) => x.topic === "charity_receipts")!;
+    expect(s.worthKind).toBe("risk");
+    expect(s.confidence.percent).toBeLessThanOrEqual(70);
+    expect(s.why).toMatch(/You gave \$1,000\.00 in one gift/);
+    // A small gift needs no receipt.
+    expect(
+      topics("equity", (d) => ({
+        ...d,
+        transactions: d.transactions.map((t) =>
+          t.pfc === "GOVERNMENT_AND_NON_PROFIT_DONATIONS" ? { ...t, amountCents: 10_000 } : t,
+        ),
+      })),
+    ).not.toContain("charity_receipts");
+  });
+
+  it("property tax: owners who pay it, from what they paid, with the appeal gap as the stake", () => {
+    const who = PERSON_IDS.filter((id) => topics(id).includes("property_tax_check"));
+    expect(who).toEqual(["family", "equity", "preretire", "retiree"]);
+    const s = run("family").find((x) => x.topic === "property_tax_check")!;
+    expect(s.worthCents).toBe(Math.round(580_000 * 0.07));
+    expect(s.confidence.percent).toBeLessThanOrEqual(45);
+    expect(s.confidence.reason).toContain("assessment");
+    // A renter with the same bill has nothing to appeal.
+    expect(topics("family", (d) => ({ ...d, told: { housing: "rent" } }))).not.toContain(
+      "property_tax_check",
+    );
+  });
+
+  it("loss harvesting: a taxable account below cost, never a retirement account's loss", () => {
+    expect(PERSON_IDS.filter((id) => topics(id).includes("tax_loss_harvest"))).toEqual(["equity"]);
+    const s = run("equity").find((x) => x.topic === "tax_loss_harvest")!;
+    expect(s.worthKind).toBe("saves");
+    expect(s.why).toContain("wash-sale");
+    expect(s.worthCents).toBeLessThanOrEqual(Math.round(300_000 * 0.5));
+    // The same loss inside a retirement account isn't a deduction.
+    expect(
+      topics("equity", (d) => ({
+        ...d,
+        accounts: d.accounts.map((a) =>
+          a.subtype === "brokerage" ? { ...a, subtype: "401k" } : a,
+        ),
+      })),
+    ).not.toContain("tax_loss_harvest");
+    // No holdings read, nothing to say.
+    expect(topics("equity", (d) => ({ ...d, holdings: undefined }))).not.toContain(
+      "tax_loss_harvest",
+    );
+  });
+
+  it("filing: January 15 to April 15 for people paid, urgent in the last two weeks, quiet after a refund", () => {
+    const at =
+      (today: string) =>
+      (d: ProfileInput): ProfileInput => ({ ...d, today });
+    for (const id of PERSON_IDS) expect(topics(id), id).not.toContain("file_return");
+    expect(topics("renter", at("2027-01-14"))).not.toContain("file_return");
+    expect(topics("renter", at("2027-01-15"))).toContain("file_return");
+    expect(topics("renter", at("2027-04-16"))).not.toContain("file_return");
+    expect(run("renter", at("2027-03-01")).find((x) => x.topic === "file_return")!.urgency).toBe(
+      "soon",
+    );
+    const late = run("renter", at("2027-04-05")).find((x) => x.topic === "file_return")!;
+    expect(late.urgency).toBe("now");
+    expect(late.why).toContain("10 days from now");
+    // A refund already deposited means it's filed.
+    expect(
+      topics("renter", (d) => ({
+        ...at("2027-03-01")(d),
+        transactions: [
+          ...d.transactions,
+          {
+            date: "2027-02-20",
+            amountCents: -120_000,
+            description: "IRS TREAS 310 TAX REF",
+            pfc: "INCOME_TAX_REFUND",
+            accountId: d.accounts[0].id,
+          },
+        ],
+      })),
+    ).not.toContain("file_return");
+  });
+});
