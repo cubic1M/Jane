@@ -1153,7 +1153,15 @@ const DEFS: Record<PersonId, Def> = {
         [10],
         "QuickBooks",
       ),
-      R("sqfee", "checking", "SQUARE PROCESSING FEES", "GENERAL_SERVICES_ACCOUNTING_AND_FINANCIAL_PLANNING", [180, 260], [3], "Square"),
+      R(
+        "sqfee",
+        "checking",
+        "SQUARE PROCESSING FEES",
+        "GENERAL_SERVICES_ACCOUNTING_AND_FINANCIAL_PLANNING",
+        [180, 260],
+        [3],
+        "Square",
+      ),
       R(
         "cardpay",
         "checking",
