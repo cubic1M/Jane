@@ -1,5 +1,10 @@
-import { BUDGET_SUGGESTION_MONTHS, BUDGET_SUGGESTION_ROUNDING_CENTS } from "@/config/budgets";
+import {
+  BUDGET_FIXED_PRIMARIES,
+  BUDGET_SUGGESTION_MONTHS,
+  BUDGET_SUGGESTION_ROUNDING_CENTS,
+} from "@/config/budgets";
 import { formatCents } from "@/lib/money";
+import { CATEGORY_LABELS } from "./labels";
 import { monthsEnding, spendingInsights, type InsightTransaction } from "./spending";
 
 // Budgets against this month's spending. Spending comes from spendingInsights, so a
@@ -47,13 +52,16 @@ export function budgetSummary(
   const categories = [
     ...new Set(months.flatMap((m) => (insights.categoriesByMonth[m] ?? []).map((c) => c.category))),
   ].sort();
+  const fixed = new Set(BUDGET_FIXED_PRIMARIES.map((p) => CATEGORY_LABELS[p] ?? p));
   const suggestions = Object.fromEntries(
-    categories.map((category) => {
-      const average = past.reduce((sum, m) => sum + spentIn(m, category), 0) / past.length;
-      const rounded =
-        Math.ceil(average / BUDGET_SUGGESTION_ROUNDING_CENTS) * BUDGET_SUGGESTION_ROUNDING_CENTS;
-      return [category, rounded];
-    }),
+    categories
+      .filter((category) => !fixed.has(category))
+      .map((category) => {
+        const average = past.reduce((sum, m) => sum + spentIn(m, category), 0) / past.length;
+        const rounded =
+          Math.ceil(average / BUDGET_SUGGESTION_ROUNDING_CENTS) * BUDGET_SUGGESTION_ROUNDING_CENTS;
+        return [category, rounded];
+      }),
   );
 
   return {

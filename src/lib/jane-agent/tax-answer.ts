@@ -18,6 +18,10 @@ import { MultiYearError, loadMultiYear, setRetireYear } from "@/lib/multi-year";
 import { yearsReply } from "./multi-year-message";
 import { loadPropertyTax } from "@/lib/property-tax";
 import { propertyReply } from "./property-tax-message";
+import { loadAccountantPage } from "@/lib/accountant";
+import { accountantReply } from "./accountant-message";
+import { loadTaxCalendar } from "@/lib/tax-calendar";
+import { calendarReply } from "./tax-calendar-message";
 import { equityReply } from "./equity-tax-message";
 import { loadIdentity } from "@/lib/tax-identity";
 import { identityReply } from "./tax-identity-message";
@@ -128,6 +132,10 @@ export async function answerTaxIntent(
         ? moveReply(intent, view.state.value, now)
         : workStateReply(intent.state, view.state.value);
     }
+    case "calendar":
+      return calendarReply(await loadTaxCalendar(userId, { client, now }));
+    case "accountant":
+      return accountantReply(await loadAccountantPage(userId, { client, now }));
     case "property":
       return propertyReply(await loadPropertyTax(userId, { client, now }));
     case "years":

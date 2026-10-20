@@ -146,6 +146,13 @@ export type AuditEvent =
   | "tax_notice_response_sent"
   // Spec step 221: who files a drafted property tax appeal (the team or the person).
   | "property_appeal_handled"
+  // Spec step 222: a read-only link for an accountant made, viewed, answered on and revoked.
+  // Spec step 223: an estimated tax payment made through the stand-in.
+  | "tax_payment_made"
+  | "accountant_link_created"
+  | "accountant_link_viewed"
+  | "accountant_link_answered"
+  | "accountant_link_revoked"
   // Taxes (spec steps 118–127): which fields of the tax profile changed, never the answers.
   | "tax_profile_changed"
   // A tax tag the person changed (spec step 119): the tag and whether on one transaction or

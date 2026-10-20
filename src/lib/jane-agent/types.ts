@@ -213,6 +213,11 @@ export const ACTION_IDS = [
   "tax.property_drop",
   "tax.exemption_remind",
   "tax.exemption_claimed",
+  // Spec step 222: the accountant's answers read.
+  "tax.accountant_seen",
+  // Spec step 223: pay an estimated payment, and December's moves on the deadlines.
+  "tax.estimate_pay",
+  "tax.yearend_plan",
   // Investments (spec step 129 on): the answer buttons on an investor-profile question,
   // by position (src/config/investing.ts PROFILE_QUESTIONS).
   "invest.answer.1",
@@ -290,6 +295,17 @@ export const ACTION_IDS = [
   "whatif.adopt",
   "lean.start",
   "lean.not_now",
+  // Spec step 257: the answer buttons on the question worth asking, by position; the fifth skips.
+  "ask.answer.1",
+  "ask.answer.2",
+  "ask.answer.3",
+  "ask.answer.4",
+  "ask.answer.5",
+  "suggestion.yes",
+  "suggestion.no",
+  "steady.pay",
+  "steady.skip",
+  "steady.on",
   "unusual.me",
   "unusual.not_me",
 ] as const;
@@ -342,6 +358,10 @@ export type MessageRefs = {
   reviewButtons?: string[];
   // Spec step 245: the add-on found in the payments (key) or confirmed (id) a button is about.
   carAddon?: { key?: string; id?: string };
+  // Spec step 255: the suggestion (by its key) a button is about.
+  suggestion?: string;
+  // Spec step 257: the profile fact the answer buttons are for.
+  askFact?: string;
   // Insurance (spec Phase X): a coverage gap by its key (GAP_KEYS), and the policy a
   // message is about.
   insuranceGap?: string;
@@ -459,6 +479,8 @@ export type MessageRefs = {
   yearsMove?: string;
   // Spec step 221: the property tax exemption (its key) a message is about.
   propertyExemption?: string;
+  // Spec step 223: the estimated-tax due date a message is about.
+  estimateDue?: string;
   // Spec step 218: the sign of identity theft (and where Jane learned of it), and the step a
   // message is about.
   identitySign?: string;

@@ -1,6 +1,7 @@
 import { BUDGET_SUGGESTION_MONTHS } from "@/config/budgets";
 import { YEARLY_BILLS_GOAL_PATTERN } from "@/config/irregular";
 import { COMING_UP_DAYS, COMING_UP_LIMIT } from "@/config/home";
+import { planTotal } from "@/detection/overlap";
 import { budgetSummary } from "@/insights/budgets";
 import { comingUp } from "@/insights/coming-up";
 import { irregularCosts } from "@/insights/irregular";
@@ -48,7 +49,7 @@ export async function homeSummary(
       // Jane's plan: every open finding is an item on it.
       db.findings.findMany({
         where: { status: { in: ["new", "shown"] } },
-        select: { status: true, annualSavingsCents: true },
+        select: { status: true, annualSavingsCents: true, type: true, evidence: true },
       }),
       loadDetectionInput(userId, { client, now }),
       db.plaidItems.findFirst({
@@ -100,7 +101,7 @@ export async function homeSummary(
     plan: {
       items: open.length,
       // The same total as /plan: every item's yearly saving, if the person says yes to all.
-      annualSavingsCents: open.reduce((sum, f) => sum + (f.annualSavingsCents ?? 0), 0),
+      annualSavingsCents: planTotal(open),
     },
     // Findings the person hasn't seen yet; seeing the plan or a card marks them seen.
     newToDecide: open.filter((f) => f.status === "new").length,

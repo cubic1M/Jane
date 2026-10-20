@@ -834,6 +834,18 @@ const BASE_QUESTIONS: readonly CheckQuestion[] = [
     expect: { intent: "tax", mentions: /assessed at/, list: true },
   },
   {
+    id: "tax-30",
+    text: "how do I share my taxes with my accountant",
+    needs: "rules",
+    expect: { intent: "tax", mentions: /link/, list: true },
+  },
+  {
+    id: "tax-31",
+    text: "what's happening with my taxes this month",
+    needs: "rules",
+    expect: { intent: "tax", mentions: /tax calendar for/, list: true },
+  },
+  {
     id: "ins-1",
     text: "what insurance do I have",
     needs: "rules",

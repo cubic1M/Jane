@@ -111,3 +111,38 @@ describe("set-up proposals", () => {
     expect(keys({ yearlyBillsMonthlyCents: 2_800 })).toContain("goal:emergency_fund");
   });
 });
+
+// Spec step 263 (QA sweep): the emergency fund is sized for the person.
+describe("the emergency fund proposal", () => {
+  const fund = (over: Partial<ProposalInput> = {}) =>
+    proposals(input(over)).find((p) => p.kind === "goal" && p.key === "goal:emergency_fund");
+  it("is three months of spending without a profile", () => {
+    expect(fund()).toMatchObject({ targetCents: 960_000, name: "Emergency fund" });
+  });
+  it("is six months for Sam, whose pay moves around", () => {
+    expect(
+      fund({ profile: { pattern: "uneven", debtTrouble: false, incomeCents: 453_781 } }),
+    ).toMatchObject({ targetCents: 1_920_000 });
+  });
+  it("is a small starter buffer for Chris, who is overdrawn and in debt trouble", () => {
+    const f = fund({ profile: { pattern: "salary", debtTrouble: true, incomeCents: 242_000 } });
+    expect(f).toMatchObject({ targetCents: 100_000, name: "Emergency starter buffer" });
+    expect(f).toMatchObject({ targetDate: "2027-04-18" });
+  });
+  it("is nothing for Ruth when her pension covers what she spends", () => {
+    expect(
+      fund({
+        monthlySpendingCents: 320_000,
+        profile: { pattern: "pension", debtTrouble: false, incomeCents: 452_000 },
+      }),
+    ).toBeUndefined();
+  });
+  it("is the gap for a retiree whose pension falls short", () => {
+    expect(
+      fund({
+        monthlySpendingCents: 500_000,
+        profile: { pattern: "pension", debtTrouble: false, incomeCents: 452_000 },
+      }),
+    ).toMatchObject({ targetCents: 580_000 });
+  });
+});

@@ -342,3 +342,27 @@ describe("estimated_tax", () => {
     expect(on("2027-01-01", [{ ...gig, amountCents: 80_000 }])).toEqual([]);
   });
 });
+
+// Spec step 263 (QA sweep): no "banks often take a fee back" for a processor's fees.
+describe("fee alerts and a payment processor", () => {
+  it("says nothing for Square's processing fees, and still flags a bank fee", () => {
+    const square = tx({
+      accountId: CHECKING.id,
+      date: addDays(AS_OF, -3),
+      amountCents: 22_000,
+      description: "SQUARE PROCESSING FEES",
+      pfcPrimary: "BANK_FEES",
+      pfcDetailed: "BANK_FEES_OTHER_BANK_FEES",
+    });
+    const overdraft = tx({
+      accountId: CHECKING.id,
+      date: addDays(AS_OF, -2),
+      amountCents: 3_500,
+      description: "OVERDRAFT FEE",
+      pfcPrimary: "BANK_FEES",
+      pfcDetailed: "BANK_FEES_OVERDRAFT_FEES",
+    });
+    expect(keys(feeAlerts(input({ transactions: [square] })))).toEqual([]);
+    expect(keys(feeAlerts(input({ transactions: [square, overdraft] })))).toEqual([overdraft.id]);
+  });
+});

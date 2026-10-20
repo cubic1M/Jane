@@ -1,0 +1,342 @@
+import { SPENDING_DETECTOR_RATES as S } from "@/config/detectors-spending";
+import { categoryOf } from "@/categorize/taxonomy";
+import { formatCents } from "@/lib/money";
+import type { ProfileInput, ProfileTx } from "@/profile/build";
+import { type Detector, suggestionId } from "./contract";
+import { evidence, liquidCents, outCents, tx } from "./helpers";
+
+// Detectors for spending, bills and cash (spec step 263): duplicate subscriptions, price
+// rises, bills worth negotiating, the same charge twice, a trial that turned into a
+// charge, a balance too low for the month's bills, and a category running over. Pure; see
+// ./contract.ts. The older ones for subscriptions, fees, idle cash and the emergency fund
+// are in ./money.ts.
+
+type Series = { description: string; pfc: string | null; txs: ProfileTx[] };
+
+// Charges that repeat: the same description in at least `regularMonthsMin` months.
+function regular(data: ProfileInput): Series[] {
+  const by = new Map<string, ProfileTx[]>();
+  for (const t of tx(data, (x) => x.amountCents > 0)) {
+    by.set(t.description, [...(by.get(t.description) ?? []), t]);
+  }
+  return [...by.entries()]
+    .filter(([, list]) => new Set(list.map((t) => t.date.slice(0, 7))).size >= S.regularMonthsMin)
+    .map(([description, list]) => ({
+      description,
+      pfc: list[0].pfc,
+      txs: [...list].sort((a, b) => a.date.localeCompare(b.date)),
+    }));
+}
+
+const median = (xs: number[]) => {
+  const s = [...xs].sort((a, b) => a - b);
+  return s[Math.floor(s.length / 2)] ?? 0;
+};
+const last = (s: Series) => s.txs[s.txs.length - 1].amountCents;
+
+const duplicateSubscription: Detector = {
+  capability: "subscriptions",
+  topic: "duplicate_subscription",
+  covers: ["subscriptions"],
+  needs: [],
+  detect({ profile, data }) {
+    const dupCats: readonly string[] = S.duplicateCategories;
+    const byCat = new Map<string, Series[]>();
+    for (const s of regular(data)) {
+      if (s.pfc && dupCats.includes(s.pfc)) byCat.set(s.pfc, [...(byCat.get(s.pfc) ?? []), s]);
+    }
+    const groups = [...byCat.values()].filter((g) => g.length >= 2);
+    if (groups.length === 0) return null;
+    // Drop the cheapest of each group: the one you'd least miss, a conservative saving.
+    const cheapest = groups.map((g) => g.sort((a, b) => last(a) - last(b))[0]);
+    const worth = cheapest.reduce((s, c) => s + last(c) * 12, 0);
+    const names = groups.flat().map((s) => s.description);
+    const charges = groups.flat().reduce((n, s) => n + s.txs.length, 0);
+    return {
+      id: suggestionId("subscriptions", "duplicate_subscription"),
+      capability: "subscriptions",
+      topic: "duplicate_subscription",
+      title: "You pay for more than one of the same kind of service: keep the one you use",
+      worthCents: worth,
+      worthKind: "saves",
+      confidence: evidence(
+        "seen",
+        profile.months,
+        charges,
+        "charges from overlapping subscriptions",
+      ),
+      urgency: "later",
+      why: `You pay for ${names.join(", ")} every month. Dropping the cheapest of each kind saves about ${formatCents(worth)} a year.`,
+      action: { label: "Review subscriptions", href: "/subscriptions" },
+    };
+  },
+};
+
+const priceIncrease: Detector = {
+  capability: "subscriptions",
+  topic: "price_increase",
+  covers: [],
+  needs: [],
+  detect({ profile, data }) {
+    const rises = regular(data)
+      .filter((s) => s.txs.length >= S.priceRiseMinCharges)
+      .flatMap((s) => {
+        const earlier = s.txs.slice(0, -1).map((t) => t.amountCents);
+        const before = median(earlier);
+        const now = last(s);
+        // A fixed price: most earlier charges were the same. A bill that moves every month
+        // (a utility, a processor's fees) is not a price rise.
+        const fixed =
+          earlier.filter((a) => a === before).length / earlier.length >= S.fixedPriceShare;
+        return fixed &&
+          before > 0 &&
+          now >= before * (1 + S.priceRiseShare) &&
+          now - before >= S.priceRiseMinCents
+          ? [{ s, before, now }]
+          : [];
+      });
+    if (rises.length === 0) return null;
+    const worth = rises.reduce((n, r) => n + (r.now - r.before) * 12, 0);
+    const top = rises.sort((a, b) => b.now - b.before - (a.now - a.before))[0];
+    return {
+      id: suggestionId("subscriptions", "price_increase"),
+      capability: "subscriptions",
+      topic: "price_increase",
+      title: "A charge went up: check it, and ask for the old price or switch",
+      worthCents: worth,
+      worthKind: "saves",
+      confidence: evidence(
+        "seen",
+        profile.months,
+        rises.reduce((n, r) => n + r.s.txs.length, 0),
+        "charges showing the rise",
+      ),
+      urgency: "soon",
+      why: `${top.s.description} went from ${formatCents(top.before)} to ${formatCents(top.now)} a month${rises.length > 1 ? `, and ${rises.length - 1} more went up` : ""}: ${formatCents(worth)} more a year.`,
+      action: { label: "See what changed", href: "/alerts" },
+    };
+  },
+};
+
+const INTERNET = "RENT_AND_UTILITIES_INTERNET_AND_CABLE";
+const PHONE = "RENT_AND_UTILITIES_TELEPHONE";
+
+const billNegotiation: Detector = {
+  capability: "cost",
+  topic: "bill_negotiation",
+  covers: [],
+  needs: [],
+  detect({ profile, data }) {
+    const bills = regular(data)
+      .filter(
+        (s) =>
+          (s.pfc === INTERNET && last(s) >= S.internetBillMinCents) ||
+          (s.pfc === PHONE && last(s) >= S.phoneBillMinCents),
+      )
+      .map((s) => ({ s, yearly: last(s) * 12 }));
+    if (bills.length === 0) return null;
+    const yearly = bills.reduce((n, b) => n + b.yearly, 0);
+    return {
+      id: suggestionId("cost", "bill_negotiation"),
+      capability: "cost",
+      topic: "bill_negotiation",
+      title: "Ask for a lower rate on your internet or phone bill",
+      worthCents: Math.round(yearly * S.negotiationShare),
+      worthKind: "saves",
+      confidence: evidence(
+        "seen",
+        profile.months,
+        bills.reduce((n, b) => n + b.s.txs.length, 0),
+        "bill payments",
+      ),
+      urgency: "later",
+      why: `You pay ${bills.map((b) => `${b.s.description} ${formatCents(last(b.s))} a month`).join(" and ")}, ${formatCents(yearly)} a year. People who ask usually get about ${Math.round(S.negotiationShare * 100)}% off.`,
+      action: { label: "See your bills", href: "/bills" },
+    };
+  },
+};
+
+const DAY_MS = 86_400_000;
+
+const duplicateCharge: Detector = {
+  capability: "cost",
+  topic: "duplicate_charge",
+  covers: [],
+  needs: [],
+  detect({ profile, data }) {
+    const out = tx(data, (t) => t.amountCents >= S.duplicateChargeMinCents).sort((a, b) =>
+      a.date.localeCompare(b.date),
+    );
+    const doubles: ProfileTx[] = [];
+    const seen = new Map<string, ProfileTx>();
+    for (const t of out) {
+      const key = `${t.description}|${t.amountCents}|${t.accountId}`;
+      const prev = seen.get(key);
+      if (prev && (Date.parse(t.date) - Date.parse(prev.date)) / DAY_MS <= S.duplicateChargeDays) {
+        // A bill paid on a schedule isn't a double charge: the days between must be short, and
+        // the same pair not part of a month-to-month series.
+        doubles.push(t);
+      }
+      seen.set(key, t);
+    }
+    if (doubles.length === 0) return null;
+    const total = outCents(doubles);
+    return {
+      id: suggestionId("cost", "duplicate_charge"),
+      capability: "cost",
+      topic: "duplicate_charge",
+      title: "You may have been charged twice: ask for one back",
+      worthCents: total,
+      worthKind: "earns",
+      confidence: evidence("seen", profile.months, doubles.length, "identical charges within days"),
+      urgency: "now",
+      why: `${doubles.map((d) => `${d.description} ${formatCents(d.amountCents)}`).join(", ")} appeared twice within ${S.duplicateChargeDays} days.`,
+      action: { label: "See the charges", href: "/alerts" },
+    };
+  },
+};
+
+const trialConversion: Detector = {
+  capability: "subscriptions",
+  topic: "trial_conversion",
+  covers: [],
+  needs: [],
+  detect({ profile, data }) {
+    const by = new Map<string, ProfileTx[]>();
+    for (const t of tx(data, (x) => x.amountCents > 0)) {
+      by.set(t.description, [...(by.get(t.description) ?? []), t]);
+    }
+    const converted = [...by.entries()].flatMap(([description, list]) => {
+      const sorted = [...list].sort((a, b) => a.date.localeCompare(b.date));
+      const trial = sorted.find((t) => t.amountCents <= S.trialMaxCents);
+      const after = trial
+        ? sorted.filter((t) => t.date > trial.date && t.amountCents >= S.trialConvertedMinCents)
+        : [];
+      return trial && after.length
+        ? [{ description, price: after[after.length - 1].amountCents, n: after.length }]
+        : [];
+    });
+    if (converted.length === 0) return null;
+    const worth = converted.reduce((s, c) => s + c.price * 12, 0);
+    return {
+      id: suggestionId("subscriptions", "trial_conversion"),
+      capability: "subscriptions",
+      topic: "trial_conversion",
+      title: "A free trial turned into a paid subscription: keep it or cancel it",
+      worthCents: worth,
+      worthKind: "saves",
+      confidence: evidence(
+        "seen",
+        profile.months,
+        converted.reduce((s, c) => s + c.n, 0),
+        "charges after a trial",
+      ),
+      urgency: "soon",
+      why: `${converted.map((c) => `${c.description} started with a small trial charge and now costs ${formatCents(c.price)}`).join("; ")}: ${formatCents(worth)} a year.`,
+      action: { label: "Review subscriptions", href: "/subscriptions" },
+    };
+  },
+};
+
+const lowBalance: Detector = {
+  capability: "safe_to_spend",
+  topic: "low_balance",
+  covers: [],
+  needs: [],
+  detect({ profile, data }) {
+    // Cash in checking and savings: what could pay the month's bills.
+    const checking = liquidCents(data);
+    // A month's regular bills: the latest charge of each regular series.
+    const bills = regular(data).filter(
+      (s) =>
+        !(s.pfc ?? "").startsWith("TRANSFER") && !(s.pfc ?? "").startsWith("LOAN_PAYMENTS_CREDIT"),
+    );
+    const monthly = bills.reduce((n, s) => n + last(s), 0);
+    if (bills.length === 0 || checking >= monthly * S.lowBalanceShare) return null;
+    const fees = outCents(
+      tx(
+        data,
+        (t) => t.pfc === "BANK_FEES_OVERDRAFT_FEES" || t.pfc === "BANK_FEES_INSUFFICIENT_FUNDS",
+      ),
+    );
+    return {
+      id: suggestionId("safe_to_spend", "low_balance"),
+      capability: "safe_to_spend",
+      topic: "low_balance",
+      title: "Your cash is below a month of bills: keep more in checking until payday",
+      worthCents: Math.max(fees, monthly - checking),
+      worthKind: "risk",
+      confidence: evidence("seen", profile.months, bills.length, "regular bills"),
+      urgency: "soon",
+      why: `Your checking and savings hold ${formatCents(checking)} and your regular bills come to about ${formatCents(monthly)} a month${fees ? `; overdraft fees have cost you ${formatCents(fees)}` : ""}.`,
+      action: { label: "See what's safe to spend", href: "/home" },
+    };
+  },
+};
+
+const budgetOverrun: Detector = {
+  capability: "spending",
+  topic: "budget_overrun",
+  covers: [],
+  needs: [],
+  detect({ profile, data }) {
+    const excluded: readonly string[] = S.budgetExcludedPrefixes;
+    const month = (d: string) => d.slice(0, 7);
+    const monthOf = (offset: number) => {
+      const [y, m] = data.today.slice(0, 7).split("-").map(Number);
+      const d = new Date(Date.UTC(y, m - 1 - offset, 1));
+      return d.toISOString().slice(0, 7);
+    };
+    const lastMonth = monthOf(1);
+    const prior = [monthOf(2), monthOf(3), monthOf(4)];
+    const totals = new Map<string, Map<string, number>>();
+    for (const t of tx(data, (x) => x.amountCents > 0 && x.pfc !== null)) {
+      const pfc = t.pfc!;
+      if (excluded.some((p) => pfc.startsWith(p))) continue;
+      const group = categoryOf(pfc)?.primary ?? pfc;
+      const m = month(t.date);
+      if (m !== lastMonth && !prior.includes(m)) continue;
+      const cat = totals.get(group) ?? new Map<string, number>();
+      cat.set(m, (cat.get(m) ?? 0) + t.amountCents);
+      totals.set(group, cat);
+    }
+    const over = [...totals.entries()]
+      .map(([group, cat]) => {
+        const avg = prior.reduce((s, m) => s + (cat.get(m) ?? 0), 0) / prior.length;
+        const now = cat.get(lastMonth) ?? 0;
+        return { group, avg, now, extra: now - avg };
+      })
+      .filter(
+        (o) =>
+          o.avg > 0 &&
+          o.now >= o.avg * (1 + S.budgetOverrunShare) &&
+          o.extra >= S.budgetOverrunMinCents,
+      )
+      .sort((a, b) => b.extra - a.extra);
+    if (over.length === 0) return null;
+    const top = over[0];
+    const label = top.group.replace(/_/g, " ").toLowerCase();
+    return {
+      id: suggestionId("spending", "budget_overrun"),
+      capability: "spending",
+      topic: "budget_overrun",
+      title: `Set a budget for ${label}: last month ran well over your usual`,
+      worthCents: Math.round(top.extra),
+      worthKind: "saves",
+      confidence: evidence("seen", profile.months, prior.length + 1, `months of ${label} spending`),
+      urgency: "later",
+      why: `You spent ${formatCents(top.now)} on ${label} last month against about ${formatCents(Math.round(top.avg))} in the three months before.`,
+      action: { label: "Set a budget", href: "/budgets" },
+    };
+  },
+};
+
+export const SPENDING_DETECTORS: readonly Detector[] = [
+  duplicateSubscription,
+  priceIncrease,
+  trialConversion,
+  billNegotiation,
+  duplicateCharge,
+  lowBalance,
+  budgetOverrun,
+];

@@ -1,4 +1,10 @@
-import { LOOKBACK_MONTHS, type ConfidenceLevel } from "@/config/detection";
+import {
+  GOVERNMENT_PAYEE,
+  LOOKBACK_MONTHS,
+  PROCESSOR_FEE_PAYEE,
+  RENEWAL_EXCLUDED_PRIMARIES,
+  type ConfidenceLevel,
+} from "@/config/detection";
 import type { DetectionInput, DetectionTransaction, EvidenceTransaction } from "./types";
 import { monthsBefore } from "./units";
 
@@ -41,3 +47,12 @@ export function sumCents(transactions: { amountCents: number }[]): number {
 export function inList(value: string | null, list: readonly string[]): boolean {
   return value !== null && list.includes(value);
 }
+
+// Spec step 263. A yearly or quarterly charge that is a real subscription: not a tax or other
+// government payment, a loan payment or a transfer.
+export const isRenewable = (s: { merchant: string; pfcPrimary: string | null }): boolean =>
+  !inList(s.pfcPrimary, RENEWAL_EXCLUDED_PRIMARIES) && !GOVERNMENT_PAYEE.test(s.merchant);
+
+// Spec step 263. A payment processor's fees are a business cost, never a bank fee.
+export const isProcessorFee = (description: string): boolean =>
+  PROCESSOR_FEE_PAYEE.test(description);

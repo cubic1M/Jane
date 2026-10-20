@@ -257,6 +257,7 @@ async function JaneContent() {
         links={[
           { href: "/actions", label: "See all" },
           { href: "/saved", label: "What Jane saved you" },
+          { href: "/profile", label: "What Jane knows about you" },
         ]}
       >
         {done.savedToDateCents > 0 && (
