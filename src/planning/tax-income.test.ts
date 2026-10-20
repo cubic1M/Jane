@@ -71,6 +71,17 @@ describe("pay stubs", () => {
     ).toBe(197_500);
   });
 
+  it("projects the same whatever order the paychecks come in", () => {
+    const shuffled = [...stubs].reverse();
+    shuffled.push(shuffled.splice(3, 1)[0]);
+    expect(payFromStubs(shuffled, 2026, "2026-10-18")).toEqual(
+      payFromStubs(stubs, 2026, "2026-10-18"),
+    );
+    expect(payFromStubs(shuffled, 2026, "2026-10-18").projected.wagesCents).toBe(
+      24 * (395_000 - 23_700 - 14_500),
+    );
+  });
+
   it("projects the rest of the year's paychecks like the average", () => {
     const pay = payFromStubs(stubs, 2026, "2026-10-18");
     expect(pay.soFar.grossCents).toBe(20 * 395_000);
