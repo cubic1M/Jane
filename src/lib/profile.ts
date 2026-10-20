@@ -28,39 +28,46 @@ export async function loadProfileInput(
   const db = scopedFor(userId, client);
   const today = dayOf(now);
   const since = new Date(now.getTime() - (PROFILE_MONTHS * 31 + 2) * 86_400_000);
-  const [transactions, accounts, liabilities, prefs, tax, insurance, investor] = await Promise.all([
-    db.transactions.findMany({
-      where: { date: { gt: since, lte: now } },
-      select: {
-        date: true,
-        amountCents: true,
-        description: true,
-        pfcDetailed: true,
-        accountId: true,
-      },
-    }),
-    db.accounts.findMany({
-      select: {
-        id: true,
-        type: true,
-        subtype: true,
-        currentBalanceCents: true,
-        availableBalanceCents: true,
-      },
-    }),
-    db.liabilities.findMany({
-      select: { accountId: true, kind: true, aprBps: true, hasPmi: true, payoffDate: true },
-    }),
-    db.janePreferences.findMany({
-      where: { kind: "fact", key: { startsWith: PREF_PREFIX } },
-      select: { key: true, value: true },
-    }),
-    db.taxProfiles.findFirst({
-      select: { filingStatus: true, childrenUnder17: true, otherDependants: true, answered: true },
-    }),
-    db.insuranceProfiles.findFirst({ select: { housing: true } }),
-    db.investorProfiles.findFirst({ select: { age: true, ageOn: true, dropReaction: true } }),
-  ]);
+  const [transactions, accounts, liabilities, holdings, prefs, tax, insurance, investor] =
+    await Promise.all([
+      db.transactions.findMany({
+        where: { date: { gt: since, lte: now } },
+        select: {
+          date: true,
+          amountCents: true,
+          description: true,
+          pfcDetailed: true,
+          accountId: true,
+        },
+      }),
+      db.accounts.findMany({
+        select: {
+          id: true,
+          type: true,
+          subtype: true,
+          currentBalanceCents: true,
+          availableBalanceCents: true,
+        },
+      }),
+      db.liabilities.findMany({
+        select: { accountId: true, kind: true, aprBps: true, hasPmi: true, payoffDate: true },
+      }),
+      db.holdings.findMany({ select: { accountId: true, valueCents: true, costBasisCents: true } }),
+      db.janePreferences.findMany({
+        where: { kind: "fact", key: { startsWith: PREF_PREFIX } },
+        select: { key: true, value: true },
+      }),
+      db.taxProfiles.findFirst({
+        select: {
+          filingStatus: true,
+          childrenUnder17: true,
+          otherDependants: true,
+          answered: true,
+        },
+      }),
+      db.insuranceProfiles.findFirst({ select: { housing: true } }),
+      db.investorProfiles.findFirst({ select: { age: true, ageOn: true, dropReaction: true } }),
+    ]);
 
   // Answers given elsewhere come first; a correction made here wins over them.
   const told: Told = {};
@@ -109,6 +116,11 @@ export async function loadProfileInput(
         a.type === "credit" && a.currentBalanceCents != null && a.availableBalanceCents != null
           ? a.currentBalanceCents + a.availableBalanceCents
           : null,
+    })),
+    holdings: holdings.map((h) => ({
+      accountId: h.accountId,
+      valueCents: h.valueCents,
+      basisCents: h.costBasisCents,
     })),
     liabilities: liabilities.map((l) => ({
       accountId: l.accountId,
