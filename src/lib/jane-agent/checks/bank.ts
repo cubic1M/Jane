@@ -828,6 +828,12 @@ const BASE_QUESTIONS: readonly CheckQuestion[] = [
   // Insurance (spec step 108), over the demo bank's sample GEICO car policy
   // (DEMO_POLICY in src/lib/insurance/profile.ts: $142.00 a month, a $1,000.00 deductible).
   {
+    id: "tax-29",
+    text: "is my property tax too high",
+    needs: "rules",
+    expect: { intent: "tax", mentions: /assessed at/, list: true },
+  },
+  {
     id: "ins-1",
     text: "what insurance do I have",
     needs: "rules",

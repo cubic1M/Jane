@@ -32,6 +32,7 @@ import { NOTICE_KINDS } from "@/config/tax-notices";
 import { checkNoticeFor, listTaxNotices, noticeAmountCents } from "@/lib/tax-notices";
 import { loadEquityTax } from "@/lib/equity-tax";
 import { loadMultiYear } from "@/lib/multi-year";
+import { loadPropertyTax } from "@/lib/property-tax";
 import { loadIdentity } from "@/lib/tax-identity";
 import { loadSideIncome } from "@/lib/side-income";
 import { loadReturnReviews } from "@/lib/prior-return/review";
@@ -184,6 +185,12 @@ export const TAX_TOOLS: Anthropic.Tool[] = [
     name: "tax_years",
     description:
       "The person's federal tax projected over the next years: each year's income, tax and top rate (the first is their estimate, the rest assume pay grows until the retirement year they gave, or one Jane assumed, and that the brackets rise with inflation), the total over the years; and in demo advice mode the moves that save tax over the years (a Roth conversion in a low-income year, realising gains in the 0% bracket, bunching charity into alternate years, timing a planned bonus, sale or withdrawal), each with the tax it saves in all. Jane moves no money; a move can be put on the person's deadlines.",
+    input_schema: noInput,
+  },
+  {
+    name: "tax_property",
+    description:
+      "The person's property tax check: their home's assessed value against its market value (their own figures, or sample data), how far over it is and what that costs a year, the county's appeal window and deadline, and in demo advice mode whether an appeal is worth making, the comparable sales behind a drafted appeal, who files it, and exemptions (homestead, senior, veteran, disabled) they may not have claimed with what each does. Jane files and applies for nothing herself.",
     input_schema: noInput,
   },
   {
@@ -697,6 +704,31 @@ export async function runTaxTool(
           steps: v.case.steps.map((s) => ({ step: s.title, doneOn: s.doneOn })),
           next: v.case.next,
         },
+      });
+    }
+    case "tax_property": {
+      const v = await loadPropertyTax(userId, { client, now });
+      return out({
+        homeowner: v.homeowner,
+        assessed: v.assessedCents === null ? null : money(v.assessedCents),
+        marketValue: v.marketCents === null ? null : money(v.marketCents),
+        figuresFrom: v.figuresFrom,
+        overBy: v.gap
+          ? { percent: Math.round(v.gap.gapRate * 100), perYear: money(v.gap.savingCents) }
+          : null,
+        appealWindow: { status: v.window.status, closes: v.window.closesOn, text: v.window.text },
+        advice: v.advice,
+        worthAppealing: v.advice ? v.suggested : null,
+        comparableSales: v.comps.map((c) => ({
+          address: c.address,
+          soldOn: c.soldOn,
+          price: money(c.priceCents),
+        })),
+        appeal: v.appeal && { status: v.appeal.status, saves: money(v.appeal.savingCents) },
+        exemptions: v.advice
+          ? v.exemptions.eligible.map((e) => ({ name: e.name, who: e.who, benefit: e.benefit }))
+          : [],
+        needToKnow: v.exemptions.ask,
       });
     }
     case "tax_years": {

@@ -395,6 +395,9 @@ export const TAX_MESSAGE_PRIORITY = {
   equity: 40,
   // Spec step 220: a move that saves tax over several years.
   years: 35,
+  // Spec step 221: an assessment worth appealing, and exemptions not yet claimed.
+  property: 38,
+  exemption: 30,
 } as const;
 
 // What Jane does about taxes by herself at each autopilot level (spec step 57), shown on
@@ -458,6 +461,11 @@ export const TAX_AUTOPILOT: readonly { feature: string; ask: string; auto: strin
     feature: "years",
     ask: "I project your federal tax for each year ahead from your estimate and your plans, and with demo advice find moves like a Roth conversion in a low-income year, each with what it saves over the years. You decide which to put on your plan.",
     auto: "I keep your multi-year tax projection up to date and, with demo advice, bring up the move that saves the most over the years with a button to put it on your deadlines. I never convert, sell or give anything myself.",
+  },
+  {
+    feature: "property",
+    ask: "I compare your home's assessed value with its market value and, with demo advice, tell you when the gap is worth an appeal, draft it with comparable sales and name exemptions you may not have claimed. You decide who files it.",
+    auto: "I compare your home's assessed value with its market value, put the appeal deadline on your plan when the gap is worth an appeal, and with demo advice draft it with comparable sales and name exemptions you may not have claimed. Filing is always on your tap: my team's or yours.",
   },
   {
     feature: "identity",

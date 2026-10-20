@@ -205,6 +205,14 @@ export const ACTION_IDS = [
   "tax.equity_aside",
   // Spec step 220: put a multi-year tax move on the person's deadlines.
   "tax.years_plan",
+  // Spec step 221: property tax: draft an appeal, say who files it, an exemption.
+  "tax.property_draft",
+  "tax.property_remind",
+  "tax.property_team",
+  "tax.property_self",
+  "tax.property_drop",
+  "tax.exemption_remind",
+  "tax.exemption_claimed",
   // Investments (spec step 129 on): the answer buttons on an investor-profile question,
   // by position (src/config/investing.ts PROFILE_QUESTIONS).
   "invest.answer.1",
@@ -432,6 +440,8 @@ export type MessageRefs = {
   taxNotice?: string;
   // Spec step 220: the multi-year tax move (its key) a message is about.
   yearsMove?: string;
+  // Spec step 221: the property tax exemption (its key) a message is about.
+  propertyExemption?: string;
   // Spec step 218: the sign of identity theft (and where Jane learned of it), and the step a
   // message is about.
   identitySign?: string;

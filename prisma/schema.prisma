@@ -385,6 +385,7 @@ model User {
   monthlyReports    MonthlyReport[]
   whatIfPlans       WhatIfPlan[]
   taxPlanEvents     TaxPlanEvent[]
+  propertyAppeals   PropertyAppeal[]
   leanPlans         LeanPlan[]
   yearPlans         YearPlan[]
   unusualAnswers    UnusualAnswer[]
@@ -2573,6 +2574,16 @@ model TaxProfile {
   // multi-year moves (keys like "roth:2027") already put on their deadlines.
   retireYear            Int?      @map("retire_year")
   multiYearHandled      String[]  @default([]) @map("multi_year_handled")
+  // Spec step 221: what the person told Jane about their home and themselves, for the
+  // assessment check and the exemptions (the county's own figures win over a guess).
+  homeMarketCents       Int?      @map("home_market_cents")
+  homeAssessedCents     Int?      @map("home_assessed_cents")
+  homeAssessedYear      Int?      @map("home_assessed_year")
+  homeNoticeOn          DateTime? @map("home_notice_on") @db.Date
+  ownerAge              Int?      @map("owner_age")
+  ownerVeteran          Boolean?  @map("owner_veteran")
+  ownerDisabled         Boolean?  @map("owner_disabled")
+  exemptionsClaimed     String[]  @default([]) @map("exemptions_claimed")
   createdAt             DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt             DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
 
@@ -3064,6 +3075,29 @@ model TaxPlanEvent {
 
   @@index([userId])
   @@map("tax_plan_events")
+}
+
+// Spec step 221: a drafted property tax appeal. Filed by the team or the person, on their
+// tap; Jane files nothing herself.
+model PropertyAppeal {
+  id            String    @id @default(cuid())
+  userId        String    @map("user_id")
+  year          Int
+  assessedCents Int       @map("assessed_cents")
+  marketCents   Int       @map("market_cents")
+  savingCents   Int       @map("saving_cents")
+  board         String
+  comps         Json
+  draft         String
+  // "drafted", then "team" or "self" once the person says who files it, or "dropped".
+  status        String    @default("drafted")
+  handledAt     DateTime? @map("handled_at") @db.Timestamptz(3)
+  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, year])
+  @@map("property_appeals")
 }
 
 model TaxReturn {

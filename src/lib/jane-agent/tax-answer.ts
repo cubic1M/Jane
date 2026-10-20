@@ -16,6 +16,8 @@ import { loadHomeTaxes } from "@/lib/home-taxes";
 import { loadEquityTax } from "@/lib/equity-tax";
 import { MultiYearError, loadMultiYear, setRetireYear } from "@/lib/multi-year";
 import { yearsReply } from "./multi-year-message";
+import { loadPropertyTax } from "@/lib/property-tax";
+import { propertyReply } from "./property-tax-message";
 import { equityReply } from "./equity-tax-message";
 import { loadIdentity } from "@/lib/tax-identity";
 import { identityReply } from "./tax-identity-message";
@@ -126,6 +128,8 @@ export async function answerTaxIntent(
         ? moveReply(intent, view.state.value, now)
         : workStateReply(intent.state, view.state.value);
     }
+    case "property":
+      return propertyReply(await loadPropertyTax(userId, { client, now }));
     case "years":
       return yearsReply(await loadMultiYear(userId, { client, now }));
     case "retire_year": {

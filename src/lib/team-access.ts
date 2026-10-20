@@ -173,6 +173,7 @@ export const TEAM_ACCESS_RULES: Record<AuditEvent, EventRule> = {
   tax_notice_confirmed: own,
   tax_identity_case_opened: own,
   tax_notice_response_sent: own,
+  property_appeal_handled: own,
   tax_profile_changed: own,
   tax_tag_changed: own,
   tax_return_started: own,

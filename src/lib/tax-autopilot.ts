@@ -11,6 +11,7 @@ import { loadTaxForms } from "@/lib/tax-organizer";
 import { collectTaxDocuments } from "@/lib/tax-documents";
 import { addOpenPlanMoves } from "@/lib/tax-plan";
 import { remindIpPinWhenDue } from "@/lib/tax-identity";
+import { remindAppealWhenSuggested } from "@/lib/property-tax";
 import { remindDueRecords } from "@/lib/audit-records";
 import { remindReceipts } from "@/lib/giving";
 
@@ -36,6 +37,7 @@ export async function runTaxAutopilot(
   receiptsReminded: number;
   recordsReminded: number;
   ipPinReminded: boolean;
+  propertyReminded: boolean;
 }> {
   // Spec step 141: Taxes' autopilot. Starting a return or a goal moves no money: the level
   // is enough.
@@ -52,6 +54,7 @@ export async function runTaxAutopilot(
       receiptsReminded: 0,
       recordsReminded: 0,
       ipPinReminded: false,
+      propertyReminded: false,
     };
   }
   return {
@@ -66,6 +69,8 @@ export async function runTaxAutopilot(
     recordsReminded: await remindDueRecords(userId, { client, now }),
     // Spec step 218: the January IP PIN reminder.
     ipPinReminded: await remindIpPinWhenDue(userId, { client, now }),
+    // Spec step 221: the appeal deadline, when the assessment is worth appealing.
+    propertyReminded: await remindAppealWhenSuggested(userId, { client, now }),
   };
 }
 
