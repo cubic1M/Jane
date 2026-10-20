@@ -55,6 +55,8 @@ import {
   cryptoReply,
   cashReply,
   steadyReply,
+  retirementAccountsReply,
+  oldAccountsReply,
 } from "./replies";
 import { gather } from "../brain";
 import { parseIntent } from "../intents";
@@ -1991,5 +1993,181 @@ describe("steadyReply and the drop message", () => {
     expect(m.actions.map((a) => a.id)).toEqual(["open", "snooze"]);
     expect(gatherSteady(-0.05)).toEqual([]);
     expect(gatherSteady(-0.1, false)).toEqual([]);
+  });
+});
+
+// Spec step 210: retirement accounts used fully.
+const RA_VIEW = {
+  advice: true,
+  age: 45,
+  limits: [
+    {
+      key: "workplace" as const,
+      label: "401(k), 403(b) or 457 at work",
+      limitCents: 2_450_000,
+      catchUpCents: 0,
+      usedCents: 1_632_000,
+      roomCents: 818_000,
+    },
+    {
+      key: "ira" as const,
+      label: "IRAs (traditional and Roth together)",
+      limitCents: 750_000,
+      catchUpCents: 0,
+      usedCents: 200_000,
+      roomCents: 550_000,
+    },
+  ],
+  match: {
+    employeeRate: 0.04,
+    fullMatchRate: 0.06,
+    missedCents: 81_600,
+    extraEmployeeCents: 163_200,
+    matchRate: 0.5,
+  },
+  roth: {
+    choice: "roth" as const,
+    marginalRate: 0.12,
+    fromEstimate: true,
+    access: { kind: "direct" as const, allowedShare: 1 as const },
+    magiCents: 8_000_000,
+  },
+  ira: { id: "ira", name: "Demo Roth IRA", roth: true },
+  iraAllowedCents: 550_000,
+  demo: true,
+  pending: null,
+};
+
+describe("retirement accounts questions, by rules", () => {
+  it.each([
+    "what is a backdoor roth",
+    "what are the contribution limits",
+    "am I getting the full match",
+    "how much can I put in my IRA",
+  ])("reads %j as retirement accounts", (text) => {
+    expect(parseIntent(text, ASOF)).toMatchObject({
+      kind: "investments",
+      topic: "retirement_accounts",
+    });
+  });
+});
+
+describe("retirementAccountsReply and the retirement messages", () => {
+  it("gives the limits, the missed match in dollars, Roth by bracket and a tap for each", () => {
+    const reply = retirementAccountsReply(RA_VIEW);
+    expect(reply.body).toMatch(
+      /^This year: 401\(k\), 403\(b\) or 457 at work: \$16,320\.00 of \$24,500\.00 \(\$8,180\.00 left\)/,
+    );
+    expect(reply.body).toMatch(/leaving about \$816\.00 a year of their money on the table/);
+    expect(reply.body).toMatch(/Roth usually wins at your bracket/);
+    expect(reply.actions.map((a) => a.id)).toEqual(["retire.match", "retire.ira", "open"]);
+    expect(reply.refs).toEqual({ advice: true, iraCents: 550_000 });
+  });
+  it("explains the backdoor Roth without a button for it, and only facts outside demo advice", () => {
+    const backdoor = retirementAccountsReply({
+      ...RA_VIEW,
+      roth: {
+        ...RA_VIEW.roth,
+        access: { kind: "backdoor", allowedShare: 0, steps: ["a", "b", "c"], note: "pro-rata" },
+      },
+    });
+    expect(backdoor.body).toMatch(
+      /The backdoor route: a b c pro-rata I don't do this one for you\./,
+    );
+    expect(backdoor.actions.map((a) => a.id)).toEqual(["retire.match", "open"]);
+    const facts = retirementAccountsReply({ ...RA_VIEW, advice: false });
+    expect(facts.body).not.toMatch(/employer|bracket|backdoor/);
+    expect(facts.actions.map((a) => a.id)).toEqual(["open"]);
+  });
+  it("posts the missed match and the IRA room, each with its tap", () => {
+    const gather = (retirementAccounts: InvestmentSnapshot["retirementAccounts"], advice = true) =>
+      investmentsSource
+        .gather(
+          { ...base, investments: demoInvestmentSnapshot({ advice, retirementAccounts }) },
+          {} as never,
+        )
+        .filter((c) => c.dedupeKey.startsWith("retire:"));
+    const messages = gather(RA_VIEW);
+    expect(messages.map((m) => [m.kind, m.dedupeKey])).toEqual([
+      ["decision", "retire:match:816"],
+      ["decision", "retire:ira:2026"],
+    ]);
+    expect(messages[1].refs).toEqual({ advice: true, iraCents: 550_000 });
+    expect(gather(RA_VIEW, false)).toEqual([]);
+    expect(gather({ ...RA_VIEW, match: { ...RA_VIEW.match, missedCents: 0 }, ira: null })).toEqual(
+      [],
+    );
+  });
+});
+
+// Spec step 211: old accounts brought home.
+const OLD_ASKED = {
+  id: "p1",
+  employer: "Globex Industries",
+  status: "asked",
+  planName: null,
+  balanceCents: null,
+  fees: null,
+  steps: [],
+  arrivesOn: null,
+};
+const OLD_FOUND = {
+  ...OLD_ASKED,
+  status: "found",
+  planName: "Globex Industries 401(k) Plan",
+  balanceCents: 3_820_000,
+  fees: { beforeCents: 42_784, afterCents: 1_146, savedCents: 41_638 },
+};
+
+describe("old account questions, by rules", () => {
+  it.each([
+    "my old 401k",
+    "I left a 401k at my last job",
+    "how do I roll over my 401k",
+    "forgotten 401k",
+    "rollover",
+  ])("reads %j as old accounts", (text) => {
+    expect(parseIntent(text, ASOF)).toMatchObject({ kind: "investments", topic: "old_accounts" });
+  });
+});
+
+describe("the old account question, the found plan and the rollover", () => {
+  it("asks once per employer with Yes and No, then offers the rollover with fees compared", () => {
+    const gather = (plans: unknown[], advice = true) =>
+      investmentsSource
+        .gather(
+          {
+            ...base,
+            investments: demoInvestmentSnapshot({
+              advice,
+              oldAccounts: { advice, plans: plans as never, demo: true },
+            }),
+          },
+          {} as never,
+        )
+        .filter((c) => c.dedupeKey.startsWith("oldplan:"));
+    const [ask] = gather([OLD_ASKED]);
+    expect(ask.body).toMatch(/^Did you have a 401\(k\) at Globex Industries\?/);
+    expect(ask.actions.map((a) => a.id)).toEqual(["oldplan.yes", "oldplan.no", "open", "snooze"]);
+    expect(ask.refs).toEqual({ oldPlanId: "p1" });
+    const [roll] = gather([OLD_FOUND]);
+    expect(roll.body).toMatch(
+      /It costs about \$427\.84 a year in fees; in a low-cost index fund the same money would cost about \$11\.46, \$416\.38 a year less\./,
+    );
+    expect(roll.body).toMatch(/isn't a withdrawal and isn't taxed/);
+    expect(roll.actions[0]).toMatchObject({ id: "oldplan.rollover", label: "Roll it over" });
+    expect(gather([OLD_FOUND], false)).toEqual([]);
+  });
+  it("answers where each plan stands", () => {
+    const reply = oldAccountsReply({ advice: true, plans: [OLD_FOUND] as never, demo: true });
+    expect(reply.body).toMatch(
+      /^Globex Industries \(\$38,200\.00\): found, read-only, ready to roll over\./,
+    );
+    expect(reply.actions[0].id).toBe("oldplan.rollover");
+    expect(
+      oldAccountsReply({ advice: false, plans: [OLD_FOUND] as never, demo: true }).actions.map(
+        (a) => a.id,
+      ),
+    ).toEqual(["open"]);
   });
 });

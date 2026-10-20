@@ -171,7 +171,15 @@ export type AuditEvent =
   // A company stock grant from the guided form (spec step 160): its kind, never amounts.
   | "equity_grant_saved"
   // A read-only crypto connection (spec step 161): exchange or wallet, never a key.
-  | "crypto_connected";
+  | "crypto_connected"
+  // Spec step 164: Jane acted on her own in the investing sector, within the person's caps.
+  | "autopilot_investing_acted"
+  // Spec step 210: a change to a contribution at work, sent to the payroll partner.
+  | "payroll_change_requested"
+  // Spec step 211: an old retirement plan found, and its direct rollover.
+  | "old_plan_found"
+  | "rollover_started"
+  | "rollover_completed";
 
 export type AuditActor = { type: ActorType; id: string | null };
 
