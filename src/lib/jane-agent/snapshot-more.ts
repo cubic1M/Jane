@@ -7,6 +7,8 @@ import { loadTransfers, type Transfers } from "@/lib/balance-transfers";
 import { loadStudentLoans, type StudentLoans } from "@/lib/student-loans";
 import { loadMortgage, type Mortgage } from "@/lib/mortgage";
 import { loadCredit, type Credit } from "@/lib/credit";
+import { loadCreditCards, type CreditCards } from "@/lib/credit-cards";
+import { loadCreditBuilding, type CreditBuilding } from "@/lib/credit-building";
 import { loadDebtAutopilot, type DebtAutopilot } from "@/lib/debt-autopilot";
 import { listApplications, type LoanApplicationView } from "@/lib/loan-applications";
 import { loadRefinance, type Refinance } from "@/lib/refinance";
@@ -63,6 +65,10 @@ export type MoreSnapshot = {
   credit?: Credit;
   // Spec step 117: what Jane does about debts by herself, and what she found.
   debtAutopilot?: DebtAutopilot;
+  // Spec step 174: what each card earns on the person's spending, and a card that'd earn more.
+  creditCards?: CreditCards;
+  // Spec step 175: paying before the statement, the on-time streak, the simulator.
+  creditBuilding?: CreditBuilding;
   // Insurance (spec Phase X), from the same loader as /insurance. Optional, so a snapshot
   // built without it (in tests) says nothing about insurance.
   insurance?: InsuranceSnapshot;
@@ -91,6 +97,8 @@ export async function loadMore(
     mortgage,
     credit,
     debtAutopilot,
+    creditCards,
+    creditBuilding,
   ] = await Promise.all([
     autopilotOf(userId, { client }),
     openProposals(userId, { client }),
@@ -122,6 +130,8 @@ export async function loadMore(
     loadMortgage(userId, { client, now, book, refinance }),
     loadCredit(userId, { client, now, book }),
     loadDebtAutopilot(userId, { client, now, book }),
+    loadCreditCards(userId, { client, now, book }),
+    loadCreditBuilding(userId, { client, now, book }),
   ]);
   const insurance = await loadInsuranceSnapshot(userId, { client, now });
 
@@ -164,6 +174,8 @@ export async function loadMore(
     mortgage,
     credit,
     debtAutopilot,
+    creditCards,
+    creditBuilding,
     insurance,
   };
 }
