@@ -139,7 +139,7 @@ export async function runAnswerChecks(
     const db = scopedFor(userId, client);
     await db.janeMessages.deleteMany({ where: { kind: { in: ["user", "reply"] } } });
     await client.rateLimit.deleteMany({
-      where: { key: { in: [`chat:${userId}`, `ask:${userId}`] } },
+      where: { key: { in: [`chat:${userId}`, `ask:${userId}`, `chatspend:${userId}`] } },
     });
     const earlier: { role: "user" | "assistant"; content: string }[] = [];
     let leadSkipped = false;

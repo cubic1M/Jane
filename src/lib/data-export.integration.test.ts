@@ -142,6 +142,16 @@ describe.runIf(url)("data export against a real database", () => {
         moves: [],
       },
     });
+    await client.unusualAnswer.create({
+      data: {
+        userId,
+        alertId: "a1",
+        merchantKey: "acme",
+        rule: "spike",
+        answer: "me",
+        amountCents: 100,
+      },
+    });
     await client.yearPlan.create({ data: { userId, startMonth: "2026-10", months: [] } });
     await client.leanPlan.create({
       data: { userId, changeKey: "late:acme:2026-10-15", employer: "Acme", dueOn: "2026-10-15" },
@@ -274,6 +284,7 @@ describe.runIf(url)("data export against a real database", () => {
       "whatIfPlans",
       "leanPlans",
       "yearPlans",
+      "unusualAnswers",
       "janeMessages",
       "janePreferences",
       "taxTags",

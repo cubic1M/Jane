@@ -30,7 +30,15 @@ import type { InsurancePartner, PartnerQuote, QuoteCarrier, QuoteRequest } from 
 const DAY_MS = 86_400_000;
 
 // Kinds quoted without a deductible.
-const NO_DEDUCTIBLE: readonly PolicyKind[] = ["life", "disability", "umbrella", "travel", "device"];
+const NO_DEDUCTIBLE: readonly PolicyKind[] = [
+  "life",
+  "disability",
+  "umbrella",
+  "travel",
+  "device",
+  "business",
+  "valuables",
+];
 
 const carrierOf = (c: DemoCarrier): QuoteCarrier => ({
   id: c.id,
@@ -162,6 +170,36 @@ export function basePremium(
     }
     case "device":
       return DEMO_PRICING.device.perDeviceCents;
+    case "rideshare":
+      return DEMO_PRICING.rideshare.perYearCents * deductible * state;
+    case "business": {
+      const p = DEMO_PRICING.business;
+      return (
+        (p.baseCents +
+          (num(coverage.businessProperty, p.defaults.businessProperty) * p.propertyBps) / 10_000) *
+        state
+      );
+    }
+    case "valuables": {
+      const p = DEMO_PRICING.valuables;
+      return (num(coverage.listedValue, p.defaults.listedValue) * p.listedBps) / 10_000;
+    }
+    case "boat": {
+      const p = DEMO_PRICING.boat;
+      return (
+        (p.baseCents + (num(coverage.hullValue, p.defaults.hullValue) * p.hullBps) / 10_000) *
+        deductible *
+        state
+      );
+    }
+    case "rental_property": {
+      const p = DEMO_PRICING.rental_property;
+      return (
+        ((num(coverage.dwelling, p.defaults.dwelling) * p.dwellingBps) / 10_000) *
+        deductible *
+        state
+      );
+    }
     default:
       return null;
   }
