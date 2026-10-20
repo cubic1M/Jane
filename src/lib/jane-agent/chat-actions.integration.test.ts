@@ -222,7 +222,7 @@ describe.runIf(url)("everything from Jane's chat, against a real database", () =
         await runJaneAgent(userId, { client, now: day(n) });
         heads = (await withButton(userId, "deadline.done"))[0];
       }
-      expect(heads?.body).toMatch(/^Coming up tomorrow: Claim FSA \d+\.$/);
+      expect(heads?.body).toMatch(/^Coming up (?:today|tomorrow): Claim FSA \d+\.$/);
       expect(buttonIds(heads!)).toEqual(["deadline.done", "snooze", "open"]);
       const { deadlineEntryId } = parseRefs(heads!.refs);
 

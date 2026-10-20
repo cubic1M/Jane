@@ -2,6 +2,7 @@
 
 import { redirect } from "next/navigation";
 import { StudentProfileError, markStudentStep, saveStudentProfile } from "@/lib/student-loans";
+import { StudentDatesError, saveStudentDates } from "@/lib/student-long-game";
 import { requireUser } from "@/lib/session";
 
 // The student loan page (spec step 114): what the plans are compared with, and a
@@ -31,4 +32,23 @@ export async function stepDone(): Promise<void> {
   const user = await requireUser();
   await markStudentStep(user.id);
   redirect("/loans/student#steps");
+}
+
+// The long game (spec step 225): federal or private, and the dates to certify the employer
+// and recertify income, which become deadlines.
+export async function saveDates(formData: FormData): Promise<void> {
+  const user = await requireUser();
+  try {
+    await saveStudentDates(user.id, {
+      loanType: String(formData.get("loanType") ?? ""),
+      lastCertifiedOn: String(formData.get("lastCertifiedOn") ?? ""),
+      recertifyOn: String(formData.get("recertifyOn") ?? ""),
+    });
+  } catch (error) {
+    if (error instanceof StudentDatesError) {
+      redirect(`/loans/student?${new URLSearchParams({ error: error.message })}#long-game`);
+    }
+    throw error;
+  }
+  redirect("/loans/student?dates=1#long-game");
 }
