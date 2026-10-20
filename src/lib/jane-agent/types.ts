@@ -69,6 +69,10 @@ export const ACTION_IDS = [
   "saving.apply_all",
   "saving.apply",
   "saving.no",
+  // Spec step 197: risks seen in how they live, and sample prices for the gap a yes opens.
+  "risk.yes",
+  "risk.no",
+  "insurance.gap_quotes",
   "plan.approve_safe",
   "undo.rule",
   "undo.no",
@@ -311,6 +315,11 @@ export type MessageRefs = {
   creditFix?: { id: string };
   // Spec step 224: the card whose lower rate "Ask" asks for.
   cardRate?: { id: string };
+  // Spec step 226: the payment-app transfer asked about ("tx:<id>").
+  familyLoan?: { id: string };
+  // Spec step 227: the plan "Start" saves, and the goal "I've done this month's list" ticks.
+  creditGoalDraft?: { kind: string; targetScore: number; targetDate: string };
+  creditGoalId?: string;
   // Insurance (spec Phase X): a coverage gap by its key (GAP_KEYS), and the policy a
   // message is about.
   insuranceGap?: string;
@@ -337,6 +346,8 @@ export type MessageRefs = {
   // Spec step 196: "same" for the savings that keep the cover, or one saving's id.
   savingGroup?: string;
   savingId?: string;
+  // Spec step 197: the risk a question asks about.
+  riskId?: string;
   // The finding as Jane described it (src/lib/jane-agent/fingerprint.ts): a button only
   // acts while the finding is still what the message said.
   fingerprint?: string;

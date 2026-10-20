@@ -19,6 +19,9 @@ import type { HomeBuying } from "@/lib/home-buying";
 import type { MedicalBills } from "@/lib/medical-bills";
 import type { ReportFixes } from "@/lib/credit-report-fixes";
 import type { CardInterest } from "@/lib/card-interest";
+import type { LongGame } from "@/lib/student-long-game";
+import type { FamilyLoans } from "@/lib/family-loans";
+import type { CreditGoals } from "@/lib/credit-goals";
 import { REWARD_CATEGORY_LABELS } from "@/config/credit-cards";
 import type { DebtAutopilot } from "@/lib/debt-autopilot";
 import { PMI_SOURCE } from "@/config/debt";
@@ -162,6 +165,24 @@ export const DEBT_TOOLS: Anthropic.Tool[] = [
     name: "card_interest",
     description:
       "How much interest the person's cards cost and how to cut it (demo-bank people only; nothing for real accounts): each card's balance, rate, a year of interest, what paying its usual payment now instead of on the due date saves, when its statement closes; any 0% promotions they typed in with the days left, the monthly amount that clears the balance by the end, whether they're on pace, and (for deferred interest) what missing the end would cost, with the deadline Jane raised when off pace; and for each card at 15% or more with a balance the written request for a lower rate with a call script and the yearly saving, whether it was sent and what the lender answered. Sending a request needs the person's tap (the cardrate.send button); Jane never sends one by herself.",
+    input_schema: noInput,
+  },
+  {
+    name: "student_long_game",
+    description:
+      "The long game on the person's student loan: Public Service Loan Forgiveness counted month by month (qualifying payments counted of 120, remaining, the date it's forgiven if they keep paying on time, and the grid of months seen), the next dates to certify their employer and to recertify an income-driven plan (both on their deadlines list), when the plan they're on forgives what's left and how much, the tax on forgiven debt (PSLF forgiveness isn't taxed; income-driven forgiveness is generally taxed federally from 2026; an estimate sized for their tax plan), and whether refinancing makes sense: a private loan can be worth refinancing when an offer is at least a point lower; a federal loan is never refinanced away from forgiveness without saying what's lost (PSLF and income-driven forgiveness, income-based payments, deferment and discharge). Plan rules and their sources are in config.",
+    input_schema: noInput,
+  },
+  {
+    name: "family_loans",
+    description:
+      "Money between the person and family or friends: payment-app transfers (Venmo, Zelle, Cash App) of $100 or more, or noted like a loan, that Jane asked about and haven't been answered (a transfer is a loan only after the person says so); loans the person confirmed, lent or borrowed, with the balance after the transfers that came back and the kind reminder drafted for them to send themselves once a loan has been open a month; loans they co-signed with whether a payment looks late; and the household's shared debts with each person's half of the monthly payment. Jane never messages the other person. Confirming or dismissing a transfer is the person's tap (the famloan.yes and famloan.no buttons).",
+    input_schema: noInput,
+  },
+  {
+    name: "credit_goals",
+    description:
+      "The credit score plans the person has for a goal (demo-bank people only, a stand-in score; every figure is an estimate from the score simulator, never a promise): for each, the target score and date, what the goal is for (a mortgage, a car), the score now, whether the plan reaches the target and the best it shows if not, the month-by-month plan (what to pay toward cards and the estimated score after each month), this month's checklist with what's done (pay before the statement closes, keep card accounts open, no new applications, on-time payments, and a rapid rescore before a mortgage application), and the total to pay down. Starting a plan and ticking off a month are the person's taps (the creditgoal.start and creditgoal.done buttons).",
     input_schema: noInput,
   },
   {
@@ -313,6 +334,9 @@ export const DEBT_TOOL_STATUS: Readonly<Record<string, string>> = {
   medical_bills: "Looking at your medical bills…",
   credit_report_fixes: "Checking your credit report…",
   card_interest: "Looking at your card interest…",
+  student_long_game: "Looking at your student loan's long game…",
+  family_loans: "Looking at who owes whom…",
+  credit_goals: "Looking at your credit plan…",
 };
 
 export function refinanceToolOutput(refi: Refinance, money: (cents: number) => string) {
@@ -854,6 +878,100 @@ export function cardInterestToolOutput(data: CardInterest, money: (cents: number
       deadlineOnDeadlinesList: p.deadlineRaised,
     })),
     alwaysNeedsATap: "sending any request",
+  };
+}
+
+export function studentLongGameToolOutput(g: LongGame, money: (cents: number) => string) {
+  if (!g.available) return { note: "No student loan with a balance and a rate for this person." };
+  return {
+    demoAdvice: g.advice,
+    loanType: g.loanType,
+    inPublicService: g.publicService,
+    pslf: g.pslf && {
+      counted: g.pslf.counted,
+      of: 120,
+      remaining: g.pslf.remaining,
+      forgivenAround: g.pslf.forgivenOn,
+      months: g.pslf.grid,
+    },
+    nextCertifyEmployerBy: g.certifyOn,
+    nextRecertifyIncomeBy: g.recertifyOn,
+    forgiveness: g.forgiveness && {
+      plan: g.forgiveness.plan,
+      around: g.forgiveness.on,
+      amount: money(g.forgiveness.forgivenCents),
+      viaPslf: g.forgiveness.viaPslf,
+    },
+    taxOnForgiven: g.tax && {
+      taxable: g.tax.taxable,
+      estimate: money(g.tax.estimateCents),
+      note: g.tax.note,
+    },
+    refinancing: g.refi && {
+      verdict: g.refi.verdict,
+      whatYouWouldLose: g.refi.lost,
+      text: g.refi.text,
+    },
+    assumptions: g.assumptions,
+  };
+}
+
+export function familyLoansToolOutput(data: FamilyLoans, money: (cents: number) => string) {
+  return {
+    janeNeverMessagesTheOtherPerson: true,
+    waitingForYourAnswer: data.candidates.map((c) => ({
+      id: c.id,
+      app: c.parsed.app,
+      with: c.parsed.counterparty,
+      amount: money(Math.abs(c.transfer.amountCents)),
+      on: c.transfer.date,
+      note: c.parsed.note,
+      wouldBe: c.kind,
+    })),
+    loans: data.loans.map((l) => ({
+      kind: l.kind,
+      with: l.counterparty,
+      lentOrBorrowed: money(l.principalCents),
+      stillOwed: money(l.balanceCents),
+      openedOn: l.openedOn,
+      paidBack: l.repaid.map((r) => ({ on: r.date, amount: money(r.cents) })),
+      reminderToSendYourself: l.reminder?.text ?? null,
+    })),
+    cosigned: data.cosigned.map((c) => ({
+      loan: c.debtName,
+      for: c.counterparty,
+      looksLate: c.missed,
+      pastDue: c.pastDueCents === null ? null : money(c.pastDueCents),
+      noteToSendYourself: c.text,
+    })),
+    sharedDebts: data.shared.map((s) => ({
+      debt: s.name,
+      monthly: s.paymentCents === null ? null : money(s.paymentCents),
+      yourHalf: s.yourShareCents === null ? null : money(s.yourShareCents),
+    })),
+  };
+}
+
+export function creditGoalsToolOutput(data: CreditGoals, money: (cents: number) => string) {
+  if (!data.available) return { note: "No credit partner for this person's accounts yet." };
+  return {
+    estimatesFromAStandInSimulator: true,
+    scoreNow: data.scoreNow,
+    plans: data.goals.map((g) => ({
+      goal: g.title,
+      target: g.targetScore,
+      by: g.targetDate,
+      reachesTarget: g.plan.reaches,
+      endsAt: g.plan.endScore,
+      bestPossible: g.plan.best,
+      totalToPayDown: money(g.plan.totalPayCents),
+      months: g.plan.months.map((m) => ({
+        month: m.month,
+        pay: money(m.payCents),
+        estimatedScore: m.projectedScore,
+      })),
+      thisMonth: g.thisMonth.map((i) => ({ item: i.text, done: i.done })),
+    })),
   };
 }
 

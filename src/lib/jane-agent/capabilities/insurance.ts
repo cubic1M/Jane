@@ -11,6 +11,7 @@ import type { CoverEvent } from "@/config/insurance";
 import { claimAnswer } from "../insurance/claim";
 import { quotesAnswer } from "../insurance/quotes";
 import { savingsAnswer } from "../insurance/savings";
+import { risksAnswer } from "../insurance/risks";
 import { insuranceReply } from "../insurance/replies";
 import { loadInsuranceSnapshot } from "../insurance/snapshot";
 import { type CapabilityContext } from "./shared";
@@ -46,6 +47,8 @@ async function answer(ctx: CapabilityContext): Promise<Reply | null> {
       if (intent.ask === "file_claim") return fileClaimAnswer(userId, { client, now });
       // Spec step 196: cheaper ways to pay for the same cover.
       if (intent.ask === "savings") return savingsAnswer(userId, { client, now });
+      // Spec step 197: risks seen in how they live.
+      if (intent.ask === "risks") return risksAnswer(userId, { client, now });
       if (intent.ask === "life_change") {
         return lifeChangeAnswer(userId, intent.event as CoverEvent, { client, now });
       }
