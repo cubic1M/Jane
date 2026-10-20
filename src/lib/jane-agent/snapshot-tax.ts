@@ -32,6 +32,7 @@ import { loadEquityTax, type EquityTaxView } from "@/lib/equity-tax";
 import { loadMultiYear, type MultiYearView } from "@/lib/multi-year";
 import { loadPropertyTax, type PropertyTaxView } from "@/lib/property-tax";
 import { loadAccountantPage, type AccountantPageView } from "@/lib/accountant";
+import { loadTaxCalendar, type TaxCalendarView } from "@/lib/tax-calendar";
 import { loadIdentity, type IdentityView } from "@/lib/tax-identity";
 import { loadSideIncome, type SideIncomeView } from "@/lib/side-income";
 import { loadAuditRecords, type AuditRecordsView } from "@/lib/audit-records";
@@ -98,6 +99,8 @@ export type TaxSnapshot = {
     property?: PropertyTaxView;
     // Spec step 222: the accountant link, its answers and the questions.
     accountant?: AccountantPageView;
+    // Spec step 223: the tax calendar for this month.
+    calendar?: TaxCalendarView;
     // Spec step 217: tax notices read from uploads, with what Jane found against them.
     notices?: { notice: NoticeView; check: (Check & { advice: boolean }) | null }[];
     // Spec step 172: returns read from uploads, and what their review found.
@@ -132,6 +135,13 @@ export async function loadTaxSnapshot(
   const [savings, selfEmployed] = await Promise.all([
     loadTaxSavings(userId, { client, now, loaded: { estimate, advice } }),
     loadSelfEmployed(userId, { client, now, loaded: { estimate, advice } }),
+  ]);
+  const noticeViews = await listTaxNotices(userId, { client });
+  const [equity, identity, sideIncome, home] = await Promise.all([
+    loadEquityTax(userId, { client, now, loaded: { estimate, advice } }),
+    loadIdentity(userId, { client, now }),
+    loadSideIncome(userId, { client, now, loaded: { estimate } }),
+    loadHomeTaxes(userId, { client, now, loaded: { estimate } }),
   ]);
   const inLastMonth = (lastMonthTags ?? tags).tagged.filter((t) => t.date.startsWith(last));
   return {
@@ -179,7 +189,7 @@ export async function loadTaxSnapshot(
       priorReturns: await listPriorReturns(userId, { client, status: "waiting" }),
       returnReviews: (await loadReturnReviews(userId, { client, now })).reviews,
       notices: await Promise.all(
-        (await listTaxNotices(userId, { client })).map(async (notice) => ({
+        noticeViews.map(async (notice) => ({
           notice,
           check:
             notice.status === "confirmed"
@@ -187,14 +197,24 @@ export async function loadTaxSnapshot(
               : null,
         })),
       ),
-      equity: await loadEquityTax(userId, { client, now, loaded: { estimate, advice } }),
-      years: await loadMultiYear(userId, { client, now }),
-      property: await loadPropertyTax(userId, { client, now }),
-      accountant: await loadAccountantPage(userId, { client, now }),
-      identity: await loadIdentity(userId, { client, now }),
-      sideIncome: await loadSideIncome(userId, { client, now, loaded: { estimate } }),
+      equity,
+      years: await loadMultiYear(userId, { client, now, loaded: { estimate, advice } }),
+      property: await loadPropertyTax(userId, { client, now, loaded: { estimate, advice, home } }),
+      accountant: await loadAccountantPage(userId, {
+        client,
+        now,
+        loaded: { estimate, advice, equity, identity, notices: noticeViews, side: sideIncome },
+        withQuestions: false,
+      }),
+      calendar: await loadTaxCalendar(userId, {
+        client,
+        now,
+        loaded: { estimate, advice, selfEmployed, identity },
+      }),
+      identity,
+      sideIncome,
       records: await loadAuditRecords(userId, estimate.year, { client, now }),
-      home: await loadHomeTaxes(userId, { client, now, loaded: { estimate } }),
+      home,
       plan: await loadTaxPlan(userId, {
         client,
         now,

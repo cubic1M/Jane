@@ -34,6 +34,7 @@ import { loadEquityTax } from "@/lib/equity-tax";
 import { loadMultiYear } from "@/lib/multi-year";
 import { loadPropertyTax } from "@/lib/property-tax";
 import { loadAccountantPage } from "@/lib/accountant";
+import { loadTaxCalendar } from "@/lib/tax-calendar";
 import { loadIdentity } from "@/lib/tax-identity";
 import { loadSideIncome } from "@/lib/side-income";
 import { loadReturnReviews } from "@/lib/prior-return/review";
@@ -198,6 +199,12 @@ export const TAX_TOOLS: Anthropic.Tool[] = [
     name: "tax_accountant",
     description:
       "Where working with an accountant stands: whether the person's taxes include things people usually bring an accountant to (self-employment, rental income, stock options or crypto, income in more than one state, a home sale, an open IRS letter, a tax identity problem, large gains), their read-only accountant links (live, expired or revoked, how many times each was opened), the questions Jane has for an accountant, and the answers that came back. A link shows only tax information, ends on a date the person picks, can be revoked, and every view is logged. Jane never sends a link herself: the person makes and shares it.",
+    input_schema: noInput,
+  },
+  {
+    name: "tax_calendar",
+    description:
+      "The person's tax calendar for this month and the year: what Jane does each month (the January IRS Identity Protection PIN reminder and form chase, estimated payments paid through the payment stand-in a few days before they are due when they fit the person's cap for taxes, the June withholding check, December's year-end moves in one message, filing day and the refund tracked), where each item stands now (done, needs the person's tap, coming, nothing to do), any estimated payment that needs a tap and why (over the cap, over the monthly cap, or the person asked Jane to ask first), and the year-end moves. Nothing is paid above the cap without a tap; signing and filing a return are always the person's.",
     input_schema: noInput,
   },
   {
@@ -756,6 +763,19 @@ export async function runTaxTool(
           said: n.body,
           seenByPerson: n.seen,
         })),
+      });
+    }
+    case "tax_calendar": {
+      const v = await loadTaxCalendar(userId, { client, now });
+      return out({
+        month: v.label,
+        janeActsByHerself: v.acts,
+        thisMonth: v.items.map((i) => ({ item: i.title, status: i.status, detail: i.detail })),
+        estimatedPaymentsNeedingATap: v.due
+          .filter((d) => d.needsTap)
+          .map((d) => ({ dueOn: d.dueOn, amount: money(d.cents), why: d.needsTap })),
+        yearEndMoves: v.yearEnd?.lines ?? [],
+        wholeYear: v.months.map((m) => ({ month: m.label, items: m.items.map((i) => i.title) })),
       });
     }
     case "tax_years": {
