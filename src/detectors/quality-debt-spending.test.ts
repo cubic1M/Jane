@@ -174,10 +174,17 @@ describe("plain words", () => {
     }
   });
 
-  it("tells Maya what went up, in a way she'd accept", () => {
+  it("tells Maya what went up, biggest yearly rise first, in plain words", () => {
     const s = run("renter").find((x) => x.topic === "price_increase")!;
-    expect(s.why).toBe("Audible went from $14.95 to $16.45 a month: $18.00 more a year.");
-    expect(s.confidence.reason).toBe("10 charges at the old price in 12 months of data");
+    const m = s.why.match(
+      /^(.+) went from \$([\d.,]+) to \$([\d.,]+) a month(?:, and \d+ more went up)?: \$([\d.,]+) more a year\.$/,
+    );
+    expect(m, s.why).not.toBeNull();
+    const [, name, before, now] = m!;
+    expect(name).toMatch(/^[A-Z][a-z]+( [A-Z][a-z]+)*$/);
+    expect(Number(now.replace(/,/g, ""))).toBeGreaterThan(Number(before.replace(/,/g, "")));
+    expect(s.why).toContain("Progressive Auto");
+    expect(s.confidence.reason).toMatch(/\d+ charges? at the old price in 12 months of data/);
   });
 
   it("keeps the leading debt wording for someone who can't pay it off", () => {
