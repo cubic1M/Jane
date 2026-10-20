@@ -338,6 +338,8 @@ export type MessageRefs = {
   // Spec step 230: the buttons of a debt review. Each is its own item, so the message stays
   // open, minus the button just used, until every one has been.
   reviewButtons?: string[];
+  // Spec step 245: the add-on found in the payments (key) or confirmed (id) a button is about.
+  carAddon?: { key?: string; id?: string };
   // Insurance (spec Phase X): a coverage gap by its key (GAP_KEYS), and the policy a
   // message is about.
   insuranceGap?: string;

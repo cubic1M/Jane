@@ -1203,6 +1203,18 @@ const BASE_QUESTIONS: readonly CheckQuestion[] = [
       maxChars: 1_000,
     },
   },
+  // Spec step 245: the car loan you already have.
+  {
+    id: "debt-34",
+    text: "can I cancel the extended warranty on my car loan",
+    needs: "rules",
+    expect: {
+      intent: "car_loan",
+      mentions: /car loan|refinanc/i,
+      link: "/loans/auto",
+      maxChars: 1_500,
+    },
+  },
   // Spec step 230: the yearly debt review, one message with a button for each item.
   {
     id: "debt-33",

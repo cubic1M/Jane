@@ -309,6 +309,8 @@ model User {
   personalLoans          PersonalLoan[]
   creditGoals            CreditGoal[]
   homeEquityFacts        HomeEquityFacts?
+  carAddons              CarAddon[]
+  carLoanWatch           CarLoanWatch?
   balanceTransfers       BalanceTransfer[]
   findings               Finding[]
   decisions              Decision[]
@@ -402,7 +404,7 @@ model User {
 
   rentalProperties RentalProperty[]
 
-  costlyProducts   CostlyProduct[]
+  costlyProducts CostlyProduct[]
 
   @@map("users")
 }
@@ -1097,6 +1099,51 @@ model HomeEquityFacts {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("home_equity_facts")
+}
+
+// A dealer add-on financed into the car loan (spec step 245): GAP, an extended warranty or
+// a service contract, found in the payments or typed in, with the refund each would give.
+model CarAddon {
+  id         String   @id @default(cuid())
+  userId     String   @map("user_id")
+  // "tx:<transaction id>" for one found in the payments, else "typed:<id>".
+  key        String
+  // gap, warranty or service.
+  kind       String
+  name       String
+  paidCents  Int      @map("paid_cents")
+  termMonths Int      @map("term_months")
+  startedOn  DateTime @map("started_on") @db.Date
+  // found (asked once), confirmed, dismissed, mine (the person sends the cancellation),
+  // team (the concierge team does).
+  status     String   @default("found")
+  source     String
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt  DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, key])
+  @@index([userId])
+  @@map("car_addons")
+}
+
+// What Jane saw when she last checked the car loan's rates (spec step 245), so she can say
+// when rates fell or the score moved into a better band.
+model CarLoanWatch {
+  id         String    @id @default(cuid())
+  userId     String    @unique @map("user_id")
+  bestAprBps Int?      @map("best_apr_bps")
+  band       String?
+  // rates_fell or score_rose at the last check that saw it, and the day.
+  change     String?
+  changedOn  DateTime? @map("changed_on") @db.Date
+  checkedOn  DateTime? @map("checked_on") @db.Date
+  updatedAt  DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("car_loan_watches")
 }
 
 // A balance transfer the person made to a 0% card (spec step 113), so Jane can keep the
@@ -3697,4 +3744,3 @@ model CostlyProduct {
   @@index([userId])
   @@map("costly_products")
 }
-

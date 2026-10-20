@@ -29,6 +29,7 @@ import type { CardInterest } from "@/lib/card-interest";
 import type { LongGame } from "@/lib/student-long-game";
 import type { FamilyLoans } from "@/lib/family-loans";
 import type { CreditGoals } from "@/lib/credit-goals";
+import type { CarLoan } from "@/lib/car-loan";
 import type { DebtReview } from "@/lib/debt-review";
 import type { DebtTrouble } from "@/lib/debt-trouble";
 import type { HomeEquity, ProjectComparison } from "@/lib/home-equity";
@@ -193,6 +194,12 @@ export const DEBT_TOOLS: Anthropic.Tool[] = [
     name: "credit_goals",
     description:
       "The credit score plans the person has for a goal (demo-bank people only, a stand-in score; every figure is an estimate from the score simulator, never a promise): for each, the target score and date, what the goal is for (a mortgage, a car), the score now, whether the plan reaches the target and the best it shows if not, the month-by-month plan (what to pay toward cards and the estimated score after each month), this month's checklist with what's done (pay before the statement closes, keep card accounts open, no new applications, on-time payments, and a rapid rescore before a mortgage application), and the total to pay down. Starting a plan and ticking off a month are the person's taps (the creditgoal.start and creditgoal.done buttons).",
+    input_schema: noInput,
+  },
+  {
+    name: "car_loan",
+    description:
+      "The car loan the person already has: its balance, rate and payment; in demo advice mode the best refinance offer compared by TOTAL cost (not the payment) with fees and break-even, and whether rates fell or the credit band improved since the last check; and dealer add-ons financed into it (GAP, extended warranty, service contract) found in the payments or typed in, each with the estimated refund if cancelled (unused months of the term, less the usual cancellation fee) and the drafted cancellation letter. The person confirms what a payment was (caraddon.yes) and sends the cancellation themselves (caraddon.mine) or asks the concierge team to (caraddon.team); Jane sends nothing. Refunds are estimates; the contract has the final say.",
     input_schema: noInput,
   },
   {
@@ -380,6 +387,7 @@ export const DEBT_TOOL_STATUS: Readonly<Record<string, string>> = {
   home_equity: "Checking your home loan…",
   debt_trouble: "Looking at your options…",
   debt_review: "Going over your debts…",
+  car_loan: "Looking at your car loan…",
 };
 
 export function refinanceToolOutput(refi: Refinance, money: (cents: number) => string) {
@@ -991,6 +999,48 @@ export function familyLoansToolOutput(data: FamilyLoans, money: (cents: number) 
       debt: s.name,
       monthly: s.paymentCents === null ? null : money(s.paymentCents),
       yourHalf: s.yourShareCents === null ? null : money(s.yourShareCents),
+    })),
+  };
+}
+
+export function carLoanToolOutput(data: CarLoan, money: (cents: number) => string) {
+  if (!data.available || !data.loan) return { note: "No car loan with a balance." };
+  const addon = (a: CarLoan["addons"][number]) => ({
+    kind: a.label,
+    seller: a.name,
+    paid: money(a.paidCents),
+    termMonths: a.termMonths,
+    boughtOn: a.startedOn,
+    status: a.status,
+    estimatedRefund: money(a.refund.refundCents),
+    monthsUnused: a.refund.monthsLeft,
+    cancellationFee: money(a.refund.feeCents),
+    letter: a.letter,
+  });
+  return {
+    loan: data.loan.name,
+    balance: money(data.loan.balanceCents),
+    ratePercent: data.loan.aprBps === null ? null : data.loan.aprBps / 100,
+    refinance:
+      data.advice && data.refi
+        ? {
+            lender: data.refi.lender,
+            ratePercent: data.refi.aprBps / 100,
+            totalCostIfKept: money(data.refi.currentTotalCents),
+            totalCostIfRefinanced: money(data.refi.newTotalCents),
+            saving: money(data.refi.savingCents),
+            fees: money(data.refi.feeCents),
+            breakEvenMonths: data.refi.breakEvenMonths,
+            standInLenderCatalogNotOffers: true,
+            sinceLastCheck: data.change,
+          }
+        : null,
+    confirmedAddOns: data.addons.map(addon),
+    maybeAddOns: data.candidates.map((a) => ({
+      kind: a.label,
+      seller: a.name,
+      paid: money(a.paidCents),
+      estimatedRefundIfSo: money(a.refund.refundCents),
     })),
   };
 }

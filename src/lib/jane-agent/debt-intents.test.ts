@@ -430,6 +430,17 @@ describe("debt questions", () => {
     expect(intent("what do you do about my debts")).toEqual({ kind: "debt_autopilot" });
   });
 
+  it("reads add-ons on a car loan (spec step 245)", () => {
+    for (const text of [
+      "can I cancel the extended warranty on my car loan",
+      "do I have gap insurance on my car loan",
+      "what dealer add-ons are in my loan",
+      "car loan rates fell, should I refinance",
+    ]) {
+      expect(intent(text), text).toEqual({ kind: "car_loan" });
+    }
+  });
+
   it("leaves requests and other questions alone", () => {
     expect(intent("lower the rate on my card")).toMatchObject({ kind: "act", verb: "lower" });
     expect(intent("what's due this week")).toMatchObject({ kind: "coming_up" });

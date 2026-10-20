@@ -419,6 +419,13 @@ async function LoansContent({
             .
           </p>
           <p className="text-sm text-zinc-600 dark:text-zinc-400">
+            Already have a car loan?{" "}
+            <Link href="/loans/auto" className={LINK}>
+              Check for a cheaper loan and dealer add-ons to cancel
+            </Link>
+            .
+          </p>
+          <p className="text-sm text-zinc-600 dark:text-zinc-400">
             Everything about your debts and credit, checked at once:{" "}
             <Link href="/loans/review" className={LINK}>
               Your debt review
