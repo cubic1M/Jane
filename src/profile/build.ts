@@ -36,6 +36,8 @@ export type ProfileAccount = {
   type: string;
   subtype: string | null;
   balanceCents: number;
+  // A card's limit, when the bank says (spec step 260); undefined or null when unknown.
+  limitCents?: number | null;
 };
 export type ProfileLiability = {
   accountId: string;

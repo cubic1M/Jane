@@ -46,6 +46,12 @@ export const SUGGESTION_TOPICS = [
   "cash_advance",
   "mortgage_extra",
   "balance_transfer",
+  // Spec step 260, the rest of the debt tools.
+  "bnpl",
+  "medical_bills",
+  "credit_report_errors",
+  "student_forgiveness",
+  "family_loans",
   // Spec step 263: spending, bills and cash.
   "duplicate_subscription",
   "price_increase",
@@ -125,6 +131,8 @@ export const PEOPLE: readonly Person[] = [
       "low_balance",
       "price_increase",
       "trial_conversion",
+      "credit_building",
+      "bnpl",
     ],
     mustNot: [
       "umbrella",
@@ -169,6 +177,7 @@ export const PEOPLE: readonly Person[] = [
       "budget_overrun",
       "insurance_shopping",
       "childcare_tax_break",
+      "student_forgiveness",
     ],
     mustNot: [
       "renters_insurance",
@@ -273,6 +282,7 @@ export const PEOPLE: readonly Person[] = [
       "idle_cash",
       "umbrella",
       "roth_conversion",
+      "family_loans",
     ],
     mustNot: [
       "education_529",
@@ -300,7 +310,7 @@ export const PEOPLE: readonly Person[] = [
       owns: "home",
       hasDebtTrouble: false,
     },
-    should: ["rmd", "medigap", "idle_cash", "subscriptions", "bill_negotiation"],
+    should: ["rmd", "medigap", "idle_cash", "subscriptions", "bill_negotiation", "medical_bills"],
     mustNot: [
       "renters_insurance",
       "health_insurance",
@@ -318,6 +328,8 @@ export const PEOPLE: readonly Person[] = [
       "car_addons",
       "trial_conversion",
       "childcare_tax_break",
+      "student_forgiveness",
+      "credit_report_errors",
     ],
     firstQuestion: "age_band",
   },
@@ -343,6 +355,8 @@ export const PEOPLE: readonly Person[] = [
       "balance_transfer",
       "low_balance",
       "cash_advance",
+      "credit_building",
+      "credit_report_errors",
     ],
     mustNot: [
       "concentration",

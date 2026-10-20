@@ -6,20 +6,6 @@
 // tool is never added to this list: it arrives with its detector or an exemption.
 
 export const MISSING_DETECTOR: readonly string[] = [
-  "debt_autopilot",
-  "credit_score",
-  "credit_building",
-  "bnpl_installments",
-  "tight_money",
-  "car_purchase",
-  "home_purchase",
-  "medical_bills",
-  "credit_report_fixes",
-  "student_long_game",
-  "family_loans",
-  "credit_goals",
-  "debt_review",
-  "loan_applications",
   "insurance_claims",
   "insurance_benefits",
   "insurance_negotiations",
