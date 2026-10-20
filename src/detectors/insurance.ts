@@ -36,6 +36,7 @@ function enrollmentSoon(today: string): boolean {
 
 const rentersInsurance: Detector = {
   capability: "insurance",
+  covers: ["insurance_policies"],
   topic: "renters_insurance",
   needs: ["housing", "insurance_home"],
   detect({ profile }) {
@@ -62,6 +63,7 @@ const rentersInsurance: Detector = {
 
 const autoInsurance: Detector = {
   capability: "insurance",
+  covers: ["insurance_policies"],
   topic: "auto_insurance",
   needs: ["has_car", "insurance_auto"],
   detect({ profile, data }) {
@@ -90,6 +92,7 @@ const autoInsurance: Detector = {
 
 const umbrella: Detector = {
   capability: "insurance",
+  covers: ["insurance_policies"],
   topic: "umbrella",
   needs: ["housing"],
   detect({ profile, data }) {
@@ -115,6 +118,7 @@ const umbrella: Detector = {
 
 const insuranceShopping: Detector = {
   capability: "insurance",
+  covers: ["insurance_quotes", "insurance_savings"],
   topic: "insurance_shopping",
   needs: ["insurance_auto", "insurance_home"],
   detect({ profile, data }) {
@@ -141,6 +145,7 @@ const insuranceShopping: Detector = {
 
 const healthInsurance: Detector = {
   capability: "insurance",
+  covers: ["insurance_quotes"],
   topic: "health_insurance",
   needs: ["income_pattern", "insurance_health"],
   detect({ profile, data }) {
@@ -191,6 +196,7 @@ const healthInsurance: Detector = {
 
 const medigap: Detector = {
   capability: "insurance",
+  covers: ["insurance_quotes"],
   topic: "medigap",
   needs: ["life_stage", "insurance_medigap"],
   detect({ profile, data }) {
@@ -221,6 +227,7 @@ const medigap: Detector = {
 
 const longTermCare: Detector = {
   capability: "insurance",
+  covers: ["insurance_checkup"],
   topic: "long_term_care",
   needs: ["life_stage"],
   detect({ profile, data }) {
