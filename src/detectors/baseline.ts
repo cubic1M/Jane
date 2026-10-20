@@ -7,8 +7,15 @@ import type { PersonId } from "@/config/people";
 // match and say why in the PR: that is the review of the change.
 
 export const BASELINE: Readonly<Record<PersonId, readonly string[]>> = {
-  renter: ["bank_fees", "card_interest", "emergency_fund", "subscriptions"],
-  family: ["emergency_fund", "life_insurance", "pmi_removal", "subscriptions"],
+  renter: ["bank_fees", "card_interest", "emergency_fund", "employer_match", "subscriptions"],
+  family: [
+    "childcare_tax_break",
+    "education_529",
+    "emergency_fund",
+    "life_insurance",
+    "pmi_removal",
+    "subscriptions",
+  ],
   freelancer: [
     "emergency_fund",
     "estimated_taxes",
@@ -16,9 +23,17 @@ export const BASELINE: Readonly<Record<PersonId, readonly string[]>> = {
     "retirement_self_employed",
     "subscriptions",
   ],
-  equity: ["concentration", "idle_cash", "refinance", "subscriptions"],
-  preretire: ["idle_cash"],
-  retiree: ["idle_cash", "subscriptions"],
+  equity: [
+    "backdoor_roth",
+    "concentration",
+    "hsa",
+    "idle_cash",
+    "refinance",
+    "subscriptions",
+    "withholding_gap",
+  ],
+  preretire: ["catch_up", "idle_cash", "roth_conversion"],
+  retiree: ["idle_cash", "rmd", "roth_conversion", "subscriptions"],
   debt: [
     "bank_fees",
     "card_interest",
