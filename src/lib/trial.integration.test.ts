@@ -7,6 +7,7 @@ vi.mock("@/lib/session", () => ({ requireUser: vi.fn() }));
 vi.mock("@/lib/audit", () => ({ logAudit: vi.fn(), SYSTEM_ACTOR: { type: "system", id: null } }));
 
 import { TERMS_VERSION } from "@/config/legal";
+import { syncItem } from "@/lib/plaid/sync";
 import { TRIAL_HOURS } from "@/config/trial";
 import { adviceMode } from "@/lib/advice-mode";
 import { mailMode } from "@/lib/agent/mail";
@@ -73,6 +74,21 @@ describe.runIf(url)("trying Jane with sample data", { timeout: 60_000 }, () => {
     // Demo advice, even in production.
     vi.stubEnv("NODE_ENV", "production");
     expect(await adviceMode(userId, { client })).toBe(true);
+  });
+
+  it("with defer, does only the minimum and leaves the first sync to the caller", async () => {
+    const started = await startTrial({ client, now: NOW, defer: true });
+    created.push(started.userId);
+    const db = scopedFor(started.userId, client);
+    // The user, the session and the linked demo item are there; nothing has been scanned.
+    expect(await client.session.count({ where: { sessionToken: started.sessionToken } })).toBe(1);
+    expect(await db.plaidItems.count()).toBe(1);
+    expect(await db.accounts.count()).toBe(0);
+    expect(await db.findings.count()).toBe(0);
+    // The caller's sync then does the rest.
+    await syncItem(started.itemId, { client, now: NOW });
+    expect(await db.accounts.count()).toBeGreaterThan(0);
+    expect(await db.findings.count()).toBeGreaterThan(0);
   });
 
   it("gives each visitor their own person, who sees only their own data", async () => {

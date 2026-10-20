@@ -11,6 +11,7 @@ import { loadCreditBuilding } from "@/lib/credit-building";
 import { loadBnpl } from "@/lib/bnpl";
 import { loadTightMoney } from "@/lib/tight-money";
 import { loadCar } from "@/lib/car";
+import { loadHomeBuying } from "@/lib/home-buying";
 import { pullCredit } from "@/lib/credit";
 import { listApplications } from "@/lib/loan-applications";
 import { checkRates, loadRefinance } from "@/lib/refinance";
@@ -26,6 +27,7 @@ import { buildCreditReply, simulateReply } from "./credit-building-replies";
 import { bnplNewPlanReply, bnplReply } from "./bnpl-replies";
 import { tightReply } from "./tight-money-replies";
 import { carDealerReply, carReply } from "./car-replies";
+import { homeReply } from "./home-buying-replies";
 import type { Reply } from "./replies";
 
 // Answers questions about debts by rules (spec Phase Y), with the same loaders as the
@@ -67,6 +69,15 @@ export async function answerDebt(
       }
       return intent.kind === "build_credit" ? buildCreditReply(data) : simulateReply(data);
     }
+    case "home_afford":
+      return homeReply(
+        await loadHomeBuying(
+          userId,
+          { priceCents: intent.priceCents ?? undefined },
+          { client, now },
+        ),
+        intent.priceCents !== null,
+      );
     case "car_afford":
       return carReply(
         await loadCar(userId, { priceCents: intent.priceCents ?? undefined }, { client, now }),

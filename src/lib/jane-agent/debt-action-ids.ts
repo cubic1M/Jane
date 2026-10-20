@@ -24,4 +24,6 @@ export const DEBT_ACTION_IDS = [
   "bnpl.payoff",
   // Spec step 177: send one prepared request when money is tight.
   "tight.send",
+  // Spec step 179: start the home down payment goal.
+  "home.goal",
 ] as const;

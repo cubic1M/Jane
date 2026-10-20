@@ -42,6 +42,7 @@ export type DebtIntent =
   // Spec step 177: "I'm short this month", "what if I can't pay my bills?".
   | { kind: "tight_money" }
   // Spec step 178: "how much car can I afford?", "the dealer offered 7.9% for 72 months".
+  | { kind: "home_afford"; priceCents: number | null }
   | { kind: "car_afford"; priceCents: number | null }
   | {
       kind: "car_dealer";
@@ -72,6 +73,7 @@ const DEBT_KINDS = new Set<string>([
   "tight_money",
   "car_afford",
   "car_dealer",
+  "home_afford",
 ]);
 export const isDebtIntent = (intent: { kind: string }): intent is DebtIntent =>
   DEBT_KINDS.has(intent.kind);
@@ -155,6 +157,12 @@ const CAR_AFFORD =
 const PERCENT = /(\d+(?:\.\d+)?)\s*(?:%|percent|apr)/;
 const MONTHS = /(\d{2,3})\s*(?:months?|mos?\b)/;
 
+// Spec step 179: buying a home (not a mortgage already owned, nor home insurance or equity).
+const HOME_WORD = /\b(?:house|home|condo|townhouse|townhome|first home|apartment)\b/;
+const HOME_BUY =
+  /\b(?:afford|buy|buying|purchase|purchasing|down payment|closing costs?|pre-?approv\w*|mortgage offers?|price range|budget|first[- ]time)\b|\bhow much (?:house|home)\b|\bsave for (?:a |my )?(?:house|home)\b/;
+const HOME_NOT = /\b(?:insurance|equity|my mortgage|refinanc\w*|pay off|payoff|rent)\b/;
+
 const clean = (target: string) =>
   target
     .replace(/\b(?:paid off|off|in full)\b/g, "")
@@ -174,6 +182,22 @@ export function parseDebtIntent(
   if (PAYOFF.test(text)) return { kind: "payoff_plan", extraCents: null };
   if (DEBT_AUTOPILOT.test(text)) return { kind: "debt_autopilot" };
   if (TIGHT.test(text)) return { kind: "tight_money" };
+  if (
+    HOME_WORD.test(text) &&
+    HOME_BUY.test(text) &&
+    !HOME_NOT.test(text) &&
+    (amountCents === null || amountCents >= 5_000_000)
+  ) {
+    return { kind: "home_afford", priceCents: amountCents };
+  }
+  if (
+    /\b(?:down payment|closing costs?|pre-?approv\w* for a mortgage|mortgage pre-?approv\w*)\b/.test(
+      text,
+    ) &&
+    !HOME_NOT.test(text)
+  ) {
+    return { kind: "home_afford", priceCents: amountCents };
+  }
   if (CAR_DEALER.test(text) && (CAR_WORD.test(text) || PERCENT.test(text))) {
     const apr = PERCENT.exec(text);
     const months = MONTHS.exec(text);
