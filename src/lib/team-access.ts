@@ -57,6 +57,8 @@ export const TEAM_ACCESS_RULES: Record<AuditEvent, EventRule> = {
   tight_request_sent: own,
   // Spec step 180: the person's own request about a medical bill.
   medical_request_sent: own,
+  // Spec step 181: the person's own validation letter or bureau dispute.
+  credit_dispute_sent: own,
   // Insurance (spec Phase X): the person's own edits to their profile.
   insurance_policy_saved: own,
   insurance_policy_removed: own,

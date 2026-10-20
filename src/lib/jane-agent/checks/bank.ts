@@ -1104,6 +1104,20 @@ const BASE_QUESTIONS: readonly CheckQuestion[] = [
       link: "/loans/cards",
     },
   },
+  // Spec step 181: collections and credit report errors, with letters to fix them.
+  {
+    id: "debt-26",
+    text: "there's a collection on my credit report",
+    needs: "rules",
+    expect: {
+      intent: "report_fixes",
+      mentions: /credit report/i,
+      button: "creditfix.send",
+      link: "/loans/report",
+      list: true,
+      maxChars: 1_000,
+    },
+  },
   // Spec step 180: medical bills found and the requests written for them.
   {
     id: "debt-25",

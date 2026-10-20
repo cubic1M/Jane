@@ -478,3 +478,42 @@ test("medical bills are found, letters are written, and a request is sent only o
   await expect(page.getByText("Sent just now.")).toBeVisible();
   await expect(mercy).toContainText("Sent, answer in about 2 days");
 });
+
+// Spec step 181: a collection and an error found on the stand-in report, with letters citing
+// the rule and deadline, sent only on the tap.
+test("report fixes show the letters with their rules, and a letter is sent only on the tap", async ({
+  context,
+  page,
+  baseURL,
+}) => {
+  const user = await signedInUser("user");
+  userId = user.userId;
+  await context.addCookies([
+    { name: "authjs.session-token", value: user.sessionToken, url: baseURL ?? "" },
+  ]);
+  await page.goto("/connect");
+  await page.getByRole("button", { name: "Link a demo bank" }).click();
+  await expect(page).toHaveURL("/chat", { timeout: 60_000 });
+
+  await page.goto("/loans/report");
+  await expect(
+    page.getByRole("heading", { level: 1, name: "Fix your credit report" }),
+  ).toBeVisible();
+  await expect(page.getByRole("note").filter({ hasText: "stand-in report" })).toBeVisible();
+  const items = page.getByRole("list", { name: "Items" });
+  await expect(items).toContainText("Northstar Recovery");
+  await expect(items).toContainText("Fair Debt Collection Practices Act");
+  await expect(items).toContainText("Fair Credit Reporting Act");
+  await expect(items).toContainText("The last day to ask is");
+
+  const letters = page.getByRole("list", { name: "Letters for Northstar Recovery" });
+  const send = letters.getByRole("button", { name: "Send this letter" }).first();
+  await send.scrollIntoViewIfNeeded();
+  // Keyboard, so the fixed bottom nav on phones never takes the tap.
+  await send.focus();
+  await send.press("Enter");
+  await expect(page.getByText("Sent just now.")).toBeVisible();
+  await expect(letters).toContainText("answer due by");
+  await page.goto("/deadlines");
+  await expect(page.getByText("Collector's validation due: Northstar Recovery")).toBeVisible();
+});

@@ -13,6 +13,7 @@ import { loadTightMoney } from "@/lib/tight-money";
 import { loadCar } from "@/lib/car";
 import { loadHomeBuying } from "@/lib/home-buying";
 import { loadMedicalBills } from "@/lib/medical-bills";
+import { loadReportFixes } from "@/lib/credit-report-fixes";
 import { pullCredit } from "@/lib/credit";
 import { listApplications } from "@/lib/loan-applications";
 import { checkRates, loadRefinance } from "@/lib/refinance";
@@ -30,6 +31,7 @@ import { tightReply } from "./tight-money-replies";
 import { carDealerReply, carReply } from "./car-replies";
 import { homeReply } from "./home-buying-replies";
 import { medicalReply } from "./medical-bills-replies";
+import { reportFixReply } from "./credit-report-fixes-replies";
 import type { Reply } from "./replies";
 
 // Answers questions about debts by rules (spec Phase Y), with the same loaders as the
@@ -71,6 +73,8 @@ export async function answerDebt(
       }
       return intent.kind === "build_credit" ? buildCreditReply(data) : simulateReply(data);
     }
+    case "report_fixes":
+      return reportFixReply(await loadReportFixes(userId, { client, now }));
     case "medical_bills":
       return medicalReply(await loadMedicalBills(userId, { client, now }));
     case "home_afford":

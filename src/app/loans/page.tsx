@@ -397,6 +397,13 @@ async function LoansContent({
             </Link>
             .
           </p>
+          <p className="text-sm text-zinc-600 dark:text-zinc-400">
+            A collection or an error on your credit report?{" "}
+            <Link href="/loans/report" className={LINK}>
+              Fix your report
+            </Link>
+            .
+          </p>
 
           <p className="text-sm text-zinc-600 dark:text-zinc-400">
             Own a home with a mortgage?{" "}

@@ -298,6 +298,7 @@ model User {
   tightRequests          TightRequest[]
   medicalBills           MedicalBill[]
   medicalRequests        MedicalRequest[]
+  creditDisputes         CreditDispute[]
   balanceTransfers       BalanceTransfer[]
   findings               Finding[]
   decisions              Decision[]
@@ -894,6 +895,39 @@ model MedicalRequest {
 
   @@unique([userId, key])
   @@map("medical_requests")
+}
+
+// A letter sent about a collection or an error on the person's credit report (spec step
+// 181), only after their tap: a debt validation letter to the collector, or a dispute to the
+// credit bureaus. The partner stand-in answers it.
+model CreditDispute {
+  id          String    @id @default(cuid())
+  userId      String    @map("user_id")
+  // "<kind>:<report item id>", once for each item and kind.
+  key         String
+  kind        String
+  itemId      String    @map("item_id")
+  // collection or error.
+  itemKind    String    @map("item_kind")
+  itemName    String    @map("item_name")
+  amountCents Int?      @map("amount_cents")
+  body        String
+  // sent, then resolved with an outcome.
+  status      String
+  partner     String
+  sentAt      DateTime  @default(now()) @map("sent_at") @db.Timestamptz(3)
+  // The date the rule gives for an answer (30 days), also on the deadlines list.
+  deadlineOn  DateTime  @map("deadline_on") @db.Date
+  deadlineId  String?   @map("deadline_id")
+  resolvedAt  DateTime? @map("resolved_at") @db.Timestamptz(3)
+  // Whether the answer removed or corrected the item.
+  removed     Boolean   @default(false)
+  outcome     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, key])
+  @@map("credit_disputes")
 }
 
 // A balance transfer the person made to a 0% card (spec step 113), so Jane can keep the

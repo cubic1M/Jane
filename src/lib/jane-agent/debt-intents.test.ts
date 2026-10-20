@@ -219,6 +219,19 @@ describe("debt questions", () => {
     expect(intent("file a claim for my doctor visit")).not.toMatchObject({ kind: "medical_bills" });
   });
 
+  it("reads collections and credit report errors, but not taxes owed", () => {
+    for (const text of [
+      "there's a collection on my credit report",
+      "a debt collector keeps calling me",
+      "there is an error on my credit report",
+      "how do I dispute something with the credit bureaus",
+      "I need debt validation",
+    ]) {
+      expect(intent(text), text).toEqual({ kind: "report_fixes" });
+    }
+    expect(intent("what's my credit score")).toEqual({ kind: "credit_score" });
+  });
+
   it("reads a tight month", () => {
     for (const text of [
       "money is tight this month",

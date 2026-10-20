@@ -28,4 +28,6 @@ export const DEBT_ACTION_IDS = [
   "home.goal",
   // Spec step 180: send one prepared request about a medical bill.
   "medical.send",
+  // Spec step 181: send one validation letter or bureau dispute.
+  "creditfix.send",
 ] as const;

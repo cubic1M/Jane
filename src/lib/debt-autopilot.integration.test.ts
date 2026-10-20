@@ -70,7 +70,7 @@ describe.runIf(url)("debt on autopilot against a real database", () => {
     const data = await loadDebtAutopilot(userId, opts());
     expect(data.level).toBe("ask");
     expect(data.does.map((d) => d.step)).toEqual([
-      109, 110, 111, 112, 113, 114, 115, 116, 117, 174, 175, 176, 177, 178, 179, 180,
+      109, 110, 111, 112, 113, 114, 115, 116, 117, 174, 175, 176, 177, 178, 179, 180, 181,
     ]);
   });
 

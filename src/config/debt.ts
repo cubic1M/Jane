@@ -48,6 +48,7 @@ export const DEBT_SOURCE_LIMITS = {
   bnpl: 2,
   tight_money: 2,
   medical_bills: 2,
+  credit_report_fixes: 2,
 } as const;
 export const DEBT_MESSAGE_PRIORITY = {
   // A buy now, pay later plan Jane found, then a debt with no rate: news that can wait,
@@ -108,11 +109,16 @@ export const DEBT_MESSAGE_PRIORITY = {
   // Spec step 180: a medical bill can wait a little; a provider's answer follows.
   medical_bill: 36,
   medical_answer: 60,
+  // Spec step 181: a collection's validation window closes in 30 days, so it comes early; a
+  // bureau dispute and the answers can wait a little.
+  report_fix_window: 72,
+  report_fix: 40,
+  report_fix_answer: 61,
 } as const;
 
 // What Jane does about debts by herself at each autopilot level (src/config/autopilot.ts),
 // step by step. Applying for credit, moving money and signing always need the person's tap,
-// at every level. Steps 110–117 and 174–180 add to this list.
+// at every level. Steps 110–117 and 174–181 add to this list.
 export const DEBT_AUTOPILOT: Readonly<
   Record<"ask" | "safe" | "all", readonly { step: number; does: string }[]>
 > = {
@@ -181,6 +187,10 @@ export const DEBT_AUTOPILOT: Readonly<
       step: 180,
       does: "Finds medical bills in your payments, and writes the requests that can lower them (an itemized bill, a check against your insurance, financial assistance, a plan with no interest). Each is sent only on your tap.",
     },
+    {
+      step: 181,
+      does: "Checks your credit report every month for collections and errors, writes the validation letter or bureau dispute that fits (citing the rule and its deadline), puts the answer dates on your deadlines and tells you what comes back. Each letter is sent only on your tap.",
+    },
   ],
   safe: [
     {
@@ -247,6 +257,10 @@ export const DEBT_AUTOPILOT: Readonly<
       step: 180,
       does: "Finds medical bills in your payments, and writes the requests that can lower them (an itemized bill, a check against your insurance, financial assistance, a plan with no interest). Each is sent only on your tap.",
     },
+    {
+      step: 181,
+      does: "Checks your credit report every month for collections and errors, writes the validation letter or bureau dispute that fits (citing the rule and its deadline), puts the answer dates on your deadlines and tells you what comes back. Each letter is sent only on your tap.",
+    },
   ],
   all: [
     {
@@ -312,6 +326,10 @@ export const DEBT_AUTOPILOT: Readonly<
     {
       step: 180,
       does: "Finds medical bills in your payments, and writes the requests that can lower them (an itemized bill, a check against your insurance, financial assistance, a plan with no interest). Each is sent only on your tap.",
+    },
+    {
+      step: 181,
+      does: "Checks your credit report every month for collections and errors, writes the validation letter or bureau dispute that fits (citing the rule and its deadline), puts the answer dates on your deadlines and tells you what comes back. Each letter is sent only on your tap.",
     },
   ],
 };
