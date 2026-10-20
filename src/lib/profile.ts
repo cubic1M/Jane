@@ -28,7 +28,7 @@ export async function loadProfileInput(
   const db = scopedFor(userId, client);
   const today = dayOf(now);
   const since = new Date(now.getTime() - (PROFILE_MONTHS * 31 + 2) * 86_400_000);
-  const [transactions, accounts, liabilities, holdings, prefs, tax, insurance, investor] =
+  const [transactions, accounts, liabilities, holdings, prefs, tax, insurance, investor, unread] =
     await Promise.all([
       db.transactions.findMany({
         where: { date: { gt: since, lte: now } },
@@ -67,6 +67,7 @@ export async function loadProfileInput(
       }),
       db.insuranceProfiles.findFirst({ select: { housing: true } }),
       db.investorProfiles.findFirst({ select: { age: true, ageOn: true, dropReaction: true } }),
+      db.policyReadings.count({ where: { status: "waiting" } }),
     ]);
 
   // Answers given elsewhere come first; a correction made here wins over them.
@@ -130,6 +131,7 @@ export async function loadProfileInput(
       payoffDate: l.payoffDate ? dayOf(l.payoffDate) : null,
     })),
     told,
+    unreadPolicyDocuments: unread,
   };
 }
 

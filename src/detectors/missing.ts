@@ -6,12 +6,6 @@
 // tool is never added to this list: it arrives with its detector or an exemption.
 
 export const MISSING_DETECTOR: readonly string[] = [
-  "insurance_claims",
-  "insurance_benefits",
-  "insurance_negotiations",
-  "insurance_cover_changes",
-  "insurance_card_cover",
-  "insurance_documents",
   "life_events",
   "holdings",
   "investor_profile",

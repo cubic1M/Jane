@@ -35,6 +35,12 @@ export const SUGGESTION_TOPICS = [
   "auto_insurance",
   "umbrella",
   "insurance_shopping",
+  "insurance_negotiation",
+  "insurance_claim",
+  "cover_change",
+  "card_cover",
+  "employer_benefits",
+  "policy_documents",
   "business_separation",
   "cash_flow",
   "pmi_removal",
@@ -135,6 +141,9 @@ export const PEOPLE: readonly Person[] = [
       "low_balance",
       "price_increase",
       "trial_conversion",
+
+      "insurance_negotiation",
+      "cover_change",
       "credit_building",
       "bnpl",
     ],
@@ -184,6 +193,8 @@ export const PEOPLE: readonly Person[] = [
       "budget_overrun",
       "insurance_shopping",
       "childcare_tax_break",
+
+      "insurance_claim",
       "student_forgiveness",
       "charity_receipts",
       "property_tax_check",
@@ -224,6 +235,8 @@ export const PEOPLE: readonly Person[] = [
       "emergency_fund",
       "student_repayment",
       "renters_insurance",
+
+      "auto_insurance",
     ],
     mustNot: [
       "employer_match",
@@ -258,6 +271,8 @@ export const PEOPLE: readonly Person[] = [
       "backdoor_roth",
       "refinance",
       "mortgage_extra",
+
+      "card_cover",
       "tax_loss_harvest",
       "charity_receipts",
       "property_tax_check",
@@ -296,6 +311,8 @@ export const PEOPLE: readonly Person[] = [
       "idle_cash",
       "umbrella",
       "roth_conversion",
+
+      "employer_benefits",
       "family_loans",
       "property_tax_check",
       "charity_receipts",
@@ -332,6 +349,7 @@ export const PEOPLE: readonly Person[] = [
       "idle_cash",
       "subscriptions",
       "bill_negotiation",
+      "policy_documents",
       "property_tax_check",
       "charity_receipts",
       "medical_bills",
@@ -353,6 +371,9 @@ export const PEOPLE: readonly Person[] = [
       "car_addons",
       "trial_conversion",
       "childcare_tax_break",
+
+      "employer_benefits",
+      "card_cover",
       "student_forgiveness",
       "credit_report_errors",
     ],
@@ -397,6 +418,8 @@ export const PEOPLE: readonly Person[] = [
       "mortgage_extra",
       "roth_conversion",
       "childcare_tax_break",
+
+      "card_cover",
       "charity_receipts",
       "property_tax_check",
       "tax_loss_harvest",

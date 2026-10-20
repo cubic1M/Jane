@@ -59,6 +59,8 @@ export type ProfileInput = {
   // Optional: what each account holds. Absent when the loader did not read holdings.
   holdings?: readonly ProfileHolding[];
   told: Told;
+  // Policies read from uploaded documents that wait for the person's confirm (spec step 259).
+  unreadPolicyDocuments?: number;
 };
 
 export type FactValue = string | number | boolean | null;

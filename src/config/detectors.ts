@@ -79,6 +79,35 @@ export const DETECTOR_RATES = {
   // is told to plan for.
   longTermCareYearCents: 10_800_000,
   longTermCareYears: 2,
+  // What a risk is worth a year is the expected loss: the chance it happens in a year times
+  // what it costs, never the whole loss. Typical figures from public insurance statistics, to be
+  // checked against a published source before real accounts see them (marked for review).
+  rentersClaimChance: 0.03,
+  autoAtFaultChance: 0.05,
+  hospitalStayChance: 0.08,
+  umbrellaLawsuitChance: 0.002,
+  longTermCareChanceOverWindow: 0.2,
+  longTermCareWindowYears: 10,
+  coverChangeClaimChance: 0.01,
+  // Life cover: the chance a working adult dies in a year (a typical figure for ages 35 to 55,
+  // marked for review), against the cover a household would need.
+  lifeDeathChancePerYear: 0.003,
+  // A small business facing a liability claim in a year, and what one costs.
+  businessClaimChance: 0.04,
+  businessClaimCents: 5_000_000,
+  // Confidence ceilings for suggestions whose amount is typical, not quoted, or that depend on
+  // something Jane can't see (the card's real benefits, the employer's real plan). Without a
+  // ceiling a clean run of charges would make a guess look certain.
+  insuranceCaps: {
+    shopping: 70,
+    health: 70,
+    medigap: 70,
+    negotiation: 75,
+    claim: 65,
+    cardCover: 55,
+    employerBenefits: 60,
+    documents: 75,
+  },
   // Umbrella cover matters when assets pass this (src/config/insurance.ts UMBRELLA_ASSETS_CENTS).
   umbrellaAssetsCents: 50_000_000,
   // Comparing a health plan, a Medicare supplement or car and home cover usually finds this
@@ -142,6 +171,19 @@ export const DETECTOR_RATES = {
     estimatedNowDays: 14,
     estimatedSoonDays: 45,
   },
+  // Insurance, the policy-by-policy checks (spec step 259). A renewal is worth a call when
+  // the charge rose by at least this share over the earlier ones.
+  negotiationMinRise: 0.05,
+  negotiationMinCharges: 3,
+  // A repair or loss this big, paid by the person with cover and no payout seen, is worth a
+  // claim; the deductible is a typical one until the real one is known.
+  claimDeductibleCents: 100_000,
+  claimWindowDays: 90,
+  // A move or a car bought this recently means the insurer should be told.
+  coverChangeWindowDays: 60,
+  // An employer usually pays this share of a plan's premium, so a private one costs that
+  // much more than the work plan (stated as "up to").
+  employerPlanShare: 0.5,
   // Urgency scores: now, soon, later.
   urgency: { now: 3, soon: 2, later: 1 },
 } as const;
