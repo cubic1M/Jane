@@ -1218,7 +1218,9 @@ describe.runIf(url)("investments in Jane's chat, against a real database", () =>
       // Depreciation is step 173's: $208,000 building, 3.636% in 2026.
       expect(r.figures.depreciationCents).toBe(756_288);
       // Both sides of the paydown question, from the demo mortgage.
-      expect(view.homes[0].equityCents).toBe(45_000_000 - (mortgage.currentBalanceCents ?? 0));
+      expect(view.homes.find((h) => h.valueCents === 45_000_000)!.equityCents).toBe(
+        45_000_000 - (mortgage.currentBalanceCents ?? 0),
+      );
       expect(view.paydown!.paydown.interestSavedCents).toBeGreaterThan(0);
       expect(view.paydown!.invest.highGainCents).toBeGreaterThan(view.paydown!.invest.lowGainCents);
       // The form checks what it takes.
