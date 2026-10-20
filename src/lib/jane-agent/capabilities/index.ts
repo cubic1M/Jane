@@ -1,5 +1,5 @@
 import { answerDebt } from "../debt-answer";
-import type { DebtIntent } from "../debt-intents";
+import { DEBT_KINDS, type DebtIntent } from "../debt-intents";
 import type { Intent } from "../intents";
 import { insuranceAnswer } from "./insurance";
 import { investingAnswer } from "./investing";
@@ -66,7 +66,7 @@ export const CAPABILITIES: readonly Capability[] = [
   {
     id: "saved",
     bank: ["spending"],
-    kinds: ["saved", "changes", "review"],
+    kinds: ["saved", "changes", "review", "monthly_report"],
     tools: ["proven_savings", "recent_changes", "plan_upkeep", "monthly_report"],
     answer: moneyAnswer,
   },
@@ -140,20 +140,8 @@ export const CAPABILITIES: readonly Capability[] = [
   {
     id: "debt",
     bank: ["debt", "loans", "student", "credit"],
-    kinds: [
-      "debts",
-      "debt_detail",
-      "payoff_plan",
-      "refinance",
-      "loan_status",
-      "balance_transfer",
-      "student_loans",
-      "mortgage",
-      "credit_score",
-      "debt_autopilot",
-      "debt_due",
-    ],
-    tools: ["debts", "payoff_plan"],
+    kinds: [...DEBT_KINDS] as Capability["kinds"],
+    tools: ["debts", "payoff_plan", "credit_score", "student_loans", "mortgage"],
     answer: debtAnswer,
   },
 ];

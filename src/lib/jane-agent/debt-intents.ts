@@ -37,7 +37,7 @@ export type DebtIntent =
   | { kind: "build_credit" }
   | { kind: "credit_simulate" };
 
-const DEBT_KINDS = new Set<string>([
+export const DEBT_KINDS = new Set<string>([
   "debts",
   "debt_detail",
   "payoff_plan",
