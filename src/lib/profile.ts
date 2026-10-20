@@ -3,7 +3,7 @@ import { PROFILE_MONTHS } from "@/config/profile";
 import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
 import { deletePreference, savePreference } from "@/lib/jane-agent/preferences";
-import { buildProfile, type Profile, type Told } from "@/profile/build";
+import { buildProfile, type Profile, type ProfileInput, type Told } from "@/profile/build";
 import { FACT_KEYS, type FactKey, factSpec } from "@/profile/facts";
 
 // The picture of you (spec step 253), loaded for one person: what the bank shows, what they
@@ -19,10 +19,12 @@ const PREF_PREFIX = "profile:";
 const dayOf = (d: Date) => d.toISOString().slice(0, 10);
 const dollars = (cents: number) => `$${Math.round(cents / 100).toLocaleString("en-US")}`;
 
-export async function loadProfile(
+// The raw rows a profile is built from, with what the person told Jane. Detectors (spec step
+// 254) get these beside the profile, for the figures that are theirs ("you pay $1,240").
+export async function loadProfileInput(
   userId: string,
   { client = defaultClient, now = new Date() }: Options = {},
-): Promise<Profile> {
+): Promise<ProfileInput> {
   const db = scopedFor(userId, client);
   const today = dayOf(now);
   const since = new Date(now.getTime() - (PROFILE_MONTHS * 31 + 2) * 86_400_000);
@@ -82,7 +84,7 @@ export async function loadProfile(
     }
   }
 
-  return buildProfile({
+  return {
     today,
     transactions: transactions.map((t) => ({
       date: dayOf(t.date),
@@ -105,7 +107,11 @@ export async function loadProfile(
       payoffDate: l.payoffDate ? dayOf(l.payoffDate) : null,
     })),
     told,
-  });
+  };
+}
+
+export async function loadProfile(userId: string, options: Options = {}): Promise<Profile> {
+  return buildProfile(await loadProfileInput(userId, options));
 }
 
 export class ProfileError extends Error {}
