@@ -10,6 +10,7 @@ import { openChat } from "@/lib/jane-agent/open";
 import { requireUser } from "@/lib/session";
 import { ChatComposer } from "./composer";
 import { ChatMessageItem } from "./message";
+import { ScanRefresher } from "./scan-refresher";
 import { ScrollToEnd } from "./scroll-to-end";
 
 // Jane's chat, the home screen (spec step 81): what Jane noticed, did and suggests, newest
@@ -44,6 +45,8 @@ async function Chat({ searchParams }: { searchParams: PageProps<"/chat">["search
           yellow edge; my answers to your questions don&apos;t.
         </p>
       </div>
+
+      {chat.scanning && <ScanRefresher />}
 
       {/* Spec step 96: search everything said here, and what the person pinned. */}
       <form action="/chat/search" role="search" className="flex gap-2">

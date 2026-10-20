@@ -245,6 +245,13 @@ export const ACTION_IDS = [
   // Spec step 162: cash moved where it earns more, one move a tap.
   "cash.to_savings",
   "cash.to_money_market",
+  // Spec step 210: raise the contribution for the match, or put money in an IRA.
+  "retire.match",
+  "retire.ira",
+  // Spec step 211: the question about a past employer's 401(k), and the rollover.
+  "oldplan.yes",
+  "oldplan.no",
+  "oldplan.rollover",
   // Jane notices changes (spec step 97).
   "change.look",
   "change.budget",
@@ -466,6 +473,10 @@ export type MessageRefs = {
   cashPlan?: string;
   // Spec step 163: the pause before a sell has been shown; the next tap sells.
   paused?: true;
+  // Spec step 210: the IRA amount (cents) the button puts in.
+  iraCents?: number;
+  // Spec step 211: the old plan a question or rollover button is about.
+  oldPlanId?: string;
   // Spec step 97: a change Jane noticed (src/insights/changes.ts), by its key; for a
   // category's pace, the budget "Set a budget" would set (cents a month).
   change?: { key: string; kind: string; category?: string; budgetCents?: number };

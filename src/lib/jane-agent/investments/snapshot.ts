@@ -14,6 +14,12 @@ import { collectReceipts, loadHsa, type HsaView } from "@/lib/investments/hsa";
 import { loadCompanyStock, type CompanyStockView } from "@/lib/investments/company-stock";
 import { loadCrypto, type CryptoView } from "@/lib/crypto/crypto";
 import { loadCash, type CashView } from "@/lib/investments/cash";
+import {
+  loadRetirementAccounts,
+  type RetirementAccountsView,
+} from "@/lib/investments/retirement-accounts";
+import { loadOldAccounts, type OldAccountsView } from "@/lib/investments/old-accounts";
+import { automaticLog } from "@/lib/investments/automatic";
 import type { Bucket } from "@/planning/goal-buckets";
 import { loadAutoInvest } from "@/lib/investments/auto-invest";
 import { loadRebalance } from "@/lib/investments/rebalance";
@@ -58,6 +64,15 @@ export type InvestmentSnapshot = {
   companyStock: Pick<CompanyStockView, "company" | "concentration" | "plan" | "demo">;
   // Spec step 161: crypto, read-only: its size and fees, and where it's read from.
   crypto: Pick<CryptoView, "size" | "fees" | "demo"> & { sources: string[] };
+  // Spec step 210: limits, the match, Roth or traditional.
+  retirementAccounts: Pick<
+    RetirementAccountsView,
+    "match" | "limits" | "roth" | "ira" | "iraAllowedCents" | "pending" | "demo"
+  >;
+  // Spec step 211: past employers' plans.
+  oldAccounts: OldAccountsView;
+  // Spec step 164: what Jane did by herself in the last month, and what she asked about.
+  automatic: Awaited<ReturnType<typeof automaticLog>>;
   // Spec step 162: the cash plan.
   cash: Pick<CashView, "plan">;
   // Spec step 156: how they've done.
@@ -125,6 +140,9 @@ export async function loadInvestmentSnapshot(
         demo: h.demo,
         receipts: h.receipts.filter((r) => r.status === "saved").length,
       })),
+    retirementAccounts: await loadRetirementAccounts(userId, { client, now }),
+    oldAccounts: await loadOldAccounts(userId, { client, now }),
+    automatic: await automaticLog(userId, { client, now }),
     cash: await loadCash(userId, { client, now, investments }).then((c) => ({ plan: c.plan })),
     crypto: await loadCrypto(userId, {
       client,
