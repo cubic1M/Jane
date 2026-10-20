@@ -27,6 +27,8 @@ import { collectReceipts, investHsaCash, loadHsa } from "./hsa";
 import { CompanyStockError, loadCompanyStock, saveGrant, sellPart } from "./company-stock";
 import { cryptoTotal, loadCrypto, syncAllCrypto } from "@/lib/crypto/crypto";
 import { CashError, loadCash, moveCash } from "./cash";
+import { automaticLog, runAutomaticInvesting } from "./automatic";
+import { setSectorAutopilot } from "@/lib/sector-autopilot";
 import { brokeragePartner, NoCryptoOrders } from "@/lib/brokerage/partner";
 import { loadMoneyHub } from "@/lib/hubs/money";
 import { setAutopilot } from "@/lib/autopilot";
@@ -843,6 +845,71 @@ describe.runIf(url)("investments in Jane's chat, against a real database", () =>
       await expect(
         moveCash(userId, plan.key, "sweep_to_money_market", { client, now: LINKED }),
       ).rejects.toThrow(CashError);
+    },
+  );
+
+  it(
+    "step 164: nothing below Everything allowed, a cap bounds every move, each is in the log with its reason",
+    SLOW,
+    async () => {
+      const userId = await demoPerson();
+      await saveProfileForm(
+        userId,
+        { age: "45", horizon: "over_20", dropReaction: "worry", goals: ["retirement"] },
+        { client, now: LINKED },
+      );
+      const orders = () => client.brokerageOrder.count({ where: { userId } });
+      // At "Always ask" (the default), "The safe stuff", nothing happens by itself.
+      expect(await runAutomaticInvesting(userId, { client, now: LINKED })).toBeNull();
+      await setSectorAutopilot(
+        userId,
+        "investing",
+        { level: "safe", actionCapCents: 5_000_000, monthlyCapCents: 5_000_000 },
+        { client, now: LINKED },
+      );
+      expect(await runAutomaticInvesting(userId, { client, now: LINKED })).toBeNull();
+      expect(await orders()).toBe(0);
+
+      // Step 57's level wins over a sector's: "Ask me first" asks everywhere.
+      await setAutopilot(userId, "safe", { client, now: LINKED });
+      // Everything allowed, but a cap of $1: the rebalance is asked about, once, and not done.
+      await setSectorAutopilot(
+        userId,
+        "investing",
+        { level: "all", actionCapCents: 100, monthlyCapCents: 100 },
+        { client, now: LINKED },
+      );
+      const over = await runAutomaticInvesting(userId, { client, now: LINKED });
+      expect(over!.did).toEqual([]);
+      expect(over!.asked[0]).toMatch(/^Asked first, over the cap on one move: Rebalanced \$/);
+      await runAutomaticInvesting(userId, { client, now: LINKED });
+      expect(await orders()).toBe(0);
+      expect((await automaticLog(userId, { client, now: LINKED })).asked).toHaveLength(1);
+
+      // With room under the caps, she does it, and the log says what and why.
+      await setSectorAutopilot(
+        userId,
+        "investing",
+        { actionCapCents: 5_000_000, monthlyCapCents: 5_000_000 },
+        { client, now: LINKED },
+      );
+      const done = await runAutomaticInvesting(userId, { client, now: LINKED });
+      expect(done!.did[0]).toMatch(
+        /^Rebalanced \$[\d,.]+ to your target mix \(it had drifted off target\)$/,
+      );
+      expect(await orders()).toBeGreaterThan(0);
+      const log = await automaticLog(userId, { client, now: LINKED });
+      expect(log.did.map((d) => d.what)).toEqual(done!.did);
+      expect(log.did[0].cents).toBeGreaterThan(0);
+
+      // Jane's monthly summary says it, with the simulated-money line.
+      const snapshot = await loadSnapshot(userId, { client, now: LINKED });
+      const summary = investmentsSource
+        .gather(snapshot!, {} as never)
+        .find((c) => c.dedupeKey.startsWith("investing:summary:"))!;
+      expect(summary.body).toMatch(/^This month I handled 1 thing in your investments by myself/);
+      expect(summary.body).toMatch(/Over your caps, so waiting for your tap: Rebalanced/);
+      expect(summary.body).toMatch(/no real money moved\.$/);
     },
   );
 });

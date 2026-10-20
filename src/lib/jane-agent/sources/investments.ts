@@ -28,6 +28,7 @@ import {
 import type { Candidate } from "../types";
 import { detectDrop } from "@/planning/steady-hand";
 import { STEADY_LINK, steadyMessage } from "../investments/steady-copy";
+import { AUTO_LOG_LINK, summaryBody } from "../investments/automatic-copy";
 import { CASH_MIN_GAIN_CENTS } from "@/config/cash";
 import { CASH_LINK, cashLine, moveButtons } from "../investments/cash-copy";
 import {
@@ -299,6 +300,19 @@ export const investmentsSource: MessageSource = {
         actions: [{ id: "hsa.link", label: "Link a demo HSA", kind: "primary" }, snoozeButton()],
         dedupeKey: "hsa:link",
         priority: MESSAGE_PRIORITY.hsa,
+      });
+    }
+    // Step 164: once a month, what Jane did by herself in investing within the person's
+    // caps (one line each, from the log), and what she's waiting on a tap for.
+    const handled = inv.automatic;
+    if (inv.advice && handled.did.length + handled.asked.length > 0) {
+      out.push({
+        kind: "done",
+        body: summaryBody(handled.did, handled.asked),
+        refs: { advice: true },
+        actions: [AUTO_LOG_LINK],
+        dedupeKey: `investing:summary:${snapshot.asOf.slice(0, 7)}`,
+        priority: MESSAGE_PRIORITY.investing_summary,
       });
     }
     // Step 163: a big drop gets one calm message a month: what changed, what it means for

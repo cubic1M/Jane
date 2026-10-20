@@ -166,6 +166,7 @@ export const TEAM_ACCESS_RULES: Record<AuditEvent, EventRule> = {
   college_plan_saved: own,
   equity_grant_saved: own,
   crypto_connected: own,
+  autopilot_investing_acted: own,
 };
 
 export const SHOWN_EVENTS = (Object.keys(TEAM_ACCESS_RULES) as AuditEvent[]).filter(

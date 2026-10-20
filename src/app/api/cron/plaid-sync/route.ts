@@ -17,6 +17,7 @@ import { runAutoInvestForAll } from "@/lib/investments/auto-invest";
 import { refreshDemoPrices } from "@/lib/investments/prices";
 import { collectAllReceipts } from "@/lib/investments/hsa";
 import { syncAllCrypto } from "@/lib/crypto/crypto";
+import { runAutomaticInvestingForAll } from "@/lib/investments/automatic";
 
 // Vercel Cron, daily: syncs linked items that haven't synced in STALE_SYNC_HOURS, in case
 // a webhook was missed, then removes items of people inactive for INACTIVE_ITEM_DAYS
@@ -66,6 +67,8 @@ async function dailyWork() {
       hsaReceipts: await collectAllReceipts(),
       // Spec step 161: crypto balances read again (read-only).
       crypto: await syncAllCrypto(),
+      // Spec step 164: fully automatic investing, within the person's caps.
+      automaticInvesting: await runAutomaticInvestingForAll(),
     };
   }
 
@@ -110,5 +113,6 @@ async function dailyWork() {
     prices: await refreshDemoPrices(),
     hsaReceipts: await collectAllReceipts(),
     crypto: await syncAllCrypto(),
+    automaticInvesting: await runAutomaticInvestingForAll(),
   };
 }
