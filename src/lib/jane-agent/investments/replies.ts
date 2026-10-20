@@ -35,6 +35,8 @@ import { advisoryLine, COSTLY_LINK, productLine } from "./costly-copy";
 import { REVIEW_LINK, reviewFor } from "./review-copy";
 import type { LocationView } from "@/lib/investments/location";
 import { freeButton, LOCATION_LINK, locationLine } from "./location-copy";
+import type { PlanMenuView } from "@/lib/investments/plan-menu";
+import { changeButton, confirmButtons, MENU_LINK, proposedLine, savingLine } from "./menu-copy";
 import { STEADY_LINK, steadyMessage, timelines } from "./steady-copy";
 import { CRYPTO_LINK, feeFlag, NEVER_TRADES, shareFlag, sizeLine } from "./crypto-copy";
 import {
@@ -942,5 +944,39 @@ export function locationReply(view: LocationView): Reply {
     body: locationLine(plan),
     actions: [...(button ? [button] : []), LOCATION_LINK],
     refs: { advice: true, ...(button ? { locationKey: plan.key } : {}) },
+  };
+}
+
+// Spec step 232: the plan's fund list (to confirm first) and the cheapest mix of it, in demo
+// advice mode. Only funds on the confirmed list are ever named.
+export function planMenuReply(view: PlanMenuView): Reply {
+  if (view.proposed) {
+    return {
+      body: proposedLine(view.proposed),
+      actions: [...confirmButtons(), MENU_LINK],
+      refs: { menuId: view.proposed.id },
+    };
+  }
+  if (!view.menu) {
+    return {
+      body: "I don't have your workplace plan's fund list yet. Paste its fee disclosure on the plan funds page and I'll read it, show you what I read, and find the cheapest mix of its funds for your target.",
+      actions: [MENU_LINK],
+      refs: {},
+    };
+  }
+  if (!view.advice || !view.plan) {
+    return {
+      body: `Your plan offers ${view.menu.funds.length} funds: ${view.menu.funds.map((f) => `${f.ticker} (${(f.expenseBps / 100).toFixed(2)}%)`).join(", ")}.${view.advice ? " Finish your investor profile and I'll find the cheapest mix." : " I don't give recommendations on real accounts yet."}`,
+      actions: [MENU_LINK],
+      refs: {},
+    };
+  }
+  return {
+    body: savingLine(view.plan),
+    actions:
+      view.plan.savingCents > 0 && !view.pending
+        ? [changeButton(view.plan), MENU_LINK]
+        : [MENU_LINK],
+    refs: { advice: true },
   };
 }

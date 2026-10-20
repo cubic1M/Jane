@@ -401,7 +401,9 @@ model User {
 
   rentalProperties RentalProperty[]
 
-  costlyProducts   CostlyProduct[]
+  costlyProducts CostlyProduct[]
+  planMenus      PlanMenu[]
+  planChanges    PlanChange[]
 
   @@map("users")
 }
@@ -3673,3 +3675,40 @@ model CostlyProduct {
   @@map("costly_products")
 }
 
+// Spec step 232: the funds a workplace plan offers, read from a fee disclosure or statement
+// the person gave and confirmed. Nothing is suggested from a menu that hasn't been confirmed.
+// status: proposed (read, to confirm) or confirmed.
+model PlanMenu {
+  id        String   @id @default(cuid())
+  userId    String   @map("user_id")
+  planName  String   @map("plan_name")
+  // [{ ticker, name, expenseBps, kind, mix }].
+  funds     Json
+  status    String   @default("proposed")
+  // you (pasted), demo (the stand-in's sample disclosure).
+  source    String
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("plan_menus")
+}
+
+// Spec step 232: a change to how the person's plan balance and future contributions are
+// invested, sent to the payroll partner (a stand-in until one is connected).
+model PlanChange {
+  id         String   @id @default(cuid())
+  userId     String   @map("user_id")
+  menuId     String   @map("menu_id")
+  partner    String
+  partnerRef String   @map("partner_ref")
+  // [{ ticker, share }].
+  allocation Json
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("plan_changes")
+}

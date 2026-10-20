@@ -40,6 +40,14 @@ import {
 } from "./family";
 import { startCollegePlan } from "./college";
 import { loadLocation, makeSwaps, LocationError } from "./location";
+import {
+  confirmMenu,
+  loadPlanMenu,
+  PlanMenuError,
+  proposeMenu,
+  requestPlanChange,
+  sampleDisclosure,
+} from "./plan-menu";
 import { harvestFromReview, loadReviewExtras, ReviewError } from "./yearly-review";
 import {
   answerPremium,
@@ -1407,6 +1415,76 @@ describe.runIf(url)("investments in Jane's chat, against a real database", () =>
           /nothing to swap/,
         );
       }
+    },
+  );
+
+  it(
+    "step 232: the menu is read, confirmed, and only then used; only its funds are suggested; the saving is in dollars",
+    SLOW,
+    async () => {
+      const userId = await demoPerson();
+      await saveProfileForm(
+        userId,
+        { age: "45", horizon: "over_20", dropReaction: "worry", goals: ["retirement"] },
+        { client, now: LINKED },
+      );
+      await expect(
+        proposeMenu(userId, "nothing useful here", "you", { client, now: LINKED }),
+      ).rejects.toThrow(PlanMenuError);
+      const read = await proposeMenu(userId, sampleDisclosure(), "demo", { client, now: LINKED });
+      expect(read.funds.map((f) => f.ticker)).toEqual([
+        "NSTDX",
+        "KTRGX",
+        "SLGFX",
+        "KTSIX",
+        "KTIIX",
+        "KTBIX",
+        "DSVXX",
+      ]);
+      // Not confirmed: nothing suggested, and a change is refused.
+      const before = await loadPlanMenu(userId, { client, now: LINKED });
+      expect(before.proposed!.id).toBe(read.id);
+      expect(before.plan).toBeNull();
+      await expect(requestPlanChange(userId, { client, now: LINKED })).rejects.toThrow(
+        /Confirm your plan's fund list/,
+      );
+
+      // Confirmed through the chat button.
+      const snapshot = await loadSnapshot(userId, { client, now: LINKED });
+      const ask = investmentsSource
+        .gather(snapshot!, {} as never)
+        .find((c) => c.dedupeKey.startsWith("menu:confirm:"))!;
+      const posted = await client.janeMessage.create({
+        data: {
+          userId,
+          kind: ask.kind,
+          body: ask.body,
+          refs: ask.refs,
+          actions: ask.actions,
+          dedupeKey: "test:menu",
+        },
+      });
+      await takeChatAction(userId, posted.id, "menu.confirm", { client, now: LINKED });
+      await expect(confirmMenu(userId, read.id, { client })).rejects.toThrow(PlanMenuError);
+
+      const view = await loadPlanMenu(userId, { client, now: LINKED });
+      const plan = view.plan!;
+      const onMenu = new Set(view.menu!.funds.map((f) => f.ticker));
+      expect(plan.suggested.every((a) => onMenu.has(a.ticker))).toBe(true);
+      expect(plan.suggestedBps).toBeLessThan(plan.currentBps);
+      expect(plan.savingCents).toBe(
+        Math.round((plan.balanceCents * (plan.currentBps - plan.suggestedBps)) / 10_000),
+      );
+      expect(plan.savingCents).toBeGreaterThan(0);
+      expect(plan.targetDates[0]!.savingCents).toBeGreaterThan(0);
+
+      // The change goes to the payroll stand-in once.
+      const r = await requestPlanChange(userId, { client, now: LINKED });
+      expect(r.savingCents).toBe(plan.savingCents);
+      expect(await client.planChange.count({ where: { userId } })).toBe(1);
+      await expect(requestPlanChange(userId, { client, now: LINKED })).rejects.toThrow(
+        /already requested/,
+      );
     },
   );
 });

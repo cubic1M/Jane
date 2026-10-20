@@ -257,6 +257,9 @@ export const ACTION_IDS = [
   "review.harvest",
   // Spec step 231: the swaps that put each investment in the right account, free of tax.
   "location.free",
+  // Spec step 232: confirm the plan's fund list Jane read, and send the cheapest mix.
+  "menu.confirm",
+  "menu.change",
   // Jane notices changes (spec step 97).
   "change.look",
   "change.budget",
@@ -489,6 +492,8 @@ export type MessageRefs = {
   harvestKey?: string;
   // Spec step 231: the location plan the swap button belongs to, by its key.
   locationKey?: string;
+  // Spec step 232: the plan menu a button is about.
+  menuId?: string;
   // Spec step 97: a change Jane noticed (src/insights/changes.ts), by its key; for a
   // category's pace, the budget "Set a budget" would set (cents a month).
   change?: { key: string; kind: string; category?: string; budgetCents?: number };

@@ -219,6 +219,8 @@ export function scopedFor(userId: string, client: PrismaClient = db) {
     familyChildren: scoped.familyChild,
     rentalProperties: scoped.rentalProperty,
     costlyProducts: scoped.costlyProduct,
+    planMenus: scoped.planMenu,
+    planChanges: scoped.planChange,
     giftLinks: scoped.giftLink,
     cryptoConnections: scoped.cryptoConnection,
     cryptoHoldings: scoped.cryptoHolding,

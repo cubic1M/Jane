@@ -20,6 +20,7 @@ import { loadFamily } from "@/lib/investments/family";
 import { loadProperty } from "@/lib/investments/property";
 import { loadCostlyProducts } from "@/lib/investments/costly-products";
 import { loadLocation } from "@/lib/investments/location";
+import { loadPlanMenu } from "@/lib/investments/plan-menu";
 import { loadSteadyHand } from "@/lib/investments/steady-hand";
 import { autopilotOf } from "@/lib/autopilot";
 import { loadInvestmentSnapshot } from "./snapshot";
@@ -41,6 +42,7 @@ import {
   cryptoReply,
   cashReply,
   steadyReply,
+  planMenuReply,
   locationReply,
   yearlyReviewReply,
   costlyReply,
@@ -123,6 +125,8 @@ export async function answerInvestments(
     }
     case "location":
       return locationReply(await loadLocation(userId, { client, now }));
+    case "plan_menu":
+      return planMenuReply(await loadPlanMenu(userId, { client, now }));
     case "steady":
       return steadyReply(await loadSteadyHand(userId, { client, now }));
     case "cash":

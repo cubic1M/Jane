@@ -30,6 +30,8 @@ import {
 import { answerOldPlan, OldAccountsError, startRollover } from "@/lib/investments/old-accounts";
 import { contributeForChild, createGiftLink, FamilyError } from "@/lib/investments/family";
 import { answerPremium, CostlyProductError } from "@/lib/investments/costly-products";
+import { confirmMenu, PlanMenuError, requestPlanChange } from "@/lib/investments/plan-menu";
+import { MENU_LINK } from "../investments/menu-copy";
 import { LocationError, makeSwaps } from "@/lib/investments/location";
 import { LOCATION_LINK } from "../investments/location-copy";
 import { harvestFromReview, ReviewError } from "@/lib/investments/yearly-review";
@@ -574,6 +576,46 @@ export const locationFree: ActionHandler = {
       };
     } catch (error) {
       if (error instanceof LocationError) throw answeredElsewhere(error.message);
+      throw error;
+    }
+  },
+};
+
+// Spec step 232: confirm the fund list Jane read (nothing is used before this), and send the
+// cheapest mix to the payroll stand-in. Each is a tap.
+export const menuConfirm: ActionHandler = {
+  id: "menu.confirm",
+  on: "open",
+  async run({ userId, message, action, client }) {
+    const id = message.refs.menuId;
+    if (!id) throw new ChatActionError("not_offered", "That button isn't on this message.");
+    try {
+      await confirmMenu(userId, id, { client });
+      return {
+        answeredWith: action.label,
+        note: "Saved. From now on I only suggest funds from your plan's list.",
+        actions: [MENU_LINK],
+      };
+    } catch (error) {
+      if (error instanceof PlanMenuError) throw answeredElsewhere(error.message);
+      throw error;
+    }
+  },
+};
+
+export const menuChange: ActionHandler = {
+  id: "menu.change",
+  on: "open",
+  async run({ userId, action, client, now }) {
+    try {
+      const r = await requestPlanChange(userId, { client, now });
+      return {
+        answeredWith: action.label,
+        note: `Requested through the payroll stand-in (nothing real changes yet): ${r.funds} funds, about ${formatCents(r.savingCents)} a year less in fees.`,
+        actions: [MENU_LINK],
+      };
+    } catch (error) {
+      if (error instanceof PlanMenuError) throw answeredElsewhere(error.message);
       throw error;
     }
   },

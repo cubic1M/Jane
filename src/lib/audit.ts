@@ -191,7 +191,10 @@ export type AuditEvent =
   // Spec step 214: a rental property added (never its figures).
   | "rental_added"
   // Spec step 215: a costly product entered or confirmed (never its figures).
-  | "costly_product_saved";
+  | "costly_product_saved"
+  // Spec step 232: a plan's fund menu confirmed, and a change to the plan's funds requested.
+  | "plan_menu_confirmed"
+  | "plan_change_requested";
 
 export type AuditActor = { type: ActorType; id: string | null };
 

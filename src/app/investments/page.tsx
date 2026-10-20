@@ -269,6 +269,12 @@ async function InvestmentsContent() {
             : bonds where interest isn&apos;t taxed, without changing your mix.
           </p>
           <p className="text-sm text-zinc-600 dark:text-zinc-400">
+            <Link href="/investments/plan-menu" className={LINK}>
+              Your workplace plan&apos;s funds
+            </Link>
+            : the cheapest mix of the funds your 401(k) offers.
+          </p>
+          <p className="text-sm text-zinc-600 dark:text-zinc-400">
             Learn:{" "}
             {["index-funds", "fees", "the-match", "roth-vs-traditional", "rebalancing"].map(
               (slug, i) => (

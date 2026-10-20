@@ -28,7 +28,8 @@ export type InvestmentTopic =
   | "property"
   | "costly_products"
   | "yearly_review"
-  | "location";
+  | "location"
+  | "plan_menu";
 
 export type InvestmentIntent = {
   kind: "investments";
@@ -158,7 +159,12 @@ const YEARLY_REVIEW =
 const LOCATION =
   /\b(?:which|what) (?:account|accounts) (?:should|do i) (?:hold|keep|put) (?:my )?(?:bonds|stocks|funds)\b|\bwhere should i (?:hold|keep) (?:my )?(?:bonds|stocks)\b|\btax[- ]efficient (?:placement|investing|fund placement)\b|\bbonds? in (?:my )?(?:401\(?k\)?|ira|taxable)\b|\bright (?:investment|investments) in the right account\b/;
 
+// Spec step 232: the workplace plan's funds.
+const PLAN_MENU =
+  /\b(?:401\(?k\)?|403\(?b\)?|plan|workplace plan)(?:'s)? (?:fund (?:list|menu|options|lineup)|funds|investment options|menu)\b|\bwhich funds? (?:should|do) i (?:pick|choose|use|buy) (?:in|for) (?:my )?(?:401\(?k\)?|403\(?b\)?|plan)\b|\btarget[- ]date fund (?:fees?|vs|versus|or)\b|\bfee disclosure\b|\bcheapest (?:mix|funds?) (?:in|for|from) (?:my )?(?:401\(?k\)?|plan)\b/;
+
 export function parseInvestmentIntent(text: string): InvestmentIntent | null {
+  if (PLAN_MENU.test(text)) return { kind: "investments", topic: "plan_menu", account: null };
   if (LOCATION.test(text)) return { kind: "investments", topic: "location", account: null };
   if (YEARLY_REVIEW.test(text))
     return { kind: "investments", topic: "yearly_review", account: null };

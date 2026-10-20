@@ -63,6 +63,7 @@ import {
   costlyReply,
   yearlyReviewReply,
   locationReply,
+  planMenuReply,
 } from "./replies";
 import { gather } from "../brain";
 import { parseIntent } from "../intents";
@@ -2751,5 +2752,113 @@ describe("locationReply and the location message", () => {
     });
     expect(gather(LOC_PLAN, false)).toEqual([]);
     expect(gather(null)).toEqual([]);
+  });
+});
+
+// Spec step 232: the workplace plan's menu.
+const MENU_FUNDS = [
+  {
+    ticker: "KTSIX",
+    name: "Keystone Total US Stock Index Fund",
+    expenseBps: 3,
+    kind: "us_stocks" as const,
+    mix: null,
+  },
+  {
+    ticker: "NSTDX",
+    name: "Northstar Target 2055 Fund",
+    expenseBps: 75,
+    kind: "target_date" as const,
+    mix: null,
+  },
+];
+const MENU_PLAN = {
+  accountId: "a",
+  accountName: "Demo 401(k)",
+  balanceCents: 8_425_040,
+  current: [],
+  currentBps: 60,
+  suggested: [
+    { ticker: "KTSIX", name: "Keystone Total US Stock Index Fund", share: 1, expenseBps: 3 },
+  ],
+  suggestedBps: 3,
+  missing: [],
+  savingCents: 480_227,
+  riskLevel: 3,
+  targetDates: [
+    {
+      ticker: "NSTDX",
+      fundBps: 75,
+      handBps: 5,
+      fundCents: 63_188,
+      handCents: 4_213,
+      savingCents: 58_975,
+      hand: [],
+    },
+  ],
+};
+const MENU_VIEW = {
+  advice: true,
+  demo: true,
+  proposed: null,
+  pending: false,
+  plan: MENU_PLAN,
+  menu: { id: "m", planName: "Demo employer 401(k)", status: "confirmed", funds: MENU_FUNDS },
+};
+
+describe("plan menu questions, by rules", () => {
+  it.each([
+    "what are my 401k fund options",
+    "which funds should i pick in my 401k",
+    "is my target date fund fee too high",
+  ])("reads %j as the plan menu", (text) => {
+    expect(parseIntent(text, ASOF)).toMatchObject({ kind: "investments", topic: "plan_menu" });
+  });
+});
+
+describe("planMenuReply and the plan menu messages", () => {
+  it("asks to confirm a list before using it", () => {
+    const reply = planMenuReply({
+      ...MENU_VIEW,
+      menu: null,
+      plan: null,
+      proposed: { id: "p", planName: "x", status: "proposed", funds: MENU_FUNDS },
+    });
+    expect(reply.body).toMatch(
+      /^I read 2 funds from your plan's list: KTSIX \(0\.03%\), NSTDX \(0\.75%\)\. Is that right\?/,
+    );
+    expect(reply.actions.map((a) => a.id)).toEqual(["menu.confirm", "open"]);
+    expect(reply.refs).toEqual({ menuId: "p" });
+  });
+  it("gives the saving in dollars a year, the target-date check and a tap, naming only the plan's funds", () => {
+    const reply = planMenuReply(MENU_VIEW);
+    expect(reply.body).toMatch(/costs about \$505\.50 a year/);
+    expect(reply.body).toMatch(/100% KTSIX, about 0\.03%: \$4,802\.27 a year less\./);
+    expect(reply.body).toMatch(
+      /NSTDX costs 0\.75%; building the same mix by hand costs 0\.05%, \$589\.75 a year less/,
+    );
+    expect(reply.actions[0].id).toBe("menu.change");
+    const menu = new Set(MENU_FUNDS.map((f) => f.ticker));
+    for (const t of reply.body.match(/\b[A-Z]{4,5}X\b/g) ?? []) expect(menu.has(t)).toBe(true);
+    expect(planMenuReply({ ...MENU_VIEW, advice: false }).body).toMatch(
+      /don't give recommendations on real accounts/,
+    );
+  });
+  it("posts the question and then the suggestion, once, in demo advice mode", () => {
+    const gather = (planMenu: InvestmentSnapshot["planMenu"], advice = true) =>
+      investmentsSource
+        .gather({ ...base, investments: demoInvestmentSnapshot({ advice, planMenu }) }, {} as never)
+        .filter((c) => c.dedupeKey.startsWith("menu:"));
+    expect(
+      gather({
+        proposed: { id: "p", planName: "x", status: "proposed", funds: MENU_FUNDS },
+        plan: null,
+        pending: false,
+      })[0].actions[0].id,
+    ).toBe("menu.confirm");
+    const sugg = gather({ proposed: null, plan: MENU_PLAN, pending: false });
+    expect(sugg.map((m) => m.dedupeKey)).toEqual(["menu:change:480227"]);
+    expect(gather({ proposed: null, plan: MENU_PLAN, pending: true })).toEqual([]);
+    expect(gather({ proposed: null, plan: MENU_PLAN, pending: false }, false)).toEqual([]);
   });
 });

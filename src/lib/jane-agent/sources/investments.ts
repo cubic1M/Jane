@@ -64,6 +64,14 @@ import {
 import { REVIEW_LINK, reviewFor } from "../investments/review-copy";
 import { MIN_SAVING_CENTS } from "@/config/location";
 import { freeButton, LOCATION_LINK, locationLine } from "../investments/location-copy";
+import { MENU_MIN_SAVING_CENTS } from "@/config/plan-menu";
+import {
+  changeButton,
+  confirmButtons,
+  MENU_LINK,
+  proposedLine,
+  savingLine,
+} from "../investments/menu-copy";
 import { AUTO_LOG_LINK, summaryBody } from "../investments/automatic-copy";
 import { CASH_MIN_GAIN_CENTS } from "@/config/cash";
 import { CASH_LINK, cashLine, moveButtons } from "../investments/cash-copy";
@@ -336,6 +344,34 @@ export const investmentsSource: MessageSource = {
         actions: [{ id: "hsa.link", label: "Link a demo HSA", kind: "primary" }, snoozeButton()],
         dedupeKey: "hsa:link",
         priority: MESSAGE_PRIORITY.hsa,
+      });
+    }
+    // Step 232: a plan fund list Jane read is confirmed before it is used; once it is, the
+    // cheapest mix of the plan's own funds is one tap to send.
+    const menu = inv.planMenu;
+    if (menu.proposed) {
+      out.push({
+        kind: "decision",
+        body: proposedLine(menu.proposed),
+        refs: { menuId: menu.proposed.id },
+        actions: [...confirmButtons(), MENU_LINK, snoozeButton()],
+        dedupeKey: `menu:confirm:${menu.proposed.id}`,
+        priority: MESSAGE_PRIORITY.plan_menu,
+      });
+    }
+    if (
+      inv.advice &&
+      menu.plan &&
+      menu.plan.savingCents >= MENU_MIN_SAVING_CENTS &&
+      !menu.pending
+    ) {
+      out.push({
+        kind: "decision",
+        body: `${savingLine(menu.plan)} Nothing changes until you tap.`,
+        refs: { advice: true },
+        actions: [changeButton(menu.plan), MENU_LINK, snoozeButton()],
+        dedupeKey: `menu:change:${menu.plan.savingCents}`,
+        priority: MESSAGE_PRIORITY.plan_menu,
       });
     }
     // Step 231: the right investment in the right account, when the tax saved is worth it:

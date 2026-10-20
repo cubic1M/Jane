@@ -91,6 +91,7 @@ export function demoInvestmentSnapshot(over: Partial<InvestmentSnapshot> = {}): 
     college: { children: 0, plans: 0 },
     hsa: { account: null, plan: null, savedCents: 0, demo: true, receipts: 0 },
     automatic: { did: [], asked: [] },
+    planMenu: { proposed: null, plan: null, pending: false },
     location: { plan: null },
     review2: { harvest: [], harvestKey: null, goals: [], raise: false },
     costly: { advice: true, demo: true, products: [], asked: [], advisory: null },

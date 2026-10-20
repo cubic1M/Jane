@@ -27,6 +27,7 @@ import { loadProperty } from "@/lib/investments/property";
 import { loadCostlyProducts } from "@/lib/investments/costly-products";
 import { reviewFor } from "./review-copy";
 import { loadLocation } from "@/lib/investments/location";
+import { loadPlanMenu } from "@/lib/investments/plan-menu";
 import { loadSteadyHand } from "@/lib/investments/steady-hand";
 import { CASH_HOMES, CASH_RATES_AS_OF } from "@/config/cash";
 import { formatReturn } from "@/insights/returns";
@@ -185,6 +186,12 @@ export const INVESTMENT_TOOLS: Anthropic.Tool[] = [
     input_schema: noInput,
   },
   {
+    name: "plan_menu",
+    description:
+      "The person's workplace plan (401(k) or 403(b)) fund list as they confirmed it from the plan's fee disclosure, each fund's cost, and in demo advice mode the cheapest mix of those funds for their target with the fee saving in dollars a year, and a target-date fund's fee against building its mix by hand. Only funds on the confirmed list may ever be named as suggestions. A change goes to the payroll stand-in on the person's tap, never by you.",
+    input_schema: noInput,
+  },
+  {
     name: "steady_hand",
     description:
       "Whether the person's investments have had a big drop lately (down 8% over a month or 15% over three, their own return, money in and out left out) and, in demo advice mode, how each goal's timeline sits (near goals are already in cash). Report only these past facts and the plan to stay the course. NEVER say or imply what markets will do, when they will recover, or that now is a good or bad time: no one can know.",
@@ -231,6 +238,7 @@ export const INVESTMENT_TOOL_STATUS: Readonly<Record<string, string>> = {
   crypto: "Reading your crypto balances…",
   cash_plan: "Looking at where your cash sits…",
   steady_hand: "Looking at how your investments have moved…",
+  plan_menu: "Looking at your plan's funds…",
   asset_location: "Checking which account holds what…",
   yearly_review: "Putting your investing review together…",
   costly_products: "Adding up what your products cost…",
@@ -786,6 +794,34 @@ export async function runInvestmentTool(
             }
           : { note: "needs two or more investment accounts" },
       );
+    }
+    case "plan_menu": {
+      const v = await loadPlanMenu(userId, { client, now });
+      return out({
+        confirmedMenu:
+          v.menu &&
+          v.menu.funds.map((f) => ({
+            ticker: f.ticker,
+            name: f.name,
+            costPercent: f.expenseBps / 100,
+            kind: f.kind,
+          })),
+        waitingForConfirmation: v.proposed !== null,
+        suggestion: !v.advice
+          ? "advice only in demo advice mode"
+          : v.plan && {
+              costsNowAYear: money(Math.round((v.plan.balanceCents * v.plan.currentBps) / 10_000)),
+              cheapestMix: v.plan.suggested.map((a) => ({
+                ticker: a.ticker,
+                sharePercent: Math.round(a.share * 100),
+                costPercent: a.expenseBps / 100,
+              })),
+              savesAYear: money(v.plan.savingCents),
+              targetDateFunds: v.plan.targetDates
+                .filter(Boolean)
+                .map((t) => ({ ticker: t!.ticker, savingBuildingItByHand: money(t!.savingCents) })),
+            },
+      });
     }
     case "steady_hand": {
       const view = await loadSteadyHand(userId, { client, now });
