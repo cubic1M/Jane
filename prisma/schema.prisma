@@ -375,6 +375,7 @@ model User {
   propertyAppeals   PropertyAppeal[]
   accountantLinks   AccountantLink[]
   accountantNotes   AccountantNote[]
+  taxPayments       TaxPayment[]
 
   @@map("users")
 }
@@ -2910,6 +2911,27 @@ model AccountantNote {
   @@index([userId])
   @@index([linkId])
   @@map("accountant_notes")
+}
+
+// Spec step 223: an estimated tax payment made through the payment stand-in (src/lib/tax-
+// payments), by Jane within the caps or on the person's tap. Nothing leaves any account.
+model TaxPayment {
+  id           String   @id @default(cuid())
+  userId       String   @map("user_id")
+  year         Int
+  // The estimated-tax due date it pays.
+  dueOn        DateTime @map("due_on") @db.Date
+  cents        Int
+  partner      String
+  confirmation String
+  // "autopilot" (within the caps) or "tap" (the person said pay it).
+  via          String
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, dueOn])
+  @@map("tax_payments")
 }
 
 model TaxReturn {
