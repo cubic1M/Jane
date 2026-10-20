@@ -3928,6 +3928,111 @@ with questions in step 189's bank.
 > - The guardrail blocks legal advice here (tests); the family file shares only what the
 >   person picks
 
+## Phase AP: Jane runs the money, round three (steps 238–244)
+
+Phases AC and AK have Jane plan, route, watch and learn. This round makes her a controller
+people can trust with everything: books that always balance, every figure explained and
+correctable, a steady paycheck from uneven income, goals that trade off openly, money run
+well for couples, price rises seen before they land, and a monthly close that runs itself.
+Each step is built into the chat through the step 190 registry, with questions in step 189's
+bank.
+
+### Step 238: Books that balance
+
+> Read CLAUDE.md. Data Jane can stand behind.
+>
+> Build:
+> 1. Every day: balances checked against the sum of transactions, duplicate accounts and
+>    duplicate transactions across links found and merged, gaps where a bank stopped
+>    sending caught, transfers between the person's own accounts matched in pairs, and a
+>    broken link turned into one reconnect message (step 7's Link update mode). Figures
+>    that rely on bad data are marked until it's fixed.
+>
+> Acceptance criteria:
+> - The demo bank has one of each problem and each is caught; nothing is merged without a
+>   test proving both sides match
+
+### Step 239: Every figure explained, and correctable
+
+> Read CLAUDE.md. "How did you get that?" answered for any number.
+>
+> Build:
+> 1. Every figure Jane shows (in the chat, cards, pages) can open its working: the
+>    transactions, the rule or rate from config, and the date. "That's wrong" on any figure
+>    lets the person fix the input (a category, an income, a bill), and the correction
+>    sticks and flows to every sector that used it.
+>
+> Acceptance criteria:
+> - Each sector's headline figure has its working; a correction changes every page that
+>   used it (tests)
+
+### Step 240: A steady paycheck from uneven income
+
+> Read CLAUDE.md. Freelancers and commission earners paid like an employee.
+>
+> Build:
+> 1. For uneven income (step 123's self-employed signals or the person saying so): a buffer
+>    account target, a steady monthly "paycheck" to checking through step 144's stand-in,
+>    taxes set aside from each deposit (step 120), and the plan adjusted when the buffer runs
+>    high or low.
+>
+> Acceptance criteria:
+> - The paycheck never drains the buffer below its floor; tests over a year of uneven
+>   deposits
+
+### Step 241: Goals that trade off openly
+
+> Read CLAUDE.md. When everything can't happen, choosing with the facts.
+>
+> Build:
+> 1. When goals compete for the same money, one view shows each goal's date under each
+>    choice ("the trip in June pushes the house fund back four months"), Jane's suggested
+>    order with the reason, and the person's pick re-plans every sector.
+>
+> Acceptance criteria:
+> - Each choice's dates come from the year plan (step 205); nothing re-plans without a
+>   tap
+
+### Step 242: Money for two
+
+> Read CLAUDE.md. Couples run their money together and still keep their own.
+>
+> Build:
+> 1. For a household (step 25): joint goals, bills split fairly by income or evenly as they
+>    choose, each person's own money kept private, both partners' taps for big moves over
+>    a set amount, and a short monthly "money date" message for both.
+>
+> Acceptance criteria:
+> - Private accounts never appear to the partner (tests); big moves need both taps
+
+### Step 243: Price rises seen before they land
+
+> Read CLAUDE.md. Promo ends and renewals caught early.
+>
+> Build:
+> 1. Introductory rates ending (internet, phone, streaming bundles, insurance, card
+>    promos), annual renewals and price-change notices from documents become deadlines a
+>    month ahead, each with the cheaper choice or the call script, before the higher price
+>    is charged.
+>
+> Acceptance criteria:
+> - The demo bank has a promo ending and an annual renewal; both raise a deadline at least
+>   30 days ahead
+
+### Step 244: The monthly close
+
+> Read CLAUDE.md. Like a company's books, closed every month by Jane.
+>
+> Build:
+> 1. On the first of the month, Jane closes the month before: books balanced (step 238),
+>    uncertain categories confirmed in one message, net worth snapshot, plan against
+>    actual (step 205), what worked (step 207), and the report (step 148). The person only
+>    taps where Jane wasn't sure.
+>
+> Acceptance criteria:
+> - A month closes with no taps when nothing is uncertain; a closed month's figures don't
+>   change unless a correction is made
+
 ### Later, when the founder is ready
 
 These need an outside account, a partner or a decision: Plaid Production (real banks) and
