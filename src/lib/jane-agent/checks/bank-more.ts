@@ -20,6 +20,12 @@ const rows: Row[] = [
   ["debt", "/debt", "debts", "how much card interest am I paying"],
   ["budgets", "/budgets", "budgets", "how's my budget"],
 
+  // What if (spec step 203).
+  ["scenarios", "/what-if", "what_if", "what if i lose my job"],
+  ["scenarios", "/what-if", "what_if", "what would happen if i got laid off for 4 months"],
+  ["scenarios", "/what-if", "what_if", "what if we have a baby"],
+  ["scenarios", "/what-if", "what_if", "what if i buy a house"],
+
   // Safe to spend and the day.
   ["safe", "/home", "safe_to_spend", "how much do i have left to spend"],
   ["safe", "/home", "safe_to_spend", "can i afford to eat out tonight"],

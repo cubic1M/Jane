@@ -169,7 +169,7 @@ test("state taxes: a mid-year move splits the estimate, each state with its sour
     estimate.getByRole("link", { name: "New York State Department of Taxation and Finance" }),
   ).toHaveAttribute("href", "https://www.tax.ny.gov");
   await expect(
-    estimate.getByText(/^California: lived there 2026-01-01 to 2026-06-30/),
+    estimate.getByText(/^California: lived there Jan 1, 2026 to Jun 30, 2026/),
   ).toBeVisible();
   expect(await axe(page)).toEqual([]);
 
@@ -226,6 +226,15 @@ test("family details: saved on the profile, and the choices on /taxes", async ({
   await form.getByRole("button", { name: "Save family details" }).click();
   await expect(form.getByRole("status")).toHaveText("Saved. Your family tax choices use it now.");
   expect(await axe(page)).toEqual([]);
+
+  // Spec step 170: the demo bank's home loan, each figure linked to where it came from.
+  await page.goto("/taxes#home");
+  const home = page.getByRole("region", { name: "Your home" });
+  await expect(home.getByRole("link", { name: /^Demo Home Loan/ })).toHaveAttribute(
+    "href",
+    "/loans",
+  );
+  await expect(home.getByText(/^State and local taxes: /)).toBeVisible();
 
   await page.goto("/taxes#family");
   const family = page.getByRole("region", { name: "Family tax choices" });

@@ -28,6 +28,11 @@ import { loadTaxDocuments } from "@/lib/tax-documents";
 import { loadTaxPlan } from "@/lib/tax-plan";
 import { loadGiving } from "@/lib/giving";
 import { loadFamilyTaxes } from "@/lib/family-taxes";
+import { loadReturnReviews } from "@/lib/prior-return/review";
+import { loadAuditRecords } from "@/lib/audit-records";
+import { loadHomeTaxes } from "@/lib/home-taxes";
+import { figuresOf, type Source } from "@/planning/home-taxes";
+import { sourceText } from "./home-taxes-message";
 import { COMPARED } from "@/planning/tax-document-check";
 
 // Claude's tax tools in Jane's chat (spec steps 118–127): read-only, over the person's own
@@ -125,6 +130,24 @@ export const TAX_TOOLS: Anthropic.Tool[] = [
     name: "tax_family",
     description:
       "Demo advice only: the person's family tax choices for the tax year, each with both sides' federal tax and whether each side is open to them (with the eligibility rules): claiming their children, a dependent care FSA or the care credit, the American Opportunity or Lifetime Learning credit, a 529's state tax break, and married filing jointly or separately (or head of household or single); plus what Jane assumed. Choosing is the person's.",
+    input_schema: noInput,
+  },
+  {
+    name: "tax_home",
+    description:
+      "What the person's home changes at tax time for the tax year, each figure with where it came from (transactions, the lender's 1098 or loan, or their answers): mortgage interest (on up to the debt limit), property tax paid, the state and local tax cap applied to state income tax and property tax (total, cap, what counts, what doesn't), points, the home office, energy credits from work paid for, and a home sale's gain against the exclusion (with whether it qualifies and why).",
+    input_schema: noInput,
+  },
+  {
+    name: "tax_records",
+    description:
+      "The person's audit-ready records for a tax year: every deduction and credit Jane counts (donations, medical, childcare, education, business, mortgage interest, property tax, energy, student loan interest, home office, miles), each with the transactions, receipts in their document vault, collected forms and answers that support it and what's still needed (for example a charity's receipt for a gift of $250 or more); amounts counted with no source yet (not in the pack); and how long to keep each year's records and when they can be thrown away. Jane never deletes records.",
+    input_schema: noInput,
+  },
+  {
+    name: "tax_last_return",
+    description:
+      "Prior-year returns the person uploaded and confirmed, and in demo advice mode what a review against their accounts found for each: money left behind (itemizing instead of the standard deduction, student loan interest, an education credit, the child and dependent care credit) with the federal tax each would have saved, the last day to amend, whether an amended return is worth preparing, and the state of any amended return (ready for them to review and sign, submitted, accepted). Returns not confirmed aren't used. Amending needs the person's review and signature.",
     input_schema: noInput,
   },
   {
@@ -504,6 +527,73 @@ export async function runTaxTool(
           saves: c.better === null ? null : money(c.savesCents),
         })),
         assumed: view.assumptions,
+      });
+    }
+    case "tax_home": {
+      const view = await loadHomeTaxes(userId, { client, now });
+      const figure = (f: { label: string; cents: number; sources: Source[]; note?: string }) => ({
+        figure: f.label,
+        amount: money(f.cents),
+        from: f.sources.map(sourceText),
+        note: f.note ?? null,
+      });
+      return out({
+        year: view.year,
+        figures: figuresOf(view).map(figure),
+        stateAndLocalTaxCap: {
+          total: money(view.salt.totalCents),
+          cap: money(view.salt.capCents),
+          counts: money(view.salt.allowedCents),
+          doesntCount: money(view.salt.overCents),
+        },
+        sale: view.sale && {
+          gain: money(Math.max(0, view.sale.gainCents)),
+          exclusion: money(view.sale.exclusionCents),
+          taxed: money(view.sale.taxableGainCents),
+          qualifies: view.sale.qualifies,
+          why: view.sale.why,
+        },
+      });
+    }
+    case "tax_records": {
+      const view = await loadAuditRecords(userId, year, { client, now });
+      const item = (i: (typeof view.items)[number]) => ({
+        item: i.label,
+        claimed: money(i.claimedCents),
+        sources: i.evidence.length,
+        stillNeeded: i.needs,
+      });
+      return out({
+        year: view.year,
+        pack: view.items.map(item),
+        noSourceYet: view.gaps.map(item),
+        keepUntil: view.retention.map((r) => ({
+          taxYear: r.year,
+          keepUntil: r.keepUntil,
+          status: r.status,
+        })),
+        rule: view.retention[0]?.rule ?? null,
+      });
+    }
+    case "tax_last_return": {
+      const { advice, reviews } = await loadReturnReviews(userId, { client, now });
+      return out({
+        demoAdvice: advice,
+        returns: reviews.map((r) => ({
+          taxYear: r.year,
+          found: r.findings.map((f) => ({
+            what: f.title,
+            why: f.why,
+            wouldHaveSaved: money(f.savesCents),
+          })),
+          total: money(r.totalCents),
+          amendBy: r.amendBy,
+          worthAmending: r.worthAmending,
+          amendedReturn: r.amendment && {
+            status: r.amendment.status,
+            refund: money(r.amendment.refundCents),
+          },
+        })),
       });
     }
     case "tax_forms": {

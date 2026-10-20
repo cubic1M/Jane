@@ -26,10 +26,12 @@ import {
   payFromYtd,
   projectOther,
   taxPaymentsFor,
+  propertyTaxFor,
   yearElapsed,
   type PayPicture,
 } from "@/planning/tax-income";
 import { defaultTaxYear } from "@/planning/tax-pack";
+import { dayLabel } from "@/lib/day-label";
 import { stateName, type ProfileField } from "@/planning/tax-profile";
 
 // The tax estimate (spec step 120), loaded from the person's own accounts, pay stubs and
@@ -200,7 +202,7 @@ export async function loadTaxEstimate(
       today,
     );
     assumptions.push(
-      `Your pay and withholding come from your pay stub as of ${pay.asOf}, projected at the same pace.`,
+      `Your pay and withholding come from your pay stub as of ${dayLabel(pay.asOf ?? "", { year: true })}, projected at the same pace.`,
     );
   } else {
     pay = NO_PAY();
@@ -264,7 +266,7 @@ export async function loadTaxEstimate(
   }
   for (const m of residency.inUse) {
     assumptions.push(
-      `${residency.usingSpotted ? "I've assumed you moved" : "You moved"} from ${stateName(m.from)} to ${stateName(m.to)} on ${m.date}: wages count where you lived on each payday, other income by the days you lived in each state.`,
+      `${residency.usingSpotted ? "I've assumed you moved" : "You moved"} from ${stateName(m.from)} to ${stateName(m.to)} on ${dayLabel(m.date, { year: true })}: wages count where you lived on each payday, other income by the days you lived in each state.`,
     );
   }
   if (residency.workState && residency.workState !== state) {
@@ -299,7 +301,8 @@ export async function loadTaxEstimate(
     mortgageInterestCents: loanInterest("mortgage"),
     charityCents: tags.totals.donation.totalCents,
     medicalCents: tags.totals.medical.totalCents,
-    otherStateLocalTaxCents: 0,
+    // Spec step 170: property tax paid this year.
+    otherStateLocalTaxCents: propertyTaxFor(rows, year),
     federalWithheldCents: pay.projected.federalWithheldCents,
     federalEstimatedPaidCents: payments.federalCents,
     stateWithheldCents: pay.projected.stateWithheldCents,
@@ -338,7 +341,9 @@ export async function loadTaxEstimate(
       paidCents: base.paidCents + delta,
       refundCents: base.refundCents + delta,
     };
-    assumptions.push(`It includes the W-4 change you sent on ${w4.changedOn}.`);
+    assumptions.push(
+      `It includes the W-4 change you sent on ${dayLabel(w4.changedOn, { year: true })}.`,
+    );
   }
   const lastYearRefundCents = rows
     .filter(

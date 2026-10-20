@@ -4,6 +4,7 @@ export const DOCUMENT_KINDS = {
   insurance_policy: "Insurance policy",
   warranty: "Warranty",
   receipt: "Receipt",
+  tax_return: "Tax return",
   other: "Something else",
 } as const;
 

@@ -54,7 +54,13 @@ export type TaxIntent =
   // Spec step 168.
   | { kind: "tax"; ask: "giving" }
   // Spec step 169.
-  | { kind: "tax"; ask: "family" };
+  | { kind: "tax"; ask: "family" }
+  // Spec step 170.
+  | { kind: "tax"; ask: "home" }
+  // Spec step 171.
+  | { kind: "tax"; ask: "records" }
+  // Spec step 172.
+  | { kind: "tax"; ask: "last_return" };
 
 const NUMBER_WORDS: Readonly<Record<string, number>> = {
   no: 0,
@@ -175,6 +181,12 @@ const GIVING_ASK =
 // jointly" sets the profile (FILING).
 const FAMILY_ASK =
   /\b(?:jointly or separately|separately or jointly|joint or separate|separate or joint)\b|\bhead of household or single\b|\bsingle or head of household\b|\bchild tax credit\b|\bdependent care (?:fsa|credit|account)\b|\bfsa or (?:the )?(?:care |childcare )?credit\b|\bamerican opportunity\b|\blifetime learning\b|\b(?:aotc|llc credit)\b|\beducation credits?\b|\b529 (?:tax|deduction|break|benefits?)\b|\bfamily tax(?:es)?\b|\btax(?:es)? (?:for|with) (?:my |our )?(?:kids|children|family)\b/;
+const HOME_ASK =
+  /\bmortgage interest\b|\bproperty tax(?:es)?\b|\bsalt (?:cap|deduction)\b|\bstate and local tax (?:cap|deduction)\b|\b(?:sold|selling|sell) (?:my |our )?(?:house|home)\b|\bhome sale\b|\bcapital gains? on (?:my |our |the )?(?:house|home)\b|\bmortgage points\b|\bhome(?:owner)? tax(?:es)?\b|\btax(?:es)? on (?:my |our )?(?:house|home)\b/;
+const RECORDS_ASK =
+  /\baudit pack\b|\baudit(?:-| )ready\b|\b(?:tax )?records? (?:for|if|in) (?:an )?audit\b|\bhow long (?:should|do) (?:i|we) (?:keep|hold on to)\b.*\b(?:tax|records?|receipts?|papers)\b|\bwhat if (?:i|the irs) (?:get|gets|am|audits?)\b.*\baudit|\bam i ready for an audit\b|\b(?:get|got|am|being) audited\b|\bkeep (?:my )?(?:tax )?(?:records|receipts|papers)\b/;
+const LAST_RETURN =
+  /\b(?:last year'?s|my (?:old|prior|previous)) (?:tax )?return\b|\b(?:review|check|look at|read) my (?:tax )?return\b|\bamend(?:ed)? (?:my |a )?(?:tax )?return\b|\b1040-?x\b|\b(?:did i|have i) miss(?:ed)? (?:anything|any|a) (?:deductions?|credits?|on my (?:tax )?return)\b|\b(?:left|leave|leaving) money on the table\b/;
 const PACK = /\btax(?:-| )?time pack\b|\btax pack\b|\byear-end pack\b/;
 
 function stateCode(words: string): string | null {
@@ -185,6 +197,9 @@ function stateCode(words: string): string | null {
 
 export function parseTaxIntent(text: string): TaxIntent | null {
   if (FAMILY_ASK.test(text)) return { kind: "tax", ask: "family" };
+  if (LAST_RETURN.test(text)) return { kind: "tax", ask: "last_return" };
+  if (RECORDS_ASK.test(text)) return { kind: "tax", ask: "records" };
+  if (HOME_ASK.test(text)) return { kind: "tax", ask: "home" };
   for (const [pattern, status] of FILING) {
     if (pattern.test(text)) return { kind: "tax", ask: "set_filing", status };
   }

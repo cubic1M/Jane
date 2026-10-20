@@ -18,6 +18,9 @@ import { planMoveMessage } from "../tax-plan-message";
 import { givingOptionsMessage, receiptMessage } from "../giving-message";
 import { familyChoiceMessage, statusOf } from "../family-taxes-message";
 import { worthSaying } from "@/planning/family-taxes";
+import { readingMessage, reviewMessage } from "../prior-return-message";
+import { retentionMessage } from "../audit-records-message";
+import { homeSaleMessage, saltCapMessage } from "../home-taxes-message";
 import { HARVEST_FROM } from "@/config/tax";
 import { formatCents } from "@/lib/money";
 import { incomeLine, listOf } from "@/planning/tax-profile";
@@ -364,6 +367,62 @@ export const taxesSource: MessageSource = {
         dedupeKey: `family:${family!.year}:${c.key}`,
         priority: TAX_MESSAGE_PRIORITY.family,
       });
+    }
+
+    // Spec step 172: a return Jane read, to confirm; and what its review found.
+    for (const r of tax.priorReturns ?? []) {
+      out.push({
+        kind: "decision",
+        ...readingMessage(r),
+        dedupeKey: `prior:${r.id}`,
+        priority: TAX_MESSAGE_PRIORITY.prior_return,
+      });
+    }
+    for (const r of tax.returnReviews ?? []) {
+      if (!r.worthAmending && !r.amendment) continue;
+      out.push({
+        kind: "decision",
+        ...reviewMessage(r),
+        dedupeKey: `review-return:${r.year}:${r.amendment?.status ?? "open"}`,
+        priority: TAX_MESSAGE_PRIORITY.prior_review,
+      });
+    }
+
+    // Spec step 171: a year's records that can be thrown away soon (the reminder is on the
+    // deadlines already at the levels that let Jane act).
+    if (!acts) {
+      for (const r of tax.records?.due ?? []) {
+        out.push({
+          kind: "heads_up",
+          ...retentionMessage(r),
+          dedupeKey: `records:${r.year}`,
+          priority: TAX_MESSAGE_PRIORITY.records,
+        });
+      }
+    }
+
+    // Spec step 170: the state and local tax cap biting once property tax is paid, and a
+    // home sale against the exclusion, once each a year.
+    const homeTax = tax.home;
+    if (homeTax) {
+      const cap = saltCapMessage(homeTax);
+      if (cap) {
+        out.push({
+          kind: "heads_up",
+          ...cap,
+          dedupeKey: `salt:${homeTax.year}`,
+          priority: TAX_MESSAGE_PRIORITY.salt_cap,
+        });
+      }
+      const sale = homeSaleMessage(homeTax);
+      if (sale) {
+        out.push({
+          kind: "heads_up",
+          ...sale,
+          dedupeKey: `homesale:${homeTax.year}:${homeTax.sale!.sale.cents}`,
+          priority: TAX_MESSAGE_PRIORITY.home_sale,
+        });
+      }
     }
 
     // Spec step 166: with a document partner, Jane collects the forms herself: a form that
