@@ -46,6 +46,8 @@ export const CHAT_SOURCE_LIMITS: Readonly<Record<string, number>> = {
   attention: 1,
   // Spec step 204.
   lean: 1,
+  // Spec step 208.
+  unusual: 2,
   // Spec step 148.
   report: 1,
   // Spec step 128 on.
@@ -155,6 +157,8 @@ export const MESSAGE_PRIORITY = {
   attention: 30,
   // Spec step 204: income stopped; right after urgent things.
   lean: 92,
+  // Spec step 208: a charge that may not be theirs; as urgent as an alert.
+  unusual: 95,
   // Spec step 148: the monthly money report, once a month, after what needs the person.
   report: 40,
   review: 900,

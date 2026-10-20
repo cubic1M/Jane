@@ -134,6 +134,7 @@ export const TEAM_ACCESS_RULES: Record<AuditEvent, EventRule> = {
   what_if_adopted: own,
   lean_plan_started: own,
   saving_marked_not_shown: own,
+  unusual_answered: own,
   lean_plan_ended: own,
   plan_link_used: own,
   // Found on the company's own website; about a company, not a person.

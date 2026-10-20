@@ -257,6 +257,8 @@ export const ACTION_IDS = [
   "whatif.adopt",
   "lean.start",
   "lean.not_now",
+  "unusual.me",
+  "unusual.not_me",
 ] as const;
 export type ActionId = (typeof ACTION_IDS)[number];
 
