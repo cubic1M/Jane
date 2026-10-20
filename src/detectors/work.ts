@@ -168,14 +168,14 @@ const businessInsurance: Detector = {
       capability: "insurance",
       topic: "business_insurance",
       title: "Check your business has liability and property cover",
-      worthCents: annualIncome(income.value),
+      worthCents: Math.round(R.businessClaimCents * R.businessClaimChance),
       worthKind: "risk",
       confidence: weakest([
         factEvidence(pattern),
         evidence("seen", profile.months, 0, "business-cover charges"),
       ]),
       urgency: "soon",
-      why: `Your business takes in about ${formatCents(annualIncome(income.value))} a year and I see no business insurance charge in ${profile.months} months.`,
+      why: `Your business takes in about ${formatCents(annualIncome(income.value))} a year and I see no business insurance charge in ${profile.months} months. A liability claim in a given year is unlikely (about ${Math.round(R.businessClaimChance * 100)}%), but one can cost ${formatCents(R.businessClaimCents)} or more.`,
       action: { label: "Check your cover", href: "/insurance/checkup" },
     };
   },

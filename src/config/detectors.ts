@@ -79,6 +79,35 @@ export const DETECTOR_RATES = {
   // is told to plan for.
   longTermCareYearCents: 10_800_000,
   longTermCareYears: 2,
+  // What a risk is worth a year is the expected loss: the chance it happens in a year times
+  // what it costs, never the whole loss. Typical figures from public insurance statistics, to be
+  // checked against a published source before real accounts see them (marked for review).
+  rentersClaimChance: 0.03,
+  autoAtFaultChance: 0.05,
+  hospitalStayChance: 0.08,
+  umbrellaLawsuitChance: 0.002,
+  longTermCareChanceOverWindow: 0.2,
+  longTermCareWindowYears: 10,
+  coverChangeClaimChance: 0.01,
+  // Life cover: the chance a working adult dies in a year (a typical figure for ages 35 to 55,
+  // marked for review), against the cover a household would need.
+  lifeDeathChancePerYear: 0.003,
+  // A small business facing a liability claim in a year, and what one costs.
+  businessClaimChance: 0.04,
+  businessClaimCents: 5_000_000,
+  // Confidence ceilings for suggestions whose amount is typical, not quoted, or that depend on
+  // something Jane can't see (the card's real benefits, the employer's real plan). Without a
+  // ceiling a clean run of charges would make a guess look certain.
+  insuranceCaps: {
+    shopping: 70,
+    health: 70,
+    medigap: 70,
+    negotiation: 75,
+    claim: 65,
+    cardCover: 55,
+    employerBenefits: 60,
+    documents: 75,
+  },
   // Umbrella cover matters when assets pass this (src/config/insurance.ts UMBRELLA_ASSETS_CENTS).
   umbrellaAssetsCents: 50_000_000,
   // Comparing a health plan, a Medicare supplement or car and home cover usually finds this
