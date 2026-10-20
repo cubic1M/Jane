@@ -381,6 +381,20 @@ const BASE_QUESTIONS: readonly CheckQuestion[] = [
     expect: { list: true, maxChars: 1_400 },
   },
 
+  // Net worth, answered at once from the net worth page's own math.
+  {
+    id: "nw-1",
+    text: "what's my net worth",
+    needs: "rules",
+    expect: { intent: "net_worth", mentions: /net worth is -?\$/, link: "/net-worth" },
+  },
+  {
+    id: "nw-2",
+    text: "how much am i worth",
+    needs: "rules",
+    expect: { intent: "net_worth", mentions: /net worth is -?\$/ },
+  },
+
   // What's due.
   {
     id: "due-1",
