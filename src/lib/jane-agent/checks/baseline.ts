@@ -1,7 +1,7 @@
 import type { PrismaClient } from "@/generated/prisma/client";
 import { answerByRules } from "../answer";
 import { parseIntent } from "../intents";
-import { QUESTIONS } from "./bank";
+import { QUESTIONS, sectorOfQuestion } from "./bank";
 
 // How much of the question bank the rules alone understand (spec step 189): each question
 // is asked of the rules as the first thing in a conversation, with no key and no Claude.
@@ -30,25 +30,6 @@ export type Baseline = {
 
 const PARALLEL = 6;
 
-const GROUPS: Record<string, string> = {
-  safe: "safe",
-  due: "bills",
-  pay: "income",
-  act: "subs",
-  follow: "follow",
-  free: "free",
-  out: "edge",
-  tax: "taxes",
-  ins: "insurance",
-  inv: "investing",
-  whole: "whole",
-  multi: "multi",
-  timeline: "timeline",
-};
-
-// Sector and page for a question from before this step, which only carry an id.
-const sectorOf = (id: string) => GROUPS[id.split("-")[0]] ?? id.split("-")[0];
-
 export async function measureBaseline(
   userId: string,
   { client, now }: { client: PrismaClient; now: Date },
@@ -63,7 +44,7 @@ export async function measureBaseline(
     return {
       id: q.id,
       text: q.text,
-      sector: q.sector ?? sectorOf(q.id),
+      sector: sectorOfQuestion(q),
       page: q.page ?? "/chat",
       tool: q.tool ?? null,
       understood: reply !== null,
