@@ -125,6 +125,7 @@ export const TEAM_ACCESS_RULES: Record<AuditEvent, EventRule> = {
   autopilot_sector_set: own,
   money_transfer_scheduled: own,
   money_transfer_cancelled: own,
+  what_if_adopted: own,
   plan_link_used: own,
   // Found on the company's own website; about a company, not a person.
   support_contact_suggested: notOnePerson,
