@@ -7,6 +7,7 @@ import { MISSING_DETECTOR } from "@/detectors/missing";
 import type { PrismaClient } from "@/generated/prisma/client";
 import { db as defaultClient } from "@/lib/db";
 import { CHAT_TOOLS } from "@/lib/jane-agent/claude-tools";
+import { worthOnce } from "@/planning/suggestion-rank";
 import { type Answered, bandsOf, offDetectors } from "@/planning/calibration";
 
 // The reach scoreboard (spec step 258): which capabilities fired for whom, the dollars shown,
@@ -43,7 +44,8 @@ export async function reachReport({ client = defaultClient }: { client?: PrismaC
       reason: s.confidence.reason,
       worthCents: s.worthCents,
     })),
-    dollarsCents: r.fired.reduce((s, x) => s + x.worthCents, 0),
+    // Each piece of money counted once, even when two suggestions touch it.
+    dollarsCents: worthOnce(r.fired),
     missed: r.missed,
     wrong: r.wrong.map((s) => s.topic),
   }));

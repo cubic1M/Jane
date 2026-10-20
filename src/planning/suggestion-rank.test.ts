@@ -8,10 +8,12 @@ import type { Suggestion } from "@/detectors/contract";
 import { reportFor } from "@/detectors/harness";
 import {
   historyFactor,
+  mergeOverlaps,
   pickForToday,
   rankSuggestions,
   scoreOf,
   workedFactor,
+  worthOnce,
 } from "./suggestion-rank";
 
 const make = (over: Partial<Suggestion> & { topic: Suggestion["topic"] }): Suggestion => ({
@@ -111,5 +113,33 @@ describe("ranking suggestions", () => {
     expect(onList, top.map((t) => t.suggestion.topic).join(",")).toBeGreaterThanOrEqual(
       Math.min(2, top.length),
     );
+  });
+});
+
+describe("money that two suggestions touch is counted once", () => {
+  const debt = reportFor(PEOPLE.find((p) => p.id === "debt")!).fired;
+
+  it("keeps the best of the suggestions that share interest or fees", () => {
+    const merged = mergeOverlaps(rankSuggestions(debt)).map((r) => r.suggestion.topic);
+    // Card interest, the payoff plan and the hardship plan all touch the interest: one stays.
+    const interest = ["card_interest", "debt_plan", "hardship_plan"].filter((t) =>
+      merged.includes(t as never),
+    );
+    expect(interest).toHaveLength(1);
+    // Bank fees, late fees and the hardship plan share the fees: one stays.
+    expect(
+      ["bank_fees", "late_fees", "hardship_plan"].filter((t) => merged.includes(t as never)).length,
+    ).toBeLessThanOrEqual(1);
+    // Things that touch other money are untouched.
+    expect(merged).toContain("high_cost_loans");
+  });
+
+  it("adds the dollars up once", () => {
+    const all = debt.reduce((s, x) => s + x.worthCents, 0);
+    expect(worthOnce(debt)).toBeLessThan(all);
+    const a = make({ topic: "card_interest", worthCents: 50_000 });
+    const b = make({ topic: "debt_plan", worthCents: 50_000 });
+    expect(worthOnce([a, b])).toBe(50_000);
+    expect(worthOnce([a, make({ topic: "idle_cash", worthCents: 7_000 })])).toBe(57_000);
   });
 });

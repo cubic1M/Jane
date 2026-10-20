@@ -33,6 +33,17 @@ export const FINDING_KIND_OF_TOPIC: Partial<Record<SuggestionTopic, FindingType>
   idle_cash: "idle_cash",
 };
 
+// Suggestions that touch the same money: the interest on a card is in "pay down the card" and
+// in "make a payoff plan", fees in bank fees, late fees and the hardship plan. Only the best of
+// those that share a group is kept, so the dollars are counted once.
+export const MONEY_GROUPS: Readonly<Record<string, readonly string[]>> = {
+  card_interest: ["interest"],
+  debt_plan: ["interest"],
+  hardship_plan: ["interest", "fees"],
+  bank_fees: ["fees"],
+  late_fees: ["fees"],
+};
+
 // A suggestion that was offered and not answered can be offered again after this many days.
 export const RESELECT_AFTER_DAYS = 14;
 

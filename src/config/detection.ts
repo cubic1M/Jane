@@ -477,6 +477,18 @@ export const UNUSUAL_DOUBLE_SUBSCRIPTION_DAYS = 25;
 // "This was me" on a charge teaches its merchant: later charges up to this multiple of the
 // amount told about stay quiet.
 export const UNUSUAL_TAUGHT_MULTIPLE = 2;
+// Spec steps 208 and 253: what a small-business owner's profile makes expected, so it isn't
+// called unusual: payroll and accounting, supplies, rent and tax payments (detailed categories).
+export const UNUSUAL_EXPECTED_FOR_BUSINESS: readonly string[] = [
+  "GENERAL_SERVICES_ACCOUNTING_AND_FINANCIAL_PLANNING",
+  "FOOD_AND_DRINK_OTHER_FOOD_AND_DRINK",
+  "GENERAL_MERCHANDISE_OFFICE_SUPPLIES",
+  "RENT_AND_UTILITIES_RENT",
+  "GOVERNMENT_AND_NON_PROFIT_TAX_PAYMENT",
+  "LOAN_PAYMENTS_OTHER_PAYMENT",
+];
+// Tax payments are due dates, not subscriptions that renew.
+export const NON_RENEWING_PRIMARIES: readonly string[] = ["GOVERNMENT_AND_NON_PROFIT"];
 // The steps shown when someone says a charge isn't theirs: lock the card first. A stand-in
 // until card issuers can be reached through a partner.
 export const CARD_LOCK_STEPS: readonly string[] = [
