@@ -14,6 +14,7 @@ import { healthFor, type HealthView } from "@/lib/health-score";
 import type { Attention } from "./attention";
 import { loadAttention } from "./attention-load";
 import { adoptedPlans, type AdoptedPlan } from "@/lib/what-if";
+import { openLean, recentlyEnded, type LeanState } from "@/lib/lean-plan";
 import { recentReport, type StoredReport } from "@/lib/monthly-report-store";
 import { moneyPartnerFor } from "@/lib/money-movement/partner";
 import { latestPaycheckPlan, type PaycheckPlanView } from "@/lib/money-movement/paycheck";
@@ -120,6 +121,8 @@ export type Snapshot = {
   attention?: Attention;
   // Spec step 203: what-if plans the person adopted. Optional, like changes.
   whatIf?: AdoptedPlan[];
+  // Spec step 204: the lean-plan question or plan in force, and plans that just ended.
+  lean?: { open: LeanState[]; ended: { id: string; employer: string }[] };
   // Spec step 148: the monthly money report, while it's new. Optional, like changes.
   monthlyReport?: StoredReport | null;
   // Spec step 128 on: what's in investment accounts.
@@ -323,6 +326,10 @@ export async function loadSnapshot(
     neverSuggest: [...never],
     lastWeek: await chatWeek(userId, client, weekStart(now, user?.timezone)),
     whatIf: await adoptedPlans(userId, { client }),
+    lean: {
+      open: await openLean(userId, { client }),
+      ended: await recentlyEnded(userId, { client, now }),
+    },
     attention: await loadAttention(userId, { client, now, timezone: user?.timezone ?? null }),
     monthlyReport: await recentReport(userId, { client, now }),
   };

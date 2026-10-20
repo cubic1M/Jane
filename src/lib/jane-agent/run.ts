@@ -14,6 +14,7 @@ import { settleTransfers } from "@/lib/money-movement/transfers";
 import { runBillPay } from "@/lib/money-movement/bill-pay";
 import { healthFor } from "@/lib/health-score";
 import { monthlyReportFor } from "@/lib/monthly-report";
+import { runLeanCheck } from "@/lib/lean-plan";
 import { runPlanUpkeep } from "@/lib/plan-upkeep";
 import { runTaxAutopilotSafely } from "@/lib/tax-autopilot";
 import { gather, plan, type BrainSettings } from "./brain";
@@ -56,6 +57,10 @@ export async function runJaneAgent(
   // Spec step 99: insurance found from payments joins the profile (as found) by itself.
   await policiesFromPayments(userId, { client, now, input }).catch((error) =>
     console.error("Finding policies from payments failed", { userId, error: String(error) }),
+  );
+  // Spec step 204: a paycheck that hasn't come in gets one question; pay back ends the plan.
+  await runLeanCheck(userId, { client, now, input }).catch((error) =>
+    console.error("Lean check failed", { userId, error: String(error) }),
   );
   // Spec step 144: transfers whose day came have gone through, and a new paycheck gets its
   // plan (moved by itself where autopilot allows).

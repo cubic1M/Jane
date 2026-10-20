@@ -84,6 +84,9 @@ export type AuditEvent =
   | "money_transfer_cancelled"
   // A what-if plan the person adopted (spec step 203).
   | "what_if_adopted"
+  // The lean plan switched on or off (spec step 204).
+  | "lean_plan_started"
+  | "lean_plan_ended"
   | "plan_link_used"
   | "support_contact_suggested"
   | "support_contact_confirmed"

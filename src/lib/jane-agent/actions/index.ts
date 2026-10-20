@@ -105,6 +105,7 @@ import { paycheckMove, paycheckSkip, paycheckUndo } from "./paycheck";
 import { billPay, billSkip } from "./billpay";
 import { attentionResume } from "./attention";
 import { whatIfAdopt } from "./whatif";
+import { leanNotNow, leanStart } from "./lean";
 import { bundleYes1, bundleYes2, bundleYes3, bundleYes4, bundleYes5 } from "./bundle";
 import { multiCancel, multiConfirm, multiUndo } from "./multi";
 import { FLOW_PICKS, flowBack, flowCancel } from "./flows";
@@ -289,6 +290,8 @@ export const ACTION_HANDLERS: Readonly<Record<ActionId, ActionHandler>> = {
   "bill.skip": billSkip,
   "attention.resume": attentionResume,
   "whatif.adopt": whatIfAdopt,
+  "lean.start": leanStart,
+  "lean.not_now": leanNotNow,
 };
 
 const MESSAGE_ID = /^[a-z0-9]{1,40}$/i;
