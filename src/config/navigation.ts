@@ -93,6 +93,7 @@ export const TABS: readonly Tab[] = [
       "/check-in",
       "/monthly",
       "/what-if",
+      "/long-view",
       "/year",
     ],
   },
@@ -100,7 +101,7 @@ export const TABS: readonly Tab[] = [
     key: "jane",
     label: "What Jane did",
     href: "/jane",
-    paths: ["/jane", "/plan", "/report", "/actions", "/alerts", "/saved", "/learn"],
+    paths: ["/jane", "/plan", "/report", "/actions", "/alerts", "/saved", "/learn", "/profile"],
   },
 ];
 

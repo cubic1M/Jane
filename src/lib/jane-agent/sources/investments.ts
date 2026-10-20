@@ -28,6 +28,43 @@ import {
 import type { Candidate } from "../types";
 import { detectDrop } from "@/planning/steady-hand";
 import { STEADY_LINK, steadyMessage } from "../investments/steady-copy";
+import { MATCH_MIN_MISSED_CENTS, ROOM_MIN_CENTS } from "@/config/retirement-accounts";
+import {
+  iraButton,
+  limitsLine,
+  matchButton,
+  raMatchLine,
+  RA_LINK,
+  rothLine,
+} from "../investments/retirement-accounts-copy";
+import { OLD_PLAN_MIN_SAVING_CENTS } from "@/config/old-accounts";
+import {
+  foundLine,
+  OLD_LINK,
+  questionButtons,
+  questionLine,
+  rollButton,
+} from "../investments/old-accounts-copy";
+import {
+  drawLine,
+  paycheckLine,
+  RI_LINK,
+  rmdLine,
+  ssLine,
+} from "../investments/retirement-income-copy";
+import { FAMILY_LINK, giftOffer, rothOffer } from "../investments/family-copy";
+import { PROPERTY_LINK, paydownLine, rentalLine } from "../investments/property-copy";
+import { MIN_YEARLY_COST_CENTS } from "@/config/costly-products";
+import {
+  advisoryLine,
+  COSTLY_LINK,
+  premiumQuestion,
+  productLine,
+} from "../investments/costly-copy";
+import { REVIEW_LINK, reviewFor } from "../investments/review-copy";
+import { MIN_SAVING_CENTS } from "@/config/location";
+import { freeButton, LOCATION_LINK, locationLine } from "../investments/location-copy";
+import { AUTO_LOG_LINK, summaryBody } from "../investments/automatic-copy";
 import { CASH_MIN_GAIN_CENTS } from "@/config/cash";
 import { CASH_LINK, cashLine, moveButtons } from "../investments/cash-copy";
 import {
@@ -299,6 +336,228 @@ export const investmentsSource: MessageSource = {
         actions: [{ id: "hsa.link", label: "Link a demo HSA", kind: "primary" }, snoozeButton()],
         dedupeKey: "hsa:link",
         priority: MESSAGE_PRIORITY.hsa,
+      });
+    }
+    // Step 231: the right investment in the right account, when the tax saved is worth it:
+    // the free swaps are one tap (the mix never changes); the taxed ones are on the page.
+    const loc = inv.location.plan;
+    if (inv.advice && loc && loc.savedCents >= MIN_SAVING_CENTS && loc.swaps.length > 0) {
+      const button = freeButton(loc);
+      out.push({
+        kind: button ? "decision" : "heads_up",
+        body: locationLine(loc),
+        refs: { advice: true, ...(button ? { locationKey: loc.key } : {}) },
+        actions: [...(button ? [button] : []), LOCATION_LINK, snoozeButton()],
+        dedupeKey: `location:${loc.key}`,
+        priority: MESSAGE_PRIORITY.location,
+      });
+    }
+    // Step 216: once a year (and after a raise or a new job) one message with the whole
+    // investing picture: what Jane did within the caps, what waits for a tap, every item
+    // with its own button. The review moves nothing itself.
+    if (inv.advice && inv.holdingCount > 0 && profileSummary(inv.profile, snapshot.asOf).complete) {
+      const year = new Date(snapshot.asOf).getUTCFullYear();
+      const review = reviewFor(inv, year);
+      const onlyOk = review.items.every((i) => i.status === "ok");
+      if (!onlyOk) {
+        out.push({
+          kind: review.buttons.length > 0 ? "decision" : "heads_up",
+          body: review.body,
+          refs: {
+            advice: true,
+            ...(inv.rebalance ? { rebalanceKey: inv.rebalance.key } : {}),
+            ...(inv.retirementAccounts.iraAllowedCents > 0
+              ? { iraCents: inv.retirementAccounts.iraAllowedCents }
+              : {}),
+            ...(inv.review2.harvestKey ? { harvestKey: inv.review2.harvestKey } : {}),
+            ...(inv.oldAccounts.plans.find((p) => p.status === "found")
+              ? { oldPlanId: inv.oldAccounts.plans.find((p) => p.status === "found")!.id }
+              : {}),
+          },
+          actions: [...review.buttons, REVIEW_LINK, snoozeButton()],
+          dedupeKey: inv.review2.raise
+            ? `review:raise:${snapshot.asOf.slice(0, 7)}`
+            : `review:${year}`,
+          priority: MESSAGE_PRIORITY.yearly_review,
+        });
+      }
+    }
+    // Step 215: a premium that may be whole life is asked about once; a costly product's
+    // yearly cost with its surrender charge (never "leave" without it), once a year.
+    const costly = inv.costly;
+    for (const q of costly.asked) {
+      out.push({
+        kind: "decision",
+        body: premiumQuestion(q),
+        refs: { productId: q.id },
+        actions: [
+          { id: "costly.yes", label: "Yes, whole life", kind: "primary" },
+          { id: "costly.no", label: "No", kind: "secondary" },
+          COSTLY_LINK,
+          snoozeButton(),
+        ],
+        dedupeKey: `costly:ask:${q.id}`,
+        priority: MESSAGE_PRIORITY.costly_products,
+      });
+    }
+    if (inv.advice) {
+      for (const p of costly.products) {
+        if ((p.yearlyCostCents ?? 0) < MIN_YEARLY_COST_CENTS) continue;
+        out.push({
+          kind: "heads_up",
+          body: productLine(p),
+          refs: { advice: true },
+          actions: [COSTLY_LINK, snoozeButton()],
+          dedupeKey: `costly:product:${p.id}:${new Date(snapshot.asOf).getUTCFullYear()}`,
+          priority: MESSAGE_PRIORITY.costly_products,
+        });
+      }
+      if (costly.advisory && costly.advisory.yearlyCents >= MIN_YEARLY_COST_CENTS) {
+        out.push({
+          kind: "heads_up",
+          body: advisoryLine(costly.advisory),
+          refs: { advice: true },
+          actions: [COSTLY_LINK, snoozeButton()],
+          dedupeKey: `costly:advisory:${new Date(snapshot.asOf).getUTCFullYear()}`,
+          priority: MESSAGE_PRIORITY.costly_products,
+        });
+      }
+    }
+    // Step 214: each rental's year in its own transactions, once a year; paying the
+    // mortgage down against investing (both sides), once a year. Analysis, no buttons.
+    for (const rental of inv.property.rentals) {
+      if (inv.advice && rental.counts.rent > 0) {
+        out.push({
+          kind: "heads_up",
+          body: rentalLine(rental),
+          refs: { advice: true },
+          actions: [PROPERTY_LINK, snoozeButton()],
+          dedupeKey: `property:rental:${rental.id}:${inv.property.year}`,
+          priority: MESSAGE_PRIORITY.property,
+        });
+      }
+    }
+    if (inv.advice && inv.property.paydown) {
+      out.push({
+        kind: "heads_up",
+        body: paydownLine(inv.property.paydown),
+        refs: { advice: true },
+        actions: [PROPERTY_LINK, snoozeButton()],
+        dedupeKey: `property:paydown:${inv.property.year}`,
+        priority: MESSAGE_PRIORITY.property,
+      });
+    }
+    // Step 213: a gift link for a child's college fund; a Roth IRA for a child who earns.
+    for (const kid of inv.family.children) {
+      if (inv.advice && kid.college && !kid.gift) {
+        out.push({
+          kind: "decision",
+          body: giftOffer(kid),
+          refs: { advice: true, familyPlan: kid.college.planId },
+          actions: [
+            { id: "family.gift_link", label: "Make a gift link", kind: "primary" },
+            FAMILY_LINK,
+            snoozeButton(),
+          ],
+          dedupeKey: `family:gift:${kid.college.planId}`,
+          priority: MESSAGE_PRIORITY.family,
+        });
+      }
+      if (inv.advice && kid.roth && kid.roth.roomCents >= 10_000) {
+        out.push({
+          kind: "decision",
+          body: `${rothOffer(kid)} Tap and I'll put it in ${SIMULATED_WORDS}.`,
+          refs: { advice: true, familyChild: kid.id, iraCents: kid.roth.roomCents },
+          actions: [
+            {
+              id: "family.child_roth",
+              label: `Put ${formatCents(kid.roth.roomCents)} in ${kid.name}'s Roth`,
+              kind: "primary",
+            },
+            FAMILY_LINK,
+            snoozeButton(),
+          ],
+          dedupeKey: `family:roth:${kid.id}:${new Date(snapshot.asOf).getUTCFullYear()}`,
+          priority: MESSAGE_PRIORITY.family,
+        });
+      }
+    }
+    // Step 212: from 15 years before retiring, one message a year with the claiming ages, the
+    // paycheck and how long it lasts. Past facts and ranges, never a promise.
+    const income = inv.retirementIncome;
+    if (inv.advice && income.applies && income.paycheck) {
+      out.push({
+        kind: "heads_up",
+        body: [paycheckLine(income), ssLine(income), rmdLine(income), drawLine(income)]
+          .filter(Boolean)
+          .join(" "),
+        refs: { advice: true },
+        actions: [RI_LINK, snoozeButton()],
+        dedupeKey: `retire:income:${new Date(snapshot.asOf).getUTCFullYear()}`,
+        priority: MESSAGE_PRIORITY.retirement_income,
+      });
+    }
+    // Step 211: each past employer is asked about once; a found plan with fees worth saving
+    // gets a rollover offer (a tap).
+    const askedPlan = inv.oldAccounts.plans.find((p) => p.status === "asked");
+    if (askedPlan) {
+      out.push({
+        kind: "decision",
+        body: questionLine(askedPlan),
+        refs: { oldPlanId: askedPlan.id },
+        actions: [...questionButtons(), OLD_LINK, snoozeButton()],
+        dedupeKey: `oldplan:ask:${askedPlan.id}`,
+        priority: MESSAGE_PRIORITY.old_plan,
+      });
+    }
+    for (const found of inv.oldAccounts.plans.filter((p) => p.status === "found")) {
+      if (!inv.advice || (found.fees?.savedCents ?? 0) < OLD_PLAN_MIN_SAVING_CENTS) continue;
+      out.push({
+        kind: "decision",
+        body: `${foundLine(found)} Tap and I'll start a direct rollover ${SIMULATED_WORDS}.`,
+        refs: { advice: true, oldPlanId: found.id },
+        actions: [rollButton(), OLD_LINK, snoozeButton()],
+        dedupeKey: `oldplan:roll:${found.id}`,
+        priority: MESSAGE_PRIORITY.old_plan,
+      });
+    }
+    // Step 210: the match left on the table, then IRA room (each a tap).
+    const ra = inv.retirementAccounts;
+    const matchText = raMatchLine(ra);
+    if (inv.advice && matchText && (ra.match?.missedCents ?? 0) >= MATCH_MIN_MISSED_CENTS) {
+      const button = matchButton(ra);
+      out.push({
+        kind: button ? "decision" : "heads_up",
+        body: `${matchText} Nothing changes in your pay until you tap.`,
+        refs: { advice: true },
+        actions: [...(button ? [button] : []), RA_LINK, snoozeButton()],
+        dedupeKey: `retire:match:${Math.round((ra.match?.missedCents ?? 0) / 100)}`,
+        priority: MESSAGE_PRIORITY.retirement_accounts,
+      });
+    }
+    const iraRoom = ra.limits.find((l) => l.key === "ira")?.roomCents ?? 0;
+    const iraTap = iraButton(ra);
+    if (inv.advice && iraTap && iraRoom >= ROOM_MIN_CENTS) {
+      out.push({
+        kind: "decision",
+        body: `You can still put ${formatCents(ra.iraAllowedCents)} in your IRA this year. ${rothLine(ra)} Tap and I'll put it in ${SIMULATED_WORDS}.`,
+        refs: { advice: true, iraCents: ra.iraAllowedCents },
+        actions: [iraTap, RA_LINK, snoozeButton()],
+        dedupeKey: `retire:ira:${new Date(snapshot.asOf).getUTCFullYear()}`,
+        priority: MESSAGE_PRIORITY.retirement_accounts,
+      });
+    }
+    // Step 164: once a month, what Jane did by herself in investing within the person's
+    // caps (one line each, from the log), and what she's waiting on a tap for.
+    const handled = inv.automatic;
+    if (inv.advice && handled.did.length + handled.asked.length > 0) {
+      out.push({
+        kind: "done",
+        body: summaryBody(handled.did, handled.asked),
+        refs: { advice: true },
+        actions: [AUTO_LOG_LINK],
+        dedupeKey: `investing:summary:${snapshot.asOf.slice(0, 7)}`,
+        priority: MESSAGE_PRIORITY.investing_summary,
       });
     }
     // Step 163: a big drop gets one calm message a month: what changed, what it means for

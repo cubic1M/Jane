@@ -12,6 +12,7 @@ import { ASK_TOOLS, runAskTool, type ToolOutput } from "@/lib/ask/tools";
 import { CARD_SELECT, buildCard } from "@/lib/cards";
 import { comparisonFor } from "@/lib/compare";
 import { frequencyWords } from "@/lib/explain-input";
+import { loadSteady } from "@/lib/steady-pay";
 import { scopedFor } from "@/lib/db-scoped";
 import { loadChanges } from "@/lib/changes";
 import { listGoals } from "@/lib/goals";
@@ -34,6 +35,8 @@ import { moneyPartnerFor } from "@/lib/money-movement/partner";
 import { healthFor } from "@/lib/health-score";
 import { SCENARIOS } from "@/config/what-if";
 import { isScenario, whatIf } from "@/lib/what-if";
+import { loadLongView } from "@/lib/long-view";
+import { loadProfile, sayFact } from "@/lib/profile";
 import { storedReport } from "@/lib/monthly-report-store";
 import { SECTOR_LABELS, SECTOR_LEVEL_LABELS } from "@/config/autopilot-sectors";
 import { provenSavings } from "@/lib/savings-proof";
@@ -208,6 +211,18 @@ export const CHAT_TOOLS: Anthropic.Tool[] = [
     input_schema: noInput,
   },
   {
+    name: "my_profile",
+    description:
+      'What Jane knows about the person (spec step 253): income pattern and employer, household, home, car, debts, cover, accounts and life stage, each with where it came from (seen in their data, told by them, or a guess), how sure Jane is as a percentage with the reason, and whether they corrected it. Use it for "what do you know about me" and to check a fact before relying on it.',
+    input_schema: noInput,
+  },
+  {
+    name: "long_view",
+    description:
+      "Where the person's net worth could be in 10, 20 and 30 years (spec step 209), as a range from a low to a high return in today's dollars, from their balances, debts, home value and what they save; with every assumption (returns, inflation, home growth, what is invested each month). In demo advice mode it also gives what moves it most (more investing, or paying a debt faster) and whether retirement is on track; for real accounts give the projection and its assumptions only, with no advice. It is a range, never a promise.",
+    input_schema: noInput,
+  },
+  {
     name: "what_if",
     description:
       "Runs a what-if through the person's own numbers (spec step 203): job loss, a raise, a baby, moving, buying a car or a home, going part-time. Returns month-by-month cash with and without it, the debt-free month, goals that slip, tax change, what to check on insurance, what's left for investing, and Jane's plan. Running it changes nothing; the person adopts the plan with a button. Give scenario and, if they said how long, months.",
@@ -255,6 +270,12 @@ export const CHAT_TOOLS: Anthropic.Tool[] = [
     name: "whole_picture",
     description:
       'How the person is doing across every sector at once (spec step 183), for "am I OK?", "how am I doing" and "what should I do this month": a verdict (ok, watch or act) with its one-sentence headline, safe to spend until payday, bills and deadlines due this week and this month, budgets over, goals behind, urgent alerts, what Jane\'s agent is working on, the steps waiting on the person, and the one to three things that matter most (from the ranked list) with why. Lead with the headline, then the things that matter; use the same figures.',
+    input_schema: noInput,
+  },
+  {
+    name: "steady_pay",
+    description:
+      "A steady paycheck from uneven income (spec step 240): whether the person has uneven (contracting, gig or freelance) income; if so this month's steady paycheck from the buffer (savings) to checking, why it is what it is (the buffer above or below its target, never under its floor), the buffer's target and floor, the tax share set aside from each deposit, and whether this month's has gone. Moves happen only by autopilot within its caps or the person's tap.",
     input_schema: noInput,
   },
   {
@@ -502,6 +523,51 @@ export async function runChatTool(
         })),
       });
     }
+    case "my_profile": {
+      const profile = await loadProfile(userId, { client, now });
+      return out({
+        months: profile.months,
+        facts: Object.values(profile.facts).map((f) => ({
+          fact: f.label,
+          value: sayFact(f.key, f.value),
+          source: f.source,
+          sureness: `${f.confidence}%`,
+          because: f.evidence,
+        })),
+      });
+    }
+    case "long_view": {
+      const view = await loadLongView(userId, {}, { client, now });
+      if (!view) return out({ view: null, why: "No accounts linked yet." });
+      return out({
+        inTodaysDollars: true,
+        range: view.horizons.map((h) => ({
+          years: h.years,
+          low: money(h.lowCents),
+          high: money(h.highCents),
+          owing: money(h.parts.debtsCents),
+        })),
+        assumptions: view.assumptions.map((a) => ({
+          what: a.label,
+          value: a.value,
+          source: a.source,
+        })),
+        ...(view.advice
+          ? {
+              demoAdviceLabelRequired: true,
+              whatMovesItMost: view.levers.map((l) => ({
+                what: l.words,
+                adds30YearLow: money(l.deltaCents),
+              })),
+              retirement: view.retirement && {
+                low: money(view.retirement.projection.lowCents),
+                high: money(view.retirement.projection.highCents),
+                status: view.retirement.status,
+              },
+            }
+          : {}),
+      });
+    }
     case "what_if": {
       const scenario = (input as { scenario?: unknown }).scenario;
       if (!isScenario(scenario)) return out({ error: "Unknown scenario." });
@@ -573,6 +639,27 @@ export async function runChatTool(
             }
           : { score: null, why: "No accounts linked yet." },
       );
+    }
+    case "steady_pay": {
+      const view = await loadSteady(userId, { client, now });
+      if (!view) return out({ view: null, why: "No accounts linked yet." });
+      return out({
+        unevenIncome: view.uneven,
+        steadyPaycheck:
+          view.plan && view.plan.status !== "not_enough_history"
+            ? money(view.plan.paycheckCents)
+            : null,
+        why: view.plan?.reason ?? null,
+        buffer: money(view.bufferCents),
+        bufferTarget: view.plan ? money(view.plan.targetCents) : null,
+        bufferFloor: view.plan ? money(view.plan.floorCents) : null,
+        taxSetAsideRate: view.setAsideRate,
+        thisMonthSent: view.sent && {
+          amount: money(view.sent.amountCents),
+          on: view.sent.runOn,
+          by: view.sent.by,
+        },
+      });
     }
     case "money_moves": {
       const [plan, transfers, partner] = await Promise.all([

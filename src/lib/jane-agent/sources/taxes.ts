@@ -19,6 +19,14 @@ import { givingOptionsMessage, receiptMessage } from "../giving-message";
 import { familyChoiceMessage, statusOf } from "../family-taxes-message";
 import { worthSaying } from "@/planning/family-taxes";
 import { equitySetAsideMessage } from "../equity-tax-message";
+import { yearsMoveMessage } from "../multi-year-message";
+import { answersMessage, complexMessage } from "../accountant-message";
+import { estimateDueMessage, yearEndMessage } from "../tax-calendar-message";
+import {
+  appealDraftedMessage,
+  appealSuggestedMessage,
+  exemptionMessage,
+} from "../property-tax-message";
 import { caseMessage, ipPinMessage, signMessage } from "../tax-identity-message";
 import {
   noticeDraftMessage,
@@ -388,6 +396,94 @@ export const taxesSource: MessageSource = {
         dedupeKey: `equity:${equity.year}:${Math.round(equity.setAside.cents / 100_000)}`,
         priority: TAX_MESSAGE_PRIORITY.equity,
       });
+    }
+
+    // Spec step 220: the move that saves the most over the years (demo advice).
+    const years = tax.years;
+    const move = years?.advice ? years.moves[0] : undefined;
+    if (years && move) {
+      out.push({
+        kind: "decision",
+        ...yearsMoveMessage(years, move),
+        dedupeKey: `years:${move.key}`,
+        priority: TAX_MESSAGE_PRIORITY.years,
+      });
+    }
+
+    // Spec step 221: an assessment worth appealing, the drafted appeal waiting for a filer,
+    // and an exemption not yet claimed (demo advice).
+    const property = tax.property;
+    if (property?.advice) {
+      if (property.appeal?.status === "drafted") {
+        out.push({
+          kind: "decision",
+          ...appealDraftedMessage(property),
+          dedupeKey: `property_filer:${property.year}`,
+          priority: TAX_MESSAGE_PRIORITY.property,
+        });
+      } else if (property.suggested && !property.appeal) {
+        out.push({
+          kind: "decision",
+          ...appealSuggestedMessage(property),
+          dedupeKey: `property:${property.year}`,
+          priority: TAX_MESSAGE_PRIORITY.property,
+        });
+      }
+      const exemption = exemptionMessage(property);
+      if (exemption) {
+        out.push({
+          kind: "decision",
+          ...exemption,
+          dedupeKey: `exemption:${exemption.refs.propertyExemption}`,
+          priority: TAX_MESSAGE_PRIORITY.exemption,
+        });
+      }
+    }
+
+    // Spec step 222: what the accountant wrote back, and a return people usually bring an
+    // accountant to (once a year, only while there is no live link).
+    const accountant = tax.accountant;
+    if (accountant) {
+      const answers = answersMessage(accountant);
+      if (answers) {
+        out.push({
+          kind: "decision",
+          ...answers,
+          dedupeKey: `accountant_answer:${accountant.notes.filter((n) => !n.seen).length}:${accountant.notes[0]?.id}`,
+          priority: TAX_MESSAGE_PRIORITY.accountant_answer,
+        });
+      }
+      const complex = accountant.activeCount === 0 ? complexMessage(accountant) : null;
+      if (complex) {
+        out.push({
+          kind: "decision",
+          ...complex,
+          dedupeKey: `accountant:${accountant.year}`,
+          priority: TAX_MESSAGE_PRIORITY.accountant,
+        });
+      }
+    }
+
+    // Spec step 223: an estimated payment that needs the person's tap, and December's
+    // year-end moves in one message.
+    const calendar = tax.calendar;
+    if (calendar) {
+      for (const d of calendar.due.filter((x) => x.needsTap && x.needsTap !== "no_partner")) {
+        out.push({
+          kind: "decision",
+          ...estimateDueMessage(d, calendar.year),
+          dedupeKey: `estimate_due:${d.dueOn}`,
+          priority: TAX_MESSAGE_PRIORITY.estimate_due,
+        });
+      }
+      if (calendar.yearEnd && calendar.advice) {
+        out.push({
+          kind: "decision",
+          ...yearEndMessage(calendar.yearEnd, calendar.acts),
+          dedupeKey: `yearend:${calendar.yearEnd.year}`,
+          priority: TAX_MESSAGE_PRIORITY.year_end,
+        });
+      }
     }
 
     // Spec step 218: the IP PIN in January (already on the deadlines at the levels that let

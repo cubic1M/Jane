@@ -19,6 +19,14 @@ import { loadHsa } from "@/lib/investments/hsa";
 import { loadCompanyStock } from "@/lib/investments/company-stock";
 import { loadCrypto } from "@/lib/crypto/crypto";
 import { loadCash } from "@/lib/investments/cash";
+import { loadRetirementAccounts } from "@/lib/investments/retirement-accounts";
+import { loadOldAccounts } from "@/lib/investments/old-accounts";
+import { loadRetirementIncome } from "@/lib/investments/retirement-income";
+import { loadFamily } from "@/lib/investments/family";
+import { loadProperty } from "@/lib/investments/property";
+import { loadCostlyProducts } from "@/lib/investments/costly-products";
+import { reviewFor } from "./review-copy";
+import { loadLocation } from "@/lib/investments/location";
 import { loadSteadyHand } from "@/lib/investments/steady-hand";
 import { CASH_HOMES, CASH_RATES_AS_OF } from "@/config/cash";
 import { formatReturn } from "@/insights/returns";
@@ -129,6 +137,54 @@ export const INVESTMENT_TOOLS: Anthropic.Tool[] = [
     input_schema: noInput,
   },
   {
+    name: "retirement_accounts",
+    description:
+      "Every retirement contribution limit this year (workplace plan and IRAs, with catch-up from 50) with what the person has put in and the room left; in demo advice mode also the employer match left on the table in dollars a year, Roth or traditional by their bracket (from their tax estimate), whether a Roth IRA is open to their income or needs the backdoor route, and the taps Jane can do (raise the payroll contribution through the payroll stand-in; put money in an IRA). The backdoor Roth is explained, never done for them.",
+    input_schema: noInput,
+  },
+  {
+    name: "old_accounts",
+    description:
+      "Retirement plans left at past employers: each employer (from payroll history or what the person told Jane) with where it stands (asked once, found, rolling over, rolled over), a found plan's balance and its yearly fees now versus in a low-cost index fund, and the rollover's tracked steps. A rollover is a direct transfer to an IRA: never a withdrawal, never a check to the person. The person taps to start one; never suggest rolling into a Roth (it's taxed).",
+    input_schema: noInput,
+  },
+  {
+    name: "retirement_income",
+    description:
+      "Turning savings into a retirement paycheck: Social Security's monthly benefit if started at 62, 67 or 70 (from the person's statement or an estimate from pay, with which) and the age waiting has paid more by; the age required minimum distributions start (73 or 75) and the first year's minimum; the order to draw from accounts; and, in demo advice mode, how long the money lasts at their spending as a range and the most a month that lasts to 95. In today's dollars. State only these ranges: never promise income or say what markets will do.",
+    input_schema: noInput,
+  },
+  {
+    name: "family_investing",
+    description:
+      "The person's children in investing: each child's custodial account balance, whether they have earned income for a Roth IRA and the room this year (the lower of what they earned and the IRA limit), the college fund's progress, and whether a gift link is active with the gifts received. Never repeat or invent a gift link: it lives only on the family page.",
+    input_schema: noInput,
+  },
+  {
+    name: "property",
+    description:
+      "Homes and rentals as investments: each home's value (the person's own), what's owed and the equity; each rental's last 12 months from its own transactions (rent in, mortgage paid, property tax, repairs and insurance, cash flow, profit, depreciation for the year and the taxable profit, cash-on-cash return); and, in demo advice mode, paying the mortgage down against investing an extra amount a month, always with both sides (interest saved for certain; investing as a range with no guarantee). Report both sides; don't pick one unless the tool's verdict is clear.",
+    input_schema: noInput,
+  },
+  {
+    name: "costly_products",
+    description:
+      "Variable annuities, whole life policies and advisory fees the person has (found from their payments and fee transactions, or entered from a statement): the yearly cost in dollars, the surrender charge now, in dollars, and the date it reaches zero, what the same money could be worth in a low-cost fund as a range (a cost difference, not a forecast), and in demo advice mode when leaving costs less than staying. NEVER tell the person to leave, cancel or surrender without quoting the surrender charge and when it ends; on real accounts report the facts only.",
+    input_schema: noInput,
+  },
+  {
+    name: "yearly_review",
+    description:
+      "The yearly investing review in one list: what Jane did by herself within the person's caps and what is waiting for their tap; retirement account room and the employer match; old 401(k)s that could come home; whether the mix has drifted; tax-loss harvesting chances; what investing costs; and every goal with what it still needs. Report it as the list it is; every change is the person's own tap on Jane's message, never something you do.",
+    input_schema: noInput,
+  },
+  {
+    name: "asset_location",
+    description:
+      "Where each kind of investment sits across the person's accounts and, in demo advice mode, the swaps that would put bonds where interest isn't taxed each year and stocks in taxable or Roth accounts: each swap's amount, the tax it would cost if it sells at a gain, the yearly tax saved, and that the overall mix stays exactly the same. The person taps to make the tax-free swaps; never do it yourself.",
+    input_schema: noInput,
+  },
+  {
     name: "steady_hand",
     description:
       "Whether the person's investments have had a big drop lately (down 8% over a month or 15% over three, their own return, money in and out left out) and, in demo advice mode, how each goal's timeline sits (near goals are already in cash). Report only these past facts and the plan to stay the course. NEVER say or imply what markets will do, when they will recover, or that now is a good or bad time: no one can know.",
@@ -175,6 +231,14 @@ export const INVESTMENT_TOOL_STATUS: Readonly<Record<string, string>> = {
   crypto: "Reading your crypto balances…",
   cash_plan: "Looking at where your cash sits…",
   steady_hand: "Looking at how your investments have moved…",
+  asset_location: "Checking which account holds what…",
+  yearly_review: "Putting your investing review together…",
+  costly_products: "Adding up what your products cost…",
+  property: "Looking at your property…",
+  family_investing: "Looking at your children's accounts…",
+  retirement_income: "Working out your retirement income…",
+  old_accounts: "Looking for old retirement accounts…",
+  retirement_accounts: "Checking your retirement limits…",
   college_plan: "Working out college costs…",
   goal_buckets: "Looking at your goals…",
   investment_returns: "Working out your returns…",
@@ -529,6 +593,199 @@ export async function runInvestmentTool(
         return out(describe(await estimateCollege(userId, { childAge: age, type }, { client })));
       }
       return out({ plans: plans.map((p) => ({ child: p.childName, ...describe(p.estimate) })) });
+    }
+    case "retirement_accounts": {
+      const v = await loadRetirementAccounts(userId, { client, now });
+      return out({
+        limits: v.limits.map((l) => ({
+          account: l.label,
+          limit: money(l.limitCents),
+          catchUp: money(l.catchUpCents),
+          putIn: money(l.usedCents),
+          roomLeft: money(l.roomCents),
+        })),
+        advice: !v.advice
+          ? "only in demo advice mode"
+          : {
+              matchLeftOnTheTableAYear: v.match ? money(v.match.missedCents) : null,
+              rothOrTraditional: v.roth.choice,
+              nextDollarTaxPercent:
+                v.roth.marginalRate === null ? null : Math.round(v.roth.marginalRate * 1000) / 10,
+              rothIraAccess: v.roth.access?.kind ?? null,
+              canPutInAnIraNow: money(v.iraAllowedCents),
+            },
+      });
+    }
+    case "old_accounts": {
+      const v = await loadOldAccounts(userId, { client, now });
+      return out({
+        employers: v.plans.map((p) => ({
+          employer: p.employer,
+          status: p.status,
+          balance: p.balanceCents === null ? null : money(p.balanceCents),
+          feesAYearNow: p.fees ? money(p.fees.beforeCents) : null,
+          feesAYearInIndexFund: p.fees && v.advice ? money(p.fees.afterCents) : null,
+          steps: p.steps.map((s) => ({ step: s.label, done: s.doneOn })),
+        })),
+        rolloverIsAWithdrawal: false,
+      });
+    }
+    case "retirement_income": {
+      const v = await loadRetirementIncome(userId, { client, now });
+      return out({
+        socialSecurity: {
+          source: v.ss.source,
+          options: v.ss.options.map((o) => ({
+            startAge: o.age,
+            monthly: money(o.monthlyCents),
+            totalByAge85: money(o.lifetimeToAgeCents),
+          })),
+          waitingFrom62To67PaidMoreByAge: v.ss.breakeven62to67,
+          waitingFrom67To70PaidMoreByAge: v.ss.breakeven67to70,
+        },
+        requiredMinimumDistributions: v.rmd && {
+          startAge: v.rmd.startAge,
+          firstYearMinimum: v.rmd.firstYearCents === null ? null : money(v.rmd.firstYearCents),
+        },
+        orderToDraw: v.draw.map((d) => d.label),
+        plan: !v.advice
+          ? "advice only in demo advice mode"
+          : v.paycheck && {
+              spendingAMonth: money(v.spendMonthlyCents),
+              retireAge: v.retireAge,
+              moneyLastsToAge: { low: v.paycheck.lasts.lowAge, high: v.paycheck.lasts.highAge },
+              mostAMonthThatLastsTo95: {
+                low: money(v.paycheck.sustainableMonthly.lowCents),
+                high: money(v.paycheck.sustainableMonthly.highCents),
+              },
+            },
+      });
+    }
+    case "family_investing": {
+      const v = await loadFamily(userId, { client, now });
+      return out({
+        children: v.children.map((c) => ({
+          name: c.name,
+          age: c.age,
+          earnedIncome: money(c.earnedCents),
+          custodialBalance: c.custodial ? money(c.custodial.balanceCents) : null,
+          rothRoomThisYear: v.advice && c.roth ? money(c.roth.roomCents) : null,
+          collegeFundPercent: c.college?.percent ?? null,
+          giftLinkActive: c.gift !== null,
+          giftsReceived: c.gift ? c.gift.gifts.length : 0,
+        })),
+      });
+    }
+    case "property": {
+      const v = await loadProperty(userId, { client, now });
+      return out({
+        homes: v.homes.map((h) => ({
+          name: h.name,
+          value: money(h.valueCents),
+          owed: h.loanCents === null ? null : money(h.loanCents),
+          equity: money(h.equityCents),
+        })),
+        rentals: v.rentals.map((r) => ({
+          name: r.name,
+          depositsCounted: r.counts.rent,
+          rent: money(r.figures.rentCents),
+          mortgagePaid: money(r.figures.mortgagePaidCents),
+          propertyTax: money(r.figures.propertyTaxCents),
+          repairsAndInsurance: money(r.figures.otherExpensesCents),
+          cashFlow: money(r.figures.cashFlowCents),
+          profit: money(r.figures.profitCents),
+          depreciation: money(r.figures.depreciationCents),
+          taxableProfit: money(r.figures.taxableCents),
+          cashOnCashPercent:
+            r.figures.cashOnCash === null ? null : Math.round(r.figures.cashOnCash * 1000) / 10,
+        })),
+        paydownVsInvesting: !v.advice
+          ? "advice only in demo advice mode"
+          : v.paydown && {
+              extraAMonth: money(v.paydown.extraMonthlyCents),
+              years: v.paydown.years,
+              payingDownSavesInterest: money(v.paydown.paydown.interestSavedCents),
+              investingCouldGain: {
+                low: money(v.paydown.invest.lowGainCents),
+                high: money(v.paydown.invest.highGainCents),
+              },
+              verdict: v.paydown.verdict,
+            },
+      });
+    }
+    case "costly_products": {
+      const v = await loadCostlyProducts(userId, { client, now });
+      return out({
+        products: v.products.map((p) => ({
+          name: p.name,
+          kind: p.kind,
+          provider: p.provider,
+          value: money(p.valueCents),
+          costAYear: p.yearlyCostCents === null ? null : money(p.yearlyCostCents),
+          surrenderChargeNow: p.surrender && {
+            percent: p.surrender.pctNow,
+            dollars: money(p.surrender.cents),
+            reachesZeroOn: p.surrender.endsOn,
+          },
+          sameMoneyInLowCostFund: v.advice
+            ? p.gap
+              ? {
+                  extraAfterYears: p.gap.years,
+                  low: money(p.gap.lowCents),
+                  high: money(p.gap.highCents),
+                }
+              : p.wholeLife && {
+                  low: money(p.wholeLife.inFundsCents.lowCents),
+                  high: money(p.wholeLife.inFundsCents.highCents),
+                  paidIn: money(p.wholeLife.paidCents),
+                }
+            : "advice only in demo advice mode",
+          leavingVsStaying:
+            v.advice && p.exit
+              ? {
+                  verdict: p.exit.verdict,
+                  stayCost: money(p.exit.stayCents),
+                  leaveNowCost: money(p.exit.leaveNowCents),
+                  surrenderIncluded: money(p.exit.surrenderNowCents),
+                  waitYears: p.exit.bestWaitYears,
+                }
+              : null,
+        })),
+        advisory: v.advisory && {
+          paidLast12Months: money(v.advisory.yearlyCents),
+          assets: money(v.advisory.assetsCents),
+          percent: v.advisory.feeBps / 100,
+        },
+      });
+    }
+    case "yearly_review": {
+      const snapshot = await loadInvestmentSnapshot(userId, { client, now });
+      if (!snapshot.advice) return out({ advice: "only in demo advice mode" });
+      const review = reviewFor(snapshot, now.getUTCFullYear());
+      return out({
+        reason: review.input.reason,
+        items: review.items.map((i) => ({ item: i.key, status: i.status, line: i.line })),
+        needsATap: review.buttons.map((b) => b.label),
+      });
+    }
+    case "asset_location": {
+      const v = await loadLocation(userId, { client, now });
+      if (!v.advice) return out({ advice: "only in demo advice mode" });
+      return out(
+        v.plan
+          ? {
+              overallMixUnchanged: true,
+              taxOnPayoutsNowAYear: money(v.plan.taxNowCents),
+              afterAYear: money(v.plan.taxAfterCents),
+              savedAYear: money(v.plan.savedCents),
+              swaps: v.plan.swaps.map((s) => ({
+                between: [s.a.accountName, s.b.accountName],
+                each: money(s.amountCents),
+                taxIfItSellsAtAGain: money(s.taxCents),
+              })),
+            }
+          : { note: "needs two or more investment accounts" },
+      );
     }
     case "steady_hand": {
       const view = await loadSteadyHand(userId, { client, now });

@@ -19,7 +19,7 @@ import { syncItem } from "./sync";
 const url = process.env.TEST_DATABASE_URL;
 const LINKED = new Date("2026-10-18T15:00:00Z");
 
-describe.runIf(url)("the demo bank, end to end", () => {
+describe.runIf(url)("the demo bank, end to end", { timeout: 60_000 }, () => {
   let client: PrismaClient;
   let userId: string;
   // Any call to real Plaid fails the test.

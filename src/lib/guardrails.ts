@@ -1,3 +1,4 @@
+import { APPROVED_DEBT_SENTENCES } from "@/config/debt-trouble";
 import type { FindingType } from "@/generated/prisma/client";
 
 // Every piece of Claude-written text passes through checkGuardrails before anyone sees it.
@@ -61,7 +62,20 @@ const LEGAL = [
   /\b(lawyer|attorney|lawsuit|litigation)s?\b/i,
   /(?<!food )\bcourts?\b/i,
   /\bsue (?:them|him|her|you|it|the|a|an|for|over)\b|\bsu(?:ed|ing)\b/i,
+  // Spec step 229: what to do about bankruptcy or settlement is legal advice. The facts
+  // Jane gives about them are fixed sentences (src/config/debt-trouble.ts) that pass below.
+  /\bbankruptcy\b/i,
+  /\bchapter (?:7|11|13)\b/i,
+  /\bdebt settlement\b/i,
+  /\b(?:stop|quit) paying\b/i,
 ];
+
+// Spec step 229: the reviewed sentences about settlement, bankruptcy, forgiven-debt tax and
+// where to take legal questions are taken out before checking. Only these exact sentences:
+// any other line about them, or a changed word, is still checked in full.
+function withoutApprovedSentences(text: string): string {
+  return APPROVED_DEBT_SENTENCES.reduce((t, sentence) => t.split(sentence).join(" "), text);
+}
 
 // (d) Promised outcomes. Savings are estimates: "could save about", never "will save".
 const GUARANTEE = [
@@ -137,8 +151,10 @@ export function checkGuardrails(
 ): GuardrailResult {
   const issues: GuardrailIssue[] = [];
   const advice = profile === "demo_advice";
+  const original = text;
+  text = withoutApprovedSentences(text);
   const required = findingType && REQUIRED_WORDING[findingType];
-  if (required && !required.test(text)) issues.push("missing_required_wording");
+  if (required && !required.test(original)) issues.push("missing_required_wording");
   if (!advice && INVESTMENT.some((p) => p.test(text))) issues.push("investment_advice");
   if ((!advice && TAX.some((p) => p.test(text))) || LEGAL.some((p) => p.test(text))) {
     issues.push("tax_or_legal_advice");
