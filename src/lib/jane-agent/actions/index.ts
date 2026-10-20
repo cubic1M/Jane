@@ -90,6 +90,7 @@ import {
   taxIpPinHave,
   taxIpPinRemind,
 } from "./tax-identity";
+import { taxEquityAside } from "./tax-equity";
 import { taxSideBusiness, taxSideHobby } from "./side-income";
 import { taxFundOpen, taxGivingNo, taxReceiptGot } from "./giving";
 import {
@@ -281,6 +282,7 @@ export const ACTION_HANDLERS: Readonly<Record<ActionId, ActionHandler>> = {
   "tax.identity_open": taxIdentityOpen,
   "tax.identity_not": taxIdentityNot,
   "tax.identity_step": taxIdentityStep,
+  "tax.equity_aside": taxEquityAside,
   "tax.records_remind": taxRecordsRemind,
   // Investments (spec step 129 on).
   "invest.answer.1": investAnswer1,

@@ -110,6 +110,19 @@ async function TaxesContent() {
         advice={advice}
       />
       <SavingsSection view={await loadTaxSavings(user.id, { now, loaded: { estimate, advice } })} />
+      <section aria-labelledby="equity-heading" id="equity" className={CARD}>
+        <h2 id="equity-heading" className="text-xl font-semibold">
+          Crypto and equity pay
+        </h2>
+        <p className="text-sm text-zinc-600 dark:text-zinc-400">
+          Crypto gains by lot, ESPP sales, ISO exercises with the alternative minimum tax and RSU
+          withholding, worked out and in your estimate.
+        </p>
+        <Link href="/taxes/equity" className={LINK}>
+          See my crypto and equity
+        </Link>
+      </section>
+
       <section aria-labelledby="identity-heading" id="identity" className={CARD}>
         <h2 id="identity-heading" className="text-xl font-semibold">
           Your tax identity
