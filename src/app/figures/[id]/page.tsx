@@ -87,8 +87,8 @@ async function Figure({ params }: { params: PageProps<"/figures/[id]">["params"]
             <section className="flex flex-col gap-2">
               <h2 className="text-xl font-semibold">That&apos;s wrong</h2>
               <p className={`text-sm ${MUTED}`}>
-                If your income isn't what I worked out, tell me and I&apos;ll use it everywhere:
-                your health score, the year plan, what-ifs and the long view.
+                If your income isn&apos;t what I worked out, tell me and I&apos;ll use it
+                everywhere: your health score, the year plan, what-ifs and the long view.
               </p>
               <IncomeForm said={said === null ? null : String(said / 100)} />
             </section>
