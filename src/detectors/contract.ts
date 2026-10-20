@@ -43,6 +43,8 @@ export type Suggestion = {
   // A strategist idea (step 256) combines several detectors' suggestions: their ids, and
   // every button they offer. Detectors leave both out.
   parts?: string[];
+  // What ranking counts it for, in cents: its parts' worth, risk at its reduced weight.
+  rankCents?: number;
   more?: { label: string; href: string }[];
 };
 
