@@ -3,6 +3,7 @@ import {
   APPROACHING_ASSETS_CENTS,
   APPROACHING_PAYOFF_YEARS,
   BUSINESS_DEPOSITS_MIN,
+  EARNER_ACTIVE_DAYS,
   PENSION_PATTERN,
   PET_PURCHASES_MIN,
   PROFILE_MONTHS,
@@ -66,6 +67,9 @@ export type ProfileInput = {
   // Optional: what each account holds. Absent when the loader did not read holdings.
   holdings?: readonly ProfileHolding[];
   told: Told;
+  // What else is known about the person's setup in Jane (step 264); a sample person's is
+  // given by ./sample.ts.
+  extras?: { householdMembers: number };
   // Policies read from uploaded documents that wait for the person's confirm (spec step 259).
   unreadPolicyDocuments?: number;
 };
@@ -88,6 +92,8 @@ export type Profile = {
 };
 
 const monthOf = (day: string) => day.slice(0, 7);
+const addDaysTo = (day: string, days: number) =>
+  new Date(Date.parse(`${day}T00:00:00Z`) + days * 86_400_000).toISOString().slice(0, 10);
 
 // How many calendar months the data covers, up to a year.
 function monthsOfData(txs: readonly ProfileTx[], today: string): number {
@@ -177,10 +183,17 @@ export function buildProfile(input: ProfileInput): Profile {
   if (pattern === "unknown") unknown("income_pattern");
   else set("income_pattern", pattern, "seen", "deposits", patternMatches);
 
+  // Employers still paying: an old one that stopped is a job change, not another earner.
   const employers = new Map<string, number>();
+  const activeSince = addDaysTo(today, -EARNER_ACTIVE_DAYS);
+  const lastPaid = new Map<string, string>();
   for (const t of salary) {
     const name = t.description.replace(/\s+PAYROLL.*$/i, "").trim();
-    employers.set(name, (employers.get(name) ?? 0) + 1);
+    if (!lastPaid.has(name) || t.date > lastPaid.get(name)!) lastPaid.set(name, t.date);
+  }
+  for (const t of salary) {
+    const name = t.description.replace(/\s+PAYROLL.*$/i, "").trim();
+    if (lastPaid.get(name)! >= activeSince) employers.set(name, (employers.get(name) ?? 0) + 1);
   }
   const topEmployer = [...employers.entries()].sort((a, b) => b[1] - a[1])[0];
   if (topEmployer) set("employer", topEmployer[0], "seen", "paychecks", topEmployer[1]);
@@ -198,7 +211,7 @@ export function buildProfile(input: ProfileInput): Profile {
 
   // --- Household and home -----------------------------------------------------------
   const childcare = count((t) => t.pfc === "GENERAL_SERVICES_CHILDCARE");
-  if (childcare > 0) set("has_children", true, "guessed", "childcare payments", childcare);
+  if (childcare > 0) set("has_children", true, "seen", "childcare payments", childcare);
   else set("has_children", false, "guessed", "childcare payments", 0);
   const hasChildren = facts.has_children.value === true;
   const household = hasChildren ? "family" : earners >= 2 ? "couple" : "single";
@@ -271,12 +284,20 @@ export function buildProfile(input: ProfileInput): Profile {
   );
   set("has_payday_loan", payday > 0, "seen", "cash-advance repayments", payday);
   const overweight = monthlyIncome > 0 && cardDebt >= monthlyIncome * TROUBLE_DEBT_MONTHS;
+  // The evidence is the signal that decided it, counted once (overdraft and late fees, else
+  // cash-advance repayments, else the card debt), not all of them added together.
+  const troubleSignal =
+    fees >= TROUBLE_FEES_MIN
+      ? { what: "overdraft, insufficient-funds or late fees", n: fees }
+      : payday > 0
+        ? { what: "cash-advance repayments", n: payday }
+        : { what: "months of income owed on cards", n: overweight ? TROUBLE_DEBT_MONTHS : 0 };
   set(
     "debt_trouble",
     fees >= TROUBLE_FEES_MIN || payday > 0 || overweight,
-    "guessed",
-    "overdraft or late fees",
-    fees + payday + (overweight ? 1 : 0),
+    "seen",
+    troubleSignal.what,
+    troubleSignal.n,
   );
 
   // --- Accounts and cover -----------------------------------------------------------

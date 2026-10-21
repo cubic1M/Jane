@@ -29,54 +29,71 @@ export async function loadProfileInput(
   const db = scopedFor(userId, client);
   const today = dayOf(now);
   const since = new Date(now.getTime() - (PROFILE_MONTHS * 31 + 2) * 86_400_000);
-  const [transactions, accounts, liabilities, holdings, prefs, tax, insurance, investor, unread] =
-    await Promise.all([
-      db.transactions.findMany({
-        where: { date: { gt: since, lte: now } },
-        select: {
-          date: true,
-          amountCents: true,
-          description: true,
-          pfcDetailed: true,
-          accountId: true,
-        },
-      }),
-      db.accounts.findMany({
-        select: {
-          id: true,
-          type: true,
-          subtype: true,
-          currentBalanceCents: true,
-          availableBalanceCents: true,
-        },
-      }),
-      db.liabilities.findMany({
-        select: { accountId: true, kind: true, aprBps: true, hasPmi: true, payoffDate: true },
-      }),
-      db.holdings.findMany({
-        select: {
-          accountId: true,
-          valueCents: true,
-          costBasisCents: true,
-          security: { select: { ticker: true, isCashEquivalent: true, type: true } },
-        },
-      }),
-      db.janePreferences.findMany({
-        where: { kind: "fact", key: { startsWith: PREF_PREFIX } },
-        select: { key: true, value: true },
-      }),
-      db.taxProfiles.findFirst({
-        select: {
-          filingStatus: true,
-          childrenUnder17: true,
-          otherDependants: true,
-          answered: true,
-        },
-      }),
-      db.insuranceProfiles.findFirst({ select: { housing: true } }),
-      db.investorProfiles.findFirst({ select: { age: true, ageOn: true, dropReaction: true } }),
-      db.policyReadings.count({ where: { status: "waiting" } }),
-    ]);
+  const [
+    transactions,
+    accounts,
+    liabilities,
+    holdings,
+    prefs,
+    tax,
+    insurance,
+    investor,
+    unread,
+    membership,
+  ] = await Promise.all([
+    db.transactions.findMany({
+      where: { date: { gt: since, lte: now } },
+      select: {
+        date: true,
+        amountCents: true,
+        description: true,
+        pfcDetailed: true,
+        accountId: true,
+      },
+    }),
+    db.accounts.findMany({
+      select: {
+        id: true,
+        type: true,
+        subtype: true,
+        currentBalanceCents: true,
+        availableBalanceCents: true,
+      },
+    }),
+    db.liabilities.findMany({
+      select: { accountId: true, kind: true, aprBps: true, hasPmi: true, payoffDate: true },
+    }),
+    db.holdings.findMany({
+      select: {
+        accountId: true,
+        valueCents: true,
+        costBasisCents: true,
+        security: { select: { ticker: true, isCashEquivalent: true, type: true } },
+      },
+    }),
+    db.janePreferences.findMany({
+      where: { kind: "fact", key: { startsWith: PREF_PREFIX } },
+      select: { key: true, value: true },
+    }),
+    db.taxProfiles.findFirst({
+      select: {
+        filingStatus: true,
+        childrenUnder17: true,
+        otherDependants: true,
+        answered: true,
+      },
+    }),
+    db.insuranceProfiles.findFirst({ select: { housing: true } }),
+    db.investorProfiles.findFirst({ select: { age: true, ageOn: true, dropReaction: true } }),
+    db.policyReadings.count({ where: { status: "waiting" } }),
+    client.householdMember.findUnique({ where: { userId }, select: { householdId: true } }),
+  ]);
+  // Other people in their household in Jane (spec step 264), not counting them.
+  const householdMembers = membership
+    ? await client.householdMember.count({
+        where: { householdId: membership.householdId, userId: { not: userId } },
+      })
+    : 0;
 
   // Answers given elsewhere come first; a correction made here wins over them.
   const told: Told = {};
@@ -142,6 +159,7 @@ export async function loadProfileInput(
     })),
     told,
     unreadPolicyDocuments: unread,
+    extras: { householdMembers },
   };
 }
 

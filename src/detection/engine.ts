@@ -1,4 +1,4 @@
-import { loadTaught, missingRefundAlerts } from "@/lib/unusual";
+import { expectedFor, loadTaught, missingRefundAlerts } from "@/lib/unusual";
 import {
   COUNT_ONLY_WHEN_APPROVED,
   LOOKBACK_MONTHS,
@@ -381,6 +381,7 @@ export async function runDetection(
       knownFindings: new Set(existing.map(idOf)),
       firstScan: firstRun.count > 0,
       taught: await loadTaught(userId, { client }),
+      expected: await expectedFor(userId, { client, now }),
     });
     const budgets = await db.budgets.findMany({ select: { category: true, amountCents: true } });
     const overBudget =

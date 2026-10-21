@@ -12,6 +12,7 @@ import {
   LARGE_CHARGE_MIN_CENTS,
   LARGE_CHARGE_MIN_HISTORY,
   NON_SPENDING_CATEGORIES,
+  NON_RENEWING_PRIMARIES,
 } from "@/config/detection";
 import { ESTIMATED_TAX_ALERT_DAYS, SELF_EMPLOYED_INCOME_CATEGORIES } from "@/config/tax-pack";
 import { formatCents } from "@/lib/money";
@@ -46,6 +47,9 @@ export type AlertContext = {
   firstScan: boolean;
   // Spec step 208: merchants the person said charges were theirs, with the amount.
   taught?: ReadonlyMap<string, number>;
+  // Spec step 253: detailed categories this person's profile makes expected (a business
+  // owner's payroll and suppliers), which are never unusual.
+  expected?: ReadonlySet<string>;
 };
 
 const shortDate = (date: string) =>
@@ -234,6 +238,7 @@ export function renewalAlerts(input: DetectionInput, streams: Stream[]): AlertCa
         s.active &&
         s.frequency !== null &&
         RENEWAL_FREQUENCIES.includes(s.frequency) &&
+        !(s.pfcPrimary && NON_RENEWING_PRIMARIES.includes(s.pfcPrimary)) &&
         isRenewable(s),
     )
     .flatMap((s) =>
@@ -278,6 +283,6 @@ export function detectAlerts(
     ...billReminderAlerts(input),
     ...renewalAlerts(input, streams),
     ...estimatedTaxAlerts(input),
-    ...unusualAlerts(input, streams, context.taught),
+    ...unusualAlerts(input, streams, context.taught, context.expected),
   ];
 }

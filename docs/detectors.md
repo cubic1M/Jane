@@ -54,12 +54,15 @@ Every suggestion carries a percentage and its reason, shown together: *"85% sure
 the stated amount. It is not a promise about markets or outcomes.
 
 The recipe is `confidenceOf` in `src/profile/confidence.ts`, with its numbers in
-`src/config/profile.ts`:
+`src/config/profile.ts`. The percentage has to help someone decide, so it **spreads with the
+evidence**:
 
 - a fact the person **told** Jane is 100%;
-- a fact Jane **saw** starts at a base and gains for each month of data and each clean
-  match, up to a cap (97%);
-- a fact Jane **guessed** starts lower and is capped lower (75%).
+- a fact Jane **saw** starts at 45% and gains 3 points per month of data and 2 per clean match
+  (up to 10), capped at 95%: a fact clearly counted over many months is 90–95%, one from a
+  single month or one match is about 50–65%;
+- a fact Jane **guessed** starts at 15%, gains the same way and is capped at 49%. Below 50% the
+  chat says "I'm not sure (45%)" instead of "I'm 45% sure" (`sureWords`).
 
 A detector builds its confidence from the evidence it used (`evidence(...)` for a count, or
 `factEvidence(fact)` for a profile fact) and takes the **weakest** of them with `weakest(...)`.
@@ -121,6 +124,17 @@ Capability `debt`, topic `pmi_removal` (`src/detectors/home.ts`).
 
 On the sample people it fires only for the Reyes family (the one with PMI); the harness
 confirms it does not fire for the renter, the retiree or anyone else.
+
+## Loss avoided is ranked by expected value
+
+A suggestion that avoids a loss (`worthKind: "risk"`) shows the full loss ("$30,000") but is
+ranked by its expected value in a year: the loss times how likely it is in a year
+(`RISK_ANNUAL_PROBABILITY` in `src/config/suggestions.ts`, a topic not listed uses 2%). So a rare
+big loss does not outrank a real saving. The chances are rough and only order suggestions; the
+sector lanes agree them for their topics. A detector that already reports an expected yearly
+value sets `worthIsExpected: true` and is ranked in full; one for something the law or a
+lender requires (car liability), or no cover at all for a business, sets `required: true` and
+ranks `REQUIRED_BOOST` times higher.
 
 ## The nightly scan (step 255)
 

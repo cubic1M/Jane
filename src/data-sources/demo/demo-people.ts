@@ -30,6 +30,9 @@ export type Recurring = {
   days: number[];
   // Only these months (1–12); every month when left out.
   months?: number[];
+  // Only days from this many days from the anchor (from, inclusive) up to (until, exclusive):
+  // a job that ended or began.
+  span?: { from?: number; until?: number };
 };
 
 export type Once = Omit<Recurring, "days" | "months"> & { offsets: number[] };
@@ -348,7 +351,24 @@ const DEFS: Record<PersonId, Def> = {
       },
     ],
     monthly: [
-      R("pay1", "checking", "NORTHWIND HEALTH PAYROLL", "INCOME_SALARY", -2850, [1, 15], null),
+      // The first earner changed jobs 60 days before the sample was linked (a life event); the
+      // second earner stays at the school.
+      {
+        ...R("pay1", "checking", "NORTHWIND HEALTH PAYROLL", "INCOME_SALARY", -2850, [1, 15], null),
+        span: { until: -60 },
+      },
+      {
+        ...R(
+          "pay1b",
+          "checking",
+          "MERIDIAN MEDICAL PAYROLL",
+          "INCOME_SALARY",
+          -3050,
+          [1, 15],
+          null,
+        ),
+        span: { from: -60 },
+      },
       R("pay2", "checking", "SPRINGFIELD SCHOOLS PAYROLL", "INCOME_SALARY", -2480, [5, 20], null),
       R(
         "mortgage",
@@ -1277,6 +1297,8 @@ export function personTransactions(
       for (const dayOfMonth of t.days) {
         const d = Math.min(dayOfMonth, lastDayOfMonth(y, m));
         const day = `${y}-${String(m + 1).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
+        if (t.span?.from !== undefined && day < addDays(demo.anchor, t.span.from)) continue;
+        if (t.span?.until !== undefined && day >= addDays(demo.anchor, t.span.until)) continue;
         if (inRange(day)) out.push(make(t, day));
       }
     }

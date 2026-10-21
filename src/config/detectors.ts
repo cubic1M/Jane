@@ -84,6 +84,14 @@ export const DETECTOR_RATES = {
   paydayFeeShare: 0.25,
   // Income that moves around by this much month to month is worth smoothing.
   smoothingMinMonthlySwingShare: 0.3,
+  // Life events (step 264): looked back this many days for a new job or a new child, and
+  // what going through the checklist is typically worth in the first year.
+  lifeLookbackDays: 90,
+  newJobTypicalCents: 50_000,
+  newChildTypicalCents: 200_000,
+  // Two people who share their money plan: what a shared household in Jane is typically worth
+  // a year in fewer double-paid bills and one view of shared goals.
+  householdTypicalCents: 30_000,
   // Insurance (spec step 259). The yearly cost avoided if the cover is missing when it is
   // needed, as typical figures from the insurance lane's gap advice: contents a renter loses,
   // a liability claim a car can face.

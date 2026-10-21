@@ -6,7 +6,7 @@ import {
   STRATEGIST_TITLE_MAX,
   STRATEGIST_TOPIC,
 } from "@/config/strategist";
-import { URGENCY_WEIGHT, WORTH_WEIGHT } from "@/config/suggestions";
+import { URGENCY_WEIGHT, rankValue } from "@/config/suggestions";
 import type { Suggestion } from "@/detectors/contract";
 import { ideaShortForms } from "@/detectors/helpers";
 import { checkGuardrails, type GuardrailProfile } from "@/lib/guardrails";
@@ -96,7 +96,7 @@ export function vetIdea(
       action: buttons[0],
       more: buttons.slice(1),
       parts,
-      rankCents: have.reduce((s, p) => s + p.worthCents * WORTH_WEIGHT[p.worthKind], 0),
+      rankCents: have.reduce((s, p) => s + rankValue(p.topic, p.worthKind, p.worthCents), 0),
     },
   };
 }
