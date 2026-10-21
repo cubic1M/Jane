@@ -665,6 +665,11 @@ export async function syncItem(
     timing.mark("suggestions");
     await runJaneAgentSafely(item.userId, { client, now, trigger: scanTrigger, early: true });
     timing.mark("first_brief");
+    // The brief is in the chat: the scan is over for the person (the page stops reloading
+    // itself); the sectors' work and Jane's last words still follow and show on the next look.
+    await markScanDone(item.userId, { client, now }).catch((error) =>
+      console.error("Marking the scan done failed", { error: String(error) }),
+    );
   }
   // After detection these don't depend on each other, so they run together; the sample
   // person's first screen is waiting on this sync.
