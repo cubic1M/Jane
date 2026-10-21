@@ -4,7 +4,7 @@ vi.mock("@/lib/session", () => ({ requireUser: vi.fn() }));
 
 import { QUESTIONS } from "./checks/bank";
 import { CHAT_TOOLS } from "./claude-tools";
-import { toolsFor } from "./tool-select";
+import { lookupsFor, sectorsFor, toolsFor } from "./tool-select";
 
 // Claude is sent the general tools and only the sectors a question is about: faster to start
 // and cheaper, and every question in the bank still gets the tool it should reach.
@@ -39,6 +39,34 @@ describe("choosing tools for a question", () => {
     });
     expect(noButtons.map((t) => t.name)).not.toContain("propose_action");
     expect(head(noButtons)).toEqual(head(withTax));
+  });
+
+  it("picks the specific lookup a question needs, else the sector's overview", () => {
+    const lookups = (q: string) => lookupsFor(q, sectorsFor(q, null, null, ASOF));
+    expect(lookups("how do i handle taxes on rsu vesting")).toEqual(["tax_equity"]);
+    expect(lookups("how do i build credit")).toEqual(["credit_building", "credit_score"]);
+    expect(lookups("do i get a 401k match")).toEqual(["retirement_accounts"]);
+    expect(lookups("am i diversified")).toEqual(["portfolio_review"]);
+    // No sector, no lookup; a sector without a named need gets the overview.
+    expect(lookups("how am i doing")).toEqual([]);
+    expect(lookups("what do i owe on my cards")).toEqual(["debts", "credit_score"]);
+    // Every one is a tool Claude has, with nothing it must be told.
+    for (const name of [
+      "tax_equity",
+      "credit_building",
+      "credit_score",
+      "retirement_accounts",
+      "portfolio_review",
+      "debts",
+      "tax_estimate",
+      "holdings",
+      "investor_profile",
+      "insurance_policies",
+    ]) {
+      const tool = CHAT_TOOLS.find((t) => t.name === name);
+      expect(tool, name).toBeDefined();
+      expect((tool!.input_schema as { required?: string[] }).required ?? [], name).toEqual([]);
+    }
   });
 
   it("always sends the calculator", () => {

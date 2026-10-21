@@ -101,6 +101,43 @@ function sectorOf(name: string): SectorName | null {
   return null;
 }
 
+// The one or two lookups that almost every question in a sector starts with. They are run
+// while the person's numbers load and sent up front, so a sector question is one round of
+// writing instead of a round of lookups first.
+export const SECTOR_OVERVIEW: Readonly<Record<SectorName, readonly string[]>> = {
+  debt: ["debts", "credit_score"],
+  insurance: ["insurance_policies"],
+  tax: ["tax_estimate"],
+  investing: ["holdings", "investor_profile"],
+};
+
+// When what the question is about is clear, the specific lookup it needs, not the sector's
+// overview: Claude would call this one next, a whole round later.
+const SPECIFIC_LOOKUPS: readonly { when: RegExp; tools: readonly string[] }[] = [
+  {
+    when: /\b(?:rsus?|vest\w*|stock comp\w*|stock options?|espp|isos?|nsos?)\b/i,
+    tools: ["tax_equity"],
+  },
+  {
+    when: /\b(?:build\w*|improv\w*|rais\w*|fix\w*|boost\w*)\b[^.?!]{0,30}\bcredit\b|\bcredit (?:score|history|building)\b/i,
+    tools: ["credit_building", "credit_score"],
+  },
+  {
+    when: /\b(?:401\(?k\)?|403\(?b\)?|match|retirement|retire|ira|roth)\b/i,
+    tools: ["retirement_accounts"],
+  },
+  { when: /\b(?:diversif\w*|allocation|portfolio|rebalanc\w*)\b/i, tools: ["portfolio_review"] },
+];
+
+// The lookups to run up front for a question: the specific ones when it names one, otherwise
+// the overview of each sector it is about (at most two sectors).
+export function lookupsFor(question: string, sectors: ReadonlySet<SectorName>): string[] {
+  if (sectors.size === 0 || sectors.size > 2) return [];
+  const specific = SPECIFIC_LOOKUPS.filter((s) => s.when.test(question)).flatMap((s) => s.tools);
+  if (specific.length > 0) return [...new Set(specific)];
+  return [...new Set([...sectors].flatMap((sector) => SECTOR_OVERVIEW[sector]))];
+}
+
 // The sectors a question is about: from the rules' reading of it, the last topic's capability,
 // and its own words (and the previous message's, since a follow-up is short).
 export function sectorsFor(

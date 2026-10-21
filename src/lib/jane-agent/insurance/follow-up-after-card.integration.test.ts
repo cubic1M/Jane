@@ -20,12 +20,14 @@ const url = process.env.TEST_DATABASE_URL;
 const NOW = new Date("2026-10-18T15:00:00Z");
 
 type Block = Record<string, unknown>;
+const requests: { system: unknown }[] = [];
 const fake = (steps: { stop: "tool_use" | "end_turn"; content: Block[] }[]) => {
   let call = 0;
   return () =>
     ({
       messages: {
-        stream: () => {
+        stream: (params: { system: unknown }) => {
+          requests.push(params);
           const step = steps[Math.min(call++, steps.length - 1)];
           const listeners: Record<string, ((...a: unknown[]) => void)[]> = {};
           const stream = {
@@ -111,5 +113,26 @@ describe.runIf(url)("a follow-up right after a card", () => {
     // The facts of their life, in words: where they live, how they are paid.
     expect(primer.text).toMatch(/Where you live: /);
     expect(primer.text).toMatch(/How you're paid: /);
+  });
+
+  it("sends a sector's overview lookups up front, so a sector question is one round", async () => {
+    requests.length = 0;
+    const later = new Date(NOW.getTime() + 120_000);
+    const { source } = await sendToJane(userId, "how do i handle taxes on rsu vesting", {
+      client,
+      now: later,
+      primerMs: 60_000,
+      claude: fake([
+        {
+          stop: "end_turn",
+          content: [{ type: "text", text: "Your vests are withheld at a flat rate." }],
+        },
+      ]),
+    });
+    expect(source).toBe("claude");
+    expect(requests).toHaveLength(1);
+    expect(JSON.stringify(requests[0].system)).toMatch(
+      /Already looked up for this question[\s\S]*tax_equity:/,
+    );
   });
 });
