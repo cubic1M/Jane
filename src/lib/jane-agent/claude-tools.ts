@@ -48,6 +48,7 @@ import { SECTOR_LABELS, SECTOR_LEVEL_LABELS } from "@/config/autopilot-sectors";
 import { provenSavings } from "@/lib/savings-proof";
 import { listLifeEvents } from "@/lib/life-events";
 import { homeSummary } from "@/lib/home";
+import { HEALTH_SAY_IN_WORDS_BELOW } from "@/config/health-score";
 import { formatCents } from "@/lib/money";
 import { POLICY_KINDS, type PolicyKind } from "@/config/insurance";
 import { quotesAnswer } from "./insurance/quotes";
@@ -96,6 +97,18 @@ export const PROPOSABLE: readonly ActionId[] = [
 // Shopping a policy for the person: Jane gets the quotes now and, in demo advice, offers the
 // switch with her pick (insurance/quotes.ts). The buttons it returns are the quote reply's.
 export const RESHOP = "insurance.reshop";
+
+// The score and its band, or, when it is low, words instead: "0, Building" would read as a
+// verdict, so under the line Claude is told to say it plainly and kindly.
+export function healthHeadline(score: number, band: string) {
+  return score < HEALTH_SAY_IN_WORDS_BELOW
+    ? {
+        score: null,
+        sayIt:
+          "Their money health is under strain right now. Say that in words, not a number or a band, and name the one thing that would raise it most.",
+      }
+    : { score, band };
+}
 
 // Pages Claude may link to, by name.
 export const CHAT_PAGES: Readonly<Record<string, { label: string; href: string }>> = {
@@ -686,8 +699,7 @@ export async function runChatTool(
       return out(
         view
           ? {
-              score: view.score,
-              band: view.band,
+              ...healthHeadline(view.score, view.band),
               parts: view.parts.map((p) => ({
                 part: p.label,
                 points: p.points,
@@ -842,8 +854,7 @@ export async function runChatTool(
         goalsBehind: week.goalsBehind.map((g) => ({ goal: g.name, stillToGo: money(g.leftCents) })),
         urgent: week.urgent,
         healthScore: week.health && {
-          score: week.health.score,
-          band: week.health.band,
+          ...healthHeadline(week.health.score, week.health.band),
           whatWouldHelpMost: week.health.next,
         },
         janeWorkingOn: week.working,

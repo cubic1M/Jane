@@ -48,7 +48,7 @@ import type { Reply } from "./replies";
 // the answer streamed as it's written (onEvent), a sentence at a time once each passes the
 // guardrails (./guarded-text), with what Jane is looking up in between.
 
-export const CHAT_PROMPT_VERSION = "chat-v22";
+export const CHAT_PROMPT_VERSION = "chat-v23";
 
 // The one rule that differs in demo advice mode (spec step 98).
 const NO_ADVICE = `- Never give investment, tax or legal advice, and don't mention investments, taxes or legal matters at all. Don't suggest financial products beyond Jane's pick from finding_details.`;
@@ -92,6 +92,9 @@ How to answer:
 - "Do I need…", "should I…" and "is it worth…" questions start with a plain yes, no or "it depends on" one named thing, then why, with their figures. A rule of thumb ("safe withdrawal rate") is stated together with the person's own balance from their numbers (the rule as a percent, their balance as given); never work out a new dollar amount yourself.
 - "Change / switch / lower my car insurance" (or home, renters, life, pet) is a request Jane can act on: say what she found (the cheaper quote and how much less, from the tool), then propose_action insurance.reshop for that policy. Never tell the person to ask again in other words.
 - Speak as Jane, about their money: never say "the app", "findings", "open findings", "tools", "tool results", "propose_action" or "what_matters_most", and never name internal ids. Say "I found", "I can see", "in your accounts" instead.
+- When a button's card goes under your answer (you called propose_action), your text is one or two sentences that don't repeat the card's figures: the card carries the details.
+- If you were not given propose_action for this message, say nothing about buttons, an earlier button or an offer; just answer the question. "What are the other options from <insurer>" is a question: answer with that insurer's savings and quote options and their figures.
+- If the money health result has no score (only words), say it in those words ("your money health is under strain right now") and the one thing that would raise it; never quote a number or the word "Building" for it.
 - A money health score that is low is room to grow, said kindly ("Building" is on the way, never a verdict); say what would raise it first.
 - Affordability ("can we afford a car / childcare / a house"): give a comfortable amount and monthly budget to aim for, then the ceiling only as the ceiling; never present the most the maths allows as the target.
 - A rule of thumb ("the 4% rule, often called a safe withdrawal rate") is something you name and explain; say it isn't a guarantee instead of promising an outcome, and don't use "definitely", "guaranteed" or "will" about the future.
@@ -249,7 +252,7 @@ export function plainText(text: string): string {
 // What the answer says about its own button ("I've put a link under this answer"): the app
 // adds the button's line itself, so Claude's sentences about it are dropped.
 const BUTTON_TALK =
-  /\b(?:(?:put|added|placed|attached|left)\s+(?:a |an |the |one )?(?:\w+\s+)?(?:button|link)s?\b|(?:button|link)s? (?:below|under (?:this|my|the) answer)|under this answer|with the button below|using the button|tap the (?:button|link) below|\b(?:put|set|lined|queued)\b[^.!?]{0,50}\bup for you\b|\bfor you to decide(?: on)?\b|\bdecide on (?:it|that|this|them)\b)/i;
+  /\b(?:(?:put|added|placed|attached|left)\s+(?:a |an |the |one )?(?:\w+\s+)?(?:button|link)s?\b|(?:button|link)s? (?:below|under (?:this|my|the) answer)|under this answer|with the button below|using the button|tap the (?:button|link) below|couldn(?:'|’)?t (?:set up|make|add|create|offer|put)[^.!?]{0,30}\b(?:button|link)s?\b|(?:the )?button for the (?:switch|change)\b|\b(?:put|set|lined|queued)\b[^.!?]{0,50}\bup for you\b|\bfor you to decide(?: on)?\b|\bdecide on (?:it|that|this|them)\b)/i;
 
 // The amounts Claude may state without a lookup, as the guardrail will read them: said up front
 // so it doesn't invent one and need a rewrite.
@@ -271,7 +274,9 @@ const ACTION_REQUEST =
 // The answer is too long for a chat: over about 600 characters, or a list nobody asked for.
 const LIST_ASKED =
   /\b(?:list|bills|subscriptions|each|every|all (?:my|of)|compare|options|steps|breakdown|itemi[sz]e|show me|what are)\b/i;
-export function tooLong(answer: string, question: string): boolean {
+export function tooLong(answer: string, question: string, hasCard = false): boolean {
+  // Under a card that already says the figures, the answer is a sentence or two.
+  if (hasCard && answer.length > 320) return true;
   if (answer.length > 600) return true;
   const items = answer.split("\n").filter((l) => /^\s*(?:[-•*]|\d+[.)])\s+/.test(l)).length;
   return items >= 3 && !LIST_ASKED.test(question);
@@ -731,7 +736,7 @@ async function askClaude(
               ? writtenText
                 ? "Noted."
                 : "The button is ready. Now write your answer in words, with the figures from the results, and don't mention the button."
-              : result.error,
+              : `${result.error}\n(This is for you. Never tell the person a button could not be set up; answer their question in words.)`,
             ...(result.ok ? {} : { is_error: true }),
           });
           continue;
@@ -803,7 +808,7 @@ async function askClaude(
       });
       continue;
     }
-    if (check.ok && !shapeRewritten && tooLong(spoken, question)) {
+    if (check.ok && !shapeRewritten && tooLong(spoken, question, Boolean(proposal?.line))) {
       // Once: shorter, and no list the person didn't ask for.
       shapeRewritten = true;
       timing.rewrites += 1;
@@ -814,7 +819,12 @@ async function askClaude(
         role: "assistant",
         content: response.content.filter((b) => b.type === "text"),
       });
-      messages.push({ role: "user", content: SHAPE_REWRITE });
+      messages.push({
+        role: "user",
+        content: proposal?.line
+          ? `${SHAPE_REWRITE} The card under your answer already shows the figures, so don't repeat them: one or two sentences.`
+          : SHAPE_REWRITE,
+      });
       continue;
     }
     if (!check.ok) {

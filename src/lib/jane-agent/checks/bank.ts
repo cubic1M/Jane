@@ -818,6 +818,29 @@ const BASE_QUESTIONS: readonly CheckQuestion[] = [
     tool: "card_interest",
     expect: { avoid: /hulu|\bbutton\b|under this answer/i },
   },
+  // After a switch offer: a follow-up about options is a question, answered from the quotes,
+  // never about a button that could not be set up.
+  {
+    id: "reshop-1",
+    text: "can you change my car insurance",
+    needs: "claude",
+    sector: "insurance",
+    page: "/insurance",
+    tool: "propose_action",
+    profile: "demo_advice",
+    expect: { button: "insurance.shop_yes", avoid: /couldn't set up|where you stand/i },
+  },
+  {
+    id: "reshop-2",
+    text: "what are some other options from geico",
+    needs: "claude",
+    after: "reshop-1",
+    sector: "insurance",
+    page: "/insurance",
+    tool: "insurance_quotes",
+    profile: "demo_advice",
+    expect: { mentions: /\$/, noButtons: true, avoid: /couldn't set up|button/i },
+  },
   // Voice (QA sweep): answers in words first, no talk of buttons or of earlier failures.
   {
     id: "voice-1",
