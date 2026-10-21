@@ -65,6 +65,9 @@ export type ProfileInput = {
   liabilities: readonly ProfileLiability[];
   // Optional: what each account holds. Absent when the loader did not read holdings.
   holdings?: readonly ProfileHolding[];
+  // Spec step 236: what the person asked Jane to leave out of their funds (keys in
+  // src/config/values.ts), when they have said.
+  valuesExcludes?: readonly string[];
   told: Told;
   // Policies read from uploaded documents that wait for the person's confirm (spec step 259).
   unreadPolicyDocuments?: number;

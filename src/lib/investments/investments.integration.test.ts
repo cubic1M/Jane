@@ -48,6 +48,7 @@ import {
   loadSuddenMoney,
   SuddenMoneyError,
 } from "./sudden-money";
+import { applyValues, loadValues, savePrefs, ValuesError } from "./values";
 import { loadShortTerm, settleLadders, ShortTermError, startLadder } from "./short-term";
 import {
   confirmMenu,
@@ -1623,6 +1624,35 @@ describe.runIf(url)("investments in Jane's chat, against a real database", () =>
         now: LINKED,
       });
       expect(reply.body).toMatch(/Nothing moves until you tap|All done/);
+    },
+  );
+
+  it(
+    "step 236: a values list switches funds inside each kind, keeps the risk target, and steers the rebalance",
+    SLOW,
+    async () => {
+      const userId = await demoPerson();
+      const before = await loadValues(userId, { client, now: LINKED });
+      expect(before.plan?.switches).toEqual([]);
+      await savePrefs(
+        userId,
+        { excludes: ["fossil_fuels", "weapons", "tobacco", "bogus"], themes: [] },
+        { client },
+      );
+      const view = await loadValues(userId, { client, now: LINKED });
+      expect(view.prefs.excludes).toEqual(["fossil_fuels", "weapons", "tobacco"]);
+      const plan = view.plan!;
+      expect(plan.switches.length).toBeGreaterThan(0);
+      for (const cls of ["us_stocks", "intl_stocks", "bonds"] as const) {
+        expect(plan.classTotals[cls].before).toBe(plan.classTotals[cls].after);
+      }
+      await expect(applyValues(userId, "stale", { client, now: LINKED })).rejects.toThrow(
+        ValuesError,
+      );
+      const done = await applyValues(userId, plan.key, { client, now: LINKED });
+      expect(done.switches).toBe(plan.switches.length);
+      const after = await loadValues(userId, { client, now: LINKED });
+      expect(after.plan?.switches).toEqual([]);
     },
   );
 });

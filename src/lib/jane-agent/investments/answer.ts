@@ -23,6 +23,7 @@ import { loadLocation } from "@/lib/investments/location";
 import { loadPlanMenu } from "@/lib/investments/plan-menu";
 import { loadHonest } from "@/lib/investments/honest";
 import { loadShortTerm } from "@/lib/investments/short-term";
+import { loadValues } from "@/lib/investments/values";
 import { loadSuddenMoney } from "@/lib/investments/sudden-money";
 import { loadSteadyHand } from "@/lib/investments/steady-hand";
 import { autopilotOf } from "@/lib/autopilot";
@@ -47,6 +48,7 @@ import {
   steadyReply,
   suddenMoneyReply,
   shortTermReply,
+  valuesReply,
   honestReply,
   planMenuReply,
   locationReply,
@@ -135,6 +137,8 @@ export async function answerInvestments(
       return planMenuReply(await loadPlanMenu(userId, { client, now }));
     case "honest_performance":
       return honestReply(await loadHonest(userId, { client, now }));
+    case "values":
+      return valuesReply(await loadValues(userId, { client, now }));
     case "short_term":
       return shortTermReply(await loadShortTerm(userId, { client, now }));
     case "sudden_money":

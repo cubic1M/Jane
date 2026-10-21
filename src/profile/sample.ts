@@ -20,6 +20,8 @@ export function inputFor(person: string, told: ProfileInput["told"] = {}): Profi
     today: SAMPLE_TODAY,
     told,
     unreadPolicyDocuments: UNREAD_DOCUMENTS[person] ?? 0,
+    // Priya has asked Jane to keep fossil fuels out of her funds (spec step 236).
+    valuesExcludes: person === "equity" ? ["fossil_fuels"] : [],
     holdings: holdings.map((h) => ({
       ticker:
         h.security_id.replace("demo-sec-", "").toUpperCase() === "CASH"

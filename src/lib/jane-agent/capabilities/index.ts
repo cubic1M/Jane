@@ -206,6 +206,7 @@ export const CAPABILITIES: readonly Capability[] = [
       "performance",
       "shortterm",
       "windfall",
+      "values",
     ],
     kinds: ["investments"],
     // Every investing tool Claude has: the overview first, then one per topic.
@@ -227,6 +228,7 @@ export const CAPABILITIES: readonly Capability[] = [
       "honest_performance",
       "short_term_money",
       "sudden_money",
+      "values_investing",
     ],
     answer: investingAnswer,
   },

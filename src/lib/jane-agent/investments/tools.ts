@@ -30,6 +30,7 @@ import { loadLocation } from "@/lib/investments/location";
 import { loadPlanMenu } from "@/lib/investments/plan-menu";
 import { loadHonest } from "@/lib/investments/honest";
 import { loadShortTerm } from "@/lib/investments/short-term";
+import { loadValues } from "@/lib/investments/values";
 import { loadSuddenMoney } from "@/lib/investments/sudden-money";
 import { loadSteadyHand } from "@/lib/investments/steady-hand";
 import { CASH_HOMES, CASH_RATES_AS_OF } from "@/config/cash";
@@ -201,6 +202,12 @@ export const INVESTMENT_TOOLS: Anthropic.Tool[] = [
     input_schema: noInput,
   },
   {
+    name: "values_investing",
+    description:
+      "What the person leaves out of their funds (fossil fuels, weapons, tobacco) or leans towards (clean energy), and what applying it to the funds they hold would change: which funds switch, the fee change in dollars a year, any tax on a sale in a taxable account, and what it does to diversification (fewer holdings). It never changes the stocks-and-bonds mix. The switch is the person's own tap on Jane's message; never trade yourself. Recommendations only in demo advice mode.",
+    input_schema: noInput,
+  },
+  {
     name: "short_term_money",
     description:
       "Money the person needs within three years (goals due soon with money saved, and the emergency fund above its floor): high-yield savings, Treasury bills, CDs and I bonds compared after tax at their own federal and state rates (Treasury interest is free of state tax), listing only places that can't lock the money past its date, and a Treasury bill ladder that matures when it's needed and rolls itself over until then. The emergency fund's floor stays in savings. The person taps to build a ladder; never do it yourself.",
@@ -261,6 +268,7 @@ export const INVESTMENT_TOOL_STATUS: Readonly<Record<string, string>> = {
   steady_hand: "Looking at how your investments have moved…",
   sudden_money: "Planning your windfall…",
   short_term_money: "Comparing safe places for money you need soon…",
+  values_investing: "Checking your funds against your values…",
   honest_performance: "Comparing you with a benchmark…",
   plan_menu: "Looking at your plan's funds…",
   asset_location: "Checking which account holds what…",
@@ -866,6 +874,28 @@ export async function runInvestmentTool(
           })),
         })),
         forecast: "never",
+      });
+    }
+    case "values_investing": {
+      const v = await loadValues(userId, { client, now });
+      return out({
+        leaveOut: v.prefs.excludes,
+        leanTowards: v.prefs.themes,
+        plan:
+          v.advice && v.plan
+            ? {
+                switches: v.plan.switches.map((s) => ({
+                  account: s.accountName,
+                  from: s.from.name,
+                  to: s.legs.map((l) => l.name),
+                  feeChangeAYear: money(s.feeDeltaCents),
+                })),
+                totalFeeChangeAYear: money(v.plan.feeDeltaCents),
+                gainRealised: money(v.plan.gainCents),
+                diversification: v.plan.diversification,
+                notes: v.plan.notes,
+              }
+            : "only in demo advice mode",
       });
     }
     case "short_term_money": {

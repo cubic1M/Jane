@@ -11,6 +11,7 @@ import {
   SUDDEN_LOOKBACK_DAYS,
   SUDDEN_MIN_CENTS,
 } from "@/config/sudden-money";
+import { VALUES_EXCLUSIONS, VALUES_FUNDS, type Exclusion } from "@/config/values";
 import { formatCents } from "@/lib/money";
 import { type Detector, suggestionId } from "./contract";
 import { evidence, liquidCents, monthlySpendCents, weakest } from "./helpers";
@@ -141,4 +142,46 @@ const suddenMoney: Detector = {
   },
 };
 
-export const PLANNING_DETECTORS: readonly Detector[] = [planMenu, shortTermCash, suddenMoney];
+const valuesFunds: Detector = {
+  capability: "investing",
+  topic: "values_funds",
+  covers: ["values_investing"],
+  needs: [],
+  detect({ profile, data }) {
+    const list = (data.valuesExcludes ?? []).filter((k): k is Exclusion =>
+      Object.hasOwn(VALUES_EXCLUSIONS, k),
+    );
+    if (list.length === 0) return null;
+    const matches = (ticker: string) => {
+      const f = VALUES_FUNDS.find((x) => x.ticker === ticker);
+      return !!f && list.every((e) => f.excludes.includes(e));
+    };
+    const offending = (data.holdings ?? []).filter(
+      (h) => h.ticker && !h.isCash && h.valueCents > 0 && !matches(h.ticker),
+    );
+    const total = offending.reduce((s, h) => s + h.valueCents, 0);
+    if (total === 0) return null;
+    return {
+      id: suggestionId("investing", "values_funds"),
+      capability: "investing",
+      topic: "values_funds",
+      title: "Move your funds in line with the list you gave me",
+      worthCents: total,
+      worthKind: "risk",
+      confidence: weakest([
+        evidence("told", profile.months, list.length, "things you asked me to leave out"),
+        evidence("seen", profile.months, offending.length, "funds that don't match your list"),
+      ]),
+      urgency: "later",
+      why: `You asked me to leave out ${list.map((k) => VALUES_EXCLUSIONS[k].toLowerCase()).join(", ")}. ${formatCents(total)} sits in ${offending.length} ${offending.length === 1 ? "fund" : "funds"} that may hold them. Switching stays inside the same kind of investment, so your stocks-and-bonds mix doesn't change; I show the fee difference in dollars and the effect on diversification first.`,
+      action: { label: "See what would change", href: "/investments/values" },
+    };
+  },
+};
+
+export const PLANNING_DETECTORS: readonly Detector[] = [
+  planMenu,
+  shortTermCash,
+  suddenMoney,
+  valuesFunds,
+];
