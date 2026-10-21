@@ -114,9 +114,11 @@ describe.runIf(url)("the chat opens during the first scan", { timeout: 120_000 }
     const messages = await client.janeMessage.findMany({
       where: { userId: trial.userId },
       orderBy: { createdAt: "asc" },
-      select: { body: true, kind: true },
+      select: { body: true, kind: true, createdAt: true },
     });
+    // Strictly first: its time is before everything else Jane posted in the sync (no tie).
     expect(messages[0].body).toBe(SCANNING_HELLO);
+    expect(messages[0].createdAt.getTime()).toBeLessThan(messages[1].createdAt.getTime());
     // The day's first agenda leads with what the scan found, with its percentage.
     const agenda = messages.find((m) => /what I'd do first/.test(m.body));
     expect(agenda, messages.map((m) => m.body.slice(0, 30)).join(" | ")).toBeDefined();
