@@ -6,6 +6,7 @@ import { CHAT_UNAVAILABLE_TEXT } from "../claude";
 import { parseIntent } from "../intents";
 import { unknownReply } from "../replies";
 import type { MessageAction } from "../types";
+import type { AnswerSource } from "../typing";
 import type { CheckQuestion } from "./bank";
 import type { Facts } from "./facts";
 
@@ -17,7 +18,7 @@ export type Answer = {
   body: string;
   actions: MessageAction[];
   // How it was answered (src/lib/jane-agent/typing.ts).
-  source: "rules" | "claude" | "claude_blocked" | "claude_unavailable" | "fallback";
+  source: AnswerSource;
 };
 
 export type Check = { name: string; ok: boolean; reason: string };
