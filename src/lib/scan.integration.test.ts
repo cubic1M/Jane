@@ -9,16 +9,26 @@ vi.mock("@/lib/audit", () => ({ logAudit: vi.fn(), SYSTEM_ACTOR: { type: "system
 
 // The slow sector work after detection: what the chat must not wait for. It records what the
 // person could already see when it started.
-const { seenBySlowWork } = vi.hoisted(() => ({ seenBySlowWork: [] as number[] }));
+const { seenBySlowWork, savedBySlowWork, failSector } = vi.hoisted(() => ({
+  seenBySlowWork: [] as number[],
+  savedBySlowWork: [] as number[],
+  failSector: { on: false },
+}));
 vi.mock("@/lib/insurance/daily", async (importOriginal) => {
   const original = await importOriginal<typeof import("@/lib/insurance/daily")>();
   return {
     ...original,
     insuranceAfterSync: vi.fn(
       async (userId: string, options: Parameters<typeof original.insuranceAfterSync>[1]) => {
+        savedBySlowWork.push(
+          await options!.client!.janePreference.count({
+            where: { userId, kind: "system", key: "snapshot" },
+          }),
+        );
         seenBySlowWork.push(
           await options!.client!.janeMessage.count({ where: { userId, kind: "decision" } }),
         );
+        if (failSector.on) throw new Error("a sector failed");
         return original.insuranceAfterSync(userId, options);
       },
     ),
@@ -91,10 +101,14 @@ describe.runIf(url)("the chat opens during the first scan", { timeout: 120_000 }
     expect(await scanReady(trial.userId, { client })).toBe(false);
     expect(await scanInProgress(trial.userId, { client })).toBe(true);
     seenBySlowWork.length = 0;
+    savedBySlowWork.length = 0;
 
     await syncItem(trial.itemId, { client, now: NOW, progressive: true });
     // The findings were posted before the slow sector work started.
     expect(seenBySlowWork[0]).toBeGreaterThan(0);
+    // And the snapshot was already saved, so the first chat question finds it instead of
+    // building it (13 seconds on live).
+    expect(savedBySlowWork[0]).toBe(1);
     expect(await scanReady(trial.userId, { client })).toBe(true);
     expect(await scanInProgress(trial.userId, { client })).toBe(false);
     expect(
@@ -147,6 +161,37 @@ describe.runIf(url)("the chat opens during the first scan", { timeout: 120_000 }
     expect(welcome).toBeGreaterThan(looking);
     expect(agenda).toBeGreaterThan(welcome);
     expect(messages[agenda].body).toMatch(/% sure|not sure/);
+  });
+
+  it("posts the first brief even when the scan runs in the night's quiet hours", async () => {
+    const night = new Date("2026-10-17T03:00:00Z");
+    const trial = await startTrial({ client, now: night, defer: true, person: "debt" });
+    created.push(trial.userId);
+    await syncItem(trial.itemId, { client, now: night, progressive: true });
+    const bodies = (
+      await client.janeMessage.findMany({ where: { userId: trial.userId }, select: { body: true } })
+    ).map((m) => m.body);
+    expect(bodies.some((b) => /what I'd do first/.test(b))).toBe(true);
+  });
+
+  it("still finishes the scan and says its piece when a sector's work fails", async () => {
+    const trial = await startTrial({ client, now: NOW, defer: true, person: "retiree" });
+    created.push(trial.userId);
+    failSector.on = true;
+    try {
+      await syncItem(trial.itemId, { client, now: NOW, progressive: true });
+    } finally {
+      failSector.on = false;
+    }
+    // The scan ended, and Jane's agenda came with what she found: not "still going through your
+    // accounts" for good.
+    expect(
+      (await client.user.findUniqueOrThrow({ where: { id: trial.userId } })).firstScanDoneAt,
+    ).not.toBeNull();
+    const bodies = (
+      await client.janeMessage.findMany({ where: { userId: trial.userId }, select: { body: true } })
+    ).map((m) => m.body);
+    expect(bodies.some((b) => /what I'd do first/.test(b))).toBe(true);
   });
 
   it("opens at once with 'still looking', without running the whole agent, while it scans", async () => {

@@ -97,7 +97,7 @@ export type Intent =
   // Spec step 142: "what did you check last night?"
   | { kind: "checked" }
   // Spec step 143: "what should I do first?"
-  | { kind: "priorities"; explain?: boolean }
+  | { kind: "priorities"; explain?: boolean; one?: boolean }
   // Spec step 183: "am I OK?" and "what should I do this month?", across every sector.
   | { kind: "whole_picture"; focus: "now" | "month" }
   // What they own and owe, from the net worth page.
@@ -369,6 +369,8 @@ const MONTHLY_REPORT =
   /\b(?:monthly|money|month'?s) report\b|\bmonth in review\b|\breport (?:for|on) (?:last|this) month\b|\bhow did (?:i|we) do (?:this|last) month\b|\bhow (?:was|did) (?:my|our|last) month\b|\bhow did last month go\b/;
 const STEADY =
   /\bsteady (?:paycheck|pay|income)\b|\b(?:my|the) (?:income|pay|paychecks?) (?:is|are) (?:uneven|irregular|unpredictable|all over the place)\b|\b(?:uneven|irregular|freelance|variable) income\b|\bpay myself (?:a )?(?:steady|regular)\b/;
+const ONE_THING =
+  /\b(?:one|1) thing\b.*\b(?:wrong|fix|change|improve|start)|\bbiggest (?:\w+ )?(?:mistake|leak|problem)\b|\bwhat am i (?:doing )?wrong\b/;
 const PRIORITIES =
   /\bwhat should i do (?:first|next|now)\b|\bwhat matters (?:most|now)\b|\bwhat'?s (?:most )?important\b|\bwhere (?:do|should) i start\b|\bmy (?:top )?priorities\b|\bnext best thing\b|\b(?:one thing|what(?:'?s| am)?) i'?m doing wrong\b|\bwhat am i (?:doing )?wrong\b|\bbiggest (?:\w+ )?(?:mistake|leak|problem)\b/;
 // Spec step 183. "Am I OK to buy …" is a purchase question, and goals have their own answer.
@@ -580,6 +582,8 @@ export function parseIntent(
   if (TIMELINE.test(text)) return { kind: "timeline", why: false };
   if (WHOLE_MONTH.test(text)) return { kind: "whole_picture", focus: "month" };
   if (WHOLE_NOW.test(text)) return { kind: "whole_picture", focus: "now" };
+  // "What's one thing I'm doing wrong": the top item alone, in a sentence.
+  if (ONE_THING.test(text)) return { kind: "priorities", one: true };
   if (PRIORITIES.test(text)) return { kind: "priorities" };
   if (PAYCHECK.test(text)) return { kind: "paycheck" };
   if (HEALTH.test(text)) return { kind: "health" };

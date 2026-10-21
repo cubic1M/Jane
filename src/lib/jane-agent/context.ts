@@ -39,8 +39,14 @@ export function withTopic(
   // follow-up as "it" (the decision again, the list explained, the credit score read again).
   if (intent.kind === "explain") {
     if (topic?.findingId) return { kind: "why_finding", findingId: topic.findingId };
+    // Nothing was just discussed: ask what, never a picker of unrelated merchants.
+    if (!topic) return intent;
+    // The last question had no answer of its own to explain: Claude is told what it was about.
+    if (topic.kind === "asked") return intent;
     return withTopic({ kind: "follow_up", target: "it", month: null }, topic, asOf);
   }
+  // A question that had no answer of its own isn't something "it" can point at.
+  if (topic?.kind === "asked") topic = null;
   if (intent.kind === "follow_up") {
     if (!topic)
       return intent.target ? { kind: "about", target: intent.target } : { kind: "unknown" };

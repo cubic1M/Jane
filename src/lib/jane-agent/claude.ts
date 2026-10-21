@@ -3,6 +3,7 @@ import {
   CHAT_CLAUDE_COOLDOWN_SECONDS,
   CHAT_CLAUDE_DEADLINE_MS,
   CHAT_CLAUDE_FIRST_WORDS_MS,
+  CHAT_CLAUDE_RETRY_MS,
   CHAT_CLAUDE_HISTORY,
   CHAT_CLAUDE_TOTAL_MS,
   CHAT_CLAUDE_MAX_TOKENS,
@@ -14,7 +15,7 @@ import {
 import { ASK_BLOCKED_REPLY } from "@/config/ask";
 import type { PrismaClient } from "@/generated/prisma/client";
 import { anthropic, chatModel } from "@/lib/anthropic";
-import { addSpend, overDailyCap } from "./spend";
+import { addSpend, costInHundredthsOfCents, overDailyCap } from "./spend";
 import type { Topic } from "./context";
 import {
   checkGuardrails,
@@ -24,6 +25,7 @@ import {
   type GuardrailIssue,
 } from "@/lib/guardrails";
 import { DEBT_TOOL_STATUS } from "./debt-tools";
+import { parseDecision } from "./decision-intents";
 import { toolsFor } from "./tool-select";
 import { CHAT_TOOLS, chatPrimer, proposeAction, runChatTool, type Proposal } from "./claude-tools";
 import { BLOCK_KINDS, buildBlock, type BlockKind } from "./block-data";
@@ -44,7 +46,7 @@ import type { Reply } from "./replies";
 // the answer streamed as it's written (onEvent), a sentence at a time once each passes the
 // guardrails (./guarded-text), with what Jane is looking up in between.
 
-export const CHAT_PROMPT_VERSION = "chat-v13";
+export const CHAT_PROMPT_VERSION = "chat-v15";
 
 // The one rule that differs in demo advice mode (spec step 98).
 const NO_ADVICE = `- Never give investment, tax or legal advice, and don't mention investments, taxes or legal matters at all. Don't suggest financial products beyond Jane's pick from finding_details.`;
@@ -60,6 +62,7 @@ Be useful, like a friend who's good with money and has their numbers in front of
 - What they've told you is under "remembered" in their numbers. Respect it: never suggest anything they said not to suggest, or cutting something they said they need.
 - Follow the conversation (spec step 193): "it", "that one", "the other one", "do it" and "and for my wife's car?" mean what was just said or what the last answer was about (given with their numbers). Don't ask again what they already told you.
 - When they ask two things in one message, answer both, in order, each with its figure; the first sentence still gives the first answer. When you really can't tell what they mean, ask one short question that names the likely choices ("Do you mean your Netflix or your Hulu?"). Never a generic list of things you can do when one of your tools fits.
+- Every message gets a written answer from you, whatever it is: a command ("cancel Netflix", "approve the plan", "undo", "help"), a short reply ("yes", "ok and?", "what do you mean", "why"), a greeting or a thing you can't do. Say in words what it is or what tapping a button would do, with their figures, and only then offer the button. A button or a card is never the whole reply.
 - Say what the data says plainly: if a tool gives a name, a figure or a date, state it, never "probably" or "it looks like". Say you don't know only when no tool has it.
 - If they push back ("you tell me"), give a straight answer from their numbers. Don't repeat yourself or hand it back to them.
 - Every answer must stand on its own, in words first: what the answer is, with their figures, and why. A button is extra. Never begin with, or talk about, a button or what you "put" under the answer (the app adds that line itself), and never answer with only a button or "tap the button".
@@ -81,6 +84,9 @@ How to answer:
 - Use only dollar amounts that appear in those numbers or in tool results, written exactly as they appear there (with the cents). Don't add, subtract, round or estimate amounts yourself.
 - Keep it short: a few sentences or a short list. Plain words, no jargon, no headings. Don't write anything before a lookup; just look it up.
 - You can't do anything yourself. When something can be done (cancel or lower something the app found, approve the plan, start a goal), call propose_action once so they get a button, and say what tapping it does. Never say it's done.
+- "Tell me more" or "why" about a finding you just discussed (its details are in their numbers: don't look it up again): add NEW facts in words, never the same sentence again: how it was found, the dates and amounts from the evidence, what happens if they do nothing, and what Jane would do. No button talk.
+- "How can I pay less / save more / lower ..." gets two or three concrete moves with their own numbers (which to do first and what it saves, or when it's paid off), written out, then the button. Never answer by pointing at a page.
+- Write your answer first, then call propose_action or show_block at the very end of that same turn if a button or a picture helps: the answer you wrote is the answer.
 - Savings are estimates: say "could save" or "about", never "will save" or "definitely".
 ${NO_ADVICE}
 - To "hi" or "thanks", answer in a sentence and mention one useful thing from their numbers.
@@ -225,6 +231,19 @@ export function plainText(text: string): string {
     .replace(/`([^`]+)`/g, "$1");
 }
 
+// What the answer says about its own button ("I've put a link under this answer"): the app
+// adds the button's line itself, so Claude's sentences about it are dropped.
+const BUTTON_TALK =
+  /\b(?:(?:put|added|placed|attached|left)\s+(?:a |an |the |one )?(?:\w+\s+)?(?:button|link)s?\b|(?:button|link)s? (?:below|under (?:this|my|the) answer)|under this answer|with the button below|using the button|tap the (?:button|link) below)/i;
+
+export function withoutButtonTalk(text: string): string {
+  return text
+    .split(/(?<=[.!?])\s+/)
+    .filter((sentence) => !BUTTON_TALK.test(sentence))
+    .join(" ")
+    .trim();
+}
+
 // Where the time goes on a free question (one log line each, numbers only): the person's
 // numbers, Claude's first stream event and first text, the rounds, and the tokens, so a slow
 // deploy can be read from the logs. Times are milliseconds from the start of the call.
@@ -245,12 +264,18 @@ type ChatTiming = {
   toolsSent: number;
   // Why the answer came from the rules instead (no text, numbers only).
   reason: string | null;
+  // Each round: how it ended, the tools it asked for (the button and picture tools too), how
+  // much text it wrote, and how long it took, so a hidden round can be seen.
+  rounds: { stop: string; tools: string[]; textChars: number; ms: number }[];
+  // Tries again after a 429 or a server error, and what the answer cost (hundredths of a cent).
+  retries: number;
+  costHundredths: number;
 };
 
 // What the last answer was about, in words for Claude (spec step 193).
 export function topicLine(topic: Topic): string {
   const what = [topic.target, topic.category, topic.month].filter(Boolean).join(", ");
-  return `Your last answer was about ${what || topic.kind}${topic.verb ? ` (they were asking to ${topic.verb} it)` : ""}. "It", "that one" and "the other one" mean that or what you just said.`;
+  return `Your last answer was about ${what || topic.kind}${topic.verb ? ` (they were asking to ${topic.verb} it)` : ""}. If their message points back ("it", "that one", "the other one", "why", "tell me more", "ok and?", "what do you mean"), it is about that or what you just said; if it is a new question, ignore this.`;
 }
 
 export async function askClaudeInChat(
@@ -273,6 +298,9 @@ export async function askClaudeInChat(
     tools: [],
     toolsSent: 0,
     reason: null,
+    rounds: [],
+    retries: 0,
+    costHundredths: 0,
   };
   let outcome = "error";
   try {
@@ -287,6 +315,14 @@ export async function askClaudeInChat(
         ...rest,
         outcome,
         totalMs: Date.now() - startedAt,
+        // Time in none of the above: guardrail checks, the spend record, waiting between steps.
+        costCents: Math.round(timing.costHundredths) / 100,
+        otherMs:
+          Date.now() -
+          startedAt -
+          (timing.primerMs ?? 0) -
+          timing.rounds.reduce((n, r) => n + r.ms, 0) -
+          timing.tools.reduce((n, t) => n + t.ms, 0),
         model: chatModel(),
         toolsSent: timing.toolsSent,
       }),
@@ -343,7 +379,40 @@ async function askClaude(
     dollarFigures(text).map((f) => f.cents),
   );
   allowedCents.push(...primer.cents);
+  // The finding that was just talked about: its details go up front, so "tell me more" is one
+  // round of writing, not a lookup first.
+  let findingBlock = "";
+  if (topic?.findingId) {
+    const lookedUp = Date.now();
+    try {
+      const detail = await runChatTool(
+        userId,
+        "finding_details",
+        { finding_id: topic.findingId },
+        { client, now },
+      );
+      timing.tools.push({ name: "finding_details (up front)", ms: Date.now() - lookedUp });
+      allowedCents.push(...detail.cents, ...dollarFigures(detail.content).map((f) => f.cents));
+      findingBlock = `\n\nThe finding just discussed (finding_details, already looked up, id ${topic.findingId}):\n${detail.content}`;
+    } catch {
+      // Without it Claude can still look the finding up itself.
+    }
+  }
   let rewrites = 0;
+  let decisionUsed = false;
+  let retriesLeft = 1;
+  const partialAnswer = (): ClaudeAnswer | null => {
+    const kept = withoutButtonTalk(draft.shownText()).trim();
+    if (kept.length < 20) return null;
+    return {
+      kind: "answer",
+      reply: {
+        body: plainText(kept),
+        actions: proposal?.actions ?? [],
+        refs: { ...(proposal?.refs ?? {}), ...(advice ? { advice: true as const } : {}) },
+      },
+    };
+  };
   // Only the last few turns: a long thread slows every follow-up. The topic of the last
   // answer is in the numbers sent with the question, so a short follow-up keeps its context.
   const messages = conversation(history.slice(-CHAT_CLAUDE_HISTORY), question);
@@ -360,7 +429,9 @@ async function askClaude(
   let shown: AnswerBlock | null = null;
   const draft = new GuardedText(
     () => allowedCents,
-    (text) => onEvent({ type: "text", text: plainText(text) }),
+    (text) => {
+      if (!BUTTON_TALK.test(text)) onEvent({ type: "text", text: plainText(text) });
+    },
     profile,
   );
   const system: Anthropic.TextBlockParam[] = [
@@ -372,7 +443,7 @@ async function askClaude(
     },
     {
       type: "text",
-      text: `The person's numbers right now (today is ${now.toISOString().slice(0, 10)}):\n${primer.text || "None available."}${topic ? `\n\n${topicLine(topic)}` : ""}${style ? `\n\n${style}` : ""}`,
+      text: `The person's numbers right now (today is ${now.toISOString().slice(0, 10)}):\n${primer.text || "None available."}${topic ? `\n\n${topicLine(topic)}` : ""}${findingBlock}${style ? `\n\n${style}` : ""}`,
     },
   ];
 
@@ -442,6 +513,15 @@ async function askClaude(
       timer = setTimeout(stop, turn === 0 ? Math.min(firstWordsMs, left) : Math.max(0, left));
       timing.turns = turn + 1;
       response = await stream.finalMessage();
+      timing.rounds.push({
+        stop: String(response.stop_reason),
+        tools: response.content.flatMap((b) => (b.type === "tool_use" ? [b.name] : [])),
+        textChars: response.content.reduce(
+          (n, b) => n + (b.type === "text" ? b.text.length : 0),
+          0,
+        ),
+        ms: Date.now() - turnStarted,
+      });
     } catch (error) {
       // Our own abort can surface as any error type: it is "too slow", never a crash.
       if (!stopped && !(error instanceof Anthropic.APIError)) throw error;
@@ -456,11 +536,26 @@ async function askClaude(
           status: error instanceof Anthropic.APIError ? error.status : undefined,
           reason: String((error as Error).message).slice(0, 300),
         });
-        // Only Claude itself failing (rate limit, overloaded, an error) pauses it.
+        // Only Claude itself failing (rate limit, overloaded, an error) is tried once more,
+        // and only then pauses it.
         const status = (error instanceof Anthropic.APIError ? error.status : 0) ?? 0;
         if (status === 429 || status >= 500) {
+          if (retriesLeft > 0 && draft.shownText().trim() === "") {
+            retriesLeft -= 1;
+            timing.retries += 1;
+            await new Promise((resolve) => setTimeout(resolve, CHAT_CLAUDE_RETRY_MS));
+            turn -= 1;
+            continue;
+          }
           claudeDownUntil = Date.now() + CHAT_CLAUDE_COOLDOWN_SECONDS * 1000;
         }
+      }
+      // Text already shown stays: it is what the person has read, so the answer is that, not a
+      // retraction to "I couldn't look into that".
+      const partial = partialAnswer();
+      if (partial) {
+        timing.reason ??= "partial";
+        return partial;
       }
       return fail(stopped ? "too_slow" : "api_error");
     } finally {
@@ -471,22 +566,34 @@ async function askClaude(
     timing.cachedInputTokens += response.usage?.cache_read_input_tokens ?? 0;
     timing.cacheWriteTokens += response.usage?.cache_creation_input_tokens ?? 0;
     timing.outputTokens += response.usage?.output_tokens ?? 0;
-    await addSpend(
-      userId,
-      {
-        model: chatModel(),
-        inputTokens: response.usage?.input_tokens ?? 0,
-        outputTokens: response.usage?.output_tokens ?? 0,
-        cacheReadTokens: response.usage?.cache_read_input_tokens ?? 0,
-        cacheWriteTokens: response.usage?.cache_creation_input_tokens ?? 0,
-      },
-      { client, now },
-    );
+    const used = {
+      model: chatModel(),
+      inputTokens: response.usage?.input_tokens ?? 0,
+      outputTokens: response.usage?.output_tokens ?? 0,
+      cacheReadTokens: response.usage?.cache_read_input_tokens ?? 0,
+      cacheWriteTokens: response.usage?.cache_creation_input_tokens ?? 0,
+    };
+    timing.costHundredths += costInHundredthsOfCents(used);
+    await addSpend(userId, used, { client, now });
+    // The answer was written and only a button or a picture was asked for after it: that text
+    // IS the answer, so there is no extra round just to be told "noted".
+    const writtenText = response.content
+      .flatMap((b) => (b.type === "text" ? [b.text] : []))
+      .join("\n")
+      .trim();
+    const decorationOnly =
+      response.stop_reason === "tool_use" &&
+      writtenText.length > 0 &&
+      response.content.every(
+        (b) => b.type !== "tool_use" || b.name === "propose_action" || b.name === "show_block",
+      );
     if (response.stop_reason === "tool_use") {
-      // Any text so far led into the lookup; the answer comes after it.
-      draft.reset();
-      onEvent({ type: "reset" });
-      messages.push({ role: "assistant", content: response.content });
+      if (!decorationOnly) {
+        // Any text so far led into the lookup; the answer comes after it.
+        draft.reset();
+        onEvent({ type: "reset" });
+        messages.push({ role: "assistant", content: response.content });
+      }
       const results: Anthropic.ToolResultBlockParam[] = [];
       for (const block of response.content) {
         if (block.type !== "tool_use") continue;
@@ -536,34 +643,48 @@ async function askClaude(
           });
           continue;
         }
+        if (block.name === "decision") decisionUsed = true;
         const toolStarted = Date.now();
         const output = await runChatTool(userId, block.name, block.input, { client, now });
         timing.tools.push({ name: block.name, ms: Date.now() - toolStarted });
         allowedCents.push(...output.cents, ...dollarFigures(output.content).map((f) => f.cents));
         results.push({ type: "tool_result", tool_use_id: block.id, content: output.content });
       }
-      messages.push({ role: "user", content: results });
-      continue;
+      if (!decorationOnly) {
+        messages.push({ role: "user", content: results });
+        continue;
+      }
     }
 
-    if (response.stop_reason !== "end_turn") return fail(`stop_${response.stop_reason}`);
+    if (response.stop_reason !== "end_turn" && !decorationOnly) {
+      return fail(`stop_${response.stop_reason}`);
+    }
     draft.finish();
     const text = response.content
       .flatMap((b) => (b.type === "text" ? [b.text] : []))
       .join("\n")
       .trim();
     if (!text) return fail("empty");
-    const check = checkGuardrails(text, allowedCents, undefined, profile);
+    // Sentences about a button or link "under this answer" are dropped; an answer that was
+    // only that (no figure, hardly a sentence) isn't an answer, so the rules answer instead.
+    const spoken = withoutButtonTalk(text);
+    if (spoken !== text && spoken.length < 80 && !/\d/.test(spoken)) return fail("button_only");
+    const check = checkGuardrails(spoken, allowedCents, undefined, profile);
     if (!check.ok && rewrites < CHAT_CLAUDE_REWRITES && turn + 1 < maxTurns) {
       // Once, Claude is told what can't be shown and answers again.
       rewrites += 1;
       draft.reset();
       onEvent({ type: "reset" });
       onEvent({ type: "status", text: "Checking my answer…" });
-      messages.push({ role: "assistant", content: response.content });
+      // Text only: a button or picture call in this turn got no tool_result, and a tool_use
+      // without one is a 400.
+      messages.push({
+        role: "assistant",
+        content: response.content.filter((b) => b.type === "text"),
+      });
       messages.push({
         role: "user",
-        content: rewriteRequest(text, check.issues, allowedCents, advice),
+        content: rewriteRequest(spoken, check.issues, allowedCents, advice),
       });
       continue;
     }
@@ -582,6 +703,15 @@ async function askClaude(
     if (proposal?.refs.findingId) {
       refs.topic = { kind: "about", findingId: proposal.refs.findingId };
     }
+    // A decision answered through the decision tool is what a following \"why?\" is about.
+    if (decisionUsed && !refs.topic) {
+      const asked = parseDecision(question.toLowerCase());
+      refs.topic = {
+        kind: "decision",
+        category: asked?.item ?? "other",
+        target: asked?.label ?? "that",
+      };
+    }
     // Its words pass the same guardrails as the answer, or it isn't shown.
     if (shown && checkGuardrails(drawBlock(shown).alt, allowedCents, undefined, profile).ok) {
       refs.block = shown;
@@ -589,10 +719,10 @@ async function askClaude(
     return {
       kind: "answer",
       reply: {
-        body: proposal?.line ? `${plainText(text)}\n\n${proposal.line}` : plainText(text),
+        body: proposal?.line ? `${plainText(spoken)}\n\n${proposal.line}` : plainText(spoken),
         actions: proposal?.actions ?? [],
         // Demo advice is always labelled (the chat shows DEMO_ADVICE_LABEL under it).
-        refs: advice && isAdvice(text) ? { ...refs, advice: true } : refs,
+        refs: advice ? { ...refs, advice: true } : refs,
       },
     };
   }
