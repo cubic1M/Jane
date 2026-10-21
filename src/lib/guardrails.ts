@@ -81,6 +81,11 @@ const REFERRAL = [
   /\b(?:talk|speak|check|consult|ask|work|go|reach out|turn) (?:to|with) (?:a|an|your|the)\b[^.!?]{0,40}\b(?:lawyer|attorney|professional|expert|advisor|adviser)\b/i,
   /\b(?:a|an|your) (?:\w+ )?(?:lawyer|attorney) (?:can|could|is the right|would)\b/i,
 ];
+// Naming who handles the legal part ("an estate attorney or the bank's bereavement team handles
+// that") is a pointer, not advice, in both profiles.
+const HANDLERS = [
+  /\b(?:estate (?:attorney|lawyer)|probate (?:attorney|lawyer)|attorney|lawyer|bereavement team|estate team|executor)s?\b[^.!?]{0,60}\b(?:handles?|can help|can walk you|will walk you|knows how|is the right|are the right|can explain)\b/i,
+];
 const ADVICE_OF_ITS_OWN = /\b(?:you should|you need to|you must|file for|sue)\b/i;
 
 // "Legal deductions", "legal ways": the word as an adjective for what is allowed, not advice.
@@ -91,8 +96,8 @@ const BENIGN_LEGAL =
 // advice, points to a lawyer, are not advice about the thing they name: they are taken out
 // before checking. `refusalsOnly` (the standard profile) takes out only her own "I can't".
 function withoutReferrals(text: string, refusalsOnly = false): string {
-  const patterns = refusalsOnly ? REFERRAL.slice(0, 2) : REFERRAL;
-  const sensitive = [...LEGAL, ...(refusalsOnly ? TAX : [])];
+  const patterns = [...(refusalsOnly ? REFERRAL.slice(0, 2) : REFERRAL), ...HANDLERS];
+  const sensitive = [...LEGAL, ...TAX];
   return text
     .split(/(?<=[.!?])\s+/)
     .filter(
@@ -112,6 +117,10 @@ function withoutReferrals(text: string, refusalsOnly = false): string {
 function withoutApprovedSentences(text: string): string {
   return APPROVED_DEBT_SENTENCES.reduce((t, sentence) => t.split(sentence).join(" "), text);
 }
+
+// "No guarantee", "can't promise", "isn't guaranteed": saying there is no promise isn't one.
+const NEGATED_PROMISE =
+  /\b(?:not|never|no|isn(?:'|’)?t|aren(?:'|’)?t|doesn(?:'|’)?t|don(?:'|’)?t|can(?:'|’)?t|cannot|won(?:'|’)?t|without)\s+(?:\w+\s+)?(?:a\s+|any\s+)?(?:guarantee\w*|promise\w*|definitely|certain\w*)\b/gi;
 
 // (d) Promised outcomes. Savings are estimates: "could save about", never "will save".
 const GUARANTEE = [
@@ -179,30 +188,63 @@ export function unsupportedFigures(text: string, allowedCents: readonly number[]
 // outcomes and legal advice stay blocked. Text it passes carries DEMO_ADVICE_LABEL.
 export type GuardrailProfile = "standard" | "demo_advice";
 
-export function checkGuardrails(
+type Scan = { issues: GuardrailIssue[]; matched: string[] };
+
+function scan(
   text: string,
   allowedCents: readonly number[],
-  findingType?: FindingType,
-  profile: GuardrailProfile = "standard",
-): GuardrailResult {
+  findingType: FindingType | undefined,
+  profile: GuardrailProfile,
+): Scan {
   const issues: GuardrailIssue[] = [];
+  const matched: string[] = [];
   const advice = profile === "demo_advice";
   const original = text;
   text = withoutApprovedSentences(text);
   text = text.replace(BENIGN_LEGAL, "allowed");
   // A refusal isn't advice; in demo advice a pointer to a lawyer isn't either.
   text = withoutReferrals(text, !advice);
+  const hits = (patterns: readonly RegExp[], label: string) => {
+    const found = patterns.filter((p) => p.test(text));
+    matched.push(...found.map((p) => `${label}:${p.source.slice(0, 60)}`));
+    return found.length > 0;
+  };
   const required = findingType && REQUIRED_WORDING[findingType];
   if (required && !required.test(original)) issues.push("missing_required_wording");
-  if (!advice && INVESTMENT.some((p) => p.test(text))) issues.push("investment_advice");
-  if ((!advice && TAX.some((p) => p.test(text))) || LEGAL.some((p) => p.test(text))) {
-    issues.push("tax_or_legal_advice");
-  }
+  if (!advice && hits(INVESTMENT, "investment")) issues.push("investment_advice");
+  const tax = !advice && hits(TAX, "tax");
+  const legal = hits(LEGAL, "legal");
+  if (tax || legal) issues.push("tax_or_legal_advice");
   if (dollarFigures(text).some((f) => !supported(f, allowedCents))) {
     issues.push("unsupported_dollar_figure");
   }
-  if (GUARANTEE.some((p) => p.test(text))) issues.push("guaranteed_outcome");
+  const unnegated = text.replace(NEGATED_PROMISE, " ");
+  const promised = GUARANTEE.filter((p) => p.test(unnegated));
+  if (promised.length > 0) {
+    issues.push("guaranteed_outcome");
+    matched.push(...promised.map((p) => `guarantee:${p.source.slice(0, 60)}`));
+  }
+  return { issues, matched };
+}
+
+export function checkGuardrails(
+  text: string,
+  allowedCents: readonly number[],
+  findingType?: FindingType,
+  profile: GuardrailProfile = "standard",
+): GuardrailResult {
+  const { issues } = scan(text, allowedCents, findingType, profile);
   return issues.length === 0 ? { ok: true } : { ok: false, issues };
+}
+
+// Which rules matched, as the rule's own pattern (never the person's words), so a block can be
+// traced in the logs.
+export function guardrailMatches(
+  text: string,
+  allowedCents: readonly number[],
+  profile: GuardrailProfile = "standard",
+): string[] {
+  return scan(text, allowedCents, undefined, profile).matched;
 }
 
 // (e) Recommending one choice over another. The debt planner is education: it shows the

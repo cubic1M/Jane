@@ -117,7 +117,7 @@ describe.runIf(url)("debt decisions against a real database", { timeout: 60_000 
       /^A Pay in 4 plan costs nothing extra/,
     );
     expect((await ask(chris, "can I afford a car?")).body).toMatch(
-      /^You can afford a car up to about \$[\d,.]+, keeping the all-in cost under /,
+      /^A comfortable car for you is around \$[\d,.]+, about \$[\d,.]+ a month all in/,
     );
   });
 
