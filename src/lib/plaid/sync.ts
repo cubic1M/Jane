@@ -83,33 +83,35 @@ type Options = {
 };
 
 async function saveAccounts(db: ScopedDb, itemId: string, sync: { accounts: NormalizedAccount[] }) {
-  const ids = new Map<string, string>();
-  for (const account of sync.accounts) {
-    const saved = await db.accounts.upsert({
-      where: { plaidAccountId: account.ref },
-      create: {
-        userId: db.userId,
-        source: "plaid",
-        itemId,
-        plaidAccountId: account.ref,
-        name: account.name,
-        mask: account.mask,
-        type: SYNCED_KINDS[account.kind].type,
-        subtype: account.plaidSubtype ?? SYNCED_KINDS[account.kind].subtype,
-        currentBalanceCents: account.currentBalanceCents,
-      },
-      update: {
-        name: account.name,
-        mask: account.mask,
-        currentBalanceCents: account.currentBalanceCents,
-        // Investment accounts keep Plaid's own subtype (spec step 128).
-        ...(account.plaidSubtype ? { subtype: account.plaidSubtype } : {}),
-      },
-      select: { id: true },
-    });
-    ids.set(account.ref, saved.id);
-  }
-  return ids;
+  // Together, not one after another: each is a round trip to the database and the person is
+  // waiting on the first scan (a person with many accounts waited the longest).
+  const saved = await Promise.all(
+    sync.accounts.map((account) =>
+      db.accounts.upsert({
+        where: { plaidAccountId: account.ref },
+        create: {
+          userId: db.userId,
+          source: "plaid",
+          itemId,
+          plaidAccountId: account.ref,
+          name: account.name,
+          mask: account.mask,
+          type: SYNCED_KINDS[account.kind].type,
+          subtype: account.plaidSubtype ?? SYNCED_KINDS[account.kind].subtype,
+          currentBalanceCents: account.currentBalanceCents,
+        },
+        update: {
+          name: account.name,
+          mask: account.mask,
+          currentBalanceCents: account.currentBalanceCents,
+          // Investment accounts keep Plaid's own subtype (spec step 128).
+          ...(account.plaidSubtype ? { subtype: account.plaidSubtype } : {}),
+        },
+        select: { id: true },
+      }),
+    ),
+  );
+  return new Map(sync.accounts.map((account, i) => [account.ref, saved[i].id]));
 }
 
 async function saveTransactions(db: ScopedDb, accountIds: Map<string, string>, sync: PlaidSync) {
@@ -573,45 +575,51 @@ export async function syncItem(
   const accessToken = decrypt(item.accessTokenEncrypted);
   timing.mark("item");
   // The demo bank (spec step 75) answers in Plaid's place; everything after is the same.
-  if (isDemoToken(accessToken)) {
-    api = demoPlaidApi(
-      accessToken,
-      now,
-      await demoSwitches(db),
-      await demoOrders(db),
-      // Spec step 112: loans a refinance paid off.
-      await demoPayoffs(item.userId, { client }),
-      // Spec step 159: extra stand-in accounts the person linked.
-      demoExtrasOf(item.demoExtras),
-    );
-    // Its example options to compare against (spec step 76), and its sample insurance policy
-    // (spec step 102): independent, so together.
-    await Promise.all([
-      ensureDemoOptions({ client, now }),
-      ensureDemoPolicies(item.userId, { client, now }),
-    ]);
-  }
-
-  // The first scan: "still going through your accounts" comes first, before anything Jane finds,
-  // whenever the person gets to the chat.
-  if (progressive && item.transactionsCursor === null) {
-    // A millisecond before this sync's own time: everything Jane posts later in the sync is
-    // stamped from `now` onward, so the hello is strictly first, never tied with the brief.
-    await postScanningHello(item.userId, { client, now: new Date(now.getTime() - 1) }).catch(
-      (error) => console.error("Posting the scanning hello failed", { error: String(error) }),
-    );
+  // Everything the demo bank needs before it can answer, together (each is a round trip):
+  // what it reads about the person, its example options and sample insurance policy, and, on
+  // the first scan, "still going through your accounts", which comes before anything Jane
+  // finds whenever the person gets to the chat.
+  const firstScan = progressive && item.transactionsCursor === null;
+  const [demo] = await Promise.all([
+    isDemoToken(accessToken)
+      ? Promise.all([
+          demoSwitches(db),
+          demoOrders(db),
+          // Spec step 112: loans a refinance paid off.
+          demoPayoffs(item.userId, { client }),
+          // Its example options to compare against (spec step 76), and its sample insurance
+          // policy (spec step 102).
+          ensureDemoOptions({ client, now }),
+          ensureDemoPolicies(item.userId, { client, now }),
+        ])
+      : null,
+    firstScan
+      ? // A millisecond before this sync's own time: everything Jane posts later in the sync is
+        // stamped from `now` onward, so the hello is strictly first, never tied with the brief.
+        postScanningHello(item.userId, { client, now: new Date(now.getTime() - 1) }).catch(
+          (error) => console.error("Posting the scanning hello failed", { error: String(error) }),
+        )
+      : null,
+  ]);
+  if (demo) {
+    // The demo bank (spec step 75) answers in Plaid's place; everything after is the same.
+    // Spec step 159: extra stand-in accounts the person linked.
+    api = demoPlaidApi(accessToken, now, demo[0], demo[1], demo[2], demoExtrasOf(item.demoExtras));
   }
   timing.mark("demo_setup");
   const sync = await new PlaidDataSource(api, accessToken, item.transactionsCursor).load();
   timing.mark("load");
   const accountIds = await saveAccounts(db, item.id, sync);
   timing.mark("save_accounts");
-  // The demo bank's home and car, once its loans are saved (spec step 67).
-  if (isDemoToken(accessToken)) await ensureDemoAssets(item.userId, item.id, { client, now });
-  timing.mark("assets");
-  const counts = await saveTransactions(db, accountIds, sync);
+  // The demo bank's home and car, once its loans are saved (spec step 67), while the
+  // transactions are saved: neither waits on the other.
+  const [counts] = await Promise.all([
+    saveTransactions(db, accountIds, sync),
+    isDemoToken(accessToken) ? ensureDemoAssets(item.userId, item.id, { client, now }) : null,
+  ]);
   // From here the chat can open (accounts and transactions are in).
   timing.mark("save_transactions");
+  if (progressive && item.transactionsCursor === null) timing.log("chat_ready");
   const recurring = await saveRecurringStreams(db, api, accessToken, accountIds);
   timing.mark("recurring");
   const liabilities = item.liabilities
@@ -665,6 +673,7 @@ export async function syncItem(
     timing.mark("suggestions");
     await runJaneAgentSafely(item.userId, { client, now, trigger: scanTrigger, early: true });
     timing.mark("first_brief");
+    timing.log("first_brief");
     // The brief is in the chat: the scan is over for the person (the page stops reloading
     // itself); the sectors' work and Jane's last words still follow and show on the next look.
     await markScanDone(item.userId, { client, now }).catch((error) =>
