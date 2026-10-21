@@ -54,6 +54,17 @@ async function write(userId: string, snapshot: Snapshot | null, { client, now }:
   }
 }
 
+// Saves a snapshot that was just built for another purpose (the brain's run builds one after
+// every sync): the first chat question then finds it saved instead of building it, which is
+// what made a new person's first question slow.
+export async function saveSnapshot(
+  userId: string,
+  snapshot: Snapshot | null,
+  options: Options,
+): Promise<void> {
+  await write(userId, snapshot, options);
+}
+
 // Builds a fresh snapshot and saves it. After a sync, a scan or a correction.
 export async function refreshSnapshot(userId: string, options: Options): Promise<Snapshot | null> {
   const { loadSnapshot } = await import("./snapshot");
