@@ -50,7 +50,7 @@ import type { Reply } from "./replies";
 // the answer streamed as it's written (onEvent), a sentence at a time once each passes the
 // guardrails (./guarded-text), with what Jane is looking up in between.
 
-export const CHAT_PROMPT_VERSION = "chat-v26";
+export const CHAT_PROMPT_VERSION = "chat-v27";
 
 // The one rule that differs in demo advice mode (spec step 98).
 const NO_ADVICE = `- Never give investment, tax or legal advice, and don't mention investments, taxes or legal matters at all. Don't suggest financial products beyond Jane's pick from finding_details.`;
@@ -93,7 +93,8 @@ How to answer:
 - When they ask something Jane can't do or shouldn't (write a will or other legal papers, get around a login, move money): say so in the first sentence, plainly, point to who can (a lawyer, the bank), then what Jane can do with their figures.
 - "Do I need…", "should I…" and "is it worth…" questions start with a plain yes, no or "it depends on" one named thing, then why, with their figures. A rule of thumb ("safe withdrawal rate") is stated together with the person's own balance from their numbers (the rule as a percent, their balance as given); never work out a new dollar amount yourself.
 - "Change / switch / lower my car insurance" (or home, renters, life, pet) is a request Jane can act on: say what she found (the cheaper quote and how much less, from the tool), then propose_action insurance.reshop for that policy. Never tell the person to ask again in other words.
-- Speak as Jane, about their money: never say "the app", "findings", "open findings", "tools", "tool results", "propose_action" or "what_matters_most", and never name internal ids. Say "I found", "I can see", "in your accounts" instead.
+- If two figures for the same thing disagree (an estimate in your numbers and a tool's result), use the tool's and say nothing about the other: never "my earlier guess", "the tool shows" or "the brief said".
+- Speak as Jane, about their money: never say "the app", "findings", "open findings", "the tool", "tools", "my earlier guess", "tool results", "propose_action" or "what_matters_most", and never name internal ids. Say "I found", "I can see", "in your accounts" instead.
 - When a button's card goes under your answer (you called propose_action), your text is one or two sentences that don't repeat the card's figures: the card carries the details.
 - If you were not given propose_action for this message, say nothing about buttons, an earlier button or an offer; just answer the question. "What are the other options from <insurer>" is a question: answer with that insurer's savings and quote options and their figures.
 - If the money health result has no score (only words), say it in those words ("your money health is under strain right now") and the one thing that would raise it; never quote a number or the word "Building" for it.
@@ -248,12 +249,20 @@ function rewriteRequest(
 // The chat shows plain text: Claude's markdown emphasis, headings and code marks are dropped
 // ("**Card use:**" is "Card use:"), its bullets kept as dashes.
 export function plainText(text: string): string {
-  return text
-    .replace(/\*\*([\s\S]+?)\*\*/g, "$1")
-    .replace(/__([\s\S]+?)__/g, "$1")
-    .replace(/^#{1,6}\s+/gm, "")
-    .replace(/^\s*[*•]\s+/gm, "- ")
-    .replace(/`([^`]+)`/g, "$1");
+  return (
+    text
+      .replace(/\*\*([\s\S]+?)\*\*/g, "$1")
+      .replace(/__([\s\S]+?)__/g, "$1")
+      .replace(/^#{1,6}\s+/gm, "")
+      .replace(/^\s*[*•]\s+/gm, "- ")
+      .replace(/`([^`]+)`/g, "$1")
+      // "The tool shows $2,448" is Jane saying what she can see.
+      .replace(
+        /\b(?:the|my) tools?\s+(?:shows?|says?|gives?|returned|reports?|found|has)\b/gi,
+        "I can see",
+      )
+      .replace(/\baccording to (?:the|my) tools?\b/gi, "from your accounts")
+  );
 }
 
 // What the answer says about its own button ("I've put a link under this answer"): the app
@@ -321,7 +330,7 @@ export function withoutTapYes(text: string): string {
 
 // The names of Jane's own machinery: nobody should read them in an answer.
 const INTERNAL_NAMES =
-  /\b(?:propose_action|open_findings?|what_matters_most|finding_details|show_block|tool results?|the findings the app has open)\b/i;
+  /\b(?:propose_action|open_findings?|what_matters_most|finding_details|show_block|tool results?|the findings the app has open|(?:my|an) earlier (?:guess|estimate) of|(?:the|my) (?:brief|primer|tools?) (?:said|says|showed|shows) (?:something|a different))\b/i;
 
 export function withoutButtonTalk(text: string): string {
   return text
@@ -545,7 +554,9 @@ async function askClaude(
     [...history].reverse().find((m) => m.role === "user")?.content ?? null,
     topic,
     now.toISOString().slice(0, 10),
-  ).filter((t) => (actionRequest && !prepared) || t.name !== "propose_action");
+    // The button tool only for a request to act, and not when the card is already prepared.
+    { buttons: actionRequest && !prepared },
+  );
   timing.toolsSent = tools.length;
   let proposal: Extract<Proposal, { ok: true }> | null = prepared
     ? { ok: true, actions: prepared.actions, refs: prepared.refs, line: prepared.body }
