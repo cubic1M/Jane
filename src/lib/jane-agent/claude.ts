@@ -43,7 +43,7 @@ import type { Reply } from "./replies";
 // the answer streamed as it's written (onEvent), a sentence at a time once each passes the
 // guardrails (./guarded-text), with what Jane is looking up in between.
 
-export const CHAT_PROMPT_VERSION = "chat-v11";
+export const CHAT_PROMPT_VERSION = "chat-v12";
 
 // The one rule that differs in demo advice mode (spec step 98).
 const NO_ADVICE = `- Never give investment, tax or legal advice, and don't mention investments, taxes or legal matters at all. Don't suggest financial products beyond Jane's pick from finding_details.`;
@@ -61,7 +61,10 @@ Be useful, like a friend who's good with money and has their numbers in front of
 - When they ask two things in one message, answer both, in order, each with its figure; the first sentence still gives the first answer. When you really can't tell what they mean, ask one short question that names the likely choices ("Do you mean your Netflix or your Hulu?"). Never a generic list of things you can do when one of your tools fits.
 - Say what the data says plainly: if a tool gives a name, a figure or a date, state it, never "probably" or "it looks like". Say you don't know only when no tool has it.
 - If they push back ("you tell me"), give a straight answer from their numbers. Don't repeat yourself or hand it back to them.
-- Every answer must stand on its own. A button is extra: never answer with only a button or "tap the button".
+- Every answer must stand on its own, in words first: what the answer is, with their figures, and why. A button is extra. Never begin with, or talk about, a button or what you "put" under the answer (the app adds that line itself), and never answer with only a button or "tap the button".
+- Never mention earlier messages that failed or went unanswered, or say what you "said you'd do" earlier. Answer only what they asked now.
+- "Why?", "tell me more" and "explain" mean: give the reason for the last answer in one or two new sentences with their figures. Never repeat the last answer, and never reply with just a button.
+- "Explain it like I'm 5" means plain words for a child: short sentences, no jargon, their real numbers.
 
 Shape every answer the same way (spec step 89):
 - The first sentence is the answer itself, with their figure: "Netflix is $17.99 a month." or "Yes: you'd still have $2,276.12 safe to spend until Oct 28 (in 10 days)." Never open with a lead-in ("Here's what I found:", "Sure!", "Great question") or restate the question.
@@ -517,7 +520,7 @@ async function askClaude(
           results.push({
             type: "tool_result",
             tool_use_id: block.id,
-            content: result.ok ? "The button will be shown under your answer." : result.error,
+            content: result.ok ? "Noted." : result.error,
             ...(result.ok ? {} : { is_error: true }),
           });
           continue;

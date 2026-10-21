@@ -97,8 +97,16 @@ export async function recentTurns(
     take: CHAT_CLAUDE_HISTORY,
     select: { kind: true, body: true },
   });
-  return rows
-    .reverse()
+  // What Jane couldn't answer (the "couldn't look into that" and "which one" replies) isn't
+  // history Claude should see, with the question it came from: it would answer those instead.
+  const turns = rows.reverse();
+  const unanswered = (m: { kind: string; body: string }) =>
+    m.kind === "reply" &&
+    /^(?:I couldn't look into that|I can't answer that one yet|Which one do you mean|You've asked me a lot)/.test(
+      m.body,
+    );
+  return turns
+    .filter((m, i) => !unanswered(m) && !(m.kind === "user" && unanswered(turns[i + 1] ?? m)))
     .map((m) => ({ role: m.kind === "user" ? "user" : "assistant", content: m.body }));
 }
 

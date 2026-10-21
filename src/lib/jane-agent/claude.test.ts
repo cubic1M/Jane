@@ -162,7 +162,7 @@ describe("askClaudeInChat", () => {
     // Jane's own wording for the finding follows Claude's text.
     expect(result.reply.body).toMatch(/\n\nReview your Hulu subscription\. Could save about/);
     expect(lastToolResult(1)).toMatchObject({
-      content: "The button will be shown under your answer.",
+      content: "Noted.",
     });
   });
 
