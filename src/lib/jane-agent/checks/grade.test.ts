@@ -81,6 +81,14 @@ describe("fixedChecks", () => {
     ).toEqual([]);
   });
 
+  it("wants a written answer: never a button, or a few words, on their own", () => {
+    expect(failed(fixedChecks(q("x"), rules("Tap the button below."), facts))).toContain("written");
+    expect(failed(fixedChecks(q("x"), rules("OK."), facts))).toContain("written");
+    expect(failed(fixedChecks(q("x"), rules("Netflix is $17.99 a month."), facts))).not.toContain(
+      "written",
+    );
+  });
+
   it("writes money Jane's way", () => {
     expect(failed(fixedChecks(q("x"), rules("Netflix is $17.99/mo."), facts))).toEqual(["tone"]);
     expect(failed(fixedChecks(q("x"), rules("Netflix is $17.99 per month."), facts))).toEqual([

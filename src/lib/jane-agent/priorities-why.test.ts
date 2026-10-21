@@ -32,7 +32,22 @@ describe("what am I doing wrong", () => {
     "what am i doing wrong",
     "what's my biggest money mistake",
   ])("reads %j as what matters most", (text) => {
-    expect(parseIntent(text, ASOF).kind).toBe("priorities");
+    expect(parseIntent(text, ASOF)).toMatchObject({ kind: "priorities", one: true });
+  });
+
+  it("gives the one thing in a sentence with its number, not the list", () => {
+    const reply = prioritiesReply(
+      [
+        item("Pay down the card", "it costs you $1,296 a year in interest"),
+        item("Cancel Hulu", "x"),
+      ],
+      false,
+      true,
+    );
+    expect(reply.body).toBe(
+      "Pay down the card. It costs you $1,296 a year in interest. It's worth about $1,296.00 a year.",
+    );
+    expect(reply.body).not.toMatch(/matter most|Cancel Hulu/);
   });
 });
 

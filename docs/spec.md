@@ -3196,8 +3196,9 @@ answer first: a question worded a little differently falls through to three gene
 buttons, sectors collide over the same words, and Claude's answers have never been graded.
 This round is about quality, not new features. Jane understands anything about the
 person's money, answers it right, and feels quick and calm to use. Claude reads every free-text
-message and works through every sector's tools; the rules stay for button taps, exact
-commands and when Claude is unavailable. Every change is measured on one question bank.
+message and works through every sector's tools; the rules stay for button taps and as the
+backup when Claude is unavailable (see "Chat architecture" at the end of this file, which
+replaces rules-first). Every change is measured on one question bank.
 
 ### Step 189: The question bank
 
@@ -4461,3 +4462,57 @@ Check each partner's current docs and terms before building.
 
 Order: card and bill payments first (they act on findings Jane already makes), then
 credit score, tax filing, investing last.
+
+## Chat architecture: Claude answers, Jane is the data (founder, 2026-10-21)
+
+> Jane is essentially a database of all the user's information. Claude runs the chat, pulling
+> from that database to answer. There should never be a prewritten answer. If the user asks
+> anything, it should always be Claude's agent answering, using data from Jane. There should
+> never be some weird incident like a user saying something and all the chat does is pull up a
+> button. Since everything is demo, financial advice is fine.
+
+This replaces "rules first" (steps 191 and 193). It is the chat's architecture:
+
+1. **Every typed message goes to Claude** (`chatModel`, `src/lib/jane-agent/claude.ts`), with no
+   rules or matcher answer in front of it: greetings, commands ("cancel Netflix", "approve all",
+   "undo"), short replies ("yes", "why?", "ok and?", "what do you mean") and decisions ("should I
+   buy bitcoin") alike. The decision paraphrase matcher survives only as the `decision` tool's
+   input reading and as the backup. Rules answer only structured events: button and card taps
+   (Yes, No, Remind, Undo, Why?), which are not free text, and the answer typed to a guided flow's
+   question. With no `ANTHROPIC_API_KEY` (dev, tests) the rules answer typed text, as the backup.
+2. **Jane is tools plus context.** The step 190 registry's tools stay (`CHAT_TOOLS`, ~125, a
+   question is sent the general ones and its sectors', `tool-select.ts`). The stored primer
+   (`primer-store.ts`, refreshed after each sync and scan) carries the numbers, the top three
+   things that matter with their confidence (`what_matters_most`) and the open findings summary;
+   the finding just discussed is looked up up front; the last topic and the recent turns come with
+   the question. Jane computes; Claude never does its own sums (it may only use dollar amounts
+   from the numbers and tool results).
+3. **Demo advice.** In advice mode (`adviceMode`: every account is the demo bank) Claude gives
+   real recommendations on investing, taxes, insurance, loans and crypto, checked with the
+   `demo_advice` guardrail profile, and every answer carries "Demo advice: sample data, not
+   financial advice". `REAL_ACCOUNT_ADVICE` stays false: real accounts keep the no-advice profile.
+4. **A button or a card only ever follows a written answer.** Claude writes the answer first and
+   attaches actions through `propose_action` (and a picture through `show_block`) at the end of the
+   same turn; its sentences about its own button are stripped, and an answer that is only that is not
+   an answer (the backup answers). The checks assert a written answer of at least a sentence for every
+   question in the bank (`written` in `checks/grade.ts`), and a test sends the bank's typed questions,
+   QA's casual phrasings, the founder's transcript and the commands through the chat asserting none
+   reaches a rules answer.
+5. **Failure.** A 429, 5xx or overloaded response is tried once more; only those pause Claude (30
+   seconds). If Claude still fails, runs out of time, is blocked by the guardrails or the month's guard
+   is spent, the person gets a short written answer from the same data (the rules' answer for the
+   question, or where they stand), never "unavailable" and never a retraction: text already shown
+   stays as the answer.
+6. **Speed.** The system prompt and tool definitions are cached, tools are called in parallel in one
+   round, the last round answers with no tools, and the answer streams. Targets: first words under 2
+   seconds, the full answer under 6. `chat_timing` logs the primer, each round (stop, tools, text,
+   milliseconds), the tool times, the tokens, `otherMs` and the cost of every answer.
+7. **Cost.** A sample (Try Jane) person gets 25 answers in all (`claudeTrial`, then a friendly
+   written message); all of Claude's chat answers together are guarded at `CHAT_MONTHLY_CAP_CENTS`
+   (default $8, under the account's $10 limit; `chatmonth:total` in `rate_limits`, kept past the
+   daily cleanup); a daily cap per person stays. Past the month's guard Claude is not asked and the
+   backup answers.
+8. **Measured.** The graded nightly (Claude Haiku as the judge, `docs/chat-quality.md`) asks the bank
+   through the real Claude path, including the casual phrasings and follow-ups, and records understood,
+   figures right, follow-ups, first-words and full-answer times against the depth bar.
+

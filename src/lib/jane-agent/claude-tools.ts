@@ -1,4 +1,7 @@
-import { loadDecisionFacts } from "./decision";
+import { adviceMode } from "@/lib/advice-mode";
+import { dollarFigures } from "@/lib/guardrails";
+import { decisionReply, loadDecisionFacts } from "./decision";
+import { parseDecision } from "./decision-intents";
 import { mattersBlock } from "./primer-matters";
 import { loadSnapshotFast, refreshSnapshot } from "./snapshot-store";
 import { INSURANCE_TOOLS, isInsuranceTool, runInsuranceTool } from "./insurance/tools";
@@ -169,8 +172,14 @@ export const CHAT_TOOLS: Anthropic.Tool[] = [
   {
     name: "decision",
     description:
-      'Where the person stands before a money decision, from their own numbers: card debt and the highest rate, cash and months of spending against the cushion Jane would set, and goals still short. Use it first for "should I buy bitcoin / stocks / a house / a car", "should I invest" and "should I pay off my card or invest". Answer from these numbers (debts at a high rate first, then the cushion, then goals); the crypto, investments or afford tools are only a follow-up. Never predict what the thing will do.',
-    input_schema: noInput,
+      'Jane\'s verdict and the numbers behind it for a money decision ("should I buy bitcoin / stocks / a house / a car", "should I invest", "should I pay off my card or invest", any paraphrase): card debt and its highest rate, cash and months of spending against the cushion, goals still short, and `verdict`, Jane\'s own answer in order of priority (high-rate debt, then the cushion, then goals, then the thing). Write the answer in your own words from the verdict and the numbers, plain and direct, opening with the verdict. Never predict what the thing will do. The crypto, investments or afford tools are only a follow-up.',
+    input_schema: {
+      type: "object",
+      properties: {
+        subject: { type: "string", description: 'What they are thinking of, e.g. "bitcoin".' },
+      },
+      additionalProperties: false,
+    },
   },
   {
     name: "net_worth",
@@ -865,8 +874,22 @@ export async function runChatTool(
       });
     }
     case "decision": {
-      const f = await loadDecisionFacts(userId, { client, now });
+      const args = (input && typeof input === "object" ? input : {}) as Record<string, unknown>;
+      const subject = str(args.subject).slice(0, 80);
+      const [f, advice] = await Promise.all([
+        loadDecisionFacts(userId, { client, now }),
+        adviceMode(userId, { client }),
+      ]);
+      const asked = subject ? parseDecision(`should i buy ${subject.toLowerCase()}`) : null;
+      const verdict = decisionReply(
+        { kind: "decision", item: asked?.item ?? "other", label: subject || null },
+        null,
+        f,
+        advice,
+      ).body;
+      cents.push(...dollarFigures(verdict).map((x) => x.cents));
       return out({
+        verdict,
         cardDebt: money(f.cardDebtCents),
         ...(f.topRateBps ? { highestRatePercent: f.topRateBps / 100 } : {}),
         cash: money(f.cashCents),

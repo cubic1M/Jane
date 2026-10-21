@@ -4,14 +4,38 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 vi.mock("@/lib/session", () => ({ requireUser: vi.fn() }));
 vi.mock("@/lib/home", () => ({ homeSummary: vi.fn() }));
 vi.mock("./snapshot", () => ({ loadSnapshot: vi.fn() }));
+vi.mock("@/lib/advice-mode", () => ({ adviceMode: vi.fn(async () => true) }));
+// The decision tool's facts come from a real database elsewhere (decision.test.ts).
+vi.mock("./decision", async (original) => ({
+  ...(await original<typeof import("./decision")>()),
+  loadDecisionFacts: vi.fn(async () => ({
+    cardDebtCents: 241_050,
+    topRateBps: 2900,
+    cashCents: 100_000,
+    monthlySpendCents: 400_000,
+    cushionTargetCents: 1_200_000,
+    cushionMonths: 0.3,
+    goalsBehind: [],
+  })),
+}));
 // The cost cap has its own tests (./spend.test.ts); here Claude is always under it.
-vi.mock("./spend", () => ({ overDailyCap: vi.fn(async () => false), addSpend: vi.fn() }));
+vi.mock("./spend", async (original) => ({
+  ...(await original<typeof import("./spend")>()),
+  overDailyCap: vi.fn(async () => false),
+  addSpend: vi.fn(),
+}));
 
 import { CHAT_CLAUDE_HISTORY, CHAT_CLAUDE_MAX_TURNS } from "@/config/agent-chat";
 import { ASK_BLOCKED_REPLY } from "@/config/ask";
 import type { PrismaClient } from "@/generated/prisma/client";
 import { homeSummary } from "@/lib/home";
-import { CHAT_UNAVAILABLE_TEXT, askClaudeInChat, plainText, resetClaudeHealth } from "./claude";
+import {
+  CHAT_UNAVAILABLE_TEXT,
+  askClaudeInChat,
+  plainText,
+  resetClaudeHealth,
+  withoutButtonTalk,
+} from "./claude";
 import { forgetPrimer } from "./primer-cache";
 import { CHAT_TOOLS, proposeAction } from "./claude-tools";
 import { loadSnapshot, type Snapshot } from "./snapshot";
@@ -283,8 +307,11 @@ describe("askClaudeInChat", () => {
   });
 
   it("is unavailable on an API error or a refusal", async () => {
-    create.mockRejectedValueOnce(new Anthropic.APIError(500, undefined, "boom", new Headers()));
+    // A server error is tried once more, then it is unavailable.
+    create.mockRejectedValue(new Anthropic.APIError(500, undefined, "boom", new Headers()));
     expect((await askClaudeInChat("u1", [], "Hi", options)).kind).toBe("unavailable");
+    expect(create).toHaveBeenCalledTimes(2);
+    create.mockReset();
     resetClaudeHealth();
     create.mockResolvedValueOnce({ stop_reason: "refusal", content: [] });
     expect((await askClaudeInChat("u1", [], "Hi", options)).kind).toBe("unavailable");
@@ -620,6 +647,30 @@ describe("speed and failures", () => {
     expect(create).not.toHaveBeenCalled();
   });
 
+  it("takes the answer written before a button or picture is asked for, with no extra round", async () => {
+    vi.mocked(homeSummary).mockResolvedValue({ safeToSpend: null, comingUp: [] } as never);
+    create.mockResolvedValueOnce({
+      stop_reason: "tool_use",
+      content: [
+        { type: "text", text: "You can open the goals page to set one up." },
+        {
+          type: "tool_use",
+          id: "t99",
+          name: "propose_action",
+          input: { action: "open", page: "goals" },
+        },
+      ],
+    });
+    const result = await askClaudeInChat("u1", [], "how do i save", options);
+    // One request, not two: the text written before the button is the answer.
+    expect(create).toHaveBeenCalledTimes(1);
+    expect(result).toMatchObject({
+      kind: "answer",
+      reply: { body: "You can open the goals page to set one up." },
+    });
+    expect(result.reply.actions.length).toBeGreaterThan(0);
+  });
+
   it("makes the last round an answer: no more lookups, never 'unavailable' for the turn cap", async () => {
     create
       .mockResolvedValueOnce(toolUse("safe_to_spend"))
@@ -632,6 +683,180 @@ describe("speed and failures", () => {
       (c) => (c[0] as { tool_choice: { type: string } }).tool_choice.type,
     );
     expect(choices).toEqual(["auto", "auto", "none"]);
+  });
+
+  it("drops sentences about its own button, and won't give an answer that is only that", async () => {
+    expect(withoutButtonTalk("Your cards charge 29%. I've put a link under this answer.")).toBe(
+      "Your cards charge 29%.",
+    );
+    for (const talk of [
+      "I've put a link to your debt plan under this answer.",
+      "You can open your debt plan with the button below.",
+      "I've added a button that opens the goals page.",
+    ]) {
+      expect(withoutButtonTalk(talk), talk).toBe("");
+    }
+    // Only button talk, even with a sentence about what the page shows: no answer at all.
+    create.mockResolvedValueOnce(
+      final(
+        "I've put a link to your debt plan under this answer. It shows how to pay off your cards, highest interest first.",
+      ),
+    );
+    const info = vi.spyOn(console, "info").mockImplementation(() => {});
+    expect((await askClaudeInChat("u1", [], "should i buy bitcoin", options)).kind).toBe(
+      "unavailable",
+    );
+    expect(
+      JSON.parse(String(info.mock.calls.find((c) => c[0] === "chat_timing")?.[1])),
+    ).toMatchObject({ reason: "button_only" });
+    // With a verdict and figures, only the button sentence goes.
+    create.mockResolvedValueOnce(
+      final("Not now: your cards charge 29% on $2,410.50. I've put a link under this answer."),
+    );
+    const result = await askClaudeInChat(
+      "u1",
+      [],
+      "my cards owe $2,410.50, should i buy bitcoin",
+      options,
+    );
+    expect(result).toMatchObject({
+      kind: "answer",
+      reply: { body: "Not now: your cards charge 29% on $2,410.50." },
+    });
+  });
+
+  it("never sends a tool_use without its result when it asks for the answer again", async () => {
+    // A figure Jane never gave, with a button call after it: the rewrite request must not
+    // carry the unanswered tool_use (the API refuses that with a 400).
+    create
+      .mockResolvedValueOnce({
+        stop_reason: "tool_use",
+        content: [
+          { type: "text", text: "You will save $9,999.00 a year." },
+          {
+            type: "tool_use",
+            id: "t77",
+            name: "propose_action",
+            input: { action: "open", page: "goals" },
+          },
+        ],
+      })
+      .mockResolvedValueOnce(final("I can't give you a figure for that."));
+    vi.mocked(homeSummary).mockResolvedValue({ safeToSpend: null, comingUp: [] } as never);
+    await askClaudeInChat("u1", [], "how much can i save", options);
+    expect(create).toHaveBeenCalledTimes(2);
+    const second = create.mock.calls[1][0] as { messages: { role: string; content: unknown }[] };
+    const blocks = second.messages.flatMap((m) => (Array.isArray(m.content) ? m.content : []));
+    expect(blocks.some((b: { type?: string }) => b.type === "tool_use")).toBe(false);
+  });
+
+  it("remembers a decision it answered with the decision tool, for a following 'why'", async () => {
+    create
+      .mockResolvedValueOnce(toolUse("decision"))
+      .mockResolvedValueOnce(
+        final("Not now: your cards charge 29%, so paying them off beats bitcoin."),
+      );
+    const result = await askClaudeInChat("u1", [], "should i buy bitcoin", {
+      ...options,
+      advice: true,
+    });
+    expect(result.reply.refs.topic).toEqual({
+      kind: "decision",
+      category: "crypto",
+      target: "bitcoin",
+    });
+  });
+
+  it("keeps the text already shown when Claude is cut off, instead of retracting it", async () => {
+    vi.spyOn(console, "warn").mockImplementation(() => {});
+    const cutOff = () =>
+      ({
+        messages: {
+          stream: () => {
+            const handlers: Record<string, (e: unknown) => void> = {};
+            let reject: (e: unknown) => void = () => {};
+            const stream = {
+              on: (name: string, fn: (e: unknown) => void) => {
+                handlers[name] = fn;
+                return stream;
+              },
+              abort: () => reject(new Anthropic.APIUserAbortError()),
+              finalMessage: () => {
+                handlers.streamEvent?.({ type: "message_start" });
+                handlers.text?.("Your cards charge 29% interest. That is a sure cost. And then");
+                return new Promise((_, r) => (reject = r));
+              },
+            };
+            return stream;
+          },
+        },
+      }) as never;
+    const events: unknown[] = [];
+    const info = vi.spyOn(console, "info").mockImplementation(() => {});
+    const result = await askClaudeInChat("u1", [], "how do i stop paying interest", {
+      ...options,
+      claude: cutOff,
+      firstWordsMs: 30,
+      deadlineMs: 60,
+      onEvent: (e) => events.push(e),
+    });
+    expect(result).toMatchObject({
+      kind: "answer",
+      reply: { body: "Your cards charge 29% interest. That is a sure cost." },
+    });
+    expect(events).toContainEqual({ type: "text", text: "Your cards charge 29% interest." });
+    expect(
+      JSON.parse(String(info.mock.calls.find((c) => c[0] === "chat_timing")?.[1])),
+    ).toMatchObject({ reason: "partial", outcome: "answer" });
+  });
+
+  it("does not pause Claude for our own 400, only for rate limits and server errors", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    const bad = () =>
+      ({
+        messages: {
+          stream: () => {
+            const stream = {
+              on: () => stream,
+              finalMessage: async () => {
+                throw new Anthropic.APIError(400, undefined, "bad request", undefined);
+              },
+            };
+            return stream;
+          },
+        },
+      }) as never;
+    expect((await askClaudeInChat("u1", [], "a", { ...options, claude: bad })).kind).toBe(
+      "unavailable",
+    );
+    create.mockResolvedValueOnce(final("Fine."));
+    expect((await askClaudeInChat("u1", [], "b", options)).kind).toBe("answer");
+  });
+
+  it("tries once more after a rate limit or server error, and answers if that works", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    create
+      .mockRejectedValueOnce(new Anthropic.APIError(529, undefined, "Overloaded", new Headers()))
+      .mockResolvedValueOnce(final("Netflix is $17.99 a month."));
+    const info = vi.spyOn(console, "info").mockImplementation(() => {});
+    const result = await askClaudeInChat("u1", [], "how much is netflix $17.99", options);
+    expect(result.kind).toBe("answer");
+    expect(create).toHaveBeenCalledTimes(2);
+    expect(
+      JSON.parse(String(info.mock.calls.find((c) => c[0] === "chat_timing")?.[1])),
+    ).toMatchObject({
+      retries: 1,
+      outcome: "answer",
+    });
+  });
+
+  it("labels every answer in demo advice mode, advice or not", async () => {
+    create.mockResolvedValueOnce(final("Netflix is $17.99 a month."));
+    const result = await askClaudeInChat("u1", [], "how much is netflix $17.99", {
+      ...options,
+      advice: true,
+    });
+    expect(result.reply.refs.advice).toBe(true);
   });
 
   it("pauses Claude for a while only when Claude itself fails (rate limit, overloaded)", async () => {
@@ -697,6 +922,30 @@ describe("speed and failures", () => {
     expect(logged.tools).toEqual([{ name: "safe_to_spend", ms: expect.any(Number) }]);
     expect(logged.tools[0].ms).toBeGreaterThanOrEqual(150);
     expect(logged.reason).toBeNull();
+  });
+
+  it("logs each round: how it ended, the tools it asked for, the text, the time", async () => {
+    vi.mocked(homeSummary).mockResolvedValue({ safeToSpend: null, comingUp: [] } as never);
+    const info = vi.spyOn(console, "info").mockImplementation(() => {});
+    create
+      .mockResolvedValueOnce(toolUse("safe_to_spend"))
+      .mockResolvedValueOnce(final("Nothing is linked yet."));
+    await askClaudeInChat("u1", [], "what can i spend", options);
+    const logged = JSON.parse(String(info.mock.calls.find((c) => c[0] === "chat_timing")?.[1]));
+    expect(logged.rounds).toEqual([
+      { stop: "tool_use", tools: ["safe_to_spend"], textChars: 0, ms: expect.any(Number) },
+      { stop: "end_turn", tools: [], textChars: 22, ms: expect.any(Number) },
+    ]);
+    expect(typeof logged.otherMs).toBe("number");
+  });
+
+  it("still answers when the finding just discussed can't be looked up up front", async () => {
+    create.mockResolvedValueOnce(final("Here is more."));
+    const result = await askClaudeInChat("u1", [], "tell me more", {
+      ...options,
+      topic: { kind: "about", findingId: "f-gone" },
+    });
+    expect(result.kind).toBe("answer");
   });
 
   it("says why Claude's answer wasn't used, as a code", async () => {

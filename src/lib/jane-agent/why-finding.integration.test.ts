@@ -53,4 +53,20 @@ describe.runIf(url)("why, typed after a finding", { timeout: 60_000 }, () => {
       expect(reply.refs.findingId).toBe(first.reply.refs.findingId);
     }
   });
+
+  it("with a key, Claude is asked; if it fails the backup still gives the reason", async () => {
+    vi.stubEnv("ANTHROPIC_API_KEY", "test-key");
+    const claude = vi.fn(() => {
+      throw new Error("Claude is down");
+    });
+    let tick = 100;
+    const at = () => new Date(LINKED.getTime() + ++tick * 60_000);
+    const first = await sendToJane(userId, "cancel netflix", { client, now: at(), claude });
+    expect(first.reply.actions.some((a) => a.id === "finding.yes")).toBe(true);
+    const { reply, source } = await sendToJane(userId, "why?", { client, now: at(), claude });
+    expect(claude).toHaveBeenCalled();
+    expect(source).toBe("claude_unavailable");
+    expect(reply.body).toContain("If you say yes:");
+    vi.stubEnv("ANTHROPIC_API_KEY", "");
+  });
 });
