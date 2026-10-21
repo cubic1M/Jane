@@ -1,7 +1,7 @@
 import { DETECTOR_RATES as R } from "@/config/detectors";
 import { formatCents } from "@/lib/money";
 import { type Detector, suggestionId } from "./contract";
-import { evidence, factEvidence, weakest } from "./helpers";
+import { evidence, factEvidence, weakest, headlineOf } from "./helpers";
 
 // Detectors for the home and the people in it (spec step 254): PMI, a costly mortgage and
 // life cover. Pure; see ./contract.ts.
@@ -23,6 +23,12 @@ const pmiRemoval: Detector = {
       capability: "debt",
       topic: "pmi_removal",
       title: "Ask your lender to drop mortgage insurance",
+      headline: headlineOf(
+        "Drop your mortgage insurance",
+        Math.round((balance * R.pmiBps) / 10_000),
+        "saves",
+      ),
+      short: `Your mortgage of ${formatCents(balance)} carries PMI.`,
       worthCents: Math.round((balance * R.pmiBps) / 10_000),
       worthKind: "saves",
       confidence: factEvidence(pmi),
@@ -49,6 +55,12 @@ const refinance: Detector = {
       capability: "debt",
       topic: "refinance",
       title: "See what a cheaper mortgage would save",
+      headline: headlineOf(
+        "Check for a cheaper mortgage",
+        Math.round((balance * gap) / 10_000),
+        "saves",
+      ),
+      short: `Your rate is ${(rate.value / 100).toFixed(2)}% on ${formatCents(balance)}.`,
       worthCents: Math.round((balance * gap) / 10_000),
       worthKind: "saves",
       confidence: factEvidence(rate),
@@ -75,6 +87,12 @@ const lifeInsurance: Detector = {
       capability: "insurance",
       topic: "life_insurance",
       title: "Look at life insurance for the people who depend on you",
+      headline: headlineOf(
+        "Look at life insurance for your family",
+        Math.round(income.value * 12 * R.lifeCoverYears * R.lifeDeathChancePerYear),
+        "risk",
+      ),
+      short: `You have children and I see no life-cover charge in ${profile.months} months.`,
       worthCents: Math.round(income.value * 12 * R.lifeCoverYears * R.lifeDeathChancePerYear),
       worthKind: "risk",
       confidence: weakest([
