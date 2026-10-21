@@ -325,7 +325,9 @@ describe("askClaudeInChat", () => {
   it("keeps links but drops an action button on a question that only asks for information", async () => {
     create
       .mockResolvedValueOnce(toolUse("propose_action", { action: "finding.yes", finding_id: "f1" }))
-      .mockResolvedValueOnce(final("You have Hulu on a schedule, and nothing else you forgot about."));
+      .mockResolvedValueOnce(
+        final("You have Hulu on a schedule, and nothing else you forgot about."),
+      );
     const info = await askClaudeInChat("u1", [], "any subscriptions i forgot about", options);
     expect(info.reply.actions.filter((a) => a.kind !== "link")).toEqual([]);
     expect(info.reply.body).not.toMatch(/Review your Hulu/);
