@@ -619,7 +619,7 @@ const BASE_QUESTIONS: readonly CheckQuestion[] = [
     profile: "demo_advice",
     expect: {
       intent: "decision",
-      mentions: /cushion|credit card/,
+      mentions: /cushion|credit card|% a year/,
       avoid: /don't see any crypto|demo exchange|button opens|opens your/i,
     },
   },
@@ -1461,7 +1461,7 @@ const BASE_QUESTIONS: readonly CheckQuestion[] = [
     text: "should I pay off my card or invest?",
     needs: "rules",
     expect: {
-      intent: "debt_decision",
+      intent: "decision",
       mentions: /invest/i,
       link: "/loans",
       maxSentences: 3,
@@ -1473,7 +1473,7 @@ const BASE_QUESTIONS: readonly CheckQuestion[] = [
     text: "should I consolidate my debt?",
     needs: "rules",
     expect: {
-      intent: "debt_decision",
+      intent: "decision",
       mentions: /cards?/i,
       link: "/loans",
       maxSentences: 3,
@@ -1485,7 +1485,7 @@ const BASE_QUESTIONS: readonly CheckQuestion[] = [
     text: "should I use my savings to pay off my cards?",
     needs: "rules",
     expect: {
-      intent: "debt_decision",
+      intent: "decision",
       mentions: /cash/i,
       link: "/loans",
       maxSentences: 3,
@@ -1497,7 +1497,7 @@ const BASE_QUESTIONS: readonly CheckQuestion[] = [
     text: "should I close a credit card?",
     needs: "rules",
     expect: {
-      intent: "debt_decision",
+      intent: "decision",
       mentions: /limit/i,
       link: "/loans",
       maxSentences: 3,
@@ -1521,7 +1521,7 @@ const BASE_QUESTIONS: readonly CheckQuestion[] = [
     text: "should I take a personal loan to pay off my cards?",
     needs: "rules",
     expect: {
-      intent: "debt_decision",
+      intent: "decision",
       mentions: /cards?/i,
       link: "/loans",
       maxSentences: 3,
@@ -1533,7 +1533,7 @@ const BASE_QUESTIONS: readonly CheckQuestion[] = [
     text: "should I take a payday loan?",
     needs: "rules",
     expect: {
-      intent: "debt_decision",
+      intent: "decision",
       mentions: /a year/i,
       link: "/loans",
       maxSentences: 3,
@@ -1545,7 +1545,7 @@ const BASE_QUESTIONS: readonly CheckQuestion[] = [
     text: "should I pay off my student loan early?",
     needs: "rules",
     expect: {
-      intent: "debt_decision",
+      intent: "decision",
       mentions: /student|loan|nothing to pay down/i,
       link: "/loans",
       maxSentences: 3,
@@ -1621,7 +1621,7 @@ const BASE_QUESTIONS: readonly CheckQuestion[] = [
     text: "should I use buy now pay later?",
     needs: "rules",
     expect: {
-      intent: "debt_decision",
+      intent: "decision",
       mentions: /Pay in 4/i,
       link: "/loans",
       maxSentences: 3,

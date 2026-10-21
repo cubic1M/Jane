@@ -156,7 +156,13 @@ export function fixedChecks(
   }
 
   if (expect.maxSentences) {
-    const count = body.split(/(?<=[.!?])\s+/).filter(Boolean).length;
+    // The "85% sure: ..." line under a decision is the evidence, not part of the answer.
+    const count = body
+      .split("\n")
+      .filter((l) => !/^\d+% sure:/.test(l))
+      .join(" ")
+      .split(/(?<=[.!?])\s+/)
+      .filter(Boolean).length;
     checks.push(
       count <= expect.maxSentences
         ? pass("sentences")

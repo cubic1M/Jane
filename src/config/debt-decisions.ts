@@ -12,6 +12,25 @@ export const INVEST_RANGE = {
   note: "Investing has historically returned roughly 4% to 8% a year over long periods, with some losing years along the way.",
 } as const;
 
+// How sure Jane is of each answer, and why (shown as "80% sure: ..." under the answer).
+export const DECISION_CONFIDENCE: Readonly<Record<string, { percent: number; reason: string }>> = {
+  pay_or_invest: {
+    percent: 80,
+    reason: "the rate is yours; investing's range is a historical average, not a forecast",
+  },
+  consolidate: { percent: 75, reason: "the offers are stand-in quotes, not a lender's" },
+  personal_loan: { percent: 75, reason: "the offers are stand-in quotes, not a lender's" },
+  savings_or_debt: { percent: 85, reason: "your balances and rates, as your accounts show them" },
+  close_card: { percent: 70, reason: "I only know your cards' total limit" },
+  payoff_hurts: { percent: 90, reason: "how credit scores treat paying a card off" },
+  payday_loan: { percent: 90, reason: "the usual payday loan fee, not a particular lender's" },
+  student_early: { percent: 75, reason: "I can't tell if your loan is federal" },
+  overdraft: { percent: 80, reason: "your bills and pay as they repeat" },
+  bnpl: { percent: 85, reason: "how pay-in-4 plans usually work" },
+  save_each_month: { percent: 80, reason: "your last full months of income and spending" },
+  rent_or_buy: { percent: 70, reason: "a typical rate and the usual 28/36 rules" },
+};
+
 // Cash to keep before putting more on a debt: this many months of spending.
 export const KEEP_CASH_MONTHS = 1;
 

@@ -11,6 +11,13 @@
 
 export const SECTOR_DECISIONS: readonly { item: string; pattern: RegExp }[] = [
   // insurance: { item: "insurance", pattern: /\b(?:life|renters|umbrella|disability) insurance\b/ },
-  // loans: { item: "loan", pattern: /\b(?:refinanc\w*|consolidat\w*)\b/ },
+  // Loans and debt (src/lib/jane-agent/debt-decide.ts): consolidating, a personal loan, a
+  // payday loan, closing a card, the student loan early, savings against debt, buy now pay
+  // later. Refinancing keeps its own offers answer.
+  {
+    item: "loan",
+    pattern:
+      /^(?!.*\$\s?\d).*\b(?:consolidat\w*|personal loan|payday (?:loan|advance|lender)s?|cash advance|close (?:a |an |my |this |that )?(?:credit )?card|pay(?:ing)? (?:off|down) (?:my )?student (?:loans?|debt)|student (?:loans?|debt)\b.*\b(?:early|faster|ahead)|buy now,? pay later|bnpl|klarna|afterpay|affirm|(?:use|using|take|tap) (?:my )?(?:savings|cash|emergency fund)\b.*\b(?:debt|cards?|loans?))\b/,
+  },
   // taxes: { item: "tax", pattern: /\b(?:roth|hsa|itemiz\w*|standard deduction)\b/ },
 ];

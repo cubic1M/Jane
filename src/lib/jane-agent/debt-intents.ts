@@ -120,7 +120,7 @@ export const isDebtIntent = (intent: { kind: string }): intent is DebtIntent =>
   DEBT_KINDS.has(intent.kind);
 
 // The decisions people ask about debt and credit, in the order they're tried.
-const DECISION_PATTERNS: readonly (readonly [DecisionId, RegExp])[] = [
+export const DECISION_PATTERNS: readonly (readonly [DecisionId, RegExp])[] = [
   [
     "pay_or_invest",
     /\b(?:pay(?:ing)? (?:off|down)|extra (?:on|toward|payments?))\b.*\b(?:or|vs\.?|versus|instead of)\b.*\binvest\w*|\binvest\w*\b.*\b(?:or|vs\.?|versus|instead of|before)\b.*\b(?:pay(?:ing)? (?:off|down)|debt|cards?|mortgage)\b|\bpay (?:extra|more) on (?:my )?(?:mortgage|card|cards)\b.*\binvest/,

@@ -22,7 +22,14 @@ import { loadDecisionInput } from "./debt-decisions";
 const url = process.env.TEST_DATABASE_URL;
 const NOW = new Date("2026-10-18T15:00:00Z");
 const MINUTE = 60 * 1000;
-const sentences = (text: string) => text.split(/(?<=[.!?])\s+/).filter(Boolean);
+// The "80% sure: ..." line under a decision is the evidence, not part of the answer.
+const sentences = (text: string) =>
+  text
+    .split("\n")
+    .filter((l) => !/^\d+% sure:/.test(l))
+    .join(" ")
+    .split(/(?<=[.!?])\s+/)
+    .filter(Boolean);
 
 describe.runIf(url)("debt decisions against a real database", { timeout: 60_000 }, () => {
   let client: PrismaClient;
@@ -173,6 +180,8 @@ describe.runIf(url)("debt decisions against a real database", { timeout: 60_000 
     });
     created.push(user.id);
     const reply = await ask(user.id, "should I pay off my card or invest?");
-    expect(reply.body).toBe("I don't see a debt with a balance, so there's nothing to pay down.");
+    expect(reply.body.split("\n")[0]).toBe(
+      "I don't see a debt with a balance, so there's nothing to pay down.",
+    );
   });
 });

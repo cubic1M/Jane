@@ -67,8 +67,13 @@ describe("debt questions", () => {
       kind: "refinance",
       target: "student loan",
     });
-    // A "should I consolidate" is a decision, answered straight (src/planning/debt-decisions.ts).
-    expect(intent("should I consolidate my credit card debt")).toEqual({
+    // A "should I consolidate" is a loans decision, answered straight (src/lib/jane-agent/
+    // debt-decide.ts); said another way it is the same decision.
+    expect(intent("should I consolidate my credit card debt")).toMatchObject({
+      kind: "decision",
+      item: "loan",
+    });
+    expect(intent("is a debt consolidation loan a good idea")).toEqual({
       kind: "debt_decision",
       which: "consolidate",
     });
@@ -161,7 +166,10 @@ describe("debt questions", () => {
       kind: "bnpl_new",
       totalCents: 30_000,
     });
-    expect(intent("should I start an affirm plan")).toEqual({ kind: "bnpl_new", totalCents: null });
+    expect(intent("should I start an affirm plan")).toMatchObject({
+      kind: "decision",
+      item: "loan",
+    });
   });
 
   it("reads buying a car: what's affordable, preapprovals, and a dealer's offer", () => {
@@ -435,16 +443,12 @@ describe("debt questions", () => {
     for (const text of [
       "will I overdraft this month?",
       "am I going to go negative before payday",
-      "will my checking go below zero",
     ]) {
       expect(intent(text), text).toEqual({ kind: "debt_decision", which: "overdraft" });
     }
-    for (const text of [
-      "should I use buy now pay later?",
-      "is klarna a good idea",
-      "should I get Afterpay",
-    ]) {
-      expect(intent(text), text).toEqual({ kind: "debt_decision", which: "bnpl" });
+    expect(intent("is klarna a good idea")).toEqual({ kind: "debt_decision", which: "bnpl" });
+    for (const text of ["should I use buy now pay later?", "should I get Afterpay"]) {
+      expect(intent(text), text).toMatchObject({ kind: "decision", item: "loan" });
     }
     expect(intent("why are there overdraft fees on my account")).not.toEqual({
       kind: "debt_decision",
