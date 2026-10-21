@@ -9,6 +9,9 @@ export const HOME_NET_TO_GROSS = 0.78;
 export const HOME_RULES_SOURCE = "https://www.consumerfinance.gov/owning-a-home/";
 
 export const HOME_TERM_MONTHS = 360;
+// A typical 30-year fixed rate, used to work out affordability when no lender partner gives a
+// real offer. Stated next to every figure that uses it; it is not an offer.
+export const HOME_DEFAULT_APR_BPS = 650;
 export const HOME_DEFAULT_DOWN_SHARE = 0.1;
 // Under this share down, private mortgage insurance is added (see src/config/debt.ts).
 export const HOME_PMI_BELOW_DOWN_SHARE = 0.2;

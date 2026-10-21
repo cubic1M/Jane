@@ -38,9 +38,10 @@ const SECTORS = {
       "student_loans",
       "balance_transfers",
       "loan_applications",
+      "debt_decision",
     ]),
     words:
-      /\b(?:debts?|loans?|credit|cards?|owe|owed|interest|mortgage|apr|pay ?off|refinanc\w*|bnpl|afford\w*|student|medical|collections?|lender|borrow\w*|equity|score|installments?|overdraft|payday|payments?|minimum|avalanche|snowball|qualifying|due)\b/,
+      /\b(?:debts?|loans?|credit|cards?|owe|owed|interest|mortgage|apr|pay ?off|refinanc\w*|bnpl|afford\w*|student|medical|collections?|lender|borrow\w*|equity|score|installments?|overdraft|payday|payments?|minimum|avalanche|snowball|qualifying|due|consolidat\w*|overdraft|klarna|afterpay|affirm|rent|saving|savings|pay later)\b/,
   },
   insurance: {
     tools: new Set<string>(),
@@ -52,7 +53,7 @@ const SECTORS = {
     tools: new Set<string>(),
     prefix: "tax_",
     words:
-      /\b(?:tax\w*|refunds?|w-?4|withh\w*|deduct\w*|1099|irs|filing|returns?|brackets?|roth|hsa|estimated|accountant|write.?offs?|dependents?|forms?|documents?|file|expenses?|tags?|profile|about me)\b/,
+      /\b(?:tax\w*|refunds?|w-?4|withh\w*|deduct\w*|1099|irs|filing|returns?|brackets?|roth|hsa|estimated|accountant|write.?offs?|dependents?|forms?|documents?|file|expenses?|tags?|profile|about me|donat\w*|charit\w*|s corp|llc|home office|set aside)\b/,
   },
   investing: {
     tools: new Set([

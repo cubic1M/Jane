@@ -83,14 +83,23 @@ const REFERRAL = [
 ];
 const ADVICE_OF_ITS_OWN = /\b(?:you should|you need to|you must|file for|sue)\b/i;
 
-function withoutReferrals(text: string): string {
+// "Legal deductions", "legal ways": the word as an adjective for what is allowed, not advice.
+const BENIGN_LEGAL =
+  /\blegal(?:ly)? (?:deductions?|credits?|ways?|options?|methods?|strateg\w+|tax breaks?|alternatives?|route)\b/gi;
+
+// Sentences in which Jane refuses ("I can't help hide income from the IRS") or, in demo
+// advice, points to a lawyer, are not advice about the thing they name: they are taken out
+// before checking. `refusalsOnly` (the standard profile) takes out only her own "I can't".
+function withoutReferrals(text: string, refusalsOnly = false): string {
+  const patterns = refusalsOnly ? REFERRAL.slice(0, 2) : REFERRAL;
+  const sensitive = [...LEGAL, ...(refusalsOnly ? TAX : [])];
   return text
     .split(/(?<=[.!?])\s+/)
     .filter(
       (sentence) =>
         !(
-          LEGAL.some((p) => p.test(sentence)) &&
-          REFERRAL.some((p) => p.test(sentence)) &&
+          sensitive.some((p) => p.test(sentence)) &&
+          patterns.some((p) => p.test(sentence)) &&
           !ADVICE_OF_ITS_OWN.test(sentence)
         ),
     )
@@ -180,8 +189,9 @@ export function checkGuardrails(
   const advice = profile === "demo_advice";
   const original = text;
   text = withoutApprovedSentences(text);
-  // Demo advice only: a refusal or a pointer to a lawyer isn't legal advice there.
-  if (advice) text = withoutReferrals(text);
+  text = text.replace(BENIGN_LEGAL, "allowed");
+  // A refusal isn't advice; in demo advice a pointer to a lawyer isn't either.
+  text = withoutReferrals(text, !advice);
   const required = findingType && REQUIRED_WORDING[findingType];
   if (required && !required.test(original)) issues.push("missing_required_wording");
   if (!advice && INVESTMENT.some((p) => p.test(text))) issues.push("investment_advice");

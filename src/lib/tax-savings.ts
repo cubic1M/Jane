@@ -1,3 +1,4 @@
+import { debtFirst } from "@/lib/debt-first";
 import { ENERGY_PAYEE, TUITION_PAYEE } from "@/config/tax";
 import type { PrismaClient } from "@/generated/prisma/client";
 import { adviceMode } from "@/lib/advice-mode";
@@ -27,6 +28,8 @@ const WORKPLACE_PLANS = [
   "thrift savings plan",
 ];
 // Solar and batteries (25D) have no cap; the rest (25C) do.
+// Savings that mean putting more money into a tax-favoured account.
+const DEBT_FIRST_KEYS: SavingKey[] = ["retirement", "ira", "hsa", "health_fsa"];
 const UNCAPPED = /\b(?:SOLAR|SUNRUN|SUNPOWER|SUNNOVA|POWERWALL|GEOTHERMAL)\b/i;
 
 export type TaxSavingsView = {
@@ -50,7 +53,7 @@ export async function loadTaxSavings(
   if (!advice) return { year: estimate.year, advice, savings: [], estimate };
   const year = estimate.year;
   const db = scopedFor(userId, client);
-  const [accounts, tags, energy, profile] = await Promise.all([
+  const [accounts, tags, energy, profile, stressed] = await Promise.all([
     db.accounts.findMany({ select: { subtype: true } }),
     loadTaxTags(userId, year, { client }),
     db.transactions.findMany({
@@ -62,6 +65,7 @@ export async function loadTaxSavings(
       select: { amountCents: true, description: true, merchantName: true },
     }),
     db.taxProfiles.findFirst({ select: { savingsDismissed: true } }),
+    debtFirst(userId, client),
   ]);
   const elapsed = estimate.elapsed > 0 ? estimate.elapsed : 1;
   const pace = (cents: number) => Math.round(cents / Math.min(1, Math.max(elapsed, 1 / 12)));
@@ -104,7 +108,12 @@ export async function loadTaxSavings(
       cents,
       uncapped: UNCAPPED.test(payee),
     })),
-  }).filter((s) => !dismissed.has(`${year}:${s.key}`));
+  }).filter(
+    (s) =>
+      !dismissed.has(`${year}:${s.key}`) &&
+      // Debt first: no new deferral or contribution for someone overdrawn or paying a high rate.
+      !(stressed && DEBT_FIRST_KEYS.includes(s.key)),
+  );
   return { year, advice, savings, estimate };
 }
 
