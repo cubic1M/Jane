@@ -1,3 +1,4 @@
+import { isPersonId } from "@/config/people";
 import type { CheckRun } from "./run";
 import type { CheckQuestion, Expect } from "./bank";
 import { FAIL_BELOW } from "./history";
@@ -21,7 +22,12 @@ export type Scenario = {
   noButtons?: boolean;
   list?: boolean;
   maxChars?: number;
-  profile?: "standard" | "demo_advice";
+  // Who it is asked as: one of the sample lives (src/config/people.ts, "profile" in the files
+  // QA writes), or the original demo bank when left out.
+  person?: string;
+  // Rules for the Haiku judge, beyond the fixed checks.
+  judge?: { mustDo?: string[]; mustNot?: string[] };
+  variantOf?: string;
 };
 
 export function parseScenarios(json: string): Scenario[] {
@@ -45,7 +51,13 @@ export function parseScenarios(json: string): Scenario[] {
     for (const key of ["mentions", "avoid"] as const) {
       if (s[key] !== undefined) new RegExp(s[key]!, "i");
     }
-    return s as Scenario;
+    const profile = (item as { profile?: unknown }).profile;
+    if (profile !== undefined && (typeof profile !== "string" || !isPersonId(profile))) {
+      throw new Error(`${s.id}: "${String(profile)}" isn't a sample person.`);
+    }
+    const { profile: _drop, ...rest } = item as Scenario & { profile?: string };
+    void _drop;
+    return { ...rest, ...(profile ? { person: profile as string } : {}) } as Scenario;
   });
 }
 
@@ -68,7 +80,10 @@ export function scenarioQuestions(scenarios: readonly Scenario[]): CheckQuestion
       ...(i === 0 ? {} : { after: s.id }),
       expect: expectOf(s),
       sector: s.category,
-      profile: s.profile ?? "standard",
+      // Every account is the demo bank, which gets demo advice.
+      profile: "demo_advice",
+      ...(s.person ? { person: s.person } : {}),
+      ...(s.judge ? { judge: s.judge } : {}),
     })),
   );
 }
@@ -242,4 +257,71 @@ export function withEvalSection(doc: string, section: string): string {
     return doc.replace(new RegExp(`${EVAL_START}[\\s\\S]*?${EVAL_END}`), () => block);
   }
   return `${doc.trimEnd()}\n\n## Scenario run\n\nWritten by the overnight scenario run (.github/workflows/chat-eval.yml, \`npm run checks:eval\`).\n\n${block}\n`;
+}
+
+// Several files at once: a comma list, with "*" allowed in a file name (docs/chat-scenarios*.json).
+export function filesOf(spec: string, list: (dir: string) => string[]): string[] {
+  return spec
+    .split(",")
+    .map((f) => f.trim())
+    .filter(Boolean)
+    .flatMap((f) => {
+      if (!f.includes("*")) return [f];
+      const slash = f.lastIndexOf("/");
+      const dir = slash < 0 ? "." : f.slice(0, slash);
+      const pattern = new RegExp(
+        `^${f
+          .slice(slash + 1)
+          .replace(/[.+?^${}()|[\]\\]/g, "\\$&")
+          .replace(/\*/g, ".*")}$`,
+      );
+      return list(dir)
+        .filter((name) => pattern.test(name))
+        .sort()
+        .map((name) => (slash < 0 ? name : `${dir}/${name}`));
+    });
+}
+
+export function parseScenarioFiles(texts: readonly string[]): Scenario[] {
+  const all = texts.flatMap((t) => parseScenarios(t));
+  const seen = new Set<string>();
+  for (const s of all) {
+    if (seen.has(s.id)) throw new Error(`The id "${s.id}" is used in two files.`);
+    seen.add(s.id);
+  }
+  return all;
+}
+
+// A fixed shuffle (the same every night, so batches by position resume): within each category
+// in a seeded random order, then one from each category in turn, so any stretch of the list,
+// and a run cut short by its cap, samples every category and, by the shuffle, every person.
+export function quotaOrder(scenarios: readonly Scenario[], seed = 20261021): Scenario[] {
+  let state = seed >>> 0;
+  const random = () => {
+    // mulberry32
+    state = (state + 0x6d2b79f5) >>> 0;
+    let t = state;
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+  const shuffle = <T>(items: readonly T[]): T[] => {
+    const out = [...items];
+    for (let i = out.length - 1; i > 0; i -= 1) {
+      const j = Math.floor(random() * (i + 1));
+      [out[i], out[j]] = [out[j], out[i]];
+    }
+    return out;
+  };
+  const byCategory = new Map<string, Scenario[]>();
+  for (const s of scenarios) byCategory.set(s.category, [...(byCategory.get(s.category) ?? []), s]);
+  const queues = shuffle([...byCategory.keys()].sort()).map((c) => shuffle(byCategory.get(c)!));
+  const out: Scenario[] = [];
+  while (queues.some((q) => q.length > 0)) {
+    for (const q of queues) {
+      const next = q.shift();
+      if (next) out.push(next);
+    }
+  }
+  return out;
 }

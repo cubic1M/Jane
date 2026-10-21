@@ -41,6 +41,10 @@ export type CheckQuestion = {
   page?: string;
   tool?: string;
   profile?: "standard" | "demo_advice";
+  // The sample person it is asked as (src/config/people.ts), and the rules the judge holds
+  // the answer to (scenario files; see scenarios.ts).
+  person?: string;
+  judge?: { mustDo?: string[]; mustNot?: string[] };
 };
 
 const safe = (f: Facts) => [f.safeCents];

@@ -9,13 +9,13 @@ on:
   workflow_dispatch:
     inputs:
       file:
-        description: "Scenarios file in the repo"
-        default: docs/chat-scenarios.json
+        description: "Scenario files in the repo: a comma list, * allowed in a name"
+        default: "docs/chat-scenarios*.json"
       max_cents:
         description: "Most this run may spend, in cents"
         default: "400"
       from:
-        description: "First scenario of this batch (position in the file, from 1)"
+        description: "First scenario of this batch (position in the shuffled list, from 1)"
         default: "1"
       to:
         description: "Last scenario of this batch (empty: to the end)"

@@ -1,5 +1,5 @@
 import { randomBytes } from "node:crypto";
-import { existsSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { expect, it, vi } from "vitest";
 import { PrismaClient } from "@/generated/prisma/client";
@@ -9,6 +9,8 @@ vi.hoisted(() => {
 });
 vi.mock("@/lib/session", () => ({ requireUser: vi.fn() }));
 
+import type { PersonId } from "@/config/people";
+import { loadFacts, type Facts } from "./facts";
 import { createCheckPerson, deleteCheckPerson } from "./person";
 import { runAnswerChecks } from "./run";
 import {
@@ -16,8 +18,10 @@ import {
   batchOf,
   emptyState,
   evalSection,
-  parseScenarios,
+  filesOf,
+  parseScenarioFiles,
   parseState,
+  quotaOrder,
   reportByCategory,
   scenarioQuestions,
   withEvalSection,
@@ -32,7 +36,7 @@ import {
 // go into the "Scenario run" section of docs/chat-quality.md. Skipped in `npm test`.
 
 const url = process.env.TEST_DATABASE_URL;
-const FILE = process.env.CHAT_EVAL_FILE ?? "docs/chat-scenarios.json";
+const FILE = process.env.CHAT_EVAL_FILE || "docs/chat-scenarios*.json";
 const DOC = "docs/chat-quality.md";
 const STATE = "docs/chat-eval-state.json";
 const num = (v: string | undefined) => (v && Number(v) > 0 ? Number(v) : undefined);
@@ -44,7 +48,10 @@ it.runIf(process.env.CHAT_EVAL === "1" && url && process.env.ANTHROPIC_API_KEY)(
     if (!process.env.TOKEN_ENCRYPTION_KEY) {
       vi.stubEnv("TOKEN_ENCRYPTION_KEY", randomBytes(32).toString("base64"));
     }
-    const scenarios = parseScenarios(readFileSync(FILE, "utf8"));
+    const files = filesOf(FILE, (dir) => readdirSync(dir));
+    expect(files.length, `no scenario files match ${FILE}`).toBeGreaterThan(0);
+    // One fixed shuffle over all the files, so positions mean the same in every batch.
+    const scenarios = quotaOrder(parseScenarioFiles(files.map((f) => readFileSync(f, "utf8"))));
     const resume = process.env.CHAT_EVAL_RESUME === "1" && existsSync(STATE);
     const before = resume ? parseState(readFileSync(STATE, "utf8")) : emptyState();
     const batch = batchOf(scenarios, {
@@ -58,13 +65,25 @@ it.runIf(process.env.CHAT_EVAL === "1" && url && process.env.ANTHROPIC_API_KEY)(
     if (batch.length === 0) return;
     const client = new PrismaClient({ adapter: new PrismaPg({ connectionString: url }) });
     const now = new Date();
-    const userId = await createCheckPerson({ client, now });
+    // Each sample person the batch asks as, made once.
+    const people = new Map<string, { userId: string; facts: Facts }>();
     try {
-      const run = await runAnswerChecks(userId, {
+      for (const key of new Set(batch.map((s) => s.person ?? "default"))) {
+        const userId = await createCheckPerson({
+          client,
+          now,
+          person: key === "default" ? undefined : (key as PersonId),
+        });
+        people.set(key, { userId, facts: await loadFacts(userId, { client, now }) });
+      }
+      const [first] = [...people.values()];
+      const run = await runAnswerChecks(first.userId, {
         client,
         now,
         capCents: CAP_CENTS,
         questions: scenarioQuestions(batch),
+        facts: first.facts,
+        personFor: (lead) => people.get(lead.person ?? "default")!,
       });
       const state = addToState(before, batch, run.results, run.costCents);
       writeFileSync(STATE, `${JSON.stringify(state)}\n`);
@@ -84,7 +103,7 @@ it.runIf(process.env.CHAT_EVAL === "1" && url && process.env.ANTHROPIC_API_KEY)(
       console.log(section);
       expect(run.graded).toBeGreaterThan(0);
     } finally {
-      await deleteCheckPerson(userId, { client });
+      for (const { userId } of people.values()) await deleteCheckPerson(userId, { client });
       await client.$disconnect();
     }
   },

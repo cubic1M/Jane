@@ -76,6 +76,9 @@ type Options = {
   // The person's numbers, when the caller already loaded them (a test running the bank in
   // chunks loads them once).
   facts?: Facts;
+  // Scenario runs ask as several sample people: who a conversation is asked as, from its
+  // first question. Without it everything is asked as `userId`.
+  personFor?: (lead: CheckQuestion) => { userId: string; facts: Facts };
 };
 
 export const NO_KEY = "Needs Claude, and there's no ANTHROPIC_API_KEY: skipped.";
@@ -130,6 +133,7 @@ export async function runAnswerChecks(
     capCents = ANSWER_CHECK_CAP_CENTS,
     rotate,
     facts: given,
+    personFor,
   }: Options,
 ): Promise<CheckRun> {
   const full = llmEnabled();
@@ -140,7 +144,7 @@ export async function runAnswerChecks(
   try {
     return await runChecks(
       userId,
-      { client, now, questions, claude, capCents, rotate, facts: given },
+      { client, now, questions, claude, capCents, rotate, facts: given, personFor },
       full,
     );
   } finally {
@@ -159,10 +163,11 @@ async function runChecks(
     capCents = ANSWER_CHECK_CAP_CENTS,
     rotate,
     facts: given,
+    personFor,
   }: Options,
   full: boolean,
 ): Promise<CheckRun> {
-  const facts = given ?? (await loadFacts(userId, { client, now }));
+  const baseFacts = given ?? (personFor ? null : await loadFacts(userId, { client, now }));
   let spent = 0;
   // Jane's own calls to Claude count toward the cap too.
   const metered = () => {
@@ -193,10 +198,14 @@ async function runChecks(
   let tick = 0;
   for (const conversation of rotated(conversations(questions), rotate)) {
     // A fresh conversation: no earlier questions, and the chat's hourly limits reset.
-    const db = scopedFor(userId, client);
+    const who = personFor?.(conversation[0]) ?? { userId, facts: baseFacts! };
+    const facts = who.facts;
+    const db = scopedFor(who.userId, client);
     await db.janeMessages.deleteMany({ where: { kind: { in: ["user", "reply"] } } });
     await client.rateLimit.deleteMany({
-      where: { key: { in: [`chat:${userId}`, `ask:${userId}`, `chatspend:${userId}`] } },
+      where: {
+        key: { in: [`chat:${who.userId}`, `ask:${who.userId}`, `chatspend:${who.userId}`] },
+      },
     });
     const earlier: { role: "user" | "assistant"; content: string }[] = [];
     let leadSkipped = false;
@@ -228,7 +237,7 @@ async function runChecks(
 
       const started = performance.now();
       let firstWords: number | null = null;
-      const { reply, source, issues } = await sendToJane(userId, question.text, {
+      const { reply, source, issues } = await sendToJane(who.userId, question.text, {
         client,
         now: new Date(now.getTime() + (tick += 1000)),
         claude: metered,
@@ -257,6 +266,7 @@ async function runChecks(
             answer: reply.body,
             buttons: reply.actions.map((a) => a.label),
             facts,
+            ...(question.judge ? { rules: question.judge } : {}),
           },
           claude,
         );
