@@ -20,6 +20,16 @@ describe("choosing tools for a question", () => {
     expect(names("how am I doing")).toContain("propose_action");
   });
 
+  it("always sends the calculator", () => {
+    for (const q of [
+      "how am I doing",
+      "wats a safe wdrawal rate",
+      "how long to pay off my card at $200/month",
+    ]) {
+      expect(names(q), q).toContain("calculate");
+    }
+  });
+
   it("adds a sector when the question is about it", () => {
     expect(names("did my insurance premium go up")).toContain("insurance_policies");
     expect(names("how are my crypto gains taxed")).toEqual(
