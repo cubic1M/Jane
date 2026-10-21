@@ -10,7 +10,10 @@
 // the router. docs/decisions.md has the whole shape.
 
 export const SECTOR_DECISIONS: readonly { item: string; pattern: RegExp }[] = [
-  // insurance: { item: "insurance", pattern: /\b(?:life|renters|umbrella|disability) insurance\b/ },
+  {
+    item: "insurance",
+    pattern: /\b(?:insurance|insurer|coverage|umbrella|deductible|fsa|rideshare)\b/,
+  },
   // loans: { item: "loan", pattern: /\b(?:refinanc\w*|consolidat\w*)\b/ },
   // taxes: { item: "tax", pattern: /\b(?:roth|hsa|itemiz\w*|standard deduction)\b/ },
 ];

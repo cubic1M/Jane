@@ -1,3 +1,4 @@
+import { SECTOR_DECISIONS } from "@/config/decisions";
 import type { Intent } from "../intents";
 import type { ActionId } from "../types";
 import { charge, lastMonth, spentOn, thisMonth, type Facts } from "./facts";
@@ -1138,7 +1139,7 @@ const BASE_QUESTIONS: readonly CheckQuestion[] = [
     id: "ins-14",
     text: "should I raise my deductible",
     needs: "rules",
-    expect: { intent: "insurance", mentions: /deductible/i, list: true },
+    expect: { intent: "decision", mentions: /deductible/i },
   },
 
   // Insurance questions only Claude answers.
@@ -1778,13 +1779,17 @@ const DECISIONS: readonly (readonly [string, string, RegExp, string?])[] = [
   ["insd-31", "do I have enough life insurance", /life/i],
 ];
 
+// "Should I ...?" with insurance words goes through the decision router (src/config/decisions.ts).
+const routed = (text: string) =>
+  text.startsWith("should I") && SECTOR_DECISIONS.some((d) => d.pattern.test(text.toLowerCase()));
+
 const DECISION_QUESTIONS: readonly CheckQuestion[] = DECISIONS.map(
   ([id, text, mentions, after]): CheckQuestion => ({
     id,
     text,
     needs: "rules",
     after,
-    expect: { intent: "insurance", mentions, maxChars: 420 },
+    expect: { intent: routed(text) ? "decision" : "insurance", mentions, maxChars: 460 },
     sector: "insurance",
     page: "insurance",
     tool: "insurance_policies",

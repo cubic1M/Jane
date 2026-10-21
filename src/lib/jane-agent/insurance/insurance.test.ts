@@ -493,7 +493,10 @@ describe("the coverage checkup in the chat (spec step 106)", () => {
     }
     expect(parseIntent("what's my deductible", ASOF)).toMatchObject({ ask: "deductible" });
     // Raising it is a saving (spec step 196), shown both ways with a tap, not just a checkup line.
-    expect(parseIntent("should I raise my deductible", ASOF)).toMatchObject({ ask: "decide" });
+    expect(parseIntent("should I raise my deductible", ASOF)).toMatchObject({
+      kind: "decision",
+      item: "insurance",
+    });
   });
 });
 
@@ -548,12 +551,19 @@ describe("do I need it? (spec step 149)", () => {
   // These get a short, direct answer (./decisions.ts).
   it.each([
     ["do I need umbrella insurance", "umbrella"],
-    ["should I get disability insurance", "disability"],
+    ["do I need disability insurance", "disability"],
     ["do I need pet insurance", "pet"],
-    ["should I cancel my phone insurance", "phone"],
   ])("answers %j directly", (text, decision) => {
     expect(parseIntent(text, ASOF)).toMatchObject({ kind: "insurance", ask: "decide", decision });
   });
+
+  // "Should I ...?" goes through the decision router, which hands insurance its own.
+  it.each(["should I get disability insurance", "should I cancel my phone insurance"])(
+    "hands %j to the decision router",
+    (text) => {
+      expect(parseIntent(text, ASOF)).toMatchObject({ kind: "decision", item: "insurance" });
+    },
+  );
 
   it("says when they already have it", () => {
     const ask = parseIntent("do I need car insurance", ASOF) as Parameters<

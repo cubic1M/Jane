@@ -51,7 +51,8 @@ describe("reading a decision question", () => {
 
   it("leaves what other answers own to them", () => {
     expect(parseDecision("should i buy a $900 couch")).toBeNull();
-    expect(parseDecision("should i buy renters insurance")).toBeNull();
+    // Insurance takes its own (src/config/decisions.ts).
+    expect(parseDecision("should i buy renters insurance")).toMatchObject({ item: "insurance" });
     expect(parseDecision("should i cancel netflix")).toBeNull();
     expect(parseIntent("should i buy a $900 couch", ASOF).kind).toBe("afford");
     expect(parseIntent("how much crypto do i have", ASOF).kind).toBe("investments");

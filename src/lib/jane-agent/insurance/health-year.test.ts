@@ -20,7 +20,6 @@ describe("health year questions", () => {
     "when will I hit my out of pocket max",
     "how much is left in my FSA",
     "have I met my deductible this year",
-    "should I raise my deductible",
   ])("answers %s directly", (text) => {
     expect(parseInsurance(normalize(text))?.ask).toBe("decide");
   });

@@ -648,3 +648,61 @@ function build(kind: DecisionKind, ins: InsuranceSnapshot, asOf: string): Out {
 
 // Used by the tests: an answer is direct and short.
 export const sentenceCount = sentences;
+
+// How sure Jane is of a decision answer, from what it rests on: a quote against the premium
+// on file, the policy's own limits, the plan's terms, or only a rule of thumb. The same
+// evidence gives the same percentage.
+export function decisionConfidence(
+  kind: DecisionKind,
+  ins: InsuranceSnapshot,
+): { percent: number; reason: string } {
+  const car = active(ins, "auto");
+  const quoted = Boolean(carShop(ins));
+  switch (kind) {
+    case "switch":
+    case "cheapest":
+    case "too_expensive":
+    case "switch_cost":
+    case "why_up":
+      return quoted
+        ? { percent: 80, reason: "a same-cover quote against the premium on your policy" }
+        : {
+            percent: 60,
+            reason: car ? "no cheaper same-cover quote found yet" : "no car policy on file",
+          };
+    case "pay_yearly":
+    case "deductible":
+    case "bundle":
+      return {
+        percent: 70,
+        reason: "your premium and the carrier's typical discount, not a quote",
+      };
+    case "umbrella":
+      return ins.household.signals.assetsCents === null
+        ? { percent: 40, reason: "I can't see your balances yet" }
+        : { percent: 80, reason: "your balances and the owned things you listed" };
+    case "life_enough":
+      return ins.life?.amountCents
+        ? { percent: 80, reason: "your income and debts, sized by the life-cover method" }
+        : { percent: 55, reason: "no life cover sized yet" };
+    case "enough_car":
+      return car?.coverage.bodilyInjuryPerPerson
+        ? { percent: 85, reason: "the limits on your policy" }
+        : { percent: 40, reason: "your policy's limits aren't on file" };
+    case "fsa_left":
+    case "deductible_met":
+    case "oop_max":
+      return ins.healthYear
+        ? {
+            percent: ins.healthYear.sample ? 60 : 85,
+            reason: ins.healthYear.sample
+              ? "the demo bank's sample plan"
+              : "your plan's terms and your medical charges",
+          }
+        : { percent: 40, reason: "your health plan's terms aren't on file" };
+    case "employer_health":
+      return { percent: 65, reason: "a pay-stub line, not the plan's terms" };
+    default:
+      return { percent: 65, reason: "a rule of thumb on what you've told me, not a quote" };
+  }
+}

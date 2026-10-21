@@ -1,3 +1,4 @@
+import { insuranceDecider } from "../insurance/decide-router";
 import { answerDecision } from "../decision";
 import { answerDebt } from "../debt-answer";
 import { DEBT_KINDS, type DebtIntent } from "../debt-intents";
@@ -171,6 +172,8 @@ export const CAPABILITIES: readonly Capability[] = [
     kinds: ["insurance"],
     tools: ["insurance_policies"],
     answer: insuranceAnswer,
+    // "Should I get umbrella insurance?" (docs/decisions.md).
+    ...insuranceDecider,
   },
   {
     id: "taxes",
