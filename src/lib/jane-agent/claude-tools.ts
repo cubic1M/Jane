@@ -65,7 +65,6 @@ import { cachedPrimer, keepPrimer } from "./primer-cache";
 import { isStale, readStoredPrimer, writeStoredPrimer } from "./primer-store";
 import { loadRecurring } from "./recurring";
 import { weeklyReview } from "./replies-review";
-import { loadSnapshot } from "./snapshot";
 import { findingCandidate } from "./sources/findings";
 import { TAX_TOOLS, isTaxTool, runTaxTool } from "./tax-tools";
 import { ACTION_IDS, type ActionId, type MessageAction } from "./types";
@@ -1033,7 +1032,7 @@ export async function proposeAction(
   }
 
   if (id === "finding.yes") {
-    const snapshot = await loadSnapshot(userId, { client, now });
+    const snapshot = await loadSnapshotFast(userId, { client, now });
     const finding = snapshot?.findings.find((f) => f.findingId === str(args.finding_id));
     if (!snapshot || !finding) return refuse("That isn't one of the person's open findings.");
     const candidate = findingCandidate(finding);
@@ -1041,7 +1040,7 @@ export async function proposeAction(
   }
 
   if (id === "plan.approve_safe") {
-    const snapshot = await loadSnapshot(userId, { client, now });
+    const snapshot = await loadSnapshotFast(userId, { client, now });
     if (!snapshot || snapshot.plan.safeItems === 0) {
       return refuse("Nothing on the plan is safe to approve together right now.");
     }
