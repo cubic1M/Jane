@@ -32,15 +32,18 @@ export async function hit(
     RETURNING count`;
   const count = Number(row.count);
 
-  // Now and then, clear out old windows.
+  // Now and then, clear out old windows: never on the caller's wait (a delete that scans the
+  // table once cost one visitor a second on the click).
   if (count === 1 && Math.random() < 0.01) {
     const cutoff = new Date(now.getTime() - RATE_LIMIT_RETENTION_HOURS * 60 * 60 * 1000);
-    await client.rateLimit.deleteMany({
-      where: {
-        windowStart: { lt: cutoff },
-        NOT: KEEP_RATE_LIMIT_PREFIXES.map((prefix) => ({ key: { startsWith: prefix } })),
-      },
-    });
+    void client.rateLimit
+      .deleteMany({
+        where: {
+          windowStart: { lt: cutoff },
+          NOT: KEEP_RATE_LIMIT_PREFIXES.map((prefix) => ({ key: { startsWith: prefix } })),
+        },
+      })
+      .catch(() => undefined);
   }
   return {
     ok: count <= limit,
