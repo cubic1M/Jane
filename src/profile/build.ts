@@ -89,6 +89,9 @@ export type ProfileInput = {
     // A year of interest on the person's cards from their balances and rates (the chat's
     // figure). Null: not available, so the interest charges seen are used. Absent: not loaded.
     cardInterestYearCents?: number | null;
+    // What Jane's open reshops of car and home cover would save a year (the switch card's and
+    // the chat's figure); 0 when there are none. Absent: not loaded.
+    insuranceShopSavingCents?: number;
     rsuGap?: {
       vestedCents: number;
       shortfallCents: number;
@@ -123,7 +126,7 @@ const addDaysTo = (day: string, days: number) =>
   new Date(Date.parse(`${day}T00:00:00Z`) + days * 86_400_000).toISOString().slice(0, 10);
 
 // How many calendar months the data covers, up to a year.
-function monthsOfData(txs: readonly ProfileTx[], today: string): number {
+export function monthsOfData(txs: readonly ProfileTx[], today: string): number {
   if (txs.length === 0) return 0;
   const first = txs.reduce((a, t) => (t.date < a ? t.date : a), today);
   const [fy, fm] = monthOf(first).split("-").map(Number);
