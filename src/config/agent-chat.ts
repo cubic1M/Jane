@@ -376,6 +376,10 @@ export const CHAT_RULES_ONLY_KINDS: readonly string[] = [
   "decision",
   // The ranked list of what matters most, and why: the same every time, so instant.
   "priorities",
+  // Exact figures the rules give in a second, whatever was talked about before.
+  "net_worth",
+  "balance_forecast",
+  "credit_score",
   // A typed yes or no, and "remind me": answered at once, pointing at the button.
   "ack",
   "remind",
