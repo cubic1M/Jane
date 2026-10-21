@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { E2E_DATABASE_URL, deleteUser, signedInUser } from "./db";
+import { E2E_DATABASE_URL, deleteUser, signedInUser, waitForFullScan } from "./db";
 
 // The day's suggestions as one card at a time over the chat (founder request): "1 of N",
 // Back and Next, the arrow keys and a swipe, the short form on each card, Hide to a chip
@@ -35,6 +35,10 @@ test("suggestions come one card at a time, by buttons, arrow keys and swipe", as
   await expect(page.getByRole("heading", { level: 1, name: "Chat with Jane" })).toBeVisible({
     timeout: 60_000,
   });
+  // The agenda and the suggestions come in the work after the first brief: wait for it, then look.
+  await waitForFullScan(user.userId);
+  await page.reload();
+  await expect(page.getByRole("heading", { level: 1, name: "Chat with Jane" })).toBeVisible();
 
   const stack = page.getByRole("region", { name: "Suggestions for you" });
   await expect(stack).toBeVisible({ timeout: 60_000 });
