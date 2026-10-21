@@ -128,16 +128,28 @@ export function sectorsFor(
   return wanted;
 }
 
+// The tools for a question, in an order that caches well: the general tools every question gets
+// come first and end in a cache breakpoint, so every request shares that cached start whatever
+// sector it is about; then the button tool (only when `buttons`), then the sector's tools. The
+// request's own system prompt follows them (./claude.ts).
 export function toolsFor(
   all: readonly Anthropic.Tool[],
   question: string,
   previous: string | null,
   topic: Topic | null,
   asOf: string,
+  { buttons = true }: { buttons?: boolean } = {},
 ): Anthropic.Tool[] {
   const wanted = sectorsFor(question, previous, topic, asOf);
-  return all.filter((tool) => {
+  const kept = all.filter((tool) => {
     const sector = sectorOf(tool.name);
     return sector === null || wanted.has(sector);
   });
+  const general = kept.filter((t) => sectorOf(t.name) === null && t.name !== "propose_action");
+  const button = buttons ? kept.filter((t) => t.name === "propose_action") : [];
+  const sectors = kept.filter((t) => sectorOf(t.name) !== null);
+  const cached = general.map((t, i) =>
+    i === general.length - 1 ? { ...t, cache_control: { type: "ephemeral" as const } } : t,
+  );
+  return [...cached, ...button, ...sectors];
 }

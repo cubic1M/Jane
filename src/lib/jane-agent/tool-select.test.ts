@@ -20,6 +20,27 @@ describe("choosing tools for a question", () => {
     expect(names("how am I doing")).toContain("propose_action");
   });
 
+  it("orders the tools to share a cached start: general first, a breakpoint, then buttons, then the sector", () => {
+    const withTax = toolsFor(CHAT_TOOLS, "how are my crypto gains taxed", null, null, ASOF);
+    const plain = toolsFor(CHAT_TOOLS, "how am I doing", null, null, ASOF);
+    const breakpoints = (tools: ReturnType<typeof toolsFor>) =>
+      tools.flatMap((t, i) => ("cache_control" in t && t.cache_control ? [i] : []));
+    expect(breakpoints(withTax)).toHaveLength(1);
+    expect(breakpoints(plain)).toHaveLength(1);
+    // The part before the breakpoint is the same list for both, so one cached copy serves all.
+    const head = (tools: ReturnType<typeof toolsFor>) =>
+      tools.slice(0, breakpoints(tools)[0] + 1).map((t) => t.name);
+    expect(head(withTax)).toEqual(head(plain));
+    // The button tool follows the breakpoint, so having it or not doesn't change the cached part.
+    const names = withTax.map((t) => t.name);
+    expect(names.indexOf("propose_action")).toBe(breakpoints(withTax)[0] + 1);
+    const noButtons = toolsFor(CHAT_TOOLS, "how are my crypto gains taxed", null, null, ASOF, {
+      buttons: false,
+    });
+    expect(noButtons.map((t) => t.name)).not.toContain("propose_action");
+    expect(head(noButtons)).toEqual(head(withTax));
+  });
+
   it("always sends the calculator", () => {
     for (const q of [
       "how am I doing",

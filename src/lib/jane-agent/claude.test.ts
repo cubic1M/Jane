@@ -462,6 +462,18 @@ describe("askClaudeInChat", () => {
     expect(tooLong("x".repeat(650), "how am i doing", false)).toBe(true);
   });
 
+  it("says what it can see, not what 'the tool shows', and drops 'my earlier guess'", () => {
+    expect(plainText("The tool shows about $2,448 a year going unclaimed.")).toBe(
+      "I can see about $2,448 a year going unclaimed.",
+    );
+    expect(plainText("According to the tools, you owe less.")).toBe(
+      "from your accounts, you owe less.",
+    );
+    expect(
+      withoutButtonTalk("You get a match. My earlier guess of 3% was lower. Ask HR to confirm."),
+    ).toBe("You get a match. Ask HR to confirm.");
+  });
+
   it("falls back to safe text, with no buttons, when the rewrite fails too", async () => {
     const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
     create
