@@ -8,6 +8,7 @@ vi.mock("@/lib/analytics", () => ({ track: vi.fn() }));
 vi.mock("@/lib/audit", () => ({ logAudit: vi.fn(), SYSTEM_ACTOR: { type: "system", id: null } }));
 
 import { DECISION_TOPICS } from "@/config/tax-decisions";
+import { loadTaxSavings } from "@/lib/tax-savings";
 import { decideTax } from "@/lib/tax-decisions";
 import { linkDemoBank } from "@/lib/plaid/demo";
 import { syncItem } from "@/lib/plaid/sync";
@@ -56,6 +57,8 @@ describe.runIf(url)("tax decisions against a real database", { timeout: 120_000 
     const d = await decideTax(chris, "k401", { client, now: NOW });
     expect(d.advice).toBe(true);
     expect(d.text).toMatch(/^Not yet\..*debt/);
+    const { savings } = await loadTaxSavings(chris, { client, now: NOW });
+    expect(savings.map((x) => x.key)).not.toContain("retirement");
 
     const real = await client.user.create({
       data: { email: `taxdec-${crypto.randomUUID()}@example.com` },

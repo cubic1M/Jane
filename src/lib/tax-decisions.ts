@@ -1,6 +1,5 @@
 import {
   ADVICE_DECISIONS,
-  DEBT_FIRST_APR_BPS,
   SAVING_DECISIONS,
   type DecisionTopic,
   ROTH_UNTIL_RATE,
@@ -8,6 +7,7 @@ import {
 } from "@/config/tax-decisions";
 import { CONTRIBUTION_LIMITS, STANDARD_DEDUCTION } from "@/config/tax-rates";
 import type { PrismaClient } from "@/generated/prisma/client";
+import { debtFirst } from "@/lib/debt-first";
 import { adviceMode } from "@/lib/advice-mode";
 import { db as defaultClient } from "@/lib/db";
 import { loadGiving } from "@/lib/giving";
@@ -44,25 +44,6 @@ export type Decision = {
 };
 
 const pct = (rate: number) => `${Math.round(rate * 100)}%`;
-
-async function debtFirst(userId: string, client: PrismaClient): Promise<string | null> {
-  const [overdrawn, costly] = await Promise.all([
-    client.account.count({
-      where: { userId, type: "depository", currentBalanceCents: { lt: 0 } },
-    }),
-    client.liability.findMany({
-      where: { userId, kind: { in: ["credit", "loan"] }, aprBps: { gte: DEBT_FIRST_APR_BPS } },
-      select: { aprBps: true },
-    }),
-  ]);
-  if (overdrawn > 0)
-    return "You're overdrawn" + (costly.length ? " and carrying debt at a high rate." : ".");
-  if (costly.length) {
-    const top = Math.max(...costly.map((l) => l.aprBps ?? 0));
-    return `You're carrying debt at up to ${(top / 100).toFixed(0)}% a year.`;
-  }
-  return null;
-}
 
 export async function decideTax(
   userId: string,

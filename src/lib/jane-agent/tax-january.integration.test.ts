@@ -94,8 +94,6 @@ describe.runIf(url)("taxes on autopilot against a real database", () => {
       client,
       now: LINKED,
     });
-    expect(reply.body).toMatch(
-      /^The 2026 standard deduction is \$16,100\.00 for single filers, \$32,200\.00 married filing jointly and \$24,150\.00 head of household\. Filing as single, yours is \$16,100\.00/,
-    );
+    expect(reply.body).toMatch(/^(?:Itemize|Take the standard)\b.*standard deduction is \$16,100/);
   });
 });

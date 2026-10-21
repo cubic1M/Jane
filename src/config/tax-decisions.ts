@@ -55,3 +55,5 @@ export const ROTH_UNTIL_RATE = 0.12;
 export const DEBT_FIRST_APR_BPS = 1500;
 // Decisions that move money out of the paycheck or the bank into a tax-favoured account.
 export const SAVING_DECISIONS: readonly DecisionTopic[] = ["k401", "ira", "hsa", "donate_stock"];
+// ...and only when more than the cash on hand is carried on it (and at least this much), so a card paid off each month does not count.
+export const DEBT_FIRST_MIN_CENTS = 100_000;

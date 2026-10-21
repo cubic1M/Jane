@@ -53,7 +53,7 @@ export const TAX_QUESTIONS: readonly CheckQuestion[] = [
   decide("taxq-03", "should I adjust my withholding", /W-4|withholding|paycheck/),
   decide("taxq-04", "do I need to pay estimated taxes", /^No\./),
   decide("taxq-05", "should I max out my 401k to lower my taxes", /401\(k\)/),
-  decide("taxq-06", "should I contribute to a traditional or Roth IRA", /IRA/),
+  decide("taxq-06", "should I contribute to a traditional IRA or a Roth IRA", /IRA/),
   decide("taxq-07", "should I open an HSA", /high-deductible/),
   decide("taxq-08", "is it worth appealing my property tax", /assessed/),
   decide("taxq-09", "should I sell my losing stocks for the tax loss", /below cost|loss/),
