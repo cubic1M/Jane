@@ -25,12 +25,14 @@ describe("pointing back with 'it'", () => {
     }
   });
 
-  it("leaves it alone without a topic, or when it can't be read either way", () => {
+  it("leaves it alone without a topic, or for a kind of answer with no name", () => {
     expect(
       resolvePronoun("how do i improve it", parse("how do i improve it"), null, parse),
+    ).toEqual({
+      kind: "unknown",
+    });
+    expect(
+      resolvePronoun("how do i improve it", parse("how do i improve it"), { kind: "act" }, parse),
     ).toEqual({ kind: "unknown" });
-    expect(resolvePronoun("blah it", parse("blah it"), { kind: "credit_score" }, parse).kind).toBe(
-      "about",
-    );
   });
 });
