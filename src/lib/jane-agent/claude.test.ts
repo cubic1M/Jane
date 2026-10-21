@@ -50,7 +50,7 @@ import {
   withoutTapYes,
 } from "./claude";
 import { forgetPrimer } from "./primer-cache";
-import { CHAT_TOOLS, proposeAction } from "./claude-tools";
+import { CHAT_TOOLS, healthHeadline, proposeAction } from "./claude-tools";
 import { loadSnapshot, type Snapshot } from "./snapshot";
 
 // Spec step 84: free questions go to Claude with read-only tools over the person's own data
@@ -258,7 +258,7 @@ describe("askClaudeInChat", () => {
     expect(lastToolResult(1)).toMatchObject({ is_error: true });
     expect(lastToolResult(1).content).toMatch(/isn't an action you can offer/);
     expect(lastToolResult(2).content).toMatch(/isn't an action you can offer/);
-    expect(lastToolResult(3).content).toBe("That isn't one of the person's open findings.");
+    expect(lastToolResult(3).content).toContain("That isn't one of the person's open findings.");
   });
 
   it("offers one button per answer", async () => {
@@ -270,7 +270,7 @@ describe("askClaudeInChat", () => {
     expect(result.reply.actions).toEqual([
       { id: "open", kind: "link", label: "See goals", href: "/goals" },
     ]);
-    expect(lastToolResult(2).content).toBe("You already offered a button for this answer.");
+    expect(lastToolResult(2).content).toContain("You already offered a button for this answer.");
   });
 
   it("lets an amount through when the calculate tool worked it out, and not when Claude did", async () => {
@@ -404,6 +404,28 @@ describe("askClaudeInChat", () => {
     expect(withoutButtonTalk("I used propose_action. Lighthouse is cheaper.")).toBe(
       "Lighthouse is cheaper.",
     );
+  });
+
+  it("keeps a failed button out of the text, and shortens an answer that repeats the card", async () => {
+    // The tool result tells Claude not to report it, and a sentence that does is dropped anyway.
+    expect(
+      withoutButtonTalk("I couldn't set up the button for the switch. GEICO is $408.00 cheaper."),
+    ).toBe("GEICO is $408.00 cheaper.");
+    expect(tooLong("x".repeat(400), "can you change my car insurance", true)).toBe(true);
+    expect(tooLong("x".repeat(400), "can you change my car insurance", false)).toBe(false);
+    create
+      .mockResolvedValueOnce(toolUse("propose_action", { action: "finding.delete" }))
+      .mockResolvedValueOnce(final("Here is what GEICO shows."));
+    await askClaudeInChat("u1", [], "cancel my plan", options);
+    expect(lastToolResult(1).content).toMatch(/Never tell the person a button could not be set up/);
+  });
+
+  it("gives a low money health score as words, not a number or a band", () => {
+    expect(healthHeadline(0, "Building")).toMatchObject({ score: null });
+    expect(JSON.stringify(healthHeadline(0, "Building"))).not.toMatch(/Building/);
+    expect(healthHeadline(19, "Building").score).toBeNull();
+    expect(healthHeadline(20, "Building")).toEqual({ score: 20, band: "Building" });
+    expect(healthHeadline(85, "Strong")).toEqual({ score: 85, band: "Strong" });
   });
 
   it("falls back to safe text, with no buttons, when the rewrite fails too", async () => {
