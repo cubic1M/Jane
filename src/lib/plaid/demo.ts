@@ -18,7 +18,7 @@ import {
   type DemoSeed,
   type DemoSwitch,
 } from "@/data-sources/demo/demo-bank";
-import { isPersonId, type PersonId } from "@/config/people";
+import { isPersonId, personById, type PersonId } from "@/config/people";
 import type { PrismaClient } from "@/generated/prisma/client";
 import { track } from "@/lib/analytics";
 import { logAudit } from "@/lib/audit";
@@ -243,6 +243,35 @@ export async function demoAnchorFor(
   } catch {
     return null;
   }
+}
+
+// Which sample person (spec step 252) a demo bank is, or null for the original demo bank and
+// for people without one.
+export async function demoPersonFor(
+  userId: string,
+  { client = defaultClient }: { client?: PrismaClient } = {},
+): Promise<PersonId | null> {
+  const item = await scopedFor(userId, client).plaidItems.findFirst({
+    where: { plaidItemId: { startsWith: DEMO_ITEM_PREFIX } },
+    select: { accessTokenEncrypted: true },
+  });
+  if (!item) return null;
+  try {
+    const person = seedOf(decrypt(item.accessTokenEncrypted)).person;
+    return person && isPersonId(person) ? person : null;
+  } catch {
+    return null;
+  }
+}
+
+// Whether a demo-bank person has an employer (the original demo bank does; the freelancer, the
+// retiree and the business owner do not), for the sample pay stub and the sample FSA.
+export async function demoHasEmployer(
+  userId: string,
+  { client = defaultClient }: { client?: PrismaClient } = {},
+): Promise<boolean> {
+  const person = await demoPersonFor(userId, { client });
+  return person === null || personById(person)?.facts.income === "salary";
 }
 
 // The extras a demo item has, keeping only ones the demo bank knows (spec step 159).
