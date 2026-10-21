@@ -8,6 +8,7 @@ import {
 } from "@/config/strategist";
 import { URGENCY_WEIGHT, WORTH_WEIGHT } from "@/config/suggestions";
 import type { Suggestion } from "@/detectors/contract";
+import { ideaShortForms } from "@/detectors/helpers";
 import { checkGuardrails, type GuardrailProfile } from "@/lib/guardrails";
 
 // Vetting what Claude proposes as strategist (spec step 256). Pure. An idea is a title, an
@@ -83,6 +84,7 @@ export function vetIdea(
       capability: STRATEGIST_CAPABILITY,
       topic: STRATEGIST_TOPIC,
       title,
+      ...ideaShortForms(title, body),
       worthCents: counted.reduce((s, p) => s + p.worthCents, 0),
       worthKind,
       confidence: {

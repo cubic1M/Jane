@@ -298,3 +298,38 @@ describe("debt trouble facts", () => {
     );
   });
 });
+
+describe("saying Jane can't do something legal", () => {
+  const demo = (text: string) => checkGuardrails(text, [], undefined, "demo_advice");
+
+  it("lets a refusal and a pointer to a lawyer through", () => {
+    expect(demo("I can't write a will for you. A lawyer can draw one up.").ok).toBe(true);
+    expect(demo("That's not something I can do, so talk to an estate attorney about it.").ok).toBe(
+      true,
+    );
+  });
+
+  it("lets a kind answer to a death through when it leaves the legal part to an attorney", () => {
+    expect(
+      demo(
+        "I'm so sorry about your mom. For her accounts, an estate attorney can tell you the steps, and each bank has a team for this.",
+      ).ok,
+    ).toBe(true);
+    expect(demo("Probate is the court process that decides who inherits.").ok).toBe(false);
+  });
+
+  it("still blocks legal advice of its own, even next to a refusal", () => {
+    expect(demo("You should sue the landlord.").ok).toBe(false);
+    expect(demo("I can't write that for you, but you should sue them and file in court.").ok).toBe(
+      false,
+    );
+    expect(demo("Legally you can stop paying your credit cards.").ok).toBe(false);
+  });
+
+  it("no longer reads 'stop paying overdraft fees' as legal trouble", () => {
+    expect(demo("You can stop paying overdraft fees by turning on a low-balance alert.").ok).toBe(
+      true,
+    );
+    expect(demo("You could stop paying your credit cards.").ok).toBe(false);
+  });
+});

@@ -178,6 +178,33 @@ describe.runIf(url)("everything from Jane's chat, against a real database", () =
         { action: "autopilot.safe", kind: "decision" },
       );
 
+      // A tap handed a defer returns before the audit row; the work runs when the caller says.
+      const second = await person("chat83-defer");
+      const ask = await client.janeMessage.create({
+        data: {
+          userId: second,
+          kind: "heads_up",
+          body: "Something to look at.",
+          dedupeKey: "defer-test",
+          actions: [{ id: "snooze", label: "Not now", kind: "secondary" }],
+        },
+      });
+      vi.mocked(logAudit).mockClear();
+      const later: (() => Promise<unknown>)[] = [];
+      await takeChatAction(second, ask.id, "snooze", {
+        client,
+        now: LINKED,
+        defer: (work) => later.push(work),
+      });
+      expect(logAudit).not.toHaveBeenCalled();
+      for (const work of later) await work();
+      expect(logAudit).toHaveBeenCalledWith(
+        { type: "user", id: second },
+        "chat_action_taken",
+        { type: "jane_message", id: ask.id },
+        { action: "snooze", kind: "heads_up" },
+      );
+
       // Once only: the same tap again is refused, and Jane never asks again.
       await expect(
         takeChatAction(userId, question.id, "autopilot.ask", { client }),

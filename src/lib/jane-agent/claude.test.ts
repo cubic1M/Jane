@@ -163,6 +163,43 @@ describe("askClaudeInChat", () => {
     expect(sent.length).toBeLessThan(CHAT_TOOLS.length / 2);
   });
 
+  it("writes the answer again in words when the last one was only about a button", async () => {
+    create
+      .mockResolvedValueOnce(toolUse("propose_action", { action: "open", page: "plan" }))
+      .mockResolvedValueOnce(final("I've put a link to the plan under this answer."))
+      .mockResolvedValueOnce(
+        final("You have two cards: one is the one to pay off first, then the other."),
+      );
+    const before = create.mock.calls.length;
+    const result = await askClaudeInChat("u1", [], "do i have any loans or debts", options);
+    expect(result.kind).toBe("answer");
+    expect(result.reply.body).toMatch(/two cards/);
+    expect(create.mock.calls.length - before).toBe(3);
+    // The rewrite request is text only: no tool_use without its tool_result.
+    const last = create.mock.calls[create.mock.calls.length - 1][0].messages.at(-2);
+    expect(JSON.stringify(last)).not.toContain("tool_use");
+  });
+
+  it("offers a finding's button from the saved snapshot, never a fresh 10-second build", async () => {
+    const stored = {
+      at: new Date(NOW.getTime() - 60_000).toISOString(),
+      snapshot,
+    };
+    const withStored = {
+      janePreference: { findUnique: vi.fn().mockResolvedValue({ value: stored }) },
+    } as unknown as PrismaClient;
+    vi.mocked(loadSnapshot).mockClear();
+    const started = Date.now();
+    const result = await proposeAction(
+      "u1",
+      { action: "finding.yes", finding_id: "f1" },
+      { client: withStored, now: NOW },
+    );
+    expect(result.ok).toBe(true);
+    expect(loadSnapshot).not.toHaveBeenCalled();
+    expect(Date.now() - started).toBeLessThan(500);
+  });
+
   it("puts a proposed finding's Yes and No under the answer, without acting", async () => {
     create
       .mockResolvedValueOnce(toolUse("propose_action", { action: "finding.yes", finding_id: "f1" }))
@@ -186,7 +223,7 @@ describe("askClaudeInChat", () => {
     // Jane's own wording for the finding follows Claude's text.
     expect(result.reply.body).toMatch(/\n\nReview your Hulu subscription\. Could save about/);
     expect(lastToolResult(1)).toMatchObject({
-      content: "Noted.",
+      content: expect.stringContaining("The button is ready"),
     });
   });
 
@@ -219,6 +256,53 @@ describe("askClaudeInChat", () => {
       { id: "open", kind: "link", label: "See goals", href: "/goals" },
     ]);
     expect(lastToolResult(2).content).toBe("You already offered a button for this answer.");
+  });
+
+  it("lets an amount through when the calculate tool worked it out, and not when Claude did", async () => {
+    create
+      .mockResolvedValueOnce(
+        toolUse("calculate", {
+          operation: "percent_of",
+          basis: "the 4% rule on her retirement balance",
+          percent: 4,
+          amount: 849414,
+        }),
+      )
+      .mockResolvedValueOnce(
+        final("The usual starting point is 4% a year, which on your balance is $33,976.56."),
+      );
+    const sent = vi.fn();
+    const result = await askClaudeInChat("u1", [], "wats a safe wdrawal rate", {
+      ...options,
+      advice: true,
+      onEvent: sent,
+    });
+    expect(result.kind).toBe("answer");
+    expect(result.reply.body).toContain("$33,976.56");
+    expect(lastToolResult(1).content).toContain("$33,976.56");
+    // And the tool is always on offer.
+    expect(CHAT_TOOLS.map((t) => t.name)).toContain("calculate");
+  });
+
+  it("rewrites a blocked answer even when the lookups used every turn, and logs the rule", async () => {
+    create
+      .mockResolvedValueOnce(toolUse("safe_to_spend"))
+      .mockResolvedValueOnce(toolUse("safe_to_spend"))
+      .mockResolvedValueOnce(final("A 4% rule on $1,000,000 would be $40,000 a year."))
+      .mockResolvedValueOnce(
+        final("A common starting point is 4% of what you've saved each year."),
+      );
+    const info = vi.spyOn(console, "info").mockImplementation(() => {});
+    const result = await askClaudeInChat("u1", [], "wats a safe wdrawal rate", options);
+    expect(result.kind).toBe("answer");
+    expect(result.reply.body).toMatch(/4%/);
+    // The note names the amounts to fix.
+    expect(JSON.stringify(create.mock.calls.at(-1)?.[0].messages.at(-1))).toMatch(/\$40,000/);
+    const logged = JSON.parse(String(info.mock.calls.find((c) => c[0] === "chat_timing")?.[1]));
+    expect(logged).toMatchObject({
+      rewrites: 1,
+      guardrails: ["unsupported_dollar_figure"],
+    });
   });
 
   it("falls back to safe text, with no buttons, when the rewrite fails too", async () => {
@@ -697,11 +781,13 @@ describe("speed and failures", () => {
       expect(withoutButtonTalk(talk), talk).toBe("");
     }
     // Only button talk, even with a sentence about what the page shows: no answer at all.
-    create.mockResolvedValueOnce(
-      final(
-        "I've put a link to your debt plan under this answer. It shows how to pay off your cards, highest interest first.",
-      ),
-    );
+    for (let i = 0; i < 2; i += 1) {
+      create.mockResolvedValueOnce(
+        final(
+          "I've put a link to your debt plan under this answer. It shows how to pay off your cards, highest interest first.",
+        ),
+      );
+    }
     const info = vi.spyOn(console, "info").mockImplementation(() => {});
     expect((await askClaudeInChat("u1", [], "should i buy bitcoin", options)).kind).toBe(
       "unavailable",
