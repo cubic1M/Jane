@@ -41,7 +41,7 @@ import { demoPayoffs } from "@/lib/loan-applications";
 import { confirmInsuranceSwitches } from "@/lib/insurance/switch";
 import { demoExtrasOf, demoPlaidApi, isDemoToken } from "./demo";
 import { postScanningHello } from "@/lib/jane-agent/open";
-import { keepFullSnapshot, runJaneAgentSafely } from "@/lib/jane-agent/run";
+import { runJaneAgentSafely } from "@/lib/jane-agent/run";
 import { scanSuggestions } from "@/lib/suggestions";
 import { markScanDone } from "@/lib/scan";
 import { phaseTimer } from "@/lib/trial-timing";
@@ -80,9 +80,6 @@ type Options = {
   // findings are posted right after detection, before the slower sector work, and again
   // after it. Other syncs run Jane once, at the end.
   progressive?: boolean;
-  // Called once, on a first scan, as soon as accounts and transactions are saved: the chat can
-  // open (the sample person's click waits for exactly this, then goes straight to the chat).
-  onReady?: () => void;
 };
 
 async function saveAccounts(db: ScopedDb, itemId: string, sync: { accounts: NormalizedAccount[] }) {
@@ -579,13 +576,7 @@ export async function syncDemoInvestments(
 
 export async function syncItem(
   itemId: string,
-  {
-    client = defaultClient,
-    api = plaid(),
-    now = new Date(),
-    progressive = false,
-    onReady,
-  }: Options = {},
+  { client = defaultClient, api = plaid(), now = new Date(), progressive = false }: Options = {},
 ): Promise<SyncResult> {
   // The first scan's phases, logged once as trial_timing (where the first minute goes).
   const timing = phaseTimer("first_sync");
@@ -651,10 +642,7 @@ export async function syncItem(
   ]);
   // From here the chat can open (accounts and transactions are in).
   timing.mark("save_transactions");
-  if (progressive && item.transactionsCursor === null) {
-    timing.log("chat_ready");
-    onReady?.();
-  }
+  if (progressive && item.transactionsCursor === null) timing.log("chat_ready");
   // Independent of each other (their own tables), so together: the investments alone were
   // five seconds on live for a person with holdings, with the brief waiting behind them.
   const [recurring, liabilities, investments] = await Promise.all([
@@ -707,11 +695,8 @@ export async function syncItem(
     await runJaneAgentSafely(item.userId, { client, now, trigger: scanTrigger, early: true });
     timing.mark("first_brief");
     timing.log("first_brief");
-    // The brief is in the chat. The whole snapshot is kept now, for the chat's first question,
-    // before the slow sector work; then the scan is over for the person (the page stops
-    // reloading itself). Marking it done earlier let the open chat start its own run while
-    // the scan was still working, and the end-to-end flows that wait for its findings failed.
-    await keepFullSnapshot(item.userId, { client, now });
+    // The brief is in the chat: the scan is over for the person (the page stops reloading
+    // itself); the sectors' work and Jane's last words still follow and show on the next look.
     await markScanDone(item.userId, { client, now }).catch((error) =>
       console.error("Marking the scan done failed", { error: String(error) }),
     );
