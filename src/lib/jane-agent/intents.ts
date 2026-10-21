@@ -94,7 +94,7 @@ export type Intent =
   // Spec step 142: "what did you check last night?"
   | { kind: "checked" }
   // Spec step 143: "what should I do first?"
-  | { kind: "priorities" }
+  | { kind: "priorities"; explain?: boolean }
   // Spec step 183: "am I OK?" and "what should I do this month?", across every sector.
   | { kind: "whole_picture"; focus: "now" | "month" }
   // What they own and owe, from the net worth page.

@@ -366,6 +366,8 @@ export const CHAT_RULES_ONLY_KINDS: readonly string[] = [
   "learn",
   // A decision is answered from their numbers, the same every time; Claude never looks up the thing.
   "decision",
+  // The ranked list of what matters most, and why: the same every time, so instant.
+  "priorities",
   // A typed yes or no, and "remind me": answered at once, pointing at the button.
   "ack",
   "remind",
