@@ -228,7 +228,7 @@ const emergencyFund: Detector = {
 };
 
 const highCostLoans: Detector = {
-  covers: ["debt_trouble"],
+  covers: ["debt_trouble", "costly_borrowing"],
   capability: "debt",
   topic: "high_cost_loans",
   needs: [],
