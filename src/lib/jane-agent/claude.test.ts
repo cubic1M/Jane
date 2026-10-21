@@ -549,6 +549,29 @@ describe("speed and failures", () => {
     expect((await askClaudeInChat("u1", [], "hi", options)).kind).toBe("answer");
   });
 
+  it("logs where the time went, as numbers only", async () => {
+    const info = vi.spyOn(console, "info").mockImplementation(() => {});
+    create.mockResolvedValueOnce({
+      ...final("Fine."),
+      usage: { input_tokens: 900, output_tokens: 20, cache_read_input_tokens: 700 },
+    });
+    await askClaudeInChat("u1", [], "how am i doing", options);
+    const line = info.mock.calls.find((c) => c[0] === "chat_timing");
+    const logged = JSON.parse(String(line?.[1]));
+    expect(logged).toMatchObject({
+      outcome: "answer",
+      turns: 1,
+      inputTokens: 900,
+      cachedInputTokens: 700,
+      outputTokens: 20,
+      tools: CHAT_TOOLS.length,
+    });
+    for (const key of ["primerMs", "firstEventMs", "firstTextMs", "totalMs"]) {
+      expect(typeof logged[key], key).toBe("number");
+    }
+    expect(JSON.stringify(logged)).not.toContain("how am i doing");
+  });
+
   it("reuses the person's numbers for a minute, until a tap clears them", async () => {
     create.mockResolvedValue(final("Fine."));
     await askClaudeInChat("u1", [], "a", options);

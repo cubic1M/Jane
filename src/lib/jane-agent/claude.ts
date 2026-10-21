@@ -192,7 +192,61 @@ function rewriteRequest(
   return `(From the app, not the person.) That answer can't be shown yet:\n- ${reasons.join("\n- ")}\nWrite the whole answer again for the person: fix only those parts and keep the rest, your suggestion and the other figures included. Don't mention this note.`;
 }
 
+// Where the time goes on a free question (one log line each, numbers only): the person's
+// numbers, Claude's first stream event and first text, the rounds, and the tokens, so a slow
+// deploy can be read from the logs. Times are milliseconds from the start of the call.
+type ChatTiming = {
+  startedAt: number;
+  primerMs: number | null;
+  firstEventMs: number | null;
+  firstTextMs: number | null;
+  turns: number;
+  stopped: boolean;
+  inputTokens: number;
+  cachedInputTokens: number;
+  cacheWriteTokens: number;
+  outputTokens: number;
+};
+
 export async function askClaudeInChat(
+  userId: string,
+  history: ChatTurn[],
+  question: string,
+  options: Options,
+): Promise<ClaudeAnswer> {
+  const timing: ChatTiming = {
+    startedAt: Date.now(),
+    primerMs: null,
+    firstEventMs: null,
+    firstTextMs: null,
+    turns: 0,
+    stopped: false,
+    inputTokens: 0,
+    cachedInputTokens: 0,
+    cacheWriteTokens: 0,
+    outputTokens: 0,
+  };
+  let outcome = "error";
+  try {
+    const answer = await askClaude(userId, history, question, options, timing);
+    outcome = answer.kind;
+    return answer;
+  } finally {
+    const { startedAt, ...rest } = timing;
+    console.info(
+      "chat_timing",
+      JSON.stringify({
+        ...rest,
+        outcome,
+        totalMs: Date.now() - startedAt,
+        model: chatModel(),
+        tools: CHAT_TOOLS.length,
+      }),
+    );
+  }
+}
+
+async function askClaude(
   userId: string,
   history: ChatTurn[],
   question: string,
@@ -207,6 +261,7 @@ export async function askClaudeInChat(
     firstWordsMs = CHAT_CLAUDE_FIRST_WORDS_MS,
     deadlineMs = CHAT_CLAUDE_DEADLINE_MS,
   }: Options,
+  timing: ChatTiming,
 ): Promise<ClaudeAnswer> {
   // Spec step 93: Claude failed a moment ago: answer from the rules now, never a spinner.
   if (Date.now() < claudeDownUntil) return unavailable();
@@ -215,7 +270,9 @@ export async function askClaudeInChat(
   const started = Date.now();
   const profile = advice ? "demo_advice" : "standard";
   onEvent({ type: "status", text: "Looking at your numbers…" });
+  const primerStarted = Date.now();
   const primer = await chatPrimer(userId, { client, now });
+  timing.primerMs = Date.now() - primerStarted;
   // Figures the answer may use: any in the numbers sent up front or a tool's result (a
   // finding's title has some too: "Charged twice? $64.20 at Target"), the question, and
   // earlier answers.
@@ -262,6 +319,7 @@ export async function askClaudeInChat(
           messages,
         })
         .on("streamEvent", (event) => {
+          timing.firstEventMs ??= Date.now() - timing.startedAt;
           // It has started: now only the deadline applies.
           if (timer && turn === 0) {
             clearTimeout(timer);
@@ -275,17 +333,22 @@ export async function askClaudeInChat(
             onEvent({ type: "status", text: statusFor(event.content_block.name) });
           }
         })
-        .on("text", (delta) => draft.push(delta));
+        .on("text", (delta) => {
+          timing.firstTextMs ??= Date.now() - timing.startedAt;
+          draft.push(delta);
+        });
       function stop() {
         stopped = true;
         if (typeof stream.abort === "function") stream.abort();
       }
       const left = deadlineMs - (Date.now() - started);
       timer = setTimeout(stop, turn === 0 ? Math.min(firstWordsMs, left) : Math.max(0, left));
+      timing.turns = turn + 1;
       response = await stream.finalMessage();
     } catch (error) {
       if (!(error instanceof Anthropic.APIError)) throw error;
       if (stopped) {
+        timing.stopped = true;
         console.warn("Jane's chat answer from Claude was too slow");
       } else {
         console.error("Jane's chat request to Claude failed", { status: error.status });
@@ -296,6 +359,10 @@ export async function askClaudeInChat(
       clearTimeout(timer);
     }
 
+    timing.inputTokens += response.usage?.input_tokens ?? 0;
+    timing.cachedInputTokens += response.usage?.cache_read_input_tokens ?? 0;
+    timing.cacheWriteTokens += response.usage?.cache_creation_input_tokens ?? 0;
+    timing.outputTokens += response.usage?.output_tokens ?? 0;
     await addSpend(
       userId,
       {
