@@ -392,6 +392,18 @@ async function askClaude(
   }
   let rewrites = 0;
   let decisionUsed = false;
+  const partialAnswer = (): ClaudeAnswer | null => {
+    const kept = withoutButtonTalk(draft.shownText()).trim();
+    if (kept.length < 20) return null;
+    return {
+      kind: "answer",
+      reply: {
+        body: plainText(kept),
+        actions: proposal?.actions ?? [],
+        refs: { ...(proposal?.refs ?? {}) },
+      },
+    };
+  };
   // Only the last few turns: a long thread slows every follow-up. The topic of the last
   // answer is in the numbers sent with the question, so a short follow-up keeps its context.
   const messages = conversation(history.slice(-CHAT_CLAUDE_HISTORY), question);
@@ -408,7 +420,9 @@ async function askClaude(
   let shown: AnswerBlock | null = null;
   const draft = new GuardedText(
     () => allowedCents,
-    (text) => onEvent({ type: "text", text: plainText(text) }),
+    (text) => {
+      if (!BUTTON_TALK.test(text)) onEvent({ type: "text", text: plainText(text) });
+    },
     profile,
   );
   const system: Anthropic.TextBlockParam[] = [
@@ -518,6 +532,13 @@ async function askClaude(
         if (status === 429 || status >= 500) {
           claudeDownUntil = Date.now() + CHAT_CLAUDE_COOLDOWN_SECONDS * 1000;
         }
+      }
+      // Text already shown stays: it is what the person has read, so the answer is that, not a
+      // retraction to "I couldn't look into that".
+      const partial = partialAnswer();
+      if (partial) {
+        timing.reason ??= "partial";
+        return partial;
       }
       return fail(stopped ? "too_slow" : "api_error");
     } finally {

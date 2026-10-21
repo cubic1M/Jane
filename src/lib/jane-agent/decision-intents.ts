@@ -110,6 +110,8 @@ export function parseDecision(raw: string): DecisionIntent | null {
     const rest = tidy(buy[1]);
     if (!rest) return null;
     const item = classify(rest);
+    // "Get" alone is too loose ("get a new credit card"): it needs a thing we know.
+    if (/^get/.test(buy[0]) && item === "other") return null;
     return {
       kind: "decision",
       item: /^invest(?:ing)? in/.test(buy[0]) && item === "other" ? "invest" : item,
@@ -118,6 +120,7 @@ export function parseDecision(raw: string): DecisionIntent | null {
   }
   // "Is crypto a good idea for me?": no verb, but a subject we know.
   const subject = SUBJECT.exec(text);
-  if (subject) return { kind: "decision", item: classify(subject[0]), label: tidy(subject[0]) };
+  if (subject && /\b(?:good (?:idea|buy|investment|bet|move)|worth|smart|wise|safe)\b/.test(text))
+    return { kind: "decision", item: classify(subject[0]), label: tidy(subject[0]) };
   return null;
 }

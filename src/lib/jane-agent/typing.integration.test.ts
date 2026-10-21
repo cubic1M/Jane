@@ -22,7 +22,7 @@ import { addSpend, overDailyCap, spentTodayCents } from "./spend";
 import { runChatTool } from "./claude-tools";
 import { chatFeed, closeSettled, postedToday } from "./messages";
 import { parseActions } from "./types";
-import { ChatInputError, recentTurns, sendToJane } from "./typing";
+import { ChatInputError, lastTopic, recentTurns, sendToJane } from "./typing";
 import { toView } from "./view";
 
 // Spec step 84 against a real, migrated Postgres: link the demo bank, type "cancel Hulu",
@@ -379,6 +379,26 @@ describe.runIf(url)("typing to Jane against a real database", () => {
       expect(
         await overDailyCap(capped, { client, now: new Date(when.getTime() + 24 * 60 * 60 * 1000) }),
       ).toBe(false);
+    });
+
+    it("makes the last question the topic even when it got no answer, so 'why' isn't about an older one", async () => {
+      const someone = await client.user.create({
+        data: { email: `asked-${crypto.randomUUID()}@example.com` },
+      });
+      await client.account.create({
+        data: { userId: someone.id, source: "csv", name: "Checking", type: "depository" },
+      });
+      const at = new Date("2026-10-18T15:00:00Z");
+      await sendToJane(someone.id, "zzz qqq blorp", { client, now: at });
+      const topic = await lastTopic(someone.id, { client, now: new Date(at.getTime() + 60_000) });
+      expect(topic).toEqual({ kind: "asked", target: "zzz qqq blorp" });
+      // "cancel it" doesn't act on an unanswered question's words.
+      const { reply } = await sendToJane(someone.id, "cancel it", {
+        client,
+        now: new Date(at.getTime() + 120_000),
+      });
+      expect(reply.body).not.toMatch(/zzz qqq blorp/);
+      await client.user.delete({ where: { id: someone.id } });
     });
 
     it("leaves what Jane couldn't answer out of what Claude sees", async () => {

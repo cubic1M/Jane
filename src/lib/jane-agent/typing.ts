@@ -177,9 +177,8 @@ async function answer(
   // rules' answer, with the person's numbers: instant, and never Claude's button talk.
   const explainByRules =
     intent.kind === "explain" &&
-    ["explain", "why_finding", "priorities", "decision"].includes(
-      withTopic(intent, topic, asOf).kind,
-    );
+    (!topic ||
+      ["why_finding", "priorities", "decision"].includes(withTopic(intent, topic, asOf).kind));
   if (!llmEnabled() || CHAT_RULES_ONLY_KINDS.includes(intent.kind) || explainByRules) {
     const byRules = await rules();
     if (byRules) return { reply: byRules, intent: intent.kind, source: "rules" };
@@ -273,6 +272,11 @@ export async function sendToJane(
   });
   // A millisecond later, so the answer always sits under the question.
   const answeredAt = new Date(now.getTime() + 1);
+  // Whatever the answer was, even one that failed, the next \"why\" is about THIS question,
+  // not an older topic.
+  if (!reply.refs.topic) {
+    reply.refs = { ...reply.refs, topic: { kind: "asked", target: text.slice(0, 80) } };
+  }
   const replied = await storeReply(userId, reply, { client, at: answeredAt });
   // What kind of question, never its words.
   await track(userId, "chat_message_sent", {

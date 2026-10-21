@@ -759,6 +759,72 @@ describe("speed and failures", () => {
     });
   });
 
+  it("keeps the text already shown when Claude is cut off, instead of retracting it", async () => {
+    vi.spyOn(console, "warn").mockImplementation(() => {});
+    const cutOff = () =>
+      ({
+        messages: {
+          stream: () => {
+            const handlers: Record<string, (e: unknown) => void> = {};
+            let reject: (e: unknown) => void = () => {};
+            const stream = {
+              on: (name: string, fn: (e: unknown) => void) => {
+                handlers[name] = fn;
+                return stream;
+              },
+              abort: () => reject(new Anthropic.APIUserAbortError()),
+              finalMessage: () => {
+                handlers.streamEvent?.({ type: "message_start" });
+                handlers.text?.("Your cards charge 29% interest. That is a sure cost. And then");
+                return new Promise((_, r) => (reject = r));
+              },
+            };
+            return stream;
+          },
+        },
+      }) as never;
+    const events: unknown[] = [];
+    const info = vi.spyOn(console, "info").mockImplementation(() => {});
+    const result = await askClaudeInChat("u1", [], "how do i stop paying interest", {
+      ...options,
+      claude: cutOff,
+      firstWordsMs: 30,
+      deadlineMs: 60,
+      onEvent: (e) => events.push(e),
+    });
+    expect(result).toMatchObject({
+      kind: "answer",
+      reply: { body: "Your cards charge 29% interest. That is a sure cost." },
+    });
+    expect(events).toContainEqual({ type: "text", text: "Your cards charge 29% interest." });
+    expect(
+      JSON.parse(String(info.mock.calls.find((c) => c[0] === "chat_timing")?.[1])),
+    ).toMatchObject({ reason: "partial", outcome: "answer" });
+  });
+
+  it("does not pause Claude for our own 400, only for rate limits and server errors", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    const bad = () =>
+      ({
+        messages: {
+          stream: () => {
+            const stream = {
+              on: () => stream,
+              finalMessage: async () => {
+                throw new Anthropic.APIError(400, undefined, "bad request", undefined);
+              },
+            };
+            return stream;
+          },
+        },
+      }) as never;
+    expect((await askClaudeInChat("u1", [], "a", { ...options, claude: bad })).kind).toBe(
+      "unavailable",
+    );
+    create.mockResolvedValueOnce(final("Fine."));
+    expect((await askClaudeInChat("u1", [], "b", options)).kind).toBe("answer");
+  });
+
   it("pauses Claude for a while only when Claude itself fails (rate limit, overloaded)", async () => {
     vi.spyOn(console, "error").mockImplementation(() => {});
     const failing = () =>
