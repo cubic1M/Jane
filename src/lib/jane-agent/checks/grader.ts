@@ -1,12 +1,13 @@
 import Anthropic from "@anthropic-ai/sdk";
-import { finishedText, llmModel } from "@/lib/anthropic";
+import { GRADER_MODEL } from "@/config/answer-checks";
+import { finishedText } from "@/lib/anthropic";
 import type { Facts } from "./facts";
 
 // Claude's grade for one of Jane's answers (spec step 87), against a written rubric for what
 // the fixed checks can't see: is it useful, and does it sound like Jane. Only with an
 // Anthropic key; the runner counts what it costs.
 
-export const GRADER_VERSION = "grader-v1";
+export const GRADER_VERSION = "grader-v3";
 
 const RUBRIC = `You grade answers from Jane, the money helper in a personal finance app's chat. You get the person's question (and the conversation before it), Jane's answer, the buttons under it, and the person's main numbers.
 
@@ -24,7 +25,9 @@ tone
 3: correct but stiff, wordy or repetitive.
 1: cold, salesy, preachy, or padded.
 
-Never reward investment, tax or legal advice. Give a reason of one or two sentences naming what to fix.`;
+A button is only right when the person asked Jane to do something; a button on an informational answer is a fault. Never reward investment, tax or legal advice. Give a reason of one or two sentences naming what to fix.
+
+Some questions come with rules: "mustDo" (the answer has to do each of these) and "mustNot" (it must not do any of these). In "rulesBroken" list, in a few words each, every mustDo the answer missed and every mustNot it did, judging only this answer against the person's numbers. Leave it empty when all hold or when there are no rules. Rules that hold for every answer: it must not invent figures, must not speak of buttons or links "under this answer", must not answer a specific question with a general status of where they stand, and must say plainly when Jane can't do something.`;
 
 const SCHEMA = {
   type: "object",
@@ -32,8 +35,9 @@ const SCHEMA = {
     usefulness: { type: "integer", enum: [1, 2, 3, 4, 5] },
     tone: { type: "integer", enum: [1, 2, 3, 4, 5] },
     reason: { type: "string" },
+    rulesBroken: { type: "array", items: { type: "string" } },
   },
-  required: ["usefulness", "tone", "reason"],
+  required: ["usefulness", "tone", "reason", "rulesBroken"],
   additionalProperties: false,
 } as const;
 
@@ -53,6 +57,8 @@ export type GradeInput = {
   answer: string;
   buttons: readonly string[];
   facts: Facts;
+  // The scenario's own rules for the judge.
+  rules?: { mustDo?: string[]; mustNot?: string[] };
 };
 
 // Null when Claude couldn't grade it (an error, a refusal, bad output).
@@ -60,12 +66,15 @@ export async function gradeWithClaude(
   input: GradeInput,
   claude: () => Pick<Anthropic, "messages">,
 ): Promise<{ grade: ClaudeGrade | null; usage: Usage | null }> {
-  const model = llmModel();
+  const model = process.env.ANTHROPIC_GRADER_MODEL || GRADER_MODEL;
   const content = JSON.stringify({
     conversation: input.earlier,
     question: input.question,
     answer: input.answer,
     buttons: input.buttons,
+    ...(input.rules
+      ? { rules: { mustDo: input.rules.mustDo ?? [], mustNot: input.rules.mustNot ?? [] } }
+      : {}),
     numbers: {
       today: input.facts.asOf,
       safeToSpend: input.facts.safeCents,
@@ -80,7 +89,7 @@ export async function gradeWithClaude(
       max_tokens: 16000,
       system: [{ type: "text", text: RUBRIC, cache_control: { type: "ephemeral" } }],
       messages: [{ role: "user", content }],
-      output_config: { effort: "low", format: { type: "json_schema", schema: SCHEMA } },
+      output_config: { format: { type: "json_schema", schema: SCHEMA } },
     });
   } catch (error) {
     if (!(error instanceof Anthropic.APIError)) throw error;
@@ -95,19 +104,34 @@ export async function gradeWithClaude(
   const text = finishedText(response);
   if (!text) return { grade: null, usage };
   try {
-    const parsed = JSON.parse(text) as { usefulness: unknown; tone: unknown; reason: unknown };
+    const parsed = JSON.parse(text) as {
+      usefulness: unknown;
+      tone: unknown;
+      reason: unknown;
+      rulesBroken?: unknown;
+    };
     const usefulness = Number(parsed.usefulness);
     const tone = Number(parsed.tone);
     if (![usefulness, tone].every((n) => Number.isInteger(n) && n >= 1 && n <= 5)) {
       return { grade: null, usage };
     }
+    // A rule broken fails the answer, however well it reads.
+    const broken = (Array.isArray(parsed.rulesBroken) ? parsed.rulesBroken : [])
+      .map((r) => String(r).slice(0, 120))
+      .filter(Boolean)
+      .slice(0, 5);
+    const score = Math.round(((usefulness + tone - 2) / 8) * 100);
     return {
       grade: {
         usefulness,
         tone,
-        reason: String(parsed.reason ?? "").slice(0, 400),
+        reason:
+          `${broken.length > 0 ? `Broke: ${broken.join("; ")}. ` : ""}${String(parsed.reason ?? "")}`.slice(
+            0,
+            400,
+          ),
         // 1–5 each, to 0–100 together.
-        score: Math.round(((usefulness + tone - 2) / 8) * 100),
+        score: broken.length > 0 ? Math.min(score, 50) : score,
       },
       usage,
     };
