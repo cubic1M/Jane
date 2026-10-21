@@ -101,6 +101,16 @@ function sectorOf(name: string): SectorName | null {
   return null;
 }
 
+// The one or two lookups that almost every question in a sector starts with. They are run
+// while the person's numbers load and sent up front, so a sector question is one round of
+// writing instead of a round of lookups first.
+export const SECTOR_OVERVIEW: Readonly<Record<SectorName, readonly string[]>> = {
+  debt: ["debts", "credit_score"],
+  insurance: ["insurance_policies"],
+  tax: ["tax_estimate"],
+  investing: ["holdings", "investor_profile"],
+};
+
 // The sectors a question is about: from the rules' reading of it, the last topic's capability,
 // and its own words (and the previous message's, since a follow-up is short).
 export function sectorsFor(
