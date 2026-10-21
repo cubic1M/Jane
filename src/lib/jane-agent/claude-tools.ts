@@ -1,4 +1,5 @@
 import { loadDecisionFacts } from "./decision";
+import { loadSnapshotFast, refreshSnapshot } from "./snapshot-store";
 import { INSURANCE_TOOLS, isInsuranceTool, runInsuranceTool } from "./insurance/tools";
 import type Anthropic from "@anthropic-ai/sdk";
 import { BUDGET_SUGGESTION_MONTHS } from "@/config/budgets";
@@ -381,7 +382,7 @@ export async function runChatTool(
       });
     }
     case "open_findings": {
-      const snapshot = await loadSnapshot(userId, { client, now });
+      const snapshot = await loadSnapshotFast(userId, { client, now });
       return out({
         findings: (snapshot?.findings ?? []).map((f) => {
           if (f.annualSavingsCents !== null) money(f.annualSavingsCents);
@@ -492,7 +493,7 @@ export async function runChatTool(
     case "plan_upkeep": {
       const [upkeep, snapshot] = await Promise.all([
         loadUpkeep(userId, { client, now }),
-        loadSnapshot(userId, { client, now }),
+        loadSnapshotFast(userId, { client, now }),
       ]);
       return out({
         tuneUp: upkeep.tuneUp && {
@@ -703,7 +704,7 @@ export async function runChatTool(
       });
     }
     case "priorities": {
-      const snapshot = await loadSnapshot(userId, { client, now });
+      const snapshot = await loadSnapshotFast(userId, { client, now });
       return out({
         ranked: (snapshot ? rankedFor(snapshot) : []).slice(0, 10).map((r) => ({
           what: r.title,
@@ -757,7 +758,7 @@ export async function runChatTool(
       });
     }
     case "whole_picture": {
-      const snapshot = await loadSnapshot(userId, { client, now });
+      const snapshot = await loadSnapshotFast(userId, { client, now });
       if (!snapshot) return out({ linked: false });
       const ranked = rankedFor(snapshot);
       const week = wholePicture(snapshot, ranked, "now");
@@ -931,6 +932,10 @@ async function computePrimer(
 // Works the numbers out and saves them for the chat to read. Run after a sync, a scan or a
 // correction (through a dynamic import, as this file reaches those by other routes).
 export async function refreshPrimer(userId: string, options: Options): Promise<void> {
+  // And the snapshot the agenda and the tools read, saved the same way.
+  await refreshSnapshot(userId, options).catch((error) =>
+    console.error("Saving the snapshot failed", { error: String(error) }),
+  );
   const primer = await computePrimer(userId, options);
   keepPrimer(userId, options.now, primer);
   await writeStoredPrimer(userId, primer, options);

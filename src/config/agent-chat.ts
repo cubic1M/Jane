@@ -331,6 +331,8 @@ export const CHAT_PRIMER_CACHE_SECONDS = 60;
 // The numbers are also saved in the database (src/lib/jane-agent/primer-store.ts) after each
 // sync, scan and correction; the chat reads that row, and refreshes it in the background once
 // it is this old.
+// The same for the whole snapshot (src/lib/jane-agent/snapshot-store.ts).
+export const CHAT_SNAPSHOT_STORED_MINUTES = 30;
 export const CHAT_PRIMER_STORED_MINUTES = 30;
 // If Claude hasn't started (a word, a lookup or its thinking) within this many
 // milliseconds, or isn't done within the deadline, Jane answers from the rules instead.

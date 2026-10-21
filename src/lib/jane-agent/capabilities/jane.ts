@@ -1,4 +1,5 @@
 import type { Reply } from "../replies";
+import { loadSnapshotFast } from "../snapshot-store";
 import { autopilotOf } from "@/lib/autopilot";
 import { lastControllerRun } from "@/lib/controller-log";
 import { autopilotFor, sectorAutopilots } from "@/lib/sector-autopilot";
@@ -82,11 +83,11 @@ async function answer(ctx: CapabilityContext): Promise<Reply | null> {
       return flowReply(intent.flow, { userId, client, now });
     // Spec step 183.
     case "whole_picture": {
-      const snapshot = await loadSnapshot(userId, { client, now });
+      const snapshot = await loadSnapshotFast(userId, { client, now });
       return wholePictureReply(snapshot, snapshot ? rankedFor(snapshot) : [], intent.focus);
     }
     case "priorities": {
-      const snapshot = await loadSnapshot(userId, { client, now });
+      const snapshot = await loadSnapshotFast(userId, { client, now });
       return prioritiesReply(snapshot ? rankedFor(snapshot) : []);
     }
     // Spec step 203.
