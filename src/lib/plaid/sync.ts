@@ -641,7 +641,7 @@ export async function syncItem(
     await scanSuggestions(item.userId, { client, now }).catch((error) =>
       console.error("The first scan's suggestions failed", { error: String(error) }),
     );
-    await runJaneAgentSafely(item.userId, { client, now, trigger: "sync" });
+    await runJaneAgentSafely(item.userId, { client, now, trigger: "sync", early: true });
   }
   // After detection these don't depend on each other, so they run together; the sample
   // person's first screen is waiting on this sync.
