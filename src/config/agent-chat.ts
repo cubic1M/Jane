@@ -328,6 +328,10 @@ export const CHAT_BUNDLE_MAX = 5;
 // Spec step 93: fast and reliable. The person's main numbers, sent with each free
 // question, are reused for this many seconds (a tap in the chat clears them).
 export const CHAT_PRIMER_CACHE_SECONDS = 60;
+// The numbers are also saved in the database (src/lib/jane-agent/primer-store.ts) after each
+// sync, scan and correction; the chat reads that row, and refreshes it in the background once
+// it is this old.
+export const CHAT_PRIMER_STORED_MINUTES = 30;
 // If Claude hasn't started (a word, a lookup or its thinking) within this many
 // milliseconds, or isn't done within the deadline, Jane answers from the rules instead.
 export const CHAT_CLAUDE_FIRST_WORDS_MS = 4_000;

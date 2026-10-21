@@ -48,6 +48,7 @@ import {
   benefitsUnsure,
 } from "./insurance";
 import { ChatActionError, linksOf, type ActionHandler } from "./handler";
+import { markPrimerStale } from "../primer-store";
 import { forgetPrimer } from "../primer-cache";
 import { planApproveSafe } from "./plan";
 import { undoNo, undoRule } from "./undo";
@@ -462,6 +463,7 @@ export async function takeChatAction(
   const outcome = await handler.run({ userId, message, action, client, now });
   // Spec step 93: a tap can change what's open, so Claude's copy of the numbers goes.
   forgetPrimer(userId);
+  await markPrimerStale(userId, { client });
   // Spec step 230: each button of a debt review is its own item. The message stays open,
   // without the button just used, until every item has been dealt with.
   const review = message.refs.reviewButtons ?? [];
