@@ -5,13 +5,15 @@ import { Suspense } from "react";
 import { AppHeader } from "@/components/app-header";
 import { CHAT_MAX_MESSAGE } from "@/config/agent-chat";
 import { scopedFor } from "@/lib/db-scoped";
-import { markChatRead, pinnedMessages } from "@/lib/jane-agent/messages";
-import { openChat } from "@/lib/jane-agent/open";
+import { markChatRead, pinnedMessages, stackedSuggestions } from "@/lib/jane-agent/messages";
+import { toView } from "@/lib/jane-agent/view";
+import { openChat, timezoneOf } from "@/lib/jane-agent/open";
 import { requireUser } from "@/lib/session";
 import { ChatComposer } from "./composer";
 import { ChatMessageItem } from "./message";
 import { ScanRefresher } from "./scan-refresher";
 import { ScrollToEnd } from "./scroll-to-end";
+import { SuggestionStack } from "./suggestion-stack";
 
 // Jane's chat, the home screen (spec step 81): what Jane noticed, did and suggests, newest
 // at the bottom, each with its buttons. The last CHAT_PAGE_SIZE messages, with "Show
@@ -29,10 +31,18 @@ async function Chat({ searchParams }: { searchParams: PageProps<"/chat">["search
   await connection();
   const user = await requireUser();
   const pages = pagesFrom((await searchParams).pages);
-  const chat = await openChat(user.id, { pages });
+  // Nothing here waits on anything else, so a first visit waits for the slowest, not the sum.
+  const [chat, askHistory, pinned, stackedRows, zone] = await Promise.all([
+    openChat(user.id, { pages }),
+    scopedFor(user.id).askConversations.count(),
+    pinnedMessages(user.id),
+    // The day's suggestions still waiting, one card at a time by the message box.
+    stackedSuggestions(user.id),
+    timezoneOf(user.id),
+  ]);
+  const stacked = stackedRows.map((m) => toView(m, new Date(), zone));
   if (!chat) redirect("/connect");
-  const hasAskHistory = (await scopedFor(user.id).askConversations.count()) > 0;
-  const pinned = await pinnedMessages(user.id);
+  const hasAskHistory = askHistory > 0;
   after(() => markChatRead(user.id));
 
   return (
@@ -105,6 +115,8 @@ async function Chat({ searchParams }: { searchParams: PageProps<"/chat">["search
           ))}
         </ol>
       )}
+
+      <SuggestionStack messages={stacked} />
 
       {/* The message box (spec step 84): typing to Jane, answered under it. */}
       <ChatComposer id="chat-end" maxLength={CHAT_MAX_MESSAGE} />

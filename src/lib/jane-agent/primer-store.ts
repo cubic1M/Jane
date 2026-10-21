@@ -1,5 +1,6 @@
 import { CHAT_PRIMER_STORED_MINUTES } from "@/config/agent-chat";
 import type { PrismaClient } from "@/generated/prisma/client";
+import { staleAndRefreshSnapshot } from "./snapshot-store";
 
 // The person's numbers for Claude, kept in the database (spec step 93, depth first): computing
 // them looks every sector up (20 seconds or more on a slow database), so it is done after each
@@ -64,6 +65,9 @@ export async function markPrimerStale(
   userId: string,
   { client }: Pick<Options, "client">,
 ): Promise<void> {
+  // The snapshot behind the agenda and the tools is just as old: marked, and rebuilt now in the
+  // background so it is ready by the next question.
+  await staleAndRefreshSnapshot(userId, { client, now: new Date() });
   try {
     const row = await client.janePreference.findUnique({
       where: { userId_kind_key: { userId, kind: "system", key: KEY } },

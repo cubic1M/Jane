@@ -1,8 +1,7 @@
 "use client";
 
-import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useActionState, useEffect, useState } from "react";
+import { useActionState, useEffect, useOptimistic, useState } from "react";
 import { DemoAdviceLabel } from "@/components/demo-advice-label";
 import type { MessageView } from "@/lib/jane-agent/view";
 import { tapButton, type MessageState } from "./actions";
@@ -49,12 +48,26 @@ function useUndoTimer(undoUntil: string | null): boolean {
   return undoUntil !== null && expiredAt === undoUntil;
 }
 
+// What a tap looks like before the server has answered: answered with that button, its
+// buttons gone (links stay), and a line saying it's in hand.
+function tappedView(current: MessageView, tapped: MessageView["buttons"][number]): MessageView {
+  return {
+    ...current,
+    status: "answered",
+    answeredWith: tapped.label,
+    note: tapped.kind === "primary" ? "Done: Jane's on it." : "Got it.",
+    buttons: [],
+  };
+}
+
 export function ChatMessageItem({ initial }: { initial: MessageView }) {
   const [state, action, pending] = useActionState<MessageState, FormData>(tapButton, {
     message: initial,
     error: null,
   });
-  const message = state.message;
+  // A tap shows its result at once (the button gives way to what was chosen); the server's
+  // answer replaces it when it arrives, and a refusal puts the buttons back with its reason.
+  const [message, showTapped] = useOptimistic(state.message, tappedView);
   // Spec step 88: a tap that posted an answer (a clarifying question's button) reloads the
   // chat so the answer shows under it.
   const router = useRouter();
@@ -161,7 +174,14 @@ export function ChatMessageItem({ initial }: { initial: MessageView }) {
       {(buttons.length > 0 || message.links.length > 0) && (
         <div className="flex flex-wrap items-center gap-2">
           {buttons.length > 0 && (
-            <form action={action} className="flex flex-wrap gap-2">
+            <form
+              action={(data) => {
+                const tapped = buttons.find((b) => b.id === data.get("actionId"));
+                if (tapped) showTapped(tapped);
+                return action(data);
+              }}
+              className="flex flex-wrap gap-2"
+            >
               <input type="hidden" name="messageId" value={message.id} />
               {buttons.map((b) => (
                 <button
@@ -191,9 +211,11 @@ export function ChatMessageItem({ initial }: { initial: MessageView }) {
                 {link.label} ›<span className="sr-only"> (opens in a new tab)</span>
               </a>
             ) : (
-              <Link key={link.href + link.label} href={link.href} className={LINK}>
+              // Spec step 194: a plain link, so it works before the page has hydrated and
+              // isn't cancelled by the refreshes that bring in new messages.
+              <a key={link.href + link.label} href={link.href} className={LINK}>
                 {link.label} ›
-              </Link>
+              </a>
             ),
           )}
         </div>

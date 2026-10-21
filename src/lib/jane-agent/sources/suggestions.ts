@@ -1,24 +1,19 @@
 import { MESSAGE_PRIORITY } from "@/config/agent-chat";
-import { ONE_TIME_TOPICS } from "@/config/suggestions";
-import { formatCents } from "@/lib/money";
+import type { OfferedSuggestion } from "@/lib/suggestions";
 import { sentence, type MessageSource } from "./source";
 
 // What Jane worked out for this person (spec step 255): the nightly scan's top suggestions, a
 // few a day. Each says what it is worth, why this person, and how sure Jane is with the
 // reason, then asks. A no is for good (answerSuggestion).
 
-export const WORTH = {
-  saves: (cents: number) => `could save you about ${formatCents(cents)} a year`,
-  earns: (cents: number) => `could earn you about ${formatCents(cents)} a year`,
-  risk: (cents: number) => `could protect you from a loss of about ${formatCents(cents)}`,
-} as const;
-
-// How a suggestion's worth is said: a year's saving, or money back once.
-export function worthPhrase(s: { worthKind: string; worthCents: number; topic: string }): string {
-  if (ONE_TIME_TOPICS.includes(s.topic) && s.worthKind !== "risk") {
-    return `could get you back about ${formatCents(s.worthCents)}, once`;
-  }
-  return WORTH[s.worthKind as keyof typeof WORTH]?.(s.worthCents) ?? "is worth a look";
+// The short card (docs/detectors.md, "Short forms"): the headline, one why-you line with the
+// person's own number, and how sure Jane is. The whole explanation is behind "Why?".
+export function suggestionCard(s: OfferedSuggestion): string[] {
+  return [
+    s.headline.replace(/[.!?]+$/, ""),
+    `Why you: ${sentence(s.short)}`,
+    `${s.confidencePercent}% sure: ${s.confidenceReason}.`,
+  ];
 }
 
 export const suggestionsSource: MessageSource = {
@@ -26,17 +21,12 @@ export const suggestionsSource: MessageSource = {
   gather(snapshot) {
     return (snapshot.suggestions ?? []).map((s) => ({
       kind: "decision" as const,
-      body: [
-        sentence(s.title),
-        `This ${worthPhrase(s)}.`,
-        sentence(s.why),
-        `I'm ${s.confidencePercent}% sure, based on ${s.confidenceReason}.`,
-        "Want to do it?",
-      ].join(" "),
+      body: suggestionCard(s).join("\n"),
       refs: { suggestion: s.key, ...(s.advice ? { advice: true as const } : {}) },
       actions: [
         { id: "suggestion.yes" as const, label: s.actionLabel, kind: "primary" as const },
         { id: "suggestion.no" as const, label: "Not for me", kind: "secondary" as const },
+        { id: "suggestion.why" as const, label: "Why?", kind: "quick" as const },
         { id: "open" as const, label: "Open", kind: "link" as const, href: s.actionHref },
         ...s.more.map((m) => ({
           id: "open" as const,

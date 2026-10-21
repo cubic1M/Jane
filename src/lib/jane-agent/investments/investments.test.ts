@@ -1783,12 +1783,17 @@ const CRYPTO_VIEW = {
 };
 
 describe("crypto questions, by rules", () => {
-  it.each(["my crypto", "how much bitcoin do I have", "my ethereum", "should I buy btc"])(
+  it.each(["my crypto", "how much bitcoin do I have", "my ethereum"])(
     "reads %j as crypto",
     (text) => {
       expect(parseIntent(text, ASOF)).toMatchObject({ kind: "investments", topic: "crypto" });
     },
   );
+});
+
+// "Should I buy btc?" is a decision, answered by the one decision router (decision.ts).
+it("reads should I buy btc as a decision about crypto", () => {
+  expect(parseIntent("should I buy btc", ASOF)).toMatchObject({ kind: "decision", item: "crypto" });
 });
 
 describe("cryptoReply and the crypto messages", () => {
