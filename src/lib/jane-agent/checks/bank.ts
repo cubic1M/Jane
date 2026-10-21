@@ -712,6 +712,80 @@ const BASE_QUESTIONS: readonly CheckQuestion[] = [
     },
   },
 
+  // Short replies and 'why?' (QA sweep): answered at once, never by an old button.
+  {
+    id: "qa-yes",
+    text: "yes",
+    needs: "rules",
+    sector: "chat",
+    page: "/home",
+    tool: "safe_to_spend",
+    expect: {
+      intent: "ack",
+      mentions: /tap|what would you like/i,
+    },
+  },
+  {
+    id: "qa-no",
+    text: "no thanks",
+    needs: "rules",
+    sector: "chat",
+    page: "/home",
+    tool: "safe_to_spend",
+    expect: {
+      intent: "ack",
+      mentions: /leave it/i,
+    },
+  },
+  {
+    id: "qa-remind",
+    text: "remind me tomorrow",
+    needs: "rules",
+    sector: "chat",
+    page: "/home",
+    tool: "safe_to_spend",
+    expect: {
+      intent: "remind",
+      mentions: /tomorrow|remind/i,
+    },
+  },
+  {
+    id: "qa-cushion",
+    text: "how much should i have in an emergency fund",
+    needs: "rules",
+    sector: "chat",
+    page: "/home",
+    tool: "safe_to_spend",
+    expect: {
+      intent: "decision",
+      mentions: /cushion/i,
+    },
+  },
+  {
+    id: "qa-month",
+    text: "what happened to my money this month",
+    needs: "rules",
+    sector: "chat",
+    page: "/home",
+    tool: "safe_to_spend",
+    expect: {
+      intent: "spending",
+      mentions: /spent|spending/i,
+    },
+  },
+  {
+    id: "qa-why",
+    text: "why?",
+    needs: "rules",
+    after: "dec-1",
+    sector: "chat",
+    page: "/home",
+    tool: "safe_to_spend",
+    expect: {
+      mentions: /bitcoin|where you stand/i,
+    },
+  },
+
   // Follow-ups: the second needs the first.
   {
     id: "follow-1",

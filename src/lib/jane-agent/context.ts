@@ -53,6 +53,14 @@ export function withTopic(
         label: topic.target ?? null,
       };
     }
+    // "Why?" after a decision is that decision again, with the reasoning.
+    if ((!target || isPronoun(target)) && topic.kind === "decision") {
+      return {
+        kind: "decision",
+        item: (topic.category as DecisionIntent["item"]) ?? null,
+        label: topic.target ?? null,
+      };
+    }
     if (!target || isPronoun(target))
       return withTopic({ kind: "about", target: "it" }, topic, asOf);
     switch (topic.kind) {

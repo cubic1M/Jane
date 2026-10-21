@@ -41,6 +41,7 @@ import { groupedHelpReply } from "../replies-help";
 import { lifeEventReply } from "../replies-life";
 import { loadSnapshot } from "../snapshot";
 import { type CapabilityContext } from "./shared";
+import { ackReply } from "../ack-reply";
 
 // Jane herself: the whole picture, what she did, autopilot, memory, help and plans (spec step 190): the rules' answers for these kinds of question, one registered
 // capability each in ./index.ts. Moved out of ../answer.ts unchanged.
@@ -50,6 +51,10 @@ async function answer(ctx: CapabilityContext): Promise<Reply | null> {
   const { userId, client, now, asOf, ask } = ctx;
 
   switch (intent.kind) {
+    // A typed "yes" or "no": Jane only acts on a tap, so it points at the button.
+    case "ack":
+    case "remind":
+      return ackReply(userId, intent, { client });
     case "follow_up":
       return null;
     case "unknown":
