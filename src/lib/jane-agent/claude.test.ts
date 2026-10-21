@@ -162,7 +162,7 @@ describe("askClaudeInChat", () => {
     // Jane's own wording for the finding follows Claude's text.
     expect(result.reply.body).toMatch(/\n\nReview your Hulu subscription\. Could save about/);
     expect(lastToolResult(1)).toMatchObject({
-      content: "The button will be shown under your answer.",
+      content: "Noted.",
     });
   });
 
@@ -620,6 +620,20 @@ describe("speed and failures", () => {
     expect(create).not.toHaveBeenCalled();
   });
 
+  it("makes the last round an answer: no more lookups, never 'unavailable' for the turn cap", async () => {
+    create
+      .mockResolvedValueOnce(toolUse("safe_to_spend"))
+      .mockResolvedValueOnce(toolUse("coming_up"))
+      .mockResolvedValueOnce(final("You have money and bills are fine."));
+    vi.mocked(homeSummary).mockResolvedValue({ safeToSpend: null, comingUp: [] } as never);
+    const result = await askClaudeInChat("u1", [], "how am i doing", { ...options, maxTurns: 3 });
+    expect(result.kind).toBe("answer");
+    const choices = create.mock.calls.map(
+      (c) => (c[0] as { tool_choice: { type: string } }).tool_choice.type,
+    );
+    expect(choices).toEqual(["auto", "auto", "none"]);
+  });
+
   it("pauses Claude for a while only when Claude itself fails (rate limit, overloaded)", async () => {
     vi.spyOn(console, "error").mockImplementation(() => {});
     const failing = () =>
@@ -709,8 +723,10 @@ describe("speed and failures", () => {
       inputTokens: 900,
       cachedInputTokens: 700,
       outputTokens: 20,
-      toolsSent: CHAT_TOOLS.length,
     });
+    // What the request carried: the question's tools, not all of them.
+    expect(logged.toolsSent).toBeGreaterThan(0);
+    expect(logged.toolsSent).toBeLessThan(CHAT_TOOLS.length);
     for (const key of ["primerMs", "firstEventMs", "firstTextMs", "totalMs"]) {
       expect(typeof logged[key], key).toBe("number");
     }
