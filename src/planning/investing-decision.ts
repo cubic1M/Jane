@@ -1,0 +1,216 @@
+import {
+  ACTIVE_FEE_BPS,
+  HIGH_DEBT_APR_BPS,
+  INDEX_FEE_BPS,
+  SINGLE_STOCK_MAX_SHARE,
+  SOON_GOAL_MONTHS,
+  START_SHARE,
+  type DecisionKind,
+} from "@/config/investing-decisions";
+import { RETURN_HIGH } from "@/config/market-assumptions";
+import { CRYPTO_SHARE_FLAG } from "@/config/crypto";
+import { formatCents } from "@/lib/money";
+
+// Investing decisions (the chat): a direct answer of three sentences or fewer from the
+// person's own numbers. Pure. The first thing in the way comes first: high-interest debt, then
+// the emergency fund, then money needed soon. In demo advice mode it answers; on a real account
+// it says what it sees and never what to do.
+
+export type DecisionFacts = {
+  advice: boolean;
+  // Debts at or above HIGH_DEBT_APR_BPS, worst first.
+  highDebts: { name: string; balanceCents: number; aprBps: number }[];
+  // The highest rate on any debt, when they have debt.
+  topDebt: { name: string; aprBps: number } | null;
+  emergencyTargetCents: number;
+  savingsCents: number;
+  investedCents: number;
+  cryptoCents: number;
+  soonGoal: { name: string; leftCents: number; months: number } | null;
+  riskLabel: string | null;
+  monthlyIncomeCents: number | null;
+};
+
+const pct = (bps: number) => `${Math.round(bps / 10) / 10}%`;
+
+// What stands in the way, in order, as one sentence; null when nothing does.
+function gate(f: DecisionFacts, what: string): string | null {
+  const debt = f.highDebts[0];
+  if (debt) {
+    return `Not yet: you owe ${formatCents(debt.balanceCents)} on ${debt.name} at ${pct(debt.aprBps)}, and paying that off beats ${what}.`;
+  }
+  if (f.emergencyTargetCents > 0 && f.savingsCents < f.emergencyTargetCents) {
+    return `Not yet: your emergency fund is ${formatCents(f.savingsCents)} of the ${formatCents(f.emergencyTargetCents)} I'd keep, and that comes before ${what}.`;
+  }
+  return null;
+}
+
+export type DecisionAnswer = { sentences: string[]; offerCrypto: boolean };
+
+export function decide(
+  kind: DecisionKind,
+  f: DecisionFacts,
+  subject: string | null,
+): DecisionAnswer {
+  if (!f.advice) return { sentences: factsOnly(kind, f, subject), offerCrypto: false };
+  switch (kind) {
+    case "buy_crypto": {
+      const share = CRYPTO_SHARE_FLAG;
+      const cap = Math.round(f.investedCents * share);
+      return {
+        sentences: [
+          gate(f, "a bet on crypto") ??
+            `That's your call, and the usual limit for something this speculative is about ${Math.round(share * 100)}% of what you invest, which for you is about ${formatCents(cap)}.`,
+          f.cryptoCents > 0
+            ? `You already hold ${formatCents(f.cryptoCents)} in crypto, so count that first.`
+            : "It can fall by half in a year, so only use money you could afford to lose.",
+          "I only read crypto, I never buy it.",
+        ],
+        offerCrypto: f.cryptoCents === 0,
+      };
+    }
+    case "buy_stock": {
+      const cap = Math.round(f.investedCents * SINGLE_STOCK_MAX_SHARE);
+      const name = subject ?? "one company";
+      return {
+        sentences: [
+          gate(f, `buying ${name}`) ??
+            `That's your call, but ${name} is a bet on one company, and about ${Math.round(SINGLE_STOCK_MAX_SHARE * 100)}% of what you invest (${formatCents(cap)} for you) is the usual limit.`,
+          "A broad index fund holds thousands of companies, so one bad year for one of them barely moves it.",
+          f.riskLabel
+            ? `With your ${f.riskLabel.toLowerCase()} profile, keep the core in index funds and treat a single stock as the extra.`
+            : "Answer my four questions about you and I'll fit this to your goals.",
+        ],
+        offerCrypto: false,
+      };
+    }
+    case "index_vs_stocks": {
+      const gap = Math.round(((ACTIVE_FEE_BPS - INDEX_FEE_BPS) * f.investedCents) / 10_000);
+      return {
+        sentences: [
+          `For most people, index funds: they charge about ${pct(INDEX_FEE_BPS)} a year against about ${pct(ACTIVE_FEE_BPS)} for the average actively managed stock fund.`,
+          f.investedCents > 0
+            ? `On your ${formatCents(f.investedCents)} invested that gap is about ${formatCents(gap)} a year.`
+            : "On every $10,000 that gap is about $35 a year.",
+          `Picking individual stocks can make sense for a small slice, up to about ${Math.round(SINGLE_STOCK_MAX_SHARE * 100)}% in any one company.`,
+        ],
+        offerCrypto: false,
+      };
+    }
+    case "invest_vs_debt": {
+      const top = f.topDebt;
+      const ceiling = Math.round(RETURN_HIGH.value * 100);
+      if (!top) {
+        return {
+          sentences: [
+            "You have no debt costing you interest, so investing isn't competing with a payoff.",
+            f.emergencyTargetCents > 0 && f.savingsCents < f.emergencyTargetCents
+              ? `First fill your emergency fund (${formatCents(f.savingsCents)} of ${formatCents(f.emergencyTargetCents)}), then invest.`
+              : "Take any employer match first, since it's an instant return, then invest the rest.",
+            "Start with a broad index fund and add a fixed amount each payday.",
+          ],
+          offerCrypto: false,
+        };
+      }
+      const high = top.aprBps >= HIGH_DEBT_APR_BPS;
+      return {
+        sentences: [
+          high
+            ? `Pay off ${top.name} first: it costs you ${pct(top.aprBps)} a year, more than the ${ceiling}% top of the range I'd assume for investing.`
+            : `Your highest rate is ${pct(top.aprBps)} on ${top.name}, below the ${ceiling}% top of the range I'd assume for investing, so it's closer than it sounds.`,
+          "Take any employer match before either, since it's an instant return.",
+          high
+            ? "Then build your emergency fund, and invest once the expensive debt is gone."
+            : "Keep your emergency fund full, then splitting extra money between the two is a fair choice.",
+        ],
+        offerCrypto: false,
+      };
+    }
+    case "save_vs_invest": {
+      return {
+        sentences: [
+          gate(f, "investing") ??
+            `Your emergency fund is full at ${formatCents(f.savingsCents)}, so money beyond it can go to investing.`,
+          f.soonGoal
+            ? `Keep ${f.soonGoal.name} (${formatCents(f.soonGoal.leftCents)} still to save, due in ${f.soonGoal.months} months) in savings, since money needed within ${Math.round(SOON_GOAL_MONTHS / 12)} years shouldn't be in anything that can fall.`
+            : "Money you won't need for five years or more is what investing is for.",
+          "Cash for the next few years, investments for the long run.",
+        ],
+        offerCrypto: false,
+      };
+    }
+    case "good_time": {
+      return {
+        sentences: [
+          "Nobody can time it, and I won't pretend to; what I can check is whether you're ready.",
+          gate(f, "investing") ??
+            (f.soonGoal
+              ? `You're clear on debt and your emergency fund, but keep ${f.soonGoal.name} out of it, since you need that money in ${f.soonGoal.months} months.`
+              : "You're clear on high-interest debt and your emergency fund, so you're ready."),
+          "Putting in a fixed amount every payday takes the timing out of it.",
+        ],
+        offerCrypto: false,
+      };
+    }
+    case "sell": {
+      return {
+        sentences: [
+          "I can't tell you when to sell, and nobody can time it.",
+          "Selling in a taxable account can trigger a tax bill, and you'd be out of the market on the days it recovers.",
+          f.riskLabel
+            ? `If the drops scare you, that's worth checking against your ${f.riskLabel.toLowerCase()} profile rather than reacting to one week.`
+            : "If the drops scare you, answer my four questions and I'll check your mix against them.",
+        ],
+        offerCrypto: false,
+      };
+    }
+    case "start": {
+      const monthly =
+        f.monthlyIncomeCents !== null ? Math.round(f.monthlyIncomeCents * START_SHARE) : null;
+      return {
+        sentences: [
+          gate(f, "investing") ??
+            "Yes: you're clear on high-interest debt and your emergency fund.",
+          monthly !== null
+            ? `A starting point is ${Math.round(START_SHARE * 100)}% of your pay, about ${formatCents(monthly)} a month, into a broad index fund.`
+            : "A starting point is about 5% of your pay into a broad index fund.",
+          f.riskLabel
+            ? `Your ${f.riskLabel.toLowerCase()} profile sets how much of it goes to stocks.`
+            : "Answer my four questions and I'll set how much goes to stocks.",
+        ],
+        offerCrypto: false,
+      };
+    }
+  }
+}
+
+// Real accounts: what Jane sees, no recommendation.
+function factsOnly(kind: DecisionKind, f: DecisionFacts, subject: string | null): string[] {
+  const seen: string[] = [];
+  if (f.highDebts[0]) {
+    seen.push(
+      `you owe ${formatCents(f.highDebts[0].balanceCents)} on ${f.highDebts[0].name} at ${pct(f.highDebts[0].aprBps)}`,
+    );
+  }
+  if (f.emergencyTargetCents > 0) {
+    seen.push(
+      `your savings are ${formatCents(f.savingsCents)} against about ${formatCents(f.emergencyTargetCents)} of emergency cover`,
+    );
+  }
+  if (f.investedCents > 0) seen.push(`you have ${formatCents(f.investedCents)} invested`);
+  const what =
+    kind === "buy_crypto"
+      ? "buy crypto"
+      : kind === "buy_stock"
+        ? `buy ${subject ?? "a stock"}`
+        : "make this call";
+  return [
+    `I can't tell you whether to ${what}, because I don't give recommendations on real accounts yet.`,
+    seen.length > 0
+      ? `What I can see: ${seen.join("; ")}.`
+      : "I don't have your numbers to show yet.",
+    kind === "buy_crypto"
+      ? "I only read crypto, I never buy it."
+      : "A licensed adviser is the person to ask for a recommendation.",
+  ];
+}

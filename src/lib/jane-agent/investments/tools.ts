@@ -27,6 +27,7 @@ import { loadProperty } from "@/lib/investments/property";
 import { loadCostlyProducts } from "@/lib/investments/costly-products";
 import { reviewFor } from "./review-copy";
 import { loadLocation } from "@/lib/investments/location";
+import { loadDecisionFacts } from "@/lib/investments/decision";
 import { loadSteadyHand } from "@/lib/investments/steady-hand";
 import { CASH_HOMES, CASH_RATES_AS_OF } from "@/config/cash";
 import { formatReturn } from "@/insights/returns";
@@ -185,6 +186,12 @@ export const INVESTMENT_TOOLS: Anthropic.Tool[] = [
     input_schema: noInput,
   },
   {
+    name: "investing_decision",
+    description:
+      "The numbers behind an investing decision the person asks about (should I buy bitcoin or a stock, index funds or stocks, invest or pay off debt, is now a good time): high-interest debts with their rates, the emergency fund against its target, money needed soon, what is invested and in crypto, and their risk label. Answer in three sentences or fewer, deciding in this order: high-interest debt, emergency fund, money needed soon, then risk. In demo advice mode say what to do; on a real account state the facts and say you don't give recommendations yet. Never predict the market or promise a return; Jane never buys or sells crypto.",
+    input_schema: noInput,
+  },
+  {
     name: "steady_hand",
     description:
       "Whether the person's investments have had a big drop lately (down 8% over a month or 15% over three, their own return, money in and out left out) and, in demo advice mode, how each goal's timeline sits (near goals are already in cash). Report only these past facts and the plan to stay the course. NEVER say or imply what markets will do, when they will recover, or that now is a good or bad time: no one can know.",
@@ -231,6 +238,7 @@ export const INVESTMENT_TOOL_STATUS: Readonly<Record<string, string>> = {
   crypto: "Reading your crypto balances…",
   cash_plan: "Looking at where your cash sits…",
   steady_hand: "Looking at how your investments have moved…",
+  investing_decision: "Checking debt, savings and goals first…",
   asset_location: "Checking which account holds what…",
   yearly_review: "Putting your investing review together…",
   costly_products: "Adding up what your products cost…",
@@ -786,6 +794,29 @@ export async function runInvestmentTool(
             }
           : { note: "needs two or more investment accounts" },
       );
+    }
+    case "investing_decision": {
+      const f = await loadDecisionFacts(userId, { client, now });
+      return out({
+        adviceMode: f.advice,
+        highInterestDebts: f.highDebts.map((d) => ({
+          name: d.name,
+          owed: money(d.balanceCents),
+          ratePercent: d.aprBps / 100,
+        })),
+        emergencyFund: { saved: money(f.savingsCents), target: money(f.emergencyTargetCents) },
+        invested: money(f.investedCents),
+        crypto: money(f.cryptoCents),
+        neededSoon: f.soonGoal
+          ? {
+              goal: f.soonGoal.name,
+              months: f.soonGoal.months,
+              stillToSave: money(f.soonGoal.leftCents),
+            }
+          : null,
+        riskProfile: f.riskLabel,
+        forecast: "never",
+      });
     }
     case "steady_hand": {
       const view = await loadSteadyHand(userId, { client, now });

@@ -211,6 +211,7 @@ export const CAPABILITIES: readonly Capability[] = [
       "crypto",
       "cash_plan",
       "steady_hand",
+      "investing_decision",
       "retirement_accounts",
       "old_accounts",
       "retirement_income",

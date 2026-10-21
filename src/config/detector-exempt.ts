@@ -69,6 +69,8 @@ export const TOOL_EXEMPT: Readonly<Record<string, string>> = {
   plan_upkeep: "reports budget upkeep",
   budgets: "shows budgets the person set",
   safe_to_spend: "answers how much is safe to spend",
+  investing_decision:
+    "answers a decision the person asks about from their numbers; the detectors make the suggestions",
   holdings: "lists what the person holds; the fee, rebalance and location detectors read it",
   investments_overview: "reports totals; the detectors behind it make the suggestions",
   investment_returns: "reports returns after fees and taxes (step 233); a report, never a promise",

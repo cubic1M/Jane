@@ -1,4 +1,6 @@
 import type { PrismaClient } from "@/generated/prisma/client";
+import { loadDecisionFacts } from "@/lib/investments/decision";
+import { decisionReply } from "./decision-reply";
 import { loadInvestments } from "@/lib/investments/holdings";
 import type { Reply } from "../replies";
 import type { InvestmentIntent } from "./intents";
@@ -67,6 +69,15 @@ export async function answerInvestments(
 ): Promise<Reply> {
   const asOf = now.toISOString().slice(0, 10);
   switch (intent.topic) {
+    case "decision": {
+      if (!intent.decision)
+        return overviewReply(await loadInvestmentSnapshot(userId, { client, now }));
+      return decisionReply(
+        intent.decision.kind,
+        await loadDecisionFacts(userId, { client, now }),
+        intent.decision.subject,
+      );
+    }
     case "holdings":
       return holdingsReply(await loadInvestments(userId, { client, now }), intent.account);
     case "profile":

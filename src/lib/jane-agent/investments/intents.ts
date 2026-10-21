@@ -1,3 +1,5 @@
+import { KNOWN_COMPANIES, type DecisionKind } from "@/config/investing-decisions";
+
 // Questions about investments, understood by rules (spec step 128 on). Pure: the
 // normalized text in (./../intents.ts normalize), the topic out, or null when it isn't
 // about investments. Each investment step adds its topics here.
@@ -19,6 +21,7 @@ export type InvestmentTopic =
   | "hsa"
   | "company_stock"
   | "crypto"
+  | "decision"
   | "cash"
   | "steady"
   | "retirement_accounts"
@@ -38,6 +41,8 @@ export type InvestmentIntent = {
   // Spec step 158: a child's age and the kind of college, when the person said them.
   childAge?: number;
   collegeType?: "public" | "private";
+  // An investing decision: what kind, and the company named, if any.
+  decision?: { kind: DecisionKind; subject: string | null };
 };
 
 const ACCOUNT_WORDS =
@@ -158,6 +163,43 @@ const YEARLY_REVIEW =
 const LOCATION =
   /\b(?:which|what) (?:account|accounts) (?:should|do i) (?:hold|keep|put) (?:my )?(?:bonds|stocks|funds)\b|\bwhere should i (?:hold|keep) (?:my )?(?:bonds|stocks)\b|\btax[- ]efficient (?:placement|investing|fund placement)\b|\bbonds? in (?:my )?(?:401\(?k\)?|ira|taxable)\b|\bright (?:investment|investments) in the right account\b/;
 
+// Investing decisions: "should I buy bitcoin", "index funds or stocks", "invest or pay off debt".
+const CRYPTO_WORDS =
+  "(?:crypto(?:currency|currencies)?|bitcoin|btc|ether(?:eum)?|eth|solana|dogecoin|doge|coins?)";
+const BUY_VERB = "(?:buy|get|purchase|invest in|put money in|put money into|own|hold|add)";
+const D_CRYPTO = new RegExp(
+  `\\b(?:should|can|do) (?:i|we) ${BUY_VERB}\\b[^?.!]{0,30}\\b${CRYPTO_WORDS}\\b|\\bis ${CRYPTO_WORDS} (?:a |an )?(?:good|safe|smart|bad|worth)\\b|\\bhow much ${CRYPTO_WORDS} should (?:i|we)\\b`,
+);
+const D_STOCK = new RegExp(
+  `\\bshould (?:i|we) ${BUY_VERB}\\b[^?.!]{0,30}\\b(?:stocks?|shares|individual stocks|(?:${Object.keys(KNOWN_COMPANIES).join("|")}))\\b|\\bis (?:${Object.keys(KNOWN_COMPANIES).join("|")}) (?:a |an )?(?:good|worth)\\b`,
+);
+const D_INDEX =
+  /\bindex funds?\b[^?.!]{0,30}\b(?:or|vs\.?|versus)\b[^?.!]{0,30}\b(?:stocks?|picking|individual)|\b(?:picking|individual) stocks?\b[^?.!]{0,30}\b(?:or|vs\.?|versus)\b[^?.!]{0,30}\bindex|\bshould i pick (?:my own )?stocks\b/;
+const D_DEBT =
+  /\b(?:invest|investing)\b[^?.!]{0,40}\b(?:or|vs\.?|versus|before)\b[^?.!]{0,40}\b(?:pay(?:ing)? (?:off|down)|debts?|loans?|cards?)\b|\bpay(?:ing)? (?:off|down)\b[^?.!]{0,40}\b(?:or|vs\.?|versus|before)\b[^?.!]{0,40}\binvest|\bshould i invest (?:while|if) i (?:have|owe) debt\b/;
+const D_SAVE =
+  /\b(?:save|saving)\b[^?.!]{0,30}\b(?:or|vs\.?|versus)\b[^?.!]{0,30}\binvest|\binvest(?:ing)?\b[^?.!]{0,30}\b(?:or|vs\.?|versus)\b[^?.!]{0,30}\b(?:sav(?:e|ing)|emergency fund)\b|\bemergency fund (?:first|before)\b[^?.!]{0,20}\binvest/;
+const D_TIME =
+  /\b(?:good|right|bad|best) time (?:to|for)\b[^?.!]{0,25}\b(?:invest|buy|start|get in)\b|\bshould i (?:wait|hold off)\b[^?.!]{0,30}\b(?:invest|buy|dip|crash|market)|\bis the market (?:too high|overvalued|about to)\b|\bwait for (?:a |the )?(?:dip|crash|pullback)\b/;
+const D_SELL =
+  /\bshould (?:i|we) sell\b(?! (?:everything|all|it all))(?![^?.!]*\b(?:company|employer|rsus?|espp|options)\b)/;
+const D_START =
+  /^(?:so |ok |okay |and )?should (?:i|we) (?:buy|invest|do it|go for it|start investing)\??$|\b(?:am i|are we) ready to (?:start )?invest\b|\bshould i (?:start|begin) investing\b|\bhow much should i (?:invest|put (?:in|into) (?:stocks|the market|investments))\b|\bwhen should i start investing\b/;
+
+export function decisionOf(text: string): { kind: DecisionKind; subject: string | null } | null {
+  const t = text.trim().toLowerCase();
+  const company = Object.entries(KNOWN_COMPANIES).find(([k]) => new RegExp(`\\b${k}\\b`).test(t));
+  if (D_CRYPTO.test(t)) return { kind: "buy_crypto", subject: null };
+  if (D_INDEX.test(t)) return { kind: "index_vs_stocks", subject: null };
+  if (D_DEBT.test(t)) return { kind: "invest_vs_debt", subject: null };
+  if (D_SAVE.test(t)) return { kind: "save_vs_invest", subject: null };
+  if (D_TIME.test(t)) return { kind: "good_time", subject: null };
+  if (D_STOCK.test(t)) return { kind: "buy_stock", subject: company ? company[1] : null };
+  if (D_SELL.test(t)) return { kind: "sell", subject: null };
+  if (D_START.test(t)) return { kind: "start", subject: null };
+  return null;
+}
+
 export function parseInvestmentIntent(text: string): InvestmentIntent | null {
   if (LOCATION.test(text)) return { kind: "investments", topic: "location", account: null };
   if (YEARLY_REVIEW.test(text))
@@ -170,6 +212,10 @@ export function parseInvestmentIntent(text: string): InvestmentIntent | null {
   if (OLD_ACCOUNTS.test(text)) return { kind: "investments", topic: "old_accounts", account: null };
   if (RETIREMENT_ACCOUNTS.test(text))
     return { kind: "investments", topic: "retirement_accounts", account: null };
+  const decision = decisionOf(text);
+  if (decision && !/crash|plung|tank|dropping|falling|down a lot|panic/.test(text)) {
+    return { kind: "investments", topic: "decision", account: null, decision };
+  }
   if (STEADY.test(text)) return { kind: "investments", topic: "steady", account: null };
   if (CASH.test(text)) return { kind: "investments", topic: "cash", account: null };
   if (CRYPTO.test(text)) return { kind: "investments", topic: "crypto", account: null };

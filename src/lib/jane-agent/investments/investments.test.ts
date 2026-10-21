@@ -1782,8 +1782,18 @@ const CRYPTO_VIEW = {
   fees: CRYPTO_FEES,
 };
 
+describe("crypto buying questions are decisions, not a connect offer", () => {
+  it("answers 'should I buy btc' as an investing decision", () => {
+    expect(parseIntent("should I buy btc", ASOF)).toMatchObject({
+      kind: "investments",
+      topic: "decision",
+      decision: { kind: "buy_crypto" },
+    });
+  });
+});
+
 describe("crypto questions, by rules", () => {
-  it.each(["my crypto", "how much bitcoin do I have", "my ethereum", "should I buy btc"])(
+  it.each(["my crypto", "how much bitcoin do I have", "my ethereum"])(
     "reads %j as crypto",
     (text) => {
       expect(parseIntent(text, ASOF)).toMatchObject({ kind: "investments", topic: "crypto" });
