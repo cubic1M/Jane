@@ -9,7 +9,14 @@ import type { Reply } from "./replies";
 
 const SPLIT = /\s*(?:,? and then |,? and also |,? and |;\s*|\?\s+)/;
 const ACTIONS: readonly string[] = ["act", "multi", "move_to_goal", "approve_all", "undo", "flow"];
-const NOT_A_QUESTION: readonly string[] = ["unknown", "follow_up", "help", "greeting", "remember", "about"];
+const NOT_A_QUESTION: readonly string[] = [
+  "unknown",
+  "follow_up",
+  "help",
+  "greeting",
+  "remember",
+  "about",
+];
 
 export function splitQuestions(text: string, asOf: string): Intent[] | null {
   const pieces = text

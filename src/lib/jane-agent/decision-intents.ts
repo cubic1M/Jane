@@ -32,10 +32,10 @@ const BARE = /^(?:so |ok |okay |and )?should i(?: buy| do it| buy it| go for it|
 const PAYOFF_OR_INVEST =
   /\b(?:pay(?:ing)? (?:off|down)\b.*\b(?:or|vs\.?|versus)\b.*\b(?:invest\w*|sav\w+)|(?:invest\w*|sav\w+)\b.*\b(?:or|vs\.?|versus)\b.*\bpay(?:ing)? (?:off|down))\b/;
 const ASKED =
-  /\bshould i\b|\bis it (?:smart|wise|a good idea) to\b|\bwould it be (?:smart|wise) to\b/;
+  /^(?:(?:so|ok|okay|and) )?(?:should i\b|is it (?:smart|wise|a good idea) to\b|would it be (?:smart|wise) to\b)/;
 const BUY =
   /\b(?:buy|purchase|invest in|put (?:some |any )?(?:money|cash|savings|\$?\d[\d,]*) (?:in|into)|get into|go (?:big )?on)\s+(.+)$/;
-const INVEST_BARE = /\bshould i (?:start )?invest(?:ing)?$/;
+const INVEST_BARE = /^(?:(?:so|ok|okay|and) )?should i (?:start )?invest(?:ing)?$/;
 
 const classify = (rest: string): DecisionItem =>
   CRYPTO.test(rest)
