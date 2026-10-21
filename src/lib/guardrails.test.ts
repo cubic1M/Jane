@@ -309,6 +309,15 @@ describe("saying Jane can't do something legal", () => {
     );
   });
 
+  it("lets a kind answer to a death through when it leaves the legal part to an attorney", () => {
+    expect(
+      demo(
+        "I'm so sorry about your mom. For her accounts, an estate attorney can tell you the steps, and each bank has a team for this.",
+      ).ok,
+    ).toBe(true);
+    expect(demo("Probate is the court process that decides who inherits.").ok).toBe(false);
+  });
+
   it("still blocks legal advice of its own, even next to a refusal", () => {
     expect(demo("You should sue the landlord.").ok).toBe(false);
     expect(demo("I can't write that for you, but you should sue them and file in court.").ok).toBe(
