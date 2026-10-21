@@ -138,6 +138,11 @@ import {
   costlyNo,
   reviewHarvest,
   locationFree,
+  menuConfirm,
+  menuChange,
+  ladderBuild,
+  suddenKinds,
+  suddenStage,
 } from "./investments";
 import { changeBudget, changeExpected, changeLook } from "./changes";
 import { lifeNever, lifeNo, lifeYes } from "./life";
@@ -373,6 +378,11 @@ export const ACTION_HANDLERS: Readonly<Record<ActionId, ActionHandler>> = {
   "costly.no": costlyNo,
   "review.harvest": reviewHarvest,
   "location.free": locationFree,
+  "menu.confirm": menuConfirm,
+  "menu.change": menuChange,
+  "ladder.build": ladderBuild,
+  ...suddenKinds,
+  "sudden.stage": suddenStage,
   // Jane notices changes (spec step 97).
   "change.look": changeLook,
   "change.budget": changeBudget,

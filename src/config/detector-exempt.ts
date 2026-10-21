@@ -75,6 +75,8 @@ export const TOOL_EXEMPT: Readonly<Record<string, string>> = {
   goal_buckets: "shows which investments belong to which goal the person set",
   family_investing: "shows custodial and family accounts the person set up",
   property: "reports a rental property's numbers the person entered",
+  honest_performance:
+    "reports 1, 3 and 5 year returns after fees and taxes (step 233); a report, never a promise",
   yearly_review: "rolls up what the other investing detectors found, once a year",
   steady_hand: "a calm message after a market drop; it follows an event, not a profile",
   crypto: "reports linked crypto read-only; nothing to suggest",

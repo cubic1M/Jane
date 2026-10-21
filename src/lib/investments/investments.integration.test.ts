@@ -40,6 +40,23 @@ import {
 } from "./family";
 import { startCollegePlan } from "./college";
 import { loadLocation, makeSwaps, LocationError } from "./location";
+import { loadHonest } from "./honest";
+import {
+  addDemoDeposit,
+  classify,
+  doStage,
+  loadSuddenMoney,
+  SuddenMoneyError,
+} from "./sudden-money";
+import { loadShortTerm, settleLadders, ShortTermError, startLadder } from "./short-term";
+import {
+  confirmMenu,
+  loadPlanMenu,
+  PlanMenuError,
+  proposeMenu,
+  requestPlanChange,
+  sampleDisclosure,
+} from "./plan-menu";
 import { harvestFromReview, loadReviewExtras, ReviewError } from "./yearly-review";
 import {
   answerPremium,
@@ -1407,6 +1424,205 @@ describe.runIf(url)("investments in Jane's chat, against a real database", () =>
           /nothing to swap/,
         );
       }
+    },
+  );
+
+  it(
+    "step 232: the menu is read, confirmed, and only then used; only its funds are suggested; the saving is in dollars",
+    SLOW,
+    async () => {
+      const userId = await demoPerson();
+      await saveProfileForm(
+        userId,
+        { age: "45", horizon: "over_20", dropReaction: "worry", goals: ["retirement"] },
+        { client, now: LINKED },
+      );
+      await expect(
+        proposeMenu(userId, "nothing useful here", "you", { client, now: LINKED }),
+      ).rejects.toThrow(PlanMenuError);
+      const read = await proposeMenu(userId, sampleDisclosure(), "demo", { client, now: LINKED });
+      expect(read.funds.map((f) => f.ticker)).toEqual([
+        "NSTDX",
+        "KTRGX",
+        "SLGFX",
+        "KTSIX",
+        "KTIIX",
+        "KTBIX",
+        "DSVXX",
+      ]);
+      // Not confirmed: nothing suggested, and a change is refused.
+      const before = await loadPlanMenu(userId, { client, now: LINKED });
+      expect(before.proposed!.id).toBe(read.id);
+      expect(before.plan).toBeNull();
+      await expect(requestPlanChange(userId, { client, now: LINKED })).rejects.toThrow(
+        /Confirm your plan's fund list/,
+      );
+
+      // Confirmed through the chat button.
+      const snapshot = await loadSnapshot(userId, { client, now: LINKED });
+      const ask = investmentsSource
+        .gather(snapshot!, {} as never)
+        .find((c) => c.dedupeKey.startsWith("menu:confirm:"))!;
+      const posted = await client.janeMessage.create({
+        data: {
+          userId,
+          kind: ask.kind,
+          body: ask.body,
+          refs: ask.refs,
+          actions: ask.actions,
+          dedupeKey: "test:menu",
+        },
+      });
+      await takeChatAction(userId, posted.id, "menu.confirm", { client, now: LINKED });
+      await expect(confirmMenu(userId, read.id, { client })).rejects.toThrow(PlanMenuError);
+
+      const view = await loadPlanMenu(userId, { client, now: LINKED });
+      const plan = view.plan!;
+      const onMenu = new Set(view.menu!.funds.map((f) => f.ticker));
+      expect(plan.suggested.every((a) => onMenu.has(a.ticker))).toBe(true);
+      expect(plan.suggestedBps).toBeLessThan(plan.currentBps);
+      expect(plan.savingCents).toBe(
+        Math.round((plan.balanceCents * (plan.currentBps - plan.suggestedBps)) / 10_000),
+      );
+      expect(plan.savingCents).toBeGreaterThan(0);
+      expect(plan.targetDates[0]!.savingCents).toBeGreaterThan(0);
+
+      // The change goes to the payroll stand-in once.
+      const r = await requestPlanChange(userId, { client, now: LINKED });
+      expect(r.savingCents).toBe(plan.savingCents);
+      expect(await client.planChange.count({ where: { userId } })).toBe(1);
+      await expect(requestPlanChange(userId, { client, now: LINKED })).rejects.toThrow(
+        /already requested/,
+      );
+    },
+  );
+
+  it(
+    "step 233: 1, 3 and 5 years after fees and taxes against a benchmark, the reasons adding up",
+    SLOW,
+    async () => {
+      const userId = await demoPerson();
+      await saveProfileForm(
+        userId,
+        { age: "45", horizon: "over_20", dropReaction: "worry", goals: ["retirement"] },
+        { client, now: LINKED },
+      );
+      const v = await loadHonest(userId, { client, now: LINKED });
+      expect(v.rows.map((r) => r.key)).toEqual(["1y", "3y", "5y"]);
+      for (const r of v.rows) {
+        // After fees and taxes can only be at or below before; the reasons add up to the gap.
+        expect(r.afterTaxes).toBeLessThanOrEqual(r.beforeFees);
+        expect(r.reasons.reduce((s, x) => s + x.points, 0)).toBeCloseTo(r.gap, 10);
+        expect(r.from < r.to).toBe(true);
+      }
+      const { reply } = await sendToJane(userId, "am i beating the market", {
+        client,
+        now: LINKED,
+      });
+      expect(reply.body).toMatch(/Over 1 year: /);
+      expect(reply.body).toMatch(/Over 5 years/);
+    },
+  );
+
+  it(
+    "step 234: a goal's money compared after tax, a ladder that never runs past the date and rolls itself over",
+    SLOW,
+    async () => {
+      const userId = await demoPerson();
+      await client.savingsGoal.create({
+        data: {
+          userId,
+          name: "House down payment",
+          targetCents: 3_000_000,
+          targetDate: new Date("2027-10-18T00:00:00Z"),
+          manualSavedCents: 2_000_000,
+        },
+      });
+      // A goal five years out isn't short-term.
+      await client.savingsGoal.create({
+        data: {
+          userId,
+          name: "Retirement trip",
+          targetCents: 3_000_000,
+          targetDate: new Date("2031-10-18T00:00:00Z"),
+          manualSavedCents: 500_000,
+        },
+      });
+      const view = await loadShortTerm(userId, { client, now: LINKED });
+      expect(view.candidates.map((c) => c.name)).not.toContain("Retirement trip");
+      const goal = view.candidates.find((c) => c.name === "House down payment")!;
+      expect(goal.months).toBe(12);
+      // Only places that can't lock the money past the date.
+      expect(goal.options.every((o) => o.product.lockMonths <= 12)).toBe(true);
+      expect(goal.options.map((o) => o.afterTaxBps)).toEqual(
+        [...goal.options.map((o) => o.afterTaxBps)].sort((a, b) => b - a),
+      );
+
+      await expect(startLadder(userId, "goal:nope", { client, now: LINKED })).rejects.toThrow(
+        ShortTermError,
+      );
+      if (goal.ladder) {
+        await startLadder(userId, goal.key, { client, now: LINKED });
+        await expect(startLadder(userId, goal.key, { client, now: LINKED })).rejects.toThrow(
+          /already has a ladder/,
+        );
+        const row = await client.billLadder.findFirstOrThrow({ where: { userId } });
+        // Nothing matures after the goal date.
+        const rungs = row.rungs as unknown as { bills: { endMonth: number }[] }[];
+        expect(rungs.every((r) => r.bills.every((b) => b.endMonth <= 12))).toBe(true);
+        // Six months later the short bills have rolled; a year later it's cash again.
+        const mid = new Date("2027-04-19T12:00:00Z");
+        const rolled = await settleLadders(userId, { client, now: mid });
+        expect(rolled).toBeGreaterThan(0);
+        expect(await settleLadders(userId, { client, now: mid })).toBe(0);
+        await settleLadders(userId, { client, now: new Date("2027-10-19T12:00:00Z") });
+        expect((await client.billLadder.findFirstOrThrow({ where: { userId } })).status).toBe(
+          "closed",
+        );
+      }
+    },
+  );
+
+  it(
+    "step 235: a big deposit is asked about once, tax comes first, and each stage waits for a tap",
+    SLOW,
+    async () => {
+      const userId = await demoPerson();
+      await addDemoDeposit(userId, { client, now: LINKED });
+      const first = await loadSuddenMoney(userId, { client, now: LINKED });
+      expect(first.items).toHaveLength(1);
+      expect(first.items[0].status).toBe("asked");
+      // Asked once: loading again doesn't ask again.
+      expect((await loadSuddenMoney(userId, { client, now: LINKED })).items).toHaveLength(1);
+      const id = first.items[0].id;
+      await classify(userId, id, "bonus", { client });
+      await expect(classify(userId, id, "gift", { client })).rejects.toThrow(SuddenMoneyError);
+
+      const planned = (await loadSuddenMoney(userId, { client, now: LINKED })).items[0];
+      // Tax comes first whenever there is any to set aside (a bonus at or under 22% has none).
+      expect(planned.tax).not.toBeNull();
+      if (planned.tax!.cents > 0) expect(planned.stages[0].key).toBe("taxes");
+      expect(planned.stages.length).toBeGreaterThan(1);
+      expect(planned.stages.every((s) => !s.done)).toBe(true);
+      // Out of order is refused; nothing has moved without a tap.
+      const last = planned.stages[planned.stages.length - 1].key;
+      await expect(doStage(userId, id, last, { client, now: LINKED })).rejects.toThrow(
+        SuddenMoneyError,
+      );
+      const firstKey = planned.stages[0].key;
+      const done = await doStage(userId, id, firstKey, { client, now: LINKED });
+      expect(done.stage).toBe(firstKey);
+      await expect(doStage(userId, id, firstKey, { client, now: LINKED })).rejects.toThrow(
+        SuddenMoneyError,
+      );
+      const after = (await loadSuddenMoney(userId, { client, now: LINKED })).items[0];
+      expect(after.stages[0].done).toBe(true);
+
+      const { reply } = await sendToJane(userId, "what should i do with my bonus", {
+        client,
+        now: LINKED,
+      });
+      expect(reply.body).toMatch(/Nothing moves until you tap|All done/);
     },
   );
 });

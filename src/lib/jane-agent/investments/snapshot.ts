@@ -28,6 +28,9 @@ import { loadProperty, type PropertyView } from "@/lib/investments/property";
 import { loadCostlyProducts, type CostlyProductsView } from "@/lib/investments/costly-products";
 import { loadReviewExtras, type ReviewExtras } from "@/lib/investments/yearly-review";
 import { loadLocation, type LocationView } from "@/lib/investments/location";
+import { loadPlanMenu, type PlanMenuView } from "@/lib/investments/plan-menu";
+import { loadShortTerm, type ShortTermView } from "@/lib/investments/short-term";
+import { loadSuddenMoney, type SuddenMoneyView } from "@/lib/investments/sudden-money";
 import { automaticLog } from "@/lib/investments/automatic";
 import type { Bucket } from "@/planning/goal-buckets";
 import { loadAutoInvest } from "@/lib/investments/auto-invest";
@@ -92,6 +95,12 @@ export type InvestmentSnapshot = {
   review2: ReviewExtras;
   // Spec step 231: the swaps that put each investment in the right account.
   location: Pick<LocationView, "plan">;
+  // Spec step 232: the workplace plan's fund list and its cheapest mix.
+  planMenu: Pick<PlanMenuView, "proposed" | "plan" | "pending">;
+  // Spec step 234: money needed within three years, and its ladders.
+  shortTerm: Pick<ShortTermView, "candidates">;
+  // Spec step 235: large deposits that aren't pay, and their plans.
+  sudden: Pick<SuddenMoneyView, "items">;
   // Spec step 164: what Jane did by herself in the last month, and what she asked about.
   automatic: Awaited<ReturnType<typeof automaticLog>>;
   // Spec step 162: the cash plan.
@@ -171,6 +180,15 @@ export async function loadInvestmentSnapshot(
     location: await loadLocation(userId, { client, now, investments }).then((l) => ({
       plan: l.plan,
     })),
+    planMenu: await loadPlanMenu(userId, { client, now, investments }).then((m) => ({
+      proposed: m.proposed,
+      plan: m.plan,
+      pending: m.pending,
+    })),
+    shortTerm: await loadShortTerm(userId, { client, now }).then((s) => ({
+      candidates: s.candidates,
+    })),
+    sudden: await loadSuddenMoney(userId, { client, now }).then((s) => ({ items: s.items })),
     automatic: await automaticLog(userId, { client, now }),
     cash: await loadCash(userId, { client, now, investments }).then((c) => ({ plan: c.plan })),
     crypto: await loadCrypto(userId, {
