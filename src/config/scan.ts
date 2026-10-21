@@ -5,7 +5,10 @@
 // A scan older than this is over, finished or not: the chat then behaves as usual.
 export const SCAN_MAX_MINUTES = 5;
 // While it runs, the open chat reloads this often, for at most this long.
-export const SCAN_REFRESH_MS = 3_000;
+// How often the open chat asks whether Jane has posted something new, and the slower full
+// reload that backs it up.
+export const SCAN_PULSE_MS = 1_500;
+export const SCAN_SLOW_REFRESH_MS = 15_000;
 export const SCAN_REFRESH_MAX_MS = 120_000;
 // Jane's first line, until she has the rest.
 export const SCANNING_HELLO =
