@@ -162,6 +162,8 @@ export const CAPABILITIES: readonly Capability[] = [
       "remind",
       "learn",
       "follow_up",
+      "explain",
+      "why_finding",
       "unknown",
     ],
     tools: ["explainer"],

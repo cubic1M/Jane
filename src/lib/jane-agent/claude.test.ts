@@ -7,7 +7,7 @@ vi.mock("./snapshot", () => ({ loadSnapshot: vi.fn() }));
 // The cost cap has its own tests (./spend.test.ts); here Claude is always under it.
 vi.mock("./spend", () => ({ overDailyCap: vi.fn(async () => false), addSpend: vi.fn() }));
 
-import { CHAT_CLAUDE_MAX_TURNS } from "@/config/agent-chat";
+import { CHAT_CLAUDE_HISTORY, CHAT_CLAUDE_MAX_TURNS } from "@/config/agent-chat";
 import { ASK_BLOCKED_REPLY } from "@/config/ask";
 import type { PrismaClient } from "@/generated/prisma/client";
 import { homeSummary } from "@/lib/home";
@@ -162,7 +162,7 @@ describe("askClaudeInChat", () => {
     // Jane's own wording for the finding follows Claude's text.
     expect(result.reply.body).toMatch(/\n\nReview your Hulu subscription\. Could save about/);
     expect(lastToolResult(1)).toMatchObject({
-      content: "The button will be shown under your answer.",
+      content: "Noted.",
     });
   });
 
@@ -555,6 +555,27 @@ describe("speed and failures", () => {
     expect((await askClaudeInChat("u1", [], "hi", options)).kind).toBe("answer");
   });
 
+  it("sends only the last few turns of a long thread, with the topic of the last answer", async () => {
+    create.mockResolvedValueOnce(final("Here is more."));
+    const thread = Array.from({ length: 40 }, (_, i) => ({
+      role: i % 2 === 0 ? ("user" as const) : ("assistant" as const),
+      content: `turn ${i}`,
+    }));
+    await askClaudeInChat("u1", thread, "tell me more", {
+      ...options,
+      topic: { kind: "decision", category: "crypto", target: "bitcoin" },
+    });
+    const params = create.mock.calls[0][0] as {
+      messages: { content: string }[];
+      system: { text: string }[];
+    };
+    expect(params.messages.length).toBeLessThanOrEqual(CHAT_CLAUDE_HISTORY + 1);
+    expect(params.messages.at(-1)?.content).toBe("tell me more");
+    expect(params.messages.some((m) => m.content.includes("turn 0"))).toBe(false);
+    // "More" is about the last answer, however long the thread.
+    expect(params.system[1].text).toContain("Your last answer was about bitcoin, crypto");
+  });
+
   it("never lets an abort escape: it is too slow, whatever the error looks like", async () => {
     vi.spyOn(console, "warn").mockImplementation(() => {});
     const unhandled = vi.fn();
@@ -597,6 +618,20 @@ describe("speed and failures", () => {
     const result = await askClaudeInChat("u1", [], "hm", { ...options, deadlineMs: 0 });
     expect(result.kind).toBe("unavailable");
     expect(create).not.toHaveBeenCalled();
+  });
+
+  it("makes the last round an answer: no more lookups, never 'unavailable' for the turn cap", async () => {
+    create
+      .mockResolvedValueOnce(toolUse("safe_to_spend"))
+      .mockResolvedValueOnce(toolUse("coming_up"))
+      .mockResolvedValueOnce(final("You have money and bills are fine."));
+    vi.mocked(homeSummary).mockResolvedValue({ safeToSpend: null, comingUp: [] } as never);
+    const result = await askClaudeInChat("u1", [], "how am i doing", { ...options, maxTurns: 3 });
+    expect(result.kind).toBe("answer");
+    const choices = create.mock.calls.map(
+      (c) => (c[0] as { tool_choice: { type: string } }).tool_choice.type,
+    );
+    expect(choices).toEqual(["auto", "auto", "none"]);
   });
 
   it("pauses Claude for a while only when Claude itself fails (rate limit, overloaded)", async () => {
@@ -688,8 +723,10 @@ describe("speed and failures", () => {
       inputTokens: 900,
       cachedInputTokens: 700,
       outputTokens: 20,
-      toolsSent: CHAT_TOOLS.length,
     });
+    // What the request carried: the question's tools, not all of them.
+    expect(logged.toolsSent).toBeGreaterThan(0);
+    expect(logged.toolsSent).toBeLessThan(CHAT_TOOLS.length);
     for (const key of ["primerMs", "firstEventMs", "firstTextMs", "totalMs"]) {
       expect(typeof logged[key], key).toBe("number");
     }
