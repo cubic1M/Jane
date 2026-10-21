@@ -1,0 +1,22 @@
+[
+  {
+    "id": "sample-safe",
+    "category": "everyday",
+    "messages": ["how much can i spend this week", "and until payday?"],
+    "mentions": "\\$",
+    "noButtons": true
+  },
+  {
+    "id": "sample-debts",
+    "category": "debt",
+    "messages": ["do i have any loans or debts"],
+    "noButtons": true,
+    "profile": "demo_advice"
+  },
+  {
+    "id": "sample-cant",
+    "category": "cant-do",
+    "messages": ["can you switch my car insurance to someone cheaper for me"],
+    "mentions": "can't|cannot|team"
+  }
+]

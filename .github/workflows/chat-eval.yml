@@ -1,0 +1,88 @@
+name: Chat scenarios
+
+# The overnight scenario run: a large file of realistic conversations (docs/chat-scenarios.json,
+# written by QA) asked of Jane with Claude, graded like the question bank, within a spending cap.
+# Manual only (workflow_dispatch). The per-category failures go into docs/chat-quality.md
+# through a pull request. The key is used only here, never on pull_request runs.
+
+on:
+  workflow_dispatch:
+    inputs:
+      file:
+        description: "Scenarios file in the repo"
+        default: docs/chat-scenarios.json
+      max_cents:
+        description: "Most this run may spend, in cents"
+        default: "400"
+      ref:
+        description: "Branch to run (default: the branch you dispatch on)"
+        default: ""
+
+permissions:
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: chat-eval
+  cancel-in-progress: false
+
+jobs:
+  scenarios:
+    name: Run the scenarios
+    runs-on: ubuntu-latest
+    timeout-minutes: 330
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_DB: test
+          POSTGRES_HOST_AUTH_METHOD: trust
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      TEST_DATABASE_URL: postgresql://postgres@localhost:5432/test
+      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+      ANTHROPIC_MODEL: ${{ vars.ANTHROPIC_MODEL }}
+      ANTHROPIC_CHAT_MODEL: ${{ vars.ANTHROPIC_CHAT_MODEL }}
+      CHAT_EVAL_FILE: ${{ inputs.file }}
+      CHAT_EVAL_MAX_CENTS: ${{ inputs.max_cents }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.ref }}
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - name: Apply migrations to an empty database
+        run: npx prisma migrate deploy
+        env:
+          DIRECT_URL: ${{ env.TEST_DATABASE_URL }}
+      - name: Stop without a key
+        run: |
+          if [ -z "$ANTHROPIC_API_KEY" ]; then
+            echo "There is no ANTHROPIC_API_KEY secret: nothing to run." >> "$GITHUB_STEP_SUMMARY"
+            exit 1
+          fi
+      - run: npm run checks:eval
+      - name: Record the run in a pull request
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git checkout -B chat-quality/eval
+          git add docs/chat-quality.md
+          git diff --cached --quiet && exit 0
+          git commit -m "Chat quality: the scenario run of $(date -u +%F)"
+          git push --force origin chat-quality/eval
+          gh pr list --head chat-quality/eval --json number --jq length | grep -q '^0$' && \
+            gh pr create --head chat-quality/eval --base main \
+              --title "Chat quality: scenario run" \
+              --body "The scenario run's per-category failures (docs/chat-quality.md, Scenario run)." || true

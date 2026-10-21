@@ -23,6 +23,9 @@ export type Expect = {
   // A short list is fine here: comparing options, or what's due.
   list?: boolean;
   maxChars?: number;
+  // An informational question gets no action button (a link to a page is fine): a button
+  // only appears when the person asked Jane to do something.
+  noButtons?: boolean;
 };
 
 export type CheckQuestion = {
