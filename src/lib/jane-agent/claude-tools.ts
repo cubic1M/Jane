@@ -51,6 +51,7 @@ import { guessLine } from "./replies-life";
 import { BLOCK_KINDS } from "./block-data";
 import { listPreferences } from "./preferences";
 import { cachedPrimer, keepPrimer } from "./primer-cache";
+import { isStale, readStoredPrimer, writeStoredPrimer } from "./primer-store";
 import { loadRecurring } from "./recurring";
 import { weeklyReview } from "./replies-review";
 import { loadSnapshot } from "./snapshot";
@@ -816,13 +817,12 @@ export async function runChatTool(
 // The person's main numbers, looked up before Claude is asked and sent with the question,
 // so most answers need no lookup. The same tools Claude can call, so the figures are
 // recorded for the guardrails in the same way. One that fails is left out.
-export async function chatPrimer(
+// Worked out afresh: every sector's lookup. Slow on a slow database, so the chat doesn't do it
+// while someone waits (see chatPrimer); it is done after each sync, scan and correction.
+async function computePrimer(
   userId: string,
   { client, now }: Options,
 ): Promise<{ text: string; cents: number[] }> {
-  // Spec step 93: reused for a minute.
-  const cached = cachedPrimer(userId, now);
-  if (cached) return cached;
   const results = await Promise.allSettled(
     CHAT_PRIMER_TOOLS.map((name) => runChatTool(userId, name, {}, { client, now })),
   );
@@ -838,8 +838,41 @@ export async function chatPrimer(
   if (remembered.length > 0) {
     parts.push(`remembered: ${JSON.stringify(remembered.map((p) => p.label))}`);
   }
-  const primer = { text: parts.join("\n"), cents };
+  return { text: parts.join("\n"), cents };
+}
+
+// Works the numbers out and saves them for the chat to read. Run after a sync, a scan or a
+// correction (through a dynamic import, as this file reaches those by other routes).
+export async function refreshPrimer(userId: string, options: Options): Promise<void> {
+  const primer = await computePrimer(userId, options);
+  keepPrimer(userId, options.now, primer);
+  await writeStoredPrimer(userId, primer, options);
+}
+
+// Spec step 93: reused for a minute in memory, and saved in the database: one query for the
+// chat to read instead of every sector's lookup. A saved copy that is old is still used at
+// once and refreshed behind it; with none yet, they are worked out here, once.
+const refreshing = new Set<string>();
+export async function chatPrimer(
+  userId: string,
+  { client, now }: Options,
+): Promise<{ text: string; cents: number[] }> {
+  const cached = cachedPrimer(userId, now);
+  if (cached) return cached;
+  const stored = await readStoredPrimer(userId, { client });
+  if (stored && stored.primer.text !== "") {
+    keepPrimer(userId, now, stored.primer);
+    if (isStale(stored.at, now) && !refreshing.has(userId)) {
+      refreshing.add(userId);
+      void refreshPrimer(userId, { client, now })
+        .catch((error) => console.error("Refreshing the numbers failed", { error: String(error) }))
+        .finally(() => refreshing.delete(userId));
+    }
+    return stored.primer;
+  }
+  const primer = await computePrimer(userId, { client, now });
   keepPrimer(userId, now, primer);
+  await writeStoredPrimer(userId, primer, { client, now });
   return primer;
 }
 
