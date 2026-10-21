@@ -207,6 +207,33 @@ function rewriteRequest(
   return `(From the app, not the person.) That answer can't be shown yet:\n- ${reasons.join("\n- ")}\nWrite the whole answer again for the person: fix only those parts and keep the rest, your suggestion and the other figures included. Don't mention this note.`;
 }
 
+// The chat shows plain text: Claude's markdown emphasis, headings and code marks are dropped
+// ("**Card use:**" is "Card use:"), its bullets kept as dashes.
+export function plainText(text: string): string {
+  return text
+    .replace(/\*\*([\s\S]+?)\*\*/g, "$1")
+    .replace(/__([\s\S]+?)__/g, "$1")
+    .replace(/^#{1,6}\s+/gm, "")
+    .replace(/^\s*[*•]\s+/gm, "- ")
+    .replace(/`([^`]+)`/g, "$1");
+}
+
+// Where the time goes on a free question (one log line each, numbers only): the person's
+// numbers, Claude's first stream event and first text, the rounds, and the tokens, so a slow
+// deploy can be read from the logs. Times are milliseconds from the start of the call.
+type ChatTiming = {
+  startedAt: number;
+  primerMs: number | null;
+  firstEventMs: number | null;
+  firstTextMs: number | null;
+  turns: number;
+  stopped: boolean;
+  inputTokens: number;
+  cachedInputTokens: number;
+  cacheWriteTokens: number;
+  outputTokens: number;
+};
+
 // What the last answer was about, in words for Claude (spec step 193).
 export function topicLine(topic: Topic): string {
   const what = [topic.target, topic.category, topic.month].filter(Boolean).join(", ");
@@ -214,6 +241,44 @@ export function topicLine(topic: Topic): string {
 }
 
 export async function askClaudeInChat(
+  userId: string,
+  history: ChatTurn[],
+  question: string,
+  options: Options,
+): Promise<ClaudeAnswer> {
+  const timing: ChatTiming = {
+    startedAt: Date.now(),
+    primerMs: null,
+    firstEventMs: null,
+    firstTextMs: null,
+    turns: 0,
+    stopped: false,
+    inputTokens: 0,
+    cachedInputTokens: 0,
+    cacheWriteTokens: 0,
+    outputTokens: 0,
+  };
+  let outcome = "error";
+  try {
+    const answer = await askClaude(userId, history, question, options, timing);
+    outcome = answer.kind;
+    return answer;
+  } finally {
+    const { startedAt, ...rest } = timing;
+    console.info(
+      "chat_timing",
+      JSON.stringify({
+        ...rest,
+        outcome,
+        totalMs: Date.now() - startedAt,
+        model: chatModel(),
+        tools: CHAT_TOOLS.length,
+      }),
+    );
+  }
+}
+
+async function askClaude(
   userId: string,
   history: ChatTurn[],
   question: string,
@@ -230,6 +295,7 @@ export async function askClaudeInChat(
     deadlineMs = CHAT_CLAUDE_DEADLINE_MS,
     primerMs = CHAT_PRIMER_BUDGET_MS,
   }: Options,
+  timing: ChatTiming,
 ): Promise<ClaudeAnswer> {
   // Spec step 93: Claude failed a moment ago: answer from the rules now, never a spinner.
   if (Date.now() < claudeDownUntil) return unavailable();
@@ -239,12 +305,14 @@ export async function askClaudeInChat(
   onEvent({ type: "status", text: "Looking at your numbers…" });
   // The person's main numbers, for at most primerMs: a slow lookup finishes in the
   // background (and is kept for the next question) while Claude starts without it.
+  const primerStarted = Date.now();
   const primer = await Promise.race([
     chatPrimer(userId, { client, now }),
     new Promise<{ text: string; cents: number[] }>((resolve) =>
       setTimeout(() => resolve({ text: "", cents: [] }), primerMs).unref?.(),
     ),
   ]);
+  timing.primerMs = Date.now() - primerStarted;
   // Claude's clock starts now, after the lookup: it always gets its whole first-words window.
   const started = Date.now();
   // Figures the answer may use: any in the numbers sent up front or a tool's result (a
@@ -268,7 +336,7 @@ export async function askClaudeInChat(
   let shown: AnswerBlock | null = null;
   const draft = new GuardedText(
     () => allowedCents,
-    (text) => onEvent({ type: "text", text }),
+    (text) => onEvent({ type: "text", text: plainText(text) }),
     profile,
   );
   const system: Anthropic.TextBlockParam[] = [
@@ -290,6 +358,8 @@ export async function askClaudeInChat(
     let stopped = false;
     let timer: ReturnType<typeof setTimeout> | undefined;
     try {
+      // No time left for another round: the rules answer, and no stream is ever started.
+      if (deadlineMs - (Date.now() - started) <= 0) return unavailable();
       const stream = claude()
         .messages.stream({
           model: chatModel(),
@@ -303,6 +373,7 @@ export async function askClaudeInChat(
           messages,
         })
         .on("streamEvent", (event) => {
+          timing.firstEventMs ??= Date.now() - timing.startedAt;
           // It has started: now only the deadline applies.
           if (timer && turn === 0) {
             clearTimeout(timer);
@@ -316,32 +387,38 @@ export async function askClaudeInChat(
             onEvent({ type: "status", text: statusFor(event.content_block.name) });
           }
         })
-        .on("text", (delta) => draft.push(delta));
+        // An aborted or failed stream also emits "error"; with no listener the SDK turns that
+        // into an unhandled rejection that crashes the request. finalMessage() below is what
+        // reports it.
+        .on("error", () => {})
+        .on("text", (delta) => {
+          timing.firstTextMs ??= Date.now() - timing.startedAt;
+          draft.push(delta);
+        });
       function stop() {
         stopped = true;
         if (typeof stream.abort === "function") stream.abort();
       }
       const left = deadlineMs - (Date.now() - started);
-      if (left <= 0) {
-        stop();
-        return unavailable();
-      }
       timer = setTimeout(stop, turn === 0 ? Math.min(firstWordsMs, left) : Math.max(0, left));
+      timing.turns = turn + 1;
       response = await stream.finalMessage();
     } catch (error) {
-      if (!(error instanceof Anthropic.APIError)) throw error;
+      // Our own abort can surface as any error type: it is "too slow", never a crash.
+      if (!stopped && !(error instanceof Anthropic.APIError)) throw error;
       if (stopped) {
+        timing.stopped = true;
         // Our own deadline: this answer comes from the rules, but Claude isn't marked down.
         console.warn("Jane's chat answer from Claude was too slow");
       } else {
         // The API's own reason (a type and a sentence about the request, never the person's
         // words), so a 400 can be read from the logs instead of guessed.
         console.error("Jane's chat request to Claude failed", {
-          status: error.status,
-          reason: String(error.message).slice(0, 300),
+          status: error instanceof Anthropic.APIError ? error.status : undefined,
+          reason: String((error as Error).message).slice(0, 300),
         });
         // Only Claude itself failing (rate limit, overloaded, an error) pauses it.
-        const status = error.status ?? 0;
+        const status = (error instanceof Anthropic.APIError ? error.status : 0) ?? 0;
         if (status === 429 || status >= 500) {
           claudeDownUntil = Date.now() + CHAT_CLAUDE_COOLDOWN_SECONDS * 1000;
         }
@@ -351,6 +428,10 @@ export async function askClaudeInChat(
       clearTimeout(timer);
     }
 
+    timing.inputTokens += response.usage?.input_tokens ?? 0;
+    timing.cachedInputTokens += response.usage?.cache_read_input_tokens ?? 0;
+    timing.cacheWriteTokens += response.usage?.cache_creation_input_tokens ?? 0;
+    timing.outputTokens += response.usage?.output_tokens ?? 0;
     await addSpend(
       userId,
       {
@@ -467,7 +548,7 @@ export async function askClaudeInChat(
     return {
       kind: "answer",
       reply: {
-        body: proposal?.line ? `${text}\n\n${proposal.line}` : text,
+        body: proposal?.line ? `${plainText(text)}\n\n${proposal.line}` : plainText(text),
         actions: proposal?.actions ?? [],
         // Demo advice is always labelled (the chat shows DEMO_ADVICE_LABEL under it).
         refs: advice && isAdvice(text) ? { ...refs, advice: true } : refs,
