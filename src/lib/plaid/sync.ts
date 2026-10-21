@@ -648,6 +648,9 @@ export async function syncItem(
 
   timing.mark("cursor_and_track");
   await runDetection(item.userId, { client, now });
+  // Someone watching their first scan is looking at the chat: Jane's first words come at once,
+  // whatever the hour (quiet hours had left a person scanned at night with no brief at all).
+  const scanTrigger = progressive && result.firstSync ? "open" : "sync";
   timing.mark("detection");
   // The first scan after linking: what people see first (the findings) is posted right after
   // detection, before the slower sector work below; the chat is already open and fills in.
@@ -660,7 +663,7 @@ export async function syncItem(
       console.error("The first scan's suggestions failed", { error: String(error) }),
     );
     timing.mark("suggestions");
-    await runJaneAgentSafely(item.userId, { client, now, trigger: "sync", early: true });
+    await runJaneAgentSafely(item.userId, { client, now, trigger: scanTrigger, early: true });
     timing.mark("first_brief");
   }
   // After detection these don't depend on each other, so they run together; the sample
@@ -692,7 +695,7 @@ export async function syncItem(
   }
   timing.mark("sectors");
   // Jane says what's new in the chat (spec step 82); a problem there never fails the sync.
-  await runJaneAgentSafely(item.userId, { client, now, trigger: "sync" });
+  await runJaneAgentSafely(item.userId, { client, now, trigger: scanTrigger });
   await markScanDone(item.userId, { client, now });
   timing.mark("last_run");
   // The person's numbers for Claude, saved now so the chat reads them in one query instead of
