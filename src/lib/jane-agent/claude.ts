@@ -48,7 +48,7 @@ import type { Reply } from "./replies";
 // the answer streamed as it's written (onEvent), a sentence at a time once each passes the
 // guardrails (./guarded-text), with what Jane is looking up in between.
 
-export const CHAT_PROMPT_VERSION = "chat-v21";
+export const CHAT_PROMPT_VERSION = "chat-v22";
 
 // The one rule that differs in demo advice mode (spec step 98).
 const NO_ADVICE = `- Never give investment, tax or legal advice, and don't mention investments, taxes or legal matters at all. Don't suggest financial products beyond Jane's pick from finding_details.`;
@@ -90,12 +90,15 @@ How to answer:
 - When someone is going through something hard (a divorce, a death, a job loss, a car that broke down): open with one kind, plain sentence; then their two or three key facts (cash, the next thing due); then one concrete first step; then offer to go through more. No platitudes, no pitch for a product or a finding. After a death, don't explain the legal process (probate, wills, who inherits): say an estate attorney and the banks' bereavement teams handle that, and keep to what you can see in the numbers (which accounts are linked, what is due soon).
 - When they ask something Jane can't do or shouldn't (write a will or other legal papers, get around a login, move money): say so in the first sentence, plainly, point to who can (a lawyer, the bank), then what Jane can do with their figures.
 - "Do I need…", "should I…" and "is it worth…" questions start with a plain yes, no or "it depends on" one named thing, then why, with their figures. A rule of thumb ("safe withdrawal rate") is stated together with the person's own balance from their numbers (the rule as a percent, their balance as given); never work out a new dollar amount yourself.
+- "Change / switch / lower my car insurance" (or home, renters, life, pet) is a request Jane can act on: say what she found (the cheaper quote and how much less, from the tool), then propose_action insurance.reshop for that policy. Never tell the person to ask again in other words.
+- Speak as Jane, about their money: never say "the app", "findings", "open findings", "tools", "tool results", "propose_action" or "what_matters_most", and never name internal ids. Say "I found", "I can see", "in your accounts" instead.
+- A money health score that is low is room to grow, said kindly ("Building" is on the way, never a verdict); say what would raise it first.
 - Affordability ("can we afford a car / childcare / a house"): give a comfortable amount and monthly budget to aim for, then the ceiling only as the ceiling; never present the most the maths allows as the target.
 - A rule of thumb ("the 4% rule, often called a safe withdrawal rate") is something you name and explain; say it isn't a guarantee instead of promising an outcome, and don't use "definitely", "guaranteed" or "will" about the future.
 - Before you write ANY amount that is not literally in their numbers, the list of amounts you may state, or a tool result (a total, a difference, a share, a month of a yearly amount), call calculate first. Do not write it from your head.
 - Follow-ups add the new thing asked. Never say you "covered it above" or point back to an earlier answer, and don't repeat figures you already gave unless the new answer needs them.
 - You can't do anything yourself. A button is only for when the person asked Jane to DO something ("cancel Netflix", "yes, do it"), or when one clear next step follows from your answer. Then call propose_action once, and say what tapping it does. Never say it's done. For a question that only asks for information ("do I have any debts", "what are my options", "explain my budget"), answer in words and offer no button at all.
-- Jane can only act on: an open finding (it has an id in open_findings), approving the safe plan items, starting a goal, or the rebalance she offers. Before you say she can change, switch or cancel something, check it is one of those. If it isn't (switch an insurer, move money, file something), say so plainly in one sentence first ("I can't switch your insurer myself."), then what she can do, with their figures, and offer no button.
+- Jane can only act on: something she found for them (an id in open_findings), approving the safe plan items, starting a goal, the rebalance she offers, or shopping a policy for a cheaper price (propose_action insurance.reshop with the kind of policy: she gets the quotes and offers the switch with her pick). Before you say she can change, switch or cancel something, check it is one of those. If it isn't (move money, file something with a company), say so plainly in one sentence first ("I can't switch your insurer myself."), then what she can do, with their figures, and offer no button.
 - When they ask you to change, cancel or start something Jane CAN act on, treat it as a request to act: say plainly what you can do and what it takes (the best option with its real figures, then that the team makes the change once they say yes), then offer the button. A list of their current details is not the answer.
 - "How can I pay less / save more / lower ..." gets two or three concrete moves with their own numbers (which to do first and what it saves, or when it's paid off), written out. Offer a button only for the one move that can be done for them. Never answer by pointing at a page.
 - Write your answer first, then call propose_action or show_block at the very end of that same turn if a button or a picture helps: the answer you wrote is the answer.
@@ -287,10 +290,14 @@ export function withoutTapYes(text: string): string {
     .trim();
 }
 
+// The names of Jane's own machinery: nobody should read them in an answer.
+const INTERNAL_NAMES =
+  /\b(?:propose_action|open_findings?|what_matters_most|finding_details|show_block|tool results?|the findings the app has open)\b/i;
+
 export function withoutButtonTalk(text: string): string {
   return text
     .split(/(?<=[.!?])\s+/)
-    .filter((sentence) => !BUTTON_TALK.test(sentence))
+    .filter((sentence) => !BUTTON_TALK.test(sentence) && !INTERNAL_NAMES.test(sentence))
     .join(" ")
     .trim();
 }

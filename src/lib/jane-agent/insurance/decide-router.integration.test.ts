@@ -9,6 +9,7 @@ vi.hoisted(() => {
 vi.mock("@/lib/session", () => ({ requireUser: vi.fn() }));
 
 import { createCheckPerson, deleteCheckPerson } from "../checks/person";
+import { proposeAction } from "../claude-tools";
 import { sendToJane } from "../typing";
 
 // "Should I ...?" about insurance goes through the decision router and comes back as the
@@ -52,5 +53,24 @@ describe.runIf(url)("insurance decisions through the router", () => {
   it("leaves a should-I that isn't about insurance to the general answer", async () => {
     const { reply } = await ask("should I buy bitcoin");
     expect(reply.body).not.toMatch(/umbrella|GEICO/);
+  });
+
+  it("lets Claude offer the switch for a car policy with no open finding (insurance.reshop)", async () => {
+    const result = await proposeAction(
+      userId,
+      { action: "insurance.reshop", policy_kind: "car" },
+      { client, now: NOW },
+    );
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.actions.some((a) => a.id === "insurance.shop_yes")).toBe(true);
+    expect(result.refs).toMatchObject({ insuranceShopId: expect.any(String) });
+    // Nothing to switch to for a kind they don't have: the reason comes back for Claude to say.
+    const none = await proposeAction(
+      userId,
+      { action: "insurance.reshop", policy_kind: "pet" },
+      { client, now: NOW },
+    );
+    expect(none.ok).toBe(false);
   });
 });
