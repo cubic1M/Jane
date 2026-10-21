@@ -33,6 +33,11 @@ export class GuardedText {
     }
   }
 
+  // What has been shown so far (everything released, nothing held back).
+  shownText(): string {
+    return this.shown;
+  }
+
   // The answer is complete: whatever is left, if it passes.
   finish(): void {
     this.release(this.held.length);

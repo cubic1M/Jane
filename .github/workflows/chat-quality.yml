@@ -1,0 +1,87 @@
+name: Chat quality
+
+# Spec step 195: Jane's question bank, run every night. The rules part always runs; the Claude
+# part runs when the ANTHROPIC_API_KEY secret is set, on a rotating share of the bank and
+# within a small spending cap (src/lib/jane-agent/checks/nightly.cli.test.ts). The scores go
+# into docs/chat-quality.md and docs/chat-quality-history.json through a pull request, and an
+# issue opens when a score falls. The key is used only here, never on pull_request runs: the
+# rules part runs on every pull request in CI's own tests (RULES_SCORE_FLOOR).
+
+on:
+  schedule:
+    - cron: "17 5 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+
+concurrency:
+  group: chat-quality
+  cancel-in-progress: false
+
+jobs:
+  nightly:
+    name: Run the question bank
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_DB: test
+          POSTGRES_HOST_AUTH_METHOD: trust
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      TEST_DATABASE_URL: postgresql://postgres@localhost:5432/test
+      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+      ANTHROPIC_MODEL: ${{ vars.ANTHROPIC_MODEL }}
+      ANTHROPIC_CHAT_MODEL: ${{ vars.ANTHROPIC_CHAT_MODEL }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - name: Apply migrations to an empty database
+        run: npx prisma migrate deploy
+        env:
+          DIRECT_URL: ${{ env.TEST_DATABASE_URL }}
+      - name: Say whether Claude's part runs
+        run: |
+          if [ -n "$ANTHROPIC_API_KEY" ]; then
+            echo "Claude part: runs on a rotating share of the bank." >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "Claude part: skipped, there is no ANTHROPIC_API_KEY secret. The rules part ran." >> "$GITHUB_STEP_SUMMARY"
+          fi
+      - run: npm run checks:nightly
+      - name: Open an issue when a score fell
+        if: hashFiles('chat-quality-drop.txt') != ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh issue create --title "Chat quality fell on $(date -u +%F)" --label "chat-quality" --body-file chat-quality-drop.txt || \
+          gh issue create --title "Chat quality fell on $(date -u +%F)" --body-file chat-quality-drop.txt
+      - name: Record the night in a pull request
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git checkout -B chat-quality/nightly
+          git add docs/chat-quality.md docs/chat-quality-history.json
+          git diff --cached --quiet && exit 0
+          git commit -m "Chat quality: the night of $(date -u +%F)"
+          git push --force origin chat-quality/nightly
+          gh pr list --head chat-quality/nightly --json number --jq length | grep -q '^0$' && \
+            gh pr create --head chat-quality/nightly --base main \
+              --title "Chat quality: nightly scores" \
+              --body "The nightly run's scores (docs/chat-quality.md and the history /admin reads). Merge to publish them." || true
