@@ -34,13 +34,14 @@ import type { Trigger } from "./sources";
 // Called after a bank or demo-bank sync, after a CSV import, by the daily job, and when the
 // person opens the chat with nothing posted yet today.
 
-type Options = { client?: PrismaClient; now?: Date; trigger?: Trigger };
+// early: the first run of a first scan, before its suggestions are in.
+type Options = { client?: PrismaClient; now?: Date; trigger?: Trigger; early?: boolean };
 
 const HOUR_MS = 60 * 60 * 1000;
 
 export async function runJaneAgent(
   userId: string,
-  { client = defaultClient, now = new Date(), trigger = "sync" }: Options = {},
+  { client = defaultClient, now = new Date(), trigger = "sync", early = false }: Options = {},
 ): Promise<{ posted: number }> {
   // The person's timezone, for quiet hours: users have their own helpers, so read by id.
   const user = await client.user.findUnique({ where: { id: userId }, select: { timezone: true } });
@@ -99,6 +100,11 @@ export async function runJaneAgent(
   }
   const snapshot = await loadSnapshot(userId, { client, now, input });
   if (!snapshot) return { posted: 0 };
+  // Spec step 265: the day's brief leads with suggestions, so the first run of a first scan
+  // (`early`, before the suggestions are in) posts nothing until there are some: never the old
+  // brief first, with the "still going through your accounts" hello after it. The scan's last
+  // run posts whatever there is.
+  if (early && (snapshot.suggestions ?? []).length === 0) return { posted: 0 };
   await closeSettled(userId, { client, now });
 
   // Spec step 184: the day as one agenda message, plus whatever is urgent, unless the person
