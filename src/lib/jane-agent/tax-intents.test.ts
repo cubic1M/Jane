@@ -65,11 +65,17 @@ describe("tax intents", () => {
     ["what should I do with my tax refund", "refund"],
     ["file my taxes", "file"],
     ["when is the tax deadline", "file"],
-    ["is itemizing worth it", "standard_deduction"],
     ["what are my realized gains this year", "investments"],
     ["was that a wash sale", "investments"],
   ])("%s asks about %s (steps 120–121)", (text, ask) => {
     expect(parse(text)).toEqual({ kind: "tax", ask });
+  });
+
+  it("reads 'is itemizing worth it' as the tax decision (the chat's tax_decide tool)", () => {
+    expect(parseIntent("is itemizing worth it", "2026-10-19")).toMatchObject({
+      kind: "decision",
+      item: "tax",
+    });
   });
 
   it("reads miles to add, and mileage questions", () => {
