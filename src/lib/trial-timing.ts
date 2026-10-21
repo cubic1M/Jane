@@ -4,6 +4,8 @@
 
 export type Phases = {
   mark: (name: string) => void;
+  // The phases so far, logged now (a long scan may be cut off before it is done).
+  log: (at: string) => void;
   done: (extra?: Record<string, unknown>) => void;
 };
 
@@ -16,6 +18,12 @@ export function phaseTimer(kind: string): Phases {
       const now = Date.now();
       phases[name] = now - last;
       last = now;
+    },
+    log(at) {
+      console.info(
+        "trial_timing",
+        JSON.stringify({ kind: `${kind}_partial`, at, ...phases, totalMs: Date.now() - started }),
+      );
     },
     done(extra = {}) {
       console.info(
