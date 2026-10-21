@@ -3,6 +3,7 @@ import { PEOPLE, type Person, type SuggestionTopic } from "@/config/people";
 import { buildProfile } from "@/profile/build";
 import { inputFor } from "@/profile/sample";
 import { DETECTORS, runDetectors } from "./index";
+import { mergeOverlaps, pickForToday, rankSuggestions } from "@/planning/suggestion-rank";
 import { HEADLINE_MAX, SHORT_MAX, type Detector, type Suggestion } from "./contract";
 
 // The detector harness (spec step 254): runs every detector on the eight sample people and
@@ -92,3 +93,35 @@ export function shortFormProblems(s: Suggestion): string[] {
   if (!/\d/.test(s.short)) problems.push("short line has none of the person's own numbers");
   return problems;
 }
+
+// Depth-first bar #3: each person's top three suggestions (ranked and merged exactly as the
+// nightly scan does, src/lib/suggestions.ts) are all on their written list and none is on their
+// must-not list.
+export type TopThree = {
+  person: Person;
+  topics: string[];
+  // On neither list's side: shown but not on the should-list.
+  offList: string[];
+  // On the must-not list: a wrong suggestion at the top.
+  wrong: string[];
+  pass: boolean;
+};
+
+export function topThreeFor(report: PersonReport): TopThree {
+  const top = pickForToday(mergeOverlaps(rankSuggestions(report.fired)));
+  const topics = top.map((r) => r.suggestion.topic as string);
+  const should = report.person.should as readonly string[];
+  const mustNot = report.person.mustNot as readonly string[];
+  const wrong = topics.filter((t) => mustNot.includes(t));
+  const offList = topics.filter((t) => !should.includes(t) && !mustNot.includes(t));
+  return {
+    person: report.person,
+    topics,
+    offList,
+    wrong,
+    pass: topics.length > 0 && wrong.length === 0 && offList.length === 0,
+  };
+}
+
+export const topThreeAll = (detectors: readonly Detector[] = DETECTORS): TopThree[] =>
+  runHarness(detectors).map(topThreeFor);
