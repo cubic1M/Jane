@@ -1784,10 +1784,10 @@ const CRYPTO_VIEW = {
 
 describe("crypto buying questions are decisions, not a connect offer", () => {
   it("answers 'should I buy btc' as an investing decision", () => {
+    // The decision router reads it and investing answers it (capabilities decide).
     expect(parseIntent("should I buy btc", ASOF)).toMatchObject({
-      kind: "investments",
-      topic: "decision",
-      decision: { kind: "buy_crypto" },
+      kind: "decision",
+      item: "crypto",
     });
   });
 });

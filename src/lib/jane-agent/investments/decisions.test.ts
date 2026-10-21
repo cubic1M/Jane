@@ -6,6 +6,8 @@ import { DECISION_QUESTIONS } from "../checks/bank-decisions";
 import { checkGuardrails } from "@/lib/guardrails";
 import type { DecisionFacts } from "@/planning/investing-decision";
 import { parseIntent } from "../intents";
+import type { DecisionKind } from "@/config/investing-decisions";
+import { companyIn } from "./decide";
 import { decisionReply } from "./decision-reply";
 
 // The investing decisions in the chat: every question gets a direct answer of three
@@ -33,8 +35,25 @@ const DEBT: DecisionFacts = {
 const GAP: DecisionFacts = { ...BASE, savingsCents: 300_000 };
 const sentences = (text: string) => text.split(/(?<=[.!?])\s+/).filter(Boolean);
 
+// A question is either the router's (a "should I ..." about crypto, stocks, investing or paying
+// off debt, answered through investingDecide's mapping) or investing's own.
+const ROUTER_KIND: Record<string, DecisionKind> = {
+  crypto: "buy_crypto",
+  stocks: "buy_stock",
+  invest: "start",
+  payoff_or_invest: "invest_vs_debt",
+};
 const ask = (text: string, facts: DecisionFacts) => {
   const intent = parseIntent(text, ASOF);
+  if (intent.kind === "decision") {
+    // A bare "should i buy?" takes the subject of what was just discussed.
+    expect([...Object.keys(ROUTER_KIND), null], text).toContain(intent.item);
+    return decisionReply(
+      ROUTER_KIND[(intent.item ?? "invest") as string],
+      facts,
+      companyIn(intent.label ?? ""),
+    );
+  }
   expect(intent, text).toMatchObject({ kind: "investments", topic: "decision" });
   const d = (intent as unknown as { decision: { kind: never; subject: string | null } }).decision;
   return decisionReply(d.kind, facts, d.subject);

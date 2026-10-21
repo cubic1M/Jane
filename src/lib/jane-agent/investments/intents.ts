@@ -168,10 +168,10 @@ const CRYPTO_WORDS =
   "(?:crypto(?:currency|currencies)?|bitcoin|btc|ether(?:eum)?|eth|solana|dogecoin|doge|coins?)";
 const BUY_VERB = "(?:buy|get|purchase|invest in|put money in|put money into|own|hold|add)";
 const D_CRYPTO = new RegExp(
-  `\\b(?:should|can|do) (?:i|we) ${BUY_VERB}\\b[^?.!]{0,30}\\b${CRYPTO_WORDS}\\b|\\bis ${CRYPTO_WORDS} (?:a |an )?(?:good|safe|smart|bad|worth)\\b|\\bhow much ${CRYPTO_WORDS} should (?:i|we)\\b`,
+  `\\bis ${CRYPTO_WORDS} (?:a |an )?(?:good|safe|smart|bad|worth)\\b|\\bhow much ${CRYPTO_WORDS} should (?:i|we)\\b`,
 );
 const D_STOCK = new RegExp(
-  `\\bshould (?:i|we) ${BUY_VERB}\\b[^?.!]{0,30}\\b(?:stocks?|shares|individual stocks|(?:${Object.keys(KNOWN_COMPANIES).join("|")}))\\b|\\bis (?:${Object.keys(KNOWN_COMPANIES).join("|")}) (?:a |an )?(?:good|worth)\\b`,
+  `\\bis (?:${Object.keys(KNOWN_COMPANIES).join("|")}) (?:a |an )?(?:good|worth)\\b|\\bshould (?:i|we) ${BUY_VERB}\\b[^?.!]{0,30}\\bindividual stocks\\b`,
 );
 const D_INDEX =
   /\bindex funds?\b[^?.!]{0,30}\b(?:or|vs\.?|versus)\b[^?.!]{0,30}\b(?:stocks?|picking|individual)|\b(?:picking|individual) stocks?\b[^?.!]{0,30}\b(?:or|vs\.?|versus)\b[^?.!]{0,30}\bindex|\bshould i pick (?:my own )?stocks\b/;
@@ -184,7 +184,7 @@ const D_TIME =
 const D_SELL =
   /\bshould (?:i|we) sell\b(?! (?:everything|all|it all))(?![^?.!]*\b(?:company|employer|rsus?|espp|options)\b)/;
 const D_START =
-  /^(?:so |ok |okay |and )?should (?:i|we) (?:buy|invest|do it|go for it|start investing)\??$|\b(?:am i|are we) ready to (?:start )?invest\b|\bshould i (?:start|begin) investing\b|\bhow much should i (?:invest|put (?:in|into) (?:stocks|the market|investments))\b|\bwhen should i start investing\b/;
+  /\b(?:am i|are we) ready to (?:start )?invest\b|\bhow much should i (?:invest|put (?:in|into) (?:stocks|the market|investments))\b|\bwhen should i start investing\b/;
 
 export function decisionOf(text: string): { kind: DecisionKind; subject: string | null } | null {
   const t = text.trim().toLowerCase();

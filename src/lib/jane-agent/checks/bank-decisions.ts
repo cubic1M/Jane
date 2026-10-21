@@ -6,7 +6,7 @@ import type { CheckQuestion } from "./bank";
 // advice mode (the grading profile) and facts only on real accounts. Must-pass.
 
 const ask = (n: number, text: string, after?: string): CheckQuestion => ({
-  id: `dec-${n}`,
+  id: `idc-${n}`,
   text,
   needs: "rules",
   ...(after ? { after } : {}),
@@ -48,5 +48,5 @@ export const DECISION_QUESTIONS: readonly CheckQuestion[] = [
   ask(28, "how much should i invest"),
   ask(29, "when should i start investing"),
   // A follow-up after any of them.
-  ask(30, "should i buy?", "dec-1"),
+  ask(30, "should i buy?", "idc-1"),
 ];

@@ -1,3 +1,4 @@
+import { INVESTING_DECIDES, investingDecide } from "../investments/decide";
 import { answerDecision } from "../decision";
 import { answerDebt } from "../debt-answer";
 import { DEBT_KINDS, type DebtIntent } from "../debt-intents";
@@ -240,6 +241,8 @@ export const CAPABILITIES: readonly Capability[] = [
       "asset_location",
     ],
     answer: investingAnswer,
+    decides: INVESTING_DECIDES,
+    decide: investingDecide,
   },
   {
     id: "debt",
