@@ -36,6 +36,7 @@ import { loadPropertyTax } from "@/lib/property-tax";
 import { loadAccountantPage } from "@/lib/accountant";
 import { loadBusinessStructure } from "@/lib/business-structure";
 import { loadInheritance } from "@/lib/inheritance";
+import { loadHealthTaxes } from "@/lib/health-taxes";
 import { loadTaxCalendar } from "@/lib/tax-calendar";
 import { loadIdentity } from "@/lib/tax-identity";
 import { loadSideIncome } from "@/lib/side-income";
@@ -219,6 +220,12 @@ export const TAX_TOOLS: Anthropic.Tool[] = [
     name: "tax_inherited",
     description:
       "Inherited money and gifts: an inherited IRA the person has (found by the account's name) with the year it must be empty by under the 10-year rule (from the year they told Jane the owner died; spouses can treat it as their own), the exceptions, and in demo advice mode how much tax taking it out evenly saves against taking it all at the end; gifts to one person this year over the annual exclusion that need a gift tax return (Form 709); the step-up in basis on inherited assets; and the federal and state estate tax facts. Facts only, with a pointer to a tax professional or estate lawyer: Jane gives no legal advice.",
+    input_schema: noInput,
+  },
+  {
+    name: "tax_health",
+    description:
+      "The tax side of the person's health insurance: a Marketplace plan's premium tax credit checked against their projected income this year (their share of the poverty line, whether it is over the 400% line where the credit stops, what an advance credit would have to be repaid and the cap on it, with the credit and plan premium told or a typical amount assumed), HSA contributions against the year's limit with the penalty on any excess, and medical costs against the 7.5% of income floor and whether itemizing would count them. Telling the Marketplace or an HSA provider is the person's: Jane contacts no one.",
     input_schema: noInput,
   },
   {
@@ -840,6 +847,34 @@ export async function runTaxTool(
         stepUpInBasis:
           "Inherited property's cost basis becomes its value on the day the owner died, so selling soon after has little or no gain to tax.",
         estateFacts: v.estate,
+      });
+    }
+    case "tax_health": {
+      const v = await loadHealthTaxes(userId, { client, now });
+      const m = v.marketplace;
+      return out({
+        marketplace: m.check && {
+          householdSize: m.householdSize,
+          incomeShareOfPovertyLine: `${Math.round(m.check.fplShare * 100)}%`,
+          overTheCliff: m.check.overCliff,
+          allowedCredit: money(m.check.allowedCents),
+          advanceCredit: money(m.check.advanceCents),
+          mayHaveToRepay: money(m.check.repayCents),
+          repaymentCap: m.check.capCents === null ? null : money(m.check.capCents),
+          amountsAssumed: !m.told,
+        },
+        hsa: {
+          contributed: money(v.hsa.contributedCents),
+          limit: money(v.hsa.limitCents),
+          over: money(v.hsa.excessCents),
+          penaltyEachYear: money(v.hsa.exciseCents),
+        },
+        medical: {
+          spent: money(v.medical.spentCents),
+          floor: money(v.medical.floorCents),
+          deductibleIfItemizing: money(v.medical.deductibleCents),
+          itemizingHelps: v.medical.itemizing,
+        },
       });
     }
     case "tax_years": {

@@ -203,6 +203,11 @@ export const DETECTOR_RATES = {
     // weeks before it, otherwise it takes effect next year.
     sCorpElectionBy: "03-15",
     sCorpElectionFrom: "01-01",
+    // Marketplace plans (step 269): a Marketplace premium seen at least this many times in the
+    // year, and from which month a change of income matters for this year's advance credit.
+    marketplacePaymentsMin: 3,
+    ptcSoonFromMonth: 7,
+    ptcNowFromMonth: 10,
     // Estimated payments: urgency by days to the next due date.
     estimatedNowDays: 14,
     estimatedSoonDays: 45,

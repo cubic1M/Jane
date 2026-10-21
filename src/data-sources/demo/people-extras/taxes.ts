@@ -47,7 +47,20 @@ const gas = (dollars: number): Recurring => ({
 
 export const TAXES_EXTRAS: Partial<Record<PersonId, PersonExtra>> = {
   // Jo drives to suppliers and customers.
-  owner: { monthly: [gas(55)] },
+  owner: {
+    monthly: [
+      gas(55),
+      {
+        key: "taxes-marketplace",
+        account: "checking",
+        name: "HEALTHCARE.GOV MARKETPLACE",
+        merchant: "Healthcare Marketplace",
+        category: "GENERAL_SERVICES_INSURANCE",
+        amount: 520,
+        days: [3],
+      },
+    ],
+  },
   // The Reyes family: a mortgage, property tax and a year-end gift.
   family: {
     monthly: [propertyTax(2900)],
@@ -56,7 +69,18 @@ export const TAXES_EXTRAS: Partial<Record<PersonId, PersonExtra>> = {
   // Priya: a big house, a gift of stock-sale proceeds, and a bond fund bought when rates were
   // lower, now worth less than she paid, in her taxable account.
   equity: {
-    monthly: [propertyTax(6800)],
+    monthly: [
+      propertyTax(6800),
+      {
+        key: "taxes-hsa-in",
+        account: "hsa",
+        name: "PAYROLL HSA CONTRIBUTION",
+        merchant: null,
+        category: "TRANSFER_IN_ACCOUNT_TRANSFER",
+        amount: -500,
+        days: [15],
+      },
+    ],
     ...gift("taxes-gift", "AMERICAN RED CROSS", 1000, -60),
     positions: [{ account: "brokerage", key: "KTBIX", quantity: 1500, basis: 19000 }],
   },

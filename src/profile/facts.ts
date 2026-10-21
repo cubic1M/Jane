@@ -53,6 +53,12 @@ export const FACT_SPECS = [
   F("insurance_medigap", "You pay for Medicare supplement cover", "boolean"),
   F("age", "Your age", "number"),
   F("inherited_ira_death_year", "The year the person you inherited an IRA from died", "number"),
+  F("marketplace_aptc_monthly", "The advance premium tax credit you get each month", "cents"),
+  F(
+    "marketplace_benchmark_monthly",
+    "The monthly premium of the benchmark plan on your Marketplace quote",
+    "cents",
+  ),
   F("inherited_from_spouse", "You inherited the IRA from your spouse", "boolean"),
   F("age_band", "Your age, roughly", "choice", {
     choices: ["under_30", "30_to_49", "50_to_57", "58_to_65", "66_to_72", "73_plus"],

@@ -24,6 +24,7 @@ import { answersMessage, complexMessage } from "../accountant-message";
 import { estimateDueMessage, yearEndMessage } from "../tax-calendar-message";
 import { sCorpMessage } from "../business-message";
 import { giftsMessage, inheritedIraMessage } from "../inheritance-message";
+import { hsaMessage, repaymentMessage } from "../health-tax-message";
 import {
   appealDraftedMessage,
   appealSuggestedMessage,
@@ -521,6 +522,29 @@ export const taxesSource: MessageSource = {
           ...gifts,
           dedupeKey: `gifts:${inheritance.year}:${inheritance.gifts[0].recipient}`,
           priority: TAX_MESSAGE_PRIORITY.gifts,
+        });
+      }
+    }
+
+    // Spec step 269: a Marketplace credit that may have to be repaid, and an HSA over its limit.
+    const health = tax.health;
+    if (health) {
+      const repay = health.advice ? repaymentMessage(health) : null;
+      if (repay) {
+        out.push({
+          kind: "decision",
+          ...repay,
+          dedupeKey: `ptc:${health.year}:${health.marketplace.check?.overCliff ? "cliff" : "over"}`,
+          priority: TAX_MESSAGE_PRIORITY.ptc,
+        });
+      }
+      const hsa = hsaMessage(health);
+      if (hsa) {
+        out.push({
+          kind: "decision",
+          ...hsa,
+          dedupeKey: `hsa_excess:${health.year}`,
+          priority: TAX_MESSAGE_PRIORITY.hsa_excess,
         });
       }
     }

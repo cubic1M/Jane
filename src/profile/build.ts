@@ -325,6 +325,8 @@ export function buildProfile(input: ProfileInput): Profile {
     "filing_status",
     "business_structure",
     "hardship_reason",
+    "marketplace_aptc_monthly",
+    "marketplace_benchmark_monthly",
     "inherited_ira_death_year",
     "inherited_from_spouse",
   ] as const) {

@@ -310,7 +310,8 @@ describe("business owners' tax structure", () => {
     ]);
     const s = run("freelancer").find((x) => x.topic === "home_office_deduction")!;
     expect(s.why).toMatch(/150 square feet at \$5 a square foot, is a \$750\.00 deduction/);
-    expect(s.confidence.percent).toBeLessThanOrEqual(55);
+    expect(s.confidence.percent).toBeLessThanOrEqual(35);
+    expect(s.confidence.reason).toMatch(/coworking space/);
   });
 
   it("vehicle: whoever works for themselves and buys gas, from the standard mileage rate", () => {

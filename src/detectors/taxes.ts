@@ -1,5 +1,11 @@
 import { DETECTOR_RATES } from "@/config/detectors";
 import { HOME_OFFICE_ASSUMED_SQFT, VEHICLE_ASSUMED_MILES } from "@/config/business-structure";
+import {
+  ASSUMED_APTC_MONTHLY_CENTS,
+  MARKETPLACE_PAYEE,
+  PTC_CLIFF,
+  fplFor,
+} from "@/config/health-taxes";
 import { GIVING } from "@/config/giving";
 import {
   INHERITED_IRA_YEARS,
@@ -22,6 +28,7 @@ import {
 } from "@/config/tax-rates";
 import { formatCents } from "@/lib/money";
 import { structureFor } from "@/planning/business-structure";
+import { hsaExcess } from "@/planning/health-taxes";
 import { mustBeEmptyBy, spreadIra } from "@/planning/inheritance";
 import { NO_INCOME, marginalRateOf, type EstimateInput } from "@/planning/tax-estimate";
 import { careShare } from "@/planning/tax-savings";
@@ -607,6 +614,12 @@ const homeOffice: Detector = {
         /COMMERCIAL|OFFICE|STUDIO|WORKSPACE|WEWORK/i.test(t.description),
     );
     if (away.length > 0) return null;
+    // A coworking membership is an office elsewhere: a home office then needs a room used only
+    // for work, which is less likely.
+    const cowork = tx(
+      data,
+      (t) => t.amountCents > 0 && /WEWORK|COWORK|REGUS|INDUSTRIOUS/i.test(t.description),
+    ).length;
     const deduction = HOME_OFFICE_ASSUMED_SQFT * HOME_OFFICE_SIMPLIFIED.perSquareFoot;
     const profit = profitOf(profile);
     const saves = Math.round(deduction * deductionRate(profit, profile.facts.household.value));
@@ -620,10 +633,16 @@ const homeOffice: Detector = {
       confidence: weakest([
         factEvidence(pattern),
         factEvidence(income),
-        {
-          percent: 55,
-          reason: "I can't see where you work, or whether a home office is already on file",
-        },
+        cowork > 0
+          ? {
+              percent: 35,
+              reason:
+                "you pay for a coworking space, so I can't tell if you also work from a room at home",
+            }
+          : {
+              percent: 55,
+              reason: "I can't see where you work, or whether a home office is already on file",
+            },
       ]),
       urgency: "later",
       why: `You work for yourself and pay no rent for an office or studio. A room used only for work, ${HOME_OFFICE_ASSUMED_SQFT} square feet at $5 a square foot, is a ${formatCents(deduction)} deduction, which saves about ${formatCents(saves)} in income tax and self-employment tax.`,
@@ -755,7 +774,101 @@ const inheritedIra: Detector = {
   },
 };
 
+// A Marketplace plan's credit stops above 400% of the poverty line: an enrollee whose income
+// has risen past it owes back every advance dollar (steps 269 and 123). Income is projected from
+// the year's deposits, so a mid-year rise shows.
+const ptcRepayment: Detector = {
+  capability: "taxes",
+  topic: "ptc_repayment",
+  covers: ["tax_health"],
+  needs: ["monthly_income", "household", "marketplace_aptc_monthly"],
+  detect({ profile, data }) {
+    const income = profile.facts.monthly_income;
+    const aptc = profile.facts.marketplace_aptc_monthly;
+    const premiums = tx(data, (t) => t.amountCents > 0 && MARKETPLACE_PAYEE.test(t.description));
+    if (premiums.length < T.marketplacePaymentsMin) return null;
+    const pattern = profile.facts.income_pattern.value;
+    const incomeCents = selfPaid(pattern) ? profitOf(profile) : grossIncome(profile, data);
+    const household = profile.facts.household.value;
+    const size = household === "family" ? 3 : household === "couple" ? 2 : 1;
+    const share = incomeCents / fplFor(size);
+    if (share <= PTC_CLIFF) return null;
+    const advance = typeof aptc.value === "number" ? aptc.value : ASSUMED_APTC_MONTHLY_CENTS;
+    const month = Number(profile.today.slice(5, 7));
+    return {
+      id: suggestionId("taxes", "ptc_repayment"),
+      capability: "taxes",
+      topic: "ptc_repayment",
+      title: "Your income may have passed the Marketplace credit's limit",
+      worthCents: advance * 12,
+      worthKind: "risk",
+      confidence: weakest([
+        factEvidence(income),
+        evidence("seen", profile.months, premiums.length, "Marketplace premium payments"),
+        {
+          percent: typeof aptc.value === "number" ? 80 : 45,
+          reason:
+            typeof aptc.value === "number"
+              ? "you told me your advance credit; your income for the rest of the year is a projection"
+              : "I can't see whether you take an advance credit or how much, so I assumed a typical one",
+        },
+      ]),
+      urgency: month >= T.ptcNowFromMonth ? "now" : month >= T.ptcSoonFromMonth ? "soon" : "later",
+      why: `You pay a Marketplace premium and your income is on track for about ${formatCents(incomeCents)}, ${Math.round(share * 100)}% of the poverty line for ${size === 1 ? "one person" : `${size} people`}, above the 400% line where the credit stops. An advance credit (${formatCents(advance)} a month is typical) would be repaid in full with your return, up to ${formatCents(advance * 12)}. Telling the Marketplace now, or lowering your income with a retirement contribution, avoids the bill.`,
+      action: { label: "See the numbers", href: "/taxes/health" },
+    };
+  },
+};
+
+// Contributions to HSAs over the limit are taxed and carry a 6% penalty every year they stay in
+// (steps 169 and 269); taking them out before filing avoids the penalty.
+const hsaOverLimit: Detector = {
+  capability: "taxes",
+  topic: "hsa_over_limit",
+  covers: ["tax_health"],
+  needs: ["has_hsa", "monthly_income", "household"],
+  detect({ profile, data }) {
+    const hsa = profile.facts.has_hsa;
+    const income = profile.facts.monthly_income;
+    if (hsa.value !== true) return null;
+    const ids = new Set(data.accounts.filter((a) => a.subtype === "hsa").map((a) => a.id));
+    const year = profile.today.slice(0, 4);
+    const puts = tx(
+      data,
+      (t) => ids.has(t.accountId) && t.amountCents < 0 && t.date.startsWith(year),
+    );
+    const contributed = puts.reduce((s, t) => s - t.amountCents, 0);
+    const family = profile.facts.household.value !== "single";
+    const limit = family ? CONTRIBUTION_LIMITS.hsaFamily : CONTRIBUTION_LIMITS.hsaSelf;
+    const rate = bracketOf(profile, data);
+    const r = hsaExcess({ contributedCents: contributed, limitCents: limit, marginalRate: rate });
+    if (r.excessCents <= 0) return null;
+    return {
+      id: suggestionId("taxes", "hsa_over_limit"),
+      capability: "taxes",
+      topic: "hsa_over_limit",
+      title: "Take the extra out of your HSA before you file",
+      worthCents: r.exciseCents + r.taxCents,
+      worthKind: "saves",
+      confidence: weakest([
+        factEvidence(hsa),
+        factEvidence(income),
+        evidence("seen", profile.months, puts.length, "HSA deposits"),
+        {
+          percent: 70,
+          reason: "your employer's contributions and your age (a catch-up) can change the limit",
+        },
+      ]),
+      urgency: Number(profile.today.slice(5, 7)) <= 4 ? "now" : "soon",
+      why: `You've put ${formatCents(contributed)} into your HSA this year, ${formatCents(r.excessCents)} over the ${formatCents(limit)} limit. The extra is taxed as income (about ${formatCents(r.taxCents)}) and carries a 6% penalty (${formatCents(r.exciseCents)}) every year it stays in. Taking it out, with what it earned, before you file avoids the penalty.`,
+      action: { label: "See the numbers", href: "/taxes/health" },
+    };
+  },
+};
+
 export const TAX_DETECTORS: readonly Detector[] = [
+  ptcRepayment,
+  hsaOverLimit,
   inheritedIra,
   sCorpElection,
   homeOffice,
