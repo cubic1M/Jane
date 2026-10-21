@@ -84,6 +84,7 @@ export async function loadDecisionFacts(
     rothCents: sumOf(investments.accounts, ["roth", "roth 401k", "roth 403b"]),
     monthlySpendCents: baseline?.monthlySpendingCents ?? null,
     askedAge: null,
+    stubDeferralCents: tax?.pay.projected.retirementCents ?? 0,
     hasFamilyPlan: tax?.estimate.filingStatus?.startsWith("married") ?? false,
   };
 }

@@ -44,6 +44,8 @@ export type DecisionFacts = {
   // The age asked about ("retire at 62"), from the question.
   askedAge: number | null;
   hasFamilyPlan: boolean;
+  // A 401(k) deferral seen on pay stubs this year, projected, when no account is linked.
+  stubDeferralCents: number;
 };
 
 const pct = (bps: number) => `${Math.round(bps / 10) / 10}%`;
@@ -212,9 +214,11 @@ export function decide(
             : lean === "a split"
               ? `At your ${pct(Math.round(r! * 10_000))} federal rate it's close, so a split between the two is a fair choice.`
               : `At your ${pct(Math.round(r! * 10_000))} federal rate, ${lean} usually comes out ahead: ${lean === "traditional" ? "the deduction now is worth more than tax-free withdrawals later" : "paying tax now at a low rate beats paying more later"}.`,
-          f.preTaxCents + f.rothCents > 0
-            ? `You hold ${formatCents(f.preTaxCents)} before tax and ${formatCents(f.rothCents)} in Roth accounts, so ${f.rothCents < f.preTaxCents ? "more Roth would balance them" : "adding before-tax money would balance them"}.`
-            : "You don't have retirement accounts yet, so either one starts you off.",
+          f.preTaxCents + f.rothCents === 0 && f.stubDeferralCents > 0
+            ? `Your pay stubs show a 401(k) deferral of about ${formatCents(f.stubDeferralCents)} this year, but no retirement account is linked, so I can't see which kind it is.`
+            : f.preTaxCents + f.rothCents > 0
+              ? `You hold ${formatCents(f.preTaxCents)} before tax and ${formatCents(f.rothCents)} in Roth accounts, so ${f.rothCents < f.preTaxCents ? "more Roth would balance them" : "adding before-tax money would balance them"}.`
+              : "You don't have retirement accounts yet, so either one starts you off.",
           "When you can't tell, splitting between both hedges the rate you'll face.",
         ],
         offerCrypto: false,
@@ -226,7 +230,9 @@ export function decide(
       if (have === 0) {
         return {
           sentences: [
-            "I don't see retirement savings yet, so I can't show whether that age works.",
+            f.stubDeferralCents > 0
+              ? `Your pay stubs show a 401(k) deferral of about ${formatCents(f.stubDeferralCents)} this year, but no retirement account is linked, so I can't see the balance to test that age.`
+              : "I don't see retirement savings yet, so I can't show whether that age works.",
             "Link your 401(k) or IRA and I'll compare what you hold with what you spend.",
             "Social Security alone usually covers only part of a year's spending.",
           ],

@@ -31,6 +31,7 @@ const BASE: DecisionFacts = {
   monthlySpendCents: 400_000,
   askedAge: null,
   hasFamilyPlan: false,
+  stubDeferralCents: 0,
 };
 const DEBT: DecisionFacts = {
   ...BASE,
@@ -147,6 +148,15 @@ describe("what each answer rests on", () => {
     expect(r.body).toMatch(/Social Security taken at 62 is about 30% smaller/);
     expect(ask("can i retire at 62", { ...BASE, preTaxCents: 0, rothCents: 0 }).body).toMatch(
       /don't see retirement savings/,
+    );
+  });
+  it("says what the pay stubs show when no retirement account is linked", () => {
+    const none = { ...BASE, preTaxCents: 0, rothCents: 0, stubDeferralCents: 280_900 };
+    expect(ask("can i retire at 62", none).body).toMatch(
+      /pay stubs show a 401\(k\) deferral of about \$2,809\.00/,
+    );
+    expect(ask("should i do a roth or traditional", none).body).toMatch(
+      /pay stubs show a 401\(k\) deferral of about \$2,809\.00/,
     );
   });
 });
