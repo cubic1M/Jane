@@ -568,7 +568,7 @@ export type MultiStep =
   | {
       kind: "transfer";
       label: string;
-      goalId: string;
+      goalId: string | null;
       goalName: string;
       fromAccountId: string;
       toAccountId: string | null;
