@@ -43,6 +43,7 @@ export async function loadProfileInput(
       db.accounts.findMany({
         select: {
           id: true,
+          name: true,
           type: true,
           subtype: true,
           currentBalanceCents: true,
@@ -116,6 +117,7 @@ export async function loadProfileInput(
     })),
     accounts: accounts.map((a) => ({
       id: a.id,
+      name: a.name,
       type: a.type,
       subtype: a.subtype,
       balanceCents: a.currentBalanceCents ?? 0,

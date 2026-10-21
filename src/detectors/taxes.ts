@@ -1,6 +1,11 @@
 import { DETECTOR_RATES } from "@/config/detectors";
 import { HOME_OFFICE_ASSUMED_SQFT, VEHICLE_ASSUMED_MILES } from "@/config/business-structure";
 import { GIVING } from "@/config/giving";
+import {
+  INHERITED_IRA_YEARS,
+  INHERITED_NAME,
+  MISSED_WITHDRAWAL_PENALTY,
+} from "@/config/inheritance";
 import { PROPERTY_TAX_PAYEE } from "@/config/home-taxes";
 import { APPEAL_GAP_RATE } from "@/config/property-tax";
 import { TAXABLE_INVESTMENT_SUBTYPES } from "@/config/tax";
@@ -17,6 +22,7 @@ import {
 } from "@/config/tax-rates";
 import { formatCents } from "@/lib/money";
 import { structureFor } from "@/planning/business-structure";
+import { mustBeEmptyBy, spreadIra } from "@/planning/inheritance";
 import { NO_INCOME, marginalRateOf, type EstimateInput } from "@/planning/tax-estimate";
 import { careShare } from "@/planning/tax-savings";
 import type { Fact } from "@/profile/build";
@@ -149,8 +155,12 @@ const rothConversion: Detector = {
   detect({ profile, data }) {
     const stage = profile.facts.life_stage;
     if (stage.value !== "approaching" && stage.value !== "retired") return null;
+    // An inherited IRA can't be converted to a Roth: only the person's own pre-tax money counts.
     const accounts = data.accounts.filter(
-      (a) => a.type === "investment" && PRETAX.test(a.subtype ?? ""),
+      (a) =>
+        a.type === "investment" &&
+        PRETAX.test(a.subtype ?? "") &&
+        !INHERITED_NAME.test(a.name ?? ""),
     );
     const balance = accounts.reduce((s, a) => s + a.balanceCents, 0);
     if (balance < T.rothMinBalanceCents) return null;
@@ -658,7 +668,95 @@ const vehicleDeduction: Detector = {
   },
 };
 
+// An inherited IRA has to be empty by the end of the 10th year after the owner died; taking it
+// out evenly keeps each year in a lower bracket than taking it all at the end (steps 220 and
+// 268). Found by the account's name; the year the owner died is something only the person can
+// say.
+const inheritedIra: Detector = {
+  capability: "taxes",
+  topic: "inherited_ira",
+  covers: ["tax_inherited"],
+  needs: ["inherited_ira_death_year", "inherited_from_spouse", "monthly_income", "household"],
+  detect({ profile, data }) {
+    const income = profile.facts.monthly_income;
+    const died = profile.facts.inherited_ira_death_year;
+    if (profile.facts.inherited_from_spouse.value === true) return null;
+    const accounts = data.accounts.filter(
+      (a) => a.type === "investment" && INHERITED_NAME.test(a.name ?? "") && a.balanceCents > 0,
+    );
+    if (accounts.length === 0) return null;
+    const balance = accounts.reduce((s, a) => s + a.balanceCents, 0);
+    const year = Number(profile.today.slice(0, 4));
+    const knownYear = typeof died.value === "number" ? died.value : null;
+    const emptyBy = knownYear !== null ? mustBeEmptyBy(knownYear) : null;
+    const yearsLeft = emptyBy !== null ? Math.max(1, emptyBy - year + 1) : INHERITED_IRA_YEARS;
+    const status = statusOf(profile.facts.household.value);
+    const base = soleInput(0, profile.facts.household.value, year);
+    const spread = spreadIra({
+      balanceCents: balance,
+      yearsLeft,
+      base: {
+        ...base,
+        filingStatus: status,
+        income: {
+          ...base.income,
+          wagesCents: grossIncome(profile, data),
+          socialSecurityWagesCents: grossIncome(profile, data),
+        },
+      },
+    });
+    // In the last year there is nothing left to spread: what matters is emptying it, because
+    // the money not taken out by the deadline costs 25% of what is left.
+    if (emptyBy !== null && yearsLeft <= 1) {
+      const penalty = Math.round(balance * MISSED_WITHDRAWAL_PENALTY);
+      return {
+        id: suggestionId("taxes", "inherited_ira"),
+        capability: "taxes",
+        topic: "inherited_ira",
+        title: "Take the rest of your inherited IRA out by December 31",
+        worthCents: penalty,
+        worthKind: "risk",
+        confidence: weakest([
+          factEvidence(income),
+          {
+            percent: 70,
+            reason:
+              "you told me when the owner died; whether you are an exception to the 10-year rule is unseen",
+          },
+        ]),
+        urgency: "now",
+        why: `The rule for most heirs is that your inherited IRA (${formatCents(balance)}) is empty by December 31, ${emptyBy}. Money left after that costs a penalty of 25% of what's left, up to ${formatCents(penalty)}. All of it is taxed as income the year it comes out, so a tax professional can say how much to take and when. If you are a spouse or another kind of heir the rule may not apply.`,
+        action: { label: "See what applies", href: "/profile" },
+      };
+    }
+    if (!spread.worthRaising) return null;
+    return {
+      id: suggestionId("taxes", "inherited_ira"),
+      capability: "taxes",
+      topic: "inherited_ira",
+      title: "Plan how you take money out of your inherited IRA",
+      worthCents: spread.savesCents,
+      worthKind: "saves",
+      confidence: weakest([
+        factEvidence(income),
+        {
+          percent: knownYear !== null ? 70 : 50,
+          reason:
+            knownYear !== null
+              ? "you told me when the owner died; whether they had started required withdrawals and your other income later are unknown"
+              : "I don't know when the owner died, so I assumed you have the full 10 years",
+        },
+      ]),
+      urgency:
+        emptyBy === null ? "later" : yearsLeft <= 1 ? "now" : yearsLeft <= 3 ? "soon" : "later",
+      why: `You have ${formatCents(balance)} in an inherited IRA. ${emptyBy !== null ? `Most heirs must empty it by December 31, ${emptyBy}.` : "Most heirs must empty it within 10 years of the owner's death."} Taking about ${formatCents(spread.perYearCents)} a year instead of all at the end would save roughly ${formatCents(spread.savesCents)} in tax. A tax professional should confirm the rules that apply to you.`,
+      action: { label: "Tell Jane when they died", href: "/profile" },
+    };
+  },
+};
+
 export const TAX_DETECTORS: readonly Detector[] = [
+  inheritedIra,
   sCorpElection,
   homeOffice,
   vehicleDeduction,

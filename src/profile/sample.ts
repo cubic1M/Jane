@@ -39,6 +39,7 @@ export function inputFor(person: string, told: ProfileInput["told"] = {}): Profi
     })),
     accounts: demoAccounts(demo).map((a) => ({
       id: a.account_id,
+      name: a.name,
       type: a.type,
       subtype: a.subtype,
       balanceCents:

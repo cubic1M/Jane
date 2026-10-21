@@ -34,6 +34,7 @@ import { loadPropertyTax, type PropertyTaxView } from "@/lib/property-tax";
 import { loadAccountantPage, type AccountantPageView } from "@/lib/accountant";
 import { loadTaxCalendar, type TaxCalendarView } from "@/lib/tax-calendar";
 import { loadBusinessStructure, type BusinessView } from "@/lib/business-structure";
+import { loadInheritance, type InheritanceView } from "@/lib/inheritance";
 import { loadIdentity, type IdentityView } from "@/lib/tax-identity";
 import { loadSideIncome, type SideIncomeView } from "@/lib/side-income";
 import { loadAuditRecords, type AuditRecordsView } from "@/lib/audit-records";
@@ -104,6 +105,8 @@ export type TaxSnapshot = {
     calendar?: TaxCalendarView;
     // Spec step 267: the S corporation question and the business deductions.
     business?: BusinessView;
+    // Spec step 268: an inherited IRA and gifts over the exclusion.
+    inheritance?: InheritanceView;
     // Spec step 217: tax notices read from uploads, with what Jane found against them.
     notices?: { notice: NoticeView; check: (Check & { advice: boolean }) | null }[];
     // Spec step 172: returns read from uploads, and what their review found.
@@ -209,6 +212,7 @@ export async function loadTaxSnapshot(
         loaded: { estimate, advice, equity, identity, notices: noticeViews, side: sideIncome },
         withQuestions: false,
       }),
+      inheritance: await loadInheritance(userId, { client, now, loaded: { estimate, advice } }),
       business: await loadBusinessStructure(userId, { client, now, loaded: { estimate, advice } }),
       calendar: await loadTaxCalendar(userId, {
         client,
