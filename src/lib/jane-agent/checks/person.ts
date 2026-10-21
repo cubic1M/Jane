@@ -1,4 +1,5 @@
 import type { PlaidApi } from "plaid";
+import type { PersonId } from "@/config/people";
 import type { PrismaClient } from "@/generated/prisma/client";
 import { linkDemoBank } from "@/lib/plaid/demo";
 import { saveProfileForm } from "@/lib/investments/profile";
@@ -21,14 +22,17 @@ const NO_PLAID = new Proxy(
 export async function createCheckPerson({
   client,
   now,
+  person,
 }: {
   client: PrismaClient;
   now: Date;
+  // One of the sample lives (src/config/people.ts); the original demo bank without it.
+  person?: PersonId;
 }): Promise<string> {
   const user = await client.user.create({
     data: { email: `answer-checks-${crypto.randomUUID()}@example.com` },
   });
-  const { itemId } = await linkDemoBank(user.id, { client, now });
+  const { itemId } = await linkDemoBank(user.id, { client, now, person });
   await syncItem(itemId, { client, api: NO_PLAID, now });
   // Spec step 137: a finished investor profile, so investment questions get full answers.
   await saveProfileForm(
