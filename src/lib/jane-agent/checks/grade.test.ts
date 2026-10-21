@@ -57,6 +57,27 @@ describe("fixedChecks", () => {
     expect(fixedScore(checks)).toBeLessThan(100);
   });
 
+  it("fails an action button on an informational question, but not a link", () => {
+    const ask = q("do i have any debts", { noButtons: true });
+    const body = "You have one credit card with a balance, and nothing else to pay off.";
+    const withYes = fixedChecks(
+      ask,
+      { body, actions: [{ id: "finding.yes", label: "Yes", kind: "primary" }], source: "claude" },
+      facts,
+    );
+    expect(failed(withYes)).toEqual(["no_buttons"]);
+    const withLink = fixedChecks(
+      ask,
+      {
+        body,
+        actions: [{ id: "open", label: "See debts", kind: "link", href: "/debt" }],
+        source: "claude",
+      },
+      facts,
+    );
+    expect(failed(withLink)).toEqual([]);
+  });
+
   it("counts a blocked answer as unanswered", () => {
     const checks = fixedChecks(
       q("x"),

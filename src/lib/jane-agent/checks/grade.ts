@@ -145,6 +145,14 @@ export function fixedChecks(
         : fail("button", `No "${expect.button}" button.`),
     );
   }
+  if (expect.noButtons) {
+    const buttons = answer.actions.filter((a) => a.kind !== "link");
+    checks.push(
+      buttons.length === 0
+        ? pass("no_buttons")
+        : fail("no_buttons", "A question that asks for information got an action button."),
+    );
+  }
   if (expect.link) {
     checks.push(
       answer.actions.some((a) => a.kind === "link" && a.href.startsWith(expect.link!))

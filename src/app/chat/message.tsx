@@ -74,6 +74,14 @@ export function ChatMessageItem({ initial }: { initial: MessageView }) {
   useEffect(() => {
     if (state.postedAt) router.refresh();
   }, [state.postedAt, router]);
+  // A tap shows its result before the server has saved it: leaving or reloading in that
+  // moment would lose the choice, so the browser asks first.
+  useEffect(() => {
+    if (!pending) return;
+    const keep = (event: BeforeUnloadEvent) => event.preventDefault();
+    window.addEventListener("beforeunload", keep);
+    return () => window.removeEventListener("beforeunload", keep);
+  }, [pending]);
   const undoExpired = useUndoTimer(message.undoUntil);
   const buttons = message.buttons.filter((b) => !(undoExpired && b.id.startsWith("undo.")));
 

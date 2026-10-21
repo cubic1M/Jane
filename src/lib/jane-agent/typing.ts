@@ -14,6 +14,7 @@ import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
 import { hit } from "@/lib/rate-limit";
 import { claudeLimit, refundClaudeUse } from "./claude-limits";
+import { overDailyCap } from "./spend";
 import { answerByRules } from "./answer";
 import { listPreferences } from "./preferences";
 import { shapeReply, styleInstructions, styleOf } from "./style";
@@ -108,7 +109,7 @@ export async function recentTurns(
   const turns = rows.reverse();
   const unanswered = (m: { kind: string; body: string }) =>
     m.kind === "reply" &&
-    /^(?:I couldn't look into that|I couldn't write a full answer|I can't answer that one yet|Which one do you mean|You've asked me a lot)/.test(
+    /^(?:I couldn't look into that|I couldn't write a full answer|Sorry, I couldn't finish|I've reached today's limit|I can't answer that one yet|Which one do you mean|You've asked me a lot)/.test(
       m.body,
     );
   return turns
@@ -124,6 +125,12 @@ export async function recentTurns(
 
 // How an answer was given: by the rules, by Claude (or blocked, or Claude couldn't), or
 // the fallback list of what Jane understands.
+const UNFINISHED_TEXT = "Sorry, I couldn't finish an answer to that. Please ask again.";
+// "How am I doing", "what should I do": the questions where the whole picture is the answer.
+const STATUS_QUESTION =
+  /\b(?:how am i doing|how are (?:things|we)|where (?:do|am) i stand|what (?:should|do) i do|where (?:should|do) i start|what now|what matters|my (?:money )?situation|overview|summary)\b/i;
+const DAILY_LIMIT_LEAD = "I've reached today's limit for answering in detail";
+
 export type AnswerSource =
   "rules" | "claude" | "claude_blocked" | "claude_unavailable" | "fallback" | "capped";
 type Source = AnswerSource;
@@ -160,19 +167,28 @@ async function answer(
   };
   // The backup for when Claude can't answer: the rules' answer from the same data, or, for
   // anything they can't place, where the person stands (never a bare "unavailable").
-  const backup = async (): Promise<Reply> => {
+  const backup = async (
+    lead = "I couldn't write a full answer to that just now",
+  ): Promise<Reply> => {
     const byRules = await rules();
-    if (byRules) return byRules;
+    if (byRules)
+      return lead === DAILY_LIMIT_LEAD ? { ...byRules, body: `${lead}. ${byRules.body}` } : byRules;
+    // Where the person stands answers "how am I doing / what should I do"; for a specific
+    // question it would be an unrelated status, so say plainly that it wasn't finished.
+    if (!STATUS_QUESTION.test(text)) {
+      return {
+        body: lead === DAILY_LIMIT_LEAD ? `${lead}. Please ask again tomorrow.` : UNFINISHED_TEXT,
+        actions: [],
+        refs: {},
+      };
+    }
     const picture = await answerByRules(
       userId,
       { kind: "whole_picture", focus: "now" },
       { client, now, topic: null },
     );
     return picture
-      ? {
-          ...picture,
-          body: `I couldn't write a full answer to that just now, so here is where you stand. ${picture.body}`,
-        }
+      ? { ...picture, body: `${lead}, so here is where you stand. ${picture.body}` }
       : unknownReply(text, asOf);
   };
   // No Claude (no key: dev, tests): the rules answer, as before.
@@ -183,6 +199,15 @@ async function answer(
   }
   // Chat architecture (docs/spec.md): every typed message is answered by Claude, writing from
   // Jane's tools and numbers. A button, a card or a rules answer never stands in for it.
+  // Today's spend on this person is used up: say so, then what the data gives.
+  if (await overDailyCap(userId, { client, now })) {
+    console.info("chat_timing", { outcome: "capped", reason: "daily_cap", costCents: 0 });
+    return {
+      reply: await backup(DAILY_LIMIT_LEAD),
+      intent: intent.kind,
+      source: "claude_unavailable",
+    };
+  }
   const limit = await claudeLimit(userId, { client, now });
   if (limit === "budget") {
     return { reply: await backup(), intent: intent.kind, source: "claude_unavailable" };
