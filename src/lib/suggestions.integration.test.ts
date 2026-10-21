@@ -78,7 +78,12 @@ describe.runIf(url)("the nightly scan of suggestions", { timeout: 120_000 }, () 
       .gather(snapshot!, { now: NOW } as never)
       .filter((m) => m.refs.suggestion === top.key);
     expect(message.body).toContain(`${top.confidencePercent}% sure: `);
-    expect(message.actions.map((a) => a.id)).toEqual(["suggestion.yes", "suggestion.no", "open"]);
+    expect(message.actions.map((a) => a.id)).toEqual([
+      "suggestion.yes",
+      "suggestion.no",
+      "suggestion.why",
+      "open",
+    ]);
     await answerSuggestion(userId, top.key, "no", { client, now: NOW });
     expect((await offeredToday(userId, { client, now: NOW })).some((o) => o.key === top.key)).toBe(
       false,

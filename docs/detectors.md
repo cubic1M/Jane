@@ -175,3 +175,22 @@ capability that reaches no sample person and is not listed in `UNREACHABLE`
 - Step 257 asks the question whose answer would unlock the most (`needs` on a detector
   whose other conditions fit).
 - Step 258 checks that "80% sure" proves right about 80% of the time.
+
+## Short forms: `headline` and `short`
+
+A suggestion is shown at a glance, and the long wording sits behind a "Why?" tap. Every
+`Suggestion` therefore carries two more fields, checked by `src/detectors/short-forms.test.ts`
+(which fails on any detector that breaks them, for the eight sample people):
+
+- `headline`: at most 60 characters, starts with a verb from `HEADLINE_VERBS`
+  (`src/config/detectors.ts`), and carries the dollars when there is a value
+  ("Cancel Hulu, save $216 a year"). Build it with `headlineOf(phrase, worthCents, worthKind)`
+  from `src/detectors/helpers.ts`: the verb phrase is at most about 35 characters, the helper
+  adds ", save $216 a year" / ", earn $360 a year" / ", avoid up to $1,200" (or ", get $40
+  back" for a one-off).
+- `short`: one "why you" line of at most 120 characters, with the person's own number in it
+  ("You pay $17.99 a month."). Use `clip()` when it lists their payees or accounts.
+
+`title` and `why` stay as the full explanation. The chat card is the headline, the short line
+and "N% sure: reason" with Yes / Not for me / Why? (src/lib/jane-agent/sources/suggestions.ts);
+"Why?" shows the title, the whole why and the confidence reason.
