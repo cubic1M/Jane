@@ -8,6 +8,10 @@ vi.mock("@/lib/session", () => ({ requireUser: vi.fn() }));
 vi.mock("@/lib/analytics", () => ({ track: vi.fn() }));
 vi.mock("@/lib/audit", () => ({ logAudit: vi.fn(), SYSTEM_ACTOR: { type: "system", id: null } }));
 
+import { loadBankFees } from "@/lib/bank-fees";
+import { idleCash } from "@/detection/rules/idle-cash";
+import { loadDetectionInput } from "@/detection/engine";
+import { openShopSavingCents } from "@/lib/insurance/shop";
 import { formatCents } from "@/lib/money";
 import { loadCardInterest } from "@/lib/card-interest";
 import { loadEquityTax } from "@/lib/equity-tax";
@@ -26,7 +30,7 @@ const NOW = new Date("2026-10-18T15:00:00Z");
 describe.runIf(url)("the brief and the chat give the same figure", { timeout: 120_000 }, () => {
   let client: PrismaClient;
   const made: string[] = [];
-  const compared = { match: 0, rsu: 0, subs: 0, interest: 0 };
+  const compared = { match: 0, rsu: 0, subs: 0, interest: 0, idle: 0, fees: 0, shop: 0 };
 
   beforeAll(() => {
     vi.stubEnv("TOKEN_ENCRYPTION_KEY", randomBytes(32).toString("base64"));
@@ -39,6 +43,9 @@ describe.runIf(url)("the brief and the chat give the same figure", { timeout: 12
     expect(compared.rsu).toBeGreaterThan(0);
     expect(compared.subs).toBeGreaterThan(0);
     expect(compared.interest).toBeGreaterThan(0);
+    expect(compared.idle).toBeGreaterThan(0);
+    expect(compared.fees).toBeGreaterThan(0);
+    expect(compared.shop).toBeGreaterThan(0);
   });
   afterAll(async () => {
     await client.user.deleteMany({ where: { id: { in: made } } });
@@ -78,6 +85,35 @@ describe.runIf(url)("the brief and the chat give the same figure", { timeout: 12
       if (interestBrief && interest.available) {
         compared.interest++;
         expect(interestBrief.worthCents, "card interest a year").toBe(interest.interestYearCents);
+      }
+
+      // Idle cash: the Today card's finding and the brief are the same function.
+      const idleBrief = brief("idle_cash");
+      const idleFinding = idleCash(
+        await loadDetectionInput(trial.userId, { client, now: NOW }),
+        [],
+      )[0];
+      expect(!!idleBrief, "idle cash in both or neither").toBe(!!idleFinding);
+      if (idleBrief && idleFinding) {
+        compared.idle++;
+        expect(idleBrief.worthCents).toBe(idleFinding.annualSavingsCents);
+      }
+
+      // Bank fees: a year of them, as the chat says.
+      const fees = await loadBankFees(trial.userId, { client, now: NOW });
+      const feesBrief = brief("bank_fees");
+      if (feesBrief && fees) {
+        compared.fees++;
+        expect(feesBrief.worthCents, "bank fees a year").toBe(fees.yearCents);
+      }
+
+      // Insurance shopping: the real quote saving when there is one, else an estimate said so.
+      const shopBrief = brief("insurance_shopping");
+      if (shopBrief) {
+        compared.shop++;
+        const quoted = await openShopSavingCents(trial.userId, { client, now: NOW });
+        if (quoted > 0) expect(shopBrief.worthCents, "quoted saving").toBe(quoted);
+        else expect(shopBrief.why).toContain("an estimate, not a quote");
       }
 
       const equity = await loadEquityTax(trial.userId, { client, now: NOW });

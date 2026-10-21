@@ -1,5 +1,7 @@
 import { DEBT_DETECTOR_RATES as D } from "@/config/detectors-debt";
-import { PROCESSOR_FEE_PAYEE } from "@/config/detection";
+import { IDLE_CASH_MONTHS_OF_SPENDING, PROCESSOR_FEE_PAYEE } from "@/config/detection";
+import { bankFeesYear } from "@/planning/bank-fees";
+import { idleCashOf } from "@/planning/idle-cash";
 import { DETECTOR_RATES as R } from "@/config/detectors";
 import { emergencyTarget } from "@/planning/emergency-fund";
 import { formatCents } from "@/lib/money";
@@ -94,28 +96,27 @@ const bankFees: Detector = {
   topic: "bank_fees",
   needs: [],
   detect({ profile, data }) {
-    const fees = tx(
-      data,
-      (t) =>
-        (t.pfc === "BANK_FEES_OVERDRAFT_FEES" ||
-          t.pfc === "BANK_FEES_INSUFFICIENT_FUNDS" ||
-          t.pfc === "BANK_FEES_ATM_FEES") &&
-        !PROCESSOR_FEE_PAYEE.test(t.description),
-    );
-    if (fees.length < R.feesMin) return null;
-    const total = outCents(fees);
+    // A year of fees, the one definition (src/planning/bank-fees.ts) the chat's answer uses too.
+    const fees = bankFeesYear(data.transactions, profile.months);
+    if (!fees || fees.count < R.feesMin) return null;
+    const total = fees.yearCents;
+    const span = fees.estimated
+      ? `${fees.count} bank fees in ${fees.monthsOfData} months, about ${formatCents(total)} over a year (an estimate)`
+      : `${formatCents(total)} in ${fees.count} bank fees in the last 12 months`;
     return {
       id: suggestionId("cost", "bank_fees"),
       capability: "cost",
       topic: "bank_fees",
       title: "Stop paying overdraft and bank fees",
       headline: headlineOf("Stop paying overdraft and bank fees", total, "saves"),
-      short: `You paid ${formatCents(total)} in ${fees.length} bank fees in ${profile.months} months.`,
+      short: fees.estimated
+        ? `You paid ${formatCents(fees.seenCents)} in ${fees.count} bank fees in ${fees.monthsOfData} months.`
+        : `You paid ${formatCents(total)} in ${fees.count} bank fees in a year.`,
       worthCents: total,
       worthKind: "saves",
-      confidence: evidence("seen", profile.months, fees.length, "bank fees"),
+      confidence: evidence("seen", profile.months, fees.count, "bank fees"),
       urgency: "soon",
-      why: `You paid ${formatCents(total)} in ${fees.length} bank fees in ${profile.months} months. A buffer in checking or a no-fee account avoids them.`,
+      why: `You paid ${span}. A buffer in checking or a no-fee account avoids them.`,
       action: { label: "See the fees", href: "/insights" },
     };
   },
@@ -196,26 +197,25 @@ const idleCash: Detector = {
   topic: "idle_cash",
   needs: [],
   detect({ profile, data }) {
-    const spend = monthlySpendCents(data, profile.months);
-    const excess = liquidCents(data) - spend * R.idleMonthsKept;
-    if (spend === 0 || excess < R.idleMinExcessCents) return null;
-    const accounts = data.accounts.filter((a) => a.type === "depository").length;
+    // The one definition (src/planning/idle-cash.ts), the same as the Today card and the chat.
+    const idle = idleCashOf({
+      asOf: data.today,
+      accounts: data.accounts,
+      transactions: data.transactions,
+    });
+    if (!idle) return null;
     return {
       id: suggestionId("investing", "idle_cash"),
       capability: "investing",
       topic: "idle_cash",
       title: "Put the cash you don't need to work",
-      headline: headlineOf(
-        "Move idle cash to a higher rate",
-        Math.round((excess * (R.highYieldBps - R.currentCashBps)) / 10_000),
-        "earns",
-      ),
-      short: `You keep ${formatCents(liquidCents(data))} in cash; about ${formatCents(excess)} is more than you need.`,
-      worthCents: Math.round((excess * (R.highYieldBps - R.currentCashBps)) / 10_000),
+      headline: headlineOf("Move idle cash to a higher rate", idle.earnsCents, "earns"),
+      short: `You keep ${formatCents(idle.balanceCents)} in cash; about ${formatCents(idle.excessCents)} is more than you need.`,
+      worthCents: idle.earnsCents,
       worthKind: "earns",
-      confidence: evidence("seen", profile.months, accounts, "cash accounts"),
+      confidence: evidence("seen", profile.months, idle.accountIds.length, "cash accounts"),
       urgency: "later",
-      why: `You keep ${formatCents(liquidCents(data))} in cash and spend about ${formatCents(spend)} a month, so about ${formatCents(excess)} is more than ${R.idleMonthsKept} months of spending.`,
+      why: `You keep ${formatCents(idle.balanceCents)} in cash and spend about ${formatCents(idle.monthlyCents)} a month, so about ${formatCents(idle.excessCents)} is more than ${IDLE_CASH_MONTHS_OF_SPENDING} months of spending.`,
       action: { label: "See where it could work", href: "/investments" },
     };
   },
