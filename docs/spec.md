@@ -4102,6 +4102,24 @@ demo advice; legal questions go to counsel.
 > Acceptance criteria:
 > - Every tax capability has a detector or a reasoned exemption; the nightly run is green
 
+## Depth first: the bar before new features (founder, 2026-10-21)
+
+Jane already has the breadth. Until the chat and suggestions are right, every lane works on
+depth, and the deferred rounds below (and Phase AT) stay paused. They resume only when all
+of these have held for three days in a row:
+
+1. The nightly graded run (step 195): at least 95% understood, 100% right figures, at least
+   90% of follow-ups and two-part questions answered.
+2. QA's live chat sweep: 40 real questions (decisions, follow-ups, typos, two-in-one) for
+   each of the eight sample people, with no wrong or empty answers and no lost topic.
+3. The reach scoreboard (step 258): each sample person's top three suggestions match their
+   written list, with no must-not suggestion.
+4. Speed: a tap answers within 1 second, and Try Jane reaches a usable chat within 10
+   seconds.
+
+When they resume, every new capability ships with its detector, its chat answers and its
+bank questions from day one.
+
 ## Deferred rounds, resumed after Phase AS (2026-10-21)
 
 The rounds below were written before the founder's direction of 2026-10-20 and wait until

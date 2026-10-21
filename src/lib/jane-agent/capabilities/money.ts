@@ -1,3 +1,12 @@
+import { FORECAST_DAYS } from "@/config/detection";
+import { loadSnapshotFast } from "../snapshot-store";
+import { loadDetectionInput } from "@/detection/engine";
+import { forecastAccounts } from "@/detection/forecast";
+import { forecastReply } from "../replies-forecast";
+import { saveMoreReply } from "../replies-savemore";
+import { netWorth } from "@/insights/net-worth";
+import { cryptoTotal } from "@/lib/crypto/crypto";
+import { netWorthReply } from "../replies-networth";
 import { storedReport } from "@/lib/monthly-report-store";
 import { reportReply } from "../replies-report";
 import type { Reply } from "../replies";
@@ -51,7 +60,7 @@ async function answer(ctx: CapabilityContext): Promise<Reply | null> {
     case "cost": {
       const [recurring, snapshot] = await Promise.all([
         loadRecurring(userId, { client, now }),
-        loadSnapshot(userId, { client, now }),
+        loadSnapshotFast(userId, { client, now }),
       ]);
       // Not a regular charge: what was spent there this month.
       return costReply(intent, recurring, snapshot, asOf) ?? (await spendingOn(intent.target));
@@ -59,7 +68,7 @@ async function answer(ctx: CapabilityContext): Promise<Reply | null> {
     case "subscriptions": {
       const [recurring, snapshot] = await Promise.all([
         loadRecurring(userId, { client, now }),
-        loadSnapshot(userId, { client, now }),
+        loadSnapshotFast(userId, { client, now }),
       ]);
       return subscriptionsReply(intent, recurring, snapshot);
     }
@@ -81,7 +90,7 @@ async function answer(ctx: CapabilityContext): Promise<Reply | null> {
     case "about": {
       const [recurring, snapshot] = await Promise.all([
         loadRecurring(userId, { client, now }),
-        loadSnapshot(userId, { client, now }),
+        loadSnapshotFast(userId, { client, now }),
       ]);
       const exact = intent.findingId
         ? snapshot?.findings.find((f) => f.findingId === intent.findingId)
@@ -161,7 +170,7 @@ async function answer(ctx: CapabilityContext): Promise<Reply | null> {
     case "changes":
       return changesReply(await loadChanges(userId, { client, now }));
     case "review": {
-      const snapshot = await loadSnapshot(userId, { client, now });
+      const snapshot = await loadSnapshotFast(userId, { client, now });
       return snapshot
         ? weeklyReview(snapshot, now)
         : {
@@ -173,6 +182,30 @@ async function answer(ctx: CapabilityContext): Promise<Reply | null> {
     // Spec step 148: the monthly money report.
     case "monthly_report":
       return reportReply(await storedReport(userId, null, { client }));
+    // What they own and owe, from the net worth page's own math.
+    case "net_worth": {
+      const db = scopedFor(userId, client);
+      const [accounts, owned, crypto] = await Promise.all([
+        db.accounts.findMany({
+          select: { id: true, name: true, type: true, subtype: true, currentBalanceCents: true },
+        }),
+        db.ownedAssets.findMany({ select: { id: true, valueCents: true, valuedOn: true } }),
+        cryptoTotal(userId, { client }),
+      ]);
+      return netWorthReply(
+        netWorth(
+          accounts.map((a) => ({ ...a, balanceCents: a.currentBalanceCents })),
+          owned.map((o) => ({ ...o, valuedOn: o.valuedOn.toISOString().slice(0, 10) })),
+          crypto,
+        ),
+      );
+    }
+    case "save_more":
+      return saveMoreReply(intent.monthlyCents, await listGoals(userId, { client, now }));
+    case "balance_forecast": {
+      const input = await loadDetectionInput(userId, { client, now });
+      return forecastReply(forecastAccounts(input, FORECAST_DAYS));
+    }
     default:
       return null;
   }

@@ -12,12 +12,13 @@ import { track } from "@/lib/analytics";
 import { llmEnabled } from "@/lib/anthropic";
 import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
-import { hit } from "@/lib/rate-limit";
+import { giveBack, hit } from "@/lib/rate-limit";
 import { answerByRules } from "./answer";
 import { listPreferences } from "./preferences";
 import { shapeReply, styleInstructions, styleOf } from "./style";
+import { joinReplies, splitQuestions } from "./two-parts";
 import { askClaudeInChat, type ChatStreamEvent, type ChatTurn } from "./claude";
-import type { Topic } from "./context";
+import { resolvePronoun, type Topic } from "./context";
 import { typedFlowReply } from "./flows/chat";
 import { parseIntent } from "./intents";
 import { storeReply } from "./messages";
@@ -38,6 +39,8 @@ type Options = {
   claude?: () => Pick<Anthropic, "messages">;
   // Claude's answer as it's written, and what Jane is looking up (./claude).
   onEvent?: (event: ChatStreamEvent) => void;
+  // How long Claude waits for the person's numbers (the answer checks wait for all of them).
+  primerMs?: number;
 };
 
 export type ChatInputErrorCode = "empty" | "too_long" | "rate_limited";
@@ -109,10 +112,10 @@ async function answer(
   userId: string,
   text: string,
   history: ChatTurn[],
-  { client, now, claude, onEvent }: Required<Pick<Options, "client" | "now">> & Options,
+  { client, now, claude, onEvent, primerMs }: Required<Pick<Options, "client" | "now">> & Options,
 ): Promise<{ reply: Reply; intent: string; source: Source; issues?: string[] }> {
   const asOf = now.toISOString().slice(0, 10);
-  const intent = parseIntent(text, asOf);
+  let intent = parseIntent(text, asOf);
   // Spec step 89: no dead ends. An answer that couldn't be given ends with the closest
   // things Jane can answer, as buttons.
   const withNearby = (reply: Reply): Reply => {
@@ -125,9 +128,20 @@ async function answer(
   if (toFlow) return { reply: toFlow, intent: "flow_answer", source: "rules" };
   // Spec step 88: what the conversation was about, for a follow-up.
   const topic = await lastTopic(userId, { client, now });
+  intent = resolvePronoun(text, intent, topic, (t) => parseIntent(t, asOf));
   // Spec step 188: how the person likes Jane to talk.
   const style = styleOf(await listPreferences(userId, { client }));
   const rules = async () => {
+    // Spec step 193: two questions in one message get both answers.
+    const two = splitQuestions(text, asOf);
+    if (two) {
+      const replies = await Promise.all(
+        two.map((part) => answerByRules(userId, part, { client, now, topic })),
+      );
+      if (replies.every((r) => r !== null)) {
+        return shapeReply(joinReplies(replies as Reply[]), style);
+      }
+    }
     const reply = await answerByRules(userId, intent, { client, now, topic });
     return reply ? shapeReply(reply, style) : null;
   };
@@ -153,14 +167,18 @@ async function answer(
     now,
     claude,
     onEvent,
+    primerMs,
     advice: await adviceMode(userId, { client }),
     style: styleInstructions(style),
+    topic,
   });
   if (result.kind === "answer") {
     return { reply: result.reply, intent: intent.kind, source: "claude" };
   }
   // Claude is slow, down, over its daily cap or blocked: the rules answer as they did before
-  // Claude read everything, never a broken message.
+  // Claude read everything, never a broken message. And it doesn't count against the hour's
+  // free questions: Claude didn't answer it.
+  await giveBack("ask", userId, { client, now }).catch(() => {});
   const fallback = await rules();
   return {
     reply: fallback ?? withNearby(result.reply),
@@ -174,7 +192,7 @@ async function answer(
 export async function sendToJane(
   userId: string,
   raw: string,
-  { client = defaultClient, now = new Date(), claude, onEvent }: Options = {},
+  { client = defaultClient, now = new Date(), claude, onEvent, primerMs }: Options = {},
 ): Promise<{
   sent: ChatMessage;
   reply: ChatMessage;
@@ -216,6 +234,7 @@ export async function sendToJane(
     now,
     claude,
     onEvent,
+    primerMs,
   });
   // A millisecond later, so the answer always sits under the question.
   const answeredAt = new Date(now.getTime() + 1);
