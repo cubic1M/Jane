@@ -123,6 +123,17 @@ export type AnswerSource =
   "rules" | "claude" | "claude_blocked" | "claude_unavailable" | "fallback";
 type Source = AnswerSource;
 
+// The kinds of message that can point back at the last answer.
+const FOLLOWS: readonly string[] = [
+  "follow_up",
+  "about",
+  "unknown",
+  "act",
+  "cost",
+  "spending",
+  "decision",
+];
+
 async function answer(
   userId: string,
   text: string,
@@ -185,7 +196,9 @@ async function answer(
     primerMs,
     advice: await adviceMode(userId, { client }),
     style: styleInstructions(style),
-    topic,
+    // The last topic goes only with a question that points back at it ("it", "why?"); a
+    // fresh question ("what's my net worth") isn't about the finding talked about before.
+    topic: FOLLOWS.includes(intent.kind) ? topic : null,
   });
   if (result.kind === "answer") {
     return { reply: result.reply, intent: intent.kind, source: "claude" };

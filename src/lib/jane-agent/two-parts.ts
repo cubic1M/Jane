@@ -12,6 +12,8 @@ const ACTIONS: readonly string[] = ["act", "multi", "move_to_goal", "approve_all
 const NOT_A_QUESTION: readonly string[] = [
   "unknown",
   "follow_up",
+  "explain",
+  "why_finding",
   "help",
   "greeting",
   "remember",

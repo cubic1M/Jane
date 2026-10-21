@@ -363,11 +363,15 @@ describe.runIf(url)("typing to Jane against a real database", () => {
       );
       expect(await overDailyCap(capped, { client, now: when })).toBe(true);
       create.mockReset();
-      const { reply, source } = await sendToJane(capped, "what is my net worth", {
-        client,
-        now: when,
-        claude,
-      });
+      const { reply, source } = await sendToJane(
+        capped,
+        "give me your honest take on my money habits",
+        {
+          client,
+          now: when,
+          claude,
+        },
+      );
       expect(create).not.toHaveBeenCalled();
       expect(source).toBe("claude_unavailable");
       expect(reply.body.length).toBeGreaterThan(0);

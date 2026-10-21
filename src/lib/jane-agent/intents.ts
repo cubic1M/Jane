@@ -87,6 +87,9 @@ export type Intent =
   | { kind: "follow_up"; target: string | null; month: string | null }
   // Taxes (spec steps 118–127): ./tax-intents.ts.
   | DecisionIntent
+  // "Why?" / "tell me more": about the last answer, read against it (./context.ts).
+  | { kind: "explain" }
+  | { kind: "why_finding"; findingId: string }
   | AckIntent
   | TaxIntent
   // Spec step 128 on: what they own, and each later investment question.
@@ -536,7 +539,7 @@ export function parseIntent(
   const ack = parseAck(text);
   if (ack) return ack;
   // "Why?" and "tell me more" are about the last answer: read against the conversation.
-  if (EXPLAIN.test(text)) return { kind: "follow_up", target: "it", month: null };
+  if (EXPLAIN.test(text)) return { kind: "explain" };
   if (CUSHION_ASK.test(text)) {
     return { kind: "decision", item: "cushion", label: "an emergency fund" };
   }
