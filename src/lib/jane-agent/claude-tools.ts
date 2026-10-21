@@ -1,4 +1,5 @@
 import { loadDecisionFacts } from "./decision";
+import { mattersBlock } from "./primer-matters";
 import { loadSnapshotFast, refreshSnapshot } from "./snapshot-store";
 import { INSURANCE_TOOLS, isInsuranceTool, runInsuranceTool } from "./insurance/tools";
 import type Anthropic from "@anthropic-ai/sdk";
@@ -921,6 +922,15 @@ async function computePrimer(
     parts.push(`${CHAT_PRIMER_TOOLS[i]}: ${result.value.content}`);
     cents.push(...result.value.cents);
   });
+  // What matters most and the open findings, from the saved snapshot (one query): so the usual
+  // "what should I do first" needs no lookup by Claude.
+  const matters = await loadSnapshotFast(userId, { client, now })
+    .then(mattersBlock)
+    .catch(() => ({ text: "", cents: [] as number[] }));
+  if (matters.text) {
+    parts.push(matters.text);
+    cents.push(...matters.cents);
+  }
   // Spec step 91: what they told Jane, and suggestions not to make again.
   const remembered = await listPreferences(userId, { client }).catch(() => []);
   if (remembered.length > 0) {
