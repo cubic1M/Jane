@@ -109,7 +109,7 @@ export async function recentTurns(
   const turns = rows.reverse();
   const unanswered = (m: { kind: string; body: string }) =>
     m.kind === "reply" &&
-    /^(?:I couldn't look into that|I couldn't write a full answer|I've reached today's limit|I can't answer that one yet|Which one do you mean|You've asked me a lot)/.test(
+    /^(?:I couldn't look into that|I couldn't write a full answer|Sorry, I couldn't finish|I've reached today's limit|I can't answer that one yet|Which one do you mean|You've asked me a lot)/.test(
       m.body,
     );
   return turns
@@ -125,6 +125,10 @@ export async function recentTurns(
 
 // How an answer was given: by the rules, by Claude (or blocked, or Claude couldn't), or
 // the fallback list of what Jane understands.
+const UNFINISHED_TEXT = "Sorry, I couldn't finish an answer to that. Please ask again.";
+// "How am I doing", "what should I do": the questions where the whole picture is the answer.
+const STATUS_QUESTION =
+  /\b(?:how am i doing|how are (?:things|we)|where (?:do|am) i stand|what (?:should|do) i do|where (?:should|do) i start|what now|what matters|my (?:money )?situation|overview|summary)\b/i;
 const DAILY_LIMIT_LEAD = "I've reached today's limit for answering in detail";
 
 export type AnswerSource =
@@ -169,16 +173,22 @@ async function answer(
     const byRules = await rules();
     if (byRules)
       return lead === DAILY_LIMIT_LEAD ? { ...byRules, body: `${lead}. ${byRules.body}` } : byRules;
+    // Where the person stands answers "how am I doing / what should I do"; for a specific
+    // question it would be an unrelated status, so say plainly that it wasn't finished.
+    if (!STATUS_QUESTION.test(text)) {
+      return {
+        body: lead === DAILY_LIMIT_LEAD ? `${lead}. Please ask again tomorrow.` : UNFINISHED_TEXT,
+        actions: [],
+        refs: {},
+      };
+    }
     const picture = await answerByRules(
       userId,
       { kind: "whole_picture", focus: "now" },
       { client, now, topic: null },
     );
     return picture
-      ? {
-          ...picture,
-          body: `${lead}, so here is where you stand. ${picture.body}`,
-        }
+      ? { ...picture, body: `${lead}, so here is where you stand. ${picture.body}` }
       : unknownReply(text, asOf);
   };
   // No Claude (no key: dev, tests): the rules answer, as before.
