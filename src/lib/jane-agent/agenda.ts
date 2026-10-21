@@ -10,7 +10,7 @@ import type { Snapshot } from "./snapshot";
 import { billsDueSoon, greeting, safeLine } from "./sources/brief";
 import { shortName } from "./sources/findings";
 import { suggestionCard } from "./sources/suggestions";
-import { inDays, sentence } from "./sources/source";
+import { inDays } from "./sources/source";
 import type { OfferedSuggestion } from "@/lib/suggestions";
 import type { ActionId, Candidate, MessageAction } from "./types";
 
@@ -40,7 +40,23 @@ const yesOf = (c: Candidate): MessageAction | undefined => {
 // One line for a message: its first line, without the question that asks for the tap.
 export function lineOf(c: Candidate): string {
   if (c.bundle) return c.bundle.line;
-  const first = c.body.split("\n")[0].trim();
+  const lines = c.body.split("\n");
+  // A message that introduces a list ("...ready for your insurance:" and its bullets) is
+  // one line with the list's first items, not just the introduction.
+  const items = lines
+    .slice(1)
+    .filter((l) => l.startsWith("- "))
+    .slice(0, 2)
+    .map((l) =>
+      l
+        .slice(2)
+        .trim()
+        .replace(/[.!?]+$/, ""),
+    );
+  const first =
+    lines[0].trim().endsWith(":") && items.length > 0
+      ? `${lines[0].trim()} ${items.join("; ")}.`
+      : lines[0].trim();
   const sentences = first.split(/(?<=[.!?])\s+/);
   while (sentences.length > 1 && sentences.at(-1)!.endsWith("?")) sentences.pop();
   return sentences.join(" ");

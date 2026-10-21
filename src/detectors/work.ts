@@ -79,7 +79,13 @@ const selfRetirement: Detector = {
     const has401k = profile.facts.has_401k;
     const income = profile.facts.monthly_income;
     if (!selfPaid(pattern.value) || has401k.value !== false) return null;
-    const put = Math.round(annualIncome(income.value) * R.selfRetireShare);
+    // A shop's deposits are sales, not profit (the same assumption as the estimated taxes): a
+    // tenth is of what's left after costs, so the confidence says it is an assumption.
+    const business = pattern.value === "business";
+    const profit = Math.round(
+      annualIncome(income.value) * (business ? R.tax.businessProfitShare : 1),
+    );
+    const put = Math.round(profit * R.selfRetireShare);
     return {
       id: suggestionId("investing", "retirement_self_employed"),
       capability: "investing",
@@ -93,9 +99,21 @@ const selfRetirement: Detector = {
       short: `Putting in ${formatCents(put)} a year would cut your tax by about ${formatCents(Math.round(put * R.selfRetireTaxRate))}.`,
       worthCents: Math.round(put * R.selfRetireTaxRate),
       worthKind: "saves",
-      confidence: weakest([factEvidence(pattern), factEvidence(has401k), factEvidence(income)]),
+      confidence: weakest([
+        factEvidence(pattern),
+        factEvidence(has401k),
+        factEvidence(income),
+        ...(business
+          ? [
+              {
+                percent: 60,
+                reason: `your deposits are sales, so I assumed ${Math.round(R.tax.businessProfitShare * 100)}% is profit`,
+              },
+            ]
+          : []),
+      ]),
       urgency: "later",
-      why: `You work for yourself and I see no retirement account. Putting in ${formatCents(put)} a year (a tenth of your income) would cut your tax by about ${formatCents(Math.round(put * R.selfRetireTaxRate))}.`,
+      why: `You work for yourself and I see no retirement account. Putting in ${formatCents(put)} a year (a tenth of ${business ? "what the business earns, about " + formatCents(profit) : "your income"}) would cut your tax by about ${formatCents(Math.round(put * R.selfRetireTaxRate))}.`,
       action: { label: "See account options", href: "/investments" },
     };
   },
