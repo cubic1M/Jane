@@ -258,6 +258,32 @@ describe("askClaudeInChat", () => {
     expect(lastToolResult(2).content).toBe("You already offered a button for this answer.");
   });
 
+  it("lets an amount through when the calculate tool worked it out, and not when Claude did", async () => {
+    create
+      .mockResolvedValueOnce(
+        toolUse("calculate", {
+          operation: "percent_of",
+          basis: "the 4% rule on her retirement balance",
+          percent: 4,
+          amount: 849414,
+        }),
+      )
+      .mockResolvedValueOnce(
+        final("The usual starting point is 4% a year, which on your balance is $33,976.56."),
+      );
+    const sent = vi.fn();
+    const result = await askClaudeInChat("u1", [], "wats a safe wdrawal rate", {
+      ...options,
+      advice: true,
+      onEvent: sent,
+    });
+    expect(result.kind).toBe("answer");
+    expect(result.reply.body).toContain("$33,976.56");
+    expect(lastToolResult(1).content).toContain("$33,976.56");
+    // And the tool is always on offer.
+    expect(CHAT_TOOLS.map((t) => t.name)).toContain("calculate");
+  });
+
   it("falls back to safe text, with no buttons, when the rewrite fails too", async () => {
     const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
     create
