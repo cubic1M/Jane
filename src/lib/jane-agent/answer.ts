@@ -1,4 +1,5 @@
 import type { PrismaClient } from "@/generated/prisma/client";
+import { loadSnapshotFast } from "./snapshot-store";
 import { db as defaultClient } from "@/lib/db";
 import { capabilityFor } from "./capabilities";
 import { topicOf, withTopic, type Topic } from "./context";
@@ -37,7 +38,7 @@ async function whichReply(
   userId: string,
   { client, now }: { client: PrismaClient; now: Date },
 ): Promise<Reply> {
-  const snapshot = await loadSnapshot(userId, { client, now });
+  const snapshot = await loadSnapshotFast(userId, { client, now });
   const top = [...(snapshot?.findings ?? [])]
     .sort((a, b) => (b.annualSavingsCents ?? -1) - (a.annualSavingsCents ?? -1))
     .map((f) => ({
