@@ -1,6 +1,11 @@
 import { createHash } from "node:crypto";
 import { NextResponse } from "next/server";
-import { RATE_LIMITS, RATE_LIMIT_RETENTION_HOURS, type LimitName } from "@/config/rate-limits";
+import {
+  KEEP_RATE_LIMIT_PREFIXES,
+  RATE_LIMITS,
+  RATE_LIMIT_RETENTION_HOURS,
+  type LimitName,
+} from "@/config/rate-limits";
 import type { PrismaClient } from "@/generated/prisma/client";
 import { db as defaultClient } from "@/lib/db";
 
@@ -30,7 +35,12 @@ export async function hit(
   // Now and then, clear out old windows.
   if (count === 1 && Math.random() < 0.01) {
     const cutoff = new Date(now.getTime() - RATE_LIMIT_RETENTION_HOURS * 60 * 60 * 1000);
-    await client.rateLimit.deleteMany({ where: { windowStart: { lt: cutoff } } });
+    await client.rateLimit.deleteMany({
+      where: {
+        windowStart: { lt: cutoff },
+        NOT: KEEP_RATE_LIMIT_PREFIXES.map((prefix) => ({ key: { startsWith: prefix } })),
+      },
+    });
   }
   return {
     ok: count <= limit,

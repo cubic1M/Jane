@@ -59,6 +59,78 @@ describe("reading a decision question", () => {
   });
 });
 
+// The same question in other words is the same question (the founder's live transcript hid
+// that: phrasing the rules didn't match fell to Claude, which talked about a button).
+describe("paraphrases of a decision question", () => {
+  const cases: [string, string][] = [
+    ["crypto", "yea so should i be buying bitcoin"],
+    ["crypto", "yea so should i buy bitcoin"],
+    ["crypto", "should i get some btc"],
+    ["crypto", "is crypto a good idea for me"],
+    ["crypto", "is bitcoin worth buying"],
+    ["crypto", "do you think i should buy ethereum"],
+    ["crypto", "hey, should i be investing in crypto right now"],
+    ["crypto", "i'm thinking about buying some bitcoin"],
+    ["crypto", "would buying bitcoin be smart"],
+    ["crypto", "ok so is bitcoin a good investment"],
+    ["stocks", "should i buy some stocks"],
+    ["stocks", "is it a good idea to buy tesla stock"],
+    ["stocks", "should i be investing in index funds"],
+    ["stocks", "am i crazy to buy etfs"],
+    ["stocks", "is the stock market a good bet for me"],
+    ["stocks", "worth buying some bonds"],
+    ["stocks", "um should i get into stocks"],
+    ["stocks", "what do you think, should i buy shares"],
+    ["stocks", "i should buy an etf right"],
+    ["stocks", "should we be buying mutual funds"],
+    ["home", "should i buy a house"],
+    ["home", "yeah so should i be buying a home"],
+    ["home", "is it a good idea to buy a condo"],
+    ["home", "i'm thinking of buying an apartment"],
+    ["home", "is buying a house worth it"],
+    ["home", "do you think i should get a house"],
+    ["home", "would buying a home be smart"],
+    ["home", "should we buy property"],
+    ["home", "hey should i purchase a townhouse"],
+    ["home", "ok so is a house a good investment"],
+    ["car", "should i buy a car"],
+    ["car", "yea should i be buying a truck"],
+    ["car", "is it a good idea to get a new car"],
+    ["car", "i'm considering buying an suv"],
+    ["car", "is buying a car worth it"],
+    ["car", "do you think i should purchase a vehicle"],
+    ["car", "would getting a car be smart"],
+    ["car", "should we get a motorcycle"],
+    ["car", "so should i buy a car or not"],
+    ["car", "hmm is a new car a good idea"],
+    ["payoff_or_invest", "should i pay off my card or invest"],
+    ["payoff_or_invest", "yea so should i pay down my credit card or invest"],
+    ["payoff_or_invest", "is it better to invest or pay off debt"],
+    ["payoff_or_invest", "should i invest or pay off my cards"],
+    ["payoff_or_invest", "do you think i should pay off my card or save"],
+    ["payoff_or_invest", "pay off debt or invest, which is smarter, should i"],
+    ["payoff_or_invest", "ok should i be paying off my card or investing"],
+    ["payoff_or_invest", "should i pay down debt vs invest"],
+    ["payoff_or_invest", "would it be smart to invest instead of paying off my card"],
+    ["payoff_or_invest", "hey should i save or pay off my card"],
+  ];
+  it.each(cases)("reads %s: %j", (item, text) => {
+    expect(parseIntent(text, ASOF), text).toMatchObject({ kind: "decision", item });
+  });
+
+  it("still leaves other sectors' and priced questions alone", () => {
+    for (const text of [
+      "should i buy renters insurance",
+      "is a roth a good idea",
+      "should i refinance my mortgage",
+      "yea so should i buy a $900 couch",
+      "should i cancel netflix",
+    ]) {
+      expect(parseIntent(text, ASOF).kind, text).not.toBe("decision");
+    }
+  });
+});
+
 describe("the follow-up", () => {
   it("takes 'should I buy?' to the decision just discussed", () => {
     const topic = { kind: "decision", category: "crypto", target: "bitcoin" };

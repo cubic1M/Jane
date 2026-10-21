@@ -1,3 +1,4 @@
+import { KEEP_RATE_LIMIT_PREFIXES } from "@/config/rate-limits";
 import {
   INACTIVE_ITEM_DAYS,
   REMOVAL_WARNING_DAYS,
@@ -28,7 +29,12 @@ export async function runRetention({
       where: { status: { in: ["done", "failed"] }, updatedAt: { lt: before("finishedJobs") } },
     }),
     client.cronRun.deleteMany({ where: { startedAt: { lt: before("cronRuns") } } }),
-    client.rateLimit.deleteMany({ where: { windowStart: { lt: before("rateLimits") } } }),
+    client.rateLimit.deleteMany({
+      where: {
+        windowStart: { lt: before("rateLimits") },
+        NOT: KEEP_RATE_LIMIT_PREFIXES.map((prefix) => ({ key: { startsWith: prefix } })),
+      },
+    }),
     client.session.deleteMany({ where: { expires: { lt: before("expiredSessions") } } }),
     client.verificationToken.deleteMany({ where: { expires: { lt: before("expiredSessions") } } }),
   ]);
