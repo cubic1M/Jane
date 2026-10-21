@@ -2,36 +2,40 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import type { ScanProgress } from "@/lib/scan";
+import { monthsLabel, percentFor, STAGES, stagesDone } from "./stages";
 
-// The first steps pace the hand-off; the last one waits until detection has finished
-// (GET /api/detection/status), then the report opens, or Jane's chat after linking the
-// demo bank (spec step 82).
-const STEPS = ["Reading your transactions", "Sorting them into categories", "Looking for savings"];
-const STEP_MS = 700;
-const POLL_MS = 1000;
-// After this long, offer the report anyway rather than leave someone staring at a spinner.
-const SLOW_MS = 20_000;
+// The first scan as named steps and a bar that only moves forward, driven by what has
+// really finished (GET /api/detection/status). The chat opens as soon as the accounts and
+// transactions are in (it says Jane is still looking and fills in); the report waits for
+// detection. Between finished steps the bar creeps toward the next one, never past it.
+const POLL_MS = 800;
+const TICK_MS = 250;
+// How long a step's creep takes to cover most of its way.
+const CREEP_MS = 6000;
+const HAND_OFF_MS = 350;
+// After this long, offer the report anyway rather than leave someone staring at a bar.
+const SLOW_MS = 25_000;
 
 export function ScanningProgress({ next = "/report" }: { next?: "/report" | "/chat" }) {
   const router = useRouter();
-  const [done, setDone] = useState(0);
-  const [detected, setDetected] = useState(false);
+  const [progress, setProgress] = useState<ScanProgress | null>(null);
+  const [percent, setPercent] = useState(0);
   const [slow, setSlow] = useState(false);
+  const stageSince = useRef<{ done: number; at: number } | null>(null);
+  const done = stagesDone(progress);
+  // Where this screen hands off: the chat once transactions are in, the report once found.
+  const opens = next === "/chat" ? done >= 2 : done >= 3;
 
   useEffect(() => {
-    const last = STEPS.length - 1;
-    if (done === STEPS.length) {
-      router.replace(next);
-      return;
-    }
-    if (done === last && !detected) return;
-    const timer = setTimeout(() => setDone((d) => d + 1), STEP_MS);
+    if (!opens) return;
+    const timer = setTimeout(() => router.replace(next), HAND_OFF_MS);
     return () => clearTimeout(timer);
-  }, [done, detected, router, next]);
+  }, [opens, router, next]);
 
   useEffect(() => {
-    if (detected) return;
+    if (opens) return;
     let cancelled = false;
     let timer: ReturnType<typeof setTimeout>;
     const started = Date.now();
@@ -39,15 +43,8 @@ export function ScanningProgress({ next = "/report" }: { next?: "/report" | "/ch
     async function check() {
       try {
         const response = await fetch("/api/detection/status", { cache: "no-store" });
-        const body = response.ok
-          ? ((await response.json()) as { complete?: boolean; ready?: boolean })
-          : null;
-        // The chat opens as soon as the accounts and transactions are in (it says Jane is
-        // still looking and fills in); the report waits for detection.
-        if (body?.complete || (next === "/chat" && body?.ready)) {
-          if (!cancelled) setDetected(true);
-          return;
-        }
+        const body = response.ok ? ((await response.json()) as { progress?: ScanProgress }) : null;
+        if (!cancelled && body?.progress) setProgress(body.progress);
       } catch {
         // A dropped request is retried on the next poll.
       }
@@ -61,27 +58,66 @@ export function ScanningProgress({ next = "/report" }: { next?: "/report" | "/ch
       cancelled = true;
       clearTimeout(timer);
     };
-  }, [detected, next]);
+  }, [opens]);
+
+  // The bar: the finished steps' share plus a creep toward the next, and never back.
+  useEffect(() => {
+    if (stageSince.current?.done !== done) stageSince.current = { done, at: Date.now() };
+    const tick = () => {
+      const elapsed = Date.now() - (stageSince.current?.at ?? Date.now());
+      const creep = 1 - Math.exp(-elapsed / CREEP_MS);
+      setPercent((p) => Math.max(p, percentFor(done, creep)));
+    };
+    tick();
+    const timer = setInterval(tick, TICK_MS);
+    return () => clearInterval(timer);
+  }, [done]);
 
   return (
     <div className="flex flex-col gap-6">
+      <div
+        role="progressbar"
+        aria-label="Scanning your money"
+        aria-valuemin={0}
+        aria-valuemax={100}
+        aria-valuenow={percent}
+        className="flex flex-col gap-2"
+      >
+        <div className="h-3 w-full bg-zinc-200 dark:bg-zinc-800">
+          <div
+            className="h-3 bg-emerald-700 transition-[width] duration-500 ease-out motion-reduce:transition-none"
+            style={{ width: `${percent}%` }}
+          />
+        </div>
+        <p className="text-sm text-zinc-600 tabular-nums dark:text-zinc-400">{percent}%</p>
+      </div>
       <ol className="flex flex-col gap-3" aria-live="polite">
-        {STEPS.map((step, i) => (
-          <li key={step} className="flex items-center gap-3">
-            <span
-              className={`inline-flex h-6 w-6 items-center justify-center rounded-full text-xs font-bold ${
-                i < done
-                  ? "bg-emerald-700 text-white"
-                  : "bg-zinc-200 text-zinc-500 dark:bg-zinc-800"
-              }`}
-            >
-              {i < done ? "✓" : i + 1}
-            </span>
-            <span className={i < done ? "" : "text-zinc-500"}>{step}</span>
-          </li>
-        ))}
+        {STAGES.map((stage, i) => {
+          const label = i === 1 && progress ? monthsLabel(progress.months) : stage.label;
+          const finished = i < done;
+          const running = i === done;
+          return (
+            <li key={stage.label} className="flex items-center gap-3">
+              <span
+                className={`inline-flex h-6 w-6 items-center justify-center rounded-full text-xs font-bold ${
+                  finished
+                    ? "bg-emerald-700 text-white"
+                    : running
+                      ? "border-2 border-emerald-700 text-emerald-700"
+                      : "bg-zinc-200 text-zinc-500 dark:bg-zinc-800"
+                }`}
+              >
+                {finished ? "✓" : i + 1}
+              </span>
+              <span className={finished || running ? "" : "text-zinc-500"}>
+                {label}
+                {running && <span className="sr-only"> (in progress)</span>}
+              </span>
+            </li>
+          );
+        })}
       </ol>
-      {slow && !detected && (
+      {slow && !opens && (
         <p className="text-zinc-600 dark:text-zinc-400">
           This is taking longer than usual.{" "}
           <Link href="/report" className="font-medium text-emerald-700 hover:underline">
