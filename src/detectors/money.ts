@@ -33,24 +33,40 @@ const subscriptions: Detector = {
   topic: "subscriptions",
   needs: [],
   detect({ profile, data }) {
-    const charges = tx(
-      data,
-      (t) =>
-        t.amountCents > 0 &&
-        t.amountCents < R.subscriptionMaxCents &&
-        SUBSCRIPTION_CATEGORIES.has(t.pfc ?? ""),
-    );
-    const byName = new Map<string, number[]>();
-    for (const t of charges)
-      byName.set(t.description, [...(byName.get(t.description) ?? []), t.amountCents]);
-    // A subscription is the same charge in at least three different months.
-    const regular = [...byName.values()].filter((list) => list.length >= R.subscriptionMinCharges);
-    if (regular.length < R.subscriptionsMin) return null;
-    const yearly = regular.reduce(
-      (s, list) => s + (list.reduce((a, b) => a + b, 0) / list.length) * 12,
-      0,
-    );
-    const count = regular.reduce((s, list) => s + list.length, 0);
+    // The person's subscriptions as the subscriptions page and the chat count them, when the
+    // loader gave them; the sample people's are found from the charges here.
+    const given = data.extras?.subscriptions;
+    let yearly: number;
+    let count: number;
+    let n: number;
+    if (given !== undefined) {
+      if (given === null || given.count < R.subscriptionsMin) return null;
+      yearly = given.yearlyCents;
+      count = given.count;
+      n = given.count;
+    } else {
+      const charges = tx(
+        data,
+        (t) =>
+          t.amountCents > 0 &&
+          t.amountCents < R.subscriptionMaxCents &&
+          SUBSCRIPTION_CATEGORIES.has(t.pfc ?? ""),
+      );
+      const byName = new Map<string, number[]>();
+      for (const t of charges)
+        byName.set(t.description, [...(byName.get(t.description) ?? []), t.amountCents]);
+      // A subscription is the same charge in at least three different months.
+      const regular = [...byName.values()].filter(
+        (list) => list.length >= R.subscriptionMinCharges,
+      );
+      if (regular.length < R.subscriptionsMin) return null;
+      yearly = regular.reduce(
+        (s, list) => s + (list.reduce((a, b) => a + b, 0) / list.length) * 12,
+        0,
+      );
+      count = regular.length;
+      n = regular.reduce((s, list) => s + list.length, 0);
+    }
     return {
       id: suggestionId("subscriptions", "subscriptions"),
       capability: "subscriptions",
@@ -61,12 +77,12 @@ const subscriptions: Detector = {
         Math.round(yearly * R.subscriptionTrimShare),
         "saves",
       ),
-      short: `You pay about ${formatCents(Math.round(yearly))} a year across ${regular.length} subscriptions.`,
+      short: `You pay about ${formatCents(Math.round(yearly))} a year across ${count} subscriptions.`,
       worthCents: Math.round(yearly * R.subscriptionTrimShare),
       worthKind: "saves",
-      confidence: evidence("seen", profile.months, count, "subscription charges"),
+      confidence: evidence("seen", profile.months, n, "subscription charges"),
       urgency: "later",
-      why: `You pay about ${formatCents(Math.round(yearly))} a year across ${regular.length} subscriptions; people who look at the list usually drop about a quarter.`,
+      why: `You pay about ${formatCents(Math.round(yearly))} a year across ${count} subscriptions; people who look at the list usually drop about a quarter.`,
       action: { label: "Review subscriptions", href: "/subscriptions" },
     };
   },
@@ -138,7 +154,10 @@ const cardInterest: Detector = {
   needs: [],
   detect({ profile, data }) {
     const charges = tx(data, (t) => t.pfc === "BANK_FEES_INTEREST_CHARGE");
-    const total = outCents(charges);
+    // A year of interest from the cards' balances and rates when known (the loans page and the
+    // chat's figure); otherwise the interest charges seen, over the months of data.
+    const yearly = data.extras?.cardInterestYearCents;
+    const total = typeof yearly === "number" ? yearly : outCents(charges);
     if (total < R.interestMinCents) return null;
     return {
       id: suggestionId("debt", "card_interest"),
@@ -146,7 +165,10 @@ const cardInterest: Detector = {
       topic: "card_interest",
       title: "Pay down the card that is charging you interest",
       headline: headlineOf("Pay down the card charging interest", total, "saves"),
-      short: `You paid ${formatCents(total)} in card interest over ${profile.months} months.`,
+      short:
+        typeof yearly === "number"
+          ? `Your cards cost you about ${formatCents(total)} a year in interest.`
+          : `You paid ${formatCents(total)} in card interest over ${profile.months} months.`,
       worthCents: total,
       worthKind: "saves",
       confidence: evidence("seen", profile.months, charges.length, "interest charges"),
@@ -154,7 +176,11 @@ const cardInterest: Detector = {
       ...(profile.facts.debt_trouble.value === true
         ? { rankCents: Math.round(total * D.troubleDiscount) }
         : {}),
-      why: `You paid ${formatCents(total)} in card interest over ${profile.months} months; ${
+      why: `${
+        typeof yearly === "number"
+          ? `At your balances and rates your cards cost about ${formatCents(total)} a year in interest`
+          : `You paid ${formatCents(total)} in card interest over ${profile.months} months`
+      }; ${
         profile.facts.debt_trouble.value === true
           ? "a payoff plan that starts with the highest rate stops it, a card at a time"
           : "paying the balance off ends it"

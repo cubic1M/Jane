@@ -14,7 +14,7 @@ import { addGoal } from "@/lib/goals";
 import { loadTaxDocuments } from "@/lib/tax-documents";
 import { loadTaxEstimate, type TaxEstimateView } from "@/lib/tax-estimate";
 import { totals } from "@/planning/crypto-tax";
-import { rsuVest, worthSettingAside, type RsuResult } from "@/planning/equity-tax";
+import { assumedRsuGap, rsuVest, worthSettingAside, type RsuResult } from "@/planning/equity-tax";
 import { estimateTaxes } from "@/planning/tax-estimate";
 
 // Crypto and equity pay, taxed right (spec step 219), for its page, the chat and Claude: the
@@ -41,6 +41,15 @@ export type EquityTaxView = {
     status: "matches" | "differs" | "unchecked" | "waiting";
   }[];
   rsu: (RsuResult & { company: string; occurredOn: string; id: string })[];
+  // The RSU withholding that falls short, as one figure for the brief and the chat: from this
+  // year's vests, or with none known an assumed share of the stock plan (said so). Null: none.
+  rsuGap: {
+    vestedCents: number;
+    shortfallCents: number;
+    marginalRate: number;
+    assumed: boolean;
+    stockCents: number;
+  } | null;
   amtCents: number;
   amtPreferenceCents: number;
   setAside: {
@@ -144,6 +153,29 @@ export async function loadEquityTax(
     });
   const shortfall = rsu.reduce((s, r) => s + r.shortfallCents, 0);
   if (shortfall > 0) parts.push({ label: "RSU withholding that falls short", cents: shortfall });
+  const stockCents = (
+    await db.accounts.findMany({
+      where: { subtype: "stock plan" },
+      select: { currentBalanceCents: true },
+    })
+  ).reduce((a, x) => a + (x.currentBalanceCents ?? 0), 0);
+  const rsuGap =
+    rsu.length > 0
+      ? {
+          vestedCents: rsu.reduce((a, r) => a + r.incomeCents, 0),
+          shortfallCents: shortfall,
+          marginalRate: estimate.estimate.marginalRate,
+          assumed: false,
+          stockCents,
+        }
+      : stockCents > 0
+        ? {
+            ...assumedRsuGap(stockCents, estimate.estimate.marginalRate),
+            marginalRate: estimate.estimate.marginalRate,
+            assumed: true,
+            stockCents,
+          }
+        : null;
   const nonZero = parts.filter((p) => p.cents > 0);
   return {
     year,
@@ -153,6 +185,7 @@ export async function loadEquityTax(
     unrealisedCryptoCents: unrealised,
     forms1099DA,
     rsu,
+    rsuGap,
     amtCents: estimate.estimate.amtCents,
     amtPreferenceCents: income.amtPreferenceCents,
     setAside: {

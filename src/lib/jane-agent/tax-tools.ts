@@ -865,6 +865,17 @@ export async function runTaxTool(
           withheld: money(r.withheldCents),
           shortfall: money(r.shortfallCents),
         })),
+        // The same figure as the brief's suggestion: from this year's vests, or, with none known,
+        // an assumed share of the stock plan (say it is assumed).
+        rsuWithholdingGap: v.rsuGap && {
+          vested: money(v.rsuGap.vestedCents),
+          shortfall: money(v.rsuGap.shortfallCents),
+          bracket: `${Math.round(v.rsuGap.marginalRate * 100)}%`,
+          assumed: v.rsuGap.assumed,
+          note: v.rsuGap.assumed
+            ? "No vests are on file for this year, so this assumes a share of the stock plan vests; ask for the vest schedule."
+            : undefined,
+        },
         alternativeMinimumTax: money(v.amtCents),
         setAside: v.advice
           ? {
