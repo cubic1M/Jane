@@ -3134,3 +3134,15 @@ describe("valuesReply", () => {
     );
   });
 });
+
+// Spec step 237: the family looked after.
+describe("family file questions, by rules", () => {
+  it.each([
+    "who are the beneficiaries on my accounts",
+    "do i need a will",
+    "what would my family need if something happens to me",
+    "set up transfer on death",
+  ])("reads %j as the family file", (text) => {
+    expect(parseIntent(text, ASOF)).toMatchObject({ kind: "investments", topic: "family_file" });
+  });
+});

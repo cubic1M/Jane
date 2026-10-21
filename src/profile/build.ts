@@ -68,6 +68,9 @@ export type ProfileInput = {
   // Spec step 236: what the person asked Jane to leave out of their funds (keys in
   // src/config/values.ts), when they have said.
   valuesExcludes?: readonly string[];
+  // Spec step 237: ids of the accounts that have a beneficiary named. Absent when the loader
+  // did not read them.
+  namedAccountIds?: readonly string[];
   told: Told;
   // Policies read from uploaded documents that wait for the person's confirm (spec step 259).
   unreadPolicyDocuments?: number;

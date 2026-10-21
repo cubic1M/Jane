@@ -39,6 +39,7 @@ export async function loadProfileInput(
     investor,
     unread,
     values,
+    named,
   ] = await Promise.all([
     db.transactions.findMany({
       where: { date: { gt: since, lte: now } },
@@ -86,6 +87,7 @@ export async function loadProfileInput(
     db.investorProfiles.findFirst({ select: { age: true, ageOn: true, dropReaction: true } }),
     db.policyReadings.count({ where: { status: "waiting" } }),
     db.valuesPreferences.findFirst({ select: { excludes: true } }),
+    db.accountBeneficiaries.findMany({ select: { accountId: true } }),
   ]);
 
   // Answers given elsewhere come first; a correction made here wins over them.
@@ -151,6 +153,7 @@ export async function loadProfileInput(
       payoffDate: l.payoffDate ? dayOf(l.payoffDate) : null,
     })),
     valuesExcludes: values?.excludes ?? [],
+    namedAccountIds: [...new Set(named.map((n) => n.accountId))],
     told,
     unreadPolicyDocuments: unread,
   };

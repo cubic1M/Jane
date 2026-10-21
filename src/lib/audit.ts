@@ -215,7 +215,11 @@ export type AuditEvent =
   | "sudden_money_stage"
   // Spec step 236: values listed (the keys, never amounts), and a switch into screened funds.
   | "values_saved"
-  | "values_switch";
+  | "values_switch"
+  // Spec step 237: beneficiaries named or confirmed, and the family file picked or shared.
+  | "beneficiary_saved"
+  | "family_file_picked"
+  | "family_file_exported";
 
 export type AuditActor = { type: ActorType; id: string | null };
 

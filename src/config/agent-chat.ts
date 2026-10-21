@@ -229,6 +229,7 @@ export const MESSAGE_PRIORITY = {
   // Spec step 234: short-term money placed safely (demo advice).
   short_term: 36,
   values: 34,
+  family_file: 31,
   // Spec step 235: a large deposit that isn't pay comes up high, with its question.
   sudden_money: 52,
   // Spec step 164: the month's summary of what Jane did by herself in investing.

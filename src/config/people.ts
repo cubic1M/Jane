@@ -85,6 +85,7 @@ export const SUGGESTION_TOPICS = [
   "short_term_cash",
   "sudden_money",
   "values_funds",
+  "beneficiaries",
   "charity_receipts",
   "property_tax_check",
   "tax_loss_harvest",
@@ -159,6 +160,7 @@ export const PEOPLE: readonly Person[] = [
       "bnpl",
     ],
     mustNot: [
+      "beneficiaries",
       "values_funds",
       "umbrella",
       "long_term_care",
@@ -200,6 +202,7 @@ export const PEOPLE: readonly Person[] = [
       hasDebtTrouble: false,
     },
     should: [
+      "beneficiaries",
       "rebalance",
       "pmi_removal",
       "life_insurance",
@@ -261,6 +264,7 @@ export const PEOPLE: readonly Person[] = [
       "auto_insurance",
     ],
     mustNot: [
+      "beneficiaries",
       "values_funds",
       "employer_match",
       "rmd",
@@ -315,6 +319,7 @@ export const PEOPLE: readonly Person[] = [
       "sudden_money",
     ],
     mustNot: [
+      "beneficiaries",
       "bank_fees",
       "late_fees",
       "hardship_plan",
@@ -341,6 +346,7 @@ export const PEOPLE: readonly Person[] = [
       hasDebtTrouble: false,
     },
     should: [
+      "beneficiaries",
       "social_security_timing",
       "medicare",
       "long_term_care",
@@ -402,6 +408,7 @@ export const PEOPLE: readonly Person[] = [
       "short_term_cash",
     ],
     mustNot: [
+      "beneficiaries",
       "values_funds",
       "renters_insurance",
       "health_insurance",
@@ -454,6 +461,7 @@ export const PEOPLE: readonly Person[] = [
       "credit_report_errors",
     ],
     mustNot: [
+      "beneficiaries",
       "values_funds",
       "concentration",
       "backdoor_roth",
@@ -504,6 +512,7 @@ export const PEOPLE: readonly Person[] = [
       "cash_flow",
     ],
     mustNot: [
+      "beneficiaries",
       "values_funds",
       "employer_match",
       "rmd",

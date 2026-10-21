@@ -1,4 +1,5 @@
 import { APPROVED_DEBT_SENTENCES } from "@/config/debt-trouble";
+import { APPROVED_FAMILY_SENTENCES } from "@/config/family-file";
 import type { FindingType } from "@/generated/prisma/client";
 
 // Every piece of Claude-written text passes through checkGuardrails before anyone sees it.
@@ -68,13 +69,27 @@ const LEGAL = [
   /\bchapter (?:7|11|13)\b/i,
   /\bdebt settlement\b/i,
   /\b(?:stop|quit) paying\b/i,
+  // Spec step 237: wills, trusts and what to do with an estate are legal advice. The facts
+  // Jane gives are fixed sentences (src/config/family-file.ts) that pass below.
+  /\b(?:last )?will and testament\b/i,
+  /\b(?:revocable|irrevocable|living|testamentary|special[- ]needs|family)\s+trusts?\b/i,
+  /\b(?:write|draft|make|update|change|sign|create|set up|file)\s+(?:a|an|your|my|the)\s+(?:new\s+)?(?:will|trust)\b/i,
+  /\b(?:put|place|move|transfer)\b[^.!?]{0,60}\b(?:in|into)\s+(?:a|your|the)\s+trust\b/i,
+  /\b(?:a|your|the)\s+(?:will|trust)\b[^.!?]{0,40}\b(?:better|best|instead|rather)\b/i,
+  /\bprobate\b/i,
+  /\bpower of attorney\b/i,
+  /\bestate (?:plan|planning|tax)\b/i,
+  /\bexecutor\b/i,
 ];
 
 // Spec step 229: the reviewed sentences about settlement, bankruptcy, forgiven-debt tax and
 // where to take legal questions are taken out before checking. Only these exact sentences:
 // any other line about them, or a changed word, is still checked in full.
 function withoutApprovedSentences(text: string): string {
-  return APPROVED_DEBT_SENTENCES.reduce((t, sentence) => t.split(sentence).join(" "), text);
+  return [...APPROVED_DEBT_SENTENCES, ...APPROVED_FAMILY_SENTENCES].reduce(
+    (t, sentence) => t.split(sentence).join(" "),
+    text,
+  );
 }
 
 // (d) Promised outcomes. Savings are estimates: "could save about", never "will save".

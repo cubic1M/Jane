@@ -11,6 +11,7 @@ import {
   SUDDEN_LOOKBACK_DAYS,
   SUDDEN_MIN_CENTS,
 } from "@/config/sudden-money";
+import { BENEFICIARY_SUBTYPES } from "@/config/family-file";
 import { VALUES_EXCLUSIONS, VALUES_FUNDS, type Exclusion } from "@/config/values";
 import { formatCents } from "@/lib/money";
 import { type Detector, suggestionId } from "./contract";
@@ -142,6 +143,38 @@ const suddenMoney: Detector = {
   },
 };
 
+const beneficiaries: Detector = {
+  capability: "investing",
+  topic: "beneficiaries",
+  covers: ["family_file"],
+  needs: [],
+  detect({ profile, data }) {
+    if (!data.namedAccountIds) return null;
+    const named = new Set(data.namedAccountIds);
+    const open = data.accounts.filter(
+      (a) =>
+        BENEFICIARY_SUBTYPES.includes(a.subtype ?? "") && a.balanceCents > 0 && !named.has(a.id),
+    );
+    if (open.length === 0) return null;
+    const total = open.reduce((s, a) => s + a.balanceCents, 0);
+    return {
+      id: suggestionId("investing", "beneficiaries"),
+      capability: "investing",
+      topic: "beneficiaries",
+      title: "Name who gets your retirement accounts",
+      worthCents: Math.round(total * R.beneficiaryRiskShare),
+      worthKind: "risk",
+      confidence: weakest([
+        evidence("seen", profile.months, open.length, "accounts with no beneficiary I know of"),
+        { percent: 75, reason: "you may have named someone with the company without telling me" },
+      ]),
+      urgency: "later",
+      why: `${open.length === 1 ? "One account" : `${open.length} accounts`} holding ${formatCents(total)} ${open.length === 1 ? "has" : "have"} nobody named that I know of. An account with a named beneficiary passes to that person whatever a will says, and one with none can end up in a court process that often costs a few percent of the balance (about ${formatCents(Math.round(total * R.beneficiaryRiskShare))} here). Tell me who is named, or confirm it with the company.`,
+      action: { label: "Check my accounts", href: "/investments/family-file" },
+    };
+  },
+};
+
 const valuesFunds: Detector = {
   capability: "investing",
   topic: "values_funds",
@@ -184,4 +217,5 @@ export const PLANNING_DETECTORS: readonly Detector[] = [
   shortTermCash,
   suddenMoney,
   valuesFunds,
+  beneficiaries,
 ];

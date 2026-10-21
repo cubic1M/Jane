@@ -30,6 +30,7 @@ import { loadLocation } from "@/lib/investments/location";
 import { loadPlanMenu } from "@/lib/investments/plan-menu";
 import { loadHonest } from "@/lib/investments/honest";
 import { loadShortTerm } from "@/lib/investments/short-term";
+import { loadFamilyFile } from "@/lib/investments/family-file";
 import { loadValues } from "@/lib/investments/values";
 import { loadSuddenMoney } from "@/lib/investments/sudden-money";
 import { loadSteadyHand } from "@/lib/investments/steady-hand";
@@ -202,6 +203,12 @@ export const INVESTMENT_TOOLS: Anthropic.Tool[] = [
     input_schema: noInput,
   },
   {
+    name: "family_file",
+    description:
+      "Which of the person's accounts name a beneficiary and which don't, or have names that are out of date after a marriage, divorce or birth; whether transfer-on-death could be set up; and what the person has picked to share in their family file. Facts only. For wills and trusts say only the facts and that an estate-planning attorney in their state is the person to ask; never advise on whether to make one, which kind, or what it should say.",
+    input_schema: noInput,
+  },
+  {
     name: "values_investing",
     description:
       "What the person leaves out of their funds (fossil fuels, weapons, tobacco) or leans towards (clean energy), and what applying it to the funds they hold would change: which funds switch, the fee change in dollars a year, any tax on a sale in a taxable account, and what it does to diversification (fewer holdings). It never changes the stocks-and-bonds mix. The switch is the person's own tap on Jane's message; never trade yourself. Recommendations only in demo advice mode.",
@@ -269,6 +276,7 @@ export const INVESTMENT_TOOL_STATUS: Readonly<Record<string, string>> = {
   sudden_money: "Planning your windfall…",
   short_term_money: "Comparing safe places for money you need soon…",
   values_investing: "Checking your funds against your values…",
+  family_file: "Checking who is named on your accounts…",
   honest_performance: "Comparing you with a benchmark…",
   plan_menu: "Looking at your plan's funds…",
   asset_location: "Checking which account holds what…",
@@ -874,6 +882,24 @@ export async function runInvestmentTool(
           })),
         })),
         forecast: "never",
+      });
+    }
+    case "family_file": {
+      const v = await loadFamilyFile(userId, { client });
+      return out({
+        accounts: v.checks.map((c) => ({
+          account: c.accountName,
+          kind:
+            c.type === "tod"
+              ? "can be set up to pass to someone (transfer-on-death)"
+              : "takes a beneficiary",
+          named: c.names,
+          problems: c.problems,
+          since: c.because,
+        })),
+        lifeEvents: v.events,
+        sharing: v.picks,
+        about_wills_and_trusts: [...v.facts, v.pointer],
       });
     }
     case "values_investing": {
