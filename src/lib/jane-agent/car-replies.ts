@@ -39,25 +39,12 @@ export function carReply(car: Car, asked: boolean): Reply {
     : [
         `You can afford a car up to about ${formatCents(car.maxPriceCents)}, keeping the all-in cost under ${formatCents(car.allowanceCents!)} a month (20% of your income).`,
       ];
-  lines.push(
-    `That ${asked ? "price" : "car"} is ${formatCents(c.paymentCents)} a month for the loan, ${formatCents(c.insuranceCents)} for insurance, ${formatCents(c.fuelCents)} for fuel and ${formatCents(c.maintenanceCents + c.registrationCents)} for upkeep and registration.`,
-  );
   const best = car.offers[0];
   lines.push(
-    `The cheapest preapproval is ${best.offer.lender} at ${formatRate(best.offer.aprBps)}: ${formatCents(best.monthlyCents)} a month, ${formatCents(best.totalCents)} in all over ${car.termMonths} months (${best.offer.feeLabel.toLowerCase()}).`,
+    `That ${asked ? "price" : "car"} is ${formatCents(c.paymentCents)} a month for the loan plus ${formatCents(c.allInCents - c.paymentCents)} for insurance, fuel and upkeep.`,
+    `The cheapest preapproval is ${best.offer.lender} at ${formatRate(best.offer.aprBps)}: ${formatCents(best.monthlyCents)} a month, ${formatCents(best.totalCents)} in all over ${car.termMonths} months.`,
   );
-  if (car.offers.length > 1) {
-    lines.push(
-      `Also: ${car.offers
-        .slice(1, 3)
-        .map(
-          (o) =>
-            `${o.offer.lender} at ${formatRate(o.offer.aprBps)}, ${formatCents(o.totalCents)} in all`,
-        )
-        .join("; ")}.`,
-    );
-  }
-  return { body: lines.join("\n"), actions: [CAR_PAGE], refs: { advice: true } };
+  return { body: lines.join(" "), actions: [CAR_PAGE], refs: { advice: true } };
 }
 
 // "The dealer offered 7.9% for 72 months."
