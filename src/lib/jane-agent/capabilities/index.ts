@@ -1,3 +1,4 @@
+import { debtDecide } from "../debt-decide";
 import { answerDecision } from "../decision";
 import { answerDebt } from "../debt-answer";
 import { DEBT_KINDS, type DebtIntent } from "../debt-intents";
@@ -259,6 +260,8 @@ export const CAPABILITIES: readonly Capability[] = [
   {
     id: "debt",
     bank: ["debt", "loans", "student", "credit"],
+    decides: ["loan", "payoff_or_invest"],
+    decide: debtDecide,
     kinds: [...DEBT_KINDS] as Capability["kinds"],
     tools: [
       "debts",
@@ -282,6 +285,7 @@ export const CAPABILITIES: readonly Capability[] = [
       "debt_trouble",
       "debt_review",
       "car_loan",
+      "debt_decision",
     ],
     answer: debtAnswer,
   },

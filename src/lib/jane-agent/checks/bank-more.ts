@@ -18,6 +18,9 @@ const rows: Row[] = [
   ["giving", "/taxes/giving", "tax_giving", "how much have I given to charity"],
   ["credit", "/loans/credit", "credit_score", "what's my credit score"],
   ["debt", "/debt", "debts", "how much card interest am I paying"],
+  ["debt", "/loans", "debt_decision", "should I pay off my debt before I invest"],
+  ["debt", "/loans", "debt_decision", "is a debt consolidation loan a good idea"],
+  ["debt", "/loans", "debt_decision", "can I use my emergency fund to pay off my credit card"],
   ["budgets", "/budgets", "budgets", "how's my budget"],
 
   // Investing, round three (steps 160–216).
