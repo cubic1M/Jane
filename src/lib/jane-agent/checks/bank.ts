@@ -1215,6 +1215,31 @@ const BASE_QUESTIONS: readonly CheckQuestion[] = [
       maxChars: 1_000,
     },
   },
+  // Spec step 249: helping family with credit.
+  {
+    id: "debt-39",
+    text: "should I cosign a loan for my son",
+    needs: "rules",
+    expect: {
+      intent: "family_credit",
+      mentions: /co-signing/i,
+      link: "/loans/helping",
+      list: true,
+      maxChars: 2_600,
+    },
+  },
+  {
+    id: "debt-40",
+    text: "how do I add my daughter to my credit card as an authorized user",
+    needs: "rules",
+    expect: {
+      intent: "family_credit",
+      mentions: /co-signing/i,
+      link: "/loans/helping",
+      list: true,
+      maxChars: 2_600,
+    },
+  },
   // Spec step 248: renting, counted.
   {
     id: "debt-37",

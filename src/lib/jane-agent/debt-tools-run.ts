@@ -22,6 +22,7 @@ import { loadFamilyLoans } from "@/lib/family-loans";
 import { loadCreditGoals } from "@/lib/credit-goals";
 import { loadCostlyBorrowing } from "@/lib/costly-borrowing";
 import { loadRenting } from "@/lib/renting";
+import { loadFamilyCredit } from "@/lib/family-credit";
 import { MortgageMoneyError, loadMortgageMoney } from "@/lib/mortgage-money";
 import { loadCarLoan } from "@/lib/car-loan";
 import { loadDebtReview } from "@/lib/debt-review";
@@ -61,6 +62,7 @@ import {
   mortgageMoneyToolOutput,
   costlyBorrowingToolOutput,
   rentingToolOutput,
+  familyCreditToolOutput,
 } from "./debt-tools";
 
 // Runs Claude's debt tools (./debt-tools.ts) for one person: read-only, scoped to them,
@@ -89,6 +91,8 @@ export async function runDebtTool(
       return out(
         costlyBorrowingToolOutput(await loadCostlyBorrowing(userId, { client, now }), money),
       );
+    case "family_credit":
+      return out(familyCreditToolOutput(await loadFamilyCredit(userId, { client, now }), money));
     case "renting":
       return out(rentingToolOutput(await loadRenting(userId, { client, now }), money));
     case "mortgage_money": {

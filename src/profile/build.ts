@@ -70,6 +70,9 @@ export type ProfileInput = {
   unreadPolicyDocuments?: number;
   // The person turned rent reporting on (spec step 248).
   rentReportingOn?: boolean;
+  // Spec step 249: people the person has an authorized user or first card for, and what they
+  // co-signed (owed, in cents) for someone.
+  familyCredit?: { helped: number; cosignedOwedCents: number; cosignedMissed: number };
 };
 
 export type FactValue = string | number | boolean | null;

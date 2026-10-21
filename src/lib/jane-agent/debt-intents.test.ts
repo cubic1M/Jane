@@ -441,6 +441,19 @@ describe("debt questions", () => {
     }
   });
 
+  it("reads helping family with credit (spec step 249), and leaves a co-signed loan listing to family loans", () => {
+    for (const text of [
+      "should I cosign a loan for my son",
+      "how do I add my daughter to my credit card as an authorized user",
+      "first credit card for my college student",
+      "what happens to my credit if my brother misses a cosigned payment",
+      "is co-signing a bad idea",
+    ]) {
+      expect(intent(text), text).toEqual({ kind: "family_credit" });
+    }
+    expect(intent("I co-signed a loan")).toEqual({ kind: "family_loans" });
+  });
+
   it("reads rent reporting, a rent increase and a deposit (spec step 248)", () => {
     for (const text of [
       "can you report my rent to the credit bureaus",

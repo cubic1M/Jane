@@ -483,6 +483,13 @@ const rows: Row[] = [
   ["debt", "/loans/costly", "costly_borrowing", "i keep overdrafting every month"],
   ["debt", "/loans/renting", "renting", "can my rent help my credit score"],
   ["debt", "/loans/renting", "renting", "my rent went up again"],
+  [
+    "debt",
+    "/loans/helping",
+    "family_credit",
+    "what happens to my credit if my brother misses a cosigned payment",
+  ],
+  ["debt", "/loans/helping", "family_credit", "first credit card for my college student"],
   ["loans", "/loans/recast", "mortgage_money", "i have $20,000, should i recast my mortgage"],
   ["loans", "/loans/recast", "mortgage_money", "pay down my mortgage or invest $500 a month"],
   ["loans", "/loans/auto", "car_loan", "can i cancel the extended warranty on my car loan"],
