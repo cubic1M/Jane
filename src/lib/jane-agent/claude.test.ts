@@ -128,7 +128,7 @@ describe("askClaudeInChat", () => {
     // A faster model than the rest of the app, thinking little, with the chat's tools.
     expect(create.mock.calls[0][0]).toMatchObject({
       model: "claude-sonnet-5-5",
-      thinking: { type: "adaptive" },
+      thinking: { type: "disabled" },
       output_config: { effort: "low" },
       tools: CHAT_TOOLS,
     });
@@ -149,7 +149,11 @@ describe("askClaudeInChat", () => {
       "suggest.never",
       "open",
     ]);
-    expect(result.reply.refs).toEqual({ findingId: "f1", fingerprint: "fp1" });
+    expect(result.reply.refs).toEqual({
+      findingId: "f1",
+      fingerprint: "fp1",
+      topic: { kind: "about", findingId: "f1" },
+    });
     // Jane's own wording for the finding follows Claude's text.
     expect(result.reply.body).toMatch(/\n\nReview your Hulu subscription\. Could save about/);
     expect(lastToolResult(1)).toMatchObject({
@@ -164,7 +168,7 @@ describe("askClaudeInChat", () => {
       .mockResolvedValueOnce(toolUse("propose_action", { action: "finding.yes", finding_id: "x" }))
       .mockResolvedValueOnce(final("I can't do that from here."));
 
-    const result = await askClaudeInChat("u1", [], "Delete it", options);
+    const result = await askClaudeInChat("u1", [], "Delete it", { ...options, maxTurns: 5 });
 
     expect(result).toEqual({
       kind: "answer",
@@ -534,19 +538,57 @@ describe("speed and failures", () => {
     vi.spyOn(console, "warn").mockImplementation(() => {});
   });
 
-  it("gives up on a slow start, then answers from the rules for a while", async () => {
+  it("gives up on a slow start for the rules' answer, without marking Claude down", async () => {
     const result = await askClaudeInChat("u1", [], "hm", {
       ...options,
       claude: stuck,
       firstWordsMs: 20,
     });
     expect(result).toMatchObject({ kind: "unavailable", reply: { body: CHAT_UNAVAILABLE_TEXT } });
-    // Right after, no waiting on Claude at all.
+    // Our own timeout is not Claude failing: the next question still goes to Claude.
     create.mockResolvedValueOnce(final("Fine."));
-    expect((await askClaudeInChat("u1", [], "hi", options)).kind).toBe("unavailable");
+    expect((await askClaudeInChat("u1", [], "hi", options)).kind).toBe("answer");
+  });
+
+  it("pauses Claude for a while only when Claude itself fails (rate limit, overloaded)", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    const failing = () =>
+      ({
+        messages: {
+          stream: () => {
+            const stream = {
+              on: () => stream,
+              finalMessage: async () => {
+                throw new Anthropic.APIError(529, undefined, "Overloaded", undefined);
+              },
+            };
+            return stream;
+          },
+        },
+      }) as never;
+    expect((await askClaudeInChat("u1", [], "a", { ...options, claude: failing })).kind).toBe(
+      "unavailable",
+    );
+    create.mockResolvedValueOnce(final("Fine."));
+    expect((await askClaudeInChat("u1", [], "b", options)).kind).toBe("unavailable");
     expect(create).not.toHaveBeenCalled();
     resetClaudeHealth();
-    expect((await askClaudeInChat("u1", [], "hi", options)).kind).toBe("answer");
+    expect((await askClaudeInChat("u1", [], "c", options)).kind).toBe("answer");
+  });
+
+  it("starts the clock after the person's numbers, so a slow lookup leaves Claude its whole window", async () => {
+    // The lookup takes far longer than Claude's first-words window.
+    vi.mocked(loadSnapshot).mockImplementation(
+      () => new Promise((resolve) => setTimeout(() => resolve(snapshot), 400)),
+    );
+    create.mockResolvedValueOnce(final("Fine."));
+    const result = await askClaudeInChat("u1", [], "how am i doing", {
+      ...options,
+      primerMs: 40,
+      firstWordsMs: 300,
+      deadlineMs: 600,
+    });
+    expect(result.kind).toBe("answer");
   });
 
   it("reuses the person's numbers for a minute, until a tap clears them", async () => {

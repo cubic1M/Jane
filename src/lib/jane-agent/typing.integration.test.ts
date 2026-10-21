@@ -382,7 +382,8 @@ describe.runIf(url)("typing to Jane against a real database", () => {
         content: [{ type: "text", text: "OK." }],
       });
       // Spec step 183: "how am I doing" is a rules answer now; this one needs Claude.
-      await send("give me your honest take on my money habits", { claude });
+      // (Given all the time it needs: the test machine can be slower than Claude's 1.5 seconds.)
+      await send("give me your honest take on my money habits", { claude, primerMs: 60_000 });
       const numbers = (create.mock.calls[0][0] as { system: { text: string }[] }).system[1].text;
       for (const tool of CHAT_PRIMER_TOOLS) expect(numbers).toContain(`${tool}: {`);
       expect(numbers).toMatch(/"safeToSpend":"\$[\d,]+\.\d\d"/);

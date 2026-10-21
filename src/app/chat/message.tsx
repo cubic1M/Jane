@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useActionState, useEffect, useState } from "react";
 import { DemoAdviceLabel } from "@/components/demo-advice-label";
@@ -191,9 +190,11 @@ export function ChatMessageItem({ initial }: { initial: MessageView }) {
                 {link.label} ›<span className="sr-only"> (opens in a new tab)</span>
               </a>
             ) : (
-              <Link key={link.href + link.label} href={link.href} className={LINK}>
+              // Spec step 194: a plain link, so it works before the page has hydrated and
+              // isn't cancelled by the refreshes that bring in new messages.
+              <a key={link.href + link.label} href={link.href} className={LINK}>
                 {link.label} ›
-              </Link>
+              </a>
             ),
           )}
         </div>
