@@ -66,6 +66,18 @@ export function fixedChecks(
         : pass("answered"),
   );
 
+  // Chat architecture (docs/spec.md): every reply is written words, at least a real sentence;
+  // a button or a card is never the whole reply.
+  const words = body.split(/\s+/).filter(Boolean).length;
+  checks.push(
+    words >= 3 && !(BARE_BUTTON.test(body) && body.length < 80)
+      ? pass("written")
+      : fail(
+          "written",
+          "The reply isn't a written answer: a button or a few words is not an answer.",
+        ),
+  );
+
   // What the rules read it as.
   if (expect.intent) {
     const intent = parseIntent(question.text, facts.asOf).kind;
