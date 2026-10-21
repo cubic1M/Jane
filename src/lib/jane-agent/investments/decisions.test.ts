@@ -6,6 +6,8 @@ import { DECISION_QUESTIONS } from "../checks/bank-decisions";
 import { checkGuardrails } from "@/lib/guardrails";
 import type { DecisionFacts } from "@/planning/investing-decision";
 import { parseIntent } from "../intents";
+import type { DecisionKind } from "@/config/investing-decisions";
+import { companyIn } from "./decide";
 import { decisionReply } from "./decision-reply";
 
 // The investing decisions in the chat: every question gets a direct answer of three
@@ -35,14 +37,33 @@ const BASE: DecisionFacts = {
 };
 const DEBT: DecisionFacts = {
   ...BASE,
-  highDebts: [{ name: "Demo Credit Card", balanceCents: 194_020, aprBps: 2699 }],
+  highDebts: [
+    { name: "Demo Credit Card", kind: "credit card", balanceCents: 194_020, aprBps: 2699 },
+  ],
   topDebt: { name: "Demo Credit Card", aprBps: 2699 },
 };
 const GAP: DecisionFacts = { ...BASE, savingsCents: 300_000 };
 const sentences = (text: string) => text.split(/(?<=[.!?])\s+/).filter(Boolean);
 
+// A question is either the router's (a "should I ..." about crypto, stocks, investing or paying
+// off debt, answered through investingDecide's mapping) or investing's own.
+const ROUTER_KIND: Record<string, DecisionKind> = {
+  crypto: "buy_crypto",
+  stocks: "buy_stock",
+  invest: "start",
+  payoff_or_invest: "invest_vs_debt",
+};
 const ask = (text: string, facts: DecisionFacts) => {
   const intent = parseIntent(text, ASOF);
+  if (intent.kind === "decision") {
+    // A bare "should i buy?" takes the subject of what was just discussed.
+    expect([...Object.keys(ROUTER_KIND), null], text).toContain(intent.item);
+    return decisionReply(
+      ROUTER_KIND[(intent.item ?? "invest") as string],
+      facts,
+      companyIn(intent.label ?? ""),
+    );
+  }
   expect(intent, text).toMatchObject({ kind: "investments", topic: "decision" });
   const d = (intent as unknown as { decision: { kind: never; subject: string | null } }).decision;
   return decisionReply(d.kind, facts, d.subject);
@@ -75,11 +96,13 @@ describe("the 30 investing decisions", () => {
 describe("what each answer rests on", () => {
   it("puts high-interest debt first for a purchase, with the person's own balance and rate", () => {
     const r = ask("should i buy bitcoin", DEBT);
-    expect(r.body).toMatch(/^Not yet: you owe \$1,940\.20 on Demo Credit Card at 27%/);
+    expect(r.body).toMatch(
+      /^Not yet: you owe \$1,940\.20 at 27% on your credit card, Demo Credit Card/,
+    );
   });
-  it("puts the emergency fund next", () => {
+  it("puts the cushion next", () => {
     const r = ask("should i buy tesla stock", GAP);
-    expect(r.body).toMatch(/^Not yet: your emergency fund is \$3,000\.00 of the \$9,000\.00/);
+    expect(r.body).toMatch(/^Not yet: your cushion is \$3,000\.00 of the \$9,000\.00/);
   });
   it("sizes a speculative bet from what they invest, and names the company asked about", () => {
     expect(ask("should i buy bitcoin", BASE).body).toMatch(/about 5%.*\$2,000\.00/);

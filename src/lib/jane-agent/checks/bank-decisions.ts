@@ -1,3 +1,4 @@
+import { parseIntent } from "../intents";
 import type { CheckQuestion } from "./bank";
 
 // Investing decisions people really type (the chat, founder bug "should i buy bitcoin" got a
@@ -6,11 +7,13 @@ import type { CheckQuestion } from "./bank";
 // advice mode (the grading profile) and facts only on real accounts. Must-pass.
 
 const ask = (n: number, text: string, after?: string): CheckQuestion => ({
-  id: `dec-${n}`,
+  id: `idc-${n}`,
   text,
   needs: "rules",
   ...(after ? { after } : {}),
-  expect: { intent: "investments", maxChars: 520 },
+  // The decision router reads the "should I ..." ones and investing answers them; the rest
+  // investing reads itself.
+  expect: { intent: parseIntent(text, "2026-10-20").kind as never, maxChars: 520 },
   sector: "investing",
   page: "/investments",
   tool: "investing_decision",
@@ -54,5 +57,5 @@ export const DECISION_QUESTIONS: readonly CheckQuestion[] = [
   ask(35, "can i retire at 62"),
   ask(36, "am i ready to retire"),
   // A follow-up after any of them.
-  ask(37, "should i buy?", "dec-1"),
+  ask(37, "should i buy?", "idc-1"),
 ];

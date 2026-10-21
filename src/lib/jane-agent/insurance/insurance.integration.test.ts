@@ -163,6 +163,8 @@ describe.runIf(url)("insurance in Jane's chat, against a real database", () => {
       (await runChatTool(me, "insurance_policies", {}, { client, now: NOW })).content,
     );
     expect(data.gaps[0].demoAdviceWhatToAdd).toBe(GAP_ADVICE.home.text);
+    // Their first scan is over (a person mid-scan gets no brief yet).
+    await client.user.update({ where: { id: me }, data: { firstScanDoneAt: NOW } });
     await runJaneAgent(me, { client, now: NOW, trigger: "open" });
     const message = await gapMessage(me);
     expect(message?.body).toContain(GAP_ADVICE.home.text);

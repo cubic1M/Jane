@@ -25,7 +25,7 @@ import { formatCents } from "@/lib/money";
 export type DecisionFacts = {
   advice: boolean;
   // Debts at or above HIGH_DEBT_APR_BPS, worst first.
-  highDebts: { name: string; balanceCents: number; aprBps: number }[];
+  highDebts: { name: string; kind: string; balanceCents: number; aprBps: number }[];
   // The highest rate on any debt, when they have debt.
   topDebt: { name: string; aprBps: number } | null;
   emergencyTargetCents: number;
@@ -54,10 +54,10 @@ const pct = (bps: number) => `${Math.round(bps / 10) / 10}%`;
 function gate(f: DecisionFacts, what: string): string | null {
   const debt = f.highDebts[0];
   if (debt) {
-    return `Not yet: you owe ${formatCents(debt.balanceCents)} on ${debt.name} at ${pct(debt.aprBps)}, and paying that off beats ${what}.`;
+    return `Not yet: you owe ${formatCents(debt.balanceCents)} at ${pct(debt.aprBps)} on your ${debt.kind}, ${debt.name}, and paying that off beats ${what}${f.emergencyTargetCents > 0 ? `, with your cushion at ${formatCents(f.savingsCents)} of ${formatCents(f.emergencyTargetCents)}` : ""}.`;
   }
   if (f.emergencyTargetCents > 0 && f.savingsCents < f.emergencyTargetCents) {
-    return `Not yet: your emergency fund is ${formatCents(f.savingsCents)} of the ${formatCents(f.emergencyTargetCents)} I'd keep, and that comes before ${what}.`;
+    return `Not yet: your cushion is ${formatCents(f.savingsCents)} of the ${formatCents(f.emergencyTargetCents)} I'd keep for emergencies, and that comes before ${what}.`;
   }
   return null;
 }
@@ -73,11 +73,12 @@ export function decide(
   switch (kind) {
     case "buy_crypto": {
       const share = CRYPTO_SHARE_FLAG;
+      const name = subject ?? "crypto";
       const cap = Math.round(f.investedCents * share);
       return {
         sentences: [
-          gate(f, "a bet on crypto") ??
-            `That's your call, and the usual limit for something this speculative is about ${Math.round(share * 100)}% of what you invest, which for you is about ${formatCents(cap)}.`,
+          gate(f, `a bet on ${name}`) ??
+            `Your debts and cushion are covered, so it's your call, and the usual limit for ${name} is about ${Math.round(share * 100)}% of what you invest, which for you is about ${formatCents(cap)}.`,
           f.cryptoCents > 0
             ? `You already hold ${formatCents(f.cryptoCents)} in crypto, so count that first.`
             : "It can fall by half in a year, so only use money you could afford to lose.",
@@ -92,7 +93,7 @@ export function decide(
       return {
         sentences: [
           gate(f, `buying ${name}`) ??
-            `That's your call, but ${name} is a bet on one company, and about ${Math.round(SINGLE_STOCK_MAX_SHARE * 100)}% of what you invest (${formatCents(cap)} for you) is the usual limit.`,
+            `Your debts and cushion are covered, so it's your call, but ${name} is a bet on one company, and about ${Math.round(SINGLE_STOCK_MAX_SHARE * 100)}% of what you invest (${formatCents(cap)} for you) is the usual limit.`,
           "A broad index fund holds thousands of companies, so one bad year for one of them barely moves it.",
           f.riskLabel
             ? `With your ${f.riskLabel.toLowerCase()} profile, keep the core in index funds and treat a single stock as the extra.`
@@ -122,7 +123,7 @@ export function decide(
           sentences: [
             "You have no debt costing you interest, so investing isn't competing with a payoff.",
             f.emergencyTargetCents > 0 && f.savingsCents < f.emergencyTargetCents
-              ? `First fill your emergency fund (${formatCents(f.savingsCents)} of ${formatCents(f.emergencyTargetCents)}), then invest.`
+              ? `First fill your cushion (${formatCents(f.savingsCents)} of ${formatCents(f.emergencyTargetCents)}), then invest.`
               : "Take any employer match first, since it's an instant return, then invest the rest.",
             "Start with a broad index fund and add a fixed amount each payday.",
           ],
@@ -137,8 +138,8 @@ export function decide(
             : `Your highest rate is ${pct(top.aprBps)} on ${top.name}, below the ${ceiling}% top of the range I'd assume for investing, so it's closer than it sounds.`,
           "Take any employer match before either, since it's an instant return.",
           high
-            ? "Then build your emergency fund, and invest once the expensive debt is gone."
-            : "Keep your emergency fund full, then splitting extra money between the two is a fair choice.",
+            ? "Then build your cushion, and invest once the expensive debt is gone."
+            : "Keep your cushion full, then splitting extra money between the two is a fair choice.",
         ],
         offerCrypto: false,
       };
@@ -147,7 +148,7 @@ export function decide(
       return {
         sentences: [
           gate(f, "investing") ??
-            `Your emergency fund is full at ${formatCents(f.savingsCents)}, so money beyond it can go to investing.`,
+            `Your cushion is full at ${formatCents(f.savingsCents)}, so money beyond it can go to investing.`,
           f.soonGoal
             ? `Keep ${f.soonGoal.name} (${formatCents(f.soonGoal.leftCents)} still to save, due in ${f.soonGoal.months} months) in savings, since money needed within ${Math.round(SOON_GOAL_MONTHS / 12)} years shouldn't be in anything that can fall.`
             : "Money you won't need for five years or more is what investing is for.",
@@ -162,8 +163,8 @@ export function decide(
           "Nobody can time it, and I won't pretend to; what I can check is whether you're ready.",
           gate(f, "investing") ??
             (f.soonGoal
-              ? `You're clear on debt and your emergency fund, but keep ${f.soonGoal.name} out of it, since you need that money in ${f.soonGoal.months} months.`
-              : "You're clear on high-interest debt and your emergency fund, so you're ready."),
+              ? `You're clear on debt and your cushion, but keep ${f.soonGoal.name} out of it, since you need that money in ${f.soonGoal.months} months.`
+              : "You're clear on high-interest debt and your cushion, so you're ready."),
           "Putting in a fixed amount every payday takes the timing out of it.",
         ],
         offerCrypto: false,
@@ -259,8 +260,7 @@ export function decide(
         f.monthlyIncomeCents !== null ? Math.round(f.monthlyIncomeCents * START_SHARE) : null;
       return {
         sentences: [
-          gate(f, "investing") ??
-            "Yes: you're clear on high-interest debt and your emergency fund.",
+          gate(f, "investing") ?? "Yes: you're clear on high-interest debt and your cushion.",
           monthly !== null
             ? `A starting point is ${Math.round(START_SHARE * 100)}% of your pay, about ${formatCents(monthly)} a month, into a broad index fund.`
             : "A starting point is about 5% of your pay into a broad index fund.",

@@ -39,7 +39,9 @@ import { insuranceAfterSync } from "@/lib/insurance/daily";
 import { demoPayoffs } from "@/lib/loan-applications";
 import { confirmInsuranceSwitches } from "@/lib/insurance/switch";
 import { demoExtrasOf, demoPlaidApi, isDemoToken } from "./demo";
+import { postScanningHello } from "@/lib/jane-agent/open";
 import { runJaneAgentSafely } from "@/lib/jane-agent/run";
+import { scanSuggestions } from "@/lib/suggestions";
 import { markScanDone } from "@/lib/scan";
 
 // Brings one Plaid item up to date: accounts, transactions since the saved cursor
@@ -583,6 +585,13 @@ export async function syncItem(
     await ensureDemoPolicies(item.userId, { client, now });
   }
 
+  // The first scan: "still going through your accounts" comes first, before anything Jane finds,
+  // whenever the person gets to the chat.
+  if (progressive && item.transactionsCursor === null) {
+    await postScanningHello(item.userId, { client, now }).catch((error) =>
+      console.error("Posting the scanning hello failed", { error: String(error) }),
+    );
+  }
   const sync = await new PlaidDataSource(api, accessToken, item.transactionsCursor).load();
   const accountIds = await saveAccounts(db, item.id, sync);
   // The demo bank's home and car, once its loans are saved (spec step 67).
@@ -622,8 +631,16 @@ export async function syncItem(
   await runDetection(item.userId, { client, now });
   // The first scan after linking: what people see first (the findings) is posted right after
   // detection, before the slower sector work below; the chat is already open and fills in.
-  if (progressive && result.firstSync)
-    await runJaneAgentSafely(item.userId, { client, now, trigger: "sync" });
+  if (progressive && result.firstSync) {
+    // Jane's first words lead with what the detectors found for this person (spec step 265), so
+    // those are worked out first, right after detection and before the slow sector work. Never
+    // the old, generic brief for someone whose first scan is running. A problem here falls
+    // back to the findings alone.
+    await scanSuggestions(item.userId, { client, now }).catch((error) =>
+      console.error("The first scan's suggestions failed", { error: String(error) }),
+    );
+    await runJaneAgentSafely(item.userId, { client, now, trigger: "sync", early: true });
+  }
   // After detection these don't depend on each other, so they run together; the sample
   // person's first screen is waiting on this sync.
   await Promise.all([
@@ -644,5 +661,13 @@ export async function syncItem(
   // Jane says what's new in the chat (spec step 82); a problem there never fails the sync.
   await runJaneAgentSafely(item.userId, { client, now, trigger: "sync" });
   await markScanDone(item.userId, { client, now });
+  // The person's numbers for Claude, saved now so the chat reads them in one query instead of
+  // looking every sector up while someone waits. Loaded here, not at the top: that file
+  // reaches this one again through the jobs.
+  await import("@/lib/jane-agent/claude-tools")
+    .then((m) => m.refreshPrimer(item.userId, { client, now }))
+    .catch((error) =>
+      console.error("Saving the numbers for Claude failed", { error: String(error) }),
+    );
   return result;
 }

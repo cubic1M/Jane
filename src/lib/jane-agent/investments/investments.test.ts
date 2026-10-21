@@ -1783,10 +1783,10 @@ const CRYPTO_VIEW = {
 
 describe("crypto buying questions are decisions, not a connect offer", () => {
   it("answers 'should I buy btc' as an investing decision", () => {
+    // The decision router reads it and investing answers it (capabilities decide).
     expect(parseIntent("should I buy btc", ASOF)).toMatchObject({
-      kind: "investments",
-      topic: "decision",
-      decision: { kind: "buy_crypto" },
+      kind: "decision",
+      item: "crypto",
     });
   });
 });
@@ -1798,6 +1798,11 @@ describe("crypto questions, by rules", () => {
       expect(parseIntent(text, ASOF)).toMatchObject({ kind: "investments", topic: "crypto" });
     },
   );
+});
+
+// "Should I buy btc?" is a decision, answered by the one decision router (decision.ts).
+it("reads should I buy btc as a decision about crypto", () => {
+  expect(parseIntent("should I buy btc", ASOF)).toMatchObject({ kind: "decision", item: "crypto" });
 });
 
 describe("cryptoReply and the crypto messages", () => {

@@ -45,7 +45,12 @@ export async function loadDecisionFacts(
     ]);
   const owed = book.debts
     .filter((d) => d.balanceCents !== null && d.balanceCents > 0 && d.aprBps !== null)
-    .map((d) => ({ name: d.name, balanceCents: d.balanceCents!, aprBps: d.aprBps! }));
+    .map((d) => ({
+      name: d.name,
+      kind: d.kindLabel.toLowerCase(),
+      balanceCents: d.balanceCents!,
+      aprBps: d.aprBps!,
+    }));
   const highDebts = owed
     .filter((d) => d.aprBps >= HIGH_DEBT_APR_BPS)
     .sort((a, b) => b.aprBps - a.aprBps || b.balanceCents - a.balanceCents);
