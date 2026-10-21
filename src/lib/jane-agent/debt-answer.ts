@@ -20,6 +20,7 @@ import { loadFamilyLoans } from "@/lib/family-loans";
 import { PROJECT_YEARS_DEFAULT } from "@/config/home-equity";
 import { checkGoalDraft, loadCreditGoals, planFor } from "@/lib/credit-goals";
 import { loadCostlyBorrowing } from "@/lib/costly-borrowing";
+import { loadRenting } from "@/lib/renting";
 import { MortgageMoneyError, loadMortgageMoney } from "@/lib/mortgage-money";
 import { loadCarLoan } from "@/lib/car-loan";
 import { loadDebtReview } from "@/lib/debt-review";
@@ -48,6 +49,7 @@ import { longGameReply } from "./student-long-game-replies";
 import { familyLoansReply } from "./family-loans-replies";
 import { creditGoalReply } from "./credit-goal-replies";
 import { costlyReply } from "./costly-borrowing-replies";
+import { rentingReply } from "./renting-replies";
 import { mortgageMoneyReply } from "./mortgage-money-replies";
 import { carLoanReply } from "./car-loan-replies";
 import { debtReviewReply } from "./debt-review-replies";
@@ -123,6 +125,8 @@ export async function answerDebt(
     }
     case "costly_borrowing":
       return costlyReply(await loadCostlyBorrowing(userId, { client, now }));
+    case "renting":
+      return rentingReply(await loadRenting(userId, { client, now }));
     case "mortgage_money": {
       try {
         return mortgageMoneyReply(

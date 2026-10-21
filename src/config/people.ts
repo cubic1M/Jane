@@ -67,6 +67,9 @@ export const SUGGESTION_TOPICS = [
   "low_balance",
   "budget_overrun",
   "education_529",
+  // Spec step 248: renting, counted.
+  "rent_reporting",
+  "rent_increase",
   "social_security_timing",
   "medicare",
   "rmd",
@@ -153,6 +156,7 @@ export const PEOPLE: readonly Person[] = [
       "cover_change",
       "credit_building",
       "bnpl",
+      "rent_reporting",
     ],
     mustNot: [
       "umbrella",
@@ -247,8 +251,8 @@ export const PEOPLE: readonly Person[] = [
       "emergency_fund",
       "student_repayment",
       "renters_insurance",
-
       "auto_insurance",
+      "rent_reporting",
     ],
     mustNot: [
       "employer_match",
@@ -429,6 +433,7 @@ export const PEOPLE: readonly Person[] = [
       "cash_advance",
       "credit_building",
       "credit_report_errors",
+      "rent_reporting",
     ],
     mustNot: [
       "concentration",
@@ -475,6 +480,7 @@ export const PEOPLE: readonly Person[] = [
       "business_insurance",
       "retirement_self_employed",
       "cash_flow",
+      "rent_reporting",
     ],
     mustNot: [
       "employer_match",

@@ -931,3 +931,40 @@ test("costly short-term borrowing is found, costed, and the way out is laid out"
   await expect(out).toContainText("Credit union payday alternative loan (PAL)");
   await expect(out).toContainText("Build a small buffer");
 });
+
+// Spec step 248: a security deposit is followed to the day the state says it is due back, and
+// rent reporting is never on by itself.
+test("a deposit is followed to its due date and marked returned", async ({
+  context,
+  page,
+  baseURL,
+}) => {
+  const user = await signedInUser("user");
+  userId = user.userId;
+  await context.addCookies([
+    { name: "authjs.session-token", value: user.sessionToken, url: baseURL ?? "" },
+  ]);
+
+  await page.goto("/loans/renting");
+  await expect(page.getByRole("heading", { level: 1, name: "Your rent" })).toBeVisible();
+  await expect(page.getByText("I don't see rent payments in your bank data yet.")).toBeVisible();
+  await expect(page.getByRole("button", { name: "Report my rent" })).toHaveCount(0);
+
+  const deposits = page.getByRole("region", { name: "Security deposits" });
+  await deposits.getByLabel("Deposit").fill("1500");
+  await deposits.getByLabel("State").selectOption("NY");
+  await deposits.getByLabel("Day you moved out").fill("2026-01-10");
+  const follow = deposits.getByRole("button", { name: "Follow this deposit" });
+  await follow.focus();
+  await page.keyboard.press("Enter");
+  await expect(page.getByRole("status")).toHaveText("Deposit saved.");
+  await expect(deposits).toContainText("$1,500.00 deposit (NY)");
+  await expect(deposits).toContainText("New York General Obligations Law § 7-108");
+
+  await deposits.getByLabel(/Amount returned/).fill("1400");
+  const back = deposits.getByRole("button", { name: "It came back" });
+  await back.focus();
+  await page.keyboard.press("Enter");
+  await expect(page.getByRole("status")).toHaveText("Noted that it came back.");
+  await expect(deposits).toContainText("returned $1,400.00");
+});

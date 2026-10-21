@@ -1215,6 +1215,29 @@ const BASE_QUESTIONS: readonly CheckQuestion[] = [
       maxChars: 1_000,
     },
   },
+  // Spec step 248: renting, counted.
+  {
+    id: "debt-37",
+    text: "can you report my rent to the credit bureaus",
+    needs: "rules",
+    expect: {
+      intent: "renting",
+      mentions: /rent/i,
+      link: "/loans/renting",
+      maxChars: 2_000,
+    },
+  },
+  {
+    id: "debt-38",
+    text: "when do I get my security deposit back",
+    needs: "rules",
+    expect: {
+      intent: "renting",
+      mentions: /deposit|rent/i,
+      link: "/loans/renting",
+      maxChars: 2_000,
+    },
+  },
   // Spec step 247: out of costly short-term borrowing.
   {
     id: "debt-36",

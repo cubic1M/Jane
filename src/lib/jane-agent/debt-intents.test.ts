@@ -441,6 +441,19 @@ describe("debt questions", () => {
     }
   });
 
+  it("reads rent reporting, a rent increase and a deposit (spec step 248)", () => {
+    for (const text of [
+      "can you report my rent to the credit bureaus",
+      "can my rent help my credit score",
+      "my rent went up again",
+      "when do I get my security deposit back",
+      "my landlord still has my deposit",
+    ]) {
+      expect(intent(text), text).toEqual({ kind: "renting" });
+    }
+    expect(intent("what is my credit score")).not.toEqual({ kind: "renting" });
+  });
+
   it("reads recasting and extra money for the mortgage (spec step 246)", () => {
     expect(intent("I have $20,000, should I recast my mortgage")).toEqual({
       kind: "mortgage_money",

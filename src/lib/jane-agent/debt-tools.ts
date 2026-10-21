@@ -32,6 +32,7 @@ import type { CreditGoals } from "@/lib/credit-goals";
 import type { CostlyBorrowing } from "@/lib/costly-borrowing";
 import type { MortgageMoneyView } from "@/lib/mortgage-money";
 import type { CarLoan } from "@/lib/car-loan";
+import type { Renting } from "@/lib/renting";
 import type { DebtReview } from "@/lib/debt-review";
 import type { DebtTrouble } from "@/lib/debt-trouble";
 import type { HomeEquity, ProjectComparison } from "@/lib/home-equity";
@@ -202,6 +203,12 @@ export const DEBT_TOOLS: Anthropic.Tool[] = [
     name: "costly_borrowing",
     description:
       "Costly short-term borrowing found in the last year of the person's payments: payday loans (matched proceeds and repayments), card cash advances (fee plus interest from day one), repeated overdraft fees and pay advance apps (tips and fees), each with how many times, what it cost in dollars, the yearly rate that works out to and how that was worked out (stated assumptions), and whether it's a cycle. In demo advice mode, the cheaper ways out: a credit union payday alternative loan (capped at 28%) with its cost against the payday loan's, an employer pay advance, a buffer built over six months, and steps to stop the cycle. Facts about what was borrowed and what it cost; the way out is advice, the choice is the person's.",
+    input_schema: noInput,
+  },
+  {
+    name: "renting",
+    description:
+      "Renting, counted: the person's rent as found in their payments (monthly amount, any increase against what is usual, using a stand-in local trend), whether their rent is being reported to the credit bureaus (only ever after their own yes; the monthly fee and what reporting can and can't do are stated), and any security deposits they have told Jane about with the day each is due back after moving out (days from the state's law, with the citation, to be confirmed against the lease). Facts and the person's own choices; Jane reports nothing and sends nothing herself.",
     input_schema: noInput,
   },
   {
@@ -413,6 +420,7 @@ export const DEBT_TOOL_STATUS: Readonly<Record<string, string>> = {
   car_loan: "Looking at your car loan…",
   mortgage_money: "Comparing ways to use the money…",
   costly_borrowing: "Looking for costly borrowing…",
+  renting: "Looking at your rent…",
 };
 
 export function refinanceToolOutput(refi: Refinance, money: (cents: number) => string) {
@@ -1304,5 +1312,43 @@ export function debtAutopilotToolOutput(data: DebtAutopilot, money: (cents: numb
       on: c.on,
     })),
     payoffPlanStartedByJaneOn: data.planStartedOn,
+  };
+}
+
+export function rentingToolOutput(d: Renting, money: (cents: number) => string) {
+  if (!d.renter && d.deposits.length === 0) {
+    return { note: "No rent payments found in the last year, and no deposits told to Jane." };
+  }
+  return {
+    monthlyRent: d.monthlyCents === null ? null : money(d.monthlyCents),
+    rentIncrease: d.rise
+      ? {
+          from: money(d.rise.beforeCents),
+          to: money(d.rise.nowCents),
+          percent: Math.round(d.rise.risePercentBps / 10) / 10,
+          extraPerYear: money(d.rise.yearlyExtraCents),
+          usualPercent: d.rise.usualBps / 100,
+          usualIs: d.localRent.label,
+          worthAskingAbout: d.rise.askAbout,
+        }
+      : null,
+    rentReporting: d.reporting.on
+      ? { on: true, since: d.reporting.since }
+      : {
+          on: false,
+          monthlyFee: money(d.reporting.monthlyFeeCents),
+          note: d.reporting.note,
+          howToTurnOn:
+            "The person taps yes in the chat or on their rent page; nothing is reported before.",
+        },
+    deposits: d.deposits.map((x) => ({
+      amount: money(x.amountCents),
+      state: x.state,
+      status: x.view.status,
+      dueBack: x.view.dueOn,
+      daysLeft: x.view.daysLeft,
+      rule: x.view.rule.note,
+      source: x.view.rule.source,
+    })),
   };
 }

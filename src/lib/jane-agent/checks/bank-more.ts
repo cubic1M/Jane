@@ -481,6 +481,8 @@ const rows: Row[] = [
     "how much have payday loans and cash advances cost me",
   ],
   ["debt", "/loans/costly", "costly_borrowing", "i keep overdrafting every month"],
+  ["debt", "/loans/renting", "renting", "can my rent help my credit score"],
+  ["debt", "/loans/renting", "renting", "my rent went up again"],
   ["loans", "/loans/recast", "mortgage_money", "i have $20,000, should i recast my mortgage"],
   ["loans", "/loans/recast", "mortgage_money", "pay down my mortgage or invest $500 a month"],
   ["loans", "/loans/auto", "car_loan", "can i cancel the extended warranty on my car loan"],
