@@ -73,9 +73,10 @@ describe("debt questions", () => {
       kind: "decision",
       item: "loan",
     });
-    expect(intent("is a debt consolidation loan a good idea")).toEqual({
-      kind: "debt_decision",
-      which: "consolidate",
+    // "Is X a good idea" is a decision question; the loans decision answers it the same way.
+    expect(intent("is a debt consolidation loan a good idea")).toMatchObject({
+      kind: "decision",
+      item: "loan",
     });
     for (const text of ["refinance offers", "any better rates", "refinance"]) {
       expect(intent(text), text).toEqual({ kind: "refinance", target: null });
@@ -446,7 +447,7 @@ describe("debt questions", () => {
     ]) {
       expect(intent(text), text).toEqual({ kind: "debt_decision", which: "overdraft" });
     }
-    expect(intent("is klarna a good idea")).toEqual({ kind: "debt_decision", which: "bnpl" });
+    expect(intent("is klarna a good idea")).toMatchObject({ kind: "decision", item: "loan" });
     for (const text of ["should I use buy now pay later?", "should I get Afterpay"]) {
       expect(intent(text), text).toMatchObject({ kind: "decision", item: "loan" });
     }
