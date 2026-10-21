@@ -367,7 +367,7 @@ const MONTHLY_REPORT =
 const STEADY =
   /\bsteady (?:paycheck|pay|income)\b|\b(?:my|the) (?:income|pay|paychecks?) (?:is|are) (?:uneven|irregular|unpredictable|all over the place)\b|\b(?:uneven|irregular|freelance|variable) income\b|\bpay myself (?:a )?(?:steady|regular)\b/;
 const PRIORITIES =
-  /\bwhat should i do (?:first|next|now)\b|\bwhat matters (?:most|now)\b|\bwhat'?s (?:most )?important\b|\bwhere (?:do|should) i start\b|\bmy (?:top )?priorities\b|\bnext best thing\b/;
+  /\bwhat should i do (?:first|next|now)\b|\bwhat matters (?:most|now)\b|\bwhat'?s (?:most )?important\b|\bwhere (?:do|should) i start\b|\bmy (?:top )?priorities\b|\bnext best thing\b|\b(?:one thing|what(?:'?s| am)?) i'?m doing wrong\b|\bwhat am i (?:doing )?wrong\b|\bbiggest (?:\w+ )?(?:mistake|leak|problem)\b/;
 // Spec step 183. "Am I OK to buy …" is a purchase question, and goals have their own answer.
 const WHOLE_NOW =
   /\bam i (?:ok|okay|alright|all right|fine|good)\b(?! (?:to|if|for|with|on)\b)|\bhow am i doing\b(?! (?:on|with)\b)|\bhow (?:are|is) (?:my|our) (?:money|finances?)(?: doing| looking)?\b|\bhow'?s (?:my|our) (?:money|finances?)\b|\b(?:the )?(?:big|whole|full) picture\b|\bis (?:my|our) money (?:ok|okay|alright|fine)\b|\bam i on track\b(?! (?:for|with)\b)|\b(?:overall|in general),? how am i\b/;

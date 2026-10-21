@@ -25,6 +25,17 @@ const item = (title: string, why: string): Ranked =>
     why,
   }) as Ranked;
 
+describe("what am I doing wrong", () => {
+  it.each([
+    "what's one thing i'm doing wrong",
+    "whats one thing im doing wrong",
+    "what am i doing wrong",
+    "what's my biggest money mistake",
+  ])("reads %j as what matters most", (text) => {
+    expect(parseIntent(text, ASOF).kind).toBe("priorities");
+  });
+});
+
 describe("why is that first", () => {
   it("keeps the list as the topic", () => {
     expect(topicOf(parseIntent("what should i do first", ASOF))).toEqual({ kind: "priorities" });
