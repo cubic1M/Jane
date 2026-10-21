@@ -6,6 +6,8 @@ import {
   appendEntry,
   dropOf,
   entryOf,
+  meetsBar,
+  metricsOf,
   nightlyTable,
   withNightlyTable,
   type NightEntry,
@@ -80,7 +82,7 @@ describe("the nightly record", () => {
     expect(again[0].score).toBe(92);
     const doc = withNightlyTable("# Chat quality\n", again);
     expect(doc).toContain("<!-- nightly:start -->");
-    expect(doc).toContain("| 2026-10-19 | with Claude | 92 |");
+    expect(doc).toMatch(/\| 2026-10-19 \| with Claude \|.* 92 \|/);
     expect(
       withNightlyTable(doc, appendEntry(again, night({ date: "2026-10-20", score: 93 }))),
     ).toMatch(/2026-10-20[\s\S]*2026-10-19/);
@@ -106,5 +108,66 @@ describe("the rotating share of the bank", () => {
     expect(ids(1)).toEqual(["r1", "c3", "c4"]);
     expect(ids(2)).toEqual(["r1", "c1", "c2"]);
     expect(rotated(bank, undefined)).toBe(bank);
+  });
+});
+
+// The depth bar (docs/spec.md "Depth first"): understood, right figures, follow-ups, timings.
+describe("the depth bar", () => {
+  const result = (over: Record<string, unknown>) =>
+    ({
+      id: "q",
+      text: "q",
+      needs: "rules",
+      status: "graded",
+      reason: "",
+      score: 100,
+      firstWordsMs: 500,
+      totalMs: 1500,
+      checks: [{ name: "answered", ok: true, reason: "" }],
+      ...over,
+    }) as CheckRun["results"][number];
+
+  it("works out the three shares and the timings from the results", () => {
+    const m = metricsOf([
+      result({}),
+      result({ checks: [{ name: "answered", ok: false, reason: "" }], score: 40 }),
+      result({
+        checks: [
+          { name: "answered", ok: true, reason: "" },
+          { name: "figures", ok: true, reason: "" },
+        ],
+        followUp: true,
+      }),
+      result({
+        checks: [
+          { name: "answered", ok: true, reason: "" },
+          { name: "figures", ok: false, reason: "" },
+        ],
+        followUp: true,
+        score: 60,
+      }),
+      result({ status: "skipped" }),
+    ]);
+    expect(m.understoodPct).toBe(75);
+    expect(m.figuresPct).toBe(50);
+    expect(m.followUpsPct).toBe(50);
+    expect(m.counts).toEqual({ questions: 4, withFigures: 2, followUps: 2 });
+    expect(m.firstWordsMs).toBe(500);
+    expect(m.fullAnswerMs).toBe(1500);
+  });
+
+  it("is met only with all three at the bar, and the table says so for three nights", () => {
+    const good = { understoodPct: 96, figuresPct: 100, followUpsPct: 91 } as never;
+    const bad = { understoodPct: 96, figuresPct: 99, followUpsPct: 91 } as never;
+    expect(meetsBar(good)).toBe(true);
+    expect(meetsBar(bad)).toBe(false);
+    expect(meetsBar(undefined)).toBe(false);
+    const nights = ["2026-10-19", "2026-10-20", "2026-10-21"].map((date) =>
+      night({ date, metrics: good }),
+    );
+    expect(nightlyTable(nights)).toContain("Met for the last three nights.");
+    expect(
+      nightlyTable([...nights.slice(0, 2), night({ date: "2026-10-22", metrics: bad })]),
+    ).toContain("Not met yet.");
   });
 });
