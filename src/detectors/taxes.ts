@@ -16,7 +16,7 @@ import { marginalRateOf } from "@/planning/tax-estimate";
 import { careShare } from "@/planning/tax-savings";
 import type { Fact } from "@/profile/build";
 import { type Detector, type Urgency, suggestionId } from "./contract";
-import { evidence, factEvidence, tx, weakest } from "./helpers";
+import { evidence, factEvidence, tx, weakest, headlineOf } from "./helpers";
 
 // Detectors for taxes (spec step 261), over what a person's profile and rows show: the pay
 // withheld on company stock, Roth conversions near retirement, childcare paid for with after-
@@ -112,6 +112,8 @@ const withholdingGap: Detector = {
       capability: "taxes",
       topic: "withholding_gap",
       title: "Set aside the tax your stock vests won't have withheld",
+      headline: headlineOf("Set aside tax on your stock vests", short, "risk"),
+      short: `About ${formatCents(vested)} is vesting, and flat withholding leaves you short.`,
       // The bill itself can't be saved; planning for it avoids the penalty and the surprise,
       // so it counts for a share of its size in ranking.
       worthCents: short,
@@ -172,6 +174,8 @@ const rothConversion: Detector = {
       capability: "taxes",
       topic: "roth_conversion",
       title: "Look at converting some of your pre-tax retirement money to a Roth",
+      headline: headlineOf("Convert some pre-tax money to a Roth", saves, "saves"),
+      short: `Done well, it could save about ${formatCents(saves)} a year in tax.`,
       worthCents: saves,
       worthKind: "saves",
       confidence: weakest([
@@ -219,6 +223,8 @@ const childcareTaxBreak: Detector = {
       capability: "taxes",
       topic: "childcare_tax_break",
       title: "Pay for childcare from a dependent care FSA",
+      headline: headlineOf("Use a dependent care FSA for childcare", saves, "saves"),
+      short: `You paid ${formatCents(spent)} for childcare in ${profile.months} months.`,
       worthCents: saves,
       worthKind: "saves",
       confidence: weakest([
@@ -257,6 +263,12 @@ const identityPin: Detector = {
       capability: "taxes",
       topic: "identity_ip_pin",
       title: "Get an IRS Identity Protection PIN before you file",
+      headline: headlineOf(
+        "Get an IRS Identity Protection PIN",
+        Math.round(T.typicalRefundCents * T.ipPinTheftChance),
+        "risk",
+      ),
+      short: `A stolen refund averages ${formatCents(T.typicalRefundCents)}; a free IP PIN stops it.`,
       // The average refund times the small chance of being targeted: not the whole refund.
       worthCents: Math.round(T.typicalRefundCents * T.ipPinTheftChance),
       worthKind: "risk",
@@ -297,6 +309,8 @@ const yearEndMoves: Detector = {
       capability: "taxes",
       topic: "year_end_moves",
       title: "Use your 401(k) room before your last paycheck of the year",
+      headline: headlineOf("Add to your 401(k) before year end", saves, "saves"),
+      short: `About ${formatCents(room)} more at your ${Math.round(rate * 100)}% bracket would save ${formatCents(saves)}.`,
       worthCents: saves,
       worthKind: "saves",
       confidence: weakest([
@@ -335,6 +349,8 @@ const charityReceipts: Detector = {
       capability: "taxes",
       topic: "charity_receipts",
       title: "Get the written receipt for your larger gifts",
+      headline: headlineOf("Get receipts for your larger gifts", Math.round(total * rate), "risk"),
+      short: `You gave ${formatCents(total)} in gifts of ${formatCents(GIVING.receiptFromCents)} or more.`,
       worthCents: Math.round(total * rate),
       worthKind: "risk",
       confidence: weakest([
@@ -382,6 +398,8 @@ const propertyTaxCheck: Detector = {
       capability: "taxes",
       topic: "property_tax_check",
       title: "Check whether your home is assessed for more than it's worth",
+      headline: headlineOf("Check your home's tax assessment", worth, "saves"),
+      short: `You paid ${formatCents(paid)} in property tax.`,
       worthCents: worth,
       worthKind: "saves",
       confidence: weakest([
@@ -428,6 +446,8 @@ const lossHarvest: Detector = {
       capability: "taxes",
       topic: "tax_loss_harvest",
       title: "Sell a holding at a loss to lower this year's tax",
+      headline: headlineOf("Sell a holding at a loss", saves, "saves"),
+      short: `A taxable account holds ${formatCents(loss)} less than you paid for it.`,
       worthCents: saves,
       worthKind: "saves",
       confidence: weakest([
@@ -474,6 +494,12 @@ const fileReturn: Detector = {
       capability: "taxes",
       topic: "file_return",
       title: "Get your tax forms in and your return ready",
+      headline: headlineOf(
+        "Get your tax forms in",
+        Math.round(T.lateFilingPenaltyCents * T.lateFilingOweShare),
+        "risk",
+      ),
+      short: `Your return is due April 15, ${days} ${days === 1 ? "day" : "days"} from now.`,
       // The penalty only applies if tax is owed, which about a fifth of filers do.
       worthCents: Math.round(T.lateFilingPenaltyCents * T.lateFilingOweShare),
       worthKind: "risk",

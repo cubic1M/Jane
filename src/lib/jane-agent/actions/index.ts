@@ -155,7 +155,7 @@ import { attentionResume } from "./attention";
 import { whatIfAdopt } from "./whatif";
 import { leanNotNow, leanStart } from "./lean";
 import { askAnswer } from "./ask";
-import { suggestionNo, suggestionYes } from "./suggestion";
+import { suggestionNo, suggestionWhy, suggestionYes } from "./suggestion";
 import { steadyOn, steadyPay, steadySkip } from "./steady";
 import { unusualMe, unusualNotMe } from "./unusual";
 import {
@@ -413,6 +413,7 @@ export const ACTION_HANDLERS: Readonly<Record<ActionId, ActionHandler>> = {
   "ask.answer.5": askAnswer(5),
   "suggestion.yes": suggestionYes,
   "suggestion.no": suggestionNo,
+  "suggestion.why": suggestionWhy,
   "steady.pay": steadyPay,
   "steady.skip": steadySkip,
   "steady.on": steadyOn,
