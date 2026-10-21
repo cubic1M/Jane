@@ -58,8 +58,13 @@ async function answer(ctx: CapabilityContext): Promise<Reply | null> {
     case "remind":
       return ackReply(userId, intent, { client });
     case "follow_up":
-    case "explain":
       return null;
+    case "explain":
+      return {
+        body: 'Why what? Ask me about something I just told you, like "why is the card first" or "why bitcoin", and I\'ll give you the reason.',
+        actions: [],
+        refs: {},
+      };
     case "why_finding":
       return whyFindingReply(userId, intent.findingId, { client });
     case "unknown":
@@ -92,7 +97,7 @@ async function answer(ctx: CapabilityContext): Promise<Reply | null> {
     }
     case "priorities": {
       const snapshot = await loadSnapshotFast(userId, { client, now });
-      return prioritiesReply(snapshot ? rankedFor(snapshot) : [], intent.explain);
+      return prioritiesReply(snapshot ? rankedFor(snapshot) : [], intent.explain, intent.one);
     }
     // Spec step 203.
     case "what_if":

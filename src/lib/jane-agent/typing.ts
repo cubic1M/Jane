@@ -5,7 +5,6 @@ import {
   CHAT_CLAUDE_TURN_CHARS,
   CHAT_CONTEXT_MINUTES,
   CHAT_MAX_MESSAGE,
-  CHAT_RULES_ONLY_KINDS,
 } from "@/config/agent-chat";
 import type { PrismaClient } from "@/generated/prisma/client";
 import { adviceMode } from "@/lib/advice-mode";
@@ -13,18 +12,24 @@ import { track } from "@/lib/analytics";
 import { llmEnabled } from "@/lib/anthropic";
 import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
-import { giveBack, hit } from "@/lib/rate-limit";
+import { hit } from "@/lib/rate-limit";
+import { claudeLimit, refundClaudeUse } from "./claude-limits";
 import { answerByRules } from "./answer";
 import { listPreferences } from "./preferences";
 import { shapeReply, styleInstructions, styleOf } from "./style";
 import { joinReplies, splitQuestions } from "./two-parts";
-import { askClaudeInChat, type ChatStreamEvent, type ChatTurn } from "./claude";
-import { resolvePronoun, type Topic } from "./context";
+import {
+  CHAT_UNAVAILABLE_TEXT,
+  askClaudeInChat,
+  type ChatStreamEvent,
+  type ChatTurn,
+} from "./claude";
+import { resolvePronoun, withTopic, type Topic } from "./context";
 import { typedFlowReply } from "./flows/chat";
 import { parseIntent } from "./intents";
 import { storeReply } from "./messages";
 import { localTime } from "./quiet-hours";
-import { clarifyReply, nearbyChoices, unknownReply, type Reply } from "./replies";
+import { unknownReply, type Reply } from "./replies";
 import { MESSAGE_SELECT, parseRefs, toChatMessage, type ChatMessage } from "./types";
 
 // Typing to Jane (spec step 84). What the person types is stored as a "user" message and
@@ -103,7 +108,7 @@ export async function recentTurns(
   const turns = rows.reverse();
   const unanswered = (m: { kind: string; body: string }) =>
     m.kind === "reply" &&
-    /^(?:I couldn't look into that|I can't answer that one yet|Which one do you mean|You've asked me a lot)/.test(
+    /^(?:I couldn't look into that|I couldn't write a full answer|I can't answer that one yet|Which one do you mean|You've asked me a lot)/.test(
       m.body,
     );
   return turns
@@ -120,19 +125,8 @@ export async function recentTurns(
 // How an answer was given: by the rules, by Claude (or blocked, or Claude couldn't), or
 // the fallback list of what Jane understands.
 export type AnswerSource =
-  "rules" | "claude" | "claude_blocked" | "claude_unavailable" | "fallback";
+  "rules" | "claude" | "claude_blocked" | "claude_unavailable" | "fallback" | "capped";
 type Source = AnswerSource;
-
-// The kinds of message that can point back at the last answer.
-const FOLLOWS: readonly string[] = [
-  "follow_up",
-  "about",
-  "unknown",
-  "act",
-  "cost",
-  "spending",
-  "decision",
-];
 
 async function answer(
   userId: string,
@@ -142,13 +136,6 @@ async function answer(
 ): Promise<{ reply: Reply; intent: string; source: Source; issues?: string[] }> {
   const asOf = now.toISOString().slice(0, 10);
   let intent = parseIntent(text, asOf);
-  // Spec step 89: no dead ends. An answer that couldn't be given ends with the closest
-  // things Jane can answer, as buttons.
-  const withNearby = (reply: Reply): Reply => {
-    if (reply.actions.length > 0) return reply;
-    const nearby = clarifyReply(reply.body, nearbyChoices(text, asOf));
-    return { ...nearby, refs: { ...reply.refs, ...nearby.refs } };
-  };
   // Spec step 95: an answer typed to a guided flow's question.
   const toFlow = await typedFlowReply(text, { userId, client, now });
   if (toFlow) return { reply: toFlow, intent: "flow_answer", source: "rules" };
@@ -171,23 +158,43 @@ async function answer(
     const reply = await answerByRules(userId, intent, { client, now, topic });
     return reply ? shapeReply(reply, style) : null;
   };
-  // Spec step 191: exact commands, and everything when Claude isn't there, keep the instant
-  // rules path.
-  if (!llmEnabled() || CHAT_RULES_ONLY_KINDS.includes(intent.kind)) {
+  // The backup for when Claude can't answer: the rules' answer from the same data, or, for
+  // anything they can't place, where the person stands (never a bare "unavailable").
+  const backup = async (): Promise<Reply> => {
+    const byRules = await rules();
+    if (byRules) return byRules;
+    const picture = await answerByRules(
+      userId,
+      { kind: "whole_picture", focus: "now" },
+      { client, now, topic: null },
+    );
+    return picture
+      ? {
+          ...picture,
+          body: `I couldn't write a full answer to that just now, so here is where you stand. ${picture.body}`,
+        }
+      : unknownReply(text, asOf);
+  };
+  // No Claude (no key: dev, tests): the rules answer, as before.
+  if (!llmEnabled()) {
     const byRules = await rules();
     if (byRules) return { reply: byRules, intent: intent.kind, source: "rules" };
     return { reply: unknownReply(text, asOf), intent: intent.kind, source: "fallback" };
   }
-  // Free text goes to Claude with every tool. Free questions count against Ask's limit too:
-  // the same tools and limits; past it the rules answer.
-  if (!(await hit("ask", userId, { client, now })).ok) {
-    const byRules = await rules();
+  // Chat architecture (docs/spec.md): every typed message is answered by Claude, writing from
+  // Jane's tools and numbers. A button, a card or a rules answer never stands in for it.
+  const limit = await claudeLimit(userId, { client, now });
+  if (limit === "budget") {
+    return { reply: await backup(), intent: intent.kind, source: "claude_unavailable" };
+  }
+  if (limit) {
     return {
-      reply: byRules ?? withNearby({ body: CHAT_ASK_LIMITED_TEXT, actions: [], refs: {} }),
+      reply: { body: limit.text, actions: [], refs: {} },
       intent: intent.kind,
-      source: byRules ? "rules" : "fallback",
+      source: "capped",
     };
   }
+  // Whatever goes wrong inside, the person gets an answer from the data, never a crash.
   const result = await askClaudeInChat(userId, history, text, {
     client,
     now,
@@ -196,20 +203,19 @@ async function answer(
     primerMs,
     advice: await adviceMode(userId, { client }),
     style: styleInstructions(style),
-    // The last topic goes only with a question that points back at it ("it", "why?"); a
-    // fresh question ("what's my net worth") isn't about the finding talked about before.
-    topic: FOLLOWS.includes(intent.kind) ? topic : null,
+    topic,
+  }).catch((error): Awaited<ReturnType<typeof askClaudeInChat>> => {
+    console.error("Jane's chat failed unexpectedly", { error: String(error).slice(0, 300) });
+    return { kind: "unavailable", reply: { body: CHAT_UNAVAILABLE_TEXT, actions: [], refs: {} } };
   });
   if (result.kind === "answer") {
     return { reply: result.reply, intent: intent.kind, source: "claude" };
   }
-  // Claude is slow, down, over its daily cap or blocked: the rules answer as they did before
-  // Claude read everything, never a broken message. And it doesn't count against the hour's
-  // free questions: Claude didn't answer it.
-  await giveBack("ask", userId, { client, now }).catch(() => {});
-  const fallback = await rules();
+  // Claude failed twice, ran out of time, hit a cap or was blocked: a short answer from the
+  // same data, and it doesn't count against the person's allowance.
+  await refundClaudeUse(userId, { client, now });
   return {
-    reply: fallback ?? withNearby(result.reply),
+    reply: await backup(),
     intent: intent.kind,
     source: result.kind === "blocked" ? "claude_blocked" : "claude_unavailable",
     // Spec step 93: which guardrail rules blocked it, codes only, never the text.
@@ -266,6 +272,11 @@ export async function sendToJane(
   });
   // A millisecond later, so the answer always sits under the question.
   const answeredAt = new Date(now.getTime() + 1);
+  // Whatever the answer was, even one that failed, the next \"why\" is about THIS question,
+  // not an older topic.
+  if (!reply.refs.topic) {
+    reply.refs = { ...reply.refs, topic: { kind: "asked", target: text.slice(0, 80) } };
+  }
   const replied = await storeReply(userId, reply, { client, at: answeredAt });
   // What kind of question, never its words.
   await track(userId, "chat_message_sent", {

@@ -347,6 +347,8 @@ export const CHAT_CLAUDE_TOTAL_MS = 40_000;
 // After Claude fails, free questions get the rules' answer at once for this long, instead
 // of waiting on Claude again.
 export const CHAT_CLAUDE_COOLDOWN_SECONDS = 30;
+// ...and a rate limit or server error is tried once more after this pause before that.
+export const CHAT_CLAUDE_RETRY_MS = 400;
 // The person's main numbers are looked up before Claude is asked; if they take longer than
 // this, Claude starts without them (it has the tools) and the lookup finishes for next time.
 // The clock for Claude starts after this, so a slow lookup never uses up its time.
@@ -407,3 +409,10 @@ export const CHAT_SEARCH_RESULTS = 30;
 // investing. Rates and thresholds live here, never in the answer.
 export const DECISION_HIGH_RATE_BPS = 800;
 export const DECISION_MIN_CUSHION_MONTHS = 3;
+
+// Claude answers every typed message (docs/spec.md, "Chat architecture"), so it is capped: a
+// sample (Try Jane) person gets this many answers in all, and all of Claude's chat answers
+// together may cost this much a month (cents; CHAT_MONTHLY_CAP_CENTS overrides it), under the
+// account's $10 limit. Past either, the person gets a written answer from the same data.
+export const CHAT_TRIAL_MESSAGES = 25;
+export const CHAT_MONTHLY_CAP_CENTS_DEFAULT = 800;
