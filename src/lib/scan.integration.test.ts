@@ -69,7 +69,7 @@ vi.mock("@/lib/suggestions", async (importOriginal) => {
 
 import { SCANNING_HELLO } from "@/config/scan";
 import { openChat } from "@/lib/jane-agent/open";
-import { scanInProgress, scanReady } from "@/lib/scan";
+import { scanInProgress, scanProgress, scanReady } from "@/lib/scan";
 import { startTrial } from "@/lib/trial";
 import { syncItem } from "@/lib/plaid/sync";
 
@@ -122,6 +122,24 @@ describe.runIf(url)("the chat opens during the first scan", { timeout: 120_000 }
     expect(
       (await client.user.findUniqueOrThrow({ where: { id: trial.userId } })).firstScanDoneAt,
     ).not.toBeNull();
+  });
+
+  it("reports each stage of the first scan as it really happens", async () => {
+    const trial = await startTrial({ client, now: NOW, defer: true });
+    created.push(trial.userId);
+    const before = await scanProgress(trial.userId, { client });
+    expect(before).toMatchObject({ transactions: false, months: 0, detection: false, done: false });
+
+    await syncItem(trial.itemId, { client, now: NOW, progressive: true });
+    const after = await scanProgress(trial.userId, { client });
+    expect(after).toMatchObject({
+      accounts: true,
+      transactions: true,
+      detection: true,
+      done: true,
+    });
+    expect(after.months).toBeGreaterThanOrEqual(6);
+    expect(after.suggestions).toBe(true);
   });
 
   it("says it is still looking first, and the brief waits for the suggestions", async () => {
