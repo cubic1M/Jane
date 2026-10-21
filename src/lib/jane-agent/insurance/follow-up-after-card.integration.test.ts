@@ -9,6 +9,7 @@ vi.hoisted(() => {
 vi.mock("@/lib/session", () => ({ requireUser: vi.fn() }));
 
 import { createCheckPerson, deleteCheckPerson } from "../checks/person";
+import { chatPrimer } from "../claude-tools";
 import { sendToJane } from "../typing";
 
 // A follow-up right after a card must work: "can you change my car insurance" gets the switch
@@ -102,5 +103,13 @@ describe.runIf(url)("a follow-up right after a card", () => {
     expect(follow.reply.body).toMatch(/higher deductible/);
     expect(follow.reply.actions.filter((a) => a.kind !== "link")).toEqual([]);
     expect(follow.reply.body).not.toMatch(/button|couldn't/i);
+  });
+
+  it("sends who the person is with their numbers, so answers fit their life", async () => {
+    const primer = await chatPrimer(userId, { client, now: NOW });
+    expect(primer.text).toMatch(/about_them: \[/);
+    // The facts of their life, in words: where they live, how they are paid.
+    expect(primer.text).toMatch(/Where you live: /);
+    expect(primer.text).toMatch(/How you're paid: /);
   });
 });

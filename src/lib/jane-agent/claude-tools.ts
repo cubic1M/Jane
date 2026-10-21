@@ -19,6 +19,7 @@ import { CARD_SELECT, buildCard } from "@/lib/cards";
 import { comparisonFor } from "@/lib/compare";
 import { frequencyWords } from "@/lib/explain-input";
 import { loadSteady } from "@/lib/steady-pay";
+import { FACT_KEYS } from "@/profile/facts";
 import { scopedFor } from "@/lib/db-scoped";
 import { loadChanges } from "@/lib/changes";
 import { listGoals } from "@/lib/goals";
@@ -1011,6 +1012,19 @@ async function computePrimer(
   if (matters.text) {
     parts.push(matters.text);
     cents.push(...matters.cents);
+  }
+  // Who they are: the facts of their life (renter or owner, family, how they are paid, company
+  // stock, a 401(k) and so on), so an answer fits their life instead of anyone's.
+  const profile = await loadProfile(userId, { client, now }).catch(() => null);
+  if (profile) {
+    const about = FACT_KEYS.flatMap((key) => {
+      const fact = profile.facts[key];
+      if (!fact || fact.value === null || fact.value === "unknown" || fact.confidence < 60)
+        return [];
+      if (typeof fact.value === "number" && /_cents$/.test(key)) cents.push(Math.abs(fact.value));
+      return [`${fact.label}: ${sayFact(key, fact.value)}`];
+    });
+    if (about.length > 0) parts.push(`about_them: ${JSON.stringify(about)}`);
   }
   // Spec step 91: what they told Jane, and suggestions not to make again.
   const remembered = await listPreferences(userId, { client }).catch(() => []);
