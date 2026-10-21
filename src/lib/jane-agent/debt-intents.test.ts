@@ -67,9 +67,10 @@ describe("debt questions", () => {
       kind: "refinance",
       target: "student loan",
     });
-    expect(intent("should I consolidate my credit card")).toEqual({
-      kind: "refinance",
-      target: "credit card",
+    // A "should I consolidate" is a decision, answered straight (src/planning/debt-decisions.ts).
+    expect(intent("should I consolidate my credit card debt")).toEqual({
+      kind: "debt_decision",
+      which: "consolidate",
     });
     for (const text of ["refinance offers", "any better rates", "refinance"]) {
       expect(intent(text), text).toEqual({ kind: "refinance", target: null });

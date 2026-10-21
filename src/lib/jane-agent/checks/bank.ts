@@ -23,6 +23,8 @@ export type Expect = {
   // A short list is fine here: comparing options, or what's due.
   list?: boolean;
   maxChars?: number;
+  // A straight answer to a decision: this many sentences at most.
+  maxSentences?: number;
 };
 
 export type CheckQuestion = {
@@ -1251,6 +1253,155 @@ const BASE_QUESTIONS: readonly CheckQuestion[] = [
       link: "/loans/help",
       list: true,
       maxChars: 3_200,
+    },
+  },
+  // Straight answers to debt and credit decisions: three sentences or fewer, from the
+  // person's own numbers (src/planning/debt-decisions.ts).
+  {
+    id: "debt-41",
+    text: "should I pay off my card or invest?",
+    needs: "rules",
+    expect: {
+      intent: "debt_decision",
+      mentions: /invest/i,
+      link: "/loans",
+      maxSentences: 3,
+      maxChars: 700,
+    },
+  },
+  {
+    id: "debt-42",
+    text: "should I consolidate my debt?",
+    needs: "rules",
+    expect: {
+      intent: "debt_decision",
+      mentions: /cards?/i,
+      link: "/loans",
+      maxSentences: 3,
+      maxChars: 700,
+    },
+  },
+  {
+    id: "debt-43",
+    text: "should I use my savings to pay off my cards?",
+    needs: "rules",
+    expect: {
+      intent: "debt_decision",
+      mentions: /cash/i,
+      link: "/loans",
+      maxSentences: 3,
+      maxChars: 700,
+    },
+  },
+  {
+    id: "debt-44",
+    text: "should I close a credit card?",
+    needs: "rules",
+    expect: {
+      intent: "debt_decision",
+      mentions: /limit/i,
+      link: "/loans",
+      maxSentences: 3,
+      maxChars: 700,
+    },
+  },
+  {
+    id: "debt-46",
+    text: "will paying off my card hurt my credit?",
+    needs: "rules",
+    expect: {
+      intent: "debt_decision",
+      mentions: /doesn't hurt/i,
+      link: "/loans",
+      maxSentences: 3,
+      maxChars: 700,
+    },
+  },
+  {
+    id: "debt-47",
+    text: "should I take a personal loan to pay off my cards?",
+    needs: "rules",
+    expect: {
+      intent: "debt_decision",
+      mentions: /cards?/i,
+      link: "/loans",
+      maxSentences: 3,
+      maxChars: 700,
+    },
+  },
+  {
+    id: "debt-48",
+    text: "should I take a payday loan?",
+    needs: "rules",
+    expect: {
+      intent: "debt_decision",
+      mentions: /a year/i,
+      link: "/loans",
+      maxSentences: 3,
+      maxChars: 700,
+    },
+  },
+  {
+    id: "debt-49",
+    text: "should I pay off my student loan early?",
+    needs: "rules",
+    expect: {
+      intent: "debt_decision",
+      mentions: /student|loan|nothing to pay down/i,
+      link: "/loans",
+      maxSentences: 3,
+      maxChars: 700,
+    },
+  },
+  {
+    id: "debt-50",
+    text: "should I pay extra on my mortgage or invest?",
+    needs: "rules",
+    expect: {
+      intent: "debt_decision",
+      mentions: /invest|nothing to pay down/i,
+      link: "/loans",
+      maxSentences: 3,
+      maxChars: 700,
+    },
+  },
+  {
+    id: "debt-51",
+    text: "what about a personal loan?",
+    needs: "rules",
+    after: "debt-42",
+    expect: {
+      intent: "debt_decision",
+      mentions: /cards?/i,
+      link: "/loans",
+      maxSentences: 3,
+      maxChars: 700,
+    },
+  },
+  {
+    id: "debt-52",
+    text: "and what if I consolidate instead?",
+    needs: "rules",
+    after: "debt-41",
+    expect: {
+      intent: "debt_decision",
+      mentions: /cards?/i,
+      link: "/loans",
+      maxSentences: 3,
+      maxChars: 700,
+    },
+  },
+  {
+    id: "debt-45",
+    text: "will paying it off hurt my credit?",
+    needs: "rules",
+    after: "debt-44",
+    expect: {
+      intent: "debt_decision",
+      mentions: /doesn't hurt/i,
+      link: "/loans",
+      maxSentences: 3,
+      maxChars: 700,
     },
   },
   // Spec step 228: a home's equity, used well.

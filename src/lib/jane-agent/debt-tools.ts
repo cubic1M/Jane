@@ -197,6 +197,30 @@ export const DEBT_TOOLS: Anthropic.Tool[] = [
     input_schema: noInput,
   },
   {
+    name: "debt_decision",
+    description:
+      "A straight answer, in three sentences or fewer, to a money decision about debt or credit, from the person's own numbers: pay_or_invest (their highest-rate debt against what investing has historically returned), consolidate and personal_loan (the best stand-in offer and what it saves with fees counted), savings_or_debt (what cash beyond a month of spending would save on the worst card), close_card (what closing does to their limits and card use), payoff_hurts (it doesn't), payday_loan (its yearly rate and cheaper options) and student_early. Give the sentences as the answer. They already say what is math and, only in demo advice mode, what Jane would pick; do not add a recommendation of your own.",
+    input_schema: {
+      type: "object" as const,
+      properties: {
+        which: {
+          type: "string" as const,
+          enum: [
+            "pay_or_invest",
+            "consolidate",
+            "personal_loan",
+            "savings_or_debt",
+            "close_card",
+            "payoff_hurts",
+            "payday_loan",
+            "student_early",
+          ],
+        },
+      },
+      required: ["which"],
+    },
+  },
+  {
     name: "car_loan",
     description:
       "The car loan the person already has: its balance, rate and payment; in demo advice mode the best refinance offer compared by TOTAL cost (not the payment) with fees and break-even, and whether rates fell or the credit band improved since the last check; and dealer add-ons financed into it (GAP, extended warranty, service contract) found in the payments or typed in, each with the estimated refund if cancelled (unused months of the term, less the usual cancellation fee) and the drafted cancellation letter. The person confirms what a payment was (caraddon.yes) and sends the cancellation themselves (caraddon.mine) or asks the concierge team to (caraddon.team); Jane sends nothing. Refunds are estimates; the contract has the final say.",
@@ -388,6 +412,7 @@ export const DEBT_TOOL_STATUS: Readonly<Record<string, string>> = {
   debt_trouble: "Looking at your options…",
   debt_review: "Going over your debts…",
   car_loan: "Looking at your car loan…",
+  debt_decision: "Working it out with your numbers…",
 };
 
 export function refinanceToolOutput(refi: Refinance, money: (cents: number) => string) {

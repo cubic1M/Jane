@@ -155,6 +155,15 @@ export function fixedChecks(
     );
   }
 
+  if (expect.maxSentences) {
+    const count = body.split(/(?<=[.!?])\s+/).filter(Boolean).length;
+    checks.push(
+      count <= expect.maxSentences
+        ? pass("sentences")
+        : fail("sentences", `${count} sentences, over ${expect.maxSentences}.`),
+    );
+  }
+
   const max = expect.maxChars ?? ANSWER_MAX_CHARS;
   checks.push(
     body.length <= max ? pass("length") : fail("length", `${body.length} characters, over ${max}.`),
