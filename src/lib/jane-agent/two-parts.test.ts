@@ -42,7 +42,7 @@ describe("two questions in one message", () => {
 describe("what the last answer was about, for Claude", () => {
   it("names the subject and says what 'it' means", () => {
     expect(topicLine({ kind: "act", verb: "cancel", target: "Netflix" })).toBe(
-      'Your last answer was about Netflix (they were asking to cancel it). "It", "that one" and "the other one" mean that or what you just said.',
+      'Your last answer was about Netflix (they were asking to cancel it). If their message points back ("it", "that one", "the other one", "why", "tell me more", "ok and?", "what do you mean"), it is about that or what you just said; if it is a new question, ignore this.',
     );
     expect(topicLine({ kind: "spending", category: "Food", month: "2026-09" })).toMatch(
       /about Food, 2026-09\./,

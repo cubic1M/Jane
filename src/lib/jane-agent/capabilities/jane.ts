@@ -1,4 +1,5 @@
 import type { Reply } from "../replies";
+import { loadSnapshotFast } from "../snapshot-store";
 import { autopilotOf } from "@/lib/autopilot";
 import { lastControllerRun } from "@/lib/controller-log";
 import { autopilotFor, sectorAutopilots } from "@/lib/sector-autopilot";
@@ -42,6 +43,7 @@ import { lifeEventReply } from "../replies-life";
 import { loadSnapshot } from "../snapshot";
 import { type CapabilityContext } from "./shared";
 import { ackReply } from "../ack-reply";
+import { whyFindingReply } from "../explain-finding";
 
 // Jane herself: the whole picture, what she did, autopilot, memory, help and plans (spec step 190): the rules' answers for these kinds of question, one registered
 // capability each in ./index.ts. Moved out of ../answer.ts unchanged.
@@ -57,6 +59,14 @@ async function answer(ctx: CapabilityContext): Promise<Reply | null> {
       return ackReply(userId, intent, { client });
     case "follow_up":
       return null;
+    case "explain":
+      return {
+        body: 'Why what? Ask me about something I just told you, like "why is the card first" or "why bitcoin", and I\'ll give you the reason.',
+        actions: [],
+        refs: {},
+      };
+    case "why_finding":
+      return whyFindingReply(userId, intent.findingId, { client });
     case "unknown":
       return null;
     case "help":
@@ -82,12 +92,12 @@ async function answer(ctx: CapabilityContext): Promise<Reply | null> {
       return flowReply(intent.flow, { userId, client, now });
     // Spec step 183.
     case "whole_picture": {
-      const snapshot = await loadSnapshot(userId, { client, now });
+      const snapshot = await loadSnapshotFast(userId, { client, now });
       return wholePictureReply(snapshot, snapshot ? rankedFor(snapshot) : [], intent.focus);
     }
     case "priorities": {
-      const snapshot = await loadSnapshot(userId, { client, now });
-      return prioritiesReply(snapshot ? rankedFor(snapshot) : []);
+      const snapshot = await loadSnapshotFast(userId, { client, now });
+      return prioritiesReply(snapshot ? rankedFor(snapshot) : [], intent.explain, intent.one);
     }
     // Spec step 203.
     case "what_if":
