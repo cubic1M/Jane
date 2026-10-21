@@ -12,6 +12,7 @@ import {
   outCents,
   tx,
   weakest,
+  headlineOf,
 } from "./helpers";
 
 // Detectors for everyday money (spec step 254): subscriptions, fees, card interest, idle
@@ -55,6 +56,12 @@ const subscriptions: Detector = {
       capability: "subscriptions",
       topic: "subscriptions",
       title: "Go through your subscriptions and cancel the ones you don't use",
+      headline: headlineOf(
+        "Cancel subscriptions you don't use",
+        Math.round(yearly * R.subscriptionTrimShare),
+        "saves",
+      ),
+      short: `You pay about ${formatCents(Math.round(yearly))} a year across ${regular.length} subscriptions.`,
       worthCents: Math.round(yearly * R.subscriptionTrimShare),
       worthKind: "saves",
       confidence: evidence("seen", profile.months, count, "subscription charges"),
@@ -86,6 +93,8 @@ const bankFees: Detector = {
       capability: "cost",
       topic: "bank_fees",
       title: "Stop paying overdraft and bank fees",
+      headline: headlineOf("Stop paying overdraft and bank fees", total, "saves"),
+      short: `You paid ${formatCents(total)} in ${fees.length} bank fees in ${profile.months} months.`,
       worthCents: total,
       worthKind: "saves",
       confidence: evidence("seen", profile.months, fees.length, "bank fees"),
@@ -110,6 +119,8 @@ const lateFees: Detector = {
       capability: "cost",
       topic: "late_fees",
       title: "Set up automatic minimum payments so nothing is late",
+      headline: headlineOf("Pay at least the minimum automatically", total, "saves"),
+      short: `You paid ${formatCents(total)} in ${fees.length} late fees.`,
       worthCents: total,
       worthKind: "saves",
       confidence: evidence("seen", profile.months, fees.length, "late fees"),
@@ -134,6 +145,8 @@ const cardInterest: Detector = {
       capability: "debt",
       topic: "card_interest",
       title: "Pay down the card that is charging you interest",
+      headline: headlineOf("Pay down the card charging interest", total, "saves"),
+      short: `You paid ${formatCents(total)} in card interest over ${profile.months} months.`,
       worthCents: total,
       worthKind: "saves",
       confidence: evidence("seen", profile.months, charges.length, "interest charges"),
@@ -166,6 +179,12 @@ const idleCash: Detector = {
       capability: "investing",
       topic: "idle_cash",
       title: "Put the cash you don't need to work",
+      headline: headlineOf(
+        "Move idle cash to a higher rate",
+        Math.round((excess * (R.highYieldBps - R.currentCashBps)) / 10_000),
+        "earns",
+      ),
+      short: `You keep ${formatCents(liquidCents(data))} in cash; about ${formatCents(excess)} is more than you need.`,
       worthCents: Math.round((excess * (R.highYieldBps - R.currentCashBps)) / 10_000),
       worthKind: "earns",
       confidence: evidence("seen", profile.months, accounts, "cash accounts"),
@@ -208,6 +227,16 @@ const emergencyFund: Detector = {
         : gap
           ? "Keep cash for the gap between your income and your spending"
           : "Build a cushion for emergencies",
+      headline: headlineOf(
+        starter
+          ? "Set a small buffer aside first"
+          : gap
+            ? "Keep cash for your income gap"
+            : "Build an emergency cushion",
+        short,
+        "risk",
+      ),
+      short: `You keep ${formatCents(liquidCents(data))} in cash; a cushion for you is ${formatCents(target.targetCents)}.`,
       worthCents: short,
       worthKind: "risk",
       confidence: weakest([
@@ -244,6 +273,12 @@ const highCostLoans: Detector = {
       capability: "debt",
       topic: "high_cost_loans",
       title: "Replace the payday loan with something cheaper",
+      headline: headlineOf(
+        "Replace your payday loan",
+        Math.round(repaid * R.paydayFeeShare),
+        "saves",
+      ),
+      short: `You repaid ${formatCents(repaid)} in cash-advance loans in ${profile.months} months.`,
       worthCents: Math.round(repaid * R.paydayFeeShare),
       worthKind: "saves",
       confidence: evidence("seen", profile.months, payments.length, "cash-advance repayments"),
@@ -268,6 +303,8 @@ const debtPlan: Detector = {
       capability: "debt",
       topic: "debt_plan",
       title: "Make a plan to pay your debts off, biggest interest first",
+      headline: headlineOf("Pay off debt, highest interest first", interest, "saves"),
+      short: `Your cards hold ${formatCents(profile.facts.card_debt_cents.value as number)} and cost you ${formatCents(interest)} a year.`,
       worthCents: interest,
       worthKind: "saves",
       confidence: factEvidence(trouble),
@@ -293,6 +330,8 @@ const hardshipPlan: Detector = {
       capability: "debt",
       topic: "hardship_plan",
       title: "Ask your lenders for a hardship plan",
+      headline: headlineOf("Ask lenders for a hardship plan", costs, "risk"),
+      short: `Fees and interest cost you ${formatCents(costs)} in ${profile.months} months.`,
       worthCents: costs,
       worthKind: "risk",
       confidence: factEvidence(trouble),

@@ -72,8 +72,14 @@ test("the demo bank lands in Jane's chat, and Yes answers a finding", async ({
   await expect(finding.getByRole("button", { name: "Yes", exact: true })).toBeVisible();
 
   // Yes answers it, found again by its words once its buttons are gone.
+  // The tap shows its result at once (before the server has saved it): wait for the save
+  // before reloading, as a person would by looking at the screen settle.
+  const saved = page.waitForResponse(
+    (r) => r.request().method() === "POST" && new URL(r.url()).pathname === "/chat",
+  );
   await finding.getByRole("button", { name: "Yes", exact: true }).click();
   await expect(finding.getByText("You chose:")).toBeVisible();
+  await saved;
   await expect(finding.getByRole("button", { name: NOT_PIN })).toHaveCount(0);
   await expect(finding.getByRole("link", { name: /Open/ })).toBeVisible();
 

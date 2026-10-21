@@ -24,6 +24,9 @@ export type Expect = {
   // A short list is fine here: comparing options, or what's due.
   list?: boolean;
   maxChars?: number;
+  // An informational question gets no action button (a link to a page is fine): a button
+  // only appears when the person asked Jane to do something.
+  noButtons?: boolean;
 };
 
 export type CheckQuestion = {
@@ -39,6 +42,10 @@ export type CheckQuestion = {
   page?: string;
   tool?: string;
   profile?: "standard" | "demo_advice";
+  // The sample person it is asked as (src/config/people.ts), and the rules the judge holds
+  // the answer to (scenario files; see scenarios.ts).
+  person?: string;
+  judge?: { mustDo?: string[]; mustNot?: string[] };
 };
 
 const safe = (f: Facts) => [f.safeCents];
@@ -831,6 +838,36 @@ const BASE_QUESTIONS: readonly CheckQuestion[] = [
     expect: { avoid: /\b(?:I(?:'ve| have) put|under this answer|never answered)\b/i },
   },
 
+  // Today's live failures, as must-pass questions for the depth bar.
+  {
+    id: "dbar-wrong",
+    text: "what's one thing i'm doing wrong",
+    needs: "rules",
+    sector: "chat",
+    page: "/home",
+    tool: "priorities",
+    expect: { intent: "priorities", avoid: /button|couldn't look/i },
+  },
+  {
+    id: "dbar-why",
+    text: "why?",
+    needs: "rules",
+    after: "follow-2",
+    sector: "follow",
+    page: "/subscriptions",
+    tool: "finding_details",
+    expect: { mentions: /If you say yes/i, avoid: /which one do you mean|button/i },
+  },
+  {
+    id: "dbar-more",
+    text: "tell me more",
+    needs: "rules",
+    after: "follow-2",
+    sector: "follow",
+    page: "/subscriptions",
+    tool: "finding_details",
+    expect: { mentions: /If you say yes/i, avoid: /which one do you mean|button/i },
+  },
   {
     id: "debt-moves",
     text: "how can i pay less interest",
@@ -2220,7 +2257,10 @@ const MORE_QUESTIONS: readonly CheckQuestion[] = MORE_ROWS.map(
     id: `more-${String(index + 1).padStart(3, "0")}`,
     text,
     needs: "claude",
-    expect: sector === "edge" ? { avoid: ADVICE } : {},
+    expect: {
+      ...(sector === "edge" ? { avoid: ADVICE } : {}),
+      ...(tool === "propose_action" ? {} : { noButtons: true }),
+    },
     sector,
     page,
     tool,

@@ -62,6 +62,8 @@ describe("what matters most, for the primer", () => {
             key: "cost:bank_fees",
             topic: "bank_fees",
             title: "Stop paying overdraft and bank fees",
+            headline: "Stop paying overdraft and bank fees, save $105 a year",
+            short: "You paid $105.00.",
             why: "You paid $105.00.",
             worthCents: 10_500,
             worthKind: "saves",

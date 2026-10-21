@@ -309,6 +309,7 @@ export const ACTION_IDS = [
   "ask.answer.5",
   "suggestion.yes",
   "suggestion.no",
+  "suggestion.why",
   "steady.pay",
   "steady.skip",
   "steady.on",

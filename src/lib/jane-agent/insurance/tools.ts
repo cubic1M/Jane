@@ -83,7 +83,7 @@ export const INSURANCE_TOOLS: Anthropic.Tool[] = [
   {
     name: "insurance_decision",
     description:
-      "A direct answer, in three sentences or fewer, to an insurance decision the person asks about: whether to get umbrella or life cover, switch car insurance, pay yearly, raise a deductible, keep the work health plan, cancel phone cover, add a teen driver, and so on. Pass their question as they said it. The answer is built from their own policies and numbers; the verdict is demo advice and only given in demo advice mode (say so with the label). Use it instead of listing their policies when they ask what to do.",
+      "A direct answer, in three sentences or fewer, to an insurance decision the person asks about: whether to get umbrella or life cover, switch car insurance, pay yearly, raise a deductible, keep the work health plan, cancel phone cover, add a teen driver, and so on. Pass their question as they said it. The answer is built from their own policies and numbers; the verdict is demo advice and only given in demo advice mode (say so with the label). Use it instead of listing their policies when they ask what to do. Start with the verdict in words; offer no button unless they asked you to do something Jane can do; for any amount the answer doesn't give, use the calculate tool.",
     input_schema: {
       type: "object",
       properties: {

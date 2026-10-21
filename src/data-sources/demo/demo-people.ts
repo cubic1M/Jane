@@ -1426,3 +1426,38 @@ export function personLiabilities(demo: DemoSeed, today: string): LiabilitiesObj
       : [],
   } as unknown as LiabilitiesObject;
 }
+
+// What each sample person owns (spec step 67 for the demo bank, 252 for the eight people): a
+// home only where they own one (the written description in src/config/people.ts), a car where
+// they drive one. The loan subtype says which of their loans each is against.
+export type PersonAsset = {
+  kind: "home" | "vehicle";
+  name: string;
+  valueCents: number;
+  loanSubtype?: "mortgage" | "auto";
+};
+
+export const PERSON_ASSETS: Readonly<Record<PersonId, readonly PersonAsset[]>> = {
+  renter: [],
+  family: [
+    { kind: "home", name: "The family home", valueCents: 45_000_000, loanSubtype: "mortgage" },
+    { kind: "vehicle", name: "The family car", valueCents: 2_300_000, loanSubtype: "auto" },
+  ],
+  freelancer: [],
+  equity: [
+    { kind: "home", name: "Priya's home", valueCents: 135_000_000, loanSubtype: "mortgage" },
+    { kind: "vehicle", name: "Priya's car", valueCents: 4_500_000 },
+  ],
+  preretire: [
+    { kind: "home", name: "Dan and Lena's home", valueCents: 42_000_000, loanSubtype: "mortgage" },
+    { kind: "vehicle", name: "The car", valueCents: 1_800_000 },
+  ],
+  retiree: [
+    { kind: "home", name: "Ruth's home", valueCents: 38_000_000 },
+    { kind: "vehicle", name: "Ruth's car", valueCents: 1_200_000 },
+  ],
+  debt: [{ kind: "vehicle", name: "Chris's car", valueCents: 1_400_000, loanSubtype: "auto" }],
+  owner: [
+    { kind: "vehicle", name: "The delivery truck", valueCents: 2_800_000, loanSubtype: "auto" },
+  ],
+};

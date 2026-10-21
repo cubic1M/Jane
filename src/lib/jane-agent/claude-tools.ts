@@ -49,6 +49,7 @@ import { provenSavings } from "@/lib/savings-proof";
 import { listLifeEvents } from "@/lib/life-events";
 import { homeSummary } from "@/lib/home";
 import { formatCents } from "@/lib/money";
+import { calculate, type CalcInput } from "./calculate";
 import { affordWindow } from "@/planning/afford";
 import type { Scored } from "@/planning/compare";
 import { ACTION_HANDLERS } from "./actions";
@@ -65,7 +66,6 @@ import { cachedPrimer, keepPrimer } from "./primer-cache";
 import { isStale, readStoredPrimer, writeStoredPrimer } from "./primer-store";
 import { loadRecurring } from "./recurring";
 import { weeklyReview } from "./replies-review";
-import { loadSnapshot } from "./snapshot";
 import { findingCandidate } from "./sources/findings";
 import { TAX_TOOLS, isTaxTool, runTaxTool } from "./tax-tools";
 import { ACTION_IDS, type ActionId, type MessageAction } from "./types";
@@ -286,6 +286,33 @@ export const CHAT_TOOLS: Anthropic.Tool[] = [
     input_schema: noInput,
   },
   {
+    name: "calculate",
+    description:
+      'Arithmetic for a number you want that no tool gives directly: percent_of (percent of an amount, e.g. the 4% rule on a balance), per_year and per_month (a monthly amount over a year, a yearly amount over a month), difference (between two amounts), sum, and payoff_months (how long to pay off a balance at a monthly payment and an APR, with the interest it costs). Pass amounts in dollars exactly as they appear in the person\'s numbers or a tool result, and say in "basis" where they came from. The result is computed, so you may state it. Never use it with an amount you made up.',
+    input_schema: {
+      type: "object",
+      properties: {
+        operation: {
+          type: "string",
+          enum: ["percent_of", "per_year", "per_month", "difference", "sum", "payoff_months"],
+        },
+        basis: {
+          type: "string",
+          description: 'Where the amounts came from, e.g. "retirement balance from holdings".',
+        },
+        percent: { type: "number" },
+        amount: { type: "number", description: "Dollars." },
+        other_amount: { type: "number", description: "Dollars (difference)." },
+        amounts: { type: "array", items: { type: "number" }, description: "Dollars (sum)." },
+        balance: { type: "number", description: "Dollars (payoff_months)." },
+        monthly_payment: { type: "number", description: "Dollars (payoff_months)." },
+        apr_percent: { type: "number", description: "Yearly rate in percent (payoff_months)." },
+      },
+      required: ["operation", "basis"],
+      additionalProperties: false,
+    },
+  },
+  {
     name: "whole_picture",
     description:
       'How the person is doing across every sector at once (spec step 183), for "am I OK?", "how am I doing" and "what should I do this month": a verdict (ok, watch or act) with its one-sentence headline, safe to spend until payday, bills and deadlines due this week and this month, budgets over, goals behind, urgent alerts, what Jane\'s agent is working on, the steps waiting on the person, and the one to three things that matter most (from the ranked list) with why. Lead with the headline, then the things that matter; use the same figures.',
@@ -367,6 +394,14 @@ export async function runChatTool(
   const asOf = now.toISOString().slice(0, 10);
 
   switch (name) {
+    case "calculate": {
+      const result = calculate((input ?? {}) as CalcInput);
+      if (!result.ok) return { content: JSON.stringify({ error: result.error }), cents: [] };
+      const amounts = Object.fromEntries(
+        Object.entries(result.cents).map(([key, value]) => [key, money(value)]),
+      );
+      return out({ ...amounts, ...result.numbers, note: result.note });
+    }
     case "safe_to_spend": {
       const safe = (await homeSummary(userId, { client, now }))?.safeToSpend;
       if (!safe) return out({ note: "No checking account is linked, so there's no number." });
@@ -1033,7 +1068,7 @@ export async function proposeAction(
   }
 
   if (id === "finding.yes") {
-    const snapshot = await loadSnapshot(userId, { client, now });
+    const snapshot = await loadSnapshotFast(userId, { client, now });
     const finding = snapshot?.findings.find((f) => f.findingId === str(args.finding_id));
     if (!snapshot || !finding) return refuse("That isn't one of the person's open findings.");
     const candidate = findingCandidate(finding);
@@ -1041,7 +1076,7 @@ export async function proposeAction(
   }
 
   if (id === "plan.approve_safe") {
-    const snapshot = await loadSnapshot(userId, { client, now });
+    const snapshot = await loadSnapshotFast(userId, { client, now });
     if (!snapshot || snapshot.plan.safeItems === 0) {
       return refuse("Nothing on the plan is safe to approve together right now.");
     }
