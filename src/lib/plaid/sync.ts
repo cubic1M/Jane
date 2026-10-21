@@ -707,13 +707,14 @@ export async function syncItem(
     await runJaneAgentSafely(item.userId, { client, now, trigger: scanTrigger, early: true });
     timing.mark("first_brief");
     timing.log("first_brief");
-    // The brief is in the chat: the scan is over for the person (the page stops reloading
-    // itself); the sectors' work and Jane's last words still follow and show on the next look.
+    // The brief is in the chat. The whole snapshot is kept now, for the chat's first question,
+    // before the slow sector work; then the scan is over for the person (the page stops
+    // reloading itself). Marking it done earlier let the open chat start its own run while
+    // the scan was still working, and the end-to-end flows that wait for its findings failed.
+    await keepFullSnapshot(item.userId, { client, now });
     await markScanDone(item.userId, { client, now }).catch((error) =>
       console.error("Marking the scan done failed", { error: String(error) }),
     );
-    // Now the whole snapshot, for the chat's first question, before the slow sector work.
-    await keepFullSnapshot(item.userId, { client, now });
   }
   // After detection these don't depend on each other, so they run together; the sample
   // person's first screen is waiting on this sync.
