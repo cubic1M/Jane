@@ -20,17 +20,25 @@ export async function tapButton(previous: MessageState, formData: FormData): Pro
   const messageId = String(formData.get("messageId") ?? "");
   const actionId = String(formData.get("actionId") ?? "");
   try {
-    const { message, agentJobIds, agentActionIds, posted } = await takeChatAction(
-      user.id,
-      messageId,
-      actionId,
-    );
+    // The timezone is read alongside the tap, and what the answer doesn't need (audit,
+    // analytics, closing the messages it settled) follows the response.
+    const [{ message, agentJobIds, agentActionIds, posted }, timezone] = await Promise.all([
+      takeChatAction(user.id, messageId, actionId, {
+        defer: (work) =>
+          after(() =>
+            work().catch((error) =>
+              console.error("After a chat tap failed", { error: String(error) }),
+            ),
+          ),
+      }),
+      timezoneOf(user.id),
+    ]);
     // The agent's first step, after the response (src/lib/agent/run.ts).
     after(() => runAgentNow(agentJobIds));
     // Spec step 83: and what a new autopilot level approved at once, as Settings does.
     if (agentActionIds.length > 0) after(() => runQueuedFor(agentActionIds));
     return {
-      message: toView(message, new Date(), await timezoneOf(user.id)),
+      message: toView(message, new Date(), timezone),
       error: null,
       ...(posted ? { postedAt: Date.now() } : {}),
     };
