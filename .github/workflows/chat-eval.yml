@@ -2,7 +2,7 @@ name: Chat scenarios
 
 # The overnight scenario run: a large file of realistic conversations (docs/chat-scenarios.json,
 # written by QA) asked of Jane with Claude, graded like the question bank, within a spending cap.
-# Manual only (workflow_dispatch). The per-category failures go into docs/chat-quality.md
+# Manual only (workflow_dispatch). It runs in batches (from, to) and resumes where the last batch stopped (docs/chat-eval-state.json on the chat-quality/eval branch). The per-category failures go into docs/chat-quality.md
 # through a pull request. The key is used only here, never on pull_request runs.
 
 on:
@@ -14,6 +14,16 @@ on:
       max_cents:
         description: "Most this run may spend, in cents"
         default: "400"
+      from:
+        description: "First scenario of this batch (position in the file, from 1)"
+        default: "1"
+      to:
+        description: "Last scenario of this batch (empty: to the end)"
+        default: ""
+      resume:
+        description: "Skip scenarios an earlier batch finished (kept on the chat-quality/eval branch)"
+        type: boolean
+        default: true
       ref:
         description: "Branch to run (default: the branch you dispatch on)"
         default: ""
@@ -51,6 +61,9 @@ jobs:
       ANTHROPIC_CHAT_MODEL: ${{ vars.ANTHROPIC_CHAT_MODEL }}
       CHAT_EVAL_FILE: ${{ inputs.file }}
       CHAT_EVAL_MAX_CENTS: ${{ inputs.max_cents }}
+      CHAT_EVAL_FROM: ${{ inputs.from }}
+      CHAT_EVAL_TO: ${{ inputs.to }}
+      CHAT_EVAL_RESUME: ${{ inputs.resume && '1' || '0' }}
     steps:
       - uses: actions/checkout@v7
         with:
@@ -70,6 +83,11 @@ jobs:
             echo "There is no ANTHROPIC_API_KEY secret: nothing to run." >> "$GITHUB_STEP_SUMMARY"
             exit 1
           fi
+      - name: Pick up where the last batch stopped
+        if: inputs.resume
+        run: |
+          git fetch origin chat-quality/eval || exit 0
+          git checkout origin/chat-quality/eval -- docs/chat-eval-state.json || true
       - run: npm run checks:eval
       - name: Record the run in a pull request
         env:
@@ -78,7 +96,7 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git checkout -B chat-quality/eval
-          git add docs/chat-quality.md
+          git add docs/chat-quality.md docs/chat-eval-state.json
           git diff --cached --quiet && exit 0
           git commit -m "Chat quality: the scenario run of $(date -u +%F)"
           git push --force origin chat-quality/eval

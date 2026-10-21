@@ -73,24 +73,86 @@ export function scenarioQuestions(scenarios: readonly Scenario[]): CheckQuestion
   );
 }
 
+// What one graded message keeps between batches: the score and why, and the start of the
+// answer for the worst-answers list. Demo-bank data only.
+export type LiteResult = {
+  id: string;
+  text: string;
+  status: "graded" | "skipped";
+  score?: number;
+  reason: string;
+  answer?: string;
+};
+
+// Where a run of batches stands: the scenarios finished (every message graded) with their
+// results, and what has been spent. Kept in docs/chat-eval-state.json on the eval branch, so
+// the next batch resumes where the last stopped.
+export type EvalState = { done: Record<string, LiteResult[]>; costCents: number };
+
+export const emptyState = (): EvalState => ({ done: {}, costCents: 0 });
+
+export function parseState(json: string): EvalState {
+  const raw = JSON.parse(json) as Partial<EvalState>;
+  return { done: raw.done ?? {}, costCents: raw.costCents ?? 0 };
+}
+
+// The scenarios in batch positions from..to (1-based, inclusive; either may be left out), that
+// the state has not finished yet when resuming.
+export function batchOf(
+  scenarios: readonly Scenario[],
+  { from, to, state }: { from?: number; to?: number; state?: EvalState },
+): Scenario[] {
+  return scenarios
+    .slice(Math.max((from ?? 1) - 1, 0), to ?? scenarios.length)
+    .filter((s) => !state?.done[s.id]);
+}
+
+export const liteOf = (r: CheckRun["results"][number]): LiteResult => ({
+  id: r.id,
+  text: r.text,
+  status: r.status,
+  ...(r.score === undefined ? {} : { score: r.score }),
+  reason: r.reason.slice(0, 200),
+  ...(r.answer ? { answer: r.answer.slice(0, 300) } : {}),
+});
+
+// Adds a batch's results to the state: a scenario counts as done when all its messages were
+// graded (one cut short by the cap is asked again next time).
+export function addToState(
+  state: EvalState,
+  batch: readonly Scenario[],
+  results: CheckRun["results"],
+  costCents: number,
+): EvalState {
+  const done = { ...state.done };
+  for (const s of batch) {
+    const ids = s.messages.map((_, i) => (i === 0 ? s.id : `${s.id}.${i + 1}`));
+    const mine = ids.map((id) => results.find((r) => r.id === id));
+    if (mine.every((r) => r?.status === "graded")) done[s.id] = mine.map((r) => liteOf(r!));
+  }
+  return { done, costCents: Math.round((state.costCents + costCents) * 100) / 100 };
+}
+
 export type CategoryReport = {
   category: string;
   asked: number;
   failed: number;
   skipped: number;
+  // The share of graded messages that scored FAIL_BELOW or more.
+  passPct: number | null;
   averageScore: number | null;
-  failures: { id: string; text: string; score: number; reason: string }[];
+  failures: { id: string; text: string; score: number; reason: string; answer?: string }[];
 };
 
 export function reportByCategory(
-  run: Pick<CheckRun, "results">,
+  run: { results: readonly LiteResult[] },
   scenarios: readonly Scenario[],
 ): CategoryReport[] {
   const categoryOf = new Map<string, string>();
   for (const s of scenarios) {
     s.messages.forEach((_, i) => categoryOf.set(i === 0 ? s.id : `${s.id}.${i + 1}`, s.category));
   }
-  const groups = new Map<string, CheckRun["results"]>();
+  const groups = new Map<string, LiteResult[]>();
   for (const r of run.results) {
     const category = categoryOf.get(r.id) ?? "other";
     groups.set(category, [...(groups.get(category) ?? []), r]);
@@ -106,12 +168,17 @@ export function reportByCategory(
           text: r.text,
           score: r.score ?? 0,
           reason: r.reason.slice(0, 200),
+          ...(r.answer ? { answer: r.answer } : {}),
         }));
       return {
         category,
         asked: graded.length,
         failed: failures.length,
         skipped: results.length - graded.length,
+        passPct:
+          graded.length === 0
+            ? null
+            : Math.round(((graded.length - failures.length) / graded.length) * 1000) / 10,
         averageScore:
           graded.length === 0
             ? null
@@ -142,22 +209,29 @@ export function evalSection(
   const asked = reports.reduce((sum, r) => sum + r.asked, 0);
   const failed = reports.reduce((sum, r) => sum + r.failed, 0);
   const skipped = reports.reduce((sum, r) => sum + r.skipped, 0);
+  const dollars = (cents: number) =>
+    (cents / 100).toLocaleString("en-US", { style: "currency", currency: "USD" });
   const lines = [
-    `Run on ${meta.date}: ${meta.scenarios} scenarios, ${asked} messages graded, ${failed} failing (under ${FAIL_BELOW}), ${skipped} skipped. Cost ${(meta.costCents / 100).toLocaleString("en-US", { style: "currency", currency: "USD" })} of a ${(meta.capCents / 100).toLocaleString("en-US", { style: "currency", currency: "USD" })} cap${meta.stoppedAtCap ? " (stopped at the cap)" : ""}.`,
+    `Last batch on ${meta.date}: ${meta.scenarios} scenarios finished so far, ${asked} messages graded, ${failed} failing (under ${FAIL_BELOW}), ${skipped} skipped. Cost so far ${dollars(meta.costCents)}; a batch is capped at ${dollars(meta.capCents)}${meta.stoppedAtCap ? " (the last one stopped at the cap)" : ""}.`,
     "",
-    "| Category | Graded | Failing | Skipped | Average |",
-    "| --- | ---: | ---: | ---: | ---: |",
+    "| Category | Graded | Failing | Pass rate | Skipped | Average |",
+    "| --- | ---: | ---: | ---: | ---: | ---: |",
     ...reports.map(
       (r) =>
-        `| ${r.category} | ${r.asked} | ${r.failed} | ${r.skipped} | ${r.averageScore ?? "–"} |`,
+        `| ${r.category} | ${r.asked} | ${r.failed} | ${r.passPct === null ? "–" : `${r.passPct}%`} | ${r.skipped} | ${r.averageScore ?? "–"} |`,
     ),
   ];
-  for (const r of reports.filter((x) => x.failures.length > 0)) {
-    lines.push("", `**${r.category}**`, "");
-    for (const f of r.failures.slice(0, 15)) {
-      lines.push(`- ${f.id} (${f.score}): "${oneLine(f.text)}" — ${oneLine(f.reason)}`);
+  const worst = reports
+    .flatMap((r) => r.failures.map((f) => ({ ...f, category: r.category })))
+    .sort((a, b) => a.score - b.score)
+    .slice(0, 20);
+  if (worst.length > 0) {
+    lines.push("", "**The 20 worst answers**", "");
+    for (const w of worst) {
+      lines.push(
+        `- ${w.id} (${w.score}, ${w.category}): "${oneLine(w.text)}" — ${oneLine(w.reason)}${w.answer ? ` Answer began: "${oneLine(w.answer)}"` : ""}`,
+      );
     }
-    if (r.failures.length > 15) lines.push(`- …and ${r.failures.length - 15} more.`);
   }
   return lines.join("\n");
 }

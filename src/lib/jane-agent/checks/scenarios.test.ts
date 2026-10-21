@@ -4,6 +4,9 @@ vi.mock("@/lib/session", () => ({ requireUser: vi.fn() }));
 
 import { conversations } from "./run";
 import {
+  addToState,
+  batchOf,
+  emptyState,
   evalSection,
   parseScenarios,
   reportByCategory,
@@ -59,6 +62,59 @@ describe("scenario files", () => {
   });
 });
 
+describe("batches that resume", () => {
+  const many = parseScenarios(
+    JSON.stringify(
+      ["a", "b", "c", "d"].map((id) => ({ id, category: "x", messages: [`${id} 1`, `${id} 2`] })),
+    ),
+  );
+  const graded = (id: string) =>
+    ({ id, text: id, status: "graded", score: 90, reason: "ok" }) as never;
+
+  it("takes positions from..to, and skips what an earlier batch finished", () => {
+    expect(batchOf(many, { from: 2, to: 3 }).map((s) => s.id)).toEqual(["b", "c"]);
+    expect(batchOf(many, {}).map((s) => s.id)).toEqual(["a", "b", "c", "d"]);
+    const state = addToState(emptyState(), many.slice(0, 2), [graded("a"), graded("a.2")], 12.5);
+    expect(Object.keys(state.done)).toEqual(["a"]);
+    expect(state.costCents).toBe(12.5);
+    expect(batchOf(many, { state }).map((s) => s.id)).toEqual(["b", "c", "d"]);
+    expect(batchOf(many, { from: 1, to: 2, state }).map((s) => s.id)).toEqual(["b"]);
+  });
+
+  it("asks a scenario again when the cap cut it short, and adds up the cost", () => {
+    const skipped = { id: "b.2", text: "b", status: "skipped", reason: "cap" } as never;
+    const state = addToState(emptyState(), many.slice(1, 2), [graded("b"), skipped], 3);
+    expect(state.done).toEqual({});
+    const next = addToState(state, many.slice(0, 1), [graded("a"), graded("a.2")], 4.25);
+    expect(next.costCents).toBe(7.25);
+  });
+
+  it("lists the 20 worst answers across categories, worst first", () => {
+    const results = Array.from({ length: 25 }, (_, i) => ({
+      id: `s${i}`,
+      text: `q${i}`,
+      status: "graded" as const,
+      score: i,
+      reason: `r${i}`,
+      answer: `a${i}`,
+    }));
+    const sc = parseScenarios(
+      JSON.stringify(results.map((r) => ({ id: r.id, category: "x", messages: ["m"] }))),
+    );
+    const section = evalSection(reportByCategory({ results }, sc), {
+      date: "d",
+      scenarios: 25,
+      costCents: 0,
+      capCents: 400,
+      stoppedAtCap: false,
+    });
+    const lines = section.split("\n").filter((l) => l.startsWith("- s"));
+    expect(lines).toHaveLength(20);
+    expect(lines[0]).toContain("s0 (0,");
+    expect(lines[0]).toContain('Answer began: "a0"');
+  });
+});
+
 describe("the per-category report", () => {
   const result = (id: string, score: number, status: "graded" | "skipped" = "graded") =>
     ({ id, text: `q ${id}`, status, score, reason: `why ${id}` }) as never;
@@ -86,8 +142,8 @@ describe("the per-category report", () => {
       capCents: 400,
       stoppedAtCap: false,
     });
-    expect(section).toContain("| debt | 2 | 1 | 0 | 70 |");
-    expect(section).toContain('- a.2 (40): "q a.2" — why a.2');
+    expect(section).toContain("| debt | 2 | 1 | 50% | 0 | 70 |");
+    expect(section).toContain('- a.2 (40, debt): "q a.2" — why a.2');
     const once = withEvalSection("# Chat quality\n", section);
     expect(once).toContain("## Scenario run");
     const twice = withEvalSection(once, "NEW");

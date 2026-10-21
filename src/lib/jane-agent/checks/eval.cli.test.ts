@@ -1,5 +1,5 @@
 import { randomBytes } from "node:crypto";
-import { readFileSync, writeFileSync } from "node:fs";
+import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { expect, it, vi } from "vitest";
 import { PrismaClient } from "@/generated/prisma/client";
@@ -12,22 +12,30 @@ vi.mock("@/lib/session", () => ({ requireUser: vi.fn() }));
 import { createCheckPerson, deleteCheckPerson } from "./person";
 import { runAnswerChecks } from "./run";
 import {
+  addToState,
+  batchOf,
+  emptyState,
   evalSection,
   parseScenarios,
+  parseState,
   reportByCategory,
   scenarioQuestions,
   withEvalSection,
 } from "./scenarios";
 
 // `npm run checks:eval`, run by .github/workflows/chat-eval.yml: the scenarios in
-// CHAT_EVAL_FILE (default docs/chat-scenarios.json) asked as the demo-bank person would, all of
-// them (no rotation), within CHAT_EVAL_MAX_CENTS (default 400). Needs ANTHROPIC_API_KEY. The
-// per-category failures go into the "Scenario run" section of docs/chat-quality.md. Skipped in
-// `npm test`.
+// CHAT_EVAL_FILE (default docs/chat-scenarios.json) asked as the demo-bank person would, in
+// batches: CHAT_EVAL_FROM..CHAT_EVAL_TO (positions in the file, 1-based), each batch within
+// CHAT_EVAL_MAX_CENTS (default 400). Finished scenarios are kept in docs/chat-eval-state.json,
+// and with CHAT_EVAL_RESUME=1 they are not asked again, so the next batch picks up where the
+// last stopped. Needs ANTHROPIC_API_KEY. The per-category pass rates and the 20 worst answers
+// go into the "Scenario run" section of docs/chat-quality.md. Skipped in `npm test`.
 
 const url = process.env.TEST_DATABASE_URL;
 const FILE = process.env.CHAT_EVAL_FILE ?? "docs/chat-scenarios.json";
 const DOC = "docs/chat-quality.md";
+const STATE = "docs/chat-eval-state.json";
+const num = (v: string | undefined) => (v && Number(v) > 0 ? Number(v) : undefined);
 const CAP_CENTS = Number(process.env.CHAT_EVAL_MAX_CENTS ?? 400);
 
 it.runIf(process.env.CHAT_EVAL === "1" && url && process.env.ANTHROPIC_API_KEY)(
@@ -37,6 +45,17 @@ it.runIf(process.env.CHAT_EVAL === "1" && url && process.env.ANTHROPIC_API_KEY)(
       vi.stubEnv("TOKEN_ENCRYPTION_KEY", randomBytes(32).toString("base64"));
     }
     const scenarios = parseScenarios(readFileSync(FILE, "utf8"));
+    const resume = process.env.CHAT_EVAL_RESUME === "1" && existsSync(STATE);
+    const before = resume ? parseState(readFileSync(STATE, "utf8")) : emptyState();
+    const batch = batchOf(scenarios, {
+      from: num(process.env.CHAT_EVAL_FROM),
+      to: num(process.env.CHAT_EVAL_TO),
+      state: before,
+    });
+    console.log(
+      `${batch.length} scenarios to ask (${Object.keys(before.done).length} already done).`,
+    );
+    if (batch.length === 0) return;
     const client = new PrismaClient({ adapter: new PrismaPg({ connectionString: url }) });
     const now = new Date();
     const userId = await createCheckPerson({ client, now });
@@ -45,13 +64,19 @@ it.runIf(process.env.CHAT_EVAL === "1" && url && process.env.ANTHROPIC_API_KEY)(
         client,
         now,
         capCents: CAP_CENTS,
-        questions: scenarioQuestions(scenarios),
+        questions: scenarioQuestions(batch),
       });
-      const reports = reportByCategory(run, scenarios);
+      const state = addToState(before, batch, run.results, run.costCents);
+      writeFileSync(STATE, `${JSON.stringify(state)}\n`);
+      const finished = scenarios.filter((s) => state.done[s.id]);
+      const reports = reportByCategory(
+        { results: finished.flatMap((s) => state.done[s.id]) },
+        scenarios,
+      );
       const section = evalSection(reports, {
         date: now.toISOString().slice(0, 10),
-        scenarios: scenarios.length,
-        costCents: run.costCents,
+        scenarios: finished.length,
+        costCents: state.costCents,
         capCents: CAP_CENTS,
         stoppedAtCap: run.stoppedAtCap,
       });
