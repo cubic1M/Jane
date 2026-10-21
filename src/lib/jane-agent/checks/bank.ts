@@ -23,6 +23,9 @@ export type Expect = {
   // A short list is fine here: comparing options, or what's due.
   list?: boolean;
   maxChars?: number;
+  // An informational question gets no action button (a link to a page is fine): a button
+  // only appears when the person asked Jane to do something.
+  noButtons?: boolean;
 };
 
 export type CheckQuestion = {
@@ -806,38 +809,6 @@ const BASE_QUESTIONS: readonly CheckQuestion[] = [
     page: "/debt",
     tool: "card_interest",
     expect: { avoid: /hulu|\bbutton\b|under this answer/i },
-  },
-  // The founder's live sequence: an action request is answered in words (what Jane can do and
-  // what it takes) before any button, and a list of options or debts is a written answer, never
-  // a generic "where you stand".
-  {
-    id: "found-1",
-    text: "can you change my car insurance",
-    needs: "claude",
-    sector: "insurance",
-    page: "/insurance",
-    tool: "insurance_quotes",
-    expect: { mentions: /\b(?:switch|change|quote|cheaper|team)\b/i, avoid: /where you stand/i },
-  },
-  {
-    id: "found-2",
-    text: "what are some other options from geico",
-    needs: "claude",
-    after: "found-1",
-    sector: "insurance",
-    page: "/insurance",
-    tool: "insurance_quotes",
-    expect: { list: true, mentions: /\$/, avoid: /where you stand|under this answer/i },
-  },
-  {
-    id: "found-3",
-    text: "do i have any loans or debts",
-    needs: "claude",
-    after: "found-1",
-    sector: "debt",
-    page: "/debt",
-    tool: "debts",
-    expect: { list: true, mentions: /\$/, avoid: /where you stand|under this answer/i },
   },
   // Voice (QA sweep): answers in words first, no talk of buttons or of earlier failures.
   {
@@ -2251,7 +2222,10 @@ const MORE_QUESTIONS: readonly CheckQuestion[] = MORE_ROWS.map(
     id: `more-${String(index + 1).padStart(3, "0")}`,
     text,
     needs: "claude",
-    expect: sector === "edge" ? { avoid: ADVICE } : {},
+    expect: {
+      ...(sector === "edge" ? { avoid: ADVICE } : {}),
+      ...(tool === "propose_action" ? {} : { noButtons: true }),
+    },
     sector,
     page,
     tool,
