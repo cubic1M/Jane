@@ -46,7 +46,7 @@ import type { Reply } from "./replies";
 // the answer streamed as it's written (onEvent), a sentence at a time once each passes the
 // guardrails (./guarded-text), with what Jane is looking up in between.
 
-export const CHAT_PROMPT_VERSION = "chat-v18";
+export const CHAT_PROMPT_VERSION = "chat-v19";
 
 // The one rule that differs in demo advice mode (spec step 98).
 const NO_ADVICE = `- Never give investment, tax or legal advice, and don't mention investments, taxes or legal matters at all. Don't suggest financial products beyond Jane's pick from finding_details.`;
@@ -81,7 +81,7 @@ Shape every answer the same way (spec step 89):
 
 How to answer:
 - Their main numbers right now come after these instructions. Answer from them when you can; use the tools for anything else. Never guess. If neither has it, say so plainly.
-- When you want a number that no tool gives directly (a percent of a balance, a year of a monthly amount, the difference between two amounts, how long a payment takes to clear a balance), use the calculate tool with the amounts exactly as given. Never work out an amount yourself.
+- When you want a number that no tool gives directly (a percent of a balance, a year of a monthly amount, the difference between two amounts, how long a payment takes to clear a balance), use the calculate tool with the amounts exactly as given: any sum, difference, total or percent, even of two amounts you can see. Never work out an amount yourself.
 - Use only dollar amounts that appear in those numbers or in tool results, written exactly as they appear there (with the cents). Don't add, subtract, round or estimate amounts yourself.
 - Keep it short: 2 to 4 sentences, under about 500 characters. A list only when they ask for one or for bills and subscriptions. Plain words, no jargon, no headings. Don't write anything before a lookup; just look it up.
 - Answer the question that was asked. what_matters_most and the open findings are background, not an agenda: mention one only when it directly answers the question or is the one clear next step, never to change the subject ("my car broke down" is not a reason to bring up a subscription, "do I need Medigap" is not a reason to bring up a quote), and never open with "Tapping Yes".
@@ -211,7 +211,7 @@ function rewriteRequest(
   const reasons = issues.map((issue) => {
     switch (issue) {
       case "unsupported_dollar_figure":
-        return `It has amounts that aren't in their numbers or the tool results: ${unsupportedFigures(text, allowedCents).join(", ")}. Use those amounts exactly as they appear there instead, or leave just that amount out.`;
+        return `It has amounts that aren't in their numbers or the tool results: ${unsupportedFigures(text, allowedCents).join(", ")}. Use those amounts exactly as they appear there instead, or leave just that amount out. (A total or difference you worked out yourself can't be shown: say it without the amount, or leave it out.)`;
       case "investment_advice":
         return "It mentions investing or investments. Say you can't advise on that here and leave it out.";
       case "tax_or_legal_advice":
@@ -246,6 +246,22 @@ const BUTTON_TALK =
 // (From the app, not the person.) What Claude is told when its answer was only about a button.
 const BUTTON_REWRITE =
   "(From the app, not the person.) That wasn't an answer. Answer the person's question in words, using the results you already have: the options, amounts and rates in them. Don't mention buttons or links. Don't call any tool.";
+
+// A question that asks Jane to do something, or whether to (a verb that acts): only then does
+// a button belong under the answer. An informational question never gets one.
+const ACTION_REQUEST =
+  /\b(?:cancel|stop|switch|change|start|set ?up|approve|undo|remind|snooze|handle|apply|enrol\w*|sign me|open (?:a|an|my)|create|file|dispute|negotiate|lower|reduce|refinanc\w*|consolidate|rebalanc\w*|do it|go ahead|yes|please|never (?:use|watch|need|want)|(?:don(?:'|’)?t|do not|dont) (?:use|watch|need|want)|no longer|not using|get(?:ting)? rid|sick of|can you|could you|will you|let(?:'|’)?s|should i (?:cancel|switch|change|start|stop|keep|get|drop|close|pay)|want you to)\b/i;
+
+// The answer is too long for a chat: over about 600 characters, or a list nobody asked for.
+const LIST_ASKED =
+  /\b(?:list|bills|subscriptions|each|every|all (?:my|of)|compare|options|steps|breakdown|itemi[sz]e|show me|what are)\b/i;
+export function tooLong(answer: string, question: string): boolean {
+  if (answer.length > 600) return true;
+  const items = answer.split("\n").filter((l) => /^\s*(?:[-•*]|\d+[.)])\s+/.test(l)).length;
+  return items >= 3 && !LIST_ASKED.test(question);
+}
+const SHAPE_REWRITE =
+  "(From the app, not the person.) That answer is too long for a chat. Answer again in at most 3 short sentences, no list, keeping the key figures and the answer to what was asked. Don't call any tool.";
 
 export function withoutButtonTalk(text: string): string {
   return text
@@ -468,6 +484,7 @@ async function askClaude(
   // be written again in words.
   let turnLimit = maxTurns;
   let buttonRewrites = 0;
+  let shapeRewritten = false;
   for (let turn = 0; turn < turnLimit; turn += 1) {
     let response: Anthropic.Message;
     // Spec step 93: give up on a slow start, or a slow answer, for the rules' answer.
@@ -655,7 +672,21 @@ async function askClaude(
           const result: Proposal = proposal
             ? { ok: false, error: "You already offered a button for this answer." }
             : await proposeAction(userId, block.input, { client, now });
-          if (result.ok) proposal = result;
+          if (result.ok) {
+            // Only a request to act gets an action button; the rest keeps its links.
+            const acts: Extract<Proposal, { ok: true }>["actions"] = result.actions.filter(
+              (a) => a.kind !== "link",
+            );
+            proposal =
+              acts.length === 0 || ACTION_REQUEST.test(question)
+                ? result
+                : {
+                    ...result,
+                    actions: result.actions.filter((a) => a.kind === "link"),
+                    refs: {},
+                    line: null,
+                  };
+          }
           results.push({
             type: "tool_result",
             tool_use_id: block.id,
@@ -727,6 +758,20 @@ async function askClaude(
         role: "user",
         content: rewriteRequest(spoken, check.issues, allowedCents, advice),
       });
+      continue;
+    }
+    if (check.ok && !shapeRewritten && tooLong(spoken, question)) {
+      // Once: shorter, and no list the person didn't ask for.
+      shapeRewritten = true;
+      timing.rewrites += 1;
+      if (turn + 1 >= turnLimit) turnLimit += 1;
+      draft.reset();
+      onEvent({ type: "reset" });
+      messages.push({
+        role: "assistant",
+        content: response.content.filter((b) => b.type === "text"),
+      });
+      messages.push({ role: "user", content: SHAPE_REWRITE });
       continue;
     }
     if (!check.ok) {

@@ -333,3 +333,25 @@ describe("saying Jane can't do something legal", () => {
     expect(demo("You could stop paying your credit cards.").ok).toBe(false);
   });
 });
+
+describe("refusing to help with something dishonest", () => {
+  const refusal = "I can't help hide income from the IRS; that's tax evasion.";
+  it("passes in both profiles", () => {
+    expect(checkGuardrails(refusal, [], undefined, "demo_advice").ok).toBe(true);
+    expect(checkGuardrails(refusal, [], undefined, "standard").ok).toBe(true);
+    expect(
+      checkGuardrails(
+        `${refusal} I can help you find legal deductions.`,
+        [],
+        undefined,
+        "demo_advice",
+      ).ok,
+    ).toBe(true);
+  });
+
+  it("still blocks tax talk that is not a refusal", () => {
+    expect(
+      checkGuardrails("You could hide income from the IRS.", [], undefined, "standard").ok,
+    ).toBe(false);
+  });
+});

@@ -56,6 +56,9 @@ describe.runIf(url)("why, typed after a finding", { timeout: 60_000 }, () => {
 
   it("with a key, Claude is asked; if it fails the backup still gives the reason", async () => {
     vi.stubEnv("ANTHROPIC_API_KEY", "test-key");
+    // The month's spend is one row all the test files share; another file's big spend must not
+    // make this one skip Claude.
+    await client.rateLimit.deleteMany({ where: { key: { startsWith: "chatmonth:" } } });
     const claude = vi.fn(() => {
       throw new Error("Claude is down");
     });

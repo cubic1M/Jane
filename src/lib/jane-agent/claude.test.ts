@@ -34,6 +34,7 @@ import {
   askClaudeInChat,
   plainText,
   resetClaudeHealth,
+  tooLong,
   withoutButtonTalk,
 } from "./claude";
 import { forgetPrimer } from "./primer-cache";
@@ -303,6 +304,38 @@ describe("askClaudeInChat", () => {
       rewrites: 1,
       guardrails: ["unsupported_dollar_figure"],
     });
+  });
+
+  it("asks for a shorter answer once when it is long or a list nobody asked for", async () => {
+    const long = `${"Your spending is a bit high this month, mostly on food and shopping. ".repeat(10)}`;
+    create
+      .mockResolvedValueOnce(final(long))
+      .mockResolvedValueOnce(final("You spent more on food this month. Eating out is most of it."));
+    const result = await askClaudeInChat("u1", [], "why was march so bad", options);
+    expect(result.reply.body).toBe("You spent more on food this month. Eating out is most of it.");
+    expect(JSON.stringify(create.mock.calls.at(-1)?.[0].messages.at(-1))).toMatch(
+      /at most 3 short sentences/,
+    );
+    // A list is fine when it was asked for; a short answer is left alone.
+    expect(tooLong("- a\n- b\n- c", "list my bills")).toBe(false);
+    expect(tooLong("- a\n- b\n- c", "how am i doing")).toBe(true);
+    expect(tooLong("Short.", "how am i doing")).toBe(false);
+  });
+
+  it("keeps links but drops an action button on a question that only asks for information", async () => {
+    create
+      .mockResolvedValueOnce(toolUse("propose_action", { action: "finding.yes", finding_id: "f1" }))
+      .mockResolvedValueOnce(
+        final("You have Hulu on a schedule, and nothing else you forgot about."),
+      );
+    const info = await askClaudeInChat("u1", [], "any subscriptions i forgot about", options);
+    expect(info.reply.actions.filter((a) => a.kind !== "link")).toEqual([]);
+    expect(info.reply.body).not.toMatch(/Review your Hulu/);
+    create
+      .mockResolvedValueOnce(toolUse("propose_action", { action: "finding.yes", finding_id: "f1" }))
+      .mockResolvedValueOnce(final("Hulu is the one to cancel. Tap Yes and the team cancels it."));
+    const act = await askClaudeInChat("u1", [], "cancel hulu", options);
+    expect(act.reply.actions.some((a) => a.id === "finding.yes")).toBe(true);
   });
 
   it("falls back to safe text, with no buttons, when the rewrite fails too", async () => {

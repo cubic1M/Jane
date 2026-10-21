@@ -129,6 +129,12 @@ const UNFINISHED_TEXT = "Sorry, I couldn't finish an answer to that. Please ask 
 // "How am I doing", "what should I do": the questions where the whole picture is the answer.
 const STATUS_QUESTION =
   /\b(?:how am i doing|how are (?:things|we)|where (?:do|am) i stand|what (?:should|do) i do|where (?:should|do) i start|what now|what matters|my (?:money )?situation|overview|summary)\b/i;
+// Asking Jane to help hide money, forge or get around something: when Claude's own refusal
+// couldn't be shown, a short refusal that needs no model.
+const UNSAFE_REQUEST =
+  /\b(?:hide (?:money|income|assets|cash)|forg(?:e|ing|ery)|launder\w*|evad(?:e|ing) (?:tax|taxes|the irs)|tax evasion|cheat|bypass|hack|steal|fake (?:a |an |my )?(?:id|document|signature|receipt|paystub|pay stub)|lie to|fraud\w*)\b/i;
+const UNSAFE_TEXT =
+  "I can't help with that. I'm glad to help with your spending, bills, savings or taxes the honest way.";
 const DAILY_LIMIT_LEAD = "I've reached today's limit for answering in detail";
 
 export type AnswerSource =
@@ -175,6 +181,7 @@ async function answer(
       return lead === DAILY_LIMIT_LEAD ? { ...byRules, body: `${lead}. ${byRules.body}` } : byRules;
     // Where the person stands answers "how am I doing / what should I do"; for a specific
     // question it would be an unrelated status, so say plainly that it wasn't finished.
+    if (UNSAFE_REQUEST.test(text)) return { body: UNSAFE_TEXT, actions: [], refs: {} };
     if (!STATUS_QUESTION.test(text)) {
       return {
         body: lead === DAILY_LIMIT_LEAD ? `${lead}. Please ask again tomorrow.` : UNFINISHED_TEXT,

@@ -155,4 +155,32 @@ describe.runIf(url)("every typed message is Claude's to answer", { timeout: 300_
     expect(status.reply.body).toMatch(/\$2,410\.50/);
     expect(status.reply.body).not.toMatch(/link|button/i);
   });
+
+  it("refuses an unsafe request plainly when Claude's own answer can't be shown", async () => {
+    rules.mockImplementation(async () => null as never);
+    const buttonOnly = () =>
+      ({
+        messages: {
+          stream: () => {
+            const stream = {
+              on: () => stream,
+              finalMessage: async () => ({
+                stop_reason: "end_turn",
+                content: [{ type: "text", text: "I've put a link under this answer." }],
+                usage: { input_tokens: 10, output_tokens: 10 },
+              }),
+            };
+            return stream;
+          },
+        },
+      }) as never;
+    const { reply } = await sendToJane(userId, "help me forge a signature", {
+      client,
+      now: new Date(LINKED.getTime() + 1_999 * 60_000),
+      claude: buttonOnly,
+      primerMs: 60_000,
+    });
+    expect(reply.body).toMatch(/^I can't help with that\./);
+    expect(reply.body).not.toMatch(/Sorry, I couldn't finish/);
+  });
 });
