@@ -3,6 +3,8 @@ import {
   CHAT_CLAUDE_COOLDOWN_SECONDS,
   CHAT_CLAUDE_DEADLINE_MS,
   CHAT_CLAUDE_FIRST_WORDS_MS,
+  CHAT_CLAUDE_MAX_TOKENS,
+  CHAT_PRIMER_BUDGET_MS,
   CHAT_CLAUDE_EFFORT,
   CHAT_CLAUDE_MAX_TURNS,
   CHAT_CLAUDE_REWRITES,
@@ -105,6 +107,8 @@ type Options = {
   // Spec step 93: how long to wait for Claude to start, and to finish, in milliseconds.
   firstWordsMs?: number;
   deadlineMs?: number;
+  // How long to wait for the person's main numbers before starting without them.
+  primerMs?: number;
 };
 
 // Spec step 93: when Claude last failed, free questions get the rules' answer at once until
@@ -223,16 +227,25 @@ export async function askClaudeInChat(
     topic = null,
     firstWordsMs = CHAT_CLAUDE_FIRST_WORDS_MS,
     deadlineMs = CHAT_CLAUDE_DEADLINE_MS,
+    primerMs = CHAT_PRIMER_BUDGET_MS,
   }: Options,
 ): Promise<ClaudeAnswer> {
   // Spec step 93: Claude failed a moment ago: answer from the rules now, never a spinner.
   if (Date.now() < claudeDownUntil) return unavailable();
   // Spec step 191: today's cost cap for this person.
   if (await overDailyCap(userId, { client, now })) return unavailable();
-  const started = Date.now();
   const profile = advice ? "demo_advice" : "standard";
   onEvent({ type: "status", text: "Looking at your numbers…" });
-  const primer = await chatPrimer(userId, { client, now });
+  // The person's main numbers, for at most primerMs: a slow lookup finishes in the
+  // background (and is kept for the next question) while Claude starts without it.
+  const primer = await Promise.race([
+    chatPrimer(userId, { client, now }),
+    new Promise<{ text: string; cents: number[] }>((resolve) =>
+      setTimeout(() => resolve({ text: "", cents: [] }), primerMs).unref?.(),
+    ),
+  ]);
+  // Claude's clock starts now, after the lookup: it always gets its whole first-words window.
+  const started = Date.now();
   // Figures the answer may use: any in the numbers sent up front or a tool's result (a
   // finding's title has some too: "Charged twice? $64.20 at Target"), the question, and
   // earlier answers.
@@ -271,7 +284,7 @@ export async function askClaudeInChat(
       const stream = claude()
         .messages.stream({
           model: chatModel(),
-          max_tokens: 16000,
+          max_tokens: CHAT_CLAUDE_MAX_TOKENS,
           system,
           tools: CHAT_TOOLS,
           thinking: { type: "adaptive" },
@@ -298,16 +311,25 @@ export async function askClaudeInChat(
         if (typeof stream.abort === "function") stream.abort();
       }
       const left = deadlineMs - (Date.now() - started);
+      if (left <= 0) {
+        stop();
+        return unavailable();
+      }
       timer = setTimeout(stop, turn === 0 ? Math.min(firstWordsMs, left) : Math.max(0, left));
       response = await stream.finalMessage();
     } catch (error) {
       if (!(error instanceof Anthropic.APIError)) throw error;
       if (stopped) {
+        // Our own deadline: this answer comes from the rules, but Claude isn't marked down.
         console.warn("Jane's chat answer from Claude was too slow");
       } else {
         console.error("Jane's chat request to Claude failed", { status: error.status });
+        // Only Claude itself failing (rate limit, overloaded, an error) pauses it.
+        const status = error.status ?? 0;
+        if (status === 429 || status >= 500) {
+          claudeDownUntil = Date.now() + CHAT_CLAUDE_COOLDOWN_SECONDS * 1000;
+        }
       }
-      claudeDownUntil = Date.now() + CHAT_CLAUDE_COOLDOWN_SECONDS * 1000;
       return unavailable();
     } finally {
       clearTimeout(timer);
