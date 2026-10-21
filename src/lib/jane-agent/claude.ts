@@ -44,7 +44,7 @@ import type { Reply } from "./replies";
 // the answer streamed as it's written (onEvent), a sentence at a time once each passes the
 // guardrails (./guarded-text), with what Jane is looking up in between.
 
-export const CHAT_PROMPT_VERSION = "chat-v12";
+export const CHAT_PROMPT_VERSION = "chat-v13";
 
 // The one rule that differs in demo advice mode (spec step 98).
 const NO_ADVICE = `- Never give investment, tax or legal advice, and don't mention investments, taxes or legal matters at all. Don't suggest financial products beyond Jane's pick from finding_details.`;
@@ -63,6 +63,8 @@ Be useful, like a friend who's good with money and has their numbers in front of
 - Say what the data says plainly: if a tool gives a name, a figure or a date, state it, never "probably" or "it looks like". Say you don't know only when no tool has it.
 - If they push back ("you tell me"), give a straight answer from their numbers. Don't repeat yourself or hand it back to them.
 - Every answer must stand on its own, in words first: what the answer is, with their figures, and why. A button is extra. Never begin with, or talk about, a button or what you "put" under the answer (the app adds that line itself), and never answer with only a button or "tap the button".
+- Their numbers include what_matters_most (the top three things, with why and what each is worth, and how sure Jane is of a suggestion) and open_findings_summary. Answer "what should I do first", "why", "tell me more" and "what am I doing wrong" straight from those, with no tool call: the first item is the answer, its why is the reason.
+- Call every tool you need in one step (several at once), not one after another, and use the fewest you can: you have only a few rounds, and the last one must be the answer.
 - Never mention earlier messages that failed or went unanswered, or say what you "said you'd do" earlier. Answer only what they asked now.
 - "Why?", "tell me more" and "explain" mean: give the reason for the last answer in one or two new sentences with their figures. Never repeat the last answer, and never reply with just a button.
 - "Explain it like I'm 5" means plain words for a child: short sentences, no jargon, their real numbers.
@@ -239,6 +241,8 @@ type ChatTiming = {
   outputTokens: number;
   // Each tool Claude called and how long it took to run, in milliseconds.
   tools: { name: string; ms: number }[];
+  // How many tool definitions the request carried (the question's sectors, not all of them).
+  toolsSent: number;
   // Why the answer came from the rules instead (no text, numbers only).
   reason: string | null;
 };
@@ -267,6 +271,7 @@ export async function askClaudeInChat(
     cacheWriteTokens: 0,
     outputTokens: 0,
     tools: [],
+    toolsSent: 0,
     reason: null,
   };
   let outcome = "error";
@@ -283,7 +288,7 @@ export async function askClaudeInChat(
         outcome,
         totalMs: Date.now() - startedAt,
         model: chatModel(),
-        toolsSent: CHAT_TOOLS.length,
+        toolsSent: timing.toolsSent,
       }),
     );
   }
@@ -350,6 +355,7 @@ async function askClaude(
     topic,
     now.toISOString().slice(0, 10),
   );
+  timing.toolsSent = tools.length;
   let proposal: Extract<Proposal, { ok: true }> | null = null;
   let shown: AnswerBlock | null = null;
   const draft = new GuardedText(
@@ -386,6 +392,8 @@ async function askClaude(
           max_tokens: CHAT_CLAUDE_MAX_TOKENS,
           system,
           tools,
+          // The last round answers from what it has: a lookup there would leave no answer.
+          tool_choice: turn === maxTurns - 1 ? { type: "none" } : { type: "auto" },
           // Adaptive thinking at low effort (the request that worked). Turning thinking off
           // made the nightly's every chat request fail with a 400.
           thinking: { type: "adaptive" },
