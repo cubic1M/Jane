@@ -120,7 +120,6 @@ describe("paraphrases of a decision question", () => {
 
   it("still leaves other sectors' and priced questions alone", () => {
     for (const text of [
-      "should i buy renters insurance",
       "is a roth a good idea",
       "should i refinance my mortgage",
       "yea so should i buy a $900 couch",

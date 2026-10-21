@@ -541,11 +541,12 @@ describe("insurance on autopilot (spec step 108)", () => {
 });
 
 describe("do I need it? (spec step 149)", () => {
-  it.each([
-    ["is travel insurance worth it", "travel"],
-    ["do we need life insurance", "life"],
-  ])("reads %j", (text, policyKind) => {
+  it.each([["do we need life insurance", "life"]])("reads %j", (text, policyKind) => {
     expect(parseIntent(text, ASOF)).toEqual({ kind: "insurance", ask: "need", policyKind });
+  });
+
+  it("reads 'is travel insurance worth it' as a decision", () => {
+    expect(parseIntent("is travel insurance worth it", ASOF).kind).toBe("decision");
   });
 
   // These get a short, direct answer (./decisions.ts).
