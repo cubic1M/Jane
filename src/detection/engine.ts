@@ -334,6 +334,19 @@ export async function runDetection(
   const input = await loadInput(db, isoDate(now), client);
   input.subscriptionMerchantKeys = await subscriptionMerchantKeys(db, input, check);
   const candidates = detect(input);
+  // A card's interest finding is worth a year of its interest from the balance and rate, the same
+  // figure as the brief and the chat (the card interest page); the charges seen stay as the
+  // finding's amount. Without that figure (real accounts, no lender partner) the charges seen stand.
+  if (candidates.some((c) => c.type === "card_interest")) {
+    const { loadCardInterest } = await import("@/lib/card-interest");
+    const view = await loadCardInterest(userId, { client, now }).catch(() => null);
+    if (view?.available) {
+      for (const c of candidates) {
+        const card = view.cards.find((x) => `account:${x.accountId}` === c.key);
+        if (c.type === "card_interest" && card) c.annualSavingsCents = card.interestYearCents;
+      }
+    }
+  }
 
   const existing = await db.findings.findMany({
     select: {

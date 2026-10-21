@@ -8,6 +8,7 @@ vi.mock("@/lib/session", () => ({ requireUser: vi.fn() }));
 vi.mock("@/lib/analytics", () => ({ track: vi.fn() }));
 vi.mock("@/lib/audit", () => ({ logAudit: vi.fn(), SYSTEM_ACTOR: { type: "system", id: null } }));
 
+import { planFor } from "@/lib/plan";
 import { loadBankFees } from "@/lib/bank-fees";
 import { idleCash } from "@/detection/rules/idle-cash";
 import { loadDetectionInput } from "@/detection/engine";
@@ -30,7 +31,7 @@ const NOW = new Date("2026-10-18T15:00:00Z");
 describe.runIf(url)("the brief and the chat give the same figure", { timeout: 120_000 }, () => {
   let client: PrismaClient;
   const made: string[] = [];
-  const compared = { match: 0, rsu: 0, subs: 0, interest: 0, idle: 0, fees: 0, shop: 0 };
+  const compared = { pages: 0, match: 0, rsu: 0, subs: 0, interest: 0, idle: 0, fees: 0, shop: 0 };
 
   beforeAll(() => {
     vi.stubEnv("TOKEN_ENCRYPTION_KEY", randomBytes(32).toString("base64"));
@@ -39,6 +40,7 @@ describe.runIf(url)("the brief and the chat give the same figure", { timeout: 12
   }, 120_000);
   afterAll(() => {
     // The comparison happened for someone (the test is not vacuous).
+    expect(compared.pages).toBeGreaterThan(0);
     expect(compared.match).toBeGreaterThan(0);
     expect(compared.rsu).toBeGreaterThan(0);
     expect(compared.subs).toBeGreaterThan(0);
@@ -85,6 +87,23 @@ describe.runIf(url)("the brief and the chat give the same figure", { timeout: 12
       if (interestBrief && interest.available) {
         compared.interest++;
         expect(interestBrief.worthCents, "card interest a year").toBe(interest.interestYearCents);
+      }
+
+      // The Plans page: each card's interest finding is worth that card's year of interest.
+      const plan = await planFor(trial.userId, { client });
+      const cards = new Map(
+        interest.cards.map((c) => [`account:${c.accountId}`, c.interestYearCents]),
+      );
+      const findings = await client.finding.findMany({
+        where: { userId: trial.userId, type: "card_interest" },
+        select: { id: true, key: true, annualSavingsCents: true },
+      });
+      for (const f of findings) {
+        if (!interest.available || !cards.has(f.key)) continue;
+        compared.pages++;
+        expect(f.annualSavingsCents, "card interest finding").toBe(cards.get(f.key));
+        const item = plan.find((i) => i.card.findingId === f.id);
+        if (item) expect(item.card.annualSavingsCents, "Plans page").toBe(cards.get(f.key));
       }
 
       // Idle cash: the Today card's finding and the brief are the same function.
