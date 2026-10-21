@@ -363,11 +363,15 @@ describe.runIf(url)("typing to Jane against a real database", () => {
       );
       expect(await overDailyCap(capped, { client, now: when })).toBe(true);
       create.mockReset();
-      const { reply, source } = await sendToJane(capped, "what is my net worth", {
-        client,
-        now: when,
-        claude,
-      });
+      const { reply, source } = await sendToJane(
+        capped,
+        "give me your honest take on my money habits",
+        {
+          client,
+          now: when,
+          claude,
+        },
+      );
       expect(create).not.toHaveBeenCalled();
       expect(source).toBe("claude_unavailable");
       expect(reply.body.length).toBeGreaterThan(0);
@@ -375,6 +379,33 @@ describe.runIf(url)("typing to Jane against a real database", () => {
       expect(
         await overDailyCap(capped, { client, now: new Date(when.getTime() + 24 * 60 * 60 * 1000) }),
       ).toBe(false);
+    });
+
+    it("leaves what Jane couldn't answer out of what Claude sees", async () => {
+      const someone = await client.user.create({
+        data: { email: `hist-${crypto.randomUUID()}@example.com` },
+      });
+      const row = (kind: "user" | "reply", body: string, minutes: number) =>
+        client.janeMessage.create({
+          data: {
+            userId: someone.id,
+            kind,
+            body,
+            dedupeKey: `h:${minutes}`,
+            refs: {},
+            actions: [],
+            createdAt: new Date(Date.UTC(2026, 9, 19, 12, minutes)),
+          },
+        });
+      await row("user", "what is my rent", 1);
+      await row("reply", "Your rent is $2,000.", 2);
+      await row("user", "should i cancel netflix", 3);
+      await row("reply", "I couldn't look into that just now. Tap one of these.", 4);
+      await row("user", "and the gym", 5);
+      await row("reply", "I can't answer that one yet. Tap one of these.", 6);
+      const turns = await recentTurns(someone.id, { client });
+      expect(turns.map((t) => t.content)).toEqual(["what is my rent", "Your rent is $2,000."]);
+      await client.user.delete({ where: { id: someone.id } });
     });
 
     it("sends the person's main numbers with the question, from the real database", async () => {

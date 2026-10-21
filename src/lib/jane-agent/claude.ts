@@ -44,7 +44,7 @@ import type { Reply } from "./replies";
 // the answer streamed as it's written (onEvent), a sentence at a time once each passes the
 // guardrails (./guarded-text), with what Jane is looking up in between.
 
-export const CHAT_PROMPT_VERSION = "chat-v11";
+export const CHAT_PROMPT_VERSION = "chat-v13";
 
 // The one rule that differs in demo advice mode (spec step 98).
 const NO_ADVICE = `- Never give investment, tax or legal advice, and don't mention investments, taxes or legal matters at all. Don't suggest financial products beyond Jane's pick from finding_details.`;
@@ -62,7 +62,12 @@ Be useful, like a friend who's good with money and has their numbers in front of
 - When they ask two things in one message, answer both, in order, each with its figure; the first sentence still gives the first answer. When you really can't tell what they mean, ask one short question that names the likely choices ("Do you mean your Netflix or your Hulu?"). Never a generic list of things you can do when one of your tools fits.
 - Say what the data says plainly: if a tool gives a name, a figure or a date, state it, never "probably" or "it looks like". Say you don't know only when no tool has it.
 - If they push back ("you tell me"), give a straight answer from their numbers. Don't repeat yourself or hand it back to them.
-- Every answer must stand on its own. A button is extra: never answer with only a button or "tap the button".
+- Every answer must stand on its own, in words first: what the answer is, with their figures, and why. A button is extra. Never begin with, or talk about, a button or what you "put" under the answer (the app adds that line itself), and never answer with only a button or "tap the button".
+- Their numbers include what_matters_most (the top three things, with why and what each is worth, and how sure Jane is of a suggestion) and open_findings_summary. Answer "what should I do first", "why", "tell me more" and "what am I doing wrong" straight from those, with no tool call: the first item is the answer, its why is the reason.
+- Call every tool you need in one step (several at once), not one after another, and use the fewest you can: you have only a few rounds, and the last one must be the answer.
+- Never mention earlier messages that failed or went unanswered, or say what you "said you'd do" earlier. Answer only what they asked now.
+- "Why?", "tell me more" and "explain" mean: give the reason for the last answer in one or two new sentences with their figures. Never repeat the last answer, and never reply with just a button.
+- "Explain it like I'm 5" means plain words for a child: short sentences, no jargon, their real numbers.
 
 Shape every answer the same way (spec step 89):
 - The first sentence is the answer itself, with their figure: "Netflix is $17.99 a month." or "Yes: you'd still have $2,276.12 safe to spend until Oct 28 (in 10 days)." Never open with a lead-in ("Here's what I found:", "Sure!", "Great question") or restate the question.
@@ -76,6 +81,7 @@ How to answer:
 - Use only dollar amounts that appear in those numbers or in tool results, written exactly as they appear there (with the cents). Don't add, subtract, round or estimate amounts yourself.
 - Keep it short: a few sentences or a short list. Plain words, no jargon, no headings. Don't write anything before a lookup; just look it up.
 - You can't do anything yourself. When something can be done (cancel or lower something the app found, approve the plan, start a goal), call propose_action once so they get a button, and say what tapping it does. Never say it's done.
+- Write your answer first, then call propose_action or show_block at the very end of that same turn if a button or a picture helps: the answer you wrote is the answer.
 - Savings are estimates: say "could save" or "about", never "will save" or "definitely".
 ${NO_ADVICE}
 - To "hi" or "thanks", answer in a sentence and mention one useful thing from their numbers.
@@ -236,6 +242,8 @@ type ChatTiming = {
   outputTokens: number;
   // Each tool Claude called and how long it took to run, in milliseconds.
   tools: { name: string; ms: number }[];
+  // How many tool definitions the request carried (the question's sectors, not all of them).
+  toolsSent: number;
   // Why the answer came from the rules instead (no text, numbers only).
   reason: string | null;
 };
@@ -264,6 +272,7 @@ export async function askClaudeInChat(
     cacheWriteTokens: 0,
     outputTokens: 0,
     tools: [],
+    toolsSent: 0,
     reason: null,
   };
   let outcome = "error";
@@ -280,7 +289,7 @@ export async function askClaudeInChat(
         outcome,
         totalMs: Date.now() - startedAt,
         model: chatModel(),
-        toolsSent: CHAT_TOOLS.length,
+        toolsSent: timing.toolsSent,
       }),
     );
   }
@@ -347,6 +356,7 @@ async function askClaude(
     topic,
     now.toISOString().slice(0, 10),
   );
+  timing.toolsSent = tools.length;
   let proposal: Extract<Proposal, { ok: true }> | null = null;
   let shown: AnswerBlock | null = null;
   const draft = new GuardedText(
@@ -383,6 +393,8 @@ async function askClaude(
           max_tokens: CHAT_CLAUDE_MAX_TOKENS,
           system,
           tools,
+          // The last round answers from what it has: a lookup there would leave no answer.
+          tool_choice: turn === maxTurns - 1 ? { type: "none" } : { type: "auto" },
           // Adaptive thinking at low effort (the request that worked). Turning thinking off
           // made the nightly's every chat request fail with a 400.
           thinking: { type: "adaptive" },
@@ -471,11 +483,25 @@ async function askClaude(
       },
       { client, now },
     );
+    // The answer was written and only a button or a picture was asked for after it: that text
+    // IS the answer, so there is no extra round just to be told "noted".
+    const writtenText = response.content
+      .flatMap((b) => (b.type === "text" ? [b.text] : []))
+      .join("\n")
+      .trim();
+    const decorationOnly =
+      response.stop_reason === "tool_use" &&
+      writtenText.length > 0 &&
+      response.content.every(
+        (b) => b.type !== "tool_use" || b.name === "propose_action" || b.name === "show_block",
+      );
     if (response.stop_reason === "tool_use") {
-      // Any text so far led into the lookup; the answer comes after it.
-      draft.reset();
-      onEvent({ type: "reset" });
-      messages.push({ role: "assistant", content: response.content });
+      if (!decorationOnly) {
+        // Any text so far led into the lookup; the answer comes after it.
+        draft.reset();
+        onEvent({ type: "reset" });
+        messages.push({ role: "assistant", content: response.content });
+      }
       const results: Anthropic.ToolResultBlockParam[] = [];
       for (const block of response.content) {
         if (block.type !== "tool_use") continue;
@@ -520,7 +546,7 @@ async function askClaude(
           results.push({
             type: "tool_result",
             tool_use_id: block.id,
-            content: result.ok ? "The button will be shown under your answer." : result.error,
+            content: result.ok ? "Noted." : result.error,
             ...(result.ok ? {} : { is_error: true }),
           });
           continue;
@@ -531,11 +557,15 @@ async function askClaude(
         allowedCents.push(...output.cents, ...dollarFigures(output.content).map((f) => f.cents));
         results.push({ type: "tool_result", tool_use_id: block.id, content: output.content });
       }
-      messages.push({ role: "user", content: results });
-      continue;
+      if (!decorationOnly) {
+        messages.push({ role: "user", content: results });
+        continue;
+      }
     }
 
-    if (response.stop_reason !== "end_turn") return fail(`stop_${response.stop_reason}`);
+    if (response.stop_reason !== "end_turn" && !decorationOnly) {
+      return fail(`stop_${response.stop_reason}`);
+    }
     draft.finish();
     const text = response.content
       .flatMap((b) => (b.type === "text" ? [b.text] : []))

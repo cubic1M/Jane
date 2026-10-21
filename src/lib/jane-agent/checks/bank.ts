@@ -786,6 +786,50 @@ const BASE_QUESTIONS: readonly CheckQuestion[] = [
     },
   },
 
+  // A finding talked about doesn't turn the next, unrelated question into a follow-up on it.
+  {
+    id: "unrelated-1",
+    text: "what's my net worth",
+    needs: "rules",
+    after: "follow-2",
+    sector: "follow",
+    page: "/net-worth",
+    tool: "net_worth",
+    expect: { intent: "net_worth", avoid: /hulu|button/i },
+  },
+  {
+    id: "unrelated-2",
+    text: "how can i pay less interest",
+    needs: "claude",
+    after: "follow-2",
+    sector: "follow",
+    page: "/debt",
+    tool: "card_interest",
+    expect: { avoid: /hulu|\bbutton\b|under this answer/i },
+  },
+  // Voice (QA sweep): answers in words first, no talk of buttons or of earlier failures.
+  {
+    id: "voice-1",
+    text: "explain my budget like i'm 5",
+    needs: "claude",
+    sector: "chat",
+    page: "/budgets",
+    tool: "budgets",
+    expect: {
+      avoid:
+        /\b(?:I(?:'ve| have) put|button|never answered|I said I'd|earlier (?:question|message))\b/i,
+    },
+  },
+  {
+    id: "voice-2",
+    text: "tell me about my spending in simple words",
+    needs: "claude",
+    sector: "chat",
+    page: "/transactions",
+    tool: "spending_by_category",
+    expect: { avoid: /\b(?:I(?:'ve| have) put|under this answer|never answered)\b/i },
+  },
+
   // Follow-ups: the second needs the first.
   {
     id: "follow-1",

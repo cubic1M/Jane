@@ -43,6 +43,7 @@ import { lifeEventReply } from "../replies-life";
 import { loadSnapshot } from "../snapshot";
 import { type CapabilityContext } from "./shared";
 import { ackReply } from "../ack-reply";
+import { whyFindingReply } from "../explain-finding";
 
 // Jane herself: the whole picture, what she did, autopilot, memory, help and plans (spec step 190): the rules' answers for these kinds of question, one registered
 // capability each in ./index.ts. Moved out of ../answer.ts unchanged.
@@ -57,7 +58,10 @@ async function answer(ctx: CapabilityContext): Promise<Reply | null> {
     case "remind":
       return ackReply(userId, intent, { client });
     case "follow_up":
+    case "explain":
       return null;
+    case "why_finding":
+      return whyFindingReply(userId, intent.findingId, { client });
     case "unknown":
       return null;
     case "help":

@@ -98,13 +98,23 @@ export async function recentTurns(
     take: CHAT_CLAUDE_HISTORY,
     select: { kind: true, body: true },
   });
-  return rows.reverse().map((m) => ({
-    role: m.kind === "user" ? "user" : "assistant",
-    content:
-      m.body.length > CHAT_CLAUDE_TURN_CHARS
-        ? `${m.body.slice(0, CHAT_CLAUDE_TURN_CHARS)}…`
-        : m.body,
-  }));
+  // What Jane couldn't answer (the "couldn't look into that" and "which one" replies) isn't
+  // history Claude should see, with the question it came from: it would answer those instead.
+  const turns = rows.reverse();
+  const unanswered = (m: { kind: string; body: string }) =>
+    m.kind === "reply" &&
+    /^(?:I couldn't look into that|I can't answer that one yet|Which one do you mean|You've asked me a lot)/.test(
+      m.body,
+    );
+  return turns
+    .filter((m, i) => !unanswered(m) && !(m.kind === "user" && unanswered(turns[i + 1] ?? m)))
+    .map((m) => ({
+      role: m.kind === "user" ? "user" : "assistant",
+      content:
+        m.body.length > CHAT_CLAUDE_TURN_CHARS
+          ? `${m.body.slice(0, CHAT_CLAUDE_TURN_CHARS)}…`
+          : m.body,
+    }));
 }
 
 // How an answer was given: by the rules, by Claude (or blocked, or Claude couldn't), or
@@ -112,6 +122,17 @@ export async function recentTurns(
 export type AnswerSource =
   "rules" | "claude" | "claude_blocked" | "claude_unavailable" | "fallback";
 type Source = AnswerSource;
+
+// The kinds of message that can point back at the last answer.
+const FOLLOWS: readonly string[] = [
+  "follow_up",
+  "about",
+  "unknown",
+  "act",
+  "cost",
+  "spending",
+  "decision",
+];
 
 async function answer(
   userId: string,
@@ -175,7 +196,9 @@ async function answer(
     primerMs,
     advice: await adviceMode(userId, { client }),
     style: styleInstructions(style),
-    topic,
+    // The last topic goes only with a question that points back at it ("it", "why?"); a
+    // fresh question ("what's my net worth") isn't about the finding talked about before.
+    topic: FOLLOWS.includes(intent.kind) ? topic : null,
   });
   if (result.kind === "answer") {
     return { reply: result.reply, intent: intent.kind, source: "claude" };
