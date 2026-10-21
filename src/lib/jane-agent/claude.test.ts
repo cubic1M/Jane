@@ -128,7 +128,7 @@ describe("askClaudeInChat", () => {
     // A faster model than the rest of the app, thinking little, with the chat's tools.
     expect(create.mock.calls[0][0]).toMatchObject({
       model: "claude-sonnet-5-5",
-      thinking: { type: "disabled" },
+      thinking: { type: "adaptive" },
       output_config: { effort: "low" },
       tools: CHAT_TOOLS,
     });
