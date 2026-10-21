@@ -33,7 +33,7 @@ export async function investingDecide({
   const kind = KIND_OF[item as keyof typeof KIND_OF];
   if (!kind) return null;
   const facts = await loadDecisionFacts(userId, { client, now });
-  const reply = decisionReply(kind, facts, companyIn(label));
+  const reply = decisionReply(kind, facts, kind === "buy_crypto" ? label : companyIn(label));
   // How sure: lower when Jane has no emergency target or income to measure against.
   const known = facts.emergencyTargetCents > 0 && facts.monthlyIncomeCents !== null;
   return {

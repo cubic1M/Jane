@@ -1,3 +1,4 @@
+import { parseIntent } from "../intents";
 import type { CheckQuestion } from "./bank";
 
 // Investing decisions people really type (the chat, founder bug "should i buy bitcoin" got a
@@ -10,7 +11,9 @@ const ask = (n: number, text: string, after?: string): CheckQuestion => ({
   text,
   needs: "rules",
   ...(after ? { after } : {}),
-  expect: { intent: "investments", maxChars: 520 },
+  // The decision router reads the "should I ..." ones and investing answers them; the rest
+  // investing reads itself.
+  expect: { intent: parseIntent(text, "2026-10-20").kind as never, maxChars: 520 },
   sector: "investing",
   page: "/investments",
   tool: "investing_decision",

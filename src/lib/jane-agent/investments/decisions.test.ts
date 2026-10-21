@@ -29,7 +29,9 @@ const BASE: DecisionFacts = {
 };
 const DEBT: DecisionFacts = {
   ...BASE,
-  highDebts: [{ name: "Demo Credit Card", balanceCents: 194_020, aprBps: 2699 }],
+  highDebts: [
+    { name: "Demo Credit Card", kind: "credit card", balanceCents: 194_020, aprBps: 2699 },
+  ],
   topDebt: { name: "Demo Credit Card", aprBps: 2699 },
 };
 const GAP: DecisionFacts = { ...BASE, savingsCents: 300_000 };
@@ -86,11 +88,13 @@ describe("the 30 investing decisions", () => {
 describe("what each answer rests on", () => {
   it("puts high-interest debt first for a purchase, with the person's own balance and rate", () => {
     const r = ask("should i buy bitcoin", DEBT);
-    expect(r.body).toMatch(/^Not yet: you owe \$1,940\.20 on Demo Credit Card at 27%/);
+    expect(r.body).toMatch(
+      /^Not yet: you owe \$1,940\.20 at 27% on your credit card, Demo Credit Card/,
+    );
   });
-  it("puts the emergency fund next", () => {
+  it("puts the cushion next", () => {
     const r = ask("should i buy tesla stock", GAP);
-    expect(r.body).toMatch(/^Not yet: your emergency fund is \$3,000\.00 of the \$9,000\.00/);
+    expect(r.body).toMatch(/^Not yet: your cushion is \$3,000\.00 of the \$9,000\.00/);
   });
   it("sizes a speculative bet from what they invest, and names the company asked about", () => {
     expect(ask("should i buy bitcoin", BASE).body).toMatch(/about 5%.*\$2,000\.00/);
