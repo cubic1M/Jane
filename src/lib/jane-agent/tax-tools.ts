@@ -34,6 +34,8 @@ import { loadEquityTax } from "@/lib/equity-tax";
 import { loadMultiYear } from "@/lib/multi-year";
 import { loadPropertyTax } from "@/lib/property-tax";
 import { loadAccountantPage } from "@/lib/accountant";
+import { DECISION_TOPICS } from "@/config/tax-decisions";
+import { decideTax } from "@/lib/tax-decisions";
 import { loadTaxCalendar } from "@/lib/tax-calendar";
 import { loadIdentity } from "@/lib/tax-identity";
 import { loadSideIncome } from "@/lib/side-income";
@@ -206,6 +208,17 @@ export const TAX_TOOLS: Anthropic.Tool[] = [
     description:
       "The person's tax calendar for this month and the year: what Jane does each month (the January IRS Identity Protection PIN reminder and form chase, estimated payments paid through the payment stand-in a few days before they are due when they fit the person's cap for taxes, the June withholding check, December's year-end moves in one message, filing day and the refund tracked), where each item stands now (done, needs the person's tap, coming, nothing to do), any estimated payment that needs a tap and why (over the cap, over the monthly cap, or the person asked Jane to ask first), and the year-end moves. Nothing is paid above the cap without a tap; signing and filing a return are always the person's.",
     input_schema: noInput,
+  },
+  {
+    name: "tax_decide",
+    description:
+      "A direct answer, in three sentences or fewer from the person's own numbers, to one of the tax questions people ask: whether to itemize, do a Roth conversion, change their withholding, pay estimated taxes, put more in their 401(k), pick a traditional or Roth IRA, open an HSA, appeal their property tax, sell a loser for the loss, give stock instead of cash, or claim a home office; and the facts: what they will owe or get back, why their refund is what it is, their effective rate, tax paid so far, what they can deduct, how much to set aside, when the next estimated payment is due, whether they must file, and their mortgage interest deduction. Decisions are demo advice and carry the label; for a real account the answer says what the numbers are, not what to do. Pass the topic.",
+    input_schema: {
+      type: "object" as const,
+      properties: { topic: { type: "string" as const, enum: [...DECISION_TOPICS] } },
+      required: ["topic"],
+      additionalProperties: false,
+    },
   },
   {
     name: "tax_forms",
@@ -776,6 +789,18 @@ export async function runTaxTool(
           .map((d) => ({ dueOn: d.dueOn, amount: money(d.cents), why: d.needsTap })),
         yearEndMoves: v.yearEnd?.lines ?? [],
         wholeYear: v.months.map((m) => ({ month: m.label, items: m.items.map((i) => i.title) })),
+      });
+    }
+    case "tax_decide": {
+      const topic = DECISION_TOPICS.find((t) => t === args.topic);
+      if (!topic) return out({ error: `topic must be one of ${DECISION_TOPICS.join(", ")}` });
+      const d = await decideTax(userId, topic, { client, now });
+      for (const c of d.figures) cents.push(Math.abs(c));
+      return out({
+        topic: d.topic,
+        answer: d.text,
+        isRecommendation: d.advice,
+        figuresInCents: d.figures,
       });
     }
     case "tax_years": {
