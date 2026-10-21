@@ -54,22 +54,19 @@ describe.runIf(url)("why, typed after a finding", { timeout: 60_000 }, () => {
     }
   });
 
-  it("with a key, answers them by the rules and never asks Claude", async () => {
+  it("with a key, Claude is asked; if it fails the backup still gives the reason", async () => {
     vi.stubEnv("ANTHROPIC_API_KEY", "test-key");
     const claude = vi.fn(() => {
-      throw new Error("Claude must not be asked");
+      throw new Error("Claude is down");
     });
     let tick = 100;
     const at = () => new Date(LINKED.getTime() + ++tick * 60_000);
-    // Cancelling is an exact command (rules), which leaves the finding as the topic.
     const first = await sendToJane(userId, "cancel netflix", { client, now: at(), claude });
     expect(first.reply.actions.some((a) => a.id === "finding.yes")).toBe(true);
-    for (const text of ["why?", "tell me more"]) {
-      const { reply, source } = await sendToJane(userId, text, { client, now: at(), claude });
-      expect(source, text).toBe("rules");
-      expect(reply.body, text).toContain("If you say yes:");
-    }
-    expect(claude).not.toHaveBeenCalled();
+    const { reply, source } = await sendToJane(userId, "why?", { client, now: at(), claude });
+    expect(claude).toHaveBeenCalled();
+    expect(source).toBe("claude_unavailable");
+    expect(reply.body).toContain("If you say yes:");
     vi.stubEnv("ANTHROPIC_API_KEY", "");
   });
 });

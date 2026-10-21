@@ -18,7 +18,12 @@ import { answerByRules } from "./answer";
 import { listPreferences } from "./preferences";
 import { shapeReply, styleInstructions, styleOf } from "./style";
 import { joinReplies, splitQuestions } from "./two-parts";
-import { askClaudeInChat, type ChatStreamEvent, type ChatTurn } from "./claude";
+import {
+  CHAT_UNAVAILABLE_TEXT,
+  askClaudeInChat,
+  type ChatStreamEvent,
+  type ChatTurn,
+} from "./claude";
 import { resolvePronoun, withTopic, type Topic } from "./context";
 import { typedFlowReply } from "./flows/chat";
 import { parseIntent } from "./intents";
@@ -103,7 +108,7 @@ export async function recentTurns(
   const turns = rows.reverse();
   const unanswered = (m: { kind: string; body: string }) =>
     m.kind === "reply" &&
-    /^(?:I couldn't look into that|I can't answer that one yet|Which one do you mean|You've asked me a lot)/.test(
+    /^(?:I couldn't look into that|I couldn't write a full answer|I can't answer that one yet|Which one do you mean|You've asked me a lot)/.test(
       m.body,
     );
   return turns
@@ -189,6 +194,7 @@ async function answer(
       source: "capped",
     };
   }
+  // Whatever goes wrong inside, the person gets an answer from the data, never a crash.
   const result = await askClaudeInChat(userId, history, text, {
     client,
     now,
@@ -198,6 +204,9 @@ async function answer(
     advice: await adviceMode(userId, { client }),
     style: styleInstructions(style),
     topic,
+  }).catch((error): Awaited<ReturnType<typeof askClaudeInChat>> => {
+    console.error("Jane's chat failed unexpectedly", { error: String(error).slice(0, 300) });
+    return { kind: "unavailable", reply: { body: CHAT_UNAVAILABLE_TEXT, actions: [], refs: {} } };
   });
   if (result.kind === "answer") {
     return { reply: result.reply, intent: intent.kind, source: "claude" };
