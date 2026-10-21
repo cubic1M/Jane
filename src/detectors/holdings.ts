@@ -48,7 +48,7 @@ const feeDrag: Detector = {
         { percent: 85, reason: "fund costs from Jane's fund table" },
       ]),
       urgency: "later",
-      why: `${rows.length} of your funds cost more than a similar fund. The largest is ${FUND_NAMES[top.h.ticker!] ?? top.h.ticker} (${formatCents(top.h.valueCents)}); switching all of them would save about ${formatCents(total)} a year in fees.`,
+      why: `${rows.length === 1 ? "One of your funds costs" : `${rows.length} of your funds cost`} more than a similar fund. The largest is ${FUND_NAMES[top.h.ticker!] ?? top.h.ticker} (${formatCents(top.h.valueCents)}); switching all of them would save about ${formatCents(total)} a year in fees.`,
       action: { label: "See the fees", href: "/investments/fees" },
     };
   },
@@ -93,7 +93,10 @@ const drift: Detector = {
       worthCents: moved,
       worthKind: "risk",
       confidence: weakest([
-        factEvidence(stage),
+        {
+          percent: stage.confidence,
+          reason: "your target mix is a guess from your life stage until you answer four questions",
+        },
         evidence("seen", profile.months, count, "funds with known holdings"),
       ]),
       urgency: "later",
@@ -112,8 +115,10 @@ const autoInvest: Detector = {
     const pattern = profile.facts.income_pattern;
     const income = profile.facts.monthly_income;
     if (pattern.value !== "salary" || typeof income.value !== "number") return null;
-    const accounts = data.accounts.filter(
-      (a) => a.type === "investment" && a.subtype !== "hsa" && a.subtype !== "stock plan",
+    // Payroll contributions to a workplace plan are already regular investing, so only
+    // accounts outside it count.
+    const accounts = data.accounts.filter((a) =>
+      ["brokerage", "ira", "roth"].includes(a.subtype ?? ""),
     );
     if (accounts.length === 0) return null;
     const spend = monthlySpendCents(data, profile.months);
@@ -134,7 +139,7 @@ const autoInvest: Detector = {
         evidence("seen", profile.months, 0, "automatic investments"),
       ]),
       urgency: "later",
-      why: `You are paid a steady salary, keep a cushion and have ${accounts.length === 1 ? "an investment account" : `${accounts.length} investment accounts`}, but I see no regular investing. ${Math.round(R.autoInvestShare * 100)}% of your pay is about ${formatCents(monthly)} a month, always moved after your bills are safe.`,
+      why: `You are paid a steady salary, keep a cushion and have ${accounts.length === 1 ? "an investment account" : `${accounts.length} investment accounts`}, but I see no regular investing outside your workplace plan. ${Math.round(R.autoInvestShare * 100)}% of your pay is about ${formatCents(monthly)} a month, always moved after your bills are safe.`,
       action: { label: "Set up automatic investing", href: "/investments/auto" },
     };
   },
