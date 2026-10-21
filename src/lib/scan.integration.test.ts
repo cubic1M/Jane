@@ -171,6 +171,22 @@ describe.runIf(url)("the chat opens during the first scan", { timeout: 120_000 }
     expect(messages[agenda].body).toMatch(/% sure|not sure/);
   });
 
+  it("builds the first brief from a light snapshot, the whole one right after", async () => {
+    const trial = await startTrial({ client, now: NOW, defer: true, person: "debt" });
+    created.push(trial.userId);
+    await syncItem(trial.itemId, { client, now: NOW, progressive: true });
+    const { loadSnapshot } = await import("@/lib/jane-agent/snapshot");
+    const light = await loadSnapshot(trial.userId, { client, now: NOW, light: true });
+    const full = await loadSnapshot(trial.userId, { client, now: NOW });
+    // The light one has the brief's parts and none of the sectors'.
+    expect(light!.suggestions!.length).toBeGreaterThan(0);
+    expect(light!.suggestions).toEqual(full!.suggestions);
+    expect(light!.investments).toBeUndefined();
+    expect(light!.tax).toBeUndefined();
+    expect(light!.setupProposals).toEqual([]);
+    expect(full!.investments).toBeDefined();
+  });
+
   it("posts the first brief even when the scan runs in the night's quiet hours", async () => {
     const night = new Date("2026-10-17T03:00:00Z");
     const trial = await startTrial({ client, now: night, defer: true, person: "debt" });
