@@ -267,7 +267,10 @@ export const BUDGET_NEARLY_OVER_SHARE = 0.9;
 // Typing to Jane (spec step 84). The longest message the box takes, in characters.
 export const CHAT_MAX_MESSAGE = 500;
 // Claude sees only this many recent typed messages and answers, never the whole chat.
-export const CHAT_CLAUDE_HISTORY = 10;
+export const CHAT_CLAUDE_HISTORY = 6;
+// ...and each of those is cut to this many characters: a long earlier answer slows the next
+// one without helping it (what the last answer was about travels as its topic).
+export const CHAT_CLAUDE_TURN_CHARS = 700;
 // Most rounds of tool calls Claude may make for one answer, like Ask (ASK_MAX_TOOL_ROUNDS).
 export const CHAT_CLAUDE_MAX_TURNS = 3;
 // The most words Claude may write in one turn of an answer: a chat answer is a few sentences.
@@ -371,6 +374,8 @@ export const CHAT_RULES_ONLY_KINDS: readonly string[] = [
   "learn",
   // A decision is answered from their numbers, the same every time; Claude never looks up the thing.
   "decision",
+  // The ranked list of what matters most, and why: the same every time, so instant.
+  "priorities",
   // A typed yes or no, and "remind me": answered at once, pointing at the button.
   "ack",
   "remind",

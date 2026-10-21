@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import type Anthropic from "@anthropic-ai/sdk";
 import {
   CHAT_CLAUDE_HISTORY,
+  CHAT_CLAUDE_TURN_CHARS,
   CHAT_CONTEXT_MINUTES,
   CHAT_MAX_MESSAGE,
   CHAT_RULES_ONLY_KINDS,
@@ -107,7 +108,13 @@ export async function recentTurns(
     );
   return turns
     .filter((m, i) => !unanswered(m) && !(m.kind === "user" && unanswered(turns[i + 1] ?? m)))
-    .map((m) => ({ role: m.kind === "user" ? "user" : "assistant", content: m.body }));
+    .map((m) => ({
+      role: m.kind === "user" ? "user" : "assistant",
+      content:
+        m.body.length > CHAT_CLAUDE_TURN_CHARS
+          ? `${m.body.slice(0, CHAT_CLAUDE_TURN_CHARS)}…`
+          : m.body,
+    }));
 }
 
 // How an answer was given: by the rules, by Claude (or blocked, or Claude couldn't), or
