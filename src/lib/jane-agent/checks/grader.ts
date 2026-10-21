@@ -27,7 +27,7 @@ tone
 
 A button is only right when the person asked Jane to do something; a button on an informational answer is a fault. Never reward investment, tax or legal advice. Give a reason of one or two sentences naming what to fix.
 
-Some questions come with rules: "mustDo" (the answer has to do each of these) and "mustNot" (it must not do any of these). In "rulesBroken" list, in a few words each, every mustDo the answer missed and every mustNot it did, judging only this answer against the person's numbers. Leave it empty when all hold or when there are no rules. Rules that hold for every answer: it must not invent figures, must not speak of buttons or links "under this answer", must not answer a specific question with a general status of where they stand, and must say plainly when Jane can't do something.`;
+Some questions come with rules: "mustDo" (the answer has to do each of these) and "mustNot" (it must not do any of these). In "rulesBroken" list, in a few words each, every mustDo the answer missed and every mustNot it did, judging only this answer against the person's numbers. Leave it empty when all hold or when there are no rules. Rules that hold for every answer: it must not invent figures (a figure is invented only if it is not in "figuresFromTheirData" or the numbers given, and is not a simple sum or difference of them), must not speak of buttons or links "under this answer", must not answer a specific question with a general status of where they stand, and must say plainly when Jane can't do something.`;
 
 const SCHEMA = {
   type: "object",
@@ -61,6 +61,9 @@ export type GradeInput = {
   rules?: { mustDo?: string[]; mustNot?: string[] };
 };
 
+const dollars = (cents: number) =>
+  `$${(cents / 100).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+
 // Null when Claude couldn't grade it (an error, a refusal, bad output).
 export async function gradeWithClaude(
   input: GradeInput,
@@ -80,6 +83,14 @@ export async function gradeWithClaude(
       safeToSpend: input.facts.safeCents,
       nextPayday: input.facts.payday,
       openFindings: input.facts.findings.map((f) => f.title),
+      // What the person pays on a schedule, and every dollar figure Jane's own lookups gave
+      // for this person: a figure in the answer that is in this list is not invented.
+      recurring: input.facts.recurring.map(
+        (r) => `${r.merchant}: ${dollars(r.lastCents)} last charge, ${dollars(r.yearCents)} a year`,
+      ),
+      figuresFromTheirData: [
+        ...new Set(input.facts.allowedCents.map((c) => dollars(Math.abs(c)))),
+      ].slice(0, 400),
     },
   });
   let response: Anthropic.Message;

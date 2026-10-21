@@ -284,6 +284,27 @@ describe("askClaudeInChat", () => {
     expect(CHAT_TOOLS.map((t) => t.name)).toContain("calculate");
   });
 
+  it("rewrites a blocked answer even when the lookups used every turn, and logs the rule", async () => {
+    create
+      .mockResolvedValueOnce(toolUse("safe_to_spend"))
+      .mockResolvedValueOnce(toolUse("safe_to_spend"))
+      .mockResolvedValueOnce(final("A 4% rule on $1,000,000 would be $40,000 a year."))
+      .mockResolvedValueOnce(
+        final("A common starting point is 4% of what you've saved each year."),
+      );
+    const info = vi.spyOn(console, "info").mockImplementation(() => {});
+    const result = await askClaudeInChat("u1", [], "wats a safe wdrawal rate", options);
+    expect(result.kind).toBe("answer");
+    expect(result.reply.body).toMatch(/4%/);
+    // The note names the amounts to fix.
+    expect(JSON.stringify(create.mock.calls.at(-1)?.[0].messages.at(-1))).toMatch(/\$40,000/);
+    const logged = JSON.parse(String(info.mock.calls.find((c) => c[0] === "chat_timing")?.[1]));
+    expect(logged).toMatchObject({
+      rewrites: 1,
+      guardrails: ["unsupported_dollar_figure"],
+    });
+  });
+
   it("falls back to safe text, with no buttons, when the rewrite fails too", async () => {
     const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
     create
