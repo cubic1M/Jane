@@ -588,8 +588,10 @@ export async function syncItem(
   // The first scan: "still going through your accounts" comes first, before anything Jane finds,
   // whenever the person gets to the chat.
   if (progressive && item.transactionsCursor === null) {
-    await postScanningHello(item.userId, { client, now }).catch((error) =>
-      console.error("Posting the scanning hello failed", { error: String(error) }),
+    // A millisecond before this sync's own time: everything Jane posts later in the sync is
+    // stamped from `now` onward, so the hello is strictly first, never tied with the brief.
+    await postScanningHello(item.userId, { client, now: new Date(now.getTime() - 1) }).catch(
+      (error) => console.error("Posting the scanning hello failed", { error: String(error) }),
     );
   }
   const sync = await new PlaidDataSource(api, accessToken, item.transactionsCursor).load();
