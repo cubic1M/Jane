@@ -4,6 +4,7 @@ import type { LifeEventKind } from "@/config/life-events";
 import { CATEGORY_LABELS, UNCATEGORIZED } from "@/insights/labels";
 import { parseMoneyToCents } from "@/lib/money";
 import { parseDebtIntent, type DebtIntent } from "./debt-intents";
+import { CUSHION_ASK, EXPLAIN, parseAck, type AckIntent } from "./ack-intents";
 import { parseDecision, type DecisionIntent } from "./decision-intents";
 import { parseTaxIntent, type TaxIntent } from "./tax-intents";
 import type { FlowId } from "./flows/engine";
@@ -86,6 +87,7 @@ export type Intent =
   | { kind: "follow_up"; target: string | null; month: string | null }
   // Taxes (spec steps 118–127): ./tax-intents.ts.
   | DecisionIntent
+  | AckIntent
   | TaxIntent
   // Spec step 128 on: what they own, and each later investment question.
   | InvestmentIntent
@@ -531,6 +533,20 @@ export function parseIntent(
   if (!text || HELP.test(text)) return { kind: "help" };
   if (GREETING.test(text)) return { kind: "greeting", thanks: false };
   if (THANKS.test(text)) return { kind: "greeting", thanks: true };
+  const ack = parseAck(text);
+  if (ack) return ack;
+  // "Why?" and "tell me more" are about the last answer: read against the conversation.
+  if (EXPLAIN.test(text)) return { kind: "follow_up", target: "it", month: null };
+  if (CUSHION_ASK.test(text)) {
+    return { kind: "decision", item: "cushion", label: "an emergency fund" };
+  }
+  // "What happened to my money this month" is the month's spending, not Jane's own log.
+  const happened = /^what happened to my (?:money|spending|cash)(?: (this|last) month)?\W*$/.exec(text);
+  if (happened) {
+    const d = new Date(`${asOf}T00:00:00Z`);
+    if (happened[1] === "last") d.setUTCMonth(d.getUTCMonth() - 1);
+    return { kind: "spending", category: null, month: d.toISOString().slice(0, 7) };
+  }
   if (PAUSE.test(text)) return { kind: "pause_autopilot" };
   if (CHECKED.test(text)) return { kind: "checked" };
   const saveMore = SAVE_MORE.exec(text);
@@ -683,7 +699,7 @@ export function parseIntent(
   if (refund) return { kind: "act", verb: "refund", target: cleanTarget(refund[1] ?? refund[2]) };
   const cancel = CANCEL.exec(text);
   if (cancel) return { kind: "act", verb: "cancel", target: cleanTarget(cancel[1]) };
-  const lower = LOWER.exec(text);
+  const lower = LOWER.exec(text.replace(/^(?:how (?:do|can|could) i|how to|can i|help me) /, ""));
   if (lower) return { kind: "act", verb: "lower", target: cleanTarget(lower[1]) };
 
   const insurance = parseInsurance(text);
