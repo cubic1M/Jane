@@ -27,6 +27,7 @@ import { inQuietHours } from "./quiet-hours";
 import { listPreferences, postingOf } from "./preferences";
 import { scanSuggestions } from "@/lib/suggestions";
 import { loadSnapshot } from "./snapshot";
+import { saveSnapshot } from "./snapshot-store";
 import type { Trigger } from "./sources";
 
 // Runs Jane's brain for one person (spec step 82): loads what it looks at with the
@@ -99,6 +100,8 @@ export async function runJaneAgent(
     await safely("The first scan for suggestions", () => scanSuggestions(userId, { client, now }));
   }
   const snapshot = await loadSnapshot(userId, { client, now, input });
+  // Kept for the chat: its first question reads this instead of building it.
+  await safely("Saving the snapshot", () => saveSnapshot(userId, snapshot, { client, now }));
   if (!snapshot) return { posted: 0 };
   // Spec step 265: the day's brief leads with suggestions, so the first run of a first scan
   // (`early`, before the suggestions are in) posts nothing until there are some: never the old

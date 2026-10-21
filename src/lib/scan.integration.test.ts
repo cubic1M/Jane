@@ -9,13 +9,21 @@ vi.mock("@/lib/audit", () => ({ logAudit: vi.fn(), SYSTEM_ACTOR: { type: "system
 
 // The slow sector work after detection: what the chat must not wait for. It records what the
 // person could already see when it started.
-const { seenBySlowWork } = vi.hoisted(() => ({ seenBySlowWork: [] as number[] }));
+const { seenBySlowWork, savedBySlowWork } = vi.hoisted(() => ({
+  seenBySlowWork: [] as number[],
+  savedBySlowWork: [] as number[],
+}));
 vi.mock("@/lib/insurance/daily", async (importOriginal) => {
   const original = await importOriginal<typeof import("@/lib/insurance/daily")>();
   return {
     ...original,
     insuranceAfterSync: vi.fn(
       async (userId: string, options: Parameters<typeof original.insuranceAfterSync>[1]) => {
+        savedBySlowWork.push(
+          await options!.client!.janePreference.count({
+            where: { userId, kind: "system", key: "snapshot" },
+          }),
+        );
         seenBySlowWork.push(
           await options!.client!.janeMessage.count({ where: { userId, kind: "decision" } }),
         );
@@ -91,10 +99,14 @@ describe.runIf(url)("the chat opens during the first scan", { timeout: 120_000 }
     expect(await scanReady(trial.userId, { client })).toBe(false);
     expect(await scanInProgress(trial.userId, { client })).toBe(true);
     seenBySlowWork.length = 0;
+    savedBySlowWork.length = 0;
 
     await syncItem(trial.itemId, { client, now: NOW, progressive: true });
     // The findings were posted before the slow sector work started.
     expect(seenBySlowWork[0]).toBeGreaterThan(0);
+    // And the snapshot was already saved, so the first chat question finds it instead of
+    // building it (13 seconds on live).
+    expect(savedBySlowWork[0]).toBe(1);
     expect(await scanReady(trial.userId, { client })).toBe(true);
     expect(await scanInProgress(trial.userId, { client })).toBe(false);
     expect(
