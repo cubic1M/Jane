@@ -26,6 +26,27 @@ the chat is measured against the numbers here. Scores are only meant to go up.
 Without a key the Claude questions are skipped and the run says so. Time to first words is
 recorded for every answered question.
 
+## The depth bar
+
+The nightly run (`.github/workflows/chat-quality.yml`, the only place the key is used) records
+three measures and two timings, in the Nightly table below:
+
+- **Understood**: the share of questions Jane answered (an answer of her own, not the "I couldn't
+  look into that" or "I can't answer that one yet" fallback, and not blocked). Bar: 95%.
+- **Figures right**: of the questions that must show the person's figures, the share that show
+  every one. Bar: 100%.
+- **Follow-ups**: of the follow-ups (a question that needs the one before) and two-questions-in-one,
+  the share scoring at least 80. Bar: 90%.
+- **First words** and **Full answer**: the median seconds until the first words and until the
+  whole answer (the same for a rules answer, which arrives at once).
+
+The bar is met on a night when all three hold; the doc says when it was met three nights in a row.
+Claude's grade is by Claude Haiku (`GRADER_MODEL` in `src/config/answer-checks.ts`) against a rubric
+(`grader-v2`), so grading fits the budget: about $5 a month of the $10 account
+(`CHAT_NIGHTLY_CAP_CENTS`, 15 cents a night); the chat itself stays on its own model. The nightly
+rotates through the Claude questions, so the whole bank is covered over a few weeks, and the rules
+questions run every night.
+
 ## Baseline (rules only, no key)
 
 Recorded with `npm run checks:baseline` on the demo bank, before any of Phase AI's changes. "Understood" means the
