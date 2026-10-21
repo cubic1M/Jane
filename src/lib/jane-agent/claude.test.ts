@@ -338,6 +338,24 @@ describe("askClaudeInChat", () => {
     expect(act.reply.actions.some((a) => a.id === "finding.yes")).toBe(true);
   });
 
+  it("drops 'I've put the finding up for you to decide on' as button talk", () => {
+    expect(
+      withoutButtonTalk(
+        "You're doing fine. I've put the Card A interest finding up for you to decide on. Cash covers the month.",
+      ),
+    ).toBe("You're doing fine. Cash covers the month.");
+    expect(withoutButtonTalk("It is yours to decide on a budget.")).toBe(
+      "It is yours to decide on a budget.",
+    );
+  });
+
+  it("tells Claude which amounts it may state, so it doesn't invent one", async () => {
+    create.mockResolvedValueOnce(final("Your numbers look fine."));
+    await askClaudeInChat("u1", [], "how am i doing", options);
+    const system = JSON.stringify(create.mock.calls.at(-1)?.[0].system);
+    expect(system).toMatch(/Amounts you may state, exactly as written/);
+  });
+
   it("falls back to safe text, with no buttons, when the rewrite fails too", async () => {
     const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
     create

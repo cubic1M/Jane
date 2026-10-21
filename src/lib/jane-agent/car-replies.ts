@@ -37,7 +37,7 @@ export function carReply(car: Car, asked: boolean): Reply {
         `A ${formatCents(c.priceCents)} car would cost about ${formatCents(c.allInCents)} a month all in, ${car.withinBudget ? "within" : "over"} the ${formatCents(car.allowanceCents!)} I'd stay under (20% of your income).`,
       ]
     : [
-        `You can afford a car up to about ${formatCents(car.maxPriceCents)}, keeping the all-in cost under ${formatCents(car.allowanceCents!)} a month (20% of your income).`,
+        `A comfortable car for you is around ${formatCents(car.comfortPriceCents ?? car.maxPriceCents)}, about ${formatCents(c.allInCents)} a month all in (around 12% of your income); the usual 20% guideline allows up to ${formatCents(car.maxPriceCents)}.`,
       ];
   const best = car.offers[0];
   lines.push(

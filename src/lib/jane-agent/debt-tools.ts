@@ -127,7 +127,7 @@ export const DEBT_TOOLS: Anthropic.Tool[] = [
   {
     name: "car_purchase",
     description:
-      "Planning a car purchase (demo-bank people only; nothing for real accounts): what the person can afford from their own income (all-in monthly cost, including the loan payment, insurance scaled from their auto policy, fuel from their gas spending, upkeep and registration, at most 20% of income), the highest price that fits, the preapproval loan offers compared by total cost with fees (cheapest first), and, with the dealer's rate and months, whether the dealer's financing costs more than the best preapproval. Every assumption is listed. Nothing is applied for here.",
+      "Planning a car purchase (demo-bank people only; nothing for real accounts): what the person can afford from their own income (all-in monthly cost, including the loan payment, insurance scaled from their auto policy, fuel from their gas spending, upkeep and registration, at most 20% of income), a comfortable price and monthly cost to aim for (about 12% of income) and, only as the ceiling, the highest price that fits (say the comfortable one first, never the ceiling as a target), the preapproval loan offers compared by total cost with fees (cheapest first), and, with the dealer's rate and months, whether the dealer's financing costs more than the best preapproval. Every assumption is listed. Nothing is applied for here.",
     input_schema: {
       type: "object" as const,
       properties: {
@@ -789,7 +789,10 @@ export function carToolOutput(car: Car, money: (cents: number) => string) {
   const c = car.costs;
   return {
     demoAdvice: true,
-    maxPrice: money(car.maxPriceCents!),
+    // Lead with the comfortable target; the most is only the ceiling the maths allows.
+    comfortablePrice: money(car.comfortPriceCents!),
+    comfortableAllInPerMonth: money(car.comfortAllowanceCents!),
+    maxPriceCeiling: money(car.maxPriceCents!),
     allInBudgetPerMonth: money(car.allowanceCents!),
     atPrice: money(c.priceCents),
     withinBudget: car.withinBudget,

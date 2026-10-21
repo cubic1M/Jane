@@ -1,3 +1,4 @@
+import { formatCents } from "@/lib/money";
 import Anthropic from "@anthropic-ai/sdk";
 import {
   CHAT_CLAUDE_COOLDOWN_SECONDS,
@@ -19,6 +20,7 @@ import { addSpend, costInHundredthsOfCents, overDailyCap } from "./spend";
 import type { Topic } from "./context";
 import {
   checkGuardrails,
+  guardrailMatches,
   dollarFigures,
   isAdvice,
   unsupportedFigures,
@@ -46,7 +48,7 @@ import type { Reply } from "./replies";
 // the answer streamed as it's written (onEvent), a sentence at a time once each passes the
 // guardrails (./guarded-text), with what Jane is looking up in between.
 
-export const CHAT_PROMPT_VERSION = "chat-v19";
+export const CHAT_PROMPT_VERSION = "chat-v20";
 
 // The one rule that differs in demo advice mode (spec step 98).
 const NO_ADVICE = `- Never give investment, tax or legal advice, and don't mention investments, taxes or legal matters at all. Don't suggest financial products beyond Jane's pick from finding_details.`;
@@ -88,6 +90,9 @@ How to answer:
 - When someone is going through something hard (a divorce, a death, a job loss, a car that broke down): open with one kind, plain sentence; then their two or three key facts (cash, the next thing due); then one concrete first step; then offer to go through more. No platitudes, no pitch for a product or a finding. After a death, don't explain the legal process (probate, wills, who inherits): say an estate attorney and the banks' bereavement teams handle that, and keep to what you can see in the numbers (which accounts are linked, what is due soon).
 - When they ask something Jane can't do or shouldn't (write a will or other legal papers, get around a login, move money): say so in the first sentence, plainly, point to who can (a lawyer, the bank), then what Jane can do with their figures.
 - "Do I need…", "should I…" and "is it worth…" questions start with a plain yes, no or "it depends on" one named thing, then why, with their figures. A rule of thumb ("safe withdrawal rate") is stated together with the person's own balance from their numbers (the rule as a percent, their balance as given); never work out a new dollar amount yourself.
+- Affordability ("can we afford a car / childcare / a house"): give a comfortable amount and monthly budget to aim for, then the ceiling only as the ceiling; never present the most the maths allows as the target.
+- A rule of thumb ("the 4% rule, often called a safe withdrawal rate") is something you name and explain; say it isn't a guarantee instead of promising an outcome, and don't use "definitely", "guaranteed" or "will" about the future.
+- Before you write ANY amount that is not literally in their numbers, the list of amounts you may state, or a tool result (a total, a difference, a share, a month of a yearly amount), call calculate first. Do not write it from your head.
 - Follow-ups add the new thing asked. Never say you "covered it above" or point back to an earlier answer, and don't repeat figures you already gave unless the new answer needs them.
 - You can't do anything yourself. A button is only for when the person asked Jane to DO something ("cancel Netflix", "yes, do it"), or when one clear next step follows from your answer. Then call propose_action once, and say what tapping it does. Never say it's done. For a question that only asks for information ("do I have any debts", "what are my options", "explain my budget"), answer in words and offer no button at all.
 - Jane can only act on: an open finding (it has an id in open_findings), approving the safe plan items, starting a goal, or the rebalance she offers. Before you say she can change, switch or cancel something, check it is one of those. If it isn't (switch an insurer, move money, file something), say so plainly in one sentence first ("I can't switch your insurer myself."), then what she can do, with their figures, and offer no button.
@@ -241,7 +246,15 @@ export function plainText(text: string): string {
 // What the answer says about its own button ("I've put a link under this answer"): the app
 // adds the button's line itself, so Claude's sentences about it are dropped.
 const BUTTON_TALK =
-  /\b(?:(?:put|added|placed|attached|left)\s+(?:a |an |the |one )?(?:\w+\s+)?(?:button|link)s?\b|(?:button|link)s? (?:below|under (?:this|my|the) answer)|under this answer|with the button below|using the button|tap the (?:button|link) below)/i;
+  /\b(?:(?:put|added|placed|attached|left)\s+(?:a |an |the |one )?(?:\w+\s+)?(?:button|link)s?\b|(?:button|link)s? (?:below|under (?:this|my|the) answer)|under this answer|with the button below|using the button|tap the (?:button|link) below|\b(?:put|set|lined|queued)\b[^.!?]{0,50}\bup for you\b|\bfor you to decide(?: on)?\b|\bdecide on (?:it|that|this|them)\b)/i;
+
+// The amounts Claude may state without a lookup, as the guardrail will read them: said up front
+// so it doesn't invent one and need a rewrite.
+function figuresLine(cents: readonly number[]): string {
+  const unique = [...new Set(cents.map((c) => Math.abs(c)))].slice(0, 60);
+  if (unique.length === 0) return "";
+  return `\n\nAmounts you may state, exactly as written (anything else comes from a tool result or the calculate tool): ${unique.map((c) => formatCents(c)).join(", ")}.`;
+}
 
 // (From the app, not the person.) What Claude is told when its answer was only about a button.
 const BUTTON_REWRITE =
@@ -301,6 +314,8 @@ type ChatTiming = {
   rewrites: number;
   // The guardrail rules that blocked an answer (codes only), so a block can be traced.
   guardrails: string[];
+  // The pattern of each rule that matched (never the words), per blocked attempt.
+  guardrailRules: string[];
 };
 
 // What the last answer was about, in words for Claude (spec step 193).
@@ -334,6 +349,7 @@ export async function askClaudeInChat(
     costHundredths: 0,
     rewrites: 0,
     guardrails: [],
+    guardrailRules: [],
   };
   let outcome = "error";
   try {
@@ -476,7 +492,7 @@ async function askClaude(
     },
     {
       type: "text",
-      text: `The person's numbers right now (today is ${now.toISOString().slice(0, 10)}):\n${primer.text || "None available."}${topic ? `\n\n${topicLine(topic)}` : ""}${findingBlock}${style ? `\n\n${style}` : ""}`,
+      text: `The person's numbers right now (today is ${now.toISOString().slice(0, 10)}):\n${primer.text || "None available."}${figuresLine(primer.cents)}${topic ? `\n\n${topicLine(topic)}` : ""}${findingBlock}${style ? `\n\n${style}` : ""}`,
     },
   ];
 
@@ -738,7 +754,10 @@ async function askClaude(
       continue;
     }
     const check = checkGuardrails(spoken, allowedCents, undefined, profile);
-    if (!check.ok) timing.guardrails.push(...check.issues);
+    if (!check.ok) {
+      timing.guardrails.push(...check.issues);
+      timing.guardrailRules.push(...guardrailMatches(spoken, allowedCents, profile).slice(0, 6));
+    }
     if (!check.ok && rewrites < CHAT_CLAUDE_REWRITES) {
       // The rewrite gets a turn of its own even when the lookups used them all.
       if (turn + 1 >= turnLimit) turnLimit += 1;

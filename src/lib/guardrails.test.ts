@@ -3,6 +3,7 @@ import { APPROVED_DEBT_SENTENCES, COUNSEL_POINTER, DEBT_FACTS } from "@/config/d
 import {
   checkGuardrails,
   dollarFigures,
+  guardrailMatches,
   isAdvice,
   recommendsAChoice,
   unsupportedFigures,
@@ -353,5 +354,32 @@ describe("refusing to help with something dishonest", () => {
     expect(
       checkGuardrails("You could hide income from the IRS.", [], undefined, "standard").ok,
     ).toBe(false);
+  });
+});
+
+describe("naming a rule of thumb, and who handles the legal part", () => {
+  const demo = (t: string) => checkGuardrails(t, [], undefined, "demo_advice");
+
+  it("lets Jane say there is no guarantee, but not promise one", () => {
+    expect(demo("The 4% rule, often called a safe withdrawal rate, isn't a guarantee.").ok).toBe(
+      true,
+    );
+    expect(demo("I can't promise it will last, and there's no guarantee.").ok).toBe(true);
+    expect(demo("This is guaranteed to last 30 years.").ok).toBe(false);
+    expect(demo("You will definitely be fine.").ok).toBe(false);
+  });
+
+  it("lets a pointer to who handles it through, in both profiles", () => {
+    const pointer = "An estate attorney or the bank's bereavement team handles that part.";
+    expect(demo(pointer).ok).toBe(true);
+    expect(checkGuardrails(pointer, [], undefined, "standard").ok).toBe(true);
+    // Still blocked: telling the person what to do about the law.
+    expect(demo("You should file for probate in court yourself.").ok).toBe(false);
+  });
+
+  it("reports which rules matched, never the words", () => {
+    const rules = guardrailMatches("This is guaranteed and risk-free.", [], "demo_advice");
+    expect(rules.length).toBeGreaterThan(0);
+    expect(rules.every((r) => r.startsWith("guarantee:"))).toBe(true);
   });
 });
