@@ -39,6 +39,8 @@ type Options = {
   claude?: () => Pick<Anthropic, "messages">;
   // Claude's answer as it's written, and what Jane is looking up (./claude).
   onEvent?: (event: ChatStreamEvent) => void;
+  // How long Claude waits for the person's numbers (the answer checks wait for all of them).
+  primerMs?: number;
 };
 
 export type ChatInputErrorCode = "empty" | "too_long" | "rate_limited";
@@ -110,7 +112,7 @@ async function answer(
   userId: string,
   text: string,
   history: ChatTurn[],
-  { client, now, claude, onEvent }: Required<Pick<Options, "client" | "now">> & Options,
+  { client, now, claude, onEvent, primerMs }: Required<Pick<Options, "client" | "now">> & Options,
 ): Promise<{ reply: Reply; intent: string; source: Source; issues?: string[] }> {
   const asOf = now.toISOString().slice(0, 10);
   const intent = parseIntent(text, asOf);
@@ -164,6 +166,7 @@ async function answer(
     now,
     claude,
     onEvent,
+    primerMs,
     advice: await adviceMode(userId, { client }),
     style: styleInstructions(style),
     topic,
@@ -188,7 +191,7 @@ async function answer(
 export async function sendToJane(
   userId: string,
   raw: string,
-  { client = defaultClient, now = new Date(), claude, onEvent }: Options = {},
+  { client = defaultClient, now = new Date(), claude, onEvent, primerMs }: Options = {},
 ): Promise<{
   sent: ChatMessage;
   reply: ChatMessage;
@@ -230,6 +233,7 @@ export async function sendToJane(
     now,
     claude,
     onEvent,
+    primerMs,
   });
   // A millisecond later, so the answer always sits under the question.
   const answeredAt = new Date(now.getTime() + 1);

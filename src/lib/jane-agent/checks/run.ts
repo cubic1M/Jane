@@ -199,6 +199,8 @@ export async function runAnswerChecks(
         client,
         now: new Date(now.getTime() + (tick += 1000)),
         claude: metered,
+        // Grading isn't a person waiting: Claude gets all the numbers.
+        primerMs: 60_000,
         onEvent: (event) => {
           if (event.type === "text" && firstWords === null) firstWords = performance.now();
         },
