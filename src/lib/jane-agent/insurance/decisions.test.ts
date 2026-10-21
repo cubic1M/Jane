@@ -122,6 +122,8 @@ describe("insurance decisions", () => {
     ["why is my insurance going up", "why_up"],
     ["should I add my teenager to my policy", "teen"],
     ["do I need business insurance for my side hustle", "business"],
+    ["do I have enough life insurance", "life_enough"],
+    ["is my life cover enough", "life_enough"],
     ["how much would it cost to switch car insurance", "switch_cost"],
   ] as const)("reads %s", (text, kind) => {
     const intent = parseInsurance(normalize(text));

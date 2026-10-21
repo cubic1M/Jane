@@ -19,6 +19,7 @@ import type { InsuranceSnapshot } from "./snapshot";
 
 export type DecisionKind =
   | "umbrella"
+  | "life_enough"
   | "switch"
   | "too_expensive"
   | "deductible"
@@ -56,6 +57,13 @@ export const DECISION_PATTERNS: readonly (readonly [DecisionKind, RegExp])[] = [
   ],
   ["oop_max", P("\\bout[- ]of[- ]pocket (?:max\\w*|limit)\\b")],
   ["umbrella", P("\\bumbrella\\b")],
+  [
+    "life_enough",
+    P(
+      "\\b(?:enough|adequate|right amount of) life (?:insurance|cover\\w*)\\b",
+      "\\bis my life (?:insurance|cover\\w*) enough\\b",
+    ),
+  ],
   [
     "switch_cost",
     P(
@@ -289,6 +297,55 @@ function build(kind: DecisionKind, ins: InsuranceSnapshot, asOf: string): Out {
         facts: `You have about ${money(assets)} by your balances and values${big ? `, over the ${money(UMBRELLA_ASSETS_CENTS)} where a big claim against you starts to matter` : `, under the ${money(UMBRELLA_ASSETS_CENTS)} where it usually matters`}. An umbrella policy pays above your car and home liability limits${big ? " and usually costs a few hundred dollars a year" : ""}.`,
         actions: big ? [QUOTES, SEE] : [SEE],
       };
+    }
+    case "life_enough": {
+      const has = active(ins, "life");
+      const need = ins.life?.amountCents ?? null;
+      const dep = household.dependants.value;
+      if (!has) {
+        return need
+          ? {
+              advice: "No.",
+              facts: `I see no life policy, and by your income and debts I'd size your cover at ${money(need)}.`,
+              actions: [
+                { id: "open", label: "Your life cover", kind: "link", href: "/insurance/life" },
+                SEE,
+              ],
+            }
+          : dep && dep > 0
+            ? {
+                advice: "No.",
+                facts: `You told me ${dep} ${dep === 1 ? "person depends" : "people depend"} on your income and I see no life policy. I can size the cover from your income and debts.`,
+                actions: [
+                  {
+                    id: "open",
+                    label: "Size my life cover",
+                    kind: "link",
+                    href: "/insurance/life",
+                  },
+                  SEE,
+                ],
+              }
+            : {
+                advice: "Not needed so far.",
+                facts:
+                  "I see no life policy, and you haven't told me anyone depends on your income. Tell me if someone does and I'll size the cover.",
+                actions: [SEE],
+              };
+      }
+      const benefit = Number(has.coverage.deathBenefit ?? 0);
+      return benefit
+        ? {
+            advice: need && benefit < need ? "Probably not quite." : "It looks enough.",
+            facts: `Your ${has.carrier} life policy pays ${money(benefit)}${need ? `, against the ${money(need)} I'd size for your income and debts` : ""}.`,
+            actions: [
+              { id: "open", label: "Your life cover", kind: "link", href: "/insurance/life" },
+              SEE,
+            ],
+          }
+        : {
+            facts: `You have ${has.carrier} life insurance, but I don't have what it pays. Add that from your policy and I'll compare it with your income and debts.`,
+          };
     }
     case "switch":
     case "cheapest":

@@ -1576,6 +1576,7 @@ const DECISIONS: readonly (readonly [string, string, RegExp, string?])[] = [
   ["insd-28", "do I need business insurance for my side hustle", /work|business/i],
   ["insd-29", "how much would it cost to switch car insurance", /nothing|\$1,296\.00/],
   ["insd-30", "do I need an umbrella policy", /umbrella/i],
+  ["insd-31", "do I have enough life insurance", /life/i],
 ];
 
 const DECISION_QUESTIONS: readonly CheckQuestion[] = DECISIONS.map(
