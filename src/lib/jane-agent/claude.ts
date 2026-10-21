@@ -473,6 +473,7 @@ async function askClaude(
   let rewrites = 0;
   let decisionUsed = false;
   let retriesLeft = 1;
+  let startRetries = 1;
   const partialAnswer = (): ClaudeAnswer | null => {
     const kept = withoutButtonTalk(draft.shownText()).trim();
     if (kept.length < 20) return null;
@@ -531,6 +532,8 @@ async function askClaude(
     let response: Anthropic.Message;
     // Spec step 93: give up on a slow start, or a slow answer, for the rules' answer.
     let stopped = false;
+    // Whether anything at all came back from Claude in this round.
+    let heard = false;
     let timer: ReturnType<typeof setTimeout> | undefined;
     try {
       // No time left for another round: the rules answer, and no stream is ever started.
@@ -552,6 +555,7 @@ async function askClaude(
           messages,
         })
         .on("streamEvent", (event) => {
+          heard = true;
           timing.firstEventMs ??= Date.now() - timing.startedAt;
           // It has started: now only the deadline applies.
           if (timer && turn === 0) {
@@ -605,6 +609,14 @@ async function askClaude(
     } catch (error) {
       // Our own abort can surface as any error type: it is "too slow", never a crash.
       if (!stopped && !(error instanceof Anthropic.APIError)) throw error;
+      if (stopped && !heard && turn === 0 && startRetries > 0) {
+        // Claude never started (a cold start on a long prompt): once more, which usually finds
+        // the prompt cached by the first try.
+        startRetries -= 1;
+        timing.retries += 1;
+        turn -= 1;
+        continue;
+      }
       if (stopped) {
         timing.stopped = true;
         // Our own deadline: this answer comes from the rules, but Claude isn't marked down.
