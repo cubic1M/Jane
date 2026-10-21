@@ -10,19 +10,19 @@ import { parseInsurance } from "./intents";
 // Spec step 200: asking where they are in their health plan's year, and the answer's facts.
 
 describe("health year questions", () => {
+  it.each(["is my doctor in network", "was this medical bill right"])("reads %s", (text) => {
+    expect(parseInsurance(normalize(text))?.ask).toBe("health_year");
+  });
+
+  // The direct questions get a short answer (./decisions.ts).
   it.each([
     "how much of my deductible have I met",
     "when will I hit my out of pocket max",
     "how much is left in my FSA",
-    "is my doctor in network",
-    "was this medical bill right",
     "have I met my deductible this year",
-  ])("reads %s", (text) => {
-    expect(parseInsurance(normalize(text))?.ask).toBe("health_year");
-  });
-
-  it("leaves 'raise my deductible' to savings", () => {
-    expect(parseInsurance(normalize("should I raise my deductible"))?.ask).toBe("savings");
+    "should I raise my deductible",
+  ])("answers %s directly", (text) => {
+    expect(parseInsurance(normalize(text))?.ask).toBe("decide");
   });
 });
 

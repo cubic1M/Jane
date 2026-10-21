@@ -1542,7 +1542,61 @@ const MORE_QUESTIONS: readonly CheckQuestion[] = MORE_ROWS.map(
   }),
 );
 
-export const QUESTIONS: readonly CheckQuestion[] = [...BASE_QUESTIONS, ...MORE_QUESTIONS];
+// Insurance decisions in the chat: the questions people really ask before buying, switching
+// or claiming. Each gets a direct answer of three sentences or fewer from the person's own
+// numbers (src/lib/jane-agent/insurance/decisions.ts), with the demo advice label. Must pass.
+const DECISIONS: readonly (readonly [string, string, RegExp, string?])[] = [
+  ["insd-1", "should I get umbrella insurance", /umbrella/i],
+  ["insd-2", "do I need life insurance", /depend/i],
+  ["insd-3", "should I switch car insurance", /Lighthouse|cheaper/i],
+  ["insd-4", "should I file a claim for a $1,200 repair on my car", /\$200\.00/],
+  ["insd-5", "what if the repair is $3,000", /\$2,000\.00/, "insd-4"],
+  ["insd-6", "is my car insurance too expensive", /\$1,704\.00/],
+  ["insd-7", "should I raise the deductible on my car insurance", /\$2,000\.00|deductible/i],
+  ["insd-8", "do I have enough car insurance", /\$50,000\.00/],
+  ["insd-9", "do I need renters insurance", /home/i],
+  ["insd-10", "should I pay my car insurance yearly", /\$133\.20/],
+  ["insd-11", "what happens if I get in an accident", /911/],
+  ["insd-12", "can you get me a better price on my car insurance", /\$408\.00/],
+  ["insd-13", "do I need disability insurance", /disability/i],
+  ["insd-14", "do I need pet insurance", /pet/i],
+  ["insd-15", "should I bundle my car and home insurance", /home/i],
+  ["insd-16", "am I covered if I drive for Uber", /driving for pay|rideshare/i],
+  ["insd-17", "is my home insurance enough", /home/i],
+  ["insd-18", "how much life insurance do I need", /depend/i],
+  ["insd-19", "should I cancel my phone insurance", /Asurion|card/i],
+  ["insd-20", "do I need travel insurance", /trip|travel/i],
+  ["insd-21", "should I keep my employer's health plan", /\$3,480\.00/],
+  ["insd-22", "do I lose my FSA money at the end of the year", /\$2,400\.00/],
+  ["insd-23", "have I hit my deductible", /\$500\.00/],
+  ["insd-24", "what's my out of pocket max", /\$3,000\.00/],
+  ["insd-25", "why is my insurance going up", /\$1,704\.00|renews/i],
+  ["insd-26", "what's the cheapest way to cover my car", /\$408\.00/],
+  ["insd-27", "should I add my teenager to my policy", /driver/i],
+  ["insd-28", "do I need business insurance for my side hustle", /work|business/i],
+  ["insd-29", "how much would it cost to switch car insurance", /nothing|\$1,296\.00/],
+  ["insd-30", "do I need an umbrella policy", /umbrella/i],
+];
+
+const DECISION_QUESTIONS: readonly CheckQuestion[] = DECISIONS.map(
+  ([id, text, mentions, after]): CheckQuestion => ({
+    id,
+    text,
+    needs: "rules",
+    after,
+    expect: { intent: "insurance", mentions, maxChars: 420 },
+    sector: "insurance",
+    page: "insurance",
+    tool: "insurance_policies",
+    profile: "demo_advice",
+  }),
+);
+
+export const QUESTIONS: readonly CheckQuestion[] = [
+  ...BASE_QUESTIONS,
+  ...MORE_QUESTIONS,
+  ...DECISION_QUESTIONS,
+];
 
 // Spec step 189: the sector a question belongs to: its own, or for the older ones the start
 // of its id.
@@ -1556,6 +1610,7 @@ const GROUPS: Record<string, string> = {
   out: "edge",
   tax: "taxes",
   ins: "insurance",
+  insd: "insurance",
   inv: "investing",
   whole: "whole",
   multi: "multi",
