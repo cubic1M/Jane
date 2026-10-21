@@ -133,6 +133,35 @@ export async function runAnswerChecks(
   }: Options,
 ): Promise<CheckRun> {
   const full = llmEnabled();
+  // The check run has its own spending cap (below); the live chat's monthly guard is not its
+  // business, and its spend isn't the live chat's.
+  const monthlyBefore = process.env.CHAT_MONTHLY_CAP_CENTS;
+  process.env.CHAT_MONTHLY_CAP_CENTS = "1000000000";
+  try {
+    return await runChecks(
+      userId,
+      { client, now, questions, claude, capCents, rotate, facts: given },
+      full,
+    );
+  } finally {
+    if (monthlyBefore === undefined) delete process.env.CHAT_MONTHLY_CAP_CENTS;
+    else process.env.CHAT_MONTHLY_CAP_CENTS = monthlyBefore;
+  }
+}
+
+async function runChecks(
+  userId: string,
+  {
+    client,
+    now,
+    questions = QUESTIONS,
+    claude = anthropic,
+    capCents = ANSWER_CHECK_CAP_CENTS,
+    rotate,
+    facts: given,
+  }: Options,
+  full: boolean,
+): Promise<CheckRun> {
   const facts = given ?? (await loadFacts(userId, { client, now }));
   let spent = 0;
   // Jane's own calls to Claude count toward the cap too.

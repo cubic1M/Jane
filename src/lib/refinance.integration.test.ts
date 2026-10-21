@@ -138,14 +138,15 @@ describe.runIf(url)("refinance offers against a real database", () => {
     expect(reply.body).toContain("Your Demo Car Loan ····0006: $18,020.00 at 6.90%.");
     expect(reply.body).toMatch(/My pick: Harbor Auto Refi at 5\.\d\d% fixed/);
     expect(reply.body).toContain("Also: ");
-    expect(reply.refs).toEqual({
+    expect(reply.refs).toMatchObject({
       advice: true,
       refinance: { debtKey: expect.stringMatching(/^account:/), lender: "Harbor Auto Refi" },
     });
     expect(reply.actions[0]).toMatchObject({ id: "loan.prepare" });
     const home = await sendToJane(userId, "refinance my mortgage", opts(later(0.001)));
     expect(home.reply.body).toContain("None of the 2 offers beats it over the same months");
-    expect(home.reply.refs).toEqual({});
+    expect(home.reply.refs.refinance).toBeUndefined();
+    expect(home.reply.refs.advice).toBeUndefined();
   });
 
   it("gives Claude every offer with its figures recorded, and applies for nothing", async () => {

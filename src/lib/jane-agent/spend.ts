@@ -1,3 +1,4 @@
+import { addMonthlySpend } from "./claude-limits";
 import { CHAT_CLAUDE_DAILY_CAP_CENTS } from "@/config/agent-chat";
 import { MODEL_PRICES_CENTS } from "@/config/answer-checks";
 import type { PrismaClient } from "@/generated/prisma/client";
@@ -49,6 +50,8 @@ export async function addSpend(
   await client.$executeRaw`
     INSERT INTO rate_limits (key, window_start, count) VALUES (${keyOf(userId)}, ${dayStart(now)}, ${amount})
     ON CONFLICT (key, window_start) DO UPDATE SET count = rate_limits.count + ${amount}`;
+  // And the month's total, which guards all of Claude's chat spend together.
+  await addMonthlySpend(amount, { client, now });
 }
 
 export async function spentTodayCents(
