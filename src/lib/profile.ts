@@ -2,6 +2,7 @@ import type { PrismaClient } from "@/generated/prisma/client";
 import { PROFILE_MONTHS } from "@/config/profile";
 import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
+import { markPrimerStale } from "@/lib/jane-agent/primer-store";
 import { deletePreference, savePreference } from "@/lib/jane-agent/preferences";
 import { buildProfile, type Profile, type ProfileInput, type Told } from "@/profile/build";
 import { FACT_KEYS, type FactKey, factSpec } from "@/profile/facts";
@@ -203,6 +204,7 @@ export async function correctFact(
     },
     { client },
   );
+  await markPrimerStale(userId, { client });
   if (key === "housing" && (value === "own" || value === "rent")) {
     await client.insuranceProfile.upsert({
       where: { userId },
@@ -242,7 +244,9 @@ export async function clearCorrection(
     where: { kind: "fact", key: `${PREF_PREFIX}${key}` },
     select: { id: true },
   });
-  return row ? deletePreference(userId, row.id, { client }) : false;
+  const gone = row ? await deletePreference(userId, row.id, { client }) : false;
+  if (gone) await markPrimerStale(userId, { client });
+  return gone;
 }
 
 // How a fact reads aloud.
