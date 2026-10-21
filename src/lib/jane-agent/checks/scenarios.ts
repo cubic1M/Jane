@@ -30,35 +30,76 @@ export type Scenario = {
   variantOf?: string;
 };
 
-export function parseScenarios(json: string): Scenario[] {
+// One entry, checked: throws saying what is wrong with it.
+function checkScenario(item: unknown, index: number): Scenario {
+  const s = (item ?? {}) as Partial<Scenario>;
+  const where = `scenario ${index + 1}`;
+  if (!s.id || typeof s.id !== "string") throw new Error(`${where} needs an id.`);
+  if (!s.category || typeof s.category !== "string") throw new Error(`${s.id} needs a category.`);
+  if (
+    !Array.isArray(s.messages) ||
+    s.messages.length === 0 ||
+    s.messages.some((m) => typeof m !== "string" || !m.trim())
+  ) {
+    throw new Error(`${s.id} needs at least one message.`);
+  }
+  for (const key of ["mentions", "avoid"] as const) {
+    if (s[key] !== undefined) new RegExp(s[key]!, "i");
+  }
+  const profile = (item as { profile?: unknown }).profile;
+  if (profile !== undefined && (typeof profile !== "string" || !isPersonId(profile))) {
+    throw new Error(`${s.id}: "${String(profile)}" isn't a sample person.`);
+  }
+  const { profile: _drop, ...rest } = item as Scenario & { profile?: string };
+  void _drop;
+  return { ...rest, ...(profile ? { person: profile as string } : {}) } as Scenario;
+}
+
+function arrayOf(json: string): unknown[] {
   const raw: unknown = JSON.parse(json);
   if (!Array.isArray(raw)) throw new Error("The scenarios file must be a JSON array.");
+  return raw;
+}
+
+export function parseScenarios(json: string): Scenario[] {
   const seen = new Set<string>();
-  return raw.map((item, index) => {
-    const s = item as Partial<Scenario>;
-    const where = `scenario ${index + 1}`;
-    if (!s.id || typeof s.id !== "string") throw new Error(`${where} needs an id.`);
-    if (seen.has(s.id)) throw new Error(`${where}: the id "${s.id}" is used twice.`);
-    seen.add(s.id);
-    if (!s.category || typeof s.category !== "string") throw new Error(`${s.id} needs a category.`);
-    if (
-      !Array.isArray(s.messages) ||
-      s.messages.length === 0 ||
-      s.messages.some((m) => typeof m !== "string" || !m.trim())
-    ) {
-      throw new Error(`${s.id} needs at least one message.`);
+  return arrayOf(json).map((item, index) => {
+    const scenario = checkScenario(item, index);
+    if (seen.has(scenario.id)) {
+      throw new Error(`scenario ${index + 1}: the id "${scenario.id}" is used twice.`);
     }
-    for (const key of ["mentions", "avoid"] as const) {
-      if (s[key] !== undefined) new RegExp(s[key]!, "i");
-    }
-    const profile = (item as { profile?: unknown }).profile;
-    if (profile !== undefined && (typeof profile !== "string" || !isPersonId(profile))) {
-      throw new Error(`${s.id}: "${String(profile)}" isn't a sample person.`);
-    }
-    const { profile: _drop, ...rest } = item as Scenario & { profile?: string };
-    void _drop;
-    return { ...rest, ...(profile ? { person: profile as string } : {}) } as Scenario;
+    seen.add(scenario.id);
+    return scenario;
   });
+}
+
+export type SkippedScenario = { id: string; reason: string };
+
+// The scenarios of several files, leaving out any entry that is invalid (or whose id was
+// already used) with its id and why: one bad line must never stop a 1,800-scenario run.
+export function parseScenarioFiles(texts: readonly string[]): {
+  scenarios: Scenario[];
+  skipped: SkippedScenario[];
+} {
+  const scenarios: Scenario[] = [];
+  const skipped: SkippedScenario[] = [];
+  const seen = new Set<string>();
+  for (const text of texts) {
+    arrayOf(text).forEach((item, index) => {
+      const id = String((item as { id?: unknown } | null)?.id ?? `#${index + 1}`);
+      try {
+        const scenario = checkScenario(item, index);
+        if (seen.has(scenario.id)) throw new Error(`the id "${scenario.id}" is used twice`);
+        seen.add(scenario.id);
+        scenarios.push(scenario);
+      } catch (error) {
+        const reason = (error as Error).message;
+        console.warn(`Skipping scenario ${id}: ${reason}`);
+        skipped.push({ id, reason });
+      }
+    });
+  }
+  return { scenarios, skipped };
 }
 
 const expectOf = (s: Scenario): Expect => ({
@@ -219,6 +260,8 @@ export function evalSection(
     costCents: number;
     capCents: number;
     stoppedAtCap: boolean;
+    // Entries of the files that were left out as invalid.
+    invalid?: readonly SkippedScenario[];
   },
 ): string {
   const asked = reports.reduce((sum, r) => sum + r.asked, 0);
@@ -236,6 +279,15 @@ export function evalSection(
         `| ${r.category} | ${r.asked} | ${r.failed} | ${r.passPct === null ? "–" : `${r.passPct}%`} | ${r.skipped} | ${r.averageScore ?? "–"} |`,
     ),
   ];
+  if (meta.invalid && meta.invalid.length > 0) {
+    lines.push(
+      "",
+      `${meta.invalid.length} invalid scenarios were skipped: ${meta.invalid
+        .slice(0, 10)
+        .map((i) => `${i.id} (${oneLine(i.reason)})`)
+        .join(", ")}${meta.invalid.length > 10 ? ", …" : ""}.`,
+    );
+  }
   const worst = reports
     .flatMap((r) => r.failures.map((f) => ({ ...f, category: r.category })))
     .sort((a, b) => a.score - b.score)
@@ -280,16 +332,6 @@ export function filesOf(spec: string, list: (dir: string) => string[]): string[]
         .sort()
         .map((name) => (slash < 0 ? name : `${dir}/${name}`));
     });
-}
-
-export function parseScenarioFiles(texts: readonly string[]): Scenario[] {
-  const all = texts.flatMap((t) => parseScenarios(t));
-  const seen = new Set<string>();
-  for (const s of all) {
-    if (seen.has(s.id)) throw new Error(`The id "${s.id}" is used in two files.`);
-    seen.add(s.id);
-  }
-  return all;
 }
 
 // A fixed shuffle (the same every night, so batches by position resume): within each category

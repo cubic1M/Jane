@@ -51,7 +51,8 @@ it.runIf(process.env.CHAT_EVAL === "1" && url && process.env.ANTHROPIC_API_KEY)(
     const files = filesOf(FILE, (dir) => readdirSync(dir));
     expect(files.length, `no scenario files match ${FILE}`).toBeGreaterThan(0);
     // One fixed shuffle over all the files, so positions mean the same in every batch.
-    const scenarios = quotaOrder(parseScenarioFiles(files.map((f) => readFileSync(f, "utf8"))));
+    const parsed = parseScenarioFiles(files.map((f) => readFileSync(f, "utf8")));
+    const scenarios = quotaOrder(parsed.scenarios);
     const resume = process.env.CHAT_EVAL_RESUME === "1" && existsSync(STATE);
     const before = resume ? parseState(readFileSync(STATE, "utf8")) : emptyState();
     const batch = batchOf(scenarios, {
@@ -98,6 +99,7 @@ it.runIf(process.env.CHAT_EVAL === "1" && url && process.env.ANTHROPIC_API_KEY)(
         costCents: state.costCents,
         capCents: CAP_CENTS,
         stoppedAtCap: run.stoppedAtCap,
+        invalid: parsed.skipped,
       });
       writeFileSync(DOC, withEvalSection(readFileSync(DOC, "utf8"), section));
       console.log(section);
