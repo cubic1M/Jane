@@ -116,8 +116,14 @@ export function subscriptionsReply(
     // The total is the answer; the biggest few say where it goes.
     lines[0] += ` The biggest: ${list.slice(0, 3).map(each).join(", ")}.`;
   } else {
-    // One sentence, led by the biggest; the rest as a second only when no saving is on offer.
-    lines[0] = `${lines[0].replace(/\.$/, "")}, led by ${each(list[0])}.`;
+    // One sentence naming the biggest few, so the answer stays at three with the saving.
+    const top = list.slice(0, 3).map(each);
+    const more = list.length - top.length;
+    const names =
+      top.length === 1
+        ? top[0]
+        : `${top.slice(0, -1).join(", ")} and ${top.at(-1)}${more > 0 ? `, and ${more} more` : ""}`;
+    lines[0] = `${lines[0].replace(/\.$/, "")}: ${names}.`;
   }
   // The open finding about one of them that would save the most.
   const ids = new Set(list.flatMap((c) => (c.openFindingId ? [c.openFindingId] : [])));
@@ -138,10 +144,6 @@ export function subscriptionsReply(
       actions: [...decision.actions, subscriptionsLink],
       refs: decision.refs,
     };
-  }
-  if (!intent.total && list.length > 1) {
-    const rest = list.slice(1, 4).map(each);
-    lines.push(`The rest: ${rest.join(", ")}${list.length > rest.length + 1 ? ", and more" : ""}.`);
   }
   return { body: lines.join(" "), actions: [subscriptionsLink], refs: {} };
 }

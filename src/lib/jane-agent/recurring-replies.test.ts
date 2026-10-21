@@ -103,7 +103,7 @@ describe("subscriptionsReply", () => {
     const reply = subscriptionsReply({ total: false, all: false }, recurring, snapshot);
     expect(
       reply.body.startsWith(
-        "You have 4 subscriptions, about $64.97 a month in all, led by Planet Fitness $24.99 a month.",
+        "You have 4 subscriptions, about $64.97 a month in all: Planet Fitness $24.99 a month, Netflix $17.99 a month and Hulu $11.99 a month, and 1 more.",
       ),
     ).toBe(true);
     expect(reply.body.split(/(?<=[.!?])\s+/).length).toBeLessThanOrEqual(3);
