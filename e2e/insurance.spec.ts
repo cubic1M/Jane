@@ -120,8 +120,15 @@ test("a demo-bank person says yes to Jane's pick (step 104)", async ({
   await page.goto("/connect");
   await page.getByRole("button", { name: "Link a demo bank" }).click();
   await expect(page).toHaveURL("/chat", { timeout: 60_000 });
-  await page.goto("/insurance");
-  await page.getByRole("link", { name: "Compare quotes" }).click();
+  // Jane's pick is made by the first scan's work after the brief, which can finish a little
+  // after the chat opens on a busy machine: look again until the pick is there.
+  await expect(async () => {
+    await page.goto("/insurance");
+    await page.getByRole("link", { name: "Compare quotes" }).click({ timeout: 10_000 });
+    await expect(page.getByRole("button", { name: "Yes, switch" })).toBeVisible({
+      timeout: 10_000,
+    });
+  }).toPass({ timeout: 90_000 });
   await page.getByRole("button", { name: "Yes, switch" }).click();
   await expect(page).toHaveURL("/actions");
 });
