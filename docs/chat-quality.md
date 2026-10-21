@@ -127,3 +127,26 @@ Claude). This is the floor CI holds (`RULES_SCORE_FLOOR`).
 The Claude part has not been measured yet: there was no `ANTHROPIC_API_KEY` where this was
 recorded. The first run with a key replaces this paragraph with its scores (understood rate,
 right figures, guardrails, time to first words, and the cost of the run).
+
+## What grading costs
+
+The founder pays for every graded question, from one shared monthly Anthropic limit (the live
+chat and this grading together), so the nightly run is small by design:
+
+- The rules questions run every night: free.
+- The Claude questions rotate: each night asks `CHAT_NIGHTLY_COUNT` (20) conversations from the
+  bank, moving along it, so the whole bank is covered over a few weeks.
+- A night stops asking at `CHAT_NIGHTLY_CAP_CENTS` (15 cents), priced at the model's listed
+  price (`MODEL_PRICES_CENTS`), so a month costs at most 30 x 15 cents = $4.50.
+- The first night with the key records what it really spent in the table below; this paragraph
+  is updated with the measured cost per question and how many nights a full pass takes.
+
+## Nightly
+
+Written by the nightly run (.github/workflows/chat-quality.yml).
+
+<!-- nightly:start -->
+| Night | Mode | Score | Graded | Skipped | Failing | First words (median) | Cost |
+| --- | --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| 2026-10-20 | rules only | 100 | 158 | 22 | 0 | 15 ms | $0.00 |
+<!-- nightly:end -->

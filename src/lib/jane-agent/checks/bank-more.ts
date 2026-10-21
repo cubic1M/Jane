@@ -10,7 +10,7 @@ export type Row = readonly [sector: string, page: string, tool: string, text: st
 const rows: Row[] = [
   // The QA report's unanswered questions.
   ["networth", "/net-worth", "net_worth", "what's my net worth"],
-  ["bills", "/bills", "safe_to_spend", "why is my checking going negative"],
+  ["bills", "/bills", "balance_forecast", "why is my checking going negative"],
   ["hsa", "/investments/hsa", "hsa", "what about my HSA"],
   ["moving", "/transfers", "money_moves", "move $200 to savings"],
   ["moving", "/transfers", "money_moves", "transfer $50 to my emergency fund"],
@@ -109,7 +109,9 @@ const rows: Row[] = [
   ["safe", "/home", "safe_to_spend", "can i afford to eat out tonight"],
   ["safe", "/home", "safe_to_spend", "whats my spending money til payday"],
   ["safe", "/home", "safe_to_spend", "how much cash can i use this week"],
-  ["safe", "/home", "safe_to_spend", "am i going to run out of money before payday"],
+  ["safe", "/home", "balance_forecast", "am i going to run out of money before payday"],
+  ["bills", "/bills", "balance_forecast", "will my checking dip below zero this month"],
+  ["bills", "/bills", "balance_forecast", "what happens to my balance next week"],
   ["safe", "/afford", "safe_to_spend", "can i afford a $1,200 laptop"],
   ["safe", "/afford", "safe_to_spend", "is it ok if i buy a $300 jacket"],
   ["safe", "/afford", "safe_to_spend", "could i afford a vacation in march"],
@@ -141,9 +143,9 @@ const rows: Row[] = [
   ["bills", "/deadlines", "coming_up", "any deadlines coming up"],
   ["bills", "/deadlines", "coming_up", "what's due before the end of the month"],
   ["bills", "/deadlines", "coming_up", "do i have a trial ending soon"],
-  ["bills", "/alerts", "recent_changes", "any alerts for me"],
-  ["bills", "/alerts", "recent_changes", "did anything weird happen on my card"],
-  ["bills", "/alerts", "recent_changes", "was i charged twice anywhere"],
+  ["bills", "/alerts", "alerts", "any alerts for me"],
+  ["bills", "/alerts", "alerts", "did anything weird happen on my card"],
+  ["bills", "/alerts", "alerts", "was i charged twice anywhere"],
   ["bills", "/alerts", "open_findings", "did i get double charged"],
   ["bills", "/alerts", "open_findings", "any fees i can get back"],
   ["bills", "/alerts", "open_findings", "i got an overdraft fee, can i get it refunded"],
@@ -256,9 +258,9 @@ const rows: Row[] = [
   ["income", "/home", "safe_to_spend", "did my paycheck come in"],
   ["income", "/home", "safe_to_spend", "is my paycheck late"],
   ["income", "/home", "recent_changes", "did my pay change"],
-  ["household", "/household", "net_worth", "can my wife see my accounts"],
-  ["household", "/household", "net_worth", "what's shared with my partner"],
-  ["household", "/household", "net_worth", "add my husband"],
+  ["household", "/household", "household", "can my wife see my accounts"],
+  ["household", "/household", "household", "what's shared with my partner"],
+  ["household", "/household", "household", "add my husband"],
 
   // Debt and loans.
   ["debt", "/debt", "debts", "how much debt do i have"],
@@ -498,6 +500,26 @@ const rows: Row[] = [
   ["loans", "/loans/home", "home_purchase", "how much house can i afford"],
   ["loans", "/loans/home", "home_purchase", "can i afford a $400,000 home"],
   ["loans", "/loans/home", "home_purchase", "how much should i save for a down payment"],
+
+  // What if (spec step 203).
+  ["whatif", "/what-if", "what_if", "what if i lose my job"],
+
+  // Gifts to family, and the long view.
+  [
+    "investing",
+    "/gift",
+    "family_investing",
+    "can i gift my daughter some money for her investments",
+  ],
+  ["investing", "/gift", "family_investing", "how do i put money in an account for my kid"],
+  ["investing", "/long-view", "long_view", "where will i be in 20 years"],
+  ["investing", "/long-view", "long_view", "show me the long view"],
+
+  // The accountant's view and the profile.
+  ["taxes", "/accountant", "tax_return", "what should my accountant see"],
+  ["taxes", "/accountant", "tax_forms", "can i share my tax documents with my accountant"],
+  ["settings", "/profile", "investor_profile", "what do you know about me"],
+  ["settings", "/profile", "tax_profile", "what's in my profile"],
 
   // Two questions in one message.
   ["two", "/home", "safe_to_spend", "how much can i spend and when is payday"],

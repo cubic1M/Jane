@@ -39,6 +39,20 @@ export async function hit(
   };
 }
 
+// Gives back one use in the current window, for a request that didn't cost what the limit
+// protects (Claude failed or was too slow, so the rules answered): it shouldn't count.
+export async function giveBack(
+  name: LimitName,
+  subject: string,
+  { client = defaultClient, now = new Date() }: Options = {},
+): Promise<void> {
+  const windowMs = RATE_LIMITS[name].windowSeconds * 1000;
+  const windowStart = new Date(Math.floor(now.getTime() / windowMs) * windowMs);
+  await client.$executeRaw`
+    UPDATE rate_limits SET count = GREATEST(count - 1, 0)
+    WHERE key = ${`${name}:${subject}`} AND window_start = ${windowStart}`;
+}
+
 // A stable, non-reversible id for the caller's IP (first X-Forwarded-For hop on Vercel).
 export function ipKey(headers: Headers): string {
   const ip =

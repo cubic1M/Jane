@@ -22,7 +22,13 @@ export const metadata: Metadata = {
 };
 
 // viewportFit "cover" lets the phone tab bar (spec step 79) sit above the iPhone home indicator.
-export const viewport: Viewport = { themeColor: "#047857", viewportFit: "cover" };
+// interactiveWidget "resizes-content" makes the page (and so the message box) shrink above the
+// phone keyboard instead of sliding under it (spec step 194).
+export const viewport: Viewport = {
+  themeColor: "#047857",
+  viewportFit: "cover",
+  interactiveWidget: "resizes-content",
+};
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
