@@ -368,7 +368,7 @@ describe.runIf(url)("typing to Jane against a real database", () => {
       // One call that costs more than the whole cap.
       await addSpend(
         capped,
-        { model: "claude-sonnet-5-5", inputTokens: 0, outputTokens: 40_000 },
+        { model: "claude-sonnet-5-5", inputTokens: 0, outputTokens: 80_000 },
         { client, now: when },
       );
       expect(await overDailyCap(capped, { client, now: when })).toBe(true);
@@ -384,7 +384,8 @@ describe.runIf(url)("typing to Jane against a real database", () => {
       );
       expect(create).not.toHaveBeenCalled();
       expect(source).toBe("claude_unavailable");
-      expect(reply.body.length).toBeGreaterThan(0);
+      // Said honestly, then the data, never a generic status passed off as the answer.
+      expect(reply.body).toMatch(/^I've reached today's limit for answering in detail/);
       // The next day it's asked again.
       expect(
         await overDailyCap(capped, { client, now: new Date(when.getTime() + 24 * 60 * 60 * 1000) }),

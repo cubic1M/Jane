@@ -387,8 +387,12 @@ export const CHAT_RULES_ONLY_KINDS: readonly string[] = [
   "remind",
 ];
 // The most Claude may spend answering one person's messages in a day, in cents, at the model's
-// listed price (MODEL_PRICES_CENTS in src/config/answer-checks.ts). Past it, the rules answer.
-export const CHAT_CLAUDE_DAILY_CAP_CENTS = 25;
+// listed price (MODEL_PRICES_CENTS in src/config/answer-checks.ts). Past it, an honest "today's
+// limit" note and the answer from the data. Sized so a sample person's whole allowance of
+// CHAT_TRIAL_MESSAGES typical answers (CHAT_TYPICAL_ANSWER_CENTS, from the nightly checks) fits
+// with room for the strategist, so the trial cap is the limit people meet.
+export const CHAT_CLAUDE_DAILY_CAP_CENTS = 60;
+export const CHAT_TYPICAL_ANSWER_CENTS = 2;
 // /admin/chat looks back this many days for what Jane couldn't answer.
 export const CHAT_UNANSWERED_DAYS = 30;
 

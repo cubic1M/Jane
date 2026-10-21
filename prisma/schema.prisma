@@ -3833,6 +3833,10 @@ model Suggestion {
   capability        String
   topic             String
   title             String
+  // The short forms (docs/detectors.md): a headline and one "why you" line. Empty on rows
+  // scanned before they existed, which fall back to the title and why.
+  headline          String    @default("")
+  short             String    @default("")
   worthCents        Int       @map("worth_cents")
   worthKind         String    @map("worth_kind")
   confidencePercent Int       @map("confidence_percent")

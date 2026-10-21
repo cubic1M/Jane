@@ -28,6 +28,8 @@ export const DETECTOR_EXEMPT: Readonly<Record<string, string>> = {
 export const TOOL_EXEMPT: Readonly<Record<string, string>> = {
   debt_decision:
     "answers a question the person asks (pay a card or invest, consolidate, close a card), built from the same numbers the debt detectors already read; each answer's own detector (card_interest, balance_transfer, student_repayment) brings the idea up unasked",
+  calculate:
+    "a general calculator for the numbers an answer needs (a percent of a balance, months to pay off); not a feature, so there is nothing to suggest",
   insurance_claim_worth:
     "answers a question that comes with an amount the person gives, and adds its line to a claim draft; the claim detector (insurance_claim) covers a repair Jane sees",
   insurance_health_year:

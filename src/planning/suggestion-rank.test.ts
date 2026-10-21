@@ -18,6 +18,8 @@ const make = (over: Partial<Suggestion> & { topic: Suggestion["topic"] }): Sugge
   id: `x:${over.topic}`,
   capability: "x",
   title: "t",
+  headline: "t",
+  short: "t",
   worthCents: 100_000,
   worthKind: "saves",
   confidence: { percent: 80, reason: "r" },

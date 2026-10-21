@@ -1,8 +1,9 @@
+import { HEADLINE_VERBS } from "@/config/detectors";
 import { PEOPLE, type Person, type SuggestionTopic } from "@/config/people";
 import { buildProfile } from "@/profile/build";
 import { inputFor } from "@/profile/sample";
 import { DETECTORS, runDetectors } from "./index";
-import type { Detector, Suggestion } from "./contract";
+import { HEADLINE_MAX, SHORT_MAX, type Detector, type Suggestion } from "./contract";
 
 // The detector harness (spec step 254): runs every detector on the eight sample people and
 // compares what fired with each person's written list. Pure and database-free, so it runs
@@ -68,4 +69,26 @@ export function formatReport(reports: readonly PersonReport[]): string {
       ].join("\n"),
     )
     .join("\n\n");
+}
+
+// What is wrong with a suggestion's short forms (docs/detectors.md, "Short forms"), if
+// anything: a headline of at most HEADLINE_MAX characters that starts with a verb and carries
+// the dollars where there is a value, and one why-you line of at most SHORT_MAX.
+export function shortFormProblems(s: Suggestion): string[] {
+  const problems: string[] = [];
+  if (!s.headline) problems.push("no headline");
+  if (s.headline.length > HEADLINE_MAX)
+    problems.push(`headline is ${s.headline.length} characters, over ${HEADLINE_MAX}`);
+  const first = s.headline.split(" ")[0];
+  if (!HEADLINE_VERBS.includes(first))
+    problems.push(`headline starts with "${first}", which is not a verb in HEADLINE_VERBS`);
+  if (s.worthCents >= 50) {
+    const dollars = `$${Math.round(s.worthCents / 100).toLocaleString("en-US")}`;
+    if (!s.headline.includes(dollars)) problems.push(`headline lacks the dollars (${dollars})`);
+  }
+  if (!s.short) problems.push("no short line");
+  if (s.short.length > SHORT_MAX)
+    problems.push(`short line is ${s.short.length} characters, over ${SHORT_MAX}`);
+  if (!/\d/.test(s.short)) problems.push("short line has none of the person's own numbers");
+  return problems;
 }

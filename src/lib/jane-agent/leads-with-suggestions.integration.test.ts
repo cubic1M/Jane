@@ -59,10 +59,10 @@ describe.runIf(url)("Jane leads with suggestions", { timeout: 120_000 }, () => {
     const leading = agenda.body.split("\n").filter((l) => l.startsWith("- "));
     // Each suggestion leads, with why this person and how sure Jane is, in their own figures.
     for (const o of offered.slice(0, leading.length)) {
-      const line = leading.find((l) => l.includes(o.title.replace(/[.!?]+$/, "")))!;
-      expect(line, o.title).toBeDefined();
+      const line = leading.find((l) => l.includes(o.headline.replace(/[.!?]+$/, "")))!;
+      expect(line, o.headline).toBeDefined();
       expect(line).toContain("Why you:");
-      expect(line).toContain(`I'm ${o.confidencePercent}% sure, based on ${o.confidenceReason}.`);
+      expect(line).toContain(`${o.confidencePercent}% sure: ${o.confidenceReason}.`);
     }
     // The first listed is the scan's best: the one from the person's written list.
     expect(person.should).toContain(offered[0].topic);

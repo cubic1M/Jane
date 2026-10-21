@@ -64,7 +64,8 @@ export async function runJaneAgent(
     await refreshDebts(userId, { client, now });
   }
   // The bank data, loaded once for what follows.
-  const input = await loadDetectionInput(userId, { client, now });
+  // (The early run's light snapshot reads none of it.)
+  const input = early ? undefined : await loadDetectionInput(userId, { client, now });
   // What Jane keeps current by herself, before she looks. These don't depend on each other
   // (except money moving, which runs in order), so they run together: a new person's first
   // run waits on all of it.
@@ -105,9 +106,11 @@ export async function runJaneAgent(
   if ((await scopedFor(userId, client).janeMessages.count()) === 0) {
     await safely("The first scan for suggestions", () => scanSuggestions(userId, { client, now }));
   }
-  const snapshot = await loadSnapshot(userId, { client, now, input });
-  // Kept for the chat: its first question reads this instead of building it.
-  await safely("Saving the snapshot", () => saveSnapshot(userId, snapshot, { client, now }));
+  const snapshot = await loadSnapshot(userId, { client, now, input, light: early });
+  // Kept for the chat: its first question reads this instead of building it. Never the early
+  // run's light one: the scan's last run keeps the whole thing.
+  if (!early)
+    await safely("Saving the snapshot", () => saveSnapshot(userId, snapshot, { client, now }));
   if (!snapshot) return { posted: 0 };
   // Spec step 265: the day's brief leads with suggestions, so the first run of a first scan
   // (`early`, before the suggestions are in) posts nothing until there are some: never the old
@@ -154,6 +157,16 @@ export async function runJaneAgent(
   const posted = await postMessages(userId, planned, { client, now });
   // What's important goes out as a notification, unless the person is looking (spec step 85).
   await queueChatNotificationsSafely(userId, { client, now, trigger });
+  // The brief is out; now the whole snapshot is built and kept for the chat, before the slow
+  // sector work, so the first question reads it instead of building it.
+  if (early)
+    await safely("Saving the snapshot", async () => {
+      const full = await loadDetectionInput(userId, { client, now });
+      await saveSnapshot(userId, await loadSnapshot(userId, { client, now, input: full }), {
+        client,
+        now,
+      });
+    });
   return { posted };
 }
 
