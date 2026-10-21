@@ -620,6 +620,30 @@ describe("speed and failures", () => {
     expect(create).not.toHaveBeenCalled();
   });
 
+  it("takes the answer written before a button or picture is asked for, with no extra round", async () => {
+    vi.mocked(homeSummary).mockResolvedValue({ safeToSpend: null, comingUp: [] } as never);
+    create.mockResolvedValueOnce({
+      stop_reason: "tool_use",
+      content: [
+        { type: "text", text: "You can open the goals page to set one up." },
+        {
+          type: "tool_use",
+          id: "t99",
+          name: "propose_action",
+          input: { action: "open", page: "goals" },
+        },
+      ],
+    });
+    const result = await askClaudeInChat("u1", [], "how do i save", options);
+    // One request, not two: the text written before the button is the answer.
+    expect(create).toHaveBeenCalledTimes(1);
+    expect(result).toMatchObject({
+      kind: "answer",
+      reply: { body: "You can open the goals page to set one up." },
+    });
+    expect(result.reply.actions.length).toBeGreaterThan(0);
+  });
+
   it("pauses Claude for a while only when Claude itself fails (rate limit, overloaded)", async () => {
     vi.spyOn(console, "error").mockImplementation(() => {});
     const failing = () =>

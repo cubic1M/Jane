@@ -786,6 +786,28 @@ const BASE_QUESTIONS: readonly CheckQuestion[] = [
     },
   },
 
+  // A finding talked about doesn't turn the next, unrelated question into a follow-up on it.
+  {
+    id: "unrelated-1",
+    text: "what's my net worth",
+    needs: "rules",
+    after: "follow-2",
+    sector: "networth",
+    page: "/net-worth",
+    tool: "net_worth",
+    expect: { intent: "net_worth", avoid: /hulu|button/i },
+  },
+  {
+    id: "unrelated-2",
+    text: "how can i pay less interest",
+    needs: "claude",
+    after: "follow-2",
+    sector: "debt",
+    page: "/debt",
+    tool: "card_interest",
+    expect: { avoid: /hulu|\bbutton\b|under this answer/i },
+  },
+
   // Follow-ups: the second needs the first.
   {
     id: "follow-1",
