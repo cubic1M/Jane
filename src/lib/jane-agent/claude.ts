@@ -3,6 +3,7 @@ import {
   CHAT_CLAUDE_COOLDOWN_SECONDS,
   CHAT_CLAUDE_DEADLINE_MS,
   CHAT_CLAUDE_FIRST_WORDS_MS,
+  CHAT_CLAUDE_TOTAL_MS,
   CHAT_CLAUDE_MAX_TOKENS,
   CHAT_PRIMER_BUDGET_MS,
   CHAT_CLAUDE_EFFORT,
@@ -232,6 +233,10 @@ type ChatTiming = {
   cachedInputTokens: number;
   cacheWriteTokens: number;
   outputTokens: number;
+  // Each tool Claude called and how long it took to run, in milliseconds.
+  tools: { name: string; ms: number }[];
+  // Why the answer came from the rules instead (no text, numbers only).
+  reason: string | null;
 };
 
 // What the last answer was about, in words for Claude (spec step 193).
@@ -257,6 +262,8 @@ export async function askClaudeInChat(
     cachedInputTokens: 0,
     cacheWriteTokens: 0,
     outputTokens: 0,
+    tools: [],
+    reason: null,
   };
   let outcome = "error";
   try {
@@ -272,7 +279,7 @@ export async function askClaudeInChat(
         outcome,
         totalMs: Date.now() - startedAt,
         model: chatModel(),
-        tools: CHAT_TOOLS.length,
+        toolsSent: CHAT_TOOLS.length,
       }),
     );
   }
@@ -297,10 +304,15 @@ async function askClaude(
   }: Options,
   timing: ChatTiming,
 ): Promise<ClaudeAnswer> {
+  // Why Claude's answer isn't used goes in the timing line (a code, never text).
+  const fail = (reason: string) => {
+    timing.reason ??= reason;
+    return unavailable();
+  };
   // Spec step 93: Claude failed a moment ago: answer from the rules now, never a spinner.
-  if (Date.now() < claudeDownUntil) return unavailable();
+  if (Date.now() < claudeDownUntil) return fail("cooldown");
   // Spec step 191: today's cost cap for this person.
-  if (await overDailyCap(userId, { client, now })) return unavailable();
+  if (await overDailyCap(userId, { client, now })) return fail("daily_cap");
   const profile = advice ? "demo_advice" : "standard";
   onEvent({ type: "status", text: "Looking at your numbers…" });
   // The person's main numbers, for at most primerMs: a slow lookup finishes in the
@@ -359,7 +371,9 @@ async function askClaude(
     let timer: ReturnType<typeof setTimeout> | undefined;
     try {
       // No time left for another round: the rules answer, and no stream is ever started.
-      if (deadlineMs - (Date.now() - started) <= 0) return unavailable();
+      const turnStarted = Date.now();
+      const totalLeft = CHAT_CLAUDE_TOTAL_MS - (Date.now() - started);
+      if (Math.min(deadlineMs, totalLeft) <= 0) return fail("no_time");
       const stream = claude()
         .messages.stream({
           model: chatModel(),
@@ -377,7 +391,16 @@ async function askClaude(
           // It has started: now only the deadline applies.
           if (timer && turn === 0) {
             clearTimeout(timer);
-            timer = setTimeout(stop, Math.max(0, deadlineMs - (Date.now() - started)));
+            timer = setTimeout(
+              stop,
+              Math.max(
+                0,
+                Math.min(
+                  deadlineMs - (Date.now() - turnStarted),
+                  totalLeft - (Date.now() - turnStarted),
+                ),
+              ),
+            );
           }
           if (event.type !== "content_block_start") return;
           if (event.content_block.type === "thinking") {
@@ -399,7 +422,9 @@ async function askClaude(
         stopped = true;
         if (typeof stream.abort === "function") stream.abort();
       }
-      const left = deadlineMs - (Date.now() - started);
+      // Each round has its own deadline (a slow lookup between rounds isn't Claude's time), within
+      // a total for the whole question.
+      const left = Math.min(deadlineMs, totalLeft);
       timer = setTimeout(stop, turn === 0 ? Math.min(firstWordsMs, left) : Math.max(0, left));
       timing.turns = turn + 1;
       response = await stream.finalMessage();
@@ -423,7 +448,7 @@ async function askClaude(
           claudeDownUntil = Date.now() + CHAT_CLAUDE_COOLDOWN_SECONDS * 1000;
         }
       }
-      return unavailable();
+      return fail(stopped ? "too_slow" : "api_error");
     } finally {
       clearTimeout(timer);
     }
@@ -497,7 +522,9 @@ async function askClaude(
           });
           continue;
         }
+        const toolStarted = Date.now();
         const output = await runChatTool(userId, block.name, block.input, { client, now });
+        timing.tools.push({ name: block.name, ms: Date.now() - toolStarted });
         allowedCents.push(...output.cents, ...dollarFigures(output.content).map((f) => f.cents));
         results.push({ type: "tool_result", tool_use_id: block.id, content: output.content });
       }
@@ -505,13 +532,13 @@ async function askClaude(
       continue;
     }
 
-    if (response.stop_reason !== "end_turn") return unavailable();
+    if (response.stop_reason !== "end_turn") return fail(`stop_${response.stop_reason}`);
     draft.finish();
     const text = response.content
       .flatMap((b) => (b.type === "text" ? [b.text] : []))
       .join("\n")
       .trim();
-    if (!text) return unavailable();
+    if (!text) return fail("empty");
     const check = checkGuardrails(text, allowedCents, undefined, profile);
     if (!check.ok && rewrites < CHAT_CLAUDE_REWRITES && turn + 1 < maxTurns) {
       // Once, Claude is told what can't be shown and answers again.
@@ -556,5 +583,5 @@ async function askClaude(
     };
   }
   // Too many rounds of lookups for one message.
-  return unavailable();
+  return fail("turn_cap");
 }
