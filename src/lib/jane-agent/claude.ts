@@ -30,7 +30,7 @@ import type { PolicyKind } from "@/config/insurance";
 import { quotesAnswer } from "./insurance/quotes";
 import { DEBT_TOOL_STATUS } from "./debt-tools";
 import { parseDecision } from "./decision-intents";
-import { toolsFor } from "./tool-select";
+import { SECTOR_OVERVIEW, sectorsFor, toolsFor } from "./tool-select";
 import { CHAT_TOOLS, chatPrimer, proposeAction, runChatTool, type Proposal } from "./claude-tools";
 import { BLOCK_KINDS, buildBlock, type BlockKind } from "./block-data";
 import { blockCents, drawBlock, type AnswerBlock } from "./blocks";
@@ -372,6 +372,8 @@ type ChatTiming = {
   guardrails: string[];
   // The pattern of each rule that matched (never the words), per blocked attempt.
   guardrailRules: string[];
+  // Why each rewrite happened: "guardrail", "shape" or "button_only".
+  rewriteReasons: string[];
 };
 
 // What the last answer was about, in words for Claude (spec step 193).
@@ -406,6 +408,7 @@ export async function askClaudeInChat(
     rewrites: 0,
     guardrails: [],
     guardrailRules: [],
+    rewriteReasons: [],
   };
   let outcome = "error";
   try {
@@ -506,6 +509,37 @@ async function askClaude(
       allowedCents.push(...dollarFigures(reply.body).map((f) => f.cents));
     }
   }
+  // A sector question starts with the sector's overview lookups, run now and sent up front.
+  let overviewBlock = "";
+  {
+    const wantedSectors = sectorsFor(
+      question,
+      [...history].reverse().find((m) => m.role === "user")?.content ?? null,
+      topic,
+      now.toISOString().slice(0, 10),
+    );
+    const names = [...new Set([...wantedSectors].flatMap((sector) => SECTOR_OVERVIEW[sector]))];
+    if (names.length > 0 && wantedSectors.size <= 2) {
+      const lookedUp = Date.now();
+      const results = await Promise.race([
+        Promise.allSettled(names.map((name) => runChatTool(userId, name, {}, { client, now }))),
+        new Promise<null>((resolve) => setTimeout(() => resolve(null), 2_500).unref?.()),
+      ]);
+      const lines: string[] = [];
+      results?.forEach((result, i) => {
+        if (result.status !== "fulfilled") return;
+        lines.push(`${names[i]}: ${result.value.content}`);
+        allowedCents.push(
+          ...result.value.cents,
+          ...dollarFigures(result.value.content).map((f) => f.cents),
+        );
+        timing.tools.push({ name: `${names[i]} (up front)`, ms: Date.now() - lookedUp });
+      });
+      if (lines.length > 0) {
+        overviewBlock = `\n\nAlready looked up for this question (do not call these again):\n${lines.join("\n")}`;
+      }
+    }
+  }
   // The finding that was just talked about: its details go up front, so "tell me more" is one
   // round of writing, not a lookup first.
   let findingBlock = "";
@@ -578,7 +612,7 @@ async function askClaude(
     },
     {
       type: "text",
-      text: `The person's numbers right now (today is ${now.toISOString().slice(0, 10)}):\n${primer.text || "None available."}${figuresLine(primer.cents)}${topic ? `\n\n${topicLine(topic)}` : ""}${findingBlock}${prepared ? `\n\nA card for this request is already prepared and will appear under your answer (never repeat its figures):\n${prepared.body}\nWrite one or two sentences saying what you found; do not call propose_action.` : ""}${style ? `\n\n${style}` : ""}`,
+      text: `The person's numbers right now (today is ${now.toISOString().slice(0, 10)}):\n${primer.text || "None available."}${figuresLine(primer.cents)}${topic ? `\n\n${topicLine(topic)}` : ""}${findingBlock}${overviewBlock}${prepared ? `\n\nA card for this request is already prepared and will appear under your answer (never repeat its figures):\n${prepared.body}\nWrite one or two sentences saying what you found; do not call propose_action.` : ""}${style ? `\n\n${style}` : ""}`,
     },
   ];
 
@@ -847,6 +881,7 @@ async function askClaude(
       buttonRewrites += 1;
       turnLimit += 1;
       timing.rewrites += 1;
+      timing.rewriteReasons.push("button_only");
       draft.reset();
       onEvent({ type: "reset" });
       messages.push({ role: "assistant", content: [{ type: "text", text: spoken || text }] });
@@ -864,6 +899,7 @@ async function askClaude(
       // Once, Claude is told what can't be shown and answers again.
       rewrites += 1;
       timing.rewrites += 1;
+      timing.rewriteReasons.push(`guardrail:${check.issues.join("+")}`);
       draft.reset();
       onEvent({ type: "reset" });
       onEvent({ type: "status", text: "Checking my answer…" });
@@ -883,6 +919,7 @@ async function askClaude(
       // Once: shorter, and no list the person didn't ask for.
       shapeRewritten = true;
       timing.rewrites += 1;
+      timing.rewriteReasons.push(`shape:${spoken.length}chars`);
       if (turn + 1 >= turnLimit) turnLimit += 1;
       draft.reset();
       onEvent({ type: "reset" });
