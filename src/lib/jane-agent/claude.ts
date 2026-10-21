@@ -22,6 +22,7 @@ import {
   type GuardrailIssue,
 } from "@/lib/guardrails";
 import { DEBT_TOOL_STATUS } from "./debt-tools";
+import { toolsFor } from "./tool-select";
 import { CHAT_TOOLS, chatPrimer, proposeAction, runChatTool, type Proposal } from "./claude-tools";
 import { BLOCK_KINDS, buildBlock, type BlockKind } from "./block-data";
 import { blockCents, drawBlock, type AnswerBlock } from "./blocks";
@@ -323,6 +324,14 @@ async function askClaude(
   allowedCents.push(...primer.cents);
   let rewrites = 0;
   const messages = conversation(history, question);
+  // Only the general tools and the sectors this question is about (./tool-select.ts).
+  const tools = toolsFor(
+    CHAT_TOOLS,
+    question,
+    [...history].reverse().find((m) => m.role === "user")?.content ?? null,
+    topic,
+    now.toISOString().slice(0, 10),
+  );
   let proposal: Extract<Proposal, { ok: true }> | null = null;
   let shown: AnswerBlock | null = null;
   const draft = new GuardedText(
@@ -356,7 +365,7 @@ async function askClaude(
           model: chatModel(),
           max_tokens: CHAT_CLAUDE_MAX_TOKENS,
           system,
-          tools: CHAT_TOOLS,
+          tools,
           // Adaptive thinking at low effort (the request that worked). Turning thinking off
           // made the nightly's every chat request fail with a 400.
           thinking: { type: "adaptive" },
