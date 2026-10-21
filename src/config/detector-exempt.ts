@@ -17,6 +17,7 @@ export const DETECTOR_EXEMPT: Readonly<Record<string, string>> = {
   act: "carries out a button the person tapped",
   autopilot: "settings for what Jane may do alone",
   memory: "what Jane remembers",
+  net_worth: "reports what the person is worth; nothing to suggest",
   life_event: "checklists the person opens; suggestions arrive through the detectors",
 };
 
@@ -51,6 +52,9 @@ export const TOOL_EXEMPT: Readonly<Record<string, string>> = {
   open_findings: "lists findings, which already reach the person as decisions",
   finding_details: "explains a finding the person asks about",
   net_worth: "reports net worth",
+  balance_forecast: "answers where the balance is heading; the low-balance detector covers a shortfall",
+  alerts: "lists the alerts, which already reach the person as heads-ups",
+  household: "shows the people on the account and what they share; nothing to suggest",
   recent_changes: "reports changes, which already reach the person as heads-ups",
   proven_savings: "reports what Jane saved",
   autopilot_settings: "settings for what Jane may do alone",

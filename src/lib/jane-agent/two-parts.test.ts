@@ -1,4 +1,7 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
+
+vi.mock("@/lib/session", () => ({ requireUser: vi.fn() }));
+
 import { topicLine } from "./claude";
 import { joinReplies, splitQuestions } from "./two-parts";
 
@@ -12,7 +15,9 @@ describe("two questions in one message", () => {
     expect(
       splitQuestions("how much can I spend and when is payday", ASOF)?.map((i) => i.kind),
     ).toEqual(["safe_to_spend", "payday"]);
-    expect(splitQuestions("what's my net worth, and how much debt do I have", ASOF)).toBeNull();
+    expect(
+      splitQuestions("what's my net worth, and how much debt do I have", ASOF)?.map((i) => i.kind),
+    ).toEqual(["net_worth", "debts"]);
   });
 
   it("leaves one question, actions and unknown halves alone", () => {
