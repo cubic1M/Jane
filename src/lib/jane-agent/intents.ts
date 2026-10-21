@@ -699,7 +699,10 @@ export function parseIntent(
 
   const refund = REFUND.exec(text);
   if (refund) return { kind: "act", verb: "refund", target: cleanTarget(refund[1] ?? refund[2]) };
-  const cancel = CANCEL.exec(text);
+  // "Should I cancel Netflix?" is the cancel offer for Netflix, with its Yes.
+  const cancel = CANCEL.exec(
+    text.replace(/^(?:should i|do i need to|can i|how do i|how can i) /, ""),
+  );
   if (cancel) return { kind: "act", verb: "cancel", target: cleanTarget(cancel[1]) };
   const lower = LOWER.exec(text.replace(/^(?:how (?:do|can|could) i|how to|can i|help me) /, ""));
   if (lower) return { kind: "act", verb: "lower", target: cleanTarget(lower[1]) };

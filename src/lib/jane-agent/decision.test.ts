@@ -49,6 +49,14 @@ describe("reading a decision question", () => {
     }
   });
 
+  it("reads should I cancel Netflix as the cancel offer", () => {
+    expect(parseIntent("should i cancel netflix", ASOF)).toMatchObject({
+      kind: "act",
+      verb: "cancel",
+      target: "netflix",
+    });
+  });
+
   it("leaves what other answers own to them", () => {
     expect(parseDecision("should i buy a $900 couch")).toBeNull();
     expect(parseDecision("should i buy renters insurance")).toBeNull();
@@ -65,7 +73,9 @@ describe("the follow-up", () => {
       kind: "decision",
       item: "crypto",
       label: "bitcoin",
+      again: true,
     });
+    expect(withTopic(parseIntent("why?", ASOF), topic, ASOF)).toMatchObject({ again: true });
     // Another kind of topic doesn't count.
     expect(
       withTopic(parseIntent("should i buy?", ASOF), { kind: "act", target: "Netflix" }, ASOF),
@@ -119,6 +129,20 @@ describe("the answer", () => {
     expect(reply.body).toContain("I don't give advice on what to buy with your real accounts");
     expect(reply.body).not.toMatch(/I'd |you should/i);
     expect(reply.refs.advice).toBeUndefined();
+  });
+
+  it("adds the next step when asked again, instead of repeating itself", () => {
+    const again = decisionReply(
+      { kind: "decision", item: "crypto", label: "bitcoin", again: true },
+      null,
+      facts(),
+      true,
+    );
+    const first = ask("should i buy bitcoin", true);
+    expect(again.body).not.toBe(first.body);
+    expect(again.body).toContain("Next step:");
+    expect(again.body).toContain("ask me about bitcoin again");
+    expect(again.refs.topic).toMatchObject({ kind: "decision", category: "crypto" });
   });
 
   it("asks what, when nothing was discussed", () => {

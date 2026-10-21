@@ -18,6 +18,9 @@ export type DecisionIntent = {
   item: DecisionItem | null;
   // What they called it, for the answer's words ("bitcoin", "a house").
   label: string | null;
+  // Asked again about the decision just answered ("should I buy?", "why?"): the answer adds
+  // the next step instead of repeating itself.
+  again?: boolean;
 };
 
 const CRYPTO = /\b(?:crypto\w*|bitcoin|btc|ether\w*|eth|solana|doge\w*|stablecoins?|nfts?)\b/;

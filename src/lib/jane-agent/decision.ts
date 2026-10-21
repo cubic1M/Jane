@@ -198,6 +198,22 @@ export function decisionReply(
   if (item === "cushion") return cushionReply(facts, advice);
   const lines = standing(facts);
   const lead = first(facts);
+  if (intent.again) {
+    // Not the same answer twice: what to do next, and what it unlocks.
+    const next = lead
+      ? `${lead.say} Next step: ${lead.link.label.charAt(0).toLowerCase()}${lead.link.label.slice(1)}, then ask me about ${label} again.`
+      : `Your basics look covered, so the next step is deciding how much of ${label} you are comfortable losing, then starting small.`;
+    return {
+      body: advice
+        ? next
+        : `The facts haven't changed: ${lines[0]} I don't give advice on what to buy with your real accounts.`,
+      actions: lead && advice ? [lead.link] : [link("See my goals", "/goals")],
+      refs: {
+        topic: { kind: "decision", category: item, target: label },
+        ...(advice ? { advice: true as const } : {}),
+      },
+    };
+  }
   const body = advice
     ? [
         `Before ${label}, here is where you stand.`,

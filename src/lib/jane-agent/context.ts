@@ -33,6 +33,7 @@ export function withTopic(
       ...intent,
       item: (topic.category as DecisionIntent["item"]) ?? null,
       label: topic.target ?? null,
+      again: true,
     };
   }
   if (intent.kind === "follow_up") {
@@ -46,19 +47,13 @@ export function withTopic(
     }
     const target = intent.target ?? "";
     // "Why?" after a decision is that decision again, with the reasoning.
-    if ((!target || isPronoun(target)) && topic.kind === "decision") {
-      return {
-        kind: "decision",
-        item: (topic.category as DecisionIntent["item"]) ?? null,
-        label: topic.target ?? null,
-      };
-    }
     // "Why?" after a decision is that decision again, with the reasoning.
     if ((!target || isPronoun(target)) && topic.kind === "decision") {
       return {
         kind: "decision",
         item: (topic.category as DecisionIntent["item"]) ?? null,
         label: topic.target ?? null,
+        again: true,
       };
     }
     if (!target || isPronoun(target))

@@ -786,6 +786,16 @@ const BASE_QUESTIONS: readonly CheckQuestion[] = [
     },
   },
 
+  {
+    id: "qa-netflix",
+    text: "should i cancel netflix",
+    needs: "rules",
+    sector: "chat",
+    page: "/subscriptions",
+    tool: "subscriptions",
+    expect: { button: "finding.yes", mentions: /netflix/i },
+  },
+
   // Follow-ups: the second needs the first.
   {
     id: "follow-1",
