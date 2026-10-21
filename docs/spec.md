@@ -4007,7 +4007,102 @@ the eight people. No new features in this phase.
 > Acceptance criteria:
 > - /admin/reach shows full reach; the nightly run is green for a week
 
-## Deferred until Phases AR and AS are done
+## Phase AT: taxes, round four (steps 267–273)
+
+Written after Phase AS: every step here ships with its detector (who it's for, dollars, a
+confidence percentage from the shared recipe with its reason, urgency, why you, action),
+reaches at least one sample person in real data, and adds bank questions. Recommendations are
+demo advice; legal questions go to counsel.
+
+### Step 267: Business owners' tax structure
+
+> Read CLAUDE.md. The S-corp question and the business deduction, worked out.
+>
+> Build:
+> 1. For self-employed and small-business people (step 123's signals): the qualified
+>    business income deduction estimated, whether an S-corp election would save more than
+>    its payroll and filing costs at their profit (config thresholds with sources), a
+>    reasonable salary range, and the home office and vehicle deductions from transactions.
+>
+> Acceptance criteria:
+> - The small-business owner and the freelancer get the right answer for their profit; the
+>   math has tests
+
+### Step 268: Inherited money and gifts
+
+> Read CLAUDE.md. Inheritances and gifts, taxed right.
+>
+> Build:
+> 1. An inherited IRA's withdrawal deadline (the 10-year rule and its exceptions) spread to
+>    keep brackets low, step-up in basis on inherited assets, gifts over the annual
+>    exclusion flagged for a gift tax return, and estate tax facts, with a pointer to counsel.
+>
+> Acceptance criteria:
+> - Rules and limits from config by year with sources; the guardrail blocks legal advice
+
+### Step 269: Health coverage and taxes
+
+> Read CLAUDE.md. The tax side of health insurance.
+>
+> Build:
+> 1. Marketplace premium tax credit reconciled against real income (repayment risk caught
+>    mid-year), HSA contributions over the limit caught before filing, and the medical
+>    deduction checked against the income floor from step 200's spending.
+>
+> Acceptance criteria:
+> - A mid-year income rise raises the repayment warning; limits from config
+
+### Step 270: Disasters and losses
+
+> Read CLAUDE.md. When a disaster hits, the tax relief applied.
+>
+> Build:
+> 1. IRS and state disaster postponements for the person's county (stand-in feed, config
+>    dates) moving their deadlines automatically, casualty loss rules, and the claim
+>    records kept with the insurance claim (step 107).
+>
+> Acceptance criteria:
+> - A postponement moves every affected deadline (tests); nothing is claimed twice
+
+### Step 271: Taxes on retirement income
+
+> Read CLAUDE.md. Social Security, Medicare surcharges and withdrawal order, taxed well.
+>
+> Build:
+> 1. How much Social Security is taxable at their income, the Medicare surcharge (IRMAA)
+>    thresholds two years ahead, and the withdrawal order from step 212 tuned to stay under
+>    them, handed to the investing side.
+>
+> Acceptance criteria:
+> - Thresholds by year from config; the couple near retirement and the retiree get their own
+>   figures
+
+### Step 272: The return, checked before you file
+
+> Read CLAUDE.md. A second look at a draft return.
+>
+> Build:
+> 1. A draft return (PDF from software or an accountant) read with confirm, line by line
+>    against what Jane knows: income missing, deductions or credits left out, figures that
+>    don't match the forms, each a card with its dollars, before the person files.
+>
+> Acceptance criteria:
+> - The demo draft has three planted mistakes and Jane finds all three; nothing is filed by
+>   Jane
+
+### Step 273: Taxes on autopilot, round three
+
+> Read CLAUDE.md. Every tax detector working as one.
+>
+> Build:
+> 1. The year's tax calendar (step 223) driven by every tax detector, ranked with the rest of
+>    the scan, one message per month at most unless something is urgent, and the reach
+>    scoreboard showing every tax capability reaching the right sample people.
+>
+> Acceptance criteria:
+> - Every tax capability has a detector or a reasoned exemption; the nightly run is green
+
+## Deferred rounds, resumed after Phase AS (2026-10-21)
 
 The rounds below were written before the founder's direction of 2026-10-20 and wait until
 every existing feature finds its person. Each new feature in them must ship with its

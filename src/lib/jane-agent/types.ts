@@ -109,6 +109,12 @@ export const ACTION_IDS = [
   "bundle.3",
   "bundle.4",
   "bundle.5",
+  // Spec step 265: Not for me, on a suggestion listed in the day's agenda (refs.items[n].no).
+  "bundle.no.1",
+  "bundle.no.2",
+  "bundle.no.3",
+  "bundle.no.4",
+  "bundle.no.5",
   // Spec step 185: a plan of several steps, confirmed once; undo its transfers.
   "multi.confirm",
   "multi.cancel",
@@ -427,7 +433,7 @@ export type MessageRefs = {
   // Spec step 92: the messages a bundle stands for, by dedupeKey, in button order. Spec
   // step 184: the morning agenda's too, each with the button its Yes stands for (a finding's
   // Yes when left out).
-  items?: { dedupeKey: string; label: string; action?: ActionId }[];
+  items?: { dedupeKey: string; label: string; action?: ActionId; no?: ActionId }[];
   // Spec step 185: a plan's steps, and once confirmed what happened to each.
   multi?: { steps: MultiStep[]; results?: MultiResult[] };
   // Spec step 94: a chart, table, timeline or progress bars shown with the answer.
