@@ -9,7 +9,10 @@ vi.mock("@/lib/audit", () => ({ logAudit: vi.fn(), SYSTEM_ACTOR: { type: "system
 
 // The slow sector work after detection: what the chat must not wait for. It records what the
 // person could already see when it started.
-const { seenBySlowWork } = vi.hoisted(() => ({ seenBySlowWork: [] as number[] }));
+const { seenBySlowWork, failSector } = vi.hoisted(() => ({
+  seenBySlowWork: [] as number[],
+  failSector: { on: false },
+}));
 vi.mock("@/lib/insurance/daily", async (importOriginal) => {
   const original = await importOriginal<typeof import("@/lib/insurance/daily")>();
   return {
@@ -19,6 +22,7 @@ vi.mock("@/lib/insurance/daily", async (importOriginal) => {
         seenBySlowWork.push(
           await options!.client!.janeMessage.count({ where: { userId, kind: "decision" } }),
         );
+        if (failSector.on) throw new Error("a sector failed");
         return original.insuranceAfterSync(userId, options);
       },
     ),
@@ -129,6 +133,26 @@ describe.runIf(url)("the chat opens during the first scan", { timeout: 120_000 }
     expect(welcome).toBeGreaterThan(looking);
     expect(agenda).toBeGreaterThan(welcome);
     expect(messages[agenda].body).toMatch(/% sure|not sure/);
+  });
+
+  it("still finishes the scan and says its piece when a sector's work fails", async () => {
+    const trial = await startTrial({ client, now: NOW, defer: true, person: "retiree" });
+    created.push(trial.userId);
+    failSector.on = true;
+    try {
+      await syncItem(trial.itemId, { client, now: NOW, progressive: true });
+    } finally {
+      failSector.on = false;
+    }
+    // The scan ended, and Jane's agenda came with what she found: not "still going through your
+    // accounts" for good.
+    expect(
+      (await client.user.findUniqueOrThrow({ where: { id: trial.userId } })).firstScanDoneAt,
+    ).not.toBeNull();
+    const bodies = (
+      await client.janeMessage.findMany({ where: { userId: trial.userId }, select: { body: true } })
+    ).map((m) => m.body);
+    expect(bodies.some((b) => /what I'd do first/.test(b))).toBe(true);
   });
 
   it("opens at once with 'still looking', without running the whole agent, while it scans", async () => {
