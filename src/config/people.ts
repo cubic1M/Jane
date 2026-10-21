@@ -491,6 +491,7 @@ export const PEOPLE: readonly Person[] = [
       "business_insurance",
       "retirement_self_employed",
       "cash_flow",
+      "emergency_fund",
     ],
     mustNot: [
       "employer_match",

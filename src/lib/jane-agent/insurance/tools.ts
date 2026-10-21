@@ -1,3 +1,4 @@
+import { decide, decisionKindOf } from "./decisions";
 import type Anthropic from "@anthropic-ai/sdk";
 import { PREMIUM_FREQUENCIES } from "@/config/documents";
 import {
@@ -78,6 +79,18 @@ export const INSURANCE_TOOLS: Anthropic.Tool[] = [
     description:
       "Life insurance sized for the person and applied for (spec step 153), demo advice only: the amount and term with the method (years of pay, debts, final expenses, schooling, less savings and cover they have), the term quotes, and where an application stands (health questions, the carrier's offer or review). Jane never applies or buys without the person's tap; to start, they tap Apply in the chat or on /insurance/life.",
     input_schema: noInput,
+  },
+  {
+    name: "insurance_decision",
+    description:
+      "A direct answer, in three sentences or fewer, to an insurance decision the person asks about: whether to get umbrella or life cover, switch car insurance, pay yearly, raise a deductible, keep the work health plan, cancel phone cover, add a teen driver, and so on. Pass their question as they said it. The answer is built from their own policies and numbers; the verdict is demo advice and only given in demo advice mode (say so with the label). Use it instead of listing their policies when they ask what to do. Start with the verdict in words; offer no button unless they asked you to do something Jane can do; for any amount the answer doesn't give, use the calculate tool.",
+    input_schema: {
+      type: "object",
+      properties: {
+        question: { type: "string", description: "The question as the person asked it." },
+      },
+      required: ["question"],
+    },
   },
   {
     name: "insurance_health_year",
@@ -199,6 +212,31 @@ export async function runInsuranceTool(
                 }
               : application.decision,
         },
+      }),
+      cents,
+    };
+  }
+  if (name === "insurance_decision") {
+    const question = String((input as { question?: unknown })?.question ?? "").toLowerCase();
+    const kind = decisionKindOf(question);
+    if (!kind) {
+      return {
+        content: JSON.stringify({
+          error: "That isn't an insurance decision I can answer directly.",
+        }),
+        cents,
+      };
+    }
+    const snapshot = await loadInsuranceSnapshot(userId, { client, now });
+    const answer = decide(kind, snapshot, now.toISOString().slice(0, 10));
+    for (const m of answer.body.matchAll(/\$([\d,]+(?:\.\d\d)?)/g)) {
+      cents.push(Math.round(Number(m[1].replace(/,/g, "")) * 100));
+    }
+    return {
+      content: JSON.stringify({
+        decision: kind,
+        answer: answer.body,
+        demoAdvice: answer.refs.advice === true,
       }),
       cents,
     };

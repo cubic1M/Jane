@@ -35,6 +35,18 @@ export function withTopic(
       label: topic.target ?? null,
     };
   }
+  // "Why?" after a finding is that finding's reason in words; after anything else, the same
+  // follow-up as "it" (the decision again, the list explained, the credit score read again).
+  if (intent.kind === "explain") {
+    if (topic?.findingId) return { kind: "why_finding", findingId: topic.findingId };
+    // Nothing was just discussed: ask what, never a picker of unrelated merchants.
+    if (!topic) return intent;
+    // The last question had no answer of its own to explain: Claude is told what it was about.
+    if (topic.kind === "asked") return intent;
+    return withTopic({ kind: "follow_up", target: "it", month: null }, topic, asOf);
+  }
+  // A question that had no answer of its own isn't something "it" can point at.
+  if (topic?.kind === "asked") topic = null;
   if (intent.kind === "follow_up") {
     if (!topic)
       return intent.target ? { kind: "about", target: intent.target } : { kind: "unknown" };
@@ -60,6 +72,10 @@ export function withTopic(
         item: (topic.category as DecisionIntent["item"]) ?? null,
         label: topic.target ?? null,
       };
+    }
+    // "Why is that first?" / "tell me more" after the list of what matters most is about it.
+    if ((!target || isPronoun(target)) && topic.kind === "priorities") {
+      return { kind: "priorities", explain: true };
     }
     if (!target || isPronoun(target))
       return withTopic({ kind: "about", target: "it" }, topic, asOf);
@@ -123,6 +139,7 @@ export function topicOf(intent: Intent): Topic | null {
 export const TOPIC_WORDS: Readonly<Record<string, string>> = {
   credit_score: "my credit score",
   net_worth: "my net worth",
+  priorities: "what matters most",
   debts: "my debt",
   student_loans: "my student loans",
   balance_forecast: "my balance",

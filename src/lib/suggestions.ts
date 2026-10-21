@@ -2,6 +2,7 @@ import { STRATEGIST_CAPABILITY, STRATEGIST_IDEA_DAYS, STRATEGIST_TOPIC } from "@
 import { ADVICE_TOPICS, RESELECT_AFTER_DAYS, rankValue } from "@/config/suggestions";
 import { runDetectors } from "@/detectors";
 import type { Suggestion } from "@/detectors/contract";
+import { ideaShortForms } from "@/detectors/helpers";
 import type { PrismaClient } from "@/generated/prisma/client";
 import { adviceMode } from "@/lib/advice-mode";
 import { track } from "@/lib/analytics";
@@ -34,6 +35,9 @@ export type OfferedSuggestion = {
   key: string;
   topic: string;
   title: string;
+  // The short forms (docs/detectors.md); the title and why for rows from before they existed.
+  headline: string;
+  short: string;
   why: string;
   worthCents: number;
   worthKind: string;
@@ -102,6 +106,7 @@ function openIdeas(
         capability: STRATEGIST_CAPABILITY,
         topic: STRATEGIST_TOPIC,
         title: e.title,
+        ...ideaShortForms(e.title, e.why),
         worthCents: e.worthCents,
         worthKind: e.worthKind as Suggestion["worthKind"],
         confidence: {
@@ -183,6 +188,8 @@ export async function scanSuggestions(
       capability: s.capability,
       topic: s.topic,
       title: s.title,
+      headline: s.headline,
+      short: s.short,
       worthCents: s.worthCents,
       worthKind: s.worthKind,
       confidencePercent: s.confidence.percent,
@@ -274,6 +281,8 @@ export async function offeredToday(
       key: r.key,
       topic: r.topic,
       title: r.title,
+      headline: r.headline || r.title,
+      short: r.short || r.why,
       why: r.why,
       worthCents: r.worthCents,
       worthKind: r.worthKind,
@@ -309,4 +318,21 @@ export async function answerSuggestion(
     percent: row.confidencePercent,
   });
   return { title: row.title, actionHref: row.actionHref };
+}
+
+// The full explanation behind a suggestion's "Why?": its whole title and why, in the person's
+// figures, and how sure Jane is with the reason.
+export async function explainSuggestion(
+  userId: string,
+  key: string,
+  { client = defaultClient }: Pick<Options, "client"> = {},
+): Promise<string> {
+  const row = await scopedFor(userId, client).suggestions.findFirst({ where: { key } });
+  if (!row) throw new SuggestionError("That suggestion isn't there any more.");
+  const end = (text: string) => (/[.!?]$/.test(text) ? text : `${text}.`);
+  return [
+    end(row.title),
+    end(row.why),
+    `I'm ${row.confidencePercent}% sure, based on ${row.confidenceReason}.`,
+  ].join(" ");
 }

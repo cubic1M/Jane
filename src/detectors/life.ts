@@ -1,7 +1,7 @@
 import { DETECTOR_RATES as R } from "@/config/detectors";
 import { formatCents } from "@/lib/money";
 import { type Detector, suggestionId } from "./contract";
-import { evidence, factEvidence, tx, weakest } from "./helpers";
+import { evidence, factEvidence, headlineOf, tx, weakest } from "./helpers";
 
 // Detectors for life events and households (spec step 264). Pure; see ./contract.ts.
 
@@ -40,6 +40,8 @@ const lifeChecklist: Detector = {
         capability: "life_event",
         topic: "life_checklist",
         title: "Go through the new-job checklist",
+        headline: headlineOf("Open the new-job checklist", R.newJobTypicalCents, "saves", true),
+        short: `Your pay now comes from ${nice(newJob[0])}; a checklist is worth about ${formatCents(R.newJobTypicalCents)}.`,
         worthCents: R.newJobTypicalCents,
         worthKind: "saves",
         // A guess from the pay: a new employer appeared as another stopped.
@@ -64,6 +66,8 @@ const lifeChecklist: Detector = {
         capability: "life_event",
         topic: "life_checklist",
         title: "Go through the new-baby checklist",
+        headline: headlineOf("Open the new-baby checklist", R.newChildTypicalCents, "saves", true),
+        short: `Childcare payments began on ${care[0]}.`,
         worthCents: R.newChildTypicalCents,
         worthKind: "saves",
         confidence: weakest([
@@ -93,6 +97,8 @@ const householdSetup: Detector = {
       capability: "life_event",
       topic: "household_setup",
       title: "Invite your partner so you plan the household together",
+      headline: headlineOf("Set up your household", R.householdTypicalCents, "saves"),
+      short: `Your pay looks like a household, worth about ${formatCents(R.householdTypicalCents)} a year in doubled-up bills.`,
       worthCents: R.householdTypicalCents,
       worthKind: "saves",
       confidence: weakest([

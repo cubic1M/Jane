@@ -9,16 +9,30 @@ vi.mock("@/lib/audit", () => ({ logAudit: vi.fn(), SYSTEM_ACTOR: { type: "system
 
 // The slow sector work after detection: what the chat must not wait for. It records what the
 // person could already see when it started.
-const { seenBySlowWork } = vi.hoisted(() => ({ seenBySlowWork: [] as number[] }));
+const { seenBySlowWork, savedBySlowWork, doneBySlowWork, failSector } = vi.hoisted(() => ({
+  seenBySlowWork: [] as number[],
+  doneBySlowWork: [] as boolean[],
+  savedBySlowWork: [] as number[],
+  failSector: { on: false },
+}));
 vi.mock("@/lib/insurance/daily", async (importOriginal) => {
   const original = await importOriginal<typeof import("@/lib/insurance/daily")>();
   return {
     ...original,
     insuranceAfterSync: vi.fn(
       async (userId: string, options: Parameters<typeof original.insuranceAfterSync>[1]) => {
+        savedBySlowWork.push(
+          await options!.client!.janePreference.count({
+            where: { userId, kind: "system", key: "snapshot" },
+          }),
+        );
+        doneBySlowWork.push(
+          !!(await options!.client!.user.findUnique({ where: { id: userId } }))?.firstScanDoneAt,
+        );
         seenBySlowWork.push(
           await options!.client!.janeMessage.count({ where: { userId, kind: "decision" } }),
         );
+        if (failSector.on) throw new Error("a sector failed");
         return original.insuranceAfterSync(userId, options);
       },
     ),
@@ -55,7 +69,7 @@ vi.mock("@/lib/suggestions", async (importOriginal) => {
 
 import { SCANNING_HELLO } from "@/config/scan";
 import { openChat } from "@/lib/jane-agent/open";
-import { scanInProgress, scanReady } from "@/lib/scan";
+import { scanInProgress, scanProgress, scanReady } from "@/lib/scan";
 import { startTrial } from "@/lib/trial";
 import { syncItem } from "@/lib/plaid/sync";
 
@@ -91,15 +105,41 @@ describe.runIf(url)("the chat opens during the first scan", { timeout: 120_000 }
     expect(await scanReady(trial.userId, { client })).toBe(false);
     expect(await scanInProgress(trial.userId, { client })).toBe(true);
     seenBySlowWork.length = 0;
+    savedBySlowWork.length = 0;
+    doneBySlowWork.length = 0;
 
     await syncItem(trial.itemId, { client, now: NOW, progressive: true });
     // The findings were posted before the slow sector work started.
     expect(seenBySlowWork[0]).toBeGreaterThan(0);
+    // The scan was over for the person once the brief was in, before the slow sector work (the
+    // page stops reloading itself then).
+    expect(doneBySlowWork[0]).toBe(true);
+    // And the snapshot was already saved, so the first chat question finds it instead of
+    // building it (13 seconds on live).
+    expect(savedBySlowWork[0]).toBe(1);
     expect(await scanReady(trial.userId, { client })).toBe(true);
     expect(await scanInProgress(trial.userId, { client })).toBe(false);
     expect(
       (await client.user.findUniqueOrThrow({ where: { id: trial.userId } })).firstScanDoneAt,
     ).not.toBeNull();
+  });
+
+  it("reports each stage of the first scan as it really happens", async () => {
+    const trial = await startTrial({ client, now: NOW, defer: true });
+    created.push(trial.userId);
+    const before = await scanProgress(trial.userId, { client });
+    expect(before).toMatchObject({ transactions: false, months: 0, detection: false, done: false });
+
+    await syncItem(trial.itemId, { client, now: NOW, progressive: true });
+    const after = await scanProgress(trial.userId, { client });
+    expect(after).toMatchObject({
+      accounts: true,
+      transactions: true,
+      detection: true,
+      done: true,
+    });
+    expect(after.months).toBeGreaterThanOrEqual(6);
+    expect(after.suggestions).toBe(true);
   });
 
   it("says it is still looking first, and the brief waits for the suggestions", async () => {
@@ -129,6 +169,53 @@ describe.runIf(url)("the chat opens during the first scan", { timeout: 120_000 }
     expect(welcome).toBeGreaterThan(looking);
     expect(agenda).toBeGreaterThan(welcome);
     expect(messages[agenda].body).toMatch(/% sure|not sure/);
+  });
+
+  it("builds the first brief from a light snapshot, the whole one right after", async () => {
+    const trial = await startTrial({ client, now: NOW, defer: true, person: "debt" });
+    created.push(trial.userId);
+    await syncItem(trial.itemId, { client, now: NOW, progressive: true });
+    const { loadSnapshot } = await import("@/lib/jane-agent/snapshot");
+    const light = await loadSnapshot(trial.userId, { client, now: NOW, light: true });
+    const full = await loadSnapshot(trial.userId, { client, now: NOW });
+    // The light one has the brief's parts and none of the sectors'.
+    expect(light!.suggestions!.length).toBeGreaterThan(0);
+    expect(light!.suggestions).toEqual(full!.suggestions);
+    expect(light!.investments).toBeUndefined();
+    expect(light!.tax).toBeUndefined();
+    expect(light!.setupProposals).toEqual([]);
+    expect(full!.investments).toBeDefined();
+  });
+
+  it("posts the first brief even when the scan runs in the night's quiet hours", async () => {
+    const night = new Date("2026-10-17T03:00:00Z");
+    const trial = await startTrial({ client, now: night, defer: true, person: "debt" });
+    created.push(trial.userId);
+    await syncItem(trial.itemId, { client, now: night, progressive: true });
+    const bodies = (
+      await client.janeMessage.findMany({ where: { userId: trial.userId }, select: { body: true } })
+    ).map((m) => m.body);
+    expect(bodies.some((b) => /what I'd do first/.test(b))).toBe(true);
+  });
+
+  it("still finishes the scan and says its piece when a sector's work fails", async () => {
+    const trial = await startTrial({ client, now: NOW, defer: true, person: "retiree" });
+    created.push(trial.userId);
+    failSector.on = true;
+    try {
+      await syncItem(trial.itemId, { client, now: NOW, progressive: true });
+    } finally {
+      failSector.on = false;
+    }
+    // The scan ended, and Jane's agenda came with what she found: not "still going through your
+    // accounts" for good.
+    expect(
+      (await client.user.findUniqueOrThrow({ where: { id: trial.userId } })).firstScanDoneAt,
+    ).not.toBeNull();
+    const bodies = (
+      await client.janeMessage.findMany({ where: { userId: trial.userId }, select: { body: true } })
+    ).map((m) => m.body);
+    expect(bodies.some((b) => /what I'd do first/.test(b))).toBe(true);
   });
 
   it("opens at once with 'still looking', without running the whole agent, while it scans", async () => {

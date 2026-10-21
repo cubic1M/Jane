@@ -1,3 +1,5 @@
+import { insuranceDecider } from "../insurance/decide-router";
+import { debtDecide } from "../debt-decide";
 import { answerDecision } from "../decision";
 import { answerDebt } from "../debt-answer";
 import { DEBT_KINDS, type DebtIntent } from "../debt-intents";
@@ -7,7 +9,7 @@ import { investingAnswer } from "./investing";
 import { janeAnswer } from "./jane";
 import { moneyAnswer } from "./money";
 import type { Capability } from "./shared";
-import { taxAnswer } from "./tax";
+import { taxAnswer, taxDecide } from "./tax";
 
 // Every capability of Jane's chat in one place (spec step 190): what she answers, the tools
 // Claude has for it and the bank questions that test it. Each sector's intents, replies and
@@ -162,6 +164,8 @@ export const CAPABILITIES: readonly Capability[] = [
       "remind",
       "learn",
       "follow_up",
+      "explain",
+      "why_finding",
       "unknown",
     ],
     tools: ["explainer"],
@@ -182,6 +186,8 @@ export const CAPABILITIES: readonly Capability[] = [
     kinds: ["insurance"],
     tools: ["insurance_policies"],
     answer: insuranceAnswer,
+    // "Should I get umbrella insurance?" (docs/decisions.md).
+    ...insuranceDecider,
   },
   {
     id: "taxes",
@@ -214,8 +220,11 @@ export const CAPABILITIES: readonly Capability[] = [
       "tax_tags",
       "tax_withholding",
       "tax_years",
+      "tax_decide",
     ],
     answer: taxAnswer,
+    decides: ["tax"],
+    decide: taxDecide,
   },
   {
     id: "investing",
@@ -254,6 +263,8 @@ export const CAPABILITIES: readonly Capability[] = [
   {
     id: "debt",
     bank: ["debt", "loans", "student", "credit"],
+    decides: ["loan", "payoff_or_invest"],
+    decide: debtDecide,
     kinds: [...DEBT_KINDS] as Capability["kinds"],
     tools: [
       "debts",
@@ -277,6 +288,7 @@ export const CAPABILITIES: readonly Capability[] = [
       "debt_trouble",
       "debt_review",
       "car_loan",
+      "debt_decision",
     ],
     answer: debtAnswer,
   },

@@ -225,3 +225,43 @@ export const DETECTOR_RATES = {
   // Urgency scores: now, soon, later.
   urgency: { now: 3, soon: 2, later: 1 },
 } as const;
+
+// The first word of a suggestion's headline must be one of these (docs/detectors.md, "Short
+// forms"): a headline starts with a verb. A new verb is added here, not worked around.
+export const HEADLINE_VERBS: readonly string[] = [
+  "Add",
+  "Ask",
+  "Build",
+  "Cancel",
+  "Check",
+  "Compare",
+  "Confirm",
+  "Convert",
+  "Drop",
+  "Get",
+  "Hold",
+  "Invest",
+  "Keep",
+  "Look",
+  "Move",
+  "Note",
+  "Open",
+  "Pay",
+  "Plan",
+  "Push",
+  "Put",
+  "Replace",
+  "Roll",
+  "Rebalance",
+  "Sell",
+  "Separate",
+  "Set",
+  "Spread",
+  "Start",
+  "Stop",
+  "Switch",
+  "Tell",
+  "Try",
+  "Use",
+  "Weigh",
+];
