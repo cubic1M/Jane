@@ -541,7 +541,9 @@ export function parseIntent(
     return { kind: "decision", item: "cushion", label: "an emergency fund" };
   }
   // "What happened to my money this month" is the month's spending, not Jane's own log.
-  const happened = /^what happened to my (?:money|spending|cash)(?: (this|last) month)?\W*$/.exec(text);
+  const happened = /^what happened to my (?:money|spending|cash)(?: (this|last) month)?\W*$/.exec(
+    text,
+  );
   if (happened) {
     const d = new Date(`${asOf}T00:00:00Z`);
     if (happened[1] === "last") d.setUTCMonth(d.getUTCMonth() - 1);
