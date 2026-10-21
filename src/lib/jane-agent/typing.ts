@@ -12,7 +12,7 @@ import { track } from "@/lib/analytics";
 import { llmEnabled } from "@/lib/anthropic";
 import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
-import { hit } from "@/lib/rate-limit";
+import { giveBack, hit } from "@/lib/rate-limit";
 import { answerByRules } from "./answer";
 import { listPreferences } from "./preferences";
 import { shapeReply, styleInstructions, styleOf } from "./style";
@@ -172,7 +172,9 @@ async function answer(
     return { reply: result.reply, intent: intent.kind, source: "claude" };
   }
   // Claude is slow, down, over its daily cap or blocked: the rules answer as they did before
-  // Claude read everything, never a broken message.
+  // Claude read everything, never a broken message. And it doesn't count against the hour's
+  // free questions: Claude didn't answer it.
+  await giveBack("ask", userId, { client, now }).catch(() => {});
   const fallback = await rules();
   return {
     reply: fallback ?? withNearby(result.reply),

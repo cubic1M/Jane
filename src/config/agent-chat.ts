@@ -269,7 +269,9 @@ export const CHAT_MAX_MESSAGE = 500;
 // Claude sees only this many recent typed messages and answers, never the whole chat.
 export const CHAT_CLAUDE_HISTORY = 10;
 // Most rounds of tool calls Claude may make for one answer, like Ask (ASK_MAX_TOOL_ROUNDS).
-export const CHAT_CLAUDE_MAX_TURNS = 6;
+export const CHAT_CLAUDE_MAX_TURNS = 4;
+// The most words Claude may write in one turn of an answer: a chat answer is a few sentences.
+export const CHAT_CLAUDE_MAX_TOKENS = 3_000;
 // How hard Claude thinks before answering in the chat: low keeps answers quick, and the
 // person's main numbers come with the question (CHAT_PRIMER_TOOLS) so most need no lookup.
 export const CHAT_CLAUDE_EFFORT = "low";
@@ -332,7 +334,11 @@ export const CHAT_CLAUDE_FIRST_WORDS_MS = 4_000;
 export const CHAT_CLAUDE_DEADLINE_MS = 10_000;
 // After Claude fails, free questions get the rules' answer at once for this long, instead
 // of waiting on Claude again.
-export const CHAT_CLAUDE_COOLDOWN_SECONDS = 60;
+export const CHAT_CLAUDE_COOLDOWN_SECONDS = 30;
+// The person's main numbers are looked up before Claude is asked; if they take longer than
+// this, Claude starts without them (it has the tools) and the lookup finishes for next time.
+// The clock for Claude starts after this, so a slow lookup never uses up its time.
+export const CHAT_PRIMER_BUDGET_MS = 1_500;
 
 // Spec step 191: Claude reads every free-text message. These kinds of message keep the
 // instant rules path, because they are exact commands, tapped-for answers or fixed content:
