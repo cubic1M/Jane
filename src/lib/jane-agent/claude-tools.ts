@@ -49,6 +49,8 @@ import { provenSavings } from "@/lib/savings-proof";
 import { listLifeEvents } from "@/lib/life-events";
 import { homeSummary } from "@/lib/home";
 import { formatCents } from "@/lib/money";
+import { POLICY_KINDS, type PolicyKind } from "@/config/insurance";
+import { quotesAnswer } from "./insurance/quotes";
 import { calculate, type CalcInput } from "./calculate";
 import { affordWindow } from "@/planning/afford";
 import type { Scored } from "@/planning/compare";
@@ -90,6 +92,10 @@ export const PROPOSABLE: readonly ActionId[] = [
   // Spec step 133.
   "invest.rebalance",
 ];
+
+// Shopping a policy for the person: Jane gets the quotes now and, in demo advice, offers the
+// switch with her pick (insurance/quotes.ts). The buttons it returns are the quote reply's.
+export const RESHOP = "insurance.reshop";
 
 // Pages Claude may link to, by name.
 export const CHAT_PAGES: Readonly<Record<string, { label: string; href: string }>> = {
@@ -337,7 +343,13 @@ export const CHAT_TOOLS: Anthropic.Tool[] = [
     input_schema: {
       type: "object",
       properties: {
-        action: { type: "string", enum: [...PROPOSABLE, "open"] },
+        action: { type: "string", enum: [...PROPOSABLE, "open", RESHOP] },
+        policy_kind: {
+          type: "string",
+          enum: Object.keys(POLICY_KINDS),
+          description:
+            "For insurance.reshop: which policy to shop (car, home, renters, life, pet).",
+        },
         finding_id: { type: "string" },
         goal_name: { type: "string" },
         goal_amount: { type: "number" },
@@ -1056,6 +1068,21 @@ export async function proposeAction(
     const page = Object.hasOwn(CHAT_PAGES, str(args.page)) ? CHAT_PAGES[str(args.page)] : null;
     if (!page) return refuse("Unknown page.");
     return { ok: true, actions: [{ id: "open", kind: "link", ...page }], refs: {}, line: null };
+  }
+  if (action === RESHOP) {
+    const kind = str(args.policy_kind);
+    const policyKind = Object.hasOwn(POLICY_KINDS, kind) ? (kind as PolicyKind) : null;
+    const reply = await quotesAnswer(
+      userId,
+      { kind: "insurance", ask: "quotes", policyKind },
+      { client, now },
+    );
+    const acts = reply.actions.filter((a) => a.kind !== "link");
+    if (acts.length === 0) {
+      // No quote to switch to (none on file, or which one?): what it found, for Claude to say.
+      return refuse(reply.body);
+    }
+    return { ok: true, actions: reply.actions, refs: reply.refs, line: reply.body };
   }
   // Only buttons from the registry, and only the ones Claude may offer.
   const id = action as ActionId;

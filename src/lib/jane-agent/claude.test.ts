@@ -4,6 +4,17 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 vi.mock("@/lib/session", () => ({ requireUser: vi.fn() }));
 vi.mock("@/lib/home", () => ({ homeSummary: vi.fn() }));
 vi.mock("./snapshot", () => ({ loadSnapshot: vi.fn() }));
+vi.mock("./insurance/quotes", async (original) => ({
+  ...(await original<typeof import("./insurance/quotes")>()),
+  quotesAnswer: vi.fn(async () => ({
+    body: "Lighthouse is $408.00 a year cheaper than your car insurance.",
+    actions: [
+      { id: "insurance.shop_yes", label: "Yes, switch", kind: "primary" },
+      { id: "insurance.shop_no", label: "Not now", kind: "secondary" },
+    ],
+    refs: { insuranceShopId: "shop1", policyId: "p1" },
+  })),
+}));
 vi.mock("@/lib/advice-mode", () => ({ adviceMode: vi.fn(async () => true) }));
 // The decision tool's facts come from a real database elsewhere (decision.test.ts).
 vi.mock("./decision", async (original) => ({
@@ -372,6 +383,27 @@ describe("askClaudeInChat", () => {
     const info = await askClaudeInChat("u1", [], "how am i doing", options);
     expect(info.reply.body).toBe("Your cash covers the month.");
     expect(withoutTapYes("Tap Yes and the team cancels it. It is $0.")).toBe("It is $0.");
+  });
+
+  it("offers the insurance switch for 'can you change my car insurance', with no open finding", async () => {
+    create
+      .mockResolvedValueOnce(
+        toolUse("propose_action", { action: "insurance.reshop", policy_kind: "car" }),
+      )
+      .mockResolvedValueOnce(
+        final("Yes, I can shop it. Lighthouse would save you money on your car insurance."),
+      );
+    const result = await askClaudeInChat("u1", [], "can you change my car insurance", options);
+    expect(result.reply.actions.map((a) => a.id)).toEqual([
+      "insurance.shop_yes",
+      "insurance.shop_no",
+    ]);
+    expect(result.reply.body).toContain("$408.00 a year cheaper");
+    expect(result.reply.refs).toMatchObject({ insuranceShopId: "shop1" });
+    // Machinery names never reach the person.
+    expect(withoutButtonTalk("I used propose_action. Lighthouse is cheaper.")).toBe(
+      "Lighthouse is cheaper.",
+    );
   });
 
   it("falls back to safe text, with no buttons, when the rewrite fails too", async () => {
