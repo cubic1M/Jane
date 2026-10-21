@@ -209,17 +209,19 @@ async function saveRecurringStreams(
   }
 
   const kept: string[] = [];
-  for (const stream of streams) {
-    const accountId = accountIds.get(stream.account_id);
-    if (!accountId) continue;
-    const row = streamRow(stream, accountId);
-    await db.recurringStreams.upsert({
-      where: { plaidStreamId: stream.stream_id },
-      create: { ...row, userId: db.userId, plaidStreamId: stream.stream_id },
-      update: row,
-    });
-    kept.push(stream.stream_id);
-  }
+  await Promise.all(
+    streams.map(async (stream) => {
+      const accountId = accountIds.get(stream.account_id);
+      if (!accountId) return;
+      const row = streamRow(stream, accountId);
+      await db.recurringStreams.upsert({
+        where: { plaidStreamId: stream.stream_id },
+        create: { ...row, userId: db.userId, plaidStreamId: stream.stream_id },
+        update: row,
+      });
+      kept.push(stream.stream_id);
+    }),
+  );
   await db.recurringStreams.deleteMany({
     where: { accountId: { in: [...accountIds.values()] }, plaidStreamId: { notIn: kept } },
   });
@@ -251,37 +253,41 @@ async function saveLiabilities(
     accounts: data.accounts.map(normalizeAccount).filter((a): a is NormalizedAccount => a !== null),
   });
   const kept: string[] = [];
-  for (const l of normalizeLiabilities(data.liabilities)) {
-    const accountId = accountIds.get(l.accountRef);
-    if (!accountId) continue;
-    const row = {
-      kind: l.kind,
-      aprBps: l.aprBps,
-      rateType: l.rateType,
-      minimumPaymentCents: l.minimumPaymentCents,
-      nextPaymentDueDate: day(l.nextPaymentDueDate),
-      lastPaymentCents: l.lastPaymentCents,
-      lastPaymentDate: day(l.lastPaymentDate),
-      originationPrincipalCents: l.originationPrincipalCents,
-      originationDate: day(l.originationDate),
-      payoffDate: day(l.payoffDate),
-      isOverdue: l.isOverdue,
-      pastDueCents: l.pastDueCents,
-      ytdInterestPaidCents: l.ytdInterestPaidCents,
-      description: l.description,
-      hasPmi: l.hasPmi,
-      escrowBalanceCents: l.escrowBalanceCents,
-      hasPrepaymentPenalty: l.hasPrepaymentPenalty,
-      lastStatementIssueDate: day(l.lastStatementIssueDate),
-      lastStatementBalanceCents: l.lastStatementBalanceCents,
-    };
-    await db.liabilities.upsert({
-      where: { accountId },
-      create: { ...row, userId: db.userId, accountId },
-      update: row,
-    });
-    kept.push(accountId);
-  }
+  await Promise.all(
+    [...new Map(normalizeLiabilities(data.liabilities).map((l) => [l.accountRef, l])).values()].map(
+      async (l) => {
+        const accountId = accountIds.get(l.accountRef);
+        if (!accountId) return;
+        const row = {
+          kind: l.kind,
+          aprBps: l.aprBps,
+          rateType: l.rateType,
+          minimumPaymentCents: l.minimumPaymentCents,
+          nextPaymentDueDate: day(l.nextPaymentDueDate),
+          lastPaymentCents: l.lastPaymentCents,
+          lastPaymentDate: day(l.lastPaymentDate),
+          originationPrincipalCents: l.originationPrincipalCents,
+          originationDate: day(l.originationDate),
+          payoffDate: day(l.payoffDate),
+          isOverdue: l.isOverdue,
+          pastDueCents: l.pastDueCents,
+          ytdInterestPaidCents: l.ytdInterestPaidCents,
+          description: l.description,
+          hasPmi: l.hasPmi,
+          escrowBalanceCents: l.escrowBalanceCents,
+          hasPrepaymentPenalty: l.hasPrepaymentPenalty,
+          lastStatementIssueDate: day(l.lastStatementIssueDate),
+          lastStatementBalanceCents: l.lastStatementBalanceCents,
+        };
+        await db.liabilities.upsert({
+          where: { accountId },
+          create: { ...row, userId: db.userId, accountId },
+          update: row,
+        });
+        kept.push(accountId);
+      },
+    ),
+  );
   // A card or loan the bank no longer reports keeps its account, but not stale details.
   await db.liabilities.deleteMany({
     where: { account: { itemId }, accountId: { notIn: kept } },
@@ -350,27 +356,29 @@ async function saveInvestments(
 }
 
 async function saveSecurities(db: ScopedDb, securities: NormalizedSecurity[]) {
-  const ids = new Map<string, string>();
-  for (const s of securities) {
-    const data = {
-      name: s.name,
-      ticker: s.ticker,
-      type: s.type,
-      subtype: s.subtype,
-      isCashEquivalent: s.isCashEquivalent,
-      closePriceCents: s.closePriceCents,
-      closePriceAsOf: s.closePriceAsOf ? new Date(`${s.closePriceAsOf}T00:00:00Z`) : null,
-      sector: s.sector,
-    };
-    const saved = await db.securities.upsert({
-      where: { userId_plaidSecurityId: { userId: db.userId, plaidSecurityId: s.ref } },
-      create: { userId: db.userId, plaidSecurityId: s.ref, ...data },
-      update: data,
-      select: { id: true },
-    });
-    ids.set(s.ref, saved.id);
-  }
-  return ids;
+  // One row per security even if the bank lists it twice (the last wins, as one after another).
+  securities = [...new Map(securities.map((s) => [s.ref, s])).values()];
+  const saved = await Promise.all(
+    securities.map((s) => {
+      const data = {
+        name: s.name,
+        ticker: s.ticker,
+        type: s.type,
+        subtype: s.subtype,
+        isCashEquivalent: s.isCashEquivalent,
+        closePriceCents: s.closePriceCents,
+        closePriceAsOf: s.closePriceAsOf ? new Date(`${s.closePriceAsOf}T00:00:00Z`) : null,
+        sector: s.sector,
+      };
+      return db.securities.upsert({
+        where: { userId_plaidSecurityId: { userId: db.userId, plaidSecurityId: s.ref } },
+        create: { userId: db.userId, plaidSecurityId: s.ref, ...data },
+        update: data,
+        select: { id: true },
+      });
+    }),
+  );
+  return new Map(securities.map((s, i) => [s.ref, saved[i].id]));
 }
 
 async function saveHoldings(
@@ -380,28 +388,38 @@ async function saveHoldings(
   holdings: Holding[],
 ) {
   const kept = new Map<string, string[]>([...accountIds.values()].map((id) => [id, []]));
-  for (const h of holdings.map(normalizeHolding)) {
-    const accountId = h && accountIds.get(h.accountRef);
-    const securityId = h && securityIds.get(h.securityRef);
-    if (!h || !accountId || !securityId) continue;
-    const data = {
-      quantity: h.quantity,
-      priceCents: h.priceCents,
-      priceAsOf: h.priceAsOf ? new Date(`${h.priceAsOf}T00:00:00Z`) : null,
-      valueCents: h.valueCents,
-      costBasisCents: h.costBasisCents,
-    };
-    await db.holdings.upsert({
-      where: { accountId_securityId: { accountId, securityId } },
-      create: { userId: db.userId, accountId, securityId, ...data },
-      update: data,
-    });
-    kept.get(accountId)?.push(securityId);
-  }
+  await Promise.all(
+    [
+      ...new Map(
+        holdings
+          .map(normalizeHolding)
+          .flatMap((h) => (h ? [[`${h.accountRef}|${h.securityRef}`, h] as const] : [])),
+      ).values(),
+    ].map(async (h) => {
+      const accountId = accountIds.get(h.accountRef);
+      const securityId = securityIds.get(h.securityRef);
+      if (!accountId || !securityId) return;
+      const data = {
+        quantity: h.quantity,
+        priceCents: h.priceCents,
+        priceAsOf: h.priceAsOf ? new Date(`${h.priceAsOf}T00:00:00Z`) : null,
+        valueCents: h.valueCents,
+        costBasisCents: h.costBasisCents,
+      };
+      await db.holdings.upsert({
+        where: { accountId_securityId: { accountId, securityId } },
+        create: { userId: db.userId, accountId, securityId, ...data },
+        update: data,
+      });
+      kept.get(accountId)?.push(securityId);
+    }),
+  );
   // Whatever an account no longer holds.
-  for (const [accountId, securities] of kept) {
-    await db.holdings.deleteMany({ where: { accountId, securityId: { notIn: securities } } });
-  }
+  await Promise.all(
+    [...kept].map(([accountId, securities]) =>
+      db.holdings.deleteMany({ where: { accountId, securityId: { notIn: securities } } }),
+    ),
+  );
 }
 
 async function saveInvestmentTransactions(
@@ -482,13 +500,18 @@ async function saveInvestmentTransactions(
       .map((d) => ({ userId: db.userId, ...d })),
     skipDuplicates: true,
   });
-  for (const { plaidInvestmentTransactionId, ...rest } of data) {
-    if (!saved.has(plaidInvestmentTransactionId)) continue;
-    await db.investmentTransactions.updateMany({
-      where: { plaidInvestmentTransactionId },
-      data: rest,
-    });
-  }
+  await Promise.all(
+    data.flatMap(({ plaidInvestmentTransactionId, ...rest }) =>
+      saved.has(plaidInvestmentTransactionId)
+        ? [
+            db.investmentTransactions.updateMany({
+              where: { plaidInvestmentTransactionId },
+              data: rest,
+            }),
+          ]
+        : [],
+    ),
+  );
 }
 
 // Simulated orders the person placed through the stand-in brokerage (spec step 133), for
@@ -620,16 +643,14 @@ export async function syncItem(
   // From here the chat can open (accounts and transactions are in).
   timing.mark("save_transactions");
   if (progressive && item.transactionsCursor === null) timing.log("chat_ready");
-  const recurring = await saveRecurringStreams(db, api, accessToken, accountIds);
-  timing.mark("recurring");
-  const liabilities = item.liabilities
-    ? await saveLiabilities(db, api, accessToken, item.id)
-    : "off";
-  timing.mark("liabilities");
-  const investments = item.investments
-    ? await saveInvestments(db, api, accessToken, item.id, now)
-    : "off";
-  timing.mark("investments");
+  // Independent of each other (their own tables), so together: the investments alone were
+  // five seconds on live for a person with holdings, with the brief waiting behind them.
+  const [recurring, liabilities, investments] = await Promise.all([
+    saveRecurringStreams(db, api, accessToken, accountIds),
+    item.liabilities ? saveLiabilities(db, api, accessToken, item.id) : ("off" as const),
+    item.investments ? saveInvestments(db, api, accessToken, item.id, now) : ("off" as const),
+  ]);
+  timing.mark("recurring_liabilities_investments");
 
   await db.plaidItems.updateMany({
     where: { id: item.id },
