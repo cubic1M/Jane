@@ -287,7 +287,9 @@ export async function askClaudeInChat(
           max_tokens: CHAT_CLAUDE_MAX_TOKENS,
           system,
           tools: CHAT_TOOLS,
-          thinking: { type: "adaptive" },
+          // No thinking before the first words: a chat answer is a few sentences from the
+          // person's numbers, and thinking delays the first text.
+          thinking: { type: "disabled" },
           output_config: { effort: CHAT_CLAUDE_EFFORT },
           messages,
         })

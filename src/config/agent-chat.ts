@@ -269,7 +269,7 @@ export const CHAT_MAX_MESSAGE = 500;
 // Claude sees only this many recent typed messages and answers, never the whole chat.
 export const CHAT_CLAUDE_HISTORY = 10;
 // Most rounds of tool calls Claude may make for one answer, like Ask (ASK_MAX_TOOL_ROUNDS).
-export const CHAT_CLAUDE_MAX_TURNS = 4;
+export const CHAT_CLAUDE_MAX_TURNS = 3;
 // The most words Claude may write in one turn of an answer: a chat answer is a few sentences.
 export const CHAT_CLAUDE_MAX_TOKENS = 3_000;
 // How hard Claude thinks before answering in the chat: low keeps answers quick, and the
