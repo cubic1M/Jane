@@ -30,7 +30,7 @@ import type { PolicyKind } from "@/config/insurance";
 import { quotesAnswer } from "./insurance/quotes";
 import { DEBT_TOOL_STATUS } from "./debt-tools";
 import { parseDecision } from "./decision-intents";
-import { SECTOR_OVERVIEW, sectorsFor, toolsFor } from "./tool-select";
+import { lookupsFor, sectorsFor, toolsFor } from "./tool-select";
 import { CHAT_TOOLS, chatPrimer, proposeAction, runChatTool, type Proposal } from "./claude-tools";
 import { BLOCK_KINDS, buildBlock, type BlockKind } from "./block-data";
 import { blockCents, drawBlock, type AnswerBlock } from "./blocks";
@@ -50,7 +50,7 @@ import type { Reply } from "./replies";
 // the answer streamed as it's written (onEvent), a sentence at a time once each passes the
 // guardrails (./guarded-text), with what Jane is looking up in between.
 
-export const CHAT_PROMPT_VERSION = "chat-v28";
+export const CHAT_PROMPT_VERSION = "chat-v29";
 
 // The one rule that differs in demo advice mode (spec step 98).
 const NO_ADVICE = `- Never give investment, tax or legal advice, and don't mention investments, taxes or legal matters at all. Don't suggest financial products beyond Jane's pick from finding_details.`;
@@ -471,6 +471,30 @@ async function askClaude(
   // The person's main numbers, for at most primerMs: a slow lookup finishes in the
   // background (and is kept for the next question) while Claude starts without it.
   const primerStarted = Date.now();
+  // A sector question's lookups (the specific one it needs, or the sector's overview) start now,
+  // together with the numbers, and are sent up front.
+  const lookupNames = lookupsFor(
+    question,
+    sectorsFor(
+      question,
+      [...history].reverse().find((m) => m.role === "user")?.content ?? null,
+      topic,
+      now.toISOString().slice(0, 10),
+    ),
+  );
+  const lookupsFetch =
+    lookupNames.length === 0
+      ? null
+      : Promise.race([
+          Promise.allSettled(
+            lookupNames.map(async (name) => {
+              const at = Date.now();
+              const out = await runChatTool(userId, name, {}, { client, now });
+              return { name, out, ms: Date.now() - at };
+            }),
+          ),
+          new Promise<null>((resolve) => setTimeout(() => resolve(null), 3_000).unref?.()),
+        ]);
   // A request to shop a policy: the quotes are fetched while the numbers load, so the card is
   // ready before Claude's first word and its answer is one round.
   const shopKind = shopKindOf(question);
@@ -485,7 +509,11 @@ async function askClaude(
   const primer = await Promise.race([
     chatPrimer(userId, { client, now }),
     new Promise<{ text: string; cents: number[] }>((resolve) =>
-      setTimeout(() => resolve({ text: "", cents: [] }), primerMs).unref?.(),
+      // A sector question waits for its lookups anyway, so its numbers get a little longer.
+      setTimeout(
+        () => resolve({ text: "", cents: [] }),
+        lookupsFetch && primerMs === CHAT_PRIMER_BUDGET_MS ? primerMs + 1_000 : primerMs,
+      ).unref?.(),
     ),
   ]);
   timing.primerMs = Date.now() - primerStarted;
@@ -509,35 +537,19 @@ async function askClaude(
       allowedCents.push(...dollarFigures(reply.body).map((f) => f.cents));
     }
   }
-  // A sector question starts with the sector's overview lookups, run now and sent up front.
   let overviewBlock = "";
-  {
-    const wantedSectors = sectorsFor(
-      question,
-      [...history].reverse().find((m) => m.role === "user")?.content ?? null,
-      topic,
-      now.toISOString().slice(0, 10),
-    );
-    const names = [...new Set([...wantedSectors].flatMap((sector) => SECTOR_OVERVIEW[sector]))];
-    if (names.length > 0 && wantedSectors.size <= 2) {
-      const lookedUp = Date.now();
-      const results = await Promise.race([
-        Promise.allSettled(names.map((name) => runChatTool(userId, name, {}, { client, now }))),
-        new Promise<null>((resolve) => setTimeout(() => resolve(null), 2_500).unref?.()),
-      ]);
-      const lines: string[] = [];
-      results?.forEach((result, i) => {
-        if (result.status !== "fulfilled") return;
-        lines.push(`${names[i]}: ${result.value.content}`);
-        allowedCents.push(
-          ...result.value.cents,
-          ...dollarFigures(result.value.content).map((f) => f.cents),
-        );
-        timing.tools.push({ name: `${names[i]} (up front)`, ms: Date.now() - lookedUp });
-      });
-      if (lines.length > 0) {
-        overviewBlock = `\n\nAlready looked up for this question (do not call these again):\n${lines.join("\n")}`;
-      }
+  if (lookupsFetch) {
+    const results = await lookupsFetch;
+    const lines: string[] = [];
+    results?.forEach((result) => {
+      if (result.status !== "fulfilled") return;
+      const { name, out, ms } = result.value;
+      lines.push(`${name}: ${out.content}`);
+      allowedCents.push(...out.cents, ...dollarFigures(out.content).map((f) => f.cents));
+      timing.tools.push({ name: `${name} (up front)`, ms });
+    });
+    if (lines.length > 0) {
+      overviewBlock = `\n\nAlready looked up for this question (do not call these again):\n${lines.join("\n")}`;
     }
   }
   // The finding that was just talked about: its details go up front, so "tell me more" is one

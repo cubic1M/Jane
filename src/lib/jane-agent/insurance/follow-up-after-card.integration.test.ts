@@ -132,7 +132,7 @@ describe.runIf(url)("a follow-up right after a card", () => {
     expect(source).toBe("claude");
     expect(requests).toHaveLength(1);
     expect(JSON.stringify(requests[0].system)).toMatch(
-      /Already looked up for this question[\s\S]*tax_estimate:/,
+      /Already looked up for this question[\s\S]*tax_equity:/,
     );
   });
 });

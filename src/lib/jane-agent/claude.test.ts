@@ -317,6 +317,7 @@ describe("askClaudeInChat", () => {
     const logged = JSON.parse(String(info.mock.calls.find((c) => c[0] === "chat_timing")?.[1]));
     expect(logged).toMatchObject({
       rewrites: 1,
+      rewriteReasons: ["guardrail:unsupported_dollar_figure"],
       guardrails: ["unsupported_dollar_figure"],
     });
   });
