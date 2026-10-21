@@ -1,4 +1,4 @@
-import { SuggestionError, answerSuggestion } from "@/lib/suggestions";
+import { SuggestionError, answerSuggestion, explainSuggestion } from "@/lib/suggestions";
 import {
   ChatActionError,
   answeredElsewhere,
@@ -45,3 +45,27 @@ function handler(id: "suggestion.yes" | "suggestion.no", answer: "yes" | "no"): 
 
 export const suggestionYes = handler("suggestion.yes", "yes");
 export const suggestionNo = handler("suggestion.no", "no");
+
+// "Why?": the short card gives way to the whole explanation in place. The message stays open
+// with its other buttons; nothing is decided.
+export const suggestionWhy: ActionHandler = {
+  id: "suggestion.why",
+  on: "open",
+  async run(context) {
+    try {
+      const body = await explainSuggestion(context.userId, keyOf(context), {
+        client: context.client,
+      });
+      return {
+        status: "open",
+        answeredWith: null,
+        body,
+        refs: context.message.refs,
+        actions: context.message.actions.filter((a) => a.id !== "suggestion.why"),
+      };
+    } catch (error) {
+      if (error instanceof SuggestionError) throw answeredElsewhere(error.message);
+      throw error;
+    }
+  },
+};

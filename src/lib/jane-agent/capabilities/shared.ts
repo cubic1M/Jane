@@ -3,6 +3,7 @@ import type { PrismaClient } from "@/generated/prisma/client";
 import { loadInsightTransactions } from "@/insights/load";
 import { CATEGORY_LABELS, UNCATEGORIZED } from "@/insights/labels";
 import { scopedFor } from "@/lib/db-scoped";
+import type { Decider } from "../decision";
 import type { Intent } from "../intents";
 import type { Reply } from "../replies";
 import { spendingReply } from "../replies";
@@ -33,6 +34,11 @@ export type Capability = {
   // Claude's tools for the same questions (src/lib/jane-agent/claude-tools.ts).
   tools: readonly string[];
   answer: (context: CapabilityContext) => Promise<Reply | null>;
+  // "Should I ...?" (docs/decisions.md): the subjects this capability decides, and how. The
+  // core router (../decision.ts) hands a decision question to the capability that lists its
+  // subject; one it declines (null), or that nobody claims, gets the general answer.
+  decides?: Decider["decides"];
+  decide?: Decider["decide"];
 };
 
 export const CATEGORY_LIST = [...new Set([...Object.values(CATEGORY_LABELS), UNCATEGORIZED])];

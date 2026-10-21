@@ -33,10 +33,6 @@ export const FINDING_KIND_OF_TOPIC: Partial<Record<SuggestionTopic, FindingType>
   idle_cash: "idle_cash",
 };
 
-// Topics whose worth is money back once, not each year (a claim for a repair that may have been
-// covered): said "about $2,100, once", never "a year".
-export const ONE_TIME_TOPICS: readonly string[] = ["insurance_claim"];
-
 // A suggestion that was offered and not answered can be offered again after this many days.
 export const RESELECT_AFTER_DAYS = 14;
 

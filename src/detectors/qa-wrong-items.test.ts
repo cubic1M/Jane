@@ -7,7 +7,6 @@ import { PEOPLE } from "@/config/people";
 import { DETECTOR_RATES as R } from "@/config/detectors";
 import { lineOf } from "@/lib/jane-agent/agenda";
 import { coverBody } from "@/lib/jane-agent/insurance/cover-words";
-import { worthPhrase } from "@/lib/jane-agent/sources/suggestions";
 import { buildProfile } from "@/profile/build";
 import { inputFor } from "@/profile/sample";
 
@@ -34,9 +33,9 @@ describe("QA's wrong items", () => {
 
   it("the Reyes' repair claim is money back once, not a year", () => {
     const claim = topic("family", "insurance_claim")!;
-    expect(worthPhrase(claim)).toMatch(/^could get you back about \$[\d,.]+, once$/);
-    expect(worthPhrase(claim)).not.toMatch(/a year/);
-    expect(worthPhrase(topic("family", "pmi_removal")!)).toMatch(/a year$/);
+    expect(claim.headline).toMatch(/save \$[\d,]+$/);
+    expect(claim.headline).not.toMatch(/a year/);
+    expect(topic("family", "pmi_removal")!.headline).toMatch(/a year$/);
   });
 
   it("the agenda keeps a list's items, not just the sentence that introduces it", () => {

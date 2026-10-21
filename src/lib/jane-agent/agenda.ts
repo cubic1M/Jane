@@ -9,8 +9,8 @@ import type { LocalTime } from "./quiet-hours";
 import type { Snapshot } from "./snapshot";
 import { billsDueSoon, greeting, safeLine } from "./sources/brief";
 import { shortName } from "./sources/findings";
-import { worthPhrase } from "./sources/suggestions";
-import { inDays, sentence } from "./sources/source";
+import { suggestionCard } from "./sources/suggestions";
+import { inDays } from "./sources/source";
 import type { OfferedSuggestion } from "@/lib/suggestions";
 import type { ActionId, Candidate, MessageAction } from "./types";
 
@@ -66,12 +66,8 @@ export function lineOf(c: Candidate): string {
 // agenda line: what it is, what it's worth, why this person, and how sure Jane is with the
 // reason. The pages are the detail behind it (its button opens them).
 export function suggestionLine(s: OfferedSuggestion): string {
-  const worth = worthPhrase(s);
-  return [
-    `${s.title.replace(/[.!?]+$/, "")}: it ${worth}.`,
-    `Why you: ${sentence(s.why)}`,
-    `I'm ${s.confidencePercent}% sure, based on ${s.confidenceReason}.`,
-  ].join(" ");
+  const [headline, why, sure] = suggestionCard(s);
+  return `${headline}. ${why} ${sure}`;
 }
 
 export type Agenda<T extends Planned> = { agenda: T; folded: T[] };

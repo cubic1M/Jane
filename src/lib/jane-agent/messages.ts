@@ -1,3 +1,4 @@
+import { SUGGESTIONS_PER_DAY } from "@/config/suggestions";
 import { randomUUID } from "node:crypto";
 import { CHAT_PAGE_SIZE } from "@/config/agent-chat";
 import type {
@@ -356,4 +357,25 @@ export async function pinnedMessages(
     take: CHAT_PAGE_SIZE,
   });
   return rows.map(toChatMessage);
+}
+
+// The suggestions still waiting for an answer, for the card stack over the chat: the open
+// messages of the day's offered suggestions, the agenda's hidden ones too, newest first, at
+// most SUGGESTIONS_PER_DAY, from the last day and a half.
+export async function stackedSuggestions(
+  userId: string,
+  { client = defaultClient, now = new Date() }: { client?: PrismaClient; now?: Date } = {},
+): Promise<ChatMessage[]> {
+  const rows = await scopedFor(userId, client).janeMessages.findMany({
+    where: {
+      status: "open",
+      refs: { path: ["suggestion"], string_contains: ":" },
+      createdAt: { gte: new Date(now.getTime() - 36 * 60 * 60 * 1000), lte: now },
+    },
+    orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+    select: MESSAGE_SELECT,
+    take: SUGGESTIONS_PER_DAY,
+  });
+  // In the order the day's best came in: the first card is the best.
+  return rows.reverse().map(toChatMessage);
 }

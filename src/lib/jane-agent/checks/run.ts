@@ -65,6 +65,10 @@ type Options = {
   questions?: readonly CheckQuestion[];
   claude?: () => Pick<Anthropic, "messages">;
   capCents?: number;
+  // Spec step 195: a rotating share of the Claude questions each night, so the whole bank is
+  // covered over a few weeks within a small budget: this many conversations starting at
+  // `day` times `count` around the bank. The rules questions always run (they're free).
+  rotate?: { day: number; count: number };
   // The person's numbers, when the caller already loaded them (a test running the bank in
   // chunks loads them once).
   facts?: Facts;
@@ -92,6 +96,21 @@ export function conversations(questions: readonly CheckQuestion[]): CheckQuestio
     .map((lead) => [lead, ...questions.filter((q) => q.after === lead.id)]);
 }
 
+// The conversations to run: every one that needs only the rules, and a window of those that
+// need Claude, moving along the bank each night (spec step 195). Without `rotate`, all.
+export function rotated(all: CheckQuestion[][], rotate: Options["rotate"]): CheckQuestion[][] {
+  if (!rotate) return all;
+  const claude = all.filter((c) => c[0].needs === "claude");
+  const start = claude.length === 0 ? 0 : (rotate.day * rotate.count) % claude.length;
+  const window = new Set(
+    Array.from(
+      { length: Math.min(rotate.count, claude.length) },
+      (_, i) => claude[(start + i) % claude.length],
+    ),
+  );
+  return all.filter((c) => c[0].needs !== "claude" || window.has(c));
+}
+
 const median = (values: number[]) => {
   const sorted = [...values].sort((a, b) => a - b);
   return sorted[Math.floor((sorted.length - 1) / 2)];
@@ -105,10 +124,40 @@ export async function runAnswerChecks(
     questions = QUESTIONS,
     claude = anthropic,
     capCents = ANSWER_CHECK_CAP_CENTS,
+    rotate,
     facts: given,
   }: Options,
 ): Promise<CheckRun> {
   const full = llmEnabled();
+  // The check run has its own spending cap (below); the live chat's monthly guard is not its
+  // business, and its spend isn't the live chat's.
+  const monthlyBefore = process.env.CHAT_MONTHLY_CAP_CENTS;
+  process.env.CHAT_MONTHLY_CAP_CENTS = "1000000000";
+  try {
+    return await runChecks(
+      userId,
+      { client, now, questions, claude, capCents, rotate, facts: given },
+      full,
+    );
+  } finally {
+    if (monthlyBefore === undefined) delete process.env.CHAT_MONTHLY_CAP_CENTS;
+    else process.env.CHAT_MONTHLY_CAP_CENTS = monthlyBefore;
+  }
+}
+
+async function runChecks(
+  userId: string,
+  {
+    client,
+    now,
+    questions = QUESTIONS,
+    claude = anthropic,
+    capCents = ANSWER_CHECK_CAP_CENTS,
+    rotate,
+    facts: given,
+  }: Options,
+  full: boolean,
+): Promise<CheckRun> {
   const facts = given ?? (await loadFacts(userId, { client, now }));
   let spent = 0;
   // Jane's own calls to Claude count toward the cap too.
@@ -138,7 +187,7 @@ export async function runAnswerChecks(
   const results: QuestionResult[] = [];
   let stoppedAtCap = false;
   let tick = 0;
-  for (const conversation of conversations(questions)) {
+  for (const conversation of rotated(conversations(questions), rotate)) {
     // A fresh conversation: no earlier questions, and the chat's hourly limits reset.
     const db = scopedFor(userId, client);
     await db.janeMessages.deleteMany({ where: { kind: { in: ["user", "reply"] } } });
@@ -179,6 +228,8 @@ export async function runAnswerChecks(
         client,
         now: new Date(now.getTime() + (tick += 1000)),
         claude: metered,
+        // Grading isn't a person waiting: Claude gets all the numbers.
+        primerMs: 60_000,
         onEvent: (event) => {
           if (event.type === "text" && firstWords === null) firstWords = performance.now();
         },
