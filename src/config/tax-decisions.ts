@@ -47,3 +47,11 @@ export const ADVICE_DECISIONS: readonly DecisionTopic[] = [
 // more than the tax-free growth later); a Roth tends to win at or below the lower one.
 export const TRADITIONAL_FROM_RATE = 0.24;
 export const ROTH_UNTIL_RATE = 0.12;
+
+// Putting more into a 401(k), IRA or HSA is not the first move for someone who is overdrawn or
+// carries debt at or above this yearly rate (basis points; mortgages and student loans are
+// not counted): paying that debt down beats the tax saving, and a new payroll deferral
+// shrinks the paycheck. ESTIMATE TO VERIFY: a judgment call, not a rule.
+export const DEBT_FIRST_APR_BPS = 1500;
+// Decisions that move money out of the paycheck or the bank into a tax-favoured account.
+export const SAVING_DECISIONS: readonly DecisionTopic[] = ["k401", "ira", "hsa", "donate_stock"];

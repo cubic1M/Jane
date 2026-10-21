@@ -1,5 +1,7 @@
 import {
   ADVICE_DECISIONS,
+  DEBT_FIRST_APR_BPS,
+  SAVING_DECISIONS,
   type DecisionTopic,
   ROTH_UNTIL_RATE,
   TRADITIONAL_FROM_RATE,
@@ -43,6 +45,25 @@ export type Decision = {
 
 const pct = (rate: number) => `${Math.round(rate * 100)}%`;
 
+async function debtFirst(userId: string, client: PrismaClient): Promise<string | null> {
+  const [overdrawn, costly] = await Promise.all([
+    client.account.count({
+      where: { userId, type: "depository", currentBalanceCents: { lt: 0 } },
+    }),
+    client.liability.findMany({
+      where: { userId, kind: { in: ["credit", "loan"] }, aprBps: { gte: DEBT_FIRST_APR_BPS } },
+      select: { aprBps: true },
+    }),
+  ]);
+  if (overdrawn > 0)
+    return "You're overdrawn" + (costly.length ? " and carrying debt at a high rate." : ".");
+  if (costly.length) {
+    const top = Math.max(...costly.map((l) => l.aprBps ?? 0));
+    return `You're carrying debt at up to ${(top / 100).toFixed(0)}% a year.`;
+  }
+  return null;
+}
+
 export async function decideTax(
   userId: string,
   topic: DecisionTopic,
@@ -66,6 +87,18 @@ export async function decideTax(
     made(`${fact} I can only say what the numbers are, not what to do.`, figures, to);
   const recommend = (fact: string, figures: number[] = [], to = href) =>
     advice ? null : noAdvice(fact, figures, to);
+
+  // Someone overdrawn or paying a high rate on debt is told to clear that first, before any
+  // new contribution (the tax saving is smaller than the interest).
+  if (advice && SAVING_DECISIONS.includes(topic)) {
+    const stress = await debtFirst(userId, client);
+    if (stress)
+      return made(
+        `Not yet. ${stress} Pay that down first: it costs you more than the tax saving would, and a new paycheck deferral would leave you shorter each month.`,
+        [],
+        "/debt",
+      );
+  }
 
   switch (topic) {
     case "itemize": {
@@ -337,7 +370,7 @@ export async function decideTax(
       ].filter(([, c]) => (c as number) > 0) as [string, number][];
       const list = parts.map(([n, c]) => `${n} ${roundDollars(c)}`).join(", ");
       return made(
-        `You can deduct the standard ${formatCents(d.standardCents)}, or itemize ${list ? `(${list}, ${formatCents(d.itemizedCents)} in all)` : "if your costs add up to more"}. ${d.kind === "itemized" ? "Itemizing is the bigger one for you." : "The standard deduction is the bigger one for you."}`,
+        `You can deduct the standard ${roundDollars(d.standardCents)}, or itemize${list ? ` (${list}, ${roundDollars(d.itemizedCents)} in all)` : " if your costs add up to more"}. ${d.kind === "itemized" ? "Itemizing is the bigger one for you." : "The standard deduction is the bigger one for you."}`,
         [d.standardCents, d.itemizedCents],
       );
     }
@@ -385,7 +418,7 @@ export async function decideTax(
       const limit = CONTRIBUTION_LIMITS.workplace;
       const put = est.pay.projected.retirementCents;
       return made(
-        `The 2026 limit for a 401(k) is ${formatCents(limit)} (more from age 50). You're on course to put in about ${roundDollars(put)} this year, which leaves ${roundDollars(Math.max(0, limit - put))} of room.`,
+        `The 2026 limit for a 401(k) is ${formatCents(limit)} (more from age 50). ${put > 0 ? `Your pay stubs show a 401(k) deferral that comes to about ${roundDollars(put)} this year (no retirement account is linked, so I can't see the balance), which leaves ${roundDollars(Math.max(0, limit - put))} of room.` : "I don't see a 401(k) deferral on your pay stubs, so all of it is room."}`,
         [limit, put],
       );
     }
