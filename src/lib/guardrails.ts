@@ -67,8 +67,35 @@ const LEGAL = [
   /\bbankruptcy\b/i,
   /\bchapter (?:7|11|13)\b/i,
   /\bdebt settlement\b/i,
-  /\b(?:stop|quit) paying\b/i,
+  // Only a debt: "stop paying overdraft fees" is the opposite of legal trouble.
+  /\b(?:stop|quit) paying (?:on |off )?(?:my |your |the |their )?(?:cards?|credit cards?|loans?|debts?|creditors?|collectors?|minimums?|mortgage|bills)\b/i,
 ];
+
+// Saying Jane can't help with something legal, or pointing to a lawyer for it, is not legal
+// advice: the sentence that does only that is taken out before checking. Only a sentence
+// that says "can't" / "not able" or sends the person to a professional, and gives no
+// instruction of its own ("you should sue").
+const REFERRAL = [
+  /\b(?:i|jane) (?:can(?:'|’)?t|cannot|can not|won(?:'|’)?t|am not able|am unable|(?:'|’)m not able)\b/i,
+  /\bnot something (?:i|jane)\b/i,
+  /\b(?:talk|speak|check|consult|ask|work|go|reach out|turn) (?:to|with) (?:a|an|your|the)\b[^.!?]{0,40}\b(?:lawyer|attorney|professional|expert|advisor|adviser)\b/i,
+  /\b(?:a|an|your) (?:\w+ )?(?:lawyer|attorney) (?:can|could|is the right|would)\b/i,
+];
+const ADVICE_OF_ITS_OWN = /\b(?:you should|you need to|you must|file for|sue)\b/i;
+
+function withoutReferrals(text: string): string {
+  return text
+    .split(/(?<=[.!?])\s+/)
+    .filter(
+      (sentence) =>
+        !(
+          LEGAL.some((p) => p.test(sentence)) &&
+          REFERRAL.some((p) => p.test(sentence)) &&
+          !ADVICE_OF_ITS_OWN.test(sentence)
+        ),
+    )
+    .join(" ");
+}
 
 // Spec step 229: the reviewed sentences about settlement, bankruptcy, forgiven-debt tax and
 // where to take legal questions are taken out before checking. Only these exact sentences:
@@ -153,6 +180,8 @@ export function checkGuardrails(
   const advice = profile === "demo_advice";
   const original = text;
   text = withoutApprovedSentences(text);
+  // Demo advice only: a refusal or a pointer to a lawyer isn't legal advice there.
+  if (advice) text = withoutReferrals(text);
   const required = findingType && REQUIRED_WORDING[findingType];
   if (required && !required.test(original)) issues.push("missing_required_wording");
   if (!advice && INVESTMENT.some((p) => p.test(text))) issues.push("investment_advice");
