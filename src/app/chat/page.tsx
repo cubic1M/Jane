@@ -119,7 +119,13 @@ async function Chat({ searchParams }: { searchParams: PageProps<"/chat">["search
       <SuggestionStack messages={stacked} />
 
       {/* The message box (spec step 84): typing to Jane, answered under it. */}
-      <ChatComposer id="chat-end" maxLength={CHAT_MAX_MESSAGE} />
+      <ChatComposer
+        id="chat-end"
+        maxLength={CHAT_MAX_MESSAGE}
+        typed={chat.messages
+          .filter((m) => m.kind === "user")
+          .map((m) => ({ id: m.id, body: m.body }))}
+      />
       {hasAskHistory && (
         <Link
           href="/ask"

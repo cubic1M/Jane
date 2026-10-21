@@ -133,14 +133,26 @@ describe.runIf(url)("every typed message is Claude's to answer", { timeout: 300_
       actions: [],
       refs: {},
     } as never);
-    const { reply, source } = await sendToJane(userId, "should i buy bitcoin", {
+    // A specific question that never got finished: said plainly, not an unrelated status.
+    const specific = await sendToJane(userId, "should i buy bitcoin", {
       client,
       now: new Date(LINKED.getTime() + 999 * 60_000),
       claude: buttonOnly,
       primerMs: 60_000,
     });
-    expect(source).toBe("claude_unavailable");
-    expect(reply.body).toMatch(/\$2,410\.50/);
-    expect(reply.body).not.toMatch(/link|button/i);
+    expect(specific.source).toBe("claude_unavailable");
+    expect(specific.reply.body).toBe(
+      "Sorry, I couldn't finish an answer to that. Please ask again.",
+    );
+    // "What should I do" is the question the whole picture answers.
+    rules.mockImplementationOnce(async () => null as never);
+    const status = await sendToJane(userId, "what should i do", {
+      client,
+      now: new Date(LINKED.getTime() + 1_099 * 60_000),
+      claude: buttonOnly,
+      primerMs: 60_000,
+    });
+    expect(status.reply.body).toMatch(/\$2,410\.50/);
+    expect(status.reply.body).not.toMatch(/link|button/i);
   });
 });
