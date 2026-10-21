@@ -36,6 +36,7 @@ import {
   resetClaudeHealth,
   tooLong,
   withoutButtonTalk,
+  withoutTapYes,
 } from "./claude";
 import { forgetPrimer } from "./primer-cache";
 import { CHAT_TOOLS, proposeAction } from "./claude-tools";
@@ -160,7 +161,9 @@ describe("askClaudeInChat", () => {
     const sent = (create.mock.calls[0][0] as { tools: { name: string }[] }).tools.map(
       (t) => t.name,
     );
-    expect(sent).toEqual(expect.arrayContaining(["safe_to_spend", "propose_action"]));
+    expect(sent).toContain("safe_to_spend");
+    // An information question isn't sent the button tool, so it has to answer in words.
+    expect(sent).not.toContain("propose_action");
     expect(sent.length).toBeLessThan(CHAT_TOOLS.length / 2);
   });
 
@@ -354,6 +357,21 @@ describe("askClaudeInChat", () => {
     await askClaudeInChat("u1", [], "how am i doing", options);
     const system = JSON.stringify(create.mock.calls.at(-1)?.[0].system);
     expect(system).toMatch(/Amounts you may state, exactly as written/);
+  });
+
+  it("sends the button tool for a request to act, and drops 'Tap Yes' from an answer with no Yes", async () => {
+    create.mockResolvedValueOnce(final("Hulu is the one to cancel."));
+    await askClaudeInChat("u1", [], "cancel hulu", options);
+    const sent = (create.mock.calls.at(-1)?.[0] as { tools: { name: string }[] }).tools.map(
+      (t) => t.name,
+    );
+    expect(sent).toContain("propose_action");
+    create.mockResolvedValueOnce(
+      final("Your cash covers the month. Tapping Yes starts the fix for the Card A interest."),
+    );
+    const info = await askClaudeInChat("u1", [], "how am i doing", options);
+    expect(info.reply.body).toBe("Your cash covers the month.");
+    expect(withoutTapYes("Tap Yes and the team cancels it. It is $0.")).toBe("It is $0.");
   });
 
   it("falls back to safe text, with no buttons, when the rewrite fails too", async () => {

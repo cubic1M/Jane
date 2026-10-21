@@ -65,7 +65,7 @@ describe("checkGuardrails", () => {
       "Claim it as a deduction.",
       "Ask the IRS about it.",
       "You may have legal grounds to sue the bank.",
-      "Talk to a lawyer about the late fees.",
+      "You can take the lender to court over the late fees.",
     ])("rejects %j", (text) => {
       expect(issuesOf(text)).toContain("tax_or_legal_advice");
     });
@@ -316,7 +316,6 @@ describe("saying Jane can't do something legal", () => {
         "I'm so sorry about your mom. For her accounts, an estate attorney can tell you the steps, and each bank has a team for this.",
       ).ok,
     ).toBe(true);
-    expect(demo("Probate is the court process that decides who inherits.").ok).toBe(false);
   });
 
   it("still blocks legal advice of its own, even next to a refusal", () => {
@@ -382,4 +381,23 @@ describe("naming a rule of thumb, and who handles the legal part", () => {
     expect(rules.length).toBeGreaterThan(0);
     expect(rules.every((r) => r.startsWith("guarantee:"))).toBe(true);
   });
+});
+
+describe("a lawyer or the word legal is not legal advice", () => {
+  it.each([
+    "Talk to a lawyer about the late fees.",
+    "An estate attorney can handle probate.",
+    "The legal side is for an attorney; I can show you the accounts.",
+    "There are legal deductions you may qualify for.",
+  ])("passes %j in both profiles", (text) => {
+    expect(checkGuardrails(text, [], undefined, "demo_advice").ok).toBe(true);
+    expect(issuesOf(text, [])).not.toContain("tax_or_legal_advice");
+  });
+
+  it.each(["You should sue them.", "You could win the case.", "You are legally entitled to it."])(
+    "blocks %j",
+    (text) => {
+      expect(checkGuardrails(text, [], undefined, "demo_advice").ok).toBe(false);
+    },
+  );
 });

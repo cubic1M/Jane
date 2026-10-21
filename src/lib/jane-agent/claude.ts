@@ -48,7 +48,7 @@ import type { Reply } from "./replies";
 // the answer streamed as it's written (onEvent), a sentence at a time once each passes the
 // guardrails (./guarded-text), with what Jane is looking up in between.
 
-export const CHAT_PROMPT_VERSION = "chat-v20";
+export const CHAT_PROMPT_VERSION = "chat-v21";
 
 // The one rule that differs in demo advice mode (spec step 98).
 const NO_ADVICE = `- Never give investment, tax or legal advice, and don't mention investments, taxes or legal matters at all. Don't suggest financial products beyond Jane's pick from finding_details.`;
@@ -85,7 +85,7 @@ How to answer:
 - Their main numbers right now come after these instructions. Answer from them when you can; use the tools for anything else. Never guess. If neither has it, say so plainly.
 - When you want a number that no tool gives directly (a percent of a balance, a year of a monthly amount, the difference between two amounts, how long a payment takes to clear a balance), use the calculate tool with the amounts exactly as given: any sum, difference, total or percent, even of two amounts you can see. Never work out an amount yourself.
 - Use only dollar amounts that appear in those numbers or in tool results, written exactly as they appear there (with the cents). Don't add, subtract, round or estimate amounts yourself.
-- Keep it short: 2 to 4 sentences, under about 500 characters. A list only when they ask for one or for bills and subscriptions. Plain words, no jargon, no headings. Don't write anything before a lookup; just look it up.
+- Keep it short: 3 sentences, about 400 characters, and never more than 550. Say the answer first and stop when it is said. A list only when they ask for one or for bills and subscriptions. Plain words, no jargon, no headings. Don't write anything before a lookup; just look it up.
 - Answer the question that was asked. what_matters_most and the open findings are background, not an agenda: mention one only when it directly answers the question or is the one clear next step, never to change the subject ("my car broke down" is not a reason to bring up a subscription, "do I need Medigap" is not a reason to bring up a quote), and never open with "Tapping Yes".
 - When someone is going through something hard (a divorce, a death, a job loss, a car that broke down): open with one kind, plain sentence; then their two or three key facts (cash, the next thing due); then one concrete first step; then offer to go through more. No platitudes, no pitch for a product or a finding. After a death, don't explain the legal process (probate, wills, who inherits): say an estate attorney and the banks' bereavement teams handle that, and keep to what you can see in the numbers (which accounts are linked, what is due soon).
 - When they ask something Jane can't do or shouldn't (write a will or other legal papers, get around a login, move money): say so in the first sentence, plainly, point to who can (a lawyer, the bank), then what Jane can do with their figures.
@@ -275,6 +275,17 @@ export function tooLong(answer: string, question: string): boolean {
 }
 const SHAPE_REWRITE =
   "(From the app, not the person.) That answer is too long for a chat. Answer again in at most 3 short sentences, no list, keeping the key figures and the answer to what was asked. Don't call any tool.";
+
+// Sentences telling the person to tap Yes, for an answer that has no button.
+const TAP_YES =
+  /^\s*(?:tap(?:ping)?|press(?:ing)?|click(?:ing)?|hit(?:ting)?)\s+(?:the\s+)?(?:yes|no)\b/i;
+export function withoutTapYes(text: string): string {
+  return text
+    .split(/(?<=[.!?])\s+/)
+    .filter((sentence) => !TAP_YES.test(sentence))
+    .join(" ")
+    .trim();
+}
 
 export function withoutButtonTalk(text: string): string {
   return text
@@ -466,13 +477,16 @@ async function askClaude(
   // answer is in the numbers sent with the question, so a short follow-up keeps its context.
   const messages = conversation(history.slice(-CHAT_CLAUDE_HISTORY), question);
   // Only the general tools and the sectors this question is about (./tool-select.ts).
+  const actionRequest = ACTION_REQUEST.test(question);
+  // A question that only asks for information isn't sent the button tool at all, so the answer
+  // has to be written in words (it can still link with show_block's pictures).
   const tools = toolsFor(
     CHAT_TOOLS,
     question,
     [...history].reverse().find((m) => m.role === "user")?.content ?? null,
     topic,
     now.toISOString().slice(0, 10),
-  );
+  ).filter((t) => actionRequest || t.name !== "propose_action");
   timing.toolsSent = tools.length;
   let proposal: Extract<Proposal, { ok: true }> | null = null;
   let shown: AnswerBlock | null = null;
@@ -739,8 +753,11 @@ async function askClaude(
     if (!text) return fail("empty");
     // Sentences about a button or link "under this answer" are dropped; an answer that was
     // only that (no figure, hardly a sentence) isn't an answer, so the rules answer instead.
-    const spoken = withoutButtonTalk(text);
-    if (spoken !== text && spoken.length < 80 && !/\d/.test(spoken)) {
+    const hasButtons = proposal?.actions.some((a) => a.kind !== "link") ?? false;
+    // "Tap Yes and the team does it" belongs only where there is a Yes to tap.
+    const talkless = withoutButtonTalk(text);
+    const spoken = hasButtons ? talkless : withoutTapYes(talkless);
+    if (!spoken || (talkless !== text && talkless.length < 80 && !/\d/.test(talkless))) {
       // Not an answer, only a word about a button: once, Claude writes the answer from the
       // lookups it already has (text only: a button call here got no tool_result).
       if (buttonRewrites > 0) return fail("button_only");
