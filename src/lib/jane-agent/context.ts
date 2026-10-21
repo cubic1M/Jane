@@ -1,3 +1,4 @@
+import type { DecisionIntent } from "./decision-intents";
 import { PRONOUNS, type ActVerb, type Intent } from "./intents";
 
 // What the conversation is about (spec step 88): the last finding, merchant, category or
@@ -26,6 +27,14 @@ export function withTopic(
   topic: Topic | null,
   asOf: string,
 ): Intent | { kind: "which" } {
+  // "Should I buy?" on its own is about the decision just discussed, never an old button.
+  if (intent.kind === "decision" && intent.item === null && topic?.kind === "decision") {
+    return {
+      ...intent,
+      item: (topic.category as DecisionIntent["item"]) ?? null,
+      label: topic.target ?? null,
+    };
+  }
   if (intent.kind === "follow_up") {
     if (!topic)
       return intent.target ? { kind: "about", target: intent.target } : { kind: "unknown" };
