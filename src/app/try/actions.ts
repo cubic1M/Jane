@@ -13,9 +13,6 @@ import { TrialError, cleanUpTrials, startTrial } from "@/lib/trial";
 // for a day with an ordinary Auth.js database session, then on to Jane's chat. Limited per
 // IP (only a hash of it is kept, for the counter), and never counted in analytics.
 
-// How long the click waits for the chat to be able to open before showing /scanning instead.
-const TRY_READY_WAIT_MS = 8000;
-
 export type TryState = { error: string } | null;
 
 // Auth.js's session cookie: the __Secure- name on HTTPS, the plain one locally.
@@ -55,35 +52,15 @@ export async function tryJane(_previous: TryState, formData: FormData): Promise<
     expires: session.expires,
   });
   timing.done();
-  // The scan starts now, and the click waits for the chat to be able to open (accounts and
-  // transactions saved, about two seconds), then goes straight to the chat: no /scanning page,
-  // no polling, no second page load. The rest of the scan carries on after the response. If it
-  // is slow or fails, /scanning shows the progress as before.
-  let ready!: () => void;
-  let chatReady = false;
-  const readied = new Promise<void>((resolve) => (ready = resolve));
-  const scan = syncItem(session.itemId, {
-    progressive: true,
-    onReady: () => {
-      chatReady = true;
-      ready();
-    },
-  })
-    .catch((error) => console.error("Sample person's first sync failed", { error: String(error) }))
-    .finally(ready);
-  let waited: ReturnType<typeof setTimeout> | undefined;
-  const opened = await Promise.race([
-    readied.then(() => chatReady),
-    new Promise<boolean>(
-      (resolve) => (waited = setTimeout(() => resolve(false), TRY_READY_WAIT_MS)),
-    ),
-  ]);
-  clearTimeout(waited);
   after(async () => {
-    await scan;
+    try {
+      await syncItem(session.itemId, { progressive: true });
+    } catch (error) {
+      console.error("Sample person's first sync failed", { error: String(error) });
+    }
     await cleanUpTrials().catch((error) =>
       console.error("Cleaning up trials failed", { error: String(error) }),
     );
   });
-  redirect(opened ? "/chat" : "/scanning?then=chat");
+  redirect("/scanning?then=chat");
 }
