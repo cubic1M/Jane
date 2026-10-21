@@ -98,6 +98,9 @@ jobs:
 
   e2e:
     name: End-to-end tests
+    # Not a required check, and about 18 minutes: run it on main after each merge (and on PRs
+    # labelled "e2e"), not on every PR push, so the required checks get runners sooner.
+    if: github.event_name == 'push' || contains(github.event.pull_request.labels.*.name, 'e2e')
     runs-on: ubuntu-latest
     services:
       postgres:
