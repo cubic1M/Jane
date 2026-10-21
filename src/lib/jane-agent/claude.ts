@@ -46,7 +46,7 @@ import type { Reply } from "./replies";
 // the answer streamed as it's written (onEvent), a sentence at a time once each passes the
 // guardrails (./guarded-text), with what Jane is looking up in between.
 
-export const CHAT_PROMPT_VERSION = "chat-v15";
+export const CHAT_PROMPT_VERSION = "chat-v16";
 
 // The one rule that differs in demo advice mode (spec step 98).
 const NO_ADVICE = `- Never give investment, tax or legal advice, and don't mention investments, taxes or legal matters at all. Don't suggest financial products beyond Jane's pick from finding_details.`;
@@ -85,6 +85,7 @@ How to answer:
 - Keep it short: a few sentences or a short list. Plain words, no jargon, no headings. Don't write anything before a lookup; just look it up.
 - You can't do anything yourself. When something can be done (cancel or lower something the app found, approve the plan, start a goal), call propose_action once so they get a button, and say what tapping it does. Never say it's done.
 - "Tell me more" or "why" about a finding you just discussed (its details are in their numbers: don't look it up again): add NEW facts in words, never the same sentence again: how it was found, the dates and amounts from the evidence, what happens if they do nothing, and what Jane would do. No button talk.
+- When they ask you to change, switch, cancel or start something ("can you change my car insurance"), treat it as a request to act: say plainly what you can do and what it takes (the best options with their real figures, then that our team makes the change once they say yes), and offer the button after that. A list of their current details is not the answer.
 - "How can I pay less / save more / lower ..." gets two or three concrete moves with their own numbers (which to do first and what it saves, or when it's paid off), written out, then the button. Never answer by pointing at a page.
 - Write your answer first, then call propose_action or show_block at the very end of that same turn if a button or a picture helps: the answer you wrote is the answer.
 - Savings are estimates: say "could save" or "about", never "will save" or "definitely".
@@ -236,6 +237,10 @@ export function plainText(text: string): string {
 const BUTTON_TALK =
   /\b(?:(?:put|added|placed|attached|left)\s+(?:a |an |the |one )?(?:\w+\s+)?(?:button|link)s?\b|(?:button|link)s? (?:below|under (?:this|my|the) answer)|under this answer|with the button below|using the button|tap the (?:button|link) below)/i;
 
+// (From the app, not the person.) What Claude is told when its answer was only about a button.
+const BUTTON_REWRITE =
+  "(From the app, not the person.) That wasn't an answer. Answer the person's question in words, using the results you already have: the options, amounts and rates in them. Don't mention buttons or links. Don't call any tool.";
+
 export function withoutButtonTalk(text: string): string {
   return text
     .split(/(?<=[.!?])\s+/)
@@ -270,6 +275,8 @@ type ChatTiming = {
   // Tries again after a 429 or a server error, and what the answer cost (hundredths of a cent).
   retries: number;
   costHundredths: number;
+  // Answers written again (a button-only answer, or a guardrail problem).
+  rewrites: number;
 };
 
 // What the last answer was about, in words for Claude (spec step 193).
@@ -301,6 +308,7 @@ export async function askClaudeInChat(
     rounds: [],
     retries: 0,
     costHundredths: 0,
+    rewrites: 0,
   };
   let outcome = "error";
   try {
@@ -447,7 +455,11 @@ async function askClaude(
     },
   ];
 
-  for (let turn = 0; turn < maxTurns; turn += 1) {
+  // The turns allowed: one more, once, when the last answer was only about a button and has to
+  // be written again in words.
+  let turnLimit = maxTurns;
+  let buttonRewrites = 0;
+  for (let turn = 0; turn < turnLimit; turn += 1) {
     let response: Anthropic.Message;
     // Spec step 93: give up on a slow start, or a slow answer, for the rules' answer.
     let stopped = false;
@@ -464,7 +476,7 @@ async function askClaude(
           system,
           tools,
           // The last round answers from what it has: a lookup there would leave no answer.
-          tool_choice: turn === maxTurns - 1 ? { type: "none" } : { type: "auto" },
+          tool_choice: turn === turnLimit - 1 ? { type: "none" } : { type: "auto" },
           // Adaptive thinking at low effort (the request that worked). Turning thinking off
           // made the nightly's every chat request fail with a 400.
           thinking: { type: "adaptive" },
@@ -638,7 +650,11 @@ async function askClaude(
           results.push({
             type: "tool_result",
             tool_use_id: block.id,
-            content: result.ok ? "Noted." : result.error,
+            content: result.ok
+              ? writtenText
+                ? "Noted."
+                : "The button is ready. Now write your answer in words, with the figures from the results, and don't mention the button."
+              : result.error,
             ...(result.ok ? {} : { is_error: true }),
           });
           continue;
@@ -668,11 +684,24 @@ async function askClaude(
     // Sentences about a button or link "under this answer" are dropped; an answer that was
     // only that (no figure, hardly a sentence) isn't an answer, so the rules answer instead.
     const spoken = withoutButtonTalk(text);
-    if (spoken !== text && spoken.length < 80 && !/\d/.test(spoken)) return fail("button_only");
+    if (spoken !== text && spoken.length < 80 && !/\d/.test(spoken)) {
+      // Not an answer, only a word about a button: once, Claude writes the answer from the
+      // lookups it already has (text only: a button call here got no tool_result).
+      if (buttonRewrites > 0) return fail("button_only");
+      buttonRewrites += 1;
+      turnLimit += 1;
+      timing.rewrites += 1;
+      draft.reset();
+      onEvent({ type: "reset" });
+      messages.push({ role: "assistant", content: [{ type: "text", text: spoken || text }] });
+      messages.push({ role: "user", content: BUTTON_REWRITE });
+      continue;
+    }
     const check = checkGuardrails(spoken, allowedCents, undefined, profile);
     if (!check.ok && rewrites < CHAT_CLAUDE_REWRITES && turn + 1 < maxTurns) {
       // Once, Claude is told what can't be shown and answers again.
       rewrites += 1;
+      timing.rewrites += 1;
       draft.reset();
       onEvent({ type: "reset" });
       onEvent({ type: "status", text: "Checking my answer…" });

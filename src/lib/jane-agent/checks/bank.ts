@@ -807,6 +807,38 @@ const BASE_QUESTIONS: readonly CheckQuestion[] = [
     tool: "card_interest",
     expect: { avoid: /hulu|\bbutton\b|under this answer/i },
   },
+  // The founder's live sequence: an action request is answered in words (what Jane can do and
+  // what it takes) before any button, and a list of options or debts is a written answer, never
+  // a generic "where you stand".
+  {
+    id: "found-1",
+    text: "can you change my car insurance",
+    needs: "claude",
+    sector: "insurance",
+    page: "/insurance",
+    tool: "insurance_quotes",
+    expect: { mentions: /\b(?:switch|change|quote|cheaper|team)\b/i, avoid: /where you stand/i },
+  },
+  {
+    id: "found-2",
+    text: "what are some other options from geico",
+    needs: "claude",
+    after: "found-1",
+    sector: "insurance",
+    page: "/insurance",
+    tool: "insurance_quotes",
+    expect: { list: true, mentions: /\$/, avoid: /where you stand|under this answer/i },
+  },
+  {
+    id: "found-3",
+    text: "do i have any loans or debts",
+    needs: "claude",
+    after: "found-1",
+    sector: "debt",
+    page: "/debt",
+    tool: "debts",
+    expect: { list: true, mentions: /\$/, avoid: /where you stand|under this answer/i },
+  },
   // Voice (QA sweep): answers in words first, no talk of buttons or of earlier failures.
   {
     id: "voice-1",
