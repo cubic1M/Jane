@@ -199,7 +199,7 @@ const cashAdvance: Detector = {
 const mortgageExtra: Detector = {
   capability: "debt",
   topic: "mortgage_extra",
-  covers: [],
+  covers: ["mortgage_money"],
   needs: ["mortgage_rate_bps"],
   detect({ profile, data }) {
     const rate = profile.facts.mortgage_rate_bps;
