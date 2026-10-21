@@ -10,11 +10,16 @@ import { monthsLabel, percentFor, STAGES, stagesDone } from "./stages";
 // really finished (GET /api/detection/status). The chat opens as soon as the accounts and
 // transactions are in (it says Jane is still looking and fills in); the report waits for
 // detection. Between finished steps the bar creeps toward the next one, never past it.
-const POLL_MS = 800;
+// Polled quickly while the first scan is young (the chat opens as soon as the data is in, and
+// every poll interval is waiting time), then calmer.
+const POLL_FAST_MS = 300;
+const POLL_FAST_FOR_MS = 12_000;
+const POLL_MS = 1000;
 const TICK_MS = 250;
 // How long a step's creep takes to cover most of its way.
 const CREEP_MS = 6000;
-const HAND_OFF_MS = 350;
+// Opens at once: the bar's last move isn't worth a wait.
+const HAND_OFF_MS = 0;
 // After this long, offer the report anyway rather than leave someone staring at a bar.
 const SLOW_MS = 25_000;
 
@@ -50,7 +55,7 @@ export function ScanningProgress({ next = "/report" }: { next?: "/report" | "/ch
       }
       if (cancelled) return;
       if (Date.now() - started >= SLOW_MS) setSlow(true);
-      timer = setTimeout(check, POLL_MS);
+      timer = setTimeout(check, Date.now() - started < POLL_FAST_FOR_MS ? POLL_FAST_MS : POLL_MS);
     }
 
     timer = setTimeout(check, 0);
