@@ -21,6 +21,9 @@ import { loadStudentLongGame } from "@/lib/student-long-game";
 import { loadFamilyLoans } from "@/lib/family-loans";
 import { loadCreditGoals } from "@/lib/credit-goals";
 import { loadCarLoan } from "@/lib/car-loan";
+import { decide } from "@/lib/debt-decisions";
+import { DECISIONS, type DecisionId } from "@/planning/debt-decisions";
+import { centsIn } from "./debt-decision-replies";
 import { loadDebtReview } from "@/lib/debt-review";
 import { loadDebtTrouble } from "@/lib/debt-trouble";
 import { PROJECT_YEARS_DEFAULT } from "@/config/home-equity";
@@ -79,6 +82,15 @@ export async function runDebtTool(
       return out(debtsToolOutput(await loadDebts(userId, { client, now }), money));
     case "debt_autopilot":
       return out(debtAutopilotToolOutput(await loadDebtAutopilot(userId, { client, now }), money));
+    case "debt_decision": {
+      const which = (input as { which?: unknown } | null)?.which;
+      if (typeof which !== "string" || !Object.hasOwn(DECISIONS, which)) {
+        return out({ error: "Pick one of the decisions in the tool's list." });
+      }
+      const d = await decide(userId, which as DecisionId, { client, now });
+      for (const c of centsIn(d.sentences)) cents.push(c);
+      return out({ answer: d.sentences, demoAdvice: d.advice, page: d.href });
+    }
     case "car_loan":
       return out(carLoanToolOutput(await loadCarLoan(userId, { client, now }), money));
     case "debt_review":
