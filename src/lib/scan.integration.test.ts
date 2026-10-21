@@ -114,14 +114,21 @@ describe.runIf(url)("the chat opens during the first scan", { timeout: 120_000 }
     const messages = await client.janeMessage.findMany({
       where: { userId: trial.userId },
       orderBy: { createdAt: "asc" },
-      select: { body: true, kind: true },
+      select: { body: true, kind: true, createdAt: true },
     });
+    // Strictly first: its time is before everything else Jane posted in the sync (no tie).
     expect(messages[0].body).toBe(SCANNING_HELLO);
-    // The day's first agenda leads with what the scan found, with its percentage.
-    const agenda = messages.find((m) => /what I'd do first/.test(m.body));
-    expect(agenda, messages.map((m) => m.body.slice(0, 30)).join(" | ")).toBeDefined();
-    expect(agenda!.body).toMatch(/% sure|not sure/);
-    expect(messages.findIndex((m) => m === agenda)).toBeGreaterThan(0);
+    expect(messages[0].createdAt.getTime()).toBeLessThan(messages[1].createdAt.getTime());
+    // Exactly: "still looking", then Jane's welcome, then the agenda that leads with the scan's
+    // suggestions and their percentage.
+    const at = (test: (body: string) => boolean) => messages.findIndex((m) => test(m.body));
+    const looking = at((b) => b === SCANNING_HELLO);
+    const welcome = at((b) => /^Hi, I'm Jane\. I look at your money/.test(b));
+    const agenda = at((b) => /what I'd do first/.test(b));
+    expect(looking, messages.map((m) => m.body.slice(0, 30)).join(" | ")).toBe(0);
+    expect(welcome).toBeGreaterThan(looking);
+    expect(agenda).toBeGreaterThan(welcome);
+    expect(messages[agenda].body).toMatch(/% sure|not sure/);
   });
 
   it("opens at once with 'still looking', without running the whole agent, while it scans", async () => {
