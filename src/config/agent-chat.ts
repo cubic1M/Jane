@@ -334,11 +334,16 @@ export const CHAT_PRIMER_CACHE_SECONDS = 60;
 // The numbers are also saved in the database (src/lib/jane-agent/primer-store.ts) after each
 // sync, scan and correction; the chat reads that row, and refreshes it in the background once
 // it is this old.
+// The same for the whole snapshot (src/lib/jane-agent/snapshot-store.ts).
+export const CHAT_SNAPSHOT_STORED_MINUTES = 30;
 export const CHAT_PRIMER_STORED_MINUTES = 30;
 // If Claude hasn't started (a word, a lookup or its thinking) within this many
 // milliseconds, or isn't done within the deadline, Jane answers from the rules instead.
 export const CHAT_CLAUDE_FIRST_WORDS_MS = 4_000;
 export const CHAT_CLAUDE_DEADLINE_MS = 10_000;
+// ...that is each round's own time (a lookup between rounds isn't Claude's); the whole question,
+// lookups included, gets this long before the rules answer instead.
+export const CHAT_CLAUDE_TOTAL_MS = 40_000;
 // After Claude fails, free questions get the rules' answer at once for this long, instead
 // of waiting on Claude again.
 export const CHAT_CLAUDE_COOLDOWN_SECONDS = 30;
@@ -369,6 +374,11 @@ export const CHAT_RULES_ONLY_KINDS: readonly string[] = [
   "learn",
   // A decision is answered from their numbers, the same every time; Claude never looks up the thing.
   "decision",
+  // The ranked list of what matters most, and why: the same every time, so instant.
+  "priorities",
+  // A typed yes or no, and "remind me": answered at once, pointing at the button.
+  "ack",
+  "remind",
 ];
 // The most Claude may spend answering one person's messages in a day, in cents, at the model's
 // listed price (MODEL_PRICES_CENTS in src/config/answer-checks.ts). Past it, the rules answer.

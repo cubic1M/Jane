@@ -11,7 +11,7 @@ import { CHAT_CLAUDE_HISTORY, CHAT_CLAUDE_MAX_TURNS } from "@/config/agent-chat"
 import { ASK_BLOCKED_REPLY } from "@/config/ask";
 import type { PrismaClient } from "@/generated/prisma/client";
 import { homeSummary } from "@/lib/home";
-import { CHAT_UNAVAILABLE_TEXT, askClaudeInChat, resetClaudeHealth } from "./claude";
+import { CHAT_UNAVAILABLE_TEXT, askClaudeInChat, plainText, resetClaudeHealth } from "./claude";
 import { forgetPrimer } from "./primer-cache";
 import { CHAT_TOOLS, proposeAction } from "./claude-tools";
 import { loadSnapshot, type Snapshot } from "./snapshot";
@@ -130,8 +130,13 @@ describe("askClaudeInChat", () => {
       model: "claude-sonnet-5-5",
       thinking: { type: "adaptive" },
       output_config: { effort: "low" },
-      tools: CHAT_TOOLS,
     });
+    // The general tools, and none of a sector's when the question isn't about one.
+    const sent = (create.mock.calls[0][0] as { tools: { name: string }[] }).tools.map(
+      (t) => t.name,
+    );
+    expect(sent).toEqual(expect.arrayContaining(["safe_to_spend", "propose_action"]));
+    expect(sent.length).toBeLessThan(CHAT_TOOLS.length / 2);
   });
 
   it("puts a proposed finding's Yes and No under the answer, without acting", async () => {
@@ -571,6 +576,50 @@ describe("speed and failures", () => {
     expect(params.system[1].text).toContain("Your last answer was about bitcoin, crypto");
   });
 
+  it("never lets an abort escape: it is too slow, whatever the error looks like", async () => {
+    vi.spyOn(console, "warn").mockImplementation(() => {});
+    const unhandled = vi.fn();
+    process.on("unhandledRejection", unhandled);
+    // The abort surfaces as a plain Error and as an "error" event with no handler of its own.
+    const plain = () =>
+      ({
+        messages: {
+          stream: () => {
+            let reject: (e: unknown) => void = () => {};
+            const listeners: Record<string, (e: unknown) => void> = {};
+            const stream = {
+              on: (name: string, fn: (e: unknown) => void) => {
+                listeners[name] = fn;
+                return stream;
+              },
+              abort: () => {
+                listeners.error?.(new Error("Request was aborted."));
+                reject(new Error("Request was aborted."));
+              },
+              finalMessage: () => new Promise((_, r) => (reject = r)),
+            };
+            return stream;
+          },
+        },
+      }) as never;
+    const result = await askClaudeInChat("u1", [], "hm", {
+      ...options,
+      claude: plain,
+      firstWordsMs: 20,
+    });
+    expect(result.kind).toBe("unavailable");
+    await new Promise((r) => setTimeout(r, 20));
+    process.off("unhandledRejection", unhandled);
+    expect(unhandled).not.toHaveBeenCalled();
+  });
+
+  it("starts no request when the deadline has already passed", async () => {
+    create.mockResolvedValueOnce(final("Fine."));
+    const result = await askClaudeInChat("u1", [], "hm", { ...options, deadlineMs: 0 });
+    expect(result.kind).toBe("unavailable");
+    expect(create).not.toHaveBeenCalled();
+  });
+
   it("pauses Claude for a while only when Claude itself fails (rate limit, overloaded)", async () => {
     vi.spyOn(console, "error").mockImplementation(() => {});
     const failing = () =>
@@ -610,6 +659,62 @@ describe("speed and failures", () => {
       deadlineMs: 600,
     });
     expect(result.kind).toBe("answer");
+  });
+
+  it("gives each round its own time: a slow lookup between rounds doesn't use up Claude's", async () => {
+    vi.mocked(homeSummary).mockImplementation(
+      () =>
+        new Promise((resolve) =>
+          setTimeout(() => resolve({ safeToSpend: null, comingUp: [] } as never), 200),
+        ),
+    );
+    create
+      .mockResolvedValueOnce(toolUse("safe_to_spend"))
+      .mockResolvedValueOnce(final("Nothing is linked yet."));
+    const info = vi.spyOn(console, "info").mockImplementation(() => {});
+    // Each round may take 150ms, and the lookup alone takes 200.
+    const result = await askClaudeInChat("u1", [], "what can i spend", {
+      ...options,
+      deadlineMs: 150,
+      firstWordsMs: 150,
+    });
+    expect(result.kind).toBe("answer");
+    const logged = JSON.parse(String(info.mock.calls.find((c) => c[0] === "chat_timing")?.[1]));
+    expect(logged.tools).toEqual([{ name: "safe_to_spend", ms: expect.any(Number) }]);
+    expect(logged.tools[0].ms).toBeGreaterThanOrEqual(150);
+    expect(logged.reason).toBeNull();
+  });
+
+  it("says why Claude's answer wasn't used, as a code", async () => {
+    const info = vi.spyOn(console, "info").mockImplementation(() => {});
+    create.mockResolvedValueOnce({ stop_reason: "end_turn", content: [] });
+    const result = await askClaudeInChat("u1", [], "hm", options);
+    expect(result.kind).toBe("unavailable");
+    const logged = JSON.parse(String(info.mock.calls.find((c) => c[0] === "chat_timing")?.[1]));
+    expect(logged).toMatchObject({ outcome: "unavailable", reason: "empty" });
+  });
+
+  it("logs where the time went, as numbers only", async () => {
+    const info = vi.spyOn(console, "info").mockImplementation(() => {});
+    create.mockResolvedValueOnce({
+      ...final("Fine."),
+      usage: { input_tokens: 900, output_tokens: 20, cache_read_input_tokens: 700 },
+    });
+    await askClaudeInChat("u1", [], "how am i doing", options);
+    const line = info.mock.calls.find((c) => c[0] === "chat_timing");
+    const logged = JSON.parse(String(line?.[1]));
+    expect(logged).toMatchObject({
+      outcome: "answer",
+      turns: 1,
+      inputTokens: 900,
+      cachedInputTokens: 700,
+      outputTokens: 20,
+      toolsSent: CHAT_TOOLS.length,
+    });
+    for (const key of ["primerMs", "firstEventMs", "firstTextMs", "totalMs"]) {
+      expect(typeof logged[key], key).toBe("number");
+    }
+    expect(JSON.stringify(logged)).not.toContain("how am i doing");
   });
 
   it("reuses the person's numbers for a minute, until a tap clears them", async () => {
@@ -672,5 +777,13 @@ describe("show_block", () => {
       .mockResolvedValueOnce(final("Here you go."));
     const result = await askClaudeInChat("u1", [], "chart it", options);
     expect(result.reply.refs.block).toBeUndefined();
+  });
+});
+
+describe("plain text", () => {
+  it("drops markdown marks and keeps the words", () => {
+    expect(plainText("**Card use:** keep it under 30%.\n## Next\n* pay it\n`$5`")).toBe(
+      "Card use: keep it under 30%.\nNext\n- pay it\n$5",
+    );
   });
 });

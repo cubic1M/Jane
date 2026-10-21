@@ -19,7 +19,7 @@ import { listPreferences } from "./preferences";
 import { shapeReply, styleInstructions, styleOf } from "./style";
 import { joinReplies, splitQuestions } from "./two-parts";
 import { askClaudeInChat, type ChatStreamEvent, type ChatTurn } from "./claude";
-import type { Topic } from "./context";
+import { resolvePronoun, type Topic } from "./context";
 import { typedFlowReply } from "./flows/chat";
 import { parseIntent } from "./intents";
 import { storeReply } from "./messages";
@@ -120,7 +120,7 @@ async function answer(
   { client, now, claude, onEvent, primerMs }: Required<Pick<Options, "client" | "now">> & Options,
 ): Promise<{ reply: Reply; intent: string; source: Source; issues?: string[] }> {
   const asOf = now.toISOString().slice(0, 10);
-  const intent = parseIntent(text, asOf);
+  let intent = parseIntent(text, asOf);
   // Spec step 89: no dead ends. An answer that couldn't be given ends with the closest
   // things Jane can answer, as buttons.
   const withNearby = (reply: Reply): Reply => {
@@ -133,6 +133,7 @@ async function answer(
   if (toFlow) return { reply: toFlow, intent: "flow_answer", source: "rules" };
   // Spec step 88: what the conversation was about, for a follow-up.
   const topic = await lastTopic(userId, { client, now });
+  intent = resolvePronoun(text, intent, topic, (t) => parseIntent(t, asOf));
   // Spec step 188: how the person likes Jane to talk.
   const style = styleOf(await listPreferences(userId, { client }));
   const rules = async () => {
