@@ -44,6 +44,7 @@ import { postScanningHello } from "@/lib/jane-agent/open";
 import { runJaneAgentSafely } from "@/lib/jane-agent/run";
 import { scanSuggestions } from "@/lib/suggestions";
 import { markScanDone } from "@/lib/scan";
+import { phaseTimer } from "@/lib/trial-timing";
 
 // Brings one Plaid item up to date: accounts, transactions since the saved cursor
 // (added, modified and removed), recurring streams, loans and card rates (Liabilities,
@@ -552,6 +553,8 @@ export async function syncItem(
   itemId: string,
   { client = defaultClient, api = plaid(), now = new Date(), progressive = false }: Options = {},
 ): Promise<SyncResult> {
+  // The first scan's phases, logged once as trial_timing (where the first minute goes).
+  const timing = phaseTimer("first_sync");
   // The one unscoped read: finds the item's owner so everything after is scoped to them.
   const item = await client.plaidItem.findUnique({
     where: { id: itemId },
@@ -568,6 +571,7 @@ export async function syncItem(
   if (!item) throw new Error("Plaid item not found");
   const db = scopedFor(item.userId, client);
   const accessToken = decrypt(item.accessTokenEncrypted);
+  timing.mark("item");
   // The demo bank (spec step 75) answers in Plaid's place; everything after is the same.
   if (isDemoToken(accessToken)) {
     api = demoPlaidApi(
@@ -580,10 +584,12 @@ export async function syncItem(
       // Spec step 159: extra stand-in accounts the person linked.
       demoExtrasOf(item.demoExtras),
     );
-    // Its example options to compare against (spec step 76).
-    await ensureDemoOptions({ client, now });
-    // And its sample insurance policy (spec step 102).
-    await ensureDemoPolicies(item.userId, { client, now });
+    // Its example options to compare against (spec step 76), and its sample insurance policy
+    // (spec step 102): independent, so together.
+    await Promise.all([
+      ensureDemoOptions({ client, now }),
+      ensureDemoPolicies(item.userId, { client, now }),
+    ]);
   }
 
   // The first scan: "still going through your accounts" comes first, before anything Jane finds,
@@ -595,18 +601,27 @@ export async function syncItem(
       (error) => console.error("Posting the scanning hello failed", { error: String(error) }),
     );
   }
+  timing.mark("demo_setup");
   const sync = await new PlaidDataSource(api, accessToken, item.transactionsCursor).load();
+  timing.mark("load");
   const accountIds = await saveAccounts(db, item.id, sync);
+  timing.mark("save_accounts");
   // The demo bank's home and car, once its loans are saved (spec step 67).
   if (isDemoToken(accessToken)) await ensureDemoAssets(item.userId, item.id, { client, now });
+  timing.mark("assets");
   const counts = await saveTransactions(db, accountIds, sync);
+  // From here the chat can open (accounts and transactions are in).
+  timing.mark("save_transactions");
   const recurring = await saveRecurringStreams(db, api, accessToken, accountIds);
+  timing.mark("recurring");
   const liabilities = item.liabilities
     ? await saveLiabilities(db, api, accessToken, item.id)
     : "off";
+  timing.mark("liabilities");
   const investments = item.investments
     ? await saveInvestments(db, api, accessToken, item.id, now)
     : "off";
+  timing.mark("investments");
 
   await db.plaidItems.updateMany({
     where: { id: item.id },
@@ -631,7 +646,9 @@ export async function syncItem(
     });
   }
 
+  timing.mark("cursor_and_track");
   await runDetection(item.userId, { client, now });
+  timing.mark("detection");
   // The first scan after linking: what people see first (the findings) is posted right after
   // detection, before the slower sector work below; the chat is already open and fills in.
   if (progressive && result.firstSync) {
@@ -642,7 +659,9 @@ export async function syncItem(
     await scanSuggestions(item.userId, { client, now }).catch((error) =>
       console.error("The first scan's suggestions failed", { error: String(error) }),
     );
+    timing.mark("suggestions");
     await runJaneAgentSafely(item.userId, { client, now, trigger: "sync", early: true });
+    timing.mark("first_brief");
   }
   // After detection these don't depend on each other, so they run together; the sample
   // person's first screen is waiting on this sync.
@@ -671,9 +690,11 @@ export async function syncItem(
       });
     }
   }
+  timing.mark("sectors");
   // Jane says what's new in the chat (spec step 82); a problem there never fails the sync.
   await runJaneAgentSafely(item.userId, { client, now, trigger: "sync" });
   await markScanDone(item.userId, { client, now });
+  timing.mark("last_run");
   // The person's numbers for Claude, saved now so the chat reads them in one query instead of
   // looking every sector up while someone waits. Loaded here, not at the top: that file
   // reaches this one again through the jobs.
@@ -682,5 +703,10 @@ export async function syncItem(
     .catch((error) =>
       console.error("Saving the numbers for Claude failed", { error: String(error) }),
     );
+  timing.mark("primer");
+  // Only the first scan of a person is the one being timed.
+  if (progressive && result.firstSync) {
+    timing.done({ added: result.added, accounts: result.accounts });
+  }
   return result;
 }
