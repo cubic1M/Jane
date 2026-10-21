@@ -35,6 +35,18 @@ export function withTopic(
       label: topic.target ?? null,
     };
   }
+  // "Why?" after a finding is that finding's reason in words; after anything else, the same
+  // follow-up as "it" (the decision again, the list explained, the credit score read again).
+  if (intent.kind === "explain") {
+    if (topic?.findingId) return { kind: "why_finding", findingId: topic.findingId };
+    // Nothing was just discussed: ask what, never a picker of unrelated merchants.
+    if (!topic) return intent;
+    // The last question had no answer of its own to explain: Claude is told what it was about.
+    if (topic.kind === "asked") return intent;
+    return withTopic({ kind: "follow_up", target: "it", month: null }, topic, asOf);
+  }
+  // A question that had no answer of its own isn't something "it" can point at.
+  if (topic?.kind === "asked") topic = null;
   if (intent.kind === "follow_up") {
     if (!topic)
       return intent.target ? { kind: "about", target: intent.target } : { kind: "unknown" };
@@ -45,6 +57,26 @@ export function withTopic(
         : { kind: "unknown" };
     }
     const target = intent.target ?? "";
+    // "Why?" after a decision is that decision again, with the reasoning.
+    if ((!target || isPronoun(target)) && topic.kind === "decision") {
+      return {
+        kind: "decision",
+        item: (topic.category as DecisionIntent["item"]) ?? null,
+        label: topic.target ?? null,
+      };
+    }
+    // "Why?" after a decision is that decision again, with the reasoning.
+    if ((!target || isPronoun(target)) && topic.kind === "decision") {
+      return {
+        kind: "decision",
+        item: (topic.category as DecisionIntent["item"]) ?? null,
+        label: topic.target ?? null,
+      };
+    }
+    // "Why is that first?" / "tell me more" after the list of what matters most is about it.
+    if ((!target || isPronoun(target)) && topic.kind === "priorities") {
+      return { kind: "priorities", explain: true };
+    }
     if (!target || isPronoun(target))
       return withTopic({ kind: "about", target: "it" }, topic, asOf);
     switch (topic.kind) {
@@ -78,6 +110,7 @@ export function withTopic(
 
 // What a reply to this intent is about, for the next message.
 export function topicOf(intent: Intent): Topic | null {
+  if (TOPIC_WORDS[intent.kind]) return { kind: intent.kind };
   switch (intent.kind) {
     case "act":
       return {
@@ -98,4 +131,35 @@ export function topicOf(intent: Intent): Topic | null {
     default:
       return null;
   }
+}
+
+// How a sector's answer is named when the next message points back at it ("how do I improve
+// it", "is that good", "why is it low"): the topic is that kind of answer, and "it" becomes
+// these words before the question is read again. Add a kind here for its follow-ups to work.
+export const TOPIC_WORDS: Readonly<Record<string, string>> = {
+  credit_score: "my credit score",
+  net_worth: "my net worth",
+  priorities: "what matters most",
+  debts: "my debt",
+  student_loans: "my student loans",
+  balance_forecast: "my balance",
+  health: "my financial health score",
+};
+
+const REFERS = /\b(?:it|that|this|those|them)\b/;
+
+// "How do I improve it" right after a credit score answer is about the credit score: when a
+// message the rules can't read points back with "it", and the last answer was a kind named in
+// TOPIC_WORDS, it's read again with the pronoun replaced. Never an older message's button.
+export function resolvePronoun(
+  text: string,
+  intent: Intent,
+  topic: Topic | null,
+  parse: (text: string) => Intent,
+): Intent {
+  if (!topic || (intent.kind !== "unknown" && intent.kind !== "about")) return intent;
+  const words = TOPIC_WORDS[topic.kind];
+  if (!words || !REFERS.test(text)) return intent;
+  const again = parse(text.replace(REFERS, words));
+  return again.kind === "unknown" || again.kind === "about" ? intent : again;
 }

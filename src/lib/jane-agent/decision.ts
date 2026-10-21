@@ -151,6 +151,33 @@ const CLOSING: Record<DecisionItem, string> = {
   other: "I can check what it would do to your month if you tell me the price.",
 };
 
+// "How much should I have in an emergency fund?": what a cushion is for them, in their figures.
+function cushionReply(f: DecisionFacts, advice: boolean): Reply {
+  const body =
+    f.cushionTargetCents === null
+      ? "I need to see a few months of your spending to size a cushion. Once your bank is linked, I'll tell you."
+      : [
+          `A cushion for you is ${formatCents(f.cushionTargetCents)}${f.monthlySpendCents > 0 ? `: you spend about ${formatCents(f.monthlySpendCents)} a month` : ""}.`,
+          `You hold ${formatCents(f.cashCents)} in cash${f.cushionMonths !== null ? `, about ${f.cushionMonths} months of spending` : ""}.`,
+          f.cashCents >= f.cushionTargetCents
+            ? "That covers it."
+            : `You are ${formatCents(f.cushionTargetCents - f.cashCents)} short of it.`,
+          advice && f.cardDebtCents > 0
+            ? "A card balance at a high rate usually comes first, then the rest of the cushion."
+            : "",
+        ]
+          .filter(Boolean)
+          .join(" ");
+  return {
+    body,
+    actions: [link("See my goals", "/goals")],
+    refs: {
+      topic: { kind: "decision", category: "cushion", target: "an emergency fund" },
+      ...(advice ? { advice: true as const } : {}),
+    },
+  };
+}
+
 export function decisionReply(
   intent: DecisionIntent,
   topic: Topic | null,
@@ -168,6 +195,7 @@ export function decisionReply(
     };
   }
   const label = intent.label ?? fromTopic?.target ?? THING[item as CoreSubject] ?? THING.other;
+  if (item === "cushion") return cushionReply(facts, advice);
   const lines = standing(facts);
   const lead = first(facts);
   const body = advice

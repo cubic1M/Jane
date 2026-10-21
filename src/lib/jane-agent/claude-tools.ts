@@ -1,4 +1,9 @@
-import { loadDecisionFacts } from "./decision";
+import { adviceMode } from "@/lib/advice-mode";
+import { dollarFigures } from "@/lib/guardrails";
+import { decisionReply, loadDecisionFacts } from "./decision";
+import { parseDecision } from "./decision-intents";
+import { mattersBlock } from "./primer-matters";
+import { loadSnapshotFast, refreshSnapshot } from "./snapshot-store";
 import { INSURANCE_TOOLS, isInsuranceTool, runInsuranceTool } from "./insurance/tools";
 import type Anthropic from "@anthropic-ai/sdk";
 import { BUDGET_SUGGESTION_MONTHS } from "@/config/budgets";
@@ -167,8 +172,14 @@ export const CHAT_TOOLS: Anthropic.Tool[] = [
   {
     name: "decision",
     description:
-      'Where the person stands before a money decision, from their own numbers: card debt and the highest rate, cash and months of spending against the cushion Jane would set, and goals still short. Use it first for "should I buy bitcoin / stocks / a house / a car", "should I invest" and "should I pay off my card or invest". Answer from these numbers (debts at a high rate first, then the cushion, then goals); the crypto, investments or afford tools are only a follow-up. Never predict what the thing will do.',
-    input_schema: noInput,
+      'Jane\'s verdict and the numbers behind it for a money decision ("should I buy bitcoin / stocks / a house / a car", "should I invest", "should I pay off my card or invest", any paraphrase): card debt and its highest rate, cash and months of spending against the cushion, goals still short, and `verdict`, Jane\'s own answer in order of priority (high-rate debt, then the cushion, then goals, then the thing). Write the answer in your own words from the verdict and the numbers, plain and direct, opening with the verdict. Never predict what the thing will do. The crypto, investments or afford tools are only a follow-up.',
+    input_schema: {
+      type: "object",
+      properties: {
+        subject: { type: "string", description: 'What they are thinking of, e.g. "bitcoin".' },
+      },
+      additionalProperties: false,
+    },
   },
   {
     name: "net_worth",
@@ -381,7 +392,7 @@ export async function runChatTool(
       });
     }
     case "open_findings": {
-      const snapshot = await loadSnapshot(userId, { client, now });
+      const snapshot = await loadSnapshotFast(userId, { client, now });
       return out({
         findings: (snapshot?.findings ?? []).map((f) => {
           if (f.annualSavingsCents !== null) money(f.annualSavingsCents);
@@ -492,7 +503,7 @@ export async function runChatTool(
     case "plan_upkeep": {
       const [upkeep, snapshot] = await Promise.all([
         loadUpkeep(userId, { client, now }),
-        loadSnapshot(userId, { client, now }),
+        loadSnapshotFast(userId, { client, now }),
       ]);
       return out({
         tuneUp: upkeep.tuneUp && {
@@ -703,7 +714,7 @@ export async function runChatTool(
       });
     }
     case "priorities": {
-      const snapshot = await loadSnapshot(userId, { client, now });
+      const snapshot = await loadSnapshotFast(userId, { client, now });
       return out({
         ranked: (snapshot ? rankedFor(snapshot) : []).slice(0, 10).map((r) => ({
           what: r.title,
@@ -757,7 +768,7 @@ export async function runChatTool(
       });
     }
     case "whole_picture": {
-      const snapshot = await loadSnapshot(userId, { client, now });
+      const snapshot = await loadSnapshotFast(userId, { client, now });
       if (!snapshot) return out({ linked: false });
       const ranked = rankedFor(snapshot);
       const week = wholePicture(snapshot, ranked, "now");
@@ -863,8 +874,22 @@ export async function runChatTool(
       });
     }
     case "decision": {
-      const f = await loadDecisionFacts(userId, { client, now });
+      const args = (input && typeof input === "object" ? input : {}) as Record<string, unknown>;
+      const subject = str(args.subject).slice(0, 80);
+      const [f, advice] = await Promise.all([
+        loadDecisionFacts(userId, { client, now }),
+        adviceMode(userId, { client }),
+      ]);
+      const asked = subject ? parseDecision(`should i buy ${subject.toLowerCase()}`) : null;
+      const verdict = decisionReply(
+        { kind: "decision", item: asked?.item ?? "other", label: subject || null },
+        null,
+        f,
+        advice,
+      ).body;
+      cents.push(...dollarFigures(verdict).map((x) => x.cents));
       return out({
+        verdict,
         cardDebt: money(f.cardDebtCents),
         ...(f.topRateBps ? { highestRatePercent: f.topRateBps / 100 } : {}),
         cash: money(f.cashCents),
@@ -920,6 +945,15 @@ async function computePrimer(
     parts.push(`${CHAT_PRIMER_TOOLS[i]}: ${result.value.content}`);
     cents.push(...result.value.cents);
   });
+  // What matters most and the open findings, from the saved snapshot (one query): so the usual
+  // "what should I do first" needs no lookup by Claude.
+  const matters = await loadSnapshotFast(userId, { client, now })
+    .then(mattersBlock)
+    .catch(() => ({ text: "", cents: [] as number[] }));
+  if (matters.text) {
+    parts.push(matters.text);
+    cents.push(...matters.cents);
+  }
   // Spec step 91: what they told Jane, and suggestions not to make again.
   const remembered = await listPreferences(userId, { client }).catch(() => []);
   if (remembered.length > 0) {
@@ -931,6 +965,10 @@ async function computePrimer(
 // Works the numbers out and saves them for the chat to read. Run after a sync, a scan or a
 // correction (through a dynamic import, as this file reaches those by other routes).
 export async function refreshPrimer(userId: string, options: Options): Promise<void> {
+  // And the snapshot the agenda and the tools read, saved the same way.
+  await refreshSnapshot(userId, options).catch((error) =>
+    console.error("Saving the snapshot failed", { error: String(error) }),
+  );
   const primer = await computePrimer(userId, options);
   keepPrimer(userId, options.now, primer);
   await writeStoredPrimer(userId, primer, options);

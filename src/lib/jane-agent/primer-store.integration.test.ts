@@ -43,6 +43,9 @@ describe.runIf(url)("the numbers for Claude, saved", { timeout: 120_000 }, () =>
     const stored = await readStoredPrimer(userId, { client });
     expect(stored).not.toBeNull();
     expect(stored!.primer.text.length).toBeGreaterThan(50);
+    // With what matters most and the open findings, so the usual questions need no lookup.
+    expect(stored!.primer.text).toMatch(/^what_matters_most: \[/m);
+    expect(stored!.primer.text).toMatch(/^open_findings_summary: /m);
     expect(stored!.at.getTime()).toBe(NOW.getTime());
   });
 

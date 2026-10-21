@@ -1,4 +1,5 @@
 import { FORECAST_DAYS } from "@/config/detection";
+import { loadSnapshotFast } from "../snapshot-store";
 import { loadDetectionInput } from "@/detection/engine";
 import { forecastAccounts } from "@/detection/forecast";
 import { forecastReply } from "../replies-forecast";
@@ -59,7 +60,7 @@ async function answer(ctx: CapabilityContext): Promise<Reply | null> {
     case "cost": {
       const [recurring, snapshot] = await Promise.all([
         loadRecurring(userId, { client, now }),
-        loadSnapshot(userId, { client, now }),
+        loadSnapshotFast(userId, { client, now }),
       ]);
       // Not a regular charge: what was spent there this month.
       return costReply(intent, recurring, snapshot, asOf) ?? (await spendingOn(intent.target));
@@ -67,7 +68,7 @@ async function answer(ctx: CapabilityContext): Promise<Reply | null> {
     case "subscriptions": {
       const [recurring, snapshot] = await Promise.all([
         loadRecurring(userId, { client, now }),
-        loadSnapshot(userId, { client, now }),
+        loadSnapshotFast(userId, { client, now }),
       ]);
       return subscriptionsReply(intent, recurring, snapshot);
     }
@@ -89,7 +90,7 @@ async function answer(ctx: CapabilityContext): Promise<Reply | null> {
     case "about": {
       const [recurring, snapshot] = await Promise.all([
         loadRecurring(userId, { client, now }),
-        loadSnapshot(userId, { client, now }),
+        loadSnapshotFast(userId, { client, now }),
       ]);
       const exact = intent.findingId
         ? snapshot?.findings.find((f) => f.findingId === intent.findingId)
@@ -169,7 +170,7 @@ async function answer(ctx: CapabilityContext): Promise<Reply | null> {
     case "changes":
       return changesReply(await loadChanges(userId, { client, now }));
     case "review": {
-      const snapshot = await loadSnapshot(userId, { client, now });
+      const snapshot = await loadSnapshotFast(userId, { client, now });
       return snapshot
         ? weeklyReview(snapshot, now)
         : {
