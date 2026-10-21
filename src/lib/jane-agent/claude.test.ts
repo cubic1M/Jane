@@ -789,6 +789,19 @@ describe("speed and failures", () => {
     expect((await askClaudeInChat("u1", [], "hi", options)).kind).toBe("answer");
   });
 
+  it("tries once more when Claude never started, and answers", async () => {
+    create.mockResolvedValueOnce(final("Here are the other options."));
+    let attempts = 0;
+    const result = await askClaudeInChat("u1", [], "what are some other options from geico", {
+      ...options,
+      claude: () => (attempts++ === 0 ? stuck() : claude()),
+      firstWordsMs: 20,
+    });
+    expect(attempts).toBe(2);
+    expect(result.kind).toBe("answer");
+    expect(result.reply.body).toBe("Here are the other options.");
+  });
+
   it("sends only the last few turns of a long thread, with the topic of the last answer", async () => {
     create.mockResolvedValueOnce(final("Here is more."));
     const thread = Array.from({ length: 40 }, (_, i) => ({
