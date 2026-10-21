@@ -130,8 +130,13 @@ describe("askClaudeInChat", () => {
       model: "claude-sonnet-5-5",
       thinking: { type: "adaptive" },
       output_config: { effort: "low" },
-      tools: CHAT_TOOLS,
     });
+    // The general tools, and none of a sector's when the question isn't about one.
+    const sent = (create.mock.calls[0][0] as { tools: { name: string }[] }).tools.map(
+      (t) => t.name,
+    );
+    expect(sent).toEqual(expect.arrayContaining(["safe_to_spend", "propose_action"]));
+    expect(sent.length).toBeLessThan(CHAT_TOOLS.length / 2);
   });
 
   it("puts a proposed finding's Yes and No under the answer, without acting", async () => {
@@ -635,6 +640,39 @@ describe("speed and failures", () => {
     expect(result.kind).toBe("answer");
   });
 
+  it("gives each round its own time: a slow lookup between rounds doesn't use up Claude's", async () => {
+    vi.mocked(homeSummary).mockImplementation(
+      () =>
+        new Promise((resolve) =>
+          setTimeout(() => resolve({ safeToSpend: null, comingUp: [] } as never), 200),
+        ),
+    );
+    create
+      .mockResolvedValueOnce(toolUse("safe_to_spend"))
+      .mockResolvedValueOnce(final("Nothing is linked yet."));
+    const info = vi.spyOn(console, "info").mockImplementation(() => {});
+    // Each round may take 150ms, and the lookup alone takes 200.
+    const result = await askClaudeInChat("u1", [], "what can i spend", {
+      ...options,
+      deadlineMs: 150,
+      firstWordsMs: 150,
+    });
+    expect(result.kind).toBe("answer");
+    const logged = JSON.parse(String(info.mock.calls.find((c) => c[0] === "chat_timing")?.[1]));
+    expect(logged.tools).toEqual([{ name: "safe_to_spend", ms: expect.any(Number) }]);
+    expect(logged.tools[0].ms).toBeGreaterThanOrEqual(150);
+    expect(logged.reason).toBeNull();
+  });
+
+  it("says why Claude's answer wasn't used, as a code", async () => {
+    const info = vi.spyOn(console, "info").mockImplementation(() => {});
+    create.mockResolvedValueOnce({ stop_reason: "end_turn", content: [] });
+    const result = await askClaudeInChat("u1", [], "hm", options);
+    expect(result.kind).toBe("unavailable");
+    const logged = JSON.parse(String(info.mock.calls.find((c) => c[0] === "chat_timing")?.[1]));
+    expect(logged).toMatchObject({ outcome: "unavailable", reason: "empty" });
+  });
+
   it("logs where the time went, as numbers only", async () => {
     const info = vi.spyOn(console, "info").mockImplementation(() => {});
     create.mockResolvedValueOnce({
@@ -650,7 +688,7 @@ describe("speed and failures", () => {
       inputTokens: 900,
       cachedInputTokens: 700,
       outputTokens: 20,
-      tools: CHAT_TOOLS.length,
+      toolsSent: CHAT_TOOLS.length,
     });
     for (const key of ["primerMs", "firstEventMs", "firstTextMs", "totalMs"]) {
       expect(typeof logged[key], key).toBe("number");
