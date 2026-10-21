@@ -168,7 +168,7 @@ describe("askClaudeInChat", () => {
       .mockResolvedValueOnce(toolUse("propose_action", { action: "finding.yes", finding_id: "x" }))
       .mockResolvedValueOnce(final("I can't do that from here."));
 
-    const result = await askClaudeInChat("u1", [], "Delete it", options);
+    const result = await askClaudeInChat("u1", [], "Delete it", { ...options, maxTurns: 5 });
 
     expect(result).toEqual({
       kind: "answer",
