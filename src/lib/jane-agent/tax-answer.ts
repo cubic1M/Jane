@@ -22,6 +22,8 @@ import { loadAccountantPage } from "@/lib/accountant";
 import { accountantReply } from "./accountant-message";
 import { loadTaxCalendar } from "@/lib/tax-calendar";
 import { calendarReply } from "./tax-calendar-message";
+import { loadBusinessStructure } from "@/lib/business-structure";
+import { businessReply } from "./business-message";
 import { equityReply } from "./equity-tax-message";
 import { loadIdentity } from "@/lib/tax-identity";
 import { identityReply } from "./tax-identity-message";
@@ -132,6 +134,8 @@ export async function answerTaxIntent(
         ? moveReply(intent, view.state.value, now)
         : workStateReply(intent.state, view.state.value);
     }
+    case "business":
+      return businessReply(await loadBusinessStructure(userId, { client, now }));
     case "calendar":
       return calendarReply(await loadTaxCalendar(userId, { client, now }));
     case "accountant":

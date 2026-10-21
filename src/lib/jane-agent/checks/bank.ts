@@ -846,6 +846,12 @@ const BASE_QUESTIONS: readonly CheckQuestion[] = [
     expect: { intent: "tax", mentions: /tax calendar for/, list: true },
   },
   {
+    id: "tax-32",
+    text: "should I become an S corp",
+    needs: "rules",
+    expect: { intent: "tax", mentions: /profit/ },
+  },
+  {
     id: "ins-1",
     text: "what insurance do I have",
     needs: "rules",

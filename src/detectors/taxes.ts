@@ -1,4 +1,5 @@
 import { DETECTOR_RATES } from "@/config/detectors";
+import { HOME_OFFICE_ASSUMED_SQFT, VEHICLE_ASSUMED_MILES } from "@/config/business-structure";
 import { GIVING } from "@/config/giving";
 import { PROPERTY_TAX_PAYEE } from "@/config/home-taxes";
 import { APPEAL_GAP_RATE } from "@/config/property-tax";
@@ -8,11 +9,15 @@ import {
   CONTRIBUTION_LIMITS,
   DEPENDENT_CARE_CREDIT,
   FEDERAL_BRACKETS,
+  HOME_OFFICE_SIMPLIFIED,
+  MILEAGE_RATE_CENTS,
   PAYROLL_TAX,
+  SELF_EMPLOYMENT_TAX,
   STANDARD_DEDUCTION,
 } from "@/config/tax-rates";
 import { formatCents } from "@/lib/money";
-import { marginalRateOf } from "@/planning/tax-estimate";
+import { structureFor } from "@/planning/business-structure";
+import { NO_INCOME, marginalRateOf, type EstimateInput } from "@/planning/tax-estimate";
 import { careShare } from "@/planning/tax-savings";
 import type { Fact } from "@/profile/build";
 import { type Detector, type Urgency, suggestionId } from "./contract";
@@ -489,7 +494,174 @@ const fileReturn: Detector = {
   },
 };
 
+// A self-employed person's profit from their deposits (a freelancer's are mostly profit, a
+// shop's are sales), and the tax bracket it puts them in.
+const selfPaid = (pattern: unknown) => pattern === "uneven" || pattern === "business";
+function profitOf(profile: { facts: Record<string, { value: unknown }> }): number {
+  const share =
+    profile.facts.income_pattern.value === "business"
+      ? T.businessProfitShare
+      : T.freelanceProfitShare;
+  return Math.round(annual(profile.facts.monthly_income.value) * share);
+}
+function soleInput(profit: number, household: unknown, year: number): EstimateInput {
+  return {
+    year,
+    filingStatus: statusOf(household),
+    childrenUnder17: 0,
+    otherDependants: 0,
+    state: null,
+    income: { ...NO_INCOME, selfEmploymentCents: profit },
+    studentLoanInterestCents: 0,
+    mortgageInterestCents: 0,
+    charityCents: 0,
+    medicalCents: 0,
+    otherStateLocalTaxCents: 0,
+    federalWithheldCents: 0,
+    federalEstimatedPaidCents: 0,
+    stateWithheldCents: 0,
+    stateEstimatedPaidCents: 0,
+  };
+}
+// What a deduction saves a sole proprietor: income tax at their bracket plus the 15.3% on 92.35%
+// of it that self-employment tax takes.
+const deductionRate = (profit: number, household: unknown) => {
+  const status = statusOf(household);
+  const bracket = marginalRateOf(
+    Math.max(0, profit - STANDARD_DEDUCTION[status]),
+    FEDERAL_BRACKETS[status],
+  );
+  return (
+    bracket +
+    (SELF_EMPLOYMENT_TAX.socialSecurityRate + SELF_EMPLOYMENT_TAX.medicareRate) *
+      SELF_EMPLOYMENT_TAX.netEarningsShare
+  );
+};
+
+// An S corporation saves payroll tax on what isn't paid as salary; worth raising only when that
+// beats its costs and the 20% deduction lost on the salary (step 267).
+const sCorpElection: Detector = {
+  capability: "taxes",
+  topic: "s_corp_election",
+  covers: ["tax_business"],
+  needs: ["income_pattern", "monthly_income", "household"],
+  detect({ profile }) {
+    const pattern = profile.facts.income_pattern;
+    const income = profile.facts.monthly_income;
+    if (!selfPaid(pattern.value)) return null;
+    const profit = profitOf(profile);
+    const result = structureFor(soleInput(profit, profile.facts.household.value, 2026));
+    if (!result.sCorp.worthIt) return null;
+    const business = pattern.value === "business";
+    const md = profile.today.slice(5);
+    return {
+      id: suggestionId("taxes", "s_corp_election"),
+      capability: "taxes",
+      topic: "s_corp_election",
+      title: "Ask a tax professional whether an S corporation would save you tax",
+      worthCents: result.sCorp.savesCents,
+      worthKind: "saves",
+      confidence: weakest([
+        factEvidence(pattern),
+        factEvidence(income),
+        {
+          percent: business ? 55 : 65,
+          reason: business
+            ? `your deposits are sales, so I assumed ${Math.round(T.businessProfitShare * 100)}% is profit`
+            : `I assumed ${Math.round((1 - T.freelanceProfitShare) * 100)}% of what clients pay goes on costs`,
+        },
+      ]),
+      // The election for this year is due March 15; after that it starts next year.
+      urgency: md >= T.sCorpElectionFrom && md <= T.sCorpElectionBy ? "soon" : "later",
+      why: `At a profit of about ${formatCents(profit)}, an S corporation (a salary of about ${formatCents(result.sCorp.salaryCents)}, the rest as profit) could cost you about ${formatCents(result.sCorp.totalCents)} in tax and costs against ${formatCents(result.sole.taxCents)} as you are: roughly ${formatCents(result.sCorp.savesCents)} less. The election (Form 2553) is due March 15 to count for the year.`,
+      action: { label: "See the numbers", href: "/taxes/business" },
+    };
+  },
+};
+
+// Work from home with no office elsewhere: the simplified home office deduction is $5 a square
+// foot up to 300 (steps 123 and 267).
+const homeOffice: Detector = {
+  capability: "taxes",
+  topic: "home_office_deduction",
+  covers: ["tax_business"],
+  needs: ["income_pattern", "monthly_income", "housing"],
+  detect({ profile, data }) {
+    const pattern = profile.facts.income_pattern;
+    const income = profile.facts.monthly_income;
+    if (!selfPaid(pattern.value)) return null;
+    const away = tx(
+      data,
+      (t) =>
+        t.pfc === "RENT_AND_UTILITIES_RENT" &&
+        /COMMERCIAL|OFFICE|STUDIO|WORKSPACE|WEWORK/i.test(t.description),
+    );
+    if (away.length > 0) return null;
+    const deduction = HOME_OFFICE_ASSUMED_SQFT * HOME_OFFICE_SIMPLIFIED.perSquareFoot;
+    const profit = profitOf(profile);
+    const saves = Math.round(deduction * deductionRate(profit, profile.facts.household.value));
+    return {
+      id: suggestionId("taxes", "home_office_deduction"),
+      capability: "taxes",
+      topic: "home_office_deduction",
+      title: "Claim a home office if you work from home",
+      worthCents: saves,
+      worthKind: "saves",
+      confidence: weakest([
+        factEvidence(pattern),
+        factEvidence(income),
+        {
+          percent: 55,
+          reason: "I can't see where you work, or whether a home office is already on file",
+        },
+      ]),
+      urgency: "later",
+      why: `You work for yourself and pay no rent for an office or studio. A room used only for work, ${HOME_OFFICE_ASSUMED_SQFT} square feet at $5 a square foot, is a ${formatCents(deduction)} deduction, which saves about ${formatCents(saves)} in income tax and self-employment tax.`,
+      action: { label: "Add your home office", href: "/taxes/profile" },
+    };
+  },
+};
+
+// Gas for a business driver: the standard mileage rate turns logged miles into a deduction
+// (steps 123 and 267).
+const vehicleDeduction: Detector = {
+  capability: "taxes",
+  topic: "vehicle_deduction",
+  covers: ["tax_business"],
+  needs: ["income_pattern", "monthly_income", "has_car"],
+  detect({ profile, data }) {
+    const pattern = profile.facts.income_pattern;
+    const income = profile.facts.monthly_income;
+    if (!selfPaid(pattern.value)) return null;
+    const gas = tx(data, (t) => t.pfc === "TRANSPORTATION_GAS" && t.amountCents > 0);
+    if (gas.length < 6) return null;
+    const deduction = Math.round(VEHICLE_ASSUMED_MILES * MILEAGE_RATE_CENTS);
+    const profit = profitOf(profile);
+    const saves = Math.round(deduction * deductionRate(profit, profile.facts.household.value));
+    return {
+      id: suggestionId("taxes", "vehicle_deduction"),
+      capability: "taxes",
+      topic: "vehicle_deduction",
+      title: "Keep a mileage log for the driving you do for your business",
+      worthCents: saves,
+      worthKind: "saves",
+      confidence: weakest([
+        factEvidence(pattern),
+        factEvidence(income),
+        evidence("seen", profile.months, gas.length, "fuel purchases"),
+        { percent: 45, reason: "I can't see how much of your driving is for the business" },
+      ]),
+      urgency: "later",
+      why: `You buy gas regularly. Every business mile is a ${(MILEAGE_RATE_CENTS / 100).toFixed(3)} dollar deduction; ${VEHICLE_ASSUMED_MILES.toLocaleString("en-US")} miles, a modest year for a driver with clients, is ${formatCents(deduction)}, saving about ${formatCents(saves)}. It only counts with a log of dates, places and reasons.`,
+      action: { label: "Log your miles", href: "/taxes/profile" },
+    };
+  },
+};
+
 export const TAX_DETECTORS: readonly Detector[] = [
+  sCorpElection,
+  homeOffice,
+  vehicleDeduction,
   yearEndMoves,
   charityReceipts,
   propertyTaxCheck,

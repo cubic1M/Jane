@@ -185,6 +185,7 @@ export const CAPABILITIES: readonly Capability[] = [
       "tax_tags",
       "tax_withholding",
       "tax_years",
+      "tax_business",
     ],
     answer: taxAnswer,
   },

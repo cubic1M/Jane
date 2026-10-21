@@ -197,6 +197,12 @@ export const DETECTOR_RATES = {
     // A shop's deposits are sales, not profit: assume this share is what's taxed
     // (ESTIMATE TO VERIFY; small retail runs roughly 5% to 15% net).
     businessProfitShare: 0.15,
+    // Business owners (step 267): a freelancer's deposits are mostly profit; a shop's are sales.
+    freelanceProfitShare: 0.85,
+    // Form 2553 (the S corporation election) is due March 15 for the same year: urgent in the
+    // weeks before it, otherwise it takes effect next year.
+    sCorpElectionBy: "03-15",
+    sCorpElectionFrom: "01-01",
     // Estimated payments: urgency by days to the next due date.
     estimatedNowDays: 14,
     estimatedSoonDays: 45,
