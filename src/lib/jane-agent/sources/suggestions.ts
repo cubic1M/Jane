@@ -1,4 +1,5 @@
 import { MESSAGE_PRIORITY } from "@/config/agent-chat";
+import { ONE_TIME_TOPICS } from "@/config/suggestions";
 import { formatCents } from "@/lib/money";
 import { sentence, type MessageSource } from "./source";
 
@@ -12,6 +13,14 @@ export const WORTH = {
   risk: (cents: number) => `could protect you from a loss of about ${formatCents(cents)}`,
 } as const;
 
+// How a suggestion's worth is said: a year's saving, or money back once.
+export function worthPhrase(s: { worthKind: string; worthCents: number; topic: string }): string {
+  if (ONE_TIME_TOPICS.includes(s.topic) && s.worthKind !== "risk") {
+    return `could get you back about ${formatCents(s.worthCents)}, once`;
+  }
+  return WORTH[s.worthKind as keyof typeof WORTH]?.(s.worthCents) ?? "is worth a look";
+}
+
 export const suggestionsSource: MessageSource = {
   key: "suggestions",
   gather(snapshot) {
@@ -19,7 +28,7 @@ export const suggestionsSource: MessageSource = {
       kind: "decision" as const,
       body: [
         sentence(s.title),
-        `This ${WORTH[s.worthKind as keyof typeof WORTH]?.(s.worthCents) ?? "is worth a look"}.`,
+        `This ${worthPhrase(s)}.`,
         sentence(s.why),
         `I'm ${s.confidencePercent}% sure, based on ${s.confidenceReason}.`,
         "Want to do it?",
