@@ -209,6 +209,8 @@ describe("the agenda leads with the scan's suggestions (step 265)", () => {
     key: "idle_cash:savings",
     topic: "idle_cash",
     title: "Move $9,000 of idle cash to a savings account that pays 4%",
+    headline: "Move idle cash to a higher rate, earn $360 a year",
+    short: "You keep $9,000 in cash; about $8,000 is more than you need.",
     why: "You keep $9,000 in checking all year; people with that much usually earn about 4%.",
     worthCents: 36_000,
     worthKind: "earns",
@@ -256,8 +258,8 @@ describe("the agenda leads with the scan's suggestions (step 265)", () => {
     );
     const lines = out.agenda.body.split("\n");
     expect(lines).toContain("Here's what I'd do first, from looking at your money:");
-    expect(lines.find((l) => l.startsWith("- Move $9,000"))).toBe(
-      "- Move $9,000 of idle cash to a savings account that pays 4%: it could earn you about $360.00 a year. Why you: You keep $9,000 in checking all year; people with that much usually earn about 4%. I'm 85% sure, based on 12 months of balances.",
+    expect(lines.find((l) => l.startsWith("- Move idle cash"))).toBe(
+      "- Move idle cash to a higher rate, earn $360 a year. Why you: You keep $9,000 in cash; about $8,000 is more than you need. 85% sure: 12 months of balances.",
     );
     expect(out.agenda.actions.map((a) => a.id)).toEqual(
       expect.arrayContaining(["bundle.1", "bundle.no.1"]),
