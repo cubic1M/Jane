@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { E2E_DATABASE_URL, deleteUser, signedInUser } from "./db";
+import { E2E_DATABASE_URL, deleteUser, signedInUser, waitForFullScan } from "./db";
 
 // Spec steps 81–82: link the demo bank, land in Jane's chat, see the morning brief, tap
 // Yes on a finding and see it answered. On a phone, with nothing sideways and the tab bar
@@ -42,6 +42,10 @@ test("the demo bank lands in Jane's chat, and Yes answers a finding", async ({
   await expect(page.getByRole("heading", { level: 1, name: "Chat with Jane" })).toBeVisible({
     timeout: 60_000,
   });
+  // The agenda and the suggestions come in the work after the first brief: wait for it, then look.
+  await waitForFullScan(user.userId);
+  await page.reload();
+  await expect(page.getByRole("heading", { level: 1, name: "Chat with Jane" })).toBeVisible();
 
   const messages = page.getByRole("list", { name: "Messages" }).getByRole("listitem");
   const ask = page.getByRole("textbox", { name: "Message Jane" });

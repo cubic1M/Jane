@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { E2E_DATABASE_URL, deleteUser, signedInUser } from "./db";
+import { E2E_DATABASE_URL, deleteUser, signedInUser, waitForFullScan } from "./db";
 
 // Insurance (spec step 102): a person says they rent, sees the missing renters cover, adds
 // their policy and the gap goes.
@@ -58,6 +58,8 @@ test("a demo-bank person sees the sample policy, like-for-like quotes and Jane's
   await page.goto("/connect");
   await page.getByRole("button", { name: "Link a demo bank" }).click();
   await expect(page).toHaveURL("/chat", { timeout: 60_000 });
+  // The chat opens once the first brief is in; Jane shops the insurance in the work after it.
+  await waitForFullScan(userId!);
 
   await page.goto("/insurance");
   await expect(page.getByRole("heading", { name: "GEICO car insurance" })).toBeVisible();
@@ -120,8 +122,17 @@ test("a demo-bank person says yes to Jane's pick (step 104)", async ({
   await page.goto("/connect");
   await page.getByRole("button", { name: "Link a demo bank" }).click();
   await expect(page).toHaveURL("/chat", { timeout: 60_000 });
-  await page.goto("/insurance");
-  await page.getByRole("link", { name: "Compare quotes" }).click();
+  // The chat opens once the first brief is in; Jane shops the insurance in the work after it.
+  await waitForFullScan(userId!);
+  // Jane's pick is made by the first scan's work after the brief, which can finish a little
+  // after the chat opens on a busy machine: look again until the pick is there.
+  await expect(async () => {
+    await page.goto("/insurance");
+    await page.getByRole("link", { name: "Compare quotes" }).click({ timeout: 10_000 });
+    await expect(page.getByRole("button", { name: "Yes, switch" })).toBeVisible({
+      timeout: 10_000,
+    });
+  }).toPass({ timeout: 90_000 });
   await page.getByRole("button", { name: "Yes, switch" }).click();
   await expect(page).toHaveURL("/actions");
 });
