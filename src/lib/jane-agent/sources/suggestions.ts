@@ -7,7 +7,7 @@ import { sentence, type MessageSource } from "./source";
 // few a day. Each says what it is worth, why this person, and how sure Jane is with the
 // reason, then asks. A no is for good (answerSuggestion).
 
-const WORTH = {
+export const WORTH = {
   saves: (cents: number) => `could save you about ${formatCents(cents)} a year`,
   earns: (cents: number) => `could earn you about ${formatCents(cents)} a year`,
   risk: (cents: number) => `could protect you from a loss of about ${formatCents(cents)}`,

@@ -158,7 +158,18 @@ import { askAnswer } from "./ask";
 import { suggestionNo, suggestionYes } from "./suggestion";
 import { steadyOn, steadyPay, steadySkip } from "./steady";
 import { unusualMe, unusualNotMe } from "./unusual";
-import { bundleYes1, bundleYes2, bundleYes3, bundleYes4, bundleYes5 } from "./bundle";
+import {
+  bundleNo1,
+  bundleNo2,
+  bundleNo3,
+  bundleNo4,
+  bundleNo5,
+  bundleYes1,
+  bundleYes2,
+  bundleYes3,
+  bundleYes4,
+  bundleYes5,
+} from "./bundle";
 import { multiCancel, multiConfirm, multiUndo } from "./multi";
 import { FLOW_PICKS, flowBack, flowCancel } from "./flows";
 
@@ -245,6 +256,11 @@ export const ACTION_HANDLERS: Readonly<Record<ActionId, ActionHandler>> = {
   "bundle.3": bundleYes3,
   "bundle.4": bundleYes4,
   "bundle.5": bundleYes5,
+  "bundle.no.1": bundleNo1,
+  "bundle.no.2": bundleNo2,
+  "bundle.no.3": bundleNo3,
+  "bundle.no.4": bundleNo4,
+  "bundle.no.5": bundleNo5,
   // Spec step 185.
   "multi.confirm": multiConfirm,
   "multi.cancel": multiCancel,

@@ -25,6 +25,8 @@ import { listNegotiations } from "@/lib/insurance/negotiate";
 import { listSavings } from "@/lib/insurance/savings";
 import { listRisks } from "@/lib/insurance/risks";
 import { loadFamily } from "@/lib/insurance/family";
+import { loadHealthYear, openDisputeCards } from "@/lib/insurance/health-year";
+import { healthYearLines } from "./health-year";
 import { claimWorthFor } from "@/lib/insurance/claim-worth-for";
 import { isPolicyKind } from "@/config/insurance";
 import { noteLines, readingLines } from "./reading-words";
@@ -76,6 +78,12 @@ export const INSURANCE_TOOLS: Anthropic.Tool[] = [
     description:
       "Life insurance sized for the person and applied for (spec step 153), demo advice only: the amount and term with the method (years of pay, debts, final expenses, schooling, less savings and cover they have), the term quotes, and where an application stands (health questions, the carrier's offer or review). Jane never applies or buys without the person's tap; to start, they tap Apply in the chat or on /insurance/life.",
     input_schema: noInput,
+  },
+  {
+    name: "insurance_health_year",
+    description:
+      "Where the person is in their health plan's year (spec step 200): deductible met, out-of-pocket so far and the month the maximum is reached at this pace, FSA money left and its use-it-or-lose-it date, HSA balance, in-network checks for providers they paid, and big bills above the plan's share (a dispute card is opened for the team). Facts only. Say when the plan is the demo bank's sample plan.",
+    input_schema: { type: "object", properties: {} },
   },
   {
     name: "insurance_claim_worth",
@@ -193,6 +201,29 @@ export async function runInsuranceTool(
         },
       }),
       cents,
+    };
+  }
+  if (name === "insurance_health_year") {
+    const year = await loadHealthYear(userId, { client, now });
+    if (!year) {
+      return {
+        content: JSON.stringify({ found: false, why: "no health plan terms on file" }),
+        cents,
+      };
+    }
+    await openDisputeCards(userId, { client, now });
+    return {
+      content: JSON.stringify({
+        plan: year.plan.label,
+        samplePlan: year.sample,
+        lines: healthYearLines(year),
+      }),
+      cents: [
+        year.progress.deductibleMetCents,
+        year.progress.oopSoFarCents,
+        year.fsa?.leftCents ?? 0,
+        ...year.disputes.flatMap((d) => [d.paidCents, d.shouldPayCents, d.overCents]),
+      ],
     };
   }
   if (name === "insurance_claim_worth") {

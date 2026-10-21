@@ -383,3 +383,24 @@ test("a person lists their household and sees who is covered by what (step 198)"
   // No car policy covers a 16-year-old driver: a gap, with the usual "I don't need it".
   await expect(page.getByRole("heading", { name: "Sam isn't on a car policy" })).toBeVisible();
 });
+
+test("a demo-bank person sees their health plan's year and a dispute card (step 200)", async ({
+  context,
+  page,
+  baseURL,
+}) => {
+  const user = await signedInUser("user");
+  userId = user.userId;
+  await context.addCookies([
+    { name: "authjs.session-token", value: user.sessionToken, url: baseURL ?? "" },
+  ]);
+  await page.goto("/connect");
+  await page.getByRole("button", { name: "Link a demo bank" }).click();
+  await expect(page).toHaveURL("/chat", { timeout: 60_000 });
+
+  await page.goto("/insurance");
+  const year = page.getByRole("region", { name: "Your health plan this year" });
+  await expect(year.getByText(/of your \$500\.00 deductible/)).toBeVisible();
+  await expect(year.getByText(/left in your FSA.*Dec 31/)).toBeVisible();
+  await expect(year.getByText(/BAYVIEW IMAGING CENTER billed/)).toBeVisible();
+});

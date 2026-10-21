@@ -62,7 +62,14 @@ export async function loadProfileInput(
     db.liabilities.findMany({
       select: { accountId: true, kind: true, aprBps: true, hasPmi: true, payoffDate: true },
     }),
-    db.holdings.findMany({ select: { accountId: true, valueCents: true, costBasisCents: true } }),
+    db.holdings.findMany({
+      select: {
+        accountId: true,
+        valueCents: true,
+        costBasisCents: true,
+        security: { select: { ticker: true, isCashEquivalent: true, type: true } },
+      },
+    }),
     db.janePreferences.findMany({
       where: { kind: "fact", key: { startsWith: PREF_PREFIX } },
       select: { key: true, value: true },
@@ -139,6 +146,8 @@ export async function loadProfileInput(
       accountId: h.accountId,
       valueCents: h.valueCents,
       basisCents: h.costBasisCents,
+      ticker: h.security.ticker,
+      isCash: h.security.isCashEquivalent || h.security.type === "cash",
     })),
     liabilities: liabilities.map((l) => ({
       accountId: l.accountId,

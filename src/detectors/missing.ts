@@ -5,22 +5,4 @@
 // but still listed here, and for a tool that is not covered, not exempt and not listed. A new
 // tool is never added to this list: it arrives with its detector or an exemption.
 
-export const MISSING_DETECTOR: readonly string[] = [
-  "holdings",
-  "investor_profile",
-  "investment_fees",
-  "portfolio_review",
-  "rebalance_plan",
-  "auto_invest",
-  "investments_overview",
-  "investment_returns",
-  "goal_buckets",
-  "old_accounts",
-  "family_investing",
-  "property",
-  "costly_products",
-  "yearly_review",
-  "asset_location",
-  "steady_hand",
-  "crypto",
-];
+export const MISSING_DETECTOR: readonly string[] = [];

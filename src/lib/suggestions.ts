@@ -125,10 +125,19 @@ export async function scanSuggestions(
 ): Promise<ScanResult> {
   const db = scopedFor(userId, client);
   const today = dayOf(now);
-  const [{ suggestions: found }, existing] = await Promise.all([
+  const [{ suggestions: found, advice }, stored] = await Promise.all([
     detectFor(userId, { client, now }),
     db.suggestions.findMany(),
   ]);
+  // Advice offered while the person was in demo advice mode must not outlive it: once a real
+  // account is added, those rows go, answered or not (they would show as recommendations).
+  const isAdviceRow = (topic: string) => (ADVICE_TOPICS as readonly string[]).includes(topic);
+  if (!advice && stored.some((e) => isAdviceRow(e.topic))) {
+    await client.suggestion.deleteMany({
+      where: { userId, topic: { in: [...ADVICE_TOPICS] } },
+    });
+  }
+  const existing = advice ? stored : stored.filter((e) => !isAdviceRow(e.topic));
   const byKey = new Map(existing.map((e) => [e.key, e]));
 
   // Already chosen for today: the scan is safe to run twice.

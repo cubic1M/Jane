@@ -62,6 +62,22 @@ export const DETECTOR_RATES = {
   // Required withdrawals: the divisor for a person's early 70s, and the penalty on a miss.
   rmdDivisor: 26.5,
   rmdPenaltyRate: 0.25,
+  // Fee drag (step 262): worth mentioning when the cheaper equivalents save this much a year.
+  feeMinCents: 5_000,
+  // Rebalance: the stock share a life stage usually holds, and how far off is worth a look.
+  stockShareByStage: { starting: 0.9, raising: 0.8, peak: 0.75, approaching: 0.6, retired: 0.45 },
+  rebalanceBandShare: 0.1,
+  // Automatic investing: the share of pay to start with.
+  autoInvestShare: 0.05,
+  // An old employer's plan usually costs this much more a year than the current one.
+  oldPlanFeeGapBps: 50,
+  // Asset location: bond interest taxed at the ordinary rate against the stock rate, and the
+  // smallest yearly saving worth mentioning.
+  locationRateGap: 0.07,
+  locationMinCents: 2_000,
+  // Annuities: what a costly one charges a year against a plain index fund.
+  annuityFeeBps: 200,
+  annuityIndexBps: 50,
   // Late fees: one is enough to mention.
   lateFeesMin: 1,
   // Payday and cash-advance loans: fees are about this share of what's repaid.

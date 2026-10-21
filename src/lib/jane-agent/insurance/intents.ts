@@ -45,7 +45,10 @@ export type InsuranceAsk =
   // household: who is covered by what across the household (spec step 198).
   | "household"
   // claim_worth: "is it worth claiming a $1,200 repair?" (spec step 199).
-  | "claim_worth";
+  | "claim_worth"
+  // health_year: deductible progress, the out-of-pocket maximum, FSA and HSA, network and
+  // bill checks (spec step 200).
+  | "health_year";
 
 export type InsuranceIntent = {
   kind: "insurance";
@@ -170,6 +173,10 @@ const RISKS =
 const HOUSEHOLD =
   /\bwho(?:'s| is| are)?\b.{0,25}\b(?:covered|insured|on my (?:car |health |home )?(?:insurance|plan|policy))\b|\b(?:family|household|kids?|children|teen\w*|spouse|wife|husband|partner)\b.{0,30}\b(?:covered|insured|health plan)\b|\bfamily (?:health )?(?:plan|insurance|cover\w*)\b|\b(?:partner|spouse|wife|husband)'?s (?:employer|work|job)\b.{0,30}\b(?:plan|insurance)\b/;
 
+// Where they are in their health plan's year (spec step 200).
+const HEALTH_YEAR =
+  /\b(?:fsa|flex(?:ible)? spending|use it or lose it)\b|\b(?:how much|how far|where am i|have i met|did i meet|when (?:will|do) i (?:hit|reach|meet))\b.{0,30}\b(?:deductible|out[- ]of[- ]pocket(?: max\w*)?)\b|\bdeductible\b.{0,20}\b(?:met|so far|left|remaining|progress)\b|\bout[- ]of[- ]pocket (?:max\w*|limit)\b|\bin[- ]network\b|\b(?:is|was) (?:my|this|that|the) (?:\w+ )?bill (?:right|correct|too (?:high|much))\b|\boverbill\w*|\bhealth plan\b.{0,20}\b(?:this year|so far)\b/;
+
 const ASKS: readonly [InsuranceAsk, RegExp][] = [
   ["cards", CARD_COVER],
   [
@@ -249,6 +256,7 @@ export function parseInsurance(text: string): InsuranceIntent | null {
       event: eventIn(text),
     };
   }
+  if (HEALTH_YEAR.test(text)) return { kind: "insurance", ask: "health_year", policyKind: null };
   if (FILE_FOR_ME.test(text)) return { kind: "insurance", ask: "file_claim", policyKind: null };
   if (RENEWAL_CALL.test(text)) {
     return { kind: "insurance", ask: "renewal_call", policyKind: kindIn(text) };
@@ -264,6 +272,7 @@ export function parseInsurance(text: string): InsuranceIntent | null {
     !CARD_COVER.test(text) &&
     !LIFE.test(text) &&
     !HOUSEHOLD.test(text) &&
+    !HEALTH_YEAR.test(text) &&
     !MARRIED.test(text) &&
     !CAR.test(text)
   ) {
@@ -274,6 +283,7 @@ export function parseInsurance(text: string): InsuranceIntent | null {
   if (CAR.test(text))
     return { kind: "insurance", ask: "life_change", policyKind: null, event: "car_bought" };
   if (LIFE.test(text)) return { kind: "insurance", ask: "life", policyKind };
+  if (HEALTH_YEAR.test(text)) return { kind: "insurance", ask: "health_year", policyKind };
   if (SAVINGS.test(text)) return { kind: "insurance", ask: "savings", policyKind };
   if (RISKS.test(text)) return { kind: "insurance", ask: "risks", policyKind };
   if (HOUSEHOLD.test(text)) return { kind: "insurance", ask: "household", policyKind };
