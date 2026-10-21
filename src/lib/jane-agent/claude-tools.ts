@@ -3,6 +3,7 @@ import { dollarFigures } from "@/lib/guardrails";
 import { decisionReply, loadDecisionFacts } from "./decision";
 import { parseDecision } from "./decision-intents";
 import { mattersBlock } from "./primer-matters";
+import { loadBankFees } from "@/lib/bank-fees";
 import { loadSnapshotFast, refreshSnapshot } from "./snapshot-store";
 import { INSURANCE_TOOLS, isInsuranceTool, runInsuranceTool } from "./insurance/tools";
 import type Anthropic from "@anthropic-ai/sdk";
@@ -159,7 +160,7 @@ export const CHAT_TOOLS: Anthropic.Tool[] = [
   {
     name: "open_findings",
     description:
-      "Things the app found that could save the person money and they haven't decided on yet, with each one's id (for propose_action and finding_details), kind, estimate, and Jane's pick when there's one.",
+      "Things the app found that could save the person money and they haven't decided on yet (and what bank fees cost them in a year), with each one's id (for propose_action and finding_details), kind, estimate, and Jane's pick when there's one.",
     input_schema: noInput,
   },
   {
@@ -454,7 +455,16 @@ export async function runChatTool(
     }
     case "open_findings": {
       const snapshot = await loadSnapshotFast(userId, { client, now });
+      const fees = await loadBankFees(userId, { client, now }).catch(() => null);
       return out({
+        // The same figure as the brief's suggestion: fees in the last 12 months, scaled to a
+        // year and said so when there are fewer months of data.
+        bankFeesAYear: fees && {
+          amount: money(fees.yearCents),
+          fees: fees.count,
+          estimate: fees.estimated,
+          monthsOfData: fees.monthsOfData,
+        },
         findings: (snapshot?.findings ?? []).map((f) => {
           if (f.annualSavingsCents !== null) money(f.annualSavingsCents);
           if (f.pick) money(f.pick.savingCents);

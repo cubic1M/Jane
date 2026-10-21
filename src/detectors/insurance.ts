@@ -160,25 +160,40 @@ const insuranceShopping: Detector = {
   needs: ["insurance_auto", "insurance_home"],
   detect({ profile, data }) {
     const paid = premiums(data, AUTO_HOME);
-    const yearly = outCents(paid);
+    // A year of what they pay, from the months of data when there are fewer than twelve.
+    const yearly = Math.round(outCents(paid) * (12 / Math.min(12, Math.max(1, profile.months))));
     if (paid.length < R.insuranceShopMinCharges || yearly < R.insuranceShopMinCents) return null;
-    const saves = Math.round(yearly * R.insuranceShopShare);
+    // Real quotes, when Jane has reshopped: the saving the switch card and the chat show.
+    const quoted = data.extras?.insuranceShopSavingCents ?? 0;
+    const estimate = Math.round(yearly * R.insuranceShopShare);
+    const saves = quoted > 0 ? quoted : estimate;
     return {
       id: suggestionId("insurance", "insurance_shopping"),
       capability: "insurance",
       topic: "insurance_shopping",
       title: "Compare your car and home cover before it renews",
       headline: headlineOf("Compare car and home cover", saves, "saves"),
-      short: `You paid ${formatCents(yearly)} for car and home cover over ${profile.months} months.`,
+      short:
+        quoted > 0
+          ? `Jane has a cheaper quote for your cover: ${formatCents(quoted)} a year less.`
+          : `You pay about ${formatCents(yearly)} a year for car and home cover.`,
       worthCents: saves,
       worthKind: "saves",
-      confidence: capped(
-        combine([evidence("seen", profile.months, paid.length, "car and home cover charges")]),
-        CAPS.shopping,
-        "the saving is typical, not quoted",
-      ),
+      confidence:
+        quoted > 0
+          ? combine([evidence("seen", profile.months, paid.length, "car and home cover charges")])
+          : capped(
+              combine([
+                evidence("seen", profile.months, paid.length, "car and home cover charges"),
+              ]),
+              CAPS.shopping,
+              "the saving is an estimate, not a quote",
+            ),
       urgency: "later",
-      why: `You paid ${formatCents(yearly)} for car and home cover over ${profile.months} months. Comparing the same cover usually finds up to ${formatCents(saves)} a year, and I do it for free before each renewal.`,
+      why:
+        quoted > 0
+          ? `You pay about ${formatCents(yearly)} a year for car and home cover, and a quote Jane already got would save you ${formatCents(quoted)} a year for the same cover.`
+          : `You pay about ${formatCents(yearly)} a year for car and home cover. Comparing the same cover could save about ${formatCents(estimate)} a year (an estimate, not a quote), and I do it for free before each renewal.`,
       action: { label: "Compare my cover", href: "/insurance" },
     };
   },

@@ -26,6 +26,32 @@ const employerMatch: Detector = {
     if (stage.value === "approaching" || stage.value === "retired") return null;
     const pay = annual(income.value);
     const saved = sum(data.accounts.filter((a) => a.subtype === "401k"));
+    // The employer's plan is known (the payroll connection, or the demo bank's): the figure is
+    // the one the retirement accounts page and the chat give, from the person's own pay, the
+    // match rules and what they put in so far this year. Otherwise a typical match is assumed.
+    const known = data.extras?.matchPace;
+    if (known) {
+      if (known.missedCents <= 0) return null;
+      const rate = (n: number) => `${Math.round(n * 1000) / 10}%`;
+      return {
+        id: suggestionId("investing", "employer_match"),
+        capability: "investing",
+        topic: "employer_match",
+        title: "Make sure you get your employer's full 401(k) match",
+        headline: headlineOf("Get your employer's full 401(k) match", known.missedCents, "earns"),
+        short: `You put in ${rate(known.employeeRate)} of pay; ${rate(known.fullMatchRate)} gets all of it.`,
+        worthCents: known.missedCents,
+        worthKind: "earns",
+        confidence: weakest([
+          factEvidence(has),
+          evidence("seen", profile.months, 1, "401(k) account"),
+          { percent: 90, reason: "your employer's plan rules and what you've put in this year" },
+        ]),
+        urgency: "soon",
+        why: `Your employer matches ${Math.round(known.matchRate * 100)}% of what you put in, up to ${rate(known.fullMatchRate)} of your pay (about ${formatCents(known.payCents)} a year). You are putting in ${rate(known.employeeRate)} at this year's pace, so about ${formatCents(known.missedCents)} a year of match goes unclaimed.`,
+        action: { label: "Check your match", href: "/investments/retirement-accounts" },
+      };
+    }
     if (pay === 0 || saved >= pay * R.matchHealthyShare) return null;
     const match = Math.round(pay * R.matchTypicalShare);
     return {
