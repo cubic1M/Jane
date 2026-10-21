@@ -661,5 +661,13 @@ export async function syncItem(
   // Jane says what's new in the chat (spec step 82); a problem there never fails the sync.
   await runJaneAgentSafely(item.userId, { client, now, trigger: "sync" });
   await markScanDone(item.userId, { client, now });
+  // The person's numbers for Claude, saved now so the chat reads them in one query instead of
+  // looking every sector up while someone waits. Loaded here, not at the top: that file
+  // reaches this one again through the jobs.
+  await import("@/lib/jane-agent/claude-tools")
+    .then((m) => m.refreshPrimer(item.userId, { client, now }))
+    .catch((error) =>
+      console.error("Saving the numbers for Claude failed", { error: String(error) }),
+    );
   return result;
 }
