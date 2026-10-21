@@ -186,9 +186,22 @@ const D_SELL =
 const D_START =
   /^(?:so |ok |okay |and )?should (?:i|we) (?:buy|invest|do it|go for it|start investing)\??$|\b(?:am i|are we) ready to (?:start )?invest\b|\bshould i (?:start|begin) investing\b|\bhow much should i (?:invest|put (?:in|into) (?:stocks|the market|investments))\b|\bwhen should i start investing\b/;
 
+const D_HSA =
+  /\bshould (?:i|we) (?:get|open|start|use|have)\b[^?.!]{0,20}\bhsa\b|\bis (?:an? |the )?hsa (?:worth|a good)\b|\bshould (?:i|we) (?:get|open) (?:an? )?health savings account\b/;
+const D_ROTH =
+  /\broth\b[^?.!]{0,30}\b(?:or|vs\.?|versus)\b[^?.!]{0,30}\btraditional\b|\btraditional\b[^?.!]{0,30}\b(?:or|vs\.?|versus)\b[^?.!]{0,30}\broth\b/;
+const D_RETIRE =
+  /\bcan (?:i|we) retire (?:at|by|in|early)\b|\bretire (?:early|at \d\d)\b|\b(?:am i|are we) ready to retire\b/;
+
 export function decisionOf(text: string): { kind: DecisionKind; subject: string | null } | null {
   const t = text.trim().toLowerCase();
   const company = Object.entries(KNOWN_COMPANIES).find(([k]) => new RegExp(`\\b${k}\\b`).test(t));
+  if (D_HSA.test(t)) return { kind: "hsa", subject: null };
+  if (D_ROTH.test(t)) return { kind: "roth_vs_traditional", subject: null };
+  if (D_RETIRE.test(t)) {
+    const age = /\b(\d{2})\b/.exec(t);
+    return { kind: "retire_at", subject: age ? age[1] : null };
+  }
   if (D_CRYPTO.test(t)) return { kind: "buy_crypto", subject: null };
   if (D_INDEX.test(t)) return { kind: "index_vs_stocks", subject: null };
   if (D_DEBT.test(t)) return { kind: "invest_vs_debt", subject: null };

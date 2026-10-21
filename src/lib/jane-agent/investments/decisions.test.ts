@@ -24,6 +24,13 @@ const BASE: DecisionFacts = {
   soonGoal: null,
   riskLabel: "Moderate",
   monthlyIncomeCents: 500_000,
+  marginalRate: 0.24,
+  hsaCents: 0,
+  preTaxCents: 30_000_000,
+  rothCents: 5_000_000,
+  monthlySpendCents: 400_000,
+  askedAge: null,
+  hasFamilyPlan: false,
 };
 const DEBT: DecisionFacts = {
   ...BASE,
@@ -116,5 +123,30 @@ describe("what each answer rests on", () => {
     expect(real.body).toMatch(/I can't tell you whether to buy crypto/);
     expect(real.body).toMatch(/you owe \$1,940\.20/);
     expect(real.actions.map((a) => a.id)).toEqual(["open"]);
+  });
+  it("answers the HSA question directly, with the tax it saves at their rate", () => {
+    const r = ask("should i get a hsa", BASE);
+    expect(r.body).toMatch(/^Yes if your health plan is a high-deductible one/);
+    expect(r.body).toMatch(/cut your federal tax by about/);
+    expect(r.body).not.toMatch(/how old are you/i);
+  });
+  it("answers Roth or traditional from their rate and what they hold", () => {
+    expect(ask("should i do a roth or traditional", BASE).body).toMatch(
+      /24% federal rate, traditional/,
+    );
+    expect(ask("roth vs traditional", { ...BASE, marginalRate: 0.1 }).body).toMatch(
+      /10% federal rate, Roth/,
+    );
+    expect(ask("roth vs traditional", BASE).body).toMatch(
+      /\$300,000\.00 before tax and \$50,000\.00 in Roth/,
+    );
+  });
+  it("answers can I retire at 62 from what they hold and spend", () => {
+    const r = ask("can i retire at 62", BASE);
+    expect(r.body).toMatch(/\$350,000\.00 could pay about \$14,000\.00 a year.*\$48,000\.00/);
+    expect(r.body).toMatch(/Social Security taken at 62 is about 30% smaller/);
+    expect(ask("can i retire at 62", { ...BASE, preTaxCents: 0, rothCents: 0 }).body).toMatch(
+      /don't see retirement savings/,
+    );
   });
 });

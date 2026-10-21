@@ -47,6 +47,12 @@ export const DECISION_QUESTIONS: readonly CheckQuestion[] = [
   ask(27, "am i ready to invest"),
   ask(28, "how much should i invest"),
   ask(29, "when should i start investing"),
+  ask(31, "should i get a hsa"),
+  ask(32, "is an hsa worth it"),
+  ask(33, "should i do a roth or traditional"),
+  ask(34, "roth vs traditional ira"),
+  ask(35, "can i retire at 62"),
+  ask(36, "am i ready to retire"),
   // A follow-up after any of them.
-  ask(30, "should i buy?", "dec-1"),
+  ask(37, "should i buy?", "dec-1"),
 ];

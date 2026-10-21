@@ -15,6 +15,16 @@ export const SINGLE_STOCK_SOURCE = "A planners' rule of thumb for a single holdi
 // basis points (Investment Company Institute, Trends in the Expenses and Fees of Funds).
 export const INDEX_FEE_BPS = 5;
 export const ACTIVE_FEE_BPS = 40;
+// Retiring: the yearly share of savings a person can usually draw, and how much smaller Social
+// Security is when taken at 62 against full retirement age at 67 (SSA).
+export const SAFE_DRAW_SHARE = 0.04;
+export const SAFE_DRAW_SOURCE = "The 4% rule of thumb from the Trinity study; FOR REVIEW";
+export const SS_AT_62_CUT = 0.3;
+export const MEDICARE_AGE = 65;
+// Roth or traditional: from this federal rate up, traditional's deduction usually wins; at or
+// below the low rate, Roth usually does.
+export const ROTH_LOW_RATE = 0.12;
+export const TRADITIONAL_HIGH_RATE = 0.24;
 // Starting share of pay to invest, once the gates are clear.
 export const START_SHARE = 0.05;
 
@@ -28,6 +38,9 @@ export const DECISION_KINDS = [
   "good_time",
   "sell",
   "start",
+  "hsa",
+  "roth_vs_traditional",
+  "retire_at",
 ] as const;
 export type DecisionKind = (typeof DECISION_KINDS)[number];
 

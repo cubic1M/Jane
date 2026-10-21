@@ -2,11 +2,17 @@ import {
   ACTIVE_FEE_BPS,
   HIGH_DEBT_APR_BPS,
   INDEX_FEE_BPS,
+  MEDICARE_AGE,
+  ROTH_LOW_RATE,
+  SAFE_DRAW_SHARE,
+  SS_AT_62_CUT,
+  TRADITIONAL_HIGH_RATE,
   SINGLE_STOCK_MAX_SHARE,
   SOON_GOAL_MONTHS,
   START_SHARE,
   type DecisionKind,
 } from "@/config/investing-decisions";
+import { HSA_LIMITS } from "@/config/hsa";
 import { RETURN_HIGH } from "@/config/market-assumptions";
 import { CRYPTO_SHARE_FLAG } from "@/config/crypto";
 import { formatCents } from "@/lib/money";
@@ -29,6 +35,15 @@ export type DecisionFacts = {
   soonGoal: { name: string; leftCents: number; months: number } | null;
   riskLabel: string | null;
   monthlyIncomeCents: number | null;
+  // Federal tax rate on the next dollar, when Jane knows it.
+  marginalRate: number | null;
+  hsaCents: number;
+  preTaxCents: number;
+  rothCents: number;
+  monthlySpendCents: number | null;
+  // The age asked about ("retire at 62"), from the question.
+  askedAge: number | null;
+  hasFamilyPlan: boolean;
 };
 
 const pct = (bps: number) => `${Math.round(bps / 10) / 10}%`;
@@ -164,6 +179,75 @@ export function decide(
         offerCrypto: false,
       };
     }
+    case "hsa": {
+      const limit = f.hasFamilyPlan ? HSA_LIMITS.familyCents : HSA_LIMITS.selfCents;
+      const saved = f.marginalRate !== null ? Math.round(limit * f.marginalRate) : null;
+      return {
+        sentences: [
+          f.hsaCents > 0
+            ? `You already have an HSA with ${formatCents(f.hsaCents)} in it, so the question is how much more to put in.`
+            : "Yes if your health plan is a high-deductible one that qualifies, because an HSA is the one account taxed lightly going in, growing and coming out for medical costs.",
+          saved !== null
+            ? `Filling it to the ${formatCents(limit)} limit would cut your federal tax by about ${formatCents(saved)} at your ${pct(Math.round(f.marginalRate! * 10_000))} rate.`
+            : `The yearly limit is ${formatCents(limit)}, and every dollar in comes off your taxable income.`,
+          "Check first that your plan qualifies, since you can only contribute with one that does.",
+        ],
+        offerCrypto: false,
+      };
+    }
+    case "roth_vs_traditional": {
+      const r = f.marginalRate;
+      const lean =
+        r === null
+          ? null
+          : r >= TRADITIONAL_HIGH_RATE
+            ? "traditional"
+            : r <= ROTH_LOW_RATE
+              ? "Roth"
+              : "a split";
+      return {
+        sentences: [
+          lean === null
+            ? "Roth pays off if your tax rate will be higher in retirement than now, and traditional if it will be lower."
+            : lean === "a split"
+              ? `At your ${pct(Math.round(r! * 10_000))} federal rate it's close, so a split between the two is a fair choice.`
+              : `At your ${pct(Math.round(r! * 10_000))} federal rate, ${lean} usually comes out ahead: ${lean === "traditional" ? "the deduction now is worth more than tax-free withdrawals later" : "paying tax now at a low rate beats paying more later"}.`,
+          f.preTaxCents + f.rothCents > 0
+            ? `You hold ${formatCents(f.preTaxCents)} before tax and ${formatCents(f.rothCents)} in Roth accounts, so ${f.rothCents < f.preTaxCents ? "more Roth would balance them" : "adding before-tax money would balance them"}.`
+            : "You don't have retirement accounts yet, so either one starts you off.",
+          "When you can't tell, splitting between both hedges the rate you'll face.",
+        ],
+        offerCrypto: false,
+      };
+    }
+    case "retire_at": {
+      const age = f.askedAge;
+      const have = f.preTaxCents + f.rothCents;
+      if (have === 0) {
+        return {
+          sentences: [
+            "I don't see retirement savings yet, so I can't show whether that age works.",
+            "Link your 401(k) or IRA and I'll compare what you hold with what you spend.",
+            "Social Security alone usually covers only part of a year's spending.",
+          ],
+          offerCrypto: false,
+        };
+      }
+      const draw = Math.round(have * SAFE_DRAW_SHARE);
+      const spend = f.monthlySpendCents !== null ? f.monthlySpendCents * 12 : null;
+      return {
+        sentences: [
+          spend !== null
+            ? `Your ${formatCents(have)} could pay about ${formatCents(draw)} a year at a ${Math.round(SAFE_DRAW_SHARE * 100)}% draw, against the ${formatCents(spend)} a year you spend now, so ${draw >= spend ? "it covers it before Social Security" : `you'd be short by about ${formatCents(spend - draw)} without it`}.`
+            : `Your ${formatCents(have)} could pay about ${formatCents(draw)} a year at a ${Math.round(SAFE_DRAW_SHARE * 100)}% draw.`,
+          age !== null && age < 67
+            ? `Social Security taken at ${Math.max(62, age)} is about ${Math.round(SS_AT_62_CUT * 100)}% smaller for life than waiting until 67${age < MEDICARE_AGE ? `, and health cover before Medicare at ${MEDICARE_AGE} is an extra cost` : ""}.`
+            : "Waiting for Social Security until 67 or later makes it bigger for life.",
+          "That is a rule of thumb from your current numbers and no more.",
+        ],
+        offerCrypto: false,
+      };
+    }
     case "start": {
       const monthly =
         f.monthlyIncomeCents !== null ? Math.round(f.monthlyIncomeCents * START_SHARE) : null;
@@ -198,12 +282,31 @@ function factsOnly(kind: DecisionKind, f: DecisionFacts, subject: string | null)
     );
   }
   if (f.investedCents > 0) seen.push(`you have ${formatCents(f.investedCents)} invested`);
+  if (kind === "hsa" && f.hsaCents > 0) seen.push(`your HSA holds ${formatCents(f.hsaCents)}`);
+  if (kind === "roth_vs_traditional" || kind === "retire_at") {
+    if (f.preTaxCents + f.rothCents > 0) {
+      seen.push(
+        `retirement accounts hold ${formatCents(f.preTaxCents)} before tax and ${formatCents(f.rothCents)} in Roth`,
+      );
+    }
+    if (f.marginalRate !== null && kind === "roth_vs_traditional") {
+      seen.push(
+        `your federal rate on the next dollar is ${pct(Math.round(f.marginalRate * 10_000))}`,
+      );
+    }
+  }
   const what =
     kind === "buy_crypto"
       ? "buy crypto"
-      : kind === "buy_stock"
-        ? `buy ${subject ?? "a stock"}`
-        : "make this call";
+      : kind === "hsa"
+        ? "get an HSA"
+        : kind === "roth_vs_traditional"
+          ? "choose Roth or traditional"
+          : kind === "retire_at"
+            ? "retire at that age"
+            : kind === "buy_stock"
+              ? `buy ${subject ?? "a stock"}`
+              : "make this call";
   return [
     `I can't tell you whether to ${what}, because I don't give recommendations on real accounts yet.`,
     seen.length > 0
