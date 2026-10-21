@@ -44,12 +44,12 @@ describe.runIf(url)("the brief during a first scan", { timeout: 120_000 }, () =>
   it("posts nothing before the scan's last run, then the brief", async () => {
     await client.janeMessage.deleteMany({ where: { userId } });
     await client.user.update({ where: { id: userId }, data: { firstScanDoneAt: null } });
-    expect(await runJaneAgent(userId, { client, now: NOW, trigger: "sync" })).toEqual({
+    expect(await runJaneAgent(userId, { client, now: NOW, trigger: "sync", early: true })).toEqual({
       posted: 0,
     });
     expect(await client.janeMessage.count({ where: { userId } })).toBe(0);
 
-    const last = await runJaneAgent(userId, { client, now: NOW, trigger: "sync", final: true });
+    const last = await runJaneAgent(userId, { client, now: NOW, trigger: "sync" });
     expect(last.posted).toBeGreaterThan(0);
     expect(
       await client.janeMessage.count({

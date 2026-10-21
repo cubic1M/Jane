@@ -639,7 +639,7 @@ export async function syncItem(
     await scanSuggestions(item.userId, { client, now }).catch((error) =>
       console.error("The first scan's suggestions failed", { error: String(error) }),
     );
-    await runJaneAgentSafely(item.userId, { client, now, trigger: "sync" });
+    await runJaneAgentSafely(item.userId, { client, now, trigger: "sync", early: true });
   }
   // After detection these don't depend on each other, so they run together; the sample
   // person's first screen is waiting on this sync.
@@ -659,7 +659,7 @@ export async function syncItem(
       }))(),
   ]);
   // Jane says what's new in the chat (spec step 82); a problem there never fails the sync.
-  await runJaneAgentSafely(item.userId, { client, now, trigger: "sync", final: true });
+  await runJaneAgentSafely(item.userId, { client, now, trigger: "sync" });
   await markScanDone(item.userId, { client, now });
   // The person's numbers for Claude, saved now so the chat reads them in one query instead of
   // looking every sector up while someone waits. Loaded here, not at the top: that file

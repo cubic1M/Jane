@@ -25,7 +25,8 @@ const STOCKS = /\b(?:stocks?|shares?|etfs?|index funds?|mutual funds?|bonds?)\b/
 const HOME = /\b(?:house|home|condo|apartment|property|townhouse)\b/;
 const CAR = /\b(?:car|truck|suv|vehicle|motorcycle)\b/;
 // Other sectors answer these (cover, tax, a particular loan): left to them.
-const OTHER_SECTOR = /\b(?:insurance|cover|warranty|tax\w*|refinanc\w*|mortgage)\b/;
+const OTHER_SECTOR =
+  /\b(?:insurance|cover|warranty|tax\w*|refinanc\w*|mortgage|life|term|disability|umbrella|renters?|annuit\w*|ira|roth|401\s?k|hsa|529)\b/;
 
 const PRICE = /\$\s?\d|\b\d[\d,.]*\s?(?:k|dollars|bucks|usd)\b/;
 const BARE = /^(?:so |ok |okay |and )?should i(?: buy| do it| buy it| go for it| get it)?$/;
