@@ -14,6 +14,7 @@ import { addGoal } from "@/lib/goals";
 import { loadTaxDocuments } from "@/lib/tax-documents";
 import { loadTaxEstimate, type TaxEstimateView } from "@/lib/tax-estimate";
 import { totals } from "@/planning/crypto-tax";
+import { defaultTaxYear } from "@/planning/tax-pack";
 import { assumedRsuGap, rsuVest, worthSettingAside, type RsuResult } from "@/planning/equity-tax";
 import { estimateTaxes } from "@/planning/tax-estimate";
 
@@ -70,16 +71,29 @@ export async function loadEquityTax(
     loaded,
   }: Options & { loaded?: { estimate: TaxEstimateView; advice: boolean } } = {},
 ): Promise<EquityTaxView> {
-  const [estimate, advice] = loaded
-    ? [loaded.estimate, loaded.advice]
-    : await Promise.all([loadTaxEstimate(userId, { client, now }), adviceMode(userId, { client })]);
-  const year = estimate.year;
+  // The year the estimate will use is known without it, so what depends only on the year runs
+  // together with the estimate instead of after it (each step is a trip to the database).
+  const guess = defaultTaxYear(now.toISOString().slice(0, 10));
   const db = scopedFor(userId, client);
-  const [income, docs, goal] = await Promise.all([
-    loadEquityIncome(userId, year, { client, now }),
-    loadTaxDocuments(userId, year, { client, now }),
-    db.savingsGoals.count({ where: { name: setAsideGoalName(year) } }),
+  const [estimate, advice, guessedIncome, guessedGoal] = await Promise.all([
+    loaded ? loaded.estimate : loadTaxEstimate(userId, { client, now }),
+    loaded ? loaded.advice : adviceMode(userId, { client }),
+    loadEquityIncome(userId, guess, { client, now }),
+    db.savingsGoals.count({ where: { name: setAsideGoalName(guess) } }),
   ]);
+  const year = estimate.year;
+  const [income, goal] =
+    year === guess
+      ? [guessedIncome, guessedGoal]
+      : await Promise.all([
+          loadEquityIncome(userId, year, { client, now }),
+          db.savingsGoals.count({ where: { name: setAsideGoalName(year) } }),
+        ]);
+  // The tax documents are looked up only to check a 1099-DA, so only when an exchange sold.
+  const docs =
+    income.crypto.exchangesSold.length > 0
+      ? await loadTaxDocuments(userId, year, { client, now })
+      : { forms: [] as Awaited<ReturnType<typeof loadTaxDocuments>>["forms"] };
   const cryptoYear = totals(income.crypto.yearSales);
   const unrealised = income.crypto.holdings.reduce(
     (a, h) => ({

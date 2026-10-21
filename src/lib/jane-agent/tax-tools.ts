@@ -182,7 +182,7 @@ export const TAX_TOOLS: Anthropic.Tool[] = [
   {
     name: "tax_equity",
     description:
-      "The tax on the person's crypto and equity pay for the tax year: crypto sold (proceeds, cost by lot, short- and long-term gain), what they hold and its unrealised gain, the 1099-DA from an exchange that sold; ESPP sales and whether each was qualifying or a disqualifying disposition that lost its special treatment; ISOs exercised and the alternative minimum tax; RSU vests with the tax withheld against their real rate and the shortfall; and in demo advice mode how much to set aside and whether a goal exists. Holding-period and AMT rules are in config with sources. For RSUs, rsuAnswer is the finished statement of the withholding gap: say it, don't work it out.",
+      "The tax on the person's crypto and equity pay for the tax year: crypto sold (proceeds, cost by lot, short- and long-term gain), what they hold and its unrealised gain, the 1099-DA from an exchange that sold; ESPP sales and whether each was qualifying or a disqualifying disposition that lost its special treatment; ISOs exercised and the alternative minimum tax; RSU vests with the tax withheld against their real rate and the shortfall; and in demo advice mode how much to set aside and whether a goal exists. Holding-period and AMT rules are in config with sources. For RSUs, rsuAnswer is the finished statement of the withholding gap: say it in 2–3 sentences, don't work it out and don't list every detail.",
     input_schema: noInput,
   },
   {
