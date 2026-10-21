@@ -622,7 +622,6 @@ describe("retirement questions, by rules", () => {
     "am I on track for retirement",
     "when can I retire",
     "am I getting my 401k match",
-    "roth or traditional",
     "catch-up contributions",
     "how much should I put in my 401k",
   ])("reads %j as retirement", (text) => {

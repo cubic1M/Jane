@@ -18,7 +18,12 @@ export function decisionReply(
   facts: DecisionFacts,
   subject: string | null,
 ): Reply {
-  const { sentences, offerCrypto } = decide(kind, facts, subject);
+  const asked = kind === "retire_at" && subject ? Number(subject) : null;
+  const { sentences, offerCrypto } = decide(
+    kind,
+    { ...facts, askedAge: Number.isFinite(asked) ? asked : null },
+    subject,
+  );
   return {
     body: sentences.join(" "),
     actions: [
