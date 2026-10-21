@@ -2,6 +2,7 @@ import type { Intent } from "../intents";
 import type { ActionId } from "../types";
 import { charge, lastMonth, spentOn, thisMonth, type Facts } from "./facts";
 import { MORE_ROWS } from "./bank-more";
+import { TAX_QUESTIONS } from "./bank-taxes";
 
 // Jane's answer checks (spec step 87): about 100 things people really type, over the demo
 // bank, each with what a good answer has. "rules" questions must be answered without
@@ -1467,7 +1468,7 @@ const BASE_QUESTIONS: readonly CheckQuestion[] = [
     id: "tax-15",
     text: "should I itemize",
     needs: "rules",
-    expect: { intent: "tax", mentions: /\$16,100/ },
+    expect: { intent: "decision", mentions: /\$16,100/ },
   },
   // Phase AF (spec steps 165–173).
   {
@@ -1555,7 +1556,7 @@ const BASE_QUESTIONS: readonly CheckQuestion[] = [
     id: "tax-29",
     text: "is my property tax too high",
     needs: "rules",
-    expect: { intent: "tax", mentions: /assessed at/, list: true },
+    expect: { intent: "tax", mentions: /assessed at/i, list: true },
   },
   {
     id: "tax-30",
@@ -2564,7 +2565,11 @@ const MORE_QUESTIONS: readonly CheckQuestion[] = MORE_ROWS.map(
   }),
 );
 
-export const QUESTIONS: readonly CheckQuestion[] = [...BASE_QUESTIONS, ...MORE_QUESTIONS];
+export const QUESTIONS: readonly CheckQuestion[] = [
+  ...BASE_QUESTIONS,
+  ...MORE_QUESTIONS,
+  ...TAX_QUESTIONS,
+];
 
 // Spec step 189: the sector a question belongs to: its own, or for the older ones the start
 // of its id.

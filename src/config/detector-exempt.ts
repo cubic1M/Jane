@@ -26,6 +26,8 @@ export const DETECTOR_EXEMPT: Readonly<Record<string, string>> = {
 // never suggest by themselves, and why (spec step 254). Every other tool is covered by a
 // detector (`covers` on src/detectors) or is on the shrinking list in src/detectors/missing.ts.
 export const TOOL_EXEMPT: Readonly<Record<string, string>> = {
+  tax_decide:
+    "answers a tax question the person asks, from the same numbers the detectors use; it suggests nothing by itself",
   debt_decision:
     "answers a question the person asks (pay a card or invest, consolidate, close a card), built from the same numbers the debt detectors already read; each answer's own detector (card_interest, balance_transfer, student_repayment) brings the idea up unasked",
   calculate:
