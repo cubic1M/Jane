@@ -314,7 +314,7 @@ export async function decideTax(
           ? ` ${state.code}: ${state.refundCents >= 0 ? `a refund of ${roundDollars(state.refundCents)}` : `owing ${roundDollars(-state.refundCents)}`}.`
           : "";
       return made(
-        `Federal: ${fed >= 0 ? `you're on course for a refund of ${roundDollars(fed)}` : `you're on course to owe ${roundDollars(-fed)}`}.${stateLine} That's from your income so far, projected to the end of the year.`,
+        `Federal: ${fed >= 0 ? `you're on course for a refund of ${roundDollars(fed)}` : `you're on course to owe ${roundDollars(-fed)}`}.${stateLine} That's an estimate from your income so far, projected to the end of the year.`,
         [fed, state?.refundCents ?? 0],
       );
     }

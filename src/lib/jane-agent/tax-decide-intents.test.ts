@@ -33,3 +33,18 @@ describe("tax decision intents", () => {
     },
   );
 });
+
+describe("tax decisions through the decision router", () => {
+  it("reads the sector's subject, and hands the words after 'should I' back to the tax rules", async () => {
+    const { parseDecision } = await import("./decision-intents");
+    for (const [q, topic] of [
+      ["should I do a Roth conversion this year", "roth_conversion"],
+      ["should I itemize or take the standard deduction", "itemize"],
+      ["should I adjust my withholding", "withholding"],
+    ] as const) {
+      const d = parseDecision(q.toLowerCase());
+      expect(d, q).toMatchObject({ kind: "decision", item: "tax" });
+      expect(parseTaxIntent(`should i ${d!.label}`), q).toMatchObject({ ask: "decide", topic });
+    }
+  });
+});

@@ -12,5 +12,9 @@
 export const SECTOR_DECISIONS: readonly { item: string; pattern: RegExp }[] = [
   // insurance: { item: "insurance", pattern: /\b(?:life|renters|umbrella|disability) insurance\b/ },
   // loans: { item: "loan", pattern: /\b(?:refinanc\w*|consolidat\w*)\b/ },
-  // taxes: { item: "tax", pattern: /\b(?:roth|hsa|itemiz\w*|standard deduction)\b/ },
+  {
+    item: "tax",
+    pattern:
+      /\b(?:roth conversion|itemi[sz]\w*|standard deduction|withholding|estimated tax\w*|quarterly|harvest\w*|home office|appeal\b.*\bproperty|donate\b.*\b(?:stock|shares)|max\w*(?: out)?\b.*\b401|(?:open|get|start|use|have) (?:an? )?hsa|traditional\b.*\broth|roth\b.*\btraditional|sell\b.*\b(?:losing|loss))/,
+  },
 ];

@@ -7,7 +7,7 @@ import { investingAnswer } from "./investing";
 import { janeAnswer } from "./jane";
 import { moneyAnswer } from "./money";
 import type { Capability } from "./shared";
-import { taxAnswer } from "./tax";
+import { taxAnswer, taxDecide } from "./tax";
 
 // Every capability of Jane's chat in one place (spec step 190): what she answers, the tools
 // Claude has for it and the bank questions that test it. Each sector's intents, replies and
@@ -206,6 +206,8 @@ export const CAPABILITIES: readonly Capability[] = [
       "tax_decide",
     ],
     answer: taxAnswer,
+    decides: ["tax"],
+    decide: taxDecide,
   },
   {
     id: "investing",

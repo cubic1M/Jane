@@ -15,7 +15,7 @@ const decide = (
   id,
   text,
   needs: "rules",
-  expect: { intent: "tax", mentions, maxChars: SHORT, ...extra },
+  expect: { intent: "decision", mentions, maxChars: SHORT, ...extra },
   sector: "taxes",
   page: "/taxes",
   tool: "tax_decide",
@@ -27,7 +27,7 @@ const fact = (
   mentions: RegExp,
   extra: Partial<CheckQuestion["expect"]> = {},
 ) => ({
-  ...decide(id, text, mentions, extra),
+  ...decide(id, text, mentions, { intent: "tax", ...extra }),
   profile: "standard" as const,
 });
 const later = (id: string, text: string, after?: string): CheckQuestion => ({
@@ -51,11 +51,11 @@ export const TAX_QUESTIONS: readonly CheckQuestion[] = [
   ),
   decide("taxq-02", "should I do a Roth conversion this year", /bracket/),
   decide("taxq-03", "should I adjust my withholding", /W-4|withholding|paycheck/),
-  decide("taxq-04", "do I need to pay estimated taxes", /^No\./),
+  decide("taxq-04", "do I need to pay estimated taxes", /^No\./, { intent: "tax" }),
   decide("taxq-05", "should I max out my 401k to lower my taxes", /401\(k\)/),
   decide("taxq-06", "should I contribute to a traditional IRA or a Roth IRA", /IRA/),
   decide("taxq-07", "should I open an HSA", /high-deductible/),
-  decide("taxq-08", "is it worth appealing my property tax", /assessed/),
+  decide("taxq-08", "is it worth appealing my property tax", /assessed/, { intent: "tax" }),
   decide("taxq-09", "should I sell my losing stocks for the tax loss", /below cost|loss/),
   decide("taxq-10", "should I donate stock instead of cash", /standard deduction|shares/),
   decide("taxq-11", "should I take the home office deduction", /employee|square/),
@@ -74,7 +74,7 @@ export const TAX_QUESTIONS: readonly CheckQuestion[] = [
   // What was already answered well, kept as must-pass.
   fact("taxq-23", "what's my tax bracket", /22%/),
   fact("taxq-24", "when are my taxes due", /April 15/),
-  fact("taxq-25", "what's the standard deduction", /16,100/),
+  fact("taxq-25", "what's the standard deduction", /16,100/, { intent: "learn" }),
   fact("taxq-26", "do I owe state taxes", /California/, { list: true, maxChars: 700 }),
   fact("taxq-27", "what tax forms am I waiting for", /W-2/, { list: true, maxChars: 700 }),
   // Waiting for the decision tool (follow-ups) and the S corporation step.

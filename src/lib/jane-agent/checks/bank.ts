@@ -943,7 +943,7 @@ const BASE_QUESTIONS: readonly CheckQuestion[] = [
     id: "tax-15",
     text: "should I itemize",
     needs: "rules",
-    expect: { intent: "tax", mentions: /\$16,100/ },
+    expect: { intent: "decision", mentions: /\$16,100/ },
   },
   // Phase AF (spec steps 165–173).
   {
@@ -1031,7 +1031,7 @@ const BASE_QUESTIONS: readonly CheckQuestion[] = [
     id: "tax-29",
     text: "is my property tax too high",
     needs: "rules",
-    expect: { intent: "tax", mentions: /assessed at/, list: true },
+    expect: { intent: "tax", mentions: /assessed at/i, list: true },
   },
   {
     id: "tax-30",

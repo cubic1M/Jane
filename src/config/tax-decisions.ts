@@ -57,3 +57,11 @@ export const DEBT_FIRST_APR_BPS = 1500;
 export const SAVING_DECISIONS: readonly DecisionTopic[] = ["k401", "ira", "hsa", "donate_stock"];
 // ...and only when more than the cash on hand is carried on it (and at least this much), so a card paid off each month does not count.
 export const DEBT_FIRST_MIN_CENTS = 100_000;
+
+// How sure Jane says she is of a tax decision answer (shown by the decision router as
+// "N% sure: reason."): the figures come from the person's own pay stubs and accounts, but the
+// choice depends on things only they know. ESTIMATE TO VERIFY.
+export const DECISION_CONFIDENCE = {
+  percent: 75,
+  reason: "from your pay stubs and the 2026 tax rules",
+};
