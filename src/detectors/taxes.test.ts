@@ -261,3 +261,28 @@ describe("the rest of the tax tools find their people", () => {
     ).not.toContain("file_return");
   });
 });
+
+describe("a shop's retirement limit comes from profit, not sales", () => {
+  it("assumes the same profit share as the estimated tax and lowers the percentage", () => {
+    const retire = (pattern: string) => {
+      const data = inputFor("freelancer");
+      const told = { ...data, told: { ...data.told, income_pattern: pattern } };
+      return runDetectors({ profile: buildProfile(told), data: told }, undefined).find(
+        (s) => s.topic === "retirement_self_employed",
+      );
+    };
+    const sales = retire("business");
+    const paid = retire("uneven");
+    if (!sales || !paid) throw new Error("both people should get the suggestion");
+    expect(sales.worthCents).toBe(
+      Math.round(
+        (paid.worthCents / DETECTOR_RATES.selfRetireTaxRate) *
+          DETECTOR_RATES.tax.businessProfitShare *
+          DETECTOR_RATES.selfRetireTaxRate,
+      ),
+    );
+    expect(sales.worthCents).toBeLessThan(paid.worthCents);
+    expect(sales.why).toContain("profit, after business costs");
+    expect(sales.confidence.percent).toBeLessThanOrEqual(60);
+  });
+});
