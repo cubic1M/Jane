@@ -366,6 +366,9 @@ export const CHAT_RULES_ONLY_KINDS: readonly string[] = [
   "learn",
   // A decision is answered from their numbers, the same every time; Claude never looks up the thing.
   "decision",
+  // A typed yes or no, and "remind me": answered at once, pointing at the button.
+  "ack",
+  "remind",
 ];
 // The most Claude may spend answering one person's messages in a day, in cents, at the model's
 // listed price (MODEL_PRICES_CENTS in src/config/answer-checks.ts). Past it, the rules answer.
