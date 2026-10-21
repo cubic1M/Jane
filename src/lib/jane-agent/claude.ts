@@ -81,6 +81,7 @@ How to answer:
 - Use only dollar amounts that appear in those numbers or in tool results, written exactly as they appear there (with the cents). Don't add, subtract, round or estimate amounts yourself.
 - Keep it short: a few sentences or a short list. Plain words, no jargon, no headings. Don't write anything before a lookup; just look it up.
 - You can't do anything yourself. When something can be done (cancel or lower something the app found, approve the plan, start a goal), call propose_action once so they get a button, and say what tapping it does. Never say it's done.
+- Write your answer first, then call propose_action or show_block at the very end of that same turn if a button or a picture helps: the answer you wrote is the answer.
 - Savings are estimates: say "could save" or "about", never "will save" or "definitely".
 ${NO_ADVICE}
 - To "hi" or "thanks", answer in a sentence and mention one useful thing from their numbers.
@@ -482,11 +483,25 @@ async function askClaude(
       },
       { client, now },
     );
+    // The answer was written and only a button or a picture was asked for after it: that text
+    // IS the answer, so there is no extra round just to be told "noted".
+    const writtenText = response.content
+      .flatMap((b) => (b.type === "text" ? [b.text] : []))
+      .join("\n")
+      .trim();
+    const decorationOnly =
+      response.stop_reason === "tool_use" &&
+      writtenText.length > 0 &&
+      response.content.every(
+        (b) => b.type !== "tool_use" || b.name === "propose_action" || b.name === "show_block",
+      );
     if (response.stop_reason === "tool_use") {
-      // Any text so far led into the lookup; the answer comes after it.
-      draft.reset();
-      onEvent({ type: "reset" });
-      messages.push({ role: "assistant", content: response.content });
+      if (!decorationOnly) {
+        // Any text so far led into the lookup; the answer comes after it.
+        draft.reset();
+        onEvent({ type: "reset" });
+        messages.push({ role: "assistant", content: response.content });
+      }
       const results: Anthropic.ToolResultBlockParam[] = [];
       for (const block of response.content) {
         if (block.type !== "tool_use") continue;
@@ -542,11 +557,15 @@ async function askClaude(
         allowedCents.push(...output.cents, ...dollarFigures(output.content).map((f) => f.cents));
         results.push({ type: "tool_result", tool_use_id: block.id, content: output.content });
       }
-      messages.push({ role: "user", content: results });
-      continue;
+      if (!decorationOnly) {
+        messages.push({ role: "user", content: results });
+        continue;
+      }
     }
 
-    if (response.stop_reason !== "end_turn") return fail(`stop_${response.stop_reason}`);
+    if (response.stop_reason !== "end_turn" && !decorationOnly) {
+      return fail(`stop_${response.stop_reason}`);
+    }
     draft.finish();
     const text = response.content
       .flatMap((b) => (b.type === "text" ? [b.text] : []))

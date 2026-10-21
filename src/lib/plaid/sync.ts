@@ -1,4 +1,5 @@
 import type { Holding, InvestmentTransaction, PlaidApi, TransactionStream } from "plaid";
+import { scrub } from "@/lib/scrub";
 import { categorizeTransactions } from "@/categorize/categorize";
 import { normalizeLiabilities } from "@/data-sources/plaid/liabilities";
 import {
@@ -664,7 +665,10 @@ export async function syncItem(
   }
   // After detection these don't depend on each other, so they run together; the sample
   // person's first screen is waiting on this sync.
-  await Promise.all([
+  // None of it may stop the rest: a failure in one sector's work (a slow database, a partner
+  // that errors) used to end the sync here, so Jane's last words and the end of the scan never
+  // came and a new person's chat said "still going through your accounts" for good.
+  const sectors = await Promise.allSettled([
     // New charges may show that a switch went through (spec step 77).
     confirmSwitches({ client, now, userId: item.userId }),
     // Spec step 105: an insurance switch whose first payment went through.
@@ -679,6 +683,13 @@ export async function syncItem(
         client,
       }))(),
   ]);
+  for (const result of sectors) {
+    if (result.status === "rejected") {
+      console.error("A sector's work after the sync failed", {
+        error: scrub(String(result.reason)),
+      });
+    }
+  }
   timing.mark("sectors");
   // Jane says what's new in the chat (spec step 82); a problem there never fails the sync.
   await runJaneAgentSafely(item.userId, { client, now, trigger: "sync" });
