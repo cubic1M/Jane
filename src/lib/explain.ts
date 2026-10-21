@@ -13,7 +13,7 @@ import { checkGuardrails, type GuardrailIssue } from "./guardrails";
 // Anything that goes wrong (no key, a refusal, malformed JSON, a guardrail failure) falls
 // back to the template text for the finding's type.
 
-export const EXPLAIN_PROMPT_VERSION = "explain-v1";
+export const EXPLAIN_PROMPT_VERSION = "explain-v2";
 
 const MAX_TITLE = 80;
 const MAX_EXPLANATION = 320;
@@ -32,6 +32,7 @@ Write for someone who isn't a finance expert: short, warm, specific, no jargon.
 Rules:
 - Use only dollar amounts that appear in the input, written exactly as they appear there. Don't calculate new amounts.
 - Savings are estimates: say "could save" or "about". Never promise or guarantee a result.
+- When a bill is above what is typical, say it is above "the typical price" (use those exact words), never that it is too high or overcharged.
 - Never mention investing, stocks, funds, bonds, crypto, retirement accounts, taxes, or legal matters. A savings account is the only place to suggest for extra cash.`;
 
 const SCHEMA = {
