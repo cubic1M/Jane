@@ -180,6 +180,26 @@ describe("askClaudeInChat", () => {
     expect(JSON.stringify(last)).not.toContain("tool_use");
   });
 
+  it("offers a finding's button from the saved snapshot, never a fresh 10-second build", async () => {
+    const stored = {
+      at: new Date(NOW.getTime() - 60_000).toISOString(),
+      snapshot,
+    };
+    const withStored = {
+      janePreference: { findUnique: vi.fn().mockResolvedValue({ value: stored }) },
+    } as unknown as PrismaClient;
+    vi.mocked(loadSnapshot).mockClear();
+    const started = Date.now();
+    const result = await proposeAction(
+      "u1",
+      { action: "finding.yes", finding_id: "f1" },
+      { client: withStored, now: NOW },
+    );
+    expect(result.ok).toBe(true);
+    expect(loadSnapshot).not.toHaveBeenCalled();
+    expect(Date.now() - started).toBeLessThan(500);
+  });
+
   it("puts a proposed finding's Yes and No under the answer, without acting", async () => {
     create
       .mockResolvedValueOnce(toolUse("propose_action", { action: "finding.yes", finding_id: "f1" }))
