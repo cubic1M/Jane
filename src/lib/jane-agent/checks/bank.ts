@@ -2256,7 +2256,10 @@ const MORE_QUESTIONS: readonly CheckQuestion[] = MORE_ROWS.map(
     id: `more-${String(index + 1).padStart(3, "0")}`,
     text,
     needs: "claude",
-    expect: sector === "edge" ? { avoid: ADVICE } : {},
+    expect: {
+      ...(sector === "edge" ? { avoid: ADVICE } : {}),
+      ...(tool === "propose_action" ? {} : { noButtons: true }),
+    },
     sector,
     page,
     tool,
