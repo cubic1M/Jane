@@ -13,7 +13,7 @@ import { suggestionsSource } from "@/lib/jane-agent/sources/suggestions";
 import { loadSnapshot } from "@/lib/jane-agent/snapshot";
 import { syncItem } from "@/lib/plaid/sync";
 import { startTrial } from "@/lib/trial";
-import { answerSuggestion, offeredToday, scanSuggestions } from "./suggestions";
+import { answerSuggestion, explainSuggestion, offeredToday, scanSuggestions } from "./suggestions";
 
 // Runs against a real, migrated Postgres (see src/detection/engine.integration.test.ts).
 const url = process.env.TEST_DATABASE_URL;
@@ -68,6 +68,24 @@ describe.runIf(url)("the nightly scan of suggestions", { timeout: 120_000 }, () 
     const next = await offeredToday(userId, { client, now: TOMORROW });
     expect(next.length).toBeGreaterThan(0);
     expect(next.map((o) => o.key).filter((k) => first.some((f) => f.key === k))).toEqual([]);
+  });
+
+  it("shows the short card, and the whole explanation behind Why?", async () => {
+    const userId = made.get("renter")!;
+    const [top] = await offeredToday(userId, { client, now: NOW });
+    expect(top.headline.length).toBeLessThanOrEqual(60);
+    expect(top.short.length).toBeLessThanOrEqual(120);
+    const snapshot = await loadSnapshot(userId, { client, now: NOW });
+    const [message] = suggestionsSource
+      .gather(snapshot!, { now: NOW } as never)
+      .filter((m) => m.refs.suggestion === top.key);
+    // The card is short: headline, why you, how sure. Not the long title and why.
+    expect(message.body.split("\n")).toHaveLength(3);
+    expect(message.body).toContain(top.headline.replace(/[.!?]+$/, ""));
+    expect(message.body).not.toContain(top.why);
+    const whole = await explainSuggestion(userId, top.key, { client });
+    expect(whole).toContain(top.why.replace(/[.!?]+$/, ""));
+    expect(whole).toContain(`${top.confidencePercent}% sure, based on ${top.confidenceReason}.`);
   });
 
   it("never offers a no again, and the source says how sure Jane is", async () => {
