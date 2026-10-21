@@ -76,18 +76,8 @@ describe.runIf(url)("a follow-up right after a card", () => {
       client,
       now: NOW,
       primerMs: 60_000,
+      // The card is fetched before Claude writes: one round, in words.
       claude: fake([
-        {
-          stop: "tool_use",
-          content: [
-            {
-              type: "tool_use",
-              id: "t1",
-              name: "propose_action",
-              input: { action: "insurance.reshop", policy_kind: "car" },
-            },
-          ],
-        },
         { stop: "end_turn", content: [{ type: "text", text: "Yes, I can switch it for you." }] },
       ]),
     });
