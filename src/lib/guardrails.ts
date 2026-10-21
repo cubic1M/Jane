@@ -55,13 +55,19 @@ const TAX = [
   // cover on an insurance policy is a kind of cover, so it's allowed (spec step 102).
   /(?<!(?:injury|damage|personal) )\bliab(le|ility)\b(?! (?:cover|coverage|insurance|limits?|only)\b)(?!, per\b)/i,
 ];
-// Spec step 93: narrowed where they blocked good answers: a food court is a place to eat,
-// and Sue is a name; suing someone is still blocked.
+// Legal ADVICE, meaning directives and claims about the law: suing, going to court, a case
+// the person could win, what they are legally entitled to. Mentioning a lawyer or an attorney,
+// or the word "legal" on its own ("legal deductions", "the legal side"), is the opposite of
+// advice, so it is not here (spec step 93 narrowed this too: a food court is a place to eat).
 const LEGAL = [
-  /\blegal(ly)?\b/i,
-  /\b(lawyer|attorney|lawsuit|litigation)s?\b/i,
-  /(?<!food )\bcourts?\b/i,
   /\bsue (?:them|him|her|you|it|the|a|an|for|over)\b|\bsu(?:ed|ing)\b/i,
+  /\blegal (?:grounds|action|claim|case|recourse|remedy|remedies)\b/i,
+  /\blegally (?:required|obligated|bound|entitled|allowed to|can)\b/i,
+  /\b(?:take|took|taken|drag|dragged) (?:you |them |him |her |it |the \w+ )?to (?:small claims )?court\b/i,
+  /\bfile (?:for (?:probate|divorce|custody)|(?:in|with) (?:the |a )?court)\b/i,
+  /\b(?:don(?:'|’)?t|do not|doesn(?:'|’)?t|no) need (?:a |an )?(?:lawyer|attorney)\b/i,
+  /\b(?:file|filed|filing|bring|start|pursue|threaten)\w* (?:a |the )?(?:lawsuit|litigation|suit)\b/i,
+  /\b(?:win|lose) (?:the |a |your )?(?:case|lawsuit|suit)\b/i,
   // Spec step 229: what to do about bankruptcy or settlement is legal advice. The facts
   // Jane gives about them are fixed sentences (src/config/debt-trouble.ts) that pass below.
   /\bbankruptcy\b/i,
