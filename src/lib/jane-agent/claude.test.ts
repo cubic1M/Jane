@@ -163,6 +163,23 @@ describe("askClaudeInChat", () => {
     expect(sent.length).toBeLessThan(CHAT_TOOLS.length / 2);
   });
 
+  it("writes the answer again in words when the last one was only about a button", async () => {
+    create
+      .mockResolvedValueOnce(toolUse("propose_action", { action: "open", page: "plan" }))
+      .mockResolvedValueOnce(final("I've put a link to the plan under this answer."))
+      .mockResolvedValueOnce(
+        final("You have two cards: one is the one to pay off first, then the other."),
+      );
+    const before = create.mock.calls.length;
+    const result = await askClaudeInChat("u1", [], "do i have any loans or debts", options);
+    expect(result.kind).toBe("answer");
+    expect(result.reply.body).toMatch(/two cards/);
+    expect(create.mock.calls.length - before).toBe(3);
+    // The rewrite request is text only: no tool_use without its tool_result.
+    const last = create.mock.calls[create.mock.calls.length - 1][0].messages.at(-2);
+    expect(JSON.stringify(last)).not.toContain("tool_use");
+  });
+
   it("offers a finding's button from the saved snapshot, never a fresh 10-second build", async () => {
     const stored = {
       at: new Date(NOW.getTime() - 60_000).toISOString(),
@@ -206,7 +223,7 @@ describe("askClaudeInChat", () => {
     // Jane's own wording for the finding follows Claude's text.
     expect(result.reply.body).toMatch(/\n\nReview your Hulu subscription\. Could save about/);
     expect(lastToolResult(1)).toMatchObject({
-      content: "Noted.",
+      content: expect.stringContaining("The button is ready"),
     });
   });
 
@@ -717,11 +734,13 @@ describe("speed and failures", () => {
       expect(withoutButtonTalk(talk), talk).toBe("");
     }
     // Only button talk, even with a sentence about what the page shows: no answer at all.
-    create.mockResolvedValueOnce(
-      final(
-        "I've put a link to your debt plan under this answer. It shows how to pay off your cards, highest interest first.",
-      ),
-    );
+    for (let i = 0; i < 2; i += 1) {
+      create.mockResolvedValueOnce(
+        final(
+          "I've put a link to your debt plan under this answer. It shows how to pay off your cards, highest interest first.",
+        ),
+      );
+    }
     const info = vi.spyOn(console, "info").mockImplementation(() => {});
     expect((await askClaudeInChat("u1", [], "should i buy bitcoin", options)).kind).toBe(
       "unavailable",

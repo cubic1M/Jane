@@ -12,7 +12,13 @@ import { sendMessage, type SendState } from "./send";
 // action sends it instead. Its scroll margin is as tall as the phone tab bar, so the bar
 // never covers it.
 
-type Draft = { question: string; status: string | null; answer: string };
+type Draft = {
+  question: string;
+  // The ids of the messages on the page when it was typed.
+  before: Set<string>;
+  status: string | null;
+  answer: string;
+};
 
 type StreamLine =
   | { type: "status"; text: string }
@@ -23,7 +29,17 @@ type StreamLine =
 
 const FAILED = "Something went wrong. Try again.";
 
-export function ChatComposer({ id, maxLength }: { id: string; maxLength: number }) {
+export function ChatComposer({
+  id,
+  maxLength,
+  typed = [],
+}: {
+  id: string;
+  maxLength: number;
+  // The person's own messages on the page, so a typed question that is already stored there
+  // (a refresh while Jane writes her answer) isn't shown a second time.
+  typed?: { id: string; body: string }[];
+}) {
   const [state, action, actionPending] = useActionState<SendState, FormData>(sendMessage, {
     error: null,
     sentAt: 0,
@@ -68,7 +84,7 @@ export function ChatComposer({ id, maxLength }: { id: string; maxLength: number 
     setError(null);
     setHeard("");
     sent.current = true;
-    setDraft({ question, status: null, answer: "" });
+    setDraft({ question, before: new Set(typed.map((m) => m.id)), status: null, answer: "" });
     form.current?.reset();
 
     const fail = (text: string) => {
@@ -133,12 +149,14 @@ export function ChatComposer({ id, maxLength }: { id: string; maxLength: number 
     <>
       {draft && (
         <div aria-label="Sending" className="flex flex-col gap-4">
-          <div className="flex flex-col items-end gap-1 self-end sm:max-w-[80%]">
-            <span className="text-xs text-zinc-500">You</span>
-            <p className="bg-emerald-700 px-3 py-2 whitespace-pre-line text-white [overflow-wrap:anywhere]">
-              {draft.question}
-            </p>
-          </div>
+          {!typed.some((m) => !draft.before.has(m.id) && m.body === draft.question) && (
+            <div className="flex flex-col items-end gap-1 self-end sm:max-w-[80%]">
+              <span className="text-xs text-zinc-500">You</span>
+              <p className="bg-emerald-700 px-3 py-2 whitespace-pre-line text-white [overflow-wrap:anywhere]">
+                {draft.question}
+              </p>
+            </div>
+          )}
           <div className="flex w-full max-w-full flex-col gap-2 self-start border border-zinc-300 p-3 sm:max-w-[85%] dark:border-zinc-700">
             <p className="text-xs text-zinc-500">
               <span className="font-semibold text-emerald-700">jane&gt;</span> answer
