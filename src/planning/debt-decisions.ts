@@ -44,6 +44,15 @@ export type DecisionInput = {
   } | null;
   // The next payday, for a payday loan question.
   nextPayday: { date: string; days: number } | null;
+  // Checking over the next month, day by day, with the bills and installments in it; and the
+  // cash in savings that could cover a dip.
+  forecast?: {
+    firstNegative: { date: string; balanceCents: number } | null;
+    lowest: { date: string; balanceCents: number } | null;
+    savingsCents: number;
+  } | null;
+  // Buy now, pay later plans the person has, and what they pay a month on them.
+  bnpl?: { plans: number; monthlyCents: number } | null;
 };
 
 export type DecisionId =
@@ -54,7 +63,9 @@ export type DecisionId =
   | "payoff_hurts"
   | "personal_loan"
   | "payday_loan"
-  | "student_early";
+  | "student_early"
+  | "overdraft"
+  | "bnpl";
 
 export type Decision = {
   id: DecisionId;
@@ -146,7 +157,7 @@ export function consolidate(i: DecisionInput): Decision {
         "I don't see an offer that beats your current rates once its fees are counted.",
         ...(i.advice ? ["Paying the highest-rate card first is the cheaper move for now."] : []),
       ],
-      href: "/loans/transfers",
+      href: "/loans/refinance",
       advice: i.advice,
     };
   }
@@ -159,7 +170,7 @@ export function consolidate(i: DecisionInput): Decision {
         ? ["It's worth it only if you stop adding to the cards afterward; I'd do it."]
         : ["That's the math; what to do with it is yours to decide."]),
     ],
-    href: "/loans/transfers",
+    href: "/loans/refinance",
     advice: i.advice,
   };
 }
@@ -363,6 +374,76 @@ export function studentEarly(i: DecisionInput): Decision {
   };
 }
 
+// "Will I overdraft this month?" From the day-by-day checking forecast.
+export function overdraft(i: DecisionInput): Decision {
+  const f = i.forecast;
+  if (!f?.lowest) {
+    return {
+      id: "overdraft",
+      sentences: [
+        "I can't see a checking account to forecast, so I can't say if you'll overdraft.",
+      ],
+      href: "/loans/tight",
+      advice: false,
+    };
+  }
+  if (!f.firstNegative) {
+    return {
+      id: "overdraft",
+      sentences: [
+        `No: your checking stays above zero for the next month, dipping lowest to ${formatCents(f.lowest.balanceCents)} on ${f.lowest.date}.`,
+        ...(i.nextPayday
+          ? [
+              `That's with your bills and installments counted, and your next payday is ${i.nextPayday.date}.`,
+            ]
+          : []),
+      ],
+      href: "/loans/tight",
+      advice: false,
+    };
+  }
+  const gap = -f.firstNegative.balanceCents;
+  return {
+    id: "overdraft",
+    sentences: [
+      `Yes: your checking is forecast to go ${formatCents(gap)} below zero on ${f.firstNegative.date}.`,
+      f.savingsCents >= gap
+        ? `Your savings could cover the ${formatCents(gap)}.`
+        : `Your savings of ${formatCents(f.savingsCents)} wouldn't fully cover it.`,
+      ...(i.advice
+        ? [
+            f.savingsCents >= gap
+              ? `Move ${formatCents(gap)} over before ${f.firstNegative.date} so no overdraft fee hits.`
+              : "Ask each lender to move a due date after payday before it hits.",
+          ]
+        : []),
+    ].slice(0, 3),
+    href: "/loans/tight",
+    advice: i.advice,
+  };
+}
+
+// "Should I use buy now pay later?"
+export function bnpl(i: DecisionInput): Decision {
+  const b = i.bnpl;
+  const have =
+    b && b.plans > 0
+      ? `You have ${b.plans} ${b.plans === 1 ? "plan" : "plans"} now, ${formatCents(b.monthlyCents)} a month in installments.`
+      : "You have no buy now, pay later plan right now.";
+  return {
+    id: "bnpl",
+    sentences: [
+      "A Pay in 4 plan costs nothing extra if every payment lands on time; a missed one brings late fees and some plans charge interest.",
+      have,
+      i.advice
+        ? "It's fine for something you'd buy anyway when your checking covers every payment; tell me the total and I'll check it against your forecast."
+        : "Tell me the total and I'll check it against your forecast.",
+    ],
+    href: "/loans",
+    advice: i.advice,
+  };
+}
+
 export const DECISIONS: Readonly<Record<DecisionId, (i: DecisionInput) => Decision>> = {
   pay_or_invest: payOrInvest,
   consolidate,
@@ -372,4 +453,6 @@ export const DECISIONS: Readonly<Record<DecisionId, (i: DecisionInput) => Decisi
   personal_loan: personalLoan,
   payday_loan: paydayLoan,
   student_early: studentEarly,
+  overdraft,
+  bnpl,
 };

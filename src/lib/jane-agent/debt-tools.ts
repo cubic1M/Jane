@@ -199,7 +199,7 @@ export const DEBT_TOOLS: Anthropic.Tool[] = [
   {
     name: "debt_decision",
     description:
-      "A straight answer, in three sentences or fewer, to a money decision about debt or credit, from the person's own numbers: pay_or_invest (their highest-rate debt against what investing has historically returned), consolidate and personal_loan (the best stand-in offer and what it saves with fees counted), savings_or_debt (what cash beyond a month of spending would save on the worst card), close_card (what closing does to their limits and card use), payoff_hurts (it doesn't), payday_loan (its yearly rate and cheaper options) and student_early. Give the sentences as the answer. They already say what is math and, only in demo advice mode, what Jane would pick; do not add a recommendation of your own.",
+      "A straight answer, in three sentences or fewer, to a money decision about debt or credit, from the person's own numbers: pay_or_invest (their highest-rate debt against what investing has historically returned), consolidate and personal_loan (the best stand-in offer and what it saves with fees counted), savings_or_debt (what cash beyond a month of spending would save on the worst card), close_card (what closing does to their limits and card use), payoff_hurts (it doesn't), payday_loan (its yearly rate and cheaper options), student_early, overdraft (whether checking is forecast to go below zero this month, when and by how much) and bnpl (whether buy now, pay later suits them). Give the sentences as the answer. They already say what is math and, only in demo advice mode, what Jane would pick; do not add a recommendation of your own.",
     input_schema: {
       type: "object" as const,
       properties: {
@@ -214,6 +214,8 @@ export const DEBT_TOOLS: Anthropic.Tool[] = [
             "payoff_hurts",
             "payday_loan",
             "student_early",
+            "overdraft",
+            "bnpl",
           ],
         },
       },

@@ -1404,6 +1404,43 @@ const BASE_QUESTIONS: readonly CheckQuestion[] = [
       maxChars: 700,
     },
   },
+  // The affordability decisions, three sentences or fewer.
+  {
+    id: "debt-53",
+    text: "will I overdraft this month?",
+    needs: "rules",
+    expect: {
+      intent: "debt_decision",
+      mentions: /below zero|above zero|checking/i,
+      link: "/loans/tight",
+      maxSentences: 3,
+      maxChars: 700,
+    },
+  },
+  {
+    id: "debt-54",
+    text: "should I use buy now pay later?",
+    needs: "rules",
+    expect: {
+      intent: "debt_decision",
+      mentions: /Pay in 4/i,
+      link: "/loans",
+      maxSentences: 3,
+      maxChars: 700,
+    },
+  },
+  {
+    id: "debt-55",
+    text: "can I afford a car?",
+    needs: "rules",
+    expect: {
+      intent: "car_afford",
+      mentions: /afford a car/i,
+      link: "/loans/car",
+      maxSentences: 3,
+      maxChars: 700,
+    },
+  },
   // Spec step 228: a home's equity, used well.
   {
     id: "debt-31",

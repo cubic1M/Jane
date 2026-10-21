@@ -431,6 +431,27 @@ describe("debt questions", () => {
     expect(intent("what do you do about my debts")).toEqual({ kind: "debt_autopilot" });
   });
 
+  it("reads the overdraft and buy now, pay later decisions, and leaves fee questions alone", () => {
+    for (const text of [
+      "will I overdraft this month?",
+      "am I going to go negative before payday",
+      "will my checking go below zero",
+    ]) {
+      expect(intent(text), text).toEqual({ kind: "debt_decision", which: "overdraft" });
+    }
+    for (const text of [
+      "should I use buy now pay later?",
+      "is klarna a good idea",
+      "should I get Afterpay",
+    ]) {
+      expect(intent(text), text).toEqual({ kind: "debt_decision", which: "bnpl" });
+    }
+    expect(intent("why are there overdraft fees on my account")).not.toEqual({
+      kind: "debt_decision",
+      which: "overdraft",
+    });
+  });
+
   it("reads add-ons on a car loan (spec step 245)", () => {
     for (const text of [
       "can I cancel the extended warranty on my car loan",

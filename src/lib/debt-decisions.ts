@@ -6,6 +6,7 @@ import { adviceMode } from "@/lib/advice-mode";
 import { loadTransfers } from "@/lib/balance-transfers";
 import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
+import { loadBnpl } from "@/lib/bnpl";
 import { loadDebts } from "@/lib/debts";
 import { dayLabel } from "@/lib/day-label";
 import { loadRefinance } from "@/lib/refinance";
@@ -30,7 +31,7 @@ export async function loadDecisionInput(
   { client = defaultClient, now = new Date() }: Options = {},
 ): Promise<DecisionInput> {
   const db = scopedFor(userId, client);
-  const [advice, book, transfers, refinance, input, report] = await Promise.all([
+  const [advice, book, transfers, refinance, input, report, bnplData] = await Promise.all([
     adviceMode(userId, { client }),
     loadDebts(userId, { client, now }),
     loadTransfers(userId, { client, now }),
@@ -40,13 +41,24 @@ export async function loadDecisionInput(
       orderBy: [{ pulledOn: "desc" }, { createdAt: "desc" }],
       select: { cardLimitCents: true },
     }),
+    loadBnpl(userId, { client, now }),
   ]);
   const owingCards = book.debts.filter((d) => d.kind === "card" && (d.balanceCents ?? 0) > 0);
   const accounts = await db.accounts.findMany({
     where: { type: { in: ["depository"] } },
-    select: { currentBalanceCents: true },
+    select: { currentBalanceCents: true, subtype: true },
   });
   const liquidCents = accounts.reduce((s, a) => s + (a.currentBalanceCents ?? 0), 0);
+  const savingsCents = accounts
+    .filter((a) => a.subtype !== "checking")
+    .reduce((s, a) => s + (a.currentBalanceCents ?? 0), 0);
+  const days = bnplData.forecastDays;
+  const lowest = days.length
+    ? days.reduce((a, b) => (b.balanceCents < a.balanceCents ? b : a))
+    : null;
+  const firstNegative = days.find((d) => d.balanceCents < 0) ?? null;
+  const label = (d: { date: string; balanceCents: number } | null) =>
+    d ? { date: dayLabel(d.date), balanceCents: d.balanceCents } : null;
   const since = new Date(now.getTime() - 90 * DAY_MS);
   const spent = input.transactions
     .filter(
@@ -100,6 +112,17 @@ export async function loadDecisionInput(
     liquidCents,
     monthlySpendCents: Math.round(spent / 3),
     consolidation,
+    forecast:
+      bnplData.checkingCents === null
+        ? null
+        : { firstNegative: label(firstNegative), lowest: label(lowest), savingsCents },
+    bnpl: {
+      plans: bnplData.plans.length,
+      monthlyCents: bnplData.plans.reduce(
+        (s, p) => s + (p.every === "month" ? p.paymentCents : p.paymentCents * 2),
+        0,
+      ),
+    },
     nextPayday: payday
       ? {
           date: dayLabel(payday.date),

@@ -8,7 +8,6 @@ import type { MessageAction } from "./types";
 
 const LABELS: Readonly<Record<string, string>> = {
   "/loans/interest": "Your card interest",
-  "/loans/transfers": "0% transfer offers",
   "/loans/refinance": "Loan offers",
   "/loans/credit": "Your credit",
   "/loans/tight": "A tight month",

@@ -6,6 +6,8 @@ import {
   payOrInvest,
   paydayLoan,
   payoffHurts,
+  bnpl,
+  overdraft,
   personalLoan,
   savingsOrDebt,
   studentEarly,
@@ -183,5 +185,64 @@ describe("a student loan early", () => {
         .sentences[0],
     ).toBe("You owe $1,000.00 on Loan, but I don't have its rate.");
     expect(studentEarly({ ...base, student: null }).sentences[0]).toMatch(/nothing to pay down/);
+  });
+});
+
+describe("will I overdraft this month", () => {
+  const forecast = (
+    negative: { date: string; balanceCents: number } | null,
+    savingsCents = 50_000,
+  ) => ({
+    ...base,
+    forecast: {
+      firstNegative: negative,
+      lowest: negative ?? { date: "Nov 3", balanceCents: 21_000 },
+      savingsCents,
+    },
+  });
+  it("says yes with the day and the amount, and what covers it", () => {
+    const d = overdraft(forecast({ date: "Nov 3", balanceCents: -21_180 }));
+    expect(d.sentences).toEqual([
+      "Yes: your checking is forecast to go $211.80 below zero on Nov 3.",
+      "Your savings could cover the $211.80.",
+      "Move $211.80 over before Nov 3 so no overdraft fee hits.",
+    ]);
+  });
+  it("points to the lenders when savings can't cover it, and stops at the math without demo advice", () => {
+    const d = overdraft(forecast({ date: "Nov 3", balanceCents: -21_180 }, 1_000));
+    expect(d.sentences[1]).toBe("Your savings of $10.00 wouldn't fully cover it.");
+    expect(d.sentences[2]).toBe("Ask each lender to move a due date after payday before it hits.");
+    expect(
+      overdraft({ ...forecast({ date: "Nov 3", balanceCents: -21_180 }), advice: false }).sentences,
+    ).toHaveLength(2);
+  });
+  it("says no with the lowest point, and can't say without a checking account", () => {
+    const d = overdraft(forecast(null));
+    expect(d.sentences[0]).toBe(
+      "No: your checking stays above zero for the next month, dipping lowest to $210.00 on Nov 3.",
+    );
+    expect(d.sentences[1]).toBe(
+      "That's with your bills and installments counted, and your next payday is Nov 1.",
+    );
+    expect(overdraft({ ...base, forecast: null }).sentences[0]).toMatch(
+      /can't see a checking account/,
+    );
+  });
+});
+
+describe("buy now, pay later", () => {
+  it("says when it's free, what the person has, and what to do next", () => {
+    const d = bnpl({ ...base, bnpl: { plans: 2, monthlyCents: 12_000 } });
+    expect(d.sentences[0]).toMatch(
+      /^A Pay in 4 plan costs nothing extra if every payment lands on time/,
+    );
+    expect(d.sentences[1]).toBe("You have 2 plans now, $120.00 a month in installments.");
+    expect(d.sentences[2]).toMatch(/check it against your forecast\.$/);
+    expect(bnpl({ ...base, bnpl: { plans: 0, monthlyCents: 0 } }).sentences[1]).toBe(
+      "You have no buy now, pay later plan right now.",
+    );
+    expect(bnpl({ ...noAdvice, bnpl: null }).sentences[2]).toBe(
+      "Tell me the total and I'll check it against your forecast.",
+    );
   });
 });

@@ -96,6 +96,24 @@ describe.runIf(url)("debt decisions against a real database", { timeout: 60_000 
     expect(payday.body).toContain("around 391% a year");
   });
 
+  it("answers the overdraft, buy now pay later and car questions in three sentences or fewer", async () => {
+    for (const q of [
+      "will I overdraft this month?",
+      "should I use buy now pay later?",
+      "can I afford a car?",
+    ]) {
+      const reply = await ask(chris, q);
+      expect(sentences(reply.body).length, `${q}: ${reply.body}`).toBeLessThanOrEqual(3);
+      expect(reply.body, q).not.toMatch(/can't answer that one yet/);
+    }
+    expect((await ask(chris, "should I use buy now pay later?")).body).toMatch(
+      /^A Pay in 4 plan costs nothing extra/,
+    );
+    expect((await ask(chris, "can I afford a car?")).body).toMatch(
+      /^You can afford a car up to about \$[\d,.]+, keeping the all-in cost under /,
+    );
+  });
+
   it("is the same answer through Claude's tool, with the figures recorded", async () => {
     const out = await runChatTool(
       chris,

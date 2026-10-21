@@ -150,6 +150,14 @@ const DECISION_PATTERNS: readonly (readonly [DecisionId, RegExp])[] = [
     /\b(?:take|get|use|need|taking|getting|using)\b.*\b(?:payday loans?|payday advances?|cash advances?)\b|\bshould i\b.*\bpayday (?:loan|advance|lender)s?\b/,
   ],
   [
+    "overdraft",
+    /\b(?:will (?:i|we)|am (?:i|we)|going to|gonna)\b.*\b(?:overdraw\w*|overdraft\w*|go negative|run out of money|go below zero|bounce)\b|\bwill (?:my )?(?:checking|account|balance)\b.*\b(?:negative|below zero|overdraw\w*|run out)\b/,
+  ],
+  [
+    "bnpl",
+    /\bshould (?:i|we) (?:use|get|do|try|take)\b.*\b(?:buy now,? pay later|bnpl|pay in 4|pay in four|klarna|afterpay|affirm|sezzle)\b|\b(?:is|are)\b.*\b(?:buy now,? pay later|bnpl|pay in 4|klarna|afterpay|affirm)\b.*\b(?:good|bad|worth|safe|a good idea)\b/,
+  ],
+  [
     "student_early",
     /\b(?:should|worth|better|good idea)\b.*\b(?:pay(?:ing)? (?:off|down)|extra (?:on|toward|payments? (?:on|to)))\b.*\bstudent (?:loans?|debt)\b|\bstudent (?:loans?|debt)\b.*\b(?:early|ahead of schedule|faster)\b|\bpay(?:ing)? (?:off|down) (?:my )?student (?:loans?|debt) (?:early|faster|ahead)\b/,
   ],
