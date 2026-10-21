@@ -9,7 +9,7 @@ vi.hoisted(() => {
 vi.mock("@/lib/session", () => ({ requireUser: vi.fn() }));
 
 import { createCheckPerson, deleteCheckPerson } from "../checks/person";
-import { chatPrimer } from "../claude-tools";
+import { chatPrimer, runChatTool } from "../claude-tools";
 import { sendToJane } from "../typing";
 
 // A follow-up right after a card must work: "can you change my car insurance" gets the switch
@@ -134,5 +134,22 @@ describe.runIf(url)("a follow-up right after a card", () => {
     expect(JSON.stringify(requests[0].system)).toMatch(
       /Already looked up for this question[\s\S]*tax_equity:/,
     );
+  });
+
+  it("gives the RSU withholding gap as a finished statement, without the empty crypto", async () => {
+    const equity = await createCheckPerson({ client, now: NOW, person: "equity" });
+    try {
+      const out = await runChatTool(equity, "tax_equity", {}, { client, now: NOW });
+      const body = JSON.parse(out.content) as Record<string, unknown>;
+      expect(String(body.rsuAnswer)).toMatch(/falls \$[\d,.]+ short on \$[\d,.]+ of vests/);
+      expect(body).toHaveProperty("rsuWithholdingGap");
+      // Every figure in the statement is one the guardrail knows.
+      for (const f of String(body.rsuAnswer).match(/\$[\d,]+\.\d\d/g) ?? []) {
+        expect(out.content).toContain(f);
+      }
+      expect(out.cents.length).toBeGreaterThan(0);
+    } finally {
+      await deleteCheckPerson(equity, { client });
+    }
   });
 });

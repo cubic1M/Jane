@@ -182,7 +182,7 @@ export const TAX_TOOLS: Anthropic.Tool[] = [
   {
     name: "tax_equity",
     description:
-      "The tax on the person's crypto and equity pay for the tax year: crypto sold (proceeds, cost by lot, short- and long-term gain), what they hold and its unrealised gain, the 1099-DA from an exchange that sold; ESPP sales and whether each was qualifying or a disqualifying disposition that lost its special treatment; ISOs exercised and the alternative minimum tax; RSU vests with the tax withheld against their real rate and the shortfall; and in demo advice mode how much to set aside and whether a goal exists. Holding-period and AMT rules are in config with sources.",
+      "The tax on the person's crypto and equity pay for the tax year: crypto sold (proceeds, cost by lot, short- and long-term gain), what they hold and its unrealised gain, the 1099-DA from an exchange that sold; ESPP sales and whether each was qualifying or a disqualifying disposition that lost its special treatment; ISOs exercised and the alternative minimum tax; RSU vests with the tax withheld against their real rate and the shortfall; and in demo advice mode how much to set aside and whether a goal exists. Holding-period and AMT rules are in config with sources. For RSUs, rsuAnswer is the finished statement of the withholding gap: say it in 2–3 sentences, don't work it out and don't list every detail.",
     input_schema: noInput,
   },
   {
@@ -827,56 +827,76 @@ export async function runTaxTool(
     }
     case "tax_equity": {
       const v = await loadEquityTax(userId, { client, now });
+      const cryptoUsed = v.cryptoYear.proceedsCents !== 0 || v.income.crypto.holdings.length > 0;
+      // Leave out what is empty (no crypto, no events), so the answer is about what they have,
+      // and give the RSU gap as a finished statement so no sum is left for Claude to do.
+      const gap = v.rsuGap;
       return out({
         year: v.year,
-        crypto: {
-          sold: {
-            proceeds: money(v.cryptoYear.proceedsCents),
-            cost: money(v.cryptoYear.costCents),
-            shortTermGain: money(Math.abs(v.cryptoYear.shortTermCents)),
-            shortTermIsLoss: v.cryptoYear.shortTermCents < 0,
-            longTermGain: money(Math.abs(v.cryptoYear.longTermCents)),
-            longTermIsLoss: v.cryptoYear.longTermCents < 0,
-          },
-          held: v.income.crypto.holdings.map((h) => ({
-            asset: h.asset,
-            where: h.connection,
-            value: money(h.valueCents),
-            basis: money(h.basisCents),
-            unrealisedGain: money(Math.abs(h.gainCents)),
-            isLoss: h.gainCents < 0,
-          })),
-          form1099DA: v.forms1099DA,
+        ...(gap
+          ? {
+              rsuAnswer: `${
+                gap.assumed
+                  ? `No vests are on file for ${v.year}, so this assumes a share of your ${money(gap.stockCents)} stock plan vests. `
+                  : ""
+              }Employers usually withhold a flat rate at vest; at your ${Math.round(gap.marginalRate * 100)}% bracket the withholding falls ${money(gap.shortfallCents)} short on ${money(gap.vestedCents)} of vests.`,
+            }
+          : {}),
+        ...(cryptoUsed
+          ? {
+              crypto: {
+                sold: {
+                  proceeds: money(v.cryptoYear.proceedsCents),
+                  cost: money(v.cryptoYear.costCents),
+                  shortTermGain: money(Math.abs(v.cryptoYear.shortTermCents)),
+                  shortTermIsLoss: v.cryptoYear.shortTermCents < 0,
+                  longTermGain: money(Math.abs(v.cryptoYear.longTermCents)),
+                  longTermIsLoss: v.cryptoYear.longTermCents < 0,
+                },
+                held: v.income.crypto.holdings.map((h) => ({
+                  asset: h.asset,
+                  where: h.connection,
+                  value: money(h.valueCents),
+                  basis: money(h.basisCents),
+                  unrealisedGain: money(Math.abs(h.gainCents)),
+                  isLoss: h.gainCents < 0,
+                })),
+                form1099DA: v.forms1099DA,
+              },
+            }
+          : {}),
+        ...(v.income.events.length > 0
+          ? {
+              equityEvents: v.income.events.map((e) => ({
+                kind: e.event.kind,
+                company: e.event.company,
+                shares: e.event.shares,
+                on: e.event.occurredOn,
+                espp: e.espp && {
+                  qualifying: e.espp.qualifying,
+                  ordinaryIncome: money(e.espp.ordinaryCents),
+                },
+                isoAmtPreference: e.iso ? money(e.iso.preferenceCents) : null,
+              })),
+            }
+          : {}),
+        ...(v.rsu.length > 0
+          ? {
+              rsu: v.rsu.map((r) => ({
+                company: r.company,
+                income: money(r.incomeCents),
+                withheld: money(r.withheldCents),
+                shortfall: money(r.shortfallCents),
+              })),
+            }
+          : {}),
+        rsuWithholdingGap: gap && {
+          vested: money(gap.vestedCents),
+          shortfall: money(gap.shortfallCents),
+          bracket: `${Math.round(gap.marginalRate * 100)}%`,
+          assumed: gap.assumed,
         },
-        equityEvents: v.income.events.map((e) => ({
-          kind: e.event.kind,
-          company: e.event.company,
-          shares: e.event.shares,
-          on: e.event.occurredOn,
-          espp: e.espp && {
-            qualifying: e.espp.qualifying,
-            ordinaryIncome: money(e.espp.ordinaryCents),
-          },
-          isoAmtPreference: e.iso ? money(e.iso.preferenceCents) : null,
-        })),
-        rsu: v.rsu.map((r) => ({
-          company: r.company,
-          income: money(r.incomeCents),
-          withheld: money(r.withheldCents),
-          shortfall: money(r.shortfallCents),
-        })),
-        // The same figure as the brief's suggestion: from this year's vests, or, with none known,
-        // an assumed share of the stock plan (say it is assumed).
-        rsuWithholdingGap: v.rsuGap && {
-          vested: money(v.rsuGap.vestedCents),
-          shortfall: money(v.rsuGap.shortfallCents),
-          bracket: `${Math.round(v.rsuGap.marginalRate * 100)}%`,
-          assumed: v.rsuGap.assumed,
-          note: v.rsuGap.assumed
-            ? "No vests are on file for this year, so this assumes a share of the stock plan vests; ask for the vest schedule."
-            : undefined,
-        },
-        alternativeMinimumTax: money(v.amtCents),
+        ...(v.amtCents > 0 ? { alternativeMinimumTax: money(v.amtCents) } : {}),
         setAside: v.advice
           ? {
               amount: money(v.setAside.cents),
