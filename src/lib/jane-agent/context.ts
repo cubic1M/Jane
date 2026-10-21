@@ -39,6 +39,8 @@ export function withTopic(
   // follow-up as "it" (the decision again, the list explained, the credit score read again).
   if (intent.kind === "explain") {
     if (topic?.findingId) return { kind: "why_finding", findingId: topic.findingId };
+    // Nothing was just discussed: ask what, never a picker of unrelated merchants.
+    if (!topic) return intent;
     return withTopic({ kind: "follow_up", target: "it", month: null }, topic, asOf);
   }
   if (intent.kind === "follow_up") {

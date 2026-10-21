@@ -177,7 +177,9 @@ async function answer(
   // rules' answer, with the person's numbers: instant, and never Claude's button talk.
   const explainByRules =
     intent.kind === "explain" &&
-    ["why_finding", "priorities", "decision"].includes(withTopic(intent, topic, asOf).kind);
+    ["explain", "why_finding", "priorities", "decision"].includes(
+      withTopic(intent, topic, asOf).kind,
+    );
   if (!llmEnabled() || CHAT_RULES_ONLY_KINDS.includes(intent.kind) || explainByRules) {
     const byRules = await rules();
     if (byRules) return { reply: byRules, intent: intent.kind, source: "rules" };

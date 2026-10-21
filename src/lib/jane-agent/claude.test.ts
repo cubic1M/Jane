@@ -4,6 +4,19 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 vi.mock("@/lib/session", () => ({ requireUser: vi.fn() }));
 vi.mock("@/lib/home", () => ({ homeSummary: vi.fn() }));
 vi.mock("./snapshot", () => ({ loadSnapshot: vi.fn() }));
+// The decision tool's facts come from a real database elsewhere (decision.test.ts).
+vi.mock("./decision", async (original) => ({
+  ...(await original<typeof import("./decision")>()),
+  loadDecisionFacts: vi.fn(async () => ({
+    cardDebtCents: 241_050,
+    topRateBps: 2900,
+    cashCents: 100_000,
+    monthlySpendCents: 400_000,
+    cushionTargetCents: 1_200_000,
+    cushionMonths: 0.3,
+    goalsBehind: [],
+  })),
+}));
 // The cost cap has its own tests (./spend.test.ts); here Claude is always under it.
 vi.mock("./spend", () => ({ overDailyCap: vi.fn(async () => false), addSpend: vi.fn() }));
 
@@ -11,7 +24,13 @@ import { CHAT_CLAUDE_HISTORY, CHAT_CLAUDE_MAX_TURNS } from "@/config/agent-chat"
 import { ASK_BLOCKED_REPLY } from "@/config/ask";
 import type { PrismaClient } from "@/generated/prisma/client";
 import { homeSummary } from "@/lib/home";
-import { CHAT_UNAVAILABLE_TEXT, askClaudeInChat, plainText, resetClaudeHealth } from "./claude";
+import {
+  CHAT_UNAVAILABLE_TEXT,
+  askClaudeInChat,
+  plainText,
+  resetClaudeHealth,
+  withoutButtonTalk,
+} from "./claude";
 import { forgetPrimer } from "./primer-cache";
 import { CHAT_TOOLS, proposeAction } from "./claude-tools";
 import { loadSnapshot, type Snapshot } from "./snapshot";
@@ -656,6 +675,88 @@ describe("speed and failures", () => {
       (c) => (c[0] as { tool_choice: { type: string } }).tool_choice.type,
     );
     expect(choices).toEqual(["auto", "auto", "none"]);
+  });
+
+  it("drops sentences about its own button, and won't give an answer that is only that", async () => {
+    expect(withoutButtonTalk("Your cards charge 29%. I've put a link under this answer.")).toBe(
+      "Your cards charge 29%.",
+    );
+    for (const talk of [
+      "I've put a link to your debt plan under this answer.",
+      "You can open your debt plan with the button below.",
+      "I've added a button that opens the goals page.",
+    ]) {
+      expect(withoutButtonTalk(talk), talk).toBe("");
+    }
+    // Only button talk, even with a sentence about what the page shows: no answer at all.
+    create.mockResolvedValueOnce(
+      final(
+        "I've put a link to your debt plan under this answer. It shows how to pay off your cards, highest interest first.",
+      ),
+    );
+    const info = vi.spyOn(console, "info").mockImplementation(() => {});
+    expect((await askClaudeInChat("u1", [], "should i buy bitcoin", options)).kind).toBe(
+      "unavailable",
+    );
+    expect(
+      JSON.parse(String(info.mock.calls.find((c) => c[0] === "chat_timing")?.[1])),
+    ).toMatchObject({ reason: "button_only" });
+    // With a verdict and figures, only the button sentence goes.
+    create.mockResolvedValueOnce(
+      final("Not now: your cards charge 29% on $2,410.50. I've put a link under this answer."),
+    );
+    const result = await askClaudeInChat(
+      "u1",
+      [],
+      "my cards owe $2,410.50, should i buy bitcoin",
+      options,
+    );
+    expect(result).toMatchObject({
+      kind: "answer",
+      reply: { body: "Not now: your cards charge 29% on $2,410.50." },
+    });
+  });
+
+  it("never sends a tool_use without its result when it asks for the answer again", async () => {
+    // A figure Jane never gave, with a button call after it: the rewrite request must not
+    // carry the unanswered tool_use (the API refuses that with a 400).
+    create
+      .mockResolvedValueOnce({
+        stop_reason: "tool_use",
+        content: [
+          { type: "text", text: "You will save $9,999.00 a year." },
+          {
+            type: "tool_use",
+            id: "t77",
+            name: "propose_action",
+            input: { action: "open", page: "goals" },
+          },
+        ],
+      })
+      .mockResolvedValueOnce(final("I can't give you a figure for that."));
+    vi.mocked(homeSummary).mockResolvedValue({ safeToSpend: null, comingUp: [] } as never);
+    await askClaudeInChat("u1", [], "how much can i save", options);
+    expect(create).toHaveBeenCalledTimes(2);
+    const second = create.mock.calls[1][0] as { messages: { role: string; content: unknown }[] };
+    const blocks = second.messages.flatMap((m) => (Array.isArray(m.content) ? m.content : []));
+    expect(blocks.some((b: { type?: string }) => b.type === "tool_use")).toBe(false);
+  });
+
+  it("remembers a decision it answered with the decision tool, for a following 'why'", async () => {
+    create
+      .mockResolvedValueOnce(toolUse("decision"))
+      .mockResolvedValueOnce(
+        final("Not now: your cards charge 29%, so paying them off beats bitcoin."),
+      );
+    const result = await askClaudeInChat("u1", [], "should i buy bitcoin", {
+      ...options,
+      advice: true,
+    });
+    expect(result.reply.refs.topic).toEqual({
+      kind: "decision",
+      category: "crypto",
+      target: "bitcoin",
+    });
   });
 
   it("pauses Claude for a while only when Claude itself fails (rate limit, overloaded)", async () => {

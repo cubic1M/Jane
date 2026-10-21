@@ -29,14 +29,36 @@ const OTHER_SECTOR =
   /\b(?:insurance|cover|warranty|tax\w*|refinanc\w*|mortgage|life|term|disability|umbrella|renters?|annuit\w*|ira|roth|401\s?k|hsa|529)\b/;
 
 const PRICE = /\$\s?\d|\b\d[\d,.]*\s?(?:k|dollars|bucks|usd)\b/;
-const BARE = /^(?:so |ok |okay |and )?should i(?: buy| do it| buy it| go for it| get it)?$/;
+
+// What people put in front of a question ("yea so", "hey,", "do you think"): dropped before it
+// is read, so the same question in other words is the same question.
+const FILLER =
+  /^(?:(?:yea|yeah|yep|yup|ok|okay|hey|hi|um|uh|well|so|and|but|hmm|like|also|actually|then|right|now)\b[\s,.!-]*)+/;
+const LEAD =
+  /^(?:do you think|would you say|what do you think|what would you say|can you tell me|tell me|i was wondering|i'?m wondering|im wondering|quick question|question)[,:]?\s*(?:if|whether)?\s*/;
+
+const BARE = /^should i(?: buy| do it| buy it| go for it| get it)?$/;
 const PAYOFF_OR_INVEST =
-  /\b(?:pay(?:ing)? (?:off|down)\b.*\b(?:or|vs\.?|versus)\b.*\b(?:invest\w*|sav\w+)|(?:invest\w*|sav\w+)\b.*\b(?:or|vs\.?|versus)\b.*\bpay(?:ing)? (?:off|down))\b/;
-const ASKED =
-  /^(?:(?:so|ok|okay|and) )?(?:should i\b|is it (?:smart|wise|a good idea) to\b|would it be (?:smart|wise) to\b)/;
+  /\b(?:pay(?:ing)? (?:off|down)\b.*\b(?:or|vs\.?|versus|instead of)\b.*\b(?:invest\w*|sav\w+)|(?:invest\w*|sav\w+)\b.*\b(?:or|vs\.?|versus|instead of)\b.*\bpay(?:ing)? (?:off|down))\b/;
+// A question about doing something with money: "should I (be)", "I should", "is it worth", "is X
+// a good idea (for me)", "thinking about buying", "would buying X be smart".
+const ASKED = new RegExp(
+  [
+    "^(?:should (?:i|we)(?: be)?\\b)",
+    "^(?:i|we) should\\b",
+    "^is it (?:smart|wise|worth|ok|okay|safe|better|smarter|a good idea|a good move|a bad idea)\\b",
+    "^would it be (?:smart|wise|ok|okay|a good idea)\\b",
+    "^would (?:buying|getting|investing)\\b",
+    "^(?:am i|are we) (?:crazy|dumb|silly) to\\b",
+    "^(?:i'?m|im|we'?re) (?:thinking|considering|planning)(?: of| about| on)?\\b",
+    "^(?:is|are) .{2,40}? (?:a good (?:idea|buy|investment|bet|move)|worth (?:it|buying|getting|investing)|smart|wise|safe)\\b",
+    "^worth (?:buying|getting|investing)\\b",
+  ].join("|"),
+);
 const BUY =
-  /\b(?:buy|purchase|invest in|put (?:some |any )?(?:money|cash|savings|\$?\d[\d,]*) (?:in|into)|get into|go (?:big )?on)\s+(.+)$/;
-const INVEST_BARE = /^(?:(?:so|ok|okay|and) )?should i (?:start )?invest(?:ing)?$/;
+  /\b(?:buy(?:ing)?|purchas(?:e|ing)|invest(?:ing)? in|get(?:ting)?|put(?:ting)? (?:some |any )?(?:money|cash|savings|\$?\d[\d,]*) (?:in|into)|get(?:ting)? into|go(?:ing)? (?:big )?on)\s+(.+)$/;
+const INVEST_BARE = /^(?:should i|i should) (?:start )?invest(?:ing)?$/;
+const SUBJECT = new RegExp(`${CRYPTO.source}|${STOCKS.source}|${HOME.source}|${CAR.source}`);
 
 const classify = (rest: string): DecisionItem =>
   CRYPTO.test(rest)
@@ -52,31 +74,50 @@ const classify = (rest: string): DecisionItem =>
 const tidy = (rest: string) =>
   rest
     .replace(/[?.!]+$/, "")
-    .replace(/^(?:some|any|a bit of|a little)\s+/, "")
+    .replace(/\b(?:for me|right now|these days|at the moment)\b/g, "")
+    .replace(/^(?:some|any|a bit of|a little|more)\s+/, "")
+    .replace(/\s+/g, " ")
     .trim();
 
-export function parseDecision(text: string): DecisionIntent | null {
+export function parseDecision(raw: string): DecisionIntent | null {
+  const text = raw.replace(FILLER, "").replace(LEAD, "").trim();
   if (BARE.test(text)) return { kind: "decision", item: null, label: null };
-  if (!ASKED.test(text)) return null;
+  // "Pay off debt or invest, which is smarter": a choice between the two is a question.
+  if (
+    !ASKED.test(text) &&
+    !(PAYOFF_OR_INVEST.test(text) && /\b(?:should|better|smarter|smart|wise|which)\b/.test(text))
+  )
+    return null;
   // A sector's own subject (insurance, loans, taxes) comes before the general ones.
   const sector = SECTOR_DECISIONS.find((s) => s.pattern.test(text));
   if (sector) {
-    const label = tidy(text.replace(/^.*?\b(?:should i|good idea to|wise to|smart to)\s+/, ""));
+    const label = tidy(
+      text.replace(
+        /^.*?\b(?:should (?:i|we)(?: be)?|i should|good idea to|wise to|smart to)\s+/,
+        "",
+      ),
+    );
     return { kind: "decision", item: sector.item, label };
   }
   if (PAYOFF_OR_INVEST.test(text)) {
     return { kind: "decision", item: "payoff_or_invest", label: "paying off debt or investing" };
   }
   if (INVEST_BARE.test(text)) return { kind: "decision", item: "invest", label: "investing" };
-  const buy = BUY.exec(text);
-  if (!buy) return null;
-  const rest = tidy(buy[1]);
   // With a price it is "can I afford it", which has its own answer.
-  if (!rest || OTHER_SECTOR.test(rest) || PRICE.test(text)) return null;
-  const item = classify(rest);
-  return {
-    kind: "decision",
-    item: /^invest in/.test(buy[0]) && item === "other" ? "invest" : item,
-    label: rest,
-  };
+  if (PRICE.test(text) || OTHER_SECTOR.test(text)) return null;
+  const buy = BUY.exec(text);
+  if (buy) {
+    const rest = tidy(buy[1]);
+    if (!rest) return null;
+    const item = classify(rest);
+    return {
+      kind: "decision",
+      item: /^invest(?:ing)? in/.test(buy[0]) && item === "other" ? "invest" : item,
+      label: rest,
+    };
+  }
+  // "Is crypto a good idea for me?": no verb, but a subject we know.
+  const subject = SUBJECT.exec(text);
+  if (subject) return { kind: "decision", item: classify(subject[0]), label: tidy(subject[0]) };
+  return null;
 }

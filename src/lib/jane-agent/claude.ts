@@ -24,6 +24,7 @@ import {
   type GuardrailIssue,
 } from "@/lib/guardrails";
 import { DEBT_TOOL_STATUS } from "./debt-tools";
+import { parseDecision } from "./decision-intents";
 import { toolsFor } from "./tool-select";
 import { CHAT_TOOLS, chatPrimer, proposeAction, runChatTool, type Proposal } from "./claude-tools";
 import { BLOCK_KINDS, buildBlock, type BlockKind } from "./block-data";
@@ -228,6 +229,19 @@ export function plainText(text: string): string {
     .replace(/`([^`]+)`/g, "$1");
 }
 
+// What the answer says about its own button ("I've put a link under this answer"): the app
+// adds the button's line itself, so Claude's sentences about it are dropped.
+const BUTTON_TALK =
+  /\b(?:(?:put|added|placed|attached|left)\s+(?:a |an |the |one )?(?:\w+\s+)?(?:button|link)s?\b|(?:button|link)s? (?:below|under (?:this|my|the) answer)|under this answer|with the button below|using the button|tap the (?:button|link) below)/i;
+
+export function withoutButtonTalk(text: string): string {
+  return text
+    .split(/(?<=[.!?])\s+/)
+    .filter((sentence) => !BUTTON_TALK.test(sentence))
+    .join(" ")
+    .trim();
+}
+
 // Where the time goes on a free question (one log line each, numbers only): the person's
 // numbers, Claude's first stream event and first text, the rounds, and the tokens, so a slow
 // deploy can be read from the logs. Times are milliseconds from the start of the call.
@@ -377,6 +391,7 @@ async function askClaude(
     }
   }
   let rewrites = 0;
+  let decisionUsed = false;
   // Only the last few turns: a long thread slows every follow-up. The topic of the last
   // answer is in the numbers sent with the question, so a short follow-up keeps its context.
   const messages = conversation(history.slice(-CHAT_CLAUDE_HISTORY), question);
@@ -592,6 +607,7 @@ async function askClaude(
           });
           continue;
         }
+        if (block.name === "decision") decisionUsed = true;
         const toolStarted = Date.now();
         const output = await runChatTool(userId, block.name, block.input, { client, now });
         timing.tools.push({ name: block.name, ms: Date.now() - toolStarted });
@@ -613,17 +629,26 @@ async function askClaude(
       .join("\n")
       .trim();
     if (!text) return fail("empty");
-    const check = checkGuardrails(text, allowedCents, undefined, profile);
+    // Sentences about a button or link "under this answer" are dropped; an answer that was
+    // only that (no figure, hardly a sentence) isn't an answer, so the rules answer instead.
+    const spoken = withoutButtonTalk(text);
+    if (spoken !== text && spoken.length < 80 && !/\d/.test(spoken)) return fail("button_only");
+    const check = checkGuardrails(spoken, allowedCents, undefined, profile);
     if (!check.ok && rewrites < CHAT_CLAUDE_REWRITES && turn + 1 < maxTurns) {
       // Once, Claude is told what can't be shown and answers again.
       rewrites += 1;
       draft.reset();
       onEvent({ type: "reset" });
       onEvent({ type: "status", text: "Checking my answer…" });
-      messages.push({ role: "assistant", content: response.content });
+      // Text only: a button or picture call in this turn got no tool_result, and a tool_use
+      // without one is a 400.
+      messages.push({
+        role: "assistant",
+        content: response.content.filter((b) => b.type === "text"),
+      });
       messages.push({
         role: "user",
-        content: rewriteRequest(text, check.issues, allowedCents, advice),
+        content: rewriteRequest(spoken, check.issues, allowedCents, advice),
       });
       continue;
     }
@@ -642,6 +667,15 @@ async function askClaude(
     if (proposal?.refs.findingId) {
       refs.topic = { kind: "about", findingId: proposal.refs.findingId };
     }
+    // A decision answered through the decision tool is what a following \"why?\" is about.
+    if (decisionUsed && !refs.topic) {
+      const asked = parseDecision(question.toLowerCase());
+      refs.topic = {
+        kind: "decision",
+        category: asked?.item ?? "other",
+        target: asked?.label ?? "that",
+      };
+    }
     // Its words pass the same guardrails as the answer, or it isn't shown.
     if (shown && checkGuardrails(drawBlock(shown).alt, allowedCents, undefined, profile).ok) {
       refs.block = shown;
@@ -649,10 +683,10 @@ async function askClaude(
     return {
       kind: "answer",
       reply: {
-        body: proposal?.line ? `${plainText(text)}\n\n${proposal.line}` : plainText(text),
+        body: proposal?.line ? `${plainText(spoken)}\n\n${proposal.line}` : plainText(spoken),
         actions: proposal?.actions ?? [],
         // Demo advice is always labelled (the chat shows DEMO_ADVICE_LABEL under it).
-        refs: advice && isAdvice(text) ? { ...refs, advice: true } : refs,
+        refs: advice && isAdvice(spoken) ? { ...refs, advice: true } : refs,
       },
     };
   }
