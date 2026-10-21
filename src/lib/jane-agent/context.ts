@@ -94,6 +94,7 @@ export function withTopic(
 
 // What a reply to this intent is about, for the next message.
 export function topicOf(intent: Intent): Topic | null {
+  if (TOPIC_WORDS[intent.kind]) return { kind: intent.kind };
   switch (intent.kind) {
     case "act":
       return {
@@ -114,4 +115,34 @@ export function topicOf(intent: Intent): Topic | null {
     default:
       return null;
   }
+}
+
+// How a sector's answer is named when the next message points back at it ("how do I improve
+// it", "is that good", "why is it low"): the topic is that kind of answer, and "it" becomes
+// these words before the question is read again. Add a kind here for its follow-ups to work.
+export const TOPIC_WORDS: Readonly<Record<string, string>> = {
+  credit_score: "my credit score",
+  net_worth: "my net worth",
+  debts: "my debt",
+  student_loans: "my student loans",
+  balance_forecast: "my balance",
+  health: "my financial health score",
+};
+
+const REFERS = /\b(?:it|that|this|those|them)\b/;
+
+// "How do I improve it" right after a credit score answer is about the credit score: when a
+// message the rules can't read points back with "it", and the last answer was a kind named in
+// TOPIC_WORDS, it's read again with the pronoun replaced. Never an older message's button.
+export function resolvePronoun(
+  text: string,
+  intent: Intent,
+  topic: Topic | null,
+  parse: (text: string) => Intent,
+): Intent {
+  if (!topic || (intent.kind !== "unknown" && intent.kind !== "about")) return intent;
+  const words = TOPIC_WORDS[topic.kind];
+  if (!words || !REFERS.test(text)) return intent;
+  const again = parse(text.replace(REFERS, words));
+  return again.kind === "unknown" || again.kind === "about" ? intent : again;
 }
