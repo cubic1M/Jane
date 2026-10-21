@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useActionState, useEffect, useRef, useState, useTransition, type FormEvent } from "react";
 import { MicButton } from "./mic-button";
 import { sendMessage, type SendState } from "./send";
+import { SENDING_LABEL } from "./scan-refresher";
 
 // The message box at the bottom of Jane's chat (spec step 84). What the person typed shows
 // at once, then what Jane is looking up and her answer as it's written (streamed from
@@ -132,7 +133,7 @@ export function ChatComposer({ id, maxLength }: { id: string; maxLength: number 
   return (
     <>
       {draft && (
-        <div aria-label="Sending" className="flex flex-col gap-4">
+        <div aria-label={SENDING_LABEL} className="flex flex-col gap-4">
           <div className="flex flex-col items-end gap-1 self-end sm:max-w-[80%]">
             <span className="text-xs text-zinc-500">You</span>
             <p className="bg-emerald-700 px-3 py-2 whitespace-pre-line text-white [overflow-wrap:anywhere]">

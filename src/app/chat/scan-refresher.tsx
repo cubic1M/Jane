@@ -7,12 +7,21 @@ import { SCAN_REFRESH_MAX_MS, SCAN_REFRESH_MS } from "@/config/scan";
 // While the first scan is still running, the open chat reloads itself every few seconds so
 // Jane's findings appear as they're ready. The page stops rendering this once the scan is
 // done, and it gives up after SCAN_REFRESH_MAX_MS either way.
+// The composer marks the question being answered with this label.
+export const SENDING_LABEL = "Sending";
+
+// No reload while a typed question is being answered: the reload brings in the stored
+// question while the draft bubble still shows it, so it appeared twice until the answer ended.
+export const refreshDue = (page: Pick<Document, "querySelector">) =>
+  !page.querySelector(`[aria-label="${SENDING_LABEL}"]`);
+
 export function ScanRefresher() {
   const router = useRouter();
   useEffect(() => {
     const started = Date.now();
     const timer = setInterval(() => {
       if (Date.now() - started >= SCAN_REFRESH_MAX_MS) return clearInterval(timer);
+      if (!refreshDue(document)) return;
       router.refresh();
     }, SCAN_REFRESH_MS);
     return () => clearInterval(timer);
