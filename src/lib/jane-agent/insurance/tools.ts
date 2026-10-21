@@ -342,9 +342,13 @@ export async function runInsuranceTool(
     const savings = await listSavings(userId, { client });
     return {
       content: JSON.stringify({
-        savings: savings
+        // Largest saving first, the three worth the most marked: so everyone gets the same top
+        // three of the same list, however many options there are.
+        savings: [...savings]
           .filter((s) => s.status !== "dismissed")
-          .map((s) => ({
+          .sort((a, b) => b.yearlySavingCents - a.yearlySavingCents)
+          .map((s, rank) => ({
+            mostValuable: rank < 3,
             what: s.kind,
             status: s.status === "offered" ? "waiting for their tap" : s.status,
             aYearLess: money(s.yearlySavingCents),

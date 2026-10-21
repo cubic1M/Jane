@@ -9,7 +9,8 @@ vi.hoisted(() => {
 vi.mock("@/lib/session", () => ({ requireUser: vi.fn() }));
 
 import { createCheckPerson, deleteCheckPerson } from "../checks/person";
-import { proposeAction } from "../claude-tools";
+import { proposeAction, runChatTool } from "../claude-tools";
+import { refreshSavings } from "@/lib/insurance/savings";
 import { sendToJane } from "../typing";
 
 // "Should I ...?" about insurance goes through the decision router and comes back as the
@@ -72,5 +73,18 @@ describe.runIf(url)("insurance decisions through the router", () => {
       { client, now: NOW },
     );
     expect(none.ok).toBe(false);
+  });
+
+  it("gives the savings largest first with the top three marked, the same for everyone", async () => {
+    await refreshSavings(userId, { client, now: NOW });
+    const out = await runChatTool(userId, "insurance_savings", {}, { client, now: NOW });
+    const { savings } = JSON.parse(out.content) as {
+      savings: { aYearLess: string; mostValuable: boolean }[];
+    };
+    expect(savings.length).toBeGreaterThan(0);
+    const dollars = savings.map((s) => Number(s.aYearLess.replace(/[^0-9.]/g, "")));
+    expect(dollars).toEqual([...dollars].sort((a, b) => b - a));
+    expect(savings.filter((s) => s.mostValuable)).toHaveLength(Math.min(3, savings.length));
+    expect(savings.slice(0, 3).every((s) => s.mostValuable)).toBe(true);
   });
 });

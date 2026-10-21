@@ -46,6 +46,7 @@ import {
   plainText,
   resetClaudeHealth,
   tooLong,
+  shopKindOf,
   withoutButtonTalk,
   withoutTapYes,
 } from "./claude";
@@ -426,6 +427,39 @@ describe("askClaudeInChat", () => {
     expect(healthHeadline(19, "Building").score).toBeNull();
     expect(healthHeadline(20, "Building")).toEqual({ score: 20, band: "Building" });
     expect(healthHeadline(85, "Strong")).toEqual({ score: 85, band: "Strong" });
+  });
+
+  it("has the switch card ready before Claude writes, so it answers in one round", async () => {
+    create.mockResolvedValueOnce(final("Yes, I found a cheaper car policy for you."));
+    const before = create.mock.calls.length;
+    const result = await askClaudeInChat("u1", [], "can you change my car insurance", options);
+    expect(create.mock.calls.length - before).toBe(1);
+    const request = create.mock.calls.at(-1)?.[0] as {
+      tools: { name: string }[];
+      system: { text: string }[];
+    };
+    expect(request.tools.map((t) => t.name)).not.toContain("propose_action");
+    expect(JSON.stringify(request.system)).toMatch(
+      /already prepared[\s\S]*\$408\.00 a year cheaper/,
+    );
+    expect(result.reply.actions.map((a) => a.id)).toEqual([
+      "insurance.shop_yes",
+      "insurance.shop_no",
+    ]);
+    expect(result.reply.body).toContain("cheaper car policy");
+    expect(result.reply.body).toContain("$408.00 a year cheaper");
+  });
+
+  it("tells a request to shop a policy from a question about it", () => {
+    expect(shopKindOf("can you change my car insurance")).toBe("auto");
+    expect(shopKindOf("find me cheaper renters insurance")).toBe("renters");
+    expect(shopKindOf("lower my insurance")).toBeNull();
+    expect(shopKindOf("should I switch car insurance")).toBe(false);
+    expect(shopKindOf("what is my car insurance")).toBe(false);
+    expect(shopKindOf("how am i doing")).toBe(false);
+    // A list that was asked for may run to 700; others stop at 600.
+    expect(tooLong("x".repeat(650), "what are my options", false)).toBe(false);
+    expect(tooLong("x".repeat(650), "how am i doing", false)).toBe(true);
   });
 
   it("falls back to safe text, with no buttons, when the rewrite fails too", async () => {
