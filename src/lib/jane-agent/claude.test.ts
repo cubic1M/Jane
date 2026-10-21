@@ -130,8 +130,13 @@ describe("askClaudeInChat", () => {
       model: "claude-sonnet-5-5",
       thinking: { type: "adaptive" },
       output_config: { effort: "low" },
-      tools: CHAT_TOOLS,
     });
+    // The general tools, and none of a sector's when the question isn't about one.
+    const sent = (create.mock.calls[0][0] as { tools: { name: string }[] }).tools.map(
+      (t) => t.name,
+    );
+    expect(sent).toEqual(expect.arrayContaining(["safe_to_spend", "propose_action"]));
+    expect(sent.length).toBeLessThan(CHAT_TOOLS.length / 2);
   });
 
   it("puts a proposed finding's Yes and No under the answer, without acting", async () => {
