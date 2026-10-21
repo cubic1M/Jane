@@ -4,6 +4,7 @@ import type { LifeEventKind } from "@/config/life-events";
 import { CATEGORY_LABELS, UNCATEGORIZED } from "@/insights/labels";
 import { parseMoneyToCents } from "@/lib/money";
 import { parseDebtIntent, type DebtIntent } from "./debt-intents";
+import { parseDecision, type DecisionIntent } from "./decision-intents";
 import { parseTaxIntent, type TaxIntent } from "./tax-intents";
 import type { FlowId } from "./flows/engine";
 import type { PreferenceDraft } from "./preferences";
@@ -84,6 +85,7 @@ export type Intent =
   // what the conversation was about (./context.ts).
   | { kind: "follow_up"; target: string | null; month: string | null }
   // Taxes (spec steps 118–127): ./tax-intents.ts.
+  | DecisionIntent
   | TaxIntent
   // Spec step 128 on: what they own, and each later investment question.
   | InvestmentIntent
@@ -536,6 +538,9 @@ export function parseIntent(
     const cents = Math.round(Number(saveMore[1].replace(/,/g, "")) * 100);
     if (cents > 0) return { kind: "save_more", monthlyCents: cents };
   }
+  // "Should I buy bitcoin?" is about their debts, cushion and goals, not about bitcoin.
+  const decision = parseDecision(text);
+  if (decision) return decision;
   const whatIf = parseWhatIf(text);
   if (whatIf) return whatIf;
   const longView = parseLongView(text);

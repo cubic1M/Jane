@@ -354,6 +354,8 @@ export const CHAT_RULES_ONLY_KINDS: readonly string[] = [
   "remember",
   "search",
   "learn",
+  // A decision is answered from their numbers, the same every time; Claude never looks up the thing.
+  "decision",
 ];
 // The most Claude may spend answering one person's messages in a day, in cents, at the model's
 // listed price (MODEL_PRICES_CENTS in src/config/answer-checks.ts). Past it, the rules answer.
@@ -372,3 +374,9 @@ export const CHAT_FLOW_OPTIONS = 5;
 
 // Spec step 96: chat search shows at most this many messages, newest first.
 export const CHAT_SEARCH_RESULTS = 30;
+
+// "Should I buy X?" (decision questions): a debt at or above this rate (basis points a year)
+// comes before buying anything, and a cushion under this many months of spending comes before
+// investing. Rates and thresholds live here, never in the answer.
+export const DECISION_HIGH_RATE_BPS = 800;
+export const DECISION_MIN_CUSHION_MONTHS = 3;

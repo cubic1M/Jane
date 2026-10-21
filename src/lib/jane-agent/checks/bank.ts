@@ -574,6 +574,144 @@ const BASE_QUESTIONS: readonly CheckQuestion[] = [
     expect: { intent: "flow", button: "flow.pick.1", mentions: /Which charge/ },
   },
 
+  // Decision questions: answered from their debts, cushion and goals, never from a lookup of
+  // the thing, and "should I buy?" is about the thing just discussed (never an old button).
+  {
+    id: "dec-1",
+    text: "should i buy bitcoin",
+    needs: "rules",
+
+    sector: "decision",
+    page: "/afford",
+    tool: "decision",
+    profile: "demo_advice",
+    expect: {
+      intent: "decision",
+      mentions: /cushion/,
+      avoid: /don't see any crypto|demo exchange|button opens|opens your/i,
+    },
+  },
+  {
+    id: "dec-1b",
+    text: "should i buy?",
+    needs: "rules",
+    after: "dec-1",
+    sector: "decision",
+    page: "/afford",
+    tool: "decision",
+    profile: "demo_advice",
+    expect: {
+      intent: "decision",
+      mentions: /bitcoin/i,
+      avoid: /don't see any crypto|demo exchange|button opens|opens your/i,
+    },
+  },
+  {
+    id: "dec-2",
+    text: "should i pay off my card or invest",
+    needs: "rules",
+
+    sector: "decision",
+    page: "/afford",
+    tool: "decision",
+    profile: "demo_advice",
+    expect: {
+      intent: "decision",
+      mentions: /cushion|credit card/,
+      avoid: /don't see any crypto|demo exchange|button opens|opens your/i,
+    },
+  },
+  {
+    id: "dec-3",
+    text: "should i buy a house",
+    needs: "rules",
+
+    sector: "decision",
+    page: "/afford",
+    tool: "decision",
+    profile: "demo_advice",
+    expect: {
+      intent: "decision",
+      mentions: /down payment/,
+      avoid: /don't see any crypto|demo exchange|button opens|opens your/i,
+    },
+  },
+  {
+    id: "dec-4",
+    text: "should i buy a car",
+    needs: "rules",
+
+    sector: "decision",
+    page: "/afford",
+    tool: "decision",
+    profile: "demo_advice",
+    expect: {
+      intent: "decision",
+      mentions: /insurance, fuel/,
+      avoid: /don't see any crypto|demo exchange|button opens|opens your/i,
+    },
+  },
+  {
+    id: "dec-5",
+    text: "should i invest",
+    needs: "rules",
+
+    sector: "decision",
+    page: "/afford",
+    tool: "decision",
+    profile: "demo_advice",
+    expect: {
+      intent: "decision",
+      mentions: /cushion/,
+      avoid: /don't see any crypto|demo exchange|button opens|opens your/i,
+    },
+  },
+  {
+    id: "dec-6",
+    text: "should i buy stocks",
+    needs: "rules",
+
+    sector: "decision",
+    page: "/afford",
+    tool: "decision",
+    profile: "demo_advice",
+    expect: {
+      intent: "decision",
+      mentions: /cushion/,
+      avoid: /don't see any crypto|demo exchange|button opens|opens your/i,
+    },
+  },
+  {
+    id: "dec-7",
+    text: "is it a good idea to buy crypto",
+    needs: "rules",
+
+    sector: "decision",
+    page: "/afford",
+    tool: "decision",
+    profile: "demo_advice",
+    expect: {
+      intent: "decision",
+      mentions: /cushion/,
+      avoid: /don't see any crypto|demo exchange|button opens|opens your/i,
+    },
+  },
+  {
+    id: "dec-8",
+    text: "should i buy tesla stock",
+    needs: "rules",
+
+    sector: "decision",
+    page: "/afford",
+    tool: "decision",
+    profile: "demo_advice",
+    expect: {
+      intent: "decision",
+      mentions: /cushion/,
+      avoid: /don't see any crypto|demo exchange|button opens|opens your/i,
+    },
+  },
+
   // Follow-ups: the second needs the first.
   {
     id: "follow-1",

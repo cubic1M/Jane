@@ -1,3 +1,4 @@
+import { loadDecisionFacts } from "./decision";
 import { INSURANCE_TOOLS, isInsuranceTool, runInsuranceTool } from "./insurance/tools";
 import type Anthropic from "@anthropic-ai/sdk";
 import { BUDGET_SUGGESTION_MONTHS } from "@/config/budgets";
@@ -160,6 +161,12 @@ export const CHAT_TOOLS: Anthropic.Tool[] = [
   {
     name: "budgets",
     description: "This month's budgets: each category's budget, spent so far and what's left.",
+    input_schema: noInput,
+  },
+  {
+    name: "decision",
+    description:
+      'Where the person stands before a money decision, from their own numbers: card debt and the highest rate, cash and months of spending against the cushion Jane would set, and goals still short. Use it first for "should I buy bitcoin / stocks / a house / a car", "should I invest" and "should I pay off my card or invest". Answer from these numbers (debts at a high rate first, then the cushion, then goals); the crypto, investments or afford tools are only a follow-up. Never predict what the thing will do.',
     input_schema: noInput,
   },
   {
@@ -852,6 +859,18 @@ export async function runChatTool(
           left: money(p.leftCents),
           over: p.over,
         })),
+      });
+    }
+    case "decision": {
+      const f = await loadDecisionFacts(userId, { client, now });
+      return out({
+        cardDebt: money(f.cardDebtCents),
+        ...(f.topRateBps ? { highestRatePercent: f.topRateBps / 100 } : {}),
+        cash: money(f.cashCents),
+        monthlySpending: money(f.monthlySpendCents),
+        ...(f.cushionTargetCents !== null ? { cushionTarget: money(f.cushionTargetCents) } : {}),
+        ...(f.cushionMonths !== null ? { monthsOfSpendingInCash: f.cushionMonths } : {}),
+        goalsStillShort: f.goalsBehind.map((g) => ({ name: g.name, toGo: money(g.leftCents) })),
       });
     }
     case "net_worth": {
