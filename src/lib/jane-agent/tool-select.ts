@@ -73,6 +73,7 @@ const SECTORS = {
       "retirement_accounts",
       "old_accounts",
       "retirement_income",
+      "investing_decision",
       "family_investing",
       "property",
       "costly_products",
@@ -83,7 +84,7 @@ const SECTORS = {
       "crypto",
     ]),
     words:
-      /\b(?:invest\w*|stocks?|etfs?|funds?|401\s?k|ira|retire\w*|portfolio|crypto\w*|bitcoin|ether\w*|bonds?|dividends?|brokerage|529|college|annuit\w*|rebalanc\w*|pension|rmd|savings account|high.?yield|money market|index|shares?|equity|risk|what is a|profile|about me|goals?|buckets?|split)\b/,
+      /\b(?:invest\w*|stocks?|etfs?|funds?|401\s?k|ira|retire\w*|portfolio|crypto\w*|bitcoin|ether\w*|bonds?|dividends?|brokerage|529|college|annuit\w*|rebalanc\w*|pension|rmd|savings account|high.?yield|money market|index|shares?|equity|risk|what is a|profile|about me|goals?|buckets?|split|buy|buying|nvidia|tesla|apple|amazon|google|microsoft)\b/,
   },
 } as const;
 
