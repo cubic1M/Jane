@@ -3,6 +3,7 @@ import {
   CHAT_CLAUDE_COOLDOWN_SECONDS,
   CHAT_CLAUDE_DEADLINE_MS,
   CHAT_CLAUDE_FIRST_WORDS_MS,
+  CHAT_CLAUDE_HISTORY,
   CHAT_CLAUDE_MAX_TOKENS,
   CHAT_PRIMER_BUDGET_MS,
   CHAT_CLAUDE_EFFORT,
@@ -254,7 +255,9 @@ export async function askClaudeInChat(
   );
   allowedCents.push(...primer.cents);
   let rewrites = 0;
-  const messages = conversation(history, question);
+  // Only the last few turns: a long thread slows every follow-up. The topic of the last
+  // answer is in the numbers sent with the question, so a short follow-up keeps its context.
+  const messages = conversation(history.slice(-CHAT_CLAUDE_HISTORY), question);
   let proposal: Extract<Proposal, { ok: true }> | null = null;
   let shown: AnswerBlock | null = null;
   const draft = new GuardedText(
