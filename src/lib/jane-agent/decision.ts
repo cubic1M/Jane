@@ -7,7 +7,7 @@ import { loadProfileInput } from "@/lib/profile";
 import { listGoals } from "@/lib/goals";
 import { emergencyTarget } from "@/planning/emergency-fund";
 import { buildProfile } from "@/profile/build";
-import type { DecisionIntent, DecisionItem } from "./decision-intents";
+import type { CoreSubject, DecisionIntent, DecisionItem } from "./decision-intents";
 import type { Topic } from "./context";
 import type { Reply } from "./replies";
 import type { MessageAction } from "./types";
@@ -73,7 +73,7 @@ const link = (label: string, href: string): MessageAction => ({
   href,
 });
 
-const THING: Record<DecisionItem, string> = {
+const THING: Record<CoreSubject, string> = {
   crypto: "crypto",
   stocks: "stocks",
   invest: "investing",
@@ -167,7 +167,7 @@ export function decisionReply(
       refs: {},
     };
   }
-  const label = intent.label ?? fromTopic?.target ?? THING[item];
+  const label = intent.label ?? fromTopic?.target ?? THING[item as CoreSubject] ?? THING.other;
   const lines = standing(facts);
   const lead = first(facts);
   const body = advice
@@ -175,8 +175,8 @@ export function decisionReply(
         `Before ${label}, here is where you stand.`,
         ...lines,
         lead
-          ? `${lead.say} ${CLOSING[item]}`
-          : `Your basics look covered, so putting some toward ${label} is reasonable. ${CLOSING[item]}`,
+          ? `${lead.say} ${CLOSING[item as CoreSubject] ?? CLOSING.other}`
+          : `Your basics look covered, so putting some toward ${label} is reasonable. ${CLOSING[item as CoreSubject] ?? CLOSING.other}`,
       ].join(" ")
     : [
         `Here is where you stand on the things that matter before ${label}.`,
@@ -199,15 +199,70 @@ export function decisionReply(
   };
 }
 
+// What a sector's decide() returns (docs/decisions.md): a short answer built from the
+// person's own figures. The router adds the confidence line, the topic (so "should I buy?"
+// afterwards is about this) and, in demo advice mode, the label.
+export type Decision = {
+  body: string;
+  actions: MessageAction[];
+  // How sure Jane is, with the evidence, shown as "85% sure: 12 months of balances."
+  confidence?: { percent: number; reason: string };
+  refs?: Reply["refs"];
+};
+
+// What a sector's decide() is given.
+export type DecideContext = {
+  userId: string;
+  client: PrismaClient;
+  now: Date;
+  item: DecisionItem;
+  // What they called it, for the answer's words ("bitcoin", "life insurance").
+  label: string;
+  // The general facts every decision starts from (card debt, cushion, goals).
+  facts: DecisionFacts;
+  // Demo advice mode: recommendations allowed, labelled. Off on real accounts: facts only.
+  advice: boolean;
+};
+
+// The sector that claims a subject (Capability.decides), if any.
+export type Decider = {
+  decides?: readonly DecisionItem[];
+  decide?: (context: DecideContext) => Promise<Decision | null>;
+};
+
+// The one router for "should I ...?": the sector whose subject it is answers it (its decide),
+// and any subject nobody claims, or a sector that declines, gets the general answer from the
+// person's debts, cushion and goals.
 export async function answerDecision(
   userId: string,
   intent: DecisionIntent,
   topic: Topic | null,
-  { client, now }: Options,
+  { client, now, sectors = [] }: Options & { sectors?: readonly Decider[] },
 ): Promise<Reply> {
   const [facts, advice] = await Promise.all([
     loadDecisionFacts(userId, { client, now }),
     adviceMode(userId, { client }),
   ]);
+  const item =
+    intent.item ?? (topic?.kind === "decision" ? (topic.category as DecisionItem) : null);
+  const sector = item ? sectors.find((s) => s.decide && s.decides?.includes(item)) : undefined;
+  if (item && sector?.decide) {
+    const label = intent.label ?? topic?.target ?? String(THING[item as CoreSubject] ?? "that");
+    const made = await sector.decide({ userId, client, now, item, label, facts, advice });
+    if (made) {
+      const sure = made.confidence
+        ? `\n${made.confidence.percent}% sure: ${made.confidence.reason}.`
+        : "";
+      return {
+        body: `${made.body}${sure}`,
+        actions: made.actions,
+        refs: {
+          ...made.refs,
+          topic: { kind: "decision", category: item, target: label },
+          ...(advice ? { advice: true as const } : {}),
+        },
+      };
+    }
+  }
   return decisionReply(intent, topic, facts, advice);
 }

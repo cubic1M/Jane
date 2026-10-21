@@ -3,8 +3,14 @@
 // debts, cushion and goals (./decision.ts), never from a lookup of the thing itself. "Should I
 // buy?" on its own is about whatever was just discussed. Pure.
 
-export type DecisionItem =
+import { SECTOR_DECISIONS } from "@/config/decisions";
+
+export type CoreSubject =
   "crypto" | "stocks" | "invest" | "home" | "car" | "payoff_or_invest" | "other";
+
+// What the question is about: a core subject or one a sector added (src/config/decisions.ts).
+// eslint-disable-next-line @typescript-eslint/no-empty-object-type
+export type DecisionItem = CoreSubject | (string & {});
 
 export type DecisionIntent = {
   kind: "decision";
@@ -51,6 +57,12 @@ const tidy = (rest: string) =>
 export function parseDecision(text: string): DecisionIntent | null {
   if (BARE.test(text)) return { kind: "decision", item: null, label: null };
   if (!ASKED.test(text)) return null;
+  // A sector's own subject (insurance, loans, taxes) comes before the general ones.
+  const sector = SECTOR_DECISIONS.find((s) => s.pattern.test(text));
+  if (sector) {
+    const label = tidy(text.replace(/^.*?\b(?:should i|good idea to|wise to|smart to)\s+/, ""));
+    return { kind: "decision", item: sector.item, label };
+  }
   if (PAYOFF_OR_INVEST.test(text)) {
     return { kind: "decision", item: "payoff_or_invest", label: "paying off debt or investing" };
   }

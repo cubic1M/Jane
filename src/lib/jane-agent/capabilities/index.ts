@@ -76,7 +76,9 @@ export const CAPABILITIES: readonly Capability[] = [
     kinds: ["decision"],
     tools: ["decision"],
     answer: async ({ userId, intent, client, now }) =>
-      intent.kind === "decision" ? answerDecision(userId, intent, null, { client, now }) : null,
+      intent.kind === "decision"
+        ? answerDecision(userId, intent, null, { client, now, sectors: CAPABILITIES })
+        : null,
   },
   { id: "goals", bank: ["goals"], kinds: ["goals"], tools: ["goals"], answer: moneyAnswer },
   {
