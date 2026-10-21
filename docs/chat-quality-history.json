@@ -1,0 +1,13 @@
+[
+  {
+    "date": "2026-10-20",
+    "mode": "rules_only",
+    "promptVersion": "chat-v9",
+    "score": 100,
+    "graded": 158,
+    "skipped": 22,
+    "costCents": 0,
+    "firstWordsMs": 15,
+    "failed": []
+  }
+]

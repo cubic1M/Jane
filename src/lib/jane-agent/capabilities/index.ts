@@ -1,3 +1,4 @@
+import { answerDecision } from "../decision";
 import { answerDebt } from "../debt-answer";
 import { DEBT_KINDS, type DebtIntent } from "../debt-intents";
 import type { Intent } from "../intents";
@@ -44,8 +45,8 @@ export const CAPABILITIES: readonly Capability[] = [
   {
     id: "safe_to_spend",
     bank: ["safe"],
-    kinds: ["safe_to_spend", "afford"],
-    tools: ["safe_to_spend"],
+    kinds: ["safe_to_spend", "afford", "balance_forecast", "save_more"],
+    tools: ["safe_to_spend", "balance_forecast"],
     answer: moneyAnswer,
   },
   {
@@ -61,6 +62,23 @@ export const CAPABILITIES: readonly Capability[] = [
     kinds: ["coming_up", "bills_paid"],
     tools: ["coming_up", "money_moves"],
     answer: moneyAnswer,
+  },
+  {
+    id: "net_worth",
+    bank: ["networth"],
+    kinds: ["net_worth"],
+    tools: ["net_worth"],
+    answer: moneyAnswer,
+  },
+  {
+    id: "decision",
+    bank: ["decision"],
+    kinds: ["decision"],
+    tools: ["decision"],
+    answer: async ({ userId, intent, client, now }) =>
+      intent.kind === "decision"
+        ? answerDecision(userId, intent, null, { client, now, sectors: CAPABILITIES })
+        : null,
   },
   { id: "goals", bank: ["goals"], kinds: ["goals"], tools: ["goals"], answer: moneyAnswer },
   {

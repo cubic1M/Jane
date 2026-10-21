@@ -1801,6 +1801,11 @@ describe("crypto questions, by rules", () => {
   );
 });
 
+// "Should I buy btc?" is a decision, answered by the one decision router (decision.ts).
+it("reads should I buy btc as a decision about crypto", () => {
+  expect(parseIntent("should I buy btc", ASOF)).toMatchObject({ kind: "decision", item: "crypto" });
+});
+
 describe("cryptoReply and the crypto messages", () => {
   it("gives the size with its sources and time, the flags, and never trades", () => {
     const reply = cryptoReply(CRYPTO_VIEW);
