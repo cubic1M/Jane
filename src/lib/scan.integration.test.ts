@@ -135,6 +135,17 @@ describe.runIf(url)("the chat opens during the first scan", { timeout: 120_000 }
     expect(messages[agenda].body).toMatch(/% sure|not sure/);
   });
 
+  it("posts the first brief even when the scan runs in the night's quiet hours", async () => {
+    const night = new Date("2026-10-17T03:00:00Z");
+    const trial = await startTrial({ client, now: night, defer: true, person: "debt" });
+    created.push(trial.userId);
+    await syncItem(trial.itemId, { client, now: night, progressive: true });
+    const bodies = (
+      await client.janeMessage.findMany({ where: { userId: trial.userId }, select: { body: true } })
+    ).map((m) => m.body);
+    expect(bodies.some((b) => /what I'd do first/.test(b))).toBe(true);
+  });
+
   it("still finishes the scan and says its piece when a sector's work fails", async () => {
     const trial = await startTrial({ client, now: NOW, defer: true, person: "retiree" });
     created.push(trial.userId);

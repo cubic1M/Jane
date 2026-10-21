@@ -632,6 +632,9 @@ export async function syncItem(
   }
 
   await runDetection(item.userId, { client, now });
+  // Someone watching their first scan is looking at the chat: Jane's first words come at once,
+  // whatever the hour (quiet hours had left a person scanned at night with no brief at all).
+  const scanTrigger = progressive && result.firstSync ? "open" : "sync";
   // The first scan after linking: what people see first (the findings) is posted right after
   // detection, before the slower sector work below; the chat is already open and fills in.
   if (progressive && result.firstSync) {
@@ -642,7 +645,7 @@ export async function syncItem(
     await scanSuggestions(item.userId, { client, now }).catch((error) =>
       console.error("The first scan's suggestions failed", { error: String(error) }),
     );
-    await runJaneAgentSafely(item.userId, { client, now, trigger: "sync", early: true });
+    await runJaneAgentSafely(item.userId, { client, now, trigger: scanTrigger, early: true });
   }
   // After detection these don't depend on each other, so they run together; the sample
   // person's first screen is waiting on this sync.
@@ -672,7 +675,7 @@ export async function syncItem(
     }
   }
   // Jane says what's new in the chat (spec step 82); a problem there never fails the sync.
-  await runJaneAgentSafely(item.userId, { client, now, trigger: "sync" });
+  await runJaneAgentSafely(item.userId, { client, now, trigger: scanTrigger });
   await markScanDone(item.userId, { client, now });
   // The person's numbers for Claude, saved now so the chat reads them in one query instead of
   // looking every sector up while someone waits. Loaded here, not at the top: that file
