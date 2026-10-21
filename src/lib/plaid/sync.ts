@@ -642,7 +642,7 @@ export async function syncItem(
       }))(),
   ]);
   // Jane says what's new in the chat (spec step 82); a problem there never fails the sync.
-  await runJaneAgentSafely(item.userId, { client, now, trigger: "sync" });
+  await runJaneAgentSafely(item.userId, { client, now, trigger: "sync", final: true });
   await markScanDone(item.userId, { client, now });
   return result;
 }
