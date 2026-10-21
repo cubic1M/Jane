@@ -4,6 +4,7 @@ import type { LifeEventKind } from "@/config/life-events";
 import { CATEGORY_LABELS, UNCATEGORIZED } from "@/insights/labels";
 import { parseMoneyToCents } from "@/lib/money";
 import { parseDebtIntent, type DebtIntent } from "./debt-intents";
+import { CUSHION_ASK, EXPLAIN, parseAck, type AckIntent } from "./ack-intents";
 import { parseDecision, type DecisionIntent } from "./decision-intents";
 import { parseTaxIntent, type TaxIntent } from "./tax-intents";
 import type { FlowId } from "./flows/engine";
@@ -86,13 +87,17 @@ export type Intent =
   | { kind: "follow_up"; target: string | null; month: string | null }
   // Taxes (spec steps 118–127): ./tax-intents.ts.
   | DecisionIntent
+  // "Why?" / "tell me more": about the last answer, read against it (./context.ts).
+  | { kind: "explain" }
+  | { kind: "why_finding"; findingId: string }
+  | AckIntent
   | TaxIntent
   // Spec step 128 on: what they own, and each later investment question.
   | InvestmentIntent
   // Spec step 142: "what did you check last night?"
   | { kind: "checked" }
   // Spec step 143: "what should I do first?"
-  | { kind: "priorities" }
+  | { kind: "priorities"; explain?: boolean; one?: boolean }
   // Spec step 183: "am I OK?" and "what should I do this month?", across every sector.
   | { kind: "whole_picture"; focus: "now" | "month" }
   // What they own and owe, from the net worth page.
@@ -364,8 +369,10 @@ const MONTHLY_REPORT =
   /\b(?:monthly|money|month'?s) report\b|\bmonth in review\b|\breport (?:for|on) (?:last|this) month\b|\bhow did (?:i|we) do (?:this|last) month\b|\bhow (?:was|did) (?:my|our|last) month\b|\bhow did last month go\b/;
 const STEADY =
   /\bsteady (?:paycheck|pay|income)\b|\b(?:my|the) (?:income|pay|paychecks?) (?:is|are) (?:uneven|irregular|unpredictable|all over the place)\b|\b(?:uneven|irregular|freelance|variable) income\b|\bpay myself (?:a )?(?:steady|regular)\b/;
+const ONE_THING =
+  /\b(?:one|1) thing\b.*\b(?:wrong|fix|change|improve|start)|\bbiggest (?:\w+ )?(?:mistake|leak|problem)\b|\bwhat am i (?:doing )?wrong\b/;
 const PRIORITIES =
-  /\bwhat should i do (?:first|next|now)\b|\bwhat matters (?:most|now)\b|\bwhat'?s (?:most )?important\b|\bwhere (?:do|should) i start\b|\bmy (?:top )?priorities\b|\bnext best thing\b/;
+  /\bwhat should i do (?:first|next|now)\b|\bwhat matters (?:most|now)\b|\bwhat'?s (?:most )?important\b|\bwhere (?:do|should) i start\b|\bmy (?:top )?priorities\b|\bnext best thing\b|\b(?:one thing|what(?:'?s| am)?) i'?m doing wrong\b|\bwhat am i (?:doing )?wrong\b|\bbiggest (?:\w+ )?(?:mistake|leak|problem)\b/;
 // Spec step 183. "Am I OK to buy …" is a purchase question, and goals have their own answer.
 const WHOLE_NOW =
   /\bam i (?:ok|okay|alright|all right|fine|good)\b(?! (?:to|if|for|with|on)\b)|\bhow am i doing\b(?! (?:on|with)\b)|\bhow (?:are|is) (?:my|our) (?:money|finances?)(?: doing| looking)?\b|\bhow'?s (?:my|our) (?:money|finances?)\b|\b(?:the )?(?:big|whole|full) picture\b|\bis (?:my|our) money (?:ok|okay|alright|fine)\b|\bam i on track\b(?! (?:for|with)\b)|\b(?:overall|in general),? how am i\b/;
@@ -531,6 +538,22 @@ export function parseIntent(
   if (!text || HELP.test(text)) return { kind: "help" };
   if (GREETING.test(text)) return { kind: "greeting", thanks: false };
   if (THANKS.test(text)) return { kind: "greeting", thanks: true };
+  const ack = parseAck(text);
+  if (ack) return ack;
+  // "Why?" and "tell me more" are about the last answer: read against the conversation.
+  if (EXPLAIN.test(text)) return { kind: "explain" };
+  if (CUSHION_ASK.test(text)) {
+    return { kind: "decision", item: "cushion", label: "an emergency fund" };
+  }
+  // "What happened to my money this month" is the month's spending, not Jane's own log.
+  const happened = /^what happened to my (?:money|spending|cash)(?: (this|last) month)?\W*$/.exec(
+    text,
+  );
+  if (happened) {
+    const d = new Date(`${asOf}T00:00:00Z`);
+    if (happened[1] === "last") d.setUTCMonth(d.getUTCMonth() - 1);
+    return { kind: "spending", category: null, month: d.toISOString().slice(0, 7) };
+  }
   if (PAUSE.test(text)) return { kind: "pause_autopilot" };
   if (CHECKED.test(text)) return { kind: "checked" };
   const saveMore = SAVE_MORE.exec(text);
@@ -559,6 +582,8 @@ export function parseIntent(
   if (TIMELINE.test(text)) return { kind: "timeline", why: false };
   if (WHOLE_MONTH.test(text)) return { kind: "whole_picture", focus: "month" };
   if (WHOLE_NOW.test(text)) return { kind: "whole_picture", focus: "now" };
+  // "What's one thing I'm doing wrong": the top item alone, in a sentence.
+  if (ONE_THING.test(text)) return { kind: "priorities", one: true };
   if (PRIORITIES.test(text)) return { kind: "priorities" };
   if (PAYCHECK.test(text)) return { kind: "paycheck" };
   if (HEALTH.test(text)) return { kind: "health" };
@@ -683,7 +708,7 @@ export function parseIntent(
   if (refund) return { kind: "act", verb: "refund", target: cleanTarget(refund[1] ?? refund[2]) };
   const cancel = CANCEL.exec(text);
   if (cancel) return { kind: "act", verb: "cancel", target: cleanTarget(cancel[1]) };
-  const lower = LOWER.exec(text);
+  const lower = LOWER.exec(text.replace(/^(?:how (?:do|can|could) i|how to|can i|help me) /, ""));
   if (lower) return { kind: "act", verb: "lower", target: cleanTarget(lower[1]) };
 
   const insurance = parseInsurance(text);
