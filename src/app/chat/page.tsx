@@ -29,10 +29,14 @@ async function Chat({ searchParams }: { searchParams: PageProps<"/chat">["search
   await connection();
   const user = await requireUser();
   const pages = pagesFrom((await searchParams).pages);
-  const chat = await openChat(user.id, { pages });
+  // Nothing here waits on anything else, so a first visit waits for the slowest, not the sum.
+  const [chat, askHistory, pinned] = await Promise.all([
+    openChat(user.id, { pages }),
+    scopedFor(user.id).askConversations.count(),
+    pinnedMessages(user.id),
+  ]);
   if (!chat) redirect("/connect");
-  const hasAskHistory = (await scopedFor(user.id).askConversations.count()) > 0;
-  const pinned = await pinnedMessages(user.id);
+  const hasAskHistory = askHistory > 0;
   after(() => markChatRead(user.id));
 
   return (
