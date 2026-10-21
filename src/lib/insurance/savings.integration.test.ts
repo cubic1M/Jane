@@ -200,7 +200,9 @@ describe.runIf(url)("paying less for the same cover, against a real database", (
       "answered",
     );
     const { reply } = await sendToJane(me.userId, "should I raise my deductible", o());
-    expect(reply.body).toMatch(/Raising your deductible from \$1,000\.00 to \$2,000\.00 saves about/);
+    expect(reply.body).toMatch(
+      /Raising your deductible from \$1,000\.00 to \$2,000\.00 saves about/,
+    );
     const tool = JSON.parse((await runChatTool(me.userId, "insurance_savings", {}, o())).content);
     expect(
       tool.savings.find((s: { what: string }) => s.what === "higher_deductible"),
