@@ -809,6 +809,37 @@ const BASE_QUESTIONS: readonly CheckQuestion[] = [
     expect: { avoid: /\b(?:I(?:'ve| have) put|under this answer|never answered)\b/i },
   },
 
+  // Today's live failures, as must-pass questions for the depth bar.
+  {
+    id: "dbar-wrong",
+    text: "what's one thing i'm doing wrong",
+    needs: "rules",
+    sector: "chat",
+    page: "/home",
+    tool: "priorities",
+    expect: { intent: "priorities", avoid: /button|couldn't look/i },
+  },
+  {
+    id: "dbar-why",
+    text: "why?",
+    needs: "rules",
+    after: "follow-2",
+    sector: "follow",
+    page: "/subscriptions",
+    tool: "finding_details",
+    expect: { mentions: /If you say yes/i, avoid: /which one do you mean|button/i },
+  },
+  {
+    id: "dbar-more",
+    text: "tell me more",
+    needs: "rules",
+    after: "follow-2",
+    sector: "follow",
+    page: "/subscriptions",
+    tool: "finding_details",
+    expect: { mentions: /If you say yes/i, avoid: /which one do you mean|button/i },
+  },
+
   // Follow-ups: the second needs the first.
   {
     id: "follow-1",

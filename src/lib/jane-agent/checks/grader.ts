@@ -1,12 +1,13 @@
 import Anthropic from "@anthropic-ai/sdk";
-import { finishedText, llmModel } from "@/lib/anthropic";
+import { GRADER_MODEL } from "@/config/answer-checks";
+import { finishedText } from "@/lib/anthropic";
 import type { Facts } from "./facts";
 
 // Claude's grade for one of Jane's answers (spec step 87), against a written rubric for what
 // the fixed checks can't see: is it useful, and does it sound like Jane. Only with an
 // Anthropic key; the runner counts what it costs.
 
-export const GRADER_VERSION = "grader-v1";
+export const GRADER_VERSION = "grader-v2";
 
 const RUBRIC = `You grade answers from Jane, the money helper in a personal finance app's chat. You get the person's question (and the conversation before it), Jane's answer, the buttons under it, and the person's main numbers.
 
@@ -60,7 +61,7 @@ export async function gradeWithClaude(
   input: GradeInput,
   claude: () => Pick<Anthropic, "messages">,
 ): Promise<{ grade: ClaudeGrade | null; usage: Usage | null }> {
-  const model = llmModel();
+  const model = process.env.ANTHROPIC_GRADER_MODEL || GRADER_MODEL;
   const content = JSON.stringify({
     conversation: input.earlier,
     question: input.question,
@@ -80,7 +81,7 @@ export async function gradeWithClaude(
       max_tokens: 16000,
       system: [{ type: "text", text: RUBRIC, cache_control: { type: "ephemeral" } }],
       messages: [{ role: "user", content }],
-      output_config: { effort: "low", format: { type: "json_schema", schema: SCHEMA } },
+      output_config: { format: { type: "json_schema", schema: SCHEMA } },
     });
   } catch (error) {
     if (!(error instanceof Anthropic.APIError)) throw error;

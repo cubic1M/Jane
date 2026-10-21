@@ -34,6 +34,10 @@ export type QuestionResult = {
   buttons?: string[];
   source?: AnswerSource;
   firstWordsMs?: number;
+  // Until the whole answer was there (for a rules answer, the same as the first words).
+  totalMs?: number;
+  // A follow-up to an earlier question, or two questions in one message.
+  followUp?: boolean;
   checks?: Check[];
   claude?: ClaudeGrade;
   // Spec step 93: the guardrail rules that blocked Claude's answer, if any.
@@ -205,6 +209,7 @@ export async function runAnswerChecks(
           if (event.type === "text" && firstWords === null) firstWords = performance.now();
         },
       });
+      const totalMs = Math.round(performance.now() - started);
       const firstWordsMs = Math.round((firstWords ?? performance.now()) - started);
       const checks = fixedChecks(
         question,
@@ -243,6 +248,8 @@ export async function runAnswerChecks(
         buttons: reply.actions.map((a) => (a.kind === "link" ? `open ${a.href}` : a.id)),
         source,
         firstWordsMs,
+        totalMs,
+        followUp: Boolean(question.after) || question.sector === "two",
         checks,
         claude: grade,
         ...(issues ? { blockedBy: issues } : {}),
