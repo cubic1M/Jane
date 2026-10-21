@@ -3,7 +3,7 @@ import type { PrismaClient } from "@/generated/prisma/client";
 import { demoPaystubs } from "@/data-sources/demo/demo-payroll";
 import { demoOptionsAllowed } from "@/lib/compare";
 import { db as defaultClient } from "@/lib/db";
-import { hasDemoBank } from "@/lib/plaid/demo";
+import { demoHasEmployer, hasDemoBank } from "@/lib/plaid/demo";
 
 // Pay stubs (spec step 150): where the deductions for benefits through work come from. A
 // bank only sees net pay, so this needs a payroll partner. Until one is connected (Plaid
@@ -43,5 +43,7 @@ export async function payrollFor(
 ): Promise<PayrollSource | null> {
   const configured = process.env.PAYROLL_PARTNER ?? "demo";
   if (configured !== "demo" || !demoOptionsAllowed()) return null;
-  return (await hasDemoBank(userId, { client })) ? demoPayroll : null;
+  if (!(await hasDemoBank(userId, { client }))) return null;
+  // The sample pay stub is an employer's: not for the freelancer, the retiree or the owner.
+  return (await demoHasEmployer(userId, { client })) ? demoPayroll : null;
 }

@@ -1,3 +1,9 @@
+import { adviceMode } from "@/lib/advice-mode";
+import { dollarFigures } from "@/lib/guardrails";
+import { decisionReply, loadDecisionFacts } from "./decision";
+import { parseDecision } from "./decision-intents";
+import { mattersBlock } from "./primer-matters";
+import { loadSnapshotFast, refreshSnapshot } from "./snapshot-store";
 import { INSURANCE_TOOLS, isInsuranceTool, runInsuranceTool } from "./insurance/tools";
 import type Anthropic from "@anthropic-ai/sdk";
 import { BUDGET_SUGGESTION_MONTHS } from "@/config/budgets";
@@ -22,6 +28,11 @@ import { sectorAutopilots } from "@/lib/sector-autopilot";
 import { lastControllerRun } from "@/lib/controller-log";
 import { CONTROLLER_STEP_LABELS } from "@/config/controller";
 import { rankedFor } from "./priorities";
+import { loadDetectionInput } from "@/detection/engine";
+import { forecastAccounts } from "@/detection/forecast";
+import { FORECAST_DAYS } from "@/config/detection";
+import { newestUnreadAlerts } from "@/lib/alerts";
+import { householdOf } from "@/lib/household";
 import { wholePicture } from "./whole-picture";
 import { latestPaycheckPlan } from "@/lib/money-movement/paycheck";
 import { listTransfers } from "@/lib/money-movement/transfers";
@@ -38,6 +49,7 @@ import { provenSavings } from "@/lib/savings-proof";
 import { listLifeEvents } from "@/lib/life-events";
 import { homeSummary } from "@/lib/home";
 import { formatCents } from "@/lib/money";
+import { calculate, type CalcInput } from "./calculate";
 import { affordWindow } from "@/planning/afford";
 import type { Scored } from "@/planning/compare";
 import { ACTION_HANDLERS } from "./actions";
@@ -54,7 +66,6 @@ import { cachedPrimer, keepPrimer } from "./primer-cache";
 import { isStale, readStoredPrimer, writeStoredPrimer } from "./primer-store";
 import { loadRecurring } from "./recurring";
 import { weeklyReview } from "./replies-review";
-import { loadSnapshot } from "./snapshot";
 import { findingCandidate } from "./sources/findings";
 import { TAX_TOOLS, isTaxTool, runTaxTool } from "./tax-tools";
 import { ACTION_IDS, type ActionId, type MessageAction } from "./types";
@@ -159,6 +170,18 @@ export const CHAT_TOOLS: Anthropic.Tool[] = [
     input_schema: noInput,
   },
   {
+    name: "decision",
+    description:
+      'Jane\'s verdict and the numbers behind it for a money decision ("should I buy bitcoin / stocks / a house / a car", "should I invest", "should I pay off my card or invest", any paraphrase): card debt and its highest rate, cash and months of spending against the cushion, goals still short, and `verdict`, Jane\'s own answer in order of priority (high-rate debt, then the cushion, then goals, then the thing). Write the answer in your own words from the verdict and the numbers, plain and direct, opening with the verdict. Never predict what the thing will do. The crypto, investments or afford tools are only a follow-up.',
+    input_schema: {
+      type: "object",
+      properties: {
+        subject: { type: "string", description: 'What they are thinking of, e.g. "bitcoin".' },
+      },
+      additionalProperties: false,
+    },
+  },
+  {
     name: "net_worth",
     description:
       "What the person has (accounts and things they own) minus what they owe, from their linked balances.",
@@ -245,6 +268,51 @@ export const CHAT_TOOLS: Anthropic.Tool[] = [
     input_schema: noInput,
   },
   {
+    name: "balance_forecast",
+    description:
+      'Where each checking account is heading over the next month (spec step 192): its balance today, the lowest point it is forecast to reach and the day, and the bills and deposits (paychecks on their pay schedule) that drive it. Use it for "why is my checking going negative", "will I run short before payday" and "what happens to my balance".',
+    input_schema: noInput,
+  },
+  {
+    name: "alerts",
+    description:
+      'The person\'s unread alerts (spec step 192): fees, big or odd charges, price rises, bills coming up and low balances, newest first, each with what it says. Use it for "any alerts for me" and "did anything weird happen".',
+    input_schema: noInput,
+  },
+  {
+    name: "household",
+    description:
+      'Whether the person shares their money with a partner (spec step 192): who is in the household, who has been invited and not yet joined. Never shows the other person\'s accounts. Use it for "can my wife see my accounts" and "add my husband".',
+    input_schema: noInput,
+  },
+  {
+    name: "calculate",
+    description:
+      'Arithmetic for a number you want that no tool gives directly: percent_of (percent of an amount, e.g. the 4% rule on a balance), per_year and per_month (a monthly amount over a year, a yearly amount over a month), difference (between two amounts), sum, and payoff_months (how long to pay off a balance at a monthly payment and an APR, with the interest it costs). Pass amounts in dollars exactly as they appear in the person\'s numbers or a tool result, and say in "basis" where they came from. The result is computed, so you may state it. Never use it with an amount you made up.',
+    input_schema: {
+      type: "object",
+      properties: {
+        operation: {
+          type: "string",
+          enum: ["percent_of", "per_year", "per_month", "difference", "sum", "payoff_months"],
+        },
+        basis: {
+          type: "string",
+          description: 'Where the amounts came from, e.g. "retirement balance from holdings".',
+        },
+        percent: { type: "number" },
+        amount: { type: "number", description: "Dollars." },
+        other_amount: { type: "number", description: "Dollars (difference)." },
+        amounts: { type: "array", items: { type: "number" }, description: "Dollars (sum)." },
+        balance: { type: "number", description: "Dollars (payoff_months)." },
+        monthly_payment: { type: "number", description: "Dollars (payoff_months)." },
+        apr_percent: { type: "number", description: "Yearly rate in percent (payoff_months)." },
+      },
+      required: ["operation", "basis"],
+      additionalProperties: false,
+    },
+  },
+  {
     name: "whole_picture",
     description:
       'How the person is doing across every sector at once (spec step 183), for "am I OK?", "how am I doing" and "what should I do this month": a verdict (ok, watch or act) with its one-sentence headline, safe to spend until payday, bills and deadlines due this week and this month, budgets over, goals behind, urgent alerts, what Jane\'s agent is working on, the steps waiting on the person, and the one to three things that matter most (from the ranked list) with why. Lead with the headline, then the things that matter; use the same figures.',
@@ -326,6 +394,14 @@ export async function runChatTool(
   const asOf = now.toISOString().slice(0, 10);
 
   switch (name) {
+    case "calculate": {
+      const result = calculate((input ?? {}) as CalcInput);
+      if (!result.ok) return { content: JSON.stringify({ error: result.error }), cents: [] };
+      const amounts = Object.fromEntries(
+        Object.entries(result.cents).map(([key, value]) => [key, money(value)]),
+      );
+      return out({ ...amounts, ...result.numbers, note: result.note });
+    }
     case "safe_to_spend": {
       const safe = (await homeSummary(userId, { client, now }))?.safeToSpend;
       if (!safe) return out({ note: "No checking account is linked, so there's no number." });
@@ -351,7 +427,7 @@ export async function runChatTool(
       });
     }
     case "open_findings": {
-      const snapshot = await loadSnapshot(userId, { client, now });
+      const snapshot = await loadSnapshotFast(userId, { client, now });
       return out({
         findings: (snapshot?.findings ?? []).map((f) => {
           if (f.annualSavingsCents !== null) money(f.annualSavingsCents);
@@ -462,7 +538,7 @@ export async function runChatTool(
     case "plan_upkeep": {
       const [upkeep, snapshot] = await Promise.all([
         loadUpkeep(userId, { client, now }),
-        loadSnapshot(userId, { client, now }),
+        loadSnapshotFast(userId, { client, now }),
       ]);
       return out({
         tuneUp: upkeep.tuneUp && {
@@ -673,7 +749,7 @@ export async function runChatTool(
       });
     }
     case "priorities": {
-      const snapshot = await loadSnapshot(userId, { client, now });
+      const snapshot = await loadSnapshotFast(userId, { client, now });
       return out({
         ranked: (snapshot ? rankedFor(snapshot) : []).slice(0, 10).map((r) => ({
           what: r.title,
@@ -686,8 +762,48 @@ export async function runChatTool(
         })),
       });
     }
+    case "balance_forecast": {
+      const input = await loadDetectionInput(userId, { client, now });
+      const forecasts = forecastAccounts(input, FORECAST_DAYS);
+      if (forecasts.length === 0) {
+        return out({ note: "No checking account is linked, so there's no forecast." });
+      }
+      return out({
+        accounts: forecasts.map((f) => ({
+          account: f.accountName,
+          balanceToday: money(f.startCents),
+          lowestPoint: money(f.lowest.balanceCents),
+          lowestOn: f.lowest.date,
+          goesNegative: f.lowest.balanceCents < 0,
+          billsBeforeThen: f.bills
+            .filter((b) => b.date <= f.lowest.date)
+            .map((b) => ({ what: b.merchant, on: b.date, amount: money(b.amountCents) })),
+          depositsBeforeThen: f.income
+            .filter((i) => i.date <= f.lowest.date)
+            .map((i) => ({ from: i.merchant, on: i.date, amount: money(i.amountCents) })),
+        })),
+      });
+    }
+    case "alerts": {
+      const alerts = await newestUnreadAlerts(userId, { client, limit: 10 });
+      return out({
+        unread: alerts.map((a) => ({
+          title: a.title,
+          what: a.body,
+          on: a.createdAt.toISOString().slice(0, 10),
+        })),
+      });
+    }
+    case "household": {
+      const household = await householdOf(userId, { client });
+      if (!household) return out({ note: "They aren't sharing with a partner." });
+      return out({
+        members: household.members.length,
+        waitingToJoin: household.invites.map((i) => ({ email: i.email })),
+      });
+    }
     case "whole_picture": {
-      const snapshot = await loadSnapshot(userId, { client, now });
+      const snapshot = await loadSnapshotFast(userId, { client, now });
       if (!snapshot) return out({ linked: false });
       const ranked = rankedFor(snapshot);
       const week = wholePicture(snapshot, ranked, "now");
@@ -713,6 +829,11 @@ export async function runChatTool(
         })),
         goalsBehind: week.goalsBehind.map((g) => ({ goal: g.name, stillToGo: money(g.leftCents) })),
         urgent: week.urgent,
+        healthScore: week.health && {
+          score: week.health.score,
+          band: week.health.band,
+          whatWouldHelpMost: week.health.next,
+        },
         janeWorkingOn: week.working,
         waitingOnThePerson: week.waitingOnYou,
         safeToApproveAtOnce: week.safeItems,
@@ -787,6 +908,32 @@ export async function runChatTool(
         })),
       });
     }
+    case "decision": {
+      const args = (input && typeof input === "object" ? input : {}) as Record<string, unknown>;
+      const subject = str(args.subject).slice(0, 80);
+      const [f, advice] = await Promise.all([
+        loadDecisionFacts(userId, { client, now }),
+        adviceMode(userId, { client }),
+      ]);
+      const asked = subject ? parseDecision(`should i buy ${subject.toLowerCase()}`) : null;
+      const verdict = decisionReply(
+        { kind: "decision", item: asked?.item ?? "other", label: subject || null },
+        null,
+        f,
+        advice,
+      ).body;
+      cents.push(...dollarFigures(verdict).map((x) => x.cents));
+      return out({
+        verdict,
+        cardDebt: money(f.cardDebtCents),
+        ...(f.topRateBps ? { highestRatePercent: f.topRateBps / 100 } : {}),
+        cash: money(f.cashCents),
+        monthlySpending: money(f.monthlySpendCents),
+        ...(f.cushionTargetCents !== null ? { cushionTarget: money(f.cushionTargetCents) } : {}),
+        ...(f.cushionMonths !== null ? { monthsOfSpendingInCash: f.cushionMonths } : {}),
+        goalsStillShort: f.goalsBehind.map((g) => ({ name: g.name, toGo: money(g.leftCents) })),
+      });
+    }
     case "net_worth": {
       const db = scopedFor(userId, client);
       const [accounts, owned, crypto] = await Promise.all([
@@ -833,6 +980,15 @@ async function computePrimer(
     parts.push(`${CHAT_PRIMER_TOOLS[i]}: ${result.value.content}`);
     cents.push(...result.value.cents);
   });
+  // What matters most and the open findings, from the saved snapshot (one query): so the usual
+  // "what should I do first" needs no lookup by Claude.
+  const matters = await loadSnapshotFast(userId, { client, now })
+    .then(mattersBlock)
+    .catch(() => ({ text: "", cents: [] as number[] }));
+  if (matters.text) {
+    parts.push(matters.text);
+    cents.push(...matters.cents);
+  }
   // Spec step 91: what they told Jane, and suggestions not to make again.
   const remembered = await listPreferences(userId, { client }).catch(() => []);
   if (remembered.length > 0) {
@@ -844,6 +1000,10 @@ async function computePrimer(
 // Works the numbers out and saves them for the chat to read. Run after a sync, a scan or a
 // correction (through a dynamic import, as this file reaches those by other routes).
 export async function refreshPrimer(userId: string, options: Options): Promise<void> {
+  // And the snapshot the agenda and the tools read, saved the same way.
+  await refreshSnapshot(userId, options).catch((error) =>
+    console.error("Saving the snapshot failed", { error: String(error) }),
+  );
   const primer = await computePrimer(userId, options);
   keepPrimer(userId, options.now, primer);
   await writeStoredPrimer(userId, primer, options);
@@ -908,7 +1068,7 @@ export async function proposeAction(
   }
 
   if (id === "finding.yes") {
-    const snapshot = await loadSnapshot(userId, { client, now });
+    const snapshot = await loadSnapshotFast(userId, { client, now });
     const finding = snapshot?.findings.find((f) => f.findingId === str(args.finding_id));
     if (!snapshot || !finding) return refuse("That isn't one of the person's open findings.");
     const candidate = findingCandidate(finding);
@@ -916,7 +1076,7 @@ export async function proposeAction(
   }
 
   if (id === "plan.approve_safe") {
-    const snapshot = await loadSnapshot(userId, { client, now });
+    const snapshot = await loadSnapshotFast(userId, { client, now });
     if (!snapshot || snapshot.plan.safeItems === 0) {
       return refuse("Nothing on the plan is safe to approve together right now.");
     }

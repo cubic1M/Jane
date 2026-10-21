@@ -57,6 +57,27 @@ describe("fixedChecks", () => {
     expect(fixedScore(checks)).toBeLessThan(100);
   });
 
+  it("fails an action button on an informational question, but not a link", () => {
+    const ask = q("do i have any debts", { noButtons: true });
+    const body = "You have one credit card with a balance, and nothing else to pay off.";
+    const withYes = fixedChecks(
+      ask,
+      { body, actions: [{ id: "finding.yes", label: "Yes", kind: "primary" }], source: "claude" },
+      facts,
+    );
+    expect(failed(withYes)).toEqual(["no_buttons"]);
+    const withLink = fixedChecks(
+      ask,
+      {
+        body,
+        actions: [{ id: "open", label: "See debts", kind: "link", href: "/debt" }],
+        source: "claude",
+      },
+      facts,
+    );
+    expect(failed(withLink)).toEqual([]);
+  });
+
   it("counts a blocked answer as unanswered", () => {
     const checks = fixedChecks(
       q("x"),
@@ -79,6 +100,14 @@ describe("fixedChecks", () => {
     expect(
       failed(fixedChecks(q("x", { list: true }), rules("Three things are due.\n- a\n- b"), facts)),
     ).toEqual([]);
+  });
+
+  it("wants a written answer: never a button, or a few words, on their own", () => {
+    expect(failed(fixedChecks(q("x"), rules("Tap the button below."), facts))).toContain("written");
+    expect(failed(fixedChecks(q("x"), rules("OK."), facts))).toContain("written");
+    expect(failed(fixedChecks(q("x"), rules("Netflix is $17.99 a month."), facts))).not.toContain(
+      "written",
+    );
   });
 
   it("writes money Jane's way", () => {

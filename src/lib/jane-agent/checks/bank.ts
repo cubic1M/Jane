@@ -23,6 +23,9 @@ export type Expect = {
   // A short list is fine here: comparing options, or what's due.
   list?: boolean;
   maxChars?: number;
+  // An informational question gets no action button (a link to a page is fine): a button
+  // only appears when the person asked Jane to do something.
+  noButtons?: boolean;
 };
 
 export type CheckQuestion = {
@@ -38,6 +41,10 @@ export type CheckQuestion = {
   page?: string;
   tool?: string;
   profile?: "standard" | "demo_advice";
+  // The sample person it is asked as (src/config/people.ts), and the rules the judge holds
+  // the answer to (scenario files; see scenarios.ts).
+  person?: string;
+  judge?: { mustDo?: string[]; mustNot?: string[] };
 };
 
 const safe = (f: Facts) => [f.safeCents];
@@ -367,6 +374,67 @@ const BASE_QUESTIONS: readonly CheckQuestion[] = [
   },
   { id: "timeline-2", text: "why did you do that", needs: "rules", expect: { intent: "timeline" } },
 
+  // Two questions in one message get both answers (spec step 193).
+  {
+    id: "two-1",
+    text: "how much can I spend and when is payday",
+    needs: "rules",
+    expect: { figures: safe, mentions: /acme|payday/i, list: true, maxChars: 900 },
+  },
+  {
+    id: "two-2",
+    text: "what subscriptions do I have and what's due this week",
+    needs: "rules",
+    expect: { list: true, maxChars: 1_400 },
+  },
+
+  // Where the balance is heading, a budget for a category, a sector follow-up, saving more and
+  // the month so far (QA's live sweep).
+  {
+    id: "fc-1",
+    text: "why is my checking going negative",
+    needs: "rules",
+    expect: { intent: "balance_forecast", link: "/bills", list: true, maxChars: 900 },
+  },
+  {
+    id: "fc-2",
+    text: "set a budget for restaurants",
+    needs: "rules",
+    expect: { intent: "spending", button: "budget.set" },
+  },
+  {
+    id: "fc-3",
+    text: "what about my student loans",
+    needs: "rules",
+    expect: { intent: "student_loans", list: true, maxChars: 1_200 },
+  },
+  {
+    id: "wi-2",
+    text: "what if I save $200 more a month",
+    needs: "rules",
+    expect: { intent: "save_more", mentions: /\$2,400\.00 a year/ },
+  },
+  {
+    id: "wi-3",
+    text: "how did I do this month",
+    needs: "rules",
+    expect: { intent: "monthly_report" },
+  },
+
+  // Net worth, answered at once from the net worth page's own math.
+  {
+    id: "nw-1",
+    text: "what's my net worth",
+    needs: "rules",
+    expect: { intent: "net_worth", mentions: /net worth is -?\$/, link: "/net-worth" },
+  },
+  {
+    id: "nw-2",
+    text: "how much am i worth",
+    needs: "rules",
+    expect: { intent: "net_worth", mentions: /net worth is -?\$/ },
+  },
+
   // What's due.
   {
     id: "due-1",
@@ -511,6 +579,660 @@ const BASE_QUESTIONS: readonly CheckQuestion[] = [
     text: "dispute a charge",
     needs: "rules",
     expect: { intent: "flow", button: "flow.pick.1", mentions: /Which charge/ },
+  },
+
+  // Decision questions: answered from their debts, cushion and goals, never from a lookup of
+  // the thing, and "should I buy?" is about the thing just discussed (never an old button).
+  {
+    id: "dec-1",
+    text: "should i buy bitcoin",
+    needs: "rules",
+
+    sector: "decision",
+    page: "/afford",
+    tool: "decision",
+    profile: "demo_advice",
+    expect: {
+      intent: "decision",
+      mentions: /cushion/,
+      avoid: /don't see any crypto|demo exchange|button opens|opens your/i,
+    },
+  },
+  {
+    id: "dec-1b",
+    text: "should i buy?",
+    needs: "rules",
+    after: "dec-1",
+    sector: "decision",
+    page: "/afford",
+    tool: "decision",
+    profile: "demo_advice",
+    expect: {
+      intent: "decision",
+      mentions: /bitcoin/i,
+      avoid: /don't see any crypto|demo exchange|button opens|opens your/i,
+    },
+  },
+  {
+    id: "dec-2",
+    text: "should i pay off my card or invest",
+    needs: "rules",
+
+    sector: "decision",
+    page: "/afford",
+    tool: "decision",
+    profile: "demo_advice",
+    expect: {
+      intent: "decision",
+      mentions: /cushion|credit card/,
+      avoid: /don't see any crypto|demo exchange|button opens|opens your/i,
+    },
+  },
+  {
+    id: "dec-3",
+    text: "should i buy a house",
+    needs: "rules",
+
+    sector: "decision",
+    page: "/afford",
+    tool: "decision",
+    profile: "demo_advice",
+    expect: {
+      intent: "decision",
+      mentions: /down payment/,
+      avoid: /don't see any crypto|demo exchange|button opens|opens your/i,
+    },
+  },
+  {
+    id: "dec-4",
+    text: "should i buy a car",
+    needs: "rules",
+
+    sector: "decision",
+    page: "/afford",
+    tool: "decision",
+    profile: "demo_advice",
+    expect: {
+      intent: "decision",
+      mentions: /insurance, fuel/,
+      avoid: /don't see any crypto|demo exchange|button opens|opens your/i,
+    },
+  },
+  {
+    id: "dec-5",
+    text: "should i invest",
+    needs: "rules",
+
+    sector: "decision",
+    page: "/afford",
+    tool: "decision",
+    profile: "demo_advice",
+    expect: {
+      intent: "decision",
+      mentions: /cushion/,
+      avoid: /don't see any crypto|demo exchange|button opens|opens your/i,
+    },
+  },
+  {
+    id: "dec-6",
+    text: "should i buy stocks",
+    needs: "rules",
+
+    sector: "decision",
+    page: "/afford",
+    tool: "decision",
+    profile: "demo_advice",
+    expect: {
+      intent: "decision",
+      mentions: /cushion/,
+      avoid: /don't see any crypto|demo exchange|button opens|opens your/i,
+    },
+  },
+  {
+    id: "dec-7",
+    text: "is it a good idea to buy crypto",
+    needs: "rules",
+
+    sector: "decision",
+    page: "/afford",
+    tool: "decision",
+    profile: "demo_advice",
+    expect: {
+      intent: "decision",
+      mentions: /cushion/,
+      avoid: /don't see any crypto|demo exchange|button opens|opens your/i,
+    },
+  },
+  {
+    id: "dec-8",
+    text: "should i buy tesla stock",
+    needs: "rules",
+
+    sector: "decision",
+    page: "/afford",
+    tool: "decision",
+    profile: "demo_advice",
+    expect: {
+      intent: "decision",
+      mentions: /cushion/,
+      avoid: /don't see any crypto|demo exchange|button opens|opens your/i,
+    },
+  },
+
+  // Short replies and 'why?' (QA sweep): answered at once, never by an old button.
+  {
+    id: "qa-yes",
+    text: "yes",
+    needs: "rules",
+    sector: "chat",
+    page: "/home",
+    tool: "safe_to_spend",
+    expect: {
+      intent: "ack",
+      mentions: /tap|what would you like/i,
+    },
+  },
+  {
+    id: "qa-no",
+    text: "no thanks",
+    needs: "rules",
+    sector: "chat",
+    page: "/home",
+    tool: "safe_to_spend",
+    expect: {
+      intent: "ack",
+      mentions: /leave it/i,
+    },
+  },
+  {
+    id: "qa-remind",
+    text: "remind me tomorrow",
+    needs: "rules",
+    sector: "chat",
+    page: "/home",
+    tool: "safe_to_spend",
+    expect: {
+      intent: "remind",
+      mentions: /tomorrow|remind/i,
+    },
+  },
+  {
+    id: "qa-cushion",
+    text: "how much should i have in an emergency fund",
+    needs: "rules",
+    sector: "chat",
+    page: "/home",
+    tool: "safe_to_spend",
+    expect: {
+      intent: "decision",
+      mentions: /cushion/i,
+    },
+  },
+  {
+    id: "qa-month",
+    text: "what happened to my money this month",
+    needs: "rules",
+    sector: "chat",
+    page: "/home",
+    tool: "safe_to_spend",
+    expect: {
+      intent: "spending",
+      mentions: /spent|spending/i,
+    },
+  },
+  {
+    id: "qa-why",
+    text: "why?",
+    needs: "rules",
+    after: "dec-1",
+    sector: "chat",
+    page: "/home",
+    tool: "safe_to_spend",
+    expect: {
+      mentions: /bitcoin|where you stand/i,
+    },
+  },
+
+  // A finding talked about doesn't turn the next, unrelated question into a follow-up on it.
+  {
+    id: "unrelated-1",
+    text: "what's my net worth",
+    needs: "rules",
+    after: "follow-2",
+    sector: "follow",
+    page: "/net-worth",
+    tool: "net_worth",
+    expect: { intent: "net_worth", avoid: /hulu|button/i },
+  },
+  {
+    id: "unrelated-2",
+    text: "how can i pay less interest",
+    needs: "claude",
+    after: "follow-2",
+    sector: "follow",
+    page: "/debt",
+    tool: "card_interest",
+    expect: { avoid: /hulu|\bbutton\b|under this answer/i },
+  },
+  // Voice (QA sweep): answers in words first, no talk of buttons or of earlier failures.
+  {
+    id: "voice-1",
+    text: "explain my budget like i'm 5",
+    needs: "claude",
+    sector: "chat",
+    page: "/budgets",
+    tool: "budgets",
+    expect: {
+      avoid:
+        /\b(?:I(?:'ve| have) put|button|never answered|I said I'd|earlier (?:question|message))\b/i,
+    },
+  },
+  {
+    id: "voice-2",
+    text: "tell me about my spending in simple words",
+    needs: "claude",
+    sector: "chat",
+    page: "/transactions",
+    tool: "spending_by_category",
+    expect: { avoid: /\b(?:I(?:'ve| have) put|under this answer|never answered)\b/i },
+  },
+
+  // Today's live failures, as must-pass questions for the depth bar.
+  {
+    id: "dbar-wrong",
+    text: "what's one thing i'm doing wrong",
+    needs: "rules",
+    sector: "chat",
+    page: "/home",
+    tool: "priorities",
+    expect: { intent: "priorities", avoid: /button|couldn't look/i },
+  },
+  {
+    id: "dbar-why",
+    text: "why?",
+    needs: "rules",
+    after: "follow-2",
+    sector: "follow",
+    page: "/subscriptions",
+    tool: "finding_details",
+    expect: { mentions: /If you say yes/i, avoid: /which one do you mean|button/i },
+  },
+  {
+    id: "dbar-more",
+    text: "tell me more",
+    needs: "rules",
+    after: "follow-2",
+    sector: "follow",
+    page: "/subscriptions",
+    tool: "finding_details",
+    expect: { mentions: /If you say yes/i, avoid: /which one do you mean|button/i },
+  },
+  {
+    id: "debt-moves",
+    text: "how can i pay less interest",
+    needs: "claude",
+    sector: "debt",
+    page: "/debt",
+    tool: "card_interest",
+    profile: "demo_advice",
+    expect: {
+      mentions: /\$\d/,
+      avoid: /open the (?:debt|debts) page|under this answer|\bbutton\b/i,
+    },
+  },
+
+  // The founder's live transcript, exactly, and the same questions in other words.
+  {
+    id: "decf-1",
+    text: "yea so should i be buying bitcoin",
+    needs: "rules",
+    sector: "decision",
+    page: "/afford",
+    tool: "decision",
+    profile: "demo_advice",
+    expect: {
+      intent: "decision",
+      mentions: /owe|cushion|credit card|where you stand/i,
+      avoid: /don"t see any crypto|demo exchange|button|link below|Which one do you mean/i,
+    },
+  },
+  {
+    id: "decf-2",
+    text: "why",
+    needs: "rules",
+    after: "decf-1",
+    sector: "decision",
+    page: "/afford",
+    tool: "decision",
+    profile: "demo_advice",
+    expect: {
+      mentions: /Next step|ask me about bitcoin/i,
+      avoid: /don"t see any crypto|demo exchange|button|link below|Which one do you mean/i,
+    },
+  },
+  {
+    id: "decf-3",
+    text: "yea so should i buy bitcoin",
+    needs: "rules",
+    after: "decf-1",
+    sector: "decision",
+    page: "/afford",
+    tool: "decision",
+    profile: "demo_advice",
+    expect: {
+      intent: "decision",
+      mentions: /owe|cushion|credit card|where you stand/i,
+      avoid: /don"t see any crypto|demo exchange|button|link below|Which one do you mean/i,
+    },
+  },
+  {
+    id: "decp-1",
+    text: "should i get some btc",
+    needs: "rules",
+    sector: "decision",
+    page: "/afford",
+    tool: "decision",
+    profile: "demo_advice",
+    expect: {
+      intent: "decision",
+      mentions: /owe|cushion|credit card|where you stand/i,
+      avoid: /don"t see any crypto|demo exchange|button|link below|Which one do you mean/i,
+    },
+  },
+  {
+    id: "decp-2",
+    text: "is crypto a good idea for me",
+    needs: "rules",
+    sector: "decision",
+    page: "/afford",
+    tool: "decision",
+    profile: "demo_advice",
+    expect: {
+      intent: "decision",
+      mentions: /owe|cushion|credit card|where you stand/i,
+      avoid: /don"t see any crypto|demo exchange|button|link below|Which one do you mean/i,
+    },
+  },
+  {
+    id: "decp-3",
+    text: "hey, should i be investing in ethereum",
+    needs: "rules",
+    sector: "decision",
+    page: "/afford",
+    tool: "decision",
+    profile: "demo_advice",
+    expect: {
+      intent: "decision",
+      mentions: /owe|cushion|credit card|where you stand/i,
+      avoid: /don"t see any crypto|demo exchange|button|link below|Which one do you mean/i,
+    },
+  },
+  {
+    id: "decp-4",
+    text: "i'm thinking about buying some stocks",
+    needs: "rules",
+    sector: "decision",
+    page: "/afford",
+    tool: "decision",
+    profile: "demo_advice",
+    expect: {
+      intent: "decision",
+      mentions: /owe|cushion|credit card|where you stand/i,
+      avoid: /don"t see any crypto|demo exchange|button|link below|Which one do you mean/i,
+    },
+  },
+  {
+    id: "decp-5",
+    text: "is it a good idea to buy a house",
+    needs: "rules",
+    sector: "decision",
+    page: "/afford",
+    tool: "decision",
+    profile: "demo_advice",
+    expect: {
+      intent: "decision",
+      mentions: /owe|cushion|credit card|where you stand/i,
+      avoid: /don"t see any crypto|demo exchange|button|link below|Which one do you mean/i,
+    },
+  },
+  {
+    id: "decp-6",
+    text: "would buying a car be smart",
+    needs: "rules",
+    sector: "decision",
+    page: "/afford",
+    tool: "decision",
+    profile: "demo_advice",
+    expect: {
+      intent: "decision",
+      mentions: /owe|cushion|credit card|where you stand/i,
+      avoid: /don"t see any crypto|demo exchange|button|link below|Which one do you mean/i,
+    },
+  },
+  {
+    id: "decp-7",
+    text: "is it better to invest or pay off debt",
+    needs: "rules",
+    sector: "decision",
+    page: "/afford",
+    tool: "decision",
+    profile: "demo_advice",
+    expect: {
+      intent: "decision",
+      mentions: /owe|cushion|credit card|where you stand/i,
+      avoid: /don"t see any crypto|demo exchange|button|link below|Which one do you mean/i,
+    },
+  },
+  {
+    id: "decp-8",
+    text: "do you think i should buy bitcoin",
+    needs: "rules",
+    sector: "decision",
+    page: "/afford",
+    tool: "decision",
+    profile: "demo_advice",
+    expect: {
+      intent: "decision",
+      mentions: /owe|cushion|credit card|where you stand/i,
+      avoid: /don"t see any crypto|demo exchange|button|link below|Which one do you mean/i,
+    },
+  },
+
+  // QA's casual phrasing (lower case, filler, typos) and follow-ups after Claude's answers.
+  {
+    id: "casual-1",
+    text: "uh should i just cancel netflix or whatever",
+    needs: "claude",
+    sector: "casual",
+    page: "/subscriptions",
+    tool: "subscriptions",
+    profile: "demo_advice",
+    expect: {
+      mentions: /netflix/i,
+      avoid:
+        /\\bbutton\\b|link below|under this answer|couldn't look into that|Which one do you mean/i,
+    },
+  },
+  {
+    id: "casual-2",
+    text: "why",
+    needs: "claude",
+    after: "casual-1",
+    sector: "casual",
+    page: "/subscriptions",
+    tool: "finding_details",
+    profile: "demo_advice",
+    expect: {
+      mentions: /\\$\\d/,
+      avoid:
+        /\\bbutton\\b|link below|under this answer|couldn't look into that|Which one do you mean/i,
+    },
+  },
+  {
+    id: "casual-3",
+    text: "netflix worth keeping??",
+    needs: "claude",
+    sector: "casual",
+    page: "/subscriptions",
+    tool: "subscriptions",
+    profile: "demo_advice",
+    expect: {
+      mentions: /netflix/i,
+      avoid:
+        /\\bbutton\\b|link below|under this answer|couldn't look into that|Which one do you mean/i,
+    },
+  },
+  {
+    id: "casual-4",
+    text: "can u explain my budget in simple words",
+    needs: "claude",
+    sector: "casual",
+    page: "/budgets",
+    tool: "budgets",
+    profile: "demo_advice",
+    expect: {
+      avoid:
+        /\\bbutton\\b|link below|under this answer|couldn't look into that|Which one do you mean/i,
+    },
+  },
+  {
+    id: "casual-5",
+    text: "ok and?",
+    needs: "claude",
+    after: "casual-4",
+    sector: "casual",
+    page: "/budgets",
+    tool: "budgets",
+    profile: "demo_advice",
+    expect: {
+      avoid:
+        /\\bbutton\\b|link below|under this answer|couldn't look into that|Which one do you mean/i,
+    },
+  },
+  {
+    id: "casual-6",
+    text: "pls explain my money situashun like im five",
+    needs: "claude",
+    sector: "casual",
+    page: "/home",
+    tool: "whole_picture",
+    profile: "demo_advice",
+    expect: {
+      avoid:
+        /\\bbutton\\b|link below|under this answer|couldn't look into that|Which one do you mean/i,
+    },
+  },
+  {
+    id: "casual-7",
+    text: "so what am i doin wrong with money",
+    needs: "claude",
+    sector: "casual",
+    page: "/home",
+    tool: "priorities",
+    profile: "demo_advice",
+    expect: {
+      mentions: /\\$\\d/,
+      avoid:
+        /\\bbutton\\b|link below|under this answer|couldn't look into that|Which one do you mean/i,
+    },
+  },
+  {
+    id: "casual-8",
+    text: "what do you mean",
+    needs: "claude",
+    after: "casual-7",
+    sector: "casual",
+    page: "/home",
+    tool: "priorities",
+    profile: "demo_advice",
+    expect: {
+      avoid:
+        /\\bbutton\\b|link below|under this answer|couldn't look into that|Which one do you mean/i,
+    },
+  },
+  {
+    id: "casual-9",
+    text: "ok what do i do first",
+    needs: "claude",
+    sector: "casual",
+    page: "/home",
+    tool: "priorities",
+    profile: "demo_advice",
+    expect: {
+      mentions: /\\$\\d/,
+      avoid:
+        /\\bbutton\\b|link below|under this answer|couldn't look into that|Which one do you mean/i,
+    },
+  },
+  {
+    id: "casual-10",
+    text: "wher shuld i start",
+    needs: "claude",
+    sector: "casual",
+    page: "/home",
+    tool: "priorities",
+    profile: "demo_advice",
+    expect: {
+      mentions: /\\$\\d/,
+      avoid:
+        /\\bbutton\\b|link below|under this answer|couldn't look into that|Which one do you mean/i,
+    },
+  },
+  {
+    id: "casual-11",
+    text: "how do i stop paying so much interest",
+    needs: "claude",
+    sector: "casual",
+    page: "/debt",
+    tool: "card_interest",
+    profile: "demo_advice",
+    expect: {
+      mentions: /\\$\\d/,
+      avoid:
+        /\\bbutton\\b|link below|under this answer|couldn't look into that|Which one do you mean/i,
+    },
+  },
+  {
+    id: "casual-12",
+    text: "what do you mean",
+    needs: "claude",
+    after: "casual-11",
+    sector: "casual",
+    page: "/debt",
+    tool: "card_interest",
+    profile: "demo_advice",
+    expect: {
+      avoid:
+        /\\bbutton\\b|link below|under this answer|couldn't look into that|Which one do you mean/i,
+    },
+  },
+  {
+    id: "casual-13",
+    text: "is crypto a good idea for me",
+    needs: "claude",
+    sector: "casual",
+    page: "/afford",
+    tool: "decision",
+    profile: "demo_advice",
+    expect: {
+      mentions: /\\$\\d/,
+      avoid:
+        /\\bbutton\\b|link below|under this answer|couldn't look into that|Which one do you mean/i,
+    },
+  },
+  {
+    id: "casual-14",
+    text: "ok and?",
+    needs: "claude",
+    after: "casual-13",
+    sector: "casual",
+    page: "/afford",
+    tool: "decision",
+    profile: "demo_advice",
+    expect: {
+      avoid:
+        /\\bbutton\\b|link below|under this answer|couldn't look into that|Which one do you mean/i,
+    },
   },
 
   // Follow-ups: the second needs the first.
@@ -1534,7 +2256,10 @@ const MORE_QUESTIONS: readonly CheckQuestion[] = MORE_ROWS.map(
     id: `more-${String(index + 1).padStart(3, "0")}`,
     text,
     needs: "claude",
-    expect: sector === "edge" ? { avoid: ADVICE } : {},
+    expect: {
+      ...(sector === "edge" ? { avoid: ADVICE } : {}),
+      ...(tool === "propose_action" ? {} : { noButtons: true }),
+    },
     sector,
     page,
     tool,

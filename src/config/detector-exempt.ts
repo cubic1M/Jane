@@ -17,6 +17,8 @@ export const DETECTOR_EXEMPT: Readonly<Record<string, string>> = {
   act: "carries out a button the person tapped",
   autopilot: "settings for what Jane may do alone",
   memory: "what Jane remembers",
+  decision: "answers a should-I question the person asks, from their debts, cushion and goals",
+  net_worth: "reports what the person is worth; nothing to suggest",
   life_event: "checklists the person opens; suggestions arrive through the detectors",
 };
 
@@ -24,6 +26,8 @@ export const DETECTOR_EXEMPT: Readonly<Record<string, string>> = {
 // never suggest by themselves, and why (spec step 254). Every other tool is covered by a
 // detector (`covers` on src/detectors) or is on the shrinking list in src/detectors/missing.ts.
 export const TOOL_EXEMPT: Readonly<Record<string, string>> = {
+  calculate:
+    "a general calculator for the numbers an answer needs (a percent of a balance, months to pay off); not a feature, so there is nothing to suggest",
   insurance_claim_worth:
     "answers a question that comes with an amount the person gives, and adds its line to a claim draft; the claim detector (insurance_claim) covers a repair Jane sees",
   insurance_health_year:
@@ -51,6 +55,11 @@ export const TOOL_EXEMPT: Readonly<Record<string, string>> = {
   open_findings: "lists findings, which already reach the person as decisions",
   finding_details: "explains a finding the person asks about",
   net_worth: "reports net worth",
+  decision: "answers a should-I question the person asks",
+  balance_forecast:
+    "answers where the balance is heading; the low-balance detector covers a shortfall",
+  alerts: "lists the alerts, which already reach the person as heads-ups",
+  household: "shows the people on the account and what they share; nothing to suggest",
   recent_changes: "reports changes, which already reach the person as heads-ups",
   proven_savings: "reports what Jane saved",
   autopilot_settings: "settings for what Jane may do alone",

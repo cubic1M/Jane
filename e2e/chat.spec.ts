@@ -72,8 +72,14 @@ test("the demo bank lands in Jane's chat, and Yes answers a finding", async ({
   await expect(finding.getByRole("button", { name: "Yes", exact: true })).toBeVisible();
 
   // Yes answers it, found again by its words once its buttons are gone.
+  // The tap shows its result at once (before the server has saved it): wait for the save
+  // before reloading, as a person would by looking at the screen settle.
+  const saved = page.waitForResponse(
+    (r) => r.request().method() === "POST" && new URL(r.url()).pathname === "/chat",
+  );
   await finding.getByRole("button", { name: "Yes", exact: true }).click();
   await expect(finding.getByText("You chose:")).toBeVisible();
+  await saved;
   await expect(finding.getByRole("button", { name: NOT_PIN })).toHaveCount(0);
   await expect(finding.getByRole("link", { name: /Open/ })).toBeVisible();
 
@@ -82,16 +88,9 @@ test("the demo bank lands in Jane's chat, and Yes answers a finding", async ({
   await expect(messages.filter({ hasText: body }).getByText("You chose:")).toBeVisible();
 
   // Spec step 86: the finding's page shows the same answer and links back to its message.
-  // The same: a click on the link before the reloaded page has hydrated can be lost.
-  await expect(async () => {
-    if (!/\/report\//.test(page.url())) {
-      await messages
-        .filter({ hasText: body })
-        .getByRole("link", { name: /Open/ })
-        .click({ timeout: 5_000 });
-    }
-    await expect(page).toHaveURL(/\/report\/[^?]+\?from=/, { timeout: 10_000 });
-  }).toPass({ timeout: 60_000 });
+  // A plain link: it works before the reloaded page has hydrated (spec step 194).
+  await messages.filter({ hasText: body }).getByRole("link", { name: /Open/ }).click();
+  await expect(page).toHaveURL(/\/report\/[^?]+\?from=/);
   await expect(page.getByText("You chose: Yes, in the chat.")).toBeVisible();
   await page.getByRole("link", { name: /Back to the chat/ }).click();
   await expect(page).toHaveURL(/\/chat#/);
