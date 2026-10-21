@@ -103,17 +103,26 @@ const withholdingGap: Detector = {
       .filter((a) => a.subtype === "stock plan")
       .reduce((s, a) => s + a.balanceCents, 0);
     if (stock <= 0) return null;
-    const vested = Math.round(stock * T.stockVestShare);
-    const rate = marginalRate(annual(income.value), vested, profile.facts.household.value);
-    if (rate <= T.rsuFlatWithholding + 0.005) return null;
-    const short = Math.round(vested * (rate - T.rsuFlatWithholding));
+    // The person's figure, worked out by the same code as the chat's answer (their vests this
+    // year, or an assumed share of the plan when none are known); the sample people's is
+    // estimated here.
+    const given = data.extras?.rsuGap;
+    if (given !== undefined && (given === null || given.shortfallCents <= 0)) return null;
+    const vested = given ? given.vestedCents : Math.round(stock * T.stockVestShare);
+    const rate = given
+      ? given.marginalRate
+      : marginalRate(annual(income.value), vested, profile.facts.household.value);
+    if (!given && rate <= T.rsuFlatWithholding + 0.005) return null;
+    const short = given ? given.shortfallCents : Math.round(vested * (rate - T.rsuFlatWithholding));
+    const assumed = !given || given.assumed;
     return {
       id: suggestionId("taxes", "withholding_gap"),
       capability: "taxes",
       topic: "withholding_gap",
       title: "Set aside the tax your stock vests won't have withheld",
       headline: headlineOf("Set aside tax on your stock vests", short, "risk"),
-      short: `About ${formatCents(vested)} is vesting, and flat withholding leaves you short.`,
+      short:
+        `${assumed ? "About" : ""} ${formatCents(vested)} is vesting, and flat withholding leaves you short.`.trim(),
       // The bill itself can't be saved; planning for it avoids the penalty and the surprise,
       // so it counts for a share of its size in ranking.
       worthCents: short,
@@ -122,10 +131,12 @@ const withholdingGap: Detector = {
       confidence: weakest([
         factEvidence(plan),
         factEvidence(income),
-        {
-          percent: Math.min(plan.confidence, 70),
-          reason: `no vest schedule yet, so I assumed ${Math.round(T.stockVestShare * 100)}% of your ${formatCents(stock)} plan vests this year`,
-        },
+        assumed
+          ? {
+              percent: Math.min(plan.confidence, 70),
+              reason: `no vest schedule yet, so I assumed ${Math.round(T.stockVestShare * 100)}% of your ${formatCents(stock)} plan vests this year`,
+            }
+          : { percent: 90, reason: "your vests this year and your tax bracket" },
       ]),
       urgency: month(profile.today) >= 10 ? "soon" : "later",
       why: `Your company stock is withheld at ${Math.round(T.rsuFlatWithholding * 100)} cents on the dollar when it vests, but with your pay plus the vesting you're in the ${Math.round(rate * 100)}% bracket. On about ${formatCents(vested)} vesting, that leaves roughly ${formatCents(short)} to pay when you file. Setting it aside through the year, or paying an estimate, avoids a penalty of about ${formatCents(Math.round(short * DETECTOR_RATES.underpaymentPenaltyRate))} on top.`,

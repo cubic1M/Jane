@@ -69,7 +69,34 @@ export type ProfileInput = {
   told: Told;
   // What else is known about the person's setup in Jane (step 264); a sample person's is
   // given by ./sample.ts.
-  extras?: { householdMembers: number };
+  extras?: {
+    householdMembers: number;
+    // The employer match left on the table at this year's pace, from the person's employer plan
+    // and contributions (the same calculation as the chat's answer). Null: no plan known;
+    // absent: not loaded (the sample people), so the detector assumes.
+    matchPace?: {
+      missedCents: number;
+      payCents: number;
+      matchRate: number;
+      fullMatchRate: number;
+      employeeRate: number;
+    } | null;
+    // RSU withholding that falls short, from the person's vests this year or, with none known,
+    // an assumed share of their stock plan (the same figure as the chat's answer). Null: none.
+    // What the person's subscriptions cost in a year, as the subscriptions page and the chat
+    // count them (recurring charges that are subscriptions). Absent: not loaded.
+    subscriptions?: { yearlyCents: number; count: number } | null;
+    // A year of interest on the person's cards from their balances and rates (the chat's
+    // figure). Null: not available, so the interest charges seen are used. Absent: not loaded.
+    cardInterestYearCents?: number | null;
+    rsuGap?: {
+      vestedCents: number;
+      shortfallCents: number;
+      marginalRate: number;
+      assumed: boolean;
+      stockCents: number;
+    } | null;
+  };
   // Policies read from uploaded documents that wait for the person's confirm (spec step 259).
   unreadPolicyDocuments?: number;
 };

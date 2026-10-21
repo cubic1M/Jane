@@ -159,7 +159,32 @@ export async function loadProfileInput(
     })),
     told,
     unreadPolicyDocuments: unread,
-    extras: { householdMembers },
+    extras: { householdMembers, ...(await sectorFigures(userId, client, now)) },
+  };
+}
+
+// The figures the brief shares with the chat's answers, computed by the same code the chat's
+// tools use (so the two cannot differ): the employer match left on the table, and the RSU
+// withholding that falls short. Loaded dynamically: those reach this file again.
+async function sectorFigures(userId: string, client: PrismaClient, now: Date) {
+  const db = scopedFor(userId, client);
+  const { loadMatchPace } = await import("@/lib/investments/match-pace");
+  const hasStock =
+    (await db.accounts.count({ where: { subtype: "stock plan" } })) > 0 ||
+    (await db.equityEvents.count()) > 0;
+  const [matchPace, equity, subscriptions, cardInterest] = await Promise.all([
+    loadMatchPace(userId, { client, now }),
+    hasStock
+      ? import("@/lib/equity-tax").then((m) => m.loadEquityTax(userId, { client, now }))
+      : null,
+    import("@/lib/jane-agent/recurring").then((m) => m.subscriptionYear(userId, { client, now })),
+    import("@/lib/card-interest").then((m) => m.loadCardInterest(userId, { client, now })),
+  ]);
+  return {
+    matchPace,
+    rsuGap: equity ? equity.rsuGap : null,
+    subscriptions,
+    cardInterestYearCents: cardInterest.available ? cardInterest.interestYearCents : null,
   };
 }
 
