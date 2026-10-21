@@ -3,6 +3,7 @@ import {
   CHAT_CLAUDE_COOLDOWN_SECONDS,
   CHAT_CLAUDE_DEADLINE_MS,
   CHAT_CLAUDE_FIRST_WORDS_MS,
+  CHAT_CLAUDE_RETRY_MS,
   CHAT_CLAUDE_HISTORY,
   CHAT_CLAUDE_TOTAL_MS,
   CHAT_CLAUDE_MAX_TOKENS,
@@ -14,7 +15,7 @@ import {
 import { ASK_BLOCKED_REPLY } from "@/config/ask";
 import type { PrismaClient } from "@/generated/prisma/client";
 import { anthropic, chatModel } from "@/lib/anthropic";
-import { addSpend, overDailyCap } from "./spend";
+import { addSpend, costInHundredthsOfCents, overDailyCap } from "./spend";
 import type { Topic } from "./context";
 import {
   checkGuardrails,
@@ -45,7 +46,7 @@ import type { Reply } from "./replies";
 // the answer streamed as it's written (onEvent), a sentence at a time once each passes the
 // guardrails (./guarded-text), with what Jane is looking up in between.
 
-export const CHAT_PROMPT_VERSION = "chat-v14";
+export const CHAT_PROMPT_VERSION = "chat-v15";
 
 // The one rule that differs in demo advice mode (spec step 98).
 const NO_ADVICE = `- Never give investment, tax or legal advice, and don't mention investments, taxes or legal matters at all. Don't suggest financial products beyond Jane's pick from finding_details.`;
@@ -61,6 +62,7 @@ Be useful, like a friend who's good with money and has their numbers in front of
 - What they've told you is under "remembered" in their numbers. Respect it: never suggest anything they said not to suggest, or cutting something they said they need.
 - Follow the conversation (spec step 193): "it", "that one", "the other one", "do it" and "and for my wife's car?" mean what was just said or what the last answer was about (given with their numbers). Don't ask again what they already told you.
 - When they ask two things in one message, answer both, in order, each with its figure; the first sentence still gives the first answer. When you really can't tell what they mean, ask one short question that names the likely choices ("Do you mean your Netflix or your Hulu?"). Never a generic list of things you can do when one of your tools fits.
+- Every message gets a written answer from you, whatever it is: a command ("cancel Netflix", "approve the plan", "undo", "help"), a short reply ("yes", "ok and?", "what do you mean", "why"), a greeting or a thing you can't do. Say in words what it is or what tapping a button would do, with their figures, and only then offer the button. A button or a card is never the whole reply.
 - Say what the data says plainly: if a tool gives a name, a figure or a date, state it, never "probably" or "it looks like". Say you don't know only when no tool has it.
 - If they push back ("you tell me"), give a straight answer from their numbers. Don't repeat yourself or hand it back to them.
 - Every answer must stand on its own, in words first: what the answer is, with their figures, and why. A button is extra. Never begin with, or talk about, a button or what you "put" under the answer (the app adds that line itself), and never answer with only a button or "tap the button".
@@ -265,12 +267,15 @@ type ChatTiming = {
   // Each round: how it ended, the tools it asked for (the button and picture tools too), how
   // much text it wrote, and how long it took, so a hidden round can be seen.
   rounds: { stop: string; tools: string[]; textChars: number; ms: number }[];
+  // Tries again after a 429 or a server error, and what the answer cost (hundredths of a cent).
+  retries: number;
+  costHundredths: number;
 };
 
 // What the last answer was about, in words for Claude (spec step 193).
 export function topicLine(topic: Topic): string {
   const what = [topic.target, topic.category, topic.month].filter(Boolean).join(", ");
-  return `Your last answer was about ${what || topic.kind}${topic.verb ? ` (they were asking to ${topic.verb} it)` : ""}. "It", "that one" and "the other one" mean that or what you just said.`;
+  return `Your last answer was about ${what || topic.kind}${topic.verb ? ` (they were asking to ${topic.verb} it)` : ""}. If their message points back ("it", "that one", "the other one", "why", "tell me more", "ok and?", "what do you mean"), it is about that or what you just said; if it is a new question, ignore this.`;
 }
 
 export async function askClaudeInChat(
@@ -294,6 +299,8 @@ export async function askClaudeInChat(
     toolsSent: 0,
     reason: null,
     rounds: [],
+    retries: 0,
+    costHundredths: 0,
   };
   let outcome = "error";
   try {
@@ -309,6 +316,7 @@ export async function askClaudeInChat(
         outcome,
         totalMs: Date.now() - startedAt,
         // Time in none of the above: guardrail checks, the spend record, waiting between steps.
+        costCents: Math.round(timing.costHundredths) / 100,
         otherMs:
           Date.now() -
           startedAt -
@@ -392,6 +400,7 @@ async function askClaude(
   }
   let rewrites = 0;
   let decisionUsed = false;
+  let retriesLeft = 1;
   const partialAnswer = (): ClaudeAnswer | null => {
     const kept = withoutButtonTalk(draft.shownText()).trim();
     if (kept.length < 20) return null;
@@ -400,7 +409,7 @@ async function askClaude(
       reply: {
         body: plainText(kept),
         actions: proposal?.actions ?? [],
-        refs: { ...(proposal?.refs ?? {}) },
+        refs: { ...(proposal?.refs ?? {}), ...(advice ? { advice: true as const } : {}) },
       },
     };
   };
@@ -527,9 +536,17 @@ async function askClaude(
           status: error instanceof Anthropic.APIError ? error.status : undefined,
           reason: String((error as Error).message).slice(0, 300),
         });
-        // Only Claude itself failing (rate limit, overloaded, an error) pauses it.
+        // Only Claude itself failing (rate limit, overloaded, an error) is tried once more,
+        // and only then pauses it.
         const status = (error instanceof Anthropic.APIError ? error.status : 0) ?? 0;
         if (status === 429 || status >= 500) {
+          if (retriesLeft > 0 && draft.shownText().trim() === "") {
+            retriesLeft -= 1;
+            timing.retries += 1;
+            await new Promise((resolve) => setTimeout(resolve, CHAT_CLAUDE_RETRY_MS));
+            turn -= 1;
+            continue;
+          }
           claudeDownUntil = Date.now() + CHAT_CLAUDE_COOLDOWN_SECONDS * 1000;
         }
       }
@@ -549,17 +566,15 @@ async function askClaude(
     timing.cachedInputTokens += response.usage?.cache_read_input_tokens ?? 0;
     timing.cacheWriteTokens += response.usage?.cache_creation_input_tokens ?? 0;
     timing.outputTokens += response.usage?.output_tokens ?? 0;
-    await addSpend(
-      userId,
-      {
-        model: chatModel(),
-        inputTokens: response.usage?.input_tokens ?? 0,
-        outputTokens: response.usage?.output_tokens ?? 0,
-        cacheReadTokens: response.usage?.cache_read_input_tokens ?? 0,
-        cacheWriteTokens: response.usage?.cache_creation_input_tokens ?? 0,
-      },
-      { client, now },
-    );
+    const used = {
+      model: chatModel(),
+      inputTokens: response.usage?.input_tokens ?? 0,
+      outputTokens: response.usage?.output_tokens ?? 0,
+      cacheReadTokens: response.usage?.cache_read_input_tokens ?? 0,
+      cacheWriteTokens: response.usage?.cache_creation_input_tokens ?? 0,
+    };
+    timing.costHundredths += costInHundredthsOfCents(used);
+    await addSpend(userId, used, { client, now });
     // The answer was written and only a button or a picture was asked for after it: that text
     // IS the answer, so there is no extra round just to be told "noted".
     const writtenText = response.content
@@ -707,7 +722,7 @@ async function askClaude(
         body: proposal?.line ? `${plainText(spoken)}\n\n${proposal.line}` : plainText(spoken),
         actions: proposal?.actions ?? [],
         // Demo advice is always labelled (the chat shows DEMO_ADVICE_LABEL under it).
-        refs: advice && isAdvice(spoken) ? { ...refs, advice: true } : refs,
+        refs: advice ? { ...refs, advice: true } : refs,
       },
     };
   }

@@ -4,6 +4,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 vi.mock("@/lib/session", () => ({ requireUser: vi.fn() }));
 vi.mock("@/lib/home", () => ({ homeSummary: vi.fn() }));
 vi.mock("./snapshot", () => ({ loadSnapshot: vi.fn() }));
+vi.mock("@/lib/advice-mode", () => ({ adviceMode: vi.fn(async () => true) }));
 // The decision tool's facts come from a real database elsewhere (decision.test.ts).
 vi.mock("./decision", async (original) => ({
   ...(await original<typeof import("./decision")>()),
@@ -18,7 +19,11 @@ vi.mock("./decision", async (original) => ({
   })),
 }));
 // The cost cap has its own tests (./spend.test.ts); here Claude is always under it.
-vi.mock("./spend", () => ({ overDailyCap: vi.fn(async () => false), addSpend: vi.fn() }));
+vi.mock("./spend", async (original) => ({
+  ...(await original<typeof import("./spend")>()),
+  overDailyCap: vi.fn(async () => false),
+  addSpend: vi.fn(),
+}));
 
 import { CHAT_CLAUDE_HISTORY, CHAT_CLAUDE_MAX_TURNS } from "@/config/agent-chat";
 import { ASK_BLOCKED_REPLY } from "@/config/ask";
@@ -302,8 +307,11 @@ describe("askClaudeInChat", () => {
   });
 
   it("is unavailable on an API error or a refusal", async () => {
-    create.mockRejectedValueOnce(new Anthropic.APIError(500, undefined, "boom", new Headers()));
+    // A server error is tried once more, then it is unavailable.
+    create.mockRejectedValue(new Anthropic.APIError(500, undefined, "boom", new Headers()));
     expect((await askClaudeInChat("u1", [], "Hi", options)).kind).toBe("unavailable");
+    expect(create).toHaveBeenCalledTimes(2);
+    create.mockReset();
     resetClaudeHealth();
     create.mockResolvedValueOnce({ stop_reason: "refusal", content: [] });
     expect((await askClaudeInChat("u1", [], "Hi", options)).kind).toBe("unavailable");
@@ -823,6 +831,32 @@ describe("speed and failures", () => {
     );
     create.mockResolvedValueOnce(final("Fine."));
     expect((await askClaudeInChat("u1", [], "b", options)).kind).toBe("answer");
+  });
+
+  it("tries once more after a rate limit or server error, and answers if that works", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    create
+      .mockRejectedValueOnce(new Anthropic.APIError(529, undefined, "Overloaded", new Headers()))
+      .mockResolvedValueOnce(final("Netflix is $17.99 a month."));
+    const info = vi.spyOn(console, "info").mockImplementation(() => {});
+    const result = await askClaudeInChat("u1", [], "how much is netflix $17.99", options);
+    expect(result.kind).toBe("answer");
+    expect(create).toHaveBeenCalledTimes(2);
+    expect(
+      JSON.parse(String(info.mock.calls.find((c) => c[0] === "chat_timing")?.[1])),
+    ).toMatchObject({
+      retries: 1,
+      outcome: "answer",
+    });
+  });
+
+  it("labels every answer in demo advice mode, advice or not", async () => {
+    create.mockResolvedValueOnce(final("Netflix is $17.99 a month."));
+    const result = await askClaudeInChat("u1", [], "how much is netflix $17.99", {
+      ...options,
+      advice: true,
+    });
+    expect(result.reply.refs.advice).toBe(true);
   });
 
   it("pauses Claude for a while only when Claude itself fails (rate limit, overloaded)", async () => {

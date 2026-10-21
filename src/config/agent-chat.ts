@@ -347,6 +347,8 @@ export const CHAT_CLAUDE_TOTAL_MS = 40_000;
 // After Claude fails, free questions get the rules' answer at once for this long, instead
 // of waiting on Claude again.
 export const CHAT_CLAUDE_COOLDOWN_SECONDS = 30;
+// ...and a rate limit or server error is tried once more after this pause before that.
+export const CHAT_CLAUDE_RETRY_MS = 400;
 // The person's main numbers are looked up before Claude is asked; if they take longer than
 // this, Claude starts without them (it has the tools) and the lookup finishes for next time.
 // The clock for Claude starts after this, so a slow lookup never uses up its time.
