@@ -287,9 +287,9 @@ export async function askClaudeInChat(
           max_tokens: CHAT_CLAUDE_MAX_TOKENS,
           system,
           tools: CHAT_TOOLS,
-          // No thinking before the first words: a chat answer is a few sentences from the
-          // person's numbers, and thinking delays the first text.
-          thinking: { type: "disabled" },
+          // Adaptive thinking at low effort (the request that worked). Turning thinking off
+          // made the nightly's every chat request fail with a 400.
+          thinking: { type: "adaptive" },
           output_config: { effort: CHAT_CLAUDE_EFFORT },
           messages,
         })
@@ -325,7 +325,12 @@ export async function askClaudeInChat(
         // Our own deadline: this answer comes from the rules, but Claude isn't marked down.
         console.warn("Jane's chat answer from Claude was too slow");
       } else {
-        console.error("Jane's chat request to Claude failed", { status: error.status });
+        // The API's own reason (a type and a sentence about the request, never the person's
+        // words), so a 400 can be read from the logs instead of guessed.
+        console.error("Jane's chat request to Claude failed", {
+          status: error.status,
+          reason: String(error.message).slice(0, 300),
+        });
         // Only Claude itself failing (rate limit, overloaded, an error) pauses it.
         const status = error.status ?? 0;
         if (status === 429 || status >= 500) {
