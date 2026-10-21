@@ -19,7 +19,7 @@ import { listPreferences } from "./preferences";
 import { shapeReply, styleInstructions, styleOf } from "./style";
 import { joinReplies, splitQuestions } from "./two-parts";
 import { askClaudeInChat, type ChatStreamEvent, type ChatTurn } from "./claude";
-import { resolvePronoun, type Topic } from "./context";
+import { resolvePronoun, withTopic, type Topic } from "./context";
 import { typedFlowReply } from "./flows/chat";
 import { parseIntent } from "./intents";
 import { storeReply } from "./messages";
@@ -173,7 +173,12 @@ async function answer(
   };
   // Spec step 191: exact commands, and everything when Claude isn't there, keep the instant
   // rules path.
-  if (!llmEnabled() || CHAT_RULES_ONLY_KINDS.includes(intent.kind)) {
+  // "Why?" / "tell me more" that points at a finding, the ranked list or a decision is the
+  // rules' answer, with the person's numbers: instant, and never Claude's button talk.
+  const explainByRules =
+    intent.kind === "explain" &&
+    ["why_finding", "priorities", "decision"].includes(withTopic(intent, topic, asOf).kind);
+  if (!llmEnabled() || CHAT_RULES_ONLY_KINDS.includes(intent.kind) || explainByRules) {
     const byRules = await rules();
     if (byRules) return { reply: byRules, intent: intent.kind, source: "rules" };
     return { reply: unknownReply(text, asOf), intent: intent.kind, source: "fallback" };

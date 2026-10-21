@@ -44,7 +44,7 @@ import type { Reply } from "./replies";
 // the answer streamed as it's written (onEvent), a sentence at a time once each passes the
 // guardrails (./guarded-text), with what Jane is looking up in between.
 
-export const CHAT_PROMPT_VERSION = "chat-v13";
+export const CHAT_PROMPT_VERSION = "chat-v14";
 
 // The one rule that differs in demo advice mode (spec step 98).
 const NO_ADVICE = `- Never give investment, tax or legal advice, and don't mention investments, taxes or legal matters at all. Don't suggest financial products beyond Jane's pick from finding_details.`;
@@ -81,6 +81,8 @@ How to answer:
 - Use only dollar amounts that appear in those numbers or in tool results, written exactly as they appear there (with the cents). Don't add, subtract, round or estimate amounts yourself.
 - Keep it short: a few sentences or a short list. Plain words, no jargon, no headings. Don't write anything before a lookup; just look it up.
 - You can't do anything yourself. When something can be done (cancel or lower something the app found, approve the plan, start a goal), call propose_action once so they get a button, and say what tapping it does. Never say it's done.
+- "Tell me more" or "why" about a finding you just discussed (its details are in their numbers: don't look it up again): add NEW facts in words, never the same sentence again: how it was found, the dates and amounts from the evidence, what happens if they do nothing, and what Jane would do. No button talk.
+- "How can I pay less / save more / lower ..." gets two or three concrete moves with their own numbers (which to do first and what it saves, or when it's paid off), written out, then the button. Never answer by pointing at a page.
 - Write your answer first, then call propose_action or show_block at the very end of that same turn if a button or a picture helps: the answer you wrote is the answer.
 - Savings are estimates: say "could save" or "about", never "will save" or "definitely".
 ${NO_ADVICE}
@@ -246,6 +248,9 @@ type ChatTiming = {
   toolsSent: number;
   // Why the answer came from the rules instead (no text, numbers only).
   reason: string | null;
+  // Each round: how it ended, the tools it asked for (the button and picture tools too), how
+  // much text it wrote, and how long it took, so a hidden round can be seen.
+  rounds: { stop: string; tools: string[]; textChars: number; ms: number }[];
 };
 
 // What the last answer was about, in words for Claude (spec step 193).
@@ -274,6 +279,7 @@ export async function askClaudeInChat(
     tools: [],
     toolsSent: 0,
     reason: null,
+    rounds: [],
   };
   let outcome = "error";
   try {
@@ -288,6 +294,13 @@ export async function askClaudeInChat(
         ...rest,
         outcome,
         totalMs: Date.now() - startedAt,
+        // Time in none of the above: guardrail checks, the spend record, waiting between steps.
+        otherMs:
+          Date.now() -
+          startedAt -
+          (timing.primerMs ?? 0) -
+          timing.rounds.reduce((n, r) => n + r.ms, 0) -
+          timing.tools.reduce((n, t) => n + t.ms, 0),
         model: chatModel(),
         toolsSent: timing.toolsSent,
       }),
@@ -344,6 +357,25 @@ async function askClaude(
     dollarFigures(text).map((f) => f.cents),
   );
   allowedCents.push(...primer.cents);
+  // The finding that was just talked about: its details go up front, so "tell me more" is one
+  // round of writing, not a lookup first.
+  let findingBlock = "";
+  if (topic?.findingId) {
+    const lookedUp = Date.now();
+    try {
+      const detail = await runChatTool(
+        userId,
+        "finding_details",
+        { finding_id: topic.findingId },
+        { client, now },
+      );
+      timing.tools.push({ name: "finding_details (up front)", ms: Date.now() - lookedUp });
+      allowedCents.push(...detail.cents, ...dollarFigures(detail.content).map((f) => f.cents));
+      findingBlock = `\n\nThe finding just discussed (finding_details, already looked up, id ${topic.findingId}):\n${detail.content}`;
+    } catch {
+      // Without it Claude can still look the finding up itself.
+    }
+  }
   let rewrites = 0;
   // Only the last few turns: a long thread slows every follow-up. The topic of the last
   // answer is in the numbers sent with the question, so a short follow-up keeps its context.
@@ -373,7 +405,7 @@ async function askClaude(
     },
     {
       type: "text",
-      text: `The person's numbers right now (today is ${now.toISOString().slice(0, 10)}):\n${primer.text || "None available."}${topic ? `\n\n${topicLine(topic)}` : ""}${style ? `\n\n${style}` : ""}`,
+      text: `The person's numbers right now (today is ${now.toISOString().slice(0, 10)}):\n${primer.text || "None available."}${topic ? `\n\n${topicLine(topic)}` : ""}${findingBlock}${style ? `\n\n${style}` : ""}`,
     },
   ];
 
@@ -443,6 +475,15 @@ async function askClaude(
       timer = setTimeout(stop, turn === 0 ? Math.min(firstWordsMs, left) : Math.max(0, left));
       timing.turns = turn + 1;
       response = await stream.finalMessage();
+      timing.rounds.push({
+        stop: String(response.stop_reason),
+        tools: response.content.flatMap((b) => (b.type === "tool_use" ? [b.name] : [])),
+        textChars: response.content.reduce(
+          (n, b) => n + (b.type === "text" ? b.text.length : 0),
+          0,
+        ),
+        ms: Date.now() - turnStarted,
+      });
     } catch (error) {
       // Our own abort can surface as any error type: it is "too slow", never a crash.
       if (!stopped && !(error instanceof Anthropic.APIError)) throw error;

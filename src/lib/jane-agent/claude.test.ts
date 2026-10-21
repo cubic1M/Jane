@@ -723,6 +723,30 @@ describe("speed and failures", () => {
     expect(logged.reason).toBeNull();
   });
 
+  it("logs each round: how it ended, the tools it asked for, the text, the time", async () => {
+    vi.mocked(homeSummary).mockResolvedValue({ safeToSpend: null, comingUp: [] } as never);
+    const info = vi.spyOn(console, "info").mockImplementation(() => {});
+    create
+      .mockResolvedValueOnce(toolUse("safe_to_spend"))
+      .mockResolvedValueOnce(final("Nothing is linked yet."));
+    await askClaudeInChat("u1", [], "what can i spend", options);
+    const logged = JSON.parse(String(info.mock.calls.find((c) => c[0] === "chat_timing")?.[1]));
+    expect(logged.rounds).toEqual([
+      { stop: "tool_use", tools: ["safe_to_spend"], textChars: 0, ms: expect.any(Number) },
+      { stop: "end_turn", tools: [], textChars: 22, ms: expect.any(Number) },
+    ]);
+    expect(typeof logged.otherMs).toBe("number");
+  });
+
+  it("still answers when the finding just discussed can't be looked up up front", async () => {
+    create.mockResolvedValueOnce(final("Here is more."));
+    const result = await askClaudeInChat("u1", [], "tell me more", {
+      ...options,
+      topic: { kind: "about", findingId: "f-gone" },
+    });
+    expect(result.kind).toBe("answer");
+  });
+
   it("says why Claude's answer wasn't used, as a code", async () => {
     const info = vi.spyOn(console, "info").mockImplementation(() => {});
     create.mockResolvedValueOnce({ stop_reason: "end_turn", content: [] });

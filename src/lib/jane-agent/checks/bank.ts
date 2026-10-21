@@ -830,6 +830,20 @@ const BASE_QUESTIONS: readonly CheckQuestion[] = [
     expect: { avoid: /\b(?:I(?:'ve| have) put|under this answer|never answered)\b/i },
   },
 
+  {
+    id: "debt-moves",
+    text: "how can i pay less interest",
+    needs: "claude",
+    sector: "debt",
+    page: "/debt",
+    tool: "card_interest",
+    profile: "demo_advice",
+    expect: {
+      mentions: /\$\d/,
+      avoid: /open the (?:debt|debts) page|under this answer|\bbutton\b/i,
+    },
+  },
+
   // Follow-ups: the second needs the first.
   {
     id: "follow-1",

@@ -92,7 +92,7 @@ async function answer(ctx: CapabilityContext): Promise<Reply | null> {
     }
     case "priorities": {
       const snapshot = await loadSnapshotFast(userId, { client, now });
-      return prioritiesReply(snapshot ? rankedFor(snapshot) : [], intent.explain);
+      return prioritiesReply(snapshot ? rankedFor(snapshot) : [], intent.explain, intent.one);
     }
     // Spec step 203.
     case "what_if":
