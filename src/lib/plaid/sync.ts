@@ -588,8 +588,10 @@ export async function syncItem(
   // The first scan: "still going through your accounts" comes first, before anything Jane finds,
   // whenever the person gets to the chat.
   if (progressive && item.transactionsCursor === null) {
-    await postScanningHello(item.userId, { client, now }).catch((error) =>
-      console.error("Posting the scanning hello failed", { error: String(error) }),
+    // A millisecond before this sync's own time: everything Jane posts later in the sync is
+    // stamped from `now` onward, so the hello is strictly first, never tied with the brief.
+    await postScanningHello(item.userId, { client, now: new Date(now.getTime() - 1) }).catch(
+      (error) => console.error("Posting the scanning hello failed", { error: String(error) }),
     );
   }
   const sync = await new PlaidDataSource(api, accessToken, item.transactionsCursor).load();
@@ -639,7 +641,7 @@ export async function syncItem(
     await scanSuggestions(item.userId, { client, now }).catch((error) =>
       console.error("The first scan's suggestions failed", { error: String(error) }),
     );
-    await runJaneAgentSafely(item.userId, { client, now, trigger: "sync" });
+    await runJaneAgentSafely(item.userId, { client, now, trigger: "sync", early: true });
   }
   // After detection these don't depend on each other, so they run together; the sample
   // person's first screen is waiting on this sync.

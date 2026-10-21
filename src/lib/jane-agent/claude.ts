@@ -3,6 +3,8 @@ import {
   CHAT_CLAUDE_COOLDOWN_SECONDS,
   CHAT_CLAUDE_DEADLINE_MS,
   CHAT_CLAUDE_FIRST_WORDS_MS,
+  CHAT_CLAUDE_MAX_TOKENS,
+  CHAT_PRIMER_BUDGET_MS,
   CHAT_CLAUDE_EFFORT,
   CHAT_CLAUDE_MAX_TURNS,
   CHAT_CLAUDE_REWRITES,
@@ -11,6 +13,7 @@ import { ASK_BLOCKED_REPLY } from "@/config/ask";
 import type { PrismaClient } from "@/generated/prisma/client";
 import { anthropic, chatModel } from "@/lib/anthropic";
 import { addSpend, overDailyCap } from "./spend";
+import type { Topic } from "./context";
 import {
   checkGuardrails,
   dollarFigures,
@@ -38,7 +41,7 @@ import type { Reply } from "./replies";
 // the answer streamed as it's written (onEvent), a sentence at a time once each passes the
 // guardrails (./guarded-text), with what Jane is looking up in between.
 
-export const CHAT_PROMPT_VERSION = "chat-v8";
+export const CHAT_PROMPT_VERSION = "chat-v11";
 
 // The one rule that differs in demo advice mode (spec step 98).
 const NO_ADVICE = `- Never give investment, tax or legal advice, and don't mention investments, taxes or legal matters at all. Don't suggest financial products beyond Jane's pick from finding_details.`;
@@ -48,9 +51,13 @@ const SYSTEM = `You are Jane, the money helper inside a personal finance app, an
 
 Be useful, like a friend who's good with money and has their numbers in front of them:
 - Answer the actual question, with their figures. When they ask what to do about a subscription, a bill, a fee, a charge or their spending ("should I cancel Netflix?"), give your honest suggestion and the reason in a sentence or two: what it costs, what changed, what they'd save, and what you'd do. For example: "Netflix went up from $A to $B a month, which is $C a year. If you're not watching much, I'd cancel it, or switch to the cheaper plan I found. Tap Yes and I'll take care of it." (with their real amounts in place of $A, $B and $C)
+- "Should I buy / invest in / pay off ...?" (bitcoin, stocks, a house, a car, "pay off my card or invest") is a decision about their money, not a lookup of the thing: call decision first and answer from their debts and rates, their cash cushion and their goals, the order being high-rate debt, then the cushion, then the goal, then the thing. Crypto, investments or afford tools come only as a follow-up. A bare "should I buy?" is about the last thing you discussed: never answer it by describing a button or page from an earlier message. Never predict what the thing will do.
 - Before suggesting what to do about something the app found, look at finding_details for it. Use subscriptions for what they pay on a schedule.
 - For "am I OK?", "how am I doing" or "what should I do this month", use whole_picture: start with its headline, then the one to three things that matter most, with the first one's button.
 - What they've told you is under "remembered" in their numbers. Respect it: never suggest anything they said not to suggest, or cutting something they said they need.
+- Follow the conversation (spec step 193): "it", "that one", "the other one", "do it" and "and for my wife's car?" mean what was just said or what the last answer was about (given with their numbers). Don't ask again what they already told you.
+- When they ask two things in one message, answer both, in order, each with its figure; the first sentence still gives the first answer. When you really can't tell what they mean, ask one short question that names the likely choices ("Do you mean your Netflix or your Hulu?"). Never a generic list of things you can do when one of your tools fits.
+- Say what the data says plainly: if a tool gives a name, a figure or a date, state it, never "probably" or "it looks like". Say you don't know only when no tool has it.
 - If they push back ("you tell me"), give a straight answer from their numbers. Don't repeat yourself or hand it back to them.
 - Every answer must stand on its own. A button is extra: never answer with only a button or "tap the button".
 
@@ -93,11 +100,15 @@ type Options = {
   // Demo advice mode (src/lib/advice-mode.ts, spec step 98): the demo guardrail profile,
   // and advice labelled. Off unless the caller checked adviceMode.
   advice?: boolean;
+  // Spec step 193: what the last answer was about, so "it" and "the other one" mean something.
+  topic?: Topic | null;
   // Spec step 188: how the person likes answers (src/lib/jane-agent/style.ts).
   style?: string | null;
   // Spec step 93: how long to wait for Claude to start, and to finish, in milliseconds.
   firstWordsMs?: number;
   deadlineMs?: number;
+  // How long to wait for the person's main numbers before starting without them.
+  primerMs?: number;
 };
 
 // Spec step 93: when Claude last failed, free questions get the rules' answer at once until
@@ -131,6 +142,9 @@ const STATUS: Record<string, string> = {
   nightly_log: "Looking at last night's checks…",
   priorities: "Working out what matters most…",
   whole_picture: "Looking across everything…",
+  balance_forecast: "Looking at where your balance is heading…",
+  alerts: "Checking your alerts…",
+  household: "Checking who you share with…",
   money_moves: "Checking what money moved…",
   steady_pay: "Working out your steady paycheck…",
   health_score: "Working out your money health score…",
@@ -192,6 +206,17 @@ function rewriteRequest(
   return `(From the app, not the person.) That answer can't be shown yet:\n- ${reasons.join("\n- ")}\nWrite the whole answer again for the person: fix only those parts and keep the rest, your suggestion and the other figures included. Don't mention this note.`;
 }
 
+// The chat shows plain text: Claude's markdown emphasis, headings and code marks are dropped
+// ("**Card use:**" is "Card use:"), its bullets kept as dashes.
+export function plainText(text: string): string {
+  return text
+    .replace(/\*\*([\s\S]+?)\*\*/g, "$1")
+    .replace(/__([\s\S]+?)__/g, "$1")
+    .replace(/^#{1,6}\s+/gm, "")
+    .replace(/^\s*[*•]\s+/gm, "- ")
+    .replace(/`([^`]+)`/g, "$1");
+}
+
 // Where the time goes on a free question (one log line each, numbers only): the person's
 // numbers, Claude's first stream event and first text, the rounds, and the tokens, so a slow
 // deploy can be read from the logs. Times are milliseconds from the start of the call.
@@ -207,6 +232,12 @@ type ChatTiming = {
   cacheWriteTokens: number;
   outputTokens: number;
 };
+
+// What the last answer was about, in words for Claude (spec step 193).
+export function topicLine(topic: Topic): string {
+  const what = [topic.target, topic.category, topic.month].filter(Boolean).join(", ");
+  return `Your last answer was about ${what || topic.kind}${topic.verb ? ` (they were asking to ${topic.verb} it)` : ""}. "It", "that one" and "the other one" mean that or what you just said.`;
+}
 
 export async function askClaudeInChat(
   userId: string,
@@ -258,8 +289,10 @@ async function askClaude(
     onEvent = () => {},
     advice = false,
     style = null,
+    topic = null,
     firstWordsMs = CHAT_CLAUDE_FIRST_WORDS_MS,
     deadlineMs = CHAT_CLAUDE_DEADLINE_MS,
+    primerMs = CHAT_PRIMER_BUDGET_MS,
   }: Options,
   timing: ChatTiming,
 ): Promise<ClaudeAnswer> {
@@ -267,12 +300,20 @@ async function askClaude(
   if (Date.now() < claudeDownUntil) return unavailable();
   // Spec step 191: today's cost cap for this person.
   if (await overDailyCap(userId, { client, now })) return unavailable();
-  const started = Date.now();
   const profile = advice ? "demo_advice" : "standard";
   onEvent({ type: "status", text: "Looking at your numbers…" });
+  // The person's main numbers, for at most primerMs: a slow lookup finishes in the
+  // background (and is kept for the next question) while Claude starts without it.
   const primerStarted = Date.now();
-  const primer = await chatPrimer(userId, { client, now });
+  const primer = await Promise.race([
+    chatPrimer(userId, { client, now }),
+    new Promise<{ text: string; cents: number[] }>((resolve) =>
+      setTimeout(() => resolve({ text: "", cents: [] }), primerMs).unref?.(),
+    ),
+  ]);
   timing.primerMs = Date.now() - primerStarted;
+  // Claude's clock starts now, after the lookup: it always gets its whole first-words window.
+  const started = Date.now();
   // Figures the answer may use: any in the numbers sent up front or a tool's result (a
   // finding's title has some too: "Charged twice? $64.20 at Target"), the question, and
   // earlier answers.
@@ -286,7 +327,7 @@ async function askClaude(
   let shown: AnswerBlock | null = null;
   const draft = new GuardedText(
     () => allowedCents,
-    (text) => onEvent({ type: "text", text }),
+    (text) => onEvent({ type: "text", text: plainText(text) }),
     profile,
   );
   const system: Anthropic.TextBlockParam[] = [
@@ -298,7 +339,7 @@ async function askClaude(
     },
     {
       type: "text",
-      text: `The person's numbers right now (today is ${now.toISOString().slice(0, 10)}):\n${primer.text || "None available."}${style ? `\n\n${style}` : ""}`,
+      text: `The person's numbers right now (today is ${now.toISOString().slice(0, 10)}):\n${primer.text || "None available."}${topic ? `\n\n${topicLine(topic)}` : ""}${style ? `\n\n${style}` : ""}`,
     },
   ];
 
@@ -308,12 +349,16 @@ async function askClaude(
     let stopped = false;
     let timer: ReturnType<typeof setTimeout> | undefined;
     try {
+      // No time left for another round: the rules answer, and no stream is ever started.
+      if (deadlineMs - (Date.now() - started) <= 0) return unavailable();
       const stream = claude()
         .messages.stream({
           model: chatModel(),
-          max_tokens: 16000,
+          max_tokens: CHAT_CLAUDE_MAX_TOKENS,
           system,
           tools: CHAT_TOOLS,
+          // Adaptive thinking at low effort (the request that worked). Turning thinking off
+          // made the nightly's every chat request fail with a 400.
           thinking: { type: "adaptive" },
           output_config: { effort: CHAT_CLAUDE_EFFORT },
           messages,
@@ -333,6 +378,10 @@ async function askClaude(
             onEvent({ type: "status", text: statusFor(event.content_block.name) });
           }
         })
+        // An aborted or failed stream also emits "error"; with no listener the SDK turns that
+        // into an unhandled rejection that crashes the request. finalMessage() below is what
+        // reports it.
+        .on("error", () => {})
         .on("text", (delta) => {
           timing.firstTextMs ??= Date.now() - timing.startedAt;
           draft.push(delta);
@@ -346,14 +395,25 @@ async function askClaude(
       timing.turns = turn + 1;
       response = await stream.finalMessage();
     } catch (error) {
-      if (!(error instanceof Anthropic.APIError)) throw error;
+      // Our own abort can surface as any error type: it is "too slow", never a crash.
+      if (!stopped && !(error instanceof Anthropic.APIError)) throw error;
       if (stopped) {
         timing.stopped = true;
+        // Our own deadline: this answer comes from the rules, but Claude isn't marked down.
         console.warn("Jane's chat answer from Claude was too slow");
       } else {
-        console.error("Jane's chat request to Claude failed", { status: error.status });
+        // The API's own reason (a type and a sentence about the request, never the person's
+        // words), so a 400 can be read from the logs instead of guessed.
+        console.error("Jane's chat request to Claude failed", {
+          status: error instanceof Anthropic.APIError ? error.status : undefined,
+          reason: String((error as Error).message).slice(0, 300),
+        });
+        // Only Claude itself failing (rate limit, overloaded, an error) pauses it.
+        const status = (error instanceof Anthropic.APIError ? error.status : 0) ?? 0;
+        if (status === 429 || status >= 500) {
+          claudeDownUntil = Date.now() + CHAT_CLAUDE_COOLDOWN_SECONDS * 1000;
+        }
       }
-      claudeDownUntil = Date.now() + CHAT_CLAUDE_COOLDOWN_SECONDS * 1000;
       return unavailable();
     } finally {
       clearTimeout(timer);
@@ -468,6 +528,10 @@ async function askClaude(
       };
     }
     const refs: Reply["refs"] = { ...(proposal?.refs ?? {}) };
+    // Spec step 193: a finding it offered a button for is what the next message is about.
+    if (proposal?.refs.findingId) {
+      refs.topic = { kind: "about", findingId: proposal.refs.findingId };
+    }
     // Its words pass the same guardrails as the answer, or it isn't shown.
     if (shown && checkGuardrails(drawBlock(shown).alt, allowedCents, undefined, profile).ok) {
       refs.block = shown;
@@ -475,7 +539,7 @@ async function askClaude(
     return {
       kind: "answer",
       reply: {
-        body: proposal?.line ? `${text}\n\n${proposal.line}` : text,
+        body: proposal?.line ? `${plainText(text)}\n\n${proposal.line}` : plainText(text),
         actions: proposal?.actions ?? [],
         // Demo advice is always labelled (the chat shows DEMO_ADVICE_LABEL under it).
         refs: advice && isAdvice(text) ? { ...refs, advice: true } : refs,

@@ -1,3 +1,4 @@
+import { loadDecisionFacts } from "./decision";
 import { INSURANCE_TOOLS, isInsuranceTool, runInsuranceTool } from "./insurance/tools";
 import type Anthropic from "@anthropic-ai/sdk";
 import { BUDGET_SUGGESTION_MONTHS } from "@/config/budgets";
@@ -22,6 +23,11 @@ import { sectorAutopilots } from "@/lib/sector-autopilot";
 import { lastControllerRun } from "@/lib/controller-log";
 import { CONTROLLER_STEP_LABELS } from "@/config/controller";
 import { rankedFor } from "./priorities";
+import { loadDetectionInput } from "@/detection/engine";
+import { forecastAccounts } from "@/detection/forecast";
+import { FORECAST_DAYS } from "@/config/detection";
+import { newestUnreadAlerts } from "@/lib/alerts";
+import { householdOf } from "@/lib/household";
 import { wholePicture } from "./whole-picture";
 import { latestPaycheckPlan } from "@/lib/money-movement/paycheck";
 import { listTransfers } from "@/lib/money-movement/transfers";
@@ -159,6 +165,12 @@ export const CHAT_TOOLS: Anthropic.Tool[] = [
     input_schema: noInput,
   },
   {
+    name: "decision",
+    description:
+      'Where the person stands before a money decision, from their own numbers: card debt and the highest rate, cash and months of spending against the cushion Jane would set, and goals still short. Use it first for "should I buy bitcoin / stocks / a house / a car", "should I invest" and "should I pay off my card or invest". Answer from these numbers (debts at a high rate first, then the cushion, then goals); the crypto, investments or afford tools are only a follow-up. Never predict what the thing will do.',
+    input_schema: noInput,
+  },
+  {
     name: "net_worth",
     description:
       "What the person has (accounts and things they own) minus what they owe, from their linked balances.",
@@ -242,6 +254,24 @@ export const CHAT_TOOLS: Anthropic.Tool[] = [
     name: "health_score",
     description:
       "The person's money health score (spec step 146): one number out of 100 and its band, made of weighted parts (cash cushion, room each month, bills on time, card balances, savings goals), each with its points, why and the step that would raise it; parts not counted yet; and the change since last month with the part that moved it most. Say it kindly: a low part is room to grow, never a judgement.",
+    input_schema: noInput,
+  },
+  {
+    name: "balance_forecast",
+    description:
+      'Where each checking account is heading over the next month (spec step 192): its balance today, the lowest point it is forecast to reach and the day, and the bills and deposits (paychecks on their pay schedule) that drive it. Use it for "why is my checking going negative", "will I run short before payday" and "what happens to my balance".',
+    input_schema: noInput,
+  },
+  {
+    name: "alerts",
+    description:
+      'The person\'s unread alerts (spec step 192): fees, big or odd charges, price rises, bills coming up and low balances, newest first, each with what it says. Use it for "any alerts for me" and "did anything weird happen".',
+    input_schema: noInput,
+  },
+  {
+    name: "household",
+    description:
+      'Whether the person shares their money with a partner (spec step 192): who is in the household, who has been invited and not yet joined. Never shows the other person\'s accounts. Use it for "can my wife see my accounts" and "add my husband".',
     input_schema: noInput,
   },
   {
@@ -686,6 +716,46 @@ export async function runChatTool(
         })),
       });
     }
+    case "balance_forecast": {
+      const input = await loadDetectionInput(userId, { client, now });
+      const forecasts = forecastAccounts(input, FORECAST_DAYS);
+      if (forecasts.length === 0) {
+        return out({ note: "No checking account is linked, so there's no forecast." });
+      }
+      return out({
+        accounts: forecasts.map((f) => ({
+          account: f.accountName,
+          balanceToday: money(f.startCents),
+          lowestPoint: money(f.lowest.balanceCents),
+          lowestOn: f.lowest.date,
+          goesNegative: f.lowest.balanceCents < 0,
+          billsBeforeThen: f.bills
+            .filter((b) => b.date <= f.lowest.date)
+            .map((b) => ({ what: b.merchant, on: b.date, amount: money(b.amountCents) })),
+          depositsBeforeThen: f.income
+            .filter((i) => i.date <= f.lowest.date)
+            .map((i) => ({ from: i.merchant, on: i.date, amount: money(i.amountCents) })),
+        })),
+      });
+    }
+    case "alerts": {
+      const alerts = await newestUnreadAlerts(userId, { client, limit: 10 });
+      return out({
+        unread: alerts.map((a) => ({
+          title: a.title,
+          what: a.body,
+          on: a.createdAt.toISOString().slice(0, 10),
+        })),
+      });
+    }
+    case "household": {
+      const household = await householdOf(userId, { client });
+      if (!household) return out({ note: "They aren't sharing with a partner." });
+      return out({
+        members: household.members.length,
+        waitingToJoin: household.invites.map((i) => ({ email: i.email })),
+      });
+    }
     case "whole_picture": {
       const snapshot = await loadSnapshot(userId, { client, now });
       if (!snapshot) return out({ linked: false });
@@ -713,6 +783,11 @@ export async function runChatTool(
         })),
         goalsBehind: week.goalsBehind.map((g) => ({ goal: g.name, stillToGo: money(g.leftCents) })),
         urgent: week.urgent,
+        healthScore: week.health && {
+          score: week.health.score,
+          band: week.health.band,
+          whatWouldHelpMost: week.health.next,
+        },
         janeWorkingOn: week.working,
         waitingOnThePerson: week.waitingOnYou,
         safeToApproveAtOnce: week.safeItems,
@@ -785,6 +860,18 @@ export async function runChatTool(
           left: money(p.leftCents),
           over: p.over,
         })),
+      });
+    }
+    case "decision": {
+      const f = await loadDecisionFacts(userId, { client, now });
+      return out({
+        cardDebt: money(f.cardDebtCents),
+        ...(f.topRateBps ? { highestRatePercent: f.topRateBps / 100 } : {}),
+        cash: money(f.cashCents),
+        monthlySpending: money(f.monthlySpendCents),
+        ...(f.cushionTargetCents !== null ? { cushionTarget: money(f.cushionTargetCents) } : {}),
+        ...(f.cushionMonths !== null ? { monthsOfSpendingInCash: f.cushionMonths } : {}),
+        goalsStillShort: f.goalsBehind.map((g) => ({ name: g.name, toGo: money(g.leftCents) })),
       });
     }
     case "net_worth": {
