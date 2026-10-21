@@ -22,5 +22,11 @@ export const paydayAprPercent = () => Math.round(PAYDAY.feeShare * (365 / PAYDAY
 // Closed cards in good standing stay on the report; this is the usual number of years.
 export const CLOSED_CARD_YEARS = 10;
 
+// How much of take-home to save: the common 50/30/20 rule's 20%.
+export const SAVE_SHARE = 0.2;
+// Buying tends to beat renting only after about this many years in the home, because closing
+// costs (3% of the price) and moving come first.
+export const RENT_BUY_YEARS = 5;
+
 // Card use under this share of the limit is where it stops weighing on a score.
 export const USE_GOOD = 0.3;

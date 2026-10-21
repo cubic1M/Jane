@@ -150,6 +150,14 @@ const DECISION_PATTERNS: readonly (readonly [DecisionId, RegExp])[] = [
     /\b(?:take|get|use|need|taking|getting|using)\b.*\b(?:payday loans?|payday advances?|cash advances?)\b|\bshould i\b.*\bpayday (?:loan|advance|lender)s?\b/,
   ],
   [
+    "save_each_month",
+    /^(?!.*\b(?:for|toward|towards)\b).*\bhow much (?:should|do|can|must|ought) (?:i|we) (?:be )?(?:sav\w+|put away|set aside|stash)\b|^(?!.*\b(?:for|toward|towards)\b).*\bhow much (?:to|of my \w+ to) save\b/,
+  ],
+  [
+    "rent_or_buy",
+    /\brent (?:or|vs\.?|versus) buy\w*|\bbuy\w* (?:or|vs\.?|versus) rent\w*|\b(?:better|cheaper|smarter) to (?:rent|buy)\b|\bshould (?:i|we) (?:buy|rent) (?:a |an |my own )?(?:house|home|condo|place|apartment)\b/,
+  ],
+  [
     "overdraft",
     /\b(?:will (?:i|we)|am (?:i|we)|going to|gonna)\b.*\b(?:overdraw\w*|overdraft\w*|go negative|run out of money|go below zero|bounce)\b|\bwill (?:my )?(?:checking|account|balance)\b.*\b(?:negative|below zero|overdraw\w*|run out)\b/,
   ],

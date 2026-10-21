@@ -2,6 +2,8 @@ import {
   CLOSED_CARD_YEARS,
   INVEST_RANGE,
   KEEP_CASH_MONTHS,
+  RENT_BUY_YEARS,
+  SAVE_SHARE,
   PAYDAY,
   USE_GOOD,
   paydayAprPercent,
@@ -51,6 +53,13 @@ export type DecisionInput = {
     lowest: { date: string; balanceCents: number } | null;
     savingsCents: number;
   } | null;
+  // Take-home pay a month and what is left after spending, from the last full months.
+  incomeCents?: number | null;
+  savingCents?: number | null;
+  // What they pay in rent, and the home the 28/36 rules would allow: its price, its monthly
+  // cost with taxes and insurance, and the cash needed up front.
+  rentCents?: number | null;
+  home?: { maxPriceCents: number; housingCents: number; cashNeededCents: number } | null;
   // Buy now, pay later plans the person has, and what they pay a month on them.
   bnpl?: { plans: number; monthlyCents: number } | null;
 };
@@ -65,7 +74,9 @@ export type DecisionId =
   | "payday_loan"
   | "student_early"
   | "overdraft"
-  | "bnpl";
+  | "bnpl"
+  | "save_each_month"
+  | "rent_or_buy";
 
 export type Decision = {
   id: DecisionId;
@@ -444,6 +455,83 @@ export function bnpl(i: DecisionInput): Decision {
   };
 }
 
+// "How much should I save each month?"
+export function saveEachMonth(i: DecisionInput): Decision {
+  const income = i.incomeCents;
+  if (!income || income <= 0) {
+    return {
+      id: "save_each_month",
+      sentences: [
+        "I need to see a few months of income before I can say how much to save each month.",
+        "A common target is 20% of what you take home.",
+      ],
+      href: "/goals",
+      advice: false,
+    };
+  }
+  const saving = Math.max(0, i.savingCents ?? 0);
+  const target = Math.round(income * SAVE_SHARE);
+  const share = Math.round((saving / income) * 100);
+  const gap = target - saving;
+  const card = worst(i.cards);
+  return {
+    id: "save_each_month",
+    sentences: [
+      `You keep about ${formatCents(saving)} a month now, ${share}% of the ${formatCents(income)} you take home.`,
+      gap > 0
+        ? `A common target is ${Math.round(SAVE_SHARE * 100)}%, ${formatCents(target)} a month, which is ${formatCents(gap)} more than you save now.`
+        : `A common target is ${Math.round(SAVE_SHARE * 100)}%, ${formatCents(target)} a month, and you already beat it.`,
+      ...(i.advice
+        ? [
+            card && (card.aprBps ?? 0) > 1_000
+              ? `With ${card.name} at ${pct(card.aprBps!)}, put the first ${formatCents(Math.min(Math.max(saving, target), card.balanceCents))} toward it each month before saving elsewhere.`
+              : `Build cash for about three months of spending first, then retirement.`,
+          ]
+        : []),
+    ],
+    href: "/goals",
+    advice: i.advice,
+  };
+}
+
+// "Should I rent or buy?"
+export function rentOrBuy(i: DecisionInput): Decision {
+  const h = i.home;
+  if (!h) {
+    return {
+      id: "rent_or_buy",
+      sentences: [
+        "I need a few months of income to see before I can compare renting with buying.",
+        `Buying tends to beat renting only if you stay about ${RENT_BUY_YEARS} years or more.`,
+      ],
+      href: "/loans/home",
+      advice: false,
+    };
+  }
+  const rent = i.rentCents;
+  const first = rent
+    ? `You pay ${formatCents(rent)} a month in rent; a home up to ${formatCents(h.maxPriceCents)}, the most the usual 28/36 rules allow, would cost about ${formatCents(h.housingCents)} a month with taxes and insurance.`
+    : `A home up to ${formatCents(h.maxPriceCents)}, the most the usual 28/36 rules allow, would cost about ${formatCents(h.housingCents)} a month with taxes and insurance.`;
+  const second = `You'd also need about ${formatCents(h.cashNeededCents)} up front, and buying tends to beat renting only if you stay ${RENT_BUY_YEARS} years or more.`;
+  const diff = rent ? h.housingCents - rent : null;
+  return {
+    id: "rent_or_buy",
+    sentences: [
+      first,
+      second,
+      ...(i.advice && diff !== null
+        ? [
+            diff > 0
+              ? `That's ${formatCents(diff)} a month more than your rent, so renting is cheaper unless you'll stay many years.`
+              : `That's no more than your rent each month, so buying makes sense if you'll stay ${RENT_BUY_YEARS} years or more.`,
+          ]
+        : []),
+    ],
+    href: "/loans/home",
+    advice: i.advice,
+  };
+}
+
 export const DECISIONS: Readonly<Record<DecisionId, (i: DecisionInput) => Decision>> = {
   pay_or_invest: payOrInvest,
   consolidate,
@@ -455,4 +543,6 @@ export const DECISIONS: Readonly<Record<DecisionId, (i: DecisionInput) => Decisi
   student_early: studentEarly,
   overdraft,
   bnpl,
+  save_each_month: saveEachMonth,
+  rent_or_buy: rentOrBuy,
 };

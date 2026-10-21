@@ -149,7 +149,7 @@ export const DEBT_TOOLS: Anthropic.Tool[] = [
   {
     name: "home_purchase",
     description:
-      "Planning a home purchase (demo-bank people only; nothing for real accounts): the most home the person can afford under the usual rules (housing at most 28% of gross income, all debt at most 36%, gross estimated from take-home), the monthly cost at a price (loan, property tax, insurance, mortgage insurance/PMI while the down payment is under 20%), the cash needed up front (down payment and estimated closing costs), a savings plan from their real monthly cash flow and savings (how many months, or what to save a month by a date), the mortgage offers compared by total cost with closing costs, and every assumption. Starting the down payment goal needs the person's tap (the home.goal button).",
+      "Planning a home purchase, for everyone from their own income and debts (the lender partner's offers and the demo advice label only for demo-bank people): the most home the person can afford under the usual rules (housing at most 28% of gross income, all debt at most 36%, gross estimated from take-home), the monthly cost at a price (loan, property tax, insurance, mortgage insurance/PMI while the down payment is under 20%), the cash needed up front (down payment and estimated closing costs), a savings plan from their real monthly cash flow and savings (how many months, or what to save a month by a date), the mortgage offers compared by total cost with closing costs, and every assumption. Starting the down payment goal needs the person's tap (the home.goal button).",
     input_schema: {
       type: "object" as const,
       properties: {
@@ -199,7 +199,7 @@ export const DEBT_TOOLS: Anthropic.Tool[] = [
   {
     name: "debt_decision",
     description:
-      "A straight answer, in three sentences or fewer, to a money decision about debt or credit, from the person's own numbers: pay_or_invest (their highest-rate debt against what investing has historically returned), consolidate and personal_loan (the best stand-in offer and what it saves with fees counted), savings_or_debt (what cash beyond a month of spending would save on the worst card), close_card (what closing does to their limits and card use), payoff_hurts (it doesn't), payday_loan (its yearly rate and cheaper options), student_early, overdraft (whether checking is forecast to go below zero this month, when and by how much) and bnpl (whether buy now, pay later suits them). Give the sentences as the answer. They already say what is math and, only in demo advice mode, what Jane would pick; do not add a recommendation of your own.",
+      "A straight answer, in three sentences or fewer, to a money decision about debt or credit, from the person's own numbers: pay_or_invest (their highest-rate debt against what investing has historically returned), consolidate and personal_loan (the best stand-in offer and what it saves with fees counted), savings_or_debt (what cash beyond a month of spending would save on the worst card), close_card (what closing does to their limits and card use), payoff_hurts (it doesn't), payday_loan (its yearly rate and cheaper options), student_early, overdraft (whether checking is forecast to go below zero this month, when and by how much) bnpl (whether buy now, pay later suits them), save_each_month (what they keep now against the common 20% target) and rent_or_buy (their rent against the home the 28/36 rules allow). Give the sentences as the answer. They already say what is math and, only in demo advice mode, what Jane would pick; do not add a recommendation of your own.",
     input_schema: {
       type: "object" as const,
       properties: {
@@ -216,6 +216,8 @@ export const DEBT_TOOLS: Anthropic.Tool[] = [
             "student_early",
             "overdraft",
             "bnpl",
+            "save_each_month",
+            "rent_or_buy",
           ],
         },
       },
@@ -817,13 +819,13 @@ export function carToolOutput(car: Car, money: (cents: number) => string) {
 }
 
 export function homeToolOutput(home: HomeBuying, money: (cents: number) => string) {
-  if (!home.available) return { note: "No lending partner for this person's accounts yet." };
   if (!home.costs || !home.affordability || !home.saving) {
     return { note: "Not enough income history to say what home fits." };
   }
   const c = home.costs;
   return {
-    demoAdvice: true,
+    demoAdvice: home.advice,
+    rate: `${((home.aprBps ?? 0) / 100).toFixed(2)}%${home.rateIsOffer ? " (a lender's offer)" : " (a typical rate, not an offer)"}`,
     maxPrice: money(home.affordability.maxPriceCents),
     allowedHousingPerMonth: money(home.affordability.allowedHousingCents),
     atPrice: money(c.priceCents),

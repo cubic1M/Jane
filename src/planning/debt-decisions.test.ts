@@ -2,6 +2,8 @@ import { describe, expect, it } from "vitest";
 import {
   DECISIONS,
   closeCard,
+  rentOrBuy,
+  saveEachMonth,
   consolidate,
   payOrInvest,
   paydayLoan,
@@ -41,7 +43,7 @@ describe("every decision answers in three sentences or fewer, with the person's 
           expect(s.endsWith(".")).toBe(true);
           expect(s.match(/\.\s/g)?.length ?? 0, s).toBe(0);
         }
-        expect(d.href.startsWith("/loans")).toBe(true);
+        expect(d.href.startsWith("/")).toBe(true);
       });
     }
   }
@@ -243,6 +245,57 @@ describe("buy now, pay later", () => {
     );
     expect(bnpl({ ...noAdvice, bnpl: null }).sentences[2]).toBe(
       "Tell me the total and I'll check it against your forecast.",
+    );
+  });
+});
+
+describe("how much to save each month", () => {
+  const withIncome = { ...base, incomeCents: 500_000, savingCents: 40_000 };
+  it("sets what they keep against 20% of take-home, and puts a high-rate card first in demo advice", () => {
+    const d = saveEachMonth(withIncome);
+    expect(d.sentences).toEqual([
+      "You keep about $400.00 a month now, 8% of the $5,000.00 you take home.",
+      "A common target is 20%, $1,000.00 a month, which is $600.00 more than you save now.",
+      "With Store Card at 31.99%, put the first $1,000.00 toward it each month before saving elsewhere.",
+    ]);
+  });
+  it("says they already beat it, stops at the math without demo advice, and wants income first", () => {
+    expect(saveEachMonth({ ...withIncome, savingCents: 150_000 }).sentences[1]).toMatch(
+      /you already beat it\.$/,
+    );
+    expect(saveEachMonth({ ...withIncome, advice: false }).sentences).toHaveLength(2);
+    expect(
+      saveEachMonth({ ...base, cards: [], incomeCents: 500_000, savingCents: 0 }).sentences[2],
+    ).toMatch(/three months of spending first/);
+    expect(saveEachMonth(base).sentences[0]).toMatch(/^I need to see a few months of income/);
+  });
+});
+
+describe("rent or buy", () => {
+  const home = { maxPriceCents: 25_000_000, housingCents: 180_000, cashNeededCents: 3_250_000 };
+  it("sets the rent against the home the 28/36 rules allow and says how long buying takes to pay", () => {
+    const d = rentOrBuy({ ...base, rentCents: 145_000, home });
+    expect(d.sentences[0]).toBe(
+      "You pay $1,450.00 a month in rent; a home up to $250,000.00, the most the usual 28/36 rules allow, would cost about $1,800.00 a month with taxes and insurance.",
+    );
+    expect(d.sentences[1]).toBe(
+      "You'd also need about $32,500.00 up front, and buying tends to beat renting only if you stay 5 years or more.",
+    );
+    expect(d.sentences[2]).toBe(
+      "That's $350.00 a month more than your rent, so renting is cheaper unless you'll stay many years.",
+    );
+  });
+  it("is the math alone without demo advice, copes with no rent, and wants income", () => {
+    expect(rentOrBuy({ ...noAdvice, rentCents: 145_000, home }).sentences).toHaveLength(2);
+    expect(rentOrBuy({ ...base, rentCents: null, home }).sentences[0]).toMatch(
+      /^A home up to \$250,000\.00/,
+    );
+    expect(
+      rentOrBuy({ ...base, rentCents: 145_000, home: { ...home, housingCents: 120_000 } })
+        .sentences[2],
+    ).toMatch(/no more than your rent/);
+    expect(rentOrBuy({ ...base, home: null }).sentences[0]).toMatch(
+      /^I need a few months of income/,
     );
   });
 });

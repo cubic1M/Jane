@@ -184,7 +184,6 @@ describe.runIf(url)("typing to Jane against a real database", () => {
     });
     const first = (await send("can I spend 500 dollars this week for food")).reply.body;
     expect(first).toMatch(/^(Yes|Not without).*\$500\.00 on food this week/);
-    expect(first).toMatch(/So far in October you've spent \$[\d,]+\.\d\d on Food and drink\./);
     expect(first).toMatch(/You usually spend about \$[\d,]+\.00 a week on Food and drink/);
     expect(first).not.toContain("budget");
 

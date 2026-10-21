@@ -114,6 +114,41 @@ describe.runIf(url)("debt decisions against a real database", { timeout: 60_000 
     );
   });
 
+  it("answers the spending, saving and housing questions in three sentences or fewer, for Maya and Chris", async () => {
+    const maya = await client.user.create({
+      data: { email: `decisions-maya-${crypto.randomUUID()}@example.com` },
+    });
+    created.push(maya.id);
+    const { itemId } = await linkDemoBank(maya.id, { client, now: NOW, person: "renter" });
+    await syncItem(itemId, { client, api: plaid, now: NOW });
+    for (const who of [maya.id, chris]) {
+      for (const q of [
+        "how much should I save each month?",
+        "should I rent or buy?",
+        "can I afford a house?",
+        "can I afford a $2,000 vacation?",
+        "can I afford a $1,500 laptop?",
+        "what subscriptions do I have?",
+        "am I spending too much on food?",
+        "where does my money go?",
+        "how much can I spend this month?",
+      ]) {
+        const reply = await ask(who, q);
+        expect(sentences(reply.body).length, `${q}: ${reply.body}`).toBeLessThanOrEqual(3);
+        expect(reply.body, q).not.toMatch(/can't answer that one yet|lending partner/);
+      }
+    }
+    const house = await ask(maya.id, "can I afford a house?");
+    expect(house.body).toMatch(/28\/36/);
+    expect(house.body).toMatch(/a typical rate|at \d+\.\d\d%/);
+    const save = await ask(maya.id, "how much should I save each month?");
+    expect(save.body).toMatch(
+      /^You keep about \$[\d,.]+ a month now, -?\d+% of the \$[\d,.]+ you take home\./,
+    );
+    const rent = await ask(maya.id, "should I rent or buy?");
+    expect(rent.body).toMatch(/^You pay \$1,450\.00 a month in rent; a home up to /);
+  });
+
   it("is the same answer through Claude's tool, with the figures recorded", async () => {
     const out = await runChatTool(
       chris,

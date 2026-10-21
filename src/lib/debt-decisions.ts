@@ -9,7 +9,10 @@ import { scopedFor } from "@/lib/db-scoped";
 import { loadBnpl } from "@/lib/bnpl";
 import { loadDebts } from "@/lib/debts";
 import { dayLabel } from "@/lib/day-label";
+import { loadHomeBuying } from "@/lib/home-buying";
 import { loadRefinance } from "@/lib/refinance";
+import { spendingInsights } from "@/insights/spending";
+import { addDays } from "@/detection/units";
 import {
   DECISIONS,
   type Decision,
@@ -96,6 +99,26 @@ export async function loadDecisionInput(
         }
       : null;
   const payday = nextPayday(input, FORECAST_DAYS);
+  // Take-home and what's left after spending, from the last three full months with income.
+  const lastFull = addDays(`${now.toISOString().slice(0, 7)}-01`, -1);
+  const months = spendingInsights(
+    input.transactions.map((t) => ({ ...t, pending: false })),
+    { asOf: lastFull, monthCount: 3 },
+  ).months.filter((m) => m.incomeCents > 0);
+  const avg = (f: (m: (typeof months)[number]) => number) =>
+    months.length ? Math.round(months.reduce((s, m) => s + f(m), 0) / months.length) : null;
+  const incomeCents = avg((m) => m.incomeCents);
+  const spendingCents = avg((m) => m.spendingCents);
+  const rents = input.transactions
+    .filter(
+      (t) =>
+        t.pfcDetailed === "RENT_AND_UTILITIES_RENT" &&
+        /RENT|APARTMENTS|PROPERT/i.test(t.description) &&
+        !/HOME RENT/i.test(t.description) &&
+        t.amountCents > 0,
+    )
+    .sort((a, b) => a.date.localeCompare(b.date));
+  const home = await loadHomeBuying(userId, {}, { client, now, input });
   const today = now.toISOString().slice(0, 10);
   const singleLimit = owingCards.length === 1 ? (report?.cardLimitCents ?? null) : null;
   return {
@@ -112,6 +135,18 @@ export async function loadDecisionInput(
     liquidCents,
     monthlySpendCents: Math.round(spent / 3),
     consolidation,
+    incomeCents,
+    savingCents:
+      incomeCents !== null && spendingCents !== null ? incomeCents - spendingCents : null,
+    rentCents: rents.length ? rents[rents.length - 1].amountCents : null,
+    home:
+      home.costs && home.affordability
+        ? {
+            maxPriceCents: home.affordability.maxPriceCents,
+            housingCents: home.costs.housingCents,
+            cashNeededCents: home.costs.cashNeededCents,
+          }
+        : null,
     forecast:
       bnplData.checkingCents === null
         ? null

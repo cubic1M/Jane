@@ -101,14 +101,13 @@ describe("costReply", () => {
 describe("subscriptionsReply", () => {
   it("lists them, most expensive first, with what they come to and the biggest saving", () => {
     const reply = subscriptionsReply({ total: false, all: false }, recurring, snapshot);
-    expect(reply.body.split("\n").slice(0, 5)).toEqual([
-      "You have 4 subscriptions, about $64.97 a month in all.",
-      "- Planet Fitness $24.99 a month",
-      "- Netflix $17.99 a month",
-      "- Hulu $11.99 a month",
-      "- Duolingo $29.99 every 3 months",
-    ]);
-    expect(reply.body).toContain("Review your Netflix subscription.");
+    expect(
+      reply.body.startsWith(
+        "You have 4 subscriptions, about $64.97 a month in all, led by Planet Fitness $24.99 a month.",
+      ),
+    ).toBe(true);
+    expect(reply.body.split(/(?<=[.!?])\s+/).length).toBeLessThanOrEqual(3);
+    expect(reply.body).toContain("Review your Netflix subscription: could save about");
     expect(ids(reply)).toEqual([
       "finding.yes",
       "finding.no",
