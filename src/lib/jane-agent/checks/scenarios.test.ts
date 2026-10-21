@@ -32,11 +32,92 @@ const scenarios = parseScenarios(
 );
 
 describe("scenario files", () => {
-  it("reads the repo's sample file", async () => {
-    const { readFileSync } = await import("node:fs");
-    expect(parseScenarios(readFileSync("docs/chat-scenarios.json", "utf8")).length).toBeGreaterThan(
-      0,
+  it("reads every scenario file in docs/, each category within the first pass of the shuffle", async () => {
+    const { readFileSync, readdirSync } = await import("node:fs");
+    const files = filesOf("docs/chat-scenarios*.json", (dir) => readdirSync(dir));
+    expect(files.length).toBeGreaterThan(0);
+    const { scenarios: all, skipped } = parseScenarioFiles(
+      files.map((f) => readFileSync(f, "utf8")),
     );
+    // A few bad lines are left out at run time; more than that means the files are broken.
+    expect(skipped.length).toBeLessThan(all.length / 100);
+    expect(all.length).toBeGreaterThan(100);
+    const ordered = quotaOrder(all);
+    expect(ordered).toHaveLength(all.length);
+    const categories = new Set(all.map((s) => s.category));
+    expect(new Set(ordered.slice(0, categories.size).map((s) => s.category)).size).toBe(
+      categories.size,
+    );
+  });
+
+  it("leaves out an invalid entry, saying which and why, and runs the rest", () => {
+    const good = { id: "ok", category: "x", messages: ["hi"] };
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const { scenarios, skipped } = parseScenarioFiles([
+      JSON.stringify([good, { id: "empty", category: "x", messages: [""] }, null]),
+      JSON.stringify([{ ...good }, { id: "later", category: "x", messages: ["yo"] }]),
+    ]);
+    warn.mockRestore();
+    expect(scenarios.map((s) => s.id)).toEqual(["ok", "later"]);
+    expect(skipped.map((s) => s.id)).toEqual(["empty", "#3", "ok"]);
+    expect(skipped[0].reason).toMatch(/at least one message/);
+    expect(skipped[2].reason).toMatch(/used twice/);
+    const section = evalSection([], {
+      date: "d",
+      scenarios: 2,
+      costCents: 0,
+      capCents: 400,
+      stoppedAtCap: false,
+      invalid: skipped,
+    });
+    expect(section).toMatch(/3 invalid scenarios were skipped: empty/);
+  });
+
+  it("reads 'profile' as the sample person, and keeps the judge's rules", () => {
+    const [s] = parseScenarios(
+      JSON.stringify([
+        {
+          id: "p",
+          category: "x",
+          profile: "renter",
+          messages: ["hi"],
+          judge: { mustDo: ["greet"], mustNot: ["invent"] },
+        },
+      ]),
+    );
+    expect(s.person).toBe("renter");
+    const [q] = scenarioQuestions([s]);
+    expect(q.person).toBe("renter");
+    expect(q.judge).toEqual({ mustDo: ["greet"], mustNot: ["invent"] });
+    expect(() =>
+      parseScenarios(
+        JSON.stringify([{ id: "p", category: "x", profile: "nobody", messages: ["hi"] }]),
+      ),
+    ).toThrow(/sample person/);
+  });
+
+  it("expands a comma list and a * in a file name", () => {
+    const list = () => ["chat-scenarios.json", "chat-scenarios-2.json", "other.json"];
+    expect(filesOf("docs/chat-scenarios*.json, docs/extra.json", list)).toEqual([
+      "docs/chat-scenarios-2.json",
+      "docs/chat-scenarios.json",
+      "docs/extra.json",
+    ]);
+  });
+
+  it("orders by category quotas, the same way every time", () => {
+    const many = parseScenarios(
+      JSON.stringify(
+        ["a", "b", "c"].flatMap((c) =>
+          Array.from({ length: 4 }, (_, i) => ({ id: `${c}${i}`, category: c, messages: ["m"] })),
+        ),
+      ),
+    );
+    const first = quotaOrder(many).map((s) => s.id);
+    expect(first).toEqual(quotaOrder(many).map((s) => s.id));
+    for (let start = 0; start < 12; start += 3) {
+      expect(new Set(first.slice(start, start + 3).map((id) => id[0])).size).toBe(3);
+    }
   });
 
   it("turns each into a conversation: the first message leads, the rest follow it", () => {
