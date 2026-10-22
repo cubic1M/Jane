@@ -21,6 +21,7 @@ import { loadCarLoan, type CarLoan } from "@/lib/car-loan";
 import { loadCostlyBorrowing, type CostlyBorrowing } from "@/lib/costly-borrowing";
 import { loadRenting, type Renting } from "@/lib/renting";
 import { loadBorrowingPower, type BorrowingPower } from "@/lib/borrowing-power";
+import { loadCreditMonthly, type CreditMonthly } from "@/lib/credit-monthly";
 import { loadDebtReview, type DebtReview } from "@/lib/debt-review";
 import { loadDebtTrouble, type DebtTrouble } from "@/lib/debt-trouble";
 import { loadHomeEquity, type HomeEquity } from "@/lib/home-equity";
@@ -108,6 +109,7 @@ export type MoreSnapshot = {
   costlyBorrowing?: CostlyBorrowing;
   renting?: Renting;
   borrowingPower?: BorrowingPower;
+  creditMonthly?: CreditMonthly | null;
   // Insurance (spec Phase X), from the same loader as /insurance. Optional, so a snapshot
   // built without it (in tests) says nothing about insurance.
   insurance?: InsuranceSnapshot;
@@ -151,6 +153,7 @@ export async function loadMore(
     costlyBorrowing,
     renting,
     borrowingPower,
+    creditMonthly,
   ] = await Promise.all([
     autopilotOf(userId, { client }),
     openProposals(userId, { client }),
@@ -197,6 +200,7 @@ export async function loadMore(
     loadCostlyBorrowing(userId, { client, now }),
     loadRenting(userId, { client, now }),
     loadBorrowingPower(userId, { client }),
+    loadCreditMonthly(userId, { client }),
   ]);
   const homeEquity = await loadHomeEquity(userId, { client, now, mortgage });
   const debtReview = await loadDebtReview(userId, {
@@ -263,6 +267,7 @@ export async function loadMore(
     costlyBorrowing,
     renting,
     borrowingPower,
+    creditMonthly,
     insurance,
   };
 }

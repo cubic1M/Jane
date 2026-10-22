@@ -875,6 +875,10 @@ model DebtWatch {
   reviewReason   String?   @map("review_reason")
   reviewKeys     Json      @default("[]") @map("review_keys")
   reviewPayCents Int?      @map("review_pay_cents")
+  // Spec step 251, the monthly credit check-up: the day Jane last did it, and what she found
+  // and did ({ month, items, did }), so the chat reads it without pricing every loan again.
+  monthlyOn      DateTime? @map("monthly_on") @db.Date
+  monthly        Json?
   updatedAt      DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
