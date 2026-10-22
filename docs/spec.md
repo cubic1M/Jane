@@ -4390,6 +4390,90 @@ cards stay as built.
 > - The questions pass in the bank; no step touches real money or a real account; the Stage B
 >   note is in the PR
 
+## Phase AV: the perfect fit for borrowing (steps 281–284)
+
+Founder-approved 2026-10-21, a depth change to borrowing rather than a new feature round: for
+any borrowing need (a car, a home, a refinance, consolidating debt, a personal loan) Jane
+picks the best product for this person from their credit, debt-to-income, cash and goals, and
+shows two to four options to choose from. It is the one place the answer comes from: the
+debt decisions (step 260 on, `debt_decision`), the refinance and consolidation answers and the
+suggestions all read it. Recommendations are demo advice (labelled "Demo advice: sample data,
+not financial advice"); a real account gets the options and the math, never a pick. Offers come
+from the lender stand-in (`src/lib/lenders`); nothing is applied for without a tap, and tests
+spend nothing on the Anthropic API.
+
+### Step 281: The fit engine
+
+> Read CLAUDE.md. One engine that scores borrowing options for a person and a need.
+>
+> Build:
+> 1. A pure planner (`src/planning/fit.ts`, every threshold in `src/config/fit.ts` with its
+>    source, nothing inline) that takes a need (car, home, refinance, consolidation, personal),
+>    the person's credit band and score, income, debt payments, cash, goals and the offers from
+>    the lender stand-in, and returns each option with: eligible or not and why (credit floor,
+>    debt-to-income ceiling, income), the total cost over the whole term with fees (not just
+>    the rate), the monthly payment as a share of take-home against a comfortable share, the
+>    fees and when they pay back, and a score that ranks them.
+> 2. Two to four options, never one: the best by total cost that is comfortable, the lowest
+>    payment, the shortest term or fastest payoff, and one stretch or alternative where it
+>    differs. Jane's pick, a confidence percentage from the shared recipe (the weakest of its
+>    evidence) and its reason.
+>
+> Acceptance criteria:
+> - Eligibility, total cost, payment share and the pick each have tests on the eight sample
+>   people; the debt-trouble person is never steered to a bigger payment; no figure or
+>   threshold is inline
+
+### Step 282: Option cards in the chat
+
+> Read CLAUDE.md. The options shown as a pick-one card, short first.
+>
+> Build:
+> 1. The fit options as the shared option card every lane uses (the type from the insurance
+>    lane's `OptionCard`, kind "loan", shown by the chat's floating "pick one of N" card):
+>    each option one short headline (about eight words, one number: "Credit union 6.9%,
+>    save $1,840"), the monthly payment, facts (rate, term, total interest, fees), why this
+>    one, and "More details" with the maths. Jane's pick and its confidence percentage and
+>    reason are set only in demo advice mode, with the demo advice label. Choosing one queues
+>    the concierge action through the existing finding, decision and action path in the
+>    background: it never submits an application or moves money, and needs no new table.
+>
+> Acceptance criteria:
+> - The card shows two to four options, with the pick marked only in advice mode; choosing
+>   never applies for anything (tests)
+
+### Step 283: One source of truth
+
+> Read CLAUDE.md. The decisions, the offers and the suggestions agree.
+>
+> Build:
+> 1. The `debt_decision` answers (consolidate, personal loan, pay off versus invest), the
+>    refinance and balance transfer answers and the car and home offers read the fit engine's
+>    options, so the chat, the pages and Claude's tools never disagree on a rate, a payment or
+>    the pick.
+> 2. A detector for refinance and consolidation opportunities (who it is for, dollars saved
+>    over the term, confidence from the shared recipe with its reason, urgency, why you, and
+>    the action that opens the options), reaching at least one sample person in real data.
+>
+> Acceptance criteria:
+> - A test asserts the chat, the tool and the page give the same pick for the same person;
+>   the detector fires for the people with a costly card, auto or student loan and for no
+>   one on a must-not list
+
+### Step 284: Bank questions and a skeptical review
+
+> Read CLAUDE.md. Prove the picks are right for each life.
+>
+> Build:
+> 1. Must-pass bank questions for each need and for follow-ups ("what about a shorter
+>    term?", "why that one?"), with `avoid` for the wrong answers seen.
+> 2. Review each sample person's options as a skeptical customer (dollars believable and
+>    counted once, the pick sensible for their life, confidence varies with reasons in plain
+>    words) and fix what is off, with tests that pin the wording and ranges.
+>
+> Acceptance criteria:
+> - The review is written to `docs/detectors/review-fit.md` with a verdict per person
+
 ## Depth first: the bar before new features (founder, 2026-10-21)
 
 Jane already has the breadth. Until the chat and suggestions are right, every lane works on
