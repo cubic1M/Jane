@@ -7,6 +7,7 @@ import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
 import { disasterFeedFor } from "@/lib/disaster-feed";
 import { loadProfileInput } from "@/lib/profile";
+import type { ProfileInput } from "@/profile/build";
 import { recordAct } from "@/lib/sector-autopilot";
 import { loadTaxEstimate, type TaxEstimateView } from "@/lib/tax-estimate";
 import {
@@ -61,13 +62,13 @@ export async function loadDisasterRelief(
     client = defaultClient,
     now = new Date(),
     loaded,
-  }: Options & { loaded?: { estimate: TaxEstimateView } } = {},
+  }: Options & { loaded?: { estimate: TaxEstimateView; input?: ProfileInput } } = {},
 ): Promise<DisasterView> {
   const db = scopedFor(userId, client);
   const today = iso(now);
   const year = now.getUTCFullYear();
   const [input, feed, profile] = await Promise.all([
-    loadProfileInput(userId, { client, now }),
+    loaded?.input ? Promise.resolve(loaded.input) : loadProfileInput(userId, { client, now }),
     disasterFeedFor(userId, { client }),
     db.taxProfiles.findFirst({ select: { state: true, disasterApplied: true } }),
   ]);
