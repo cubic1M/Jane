@@ -119,3 +119,30 @@ describe("how the percentage spreads with the evidence", () => {
     expect(fact.evidence).toMatch(/^11 overdraft, insufficient-funds or late fees in 12 months/);
   });
 });
+
+describe("monthly income on a short history", () => {
+  const today = "2026-10-19";
+  const day = (back: number) =>
+    new Date(Date.parse(`${today}T00:00:00Z`) - back * 86_400_000).toISOString().slice(0, 10);
+
+  it("spreads the pay over the days the history covers, not over the calendar months it touches", () => {
+    const base = inputFor("renter");
+    // Six $4,000 paychecks from 75 days ago to 5 days ago: the history starts in August, so the
+    // calendar count says 2 months ($12,000 a month), but it is 2.5 months of data.
+    const pays = [5, 19, 33, 47, 61, 75].map((b) => ({
+      date: day(b),
+      amountCents: -400_000,
+      description: "ACME CORP PAYROLL",
+      pfc: "INCOME_SALARY",
+      accountId: base.accounts[0].id,
+    }));
+    const profile = buildProfile({ ...base, today, transactions: pays });
+    const monthly = profile.facts.monthly_income.value as number;
+    expect(monthly).toBeGreaterThan(9_500_00);
+    expect(monthly).toBeLessThan(10_000_00);
+  });
+
+  it("leaves a full year as the calendar count (the sample people do not move)", () => {
+    expect(buildProfile(inputFor("renter")).months).toBe(12);
+  });
+});

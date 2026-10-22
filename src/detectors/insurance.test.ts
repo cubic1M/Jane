@@ -5,6 +5,7 @@ vi.mock("@/lib/session", () => ({ requireUser: vi.fn() }));
 import { PEOPLE } from "@/config/people";
 import { buildProfile, type ProfileInput } from "@/profile/build";
 import { inputFor } from "@/profile/sample";
+import { pickForToday, rankSuggestions } from "@/planning/suggestion-rank";
 import { INSURANCE_DETECTORS } from "./insurance";
 import { reportFor } from "./harness";
 import { detectorsFor } from "./index";
@@ -171,13 +172,21 @@ describe("the figures are the person's own", () => {
     expect(s.worthCents).toBe(Math.round(492_000 * 0.1));
   });
 
-  it("values a risk as the expected yearly loss, never the whole loss", () => {
+  it("shows the whole loss and leaves the yearly chance to the ranking", () => {
     const [renters] = firedFor("renter", "renters_insurance");
-    expect(renters.worthCents).toBe(Math.round(3_000_000 * 0.03));
+    expect(renters.worthCents).toBe(3_000_000);
+    expect(renters.worthIsExpected).toBeUndefined();
     const [ltc] = firedFor("preretire", "long_term_care");
-    expect(ltc.worthCents).toBe(Math.round((21_600_000 * 0.2) / 10));
-    const [umbrella] = firedFor("preretire", "umbrella");
-    expect(umbrella.worthCents).toBeLessThan(500_000_000 * 0.01);
+    expect(ltc.worthCents).toBe(21_600_000);
+    // $30,000 at 3% a year is a $900 expected loss: it ranks, but not in Maya's top three, which
+    // are real money. An uninsured car is required, so it leads for Sam.
+    const top = (id: string) =>
+      pickForToday(rankSuggestions(reportFor(PEOPLE.find((x) => x.id === id)!).fired)).map(
+        (r) => r.suggestion.topic,
+      );
+    expect(top("renter")).not.toContain("renters_insurance");
+    expect(top("freelancer")[0]).toBe("auto_insurance");
+    expect(top("owner")[0]).toBe("business_insurance");
   });
 });
 
@@ -209,14 +218,34 @@ describe("how sure Jane is", () => {
     );
   });
 
-  it("values life and business cover as an expected yearly loss, not the whole loss", () => {
-    const family = reportFor(PEOPLE.find((x) => x.id === "family")!).fired.find(
-      (s) => s.topic === "life_insurance",
-    )!;
-    expect(family.worthCents).toBeLessThan(1_000_000);
-    const owner = reportFor(PEOPLE.find((x) => x.id === "owner")!).fired.find(
-      (s) => s.topic === "business_insurance",
-    )!;
-    expect(owner.worthCents).toBe(200_000);
+  it("shows life and business cover at their whole loss, and marks a missing car or business cover as required", () => {
+    const find = (id: string, topic: string) =>
+      reportFor(PEOPLE.find((x) => x.id === id)!).fired.find((x) => x.topic === topic)!;
+    expect(find("family", "life_insurance").worthCents).toBe(
+      (buildProfile(inputFor("family")).facts.monthly_income.value as number) * 12 * 10,
+    );
+    const owner = find("owner", "business_insurance");
+    expect(owner.worthCents).toBe(5_000_000);
+    expect(owner.required).toBe(true);
+    expect(firedFor("freelancer", "auto_insurance")[0].required).toBe(true);
+    expect(firedFor("renter", "renters_insurance")[0].required).toBeUndefined();
+  });
+});
+
+describe("the umbrella suggestion follows the need calculator (insurance QA pass)", () => {
+  it("is not offered on gross balances when the net worth after debts is under the line", () => {
+    // The sample family has $108k in the bank and investments, a home and a $338k mortgage.
+    const data = inputFor("family");
+    const profile = buildProfile(data);
+    const umbrella = INSURANCE_DETECTORS.find((d) => d.topic === "umbrella")!;
+    expect(umbrella.detect({ profile, data })).toBeNull();
+  });
+  it("counts the home: the retiree's net worth is over the line, and the figure is the need's", () => {
+    const data = inputFor("retiree");
+    const profile = buildProfile(data);
+    const umbrella = INSURANCE_DETECTORS.find((d) => d.topic === "umbrella")!;
+    const s = umbrella.detect({ profile, data });
+    expect(s?.short).toContain("$856,994.00");
+    expect(s?.why).toContain("what you own less what you owe");
   });
 });

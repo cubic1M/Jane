@@ -16,13 +16,20 @@ export interface PayrollPartner {
     // YYYY-MM-DD: from the first paycheck after this.
     effectiveOn: string;
   }): Promise<{ partnerRef: string }>;
+  // Spec step 232: how the plan balance and future contributions are invested.
+  requestAllocationChange(allocation: AllocationChange): Promise<{ partnerRef: string }>;
 }
+
+export type AllocationChange = { ticker: string; share: number }[];
 
 export const standInPayroll: PayrollPartner = {
   name: PAYROLL_STAND_IN,
   simulated: true,
   async requestContributionChange() {
     return { partnerRef: `SIMPAY-${randomUUID().slice(0, 8).toUpperCase()}` };
+  },
+  async requestAllocationChange() {
+    return { partnerRef: `SIMFUND-${randomUUID().slice(0, 8).toUpperCase()}` };
   },
 };
 

@@ -16,6 +16,7 @@ import { healthFor } from "@/lib/health-score";
 import { monthlyReportFor } from "@/lib/monthly-report";
 import { runLeanCheck } from "@/lib/lean-plan";
 import { checkResults } from "@/lib/worked";
+import { runBooksCheck } from "@/lib/books";
 import { runSteadyPay } from "@/lib/steady-pay";
 import { loadYearPlan } from "@/lib/year-plan";
 import { runPlanUpkeep } from "@/lib/plan-upkeep";
@@ -91,6 +92,8 @@ export async function runJaneAgent(
       })(),
       // Spec step 205: the year's plan, re-planned from what happened and kept.
       safely("Year plan", () => loadYearPlan(userId, { client, now, input, keep: true })),
+      // Spec step 238: balances against transactions, duplicate links, stale or broken links.
+      safely("Books check", () => runBooksCheck(userId, { client, now })),
       // Spec step 240: deposits from uneven income set aside and swept; the month's steady paycheck.
       safely("Steady paycheck", () => runSteadyPay(userId, { client, now, input })),
       // Spec step 207: finished actions checked against the transactions; a saving that never
@@ -157,16 +160,6 @@ export async function runJaneAgent(
   const posted = await postMessages(userId, planned, { client, now });
   // What's important goes out as a notification, unless the person is looking (spec step 85).
   await queueChatNotificationsSafely(userId, { client, now, trigger });
-  // The brief is out; now the whole snapshot is built and kept for the chat, before the slow
-  // sector work, so the first question reads it instead of building it.
-  if (early)
-    await safely("Saving the snapshot", async () => {
-      const full = await loadDetectionInput(userId, { client, now });
-      await saveSnapshot(userId, await loadSnapshot(userId, { client, now, input: full }), {
-        client,
-        now,
-      });
-    });
   return { posted };
 }
 
@@ -232,4 +225,22 @@ export async function runJaneAgentForAll({
     }
   }
   return run;
+}
+
+// The whole snapshot, built and kept for the chat: its first question reads this instead of
+// building it. The first scan does it right after the first brief is out (the person is already
+// reading), before the slow sector work.
+export async function keepFullSnapshot(
+  userId: string,
+  { client = defaultClient, now = new Date() }: { client?: PrismaClient; now?: Date } = {},
+): Promise<void> {
+  try {
+    const input = await loadDetectionInput(userId, { client, now });
+    await saveSnapshot(userId, await loadSnapshot(userId, { client, now, input }), {
+      client,
+      now,
+    });
+  } catch (error) {
+    console.error("Saving the snapshot failed", { userId, error: String(error) });
+  }
 }

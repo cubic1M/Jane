@@ -26,7 +26,7 @@ import { loadInvestments, type Investments } from "./holdings";
 // provider is connected). Money paid in counts as money in, not as a gain. Facts only.
 
 export type PeriodReturn = {
-  key: ReturnPeriodKey;
+  key: ReturnPeriodKey | string;
   label: string;
   from: string;
   to: string;
@@ -73,11 +73,21 @@ export async function loadReturns(
     client = defaultClient,
     now = new Date(),
     investments: loaded,
-  }: { client?: PrismaClient; now?: Date; investments?: Investments } = {},
+    periods: periodList = RETURN_PERIODS,
+    benchmark: benchmarkWeights,
+  }: {
+    client?: PrismaClient;
+    now?: Date;
+    investments?: Investments;
+    // Spec step 233: longer periods, and a benchmark mix to compare with (default: the
+    // person's own asset classes in index funds).
+    periods?: readonly { key: string; label: string; days: number }[];
+    benchmark?: Record<Exclude<AssetClass, "other">, number>;
+  } = {},
 ): Promise<Returns> {
   const investments = loaded ?? (await loadInvestments(userId, { client, now }));
   const end = lastClose(now);
-  const earliest = addDays(end, -Math.max(...RETURN_PERIODS.map((p) => p.days)));
+  const earliest = addDays(end, -Math.max(...periodList.map((p) => p.days)));
   const ids = investments.accounts.map((a) => a.id);
   const db = scopedFor(userId, client);
   const [market, snapshots, transactions] = await Promise.all([
@@ -124,10 +134,15 @@ export async function loadReturns(
     .map((t) => ({ day: iso(t.date), amountCents: -t.amountCents }))
     .filter((f) => firstSnapshot !== null && f.day >= firstSnapshot);
 
-  const shares = investments.byAssetClass.filter((c) => c.assetClass !== "other");
+  const ownShares = investments.byAssetClass.filter((c) => c.assetClass !== "other");
+  const shares = benchmarkWeights
+    ? (Object.entries(benchmarkWeights) as [Exclude<AssetClass, "other">, number][])
+        .filter(([, w]) => w > 0)
+        .map(([assetClass, w]) => ({ assetClass, valueCents: w * 10_000 }))
+    : ownShares;
   const total = shares.reduce((s, c) => s + c.valueCents, 0);
 
-  const periods = RETURN_PERIODS.flatMap((p): PeriodReturn[] => {
+  const periods = periodList.flatMap((p): PeriodReturn[] => {
     const from = addDays(end, -p.days);
     const values: DayValue[] = [];
     for (let day = from; day <= end; day = addDays(day, 1)) {
