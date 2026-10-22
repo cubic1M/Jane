@@ -31,6 +31,8 @@ export type FloatingCardData = {
   headline: string;
   summary?: string;
   details: CardDetails;
+  // A small label by the counter ("Jane's pick", only in demo advice mode).
+  badge?: string;
   yesLabel: string;
   notNowLabel?: string;
 };

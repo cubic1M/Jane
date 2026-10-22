@@ -129,12 +129,16 @@ export function FloatingCards({
             className="floating-card-in pointer-events-auto flex flex-col gap-2 border-2 border-emerald-700 bg-white p-3 shadow-lg dark:bg-zinc-950"
           >
             <div className="flex items-center justify-between gap-2">
-              <p
-                aria-live="polite"
-                className="text-xs tabular-nums text-zinc-600 dark:text-zinc-400"
-              >
-                {counter(cards, state, mode)}
-              </p>
+              <div className="flex items-baseline gap-2 text-xs">
+                <p aria-live="polite" className="tabular-nums text-zinc-600 dark:text-zinc-400">
+                  {counter(cards, state, mode)}
+                </p>
+                {current.badge && (
+                  <p className="font-semibold text-emerald-800 dark:text-emerald-400">
+                    {current.badge}
+                  </p>
+                )}
+              </div>
               <button
                 type="button"
                 aria-label="Not now"

@@ -24,6 +24,7 @@ import { answersMessage, complexMessage } from "../accountant-message";
 import { estimateDueMessage, yearEndMessage } from "../tax-calendar-message";
 import { sCorpMessage } from "../business-message";
 import { giftsMessage, inheritedIraMessage } from "../inheritance-message";
+import { hsaMessage, medicalMessage, repaymentMessage } from "../health-tax-message";
 import {
   appealDraftedMessage,
   appealSuggestedMessage,
@@ -521,6 +522,39 @@ export const taxesSource: MessageSource = {
           ...gifts,
           dedupeKey: `gifts:${inheritance.year}:${inheritance.gifts[0].recipient}`,
           priority: TAX_MESSAGE_PRIORITY.gifts,
+        });
+      }
+    }
+
+    // Spec step 269: a Marketplace credit that would come back as a bill, an HSA over its limit,
+    // and a year of care worth itemizing.
+    const health = tax.health;
+    if (health) {
+      const repay = repaymentMessage(health);
+      if (repay) {
+        out.push({
+          kind: health.advice ? "decision" : "heads_up",
+          ...repay,
+          dedupeKey: `ptc:${health.year}:${health.marketplace.check?.overCliff ? "cliff" : "over"}`,
+          priority: TAX_MESSAGE_PRIORITY.ptc,
+        });
+      }
+      const hsa = hsaMessage(health);
+      if (hsa) {
+        out.push({
+          kind: "heads_up",
+          ...hsa,
+          dedupeKey: `hsa_excess:${health.year}`,
+          priority: TAX_MESSAGE_PRIORITY.hsa_excess,
+        });
+      }
+      const medical = medicalMessage(health);
+      if (medical) {
+        out.push({
+          kind: "heads_up",
+          ...medical,
+          dedupeKey: `medical_deduction:${health.year}`,
+          priority: TAX_MESSAGE_PRIORITY.medical,
         });
       }
     }

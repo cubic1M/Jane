@@ -26,6 +26,8 @@ import { loadBusinessStructure } from "@/lib/business-structure";
 import { businessReply } from "./business-message";
 import { loadInheritance } from "@/lib/inheritance";
 import { inheritanceReply } from "./inheritance-message";
+import { loadHealthTaxes } from "@/lib/health-taxes";
+import { healthReply } from "./health-tax-message";
 import { decideTax } from "@/lib/tax-decisions";
 import { equityReply } from "./equity-tax-message";
 import { loadIdentity } from "@/lib/tax-identity";
@@ -145,6 +147,8 @@ export async function answerTaxIntent(
         ? moveReply(intent, view.state.value, now)
         : workStateReply(intent.state, view.state.value);
     }
+    case "health":
+      return healthReply(await loadHealthTaxes(userId, { client, now }));
     case "inherited":
       return inheritanceReply(await loadInheritance(userId, { client, now }));
     case "business":

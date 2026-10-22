@@ -156,6 +156,34 @@ export async function addAlert(
   }
 }
 
+// Posts one of Jane's chat messages as the app stores them (a reply with refs.options, say),
+// for a test that needs one Claude would write: there's no Anthropic key in tests.
+export async function addJaneMessage(
+  userId: string,
+  message: { kind: string; body: string; refs: object; actions: object[] },
+): Promise<string> {
+  const id = `e2em${crypto.randomUUID().replaceAll("-", "").slice(0, 20)}`;
+  const client = new Client({ connectionString: E2E_DATABASE_URL });
+  await client.connect();
+  try {
+    await client.query(
+      `INSERT INTO jane_messages (id, user_id, kind, body, refs, actions, dedupe_key)
+       VALUES ($1, $2, $3, $4, $5, $6, $1)`,
+      [
+        id,
+        userId,
+        message.kind,
+        message.body,
+        JSON.stringify(message.refs),
+        JSON.stringify(message.actions),
+      ],
+    );
+  } finally {
+    await client.end();
+  }
+  return id;
+}
+
 // Turns two-factor on for a user (a placeholder secret: tests only check that a code is
 // asked for, never enter a right one).
 export async function enableTwoFactor(userId: string): Promise<void> {
