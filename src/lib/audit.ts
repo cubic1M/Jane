@@ -149,6 +149,10 @@ export type AuditEvent =
   // Spec step 222: a read-only link for an accountant made, viewed, answered on and revoked.
   // Spec step 223: an estimated tax payment made through the stand-in.
   | "tax_payment_made"
+  // Spec step 270: tax deadlines moved by a disaster postponement, and a disaster loss recorded
+  // with its insurance claim.
+  | "tax_deadlines_postponed"
+  | "disaster_loss_recorded"
   | "accountant_link_created"
   | "accountant_link_viewed"
   | "accountant_link_answered"
@@ -222,7 +226,10 @@ export type AuditEvent =
   | "family_file_exported"
   // Spec step 290 (Phase AW): the practice portfolio started, and each practice trade.
   | "practice_started"
-  | "practice_trade";
+  | "practice_trade"
+  // The person's practice-portfolio preferences changed, from the page or the chat (which fields,
+  // never the amounts).
+  | "practice_preferences_changed";
 
 export type AuditActor = { type: ActorType; id: string | null };
 

@@ -87,8 +87,6 @@ export const DETECTOR_RATES = {
   beneficiaryRiskShare: 0.03,
   // Late fees: one is enough to mention.
   lateFeesMin: 1,
-  // Payday and cash-advance loans: fees are about this share of what's repaid.
-  paydayFeeShare: 0.25,
   // Income that moves around by this much month to month is worth smoothing.
   smoothingMinMonthlySwingShare: 0.3,
   // Life events (step 264): looked back this many days for a new job or a new child, and
@@ -209,6 +207,13 @@ export const DETECTOR_RATES = {
     // weeks before it, otherwise it takes effect next year.
     sCorpElectionBy: "03-15",
     sCorpElectionFrom: "01-01",
+    // Marketplace plans (step 269): premiums seen at least this many times this year; from which
+    // month a rise in income is worth acting on soon, and now; a family counted as two adults
+    // and this many children when the household is all Jane knows.
+    marketplacePaymentsMin: 3,
+    ptcSoonFromMonth: 7,
+    ptcNowFromMonth: 10,
+    familyChildren: 2,
     // Estimated payments: urgency by days to the next due date.
     estimatedNowDays: 14,
     estimatedSoonDays: 45,
