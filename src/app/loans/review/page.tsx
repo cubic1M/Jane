@@ -5,6 +5,9 @@ import { AppHeader } from "@/components/app-header";
 import { DemoAdviceLabel } from "@/components/demo-advice-label";
 import { REVIEW_REASON_TEXT, type ReviewItemKey } from "@/config/debt-review";
 import { DEBT_AUTOPILOT } from "@/config/debt";
+import { ensureBorrowingChecked } from "@/lib/borrowing-power";
+import { computeCreditMonthly, loadCreditMonthly } from "@/lib/credit-monthly";
+import { ensureChecked } from "@/lib/refinance";
 import { loadDebtReview } from "@/lib/debt-review";
 import { requireUser } from "@/lib/session";
 
@@ -26,8 +29,16 @@ const STATUS = { done: "Done by Jane", tap: "Needs you", ok: "Fine" } as const;
 async function ReviewContent() {
   const user = await requireUser();
   await connection();
-  const data = await loadDebtReview(user.id);
+  const [data, kept] = await Promise.all([loadDebtReview(user.id), loadCreditMonthly(user.id)]);
+  // Before Jane's first monthly pass (her runs skip quiet hours), worked out now, read-only:
+  // nothing is sent or applied for from here.
+  if (!kept) {
+    // The soft checks it reads, as the offers pages do on first open: they never touch the score.
+    await Promise.all([ensureChecked(user.id), ensureBorrowingChecked(user.id)]);
+  }
+  const monthly = kept ?? (await computeCreditMonthly(user.id));
   const autopilot = DEBT_AUTOPILOT[data.level].find((s) => s.step === 230);
+  const monthlyAutopilot = DEBT_AUTOPILOT[data.level].find((s) => s.step === 251);
   return (
     <>
       <AppHeader user={user} />
@@ -77,6 +88,46 @@ async function ReviewContent() {
           )}
         </>
       )}
+      {/* Spec step 251: the monthly credit check-up, the last one Jane did. */}
+      <section aria-label="This month's check-up" className="flex flex-col gap-3">
+        <h2 className="text-xl font-semibold">This month&apos;s check-up</h2>
+        {!monthly.available ? (
+          <p className="text-sm text-zinc-600 dark:text-zinc-400">
+            No loan, card balance, rent or costly borrowing to check this month.
+          </p>
+        ) : (
+          <>
+            <p className="text-sm text-zinc-600 dark:text-zinc-400">
+              {monthly.checkedOn
+                ? `Done ${monthly.checkedOn}.`
+                : "Jane's monthly pass hasn't run yet; this is how things stand today."}
+            </p>
+            <ul aria-label="Check-up items" className="flex flex-col gap-3">
+              {monthly.items.map((i) => (
+                <li key={i.key} className={CARD}>
+                  <div className="flex flex-wrap items-baseline justify-between gap-2">
+                    <h3 className="font-semibold">{i.title}</h3>
+                    <span className="text-sm text-zinc-600 dark:text-zinc-400">
+                      {STATUS[i.status]}
+                    </span>
+                  </div>
+                  <p>{i.text}</p>
+                  {i.link && (
+                    <Link href={i.link.href} className={`${LINK} text-sm`}>
+                      {i.link.label}
+                    </Link>
+                  )}
+                </li>
+              ))}
+            </ul>
+          </>
+        )}
+        {monthlyAutopilot && (
+          <p className="text-sm text-zinc-600 dark:text-zinc-400">
+            Every month, at your level: {monthlyAutopilot.does}
+          </p>
+        )}
+      </section>
     </>
   );
 }

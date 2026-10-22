@@ -1,5 +1,4 @@
 import { AGENT_CALL_TYPES } from "@/config/agent";
-import { normalizeAlias } from "@/data-sources/merchant-directory";
 import type { PrismaClient } from "@/generated/prisma/client";
 import { sendStatusEmail } from "@/lib/action-emails";
 import {
@@ -20,7 +19,7 @@ import { scopedFor } from "@/lib/db-scoped";
 import { PLACEHOLDERS, draftMessage, draftPayload } from "@/lib/drafts";
 import { checkGuardrails } from "@/lib/guardrails";
 import { enqueueJob } from "@/lib/jobs";
-import { merchantFor } from "@/lib/merchants";
+import { companyFacts } from "@/lib/merchants";
 import { formatCents } from "@/lib/money";
 import {
   CALL_OUTCOMES,
@@ -78,7 +77,7 @@ export async function startCall(
     return "handed_off";
   }
   const company = merchantOf(action);
-  const row = await merchantFor(normalizeAlias(company), { client });
+  const { merchant: row } = await companyFacts(company, { client });
   const phone = callMode(userId) === "simulated" ? SIMULATED_NUMBER : row?.supportPhone;
   const target = targetCents(action);
   const { monthlyCents } = billFacts(action);

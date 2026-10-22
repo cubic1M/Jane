@@ -131,6 +131,18 @@ async function Content({
               </li>
             ))}
           </ol>
+          {v.taxTuned && v.taxTuned.preTaxCapCents !== null && v.taxTuned.lineCents !== null && (
+            <p className="text-sm">
+              Tuned for taxes: after taxable accounts, take up to{" "}
+              {formatCents(v.taxTuned.preTaxCapCents)} from pre-tax accounts this year, which keeps
+              your income under {formatCents(v.taxTuned.lineCents)}, the line where Medicare&apos;s
+              premiums go up in {v.taxTuned.premiumYear}
+              {v.taxTuned.linesEstimated ? " (estimated)" : ""}; then Roth.
+              {v.taxTuned.ssTaxableCents > 0
+                ? ` ${formatCents(v.taxTuned.ssTaxableCents)} of your Social Security is taxable, so your next pre-tax dollar is taxed at about ${Math.round(v.taxTuned.nextDollarRate * 100)}%.`
+                : ""}
+            </p>
+          )}
         </section>
       )}
 

@@ -6,6 +6,7 @@ import { track } from "@/lib/analytics";
 import { logAudit } from "@/lib/audit";
 import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
+import { bigMoveCheck } from "@/lib/money-for-two";
 import { moneyPartnerFor, type MoneyMovementPartner } from "./partner";
 
 // Transfers and payments through the money-movement partner (spec steps 144–145). Every one
@@ -36,7 +37,7 @@ export async function scheduleTransfer(
   transfer: NewTransfer,
   by: "autopilot" | "person",
   { client = defaultClient, now = new Date(), partner }: Options = {},
-): Promise<{ id: string; runOn: string }> {
+): Promise<{ id: string; runOn: string; awaitingPartner?: boolean }> {
   const movement = partner === undefined ? await moneyPartnerFor(userId, { client }) : partner;
   if (!movement) {
     throw new TransferError(
@@ -59,6 +60,39 @@ export async function scheduleTransfer(
     throw new TransferError("Transfers only go between your own accounts.");
   }
   const runOn = transfer.runOn ?? addDays(today(now), TRANSFER_DELAY_DAYS);
+  // Spec step 242: a big move out of a shared account waits for the other partner's tap, and
+  // only goes to the money-movement partner once it comes (src/lib/money-for-two.ts).
+  const both = await bigMoveCheck(userId, transfer.fromAccountId, transfer.amountCents, client);
+  if (both) {
+    const row = await db.moneyTransfers.create({
+      data: {
+        userId,
+        fromAccountId: transfer.fromAccountId,
+        toAccountId: transfer.toAccountId,
+        toName: transfer.toName,
+        amountCents: transfer.amountCents,
+        purpose: transfer.purpose,
+        sector: transfer.sector,
+        goalId: transfer.goalId ?? null,
+        status: "awaiting_partner",
+        runOn: new Date(`${runOn}T00:00:00Z`),
+        partner: movement.name,
+        partnerRef: null,
+        by,
+        planKey: transfer.planKey ?? null,
+        createdAt: now,
+      },
+      select: { id: true },
+    });
+    await logAudit(
+      { type: "user", id: userId },
+      "money_transfer_awaiting_partner",
+      { type: "money_transfer", id: row.id },
+      { by, purpose: transfer.purpose, amount_cents: transfer.amountCents },
+    );
+    await track(userId, "money_transfer_awaiting_partner", { by, purpose: transfer.purpose });
+    return { id: row.id, runOn, awaitingPartner: true };
+  }
   const { partnerRef } = await movement.schedule({
     fromAccountId: transfer.fromAccountId,
     toAccountId: transfer.toAccountId,
@@ -109,7 +143,8 @@ export async function cancelTransfer(
 ): Promise<void> {
   const db = scopedFor(userId, client);
   const row = await db.moneyTransfers.findFirst({
-    where: { id: transferId, status: "pending" },
+    // Spec step 242: a big move still waiting for the partner can be undone too.
+    where: { id: transferId, status: { in: ["pending", "awaiting_partner"] } },
     select: { id: true, partnerRef: true, runOn: true },
   });
   if (!row || today(row.runOn) < today(now)) {
@@ -118,7 +153,7 @@ export async function cancelTransfer(
   const movement = partner === undefined ? await moneyPartnerFor(userId, { client }) : partner;
   if (movement && row.partnerRef) await movement.cancel(row.partnerRef);
   const { count } = await db.moneyTransfers.updateMany({
-    where: { id: transferId, status: "pending" },
+    where: { id: transferId, status: { in: ["pending", "awaiting_partner"] } },
     data: { status: "cancelled", cancelledAt: now },
   });
   if (count === 0)
@@ -203,6 +238,7 @@ export async function listTransfers(
   return rows.map((r) => ({
     ...r,
     runOn: today(r.runOn),
-    undoable: r.status === "pending" && today(r.runOn) >= today(now),
+    undoable:
+      (r.status === "pending" || r.status === "awaiting_partner") && today(r.runOn) >= today(now),
   }));
 }
