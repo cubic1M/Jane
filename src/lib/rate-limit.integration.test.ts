@@ -36,11 +36,13 @@ describe.runIf(url)("rate limiting against a real database", () => {
   it("gives a use back, never below zero", async () => {
     const subject = `rl-test-${crypto.randomUUID()}`;
     const now = new Date("2026-10-19T12:00:30Z");
-    await hit("ask", subject, { client, now });
-    await hit("ask", subject, { client, now });
-    await giveBack("ask", subject, { client, now });
-    expect((await hit("ask", subject, { client, now })).remaining).toBe(RATE_LIMITS.ask.limit - 2);
-    await giveBack("ask", `rl-test-${crypto.randomUUID()}`, { client, now });
+    await hit("chat", subject, { client, now });
+    await hit("chat", subject, { client, now });
+    await giveBack("chat", subject, { client, now });
+    expect((await hit("chat", subject, { client, now })).remaining).toBe(
+      RATE_LIMITS.chat.limit - 2,
+    );
+    await giveBack("chat", `rl-test-${crypto.randomUUID()}`, { client, now });
   });
 
   it("allows the limit within a window, then refuses until the next window", async () => {

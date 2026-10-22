@@ -117,7 +117,7 @@ function summary(r: ReplayResult): StrategySummary {
 
 // What each rule needs beyond the four model funds.
 function needs(rule: OpportunityRule): string[] {
-  if (rule === "tax_loss_harvest") return ["ITOT", "IXUS", "AGG"];
+  if (rule === "tax_loss_harvest" || rule === "cheaper_fund") return ["ITOT", "IXUS", "AGG"];
   if (rule === "news_idea") return [...PRACTICE_STOCKS];
   return [];
 }

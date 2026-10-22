@@ -41,10 +41,12 @@ import { apply, type LedgerState } from "./practice-ledger";
 // - dip_buy: a model holding has dropped, bought only with cash waiting to be invested and never
 //   past its target plus a margin;
 // - tax_loss_harvest: a model holding below what it cost, swapped into a similar fund of the
-//   same kind (step 124's lots), never into a wash sale;
+//   same kind (step 124's lots), never into a wash sale; watched every day, so a loss that
+//   deepens after a swap can be harvested again (the wash-sale checks and the monthly cap hold);
 // - news_idea: good news about a watched company, a small capped position, at High and Very
 //   high only and not while opportunities are paused.
 // Every number comes from src/config. Practice money only: nothing here is a real order.
+// The kinds added after step 292 are in ./practice-opportunities.ts, which runs this first.
 
 export type ScanTrade = {
   ticker: string;
@@ -83,6 +85,10 @@ export type PastTrade = {
   rule: string;
 };
 
+// A headline with step 293's one-sentence summary (Claude's when a key is set, else the rules
+// summary), when there is one.
+export type ScanHeadline = Headline & { summary?: string; summaryBy?: "claude" | "rules" };
+
 export type ScanInput = {
   level: RiskLevel;
   state: LedgerState;
@@ -93,7 +99,7 @@ export type ScanInput = {
   // The standing trades, any order.
   trades: readonly PastTrade[];
   // Headlines about the watched companies from the last few days.
-  headlines: readonly Headline[];
+  headlines: readonly ScanHeadline[];
   today: string;
   opportunitiesPaused: boolean;
   // How many of each kind already acted this calendar month.
@@ -350,7 +356,7 @@ function harvestFlags(input: ScanInput, total: number, blocked: ReadonlySet<stri
     flags.push({
       kind: "tax_loss_harvest",
       ticker,
-      key: `tax_loss_harvest:${ticker}:${input.today.slice(0, 7)}`,
+      key: `tax_loss_harvest:${ticker}:${input.today}`,
       headline: `Harvested a ${dollars(harvested)} loss in ${ticker}`,
       reason,
       amountCents: amount,
@@ -437,6 +443,9 @@ function newsFlags(input: ScanInput, total: number, blocked: ReadonlySet<string>
       trades,
       figures: [
         { label: "Headline", value: h.title },
+        ...(h.summary
+          ? [{ label: h.summaryBy === "claude" ? "Summary" : "Summary (rules)", value: h.summary }]
+          : []),
         { label: "Source", value: `${h.source}, ${h.date}` },
         { label: "Position", value: dollars(own + amount) },
         { label: "All opportunity stocks", value: dollars(held) },
@@ -496,15 +505,25 @@ export function heldBy(
   return null;
 }
 
-// What happens to a flag: held by a limit, left to the autopilot (drift), or acted on.
+// What happens to a flag: held by a limit, left to the autopilot (drift), kept as a suggestion
+// (a kind that never trades, or the person's suggest-only mode), or acted on. The live scan
+// (src/lib/practice/scan.ts) and the rule replay both decide with this.
 export function flagStatus(
-  flag: Pick<ScanFlag, "trades">,
+  flag: Pick<ScanFlag, "kind" | "trades">,
   state: LedgerState,
   prices: Prices,
   tradesToday: number,
-): { status: "acted" | "autopilot" | "held"; heldBy: string | null } {
+  mode: "act" | "suggest" = "act",
+): { status: "acted" | "autopilot" | "held" | "suggested"; heldBy: string | null } {
   const held = flag.trades.length > 0 ? heldBy(flag, state, prices, tradesToday) : null;
-  return { status: held ? "held" : flag.trades.length === 0 ? "autopilot" : "acted", heldBy: held };
+  const status = held
+    ? "held"
+    : flag.kind === "drift_rebalance"
+      ? "autopilot"
+      : flag.trades.length === 0 || mode === "suggest"
+        ? "suggested"
+        : "acted";
+  return { status, heldBy: held };
 }
 
 // A flag kept from an earlier scan, as the scan reads it back.
