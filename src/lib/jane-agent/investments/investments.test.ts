@@ -1295,16 +1295,33 @@ describe("overviewReply and autopilotReply", () => {
     });
   });
 
-  it("says what Jane does by herself at each level, and that trades wait for a tap", () => {
-    expect(autopilotReply(null).body).toMatch(
+  it("says what Jane does by herself at each level, then what the Investing area allows", () => {
+    const ask = {
+      sector: "investing",
+      level: "ask",
+      actionCapCents: 0,
+      monthlyCapCents: 0,
+    } as const;
+    expect(autopilotReply(null, ask).body).toMatch(
       /^Here's what I do with your investments by myself\./,
     );
-    const all = autopilotReply("all").body;
+    const all = autopilotReply("all", ask).body;
     expect(all).toMatch(/^On your autopilot setting, here's what I do/);
+    // The Investing area's own setting (spec step 141) says whether trades wait for a tap.
     expect(all).toContain(
-      "Buying, selling and moving money always wait for your tap, at every level.",
+      "Investing is set to always ask: I don't move money into investing or change anything else without your tap.",
     );
-    expect(autopilotReply("ask").body).not.toMatch(/invest every payday/);
+    expect(
+      autopilotReply("all", {
+        ...ask,
+        level: "all",
+        actionCapCents: 50_000,
+        monthlyCapCents: 100_000,
+      }).body,
+    ).toContain(
+      "Investing is set to everything allowed: I move money into investing by myself, up to $500.00 each time and $1,000.00 a month",
+    );
+    expect(autopilotReply("ask", ask).body).not.toMatch(/invest every payday/);
   });
 });
 
