@@ -2,7 +2,7 @@ import { MONTHLY_REPORT_DAYS } from "@/config/monthly-report";
 import type { Prisma, PrismaClient } from "@/generated/prisma/client";
 import { previousMonth } from "@/insights/check-in";
 import { track } from "@/lib/analytics";
-import { loadCheckIn } from "@/lib/check-in";
+import { loadCheckIn, summaryFor } from "@/lib/check-in";
 import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
 import { appBase } from "@/lib/digest/links";
@@ -18,8 +18,10 @@ import {
   receiptWords,
   reportLines,
   type MonthlyReport,
+  type YearInReport,
 } from "@/planning/monthly-report";
 import { storedReport, type StoredReport } from "./monthly-report-store";
+import { yearInReview } from "./year";
 import { loadYearPlan } from "./year-plan";
 import { resultsByKind } from "./worked";
 
@@ -27,6 +29,9 @@ import { resultsByKind } from "./worked";
 // just ended came to (saved, earned, paid down, moved), the health score's change, what's
 // next and the receipts. Each figure comes from the loader of the page it links to, so it
 // matches that page. Made once per person and month, kept, posted in the chat and emailed.
+// It is the month's one report and one email: the monthly check-in's figures and summary
+// (spec step 45) are part of it, and December's carries the year in review (spec step 35)
+// (docs/feature-audit.md, cluster 2).
 
 type Options = { client?: PrismaClient; now?: Date };
 
@@ -58,8 +63,20 @@ export async function buildMonthlyReport(
   const kinds = await resultsByKind(userId, { client, now });
   const receipts = saved.confirmed.filter((r) => r.seen.date.startsWith(month));
   const [next] = snapshot ? rankedFor(snapshot) : [];
+  const [summary, year] = await Promise.all([
+    summaryFor(userId, checkIn, { client }),
+    month.endsWith("-12") ? yearSection(userId, Number(month.slice(0, 4)), client, now) : null,
+  ]);
   return {
     month,
+    summary,
+    spent: { cents: checkIn.spendingCents, previousCents: checkIn.previousSpendingCents },
+    budgets: {
+      kept: checkIn.budgets.filter((b) => b.kept).length,
+      over: checkIn.budgets.filter((b) => !b.kept).map((b) => b.category),
+    },
+    netWorth: checkIn.netWorth,
+    year,
     saved: {
       totalCents: saved.confirmedCents,
       monthCents: receipts.reduce((s, r) => s + r.cents, 0),
@@ -102,13 +119,35 @@ export async function buildMonthlyReport(
   };
 }
 
+// The year in review's headline figures, from /year's own loader.
+async function yearSection(
+  userId: string,
+  year: number,
+  client: PrismaClient,
+  now: Date,
+): Promise<YearInReport> {
+  const review = await yearInReview(userId, year, { client, now });
+  return {
+    year,
+    spendingCents: review.spendingCents,
+    incomeCents: review.incomeCents,
+    found: review.found.findings,
+    foundAnnualCents: review.found.annualSavingsCents,
+    savedCents: review.savedCents,
+  };
+}
+
 function nextMonth(month: string): string {
   const [y, m] = month.split("-").map(Number);
   return new Date(Date.UTC(y, m, 1)).toISOString().slice(0, 7);
 }
 
 const empty = (r: MonthlyReport) =>
-  r.earnedCents === 0 && r.paidDownCents === 0 && r.saved.monthCents === 0 && r.moved.count === 0;
+  (r.spent?.cents ?? 0) === 0 &&
+  r.earnedCents === 0 &&
+  r.paidDownCents === 0 &&
+  r.saved.monthCents === 0 &&
+  r.moved.count === 0;
 
 // Last month's report, made once in the first days of this month (the person's own), kept.
 // Null outside those days or for a month with nothing in it.
@@ -166,6 +205,7 @@ export function renderMonthlyReportEmail(
   const text = [
     subject,
     "",
+    ...(report.summary ? [report.summary, ""] : []),
     ...lines.map((l) => `${l.label}: ${l.text} ${links.base}${l.href}`),
     ...(receipts.length > 0 ? ["", "Receipts:", ...receipts.map((r) => `- ${r}`)] : []),
     "",
@@ -175,6 +215,7 @@ export function renderMonthlyReportEmail(
   ].join("\n");
   const html = `<div style="font-family:-apple-system,Segoe UI,Helvetica,Arial,sans-serif;max-width:560px;margin:0 auto;color:#18181b;line-height:1.5">
 <h1 style="font-size:22px">${esc(subject)}</h1>
+${report.summary ? `<p>${esc(report.summary)}</p>` : ""}
 <ul>${lines
     .map(
       (l) =>

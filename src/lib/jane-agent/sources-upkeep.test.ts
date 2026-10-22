@@ -6,13 +6,13 @@ import { weeklyReview } from "./replies-review";
 import type { Snapshot } from "./snapshot";
 
 // Spec step 101: the budget tune-up and transfers in the chat, and the weekly review: what
-// Jane did, what it saved, what's next and one decision at most.
+// Jane did, what it saved, what's next and one decision at most, as an answer and as the
+// Monday brief's "Last week" line.
 
-// Sunday Oct 25, 2026, 6pm in New York, the last day of the week of Oct 19; and earlier
-// that Sunday, and the Saturday.
+// Sunday Oct 25, 2026, 6pm in New York, the last day of the week of Oct 19.
 const SUNDAY = new Date("2026-10-25T22:00:00Z");
-const SUNDAY_MORNING = new Date("2026-10-25T13:00:00Z");
-const SATURDAY = new Date("2026-10-24T22:00:00Z");
+// Monday Oct 26, 9am in New York: the first day of the next week.
+const MONDAY = new Date("2026-10-26T13:00:00Z");
 const SYNC: BrainSettings = { trigger: "sync" };
 const DAY = 24 * 60 * 60 * 1000;
 
@@ -167,12 +167,8 @@ describe("the weekly review", () => {
       findings: [finding, { ...finding, findingId: "f2" }],
       upkeep: upkeep({ tuneUp: { ...TUNE, status: "auto" } }),
     });
-    const [m] = from(s, "review");
-    expect(m).toMatchObject({
-      kind: "decision",
-      dedupeKey: "review:2026-10-19",
-      refs: { findingId: "f1", fingerprint: "fp1" },
-    });
+    const m = weeklyReview(s, SUNDAY);
+    expect(m.refs).toEqual({ findingId: "f1", fingerprint: "fp1" });
     expect(m.body).toBe(
       [
         "Here's your week with Jane.",
@@ -186,18 +182,54 @@ describe("the weekly review", () => {
     expect(ids(m)).toEqual(["finding.yes", "finding.no", "open"]);
   });
 
-  it("is posted on Sunday evening only, outside the daily limit", () => {
-    expect(from(snapshot(), "review", SATURDAY)).toEqual([]);
-    expect(from(snapshot(), "review", SUNDAY_MORNING)).toEqual([]);
-    // Not even when they open the chat that morning.
-    expect(
-      gather(snapshot(), SUNDAY_MORNING, { trigger: "open" }).filter((m) => m.source === "review"),
-    ).toEqual([]);
-    const planned = plan(snapshot(), { recent: [], seenKeys: [] }, SUNDAY, {
-      ...SYNC,
-      dailyLimit: 0,
+  it("is never a message of its own: the Monday brief says how the week went", () => {
+    // Merged into the brief (docs/feature-audit.md, cluster 2), with the week's summary
+    // (spec step 96).
+    const sources = new Set(gather(snapshot(), SUNDAY, SYNC).map((m) => m.source));
+    expect(sources.has("review")).toBe(false);
+    expect(sources.has("week")).toBe(false);
+    const s = snapshot({
+      weekStart: "2026-10-26",
+      finished: [
+        {
+          actionId: "a1",
+          title: "Refund the overdraft fee",
+          confirmedCents: 3400,
+          completedAt: new Date(MONDAY.getTime() - 2 * DAY),
+        },
+      ],
+      ruleApprovals: [
+        {
+          decisionId: "d1",
+          title: "x",
+          ruleLabel: "r",
+          createdAt: new Date(MONDAY.getTime() - DAY),
+          canUndo: false,
+        },
+      ],
+      lastWeek: { start: "2026-10-19", asked: 5, yes: 2, no: 1, done: 1 },
     });
-    expect(planned.map((m) => m.dedupeKey)).toContain("review:2026-10-19");
+    const line =
+      'The week of Oct 19: I finished 1 thing ("Refund the overdraft fee"); said yes to 1 thing under your rules; $34.00 was confirmed back or saved; we covered 5 questions you asked and 3 decisions (2 yes, 1 no).';
+    const [brief] = from(s, "brief", MONDAY);
+    expect(brief.body.split("\n")).toContain(line);
+    // The day as one agenda message (spec step 184) carries it too.
+    const [agenda] = plan(s, { recent: [], seenKeys: [] }, MONDAY, { ...SYNC, agenda: true });
+    expect(agenda.source).toBe("brief");
+    expect(agenda.body.split("\n")).toContain(line);
+    // Only on the first day of the week.
+    const [tuesday] = from(s, "brief", new Date(MONDAY.getTime() + DAY));
+    expect(tuesday.body).not.toContain("The week of");
+  });
+
+  it("leaves the brief alone after a week with nothing in it", () => {
+    const quiet = snapshot({
+      weekStart: "2026-10-26",
+      lastWeek: { start: "2026-10-19", asked: 0, yes: 0, no: 0, done: 0 },
+    });
+    const [brief] = from(quiet, "brief", MONDAY);
+    expect(brief.body).not.toContain("The week of");
+    expect(brief.body).not.toContain("Last week");
   });
 
   it("says so plainly in a quiet week, with no decision", () => {
