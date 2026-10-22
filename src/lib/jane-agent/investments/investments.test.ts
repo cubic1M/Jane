@@ -2214,6 +2214,13 @@ describe("the old account question, the found plan and the rollover", () => {
       ),
     ).toEqual(["open"]);
   });
+  it("asks about a past employer still waiting, with its buttons (not 'waiting for your answer')", () => {
+    const reply = oldAccountsReply({ advice: true, plans: [OLD_ASKED] as never, demo: true });
+    expect(reply.body).toMatch(/^Did you have a 401\(k\) at Globex Industries\?/);
+    expect(reply.body).not.toMatch(/waiting for your answer/);
+    expect(reply.actions.map((a) => a.id)).toEqual(["oldplan.yes", "oldplan.no", "open"]);
+    expect(reply.refs).toEqual({ oldPlanId: "p1" });
+  });
 });
 
 // Spec step 212: income in retirement.
