@@ -99,6 +99,22 @@ export const CAPABILITIES: readonly Capability[] = [
     tools: ["whole_picture", "priorities", "health_score"],
     answer: janeAnswer,
   },
+  // Spec step 239: how a figure was worked out.
+  {
+    id: "figures",
+    bank: ["figures"],
+    kinds: ["figure_how"],
+    tools: ["explain_figure"],
+    answer: janeAnswer,
+  },
+  // Spec step 238: are the numbers right.
+  {
+    id: "books",
+    bank: ["books"],
+    kinds: ["books"],
+    tools: ["books_check"],
+    answer: janeAnswer,
+  },
   // Spec step 203: what-if scenarios; step 209: the long view.
   {
     id: "what_if",
@@ -224,6 +240,7 @@ export const CAPABILITIES: readonly Capability[] = [
       "tax_inherited",
       "tax_health",
       "tax_disaster",
+      "tax_retirement",
       "tax_decide",
     ],
     answer: taxAnswer,
@@ -306,6 +323,7 @@ export const CAPABILITIES: readonly Capability[] = [
       "car_loan",
       "mortgage_money",
       "costly_borrowing",
+      "renting",
       "debt_decision",
       "loan_fit",
     ],

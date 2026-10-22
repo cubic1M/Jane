@@ -57,6 +57,33 @@ const SAMPLE_POLICIES: Readonly<Record<string, readonly NeedPolicy[]>> = {
   retiree: [house("retiree-home", 30_000_000, 100_000)],
 };
 
+// What the daily books check (spec step 238) left open for the sample people: the Reyes family's
+// joint savings is linked twice, once through each parent's bank login.
+const SAMPLE_BOOKS: Readonly<Record<string, NonNullable<ProfileInput["extras"]>["books"]>> = {
+  family: [
+    {
+      kind: "duplicate",
+      words: "Your joint savings is linked twice, once through each of your bank logins.",
+      accountId: "demo-seedfamily-savings",
+    },
+  ],
+};
+
+// Sample people with a health plan whose terms Jane has, and an FSA election (spec step 259).
+const HEALTH_PLANS: Readonly<
+  Record<string, { plan: NonNullable<ProfileInput["healthPlan"]>; fsaElectionCents: number | null }>
+> = {
+  family: {
+    plan: {
+      label: "Acme PPO",
+      deductibleCents: 150_000,
+      outOfPocketMaxCents: 450_000,
+      coinsurance: 20,
+    },
+    fsaElectionCents: 240_000,
+  },
+};
+
 export function inputFor(person: string, told: ProfileInput["told"] = {}): ProfileInput {
   const demo = { seed: `seed${person}`, anchor: SAMPLE_ANCHOR, person };
   const holdings = demoHoldings(demo, SAMPLE_TODAY);
@@ -66,6 +93,7 @@ export function inputFor(person: string, told: ProfileInput["told"] = {}): Profi
     extras: {
       householdMembers: 0,
       coverPolicies: SAMPLE_POLICIES[person] ?? [],
+      books: SAMPLE_BOOKS[person] ?? [],
       // The sample people are all the demo bank's, so they read the stand-in disaster feed.
       disasterRelief: SAMPLE_RELIEF,
       // A home is worth about what its policy insures the dwelling for (the demo bank's owned things).
@@ -82,6 +110,8 @@ export function inputFor(person: string, told: ProfileInput["told"] = {}): Profi
           .filter((a) => BENEFICIARY_SUBTYPES.includes(a.subtype ?? ""))
           .map((a) => a.account_id),
     valuesExcludes: [...(DEMO_VALUES_EXCLUDES[person as PersonId] ?? [])],
+    healthPlan: HEALTH_PLANS[person]?.plan ?? null,
+    fsaElectionCents: HEALTH_PLANS[person]?.fsaElectionCents ?? null,
     holdings: holdings.map((h) => ({
       ticker:
         h.security_id.replace("demo-sec-", "").toUpperCase() === "CASH"

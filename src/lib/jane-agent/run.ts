@@ -16,6 +16,7 @@ import { healthFor } from "@/lib/health-score";
 import { monthlyReportFor } from "@/lib/monthly-report";
 import { runLeanCheck } from "@/lib/lean-plan";
 import { checkResults } from "@/lib/worked";
+import { runBooksCheck } from "@/lib/books";
 import { runSteadyPay } from "@/lib/steady-pay";
 import { loadYearPlan } from "@/lib/year-plan";
 import { runPlanUpkeep } from "@/lib/plan-upkeep";
@@ -91,6 +92,8 @@ export async function runJaneAgent(
       })(),
       // Spec step 205: the year's plan, re-planned from what happened and kept.
       safely("Year plan", () => loadYearPlan(userId, { client, now, input, keep: true })),
+      // Spec step 238: balances against transactions, duplicate links, stale or broken links.
+      safely("Books check", () => runBooksCheck(userId, { client, now })),
       // Spec step 240: deposits from uneven income set aside and swept; the month's steady paycheck.
       safely("Steady paycheck", () => runSteadyPay(userId, { client, now, input })),
       // Spec step 207: finished actions checked against the transactions; a saving that never
