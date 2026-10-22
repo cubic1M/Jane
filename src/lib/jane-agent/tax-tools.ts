@@ -38,6 +38,8 @@ import { loadBusinessStructure } from "@/lib/business-structure";
 import { loadInheritance } from "@/lib/inheritance";
 import { loadHealthTaxes } from "@/lib/health-taxes";
 import { loadDisasterRelief } from "@/lib/disasters";
+import { loadTaxFound } from "@/lib/tax-scan";
+import { MONTH_NAMES } from "@/planning/tax-calendar";
 import { loadRetirementTaxes } from "@/lib/retirement-taxes";
 import { listDraftReturns } from "@/lib/draft-return";
 import { DECISION_TOPICS } from "@/config/tax-decisions";
@@ -831,6 +833,17 @@ export async function runTaxTool(
           .map((d) => ({ dueOn: d.dueOn, amount: money(d.cents), why: d.needsTap })),
         yearEndMoves: v.yearEnd?.lines ?? [],
         wholeYear: v.months.map((m) => ({ month: m.label, items: m.items.map((i) => i.title) })),
+        // Spec step 273: every tax suggestion from the whole scan, by the month it belongs in,
+        // with its place among everything Jane found for the person.
+        foundForThem: (await loadTaxFound(userId, { client, now })).map((f) => ({
+          month: MONTH_NAMES[f.month - 1],
+          what: f.headline,
+          why: f.short,
+          worth: money(f.worthCents),
+          sure: `${f.percent}%`,
+          urgency: f.urgency,
+          rankOfEverything: f.rank,
+        })),
       });
     }
     case "tax_business": {

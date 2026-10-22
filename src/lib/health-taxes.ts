@@ -3,7 +3,7 @@ import { adviceMode } from "@/lib/advice-mode";
 import { db as defaultClient } from "@/lib/db";
 import { loadProfileInput } from "@/lib/profile";
 import { readHealthTaxes, type HealthTaxes } from "@/planning/health-taxes-read";
-import { buildProfile } from "@/profile/build";
+import { buildProfile, type ProfileInput } from "@/profile/build";
 
 // The tax side of health insurance (spec step 269) for a signed-in person: their profile and
 // rows read the same way the detectors read them. A Marketplace credit checked against their
@@ -21,10 +21,10 @@ export async function loadHealthTaxes(
     client = defaultClient,
     now = new Date(),
     loaded,
-  }: Options & { loaded?: { advice: boolean } } = {},
+  }: Options & { loaded?: { advice: boolean; input?: ProfileInput } } = {},
 ): Promise<HealthTaxView> {
   const [input, advice] = await Promise.all([
-    loadProfileInput(userId, { client, now }),
+    loaded?.input ? Promise.resolve(loaded.input) : loadProfileInput(userId, { client, now }),
     loaded ? Promise.resolve(loaded.advice) : adviceMode(userId, { client }),
   ]);
   return { ...readHealthTaxes(buildProfile(input), input), advice };
