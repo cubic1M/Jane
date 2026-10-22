@@ -25,3 +25,6 @@ export const PRACTICE_SUGGEST_STAGES: readonly string[] = ["starting", "raising"
 export const PRACTICE_TOPIC: SuggestionTopic = "practice_portfolio";
 // Accounts that mean the person already invests on their own.
 export const OWN_INVESTING_SUBTYPES: readonly string[] = ["brokerage"];
+
+// "What did you buy this week": the chat's answer covers this many days (step 297).
+export const PRACTICE_LOG_DAYS = 7;
