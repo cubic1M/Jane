@@ -29,8 +29,13 @@ import type { CardInterest } from "@/lib/card-interest";
 import type { LongGame } from "@/lib/student-long-game";
 import type { FamilyLoans } from "@/lib/family-loans";
 import type { CreditGoals } from "@/lib/credit-goals";
+import type { CostlyBorrowing } from "@/lib/costly-borrowing";
 import type { MortgageMoneyView } from "@/lib/mortgage-money";
 import type { CarLoan } from "@/lib/car-loan";
+import type { Renting } from "@/lib/renting";
+import type { BorrowingPower } from "@/lib/borrowing-power";
+import type { CreditMonthly } from "@/lib/credit-monthly";
+import type { FamilyCredit } from "@/lib/family-credit";
 import type { DebtReview } from "@/lib/debt-review";
 import type { DebtTrouble } from "@/lib/debt-trouble";
 import type { HomeEquity, ProjectComparison } from "@/lib/home-equity";
@@ -200,6 +205,36 @@ export const DEBT_TOOLS: Anthropic.Tool[] = [
     name: "credit_goals",
     description:
       "The credit score plans the person has for a goal (demo-bank people only, a stand-in score; every figure is an estimate from the score simulator, never a promise): for each, the target score and date, what the goal is for (a mortgage, a car), the score now, whether the plan reaches the target and the best it shows if not, the month-by-month plan (what to pay toward cards and the estimated score after each month), this month's checklist with what's done (pay before the statement closes, keep card accounts open, no new applications, on-time payments, and a rapid rescore before a mortgage application), and the total to pay down. Starting a plan and ticking off a month are the person's taps (the creditgoal.start and creditgoal.done buttons).",
+    input_schema: noInput,
+  },
+  {
+    name: "costly_borrowing",
+    description:
+      "Costly short-term borrowing found in the last year of the person's payments: payday loans (matched proceeds and repayments), card cash advances (fee plus interest from day one), repeated overdraft fees and pay advance apps (tips and fees), each with how many times, what it cost in dollars, the yearly rate that works out to and how that was worked out (stated assumptions), and whether it's a cycle. In demo advice mode, the cheaper ways out: a credit union payday alternative loan (capped at 28%) with its cost against the payday loan's, an employer pay advance, a buffer built over six months, and steps to stop the cycle. Facts about what was borrowed and what it cost; the way out is advice, the choice is the person's.",
+    input_schema: noInput,
+  },
+  {
+    name: "renting",
+    description:
+      "Renting, counted: the person's rent as found in their payments (monthly amount, any increase against what is usual, using a stand-in local trend), whether their rent is being reported to the credit bureaus (only ever after their own yes; the monthly fee and what reporting can and can't do are stated), and any security deposits they have told Jane about with the day each is due back after moving out (days from the state's law, with the citation, to be confirmed against the lease). Facts and the person's own choices; Jane reports nothing and sends nothing herself.",
+    input_schema: noInput,
+  },
+  {
+    name: "credit_monthly",
+    description:
+      "The monthly credit check-up Jane does by herself: the day she did it and, for this month, each item with its status (done by Jane, needs the person, or fine): her soft checks of loan rates and what the person could borrow, a cheaper rate on a loan (the fit engine's refinance pick with fees counted), car loan add-ons worth cancelling with the refund, costly borrowing creeping back in the last 30 days, a security deposit due back or a rent rise worth asking about, and a lower-rate request to a card (sent by Jane only at Handle everything, once a month). Each item that needs the person names the page where they act. Nothing that runs a hard credit check, applies for credit, opens an account or cancels cover happens without the person's tap.",
+    input_schema: noInput,
+  },
+  {
+    name: "borrowing_power",
+    description:
+      "What the person could borrow, kept current: for a mortgage, a car loan, a personal loan and a credit card, the likely amount (the most whose payment stays inside the lender's debt-to-income limit and a comfortable share of take-home pay, from the same fit engine as the loan options) and the likely rate, lender, term, payment and fees from the lender stand-in's soft prequalification (soft checks never touch the score), the day it was checked, the score it was priced by and the day that score was pulled, what would improve each (the next score band's rate, debt payments that set the limit), and what moved since the check before. Estimates, not offers; a card's limit is a stated guess from income. Nothing is applied for: a hard pull only ever follows the person's own tap.",
+    input_schema: noInput,
+  },
+  {
+    name: "family_credit",
+    description:
+      "Helping family with credit: what adding someone as an authorized user on one of the person's cards would do to both credit reports (the card's use against its limit, a range of points the added person can gain, and the risk to the primary), the usual first cards for a student and the rule for under 21s, and co-signing: the loans the person has told Jane they co-signed, counted in full in their own debt-to-income (before and after), what lands on them if the other person misses, and any missed payments they reported. Facts and stated ranges; suggestions only in demo advice mode; what a lender may do depends on the contract, a question for counsel.",
     input_schema: noInput,
   },
   {
@@ -455,6 +490,11 @@ export const DEBT_TOOL_STATUS: Readonly<Record<string, string>> = {
   debt_review: "Going over your debts…",
   car_loan: "Looking at your car loan…",
   mortgage_money: "Comparing ways to use the money…",
+  costly_borrowing: "Looking for costly borrowing…",
+  renting: "Looking at your rent…",
+  borrowing_power: "Checking what you could borrow…",
+  credit_monthly: "Going over this month's credit check-up…",
+  family_credit: "Looking at helping with credit…",
   debt_decision: "Working it out with your numbers…",
   loan_fit: "Finding the loan that fits you…",
 };
@@ -1075,6 +1115,42 @@ export function familyLoansToolOutput(data: FamilyLoans, money: (cents: number) 
   };
 }
 
+export function costlyBorrowingToolOutput(d: CostlyBorrowing, money: (cents: number) => string) {
+  if (!d.any) return { note: "No costly short-term borrowing found in the last year." };
+  return {
+    lastYearTotalCost: money(d.totalYearlyCents),
+    costInTheLast30Days: money(d.lastMonthCents),
+    cycle: d.cycle,
+    kinds: d.kinds.map((k) => ({
+      kind: k.kind,
+      times: k.count,
+      cost: money(k.costCents),
+      yearlyRatePercent: k.aprBps === null ? null : Math.round(k.aprBps / 100),
+      howWorkedOut: k.basis,
+      lastOn: k.lastOn,
+    })),
+    cheaperWaysOut: d.advice
+      ? {
+          payAlternativeLoan: {
+            amount: money(d.alternatives.pal.amountCents),
+            months: d.alternatives.pal.termMonths,
+            ratePercent: d.alternatives.pal.aprBps / 100,
+            monthlyPayment: money(d.alternatives.pal.paymentCents),
+            totalCost: money(d.alternatives.pal.totalCostCents),
+            paydayLoanFeeForTheSameAmountEveryTwoWeeks: money(d.alternatives.pal.paydayFeeCents),
+          },
+          employerAdvance: d.alternatives.employer,
+          buffer: {
+            target: money(d.alternatives.buffer.targetCents),
+            months: d.alternatives.buffer.months,
+            monthly: money(d.alternatives.buffer.monthlyCents),
+          },
+          stopTheCycle: d.steps,
+        }
+      : "Only for the demo bank.",
+  };
+}
+
 export function mortgageMoneyToolOutput(v: MortgageMoneyView, money: (cents: number) => string) {
   if (!v.available) return { note: "No mortgage with a balance, a rate and an end date." };
   if (!v.advice) return { note: "Only for the demo bank." };
@@ -1315,6 +1391,146 @@ export function debtAutopilotToolOutput(data: DebtAutopilot, money: (cents: numb
       on: c.on,
     })),
     payoffPlanStartedByJaneOn: data.planStartedOn,
+  };
+}
+
+export function rentingToolOutput(d: Renting, money: (cents: number) => string) {
+  if (!d.renter && d.deposits.length === 0) {
+    return { note: "No rent payments found in the last year, and no deposits told to Jane." };
+  }
+  return {
+    monthlyRent: d.monthlyCents === null ? null : money(d.monthlyCents),
+    rentIncrease: d.rise
+      ? {
+          from: money(d.rise.beforeCents),
+          to: money(d.rise.nowCents),
+          percent: Math.round(d.rise.risePercentBps / 10) / 10,
+          extraPerYear: money(d.rise.yearlyExtraCents),
+          usualPercent: d.rise.usualBps / 100,
+          usualIs: d.localRent.label,
+          worthAskingAbout: d.rise.askAbout,
+        }
+      : null,
+    rentReporting: d.reporting.on
+      ? { on: true, since: d.reporting.since }
+      : {
+          on: false,
+          monthlyFee: money(d.reporting.monthlyFeeCents),
+          note: d.reporting.note,
+          howToTurnOn:
+            "The person taps yes in the chat or on their rent page; nothing is reported before.",
+        },
+    deposits: d.deposits.map((x) => ({
+      amount: money(x.amountCents),
+      state: x.state,
+      status: x.view.status,
+      dueBack: x.view.dueOn,
+      daysLeft: x.view.daysLeft,
+      rule: x.view.rule.note,
+      source: x.view.rule.source,
+    })),
+  };
+}
+
+export function creditMonthlyToolOutput(d: CreditMonthly) {
+  if (!d.available) return { note: "Nothing on credit to check this month." };
+  return {
+    month: d.month,
+    doneOn: d.checkedOn ?? "worked out just now; Jane's own pass hasn't run this month",
+    level: d.level,
+    items: d.items.map((i) => ({
+      title: i.title,
+      status:
+        i.status === "tap" ? "needs the person" : i.status === "done" ? "done by Jane" : "fine",
+      text: i.text,
+      ...(i.link ? { page: i.link.href } : {}),
+    })),
+    janeDidByHerself: d.did,
+    noHardPullsWithoutATap: true,
+  };
+}
+
+export function borrowingPowerToolOutput(d: BorrowingPower, money: (cents: number) => string) {
+  if (!d.available) return { note: "No lending partner for this person's accounts yet." };
+  return {
+    checkedOn: d.checkedOn,
+    softChecksOnly: true,
+    score: d.score === null ? "not pulled yet; a middling score is assumed" : d.score,
+    scorePulledOn: d.scoreOn,
+    figures: d.figures.map((f) =>
+      !f.available
+        ? { product: f.product, available: false, why: f.why, whatWouldHelp: f.improve }
+        : f.product === "card"
+          ? {
+              product: "card",
+              likelyRatePercent: (f.aprBps ?? 0) / 100,
+              likelyLimit: money(f.limitCents),
+              limitIsAGuess: true,
+              checkedOn: d.checkedOn,
+              whatWouldHelp: f.improve,
+            }
+          : {
+              product: f.product,
+              upTo: money(f.amountCents),
+              likelyRatePercent: (f.aprBps ?? 0) / 100,
+              lender: f.lender,
+              termMonths: f.termMonths,
+              monthlyPayment: money(f.paymentCents),
+              fees: money(f.feeCents),
+              limitSetBy: f.binding === "dti" ? "debt-to-income" : "a comfortable payment",
+              checkedOn: d.checkedOn,
+              whatWouldHelp: f.improve,
+            },
+    ),
+    changedSinceLastCheck: d.changes,
+    page: "/loans/borrow",
+  };
+}
+
+export function familyCreditToolOutput(d: FamilyCredit, money: (cents: number) => string) {
+  return {
+    cosigned: {
+      loans: d.entries
+        .filter((e) => e.kind === "cosigned")
+        .map((e) => ({
+          for: e.person,
+          owed: e.balanceCents === null ? null : money(e.balanceCents),
+          monthlyPayment: e.monthlyPaymentCents === null ? null : money(e.monthlyPaymentCents),
+          missedPayment: e.missed,
+        })),
+      totalOwedOnThem: money(d.cosign.exposureCents),
+      yourDebtPaymentsShareOfIncome: {
+        before: d.cosign.shareBefore === null ? null : Math.round(d.cosign.shareBefore * 100),
+        withCosignedCountedInFull:
+          d.cosign.shareWith === null ? null : Math.round(d.cosign.shareWith * 100),
+      },
+      whatThisMeans: d.cosigning.facts,
+      legal: d.cosigning.legalNote,
+    },
+    otherWaysToHelp: d.advice
+      ? {
+          authorizedUser: {
+            cardToAddTo: d.bestCard
+              ? {
+                  name: d.bestCard.name,
+                  percentUsed: Math.round((d.bestCard.au.utilisation ?? 0) * 100),
+                }
+              : "None is used under 30% of its limit.",
+            addedPersonMayGainPoints: d.authorizedUser.addedGainsPoints,
+            risk: d.authorizedUser.primaryRisk,
+            removal: d.authorizedUser.removal,
+          },
+          firstCardForAStudent: {
+            under21: d.firstCard.under21Rule,
+            options: d.firstCard.options,
+            habits: d.firstCard.habits,
+          },
+          startingAFileMightSave: money(d.fileStartCents),
+        }
+      : "Only for the demo bank.",
+    recordedByThePerson: d.entries
+      .filter((e) => e.kind !== "cosigned")
+      .map((e) => ({ kind: e.kind, person: e.person })),
   };
 }
 

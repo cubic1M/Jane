@@ -66,6 +66,8 @@ export function practiceLogReply(
   practice: { level: RiskLevel; paused: boolean } | null,
   trades: readonly PracticeTradeRow[],
   advice: boolean,
+  // "Why?": every trade with its reason, as many as fit.
+  explain = false,
 ): Reply {
   if (!advice) return { body: PRACTICE_ONLY_NOTE, actions: [], refs: {} };
   if (!practice) {
@@ -91,7 +93,7 @@ export function practiceLogReply(
   const lines = placed.map((t, i) => {
     const what = `${t.side === "buy" ? "bought" : "sold"} ${formatCents(t.amountCents)} of ${t.ticker}`;
     const rule = RULE_LABELS[t.rule] ?? t.rule;
-    return i === 0
+    return i === 0 || explain
       ? `- ${day(t.placedAt)}: ${what}. ${t.reason}`
       : `- ${day(t.placedAt)}: ${what} (${rule}).`;
   });

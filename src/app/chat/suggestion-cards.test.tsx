@@ -32,6 +32,7 @@ const message = (n: number, over: Partial<MessageView> = {}): MessageView => ({
   block: null,
   pinned: false,
   suggestion: true,
+  options: null,
   ...over,
 });
 

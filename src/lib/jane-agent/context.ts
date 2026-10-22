@@ -1,5 +1,6 @@
 import type { DecisionIntent } from "./decision-intents";
 import { PRONOUNS, type ActVerb, type Intent } from "./intents";
+import { levelAndYear } from "./investments/intents";
 
 // What the conversation is about (spec step 88): the last finding, merchant, category or
 // month Jane answered about, kept on her reply (refs.topic). A follow-up ("and Hulu?",
@@ -16,6 +17,9 @@ export type Topic = {
   findingId?: string;
   month?: string;
   category?: string;
+  // An investing answer's risk level and year (a replay), for "what about very low".
+  level?: number;
+  year?: number;
 };
 
 export const isPronoun = (target: string) => PRONOUNS.includes(target.trim());
@@ -37,6 +41,14 @@ export function withTopic(
   }
   // "Why?" after a finding is that finding's reason in words; after anything else, the same
   // follow-up as "it" (the decision again, the list explained, the credit score read again).
+  // An investing answer: "why?" after the practice trades gives every trade's reason, and "what
+  // about very low" / "and in 2020" after a replay replays that level or year. Anything else
+  // reads as it did with no topic.
+  if (topic?.kind === "investments") {
+    const followed = investingFollowUp(intent, topic);
+    if (followed) return followed;
+    topic = null;
+  }
   if (intent.kind === "explain") {
     if (topic?.findingId) return { kind: "why_finding", findingId: topic.findingId };
     // Nothing was just discussed: ask what, never a picker of unrelated merchants.
@@ -109,9 +121,36 @@ export function withTopic(
 }
 
 // What a reply to this intent is about, for the next message.
+function investingFollowUp(intent: Intent, topic: Topic): Intent | null {
+  const base = { kind: "investments" as const, account: null };
+  if (intent.kind === "explain" && topic.category === "practice_log") {
+    return { ...base, topic: "practice_log", explain: true };
+  }
+  if (intent.kind === "follow_up" && topic.category === "backtest") {
+    const asked = levelAndYear(`${intent.target ?? ""} ${intent.month ?? ""}`);
+    if (!asked.level && !asked.year) return null;
+    const level = asked.level ?? topic.level;
+    const year = asked.year ?? topic.year;
+    return {
+      ...base,
+      topic: "backtest",
+      ...(level ? { level: level as 1 | 2 | 3 | 4 | 5 } : {}),
+      ...(year ? { year } : {}),
+    };
+  }
+  return null;
+}
+
 export function topicOf(intent: Intent): Topic | null {
   if (TOPIC_WORDS[intent.kind]) return { kind: intent.kind };
   switch (intent.kind) {
+    case "investments":
+      return {
+        kind: "investments",
+        category: intent.topic,
+        ...(intent.level ? { level: intent.level } : {}),
+        ...(intent.year ? { year: intent.year } : {}),
+      };
     case "act":
       return {
         kind: "act",

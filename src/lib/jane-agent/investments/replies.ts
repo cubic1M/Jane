@@ -23,7 +23,14 @@ import {
   rothLine,
 } from "./retirement-accounts-copy";
 import type { OldAccountsView } from "@/lib/investments/old-accounts";
-import { foundLine, OLD_LINK, rollButton, summaryLine } from "./old-accounts-copy";
+import {
+  foundLine,
+  OLD_LINK,
+  questionButtons,
+  questionLine,
+  rollButton,
+  summaryLine,
+} from "./old-accounts-copy";
 import type { RetirementIncomeView } from "@/lib/investments/retirement-income";
 import { drawLine, paycheckLine, RI_LINK, rmdLine, ssLine } from "./retirement-income-copy";
 import type { FamilyView } from "@/lib/investments/family";
@@ -73,6 +80,7 @@ import {
   type ProfileSummary,
 } from "@/planning/investor-profile";
 import type { Reply } from "../replies";
+import { byHerself } from "../replies-autopilot";
 import type { MessageAction } from "../types";
 import { ROTH_WORDS, type RetirementPlan } from "@/planning/retirement";
 import { equivalentLine, feeRange, switchSummary } from "./fees-copy";
@@ -515,15 +523,29 @@ export function overviewReply(snapshot: InvestmentSnapshot): Reply {
   };
 }
 
-// Spec step 137: what Jane does with investments by herself at the person's level.
-export function autopilotReply(level: string | null): Reply {
+// Spec step 137: what Jane keeps up with investments at the person's level, then what the
+// Investing area's own setting lets her trade by herself (spec step 141), so it matches what
+// she does. The page, the answer and Claude's tool all say these lines.
+export function investmentsByHerself(
+  level: string | null,
+  investing: Parameters<typeof byHerself>[0],
+): string[] {
   const key = (
     level && Object.hasOwn(INVESTMENT_AUTOPILOT, level) ? level : "none"
   ) as keyof typeof INVESTMENT_AUTOPILOT;
-  const lines = INVESTMENT_AUTOPILOT[key];
+  return [...INVESTMENT_AUTOPILOT[key], byHerself(investing)];
+}
+
+export function autopilotReply(
+  level: string | null,
+  investing: Parameters<typeof byHerself>[0],
+): Reply {
   return {
-    body: `${level ? `On your autopilot setting, here's` : "Here's"} what I do with your investments by myself. ${lines.join(" ")}`,
-    actions: [SEE, { id: "open", label: "Change autopilot", kind: "link", href: "/settings" }],
+    body: `${level ? `On your autopilot setting, here's` : "Here's"} what I do with your investments by myself. ${investmentsByHerself(level, investing).join(" ")}`,
+    actions: [
+      SEE,
+      { id: "open", label: "Change autopilot", kind: "link", href: "/settings#sectors" },
+    ],
     refs: {},
   };
 }
@@ -825,6 +847,16 @@ export function oldAccountsReply(view: OldAccountsView): Reply {
       body: `${base}. ${foundLine(found)}`,
       actions: [rollButton(), OLD_LINK],
       refs: { advice: true, oldPlanId: found.id },
+    };
+  }
+  // Nothing found yet, but a past employer still to ask about: ask it here, with its buttons,
+  // instead of "waiting for your answer".
+  const asked = view.plans.find((p) => p.status === "asked");
+  if (asked) {
+    return {
+      body: questionLine(asked),
+      actions: [...questionButtons(), OLD_LINK],
+      refs: { oldPlanId: asked.id },
     };
   }
   return { body: base.endsWith(".") ? base : `${base}.`, actions: [OLD_LINK], refs: {} };

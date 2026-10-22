@@ -32,11 +32,14 @@ import { DEBT_TOOL_STATUS } from "./debt-tools";
 import { parseDecision } from "./decision-intents";
 import { lookupsFor, sectorsFor, toolsFor } from "./tool-select";
 import { CHAT_TOOLS, chatPrimer, proposeAction, runChatTool, type Proposal } from "./claude-tools";
+import { CHANGE_PRACTICE_TOOL, proposePracticeChange } from "./practice-tools";
 import { BLOCK_KINDS, buildBlock, type BlockKind } from "./block-data";
 import { blockCents, drawBlock, type AnswerBlock } from "./blocks";
 import { GuardedText } from "./guarded-text";
 import { INVESTMENT_TOOL_STATUS } from "./investments/tools";
 import type { Reply } from "./replies";
+import { OPTION_ACTIONS } from "./actions/options";
+import type { OfferedOptions } from "@/lib/option-card";
 
 // Free questions in Jane's chat, with an Anthropic key (spec step 84): Claude, the
 // person's recent typed messages and Jane's answers to them, and read-only tools over their
@@ -187,7 +190,11 @@ const STATUS: Record<string, string> = {
   alerts: "Checking your alerts…",
   household: "Checking who you share with…",
   money_moves: "Checking what money moved…",
+  explain_figure: "Working out how I got that…",
+  books_check: "Checking your numbers add up…",
   steady_pay: "Working out your steady paycheck…",
+  money_for_two: "Looking at what you share…",
+  goal_tradeoffs: "Weighing your goals against each other…",
   health_score: "Working out your money health score…",
   monthly_report: "Reading your monthly report…",
   what_if: "Running the what-if…",
@@ -609,6 +616,8 @@ async function askClaude(
     ? { ok: true, actions: prepared.actions, refs: prepared.refs, line: prepared.body }
     : null;
   let shown: AnswerBlock | null = null;
+  // A pick-one card a tool found (insurance_needs, loan_fit): shown with the answer.
+  let offered: OfferedOptions | null = null;
   const draft = new GuardedText(
     () => allowedCents,
     (text) => {
@@ -828,6 +837,25 @@ async function askClaude(
           });
           continue;
         }
+        // Phase AW: a practice-settings change, as a card the person confirms (./practice-tools.ts).
+        if (block.name === CHANGE_PRACTICE_TOOL) {
+          const result = proposal
+            ? ({ ok: false, error: "You already offered a button for this answer." } as const)
+            : await proposePracticeChange(userId, block.input, { client, now });
+          if (result.ok) {
+            proposal = { ok: true, actions: result.actions, refs: result.refs, line: result.line };
+            allowedCents.push(...result.cents);
+          }
+          results.push({
+            type: "tool_result",
+            tool_use_id: block.id,
+            content: result.ok
+              ? `The change is ready as a card under your answer, for them to confirm:\n${result.line}\nNow write one sentence saying what will change once they tap to confirm. Never say it's done, and don't repeat the card's figures.`
+              : `${result.error}\n(Say this to the person in your own words; nothing was changed.)`,
+            ...(result.ok ? {} : { is_error: true }),
+          });
+          continue;
+        }
         if (block.name === "propose_action") {
           const result: Proposal = proposal
             ? { ok: false, error: "You already offered a button for this answer." }
@@ -864,6 +892,7 @@ async function askClaude(
         const output = await runChatTool(userId, block.name, block.input, { client, now });
         timing.tools.push({ name: block.name, ms: Date.now() - toolStarted });
         allowedCents.push(...output.cents, ...dollarFigures(output.content).map((f) => f.cents));
+        if (output.options) offered = output.options;
         results.push({ type: "tool_result", tool_use_id: block.id, content: output.content });
       }
       if (!decorationOnly) {
@@ -976,13 +1005,17 @@ async function askClaude(
     if (shown && checkGuardrails(drawBlock(shown).alt, allowedCents, undefined, profile).ok) {
       refs.block = shown;
     }
+    // The options a tool found float over the chat as the pick-one card; its two buttons are
+    // the card's (src/lib/jane-agent/actions/options.ts).
+    if (offered) refs.options = offered;
     return {
       kind: "answer",
       reply: {
         body: proposal?.line ? `${plainText(spoken)}\n\n${proposal.line}` : plainText(spoken),
-        actions: proposal?.actions ?? [],
-        // Demo advice is always labelled (the chat shows DEMO_ADVICE_LABEL under it).
-        refs: advice ? { ...refs, advice: true } : refs,
+        actions: [...(proposal?.actions ?? []), ...(offered ? OPTION_ACTIONS : [])],
+        // Demo advice is always labelled (the chat shows DEMO_ADVICE_LABEL under it). A pick
+        // card is only ever offered in demo advice mode, so it is labelled too.
+        refs: advice || offered ? { ...refs, advice: true } : refs,
       },
     };
   }

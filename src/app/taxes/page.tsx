@@ -19,6 +19,7 @@ import { loadTaxEstimate } from "@/lib/tax-estimate";
 import { checkFrom } from "@/lib/tax-withholding";
 import { loadTaxSavings } from "@/lib/tax-savings";
 import { loadWorkingProfile } from "@/lib/tax-profile";
+import { byHerself } from "@/lib/jane-agent/replies-autopilot";
 import { defaultTaxYear } from "@/planning/tax-pack";
 import { stateName, type FieldStatus } from "@/planning/tax-profile";
 import { EstimateSection } from "./estimate-section";
@@ -79,7 +80,7 @@ async function TaxesContent() {
   const now = new Date();
   // The year being gathered: last year until the end of April, then this one.
   const year = defaultTaxYear(now.toISOString().slice(0, 10));
-  const [{ view, autopilot }, tags, forms, estimate, advice] = await Promise.all([
+  const [{ view, taxes }, tags, forms, estimate, advice] = await Promise.all([
     loadWorkingProfile(user.id, { now }),
     loadTaxTags(user.id, year),
     // Spec step 166: with what Jane collected and how each checked.
@@ -171,6 +172,32 @@ async function TaxesContent() {
         </p>
         <Link href="/taxes/calendar" className={LINK}>
           See my tax calendar
+        </Link>
+      </section>
+
+      <section aria-labelledby="draft-heading" id="draft" className={CARD}>
+        <h2 id="draft-heading" className="text-xl font-semibold">
+          Your draft return, checked before you file
+        </h2>
+        <p className="text-sm text-zinc-600 dark:text-zinc-400">
+          Upload the draft from your software or accountant and Jane checks every line against your
+          forms and accounts. She never files it.
+        </p>
+        <Link href="/taxes/draft" className={LINK}>
+          Check my draft return
+        </Link>
+      </section>
+
+      <section aria-labelledby="health-heading" id="health" className={CARD}>
+        <h2 id="health-heading" className="text-xl font-semibold">
+          Health insurance and taxes
+        </h2>
+        <p className="text-sm text-zinc-600 dark:text-zinc-400">
+          A Marketplace credit checked against your income, HSA deposits against the limit, and
+          medical costs against the 7.5% floor.
+        </p>
+        <Link href="/taxes/health" className={LINK}>
+          See the tax side of my health cover
         </Link>
       </section>
 
@@ -363,12 +390,13 @@ async function TaxesContent() {
           What Jane does by herself
         </h2>
         <ul className="flex list-disc flex-col gap-1 pl-5 text-sm">
-          {whatJaneDoes(autopilot).map((line) => (
+          {whatJaneDoes(taxes.level).map((line) => (
             <li key={line}>{line}</li>
           ))}
-          <li>Nothing is ever filed, signed or paid without your tap.</li>
+          {/* Spec step 141: what the Taxes area may do by itself, as Settings has it. */}
+          <li>{byHerself(taxes)} Nothing is ever filed or signed without your tap.</li>
         </ul>
-        <Link href="/settings#autopilot" className={`${LINK} text-sm`}>
+        <Link href="/settings#sectors" className={`${LINK} text-sm`}>
           Change your autopilot
         </Link>
       </section>

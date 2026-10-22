@@ -150,6 +150,24 @@ async function Reach() {
       </section>
 
       <section className="flex flex-col gap-2">
+        <h2 className="text-xl font-semibold">Taxes, tool by tool</h2>
+        <p className={MUTED}>
+          {report.taxes.filter((t) => t.reached.length > 0).length} of {report.taxes.length} tax
+          tools reach a sample person during the year; the rest say why.
+        </p>
+        <ul className="list-disc pl-5 text-sm">
+          {report.taxes.map((t) => (
+            <li key={t.tool}>
+              {t.tool}
+              {t.reached.length > 0
+                ? `: ${t.reached.map((r) => `${r.person} (${r.months.length === 12 ? "all year" : r.months.join(", ")})`).join("; ")}, by ${t.detectors.join(", ")}`
+                : `: ${t.exempt ?? t.needsPerson ?? "reaches no one"}`}
+            </li>
+          ))}
+        </ul>
+      </section>
+
+      <section className="flex flex-col gap-2">
         <h2 className="text-xl font-semibold">Capabilities</h2>
         <ul className="list-disc pl-5 text-sm">
           {report.capabilities.map((c) => (
