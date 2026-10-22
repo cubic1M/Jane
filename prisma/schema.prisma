@@ -3927,6 +3927,8 @@ model PracticeTrade {
   @@index([portfolioId, placedAt])
   @@index([userId])
   @@map("practice_trades")
+}
+
 // Spec step 289 (Phase AW): daily closes pulled once from the market data (Alpaca) for the model
 // portfolios' ETFs, stored with their source so backtests can say "real history since <date>".
 // Market data, not a person's: no user_id.
