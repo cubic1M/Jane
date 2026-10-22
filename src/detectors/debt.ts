@@ -169,7 +169,7 @@ const carAddons: Detector = {
 const cashAdvance: Detector = {
   capability: "debt",
   topic: "cash_advance",
-  covers: [],
+  covers: ["costly_borrowing"],
   needs: [],
   detect({ profile, data }) {
     const cards = new Set(
@@ -212,7 +212,7 @@ const cashAdvance: Detector = {
 const mortgageExtra: Detector = {
   capability: "debt",
   topic: "mortgage_extra",
-  covers: [],
+  covers: ["mortgage_money"],
   needs: ["mortgage_rate_bps"],
   detect({ profile, data }) {
     const rate = profile.facts.mortgage_rate_bps;

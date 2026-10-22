@@ -1,0 +1,74 @@
+import type { PrismaClient } from "@/generated/prisma/client";
+import { FitPickError, pickFitOption } from "@/lib/fit-pick";
+import { PickError, pickOption } from "@/lib/insurance/need/pick";
+import type { NeedKind } from "@/lib/insurance/need/types";
+import type { OfferedOptions } from "@/lib/option-card";
+import type { MessageAction } from "../types";
+import { ChatActionError, answeredElsewhere, type ActionHandler } from "./handler";
+
+// The pick-one card in the chat (refs.options, shown as the floating pick card). The screen
+// answers a tap at once; this is the server's half, run behind it.
+//
+// option.pick: the option's id comes with the tap. It must be one the message offered, then
+// the card's own lane picks it: insurance through pickOption (step 276), loans through
+// pickFitOption (step 282). Each prices the options again, refuses a stale or made-up one and
+// queues the pick once for the concierge team. Nothing is bought, applied for or moved.
+// option.later: the whole set is put off; the message stays in the history as dismissed.
+
+// The two buttons a message with refs.options offers. The chat draws them on the floating
+// card, not under the message; offering them is what lets the server check a tap.
+export const OPTION_ACTIONS: MessageAction[] = [
+  { id: "option.pick", label: "Pick this one", kind: "primary" },
+  { id: "option.later", label: "Later", kind: "secondary" },
+];
+
+// What the pick did, in a line under the message.
+async function pick(
+  userId: string,
+  card: OfferedOptions,
+  optionId: string,
+  at: { client: PrismaClient; now: Date },
+): Promise<string> {
+  if (card.kind === "insurance") {
+    const picked = await pickOption(userId, card.topic as NeedKind, optionId, {
+      ...at,
+      ...(card.policyId ? { policyId: card.policyId } : {}),
+    });
+    return picked.newCover
+      ? "Got it. My team will add that cover for you and tell you when it's done."
+      : "Got it. My team will change that on your policy and tell you when it's done.";
+  }
+  const picked = await pickFitOption(userId, card.topic, optionId, at);
+  return picked.kept
+    ? "Got it: you keep what you have. Nothing to apply for."
+    : "Got it. My team will send you the lender's steps; you apply yourself.";
+}
+
+export const optionPick: ActionHandler = {
+  id: "option.pick",
+  on: "open",
+  async run({ userId, message, choice, client, now }) {
+    const card = message.refs.options;
+    const chosen = card?.options.find((o) => o.id === choice);
+    if (!card || !chosen) {
+      throw new ChatActionError("not_offered", "That option isn't on this card.");
+    }
+    try {
+      const note = await pick(userId, card, chosen.id, { client, now });
+      return { answeredWith: chosen.label, note };
+    } catch (error) {
+      if (error instanceof PickError || error instanceof FitPickError) {
+        throw answeredElsewhere(error.message);
+      }
+      throw error;
+    }
+  },
+};
+
+export const optionLater: ActionHandler = {
+  id: "option.later",
+  on: "open",
+  async run() {
+    return { status: "dismissed", answeredWith: null, note: "OK, not now. Ask me again any time." };
+  },
+};

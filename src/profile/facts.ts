@@ -36,6 +36,7 @@ export const FACT_SPECS = [
   F("household", "Your household", "choice", { choices: ["single", "couple", "family"] }),
   F("has_children", "You have children at home", "boolean"),
   F("housing", "Where you live", "choice", { choices: ["own", "rent", "unknown"] }),
+  F("county", "The county you live in", "text"),
   F("mortgage_rate_bps", "Your mortgage rate (in basis points)", "number", { correctable: false }),
   F("has_pmi", "Your mortgage includes PMI", "boolean", { correctable: false }),
   F("has_car", "You have a car", "boolean"),
@@ -54,6 +55,12 @@ export const FACT_SPECS = [
   F("age", "Your age", "number"),
   F("inherited_ira_death_year", "The year the person you inherited an IRA from died", "number"),
   F("inherited_from_spouse", "You inherited the IRA from your spouse", "boolean"),
+  F("marketplace_aptc_monthly", "The advance premium tax credit you get each month", "cents"),
+  F(
+    "marketplace_benchmark_monthly",
+    "The monthly premium of the benchmark plan on your Marketplace quote",
+    "cents",
+  ),
   F("age_band", "Your age, roughly", "choice", {
     choices: ["under_30", "30_to_49", "50_to_57", "58_to_65", "66_to_72", "73_plus"],
   }),

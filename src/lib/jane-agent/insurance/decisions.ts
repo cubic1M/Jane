@@ -1,4 +1,5 @@
 import {
+  DISABILITY_NEED,
   LIABILITY_TARGET_ACCIDENT_CENTS,
   LIABILITY_TARGET_CENTS,
   UMBRELLA_ASSETS_CENTS,
@@ -19,6 +20,8 @@ import type { InsuranceSnapshot } from "./snapshot";
 // it can't recommend. Pure: the snapshot in, the words out.
 
 export type DecisionKind =
+  | "what_cover"
+  | "deductible_fit"
   | "umbrella"
   | "life_how_much"
   | "disability_how_much"
@@ -108,6 +111,20 @@ export const DECISION_PATTERNS: readonly (readonly [DecisionKind, RegExp])[] = [
     ),
   ],
   [
+    "what_cover",
+    P(
+      "\\bwhat (?:cover|coverage) do (?:i|we) (?:need|want|require)\\b",
+      "\\bwhat(?:'s| is) my (?:perfect|ideal|right) (?:cover|coverage)\\b",
+    ),
+  ],
+  [
+    "deductible_fit",
+    P(
+      "\\bis my (?:car |auto |home )?deductible (?:right|ok|okay|good|fine|set right|about right|too (?:high|low))\\b",
+      "\\b(?:right|best) deductible for me\\b",
+    ),
+  ],
+  [
     "deductible",
     P(
       "\\b(?:raise|increase|lower|change) (?:my|the) (?:car |auto |home )?deductible\\b",
@@ -192,7 +209,7 @@ export const DECISION_PATTERNS: readonly (readonly [DecisionKind, RegExp])[] = [
 // Only a question that asks what to do or where they stand: "did you switch my car
 // insurance?" and "what does my renters insurance cover?" are other questions.
 const FRAME =
-  /^(?:(?:so|and|ok|okay|also) )?(?:(?:hey )?jane,? )?(?:should i|do i (?:need|have|lose|want)|am i|is my|is it|are my|what(?:'s| is) my|what happens|what(?:'s| is) the cheapest|have i|how much (?:is|would|of|life|disability|umbrella|liability|car|auto|home|do i)|when will i|why is my|why has my|can you|could you|(?:get|find|give) me|what if)\b/;
+  /^(?:(?:so|and|ok|okay|also) )?(?:(?:hey )?jane,? )?(?:should i|do i (?:need|have|lose|want)|am i|is my|is it|are my|what(?:'s| is) my|what (?:cover|coverage) do (?:i|we)|what happens|what(?:'s| is) the cheapest|have i|how much (?:is|would|of|life|disability|umbrella|liability|car|auto|home|do i)|when will i|why is my|why has my|can you|could you|(?:get|find|give) me|what if)\b/;
 
 export function decisionKindOf(text: string): DecisionKind | null {
   if (!FRAME.test(text.trim())) return null;
@@ -334,7 +351,10 @@ function build(kind: DecisionKind, ins: InsuranceSnapshot, asOf: string): Out {
         };
       return {
         advice: n.gapCents > 0 ? `About ${money(n.needCents)} a month.` : "You have enough.",
-        facts: n.summary,
+        facts:
+          n.gapCents > 0
+            ? `That's about 60% of your pay, paid after a ${DISABILITY_NEED.waitingDays}-day wait until ${DISABILITY_NEED.benefitUntilAge}${n.haveCents > 0 ? `, and you have ${money(n.haveCents)} of it` : ", and you have none of it today"}.`
+            : n.summary,
         actions: [
           {
             id: "open",
@@ -410,9 +430,18 @@ function build(kind: DecisionKind, ins: InsuranceSnapshot, asOf: string): Out {
           ],
         };
       }
-      const assets = household.signals.assetsCents;
       const has = active(ins, "umbrella");
       if (has) return { facts: `You already have an umbrella policy with ${has.carrier}.` };
+      // The need calculator's net worth (what you own less what you owe) is the number the page
+      // uses: when it says no umbrella is needed, the chat does not call the gross total a reason.
+      const assets = household.signals.assetsCents;
+      if (ins.needs && assets !== null && assets >= UMBRELLA_ASSETS_CENTS) {
+        return {
+          advice: "Probably not yet.",
+          facts: `You have about ${money(assets)} by your balances and values, but after what you owe you're under the ${money(UMBRELLA_ASSETS_CENTS)} where a big claim against you starts to matter. An umbrella policy pays above your car and home liability limits.`,
+          actions: [SEE],
+        };
+      }
       if (assets === null) {
         return {
           facts:
@@ -513,6 +542,62 @@ function build(kind: DecisionKind, ins: InsuranceSnapshot, asOf: string): Out {
             facts: `You pay ${money(carYearly)} a year and I don't find the same cover for much less.`,
           };
     }
+    case "what_cover": {
+      if (!ins.needs)
+        return {
+          facts:
+            "I need your pay and your policies to work out what cover you need. Add them on your insurance page.",
+          actions: [SEE],
+        };
+      const open = ins.needs.filter((n) => (n.direction ? n.direction !== "ok" : n.gapCents > 0));
+      if (open.length === 0)
+        return {
+          advice: "You have what you need.",
+          facts: "Nothing in your cover looks short today.",
+          actions: [SEE],
+        };
+      const first = open.slice(0, 2).map((n) => n.summary);
+      return {
+        advice: `${open.length === 1 ? "One gap" : `${open.length} gaps`}.`,
+        facts: `${first.join(" ")}${open.length > 2 ? ` And ${open.length - 2} more on your insurance page.` : ""}`,
+        actions: [
+          {
+            id: "open",
+            label: "See my options",
+            kind: "link",
+            href: `/insurance?need=${open[0].kind}#options`,
+          },
+          SEE,
+        ],
+      };
+    }
+    case "deductible_fit": {
+      const dn = needOf(ins, "deductible");
+      if (!dn)
+        return {
+          facts:
+            "I need your policy's deductible and your cash balance to say. Add the deductible from your policy and I'll look.",
+          actions: [SEE],
+        };
+      return {
+        advice:
+          dn.direction === "ok"
+            ? "Yes, it fits."
+            : dn.direction === "raise"
+              ? "You could go higher."
+              : "It's higher than your cash carries.",
+        facts: dn.summary,
+        actions: [
+          {
+            id: "open",
+            label: "See my options",
+            kind: "link",
+            href: "/insurance?need=deductible#options",
+          },
+          SEE,
+        ],
+      };
+    }
     case "deductible": {
       const saving = ins.savings?.find((s) => s.kind === "higher_deductible");
       if (!car || car.deductibleCents === null)
@@ -591,6 +676,22 @@ function build(kind: DecisionKind, ins: InsuranceSnapshot, asOf: string): Out {
     case "disability": {
       const has = active(ins, "disability");
       if (has) return { facts: `You already have ${has.carrier} disability cover.` };
+      const dn = needOf(ins, "disability");
+      if (dn && dn.gapCents > 0) {
+        return {
+          advice: "Probably yes.",
+          facts: `You get a paycheck and I see no disability cover. Many jobs include it, so check your benefits first; I'd size it at ${money(dn.needCents)} a month, about 60% of your pay after a ${DISABILITY_NEED.waitingDays}-day wait.`,
+          actions: [
+            {
+              id: "open",
+              label: "See my options",
+              kind: "link",
+              href: "/insurance?need=disability#options",
+            },
+            SEE,
+          ],
+        };
+      }
       return household.signals.paycheck
         ? {
             advice: "Probably yes.",
@@ -802,6 +903,9 @@ export function decisionConfidence(
             reason: car ? "no cheaper same-cover quote found yet" : "no car policy on file",
           };
     case "pay_yearly":
+    case "deductible_fit":
+    case "what_cover":
+      return { percent: 70, reason: "your cash and pay against a standard rule, not a quote" };
     case "deductible":
     case "bundle":
       return {
