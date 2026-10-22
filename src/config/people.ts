@@ -100,6 +100,8 @@ export const SUGGESTION_TOPICS = [
   "property_tax_check",
   "tax_loss_harvest",
   "file_return",
+  // Spec step 239: a headline figure resting on something only the person knows.
+  "figure_check",
   // Phase AP (spec steps 238–244): Jane runs the money.
   "data_problems",
   // Spec step 296: practice money first.
@@ -630,6 +632,8 @@ export const PEOPLE: readonly Person[] = [
       "emergency_fund",
 
       "disability_insurance",
+      // Spec step 239: her shop's sales are counted as her income.
+      "figure_check",
       "practice_portfolio",
     ],
     mustNot: [
