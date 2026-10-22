@@ -4103,6 +4103,116 @@ demo advice; legal questions go to counsel.
 > Acceptance criteria:
 > - Every tax capability has a detector or a reasoned exemption; the nightly run is green
 
+## Phase AU: perfect coverage (steps 274–280)
+
+Founder-approved 2026-10-21. Jane works out what cover each person needs from their own data,
+shows the gap against what they have, and offers several options to pick from, each with its
+price, cover and a one-line reason, her pick marked with a confidence percentage. Picking one
+queues the action for the concierge team at once. Every threshold lives in
+`src/config/insurance.ts`; nothing is inline. Recommendations are demo advice (the label, the
+`demo_advice` guardrail profile); `REAL_ACCOUNT_ADVICE` stays false, so real accounts see
+the need and the gap as facts, never an option to buy. No Anthropic spend in tests. Every step
+ships with its detector, its chat answers and its bank questions.
+
+### Step 274: What cover you need
+
+> Read CLAUDE.md. The need, worked out from the person's own data, and the gap.
+>
+> Build:
+> 1. Pure need calculators (`src/lib/insurance/need/`), each returning the need, the cover now
+>    in place, the gap and the line-by-line working: term life (income replaced for a number
+>    of years, plus debts, plus each child's education, less savings and cover through work),
+>    disability (about 60% of income), umbrella (net worth over the liability limits on car
+>    and home), deductibles (sized to the cash cushion, step 253's profile), and the liability
+>    levels for renters, home and auto.
+> 2. Every rate, multiple and threshold in config with where it comes from; the inputs come
+>    from the person's profile (step 253) and their policies, never guessed when told.
+>
+> Acceptance criteria:
+> - Each calculator has tests at its edges (no income, no dependants, no policies); the same
+>   inputs always give the same need
+
+### Step 275: Options to pick from
+
+> Read CLAUDE.md. Three or four real options for each gap.
+>
+> Build:
+> 1. For each gap, and for each policy worth a second look, three to four options from the
+>    quote stand-in: like for like, cheaper with a stated trade-off, and better cover for a
+>    stated price. Each has the price a year, the cover, the carrier's rating and one line on
+>    why this one ("Cheapest that keeps your $100k/$300k cover").
+> 2. Jane's pick is marked with a confidence percentage and its reason, built from the shared
+>    recipe: a same-cover quote beats a cheaper one, a better-rated carrier breaks a tie.
+>
+> Acceptance criteria:
+> - Options are always like-for-like unless the trade-off is said; the pick is the same for the
+>   same evidence
+
+### Step 276: The pick-one card
+
+> Read CLAUDE.md. Options as a card in the chat, and one tap to choose.
+>
+> Build:
+> 1. Option data in the shape the chat's "pick one of N" card takes (agreed with the chat lane):
+>    short cards, a "More details" for the working and the comparison, her pick first.
+> 2. Choosing an option queues the action for the concierge team instantly (bind, endorse or
+>    quote request through the stand-in), with the choice recorded; nothing changes cover
+>    without that tap.
+>
+> Acceptance criteria:
+> - One tap queues it; asking again never queues twice; a real account sees the need and the
+>   gap but no option card
+
+### Step 277: A detector for every gap
+
+> Read CLAUDE.md. Perfect coverage, brought unasked.
+>
+> Build:
+> 1. A detector per gap (life, disability, umbrella, deductible, liability levels), each with
+>    its value, confidence, urgency, why you and the action opening its option card, reaching
+>    the right sample people and none on a must-not list.
+>
+> Acceptance criteria:
+> - The harness shows each gap reaching the right people; the reach baseline is updated on
+>   purpose
+
+### Step 278: Ask it in the chat
+
+> Read CLAUDE.md. "How much life insurance do I need?", answered from the same numbers.
+>
+> Build:
+> 1. A Claude tool and rules answers for each need question, three sentences or fewer with
+>    the person's figures and the gap, and the option card when they ask what to get.
+> 2. Bank questions for each, with follow-ups ("what if I have another child", "and if I
+>    raise the deductible").
+>
+> Acceptance criteria:
+> - The chat and the page give the same need for the same person (one source of truth); the
+>   questions score 100
+
+### Step 279: Your perfect coverage page
+
+> Read CLAUDE.md. The whole picture on one page.
+>
+> Build:
+> 1. A section on `/insurance` showing each need, what they have, the gap, and the options
+>    behind "See options", with the working under "More details".
+>
+> Acceptance criteria:
+> - The page and the chat agree; an e2e test walks from a gap to a picked option
+
+### Step 280: Kept perfect
+
+> Read CLAUDE.md. The need changes when life does.
+>
+> Build:
+> 1. The needs are re-worked after a life event (step 100), a raise, a new child or a home
+>    bought, and the yearly review (step 202) shows the gaps that opened, with the option
+>    card; a pick is always a tap.
+>
+> Acceptance criteria:
+> - A new child opens the life-cover gap the same day; nothing is bought without a tap
+
 ## Depth first: the bar before new features (founder, 2026-10-21)
 
 Jane already has the breadth. Until the chat and suggestions are right, every lane works on
