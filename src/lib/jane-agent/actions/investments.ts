@@ -51,6 +51,10 @@ import { REVIEW_LINK } from "../investments/review-copy";
 import { COSTLY_LINK } from "../investments/costly-copy";
 import { FAMILY_LINK } from "../investments/family-copy";
 import { OLD_LINK } from "../investments/old-accounts-copy";
+import { setPaused } from "@/lib/practice/autopilot";
+import { NoPracticePortfolio } from "@/lib/practice/broker";
+import { PAUSE as PRACTICE_PAUSE_LINK, PRACTICE_ONLY_NOTE } from "../investments/practice-copy";
+import { adviceMode } from "@/lib/advice-mode";
 import { RA_LINK } from "../investments/retirement-accounts-copy";
 import { loadSteadyHand } from "@/lib/investments/steady-hand";
 import { pauseNote } from "../investments/steady-copy";
@@ -201,6 +205,35 @@ function autoStatus(id: ActionId, status: "active" | "paused"): ActionHandler {
     },
   };
 }
+
+// Spec step 297: the practice portfolio's switch, from a button Claude offered. Practice money
+// only, and only in demo advice mode; the next daily scan sees it.
+function practiceSwitch(id: ActionId, paused: boolean): ActionHandler {
+  return {
+    id,
+    on: "open",
+    async run({ userId, message, action, client }) {
+      const which = message.refs.practiceWhich ?? "all";
+      if (!(await adviceMode(userId, { client }))) throw answeredElsewhere(PRACTICE_ONLY_NOTE);
+      try {
+        await setPaused(userId, which, paused, { client });
+      } catch (error) {
+        if (error instanceof NoPracticePortfolio) throw answeredElsewhere(error.message);
+        throw error;
+      }
+      const what = which === "all" ? "your practice portfolio" : "opportunities";
+      return {
+        answeredWith: action.label,
+        note: paused
+          ? `Paused ${what}. It takes effect before the next daily scan.`
+          : `Resumed ${what}. The next daily scan picks up from here.`,
+        actions: [PRACTICE_PAUSE_LINK],
+      };
+    },
+  };
+}
+export const practicePause = practiceSwitch("practice.pause", true);
+export const practiceResume = practiceSwitch("practice.resume", false);
 
 export const investAutoPause = autoStatus("invest.auto_pause", "paused");
 export const investAutoResume = autoStatus("invest.auto_resume", "active");

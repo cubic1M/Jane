@@ -1,7 +1,8 @@
 import { categoryOf } from "@/categorize/taxonomy";
 import { findInDirectory, normalizeAlias } from "@/data-sources/merchant-directory";
-import type { PrismaClient } from "@/generated/prisma/client";
+import type { ActionType, Merchant, PrismaClient } from "@/generated/prisma/client";
 import { db as defaultClient } from "@/lib/db";
+import { outcomeAt, type Outcome } from "@/lib/merchant-outcomes";
 import { parseMoneyToCents } from "@/lib/money";
 
 // The merchant directory (shared knowledge about companies, never about people): reading
@@ -125,13 +126,23 @@ export async function listMerchants({ client = defaultClient }: { client?: Prism
   return client.merchant.findMany({ orderBy: { name: "asc" } });
 }
 
-// The directory row for a merchant key, matched the same way detection matches.
-export async function merchantFor(
-  merchantKey: string | null,
-  { client = defaultClient }: { client?: PrismaClient } = {},
-) {
-  if (!merchantKey) return null;
+export type CompanyFacts = { merchant: Merchant | null; outcome: Outcome | null };
+
+// What Jane knows about a company, in one lookup (docs/feature-audit.md, cluster 4): its row
+// in the merchant directory (spec step 24: the cancel link, support phone and support email,
+// which is only ever one the team added or confirmed, spec step 64), and, for a kind of
+// action, how those usually go there (spec step 40), shown from OUTCOME_MIN_CASES cases. The
+// name is as the bank or the person wrote it; it's matched the same way detection matches.
+export async function companyFacts(
+  name: string | null,
+  { client = defaultClient, actionType }: { client?: PrismaClient; actionType?: ActionType } = {},
+): Promise<CompanyFacts> {
+  const key = name ? normalizeAlias(name) : null;
+  if (!key) return { merchant: null, outcome: null };
   const rows = await client.merchant.findMany();
-  const match = findInDirectory(merchantKey, rows);
-  return match ? (rows.find((r) => r.key === match.key) ?? null) : null;
+  const match = findInDirectory(key, rows);
+  const merchant = match ? (rows.find((r) => r.key === match.key) ?? null) : null;
+  // A company the directory doesn't know counts its cases under its normalized name.
+  const outcome = actionType ? await outcomeAt(merchant?.key ?? key, actionType, { client }) : null;
+  return { merchant, outcome };
 }

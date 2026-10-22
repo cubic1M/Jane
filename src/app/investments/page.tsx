@@ -1,12 +1,11 @@
 import Link from "next/link";
-import { connection } from "next/server";
+import { after, connection } from "next/server";
 import { Suspense } from "react";
 import { AppHeader } from "@/components/app-header";
 import { BacktestsSection } from "@/components/backtests";
 import { SimulatedBanner } from "@/components/simulated-banner";
 import { ViewTracker } from "@/components/view-tracker";
 import { SIMULATED_PARTNER } from "@/config/brokerage";
-import { INVESTMENT_AUTOPILOT } from "@/config/investing";
 import { explainer } from "@/config/learn";
 import { RETURNS_NOTE } from "@/config/returns";
 import { formatReturn } from "@/insights/returns";
@@ -14,12 +13,15 @@ import { cryptoTotal } from "@/lib/crypto/crypto";
 import { loadReturns } from "@/lib/investments/returns";
 import { backtestsFor } from "@/lib/investments/backtest";
 import { autopilotOf } from "@/lib/autopilot";
+import { investmentsByHerself } from "@/lib/jane-agent/investments/replies";
+import { autopilotFor } from "@/lib/sector-autopilot";
 import { scopedFor } from "@/lib/db-scoped";
 import { formatBps, type HoldingView } from "@/insights/investments";
 import { loadInvestments } from "@/lib/investments/holdings";
 import { profileOf } from "@/lib/investments/profile";
 import { profileSummary } from "@/planning/investor-profile";
 import { formatCents } from "@/lib/money";
+import { scanOnOpenQuietly } from "@/lib/practice/scan";
 import { requireUser } from "@/lib/session";
 
 // What the person owns (spec step 128): every investment and retirement account, what's in
@@ -85,13 +87,17 @@ function HoldingRow({ h }: { h: HoldingView }) {
 async function InvestmentsContent() {
   const user = await requireUser();
   await connection();
+  // Constant search (Phase AW): a cheap practice scan, after the page is sent.
+  after(() => scanOnOpenQuietly(user.id));
   const data = await loadInvestments(user.id);
-  const [answers, simulated, level, returns, crypto, backtests] = await Promise.all([
+  const [answers, simulated, level, investing, returns, crypto, backtests] = await Promise.all([
     profileOf(user.id),
     // Spec step 133: holdings shaped by simulated orders say so.
     scopedFor(user.id).brokerageOrders.count({ where: { partner: SIMULATED_PARTNER } }),
     // Spec step 137: what Jane does by herself at the person's autopilot level.
     autopilotOf(user.id),
+    // Spec step 141: what the Investing area may do by itself.
+    autopilotFor(user.id, "investing"),
     // Spec step 156: how they've done.
     loadReturns(user.id, { investments: data }),
     // Spec step 161: crypto, read-only, counted in the mix.
@@ -99,12 +105,7 @@ async function InvestmentsContent() {
     // Spec step 295: each risk level replayed over past prices (demo advice only).
     backtestsFor(user.id),
   ]);
-  const byHerself =
-    INVESTMENT_AUTOPILOT[
-      (level && Object.hasOwn(INVESTMENT_AUTOPILOT, level)
-        ? level
-        : "none") as keyof typeof INVESTMENT_AUTOPILOT
-    ];
+  const byHerself = investmentsByHerself(level, investing);
   const profile = profileSummary(answers, data.asOf);
   const max = Math.max(1, ...data.months.map((m) => m.totalCents ?? 0));
 
@@ -447,7 +448,7 @@ async function InvestmentsContent() {
                 <li key={line}>{line}</li>
               ))}
             </ul>
-            <Link href="/settings" className={`text-sm ${LINK}`}>
+            <Link href="/settings#sectors" className={`text-sm ${LINK}`}>
               Change your autopilot
             </Link>
           </section>

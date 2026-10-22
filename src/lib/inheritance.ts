@@ -5,6 +5,7 @@ import type { PrismaClient } from "@/generated/prisma/client";
 import { adviceMode } from "@/lib/advice-mode";
 import { db as defaultClient } from "@/lib/db";
 import { loadProfileInput } from "@/lib/profile";
+import type { ProfileInput } from "@/profile/build";
 import type { TaxEstimateView } from "@/lib/tax-estimate";
 import { loadTaxEstimate } from "@/lib/tax-estimate";
 import {
@@ -55,11 +56,13 @@ export async function loadInheritance(
     client = defaultClient,
     now = new Date(),
     loaded,
-  }: Options & { loaded?: { estimate: TaxEstimateView; advice: boolean } } = {},
+  }: Options & {
+    loaded?: { estimate: TaxEstimateView; advice: boolean; input?: ProfileInput };
+  } = {},
 ): Promise<InheritanceView> {
   const year = now.getUTCFullYear();
   const [input, estimate, advice] = await Promise.all([
-    loadProfileInput(userId, { client, now }),
+    loaded?.input ? Promise.resolve(loaded.input) : loadProfileInput(userId, { client, now }),
     loaded ? Promise.resolve(loaded.estimate) : loadTaxEstimate(userId, { client, now }),
     // Spreading the withdrawals is demo advice: only for the demo bank (step 98).
     loaded ? Promise.resolve(loaded.advice) : adviceMode(userId, { client }),
