@@ -533,6 +533,18 @@ describe("debt questions", () => {
     expect(intent("what is an overdraft fee")).not.toEqual({ kind: "costly_borrowing" });
   });
 
+  it("reads the monthly credit check-up (spec step 251), and leaves the yearly review alone", () => {
+    for (const text of [
+      "what's in my credit check-up this month?",
+      "show me the monthly credit check",
+      "how's my credit on autopilot this month",
+      "credit checkup",
+    ]) {
+      expect(intent(text), text).toEqual({ kind: "credit_monthly" });
+    }
+    expect(intent("do my yearly debt review")).toEqual({ kind: "debt_review" });
+  });
+
   it("reads what could I borrow (spec step 250)", () => {
     for (const text of [
       "what could I borrow?",
