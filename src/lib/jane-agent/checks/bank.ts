@@ -2056,6 +2056,18 @@ const BASE_QUESTIONS: readonly CheckQuestion[] = [
       maxChars: 2_600,
     },
   },
+  // Spec step 251: credit on autopilot, round three.
+  {
+    id: "debt-72",
+    text: "show me this month's credit check-up",
+    needs: "rules",
+    expect: {
+      intent: "credit_monthly",
+      mentions: /check-up/i,
+      link: "/loans/review",
+      maxChars: 2_600,
+    },
+  },
   // Spec step 250: what you could borrow.
   {
     id: "debt-70",

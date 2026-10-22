@@ -293,6 +293,7 @@ export const CAPABILITIES: readonly Capability[] = [
       "renting",
       "family_credit",
       "borrowing_power",
+      "credit_monthly",
       "debt_decision",
       "loan_fit",
     ],

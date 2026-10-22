@@ -23,6 +23,7 @@ import { loadCreditGoals } from "@/lib/credit-goals";
 import { loadCostlyBorrowing } from "@/lib/costly-borrowing";
 import { loadRenting } from "@/lib/renting";
 import { ensureBorrowingChecked, loadBorrowingPower } from "@/lib/borrowing-power";
+import { computeCreditMonthly, loadCreditMonthly } from "@/lib/credit-monthly";
 import { loadFamilyCredit } from "@/lib/family-credit";
 import { MortgageMoneyError, loadMortgageMoney } from "@/lib/mortgage-money";
 import { loadCarLoan } from "@/lib/car-loan";
@@ -70,6 +71,7 @@ import {
   costlyBorrowingToolOutput,
   rentingToolOutput,
   borrowingPowerToolOutput,
+  creditMonthlyToolOutput,
   familyCreditToolOutput,
   loanFitToolOutput,
 } from "./debt-tools";
@@ -99,6 +101,13 @@ export async function runDebtTool(
     case "costly_borrowing":
       return out(
         costlyBorrowingToolOutput(await loadCostlyBorrowing(userId, { client, now }), money),
+      );
+    case "credit_monthly":
+      return out(
+        creditMonthlyToolOutput(
+          (await loadCreditMonthly(userId, { client })) ??
+            (await computeCreditMonthly(userId, { client, now })),
+        ),
       );
     case "borrowing_power":
       await ensureBorrowingChecked(userId, { client, now });

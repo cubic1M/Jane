@@ -93,6 +93,8 @@ export const TOOL_EXEMPT: Readonly<Record<string, string>> = {
   steady_hand: "a calm message after a market drop; it follows an event, not a profile",
   crypto: "reports linked crypto read-only; nothing to suggest",
   debt_autopilot: "reports what Jane does by herself for debts at the person's level",
+  credit_monthly:
+    "gathers the credit items the other detectors raise (refinance, car add-ons, costly borrowing, rent), once a month, into one message",
   debt_review:
     "gathers the debt items the other detectors already raise, once a year, into one message",
   credit_goals: "a score plan the person asks for with their own target and date",

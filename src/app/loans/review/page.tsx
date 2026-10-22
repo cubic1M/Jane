@@ -5,6 +5,7 @@ import { AppHeader } from "@/components/app-header";
 import { DemoAdviceLabel } from "@/components/demo-advice-label";
 import { REVIEW_REASON_TEXT, type ReviewItemKey } from "@/config/debt-review";
 import { DEBT_AUTOPILOT } from "@/config/debt";
+import { loadCreditMonthly } from "@/lib/credit-monthly";
 import { loadDebtReview } from "@/lib/debt-review";
 import { requireUser } from "@/lib/session";
 
@@ -26,8 +27,9 @@ const STATUS = { done: "Done by Jane", tap: "Needs you", ok: "Fine" } as const;
 async function ReviewContent() {
   const user = await requireUser();
   await connection();
-  const data = await loadDebtReview(user.id);
+  const [data, monthly] = await Promise.all([loadDebtReview(user.id), loadCreditMonthly(user.id)]);
   const autopilot = DEBT_AUTOPILOT[data.level].find((s) => s.step === 230);
+  const monthlyAutopilot = DEBT_AUTOPILOT[data.level].find((s) => s.step === 251);
   return (
     <>
       <AppHeader user={user} />
@@ -77,6 +79,42 @@ async function ReviewContent() {
           )}
         </>
       )}
+      {/* Spec step 251: the monthly credit check-up, the last one Jane did. */}
+      <section aria-label="This month's check-up" className="flex flex-col gap-3">
+        <h2 className="text-xl font-semibold">This month&apos;s check-up</h2>
+        {!monthly ? (
+          <p className="text-sm text-zinc-600 dark:text-zinc-400">
+            Jane does it once a month, after her soft checks of your rates; it isn&apos;t done yet.
+          </p>
+        ) : (
+          <>
+            <p className="text-sm text-zinc-600 dark:text-zinc-400">Done {monthly.checkedOn}.</p>
+            <ul aria-label="Check-up items" className="flex flex-col gap-3">
+              {monthly.items.map((i) => (
+                <li key={i.key} className={CARD}>
+                  <div className="flex flex-wrap items-baseline justify-between gap-2">
+                    <h3 className="font-semibold">{i.title}</h3>
+                    <span className="text-sm text-zinc-600 dark:text-zinc-400">
+                      {STATUS[i.status]}
+                    </span>
+                  </div>
+                  <p>{i.text}</p>
+                  {i.link && (
+                    <Link href={i.link.href} className={`${LINK} text-sm`}>
+                      {i.link.label}
+                    </Link>
+                  )}
+                </li>
+              ))}
+            </ul>
+          </>
+        )}
+        {monthlyAutopilot && (
+          <p className="text-sm text-zinc-600 dark:text-zinc-400">
+            Every month, at your level: {monthlyAutopilot.does}
+          </p>
+        )}
+      </section>
     </>
   );
 }

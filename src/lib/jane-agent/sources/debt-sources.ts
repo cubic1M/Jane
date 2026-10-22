@@ -10,6 +10,7 @@ import { carLoanSource } from "./car-loan";
 import { costlyBorrowingSource } from "./costly-borrowing";
 import { rentingSource } from "./renting";
 import { borrowingPowerSource } from "./borrowing-power";
+import { creditMonthlySource } from "./credit-monthly";
 import { debtReviewSource } from "./debt-review";
 import { debtTroubleSource } from "./debt-trouble";
 import { homeEquitySource } from "./home-equity";
@@ -55,4 +56,5 @@ export const DEBT_SOURCES: readonly MessageSource[] = [
   costlyBorrowingSource,
   rentingSource,
   borrowingPowerSource,
+  creditMonthlySource,
 ];
