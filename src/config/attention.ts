@@ -23,7 +23,6 @@ export const ATTENTION_ALWAYS: readonly string[] = [
   "paycheck",
   "brief",
   "welcome",
-  "review",
   "autopilot",
   "attention",
   // Spec step 204: income stopped; never held or stopped.
