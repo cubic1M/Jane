@@ -39,6 +39,7 @@ export async function loadProfileInput(
     insurance,
     investor,
     unread,
+    reporting,
     values,
     named,
     membership,
@@ -89,6 +90,7 @@ export async function loadProfileInput(
     db.insuranceProfiles.findFirst({ select: { housing: true } }),
     db.investorProfiles.findFirst({ select: { age: true, ageOn: true, dropReaction: true } }),
     db.policyReadings.count({ where: { status: "waiting" } }),
+    db.rentReporting.findFirst({ select: { id: true } }),
     db.valuesPreferences.findFirst({ select: { excludes: true } }),
     db.accountBeneficiaries.findMany({ select: { accountId: true } }),
     client.householdMember.findUnique({ where: { userId }, select: { householdId: true } }),
@@ -167,6 +169,7 @@ export async function loadProfileInput(
     namedAccountIds: [...new Set(named.map((n) => n.accountId))],
     told,
     unreadPolicyDocuments: unread,
+    rentReportingOn: reporting !== null,
     extras: { householdMembers, ...(await sectorFigures(userId, client, now)) },
   };
 }
@@ -182,7 +185,7 @@ async function sectorFigures(userId: string, client: PrismaClient, now: Date) {
     (await db.equityEvents.count()) > 0;
   // Spec step 296: whether the practice-portfolio suggestion still applies.
   const practice = await db.practicePortfolios.count();
-  const [matchPace, equity, subscriptions, cardInterest, shopSaving, policies, owned, feed] =
+  const [matchPace, equity, subscriptions, cardInterest, shopSaving, policies, owned, feed, books] =
     await Promise.all([
       loadMatchPace(userId, { client, now }),
       hasStock
@@ -194,6 +197,8 @@ async function sectorFigures(userId: string, client: PrismaClient, now: Date) {
       import("@/lib/insurance/policies").then((m) => m.listPolicies(userId, { client })),
       db.ownedAssets.findMany({ select: { valueCents: true } }),
       import("@/lib/disaster-feed").then((m) => m.disasterFeedFor(userId, { client })),
+      // Spec step 238: what the daily books check left open.
+      import("@/lib/books").then((m) => m.openBooks(userId, { client })),
     ]);
   return {
     matchPace,
@@ -201,6 +206,7 @@ async function sectorFigures(userId: string, client: PrismaClient, now: Date) {
     subscriptions,
     cardInterestYearCents: cardInterest.available ? cardInterest.interestYearCents : null,
     insuranceShopSavingCents: shopSaving,
+    books: books.open.map((o) => ({ kind: o.kind, words: o.words, accountId: o.accountId })),
     // What they own by its value (a home, a car), for the net worth an umbrella protects.
     ownedValueCents: owned.reduce((sum, o) => sum + o.valueCents, 0),
     coverPolicies: policies

@@ -126,6 +126,8 @@ export function scopedFor(userId: string, client: PrismaClient = db) {
     homeEquityFacts: scoped.homeEquityFacts,
     carAddons: scoped.carAddon,
     carLoanWatches: scoped.carLoanWatch,
+    rentReporting: scoped.rentReporting,
+    securityDeposits: scoped.securityDeposit,
     balanceTransfers: scoped.balanceTransfer,
     findings: scoped.finding,
     decisions: scoped.decision,
@@ -198,6 +200,8 @@ export function scopedFor(userId: string, client: PrismaClient = db) {
     whatIfPlans: scoped.whatIfPlan,
     // The lean plan when income stops (spec step 204).
     leanPlans: scoped.leanPlan,
+    // Data that doesn't add up (spec step 238).
+    booksIssues: scoped.booksIssue,
     // What Jane suggests (spec step 255).
     suggestions: scoped.suggestion,
     // The year's money plan (spec step 205).
@@ -241,6 +245,8 @@ export function scopedFor(userId: string, client: PrismaClient = db) {
     practiceTrades: scoped.practiceTrade,
     // What the daily scan flagged in a practice portfolio (spec step 292).
     practiceOpportunities: scoped.practiceOpportunity,
+    // What the person wants from the practice portfolio (Phase AW).
+    practicePreferences: scoped.practicePreferences,
     giftLinks: scoped.giftLink,
     cryptoConnections: scoped.cryptoConnection,
     cryptoHoldings: scoped.cryptoHolding,
