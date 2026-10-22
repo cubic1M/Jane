@@ -46,7 +46,22 @@ def order(prs, priority):
     return sorted(prs, key=lambda p: (rank.get(p["number"], len(rank)), p["number"]))
 
 
+def ci_exists(pr):
+    """True when a CI run for the PR's current commit is queued, running or done. A queued run
+    has no check yet, so the PR alone can't tell; starting another would cancel the queued one."""
+    runs = json.loads(
+        gh(
+            "run", "list", "--workflow", "ci.yml", "--branch", pr["headRefName"],
+            "--limit", "5", "--json", "headSha,status",
+        )
+    )
+    return any(r["headSha"] == pr["headRefOid"] for r in runs)
+
+
 def dispatch_ci(pr):
+    if ci_exists(pr):
+        print(f"CI already queued or run on #{pr['number']}")
+        return
     gh("workflow", "run", "ci.yml", "--ref", pr["headRefName"])
     print(f"started CI on #{pr['number']} ({pr['headRefName']})")
 
@@ -56,7 +71,8 @@ def main():
     prs = json.loads(
         gh(
             "pr", "list", "--base", "main", "--state", "open", "--limit", "100",
-            "--json", "number,isDraft,mergeStateStatus,autoMergeRequest,statusCheckRollup,headRefName",
+            "--json",
+            "number,isDraft,mergeStateStatus,autoMergeRequest,statusCheckRollup,headRefName,headRefOid",
         )
     )
     queued = order([p for p in prs if p["autoMergeRequest"] and not p["isDraft"]], priority)
@@ -97,7 +113,9 @@ def main():
     repo = os.environ["GH_REPO"]
     gh("api", "-X", "PUT", f"repos/{repo}/pulls/{pr['number']}/update-branch")
     print(f"updated #{pr['number']}")
-    dispatch_ci(pr)
+    # The update makes a new commit; start CI on the branch as it now is.
+    gh("workflow", "run", "ci.yml", "--ref", pr["headRefName"])
+    print(f"started CI on #{pr['number']} ({pr['headRefName']})")
 
 
 if __name__ == "__main__":
