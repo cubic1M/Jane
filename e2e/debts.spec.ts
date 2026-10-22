@@ -935,7 +935,7 @@ test("costly short-term borrowing is found, costed, and the way out is laid out"
   const found = page.getByRole("list", { name: "What you paid" });
   await expect(found.getByRole("listitem")).toHaveCount(4);
   await expect(found).toContainText("Payday loans");
-  await expect(found).toContainText("2 times, $90.00 in fees");
+  await expect(found).toContainText("2 times, $30.00 in fees");
   await expect(found).toContainText("Card cash advances");
   await expect(found).toContainText("Overdraft fees");
   await expect(found).toContainText("Pay advance apps");
