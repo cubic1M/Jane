@@ -114,6 +114,8 @@ export type AuditEvent =
   | "saving_marked_not_shown"
   // Unusual activity answered: this was me, or not me (spec step 208).
   | "unusual_answered"
+  // The order goals are funded in, picked by the person (spec step 241).
+  | "goal_order_chosen"
   | "lean_plan_ended"
   | "plan_link_used"
   | "support_contact_suggested"

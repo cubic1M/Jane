@@ -119,6 +119,16 @@ export type ProfileInput = {
     ownedValueCents?: number;
     // The person already has a practice portfolio (step 296). Absent: not loaded.
     hasPracticePortfolio?: boolean;
+    // Savings goals still on the way (spec step 241), in the order they're funded, and the
+    // room the year plan has for them this month. Absent: not loaded.
+    goals?: readonly {
+      id: string;
+      name: string;
+      leftCents: number;
+      wantedMonth: string;
+      monthlyCents: number;
+    }[];
+    goalRoomCents?: number | null;
     rsuGap?: {
       vestedCents: number;
       shortfallCents: number;

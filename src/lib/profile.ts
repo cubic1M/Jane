@@ -1,4 +1,5 @@
 import type { PrismaClient } from "@/generated/prisma/client";
+import { roomFromPlan, tradeGoalOf } from "@/planning/goal-tradeoffs";
 import { PAY_PERIODS } from "@/config/benefits";
 import { PROFILE_MONTHS } from "@/config/profile";
 import { db as defaultClient } from "@/lib/db";
@@ -240,6 +241,8 @@ async function sectorFigures(userId: string, client: PrismaClient, now: Date) {
     feed,
     books,
     draft,
+    goals,
+    plan,
   ] = await Promise.all([
     loadMatchPace(userId, { client, now }),
     hasStock
@@ -254,7 +257,14 @@ async function sectorFigures(userId: string, client: PrismaClient, now: Date) {
     // Spec step 238: what the daily books check left open.
     import("@/lib/books").then((m) => m.openBooks(userId, { client })),
     import("@/lib/draft-return").then((m) => m.latestDraftCheck(userId, { client })),
+    // Spec step 241: the goals, and the year plan as last kept (not worked out again here).
+    import("@/lib/goals").then((m) => m.listGoals(userId, { client, now })),
+    db.yearPlans.findFirst({ orderBy: { startMonth: "desc" }, select: { months: true } }),
   ]);
+  const month = now.toISOString().slice(0, 7);
+  const planMonths = Array.isArray(plan?.months)
+    ? (plan.months as unknown as Parameters<typeof roomFromPlan>[0])
+    : [];
   return {
     matchPace,
     rsuGap: equity ? equity.rsuGap : null,
@@ -264,6 +274,10 @@ async function sectorFigures(userId: string, client: PrismaClient, now: Date) {
     books: books.open.map((o) => ({ kind: o.kind, words: o.words, accountId: o.accountId })),
     // What they own by its value (a home, a car), for the net worth an umbrella protects.
     ownedValueCents: owned.reduce((sum, o) => sum + o.valueCents, 0),
+    goals: goals.flatMap((g) => tradeGoalOf(g) ?? []),
+    goalRoomCents: planMonths.some((m) => m.month === month)
+      ? roomFromPlan(planMonths, month)[0]
+      : null,
     coverPolicies: policies
       .filter((p) => p.status === "active" || p.status === "pending")
       .map((p) => ({
