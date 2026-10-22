@@ -359,16 +359,17 @@ const ONE_OFF: (Template & { offsets: number[] })[] = [
     amount: 34,
     offsets: [-230, -110, -5],
   },
-  // Spec step 247: costly short-term borrowing, so each kind can be found: two payday loans
-  // ($300 out, $345 back two weeks later), a card cash advance and its fee, and a pay advance
-  // app's advances with a tip each.
+  // Spec step 247: costly short-term borrowing, so each kind can be found: two small payday
+  // loans ($100 in, $115 back two weeks later), a card cash advance and its fee, and a pay
+  // advance app's advances with a tip each. Kept small: the demo person's year plan (step 203)
+  // still has a margin to save from.
   {
     key: "payday-proceeds",
     account: "checking",
     name: "ADVANCE AMERICA LOAN PROCEEDS",
     merchant: null,
     category: "LOAN_DISBURSEMENTS_CASH_ADVANCES",
-    amount: -300,
+    amount: -100,
     offsets: [-92, -41],
   },
   {
@@ -377,7 +378,7 @@ const ONE_OFF: (Template & { offsets: number[] })[] = [
     name: "ADVANCE AMERICA LOAN PAYMENT",
     merchant: null,
     category: "LOAN_PAYMENTS_CASH_ADVANCES",
-    amount: 345,
+    amount: 115,
     offsets: [-78, -27],
   },
   {
@@ -404,8 +405,8 @@ const ONE_OFF: (Template & { offsets: number[] })[] = [
     name: "EARNIN ADVANCE",
     merchant: null,
     category: "LOAN_DISBURSEMENTS_EWA",
-    amount: -100,
-    offsets: [-71, -50, -9],
+    amount: -50,
+    offsets: [-50, -9],
   },
   {
     key: "ewa-repayment",
@@ -413,8 +414,8 @@ const ONE_OFF: (Template & { offsets: number[] })[] = [
     name: "EARNIN REPAYMENT",
     merchant: null,
     category: "LOAN_PAYMENTS_EWA",
-    amount: 100,
-    offsets: [-64, -43, -2],
+    amount: 50,
+    offsets: [-43, -2],
   },
   {
     key: "ewa-tip",
@@ -422,8 +423,8 @@ const ONE_OFF: (Template & { offsets: number[] })[] = [
     name: "EARNIN TIP",
     merchant: null,
     category: "BANK_FEES_OTHER_BANK_FEES",
-    amount: 5,
-    offsets: [-64, -43, -2],
+    amount: 3,
+    offsets: [-43, -2],
   },
   {
     key: "late-fee",

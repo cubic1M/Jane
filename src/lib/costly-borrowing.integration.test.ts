@@ -74,16 +74,16 @@ describe.runIf(url)(
         "payday",
       ]);
       const by = Object.fromEntries(d.kinds.map((k) => [k.kind, k]));
-      // Two $300 loans paid back as $345: $90 in fees, about 391% a year.
-      expect(by.payday).toMatchObject({ count: 2, costCents: 9_000 });
+      // Two $100 loans paid back as $115: $30 in fees, about 391% a year.
+      expect(by.payday).toMatchObject({ count: 2, costCents: 3_000 });
       expect(by.payday.aprBps).toBeGreaterThan(38_000);
       expect(by.payday.aprBps).toBeLessThan(40_000);
       // $10 fee plus interest from day one on $200.
       expect(by.cash_advance.costCents).toBeGreaterThan(1_000);
       // Three $34 overdraft fees.
       expect(by.overdraft).toMatchObject({ count: 3, costCents: 10_200 });
-      // A $5 tip on each of three $100 advances out for a week.
-      expect(by.pay_app).toMatchObject({ count: 3, costCents: 1_500 });
+      // A $3 tip on each of two $50 advances out for a week.
+      expect(by.pay_app).toMatchObject({ count: 2, costCents: 600 });
       expect(by.pay_app.aprBps).toBeGreaterThan(20_000);
       expect(d.totalYearlyCents).toBe(
         by.payday.costCents +
@@ -112,7 +112,7 @@ describe.runIf(url)(
       expect(reply.body).toMatch(
         /^Costly short-term borrowing cost you \$[\d,.]+ over the last year, across 4 kinds\./,
       );
-      expect(reply.body).toContain("Payday loans: 2 times, $90.00 in fees");
+      expect(reply.body).toContain("Payday loans: 2 times, $30.00 in fees");
       expect(reply.body).toContain("Cheaper ways out:");
       expect(reply.body).toContain("Credit union payday alternative loan (PAL)");
       expect(parseRefs(reply.refs).advice).toBe(true);
