@@ -1098,7 +1098,49 @@ const irmaaWatch: Detector = {
   },
 };
 
+// A draft return checked before filing (step 272): what the check found, each with the tax it
+// changes. Raised as soon as a confirmed draft has something to fix: before the person files.
+const draftReturnCheck: Detector = {
+  capability: "taxes",
+  topic: "draft_return_check",
+  covers: ["tax_draft_check"],
+  needs: [],
+  detect({ data }) {
+    const d = data.extras?.draftReturn;
+    if (!d || d.findings.length === 0) return null;
+    const total = d.findings.reduce((s, f) => s + f.dollarsCents, 0);
+    const owes = d.findings.some((f) => f.effect === "owes");
+    const top = d.findings[0];
+    return {
+      id: suggestionId("taxes", "draft_return_check"),
+      capability: "taxes",
+      topic: "draft_return_check",
+      title: `Fix ${d.findings.length === 1 ? "one thing" : `${d.findings.length} things`} in your ${d.year} draft return before you file`,
+      headline: headlineOf("Fix your draft return", total, owes ? "risk" : "saves", true),
+      short: `${top.title}, on ${top.line}: ${formatCents(top.dollarsCents)}.`,
+      worthCents: total,
+      worthKind: owes ? "risk" : "saves",
+      confidence: {
+        percent: 80,
+        reason:
+          "you confirmed what I read, and each line is checked against your forms and accounts",
+      },
+      urgency: "now",
+      why: `I checked your ${d.year} draft against your forms and accounts. ${d.findings
+        .map(
+          (f) =>
+            `${f.title} (${f.line}): about ${formatCents(f.dollarsCents)} ${f.effect === "saves" ? "back" : "more tax"}.`,
+        )
+        .join(
+          " ",
+        )} Fix them in your software or with your preparer before you file; I don't file it.`,
+      action: { label: "See every line", href: "/taxes/draft" },
+    };
+  },
+};
+
 export const TAX_DETECTORS: readonly Detector[] = [
+  draftReturnCheck,
   socialSecurityTaxDetector,
   irmaaWatch,
   disasterRelief,

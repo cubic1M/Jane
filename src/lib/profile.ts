@@ -42,6 +42,8 @@ export async function loadProfileInput(
     investor,
     unread,
     reporting,
+    familyCredit,
+    report,
     values,
     named,
     membership,
@@ -95,6 +97,13 @@ export async function loadProfileInput(
     db.investorProfiles.findFirst({ select: { age: true, ageOn: true, dropReaction: true } }),
     db.policyReadings.count({ where: { status: "waiting" } }),
     db.rentReporting.findFirst({ select: { id: true } }),
+    db.familyCredit.findMany({
+      select: { kind: true, balanceCents: true, monthlyPaymentCents: true, missed: true },
+    }),
+    db.creditReports.findFirst({
+      orderBy: [{ pulledOn: "desc" }, { createdAt: "desc" }],
+      select: { cardLimitCents: true },
+    }),
     db.valuesPreferences.findFirst({ select: { excludes: true } }),
     db.accountBeneficiaries.findMany({ select: { accountId: true } }),
     client.householdMember.findUnique({ where: { userId }, select: { householdId: true } }),
@@ -148,6 +157,7 @@ export async function loadProfileInput(
     }
   }
 
+  const onlyCard = accounts.filter((a) => a.type === "credit").length === 1;
   return {
     today,
     transactions: transactions.map((t) => ({
@@ -167,7 +177,10 @@ export async function loadProfileInput(
       limitCents:
         a.type === "credit" && a.currentBalanceCents != null && a.availableBalanceCents != null
           ? a.currentBalanceCents + a.availableBalanceCents
-          : null,
+          : // The credit report's total limit is one card's limit when there is one card.
+            a.type === "credit" && onlyCard
+            ? (report?.cardLimitCents ?? null)
+            : null,
     })),
     holdings: holdings.map((h) => ({
       accountId: h.accountId,
@@ -188,6 +201,16 @@ export async function loadProfileInput(
     told,
     unreadPolicyDocuments: unread,
     rentReportingOn: reporting !== null,
+    familyCredit: {
+      helped: familyCredit.filter((f) => f.kind !== "cosigned").length,
+      cosignedOwedCents: familyCredit
+        .filter((f) => f.kind === "cosigned")
+        .reduce((s, f) => s + (f.balanceCents ?? 0), 0),
+      cosignedMissed: familyCredit.filter((f) => f.kind === "cosigned" && f.missed).length,
+      cosignedPaymentCents: familyCredit
+        .filter((f) => f.kind === "cosigned")
+        .reduce((s, f) => s + (f.monthlyPaymentCents ?? 0), 0),
+    },
     extras: { householdMembers, ...(await sectorFigures(userId, client, now)) },
     healthPlan: healthPlanOf(healthPolicy),
     fsaElectionCents: fsa
@@ -217,6 +240,7 @@ async function sectorFigures(userId: string, client: PrismaClient, now: Date) {
     owned,
     feed,
     books,
+    draft,
     goals,
     plan,
   ] = await Promise.all([
@@ -232,6 +256,7 @@ async function sectorFigures(userId: string, client: PrismaClient, now: Date) {
     import("@/lib/disaster-feed").then((m) => m.disasterFeedFor(userId, { client })),
     // Spec step 238: what the daily books check left open.
     import("@/lib/books").then((m) => m.openBooks(userId, { client })),
+    import("@/lib/draft-return").then((m) => m.latestDraftCheck(userId, { client })),
     // Spec step 241: the goals, and the year plan as last kept (not worked out again here).
     import("@/lib/goals").then((m) => m.listGoals(userId, { client, now })),
     db.yearPlans.findFirst({ orderBy: { startMonth: "desc" }, select: { months: true } }),
@@ -264,6 +289,8 @@ async function sectorFigures(userId: string, client: PrismaClient, now: Date) {
       })),
     // Spec step 270: the disaster relief declared where they might live (none without a feed).
     disasterRelief: feed ? await feed.declarations() : [],
+    // Spec step 272: the latest checked draft return.
+    draftReturn: draft,
     hasPracticePortfolio: practice > 0,
   };
 }

@@ -283,3 +283,19 @@ so a conversion saves nothing and is no longer raised. Surcharge lines and amoun
 estimated). The order to draw from step 212 is tuned here (taxable first, pre-tax only as far as
 the room under the line allows, then Roth) and handed to the investing side's retirement paycheck
 (`RetirementIncomeView.taxTuned`, shown on `/investments/retirement-income` in demo advice mode).
+
+### Step 272: the return, checked before you file
+
+| Topic | Trigger signals | Value | Confidence drivers | Urgency | Fires for | Should not |
+|---|---|---|---|---|---|---|
+| `draft_return_check` (covers `tax_draft_check`) | a confirmed draft return (uploaded to Documents as "Draft tax return", read, and confirmed by the person) whose check found something | the federal tax the findings change, added up: a bill to avoid (risk) when any line owes, else money back (saves) | 80%: the person confirmed what Jane read, and each line is checked against their collected forms, accounts and estimate | now (before filing) | anyone with a checked draft that has findings; in the samples, a demo draft (tests) | anyone without a confirmed draft, or whose draft checks out |
+
+The check, line by line (`src/planning/draft-return.ts`): income missing (interest, dividends, capital
+gains, business income, wages under the W-2s), figures that don't match the forms (withholding),
+deductions or credits left out (student loan interest, itemizing, education and care credits, the
+same checks as step 172) and estimated payments left off, each with its line and the tax it changes
+(nothing under $25). The demo draft (the stand-in reader for demo-bank people without a key) is
+built from the person's own forms with three mistakes planted, and the check finds all three. Jane
+never files or changes a draft: the cards point to the software or the preparer. The detector is
+seasonal by nature (drafts come in filing season), so the eight samples at their October date carry
+none; the tests attach a checked draft.

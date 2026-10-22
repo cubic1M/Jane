@@ -27,6 +27,7 @@ import { giftsMessage, inheritedIraMessage } from "../inheritance-message";
 import { hsaMessage, medicalMessage, repaymentMessage } from "../health-tax-message";
 import { reliefMessage } from "../disaster-message";
 import { irmaaMessage, ssWithholdingMessage } from "../retirement-tax-message";
+import { draftFindingMessage, draftReadingMessage } from "../draft-return-message";
 import {
   appealDraftedMessage,
   appealSuggestedMessage,
@@ -599,6 +600,28 @@ export const taxesSource: MessageSource = {
           ...watch,
           dedupeKey: `irmaa:${retirement.year}`,
           priority: TAX_MESSAGE_PRIORITY.irmaa,
+        });
+      }
+    }
+
+    // Spec step 272: a draft return read and waiting for the person's confirm, and each thing
+    // the check of a confirmed draft found, as a card with its dollars.
+    for (const d of tax.drafts ?? []) {
+      if (d.status === "waiting") {
+        out.push({
+          kind: "decision",
+          ...draftReadingMessage(d),
+          dedupeKey: `draft:${d.id}`,
+          priority: TAX_MESSAGE_PRIORITY.draft,
+        });
+        continue;
+      }
+      for (const f of d.findings) {
+        out.push({
+          kind: "heads_up",
+          ...draftFindingMessage(d, f),
+          dedupeKey: `draft:${d.id}:${f.key}`,
+          priority: TAX_MESSAGE_PRIORITY.draft,
         });
       }
     }

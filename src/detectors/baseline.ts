@@ -48,6 +48,7 @@ export const BASELINE: Readonly<Record<PersonId, readonly string[]>> = {
     "duplicate_subscription",
     "education_529",
     "emergency_fund",
+    "family_credit",
     "fsa_deadline",
     "household_setup",
     "insurance_claim",
