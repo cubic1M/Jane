@@ -4,6 +4,7 @@ import { formatCents } from "@/lib/money";
 import type { ProfileInput } from "@/profile/build";
 import { computeNeeds } from "@/lib/insurance/need/calculators";
 import { needInputFromProfile } from "@/lib/insurance/need/from-profile";
+import { HEALTH_YEAR_DETECTORS } from "./health-year";
 import { type Detector, suggestionId } from "./contract";
 import type { Confidence } from "./contract";
 import { evidence, factEvidence, nice, outCents, tx, headlineOf } from "./helpers";
@@ -596,4 +597,5 @@ export const INSURANCE_DETECTORS: readonly Detector[] = [
   cardCover,
   employerBenefits,
   policyDocuments,
+  ...HEALTH_YEAR_DETECTORS,
 ];

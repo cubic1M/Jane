@@ -40,7 +40,8 @@ describe("on the eight sample people", () => {
     // card limit in use, and six Klarna installments.
     expect(by.renter).toEqual(["balance_transfer", "bnpl", "credit_building"]);
     // A GAP add-on bought with the car loan, and a teacher's $62,000 student loan.
-    expect(by.family).toEqual(["car_addons", "student_forgiveness"]);
+    // Also the Reyes' $2,100 imaging bill (the insurance lane's sample data).
+    expect(by.family).toEqual(["car_addons", "medical_bills", "student_forgiveness"]);
     // A $450 student loan payment against $4,538 a month of income.
     expect(by.freelancer).toEqual(["student_repayment"]);
     // 6.9% on $910,000 with $106,000 of cash: pay down or compare.
