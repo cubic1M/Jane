@@ -412,6 +412,8 @@ export const TAX_MESSAGE_PRIORITY = {
   ptc: 72,
   hsa_excess: 62,
   medical: 40,
+  // Spec step 270: deadlines a disaster postponement moves.
+  disaster: 80,
   year_end: 55,
   exemption: 30,
 } as const;
@@ -507,6 +509,11 @@ export const TAX_AUTOPILOT: readonly { feature: string; ask: string; auto: strin
     feature: "health",
     ask: "If you buy a Marketplace plan I check its credit against your real income every month and warn you as soon as a rise would make you pay some back. I watch your HSA deposits against the limit before you file, and tell you when a year of medical bills is worth itemizing. Telling the Marketplace or your HSA provider is yours.",
     auto: "I keep checking your income against the Marketplace credit, your HSA against its limit and your medical costs against the 7.5% floor, and bring each up with the numbers as soon as it matters. I contact no one: telling the Marketplace or your HSA provider is yours.",
+  },
+  {
+    feature: "disaster",
+    ask: "When the IRS postpones tax deadlines for a disaster in your county, I tell you the new date and move the tax deadlines on your list when you tap. Repairs since, less what insurance and FEMA paid back, I work out as a casualty loss and keep with your insurance claim, once.",
+    auto: "When the IRS postpones tax deadlines for a disaster in your county, I move the tax deadlines on your list to the new date by myself and tell you. I work out the casualty loss after insurance and keep it with your claim when you tap. I file nothing.",
   },
   {
     feature: "identity",

@@ -17,7 +17,9 @@ import {
   UNEVEN_DEPOSITS_MIN,
   TROUBLE_DEBT_MONTHS,
 } from "@/config/profile";
+import type { Relief } from "@/config/disasters";
 import type { NeedPolicy } from "@/lib/insurance/need/types";
+import { countyFromPayments, countyOf } from "@/planning/disasters";
 import { confidenceOf, evidenceText, type Source } from "./confidence";
 import { FACT_SPECS, type FactKey, factSpec } from "./facts";
 
@@ -106,6 +108,9 @@ export type ProfileInput = {
     // What doesn't add up in the person's data (spec step 238), from the daily books check.
     // Absent: not loaded.
     books?: readonly { kind: string; words: string; accountId: string | null }[];
+    // Disaster relief declarations from the person's feed (spec step 270): the stand-in's
+    // samples for demo-bank people, none for anyone else. Absent: not loaded.
+    disasterRelief?: readonly Relief[];
     // The value of what they own (a home, cars), added to their net worth for the umbrella.
     ownedValueCents?: number;
     // The person already has a practice portfolio (step 296). Absent: not loaded.
@@ -369,6 +374,17 @@ export function buildProfile(input: ProfileInput): Profile {
     accounts.filter((a) => a.subtype === "401k").length,
   );
   set("has_hsa", has("hsa"), "seen", "HSAs", accounts.filter((a) => a.subtype === "hsa").length);
+  // Spec step 270: the county, as the property tax payee names it ("HARRIS COUNTY TAX ...").
+  const county = countyFromPayments(txs);
+  if (county)
+    set(
+      "county",
+      county,
+      "seen",
+      "property tax payments naming it",
+      count((t) => t.amountCents > 0 && countyOf(t.description) === county),
+    );
+  else unknown("county");
   set(
     "has_stock_plan",
     has("stock plan"),

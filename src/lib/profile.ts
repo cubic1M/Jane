@@ -182,7 +182,7 @@ async function sectorFigures(userId: string, client: PrismaClient, now: Date) {
     (await db.equityEvents.count()) > 0;
   // Spec step 296: whether the practice-portfolio suggestion still applies.
   const practice = await db.practicePortfolios.count();
-  const [matchPace, equity, subscriptions, cardInterest, shopSaving, policies, owned, books] =
+  const [matchPace, equity, subscriptions, cardInterest, shopSaving, policies, owned, feed, books] =
     await Promise.all([
       loadMatchPace(userId, { client, now }),
       hasStock
@@ -193,6 +193,7 @@ async function sectorFigures(userId: string, client: PrismaClient, now: Date) {
       import("@/lib/insurance/shop").then((m) => m.openShopSavingCents(userId, { client, now })),
       import("@/lib/insurance/policies").then((m) => m.listPolicies(userId, { client })),
       db.ownedAssets.findMany({ select: { valueCents: true } }),
+      import("@/lib/disaster-feed").then((m) => m.disasterFeedFor(userId, { client })),
       // Spec step 238: what the daily books check left open.
       import("@/lib/books").then((m) => m.openBooks(userId, { client })),
     ]);
@@ -214,6 +215,8 @@ async function sectorFigures(userId: string, client: PrismaClient, now: Date) {
         deductibleCents: p.deductibleCents,
         coverage: p.coverage,
       })),
+    // Spec step 270: the disaster relief declared where they might live (none without a feed).
+    disasterRelief: feed ? await feed.declarations() : [],
     hasPracticePortfolio: practice > 0,
   };
 }

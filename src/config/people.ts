@@ -108,6 +108,7 @@ export const SUGGESTION_TOPICS = [
   "ptc_repayment",
   "hsa_over_limit",
   "medical_deduction",
+  "disaster_relief",
 ] as const;
 export type SuggestionTopic = (typeof SUGGESTION_TOPICS)[number];
 
@@ -259,6 +260,7 @@ export const PEOPLE: readonly Person[] = [
       "disability_insurance",
       // Spec step 238: their joint savings is linked twice.
       "data_problems",
+      "disaster_relief",
       "practice_portfolio",
     ],
     mustNot: [

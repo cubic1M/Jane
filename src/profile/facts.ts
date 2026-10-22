@@ -36,6 +36,7 @@ export const FACT_SPECS = [
   F("household", "Your household", "choice", { choices: ["single", "couple", "family"] }),
   F("has_children", "You have children at home", "boolean"),
   F("housing", "Where you live", "choice", { choices: ["own", "rent", "unknown"] }),
+  F("county", "The county you live in", "text"),
   F("mortgage_rate_bps", "Your mortgage rate (in basis points)", "number", { correctable: false }),
   F("has_pmi", "Your mortgage includes PMI", "boolean", { correctable: false }),
   F("has_car", "You have a car", "boolean"),

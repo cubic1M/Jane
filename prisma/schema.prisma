@@ -339,6 +339,7 @@ model User {
   insuranceShops         InsuranceShop[]
   insuranceCheckups      InsuranceCheckup[]
   insuranceClaims        InsuranceClaim[]
+  disasterLosses         DisasterLoss[]
   employerBenefits       EmployerBenefit[]
   policyReadings         PolicyReading[]
   lifeApplications       LifeApplication[]
@@ -2213,11 +2214,36 @@ model InsuranceClaim {
   createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt     DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
 
-  user   User             @relation(fields: [userId], references: [id], onDelete: Cascade)
-  policy InsurancePolicy? @relation(fields: [policyId], references: [id], onDelete: SetNull)
+  user           User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  policy         InsurancePolicy? @relation(fields: [policyId], references: [id], onDelete: SetNull)
+  // Spec step 270: the disaster loss kept with this claim.
+  disasterLosses DisasterLoss[]
 
   @@index([userId, status])
   @@map("insurance_claims")
+}
+
+// A loss from a declared disaster, kept with its insurance claim (spec step 270): what the
+// repairs cost, what insurance paid back, and the part that is deductible, for one disaster and
+// one claim. The key ("<relief id>:<claim id or none>") is unique per person, so the same loss
+// is never recorded, or counted, twice.
+model DisasterLoss {
+  id              String   @id @default(cuid())
+  userId          String   @map("user_id")
+  key             String
+  reliefId        String   @map("relief_id")
+  claimId         String?  @map("claim_id")
+  taxYear         Int      @map("tax_year")
+  lossCents       Int      @map("loss_cents")
+  reimbursedCents Int      @map("reimbursed_cents")
+  deductibleCents Int      @map("deductible_cents")
+  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  user  User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  claim InsuranceClaim? @relation(fields: [claimId], references: [id], onDelete: SetNull)
+
+  @@unique([userId, key])
+  @@map("disaster_losses")
 }
 
 // A benefit through work (spec step 150), found from a pay-stub deduction (or answered in
@@ -2690,6 +2716,8 @@ model TaxProfile {
   ownerVeteran          Boolean?  @map("owner_veteran")
   ownerDisabled         Boolean?  @map("owner_disabled")
   exemptionsClaimed     String[]  @default([]) @map("exemptions_claimed")
+  // Spec step 270: the disaster postponements (relief ids) already applied to their deadlines.
+  disasterApplied       String[]  @default([]) @map("disaster_applied")
   createdAt             DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt             DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
 
