@@ -95,6 +95,8 @@ export type ProfileInput = {
     insuranceShopSavingCents?: number;
     // The policies they have, for the cover-need gaps (spec step 277). Absent: not loaded.
     coverPolicies?: readonly NeedPolicy[];
+    // The value of what they own (a home, cars), added to their net worth for the umbrella.
+    ownedValueCents?: number;
     rsuGap?: {
       vestedCents: number;
       shortfallCents: number;

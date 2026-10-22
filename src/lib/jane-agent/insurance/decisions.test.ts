@@ -219,3 +219,59 @@ describe("how much cover do I need, from the same numbers as the detectors (spec
     expect(decide("life_how_much", rich(true), "x").body).toMatch(/who depends on your income/);
   });
 });
+
+describe("chat answers agree with the page's numbers (insurance QA pass)", () => {
+  const base = {
+    yearlyPayCents: 9_600_000,
+    dependants: 0,
+    mortgageCents: 0,
+    otherDebtCents: 0,
+    mortgageYearsLeft: null,
+    savingsCents: 1_000_000,
+    cashCents: 1_000_000,
+    workLifeCoverCents: 0,
+  };
+  const auto = {
+    id: "a1",
+    kind: "auto" as const,
+    status: "active",
+    deductibleCents: 100_000,
+    coverage: { bodilyInjuryPerPerson: 5_000_000, bodilyInjuryPerAccident: 10_000_000 },
+  };
+  const snap = (netWorthCents: number) =>
+    ({
+      ...rich(true),
+      needs: computeNeeds({ ...base, netWorthCents, policies: [auto] }),
+    }) as never;
+
+  it("reads what cover and is my deductible right as decisions", () => {
+    expect(decisionKindOf("what cover do i need")).toBe("what_cover");
+    expect(decisionKindOf("is my deductible right")).toBe("deductible_fit");
+    expect(decisionKindOf("what insurance do i need")).toBeNull();
+  });
+
+  it("lists the open gaps in three sentences or fewer, and links the first", () => {
+    const r = decide("what_cover", snap(1_000_000), "x");
+    expect(r.body).toMatch(/gaps?\./);
+    expect(sentenceCount(r.body)).toBeLessThanOrEqual(5);
+    expect(r.actions.some((a) => a.kind === "link")).toBe(true);
+  });
+
+  it("says whether the deductible fits the cash, from the same need as the page", () => {
+    const r = decide("deductible_fit", snap(1_000_000), "x");
+    expect(r.body).toMatch(/deductible/);
+    expect(r.body).toMatch(/\$[\d,]+\.00/);
+  });
+
+  it("does not call the gross total a reason for an umbrella the page doesn't show", () => {
+    // $529k by balances and values, but net worth after debts is under the line: no umbrella need.
+    const r = decide("umbrella", snap(10_000_000), "x");
+    expect(r.body).toMatch(/^Probably not yet\./);
+    expect(r.body).toContain("after what you owe");
+  });
+
+  it("gives the disability amount from the need when asked if they need it", () => {
+    const r = decide("disability", snap(1_000_000), "x");
+    expect(r.body).toContain("$4,800.00 a month");
+  });
+});
