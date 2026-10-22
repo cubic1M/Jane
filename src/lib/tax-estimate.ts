@@ -38,7 +38,7 @@ import {
 } from "@/planning/tax-income";
 import { defaultTaxYear } from "@/planning/tax-pack";
 import { dayLabel } from "@/lib/day-label";
-import { stateName, type ProfileField } from "@/planning/tax-profile";
+import { guessFilingStatus, stateName, type ProfileField } from "@/planning/tax-profile";
 
 // The tax estimate (spec step 120), loaded from the person's own accounts, pay stubs and
 // tax profile: what they'll owe or get back for the year, federal and state. Worked out
@@ -102,6 +102,9 @@ export async function loadTaxEstimate(
     // Spec step 121: last year's refund, as it arrived this year.
     "INCOME_TAX_REFUND",
   ];
+  const jointAccounts = await db.accounts.count({
+    where: { name: { contains: "joint", mode: "insensitive" } },
+  });
   const [
     { view, profile },
     demo,
@@ -331,9 +334,20 @@ export async function loadTaxEstimate(
     return elapsed > 0 && elapsed < 1 ? Math.round(ytd / elapsed) : ytd;
   };
 
-  const filingStatus: FilingStatus = profile.filingStatus ?? "single";
+  // Taxes QA: a couple's signs (a joint account, two employers) mean married filing jointly.
+  const guessed = profile.filingStatus
+    ? null
+    : guessFilingStatus({
+        jointAccounts,
+        payrollNames: paychecks.map((t) => t.description),
+      });
+  const filingStatus: FilingStatus = profile.filingStatus ?? guessed?.status ?? "single";
   if (!profile.filingStatus) {
-    assumptions.push("You haven't told me how you file, so I've estimated as single.");
+    assumptions.push(
+      guessed
+        ? `You haven't told me how you file. I see ${guessed.why}, so I've estimated as married filing jointly; tell me if that's wrong.`
+        : "You haven't told me how you file, so I've estimated as single.",
+    );
   }
   const state = profile.state ?? view.state.value;
   if (state && view.state.status !== "yours") {
