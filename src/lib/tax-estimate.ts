@@ -1,4 +1,9 @@
 import {
+  IRA_DISTRIBUTION,
+  RETIREMENT_DEPOSIT_WORDS,
+  SOCIAL_SECURITY_PAYEE,
+} from "@/config/retirement-taxes";
+import {
   FILING_STATUSES,
   INCOME_KINDS,
   TAXABLE_INVESTMENT_SUBTYPES,
@@ -297,6 +302,42 @@ export async function loadTaxEstimate(
     paced.selfEmploymentCents > 0
       ? Math.min(homeOfficeDeduction(stored?.homeOfficeSqFt ?? null), paced.selfEmploymentCents)
       : 0;
+  // Taxes QA: Social Security and traditional IRA withdrawals, as they land in the accounts,
+  // projected to the year's end; only Social Security's taxable part counts (the engine).
+  const retirementRows = await db.transactions.findMany({
+    where: {
+      pending: false,
+      amountCents: { lt: 0 },
+      date: { gte: new Date(Date.UTC(year, 0, 1)), lt: new Date(Date.UTC(year + 1, 0, 1)) },
+      OR: RETIREMENT_DEPOSIT_WORDS.map((w) => ({
+        description: { contains: w, mode: "insensitive" as const },
+      })),
+    },
+    select: { amountCents: true, description: true },
+  });
+  const paceYear = (cents: number) =>
+    elapsed > 0 && elapsed < 1 ? Math.round(cents / elapsed) : cents;
+  const benefits = paceYear(
+    retirementRows
+      .filter((t) => SOCIAL_SECURITY_PAYEE.test(t.description))
+      .reduce((s, t) => s - t.amountCents, 0),
+  );
+  const iraDraws = paceYear(
+    retirementRows
+      .filter((t) => IRA_DISTRIBUTION.test(t.description))
+      .reduce((s, t) => s - t.amountCents, 0),
+  );
+  paced.retirementCents += iraDraws;
+  if (benefits > 0) {
+    assumptions.push(
+      `Your Social Security comes to about ${formatCents(benefits)} this year; only the part your other income makes taxable is counted.`,
+    );
+  }
+  if (iraDraws > 0) {
+    assumptions.push(
+      `Withdrawals from your IRA (about ${formatCents(iraDraws)} this year) are taxed as income.`,
+    );
+  }
   const other = { ...paced, selfEmploymentCents: paced.selfEmploymentCents - homeOffice };
   const seen = taxPaymentsFor(rows, year);
   const typed = enteredTaxPayments(stored?.taxPayments, year);
@@ -349,6 +390,7 @@ export async function loadTaxEstimate(
     income: {
       ...other,
       otherCents: hobbyIncome,
+      socialSecurityBenefitsCents: benefits,
       wagesCents: wagesProjected + equity.ordinaryCents,
       socialSecurityWagesCents:
         pay.source === "none" ? wagesProjected : pay.projected.socialSecurityWagesCents,

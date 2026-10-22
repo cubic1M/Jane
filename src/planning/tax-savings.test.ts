@@ -163,3 +163,18 @@ describe("findTaxSavings", () => {
     expect(m.refs).toMatchObject({ advice: true, taxSaving: "itemize", taxYear: 2026 });
   });
 });
+
+describe("FSAs need a job (taxes QA)", () => {
+  it("never suggests a health or dependent care FSA without wages", () => {
+    const retired = input({
+      income: { ...NO_INCOME, retirementCents: $(40_000) },
+      childrenUnder17: 1,
+    });
+    const keys = savings(retired, { medicalCents: $(27_000), childcareCents: $(5_000) }).map(
+      (s) => s.key,
+    );
+    expect(keys).not.toContain("health_fsa");
+    expect(keys).not.toContain("dependent_care");
+    expect(savings(input(), { medicalCents: $(3_000) }).map((s) => s.key)).toContain("health_fsa");
+  });
+});
