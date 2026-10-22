@@ -1675,6 +1675,18 @@ const BASE_QUESTIONS: readonly CheckQuestion[] = [
     expect: { intent: "tax", mentions: /step-up|new cost basis|10 years/, list: true },
   },
   {
+    id: "tax-34",
+    text: "do I have to pay back my marketplace subsidy",
+    needs: "rules",
+    expect: { intent: "tax", mentions: /Marketplace credit/, list: true },
+  },
+  {
+    id: "tax-35",
+    text: "did I put too much in my HSA",
+    needs: "rules",
+    expect: { intent: "tax", mentions: /HSA|7\.5%/, list: true },
+  },
+  {
     id: "ins-1",
     text: "what insurance do I have",
     needs: "rules",

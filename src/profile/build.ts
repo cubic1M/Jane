@@ -402,6 +402,8 @@ export function buildProfile(input: ProfileInput): Profile {
     "hardship_reason",
     "inherited_ira_death_year",
     "inherited_from_spouse",
+    "marketplace_aptc_monthly",
+    "marketplace_benchmark_monthly",
   ] as const) {
     if (told[key] === undefined) unknown(key);
     else set(key, told[key], "told", "answers", 0);

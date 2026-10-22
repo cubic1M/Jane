@@ -238,3 +238,18 @@ detector suggestion; the tool is covered by `inherited_ira`. An inherited IRA is
 money to convert to a Roth. Rules, limits and states with their own death taxes are in
 `src/config/inheritance.ts` with sources; the chat gives facts and points to a tax professional or
 estate lawyer.
+
+### Step 269: health cover and taxes
+
+| Topic | Trigger signals | Value | Confidence drivers | Urgency | Fires for | Should not |
+|---|---|---|---|---|---|---|
+| `ptc_repayment` (covers `tax_health`) | 3+ Marketplace premiums this year (payee names in `src/config/health-taxes.ts`); income read month by month (profit for the self-employed), projected at the pace of the last 3 months | the advance credit that would come back with the return: the advance (told, or what the income of the year's first 3 months allowed) less the credit at the projected income; all of it over 400% of the poverty line; no cap from 2026 | income pattern and income as seen; 50% when the advance is worked out, 75% when told | later; soon from July; now from October | Sam (a retainer client since July puts him over 400%) | anyone without a Marketplace plan; steady income |
+| `hsa_over_limit` (covers `tax_health`) | has an HSA; deposits into it this year (or out to one by name when none is linked), projected to December | the 6% excise a year on what's over (the tax on it isn't avoidable, so not counted) | the HSA fact; deposits seen; capped at 70% (cover taken from the household, an employer's deposits unseen) | now when already over, soon when the pace will be | Priya ($500 a month against the $4,400 self-only limit) | no HSA; under the limit; the catch-up from 55 counted |
+| `medical_deduction` (covers `tax_health`) | medical payments this year (not the vet) and health premiums (Medicare, supplement, drug plan, Marketplace) | what itemizing with the medical costs over 7.5% of income saves against the standard deduction (with the 65+ addition) at the person's bracket; property tax and gifts counted with it | income as seen; payments seen; capped at 60% (insurance may still pay some, income estimated) | later; soon from November | Ruth (dental implants and hearing aids this year) | anyone whose costs stay under the floor or whose standard deduction is still bigger |
+
+The three share one reading (`src/planning/health-taxes-read.ts`), used by the detectors, the chat's
+messages and answer, the `tax_health` tool and `/taxes/health`, so the figures match. The
+Marketplace figures (poverty line, the 2026 applicable percentage table, the 400% line, the end of
+the repayment cap) are in `src/config/health-taxes.ts` with sources; the HSA limits, the 7.5% floor
+and the 65+ standard deduction are in `src/config/tax-rates.ts`. Telling the Marketplace or an HSA
+provider is the person's: Jane contacts no one. What to do about the credit is demo advice.

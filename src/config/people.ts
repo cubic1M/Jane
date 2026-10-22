@@ -103,6 +103,9 @@ export const SUGGESTION_TOPICS = [
   "home_office_deduction",
   "vehicle_deduction",
   "inherited_ira",
+  "ptc_repayment",
+  "hsa_over_limit",
+  "medical_deduction",
 ] as const;
 export type SuggestionTopic = (typeof SUGGESTION_TOPICS)[number];
 
@@ -208,6 +211,9 @@ export const PEOPLE: readonly Person[] = [
       "sudden_money",
       "household_setup",
       "life_checklist",
+      "ptc_repayment",
+      "hsa_over_limit",
+      "medical_deduction",
     ],
     firstQuestion: "employer_match",
   },
@@ -269,6 +275,7 @@ export const PEOPLE: readonly Person[] = [
       "home_office_deduction",
       "vehicle_deduction",
       "inherited_ira",
+      "ptc_repayment",
     ],
     firstQuestion: "employer_match",
   },
@@ -298,6 +305,7 @@ export const PEOPLE: readonly Person[] = [
       "vehicle_deduction",
 
       "disability_insurance",
+      "ptc_repayment",
       "practice_portfolio",
     ],
     mustNot: [
@@ -360,6 +368,7 @@ export const PEOPLE: readonly Person[] = [
       "sudden_money",
 
       "deductible_fit",
+      "hsa_over_limit",
     ],
     mustNot: [
       "beneficiaries",
@@ -379,6 +388,7 @@ export const PEOPLE: readonly Person[] = [
       "inherited_ira",
       "household_setup",
       "life_checklist",
+      "ptc_repayment",
     ],
     firstQuestion: "employer_match",
   },
@@ -432,6 +442,7 @@ export const PEOPLE: readonly Person[] = [
       "home_office_deduction",
       "vehicle_deduction",
       "life_checklist",
+      "ptc_repayment",
     ],
     firstQuestion: "age_band",
   },
@@ -460,6 +471,7 @@ export const PEOPLE: readonly Person[] = [
       "property_tax_check",
       "charity_receipts",
       "medical_bills",
+      "medical_deduction",
       "short_term_cash",
     ],
     mustNot: [
@@ -497,6 +509,8 @@ export const PEOPLE: readonly Person[] = [
       "life_checklist",
 
       "disability_insurance",
+      "ptc_repayment",
+      "hsa_over_limit",
       "practice_portfolio",
     ],
     firstQuestion: "age_band",
@@ -561,6 +575,9 @@ export const PEOPLE: readonly Person[] = [
       "sudden_money",
       "household_setup",
       "life_checklist",
+      "ptc_repayment",
+      "hsa_over_limit",
+      "medical_deduction",
       "practice_portfolio",
     ],
     firstQuestion: "hardship_reason",
