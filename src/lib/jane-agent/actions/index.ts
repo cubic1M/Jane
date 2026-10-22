@@ -95,6 +95,8 @@ import {
   taxIpPinHave,
   taxIpPinRemind,
 } from "./tax-identity";
+import { taxDisasterLoss, taxDisasterMove } from "./tax-disaster";
+import { taxDraftConfirm, taxDraftDismiss } from "./tax-draft";
 import { taxEquityAside } from "./tax-equity";
 import { taxYearsPlan } from "./tax-years";
 import { taxAccountantSeen } from "./tax-accountant";
@@ -336,6 +338,10 @@ export const ACTION_HANDLERS: Readonly<Record<ActionId, ActionHandler>> = {
   "tax.notice_team": taxNoticeTeam,
   "tax.notice_mine": taxNoticeMine,
   "tax.ippin_remind": taxIpPinRemind,
+  "tax.disaster_move": taxDisasterMove,
+  "tax.disaster_loss": taxDisasterLoss,
+  "tax.draft_confirm": taxDraftConfirm,
+  "tax.draft_dismiss": taxDraftDismiss,
   "tax.ippin_have": taxIpPinHave,
   "tax.identity_open": taxIdentityOpen,
   "tax.identity_not": taxIdentityNot,

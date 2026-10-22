@@ -13,7 +13,6 @@ export const GOAL_TRANSFER_DAYS = 30;
 export const GOAL_TRANSFER_CATEGORIES: readonly string[] = ["TRANSFER_OUT_SAVINGS"];
 export const GOAL_TRANSFER_MIN_CENTS = 1_000;
 
-// The weekly review covers this many days, and is posted on the last day of the person's
-// week (Sunday), from this hour in their timezone.
+// The weekly review ("how was my week?", and the Monday brief's "Last week" line) covers
+// this many days.
 export const REVIEW_DAYS = 7;
-export const REVIEW_FROM_HOUR = 17;

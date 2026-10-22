@@ -52,7 +52,8 @@ describe("cover gap detectors", () => {
     expect(s.worthCents).toBe(LIABILITY_WORTH_CAP_CENTS);
     expect(s.why).toContain("$100,000.00 per person and $300,000.00 per accident");
     const [d] = firedFor("freelancer", "disability_insurance");
-    expect(d.why).toMatch(/\$2,722\.69 a month/);
+    // Sam's income includes the retainer client he landed in July (step 269).
+    expect(d.why).toMatch(/\$3,422\.68 a month/);
   });
 
   it("states a typical saving, not a quote, and caps its confidence", () => {

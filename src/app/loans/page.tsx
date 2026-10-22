@@ -419,6 +419,27 @@ async function LoansContent({
             .
           </p>
           <p className="text-sm text-zinc-600 dark:text-zinc-400">
+            Helping someone with credit, or asked to co-sign?{" "}
+            <Link href="/loans/helping" className={LINK}>
+              See what it does to both of you
+            </Link>
+            .
+          </p>
+          <p className="text-sm text-zinc-600 dark:text-zinc-400">
+            Paying rent?{" "}
+            <Link href="/loans/renting" className={LINK}>
+              Build credit with it and track your deposit
+            </Link>
+            .
+          </p>
+          <p className="text-sm text-zinc-600 dark:text-zinc-400">
+            Payday loans, cash advances or overdrafts?{" "}
+            <Link href="/loans/costly" className={LINK}>
+              See what they cost and the way out
+            </Link>
+            .
+          </p>
+          <p className="text-sm text-zinc-600 dark:text-zinc-400">
             Extra money for the mortgage?{" "}
             <Link href="/loans/recast" className={LINK}>
               Recast, refinance or pay extra

@@ -167,6 +167,14 @@ const rows: Row[] = [
   ["longview", "/long-view", "long_view", "what will my net worth be in 20 years"],
   ["longview", "/long-view", "long_view", "how much will i have when i retire"],
 
+  // Every figure explained (spec step 239).
+  ["figures", "/figures/safe_to_spend", "explain_figure", "how did you get my safe to spend"],
+  ["figures", "/figures/monthly_spending", "explain_figure", "how did you work out my spending"],
+  ["figures", "/figures/net_worth", "explain_figure", "show me the working for my net worth"],
+  // Books that balance (spec step 238).
+  ["books", "/net-worth", "books_check", "are my numbers right"],
+  ["books", "/net-worth", "books_check", "do my books balance"],
+  ["books", "/net-worth", "books_check", "any problems with my accounts"],
   // The picture of you (spec step 253).
   ["profile", "/profile", "my_profile", "what do you know about me"],
   ["profile", "/profile", "my_profile", "show me my profile"],
@@ -553,6 +561,22 @@ const rows: Row[] = [
   ["debt", "/loans/equity", "home_equity", "when does my pmi end by itself"],
   ["debt", "/loans/equity", "home_equity", "is my escrow too high"],
   ["debt", "/loans/equity", "home_equity", "heloc or cash-out refinance for a $40,000 kitchen"],
+  [
+    "debt",
+    "/loans/costly",
+    "costly_borrowing",
+    "how much have payday loans and cash advances cost me",
+  ],
+  ["debt", "/loans/costly", "costly_borrowing", "i keep overdrafting every month"],
+  ["debt", "/loans/renting", "renting", "can my rent help my credit score"],
+  ["debt", "/loans/renting", "renting", "my rent went up again"],
+  [
+    "debt",
+    "/loans/helping",
+    "family_credit",
+    "what happens to my credit if my brother misses a cosigned payment",
+  ],
+  ["debt", "/loans/helping", "family_credit", "first credit card for my college student"],
   ["loans", "/loans/recast", "mortgage_money", "i have $20,000, should i recast my mortgage"],
   ["loans", "/loans/recast", "mortgage_money", "pay down my mortgage or invest $500 a month"],
   ["loans", "/loans/auto", "car_loan", "can i cancel the extended warranty on my car loan"],

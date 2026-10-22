@@ -25,6 +25,11 @@ export type AuditEvent =
   | "debt_review_done"
   | "car_addon_confirmed"
   | "car_addon_cancel_requested"
+  // Spec step 248: rent reporting turned on or off, a security deposit saved or returned.
+  | "rent_reporting_changed"
+  | "security_deposit_saved"
+  // Spec step 249: credit given or got through someone close, recorded or removed.
+  | "family_credit_changed"
   | "home_request_sent"
   | "user_signed_up"
   // Insurance (spec Phase X): a policy saved or removed, the household facts saved.
@@ -103,6 +108,8 @@ export type AuditEvent =
   | "what_if_adopted"
   // The lean plan switched on or off (spec step 204).
   | "lean_plan_started"
+  // The same account linked twice, merged after both sides were proven to match (spec step 238).
+  | "books_merged"
   // A finished action whose saving never showed up (spec step 207).
   | "saving_marked_not_shown"
   // Unusual activity answered: this was me, or not me (spec step 208).
@@ -149,6 +156,10 @@ export type AuditEvent =
   // Spec step 222: a read-only link for an accountant made, viewed, answered on and revoked.
   // Spec step 223: an estimated tax payment made through the stand-in.
   | "tax_payment_made"
+  // Spec step 270: tax deadlines moved by a disaster postponement, and a disaster loss recorded
+  // with its insurance claim.
+  | "tax_deadlines_postponed"
+  | "disaster_loss_recorded"
   | "accountant_link_created"
   | "accountant_link_viewed"
   | "accountant_link_answered"
