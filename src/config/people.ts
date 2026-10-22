@@ -92,6 +92,8 @@ export const SUGGESTION_TOPICS = [
   "property_tax_check",
   "tax_loss_harvest",
   "file_return",
+  // Spec step 242: how a couple splits shared bills.
+  "bill_split",
 ] as const;
 export type SuggestionTopic = (typeof SUGGESTION_TOPICS)[number];
 
@@ -363,6 +365,8 @@ export const PEOPLE: readonly Person[] = [
       "property_tax_check",
       "charity_receipts",
       "household_setup",
+      // Spec step 242: Dan earns about twice what Lena does.
+      "bill_split",
     ],
     mustNot: [
       "education_529",

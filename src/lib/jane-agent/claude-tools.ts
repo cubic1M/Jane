@@ -20,6 +20,7 @@ import { CARD_SELECT, buildCard } from "@/lib/cards";
 import { comparisonFor } from "@/lib/compare";
 import { frequencyWords } from "@/lib/explain-input";
 import { loadSteady } from "@/lib/steady-pay";
+import { loadMoneyForTwo } from "@/lib/money-for-two";
 import { FACT_KEYS } from "@/profile/facts";
 import { scopedFor } from "@/lib/db-scoped";
 import { loadChanges } from "@/lib/changes";
@@ -341,6 +342,12 @@ export const CHAT_TOOLS: Anthropic.Tool[] = [
     name: "whole_picture",
     description:
       'How the person is doing across every sector at once (spec step 183), for "am I OK?", "how am I doing" and "what should I do this month": a verdict (ok, watch or act) with its one-sentence headline, safe to spend until payday, bills and deadlines due this week and this month, budgets over, goals behind, urgent alerts, what Jane\'s agent is working on, the steps waiting on the person, and the one to three things that matter most (from the ranked list) with why. Lead with the headline, then the things that matter; use the same figures.',
+    input_schema: noInput,
+  },
+  {
+    name: "money_for_two",
+    description:
+      "Money for two (spec step 242), for a person in a household with a partner: how shared bills split (half each or by income, with the shares; never the partner's income), who owes whom, joint goals and their progress, the amount from which a move out of a shared account needs both partners' taps, and big moves waiting for a tap. Only what either of them shared; never the partner's own accounts. Null when they have no partner in Jane.",
     input_schema: noInput,
   },
   {
@@ -753,6 +760,32 @@ export async function runChatTool(
             }
           : { score: null, why: "No accounts linked yet." },
       );
+    }
+    case "money_for_two": {
+      const view = await loadMoneyForTwo(userId, { client, now });
+      if (!view) return out({ view: null, why: "No partner in their household yet." });
+      return out({
+        partner: view.partnerName,
+        split: view.rule,
+        chosen: view.chosen,
+        yourShare: `${Math.round(view.myShareBps / 100)}%`,
+        yourShareByIncome: `${Math.round(view.incomeMyShareBps / 100)}%`,
+        owedToYou: money(view.owedToMeCents),
+        spentTogetherThisMonth: money(view.sharedSpentCents),
+        bothTapsFrom: money(view.bigMoveCents),
+        jointGoals: view.jointGoals.map((g) => ({
+          name: g.name,
+          saved: money(g.savedCents),
+          target: money(g.targetCents),
+          by: g.targetDate,
+        })),
+        bigMovesWaiting: view.bigMoves.map((m) => ({
+          amount: money(m.amountCents),
+          to: m.toName,
+          on: m.runOn,
+          waitingFor: m.mine ? "your partner" : "you",
+        })),
+      });
     }
     case "steady_pay": {
       const view = await loadSteady(userId, { client, now });

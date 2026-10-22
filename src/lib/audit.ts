@@ -107,6 +107,14 @@ export type AuditEvent =
   | "saving_marked_not_shown"
   // Unusual activity answered: this was me, or not me (spec step 208).
   | "unusual_answered"
+  // Money for two (spec step 242): the household's split rule and big-move amount, a goal made
+  // joint or private, and a big move waiting for, approved or declined by the other partner.
+  | "household_split_set"
+  | "household_big_move_set"
+  | "goal_sharing_changed"
+  | "money_transfer_awaiting_partner"
+  | "big_move_approved"
+  | "big_move_declined"
   | "lean_plan_ended"
   | "plan_link_used"
   | "support_contact_suggested"

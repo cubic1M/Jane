@@ -123,6 +123,8 @@ export type Intent =
   | { kind: "monthly_report" }
   // Spec step 240: "my steady paycheck", "my income is uneven".
   | { kind: "steady_pay" }
+  // Spec step 242: "how should we split the bills?", "our money date".
+  | { kind: "money_for_two" }
   // Spec step 203: "what if I lose my job?"; step 209: "where will I be in 30 years?"
   | WhatIfIntent
   | LongViewIntent
@@ -367,6 +369,8 @@ const HEALTH =
   /\b(?:health score|money health|financial health|financial wellness)\b|\bhow healthy (?:are|is) my (?:money|finances)\b/;
 const MONTHLY_REPORT =
   /\b(?:monthly|money|month'?s) report\b|\bmonth in review\b|\breport (?:for|on) (?:last|this) month\b|\bhow did (?:i|we) do (?:this|last) month\b|\bhow (?:was|did) (?:my|our|last) month\b|\bhow did last month go\b/;
+const TWO =
+  /\bmoney date\b|\bsplit (?:the |our )?(?:bills|rent|costs|expenses)\b|\bsplit (?:by|according to) income\b|\bhow (?:should|do) we split\b|\bjoint goals?\b|\b(?:my|our) partner'?s? (?:tap|approval|ok)\b|\bmoney (?:as a couple|with my partner|for two)\b/;
 const STEADY =
   /\bsteady (?:paycheck|pay|income)\b|\b(?:my|the) (?:income|pay|paychecks?) (?:is|are) (?:uneven|irregular|unpredictable|all over the place)\b|\b(?:uneven|irregular|freelance|variable) income\b|\bpay myself (?:a )?(?:steady|regular)\b/;
 const ONE_THING =
@@ -571,6 +575,7 @@ export function parseIntent(
   const profile = parseProfile(text);
   if (profile) return profile;
   if (STEADY.test(text)) return { kind: "steady_pay" };
+  if (TWO.test(text)) return { kind: "money_for_two" };
   if (NET_WORTH.test(text)) return { kind: "net_worth" };
   if (BALANCE_FORECAST.test(text)) return { kind: "balance_forecast" };
   const budgetFor = BUDGET_FOR.exec(text);

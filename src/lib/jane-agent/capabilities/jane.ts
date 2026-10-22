@@ -32,6 +32,8 @@ import { healthFor } from "@/lib/health-score";
 import { healthReply } from "../replies-health";
 import { loadSteady } from "@/lib/steady-pay";
 import { steadyReply } from "../replies-steady";
+import { loadMoneyForTwo } from "@/lib/money-for-two";
+import { moneyForTwoReply } from "../replies-two";
 import { whatIf } from "@/lib/what-if";
 import { loadLongView } from "@/lib/long-view";
 import { loadProfile } from "@/lib/profile";
@@ -118,6 +120,9 @@ async function answer(ctx: CapabilityContext): Promise<Reply | null> {
     // Spec step 240.
     case "steady_pay":
       return steadyReply(await loadSteady(userId, { client, now }));
+    // Spec step 242.
+    case "money_for_two":
+      return moneyForTwoReply(await loadMoneyForTwo(userId, { client, now }));
     case "health":
       return healthReply(await healthFor(userId, { client, now }));
     case "checked":

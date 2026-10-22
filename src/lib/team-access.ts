@@ -146,6 +146,12 @@ export const TEAM_ACCESS_RULES: Record<AuditEvent, EventRule> = {
   lean_plan_started: own,
   saving_marked_not_shown: own,
   unusual_answered: own,
+  household_split_set: own,
+  household_big_move_set: own,
+  goal_sharing_changed: own,
+  money_transfer_awaiting_partner: own,
+  big_move_approved: own,
+  big_move_declined: own,
   lean_plan_ended: own,
   plan_link_used: own,
   // Found on the company's own website; about a company, not a person.

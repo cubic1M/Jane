@@ -95,6 +95,8 @@ export type ProfileInput = {
     insuranceShopSavingCents?: number;
     // The policies they have, for the cover-need gaps (spec step 277). Absent: not loaded.
     coverPolicies?: readonly NeedPolicy[];
+    // Whether the household chose how shared bills split (spec step 242). Absent: not loaded.
+    splitChosen?: boolean;
     rsuGap?: {
       vestedCents: number;
       shortfallCents: number;

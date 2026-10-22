@@ -130,6 +130,14 @@ export const CAPABILITIES: readonly Capability[] = [
     tools: ["steady_pay"],
     answer: janeAnswer,
   },
+  // Spec step 242: money for two.
+  {
+    id: "two",
+    bank: ["two"],
+    kinds: ["money_for_two"],
+    tools: ["money_for_two"],
+    answer: janeAnswer,
+  },
   {
     id: "did",
     bank: ["timeline", "settings"],

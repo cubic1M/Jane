@@ -9,6 +9,7 @@ import { INVESTING_DETECTORS } from "./investing";
 import { MONEY_DETECTORS } from "./money";
 import { SPENDING_DETECTORS } from "./spending";
 import { TAX_DETECTORS } from "./taxes";
+import { TWO_DETECTORS } from "./two";
 import { WORK_DETECTORS } from "./work";
 import type { Detector, DetectorContext, Suggestion } from "./contract";
 
@@ -29,6 +30,7 @@ export const DETECTORS: readonly Detector[] = [
   ...TAX_DETECTORS,
   ...INVESTING_DETECTORS,
   ...HOLDINGS_DETECTORS,
+  ...TWO_DETECTORS,
 ];
 
 export const detectorsFor = (capability: string) =>
