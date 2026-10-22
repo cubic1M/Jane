@@ -39,6 +39,7 @@ import { loadInheritance } from "@/lib/inheritance";
 import { loadHealthTaxes } from "@/lib/health-taxes";
 import { loadDisasterRelief } from "@/lib/disasters";
 import { loadRetirementTaxes } from "@/lib/retirement-taxes";
+import { listDraftReturns } from "@/lib/draft-return";
 import { DECISION_TOPICS } from "@/config/tax-decisions";
 import { decideTax } from "@/lib/tax-decisions";
 import { loadTaxCalendar } from "@/lib/tax-calendar";
@@ -242,6 +243,12 @@ export const TAX_TOOLS: Anthropic.Tool[] = [
     name: "tax_retirement",
     description:
       "Taxes on the person's retirement income: their Social Security for a year (from its deposits), other income (pension, IRA withdrawals, wages), provisional income and how much of the benefit is taxable (0, up to 50% or up to 85%), the tax on it that nothing withholds unless they file Form W-4V, and the rate on their next IRA dollar once Social Security's taxable part growing with it is counted; Medicare's income surcharge (IRMAA): this year's income sets the premiums two years ahead, the tier, the next line (estimated past the published years) and the room to it, and what crossing it adds a year; and, in demo advice mode, the order to draw from accounts tuned to stay under the line (pre-tax up to a cap, then taxable, then Roth), which the retirement paycheck uses. Jane moves no money and changes no withholding.",
+    input_schema: noInput,
+  },
+  {
+    name: "tax_draft_check",
+    description:
+      "The person's draft tax returns (uploaded to Documents as a draft before filing): what Jane read off each (line by line, waiting for the person to confirm, or confirmed), and for a confirmed draft what her check against their collected forms, accounts and estimate found: income missing (interest, dividends, capital gains, business income, wages lower than the W-2), deductions or credits left out (student loan interest, itemizing, education and care credits, estimated payments), figures that don't match the forms (withholding), each with its line and the federal tax it changes (more tax owed, or money back). Jane never files or changes the draft.",
     input_schema: noInput,
   },
   {
@@ -850,6 +857,30 @@ export async function runTaxTool(
             : null,
         homeOffice: { sqft: v.homeOffice.sqft, deduction: money(v.homeOffice.deductionCents) },
         businessMiles: { miles: v.mileage.miles, deduction: money(v.mileage.deductionCents) },
+      });
+    }
+    case "tax_draft_check": {
+      const drafts = (await listDraftReturns(userId, { client })).filter(
+        (d) => d.status !== "dismissed",
+      );
+      return out({
+        drafts: drafts.map((d) => ({
+          file: d.fileName,
+          year: d.year,
+          status:
+            d.status === "waiting" ? "read, waiting for you to confirm" : "confirmed and checked",
+          read: d.fields,
+          findings: d.findings.map((f) => ({
+            what: f.title,
+            line: f.line,
+            onTheDraft: money(f.draftCents),
+            whatJaneKnows: money(f.knownCents),
+            effect: f.effect === "saves" ? "money back" : "more tax owed",
+            dollars: money(f.dollarsCents),
+            why: f.why,
+          })),
+        })),
+        janeFiles: false,
       });
     }
     case "tax_retirement": {

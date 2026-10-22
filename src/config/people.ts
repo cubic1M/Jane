@@ -119,6 +119,7 @@ export const SUGGESTION_TOPICS = [
   "disaster_relief",
   "social_security_tax",
   "irmaa_watch",
+  "draft_return_check",
 ] as const;
 export type SuggestionTopic = (typeof SUGGESTION_TOPICS)[number];
 
