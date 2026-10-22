@@ -1,14 +1,25 @@
 // The daily scan of each practice portfolio (spec step 292, Phase AW, Stage A). Practice money
 // and the sample market only: every number here is demo advice, FOR REVIEW before Stage B.
 // The scan's rules are in src/planning/practice-scan.ts; nothing there has a number of its own.
+// The kinds added after step 292 (./practice-opportunities.ts) are spread into each table here.
 
-export type ScanKind = "drift_rebalance" | "dip_buy" | "tax_loss_harvest" | "news_idea";
+import {
+  OPPORTUNITY_CAPS,
+  OPPORTUNITY_CONFIDENCE,
+  OPPORTUNITY_KINDS,
+  OPPORTUNITY_LABELS,
+  type OpportunityKind,
+} from "./practice-opportunities";
+
+export type ScanKind =
+  "drift_rebalance" | "dip_buy" | "tax_loss_harvest" | "news_idea" | OpportunityKind;
 
 export const SCAN_KINDS: readonly ScanKind[] = [
   "drift_rebalance",
   "dip_buy",
   "tax_loss_harvest",
   "news_idea",
+  ...OPPORTUNITY_KINDS,
 ];
 
 // What each flag is called on a card and in the log.
@@ -17,6 +28,7 @@ export const SCAN_LABELS: Readonly<Record<ScanKind, string>> = {
   dip_buy: "Buy a dip, within the plan",
   tax_loss_harvest: "Harvest a loss",
   news_idea: "An idea from the news",
+  ...OPPORTUNITY_LABELS,
 };
 
 // Per flag: the most one action may be, as a share of the portfolio's value (the size cap);
@@ -30,6 +42,7 @@ export const SCAN_CAPS: Readonly<
   dip_buy: { sizeShare: 0.05, positionShare: 0.8, perMonth: 2 },
   tax_loss_harvest: { sizeShare: 0.7, positionShare: 0.8, perMonth: 2 },
   news_idea: { sizeShare: 0.01, positionShare: 0.03, perMonth: 2 },
+  ...OPPORTUNITY_CAPS,
 };
 
 // Drift: the share in stocks (US and international together) this many points off its target
@@ -82,4 +95,5 @@ export const SCAN_CONFIDENCE: Readonly<Record<ScanKind, { percent: number; reaso
     percent: 35,
     reason: "One headline is thin evidence, so the position is kept small.",
   },
+  ...OPPORTUNITY_CONFIDENCE,
 };
