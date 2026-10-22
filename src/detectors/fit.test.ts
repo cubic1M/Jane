@@ -8,7 +8,7 @@ import { inputFor } from "@/profile/sample";
 import { runDetectors } from "./index";
 import { FIT_DETECTORS } from "./fit";
 
-// Spec step 276: cards that could be one cheaper loan, from the fit engine.
+// Spec step 283: cards that could be one cheaper loan, from the fit engine.
 
 const fire = (id: string, change: (d: ProfileInput) => ProfileInput = (d) => d) => {
   const data = change(inputFor(id));

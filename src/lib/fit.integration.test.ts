@@ -15,7 +15,7 @@ import { syncItem } from "@/lib/plaid/sync";
 import { loadDecisionInput } from "./debt-decisions";
 import { loadFit } from "./fit";
 
-// Spec step 276 against a real, migrated Postgres, on Chris's and the Reyes' demo banks: the
+// Spec step 283 against a real, migrated Postgres, on Chris's and the Reyes' demo banks: the
 // fit engine's options for each need, and the same pick in the chat, Claude's tool and the
 // debt decisions.
 

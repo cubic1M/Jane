@@ -2255,7 +2255,7 @@ const BASE_QUESTIONS: readonly CheckQuestion[] = [
       maxChars: 700,
     },
   },
-  // The perfect fit for borrowing (spec step 276): the pick and the options to choose from.
+  // The perfect fit for borrowing (spec step 283): the pick and the options to choose from.
   {
     id: "debt-65",
     text: "what's the best loan for me?",

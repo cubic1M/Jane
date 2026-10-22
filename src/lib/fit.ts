@@ -12,7 +12,7 @@ import { lenderPartnerFor } from "@/lib/refinance";
 import { fit, type FitBaseline, type FitResult } from "@/planning/fit";
 import { fitPersonFrom } from "@/planning/fit-person";
 
-// The perfect fit for borrowing (spec step 274), for one person: the need, what they have now,
+// The perfect fit for borrowing (spec step 281), for one person: the need, what they have now,
 // the lender's offers at each usual term, and the fit engine's options (src/planning/fit.ts).
 // The chat, the pages, Claude's tools and the detector all read this, so they agree. The
 // lender is the stand-in, for demo advice people only; a real account has no offers yet.

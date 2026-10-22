@@ -1,4 +1,4 @@
-# The perfect fit for borrowing, reviewed as a skeptical customer (step 277)
+# The perfect fit for borrowing, reviewed as a skeptical customer (step 284)
 
 Each sample person asked for a personal loan ($5,000), a car loan ($20,000), a consolidation of
 their cards, a refinance of their costliest debt and a mortgage ($250,000) through the fit

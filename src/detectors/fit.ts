@@ -15,7 +15,7 @@ import { fitPersonFrom } from "@/planning/fit-person";
 import { type Detector, suggestionId } from "./contract";
 import { evidence, headlineOf, outCents, tx, weakest } from "./helpers";
 
-// The perfect fit for borrowing (spec step 276): cards that could be one cheaper loan. The same
+// The perfect fit for borrowing (spec step 283): cards that could be one cheaper loan. The same
 // fit engine as the chat's options card and Claude's tool (src/planning/fit.ts), priced from
 // the stand-in lender catalog's typical rates. Pure; see ./contract.ts. Someone in debt trouble
 // is steered to a payoff or hardship plan instead, never to a new loan.

@@ -4,7 +4,7 @@ import { formatCents } from "@/lib/money";
 import type { Reply } from "./replies";
 import type { MessageAction } from "./types";
 
-// Jane's answer to "what's the best loan for me?" (spec step 276), from the fit engine
+// Jane's answer to "what's the best loan for me?" (spec step 283), from the fit engine
 // (src/lib/fit.ts): her pick first, with how sure she is, then the options to choose from. The
 // pick is demo advice; the choice is theirs, and choosing never applies for anything.
 
