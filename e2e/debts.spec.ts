@@ -901,3 +901,36 @@ test("a lump sum is compared on the mortgage: extra principal, recast, refinance
   await expect(page.getByText(/Investing the same money for \d+ years instead/)).toBeVisible();
   await expect(page.getByText("Paying down earns your 4% rate")).toBeVisible();
 });
+
+// Spec step 247: costly short-term borrowing found in the demo bank, with the cost in dollars
+// and as a yearly rate, and the cheaper ways out.
+test("costly short-term borrowing is found, costed, and the way out is laid out", async ({
+  context,
+  page,
+  baseURL,
+}) => {
+  const user = await signedInUser("user");
+  userId = user.userId;
+  await context.addCookies([
+    { name: "authjs.session-token", value: user.sessionToken, url: baseURL ?? "" },
+  ]);
+  await page.goto("/connect");
+  await page.getByRole("button", { name: "Link a demo bank" }).click();
+  await expect(page).toHaveURL("/chat", { timeout: 60_000 });
+
+  await page.goto("/loans/costly");
+  await expect(
+    page.getByRole("heading", { level: 1, name: "Costly short-term borrowing" }),
+  ).toBeVisible();
+  await expect(page.getByRole("status")).toContainText("over the last year");
+  const found = page.getByRole("list", { name: "What you paid" });
+  await expect(found.getByRole("listitem")).toHaveCount(4);
+  await expect(found).toContainText("Payday loans");
+  await expect(found).toContainText("2 times, $30.00 in fees");
+  await expect(found).toContainText("Card cash advances");
+  await expect(found).toContainText("Overdraft fees");
+  await expect(found).toContainText("Pay advance apps");
+  const out = page.getByRole("region", { name: "Ways out" });
+  await expect(out).toContainText("Credit union payday alternative loan (PAL)");
+  await expect(out).toContainText("Build a small buffer");
+});

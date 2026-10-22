@@ -1675,6 +1675,24 @@ const BASE_QUESTIONS: readonly CheckQuestion[] = [
     expect: { intent: "tax", mentions: /step-up|new cost basis|10 years/, list: true },
   },
   {
+    id: "tax-34",
+    text: "do I have to pay back my marketplace subsidy",
+    needs: "rules",
+    expect: { intent: "tax", mentions: /Marketplace credit/, list: true },
+  },
+  {
+    id: "tax-35",
+    text: "did I put too much in my HSA",
+    needs: "rules",
+    expect: { intent: "tax", mentions: /HSA|7\.5%/, list: true },
+  },
+  {
+    id: "tax-36",
+    text: "do I get more time on my taxes after the storm",
+    needs: "rules",
+    expect: { intent: "tax", mentions: /disaster|county/ },
+  },
+  {
     id: "ins-1",
     text: "what insurance do I have",
     needs: "rules",
@@ -2042,6 +2060,19 @@ const BASE_QUESTIONS: readonly CheckQuestion[] = [
       link: "/loans/goal",
       list: true,
       maxChars: 1_000,
+    },
+  },
+  // Spec step 247: out of costly short-term borrowing.
+  {
+    id: "debt-36",
+    text: "how much have payday loans and cash advances cost me",
+    needs: "rules",
+    expect: {
+      intent: "costly_borrowing",
+      mentions: /payday/i,
+      link: "/loans/costly",
+      list: true,
+      maxChars: 2_600,
     },
   },
   // Spec step 246: recast, refinance or pay extra.
@@ -2788,6 +2819,8 @@ const DECISIONS: readonly (readonly [string, string, RegExp, string?])[] = [
   ["insd-33", "how much disability insurance do I need", /\$[\d,.]+ a month/],
   ["insd-34", "how much umbrella insurance do I need", /umbrella|net worth/i],
   ["insd-35", "how much liability insurance do I need on my car", /liability/i],
+  ["insd-36", "what cover do I need", /gaps?\.|need|short|enough/i],
+  ["insd-37", "is my deductible right", /deductible/i],
 ];
 
 // "Should I ...?" with insurance words goes through the decision router (src/config/decisions.ts).

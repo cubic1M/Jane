@@ -182,22 +182,27 @@ async function sectorFigures(userId: string, client: PrismaClient, now: Date) {
     (await db.equityEvents.count()) > 0;
   // Spec step 296: whether the practice-portfolio suggestion still applies.
   const practice = await db.practicePortfolios.count();
-  const [matchPace, equity, subscriptions, cardInterest, shopSaving, policies] = await Promise.all([
-    loadMatchPace(userId, { client, now }),
-    hasStock
-      ? import("@/lib/equity-tax").then((m) => m.loadEquityTax(userId, { client, now }))
-      : null,
-    import("@/lib/jane-agent/recurring").then((m) => m.subscriptionYear(userId, { client, now })),
-    import("@/lib/card-interest").then((m) => m.loadCardInterest(userId, { client, now })),
-    import("@/lib/insurance/shop").then((m) => m.openShopSavingCents(userId, { client, now })),
-    import("@/lib/insurance/policies").then((m) => m.listPolicies(userId, { client })),
-  ]);
+  const [matchPace, equity, subscriptions, cardInterest, shopSaving, policies, owned, feed] =
+    await Promise.all([
+      loadMatchPace(userId, { client, now }),
+      hasStock
+        ? import("@/lib/equity-tax").then((m) => m.loadEquityTax(userId, { client, now }))
+        : null,
+      import("@/lib/jane-agent/recurring").then((m) => m.subscriptionYear(userId, { client, now })),
+      import("@/lib/card-interest").then((m) => m.loadCardInterest(userId, { client, now })),
+      import("@/lib/insurance/shop").then((m) => m.openShopSavingCents(userId, { client, now })),
+      import("@/lib/insurance/policies").then((m) => m.listPolicies(userId, { client })),
+      db.ownedAssets.findMany({ select: { valueCents: true } }),
+      import("@/lib/disaster-feed").then((m) => m.disasterFeedFor(userId, { client })),
+    ]);
   return {
     matchPace,
     rsuGap: equity ? equity.rsuGap : null,
     subscriptions,
     cardInterestYearCents: cardInterest.available ? cardInterest.interestYearCents : null,
     insuranceShopSavingCents: shopSaving,
+    // What they own by its value (a home, a car), for the net worth an umbrella protects.
+    ownedValueCents: owned.reduce((sum, o) => sum + o.valueCents, 0),
     coverPolicies: policies
       .filter((p) => p.status === "active" || p.status === "pending")
       .map((p) => ({
@@ -207,6 +212,8 @@ async function sectorFigures(userId: string, client: PrismaClient, now: Date) {
         deductibleCents: p.deductibleCents,
         coverage: p.coverage,
       })),
+    // Spec step 270: the disaster relief declared where they might live (none without a feed).
+    disasterRelief: feed ? await feed.declarations() : [],
     hasPracticePortfolio: practice > 0,
   };
 }
