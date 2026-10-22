@@ -28,7 +28,7 @@ import { savePracticeSettings } from "./actions";
 const LINK = "font-medium text-emerald-700 hover:underline";
 const BUTTON = "h-11 rounded-lg bg-emerald-700 px-5 font-medium text-white hover:bg-emerald-800";
 const FIELD =
-  "h-10 rounded-lg border border-zinc-300 bg-white px-3 text-sm dark:border-zinc-700 dark:bg-zinc-900";
+  "h-10 w-full max-w-full rounded-lg border border-zinc-300 bg-white px-3 text-sm dark:border-zinc-700 dark:bg-zinc-900";
 const SECTION = "flex flex-col gap-2 rounded-xl border border-zinc-200 p-4 dark:border-zinc-800";
 const HINT = "text-sm text-zinc-600 dark:text-zinc-400";
 
@@ -126,11 +126,18 @@ async function Content({
               </option>
               {([1, 2, 3, 4, 5] as const).map((l) => (
                 <option key={l} value={l}>
-                  {RISK_LEVELS[l].label}: {RISK_LEVELS[l].description}
+                  {RISK_LEVELS[l].label}
                 </option>
               ))}
             </select>
           </label>
+          <ul className={`${HINT} list-disc pl-5`}>
+            {([1, 2, 3, 4, 5] as const).map((l) => (
+              <li key={l}>
+                <strong>{RISK_LEVELS[l].label}</strong>: {RISK_LEVELS[l].description}
+              </li>
+            ))}
+          </ul>
           <label className="flex flex-col gap-1 text-sm">
             {PREFERENCE_LABELS.maxDropPercent} (%)
             <input
@@ -233,7 +240,7 @@ async function Content({
                 name="appetite"
                 value={a}
                 defaultChecked={prefs.appetite === a}
-                className="mt-1"
+                className="mt-1 shrink-0"
               />
               <span>
                 <strong>{APPETITES[a].label}</strong>: {APPETITES[a].description}
@@ -252,6 +259,7 @@ async function Content({
                   name="avoid"
                   value={key}
                   defaultChecked={prefs.avoid.includes(key)}
+                  className="shrink-0"
                 />
                 {label}
               </label>
@@ -273,7 +281,12 @@ async function Content({
         <fieldset className={SECTION}>
           <legend className="px-1 font-semibold">Taxes and the autopilot</legend>
           <label className="flex items-center gap-2 text-sm">
-            <input type="checkbox" name="harvestLosses" defaultChecked={prefs.harvestLosses} />
+            <input
+              type="checkbox"
+              name="harvestLosses"
+              defaultChecked={prefs.harvestLosses}
+              className="shrink-0"
+            />
             {PREFERENCE_LABELS.harvestLosses}: swap a fund that&rsquo;s down into a similar one
           </label>
           {(Object.keys(AUTOPILOT_MODES) as (keyof typeof AUTOPILOT_MODES)[]).map((m) => (
@@ -283,7 +296,7 @@ async function Content({
                 name="mode"
                 value={m}
                 defaultChecked={prefs.mode === m}
-                className="mt-1"
+                className="mt-1 shrink-0"
               />
               <span>
                 <strong>{AUTOPILOT_MODES[m].label}</strong>: {AUTOPILOT_MODES[m].description}

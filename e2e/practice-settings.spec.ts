@@ -31,6 +31,11 @@ test("practice settings save and change what Jane does", async ({ context, page,
   await expect(doing.getByText(/trades the practice portfolio herself/)).toBeVisible();
   await expect(doing.getByText("Demo advice: sample data, not financial advice")).toBeVisible();
 
+  // Fits a phone: nothing wider than the screen.
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(
+    true,
+  );
+
   await page.getByLabel("Risk level").selectOption("2");
   await page.getByLabel("Oil, gas and coal companies").check();
   await page.getByLabel(/^Off/).check();
