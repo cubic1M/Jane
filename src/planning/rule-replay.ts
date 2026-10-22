@@ -357,8 +357,8 @@ export function stressDrop(
 export type RuleEffect = "helped" | "hurt" | "no_difference";
 
 export function ruleEffect(
-  withRule: Pick<ReplayResult, "totalReturn" | "worstDrop">,
-  without: Pick<ReplayResult, "totalReturn" | "worstDrop">,
+  withRule: { totalReturn: number; worstDrop: Pick<Drop, "fraction"> },
+  without: { totalReturn: number; worstDrop: Pick<Drop, "fraction"> },
   worsePoints: number,
 ): { effect: RuleEffect; returnPoints: number; dropPoints: number } {
   const returnPoints = (withRule.totalReturn - without.totalReturn) * 100;

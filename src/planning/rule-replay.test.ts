@@ -176,7 +176,7 @@ describe("replayRules on the sample market", () => {
 describe("ruleEffect", () => {
   const at = (totalReturn: number, fraction: number) => ({
     totalReturn,
-    worstDrop: { fraction } as { fraction: number } & Record<string, never>,
+    worstDrop: { fraction },
   });
   it("calls a rule worse past the margin, better past it, else no difference", () => {
     expect(ruleEffect(at(0.5, -0.3), at(0.51, -0.3), 0.25).effect).toBe("hurt");
