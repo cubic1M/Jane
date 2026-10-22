@@ -2249,7 +2249,7 @@ const BASE_QUESTIONS: readonly CheckQuestion[] = [
     needs: "rules",
     expect: {
       intent: "car_afford",
-      mentions: /afford a car/i,
+      mentions: /comfortable car|afford a car/i,
       link: "/loans/car",
       maxSentences: 3,
       maxChars: 700,
