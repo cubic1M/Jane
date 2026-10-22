@@ -61,7 +61,7 @@ describe("tryJane", () => {
 
   it("sets the session cookie for a day and opens the chat", async () => {
     headerValues.set("user-agent", "Browser");
-    await expect(tryJane(null, agreed())).rejects.toThrow("NEXT_REDIRECT");
+    expect(await tryJane(null, agreed())).toEqual({ next: "/chat" });
     expect(hit).toHaveBeenCalledWith("trial", "iphash");
     expect(startTrial).toHaveBeenCalledWith({ userAgent: "Browser", defer: true });
     expect(set).toHaveBeenCalledWith("authjs.session-token", "tok", {
@@ -71,15 +71,15 @@ describe("tryJane", () => {
       path: "/",
       expires: EXPIRES,
     });
-    // Straight to the chat once it can open: no /scanning page in between.
-    expect(redirect).toHaveBeenCalledWith("/chat");
+    // Straight to the chat once it can open: no /scanning page in between. The action returns
+    // where to go (the page navigates), it does not redirect.
+    expect(redirect).not.toHaveBeenCalled();
   });
 
   // The scan starts at once and the click waits only until the chat can open; the rest of the
   // scan and the cleanup carry on after the response.
   it("starts the scan now, opens the chat when it is ready, and cleans up after", async () => {
-    await expect(tryJane(null, agreed())).rejects.toThrow("NEXT_REDIRECT");
-    expect(redirect).toHaveBeenCalledWith("/chat");
+    expect(await tryJane(null, agreed())).toEqual({ next: "/chat" });
     expect(syncItem).toHaveBeenCalledWith("item_1", {
       progressive: true,
       onReady: expect.any(Function),
@@ -92,13 +92,12 @@ describe("tryJane", () => {
 
   it("shows /scanning when the scan fails before the chat can open", async () => {
     vi.mocked(syncItem).mockRejectedValueOnce(new Error("boom"));
-    await expect(tryJane(null, agreed())).rejects.toThrow("NEXT_REDIRECT");
-    expect(redirect).toHaveBeenCalledWith("/scanning?then=chat");
+    expect(await tryJane(null, agreed())).toEqual({ next: "/scanning?then=chat" });
   });
 
   it("still cleans up when the first sync fails", async () => {
     vi.mocked(syncItem).mockRejectedValueOnce(new Error("boom"));
-    await expect(tryJane(null, agreed())).rejects.toThrow("NEXT_REDIRECT");
+    await tryJane(null, agreed());
     await afterJobs[0]();
     expect(cleanUpTrials).toHaveBeenCalled();
   });
@@ -106,17 +105,17 @@ describe("tryJane", () => {
   it("lets the visitor pick a life, or picks one for them (spec step 252)", async () => {
     const data = agreed();
     data.set("person", "retiree");
-    await expect(tryJane(null, data)).rejects.toThrow("NEXT_REDIRECT");
+    await tryJane(null, data);
     expect(startTrial).toHaveBeenLastCalledWith(expect.objectContaining({ person: "retiree" }));
     const any = agreed();
     any.set("person", "any");
-    await expect(tryJane(null, any)).rejects.toThrow("NEXT_REDIRECT");
+    await tryJane(null, any);
     expect(vi.mocked(startTrial).mock.lastCall?.[0]?.person).toMatch(/^[a-z]+$/);
   });
 
   it("uses the secure cookie on HTTPS", async () => {
     headerValues.set("x-forwarded-proto", "https");
-    await expect(tryJane(null, agreed())).rejects.toThrow("NEXT_REDIRECT");
+    await tryJane(null, agreed());
     expect(set.mock.calls[0][0]).toBe("__Secure-authjs.session-token");
     expect(set.mock.calls[0][2]).toMatchObject({ secure: true });
   });

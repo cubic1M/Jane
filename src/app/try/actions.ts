@@ -1,7 +1,6 @@
 "use server";
 
 import { cookies, headers } from "next/headers";
-import { redirect } from "next/navigation";
 import { after } from "next/server";
 import { pickPerson } from "@/lib/people";
 import { hit, ipKey } from "@/lib/rate-limit";
@@ -16,7 +15,9 @@ import { TrialError, cleanUpTrials, startTrial } from "@/lib/trial";
 // How long the click waits for the chat to be able to open before showing /scanning instead.
 const TRY_READY_WAIT_MS = 8000;
 
-export type TryState = { error: string } | null;
+// Where the browser goes next, or why not. The action returns this instead of redirecting:
+// a redirect from an action that waited for the scan left some browsers on the landing page.
+export type TryState = { error: string } | { next: string } | null;
 
 // Auth.js's session cookie: the __Secure- name on HTTPS, the plain one locally.
 const cookieName = (secure: boolean) =>
@@ -85,5 +86,5 @@ export async function tryJane(_previous: TryState, formData: FormData): Promise<
       console.error("Cleaning up trials failed", { error: String(error) }),
     );
   });
-  redirect(opened ? "/chat" : "/scanning?then=chat");
+  return { next: opened ? "/chat" : "/scanning?then=chat" };
 }
