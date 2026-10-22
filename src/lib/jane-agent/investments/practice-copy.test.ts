@@ -34,9 +34,27 @@ describe("the practice portfolio in the chat", () => {
     ["pause opportunities", "practice_pause"],
     ["resume it", "practice_resume"],
     ["how would a High portfolio have done in 2022", "backtest"],
+    ["how did a medium portfolio do in 2020", "backtest"],
     ["backtest", "backtest"],
   ])("reads %j as %s", (text, topic) => {
     expect(read(text)).toMatchObject({ kind: "investments", topic });
+  });
+
+  it("reads 'why' about the trades as asking for every trade's reason", () => {
+    expect(read("why did you buy MSFT")).toMatchObject({ topic: "practice_log", explain: true });
+    expect(read("show my practice trades")).not.toHaveProperty("explain");
+  });
+
+  it("gives every trade's reason when asked why", () => {
+    const trades = [
+      trade("buy", "MSFT", 9_943, "news_idea", "A news idea, kept to 3%."),
+      trade("sell", "BIL", 9_943, "news_idea", "Paid for the MSFT idea."),
+    ];
+    const short = practiceLogReply({ level: 4, paused: false }, trades, true);
+    expect(short.body).not.toMatch(/Paid for the MSFT idea/);
+    const why = practiceLogReply({ level: 4, paused: false }, trades, true, true);
+    expect(why.body).toMatch(/A news idea, kept to 3%\./);
+    expect(why.body).toMatch(/Paid for the MSFT idea\./);
   });
 
   it("reads the level, the year and which switch", () => {

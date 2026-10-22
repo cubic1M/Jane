@@ -91,7 +91,7 @@ export async function answerInvestments(
       const since = now.getTime() - PRACTICE_LOG_DAYS * 86_400_000;
       const log = view ? await tradeLog(userId, { client }) : [];
       const week = log.filter((t) => !t.undone && t.placedAt.getTime() >= since);
-      return practiceLogReply(view, week, advice);
+      return practiceLogReply(view, week, advice, intent.explain ?? false);
     }
     case "practice_pause":
     case "practice_resume": {
