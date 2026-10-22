@@ -70,8 +70,7 @@ export function practiceLogReply(
   if (!advice) return { body: PRACTICE_ONLY_NOTE, actions: [], refs: {} };
   if (!practice) {
     return {
-      body:
-        "I haven't bought anything: you don't have a practice portfolio yet. Start one and I'll buy the model for your level with practice money, nothing real.",
+      body: "I haven't bought anything: you don't have a practice portfolio yet. Start one and I'll buy the model for your level with practice money, nothing real.",
       actions: [{ ...PRACTICE, label: "Start with practice money" }],
       refs: { advice: true },
     };
@@ -127,8 +126,7 @@ export function practicePauseReply(
     resumed: `Resumed ${what}. The next daily scan picks up from here.`,
     already_paused: `${what[0].toUpperCase()}${what.slice(1)} is already paused. Say "resume it" when you want me back.`,
     already_running: `${what[0].toUpperCase()}${what.slice(1)} is already running.`,
-    none:
-      'There\'s no practice portfolio to pause. To stop me acting on your money, say "pause the autopilot".',
+    none: 'There\'s no practice portfolio to pause. To stop me acting on your money, say "pause the autopilot".',
   };
   return {
     body: bodies[outcome],
@@ -145,8 +143,7 @@ export function backtestReply(
 ): Reply {
   if (!data.advice) {
     return {
-      body:
-        "Replays of the model portfolios are demo advice, for the demo bank's sample people only, so I can't show them for your real accounts.",
+      body: "Replays of the model portfolios are demo advice, for the demo bank's sample people only, so I can't show them for your real accounts.",
       actions: [],
       refs: {},
     };
