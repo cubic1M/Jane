@@ -3882,9 +3882,10 @@ model PracticePortfolio {
   startedAt           DateTime @map("started_at") @db.Timestamptz(3)
   updatedAt           DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
 
-  user      User               @relation(fields: [userId], references: [id], onDelete: Cascade)
-  positions PracticePosition[]
-  trades    PracticeTrade[]
+  user          User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  positions     PracticePosition[]
+  trades        PracticeTrade[]
+  opportunities PracticeOpportunity[]
 
   @@map("practice_portfolios")
 }
@@ -3956,4 +3957,32 @@ model MarketHistoryLoad {
 
   @@unique([ticker, source])
   @@map("market_history_loads")
+}
+
+// Spec step 292 (Phase AW, Stage A): what the daily scan of a practice portfolio flagged, and
+// what Jane did about it in the practice ledger. kind: drift_rebalance, dip_buy,
+// tax_loss_harvest or news_idea. key stops one event being acted on twice. details holds the
+// numbers, the caps and the confidence for the card (step 296). status: acted (placed in the
+// practice ledger) or autopilot (the autopilot's rebalance does it).
+model PracticeOpportunity {
+  id          String   @id @default(cuid())
+  portfolioId String   @map("portfolio_id")
+  userId      String   @map("user_id")
+  scannedAt   DateTime @map("scanned_at") @db.Timestamptz(3)
+  kind        String
+  ticker      String
+  key         String
+  amountCents Int      @map("amount_cents")
+  headline    String
+  reason      String
+  confidence  Int
+  details     Json
+  status      String
+  tradeIds    String[] @map("trade_ids")
+
+  portfolio PracticePortfolio @relation(fields: [portfolioId], references: [id], onDelete: Cascade)
+
+  @@unique([portfolioId, key])
+  @@index([userId, scannedAt])
+  @@map("practice_opportunities")
 }
