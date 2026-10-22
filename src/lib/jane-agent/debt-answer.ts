@@ -19,6 +19,7 @@ import { loadStudentLongGame } from "@/lib/student-long-game";
 import { loadFamilyLoans } from "@/lib/family-loans";
 import { PROJECT_YEARS_DEFAULT } from "@/config/home-equity";
 import { checkGoalDraft, loadCreditGoals, planFor } from "@/lib/credit-goals";
+import { loadCostlyBorrowing } from "@/lib/costly-borrowing";
 import { MortgageMoneyError, loadMortgageMoney } from "@/lib/mortgage-money";
 import { loadCarLoan } from "@/lib/car-loan";
 import { decide } from "@/lib/debt-decisions";
@@ -48,6 +49,7 @@ import { cardInterestReply } from "./card-interest-replies";
 import { longGameReply } from "./student-long-game-replies";
 import { familyLoansReply } from "./family-loans-replies";
 import { creditGoalReply } from "./credit-goal-replies";
+import { costlyReply } from "./costly-borrowing-replies";
 import { mortgageMoneyReply } from "./mortgage-money-replies";
 import { carLoanReply } from "./car-loan-replies";
 import { decisionReply } from "./debt-decision-replies";
@@ -123,6 +125,8 @@ export async function answerDebt(
       }
       return creditGoalReply(goals, null, { score: intent.targetScore });
     }
+    case "costly_borrowing":
+      return costlyReply(await loadCostlyBorrowing(userId, { client, now }));
     case "mortgage_money": {
       try {
         return mortgageMoneyReply(

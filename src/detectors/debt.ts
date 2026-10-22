@@ -169,7 +169,7 @@ const carAddons: Detector = {
 const cashAdvance: Detector = {
   capability: "debt",
   topic: "cash_advance",
-  covers: [],
+  covers: ["costly_borrowing"],
   needs: [],
   detect({ profile, data }) {
     const cards = new Set(

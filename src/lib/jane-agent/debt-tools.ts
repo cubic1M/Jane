@@ -29,6 +29,7 @@ import type { CardInterest } from "@/lib/card-interest";
 import type { LongGame } from "@/lib/student-long-game";
 import type { FamilyLoans } from "@/lib/family-loans";
 import type { CreditGoals } from "@/lib/credit-goals";
+import type { CostlyBorrowing } from "@/lib/costly-borrowing";
 import type { MortgageMoneyView } from "@/lib/mortgage-money";
 import type { CarLoan } from "@/lib/car-loan";
 import type { DebtReview } from "@/lib/debt-review";
@@ -200,6 +201,12 @@ export const DEBT_TOOLS: Anthropic.Tool[] = [
     name: "credit_goals",
     description:
       "The credit score plans the person has for a goal (demo-bank people only, a stand-in score; every figure is an estimate from the score simulator, never a promise): for each, the target score and date, what the goal is for (a mortgage, a car), the score now, whether the plan reaches the target and the best it shows if not, the month-by-month plan (what to pay toward cards and the estimated score after each month), this month's checklist with what's done (pay before the statement closes, keep card accounts open, no new applications, on-time payments, and a rapid rescore before a mortgage application), and the total to pay down. Starting a plan and ticking off a month are the person's taps (the creditgoal.start and creditgoal.done buttons).",
+    input_schema: noInput,
+  },
+  {
+    name: "costly_borrowing",
+    description:
+      "Costly short-term borrowing found in the last year of the person's payments: payday loans (matched proceeds and repayments), card cash advances (fee plus interest from day one), repeated overdraft fees and pay advance apps (tips and fees), each with how many times, what it cost in dollars, the yearly rate that works out to and how that was worked out (stated assumptions), and whether it's a cycle. In demo advice mode, the cheaper ways out: a credit union payday alternative loan (capped at 28%) with its cost against the payday loan's, an employer pay advance, a buffer built over six months, and steps to stop the cycle. Facts about what was borrowed and what it cost; the way out is advice, the choice is the person's.",
     input_schema: noInput,
   },
   {
@@ -455,6 +462,7 @@ export const DEBT_TOOL_STATUS: Readonly<Record<string, string>> = {
   debt_review: "Going over your debts…",
   car_loan: "Looking at your car loan…",
   mortgage_money: "Comparing ways to use the money…",
+  costly_borrowing: "Looking for costly borrowing…",
   debt_decision: "Working it out with your numbers…",
   loan_fit: "Finding the loan that fits you…",
 };
@@ -1072,6 +1080,42 @@ export function familyLoansToolOutput(data: FamilyLoans, money: (cents: number) 
       monthly: s.paymentCents === null ? null : money(s.paymentCents),
       yourHalf: s.yourShareCents === null ? null : money(s.yourShareCents),
     })),
+  };
+}
+
+export function costlyBorrowingToolOutput(d: CostlyBorrowing, money: (cents: number) => string) {
+  if (!d.any) return { note: "No costly short-term borrowing found in the last year." };
+  return {
+    lastYearTotalCost: money(d.totalYearlyCents),
+    costInTheLast30Days: money(d.lastMonthCents),
+    cycle: d.cycle,
+    kinds: d.kinds.map((k) => ({
+      kind: k.kind,
+      times: k.count,
+      cost: money(k.costCents),
+      yearlyRatePercent: k.aprBps === null ? null : Math.round(k.aprBps / 100),
+      howWorkedOut: k.basis,
+      lastOn: k.lastOn,
+    })),
+    cheaperWaysOut: d.advice
+      ? {
+          payAlternativeLoan: {
+            amount: money(d.alternatives.pal.amountCents),
+            months: d.alternatives.pal.termMonths,
+            ratePercent: d.alternatives.pal.aprBps / 100,
+            monthlyPayment: money(d.alternatives.pal.paymentCents),
+            totalCost: money(d.alternatives.pal.totalCostCents),
+            paydayLoanFeeForTheSameAmountEveryTwoWeeks: money(d.alternatives.pal.paydayFeeCents),
+          },
+          employerAdvance: d.alternatives.employer,
+          buffer: {
+            target: money(d.alternatives.buffer.targetCents),
+            months: d.alternatives.buffer.months,
+            monthly: money(d.alternatives.buffer.monthlyCents),
+          },
+          stopTheCycle: d.steps,
+        }
+      : "Only for the demo bank.",
   };
 }
 
