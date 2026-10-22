@@ -3879,6 +3879,9 @@ model PracticePortfolio {
   paused              Boolean  @default(false)
   // Opportunities (small capped positions, High and Very high only) paused on their own.
   opportunitiesPaused Boolean  @default(false) @map("opportunities_paused")
+  // The last cheap scan when the person opened the chat or the investing pages (no more than
+  // one an hour), claimed before it runs so two opens scan once.
+  lightScannedAt      DateTime? @map("light_scanned_at") @db.Timestamptz(3)
   startedAt           DateTime @map("started_at") @db.Timestamptz(3)
   updatedAt           DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
 

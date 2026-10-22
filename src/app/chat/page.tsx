@@ -8,6 +8,7 @@ import { scopedFor } from "@/lib/db-scoped";
 import { markChatRead, pinnedMessages, stackedSuggestions } from "@/lib/jane-agent/messages";
 import { toView } from "@/lib/jane-agent/view";
 import { openChat, timezoneOf } from "@/lib/jane-agent/open";
+import { scanOnOpenQuietly } from "@/lib/practice/scan";
 import { requireUser } from "@/lib/session";
 import { ChatComposer } from "./composer";
 import { ChatMessageItem } from "./message";
@@ -44,6 +45,8 @@ async function Chat({ searchParams }: { searchParams: PageProps<"/chat">["search
   if (!chat) redirect("/connect");
   const hasAskHistory = askHistory > 0;
   after(() => markChatRead(user.id));
+  // Constant search (Phase AW): a cheap practice scan, after the page is sent.
+  after(() => scanOnOpenQuietly(user.id));
 
   return (
     <>
