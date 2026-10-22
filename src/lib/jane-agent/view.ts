@@ -95,3 +95,11 @@ export function toView(message: ChatMessage, now: Date, timezone: string | null)
         : null,
   };
 }
+
+// The chat's list without what floats over it as cards (the day's suggestions): the overlay is
+// the one place a suggestion appears. Once answered it is history, and comes back here with
+// what was chosen.
+export function withoutCards(messages: MessageView[], onCards: MessageView[]): MessageView[] {
+  const floating = new Set(onCards.map((m) => m.id));
+  return messages.filter((m) => !floating.has(m.id));
+}

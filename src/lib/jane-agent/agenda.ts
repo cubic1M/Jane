@@ -9,9 +9,7 @@ import type { LocalTime } from "./quiet-hours";
 import type { Snapshot } from "./snapshot";
 import { billsDueSoon, greeting, safeLine } from "./sources/brief";
 import { shortName } from "./sources/findings";
-import { suggestionCard } from "./sources/suggestions";
 import { inDays } from "./sources/source";
-import type { OfferedSuggestion } from "@/lib/suggestions";
 import type { ActionId, Candidate, MessageAction } from "./types";
 
 // The day in one message (spec step 184). The morning brief becomes the day's agenda: what
@@ -62,12 +60,11 @@ export function lineOf(c: Candidate): string {
   return sentences.join(" ");
 }
 
-// Spec step 265: what Jane worked out for this person leads the day. One suggestion as its
-// agenda line: what it is, what it's worth, why this person, and how sure Jane is with the
-// reason. The pages are the detail behind it (its button opens them).
-export function suggestionLine(s: OfferedSuggestion): string {
-  const [headline, why, sure] = suggestionCard(s);
-  return `${headline}. ${why} ${sure}`;
+// The agenda's one line about the suggestions: they're on the cards, not repeated here.
+export function cardsLine(count: number): string {
+  return count === 1
+    ? "I have a suggestion for you, from looking at your money: it's on the card at the bottom."
+    : `I have ${count} suggestions for you, from looking at your money: they're on the cards at the bottom.`;
 }
 
 export type Agenda<T extends Planned> = { agenda: T; folded: T[] };
@@ -87,14 +84,11 @@ export function agendaOf<T extends Planned>(
     (a, b) =>
       Number(Boolean(suggested(b))) - Number(Boolean(suggested(a))) || b.priority - a.priority,
   );
-  const yes = ordered.filter((c) => yesOf(c)).slice(0, AGENDA_MAX_YES);
-  const others = ordered.filter((c) => !yesOf(c)).slice(0, AGENDA_MAX_LINES);
-  const lead = yes.filter((c) => suggested(c));
-  const rest = yes.filter((c) => !suggested(c));
-  const line = (c: Candidate) => {
-    const s = suggested(c);
-    return s ? suggestionLine(s) : lineOf(c);
-  };
+  // The suggestions float over the chat as cards (src/app/chat/chat-cards.tsx), the one place
+  // they appear: the agenda only says they're there, and they never take one of its Yes slots.
+  const lead = ordered.filter((c) => suggested(c));
+  const yes = ordered.filter((c) => yesOf(c) && !suggested(c)).slice(0, AGENDA_MAX_YES);
+  const others = ordered.filter((c) => !yesOf(c) && !suggested(c)).slice(0, AGENDA_MAX_LINES);
 
   const run = snapshot.lastRun;
   const changed = run?.steps.filter((s) => s.changed > 0) ?? [];
@@ -108,7 +102,7 @@ export function agendaOf<T extends Planned>(
   const bills = billsDueSoon(snapshot);
   const safe = safeLine(snapshot, local.date);
 
-  const quiet = yes.length === 0 && others.length === 0 && bills.length === 0;
+  const quiet = lead.length === 0 && yes.length === 0 && others.length === 0 && bills.length === 0;
   const lines: string[] = [];
   if (quiet) {
     // A day with nothing to do: one short line.
@@ -116,17 +110,10 @@ export function agendaOf<T extends Planned>(
   } else {
     lines.push(safe ? `${greeting(local.hour)} ${safe}` : greeting(local.hour));
     if (overnight) lines.push(overnight);
-    if (lead.length > 0) {
-      lines.push(
-        lead.length === 1
-          ? "Here's what I'd do first, from looking at your money:"
-          : "Here's what I'd do first, from looking at your money:",
-      );
-      lines.push(...lead.map((c) => `- ${line(c)}`));
-    }
-    if (rest.length > 0) {
-      lines.push(rest.length === 1 ? "One more thing needs your yes:" : "These need your yes:");
-      lines.push(...rest.map((c) => `- ${lineOf(c)}`));
+    if (lead.length > 0) lines.push(cardsLine(lead.length));
+    if (yes.length > 0) {
+      lines.push(yes.length === 1 ? "One more thing needs your yes:" : "These need your yes:");
+      lines.push(...yes.map((c) => `- ${lineOf(c)}`));
     }
     if (bills.length > 0) {
       lines.push(
@@ -146,10 +133,8 @@ export function agendaOf<T extends Planned>(
 
   const items = yes.map((c) => ({
     dedupeKey: c.dedupeKey,
-    label: `Yes: ${c.bundle?.name ?? (suggested(c) ? shortName(suggested(c)!.actionLabel) : shortName(lineOf(c)))}`,
+    label: `Yes: ${c.bundle?.name ?? shortName(lineOf(c))}`,
     action: yesOf(c)!.id as ActionId,
-    // A suggestion can be turned down for good from the agenda (the scan never offers it again).
-    ...(suggested(c) ? { no: "suggestion.no" as ActionId } : {}),
   }));
   const actions: MessageAction[] = [
     ...items.map((item, n): MessageAction => ({
@@ -157,17 +142,6 @@ export function agendaOf<T extends Planned>(
       label: item.label,
       kind: "primary",
     })),
-    ...items.flatMap((item, n): MessageAction[] =>
-      item.no
-        ? [
-            {
-              id: `bundle.no.${n + 1}` as ActionId,
-              label: `Not for me: ${item.label.replace(/^Yes: /, "")}`,
-              kind: "secondary",
-            },
-          ]
-        : [],
-    ),
     ...(snapshot.plan.safeItems > 0
       ? [
           {
@@ -186,6 +160,8 @@ export function agendaOf<T extends Planned>(
       refs: { ...brief.refs, ...(items.length > 0 ? { items } : {}) },
       actions,
     },
-    folded: [...yes, ...others],
+    // The suggestions too: hidden from the list, they are the cards, and once answered they
+    // come back into the history with what was chosen.
+    folded: [...lead, ...yes, ...others],
   };
 }

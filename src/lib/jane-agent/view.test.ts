@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { OfferedOptions } from "@/lib/option-card";
 import { parseActions, toChatMessage, type ChatMessage } from "./types";
-import { toView } from "./view";
+import { toView, withoutCards } from "./view";
 
 // Spec step 81: an open message shows its buttons; an answered one shows the answer, keeps
 // its links, and keeps Undo only while Undo works.
@@ -164,5 +164,13 @@ describe("a reply with options (refs.options)", () => {
     expect(toView(reply("answered"), NOW, null).options).toBeNull();
     expect(toView(reply("dismissed"), NOW, null).options).toBeNull();
     expect(toView(message(), NOW, null).options).toBeNull();
+  });
+});
+
+describe("withoutCards", () => {
+  it("keeps what floats over the chat as a card out of the list, and the rest in order", () => {
+    const views = ["a", "b", "c"].map((id) => toView(message({ id }), NOW, null));
+    expect(withoutCards(views, [views[1]]).map((m) => m.id)).toEqual(["a", "c"]);
+    expect(withoutCards(views, []).map((m) => m.id)).toEqual(["a", "b", "c"]);
   });
 });

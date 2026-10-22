@@ -6,7 +6,7 @@ import { AppHeader } from "@/components/app-header";
 import { CHAT_MAX_MESSAGE } from "@/config/agent-chat";
 import { scopedFor } from "@/lib/db-scoped";
 import { markChatRead, pinnedMessages, stackedSuggestions } from "@/lib/jane-agent/messages";
-import { toView, type MessageView } from "@/lib/jane-agent/view";
+import { toView, withoutCards, type MessageView } from "@/lib/jane-agent/view";
 import { openChat, timezoneOf } from "@/lib/jane-agent/open";
 import { requireUser } from "@/lib/session";
 import { ChatComposer } from "./composer";
@@ -49,6 +49,8 @@ async function Chat({ searchParams }: { searchParams: PageProps<"/chat">["search
   ]);
   const stacked = stackedRows.map((m) => toView(m, new Date(), zone));
   if (!chat) redirect("/connect");
+  // What floats over the chat as a card isn't in the list too.
+  const listed = withoutCards(chat.messages, stacked);
   const hasAskHistory = askHistory > 0;
   after(() => markChatRead(user.id));
 
@@ -111,13 +113,13 @@ async function Chat({ searchParams }: { searchParams: PageProps<"/chat">["search
         </Link>
       )}
 
-      {chat.messages.length === 0 ? (
+      {listed.length === 0 ? (
         <p className="text-zinc-600 dark:text-zinc-400">
           Nothing new from me yet. I&apos;ll post here as soon as I spot something.
         </p>
       ) : (
         <ol aria-label="Messages" className="flex flex-col gap-4">
-          {chat.messages.map((message) => (
+          {listed.map((message) => (
             // Keyed by its state too: a tap on a floating card answers it on the server, and the
             // reload shows that here.
             <ChatMessageItem key={`${message.id}:${message.status}`} initial={message} />

@@ -2,9 +2,10 @@ import { expect, test } from "@playwright/test";
 import { E2E_DATABASE_URL, deleteUser, signedInUser, waitForFullScan } from "./db";
 
 // The day's suggestions as floating cards over the chat (founder request): one at a time, a
-// card above the page and not in it, a short card with Yes and Not now, More details already
-// there, the next card sliding in, keys and swipe, and every tap answered on screen within
-// 100 ms (the server follows). On a phone, with nothing sideways.
+// card above the page and not in it, the one place they appear (no message repeats them), a
+// short card with Yes and Not now, More details already there, the next card sliding in, keys
+// and swipe, and every tap answered on screen within 100 ms (the server follows). On a phone,
+// with nothing sideways.
 
 test.skip(!E2E_DATABASE_URL, "needs E2E_DATABASE_URL pointing at a scratch database");
 test.setTimeout(120_000);
@@ -45,7 +46,8 @@ test("suggestions float over the chat one at a time, and every tap answers at on
 
   // Floating: fixed over the page, not part of the message list.
   expect(await overlay.evaluate((el) => getComputedStyle(el).position)).toBe("fixed");
-  expect(await page.getByRole("list", { name: "Messages" }).locator(overlay).count()).toBe(0);
+  const list = page.getByRole("list", { name: "Messages" });
+  expect(await list.locator(overlay).count()).toBe(0);
 
   // Short: a headline with one number, Yes and Not now, and More details closed.
   const showing = overlay.locator('[data-card-state="showing"]');
@@ -57,6 +59,16 @@ test("suggestions float over the chat one at a time, and every tap answers at on
   await expect(showing.getByRole("button", { name: "Not now", exact: true }).first()).toBeVisible();
   const details = showing.locator('[id^="details-"]');
   await expect(details).toBeHidden();
+
+  // The overlay is the one place a suggestion appears: the agenda says they're on the cards,
+  // and neither it nor any other message repeats one.
+  await expect(
+    list.getByText(
+      /suggestions? for you, from looking at your money: (they're|it's) on the cards? at the bottom\./,
+    ),
+  ).toHaveCount(1);
+  await expect(list.getByText(first.trim(), { exact: false })).toHaveCount(0);
+  await expect(list.getByRole("button", { name: /Not for me:/ })).toHaveCount(0);
 
   // Nothing sideways on a phone.
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(375);
@@ -82,11 +94,15 @@ test("suggestions float over the chat one at a time, and every tap answers at on
   await expect(headline).not.toHaveText(first, { timeout: 100 });
   expect(Date.now() - started).toBeLessThan(1_000);
 
-  // Yes is just as quick, and the server catches up: the chat shows it answered.
-  const second = (await headline.textContent()) ?? "";
+  // Yes is just as quick, and the server catches up: it is history now, back in the list
+  // with what was chosen, and only there.
+  const second = ((await headline.textContent()) ?? "").trim();
   await showing.getByRole("button", { name: "Yes", exact: true }).click();
   await expect(counter).toHaveText(`${total - 2} left`, { timeout: 100 });
-  await expect(page.getByText(second, { exact: false }).first()).toBeAttached();
+  const answered = list.getByRole("listitem").filter({ hasText: second });
+  await expect(answered).toHaveCount(1, { timeout: 30_000 });
+  await expect(answered.getByText("You chose:")).toBeVisible();
+  await expect(overlay.getByRole("heading", { level: 3, name: second })).toHaveCount(0);
 
   // The ✕ is Not now too.
   if (total - 2 >= 1) {
