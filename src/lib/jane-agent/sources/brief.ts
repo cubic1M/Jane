@@ -2,11 +2,13 @@ import { BRIEF_BILL_DAYS, BRIEF_FROM_HOUR, MESSAGE_PRIORITY } from "@/config/age
 import { formatCents } from "@/lib/money";
 import { dateAndDays, inDays, things, type MessageSource } from "./source";
 import { rankedFor } from "../priorities";
+import { lastWeekLine } from "./last-week";
 import type { Snapshot } from "../snapshot";
 
 // The morning brief (spec step 82): once a day, from 7am in the person's timezone (or
 // whenever they first open the chat that day). Safe to spend until payday, bills due in
-// the next two days, and how many things wait on them. Fixed wording, no advice.
+// the next two days, and how many things wait on them; on the first day of the week, how last
+// week went (./last-week.ts). Fixed wording, no advice.
 
 export function greeting(hour: number): string {
   if (hour < 12) return "Good morning!";
@@ -31,11 +33,13 @@ export const billsDueSoon = (snapshot: Snapshot) =>
 
 export const briefSource: MessageSource = {
   key: "brief",
-  gather(snapshot, { local, trigger }) {
+  gather(snapshot, { now, local, trigger }) {
     if (local.hour < BRIEF_FROM_HOUR && trigger !== "open") return [];
     const lines = [greeting(local.hour)];
     const safe = safeLine(snapshot, local.date);
     if (safe) lines.push(safe);
+    const week = lastWeekLine(snapshot, local, now);
+    if (week) lines.push(week);
 
     const bills = billsDueSoon(snapshot);
     lines.push(

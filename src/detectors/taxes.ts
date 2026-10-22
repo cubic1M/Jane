@@ -1,5 +1,12 @@
 import { DETECTOR_RATES } from "@/config/detectors";
+import { HOME_OFFICE_ASSUMED_SQFT, VEHICLE_ASSUMED_MILES } from "@/config/business-structure";
 import { GIVING } from "@/config/giving";
+import { MEDICAL_MIN_SAVING_CENTS, PTC_MIN_REPAY_CENTS } from "@/config/health-taxes";
+import {
+  INHERITED_IRA_YEARS,
+  INHERITED_NAME,
+  MISSED_WITHDRAWAL_PENALTY,
+} from "@/config/inheritance";
 import { PROPERTY_TAX_PAYEE } from "@/config/home-taxes";
 import { APPEAL_GAP_RATE } from "@/config/property-tax";
 import { TAXABLE_INVESTMENT_SUBTYPES } from "@/config/tax";
@@ -8,11 +15,17 @@ import {
   CONTRIBUTION_LIMITS,
   DEPENDENT_CARE_CREDIT,
   FEDERAL_BRACKETS,
+  HOME_OFFICE_SIMPLIFIED,
+  MILEAGE_RATE_CENTS,
   PAYROLL_TAX,
+  SELF_EMPLOYMENT_TAX,
   STANDARD_DEDUCTION,
 } from "@/config/tax-rates";
 import { formatCents } from "@/lib/money";
-import { marginalRateOf } from "@/planning/tax-estimate";
+import { structureFor } from "@/planning/business-structure";
+import { readHealthTaxes } from "@/planning/health-taxes-read";
+import { mustBeEmptyBy, spreadIra } from "@/planning/inheritance";
+import { NO_INCOME, marginalRateOf, type EstimateInput } from "@/planning/tax-estimate";
 import { careShare } from "@/planning/tax-savings";
 import type { Fact } from "@/profile/build";
 import { type Detector, type Urgency, suggestionId } from "./contract";
@@ -157,8 +170,12 @@ const rothConversion: Detector = {
   detect({ profile, data }) {
     const stage = profile.facts.life_stage;
     if (stage.value !== "approaching" && stage.value !== "retired") return null;
+    // An inherited IRA can't be converted to a Roth: only the person's own pre-tax money counts.
     const accounts = data.accounts.filter(
-      (a) => a.type === "investment" && PRETAX.test(a.subtype ?? ""),
+      (a) =>
+        a.type === "investment" &&
+        PRETAX.test(a.subtype ?? "") &&
+        !INHERITED_NAME.test(a.name ?? ""),
     );
     const balance = accounts.reduce((s, a) => s + a.balanceCents, 0);
     if (balance < T.rothMinBalanceCents) return null;
@@ -526,7 +543,401 @@ const fileReturn: Detector = {
   },
 };
 
+// A self-employed person's profit from their deposits (a freelancer's are mostly profit, a
+// shop's are sales), and the tax bracket it puts them in.
+const selfPaid = (pattern: unknown) => pattern === "uneven" || pattern === "business";
+function profitOf(profile: { facts: Record<string, { value: unknown }> }): number {
+  const share =
+    profile.facts.income_pattern.value === "business"
+      ? T.businessProfitShare
+      : T.freelanceProfitShare;
+  return Math.round(annual(profile.facts.monthly_income.value) * share);
+}
+function soleInput(profit: number, household: unknown, year: number): EstimateInput {
+  return {
+    year,
+    filingStatus: statusOf(household),
+    childrenUnder17: 0,
+    otherDependants: 0,
+    state: null,
+    income: { ...NO_INCOME, selfEmploymentCents: profit },
+    studentLoanInterestCents: 0,
+    mortgageInterestCents: 0,
+    charityCents: 0,
+    medicalCents: 0,
+    otherStateLocalTaxCents: 0,
+    federalWithheldCents: 0,
+    federalEstimatedPaidCents: 0,
+    stateWithheldCents: 0,
+    stateEstimatedPaidCents: 0,
+  };
+}
+// What a deduction saves a sole proprietor: income tax at their bracket plus the 15.3% on 92.35%
+// of it that self-employment tax takes.
+const deductionRate = (profit: number, household: unknown) => {
+  const status = statusOf(household);
+  const bracket = marginalRateOf(
+    Math.max(0, profit - STANDARD_DEDUCTION[status]),
+    FEDERAL_BRACKETS[status],
+  );
+  return (
+    bracket +
+    (SELF_EMPLOYMENT_TAX.socialSecurityRate + SELF_EMPLOYMENT_TAX.medicareRate) *
+      SELF_EMPLOYMENT_TAX.netEarningsShare
+  );
+};
+
+// An S corporation saves payroll tax on what isn't paid as salary; worth raising only when that
+// beats its costs and the 20% deduction lost on the salary (step 267).
+const sCorpElection: Detector = {
+  capability: "taxes",
+  topic: "s_corp_election",
+  covers: ["tax_business"],
+  needs: ["income_pattern", "monthly_income", "household"],
+  detect({ profile }) {
+    const pattern = profile.facts.income_pattern;
+    const income = profile.facts.monthly_income;
+    if (!selfPaid(pattern.value)) return null;
+    const profit = profitOf(profile);
+    const result = structureFor(soleInput(profit, profile.facts.household.value, 2026));
+    if (!result.sCorp.worthIt) return null;
+    const business = pattern.value === "business";
+    const md = profile.today.slice(5);
+    return {
+      id: suggestionId("taxes", "s_corp_election"),
+      capability: "taxes",
+      topic: "s_corp_election",
+      title: "Ask a tax professional whether an S corporation would save you tax",
+      headline: headlineOf("Ask about an S corporation", result.sCorp.savesCents, "saves"),
+      short: `At about ${formatCents(profit)} profit, a salary plus distributions could cut your tax.`,
+      worthCents: result.sCorp.savesCents,
+      worthKind: "saves",
+      confidence: weakest([
+        factEvidence(pattern),
+        factEvidence(income),
+        {
+          percent: business ? 55 : 65,
+          reason: business
+            ? `your deposits are sales, so I assumed ${Math.round(T.businessProfitShare * 100)}% is profit`
+            : `I assumed ${Math.round((1 - T.freelanceProfitShare) * 100)}% of what clients pay goes on costs`,
+        },
+      ]),
+      // The election for this year is due March 15; after that it starts next year.
+      urgency: md >= T.sCorpElectionFrom && md <= T.sCorpElectionBy ? "soon" : "later",
+      why: `At a profit of about ${formatCents(profit)}, an S corporation (a salary of about ${formatCents(result.sCorp.salaryCents)}, the rest as profit) could cost you about ${formatCents(result.sCorp.totalCents)} in tax and costs against ${formatCents(result.sole.taxCents)} as you are: roughly ${formatCents(result.sCorp.savesCents)} less. The election (Form 2553) is due March 15 to count for the year.`,
+      action: { label: "See the numbers", href: "/taxes/business" },
+    };
+  },
+};
+
+// Work from home with no office elsewhere: the simplified home office deduction is $5 a square
+// foot up to 300 (steps 123 and 267).
+const homeOffice: Detector = {
+  capability: "taxes",
+  topic: "home_office_deduction",
+  covers: ["tax_business"],
+  needs: ["income_pattern", "monthly_income", "housing"],
+  detect({ profile, data }) {
+    const pattern = profile.facts.income_pattern;
+    const income = profile.facts.monthly_income;
+    if (!selfPaid(pattern.value)) return null;
+    const away = tx(
+      data,
+      (t) =>
+        t.pfc === "RENT_AND_UTILITIES_RENT" &&
+        /COMMERCIAL|OFFICE|STUDIO|WORKSPACE|WEWORK/i.test(t.description),
+    );
+    if (away.length > 0) return null;
+    const deduction = HOME_OFFICE_ASSUMED_SQFT * HOME_OFFICE_SIMPLIFIED.perSquareFoot;
+    const profit = profitOf(profile);
+    const saves = Math.round(deduction * deductionRate(profit, profile.facts.household.value));
+    return {
+      id: suggestionId("taxes", "home_office_deduction"),
+      capability: "taxes",
+      topic: "home_office_deduction",
+      title: "Claim a home office if you work from home",
+      headline: headlineOf("Claim a home office", saves, "saves"),
+      short: `${HOME_OFFICE_ASSUMED_SQFT} square feet used only for work is a ${formatCents(deduction)} deduction.`,
+      worthCents: saves,
+      worthKind: "saves",
+      confidence: weakest([
+        factEvidence(pattern),
+        factEvidence(income),
+        {
+          percent: 55,
+          reason: "I can't see where you work, or whether a home office is already on file",
+        },
+      ]),
+      urgency: "later",
+      why: `You work for yourself and pay no rent for an office or studio. A room used only for work, ${HOME_OFFICE_ASSUMED_SQFT} square feet at $5 a square foot, is a ${formatCents(deduction)} deduction, which saves about ${formatCents(saves)} in income tax and self-employment tax.`,
+      action: { label: "Add your home office", href: "/taxes/profile" },
+    };
+  },
+};
+
+// Gas for a business driver: the standard mileage rate turns logged miles into a deduction
+// (steps 123 and 267).
+const vehicleDeduction: Detector = {
+  capability: "taxes",
+  topic: "vehicle_deduction",
+  covers: ["tax_business"],
+  needs: ["income_pattern", "monthly_income", "has_car"],
+  detect({ profile, data }) {
+    const pattern = profile.facts.income_pattern;
+    const income = profile.facts.monthly_income;
+    if (!selfPaid(pattern.value)) return null;
+    const gas = tx(data, (t) => t.pfc === "TRANSPORTATION_GAS" && t.amountCents > 0);
+    if (gas.length < 6) return null;
+    const deduction = Math.round(VEHICLE_ASSUMED_MILES * MILEAGE_RATE_CENTS);
+    const profit = profitOf(profile);
+    const saves = Math.round(deduction * deductionRate(profit, profile.facts.household.value));
+    return {
+      id: suggestionId("taxes", "vehicle_deduction"),
+      capability: "taxes",
+      topic: "vehicle_deduction",
+      title: "Keep a mileage log for the driving you do for your business",
+      headline: headlineOf("Keep a mileage log", saves, "saves"),
+      short: `You bought gas ${gas.length} times; ${VEHICLE_ASSUMED_MILES.toLocaleString("en-US")} business miles is a ${formatCents(deduction)} deduction.`,
+      worthCents: saves,
+      worthKind: "saves",
+      confidence: weakest([
+        factEvidence(pattern),
+        factEvidence(income),
+        evidence("seen", profile.months, gas.length, "fuel purchases"),
+        { percent: 45, reason: "I can't see how much of your driving is for the business" },
+      ]),
+      urgency: "later",
+      why: `You buy gas regularly. Every business mile is a ${(MILEAGE_RATE_CENTS / 100).toFixed(3)} dollar deduction; ${VEHICLE_ASSUMED_MILES.toLocaleString("en-US")} miles, a modest year for a driver with clients, is ${formatCents(deduction)}, saving about ${formatCents(saves)}. It only counts with a log of dates, places and reasons.`,
+      action: { label: "Log your miles", href: "/taxes/profile" },
+    };
+  },
+};
+
+// An inherited IRA has to be empty by the end of the 10th year after the owner died; taking it
+// out evenly keeps each year in a lower bracket than taking it all at the end (steps 220 and
+// 268). Found by the account's name; the year the owner died is something only the person can
+// say.
+const inheritedIra: Detector = {
+  capability: "taxes",
+  topic: "inherited_ira",
+  covers: ["tax_inherited"],
+  needs: ["inherited_ira_death_year", "inherited_from_spouse", "monthly_income", "household"],
+  detect({ profile, data }) {
+    const income = profile.facts.monthly_income;
+    const died = profile.facts.inherited_ira_death_year;
+    if (profile.facts.inherited_from_spouse.value === true) return null;
+    const accounts = data.accounts.filter(
+      (a) => a.type === "investment" && INHERITED_NAME.test(a.name ?? "") && a.balanceCents > 0,
+    );
+    if (accounts.length === 0) return null;
+    const balance = accounts.reduce((s, a) => s + a.balanceCents, 0);
+    const year = Number(profile.today.slice(0, 4));
+    const knownYear = typeof died.value === "number" ? died.value : null;
+    const emptyBy = knownYear !== null ? mustBeEmptyBy(knownYear) : null;
+    const yearsLeft = emptyBy !== null ? Math.max(1, emptyBy - year + 1) : INHERITED_IRA_YEARS;
+    const status = statusOf(profile.facts.household.value);
+    const base = soleInput(0, profile.facts.household.value, year);
+    const spread = spreadIra({
+      balanceCents: balance,
+      yearsLeft,
+      base: {
+        ...base,
+        filingStatus: status,
+        income: {
+          ...base.income,
+          wagesCents: grossIncome(profile, data),
+          socialSecurityWagesCents: grossIncome(profile, data),
+        },
+      },
+    });
+    // In the last year there is nothing left to spread: what matters is emptying it, because
+    // the money not taken out by the deadline costs 25% of what is left.
+    if (emptyBy !== null && yearsLeft <= 1) {
+      const penalty = Math.round(balance * MISSED_WITHDRAWAL_PENALTY);
+      return {
+        id: suggestionId("taxes", "inherited_ira"),
+        capability: "taxes",
+        topic: "inherited_ira",
+        title: "Take the rest of your inherited IRA out by December 31",
+        headline: headlineOf("Empty your inherited IRA by December 31", penalty, "risk"),
+        short: `Your inherited IRA holds ${formatCents(balance)}; what's left after ${emptyBy} costs 25%.`,
+        worthCents: penalty,
+        worthKind: "risk",
+        confidence: weakest([
+          factEvidence(income),
+          {
+            percent: 70,
+            reason:
+              "you told me when the owner died; whether you are an exception to the 10-year rule is unseen",
+          },
+        ]),
+        urgency: "now",
+        why: `The rule for most heirs is that your inherited IRA (${formatCents(balance)}) is empty by December 31, ${emptyBy}. Money left after that costs a penalty of 25% of what's left, up to ${formatCents(penalty)}. All of it is taxed as income the year it comes out, so a tax professional can say how much to take and when. If you are a spouse or another kind of heir the rule may not apply.`,
+        action: { label: "See what applies", href: "/profile" },
+      };
+    }
+    if (!spread.worthRaising) return null;
+    return {
+      id: suggestionId("taxes", "inherited_ira"),
+      capability: "taxes",
+      topic: "inherited_ira",
+      title: "Plan how you take money out of your inherited IRA",
+      headline: headlineOf("Spread your inherited IRA withdrawals", spread.savesCents, "saves"),
+      short: `About ${formatCents(spread.perYearCents)} a year from your ${formatCents(balance)} inherited IRA keeps brackets low.`,
+      worthCents: spread.savesCents,
+      worthKind: "saves",
+      confidence: weakest([
+        factEvidence(income),
+        {
+          percent: knownYear !== null ? 70 : 50,
+          reason:
+            knownYear !== null
+              ? "you told me when the owner died; whether they had started required withdrawals and your other income later are unknown"
+              : "I don't know when the owner died, so I assumed you have the full 10 years",
+        },
+      ]),
+      urgency:
+        emptyBy === null ? "later" : yearsLeft <= 1 ? "now" : yearsLeft <= 3 ? "soon" : "later",
+      why: `You have ${formatCents(balance)} in an inherited IRA. ${emptyBy !== null ? `Most heirs must empty it by December 31, ${emptyBy}.` : "Most heirs must empty it within 10 years of the owner's death."} Taking about ${formatCents(spread.perYearCents)} a year instead of all at the end would save roughly ${formatCents(spread.savesCents)} in tax. A tax professional should confirm the rules that apply to you.`,
+      action: { label: "Tell Jane when they died", href: "/profile" },
+    };
+  },
+};
+
+// The Marketplace credit (step 269): the advance credit is set from the income a person expected
+// when they enrolled; a rise later in the year means some or all of it comes back as a bill with
+// the return (from 2026 with no cap). The income is read month by month, so a mid-year rise shows.
+const ptcRepayment: Detector = {
+  capability: "taxes",
+  topic: "ptc_repayment",
+  covers: ["tax_health"],
+  needs: ["income_pattern", "monthly_income", "household", "marketplace_aptc_monthly"],
+  detect({ profile, data }) {
+    const h = readHealthTaxes(profile, data);
+    const c = h.marketplace.check;
+    if (!c || c.repayCents < PTC_MIN_REPAY_CENTS) return null;
+    const m = month(profile.today);
+    const pct = Math.round(c.fplShare * 100);
+    const size = h.householdSize;
+    return {
+      id: suggestionId("taxes", "ptc_repayment"),
+      capability: "taxes",
+      topic: "ptc_repayment",
+      title: "Tell the Marketplace your income has gone up, so the credit isn't a bill in April",
+      headline: headlineOf("Tell the Marketplace your new income", c.repayCents, "risk"),
+      short: `Your income is on pace for ${formatCents(h.pace.projectedCents)}, ${pct}% of the poverty line.`,
+      worthCents: c.repayCents,
+      worthKind: "risk",
+      confidence: weakest([
+        factEvidence(profile.facts.income_pattern),
+        factEvidence(profile.facts.monthly_income),
+        evidence("seen", profile.months, h.marketplace.payments, "Marketplace premium payments"),
+        h.marketplace.told
+          ? {
+              percent: 75,
+              reason:
+                "you told me your advance credit; the rest of the year's income is a projection",
+            }
+          : {
+              percent: 50,
+              reason:
+                "I can't see your advance credit, so I took it from your income in the year's first months",
+            },
+      ]),
+      urgency: m >= T.ptcNowFromMonth ? "now" : m >= T.ptcSoonFromMonth ? "soon" : "later",
+      why: `You pay a Marketplace premium, and your income has gone up: about ${formatCents(Math.round(h.pace.enrollmentCents / 12))} a month early in the year, about ${formatCents(h.pace.recentMonthlyCents)} a month lately. At about ${formatCents(h.pace.projectedCents)} for the year (${pct}% of the poverty line for ${size === 1 ? "one person" : `${size} people`})${c.overCliff ? ", over the 400% line where the credit stops," : ""} the credit you're allowed is ${formatCents(c.allowedCents)} against about ${formatCents(c.advanceCents)} paid in advance, so about ${formatCents(c.repayCents)} would come back with your return, with no cap from 2026. Updating your income on the Marketplace now lowers the advance for the rest of the year.`,
+      action: { label: "See the numbers", href: "/taxes/health" },
+    };
+  },
+};
+
+// HSA deposits over the year's limit aren't deductible and carry a 6% penalty each year they stay
+// in (steps 159 and 269); the pace to December shows it before it happens.
+const hsaOverLimit: Detector = {
+  capability: "taxes",
+  topic: "hsa_over_limit",
+  covers: ["tax_health"],
+  needs: ["has_hsa", "household", "age"],
+  detect({ profile, data }) {
+    const fact = profile.facts.has_hsa;
+    if (fact.value !== true) return null;
+    const h = readHealthTaxes(profile, data).hsa;
+    if (h.deposits === 0 || h.projectedExcessCents <= 0) return null;
+    const over = h.excessCents > 0;
+    const cover = h.family ? "family" : "self-only";
+    return {
+      id: suggestionId("taxes", "hsa_over_limit"),
+      capability: "taxes",
+      topic: "hsa_over_limit",
+      title: over
+        ? "Stop your HSA deposits and take the extra out before you file"
+        : "Lower your HSA deposits so they stay under the limit",
+      headline: headlineOf(
+        over ? "Stop your HSA deposits" : "Lower your HSA deposits",
+        h.exciseCents,
+        "risk",
+      ),
+      short: `${formatCents(h.contributedCents)} in so far this year; the ${cover} limit is ${formatCents(h.limitCents)}.`,
+      worthCents: h.exciseCents,
+      worthKind: "risk",
+      confidence: weakest([
+        factEvidence(fact),
+        evidence("seen", profile.months, h.deposits, "HSA deposits"),
+        {
+          percent: 70,
+          reason: `I took your cover as ${cover} from your household, and an employer's deposits I can't see add to the total`,
+        },
+      ]),
+      urgency: over ? "now" : "soon",
+      why: `You've put ${formatCents(h.contributedCents)} into your HSA this year, and at this pace about ${formatCents(h.projectedCents)} by December, against a ${formatCents(h.limitCents)} limit for ${cover} cover. ${over ? `${formatCents(h.excessCents)} is over already.` : `That would be ${formatCents(h.projectedExcessCents)} over.`} Money over the limit isn't deductible and costs a 6% penalty (about ${formatCents(h.exciseCents)}) every year it stays in. Taking it out, with what it earned, before you file avoids the penalty; your HSA provider has a form for it.`,
+      action: { label: "See the numbers", href: "/taxes/health" },
+    };
+  },
+};
+
+// Medical costs count only above 7.5% of income and only when itemizing beats the standard
+// deduction (step 269, from the medical spending step 200 reads); a big year of care can tip it.
+const medicalDeductionDetector: Detector = {
+  capability: "taxes",
+  topic: "medical_deduction",
+  covers: ["tax_health"],
+  needs: ["monthly_income", "household", "life_stage"],
+  detect({ profile, data }) {
+    const h = readHealthTaxes(profile, data).medical;
+    if (h.spentCents <= 0 || h.savesCents < MEDICAL_MIN_SAVING_CENTS) return null;
+    return {
+      id: suggestionId("taxes", "medical_deduction"),
+      capability: "taxes",
+      topic: "medical_deduction",
+      title: "Keep your medical receipts: this year they're worth itemizing",
+      headline: headlineOf("Keep your medical receipts", h.savesCents, "saves", true),
+      short: `You paid ${formatCents(h.spentCents)} for care this year; ${formatCents(h.floorCents)} is the 7.5% floor.`,
+      worthCents: h.savesCents,
+      worthKind: "saves",
+      confidence: weakest([
+        factEvidence(profile.facts.monthly_income),
+        evidence("seen", profile.months, h.payments, "medical payments"),
+        {
+          percent: 60,
+          reason:
+            "insurance may still pay some of these bills, and I estimated your income for the 7.5% floor",
+        },
+      ]),
+      urgency: month(profile.today) >= 11 ? "soon" : "later",
+      why: `You've paid ${formatCents(h.spentCents)} for care and health premiums this year. Only what's over 7.5% of your income (about ${formatCents(h.floorCents)}) counts, which is ${formatCents(h.deductibleCents)}; with your property tax and gifts that's more than your ${formatCents(h.standardCents)} standard deduction, so itemizing would save about ${formatCents(h.savesCents)}. Keep the bills and receipts, and ask whoever does your return to itemize.`,
+      action: { label: "See the numbers", href: "/taxes/health" },
+    };
+  },
+};
+
 export const TAX_DETECTORS: readonly Detector[] = [
+  ptcRepayment,
+  hsaOverLimit,
+  medicalDeductionDetector,
+  inheritedIra,
+  sCorpElection,
+  homeOffice,
+  vehicleDeduction,
   yearEndMoves,
   charityReceipts,
   propertyTaxCheck,

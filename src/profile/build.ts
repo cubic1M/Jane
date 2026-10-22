@@ -35,6 +35,8 @@ export type ProfileTx = {
 };
 export type ProfileAccount = {
   id: string;
+  // What the bank calls it ("Inherited IRA"); read for a few tax signals (step 268).
+  name?: string;
   type: string;
   subtype: string | null;
   balanceCents: number;
@@ -67,6 +69,12 @@ export type ProfileInput = {
   liabilities: readonly ProfileLiability[];
   // Optional: what each account holds. Absent when the loader did not read holdings.
   holdings?: readonly ProfileHolding[];
+  // Spec step 236: what the person asked Jane to leave out of their funds (keys in
+  // src/config/values.ts), when they have said.
+  valuesExcludes?: readonly string[];
+  // Spec step 237: ids of the accounts that have a beneficiary named. Absent when the loader
+  // did not read them.
+  namedAccountIds?: readonly string[];
   told: Told;
   // What else is known about the person's setup in Jane (step 264); a sample person's is
   // given by ./sample.ts.
@@ -95,6 +103,10 @@ export type ProfileInput = {
     insuranceShopSavingCents?: number;
     // The policies they have, for the cover-need gaps (spec step 277). Absent: not loaded.
     coverPolicies?: readonly NeedPolicy[];
+    // The value of what they own (a home, cars), added to their net worth for the umbrella.
+    ownedValueCents?: number;
+    // The person already has a practice portfolio (step 296). Absent: not loaded.
+    hasPracticePortfolio?: boolean;
     rsuGap?: {
       vestedCents: number;
       shortfallCents: number;
@@ -137,6 +149,17 @@ export function monthsOfData(txs: readonly ProfileTx[], today: string): number {
   const [fy, fm] = monthOf(first).split("-").map(Number);
   const [ty, tm] = monthOf(today).split("-").map(Number);
   return Math.min(PROFILE_MONTHS, Math.max(1, (ty - fy) * 12 + (tm - fm)));
+}
+
+// The months a monthly rate is spread over. A full year is the calendar count; a shorter history
+// uses the real span in days, because the calendar count rounds a 90-day history to two or three
+// "months" and a rate taken over two would read a third too high.
+export function monthsForRate(txs: readonly ProfileTx[], today: string): number {
+  const whole = monthsOfData(txs, today);
+  if (whole === 0 || whole >= PROFILE_MONTHS) return whole;
+  const first = txs.reduce((a, t) => (t.date < a ? t.date : a), today);
+  const days = (Date.parse(`${today}T00:00:00Z`) - Date.parse(`${first}T00:00:00Z`)) / 86_400_000;
+  return Math.max(1, (days + 1) / (365.25 / 12));
 }
 
 const inYear = (txs: readonly ProfileTx[], today: string) => {
@@ -240,7 +263,7 @@ export function buildProfile(input: ProfileInput): Profile {
   const incomeTotal = income
     .filter((t) => !(t.pfc === "INCOME_TAX_REFUND" || t.pfc === "INCOME_INTEREST_EARNED"))
     .reduce((s, t) => s - t.amountCents, 0);
-  const monthlyIncome = months > 0 ? Math.round(incomeTotal / months) : 0;
+  const monthlyIncome = months > 0 ? Math.round(incomeTotal / monthsForRate(txs, today)) : 0;
   if (income.length > 0) set("monthly_income", monthlyIncome, "seen", "deposits", income.length);
   else unknown("monthly_income");
 
@@ -379,6 +402,10 @@ export function buildProfile(input: ProfileInput): Profile {
     "filing_status",
     "business_structure",
     "hardship_reason",
+    "inherited_ira_death_year",
+    "inherited_from_spouse",
+    "marketplace_aptc_monthly",
+    "marketplace_benchmark_monthly",
   ] as const) {
     if (told[key] === undefined) unknown(key);
     else set(key, told[key], "told", "answers", 0);
