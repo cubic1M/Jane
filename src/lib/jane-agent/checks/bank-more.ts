@@ -167,6 +167,10 @@ const rows: Row[] = [
   ["longview", "/long-view", "long_view", "what will my net worth be in 20 years"],
   ["longview", "/long-view", "long_view", "how much will i have when i retire"],
 
+  // Every figure explained (spec step 239).
+  ["figures", "/figures/safe_to_spend", "explain_figure", "how did you get my safe to spend"],
+  ["figures", "/figures/monthly_spending", "explain_figure", "how did you work out my spending"],
+  ["figures", "/figures/net_worth", "explain_figure", "show me the working for my net worth"],
   // Books that balance (spec step 238).
   ["books", "/net-worth", "books_check", "are my numbers right"],
   ["books", "/net-worth", "books_check", "do my books balance"],

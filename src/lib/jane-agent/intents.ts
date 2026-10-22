@@ -11,6 +11,7 @@ import type { FlowId } from "./flows/engine";
 import type { PreferenceDraft } from "./preferences";
 import { parseFact } from "./remember";
 import { parseInvestmentIntent, type InvestmentIntent } from "./investments/intents";
+import { parseFigureHow, type FigureIntent } from "./figure-intents";
 import { parseSectorIntent, type SectorIntent } from "./autopilot-intents";
 import { parseLongView, type LongViewIntent } from "./long-view-intents";
 import { parseProfile, type ProfileIntent } from "./profile-intents";
@@ -121,6 +122,8 @@ export type Intent =
   | { kind: "health" }
   // Spec step 148: "my monthly report".
   | { kind: "monthly_report" }
+  // Spec step 239: "how did you get my safe to spend?"
+  | FigureIntent
   // Spec step 238: "are my numbers right?"
   | { kind: "books" }
   // Spec step 240: "my steady paycheck", "my income is uneven".
@@ -560,6 +563,8 @@ export function parseIntent(
   }
   if (PAUSE.test(text)) return { kind: "pause_autopilot" };
   if (CHECKED.test(text)) return { kind: "checked" };
+  const figureHow = parseFigureHow(text);
+  if (figureHow) return figureHow;
   if (BOOKS.test(text)) return { kind: "books" };
   const saveMore = SAVE_MORE.exec(text);
   if (saveMore) {

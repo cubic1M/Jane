@@ -154,9 +154,10 @@ describe("a sensible top three, in the person's life", () => {
     expect(rank("preretire", "roth_conversion")).toBeLessThan(3);
     expect(rank("owner", "estimated_taxes")).toBeLessThan(4);
     // In December the Reyes family's biggest tax item is their flood (step 270: deadlines
-    // moved, a casualty loss), at the top; their year-end moves follow the insurance gaps.
+    // moved, a casualty loss), at the top; their year-end moves follow the insurance gaps and
+    // the FSA money that expires Dec 31 (step 259).
     expect(rank("family", "disaster_relief", inDecember)).toBe(0);
-    expect(rank("family", "year_end_moves", inDecember)).toBeLessThan(6);
+    expect(rank("family", "year_end_moves", inDecember)).toBeLessThan(7);
   });
 
   it("keeps the small, unsure ones low: receipts, an appeal nobody has priced, a filing nudge", () => {
