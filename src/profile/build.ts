@@ -36,6 +36,8 @@ export type ProfileTx = {
 };
 export type ProfileAccount = {
   id: string;
+  // What the bank calls it ("Inherited IRA"); read for a few tax signals (step 268).
+  name?: string;
   type: string;
   subtype: string | null;
   balanceCents: number;
@@ -68,6 +70,12 @@ export type ProfileInput = {
   liabilities: readonly ProfileLiability[];
   // Optional: what each account holds. Absent when the loader did not read holdings.
   holdings?: readonly ProfileHolding[];
+  // Spec step 236: what the person asked Jane to leave out of their funds (keys in
+  // src/config/values.ts), when they have said.
+  valuesExcludes?: readonly string[];
+  // Spec step 237: ids of the accounts that have a beneficiary named. Absent when the loader
+  // did not read them.
+  namedAccountIds?: readonly string[];
   told: Told;
   // What else is known about the person's setup in Jane (step 264); a sample person's is
   // given by ./sample.ts.
@@ -96,6 +104,8 @@ export type ProfileInput = {
     insuranceShopSavingCents?: number;
     // The policies they have, for the cover-need gaps (spec step 277). Absent: not loaded.
     coverPolicies?: readonly NeedPolicy[];
+    // The person already has a practice portfolio (step 296). Absent: not loaded.
+    hasPracticePortfolio?: boolean;
     rsuGap?: {
       vestedCents: number;
       shortfallCents: number;
@@ -399,6 +409,8 @@ export function buildProfile(input: ProfileInput): Profile {
     "filing_status",
     "business_structure",
     "hardship_reason",
+    "inherited_ira_death_year",
+    "inherited_from_spouse",
   ] as const) {
     if (told[key] === undefined) unknown(key);
     else set(key, told[key], "told", "answers", 0);

@@ -35,6 +35,22 @@ import { advisoryLine, COSTLY_LINK, productLine } from "./costly-copy";
 import { REVIEW_LINK, reviewFor } from "./review-copy";
 import type { LocationView } from "@/lib/investments/location";
 import { freeButton, LOCATION_LINK, locationLine } from "./location-copy";
+import type { PlanMenuView } from "@/lib/investments/plan-menu";
+import { changeButton, confirmButtons, MENU_LINK, proposedLine, savingLine } from "./menu-copy";
+import type { HonestView } from "@/lib/investments/honest";
+import { HONEST_LINK, honestLine } from "./honest-copy";
+import type { ValuesView } from "@/lib/investments/values";
+import { valuesListWords, valuesPlanLine, valuesButton, VALUES_LINK } from "./values-copy";
+import type { ShortTermView } from "@/lib/investments/short-term";
+import { candidateLine, ladderButton, SHORT_LINK } from "./short-term-copy";
+import type { SuddenMoneyView } from "@/lib/investments/sudden-money";
+import {
+  planBody,
+  suddenQuestionButtons,
+  suddenQuestionLine,
+  stageButton,
+  SUDDEN_LINK,
+} from "./sudden-copy";
 import { STEADY_LINK, steadyMessage, timelines } from "./steady-copy";
 import { CRYPTO_LINK, feeFlag, NEVER_TRADES, shareFlag, sizeLine } from "./crypto-copy";
 import {
@@ -942,5 +958,121 @@ export function locationReply(view: LocationView): Reply {
     body: locationLine(plan),
     actions: [...(button ? [button] : []), LOCATION_LINK],
     refs: { advice: true, ...(button ? { locationKey: plan.key } : {}) },
+  };
+}
+
+// Spec step 232: the plan's fund list (to confirm first) and the cheapest mix of it, in demo
+// advice mode. Only funds on the confirmed list are ever named.
+export function planMenuReply(view: PlanMenuView): Reply {
+  if (view.proposed) {
+    return {
+      body: proposedLine(view.proposed),
+      actions: [...confirmButtons(), MENU_LINK],
+      refs: { menuId: view.proposed.id },
+    };
+  }
+  if (!view.menu) {
+    return {
+      body: "I don't have your workplace plan's fund list yet. Paste its fee disclosure on the plan funds page and I'll read it, show you what I read, and find the cheapest mix of its funds for your target.",
+      actions: [MENU_LINK],
+      refs: {},
+    };
+  }
+  if (!view.advice || !view.plan) {
+    return {
+      body: `Your plan offers ${view.menu.funds.length} funds: ${view.menu.funds.map((f) => `${f.ticker} (${(f.expenseBps / 100).toFixed(2)}%)`).join(", ")}.${view.advice ? " Finish your investor profile and I'll find the cheapest mix." : " I don't give recommendations on real accounts yet."}`,
+      actions: [MENU_LINK],
+      refs: {},
+    };
+  }
+  return {
+    body: savingLine(view.plan),
+    actions:
+      view.plan.savingCents > 0 && !view.pending
+        ? [changeButton(view.plan), MENU_LINK]
+        : [MENU_LINK],
+    refs: { advice: true },
+  };
+}
+
+// Spec step 233: how the money really did, after fees and taxes, against a benchmark, with
+// the biggest reason for each gap. Facts about the past; never a forecast.
+export function honestReply(view: HonestView): Reply {
+  return {
+    body: `${honestLine(view)}${view.rows.length > 0 ? " That's what happened, not what will." : ""}`,
+    actions: [HONEST_LINK],
+    refs: {},
+  };
+}
+
+// Spec step 234: where money needed soon does best after tax, for each goal due within three
+// years and the emergency fund above its floor (demo advice mode).
+export function shortTermReply(view: ShortTermView): Reply {
+  if (!view.advice) {
+    return {
+      body: "I don't give recommendations on real accounts yet. The options and their after-tax rates are on the short-term money page.",
+      actions: [SHORT_LINK],
+      refs: {},
+    };
+  }
+  const withLadder = view.candidates.find((c) => c.ladder && !c.hasLadder);
+  return {
+    body:
+      view.candidates.map(candidateLine).join(" ") ||
+      "None of your goals is due within three years with money saved, and there's no emergency money above its floor.",
+    actions: [...(withLadder ? [ladderButton(withLadder)] : []), SHORT_LINK],
+    refs: { advice: true, ...(withLadder ? { ladderKey: withLadder.key } : {}) },
+  };
+}
+
+// Spec step 235: sudden money. The question if a deposit is waiting, else its plan, else how
+// it works. Tax first, always; every part is a tap.
+export function suddenMoneyReply(view: SuddenMoneyView): Reply {
+  const asked = view.items.find((i) => i.status === "asked");
+  if (asked) {
+    return {
+      body: suddenQuestionLine(asked),
+      actions: [...suddenQuestionButtons(), SUDDEN_LINK],
+      refs: { suddenId: asked.id },
+    };
+  }
+  const planned = view.items.find((i) => i.status === "planned" && stageButton(i));
+  if (planned && view.advice) {
+    const next = planned.stages.find((s) => !s.done)!;
+    return {
+      body: planBody(planned),
+      actions: [stageButton(planned)!, SUDDEN_LINK],
+      refs: { advice: true, suddenId: planned.id, suddenStage: next.key },
+    };
+  }
+  return {
+    body: "When a lot of money arrives that isn't pay, like a bonus, an inheritance or a sale, I work out the tax to set aside first (it depends on which it was), then a plan in order: high-interest debt, your emergency fund, your retirement limits, your goals, and last investing. Each part is a tap. I don't see a large deposit waiting right now.",
+    actions: [SUDDEN_LINK],
+    refs: {},
+  };
+}
+
+// Spec step 236: investing by your values. Says what the list would change, in dollars and in
+// diversification, and offers the switch as a tap in demo advice only.
+export function valuesReply(view: ValuesView): Reply {
+  if (view.prefs.excludes.length === 0 && view.prefs.themes.length === 0) {
+    return {
+      body: "You can tell me what to leave out of your funds (fossil fuels, weapons, tobacco) or lean towards (clean energy). Screened funds hold fewer companies and can cost a little more, and I show both in dollars first. They stay inside the same kind of investment, so your stocks-and-bonds mix doesn't change.",
+      actions: [VALUES_LINK],
+      refs: {},
+    };
+  }
+  if (!view.advice) {
+    return {
+      body: `Your list: ${valuesListWords(view.prefs)}. I don't give fund recommendations on real accounts yet; the screened funds and their costs are on the values page.`,
+      actions: [VALUES_LINK],
+      refs: {},
+    };
+  }
+  const can = view.plan && view.plan.switches.length > 0;
+  return {
+    body: valuesPlanLine(view),
+    actions: [...(can ? [valuesButton()] : []), VALUES_LINK],
+    refs: { advice: true, ...(can ? { valuesKey: view.plan!.key } : {}) },
   };
 }

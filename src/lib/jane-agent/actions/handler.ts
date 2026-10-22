@@ -10,6 +10,9 @@ export type ActionContext = {
   message: ChatMessage;
   // The button as it was offered.
   action: MessageAction;
+  // What was chosen with it, for a button that carries a choice (option.pick: the option's
+  // id). Checked by the handler against what the message offered.
+  choice?: string;
   client: PrismaClient;
   now: Date;
 };

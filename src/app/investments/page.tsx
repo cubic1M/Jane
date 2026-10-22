@@ -276,6 +276,44 @@ async function InvestmentsContent() {
             : bonds where interest isn&apos;t taxed, without changing your mix.
           </p>
           <p className="text-sm text-zinc-600 dark:text-zinc-400">
+            <Link href="/investments/plan-menu" className={LINK}>
+              Your workplace plan&apos;s funds
+            </Link>
+            : the cheapest mix of the funds your 401(k) offers.
+          </p>
+          <p className="text-sm text-zinc-600 dark:text-zinc-400">
+            <Link href="/investments/performance" className={LINK}>
+              How your money really did
+            </Link>
+            : 1, 3 and 5 years, after fees and taxes, against a simple mix with your risk.
+          </p>
+          <p className="text-sm text-zinc-600 dark:text-zinc-400">
+            <Link href="/investments/short-term" className={LINK}>
+              Short-term money
+            </Link>
+            : bills, CDs, I bonds and savings compared after tax, with a ladder that matures on
+            time.
+          </p>
+          <p className="text-sm text-zinc-600 dark:text-zinc-400">
+            <Link href="/investments/sudden-money" className={LINK}>
+              Sudden money
+            </Link>
+            : a bonus, an inheritance or a sale, with tax first and a plan in order.
+          </p>
+          <p className="text-sm text-zinc-600 dark:text-zinc-400">
+            <Link href="/investments/values" className={LINK}>
+              Investing by your values
+            </Link>
+            : leave out fossil fuels, weapons or tobacco, with the cost and diversification shown.
+          </p>
+          <p className="text-sm text-zinc-600 dark:text-zinc-400">
+            <Link href="/investments/family-file" className={LINK}>
+              The family looked after
+            </Link>
+            : who is named on each account, what a life change makes out of date, and a file to
+            share.
+          </p>
+          <p className="text-sm text-zinc-600 dark:text-zinc-400">
             <Link href="/investments/practice" className={LINK}>
               Practice portfolio
             </Link>
