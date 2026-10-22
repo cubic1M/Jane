@@ -404,6 +404,9 @@ export const TAX_MESSAGE_PRIORITY = {
   estimate_due: 85,
   // Spec step 267: an S corporation that would save more than it costs.
   business: 33,
+  // Spec step 268: an inherited IRA, and a gift that needs a gift tax return.
+  inherited: 46,
+  gifts: 44,
   year_end: 55,
   exemption: 30,
 } as const;
@@ -489,6 +492,11 @@ export const TAX_AUTOPILOT: readonly { feature: string; ask: string; auto: strin
     feature: "business",
     ask: "For a business owner I work out your qualified business income deduction and, with demo advice, whether an S corporation would save more than its payroll and filing costs at your profit, with a salary range to start from. A tax professional sets up the election.",
     auto: "For a business owner I keep your qualified business income deduction and the S corporation comparison current and, with demo advice, bring it up when it would save more than it costs. I never file the election.",
+  },
+  {
+    feature: "inheritance",
+    ask: "If you inherit an IRA I tell you the date it has to be empty by and, with demo advice, how taking it out evenly could keep your tax lower. I flag a gift to one person over the yearly exclusion, which needs a gift tax return. These are facts for a tax professional to confirm, not legal advice.",
+    auto: "I watch for an inherited IRA and gifts over the yearly exclusion and tell you what applies and by when, with demo advice on spreading withdrawals. These are facts for a tax professional to confirm, not legal advice. I never file a return.",
   },
   {
     feature: "identity",

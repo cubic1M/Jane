@@ -8,12 +8,14 @@ import { scopedFor } from "@/lib/db-scoped";
 import { markChatRead, pinnedMessages, stackedSuggestions } from "@/lib/jane-agent/messages";
 import { toView } from "@/lib/jane-agent/view";
 import { openChat, timezoneOf } from "@/lib/jane-agent/open";
+import { practiceCards } from "@/lib/practice/cards";
 import { requireUser } from "@/lib/session";
 import { ChatComposer } from "./composer";
 import { ChatMessageItem } from "./message";
+import { PracticeCards } from "./practice-cards";
 import { ScanRefresher } from "./scan-refresher";
 import { ScrollToEnd } from "./scroll-to-end";
-import { SuggestionStack } from "./suggestion-stack";
+import { SuggestionCards } from "./suggestion-cards";
 
 // Jane's chat, the home screen (spec step 81): what Jane noticed, did and suggests, newest
 // at the bottom, each with its buttons. The last CHAT_PAGE_SIZE messages, with "Show
@@ -32,13 +34,15 @@ async function Chat({ searchParams }: { searchParams: PageProps<"/chat">["search
   const user = await requireUser();
   const pages = pagesFrom((await searchParams).pages);
   // Nothing here waits on anything else, so a first visit waits for the slowest, not the sum.
-  const [chat, askHistory, pinned, stackedRows, zone] = await Promise.all([
+  const [chat, askHistory, pinned, stackedRows, zone, practice] = await Promise.all([
     openChat(user.id, { pages }),
     scopedFor(user.id).askConversations.count(),
     pinnedMessages(user.id),
     // The day's suggestions still waiting, one card at a time by the message box.
     stackedSuggestions(user.id),
     timezoneOf(user.id),
+    // Spec step 296: the practice portfolio's cards (demo advice mode only).
+    practiceCards(user.id),
   ]);
   const stacked = stackedRows.map((m) => toView(m, new Date(), zone));
   if (!chat) redirect("/connect");
@@ -116,8 +120,6 @@ async function Chat({ searchParams }: { searchParams: PageProps<"/chat">["search
         </ol>
       )}
 
-      <SuggestionStack messages={stacked} />
-
       {/* The message box (spec step 84): typing to Jane, answered under it. */}
       <ChatComposer
         id="chat-end"
@@ -135,6 +137,10 @@ async function Chat({ searchParams }: { searchParams: PageProps<"/chat">["search
         </Link>
       )}
       {pages === 1 && <ScrollToEnd targetId="chat-end" />}
+      {/* Last, so its room under the message box is the end of the page. */}
+      <SuggestionCards messages={stacked} />
+      {/* One set of cards at a time: the practice portfolio's once the suggestions are done. */}
+      {stacked.length === 0 && <PracticeCards cards={practice} />}
     </>
   );
 }

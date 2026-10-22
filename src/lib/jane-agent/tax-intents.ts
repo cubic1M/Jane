@@ -80,6 +80,8 @@ export type TaxIntent =
   | { kind: "tax"; ask: "calendar" }
   // Spec step 267: business owners' tax structure.
   | { kind: "tax"; ask: "business" }
+  // Spec step 268: inherited money and gifts.
+  | { kind: "tax"; ask: "inherited" }
   | { kind: "tax"; ask: "retire_year"; year: number }
   // Spec step 218: a sign of identity theft, or the IP PIN.
   | { kind: "tax"; ask: "identity"; sign: "efile_rejected" | "unknown_form" | "irs_letter" | null };
@@ -236,6 +238,8 @@ const CALENDAR_ASK =
   /\btax year (?:calendar|runs)\b|\b(?:taxes|tax stuff)\b.*\bthis month\b|\bwhat(?:'s| is)? (?:due|coming up) (?:for|with) (?:my )?taxes\b|\btax(?:es)? on autopilot\b|\bhow does jane (?:handle|run|do) my taxes\b/;
 const BUSINESS_ASK =
   /\bs[- ]?corp(?:oration)?\b|\bqbi\b|\bqualified business income\b|\bpass[- ]?through\b|\bshould i (?:incorporate|form an llc|become an llc|elect)\b|\bllc\b.*\btax/;
+const INHERITED_ASK =
+  /\binherit(?:ed|ing)?\b[^.?!]{0,30}\b(?:ira|401\(?k\)?|403\(?b\)?|retirement account|roth)\b|\binherit\w*\b[^.?!]{0,40}\b(?:tax(?:es|ed)?|irs|deadline|10 years?)\b|\bbeneficiary ira\b|\bstep(?:ped)?[- ]?up\b.*\bbasis\b|\bgift tax\b|\bform 709\b|\bannual (?:gift )?exclusion\b|\bestate tax\b|\b10[- ]year rule\b/;
 const RETIRE_YEAR = /\b(?:plan|expect|want|hope|aim) to retire (?:in|by) (\d{4})\b/;
 const PACK = /\btax(?:-| )?time pack\b|\btax pack\b|\byear-end pack\b/;
 
@@ -332,6 +336,7 @@ export function parseTaxIntent(text: string): TaxIntent | null {
   if (EQUITY_ASK.test(text)) return { kind: "tax", ask: "equity" };
   const retire = text.match(RETIRE_YEAR);
   if (retire) return { kind: "tax", ask: "retire_year", year: Number(retire[1]) };
+  if (INHERITED_ASK.test(text)) return { kind: "tax", ask: "inherited" };
   if (BUSINESS_ASK.test(text)) return { kind: "tax", ask: "business" };
   if (CALENDAR_ASK.test(text)) return { kind: "tax", ask: "calendar" };
   if (ACCOUNTANT_ASK.test(text)) return { kind: "tax", ask: "accountant" };

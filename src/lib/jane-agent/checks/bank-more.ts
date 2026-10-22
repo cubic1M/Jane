@@ -82,6 +82,38 @@ const rows: Row[] = [
   ["costly", "/investments/costly-products", "costly_products", "what is a surrender charge"],
   ["invreview", "/investments", "yearly_review", "do my yearly investing review"],
   ["location", "/investments/location", "asset_location", "which accounts should hold my bonds"],
+  [
+    "values",
+    "/investments/values",
+    "values_investing",
+    "can i avoid fossil fuel companies in my funds",
+  ],
+  [
+    "values",
+    "/investments/values",
+    "values_investing",
+    "what would it cost to invest without tobacco and weapons",
+  ],
+  [
+    "familyfile",
+    "/investments/family-file",
+    "family_file",
+    "who are the beneficiaries on my accounts",
+  ],
+  [
+    "familyfile",
+    "/investments/family-file",
+    "family_file",
+    "do my beneficiaries need updating after my divorce",
+  ],
+  [
+    "familyfile",
+    "/investments/family-file",
+    "family_file",
+    "what would my family need if something happens to me",
+  ],
+  ["familyfile", "/investments/family-file", "family_file", "should i make a will or a trust"],
+  ["values", "/investments/values", "values_investing", "do you have esg funds"],
   ["windfall", "/investments/sudden-money", "sudden_money", "i got a big bonus what should i do"],
   [
     "windfall",

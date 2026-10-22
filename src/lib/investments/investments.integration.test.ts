@@ -48,6 +48,17 @@ import {
   loadSuddenMoney,
   SuddenMoneyError,
 } from "./sudden-money";
+import {
+  confirmBeneficiaries,
+  exportFamilyFile,
+  FamilyFileError,
+  loadFamilyFile,
+  recordEvent,
+  saveBeneficiaries,
+  saveContacts,
+  savePicks,
+} from "./family-file";
+import { applyValues, loadValues, savePrefs, ValuesError } from "./values";
 import { loadShortTerm, settleLadders, ShortTermError, startLadder } from "./short-term";
 import {
   confirmMenu,
@@ -1632,6 +1643,92 @@ describe.runIf(url)("investments in Jane's chat, against a real database", () =>
         now: LINKED,
       });
       expect(reply.body).toMatch(/Nothing moves until you tap|All done/);
+    },
+  );
+
+  it(
+    "step 236: a values list switches funds inside each kind, keeps the risk target, and steers the rebalance",
+    SLOW,
+    async () => {
+      const userId = await demoPerson();
+      const before = await loadValues(userId, { client, now: LINKED });
+      expect(before.plan?.switches).toEqual([]);
+      await savePrefs(
+        userId,
+        { excludes: ["fossil_fuels", "weapons", "tobacco", "bogus"], themes: [] },
+        { client },
+      );
+      const view = await loadValues(userId, { client, now: LINKED });
+      expect(view.prefs.excludes).toEqual(["fossil_fuels", "weapons", "tobacco"]);
+      const plan = view.plan!;
+      expect(plan.switches.length).toBeGreaterThan(0);
+      for (const cls of ["us_stocks", "intl_stocks", "bonds"] as const) {
+        expect(plan.classTotals[cls].before).toBe(plan.classTotals[cls].after);
+      }
+      await expect(applyValues(userId, "stale", { client, now: LINKED })).rejects.toThrow(
+        ValuesError,
+      );
+      const done = await applyValues(userId, plan.key, { client, now: LINKED });
+      expect(done.switches).toBe(plan.switches.length);
+      const after = await loadValues(userId, { client, now: LINKED });
+      expect(after.plan?.switches).toEqual([]);
+    },
+  );
+
+  it(
+    "step 237: beneficiaries missing or out of date, a family file with only what is picked, no legal advice",
+    SLOW,
+    async () => {
+      const userId = await demoPerson();
+      const first = await loadFamilyFile(userId, { client });
+      const k = first.checks.find((c) => c.problems.includes("missing"))!;
+      expect(k).toBeDefined();
+      await expect(
+        saveBeneficiaries(
+          userId,
+          k.accountId,
+          [{ name: "Sam", relationship: "spouse", sharePct: 60, tier: "primary" }],
+          { client, now: LINKED },
+        ),
+      ).rejects.toThrow(FamilyFileError);
+      await saveBeneficiaries(
+        userId,
+        k.accountId,
+        [{ name: "Sam", relationship: "spouse", sharePct: 100, tier: "primary" }],
+        { client, now: LINKED },
+      );
+      let view = await loadFamilyFile(userId, { client });
+      expect(view.checks.find((c) => c.accountId === k.accountId)!.problems).toEqual([]);
+      // A birth after the names were confirmed makes them out of date; a tap confirms them.
+      await recordEvent(userId, "birth", "2099-01-01", { client });
+      view = await loadFamilyFile(userId, { client });
+      expect(view.checks.find((c) => c.accountId === k.accountId)!.problems).toEqual([
+        "out_of_date",
+      ]);
+      await expect(recordEvent(userId, "wedding", "2099-01-01", { client })).rejects.toThrow(
+        FamilyFileError,
+      );
+      await confirmBeneficiaries(userId, k.accountId, {
+        client,
+        now: new Date("2099-02-01T12:00:00Z"),
+      });
+      view = await loadFamilyFile(userId, { client });
+      expect(view.checks.find((c) => c.accountId === k.accountId)!.problems).toEqual([]);
+
+      // The file holds only what is picked.
+      await saveContacts(
+        userId,
+        [{ name: "Pat Lee", role: "lawyer", phone: "555-0100", email: null }],
+        "Hall closet",
+        { client },
+      );
+      await savePicks(userId, ["contacts", "bogus"], { client });
+      const text = await exportFamilyFile(userId, { client, now: LINKED });
+      expect(text).toMatch(/Pat Lee \(lawyer\)/);
+      expect(text).not.toMatch(/Hall closet|nobody named|Sam/);
+      const { reply } = await sendToJane(userId, "do i need a will", { client, now: LINKED });
+      expect(reply.body).toMatch(/estate-planning attorney/);
+      expect(reply.body).not.toMatch(/you should/i);
     },
   );
 });

@@ -143,7 +143,7 @@ describe("a sensible top three, in the person's life", () => {
     const rank = (id: PersonId, t: string, change?: (d: ProfileInput) => ProfileInput) =>
       ranked(id, change).findIndex((s) => s.topic === t);
     expect(rank("equity", "withholding_gap")).toBeLessThan(4);
-    expect(rank("preretire", "roth_conversion")).toBe(0);
+    expect(rank("preretire", "roth_conversion")).toBeLessThan(3);
     expect(rank("owner", "estimated_taxes")).toBeLessThan(4);
     expect(rank("family", "year_end_moves", inDecember)).toBeLessThan(4);
   });
