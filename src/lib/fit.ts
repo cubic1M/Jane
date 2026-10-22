@@ -122,6 +122,7 @@ export async function loadFit(
     ineligible: [],
     whatWouldHelp: [],
     assumptions: [],
+    terms: null,
     available: Boolean(found),
     advice: Boolean(found),
     checkedOn: asOf,

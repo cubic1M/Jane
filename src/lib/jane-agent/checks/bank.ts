@@ -2292,6 +2292,36 @@ const BASE_QUESTIONS: readonly CheckQuestion[] = [
       maxChars: 900,
     },
   },
+  // Follow-ups on the best loan (spec step 284), from loan_fit's reason for the pick and the
+  // lender's other terms, the differences already worked out.
+  {
+    id: "debt-68",
+    text: "why that one?",
+    needs: "claude",
+    after: "debt-67",
+    sector: "loans",
+    page: "/loans",
+    tool: "loan_fit",
+    profile: "demo_advice",
+    expect: {
+      mentions: /in all|total|cost|cheap|less|payment/i,
+      avoid: /\bbutton\b|apply for you|I can't tell/i,
+    },
+  },
+  {
+    id: "debt-69",
+    text: "what about a shorter term?",
+    needs: "claude",
+    after: "debt-67",
+    sector: "loans",
+    page: "/loans",
+    tool: "loan_fit",
+    profile: "demo_advice",
+    expect: {
+      mentions: /a month/i,
+      avoid: /\bbutton\b|apply for you|I can't tell/i,
+    },
+  },
   // Spending, saving and housing decisions, three sentences or fewer.
   {
     id: "debt-56",

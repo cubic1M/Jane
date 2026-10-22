@@ -123,6 +123,39 @@ describe("options for a new car loan", () => {
   });
 });
 
+describe("the best loan's other terms, for a follow-up", () => {
+  it("lists the best loan's lender at each term, with the differences against it worked out", async () => {
+    const r = await car(person({ incomeCents: 400_000, debtPaymentsCents: 30_000 }));
+    const best = r.options.find((o) => o.label === "best_cost")!;
+    expect(r.terms!.lender).toBe(best.lender);
+    expect(r.terms!.bestId).toBe(best.id);
+    const months = r.terms!.options.map((t) => t.termMonths);
+    expect(months).toEqual([...months].sort((a, b) => a - b));
+    expect(months).toContain(best.termMonths);
+    const at = r.terms!.options.find((t) => t.id === best.id)!;
+    expect(at).toMatchObject({ paymentDiffCents: 0, interestDiffCents: 0 });
+    expect(at.interestCents).toBe(best.totalCostCents - best.feeCents - 2_000_000);
+    for (const t of r.terms!.options) {
+      expect(t.paymentDiffCents).toBe(t.paymentCents - best.paymentCents);
+      expect(t.interestDiffCents).toBe(t.interestCents - at.interestCents);
+      // A shorter term pays more a month and less interest; a longer one the other way.
+      if (t.termMonths < best.termMonths) {
+        expect(t.paymentDiffCents).toBeGreaterThan(0);
+        expect(t.interestDiffCents).toBeLessThan(0);
+      }
+      if (t.termMonths > best.termMonths) {
+        expect(t.paymentDiffCents).toBeLessThan(0);
+        expect(t.interestDiffCents).toBeGreaterThan(0);
+      }
+    }
+    expect(months.some((m) => m < best.termMonths)).toBe(true);
+  });
+
+  it("has none when no loan is eligible", async () => {
+    expect((await car(person({ creditScore: 400 }))).terms).toBeNull();
+  });
+});
+
 describe("who is eligible", () => {
   it("turns a score under the floor down with the reason, and says what would help", async () => {
     const r = await car(person({ creditScore: FIT_CREDIT_FLOOR.auto - 20 }));
