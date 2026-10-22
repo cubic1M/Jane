@@ -63,6 +63,10 @@ import {
   costlyReply,
   yearlyReviewReply,
   locationReply,
+  planMenuReply,
+  honestReply,
+  shortTermReply,
+  suddenMoneyReply,
 } from "./replies";
 import { gather } from "../brain";
 import { parseIntent } from "../intents";
@@ -78,6 +82,9 @@ import {
   wholeLifeCompare,
 } from "@/planning/costly-products";
 import { productLine } from "./costly-copy";
+import { honestPeriod } from "@/planning/honest";
+import { compare as compareShort, ladder as shortLadder } from "@/planning/short-term";
+import { PREDICTION_WORDS } from "@/config/steady-hand";
 import { locationPlan, type PlanAccount } from "@/planning/location";
 import { holdingsReply, matchAccounts } from "./replies";
 import { INVESTMENT_TOOLS, runInvestmentTool } from "./tools";
@@ -2756,5 +2763,315 @@ describe("locationReply and the location message", () => {
     });
     expect(gather(LOC_PLAN, false)).toEqual([]);
     expect(gather(null)).toEqual([]);
+  });
+});
+
+// Spec step 232: the workplace plan's menu.
+const MENU_FUNDS = [
+  {
+    ticker: "KTSIX",
+    name: "Keystone Total US Stock Index Fund",
+    expenseBps: 3,
+    kind: "us_stocks" as const,
+    mix: null,
+  },
+  {
+    ticker: "NSTDX",
+    name: "Northstar Target 2055 Fund",
+    expenseBps: 75,
+    kind: "target_date" as const,
+    mix: null,
+  },
+];
+const MENU_PLAN = {
+  accountId: "a",
+  accountName: "Demo 401(k)",
+  balanceCents: 8_425_040,
+  current: [],
+  currentBps: 60,
+  suggested: [
+    { ticker: "KTSIX", name: "Keystone Total US Stock Index Fund", share: 1, expenseBps: 3 },
+  ],
+  suggestedBps: 3,
+  missing: [],
+  savingCents: 480_227,
+  riskLevel: 3,
+  targetDates: [
+    {
+      ticker: "NSTDX",
+      fundBps: 75,
+      handBps: 5,
+      fundCents: 63_188,
+      handCents: 4_213,
+      savingCents: 58_975,
+      hand: [],
+    },
+  ],
+};
+const MENU_VIEW = {
+  advice: true,
+  demo: true,
+  proposed: null,
+  pending: false,
+  plan: MENU_PLAN,
+  menu: { id: "m", planName: "Demo employer 401(k)", status: "confirmed", funds: MENU_FUNDS },
+};
+
+describe("plan menu questions, by rules", () => {
+  it.each([
+    "what are my 401k fund options",
+    "which funds should i pick in my 401k",
+    "is my target date fund fee too high",
+  ])("reads %j as the plan menu", (text) => {
+    expect(parseIntent(text, ASOF)).toMatchObject({ kind: "investments", topic: "plan_menu" });
+  });
+});
+
+describe("planMenuReply and the plan menu messages", () => {
+  it("asks to confirm a list before using it", () => {
+    const reply = planMenuReply({
+      ...MENU_VIEW,
+      menu: null,
+      plan: null,
+      proposed: { id: "p", planName: "x", status: "proposed", funds: MENU_FUNDS },
+    });
+    expect(reply.body).toMatch(
+      /^I read 2 funds from your plan's list: KTSIX \(0\.03%\), NSTDX \(0\.75%\)\. Is that right\?/,
+    );
+    expect(reply.actions.map((a) => a.id)).toEqual(["menu.confirm", "open"]);
+    expect(reply.refs).toEqual({ menuId: "p" });
+  });
+  it("gives the saving in dollars a year, the target-date check and a tap, naming only the plan's funds", () => {
+    const reply = planMenuReply(MENU_VIEW);
+    expect(reply.body).toMatch(/costs about \$505\.50 a year/);
+    expect(reply.body).toMatch(/100% KTSIX, about 0\.03%: \$4,802\.27 a year less\./);
+    expect(reply.body).toMatch(
+      /NSTDX costs 0\.75%; building the same mix by hand costs 0\.05%, \$589\.75 a year less/,
+    );
+    expect(reply.actions[0].id).toBe("menu.change");
+    const menu = new Set(MENU_FUNDS.map((f) => f.ticker));
+    for (const t of reply.body.match(/\b[A-Z]{4,5}X\b/g) ?? []) expect(menu.has(t)).toBe(true);
+    expect(planMenuReply({ ...MENU_VIEW, advice: false }).body).toMatch(
+      /don't give recommendations on real accounts/,
+    );
+  });
+  it("posts the question and then the suggestion, once, in demo advice mode", () => {
+    const gather = (planMenu: InvestmentSnapshot["planMenu"], advice = true) =>
+      investmentsSource
+        .gather({ ...base, investments: demoInvestmentSnapshot({ advice, planMenu }) }, {} as never)
+        .filter((c) => c.dedupeKey.startsWith("menu:"));
+    expect(
+      gather({
+        proposed: { id: "p", planName: "x", status: "proposed", funds: MENU_FUNDS },
+        plan: null,
+        pending: false,
+      })[0].actions[0].id,
+    ).toBe("menu.confirm");
+    const sugg = gather({ proposed: null, plan: MENU_PLAN, pending: false });
+    expect(sugg.map((m) => m.dedupeKey)).toEqual(["menu:change:480227"]);
+    expect(gather({ proposed: null, plan: MENU_PLAN, pending: true })).toEqual([]);
+    expect(gather({ proposed: null, plan: MENU_PLAN, pending: false }, false)).toEqual([]);
+  });
+});
+
+// Spec step 233: honest performance.
+const HONEST_ROW = {
+  ...honestPeriod({
+    years: 3,
+    twr: 0.3,
+    mwr: 0.27,
+    benchmark: 0.34,
+    ownFeeBps: 60,
+    benchFeeBps: 5,
+    ownCashShare: 0.1,
+    benchCashShare: 0.05,
+    taxDragBps: 20,
+  }),
+  key: "3y",
+  label: "3 years",
+  from: "2023-10-18",
+  to: "2026-10-18",
+  shorter: false,
+};
+
+describe("honest performance questions, by rules", () => {
+  it.each([
+    "am i beating the market",
+    "what is my 3 year return",
+    "how do i compare to a benchmark",
+  ])("reads %j as honest performance", (text) => {
+    expect(parseIntent(text, ASOF)).toMatchObject({
+      kind: "investments",
+      topic: "honest_performance",
+    });
+  });
+});
+
+describe("honestReply", () => {
+  it("gives after-fee-and-tax returns against the benchmark with the biggest reason, never a forecast", () => {
+    const reply = honestReply({
+      advice: true,
+      riskLevel: 3,
+      rows: [HONEST_ROW],
+      ownFeeBps: 60,
+      taxDragBps: 20,
+      simulatedPrices: true,
+    });
+    expect(reply.body).toMatch(
+      /^Over 3 years: \+27\.6% after fees and taxes against \+33\.9% for a simple mix with your risk, −6\.3 points\./,
+    );
+    expect(reply.body).toMatch(/The biggest reason: .* \(−/);
+    expect(reply.body).toMatch(/That's what happened, not what will\.$/);
+    expect(reply.body).not.toMatch(PREDICTION_WORDS);
+  });
+  it("asks for the profile when there is nothing to compare", () => {
+    expect(
+      honestReply({
+        advice: true,
+        riskLevel: null,
+        rows: [],
+        ownFeeBps: 0,
+        taxDragBps: 0,
+        simulatedPrices: false,
+      }).body,
+    ).toMatch(/finished/);
+  });
+});
+
+// Spec step 234: short-term money.
+const SHORT_OPTIONS = compareShort({ amountCents: 2_000_000, months: 12, fed: 0.22, state: 0.06 });
+const SHORT_CANDIDATE = {
+  key: "goal:g1",
+  purpose: "goal" as const,
+  goalId: "g1",
+  name: "House down payment",
+  amountCents: 2_000_000,
+  months: 12,
+  endsOn: "2027-10-18",
+  options: SHORT_OPTIONS,
+  best: SHORT_OPTIONS[0],
+  ladder: shortLadder(2_000_000, 12),
+  gainCents: 4_000,
+  hasLadder: false,
+};
+
+describe("short-term money questions, by rules", () => {
+  it.each(["what is a cd ladder", "what is an i bond", "short term money"])(
+    "reads %j as short-term money",
+    (text) => {
+      expect(parseIntent(text, ASOF)).toMatchObject({ kind: "investments", topic: "short_term" });
+    },
+  );
+});
+
+describe("shortTermReply and the short-term message", () => {
+  const view = {
+    advice: true,
+    fed: 0.22,
+    state: 0.06,
+    stateCode: "NY",
+    fromProfile: true,
+    candidates: [SHORT_CANDIDATE],
+    ladders: [],
+  };
+  it("compares after tax, lists only what can't lock the money past the date, and gives a tap", () => {
+    const reply = shortTermReply(view);
+    expect(reply.body).toMatch(
+      /^House down payment \(\$20,000\.00, needed by Oct 18, 2027\): after tax, /,
+    );
+    expect(reply.body).toMatch(
+      /Only places that can't lock your money past that date are on the list\./,
+    );
+    expect(reply.body).toMatch(
+      /A ladder of 4 rungs of Treasury bills, each maturing by Oct 18, 2027/,
+    );
+    expect(reply.actions.map((a) => a.id)).toEqual(["ladder.build", "open"]);
+    expect(reply.refs).toEqual({ advice: true, ladderKey: "goal:g1" });
+    expect(shortTermReply({ ...view, advice: false }).actions.map((a) => a.id)).toEqual(["open"]);
+  });
+  it("posts when the gain is worth it, never when a ladder already runs", () => {
+    const gather = (candidates: InvestmentSnapshot["shortTerm"]["candidates"], advice = true) =>
+      investmentsSource
+        .gather(
+          { ...base, investments: demoInvestmentSnapshot({ advice, shortTerm: { candidates } }) },
+          {} as never,
+        )
+        .filter((c) => c.dedupeKey.startsWith("short:"));
+    expect(gather([SHORT_CANDIDATE]).map((m) => m.kind)).toEqual(["decision"]);
+    expect(gather([{ ...SHORT_CANDIDATE, hasLadder: true }])).toEqual([]);
+    expect(gather([{ ...SHORT_CANDIDATE, gainCents: 100 }])).toEqual([]);
+    expect(gather([SHORT_CANDIDATE], false)).toEqual([]);
+  });
+});
+
+// Spec step 235: sudden money.
+const SUDDEN_ITEM = {
+  id: "s1",
+  amountCents: 1_200_000,
+  depositedOn: "2026-10-15",
+  status: "asked",
+  kind: null,
+  tax: null,
+  stages: [],
+  cushionMonths: null,
+};
+const SUDDEN_PLANNED = {
+  ...SUDDEN_ITEM,
+  status: "planned",
+  kind: "bonus" as const,
+  tax: { cents: 264_000, note: "Bonuses are withheld at 22%.", source: "IRS Pub. 15" },
+  stages: [
+    { key: "taxes" as const, title: "Set aside the tax", cents: 264_000, note: "", done: false },
+    { key: "investing" as const, title: "Invest the rest", cents: 936_000, note: "", done: false },
+  ],
+};
+
+describe("sudden money questions, by rules", () => {
+  it.each(["I got a bonus", "what should i do with my inheritance", "i sold my business"])(
+    "reads %j as sudden money",
+    (text) => {
+      expect(parseIntent(text, ASOF)).toMatchObject({ kind: "investments", topic: "sudden_money" });
+    },
+  );
+});
+
+describe("suddenMoneyReply and the sudden-money message", () => {
+  it("asks what the deposit was before anything else, with the kinds as buttons", () => {
+    const reply = suddenMoneyReply({ advice: true, demo: true, items: [SUDDEN_ITEM] });
+    expect(reply.body).toMatch(/\$12,000\.00 came into your account on 2026-10-15/);
+    expect(reply.actions.map((a) => a.id)).toEqual([
+      "sudden.bonus",
+      "sudden.inheritance",
+      "sudden.home_sale",
+      "sudden.other_sale",
+      "sudden.gift",
+      "sudden.transfer",
+      "open",
+    ]);
+    expect(reply.refs).toEqual({ suddenId: "s1" });
+  });
+  it("puts the tax first and offers one stage, a tap, only in demo advice", () => {
+    const reply = suddenMoneyReply({ advice: true, demo: true, items: [SUDDEN_PLANNED] });
+    expect(reply.body).toMatch(/1\. Set aside the tax: \$2,640\.00/);
+    expect(reply.body).toMatch(/Nothing moves until you tap\./);
+    expect(reply.actions.map((a) => a.id)).toEqual(["sudden.stage", "open"]);
+    expect(reply.refs).toMatchObject({ advice: true, suddenId: "s1", suddenStage: "taxes" });
+    const real = suddenMoneyReply({ advice: false, demo: false, items: [SUDDEN_PLANNED] });
+    expect(real.actions.map((a) => a.id)).toEqual(["open"]);
+  });
+  it("posts the question for everyone, the plan only with advice", () => {
+    const gather = (items: unknown[], advice = true) =>
+      investmentsSource
+        .gather(
+          {
+            ...base,
+            investments: demoInvestmentSnapshot({ advice, sudden: { items } as never }),
+          },
+          {} as never,
+        )
+        .filter((c) => c.dedupeKey.startsWith("sudden:"));
+    expect(gather([SUDDEN_ITEM], false).map((m) => m.kind)).toEqual(["decision"]);
+    expect(gather([SUDDEN_PLANNED]).map((m) => m.actions[0].id)).toEqual(["sudden.stage"]);
+    expect(gather([SUDDEN_PLANNED], false)).toEqual([]);
   });
 });
