@@ -19,6 +19,8 @@ import { ASK_TOOLS, runAskTool, type ToolOutput } from "@/lib/ask/tools";
 import { CARD_SELECT, buildCard } from "@/lib/cards";
 import { comparisonFor } from "@/lib/compare";
 import { frequencyWords } from "@/lib/explain-input";
+import { FIGURE_IDS, type FigureId } from "@/config/figures";
+import { explainFigure } from "@/lib/figures";
 import { openBooks } from "@/lib/books";
 import { loadSteady } from "@/lib/steady-pay";
 import { FACT_KEYS } from "@/profile/facts";
@@ -343,6 +345,17 @@ export const CHAT_TOOLS: Anthropic.Tool[] = [
     description:
       'How the person is doing across every sector at once (spec step 183), for "am I OK?", "how am I doing" and "what should I do this month": a verdict (ok, watch or act) with its one-sentence headline, safe to spend until payday, bills and deadlines due this week and this month, budgets over, goals behind, urgent alerts, what Jane\'s agent is working on, the steps waiting on the person, and the one to three things that matter most (from the ranked list) with why. Lead with the headline, then the things that matter; use the same figures.',
     input_schema: noInput,
+  },
+  {
+    name: "explain_figure",
+    description:
+      'How a headline figure was worked out (spec step 239): the rows it adds up, the biggest transactions behind it, the rules and rates from config and the date, for safe_to_spend, monthly_spending, monthly_income, net_worth, health_score or debt_free. Use it for "how did you get that?". If the person says a figure is wrong, point them to the page (/figures/<figure>) where a category or their income can be corrected; the correction sticks and updates everything that used it.',
+    input_schema: {
+      type: "object",
+      properties: { figure: { type: "string", enum: [...FIGURE_IDS] } },
+      required: ["figure"],
+      additionalProperties: false,
+    },
   },
   {
     name: "books_check",
@@ -760,6 +773,30 @@ export async function runChatTool(
             }
           : { score: null, why: "No accounts linked yet." },
       );
+    }
+    case "explain_figure": {
+      const figure = (input as { figure?: unknown }).figure;
+      if (typeof figure !== "string" || !(FIGURE_IDS as readonly string[]).includes(figure)) {
+        return out({ error: "Unknown figure." });
+      }
+      const working = await explainFigure(userId, figure as FigureId, { client, now });
+      if (!working) return out({ working: null, why: "No accounts linked yet." });
+      return out({
+        figure: working.title,
+        value: working.value,
+        asOf: working.asOf,
+        how: working.summary,
+        rows: working.rows,
+        transactions: working.transactions.map((t) => ({
+          date: t.date,
+          what: t.description,
+          amount: money(t.amountCents),
+          category: t.category_label,
+        })),
+        rulesUsed: working.rules,
+        canBeCorrected: working.corrections,
+        page: `/figures/${working.id}`,
+      });
     }
     case "books_check": {
       const books = await openBooks(userId, { client });

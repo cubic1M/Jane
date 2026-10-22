@@ -1,4 +1,5 @@
 import type { PrismaClient } from "@/generated/prisma/client";
+import { PAY_PERIODS } from "@/config/benefits";
 import { PROFILE_MONTHS } from "@/config/profile";
 import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
@@ -45,6 +46,8 @@ export async function loadProfileInput(
     values,
     named,
     membership,
+    healthPolicy,
+    fsa,
   ] = await Promise.all([
     db.transactions.findMany({
       where: { date: { gt: since, lte: now } },
@@ -78,7 +81,7 @@ export async function loadProfileInput(
       },
     }),
     db.janePreferences.findMany({
-      where: { kind: "fact", key: { startsWith: PREF_PREFIX } },
+      where: { kind: "fact", OR: [{ key: { startsWith: PREF_PREFIX } }, { key: "income" }] },
       select: { key: true, value: true },
     }),
     db.taxProfiles.findFirst({
@@ -103,6 +106,14 @@ export async function loadProfileInput(
     db.valuesPreferences.findFirst({ select: { excludes: true } }),
     db.accountBeneficiaries.findMany({ select: { accountId: true } }),
     client.householdMember.findUnique({ where: { userId }, select: { householdId: true } }),
+    db.insurancePolicies.findFirst({
+      where: { kind: "health", status: "active", deductibleCents: { not: null } },
+      select: { carrier: true, deductibleCents: true, coverage: true },
+    }),
+    db.employerBenefits.findFirst({
+      where: { kind: "fsa", status: { not: "declined" } },
+      select: { perPayCents: true, payFrequency: true },
+    }),
   ]);
   // Other people in their household in Jane (spec step 264), not counting them.
   const householdMembers = membership
@@ -128,7 +139,13 @@ export async function loadProfileInput(
     told.age = investor.age + Math.max(0, years);
   }
   if (investor?.dropReaction) told.risk = investor.dropReaction;
+  // Spec step 239: "that's wrong" on an income figure is what they told Jane they earn.
+  const incomeSaid = (prefs.find((p) => p.key === "income")?.value as { monthlyCents?: unknown })
+    ?.monthlyCents;
+  if (typeof incomeSaid === "number" && incomeSaid > 0)
+    told.monthly_income = Math.round(incomeSaid);
   for (const p of prefs) {
+    if (!p.key.startsWith(PREF_PREFIX)) continue;
     const key = p.key.slice(PREF_PREFIX.length);
     const value = (p.value as { value?: unknown } | null)?.value;
     if (
@@ -194,6 +211,10 @@ export async function loadProfileInput(
         .reduce((s, f) => s + (f.monthlyPaymentCents ?? 0), 0),
     },
     extras: { householdMembers, ...(await sectorFigures(userId, client, now)) },
+    healthPlan: healthPlanOf(healthPolicy),
+    fsaElectionCents: fsa
+      ? fsa.perPayCents * (PAY_PERIODS[fsa.payFrequency as keyof typeof PAY_PERIODS] ?? 12)
+      : null,
   };
 }
 
@@ -244,6 +265,20 @@ async function sectorFigures(userId: string, client: PrismaClient, now: Date) {
     // Spec step 270: the disaster relief declared where they might live (none without a feed).
     disasterRelief: feed ? await feed.declarations() : [],
     hasPracticePortfolio: practice > 0,
+  };
+}
+
+// A health policy's terms when the plan is a coinsurance plan with a known deductible.
+function healthPlanOf(
+  policy: { carrier: string; deductibleCents: number | null; coverage: unknown } | null,
+): ProfileInput["healthPlan"] {
+  const c = (policy?.coverage ?? {}) as Record<string, unknown>;
+  if (!policy || policy.deductibleCents === null || typeof c.coinsurance !== "number") return null;
+  return {
+    label: `${policy.carrier} plan`,
+    deductibleCents: policy.deductibleCents,
+    outOfPocketMaxCents: typeof c.outOfPocketMax === "number" ? c.outOfPocketMax : null,
+    coinsurance: c.coinsurance,
   };
 }
 
