@@ -402,6 +402,11 @@ export const TAX_MESSAGE_PRIORITY = {
   accountant: 28,
   // Spec step 223: an estimated payment due that needs a tap, and December's year-end moves.
   estimate_due: 85,
+  // Spec step 267: an S corporation that would save more than it costs.
+  business: 33,
+  // Spec step 268: an inherited IRA, and a gift that needs a gift tax return.
+  inherited: 46,
+  gifts: 44,
   year_end: 55,
   exemption: 30,
 } as const;
@@ -482,6 +487,16 @@ export const TAX_AUTOPILOT: readonly { feature: string; ask: string; auto: strin
     feature: "calendar",
     ask: "I keep your tax calendar and, each month, tell you what is due: the IP PIN in January, forms as they come in, estimated payments a few days before they are due, a withholding check in June, the year-end moves in December and your refund after you file. Anything that moves money, I ask first.",
     auto: "I run your tax calendar: the IP PIN reminder in January, the form chase, each estimated payment paid a few days before it is due if it is within your cap for taxes (above it, I ask), a withholding check in June, the year-end moves on your deadlines in December, and your refund tracked after you file. Signing and filing your return are always yours.",
+  },
+  {
+    feature: "business",
+    ask: "For a business owner I work out your qualified business income deduction and, with demo advice, whether an S corporation would save more than its payroll and filing costs at your profit, with a salary range to start from. A tax professional sets up the election.",
+    auto: "For a business owner I keep your qualified business income deduction and the S corporation comparison current and, with demo advice, bring it up when it would save more than it costs. I never file the election.",
+  },
+  {
+    feature: "inheritance",
+    ask: "If you inherit an IRA I tell you the date it has to be empty by and, with demo advice, how taking it out evenly could keep your tax lower. I flag a gift to one person over the yearly exclusion, which needs a gift tax return. These are facts for a tax professional to confirm, not legal advice.",
+    auto: "I watch for an inherited IRA and gifts over the yearly exclusion and tell you what applies and by when, with demo advice on spreading withdrawals. These are facts for a tax professional to confirm, not legal advice. I never file a return.",
   },
   {
     feature: "identity",

@@ -78,6 +78,13 @@ export const DETECTOR_RATES = {
   // Annuities: what a costly one charges a year against a plain index fund.
   annuityFeeBps: 200,
   annuityIndexBps: 50,
+  // Short-term cash: Treasury bills or CDs against a savings account, after tax.
+  shortTermGapBps: 150,
+  // Sudden money: until the person says what a big deposit was, hold back this share for tax.
+  suddenHoldShare: 0.25,
+  // Beneficiaries: an account with nobody named can go through a court process, which often
+  // costs a few percent of what is in it.
+  beneficiaryRiskShare: 0.03,
   // Late fees: one is enough to mention.
   lateFeesMin: 1,
   // Payday and cash-advance loans: fees are about this share of what's repaid.
@@ -196,6 +203,12 @@ export const DETECTOR_RATES = {
     // A shop's deposits are sales, not profit: assume this share is what's taxed
     // (ESTIMATE TO VERIFY; small retail runs roughly 5% to 15% net).
     businessProfitShare: 0.15,
+    // Business owners (step 267): a freelancer's deposits are mostly profit; a shop's are sales.
+    freelanceProfitShare: 0.85,
+    // Form 2553 (the S corporation election) is due March 15 for the same year: urgent in the
+    // weeks before it, otherwise it takes effect next year.
+    sCorpElectionBy: "03-15",
+    sCorpElectionFrom: "01-01",
     // Estimated payments: urgency by days to the next due date.
     estimatedNowDays: 14,
     estimatedSoonDays: 45,
@@ -225,10 +238,12 @@ export const HEADLINE_VERBS: readonly string[] = [
   "Build",
   "Cancel",
   "Check",
+  "Claim",
   "Compare",
   "Confirm",
   "Convert",
   "Drop",
+  "Empty",
   "Get",
   "Hold",
   "Invest",
