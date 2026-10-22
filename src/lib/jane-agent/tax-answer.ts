@@ -22,6 +22,7 @@ import { loadAccountantPage } from "@/lib/accountant";
 import { accountantReply } from "./accountant-message";
 import { loadTaxCalendar } from "@/lib/tax-calendar";
 import { calendarReply } from "./tax-calendar-message";
+import { loadTaxFound } from "@/lib/tax-scan";
 import { loadBusinessStructure } from "@/lib/business-structure";
 import { businessReply } from "./business-message";
 import { loadInheritance } from "@/lib/inheritance";
@@ -175,8 +176,13 @@ export async function answerTaxIntent(
       return inheritanceReply(await loadInheritance(userId, { client, now }));
     case "business":
       return businessReply(await loadBusinessStructure(userId, { client, now }));
-    case "calendar":
-      return calendarReply(await loadTaxCalendar(userId, { client, now }));
+    case "calendar": {
+      const [calendar, found] = await Promise.all([
+        loadTaxCalendar(userId, { client, now }),
+        loadTaxFound(userId, { client, now }),
+      ]);
+      return calendarReply(calendar, found);
+    }
     case "accountant":
       return accountantReply(await loadAccountantPage(userId, { client, now }));
     case "property":

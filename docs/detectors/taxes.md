@@ -299,3 +299,22 @@ built from the person's own forms with three mistakes planted, and the check fin
 never files or changes a draft: the cards point to the software or the preparer. The detector is
 seasonal by nature (drafts come in filing season), so the eight samples at their October date carry
 none; the tests attach a checked draft.
+
+### Step 273: taxes on autopilot, round three
+
+Every tax detector's suggestion is on the year's tax calendar (`/taxes/calendar`, the `tax_calendar`
+tool and the calendar answer): from the same scan as everything else, ranked with all of the
+person's suggestions (its place in that list is shown), and put in the month it matters most
+(`TAX_TOPIC_MONTH` in `src/config/tax-calendar.ts`: the S corporation election in February, the
+draft check in March, December's last chances; urgent ones this month, "soon" ones this month or
+next). A test fails for a tax detector with no month.
+
+In the chat, taxes speak at most once a calendar month (`CHAT_SOURCE_MONTHLY_LIMITS`), the most
+important message first; anything at priority 80 or above (a payment due, a letter from the IRS,
+an identity case, a draft to fix, a disaster postponement) still goes at once. Lines folded into
+the day's agenda count as said.
+
+The reach scoreboard (`/admin/reach`, "Taxes, tool by tool", `src/detectors/tax-reach.ts`) runs the
+eight sample people's year moved to each month, so seasonal detectors show when they reach whom.
+Every tax tool reaches a sample person, never suggests by itself (`TOOL_EXEMPT`), or needs something
+only the person can give first (`TAX_REACH_NEEDS_PERSON`: the draft return); a test holds this.
