@@ -311,6 +311,8 @@ model User {
   homeEquityFacts        HomeEquityFacts?
   carAddons              CarAddon[]
   carLoanWatch           CarLoanWatch?
+  rentReporting          RentReporting?
+  securityDeposits       SecurityDeposit[]
   balanceTransfers       BalanceTransfer[]
   findings               Finding[]
   decisions              Decision[]
@@ -1163,6 +1165,39 @@ model CarLoanWatch {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("car_loan_watches")
+}
+
+// The person's opt-in to having their rent payments reported to the credit bureaus through a
+// reporting partner (spec step 248). No row, no reporting.
+model RentReporting {
+  id        String   @id @default(cuid())
+  userId    String   @unique @map("user_id")
+  partner   String
+  optedInAt DateTime @map("opted_in_at") @db.Timestamptz(3)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("rent_reporting")
+}
+
+// A security deposit the person gave a landlord (spec step 248), tracked to the day the state
+// says it is due back after they move out.
+model SecurityDeposit {
+  id            String    @id @default(cuid())
+  userId        String    @map("user_id")
+  amountCents   Int       @map("amount_cents")
+  state         String
+  movedOutOn    DateTime? @map("moved_out_on") @db.Date
+  returnedOn    DateTime? @map("returned_on") @db.Date
+  returnedCents Int?      @map("returned_cents")
+  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt     DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("security_deposits")
 }
 
 // A balance transfer the person made to a 0% card (spec step 113), so Jane can keep the

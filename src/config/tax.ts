@@ -414,6 +414,9 @@ export const TAX_MESSAGE_PRIORITY = {
   medical: 40,
   // Spec step 270: deadlines a disaster postponement moves.
   disaster: 80,
+  // Spec step 271: Social Security tax nothing withholds; Medicare's surcharge line.
+  ss_tax: 50,
+  irmaa: 42,
   year_end: 55,
   exemption: 30,
 } as const;
@@ -514,6 +517,11 @@ export const TAX_AUTOPILOT: readonly { feature: string; ask: string; auto: strin
     feature: "disaster",
     ask: "When the IRS postpones tax deadlines for a disaster in your county, I tell you the new date and move the tax deadlines on your list when you tap. Repairs since, less what insurance and FEMA paid back, I work out as a casualty loss and keep with your insurance claim, once.",
     auto: "When the IRS postpones tax deadlines for a disaster in your county, I move the tax deadlines on your list to the new date by myself and tell you. I work out the casualty loss after insurance and keep it with your claim when you tap. I file nothing.",
+  },
+  {
+    feature: "retirement",
+    ask: "Once Social Security comes in I work out how much of it is taxable and whether anything withholds it, and from October I tell you Medicare's surcharge line two years ahead with the room you have under it. The order to take money from your accounts, tuned to stay under the line, goes to your retirement paycheck.",
+    auto: "I keep Social Security's taxable part and Medicare's surcharge line current, tell you when either matters, and keep the order to draw from your accounts tuned to stay under the line. I never move money or change your withholding: Form W-4V is yours.",
   },
   {
     feature: "identity",

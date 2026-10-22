@@ -40,6 +40,7 @@ export async function loadProfileInput(
     insurance,
     investor,
     unread,
+    reporting,
     values,
     named,
     membership,
@@ -78,7 +79,7 @@ export async function loadProfileInput(
       },
     }),
     db.janePreferences.findMany({
-      where: { kind: "fact", key: { startsWith: PREF_PREFIX } },
+      where: { kind: "fact", OR: [{ key: { startsWith: PREF_PREFIX } }, { key: "income" }] },
       select: { key: true, value: true },
     }),
     db.taxProfiles.findFirst({
@@ -92,6 +93,7 @@ export async function loadProfileInput(
     db.insuranceProfiles.findFirst({ select: { housing: true } }),
     db.investorProfiles.findFirst({ select: { age: true, ageOn: true, dropReaction: true } }),
     db.policyReadings.count({ where: { status: "waiting" } }),
+    db.rentReporting.findFirst({ select: { id: true } }),
     db.valuesPreferences.findFirst({ select: { excludes: true } }),
     db.accountBeneficiaries.findMany({ select: { accountId: true } }),
     client.householdMember.findUnique({ where: { userId }, select: { householdId: true } }),
@@ -128,7 +130,13 @@ export async function loadProfileInput(
     told.age = investor.age + Math.max(0, years);
   }
   if (investor?.dropReaction) told.risk = investor.dropReaction;
+  // Spec step 239: "that's wrong" on an income figure is what they told Jane they earn.
+  const incomeSaid = (prefs.find((p) => p.key === "income")?.value as { monthlyCents?: unknown })
+    ?.monthlyCents;
+  if (typeof incomeSaid === "number" && incomeSaid > 0)
+    told.monthly_income = Math.round(incomeSaid);
   for (const p of prefs) {
+    if (!p.key.startsWith(PREF_PREFIX)) continue;
     const key = p.key.slice(PREF_PREFIX.length);
     const value = (p.value as { value?: unknown } | null)?.value;
     if (
@@ -178,6 +186,7 @@ export async function loadProfileInput(
     namedAccountIds: [...new Set(named.map((n) => n.accountId))],
     told,
     unreadPolicyDocuments: unread,
+    rentReportingOn: reporting !== null,
     extras: { householdMembers, ...(await sectorFigures(userId, client, now)) },
     healthPlan: healthPlanOf(healthPolicy),
     fsaElectionCents: fsa

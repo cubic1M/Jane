@@ -77,6 +77,9 @@ export const SUGGESTION_TOPICS = [
   "low_balance",
   "budget_overrun",
   "education_529",
+  // Spec step 248: renting, counted.
+  "rent_reporting",
+  "rent_increase",
   "social_security_timing",
   "medicare",
   "rmd",
@@ -100,6 +103,8 @@ export const SUGGESTION_TOPICS = [
   "property_tax_check",
   "tax_loss_harvest",
   "file_return",
+  // Spec step 239: a headline figure resting on something only the person knows.
+  "figure_check",
   // Phase AP (spec steps 238–244): Jane runs the money.
   "data_problems",
   // Spec step 296: practice money first.
@@ -112,6 +117,8 @@ export const SUGGESTION_TOPICS = [
   "hsa_over_limit",
   "medical_deduction",
   "disaster_relief",
+  "social_security_tax",
+  "irmaa_watch",
 ] as const;
 export type SuggestionTopic = (typeof SUGGESTION_TOPICS)[number];
 
@@ -180,6 +187,7 @@ export const PEOPLE: readonly Person[] = [
       "cover_change",
       "credit_building",
       "bnpl",
+      "rent_reporting",
       "liability_levels",
       "consolidation",
       "practice_portfolio",
@@ -220,6 +228,8 @@ export const PEOPLE: readonly Person[] = [
       "ptc_repayment",
       "hsa_over_limit",
       "medical_deduction",
+      "social_security_tax",
+      "irmaa_watch",
     ],
     firstQuestion: "employer_match",
   },
@@ -288,6 +298,8 @@ export const PEOPLE: readonly Person[] = [
       "vehicle_deduction",
       "inherited_ira",
       "ptc_repayment",
+      "social_security_tax",
+      "irmaa_watch",
     ],
     firstQuestion: "employer_match",
   },
@@ -311,8 +323,8 @@ export const PEOPLE: readonly Person[] = [
       "emergency_fund",
       "student_repayment",
       "renters_insurance",
-
       "auto_insurance",
+      "rent_reporting",
       "home_office_deduction",
       "vehicle_deduction",
 
@@ -343,6 +355,8 @@ export const PEOPLE: readonly Person[] = [
       "sudden_money",
       "household_setup",
       "life_checklist",
+      "social_security_tax",
+      "irmaa_watch",
     ],
     firstQuestion: "filing_status",
   },
@@ -437,6 +451,7 @@ export const PEOPLE: readonly Person[] = [
       "plan_menu",
       "short_term_cash",
       "household_setup",
+      "irmaa_watch",
     ],
     mustNot: [
       "values_funds",
@@ -484,6 +499,7 @@ export const PEOPLE: readonly Person[] = [
       "charity_receipts",
       "medical_bills",
       "medical_deduction",
+      "social_security_tax",
       "short_term_cash",
     ],
     mustNot: [
@@ -523,6 +539,7 @@ export const PEOPLE: readonly Person[] = [
       "disability_insurance",
       "ptc_repayment",
       "hsa_over_limit",
+      "roth_conversion",
       "practice_portfolio",
     ],
     firstQuestion: "age_band",
@@ -551,6 +568,7 @@ export const PEOPLE: readonly Person[] = [
       "cash_advance",
       "credit_building",
       "credit_report_errors",
+      "rent_reporting",
     ],
     mustNot: [
       "beneficiaries",
@@ -590,6 +608,8 @@ export const PEOPLE: readonly Person[] = [
       "ptc_repayment",
       "hsa_over_limit",
       "medical_deduction",
+      "social_security_tax",
+      "irmaa_watch",
       "practice_portfolio",
     ],
     firstQuestion: "hardship_reason",
@@ -612,11 +632,14 @@ export const PEOPLE: readonly Person[] = [
       "business_insurance",
       "retirement_self_employed",
       "cash_flow",
+      "rent_reporting",
       "s_corp_election",
       "vehicle_deduction",
       "emergency_fund",
 
       "disability_insurance",
+      // Spec step 239: her shop's sales are counted as her income.
+      "figure_check",
       "practice_portfolio",
     ],
     mustNot: [

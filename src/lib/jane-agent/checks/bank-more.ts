@@ -167,6 +167,10 @@ const rows: Row[] = [
   ["longview", "/long-view", "long_view", "what will my net worth be in 20 years"],
   ["longview", "/long-view", "long_view", "how much will i have when i retire"],
 
+  // Every figure explained (spec step 239).
+  ["figures", "/figures/safe_to_spend", "explain_figure", "how did you get my safe to spend"],
+  ["figures", "/figures/monthly_spending", "explain_figure", "how did you work out my spending"],
+  ["figures", "/figures/net_worth", "explain_figure", "show me the working for my net worth"],
   // Books that balance (spec step 238).
   ["books", "/net-worth", "books_check", "are my numbers right"],
   ["books", "/net-worth", "books_check", "do my books balance"],
@@ -564,6 +568,8 @@ const rows: Row[] = [
     "how much have payday loans and cash advances cost me",
   ],
   ["debt", "/loans/costly", "costly_borrowing", "i keep overdrafting every month"],
+  ["debt", "/loans/renting", "renting", "can my rent help my credit score"],
+  ["debt", "/loans/renting", "renting", "my rent went up again"],
   ["loans", "/loans/recast", "mortgage_money", "i have $20,000, should i recast my mortgage"],
   ["loans", "/loans/recast", "mortgage_money", "pay down my mortgage or invest $500 a month"],
   ["loans", "/loans/auto", "car_loan", "can i cancel the extended warranty on my car loan"],

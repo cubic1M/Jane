@@ -134,6 +134,8 @@ export type ProfileInput = {
     coinsurance: number;
   } | null;
   fsaElectionCents?: number | null;
+  // The person turned rent reporting on (spec step 248).
+  rentReportingOn?: boolean;
 };
 
 export type FactValue = string | number | boolean | null;

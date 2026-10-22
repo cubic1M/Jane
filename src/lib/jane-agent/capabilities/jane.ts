@@ -30,6 +30,8 @@ import { loadTimeline } from "@/lib/timeline";
 import { timelineReply } from "../replies-timeline";
 import { healthFor } from "@/lib/health-score";
 import { healthReply } from "../replies-health";
+import { explainFigure } from "@/lib/figures";
+import { figureReply, whichFigureReply } from "../replies-figures";
 import { openBooks } from "@/lib/books";
 import { booksReply } from "../replies-books";
 import { loadSteady } from "@/lib/steady-pay";
@@ -101,6 +103,11 @@ async function answer(ctx: CapabilityContext): Promise<Reply | null> {
       const snapshot = await loadSnapshotFast(userId, { client, now });
       return prioritiesReply(snapshot ? rankedFor(snapshot) : [], intent.explain, intent.one);
     }
+    // Spec step 239.
+    case "figure_how":
+      return intent.figure
+        ? figureReply(await explainFigure(userId, intent.figure, { client, now }))
+        : whichFigureReply();
     // Spec step 238.
     case "books":
       return booksReply(await openBooks(userId, { client }));
