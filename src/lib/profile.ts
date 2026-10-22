@@ -184,17 +184,17 @@ async function sectorFigures(userId: string, client: PrismaClient, now: Date) {
   const practice = await db.practicePortfolios.count();
   const [matchPace, equity, subscriptions, cardInterest, shopSaving, policies, books] =
     await Promise.all([
-    loadMatchPace(userId, { client, now }),
-    hasStock
-      ? import("@/lib/equity-tax").then((m) => m.loadEquityTax(userId, { client, now }))
-      : null,
-    import("@/lib/jane-agent/recurring").then((m) => m.subscriptionYear(userId, { client, now })),
-    import("@/lib/card-interest").then((m) => m.loadCardInterest(userId, { client, now })),
-    import("@/lib/insurance/shop").then((m) => m.openShopSavingCents(userId, { client, now })),
-    import("@/lib/insurance/policies").then((m) => m.listPolicies(userId, { client })),
-    // Spec step 238: what the daily books check left open.
-    import("@/lib/books").then((m) => m.openBooks(userId, { client })),
-  ]);
+      loadMatchPace(userId, { client, now }),
+      hasStock
+        ? import("@/lib/equity-tax").then((m) => m.loadEquityTax(userId, { client, now }))
+        : null,
+      import("@/lib/jane-agent/recurring").then((m) => m.subscriptionYear(userId, { client, now })),
+      import("@/lib/card-interest").then((m) => m.loadCardInterest(userId, { client, now })),
+      import("@/lib/insurance/shop").then((m) => m.openShopSavingCents(userId, { client, now })),
+      import("@/lib/insurance/policies").then((m) => m.listPolicies(userId, { client })),
+      // Spec step 238: what the daily books check left open.
+      import("@/lib/books").then((m) => m.openBooks(userId, { client })),
+    ]);
   return {
     matchPace,
     rsuGap: equity ? equity.rsuGap : null,
