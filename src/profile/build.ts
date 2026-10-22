@@ -108,6 +108,8 @@ export type ProfileInput = {
     // Disaster relief declarations from the person's feed (spec step 270): the stand-in's
     // samples for demo-bank people, none for anyone else. Absent: not loaded.
     disasterRelief?: readonly Relief[];
+    // The value of what they own (a home, cars), added to their net worth for the umbrella.
+    ownedValueCents?: number;
     // The person already has a practice portfolio (step 296). Absent: not loaded.
     hasPracticePortfolio?: boolean;
     rsuGap?: {
@@ -150,6 +152,17 @@ export function monthsOfData(txs: readonly ProfileTx[], today: string): number {
   const [fy, fm] = monthOf(first).split("-").map(Number);
   const [ty, tm] = monthOf(today).split("-").map(Number);
   return Math.min(PROFILE_MONTHS, Math.max(1, (ty - fy) * 12 + (tm - fm)));
+}
+
+// The months a monthly rate is spread over. A full year is the calendar count; a shorter history
+// uses the real span in days, because the calendar count rounds a 90-day history to two or three
+// "months" and a rate taken over two would read a third too high.
+export function monthsForRate(txs: readonly ProfileTx[], today: string): number {
+  const whole = monthsOfData(txs, today);
+  if (whole === 0 || whole >= PROFILE_MONTHS) return whole;
+  const first = txs.reduce((a, t) => (t.date < a ? t.date : a), today);
+  const days = (Date.parse(`${today}T00:00:00Z`) - Date.parse(`${first}T00:00:00Z`)) / 86_400_000;
+  return Math.max(1, (days + 1) / (365.25 / 12));
 }
 
 const inYear = (txs: readonly ProfileTx[], today: string) => {
@@ -253,7 +266,7 @@ export function buildProfile(input: ProfileInput): Profile {
   const incomeTotal = income
     .filter((t) => !(t.pfc === "INCOME_TAX_REFUND" || t.pfc === "INCOME_INTEREST_EARNED"))
     .reduce((s, t) => s - t.amountCents, 0);
-  const monthlyIncome = months > 0 ? Math.round(incomeTotal / months) : 0;
+  const monthlyIncome = months > 0 ? Math.round(incomeTotal / monthsForRate(txs, today)) : 0;
   if (income.length > 0) set("monthly_income", monthlyIncome, "seen", "deposits", income.length);
   else unknown("monthly_income");
 
