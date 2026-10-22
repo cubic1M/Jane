@@ -209,3 +209,19 @@ message is covered by `year_end_moves` for the one move a profile can show (a wo
 room); the losses to harvest and gifts in the same message need rows the sample people lack (above). The accountant link (222) shares what the others find, so it
 takes no detector of its own; the accountant's "people usually bring one" message is derived from the factors the other detectors
 already see, and has no dollar value.
+
+## Phase AT (round four)
+
+### Step 267: business owners' tax structure
+
+| Topic | Trigger signals | Value | Confidence drivers | Urgency | Fires for | Should not |
+|---|---|---|---|---|---|---|
+| `s_corp_election` (covers `tax_business`) | self-paid; profit (deposits × 85% for a freelancer, × 15% for a shop) where an S corporation saves at least $1,000 after $2,700 of payroll and filing costs, from the same estimate engine | tax as a sole proprietor less tax as an S corporation (salary at the middle of 40% to 60% of profit, both halves of payroll tax, the 20% deduction on what's left, the costs) | income pattern and income as seen; capped at 55% for a shop (deposits are sales) and 65% for a freelancer (costs assumed) | soon from January 1 to March 15 (Form 2553), else later | Jo | Sam (profit too small), anyone with a salary and no business |
+| `home_office_deduction` | self-paid, no commercial or studio rent, so working from home is likely | 150 sq ft × $5, at their bracket plus the 15.3% on 92.35% self-employment tax | capped at 55%: where they work and whether it is on file are unseen | later | Sam | Jo (rents a shop), employees |
+| `vehicle_deduction` | self-paid and buying gas regularly (6+ fills) | 4,000 miles × the standard rate, at their bracket plus self-employment tax | capped at 45%: how much driving is for the business is unseen | later | Sam, Jo | people with no fuel purchases, employees |
+
+Where a person also has a job, the Social Security tax is already paid on that salary, which shrinks
+what an S corporation can save; the chat answer and tool use the full estimate (so they see it), the
+detector only reaches people whose pay is all self-employment. The qualified business income
+deduction is worked out in the same place (`structureFor`) and shown in the chat answer, the tool
+and `/taxes/business`; it is not a separate suggestion because the return already takes it.

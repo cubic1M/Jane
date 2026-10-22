@@ -34,7 +34,20 @@ const gift = (key: string, name: string, dollars: number, offset: number): Perso
   ],
 });
 
+// Fuel bought through the year.
+const gas = (dollars: number): Recurring => ({
+  key: "taxes-gas",
+  account: "checking",
+  name: "SHELL OIL",
+  merchant: "Shell",
+  category: "TRANSPORTATION_GAS",
+  amount: dollars,
+  days: [6, 21],
+});
+
 export const TAXES_EXTRAS: Partial<Record<PersonId, PersonExtra>> = {
+  // Jo drives to suppliers and customers.
+  owner: { monthly: [gas(55)] },
   // The Reyes family: a mortgage, property tax and a year-end gift.
   family: {
     monthly: [propertyTax(2900)],

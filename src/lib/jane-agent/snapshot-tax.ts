@@ -33,6 +33,7 @@ import { loadMultiYear, type MultiYearView } from "@/lib/multi-year";
 import { loadPropertyTax, type PropertyTaxView } from "@/lib/property-tax";
 import { loadAccountantPage, type AccountantPageView } from "@/lib/accountant";
 import { loadTaxCalendar, type TaxCalendarView } from "@/lib/tax-calendar";
+import { loadBusinessStructure, type BusinessView } from "@/lib/business-structure";
 import { loadIdentity, type IdentityView } from "@/lib/tax-identity";
 import { loadSideIncome, type SideIncomeView } from "@/lib/side-income";
 import { loadAuditRecords, type AuditRecordsView } from "@/lib/audit-records";
@@ -101,6 +102,8 @@ export type TaxSnapshot = {
     accountant?: AccountantPageView;
     // Spec step 223: the tax calendar for this month.
     calendar?: TaxCalendarView;
+    // Spec step 267: the S corporation question and the business deductions.
+    business?: BusinessView;
     // Spec step 217: tax notices read from uploads, with what Jane found against them.
     notices?: { notice: NoticeView; check: (Check & { advice: boolean }) | null }[];
     // Spec step 172: returns read from uploads, and what their review found.
@@ -206,6 +209,7 @@ export async function loadTaxSnapshot(
         loaded: { estimate, advice, equity, identity, notices: noticeViews, side: sideIncome },
         withQuestions: false,
       }),
+      business: await loadBusinessStructure(userId, { client, now, loaded: { estimate, advice } }),
       calendar: await loadTaxCalendar(userId, {
         client,
         now,
