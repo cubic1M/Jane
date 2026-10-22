@@ -7,10 +7,10 @@ import { adviceMode } from "@/lib/advice-mode";
 import { loadFees } from "@/lib/investments/fees";
 import { loadInvestments } from "@/lib/investments/holdings";
 import { EXPLAINERS, REVIEW_NOTE, explainer } from "@/config/learn";
-import { INVESTMENT_AUTOPILOT } from "@/config/investing";
 import { autopilotOf } from "@/lib/autopilot";
+import { autopilotFor } from "@/lib/sector-autopilot";
 import { loadInvestmentSnapshot } from "./snapshot";
-import { overviewReply } from "./replies";
+import { investmentsByHerself, overviewReply } from "./replies";
 import { loadAccountPlan } from "@/lib/investments/accounts";
 import { loadReturns } from "@/lib/investments/returns";
 import { loadGoalBuckets } from "@/lib/investments/goal-buckets";
@@ -560,14 +560,12 @@ export async function runInvestmentTool(
       });
     }
     case "investments_overview": {
-      const [snapshot, level] = await Promise.all([
+      const [snapshot, level, investing] = await Promise.all([
         loadInvestmentSnapshot(userId, { client, now }),
         autopilotOf(userId, { client }),
+        autopilotFor(userId, "investing", { client, now }),
       ]);
       const note = overviewReply(snapshot);
-      const key = (
-        level && Object.hasOwn(INVESTMENT_AUTOPILOT, level) ? level : "none"
-      ) as keyof typeof INVESTMENT_AUTOPILOT;
       money(snapshot.totalCents);
       if (snapshot.month.previousCents !== null) {
         money(snapshot.month.previousCents);
@@ -578,7 +576,7 @@ export async function runInvestmentTool(
       return out({
         note: note.body,
         ordersReady: snapshot.advice ? (snapshot.rebalance?.orders.length ?? 0) : 0,
-        whatJaneDoesByHerself: INVESTMENT_AUTOPILOT[key],
+        whatJaneDoesByHerself: investmentsByHerself(level, investing),
       });
     }
     case "investment_returns": {

@@ -4,6 +4,7 @@ import type { Ranked } from "@/planning/priorities";
 import type { MessageAction, MessageRefs } from "./types";
 import type { Reply } from "./replies";
 import { mostRoom } from "./replies-health";
+import { listWhy } from "./priorities";
 import type { Snapshot } from "./snapshot";
 import { dateAndDays, inDays, things } from "./sources/source";
 import { shortName } from "./sources/findings";
@@ -152,7 +153,7 @@ export function wholePictureReply(
   }
   const picture = wholePicture(snapshot, ranked, focus);
   const { top } = picture;
-  const numbered = top.map((r, i) => `${i + 1}. ${r.title}. ${r.why}`);
+  const numbered = top.map((r, i) => `${i + 1}. ${r.title}. ${listWhy(r)}`);
   const thingsHeader =
     top.length === 0
       ? null

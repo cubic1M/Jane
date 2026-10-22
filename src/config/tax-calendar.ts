@@ -81,3 +81,32 @@ export const ESTIMATE_PAY_GRACE_DAYS = 30;
 
 // The year-end message goes out from this day of December.
 export const YEAR_END_FROM_DAY = 1;
+
+// Spec step 273: every tax detector's suggestion on the year's calendar. The month each one
+// belongs in when it isn't urgent: when acting on it does the most (the March 15 S corporation
+// election, December's last chances, January's forms and PINs, filing season for what goes on
+// the return). Urgent ones ("now") go in this month; "soon" ones in this month or the next.
+export const TAX_TOPIC_MONTH: Readonly<Record<string, number>> = {
+  estimated_taxes: 1,
+  business_separation: 1,
+  identity_ip_pin: 1,
+  charity_receipts: 1,
+  social_security_tax: 1,
+  s_corp_election: 2,
+  draft_return_check: 3,
+  file_return: 3,
+  hsa_over_limit: 3,
+  home_office_deduction: 3,
+  vehicle_deduction: 3,
+  property_tax_check: 4,
+  withholding_gap: 6,
+  ptc_repayment: 7,
+  disaster_relief: 9,
+  irmaa_watch: 10,
+  childcare_tax_break: 11,
+  roth_conversion: 11,
+  year_end_moves: 12,
+  tax_loss_harvest: 12,
+  medical_deduction: 12,
+  inherited_ira: 12,
+};
