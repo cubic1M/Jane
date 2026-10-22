@@ -57,3 +57,21 @@ export const PRACTICE_UNIVERSE: ReadonlySet<string> = new Set([
 // Practice money a new portfolio starts with: a stated sample amount, never linked to anything.
 export const PRACTICE_START_CENTS = 1_000_000;
 export const PRACTICE_MONTHLY_ADD_CENTS = 50_000;
+
+// Autopilot for the practice portfolio (spec step 291). Hard limits: nothing here can be turned
+// up by the person or by a card; they live in code review. No leverage, no options and no
+// shorting are enforced by the ledger itself (src/planning/practice-ledger.ts).
+export const AUTOPILOT_LIMITS = {
+  // A class this many points of the portfolio off its target is rebalanced.
+  rebalanceBand: 0.05,
+  // Smaller trades aren't worth making.
+  minTradeCents: 1_000,
+  // One trade is never more than this share of the portfolio's value.
+  perTradeShare: 0.7,
+  // No model ETF is ever more than this share of the portfolio (after a trade).
+  perEtfShare: 0.8,
+  // A single company's stock (an opportunity, step 292) is never more than this share.
+  perStockShare: 0.03,
+  // At most this many trades a day for one portfolio.
+  tradesPerDay: 12,
+} as const;

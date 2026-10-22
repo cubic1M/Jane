@@ -12,6 +12,7 @@ import { PRACTICE_UNIVERSE } from "@/config/portfolios";
 import { LedgerError } from "@/planning/practice-ledger";
 import { logAudit } from "@/lib/audit";
 import { practiceBroker } from "./broker";
+import { runAutopilot, setPaused, tradeLog, undoLastTrade } from "./autopilot";
 import { addPracticeMoney, loadPractice, PracticeError, startPractice } from "./portfolio";
 
 // Spec step 290 against a real, migrated Postgres: the practice ledger balances to the cent,
@@ -174,5 +175,81 @@ describe.runIf(url)("the practice portfolio", () => {
         /from "@\/lib\/brokerage|brokeragePartner|placeOrders|scheduleTransfer/,
       );
     }
+  });
+
+  it("autopilot buys the model with a reason on every trade, then does nothing more that day", async () => {
+    const userId = await person();
+    await startPractice(userId, 3, { client, now: NOW });
+    const first = await runAutopilot(userId, { client, now: NOW });
+    expect(first.ran && first.fills.length).toBeGreaterThan(2);
+    const log = await tradeLog(userId, { client });
+    expect(
+      log
+        .filter((t) => t.side === "buy")
+        .every((t) => t.reason.length > 20 && t.rule === "model_buy"),
+    ).toBe(true);
+    const view = await loadPractice(userId, { client, now: NOW });
+    // Nearly everything is invested, in the model's proportions for Medium.
+    expect(view!.state.cashCents).toBeLessThan(view!.totalCents * 0.02);
+    const again = await runAutopilot(userId, { client, now: NOW });
+    expect(again.ran && again.fills).toEqual([]);
+  });
+
+  it("adds the monthly practice money once a month", async () => {
+    const userId = await person();
+    await startPractice(userId, 2, { client, now: NOW });
+    const a = await runAutopilot(userId, { client, now: NOW });
+    expect(a.ran && a.deposit).toBe(true);
+    const b = await runAutopilot(userId, { client, now: new Date("2026-10-20T15:00:00Z") });
+    expect(b.ran && b.deposit).toBe(false);
+    const c = await runAutopilot(userId, { client, now: new Date("2026-11-03T15:00:00Z") });
+    expect(c.ran && c.deposit).toBe(true);
+    expect(await client.practiceTrade.count({ where: { userId, rule: "monthly_add" } })).toBe(2);
+  });
+
+  it("does nothing when paused, and resumes", async () => {
+    const userId = await person();
+    await startPractice(userId, 4, { client, now: NOW });
+    await setPaused(userId, "all", true, { client });
+    expect(await runAutopilot(userId, { client, now: NOW })).toEqual({ ran: false, why: "paused" });
+    expect(await client.practiceTrade.count({ where: { userId } })).toBe(1);
+    await setPaused(userId, "all", false, { client });
+    const r = await runAutopilot(userId, { client, now: NOW });
+    expect(r.ran && r.fills.length).toBeGreaterThan(0);
+  });
+
+  it("undoes the last trade by rebuilding the ledger, never the starting money", async () => {
+    const userId = await person();
+    await startPractice(userId, 5, { client, now: NOW });
+    await runAutopilot(userId, { client, now: NOW });
+    const before = await loadPractice(userId, { client, now: NOW });
+    const trades = await client.practiceTrade.count({
+      where: { userId, undone: false, side: { in: ["buy", "sell"] } },
+    });
+    const u = await undoLastTrade(userId, { client });
+    expect(u.side).toMatch(/buy|sell/);
+    const after = await loadPractice(userId, { client, now: NOW });
+    expect(after!.state.cashCents).toBeGreaterThan(before!.state.cashCents);
+    expect(
+      await client.practiceTrade.count({
+        where: { userId, undone: false, side: { in: ["buy", "sell"] } },
+      }),
+    ).toBe(trades - 1);
+    const rest = await client.practiceTrade.findMany({
+      where: { userId, undone: false },
+      orderBy: { placedAt: "asc" },
+    });
+    expect(rest[0].rule).toBe("start");
+    for (let i = 0; i < 20; i += 1) {
+      try {
+        await undoLastTrade(userId, { client });
+      } catch {
+        break;
+      }
+    }
+    await expect(undoLastTrade(userId, { client })).rejects.toThrow(PracticeError);
+    expect((await loadPractice(userId, { client, now: NOW }))!.state.cashCents).toBe(
+      before!.startingCents + (rest.filter((t) => t.rule === "monthly_add").length ? 0 : 0),
+    );
   });
 });

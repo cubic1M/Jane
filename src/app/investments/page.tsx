@@ -269,6 +269,12 @@ async function InvestmentsContent() {
             : bonds where interest isn&apos;t taxed, without changing your mix.
           </p>
           <p className="text-sm text-zinc-600 dark:text-zinc-400">
+            <Link href="/investments/practice" className={LINK}>
+              Practice portfolio
+            </Link>
+            : Jane runs a paper portfolio on practice money, with every trade explained.
+          </p>
+          <p className="text-sm text-zinc-600 dark:text-zinc-400">
             Learn:{" "}
             {["index-funds", "fees", "the-match", "roth-vs-traditional", "rebalancing"].map(
               (slug, i) => (
