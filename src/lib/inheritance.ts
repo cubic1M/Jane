@@ -2,6 +2,7 @@ import { GIFT_ANNUAL_EXCLUSION_CENTS } from "@/config/family";
 import { INHERITED_NAME } from "@/config/inheritance";
 import { mustBeEmptyBy } from "@/planning/inheritance";
 import type { PrismaClient } from "@/generated/prisma/client";
+import { adviceMode } from "@/lib/advice-mode";
 import { db as defaultClient } from "@/lib/db";
 import { loadProfileInput } from "@/lib/profile";
 import type { TaxEstimateView } from "@/lib/tax-estimate";
@@ -57,11 +58,12 @@ export async function loadInheritance(
   }: Options & { loaded?: { estimate: TaxEstimateView; advice: boolean } } = {},
 ): Promise<InheritanceView> {
   const year = now.getUTCFullYear();
-  const [input, estimate] = await Promise.all([
+  const [input, estimate, advice] = await Promise.all([
     loadProfileInput(userId, { client, now }),
     loaded ? Promise.resolve(loaded.estimate) : loadTaxEstimate(userId, { client, now }),
+    // Spreading the withdrawals is demo advice: only for the demo bank (step 98).
+    loaded ? Promise.resolve(loaded.advice) : adviceMode(userId, { client }),
   ]);
-  const advice = loaded?.advice ?? true;
   const diedYear =
     typeof input.told.inherited_ira_death_year === "number"
       ? input.told.inherited_ira_death_year
