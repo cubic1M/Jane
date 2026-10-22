@@ -1668,6 +1668,12 @@ const BASE_QUESTIONS: readonly CheckQuestion[] = [
     expect: { intent: "tax", mentions: /profit/ },
   },
   {
+    id: "tax-33",
+    text: "I inherited an IRA, what do I do",
+    needs: "rules",
+    expect: { intent: "tax", mentions: /step-up|new cost basis|10 years/, list: true },
+  },
+  {
     id: "ins-1",
     text: "what insurance do I have",
     needs: "rules",

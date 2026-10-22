@@ -202,6 +202,28 @@ describe("the demo advice profile", () => {
     expect(demoIssues("Talk to a lawyer and sue the lender.")).toEqual(["tax_or_legal_advice"]);
   });
 
+  // Spec step 268: inherited money and gifts are tax facts plus a pointer to counsel; what to do
+  // about the estate is legal advice, blocked even as demo advice.
+  it.each([
+    "You should set up a revocable trust for the house.",
+    "Put the house in a living trust to avoid probate.",
+    "Write a will that leaves the IRA to your daughter.",
+    "Disclaim the inheritance so it passes to your kids.",
+    "Update your power of attorney before the gift.",
+  ])("blocks estate advice: %j", (text) => {
+    expect(demoIssues(text)).toEqual(["tax_or_legal_advice"]);
+  });
+
+  it("lets the inheritance facts and the pointer to counsel through", () => {
+    for (const text of [
+      "Most heirs must empty an inherited IRA within 10 years of the owner's death.",
+      "Inherited stocks get a new cost basis: their value on the day the owner died.",
+      "A gift over the annual exclusion takes a gift tax return (Form 709).",
+      "An estate lawyer can say what applies to a particular family.",
+    ])
+      expect(demoIssues(text), text).toEqual([]);
+  });
+
   it("still requires a card's wording", () => {
     expect(checkGuardrails("Your bill is high.", [], "bill_negotiation", "demo_advice")).toEqual({
       ok: false,

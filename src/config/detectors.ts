@@ -240,6 +240,7 @@ export const HEADLINE_VERBS: readonly string[] = [
   "Confirm",
   "Convert",
   "Drop",
+  "Empty",
   "Get",
   "Hold",
   "Invest",
