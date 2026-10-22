@@ -1,5 +1,7 @@
+import { DETECTOR_RATES } from "@/config/detectors";
 import {
   FILING_STATUSES,
+  BUSINESS_SALES_CATEGORIES,
   INCOME_KINDS,
   TAXABLE_INVESTMENT_SUBTYPES,
   type FilingStatus,
@@ -24,6 +26,7 @@ import {
   NO_PAY,
   payFrequency,
   paychecksLeft,
+  businessSalesSoFar,
   otherIncomeSoFar,
   payFromStubs,
   payFromYtd,
@@ -115,7 +118,11 @@ export async function loadTaxEstimate(
     db.transactions.findMany({
       where: {
         pending: false,
-        pfcDetailed: { in: incomeCategories },
+        OR: [
+          { pfcDetailed: { in: incomeCategories } },
+          // A shop's card sales, often other income or a deposit (businessSalesSoFar).
+          { amountCents: { lt: 0 }, pfcDetailed: { in: [...BUSINESS_SALES_CATEGORIES] } },
+        ],
         date: { gte: new Date(Date.UTC(year, 0, 1)), lt: new Date(Date.UTC(year + 1, 1, 1)) },
       },
       select: {
@@ -239,6 +246,19 @@ export async function loadTaxEstimate(
   const miles = stored?.businessMilesYear === year ? (stored.businessMiles ?? 0) : 0;
   const businessSoFar = tags.totals.business.totalCents + mileageDeduction(miles);
   const otherSoFar = otherIncomeSoFar(rows, cash, year, businessSoFar);
+  // A shop's card sales (taxes QA): profit is sales less the business expenses tagged; with
+  // none tagged, the share of sales the detectors assume, said as an assumption.
+  const sales = businessSalesSoFar(rows, year);
+  if (sales > 0) {
+    const profit =
+      businessSoFar > 0 ? sales : Math.round(sales * DETECTOR_RATES.tax.businessProfitShare);
+    otherSoFar.selfEmploymentCents += profit;
+    if (businessSoFar === 0) {
+      assumptions.push(
+        `Your card sales so far (${formatCents(sales)}) are business income. I've counted ${Math.round(DETECTOR_RATES.tax.businessProfitShare * 100)}% of them as profit until you tag your business expenses (rent, payroll, supplies), which makes it exact.`,
+      );
+    }
+  }
   // Spec step 124: gains realised this year in taxable investment accounts.
   const gains = (await loadInvestmentTaxes(userId, year, { client, now })).realisedCents;
   // Spec step 219: crypto sold by lot, ESPP sales and ISO exercises.
