@@ -80,11 +80,17 @@ function toApplication(
   };
 }
 
-// Whether the profile (spec step 253) sees children: the same fact the need calculators and the
-// nightly detectors read, so the chat does not ask who depends on them when the page knows.
-async function profileHasChildren(userId: string, options: Options): Promise<boolean> {
+// The profile's (spec step 253) children and income: the same facts the need calculators and the
+// nightly detectors read, so the chat's life answer agrees with the page and does not ask who
+// depends on them when the page knows.
+async function profileFacts(userId: string, options: Options) {
   const { loadProfile } = await import("@/lib/profile");
-  return (await loadProfile(userId, options)).facts.has_children.value === true;
+  const facts = (await loadProfile(userId, options)).facts;
+  const income = facts.monthly_income.value;
+  return {
+    hasChildren: facts.has_children.value === true,
+    yearlyPayCents: typeof income === "number" && income > 0 ? income * 12 : null,
+  };
 }
 
 const DAY = 86_400_000;
@@ -97,7 +103,7 @@ export async function lifeInput(
 ): Promise<Omit<LifeNeedInput, "dependants"> & { dependants: number | null }> {
   const db = scopedFor(userId, client);
   const since = new Date(now.getTime() - LIFE_PAY_LOOKBACK_DAYS * DAY);
-  const [household, income, accounts, mortgages, policies, hasChildren] = await Promise.all([
+  const [household, income, accounts, mortgages, policies, facts] = await Promise.all([
     loadHousehold(userId, { client, now }),
     db.transactions.aggregate({
       where: { pfcDetailed: "INCOME_SALARY", pending: false, date: { gte: since, lte: now } },
@@ -108,7 +114,7 @@ export async function lifeInput(
     }),
     db.liabilities.findMany({ where: { kind: "mortgage" }, select: { payoffDate: true } }),
     listPolicies(userId, { client }),
-    profileHasChildren(userId, { client, now }),
+    profileFacts(userId, { client, now }),
   ]);
   // Plaid's sign: money in is negative.
   const paid = -(income._sum.amountCents ?? 0);
@@ -119,10 +125,12 @@ export async function lifeInput(
     .filter((d): d is Date => d !== null)
     .sort((a, b) => b.getTime() - a.getTime())[0];
   return {
-    yearlyPayCents: paid > 0 ? Math.round((paid * 365) / LIFE_PAY_LOOKBACK_DAYS) : null,
+    // The profile's income when it has one; otherwise the salary deposits of the lookback.
+    yearlyPayCents:
+      facts.yearlyPayCents ?? (paid > 0 ? Math.round((paid * 365) / LIFE_PAY_LOOKBACK_DAYS) : null),
     // What they told wins; otherwise the profile's own picture (children seen in their
     // spending), so the chat does not ask what the page already knows.
-    dependants: household.dependants.value ?? (hasChildren ? 1 : null),
+    dependants: household.dependants.value ?? (facts.hasChildren ? 1 : null),
     mortgageCents: balance((a) => a.type === "loan" && a.subtype === "mortgage"),
     otherDebtCents: balance(
       (a) => (a.type === "loan" && a.subtype !== "mortgage") || a.type === "credit",
