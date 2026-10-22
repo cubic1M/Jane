@@ -1,6 +1,7 @@
 import { DETECTOR_RATES as R } from "@/config/detectors";
 import { FUND_FACTS, FUND_NAMES, LOWER_COST_EQUIVALENTS } from "@/config/funds";
 import { formatCents } from "@/lib/money";
+import { olderPlans } from "@/planning/rollover";
 import { type Detector, suggestionId } from "./contract";
 import {
   evidence,
@@ -178,8 +179,11 @@ const oldAccounts: Detector = {
   detect({ profile, data }) {
     const plans = data.accounts.filter((a) => a.subtype === "401k");
     if (plans.length < 2) return null;
-    const sorted = [...plans].sort((a, b) => b.balanceCents - a.balanceCents);
-    const old = sorted.slice(1).reduce((s, a) => s + a.balanceCents, 0);
+    const older = olderPlans(
+      plans.map((a) => ({ id: a.id, name: a.name ?? "", balanceCents: a.balanceCents })),
+      R.oldPlanFeeGapBps,
+    );
+    const old = older.totalCents;
     if (old === 0) return null;
     return {
       id: suggestionId("investing", "old_accounts"),
