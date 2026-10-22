@@ -6,15 +6,16 @@ import { AppHeader } from "@/components/app-header";
 import { CHAT_MAX_MESSAGE } from "@/config/agent-chat";
 import { scopedFor } from "@/lib/db-scoped";
 import { markChatRead, pinnedMessages, stackedSuggestions } from "@/lib/jane-agent/messages";
-import { toView } from "@/lib/jane-agent/view";
+import { toView, type MessageView } from "@/lib/jane-agent/view";
 import { openChat, timezoneOf } from "@/lib/jane-agent/open";
+import { practiceCards } from "@/lib/practice/cards";
 import { scanOnOpenQuietly } from "@/lib/practice/scan";
 import { requireUser } from "@/lib/session";
 import { ChatComposer } from "./composer";
 import { ChatMessageItem } from "./message";
 import { ScanRefresher } from "./scan-refresher";
 import { ScrollToEnd } from "./scroll-to-end";
-import { SuggestionStack } from "./suggestion-stack";
+import { ChatCards } from "./chat-cards";
 
 // Jane's chat, the home screen (spec step 81): what Jane noticed, did and suggests, newest
 // at the bottom, each with its buttons. The last CHAT_PAGE_SIZE messages, with "Show
@@ -22,6 +23,13 @@ import { SuggestionStack } from "./suggestion-stack";
 // from Ask Jane stay readable on /ask.
 
 const MAX_PAGES = 20;
+
+// The options in Jane's latest answer, while still open: an older answer's options never come
+// back once the conversation has moved on.
+function latestOptions(messages: MessageView[]): MessageView | null {
+  const last = messages.findLast((m) => m.kind === "reply");
+  return last?.options ? last : null;
+}
 
 function pagesFrom(value: string | string[] | undefined): number {
   const n = Number(typeof value === "string" ? value : "1");
@@ -33,13 +41,15 @@ async function Chat({ searchParams }: { searchParams: PageProps<"/chat">["search
   const user = await requireUser();
   const pages = pagesFrom((await searchParams).pages);
   // Nothing here waits on anything else, so a first visit waits for the slowest, not the sum.
-  const [chat, askHistory, pinned, stackedRows, zone] = await Promise.all([
+  const [chat, askHistory, pinned, stackedRows, zone, practice] = await Promise.all([
     openChat(user.id, { pages }),
     scopedFor(user.id).askConversations.count(),
     pinnedMessages(user.id),
     // The day's suggestions still waiting, one card at a time by the message box.
     stackedSuggestions(user.id),
     timezoneOf(user.id),
+    // Spec step 296: the practice portfolio's cards (demo advice mode only).
+    practiceCards(user.id),
   ]);
   const stacked = stackedRows.map((m) => toView(m, new Date(), zone));
   if (!chat) redirect("/connect");
@@ -59,7 +69,7 @@ async function Chat({ searchParams }: { searchParams: PageProps<"/chat">["search
         </p>
       </div>
 
-      {chat.scanning && <ScanRefresher />}
+      {chat.scanning && <ScanRefresher shown={chat.hasEarlier ? -1 : chat.messages.length} />}
 
       {/* Spec step 96: search everything said here, and what the person pinned. */}
       <form action="/chat/search" role="search" className="flex gap-2">
@@ -114,12 +124,12 @@ async function Chat({ searchParams }: { searchParams: PageProps<"/chat">["search
       ) : (
         <ol aria-label="Messages" className="flex flex-col gap-4">
           {chat.messages.map((message) => (
-            <ChatMessageItem key={message.id} initial={message} />
+            // Keyed by its state too: a tap on a floating card answers it on the server, and the
+            // reload shows that here.
+            <ChatMessageItem key={`${message.id}:${message.status}`} initial={message} />
           ))}
         </ol>
       )}
-
-      <SuggestionStack messages={stacked} />
 
       {/* The message box (spec step 84): typing to Jane, answered under it. */}
       <ChatComposer
@@ -138,6 +148,10 @@ async function Chat({ searchParams }: { searchParams: PageProps<"/chat">["search
         </Link>
       )}
       {pages === 1 && <ScrollToEnd targetId="chat-end" />}
+      {/* Last, so its room under the message box is the end of the page: one set of cards at
+          a time, the options Jane just gave, then the day's suggestions, then the practice
+          portfolio's. */}
+      <ChatCards options={latestOptions(chat.messages)} suggestions={stacked} practice={practice} />
     </>
   );
 }
