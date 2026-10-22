@@ -61,6 +61,7 @@ import { ACTION_HANDLERS } from "./actions";
 import { DEBT_CHAT_PAGES, DEBT_TOOLS } from "./debt-tools";
 import { isDebtTool, runDebtTool } from "./debt-tools-run";
 import { INVESTMENT_TOOLS, isInvestmentTool, runInvestmentTool } from "./investments/tools";
+import { NEWS_TOOLS, isNewsTool, runNewsTool } from "./news-tools";
 import { rebalanceOffer } from "./investments/replies";
 import { loadRebalance } from "@/lib/investments/rebalance";
 import { monthLabel, type Reply } from "./replies";
@@ -75,6 +76,9 @@ import { findingCandidate } from "./sources/findings";
 import { TAX_TOOLS, isTaxTool, runTaxTool } from "./tax-tools";
 import { ACTION_IDS, type ActionId, type MessageAction } from "./types";
 import { cryptoTotal } from "@/lib/crypto/crypto";
+import { backtestsFor, longDate } from "@/lib/investments/backtest";
+import { RISK_LEVELS } from "@/config/investing";
+import { formatReturn } from "@/insights/returns";
 
 // The tools Claude gets in Jane's chat (spec step 84). Read-only tools over the person's
 // own data, wrapping the same loaders as the pages (and Ask's own tools, src/lib/ask), each
@@ -391,10 +395,30 @@ export const CHAT_TOOLS: Anthropic.Tool[] = [
       additionalProperties: false,
     },
   },
+  // Spec step 295: backtests by risk level (demo advice).
+  {
+    name: "backtest_by_level",
+    description:
+      'How each risk level\'s model portfolio (Very low, Low, Medium, High, Very high) would have done, replayed over past prices from the same sample amount: for "how would a High portfolio have done in 2022" or "how bad did the drops get". Gives where the prices came from (real stored history, or the sample market\'s made-up prices with a planted crash and recovery), the end value, the worst drop with its dates and when it got back, the best and worst whole year, and with year that year\'s return and its worst fall; plus the assumptions (fund costs, rebalancing band, no taxes). Leave level out for all five. Demo advice mode only. Always call it a replay of past or sample history, never a forecast or what will happen.',
+    input_schema: {
+      type: "object",
+      properties: {
+        level: {
+          type: "string",
+          enum: Object.values(RISK_LEVELS).map((l) => l.label),
+          description: "One risk level; leave out for all five.",
+        },
+        year: { type: "integer", description: "A calendar year, e.g. 2022." },
+      },
+      additionalProperties: false,
+    },
+  },
   // Taxes (spec steps 118–127): ./tax-tools.ts.
   ...TAX_TOOLS,
   // Spec step 128 on.
   ...INVESTMENT_TOOLS,
+  // Spec step 293: the practice portfolio's news.
+  ...NEWS_TOOLS,
 ];
 
 const str = (value: unknown) => (typeof value === "string" ? value.trim() : "");
@@ -411,6 +435,7 @@ export async function runChatTool(
   if (isDebtTool(name)) return runDebtTool(userId, name, input, { client, now });
   if (isTaxTool(name)) return runTaxTool(userId, name, input, { client, now });
   if (isInvestmentTool(name)) return runInvestmentTool(userId, name, input, { client, now });
+  if (isNewsTool(name)) return runNewsTool(userId, name, input, { client, now });
   if (isInsuranceTool(name)) return runInsuranceTool(userId, name, input, { client, now });
   const cents: number[] = [];
   const money = (value: number) => {
@@ -988,6 +1013,79 @@ export async function runChatTool(
         netWorth: money(worth.netCents),
         ...(worth.cryptoCents > 0 ? { ofWhichCryptoReadOnly: money(worth.cryptoCents) } : {}),
         accountsWithoutABalance: worth.missing.length,
+      });
+    }
+    case "backtest_by_level": {
+      const data = await backtestsFor(userId, { client, now });
+      if (!data.advice)
+        return out({
+          note: "Backtests of the model portfolios are demo advice, for the demo bank's sample people only. For real accounts, say Jane can't show them yet.",
+        });
+      const b = data.backtests;
+      const args = (input && typeof input === "object" ? input : {}) as Record<string, unknown>;
+      const asked = str(args.level).toLowerCase().replace(/_/g, " ");
+      const year = Number.isInteger(args.year) ? (args.year as number) : null;
+      const levels = b.levels.filter((l) => !asked || l.label.toLowerCase() === asked);
+      if (levels.length === 0) return out({ error: `There's no risk level called ${asked}.` });
+      return out({
+        replay: b.label,
+        to: b.to,
+        prices: b.note,
+        notAForecast: b.notAForecast,
+        assumptions: {
+          startingAmount: money(b.assumptions.startCents),
+          yearlyFundCostPercent: Object.fromEntries(
+            Object.entries(b.assumptions.feeBps).map(([k, v]) => [k, v / 100]),
+          ),
+          rebalanceWhenAPartDriftsByPoints: b.assumptions.rebalanceBandPoints,
+          tradingCosts:
+            b.assumptions.tradeCostBps === 0 ? "none" : `${b.assumptions.tradeCostBps / 100}%`,
+          taxes: "none (base case)",
+          moneyAddedOrTaken: "none",
+        },
+        levels: levels.map((l) => {
+          const r = l.result;
+          const y = year === null ? null : r.years.find((x) => x.year === year);
+          return {
+            level: l.label,
+            stocksPercent: Math.round((l.weights.us_stocks + l.weights.intl_stocks) * 100),
+            bondsPercent: Math.round(l.weights.bonds * 100),
+            cashPercent: Math.round(l.weights.cash * 100),
+            yearlyFundCostPercent: Math.round(l.yearlyFeeBps) / 100,
+            endValue: money(r.endCents),
+            overall: formatReturn(r.totalReturn),
+            worstDrop: {
+              fall: formatReturn(r.worstDrop.fraction),
+              from: money(r.worstDrop.peakCents),
+              to: money(r.worstDrop.troughCents),
+              peakOn: longDate(r.worstDrop.peakDate),
+              lowOn: longDate(r.worstDrop.troughDate),
+              backBy: r.worstDrop.recoveredOn ? longDate(r.worstDrop.recoveredOn) : "not back yet",
+            },
+            bestYear: r.bestYear && {
+              year: r.bestYear.year,
+              return: formatReturn(r.bestYear.return),
+            },
+            worstYear: r.worstYear && {
+              year: r.worstYear.year,
+              return: formatReturn(r.worstYear.return),
+            },
+            ...(year === null
+              ? {}
+              : y
+                ? {
+                    inYear: {
+                      year,
+                      startValue: money(y.startCents),
+                      endValue: money(y.endCents),
+                      return: formatReturn(y.return),
+                      worstFallInTheYear: formatReturn(y.worstDrop),
+                      ...(y.whole ? {} : { partYear: `${longDate(y.from)} to ${longDate(y.to)}` }),
+                    },
+                  }
+                : { inYear: { year, note: "That year isn't in the replay." } }),
+          };
+        }),
       });
     }
     default:
