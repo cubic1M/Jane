@@ -184,6 +184,12 @@ const beneficiaries: Detector = {
       capability: "investing",
       topic: "beneficiaries",
       title: "Name who gets your retirement accounts",
+      headline: headlineOf(
+        "Add beneficiaries to your accounts",
+        Math.round(total * R.beneficiaryRiskShare),
+        "risk",
+      ),
+      short: `${formatCents(total)} in ${open.length === 1 ? "one account" : `${open.length} accounts`} with nobody named that I know of.`,
       worthCents: Math.round(total * R.beneficiaryRiskShare),
       worthKind: "risk",
       confidence: weakest([
@@ -221,6 +227,10 @@ const valuesFunds: Detector = {
       capability: "investing",
       topic: "values_funds",
       title: "Move your funds in line with the list you gave me",
+      headline: `Move ${dollars(total)} to funds that match your values`,
+      short: clip(
+        `${formatCents(total)} sits in ${offending.length} ${offending.length === 1 ? "fund" : "funds"} that may hold what you asked me to leave out.`,
+      ),
       worthCents: total,
       worthKind: "risk",
       confidence: weakest([

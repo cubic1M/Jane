@@ -87,6 +87,8 @@ const LEGAL = [
   /\bpower of attorney\b/i,
   /\bestate (?:plan|planning|tax)\b/i,
   /\bexecutor\b/i,
+  // Claims about what a court does with what someone leaves (the reviewed fact says "usually").
+  /\bcourts? (?:always|never|must|will|won(?:'|’)t|has to|have to|doesn(?:'|’)t have to)\b[^.!?]{0,40}\b(?:approve|decide|take|split|divide|get)\b/i,
 ];
 
 // Saying Jane can't help with something legal, or pointing to a lawyer for it, is not legal
