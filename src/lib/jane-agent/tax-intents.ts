@@ -248,7 +248,7 @@ const CALENDAR_ASK =
 const BUSINESS_ASK =
   /\bs[- ]?corp(?:oration)?\b|\bqbi\b|\bqualified business income\b|\bpass[- ]?through\b|\bshould i (?:incorporate|form an llc|become an llc|elect)\b|\bllc\b.*\btax/;
 const INHERITED_ASK =
-  /\binherit(?:ed|ance)?\b|\bbeneficiary ira\b|\bstep(?:ped)?[- ]?up\b.*\bbasis\b|\bgift tax\b|\bform 709\b|\bannual (?:gift )?exclusion\b|\bestate tax\b|\b10[- ]year rule\b/;
+  /\binherit(?:ed|ing)?\b[^.?!]{0,30}\b(?:ira|401\(?k\)?|403\(?b\)?|retirement account|roth)\b|\binherit\w*\b[^.?!]{0,40}\b(?:tax(?:es|ed)?|irs|deadline|10 years?)\b|\bbeneficiary ira\b|\bstep(?:ped)?[- ]?up\b.*\bbasis\b|\bgift tax\b|\bform 709\b|\bannual (?:gift )?exclusion\b|\bestate tax\b|\b10[- ]year rule\b/;
 const HEALTH_ASK =
   /\bpremium tax credit\b|\b(?:marketplace|obamacare|aca|healthcare\.gov)\b.*\b(?:subsid(?:y|ies)|credit|repay|pay (?:it )?back|tax)|\b(?:subsid(?:y|ies)|advance credit|aptc)\b.*\b(?:repay|pay (?:it )?back|owe|tax)|\bhsa\b.*\b(?:too much|over the limit|excess|limit|max(?:imum)?)\b|\b(?:put|contribut\w*) too much\b.*\bhsa\b|\bmedical (?:expenses|costs|bills)\b.*\b(?:deduct(?:ion|ions|ed|ing)?|tax\w*|write off)\b|\bdeduct(?:ion|ions|ed|ing)?\b.*\b(?:medical|dental|doctor|hospital)\b|\bmedical (?:expense )?deduction\b|\bform 8962\b/;
 const DISASTER_ASK =
