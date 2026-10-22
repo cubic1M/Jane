@@ -38,6 +38,8 @@ import { loadBusinessStructure } from "@/lib/business-structure";
 import { loadInheritance } from "@/lib/inheritance";
 import { loadHealthTaxes } from "@/lib/health-taxes";
 import { loadDisasterRelief } from "@/lib/disasters";
+import { loadRetirementTaxes } from "@/lib/retirement-taxes";
+import { listDraftReturns } from "@/lib/draft-return";
 import { DECISION_TOPICS } from "@/config/tax-decisions";
 import { decideTax } from "@/lib/tax-decisions";
 import { loadTaxCalendar } from "@/lib/tax-calendar";
@@ -235,6 +237,18 @@ export const TAX_TOOLS: Anthropic.Tool[] = [
     name: "tax_disaster",
     description:
       "Disaster relief and losses for the person: the county they live in (told, or named by their property tax payee), any IRS disaster postponement covering it from their disaster feed (only a stand-in with sample declarations for demo-bank people; none for real accounts yet), what it covers (from the incident date, deadlines move to the postponed date: estimated payments, filing and paying, prior-year IRA and HSA contributions) and whether Jane has moved the tax deadlines on their list; repairs since the disaster, what insurance or FEMA paid back, and the casualty loss after the $100 floor and 10% of income (Form 4684), kept once with the insurance claim. Facts only; Jane files nothing.",
+    input_schema: noInput,
+  },
+  {
+    name: "tax_retirement",
+    description:
+      "Taxes on the person's retirement income: their Social Security for a year (from its deposits), other income (pension, IRA withdrawals, wages), provisional income and how much of the benefit is taxable (0, up to 50% or up to 85%), the tax on it that nothing withholds unless they file Form W-4V, and the rate on their next IRA dollar once Social Security's taxable part growing with it is counted; Medicare's income surcharge (IRMAA): this year's income sets the premiums two years ahead, the tier, the next line (estimated past the published years) and the room to it, and what crossing it adds a year; and, in demo advice mode, the order to draw from accounts tuned to stay under the line (pre-tax up to a cap, then taxable, then Roth), which the retirement paycheck uses. Jane moves no money and changes no withholding.",
+    input_schema: noInput,
+  },
+  {
+    name: "tax_draft_check",
+    description:
+      "The person's draft tax returns (uploaded to Documents as a draft before filing): what Jane read off each (line by line, waiting for the person to confirm, or confirmed), and for a confirmed draft what her check against their collected forms, accounts and estimate found: income missing (interest, dividends, capital gains, business income, wages lower than the W-2), deductions or credits left out (student loan interest, itemizing, education and care credits, estimated payments), figures that don't match the forms (withholding), each with its line and the federal tax it changes (more tax owed, or money back). Jane never files or changes the draft.",
     input_schema: noInput,
   },
   {
@@ -843,6 +857,63 @@ export async function runTaxTool(
             : null,
         homeOffice: { sqft: v.homeOffice.sqft, deduction: money(v.homeOffice.deductionCents) },
         businessMiles: { miles: v.mileage.miles, deduction: money(v.mileage.deductionCents) },
+      });
+    }
+    case "tax_draft_check": {
+      const drafts = (await listDraftReturns(userId, { client })).filter(
+        (d) => d.status !== "dismissed",
+      );
+      return out({
+        drafts: drafts.map((d) => ({
+          file: d.fileName,
+          year: d.year,
+          status:
+            d.status === "waiting" ? "read, waiting for you to confirm" : "confirmed and checked",
+          read: d.fields,
+          findings: d.findings.map((f) => ({
+            what: f.title,
+            line: f.line,
+            onTheDraft: money(f.draftCents),
+            whatJaneKnows: money(f.knownCents),
+            effect: f.effect === "saves" ? "money back" : "more tax owed",
+            dollars: money(f.dollarsCents),
+            why: f.why,
+          })),
+        })),
+        janeFiles: false,
+      });
+    }
+    case "tax_retirement": {
+      const v = await loadRetirementTaxes(userId, { client, now });
+      const i = v.irmaa;
+      return out({
+        socialSecurity: {
+          benefitsAYear: money(v.ssBenefitsCents),
+          otherIncome: money(v.otherIncomeCents),
+          provisionalIncome: money(v.ss.provisionalCents),
+          taxable: money(v.ss.taxableCents),
+          taxOnItAtTheirBracket: money(Math.round(v.ss.taxableCents * v.bracket)),
+          bracket: `${Math.round(v.bracket * 100)}%`,
+          rateOnNextIraDollar: `${Math.round(v.nextDollarRate * 100)}%`,
+        },
+        medicareSurcharge: {
+          incomeThisYear: money(v.magiCents),
+          setsPremiumsFor: i.premiumYear,
+          linesEstimated: i.estimated,
+          tier: i.tier,
+          monthlySurchargePerPerson: money(i.monthlyPerPersonCents),
+          nextLine: i.nextLineCents === null ? null : money(i.nextLineCents),
+          roomUnderIt: i.roomCents === null ? null : money(i.roomCents),
+          crossingAddsAYear: i.nextYearlyCents === null ? null : money(i.nextYearlyCents),
+        },
+        tunedOrder: v.advice
+          ? {
+              preTaxUpTo: v.tuned.preTaxCapCents === null ? null : money(v.tuned.preTaxCapCents),
+              thenTaxable: true,
+              thenRoth: true,
+              isRecommendation: true,
+            }
+          : null,
       });
     }
     case "tax_disaster": {

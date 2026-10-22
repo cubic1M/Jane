@@ -311,6 +311,9 @@ model User {
   homeEquityFacts        HomeEquityFacts?
   carAddons              CarAddon[]
   carLoanWatch           CarLoanWatch?
+  rentReporting          RentReporting?
+  securityDeposits       SecurityDeposit[]
+  familyCredit           FamilyCreditHelp[]
   balanceTransfers       BalanceTransfer[]
   findings               Finding[]
   decisions              Decision[]
@@ -340,6 +343,7 @@ model User {
   insuranceCheckups      InsuranceCheckup[]
   insuranceClaims        InsuranceClaim[]
   disasterLosses         DisasterLoss[]
+  draftReturns           DraftReturn[]
   employerBenefits       EmployerBenefit[]
   policyReadings         PolicyReading[]
   lifeApplications       LifeApplication[]
@@ -394,6 +398,7 @@ model User {
   accountantNotes   AccountantNote[]
   taxPayments       TaxPayment[]
   leanPlans         LeanPlan[]
+  booksIssues       BooksIssue[]
   suggestions       Suggestion[]
   yearPlans         YearPlan[]
   unusualAnswers    UnusualAnswer[]
@@ -1162,6 +1167,63 @@ model CarLoanWatch {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("car_loan_watches")
+}
+
+// The person's opt-in to having their rent payments reported to the credit bureaus through a
+// reporting partner (spec step 248). No row, no reporting.
+model RentReporting {
+  id        String   @id @default(cuid())
+  userId    String   @unique @map("user_id")
+  partner   String
+  optedInAt DateTime @map("opted_in_at") @db.Timestamptz(3)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("rent_reporting")
+}
+
+// A security deposit the person gave a landlord (spec step 248), tracked to the day the state
+// says it is due back after they move out.
+model SecurityDeposit {
+  id            String    @id @default(cuid())
+  userId        String    @map("user_id")
+  amountCents   Int       @map("amount_cents")
+  state         String
+  movedOutOn    DateTime? @map("moved_out_on") @db.Date
+  returnedOn    DateTime? @map("returned_on") @db.Date
+  returnedCents Int?      @map("returned_cents")
+  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt     DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("security_deposits")
+}
+
+// Credit the person gives or gets through someone close (spec step 249): an authorized user on
+// a card, a first card for a student, or a loan co-signed for someone. The terms of a co-signed
+// loan are what the person types; nothing here is sent anywhere.
+model FamilyCreditHelp {
+  id                  String   @id @default(cuid())
+  userId              String   @map("user_id")
+  // authorized_user, first_card or cosigned.
+  kind                String
+  person              String
+  // The card the person is on or adds someone to (a debt key), when it is one of theirs.
+  debtKey             String?  @map("debt_key")
+  // A co-signed loan: what is owed, the payment, and the rate if known.
+  balanceCents        Int?     @map("balance_cents")
+  monthlyPaymentCents Int?     @map("monthly_payment_cents")
+  // The other person missed a payment, as the person said.
+  missed              Boolean  @default(false)
+  createdAt           DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("family_credit_help")
 }
 
 // A balance transfer the person made to a 0% card (spec step 113), so Jane can keep the
@@ -1995,6 +2057,7 @@ model PlanLink {
 model Document {
   taxNotice           TaxNotice?
   priorReturn         PriorReturn?
+  draftReturn         DraftReturn?
   id                  String       @id @default(cuid())
   userId              String       @map("user_id")
   // insurance_policy, warranty, receipt or other (src/config/documents.ts).
@@ -3101,6 +3164,28 @@ model PriorReturn {
   @@map("prior_returns")
 }
 
+// Spec step 272: a draft return (before filing) read from an uploaded document, for the person
+// to confirm, and what Jane's check of it found: [{ key, kind, title, line, draftCents,
+// knownCents, effect, dollarsCents, why }]. Jane never files it.
+model DraftReturn {
+  id          String    @id @default(cuid())
+  userId      String    @map("user_id")
+  documentId  String    @unique @map("document_id")
+  fields      Json
+  sources     Json
+  notes       Json
+  status      String    @default("waiting")
+  findings    Json      @default("[]")
+  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  confirmedAt DateTime? @map("confirmed_at") @db.Timestamptz(3)
+
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  document Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("draft_returns")
+}
+
 // Spec step 172: an amended return (1040-X) prepared through the filing stand-in for what a
 // prior-year review found. Never submitted without the person's review and signature.
 model TaxAmendment {
@@ -3859,6 +3944,31 @@ model CostlyProduct {
 
   @@index([userId])
   @@map("costly_products")
+}
+
+// Something in the person's data that doesn't add up (spec step 238): a balance off from its
+// transactions, transactions that stopped, a stale or broken bank link, the same account
+// linked twice, a transfer with no other side. Open until it clears.
+model BooksIssue {
+  id        String    @id @default(cuid())
+  userId    String    @map("user_id")
+  // off, gap, stale, broken, duplicate or transfer.
+  kind      String
+  // Stable per problem: "balance:<account>", "stale:<item>", "dup:<account>"...
+  key       String
+  accountId String?   @map("account_id")
+  itemId    String?   @map("item_id")
+  detail    Json
+  // open or fixed.
+  status    String    @default("open")
+  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  fixedAt   DateTime? @map("fixed_at") @db.Timestamptz(3)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, key])
+  @@index([userId, status])
+  @@map("books_issues")
 }
 
 // What Jane suggests to a person (spec step 255), one row per detector (src/detectors) that

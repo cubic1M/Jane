@@ -69,6 +69,9 @@ export const TEAM_ACCESS_RULES: Record<AuditEvent, EventRule> = {
   debt_review_done: own,
   car_addon_confirmed: own,
   car_addon_cancel_requested: own,
+  rent_reporting_changed: own,
+  security_deposit_saved: own,
+  family_credit_changed: own,
   home_request_sent: own,
   // Insurance (spec Phase X): the person's own edits to their profile.
   insurance_policy_saved: own,
@@ -144,6 +147,7 @@ export const TEAM_ACCESS_RULES: Record<AuditEvent, EventRule> = {
   money_transfer_cancelled: own,
   what_if_adopted: own,
   lean_plan_started: own,
+  books_merged: own,
   saving_marked_not_shown: own,
   unusual_answered: own,
   lean_plan_ended: own,

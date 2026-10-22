@@ -18,6 +18,7 @@ import {
   TROUBLE_DEBT_MONTHS,
 } from "@/config/profile";
 import type { Relief } from "@/config/disasters";
+import type { DraftFinding } from "@/planning/draft-return";
 import type { NeedPolicy } from "@/lib/insurance/need/types";
 import { countyFromPayments, countyOf } from "@/planning/disasters";
 import { confidenceOf, evidenceText, type Source } from "./confidence";
@@ -105,9 +106,15 @@ export type ProfileInput = {
     insuranceShopSavingCents?: number;
     // The policies they have, for the cover-need gaps (spec step 277). Absent: not loaded.
     coverPolicies?: readonly NeedPolicy[];
+    // What doesn't add up in the person's data (spec step 238), from the daily books check.
+    // Absent: not loaded.
+    books?: readonly { kind: string; words: string; accountId: string | null }[];
     // Disaster relief declarations from the person's feed (spec step 270): the stand-in's
     // samples for demo-bank people, none for anyone else. Absent: not loaded.
     disasterRelief?: readonly Relief[];
+    // The latest confirmed draft return's check (spec step 272): what it found, by line, with the
+    // tax each changes. Null: no checked draft. Absent: not loaded.
+    draftReturn?: { year: number; findings: readonly DraftFinding[] } | null;
     // The value of what they own (a home, cars), added to their net worth for the umbrella.
     ownedValueCents?: number;
     // The person already has a practice portfolio (step 296). Absent: not loaded.
@@ -122,6 +129,26 @@ export type ProfileInput = {
   };
   // Policies read from uploaded documents that wait for the person's confirm (spec step 259).
   unreadPolicyDocuments?: number;
+  // The person's health plan terms and FSA election, where Jane has them (spec step 259):
+  // from a confirmed policy and the pay stub. null/absent when she hasn't.
+  healthPlan?: {
+    label: string;
+    deductibleCents: number;
+    outOfPocketMaxCents: number | null;
+    coinsurance: number;
+  } | null;
+  fsaElectionCents?: number | null;
+  // The person turned rent reporting on (spec step 248).
+  rentReportingOn?: boolean;
+  // Spec step 249: people the person has an authorized user or first card for, and what they
+  // co-signed (owed, in cents) for someone.
+  familyCredit?: {
+    helped: number;
+    cosignedOwedCents: number;
+    cosignedMissed: number;
+    // The co-signed loans' payments a month: lenders count them as the person's own debt.
+    cosignedPaymentCents?: number;
+  };
 };
 
 export type FactValue = string | number | boolean | null;
