@@ -22,7 +22,7 @@ describe("portfolioNote", () => {
   it("says where things stand, what changed, what went in and what it costs", () => {
     const { body, decision } = portfolioNote(base);
     expect(body).toBe(
-      "Your investments start November at $96,730.55. That's up $1,730.55 from a month ago, counting what went in. $489.60 went in last month. Fees run about $1,000.00 a year. Your mix has drifted from your moderate target: 69% US stocks against 40%. I've got the orders ready to bring it back.",
+      "Your investments start November at $96,730.55. That's up $1,730.55 from a month ago, counting what went in. $489.60 went in last month. Fees run about $1,000.00 a year. Your mix has drifted from your medium target: 69% US stocks against 40%. I've got the orders ready to bring it back.",
     );
     expect(decision).toBe("rebalance");
   });
@@ -30,7 +30,7 @@ describe("portfolioNote", () => {
   it("asks at most one thing, and nothing when on target or without orders", () => {
     expect(portfolioNote({ ...base, review: { ...review, offTarget: false } })).toMatchObject({
       decision: null,
-      body: expect.stringContaining("Your mix is on your moderate target."),
+      body: expect.stringContaining("Your mix is on your medium target."),
     });
     expect(portfolioNote({ ...base, ordersReady: 0 }).decision).toBeNull();
     expect(portfolioNote({ ...base, review: null }).body).not.toMatch(/mix/);

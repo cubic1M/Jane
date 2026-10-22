@@ -1842,7 +1842,7 @@ const BASE_QUESTIONS: readonly CheckQuestion[] = [
     id: "inv-9",
     text: "what's my risk profile",
     needs: "rules",
-    expect: { intent: "investments", mentions: /moderate/i, link: "/investments/profile" },
+    expect: { intent: "investments", mentions: /medium/i, link: "/investments/profile" },
   },
   {
     id: "inv-10",
