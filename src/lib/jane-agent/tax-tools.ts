@@ -21,6 +21,7 @@ import { filingYear, inFilingSeason, loadReturn } from "@/lib/tax-filing";
 import { filingPartnerFor } from "@/lib/filing";
 import { loadTaxTags } from "@/lib/tax-organizer";
 import { loadWorkingProfile } from "@/lib/tax-profile";
+import { byHerself } from "./replies-autopilot";
 import { defaultTaxYear } from "@/planning/tax-pack";
 import { stateName } from "@/planning/tax-profile";
 import { STATE_SOURCES } from "@/config/tax-states";
@@ -246,7 +247,7 @@ export async function runTaxTool(
   const out = (value: unknown): ToolOutput => ({ content: JSON.stringify(value), cents });
   switch (name) {
     case "tax_profile": {
-      const { view, autopilot } = await loadWorkingProfile(userId, { client, now });
+      const { view, taxes } = await loadWorkingProfile(userId, { client, now });
       return out({
         filingStatus: view.filingStatus.value ? FILING_STATUSES[view.filingStatus.value] : null,
         dependants:
@@ -270,7 +271,7 @@ export async function runTaxTool(
           })),
         },
         complete: view.complete,
-        janeDoesByHerself: whatJaneDoes(autopilot),
+        janeDoesByHerself: [...whatJaneDoes(taxes.level), byHerself(taxes)],
       });
     }
     case "tax_tags": {

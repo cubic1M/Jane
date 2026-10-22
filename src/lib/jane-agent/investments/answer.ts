@@ -22,6 +22,7 @@ import { loadCostlyProducts } from "@/lib/investments/costly-products";
 import { loadLocation } from "@/lib/investments/location";
 import { loadSteadyHand } from "@/lib/investments/steady-hand";
 import { autopilotOf } from "@/lib/autopilot";
+import { autopilotFor } from "@/lib/sector-autopilot";
 import { loadInvestmentSnapshot } from "./snapshot";
 import { loadAutoInvest } from "@/lib/investments/auto-invest";
 import { loadRebalance } from "@/lib/investments/rebalance";
@@ -136,7 +137,10 @@ export async function answerInvestments(
     case "returns":
       return returnsReply(await loadReturns(userId, { client, now }));
     case "autopilot":
-      return autopilotReply(await autopilotOf(userId, { client }));
+      return autopilotReply(
+        await autopilotOf(userId, { client }),
+        await autopilotFor(userId, "investing", { client, now }),
+      );
     case "accounts":
       return accountsReply(await loadAccountPlan(userId, { client, now }));
     case "auto_invest":

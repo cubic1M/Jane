@@ -34,7 +34,7 @@ import { isPolicyKind } from "@/config/insurance";
 import { noteLines, readingLines } from "./reading-words";
 import { listBenefits, openEnrollmentAtWork, yearlyCost } from "@/lib/insurance/benefits";
 import { autopilotOf } from "@/lib/autopilot";
-import { autopilotReply } from "./autopilot";
+import { autopilotAnswer } from "./autopilot";
 import { eventLabel, listClaims } from "@/lib/insurance/claims";
 import { formatCents } from "@/lib/money";
 import { loadInsuranceSnapshot } from "./snapshot";
@@ -600,8 +600,8 @@ export async function runInsuranceTool(
         dependants: fact(household.dependants),
         pets: fact(household.pets),
       },
-      // Spec step 108: what Jane does with insurance by herself at their autopilot level.
-      whatJaneDoesByHerself: autopilotReply(await autopilotOf(userId, { client })).body,
+      // Spec steps 108 and 141: what Jane does with insurance by herself.
+      whatJaneDoesByHerself: (await autopilotAnswer(userId, { client })).body,
       // Spec step 105: switches Jane is doing, and ones finished lately.
       switches: switches.map((sw) => ({
         newPolicy: `${sw.carrier} ${kindWords(sw.kind as PolicyKind)}`,

@@ -1,5 +1,5 @@
 import type { PfcDetailed } from "@/categorize/taxonomy";
-import type { AutopilotChoice } from "@/config/autopilot";
+import type { SectorLevel } from "@/config/autopilot-sectors";
 import { CHARITY_CATEGORIES, PREPARER_GROUPS } from "@/config/tax-pack";
 
 // Taxes (spec steps 118–127): what Jane needs to know, how she works it out from the
@@ -406,12 +406,11 @@ export const TAX_MESSAGE_PRIORITY = {
   exemption: 30,
 } as const;
 
-// What Jane does about taxes by herself at each autopilot level (spec step 57), shown on
-// /taxes and said in the chat, one entry per feature: what she does when the person asks
-// her to check first ("Ask me first", or no level picked yet) and at the levels that let
-// her act (safe, everything allowed, custom). Nothing is ever filed, signed or paid
-// without a tap.
-export type TaxAutopilotLevel = AutopilotChoice | "custom" | "none";
+// What Jane does about taxes by herself, shown on /taxes and said in the chat, one entry per
+// feature: what she does when the Taxes area always asks, and at its levels that let her act
+// (the safe stuff, everything allowed). The Taxes area's own level (spec step 141) decides it,
+// the same setting its payments go by (docs/feature-audit.md, cluster 1); by default it follows
+// the step 57 level. Nothing is ever filed or signed without a tap.
 export const TAX_AUTOPILOT: readonly { feature: string; ask: string; auto: string }[] = [
   {
     feature: "profile",
@@ -545,11 +544,10 @@ export const TAX_AUTOPILOT: readonly { feature: string; ask: string; auto: strin
   },
 ];
 
-export function whatJaneDoes(level: string | null): string[] {
-  const auto = level === "safe" || level === "all" || level === "custom";
-  return TAX_AUTOPILOT.map((line) => (auto ? line.auto : line.ask));
+export function whatJaneDoes(level: SectorLevel): string[] {
+  return TAX_AUTOPILOT.map((line) => (usesFoundAnswers(level) ? line.auto : line.ask));
 }
 
-// Whether Jane may use what she found before the person has said yes to it.
-export const usesFoundAnswers = (level: string | null): boolean =>
-  level === "safe" || level === "all" || level === "custom";
+// Whether Jane may use what she found before the person has said yes to it: the Taxes area
+// doesn't always ask.
+export const usesFoundAnswers = (level: SectorLevel): boolean => level !== "ask";
