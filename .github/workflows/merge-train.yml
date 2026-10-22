@@ -1,0 +1,33 @@
+name: Merge train
+
+# Keeps auto-merge PRs moving into main without anyone's laptop open: one PR at a time is
+# brought up to date and tested, then GitHub's auto-merge lands it. See
+# .github/scripts/merge_train.py.
+on:
+  schedule:
+    - cron: "*/10 * * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+  actions: write
+
+concurrency:
+  group: merge-train
+  cancel-in-progress: false
+
+jobs:
+  train:
+    name: Move the next PR along
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          sparse-checkout: .github/scripts
+      - run: python3 .github/scripts/merge_train.py
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+          PRIORITY: ${{ vars.MERGE_PRIORITY }}
