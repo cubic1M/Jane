@@ -1,4 +1,5 @@
 import { randomBytes } from "node:crypto";
+import { cardHeadline } from "@/detectors/contract";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { PEOPLE } from "@/config/people";
@@ -81,7 +82,7 @@ describe.runIf(url)("the nightly scan of suggestions", { timeout: 120_000 }, () 
       .filter((m) => m.refs.suggestion === top.key);
     // The card is short: headline, why you, how sure. Not the long title and why.
     expect(message.body.split("\n")).toHaveLength(3);
-    expect(message.body).toContain(top.headline.replace(/[.!?]+$/, ""));
+    expect(message.body).toContain(cardHeadline(top.headline));
     expect(message.body).not.toContain(top.why);
     const whole = await explainSuggestion(userId, top.key, { client });
     expect(whole).toContain(top.why.replace(/[.!?]+$/, ""));
@@ -98,6 +99,7 @@ describe.runIf(url)("the nightly scan of suggestions", { timeout: 120_000 }, () 
     expect(message.body).toContain(`${top.confidencePercent}% sure: `);
     expect(message.actions.map((a) => a.id)).toEqual([
       "suggestion.yes",
+      "snooze",
       "suggestion.no",
       "suggestion.why",
       "open",

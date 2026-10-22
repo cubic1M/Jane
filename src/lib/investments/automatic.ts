@@ -1,3 +1,5 @@
+import { coreFundsFor } from "@/planning/values";
+import { loadPrefs } from "./values";
 import { randomUUID } from "node:crypto";
 import {
   AUTO_CASH_BUFFER_CENTS,
@@ -111,6 +113,7 @@ export async function runAutomaticInvesting(
   // 3. Invest new cash sitting in a brokerage account, above a cushion.
   try {
     const investments = await loadInvestments(userId, { client, now });
+    const prefs = await loadPrefs(userId, { client });
     for (const a of investments.accounts.filter((x) => x.subtype === "brokerage")) {
       const cash = a.holdings
         .filter((h) => h.isCash && h.ticker !== MONEY_MARKET_TICKER)
@@ -126,7 +129,7 @@ export async function runAutomaticInvesting(
             {
               batchId: randomUUID(),
               reason: "auto_cash",
-              orders: contributionBuys(amount, profile.riskLevel).map((b) => ({
+              orders: contributionBuys(amount, profile.riskLevel, coreFundsFor(prefs)).map((b) => ({
                 accountId: a.id,
                 ticker: b.ticker,
                 securityName: FUND_NAMES[b.ticker] ?? b.ticker,

@@ -134,7 +134,13 @@ export function plan(
     const out: PlannedMessage[] = [];
     for (const [index, candidate] of now_.entries()) {
       if (index === at) {
-        const { agenda, folded } = agendaOf(candidate, held, snapshot, localTime(now, timezone));
+        const { agenda, folded } = agendaOf(
+          candidate,
+          held,
+          snapshot,
+          localTime(now, timezone),
+          now,
+        );
         out.push(agenda, ...folded.map((f) => ({ ...f, hidden: true })));
       } else {
         out.push(candidate);

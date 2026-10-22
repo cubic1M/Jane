@@ -343,6 +343,8 @@ model User {
   insuranceShops         InsuranceShop[]
   insuranceCheckups      InsuranceCheckup[]
   insuranceClaims        InsuranceClaim[]
+  disasterLosses         DisasterLoss[]
+  draftReturns           DraftReturn[]
   employerBenefits       EmployerBenefit[]
   policyReadings         PolicyReading[]
   lifeApplications       LifeApplication[]
@@ -397,6 +399,7 @@ model User {
   accountantNotes   AccountantNote[]
   taxPayments       TaxPayment[]
   leanPlans         LeanPlan[]
+  booksIssues       BooksIssue[]
   suggestions       Suggestion[]
   yearPlans         YearPlan[]
   unusualAnswers    UnusualAnswer[]
@@ -414,7 +417,15 @@ model User {
 
   costlyProducts CostlyProduct[]
 
-  practicePortfolio PracticePortfolio?
+  planMenus            PlanMenu[]
+  planChanges          PlanChange[]
+  billLadders          BillLadder[]
+  suddenMoneys         SuddenMoney[]
+  valuesPreference     ValuesPreference?
+  accountBeneficiaries AccountBeneficiary[]
+  familyFile           FamilyFile?
+  practicePortfolio    PracticePortfolio?
+  practicePreferences  PracticePreferences?
 
   @@map("users")
 }
@@ -528,6 +539,7 @@ model Account {
   investmentTransactions InvestmentTransaction[]
   // Spec step 133: orders placed in it.
   brokerageOrders        BrokerageOrder[]
+  beneficiaries          AccountBeneficiary[]
 
   @@index([userId])
   @@index([itemId])
@@ -560,6 +572,8 @@ model Transaction {
   account    Account     @relation(fields: [accountId], references: [id], onDelete: Cascade)
   taxTags    TaxTag[]
   hsaReceipt HsaReceipt?
+
+  suddenMoney SuddenMoney?
 
   @@unique([accountId, dedupeKey])
   @@index([userId])
@@ -2067,6 +2081,7 @@ model PlanLink {
 model Document {
   taxNotice           TaxNotice?
   priorReturn         PriorReturn?
+  draftReturn         DraftReturn?
   id                  String       @id @default(cuid())
   userId              String       @map("user_id")
   // insurance_policy, warranty, receipt or other (src/config/documents.ts).
@@ -2286,11 +2301,36 @@ model InsuranceClaim {
   createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt     DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
 
-  user   User             @relation(fields: [userId], references: [id], onDelete: Cascade)
-  policy InsurancePolicy? @relation(fields: [policyId], references: [id], onDelete: SetNull)
+  user           User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  policy         InsurancePolicy? @relation(fields: [policyId], references: [id], onDelete: SetNull)
+  // Spec step 270: the disaster loss kept with this claim.
+  disasterLosses DisasterLoss[]
 
   @@index([userId, status])
   @@map("insurance_claims")
+}
+
+// A loss from a declared disaster, kept with its insurance claim (spec step 270): what the
+// repairs cost, what insurance paid back, and the part that is deductible, for one disaster and
+// one claim. The key ("<relief id>:<claim id or none>") is unique per person, so the same loss
+// is never recorded, or counted, twice.
+model DisasterLoss {
+  id              String   @id @default(cuid())
+  userId          String   @map("user_id")
+  key             String
+  reliefId        String   @map("relief_id")
+  claimId         String?  @map("claim_id")
+  taxYear         Int      @map("tax_year")
+  lossCents       Int      @map("loss_cents")
+  reimbursedCents Int      @map("reimbursed_cents")
+  deductibleCents Int      @map("deductible_cents")
+  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  user  User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  claim InsuranceClaim? @relation(fields: [claimId], references: [id], onDelete: SetNull)
+
+  @@unique([userId, key])
+  @@map("disaster_losses")
 }
 
 // A benefit through work (spec step 150), found from a pay-stub deduction (or answered in
@@ -2763,6 +2803,8 @@ model TaxProfile {
   ownerVeteran          Boolean?  @map("owner_veteran")
   ownerDisabled         Boolean?  @map("owner_disabled")
   exemptionsClaimed     String[]  @default([]) @map("exemptions_claimed")
+  // Spec step 270: the disaster postponements (relief ids) already applied to their deadlines.
+  disasterApplied       String[]  @default([]) @map("disaster_applied")
   createdAt             DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt             DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
 
@@ -3144,6 +3186,28 @@ model PriorReturn {
 
   @@index([userId])
   @@map("prior_returns")
+}
+
+// Spec step 272: a draft return (before filing) read from an uploaded document, for the person
+// to confirm, and what Jane's check of it found: [{ key, kind, title, line, draftCents,
+// knownCents, effect, dollarsCents, why }]. Jane never files it.
+model DraftReturn {
+  id          String    @id @default(cuid())
+  userId      String    @map("user_id")
+  documentId  String    @unique @map("document_id")
+  fields      Json
+  sources     Json
+  notes       Json
+  status      String    @default("waiting")
+  findings    Json      @default("[]")
+  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  confirmedAt DateTime? @map("confirmed_at") @db.Timestamptz(3)
+
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  document Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("draft_returns")
 }
 
 // Spec step 172: an amended return (1040-X) prepared through the filing stand-in for what a
@@ -3906,6 +3970,31 @@ model CostlyProduct {
   @@map("costly_products")
 }
 
+// Something in the person's data that doesn't add up (spec step 238): a balance off from its
+// transactions, transactions that stopped, a stale or broken bank link, the same account
+// linked twice, a transfer with no other side. Open until it clears.
+model BooksIssue {
+  id        String    @id @default(cuid())
+  userId    String    @map("user_id")
+  // off, gap, stale, broken, duplicate or transfer.
+  kind      String
+  // Stable per problem: "balance:<account>", "stale:<item>", "dup:<account>"...
+  key       String
+  accountId String?   @map("account_id")
+  itemId    String?   @map("item_id")
+  detail    Json
+  // open or fixed.
+  status    String    @default("open")
+  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  fixedAt   DateTime? @map("fixed_at") @db.Timestamptz(3)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, key])
+  @@index([userId, status])
+  @@map("books_issues")
+}
+
 // What Jane suggests to a person (spec step 255), one row per detector (src/detectors) that
 // fires for them. The nightly scan refreshes it, ranks the open ones by dollars x confidence x
 // urgency and selects the top few for today; the chat offers those. status: waiting (fired,
@@ -3945,6 +4034,148 @@ model Suggestion {
   @@unique([userId, key])
   @@index([userId, status])
   @@map("suggestions")
+}
+
+// Spec step 232: the funds a workplace plan offers, read from a fee disclosure or statement
+// the person gave and confirmed. Nothing is suggested from a menu that hasn't been confirmed.
+// status: proposed (read, to confirm) or confirmed.
+model PlanMenu {
+  id        String   @id @default(cuid())
+  userId    String   @map("user_id")
+  planName  String   @map("plan_name")
+  // [{ ticker, name, expenseBps, kind, mix }].
+  funds     Json
+  status    String   @default("proposed")
+  // you (pasted), demo (the stand-in's sample disclosure).
+  source    String
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("plan_menus")
+}
+
+// Spec step 232: a change to how the person's plan balance and future contributions are
+// invested, sent to the payroll partner (a stand-in until one is connected).
+model PlanChange {
+  id         String   @id @default(cuid())
+  userId     String   @map("user_id")
+  menuId     String   @map("menu_id")
+  partner    String
+  partnerRef String   @map("partner_ref")
+  // [{ ticker, share }].
+  allocation Json
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("plan_changes")
+}
+
+// Spec step 234: a ladder of Treasury bills for money needed by a date, bought through a
+// stand-in (nothing real is bought). Every bill matures by endsOn; when one matures before
+// then, the stand-in rolls it into the next, and each roll is recorded in events.
+model BillLadder {
+  id          String   @id @default(cuid())
+  userId      String   @map("user_id")
+  // goal (a savings goal) or emergency (the part above its floor).
+  purpose     String
+  goalId      String?  @map("goal_id")
+  name        String
+  amountCents Int      @map("amount_cents")
+  startOn     DateTime @map("start_on") @db.Date
+  endsOn      DateTime @map("ends_on") @db.Date
+  // [{ amountCents, bills: [{ term, startMonth, endMonth, rateBps }] }].
+  rungs       Json
+  // [{ on, rung, term, amountCents }]: each roll the stand-in made.
+  events      Json     @default("[]")
+  status      String   @default("active")
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("bill_ladders")
+}
+
+// Spec step 235: a large deposit that isn't pay, asked about once ("a bonus, an inheritance,
+// a sale?") and then given a staged plan. status: asked, planned or dismissed. `done` holds the
+// stage keys the person has tapped.
+model SuddenMoney {
+  id            String   @id @default(cuid())
+  userId        String   @map("user_id")
+  transactionId String   @unique @map("transaction_id")
+  amountCents   Int      @map("amount_cents")
+  depositedOn   DateTime @map("deposited_on") @db.Date
+  kind          String?
+  // A sale's cost basis, when the person has said it.
+  basisCents    Int?     @map("basis_cents")
+  status        String   @default("asked")
+  done          Json     @default("[]")
+  createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  transaction Transaction @relation(fields: [transactionId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("sudden_moneys")
+}
+
+// Spec step 236: what the person leaves out of their funds and which theme they lean towards
+// (keys from src/config/values.ts). One row a person.
+model ValuesPreference {
+  id        String   @id @default(cuid())
+  userId    String   @unique @map("user_id")
+  excludes  String[] @default([])
+  themes    String[] @default([])
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("values_preferences")
+}
+
+// Spec step 237: who the person has named on an account that takes a beneficiary (or a
+// transfer-on-death registration). tier is primary or contingent; confirmedOn is the day they
+// last said the names are right, which life events are compared with.
+model AccountBeneficiary {
+  id           String   @id @default(cuid())
+  userId       String   @map("user_id")
+  accountId    String   @map("account_id")
+  name         String
+  relationship String
+  sharePct     Int      @map("share_pct")
+  tier         String   @default("primary")
+  confirmedOn  DateTime @map("confirmed_on") @db.Date
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  account Account @relation(fields: [accountId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([accountId])
+  @@map("account_beneficiaries")
+}
+
+// Spec step 237: the person's family file. events are life events they told Jane about
+// (marriage, divorce, birth); picks are the sections they chose to share; contacts and
+// documents are what they typed.
+model FamilyFile {
+  id        String   @id @default(cuid())
+  userId    String   @unique @map("user_id")
+  events    Json     @default("[]")
+  picks     String[] @default([])
+  contacts  Json     @default("[]")
+  documents String   @default("")
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("family_files")
 }
 
 // Spec step 290 (Phase AW, Stage A): a practice portfolio on paper. Nothing here is a real
@@ -3992,26 +4223,61 @@ model PracticePosition {
 // side: buy, sell or deposit. amountCents is what changed hands (a deposit has no ticker).
 // reason is a sentence for the person; rule names the rule that allowed it (step 291 on).
 model PracticeTrade {
-  id          String   @id @default(cuid())
-  portfolioId String   @map("portfolio_id")
-  userId      String   @map("user_id")
-  placedAt    DateTime @map("placed_at") @db.Timestamptz(3)
+  id          String    @id @default(cuid())
+  portfolioId String    @map("portfolio_id")
+  userId      String    @map("user_id")
+  placedAt    DateTime  @map("placed_at") @db.Timestamptz(3)
   side        String
   ticker      String?
   quantity    Float?
-  priceCents  Int?     @map("price_cents")
-  amountCents Int      @map("amount_cents")
+  priceCents  Int?      @map("price_cents")
+  amountCents Int       @map("amount_cents")
   // A sale's gain or loss against the cost of what was sold.
-  gainCents   Int?     @map("gain_cents")
+  gainCents   Int?      @map("gain_cents")
   reason      String
   rule        String
-  undone      Boolean  @default(false)
+  undone      Boolean   @default(false)
+  // Its card in the chat put away ("Got it", step 296).
+  dismissedAt DateTime? @map("dismissed_at") @db.Timestamptz(3)
 
   portfolio PracticePortfolio @relation(fields: [portfolioId], references: [id], onDelete: Cascade)
 
   @@index([portfolioId, placedAt])
   @@index([userId])
   @@map("practice_trades")
+}
+
+// What the person wants from the practice portfolio (Phase AW, Stage A): their level, how big a
+// drop they can live with, a goal and its date, the monthly practice money, how many extra
+// moves they want, what to avoid, whether to harvest losses, cash to keep and whether Jane acts
+// or only suggests. One row per person, made on the first change; with none the defaults in
+// src/config/practice-preferences.ts apply. Practice money only. Rules: src/planning/practice-preferences.ts.
+model PracticePreferences {
+  id              String    @id @default(cuid())
+  userId          String    @unique @map("user_id")
+  // 1 to 5 (RISK_LEVELS); null follows the questionnaire (step 288).
+  riskLevel       Int?      @map("risk_level")
+  // The largest drop they can live with, in whole percent; null for no limit beyond the level.
+  maxDropPercent  Int?      @map("max_drop_percent")
+  // A key of GOALS (src/config/investing.ts), and when the money is needed.
+  goal            String?
+  goalDate        DateTime? @map("goal_date") @db.Date
+  monthlyAddCents Int       @map("monthly_add_cents")
+  addDay          Int       @map("add_day")
+  // off, cautious, normal or adventurous (APPETITES).
+  appetite        String
+  // Exclusion keys (EXCLUSIONS) and tickers never to buy.
+  avoid           String[]  @default([])
+  harvestLosses   Boolean   @map("harvest_losses")
+  cashBufferCents Int       @map("cash_buffer_cents")
+  // suggest (no practice trades) or act (within the caps, practice ledger only).
+  mode            String
+  createdAt       DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt       DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("practice_preferences")
 }
 
 // Spec step 289 (Phase AW): daily closes pulled once from the market data (Alpaca) for the model
@@ -4049,20 +4315,22 @@ model MarketHistoryLoad {
 // numbers, the caps and the confidence for the card (step 296). status: acted (placed in the
 // practice ledger) or autopilot (the autopilot's rebalance does it).
 model PracticeOpportunity {
-  id          String   @id @default(cuid())
-  portfolioId String   @map("portfolio_id")
-  userId      String   @map("user_id")
-  scannedAt   DateTime @map("scanned_at") @db.Timestamptz(3)
+  id          String    @id @default(cuid())
+  portfolioId String    @map("portfolio_id")
+  userId      String    @map("user_id")
+  scannedAt   DateTime  @map("scanned_at") @db.Timestamptz(3)
   kind        String
   ticker      String
   key         String
-  amountCents Int      @map("amount_cents")
+  amountCents Int       @map("amount_cents")
   headline    String
   reason      String
   confidence  Int
   details     Json
   status      String
-  tradeIds    String[] @map("trade_ids")
+  tradeIds    String[]  @map("trade_ids")
+  // Its card in the chat put away ("Got it", step 296).
+  dismissedAt DateTime? @map("dismissed_at") @db.Timestamptz(3)
 
   portfolio PracticePortfolio @relation(fields: [portfolioId], references: [id], onDelete: Cascade)
 

@@ -1,5 +1,6 @@
 "use server";
 
+import { readDraftReturn } from "@/lib/draft-return";
 import { revalidatePath } from "next/cache";
 import { MAX_DOCUMENT_BYTES, type DocumentContentType } from "@/config/documents";
 import { track } from "@/lib/analytics";
@@ -56,6 +57,22 @@ export async function uploadDocument(_previous: FormState, formData: FormData): 
         ok: true,
         message:
           "Saved. Check what Jane read on Letters from the IRS (Taxes) or in the chat, and confirm it.",
+      };
+    }
+  }
+  // Spec step 272: a draft return, read for the person to confirm, then checked before filing.
+  if (kind === "draft_return") {
+    const reading = await readDraftReturn(user.id, result.id, {
+      file: { bytes, contentType: file.type as DocumentContentType },
+    }).catch((error) => {
+      console.error("Reading a draft return failed", { error: String(error) });
+      return null;
+    });
+    if (reading) {
+      return {
+        ok: true,
+        message:
+          "Saved. Check what Jane read on Your draft return (Taxes) or in the chat, and confirm it: then she checks it before you file.",
       };
     }
   }
