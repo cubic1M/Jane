@@ -62,12 +62,7 @@ export type FitInput = {
 };
 
 export type FitLabel =
-  | "best_cost"
-  | "lowest_payment"
-  | "fastest"
-  | "alternative"
-  | "keep"
-  | "payoff";
+  "best_cost" | "lowest_payment" | "fastest" | "alternative" | "keep" | "payoff";
 
 export const FIT_LABEL_TEXT: Readonly<Record<FitLabel, string>> = {
   best_cost: "Best total cost",
