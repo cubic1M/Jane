@@ -2,6 +2,7 @@ import Link from "next/link";
 import { connection } from "next/server";
 import { Suspense } from "react";
 import { AppHeader } from "@/components/app-header";
+import { BacktestsSection } from "@/components/backtests";
 import { SimulatedBanner } from "@/components/simulated-banner";
 import { ViewTracker } from "@/components/view-tracker";
 import { SIMULATED_PARTNER } from "@/config/brokerage";
@@ -11,6 +12,7 @@ import { RETURNS_NOTE } from "@/config/returns";
 import { formatReturn } from "@/insights/returns";
 import { cryptoTotal } from "@/lib/crypto/crypto";
 import { loadReturns } from "@/lib/investments/returns";
+import { backtestsFor } from "@/lib/investments/backtest";
 import { autopilotOf } from "@/lib/autopilot";
 import { scopedFor } from "@/lib/db-scoped";
 import { formatBps, type HoldingView } from "@/insights/investments";
@@ -84,7 +86,7 @@ async function InvestmentsContent() {
   const user = await requireUser();
   await connection();
   const data = await loadInvestments(user.id);
-  const [answers, simulated, level, returns, crypto] = await Promise.all([
+  const [answers, simulated, level, returns, crypto, backtests] = await Promise.all([
     profileOf(user.id),
     // Spec step 133: holdings shaped by simulated orders say so.
     scopedFor(user.id).brokerageOrders.count({ where: { partner: SIMULATED_PARTNER } }),
@@ -94,6 +96,8 @@ async function InvestmentsContent() {
     loadReturns(user.id, { investments: data }),
     // Spec step 161: crypto, read-only, counted in the mix.
     cryptoTotal(user.id),
+    // Spec step 295: each risk level replayed over past prices (demo advice only).
+    backtestsFor(user.id),
   ]);
   const byHerself =
     INVESTMENT_AUTOPILOT[
@@ -439,6 +443,8 @@ async function InvestmentsContent() {
           </section>
         </>
       )}
+
+      {backtests.advice && <BacktestsSection backtests={backtests.backtests} />}
     </>
   );
 }
