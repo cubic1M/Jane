@@ -1,11 +1,13 @@
 import {
   OWN_INVESTING_SUBTYPES,
+  PRACTICE_SUGGEST_FALL_SHARE,
   PRACTICE_SUGGEST_STAGES,
   PRACTICE_TOPIC,
 } from "@/config/practice-cards";
+import { PRACTICE_START_CENTS } from "@/config/portfolios";
 import { formatCents } from "@/lib/money";
 import { type Detector, suggestionId } from "./contract";
-import { evidence, factEvidence, liquidCents, weakest } from "./helpers";
+import { evidence, factEvidence, headlineOf, liquidCents, weakest } from "./helpers";
 
 // "Start a practice portfolio" (spec step 296, Phase AW, Stage A): practice money on the sample
 // market for someone still building up, not in debt trouble, with no taxable investment account
@@ -26,22 +28,25 @@ const practicePortfolio: Detector = {
     if (trouble.value === true || data.extras?.hasPracticePortfolio) return null;
     if (data.accounts.some((a) => OWN_INVESTING_SUBTYPES.includes(a.subtype ?? ""))) return null;
     const cash = liquidCents(data);
+    // The fall met on practice money: a loss that costs nothing real.
+    const fall = Math.round(PRACTICE_START_CENTS * PRACTICE_SUGGEST_FALL_SHARE);
+    const share = `${Math.round(PRACTICE_SUGGEST_FALL_SHARE * 100)}%`;
     return {
       id: suggestionId("investing", PRACTICE_TOPIC),
       capability: "investing",
       topic: PRACTICE_TOPIC,
       title: "Start a practice portfolio before putting real money in",
-      headline: "Start a practice portfolio, no real money",
+      headline: headlineOf("Start a practice portfolio", fall, "risk"),
       short: `You keep ${formatCents(cash)} in cash and no investment account of your own yet.`,
-      worthCents: 0,
-      worthKind: "earns",
+      worthCents: fall,
+      worthKind: "risk",
       confidence: weakest([
         factEvidence(stage),
         factEvidence(trouble),
         evidence("seen", profile.months, data.accounts.length, "accounts"),
       ]),
       urgency: "later",
-      why: `You keep ${formatCents(cash)} in checking and savings and have no investment account of your own yet. A practice portfolio runs the model for your risk level on practice money and sample prices, so you can see how it behaves before any real money goes in.`,
+      why: `You keep ${formatCents(cash)} in checking and savings and have no investment account of your own yet. A practice portfolio runs the model for your risk level on ${formatCents(PRACTICE_START_CENTS)} of practice money and sample prices: a ${share} fall there is ${formatCents(fall)} you can sit through without losing anything real.`,
       action: { label: "Start with practice money", href: "/investments/practice" },
     };
   },
