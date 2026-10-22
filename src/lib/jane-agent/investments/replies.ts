@@ -23,7 +23,14 @@ import {
   rothLine,
 } from "./retirement-accounts-copy";
 import type { OldAccountsView } from "@/lib/investments/old-accounts";
-import { foundLine, OLD_LINK, rollButton, summaryLine } from "./old-accounts-copy";
+import {
+  foundLine,
+  OLD_LINK,
+  questionButtons,
+  questionLine,
+  rollButton,
+  summaryLine,
+} from "./old-accounts-copy";
 import type { RetirementIncomeView } from "@/lib/investments/retirement-income";
 import { drawLine, paycheckLine, RI_LINK, rmdLine, ssLine } from "./retirement-income-copy";
 import type { FamilyView } from "@/lib/investments/family";
@@ -840,6 +847,16 @@ export function oldAccountsReply(view: OldAccountsView): Reply {
       body: `${base}. ${foundLine(found)}`,
       actions: [rollButton(), OLD_LINK],
       refs: { advice: true, oldPlanId: found.id },
+    };
+  }
+  // Nothing found yet, but a past employer still to ask about: ask it here, with its buttons,
+  // instead of "waiting for your answer".
+  const asked = view.plans.find((p) => p.status === "asked");
+  if (asked) {
+    return {
+      body: questionLine(asked),
+      actions: [...questionButtons(), OLD_LINK],
+      refs: { oldPlanId: asked.id },
     };
   }
   return { body: base.endsWith(".") ? base : `${base}.`, actions: [OLD_LINK], refs: {} };

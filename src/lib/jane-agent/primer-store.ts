@@ -63,11 +63,12 @@ export const isStale = (at: Date, now: Date) =>
 // refreshes them. Cheap, and it never fails the change.
 export async function markPrimerStale(
   userId: string,
-  { client }: Pick<Options, "client">,
+  { client, now = new Date() }: Pick<Options, "client"> & { now?: Date },
 ): Promise<void> {
   // The snapshot behind the agenda and the tools is just as old: marked, and rebuilt now in the
-  // background so it is ready by the next question.
-  await staleAndRefreshSnapshot(userId, { client, now: new Date() });
+  // background so it is ready by the next question. It is built as of the caller's time: a
+  // rebuild on the real clock would settle what is due by then (a rollover) ahead of the caller.
+  await staleAndRefreshSnapshot(userId, { client, now });
   try {
     const row = await client.janePreference.findUnique({
       where: { userId_kind_key: { userId, kind: "system", key: KEY } },
