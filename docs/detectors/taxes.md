@@ -268,3 +268,18 @@ on the "Move my tax deadlines" tap at "ask first", once per disaster. The dates 
 The loss is recorded once per disaster and insurance claim (`DisasterLoss`, unique key), so it is
 never counted twice. Rules and the sample feed are in `src/config/disasters.ts` with sources; swap
 the stand-in (`src/lib/disaster-feed`) for the IRS disaster relief page and FEMA's OpenFEMA API.
+
+### Step 271: taxes on retirement income
+
+| Topic | Trigger signals | Value | Confidence drivers | Urgency | Fires for | Should not |
+|---|---|---|---|---|---|---|
+| `social_security_tax` (covers `tax_retirement`) | 3+ Social Security deposits in the last year; the taxable part (Publication 915's 50% and 85% lines) over the floor | the tax on the taxable part at the person's bracket, which nothing withholds without Form W-4V (risk) | deposits seen; capped at 55% (withholding unseen) | later; soon from October | Ruth ($13,136 of her $32,160 is taxable; her next IRA dollar is taxed at about 22%, not 12%) | anyone without Social Security |
+| `irmaa_watch` (covers `tax_retirement`) | near Medicare (told 63+, or near or in retirement), $100,000+ pre-tax, and the room under the next surcharge line (income of this year sets premiums two years ahead) under a fifth of the pre-tax savings, or already over a line | what crossing the next line adds a year to Part B and D for the household (risk) | income as seen; 50% without the age (Medicare then unknown), 70% with it | later; soon from October | Dan and Lena ($76,120 under the 2028 couple's line, with $575,513 pre-tax) | the young, the small savers, anyone with plenty of room |
+
+The Roth conversion detector now uses the real rate on a converted dollar for someone on Social
+Security (the bracket plus up to 85 cents more of benefits taxed): at Ruth's income that's about 22%,
+so a conversion saves nothing and is no longer raised. Surcharge lines and amounts are by year in
+`src/config/retirement-taxes.ts` (2025 and 2026 published; later years grown 2.5% a year and marked
+estimated). The order to draw from step 212 is tuned here (taxable first, pre-tax only as far as
+the room under the line allows, then Roth) and handed to the investing side's retirement paycheck
+(`RetirementIncomeView.taxTuned`, shown on `/investments/retirement-income` in demo advice mode).

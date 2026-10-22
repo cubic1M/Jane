@@ -25,6 +25,8 @@ import { dayLabel } from "@/lib/day-label";
 import { formatCents } from "@/lib/money";
 import { structureFor } from "@/planning/business-structure";
 import { readHealthTaxes } from "@/planning/health-taxes-read";
+import { readRetirementTaxes } from "@/planning/retirement-taxes-read";
+import { IRMAA_WATCH, SS_TAX_MIN_CENTS } from "@/config/retirement-taxes";
 import { casualtyLoss, computedMoves, damageSince, reliefFor } from "@/planning/disasters";
 import { mustBeEmptyBy, spreadIra } from "@/planning/inheritance";
 import { NO_INCOME, marginalRateOf, type EstimateInput } from "@/planning/tax-estimate";
@@ -190,6 +192,9 @@ const rothConversion: Detector = {
       // Their income is known: convert only what fits in the bracket they're in now.
       const taxable = Math.max(0, grossIncome(profile, data) - STANDARD_DEDUCTION[status]);
       nowRate = marginalRateOf(taxable, FEDERAL_BRACKETS[status]);
+      // Spec step 271: on Social Security, each converted dollar can make up to 85 cents more of it
+      // taxable, so the real rate on the conversion is higher than the bracket.
+      nowRate = Math.max(nowRate, readRetirementTaxes(profile, data).nextDollarRate);
       if (nowRate >= T.rothLaterRate) return null;
       const next = FEDERAL_BRACKETS[status].find((b) => b.over > taxable);
       convert = Math.min(convert, next ? next.over - taxable : convert);
@@ -1010,7 +1015,92 @@ const disasterRelief: Detector = {
   },
 };
 
+// Social Security is partly taxed once other income passes a line, and nothing is withheld from
+// it unless the person asks (Form W-4V): a bill at filing (step 271). Each extra pre-tax dollar
+// can make up to 85 cents more of it taxable, so the next dollar costs more than the bracket says.
+const socialSecurityTaxDetector: Detector = {
+  capability: "taxes",
+  topic: "social_security_tax",
+  covers: ["tax_retirement"],
+  needs: ["income_pattern", "household"],
+  detect({ profile, data }) {
+    const r = readRetirementTaxes(profile, data);
+    if (r.ssDeposits < 3 || r.ss.taxableCents <= 0) return null;
+    const tax = Math.round(r.ss.taxableCents * r.bracket);
+    if (tax < SS_TAX_MIN_CENTS) return null;
+    const pct = (x: number) => `${Math.round(x * 100)}%`;
+    return {
+      id: suggestionId("taxes", "social_security_tax"),
+      capability: "taxes",
+      topic: "social_security_tax",
+      title: "Have tax withheld from your Social Security, so the part that's taxed isn't a bill",
+      headline: headlineOf("Set up withholding on Social Security", tax, "risk"),
+      short: `${formatCents(r.ss.taxableCents)} of your ${formatCents(r.ssBenefitsCents)} Social Security is taxable.`,
+      worthCents: tax,
+      worthKind: "risk",
+      confidence: weakest([
+        evidence("seen", profile.months, r.ssDeposits, "Social Security deposits"),
+        { percent: 55, reason: "I can't see whether tax is already withheld from it" },
+      ]),
+      urgency: month(profile.today) >= 10 ? "soon" : "later",
+      why: `Your Social Security is ${formatCents(r.ssBenefitsCents)} a year and your other income about ${formatCents(r.otherIncomeCents)}, so ${formatCents(r.ss.taxableCents)} of it is taxable: about ${formatCents(tax)} of tax at your ${pct(r.bracket)} bracket, which nothing withholds unless you ask (Form W-4V lets Social Security withhold 7%, 10%, 12% or 22%). ${
+        r.ss.extraTaxablePerDollar > 0
+          ? `And each extra dollar from your IRA makes ${Math.round(r.ss.extraTaxablePerDollar * 100)} cents more of it taxable, so your next IRA dollar is taxed at about ${pct(r.nextDollarRate)}, not ${pct(r.bracket)}.`
+          : ""
+      }`.trim(),
+      action: { label: "See the numbers", href: "/taxes" },
+    };
+  },
+};
+
+// Medicare's income surcharge (IRMAA) is set by income two years before (step 271): near or on
+// Medicare, with pre-tax savings that withdrawals or conversions could push past the line.
+const irmaaWatch: Detector = {
+  capability: "taxes",
+  topic: "irmaa_watch",
+  covers: ["tax_retirement"],
+  needs: ["life_stage", "household", "monthly_income"],
+  detect({ profile, data }) {
+    const r = readRetirementTaxes(profile, data);
+    if (!r.nearMedicare || r.balances.preTaxCents < IRMAA_WATCH.minPreTaxCents) return null;
+    const room = r.irmaa.roomCents;
+    if (room === null || r.irmaa.nextLineCents === null || r.irmaa.nextYearlyCents === null)
+      return null;
+    if (r.irmaa.tier === 0 && room > r.balances.preTaxCents * IRMAA_WATCH.roomShare) return null;
+    const couple = r.people === 2;
+    return {
+      id: suggestionId("taxes", "irmaa_watch"),
+      capability: "taxes",
+      topic: "irmaa_watch",
+      title: `Keep this year's income under ${formatCents(r.irmaa.nextLineCents)}, Medicare's surcharge line for ${r.irmaa.premiumYear}`,
+      headline: headlineOf(
+        "Keep withdrawals under Medicare's line",
+        r.irmaa.nextYearlyCents,
+        "risk",
+      ),
+      short: `Your income is about ${formatCents(r.magiCents)}; ${formatCents(room)} more crosses the ${r.irmaa.premiumYear} line.`,
+      worthCents: r.irmaa.nextYearlyCents,
+      worthKind: "risk",
+      confidence: weakest([
+        factEvidence(profile.facts.monthly_income),
+        {
+          percent: typeof profile.facts.age.value === "number" ? 70 : 50,
+          reason:
+            typeof profile.facts.age.value === "number"
+              ? "the line two years ahead is estimated from this year's"
+              : "I don't know your age, so I can't tell whether you'll be on Medicare then",
+        },
+      ]),
+      urgency: month(profile.today) >= 10 ? "soon" : "later",
+      why: `Medicare premiums in ${r.irmaa.premiumYear} are set by this year's income. Yours is about ${formatCents(r.magiCents)}${couple ? " for the two of you" : ""}; ${formatCents(r.irmaa.nextLineCents)} is the next surcharge line${r.irmaa.estimated ? " (estimated)" : ""}, ${formatCents(room)} away. With ${formatCents(r.balances.preTaxCents)} in pre-tax accounts, a Roth conversion or a big withdrawal over that would add about ${formatCents(r.irmaa.nextYearlyCents)} a year to ${couple ? "your Part B and D premiums together" : "your Part B and D premiums"}. Taking the rest from taxable accounts, then Roth, stays under it.`,
+      action: { label: "See my retirement paycheck", href: "/investments/retirement-income" },
+    };
+  },
+};
+
 export const TAX_DETECTORS: readonly Detector[] = [
+  socialSecurityTaxDetector,
+  irmaaWatch,
   disasterRelief,
   ptcRepayment,
   hsaOverLimit,
