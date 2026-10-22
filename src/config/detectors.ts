@@ -78,6 +78,10 @@ export const DETECTOR_RATES = {
   // Annuities: what a costly one charges a year against a plain index fund.
   annuityFeeBps: 200,
   annuityIndexBps: 50,
+  // Short-term cash: Treasury bills or CDs against a savings account, after tax.
+  shortTermGapBps: 150,
+  // Sudden money: until the person says what a big deposit was, hold back this share for tax.
+  suddenHoldShare: 0.25,
   // Late fees: one is enough to mention.
   lateFeesMin: 1,
   // Payday and cash-advance loans: fees are about this share of what's repaid.
