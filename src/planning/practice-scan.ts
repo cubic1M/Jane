@@ -243,8 +243,14 @@ function dipFlags(input: ScanInput, total: number, blocked: ReadonlySet<string>)
   found.sort((a, b) => b.drop - a.drop);
   const flags: ScanFlag[] = [];
   for (const x of found) {
-    // Into the fund held, or its partner when that one was just sold at a loss.
-    const buy = [x.ticker, ...classTickers(x.c)].find((t) => !blocked.has(t));
+    // Into the fund held, or its partner when that one is at a loss or was just sold at one
+    // (buying it would make a wash sale of the loss).
+    const open = [x.ticker, ...classTickers(x.c)].filter((t) => !blocked.has(t));
+    const atLoss = (t: string) => {
+      const p = input.state.positions[t];
+      return p !== undefined && positionValue(input.state, input.prices, t) < p.costBasisCents;
+    };
+    const buy = open.find((t) => !atLoss(t)) ?? open[0];
     if (!buy) continue;
     const held = classValue(input.state, input.prices, x.c);
     const room = Math.round((weights[x.c] + DIP_MAX_OVER_TARGET) * total) - held;
@@ -361,17 +367,21 @@ function newsFlags(input: ScanInput, total: number, blocked: ReadonlySet<string>
   const stocks = PRACTICE_STOCKS as readonly string[];
   let held = stocks.reduce((s, t) => s + positionValue(input.state, input.prices, t), 0);
   let cash = input.state.cashCents;
-  // The US stocks fund held now pays for an idea when cash runs out, so the mix of kinds stays.
-  const us = classTickers("us_stocks").find((t) => input.state.positions[t] && !blocked.has(t));
-  let usValue = us ? positionValue(input.state, input.prices, us) : 0;
-  const usAtGain = us ? usValue >= input.state.positions[us].costBasisCents : false;
+  // When cash waiting runs out, a fund pays for an idea: the short-term bills first, then the
+  // US stocks fund (an idea is a US company). Never one at a loss: that sale would need its own
+  // wash-sale check.
+  const funds = [...classTickers("cash"), ...classTickers("us_stocks")]
+    .filter((t) => input.state.positions[t] && !blocked.has(t))
+    .map((t) => ({ ticker: t, value: positionValue(input.state, input.prices, t) }))
+    .filter((f) => f.value >= input.state.positions[f.ticker].costBasisCents);
   const flags: ScanFlag[] = [];
   const done = new Set<string>();
   for (const h of input.headlines) {
     if (!h.ticker || !stocks.includes(h.ticker) || done.has(h.ticker)) continue;
     if (h.date < from || h.date > input.today) continue;
     if (!NEWS_GOOD.test(h.title) || NEWS_BAD.test(h.title)) continue;
-    const key = `news_idea:${h.id}`;
+    // The headline's company and day: a feed's ids can change from one query to the next.
+    const key = `news_idea:${h.ticker}:${h.date}`;
     if (input.seen.has(key)) continue;
     const price = input.prices[h.ticker];
     if (!price) continue;
@@ -386,17 +396,18 @@ function newsFlags(input: ScanInput, total: number, blocked: ReadonlySet<string>
     if (amount < AUTOPILOT_LIMITS.minTradeCents) continue;
     const fromCash = Math.min(cash, amount);
     const fromFund = amount - fromCash;
-    // Never sell the fund at a loss to pay for an idea (that would need a wash-sale check too).
-    if (fromFund > 0 && (!us || !usAtGain || fromFund > usValue)) continue;
+    const fund = fromFund > 0 ? funds.find((f) => f.value >= fromFund) : null;
+    if (fromFund > 0 && !fund) continue;
     done.add(h.ticker);
     cash -= fromCash;
-    usValue -= fromFund;
+    if (fund) fund.value -= fromFund;
     held += amount;
-    const paid = fromFund > 0 ? ` paid from ${us} (both US stocks)` : " from cash waiting";
+    const paid = fund ? ` paid from ${fund.ticker}` : " from cash waiting";
     const reason = `News on ${h.date}: "${h.title}". A small practice position in ${h.ticker}, ${dollars(amount)}${paid}, kept to ${pct(caps.positionShare)} of the portfolio.`;
     const trades: ScanTrade[] = [];
-    if (fromFund > 0 && us) {
-      trades.push({ ticker: us, side: "sell", amountCents: fromFund, rule: "news_idea", reason });
+    if (fund) {
+      const sale = { ticker: fund.ticker, side: "sell" as const, amountCents: fromFund };
+      trades.push({ ...sale, rule: "news_idea", reason });
     }
     trades.push({ ticker: h.ticker, side: "buy", amountCents: amount, rule: "news_idea", reason });
     flags.push({

@@ -131,6 +131,17 @@ describe("autopilot for the practice portfolio", () => {
     expect(trades.some((t) => t.ticker === "VTI")).toBe(false);
   });
 
+  it("puts new money into a fund of the kind that isn't at a loss, keeping the loss to harvest", () => {
+    const { state } = run(3, empty(1_000_000));
+    // VTI down 20% since it was bought: new money goes to US stocks through ITOT instead.
+    const down = { ...PRICES, VTI: 24_000 };
+    const more = { ...state, cashCents: state.cashCents + 300_000 };
+    const input = { level: 3 as const, state: more, prices: down, paused: false, tradesToday: 0 };
+    const trades = planTrades(input);
+    expect(trades.some((t) => t.ticker === "ITOT" && t.side === "buy")).toBe(true);
+    expect(trades.some((t) => t.ticker === "VTI" && t.side === "buy")).toBe(false);
+  });
+
   it("rebalances when stocks together drift past their band, even if no one kind does", () => {
     const { state } = run(3, empty(1_000_000));
     // Both stock funds up 30%: each kind is under 5 points off, stocks together are over.

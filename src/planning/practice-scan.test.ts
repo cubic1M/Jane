@@ -207,6 +207,16 @@ describe("the daily scan: news-driven ideas", () => {
     }
   });
 
+  it("pays for an idea from the short-term bills when no cash is waiting", async () => {
+    const held = await boughtOn(4, "2026-09-01");
+    expect(held.state.cashCents).toBeLessThan(1_000);
+    const [idea] = (await scanOn(4, "2026-10-09", held)).filter((f) => f.kind === "news_idea");
+    expect(idea.trades).toEqual([
+      expect.objectContaining({ ticker: "BIL", side: "sell" }),
+      expect.objectContaining({ ticker: "NVDA", side: "buy" }),
+    ]);
+  });
+
   it("never fires below High, while opportunities are paused, on bad news or with no news", async () => {
     for (const level of [1, 2, 3] as const) {
       const held = withCash(await boughtOn(level, "2026-09-01"), 50_000);
