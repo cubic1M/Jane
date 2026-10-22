@@ -1704,6 +1704,12 @@ const BASE_QUESTIONS: readonly CheckQuestion[] = [
     expect: { intent: "tax", mentions: /Medicare/, list: true },
   },
   {
+    id: "tax-39",
+    text: "can you check my draft return before I file",
+    needs: "rules",
+    expect: { intent: "tax", mentions: /draft/ },
+  },
+  {
     id: "ins-1",
     text: "what insurance do I have",
     needs: "rules",

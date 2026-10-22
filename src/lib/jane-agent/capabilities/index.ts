@@ -225,6 +225,7 @@ export const CAPABILITIES: readonly Capability[] = [
       "tax_health",
       "tax_disaster",
       "tax_retirement",
+      "tax_draft_check",
       "tax_decide",
     ],
     answer: taxAnswer,

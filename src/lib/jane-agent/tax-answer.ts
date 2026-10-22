@@ -32,6 +32,8 @@ import { loadDisasterRelief } from "@/lib/disasters";
 import { disasterReply } from "./disaster-message";
 import { loadRetirementTaxes } from "@/lib/retirement-taxes";
 import { retirementReply } from "./retirement-tax-message";
+import { listDraftReturns } from "@/lib/draft-return";
+import { draftReply } from "./draft-return-message";
 import { correctFact } from "@/lib/profile";
 import { decideTax } from "@/lib/tax-decisions";
 import { equityReply } from "./equity-tax-message";
@@ -152,6 +154,10 @@ export async function answerTaxIntent(
         ? moveReply(intent, view.state.value, now)
         : workStateReply(intent.state, view.state.value);
     }
+    case "draft":
+      return draftReply(
+        (await listDraftReturns(userId, { client })).filter((d) => d.status !== "dismissed"),
+      );
     case "retirement":
       return retirementReply(await loadRetirementTaxes(userId, { client, now }));
     case "disaster":
