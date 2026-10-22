@@ -415,3 +415,28 @@ test("a demo-bank person sees their health plan's year and a dispute card (step 
   await expect(year.getByText(/left in your FSA.*Dec 31/)).toBeVisible();
   await expect(year.getByText(/BAYVIEW IMAGING CENTER billed/)).toBeVisible();
 });
+
+test("a demo-bank person goes from a gap to a picked option, and it reaches the team (step 279)", async ({
+  context,
+  page,
+  baseURL,
+}) => {
+  const user = await signedInUser("user");
+  userId = user.userId;
+  await context.addCookies([
+    { name: "authjs.session-token", value: user.sessionToken, url: baseURL ?? "" },
+  ]);
+  await page.goto("/connect");
+  await page.getByRole("button", { name: "Link a demo bank" }).click();
+  await expect(page).toHaveURL("/chat", { timeout: 60_000 });
+  await waitForFullScan(userId!);
+  await page.goto("/insurance");
+  await expect(page.getByRole("heading", { name: "Your perfect coverage" })).toBeVisible();
+  await page.getByRole("link", { name: "See options" }).first().click();
+  const card = page.getByTestId("option-card");
+  await expect(card).toBeVisible();
+  await expect(card.getByText("Demo advice: sample data, not financial advice")).toBeVisible();
+  await expect(card.getByText("Jane's pick")).toBeVisible();
+  await card.getByRole("button", { name: "Choose this one" }).first().click();
+  await expect(page.getByRole("status")).toContainText("My team will");
+});

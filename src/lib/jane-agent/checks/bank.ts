@@ -1842,7 +1842,7 @@ const BASE_QUESTIONS: readonly CheckQuestion[] = [
     id: "inv-9",
     text: "what's my risk profile",
     needs: "rules",
-    expect: { intent: "investments", mentions: /moderate/i, link: "/investments/profile" },
+    expect: { intent: "investments", mentions: /medium/i, link: "/investments/profile" },
   },
   {
     id: "inv-10",
@@ -2249,10 +2249,77 @@ const BASE_QUESTIONS: readonly CheckQuestion[] = [
     needs: "rules",
     expect: {
       intent: "car_afford",
-      mentions: /afford a car/i,
+      mentions: /comfortable car|afford a car/i,
       link: "/loans/car",
       maxSentences: 3,
       maxChars: 700,
+    },
+  },
+  // The perfect fit for borrowing (spec step 283): the pick and the options to choose from.
+  {
+    id: "debt-65",
+    text: "what's the best loan for me?",
+    needs: "rules",
+    expect: {
+      intent: "loan_fit",
+      mentions: /personal|loan/i,
+      link: "/loans",
+      list: true,
+      maxChars: 900,
+    },
+  },
+  {
+    id: "debt-66",
+    text: "which loan should I get to consolidate my cards?",
+    needs: "rules",
+    expect: {
+      intent: "loan_fit",
+      mentions: /cards|consolidat|loan/i,
+      link: "/loans",
+      list: true,
+      maxChars: 900,
+    },
+  },
+  {
+    id: "debt-67",
+    text: "what's the best car loan for $20,000?",
+    needs: "rules",
+    expect: {
+      intent: "loan_fit",
+      mentions: /car loan|\\$20,000/i,
+      link: "/loans",
+      list: true,
+      maxChars: 900,
+    },
+  },
+  // Follow-ups on the best loan (spec step 284), from loan_fit's reason for the pick and the
+  // lender's other terms, the differences already worked out.
+  {
+    id: "debt-68",
+    text: "why that one?",
+    needs: "claude",
+    after: "debt-67",
+    sector: "loans",
+    page: "/loans",
+    tool: "loan_fit",
+    profile: "demo_advice",
+    expect: {
+      mentions: /in all|total|cost|cheap|less|payment/i,
+      avoid: /\bbutton\b|apply for you|I can't tell/i,
+    },
+  },
+  {
+    id: "debt-69",
+    text: "what about a shorter term?",
+    needs: "claude",
+    after: "debt-67",
+    sector: "loans",
+    page: "/loans",
+    tool: "loan_fit",
+    profile: "demo_advice",
+    expect: {
+      mentions: /a month/i,
+      avoid: /\bbutton\b|apply for you|I can't tell/i,
     },
   },
   // Spending, saving and housing decisions, three sentences or fewer.
@@ -2691,6 +2758,10 @@ const DECISIONS: readonly (readonly [string, string, RegExp, string?])[] = [
   ["insd-29", "how much would it cost to switch car insurance", /nothing|\$1,296\.00/],
   ["insd-30", "do I need an umbrella policy", /umbrella/i],
   ["insd-31", "do I have enough life insurance", /life/i],
+  ["insd-32", "how much life insurance do I need", /depend|\$[\d,]+/i],
+  ["insd-33", "how much disability insurance do I need", /\$[\d,.]+ a month/],
+  ["insd-34", "how much umbrella insurance do I need", /umbrella|net worth/i],
+  ["insd-35", "how much liability insurance do I need on my car", /liability/i],
 ];
 
 // "Should I ...?" with insurance words goes through the decision router (src/config/decisions.ts).

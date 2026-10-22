@@ -17,6 +17,7 @@ import {
   UNEVEN_DEPOSITS_MIN,
   TROUBLE_DEBT_MONTHS,
 } from "@/config/profile";
+import type { NeedPolicy } from "@/lib/insurance/need/types";
 import { confidenceOf, evidenceText, type Source } from "./confidence";
 import { FACT_SPECS, type FactKey, factSpec } from "./facts";
 
@@ -92,6 +93,8 @@ export type ProfileInput = {
     // What Jane's open reshops of car and home cover would save a year (the switch card's and
     // the chat's figure); 0 when there are none. Absent: not loaded.
     insuranceShopSavingCents?: number;
+    // The policies they have, for the cover-need gaps (spec step 277). Absent: not loaded.
+    coverPolicies?: readonly NeedPolicy[];
     rsuGap?: {
       vestedCents: number;
       shortfallCents: number;

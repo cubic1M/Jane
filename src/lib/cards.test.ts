@@ -57,6 +57,25 @@ describe("buildCard", () => {
     },
   );
 
+  it("says a picked loan option is the person's to apply for, never ours (spec step 282)", () => {
+    const loan = (applyWith: string | null) =>
+      buildCard({
+        id: "finding_loan",
+        type: "card_interest",
+        title: "Lakeside Credit Union at 6.90% for 60 months",
+        annualSavingsCents: 0,
+        evidence: { loanPick: true, applyWith, transactions: [] },
+        explanation: null,
+        explanationHash: null,
+      }).whatChanges;
+    expect(loan("Lakeside Credit Union")).toBe(
+      "We check the option you picked and send you Lakeside Credit Union's steps to apply yourself. Nothing is applied for and no money moves until you do it.",
+    );
+    expect(loan(null)).toBe(
+      "We check the option you picked and send you the steps. Nothing is applied for and no money moves until you do it.",
+    );
+  });
+
   it("changes the card hash when a partner is turned off, so old answers are refused", () => {
     const partner = { key: "p", name: "P", disclosure: "We may earn a fee." };
     expect(cardHash(buildCard(asStored("idle_cash"), partner))).not.toBe(
