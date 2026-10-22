@@ -10,23 +10,23 @@
 
 export const RISK_LEVELS = {
   1: {
-    label: "Conservative",
+    label: "Very low",
     description: "Keeping what you have matters most; smaller ups and downs, slower growth.",
   },
   2: {
-    label: "Moderately conservative",
+    label: "Low",
     description: "Mostly steady, with some room to grow.",
   },
   3: {
-    label: "Moderate",
+    label: "Medium",
     description: "A balance of growth and steadiness.",
   },
   4: {
-    label: "Moderately aggressive",
+    label: "High",
     description: "Mostly growth, accepting bigger drops along the way.",
   },
   5: {
-    label: "Aggressive",
+    label: "Very high",
     description: "Growth first; you can ride out large drops.",
   },
 } as const;

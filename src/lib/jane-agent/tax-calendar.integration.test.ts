@@ -100,14 +100,16 @@ describe.runIf(url)("the tax calendar against a real database", { timeout: 120_0
     await client.user.deleteMany({ where: { id: { in: created } } });
     await client.$disconnect();
     vi.unstubAllEnvs();
-  });
+  }, 120_000);
 
   describe("every month of the calendar", () => {
     let userId = "";
     beforeAll(async () => {
       userId = await freelancer("cal-months");
       await setAutopilot(userId, "safe", { client, now: LINKED });
-    });
+      // Linking and syncing a sample person is slow on a busy runner: the hook gets as long
+      // as the tests do (the default 10s failed at random).
+    }, 120_000);
     const months = Array.from({ length: 12 }, (_, i) => i + 1);
     it.each(months)("month %i lists its items, each with a status and words", async (month) => {
       const view = await loadTaxCalendar(userId, {

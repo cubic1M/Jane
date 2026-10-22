@@ -149,7 +149,7 @@ export async function quotesAnswer(
   if (shopsItself) {
     const shop = await shopNow(userId, policy.id, { client, now });
     if (shop?.status === "open") {
-      const body = shopBody(shop, policies);
+      const body = shopBody(shop, policies, null, true);
       if (body) {
         return {
           body,

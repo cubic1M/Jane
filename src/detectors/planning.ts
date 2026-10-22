@@ -15,7 +15,15 @@ import { BENEFICIARY_SUBTYPES } from "@/config/family-file";
 import { VALUES_EXCLUSIONS, VALUES_FUNDS, type Exclusion } from "@/config/values";
 import { formatCents } from "@/lib/money";
 import { type Detector, suggestionId } from "./contract";
-import { evidence, liquidCents, monthlySpendCents, weakest } from "./helpers";
+import {
+  clip,
+  dollars,
+  evidence,
+  headlineOf,
+  liquidCents,
+  monthlySpendCents,
+  weakest,
+} from "./helpers";
 
 // Detectors for the second batch of investing tools (spec steps 232, 234 and 235): the
 // workplace plan's own menu, cash that could work harder for a short time, and a big deposit
@@ -49,6 +57,10 @@ const planMenu: Detector = {
       capability: "investing",
       topic: "plan_menu",
       title: "Use a cheaper fund from your own 401(k) menu",
+      headline: headlineOf("Use a cheaper fund in your 401(k)", total, "saves"),
+      short: clip(
+        `Your 401(k) holds ${FUND_NAMES[top.h.ticker!] ?? top.h.ticker} (${formatCents(top.h.valueCents)}); your plan offers cheaper.`,
+      ),
       worthCents: total,
       worthKind: "saves",
       confidence: weakest([
@@ -81,6 +93,12 @@ const shortTermCash: Detector = {
       capability: "investing",
       topic: "short_term_cash",
       title: "Put cash you need within a few years where it earns more, and is still safe",
+      headline: headlineOf(
+        "Put short-term cash in T-bills",
+        Math.round((excess * R.shortTermGapBps) / 10_000),
+        "earns",
+      ),
+      short: `About ${formatCents(excess)} of your cash is more than ${R.idleMonthsKept} months of spending.`,
       worthCents: Math.round((excess * R.shortTermGapBps) / 10_000),
       worthKind: "earns",
       confidence: weakest([
@@ -130,6 +148,10 @@ const suddenMoney: Detector = {
       capability: "investing",
       topic: "sudden_money",
       title: "Plan your big deposit: tax first, then the rest in order",
+      headline: `Plan your big deposit, set aside ${dollars(hold)} for tax`,
+      short: clip(
+        `${formatCents(amount)} arrived on ${biggest.date}; keep about ${formatCents(hold)} aside for tax.`,
+      ),
       worthCents: hold,
       worthKind: "risk",
       confidence: weakest([

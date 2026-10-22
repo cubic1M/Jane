@@ -219,7 +219,10 @@ export type AuditEvent =
   // Spec step 237: beneficiaries named or confirmed, and the family file picked or shared.
   | "beneficiary_saved"
   | "family_file_picked"
-  | "family_file_exported";
+  | "family_file_exported"
+  // Spec step 290 (Phase AW): the practice portfolio started, and each practice trade.
+  | "practice_started"
+  | "practice_trade";
 
 export type AuditActor = { type: ActorType; id: string | null };
 

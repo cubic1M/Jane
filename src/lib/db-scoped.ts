@@ -234,6 +234,11 @@ export function scopedFor(userId: string, client: PrismaClient = db) {
     accountBeneficiaries: scoped.accountBeneficiary,
     familyFiles: scoped.familyFile,
     planChanges: scoped.planChange,
+    practicePortfolios: scoped.practicePortfolio,
+    practicePositions: scoped.practicePosition,
+    practiceTrades: scoped.practiceTrade,
+    // What the daily scan flagged in a practice portfolio (spec step 292).
+    practiceOpportunities: scoped.practiceOpportunity,
     giftLinks: scoped.giftLink,
     cryptoConnections: scoped.cryptoConnection,
     cryptoHoldings: scoped.cryptoHolding,

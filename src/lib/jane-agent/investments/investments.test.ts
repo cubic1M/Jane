@@ -322,7 +322,7 @@ describe("profileReply", () => {
   it("says the level, why, and where to change it once answered", () => {
     const reply = profileReply(FULL, ASOF);
     expect(reply.body).toBe(
-      "Your investor profile: Moderate: you'd worry, but wait it out after a drop, so less risk than your timeline allows. A balance of growth and steadiness. Age 45; the money is for: Retirement.",
+      "Your investor profile: Medium: you'd worry, but wait it out after a drop, so less risk than your timeline allows. A balance of growth and steadiness. Age 45; the money is for: Retirement.",
     );
     expect(reply.actions).toEqual([
       { id: "open", label: "Change it", kind: "link", href: "/investments/profile" },
@@ -396,8 +396,8 @@ describe("Claude's investor_profile tool", () => {
     );
     expect(JSON.parse(out.content)).toEqual({
       complete: true,
-      riskLevel: "Moderate",
-      why: "Moderate: you'd worry, but wait it out after a drop, so less risk than your timeline allows.",
+      riskLevel: "Medium",
+      why: "Medium: you'd worry, but wait it out after a drop, so less risk than your timeline allows.",
       age: 45,
       needsTheMoney: "In 10 to 20 years",
       goals: ["Retirement"],
@@ -557,7 +557,7 @@ describe("reviewReply", () => {
   it("says what to change and why once the profile is in, labelled", () => {
     const reply = reviewReply(data, done, review, true);
     expect(reply.body).toMatch(
-      /^Against your moderate profile: US stocks 69% \(target 40%\), international stocks 14% \(target 20%\), bonds 10% \(target 35%\), cash 7% \(target 5%\)\.\nWhat I'd change:\n1\. Move about/,
+      /^Against your medium profile: US stocks 69% \(target 40%\), international stocks 14% \(target 20%\), bonds 10% \(target 35%\), cash 7% \(target 5%\)\.\nWhat I'd change:\n1\. Move about/,
     );
     expect(reply.refs).toEqual({ advice: true });
   });
@@ -578,7 +578,7 @@ describe("the review message", () => {
       priority: MESSAGE_PRIORITY.investment_review,
     });
     expect(message.body).toMatch(
-      /^I've reviewed your investments against your moderate profile\. Move about/,
+      /^I've reviewed your investments against your medium profile\. Move about/,
     );
     expect(message.actions[0]).toMatchObject({ href: "/investments/review" });
   });
@@ -608,7 +608,7 @@ describe("Claude's portfolio_review tool", () => {
     vi.mocked(adviceMode).mockResolvedValue(true);
     const out = await runInvestmentTool("u", "portfolio_review", {}, options);
     const parsed = JSON.parse(out.content);
-    expect(parsed.riskLevel).toBe("Moderate");
+    expect(parsed.riskLevel).toBe("Medium");
     expect(parsed.whatToChange[0].amount).toMatch(/^\$/);
     expect(out.cents).toContain(
       reviewPortfolio(demoInvestments().accounts, 3).recommendations[0].amountCents,
@@ -753,7 +753,7 @@ describe("rebalanceReply", () => {
   it("offers the orders with the button, saying they're simulated", () => {
     const reply = rebalanceReply(true, PLAN, profileSummary(FULL, ASOF));
     expect(reply.body).toMatch(
-      /^I've got \d+ orders ready to move you to your moderate mix, in the simulated brokerage \(no real money moves\)\.\n\d+ orders: sell \$[\d,.]+ \(/,
+      /^I've got \d+ orders ready to move you to your medium mix, in the simulated brokerage \(no real money moves\)\.\n\d+ orders: sell \$[\d,.]+ \(/,
     );
     expect(reply.body).toContain(
       "After: 40% US stocks, 20% international stocks, 35% bonds, 5% cash.",
@@ -1791,12 +1791,17 @@ const CRYPTO_VIEW = {
 };
 
 describe("crypto questions, by rules", () => {
-  it.each(["my crypto", "how much bitcoin do I have", "my ethereum", "should I buy btc"])(
+  it.each(["my crypto", "how much bitcoin do I have", "my ethereum"])(
     "reads %j as crypto",
     (text) => {
       expect(parseIntent(text, ASOF)).toMatchObject({ kind: "investments", topic: "crypto" });
     },
   );
+});
+
+// "Should I buy btc?" is a decision, answered by the one decision router (decision.ts).
+it("reads should I buy btc as a decision about crypto", () => {
+  expect(parseIntent("should I buy btc", ASOF)).toMatchObject({ kind: "decision", item: "crypto" });
 });
 
 describe("cryptoReply and the crypto messages", () => {

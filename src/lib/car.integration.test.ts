@@ -72,7 +72,8 @@ describe.runIf(url)("buying a car against a real database", { timeout: 30_000 },
     expect(car.monthlyIncomeCents).toBeGreaterThan(100_000);
     expect(car.maxPriceCents).toBeGreaterThan(0);
     const c = car.costs!;
-    expect(c.priceCents).toBe(car.maxPriceCents);
+    expect(c.priceCents).toBe(car.comfortPriceCents);
+    expect(car.comfortPriceCents).toBeLessThan(car.maxPriceCents!);
     expect(c.allInCents).toBe(
       c.paymentCents + c.insuranceCents + c.fuelCents + c.maintenanceCents + c.registrationCents,
     );
@@ -148,7 +149,7 @@ describe.runIf(url)("buying a car against a real database", { timeout: 30_000 },
     const id = await demoPerson("car-chat");
     const { reply } = await sendToJane(id, "how much car can I afford?", { client, now: later() });
     expect(reply.body).toMatch(
-      /^You can afford a car up to about \$[\d,.]+, keeping the all-in cost under /,
+      /^A comfortable car for you is around \$[\d,.]+, about \$[\d,.]+ a month all in/,
     );
     expect(reply.body).toMatch(/The cheapest preapproval is /);
     const { reply: priced } = await sendToJane(id, "can I afford a $30,000 car?", {

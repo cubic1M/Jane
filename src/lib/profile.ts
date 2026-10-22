@@ -2,6 +2,7 @@ import type { PrismaClient } from "@/generated/prisma/client";
 import { PROFILE_MONTHS } from "@/config/profile";
 import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
+import { markPrimerStale } from "@/lib/jane-agent/primer-store";
 import { deletePreference, savePreference } from "@/lib/jane-agent/preferences";
 import { buildProfile, type Profile, type ProfileInput, type Told } from "@/profile/build";
 import { FACT_KEYS, type FactKey, factSpec } from "@/profile/facts";
@@ -40,6 +41,7 @@ export async function loadProfileInput(
     unread,
     values,
     named,
+    membership,
   ] = await Promise.all([
     db.transactions.findMany({
       where: { date: { gt: since, lte: now } },
@@ -88,7 +90,14 @@ export async function loadProfileInput(
     db.policyReadings.count({ where: { status: "waiting" } }),
     db.valuesPreferences.findFirst({ select: { excludes: true } }),
     db.accountBeneficiaries.findMany({ select: { accountId: true } }),
+    client.householdMember.findUnique({ where: { userId }, select: { householdId: true } }),
   ]);
+  // Other people in their household in Jane (spec step 264), not counting them.
+  const householdMembers = membership
+    ? await client.householdMember.count({
+        where: { householdId: membership.householdId, userId: { not: userId } },
+      })
+    : 0;
 
   // Answers given elsewhere come first; a correction made here wins over them.
   const told: Told = {};
@@ -156,6 +165,44 @@ export async function loadProfileInput(
     namedAccountIds: [...new Set(named.map((n) => n.accountId))],
     told,
     unreadPolicyDocuments: unread,
+    extras: { householdMembers, ...(await sectorFigures(userId, client, now)) },
+  };
+}
+
+// The figures the brief shares with the chat's answers, computed by the same code the chat's
+// tools use (so the two cannot differ): the employer match left on the table, and the RSU
+// withholding that falls short. Loaded dynamically: those reach this file again.
+async function sectorFigures(userId: string, client: PrismaClient, now: Date) {
+  const db = scopedFor(userId, client);
+  const { loadMatchPace } = await import("@/lib/investments/match-pace");
+  const hasStock =
+    (await db.accounts.count({ where: { subtype: "stock plan" } })) > 0 ||
+    (await db.equityEvents.count()) > 0;
+  const [matchPace, equity, subscriptions, cardInterest, shopSaving, policies] = await Promise.all([
+    loadMatchPace(userId, { client, now }),
+    hasStock
+      ? import("@/lib/equity-tax").then((m) => m.loadEquityTax(userId, { client, now }))
+      : null,
+    import("@/lib/jane-agent/recurring").then((m) => m.subscriptionYear(userId, { client, now })),
+    import("@/lib/card-interest").then((m) => m.loadCardInterest(userId, { client, now })),
+    import("@/lib/insurance/shop").then((m) => m.openShopSavingCents(userId, { client, now })),
+    import("@/lib/insurance/policies").then((m) => m.listPolicies(userId, { client })),
+  ]);
+  return {
+    matchPace,
+    rsuGap: equity ? equity.rsuGap : null,
+    subscriptions,
+    cardInterestYearCents: cardInterest.available ? cardInterest.interestYearCents : null,
+    insuranceShopSavingCents: shopSaving,
+    coverPolicies: policies
+      .filter((p) => p.status === "active" || p.status === "pending")
+      .map((p) => ({
+        id: p.id,
+        kind: p.kind,
+        status: p.status,
+        deductibleCents: p.deductibleCents,
+        coverage: p.coverage,
+      })),
   };
 }
 
@@ -218,6 +265,7 @@ export async function correctFact(
     },
     { client },
   );
+  await markPrimerStale(userId, { client });
   if (key === "housing" && (value === "own" || value === "rent")) {
     await client.insuranceProfile.upsert({
       where: { userId },
@@ -257,7 +305,9 @@ export async function clearCorrection(
     where: { kind: "fact", key: `${PREF_PREFIX}${key}` },
     select: { id: true },
   });
-  return row ? deletePreference(userId, row.id, { client }) : false;
+  const gone = row ? await deletePreference(userId, row.id, { client }) : false;
+  if (gone) await markPrimerStale(userId, { client });
+  return gone;
 }
 
 // How a fact reads aloud.

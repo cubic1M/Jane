@@ -61,7 +61,8 @@ describe("the eight sample people", () => {
     expect(has("renter", /OVERDRAFT/)).toBe(true);
     expect(has("renter", /INTEREST CHARGE/)).toBe(true);
     // The family: two paychecks, childcare, a mortgage with PMI.
-    expect([...names("family")].filter((n) => /PAYROLL/.test(n))).toHaveLength(2);
+    // The second earner changed jobs two months ago, so three payrolls in the year.
+    expect([...names("family")].filter((n) => /PAYROLL/.test(n))).toHaveLength(3);
     expect(has("family", /BRIGHT HORIZONS/)).toBe(true);
     expect(demoLiabilities(seedOf("family"), THROUGH).mortgage?.[0].has_pmi).toBe(true);
     // The freelancer: clients, no payroll, no tax payment.
