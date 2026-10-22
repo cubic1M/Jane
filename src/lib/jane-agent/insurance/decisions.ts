@@ -9,6 +9,7 @@ import { PREMIUM_FREQUENCIES } from "@/config/documents";
 import { formatCents } from "@/lib/money";
 import type { Reply } from "../replies";
 import type { MessageAction } from "../types";
+import type { Need } from "@/lib/insurance/need/types";
 import type { InsuranceSnapshot } from "./snapshot";
 
 // Insurance decisions in the chat: "should I get umbrella insurance?", "do I need life
@@ -19,6 +20,10 @@ import type { InsuranceSnapshot } from "./snapshot";
 
 export type DecisionKind =
   | "umbrella"
+  | "life_how_much"
+  | "disability_how_much"
+  | "umbrella_how_much"
+  | "liability_how_much"
   | "life_enough"
   | "switch"
   | "too_expensive"
@@ -56,6 +61,19 @@ export const DECISION_PATTERNS: readonly (readonly [DecisionKind, RegExp])[] = [
     ),
   ],
   ["oop_max", P("\\bout[- ]of[- ]pocket (?:max\\w*|limit)\\b")],
+  ["life_how_much", P("\\bhow much life (?:insurance|cover\\w*)\\b.*\\b(?:need|get|buy|carry)\\b")],
+  [
+    "disability_how_much",
+    P("\\bhow much disability (?:insurance|cover\\w*)\\b.*\\b(?:need|get|buy|carry)\\b"),
+  ],
+  [
+    "umbrella_how_much",
+    P("\\bhow much umbrella (?:insurance|cover\\w*|policy)?\\b.*\\b(?:need|get|buy|carry)\\b"),
+  ],
+  [
+    "liability_how_much",
+    P("\\bhow much (?:car |auto |home |renters? )?liability\\b.*\\b(?:need|get|buy|carry)\\b"),
+  ],
   ["umbrella", P("\\bumbrella\\b")],
   [
     "life_enough",
@@ -175,7 +193,7 @@ export const DECISION_PATTERNS: readonly (readonly [DecisionKind, RegExp])[] = [
 // Only a question that asks what to do or where they stand: "did you switch my car
 // insurance?" and "what does my renters insurance cover?" are other questions.
 const FRAME =
-  /^(?:(?:so|and|ok|okay|also) )?(?:(?:hey )?jane,? )?(?:should i|do i (?:need|have|lose|want)|am i|is my|is it|are my|what(?:'s| is) my|what happens|what(?:'s| is) the cheapest|have i|how much (?:is|would|of|life|do i)|when will i|why is my|why has my|can you|could you|(?:get|find|give) me|what if)\b/;
+  /^(?:(?:so|and|ok|okay|also) )?(?:(?:hey )?jane,? )?(?:should i|do i (?:need|have|lose|want)|am i|is my|is it|are my|what(?:'s| is) my|what happens|what(?:'s| is) the cheapest|have i|how much (?:is|would|of|life|disability|umbrella|liability|car|auto|home|do i)|when will i|why is my|why has my|can you|could you|(?:get|find|give) me|what if)\b/;
 
 export function decisionKindOf(text: string): DecisionKind | null {
   if (!FRAME.test(text.trim())) return null;
@@ -211,6 +229,8 @@ function reply(out: Out, advice: boolean): Reply {
   };
 }
 
+const needOf = (ins: InsuranceSnapshot, kind: Need["kind"]) =>
+  ins.needs?.find((n) => n.kind === kind) ?? null;
 const active = (ins: InsuranceSnapshot, kind: PolicyKind) =>
   ins.policies.find((p) => p.kind === kind && p.status !== "removed" && p.status !== "cancelled");
 const money = formatCents;
@@ -280,7 +300,117 @@ function build(kind: DecisionKind, ins: InsuranceSnapshot, asOf: string): Out {
   const car = active(ins, "auto");
   const carYearly = yearly(car as never);
   switch (kind) {
+    case "life_how_much": {
+      const n = needOf(ins, "life");
+      if (!n) {
+        return {
+          facts:
+            "I need to know who depends on your income and what you earn before I can size life cover. Tell me on your insurance page and I'll work it out.",
+          actions: [SEE],
+        };
+      }
+      return {
+        advice: n.gapCents > 0 ? `About ${money(n.needCents)}.` : "You have enough.",
+        facts:
+          n.gapCents > 0
+            ? `That's ${n.lines[0]?.label ?? "your income"} plus debts and schooling, less your savings${n.haveCents > 0 ? ` and the ${money(n.haveCents)} you have` : ""}, for ${n.termYears} years: ${money(n.gapCents)} short.`
+            : n.summary,
+        actions: [
+          {
+            id: "open",
+            label: "See my options",
+            kind: "link",
+            href: "/insurance?need=life#options",
+          },
+          SEE,
+        ],
+      };
+    }
+    case "disability_how_much": {
+      const n = needOf(ins, "disability");
+      if (!n)
+        return {
+          facts:
+            "I need your pay to size disability cover. Tell me on your insurance page and I'll work it out.",
+        };
+      return {
+        advice: n.gapCents > 0 ? `About ${money(n.needCents)} a month.` : "You have enough.",
+        facts: n.summary,
+        actions: [
+          {
+            id: "open",
+            label: "See my options",
+            kind: "link",
+            href: "/insurance?need=disability#options",
+          },
+          SEE,
+        ],
+      };
+    }
+    case "umbrella_how_much": {
+      const n = needOf(ins, "umbrella");
+      if (!n)
+        return {
+          facts:
+            "Your net worth is under the line where an umbrella usually matters, or I can't see your balances yet.",
+        };
+      return {
+        advice: n.gapCents > 0 ? `About ${money(n.needCents)}.` : "You have enough.",
+        facts: n.summary,
+        actions: [
+          {
+            id: "open",
+            label: "See my options",
+            kind: "link",
+            href: "/insurance?need=umbrella#options",
+          },
+          SEE,
+        ],
+      };
+    }
+    case "liability_how_much": {
+      const n = ins.needs?.find(
+        (x) =>
+          x.kind === "auto_liability" ||
+          x.kind === "home_liability" ||
+          x.kind === "renters_liability",
+      );
+      if (!n)
+        return {
+          facts:
+            "I don't have a car, home or renters policy on file to size liability for. Add one and I'll check it.",
+        };
+      return {
+        advice: n.gapCents > 0 ? `More than you have.` : "You have enough.",
+        facts: n.summary,
+        actions: [
+          {
+            id: "open",
+            label: "See my options",
+            kind: "link",
+            href: `/insurance?need=${n.kind}#options`,
+          },
+          SEE,
+        ],
+      };
+    }
     case "umbrella": {
+      const un = needOf(ins, "umbrella");
+      if (un && !active(ins, "umbrella")) {
+        return {
+          advice: "Probably yes.",
+          facts: `${un.summary} Your net worth is over the ${money(UMBRELLA_ASSETS_CENTS)} where a big claim against you starts to matter.`,
+          actions: [
+            {
+              id: "open",
+              label: "See my options",
+              kind: "link",
+              href: "/insurance?need=umbrella#options",
+            },
+            SEE,
+          ],
+        };
+      }
       const assets = household.signals.assetsCents;
       const has = active(ins, "umbrella");
       if (has) return { facts: `You already have an umbrella policy with ${has.carrier}.` };
@@ -300,7 +430,9 @@ function build(kind: DecisionKind, ins: InsuranceSnapshot, asOf: string): Out {
     }
     case "life_enough": {
       const has = active(ins, "life");
-      const need = ins.life?.amountCents ?? null;
+      const ln = needOf(ins, "life");
+      const need =
+        ln && ln.gapCents + ln.haveCents > 0 ? ln.needCents : (ins.life?.amountCents ?? null);
       const dep = household.dependants.value;
       if (!has) {
         return need
