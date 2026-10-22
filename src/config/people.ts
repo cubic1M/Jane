@@ -87,6 +87,8 @@ export const SUGGESTION_TOPICS = [
   "property_tax_check",
   "tax_loss_harvest",
   "file_return",
+  // Spec step 296: practice money first.
+  "practice_portfolio",
 ] as const;
 export type SuggestionTopic = (typeof SUGGESTION_TOPICS)[number];
 
@@ -155,6 +157,7 @@ export const PEOPLE: readonly Person[] = [
       "cover_change",
       "credit_building",
       "bnpl",
+      "practice_portfolio",
     ],
     mustNot: [
       "umbrella",
@@ -216,6 +219,7 @@ export const PEOPLE: readonly Person[] = [
       "property_tax_check",
       "life_checklist",
       "household_setup",
+      "practice_portfolio",
     ],
     mustNot: [
       "renters_insurance",
@@ -255,6 +259,7 @@ export const PEOPLE: readonly Person[] = [
       "renters_insurance",
 
       "auto_insurance",
+      "practice_portfolio",
     ],
     mustNot: [
       "employer_match",
@@ -416,6 +421,7 @@ export const PEOPLE: readonly Person[] = [
       "credit_report_errors",
       "household_setup",
       "life_checklist",
+      "practice_portfolio",
     ],
     firstQuestion: "age_band",
   },
@@ -470,6 +476,7 @@ export const PEOPLE: readonly Person[] = [
       "tax_loss_harvest",
       "household_setup",
       "life_checklist",
+      "practice_portfolio",
     ],
     firstQuestion: "hardship_reason",
   },
@@ -492,6 +499,7 @@ export const PEOPLE: readonly Person[] = [
       "retirement_self_employed",
       "cash_flow",
       "emergency_fund",
+      "practice_portfolio",
     ],
     mustNot: [
       "employer_match",

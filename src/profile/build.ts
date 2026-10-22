@@ -92,6 +92,8 @@ export type ProfileInput = {
     // What Jane's open reshops of car and home cover would save a year (the switch card's and
     // the chat's figure); 0 when there are none. Absent: not loaded.
     insuranceShopSavingCents?: number;
+    // The person already has a practice portfolio (step 296). Absent: not loaded.
+    hasPracticePortfolio?: boolean;
     rsuGap?: {
       vestedCents: number;
       shortfallCents: number;

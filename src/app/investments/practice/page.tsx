@@ -128,12 +128,26 @@ async function Content({
                 </li>
               ))}
             </ul>
-            <div className="flex flex-wrap gap-2">
+            {/* The pause switch: a card in the chat opens it here (step 296). */}
+            <div id="pause" className="flex scroll-mt-20 flex-wrap gap-2">
               <form action={pauseSwitch}>
                 <input type="hidden" name="which" value="all" />
                 <input type="hidden" name="paused" value={practice.paused ? "0" : "1"} />
                 <button type="submit" className={OUTLINE}>
                   {practice.paused ? "Resume Jane" : "Pause Jane"}
+                </button>
+              </form>
+              <form action={pauseSwitch}>
+                <input type="hidden" name="which" value="opportunities" />
+                <input
+                  type="hidden"
+                  name="paused"
+                  value={practice.opportunitiesPaused ? "0" : "1"}
+                />
+                <button type="submit" className={OUTLINE}>
+                  {practice.opportunitiesPaused
+                    ? "Resume opportunities"
+                    : "Pause opportunities"}
                 </button>
               </form>
               <form action={runNow}>
@@ -148,6 +162,11 @@ async function Content({
               </form>
             </div>
             {practice.paused && <p className="text-sm">Paused: no trades until you resume.</p>}
+            {!practice.paused && practice.opportunitiesPaused && (
+              <p className="text-sm">
+                Opportunities paused: Jane only keeps the model on target.
+              </p>
+            )}
             <DemoAdviceLabel />
           </section>
           <section className="flex flex-col gap-2">
