@@ -39,6 +39,8 @@ import type { PlanMenuView } from "@/lib/investments/plan-menu";
 import { changeButton, confirmButtons, MENU_LINK, proposedLine, savingLine } from "./menu-copy";
 import type { HonestView } from "@/lib/investments/honest";
 import { HONEST_LINK, honestLine } from "./honest-copy";
+import type { ValuesView } from "@/lib/investments/values";
+import { valuesListWords, valuesPlanLine, valuesButton, VALUES_LINK } from "./values-copy";
 import type { ShortTermView } from "@/lib/investments/short-term";
 import { candidateLine, ladderButton, SHORT_LINK } from "./short-term-copy";
 import type { SuddenMoneyView } from "@/lib/investments/sudden-money";
@@ -1047,5 +1049,30 @@ export function suddenMoneyReply(view: SuddenMoneyView): Reply {
     body: "When a lot of money arrives that isn't pay, like a bonus, an inheritance or a sale, I work out the tax to set aside first (it depends on which it was), then a plan in order: high-interest debt, your emergency fund, your retirement limits, your goals, and last investing. Each part is a tap. I don't see a large deposit waiting right now.",
     actions: [SUDDEN_LINK],
     refs: {},
+  };
+}
+
+// Spec step 236: investing by your values. Says what the list would change, in dollars and in
+// diversification, and offers the switch as a tap in demo advice only.
+export function valuesReply(view: ValuesView): Reply {
+  if (view.prefs.excludes.length === 0 && view.prefs.themes.length === 0) {
+    return {
+      body: "You can tell me what to leave out of your funds (fossil fuels, weapons, tobacco) or lean towards (clean energy). Screened funds hold fewer companies and can cost a little more, and I show both in dollars first. They stay inside the same kind of investment, so your stocks-and-bonds mix doesn't change.",
+      actions: [VALUES_LINK],
+      refs: {},
+    };
+  }
+  if (!view.advice) {
+    return {
+      body: `Your list: ${valuesListWords(view.prefs)}. I don't give fund recommendations on real accounts yet; the screened funds and their costs are on the values page.`,
+      actions: [VALUES_LINK],
+      refs: {},
+    };
+  }
+  const can = view.plan && view.plan.switches.length > 0;
+  return {
+    body: valuesPlanLine(view),
+    actions: [...(can ? [valuesButton()] : []), VALUES_LINK],
+    refs: { advice: true, ...(can ? { valuesKey: view.plan!.key } : {}) },
   };
 }
