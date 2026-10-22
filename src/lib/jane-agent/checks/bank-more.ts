@@ -553,6 +553,8 @@ const rows: Row[] = [
   ["debt", "/loans/equity", "home_equity", "when does my pmi end by itself"],
   ["debt", "/loans/equity", "home_equity", "is my escrow too high"],
   ["debt", "/loans/equity", "home_equity", "heloc or cash-out refinance for a $40,000 kitchen"],
+  ["loans", "/loans/recast", "mortgage_money", "i have $20,000, should i recast my mortgage"],
+  ["loans", "/loans/recast", "mortgage_money", "pay down my mortgage or invest $500 a month"],
   ["loans", "/loans/auto", "car_loan", "can i cancel the extended warranty on my car loan"],
   ["loans", "/loans/auto", "car_loan", "do i have gap insurance on my car loan"],
   ["debt", "/loans/review", "debt_review", "do my yearly debt review"],
