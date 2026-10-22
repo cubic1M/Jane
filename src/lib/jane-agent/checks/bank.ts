@@ -2768,6 +2768,8 @@ const DECISIONS: readonly (readonly [string, string, RegExp, string?])[] = [
   ["insd-33", "how much disability insurance do I need", /\$[\d,.]+ a month/],
   ["insd-34", "how much umbrella insurance do I need", /umbrella|net worth/i],
   ["insd-35", "how much liability insurance do I need on my car", /liability/i],
+  ["insd-36", "what cover do I need", /gaps?\.|need|short|enough/i],
+  ["insd-37", "is my deductible right", /deductible/i],
 ];
 
 // "Should I ...?" with insurance words goes through the decision router (src/config/decisions.ts).

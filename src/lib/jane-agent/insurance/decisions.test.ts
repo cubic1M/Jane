@@ -274,4 +274,16 @@ describe("chat answers agree with the page's numbers (insurance QA pass)", () =>
     const r = decide("disability", snap(1_000_000), "x");
     expect(r.body).toContain("$4,800.00 a month");
   });
+
+  it("gives real accounts the gaps as facts, with no verdict or pick", () => {
+    const real = {
+      ...rich(false),
+      needs: computeNeeds({ ...base, netWorthCents: 1_000_000, policies: [auto] }),
+    } as never;
+    for (const kind of ["what_cover", "deductible_fit", "disability"] as const) {
+      const r = decide(kind, real, "x");
+      expect(r.refs).not.toHaveProperty("advice");
+      expect(r.body).not.toMatch(/^(Probably yes|You could go higher|Yes, it fits|\d+ gaps?)/);
+    }
+  });
 });
