@@ -9,6 +9,7 @@ import { INVESTING_DETECTORS } from "./investing";
 import { MONEY_DETECTORS } from "./money";
 import { FAMILY_CREDIT_DETECTORS } from "./family-credit";
 import { RENTING_DETECTORS } from "./renting";
+import { BORROWING_POWER_DETECTORS } from "./borrowing-power";
 import { SPENDING_DETECTORS } from "./spending";
 import { TAX_DETECTORS } from "./taxes";
 import { WORK_DETECTORS } from "./work";
@@ -29,6 +30,7 @@ export const DETECTORS: readonly Detector[] = [
   ...FIT_DETECTORS,
   ...SPENDING_DETECTORS,
   ...RENTING_DETECTORS,
+  ...BORROWING_POWER_DETECTORS,
   ...FAMILY_CREDIT_DETECTORS,
   ...TAX_DETECTORS,
   ...INVESTING_DETECTORS,

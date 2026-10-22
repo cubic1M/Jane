@@ -426,6 +426,13 @@ async function LoansContent({
             .
           </p>
           <p className="text-sm text-zinc-600 dark:text-zinc-400">
+            Thinking of borrowing?{" "}
+            <Link href="/loans/borrow" className={LINK}>
+              See what you could get, and at what rate
+            </Link>
+            .
+          </p>
+          <p className="text-sm text-zinc-600 dark:text-zinc-400">
             Paying rent?{" "}
             <Link href="/loans/renting" className={LINK}>
               Build credit with it and track your deposit
