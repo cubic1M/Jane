@@ -206,12 +206,15 @@ describe("in the chat", () => {
     );
   });
 
+  it("answers how much life cover from the need calculators (step 278)", () => {
+    expect(parseIntent("how much life insurance do I need", "2026-10-19")).toMatchObject({
+      kind: "insurance",
+      ask: "decide",
+    });
+  });
+
   it("reads questions about sizing and buying life cover", () => {
-    for (const text of [
-      "how much life insurance do I need",
-      "apply for life insurance",
-      "should I buy term life",
-    ]) {
+    for (const text of ["apply for life insurance", "should I buy term life"]) {
       expect(parseIntent(text, "2026-10-19"), text).toMatchObject({
         kind: "insurance",
         ask: "life",
