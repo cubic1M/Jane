@@ -146,4 +146,19 @@ describe.runIf(url)("the brief and the chat give the same figure", { timeout: 12
       }
     },
   );
+
+  // The employer plan's match is the original demo bank's person's (the sample people have no
+  // employer plan): the brief and the retirement accounts page give the same figure for them.
+  it("the original demo bank: the 401(k) match", async () => {
+    const trial = await startTrial({ client, now: NOW, defer: true });
+    made.push(trial.userId);
+    await syncItem(trial.itemId, { client, now: NOW });
+    const { suggestions } = await detectFor(trial.userId, { client, now: NOW });
+    const matchBrief = suggestions.find((s) => s.topic === "employer_match");
+    const match = (await loadRetirementAccounts(trial.userId, { client, now: NOW })).match;
+    expect(match, "the demo employer plan").not.toBeNull();
+    expect(matchBrief, "the match brief").toBeDefined();
+    compared.match++;
+    expect(matchBrief!.worthCents, "401(k) match").toBe(match!.missedCents);
+  });
 });

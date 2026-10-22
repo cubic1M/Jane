@@ -124,7 +124,11 @@ export const SUGGESTION_TOPICS = [
   "disaster_relief",
   "social_security_tax",
   "irmaa_watch",
+  // Spec step 242: how a couple splits shared bills.
+  "bill_split",
   "draft_return_check",
+  // Spec step 241: goals that can't all be on time.
+  "goal_tradeoffs",
 ] as const;
 export type SuggestionTopic = (typeof SUGGESTION_TOPICS)[number];
 
@@ -460,6 +464,10 @@ export const PEOPLE: readonly Person[] = [
       "short_term_cash",
       "household_setup",
       "irmaa_watch",
+      // Spec step 242: Dan earns about twice what Lena does.
+      "bill_split",
+      // Spec step 241: the trip to Japan and the kitchen can't both be on time.
+      "goal_tradeoffs",
     ],
     mustNot: [
       "values_funds",

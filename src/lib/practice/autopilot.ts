@@ -1,4 +1,3 @@
-import type { RiskLevel } from "@/config/investing";
 import { PRACTICE_UNIVERSE } from "@/config/portfolios";
 import { WASH_SALE_DAYS } from "@/config/tax-rates";
 import type { PrismaClient } from "@/generated/prisma/client";
@@ -6,11 +5,13 @@ import { logAudit } from "@/lib/audit";
 import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
 import { marketData } from "@/lib/market";
-import { planTrades } from "@/planning/practice-autopilot";
+import { planTrades, type PlannedTrade } from "@/planning/practice-autopilot";
+import { refusedByPreferences } from "@/planning/practice-profile";
 import { washBlocked } from "@/planning/practice-scan";
 import { replay, type Entry } from "@/planning/practice-ledger";
 import { practiceBroker, loadLedger, type Fill } from "./broker";
 import { addPracticeMoney, PracticeError } from "./portfolio";
+import { practiceProfileOf } from "./preferences";
 
 // Autopilot for the practice portfolio (spec steps 291 and 294, Phase AW, Stage A): once a level
 // is chosen Jane buys the model, rebalances past the band and adds the monthly practice money,
@@ -20,8 +21,11 @@ import { addPracticeMoney, PracticeError } from "./portfolio";
 
 type Options = { client?: PrismaClient; now?: Date };
 
+// In suggest-only mode (the person's preferences) the plan comes back as `suggested` and nothing
+// is placed.
 export type RunResult =
-  { ran: false; why: "no_portfolio" | "paused" } | { ran: true; deposit: boolean; fills: Fill[] };
+  | { ran: false; why: "no_portfolio" | "paused" }
+  | { ran: true; deposit: boolean; fills: Fill[]; suggested: PlannedTrade[] };
 
 const monthKey = (d: Date) => d.toISOString().slice(0, 7);
 
@@ -99,18 +103,25 @@ export async function runAutopilot(
   });
   const sold = recent.map((t) => ({ ...t, placedAt: t.placedAt.toISOString() }));
   const blocked = washBlocked(sold, asOf);
+  // The person's preferences: the mix, what is never bought, the cash kept and whether Jane acts.
+  const profile = await practiceProfileOf(userId, { client, now });
   const plan = planTrades({
-    level: portfolio.level as RiskLevel,
+    level: profile.level,
     state,
     prices,
     paused: false,
     tradesToday,
     blocked,
+    weights: profile.weights,
+    avoid: new Set(profile.avoid),
+    cashBufferCents: profile.cashBufferCents,
   });
+  if (!profile.trades) return { ran: true, deposit, fills: [], suggested: plan };
   const broker = practiceBroker();
   const fills: Fill[] = [];
   // Sales first, so their cash pays for the buys.
   for (const t of [...plan].sort((a, b) => (a.side === b.side ? 0 : a.side === "sell" ? -1 : 1))) {
+    if (refusedByPreferences(profile, t)) continue;
     fills.push(
       await broker.placeOrder(
         userId,
@@ -125,7 +136,7 @@ export async function runAutopilot(
       ),
     );
   }
-  return { ran: true, deposit, fills };
+  return { ran: true, deposit, fills, suggested: [] };
 }
 
 // Every portfolio, for the daily run (step 292 calls this beside the scan). One person's problem
