@@ -6,7 +6,10 @@ vi.mock("@/lib/advice-mode", () => ({ adviceMode: vi.fn() }));
 import { formatReturn } from "@/insights/returns";
 import type { PrismaClient } from "@/generated/prisma/client";
 import { adviceMode } from "@/lib/advice-mode";
+import { RULE_REPLAY_STRATEGY_LABELS } from "@/config/backtest";
+import { SCAN_LABELS } from "@/config/practice-scan";
 import { loadBacktests } from "@/lib/investments/backtest";
+import { loadRuleReplays } from "@/lib/investments/rule-replay";
 import { formatCents } from "@/lib/money";
 import { CHAT_TOOLS, runChatTool } from "./claude-tools";
 import { lookupsFor, sectorsFor, toolsFor } from "./tool-select";
@@ -66,6 +69,54 @@ describe("backtest_by_level", () => {
       "Very high",
     ]);
     expect(body.levels[0].inYear).toEqual({ year: 2010, note: "That year isn't in the replay." });
+  });
+
+  it("adds the rule replay when asked: three replays, each rule's verdict, figures recorded", async () => {
+    vi.mocked(adviceMode).mockResolvedValue(true);
+    const without = await runChatTool(
+      "u1",
+      "backtest_by_level",
+      { level: "High" },
+      { client, now: NOW },
+    );
+    expect(JSON.parse(without.content).didTheExtraRulesHelp).toBeUndefined();
+
+    const out = await runChatTool(
+      "u1",
+      "backtest_by_level",
+      { level: "High", extra_rules: true },
+      { client, now: NOW },
+    );
+    const rules = JSON.parse(out.content).didTheExtraRulesHelp;
+    expect(rules.replay).toBe("Replay of sample history since Jan 2, 2018");
+    expect(rules.notAForecast).toMatch(/not a forecast/);
+    expect(rules.levels).toHaveLength(1);
+    const high = rules.levels[0];
+    expect(high.level).toBe("High");
+    for (const name of Object.values(RULE_REPLAY_STRATEGY_LABELS)) {
+      expect(high[name].return).toMatch(/^[+−]\d/);
+      expect(high[name].drop2020).toMatch(/^−/);
+      expect(high[name].drop2022).toMatch(/^[+−]/);
+      expect(high[name].trades).toBeGreaterThan(0);
+    }
+    const verdicts = Object.fromEntries(
+      high.rules.map((r: { rule: string; verdict: string }) => [r.rule, r.verdict]),
+    );
+    expect(verdicts[SCAN_LABELS.tax_loss_harvest]).toBe("off");
+    expect(Object.keys(verdicts)).toHaveLength(3);
+    const cost = (await loadRuleReplays({ client, now: NOW }, [4]))!.replays.levels[0].strategies
+      .rules.costCents;
+    expect(out.cents).toContain(cost);
+    const text = JSON.stringify(rules).replaceAll("notAForecast", "");
+    expect(text.replaceAll("not a forecast", "")).not.toMatch(/forecast/i);
+  });
+
+  it("sends the tool for the rule replay question", () => {
+    const asOf = "2026-10-21";
+    for (const q of ["did the extra rules help?", "do the dip buys work"])
+      expect(toolsFor(CHAT_TOOLS, q, null, null, asOf).map((t) => t.name)).toContain(
+        "backtest_by_level",
+      );
   });
 
   it("gives no figures for a real account", async () => {

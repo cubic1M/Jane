@@ -8,7 +8,13 @@ import {
   PRACTICE_UNIVERSE,
   type PracticeClass,
 } from "@/config/portfolios";
-import { SCAN_CAPS, SCAN_KINDS, type ScanKind } from "@/config/practice-scan";
+import {
+  OPPORTUNITY_RULES_OFF,
+  rulesOnAt,
+  SCAN_CAPS,
+  SCAN_KINDS,
+  type ScanKind,
+} from "@/config/practice-scan";
 import type { Bar } from "@/lib/market";
 import { SAMPLE_EVENTS, SampleMarketData } from "@/lib/market/sample";
 import { planTrades, portfolioValue } from "./practice-autopilot";
@@ -62,6 +68,8 @@ async function boughtOn(level: RiskLevel, day: string, cashCents = 1_000_000) {
   return { state, trades };
 }
 
+// Every rule, whatever OPPORTUNITY_RULES_OFF turns off at a level: these tests are about the
+// rules themselves (the switch has its own test below).
 async function scanOn(
   level: RiskLevel,
   day: string,
@@ -69,6 +77,7 @@ async function scanOn(
   extra: Partial<ScanInput> = {},
 ) {
   return scanPortfolio({
+    rules: new Set(SCAN_KINDS),
     level,
     state: held.state,
     prices: await pricesOn(day),
@@ -281,5 +290,29 @@ describe("the daily scan: caps", () => {
       expect(f.confidence.reason.length).toBeGreaterThan(20);
       expect(f.trades.every((t) => t.rule === f.kind)).toBe(true);
     }
+  });
+});
+
+describe("the daily scan: rules turned off by the rule replay", () => {
+  it("keeps drift on everywhere and every turned-off rule off at its level, with its evidence", () => {
+    for (const level of [1, 2, 3, 4, 5] as const) {
+      const on = rulesOnAt(level);
+      expect(on.has("drift_rebalance")).toBe(true);
+      for (const off of OPPORTUNITY_RULES_OFF[level] ?? []) {
+        expect(on.has(off.rule)).toBe(false);
+        expect(off.evidence).toMatch(/real history from .* to .*points/);
+      }
+    }
+  });
+
+  it("doesn't harvest at a level where the replay turned harvesting off, by default", async () => {
+    const off = ([1, 2, 3, 4, 5] as const).find((l) => !rulesOnAt(l).has("tax_loss_harvest"));
+    expect(off).toBeDefined();
+    const held = await boughtOn(off!, "2026-09-01");
+    const day = "2026-10-14";
+    expect(kinds(await scanOn(off!, day, held))).toContain("tax_loss_harvest");
+    expect(kinds(await scanOn(off!, day, held, { rules: undefined }))).not.toContain(
+      "tax_loss_harvest",
+    );
   });
 });

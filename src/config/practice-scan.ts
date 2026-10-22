@@ -2,6 +2,8 @@
 // and the sample market only: every number here is demo advice, FOR REVIEW before Stage B.
 // The scan's rules are in src/planning/practice-scan.ts; nothing there has a number of its own.
 
+import type { RiskLevel } from "@/config/investing";
+
 export type ScanKind = "drift_rebalance" | "dip_buy" | "tax_loss_harvest" | "news_idea";
 
 export const SCAN_KINDS: readonly ScanKind[] = [
@@ -41,6 +43,8 @@ export const DRIFT_STOCKS_BAND = 0.05;
 // 2026; the planted dips go past it.
 export const DIP_MIN_DROP = 0.1;
 export const DIP_LOOKBACK_DAYS = 20;
+// The calendar days of closes the scan reads: enough to hold the look-back in trading days.
+export const SCAN_HISTORY_DAYS = DIP_LOOKBACK_DAYS * 2 + 10;
 // The plan's cash for a dip is cash waiting to be invested (the monthly practice money before
 // the autopilot spends it). A dip buy never takes its kind past target plus this many points.
 export const DIP_MAX_OVER_TARGET = 0.05;
@@ -83,3 +87,46 @@ export const SCAN_CONFIDENCE: Readonly<Record<ScanKind, { percent: number; reaso
     reason: "One headline is thin evidence, so the position is kept small.",
   },
 };
+
+// The opportunity rules: everything the scan does beyond the autopilot's own rebalance.
+export type OpportunityRule = Exclude<ScanKind, "drift_rebalance">;
+export const OPPORTUNITY_RULES: readonly OpportunityRule[] = [
+  "dip_buy",
+  "tax_loss_harvest",
+  "news_idea",
+];
+
+// Rules turned off at a level because the rule replay (src/planning/rule-replay.ts, "Did the
+// extra rules help?") found they made results worse on real history there: with the rule, the
+// replay's time-weighted return was lower, or its worst drop deeper, than without it by more than
+// RULE_REPLAY_WORSE_POINTS (src/config/backtest.ts). Each entry keeps its evidence: the history it
+// was replayed on and the two figures. A rule comes back on only with new evidence. FOR REVIEW.
+//
+// The replay of October 22, 2026: real adjusted daily closes for all eleven tickers from Jan 4,
+// 2016 to Oct 14, 2026 (2,711 trading days; Yahoo Finance's adjusted closes, standing in for the
+// stored Alpaca history, which this replay couldn't read), $10,000 to start, $500 every month, a
+// 2-basis-point cost a trade. What it found:
+// - Dip buys: helped at Very low (+0.45 points of return) and High (+0.85); within 0.25 points
+//   elsewhere. Kept on everywhere.
+// - Tax-loss swaps: within 0.25 points at Very low (-0.01) and Low (-0.23); worse at Medium,
+//   High and Very high (below), so turned off there. The replay is before tax: the harvested
+//   losses ($3,017, $2,667 and $2,383 of them) would lower a real tax bill, which it doesn't
+//   count. Worth another look with a tax model before Stage B.
+// - News ideas: not replayed. Headlines are stored only since step 293 (October 2026), so there
+//   is no past news to replay; they stay on at High and Very high, untested, at 1% a position.
+export type RuleOff = { rule: OpportunityRule; evidence: string };
+const HARVEST_OFF = (returnPoints: string, dropPoints: string): RuleOff => ({
+  rule: "tax_loss_harvest",
+  evidence: `on real history from Jan 4, 2016 to Oct 14, 2026, the replay with tax-loss swaps returned ${returnPoints} points less, with a worst drop ${dropPoints} points deeper, than the same replay without them (before tax).`,
+});
+export const OPPORTUNITY_RULES_OFF: Readonly<Partial<Record<RiskLevel, readonly RuleOff[]>>> = {
+  3: [HARVEST_OFF("0.54", "0.07")],
+  4: [HARVEST_OFF("0.50", "0.09")],
+  5: [HARVEST_OFF("0.60", "0.10")],
+};
+
+// The scan kinds that may flag at a level: drift always, and each opportunity rule not turned off.
+export function rulesOnAt(level: RiskLevel): Set<ScanKind> {
+  const off = new Set((OPPORTUNITY_RULES_OFF[level] ?? []).map((r) => r.rule));
+  return new Set(SCAN_KINDS.filter((k) => !off.has(k as OpportunityRule)));
+}

@@ -6,7 +6,7 @@ import { logAudit } from "@/lib/audit";
 import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
 import { marketData } from "@/lib/market";
-import { planTrades } from "@/planning/practice-autopilot";
+import { monthlyDue, planTrades, sellsFirst } from "@/planning/practice-autopilot";
 import { washBlocked } from "@/planning/practice-scan";
 import { replay, type Entry } from "@/planning/practice-ledger";
 import { practiceBroker, loadLedger, type Fill } from "./broker";
@@ -33,7 +33,9 @@ export async function addMonthlyIfDue(
 ): Promise<boolean> {
   const { portfolio } = await loadLedger(userId, client);
   if (portfolio.paused) return false;
-  if (portfolio.monthlyAddCents <= 0 || now.getUTCDate() < portfolio.addDay) return false;
+  const today = now.toISOString().slice(0, 10);
+  const due = { ...portfolio, today, addedThisMonth: false };
+  if (!monthlyDue(due)) return false;
   const added = await client.practiceTrade.findFirst({
     where: {
       portfolioId: portfolio.id,
@@ -44,7 +46,7 @@ export async function addMonthlyIfDue(
     },
     select: { id: true },
   });
-  if (added) return false;
+  if (!monthlyDue({ ...due, addedThisMonth: added !== null })) return false;
   await addPracticeMoney(
     userId,
     portfolio.monthlyAddCents,
@@ -109,8 +111,7 @@ export async function runAutopilot(
   });
   const broker = practiceBroker();
   const fills: Fill[] = [];
-  // Sales first, so their cash pays for the buys.
-  for (const t of [...plan].sort((a, b) => (a.side === b.side ? 0 : a.side === "sell" ? -1 : 1))) {
+  for (const t of sellsFirst(plan)) {
     fills.push(
       await broker.placeOrder(
         userId,

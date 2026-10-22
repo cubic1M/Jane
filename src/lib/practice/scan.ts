@@ -6,14 +6,12 @@ import {
   PRACTICE_UNIVERSE,
   type PracticeClass,
 } from "@/config/portfolios";
-import { DIP_LOOKBACK_DAYS, NEWS_LOOKBACK_DAYS, type ScanKind } from "@/config/practice-scan";
+import { NEWS_LOOKBACK_DAYS, SCAN_HISTORY_DAYS, type ScanKind } from "@/config/practice-scan";
 import type { Prisma, PrismaClient } from "@/generated/prisma/client";
 import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
 import { marketData, type Bar } from "@/lib/market";
-import { violates } from "@/planning/practice-autopilot";
-import { apply, type LedgerState } from "@/planning/practice-ledger";
-import { scanPortfolio, type ScanFlag } from "@/planning/practice-scan";
+import { flagStatus, monthUse, scanPortfolio } from "@/planning/practice-scan";
 import { addMonthlyIfDue, runAutopilot } from "./autopilot";
 import { loadLedger, NoPracticePortfolio, practiceBroker } from "./broker";
 
@@ -40,27 +38,6 @@ const DAY_MS = 86_400_000;
 const daysBefore = (iso: string, days: number) =>
   new Date(Date.parse(`${iso}T00:00:00Z`) - days * DAY_MS).toISOString().slice(0, 10);
 
-// Whether a flag's trades, one after another, all keep the hard limits; the first broken one.
-function heldBy(
-  flag: ScanFlag,
-  state: LedgerState,
-  prices: Readonly<Record<string, number>>,
-  tradesToday: number,
-): string | null {
-  let s = state;
-  let n = tradesToday;
-  for (const t of flag.trades) {
-    const why = violates(t, s, prices, n);
-    if (why) return why;
-    const priceCents = prices[t.ticker];
-    if (!priceCents) return `no price for ${t.ticker}`;
-    const entry = { side: t.side, ticker: t.ticker, amountCents: t.amountCents, priceCents };
-    s = apply(s, entry, PRACTICE_UNIVERSE).state;
-    n += 1;
-  }
-  return null;
-}
-
 export async function scanPractice(
   userId: string,
   { client = defaultClient, now = new Date() }: Options = {},
@@ -83,8 +60,7 @@ export async function scanPractice(
     const bar = await feed.latest(ticker, today);
     if (bar) prices[ticker] = bar.closeCents;
   }
-  // Enough calendar days to hold the dip's look-back in trading days.
-  const from = daysBefore(today, DIP_LOOKBACK_DAYS * 2 + 10);
+  const from = daysBefore(today, SCAN_HISTORY_DAYS);
   const history: Record<string, Bar[]> = {};
   for (const c of Object.keys(PRACTICE_ETFS) as PracticeClass[]) {
     for (const ticker of classTickers(c)) history[ticker] = await feed.prices(ticker, from, today);
@@ -108,13 +84,10 @@ export async function scanPractice(
     where: { portfolioId: portfolio.id },
     select: { key: true, kind: true, scannedAt: true, status: true },
   });
-  const monthStart = new Date(`${today.slice(0, 7)}-01T00:00:00Z`);
-  const usedThisMonth: Partial<Record<ScanKind, number>> = {};
-  for (const p of past) {
-    if (p.scannedAt < monthStart || p.status === "held") continue;
-    const kind = p.kind as ScanKind;
-    usedThisMonth[kind] = (usedThisMonth[kind] ?? 0) + 1;
-  }
+  const { usedThisMonth, seen } = monthUse(
+    past.map((p) => ({ ...p, scannedAt: p.scannedAt.toISOString() })),
+    today,
+  );
 
   const flags = scanPortfolio({
     level: portfolio.level as RiskLevel,
@@ -126,7 +99,7 @@ export async function scanPractice(
     today,
     opportunitiesPaused: portfolio.opportunitiesPaused,
     usedThisMonth,
-    seen: new Set(past.filter((p) => p.status !== "held").map((p) => p.key)),
+    seen,
   });
 
   const dayStart = new Date(`${today}T00:00:00Z`);
@@ -142,8 +115,7 @@ export async function scanPractice(
         placedAt: { gte: dayStart },
       },
     });
-    const held = flag.trades.length > 0 ? heldBy(flag, current.state, prices, tradesToday) : null;
-    const status = held ? "held" : flag.trades.length === 0 ? "autopilot" : "acted";
+    const { status, heldBy: held } = flagStatus(flag, current.state, prices, tradesToday);
     const details = {
       figures: flag.figures,
       caps: flag.caps,
