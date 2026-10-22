@@ -203,6 +203,8 @@ export const ACTION_IDS = [
   "tax.notice_mine",
   // Spec step 218: the IP PIN, and the steps after a sign of tax identity theft.
   "tax.ippin_remind",
+  "tax.disaster_move",
+  "tax.disaster_loss",
   "tax.ippin_have",
   "tax.identity_open",
   "tax.identity_not",
@@ -493,6 +495,8 @@ export type MessageRefs = {
   identitySign?: string;
   identitySource?: string;
   identityStep?: string;
+  // Spec step 270: the disaster relief (its id) a message is about.
+  disasterRelief?: string;
   // Spec step 98: demo advice (src/lib/advice-mode.ts). The chat shows DEMO_ADVICE_LABEL
   // under it. Set it on every message that recommends investments, taxes, insurance or loans.
   advice?: true;

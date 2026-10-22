@@ -145,7 +145,9 @@ describe("a sensible top three, in the person's life", () => {
     expect(rank("equity", "withholding_gap")).toBeLessThan(4);
     expect(rank("preretire", "roth_conversion")).toBeLessThan(3);
     expect(rank("owner", "estimated_taxes")).toBeLessThan(4);
-    expect(rank("family", "year_end_moves", inDecember)).toBeLessThan(4);
+    // In December the Reyes family's flood (step 270: deadlines moved, a casualty loss) sits
+    // beside their year-end moves.
+    expect(rank("family", "year_end_moves", inDecember)).toBeLessThan(5);
   });
 
   it("keeps the small, unsure ones low: receipts, an appeal nobody has priced, a filing nudge", () => {

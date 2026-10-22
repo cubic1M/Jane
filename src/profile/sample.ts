@@ -1,5 +1,6 @@
 import { demoAccounts, demoLiabilities, demoTransactions } from "@/data-sources/demo/demo-bank";
 import { demoHoldings } from "@/data-sources/demo/demo-holdings";
+import { SAMPLE_RELIEF } from "@/config/disasters";
 import type { NeedPolicy } from "@/lib/insurance/need/types";
 import type { ProfileInput } from "./build";
 
@@ -50,7 +51,12 @@ export function inputFor(person: string, told: ProfileInput["told"] = {}): Profi
   return {
     today: SAMPLE_TODAY,
     told,
-    extras: { householdMembers: 0, coverPolicies: SAMPLE_POLICIES[person] ?? [] },
+    extras: {
+      householdMembers: 0,
+      coverPolicies: SAMPLE_POLICIES[person] ?? [],
+      // The sample people are all the demo bank's, so they read the stand-in disaster feed.
+      disasterRelief: SAMPLE_RELIEF,
+    },
     unreadPolicyDocuments: UNREAD_DOCUMENTS[person] ?? 0,
     holdings: holdings.map((h) => ({
       ticker:

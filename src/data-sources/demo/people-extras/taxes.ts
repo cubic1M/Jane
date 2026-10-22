@@ -7,11 +7,12 @@ import type { PersonExtra, Recurring } from "../demo-people";
 // src/config/people.ts; a detector must fire for the people it is for and for no one on a
 // must-not list.
 
-// Property tax, paid to the county in two instalments (April and December).
-const propertyTax = (dollars: number): Recurring => ({
+// Property tax, paid to the county in two instalments (April and December); the payee can name
+// the county (step 270 reads it).
+const propertyTax = (dollars: number, name = "COUNTY TAX COLLECTOR PROPERTY TAX"): Recurring => ({
   key: "taxes-property-tax",
   account: "checking",
-  name: "COUNTY TAX COLLECTOR PROPERTY TAX",
+  name,
   merchant: "County Tax Collector",
   category: "GOVERNMENT_AND_NON_PROFIT_TAX_PAYMENT",
   amount: dollars,
@@ -64,9 +65,58 @@ export const TAXES_EXTRAS: Partial<Record<PersonId, PersonExtra>> = {
     ],
   },
   // The Reyes family: a mortgage, property tax and a year-end gift.
+  // Step 270: they live in Harris County, where September's storm flooded the ground floor (not
+  // covered by a home policy) and damaged the roof; the repairs are paid and FEMA assistance came
+  // in October.
   family: {
-    monthly: [propertyTax(2900)],
-    ...gift("taxes-gift", "UNITED WAY", 300, -45),
+    monthly: [propertyTax(2900, "HARRIS COUNTY TAX ASSESSOR")],
+    once: [
+      {
+        key: "taxes-gift",
+        account: "checking",
+        name: "UNITED WAY",
+        merchant: "UNITED WAY",
+        category: "GOVERNMENT_AND_NON_PROFIT_DONATIONS",
+        amount: 300,
+        offsets: [-45],
+      },
+      {
+        key: "taxes-roof",
+        account: "checking",
+        name: "GULF COAST CONTRACTORS",
+        merchant: "Gulf Coast Contractors",
+        category: "HOME_IMPROVEMENT_REPAIR_AND_MAINTENANCE",
+        amount: 11800,
+        offsets: [-36],
+      },
+      {
+        key: "taxes-water",
+        account: "checking",
+        name: "SERVPRO OF NORTH HOUSTON",
+        merchant: "Servpro",
+        category: "HOME_IMPROVEMENT_REPAIR_AND_MAINTENANCE",
+        amount: 3400,
+        offsets: [-28],
+      },
+      {
+        key: "taxes-floors",
+        account: "checking",
+        name: "BAYOU FLOORING AND DRYWALL",
+        merchant: "Bayou Flooring",
+        category: "HOME_IMPROVEMENT_REPAIR_AND_MAINTENANCE",
+        amount: 21000,
+        offsets: [-20],
+      },
+      {
+        key: "taxes-fema",
+        account: "checking",
+        name: "FEMA IHP TREAS 310 DISASTER ASSIST",
+        merchant: null,
+        category: "TRANSFER_IN_DEPOSIT",
+        amount: -5000,
+        offsets: [-12],
+      },
+    ],
   },
   // Priya: a big house, a gift of stock-sale proceeds, and a bond fund bought when rates were
   // lower, now worth less than she paid, in her taxable account.

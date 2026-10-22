@@ -99,6 +99,7 @@ export const SUGGESTION_TOPICS = [
   "ptc_repayment",
   "hsa_over_limit",
   "medical_deduction",
+  "disaster_relief",
 ] as const;
 export type SuggestionTopic = (typeof SUGGESTION_TOPICS)[number];
 
@@ -240,6 +241,7 @@ export const PEOPLE: readonly Person[] = [
 
       "liability_levels",
       "disability_insurance",
+      "disaster_relief",
     ],
     mustNot: [
       "renters_insurance",
