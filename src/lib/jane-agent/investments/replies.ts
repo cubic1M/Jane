@@ -25,6 +25,7 @@ import {
 import type { OldAccountsView } from "@/lib/investments/old-accounts";
 import {
   foundLine,
+  linkedLine,
   OLD_LINK,
   questionButtons,
   questionLine,
@@ -841,10 +842,12 @@ export function retirementAccountsReply(view: RetirementAccountsView): Reply {
 // rollover tap in demo advice mode.
 export function oldAccountsReply(view: OldAccountsView): Reply {
   const found = view.plans.find((p) => p.status === "found");
+  // 401(k)s already linked from past jobs come first: they're what the suggestion counted.
+  const linked = view.linked?.plans.length ? `${linkedLine(view.linked)} ` : "";
   const base = summaryLine(view.plans);
   if (view.advice && found) {
     return {
-      body: `${base}. ${foundLine(found)}`,
+      body: `${linked}${base}. ${foundLine(found)}`,
       actions: [rollButton(), OLD_LINK],
       refs: { advice: true, oldPlanId: found.id },
     };
@@ -854,12 +857,16 @@ export function oldAccountsReply(view: OldAccountsView): Reply {
   const asked = view.plans.find((p) => p.status === "asked");
   if (asked) {
     return {
-      body: questionLine(asked),
+      body: `${linked}${questionLine(asked)}`,
       actions: [...questionButtons(), OLD_LINK],
       refs: { oldPlanId: asked.id },
     };
   }
-  return { body: base.endsWith(".") ? base : `${base}.`, actions: [OLD_LINK], refs: {} };
+  return {
+    body: `${linked}${base.endsWith(".") ? base : `${base}.`}`,
+    actions: [OLD_LINK],
+    refs: {},
+  };
 }
 
 // Spec step 212: Social Security options, the minimums, the order to draw and the paycheck

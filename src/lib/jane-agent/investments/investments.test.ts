@@ -2214,6 +2214,23 @@ describe("the old account question, the found plan and the rollover", () => {
       ),
     ).toEqual(["open"]);
   });
+  it("names 401(k)s already linked from past jobs, with the suggestion's saving", () => {
+    const linked = {
+      plans: [{ id: "a2", name: "Former Employer 401(k)", balanceCents: 2_389_200 }],
+      count: 2,
+      totalCents: 2_389_200,
+      savedCents: 11_946,
+    };
+    const reply = oldAccountsReply({
+      advice: true,
+      plans: [OLD_ASKED] as never,
+      demo: true,
+      linked,
+    });
+    expect(reply.body).toMatch(
+      /^You have 2 401\(k\) accounts; \$23,892\.00 sits in the older one \(Former Employer 401\(k\)\)\. .* about \$119\.46 a year in fees\. Did you have a 401\(k\) at Globex Industries\?/,
+    );
+  });
   it("asks about a past employer still waiting, with its buttons (not 'waiting for your answer')", () => {
     const reply = oldAccountsReply({ advice: true, plans: [OLD_ASKED] as never, demo: true });
     expect(reply.body).toMatch(/^Did you have a 401\(k\) at Globex Industries\?/);
