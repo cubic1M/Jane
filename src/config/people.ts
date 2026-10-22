@@ -12,6 +12,8 @@ export const SUGGESTION_TOPICS = [
   "card_interest",
   "high_cost_loans",
   "debt_plan",
+  // Spec step 283: cards that could be one cheaper loan.
+  "consolidation",
   "hardship_plan",
   "credit_building",
   "emergency_fund",
@@ -157,6 +159,7 @@ export const PEOPLE: readonly Person[] = [
       "cover_change",
       "credit_building",
       "bnpl",
+      "consolidation",
       "practice_portfolio",
     ],
     mustNot: [

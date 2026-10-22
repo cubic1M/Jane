@@ -123,6 +123,39 @@ describe("options for a new car loan", () => {
   });
 });
 
+describe("the best loan's other terms, for a follow-up", () => {
+  it("lists the best loan's lender at each term, with the differences against it worked out", async () => {
+    const r = await car(person({ incomeCents: 400_000, debtPaymentsCents: 30_000 }));
+    const best = r.options.find((o) => o.label === "best_cost")!;
+    expect(r.terms!.lender).toBe(best.lender);
+    expect(r.terms!.bestId).toBe(best.id);
+    const months = r.terms!.options.map((t) => t.termMonths);
+    expect(months).toEqual([...months].sort((a, b) => a - b));
+    expect(months).toContain(best.termMonths);
+    const at = r.terms!.options.find((t) => t.id === best.id)!;
+    expect(at).toMatchObject({ paymentDiffCents: 0, interestDiffCents: 0 });
+    expect(at.interestCents).toBe(best.totalCostCents - best.feeCents - 2_000_000);
+    for (const t of r.terms!.options) {
+      expect(t.paymentDiffCents).toBe(t.paymentCents - best.paymentCents);
+      expect(t.interestDiffCents).toBe(t.interestCents - at.interestCents);
+      // A shorter term pays more a month and less interest; a longer one the other way.
+      if (t.termMonths < best.termMonths) {
+        expect(t.paymentDiffCents).toBeGreaterThan(0);
+        expect(t.interestDiffCents).toBeLessThan(0);
+      }
+      if (t.termMonths > best.termMonths) {
+        expect(t.paymentDiffCents).toBeLessThan(0);
+        expect(t.interestDiffCents).toBeGreaterThan(0);
+      }
+    }
+    expect(months.some((m) => m < best.termMonths)).toBe(true);
+  });
+
+  it("has none when no loan is eligible", async () => {
+    expect((await car(person({ creditScore: 400 }))).terms).toBeNull();
+  });
+});
+
 describe("who is eligible", () => {
   it("turns a score under the floor down with the reason, and says what would help", async () => {
     const r = await car(person({ creditScore: FIT_CREDIT_FLOOR.auto - 20 }));
@@ -156,7 +189,6 @@ describe("a refinance or a consolidation", () => {
     balanceCents: 1_280_000,
     aprBps: 1_790,
     monthlyCents: 46_000,
-    remainingMonths: 36,
   };
   const refi = async (p: FitPerson, b = baseline) =>
     fit({
@@ -250,4 +282,71 @@ describe("the eight sample people, for a $5,000 personal loan", () => {
       expect(r.confidence!.percent).toBeLessThanOrEqual(FIT_OFFER_EVIDENCE.percent);
     });
   }
+});
+
+describe("paying off with cash, and what keeping costs", () => {
+  const card = {
+    label: "your card",
+    balanceCents: 300_000,
+    aprBps: 2_499,
+    monthlyCents: 9_000,
+  };
+  const consolidate = async (p: FitPerson) =>
+    fit({
+      need: "consolidation",
+      product: "personal",
+      amountCents: card.balanceCents,
+      person: p,
+      offers: await offersFor("personal", card.balanceCents),
+      baseline: card,
+    });
+
+  it("picks paying it off from cash when the cash covers it and still leaves a month of spending", async () => {
+    const r = await consolidate(person({ cashCents: 900_000, spendCents: 250_000 }));
+    expect(r.pick).toBe("payoff");
+    expect(r.options[0]).toMatchObject({
+      id: "payoff",
+      label: "payoff",
+      feeCents: 0,
+      totalCostCents: 300_000,
+    });
+    expect(r.options[0].headline).toMatch(/^Pay off your card with your cash - \$[\d,.]+ less$/);
+    expect(r.options[0].details[1]).toBe("Leaves $6,000.00, at least a month of spending");
+    expect(r.options.length).toBeGreaterThan(1);
+    expect(r.confidence).toEqual({
+      percent: 90,
+      reason: "your balances as your accounts show them",
+    });
+  });
+
+  it("does not, when the cash would leave less than a month of spending", async () => {
+    const r = await consolidate(person({ cashCents: 400_000, spendCents: 250_000 }));
+    expect(r.options.some((o) => o.id === "payoff")).toBe(false);
+    expect(r.pick).not.toBe("payoff");
+  });
+
+  it("still offers it when no loan is eligible", async () => {
+    const r = await consolidate(
+      person({ creditScore: 450, cashCents: 900_000, spendCents: 250_000 }),
+    );
+    expect(r.options.map((o) => o.id)).toEqual(["payoff"]);
+    expect(r.pick).toBe("payoff");
+    expect(r.ineligible.length).toBeGreaterThan(0);
+  });
+
+  it("costs keeping a card by the months its payment really takes, not a made-up term", async () => {
+    const r = await consolidate(person({ cashCents: 100_000, spendCents: 250_000 }));
+    const keep = r.options.find((o) => o.id === "keep");
+    if (keep) expect(keep.termMonths).toBeGreaterThan(36);
+    const loan = r.options.find((o) => o.id !== "keep")!;
+    expect(loan.savesCents!).toBeGreaterThan(0);
+  });
+});
+
+describe("when nothing is comfortable", () => {
+  it("labels the lowest payment as such, not as the best total cost", async () => {
+    const r = await car(person({ incomeCents: 150_000, debtPaymentsCents: 0 }));
+    expect(r.options[0].label).toBe("lowest_payment");
+    expect(r.options.some((o) => o.label === "best_cost")).toBe(false);
+  });
 });

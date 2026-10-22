@@ -224,6 +224,25 @@ describe("the daily scan: news-driven ideas", () => {
   });
 });
 
+describe("the daily scan: the ledger", () => {
+  it("places every flag's trades in the practice ledger as they stand, selling no more than is held", async () => {
+    for (const level of [3, 4, 5] as const) {
+      const held = withCash(await boughtOn(level, "2026-09-01"), 50_000);
+      for (const day of ["2026-10-09", "2026-10-14", "2026-10-16"]) {
+        const prices = await pricesOn(day);
+        let state = held.state;
+        for (const f of await scanOn(level, day, held)) {
+          for (const t of f.trades) {
+            const entry = { ...t, priceCents: prices[t.ticker] };
+            state = apply(state, entry, PRACTICE_UNIVERSE).state;
+          }
+        }
+        expect(state.cashCents).toBeGreaterThanOrEqual(0);
+      }
+    }
+  });
+});
+
 describe("the daily scan: caps", () => {
   it("holds the monthly count cap and never acts on the same event twice", async () => {
     const held = withCash(await boughtOn(4, "2026-09-01"), 50_000);
