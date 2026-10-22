@@ -172,7 +172,9 @@ async function sectorFigures(userId: string, client: PrismaClient, now: Date) {
   const hasStock =
     (await db.accounts.count({ where: { subtype: "stock plan" } })) > 0 ||
     (await db.equityEvents.count()) > 0;
-  const [matchPace, equity, subscriptions, cardInterest, shopSaving, practice] = await Promise.all([
+  // Spec step 296: whether the practice-portfolio suggestion still applies.
+  const practice = await db.practicePortfolios.count();
+  const [matchPace, equity, subscriptions, cardInterest, shopSaving, policies] = await Promise.all([
     loadMatchPace(userId, { client, now }),
     hasStock
       ? import("@/lib/equity-tax").then((m) => m.loadEquityTax(userId, { client, now }))
@@ -180,7 +182,7 @@ async function sectorFigures(userId: string, client: PrismaClient, now: Date) {
     import("@/lib/jane-agent/recurring").then((m) => m.subscriptionYear(userId, { client, now })),
     import("@/lib/card-interest").then((m) => m.loadCardInterest(userId, { client, now })),
     import("@/lib/insurance/shop").then((m) => m.openShopSavingCents(userId, { client, now })),
-    db.practicePortfolios.count(),
+    import("@/lib/insurance/policies").then((m) => m.listPolicies(userId, { client })),
   ]);
   return {
     matchPace,
@@ -188,6 +190,15 @@ async function sectorFigures(userId: string, client: PrismaClient, now: Date) {
     subscriptions,
     cardInterestYearCents: cardInterest.available ? cardInterest.interestYearCents : null,
     insuranceShopSavingCents: shopSaving,
+    coverPolicies: policies
+      .filter((p) => p.status === "active" || p.status === "pending")
+      .map((p) => ({
+        id: p.id,
+        kind: p.kind,
+        status: p.status,
+        deductibleCents: p.deductibleCents,
+        coverage: p.coverage,
+      })),
     hasPracticePortfolio: practice > 0,
   };
 }
