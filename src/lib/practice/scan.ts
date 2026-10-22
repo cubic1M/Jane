@@ -1,4 +1,3 @@
-import type { RiskLevel } from "@/config/investing";
 import {
   classTickers,
   PRACTICE_ETFS,
@@ -20,10 +19,12 @@ import { rulesSummary } from "@/lib/news/summarize";
 import { violates } from "@/planning/practice-autopilot";
 import { apply, type LedgerState } from "@/planning/practice-ledger";
 import { mainPaydayDay, scanOpportunities } from "@/planning/practice-opportunities";
+import { refusedByPreferences } from "@/planning/practice-profile";
 import type { ScanFlag, ScanHeadline } from "@/planning/practice-scan";
 import { addMonthlyIfDue, runAutopilot } from "./autopilot";
 import { loadLedger, NoPracticePortfolio, practiceBroker } from "./broker";
 import { scanPreferences } from "./opportunity-prefs";
+import { practiceProfileOf } from "./preferences";
 
 // The daily scan of each practice portfolio (spec step 292, Phase AW, Stage A), run by Vercel
 // Cron (/api/cron/practice-scan). For each portfolio that isn't paused: the monthly practice
@@ -154,8 +155,11 @@ export async function scanPractice(
     feed.name,
     client,
   );
+  // The person's preferences (src/planning/practice-profile.ts): the mix, the caps their
+  // appetite allows, what is never bought, the cash kept and whether Jane acts.
+  const profile = await practiceProfileOf(userId, { client, now });
   const [prefs, advice, paydayDay] = await Promise.all([
-    scanPreferences(userId, { client }),
+    scanPreferences(userId, { client, now }),
     adviceMode(userId, { client }),
     act && portfolio.monthlyAddCents > 0 ? paydayDayOf(userId, client, now) : Promise.resolve(null),
   ]);
@@ -186,8 +190,13 @@ export async function scanPractice(
   }
 
   const found = scanOpportunities({
-    level: portfolio.level as RiskLevel,
+    level: profile.level,
     state,
+    weights: profile.weights,
+    caps: profile.caps,
+    opportunityMaxShare: profile.opportunityMaxShare,
+    avoid: profile.avoid,
+    cashBufferCents: profile.cashBufferCents,
     prices,
     history,
     trades: trades.map((t) => ({ ...t, placedAt: t.placedAt.toISOString() })),
@@ -219,7 +228,13 @@ export async function scanPractice(
         placedAt: { gte: dayStart },
       },
     });
-    const held = flag.trades.length > 0 ? heldBy(flag, current.state, prices, tradesToday) : null;
+    // The preferences' last check (never-buy list), then the hard limits.
+    const refused =
+      flag.trades
+        .map((t) => refusedByPreferences({ ...profile, trades: true }, t))
+        .find((r) => r !== null) ?? null;
+    const held =
+      flag.trades.length > 0 ? (refused ?? heldBy(flag, current.state, prices, tradesToday)) : null;
     if (!act && held) continue;
     const status: ScanOutcome["status"] = held
       ? "held"
@@ -267,6 +282,7 @@ export async function scanPractice(
     }
     const tradeIds: string[] = [];
     for (const t of flag.trades) {
+      if (refusedByPreferences(profile, t)) continue;
       const fill = await broker.placeOrder(
         userId,
         {
