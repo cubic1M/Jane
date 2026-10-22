@@ -147,7 +147,7 @@ describe.runIf(url)("investments in Jane's chat, against a real database", () =>
     message = await tap("invest.answer.1"); // retirement
     expect(message).toMatchObject({ status: "answered", answeredWith: "Retirement" });
     expect(message.refs.note).toBe(
-      "Thanks. Your profile: Moderate: you'd worry, but wait it out after a drop, so less risk than your timeline allows. You can change it any time.",
+      "Thanks. Your profile: Medium: you'd worry, but wait it out after a drop, so less risk than your timeline allows. You can change it any time.",
     );
     const profile = await profileOf(userId, { client });
     expect(profile).toMatchObject({
@@ -224,7 +224,7 @@ describe.runIf(url)("investments in Jane's chat, against a real database", () =>
     expect(review?.recommendations[0].kind).toBe("rebalance");
     const { reply } = await sendToJane(userId, "review my portfolio", { client, now: LINKED });
     expect(reply.refs.advice).toBe(true);
-    expect(reply.body).toMatch(/^Against your moderate profile/);
+    expect(reply.body).toMatch(/^Against your medium profile/);
   });
 
   it("step 132: plans retirement from the contributions and the plan's match", SLOW, async () => {

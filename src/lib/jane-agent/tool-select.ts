@@ -39,6 +39,7 @@ const SECTORS = {
       "balance_transfers",
       "loan_applications",
       "debt_decision",
+      "loan_fit",
     ]),
     words:
       /\b(?:debts?|loans?|credit|cards?|owe|owed|interest|mortgage|apr|pay ?off|refinanc\w*|bnpl|afford\w*|student|medical|collections?|lender|borrow\w*|equity|score|installments?|overdraft|payday|payments?|minimum|avalanche|snowball|qualifying|due|consolidat\w*|overdraft|klarna|afterpay|affirm|rent|saving|savings|pay later)\b/,
