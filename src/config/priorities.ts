@@ -39,3 +39,6 @@ export const CONFIDENCE_SCORE = { high: 1, medium: 0.7, low: 0.4 } as const;
 // The brief and the chat name this many; /jane shows this many.
 export const BRIEF_TOP = 1;
 export const TOP_THINGS = 3;
+
+// A scan suggestion's confidence percentage (spec step 254) as the ranked list's three steps.
+export const SUGGESTION_CONFIDENCE_FROM = { high: 80, medium: 50 } as const;

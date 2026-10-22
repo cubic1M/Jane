@@ -1,7 +1,15 @@
 import { BENEFICIARY_SUBTYPES } from "@/config/family-file";
 import { demoAccounts, demoLiabilities, demoTransactions } from "@/data-sources/demo/demo-bank";
+import { demoGoalsFor } from "@/data-sources/demo/demo-goals";
 import { demoHoldings } from "@/data-sources/demo/demo-holdings";
+import {
+  DEMO_BENEFICIARIES_MISSING,
+  DEMO_VALUES_EXCLUDES,
+} from "@/data-sources/demo/people-extras/investing";
+import type { PersonId } from "@/config/people";
 import { SAMPLE_RELIEF } from "@/config/disasters";
+import { goalProgress } from "@/planning/goals";
+import { tradeGoalOf } from "@/planning/goal-tradeoffs";
 import type { NeedPolicy } from "@/lib/insurance/need/types";
 import type { ProfileInput } from "./build";
 
@@ -95,17 +103,29 @@ export function inputFor(person: string, told: ProfileInput["told"] = {}): Profi
       ownedValueCents: (SAMPLE_POLICIES[person] ?? [])
         .filter((p) => p.kind === "home")
         .reduce((sum, p) => sum + Number(p.coverage.dwelling ?? 0), 0),
+      // Spec step 241: their goals as the demo bank adds them on the day it's linked.
+      goals: demoGoalsFor(person, SAMPLE_TODAY).flatMap(
+        (g, i) =>
+          tradeGoalOf({
+            id: `${person}-goal-${i}`,
+            name: g.name,
+            targetDate: g.targetDate,
+            progress: goalProgress(
+              { targetCents: g.targetCents, savedCents: g.savedCents, targetDate: g.targetDate },
+              SAMPLE_TODAY,
+            ),
+          }) ?? [],
+      ),
     },
     unreadPolicyDocuments: UNREAD_DOCUMENTS[person] ?? 0,
-    // Priya has asked Jane to keep fossil fuels out of her funds (spec step 236).
-    // Everyone has named beneficiaries except the family (a new child) and the couple near
-    // retirement (a form from years ago), spec step 237.
-    namedAccountIds: ["family", "preretire"].includes(person)
+    // What they've told Jane about values and beneficiaries (steps 236 and 237): the same lists
+    // the demo bank seeds (people-extras/investing.ts).
+    namedAccountIds: DEMO_BENEFICIARIES_MISSING.includes(person as PersonId)
       ? []
       : demoAccounts(demo)
           .filter((a) => BENEFICIARY_SUBTYPES.includes(a.subtype ?? ""))
           .map((a) => a.account_id),
-    valuesExcludes: person === "equity" ? ["fossil_fuels"] : [],
+    valuesExcludes: [...(DEMO_VALUES_EXCLUDES[person as PersonId] ?? [])],
     healthPlan: HEALTH_PLANS[person]?.plan ?? null,
     fsaElectionCents: HEALTH_PLANS[person]?.fsaElectionCents ?? null,
     holdings: holdings.map((h) => ({

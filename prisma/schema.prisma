@@ -875,6 +875,10 @@ model DebtWatch {
   reviewReason   String?   @map("review_reason")
   reviewKeys     Json      @default("[]") @map("review_keys")
   reviewPayCents Int?      @map("review_pay_cents")
+  // Spec step 251, the monthly credit check-up: the day Jane last did it, and what she found
+  // and did ({ month, items, did }), so the chat reads it without pricing every loan again.
+  monthlyOn      DateTime? @map("monthly_on") @db.Date
+  monthly        Json?
   updatedAt      DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -1595,8 +1599,14 @@ model AskMessage {
 // accounts to share; a partner can read those (and undecided findings on them), never
 // change them, and never sees the other person's decisions.
 model Household {
-  id        String   @id @default(cuid())
-  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  id           String    @id @default(cuid())
+  createdAt    DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  // Money for two (spec step 242): how shared bills split ("even" or "income", the partner's
+  // share by what each earns), when one of them chose it (null: never chosen), and the amount
+  // from which a move out of a shared account needs both partners' taps (null: the default).
+  splitRule    String    @default("even") @map("split_rule")
+  splitSetAt   DateTime? @map("split_set_at") @db.Timestamptz(3)
+  bigMoveCents Int?      @map("big_move_cents")
 
   members       HouseholdMember[]
   invites       HouseholdInvite[]
@@ -1718,16 +1728,18 @@ model Budget {
 // A savings goal the person set. Progress comes from a linked account's balance, or an
 // amount they update by hand.
 model SavingsGoal {
-  id               String   @id @default(cuid())
-  userId           String   @map("user_id")
-  name             String
-  targetCents      Int      @map("target_cents")
-  targetDate       DateTime @map("target_date") @db.Date
+  id                  String   @id @default(cuid())
+  userId              String   @map("user_id")
+  name                String
+  targetCents         Int      @map("target_cents")
+  targetDate          DateTime @map("target_date") @db.Date
   // A savings account whose balance is the progress; null to track by hand.
-  accountId        String?  @map("account_id")
-  manualSavedCents Int?     @map("manual_saved_cents")
-  createdAt        DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
-  updatedAt        DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+  accountId           String?  @map("account_id")
+  manualSavedCents    Int?     @map("manual_saved_cents")
+  // A joint goal (spec step 242): the household partner sees it too. Off by default.
+  sharedWithHousehold Boolean  @default(false) @map("shared_with_household")
+  createdAt           DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt           DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
@@ -3629,8 +3641,11 @@ model MoneyTransfer {
   purpose       String
   sector        String
   goalId        String?   @map("goal_id")
-  // pending, completed, cancelled or failed.
+  // pending, completed, cancelled or failed; awaiting_partner while a big move out of a shared
+  // account waits for the other partner's tap (spec step 242), not yet sent to the partner.
   status        String    @default("pending")
+  // The household partner whose tap let a big move go (spec step 242).
+  approvedById  String?   @map("approved_by_id")
   runOn         DateTime  @map("run_on") @db.Date
   partner       String
   partnerRef    String?   @map("partner_ref")

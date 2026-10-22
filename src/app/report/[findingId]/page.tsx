@@ -10,10 +10,8 @@ import { scopedDb } from "@/lib/db-scoped";
 import { UNDO_WINDOW_SECONDS } from "@/lib/decisions";
 import { formatCents } from "@/lib/money";
 import { requireUser } from "@/lib/session";
-import { normalizeAlias } from "@/data-sources/merchant-directory";
 import { buildKit, hasKit } from "@/lib/diy";
-import { outcomeFor } from "@/lib/merchant-outcomes";
-import { merchantFor } from "@/lib/merchants";
+import { companyFacts } from "@/lib/merchants";
 import { comparisonFor } from "@/lib/compare";
 import { BestOption } from "./best-option";
 import { DecisionButtons } from "./decision-buttons";
@@ -49,10 +47,14 @@ async function Card({ params }: { params: PageProps<"/report/[findingId]">["para
   // Options compared for this person, with Jane's pick (spec step 76).
   const comparison = open ? await comparisonFor(finding, { userId: user.id }) : null;
   const merchantName = (finding.evidence as { merchant?: unknown } | null)?.merchant;
-  const outcome =
+  // The company's directory row and how its cases usually go, in one lookup.
+  const company =
     hasKit(card.actionType) && (open || diyDecision)
-      ? await outcomeFor(typeof merchantName === "string" ? merchantName : null, card.actionType)
+      ? await companyFacts(typeof merchantName === "string" ? merchantName : null, {
+          actionType: card.actionType,
+        })
       : null;
+  const outcome = company?.outcome ?? null;
   // The person's own policy from this insurer, if they uploaded one (spec step 68). Shown
   // beside the card, not in it, so the card and its hash stay the same.
   const policy =
@@ -74,11 +76,7 @@ async function Card({ params }: { params: PageProps<"/report/[findingId]">["para
   ]);
   const kit =
     hasKit(card.actionType) && (open || diyDecision)
-      ? buildKit(
-          card.actionType,
-          finding,
-          await merchantFor(typeof merchantName === "string" ? normalizeAlias(merchantName) : null),
-        )
+      ? buildKit(card.actionType, finding, company?.merchant ?? null)
       : null;
 
   return (

@@ -5,6 +5,7 @@ import {
   LEVEL_WORST_DROP_PERCENT,
   OPPORTUNITY_HARD_CAPS,
   OPPORTUNITY_HARD_MAX_SHARE,
+  OPPORTUNITY_MIN_APPETITE,
 } from "@/config/practice-preferences";
 import { SCAN_CAPS, SCAN_KINDS } from "@/config/practice-scan";
 import { DEFAULT_PREFERENCES, type PracticePreferences } from "./practice-preferences";
@@ -155,6 +156,16 @@ describe("profileFor", () => {
       // Keeping the plan on target isn't an extra move.
       expect(off.caps.drift_rebalance).toEqual(SCAN_CAPS.drift_rebalance);
     });
+  });
+
+  it("the appetite scales only the extra moves: every other kind keeps its usual caps", () => {
+    for (const appetite of APPETITE_ORDER) {
+      const p = profileFor(prefs({ appetite }), { level: 5, today: TODAY });
+      for (const kind of SCAN_KINDS) {
+        if (OPPORTUNITY_MIN_APPETITE[kind]) continue;
+        expect(p.caps[kind], `${appetite} ${kind}`).toEqual(SCAN_CAPS[kind]);
+      }
+    }
   });
 
   it("turning loss harvesting off allows none", () => {
