@@ -53,29 +53,29 @@ export const PRACTICE_STOCKS = ["AAPL", "MSFT", "NVDA", "TSLA"] as const;
 // For a tax-loss swap (step 292): a similar fund of the same kind, so the mix stays as it is,
 // that isn't the same fund (selling at a loss and buying the same fund back within 30 days is a
 // wash sale). Short-term bills are never at a loss worth harvesting, so they have none.
-export const HARVEST_PARTNERS: Readonly<
-  Partial<Record<PracticeClass, { ticker: string; name: string }>>
-> = {
+type Partner = { ticker: string; name: string };
+export const HARVEST_PARTNERS: Readonly<Partial<Record<PracticeClass, Partner>>> = {
   us_stocks: { ticker: "ITOT", name: "Core S&P Total US Stock Market ETF" },
   intl_stocks: { ticker: "IXUS", name: "Core MSCI Total International Stock ETF" },
   bonds: { ticker: "AGG", name: "Core US Aggregate Bond ETF" },
 };
 
+const CLASS_KEYS = Object.keys(PRACTICE_ETFS) as PracticeClass[];
+
 // The model ETFs that hold one kind: the main one, then its swap partner.
-export const classTickers = (c: PracticeClass): string[] =>
-  [PRACTICE_ETFS[c].ticker, HARVEST_PARTNERS[c]?.ticker].filter((t): t is string => !!t);
+export function classTickers(c: PracticeClass): string[] {
+  const partner = HARVEST_PARTNERS[c];
+  return partner ? [PRACTICE_ETFS[c].ticker, partner.ticker] : [PRACTICE_ETFS[c].ticker];
+}
 
 // Which kind a model ETF holds, or null for anything else (an opportunity stock).
 export function classOf(ticker: string): PracticeClass | null {
   const t = ticker.toUpperCase();
-  return (
-    (Object.keys(PRACTICE_ETFS) as PracticeClass[]).find((c) => classTickers(c).includes(t)) ??
-    null
-  );
+  return CLASS_KEYS.find((c) => classTickers(c).includes(t)) ?? null;
 }
 
 export const PRACTICE_UNIVERSE: ReadonlySet<string> = new Set([
-  ...(Object.keys(PRACTICE_ETFS) as PracticeClass[]).flatMap(classTickers),
+  ...CLASS_KEYS.flatMap((c) => classTickers(c)),
   ...PRACTICE_STOCKS,
 ]);
 
