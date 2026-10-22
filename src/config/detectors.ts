@@ -214,6 +214,13 @@ export const DETECTOR_RATES = {
     // weeks before it, otherwise it takes effect next year.
     sCorpElectionBy: "03-15",
     sCorpElectionFrom: "01-01",
+    // Marketplace plans (step 269): premiums seen at least this many times this year; from which
+    // month a rise in income is worth acting on soon, and now; a family counted as two adults
+    // and this many children when the household is all Jane knows.
+    marketplacePaymentsMin: 3,
+    ptcSoonFromMonth: 7,
+    ptcNowFromMonth: 10,
+    familyChildren: 2,
     // Estimated payments: urgency by days to the next due date.
     estimatedNowDays: 14,
     estimatedSoonDays: 45,

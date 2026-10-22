@@ -82,6 +82,8 @@ export type TaxIntent =
   | { kind: "tax"; ask: "business" }
   // Spec step 268: inherited money and gifts.
   | { kind: "tax"; ask: "inherited" }
+  // Spec step 269: the tax side of health insurance.
+  | { kind: "tax"; ask: "health" }
   | { kind: "tax"; ask: "retire_year"; year: number }
   // Spec step 218: a sign of identity theft, or the IP PIN.
   | { kind: "tax"; ask: "identity"; sign: "efile_rejected" | "unknown_form" | "irs_letter" | null };
@@ -240,6 +242,8 @@ const BUSINESS_ASK =
   /\bs[- ]?corp(?:oration)?\b|\bqbi\b|\bqualified business income\b|\bpass[- ]?through\b|\bshould i (?:incorporate|form an llc|become an llc|elect)\b|\bllc\b.*\btax/;
 const INHERITED_ASK =
   /\binherit(?:ed|ance)?\b|\bbeneficiary ira\b|\bstep(?:ped)?[- ]?up\b.*\bbasis\b|\bgift tax\b|\bform 709\b|\bannual (?:gift )?exclusion\b|\bestate tax\b|\b10[- ]year rule\b/;
+const HEALTH_ASK =
+  /\bpremium tax credit\b|\b(?:marketplace|obamacare|aca|healthcare\.gov)\b.*\b(?:subsid(?:y|ies)|credit|repay|pay (?:it )?back|tax)|\b(?:subsid(?:y|ies)|advance credit|aptc)\b.*\b(?:repay|pay (?:it )?back|owe|tax)|\bhsa\b.*\b(?:too much|over the limit|excess|limit|max(?:imum)?)\b|\b(?:put|contribut\w*) too much\b.*\bhsa\b|\bmedical (?:expenses|costs|bills)\b.*\b(?:deduct\w*|tax\w*|write off)\b|\bdeduct\w*\b.*\b(?:medical|dental|doctor|hospital)\b|\bform 8962\b/;
 const RETIRE_YEAR = /\b(?:plan|expect|want|hope|aim) to retire (?:in|by) (\d{4})\b/;
 const PACK = /\btax(?:-| )?time pack\b|\btax pack\b|\byear-end pack\b/;
 
@@ -336,6 +340,7 @@ export function parseTaxIntent(text: string): TaxIntent | null {
   if (EQUITY_ASK.test(text)) return { kind: "tax", ask: "equity" };
   const retire = text.match(RETIRE_YEAR);
   if (retire) return { kind: "tax", ask: "retire_year", year: Number(retire[1]) };
+  if (HEALTH_ASK.test(text)) return { kind: "tax", ask: "health" };
   if (INHERITED_ASK.test(text)) return { kind: "tax", ask: "inherited" };
   if (BUSINESS_ASK.test(text)) return { kind: "tax", ask: "business" };
   if (CALENDAR_ASK.test(text)) return { kind: "tax", ask: "calendar" };

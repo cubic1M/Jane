@@ -371,3 +371,66 @@ describe("inherited money", () => {
     expect(withIt.why).toContain(`You have ${formatCents(own)} in pre-tax retirement`);
   });
 });
+
+describe("health cover and taxes (step 269)", () => {
+  const withoutNewClient = (d: ProfileInput): ProfileInput => ({
+    ...d,
+    transactions: d.transactions.filter((t) => !/NORTHWIND/.test(t.description)),
+  });
+
+  it("warns Sam, whose income rose mid-year past the Marketplace credit's line, and no one else", () => {
+    expect(PERSON_IDS.filter((id) => topics(id).includes("ptc_repayment"))).toEqual(["freelancer"]);
+    const s = run("freelancer").find((x) => x.topic === "ptc_repayment")!;
+    expect(s).toMatchObject({ worthKind: "risk", urgency: "now" });
+    expect(s.worthCents).toBeGreaterThan(200_000);
+    expect(s.why).toMatch(/over the 400% line where the credit stops/);
+    expect(s.why).toMatch(/no cap from 2026/);
+    expect(s.confidence.percent).toBeLessThanOrEqual(50);
+    expect(s.confidence.reason).toMatch(/took it from your income in the year's first months/);
+  });
+
+  it("is raised by a mid-year rise in income, and not without it", () => {
+    expect(topics("freelancer", withoutNewClient)).not.toContain("ptc_repayment");
+  });
+
+  it("uses the advance credit the person told Jane, at a higher confidence", () => {
+    const told = (d: ProfileInput): ProfileInput => ({
+      ...d,
+      told: { ...d.told, marketplace_aptc_monthly: 15_000 },
+    });
+    const s = run("freelancer", told).find((x) => x.topic === "ptc_repayment")!;
+    // Over the line, all of the told $150 a month comes back.
+    expect(s.worthCents).toBe(180_000);
+    expect(s.confidence.reason).not.toMatch(/first months/);
+  });
+
+  it("catches Priya's HSA deposits over the self-only limit, now", () => {
+    expect(PERSON_IDS.filter((id) => topics(id).includes("hsa_over_limit"))).toEqual(["equity"]);
+    const s = run("equity").find((x) => x.topic === "hsa_over_limit")!;
+    expect(s).toMatchObject({ worthKind: "risk", urgency: "now", worthCents: 9_600 });
+    expect(s.short).toMatch(/\$5,000\.00 in so far this year; the self-only limit is \$4,400\.00/);
+    // At 55 the catch-up lifts the limit to $5,400: only the pace to December is over.
+    const older = run("equity", (d) => ({ ...d, told: { ...d.told, age: 56 } })).find(
+      (x) => x.topic === "hsa_over_limit",
+    )!;
+    expect(older.urgency).toBe("soon");
+    expect(older.worthCents).toBe(3_600);
+  });
+
+  it("tells Ruth her year of care is worth itemizing; nobody else's spending clears the floor", () => {
+    expect(PERSON_IDS.filter((id) => topics(id).includes("medical_deduction"))).toEqual([
+      "retiree",
+    ]);
+    const s = run("retiree").find((x) => x.topic === "medical_deduction")!;
+    expect(s.worthKind).toBe("saves");
+    expect(s.worthCents).toBeGreaterThanOrEqual(10_000);
+    expect(s.why).toMatch(/\$18,150\.00 standard deduction/);
+    // Without the dental implants and hearing aids, the standard deduction wins.
+    expect(
+      topics("retiree", (d) => ({
+        ...d,
+        transactions: d.transactions.filter((t) => !/IMPLANT|HEARING/.test(t.description)),
+      })),
+    ).not.toContain("medical_deduction");
+  });
+});

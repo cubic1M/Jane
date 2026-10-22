@@ -74,6 +74,11 @@ export const STANDARD_DEDUCTION: Readonly<Record<FilingStatus, number>> = {
   head_of_household: $(24_150),
 };
 
+// The additional standard deduction for each person 65 or older (or blind), Rev. Proc. 2025-32:
+// unmarried, and each spouse of a married couple. Spec step 269 uses it to judge whether
+// itemizing medical costs beats the standard deduction for a retiree.
+export const ADDITIONAL_STANDARD_65 = { unmarried: $(2_050), married: $(1_650) } as const;
+
 // Long-term gains and qualified dividends: 0% up to the first figure of taxable income, 15%
 // up to the second, 20% above (Rev. Proc. 2025-32). Married separately: half of joint.
 export const CAPITAL_GAINS_BRACKETS: Readonly<Record<FilingStatus, readonly Bracket[]>> = {
