@@ -21,6 +21,7 @@ import { linkDemoBank } from "@/lib/plaid/demo";
 import { detectFor, scanSuggestions } from "@/lib/suggestions";
 import { DEFAULT_SCAN_PREFERENCES } from "@/planning/practice-opportunities";
 import { runAutopilot, setPaused } from "./autopilot";
+import { practiceCards } from "./cards";
 import { answerPracticeIdea, openPracticeIdeas } from "./ideas";
 import { scanPreferences } from "./opportunity-prefs";
 import { startPractice } from "./portfolio";
@@ -91,6 +92,12 @@ describe.runIf(url)("practice ideas as suggestions", () => {
     expect(row).not.toBeNull();
     expect(row?.confidencePercent).toBe(harvest?.confidence.percent);
     expect(row?.why).toMatch(/The caps: /);
+    // A waiting idea is a suggestion, not one of the practice cards: it isn't shown twice.
+    const waiting = await client.practiceOpportunity.findMany({
+      where: { userId, status: "suggested" },
+    });
+    const cards = await practiceCards(userId, { client, now: at("2026-10-15", "15:00:00") });
+    for (const w of waiting) expect(cards.map((c) => c.id)).not.toContain(`opportunity:${w.id}`);
   });
 
   it("places the idea's trades in the practice ledger on Yes, once, and puts one away on No", async () => {

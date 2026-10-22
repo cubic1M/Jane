@@ -5,8 +5,10 @@ import { HOME_DETECTORS } from "./home";
 import { LIFE_DETECTORS } from "./life";
 import { COVER_GAP_DETECTORS } from "./cover-gaps";
 import { INSURANCE_DETECTORS } from "./insurance";
+import { PLANNING_DETECTORS } from "./planning";
 import { INVESTING_DETECTORS } from "./investing";
 import { MONEY_DETECTORS } from "./money";
+import { PRACTICE_DETECTORS } from "./practice";
 import { PRACTICE_IDEA_DETECTORS } from "./practice-ideas";
 import { SPENDING_DETECTORS } from "./spending";
 import { TAX_DETECTORS } from "./taxes";
@@ -30,6 +32,8 @@ export const DETECTORS: readonly Detector[] = [
   ...TAX_DETECTORS,
   ...INVESTING_DETECTORS,
   ...HOLDINGS_DETECTORS,
+  ...PRACTICE_DETECTORS,
+  ...PLANNING_DETECTORS,
   ...PRACTICE_IDEA_DETECTORS,
 ];
 
