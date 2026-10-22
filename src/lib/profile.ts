@@ -240,6 +240,7 @@ async function sectorFigures(userId: string, client: PrismaClient, now: Date) {
     owned,
     feed,
     books,
+    split,
     draft,
     goals,
     plan,
@@ -256,6 +257,11 @@ async function sectorFigures(userId: string, client: PrismaClient, now: Date) {
     import("@/lib/disaster-feed").then((m) => m.disasterFeedFor(userId, { client })),
     // Spec step 238: what the daily books check left open.
     import("@/lib/books").then((m) => m.openBooks(userId, { client })),
+    // Spec step 242: whether the household chose how bills split.
+    client.householdMember.findUnique({
+      where: { userId },
+      select: { household: { select: { splitSetAt: true } } },
+    }),
     import("@/lib/draft-return").then((m) => m.latestDraftCheck(userId, { client })),
     // Spec step 241: the goals, and the year plan as last kept (not worked out again here).
     import("@/lib/goals").then((m) => m.listGoals(userId, { client, now })),
@@ -274,6 +280,7 @@ async function sectorFigures(userId: string, client: PrismaClient, now: Date) {
     books: books.open.map((o) => ({ kind: o.kind, words: o.words, accountId: o.accountId })),
     // What they own by its value (a home, a car), for the net worth an umbrella protects.
     ownedValueCents: owned.reduce((sum, o) => sum + o.valueCents, 0),
+    splitChosen: split?.household.splitSetAt != null,
     goals: goals.flatMap((g) => tradeGoalOf(g) ?? []),
     goalRoomCents: planMonths.some((m) => m.month === month)
       ? roomFromPlan(planMonths, month)[0]

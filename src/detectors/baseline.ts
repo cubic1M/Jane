@@ -117,6 +117,7 @@ export const BASELINE: Readonly<Record<PersonId, readonly string[]>> = {
     "auto_invest",
     "beneficiaries",
     "bill_negotiation",
+    "bill_split",
     "catch_up",
     "charity_receipts",
     "deductible_fit",

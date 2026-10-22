@@ -334,6 +334,11 @@ export const ACTION_IDS = [
   "suggestion.yes",
   "suggestion.no",
   "suggestion.why",
+  // Spec step 242: money for two.
+  "two.split_income",
+  "two.split_even",
+  "two.approve",
+  "two.decline",
   // Spec step 241: goals that trade off openly.
   "tradeoffs.pick",
   "tradeoffs.keep",

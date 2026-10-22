@@ -167,6 +167,7 @@ import { leanNotNow, leanStart } from "./lean";
 import { askAnswer } from "./ask";
 import { suggestionNo, suggestionWhy, suggestionYes } from "./suggestion";
 import { steadyOn, steadyPay, steadySkip } from "./steady";
+import { twoApprove, twoDecline, twoSplitEven, twoSplitIncome } from "./two";
 import { tradeoffsKeep, tradeoffsPick } from "./tradeoffs";
 import { unusualMe, unusualNotMe } from "./unusual";
 import {
@@ -440,6 +441,10 @@ export const ACTION_HANDLERS: Readonly<Record<ActionId, ActionHandler>> = {
   "steady.pay": steadyPay,
   "steady.skip": steadySkip,
   "steady.on": steadyOn,
+  "two.split_income": twoSplitIncome,
+  "two.split_even": twoSplitEven,
+  "two.approve": twoApprove,
+  "two.decline": twoDecline,
   "tradeoffs.pick": tradeoffsPick,
   "tradeoffs.keep": tradeoffsKeep,
   "unusual.me": unusualMe,
