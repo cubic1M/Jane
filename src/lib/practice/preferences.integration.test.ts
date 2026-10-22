@@ -8,7 +8,12 @@ vi.mock("@/lib/audit", () => ({ logAudit: vi.fn(), SYSTEM_ACTOR: { type: "system
 
 import { logAudit } from "@/lib/audit";
 import { startPractice } from "./portfolio";
-import { loadPreferences, questionnaireLevel, savePreferences } from "./preferences";
+import {
+  loadPreferences,
+  practiceProfileOf,
+  questionnaireLevel,
+  savePreferences,
+} from "./preferences";
 
 // The practice preferences against a real, migrated Postgres: defaults with no row, one check
 // for every change, scoped to the person, mirrored into the portfolio and audit-logged.
@@ -115,5 +120,16 @@ describe.runIf(url)("practice preferences", () => {
       data: { userId: id, horizon: "over_20", dropReaction: "worry", goals: ["growth"] },
     });
     expect(await questionnaireLevel(id, { client, now: NOW })).toBe(3);
+  });
+
+  it("builds the profile from the portfolio's level until one is chosen", async () => {
+    const id = await person();
+    expect((await practiceProfileOf(id, { client, now: NOW })).level).toBe(3);
+    await startPractice(id, 5, { client, now: NOW });
+    expect((await practiceProfileOf(id, { client, now: NOW })).level).toBe(5);
+    await savePreferences(id, { riskLevel: 2, mode: "suggest" }, "page", { client, now: NOW });
+    const p = await practiceProfileOf(id, { client, now: NOW });
+    expect(p.level).toBe(2);
+    expect(p.trades).toBe(false);
   });
 });

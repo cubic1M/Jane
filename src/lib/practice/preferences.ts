@@ -1,4 +1,5 @@
-import type { RiskLevel } from "@/config/investing";
+import { RISK_LEVELS, type RiskLevel } from "@/config/investing";
+import { DEFAULT_LEVEL } from "@/config/practice-preferences";
 import type { PrismaClient } from "@/generated/prisma/client";
 import { track } from "@/lib/analytics";
 import { logAudit } from "@/lib/audit";
@@ -15,6 +16,7 @@ import {
   type Validated,
 } from "@/planning/practice-preferences";
 import { practiceLevel } from "@/planning/practice-level";
+import { profileFor, type PracticeProfile } from "@/planning/practice-profile";
 
 // The person's practice-portfolio preferences (Phase AW, Stage A): read with the defaults filled
 // in, and changed through the one check (applyPatch) from the settings page or the chat. Every
@@ -121,4 +123,25 @@ export async function savePreferences(
   );
   await track(userId, "practice_preferences_changed", { changed: changed.join(","), via: source });
   return { ok: true, before, preferences: p, changed };
+}
+
+// The person's profile (src/planning/practice-profile.ts): the mix, caps and rules the autopilot,
+// the scan and the backtests read. With no level chosen, the portfolio's, then the
+// questionnaire's, then the middle level.
+export async function practiceProfileOf(
+  userId: string,
+  { client = defaultClient, now = new Date() }: Options = {},
+): Promise<PracticeProfile> {
+  const prefs = await loadPreferences(userId, { client });
+  let level = prefs.riskLevel;
+  if (!level) {
+    const portfolio = await scopedFor(userId, client).practicePortfolios.findFirst({
+      select: { level: true },
+    });
+    level =
+      portfolio && Object.hasOwn(RISK_LEVELS, portfolio.level)
+        ? (portfolio.level as RiskLevel)
+        : ((await questionnaireLevel(userId, { client, now })) ?? DEFAULT_LEVEL);
+  }
+  return profileFor(prefs, { level, today: now.toISOString().slice(0, 10) });
 }
