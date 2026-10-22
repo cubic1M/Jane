@@ -1,3 +1,5 @@
+import { coreFundsFor } from "@/planning/values";
+import { loadPrefs } from "./values";
 import { randomUUID } from "node:crypto";
 import { OLD_PLAN_LOCATOR } from "@/config/old-accounts";
 import { FUND_FACTS, FUND_NAMES } from "@/config/funds";
@@ -244,7 +246,11 @@ export async function settleRollovers(
     if (claimed.count === 0) continue;
     const answers = await profileOf(userId, { client });
     const profile = profileSummary(answers, iso(now));
-    const buys = contributionBuys(row.balanceCents, profile.complete ? profile.riskLevel : 3);
+    const buys = contributionBuys(
+      row.balanceCents,
+      profile.complete ? profile.riskLevel : 3,
+      coreFundsFor(await loadPrefs(userId, { client })),
+    );
     const batchId = randomUUID();
     await brokeragePartner().placeOrders(
       userId,

@@ -17,6 +17,7 @@ import { runAutoInvestForAll } from "@/lib/investments/auto-invest";
 import { refreshDemoPrices } from "@/lib/investments/prices";
 import { collectAllReceipts } from "@/lib/investments/hsa";
 import { syncAllCrypto } from "@/lib/crypto/crypto";
+import { settleAllLadders } from "@/lib/investments/short-term";
 import { settleAllRollovers } from "@/lib/investments/old-accounts";
 import { runAutomaticInvestingForAll } from "@/lib/investments/automatic";
 
@@ -72,6 +73,8 @@ async function dailyWork() {
       automaticInvesting: await runAutomaticInvestingForAll(),
       // Spec step 211: rollovers whose money has arrived.
       rollovers: await settleAllRollovers(),
+      // Spec step 234: Treasury bills that matured are rolled into the next (stand-in).
+      ladders: await settleAllLadders(),
     };
   }
 
@@ -118,5 +121,6 @@ async function dailyWork() {
     crypto: await syncAllCrypto(),
     automaticInvesting: await runAutomaticInvestingForAll(),
     rollovers: await settleAllRollovers(),
+    ladders: await settleAllLadders(),
   };
 }

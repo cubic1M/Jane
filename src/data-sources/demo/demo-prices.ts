@@ -8,7 +8,7 @@ import { addDays } from "./demo-bank";
 // the familiar numbers and prices move from there, forwards and back. Pure.
 
 // The feed starts here; earlier days use the first price.
-export const PRICE_HISTORY_START = "2024-01-01";
+export const PRICE_HISTORY_START = "2020-10-01";
 
 type Profile = {
   // Price on the anchor's eve, in dollars.
@@ -31,6 +31,12 @@ export const DEMO_PRICE_PROFILES: Readonly<Record<string, Profile>> = {
   PDIFX: { base: 21.72, drift: 0.04, vol: 0.009, beta: 0.8 },
   KLCX: { base: 452.3, drift: 0.07, vol: 0.011, beta: 1 },
   KDVX: { base: 41.25, drift: 0.05, vol: 0.009, beta: 0.85 },
+  // Spec step 236: the screened funds move with their plain index, a little differently.
+  KUFFX: { base: 61.1, drift: 0.07, vol: 0.011, beta: 1 },
+  KUSEX: { base: 33.8, drift: 0.07, vol: 0.011, beta: 1 },
+  KUCEX: { base: 27.6, drift: 0.08, vol: 0.016, beta: 1.15 },
+  KISEX: { base: 22.4, drift: 0.05, vol: 0.011, beta: 0.8 },
+  KBSEX: { base: 10.2, drift: 0.02, vol: 0.003, beta: 0.1 },
 };
 
 // Cash-like holdings always cost a dollar.

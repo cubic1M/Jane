@@ -845,3 +845,23 @@ export const OPTION_PICK_CAP = 80;
 // The most a liability-limits gap counts for when suggestions are ranked: the chance is small
 // and the gap can be huge for a rich person, so the size alone must not put it first.
 export const LIABILITY_WORTH_CAP_CENTS = 5_000_000;
+
+// Kept perfect (spec step 280): which needs a life event can change, so the gaps it opens are
+// shown with their reason. A new baby adds a dependant; a new job changes the pay and the cover
+// through work; a move changes the home and its liability; a car bought adds a car to cover.
+export const EVENT_NEEDS: Readonly<Record<string, readonly string[]>> = {
+  new_baby: ["life", "disability", "umbrella"],
+  new_job: ["life", "disability"],
+  moving: ["home_liability", "renters_liability", "umbrella", "deductible"],
+  car_bought: ["auto_liability", "umbrella", "deductible"],
+  raise: ["life", "disability", "umbrella"],
+  home_bought: ["home_liability", "umbrella", "deductible", "life"],
+};
+export const EVENT_REASONS: Readonly<Record<string, string>> = {
+  new_baby: "the new baby",
+  new_job: "the new job",
+  moving: "the move",
+  car_bought: "the new car",
+  raise: "your raise",
+  home_bought: "the home you bought",
+};
