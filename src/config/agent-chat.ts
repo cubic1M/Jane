@@ -46,6 +46,8 @@ export const CHAT_SOURCE_LIMITS: Readonly<Record<string, number>> = {
   attention: 1,
   // Spec step 204.
   lean: 1,
+  // Spec step 238.
+  books: 1,
   // Spec step 255: the top few suggestions of the day (src/config/suggestions.ts).
   suggestions: 3,
   // Spec step 240.
@@ -85,8 +87,6 @@ export const MESSAGE_PRIORITY = {
   // Loans and debt (spec Phase Y, src/config/debt.ts).
   ...DEBT_MESSAGE_PRIORITY,
   brief: 1_000,
-  // Spec step 96: the week's summary comes first, at the top of the week.
-  week: 1_001,
   // Insurance (spec step 102): cover that looks missing, after budgets and goals.
   insurance_gap: 35,
   // Spec step 104: a cheaper policy for the same cover, after news (a change Jane noticed)
@@ -148,8 +148,8 @@ export const MESSAGE_PRIORITY = {
   change: 66,
   // Spec step 100: a life event spotted, once, before set-up suggestions.
   life_event: 67,
-  // Spec step 101: a budget tune-up or a transfer to count, before set-up suggestions; the
-  // weekly review comes right after the brief.
+  // Spec step 101: a budget tune-up or a transfer to count, before set-up suggestions. (The
+  // weekly review is a line of the Monday brief: ./sources/last-week.ts.)
   upkeep: 64,
   // Spec step 99: a policy found from payments, to confirm.
   found_policy: 63,
@@ -169,6 +169,8 @@ export const MESSAGE_PRIORITY = {
   attention: 30,
   // Spec step 204: income stopped; right after urgent things.
   lean: 92,
+  // Spec step 238: data that does not add up; a broken link is asked for at once.
+  books: 90,
   // Spec step 255: what Jane worked out for this person, just below a finding to decide.
   suggestions: 58,
   // Spec step 240: a steady paycheck, once a month.
@@ -182,7 +184,6 @@ export const MESSAGE_PRIORITY = {
   unusual: 95,
   // Spec step 148: the monthly money report, once a month, after what needs the person.
   report: 40,
-  review: 900,
   // Spec step 128: what's in investment accounts, the first time Jane sees it.
   investments: 32,
   // Spec step 129: the investor-profile questions, which later investment steps wait on.
@@ -229,6 +230,14 @@ export const MESSAGE_PRIORITY = {
   yearly_review: 43,
   // Spec step 231: the right investment in the right account (demo advice).
   location: 34,
+  // Spec step 232: the plan's fund list to confirm, and its cheapest mix (demo advice).
+  plan_menu: 35,
+  // Spec step 234: short-term money placed safely (demo advice).
+  short_term: 36,
+  values: 34,
+  family_file: 31,
+  // Spec step 235: a large deposit that isn't pay comes up high, with its question.
+  sudden_money: 52,
   // Spec step 164: the month's summary of what Jane did by herself in investing.
   investing_summary: 40,
   auto_invest_run: 31,
@@ -248,7 +257,6 @@ export const CHAT_HISTORY_HOURS = 48;
 // the one-time autopilot question, so it never pushes a finding out on the first day.
 export const CHAT_UNCAPPED_SOURCES: readonly string[] = [
   "autopilot",
-  "review",
   "welcome",
   // Spec step 208: a charge that may not be theirs shouldn't wait for a quiet day; the source
   // itself brings up at most UNUSUAL_CHAT_MAX at a time.
@@ -276,7 +284,7 @@ export const CHAT_CLAUDE_HISTORY = 6;
 // ...and each of those is cut to this many characters: a long earlier answer slows the next
 // one without helping it (what the last answer was about travels as its topic).
 export const CHAT_CLAUDE_TURN_CHARS = 700;
-// Most rounds of tool calls Claude may make for one answer, like Ask (ASK_MAX_TOOL_ROUNDS).
+// Most rounds of tool calls Claude may make for one answer.
 export const CHAT_CLAUDE_MAX_TURNS = 3;
 // The most words Claude may write in one turn of an answer: a chat answer is a few sentences.
 export const CHAT_CLAUDE_MAX_TOKENS = 3_000;

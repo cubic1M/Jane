@@ -57,6 +57,8 @@ export const DEBT_SOURCE_LIMITS = {
   debt_trouble: 1,
   debt_review: 1,
   car_loan: 2,
+  costly_borrowing: 1,
+  renting: 1,
 } as const;
 export const DEBT_MESSAGE_PRIORITY = {
   // A buy now, pay later plan Jane found, then a debt with no rate: news that can wait,
@@ -151,6 +153,12 @@ export const DEBT_MESSAGE_PRIORITY = {
   // can wait.
   car_addon_refund: 55,
   car_addon_found: 38,
+  // Spec step 247: said once a quarter, after the things with a date.
+  costly_borrowing: 51,
+  // Spec step 248: a deposit due back has a date; a rise and the reporting offer can wait.
+  rent_deposit: 60,
+  rent_rise: 40,
+  rent_report: 37,
 } as const;
 
 // One short line for each step above, for the chat's answer to "what do you do about my
@@ -182,6 +190,9 @@ export const DEBT_AUTOPILOT_SHORT: Readonly<Record<number, string>> = {
   229: "Lays out your options as facts when debt payments pass 40% of your income.",
   230: "Reviews all of this once a year, in one message.",
   245: "Finds dealer add-ons in your car loan and what cancelling each would refund.",
+  246: "Compares a recast, a refinance and extra principal, and investing it instead.",
+  247: "Finds payday loans, cash advances and overdrafts, with the yearly cost and a way out.",
+  248: "Offers to report your rent, flags big rises and follows a deposit's return date.",
 };
 
 // What Jane does about debts by herself at each autopilot level (src/config/autopilot.ts),
@@ -291,6 +302,18 @@ export const DEBT_AUTOPILOT: Readonly<
       step: 245,
       does: "Checks your car loan for a cheaper refinance on total cost, finds dealer add-ons (GAP, extended warranty, service contract) in your payments, asks you once, and drafts the cancellation with the refund it could give. You send it, or ask the team to.",
     },
+    {
+      step: 246,
+      does: "When you have a lump sum or extra monthly money for your mortgage, compares paying extra principal, a recast and a refinance (fees counted, with the date each pays back) against investing it instead. The choice is yours.",
+    },
+    {
+      step: 247,
+      does: "Finds payday loans, card cash advances, repeated overdrafts and pay advance apps in your payments, shows the yearly cost in dollars and as a rate, and lays out cheaper ways out and how to stop the cycle. Nothing is borrowed or sent for you.",
+    },
+    {
+      step: 248,
+      does: "Offers to have your rent payments reported to the credit bureaus (only after you say yes, and you can turn it off), tells you when a rent increase is well above what is usual, and follows a security deposit to the day your state says it is due back.",
+    },
   ],
   safe: [
     {
@@ -393,6 +416,18 @@ export const DEBT_AUTOPILOT: Readonly<
       step: 245,
       does: "Checks your car loan for a cheaper refinance on total cost, finds dealer add-ons (GAP, extended warranty, service contract) in your payments, asks you once, and drafts the cancellation with the refund it could give. You send it, or ask the team to.",
     },
+    {
+      step: 246,
+      does: "When you have a lump sum or extra monthly money for your mortgage, compares paying extra principal, a recast and a refinance (fees counted, with the date each pays back) against investing it instead. The choice is yours.",
+    },
+    {
+      step: 247,
+      does: "Finds payday loans, card cash advances, repeated overdrafts and pay advance apps in your payments, shows the yearly cost in dollars and as a rate, and lays out cheaper ways out and how to stop the cycle. Nothing is borrowed or sent for you.",
+    },
+    {
+      step: 248,
+      does: "Offers to have your rent payments reported to the credit bureaus (only after you say yes, and you can turn it off), tells you when a rent increase is well above what is usual, and follows a security deposit to the day your state says it is due back.",
+    },
   ],
   all: [
     {
@@ -494,6 +529,18 @@ export const DEBT_AUTOPILOT: Readonly<
     {
       step: 245,
       does: "Checks your car loan for a cheaper refinance on total cost, finds dealer add-ons (GAP, extended warranty, service contract) in your payments, asks you once, and drafts the cancellation with the refund it could give. You send it, or ask the team to.",
+    },
+    {
+      step: 246,
+      does: "When you have a lump sum or extra monthly money for your mortgage, compares paying extra principal, a recast and a refinance (fees counted, with the date each pays back) against investing it instead. The choice is yours.",
+    },
+    {
+      step: 247,
+      does: "Finds payday loans, card cash advances, repeated overdrafts and pay advance apps in your payments, shows the yearly cost in dollars and as a rate, and lays out cheaper ways out and how to stop the cycle. Nothing is borrowed or sent for you.",
+    },
+    {
+      step: 248,
+      does: "Offers to have your rent payments reported to the credit bureaus (only after you say yes, and you can turn it off), tells you when a rent increase is well above what is usual, and follows a security deposit to the day your state says it is due back.",
     },
   ],
 };

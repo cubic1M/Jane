@@ -30,6 +30,8 @@ export async function saveCategory(
   after(() => runDetection(user.id));
   revalidatePath("/transactions");
   revalidatePath("/insights");
+  // Spec step 239: the working of a figure that used this category.
+  revalidatePath("/figures/[id]", "page");
   return {
     ok: true,
     message: forMerchant

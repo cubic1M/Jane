@@ -3,6 +3,7 @@ import type { Intent } from "../intents";
 import type { ActionId } from "../types";
 import { charge, lastMonth, spentOn, thisMonth, type Facts } from "./facts";
 import { MORE_ROWS } from "./bank-more";
+import { PRACTICE_QUESTIONS } from "./bank-practice";
 import { TAX_QUESTIONS } from "./bank-taxes";
 
 // Jane's answer checks (spec step 87): about 100 things people really type, over the demo
@@ -1662,6 +1663,48 @@ const BASE_QUESTIONS: readonly CheckQuestion[] = [
     expect: { intent: "tax", mentions: /tax calendar for/, list: true },
   },
   {
+    id: "tax-32",
+    text: "should I become an S corp",
+    needs: "rules",
+    expect: { intent: "tax", mentions: /profit/ },
+  },
+  {
+    id: "tax-33",
+    text: "I inherited an IRA, what do I do",
+    needs: "rules",
+    expect: { intent: "tax", mentions: /step-up|new cost basis|10 years/, list: true },
+  },
+  {
+    id: "tax-34",
+    text: "do I have to pay back my marketplace subsidy",
+    needs: "rules",
+    expect: { intent: "tax", mentions: /Marketplace credit/, list: true },
+  },
+  {
+    id: "tax-35",
+    text: "did I put too much in my HSA",
+    needs: "rules",
+    expect: { intent: "tax", mentions: /HSA|7\.5%/, list: true },
+  },
+  {
+    id: "tax-36",
+    text: "do I get more time on my taxes after the storm",
+    needs: "rules",
+    expect: { intent: "tax", mentions: /disaster|county/ },
+  },
+  {
+    id: "tax-37",
+    text: "is my social security taxed",
+    needs: "rules",
+    expect: { intent: "tax", mentions: /Social Security/, list: true },
+  },
+  {
+    id: "tax-38",
+    text: "what is irmaa",
+    needs: "rules",
+    expect: { intent: "tax", mentions: /Medicare/, list: true },
+  },
+  {
     id: "ins-1",
     text: "what insurance do I have",
     needs: "rules",
@@ -2029,6 +2072,55 @@ const BASE_QUESTIONS: readonly CheckQuestion[] = [
       link: "/loans/goal",
       list: true,
       maxChars: 1_000,
+    },
+  },
+  // Spec step 248: renting, counted.
+  {
+    id: "debt-37",
+    text: "can you report my rent to the credit bureaus",
+    needs: "rules",
+    expect: {
+      intent: "renting",
+      mentions: /rent/i,
+      link: "/loans/renting",
+      maxChars: 2_000,
+    },
+  },
+  {
+    id: "debt-38",
+    text: "when do I get my security deposit back",
+    needs: "rules",
+    expect: {
+      intent: "renting",
+      mentions: /deposit|rent/i,
+      link: "/loans/renting",
+      maxChars: 2_000,
+    },
+  },
+  // Spec step 247: out of costly short-term borrowing.
+  {
+    id: "debt-36",
+    text: "how much have payday loans and cash advances cost me",
+    needs: "rules",
+    expect: {
+      intent: "costly_borrowing",
+      mentions: /payday/i,
+      link: "/loans/costly",
+      list: true,
+      maxChars: 2_600,
+    },
+  },
+  // Spec step 246: recast, refinance or pay extra.
+  {
+    id: "debt-35",
+    text: "I have $20,000, should I pay down my mortgage or recast it",
+    needs: "rules",
+    expect: {
+      intent: "mortgage_money",
+      mentions: /recast/i,
+      link: "/loans/recast",
+      list: true,
+      maxChars: 2_200,
     },
   },
   // Spec step 245: the car loan you already have.
@@ -2762,6 +2854,8 @@ const DECISIONS: readonly (readonly [string, string, RegExp, string?])[] = [
   ["insd-33", "how much disability insurance do I need", /\$[\d,.]+ a month/],
   ["insd-34", "how much umbrella insurance do I need", /umbrella|net worth/i],
   ["insd-35", "how much liability insurance do I need on my car", /liability/i],
+  ["insd-36", "what cover do I need", /gaps?\.|need|short|enough/i],
+  ["insd-37", "is my deductible right", /deductible/i],
 ];
 
 // "Should I ...?" with insurance words goes through the decision router (src/config/decisions.ts).
@@ -2787,6 +2881,7 @@ export const QUESTIONS: readonly CheckQuestion[] = [
   ...MORE_QUESTIONS,
   ...DECISION_QUESTIONS,
   ...TAX_QUESTIONS,
+  ...PRACTICE_QUESTIONS,
 ];
 
 // Spec step 189: the sector a question belongs to: its own, or for the older ones the start

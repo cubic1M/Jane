@@ -1,4 +1,5 @@
 import type { PrismaClient } from "@/generated/prisma/client";
+import { PAY_PERIODS } from "@/config/benefits";
 import { PROFILE_MONTHS } from "@/config/profile";
 import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
@@ -39,7 +40,12 @@ export async function loadProfileInput(
     insurance,
     investor,
     unread,
+    reporting,
+    values,
+    named,
     membership,
+    healthPolicy,
+    fsa,
   ] = await Promise.all([
     db.transactions.findMany({
       where: { date: { gt: since, lte: now } },
@@ -54,6 +60,7 @@ export async function loadProfileInput(
     db.accounts.findMany({
       select: {
         id: true,
+        name: true,
         type: true,
         subtype: true,
         currentBalanceCents: true,
@@ -72,7 +79,7 @@ export async function loadProfileInput(
       },
     }),
     db.janePreferences.findMany({
-      where: { kind: "fact", key: { startsWith: PREF_PREFIX } },
+      where: { kind: "fact", OR: [{ key: { startsWith: PREF_PREFIX } }, { key: "income" }] },
       select: { key: true, value: true },
     }),
     db.taxProfiles.findFirst({
@@ -86,7 +93,18 @@ export async function loadProfileInput(
     db.insuranceProfiles.findFirst({ select: { housing: true } }),
     db.investorProfiles.findFirst({ select: { age: true, ageOn: true, dropReaction: true } }),
     db.policyReadings.count({ where: { status: "waiting" } }),
+    db.rentReporting.findFirst({ select: { id: true } }),
+    db.valuesPreferences.findFirst({ select: { excludes: true } }),
+    db.accountBeneficiaries.findMany({ select: { accountId: true } }),
     client.householdMember.findUnique({ where: { userId }, select: { householdId: true } }),
+    db.insurancePolicies.findFirst({
+      where: { kind: "health", status: "active", deductibleCents: { not: null } },
+      select: { carrier: true, deductibleCents: true, coverage: true },
+    }),
+    db.employerBenefits.findFirst({
+      where: { kind: "fsa", status: { not: "declined" } },
+      select: { perPayCents: true, payFrequency: true },
+    }),
   ]);
   // Other people in their household in Jane (spec step 264), not counting them.
   const householdMembers = membership
@@ -112,7 +130,13 @@ export async function loadProfileInput(
     told.age = investor.age + Math.max(0, years);
   }
   if (investor?.dropReaction) told.risk = investor.dropReaction;
+  // Spec step 239: "that's wrong" on an income figure is what they told Jane they earn.
+  const incomeSaid = (prefs.find((p) => p.key === "income")?.value as { monthlyCents?: unknown })
+    ?.monthlyCents;
+  if (typeof incomeSaid === "number" && incomeSaid > 0)
+    told.monthly_income = Math.round(incomeSaid);
   for (const p of prefs) {
+    if (!p.key.startsWith(PREF_PREFIX)) continue;
     const key = p.key.slice(PREF_PREFIX.length);
     const value = (p.value as { value?: unknown } | null)?.value;
     if (
@@ -134,6 +158,7 @@ export async function loadProfileInput(
     })),
     accounts: accounts.map((a) => ({
       id: a.id,
+      name: a.name,
       type: a.type,
       subtype: a.subtype,
       balanceCents: a.currentBalanceCents ?? 0,
@@ -157,9 +182,16 @@ export async function loadProfileInput(
       hasPmi: l.hasPmi,
       payoffDate: l.payoffDate ? dayOf(l.payoffDate) : null,
     })),
+    valuesExcludes: values?.excludes ?? [],
+    namedAccountIds: [...new Set(named.map((n) => n.accountId))],
     told,
     unreadPolicyDocuments: unread,
+    rentReportingOn: reporting !== null,
     extras: { householdMembers, ...(await sectorFigures(userId, client, now)) },
+    healthPlan: healthPlanOf(healthPolicy),
+    fsaElectionCents: fsa
+      ? fsa.perPayCents * (PAY_PERIODS[fsa.payFrequency as keyof typeof PAY_PERIODS] ?? 12)
+      : null,
   };
 }
 
@@ -172,28 +204,47 @@ async function sectorFigures(userId: string, client: PrismaClient, now: Date) {
   const hasStock =
     (await db.accounts.count({ where: { subtype: "stock plan" } })) > 0 ||
     (await db.equityEvents.count()) > 0;
-  const [matchPace, equity, subscriptions, cardInterest, shopSaving, policies, split] =
-    await Promise.all([
-      loadMatchPace(userId, { client, now }),
-      hasStock
-        ? import("@/lib/equity-tax").then((m) => m.loadEquityTax(userId, { client, now }))
-        : null,
-      import("@/lib/jane-agent/recurring").then((m) => m.subscriptionYear(userId, { client, now })),
-      import("@/lib/card-interest").then((m) => m.loadCardInterest(userId, { client, now })),
-      import("@/lib/insurance/shop").then((m) => m.openShopSavingCents(userId, { client, now })),
-      import("@/lib/insurance/policies").then((m) => m.listPolicies(userId, { client })),
-      // Spec step 242: whether the household chose how bills split.
-      client.householdMember.findUnique({
-        where: { userId },
-        select: { household: { select: { splitSetAt: true } } },
-      }),
-    ]);
+  // Spec step 296: whether the practice-portfolio suggestion still applies.
+  const practice = await db.practicePortfolios.count();
+  const [
+    matchPace,
+    equity,
+    subscriptions,
+    cardInterest,
+    shopSaving,
+    policies,
+    owned,
+    feed,
+    books,
+    split,
+  ] = await Promise.all([
+    loadMatchPace(userId, { client, now }),
+    hasStock
+      ? import("@/lib/equity-tax").then((m) => m.loadEquityTax(userId, { client, now }))
+      : null,
+    import("@/lib/jane-agent/recurring").then((m) => m.subscriptionYear(userId, { client, now })),
+    import("@/lib/card-interest").then((m) => m.loadCardInterest(userId, { client, now })),
+    import("@/lib/insurance/shop").then((m) => m.openShopSavingCents(userId, { client, now })),
+    import("@/lib/insurance/policies").then((m) => m.listPolicies(userId, { client })),
+    db.ownedAssets.findMany({ select: { valueCents: true } }),
+    import("@/lib/disaster-feed").then((m) => m.disasterFeedFor(userId, { client })),
+    // Spec step 238: what the daily books check left open.
+    import("@/lib/books").then((m) => m.openBooks(userId, { client })),
+    // Spec step 242: whether the household chose how bills split.
+    client.householdMember.findUnique({
+      where: { userId },
+      select: { household: { select: { splitSetAt: true } } },
+    }),
+  ]);
   return {
     matchPace,
     rsuGap: equity ? equity.rsuGap : null,
     subscriptions,
     cardInterestYearCents: cardInterest.available ? cardInterest.interestYearCents : null,
     insuranceShopSavingCents: shopSaving,
+    books: books.open.map((o) => ({ kind: o.kind, words: o.words, accountId: o.accountId })),
+    // What they own by its value (a home, a car), for the net worth an umbrella protects.
+    ownedValueCents: owned.reduce((sum, o) => sum + o.valueCents, 0),
     splitChosen: split?.household.splitSetAt != null,
     coverPolicies: policies
       .filter((p) => p.status === "active" || p.status === "pending")
@@ -204,6 +255,23 @@ async function sectorFigures(userId: string, client: PrismaClient, now: Date) {
         deductibleCents: p.deductibleCents,
         coverage: p.coverage,
       })),
+    // Spec step 270: the disaster relief declared where they might live (none without a feed).
+    disasterRelief: feed ? await feed.declarations() : [],
+    hasPracticePortfolio: practice > 0,
+  };
+}
+
+// A health policy's terms when the plan is a coinsurance plan with a known deductible.
+function healthPlanOf(
+  policy: { carrier: string; deductibleCents: number | null; coverage: unknown } | null,
+): ProfileInput["healthPlan"] {
+  const c = (policy?.coverage ?? {}) as Record<string, unknown>;
+  if (!policy || policy.deductibleCents === null || typeof c.coinsurance !== "number") return null;
+  return {
+    label: `${policy.carrier} plan`,
+    deductibleCents: policy.deductibleCents,
+    outOfPocketMaxCents: typeof c.outOfPocketMax === "number" ? c.outOfPocketMax : null,
+    coinsurance: c.coinsurance,
   };
 }
 

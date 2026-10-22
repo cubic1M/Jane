@@ -119,6 +119,43 @@ export const FUND_FACTS: Readonly<Record<string, FundFacts>> = {
     source: DEMO_SOURCE,
     yieldBps: 280,
   },
+  // Spec step 236: screened stand-in funds (tags in src/config/values.ts).
+  KUFFX: {
+    expenseRatioBps: 5,
+    mix: { us_stocks: 1 },
+    category: "US total stock market index, fossil-fuel free",
+    source: DEMO_SOURCE,
+    yieldBps: 125,
+  },
+  KUSEX: {
+    expenseRatioBps: 9,
+    mix: { us_stocks: 1 },
+    category: "US total stock market index, screened (fossil fuels, weapons, tobacco)",
+    source: DEMO_SOURCE,
+    yieldBps: 120,
+  },
+  KUCEX: {
+    expenseRatioBps: 22,
+    mix: { us_stocks: 1 },
+    category: "US clean-energy tilt, screened",
+    source: DEMO_SOURCE,
+    yieldBps: 60,
+  },
+  KISEX: {
+    expenseRatioBps: 16,
+    mix: { intl_stocks: 1 },
+    category: "International stock index, screened (fossil fuels, weapons, tobacco)",
+    source: DEMO_SOURCE,
+    yieldBps: 270,
+  },
+  KBSEX: {
+    expenseRatioBps: 11,
+    mix: { bonds: 1 },
+    category: "US bond index, screened (fossil fuels, weapons, tobacco)",
+    source: DEMO_SOURCE,
+    yieldBps: 370,
+    interest: true,
+  },
 };
 
 // Names for funds Jane may suggest but nobody holds yet (held ones are named by Plaid).
@@ -134,6 +171,11 @@ export const FUND_NAMES: Readonly<Record<string, string>> = {
   PDIFX: "Pinnacle Dividend Income Fund",
   KTRGX: "Keystone Target 2055 Index Fund",
   KDVX: "Keystone US Dividend Index ETF",
+  KUFFX: "Keystone US Fossil-Free Index Fund",
+  KUSEX: "Keystone US Screened Index Fund",
+  KUCEX: "Keystone US Clean Energy Tilt Fund",
+  KISEX: "Keystone International Screened Index Fund",
+  KBSEX: "Keystone Screened Bond Index Fund",
 };
 
 // Spec step 130: for a costly fund, funds that do a similar job for less, best first. In
