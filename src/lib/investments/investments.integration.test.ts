@@ -14,6 +14,8 @@ import { loadSnapshot } from "@/lib/jane-agent/snapshot";
 import { investmentsSource } from "@/lib/jane-agent/sources/investments";
 import { sendToJane } from "@/lib/jane-agent/typing";
 import { linkDemoBank } from "@/lib/plaid/demo";
+import { runHarness } from "@/detectors/harness";
+import { formatCents } from "@/lib/money";
 import { syncItem } from "@/lib/plaid/sync";
 import { profileSummary } from "@/planning/investor-profile";
 import { loadAccountPlan } from "./accounts";
@@ -1104,6 +1106,27 @@ describe.runIf(url)("investments in Jane's chat, against a real database", () =>
       ).toBe(0);
       const limits = (await loadRetirementAccounts(userId, { client, now: later })).limits;
       expect(limits.find((l) => l.key === "ira")!.usedCents).toBe(0);
+    },
+  );
+
+  it(
+    "step 211: 401(k)s already linked from past jobs show with the old-accounts suggestion's figures",
+    SLOW,
+    async () => {
+      const user = await client.user.create({
+        data: { email: `inv-${crypto.randomUUID()}@example.com` },
+      });
+      created.push(user.id);
+      const { itemId } = await linkDemoBank(user.id, { client, now: LINKED, person: "preretire" });
+      await syncItem(itemId, { client, api: plaid, now: LINKED });
+      const view = await loadOldAccounts(user.id, { client, now: LINKED });
+      expect(view.linked?.plans.map((p) => p.name)).toEqual(["Former Employer 401(k)"]);
+      // The same rule and rate as the suggestion ("$23,892.00 sits in the old ones", "$119").
+      const suggestion = runHarness()
+        .find((r) => r.person.id === "preretire")!
+        .fired.find((s) => s.topic === "old_accounts")!;
+      expect(suggestion.short).toContain(formatCents(view.linked!.totalCents));
+      expect(suggestion.worthCents).toBe(view.linked!.savedCents);
     },
   );
 

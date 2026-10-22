@@ -79,10 +79,7 @@ async function Content({
             ))}
           </ul>
           <p className="text-sm text-zinc-600 dark:text-zinc-400">
-            You have {v.linked.count} 401(k) accounts; {formatCents(v.linked.totalCents)} sits in
-            the older one{v.linked.plans.length > 1 ? "s" : ""}. Old plans often cost about{" "}
-            {OLD_PLAN_FEE_GAP_PERCENT}% a year more, so rolling it into an IRA (moved directly,
-            never withdrawn) saves about {formatCents(v.linked.savedCents)} a year.
+            {`You have ${v.linked.count} 401(k) accounts; ${formatCents(v.linked.totalCents)} sits in the older one${v.linked.plans.length > 1 ? "s" : ""}. Old plans often cost about ${OLD_PLAN_FEE_GAP_PERCENT}% a year more, so rolling it into an IRA (moved directly, never withdrawn) saves about ${formatCents(v.linked.savedCents)} a year.`}
           </p>
         </section>
       )}
