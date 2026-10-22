@@ -3,6 +3,7 @@ import { connection } from "next/server";
 import { Suspense } from "react";
 import { AppHeader } from "@/components/app-header";
 import { DemoAdviceLabel } from "@/components/demo-advice-label";
+import { PerfectCoverage } from "./perfect-coverage";
 import { ViewTracker } from "@/components/view-tracker";
 import { PREMIUM_FREQUENCIES } from "@/config/documents";
 import {
@@ -291,6 +292,14 @@ async function InsuranceContent({
           {saved}
         </p>
       )}
+
+      <PerfectCoverage
+        userId={user.id}
+        advice={advice}
+        selected={one("need")}
+        policyId={one("policy")}
+        result={one("picked")}
+      />
 
       {healthYear && (
         <section id="health-year" className="flex flex-col gap-3" aria-labelledby="health-year-h">

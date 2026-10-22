@@ -12,6 +12,8 @@ export const SUGGESTION_TOPICS = [
   "card_interest",
   "high_cost_loans",
   "debt_plan",
+  // Spec step 283: cards that could be one cheaper loan.
+  "consolidation",
   "hardship_plan",
   "credit_building",
   "emergency_fund",
@@ -41,9 +43,14 @@ export const SUGGESTION_TOPICS = [
   "card_cover",
   "employer_benefits",
   "policy_documents",
+  "disability_insurance",
+  "liability_levels",
+  "deductible_fit",
   "business_separation",
   "cash_flow",
   "pmi_removal",
+  "life_checklist",
+  "household_setup",
   "refinance",
   // Spec step 260: debt and credit.
   "student_repayment",
@@ -156,6 +163,8 @@ export const PEOPLE: readonly Person[] = [
       "cover_change",
       "credit_building",
       "bnpl",
+      "liability_levels",
+      "consolidation",
     ],
     mustNot: [
       "umbrella",
@@ -182,6 +191,8 @@ export const PEOPLE: readonly Person[] = [
       "plan_menu",
       "short_term_cash",
       "sudden_money",
+      "household_setup",
+      "life_checklist",
     ],
     firstQuestion: "employer_match",
   },
@@ -217,6 +228,11 @@ export const PEOPLE: readonly Person[] = [
       "charity_receipts",
       "property_tax_check",
       "plan_menu",
+      "life_checklist",
+      "household_setup",
+
+      "liability_levels",
+      "disability_insurance",
     ],
     mustNot: [
       "renters_insurance",
@@ -256,6 +272,8 @@ export const PEOPLE: readonly Person[] = [
       "renters_insurance",
 
       "auto_insurance",
+
+      "disability_insurance",
     ],
     mustNot: [
       "employer_match",
@@ -274,6 +292,8 @@ export const PEOPLE: readonly Person[] = [
       "plan_menu",
       "short_term_cash",
       "sudden_money",
+      "household_setup",
+      "life_checklist",
     ],
     firstQuestion: "filing_status",
   },
@@ -308,6 +328,8 @@ export const PEOPLE: readonly Person[] = [
       "plan_menu",
       "short_term_cash",
       "sudden_money",
+
+      "deductible_fit",
     ],
     mustNot: [
       "bank_fees",
@@ -320,6 +342,8 @@ export const PEOPLE: readonly Person[] = [
       "cash_advance",
       "roth_conversion",
       "childcare_tax_break",
+      "household_setup",
+      "life_checklist",
     ],
     firstQuestion: "employer_match",
   },
@@ -353,6 +377,7 @@ export const PEOPLE: readonly Person[] = [
       "charity_receipts",
       "plan_menu",
       "short_term_cash",
+      "household_setup",
     ],
     mustNot: [
       "education_529",
@@ -365,6 +390,7 @@ export const PEOPLE: readonly Person[] = [
       "cash_advance",
       "trial_conversion",
       "childcare_tax_break",
+      "life_checklist",
     ],
     firstQuestion: "age_band",
   },
@@ -418,6 +444,10 @@ export const PEOPLE: readonly Person[] = [
       "card_cover",
       "student_forgiveness",
       "credit_report_errors",
+      "household_setup",
+      "life_checklist",
+
+      "disability_insurance",
     ],
     firstQuestion: "age_band",
   },
@@ -473,6 +503,8 @@ export const PEOPLE: readonly Person[] = [
       "plan_menu",
       "short_term_cash",
       "sudden_money",
+      "household_setup",
+      "life_checklist",
     ],
     firstQuestion: "hardship_reason",
   },
@@ -494,6 +526,9 @@ export const PEOPLE: readonly Person[] = [
       "business_insurance",
       "retirement_self_employed",
       "cash_flow",
+      "emergency_fund",
+
+      "disability_insurance",
     ],
     mustNot: [
       "employer_match",
@@ -512,6 +547,8 @@ export const PEOPLE: readonly Person[] = [
       "plan_menu",
       "short_term_cash",
       "sudden_money",
+      "household_setup",
+      "life_checklist",
     ],
     firstQuestion: "business_structure",
   },

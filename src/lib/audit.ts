@@ -215,7 +215,10 @@ export type AuditEvent =
   | "sudden_money_stage"
   // Spec step 236: values listed (the keys, never amounts), and a switch into screened funds.
   | "values_saved"
-  | "values_switch";
+  | "values_switch"
+  // Spec step 290 (Phase AW): the practice portfolio started, and each practice trade.
+  | "practice_started"
+  | "practice_trade";
 
 export type AuditActor = { type: ActorType; id: string | null };
 

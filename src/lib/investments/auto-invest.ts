@@ -1,7 +1,11 @@
 import { coreFundsFor } from "@/planning/values";
 import { loadPrefs } from "./values";
 import { randomUUID } from "node:crypto";
-import { MIN_PAYCHECK_CENTS, PAYCHECK_LOOKBACK_DAYS } from "@/config/auto-invest";
+import {
+  MIN_PAYCHECK_CENTS,
+  PAYCHECK_LOOKBACK_DAYS,
+  SUGGESTION_DEPOSITS_LOOKED_AT,
+} from "@/config/auto-invest";
 import { EMPLOYER_PLAN_SUBTYPES, FUND_NAMES } from "@/config/funds";
 import type { PrismaClient } from "@/generated/prisma/client";
 import { adviceMode } from "@/lib/advice-mode";
@@ -36,6 +40,8 @@ type Options = { client?: PrismaClient; now?: Date };
 
 export class AutoInvestError extends Error {}
 
+// Plaid's detailed categories for a paycheck.
+const SALARY = ["INCOME_SALARY", "INCOME_WAGES"];
 const DAY_MS = 86_400_000;
 const iso = (d: Date) => d.toISOString().slice(0, 10);
 const isEmployerPlan = (subtype: string | null) =>
@@ -70,7 +76,7 @@ export async function loadAutoInvest(
   { client = defaultClient, now = new Date() }: Options = {},
 ) {
   const db = scopedFor(userId, client);
-  const [advice, answers, plan, runs, accounts, paycheck] = await Promise.all([
+  const [advice, answers, plan, runs, accounts, deposits] = await Promise.all([
     adviceMode(userId, { client }),
     profileOf(userId, { client }),
     db.autoInvestPlans.findFirst({
@@ -96,12 +102,16 @@ export async function loadAutoInvest(
       take: 12,
     }),
     payableAccounts(userId, client),
-    db.transactions.findFirst({
+    db.transactions.findMany({
       where: { pfcPrimary: "INCOME", amountCents: { lte: -MIN_PAYCHECK_CENTS } },
-      select: { amountCents: true },
+      select: { amountCents: true, pfcDetailed: true },
       orderBy: [{ date: "desc" }, { id: "asc" }],
+      take: SUGGESTION_DEPOSITS_LOOKED_AT,
     }),
   ]);
+  // The paycheck is the latest salary or wages deposit; a rental or gig payout landing after
+  // it isn't one. Someone paid only through other income (a freelancer) gets their latest.
+  const paycheck = deposits.find((d) => SALARY.includes(d.pfcDetailed ?? "")) ?? deposits[0];
   const profile = profileSummary(answers, iso(now));
   return {
     advice,

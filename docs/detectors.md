@@ -54,12 +54,15 @@ Every suggestion carries a percentage and its reason, shown together: *"85% sure
 the stated amount. It is not a promise about markets or outcomes.
 
 The recipe is `confidenceOf` in `src/profile/confidence.ts`, with its numbers in
-`src/config/profile.ts`:
+`src/config/profile.ts`. The percentage has to help someone decide, so it **spreads with the
+evidence**:
 
 - a fact the person **told** Jane is 100%;
-- a fact Jane **saw** starts at a base and gains for each month of data and each clean
-  match, up to a cap (97%);
-- a fact Jane **guessed** starts lower and is capped lower (75%).
+- a fact Jane **saw** starts at 45% and gains 3 points per month of data and 2 per clean match
+  (up to 10), capped at 95%: a fact clearly counted over many months is 90–95%, one from a
+  single month or one match is about 50–65%;
+- a fact Jane **guessed** starts at 15%, gains the same way and is capped at 49%. Below 50% the
+  chat says "I'm not sure (45%)" instead of "I'm 45% sure" (`sureWords`).
 
 A detector builds its confidence from the evidence it used (`evidence(...)` for a count, or
 `factEvidence(fact)` for a profile fact) and takes the **weakest** of them with `weakest(...)`.
@@ -122,6 +125,17 @@ Capability `debt`, topic `pmi_removal` (`src/detectors/home.ts`).
 On the sample people it fires only for the Reyes family (the one with PMI); the harness
 confirms it does not fire for the renter, the retiree or anyone else.
 
+## Loss avoided is ranked by expected value
+
+A suggestion that avoids a loss (`worthKind: "risk"`) shows the full loss ("$30,000") but is
+ranked by its expected value in a year: the loss times how likely it is in a year
+(`RISK_ANNUAL_PROBABILITY` in `src/config/suggestions.ts`, a topic not listed uses 2%). So a rare
+big loss does not outrank a real saving. The chances are rough and only order suggestions; the
+sector lanes agree them for their topics. A detector that already reports an expected yearly
+value sets `worthIsExpected: true` and is ranked in full; one for something the law or a
+lender requires (car liability), or no cover at all for a business, sets `required: true` and
+ranks `REQUIRED_BOOST` times higher.
+
 ## The nightly scan (step 255)
 
 The controller's `suggestions` step runs `scanSuggestions` (`src/lib/suggestions.ts`) for each
@@ -175,3 +189,22 @@ capability that reaches no sample person and is not listed in `UNREACHABLE`
 - Step 257 asks the question whose answer would unlock the most (`needs` on a detector
   whose other conditions fit).
 - Step 258 checks that "80% sure" proves right about 80% of the time.
+
+## Short forms: `headline` and `short`
+
+A suggestion is shown at a glance, and the long wording sits behind a "Why?" tap. Every
+`Suggestion` therefore carries two more fields, checked by `src/detectors/short-forms.test.ts`
+(which fails on any detector that breaks them, for the eight sample people):
+
+- `headline`: at most 60 characters, starts with a verb from `HEADLINE_VERBS`
+  (`src/config/detectors.ts`), and carries the dollars when there is a value
+  ("Cancel Hulu, save $216 a year"). Build it with `headlineOf(phrase, worthCents, worthKind)`
+  from `src/detectors/helpers.ts`: the verb phrase is at most about 35 characters, the helper
+  adds ", save $216 a year" / ", earn $360 a year" / ", avoid up to $1,200" (or ", get $40
+  back" for a one-off).
+- `short`: one "why you" line of at most 120 characters, with the person's own number in it
+  ("You pay $17.99 a month."). Use `clip()` when it lists their payees or accounts.
+
+`title` and `why` stay as the full explanation. The chat card is the headline, the short line
+and "N% sure: reason" with Yes / Not for me / Why? (src/lib/jane-agent/sources/suggestions.ts);
+"Why?" shows the title, the whole why and the confidence reason.

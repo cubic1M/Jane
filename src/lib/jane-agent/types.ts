@@ -322,6 +322,7 @@ export const ACTION_IDS = [
   "ask.answer.5",
   "suggestion.yes",
   "suggestion.no",
+  "suggestion.why",
   "steady.pay",
   "steady.skip",
   "steady.on",
@@ -587,7 +588,7 @@ export type MultiStep =
   | {
       kind: "transfer";
       label: string;
-      goalId: string;
+      goalId: string | null;
       goalName: string;
       fromAccountId: string;
       toAccountId: string | null;

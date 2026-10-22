@@ -1,4 +1,5 @@
 import {
+  CAR_COMFORT_SHARE,
   CAR_COST_MAX_SHARE,
   CAR_DEALER_FLAG_BPS,
   CAR_DEFAULT_TERM_MONTHS,
@@ -59,6 +60,10 @@ export type Car = {
   aprBps: number | null;
   // The most they can afford, and the price checked (that, or the one asked about).
   maxPriceCents: number | null;
+  // A comfortable target, well under the most: the price and the monthly all-in cost at
+  // CAR_COMFORT_SHARE of income.
+  comfortPriceCents: number | null;
+  comfortAllowanceCents: number | null;
   costs: CarCosts | null;
   allowanceCents: number | null;
   withinBudget: boolean | null;
@@ -76,6 +81,8 @@ const none = (termMonths: number): Car => ({
   termMonths,
   aprBps: null,
   maxPriceCents: null,
+  comfortPriceCents: null,
+  comfortAllowanceCents: null,
   costs: null,
   allowanceCents: null,
   withinBudget: null,
@@ -161,7 +168,16 @@ export async function loadCar(
     insuranceYearlyFor: insuranceFor,
     fuelMonthlyCents,
   });
-  const priceCents = question.priceCents ?? maxPriceCents;
+  const comfortPriceCents = maxAffordablePrice({
+    monthlyIncomeCents: Math.round(monthlyIncomeCents * (CAR_COMFORT_SHARE / CAR_COST_MAX_SHARE)),
+    downShare,
+    termMonths,
+    aprBps,
+    insuranceYearlyFor: insuranceFor,
+    fuelMonthlyCents,
+  });
+  // With no price asked about, the figures are for the comfortable car, not the ceiling.
+  const priceCents = question.priceCents ?? comfortPriceCents;
   const downCents = question.downCents ?? Math.round(priceCents * downShare);
   const financed = Math.max(0, priceCents - downCents);
   const dealerTerm = question.dealer?.termMonths ?? termMonths;
@@ -186,6 +202,8 @@ export async function loadCar(
     termMonths,
     aprBps,
     maxPriceCents,
+    comfortPriceCents,
+    comfortAllowanceCents: Math.round(monthlyIncomeCents * CAR_COMFORT_SHARE),
     costs,
     allowanceCents,
     withinBudget: costs.allInCents <= allowanceCents,

@@ -88,6 +88,14 @@ export const DETECTOR_RATES = {
   paydayFeeShare: 0.25,
   // Income that moves around by this much month to month is worth smoothing.
   smoothingMinMonthlySwingShare: 0.3,
+  // Life events (step 264): looked back this many days for a new job or a new child, and
+  // what going through the checklist is typically worth in the first year.
+  lifeLookbackDays: 90,
+  newJobTypicalCents: 50_000,
+  newChildTypicalCents: 200_000,
+  // Two people who share their money plan: what a shared household in Jane is typically worth
+  // a year in fewer double-paid bills and one view of shared goals.
+  householdTypicalCents: 30_000,
   // Insurance (spec step 259). The yearly cost avoided if the cover is missing when it is
   // needed, as typical figures from the insurance lane's gap advice: contents a renter loses,
   // a liability claim a car can face.
@@ -127,6 +135,9 @@ export const DETECTOR_RATES = {
     cardCover: 55,
     employerBenefits: 60,
     documents: 75,
+    disabilityGap: 65,
+    liabilityLevels: 85,
+    deductibleFit: 60,
   },
   // Umbrella cover matters when assets pass this (src/config/insurance.ts UMBRELLA_ASSETS_CENTS).
   umbrellaAssetsCents: 50_000_000,
@@ -221,3 +232,43 @@ export const DETECTOR_RATES = {
   // Urgency scores: now, soon, later.
   urgency: { now: 3, soon: 2, later: 1 },
 } as const;
+
+// The first word of a suggestion's headline must be one of these (docs/detectors.md, "Short
+// forms"): a headline starts with a verb. A new verb is added here, not worked around.
+export const HEADLINE_VERBS: readonly string[] = [
+  "Add",
+  "Ask",
+  "Build",
+  "Cancel",
+  "Check",
+  "Compare",
+  "Confirm",
+  "Convert",
+  "Drop",
+  "Get",
+  "Hold",
+  "Invest",
+  "Keep",
+  "Look",
+  "Move",
+  "Note",
+  "Open",
+  "Pay",
+  "Plan",
+  "Push",
+  "Put",
+  "Replace",
+  "Roll",
+  "Rebalance",
+  "Sell",
+  "Separate",
+  "Set",
+  "Spread",
+  "Start",
+  "Stop",
+  "Switch",
+  "Tell",
+  "Try",
+  "Use",
+  "Weigh",
+];

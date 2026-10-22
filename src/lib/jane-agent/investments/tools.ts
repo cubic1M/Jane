@@ -70,7 +70,7 @@ export const INVESTMENT_TOOLS: Anthropic.Tool[] = [
   {
     name: "portfolio_review",
     description:
-      "In demo advice mode, once the investor profile is complete: the person's mix (US stocks, international stocks, bonds, cash) against the target for their risk level, which parts are off target and by how much, any one company's shares that are too big a part (and whether it's their employer), idle cash, and what to change with the reason. Never say what returns will be.",
+      "In demo advice mode, once the investor profile is complete: the person's mix (US stocks, international stocks, bonds, cash) against the target for their risk level, which parts are off target and by how much, any one company's shares that are too big a part (and whether it's their employer), cash above their target mix (not idle cash, which means cash beyond a few months of spending), and what to change with the reason. Never say what returns will be.",
     input_schema: noInput,
   },
   {
@@ -412,7 +412,7 @@ export async function runInvestmentTool(
           employer: c.employer,
           sellToReachLimit: money(c.overCents),
         })),
-        idleCash: money(review.idleCashCents),
+        cashAboveYourTargetMix: money(review.cashAboveTargetCents),
         whatToChange: review.recommendations.map((r) => ({
           what: r.what,
           why: r.why,

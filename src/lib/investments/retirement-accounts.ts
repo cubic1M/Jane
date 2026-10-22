@@ -23,6 +23,7 @@ import { currentAge } from "@/planning/investor-profile";
 import {
   limitRows,
   matchGap,
+  matchPaceGap,
   rothAccess,
   rothByBracket,
   type LimitRow,
@@ -114,19 +115,7 @@ export async function loadRetirementAccounts(
   });
   const employeeYtd = Math.max(0, paidIn(workplace, false));
   // The match: this year's pace of the person's own contributions against full-year pay.
-  const monthsIn = now.getUTCMonth() + now.getUTCDate() / 31;
-  const match =
-    plan && employeeYtd >= 0
-      ? {
-          ...matchGap({
-            payCents: plan.payCents,
-            employeeCents: monthsIn > 0 ? Math.round((employeeYtd / monthsIn) * 12) : 0,
-            matchRate: plan.matchRate,
-            matchUpTo: plan.matchUpTo,
-          }),
-          matchRate: plan.matchRate,
-        }
-      : null;
+  const match = plan && employeeYtd >= 0 ? matchPaceGap(plan, employeeYtd, now) : null;
   const marginalRate = estimate?.estimate.marginalRate ?? null;
   const filing: FilingStatus = estimate?.estimate.filingStatus ?? "single";
   const magi = estimate?.estimate.agiCents ?? null;

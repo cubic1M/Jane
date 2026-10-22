@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { after } from "next/server";
 import { pickPerson } from "@/lib/people";
 import { hit, ipKey } from "@/lib/rate-limit";
+import { phaseTimer } from "@/lib/trial-timing";
 import { syncItem } from "@/lib/plaid/sync";
 import { TrialError, cleanUpTrials, startTrial } from "@/lib/trial";
 
@@ -23,10 +24,12 @@ export async function tryJane(_previous: TryState, formData: FormData): Promise<
   if (formData.get("consent") !== "on") {
     return { error: "Tick the box to agree to the Terms and Privacy Policy first." };
   }
+  const timing = phaseTimer("try_click");
   const h = await headers();
   if (!(await hit("trial", ipKey(h))).ok) {
     return { error: "Lots of people are trying Jane from here. Please try again in an hour." };
   }
+  timing.mark("rate_limit");
   let session: { itemId: string; sessionToken: string; expires: Date };
   try {
     // Only the minimum before the redirect; the scan runs after the response.
@@ -39,6 +42,7 @@ export async function tryJane(_previous: TryState, formData: FormData): Promise<
     if (error instanceof TrialError) return { error: error.message };
     throw error;
   }
+  timing.mark("start_trial");
   const secure = h.get("x-forwarded-proto") === "https" || process.env.NODE_ENV === "production";
   (await cookies()).set(cookieName(secure), session.sessionToken, {
     httpOnly: true,
@@ -47,6 +51,7 @@ export async function tryJane(_previous: TryState, formData: FormData): Promise<
     path: "/",
     expires: session.expires,
   });
+  timing.done();
   after(async () => {
     try {
       await syncItem(session.itemId, { progressive: true });
