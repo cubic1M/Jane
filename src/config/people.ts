@@ -92,6 +92,8 @@ export const SUGGESTION_TOPICS = [
   "property_tax_check",
   "tax_loss_harvest",
   "file_return",
+  // Spec step 243: an intro price ending, a yearly plan renewing.
+  "promo_ending",
 ] as const;
 export type SuggestionTopic = (typeof SUGGESTION_TOPICS)[number];
 
@@ -317,6 +319,8 @@ export const PEOPLE: readonly Person[] = [
       "property_tax_check",
 
       "deductible_fit",
+      // Spec step 243: her fibre intro price ends and her storage plan renews.
+      "promo_ending",
     ],
     mustNot: [
       "bank_fees",

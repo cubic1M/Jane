@@ -108,6 +108,10 @@ const rows: Row[] = [
   ],
   ["steady", "/transfers", "steady_pay", "my income is uneven"],
   ["steady", "/transfers", "steady_pay", "what is my steady pay"],
+  // Price rises seen before they land (spec step 243).
+  ["price_rises", "/deadlines", "price_rises", "is any of my bills going up"],
+  ["price_rises", "/deadlines", "price_rises", "when does my intro rate end"],
+  ["price_rises", "/deadlines", "price_rises", "what's renewing soon"],
 
   // Safe to spend and the day.
   ["safe", "/home", "safe_to_spend", "how much do i have left to spend"],

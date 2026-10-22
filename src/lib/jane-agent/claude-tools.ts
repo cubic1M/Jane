@@ -20,6 +20,7 @@ import { CARD_SELECT, buildCard } from "@/lib/cards";
 import { comparisonFor } from "@/lib/compare";
 import { frequencyWords } from "@/lib/explain-input";
 import { loadSteady } from "@/lib/steady-pay";
+import { loadPriceRises } from "@/lib/price-rises";
 import { FACT_KEYS } from "@/profile/facts";
 import { scopedFor } from "@/lib/db-scoped";
 import { loadChanges } from "@/lib/changes";
@@ -341,6 +342,12 @@ export const CHAT_TOOLS: Anthropic.Tool[] = [
     name: "whole_picture",
     description:
       'How the person is doing across every sector at once (spec step 183), for "am I OK?", "how am I doing" and "what should I do this month": a verdict (ok, watch or act) with its one-sentence headline, safe to spend until payday, bills and deadlines due this week and this month, budgets over, goals behind, urgent alerts, what Jane\'s agent is working on, the steps waiting on the person, and the one to three things that matter most (from the ranked list) with why. Lead with the headline, then the things that matter; use the same figures.',
+    input_schema: noInput,
+  },
+  {
+    name: "price_rises",
+    description:
+      "Price rises seen before they land (spec step 243): intro prices about to end (a new internet or phone bill whose price hasn't moved, about a year in) and yearly plans about to renew, within the next ten weeks, each with the date, the price now and the likely price after, the cheaper choice and what to say on the call, and how sure Jane is (the dates are estimates from the charges).",
     input_schema: noInput,
   },
   {
@@ -753,6 +760,22 @@ export async function runChatTool(
             }
           : { score: null, why: "No accounts linked yet." },
       );
+    }
+    case "price_rises": {
+      const rises = await loadPriceRises(userId, { client, now });
+      return out({
+        rises: rises.map((r) => ({
+          what: r.kind === "promo_end" ? "intro price ends" : "yearly plan renews",
+          name: r.name,
+          on: r.date,
+          daysLeft: r.daysLeft,
+          now: money(r.nowCents),
+          likelyAfter: money(r.thenCents),
+          cheaperChoice: r.cheaper,
+          callScript: r.script,
+          confidence: `${r.confidence.percent}% (${r.confidence.reason})`,
+        })),
+      });
     }
     case "steady_pay": {
       const view = await loadSteady(userId, { client, now });

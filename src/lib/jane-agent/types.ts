@@ -310,6 +310,8 @@ export const ACTION_IDS = [
   "suggestion.yes",
   "suggestion.no",
   "suggestion.why",
+  // Spec step 243: a price rise the person called about.
+  "price.called",
   "steady.pay",
   "steady.skip",
   "steady.on",

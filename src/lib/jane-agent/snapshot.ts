@@ -16,6 +16,8 @@ import { loadAttention } from "./attention-load";
 import { resultsByKind, type KindResult } from "@/lib/worked";
 import { offeredToday, type OfferedSuggestion } from "@/lib/suggestions";
 import { loadSteady, type SteadyView } from "@/lib/steady-pay";
+import { loadPriceRises } from "@/lib/price-rises";
+import type { PriceRise } from "@/planning/price-rises";
 import { nextQuestion, type OpenQuestion } from "@/lib/questions";
 import { adoptedPlans, type AdoptedPlan } from "@/lib/what-if";
 import { openLean, recentlyEnded, type LeanState } from "@/lib/lean-plan";
@@ -129,6 +131,8 @@ export type Snapshot = {
   suggestions?: OfferedSuggestion[];
   // Spec step 240: the steady paycheck from uneven income. Optional, like changes.
   steady?: SteadyView | null;
+  // Spec step 243: prices about to go up. Optional, like changes.
+  priceRises?: PriceRise[];
   // Spec step 257: the one question worth asking now. Optional, like changes.
   question?: OpenQuestion | null;
   // Spec step 208: unusual-activity alerts waiting for "this was me" or "not me".
@@ -320,6 +324,7 @@ export async function loadSnapshot(
     suggestions,
     steady,
     question,
+    priceRises,
   ] = await Promise.all([
     light ? NO_MORE : loadMore(userId, { client, now, input }),
     light ? {} : loadTaxSnapshot(userId, { client, now }),
@@ -336,6 +341,7 @@ export async function loadSnapshot(
     offeredToday(userId, { client, now }),
     light ? null : loadSteady(userId, { client, now, input }),
     nextQuestion(userId, { client, now }),
+    light ? [] : loadPriceRises(userId, { client, now }),
   ]);
 
   return {
@@ -402,6 +408,7 @@ export async function loadSnapshot(
     suggestions,
     steady,
     question,
+    priceRises,
     lean: light
       ? { open: [], ended: [] }
       : {
