@@ -145,6 +145,7 @@ import {
   ladderBuild,
   suddenKinds,
   suddenStage,
+  valuesApply,
 } from "./investments";
 import { changeBudget, changeExpected, changeLook } from "./changes";
 import { lifeNever, lifeNo, lifeYes } from "./life";
@@ -387,6 +388,7 @@ export const ACTION_HANDLERS: Readonly<Record<ActionId, ActionHandler>> = {
   "ladder.build": ladderBuild,
   ...suddenKinds,
   "sudden.stage": suddenStage,
+  "values.apply": valuesApply,
   // Jane notices changes (spec step 97).
   "change.look": changeLook,
   "change.budget": changeBudget,

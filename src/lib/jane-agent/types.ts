@@ -286,6 +286,8 @@ export const ACTION_IDS = [
   "sudden.gift",
   "sudden.transfer",
   "sudden.stage",
+  // Spec step 236: switch funds to match the person's values list.
+  "values.apply",
   // Jane notices changes (spec step 97).
   "change.look",
   "change.budget",
@@ -554,6 +556,7 @@ export type MessageRefs = {
   // Spec step 235: the large deposit a message is about, and its next stage.
   suddenId?: string;
   suddenStage?: string;
+  valuesKey?: string;
   // Spec step 97: a change Jane noticed (src/insights/changes.ts), by its key; for a
   // category's pace, the budget "Set a budget" would set (cents a month).
   change?: { key: string; kind: string; category?: string; budgetCents?: number };

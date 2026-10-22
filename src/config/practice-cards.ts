@@ -29,3 +29,6 @@ export const OWN_INVESTING_SUBTYPES: readonly string[] = ["brokerage"];
 // of this share of the practice starting money, about the 2022 slide for a Medium model in the
 // sample market. FOR REVIEW.
 export const PRACTICE_SUGGEST_FALL_SHARE = 0.25;
+
+// "What did you buy this week": the chat's answer covers this many days (step 297).
+export const PRACTICE_LOG_DAYS = 7;

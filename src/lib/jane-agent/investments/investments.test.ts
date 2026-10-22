@@ -67,6 +67,7 @@ import {
   honestReply,
   shortTermReply,
   suddenMoneyReply,
+  valuesReply,
 } from "./replies";
 import { gather } from "../brain";
 import { parseIntent } from "../intents";
@@ -3073,5 +3074,80 @@ describe("suddenMoneyReply and the sudden-money message", () => {
     expect(gather([SUDDEN_ITEM], false).map((m) => m.kind)).toEqual(["decision"]);
     expect(gather([SUDDEN_PLANNED]).map((m) => m.actions[0].id)).toEqual(["sudden.stage"]);
     expect(gather([SUDDEN_PLANNED], false)).toEqual([]);
+  });
+});
+
+// Spec step 236: investing by your values.
+describe("values questions, by rules", () => {
+  it.each(["do you have esg funds", "i don't want to invest in tobacco", "avoid fossil fuels"])(
+    "reads %j as values",
+    (text) => {
+      expect(parseIntent(text, ASOF)).toMatchObject({ kind: "investments", topic: "values" });
+    },
+  );
+});
+
+describe("valuesReply", () => {
+  const prefs = { excludes: ["tobacco" as const], themes: [] };
+  const plan = {
+    prefs,
+    switches: [
+      {
+        accountId: "a",
+        accountName: "Brokerage",
+        taxable: true,
+        from: { ticker: "KTSIX", name: "Total US", valueCents: 1_000_000, expenseRatioBps: 3 },
+        assetClass: "us_stocks" as const,
+        legs: [{ ticker: "KUSEX", name: "Screened US", amountCents: 1_000_000 }],
+        feeDeltaCents: 600,
+        gainCents: 400_000,
+      },
+    ],
+    skipped: [],
+    movedCents: 1_000_000,
+    feeDeltaCents: 600,
+    gainCents: 400_000,
+    diversification: [
+      {
+        assetClass: "us_stocks" as const,
+        beforeHoldings: 3500,
+        afterHoldings: 3150,
+        keptBps: 9400,
+      },
+    ],
+    classTotals: {
+      us_stocks: { before: 1, after: 1 },
+      intl_stocks: { before: 0, after: 0 },
+      bonds: { before: 0, after: 0 },
+    },
+    notes: [],
+    key: "k1",
+  };
+  const view = { advice: true, prefs, plan, note: "n", source: "s" };
+  it("says the cost in dollars and the diversification, and offers one tap", () => {
+    const r = valuesReply(view);
+    expect(r.body).toMatch(/Fees change by \+\$6\.00 a year/);
+    expect(r.body).toMatch(/3,500 holdings to 3,150/);
+    expect(r.body).toMatch(/stocks-and-bonds mix doesn't change/);
+    expect(r.actions.map((a) => a.id)).toEqual(["values.apply", "open"]);
+    expect(r.refs).toEqual({ advice: true, valuesKey: "k1" });
+  });
+  it("gives real accounts no recommendation, and explains when nothing is listed", () => {
+    expect(valuesReply({ ...view, advice: false }).actions.map((a) => a.id)).toEqual(["open"]);
+    expect(valuesReply({ ...view, prefs: { excludes: [], themes: [] } }).body).toMatch(
+      /fossil fuels, weapons, tobacco/,
+    );
+  });
+});
+
+// Spec step 237: the family looked after.
+describe("family file questions, by rules", () => {
+  it.each([
+    "who are the beneficiaries on my accounts",
+    "do i need a will",
+    "what would my family need if something happens to me",
+    "set up transfer on death",
+  ])("reads %j as the family file", (text) => {
+    expect(parseIntent(text, ASOF)).toMatchObject({ kind: "investments", topic: "family_file" });
   });
 });
