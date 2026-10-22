@@ -4,6 +4,9 @@
 // All-in monthly cost of a car (payment, insurance, fuel, upkeep, registration) at most this
 // share of monthly income: the common 20% guideline.
 export const CAR_COST_MAX_SHARE = 0.2;
+// What Jane suggests aiming for: the all-in cost around this share of income, well under the
+// ceiling above, so a car doesn't squeeze the rest of the month.
+export const CAR_COMFORT_SHARE = 0.12;
 export const CAR_COST_SOURCE = "https://www.consumerfinance.gov/consumer-tools/auto-loans/";
 
 export const CAR_TERMS_MONTHS = [36, 48, 60, 72] as const;

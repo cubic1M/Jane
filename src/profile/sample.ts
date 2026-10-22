@@ -1,5 +1,6 @@
 import { demoAccounts, demoLiabilities, demoTransactions } from "@/data-sources/demo/demo-bank";
 import { demoHoldings } from "@/data-sources/demo/demo-holdings";
+import type { NeedPolicy } from "@/lib/insurance/need/types";
 import type { ProfileInput } from "./build";
 
 // A sample person's data in the shape the profile builder takes, straight from the demo bank
@@ -13,12 +14,43 @@ export const SAMPLE_TODAY = "2026-10-17";
 // in her Medicare supplement's renewal notice.
 const UNREAD_DOCUMENTS: Readonly<Record<string, number>> = { retiree: 1 };
 
+// The policies the sample people have, for the cover-need gaps (spec step 277): the ones their
+// charges show (State Farm, AAA, Chubb, Allstate, Progressive), with plausible limits.
+const car = (id: string, person: number, accident: number, deductible: number): NeedPolicy => ({
+  id,
+  kind: "auto",
+  status: "active",
+  deductibleCents: deductible,
+  coverage: { bodilyInjuryPerPerson: person, bodilyInjuryPerAccident: accident, collision: true },
+});
+const house = (id: string, liability: number, deductible: number): NeedPolicy => ({
+  id,
+  kind: "home",
+  status: "active",
+  deductibleCents: deductible,
+  coverage: { dwelling: 40_000_000, liability },
+});
+const SAMPLE_POLICIES: Readonly<Record<string, readonly NeedPolicy[]>> = {
+  renter: [car("renter-auto", 5_000_000, 10_000_000, 100_000)],
+  family: [
+    car("family-auto", 5_000_000, 10_000_000, 50_000),
+    house("family-home", 10_000_000, 100_000),
+  ],
+  equity: [house("equity-home", 30_000_000, 100_000)],
+  preretire: [
+    car("pre-auto", 25_000_000, 50_000_000, 100_000),
+    house("pre-home", 30_000_000, 100_000),
+  ],
+  retiree: [house("retiree-home", 30_000_000, 100_000)],
+};
+
 export function inputFor(person: string, told: ProfileInput["told"] = {}): ProfileInput {
   const demo = { seed: `seed${person}`, anchor: SAMPLE_ANCHOR, person };
   const holdings = demoHoldings(demo, SAMPLE_TODAY);
   return {
     today: SAMPLE_TODAY,
     told,
+    extras: { householdMembers: 0, coverPolicies: SAMPLE_POLICIES[person] ?? [] },
     unreadPolicyDocuments: UNREAD_DOCUMENTS[person] ?? 0,
     holdings: holdings.map((h) => ({
       ticker:

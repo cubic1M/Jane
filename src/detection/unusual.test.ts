@@ -85,4 +85,26 @@ describe("unusualAlerts", () => {
     expect(run([...usual, charge(1, 40_000, { pfcPrimary: "TRANSFER_OUT" })])).toEqual([]);
     expect(run([...usual, charge(30, 40_000)])).toEqual([]);
   });
+
+  it("doesn't call a business owner's payroll or suppliers unusual (spec step 253)", () => {
+    const payroll = (daysAgo: number, cents: number) =>
+      charge(daysAgo, cents, {
+        description: "GUSTO PAYROLL",
+        merchantName: "Gusto",
+        pfcDetailed: "GENERAL_SERVICES_ACCOUNTING_AND_FINANCIAL_PLANNING",
+      });
+    const data = input({
+      transactions: [
+        payroll(120, 40_000),
+        payroll(90, 40_000),
+        payroll(60, 40_000),
+        payroll(40, 40_000),
+        payroll(1, 430_000),
+      ],
+    });
+    const streams = buildStreams(data);
+    expect(unusualAlerts(data, streams, new Map())).toHaveLength(1);
+    const expected = new Set(["GENERAL_SERVICES_ACCOUNTING_AND_FINANCIAL_PLANNING"]);
+    expect(unusualAlerts(data, streams, new Map(), expected)).toEqual([]);
+  });
 });

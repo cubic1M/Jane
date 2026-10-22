@@ -795,3 +795,73 @@ export const DEMO_NETWORK_DIRECTORY: readonly {
   { match: /bayview imaging/i, name: "Bayview Imaging Center", inNetwork: true },
   { match: /lakeside urgent/i, name: "Lakeside Urgent Care", inNetwork: false },
 ];
+
+// --- Perfect coverage: what cover you need (spec step 274) ----------------------------------
+// Every threshold the need calculators use. Demo advice only. Term life is LIFE_NEED above
+// (income years, final expenses, schooling per dependant, less savings and cover in place).
+// Disability: a policy should replace about this share of pay (the share most policies pay, and
+// the one that leaves it untaxed), which is DISABILITY_PAY_SHARE in src/config/benefits.ts.
+export const DISABILITY_NEED = { waitingDays: 90, benefitUntilAge: 65 } as const;
+// Umbrella: net worth above the liability limits on car and home, rounded up to a step, between a
+// first million and a most. It only applies at UMBRELLA_ASSETS_CENTS of net worth or more.
+export const UMBRELLA_NEED = {
+  stepCents: 100_000_000,
+  minCents: 100_000_000,
+  maxCents: 500_000_000,
+} as const;
+// A deductible the cash cushion can carry: the largest step on the ladder that is at most this
+// share of liquid cash (so a claim never empties it), and never below the smallest step.
+export const DEDUCTIBLE_CASH_SHARE = 0.5;
+// Liability levels by net worth tier: car injury per person and per accident, home and renters
+// liability. The higher tier applies from HIGHER_LIABILITY_NET_WORTH_CENTS of net worth.
+export const LIABILITY_LEVELS = {
+  base: {
+    autoPerPersonCents: LIABILITY_TARGET_CENTS,
+    autoPerAccidentCents: LIABILITY_TARGET_ACCIDENT_CENTS,
+    homeCents: 30_000_000,
+    rentersCents: 10_000_000,
+  },
+  higher: {
+    autoPerPersonCents: 25_000_000,
+    autoPerAccidentCents: 50_000_000,
+    homeCents: 50_000_000,
+    rentersCents: 30_000_000,
+  },
+} as const;
+export const HIGHER_LIABILITY_NET_WORTH_CENTS = 25_000_000;
+
+// --- Perfect coverage: options to pick from (spec step 275) ---------------------------------
+// Disability options are a share of monthly pay: a cheaper one, the need, a better one.
+export const DISABILITY_OPTION_SHARES = [0.5, 0.6, 0.7] as const;
+// Life options: the cheaper one covers this share of the need; the longer one adds this many
+// years of term.
+export const LIFE_OPTION_CHEAPER_SHARE = 0.75;
+export const LIFE_OPTION_LONGER_YEARS = 10;
+// Most options shown for one need.
+export const MAX_OPTIONS = 4;
+// Jane's pick can't be surer than a sample price from the stand-in allows.
+export const OPTION_PICK_CAP = 80;
+
+// The most a liability-limits gap counts for when suggestions are ranked: the chance is small
+// and the gap can be huge for a rich person, so the size alone must not put it first.
+export const LIABILITY_WORTH_CAP_CENTS = 5_000_000;
+
+// Kept perfect (spec step 280): which needs a life event can change, so the gaps it opens are
+// shown with their reason. A new baby adds a dependant; a new job changes the pay and the cover
+// through work; a move changes the home and its liability; a car bought adds a car to cover.
+export const EVENT_NEEDS: Readonly<Record<string, readonly string[]>> = {
+  new_baby: ["life", "disability", "umbrella"],
+  new_job: ["life", "disability"],
+  moving: ["home_liability", "renters_liability", "umbrella", "deductible"],
+  car_bought: ["auto_liability", "umbrella", "deductible"],
+  raise: ["life", "disability", "umbrella"],
+  home_bought: ["home_liability", "umbrella", "deductible", "life"],
+};
+export const EVENT_REASONS: Readonly<Record<string, string>> = {
+  new_baby: "the new baby",
+  new_job: "the new job",
+  moving: "the move",
+  car_bought: "the new car",
+  raise: "your raise",
+  home_bought: "the home you bought",
+};

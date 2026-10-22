@@ -2,7 +2,7 @@ import { FILE_START } from "@/config/family-credit";
 import { formatCents } from "@/lib/money";
 import { authorizedUser, fileStartSavingCents } from "@/planning/family-credit";
 import { type Detector, suggestionId } from "./contract";
-import { evidence, factEvidence, weakest } from "./helpers";
+import { evidence, factEvidence, headlineOf, weakest } from "./helpers";
 
 // Detectors for helping family with credit (spec step 249): starting a child's file through a
 // low-use card, and the exposure from a loan co-signed for someone. Pure; see ./contract.ts.
@@ -35,8 +35,10 @@ const authorizedUserIdea: Detector = {
       capability: "debt",
       topic: "family_credit",
       title: "Start your child's credit by adding them to a low-use card",
+      headline: headlineOf("Start your child's credit file", worth, "saves", true),
+      short: `One of your cards is only ${Math.round((best.au.utilisation ?? 0) * 100)}% used, and you have children.`,
       worthCents: worth,
-      worthKind: "earns",
+      worthKind: "saves",
       confidence: weakest([
         factEvidence(kids),
         evidence("seen", profile.months, cards.length, "cards used under 30%"),
@@ -69,6 +71,15 @@ const cosignRisk: Detector = {
         f.cosignedMissed > 0
           ? "A loan you co-signed has a missed payment"
           : "A loan you co-signed is yours too",
+      headline: headlineOf(
+        f.cosignedMissed > 0 ? "Check the co-signed loan now" : "Check the loan you co-signed",
+        f.cosignedOwedCents,
+        "risk",
+      ),
+      short:
+        f.cosignedMissed > 0
+          ? `A payment was missed on ${formatCents(f.cosignedOwedCents)} you co-signed.`
+          : `You co-signed ${formatCents(f.cosignedOwedCents)}, and it's yours if they miss.`,
       worthCents: f.cosignedOwedCents,
       worthKind: "risk",
       confidence: evidence("told", profile.months, 1, "co-signed loans"),

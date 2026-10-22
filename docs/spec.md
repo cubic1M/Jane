@@ -3196,8 +3196,9 @@ answer first: a question worded a little differently falls through to three gene
 buttons, sectors collide over the same words, and Claude's answers have never been graded.
 This round is about quality, not new features. Jane understands anything about the
 person's money, answers it right, and feels quick and calm to use. Claude reads every free-text
-message and works through every sector's tools; the rules stay for button taps, exact
-commands and when Claude is unavailable. Every change is measured on one question bank.
+message and works through every sector's tools; the rules stay for button taps and as the
+backup when Claude is unavailable (see "Chat architecture" at the end of this file, which
+replaces rules-first). Every change is measured on one question bank.
 
 ### Step 189: The question bank
 
@@ -4007,7 +4008,491 @@ the eight people. No new features in this phase.
 > Acceptance criteria:
 > - /admin/reach shows full reach; the nightly run is green for a week
 
-## Deferred until Phases AR and AS are done
+## Phase AT: taxes, round four (steps 267–273)
+
+Written after Phase AS: every step here ships with its detector (who it's for, dollars, a
+confidence percentage from the shared recipe with its reason, urgency, why you, action),
+reaches at least one sample person in real data, and adds bank questions. Recommendations are
+demo advice; legal questions go to counsel.
+
+### Step 267: Business owners' tax structure
+
+> Read CLAUDE.md. The S-corp question and the business deduction, worked out.
+>
+> Build:
+> 1. For self-employed and small-business people (step 123's signals): the qualified
+>    business income deduction estimated, whether an S-corp election would save more than
+>    its payroll and filing costs at their profit (config thresholds with sources), a
+>    reasonable salary range, and the home office and vehicle deductions from transactions.
+>
+> Acceptance criteria:
+> - The small-business owner and the freelancer get the right answer for their profit; the
+>   math has tests
+
+### Step 268: Inherited money and gifts
+
+> Read CLAUDE.md. Inheritances and gifts, taxed right.
+>
+> Build:
+> 1. An inherited IRA's withdrawal deadline (the 10-year rule and its exceptions) spread to
+>    keep brackets low, step-up in basis on inherited assets, gifts over the annual
+>    exclusion flagged for a gift tax return, and estate tax facts, with a pointer to counsel.
+>
+> Acceptance criteria:
+> - Rules and limits from config by year with sources; the guardrail blocks legal advice
+
+### Step 269: Health coverage and taxes
+
+> Read CLAUDE.md. The tax side of health insurance.
+>
+> Build:
+> 1. Marketplace premium tax credit reconciled against real income (repayment risk caught
+>    mid-year), HSA contributions over the limit caught before filing, and the medical
+>    deduction checked against the income floor from step 200's spending.
+>
+> Acceptance criteria:
+> - A mid-year income rise raises the repayment warning; limits from config
+
+### Step 270: Disasters and losses
+
+> Read CLAUDE.md. When a disaster hits, the tax relief applied.
+>
+> Build:
+> 1. IRS and state disaster postponements for the person's county (stand-in feed, config
+>    dates) moving their deadlines automatically, casualty loss rules, and the claim
+>    records kept with the insurance claim (step 107).
+>
+> Acceptance criteria:
+> - A postponement moves every affected deadline (tests); nothing is claimed twice
+
+### Step 271: Taxes on retirement income
+
+> Read CLAUDE.md. Social Security, Medicare surcharges and withdrawal order, taxed well.
+>
+> Build:
+> 1. How much Social Security is taxable at their income, the Medicare surcharge (IRMAA)
+>    thresholds two years ahead, and the withdrawal order from step 212 tuned to stay under
+>    them, handed to the investing side.
+>
+> Acceptance criteria:
+> - Thresholds by year from config; the couple near retirement and the retiree get their own
+>   figures
+
+### Step 272: The return, checked before you file
+
+> Read CLAUDE.md. A second look at a draft return.
+>
+> Build:
+> 1. A draft return (PDF from software or an accountant) read with confirm, line by line
+>    against what Jane knows: income missing, deductions or credits left out, figures that
+>    don't match the forms, each a card with its dollars, before the person files.
+>
+> Acceptance criteria:
+> - The demo draft has three planted mistakes and Jane finds all three; nothing is filed by
+>   Jane
+
+### Step 273: Taxes on autopilot, round three
+
+> Read CLAUDE.md. Every tax detector working as one.
+>
+> Build:
+> 1. The year's tax calendar (step 223) driven by every tax detector, ranked with the rest of
+>    the scan, one message per month at most unless something is urgent, and the reach
+>    scoreboard showing every tax capability reaching the right sample people.
+>
+> Acceptance criteria:
+> - Every tax capability has a detector or a reasoned exemption; the nightly run is green
+
+## Phase AU: perfect coverage (steps 274–280)
+
+Founder-approved 2026-10-21. Jane works out what cover each person needs from their own data,
+shows the gap against what they have, and offers several options to pick from, each with its
+price, cover and a one-line reason, her pick marked with a confidence percentage. Picking one
+queues the action for the concierge team at once. Every threshold lives in
+`src/config/insurance.ts`; nothing is inline. Recommendations are demo advice (the label, the
+`demo_advice` guardrail profile); `REAL_ACCOUNT_ADVICE` stays false, so real accounts see
+the need and the gap as facts, never an option to buy. No Anthropic spend in tests. Every step
+ships with its detector, its chat answers and its bank questions.
+
+### Step 274: What cover you need
+
+> Read CLAUDE.md. The need, worked out from the person's own data, and the gap.
+>
+> Build:
+> 1. Pure need calculators (`src/lib/insurance/need/`), each returning the need, the cover now
+>    in place, the gap and the line-by-line working: term life (income replaced for a number
+>    of years, plus debts, plus each child's education, less savings and cover through work),
+>    disability (about 60% of income), umbrella (net worth over the liability limits on car
+>    and home), deductibles (sized to the cash cushion, step 253's profile), and the liability
+>    levels for renters, home and auto.
+> 2. Every rate, multiple and threshold in config with where it comes from; the inputs come
+>    from the person's profile (step 253) and their policies, never guessed when told.
+>
+> Acceptance criteria:
+> - Each calculator has tests at its edges (no income, no dependants, no policies); the same
+>   inputs always give the same need
+
+### Step 275: Options to pick from
+
+> Read CLAUDE.md. Three or four real options for each gap.
+>
+> Build:
+> 1. For each gap, and for each policy worth a second look, three to four options from the
+>    quote stand-in: like for like, cheaper with a stated trade-off, and better cover for a
+>    stated price. Each has the price a year, the cover, the carrier's rating and one line on
+>    why this one ("Cheapest that keeps your $100k/$300k cover").
+> 2. Jane's pick is marked with a confidence percentage and its reason, built from the shared
+>    recipe: a same-cover quote beats a cheaper one, a better-rated carrier breaks a tie.
+>
+> Acceptance criteria:
+> - Options are always like-for-like unless the trade-off is said; the pick is the same for the
+>   same evidence
+
+### Step 276: The pick-one card
+
+> Read CLAUDE.md. Options as a card in the chat, and one tap to choose.
+>
+> Build:
+> 1. Option data in the shape the chat's "pick one of N" card takes (agreed with the chat lane):
+>    short cards, a "More details" for the working and the comparison, her pick first.
+> 2. Choosing an option queues the action for the concierge team instantly (bind, endorse or
+>    quote request through the stand-in), with the choice recorded; nothing changes cover
+>    without that tap.
+>
+> Acceptance criteria:
+> - One tap queues it; asking again never queues twice; a real account sees the need and the
+>   gap but no option card
+
+### Step 277: A detector for every gap
+
+> Read CLAUDE.md. Perfect coverage, brought unasked.
+>
+> Build:
+> 1. A detector per gap (life, disability, umbrella, deductible, liability levels), each with
+>    its value, confidence, urgency, why you and the action opening its option card, reaching
+>    the right sample people and none on a must-not list.
+>
+> Acceptance criteria:
+> - The harness shows each gap reaching the right people; the reach baseline is updated on
+>   purpose
+
+### Step 278: Ask it in the chat
+
+> Read CLAUDE.md. "How much life insurance do I need?", answered from the same numbers.
+>
+> Build:
+> 1. A Claude tool and rules answers for each need question, three sentences or fewer with
+>    the person's figures and the gap, and the option card when they ask what to get.
+> 2. Bank questions for each, with follow-ups ("what if I have another child", "and if I
+>    raise the deductible").
+>
+> Acceptance criteria:
+> - The chat and the page give the same need for the same person (one source of truth); the
+>   questions score 100
+
+### Step 279: Your perfect coverage page
+
+> Read CLAUDE.md. The whole picture on one page.
+>
+> Build:
+> 1. A section on `/insurance` showing each need, what they have, the gap, and the options
+>    behind "See options", with the working under "More details".
+>
+> Acceptance criteria:
+> - The page and the chat agree; an e2e test walks from a gap to a picked option
+
+### Step 280: Kept perfect
+
+> Read CLAUDE.md. The need changes when life does.
+>
+> Build:
+> 1. The needs are re-worked after a life event (step 100), a raise, a new child or a home
+>    bought, and the yearly review (step 202) shows the gaps that opened, with the option
+>    card; a pick is always a tap.
+>
+> Acceptance criteria:
+> - A new child opens the life-cover gap the same day; nothing is bought without a tap
+
+## Phase AW: automated investing, Stage A: practice money only (steps 288–297)
+
+Founder-approved 2026-10-21, ahead of the depth bar. **Everything in Stage A runs on sample data
+and a paper (practice) portfolio. No real money moves, no real account is traded, and
+`REAL_ACCOUNT_ADVICE` stays false:** all of it is demo advice, labelled "Demo advice: sample data,
+not financial advice", and any text Claude writes about it passes the `demo_advice` guardrail
+(unsupported figures, promised outcomes and legal advice stay blocked). Real accounts get facts
+only. No new Anthropic spend in tests.
+
+Data sources, in one place (`src/lib/market/`): a `MarketData` interface (prices, a news feed,
+filings) with three implementations behind it. **Sample** (now): synthetic and recorded daily
+prices and headlines for the model portfolios' ETFs, deterministic by date, so every test and the
+Try Jane people have the same market. **Alpaca** (stub only; needs an account the founder creates,
+Jane never creates one): market data and news endpoints, behind env keys that are unset. **SEC
+EDGAR** (stub, no key needed, descriptive User-Agent): filings for news-driven ideas. Nothing calls
+a live service until a key is set; the stubs have contract tests against recorded responses.
+
+**Stage B (not built here): the partner swap.** The paper ledger's `Broker` interface
+(`placeOrder`, `positions`, `cancel`) gets a licensed broker-dealer or RIA partner behind it, the
+real-account advice rule (`REAL_ACCOUNT_ADVICE`) is revisited with counsel, and Alpaca (or the
+partner's own feed) replaces Sample. Stage A is written so Stage B changes configuration and one
+adapter, not the product: the model portfolios, the risk questionnaire, the scan, the log and the
+cards stay as built.
+
+### Step 288: Five risk levels
+
+> Read CLAUDE.md. A short questionnaire and five levels.
+>
+> Build:
+> 1. Four questions (time horizon, reaction to a 20% drop, income stability, goals) map to one of
+>    five levels: Very low, Low, Medium, High, Very high. The lower of capacity (horizon,
+>    stability) and willingness (reaction) wins, with the reason in a sentence. Replaces the
+>    older five-level labels where they differ; the existing investor profile answers carry over.
+> 2. Each level has a model portfolio of diversified index ETFs (US stocks, international stocks,
+>    bonds, cash and short-term bills) with stock/bond/cash targets in `src/config/portfolios.ts`
+>    (sources shown; FOR REVIEW).
+>
+> Acceptance criteria:
+> - The same answers always give the same level; the targets of every level sum to 100%; a
+>   higher level never has fewer stocks than a lower one (tests)
+
+### Step 289: The market data interface and the sample market
+
+> Read CLAUDE.md. Prices and headlines behind one interface.
+>
+> Build:
+> 1. `MarketData` (prices, history, news, filings) with the Sample implementation: deterministic
+>    synthetic daily prices and recorded headlines for the model portfolios' ETFs and a short list
+>    of large companies, plus planted dips, rallies and news events so every scan has something to
+>    find.
+> 2. Stubs for Alpaca market data and news and SEC EDGAR, unused without keys, with contract tests
+>    on recorded responses. No account is created; no key is stored in code.
+>
+> Acceptance criteria:
+> - The same date always returns the same sample prices; swapping the implementation changes no
+>   other file (tests)
+
+### Step 290: The practice portfolio and the paper ledger
+
+> Read CLAUDE.md. Practice money in the database.
+>
+> Build:
+> 1. A paper ledger (`PracticePortfolio`, `PracticeTrade`, `PracticePosition`): cash, positions
+>    by lot, each trade with its time, side, size, price from the market data, the reason in a
+>    sentence and the rule that allowed it. Starting practice cash is a stated sample amount;
+>    never linked to a real account.
+> 2. A `Broker` interface with the paper implementation only.
+>
+> Acceptance criteria:
+> - The ledger balances to the cent after any run of trades; a practice trade can never touch a
+>   real account or the real brokerage stand-in (tests)
+
+### Step 291: Autopilot for the practice portfolio
+
+> Read CLAUDE.md. Pick a style, then Jane runs it.
+>
+> Build:
+> 1. Once the person picks a level (or accepts the questionnaire's), Jane buys the model
+>    portfolio, rebalances when a class drifts past the band, and adds a monthly amount on the
+>    day they choose, in the practice ledger.
+> 2. Hard limits in config: no leverage, no options, no shorting, a per-position cap, a
+>    per-trade cap, a daily trade count. A **pause switch**. Every action writes to the audit log
+>    and the trade log with its reason.
+>
+> Acceptance criteria:
+> - No order breaks a limit; paused means no trades; every trade has a reason and an audit row
+>   (tests)
+
+### Step 292: The daily scan
+
+> Read CLAUDE.md. Four things worth a look.
+>
+> Build:
+> 1. A daily Vercel Cron scan of each practice portfolio over the market data, flagging
+>    **drift-rebalance**, **dip-buy-within-plan** (a drop in a holding already in the plan, bought
+>    only with cash the plan allows), **tax-loss-harvest** (step 124's lots; a swap that keeps the
+>    mix and avoids a wash sale) and, **for High and Very high levels only**, **news-driven
+>    ideas**. Each has a size cap, a per-position cap and a monthly count cap.
+> 2. Opportunities are small and capped positions only (a share of the portfolio set in config),
+>    never at Very low, Low or Medium.
+>
+> Acceptance criteria:
+> - Each flag fires on the sample market's planted event and not otherwise; opportunities never
+>   appear below High; caps hold (tests)
+
+### Step 293: News, summarised cheaply
+
+> Read CLAUDE.md. A few batched calls a day.
+>
+> Build:
+> 1. Headlines for the watchlist summarised by Claude Haiku in a few batched calls a day
+>    (`ANTHROPIC_MODEL_NEWS`), behind a monthly cents cap in config (default 100). **Off unless the
+>    env key is set**; with no key (and in every test) a rules summary from the headline text is
+>    used. Summaries pass the `demo_advice` guardrail and never predict a price.
+> 2. EDGAR filings (8-K, 10-Q) shown as facts with a link.
+>
+> Acceptance criteria:
+> - No call is made without the key or past the cap; a test proves zero Anthropic calls in the
+>   suite
+
+### Step 294: The trade log and the pause switch
+
+> Read CLAUDE.md. See and stop everything.
+>
+> Build:
+> 1. A page and a chat answer: every practice trade with its reason, the rule that allowed it and
+>    the running result; a pause switch for the whole portfolio and for opportunities alone;
+>    "undo the last trade" in the ledger (practice only).
+>
+> Acceptance criteria:
+> - Pausing takes effect before the next scan; the log matches the ledger (tests)
+
+### Step 295: Backtests by level
+
+> Read CLAUDE.md. How each level would have behaved.
+>
+> Build:
+> 1. For each of the five levels, a backtest over the sample historical prices (several years,
+>    including a planted crash and recovery): the value path, the worst drop, the best and worst
+>    year, shown as a simple chart and a few figures with the assumptions beside them (fees,
+>    rebalancing, no taxes in the base case). Always labelled as a replay of sample history, not a
+>    forecast.
+>
+> Acceptance criteria:
+> - Higher levels have larger worst drops than lower ones in the sample; the figures match a
+>   hand-worked case (tests)
+
+### Step 296: Cards in the chat
+
+> Read CLAUDE.md. Short, with the reasoning one tap away.
+>
+> Build:
+> 1. Opportunities and trades appear as the chat lane's floating cards, each short (what, how
+>    much, why in a sentence), with **More details** (the rule, the numbers, the caps) and the
+>    confidence percentage with its reason. A card's button only ever opens the details or the
+>    pause switch; nothing real is bought.
+> 2. A detector (step 254's contract) for "set up your practice portfolio" so it reaches the
+>    right sample people.
+>
+> Acceptance criteria:
+> - Cards follow the chat lane's card shape; every card has a percentage and a reason; no card
+>   offers a real trade (tests)
+
+### Step 297: Proof
+
+> Read CLAUDE.md. Stage A, checked end to end.
+>
+> Build:
+> 1. A graded set of chat questions about the practice portfolio ("what did you buy this week and
+>    why", "pause it", "what's my risk level", "how would a High portfolio have done in 2022"), a
+>    walk through the sample people, and a note for Stage B listing exactly what the partner swap
+>    needs.
+>
+> Acceptance criteria:
+> - The questions pass in the bank; no step touches real money or a real account; the Stage B
+>   note is in the PR
+
+## Phase AV: the perfect fit for borrowing (steps 281–284)
+
+Founder-approved 2026-10-21, a depth change to borrowing rather than a new feature round: for
+any borrowing need (a car, a home, a refinance, consolidating debt, a personal loan) Jane
+picks the best product for this person from their credit, debt-to-income, cash and goals, and
+shows two to four options to choose from. It is the one place the answer comes from: the
+debt decisions (step 260 on, `debt_decision`), the refinance and consolidation answers and the
+suggestions all read it. Recommendations are demo advice (labelled "Demo advice: sample data,
+not financial advice"); a real account gets the options and the math, never a pick. Offers come
+from the lender stand-in (`src/lib/lenders`); nothing is applied for without a tap, and tests
+spend nothing on the Anthropic API.
+
+### Step 281: The fit engine
+
+> Read CLAUDE.md. One engine that scores borrowing options for a person and a need.
+>
+> Build:
+> 1. A pure planner (`src/planning/fit.ts`, every threshold in `src/config/fit.ts` with its
+>    source, nothing inline) that takes a need (car, home, refinance, consolidation, personal),
+>    the person's credit band and score, income, debt payments, cash, goals and the offers from
+>    the lender stand-in, and returns each option with: eligible or not and why (credit floor,
+>    debt-to-income ceiling, income), the total cost over the whole term with fees (not just
+>    the rate), the monthly payment as a share of take-home against a comfortable share, the
+>    fees and when they pay back, and a score that ranks them.
+> 2. Two to four options, never one: the best by total cost that is comfortable, the lowest
+>    payment, the shortest term or fastest payoff, and one stretch or alternative where it
+>    differs. Jane's pick, a confidence percentage from the shared recipe (the weakest of its
+>    evidence) and its reason.
+>
+> Acceptance criteria:
+> - Eligibility, total cost, payment share and the pick each have tests on the eight sample
+>   people; the debt-trouble person is never steered to a bigger payment; no figure or
+>   threshold is inline
+
+### Step 282: Option cards in the chat
+
+> Read CLAUDE.md. The options shown as a pick-one card, short first.
+>
+> Build:
+> 1. The fit options as the shared option card every lane uses (the type from the insurance
+>    lane's `OptionCard`, kind "loan", shown by the chat's floating "pick one of N" card):
+>    each option one short headline (about eight words, one number: "Credit union 6.9%,
+>    save $1,840"), the monthly payment, facts (rate, term, total interest, fees), why this
+>    one, and "More details" with the maths. Jane's pick and its confidence percentage and
+>    reason are set only in demo advice mode, with the demo advice label. Choosing one queues
+>    the concierge action through the existing finding, decision and action path in the
+>    background: it never submits an application or moves money, and needs no new table.
+>
+> Acceptance criteria:
+> - The card shows two to four options, with the pick marked only in advice mode; choosing
+>   never applies for anything (tests)
+
+### Step 283: One source of truth
+
+> Read CLAUDE.md. The decisions, the offers and the suggestions agree.
+>
+> Build:
+> 1. The `debt_decision` answers (consolidate, personal loan, pay off versus invest), the
+>    refinance and balance transfer answers and the car and home offers read the fit engine's
+>    options, so the chat, the pages and Claude's tools never disagree on a rate, a payment or
+>    the pick.
+> 2. A detector for refinance and consolidation opportunities (who it is for, dollars saved
+>    over the term, confidence from the shared recipe with its reason, urgency, why you, and
+>    the action that opens the options), reaching at least one sample person in real data.
+>
+> Acceptance criteria:
+> - A test asserts the chat, the tool and the page give the same pick for the same person;
+>   the detector fires for the people with a costly card, auto or student loan and for no
+>   one on a must-not list
+
+### Step 284: Bank questions and a skeptical review
+
+> Read CLAUDE.md. Prove the picks are right for each life.
+>
+> Build:
+> 1. Must-pass bank questions for each need and for follow-ups ("what about a shorter
+>    term?", "why that one?"), with `avoid` for the wrong answers seen.
+> 2. Review each sample person's options as a skeptical customer (dollars believable and
+>    counted once, the pick sensible for their life, confidence varies with reasons in plain
+>    words) and fix what is off, with tests that pin the wording and ranges.
+>
+> Acceptance criteria:
+> - The review is written to `docs/detectors/review-fit.md` with a verdict per person
+
+## Depth first: the bar before new features (founder, 2026-10-21)
+
+Jane already has the breadth. Until the chat and suggestions are right, every lane works on
+depth, and the deferred rounds below (and Phase AT) stay paused. They resume only when all
+of these have held for three days in a row:
+
+1. The nightly graded run (step 195): at least 95% understood, 100% right figures, at least
+   90% of follow-ups and two-part questions answered.
+2. QA's live chat sweep: 40 real questions (decisions, follow-ups, typos, two-in-one) for
+   each of the eight sample people, with no wrong or empty answers and no lost topic.
+3. The reach scoreboard (step 258): each sample person's top three suggestions match their
+   written list, with no must-not suggestion.
+4. Speed: a tap answers within 1 second, and Try Jane reaches a usable chat within 10
+   seconds.
+
+When they resume, every new capability ships with its detector, its chat answers and its
+bank questions from day one.
+
+## Deferred rounds, resumed after Phase AS (2026-10-21)
 
 The rounds below were written before the founder's direction of 2026-10-20 and wait until
 every existing feature finds its person. Each new feature in them must ship with its
@@ -4348,3 +4833,57 @@ Check each partner's current docs and terms before building.
 
 Order: card and bill payments first (they act on findings Jane already makes), then
 credit score, tax filing, investing last.
+
+## Chat architecture: Claude answers, Jane is the data (founder, 2026-10-21)
+
+> Jane is essentially a database of all the user's information. Claude runs the chat, pulling
+> from that database to answer. There should never be a prewritten answer. If the user asks
+> anything, it should always be Claude's agent answering, using data from Jane. There should
+> never be some weird incident like a user saying something and all the chat does is pull up a
+> button. Since everything is demo, financial advice is fine.
+
+This replaces "rules first" (steps 191 and 193). It is the chat's architecture:
+
+1. **Every typed message goes to Claude** (`chatModel`, `src/lib/jane-agent/claude.ts`), with no
+   rules or matcher answer in front of it: greetings, commands ("cancel Netflix", "approve all",
+   "undo"), short replies ("yes", "why?", "ok and?", "what do you mean") and decisions ("should I
+   buy bitcoin") alike. The decision paraphrase matcher survives only as the `decision` tool's
+   input reading and as the backup. Rules answer only structured events: button and card taps
+   (Yes, No, Remind, Undo, Why?), which are not free text, and the answer typed to a guided flow's
+   question. With no `ANTHROPIC_API_KEY` (dev, tests) the rules answer typed text, as the backup.
+2. **Jane is tools plus context.** The step 190 registry's tools stay (`CHAT_TOOLS`, ~125, a
+   question is sent the general ones and its sectors', `tool-select.ts`). The stored primer
+   (`primer-store.ts`, refreshed after each sync and scan) carries the numbers, the top three
+   things that matter with their confidence (`what_matters_most`) and the open findings summary;
+   the finding just discussed is looked up up front; the last topic and the recent turns come with
+   the question. Jane computes; Claude never does its own sums (it may only use dollar amounts
+   from the numbers and tool results).
+3. **Demo advice.** In advice mode (`adviceMode`: every account is the demo bank) Claude gives
+   real recommendations on investing, taxes, insurance, loans and crypto, checked with the
+   `demo_advice` guardrail profile, and every answer carries "Demo advice: sample data, not
+   financial advice". `REAL_ACCOUNT_ADVICE` stays false: real accounts keep the no-advice profile.
+4. **A button or a card only ever follows a written answer.** Claude writes the answer first and
+   attaches actions through `propose_action` (and a picture through `show_block`) at the end of the
+   same turn; its sentences about its own button are stripped, and an answer that is only that is not
+   an answer (the backup answers). The checks assert a written answer of at least a sentence for every
+   question in the bank (`written` in `checks/grade.ts`), and a test sends the bank's typed questions,
+   QA's casual phrasings, the founder's transcript and the commands through the chat asserting none
+   reaches a rules answer.
+5. **Failure.** A 429, 5xx or overloaded response is tried once more; only those pause Claude (30
+   seconds). If Claude still fails, runs out of time, is blocked by the guardrails or the month's guard
+   is spent, the person gets a short written answer from the same data (the rules' answer for the
+   question, or where they stand), never "unavailable" and never a retraction: text already shown
+   stays as the answer.
+6. **Speed.** The system prompt and tool definitions are cached, tools are called in parallel in one
+   round, the last round answers with no tools, and the answer streams. Targets: first words under 2
+   seconds, the full answer under 6. `chat_timing` logs the primer, each round (stop, tools, text,
+   milliseconds), the tool times, the tokens, `otherMs` and the cost of every answer.
+7. **Cost.** A sample (Try Jane) person gets 25 answers in all (`claudeTrial`, then a friendly
+   written message); all of Claude's chat answers together are guarded at `CHAT_MONTHLY_CAP_CENTS`
+   (default $8, under the account's $10 limit; `chatmonth:total` in `rate_limits`, kept past the
+   daily cleanup); a daily cap per person stays. Past the month's guard Claude is not asked and the
+   backup answers.
+8. **Measured.** The graded nightly (Claude Haiku as the judge, `docs/chat-quality.md`) asks the bank
+   through the real Claude path, including the casual phrasings and follow-ups, and records understood,
+   figures right, follow-ups, first-words and full-answer times against the depth bar.
+

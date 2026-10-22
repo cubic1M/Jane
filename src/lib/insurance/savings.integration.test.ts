@@ -200,8 +200,8 @@ describe.runIf(url)("paying less for the same cover, against a real database", (
       "answered",
     );
     const { reply } = await sendToJane(me.userId, "should I raise my deductible", o());
-    expect(reply.body.split("\n")[0]).toMatch(
-      /^Raising the deductible on your GEICO car policy from \$1,000\.00 to \$2,000\.00/,
+    expect(reply.body).toMatch(
+      /Raising your deductible from \$1,000\.00 to \$2,000\.00 saves about/,
     );
     const tool = JSON.parse((await runChatTool(me.userId, "insurance_savings", {}, o())).content);
     expect(

@@ -84,6 +84,8 @@ export function shopBody(
   shop: Shop,
   policies: Policies,
   autopilot: string | null = null,
+  // The chat's card under a short answer: the pick and the saving, one line of why, what Yes does.
+  short = false,
 ): string | null {
   const policy = policies.find((p) => p.id === shop.policyId);
   if (!policy || !shop.pick || shop.savingCents === null) return null;
@@ -94,8 +96,8 @@ export function shopBody(
     policy.kind === "health"
       ? `I found a health plan that would cost ${formatCents(shop.savingCents)} less a year with your usual care: ${pick.plan ?? pick.carrier.name}, at ${price}.`
       : `I found ${kindWords(policy.kind)} ${formatCents(shop.savingCents)} a year cheaper for the same cover: ${pick.carrier.name}, at ${price}.`,
-    ...shop.why.map((line) => `- ${line}`),
-    ...(shop.demo
+    ...shop.why.slice(0, short ? 1 : undefined).map((line) => `- ${line}`),
+    ...(shop.demo && !short
       ? ["These are sample quotes from my demo carrier catalog, not real offers."]
       : []),
     // Spec step 108: at "handle everything" the switch is ready to go.

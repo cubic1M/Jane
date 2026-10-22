@@ -6,11 +6,17 @@ export const PROFILE_MONTHS = 12;
 // How sure Jane is of a fact (spec step 254's founder ask: a percentage worked out from the
 // evidence, never made up). Told facts are the person's own word: sure. Seen and guessed
 // facts start at a base, gain for each month of data and each clean match, up to a cap.
+//
+// The percentage has to help someone decide, so it spreads with the evidence: a fact clearly
+// counted over many months is near 90–95%, one from a month or a single match is about
+// 50–65%, and a guess is always below 50% (UNSURE_BELOW) and is worded "Jane isn't sure".
 export const CONFIDENCE = {
   told: 100,
-  seen: { base: 55, perMonth: 2, perMatch: 1, matchCap: 10, max: 97 },
-  guessed: { base: 30, perMonth: 2, perMatch: 2, matchCap: 10, max: 75 },
+  seen: { base: 45, perMonth: 3, perMatch: 2, matchCap: 10, max: 95 },
+  guessed: { base: 15, perMonth: 2, perMatch: 2, matchCap: 10, max: 49 },
 } as const;
+// Below this a percentage is said as "I'm not sure".
+export const UNSURE_BELOW = 50;
 
 // Income.
 export const SALARY_DEPOSITS_MIN = 6;
@@ -18,6 +24,9 @@ export const UNEVEN_DEPOSITS_MIN = 3;
 export const BUSINESS_DEPOSITS_MIN = 24;
 export const PENSION_PATTERN =
   /SSA TREAS|SOCIAL SEC|PENSION|RETIREMENT SYSTEM|TEACHERS RETIREMENT/i;
+
+// An employer that has paid in this many days is still an earner in the household.
+export const EARNER_ACTIVE_DAYS = 45;
 
 // Debt trouble: this many overdraft, insufficient-funds or late fees in the year, card debt
 // of this many months of income, or any payday loan.

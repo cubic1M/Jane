@@ -344,10 +344,21 @@ export function affordReply(
       : " now";
   const what = `${fmt(intent.amountCents)}${intent.what ? ` on ${intent.what}` : ""}${when}`;
   const verdict = affordVerdict(result, what, asOf);
-  const lines = [...(verdict ? [verdict] : []), ...effectLines(result, verdict !== null)];
+  // A straight answer: the verdict, the one fact that matters most after it, and then either
+  // the goal on offer (when it doesn't fit) or the reminder that this is math.
+  const effects = [...effectLines(result, verdict !== null)];
   // Spending so far and the budget are about this month; a later month only gets the goal.
-  if (context && !later) lines.push(...categoryLines(context, intent.amountCents, intent.period));
-  lines.push("This is math, not a recommendation.");
+  const about = context && !later ? categoryLines(context, intent.amountCents, intent.period) : [];
+  // A budget the purchase would break (or fit) decides; then what they usually spend there;
+  // then what it does to goals and checking.
+  const second =
+    about.find((l) => /budget is /.test(l)) ??
+    about.find((l) => /usually spend/.test(l)) ??
+    effects[0] ??
+    about[0];
+  const lines = verdict
+    ? [verdict, ...(second ? [second] : [])]
+    : [...effects, ...about].slice(0, 2);
 
   const amount = (intent.amountCents / 100).toFixed(2);
   const actions: MessageAction[] = [];
@@ -367,9 +378,13 @@ export function affordReply(
     };
     actions.push({ id: "goal.start", label: "Start a goal for it", kind: "primary" });
     if (short) lines.push(`I can set up a goal to save for it by ${monthLabel(goalMonth)}.`);
+    else lines.push("This is math, not a recommendation.");
   } else if (context && context.budgetCents === null && context.usualMonthCents > 0) {
     Object.assign(refs, budgetSuggestion(context.category, context.usualMonthCents));
     actions.push(budgetButton(refs.budget!));
+    lines.push("This is math, not a recommendation.");
+  } else {
+    lines.push("This is math, not a recommendation.");
   }
   actions.push(link("See the full check", `/afford?kind=purchase&amount=${amount}&date=${date}`));
   return reply(lines.join("\n"), actions, refs);

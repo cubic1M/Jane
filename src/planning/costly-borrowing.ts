@@ -45,7 +45,7 @@ const daysBetween = (a: string, b: string) =>
 
 // Proceeds (money in) matched to the next repayment (money out) from the same lender, within
 // 60 days. For a pay advance app the tips and fees that day add to what was repaid.
-export function pairLoans(txs: readonly Tx[]): { loans: Loan[]; open: Tx[] } {
+export function pairLoans(txs: readonly Tx[]): { loans: Loan[]; open: Tx[]; repaidOnly: Tx[] } {
   const sorted = [...txs].sort((a, b) => a.date.localeCompare(b.date));
   const loans: Loan[] = [];
   const open: Tx[] = [];
@@ -99,8 +99,48 @@ export function pairLoans(txs: readonly Tx[]): { loans: Loan[]; open: Tx[] } {
       days: Math.max(1, daysBetween(t.date, repay.date)),
     });
   }
-  return { loans, open };
+  // Repayments with no loan going in seen (it came in cash, or before the payments start).
+  const repaidOnly = sorted.filter(
+    (r) =>
+      !used.has(r.id) &&
+      r.amountCents > 0 &&
+      kindOf(r) === "payday" &&
+      !/tip|fee/i.test(r.description),
+  );
+  return { loans, open, repaidOnly };
 }
+
+// A payday repayment without its loan, as a loan at the typical fee (stated in ASSUMED). The
+// loan was out the gap since the last repayment to the same lender (a loan rolled over pays
+// the fee again each period), between ASSUMED.paydayDays and ASSUMED.paydayMaxDays.
+export function assumedLoans(repaid: readonly Tx[]): Loan[] {
+  const sorted = [...repaid].sort((a, b) => a.date.localeCompare(b.date));
+  return sorted.map((r) => {
+    const same = sorted.filter((o) => o.description === r.description);
+    const at = same.indexOf(r);
+    const gap =
+      at > 0
+        ? daysBetween(same[at - 1].date, r.date)
+        : same.length > 1
+          ? daysBetween(r.date, same[1].date)
+          : ASSUMED.paydayDays;
+    const days = Math.min(ASSUMED.paydayMaxDays, Math.max(ASSUMED.paydayDays, gap));
+    const per100 = (ASSUMED.paydayFeePer100 * days) / ASSUMED.paydayDays;
+    const feeCents = Math.round((r.amountCents * per100) / (100 + per100));
+    return {
+      kind: "payday",
+      lender: r.description,
+      principalCents: r.amountCents - feeCents,
+      repaidCents: r.amountCents,
+      feeCents,
+      takenOn: addDaysIso(r.date, -days),
+      days,
+    };
+  });
+}
+
+const addDaysIso = (iso: string, days: number) =>
+  new Date(Date.parse(`${iso}T00:00:00Z`) + days * 86_400_000).toISOString().slice(0, 10);
 
 export type KindSummary = {
   kind: CostlyKind;
@@ -130,7 +170,11 @@ export function summarize(txs: readonly Tx[], today: string): Costly {
   const out: KindSummary[] = [];
 
   const paydayTxs = by("payday");
-  const payday = pairLoans(paydayTxs);
+  const paired = pairLoans(paydayTxs);
+  const assumed = assumedLoans(paired.repaidOnly);
+  const payday = {
+    loans: [...paired.loans, ...assumed].sort((a, b) => a.takenOn.localeCompare(b.takenOn)),
+  };
   if (payday.loans.length > 0) {
     const cost = payday.loans.reduce((s, l) => s + l.feeCents, 0);
     const pd = payday.loans.reduce((s, l) => s + l.principalCents * l.days, 0);
@@ -139,7 +183,12 @@ export function summarize(txs: readonly Tx[], today: string): Costly {
       count: payday.loans.length,
       costCents: cost,
       aprBps: apr(cost, pd),
-      basis: "the fee on each loan over the days it was out",
+      basis:
+        assumed.length === 0
+          ? "the fee on each loan over the days it was out"
+          : paired.loans.length === 0
+            ? `the typical fee of $${ASSUMED.paydayFeePer100} per $100 every ${ASSUMED.paydayDays} days the loan is out, since only the repayments show`
+            : `the fee on each loan over the days it was out, and the typical $${ASSUMED.paydayFeePer100} per $100 every ${ASSUMED.paydayDays} days where only the repayment shows`,
       lastOn: payday.loans.at(-1)!.takenOn,
     });
   }

@@ -40,6 +40,25 @@ describe("gradeWithClaude", () => {
     expect(request.output_config.format.type).toBe("json_schema");
   });
 
+  it("sends the scenario's rules, and a broken rule fails the answer however well it reads", async () => {
+    const create = vi.fn(async () =>
+      reply('{"usefulness":5,"tone":5,"reason":"Reads well.","rulesBroken":["invented a figure"]}'),
+    );
+    const { grade } = await gradeWithClaude(
+      { ...input, rules: { mustDo: ["give the amount"], mustNot: ["invent a figure"] } },
+      client(create),
+    );
+    expect(grade?.score).toBe(50);
+    expect(grade?.reason).toMatch(/^Broke: invented a figure\. Reads well\./);
+    const request = (create.mock.calls[0] as unknown[])[0] as {
+      messages: { content: string }[];
+    };
+    expect(JSON.parse(request.messages[0].content).rules).toEqual({
+      mustDo: ["give the amount"],
+      mustNot: ["invent a figure"],
+    });
+  });
+
   it("gives no grade for bad output, a refusal or an API error, but still counts the cost", async () => {
     expect(
       (

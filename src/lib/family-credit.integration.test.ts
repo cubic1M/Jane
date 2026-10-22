@@ -13,6 +13,7 @@ import { runChatTool } from "@/lib/jane-agent/claude-tools";
 import { sendToJane } from "@/lib/jane-agent/typing";
 import { linkDemoBank } from "@/lib/plaid/demo";
 import { syncItem } from "@/lib/plaid/sync";
+import { fitPersonFrom } from "@/planning/fit-person";
 import { loadProfileInput } from "@/lib/profile";
 import {
   FamilyCreditError,
@@ -103,7 +104,13 @@ describe.runIf(url)(
         helped: 0,
         cosignedOwedCents: 1_200_000,
         cosignedMissed: 0,
+        cosignedPaymentCents: 30_000,
       });
+      // The fit engine counts the co-signed payment as Chris's own debt (spec step 249).
+      expect(
+        fitPersonFrom(input).debtPaymentsCents -
+          fitPersonFrom({ ...input, familyCredit: undefined }).debtPaymentsCents,
+      ).toBe(30_000);
 
       await setMissed(chris, d.entries[0].id, true, opts());
       expect((await loadFamilyCredit(chris, opts())).missed).toHaveLength(1);

@@ -33,6 +33,12 @@ export const ASSUMED = {
   cashAdvanceDays: 30,
   // Card cash advances start charging interest at once, at this rate unless the card's own is known.
   cashAdvanceAprBps: 2_999,
+  // A payday loan repayment seen without the loan going in: the CFPB's typical fee of $15 per
+  // $100 borrowed for two weeks, paid again each time the loan rolls over. The loan is taken to
+  // have been out since the last repayment, between these many days.
+  paydayFeePer100: 15,
+  paydayDays: 14,
+  paydayMaxDays: 31,
 } as const;
 // A year's cost under this isn't worth a message.
 export const COSTLY_MIN_YEARLY_CENTS = 5_000;

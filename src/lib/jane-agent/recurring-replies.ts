@@ -1,4 +1,3 @@
-import { CHAT_SUBSCRIPTIONS_LISTED } from "@/config/agent-chat";
 import type { Frequency } from "@/config/detection";
 import { formatCents } from "@/lib/money";
 import { nameMatches } from "./names";
@@ -117,9 +116,14 @@ export function subscriptionsReply(
     // The total is the answer; the biggest few say where it goes.
     lines[0] += ` The biggest: ${list.slice(0, 3).map(each).join(", ")}.`;
   } else {
-    const shown = list.slice(0, CHAT_SUBSCRIPTIONS_LISTED);
-    lines.push(...shown.map((c) => `- ${each(c)}`));
-    if (list.length > shown.length) lines.push(`- and ${list.length - shown.length} more`);
+    // One sentence naming the biggest few, so the answer stays at three with the saving.
+    const top = list.slice(0, 3).map(each);
+    const more = list.length - top.length;
+    const names =
+      top.length === 1
+        ? top[0]
+        : `${top.slice(0, -1).join(", ")} and ${top.at(-1)}${more > 0 ? `, and ${more} more` : ""}`;
+    lines[0] = `${lines[0].replace(/\.$/, "")}: ${names}.`;
   }
   // The open finding about one of them that would save the most.
   const ids = new Set(list.flatMap((c) => (c.openFindingId ? [c.openFindingId] : [])));
@@ -128,13 +132,20 @@ export function subscriptionsReply(
     .sort((a, b) => (b.annualSavingsCents ?? -1) - (a.annualSavingsCents ?? -1))[0];
   if (best && snapshot) {
     const decision = findingReply(best);
+    // The finding's own words are "Review X. Could save about $Y a year. Want me to handle
+    // it?": joined into two sentences, so the whole answer stays at three.
+    const said = decision.body.split(/(?<=[.!?])\s+/);
+    const tail =
+      said.length >= 3
+        ? `${said[0].replace(/\.$/, "")}: ${said[1].charAt(0).toLowerCase()}${said[1].slice(1)} ${said.slice(2).join(" ")}`
+        : said.join(" ");
     return {
-      body: `${lines.join("\n")}\n${decision.body}`,
+      body: `${lines.join(" ")} ${tail}`,
       actions: [...decision.actions, subscriptionsLink],
       refs: decision.refs,
     };
   }
-  return { body: lines.join("\n"), actions: [subscriptionsLink], refs: {} };
+  return { body: lines.join(" "), actions: [subscriptionsLink], refs: {} };
 }
 
 // "When do I get paid?": the same payday as safe to spend.

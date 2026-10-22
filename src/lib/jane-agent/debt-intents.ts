@@ -1,3 +1,5 @@
+import type { DecisionId } from "@/planning/debt-decisions";
+import type { FitNeed } from "@/config/fit";
 import type { RewardCategory } from "@/config/credit-cards";
 
 // Questions about debts, understood by rules (spec Phase Y). Pure: normalized text in
@@ -66,6 +68,11 @@ export type DebtIntent =
   // Spec step 246: "I have $20,000, pay down my mortgage or recast?", "$500 a month extra on my
   // mortgage". lumpCents or extraMonthlyCents is the amount named, or both null.
   | { kind: "mortgage_money"; lumpCents: number | null; extraMonthlyCents: number | null }
+  // "Should I pay off my card or invest?", "should I consolidate?", "should I close a card?":
+  // a straight answer from the person's numbers (src/planning/debt-decisions.ts).
+  | { kind: "debt_decision"; which: DecisionId }
+  // "What's the best loan for me?", "best car loan for $20,000": the fit engine's options.
+  | { kind: "loan_fit"; need: FitNeed; amountCents: number | null }
   // Spec step 228: "when does my PMI end by itself?", "is my escrow too high?", "HELOC or
   // cash-out refinance for a $40,000 kitchen?".
   | {
@@ -123,9 +130,77 @@ export const DEBT_KINDS = new Set<string>([
   "costly_borrowing",
   "renting",
   "family_credit",
+  "debt_decision",
+  "loan_fit",
 ]);
 export const isDebtIntent = (intent: { kind: string }): intent is DebtIntent =>
   DEBT_KINDS.has(intent.kind);
+
+// The decisions people ask about debt and credit, in the order they're tried.
+export const DECISION_PATTERNS: readonly (readonly [DecisionId, RegExp])[] = [
+  [
+    "pay_or_invest",
+    /\b(?:pay(?:ing)? (?:off|down)|extra (?:on|toward|payments?))\b.*\b(?:or|vs\.?|versus|instead of)\b.*\binvest\w*|\binvest\w*\b.*\b(?:or|vs\.?|versus|instead of|before)\b.*\b(?:pay(?:ing)? (?:off|down)|debt|cards?|mortgage)\b|\bpay (?:extra|more) on (?:my )?(?:mortgage|card|cards)\b.*\binvest/,
+  ],
+  [
+    "savings_or_debt",
+    /\b(?:use|using|take|tap|put|spend)\b.*\b(?:savings|cash|emergency fund)\b.*\b(?:debt|cards?|loans?|pay (?:off|down))\b|\bpay(?:ing)? (?:off|down) (?:my )?(?:debt|cards?|loans?)\b.*\b(?:with|from|using) (?:my )?(?:savings|cash)\b/,
+  ],
+  [
+    "personal_loan",
+    /\bpersonal loan\b.*\b(?:cards?|debt)\b|\b(?:take out|get) a (?:personal )?loan to (?:pay off|cover|consolidate)\b|\bwhat about (?:a )?personal loan\b/,
+  ],
+  [
+    "consolidate",
+    /\bwhat (?:if|about) (?:i )?consolidat\w+|\bconsolidat\w+\b.*\b(?:debts?|cards?|loans?)\b|\bdebt consolidation\b|\bshould i consolidate\b/,
+  ],
+  [
+    "payoff_hurts",
+    /\bpay(?:ing)? (?:it|them) (?:off|down)\b.*\b(?:hurt|lower|drop|affect|damage|help)\w*\b.*\b(?:credit|score)\b|\bpay(?:ing)? (?:off|down) (?:a |my |the |this |that )?(?:credit )?(?:cards?|debt|loans?|it|them)\b.*\b(?:hurt|lower|drop|affect|damage|help)\w*\b.*\b(?:credit|score)\b/,
+  ],
+  [
+    "close_card",
+    /\b(?:close|closing|cancel|cancelling|canceling)\b.*\b(?:credit card|old card|a card|my card|this card|that card)\b|\bclose (?:an? )?(?:old )?card\b/,
+  ],
+  [
+    "payday_loan",
+    /\b(?:take|get|use|need|taking|getting|using)\b.*\b(?:payday loans?|payday advances?|cash advances?)\b|\bshould i\b.*\bpayday (?:loan|advance|lender)s?\b/,
+  ],
+  [
+    "save_each_month",
+    /^(?!.*\b(?:for|toward|towards)\b).*\bhow much (?:should|do|can|must|ought) (?:i|we) (?:be )?(?:sav\w+|put away|set aside|stash)\b|^(?!.*\b(?:for|toward|towards)\b).*\bhow much (?:to|of my \w+ to) save\b/,
+  ],
+  [
+    "rent_or_buy",
+    /\brent (?:or|vs\.?|versus) buy\w*|\bbuy\w* (?:or|vs\.?|versus) rent\w*|\b(?:better|cheaper|smarter) to (?:rent|buy)\b|\bshould (?:i|we) (?:buy|rent) (?:a |an |my own )?(?:house|home|condo|place|apartment)\b/,
+  ],
+  [
+    "overdraft",
+    /\b(?:will (?:i|we)|am (?:i|we)|going to|gonna)\b.*\b(?:overdraw\w*|overdraft\w*|go negative|run out of money|go below zero|bounce)\b|\bwill (?:my )?(?:checking|account|balance)\b.*\b(?:negative|below zero|overdraw\w*|run out)\b/,
+  ],
+  [
+    "bnpl",
+    /\bshould (?:i|we) (?:use|get|do|try|take)\b.*\b(?:buy now,? pay later|bnpl|pay in 4|pay in four|klarna|afterpay|affirm|sezzle)\b|\b(?:is|are)\b.*\b(?:buy now,? pay later|bnpl|pay in 4|klarna|afterpay|affirm)\b.*\b(?:good|bad|worth|safe|a good idea)\b/,
+  ],
+  [
+    "student_early",
+    /\b(?:should|worth|better|good idea)\b.*\b(?:pay(?:ing)? (?:off|down)|extra (?:on|toward|payments? (?:on|to)))\b.*\bstudent (?:loans?|debt)\b|\bstudent (?:loans?|debt)\b.*\b(?:early|ahead of schedule|faster)\b|\bpay(?:ing)? (?:off|down) (?:my )?student (?:loans?|debt) (?:early|faster|ahead)\b/,
+  ],
+];
+
+// "What's the best loan for me?", "which loan should I get for a car?": the fit engine.
+const LOAN_FIT =
+  /\b(?:best|right|cheapest|perfect|smartest) (?:personal |car |auto |home |mortgage |consolidation )?loans?\b|\bwhich loan\b|\bwhat loan\b|\bloan options\b|\bwhat are my options (?:for|to borrow)\b|\bfind me a (?:car |personal |home )?loan\b|\bbest way to (?:borrow|finance)\b|\bhow should i (?:borrow|finance)\b/;
+const fitNeedOf = (text: string): FitNeed =>
+  /\bconsolidat\w*/.test(text)
+    ? "consolidation"
+    : /\brefinanc\w*|\brefi\b/.test(text)
+      ? "refinance"
+      : /\b(?:car|auto|truck|vehicle)\b/.test(text)
+        ? "car"
+        : /\b(?:home|house|mortgage|condo)\b/.test(text)
+          ? "home"
+          : "personal";
 
 const OWE =
   /\bhow much (?:do|does|did) (?:i|we) (?:still )?owe\b|\bhow much debt\b|\bwhat do (?:i|we) owe (?:in total|altogether|overall)\b|\b(?:my )?total (?:debt|owed)\b|\bwhat (?:are|is) (?:all )?my (?:debts?|loans)\b|\b(?:list|show)(?: me)? (?:all )?my (?:debts|loans)\b|\ball my debts?\b/;
@@ -150,7 +225,7 @@ const REFINANCE_TARGET =
 const TRANSFER =
   /\bbalance transfers?\b|\b0 ?% (?:card|cards|transfer|apr|interest|intro)\b|\bzero percent\b|\bmove (?:my )?(?:credit )?card (?:debt|balance)\b|\btransfer (?:my )?(?:credit )?card(?: debt| balance)?\b|\btransfer (?:my )?balance\b/;
 const STUDENT =
-  /\b(?:idr|ibr|rap|pslf|income[- ]driven|income[- ]based|repayment assistance plan|public service loan forgiveness|studentaid)\b|\bstudent loans?\b.*\b(?:plans?|repay\w*|forgiv\w*|options?|lower|cheaper|best|income|switch)\b|\b(?:plans?|repay\w*|forgiv\w*|lower|reduce|cut)\b.*\bstudent loans?\b/;
+  /\b(?:idr|ibr|rap|pslf|income[- ]driven|income[- ]based|repayment assistance plan|public service loan forgiveness|studentaid)\b|\bstudent loans?\b.*\b(?:plans?|repay\w*|forgiv\w*|options?|lower|cheaper|best|income|switch)\b|\b(?:plans?|repay\w*|forgiv\w*|lower|reduce|cut)\b.*\bstudent loans?\b|^(?:how (?:are|is) )?(?:my |our )?student loans?(?: doing| status)?$|\bstudent loan (?:balance|status)\b/;
 const MORTGAGE =
   /\b(?:pmi|escrow|private mortgage insurance)\b|\bmortgage\b|\b(?:extra|more) (?:principal|payments?)\b.*\b(?:house|home)\b/;
 const CREDIT = /\bcredit (?:score|rating|report)\b|\bfico\b|\bcredit utili[sz]ation\b/;
@@ -377,6 +452,12 @@ export function parseDebtIntent(
   if (/\b(?:tax|taxes|irs|tax refund)\b/.test(text)) return null;
   // "Lower the rate on my card" is a request, not a question (./intents.ts act).
   if (/^(?:lower|reduce|cut|negotiate|bring down|shrink|cancel|refund)\b/.test(text)) return null;
+  if (LOAN_FIT.test(text) && !/\b(?:student)\b/.test(text)) {
+    return { kind: "loan_fit", need: fitNeedOf(text), amountCents };
+  }
+  for (const [which, pattern] of DECISION_PATTERNS) {
+    if (pattern.test(text)) return { kind: "debt_decision", which };
+  }
   if (MORE.test(text) && amountCents !== null)
     return { kind: "payoff_plan", extraCents: amountCents };
   if (PAYOFF.test(text)) return { kind: "payoff_plan", extraCents: null };

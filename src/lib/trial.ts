@@ -6,6 +6,7 @@ import { db as defaultClient } from "@/lib/db";
 import { demoBankEnabled, linkDemoBank } from "@/lib/plaid/demo";
 import { syncItem } from "@/lib/plaid/sync";
 import { acceptTerms } from "@/lib/terms";
+import { phaseTimer } from "@/lib/trial-timing";
 
 // Try Jane without signing up (spec step 138): a temporary sample person with the demo
 // bank and demo advice (src/lib/advice-mode.ts), signed in with a session that ends after
@@ -60,8 +61,10 @@ export async function startTrial({
   expires: Date;
 }> {
   if (!trialEnabled()) throw new TrialError("Trying Jane isn't available here.");
+  const timing = phaseTimer("trial_start");
   // Cleaning up other people's finished trials isn't this visitor's wait.
   if (!defer) await cleanUpTrials({ client, now });
+  timing.mark("clean_up");
   const id = `${TRIAL_ID_PREFIX}${randomBytes(12).toString("hex")}`;
   // Users have their own helpers; a trial person is made here and nowhere else.
   await client.user.create({
@@ -72,14 +75,21 @@ export async function startTrial({
       createdAt: now,
     },
   });
-  // The visitor ticked "I agree" to try it (src/app/try/actions.ts), as at sign-up.
-  await acceptTerms(id, { client, now, via: "trial" });
-  const { itemId } = await linkDemoBank(id, { client, now, person });
-  if (!defer) await syncItem(itemId, { client, now });
+  timing.mark("create_user");
   const expires = new Date(now.getTime() + TRIAL_HOURS * HOUR_MS);
   const sessionToken = randomBytes(32).toString("hex");
-  await client.session.create({
-    data: { sessionToken, userId: id, expires, userAgent: userAgent?.slice(0, 200) ?? null },
-  });
+  // These only need the new person to exist, so they go together instead of one after another
+  // (each is a round trip to the database, and the visitor is waiting).
+  const [, { itemId }] = await Promise.all([
+    // The visitor ticked "I agree" to try it (src/app/try/actions.ts), as at sign-up.
+    acceptTerms(id, { client, now, via: "trial" }),
+    linkDemoBank(id, { client, now, person }),
+    client.session.create({
+      data: { sessionToken, userId: id, expires, userAgent: userAgent?.slice(0, 200) ?? null },
+    }),
+  ]);
+  timing.mark("terms_link_session");
+  if (!defer) await syncItem(itemId, { client, now });
+  if (defer) timing.done();
   return { userId: id, itemId, sessionToken, expires };
 }

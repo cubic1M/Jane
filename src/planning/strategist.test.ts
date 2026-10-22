@@ -7,6 +7,8 @@ const s = (topic: string, over: Partial<Suggestion> = {}): Suggestion => ({
   capability: "x",
   topic: topic as Suggestion["topic"],
   title: topic,
+  headline: topic,
+  short: topic,
   worthCents: 100_000,
   worthKind: "saves",
   confidence: { percent: 80, reason: `${topic} evidence` },

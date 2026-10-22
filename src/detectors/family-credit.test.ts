@@ -21,7 +21,7 @@ describe("starting a child's credit file", () => {
     const [s] = fire("family");
     expect(s).toMatchObject({
       topic: "family_credit",
-      worthKind: "earns",
+      worthKind: "saves",
       urgency: "later",
       action: { href: "/loans/helping" },
     });

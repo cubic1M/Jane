@@ -16,6 +16,7 @@ import { familyAnswer } from "../insurance/family";
 import { healthYearAnswer } from "../insurance/health-year";
 import { claimWorthAnswer } from "../insurance/claim-worth";
 import { insuranceReply } from "../insurance/replies";
+import { withNeeds } from "@/lib/insurance/need/load";
 import { loadInsuranceSnapshot } from "../insurance/snapshot";
 import { type CapabilityContext } from "./shared";
 
@@ -67,7 +68,17 @@ async function answer(ctx: CapabilityContext): Promise<Reply | null> {
       if (intent.ask === "life_change") {
         return lifeChangeAnswer(userId, intent.event as CoverEvent, { client, now });
       }
-      return insuranceReply(intent, await loadInsuranceSnapshot(userId, { client, now }), asOf);
+      return insuranceReply(
+        intent,
+        // A need question reads the same numbers the nightly detectors do (spec step 278).
+        intent.ask === "decide"
+          ? await withNeeds(userId, await loadInsuranceSnapshot(userId, { client, now }), {
+              client,
+              now,
+            })
+          : await loadInsuranceSnapshot(userId, { client, now }),
+        asOf,
+      );
     default:
       return null;
   }
