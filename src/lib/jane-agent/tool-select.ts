@@ -83,6 +83,7 @@ const SECTORS = {
       "steady_hand",
       "cash_plan",
       "crypto",
+      "backtest_by_level",
     ]),
     words:
       /\b(?:invest\w*|stocks?|etfs?|funds?|401\s?k|ira|retire\w*|portfolio|crypto\w*|bitcoin|ether\w*|bonds?|dividends?|brokerage|529|college|annuit\w*|rebalanc\w*|pension|rmd|savings account|high.?yield|money market|index|shares?|equity|risk|what is a|profile|about me|goals?|buckets?|split)\b/,
@@ -128,6 +129,11 @@ const SPECIFIC_LOOKUPS: readonly { when: RegExp; tools: readonly string[] }[] = 
     tools: ["retirement_accounts"],
   },
   { when: /\b(?:diversif\w*|allocation|portfolio|rebalanc\w*)\b/i, tools: ["portfolio_review"] },
+  // Spec step 295: "how would a High portfolio have done in 2022".
+  {
+    when: /\b(?:backtest\w*|replay\w*|would\b[^.?!]{0,40}\bhave (?:done|gone|fared|performed|lost|dropped|fallen))\b/i,
+    tools: ["backtest_by_level"],
+  },
 ];
 
 // The lookups to run up front for a question: the specific ones when it names one, otherwise

@@ -36,6 +36,11 @@ test("the demo bank's holdings show with their sources, and Jane answers about t
   await expect(
     page.getByText(/Source: Demo Bank \(fake data\), Demo 401\(k\), price as of/).first(),
   ).toBeVisible();
+  // Step 295: each risk level replayed over sample history, as demo advice, never a forecast.
+  const backtests = page.getByRole("region", { name: "How each risk level would have done" });
+  await expect(backtests.getByText(/Replay of sample history since Jan 2, 2018/)).toBeVisible();
+  await expect(backtests.getByText(/not a forecast/)).toBeVisible();
+  await expect(backtests.getByText("Demo advice: sample data, not financial advice")).toBeVisible();
   // The filled-in page has no serious accessibility problems (e2e/accessibility.spec.ts
   // checks it empty).
   const axe = await new AxeBuilder({ page })
