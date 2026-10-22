@@ -32,6 +32,8 @@ import { healthFor } from "@/lib/health-score";
 import { healthReply } from "../replies-health";
 import { openBooks } from "@/lib/books";
 import { booksReply } from "../replies-books";
+import { loadClose } from "@/lib/month-close";
+import { closeReply } from "../replies-close";
 import { loadSteady } from "@/lib/steady-pay";
 import { steadyReply } from "../replies-steady";
 import { whatIf } from "@/lib/what-if";
@@ -104,6 +106,9 @@ async function answer(ctx: CapabilityContext): Promise<Reply | null> {
     // Spec step 238.
     case "books":
       return booksReply(await openBooks(userId, { client }));
+    // Spec step 244.
+    case "month_close":
+      return closeReply(await loadClose(userId, { client }));
     // Spec step 203.
     case "what_if":
       return whatIfReply(

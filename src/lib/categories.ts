@@ -48,7 +48,7 @@ export async function correctCategory(
   const db = scopedFor(userId, client);
   const transaction = await db.transactions.findFirst({
     where: { id: transactionId },
-    select: { id: true, description: true },
+    select: { id: true, description: true, date: true },
   });
   if (!transaction) throw new CategoryError("That transaction doesn't exist.");
   const data = {
@@ -60,9 +60,23 @@ export async function correctCategory(
   const key = forMerchant ? merchantRuleKey(transaction.description) : null;
   if (!key) {
     await db.transactions.updateMany({ where: { id: transaction.id }, data });
+    await correctionsReachClosedMonths(userId, [transaction.date], client);
     return { updated: 1 };
   }
   return setMerchantCategory(userId, key, detailed, { client });
+}
+
+// Spec step 244: a closed month changes only through a correction like this one, and then
+// its figures are worked out again.
+async function correctionsReachClosedMonths(
+  userId: string,
+  dates: readonly Date[],
+  client: PrismaClient,
+) {
+  if (dates.length === 0) return;
+  const months = dates.map((d) => d.toISOString().slice(0, 7));
+  const { correctClosedMonths } = await import("@/lib/month-close");
+  await correctClosedMonths(userId, months, { client });
 }
 
 // Every transaction at one merchant, now and later, goes in this category.
@@ -92,9 +106,17 @@ export async function setMerchantCategory(
     update: { pfcPrimary: category.primary, pfcDetailed: category.detailed, source: "user" },
   });
   // Past transactions at the same merchant. Only this person's, through the scoped client.
-  const all = await db.transactions.findMany({ select: { id: true, description: true } });
-  const ids = all.filter((t) => merchantRuleKey(t.description) === key).map((t) => t.id);
+  const all = await db.transactions.findMany({
+    select: { id: true, description: true, date: true },
+  });
+  const matched = all.filter((t) => merchantRuleKey(t.description) === key);
+  const ids = matched.map((t) => t.id);
   const { count } = await db.transactions.updateMany({ where: { id: { in: ids } }, data });
+  await correctionsReachClosedMonths(
+    userId,
+    matched.map((t) => t.date),
+    client,
+  );
   return { updated: count };
 }
 

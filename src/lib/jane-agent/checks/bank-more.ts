@@ -95,6 +95,10 @@ const rows: Row[] = [
   ["longview", "/long-view", "long_view", "what will my net worth be in 20 years"],
   ["longview", "/long-view", "long_view", "how much will i have when i retire"],
 
+  // The monthly close (spec step 244).
+  ["close", "/monthly", "month_close", "is last month closed"],
+  ["close", "/monthly", "month_close", "how did the monthly close go"],
+  ["close", "/monthly", "month_close", "close the month"],
   // Books that balance (spec step 238).
   ["books", "/net-worth", "books_check", "are my numbers right"],
   ["books", "/net-worth", "books_check", "do my books balance"],

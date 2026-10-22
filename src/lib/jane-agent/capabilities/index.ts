@@ -99,6 +99,14 @@ export const CAPABILITIES: readonly Capability[] = [
     tools: ["whole_picture", "priorities", "health_score"],
     answer: janeAnswer,
   },
+  // Spec step 244: the monthly close.
+  {
+    id: "close",
+    bank: ["close"],
+    kinds: ["month_close"],
+    tools: ["month_close"],
+    answer: janeAnswer,
+  },
   // Spec step 238: are the numbers right.
   {
     id: "books",

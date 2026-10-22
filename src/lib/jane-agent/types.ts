@@ -310,6 +310,8 @@ export const ACTION_IDS = [
   "suggestion.yes",
   "suggestion.no",
   "suggestion.why",
+  // Spec step 244: the monthly close's one tap.
+  "close.confirm",
   "steady.pay",
   "steady.skip",
   "steady.on",
@@ -414,6 +416,8 @@ export type MessageRefs = {
   previousActions?: MessageAction[];
   // A line under the answer: what happened when the button was tapped.
   note?: string;
+  // Spec step 244: the month a "Looks right" on the monthly close closes (YYYY-MM).
+  closeMonth?: string;
   // Spec step 83: a set-up suggestion (src/lib/proposals.ts), by its key.
   proposalKey?: string;
   // Spec step 83: the step only the person can do on an action (./agent-steps.ts).

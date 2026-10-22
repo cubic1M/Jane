@@ -386,6 +386,7 @@ model User {
   paycheckPlans     PaycheckPlan[]
   healthScores      HealthScore[]
   monthlyReports    MonthlyReport[]
+  monthCloses       MonthClose[]
   whatIfPlans       WhatIfPlan[]
   taxPlanEvents     TaxPlanEvent[]
   propertyAppeals   PropertyAppeal[]
@@ -3560,6 +3561,29 @@ model MonthlyReport {
 
   @@unique([userId, month])
   @@map("monthly_reports")
+}
+
+// The monthly close (spec step 244): on the first of the month Jane closes the month before,
+// like a company's books. waiting: charges whose category Jane wasn't sure of, asked about in
+// one message; closed: the figures are kept and don't change unless the person corrects
+// something in that month (then they're worked out again and correctedAt is set).
+model MonthClose {
+  id          String    @id @default(cuid())
+  userId      String    @map("user_id")
+  // YYYY-MM: the month closed.
+  month       String
+  status      String
+  // Transaction ids whose category Jane wasn't sure of, while waiting.
+  uncertain   String[]
+  figures     Json
+  closedAt    DateTime? @map("closed_at") @db.Timestamptz(3)
+  correctedAt DateTime? @map("corrected_at") @db.Timestamptz(3)
+  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, month])
+  @@map("month_closes")
 }
 
 // A what-if plan the person adopted (spec step 203): the scenario, its assumptions and the

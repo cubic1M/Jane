@@ -38,7 +38,7 @@ export const PAGE_TOOLS: Readonly<Record<string, readonly string[]>> = {
     "student_loans",
     "credit_score",
   ],
-  monthly: ["monthly_report"],
+  monthly: ["monthly_report", "month_close"],
   money: ["net_worth"],
   "net-worth": ["net_worth"],
   plan: ["open_findings"],

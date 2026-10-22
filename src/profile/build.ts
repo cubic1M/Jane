@@ -98,6 +98,8 @@ export type ProfileInput = {
     // What doesn't add up in the person's data (spec step 238), from the daily books check.
     // Absent: not loaded.
     books?: readonly { kind: string; words: string; accountId: string | null }[];
+    // Last month's close (spec step 244): closed, waiting or none yet. Absent: not loaded.
+    lastCloseStatus?: "closed" | "waiting" | null;
     rsuGap?: {
       vestedCents: number;
       shortfallCents: number;

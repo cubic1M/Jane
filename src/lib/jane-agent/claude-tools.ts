@@ -20,6 +20,7 @@ import { CARD_SELECT, buildCard } from "@/lib/cards";
 import { comparisonFor } from "@/lib/compare";
 import { frequencyWords } from "@/lib/explain-input";
 import { openBooks } from "@/lib/books";
+import { loadClose } from "@/lib/month-close";
 import { loadSteady } from "@/lib/steady-pay";
 import { FACT_KEYS } from "@/profile/facts";
 import { scopedFor } from "@/lib/db-scoped";
@@ -342,6 +343,12 @@ export const CHAT_TOOLS: Anthropic.Tool[] = [
     name: "whole_picture",
     description:
       'How the person is doing across every sector at once (spec step 183), for "am I OK?", "how am I doing" and "what should I do this month": a verdict (ok, watch or act) with its one-sentence headline, safe to spend until payday, bills and deadlines due this week and this month, budgets over, goals behind, urgent alerts, what Jane\'s agent is working on, the steps waiting on the person, and the one to three things that matter most (from the ranked list) with why. Lead with the headline, then the things that matter; use the same figures.',
+    input_schema: noInput,
+  },
+  {
+    name: "month_close",
+    description:
+      "The monthly close (spec step 244): the latest month Jane closed (on the first of the next), or the one waiting on charges she wasn't sure of: what came in and went out, the top categories, net worth at the close, plan against actual, what worked, whether the books added up, and whether a correction changed it since. A closed month's figures only change when the person corrects something in it.",
     input_schema: noInput,
   },
   {
@@ -760,6 +767,31 @@ export async function runChatTool(
             }
           : { score: null, why: "No accounts linked yet." },
       );
+    }
+    case "month_close": {
+      const view = await loadClose(userId, { client });
+      if (!view) return out({ view: null, why: "No month closed yet." });
+      const f = view.figures;
+      return out({
+        month: view.month,
+        status: view.status,
+        cameIn: money(f.incomeCents),
+        wentOut: money(f.spendingCents),
+        topCategories: f.topCategories.map((c) => ({
+          category: c.category,
+          amount: money(c.cents),
+        })),
+        netWorthAtClose: f.netWorthCents === null ? null : money(f.netWorthCents),
+        booksProblems: f.booksOpen,
+        plan: f.plan,
+        worked: f.worked,
+        waitingOn: view.uncertain.map((t) => ({
+          what: t.description,
+          on: t.date,
+          amount: money(t.amountCents),
+        })),
+        correctedSinceClose: view.correctedAt !== null,
+      });
     }
     case "books_check": {
       const books = await openBooks(userId, { client });

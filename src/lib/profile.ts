@@ -172,7 +172,7 @@ async function sectorFigures(userId: string, client: PrismaClient, now: Date) {
   const hasStock =
     (await db.accounts.count({ where: { subtype: "stock plan" } })) > 0 ||
     (await db.equityEvents.count()) > 0;
-  const [matchPace, equity, subscriptions, cardInterest, shopSaving, policies, books] =
+  const [matchPace, equity, subscriptions, cardInterest, shopSaving, policies, books, lastClose] =
     await Promise.all([
       loadMatchPace(userId, { client, now }),
       hasStock
@@ -184,6 +184,11 @@ async function sectorFigures(userId: string, client: PrismaClient, now: Date) {
       import("@/lib/insurance/policies").then((m) => m.listPolicies(userId, { client })),
       // Spec step 238: what the daily books check left open.
       import("@/lib/books").then((m) => m.openBooks(userId, { client })),
+      // Spec step 244: last month's close, if it's begun.
+      db.monthCloses.findFirst({
+        where: { month: previousMonthOf(now) },
+        select: { status: true },
+      }),
     ]);
   return {
     matchPace,
@@ -191,6 +196,9 @@ async function sectorFigures(userId: string, client: PrismaClient, now: Date) {
     subscriptions,
     cardInterestYearCents: cardInterest.available ? cardInterest.interestYearCents : null,
     insuranceShopSavingCents: shopSaving,
+    lastCloseStatus: (lastClose?.status === "closed" || lastClose?.status === "waiting"
+      ? lastClose.status
+      : null) as "closed" | "waiting" | null,
     books: books.open.map((o) => ({ kind: o.kind, words: o.words, accountId: o.accountId })),
     coverPolicies: policies
       .filter((p) => p.status === "active" || p.status === "pending")
@@ -203,6 +211,9 @@ async function sectorFigures(userId: string, client: PrismaClient, now: Date) {
       })),
   };
 }
+
+const previousMonthOf = (now: Date) =>
+  new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - 1, 1)).toISOString().slice(0, 7);
 
 export async function loadProfile(userId: string, options: Options = {}): Promise<Profile> {
   return buildProfile(await loadProfileInput(userId, options));
