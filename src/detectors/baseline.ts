@@ -123,6 +123,7 @@ export const BASELINE: Readonly<Record<PersonId, readonly string[]>> = {
     "disability_insurance",
     "employer_benefits",
     "family_loans",
+    "goal_tradeoffs",
     "household_setup",
     "idle_cash",
     "inherited_ira",

@@ -1,7 +1,10 @@
 import { BENEFICIARY_SUBTYPES } from "@/config/family-file";
 import { demoAccounts, demoLiabilities, demoTransactions } from "@/data-sources/demo/demo-bank";
+import { demoGoalsFor } from "@/data-sources/demo/demo-goals";
 import { demoHoldings } from "@/data-sources/demo/demo-holdings";
 import { SAMPLE_RELIEF } from "@/config/disasters";
+import { goalProgress } from "@/planning/goals";
+import { tradeGoalOf } from "@/planning/goal-tradeoffs";
 import type { NeedPolicy } from "@/lib/insurance/need/types";
 import type { ProfileInput } from "./build";
 
@@ -95,6 +98,19 @@ export function inputFor(person: string, told: ProfileInput["told"] = {}): Profi
       ownedValueCents: (SAMPLE_POLICIES[person] ?? [])
         .filter((p) => p.kind === "home")
         .reduce((sum, p) => sum + Number(p.coverage.dwelling ?? 0), 0),
+      // Spec step 241: their goals as the demo bank adds them on the day it's linked.
+      goals: demoGoalsFor(person, SAMPLE_TODAY).flatMap(
+        (g, i) =>
+          tradeGoalOf({
+            id: `${person}-goal-${i}`,
+            name: g.name,
+            targetDate: g.targetDate,
+            progress: goalProgress(
+              { targetCents: g.targetCents, savedCents: g.savedCents, targetDate: g.targetDate },
+              SAMPLE_TODAY,
+            ),
+          }) ?? [],
+      ),
     },
     unreadPolicyDocuments: UNREAD_DOCUMENTS[person] ?? 0,
     // Priya has asked Jane to keep fossil fuels out of her funds (spec step 236).
