@@ -1693,6 +1693,24 @@ const BASE_QUESTIONS: readonly CheckQuestion[] = [
     expect: { intent: "tax", mentions: /disaster|county/ },
   },
   {
+    id: "tax-37",
+    text: "is my social security taxed",
+    needs: "rules",
+    expect: { intent: "tax", mentions: /Social Security/, list: true },
+  },
+  {
+    id: "tax-38",
+    text: "what is irmaa",
+    needs: "rules",
+    expect: { intent: "tax", mentions: /Medicare/, list: true },
+  },
+  {
+    id: "tax-39",
+    text: "can you check my draft return before I file",
+    needs: "rules",
+    expect: { intent: "tax", mentions: /draft/ },
+  },
+  {
     id: "ins-1",
     text: "what insurance do I have",
     needs: "rules",
@@ -2060,6 +2078,54 @@ const BASE_QUESTIONS: readonly CheckQuestion[] = [
       link: "/loans/goal",
       list: true,
       maxChars: 1_000,
+    },
+  },
+  // Spec step 249: helping family with credit.
+  {
+    id: "debt-39",
+    text: "should I cosign a loan for my son",
+    needs: "rules",
+    expect: {
+      intent: "family_credit",
+      mentions: /co-signing/i,
+      link: "/loans/helping",
+      list: true,
+      maxChars: 2_600,
+    },
+  },
+  {
+    id: "debt-40",
+    text: "how do I add my daughter to my credit card as an authorized user",
+    needs: "rules",
+    expect: {
+      intent: "family_credit",
+      mentions: /co-signing/i,
+      link: "/loans/helping",
+      list: true,
+      maxChars: 2_600,
+    },
+  },
+  // Spec step 248: renting, counted.
+  {
+    id: "debt-37",
+    text: "can you report my rent to the credit bureaus",
+    needs: "rules",
+    expect: {
+      intent: "renting",
+      mentions: /rent/i,
+      link: "/loans/renting",
+      maxChars: 2_000,
+    },
+  },
+  {
+    id: "debt-38",
+    text: "when do I get my security deposit back",
+    needs: "rules",
+    expect: {
+      intent: "renting",
+      mentions: /deposit|rent/i,
+      link: "/loans/renting",
+      maxChars: 2_000,
     },
   },
   // Spec step 247: out of costly short-term borrowing.

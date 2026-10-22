@@ -40,7 +40,8 @@ describe("who the tax detectors reach", () => {
 
   it("Roth conversions: near or in retirement with a big pre-tax balance, never someone starting out", () => {
     const fired = PERSON_IDS.filter((id) => topics(id).includes("roth_conversion"));
-    expect(fired).toEqual(["preretire", "retiree"]);
+    // Not Ruth: on Social Security, a converted dollar is taxed at about 22% (step 271).
+    expect(fired).toEqual(["preretire"]);
     const s = run("preretire").find((x) => x.topic === "roth_conversion")!;
     expect(s.worthKind).toBe("saves");
     expect(s.confidence.percent).toBeLessThanOrEqual(65);
@@ -473,5 +474,48 @@ describe("disaster relief (step 270)", () => {
     const s = run("family", smaller).find((x) => x.topic === "disaster_relief")!;
     expect(s.worthCents).toBe(0);
     expect(s.why).toContain("none of it is deductible");
+  });
+});
+
+describe("a draft return checked before filing (step 272)", () => {
+  const finding = (key: string, effect: "owes" | "saves", dollarsCents: number) => ({
+    key,
+    kind: "left_out" as const,
+    title: `${key} title`,
+    line: "Form 1040 line 1a",
+    draftCents: 0,
+    knownCents: dollarsCents,
+    effect,
+    dollarsCents,
+    why: "why",
+  });
+  const withDraft =
+    (findings: ReturnType<typeof finding>[]) =>
+    (d: ProfileInput): ProfileInput => ({
+      ...d,
+      extras: { ...d.extras!, draftReturn: { year: 2026, findings } },
+    });
+
+  it("raises nothing without a checked draft, or when the check found nothing", () => {
+    for (const id of PERSON_IDS) expect(topics(id)).not.toContain("draft_return_check");
+    expect(topics("freelancer", withDraft([]))).not.toContain("draft_return_check");
+  });
+
+  it("brings what the check found, now, with the dollars: a bill to avoid when any line owes", () => {
+    const s = run(
+      "freelancer",
+      withDraft([
+        finding("capitalGains", "owes", 16_737),
+        finding("federalWithheld", "saves", 100_000),
+      ]),
+    ).find((x) => x.topic === "draft_return_check")!;
+    expect(s).toMatchObject({ urgency: "now", worthKind: "risk", worthCents: 116_737 });
+    expect(s.title).toBe("Fix 2 things in your 2026 draft return before you file");
+    expect(s.headline).toBe("Fix your draft return, avoid up to $1,167");
+    expect(s.why).toContain("I don't file it.");
+    const saves = run("freelancer", withDraft([finding("estimatedPaid", "saves", 200_000)])).find(
+      (x) => x.topic === "draft_return_check",
+    )!;
+    expect(saves.worthKind).toBe("saves");
   });
 });

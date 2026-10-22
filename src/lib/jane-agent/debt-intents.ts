@@ -61,6 +61,10 @@ export type DebtIntent =
   | { kind: "car_loan" }
   // Spec step 247: "how much have payday loans cost me?", "I keep overdrafting".
   | { kind: "costly_borrowing" }
+  // Spec step 248: "report my rent", "my rent went up", "when do I get my deposit back?".
+  | { kind: "renting" }
+  // Spec step 249: "add my son to my card", "should I co-sign", "first card for my daughter".
+  | { kind: "family_credit" }
   // Spec step 246: "I have $20,000, pay down my mortgage or recast?", "$500 a month extra on my
   // mortgage". lumpCents or extraMonthlyCents is the amount named, or both null.
   | { kind: "mortgage_money"; lumpCents: number | null; extraMonthlyCents: number | null }
@@ -124,6 +128,8 @@ export const DEBT_KINDS = new Set<string>([
   "car_loan",
   "mortgage_money",
   "costly_borrowing",
+  "renting",
+  "family_credit",
   "debt_decision",
   "loan_fit",
 ]);
@@ -301,6 +307,9 @@ const STUDENT_LONG =
   /\b(?:pslf|public service loan\w*)\b.*\b(?:payments?|counted?|count|how many|how long|when|date|done|left|remaining|progress|certif\w+|recertif\w+)\b|\b(?:payments?|counted?|how many|when|date|progress)\b.*\bpslf\b|\brecertif\w+\b.*\b(?:income|plan|idr|loans?)\b|\b(?:income|idr|income-driven)\b.*\brecertif\w+\b|\bemployer certif\w+\b|\bcertify my employer\b|\b(?:taxed|taxable)\b.*\bforgiven (?:student|loans?|debt)\b|\bforgiven (?:student )?(?:loans?|debt)\b.*\b(?:taxed|taxable)\b|\b(?:refinanc\w*|consolidat\w*)\b.*\bstudent\b|\bstudent\b.*\b(?:refinanc\w*)\b/;
 
 // Spec step 226: money lent to or borrowed from family and friends.
+// Spec step 249. Helping someone with credit; a past co-signed loan is still family loans.
+const FAMILY_CREDIT =
+  /\bauthori[sz]ed users?\b|\badd (?:my )?(?:son|daughter|kid|teen|teenager|child|partner|spouse|wife|husband) (?:to|as)\b.*\b(?:card|account)\b|\bfirst (?:credit )?card for (?:my |a )?(?:son|daughter|kid|teen|teenager|child|student)\b|\bcard for (?:my )?(?:college )?student\b|\bshould i co-?sign\b|\bco-?sign(?:ing)? (?:a |an |for |my )|\bco-?signer\b.*\b(?:risk|miss|hurt|credit|happens)\b|\bwhat (?:happens|if) .*\bco-?sign/;
 const FAMILY_LOANS =
   /\bwho owes me\b|\bwho do i owe\b|\bowes? me (?:money|\$|back)\b|\b(?:did|has|have) \w+(?: \w+)? (?:pay|paid|paying) me back\b|\bmoney (?:i |i've |ive )?(?:lent|loaned|borrowed)\b|\b(?:i|we) (?:lent|loaned)\b|\blent (?:out|money)\b|\bloans? to (?:family|friends?)\b|\b(?:family|friends?) (?:loans?|owe)\b|\bi owe (?:my )?(?:mom|dad|mother|father|sister|brother|friend|friends|aunt|uncle|cousin|parents|family)\b|\bco-?sign(?:ed|er)?\b|\bshared (?:debt|debts|loan|loans)\b/;
 
@@ -331,6 +340,9 @@ const EQUITY_PMI =
 const DEBT_TROUBLE =
   /\b(?:too much debt|drowning in debt|buried in debt|overwhelmed by (?:my )?debts?|(?:can'?t|cannot|unable to) (?:keep up with|manage|handle|pay off) (?:all )?(?:my |the )?debts?|debts? (?:is |are )?(?:out of control|too (?:high|much|big))|bankruptcy|debt settlement|settle (?:my |the |some of my )?debts?|debt management plans?|debt relief|debt consolidation counsel\w*|(?:non-?profit )?credit counsel\w*|hardship (?:programs?|plans?) (?:for|on|with) (?:my )?(?:cards?|debts?|loans?)|what are my options with (?:my )?debts?)\b/;
 // Spec step 247. An overdraft question is this one only when it's about the habit.
+// Spec step 248. Rent reporting, a rent increase, and a security deposit.
+const RENTING =
+  /\b(?:report|reporting|reported)\b.*\b(?:my )?rent\b|\brent\b.*\b(?:credit (?:report|score|file|bureaus?)|build(?:ing)? (?:my )?credit)\b|\b(?:my )?rent (?:went up|is going up|increase\w*|hike|raised)\b|\brent (?:is|got) (?:too )?(?:high|raised)\b|\b(?:security|rental) deposit\b|\bdeposit back\b|\blandlord\b.*\bdeposit\b/;
 const COSTLY =
   /\bpayday (?:loans?|lenders?|advances?)\b|\bcash advances?\b|\bpay(?:check)? advance apps?\b|\b(?:earnin|brigit|moneylion|klover)\b|\bhigh[- ]cost (?:loans?|borrowing)\b|\bsmall[- ]dollar loans?\b|\bpayday alternative\b|\bcostly (?:short[- ]term )?borrowing\b|\boverdrafts?\b.*\b(?:keep|keeps|again|repeated|every month|so often|a lot|cost me|add up)\b|\b(?:keep|keeps|stop|always)\b.*\boverdraft\w*/;
 // Spec step 246.
@@ -427,6 +439,7 @@ export function parseDebtIntent(
   if (DEBT_REVIEW.test(text)) return { kind: "debt_review" };
   if (CAR_LOAN.test(text)) return { kind: "car_loan" };
   if (COSTLY.test(text)) return { kind: "costly_borrowing" };
+  if (RENTING.test(text)) return { kind: "renting" };
   if (MORTGAGE_MONEY.test(text) && !/\b(?:paid off|payoff date|when will)\b/.test(text)) {
     const monthly = PER_MONTH.test(text);
     return {
@@ -456,6 +469,7 @@ export function parseDebtIntent(
   ) {
     return { kind: "card_interest" };
   }
+  if (FAMILY_CREDIT.test(text)) return { kind: "family_credit" };
   if (FAMILY_LOANS.test(text)) return { kind: "family_loans" };
   if (CREDIT_GOAL.test(text) && /\bscore\b|\bcredit (?:goal|plan)\b/.test(text)) {
     const g = goalFrom(text, asOf);
