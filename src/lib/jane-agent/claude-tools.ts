@@ -20,6 +20,8 @@ import { CARD_SELECT, buildCard } from "@/lib/cards";
 import { comparisonFor } from "@/lib/compare";
 import { frequencyWords } from "@/lib/explain-input";
 import { loadSteady } from "@/lib/steady-pay";
+import { loadTradeoffs } from "@/lib/goal-tradeoffs";
+import type { TradeOrder } from "@/planning/goal-tradeoffs";
 import { FACT_KEYS } from "@/profile/facts";
 import { scopedFor } from "@/lib/db-scoped";
 import { loadChanges } from "@/lib/changes";
@@ -341,6 +343,12 @@ export const CHAT_TOOLS: Anthropic.Tool[] = [
     name: "whole_picture",
     description:
       'How the person is doing across every sector at once (spec step 183), for "am I OK?", "how am I doing" and "what should I do this month": a verdict (ok, watch or act) with its one-sentence headline, safe to spend until payday, bills and deadlines due this week and this month, budgets over, goals behind, urgent alerts, what Jane\'s agent is working on, the steps waiting on the person, and the one to three things that matter most (from the ranked list) with why. Lead with the headline, then the things that matter; use the same figures.',
+    input_schema: noInput,
+  },
+  {
+    name: "goal_tradeoffs",
+    description:
+      "Goals that trade off openly (spec step 241): whether the person's savings goals need more each month than the year plan has room for; if so each order's dates (when each goal is reached and how many months late), Jane's suggested order with the reason, and the order the person picked, if any. Use it for \"which goal first?\" and \"can I do both?\". The pick re-plans every sector only on the person's tap (the button under the answer).",
     input_schema: noInput,
   },
   {
@@ -753,6 +761,27 @@ export async function runChatTool(
             }
           : { score: null, why: "No accounts linked yet." },
       );
+    }
+    case "goal_tradeoffs": {
+      const view = await loadTradeoffs(userId, { client, now });
+      if (!view) return out({ view: null, why: "No accounts linked yet." });
+      const dates = (o: TradeOrder) =>
+        o.dates.map((d) => ({
+          goal: d.name,
+          reached: d.month,
+          wanted: d.wantedMonth,
+          monthsLate: d.lateMonths,
+        }));
+      return out({
+        competing: view.competing,
+        options: view.options
+          .slice(0, 4)
+          .map((o) => ({ first: o.dates[0]?.name, dates: dates(o) })),
+        suggested: view.suggested ? dates(view.suggested) : null,
+        why: view.reason || null,
+        picked: view.chosen !== null,
+        nowInForce: view.current ? dates(view.current) : null,
+      });
     }
     case "steady_pay": {
       const view = await loadSteady(userId, { client, now });

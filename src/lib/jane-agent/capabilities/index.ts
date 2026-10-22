@@ -130,6 +130,14 @@ export const CAPABILITIES: readonly Capability[] = [
     tools: ["steady_pay"],
     answer: janeAnswer,
   },
+  // Spec step 241: goals that trade off openly.
+  {
+    id: "tradeoffs",
+    bank: ["tradeoffs"],
+    kinds: ["goal_tradeoffs"],
+    tools: ["goal_tradeoffs"],
+    answer: janeAnswer,
+  },
   {
     id: "did",
     bank: ["timeline", "settings"],

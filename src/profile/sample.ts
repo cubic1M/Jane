@@ -1,5 +1,8 @@
 import { demoAccounts, demoLiabilities, demoTransactions } from "@/data-sources/demo/demo-bank";
+import { demoGoalsFor } from "@/data-sources/demo/demo-goals";
 import { demoHoldings } from "@/data-sources/demo/demo-holdings";
+import { goalProgress } from "@/planning/goals";
+import { tradeGoalOf } from "@/planning/goal-tradeoffs";
 import type { NeedPolicy } from "@/lib/insurance/need/types";
 import type { ProfileInput } from "./build";
 
@@ -50,7 +53,23 @@ export function inputFor(person: string, told: ProfileInput["told"] = {}): Profi
   return {
     today: SAMPLE_TODAY,
     told,
-    extras: { householdMembers: 0, coverPolicies: SAMPLE_POLICIES[person] ?? [] },
+    extras: {
+      householdMembers: 0,
+      coverPolicies: SAMPLE_POLICIES[person] ?? [],
+      // Spec step 241: their goals as the demo bank adds them on the day it's linked.
+      goals: demoGoalsFor(person, SAMPLE_TODAY).flatMap(
+        (g, i) =>
+          tradeGoalOf({
+            id: `${person}-goal-${i}`,
+            name: g.name,
+            targetDate: g.targetDate,
+            progress: goalProgress(
+              { targetCents: g.targetCents, savedCents: g.savedCents, targetDate: g.targetDate },
+              SAMPLE_TODAY,
+            ),
+          }) ?? [],
+      ),
+    },
     unreadPolicyDocuments: UNREAD_DOCUMENTS[person] ?? 0,
     holdings: holdings.map((h) => ({
       ticker:

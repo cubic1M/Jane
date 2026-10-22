@@ -92,6 +92,8 @@ export const SUGGESTION_TOPICS = [
   "property_tax_check",
   "tax_loss_harvest",
   "file_return",
+  // Spec step 241: goals that can't all be on time.
+  "goal_tradeoffs",
 ] as const;
 export type SuggestionTopic = (typeof SUGGESTION_TOPICS)[number];
 
@@ -226,6 +228,8 @@ export const PEOPLE: readonly Person[] = [
 
       "liability_levels",
       "disability_insurance",
+      // Spec step 241: the trip and the kitchen can't both be on time.
+      "goal_tradeoffs",
     ],
     mustNot: [
       "renters_insurance",

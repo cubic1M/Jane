@@ -95,6 +95,16 @@ export type ProfileInput = {
     insuranceShopSavingCents?: number;
     // The policies they have, for the cover-need gaps (spec step 277). Absent: not loaded.
     coverPolicies?: readonly NeedPolicy[];
+    // Savings goals still on the way (spec step 241), in the order they're funded, and the
+    // room the year plan has for them this month. Absent: not loaded.
+    goals?: readonly {
+      id: string;
+      name: string;
+      leftCents: number;
+      wantedMonth: string;
+      monthlyCents: number;
+    }[];
+    goalRoomCents?: number | null;
     rsuGap?: {
       vestedCents: number;
       shortfallCents: number;

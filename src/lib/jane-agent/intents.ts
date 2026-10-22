@@ -123,6 +123,8 @@ export type Intent =
   | { kind: "monthly_report" }
   // Spec step 240: "my steady paycheck", "my income is uneven".
   | { kind: "steady_pay" }
+  // Spec step 241: "which goal first?", "can I do both?"
+  | { kind: "goal_tradeoffs" }
   // Spec step 203: "what if I lose my job?"; step 209: "where will I be in 30 years?"
   | WhatIfIntent
   | LongViewIntent
@@ -367,6 +369,8 @@ const HEALTH =
   /\b(?:health score|money health|financial health|financial wellness)\b|\bhow healthy (?:are|is) my (?:money|finances)\b/;
 const MONTHLY_REPORT =
   /\b(?:monthly|money|month'?s) report\b|\bmonth in review\b|\breport (?:for|on) (?:last|this) month\b|\bhow did (?:i|we) do (?:this|last) month\b|\bhow (?:was|did) (?:my|our|last) month\b|\bhow did last month go\b/;
+const TRADEOFFS =
+  /\bwhich goal\b.*\b(?:first|matters most)\b|\bgoals? (?:compete|competing|conflict|clash)\b|\btrade[- ]?offs? (?:between|in|for) (?:my )?goals?\b|\bwhich (?:should|do) i save for first\b|\b(?:can|could) i (?:afford|do|save for) both (?:goals|of them|at once)\b|\bprioriti[sz]e my goals\b|\border (?:of|for) my goals\b/;
 const STEADY =
   /\bsteady (?:paycheck|pay|income)\b|\b(?:my|the) (?:income|pay|paychecks?) (?:is|are) (?:uneven|irregular|unpredictable|all over the place)\b|\b(?:uneven|irregular|freelance|variable) income\b|\bpay myself (?:a )?(?:steady|regular)\b/;
 const ONE_THING =
@@ -571,6 +575,7 @@ export function parseIntent(
   const profile = parseProfile(text);
   if (profile) return profile;
   if (STEADY.test(text)) return { kind: "steady_pay" };
+  if (TRADEOFFS.test(text)) return { kind: "goal_tradeoffs" };
   if (NET_WORTH.test(text)) return { kind: "net_worth" };
   if (BALANCE_FORECAST.test(text)) return { kind: "balance_forecast" };
   const budgetFor = BUDGET_FOR.exec(text);

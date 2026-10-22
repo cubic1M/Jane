@@ -1,4 +1,5 @@
 import type { PrismaClient } from "@/generated/prisma/client";
+import { roomFromPlan, tradeGoalOf } from "@/planning/goal-tradeoffs";
 import { PROFILE_MONTHS } from "@/config/profile";
 import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
@@ -172,22 +173,34 @@ async function sectorFigures(userId: string, client: PrismaClient, now: Date) {
   const hasStock =
     (await db.accounts.count({ where: { subtype: "stock plan" } })) > 0 ||
     (await db.equityEvents.count()) > 0;
-  const [matchPace, equity, subscriptions, cardInterest, shopSaving, policies] = await Promise.all([
-    loadMatchPace(userId, { client, now }),
-    hasStock
-      ? import("@/lib/equity-tax").then((m) => m.loadEquityTax(userId, { client, now }))
-      : null,
-    import("@/lib/jane-agent/recurring").then((m) => m.subscriptionYear(userId, { client, now })),
-    import("@/lib/card-interest").then((m) => m.loadCardInterest(userId, { client, now })),
-    import("@/lib/insurance/shop").then((m) => m.openShopSavingCents(userId, { client, now })),
-    import("@/lib/insurance/policies").then((m) => m.listPolicies(userId, { client })),
-  ]);
+  const [matchPace, equity, subscriptions, cardInterest, shopSaving, policies, goals, plan] =
+    await Promise.all([
+      loadMatchPace(userId, { client, now }),
+      hasStock
+        ? import("@/lib/equity-tax").then((m) => m.loadEquityTax(userId, { client, now }))
+        : null,
+      import("@/lib/jane-agent/recurring").then((m) => m.subscriptionYear(userId, { client, now })),
+      import("@/lib/card-interest").then((m) => m.loadCardInterest(userId, { client, now })),
+      import("@/lib/insurance/shop").then((m) => m.openShopSavingCents(userId, { client, now })),
+      import("@/lib/insurance/policies").then((m) => m.listPolicies(userId, { client })),
+      // Spec step 241: the goals, and the year plan as last kept (not worked out again here).
+      import("@/lib/goals").then((m) => m.listGoals(userId, { client, now })),
+      db.yearPlans.findFirst({ orderBy: { startMonth: "desc" }, select: { months: true } }),
+    ]);
+  const month = now.toISOString().slice(0, 7);
+  const planMonths = Array.isArray(plan?.months)
+    ? (plan.months as unknown as Parameters<typeof roomFromPlan>[0])
+    : [];
   return {
     matchPace,
     rsuGap: equity ? equity.rsuGap : null,
     subscriptions,
     cardInterestYearCents: cardInterest.available ? cardInterest.interestYearCents : null,
     insuranceShopSavingCents: shopSaving,
+    goals: goals.flatMap((g) => tradeGoalOf(g) ?? []),
+    goalRoomCents: planMonths.some((m) => m.month === month)
+      ? roomFromPlan(planMonths, month)[0]
+      : null,
     coverPolicies: policies
       .filter((p) => p.status === "active" || p.status === "pending")
       .map((p) => ({

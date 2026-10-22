@@ -188,6 +188,7 @@ const STATUS: Record<string, string> = {
   household: "Checking who you share with…",
   money_moves: "Checking what money moved…",
   steady_pay: "Working out your steady paycheck…",
+  goal_tradeoffs: "Weighing your goals against each other…",
   health_score: "Working out your money health score…",
   monthly_report: "Reading your monthly report…",
   what_if: "Running the what-if…",

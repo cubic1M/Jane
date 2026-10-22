@@ -310,6 +310,9 @@ export const ACTION_IDS = [
   "suggestion.yes",
   "suggestion.no",
   "suggestion.why",
+  // Spec step 241: goals that trade off openly.
+  "tradeoffs.pick",
+  "tradeoffs.keep",
   "steady.pay",
   "steady.skip",
   "steady.on",
@@ -414,6 +417,8 @@ export type MessageRefs = {
   previousActions?: MessageAction[];
   // A line under the answer: what happened when the button was tapped.
   note?: string;
+  // Spec step 241: the goal order a "Use this order" button picks (goal ids, comma-joined).
+  goalOrder?: string;
   // Spec step 83: a set-up suggestion (src/lib/proposals.ts), by its key.
   proposalKey?: string;
   // Spec step 83: the step only the person can do on an action (./agent-steps.ts).

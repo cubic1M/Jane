@@ -108,6 +108,10 @@ const rows: Row[] = [
   ],
   ["steady", "/transfers", "steady_pay", "my income is uneven"],
   ["steady", "/transfers", "steady_pay", "what is my steady pay"],
+  // Goals that trade off openly (spec step 241).
+  ["tradeoffs", "/goals", "goal_tradeoffs", "which goal should i save for first"],
+  ["tradeoffs", "/goals", "goal_tradeoffs", "can i afford both goals"],
+  ["tradeoffs", "/goals", "goal_tradeoffs", "my goals compete, what do i do"],
 
   // Safe to spend and the day.
   ["safe", "/home", "safe_to_spend", "how much do i have left to spend"],

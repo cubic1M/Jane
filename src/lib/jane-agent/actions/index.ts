@@ -158,6 +158,7 @@ import { leanNotNow, leanStart } from "./lean";
 import { askAnswer } from "./ask";
 import { suggestionNo, suggestionWhy, suggestionYes } from "./suggestion";
 import { steadyOn, steadyPay, steadySkip } from "./steady";
+import { tradeoffsKeep, tradeoffsPick } from "./tradeoffs";
 import { unusualMe, unusualNotMe } from "./unusual";
 import {
   bundleNo1,
@@ -418,6 +419,8 @@ export const ACTION_HANDLERS: Readonly<Record<ActionId, ActionHandler>> = {
   "steady.pay": steadyPay,
   "steady.skip": steadySkip,
   "steady.on": steadyOn,
+  "tradeoffs.pick": tradeoffsPick,
+  "tradeoffs.keep": tradeoffsKeep,
   "unusual.me": unusualMe,
   "unusual.not_me": unusualNotMe,
 };
