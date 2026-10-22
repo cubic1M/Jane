@@ -271,7 +271,7 @@ export const CHAT_CLAUDE_HISTORY = 6;
 // ...and each of those is cut to this many characters: a long earlier answer slows the next
 // one without helping it (what the last answer was about travels as its topic).
 export const CHAT_CLAUDE_TURN_CHARS = 700;
-// Most rounds of tool calls Claude may make for one answer, like Ask (ASK_MAX_TOOL_ROUNDS).
+// Most rounds of tool calls Claude may make for one answer.
 export const CHAT_CLAUDE_MAX_TURNS = 3;
 // The most words Claude may write in one turn of an answer: a chat answer is a few sentences.
 export const CHAT_CLAUDE_MAX_TOKENS = 3_000;
