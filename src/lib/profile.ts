@@ -159,7 +159,13 @@ export async function loadProfileInput(
     })),
     told,
     unreadPolicyDocuments: unread,
-    extras: { householdMembers, ...(await sectorFigures(userId, client, now)) },
+    extras: {
+      householdMembers,
+      ...(await sectorFigures(userId, client, now)),
+      practiceIdeas: await import("@/lib/practice/ideas").then((m) =>
+        m.openPracticeIdeas(userId, { client, now }),
+      ),
+    },
   };
 }
 

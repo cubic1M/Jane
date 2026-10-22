@@ -1,5 +1,6 @@
 import type { SuggestionTopic } from "@/config/people";
 import type { FindingType } from "@/generated/prisma/client";
+import { PRACTICE_TOPIC } from "./practice-suggestions";
 
 // Ranking and reaching (spec step 255): how the nightly scan orders what the detectors found
 // and how much of it reaches a person each day.
@@ -124,4 +125,6 @@ export const ADVICE_TOPICS: readonly SuggestionTopic[] = [
   "health_insurance",
   "education_529",
   "employer_match",
+  // The practice portfolio's ideas: demo advice only.
+  ...Object.values(PRACTICE_TOPIC),
 ];
