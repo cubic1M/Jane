@@ -85,7 +85,7 @@ export function opportunityCard(o: OpportunityRow): FloatingCardData {
         : "Done in the practice portfolio";
   return {
     id: `opportunity:${o.id}`,
-    headline: o.status === "held" ? `${label}: held back by a cap` : o.headline,
+    headline: o.status === "held" ? `Held back: ${label}` : o.headline,
     details: {
       why: o.reason,
       figures: [{ label: "Rule", value: label }, ...d.figures, { label: "Status", value: status }],
