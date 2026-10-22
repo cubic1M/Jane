@@ -95,8 +95,16 @@ export function planTrades(input: {
   // The fund a kind is held in (the larger, after a swap), and the one to buy more of.
   const sellTicker = (c: PracticeClass) =>
     classTickers(c).reduce((a, b) => (held(b) > held(a) ? b : a));
-  const buyTicker = (c: PracticeClass) =>
-    [sellTicker(c), ...classTickers(c)].find((t) => !blocked.has(t)) ?? null;
+  // New money goes into a fund of the kind that isn't at a loss, so buying never turns a loss
+  // still to be harvested into a wash sale.
+  const atLoss = (t: string) => {
+    const p = state.positions[t];
+    return p !== undefined && held(t) < p.costBasisCents;
+  };
+  const buyTicker = (c: PracticeClass) => {
+    const open = [sellTicker(c), ...classTickers(c)].filter((t) => !blocked.has(t));
+    return open.find((t) => !atLoss(t)) ?? open[0] ?? null;
+  };
   // The model's value: cash waiting plus the ETFs (opportunity stocks sit outside it).
   const total = state.cashCents + CLASSES.reduce((s, c) => s + modelValue(c), 0);
   if (total <= 0) return [];
