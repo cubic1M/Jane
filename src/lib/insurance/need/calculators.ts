@@ -176,6 +176,7 @@ export function deductibleNeedsFor(input: NeedInput): Need[] {
     const recommended = fits.length > 0 ? Math.max(...fits) : Math.min(...ladder);
     const have = p.deductibleCents;
     const direction = recommended > have ? "raise" : recommended < have ? "lower" : "ok";
+    const step = [...ladder].sort((a, b) => a - b).find((s) => s > have && s <= recommended);
     return [
       {
         kind: "deductible",
@@ -185,6 +186,7 @@ export function deductibleNeedsFor(input: NeedInput): Need[] {
         haveCents: have,
         gapCents: Math.abs(recommended - have),
         direction,
+        stepCents: direction === "raise" ? step : undefined,
         lines: [
           { label: "Your cash in the bank", cents: input.cashCents, adds: true },
           {

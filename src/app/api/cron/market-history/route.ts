@@ -3,8 +3,9 @@ import { loadHistory, HistoryError } from "@/lib/market/history";
 import { marketData } from "@/lib/market";
 
 // The one-time market history load (spec step 289, Phase AW): pulls daily closes for the model
-// portfolios' ETFs from Alpaca into our database. Not on the Vercel schedule; it is run once by
-// hand, and again later only to top up. Needs ALPACA_API_KEY_ID and ALPACA_API_SECRET_KEY; with
+// portfolios' ETFs from Alpaca into our database. On the Vercel schedule once a day (vercel.json):
+// the first run loads everything since HISTORY_START, later runs only add the new days (rows
+// already stored are skipped). Needs ALPACA_API_KEY_ID and ALPACA_API_SECRET_KEY; with
 // neither set it refuses, and the sample market stays in use. Alpaca is only read from: no
 // order is ever placed.
 export async function GET(request: Request) {
