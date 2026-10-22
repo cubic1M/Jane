@@ -1,0 +1,30 @@
+import { liquidCents } from "@/detectors/helpers";
+import { buildProfile, type ProfileInput } from "@/profile/build";
+import type { FitPerson } from "./fit";
+
+// The person the fit engine (./fit.ts) works for, read from what the profile already holds:
+// take-home pay, the debt payments seen in the last three months, cash, and whether they are
+// in debt trouble. The score is a pulled one when the caller has it. Pure.
+
+const MONTHS = 3;
+const DAY_MS = 86_400_000;
+
+export function fitPersonFrom(input: ProfileInput, creditScore: number | null = null): FitPerson {
+  const profile = buildProfile(input);
+  const income = profile.facts.monthly_income.value;
+  const since = new Date(Date.parse(`${input.today}T00:00:00Z`) - MONTHS * 31 * DAY_MS)
+    .toISOString()
+    .slice(0, 10);
+  const paid = input.transactions
+    .filter(
+      (t) => (t.pfc ?? "").startsWith("LOAN_PAYMENTS_") && t.amountCents > 0 && t.date > since,
+    )
+    .reduce((s, t) => s + t.amountCents, 0);
+  return {
+    creditScore,
+    incomeCents: typeof income === "number" && income > 0 ? income : null,
+    debtPaymentsCents: Math.round(paid / MONTHS),
+    cashCents: liquidCents(input),
+    debtTrouble: profile.facts.debt_trouble.value === true,
+  };
+}

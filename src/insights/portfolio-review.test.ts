@@ -73,7 +73,7 @@ describe("reviewPortfolio on the demo bank", () => {
       /^Move about \$[\d,]+ from US stocks and cash into international stocks and bonds, using low-cost index funds: Keystone Total International Index Fund for international stocks and Keystone Total Bond Index Fund for bonds\.$/,
     );
     expect(moderate.why).toBe(
-      "Your moderate profile aims for 40% US stocks, 20% international stocks, 35% bonds and 5% cash. You have 69% in US stocks against a target of 40%.",
+      "Your medium profile aims for 40% US stocks, 20% international stocks, 35% bonds and 5% cash. You have 69% in US stocks against a target of 40%.",
     );
     const careful = reviewPortfolio(accounts, 1).recommendations[0];
     expect(careful.what).toMatch(/into cash and bonds/);
