@@ -61,7 +61,6 @@ export const DECISION_PATTERNS: readonly (readonly [DecisionKind, RegExp])[] = [
     ),
   ],
   ["oop_max", P("\\bout[- ]of[- ]pocket (?:max\\w*|limit)\\b")],
-  ["life_how_much", P("\\bhow much life (?:insurance|cover\\w*)\\b.*\\b(?:need|get|buy|carry)\\b")],
   [
     "disability_how_much",
     P("\\bhow much disability (?:insurance|cover\\w*)\\b.*\\b(?:need|get|buy|carry)\\b"),
