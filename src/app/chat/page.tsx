@@ -56,7 +56,7 @@ async function Chat({ searchParams }: { searchParams: PageProps<"/chat">["search
         </p>
       </div>
 
-      {chat.scanning && <ScanRefresher shown={chat.hasEarlier ? -1 : chat.messages.length} />}
+      {chat.scanning && <ScanRefresher />}
 
       {/* Spec step 96: search everything said here, and what the person pinned. */}
       <form action="/chat/search" role="search" className="flex gap-2">
