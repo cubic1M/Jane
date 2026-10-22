@@ -219,6 +219,7 @@ describe("the loan card's shape", () => {
       ineligible: [],
       whatWouldHelp: [],
       assumptions: [],
+      terms: null,
       available: true,
       advice: true,
       checkedOn: "2026-10-18",

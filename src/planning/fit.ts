@@ -98,6 +98,23 @@ export type FitOption = {
 
 export type FitIneligible = { lender: string; aprBps: number; termMonths: number; reason: string };
 
+// The best loan's lender at each term it offers, so "what about a shorter term?" is answered from
+// the same numbers; the differences are against that best loan, worked out here.
+export type FitTerm = {
+  id: string;
+  termMonths: number;
+  aprBps: number;
+  paymentCents: number;
+  feeCents: number;
+  totalCostCents: number;
+  interestCents: number;
+  comfortable: boolean;
+  // Against the best loan: positive is more.
+  paymentDiffCents: number;
+  interestDiffCents: number;
+};
+export type FitTerms = { lender: string; bestId: string; options: FitTerm[] };
+
 export type FitResult = {
   need: FitNeed;
   amountCents: number;
@@ -110,6 +127,8 @@ export type FitResult = {
   whatWouldHelp: string[];
   // Stated assumptions, for "More details".
   assumptions: string[];
+  // The best loan's lender at its other terms; null when no loan is eligible.
+  terms: FitTerms | null;
 };
 
 const pct = (share: number) => `${Math.round(share * 100)}%`;
@@ -310,6 +329,7 @@ export function fit(input: FitInput): FitResult {
     ineligible,
     whatWouldHelp: [],
     assumptions,
+    terms: null,
   };
   if (eligible.length === 0 && payoff) {
     const w = [
@@ -347,6 +367,26 @@ export function fit(input: FitInput): FitResult {
   const best = stretch
     ? [...eligible].sort((a, b) => a.paymentCents - b.paymentCents)[0]
     : cheapest;
+  const interestOf = (s: Scored) => s.totalCostCents - s.feeCents - input.amountCents;
+  const terms: FitTerms = {
+    lender: best.lender,
+    bestId: best.id,
+    options: eligible
+      .filter((s) => s.lender === best.lender)
+      .sort((a, b) => a.termMonths - b.termMonths)
+      .map((s) => ({
+        id: s.id,
+        termMonths: s.termMonths,
+        aprBps: s.aprBps,
+        paymentCents: s.paymentCents,
+        feeCents: s.feeCents,
+        totalCostCents: s.totalCostCents,
+        interestCents: interestOf(s),
+        comfortable: s.comfortable,
+        paymentDiffCents: s.paymentCents - best.paymentCents,
+        interestDiffCents: interestOf(s) - interestOf(best),
+      })),
+  };
   const picked: { s: Scored; label: FitLabel }[] = [
     { s: best, label: stretch ? "lowest_payment" : "best_cost" },
   ];
@@ -430,6 +470,7 @@ export function fit(input: FitInput): FitResult {
       pick,
       confidence: { percent: w.percent, reason: w.reason },
       assumptions,
+      terms,
     };
   }
 
@@ -450,6 +491,7 @@ export function fit(input: FitInput): FitResult {
     options,
     pick,
     confidence: { percent: weakest.percent, reason: weakest.reason },
+    terms,
     assumptions: stretch
       ? [...assumptions, "None of the options is comfortable, so the pick is the lowest payment."]
       : assumptions,
