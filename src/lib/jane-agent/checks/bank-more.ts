@@ -19,6 +19,8 @@ const rows: Row[] = [
   ["credit", "/loans/credit", "credit_score", "what's my credit score"],
   ["debt", "/debt", "debts", "how much card interest am I paying"],
   ["debt", "/loans", "debt_decision", "should I pay off my debt before I invest"],
+  ["debt", "/loans/refinance", "loan_fit", "what loan fits me best"],
+  ["debt", "/loans/refinance", "loan_fit", "find me a loan to pay off my cards"],
   ["debt", "/loans", "debt_decision", "is a debt consolidation loan a good idea"],
   ["debt", "/loans", "debt_decision", "can I use my emergency fund to pay off my credit card"],
   ["budgets", "/budgets", "budgets", "how's my budget"],
