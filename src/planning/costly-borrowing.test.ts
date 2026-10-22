@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { kindOf, loanCost, pairLoans, summarize, type Tx } from "./costly-borrowing";
+import { assumedLoans, kindOf, loanCost, pairLoans, summarize, type Tx } from "./costly-borrowing";
 
 // Spec step 247: costly short-term borrowing found in payments, with its cost in dollars and as
 // a yearly rate.
@@ -126,6 +126,45 @@ describe("summarize", () => {
     );
     expect(s.kinds.map((k) => k.kind)).toEqual(["payday", "overdraft"]);
     expect(s.totalYearlyCents).toBe(7_900);
+  });
+});
+
+describe("payday repayments without the loan going in", () => {
+  // Chris's bank shows only the monthly repayments: the loan came in cash or is rolled over.
+  const monthly = ["2026-01-16", "2026-02-16", "2026-03-16"].map((d) =>
+    tx(d, 34_500, "ADVANCE AMERICA LOAN", "LOAN_PAYMENTS_CASH_ADVANCES"),
+  );
+
+  it("costs each at $15 per $100 every 14 days it was out, rolled over to the next", () => {
+    const loans = assumedLoans(monthly);
+    expect(loans.map((l) => l.days)).toEqual([31, 31, 28]);
+    // 31 days: $33.21 per $100, so the fee is 33.21/133.21 of $345.
+    expect(loans[0].feeCents).toBe(Math.round((34_500 * (15 * 31)) / 14 / (100 + (15 * 31) / 14)));
+    expect(loans[0].principalCents + loans[0].feeCents).toBe(34_500);
+    expect(loans[0].takenOn).toBe("2025-12-16");
+  });
+
+  it("uses two weeks for a single repayment, and counts them in the summary as a cycle", () => {
+    expect(assumedLoans(monthly.slice(0, 1))[0]).toMatchObject({ days: 14, feeCents: 4_500 });
+    const s = summarize(monthly, "2026-03-20");
+    expect(s.kinds[0]).toMatchObject({ kind: "payday", count: 3 });
+    expect(s.kinds[0].basis).toMatch(/only the repayments show/);
+    expect(s.kinds[0].aprBps).toBeGreaterThan(35_000);
+    expect(s.cycle).toBe(true);
+  });
+
+  it("does not count a repayment twice when its loan is seen", () => {
+    const pair = [
+      tx(
+        "2026-01-02",
+        -30_000,
+        "ADVANCE AMERICA LOAN PROCEEDS",
+        "LOAN_DISBURSEMENTS_CASH_ADVANCES",
+      ),
+      tx("2026-01-16", 34_500, "ADVANCE AMERICA LOAN PAYMENT", "LOAN_PAYMENTS_CASH_ADVANCES"),
+    ];
+    expect(pairLoans(pair).repaidOnly).toEqual([]);
+    expect(summarize(pair, "2026-02-01").kinds[0]).toMatchObject({ count: 1, costCents: 4_500 });
   });
 });
 

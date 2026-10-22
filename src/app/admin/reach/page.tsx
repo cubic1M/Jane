@@ -65,6 +65,32 @@ async function Reach() {
         Which of Jane&apos;s features reach which people, and whether her confidence is honest.
       </p>
 
+      <section className="flex flex-col gap-2">
+        <h2 className="text-xl font-semibold">Bar 3: top three suggestions</h2>
+        <p className={MUTED}>
+          {report.topThree.filter((t) => t.pass).length} of {report.topThree.length} people pass:
+          their top three are all on their written list and none is on their must-not list.
+        </p>
+        <ul className="flex flex-col gap-1 text-sm">
+          {report.topThree.map((t) => (
+            <li key={t.id}>
+              <span
+                className={`mr-2 inline-block rounded px-2 py-0.5 font-semibold ${t.pass ? "bg-emerald-100 text-emerald-900 dark:bg-emerald-950 dark:text-emerald-200" : "bg-red-100 text-red-900 dark:bg-red-950 dark:text-red-200"}`}
+              >
+                {t.pass ? "Pass" : "Fail"}
+              </span>
+              {t.label}: {t.topics.join(", ") || "nothing"}
+              {t.wrong.length > 0 && (
+                <span className="text-red-700"> · must not: {t.wrong.join(", ")}</span>
+              )}
+              {t.offList.length > 0 && (
+                <span className={MUTED}> · not on their list: {t.offList.join(", ")}</span>
+              )}
+            </li>
+          ))}
+        </ul>
+      </section>
+
       <section className="flex flex-col gap-3">
         <h2 className="text-xl font-semibold">The eight sample people</h2>
         {report.people.map((p) => (

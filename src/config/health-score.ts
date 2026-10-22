@@ -39,6 +39,9 @@ export const HEALTH_BANDS: readonly { min: number; label: string }[] = [
   { min: 60, label: "Steady" },
   { min: 0, label: "Building" },
 ];
+// Under this the number and band aren't quoted to the person ("0, Building" reads as a verdict):
+// the chat says it in words, with the one thing that would raise it most.
+export const HEALTH_SAY_IN_WORDS_BELOW = 20;
 // A change this big or bigger is worth telling the person about.
 export const HEALTH_CHANGE_WORTH_SAYING = 5;
 // Never in anything the score says: it explains, it doesn't judge.

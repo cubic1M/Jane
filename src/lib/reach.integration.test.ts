@@ -58,6 +58,9 @@ describe.runIf(url)("the reach scoreboard", { timeout: 60_000 }, () => {
   it("shows the eight people one by one, and everyone else in totals", async () => {
     const report = await reachReport({ client });
     expect(report.people).toHaveLength(8);
+    // Bar 3: pass or fail per person.
+    expect(report.topThree).toHaveLength(8);
+    expect(report.topThree.every((t) => t.pass)).toBe(true);
     // Per tool: covered, exempt and missing add up to every tool.
     const c = report.coverage;
     expect(c.covered.length + c.exempt.length + c.missing.length).toBe(c.total);

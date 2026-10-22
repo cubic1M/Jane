@@ -1,3 +1,4 @@
+import { decisionKindOf, type DecisionKind } from "./decisions";
 import type { PolicyKind } from "@/config/insurance";
 
 // Questions about insurance, understood by rules (spec Phase X). Pure: the normalized text
@@ -48,7 +49,10 @@ export type InsuranceAsk =
   | "claim_worth"
   // health_year: deductible progress, the out-of-pocket maximum, FSA and HSA, network and
   // bill checks (spec step 200).
-  | "health_year";
+  | "health_year"
+  // decide: "should I get umbrella insurance?", "do I need life insurance?" and the like,
+  // answered directly in a few sentences (./decisions.ts).
+  | "decide";
 
 export type InsuranceIntent = {
   kind: "insurance";
@@ -59,6 +63,8 @@ export type InsuranceIntent = {
   event?: string;
   // Spec step 199: how much the damage is, when they said.
   amountCents?: number;
+  // The decision asked about, when ask is "decide".
+  decision?: DecisionKind;
 };
 
 // Something happened (spec step 107): the kind of policy it's for and the guide's event.
@@ -226,7 +232,7 @@ const RENEWAL_CALL =
 
 // Whether a claim is worth making against paying it themselves (spec step 199).
 const CLAIM_WORTH =
-  /\b(?:worth|should i|do i need to|is it worth)\b.{0,30}\b(?:claim|claiming|filing a claim|file a claim|make a claim|making a claim)\b|\bclaim (?:or|vs\.?|versus) (?:pay|paying|cover|out of pocket)\b|\b(?:claim|insurance)\b.{0,40}\bpay (?:it )?(?:out of pocket|myself)\b|\bpay (?:it )?(?:out of pocket|myself)\b.{0,40}\b(?:claim|insurance)\b/;
+  /\bwhat if (?:the |it'?s )?(?:repair|damage|bill|claim)\b.{0,20}\$|\b(?:worth|should i|do i need to|is it worth)\b.{0,30}\b(?:claim|claiming|filing a claim|file a claim|make a claim|making a claim)\b|\bclaim (?:or|vs\.?|versus) (?:pay|paying|cover|out of pocket)\b|\b(?:claim|insurance)\b.{0,40}\bpay (?:it )?(?:out of pocket|myself)\b|\bpay (?:it )?(?:out of pocket|myself)\b.{0,40}\b(?:claim|insurance)\b/;
 
 // "$1,200" or "$1.2k" in the text, in cents.
 function amountIn(text: string): number | undefined {
@@ -247,6 +253,10 @@ function eventIn(text: string): string | undefined {
 }
 
 export function parseInsurance(text: string): InsuranceIntent | null {
+  const decision = decisionKindOf(text);
+  if (decision && !CLAIM_WORTH.test(text)) {
+    return { kind: "insurance", ask: "decide", policyKind: kindIn(text), decision };
+  }
   if (CLAIM_WORTH.test(text)) {
     return {
       kind: "insurance",

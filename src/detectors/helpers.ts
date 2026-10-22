@@ -1,7 +1,7 @@
 import { DETECTOR_RATES } from "@/config/detectors";
 import { confidenceOf, counted, type Source } from "@/profile/confidence";
 import type { Fact, ProfileInput, ProfileTx } from "@/profile/build";
-import type { Confidence } from "./contract";
+import { HEADLINE_MAX, SHORT_MAX, type Confidence, type WorthKind } from "./contract";
 
 // What detectors share. Pure.
 
@@ -74,4 +74,48 @@ export function nice(description: string): string {
 export function listOf(names: readonly string[]): string {
   const n = names.map(nice);
   return n.length <= 1 ? (n[0] ?? "") : `${n.slice(0, -1).join(", ")} and ${n.at(-1)}`;
+}
+
+// Whole dollars for a headline: "$216".
+export const dollars = (cents: number) => `$${Math.round(cents / 100).toLocaleString("en-US")}`;
+
+// A headline: the verb phrase, then what it is worth ("Cancel Hulu, save $216 a year").
+// `once` is for a one-off amount rather than a yearly one. Without a value, the phrase alone.
+export function headlineOf(
+  phrase: string,
+  worthCents: number,
+  kind: WorthKind,
+  once = false,
+): string {
+  if (worthCents <= 0) return phrase;
+  const d = dollars(worthCents);
+  const worth =
+    kind === "risk"
+      ? `avoid up to ${d}`
+      : kind === "earns"
+        ? once
+          ? `get ${d} back`
+          : `earn ${d} a year`
+        : once
+          ? `save ${d}`
+          : `save ${d} a year`;
+  return `${phrase}, ${worth}`;
+}
+
+// A line cut at a word boundary to fit, for the parts that are a list of the person's own
+// things (their payees, their accounts) and so have no fixed length.
+export function clip(text: string, max = SHORT_MAX): string {
+  if (text.length <= max) return text;
+  const cut = text.slice(0, max - 1);
+  return `${cut.slice(0, cut.lastIndexOf(" ")).replace(/[,;:\s]+$/, "")}…`;
+}
+
+// The short forms of a strategist idea (step 256), whose title and why are written by the
+// model: the title, cut to a headline, and the first sentence of the why.
+export function ideaShortForms(title: string, why: string): { headline: string; short: string } {
+  const firstSentence = why.split(/(?<=[.!?])\s/)[0];
+  return {
+    headline: clip(title.replace(/[.!?]+$/, ""), HEADLINE_MAX),
+    short: clip(firstSentence),
+  };
 }

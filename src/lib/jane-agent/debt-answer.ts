@@ -22,6 +22,8 @@ import { checkGoalDraft, loadCreditGoals, planFor } from "@/lib/credit-goals";
 import { loadCostlyBorrowing } from "@/lib/costly-borrowing";
 import { MortgageMoneyError, loadMortgageMoney } from "@/lib/mortgage-money";
 import { loadCarLoan } from "@/lib/car-loan";
+import { decide } from "@/lib/debt-decisions";
+import { loadFit } from "@/lib/fit";
 import { loadDebtReview } from "@/lib/debt-review";
 import { loadDebtTrouble } from "@/lib/debt-trouble";
 import { compareHomeProject, loadHomeEquity } from "@/lib/home-equity";
@@ -50,6 +52,8 @@ import { creditGoalReply } from "./credit-goal-replies";
 import { costlyReply } from "./costly-borrowing-replies";
 import { mortgageMoneyReply } from "./mortgage-money-replies";
 import { carLoanReply } from "./car-loan-replies";
+import { decisionReply } from "./debt-decision-replies";
+import { defaultAmount, loanFitReply } from "./loan-fit-replies";
 import { debtReviewReply } from "./debt-review-replies";
 import { debtTroubleReply } from "./debt-trouble-replies";
 import { homeEquityReply } from "./home-equity-replies";
@@ -140,6 +144,20 @@ export async function answerDebt(
         return { body: error.message, actions: [], refs: {} };
       }
     }
+    case "loan_fit": {
+      const assumed = intent.amountCents === null && defaultAmount(intent.need) > 0;
+      const amountCents = intent.amountCents ?? defaultAmount(intent.need);
+      return loanFitReply(
+        await loadFit(
+          userId,
+          { need: intent.need, ...(amountCents > 0 ? { amountCents } : {}) },
+          { client, now },
+        ),
+        assumed,
+      );
+    }
+    case "debt_decision":
+      return decisionReply(await decide(userId, intent.which, { client, now }));
     case "car_loan":
       return carLoanReply(await loadCarLoan(userId, { client, now }));
     case "debt_review":
