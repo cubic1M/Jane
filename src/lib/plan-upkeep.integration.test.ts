@@ -175,17 +175,17 @@ describe.runIf(url)("plans that keep up, against a real database", { timeout: 30
     ).toBeNull();
   });
 
-  it("reviews the week in the chat and for Claude", async () => {
+  it("reviews the week when asked and for Claude, never as a message of its own", async () => {
     const userId = await person("upkeep-review", "ask");
-    // Sunday Nov 8, 6pm in Los Angeles: the last day of the week of Nov 2.
+    // Sunday Nov 8, 6pm in Los Angeles: the last day of the week of Nov 2. The week is a line
+    // of Monday's brief now (docs/feature-audit.md, cluster 2).
     const sunday = new Date("2026-11-09T02:00:00Z");
     await runJaneAgent(userId, { client, now: sunday, trigger: "cron" });
-    const review = await client.janeMessage.findFirst({
-      where: { userId, dedupeKey: "review:2026-11-02" },
-    });
-    expect(review?.body).toMatch(/^Here's your week with Jane\.\n- Done: /);
+    expect(
+      await client.janeMessage.count({ where: { userId, dedupeKey: { startsWith: "review:" } } }),
+    ).toBe(0);
     const typed = await answerByRules(userId, { kind: "review" }, { client, now: sunday });
-    expect(typed?.body).toBe(review?.body);
+    expect(typed?.body).toMatch(/^Here's your week with Jane\.\n- Done: /);
     const tool = JSON.parse(
       (await runChatTool(userId, "plan_upkeep", {}, { client, now: NOW })).content,
     );

@@ -350,3 +350,37 @@ describe("when nothing is comfortable", () => {
     expect(r.options.some((o) => o.label === "best_cost")).toBe(false);
   });
 });
+
+// Spec step 249: a loan co-signed for someone is the person's own debt to a lender.
+describe("a co-signed loan", () => {
+  it("counts its payment in the person's own debt-to-income", async () => {
+    const input = inputFor("family");
+    const before = fitPersonFrom(input);
+    const after = fitPersonFrom({
+      ...input,
+      familyCredit: {
+        helped: 0,
+        cosignedOwedCents: 1_800_000,
+        cosignedMissed: 0,
+        cosignedPaymentCents: 250_000,
+      },
+    });
+    expect(after.debtPaymentsCents - before.debtPaymentsCents).toBe(250_000);
+    // Enough co-signed debt pushes a loan the person could get past the lender's limit.
+    const offers = await offersFor("personal", 500_000);
+    const fits = (who: FitPerson) =>
+      fit({ need: "personal", product: "personal", amountCents: 500_000, person: who, offers });
+    const heavy = fitPersonFrom({
+      ...input,
+      familyCredit: {
+        helped: 0,
+        cosignedOwedCents: 30_000_000,
+        cosignedMissed: 0,
+        cosignedPaymentCents: 2_000_000,
+      },
+    });
+    expect(fits(before).options.length).toBeGreaterThan(0);
+    expect(fits(heavy).options).toEqual([]);
+    expect(fits(heavy).ineligible[0].reason).toMatch(/debt payments would be/);
+  });
+});

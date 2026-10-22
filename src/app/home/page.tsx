@@ -9,6 +9,8 @@ import type { ComingUpRow } from "@/insights/coming-up";
 import type { SafeToSpend } from "@/planning/safe-to-spend";
 import { formatCents } from "@/lib/money";
 import { requireUser } from "@/lib/session";
+import { BooksNotice } from "@/components/books-notice";
+import { openBooks } from "@/lib/books";
 import { FirstWeekChecklist } from "./checklist";
 import { AutopilotChooser } from "@/components/autopilot-chooser";
 import { autopilotOf } from "@/lib/autopilot";
@@ -93,6 +95,12 @@ function SafeToSpendCard({ safe }: { safe: SafeToSpend }) {
           bills.
         </p>
       )}
+      <Link
+        href="/figures/safe_to_spend"
+        className="text-sm font-medium text-emerald-700 hover:underline"
+      >
+        How did I get this?
+      </Link>
       <details>
         <summary className="cursor-pointer text-sm font-medium text-emerald-700">
           How we worked it out
@@ -283,6 +291,7 @@ async function HomeContent() {
   return (
     <>
       <AppHeader user={user} />
+      <BooksNotice books={await openBooks(user.id)} />
       <div className="flex flex-col gap-1">
         <h1 className="text-3xl font-semibold tracking-tight">Today</h1>
         <Totals home={home} />

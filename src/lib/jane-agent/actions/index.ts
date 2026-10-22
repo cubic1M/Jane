@@ -96,6 +96,8 @@ import {
   taxIpPinHave,
   taxIpPinRemind,
 } from "./tax-identity";
+import { taxDisasterLoss, taxDisasterMove } from "./tax-disaster";
+import { taxDraftConfirm, taxDraftDismiss } from "./tax-draft";
 import { taxEquityAside } from "./tax-equity";
 import { taxYearsPlan } from "./tax-years";
 import { taxAccountantSeen } from "./tax-accountant";
@@ -166,6 +168,8 @@ import { leanNotNow, leanStart } from "./lean";
 import { askAnswer } from "./ask";
 import { suggestionNo, suggestionWhy, suggestionYes } from "./suggestion";
 import { steadyOn, steadyPay, steadySkip } from "./steady";
+import { twoApprove, twoDecline, twoSplitEven, twoSplitIncome } from "./two";
+import { tradeoffsKeep, tradeoffsPick } from "./tradeoffs";
 import { unusualMe, unusualNotMe } from "./unusual";
 import {
   bundleNo1,
@@ -338,6 +342,10 @@ export const ACTION_HANDLERS: Readonly<Record<ActionId, ActionHandler>> = {
   "tax.notice_team": taxNoticeTeam,
   "tax.notice_mine": taxNoticeMine,
   "tax.ippin_remind": taxIpPinRemind,
+  "tax.disaster_move": taxDisasterMove,
+  "tax.disaster_loss": taxDisasterLoss,
+  "tax.draft_confirm": taxDraftConfirm,
+  "tax.draft_dismiss": taxDraftDismiss,
   "tax.ippin_have": taxIpPinHave,
   "tax.identity_open": taxIdentityOpen,
   "tax.identity_not": taxIdentityNot,
@@ -435,6 +443,12 @@ export const ACTION_HANDLERS: Readonly<Record<ActionId, ActionHandler>> = {
   "steady.pay": steadyPay,
   "steady.skip": steadySkip,
   "steady.on": steadyOn,
+  "two.split_income": twoSplitIncome,
+  "two.split_even": twoSplitEven,
+  "two.approve": twoApprove,
+  "two.decline": twoDecline,
+  "tradeoffs.pick": tradeoffsPick,
+  "tradeoffs.keep": tradeoffsKeep,
   "unusual.me": unusualMe,
   "unusual.not_me": unusualNotMe,
 };

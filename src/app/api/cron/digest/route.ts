@@ -1,5 +1,4 @@
 import { NextResponse } from "next/server";
-import { runMonthlyCheckIns } from "@/lib/check-in-email";
 import { runDigests } from "@/lib/digest/send";
 import { recordRun, reportMissedJobs } from "@/lib/health";
 import { runDueJobs } from "@/lib/jobs";
@@ -27,8 +26,8 @@ export async function GET(request: Request) {
       return {
         ...run,
         previews: undefined,
-        checkIns: await runMonthlyCheckIns(),
-        // Spec step 148: last month's money report, once, in the first days of the month.
+        // Spec step 148: last month's money report, once, in the first days of the month. It is
+        // the one monthly email: the check-in (spec step 45) is part of it.
         monthlyReports: await runMonthlyReports().catch((error) => {
           console.error("Monthly reports failed", { error: String(error) });
           return null;

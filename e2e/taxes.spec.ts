@@ -60,9 +60,10 @@ test("the tax profile shows what Jane found and saves the person's answers", asy
   const profile = page.getByRole("region", { name: "Your tax profile" });
   await expect(profile.getByText("California")).toBeVisible();
   await expect(profile.getByText("Found by Jane: check it").first()).toBeVisible();
-  await expect(page.getByRole("region", { name: "What Jane does by herself" })).toContainText(
-    "Nothing is ever filed, signed or paid without your tap.",
-  );
+  // Spec step 141: what the Taxes area may do by itself, as Settings has it.
+  const byHerself = page.getByRole("region", { name: "What Jane does by herself" });
+  await expect(byHerself).toContainText("Taxes is set to");
+  await expect(byHerself).toContainText("Nothing is ever filed or signed without your tap.");
   expect(await axe(page)).toEqual([]);
 
   await profile.getByRole("link", { name: "Finish it" }).click();
