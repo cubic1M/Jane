@@ -6,7 +6,7 @@ import { DETECTOR_EXEMPT } from "@/config/detector-exempt";
 import { UNREACHABLE } from "@/config/reach";
 import { CAPABILITIES } from "@/lib/jane-agent/capabilities";
 import { BASELINE } from "./baseline";
-import { runHarness } from "./harness";
+import { runHarness, topThreeFor } from "./harness";
 
 // Spec step 258: the nightly CI run fails on a new wrong suggestion or a person losing a
 // right one, and every capability reaches someone or says why not.
@@ -44,6 +44,20 @@ describe("reach on the eight sample people", () => {
     }
     for (const id of Object.keys(UNREACHABLE)) {
       expect(reached.has(id), `${id} is listed unreachable but reaches someone`).toBe(false);
+    }
+  });
+
+  // Depth-first bar #3 (measured on /admin/reach): each person's top three are on their written
+  // list, and none is on their must-not list.
+  it("passes bar 3 for all eight people", () => {
+    for (const r of reports) {
+      const t = topThreeFor(r);
+      expect(t.wrong, `${r.person.id} has a must-not item in the top three`).toEqual([]);
+      expect(
+        t.offList,
+        `${r.person.id}: top three ${t.topics.join(", ")} has items not on their list`,
+      ).toEqual([]);
+      expect(t.pass, r.person.id).toBe(true);
     }
   });
 });

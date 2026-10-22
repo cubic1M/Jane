@@ -24,6 +24,12 @@ import { loadCostlyBorrowing } from "@/lib/costly-borrowing";
 import { loadRenting } from "@/lib/renting";
 import { MortgageMoneyError, loadMortgageMoney } from "@/lib/mortgage-money";
 import { loadCarLoan } from "@/lib/car-loan";
+import { decide } from "@/lib/debt-decisions";
+import { loadFit } from "@/lib/fit";
+import { adviceMode } from "@/lib/advice-mode";
+import { FIT_NEEDS, type FitNeed } from "@/config/fit";
+import { DECISIONS, type DecisionId } from "@/planning/debt-decisions";
+import { centsIn } from "./debt-decision-replies";
 import { loadDebtReview } from "@/lib/debt-review";
 import { loadDebtTrouble } from "@/lib/debt-trouble";
 import { PROJECT_YEARS_DEFAULT } from "@/config/home-equity";
@@ -61,6 +67,7 @@ import {
   mortgageMoneyToolOutput,
   costlyBorrowingToolOutput,
   rentingToolOutput,
+  loanFitToolOutput,
 } from "./debt-tools";
 
 // Runs Claude's debt tools (./debt-tools.ts) for one person: read-only, scoped to them,
@@ -108,6 +115,33 @@ export async function runDebtTool(
         if (!(error instanceof MortgageMoneyError)) throw error;
         return out({ note: error.message });
       }
+    }
+    case "loan_fit": {
+      const a = (input ?? {}) as { need?: unknown; amount_dollars?: unknown; debt_key?: unknown };
+      if (typeof a.need !== "string" || !(FIT_NEEDS as readonly string[]).includes(a.need)) {
+        return out({ error: "Pick a need: car, home, refinance, consolidation or personal." });
+      }
+      const view = await loadFit(
+        userId,
+        {
+          need: a.need as FitNeed,
+          ...(typeof a.amount_dollars === "number" && a.amount_dollars > 0
+            ? { amountCents: Math.round(a.amount_dollars * 100) }
+            : {}),
+          ...(typeof a.debt_key === "string" ? { debtKey: a.debt_key } : {}),
+        },
+        { client, now },
+      );
+      return out(loanFitToolOutput(view, money, await adviceMode(userId, { client })));
+    }
+    case "debt_decision": {
+      const which = (input as { which?: unknown } | null)?.which;
+      if (typeof which !== "string" || !Object.hasOwn(DECISIONS, which)) {
+        return out({ error: "Pick one of the decisions in the tool's list." });
+      }
+      const d = await decide(userId, which as DecisionId, { client, now });
+      for (const c of centsIn(d.sentences)) cents.push(c);
+      return out({ answer: d.sentences, demoAdvice: d.advice, page: d.href });
     }
     case "car_loan":
       return out(carLoanToolOutput(await loadCarLoan(userId, { client, now }), money));

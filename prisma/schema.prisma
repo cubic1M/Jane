@@ -412,6 +412,8 @@ model User {
 
   costlyProducts CostlyProduct[]
 
+  practicePortfolio PracticePortfolio?
+
   @@map("users")
 }
 
@@ -3868,6 +3870,10 @@ model Suggestion {
   capability        String
   topic             String
   title             String
+  // The short forms (docs/detectors.md): a headline and one "why you" line. Empty on rows
+  // scanned before they existed, which fall back to the title and why.
+  headline          String    @default("")
+  short             String    @default("")
   worthCents        Int       @map("worth_cents")
   worthKind         String    @map("worth_kind")
   confidencePercent Int       @map("confidence_percent")
@@ -3890,4 +3896,173 @@ model Suggestion {
   @@unique([userId, key])
   @@index([userId, status])
   @@map("suggestions")
+}
+
+// Spec step 290 (Phase AW, Stage A): a practice portfolio on paper. Nothing here is a real
+// account and none of it can reach the brokerage stand-in. cashCents and the positions are the
+// ledger's running state; every change is a PracticeTrade row, so the state can always be
+// rebuilt from the trades. level is the risk level 1-5 (Very low to Very high).
+model PracticePortfolio {
+  id                  String   @id @default(cuid())
+  userId              String   @unique @map("user_id")
+  level               Int
+  startingCents       Int      @map("starting_cents")
+  cashCents           Int      @map("cash_cents")
+  // Monthly practice deposit and the day of the month it lands (0 = none).
+  monthlyAddCents     Int      @default(0) @map("monthly_add_cents")
+  addDay              Int      @default(1) @map("add_day")
+  paused              Boolean  @default(false)
+  // Opportunities (small capped positions, High and Very high only) paused on their own.
+  opportunitiesPaused Boolean  @default(false) @map("opportunities_paused")
+  startedAt           DateTime @map("started_at") @db.Timestamptz(3)
+  updatedAt           DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  user          User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  positions     PracticePosition[]
+  trades        PracticeTrade[]
+  opportunities PracticeOpportunity[]
+
+  @@map("practice_portfolios")
+}
+
+model PracticePosition {
+  id             String @id @default(cuid())
+  portfolioId    String @map("portfolio_id")
+  userId         String @map("user_id")
+  ticker         String
+  quantity       Float
+  costBasisCents Int    @map("cost_basis_cents")
+
+  portfolio PracticePortfolio @relation(fields: [portfolioId], references: [id], onDelete: Cascade)
+
+  @@unique([portfolioId, ticker])
+  @@index([userId])
+  @@map("practice_positions")
+}
+
+// side: buy, sell or deposit. amountCents is what changed hands (a deposit has no ticker).
+// reason is a sentence for the person; rule names the rule that allowed it (step 291 on).
+model PracticeTrade {
+  id          String   @id @default(cuid())
+  portfolioId String   @map("portfolio_id")
+  userId      String   @map("user_id")
+  placedAt    DateTime @map("placed_at") @db.Timestamptz(3)
+  side        String
+  ticker      String?
+  quantity    Float?
+  priceCents  Int?     @map("price_cents")
+  amountCents Int      @map("amount_cents")
+  // A sale's gain or loss against the cost of what was sold.
+  gainCents   Int?     @map("gain_cents")
+  reason      String
+  rule        String
+  undone      Boolean  @default(false)
+
+  portfolio PracticePortfolio @relation(fields: [portfolioId], references: [id], onDelete: Cascade)
+
+  @@index([portfolioId, placedAt])
+  @@index([userId])
+  @@map("practice_trades")
+}
+
+// Spec step 289 (Phase AW): daily closes pulled once from the market data (Alpaca) for the model
+// portfolios' ETFs, stored with their source so backtests can say "real history since <date>".
+// Market data, not a person's: no user_id.
+model MarketPrice {
+  id         String   @id @default(cuid())
+  ticker     String
+  date       DateTime @db.Date
+  closeCents Int      @map("close_cents")
+  source     String
+
+  @@unique([ticker, date])
+  @@index([ticker, date])
+  @@map("market_prices")
+}
+
+// What was loaded for a ticker, from where and for which dates.
+model MarketHistoryLoad {
+  id       String   @id @default(cuid())
+  ticker   String
+  source   String
+  fromDate DateTime @map("from_date") @db.Date
+  toDate   DateTime @map("to_date") @db.Date
+  rows     Int
+  loadedAt DateTime @map("loaded_at") @db.Timestamptz(3)
+
+  @@unique([ticker, source])
+  @@map("market_history_loads")
+}
+
+// Spec step 292 (Phase AW, Stage A): what the daily scan of a practice portfolio flagged, and
+// what Jane did about it in the practice ledger. kind: drift_rebalance, dip_buy,
+// tax_loss_harvest or news_idea. key stops one event being acted on twice. details holds the
+// numbers, the caps and the confidence for the card (step 296). status: acted (placed in the
+// practice ledger) or autopilot (the autopilot's rebalance does it).
+model PracticeOpportunity {
+  id          String   @id @default(cuid())
+  portfolioId String   @map("portfolio_id")
+  userId      String   @map("user_id")
+  scannedAt   DateTime @map("scanned_at") @db.Timestamptz(3)
+  kind        String
+  ticker      String
+  key         String
+  amountCents Int      @map("amount_cents")
+  headline    String
+  reason      String
+  confidence  Int
+  details     Json
+  status      String
+  tradeIds    String[] @map("trade_ids")
+
+  portfolio PracticePortfolio @relation(fields: [portfolioId], references: [id], onDelete: Cascade)
+
+  @@unique([portfolioId, key])
+  @@index([userId, scannedAt])
+  @@map("practice_opportunities")
+}
+
+// Spec step 293 (Phase AW): the watchlist's headlines with their one-sentence summaries, and
+// filings (8-K, 10-Q) as facts with a link, stored by the daily job so the chat and pages read
+// them without calling anyone. Market data, not a person's: no user_id. `feed` is the market data
+// it came from ("sample" or "alpaca"), so sample news is never shown as real.
+model MarketNews {
+  id        String   @id @default(cuid())
+  // A hash of the feed, kind, date, ticker and title: the same item is stored once.
+  key       String   @unique
+  feed      String
+  // "headline" or "filing".
+  kind      String
+  ticker    String?
+  date      DateTime @db.Date
+  title     String
+  source    String
+  url       String?
+  // Filings only: 8-K, 10-Q.
+  form      String?
+  // Headlines only: one sentence, and who wrote it ("claude" or "rules").
+  summary   String?
+  summaryBy String?  @map("summary_by")
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  @@index([feed, kind, date])
+  @@map("market_news")
+}
+
+// One Claude call for news summaries (spec step 293): what it cost, so the job keeps to a few
+// calls a day and the monthly cap. Written before the call with the most it could cost, then
+// set to what it did cost.
+model NewsSummaryCall {
+  id             String   @id @default(cuid())
+  calledAt       DateTime @map("called_at") @db.Timestamptz(3)
+  model          String
+  headlines      Int
+  inputTokens    Int      @default(0) @map("input_tokens")
+  outputTokens   Int      @default(0) @map("output_tokens")
+  // Hundredths of a cent.
+  costHundredths Int      @map("cost_hundredths")
+  ok             Boolean  @default(false)
+
+  @@index([calledAt])
+  @@map("news_summary_calls")
 }

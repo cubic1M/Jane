@@ -206,7 +206,10 @@ export type AuditEvent =
   // Spec step 214: a rental property added (never its figures).
   | "rental_added"
   // Spec step 215: a costly product entered or confirmed (never its figures).
-  | "costly_product_saved";
+  | "costly_product_saved"
+  // Spec step 290 (Phase AW): the practice portfolio started, and each practice trade.
+  | "practice_started"
+  | "practice_trade";
 
 export type AuditActor = { type: ActorType; id: string | null };
 

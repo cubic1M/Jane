@@ -15,6 +15,7 @@ import {
   outCents,
   tx,
   weakest,
+  headlineOf,
 } from "./helpers";
 
 // Detectors for debt and credit (spec step 260): the loans a person already has, and the extra
@@ -50,6 +51,8 @@ const studentRepayment: Detector = {
       capability: "debt",
       topic: "student_repayment",
       title: "Compare an income-driven plan for your student loans",
+      headline: headlineOf("Compare an income-driven loan plan", gap * 12, "saves"),
+      short: `You pay about ${formatCents(Math.round(monthly))} a month on student loans.`,
       worthCents: gap * 12,
       worthKind: "saves",
       confidence: weakest([
@@ -88,6 +91,12 @@ const autoRefinance: Detector = {
       capability: "debt",
       topic: "auto_refinance",
       title: "Check whether a cheaper car loan exists, and whether the dealer added extras",
+      headline: headlineOf(
+        "Check for a cheaper car loan",
+        Math.round((balance * D.autoRefiGapBps) / 10_000),
+        "saves",
+      ),
+      short: `Your car payment is about ${formatCents(Math.round(monthly))} a month on ${formatCents(balance)} owed.`,
       worthCents: Math.round((balance * D.autoRefiGapBps) / 10_000),
       worthKind: "saves",
       confidence: weakest([
@@ -138,6 +147,8 @@ const carAddons: Detector = {
       capability: "debt",
       topic: "car_addons",
       title: "Cancel the dealer add-on you may not need and ask for the refund",
+      headline: headlineOf("Cancel a dealer add-on", worth, "earns", true),
+      short: `The unused part of what you paid could refund about ${formatCents(worth)}.`,
       worthCents: worth,
       worthKind: "earns",
       // The charge looks like an add-on by its words; whether it is one is the person's to say.
@@ -158,7 +169,7 @@ const carAddons: Detector = {
 const cashAdvance: Detector = {
   capability: "debt",
   topic: "cash_advance",
-  covers: [],
+  covers: ["costly_borrowing"],
   needs: [],
   detect({ profile, data }) {
     const cards = new Set(
@@ -185,6 +196,8 @@ const cashAdvance: Detector = {
       capability: "debt",
       topic: "cash_advance",
       title: "Stop taking cash advances on your card",
+      headline: headlineOf("Stop taking card cash advances", cost, "saves"),
+      short: `Your card cash advances cost about ${formatCents(cost)} in fees and interest.`,
       worthCents: cost,
       worthKind: "saves",
       confidence: evidence("seen", profile.months, count, "card cash advances"),
@@ -215,6 +228,12 @@ const mortgageExtra: Detector = {
       capability: "debt",
       topic: "mortgage_extra",
       title: "Compare paying extra on your mortgage with what the cash earns now",
+      headline: headlineOf(
+        "Weigh extra mortgage payments",
+        Math.round((excess * (rate.value - R.highYieldBps)) / 10_000),
+        "saves",
+      ),
+      short: `Your mortgage charges ${(rate.value / 100).toFixed(2)}% on ${formatCents(balance)}.`,
       worthCents: Math.round((excess * (rate.value - R.highYieldBps)) / 10_000),
       worthKind: "saves",
       confidence: weakest([
@@ -253,6 +272,8 @@ const balanceTransfer: Detector = {
       capability: "debt",
       topic: "balance_transfer",
       title: "See if a 0% transfer card would cut your interest",
+      headline: headlineOf("Try a 0% balance transfer card", saving, "saves"),
+      short: `You owe ${formatCents(debt.value)} on cards and paid ${formatCents(interest)} in interest.`,
       worthCents: saving,
       worthKind: "saves",
       confidence: weakest([
@@ -301,6 +322,12 @@ const creditUtilisation: Detector = {
       capability: "debt",
       topic: "credit_building",
       title: "Pay your cards down before the statement closes, so a lower balance is reported",
+      headline: headlineOf(
+        "Pay cards down before the statement",
+        Math.round((owed * D.utilisationRateBenefitBps) / 10_000),
+        "saves",
+      ),
+      short: `Your cards hold ${formatCents(owed)} of ${formatCents(limit)} in limits.`,
       // What getting under the line is usually worth: a better pricing tier, about 1.5 points off
       // the rate on what's owed. An estimate, so not what the pay-down itself costs.
       worthCents: Math.round((owed * D.utilisationRateBenefitBps) / 10_000),
@@ -349,6 +376,8 @@ const bnplPlans: Detector = {
       capability: "debt",
       topic: "bnpl",
       title: "Put your pay-later installments in your forecast so they never catch you short",
+      headline: headlineOf("Plan for pay-later installments", total, "risk"),
+      short: `You've paid ${formatCents(total)} in ${payments.length} pay-later installments.`,
       worthCents: total,
       worthKind: "risk",
       confidence: evidence("seen", profile.months, payments.length, "pay-later installments"),
@@ -383,6 +412,12 @@ const medicalBills: Detector = {
       topic: "medical_bills",
       title:
         "Ask for an itemized bill, and for financial help or a no-interest plan, on your medical bills",
+      headline: headlineOf(
+        "Ask for help with medical bills",
+        Math.round(total * D.medicalAskShare),
+        "saves",
+      ),
+      short: `You paid ${formatCents(total)} for medical care in ${profile.months} months.`,
       worthCents: Math.round(total * D.medicalAskShare),
       worthKind: "saves",
       confidence: evidence("seen", profile.months, care.length, "medical bills"),
@@ -409,6 +444,8 @@ const collections: Detector = {
       topic: "credit_report_errors",
       title:
         "Check the collection on your credit report before you pay more, and ask for it in writing",
+      headline: headlineOf("Check a collection before paying", total, "risk"),
+      short: `You've paid ${formatCents(total)} to a collection agency in ${profile.months} months.`,
       worthCents: total,
       worthKind: "risk",
       confidence: evidence("seen", profile.months, paid.length, "payments to a collector"),
@@ -440,6 +477,8 @@ const studentForgiveness: Detector = {
       capability: "debt",
       topic: "student_forgiveness",
       title: "Check Public Service Loan Forgiveness: you work for a public employer",
+      headline: headlineOf("Check loan forgiveness (PSLF)", left, "earns", true),
+      short: `You work for ${nice(employer.value)} and owe ${formatCents(balance)} on student loans.`,
       worthCents: left,
       worthKind: "earns",
       confidence: weakest([
@@ -482,6 +521,8 @@ const familyLoans: Detector = {
       capability: "debt",
       topic: "family_loans",
       title: "Note down money you lent, so it's remembered and a kind reminder is easy",
+      headline: headlineOf("Note down money you lent", total, "risk"),
+      short: `You sent ${formatCents(total)} through a payment app and nothing has come back.`,
       worthCents: total,
       worthKind: "risk",
       // The payment alone doesn't say it was a loan; only the person can.

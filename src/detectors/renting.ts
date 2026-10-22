@@ -2,7 +2,7 @@ import { RENT_REPORTING, RENT_REPORTING_RATE_BENEFIT_BPS } from "@/config/rentin
 import { formatCents } from "@/lib/money";
 import { enoughRent, rentPayments, rentRise } from "@/planning/renting";
 import { type Detector, suggestionId } from "./contract";
-import { evidence, factEvidence, weakest } from "./helpers";
+import { evidence, factEvidence, headlineOf, weakest } from "./helpers";
 
 // Detectors for renting (spec step 248): rent that could build credit, and a rent increase set
 // beside what is usual. Pure; see ./contract.ts.
@@ -40,6 +40,8 @@ const rentReporting: Detector = {
       capability: "debt",
       topic: "rent_reporting",
       title: "Have your rent reported to the credit bureaus",
+      headline: headlineOf("Get your rent reported", worth, "saves"),
+      short: `Your ${formatCents(rent)} rent isn't on your credit file, and you owe ${formatCents(owed)}.`,
       worthCents: worth,
       worthKind: "saves",
       confidence: weakest([
@@ -71,6 +73,8 @@ const rentIncrease: Detector = {
       capability: "debt",
       topic: "rent_increase",
       title: "Your rent went up more than is usual",
+      headline: headlineOf("Ask about your rent rise", rise.yearlyExtraCents, "risk"),
+      short: `Your rent rose ${(rise.risePercentBps / 100).toFixed(1)}%, against a usual ${(rise.usualBps / 100).toFixed(0)}%.`,
       worthCents: rise.yearlyExtraCents,
       worthKind: "risk",
       confidence: weakest([

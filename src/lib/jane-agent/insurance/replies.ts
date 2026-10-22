@@ -10,6 +10,7 @@ import { formatCents } from "@/lib/money";
 import type { Reply } from "../replies";
 import type { MessageAction } from "../types";
 import type { InsuranceIntent } from "./intents";
+import { decide } from "./decisions";
 import { needReply } from "./need";
 import type { InsuranceSnapshot } from "./snapshot";
 
@@ -133,6 +134,8 @@ export function insuranceReply(
   const profile = insurance ?? { policies: [], gaps: [] };
 
   const all = profile.policies;
+
+  if (intent.ask === "decide" && intent.decision) return decide(intent.decision, insurance, asOf);
 
   // Spec step 149: whether they need a kind of cover, from their numbers.
   if (intent.ask === "need" && intent.policyKind && insurance) {

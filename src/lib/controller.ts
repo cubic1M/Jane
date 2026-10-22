@@ -162,6 +162,16 @@ const STEPS: Record<
     const { fired, selected } = await scanSuggestions(userId, { client, now });
     // Spec step 257: which question to ask next, kept for the chat to read.
     await planQuestion(userId, { client, now });
+    // The numbers for Claude, saved for the chat to read in one query (loaded here: that file
+    // reaches this one again through the jobs).
+    await import("@/lib/jane-agent/claude-tools")
+      .then((m) => m.refreshPrimer(userId, { client, now }))
+      .catch((error) =>
+        console.error("Saving the numbers for Claude failed", {
+          userId,
+          error: scrub(String(error)),
+        }),
+      );
     if (fired === 0) return { did: "Nothing new to suggest.", changed: 0 };
     return {
       did: `Checked everything for you: ${plural(fired, "idea")} fit, ${selected.length} worth your attention today.`,
