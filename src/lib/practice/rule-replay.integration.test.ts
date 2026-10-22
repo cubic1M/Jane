@@ -1,3 +1,4 @@
+import { randomBytes } from "node:crypto";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { PrismaClient } from "@/generated/prisma/client";
@@ -16,6 +17,7 @@ import {
 import { rulesOnAt } from "@/config/practice-scan";
 import { SAMPLE_START, SampleMarketData } from "@/lib/market/sample";
 import type { Bar } from "@/lib/market/types";
+import { linkDemoBank } from "@/lib/plaid/demo";
 import { replayRules } from "@/planning/rule-replay";
 import { startPractice } from "./portfolio";
 import { runPracticeDay } from "./scan";
@@ -36,6 +38,8 @@ describe.runIf(url)("the rule replay against the live daily run", () => {
   const created: string[] = [];
 
   beforeAll(() => {
+    // The demo bank stores an encrypted stand-in token: a key for this test only.
+    vi.stubEnv("TOKEN_ENCRYPTION_KEY", randomBytes(32).toString("base64"));
     client = new PrismaClient({ adapter: new PrismaPg({ connectionString: url! }) });
   });
   afterAll(async () => {
@@ -67,6 +71,8 @@ describe.runIf(url)("the rule replay against the live daily run", () => {
       data: { email: `rule-replay-${crypto.randomUUID()}@example.com` },
     });
     created.push(user.id);
+    // The demo bank: demo advice mode, so the live scan brings every idea, as the replay does.
+    await linkDemoBank(user.id, { client });
     await startPractice(user.id, level, { client, now: at(days[0]) });
     for (const day of days) await runPracticeDay(user.id, { client, now: at(day) });
 
@@ -96,6 +102,9 @@ describe.runIf(url)("the rule replay against the live daily run", () => {
     });
     expect(Object.fromEntries(acted.map((a) => [a.kind, a._count]))).toEqual(replay.acted);
     if (level === 5) expect(Object.keys(replay.acted)).toContain("news_idea");
+    // The kinds added after step 292 go through the same scan: new money and idle cash act too.
+    if (level === 5) expect(Object.keys(replay.acted)).toContain("new_money_rebalance");
+    if (level === 2) expect(Object.keys(replay.acted)).toContain("cash_drag");
     if (level === 2) expect(Object.keys(replay.acted)).toContain("tax_loss_harvest");
 
     // And the same portfolio at the end.

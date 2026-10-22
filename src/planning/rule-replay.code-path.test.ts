@@ -22,6 +22,10 @@ vi.mock("./practice-scan", async (original) => {
     washBlocked: vi.fn(actual.washBlocked),
   };
 });
+vi.mock("./practice-opportunities", async (original) => {
+  const actual = await original<typeof import("./practice-opportunities")>();
+  return { ...actual, scanOpportunities: vi.fn(actual.scanOpportunities) };
+});
 vi.mock("./practice-autopilot", async (original) => {
   const actual = await original<typeof import("./practice-autopilot")>();
   return {
@@ -37,6 +41,7 @@ import { SCAN_KINDS } from "@/config/practice-scan";
 import { SAMPLE_START, SampleMarketData } from "@/lib/market/sample";
 import type { Bar } from "@/lib/market/types";
 import { monthlyDue, planTrades, sellsFirst } from "./practice-autopilot";
+import { scanOpportunities } from "./practice-opportunities";
 import { flagStatus, monthUse, scanPortfolio, washBlocked } from "./practice-scan";
 import { replayRules } from "./rule-replay";
 
@@ -59,6 +64,7 @@ describe("the rule replay's code path", () => {
       tradeCostBps: 0,
     })!;
     const days = r.index.length;
+    expect(vi.mocked(scanOpportunities)).toHaveBeenCalledTimes(days);
     expect(vi.mocked(scanPortfolio)).toHaveBeenCalledTimes(days);
     expect(vi.mocked(planTrades)).toHaveBeenCalledTimes(days);
     expect(vi.mocked(monthUse)).toHaveBeenCalledTimes(days);
@@ -89,7 +95,8 @@ describe("the rule replay's code path", () => {
     ])
       expect(replay).not.toContain(rule);
     const scan = source("../lib/practice/scan.ts");
-    for (const fn of ["scanPortfolio", "flagStatus", "monthUse"]) expect(scan).toContain(`${fn}(`);
+    for (const fn of ["scanOpportunities", "flagStatus", "monthUse"])
+      expect(scan).toContain(`${fn}(`);
     const autopilot = source("../lib/practice/autopilot.ts");
     for (const fn of ["planTrades", "sellsFirst", "monthlyDue", "washBlocked"])
       expect(autopilot).toContain(`${fn}(`);

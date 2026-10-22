@@ -97,8 +97,9 @@ export function RuleReplaySection({ data }: { data: LoadedRuleReplays }) {
         </h2>
         <p className="text-sm text-zinc-600 dark:text-zinc-400">
           <strong>{data.label}</strong>, to {longDate(r.to)}: the practice autopilot run day by day
-          with its own rules (dip buys, tax-loss swaps and, at High and Very high, news ideas),
-          against plain rebalancing and buy and hold. {r.notAForecast}
+          with its own rules (dip buys, tax-loss swaps, new money and idle cash put where the mix is
+          short, cheaper twin funds and, at High and Very high, news ideas), against plain
+          rebalancing and buy and hold. {r.notAForecast}
         </p>
       </div>
       <div className="flex flex-col gap-2">

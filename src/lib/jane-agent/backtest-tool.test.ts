@@ -7,7 +7,7 @@ import { formatReturn } from "@/insights/returns";
 import type { PrismaClient } from "@/generated/prisma/client";
 import { adviceMode } from "@/lib/advice-mode";
 import { RULE_REPLAY_STRATEGY_LABELS } from "@/config/backtest";
-import { SCAN_LABELS } from "@/config/practice-scan";
+import { OPPORTUNITY_RULES, SCAN_LABELS } from "@/config/practice-scan";
 import { loadBacktests } from "@/lib/investments/backtest";
 import { loadRuleReplays } from "@/lib/investments/rule-replay";
 import { formatCents } from "@/lib/money";
@@ -103,7 +103,7 @@ describe("backtest_by_level", () => {
       high.rules.map((r: { rule: string; verdict: string }) => [r.rule, r.verdict]),
     );
     expect(verdicts[SCAN_LABELS.tax_loss_harvest]).toBe("off");
-    expect(Object.keys(verdicts)).toHaveLength(3);
+    expect(Object.keys(verdicts)).toHaveLength(OPPORTUNITY_RULES.length);
     const cost = (await loadRuleReplays({ client, now: NOW }, [4]))!.replays.levels[0].strategies
       .rules.costCents;
     expect(out.cents).toContain(cost);

@@ -27,18 +27,22 @@ import {
 } from "./practice-autopilot";
 import { apply, type LedgerState } from "./practice-ledger";
 import {
+  DEFAULT_SCAN_PREFERENCES,
+  scanOpportunities,
+  type ScanPreferences,
+} from "./practice-opportunities";
+import {
   daysBefore,
   flagStatus,
   monthUse,
-  scanPortfolio,
   washBlocked,
   type PastFlag,
   type PastTrade,
 } from "./practice-scan";
 
 // The rule replay ("Did the extra rules help?"): the practice autopilot and its daily scan run
-// day by day over stored history, with the very functions the live run uses (scanPortfolio,
-// flagStatus, monthUse, planTrades, washBlocked, monthlyDue, sellsFirst and the ledger's apply),
+// day by day over stored history, with the very functions the live run uses (scanOpportunities,
+// which runs scanPortfolio first, flagStatus, monthUse, planTrades, washBlocked, monthlyDue, sellsFirst and the ledger's apply),
 // so no rule is copied here. Each day is the live day in order: the monthly money in, the scan
 // and each flag it acts on within its caps and the hard limits, then the autopilot's rebalance.
 // Every simulated trade is recorded. Pure: the same bars always give the same result. A replay of
@@ -67,6 +71,9 @@ export type ReplayInput = {
   strategy: Strategy;
   // For "rules": the scan kinds that may flag (drift always does).
   rules?: ReadonlySet<ScanKind>;
+  // The person's preferences the scan obeys (appetite, exclusions, tax sensitivity, cash
+  // buffer, suggest-only); left out, the defaults the live scan starts from.
+  prefs?: ScanPreferences;
   // Each trade's cost in basis points of what changes hands, taken off the value as paid.
   tradeCostBps: number;
 };
@@ -105,9 +112,10 @@ export type ReplayResult = {
   trades: ReplayTrade[];
   // Trades by rule ("model_buy", "rebalance", "dip_buy", "hold" and so on).
   byRule: Record<string, number>;
-  // Scan flags that acted, and those a limit held.
+  // Scan flags that acted, those a limit held, and those kept as suggestions (no trade).
   acted: Partial<Record<ScanKind, number>>;
   held: Partial<Record<ScanKind, number>>;
+  suggested: Partial<Record<ScanKind, number>>;
   costCents: number;
   // Losses taken by tax-loss swaps (before taxes they show only as a cost).
   harvestedLossCents: number;
@@ -173,6 +181,8 @@ export function replayRules(input: ReplayInput): ReplayResult | null {
   const byRule: Record<string, number> = {};
   const acted: Partial<Record<ScanKind, number>> = {};
   const held: Partial<Record<ScanKind, number>> = {};
+  const suggested: Partial<Record<ScanKind, number>> = {};
+  const prefs = input.prefs ?? DEFAULT_SCAN_PREFERENCES;
   const index: PathPoint[] = [];
   let indexValue = input.startCents;
   let lastValue = 0;
@@ -265,7 +275,12 @@ export function replayRules(input: ReplayInput): ReplayResult | null {
         for (const t of MODEL_TICKERS) history[t] = cursors.get(t)!.window(from);
         const newsFrom = daysBefore(today, NEWS_LOOKBACK_DAYS);
         const { usedThisMonth, seen } = monthUse(pastFlags, today);
-        const flags = scanPortfolio({
+        // Every ticker held beyond the model funds (the opportunity stocks), as the live scan reads.
+        const heldHistory: Record<string, readonly Bar[]> = {};
+        for (const t of Object.keys(state.positions))
+          if (!history[t]) heldHistory[t] = cursors.get(t)?.window(from) ?? [];
+        const unpriced = [...PRACTICE_UNIVERSE].filter((t) => !prices[t]);
+        const flags = scanOpportunities({
           level,
           state,
           prices,
@@ -277,9 +292,21 @@ export function replayRules(input: ReplayInput): ReplayResult | null {
           usedThisMonth,
           seen,
           rules,
+          // A fund the history has no price for yet is one the scan can't buy (live, every
+          // fund has one): treated like a ticker the person never buys.
+          prefs:
+            unpriced.length > 0
+              ? { ...prefs, excludedTickers: [...prefs.excludedTickers, ...unpriced] }
+              : prefs,
+          monthlyAddCents: input.monthlyAddCents,
+          addDay: input.addDay,
+          // The replay knows no paydays (they come from a person's bank deposits); the payday
+          // kind only ever suggests.
+          paydayDay: null,
+          heldHistory,
         });
         for (const flag of flags) {
-          const { status } = flagStatus(flag, state, prices, tradesToday);
+          const { status } = flagStatus(flag, state, prices, tradesToday, prefs.mode);
           pastFlags.push({
             key: status === "held" ? `${flag.key}:held:${today}` : flag.key,
             kind: flag.kind,
@@ -287,6 +314,7 @@ export function replayRules(input: ReplayInput): ReplayResult | null {
             status,
           });
           if (status === "held") held[flag.kind] = (held[flag.kind] ?? 0) + 1;
+          if (status === "suggested") suggested[flag.kind] = (suggested[flag.kind] ?? 0) + 1;
           if (status !== "acted") continue;
           acted[flag.kind] = (acted[flag.kind] ?? 0) + 1;
           for (const t of flag.trades) place(t, t.rule);
@@ -334,6 +362,7 @@ export function replayRules(input: ReplayInput): ReplayResult | null {
     byRule,
     acted,
     held,
+    suggested,
     costCents: Math.round(costCents),
     harvestedLossCents: harvested,
     maxOpportunityShare,

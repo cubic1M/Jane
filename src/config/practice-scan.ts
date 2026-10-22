@@ -1,16 +1,27 @@
 // The daily scan of each practice portfolio (spec step 292, Phase AW, Stage A). Practice money
 // and the sample market only: every number here is demo advice, FOR REVIEW before Stage B.
 // The scan's rules are in src/planning/practice-scan.ts; nothing there has a number of its own.
+// The kinds added after step 292 (./practice-opportunities.ts) are spread into each table here.
 
 import type { RiskLevel } from "@/config/investing";
+import {
+  MAX_DROP_LOOKBACK_DAYS,
+  OPPORTUNITY_CAPS,
+  OPPORTUNITY_CONFIDENCE,
+  OPPORTUNITY_KINDS,
+  OPPORTUNITY_LABELS,
+  type OpportunityKind,
+} from "./practice-opportunities";
 
-export type ScanKind = "drift_rebalance" | "dip_buy" | "tax_loss_harvest" | "news_idea";
+export type ScanKind =
+  "drift_rebalance" | "dip_buy" | "tax_loss_harvest" | "news_idea" | OpportunityKind;
 
 export const SCAN_KINDS: readonly ScanKind[] = [
   "drift_rebalance",
   "dip_buy",
   "tax_loss_harvest",
   "news_idea",
+  ...OPPORTUNITY_KINDS,
 ];
 
 // What each flag is called on a card and in the log.
@@ -19,6 +30,7 @@ export const SCAN_LABELS: Readonly<Record<ScanKind, string>> = {
   dip_buy: "Buy a dip, within the plan",
   tax_loss_harvest: "Harvest a loss",
   news_idea: "An idea from the news",
+  ...OPPORTUNITY_LABELS,
 };
 
 // Per flag: the most one action may be, as a share of the portfolio's value (the size cap);
@@ -32,6 +44,7 @@ export const SCAN_CAPS: Readonly<
   dip_buy: { sizeShare: 0.05, positionShare: 0.8, perMonth: 2 },
   tax_loss_harvest: { sizeShare: 0.7, positionShare: 0.8, perMonth: 2 },
   news_idea: { sizeShare: 0.01, positionShare: 0.03, perMonth: 2 },
+  ...OPPORTUNITY_CAPS,
 };
 
 // Drift: the share in stocks (US and international together) this many points off its target
@@ -43,8 +56,9 @@ export const DRIFT_STOCKS_BAND = 0.05;
 // 2026; the planted dips go past it.
 export const DIP_MIN_DROP = 0.1;
 export const DIP_LOOKBACK_DAYS = 20;
-// The calendar days of closes the scan reads: enough to hold the look-back in trading days.
-export const SCAN_HISTORY_DAYS = DIP_LOOKBACK_DAYS * 2 + 10;
+// The calendar days of closes the scan reads: enough to hold the dip's and the max drop's
+// look-backs in trading days.
+export const SCAN_HISTORY_DAYS = Math.max(DIP_LOOKBACK_DAYS, MAX_DROP_LOOKBACK_DAYS) * 2 + 10;
 // The plan's cash for a dip is cash waiting to be invested (the monthly practice money before
 // the autopilot spends it). A dip buy never takes its kind past target plus this many points.
 export const DIP_MAX_OVER_TARGET = 0.05;
@@ -86,14 +100,20 @@ export const SCAN_CONFIDENCE: Readonly<Record<ScanKind, { percent: number; reaso
     percent: 35,
     reason: "One headline is thin evidence, so the position is kept small.",
   },
+  ...OPPORTUNITY_CONFIDENCE,
 };
 
 // The opportunity rules: everything the scan does beyond the autopilot's own rebalance.
 export type OpportunityRule = Exclude<ScanKind, "drift_rebalance">;
+// The ones that trade, so a replay can say whether they helped. The rest only suggest or warn
+// (ADVICE_ONLY_KINDS in src/planning/practice-opportunities.ts), so a replay can't judge them.
 export const OPPORTUNITY_RULES: readonly OpportunityRule[] = [
   "dip_buy",
   "tax_loss_harvest",
   "news_idea",
+  "new_money_rebalance",
+  "cash_drag",
+  "cheaper_fund",
 ];
 
 // Rules turned off at a level because the rule replay (src/planning/rule-replay.ts, "Did the
@@ -109,9 +129,12 @@ export const OPPORTUNITY_RULES: readonly OpportunityRule[] = [
 // - Dip buys: helped at Very low (+0.45 points of return) and High (+0.85); within 0.25 points
 //   elsewhere. Kept on everywhere.
 // - Tax-loss swaps: within 0.25 points at Very low (-0.01) and Low (-0.23); worse at Medium,
-//   High and Very high (below), so turned off there. The replay is before tax: the harvested
-//   losses ($3,017, $2,667 and $2,383 of them) would lower a real tax bill, which it doesn't
-//   count. Worth another look with a tax model before Stage B.
+//   High and Very high (below), so turned off there. Re-run the same day after swaps became
+//   watched daily (#483): still worse, by a little less. The replay is before tax: the
+//   harvested losses would lower a real tax bill, which it doesn't count. Worth another look
+//   with a tax model before Stage B.
+// - New money, idle cash and cheaper twin funds (#483): no difference at any level (0.00 to
+//   +0.01 points): the autopilot would have invested the same cash the same day. Kept on.
 // - News ideas: not replayed. Headlines are stored only since step 293 (October 2026), so there
 //   is no past news to replay; they stay on at High and Very high, untested, at 1% a position.
 export type RuleOff = { rule: OpportunityRule; evidence: string };
@@ -120,9 +143,9 @@ const HARVEST_OFF = (returnPoints: string, dropPoints: string): RuleOff => ({
   evidence: `on real history from Jan 4, 2016 to Oct 14, 2026, the replay with tax-loss swaps returned ${returnPoints} points less, with a worst drop ${dropPoints} points deeper, than the same replay without them (before tax).`,
 });
 export const OPPORTUNITY_RULES_OFF: Readonly<Partial<Record<RiskLevel, readonly RuleOff[]>>> = {
-  3: [HARVEST_OFF("0.54", "0.07")],
-  4: [HARVEST_OFF("0.50", "0.09")],
-  5: [HARVEST_OFF("0.60", "0.10")],
+  3: [HARVEST_OFF("0.46", "0.07")],
+  4: [HARVEST_OFF("0.40", "0.09")],
+  5: [HARVEST_OFF("0.44", "0.11")],
 };
 
 // The scan kinds that may flag at a level: drift always, and each opportunity rule not turned off.

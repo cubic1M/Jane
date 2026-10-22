@@ -11,6 +11,17 @@ import type { FactKey } from "@/profile/facts";
 // docs/detectors.md has the contract and two worked examples.
 
 export const HEADLINE_MAX = 60;
+// About eight words: the card is read in a glance.
+export const HEADLINE_MAX_WORDS = 9;
+
+// The headline as the floating card shows it ("Cancel Planet Fitness, save $588/yr"): the
+// yearly figure shortened so the number reads in a glance.
+export function cardHeadline(headline: string): string {
+  return headline
+    .replace(/[.!?]+$/, "")
+    .replace(/\s+a year\b/g, "/yr")
+    .replace(/\bavoid up to\b/, "avoid");
+}
 export const SHORT_MAX = 120;
 
 export type Urgency = "now" | "soon" | "later";
