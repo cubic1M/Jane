@@ -1,6 +1,7 @@
 import { coreFundsFor } from "@/planning/values";
 import { loadPrefs } from "./values";
 import { randomUUID } from "node:crypto";
+import { DETECTOR_RATES } from "@/config/detectors";
 import { OLD_PLAN_LOCATOR } from "@/config/old-accounts";
 import { FUND_FACTS, FUND_NAMES } from "@/config/funds";
 import type { PrismaClient } from "@/generated/prisma/client";
@@ -20,6 +21,7 @@ import {
   feeComparison,
   isComplete,
   newSteps,
+  olderPlans,
   stepsOn,
   type Step,
 } from "@/planning/rollover";
@@ -70,7 +72,14 @@ export type OldPlanView = {
   arrivesOn: string | null;
 };
 
-export type OldAccountsView = { advice: boolean; plans: OldPlanView[]; demo: boolean };
+export type OldAccountsView = {
+  advice: boolean;
+  plans: OldPlanView[];
+  demo: boolean;
+  // 401(k)s already linked from past jobs (the same rule and saving as the "old accounts"
+  // suggestion). Optional so older callers and fixtures still type.
+  linked?: ReturnType<typeof olderPlans>;
+};
 
 // The index fund a rollover is invested in; its fee is the "after".
 const NEW_FUND = "KTSIX";
@@ -132,12 +141,20 @@ export async function loadOldAccounts(
   await syncPastEmployers(userId, { client });
   await settleRollovers(userId, { client, now });
   const db = scopedFor(userId, client);
-  const [advice, rows, demo] = await Promise.all([
+  const [advice, rows, demo, plans401k] = await Promise.all([
     adviceMode(userId, { client }),
     db.oldPlans.findMany({ orderBy: { createdAt: "asc" } }),
     hasDemoBank(userId, { client }),
+    db.accounts.findMany({
+      where: { subtype: "401k" },
+      select: { id: true, name: true, currentBalanceCents: true },
+    }),
   ]);
-  return { advice, plans: rows.map(viewOf), demo };
+  const linked = olderPlans(
+    plans401k.map((a) => ({ id: a.id, name: a.name, balanceCents: a.currentBalanceCents ?? 0 })),
+    DETECTOR_RATES.oldPlanFeeGapBps,
+  );
+  return { advice, plans: rows.map(viewOf), demo, linked };
 }
 
 // "Did you have a 401(k) at X?" Yes asks the locator; No closes it.

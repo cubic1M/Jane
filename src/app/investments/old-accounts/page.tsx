@@ -4,6 +4,7 @@ import { Suspense } from "react";
 import { AppHeader } from "@/components/app-header";
 import { DemoAdviceLabel } from "@/components/demo-advice-label";
 import { SimulatedBanner } from "@/components/simulated-banner";
+import { DETECTOR_RATES } from "@/config/detectors";
 import { LOOKUP_HELP, ROLLOVER_NOTE } from "@/config/old-accounts";
 import { loadOldAccounts } from "@/lib/investments/old-accounts";
 import { formatCents } from "@/lib/money";
@@ -13,6 +14,7 @@ import { addEmployer, answer, rollOver } from "./actions";
 // Old accounts brought home (spec step 211, demo advice): past employers, each asked about
 // once; found plans with fees compared; a direct rollover tracked step by step.
 
+const OLD_PLAN_FEE_GAP_PERCENT = DETECTOR_RATES.oldPlanFeeGapBps / 100;
 const LINK = "font-medium text-emerald-700 hover:underline";
 const BUTTON = "h-11 rounded-lg bg-emerald-700 px-5 font-medium text-white hover:bg-emerald-800";
 const SECONDARY =
@@ -61,6 +63,29 @@ async function Content({
         </p>
       )}
 
+      {v.linked && v.linked.plans.length > 0 && (
+        <section
+          aria-labelledby="linked-old-plans"
+          className="flex flex-col gap-2 rounded-xl border border-zinc-200 p-4 dark:border-zinc-800"
+        >
+          <h2 id="linked-old-plans" className="text-xl font-semibold">
+            Already linked from past jobs
+          </h2>
+          <ul className="flex flex-col gap-1 text-sm">
+            {v.linked.plans.map((p) => (
+              <li key={p.id}>
+                {p.name}: {formatCents(p.balanceCents)}
+              </li>
+            ))}
+          </ul>
+          <p className="text-sm text-zinc-600 dark:text-zinc-400">
+            You have {v.linked.count} 401(k) accounts; {formatCents(v.linked.totalCents)} sits in
+            the older one{v.linked.plans.length > 1 ? "s" : ""}. Old plans often cost about{" "}
+            {OLD_PLAN_FEE_GAP_PERCENT}% a year more, so rolling it into an IRA (moved directly,
+            never withdrawn) saves about {formatCents(v.linked.savedCents)} a year.
+          </p>
+        </section>
+      )}
       {v.plans.length === 0 && (
         <p className="text-zinc-600 dark:text-zinc-400">No past employers yet. Add one below.</p>
       )}
