@@ -1,3 +1,4 @@
+import type { Need } from "@/lib/insurance/need/types";
 import type { PrismaClient } from "@/generated/prisma/client";
 import type { Gap } from "@/lib/insurance/gaps";
 import type { Household } from "@/lib/insurance/household";
@@ -68,6 +69,9 @@ export type InsuranceSnapshot = {
   risks?: Risk[];
   // Spec step 200: the health plan's year, when its terms are known.
   healthYear?: HealthYear | null;
+  // What cover they need, from the same numbers the nightly detectors use (spec step 278).
+  // Loaded when a need is asked about, not on every snapshot.
+  needs?: Need[] | null;
 };
 
 export type Switch = Awaited<ReturnType<typeof switchesFor>>[number];
