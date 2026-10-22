@@ -3,7 +3,9 @@ import { db as defaultClient } from "@/lib/db";
 import { loadProfileInput } from "@/lib/profile";
 import { buildProfile } from "@/profile/build";
 import { computeNeeds } from "./calculators";
+import { listPolicies } from "@/lib/insurance/policies";
 import { needInputFromProfile } from "./from-profile";
+import { optionsFor } from "./options-for";
 import type { Need } from "./types";
 
 // The needs for one person, from the same profile the detectors read (spec step 278), so the
@@ -26,4 +28,36 @@ export async function loadNeeds(
   const data = await loadProfileInput(userId, { client, now });
   const input = needInputFromProfile(buildProfile(data), data);
   return input ? computeNeeds(input) : null;
+}
+
+// The option set for one need, priced by the stand-in (spec step 276): re-derived on the server
+// every time, so a pick is checked against what the person is shown now, not what a client sent.
+export async function optionsForNeed(
+  userId: string,
+  topic: Need["kind"],
+  {
+    client = defaultClient,
+    now = new Date(),
+    policyId,
+  }: { client?: PrismaClient; now?: Date; policyId?: string } = {},
+) {
+  const data = await loadProfileInput(userId, { client, now });
+  const profile = buildProfile(data);
+  const input = needInputFromProfile(profile, data);
+  if (!input) return null;
+  const need = computeNeeds(input).find(
+    (n) => n.kind === topic && (!policyId || n.policyId === policyId),
+  );
+  if (!need) return null;
+  const policy = need.policyId
+    ? ((await listPolicies(userId, { client })).find((p) => p.id === need.policyId) ?? null)
+    : null;
+  const set = await optionsFor(
+    userId,
+    need,
+    policy,
+    { yearlyPayCents: input.yearlyPayCents, netWorthCents: input.netWorthCents },
+    { client, now },
+  );
+  return set ? { need, set } : null;
 }
