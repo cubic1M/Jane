@@ -21,9 +21,11 @@ import {
   SELF_EMPLOYMENT_TAX,
   STANDARD_DEDUCTION,
 } from "@/config/tax-rates";
+import { dayLabel } from "@/lib/day-label";
 import { formatCents } from "@/lib/money";
 import { structureFor } from "@/planning/business-structure";
 import { readHealthTaxes } from "@/planning/health-taxes-read";
+import { casualtyLoss, computedMoves, damageSince, reliefFor } from "@/planning/disasters";
 import { mustBeEmptyBy, spreadIra } from "@/planning/inheritance";
 import { NO_INCOME, marginalRateOf, type EstimateInput } from "@/planning/tax-estimate";
 import { careShare } from "@/planning/tax-savings";
@@ -930,7 +932,86 @@ const medicalDeductionDetector: Detector = {
   },
 };
 
+// Disaster relief (step 270): a postponement declared for the person's county moves their
+// federal tax deadlines; repairs since, less what insurance paid back, may be a casualty loss.
+// Only from the person's disaster feed (the stand-in's samples for demo-bank people).
+const longDate = (day: string) => dayLabel(day, { year: true });
+const daysBetween = (a: string, b: string) =>
+  Math.round((Date.parse(b) - Date.parse(a)) / 86_400_000);
+const disasterRelief: Detector = {
+  capability: "taxes",
+  topic: "disaster_relief",
+  covers: ["tax_disaster"],
+  needs: ["county", "monthly_income", "household"],
+  detect({ profile, data }) {
+    const county = profile.facts.county;
+    if (typeof county.value !== "string") return null;
+    const r = reliefFor(
+      data.extras?.disasterRelief ?? [],
+      { county: county.value, state: null },
+      profile.today,
+    )[0];
+    if (!r) return null;
+    const damage = damageSince(data.transactions, r.incidentFrom);
+    const loss = casualtyLoss({
+      repairsCents: damage.repairsCents,
+      reimbursedCents: damage.reimbursedCents,
+      agiCents: grossIncome(profile, data),
+      relief: r,
+    });
+    const saves = Math.round(loss.deductibleCents * bracketOf(profile, data));
+    const year = Number(profile.today.slice(0, 4));
+    const moved = computedMoves(r, [year - 1, year, year + 1]).filter(
+      (m) => m.from >= profile.today,
+    );
+    const to = longDate(r.postponedTo);
+    return {
+      id: suggestionId("taxes", "disaster_relief"),
+      capability: "taxes",
+      topic: "disaster_relief",
+      title: `Use the IRS disaster postponement for ${county.value} County: your tax deadlines move to ${to}`,
+      headline: headlineOf(
+        `Check your ${county.value} County disaster relief`,
+        saves,
+        "saves",
+        true,
+      ),
+      short: `${moved.length} federal tax date${moved.length === 1 ? "" : "s"} move to ${to}; repairs seen: ${formatCents(damage.repairsCents)}.`,
+      worthCents: saves,
+      worthKind: "saves",
+      confidence: weakest([
+        factEvidence(county),
+        {
+          percent: 70,
+          reason:
+            "I matched your county by name from your property tax; tell me your state to be sure",
+        },
+        ...(saves > 0
+          ? [
+              {
+                percent: 55,
+                reason: "I can't see whether you itemize or what insurance may still pay",
+              },
+            ]
+          : []),
+      ]),
+      urgency: moved.some((m) => daysBetween(profile.today, m.from) <= 45) ? "now" : "soon",
+      why: `The IRS has postponed federal tax deadlines for ${county.value} County after ${r.title.replace(/ \(sample declaration\)$/, "").toLowerCase()} from ${longDate(r.incidentFrom)}: ${moved.map((m) => `${m.title} (${longDate(m.from)})`).join("; ")} move${moved.length === 1 ? "s" : ""} to ${to}. ${
+        damage.repairsCents > 0
+          ? `You've paid ${formatCents(damage.repairsCents)} for repairs since, and ${formatCents(damage.reimbursedCents)} came back from insurance or assistance, so the loss is ${formatCents(loss.lossCents)}. ${
+              loss.deductibleCents > 0
+                ? `After the $100 and 10%-of-income floors, ${formatCents(loss.deductibleCents)} is deductible if you itemize, worth up to about ${formatCents(saves)}; keep the bills with your insurance claim, since what insurance pays changes it.`
+                : "After the $100 and 10%-of-income floors none of it is deductible; keep the bills with your insurance claim, since what insurance pays changes the loss."
+            }`
+          : "If the disaster damaged your home or car, keep the repair bills and the insurance claim together."
+      }${r.sample ? " (This is a sample declaration from Jane's stand-in feed.)" : ""}`,
+      action: { label: "Move my tax deadlines", href: "/deadlines" },
+    };
+  },
+};
+
 export const TAX_DETECTORS: readonly Detector[] = [
+  disasterRelief,
   ptcRepayment,
   hsaOverLimit,
   medicalDeductionDetector,

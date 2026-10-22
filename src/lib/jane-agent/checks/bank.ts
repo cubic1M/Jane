@@ -1687,6 +1687,12 @@ const BASE_QUESTIONS: readonly CheckQuestion[] = [
     expect: { intent: "tax", mentions: /HSA|7\.5%/, list: true },
   },
   {
+    id: "tax-36",
+    text: "do I get more time on my taxes after the storm",
+    needs: "rules",
+    expect: { intent: "tax", mentions: /disaster|county/ },
+  },
+  {
     id: "ins-1",
     text: "what insurance do I have",
     needs: "rules",

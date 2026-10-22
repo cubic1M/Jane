@@ -1,6 +1,7 @@
 import { BENEFICIARY_SUBTYPES } from "@/config/family-file";
 import { demoAccounts, demoLiabilities, demoTransactions } from "@/data-sources/demo/demo-bank";
 import { demoHoldings } from "@/data-sources/demo/demo-holdings";
+import { SAMPLE_RELIEF } from "@/config/disasters";
 import type { NeedPolicy } from "@/lib/insurance/need/types";
 import type { ProfileInput } from "./build";
 
@@ -60,6 +61,8 @@ export function inputFor(person: string, told: ProfileInput["told"] = {}): Profi
     extras: {
       householdMembers: 0,
       coverPolicies: SAMPLE_POLICIES[person] ?? [],
+      // The sample people are all the demo bank's, so they read the stand-in disaster feed.
+      disasterRelief: SAMPLE_RELIEF,
       // A home is worth about what its policy insures the dwelling for (the demo bank's owned things).
       ownedValueCents: (SAMPLE_POLICIES[person] ?? [])
         .filter((p) => p.kind === "home")

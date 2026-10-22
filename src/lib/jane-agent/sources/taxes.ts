@@ -25,6 +25,7 @@ import { estimateDueMessage, yearEndMessage } from "../tax-calendar-message";
 import { sCorpMessage } from "../business-message";
 import { giftsMessage, inheritedIraMessage } from "../inheritance-message";
 import { hsaMessage, medicalMessage, repaymentMessage } from "../health-tax-message";
+import { reliefMessage } from "../disaster-message";
 import {
   appealDraftedMessage,
   appealSuggestedMessage,
@@ -555,6 +556,20 @@ export const taxesSource: MessageSource = {
           ...medical,
           dedupeKey: `medical_deduction:${health.year}`,
           priority: TAX_MESSAGE_PRIORITY.medical,
+        });
+      }
+    }
+
+    // Spec step 270: a disaster postponement for their county. At the levels that let Jane act
+    // the deadlines are already moved (autopilot); at "ask first" a tap moves them.
+    const disaster = tax.disaster;
+    if (disaster) {
+      for (const r of disaster.relief) {
+        out.push({
+          kind: r.applied ? "done" : "decision",
+          ...reliefMessage(disaster, r),
+          dedupeKey: `disaster:${r.relief.id}${r.applied ? ":moved" : ""}`,
+          priority: TAX_MESSAGE_PRIORITY.disaster,
         });
       }
     }
