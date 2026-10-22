@@ -5,7 +5,7 @@ import { needInputFromProfile } from "./from-profile";
 
 describe("the net worth the umbrella is sized from", () => {
   it("counts what they own (a home) by its value", () => {
-    const data = inputFor("family");
+    const data = inputFor("renter");
     const without = needInputFromProfile(buildProfile(data), data)!;
     const withHome = {
       ...data,
