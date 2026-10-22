@@ -16,6 +16,10 @@ export const SAMPLE_PROFILES: Readonly<Record<string, Profile>> = {
   VXUS: { base: 55, drift: 0.05, vol: 0.011, beta: 0.85, hit: 0.9 },
   BND: { base: 80, drift: 0.025, vol: 0.003, beta: 0.1, hit: 0.35 },
   BIL: { base: 91.5, drift: 0.02, vol: 0.0002, beta: 0, hit: 0 },
+  // Similar funds for a tax-loss swap (step 292): the same kind, not the same fund.
+  ITOT: { base: 60, drift: 0.09, vol: 0.011, beta: 1, hit: 1 },
+  IXUS: { base: 62, drift: 0.05, vol: 0.011, beta: 0.85, hit: 0.9 },
+  AGG: { base: 107, drift: 0.025, vol: 0.003, beta: 0.1, hit: 0.35 },
   AAPL: { base: 43, drift: 0.2, vol: 0.017, beta: 1.2, hit: 1.2 },
   MSFT: { base: 85, drift: 0.2, vol: 0.016, beta: 1.1, hit: 1.1 },
   NVDA: { base: 50, drift: 0.4, vol: 0.028, beta: 1.5, hit: 1.5 },

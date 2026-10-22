@@ -37,6 +37,12 @@ export const RISK_ANNUAL_PROBABILITY: Readonly<Record<string, number>> = {
   business_insurance: 0.04,
   // A claim while the insurer has stale information.
   cover_change: 0.01,
+  // Cover cap gaps (spec step 277): a long disability in a year (about 2%), an at-fault accident
+  // costing more than the injury limits (about 0.5%: most at-fault accidents stay under them), a
+  // claim a deductible the cash can't carry (5%).
+  disability_insurance: 0.02,
+  liability_levels: 0.005,
+  deductible_fit: 0.05,
   // A large fall in one company's stock, or a stretch without pay.
   concentration: 0.1,
   emergency_fund: 0.05,

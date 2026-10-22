@@ -28,6 +28,9 @@ export type Need = {
   gapCents: number;
   // For a deductible: whether a higher or lower one fits their cash, or it already fits.
   direction?: "raise" | "lower" | "ok";
+  // For a deductible to raise: the next step up the ladder their cash carries, a smaller move
+  // than the largest they could take.
+  stepCents?: number;
   // The working, line by line, for "More details".
   lines: NeedLine[];
   // One sentence with the person's own figures.
