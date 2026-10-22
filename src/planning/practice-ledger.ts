@@ -56,8 +56,9 @@ export function apply(state: LedgerState, entry: Entry, allowed: ReadonlySet<str
       gainCents: null,
     };
   }
-  // Selling: no more than is held; a sale of everything takes the whole cost.
-  const tolerance = 1e-9 * Math.max(1, held.quantity);
+  // Selling: no more than is held; a sale of everything takes the whole cost. Amounts are whole
+  // cents, so a sale within a cent of everything held is all of it.
+  const tolerance = Math.max(1e-9 * Math.max(1, held.quantity), 1 / entry.priceCents);
   if (quantity > held.quantity + tolerance)
     throw new LedgerError(`You don't hold that much ${ticker}: no selling short.`);
   const all = Math.abs(quantity - held.quantity) <= tolerance;
