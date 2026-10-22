@@ -22,6 +22,11 @@ import { equitySetAsideMessage } from "../equity-tax-message";
 import { yearsMoveMessage } from "../multi-year-message";
 import { answersMessage, complexMessage } from "../accountant-message";
 import { estimateDueMessage, yearEndMessage } from "../tax-calendar-message";
+import { sCorpMessage } from "../business-message";
+import { giftsMessage, inheritedIraMessage } from "../inheritance-message";
+import { hsaMessage, medicalMessage, repaymentMessage } from "../health-tax-message";
+import { reliefMessage } from "../disaster-message";
+import { irmaaMessage, ssWithholdingMessage } from "../retirement-tax-message";
 import {
   appealDraftedMessage,
   appealSuggestedMessage,
@@ -482,6 +487,118 @@ export const taxesSource: MessageSource = {
           ...yearEndMessage(calendar.yearEnd, calendar.acts),
           dedupeKey: `yearend:${calendar.yearEnd.year}`,
           priority: TAX_MESSAGE_PRIORITY.year_end,
+        });
+      }
+    }
+
+    // Spec step 267: an S corporation that would save more than it costs (demo advice).
+    const business = tax.business ? sCorpMessage(tax.business) : null;
+    if (tax.business && business) {
+      out.push({
+        kind: "decision",
+        ...business,
+        dedupeKey: `business:${tax.business.year}`,
+        priority: TAX_MESSAGE_PRIORITY.business,
+      });
+    }
+
+    // Spec step 268: an inherited IRA's deadline and spread (demo advice), and gifts over the
+    // annual exclusion (facts, with a pointer to a tax professional).
+    const inheritance = tax.inheritance;
+    if (inheritance) {
+      for (const ira of inheritance.inherited) {
+        const m = inheritedIraMessage(inheritance, ira);
+        if (m) {
+          out.push({
+            kind: "decision",
+            ...m,
+            dedupeKey: `inherited:${ira.accountId}`,
+            priority: TAX_MESSAGE_PRIORITY.inherited,
+          });
+        }
+      }
+      const gifts = giftsMessage(inheritance);
+      if (gifts) {
+        out.push({
+          kind: "heads_up",
+          ...gifts,
+          dedupeKey: `gifts:${inheritance.year}:${inheritance.gifts[0].recipient}`,
+          priority: TAX_MESSAGE_PRIORITY.gifts,
+        });
+      }
+    }
+
+    // Spec step 269: a Marketplace credit that would come back as a bill, an HSA over its limit,
+    // and a year of care worth itemizing.
+    const health = tax.health;
+    if (health) {
+      const repay = repaymentMessage(health);
+      if (repay) {
+        out.push({
+          kind: health.advice ? "decision" : "heads_up",
+          ...repay,
+          dedupeKey: `ptc:${health.year}:${health.marketplace.check?.overCliff ? "cliff" : "over"}`,
+          priority: TAX_MESSAGE_PRIORITY.ptc,
+        });
+      }
+      const hsa = hsaMessage(health);
+      if (hsa) {
+        out.push({
+          kind: "heads_up",
+          ...hsa,
+          dedupeKey: `hsa_excess:${health.year}`,
+          priority: TAX_MESSAGE_PRIORITY.hsa_excess,
+        });
+      }
+      const medical = medicalMessage(health);
+      if (medical) {
+        out.push({
+          kind: "heads_up",
+          ...medical,
+          dedupeKey: `medical_deduction:${health.year}`,
+          priority: TAX_MESSAGE_PRIORITY.medical,
+        });
+      }
+    }
+
+    // Spec step 270: a disaster postponement for their county. At the levels that let Jane act
+    // the deadlines are already moved (autopilot); at "ask first" a tap moves them.
+    const disaster = tax.disaster;
+    if (disaster) {
+      for (const r of disaster.relief) {
+        out.push({
+          kind: r.applied ? "done" : "decision",
+          ...reliefMessage(disaster, r),
+          dedupeKey: `disaster:${r.relief.id}${r.applied ? ":moved" : ""}`,
+          priority: TAX_MESSAGE_PRIORITY.disaster,
+        });
+      }
+    }
+
+    // Spec step 271: Social Security's taxable part nothing withholds, and Medicare's surcharge
+    // line two years ahead (with the tuned order, as demo advice) from October, when the year's
+    // last withdrawals and conversions are planned.
+    const retirement = tax.retirement;
+    if (retirement) {
+      const ss = ssWithholdingMessage(retirement);
+      if (ss) {
+        out.push({
+          kind: "heads_up",
+          ...ss,
+          dedupeKey: `ss_tax:${retirement.year}`,
+          priority: TAX_MESSAGE_PRIORITY.ss_tax,
+        });
+      }
+      const watch =
+        context.local.date.slice(5, 7) >= "10" && retirement.balances.preTaxCents > 0
+          ? irmaaMessage(retirement)
+          : null;
+      if (watch) {
+        out.push({
+          kind: watch.refs.advice ? "decision" : "heads_up",
+          ...watch,
+          dedupeKey: `irmaa:${retirement.year}`,
+          priority: TAX_MESSAGE_PRIORITY.irmaa,
         });
       }
     }

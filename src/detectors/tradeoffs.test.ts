@@ -16,11 +16,13 @@ const withRoom = (data: ProfileInput, goalRoomCents: number): ProfileInput => ({
 });
 
 describe("goals that trade off (step 241)", () => {
-  it("tells the Reyes their trip and kitchen can't both be on time, and which to put first", () => {
-    const s = run(inputFor("family"));
+  it("tells Dan and Lena their trip and kitchen can't both be on time, and which to put first", () => {
+    const s = run(inputFor("preretire"));
     expect(s?.topic).toBe("goal_tradeoffs");
-    expect(s?.why).toMatch(/^Family trip and Kitchen redo need \$[\d,]+\.\d\d a month together/);
-    expect(s?.why).toMatch(/Putting Family trip first/);
+    expect(s?.why).toMatch(
+      /^Trip to Japan and Kitchen remodel need \$[\d,]+\.\d\d a month together/,
+    );
+    expect(s?.why).toMatch(/Putting Trip to Japan first/);
     expect(s?.worthKind).toBe("risk");
     expect(s?.worthCents).toBeGreaterThan(0);
     expect(s?.confidence.percent).toBeGreaterThanOrEqual(50);
@@ -28,15 +30,15 @@ describe("goals that trade off (step 241)", () => {
   });
 
   it("uses the year plan's room when it's kept, and is quiet when there's enough", () => {
-    expect(run(withRoom(inputFor("family"), 1_000_000))).toBeNull();
-    expect(run(withRoom(inputFor("family"), 100_000))?.short).toMatch(/room for \$1,000\.00/);
+    expect(run(withRoom(inputFor("preretire"), 2_000_000))).toBeNull();
+    expect(run(withRoom(inputFor("preretire"), 100_000))?.short).toMatch(/room for \$1,000\.00/);
   });
 
   it("needs two goals or more", () => {
-    for (const id of PERSON_IDS.filter((p) => p !== "family")) {
+    for (const id of PERSON_IDS.filter((p) => p !== "preretire")) {
       expect(run(inputFor(id)), id).toBeNull();
     }
-    const data = inputFor("family");
+    const data = inputFor("preretire");
     const one = { ...data, extras: { ...data.extras!, goals: data.extras!.goals!.slice(0, 1) } };
     expect(run(one)).toBeNull();
   });

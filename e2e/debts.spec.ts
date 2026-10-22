@@ -867,3 +867,107 @@ test("a dealer add-on is confirmed, with its refund and a cancellation the team 
   await team.press("Enter");
   await expect(page.getByText("The team has this request.")).toBeVisible();
 });
+
+// Spec step 246: a lump sum compared as extra principal, a recast and a refinance, against
+// investing it instead.
+test("a lump sum is compared on the mortgage: extra principal, recast, refinance, investing", async ({
+  context,
+  page,
+  baseURL,
+}) => {
+  const user = await signedInUser("user");
+  userId = user.userId;
+  await context.addCookies([
+    { name: "authjs.session-token", value: user.sessionToken, url: baseURL ?? "" },
+  ]);
+  await page.goto("/connect");
+  await page.getByRole("button", { name: "Link a demo bank" }).click();
+  await expect(page).toHaveURL("/chat", { timeout: 60_000 });
+
+  await page.goto("/loans/recast");
+  await expect(
+    page.getByRole("heading", { level: 1, name: "Recast, refinance or pay extra" }),
+  ).toBeVisible();
+  await page.getByLabel("A lump sum").fill("20000");
+  const compare = page.getByRole("button", { name: "Compare" });
+  await compare.focus();
+  await compare.press("Enter");
+  const table = page.getByRole("table", { name: "The ways" });
+  await expect(table.getByRole("row")).toHaveCount(4);
+  await expect(table).toContainText("Pay extra principal");
+  await expect(table).toContainText("Recast the mortgage");
+  await expect(table).toContainText("$250.00");
+  await expect(table).toContainText("Not an option");
+  await expect(page.getByText(/Investing the same money for \d+ years instead/)).toBeVisible();
+  await expect(page.getByText("Paying down earns your 4% rate")).toBeVisible();
+});
+
+// Spec step 247: costly short-term borrowing found in the demo bank, with the cost in dollars
+// and as a yearly rate, and the cheaper ways out.
+test("costly short-term borrowing is found, costed, and the way out is laid out", async ({
+  context,
+  page,
+  baseURL,
+}) => {
+  const user = await signedInUser("user");
+  userId = user.userId;
+  await context.addCookies([
+    { name: "authjs.session-token", value: user.sessionToken, url: baseURL ?? "" },
+  ]);
+  await page.goto("/connect");
+  await page.getByRole("button", { name: "Link a demo bank" }).click();
+  await expect(page).toHaveURL("/chat", { timeout: 60_000 });
+
+  await page.goto("/loans/costly");
+  await expect(
+    page.getByRole("heading", { level: 1, name: "Costly short-term borrowing" }),
+  ).toBeVisible();
+  await expect(page.getByRole("status")).toContainText("over the last year");
+  const found = page.getByRole("list", { name: "What you paid" });
+  await expect(found.getByRole("listitem")).toHaveCount(4);
+  await expect(found).toContainText("Payday loans");
+  await expect(found).toContainText("2 times, $30.00 in fees");
+  await expect(found).toContainText("Card cash advances");
+  await expect(found).toContainText("Overdraft fees");
+  await expect(found).toContainText("Pay advance apps");
+  const out = page.getByRole("region", { name: "Ways out" });
+  await expect(out).toContainText("Credit union payday alternative loan (PAL)");
+  await expect(out).toContainText("Build a small buffer");
+});
+
+// Spec step 248: a security deposit is followed to the day the state says it is due back, and
+// rent reporting is never on by itself.
+test("a deposit is followed to its due date and marked returned", async ({
+  context,
+  page,
+  baseURL,
+}) => {
+  const user = await signedInUser("user");
+  userId = user.userId;
+  await context.addCookies([
+    { name: "authjs.session-token", value: user.sessionToken, url: baseURL ?? "" },
+  ]);
+
+  await page.goto("/loans/renting");
+  await expect(page.getByRole("heading", { level: 1, name: "Your rent" })).toBeVisible();
+  await expect(page.getByText("I don't see rent payments in your bank data yet.")).toBeVisible();
+  await expect(page.getByRole("button", { name: "Report my rent" })).toHaveCount(0);
+
+  const deposits = page.getByRole("region", { name: "Security deposits" });
+  await deposits.getByLabel("Deposit").fill("1500");
+  await deposits.getByLabel("State").selectOption("NY");
+  await deposits.getByLabel("Day you moved out").fill("2026-01-10");
+  const follow = deposits.getByRole("button", { name: "Follow this deposit" });
+  await follow.focus();
+  await page.keyboard.press("Enter");
+  await expect(page.getByRole("status")).toHaveText("Deposit saved.");
+  await expect(deposits).toContainText("$1,500.00 deposit (NY)");
+  await expect(deposits).toContainText("New York General Obligations Law § 7-108");
+
+  await deposits.getByLabel(/Amount returned/).fill("1400");
+  const back = deposits.getByRole("button", { name: "It came back" });
+  await back.focus();
+  await page.keyboard.press("Enter");
+  await expect(page.getByRole("status")).toHaveText("Noted that it came back.");
+  await expect(deposits).toContainText("returned $1,400.00");
+});

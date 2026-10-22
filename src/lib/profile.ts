@@ -40,6 +40,9 @@ export async function loadProfileInput(
     insurance,
     investor,
     unread,
+    reporting,
+    values,
+    named,
     membership,
   ] = await Promise.all([
     db.transactions.findMany({
@@ -55,6 +58,7 @@ export async function loadProfileInput(
     db.accounts.findMany({
       select: {
         id: true,
+        name: true,
         type: true,
         subtype: true,
         currentBalanceCents: true,
@@ -73,7 +77,7 @@ export async function loadProfileInput(
       },
     }),
     db.janePreferences.findMany({
-      where: { kind: "fact", key: { startsWith: PREF_PREFIX } },
+      where: { kind: "fact", OR: [{ key: { startsWith: PREF_PREFIX } }, { key: "income" }] },
       select: { key: true, value: true },
     }),
     db.taxProfiles.findFirst({
@@ -87,6 +91,9 @@ export async function loadProfileInput(
     db.insuranceProfiles.findFirst({ select: { housing: true } }),
     db.investorProfiles.findFirst({ select: { age: true, ageOn: true, dropReaction: true } }),
     db.policyReadings.count({ where: { status: "waiting" } }),
+    db.rentReporting.findFirst({ select: { id: true } }),
+    db.valuesPreferences.findFirst({ select: { excludes: true } }),
+    db.accountBeneficiaries.findMany({ select: { accountId: true } }),
     client.householdMember.findUnique({ where: { userId }, select: { householdId: true } }),
   ]);
   // Other people in their household in Jane (spec step 264), not counting them.
@@ -113,7 +120,13 @@ export async function loadProfileInput(
     told.age = investor.age + Math.max(0, years);
   }
   if (investor?.dropReaction) told.risk = investor.dropReaction;
+  // Spec step 239: "that's wrong" on an income figure is what they told Jane they earn.
+  const incomeSaid = (prefs.find((p) => p.key === "income")?.value as { monthlyCents?: unknown })
+    ?.monthlyCents;
+  if (typeof incomeSaid === "number" && incomeSaid > 0)
+    told.monthly_income = Math.round(incomeSaid);
   for (const p of prefs) {
+    if (!p.key.startsWith(PREF_PREFIX)) continue;
     const key = p.key.slice(PREF_PREFIX.length);
     const value = (p.value as { value?: unknown } | null)?.value;
     if (
@@ -135,6 +148,7 @@ export async function loadProfileInput(
     })),
     accounts: accounts.map((a) => ({
       id: a.id,
+      name: a.name,
       type: a.type,
       subtype: a.subtype,
       balanceCents: a.currentBalanceCents ?? 0,
@@ -158,8 +172,11 @@ export async function loadProfileInput(
       hasPmi: l.hasPmi,
       payoffDate: l.payoffDate ? dayOf(l.payoffDate) : null,
     })),
+    valuesExcludes: values?.excludes ?? [],
+    namedAccountIds: [...new Set(named.map((n) => n.accountId))],
     told,
     unreadPolicyDocuments: unread,
+    rentReportingOn: reporting !== null,
     extras: { householdMembers, ...(await sectorFigures(userId, client, now)) },
   };
 }
@@ -173,20 +190,37 @@ async function sectorFigures(userId: string, client: PrismaClient, now: Date) {
   const hasStock =
     (await db.accounts.count({ where: { subtype: "stock plan" } })) > 0 ||
     (await db.equityEvents.count()) > 0;
-  const [matchPace, equity, subscriptions, cardInterest, shopSaving, policies, goals, plan] =
-    await Promise.all([
-      loadMatchPace(userId, { client, now }),
-      hasStock
-        ? import("@/lib/equity-tax").then((m) => m.loadEquityTax(userId, { client, now }))
-        : null,
-      import("@/lib/jane-agent/recurring").then((m) => m.subscriptionYear(userId, { client, now })),
-      import("@/lib/card-interest").then((m) => m.loadCardInterest(userId, { client, now })),
-      import("@/lib/insurance/shop").then((m) => m.openShopSavingCents(userId, { client, now })),
-      import("@/lib/insurance/policies").then((m) => m.listPolicies(userId, { client })),
-      // Spec step 241: the goals, and the year plan as last kept (not worked out again here).
-      import("@/lib/goals").then((m) => m.listGoals(userId, { client, now })),
-      db.yearPlans.findFirst({ orderBy: { startMonth: "desc" }, select: { months: true } }),
-    ]);
+  // Spec step 296: whether the practice-portfolio suggestion still applies.
+  const practice = await db.practicePortfolios.count();
+  const [
+    matchPace,
+    equity,
+    subscriptions,
+    cardInterest,
+    shopSaving,
+    policies,
+    owned,
+    feed,
+    books,
+    goals,
+    plan,
+  ] = await Promise.all([
+    loadMatchPace(userId, { client, now }),
+    hasStock
+      ? import("@/lib/equity-tax").then((m) => m.loadEquityTax(userId, { client, now }))
+      : null,
+    import("@/lib/jane-agent/recurring").then((m) => m.subscriptionYear(userId, { client, now })),
+    import("@/lib/card-interest").then((m) => m.loadCardInterest(userId, { client, now })),
+    import("@/lib/insurance/shop").then((m) => m.openShopSavingCents(userId, { client, now })),
+    import("@/lib/insurance/policies").then((m) => m.listPolicies(userId, { client })),
+    db.ownedAssets.findMany({ select: { valueCents: true } }),
+    import("@/lib/disaster-feed").then((m) => m.disasterFeedFor(userId, { client })),
+    // Spec step 238: what the daily books check left open.
+    import("@/lib/books").then((m) => m.openBooks(userId, { client })),
+    // Spec step 241: the goals, and the year plan as last kept (not worked out again here).
+    import("@/lib/goals").then((m) => m.listGoals(userId, { client, now })),
+    db.yearPlans.findFirst({ orderBy: { startMonth: "desc" }, select: { months: true } }),
+  ]);
   const month = now.toISOString().slice(0, 7);
   const planMonths = Array.isArray(plan?.months)
     ? (plan.months as unknown as Parameters<typeof roomFromPlan>[0])
@@ -197,6 +231,9 @@ async function sectorFigures(userId: string, client: PrismaClient, now: Date) {
     subscriptions,
     cardInterestYearCents: cardInterest.available ? cardInterest.interestYearCents : null,
     insuranceShopSavingCents: shopSaving,
+    books: books.open.map((o) => ({ kind: o.kind, words: o.words, accountId: o.accountId })),
+    // What they own by its value (a home, a car), for the net worth an umbrella protects.
+    ownedValueCents: owned.reduce((sum, o) => sum + o.valueCents, 0),
     goals: goals.flatMap((g) => tradeGoalOf(g) ?? []),
     goalRoomCents: planMonths.some((m) => m.month === month)
       ? roomFromPlan(planMonths, month)[0]
@@ -210,6 +247,9 @@ async function sectorFigures(userId: string, client: PrismaClient, now: Date) {
         deductibleCents: p.deductibleCents,
         coverage: p.coverage,
       })),
+    // Spec step 270: the disaster relief declared where they might live (none without a feed).
+    disasterRelief: feed ? await feed.declarations() : [],
+    hasPracticePortfolio: practice > 0,
   };
 }
 

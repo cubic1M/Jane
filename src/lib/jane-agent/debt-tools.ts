@@ -29,7 +29,10 @@ import type { CardInterest } from "@/lib/card-interest";
 import type { LongGame } from "@/lib/student-long-game";
 import type { FamilyLoans } from "@/lib/family-loans";
 import type { CreditGoals } from "@/lib/credit-goals";
+import type { CostlyBorrowing } from "@/lib/costly-borrowing";
+import type { MortgageMoneyView } from "@/lib/mortgage-money";
 import type { CarLoan } from "@/lib/car-loan";
+import type { Renting } from "@/lib/renting";
 import type { DebtReview } from "@/lib/debt-review";
 import type { DebtTrouble } from "@/lib/debt-trouble";
 import type { HomeEquity, ProjectComparison } from "@/lib/home-equity";
@@ -200,6 +203,33 @@ export const DEBT_TOOLS: Anthropic.Tool[] = [
     description:
       "The credit score plans the person has for a goal (demo-bank people only, a stand-in score; every figure is an estimate from the score simulator, never a promise): for each, the target score and date, what the goal is for (a mortgage, a car), the score now, whether the plan reaches the target and the best it shows if not, the month-by-month plan (what to pay toward cards and the estimated score after each month), this month's checklist with what's done (pay before the statement closes, keep card accounts open, no new applications, on-time payments, and a rapid rescore before a mortgage application), and the total to pay down. Starting a plan and ticking off a month are the person's taps (the creditgoal.start and creditgoal.done buttons).",
     input_schema: noInput,
+  },
+  {
+    name: "costly_borrowing",
+    description:
+      "Costly short-term borrowing found in the last year of the person's payments: payday loans (matched proceeds and repayments), card cash advances (fee plus interest from day one), repeated overdraft fees and pay advance apps (tips and fees), each with how many times, what it cost in dollars, the yearly rate that works out to and how that was worked out (stated assumptions), and whether it's a cycle. In demo advice mode, the cheaper ways out: a credit union payday alternative loan (capped at 28%) with its cost against the payday loan's, an employer pay advance, a buffer built over six months, and steps to stop the cycle. Facts about what was borrowed and what it cost; the way out is advice, the choice is the person's.",
+    input_schema: noInput,
+  },
+  {
+    name: "renting",
+    description:
+      "Renting, counted: the person's rent as found in their payments (monthly amount, any increase against what is usual, using a stand-in local trend), whether their rent is being reported to the credit bureaus (only ever after their own yes; the monthly fee and what reporting can and can't do are stated), and any security deposits they have told Jane about with the day each is due back after moving out (days from the state's law, with the citation, to be confirmed against the lease). Facts and the person's own choices; Jane reports nothing and sends nothing herself.",
+    input_schema: noInput,
+  },
+  {
+    name: "mortgage_money",
+    description:
+      "Recast, refinance or pay extra on the person's mortgage (demo advice mode only): for a lump sum (lump_cents) and/or extra money each month (extra_monthly_cents), the mortgage as it is (payment, end date, total interest) and each way to use the money: extra principal (same payment, paid off sooner), a recast (lower payment, same rate and end date, with the servicer's fee), and a refinance of what's left at the best stand-in mortgage offer (with its closing fees), each with total interest, the interest saved against doing nothing with fees counted, and the month and date its fee pays back; and the same money invested instead as a low to high range of gain, not guaranteed, against the certain return of paying down. Fees and rules come from config with sources. Show both sides and leave the choice to the person.",
+    input_schema: {
+      type: "object" as const,
+      properties: {
+        lump_cents: { type: "integer" as const, description: "A lump sum in cents (optional)." },
+        extra_monthly_cents: {
+          type: "integer" as const,
+          description: "Extra each month in cents (optional).",
+        },
+      },
+    },
   },
   {
     name: "loan_fit",
@@ -438,6 +468,9 @@ export const DEBT_TOOL_STATUS: Readonly<Record<string, string>> = {
   debt_trouble: "Looking at your options…",
   debt_review: "Going over your debts…",
   car_loan: "Looking at your car loan…",
+  mortgage_money: "Comparing ways to use the money…",
+  costly_borrowing: "Looking for costly borrowing…",
+  renting: "Looking at your rent…",
   debt_decision: "Working it out with your numbers…",
   loan_fit: "Finding the loan that fits you…",
 };
@@ -1058,6 +1091,81 @@ export function familyLoansToolOutput(data: FamilyLoans, money: (cents: number) 
   };
 }
 
+export function costlyBorrowingToolOutput(d: CostlyBorrowing, money: (cents: number) => string) {
+  if (!d.any) return { note: "No costly short-term borrowing found in the last year." };
+  return {
+    lastYearTotalCost: money(d.totalYearlyCents),
+    costInTheLast30Days: money(d.lastMonthCents),
+    cycle: d.cycle,
+    kinds: d.kinds.map((k) => ({
+      kind: k.kind,
+      times: k.count,
+      cost: money(k.costCents),
+      yearlyRatePercent: k.aprBps === null ? null : Math.round(k.aprBps / 100),
+      howWorkedOut: k.basis,
+      lastOn: k.lastOn,
+    })),
+    cheaperWaysOut: d.advice
+      ? {
+          payAlternativeLoan: {
+            amount: money(d.alternatives.pal.amountCents),
+            months: d.alternatives.pal.termMonths,
+            ratePercent: d.alternatives.pal.aprBps / 100,
+            monthlyPayment: money(d.alternatives.pal.paymentCents),
+            totalCost: money(d.alternatives.pal.totalCostCents),
+            paydayLoanFeeForTheSameAmountEveryTwoWeeks: money(d.alternatives.pal.paydayFeeCents),
+          },
+          employerAdvance: d.alternatives.employer,
+          buffer: {
+            target: money(d.alternatives.buffer.targetCents),
+            months: d.alternatives.buffer.months,
+            monthly: money(d.alternatives.buffer.monthlyCents),
+          },
+          stopTheCycle: d.steps,
+        }
+      : "Only for the demo bank.",
+  };
+}
+
+export function mortgageMoneyToolOutput(v: MortgageMoneyView, money: (cents: number) => string) {
+  if (!v.available) return { note: "No mortgage with a balance, a rate and an end date." };
+  if (!v.advice) return { note: "Only for the demo bank." };
+  if (!v.result) return { note: "Give lump_cents and/or extra_monthly_cents to compare." };
+  const r = v.result;
+  return {
+    mortgage: v.loanName,
+    ratePercent: (v.aprBps ?? 0) / 100,
+    lump: money(v.lumpCents),
+    extraAMonth: money(v.extraMonthlyCents),
+    doingNothing: {
+      payment: money(r.baseline.paymentCents),
+      paidOff: r.baseline.endsOn,
+      totalInterest: money(r.baseline.totalInterestCents),
+    },
+    options: r.options.map((o) => ({
+      way: o.label,
+      available: o.available,
+      why: o.why,
+      fee: money(o.feeCents),
+      payment: money(o.paymentCents),
+      paidOff: o.endsOn,
+      totalInterest: money(o.totalInterestCents),
+      interestSavedWithFeesCounted: money(o.interestSavedCents),
+      feePaysBackInMonths: o.breakEvenMonths,
+      feePaysBackOn: o.breakEvenOn,
+    })),
+    investingInstead: {
+      put: money(r.invest.putCents),
+      years: r.invest.years,
+      lowGain: money(r.invest.lowGainCents),
+      highGain: money(r.invest.highGainCents),
+      notGuaranteed: true,
+    },
+    certainReturnOfPayingDownPercent: r.guaranteedReturnPercent,
+    verdict: r.verdict,
+  };
+}
+
 export function carLoanToolOutput(data: CarLoan, money: (cents: number) => string) {
   if (!data.available || !data.loan) return { note: "No car loan with a balance." };
   const addon = (a: CarLoan["addons"][number]) => ({
@@ -1259,6 +1367,44 @@ export function debtAutopilotToolOutput(data: DebtAutopilot, money: (cents: numb
       on: c.on,
     })),
     payoffPlanStartedByJaneOn: data.planStartedOn,
+  };
+}
+
+export function rentingToolOutput(d: Renting, money: (cents: number) => string) {
+  if (!d.renter && d.deposits.length === 0) {
+    return { note: "No rent payments found in the last year, and no deposits told to Jane." };
+  }
+  return {
+    monthlyRent: d.monthlyCents === null ? null : money(d.monthlyCents),
+    rentIncrease: d.rise
+      ? {
+          from: money(d.rise.beforeCents),
+          to: money(d.rise.nowCents),
+          percent: Math.round(d.rise.risePercentBps / 10) / 10,
+          extraPerYear: money(d.rise.yearlyExtraCents),
+          usualPercent: d.rise.usualBps / 100,
+          usualIs: d.localRent.label,
+          worthAskingAbout: d.rise.askAbout,
+        }
+      : null,
+    rentReporting: d.reporting.on
+      ? { on: true, since: d.reporting.since }
+      : {
+          on: false,
+          monthlyFee: money(d.reporting.monthlyFeeCents),
+          note: d.reporting.note,
+          howToTurnOn:
+            "The person taps yes in the chat or on their rent page; nothing is reported before.",
+        },
+    deposits: d.deposits.map((x) => ({
+      amount: money(x.amountCents),
+      state: x.state,
+      status: x.view.status,
+      dueBack: x.view.dueOn,
+      daysLeft: x.view.daysLeft,
+      rule: x.view.rule.note,
+      source: x.view.rule.source,
+    })),
   };
 }
 

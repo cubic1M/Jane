@@ -128,3 +128,13 @@ describe("the year plan's room, goals and the person's pick", () => {
     expect(monthLabel("2027-06")).toBe("June 2027");
   });
 });
+
+describe("with no room at all", () => {
+  it("says there's nothing to weigh yet and keeps the goals in date order", () => {
+    const view = tradeoffs(goals, [0], "2026-11");
+    expect(view.competing).toBe(true);
+    expect(view.options).toHaveLength(1);
+    expect(view.suggested?.order).toEqual(["trip", "house"]);
+    expect(view.reason).toMatch(/^Your plan has no room for goals right now/);
+  });
+});

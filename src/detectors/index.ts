@@ -3,10 +3,15 @@ import { HOLDINGS_DETECTORS } from "./holdings";
 import { FIT_DETECTORS } from "./fit";
 import { HOME_DETECTORS } from "./home";
 import { LIFE_DETECTORS } from "./life";
+import { CONTROLLER_DETECTORS } from "./controller";
 import { COVER_GAP_DETECTORS } from "./cover-gaps";
+import { FIGURES_DETECTORS } from "./figures";
 import { INSURANCE_DETECTORS } from "./insurance";
+import { PLANNING_DETECTORS } from "./planning";
 import { INVESTING_DETECTORS } from "./investing";
 import { MONEY_DETECTORS } from "./money";
+import { RENTING_DETECTORS } from "./renting";
+import { PRACTICE_DETECTORS } from "./practice";
 import { SPENDING_DETECTORS } from "./spending";
 import { TAX_DETECTORS } from "./taxes";
 import { TRADEOFF_DETECTORS } from "./tradeoffs";
@@ -27,9 +32,14 @@ export const DETECTORS: readonly Detector[] = [
   ...DEBT_DETECTORS,
   ...FIT_DETECTORS,
   ...SPENDING_DETECTORS,
+  ...RENTING_DETECTORS,
   ...TAX_DETECTORS,
   ...INVESTING_DETECTORS,
   ...HOLDINGS_DETECTORS,
+  ...FIGURES_DETECTORS,
+  ...CONTROLLER_DETECTORS,
+  ...PRACTICE_DETECTORS,
+  ...PLANNING_DETECTORS,
   ...TRADEOFF_DETECTORS,
 ];
 

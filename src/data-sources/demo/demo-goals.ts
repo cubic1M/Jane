@@ -1,9 +1,9 @@
 import type { PersonId } from "@/config/people";
 
 // The sample people's savings goals (spec step 241), dated from the day the demo bank is
-// linked, so the goals page and the trade-off have something real to work on. The Reyes
-// family wants a trip and a kitchen redo; together they need more each month than the
-// family's plan has room for, so one has to wait. Pure.
+// linked, so the goals page and the trade-off have something real to work on. Dan and Lena
+// want a trip to Japan and a kitchen remodel before retiring; together they need more each
+// month than their plan has room for, so one has to wait. Pure.
 
 export type DemoGoal = {
   name: string;
@@ -14,9 +14,9 @@ export type DemoGoal = {
 };
 
 export const DEMO_GOALS: Readonly<Partial<Record<PersonId, readonly DemoGoal[]>>> = {
-  family: [
-    { name: "Family trip", targetCents: 600_000, savedCents: 100_000, inMonths: 7 },
-    { name: "Kitchen redo", targetCents: 2_400_000, savedCents: 200_000, inMonths: 12 },
+  preretire: [
+    { name: "Trip to Japan", targetCents: 1_500_000, savedCents: 300_000, inMonths: 7 },
+    { name: "Kitchen remodel", targetCents: 9_000_000, savedCents: 1_000_000, inMonths: 12 },
   ],
 };
 

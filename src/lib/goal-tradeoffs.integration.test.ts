@@ -28,8 +28,8 @@ import { buildProfile } from "@/profile/build";
 import { fund, roomFromPlan } from "@/planning/goal-tradeoffs";
 import { TradeoffError, chooseGoalOrder, loadTradeoffs } from "./goal-tradeoffs";
 
-// Spec step 241 against a real, migrated Postgres: the Reyes family's demo bank comes with a
-// trip and a kitchen redo that can't both be on time. Each order's dates come from the year
+// Spec step 241 against a real, migrated Postgres: Dan and Lena's demo bank comes with a
+// trip to Japan and a kitchen remodel that can't both be on time. Each order's dates come from the year
 // plan, Jane suggests one and says why, and only the person's tap picks it, after which every
 // sector funds the goals in that order.
 
@@ -48,12 +48,12 @@ describe.runIf(url)("goals that trade off openly", { timeout: 120_000 }, () => {
     },
   ) as PlaidApi;
 
-  async function reyes(prefix: string) {
+  async function couple(prefix: string) {
     const user = await client.user.create({
       data: { email: `${prefix}-${crypto.randomUUID()}@example.com` },
     });
     created.push(user.id);
-    const { itemId } = await linkDemoBank(user.id, { client, now: NOW, person: "family" });
+    const { itemId } = await linkDemoBank(user.id, { client, now: NOW, person: "preretire" });
     await syncItem(itemId, { client, api, now: NOW });
     return user.id;
   }
@@ -73,9 +73,9 @@ describe.runIf(url)("goals that trade off openly", { timeout: 120_000 }, () => {
   });
 
   it("shows each order's dates from the year plan, suggests one and says why", async () => {
-    const userId = await reyes("tradeoffs-view");
+    const userId = await couple("tradeoffs-view");
     const goals = await listGoals(userId, { client, now: NOW });
-    expect(goals.map((g) => g.name)).toEqual(["Family trip", "Kitchen redo"]);
+    expect(goals.map((g) => g.name)).toEqual(["Trip to Japan", "Kitchen remodel"]);
 
     const view = (await loadTradeoffs(userId, { client, now: NOW }))!;
     expect(view.competing).toBe(true);
@@ -100,19 +100,19 @@ describe.runIf(url)("goals that trade off openly", { timeout: 120_000 }, () => {
     for (const option of view.options) {
       expect(option.dates).toEqual(fund(open, option.order, capacity, "2026-10").dates);
     }
-    expect(view.suggested!.dates[0].name).toBe("Family trip");
-    expect(view.reason).toMatch(/^Putting Family trip first leaves the least delay overall/);
-    expect(view.reason).toMatch(/Kitchen redo slips \d+ months/);
+    expect(view.suggested!.dates[0].name).toBe("Trip to Japan");
+    expect(view.reason).toMatch(/^Putting Trip to Japan first leaves the least delay overall/);
+    expect(view.reason).toMatch(/Kitchen remodel slips \d+ months/);
 
     // Looking never re-plans: nothing is remembered and the order stays by date.
     expect(await client.janePreference.count({ where: { userId, key: GOAL_ORDER_FACT } })).toBe(0);
   });
 
   it("re-plans only on the tap, and every sector then funds goals in that order", async () => {
-    const userId = await reyes("tradeoffs-pick");
+    const userId = await couple("tradeoffs-pick");
     const goals = await listGoals(userId, { client, now: NOW });
-    const kitchen = goals.find((g) => g.name === "Kitchen redo")!;
-    const trip = goals.find((g) => g.name === "Family trip")!;
+    const kitchen = goals.find((g) => g.name === "Kitchen remodel")!;
+    const trip = goals.find((g) => g.name === "Trip to Japan")!;
     await expect(chooseGoalOrder(userId, [kitchen.id], { client, now: NOW })).rejects.toThrow(
       TradeoffError,
     );
@@ -121,7 +121,7 @@ describe.runIf(url)("goals that trade off openly", { timeout: 120_000 }, () => {
     ).rejects.toThrow(TradeoffError);
 
     const picked = await chooseGoalOrder(userId, [kitchen.id, trip.id], { client, now: NOW });
-    expect(picked.names).toEqual(["Kitchen redo", "Family trip"]);
+    expect(picked.names).toEqual(["Kitchen remodel", "Trip to Japan"]);
     expect(vi.mocked(logAudit)).toHaveBeenCalledWith(
       { type: "user", id: userId },
       "goal_order_chosen",
@@ -130,8 +130,8 @@ describe.runIf(url)("goals that trade off openly", { timeout: 120_000 }, () => {
     );
     // Every sector reads goals through listGoals: the kitchen now comes first.
     expect((await listGoals(userId, { client, now: NOW })).map((g) => g.name)).toEqual([
-      "Kitchen redo",
-      "Family trip",
+      "Kitchen remodel",
+      "Trip to Japan",
     ]);
     const view = (await loadTradeoffs(userId, { client, now: NOW }))!;
     expect(view.chosen).toEqual([kitchen.id, trip.id]);
@@ -141,7 +141,7 @@ describe.runIf(url)("goals that trade off openly", { timeout: 120_000 }, () => {
   });
 
   it("is in the chat: the rule answer, Claude's tool, the message and its button", async () => {
-    const userId = await reyes("tradeoffs-chat");
+    const userId = await couple("tradeoffs-chat");
     expect(parseIntent("which goal should I save for first?", "2026-10-16")).toEqual({
       kind: "goal_tradeoffs",
     });
@@ -153,7 +153,7 @@ describe.runIf(url)("goals that trade off openly", { timeout: 120_000 }, () => {
       (await runChatTool(userId, "goal_tradeoffs", {}, { client, now: NOW })).content,
     );
     expect(tool.competing).toBe(true);
-    expect(tool.suggested[0].goal).toBe("Family trip");
+    expect(tool.suggested[0].goal).toBe("Trip to Japan");
     expect(tool.picked).toBe(false);
 
     const snapshot = (await loadSnapshot(userId, { client, now: NOW }))!;
@@ -171,7 +171,7 @@ describe.runIf(url)("goals that trade off openly", { timeout: 120_000 }, () => {
       now: NOW,
     });
     expect(answered.refs.note).toBe(
-      "Done. From now on your goals are funded in this order: Family trip, then Kitchen redo. Your paycheck plan and the year plan use it.",
+      "Done. From now on your goals are funded in this order: Trip to Japan, then Kitchen remodel. Your paycheck plan and the year plan use it.",
     );
     // Once picked, the message isn't raised again.
     const after = (await loadSnapshot(userId, { client, now: NOW }))!;
@@ -179,7 +179,7 @@ describe.runIf(url)("goals that trade off openly", { timeout: 120_000 }, () => {
   });
 
   it("finds its person from the loaded profile, and stays quiet without goals", async () => {
-    const userId = await reyes("tradeoffs-detect");
+    const userId = await couple("tradeoffs-detect");
     await loadYearPlan(userId, { client, now: NOW, keep: true });
     const data = await loadProfileInput(userId, { client, now: NOW });
     expect(data.extras?.goals).toHaveLength(2);

@@ -7,7 +7,8 @@ import {
 // Goals that trade off openly (spec step 241). Pure: the goals, and the savings the year plan
 // has room for each month, in; for each order the goals could be funded in, the month each
 // reaches its target against the date the person wanted; a suggested order and why. Money
-// goes to the first goal first, up to what it needs that month, then the next.
+// goes to the first goal first, up to what it needs that month, then the next; what's left
+// over catches up the goals in the same order.
 
 export type TradeGoal = {
   id: string;
@@ -66,12 +67,17 @@ export function fund(
   const reached = new Map<string, string>();
   for (let i = 0; i < TRADEOFF_HORIZON_MONTHS; i += 1) {
     let room = capacity[Math.min(i, capacity.length - 1)] ?? Number.POSITIVE_INFINITY;
+    // What each needs to stay on time, in order; then what's left catches up, in order.
+    for (const pass of ["on time", "catch up"] as const) {
+      for (const id of order) {
+        const g = byId.get(id)!;
+        const want = pass === "on time" ? Math.min(left.get(id)!, g.monthlyCents) : left.get(id)!;
+        const give = Math.min(want, room);
+        left.set(id, left.get(id)! - give);
+        room -= give;
+      }
+    }
     for (const id of order) {
-      const g = byId.get(id)!;
-      const need = Math.min(left.get(id)!, g.monthlyCents);
-      const give = Math.min(need, room);
-      left.set(id, left.get(id)! - give);
-      room -= give;
       if (left.get(id)! <= 0 && !reached.has(id)) reached.set(id, addMonth(startMonth, i));
     }
     if (reached.size === goals.length) break;
@@ -135,6 +141,18 @@ export function tradeoffs(goals: TradeGoal[], capacity: number[], startMonth: st
     o.dates.some((d) => d.lateMonths === null || d.lateMonths > TRADEOFF_NOTICEABLE_MONTHS),
   );
   if (!competing) return { competing: false, options, suggested: best, reason: "" };
+  // No room at all (a month of big one-off spending can do it): no order reaches any goal, so
+  // there is nothing to weigh yet. Say so, and keep them in the order they're wanted.
+  if (options.every((o) => o.dates.every((d) => d.month === null))) {
+    const byDate = options.find((o) => o.order.join() === wantedFirst.join()) ?? best;
+    return {
+      competing,
+      options: [byDate],
+      suggested: byDate,
+      reason:
+        "Your plan has no room for goals right now, so neither order reaches one yet. They stay in the order you want them, and I'll show the dates again when there's room.",
+    };
+  }
   const first = best.dates[0];
   const others = best.dates.slice(1).map(lateWords).join(", ");
   return {
