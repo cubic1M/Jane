@@ -3,6 +3,7 @@ import type { Intent } from "../intents";
 import type { ActionId } from "../types";
 import { charge, lastMonth, spentOn, thisMonth, type Facts } from "./facts";
 import { MORE_ROWS } from "./bank-more";
+import { PRACTICE_QUESTIONS } from "./bank-practice";
 import { TAX_QUESTIONS } from "./bank-taxes";
 
 // Jane's answer checks (spec step 87): about 100 things people really type, over the demo
@@ -2811,6 +2812,7 @@ export const QUESTIONS: readonly CheckQuestion[] = [
   ...MORE_QUESTIONS,
   ...DECISION_QUESTIONS,
   ...TAX_QUESTIONS,
+  ...PRACTICE_QUESTIONS,
 ];
 
 // Spec step 189: the sector a question belongs to: its own, or for the older ones the start
