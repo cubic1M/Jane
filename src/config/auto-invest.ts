@@ -16,5 +16,7 @@ export const SUGGESTED_PAYCHECK_SHARE = 0.05;
 export const SUGGESTED_ROUND_CENTS = 2_500;
 // A deposit counts as a paycheck from this much.
 export const MIN_PAYCHECK_CENTS = 50_000;
+// Recent deposits looked through for the latest salary one when suggesting an amount.
+export const SUGGESTION_DEPOSITS_LOOKED_AT = 10;
 // Paychecks this old or older don't start a contribution (a new plan starts at the next).
 export const PAYCHECK_LOOKBACK_DAYS = 7;
