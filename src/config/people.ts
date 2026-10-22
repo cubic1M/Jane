@@ -467,7 +467,9 @@ export const PEOPLE: readonly Person[] = [
       "values_funds",
       "renters_insurance",
       "health_insurance",
-      "umbrella",
+      // Umbrella came off this list (insurance QA pass): with their home counted, Ruth's net
+      // worth is over the line the need calculator uses (about $857,000), so the page shows the
+      // gap and the suggestion follows it.
       "employer_match",
       "education_529",
       "estimated_taxes",

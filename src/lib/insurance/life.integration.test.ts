@@ -112,9 +112,9 @@ describe.runIf(url)("life insurance, sized and bought, against a real database",
     expect(sized.kind).toBe("sized");
     const application = (sized as { application: Awaited<ReturnType<typeof latestLife>> })
       .application!;
-    // $2,400,000 × 365 / 90 ≈ $97,333 a year of pay.
+    // The profile's income: $9,611.84 a month over the 2.5 months the paychecks cover, $115,342 a year.
     expect(application.method.map((l) => [l.label, l.cents, l.adds])).toEqual([
-      ["10 years of your pay", 97_333_330, true],
+      ["10 years of your pay", 115_342_080, true],
       ["Paying off the mortgage", 30_000_000, true],
       ["Final expenses", 1_500_000, true],
       ["School for 2 dependants", 10_000_000, true],
@@ -122,7 +122,7 @@ describe.runIf(url)("life insurance, sized and bought, against a real database",
     ]);
     expect(application).toMatchObject({
       status: "sized",
-      amountCents: 140_000_000,
+      amountCents: 155_000_000,
       termYears: 20,
     });
     expect(application.quotes.length).toBeGreaterThan(0);
@@ -238,7 +238,7 @@ describe.runIf(url)("life insurance, sized and bought, against a real database",
     let now = await tap("lifecover.dependants_2");
     expect(now.status).toBe("open");
     expect(now.body).toMatch(
-      /^You'd need about \$1,400,000\.00 of term life insurance for 20 years\./,
+      /^You'd need about \$1,550,000\.00 of term life insurance for 20 years\./,
     );
     expect(parseRefs(now.refs)).toMatchObject({ advice: true });
     expect(parseActions(now.actions).map((a) => a.id)).toEqual([
@@ -252,7 +252,7 @@ describe.runIf(url)("life insurance, sized and bought, against a real database",
     expect(now.body).toMatch(/^That's every question\./);
     now = await tap("lifecover.submit");
     expect(now.body).toMatch(
-      /offers you \$1,400,000\.00 of cover for 20 years at .* their best rate\. Buy it\?/,
+      /offers you \$1,550,000\.00 of cover for 20 years at .* their best rate\. Buy it\?/,
     );
     now = await tap("lifecover.buy");
     expect(now).toMatchObject({ status: "answered", answeredWith: "Buy it" });
@@ -264,7 +264,7 @@ describe.runIf(url)("life insurance, sized and bought, against a real database",
     expect(tool).toMatchObject({
       available: true,
       demoAdvice: true,
-      application: { status: "bought", amount: "$1,400,000.00", termYears: 20 },
+      application: { status: "bought", amount: "$1,550,000.00", termYears: 20 },
     });
   });
 });

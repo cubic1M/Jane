@@ -231,3 +231,21 @@ describe("how sure Jane is", () => {
     expect(firedFor("renter", "renters_insurance")[0].required).toBeUndefined();
   });
 });
+
+describe("the umbrella suggestion follows the need calculator (insurance QA pass)", () => {
+  it("is not offered on gross balances when the net worth after debts is under the line", () => {
+    // The sample family has $108k in the bank and investments, a home and a $338k mortgage.
+    const data = inputFor("family");
+    const profile = buildProfile(data);
+    const umbrella = INSURANCE_DETECTORS.find((d) => d.topic === "umbrella")!;
+    expect(umbrella.detect({ profile, data })).toBeNull();
+  });
+  it("counts the home: the retiree's net worth is over the line, and the figure is the need's", () => {
+    const data = inputFor("retiree");
+    const profile = buildProfile(data);
+    const umbrella = INSURANCE_DETECTORS.find((d) => d.topic === "umbrella")!;
+    const s = umbrella.detect({ profile, data });
+    expect(s?.short).toContain("$856,994.00");
+    expect(s?.why).toContain("what you own less what you owe");
+  });
+});
