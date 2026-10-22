@@ -83,8 +83,6 @@ export const MESSAGE_PRIORITY = {
   // Loans and debt (spec Phase Y, src/config/debt.ts).
   ...DEBT_MESSAGE_PRIORITY,
   brief: 1_000,
-  // Spec step 96: the week's summary comes first, at the top of the week.
-  week: 1_001,
   // Insurance (spec step 102): cover that looks missing, after budgets and goals.
   insurance_gap: 35,
   // Spec step 104: a cheaper policy for the same cover, after news (a change Jane noticed)
@@ -146,8 +144,8 @@ export const MESSAGE_PRIORITY = {
   change: 66,
   // Spec step 100: a life event spotted, once, before set-up suggestions.
   life_event: 67,
-  // Spec step 101: a budget tune-up or a transfer to count, before set-up suggestions; the
-  // weekly review comes right after the brief.
+  // Spec step 101: a budget tune-up or a transfer to count, before set-up suggestions. (The
+  // weekly review is a line of the Monday brief: ./sources/last-week.ts.)
   upkeep: 64,
   // Spec step 99: a policy found from payments, to confirm.
   found_policy: 63,
@@ -177,7 +175,6 @@ export const MESSAGE_PRIORITY = {
   unusual: 95,
   // Spec step 148: the monthly money report, once a month, after what needs the person.
   report: 40,
-  review: 900,
   // Spec step 128: what's in investment accounts, the first time Jane sees it.
   investments: 32,
   // Spec step 129: the investor-profile questions, which later investment steps wait on.
@@ -243,7 +240,6 @@ export const CHAT_HISTORY_HOURS = 48;
 // the one-time autopilot question, so it never pushes a finding out on the first day.
 export const CHAT_UNCAPPED_SOURCES: readonly string[] = [
   "autopilot",
-  "review",
   "welcome",
   // Spec step 208: a charge that may not be theirs shouldn't wait for a quiet day; the source
   // itself brings up at most UNUSUAL_CHAT_MAX at a time.

@@ -255,6 +255,7 @@ describe("the agenda leads with the scan's suggestions (step 265)", () => {
       [posted(suggestion)],
       withSuggestion,
       local,
+      new Date("2026-10-19T16:00:00Z"),
     );
     const lines = out.agenda.body.split("\n");
     expect(lines).toContain("Here's what I'd do first, from looking at your money:");
