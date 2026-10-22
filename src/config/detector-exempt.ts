@@ -101,4 +101,6 @@ export const TOOL_EXEMPT: Readonly<Record<string, string>> = {
     "works out a home the person asks about; nothing in their data says they're buying",
   loan_applications:
     "tracks an application the person started; the refinance and transfer detectors suggest them",
+  backtest_by_level:
+    "replays a risk level over past prices when the person asks how it would have done; the practice-portfolio detector (step 296) brings investing up unasked",
 };
