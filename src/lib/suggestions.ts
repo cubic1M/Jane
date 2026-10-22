@@ -1,7 +1,8 @@
 import { STRATEGIST_CAPABILITY, STRATEGIST_IDEA_DAYS, STRATEGIST_TOPIC } from "@/config/strategist";
-import { ADVICE_TOPICS, RESELECT_AFTER_DAYS, WORTH_WEIGHT } from "@/config/suggestions";
+import { ADVICE_TOPICS, RESELECT_AFTER_DAYS, rankValue } from "@/config/suggestions";
 import { runDetectors } from "@/detectors";
 import type { Suggestion } from "@/detectors/contract";
+import { ideaShortForms } from "@/detectors/helpers";
 import type { PrismaClient } from "@/generated/prisma/client";
 import { adviceMode } from "@/lib/advice-mode";
 import { track } from "@/lib/analytics";
@@ -11,7 +12,12 @@ import { loadProfileInput } from "@/lib/profile";
 import { scrub } from "@/lib/scrub";
 import { resultsByKind } from "@/lib/worked";
 import { buildProfile } from "@/profile/build";
-import { pickForToday, rankSuggestions, type TopicHistory } from "@/planning/suggestion-rank";
+import {
+  mergeOverlaps,
+  pickForToday,
+  rankSuggestions,
+  type TopicHistory,
+} from "@/planning/suggestion-rank";
 
 // The nightly scan (spec step 255): every detector for one person, ranked by dollars x
 // confidence x urgency and adjusted by what they have said yes and no to (step 207). Only the
@@ -29,6 +35,9 @@ export type OfferedSuggestion = {
   key: string;
   topic: string;
   title: string;
+  // The short forms (docs/detectors.md); the title and why for rows from before they existed.
+  headline: string;
+  short: string;
   why: string;
   worthCents: number;
   worthKind: string;
@@ -97,6 +106,7 @@ function openIdeas(
         capability: STRATEGIST_CAPABILITY,
         topic: STRATEGIST_TOPIC,
         title: e.title,
+        ...ideaShortForms(e.title, e.why),
         worthCents: e.worthCents,
         worthKind: e.worthKind as Suggestion["worthKind"],
         confidence: {
@@ -108,7 +118,7 @@ function openIdeas(
         action: have[0].action,
         more: have.slice(1).map((p) => p.action),
         parts: have.map((p) => p.id),
-        rankCents: have.reduce((s, p) => s + p.worthCents * WORTH_WEIGHT[p.worthKind], 0),
+        rankCents: have.reduce((s, p) => s + rankValue(p.topic, p.worthKind, p.worthCents), 0),
       },
     ];
   });
@@ -162,11 +172,13 @@ export async function scanSuggestions(
     }
   }
   const ideas = openIdeas(existing, new Map(found.map((s) => [s.id, s])), now);
-  const ranked = rankSuggestions([...found, ...ideas], {
-    history: history as TopicHistory,
-    results,
-    blocked,
-  });
+  const ranked = mergeOverlaps(
+    rankSuggestions([...found, ...ideas], {
+      history: history as TopicHistory,
+      results,
+      blocked,
+    }),
+  );
   const picked = pickForToday(ranked);
   const pickedIds = new Set(picked.map((r) => r.suggestion.id));
   const scores = new Map(ranked.map((r) => [r.suggestion.id, r.score]));
@@ -176,6 +188,8 @@ export async function scanSuggestions(
       capability: s.capability,
       topic: s.topic,
       title: s.title,
+      headline: s.headline,
+      short: s.short,
       worthCents: s.worthCents,
       worthKind: s.worthKind,
       confidencePercent: s.confidence.percent,
@@ -267,6 +281,8 @@ export async function offeredToday(
       key: r.key,
       topic: r.topic,
       title: r.title,
+      headline: r.headline || r.title,
+      short: r.short || r.why,
       why: r.why,
       worthCents: r.worthCents,
       worthKind: r.worthKind,
@@ -302,4 +318,21 @@ export async function answerSuggestion(
     percent: row.confidencePercent,
   });
   return { title: row.title, actionHref: row.actionHref };
+}
+
+// The full explanation behind a suggestion's "Why?": its whole title and why, in the person's
+// figures, and how sure Jane is with the reason.
+export async function explainSuggestion(
+  userId: string,
+  key: string,
+  { client = defaultClient }: Pick<Options, "client"> = {},
+): Promise<string> {
+  const row = await scopedFor(userId, client).suggestions.findFirst({ where: { key } });
+  if (!row) throw new SuggestionError("That suggestion isn't there any more.");
+  const end = (text: string) => (/[.!?]$/.test(text) ? text : `${text}.`);
+  return [
+    end(row.title),
+    end(row.why),
+    `I'm ${row.confidencePercent}% sure, based on ${row.confidenceReason}.`,
+  ].join(" ");
 }

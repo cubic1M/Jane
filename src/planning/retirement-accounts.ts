@@ -113,3 +113,23 @@ export function matchGap(input: {
     extraEmployeeCents: Math.round(shortRate * input.payCents),
   };
 }
+
+// The match left on the table at this year's pace: what the person has put in so far, scaled to
+// a full year, against full-year pay. The one calculation behind the brief's suggestion and
+// the chat's answer.
+export function matchPaceGap(
+  plan: { payCents: number; matchRate: number; matchUpTo: number },
+  employeeYtdCents: number,
+  now: Date,
+) {
+  const monthsIn = now.getUTCMonth() + now.getUTCDate() / 31;
+  return {
+    ...matchGap({
+      payCents: plan.payCents,
+      employeeCents: monthsIn > 0 ? Math.round((employeeYtdCents / monthsIn) * 12) : 0,
+      matchRate: plan.matchRate,
+      matchUpTo: plan.matchUpTo,
+    }),
+    matchRate: plan.matchRate,
+  };
+}

@@ -1,11 +1,14 @@
 import { US_STATES } from "@/config/referrals";
 import type { FilingStatus, TaxTagKind } from "@/config/tax";
+import type { DecisionTopic } from "@/config/tax-decisions";
 
 // What the person typed about taxes (spec steps 118–127), understood by rules. Pure: the
 // normalized text in (./intents.ts normalize), a tax intent out, or null when it isn't
 // about taxes. Typing never changes anything by itself: each answer offers a button.
 
 export type TaxIntent =
+  // Taxes in the chat: a direct answer to a decision or a fact.
+  | { kind: "tax"; ask: "decide"; topic: DecisionTopic }
   | { kind: "tax"; ask: "profile" }
   // status null: "I'm married", which could be either way.
   | { kind: "tax"; ask: "set_filing"; status: FilingStatus | null }
@@ -242,7 +245,89 @@ function stateCode(words: string): string | null {
   return match?.code ?? null;
 }
 
+// The tax questions people really ask, in the words they use, each with the topic whose
+// numbers answer it (src/lib/tax-decisions.ts). Checked first, so a direct question gets a
+// direct answer and not a page's worth of figures.
+const DECISIONS: readonly (readonly [DecisionTopic, RegExp])[] = [
+  [
+    "itemize",
+    /\bshould i (?:itemi[sz]e|take the standard)|\bitemi[sz]e\b.*\b(?:or|vs\.?|versus)\b.*\bstandard\b|\bstandard\b.*\b(?:or|vs\.?|versus)\b.*\bitemi[sz]/,
+  ],
+  [
+    "roth_conversion",
+    /\bshould i\b.*\broth conversion|\b(?:is|would) a roth conversion\b|\bshould i convert\b.*\broth\b/,
+  ],
+  [
+    "withholding",
+    /\bshould i (?:adjust|change|raise|lower|increase|decrease|fix|update)\b.*\bwithholding\b|\bis my withholding (?:right|enough|too (?:high|low))\b|\bshould i (?:file|submit|change|fill out) (?:a )?(?:new )?w-?4\b/,
+  ],
+  [
+    "estimated",
+    /\b(?:do|should) i (?:need|have) to (?:pay|make) (?:quarterly|estimated)\b|\bdo i need (?:to pay )?estimated\b|\bshould i pay (?:quarterly|estimated)\b|\bdo i owe quarterly\b/,
+  ],
+  [
+    "k401",
+    /\bshould i (?:max(?:imi[sz]e)?(?: out)?|put more|contribute more|put more money)\b.*\b401/,
+  ],
+  [
+    "ira",
+    /\b(?:traditional|regular) ira (?:or|vs\.?|versus) (?:a )?roth\b|\b(?:traditional|regular) (?:or|vs\.?|versus) (?:a )?roth ira\b|\broth ira (?:or|vs\.?|versus) (?:a )?traditional\b|\broth (?:or|vs\.?|versus) (?:a )?traditional ira\b/,
+  ],
+  ["hsa", /\bshould i (?:open|get|start|use|have) (?:an? )?hsa\b/],
+  [
+    "property",
+    /\b(?:is it worth|should i)\b.*\b(?:appeal|protest|contest)\w*\b.*\bproperty tax|\bshould i (?:appeal|protest)\b.*\b(?:assessment|property)/,
+  ],
+  [
+    "harvest",
+    /\bshould i sell\b.*\b(?:loss|losing|loser|losers)\b|\b(?:harvest|harvesting)\b.*\bloss/,
+  ],
+  [
+    "donate_stock",
+    /\b(?:donat\w*|give|giving)\b.*\b(?:stock|shares)\b.*\b(?:instead|rather|better)\b|\b(?:stock|shares)\b.*\binstead of (?:cash|money)\b/,
+  ],
+  [
+    "home_office",
+    /\bhome office\b.*\b(?:deduction|deduct|write[- ]?off|worth|claim)\b|\b(?:should i|can i) (?:take|claim|deduct)\b.*\bhome office\b/,
+  ],
+  [
+    "owe",
+    /\bhow much (?:will|would|do) i owe\b|\bhow much\b.*\b(?:tax(?:es)?|federal)\b.*\b(?:will|do|would|am) i\b.*\bowe\b|\bhow much (?:tax|taxes) (?:will|do|would) i owe\b|\bwill i owe (?:any )?(?:tax|taxes)\b(?!\s+(?:on|in|to|for|from)\b)|\bdo i owe (?:any )?(?:federal )?(?:tax|taxes)\b(?!\s+(?:on|in|to|for|from)\b)/,
+  ],
+  ["refund", /\bhow (?:big|much)\b.*\brefund\b|\b(?:will|am) i (?:get|getting) a refund\b/],
+  [
+    "refund_why",
+    /\bwhy\b.*\b(?:refund|tax bill)\b.*\b(?:small|big|large|low|high|so)\b|\bwhy (?:is|am) my refund\b/,
+  ],
+  ["effective_rate", /\beffective (?:tax )?rate\b/],
+  [
+    "paid",
+    /\bhow much\b.*\b(?:have i paid|did i pay|i(?:'ve| have) paid)\b.*\btax|\bhow much\b.*\b(?:federal )?tax(?:es)?\b.*\b(?:have i paid|did i pay|paid so far|been withheld)\b|\bhow much (?:federal )?tax (?:have|has)\b.*\b(?:i|been)\b.*\b(?:paid|withheld)\b/,
+  ],
+  [
+    "deductions",
+    /\bwhat (?:can|could|do) i (?:deduct|write off)\b|\bwhat (?:deductions|write[- ]?offs) (?:do|can) i\b/,
+  ],
+  [
+    "setaside",
+    /\bhow much\b.*\b(?:set aside|put aside|save)\b.*\b(?:for )?taxes?\b|\bhow much (?:tax|taxes)\b.*\b(?:set aside|put aside|save)\b/,
+  ],
+  [
+    "est_due",
+    /\bnext estimated\b|\bestimated (?:tax )?payments?\b.*\bdue\b|\bwhen (?:is|are|do)\b.*\bestimated\b/,
+  ],
+  ["must_file", /\bdo i (?:need|have) to file\b|\bam i required to file\b|\bmust i file\b/],
+  [
+    "k401_limit",
+    /\bhow much can i (?:put|contribute|put in|save)\b.*\b401|\b401\s?\(?k\)? (?:limit|contribution limit)\b/,
+  ],
+  ["mortgage_interest", /\bmortgage interest\b.*\bdeduct|\bdeduct\w*\b.*\bmortgage interest\b/],
+];
+
 export function parseTaxIntent(text: string): TaxIntent | null {
+  for (const [topic, pattern] of DECISIONS) {
+    if (pattern.test(text)) return { kind: "tax", ask: "decide", topic };
+  }
   if (FAMILY_ASK.test(text)) return { kind: "tax", ask: "family" };
   if (EQUITY_ASK.test(text)) return { kind: "tax", ask: "equity" };
   const retire = text.match(RETIRE_YEAR);

@@ -171,4 +171,29 @@ describe("the whole-picture answer", () => {
   it("asks for a bank when there's nothing to look at", () => {
     expect(wholePictureReply(null, [], "now").actions[0]).toMatchObject({ href: "/connect" });
   });
+
+  it("adds the money health score and what would help most (step 192)", () => {
+    const withHealth = snapshot({
+      health: {
+        score: 72,
+        band: "good",
+        parts: [
+          {
+            part: "cushion",
+            label: "Cash cushion",
+            points: 10,
+            max: 25,
+            why: "x",
+            next: "Save one more month of bills.",
+          },
+        ],
+      } as unknown as Snapshot["health"],
+    });
+    const lines = answer(withHealth).body.split("\n");
+    expect(lines).toContain(
+      "Your money health score is 72 out of 100 (good). What would help most: Save one more month of bills.",
+    );
+    expect(wholePicture(withHealth, [], "now").health).toMatchObject({ score: 72 });
+    expect(answer(snapshot()).body).not.toMatch(/health score/);
+  });
 });
