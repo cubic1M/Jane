@@ -1,11 +1,9 @@
 """A small merge queue for this repo, run by .github/workflows/merge-train.yml.
 
 Main requires branches to be up to date, and user-owned repos can't use GitHub's merge
-queue. So every run: land an auto-merge PR that passed but whose auto-merge never fired; if
-one is up to date and still testing, leave it be; otherwise bring the next auto-merge PR that
-is BEHIND up to date and start CI on it. Pushes and merges made with the workflow token start
-no workflows, which is why CI is dispatched by hand. Usually GitHub's auto-merge does the
-merging itself.
+queue. Every run lands an auto-merge PR that passed and is up to date but whose auto-merge
+never fired, then starts main's CI by hand (a merge made with the workflow token starts no
+workflows). Usually GitHub's auto-merge does the merging itself.
 
 Order: the PR numbers in the MERGE_PRIORITY repo variable (comma separated) first, then
 the oldest. Drafts, PRs without auto-merge, PRs with conflicts and PRs whose required
@@ -46,26 +44,6 @@ def order(prs, priority):
     return sorted(prs, key=lambda p: (rank.get(p["number"], len(rank)), p["number"]))
 
 
-def ci_exists(pr):
-    """True when a CI run for the PR's current commit is queued, running or done. A queued run
-    has no check yet, so the PR alone can't tell; starting another would cancel the queued one."""
-    runs = json.loads(
-        gh(
-            "run", "list", "--workflow", "ci.yml", "--branch", pr["headRefName"],
-            "--limit", "5", "--json", "headSha,status",
-        )
-    )
-    return any(r["headSha"] == pr["headRefOid"] for r in runs)
-
-
-def dispatch_ci(pr):
-    if ci_exists(pr):
-        print(f"CI already queued or run on #{pr['number']}")
-        return
-    gh("workflow", "run", "ci.yml", "--ref", pr["headRefName"])
-    print(f"started CI on #{pr['number']} ({pr['headRefName']})")
-
-
 def main():
     priority = [int(n) for n in os.environ.get("PRIORITY", "").replace(" ", "").split(",") if n]
     prs = json.loads(
@@ -94,28 +72,11 @@ def main():
             gh("workflow", "run", "ci.yml", "--ref", "main")
             return
 
-    if in_flight:
-        for p in in_flight:
-            # Brought up to date by an earlier run whose CI never started: start it now.
-            if required_state(p) == "none":
-                dispatch_ci(p)
-        print("in flight:", ", ".join(f"#{p['number']}" for p in in_flight))
-        return
-
-    behind = [
-        p for p in queued
-        if p["mergeStateStatus"] == "BEHIND" and required_state(p) != "failure"
-    ]
-    if not behind:
-        print("nothing to update")
-        return
-    pr = behind[0]
-    repo = os.environ["GH_REPO"]
-    gh("api", "-X", "PUT", f"repos/{repo}/pulls/{pr['number']}/update-branch")
-    print(f"updated #{pr['number']}")
-    # The update makes a new commit; start CI on the branch as it now is.
-    gh("workflow", "run", "ci.yml", "--ref", pr["headRefName"])
-    print(f"started CI on #{pr['number']} ({pr['headRefName']})")
+    # It doesn't bring PRs up to date: a commit made with the workflow token counts as an
+    # unattributed change, which main's ruleset holds for extra approval, so the PR would sit
+    # BLOCKED with no checks. Branches are updated by a person's token (the lanes, or the
+    # manager's script); this workflow only lands what has already passed.
+    print("in flight:" if in_flight else "nothing ready to land", ", ".join(f"#{p['number']}" for p in in_flight))
 
 
 if __name__ == "__main__":

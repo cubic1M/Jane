@@ -24,6 +24,8 @@ import { loadTaxCalendar } from "@/lib/tax-calendar";
 import { calendarReply } from "./tax-calendar-message";
 import { loadBusinessStructure } from "@/lib/business-structure";
 import { businessReply } from "./business-message";
+import { loadInheritance } from "@/lib/inheritance";
+import { inheritanceReply } from "./inheritance-message";
 import { decideTax } from "@/lib/tax-decisions";
 import { equityReply } from "./equity-tax-message";
 import { loadIdentity } from "@/lib/tax-identity";
@@ -143,6 +145,8 @@ export async function answerTaxIntent(
         ? moveReply(intent, view.state.value, now)
         : workStateReply(intent.state, view.state.value);
     }
+    case "inherited":
+      return inheritanceReply(await loadInheritance(userId, { client, now }));
     case "business":
       return businessReply(await loadBusinessStructure(userId, { client, now }));
     case "calendar":

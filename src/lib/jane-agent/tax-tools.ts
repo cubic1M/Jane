@@ -35,6 +35,7 @@ import { loadMultiYear } from "@/lib/multi-year";
 import { loadPropertyTax } from "@/lib/property-tax";
 import { loadAccountantPage } from "@/lib/accountant";
 import { loadBusinessStructure } from "@/lib/business-structure";
+import { loadInheritance } from "@/lib/inheritance";
 import { DECISION_TOPICS } from "@/config/tax-decisions";
 import { decideTax } from "@/lib/tax-decisions";
 import { loadTaxCalendar } from "@/lib/tax-calendar";
@@ -214,6 +215,12 @@ export const TAX_TOOLS: Anthropic.Tool[] = [
     name: "tax_business",
     description:
       "A business owner's tax structure: profit from self-employment so far this year (projected), the qualified business income deduction they get as a sole proprietor and what it saves, their federal tax as they are, and in demo advice mode whether an S corporation would save more than its payroll tax and filing costs at their profit (with a salary range to start from), plus the home office deduction and business miles on file. A tax professional confirms and files any election; Jane files nothing.",
+    input_schema: noInput,
+  },
+  {
+    name: "tax_inherited",
+    description:
+      "Inherited money and gifts: an inherited IRA the person has (found by the account's name) with the year it must be empty by under the 10-year rule (from the year they told Jane the owner died; spouses can treat it as their own), the exceptions, and in demo advice mode how much tax taking it out evenly saves against taking it all at the end; gifts to one person this year over the annual exclusion that need a gift tax return (Form 709); the step-up in basis on inherited assets; and the federal and state estate tax facts. Facts only, with a pointer to a tax professional or estate lawyer: Jane gives no legal advice.",
     input_schema: noInput,
   },
   {
@@ -822,6 +829,30 @@ export async function runTaxTool(
             : null,
         homeOffice: { sqft: v.homeOffice.sqft, deduction: money(v.homeOffice.deductionCents) },
         businessMiles: { miles: v.mileage.miles, deduction: money(v.mileage.deductionCents) },
+      });
+    }
+    case "tax_inherited": {
+      const v = await loadInheritance(userId, { client, now });
+      return out({
+        inheritedIras: v.inherited.map((i) => ({
+          account: i.name,
+          balance: money(i.balanceCents),
+          fromSpouse: i.fromSpouse,
+          mustBeEmptyByEndOf: i.emptyBy,
+          diedYearKnown: i.diedYear !== null,
+          evenlyPerYear: i.spread && v.advice ? money(i.spread.perYearCents) : null,
+          evenlySavesTax: i.spread && v.advice ? money(Math.max(0, i.spread.savesCents)) : null,
+        })),
+        giftsOverTheExclusion: v.gifts.map((g) => ({
+          to: g.recipient,
+          total: money(g.cents),
+          over: money(g.overCents),
+          splittingCoversIt: g.splitCovers,
+        })),
+        annualExclusionPerPerson: money(v.exclusionCents),
+        stepUpInBasis:
+          "Inherited property's cost basis becomes its value on the day the owner died, so selling soon after has little or no gain to tax.",
+        estateFacts: v.estate,
       });
     }
     case "tax_decide": {
