@@ -38,6 +38,8 @@ export type DecisionInput = {
   liquidCents: number;
   monthlySpendCents: number;
   // The best way found to move card debt for less, with what it would save in all.
+  // The fit engine's pick for the cards as one personal loan, when it saves.
+  personalLoan?: { name: string; kind: "personal"; aprBps: number; savesCents: number } | null;
   consolidation: {
     name: string;
     kind: "transfer" | "personal";
@@ -295,7 +297,7 @@ export function personalLoan(i: DecisionInput): Decision {
   const cards = rated(i.cards);
   if (cards.length === 0) return noDebt("personal_loan");
   const avg = weightedApr(cards)!;
-  const c = i.consolidation;
+  const c = i.personalLoan ?? null;
   const first = `Your cards average ${pct(avg)} on ${formatCents(total(cards))}.`;
   if (!c || c.savesCents <= 0) {
     return {

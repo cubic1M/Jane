@@ -10,7 +10,7 @@ import { loadBnpl } from "@/lib/bnpl";
 import { loadDebts } from "@/lib/debts";
 import { dayLabel } from "@/lib/day-label";
 import { loadHomeBuying } from "@/lib/home-buying";
-import { loadRefinance } from "@/lib/refinance";
+import { loadFit } from "@/lib/fit";
 import { spendingInsights } from "@/insights/spending";
 import { addDays } from "@/detection/units";
 import {
@@ -34,11 +34,11 @@ export async function loadDecisionInput(
   { client = defaultClient, now = new Date() }: Options = {},
 ): Promise<DecisionInput> {
   const db = scopedFor(userId, client);
-  const [advice, book, transfers, refinance, input, report, bnplData] = await Promise.all([
+  const [advice, book, transfers, fitView, input, report, bnplData] = await Promise.all([
     adviceMode(userId, { client }),
     loadDebts(userId, { client, now }),
     loadTransfers(userId, { client, now }),
-    loadRefinance(userId, { client, now }),
+    loadFit(userId, { need: "consolidation" }, { client, now }),
     loadDetectionInput(userId, { client, now }),
     db.creditReports.findFirst({
       orderBy: [{ pulledOn: "desc" }, { createdAt: "desc" }],
@@ -80,24 +80,30 @@ export async function loadDecisionInput(
   const transfer = transfers.comparisons
     .filter((c) => cardKeys.has(c.debtKey) && c.pick && (c.pick.savingCents ?? 0) > 0)
     .sort((a, b) => (b.pick!.savingCents ?? 0) - (a.pick!.savingCents ?? 0))[0];
-  const personal = refinance.comparisons
-    .filter((c) => cardKeys.has(c.debtKey) && c.pick && c.pick.savingCents > 0)
-    .sort((a, b) => b.pick!.savingCents - a.pick!.savingCents)[0];
-  const consolidation = transfer
+  // The fit engine's pick for the cards as one personal loan (src/planning/fit.ts): the same
+  // option the chat card, the tool and the suggestion show.
+  const fitted = fitView.options.find((o) => o.id === fitView.pick && o.id !== "keep");
+  const personalLoan =
+    fitted && (fitted.savesCents ?? 0) > 0
+      ? {
+          name: fitted.lender,
+          kind: "personal" as const,
+          aprBps: fitted.aprBps,
+          savesCents: fitted.savesCents ?? 0,
+        }
+      : null;
+  const viaTransfer = transfer
     ? {
         name: transfer.pick!.offer.cardName,
         kind: "transfer" as const,
         aprBps: 0,
         savesCents: transfer.pick!.savingCents ?? 0,
       }
-    : personal
-      ? {
-          name: personal.pick!.offer.lender,
-          kind: "personal" as const,
-          aprBps: personal.pick!.offer.aprBps,
-          savesCents: personal.pick!.savingCents,
-        }
-      : null;
+    : null;
+  const consolidation =
+    viaTransfer && (!personalLoan || viaTransfer.savesCents >= personalLoan.savesCents)
+      ? viaTransfer
+      : personalLoan;
   const payday = nextPayday(input, FORECAST_DAYS);
   // Take-home and what's left after spending, from the last three full months with income.
   const lastFull = addDays(`${now.toISOString().slice(0, 7)}-01`, -1);
@@ -135,6 +141,7 @@ export async function loadDecisionInput(
     liquidCents,
     monthlySpendCents: Math.round(spent / 3),
     consolidation,
+    personalLoan,
     incomeCents,
     savingCents:
       incomeCents !== null && spendingCents !== null ? incomeCents - spendingCents : null,

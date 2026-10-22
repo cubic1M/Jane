@@ -58,7 +58,8 @@ describe("on the eight sample people", () => {
       "credit_building",
       "credit_report_errors",
     ]);
-    expect(by.owner).toEqual(["credit_building"]);
+    // A card carried month to month at about 24% (the loans lane's signal for Jo).
+    expect(by.owner).toEqual(["balance_transfer", "credit_building"]);
   });
 
   it("gives each its dollars, a percentage with the reason, an urgency, why and the button", () => {

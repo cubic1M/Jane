@@ -85,3 +85,19 @@ export const FIT_SOURCES = [
     url: "https://www.consumerfinance.gov/ask-cfpb/what-is-a-debt-to-income-ratio-why-is-the-43-debt-to-income-ratio-important-en-1791/",
   },
 ] as const;
+
+// Consolidating cards into one loan is only worth bringing up when the cards owe at least this
+// much, at a weighted rate of at least this, so a small or cheap balance isn't nagged about.
+export const FIT_CONSOLIDATION_MIN_CENTS = 200_000;
+export const FIT_CONSOLIDATION_MIN_APR_BPS = 1_600;
+// The monthly payment on cards when none is seen in the payments: this share of what is owed.
+export const FIT_CARD_PAYMENT_SHARE = 0.03;
+
+// What to price when someone asks for the best loan without an amount (said in the answer).
+export const FIT_DEFAULT_AMOUNT_CENTS: Readonly<Record<FitNeed, number>> = {
+  car: 2_000_000,
+  home: 25_000_000,
+  refinance: 0,
+  consolidation: 0,
+  personal: 500_000,
+};

@@ -27,6 +27,7 @@ const base: DecisionInput = {
   liquidCents: 900_000,
   monthlySpendCents: 300_000,
   consolidation: { name: "Northstar Slate", kind: "transfer", aprBps: 0, savesCents: 166_797 },
+  personalLoan: { name: "Clearwater", kind: "personal", aprBps: 1_199, savesCents: 90_000 },
   nextPayday: { date: "Nov 1", days: 14 },
 };
 const noAdvice = { ...base, advice: false };
@@ -101,10 +102,12 @@ describe("consolidate and a personal loan", () => {
     expect(d.sentences[1]).toBe(
       "Northstar Slate at 0% would save about $1,667.97 in all, fees counted.",
     );
-    expect(sentences(personalLoan(base).sentences)[1]).toMatch(/would save about \$1,667\.97/);
+    expect(sentences(personalLoan(base).sentences)[1]).toMatch(
+      /Clearwater at 11\.99% would save about \$900\.00/,
+    );
   });
   it("says there's no offer worth taking when none saves, and the math only when not demo advice", () => {
-    const none = { ...base, consolidation: null };
+    const none = { ...base, consolidation: null, personalLoan: null };
     expect(consolidate(none).sentences[1]).toMatch(/beats your current rates once its fees/);
     expect(consolidate(none).sentences[2]).toMatch(/highest-rate card first/);
     expect(consolidate({ ...noAdvice, consolidation: null }).sentences).toHaveLength(2);

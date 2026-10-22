@@ -210,4 +210,19 @@ export const LOANS_EXTRAS: Partial<Record<PersonId, PersonExtra>> = {
       ),
     ],
   },
+  // Jo: the shop's supplies go on a card that isn't cleared each month, so it charges interest
+  // (about 24% a year on $6,900), which the fit engine's consolidation reads (spec step 276).
+  owner: {
+    monthly: [
+      R(
+        "loans-jo-interest",
+        "card",
+        "INTEREST CHARGE",
+        "BANK_FEES_INTEREST_CHARGE",
+        138,
+        [20],
+        null,
+      ),
+    ],
+  },
 };
