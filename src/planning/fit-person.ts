@@ -4,8 +4,8 @@ import { buildProfile, type ProfileInput } from "@/profile/build";
 import type { FitPerson } from "./fit";
 
 // The person the fit engine (./fit.ts) works for, read from what the profile already holds:
-// take-home pay, the debt payments seen in the last three months, cash, and whether they are
-// in debt trouble. The score is a pulled one when the caller has it. Pure.
+// take-home pay, the debt payments seen in the last three months (and loans they co-signed),
+// cash, and whether they are in debt trouble. The score is a pulled one when the caller has it. Pure.
 
 const MONTHS = 3;
 const DAY_MS = 86_400_000;
@@ -35,7 +35,9 @@ export function fitPersonFrom(input: ProfileInput, creditScore: number | null = 
   return {
     creditScore,
     incomeCents: typeof income === "number" && income > 0 ? income : null,
-    debtPaymentsCents: Math.round(paid / MONTHS) + cardMinimums,
+    // A loan co-signed for someone counts in full, as lenders count it (spec step 249).
+    debtPaymentsCents:
+      Math.round(paid / MONTHS) + cardMinimums + (input.familyCredit?.cosignedPaymentCents ?? 0),
     cashCents: liquidCents(input),
     spendCents: monthlySpendCents(input, profile.months),
     debtTrouble: profile.facts.debt_trouble.value === true,

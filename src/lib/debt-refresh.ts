@@ -1,4 +1,5 @@
 import type { PrismaClient } from "@/generated/prisma/client";
+import { refreshBorrowing } from "@/lib/borrowing-power";
 import { refreshCredit } from "@/lib/credit";
 import { runDebtAutopilot } from "@/lib/debt-autopilot";
 import { runCreditBuilding } from "@/lib/credit-building";
@@ -48,6 +49,8 @@ export async function refreshDebts(
     ["refinance rates", () => refreshRefinance(userId, { client, now })],
     // Spec step 245: rates that fell or a score that rose, noticed once.
     ["car loan", () => refreshCarLoan(userId, { client, now })],
+    // Spec step 250: what they could borrow, soft-checked once a month after the score.
+    ["borrowing power", () => refreshBorrowing(userId, { client, now })],
     // Spec step 112: loans funding, and old loans reaching zero.
     ["loan applications", () => refreshLoanApplications(userId, { client, now })],
   ];

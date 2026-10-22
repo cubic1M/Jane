@@ -127,8 +127,8 @@ export function aheadTiles(d: AheadData): HubGroup[] {
       status: "The year's records, gathered in one place",
     },
     {
-      label: "Monthly check-in",
-      href: "/check-in",
+      label: "Monthly report",
+      href: "/monthly",
       value: null,
       status: `How ${monthName(previousMonth(d.asOf))} went`,
     },

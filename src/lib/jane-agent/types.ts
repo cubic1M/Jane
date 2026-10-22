@@ -3,6 +3,7 @@ import type { Topic } from "./context";
 import type { FlowState } from "./flows/engine";
 import type { Intent } from "./intents";
 import type { PreferenceDraft } from "./preferences";
+import type { OfferedOptions } from "@/lib/option-card";
 
 // Jane's chat messages (spec step 81): what a message is, what it's about and its buttons.
 // Stored in jane_messages; posted by Jane's brain (spec step 82) and, from step 84, typed
@@ -27,6 +28,10 @@ export const ACTION_IDS = [
   ...DEBT_ACTION_IDS,
   "finding.no",
   "finding.pick",
+  // The pick-one card in the chat (refs.options): pick an option (its id goes with the tap),
+  // or put the whole set off.
+  "option.pick",
+  "option.later",
   // Insurance (spec Phase X).
   "insurance.gap_no",
   "insurance.quotes",
@@ -203,6 +208,10 @@ export const ACTION_IDS = [
   "tax.notice_mine",
   // Spec step 218: the IP PIN, and the steps after a sign of tax identity theft.
   "tax.ippin_remind",
+  "tax.disaster_move",
+  "tax.disaster_loss",
+  "tax.draft_confirm",
+  "tax.draft_dismiss",
   "tax.ippin_have",
   "tax.identity_open",
   "tax.identity_not",
@@ -268,6 +277,21 @@ export const ACTION_IDS = [
   "review.harvest",
   // Spec step 231: the swaps that put each investment in the right account, free of tax.
   "location.free",
+  // Spec step 232: confirm the plan's fund list Jane read, and send the cheapest mix.
+  "menu.confirm",
+  "menu.change",
+  // Spec step 234: build a Treasury bill ladder that matures when the money is needed.
+  "ladder.build",
+  // Spec step 235: what a large deposit was, and the plan's stages one tap at a time.
+  "sudden.bonus",
+  "sudden.inheritance",
+  "sudden.home_sale",
+  "sudden.other_sale",
+  "sudden.gift",
+  "sudden.transfer",
+  "sudden.stage",
+  // Spec step 236: switch funds to match the person's values list.
+  "values.apply",
   // Jane notices changes (spec step 97).
   "change.look",
   "change.budget",
@@ -310,6 +334,9 @@ export const ACTION_IDS = [
   "suggestion.yes",
   "suggestion.no",
   "suggestion.why",
+  // Spec step 241: goals that trade off openly.
+  "tradeoffs.pick",
+  "tradeoffs.keep",
   "steady.pay",
   "steady.skip",
   "steady.on",
@@ -414,6 +441,8 @@ export type MessageRefs = {
   previousActions?: MessageAction[];
   // A line under the answer: what happened when the button was tapped.
   note?: string;
+  // Spec step 241: the goal order a "Use this order" button picks (goal ids, comma-joined).
+  goalOrder?: string;
   // Spec step 83: a set-up suggestion (src/lib/proposals.ts), by its key.
   proposalKey?: string;
   // Spec step 83: the step only the person can do on an action (./agent-steps.ts).
@@ -439,6 +468,10 @@ export type MessageRefs = {
   multi?: { steps: MultiStep[]; results?: MultiResult[] };
   // Spec step 94: a chart, table, timeline or progress bars shown with the answer.
   block?: AnswerBlock;
+  // Options of one choice (insurance cover, loan offers) from a lane's pick-one card: the
+  // chat shows them as the floating pick card (src/lib/option-set.ts), and option.pick
+  // queues the one picked through that lane's picker.
+  options?: OfferedOptions;
   // Spec step 95: where a guided flow is.
   flow?: FlowState;
   // Spec step 96: pinned to the top of the chat.
@@ -493,6 +526,10 @@ export type MessageRefs = {
   identitySign?: string;
   identitySource?: string;
   identityStep?: string;
+  // Spec step 270: the disaster relief (its id) a message is about.
+  disasterRelief?: string;
+  // Spec step 272: the draft return (its id) a message is about.
+  draftReturn?: string;
   // Spec step 98: demo advice (src/lib/advice-mode.ts). The chat shows DEMO_ADVICE_LABEL
   // under it. Set it on every message that recommends investments, taxes, insurance or loans.
   advice?: true;
@@ -525,6 +562,14 @@ export type MessageRefs = {
   harvestKey?: string;
   // Spec step 231: the location plan the swap button belongs to, by its key.
   locationKey?: string;
+  // Spec step 232: the plan menu a button is about.
+  menuId?: string;
+  // Spec step 234: the short-term money candidate (a goal or the emergency fund) a button is about.
+  ladderKey?: string;
+  // Spec step 235: the large deposit a message is about, and its next stage.
+  suddenId?: string;
+  suddenStage?: string;
+  valuesKey?: string;
   // Spec step 97: a change Jane noticed (src/insights/changes.ts), by its key; for a
   // category's pace, the budget "Set a budget" would set (cents a month).
   change?: { key: string; kind: string; category?: string; budgetCents?: number };
