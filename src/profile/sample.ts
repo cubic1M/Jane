@@ -67,7 +67,11 @@ export function inputFor(person: string, told: ProfileInput["told"] = {}): Profi
   return {
     today: SAMPLE_TODAY,
     told,
-    extras: { householdMembers: 0, coverPolicies: SAMPLE_POLICIES[person] ?? [] },
+    extras: {
+      householdMembers: 0,
+      coverPolicies: SAMPLE_POLICIES[person] ?? [],
+      matchPace: matchPaceOf(person),
+    },
     unreadPolicyDocuments: UNREAD_DOCUMENTS[person] ?? 0,
     holdings: holdings.map((h) => ({
       ticker:
