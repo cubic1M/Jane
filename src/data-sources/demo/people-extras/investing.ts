@@ -10,6 +10,18 @@ export const INVESTING_EXTRAS: Partial<Record<PersonId, PersonExtra>> = {
   // Priya: bond funds sitting in the taxable brokerage while her 401(k) holds stocks.
   equity: {
     positions: [{ account: "brokerage", key: "KTBIX", quantity: 1500, basis: 14500 }],
+    // Her annual bonus, paid into checking a few days before the sample date.
+    once: [
+      {
+        key: "investing-bonus",
+        account: "checking",
+        name: "ACME CORP ANNUAL BONUS",
+        merchant: null,
+        category: "INCOME_OTHER",
+        amount: -12000,
+        offsets: [-9],
+      },
+    ],
   },
   // Dan and Lena: a 401(k) left at a past employer, in a costly fund.
   preretire: {

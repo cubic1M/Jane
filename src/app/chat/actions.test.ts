@@ -74,6 +74,20 @@ describe("tapButton", () => {
     expect(runQueuedFor).not.toHaveBeenCalled();
   });
 
+  it("passes the option picked on a floating pick card with the tap", async () => {
+    vi.mocked(takeChatAction).mockResolvedValue({
+      message: stored,
+      agentJobIds: [],
+      agentActionIds: [],
+      posted: false,
+    });
+    await tapButton(previous, form({ messageId: "m1", actionId: "option.pick", choice: "o2" }));
+    expect(takeChatAction).toHaveBeenLastCalledWith("u1", "m1", "option.pick", {
+      choice: "o2",
+      defer: expect.any(Function),
+    });
+  });
+
   // The tap returns before the audit row, the funnel event and closing settled messages.
   it("hands the work the answer doesn't need to after()", async () => {
     vi.mocked(takeChatAction).mockResolvedValue({

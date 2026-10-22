@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useActionState } from "react";
+import { useRouter } from "next/navigation";
+import { useActionState, useEffect } from "react";
 import { PEOPLE } from "@/config/people";
 import { tryJane, type TryState } from "@/app/try/actions";
 
@@ -9,6 +10,17 @@ import { tryJane, type TryState } from "@/app/try/actions";
 // data, deleted after a day. Agreeing to the Terms first, as at sign-up.
 export function TryButton() {
   const [state, action, pending] = useActionState<TryState, FormData>(tryJane, null);
+  const router = useRouter();
+  const next = state && "next" in state ? state.next : null;
+  // The sample person is made and signed in: on to the chat. The button stays disabled until
+  // the page changes, so a second tap can't make a second person.
+  useEffect(() => {
+    if (!next) return;
+    router.replace(next);
+    // If the soft navigation has not landed in a few seconds, a plain page load will.
+    const fallback = setTimeout(() => window.location.assign(next), 4000);
+    return () => clearTimeout(fallback);
+  }, [next, router]);
   return (
     <form action={action} className="flex flex-col gap-2">
       <label className="flex items-start gap-2 text-sm text-zinc-600 dark:text-zinc-400">
@@ -42,12 +54,12 @@ export function TryButton() {
       </label>
       <button
         type="submit"
-        disabled={pending}
+        disabled={pending || next !== null}
         className="inline-flex h-12 items-center justify-center rounded-full border border-emerald-700 px-6 text-base font-semibold text-emerald-800 transition-colors hover:bg-emerald-50 disabled:opacity-60 dark:text-emerald-300 dark:hover:bg-emerald-950"
       >
-        {pending ? "Setting up a sample person…" : "Try it with sample data"}
+        {pending || next !== null ? "Setting up a sample person…" : "Try it with sample data"}
       </button>
-      {state?.error && (
+      {state && "error" in state && (
         <p role="alert" className="text-sm text-red-700">
           {state.error}
         </p>

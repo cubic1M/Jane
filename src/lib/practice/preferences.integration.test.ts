@@ -49,6 +49,15 @@ describe.runIf(url)("practice preferences", () => {
     expect(await client.practicePreferences.count({ where: { userId: id } })).toBe(0);
   });
 
+  it("starts from what the person leaves out of their funds (step 236)", async () => {
+    const id = await person();
+    await client.valuesPreference.create({ data: { userId: id, excludes: ["tobacco"] } });
+    expect((await loadPreferences(id, { client })).avoid).toEqual(["tobacco"]);
+    // Once they choose here, theirs stands.
+    await savePreferences(id, { avoid: [] }, "page", { client, now: NOW });
+    expect((await loadPreferences(id, { client })).avoid).toEqual([]);
+  });
+
   it("saves a change, audit-logs which fields and where from, and reads it back", async () => {
     const id = await person();
     const r = await savePreferences(
