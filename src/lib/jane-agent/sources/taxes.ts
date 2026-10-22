@@ -23,6 +23,7 @@ import { yearsMoveMessage } from "../multi-year-message";
 import { answersMessage, complexMessage } from "../accountant-message";
 import { estimateDueMessage, yearEndMessage } from "../tax-calendar-message";
 import { sCorpMessage } from "../business-message";
+import { giftsMessage, inheritedIraMessage } from "../inheritance-message";
 import {
   appealDraftedMessage,
   appealSuggestedMessage,
@@ -496,6 +497,32 @@ export const taxesSource: MessageSource = {
         dedupeKey: `business:${tax.business.year}`,
         priority: TAX_MESSAGE_PRIORITY.business,
       });
+    }
+
+    // Spec step 268: an inherited IRA's deadline and spread (demo advice), and gifts over the
+    // annual exclusion (facts, with a pointer to a tax professional).
+    const inheritance = tax.inheritance;
+    if (inheritance) {
+      for (const ira of inheritance.inherited) {
+        const m = inheritedIraMessage(inheritance, ira);
+        if (m) {
+          out.push({
+            kind: "decision",
+            ...m,
+            dedupeKey: `inherited:${ira.accountId}`,
+            priority: TAX_MESSAGE_PRIORITY.inherited,
+          });
+        }
+      }
+      const gifts = giftsMessage(inheritance);
+      if (gifts) {
+        out.push({
+          kind: "heads_up",
+          ...gifts,
+          dedupeKey: `gifts:${inheritance.year}:${inheritance.gifts[0].recipient}`,
+          priority: TAX_MESSAGE_PRIORITY.gifts,
+        });
+      }
     }
 
     // Spec step 218: the IP PIN in January (already on the deadlines at the levels that let

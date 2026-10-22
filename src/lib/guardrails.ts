@@ -73,6 +73,12 @@ const LEGAL = [
   /\bbankruptcy\b/i,
   /\bchapter (?:7|11|13)\b/i,
   /\bdebt settlement\b/i,
+  // Spec step 268: what to do about an estate is legal advice: a trust, a will, a power of
+  // attorney, avoiding probate, disclaiming an inheritance. Jane gives the tax facts and points
+  // to an estate lawyer.
+  /\b(?:set up|setting up|create|creating|draft|drafting|write|writing|update|updating|sign|change|amend|put (?:it|them|the \w+|your \w+) in) (?:a |an |your |the )?(?:(?:revocable|irrevocable|living|family|testamentary|special needs|bypass|credit shelter) )?(?:trust|will|power of attorney|living will|prenup(?:tial agreement)?)\b/i,
+  /\bavoid(?:ing)? probate\b/i,
+  /\bdisclaim(?:ing|er of)? (?:the |your |an |this |that )?(?:inheritance|bequest|inherited \w+|ira)\b/i,
   // Only a debt: "stop paying overdraft fees" is the opposite of legal trouble.
   /\b(?:stop|quit) paying (?:on |off )?(?:my |your |the |their )?(?:cards?|credit cards?|loans?|debts?|creditors?|collectors?|minimums?|mortgage|bills)\b/i,
 ];
