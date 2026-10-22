@@ -5,7 +5,11 @@ import {
   ROTH_UNTIL_RATE,
   TRADITIONAL_FROM_RATE,
 } from "@/config/tax-decisions";
-import { CONTRIBUTION_LIMITS, STANDARD_DEDUCTION } from "@/config/tax-rates";
+import {
+  CONTRIBUTION_LIMITS,
+  HOME_OFFICE_SIMPLIFIED,
+  STANDARD_DEDUCTION,
+} from "@/config/tax-rates";
 import type { PrismaClient } from "@/generated/prisma/client";
 import { debtFirst } from "@/lib/debt-first";
 import { adviceMode } from "@/lib/advice-mode";
@@ -287,8 +291,10 @@ export async function decideTax(
     }
     case "home_office": {
       const se = await loadSelfEmployed(userId, { client, now, loaded: { estimate: est, advice } });
+      // The rule is a fact, and whether Jane sees self-employment income is too.
+      const rule = `The home office deduction is for people who work for themselves, for a room used only for work: ${formatCents(HOME_OFFICE_SIMPLIFIED.perSquareFoot)} a square foot, up to ${HOME_OFFICE_SIMPLIFIED.maxSquareFeet} square feet.`;
       const gate = recommend(
-        "The home office deduction is for people who work for themselves.",
+        `${rule} ${se.active ? "I see self-employment income in your accounts." : "I don't see self-employment income in your accounts."}`,
         [],
         "/taxes/self-employed",
       );
