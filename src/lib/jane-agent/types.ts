@@ -210,6 +210,8 @@ export const ACTION_IDS = [
   "tax.ippin_remind",
   "tax.disaster_move",
   "tax.disaster_loss",
+  "tax.draft_confirm",
+  "tax.draft_dismiss",
   "tax.ippin_have",
   "tax.identity_open",
   "tax.identity_not",
@@ -337,6 +339,9 @@ export const ACTION_IDS = [
   "two.split_even",
   "two.approve",
   "two.decline",
+  // Spec step 241: goals that trade off openly.
+  "tradeoffs.pick",
+  "tradeoffs.keep",
   "steady.pay",
   "steady.skip",
   "steady.on",
@@ -441,6 +446,8 @@ export type MessageRefs = {
   previousActions?: MessageAction[];
   // A line under the answer: what happened when the button was tapped.
   note?: string;
+  // Spec step 241: the goal order a "Use this order" button picks (goal ids, comma-joined).
+  goalOrder?: string;
   // Spec step 83: a set-up suggestion (src/lib/proposals.ts), by its key.
   proposalKey?: string;
   // Spec step 83: the step only the person can do on an action (./agent-steps.ts).
@@ -526,6 +533,8 @@ export type MessageRefs = {
   identityStep?: string;
   // Spec step 270: the disaster relief (its id) a message is about.
   disasterRelief?: string;
+  // Spec step 272: the draft return (its id) a message is about.
+  draftReturn?: string;
   // Spec step 98: demo advice (src/lib/advice-mode.ts). The chat shows DEMO_ADVICE_LABEL
   // under it. Set it on every message that recommends investments, taxes, insurance or loans.
   advice?: true;

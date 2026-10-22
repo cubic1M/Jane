@@ -1705,6 +1705,12 @@ const BASE_QUESTIONS: readonly CheckQuestion[] = [
     expect: { intent: "tax", mentions: /Medicare/, list: true },
   },
   {
+    id: "tax-39",
+    text: "can you check my draft return before I file",
+    needs: "rules",
+    expect: { intent: "tax", mentions: /draft/ },
+  },
+  {
     id: "ins-1",
     text: "what insurance do I have",
     needs: "rules",
@@ -2072,6 +2078,54 @@ const BASE_QUESTIONS: readonly CheckQuestion[] = [
       link: "/loans/goal",
       list: true,
       maxChars: 1_000,
+    },
+  },
+  // Spec step 249: helping family with credit.
+  {
+    id: "debt-39",
+    text: "should I cosign a loan for my son",
+    needs: "rules",
+    expect: {
+      intent: "family_credit",
+      mentions: /co-signing/i,
+      link: "/loans/helping",
+      list: true,
+      maxChars: 2_600,
+    },
+  },
+  {
+    id: "debt-40",
+    text: "how do I add my daughter to my credit card as an authorized user",
+    needs: "rules",
+    expect: {
+      intent: "family_credit",
+      mentions: /co-signing/i,
+      link: "/loans/helping",
+      list: true,
+      maxChars: 2_600,
+    },
+  },
+  // Spec step 250: what you could borrow.
+  {
+    id: "debt-70",
+    text: "what could I borrow, and at what rate?",
+    needs: "rules",
+    expect: {
+      intent: "borrowing_power",
+      mentions: /soft check|borrow/i,
+      link: "/loans/borrow",
+      maxChars: 2_000,
+    },
+  },
+  {
+    id: "debt-71",
+    text: "how big a mortgage could I get",
+    needs: "rules",
+    expect: {
+      intent: "borrowing_power",
+      mentions: /mortgage/i,
+      link: "/loans/borrow",
+      maxChars: 2_000,
     },
   },
   // Spec step 248: renting, counted.

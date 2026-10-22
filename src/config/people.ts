@@ -80,6 +80,11 @@ export const SUGGESTION_TOPICS = [
   // Spec step 248: renting, counted.
   "rent_reporting",
   "rent_increase",
+  // Spec step 250: what you could borrow.
+  "borrowing_power",
+  // Spec step 249: helping family with credit.
+  "family_credit",
+  "cosign_risk",
   "social_security_timing",
   "medicare",
   "rmd",
@@ -121,6 +126,9 @@ export const SUGGESTION_TOPICS = [
   "irmaa_watch",
   // Spec step 242: how a couple splits shared bills.
   "bill_split",
+  "draft_return_check",
+  // Spec step 241: goals that can't all be on time.
+  "goal_tradeoffs",
 ] as const;
 export type SuggestionTopic = (typeof SUGGESTION_TOPICS)[number];
 
@@ -267,6 +275,7 @@ export const PEOPLE: readonly Person[] = [
       "student_forgiveness",
       "charity_receipts",
       "property_tax_check",
+      "family_credit",
       "plan_menu",
       "life_checklist",
       "household_setup",
@@ -333,6 +342,7 @@ export const PEOPLE: readonly Person[] = [
       "disability_insurance",
       "ptc_repayment",
       "practice_portfolio",
+      "borrowing_power",
     ],
     mustNot: [
       "beneficiaries",
@@ -456,6 +466,8 @@ export const PEOPLE: readonly Person[] = [
       "irmaa_watch",
       // Spec step 242: Dan earns about twice what Lena does.
       "bill_split",
+      // Spec step 241: the trip to Japan and the kitchen can't both be on time.
+      "goal_tradeoffs",
     ],
     mustNot: [
       "values_funds",
@@ -615,6 +627,8 @@ export const PEOPLE: readonly Person[] = [
       "social_security_tax",
       "irmaa_watch",
       "practice_portfolio",
+      // Spec step 250: a new loan is the wrong thing to bring someone in debt trouble.
+      "borrowing_power",
     ],
     firstQuestion: "hardship_reason",
   },

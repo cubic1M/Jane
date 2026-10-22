@@ -18,6 +18,7 @@ import {
   TROUBLE_DEBT_MONTHS,
 } from "@/config/profile";
 import type { Relief } from "@/config/disasters";
+import type { DraftFinding } from "@/planning/draft-return";
 import type { NeedPolicy } from "@/lib/insurance/need/types";
 import { countyFromPayments, countyOf } from "@/planning/disasters";
 import { confidenceOf, evidenceText, type Source } from "./confidence";
@@ -111,12 +112,25 @@ export type ProfileInput = {
     // Disaster relief declarations from the person's feed (spec step 270): the stand-in's
     // samples for demo-bank people, none for anyone else. Absent: not loaded.
     disasterRelief?: readonly Relief[];
+    // The latest confirmed draft return's check (spec step 272): what it found, by line, with the
+    // tax each changes. Null: no checked draft. Absent: not loaded.
+    draftReturn?: { year: number; findings: readonly DraftFinding[] } | null;
     // The value of what they own (a home, cars), added to their net worth for the umbrella.
     ownedValueCents?: number;
     // The person already has a practice portfolio (step 296). Absent: not loaded.
     hasPracticePortfolio?: boolean;
     // Whether the household chose how shared bills split (spec step 242). Absent: not loaded.
     splitChosen?: boolean;
+    // Savings goals still on the way (spec step 241), in the order they're funded, and the
+    // room the year plan has for them this month. Absent: not loaded.
+    goals?: readonly {
+      id: string;
+      name: string;
+      leftCents: number;
+      wantedMonth: string;
+      monthlyCents: number;
+    }[];
+    goalRoomCents?: number | null;
     rsuGap?: {
       vestedCents: number;
       shortfallCents: number;
@@ -138,6 +152,15 @@ export type ProfileInput = {
   fsaElectionCents?: number | null;
   // The person turned rent reporting on (spec step 248).
   rentReportingOn?: boolean;
+  // Spec step 249: people the person has an authorized user or first card for, and what they
+  // co-signed (owed, in cents) for someone.
+  familyCredit?: {
+    helped: number;
+    cosignedOwedCents: number;
+    cosignedMissed: number;
+    // The co-signed loans' payments a month: lenders count them as the person's own debt.
+    cosignedPaymentCents?: number;
+  };
 };
 
 export type FactValue = string | number | boolean | null;

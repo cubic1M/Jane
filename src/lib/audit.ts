@@ -28,6 +28,8 @@ export type AuditEvent =
   // Spec step 248: rent reporting turned on or off, a security deposit saved or returned.
   | "rent_reporting_changed"
   | "security_deposit_saved"
+  // Spec step 249: credit given or got through someone close, recorded or removed.
+  | "family_credit_changed"
   | "home_request_sent"
   | "user_signed_up"
   // Insurance (spec Phase X): a policy saved or removed, the household facts saved.
@@ -120,6 +122,8 @@ export type AuditEvent =
   | "money_transfer_awaiting_partner"
   | "big_move_approved"
   | "big_move_declined"
+  // The order goals are funded in, picked by the person (spec step 241).
+  | "goal_order_chosen"
   | "lean_plan_ended"
   | "plan_link_used"
   | "support_contact_suggested"

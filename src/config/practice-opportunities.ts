@@ -191,6 +191,12 @@ export const MAX_DROP_FROM_REACTION: Readonly<Record<string, number>> = {
 export const MAX_DROP_NEAR_SHARE = 0.75;
 export const MAX_DROP_LOOKBACK_DAYS = 60;
 
+// Constant search: besides the daily cron, a cheap scan runs when the person opens the chat
+// or the investing pages, at most once in this many minutes. It reads the ledger and the
+// market data only (no Claude, no paydays), records what only suggests, and leaves every
+// trade to the daily run unless the person is in suggest-only mode.
+export const ON_OPEN_SCAN_MINUTES = 60;
+
 // What the scan assumes before the person sets their own (src/planning/practice-opportunities.ts
 // ScanPreferences; the settings themselves are session B1's PracticePreferences).
 export const DEFAULT_CASH_BUFFER_CENTS = 0;

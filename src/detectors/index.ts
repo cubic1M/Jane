@@ -10,11 +10,14 @@ import { INSURANCE_DETECTORS } from "./insurance";
 import { PLANNING_DETECTORS } from "./planning";
 import { INVESTING_DETECTORS } from "./investing";
 import { MONEY_DETECTORS } from "./money";
+import { FAMILY_CREDIT_DETECTORS } from "./family-credit";
 import { RENTING_DETECTORS } from "./renting";
 import { PRACTICE_DETECTORS } from "./practice";
+import { BORROWING_POWER_DETECTORS } from "./borrowing-power";
 import { SPENDING_DETECTORS } from "./spending";
 import { TAX_DETECTORS } from "./taxes";
 import { TWO_DETECTORS } from "./two";
+import { TRADEOFF_DETECTORS } from "./tradeoffs";
 import { WORK_DETECTORS } from "./work";
 import type { Detector, DetectorContext, Suggestion } from "./contract";
 
@@ -33,6 +36,8 @@ export const DETECTORS: readonly Detector[] = [
   ...FIT_DETECTORS,
   ...SPENDING_DETECTORS,
   ...RENTING_DETECTORS,
+  ...BORROWING_POWER_DETECTORS,
+  ...FAMILY_CREDIT_DETECTORS,
   ...TAX_DETECTORS,
   ...INVESTING_DETECTORS,
   ...HOLDINGS_DETECTORS,
@@ -41,6 +46,7 @@ export const DETECTORS: readonly Detector[] = [
   ...PRACTICE_DETECTORS,
   ...PLANNING_DETECTORS,
   ...TWO_DETECTORS,
+  ...TRADEOFF_DETECTORS,
 ];
 
 export const detectorsFor = (capability: string) =>

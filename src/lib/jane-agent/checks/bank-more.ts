@@ -192,6 +192,10 @@ const rows: Row[] = [
   ["two", "/household", "money_for_two", "how should we split the bills"],
   ["two", "/household", "money_for_two", "what's our money date"],
   ["two", "/household", "money_for_two", "should we split by income"],
+  // Goals that trade off openly (spec step 241).
+  ["tradeoffs", "/goals", "goal_tradeoffs", "which goal should i save for first"],
+  ["tradeoffs", "/goals", "goal_tradeoffs", "can i afford both goals"],
+  ["tradeoffs", "/goals", "goal_tradeoffs", "my goals compete, what do i do"],
 
   // Safe to spend and the day.
   ["safe", "/home", "safe_to_spend", "how much do i have left to spend"],
@@ -574,6 +578,15 @@ const rows: Row[] = [
   ["debt", "/loans/costly", "costly_borrowing", "i keep overdrafting every month"],
   ["debt", "/loans/renting", "renting", "can my rent help my credit score"],
   ["debt", "/loans/renting", "renting", "my rent went up again"],
+  [
+    "debt",
+    "/loans/helping",
+    "family_credit",
+    "what happens to my credit if my brother misses a cosigned payment",
+  ],
+  ["debt", "/loans/helping", "family_credit", "first credit card for my college student"],
+  ["debt", "/loans/borrow", "borrowing_power", "how much could i borrow for a car"],
+  ["debt", "/loans/borrow", "borrowing_power", "can i get prequalified for a loan"],
   ["loans", "/loans/recast", "mortgage_money", "i have $20,000, should i recast my mortgage"],
   ["loans", "/loans/recast", "mortgage_money", "pay down my mortgage or invest $500 a month"],
   ["loans", "/loans/auto", "car_loan", "can i cancel the extended warranty on my car loan"],

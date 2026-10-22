@@ -59,6 +59,8 @@ export const DEBT_SOURCE_LIMITS = {
   car_loan: 2,
   costly_borrowing: 1,
   renting: 1,
+  family_credit: 1,
+  borrowing_power: 1,
 } as const;
 export const DEBT_MESSAGE_PRIORITY = {
   // A buy now, pay later plan Jane found, then a debt with no rate: news that can wait,
@@ -159,6 +161,8 @@ export const DEBT_MESSAGE_PRIORITY = {
   rent_deposit: 60,
   rent_rise: 40,
   rent_report: 37,
+  // Spec step 250: a better rate or a bigger amount than last month can wait for a quiet day.
+  borrowing_power: 36,
 } as const;
 
 // One short line for each step above, for the chat's answer to "what do you do about my
@@ -166,33 +170,35 @@ export const DEBT_MESSAGE_PRIORITY = {
 // where a step differs by level the line says "as your level allows".
 export const DEBT_AUTOPILOT_SHORT: Readonly<Record<number, string>> = {
   109: "Keeps every loan, card and pay-later plan up to date.",
-  110: "Rechecks your payoff plan every month and tells you when you're off track.",
-  111: "Checks refinance rates monthly and speaks up only when a switch pays.",
+  110: "Rechecks your payoff plan monthly; says if you're off track.",
+  111: "Checks refinance rates monthly; speaks up when a switch pays.",
   112: "Prepares the loan application you pick and follows it through.",
-  113: "Looks for 0% transfer offers and keeps the promo's end on your deadlines.",
-  114: "Compares student loan plans and counts your qualifying payments.",
-  115: "Watches your mortgage: PMI, escrow changes and extra payments.",
-  116: "Checks your credit score monthly with a soft pull and says what's moving it.",
-  117: "Watches your rates and drafts a request to move a payment due before payday.",
-  174: "Works out what each card earns on your spending and which to use.",
-  175: "Handles the payment before a card's statement closes, as your level allows.",
-  176: "Puts pay-later installments in your forecast and warns before a new plan.",
-  177: "Prepares a plan with bills in order and written requests when money is tight.",
-  178: "Works out the car you can afford and checks a dealer's financing.",
-  179: "Works out the home you can afford and compares mortgage offers.",
-  180: "Finds medical bills and writes the requests that can lower them.",
-  181: "Checks your credit report monthly and writes letters for errors and collections.",
-  224: "Shows what each card costs in interest and writes lower-rate requests.",
-  225: "Counts your PSLF payments and keeps your certification dates.",
-  226: "Spots payment-app transfers that might be loans and asks you once.",
-  227: "Plans a credit score goal month by month and brings up each month's list.",
-  228: "Checks PMI and escrow against real figures and compares ways to fund a home project.",
-  229: "Lays out your options as facts when debt payments pass 40% of your income.",
+  113: "Finds 0% transfer offers and keeps the promo's end on your deadlines.",
+  114: "Compares student loan plans and counts qualifying payments.",
+  115: "Watches your mortgage: PMI, escrow and extra payments.",
+  116: "Checks your credit score monthly with a soft pull.",
+  117: "Watches rates; drafts a request to move a due date.",
+  174: "Works out which card earns most on your spending.",
+  175: "Handles the payment before a card's statement closes.",
+  176: "Puts pay-later installments in your forecast.",
+  177: "Prepares a plan and written requests when money is tight.",
+  178: "Works out the car you can afford; checks dealer financing.",
+  179: "Works out the home you can afford; compares mortgage offers.",
+  180: "Finds medical bills and writes requests that can lower them.",
+  181: "Checks your credit report monthly; writes dispute letters.",
+  224: "Shows what each card costs in interest; writes rate requests.",
+  225: "Counts your PSLF payments and keeps certification dates.",
+  226: "Spots payment-app transfers that might be loans.",
+  227: "Plans a credit score goal month by month.",
+  228: "Checks PMI and escrow; compares ways to fund a home project.",
+  229: "Lays out your options when debt passes 40% of income.",
   230: "Reviews all of this once a year, in one message.",
-  245: "Finds dealer add-ons in your car loan and what cancelling each would refund.",
-  246: "Compares a recast, a refinance and extra principal, and investing it instead.",
-  247: "Finds payday loans, cash advances and overdrafts, with the yearly cost and a way out.",
-  248: "Offers to report your rent, flags big rises and follows a deposit's return date.",
+  245: "Finds dealer add-ons in your car loan and the refund.",
+  246: "Compares a recast, a refinance and extra principal.",
+  247: "Finds payday loans and overdrafts; shows the way out.",
+  248: "Offers to report your rent; follows a deposit's return.",
+  249: "Shows what helping family with credit does; counts co-signing.",
+  250: "Keeps what you could borrow, and at what rate, current with soft checks.",
 };
 
 // What Jane does about debts by herself at each autopilot level (src/config/autopilot.ts),
@@ -314,6 +320,14 @@ export const DEBT_AUTOPILOT: Readonly<
       step: 248,
       does: "Offers to have your rent payments reported to the credit bureaus (only after you say yes, and you can turn it off), tells you when a rent increase is well above what is usual, and follows a security deposit to the day your state says it is due back.",
     },
+    {
+      step: 249,
+      does: "Shows what adding someone to your card, a first card for a student or co-signing would do to your credit and theirs, with a co-signed loan counted in full in your own debt load and what lands on you if they miss. You decide; nothing is applied for or sent.",
+    },
+    {
+      step: 250,
+      does: "Once a month, soft-checks what you could likely borrow for a mortgage, a car, a personal loan and a card, from your score, income and debts, with the day each was checked and what would improve it, and tells you when it gets better. Soft checks never touch your score; applying is always your tap.",
+    },
   ],
   safe: [
     {
@@ -428,6 +442,14 @@ export const DEBT_AUTOPILOT: Readonly<
       step: 248,
       does: "Offers to have your rent payments reported to the credit bureaus (only after you say yes, and you can turn it off), tells you when a rent increase is well above what is usual, and follows a security deposit to the day your state says it is due back.",
     },
+    {
+      step: 249,
+      does: "Shows what adding someone to your card, a first card for a student or co-signing would do to your credit and theirs, with a co-signed loan counted in full in your own debt load and what lands on you if they miss. You decide; nothing is applied for or sent.",
+    },
+    {
+      step: 250,
+      does: "Once a month, soft-checks what you could likely borrow for a mortgage, a car, a personal loan and a card, from your score, income and debts, with the day each was checked and what would improve it, and tells you when it gets better. Soft checks never touch your score; applying is always your tap.",
+    },
   ],
   all: [
     {
@@ -541,6 +563,14 @@ export const DEBT_AUTOPILOT: Readonly<
     {
       step: 248,
       does: "Offers to have your rent payments reported to the credit bureaus (only after you say yes, and you can turn it off), tells you when a rent increase is well above what is usual, and follows a security deposit to the day your state says it is due back.",
+    },
+    {
+      step: 249,
+      does: "Shows what adding someone to your card, a first card for a student or co-signing would do to your credit and theirs, with a co-signed loan counted in full in your own debt load and what lands on you if they miss. You decide; nothing is applied for or sent.",
+    },
+    {
+      step: 250,
+      does: "Once a month, soft-checks what you could likely borrow for a mortgage, a car, a personal loan and a card, from your score, income and debts, with the day each was checked and what would improve it, and tells you when it gets better. Soft checks never touch your score; applying is always your tap.",
     },
   ],
 };

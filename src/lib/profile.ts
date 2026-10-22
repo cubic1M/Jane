@@ -1,4 +1,5 @@
 import type { PrismaClient } from "@/generated/prisma/client";
+import { roomFromPlan, tradeGoalOf } from "@/planning/goal-tradeoffs";
 import { PAY_PERIODS } from "@/config/benefits";
 import { PROFILE_MONTHS } from "@/config/profile";
 import { db as defaultClient } from "@/lib/db";
@@ -41,6 +42,8 @@ export async function loadProfileInput(
     investor,
     unread,
     reporting,
+    familyCredit,
+    report,
     values,
     named,
     membership,
@@ -94,6 +97,13 @@ export async function loadProfileInput(
     db.investorProfiles.findFirst({ select: { age: true, ageOn: true, dropReaction: true } }),
     db.policyReadings.count({ where: { status: "waiting" } }),
     db.rentReporting.findFirst({ select: { id: true } }),
+    db.familyCredit.findMany({
+      select: { kind: true, balanceCents: true, monthlyPaymentCents: true, missed: true },
+    }),
+    db.creditReports.findFirst({
+      orderBy: [{ pulledOn: "desc" }, { createdAt: "desc" }],
+      select: { cardLimitCents: true },
+    }),
     db.valuesPreferences.findFirst({ select: { excludes: true } }),
     db.accountBeneficiaries.findMany({ select: { accountId: true } }),
     client.householdMember.findUnique({ where: { userId }, select: { householdId: true } }),
@@ -147,6 +157,7 @@ export async function loadProfileInput(
     }
   }
 
+  const onlyCard = accounts.filter((a) => a.type === "credit").length === 1;
   return {
     today,
     transactions: transactions.map((t) => ({
@@ -166,7 +177,10 @@ export async function loadProfileInput(
       limitCents:
         a.type === "credit" && a.currentBalanceCents != null && a.availableBalanceCents != null
           ? a.currentBalanceCents + a.availableBalanceCents
-          : null,
+          : // The credit report's total limit is one card's limit when there is one card.
+            a.type === "credit" && onlyCard
+            ? (report?.cardLimitCents ?? null)
+            : null,
     })),
     holdings: holdings.map((h) => ({
       accountId: h.accountId,
@@ -187,6 +201,16 @@ export async function loadProfileInput(
     told,
     unreadPolicyDocuments: unread,
     rentReportingOn: reporting !== null,
+    familyCredit: {
+      helped: familyCredit.filter((f) => f.kind !== "cosigned").length,
+      cosignedOwedCents: familyCredit
+        .filter((f) => f.kind === "cosigned")
+        .reduce((s, f) => s + (f.balanceCents ?? 0), 0),
+      cosignedMissed: familyCredit.filter((f) => f.kind === "cosigned" && f.missed).length,
+      cosignedPaymentCents: familyCredit
+        .filter((f) => f.kind === "cosigned")
+        .reduce((s, f) => s + (f.monthlyPaymentCents ?? 0), 0),
+    },
     extras: { householdMembers, ...(await sectorFigures(userId, client, now)) },
     healthPlan: healthPlanOf(healthPolicy),
     fsaElectionCents: fsa
@@ -217,6 +241,9 @@ async function sectorFigures(userId: string, client: PrismaClient, now: Date) {
     feed,
     books,
     split,
+    draft,
+    goals,
+    plan,
   ] = await Promise.all([
     loadMatchPace(userId, { client, now }),
     hasStock
@@ -235,7 +262,15 @@ async function sectorFigures(userId: string, client: PrismaClient, now: Date) {
       where: { userId },
       select: { household: { select: { splitSetAt: true } } },
     }),
+    import("@/lib/draft-return").then((m) => m.latestDraftCheck(userId, { client })),
+    // Spec step 241: the goals, and the year plan as last kept (not worked out again here).
+    import("@/lib/goals").then((m) => m.listGoals(userId, { client, now })),
+    db.yearPlans.findFirst({ orderBy: { startMonth: "desc" }, select: { months: true } }),
   ]);
+  const month = now.toISOString().slice(0, 7);
+  const planMonths = Array.isArray(plan?.months)
+    ? (plan.months as unknown as Parameters<typeof roomFromPlan>[0])
+    : [];
   return {
     matchPace,
     rsuGap: equity ? equity.rsuGap : null,
@@ -246,6 +281,10 @@ async function sectorFigures(userId: string, client: PrismaClient, now: Date) {
     // What they own by its value (a home, a car), for the net worth an umbrella protects.
     ownedValueCents: owned.reduce((sum, o) => sum + o.valueCents, 0),
     splitChosen: split?.household.splitSetAt != null,
+    goals: goals.flatMap((g) => tradeGoalOf(g) ?? []),
+    goalRoomCents: planMonths.some((m) => m.month === month)
+      ? roomFromPlan(planMonths, month)[0]
+      : null,
     coverPolicies: policies
       .filter((p) => p.status === "active" || p.status === "pending")
       .map((p) => ({
@@ -257,6 +296,8 @@ async function sectorFigures(userId: string, client: PrismaClient, now: Date) {
       })),
     // Spec step 270: the disaster relief declared where they might live (none without a feed).
     disasterRelief: feed ? await feed.declarations() : [],
+    // Spec step 272: the latest checked draft return.
+    draftReturn: draft,
     hasPracticePortfolio: practice > 0,
   };
 }

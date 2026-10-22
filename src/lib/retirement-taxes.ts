@@ -3,7 +3,7 @@ import { adviceMode } from "@/lib/advice-mode";
 import { db as defaultClient } from "@/lib/db";
 import { loadProfileInput } from "@/lib/profile";
 import { readRetirementTaxes, type RetirementTaxes } from "@/planning/retirement-taxes-read";
-import { buildProfile } from "@/profile/build";
+import { buildProfile, type ProfileInput } from "@/profile/build";
 
 // Taxes on retirement income (spec step 271) for a signed-in person, read the way the detectors
 // read them: how much of their Social Security is taxable and what nothing withholds, Medicare's
@@ -21,10 +21,10 @@ export async function loadRetirementTaxes(
     client = defaultClient,
     now = new Date(),
     loaded,
-  }: Options & { loaded?: { advice: boolean } } = {},
+  }: Options & { loaded?: { advice: boolean; input?: ProfileInput } } = {},
 ): Promise<RetirementTaxView> {
   const [input, advice] = await Promise.all([
-    loadProfileInput(userId, { client, now }),
+    loaded?.input ? Promise.resolve(loaded.input) : loadProfileInput(userId, { client, now }),
     loaded ? Promise.resolve(loaded.advice) : adviceMode(userId, { client }),
   ]);
   return { ...readRetirementTaxes(buildProfile(input), input), advice };

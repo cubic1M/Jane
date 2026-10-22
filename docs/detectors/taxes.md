@@ -283,3 +283,38 @@ so a conversion saves nothing and is no longer raised. Surcharge lines and amoun
 estimated). The order to draw from step 212 is tuned here (taxable first, pre-tax only as far as
 the room under the line allows, then Roth) and handed to the investing side's retirement paycheck
 (`RetirementIncomeView.taxTuned`, shown on `/investments/retirement-income` in demo advice mode).
+
+### Step 272: the return, checked before you file
+
+| Topic | Trigger signals | Value | Confidence drivers | Urgency | Fires for | Should not |
+|---|---|---|---|---|---|---|
+| `draft_return_check` (covers `tax_draft_check`) | a confirmed draft return (uploaded to Documents as "Draft tax return", read, and confirmed by the person) whose check found something | the federal tax the findings change, added up: a bill to avoid (risk) when any line owes, else money back (saves) | 80%: the person confirmed what Jane read, and each line is checked against their collected forms, accounts and estimate | now (before filing) | anyone with a checked draft that has findings; in the samples, a demo draft (tests) | anyone without a confirmed draft, or whose draft checks out |
+
+The check, line by line (`src/planning/draft-return.ts`): income missing (interest, dividends, capital
+gains, business income, wages under the W-2s), figures that don't match the forms (withholding),
+deductions or credits left out (student loan interest, itemizing, education and care credits, the
+same checks as step 172) and estimated payments left off, each with its line and the tax it changes
+(nothing under $25). The demo draft (the stand-in reader for demo-bank people without a key) is
+built from the person's own forms with three mistakes planted, and the check finds all three. Jane
+never files or changes a draft: the cards point to the software or the preparer. The detector is
+seasonal by nature (drafts come in filing season), so the eight samples at their October date carry
+none; the tests attach a checked draft.
+
+### Step 273: taxes on autopilot, round three
+
+Every tax detector's suggestion is on the year's tax calendar (`/taxes/calendar`, the `tax_calendar`
+tool and the calendar answer): from the same scan as everything else, ranked with all of the
+person's suggestions (its place in that list is shown), and put in the month it matters most
+(`TAX_TOPIC_MONTH` in `src/config/tax-calendar.ts`: the S corporation election in February, the
+draft check in March, December's last chances; urgent ones this month, "soon" ones this month or
+next). A test fails for a tax detector with no month.
+
+In the chat, taxes speak at most once a calendar month (`CHAT_SOURCE_MONTHLY_LIMITS`), the most
+important message first; anything at priority 80 or above (a payment due, a letter from the IRS,
+an identity case, a draft to fix, a disaster postponement) still goes at once. Lines folded into
+the day's agenda count as said.
+
+The reach scoreboard (`/admin/reach`, "Taxes, tool by tool", `src/detectors/tax-reach.ts`) runs the
+eight sample people's year moved to each month, so seasonal detectors show when they reach whom.
+Every tax tool reaches a sample person, never suggests by itself (`TOOL_EXEMPT`), or needs something
+only the person can give first (`TAX_REACH_NEEDS_PERSON`: the draft return); a test holds this.

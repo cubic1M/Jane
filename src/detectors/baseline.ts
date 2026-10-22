@@ -48,6 +48,7 @@ export const BASELINE: Readonly<Record<PersonId, readonly string[]>> = {
     "duplicate_subscription",
     "education_529",
     "emergency_fund",
+    "family_credit",
     "fsa_deadline",
     "household_setup",
     "insurance_claim",
@@ -68,6 +69,7 @@ export const BASELINE: Readonly<Record<PersonId, readonly string[]>> = {
   ],
   freelancer: [
     "auto_insurance",
+    "borrowing_power",
     "disability_insurance",
     "emergency_fund",
     "estimated_taxes",
@@ -122,6 +124,7 @@ export const BASELINE: Readonly<Record<PersonId, readonly string[]>> = {
     "disability_insurance",
     "employer_benefits",
     "family_loans",
+    "goal_tradeoffs",
     "household_setup",
     "idle_cash",
     "inherited_ira",
