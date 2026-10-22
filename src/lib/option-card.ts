@@ -35,6 +35,10 @@ export type OptionCard = {
   advice: boolean;
 };
 
+// A card offered in the chat (refs.options on a reply): the card, and for insurance the policy
+// the need is about, so a pick is priced again for the same policy on the server.
+export type OfferedOptions = OptionCard & { policyId?: string };
+
 export const OPTION_HEADLINE_WORDS = 8;
 export const MAX_CARD_OPTIONS = 4;
 

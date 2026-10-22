@@ -3,6 +3,7 @@ import type { Topic } from "./context";
 import type { FlowState } from "./flows/engine";
 import type { Intent } from "./intents";
 import type { PreferenceDraft } from "./preferences";
+import type { OfferedOptions } from "@/lib/option-card";
 
 // Jane's chat messages (spec step 81): what a message is, what it's about and its buttons.
 // Stored in jane_messages; posted by Jane's brain (spec step 82) and, from step 84, typed
@@ -27,6 +28,10 @@ export const ACTION_IDS = [
   ...DEBT_ACTION_IDS,
   "finding.no",
   "finding.pick",
+  // The pick-one card in the chat (refs.options): pick an option (its id goes with the tap),
+  // or put the whole set off.
+  "option.pick",
+  "option.later",
   // Insurance (spec Phase X).
   "insurance.gap_no",
   "insurance.quotes",
@@ -439,6 +444,10 @@ export type MessageRefs = {
   multi?: { steps: MultiStep[]; results?: MultiResult[] };
   // Spec step 94: a chart, table, timeline or progress bars shown with the answer.
   block?: AnswerBlock;
+  // Options of one choice (insurance cover, loan offers) from a lane's pick-one card: the
+  // chat shows them as the floating pick card (src/lib/option-set.ts), and option.pick
+  // queues the one picked through that lane's picker.
+  options?: OfferedOptions;
   // Spec step 95: where a guided flow is.
   flow?: FlowState;
   // Spec step 96: pinned to the top of the chat.

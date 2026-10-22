@@ -102,7 +102,13 @@ export async function runDebtTool(
         },
         { client, now },
       );
-      return out(loanFitToolOutput(view, money, await adviceMode(userId, { client })));
+      const advice = await adviceMode(userId, { client });
+      const output = loanFitToolOutput(view, money, advice);
+      // Demo advice only: the options ride along as the chat's pick-one card (refs.options).
+      const card = advice && "optionCard" in output ? output.optionCard : null;
+      if (!card) return out(output);
+      // Told so, it names its pick and why rather than listing every option again.
+      return { ...out({ ...output, shownAsACard: true }), options: card };
     }
     case "debt_decision": {
       const which = (input as { which?: unknown } | null)?.which;

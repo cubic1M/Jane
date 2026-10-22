@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import type { OfferedOptions } from "@/lib/option-card";
 import { parseActions, toChatMessage, type ChatMessage } from "./types";
 import { toView } from "./view";
 
@@ -103,5 +104,65 @@ describe("reading stored messages", () => {
       createdAt: NOW,
     });
     expect(row).toMatchObject({ kind: "heads_up", status: "dismissed", refs: {}, actions: [] });
+  });
+});
+
+describe("a reply with options (refs.options)", () => {
+  const options: OfferedOptions = {
+    kind: "insurance",
+    title: "Choose your life cover",
+    topic: "life",
+    newCover: true,
+    advice: true,
+    options: [
+      {
+        id: "dear",
+        label: "Harbor",
+        headline: "Harbor, $520.00 a year",
+        priceCents: 52_000,
+        pricePeriod: "year",
+        facts: [],
+        whyThisOne: "Higher rated.",
+        isPick: false,
+        details: [],
+      },
+      {
+        id: "pick",
+        label: "Lighthouse",
+        headline: "Lighthouse, $480.00 a year",
+        priceCents: 48_000,
+        pricePeriod: "year",
+        facts: [],
+        whyThisOne: "The least for the cover.",
+        isPick: true,
+        details: [],
+      },
+    ],
+  };
+  const reply = (status: ChatMessage["status"]) =>
+    message({
+      kind: "reply",
+      status,
+      refs: { options, advice: true },
+      actions: [
+        { id: "option.pick", label: "Pick this one", kind: "primary" },
+        { id: "option.later", label: "Later", kind: "secondary" },
+      ],
+    });
+
+  it("shows them as the pick card while open, and not as buttons under the message", () => {
+    const view = toView(reply("open"), NOW, null);
+    expect(view.buttons).toEqual([]);
+    expect(view.options?.title).toBe("Choose your life cover");
+    expect(view.options?.options.map((o) => [o.id, o.headline])).toEqual([
+      ["pick", "Lighthouse, $480/yr"],
+      ["dear", "Harbor, $520/yr"],
+    ]);
+  });
+
+  it("drops the card once picked or put off; the history keeps the message", () => {
+    expect(toView(reply("answered"), NOW, null).options).toBeNull();
+    expect(toView(reply("dismissed"), NOW, null).options).toBeNull();
+    expect(toView(message(), NOW, null).options).toBeNull();
   });
 });

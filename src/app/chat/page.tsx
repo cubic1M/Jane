@@ -6,14 +6,14 @@ import { AppHeader } from "@/components/app-header";
 import { CHAT_MAX_MESSAGE } from "@/config/agent-chat";
 import { scopedFor } from "@/lib/db-scoped";
 import { markChatRead, pinnedMessages, stackedSuggestions } from "@/lib/jane-agent/messages";
-import { toView } from "@/lib/jane-agent/view";
+import { toView, type MessageView } from "@/lib/jane-agent/view";
 import { openChat, timezoneOf } from "@/lib/jane-agent/open";
 import { requireUser } from "@/lib/session";
 import { ChatComposer } from "./composer";
 import { ChatMessageItem } from "./message";
 import { ScanRefresher } from "./scan-refresher";
 import { ScrollToEnd } from "./scroll-to-end";
-import { SuggestionCards } from "./suggestion-cards";
+import { ChatCards } from "./chat-cards";
 
 // Jane's chat, the home screen (spec step 81): what Jane noticed, did and suggests, newest
 // at the bottom, each with its buttons. The last CHAT_PAGE_SIZE messages, with "Show
@@ -21,6 +21,13 @@ import { SuggestionCards } from "./suggestion-cards";
 // from Ask Jane stay readable on /ask.
 
 const MAX_PAGES = 20;
+
+// The options in Jane's latest answer, while still open: an older answer's options never come
+// back once the conversation has moved on.
+function latestOptions(messages: MessageView[]): MessageView | null {
+  const last = messages.findLast((m) => m.kind === "reply");
+  return last?.options ? last : null;
+}
 
 function pagesFrom(value: string | string[] | undefined): number {
   const n = Number(typeof value === "string" ? value : "1");
@@ -111,7 +118,9 @@ async function Chat({ searchParams }: { searchParams: PageProps<"/chat">["search
       ) : (
         <ol aria-label="Messages" className="flex flex-col gap-4">
           {chat.messages.map((message) => (
-            <ChatMessageItem key={message.id} initial={message} />
+            // Keyed by its state too: a tap on a floating card answers it on the server, and the
+            // reload shows that here.
+            <ChatMessageItem key={`${message.id}:${message.status}`} initial={message} />
           ))}
         </ol>
       )}
@@ -133,8 +142,9 @@ async function Chat({ searchParams }: { searchParams: PageProps<"/chat">["search
         </Link>
       )}
       {pages === 1 && <ScrollToEnd targetId="chat-end" />}
-      {/* Last, so its room under the message box is the end of the page. */}
-      <SuggestionCards messages={stacked} />
+      {/* Last, so its room under the message box is the end of the page: the options Jane
+          just gave, then the day's suggestions, one card at a time. */}
+      <ChatCards options={latestOptions(chat.messages)} suggestions={stacked} />
     </>
   );
 }
