@@ -22,7 +22,7 @@ const OPTIONS = (need: string) => ({
 
 const disabilityGap: Detector = {
   capability: "insurance",
-  covers: ["insurance_policies"],
+  covers: ["insurance_policies", "insurance_needs"],
   topic: "disability_insurance",
   needs: ["income_pattern", "monthly_income", "life_stage"],
   detect(ctx) {
@@ -58,7 +58,7 @@ const disabilityGap: Detector = {
 
 const liabilityLevels: Detector = {
   capability: "insurance",
-  covers: ["insurance_policies"],
+  covers: ["insurance_policies", "insurance_needs"],
   topic: "liability_levels",
   needs: [],
   detect(ctx) {
@@ -92,7 +92,7 @@ const liabilityLevels: Detector = {
 
 const deductibleFit: Detector = {
   capability: "insurance",
-  covers: ["insurance_policies"],
+  covers: ["insurance_policies", "insurance_needs"],
   topic: "deductible_fit",
   needs: [],
   detect(ctx) {

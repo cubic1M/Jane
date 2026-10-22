@@ -3990,3 +3990,48 @@ model PracticeOpportunity {
   @@index([userId, scannedAt])
   @@map("practice_opportunities")
 }
+
+// Spec step 293 (Phase AW): the watchlist's headlines with their one-sentence summaries, and
+// filings (8-K, 10-Q) as facts with a link, stored by the daily job so the chat and pages read
+// them without calling anyone. Market data, not a person's: no user_id. `feed` is the market data
+// it came from ("sample" or "alpaca"), so sample news is never shown as real.
+model MarketNews {
+  id        String   @id @default(cuid())
+  // A hash of the feed, kind, date, ticker and title: the same item is stored once.
+  key       String   @unique
+  feed      String
+  // "headline" or "filing".
+  kind      String
+  ticker    String?
+  date      DateTime @db.Date
+  title     String
+  source    String
+  url       String?
+  // Filings only: 8-K, 10-Q.
+  form      String?
+  // Headlines only: one sentence, and who wrote it ("claude" or "rules").
+  summary   String?
+  summaryBy String?  @map("summary_by")
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  @@index([feed, kind, date])
+  @@map("market_news")
+}
+
+// One Claude call for news summaries (spec step 293): what it cost, so the job keeps to a few
+// calls a day and the monthly cap. Written before the call with the most it could cost, then
+// set to what it did cost.
+model NewsSummaryCall {
+  id             String   @id @default(cuid())
+  calledAt       DateTime @map("called_at") @db.Timestamptz(3)
+  model          String
+  headlines      Int
+  inputTokens    Int      @default(0) @map("input_tokens")
+  outputTokens   Int      @default(0) @map("output_tokens")
+  // Hundredths of a cent.
+  costHundredths Int      @map("cost_hundredths")
+  ok             Boolean  @default(false)
+
+  @@index([calledAt])
+  @@map("news_summary_calls")
+}

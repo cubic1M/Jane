@@ -1,5 +1,6 @@
 import type { Decider } from "../decision";
 import type { MessageAction } from "../types";
+import { withNeeds } from "@/lib/insurance/need/load";
 import { decide, decisionConfidence, decisionKindOf } from "./decisions";
 import { loadInsuranceSnapshot } from "./snapshot";
 
@@ -27,7 +28,11 @@ export const insuranceDecider: Required<Pick<Decider, "decides" | "decide">> = {
   decide: async ({ userId, client, now, label }) => {
     const kind = decisionKindOf(`should i ${label.toLowerCase()}`);
     if (!kind) return null;
-    const insurance = await loadInsuranceSnapshot(userId, { client, now });
+    const insurance = await withNeeds(
+      userId,
+      await loadInsuranceSnapshot(userId, { client, now }),
+      { client, now },
+    );
     const reply = decide(kind, insurance, now.toISOString().slice(0, 10));
     const seen = new Set<string>();
     const actions = linkOnly(reply.actions).filter((a) => {

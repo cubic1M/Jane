@@ -253,6 +253,24 @@ export function guardrailMatches(
   return scan(text, allowedCents, undefined, profile).matched;
 }
 
+// A forecast of a price or the market (spec step 293): news summaries say what happened, never
+// where a price is going, in every profile. "Shares slipped" is a fact; "shares could rebound"
+// and "a price target of" are predictions.
+const PRICE_PREDICTION = [
+  /\b(?:will|would|could|should|may|might|can|going to|set to|poised to|expected to|likely to|bound to|about to|due to|ready to)\s+(?:\w+\s+){0,3}?(?:rise|rally|climb|jump|soar|surge|spike|fall|drop|decline|sink|slide|slip|plunge|plummet|tumble|crash|rebound|recover|bounce|gain|lose|double|halve|go (?:up|down)|head (?:higher|lower)|outperform|underperform|beat the market)\b/i,
+  /\b(?:price|share|stock) (?:target|forecast|prediction|outlook)\b/i,
+  /\btarget price\b/i,
+  /\b(?:heading|headed|poised|set) (?:for )?(?:higher|lower|a (?:rally|rebound|drop|fall|crash))\b/i,
+  /\b(?:upside|downside) (?:of|to)\b/i,
+  /\b(?:predict\w*|forecast\w*|expect\w*)\b[^.!?]{0,40}\b(?:prices?|shares?|stocks?|the market|returns?)\b[^.!?]{0,30}\b(?:rise|rally|climb|fall|drop|recover|rebound|gain|higher|lower|up|down)\b/i,
+  /\b(?:a )?(?:good|great|bad) time to (?:buy|sell)\b/i,
+  /\b(?:bottom(?:ed)? out|has (?:further|more) to (?:fall|run|go))\b/i,
+];
+
+export function predictsAPrice(text: string): boolean {
+  return PRICE_PREDICTION.some((pattern) => pattern.test(text));
+}
+
 // (e) Recommending one choice over another. The debt planner is education: it shows the
 // math for each order of paying cards down and leaves the choice to the person.
 const RECOMMENDATION = [
