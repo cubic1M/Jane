@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { PRACTICE_STOCKS, PRACTICE_UNIVERSE, classOf } from "@/config/portfolios";
 import { AVOID_MAX, EXCLUSIONS, TICKER_TAGS } from "@/config/practice-preferences";
+import { VALUES_EXCLUSIONS } from "@/config/values";
 import {
   applyPatch,
   avoidKey,
@@ -136,6 +137,10 @@ describe("practice preferences", () => {
       "Risk level: From your answers → Low",
       "Cash to keep: $0 → $500",
     ]);
+  });
+
+  it("knows every exclusion from investing by your values (step 236), by the same key", () => {
+    for (const key of Object.keys(VALUES_EXCLUSIONS)) expect(avoidKey(key)).toBe(key);
   });
 
   it("every company the portfolio may buy has its tags", () => {

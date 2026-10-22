@@ -13,6 +13,7 @@ import { ACTION_STATUS_LABELS } from "@/lib/action-status";
 import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
 import { formatCents } from "@/lib/money";
+import type { OfferedOptions } from "@/lib/option-card";
 import { savingsPhrase } from "@/lib/savings-text";
 
 // The tools Claude can use to answer questions about the person's money. Every tool reads
@@ -82,7 +83,9 @@ export const ASK_TOOLS: Anthropic.Tool[] = [
   },
 ];
 
-export type ToolOutput = { content: string; cents: number[] };
+// options: a pick-one card the tool found (insurance cover, loan offers), for the chat to
+// show with the answer (refs.options).
+export type ToolOutput = { content: string; cents: number[]; options?: OfferedOptions };
 
 type Options = { client?: PrismaClient; now?: Date };
 

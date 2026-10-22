@@ -13,30 +13,30 @@ data.
 | # | Finding | Fix |
 | --- | --- | --- |
 | 1 | `insurance_shopping` told Priya she paid $76,684.80 in premiums; Chubb is $410 a month ($4,920 a year). The regex for car and home cover (`\bHOME\b`) also matched "HOME DEPOT" and mortgage lines. | Premiums are now only charges in the insurance category (`premiums()`), so a store is never home cover. Test: Priya's text says $4,920.00 and the saving is 10% of that. |
-| 2 | Risk amounts were the whole loss: renters $30,000 ranked first or second for Maya, Sam and Chris, above real money; the Reyes' life cover said $1,279,200 and Jo's business cover said $491,839 (a year of his income). | A risk is worth its expected yearly loss, chance × cost, from config (`DETECTOR_RATES`: renters 3% × $30,000 = $900, an at-fault accident 5% × $100,000 = $5,000, a hospital stay 8% × $27,000, umbrella 0.2% of assets, long-term care 20% over 10 years of two years' care, life 0.3% a year of ten years' income, business 4% × $50,000). The "why you" still states the whole loss and the small chance, so the person sees both. |
+| 2 | Risk amounts ranked as the whole loss: renters $30,000 ranked first or second for Maya, Sam and Chris, above real money; the Reyes' life cover said $1,279,200 and Jo's business cover said $491,839 (a year of his income). | A first fix put the expected loss in `worthCents`. The thinking lane then moved the discount into the ranking (`RISK_ANNUAL_PROBABILITY` in `src/config/suggestions.ts`, chances I supplied: renters 3%, an at-fault accident 5%, a hospital stay 8%, umbrella 0.2%, long-term care 2% a year, life 0.3%, business 4%, a stale-insurer claim 1%), so now `worthCents` is the whole loss the person sees ($30,000 for renters, $100,000 for an uninsured car) and the ranking counts loss × chance. My own chance constants are gone: the map is the only discount. An uninsured car and a business with no cover at all are `required: true`, which the ranking multiplies by `REQUIRED_BOOST`. |
 | 3 | Confidence read as sure as the charges were clean: 89% on "you could save up to a tenth" (a typical rate, not a quote), 80% on "your card probably covers this" (we cannot see the card's benefits). | Ceilings in `DETECTOR_RATES.insuranceCaps` for suggestions whose amount is typical or rests on something Jane cannot see (shopping, health and Medicare supplement comparisons 70%, renewal call 75%, claim 65%, card cover 55%, employer plan 60%, document 75%). When a ceiling applies the reason says so ("…; I can't see your card's actual benefits"). |
 | 4 | A multi-part confidence showed only one piece of evidence: Sam's health-plan comparison read "24 deposits in 12 months of data". | `combine()` names every piece in the reason ("uneven pay…; 12 health-plan charges…"), and the percentage is still the weakest piece. |
 
-Expected loss does not subtract the premium. Insurance is priced above its expected payout on
-purpose, so subtracting would make every risk detector negative; the value of a risk detector
-is the loss the person is exposed to in a year, weighted by the scan (`WORTH_WEIGHT.risk`) so
-it never outranks real savings. The premium appears in the "why you" where it is known.
+The ranking does not subtract the premium from a risk's expected loss. Insurance is priced above
+its expected payout on purpose, so subtracting would make every risk negative; the value of a
+risk detector is the loss the person is exposed to in a year. The premium appears in the "why
+you" where it is known.
 
 ## The eight people
 
 Top three is what `pickForToday` would show after all detectors (every lane), so it says
 whether insurance reaches the person unasked. Insurance rows are rank / suggestions fired.
 
-| Person | Top three today | Insurance suggestions | Verdict |
+| Person | Top three today | Insurance suggestions (rank / fired) | Verdict |
 | --- | --- | --- | --- |
-| Maya (renter) | employer match, card interest, balance transfer | renewal call $156 (75%, #8/17); shop car cover $144 (70%, #11); renters cover $900 risk (79%, #15); tell the insurer about the move $300 risk (80%, #16) | Right: real money first. The renewal call is the only insurance item worth a nudge this week. |
-| The Reyes | student forgiveness, **insurance claim**, PMI removal | claim after a $3,100 collision repair $2,100 (65%, #2, now); shop cover $420 (70%, #10); life cover $3,838 risk (74%, #11) | Right: an unclaimed repair has a deadline. Life cover now sits where its expected value puts it. |
-| Sam (freelancer) | student repayment, emergency fund, self-employed retirement | health-plan comparison $494 (70%, #4, soon); **no car insurance** $5,000 risk (74%, #5, now); renters cover $900 (79%, #9) | Questionable: an uninsured car is illegal to drive and urgent, but ranks fifth. See open question 1. |
-| Priya (equity) | refinance, concentration, idle cash | shop cover $492 (70%, #9); card already covers the protection plan $204 (55%, #13) | Right. Neither is more than a footnote next to $259,000 of company stock. |
-| Dan and Lena | Roth conversion, catch-up, idle cash | employer benefits $660 (60%, #4); shop cover $342 (70%, #5); long-term care $4,320 risk (58%, #8); umbrella $1,060 risk (85%, #9) | Right. Long-term care is rightly low confidence: age is guessed (no age told), so it is 58%. |
-| Ruth (retiree) | idle cash, Roth conversion, medical bills | confirm the policy document $493 (75%, #4, soon); Medicare supplement comparison $347 (58%, #6); shop cover $158 (70%, #10) | Right. The document is the one with a concrete next step. |
-| Chris (debt) | debt plan, card interest, balance transfer | renters cover $900 risk (79%, #15/16) | Right: insurance stays out of the way of the debt plan. |
-| Jo (owner) | self-employed retirement, emergency fund, estimated taxes | business cover $2,000 risk (79%, #6, soon); health plan $2,160 risk (70%, #8); renters cover $900 (79%, #9) | Questionable: a business with no liability cover and about $492,000 of yearly income deserves more than #6. See open question 2. |
+| Maya (renter) | employer match, card interest, balance transfer | renters cover $30,000 at 3% (81%, #4/17); tell the insurer about the move $30,000 at 1% (83%, #6); renewal call $156 (75%, #10); shop car cover $144 (70%, #14) | Right: real money first. Renters cover is fourth, worth about $900 a year in expectation against a $156 call; it is the one to watch (open question 3). |
+| The Reyes | **insurance claim**, student forgiveness, life insurance | claim after a $3,100 collision repair $2,100 (65%, #1, now); life cover $1,287,200 at 0.3% (49%, #3); shop cover $420 (70%, #11) | Right: an unclaimed repair has a deadline, and the family with a child and no life cover sees it third. |
+| Sam (freelancer) | **auto insurance**, income smoothing, emergency fund | no car insurance $100,000 at 5% (49%, #1, required); renters cover (#6); health-plan comparison $494 (70%, #7) | Right now: an uninsured car is required and leads. Its confidence is 49% because "has a car" is a guess from gas stations. |
+| Priya (equity) | concentration, refinance, idle cash | shop cover $492 (70%, #8); card already covers the protection plan $204 (55%, #13) | Right. Neither is more than a footnote next to $259,000 of company stock. |
+| Dan and Lena | **long-term care**, Roth conversion, idle cash | long-term care $216,000 at 2% (43%, #1); umbrella $529,926 at 0.2% (93%, #5); employer benefits $660 (60%, #6); shop cover $342 (70%, #7) | Questionable: long-term care leads at 43% confidence. See open question 4. |
+| Ruth (retiree) | idle cash, Roth conversion, medical bills | confirm the policy document $493 (75%, #4, soon); Medicare supplement comparison $347 (43%, #7); shop cover $158 (70%, #9) | Right. The document is the one with a concrete next step. |
+| Chris (debt) | debt plan, hardship plan, high-cost loans | renters cover $30,000 at 3% (81%, #7/16) | Right: insurance stays out of the way of the debt plan. |
+| Jo (owner) | **business insurance**, self-employed retirement, emergency fund | business cover $50,000 at 4% (81%, #1, required); health plan $27,000 at 8% (70%, #4); renters cover (#7) | Right: a business with no liability cover leads. |
 
 ## Confidence spread
 
@@ -56,21 +56,22 @@ stated amount" when the amount is a typical rate.
 - Does not state a promise: savings are "up to", risks give the small chance next to the big
   loss, and nothing says what the insurer will do.
 
-## Open questions for the thinking lane
+## Open questions
 
-1. **Urgency against risk weight.** `auto_insurance` is `urgency: "now"` with a $5,000 expected
-   loss, and still ranks fifth for Sam, behind emergency fund and self-employed retirement,
-   because `WORTH_WEIGHT.risk` discounts every risk. Driving uninsured is both illegal and the
-   most expensive mistake on the list. Either a higher weight for `"now"` risks, or a
-   `rankCents` override for a legal requirement, would put it in the top three.
-2. **Business liability for Jo.** Same weighting: a business with no liability cover ranks
-   sixth. A claim against an uninsured small business can end it; the 4% yearly chance
-   understates how bad the tail is. A risk-aversion factor (or a minimum rank for
-   "no cover at all" on a business) is the scan's call.
-3. **Renters cover for people in other trouble.** It fires for Maya, Sam, Chris and Jo
-   (all renters, none with a cover charge). At #9 to #15 it never reaches the top three, which
-   is right; if the scan ever shows it, it should come after debt and cash.
-4. **Still outside the profile.** The checks that need the policies themselves (reshop of a
+1. **Done: urgency against risk.** An uninsured car (Sam) and a business with no cover at all (Jo)
+   now lead, through `required: true` and `REQUIRED_BOOST`.
+2. **Confidence on "has a car".** Sam's uninsured-car suggestion is 49% because a car is guessed
+   from gas and car costs. Asking once ("do you have a car?") would lift it; that is the
+   step 257 question.
+3. **Renters cover at #4 for Maya.** At 3% × $30,000 it is worth about $900 a year in
+   expectation, more than a renewal call. If that reads as pushy for a first job on a tight
+   budget, the right lever is the chance (the map), not a special case here.
+4. **Long-term care at #1 for Dan and Lena at 43% confidence.** The yearly chance (2%) times two
+   years of care ($216,000) is $4,320 a year, which beats a Roth conversion. Their age is
+   guessed (nobody told Jane), so the confidence is low, and for people in their early sixties
+   it is early rather than urgent. A "later" urgency weight below Roth conversion's, or a
+   minimum confidence to lead, is the scan's call.
+5. **Still outside the profile.** The checks that need the policies themselves (reshop of a
    known policy, the coverage checkup, household gaps, business gaps from the tax profile, the
    health year, the yearly review) keep running from the insurance snapshot, not the profile.
    Passing policies into `ProfileInput` would let them join the nightly scan and these

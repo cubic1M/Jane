@@ -204,6 +204,22 @@ export type AuditEvent =
   | "rental_added"
   // Spec step 215: a costly product entered or confirmed (never its figures).
   | "costly_product_saved"
+  // Spec step 232: a plan's fund menu confirmed, and a change to the plan's funds requested.
+  | "plan_menu_confirmed"
+  | "plan_change_requested"
+  // Spec step 234: a Treasury bill ladder started, and a bill rolled into the next.
+  | "ladder_started"
+  | "ladder_rolled"
+  // Spec step 235: sudden money classed (the kind, never the amount), and a stage done.
+  | "sudden_money_classed"
+  | "sudden_money_stage"
+  // Spec step 236: values listed (the keys, never amounts), and a switch into screened funds.
+  | "values_saved"
+  | "values_switch"
+  // Spec step 237: beneficiaries named or confirmed, and the family file picked or shared.
+  | "beneficiary_saved"
+  | "family_file_picked"
+  | "family_file_exported"
   // Spec step 290 (Phase AW): the practice portfolio started, and each practice trade.
   | "practice_started"
   | "practice_trade"

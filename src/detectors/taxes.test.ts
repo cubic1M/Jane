@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { formatCents } from "@/lib/money";
 import { DETECTOR_RATES } from "@/config/detectors";
 import { PEOPLE, PERSON_IDS, type PersonId } from "@/config/people";
 import { buildProfile, type ProfileInput } from "@/profile/build";
@@ -259,5 +260,114 @@ describe("the rest of the tax tools find their people", () => {
         ],
       })),
     ).not.toContain("file_return");
+  });
+});
+
+describe("business owners' tax structure", () => {
+  it("raises an S corporation only for the profit where it pays: Jo, not Sam", () => {
+    expect(PERSON_IDS.filter((id) => topics(id).includes("s_corp_election"))).toEqual(["owner"]);
+    const s = run("owner").find((x) => x.topic === "s_corp_election")!;
+    expect(s.worthKind).toBe("saves");
+    expect(s.worthCents).toBeGreaterThanOrEqual(100_000);
+    expect(s.confidence.percent).toBeLessThanOrEqual(55);
+    expect(s.confidence.reason).toMatch(/deposits are sales, so I assumed 15% is profit/);
+    expect(s.why).toMatch(/Form 2553\) is due March 15/);
+    // Bigger profit, bigger saving: Sam's income doubled would be worth raising too.
+    expect(
+      topics("freelancer", (d) => ({
+        ...d,
+        transactions: d.transactions.map((t) =>
+          t.pfc === "INCOME_CONTRACTOR" ? { ...t, amountCents: t.amountCents * 3 } : t,
+        ),
+      })),
+    ).toContain("s_corp_election");
+  });
+
+  it("is urgent before the March 15 election date and not after", () => {
+    // The sample's year of data moved forward whole, so the same life is seen on another date.
+    const on =
+      (today: string) =>
+      (d: ProfileInput): ProfileInput => {
+        const days = Math.round((Date.parse(today) - Date.parse(d.today)) / 86_400_000);
+        const move = (day: string) =>
+          new Date(Date.parse(day) + days * 86_400_000).toISOString().slice(0, 10);
+        return {
+          ...d,
+          today,
+          transactions: d.transactions.map((t) => ({ ...t, date: move(t.date) })),
+        };
+      };
+    const urgency = (today: string) =>
+      run("owner", on(today)).find((x) => x.topic === "s_corp_election")?.urgency;
+    expect(urgency("2027-02-20")).toBe("soon");
+    expect(urgency("2027-03-16")).toBe("later");
+    expect(urgency("2026-10-17")).toBe("later");
+  });
+
+  it("home office: the freelancer who rents at home, never the shop owner with a shop", () => {
+    expect(PERSON_IDS.filter((id) => topics(id).includes("home_office_deduction"))).toEqual([
+      "freelancer",
+    ]);
+    const s = run("freelancer").find((x) => x.topic === "home_office_deduction")!;
+    expect(s.why).toMatch(/150 square feet at \$5 a square foot, is a \$750\.00 deduction/);
+    expect(s.confidence.percent).toBeLessThanOrEqual(55);
+  });
+
+  it("vehicle: whoever works for themselves and buys gas, from the standard mileage rate", () => {
+    expect(PERSON_IDS.filter((id) => topics(id).includes("vehicle_deduction"))).toEqual([
+      "freelancer",
+      "owner",
+    ]);
+    const s = run("owner").find((x) => x.topic === "vehicle_deduction")!;
+    expect(s.why).toMatch(/4,000 miles.*\$2,900\.00/);
+    expect(s.confidence.percent).toBeLessThanOrEqual(45);
+    expect(
+      topics("owner", (d) => ({
+        ...d,
+        transactions: d.transactions.filter((t) => t.pfc !== "TRANSPORTATION_GAS"),
+      })),
+    ).not.toContain("vehicle_deduction");
+  });
+});
+
+describe("inherited money", () => {
+  it("raises an inherited IRA for the couple who have one, never for a spouse's, and ranks it by years left", () => {
+    expect(PERSON_IDS.filter((id) => topics(id).includes("inherited_ira"))).toEqual(["preretire"]);
+    const s = run("preretire").find((x) => x.topic === "inherited_ira")!;
+    expect(s.worthKind).toBe("saves");
+    expect(s.worthCents).toBeGreaterThanOrEqual(50_000);
+    expect(s.confidence.percent).toBeLessThanOrEqual(50);
+    expect(s.confidence.reason).toMatch(/don't know when the owner died/);
+    expect(s.why).toMatch(
+      /within 10 years of the owner's death.*A tax professional should confirm/,
+    );
+    // From a spouse it is theirs to roll over: no deadline, nothing to spread.
+    expect(
+      topics("preretire", (d) => ({ ...d, told: { inherited_from_spouse: true } })),
+    ).not.toContain("inherited_ira");
+    // Told the year, the date and the urgency follow.
+    const told = (year: number) =>
+      run("preretire", (d) => ({ ...d, told: { inherited_ira_death_year: year } })).find(
+        (x) => x.topic === "inherited_ira",
+      );
+    expect(told(2023)?.why).toContain("by December 31, 2033");
+    expect(told(2023)?.urgency).toBe("later");
+    expect(told(2018)?.urgency).toBe("soon");
+    expect(told(2016)?.urgency).toBe("now");
+    expect(told(2023)?.confidence.percent).toBeGreaterThan(50);
+  });
+
+  it("doesn't count an inherited IRA as money to convert to a Roth", () => {
+    const data = inputFor("preretire");
+    const own = data.accounts
+      .filter(
+        (a) =>
+          a.type === "investment" &&
+          /^(401k|403b|ira)$/.test(a.subtype ?? "") &&
+          a.name !== "Inherited IRA",
+      )
+      .reduce((sum, a) => sum + a.balanceCents, 0);
+    const withIt = run("preretire").find((x) => x.topic === "roth_conversion")!;
+    expect(withIt.why).toContain(`You have ${formatCents(own)} in pre-tax retirement`);
   });
 });
