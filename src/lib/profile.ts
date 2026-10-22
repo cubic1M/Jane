@@ -180,13 +180,9 @@ async function sectorFigures(userId: string, client: PrismaClient, now: Date) {
   const hasStock =
     (await db.accounts.count({ where: { subtype: "stock plan" } })) > 0 ||
     (await db.equityEvents.count()) > 0;
-<<<<<<< HEAD
-  const [matchPace, equity, subscriptions, cardInterest, shopSaving, policies, feed, draft] =
-=======
   // Spec step 296: whether the practice-portfolio suggestion still applies.
   const practice = await db.practicePortfolios.count();
-  const [matchPace, equity, subscriptions, cardInterest, shopSaving, policies, owned, feed] =
->>>>>>> claude/step-271-retirement-taxes
+  const [matchPace, equity, subscriptions, cardInterest, shopSaving, policies, owned, feed, draft] =
     await Promise.all([
       loadMatchPace(userId, { client, now }),
       hasStock
@@ -219,12 +215,9 @@ async function sectorFigures(userId: string, client: PrismaClient, now: Date) {
       })),
     // Spec step 270: the disaster relief declared where they might live (none without a feed).
     disasterRelief: feed ? await feed.declarations() : [],
-<<<<<<< HEAD
     // Spec step 272: the latest checked draft return.
     draftReturn: draft,
-=======
     hasPracticePortfolio: practice > 0,
->>>>>>> claude/step-271-retirement-taxes
   };
 }
 

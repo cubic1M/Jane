@@ -109,16 +109,13 @@ export type ProfileInput = {
     // Disaster relief declarations from the person's feed (spec step 270): the stand-in's
     // samples for demo-bank people, none for anyone else. Absent: not loaded.
     disasterRelief?: readonly Relief[];
-<<<<<<< HEAD
     // The latest confirmed draft return's check (spec step 272): what it found, by line, with the
     // tax each changes. Null: no checked draft. Absent: not loaded.
     draftReturn?: { year: number; findings: readonly DraftFinding[] } | null;
-=======
     // The value of what they own (a home, cars), added to their net worth for the umbrella.
     ownedValueCents?: number;
     // The person already has a practice portfolio (step 296). Absent: not loaded.
     hasPracticePortfolio?: boolean;
->>>>>>> claude/step-271-retirement-taxes
     rsuGap?: {
       vestedCents: number;
       shortfallCents: number;
