@@ -3927,4 +3927,31 @@ model PracticeTrade {
   @@index([portfolioId, placedAt])
   @@index([userId])
   @@map("practice_trades")
+// Spec step 289 (Phase AW): daily closes pulled once from the market data (Alpaca) for the model
+// portfolios' ETFs, stored with their source so backtests can say "real history since <date>".
+// Market data, not a person's: no user_id.
+model MarketPrice {
+  id         String   @id @default(cuid())
+  ticker     String
+  date       DateTime @db.Date
+  closeCents Int      @map("close_cents")
+  source     String
+
+  @@unique([ticker, date])
+  @@index([ticker, date])
+  @@map("market_prices")
+}
+
+// What was loaded for a ticker, from where and for which dates.
+model MarketHistoryLoad {
+  id       String   @id @default(cuid())
+  ticker   String
+  source   String
+  fromDate DateTime @map("from_date") @db.Date
+  toDate   DateTime @map("to_date") @db.Date
+  rows     Int
+  loadedAt DateTime @map("loaded_at") @db.Timestamptz(3)
+
+  @@unique([ticker, source])
+  @@map("market_history_loads")
 }

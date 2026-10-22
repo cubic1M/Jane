@@ -3,12 +3,15 @@ import { MarketDataNotConfigured, type Filing } from "./types";
 
 // Alpaca market data and news (spec step 289). A stub for Stage B: the request URLs and the
 // parsing of its responses are written and tested against recorded responses, and nothing calls
-// out unless ALPACA_KEY_ID and ALPACA_SECRET_KEY are set. Jane never creates an Alpaca account:
+// out unless ALPACA_API_KEY_ID and ALPACA_API_SECRET_KEY are set. Jane never creates an Alpaca account:
 // the founder does, and the keys go in the environment, never in code.
 
 export const ALPACA_DATA_URL = "https://data.alpaca.markets";
 
-type AlpacaBars = { bars?: Record<string, { t: string; c: number }[]> | null };
+type AlpacaBars = {
+  bars?: Record<string, { t: string; c: number }[]> | null;
+  next_page_token?: string | null;
+};
 type AlpacaNews = {
   news?: {
     id: number;
@@ -20,8 +23,17 @@ type AlpacaNews = {
   }[];
 };
 
-export const barsUrl = (tickers: readonly string[], from: string, to: string) =>
-  `${ALPACA_DATA_URL}/v2/stocks/bars?symbols=${encodeURIComponent(tickers.join(","))}&timeframe=1Day&start=${from}&end=${to}&adjustment=all&limit=10000`;
+// The feed: the free IEX feed unless ALPACA_DATA_FEED says otherwise (spec step 289).
+export const DEFAULT_FEED = "iex";
+
+export const barsUrl = (
+  tickers: readonly string[],
+  from: string,
+  to: string,
+  feed = DEFAULT_FEED,
+  pageToken?: string | null,
+) =>
+  `${ALPACA_DATA_URL}/v2/stocks/bars?symbols=${encodeURIComponent(tickers.join(","))}&timeframe=1Day&start=${from}&end=${to}&adjustment=all&feed=${feed}&limit=10000${pageToken ? `&page_token=${encodeURIComponent(pageToken)}` : ""}`;
 export const newsUrl = (tickers: readonly string[], from: string, to: string) =>
   `${ALPACA_DATA_URL}/v1beta1/news?symbols=${encodeURIComponent(tickers.join(","))}&start=${from}&end=${to}&limit=50`;
 
@@ -31,6 +43,8 @@ export function parseBars(json: AlpacaBars, ticker: string): Bar[] {
     closeCents: Math.round(b.c * 100),
   }));
 }
+
+export const nextPage = (json: AlpacaBars): string | null => json.next_page_token ?? null;
 
 export function parseNews(json: AlpacaNews): Headline[] {
   return (json.news ?? []).map((n) => ({
@@ -55,6 +69,7 @@ export class AlpacaMarketData implements MarketData {
     private readonly keys: { id: string; secret: string } | null,
     private readonly fetcher: Fetcher = fetch as unknown as Fetcher,
     private readonly filingsFrom?: MarketData,
+    private readonly feed: string = DEFAULT_FEED,
   ) {}
 
   private headers() {
@@ -62,9 +77,21 @@ export class AlpacaMarketData implements MarketData {
     return { "APCA-API-KEY-ID": this.keys.id, "APCA-API-SECRET-KEY": this.keys.secret };
   }
 
+  // History comes in pages of up to 10,000 bars; follow the page tokens (a hard stop at 50
+  // pages so a bad response can't loop).
   async prices(ticker: string, from: string, to: string): Promise<Bar[]> {
-    const res = await this.fetcher(barsUrl([ticker], from, to), { headers: this.headers() });
-    return parseBars((await res.json()) as AlpacaBars, ticker);
+    const out: Bar[] = [];
+    let token: string | null = null;
+    for (let page = 0; page < 50; page += 1) {
+      const res = await this.fetcher(barsUrl([ticker], from, to, this.feed, token), {
+        headers: this.headers(),
+      });
+      const json = (await res.json()) as AlpacaBars;
+      out.push(...parseBars(json, ticker));
+      token = nextPage(json);
+      if (!token) break;
+    }
+    return out;
   }
 
   async latest(ticker: string, on: string): Promise<Bar | null> {

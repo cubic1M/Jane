@@ -65,8 +65,8 @@ describe("the sample market", () => {
 describe("choosing the market data", () => {
   it("is the sample unless both Alpaca keys are set", () => {
     expect(marketData({}).name).toBe("sample");
-    expect(marketData({ ALPACA_KEY_ID: "x" }).name).toBe("sample");
-    expect(marketData({ ALPACA_KEY_ID: "x", ALPACA_SECRET_KEY: "y" }).name).toBe("alpaca");
+    expect(marketData({ ALPACA_API_KEY_ID: "x" }).name).toBe("sample");
+    expect(marketData({ ALPACA_API_KEY_ID: "x", ALPACA_API_SECRET_KEY: "y" }).name).toBe("alpaca");
     expect(marketData({}).simulated).toBe(true);
   });
 });
@@ -129,6 +129,35 @@ describe("the Alpaca adapter, on recorded responses", () => {
       "APCA-API-KEY-ID": "k",
       "APCA-API-SECRET-KEY": "s",
     });
+  });
+});
+
+describe("the Alpaca adapter's history, page by page", () => {
+  it("follows the page tokens and joins the pages, oldest first", async () => {
+    const pages = [
+      { bars: { VTI: [{ t: "2016-01-04T05:00:00Z", c: 100.1 }] }, next_page_token: "p2" },
+      { bars: { VTI: [{ t: "2016-01-05T05:00:00Z", c: 100.9 }] }, next_page_token: null },
+    ];
+    const urls: string[] = [];
+    const fetcher = vi.fn(async (url: string, _init: { headers: Record<string, string> }) => {
+      urls.push(url);
+      return { json: async () => pages[urls.length - 1] };
+    });
+    const a = new AlpacaMarketData({ id: "k", secret: "s" }, fetcher, undefined, "iex");
+    const bars = await a.prices("VTI", "2016-01-04", "2016-01-05");
+    expect(bars.map((b) => b.date)).toEqual(["2016-01-04", "2016-01-05"]);
+    expect(urls[1]).toContain("page_token=p2");
+  });
+  it("uses the feed it is given", async () => {
+    const fetcher = vi.fn(async (_u: string, _i: { headers: Record<string, string> }) => ({
+      json: async () => ({ bars: {} }),
+    }));
+    await new AlpacaMarketData({ id: "k", secret: "s" }, fetcher, undefined, "sip").prices(
+      "VTI",
+      "2026-10-01",
+      "2026-10-02",
+    );
+    expect(fetcher.mock.calls[0][0]).toContain("feed=sip");
   });
 });
 
