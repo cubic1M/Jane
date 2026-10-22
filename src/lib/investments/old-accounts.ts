@@ -12,7 +12,7 @@ import { logAudit } from "@/lib/audit";
 import { brokeragePartner } from "@/lib/brokerage/partner";
 import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
-import { addDemoExtra, hasDemoBank } from "@/lib/plaid/demo";
+import { addDemoExtra, demoPersonFor, hasDemoBank } from "@/lib/plaid/demo";
 import { syncDemoInvestments } from "@/lib/plaid/sync";
 import { contributionBuys } from "@/planning/auto-invest";
 import { profileSummary } from "@/planning/investor-profile";
@@ -39,9 +39,12 @@ export class OldAccountsError extends Error {}
 
 const iso = (d: Date) => d.toISOString().slice(0, 10);
 
-// Past employers from payroll history: a stand-in for demo-bank people.
+// Past employers from payroll history: a stand-in for the original demo bank's person. The sample
+// people's written lives (src/config/people.ts) have no past employer to ask about; their old
+// 401(k)s, where they have one, are linked accounts.
 async function payrollHistory(userId: string, client: PrismaClient): Promise<string[]> {
   if (!demoOptionsAllowed() || !(await hasDemoBank(userId, { client }))) return [];
+  if (await demoPersonFor(userId, { client })) return [];
   return ["Globex Industries"];
 }
 
