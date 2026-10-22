@@ -5,6 +5,7 @@ import { HOME_DETECTORS } from "./home";
 import { LIFE_DETECTORS } from "./life";
 import { COVER_GAP_DETECTORS } from "./cover-gaps";
 import { INSURANCE_DETECTORS } from "./insurance";
+import { PLANNING_DETECTORS } from "./planning";
 import { INVESTING_DETECTORS } from "./investing";
 import { MONEY_DETECTORS } from "./money";
 import { SPENDING_DETECTORS } from "./spending";
@@ -29,6 +30,7 @@ export const DETECTORS: readonly Detector[] = [
   ...TAX_DETECTORS,
   ...INVESTING_DETECTORS,
   ...HOLDINGS_DETECTORS,
+  ...PLANNING_DETECTORS,
 ];
 
 export const detectorsFor = (capability: string) =>
