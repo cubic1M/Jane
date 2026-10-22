@@ -15,7 +15,7 @@ describe("how a couple splits bills (step 242)", () => {
   it("shows Dan and Lena the split by income, with their own paychecks and bills", () => {
     const s = run(inputFor("preretire"));
     expect(s?.topic).toBe("bill_split");
-    expect(s?.headline).toMatch(/^Set bills to split 66\/34 by income: \$[\d,]+ a year$/);
+    expect(s?.headline).toMatch(/^Set bills to 66\/34 by income: \$[\d,]+\/yr$/);
     expect(s?.why).toMatch(/Meridian Logistics pays 66% of what you two earn/);
     expect(s?.worthCents).toBeGreaterThan(0);
     expect(s?.confidence.reason).toMatch(/paychecks? in 12 months of data/);

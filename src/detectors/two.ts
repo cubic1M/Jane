@@ -48,7 +48,7 @@ const billSplit: Detector = {
       capability: "two",
       topic: "bill_split",
       title: "Choose how you two split shared bills: half each, or by what each earns",
-      headline: `Set bills to split ${first}/${100 - first} by income: ${dollars(moves)} a year`,
+      headline: `Set bills to ${first}/${100 - first} by income: ${dollars(moves)}/yr`,
       short: `${nice(earners.first.name)} pays ${first}% of what you two earn; bills now split half each.`,
       worthCents: moves,
       worthKind: "risk",
