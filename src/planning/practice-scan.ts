@@ -7,7 +7,6 @@ import {
   OPPORTUNITY_LEVELS,
   PRACTICE_ETFS,
   PRACTICE_STOCKS,
-  stocksShare,
   type PracticeClass,
 } from "@/config/portfolios";
 import {
@@ -98,7 +97,18 @@ export type ScanInput = {
   usedThisMonth: Readonly<Partial<Record<ScanKind, number>>>;
   // Keys already acted on.
   seen: ReadonlySet<string>;
+  // From the person's preferences (src/planning/practice-profile.ts); without them, the level's
+  // model and the usual caps. Caps here are already held to the hard caps.
+  weights?: Readonly<Record<PracticeClass, number>>;
+  caps?: Readonly<Record<ScanKind, { sizeShare: number; positionShare: number; perMonth: number }>>;
+  opportunityMaxShare?: number;
+  // Tickers never bought.
+  avoid?: readonly string[];
 };
+
+const weightsOf = (input: Pick<ScanInput, "level" | "weights">) =>
+  input.weights ?? MODEL_PORTFOLIOS[input.level].weights;
+const capsOf = (input: ScanInput, kind: ScanKind) => (input.caps ?? SCAN_CAPS)[kind];
 
 const DAY_MS = 86_400_000;
 const daysBefore = (iso: string, days: number) =>
@@ -119,8 +129,13 @@ export const classValue = (state: LedgerState, prices: Prices, c: PracticeClass)
 
 // Each kind's share of the model's value (cash waiting and the model ETFs; opportunity stocks
 // sit outside it), and the stocks' share, against the level's targets.
-export function drift(level: RiskLevel, state: LedgerState, prices: Prices) {
-  const weights = MODEL_PORTFOLIOS[level].weights;
+export function drift(
+  level: RiskLevel,
+  state: LedgerState,
+  prices: Prices,
+  weights: Readonly<Record<PracticeClass, number>> = MODEL_PORTFOLIOS[level].weights,
+) {
+  const targetStocks = weights.us_stocks + weights.intl_stocks;
   const values = {} as Record<PracticeClass, number>;
   for (const c of CLASSES) values[c] = classValue(state, prices, c);
   const total = state.cashCents + CLASSES.reduce((s, c) => s + values[c], 0);
@@ -140,7 +155,7 @@ export function drift(level: RiskLevel, state: LedgerState, prices: Prices) {
     past:
       invested &&
       (off(worst) > AUTOPILOT_LIMITS.rebalanceBand ||
-        Math.abs(stocks - stocksShare(level)) > DRIFT_STOCKS_BAND),
+        Math.abs(stocks - targetStocks) > DRIFT_STOCKS_BAND),
   };
 }
 
@@ -176,10 +191,10 @@ function asTransactions(trades: readonly PastTrade[], ticker: string): InvTransa
 }
 
 function driftFlag(input: ScanInput): ScanFlag | null {
-  const d = drift(input.level, input.state, input.prices);
+  const weights = weightsOf(input);
+  const d = drift(input.level, input.state, input.prices, weights);
   if (!d.past) return null;
-  const weights = MODEL_PORTFOLIOS[input.level].weights;
-  const target = stocksShare(input.level);
+  const target = weights.us_stocks + weights.intl_stocks;
   const moved = Math.round(
     CLASSES.reduce((s, c) => s + Math.max(0, d.shares[c] - weights[c]), 0) * d.total,
   );
@@ -223,8 +238,8 @@ function largestHeld(input: ScanInput, c: PracticeClass): string | null {
 
 // `blocked`: sold at a loss lately, or swapped out today (a wash sale either way).
 function dipFlags(input: ScanInput, total: number, blocked: ReadonlySet<string>): ScanFlag[] {
-  const caps = SCAN_CAPS.dip_buy;
-  const weights = MODEL_PORTFOLIOS[input.level].weights;
+  const caps = capsOf(input, "dip_buy");
+  const weights = weightsOf(input);
   const month = input.today.slice(0, 7);
   let cash = input.state.cashCents;
   const found: Dip[] = [];
@@ -291,12 +306,12 @@ function dipFlags(input: ScanInput, total: number, blocked: ReadonlySet<string>)
 }
 
 function harvestFlags(input: ScanInput, total: number, blocked: ReadonlySet<string>): ScanFlag[] {
-  const caps = SCAN_CAPS.tax_loss_harvest;
+  const caps = capsOf(input, "tax_loss_harvest");
   const flags: ScanFlag[] = [];
   for (const [ticker, position] of Object.entries(input.state.positions)) {
     const c = classOf(ticker);
     if (!c) continue;
-    const swap = classTickers(c).find((t) => t !== ticker);
+    const swap = classTickers(c).find((t) => t !== ticker && !blocked.has(t));
     if (!swap) continue;
     const valueCents = positionValue(input.state, input.prices, ticker);
     const cost = position.costBasisCents;
@@ -362,7 +377,8 @@ function harvestFlags(input: ScanInput, total: number, blocked: ReadonlySet<stri
 
 function newsFlags(input: ScanInput, total: number, blocked: ReadonlySet<string>): ScanFlag[] {
   if (!OPPORTUNITY_LEVELS.includes(input.level) || input.opportunitiesPaused) return [];
-  const caps = SCAN_CAPS.news_idea;
+  const caps = capsOf(input, "news_idea");
+  const maxShare = input.opportunityMaxShare ?? OPPORTUNITY_MAX_SHARE;
   const from = daysBefore(input.today, NEWS_LOOKBACK_DAYS);
   const stocks = PRACTICE_STOCKS as readonly string[];
   let held = stocks.reduce((s, t) => s + positionValue(input.state, input.prices, t), 0);
@@ -378,6 +394,7 @@ function newsFlags(input: ScanInput, total: number, blocked: ReadonlySet<string>
   const done = new Set<string>();
   for (const h of input.headlines) {
     if (!h.ticker || !stocks.includes(h.ticker) || done.has(h.ticker)) continue;
+    if (blocked.has(h.ticker)) continue;
     if (h.date < from || h.date > input.today) continue;
     if (!NEWS_GOOD.test(h.title) || NEWS_BAD.test(h.title)) continue;
     // The headline's company and day: a feed's ids can change from one query to the next.
@@ -390,7 +407,7 @@ function newsFlags(input: ScanInput, total: number, blocked: ReadonlySet<string>
       Math.min(
         Math.round(caps.sizeShare * total),
         Math.round(caps.positionShare * total) - own,
-        Math.round(OPPORTUNITY_MAX_SHARE * total) - held,
+        Math.round(maxShare * total) - held,
       ),
     );
     if (amount < AUTOPILOT_LIMITS.minTradeCents) continue;
@@ -427,7 +444,7 @@ function newsFlags(input: ScanInput, total: number, blocked: ReadonlySet<string>
       caps: [
         `At most ${pct(caps.sizeShare)} of the portfolio at a time`,
         `At most ${pct(caps.positionShare)} in one company`,
-        `At most ${pct(OPPORTUNITY_MAX_SHARE)} in all opportunity stocks`,
+        `At most ${pct(maxShare)} in all opportunity stocks`,
         `At most ${caps.perMonth} ideas a month; High and Very high only`,
       ],
       confidence: SCAN_CONFIDENCE.news_idea,
@@ -439,7 +456,8 @@ function newsFlags(input: ScanInput, total: number, blocked: ReadonlySet<string>
 export function scanPortfolio(input: ScanInput): ScanFlag[] {
   const total = portfolioValue(input.state, input.prices);
   if (total <= 0) return [];
-  const blocked = washBlocked(input.trades, input.today);
+  // Never bought: sold at a loss lately (a wash sale) or on the person's never-buy list.
+  const blocked = new Set([...washBlocked(input.trades, input.today), ...(input.avoid ?? [])]);
   const harvests = harvestFlags(input, total, blocked);
   // What is swapped out today isn't bought back or sold again today.
   const after = new Set([...blocked, ...harvests.map((f) => f.ticker)]);
@@ -451,7 +469,7 @@ export function scanPortfolio(input: ScanInput): ScanFlag[] {
   ].filter((f): f is ScanFlag => f !== null && !input.seen.has(f.key));
   // The monthly count cap for each kind.
   const left = Object.fromEntries(
-    SCAN_KINDS.map((k) => [k, SCAN_CAPS[k].perMonth - (input.usedThisMonth[k] ?? 0)]),
+    SCAN_KINDS.map((k) => [k, capsOf(input, k).perMonth - (input.usedThisMonth[k] ?? 0)]),
   ) as Record<ScanKind, number>;
   return all.filter((f) => (left[f.kind] -= 1) >= 0);
 }

@@ -1,4 +1,3 @@
-import type { RiskLevel } from "@/config/investing";
 import {
   classTickers,
   PRACTICE_ETFS,
@@ -13,9 +12,11 @@ import { scopedFor } from "@/lib/db-scoped";
 import { marketData, type Bar } from "@/lib/market";
 import { violates } from "@/planning/practice-autopilot";
 import { apply, type LedgerState } from "@/planning/practice-ledger";
+import { refusedByPreferences } from "@/planning/practice-profile";
 import { scanPortfolio, type ScanFlag } from "@/planning/practice-scan";
 import { addMonthlyIfDue, runAutopilot } from "./autopilot";
 import { loadLedger, NoPracticePortfolio, practiceBroker } from "./broker";
+import { practiceProfileOf } from "./preferences";
 
 // The daily scan of each practice portfolio (spec step 292, Phase AW, Stage A), run by Vercel
 // Cron (/api/cron/practice-scan). For each portfolio that isn't paused: the monthly practice
@@ -29,7 +30,8 @@ type Options = { client?: PrismaClient; now?: Date };
 export type ScanOutcome = {
   kind: ScanKind;
   ticker: string;
-  status: "acted" | "autopilot" | "held";
+  // suggested: suggest-only mode, kept for the cards with nothing placed.
+  status: "acted" | "autopilot" | "held" | "suggested";
   trades: number;
 };
 
@@ -108,17 +110,26 @@ export async function scanPractice(
     where: { portfolioId: portfolio.id },
     select: { key: true, kind: true, scannedAt: true, status: true },
   });
+  // Held and suggested flags placed nothing: they don't count and can come up again.
+  const stood = (status: string) => status !== "held" && status !== "suggested";
   const monthStart = new Date(`${today.slice(0, 7)}-01T00:00:00Z`);
   const usedThisMonth: Partial<Record<ScanKind, number>> = {};
   for (const p of past) {
-    if (p.scannedAt < monthStart || p.status === "held") continue;
+    if (p.scannedAt < monthStart || !stood(p.status)) continue;
     const kind = p.kind as ScanKind;
     usedThisMonth[kind] = (usedThisMonth[kind] ?? 0) + 1;
   }
 
+  // The person's preferences: the mix, the caps their appetite allows, what is never bought and
+  // the cash kept (outside the model, so no flag spends it).
+  const profile = await practiceProfileOf(userId, { client, now });
   const flags = scanPortfolio({
-    level: portfolio.level as RiskLevel,
-    state,
+    level: profile.level,
+    state: { ...state, cashCents: Math.max(0, state.cashCents - profile.cashBufferCents) },
+    weights: profile.weights,
+    caps: profile.caps,
+    opportunityMaxShare: profile.opportunityMaxShare,
+    avoid: profile.avoid,
     prices,
     history,
     trades: trades.map((t) => ({ ...t, placedAt: t.placedAt.toISOString() })),
@@ -126,7 +137,7 @@ export async function scanPractice(
     today,
     opportunitiesPaused: portfolio.opportunitiesPaused,
     usedThisMonth,
-    seen: new Set(past.filter((p) => p.status !== "held").map((p) => p.key)),
+    seen: new Set(past.filter((p) => stood(p.status)).map((p) => p.key)),
   });
 
   const dayStart = new Date(`${today}T00:00:00Z`);
@@ -142,8 +153,18 @@ export async function scanPractice(
         placedAt: { gte: dayStart },
       },
     });
-    const held = flag.trades.length > 0 ? heldBy(flag, current.state, prices, tradesToday) : null;
-    const status = held ? "held" : flag.trades.length === 0 ? "autopilot" : "acted";
+    const refused = flag.trades
+      .map((t) => refusedByPreferences({ ...profile, trades: true }, t))
+      .find((r) => r !== null);
+    const held =
+      flag.trades.length > 0 ? (refused ?? heldBy(flag, current.state, prices, tradesToday)) : null;
+    const status: ScanOutcome["status"] = held
+      ? "held"
+      : flag.trades.length === 0
+        ? "autopilot"
+        : profile.trades
+          ? "acted"
+          : "suggested";
     const details = {
       figures: flag.figures,
       caps: flag.caps,
@@ -164,7 +185,10 @@ export async function scanPractice(
           scannedAt: now,
           kind: flag.kind,
           ticker: flag.ticker,
-          key: held ? `${flag.key}:held:${today}` : flag.key,
+          key:
+            status === "held" || status === "suggested"
+              ? `${flag.key}:${status}:${today}`
+              : flag.key,
           amountCents: flag.amountCents,
           headline: flag.headline,
           reason: flag.reason,
@@ -182,6 +206,7 @@ export async function scanPractice(
     }
     const tradeIds: string[] = [];
     for (const t of flag.trades) {
+      if (refusedByPreferences(profile, t)) continue;
       const fill = await broker.placeOrder(
         userId,
         {
