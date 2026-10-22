@@ -12,6 +12,9 @@ import {
   type FloatingCardData,
 } from "@/lib/floating-cards";
 
+// A reason as one sentence: some end with a full stop already (the practice scan's), some don't.
+const sentence = (text: string) => (/[.!?]$/.test(text.trim()) ? text.trim() : `${text.trim()}.`);
+
 // Floating cards over the page (founder request): suggestions, or the options of one choice,
 // one card at a time, above the content and not in it. Yes, Not now or the ✕ takes the card
 // away at once with a short slide, and the next slides in; the server work follows in the
@@ -195,7 +198,7 @@ export function FloatingCards({
               {current.details.confidence && (
                 <p>
                   <span className="font-medium">{current.details.confidence.percent}% sure:</span>{" "}
-                  {current.details.confidence.reason}.
+                  {sentence(current.details.confidence.reason)}
                 </p>
               )}
               {current.details.whatYesDoes && (
