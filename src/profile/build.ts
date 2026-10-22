@@ -125,6 +125,8 @@ export type ProfileInput = {
   };
   // Policies read from uploaded documents that wait for the person's confirm (spec step 259).
   unreadPolicyDocuments?: number;
+  // The person turned rent reporting on (spec step 248).
+  rentReportingOn?: boolean;
 };
 
 export type FactValue = string | number | boolean | null;

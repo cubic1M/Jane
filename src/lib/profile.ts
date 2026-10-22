@@ -39,6 +39,7 @@ export async function loadProfileInput(
     insurance,
     investor,
     unread,
+    reporting,
     values,
     named,
     membership,
@@ -89,6 +90,7 @@ export async function loadProfileInput(
     db.insuranceProfiles.findFirst({ select: { housing: true } }),
     db.investorProfiles.findFirst({ select: { age: true, ageOn: true, dropReaction: true } }),
     db.policyReadings.count({ where: { status: "waiting" } }),
+    db.rentReporting.findFirst({ select: { id: true } }),
     db.valuesPreferences.findFirst({ select: { excludes: true } }),
     db.accountBeneficiaries.findMany({ select: { accountId: true } }),
     client.householdMember.findUnique({ where: { userId }, select: { householdId: true } }),
@@ -173,6 +175,7 @@ export async function loadProfileInput(
     namedAccountIds: [...new Set(named.map((n) => n.accountId))],
     told,
     unreadPolicyDocuments: unread,
+    rentReportingOn: reporting !== null,
     extras: { householdMembers, ...(await sectorFigures(userId, client, now)) },
   };
 }

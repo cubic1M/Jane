@@ -40,7 +40,8 @@ describe("who the tax detectors reach", () => {
 
   it("Roth conversions: near or in retirement with a big pre-tax balance, never someone starting out", () => {
     const fired = PERSON_IDS.filter((id) => topics(id).includes("roth_conversion"));
-    expect(fired).toEqual(["preretire", "retiree"]);
+    // Not Ruth: on Social Security, a converted dollar is taxed at about 22% (step 271).
+    expect(fired).toEqual(["preretire"]);
     const s = run("preretire").find((x) => x.topic === "roth_conversion")!;
     expect(s.worthKind).toBe("saves");
     expect(s.confidence.percent).toBeLessThanOrEqual(65);
