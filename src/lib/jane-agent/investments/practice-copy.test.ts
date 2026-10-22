@@ -69,10 +69,7 @@ describe("the practice portfolio in the chat", () => {
     expect(reply.body).toMatch(/practice money only/);
     expect(reply.body.length).toBeLessThanOrEqual(700);
     expect(reply.refs.advice).toBe(true);
-    expect(hrefs(reply.actions)).toEqual([
-      "/investments/practice",
-      "/investments/practice#pause",
-    ]);
+    expect(hrefs(reply.actions)).toEqual(["/investments/practice", "/investments/practice#pause"]);
   });
 
   it("keeps a long week short", () => {
