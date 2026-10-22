@@ -44,3 +44,16 @@ export const STABILITY_PENALTY: Readonly<Record<"steady" | "variable", number>> 
 };
 export const STABILITY_SOURCE =
   "Income that moves around raises the chance of needing the money early (FINRA suitability: financial situation and needs); FOR REVIEW";
+
+// What a practice portfolio may hold: the model ETFs, and the large companies the sample market
+// watches (for opportunities at High and Very high only, step 292). No options, no leverage, no
+// shorting: the ledger refuses anything outside this list and any trade that needs borrowing.
+export const PRACTICE_STOCKS = ["AAPL", "MSFT", "NVDA", "TSLA"] as const;
+export const PRACTICE_UNIVERSE: ReadonlySet<string> = new Set([
+  ...Object.values(PRACTICE_ETFS).map((e) => e.ticker),
+  ...PRACTICE_STOCKS,
+]);
+
+// Practice money a new portfolio starts with: a stated sample amount, never linked to anything.
+export const PRACTICE_START_CENTS = 1_000_000;
+export const PRACTICE_MONTHLY_ADD_CENTS = 50_000;
