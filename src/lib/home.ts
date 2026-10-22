@@ -10,17 +10,11 @@ import { loadDetectionInput, moneyFound } from "@/detection/engine";
 import type { PrismaClient } from "@/generated/prisma/client";
 import { unreadAlertCount } from "@/lib/alerts";
 import { db as defaultClient } from "@/lib/db";
-import {
-  DEADLINE_SOURCES,
-  listDeadlines,
-  transactionDeadlines,
-  transactionDeadlinesFrom,
-} from "@/lib/deadlines";
 import { listGoals } from "@/lib/goals";
 import { safeToSpend } from "@/planning/safe-to-spend";
 import { scopedFor } from "@/lib/db-scoped";
 import { savedToDate } from "@/lib/membership/service";
-import { upcomingCharges } from "@/lib/upcoming";
+import { loadComingUp } from "@/lib/coming-up";
 import { whatJaneDid } from "@/lib/what-jane-did";
 
 // Everything Today (the home dashboard) shows, for one person. Null when they have no
@@ -76,13 +70,12 @@ export async function homeSummary(
           budgets,
           asOf,
         );
-  // The deadlines page's own list, reusing the transactions loaded above.
-  const deadlines = await listDeadlines(userId, {
+  // Bills and deadlines from the one coming-up source, reusing the transactions loaded above.
+  const { bills, deadlines } = await loadComingUp(userId, {
     client,
     now,
-    sources: DEADLINE_SOURCES.map((source) =>
-      source === transactionDeadlines ? transactionDeadlinesFrom(input) : source,
-    ),
+    days: COMING_UP_DAYS,
+    input,
   });
 
   // Yearly bills (spec step 70): this month's set-aside is its own line, so a "Yearly
@@ -134,12 +127,7 @@ export async function homeSummary(
         "Your request",
     })),
     // Bills and deadlines in one list, soonest first (spec step 79).
-    comingUp: comingUp(
-      upcomingCharges(input, { days: COMING_UP_DAYS, limit: Number.POSITIVE_INFINITY }),
-      deadlines,
-      asOf,
-      { days: COMING_UP_DAYS, limit: COMING_UP_LIMIT },
-    ),
+    comingUp: comingUp(bills, deadlines, asOf, { days: COMING_UP_DAYS, limit: COMING_UP_LIMIT }),
     lastUpdated: updated ?? null,
     // For Jane's heads-ups in the chat (spec step 82): the deadlines page's list, budgets
     // gone over this month and goals whose date passed short of the target.

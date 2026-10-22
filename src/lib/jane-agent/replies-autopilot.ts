@@ -21,12 +21,30 @@ const settings: MessageAction = {
   href: "/settings#sectors",
 };
 
-export function sectorLine(
-  s: Pick<SectorAutopilot, "sector" | "level" | "actionCapCents" | "monthlyCapCents">,
-) {
+type SectorSettingView = Pick<
+  SectorAutopilot,
+  "sector" | "level" | "actionCapCents" | "monthlyCapCents"
+>;
+
+export function sectorLine(s: SectorSettingView) {
   const label = SECTOR_LABELS[s.sector];
   if (s.level === "ask") return `${label}: always asks`;
   return `${label}: ${SECTOR_LEVEL_LABELS[s.level].toLowerCase()}, up to ${formatCents(s.actionCapCents)} each time and ${formatCents(s.monthlyCapCents)} a month`;
+}
+
+// What an area does by itself at its own level (spec step 141), as one sentence. Every sector's
+// page and answer about its autopilot ends with it, so they always say what Jane really does:
+// the same setting mayAct reads (docs/feature-audit.md, cluster 1).
+export function byHerself(s: SectorSettingView): string {
+  const label = SECTOR_LABELS[s.sector];
+  const caps = `up to ${formatCents(s.actionCapCents)} each time and ${formatCents(s.monthlyCapCents)} a month`;
+  if (s.level === "all") {
+    return `${label} is set to everything allowed: I ${SECTOR_ALL_MEANS[s.sector]} by myself, ${caps}, and ask you about anything over that.`;
+  }
+  if (s.level === "safe") {
+    return `${label} is set to the safe stuff, ${caps}: I only do by myself what can't cost you, and ask you about the rest.`;
+  }
+  return `${label} is set to always ask: I don't ${SECTOR_ALL_MEANS[s.sector]} or change anything else without your tap.`;
 }
 
 export function overviewReply(sectors: SectorAutopilot[], global: string | null): Reply {

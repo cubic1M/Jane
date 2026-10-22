@@ -5,7 +5,8 @@ import { PrismaClient } from "@/generated/prisma/client";
 
 vi.mock("@/lib/session", () => ({ requireUser: vi.fn() }));
 
-import { outcomeFor, refreshMerchantOutcomes } from "./merchant-outcomes";
+import { companyFacts } from "./merchants";
+import { refreshMerchantOutcomes } from "./merchant-outcomes";
 
 // Runs against a real, migrated Postgres (see src/detection/engine.integration.test.ts).
 const url = process.env.TEST_DATABASE_URL;
@@ -61,12 +62,18 @@ describe.runIf(url)("merchant outcomes against a real database", () => {
   it("shows nothing below the minimum number of cases, then the aggregate", async () => {
     await finished(OUTCOME_MIN_CASES - 1, true);
     await refreshMerchantOutcomes({ client });
-    expect(await outcomeFor(merchant, "cancel_subscription", { client })).toBeNull();
+    const facts = (actionType: "cancel_subscription" | "request_refund") =>
+      companyFacts(merchant, { client, actionType });
+    // Through the one company lookup (docs/feature-audit.md, cluster 4); a company the
+    // directory doesn't know counts under its own name.
+    expect(await facts("cancel_subscription")).toEqual({ merchant: null, outcome: null });
 
     await finished(1, false);
     await refreshMerchantOutcomes({ client });
-    const outcome = await outcomeFor(merchant, "cancel_subscription", { client });
+    const { outcome } = await facts("cancel_subscription");
     expect(outcome).toMatchObject({ cases: OUTCOME_MIN_CASES, succeeded: OUTCOME_MIN_CASES - 1 });
     expect(outcome?.medianMinutes).toBeGreaterThan(0);
+    // Another kind of action there has no cases yet.
+    expect((await facts("request_refund")).outcome).toBeNull();
   });
 });

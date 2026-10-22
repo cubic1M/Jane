@@ -1,17 +1,31 @@
 import Link from "next/link";
 import { Suspense } from "react";
 import { AppHeader } from "@/components/app-header";
+import { previousMonth } from "@/insights/check-in";
+import { loadCheckIn, summaryFor } from "@/lib/check-in";
 import { formatCents } from "@/lib/money";
 import { storedReport } from "@/lib/monthly-report-store";
 import { requireUser } from "@/lib/session";
 import { monthName, reportLines } from "@/planning/monthly-report";
 
-// The monthly money report (spec step 148), as kept when it was made: each figure with a
-// link to the page it comes from, and every receipt.
+// The month's one report (spec step 148), with the monthly check-in folded in (spec step 45;
+// docs/feature-audit.md, cluster 2). For any month: Jane's short summary, what was spent and
+// came in, net worth, budgets kept and the biggest changes, worked out from the same loader the
+// check-in used. For a month whose report was made: the report as kept then (saved, paid down,
+// moved, health, what's next), each figure with a link to the page it comes from, and every
+// receipt. /check-in redirects here.
 
 const MONTH = /^\d{4}-\d{2}$/;
 const MUTED = "text-zinc-600 dark:text-zinc-400";
 const LINK = "text-sm font-medium text-emerald-700 hover:underline";
+// Shown as the tiles and sections at the top of the page, so not repeated from the report.
+const SHOWN_ABOVE = new Set(["Spent", "Earned", "Net worth", "Budgets"]);
+
+const signed = (cents: number) => `${cents >= 0 ? "up" : "down"} ${formatCents(Math.abs(cents))}`;
+const monthAfter = (month: string) => {
+  const [y, m] = month.split("-").map(Number);
+  return new Date(Date.UTC(y, m, 1)).toISOString().slice(0, 7);
+};
 
 async function MonthlyContent({
   searchParams,
@@ -20,70 +34,157 @@ async function MonthlyContent({
 }) {
   const user = await requireUser();
   const { m } = await searchParams;
-  const stored = await storedReport(user.id, typeof m === "string" && MONTH.test(m) ? m : null);
+  const latest = previousMonth(new Date().toISOString().slice(0, 10));
+  const asked = typeof m === "string" && MONTH.test(m) && m <= latest ? m : null;
+  // With no month asked for, the newest report made, or else the month just ended.
+  const stored = await storedReport(user.id, asked);
+  const month = asked ?? stored?.month ?? latest;
+  const report = stored?.month === month ? stored.report : null;
+  const checkIn = await loadCheckIn(user.id, month);
+  const summary = report?.summary ?? (await summaryFor(user.id, checkIn));
+  const before = previousMonth(`${month}-01`);
+  const after = month < latest ? monthAfter(month) : null;
 
-  if (!stored) {
-    return (
-      <>
-        <AppHeader user={user} />
-        <h1 className="text-3xl font-semibold tracking-tight">Monthly money report</h1>
-        <p className={MUTED}>
-          Your first report comes at the start of next month: what you saved, earned, paid down and
-          moved, with the receipts.
-        </p>
-      </>
-    );
-  }
-  const { report } = stored;
   return (
     <>
       <AppHeader user={user} />
       <div className="flex flex-col gap-2">
-        <h1 className="text-3xl font-semibold tracking-tight">
-          {monthName(report.month)} money report
-        </h1>
+        <h1 className="text-3xl font-semibold tracking-tight">{monthName(month)} money report</h1>
+        <p className="text-lg">{summary}</p>
         <p className={MUTED}>
-          Made {stored.createdAt.toISOString().slice(0, 10)}. Each figure comes from the page it
-          links to.
+          {stored && report
+            ? `Made ${stored.createdAt.toISOString().slice(0, 10)}. Each figure comes from the page it links to.`
+            : month === latest
+              ? "Worked out from your accounts now. The full report, with what you saved, paid down and moved, comes in the first days of the month."
+              : "Worked out from your accounts now."}
         </p>
+        <nav aria-label="Months" className="flex gap-4">
+          <Link href={`/monthly?m=${before}`} className={LINK}>
+            ‹ {monthName(before)}
+          </Link>
+          {after && (
+            <Link href={`/monthly?m=${after}`} className={LINK}>
+              {monthName(after)} ›
+            </Link>
+          )}
+        </nav>
       </div>
-      <ul className="flex flex-col gap-3">
-        {reportLines(report).map((line) => (
-          <li
-            key={line.label}
+
+      <section className="grid gap-3 sm:grid-cols-3">
+        {(
+          [
+            [
+              "Spent",
+              formatCents(checkIn.spendingCents),
+              `${signed(checkIn.spendingCents - checkIn.previousSpendingCents)} from the month before`,
+            ],
+            ["Came in", formatCents(checkIn.incomeCents), ""],
+            [
+              "Net worth",
+              checkIn.netWorth ? formatCents(checkIn.netWorth.endCents) : "–",
+              checkIn.netWorth
+                ? signed(checkIn.netWorth.endCents - checkIn.netWorth.startCents)
+                : "No balance history yet",
+            ],
+          ] as const
+        ).map(([label, value, note]) => (
+          <div
+            key={label}
             className="flex flex-col gap-1 rounded-xl border border-zinc-200 p-4 dark:border-zinc-800"
           >
-            <span className="flex flex-wrap items-baseline justify-between gap-x-4">
-              <span className="font-semibold">{line.label}</span>
-              <Link href={line.href} className={LINK}>
-                See it<span className="sr-only">: {line.label}</span>
-              </Link>
-            </span>
-            <span>{line.text}</span>
-          </li>
+            <span className="text-sm text-zinc-600 dark:text-zinc-400">{label}</span>
+            <span className="text-2xl font-semibold">{value}</span>
+            {note && <span className="text-xs text-zinc-500">{note}</span>}
+          </div>
         ))}
-      </ul>
-      <section className="flex flex-col gap-2">
-        <h2 className="text-xl font-semibold">Receipts</h2>
-        {report.receipts.length === 0 ? (
-          <p className={MUTED}>No new savings confirmed by your transactions this month.</p>
-        ) : (
-          <ul className="flex flex-col gap-2">
-            {report.receipts.map((r) => (
-              <li key={`${r.title}-${r.proof}`} className="flex flex-col gap-1 text-sm">
-                <span className="font-medium">
-                  {r.title}: {formatCents(r.cents)}
-                  {r.yearly ? " a year" : " back"}
+      </section>
+
+      {report && (
+        <ul className="flex flex-col gap-3">
+          {reportLines(report)
+            .filter((line) => !SHOWN_ABOVE.has(line.label))
+            .map((line) => (
+              <li
+                key={line.label}
+                className="flex flex-col gap-1 rounded-xl border border-zinc-200 p-4 dark:border-zinc-800"
+              >
+                <span className="flex flex-wrap items-baseline justify-between gap-x-4">
+                  <span className="font-semibold">{line.label}</span>
+                  {!line.href.startsWith("/monthly") && (
+                    <Link href={line.href} className={LINK}>
+                      See it<span className="sr-only">: {line.label}</span>
+                    </Link>
+                  )}
                 </span>
-                <span className={MUTED}>{r.proof}</span>
+                <span>{line.text}</span>
+              </li>
+            ))}
+        </ul>
+      )}
+
+      {checkIn.budgets.length > 0 && (
+        <section className="flex flex-col gap-2">
+          <h2 className="text-xl font-semibold">Budgets</h2>
+          <ul className="divide-y divide-zinc-200 rounded-xl border border-zinc-200 text-sm dark:divide-zinc-800 dark:border-zinc-800">
+            {checkIn.budgets.map((b) => (
+              <li key={b.category} className="flex justify-between gap-2 px-4 py-2">
+                <span>{b.category}</span>
+                <span className={b.kept ? "" : "font-semibold text-red-700"}>
+                  {formatCents(b.spentCents)} of {formatCents(b.budgetCents)}
+                  {b.kept ? "" : " (over)"}
+                </span>
               </li>
             ))}
           </ul>
-        )}
-        <Link href="/saved" className={LINK}>
-          Every receipt
-        </Link>
+        </section>
+      )}
+
+      {checkIn.changes.length > 0 && (
+        <section className="flex flex-col gap-2">
+          <h2 className="text-xl font-semibold">Biggest changes from {monthName(before)}</h2>
+          <ul className="flex flex-col gap-1 text-sm">
+            {checkIn.changes.map((c) => (
+              <li key={c.category} className="flex justify-between gap-2">
+                <span>{c.category}</span>
+                <span>{signed(c.changeCents)}</span>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+
+      <section className={`flex flex-col gap-1 text-sm ${MUTED}`}>
+        <p>
+          Jane found {checkIn.found.findings} way{checkIn.found.findings === 1 ? "" : "s"} to save
+          this month. Changes finished this month save about {formatCents(checkIn.savedCents)} a
+          year.
+        </p>
+        <p>You paid {formatCents(checkIn.debtPaymentsCents)} toward cards and loans this month.</p>
       </section>
+
+      {report && (
+        <section className="flex flex-col gap-2">
+          <h2 className="text-xl font-semibold">Receipts</h2>
+          {report.receipts.length === 0 ? (
+            <p className={MUTED}>No new savings confirmed by your transactions this month.</p>
+          ) : (
+            <ul className="flex flex-col gap-2">
+              {report.receipts.map((r) => (
+                <li key={`${r.title}-${r.proof}`} className="flex flex-col gap-1 text-sm">
+                  <span className="font-medium">
+                    {r.title}: {formatCents(r.cents)}
+                    {r.yearly ? " a year" : " back"}
+                  </span>
+                  <span className={MUTED}>{r.proof}</span>
+                </li>
+              ))}
+            </ul>
+          )}
+          <Link href="/saved" className={LINK}>
+            Every receipt
+          </Link>
+        </section>
+      )}
     </>
   );
 }
