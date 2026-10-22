@@ -407,6 +407,11 @@ export const TAX_MESSAGE_PRIORITY = {
   // Spec step 268: an inherited IRA, and a gift that needs a gift tax return.
   inherited: 46,
   gifts: 44,
+  // Spec step 269: a credit that would be repaid, an HSA over its limit, medical costs worth
+  // itemizing.
+  ptc: 72,
+  hsa_excess: 62,
+  medical: 40,
   year_end: 55,
   exemption: 30,
 } as const;
@@ -497,6 +502,11 @@ export const TAX_AUTOPILOT: readonly { feature: string; ask: string; auto: strin
     feature: "inheritance",
     ask: "If you inherit an IRA I tell you the date it has to be empty by and, with demo advice, how taking it out evenly could keep your tax lower. I flag a gift to one person over the yearly exclusion, which needs a gift tax return. These are facts for a tax professional to confirm, not legal advice.",
     auto: "I watch for an inherited IRA and gifts over the yearly exclusion and tell you what applies and by when, with demo advice on spreading withdrawals. These are facts for a tax professional to confirm, not legal advice. I never file a return.",
+  },
+  {
+    feature: "health",
+    ask: "If you buy a Marketplace plan I check its credit against your real income every month and warn you as soon as a rise would make you pay some back. I watch your HSA deposits against the limit before you file, and tell you when a year of medical bills is worth itemizing. Telling the Marketplace or your HSA provider is yours.",
+    auto: "I keep checking your income against the Marketplace credit, your HSA against its limit and your medical costs against the 7.5% floor, and bring each up with the numbers as soon as it matters. I contact no one: telling the Marketplace or your HSA provider is yours.",
   },
   {
     feature: "identity",

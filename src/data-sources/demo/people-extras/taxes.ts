@@ -48,6 +48,21 @@ const gas = (dollars: number): Recurring => ({
 export const TAXES_EXTRAS: Partial<Record<PersonId, PersonExtra>> = {
   // Jo drives to suppliers and customers.
   owner: { monthly: [gas(55)] },
+  // Sam buys a Marketplace plan (in the base data) and landed a retainer client in July, so his
+  // income for the year has risen past what his advance credit was set from (step 269).
+  freelancer: {
+    once: [
+      {
+        key: "taxes-new-client",
+        account: "checking",
+        name: "STRIPE TRANSFER - NORTHWIND STUDIO",
+        merchant: null,
+        category: "INCOME_CONTRACTOR",
+        amount: -3500,
+        offsets: [-100, -69, -38, -8],
+      },
+    ],
+  },
   // The Reyes family: a mortgage, property tax and a year-end gift.
   family: {
     monthly: [propertyTax(2900)],
@@ -56,7 +71,19 @@ export const TAXES_EXTRAS: Partial<Record<PersonId, PersonExtra>> = {
   // Priya: a big house, a gift of stock-sale proceeds, and a bond fund bought when rates were
   // lower, now worth less than she paid, in her taxable account.
   equity: {
-    monthly: [propertyTax(6800)],
+    monthly: [
+      propertyTax(6800),
+      // Step 269: payroll deposits into her HSA at a pace over the self-only limit.
+      {
+        key: "taxes-hsa-in",
+        account: "hsa",
+        name: "PAYROLL HSA CONTRIBUTION",
+        merchant: null,
+        category: "TRANSFER_IN_ACCOUNT_TRANSFER",
+        amount: -500,
+        days: [15],
+      },
+    ],
     ...gift("taxes-gift", "AMERICAN RED CROSS", 1000, -60),
     positions: [{ account: "brokerage", key: "KTBIX", quantity: 1500, basis: 19000 }],
   },
@@ -96,9 +123,37 @@ export const TAXES_EXTRAS: Partial<Record<PersonId, PersonExtra>> = {
       },
     ],
   },
-  // Ruth owns her home outright and gives to her church.
+  // Ruth owns her home outright and gives to her church. Step 269: this year she had dental implants and bought hearing aids, a big year of care.
   retiree: {
     monthly: [propertyTax(2400)],
-    ...gift("taxes-gift", "ST MARKS CHURCH", 400, -20),
+    once: [
+      {
+        key: "taxes-gift",
+        account: "checking",
+        name: "ST MARKS CHURCH",
+        merchant: "ST MARKS CHURCH",
+        category: "GOVERNMENT_AND_NON_PROFIT_DONATIONS",
+        amount: 400,
+        offsets: [-20],
+      },
+      {
+        key: "taxes-dental",
+        account: "checking",
+        name: "BRIGHT SMILE DENTAL IMPLANT CENTER",
+        merchant: "Bright Smile Dental",
+        category: "MEDICAL_DENTAL_CARE",
+        amount: 12500,
+        offsets: [-150],
+      },
+      {
+        key: "taxes-hearing",
+        account: "checking",
+        name: "HEARINGLIFE HEARING AIDS",
+        merchant: "HearingLife",
+        category: "MEDICAL_OTHER_MEDICAL",
+        amount: 5800,
+        offsets: [-95],
+      },
+    ],
   },
 };
