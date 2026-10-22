@@ -224,6 +224,14 @@ export const MESSAGE_PRIORITY = {
   yearly_review: 43,
   // Spec step 231: the right investment in the right account (demo advice).
   location: 34,
+  // Spec step 232: the plan's fund list to confirm, and its cheapest mix (demo advice).
+  plan_menu: 35,
+  // Spec step 234: short-term money placed safely (demo advice).
+  short_term: 36,
+  values: 34,
+  family_file: 31,
+  // Spec step 235: a large deposit that isn't pay comes up high, with its question.
+  sudden_money: 52,
   // Spec step 164: the month's summary of what Jane did by herself in investing.
   investing_summary: 40,
   auto_invest_run: 31,
@@ -271,7 +279,7 @@ export const CHAT_CLAUDE_HISTORY = 6;
 // ...and each of those is cut to this many characters: a long earlier answer slows the next
 // one without helping it (what the last answer was about travels as its topic).
 export const CHAT_CLAUDE_TURN_CHARS = 700;
-// Most rounds of tool calls Claude may make for one answer, like Ask (ASK_MAX_TOOL_ROUNDS).
+// Most rounds of tool calls Claude may make for one answer.
 export const CHAT_CLAUDE_MAX_TURNS = 3;
 // The most words Claude may write in one turn of an answer: a chat answer is a few sentences.
 export const CHAT_CLAUDE_MAX_TOKENS = 3_000;

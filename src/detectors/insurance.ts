@@ -1,4 +1,5 @@
 import { DETECTOR_RATES as R } from "@/config/detectors";
+import { RISK_ANNUAL_PROBABILITY as CHANCE } from "@/config/suggestions";
 import { formatCents } from "@/lib/money";
 import type { ProfileInput } from "@/profile/build";
 import { type Detector, suggestionId } from "./contract";
@@ -68,20 +69,16 @@ const rentersInsurance: Detector = {
       capability: "insurance",
       topic: "renters_insurance",
       title: "Cover your belongings with renters insurance",
-      headline: headlineOf(
-        "Get renters insurance",
-        Math.round(R.rentersContentsCents * R.rentersClaimChance),
-        "risk",
-      ),
+      headline: headlineOf("Get renters insurance", R.rentersContentsCents, "risk"),
       short: `You rent and I see no renters cover in ${profile.months} months.`,
-      worthCents: Math.round(R.rentersContentsCents * R.rentersClaimChance),
+      worthCents: R.rentersContentsCents,
       worthKind: "risk",
       confidence: combine([
         factEvidence(housing),
         evidence("seen", profile.months, 0, "renters-cover charges"),
       ]),
       urgency: "later",
-      why: `You rent and I see no renters-cover charge in ${profile.months} months. Your landlord's policy covers the building, not the ${formatCents(R.rentersContentsCents)} or so of belongings inside it. A fire or a break-in in a given year is unlikely (about ${Math.round(R.rentersClaimChance * 100)}%), and renters cover usually costs under $20 a month.`,
+      why: `You rent and I see no renters-cover charge in ${profile.months} months. Your landlord's policy covers the building, not the ${formatCents(R.rentersContentsCents)} or so of belongings inside it. A fire or a break-in in a given year is unlikely (about ${Math.round(CHANCE.renters_insurance * 100)}%), and renters cover usually costs under $20 a month.`,
       action: { label: "Get quotes", href: "/insurance" },
     };
   },
@@ -103,20 +100,18 @@ const autoInsurance: Detector = {
       capability: "insurance",
       topic: "auto_insurance",
       title: "Check your car is insured",
-      headline: headlineOf(
-        "Check your car is insured",
-        Math.round(R.autoLiabilityCents * R.autoAtFaultChance),
-        "risk",
-      ),
+      headline: headlineOf("Check your car is insured", R.autoLiabilityCents, "risk"),
       short: `I see car costs but no car-insurance charge in ${profile.months} months.`,
-      worthCents: Math.round(R.autoLiabilityCents * R.autoAtFaultChance),
+      worthCents: R.autoLiabilityCents,
+      // Driving without liability cover is against the law almost everywhere.
+      required: true,
       worthKind: "risk",
       confidence: combine([
         factEvidence(car),
         evidence("seen", profile.months, 0, "car-cover charges"),
       ]),
       urgency: "now",
-      why: `I see car costs but no car-insurance charge in ${profile.months} months. If it's paid some other way, tell me and I'll stop asking. Without it, an accident you cause (about ${Math.round(R.autoAtFaultChance * 100)}% of drivers have one in a year) could cost you ${formatCents(R.autoLiabilityCents)} or more.`,
+      why: `I see car costs but no car-insurance charge in ${profile.months} months. If it's paid some other way, tell me and I'll stop asking. Without it, an accident you cause (about ${Math.round(CHANCE.auto_insurance * 100)}% of drivers have one in a year) could cost you ${formatCents(R.autoLiabilityCents)} or more.`,
       action: { label: "Add or compare car cover", href: "/insurance" },
     };
   },
@@ -135,13 +130,9 @@ const umbrella: Detector = {
       capability: "insurance",
       topic: "umbrella",
       title: "Look at an umbrella policy",
-      headline: headlineOf(
-        "Look at an umbrella policy",
-        Math.round(total * R.umbrellaLawsuitChance),
-        "risk",
-      ),
+      headline: headlineOf("Look at an umbrella policy", total, "risk"),
       short: `You have about ${formatCents(total)} that a big liability claim could reach.`,
-      worthCents: Math.round(total * R.umbrellaLawsuitChance),
+      worthCents: total,
       worthKind: "risk",
       confidence: combine([
         evidence("seen", profile.months, data.accounts.length, "account balances"),
@@ -242,13 +233,9 @@ const healthInsurance: Detector = {
         capability: "insurance",
         topic: "health_insurance",
         title: "Get a health plan",
-        headline: headlineOf(
-          "Get a health plan",
-          Math.round(R.uninsuredStayCents * R.hospitalStayChance),
-          "risk",
-        ),
+        headline: headlineOf("Get a health plan", R.uninsuredStayCents, "risk"),
         short: `A hospital stay without cover can cost about ${formatCents(R.uninsuredStayCents)}.`,
-        worthCents: Math.round(R.uninsuredStayCents * R.hospitalStayChance),
+        worthCents: R.uninsuredStayCents,
         worthKind: "risk",
         confidence: capped(
           combine([
@@ -320,13 +307,9 @@ const longTermCare: Detector = {
       capability: "insurance",
       topic: "long_term_care",
       title: "Think about long-term care before you retire",
-      headline: headlineOf(
-        "Plan for long-term care",
-        Math.round((cost * R.longTermCareChanceOverWindow) / R.longTermCareWindowYears),
-        "risk",
-      ),
+      headline: headlineOf("Plan for long-term care", cost, "risk"),
       short: `You're close to retiring with about ${formatCents(total)} saved.`,
-      worthCents: Math.round((cost * R.longTermCareChanceOverWindow) / R.longTermCareWindowYears),
+      worthCents: cost,
       worthKind: "risk",
       confidence: combine([
         factEvidence(stage),
@@ -457,13 +440,9 @@ const coverChange: Detector = {
       capability: "insurance",
       topic: "cover_change",
       title: "Tell your insurer about your move",
-      headline: headlineOf(
-        "Tell your insurer about your move",
-        Math.round(R.rentersContentsCents * R.coverChangeClaimChance),
-        "risk",
-      ),
+      headline: headlineOf("Tell your insurer about your move", R.rentersContentsCents, "risk"),
       short: `You paid ${formatCents(event.amountCents)} on ${event.date}; your policy may not know.`,
-      worthCents: Math.round(R.rentersContentsCents * R.coverChangeClaimChance),
+      worthCents: R.rentersContentsCents,
       worthKind: "risk",
       confidence: combine([
         evidence("seen", profile.months, insured.length, "cover charges"),
