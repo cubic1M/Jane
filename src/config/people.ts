@@ -91,10 +91,14 @@ export const SUGGESTION_TOPICS = [
   "plan_menu",
   "short_term_cash",
   "sudden_money",
+  "values_funds",
+  "beneficiaries",
   "charity_receipts",
   "property_tax_check",
   "tax_loss_harvest",
   "file_return",
+  // Spec step 296: practice money first.
+  "practice_portfolio",
   "s_corp_election",
   "home_office_deduction",
   "vehicle_deduction",
@@ -173,8 +177,11 @@ export const PEOPLE: readonly Person[] = [
       "bnpl",
       "liability_levels",
       "consolidation",
+      "practice_portfolio",
     ],
     mustNot: [
+      "beneficiaries",
+      "values_funds",
       "umbrella",
       "long_term_care",
       "medigap",
@@ -224,6 +231,7 @@ export const PEOPLE: readonly Person[] = [
       hasDebtTrouble: false,
     },
     should: [
+      "beneficiaries",
       "rebalance",
       "pmi_removal",
       "life_insurance",
@@ -249,8 +257,10 @@ export const PEOPLE: readonly Person[] = [
       "liability_levels",
       "disability_insurance",
       "disaster_relief",
+      "practice_portfolio",
     ],
     mustNot: [
+      "values_funds",
       "renters_insurance",
       "medigap",
       "long_term_care",
@@ -298,8 +308,11 @@ export const PEOPLE: readonly Person[] = [
 
       "disability_insurance",
       "ptc_repayment",
+      "practice_portfolio",
     ],
     mustNot: [
+      "beneficiaries",
+      "values_funds",
       "employer_match",
       "rmd",
       "pmi_removal",
@@ -336,6 +349,7 @@ export const PEOPLE: readonly Person[] = [
       hasDebtTrouble: false,
     },
     should: [
+      "values_funds",
       "idle_cash",
       "concentration",
       "withholding_gap",
@@ -359,6 +373,7 @@ export const PEOPLE: readonly Person[] = [
       "hsa_over_limit",
     ],
     mustNot: [
+      "beneficiaries",
       "bank_fees",
       "late_fees",
       "hardship_plan",
@@ -392,6 +407,7 @@ export const PEOPLE: readonly Person[] = [
       hasDebtTrouble: false,
     },
     should: [
+      "beneficiaries",
       "social_security_timing",
       "medicare",
       "long_term_care",
@@ -413,6 +429,7 @@ export const PEOPLE: readonly Person[] = [
       "household_setup",
     ],
     mustNot: [
+      "values_funds",
       "education_529",
       "credit_building",
       "estimated_taxes",
@@ -460,6 +477,8 @@ export const PEOPLE: readonly Person[] = [
       "short_term_cash",
     ],
     mustNot: [
+      "beneficiaries",
+      "values_funds",
       "renters_insurance",
       "health_insurance",
       "umbrella",
@@ -492,6 +511,7 @@ export const PEOPLE: readonly Person[] = [
       "disability_insurance",
       "ptc_repayment",
       "hsa_over_limit",
+      "practice_portfolio",
     ],
     firstQuestion: "age_band",
   },
@@ -521,6 +541,8 @@ export const PEOPLE: readonly Person[] = [
       "credit_report_errors",
     ],
     mustNot: [
+      "beneficiaries",
+      "values_funds",
       "concentration",
       "backdoor_roth",
       "hsa",
@@ -556,6 +578,7 @@ export const PEOPLE: readonly Person[] = [
       "ptc_repayment",
       "hsa_over_limit",
       "medical_deduction",
+      "practice_portfolio",
     ],
     firstQuestion: "hardship_reason",
   },
@@ -582,8 +605,11 @@ export const PEOPLE: readonly Person[] = [
       "emergency_fund",
 
       "disability_insurance",
+      "practice_portfolio",
     ],
     mustNot: [
+      "beneficiaries",
+      "values_funds",
       "employer_match",
       "rmd",
       "pmi_removal",

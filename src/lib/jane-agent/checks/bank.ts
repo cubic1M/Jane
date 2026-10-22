@@ -3,6 +3,7 @@ import type { Intent } from "../intents";
 import type { ActionId } from "../types";
 import { charge, lastMonth, spentOn, thisMonth, type Facts } from "./facts";
 import { MORE_ROWS } from "./bank-more";
+import { PRACTICE_QUESTIONS } from "./bank-practice";
 import { TAX_QUESTIONS } from "./bank-taxes";
 
 // Jane's answer checks (spec step 87): about 100 things people really type, over the demo
@@ -2061,6 +2062,19 @@ const BASE_QUESTIONS: readonly CheckQuestion[] = [
       maxChars: 1_000,
     },
   },
+  // Spec step 246: recast, refinance or pay extra.
+  {
+    id: "debt-35",
+    text: "I have $20,000, should I pay down my mortgage or recast it",
+    needs: "rules",
+    expect: {
+      intent: "mortgage_money",
+      mentions: /recast/i,
+      link: "/loans/recast",
+      list: true,
+      maxChars: 2_200,
+    },
+  },
   // Spec step 245: the car loan you already have.
   {
     id: "debt-34",
@@ -2817,6 +2831,7 @@ export const QUESTIONS: readonly CheckQuestion[] = [
   ...MORE_QUESTIONS,
   ...DECISION_QUESTIONS,
   ...TAX_QUESTIONS,
+  ...PRACTICE_QUESTIONS,
 ];
 
 // Spec step 189: the sector a question belongs to: its own, or for the older ones the start

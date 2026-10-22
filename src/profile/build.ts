@@ -71,6 +71,12 @@ export type ProfileInput = {
   liabilities: readonly ProfileLiability[];
   // Optional: what each account holds. Absent when the loader did not read holdings.
   holdings?: readonly ProfileHolding[];
+  // Spec step 236: what the person asked Jane to leave out of their funds (keys in
+  // src/config/values.ts), when they have said.
+  valuesExcludes?: readonly string[];
+  // Spec step 237: ids of the accounts that have a beneficiary named. Absent when the loader
+  // did not read them.
+  namedAccountIds?: readonly string[];
   told: Told;
   // What else is known about the person's setup in Jane (step 264); a sample person's is
   // given by ./sample.ts.
@@ -102,6 +108,8 @@ export type ProfileInput = {
     // Disaster relief declarations from the person's feed (spec step 270): the stand-in's
     // samples for demo-bank people, none for anyone else. Absent: not loaded.
     disasterRelief?: readonly Relief[];
+    // The person already has a practice portfolio (step 296). Absent: not loaded.
+    hasPracticePortfolio?: boolean;
     rsuGap?: {
       vestedCents: number;
       shortfallCents: number;

@@ -19,11 +19,14 @@ export async function tapButton(previous: MessageState, formData: FormData): Pro
   const user = await requireUser();
   const messageId = String(formData.get("messageId") ?? "");
   const actionId = String(formData.get("actionId") ?? "");
+  // A button that carries a choice (option.pick: the option's id).
+  const choice = formData.get("choice");
   try {
     // The timezone is read alongside the tap, and what the answer doesn't need (audit,
     // analytics, closing the messages it settled) follows the response.
     const [{ message, agentJobIds, agentActionIds, posted }, timezone] = await Promise.all([
       takeChatAction(user.id, messageId, actionId, {
+        ...(typeof choice === "string" && choice ? { choice: choice.slice(0, 80) } : {}),
         defer: (work) =>
           after(() =>
             work().catch((error) =>

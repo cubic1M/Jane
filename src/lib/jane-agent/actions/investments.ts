@@ -36,6 +36,8 @@ import {
   loadSuddenMoney,
   SuddenMoneyError,
 } from "@/lib/investments/sudden-money";
+import { applyValues, ValuesError } from "@/lib/investments/values";
+import { VALUES_LINK } from "../investments/values-copy";
 import { ACTION_KIND, planBody, stageButton, SUDDEN_LINK } from "../investments/sudden-copy";
 import type { StageKey } from "@/planning/sudden-money";
 import { ShortTermError, startLadder } from "@/lib/investments/short-term";
@@ -743,6 +745,28 @@ export const suddenStage: ActionHandler = {
       };
     } catch (error) {
       if (error instanceof SuddenMoneyError) throw answeredElsewhere(error.message);
+      throw error;
+    }
+  },
+};
+
+// Spec step 236: switch to the screened funds the message showed, a tap, while the plan is
+// still the one shown.
+export const valuesApply: ActionHandler = {
+  id: "values.apply",
+  on: "open",
+  async run({ userId, message, action, client, now }) {
+    const key = message.refs.valuesKey;
+    if (!key) throw new ChatActionError("not_offered", "That button isn't on this message.");
+    try {
+      const r = await applyValues(userId, key, { client, now });
+      return {
+        answeredWith: action.label,
+        note: `Switched ${r.switches} ${r.switches === 1 ? "fund" : "funds"} in the stand-in (no real trades are made). Fees change by ${r.plan.feeDeltaCents >= 0 ? "+" : "-"}$${(Math.abs(r.plan.feeDeltaCents) / 100).toFixed(2)} a year.`,
+        actions: [VALUES_LINK],
+      };
+    } catch (error) {
+      if (error instanceof ValuesError) throw answeredElsewhere(error.message);
       throw error;
     }
   },

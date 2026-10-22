@@ -304,6 +304,13 @@ async function InvestmentsContent() {
             : leave out fossil fuels, weapons or tobacco, with the cost and diversification shown.
           </p>
           <p className="text-sm text-zinc-600 dark:text-zinc-400">
+            <Link href="/investments/family-file" className={LINK}>
+              The family looked after
+            </Link>
+            : who is named on each account, what a life change makes out of date, and a file to
+            share.
+          </p>
+          <p className="text-sm text-zinc-600 dark:text-zinc-400">
             <Link href="/investments/practice" className={LINK}>
               Practice portfolio
             </Link>
