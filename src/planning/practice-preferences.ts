@@ -273,3 +273,35 @@ export function describeChanges(
     (f) => `${PREFERENCE_LABELS[f]}: ${sayPreference(before, f)} → ${sayPreference(after, f)}`,
   );
 }
+
+type FormLike = { get(name: string): unknown; getAll(name: string): unknown[] };
+
+const text = (v: unknown) => (typeof v === "string" ? v.trim() : "");
+const num = (v: unknown) => (text(v) === "" ? Number.NaN : Number(text(v).replace(/[$,]/g, "")));
+const dollarsToCents = (v: unknown) => {
+  const n = num(v);
+  return Number.isFinite(n) ? Math.round(n * 100) : n;
+};
+
+// The settings page's form as a change, every field at once; applyPatch does the checking.
+// Empty means "none" where a field can be none (level, drop, goal, date).
+export function parsePreferenceForm(form: FormLike): PreferencePatch {
+  const level = text(form.get("riskLevel"));
+  const drop = text(form.get("maxDropPercent"));
+  const tickers = text(form.get("avoidTickers"))
+    .split(/[\s,]+/)
+    .filter(Boolean);
+  return {
+    riskLevel: level === "" ? null : Number(level),
+    maxDropPercent: drop === "" ? null : num(drop),
+    goal: text(form.get("goal")) || null,
+    goalDate: text(form.get("goalDate")) || null,
+    monthlyAddCents: dollarsToCents(form.get("monthlyAdd")),
+    addDay: num(form.get("addDay")),
+    appetite: text(form.get("appetite")),
+    avoid: [...form.getAll("avoid").map(text).filter(Boolean), ...tickers],
+    harvestLosses: form.get("harvestLosses") === "on",
+    cashBufferCents: dollarsToCents(form.get("cashBuffer")),
+    mode: text(form.get("mode")),
+  };
+}

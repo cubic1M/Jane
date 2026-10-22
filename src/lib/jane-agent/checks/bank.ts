@@ -2105,6 +2105,41 @@ const BASE_QUESTIONS: readonly CheckQuestion[] = [
       maxChars: 2_600,
     },
   },
+  // Spec step 251: credit on autopilot, round three.
+  {
+    id: "debt-72",
+    text: "show me this month's credit check-up",
+    needs: "rules",
+    expect: {
+      intent: "credit_monthly",
+      mentions: /check-up/i,
+      link: "/loans/review",
+      maxChars: 2_600,
+    },
+  },
+  // Spec step 250: what you could borrow.
+  {
+    id: "debt-70",
+    text: "what could I borrow, and at what rate?",
+    needs: "rules",
+    expect: {
+      intent: "borrowing_power",
+      mentions: /soft check|borrow/i,
+      link: "/loans/borrow",
+      maxChars: 2_000,
+    },
+  },
+  {
+    id: "debt-71",
+    text: "how big a mortgage could I get",
+    needs: "rules",
+    expect: {
+      intent: "borrowing_power",
+      mentions: /mortgage/i,
+      link: "/loans/borrow",
+      maxChars: 2_000,
+    },
+  },
   // Spec step 248: renting, counted.
   {
     id: "debt-37",

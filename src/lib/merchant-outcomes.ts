@@ -111,19 +111,16 @@ export async function refreshMerchantOutcomes({
   return { merchants: new Set(outcomes.map((o) => o.merchantKey)).size };
 }
 
-// What to show for a merchant and action, or null below the minimum number of cases.
-export async function outcomeFor(
-  merchantName: string | null,
+// What to show for a merchant (its directory key, or the normalized name for one the directory
+// doesn't know) and action, or null below the minimum number of cases. Looked up through
+// companyFacts (src/lib/merchants.ts), which matches the name once.
+export async function outcomeAt(
+  merchantKey: string,
   actionType: ActionType,
   { client = defaultClient }: { client?: PrismaClient } = {},
 ): Promise<Outcome | null> {
-  const directory = await client.merchant.findMany({
-    select: { key: true, name: true, aliases: true, category: true },
-  });
-  const key = merchantKeyOf(merchantName, directory);
-  if (!key) return null;
   const row = await client.merchantOutcome.findUnique({
-    where: { merchantKey_actionType: { merchantKey: key, actionType } },
+    where: { merchantKey_actionType: { merchantKey, actionType } },
     select: {
       merchantKey: true,
       actionType: true,

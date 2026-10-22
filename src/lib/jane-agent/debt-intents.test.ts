@@ -533,6 +533,33 @@ describe("debt questions", () => {
     expect(intent("what is an overdraft fee")).not.toEqual({ kind: "costly_borrowing" });
   });
 
+  it("reads the monthly credit check-up (spec step 251), and leaves the yearly review alone", () => {
+    for (const text of [
+      "what's in my credit check-up this month?",
+      "show me the monthly credit check",
+      "how's my credit on autopilot this month",
+      "credit checkup",
+    ]) {
+      expect(intent(text), text).toEqual({ kind: "credit_monthly" });
+    }
+    expect(intent("do my yearly debt review")).toEqual({ kind: "debt_review" });
+  });
+
+  it("reads what could I borrow (spec step 250)", () => {
+    for (const text of [
+      "what could I borrow?",
+      "how much could I borrow for a car",
+      "what rate could I get on a loan",
+      "how big a mortgage could I get",
+      "can I get prequalified",
+      "what's my borrowing power",
+    ]) {
+      expect(intent(text), text).toEqual({ kind: "borrowing_power" });
+    }
+    // A loan for a need with an amount is the options card's.
+    expect(intent("best car loan for $20,000")).not.toEqual({ kind: "borrowing_power" });
+  });
+
   it("leaves requests and other questions alone", () => {
     expect(intent("lower the rate on my card")).toMatchObject({ kind: "act", verb: "lower" });
     expect(intent("what's due this week")).toMatchObject({ kind: "coming_up" });
