@@ -99,6 +99,14 @@ export const CAPABILITIES: readonly Capability[] = [
     tools: ["whole_picture", "priorities", "health_score"],
     answer: janeAnswer,
   },
+  // Spec step 238: are the numbers right.
+  {
+    id: "books",
+    bank: ["books"],
+    kinds: ["books"],
+    tools: ["books_check"],
+    answer: janeAnswer,
+  },
   // Spec step 203: what-if scenarios; step 209: the long view.
   {
     id: "what_if",

@@ -105,6 +105,9 @@ export type ProfileInput = {
     insuranceShopSavingCents?: number;
     // The policies they have, for the cover-need gaps (spec step 277). Absent: not loaded.
     coverPolicies?: readonly NeedPolicy[];
+    // What doesn't add up in the person's data (spec step 238), from the daily books check.
+    // Absent: not loaded.
+    books?: readonly { kind: string; words: string; accountId: string | null }[];
     // Disaster relief declarations from the person's feed (spec step 270): the stand-in's
     // samples for demo-bank people, none for anyone else. Absent: not loaded.
     disasterRelief?: readonly Relief[];
