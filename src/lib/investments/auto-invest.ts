@@ -1,3 +1,5 @@
+import { coreFundsFor } from "@/planning/values";
+import { loadPrefs } from "./values";
 import { randomUUID } from "node:crypto";
 import {
   MIN_PAYCHECK_CENTS,
@@ -229,7 +231,12 @@ export async function runAutoInvest(
       : null;
   const buys =
     decision.status === "invested"
-      ? (split?.buys ?? contributionBuys(decision.amountCents, profile.riskLevel))
+      ? (split?.buys ??
+        contributionBuys(
+          decision.amountCents,
+          profile.riskLevel,
+          coreFundsFor(await loadPrefs(userId, { client })),
+        ))
       : [];
   if (decision.status === "invested") {
     batchId = randomUUID();

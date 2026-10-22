@@ -2,6 +2,8 @@ import Link from "next/link";
 import { DemoAdviceLabel } from "@/components/demo-advice-label";
 import { formatCents } from "@/lib/money";
 import { insuranceCard } from "@/lib/insurance/need/card";
+import { coverEvents } from "@/lib/insurance/cover-changes";
+import { openedGaps } from "@/lib/insurance/need/rework";
 import { loadNeeds, optionsForNeed } from "@/lib/insurance/need/load";
 import type { Need, NeedKind } from "@/lib/insurance/need/types";
 import { pickCoverForm } from "./actions";
@@ -42,6 +44,8 @@ export async function PerfectCoverage({
 }) {
   const needs = await loadNeeds(userId);
   if (!needs || needs.length === 0) return null;
+  const events = (await coverEvents(userId)).map((e) => e.event);
+  const opened = openedGaps(needs, events);
   const open = needs.find((n) => n.kind === selected && (!policyId || n.policyId === policyId));
   const found =
     open && advice
@@ -63,6 +67,20 @@ export async function PerfectCoverage({
         >
           {result}
         </p>
+      )}
+      {opened.length > 0 && (
+        <ul className="flex flex-col gap-1 text-sm" data-testid="opened-gaps">
+          {opened.map((g) => (
+            <li key={`${g.need.kind}-${g.need.policyId ?? ""}`}>
+              Because of {g.because}, your {LABELS[g.need.kind].toLowerCase()} has a gap.{" "}
+              {advice && (
+                <Link href={`/insurance?need=${g.need.kind}#options`} className={LINK}>
+                  See options
+                </Link>
+              )}
+            </li>
+          ))}
+        </ul>
       )}
       <ul className="flex flex-col gap-2">
         {needs.map((n) => {
