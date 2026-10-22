@@ -95,6 +95,8 @@ export const SUGGESTION_TOPICS = [
   "property_tax_check",
   "tax_loss_harvest",
   "file_return",
+  // Spec step 296: practice money first.
+  "practice_portfolio",
   "s_corp_election",
   "home_office_deduction",
   "vehicle_deduction",
@@ -169,6 +171,7 @@ export const PEOPLE: readonly Person[] = [
       "bnpl",
       "liability_levels",
       "consolidation",
+      "practice_portfolio",
     ],
     mustNot: [
       "umbrella",
@@ -241,6 +244,7 @@ export const PEOPLE: readonly Person[] = [
 
       "liability_levels",
       "disability_insurance",
+      "practice_portfolio",
     ],
     mustNot: [
       "renters_insurance",
@@ -288,6 +292,7 @@ export const PEOPLE: readonly Person[] = [
       "vehicle_deduction",
 
       "disability_insurance",
+      "practice_portfolio",
     ],
     mustNot: [
       "employer_match",
@@ -476,6 +481,7 @@ export const PEOPLE: readonly Person[] = [
       "life_checklist",
 
       "disability_insurance",
+      "practice_portfolio",
     ],
     firstQuestion: "age_band",
   },
@@ -537,6 +543,7 @@ export const PEOPLE: readonly Person[] = [
       "sudden_money",
       "household_setup",
       "life_checklist",
+      "practice_portfolio",
     ],
     firstQuestion: "hardship_reason",
   },
@@ -563,6 +570,7 @@ export const PEOPLE: readonly Person[] = [
       "emergency_fund",
 
       "disability_insurance",
+      "practice_portfolio",
     ],
     mustNot: [
       "employer_match",
