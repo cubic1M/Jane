@@ -1,11 +1,14 @@
 import {
   AUTOPILOT_LIMITS as L,
+  classTickers,
   MODEL_PORTFOLIOS,
   PRACTICE_ETFS,
   PRACTICE_STOCKS,
+  stocksShare,
   type PracticeClass,
 } from "@/config/portfolios";
 import type { RiskLevel } from "@/config/investing";
+import { DRIFT_STOCKS_BAND } from "@/config/practice-scan";
 import type { LedgerState } from "./practice-ledger";
 
 // Autopilot for the practice portfolio (spec step 291, Phase AW, Stage A). Pure: given the model
@@ -13,7 +16,9 @@ import type { LedgerState } from "./practice-ledger";
 // bring the practice portfolio to the model: buy the model with cash, rebalance when a class
 // drifts past the band, and nothing when paused. Every trade carries a reason in a sentence and
 // the rule that allowed it, and every one is held to the hard limits (no leverage, no options, no
-// shorting, a per-trade and per-position cap, a daily count).
+// shorting, a per-trade and per-position cap, a daily count). A kind may be held in its main fund
+// or, after a tax-loss swap (step 292), its partner; a fund sold at a loss in the last 30 days
+// (`blocked`) is never bought back, so no trade makes a wash sale.
 
 export type PlannedTrade = {
   ticker: string;
@@ -79,17 +84,29 @@ export function planTrades(input: {
   prices: Prices;
   paused: boolean;
   tradesToday: number;
+  blocked?: ReadonlySet<string>;
 }): PlannedTrade[] {
   if (input.paused) return [];
   const { state, prices } = input;
+  const blocked = input.blocked ?? new Set<string>();
   const weights = MODEL_PORTFOLIOS[input.level].weights;
-  const modelValue = (c: PracticeClass) => positionValue(state, prices, PRACTICE_ETFS[c].ticker);
+  const held = (t: string) => positionValue(state, prices, t);
+  const modelValue = (c: PracticeClass) => classTickers(c).reduce((s, t) => s + held(t), 0);
+  // The fund a kind is held in (the larger, after a swap), and the one to buy more of.
+  const sellTicker = (c: PracticeClass) =>
+    classTickers(c).reduce((a, b) => (held(b) > held(a) ? b : a));
+  const buyTicker = (c: PracticeClass) =>
+    [sellTicker(c), ...classTickers(c)].find((t) => !blocked.has(t)) ?? null;
   // The model's value: cash waiting plus the ETFs (opportunity stocks sit outside it).
   const total = state.cashCents + CLASSES.reduce((s, c) => s + modelValue(c), 0);
   if (total <= 0) return [];
   const gap = (c: PracticeClass) => Math.round(weights[c] * total) - modelValue(c);
   const band = Math.round(L.rebalanceBand * total);
   const first = CLASSES.every((c) => modelValue(c) === 0);
+  // Stocks together past their band: every kind over its target goes back, not only those past
+  // the band on their own.
+  const stocks = (modelValue("us_stocks") + modelValue("intl_stocks")) / total;
+  const stocksPast = !first && Math.abs(stocks - stocksShare(input.level)) > DRIFT_STOCKS_BAND;
 
   const trades: PlannedTrade[] = [];
   let cash = state.cashCents;
@@ -113,9 +130,9 @@ export function planTrades(input: {
   // Rebalance: sell what is over its target by more than the band.
   for (const c of CLASSES) {
     const over = -gap(c);
-    if (over > band && over >= L.minTradeCents) {
-      const ticker = PRACTICE_ETFS[c].ticker;
-      const amount = Math.min(over, modelValue(c));
+    if ((over > band || stocksPast) && over >= L.minTradeCents) {
+      const ticker = sellTicker(c);
+      const amount = Math.min(over, held(ticker));
       track({
         ticker,
         side: "sell",
@@ -133,9 +150,10 @@ export function planTrades(input: {
   const spend = Math.min(cash, needed);
   for (const { c, d } of deficits) {
     const amount = Math.floor((spend * d) / needed);
-    if (amount < L.minTradeCents) continue;
+    const ticker = buyTicker(c);
+    if (amount < L.minTradeCents || !ticker) continue;
     track({
-      ticker: PRACTICE_ETFS[c].ticker,
+      ticker,
       side: "buy",
       amountCents: amount,
       rule: first ? "model_buy" : "rebalance",

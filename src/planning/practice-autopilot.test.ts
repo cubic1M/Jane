@@ -3,8 +3,8 @@ import { AUTOPILOT_LIMITS, MODEL_PORTFOLIOS, PRACTICE_ETFS } from "@/config/port
 import { apply, type LedgerState } from "./practice-ledger";
 import { planTrades, portfolioValue, violates } from "./practice-autopilot";
 
-const PRICES = { VTI: 30_000, VXUS: 6_000, BND: 8_000, BIL: 9_150, TSLA: 20_000 };
-const UNIVERSE = new Set(["VTI", "VXUS", "BND", "BIL", "TSLA"]);
+const PRICES = { VTI: 30_000, VXUS: 6_000, BND: 8_000, BIL: 9_150, TSLA: 20_000, ITOT: 12_000 };
+const UNIVERSE = new Set(["VTI", "VXUS", "BND", "BIL", "TSLA", "ITOT"]);
 const empty = (cash: number): LedgerState => ({ cashCents: cash, positions: {} });
 
 function run(level: 1 | 2 | 3 | 4 | 5, state: LedgerState, paused = false) {
@@ -109,5 +109,34 @@ describe("autopilot for the practice portfolio", () => {
     expect(
       violates({ ticker: "VTI", side: "buy", amountCents: 100_000 }, empty(50_000), PRICES, 0),
     ).toMatch(/borrow/);
+  });
+
+  it("counts a swapped-into fund as its kind, and never buys back one just sold at a loss", () => {
+    const { state } = run(3, empty(1_000_000));
+    // US stocks swapped from VTI into ITOT (a tax-loss swap, step 292).
+    const vti = state.positions.VTI;
+    const swapped: LedgerState = {
+      cashCents: state.cashCents,
+      positions: {
+        ...Object.fromEntries(Object.entries(state.positions).filter(([t]) => t !== "VTI")),
+        ITOT: { quantity: (vti.quantity * PRICES.VTI) / PRICES.ITOT, costBasisCents: 400_000 },
+      },
+    };
+    const input = { level: 3 as const, state: swapped, prices: PRICES, paused: false };
+    expect(planTrades({ ...input, tradesToday: 0 })).toEqual([]);
+    // New money goes to US stocks through ITOT, and never VTI while VTI is blocked.
+    const more = { ...swapped, cashCents: swapped.cashCents + 200_000 };
+    const trades = planTrades({ ...input, state: more, tradesToday: 0, blocked: new Set(["VTI"]) });
+    expect(trades.some((t) => t.ticker === "ITOT" && t.side === "buy")).toBe(true);
+    expect(trades.some((t) => t.ticker === "VTI")).toBe(false);
+  });
+
+  it("rebalances when stocks together drift past their band, even if no one kind does", () => {
+    const { state } = run(3, empty(1_000_000));
+    // Both stock funds up 30%: each kind is under 5 points off, stocks together are over.
+    const up = { ...PRICES, VTI: 39_000, VXUS: 7_800 };
+    const trades = planTrades({ level: 3, state, prices: up, paused: false, tradesToday: 0 });
+    expect(trades.filter((t) => t.side === "sell").map((t) => t.ticker)).toEqual(["VTI", "VXUS"]);
+    expect(trades.every((t) => t.rule === "rebalance")).toBe(true);
   });
 });

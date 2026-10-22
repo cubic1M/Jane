@@ -1,11 +1,13 @@
 import type { RiskLevel } from "@/config/investing";
 import { PRACTICE_UNIVERSE } from "@/config/portfolios";
+import { WASH_SALE_DAYS } from "@/config/tax-rates";
 import type { PrismaClient } from "@/generated/prisma/client";
 import { logAudit } from "@/lib/audit";
 import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
 import { marketData } from "@/lib/market";
 import { planTrades } from "@/planning/practice-autopilot";
+import { washBlocked } from "@/planning/practice-scan";
 import { replay, type Entry } from "@/planning/practice-ledger";
 import { practiceBroker, loadLedger, type Fill } from "./broker";
 import { addPracticeMoney, PracticeError } from "./portfolio";
@@ -23,6 +25,36 @@ export type RunResult =
 
 const monthKey = (d: Date) => d.toISOString().slice(0, 7);
 
+// The monthly practice money, once a month, on or after the chosen day. True when it went in.
+// The daily run puts it in before the scan (step 292), so a dip can use it first.
+export async function addMonthlyIfDue(
+  userId: string,
+  { client = defaultClient, now = new Date() }: Options = {},
+): Promise<boolean> {
+  const { portfolio } = await loadLedger(userId, client);
+  if (portfolio.paused) return false;
+  if (portfolio.monthlyAddCents <= 0 || now.getUTCDate() < portfolio.addDay) return false;
+  const added = await client.practiceTrade.findFirst({
+    where: {
+      portfolioId: portfolio.id,
+      side: "deposit",
+      rule: "monthly_add",
+      undone: false,
+      placedAt: { gte: new Date(`${monthKey(now)}-01T00:00:00Z`) },
+    },
+    select: { id: true },
+  });
+  if (added) return false;
+  await addPracticeMoney(
+    userId,
+    portfolio.monthlyAddCents,
+    "Your monthly practice money.",
+    "monthly_add",
+    { client, now },
+  );
+  return true;
+}
+
 export async function runAutopilot(
   userId: string,
   { client = defaultClient, now = new Date() }: Options = {},
@@ -36,30 +68,7 @@ export async function runAutopilot(
   const { portfolio } = ledger;
   if (portfolio.paused) return { ran: false, why: "paused" };
 
-  // The monthly practice money, once a month, on or after the chosen day.
-  let deposit = false;
-  if (portfolio.monthlyAddCents > 0 && now.getUTCDate() >= portfolio.addDay) {
-    const added = await client.practiceTrade.findFirst({
-      where: {
-        portfolioId: portfolio.id,
-        side: "deposit",
-        rule: "monthly_add",
-        undone: false,
-        placedAt: { gte: new Date(`${monthKey(now)}-01T00:00:00Z`) },
-      },
-      select: { id: true },
-    });
-    if (!added) {
-      await addPracticeMoney(
-        userId,
-        portfolio.monthlyAddCents,
-        "Your monthly practice money.",
-        "monthly_add",
-        { client, now },
-      );
-      deposit = true;
-    }
-  }
+  const deposit = await addMonthlyIfDue(userId, { client, now });
 
   const { state } = await loadLedger(userId, client);
   const asOf = now.toISOString().slice(0, 10);
@@ -78,12 +87,25 @@ export async function runAutopilot(
       placedAt: { gte: dayStart },
     },
   });
+  // Funds sold at a loss lately aren't bought back (no wash sale).
+  const recent = await client.practiceTrade.findMany({
+    where: {
+      portfolioId: portfolio.id,
+      side: "sell",
+      undone: false,
+      placedAt: { gte: new Date(dayStart.getTime() - (WASH_SALE_DAYS + 1) * 86_400_000) },
+    },
+    select: { placedAt: true, side: true, ticker: true, gainCents: true },
+  });
+  const sold = recent.map((t) => ({ ...t, placedAt: t.placedAt.toISOString() }));
+  const blocked = washBlocked(sold, asOf);
   const plan = planTrades({
     level: portfolio.level as RiskLevel,
     state,
     prices,
     paused: false,
     tradesToday,
+    blocked,
   });
   const broker = practiceBroker();
   const fills: Fill[] = [];
