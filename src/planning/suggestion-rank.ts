@@ -1,5 +1,6 @@
 import {
   HISTORY_MAX_FACTOR,
+  MONEY_GROUPS,
   HISTORY_MIN_FACTOR,
   FINDING_KIND_OF_TOPIC,
   NO_PENALTY,
@@ -8,7 +9,8 @@ import {
   WORKED_DOWN_FACTOR,
   WORKED_MIN_DONE,
   WORKED_UP_FACTOR,
-  WORTH_WEIGHT,
+  REQUIRED_BOOST,
+  rankValue,
   YES_BOOST,
 } from "@/config/suggestions";
 import type { Suggestion } from "@/detectors/contract";
@@ -52,7 +54,9 @@ export function scoreOf(
   results: KindResults = [],
 ): number {
   return Math.round(
-    (s.rankCents ?? s.worthCents * WORTH_WEIGHT[s.worthKind]) *
+    (s.rankCents ??
+      (s.worthIsExpected ? s.worthCents : rankValue(s.topic, s.worthKind, s.worthCents))) *
+      (s.required ? REQUIRED_BOOST : 1) *
       (s.confidence.percent / 100) *
       URGENCY_WEIGHT[s.urgency] *
       historyFactor(s.topic, history) *
@@ -77,6 +81,28 @@ export function rankSuggestions(
 }
 
 // The ones that reach the person today.
+// Suggestions that touch the same money count it once (spec step 255): of those that share a
+// money group (MONEY_GROUPS) only the highest-ranked stays. `ranked` must be best first.
+export function mergeOverlaps(ranked: readonly Ranked[]): Ranked[] {
+  const taken = new Set<string>();
+  const out: Ranked[] = [];
+  for (const r of ranked) {
+    const groups = MONEY_GROUPS[r.suggestion.topic] ?? [];
+    if (groups.some((g) => taken.has(g))) continue;
+    for (const g of groups) taken.add(g);
+    out.push(r);
+  }
+  return out;
+}
+
+// What a list of suggestions is worth a year, each piece of money counted once.
+export function worthOnce(suggestions: readonly Suggestion[]): number {
+  return mergeOverlaps(rankSuggestions(suggestions)).reduce(
+    (s, r) => s + r.suggestion.worthCents,
+    0,
+  );
+}
+
 // An idea that combines suggestions and one of them are never both offered on one day.
 export function pickForToday(
   ranked: readonly Ranked[],

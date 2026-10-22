@@ -1,3 +1,4 @@
+import { DETECTOR_RATES } from "@/config/detectors";
 import { AMT, EQUITY_SET_ASIDE_MIN_CENTS, ESPP_RULES, RSU_WITHHOLDING } from "@/config/equity-tax";
 import type { FilingStatus } from "@/config/tax";
 
@@ -163,3 +164,15 @@ export function amt(input: {
 
 // Whether a set-aside is worth offering for the tax on an event.
 export const worthSettingAside = (taxCents: number) => taxCents >= EQUITY_SET_ASIDE_MIN_CENTS;
+
+// With no vest schedule known: an assumed share of the stock plan vests this year, withheld at
+// the flat rate, and what is short at the person's rate. The brief's suggestion and the chat's
+// answer both use this, and say it is assumed.
+export function assumedRsuGap(stockCents: number, marginalRate: number) {
+  const vestedCents = Math.round(stockCents * DETECTOR_RATES.tax.stockVestShare);
+  const shortfallCents = Math.max(
+    0,
+    Math.round(vestedCents * (marginalRate - RSU_WITHHOLDING.flatRate)),
+  );
+  return { vestedCents, shortfallCents };
+}

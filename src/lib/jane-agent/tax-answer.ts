@@ -26,6 +26,7 @@ import { loadBusinessStructure } from "@/lib/business-structure";
 import { businessReply } from "./business-message";
 import { loadInheritance } from "@/lib/inheritance";
 import { inheritanceReply } from "./inheritance-message";
+import { decideTax } from "@/lib/tax-decisions";
 import { equityReply } from "./equity-tax-message";
 import { loadIdentity } from "@/lib/tax-identity";
 import { identityReply } from "./tax-identity-message";
@@ -119,6 +120,14 @@ export async function answerTaxIntent(
   const { client, now } = options;
   const year = defaultTaxYear(now.toISOString().slice(0, 10));
   switch (intent.ask) {
+    case "decide": {
+      const d = await decideTax(userId, intent.topic, { client, now });
+      return {
+        body: d.text,
+        refs: d.advice ? { advice: true } : {},
+        actions: [{ id: "open", label: "See the numbers", kind: "link", href: d.href }],
+      };
+    }
     case "profile": {
       const { view, autopilot } = await loadWorkingProfile(userId, { client, now });
       return taxProfileReply(view, autopilot);

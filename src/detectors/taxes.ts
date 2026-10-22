@@ -27,7 +27,7 @@ import { NO_INCOME, marginalRateOf, type EstimateInput } from "@/planning/tax-es
 import { careShare } from "@/planning/tax-savings";
 import type { Fact } from "@/profile/build";
 import { type Detector, type Urgency, suggestionId } from "./contract";
-import { evidence, factEvidence, tx, weakest } from "./helpers";
+import { evidence, factEvidence, tx, weakest, headlineOf } from "./helpers";
 
 // Detectors for taxes (spec step 261), over what a person's profile and rows show: the pay
 // withheld on company stock, Roth conversions near retirement, childcare paid for with after-
@@ -114,15 +114,26 @@ const withholdingGap: Detector = {
       .filter((a) => a.subtype === "stock plan")
       .reduce((s, a) => s + a.balanceCents, 0);
     if (stock <= 0) return null;
-    const vested = Math.round(stock * T.stockVestShare);
-    const rate = marginalRate(annual(income.value), vested, profile.facts.household.value);
-    if (rate <= T.rsuFlatWithholding + 0.005) return null;
-    const short = Math.round(vested * (rate - T.rsuFlatWithholding));
+    // The person's figure, worked out by the same code as the chat's answer (their vests this
+    // year, or an assumed share of the plan when none are known); the sample people's is
+    // estimated here.
+    const given = data.extras?.rsuGap;
+    if (given !== undefined && (given === null || given.shortfallCents <= 0)) return null;
+    const vested = given ? given.vestedCents : Math.round(stock * T.stockVestShare);
+    const rate = given
+      ? given.marginalRate
+      : marginalRate(annual(income.value), vested, profile.facts.household.value);
+    if (!given && rate <= T.rsuFlatWithholding + 0.005) return null;
+    const short = given ? given.shortfallCents : Math.round(vested * (rate - T.rsuFlatWithholding));
+    const assumed = !given || given.assumed;
     return {
       id: suggestionId("taxes", "withholding_gap"),
       capability: "taxes",
       topic: "withholding_gap",
       title: "Set aside the tax your stock vests won't have withheld",
+      headline: headlineOf("Set aside tax on your stock vests", short, "risk"),
+      short:
+        `${assumed ? "About" : ""} ${formatCents(vested)} is vesting, and flat withholding leaves you short.`.trim(),
       // The bill itself can't be saved; planning for it avoids the penalty and the surprise,
       // so it counts for a share of its size in ranking.
       worthCents: short,
@@ -131,10 +142,12 @@ const withholdingGap: Detector = {
       confidence: weakest([
         factEvidence(plan),
         factEvidence(income),
-        {
-          percent: Math.min(plan.confidence, 70),
-          reason: `no vest schedule yet, so I assumed ${Math.round(T.stockVestShare * 100)}% of your ${formatCents(stock)} plan vests this year`,
-        },
+        assumed
+          ? {
+              percent: Math.min(plan.confidence, 70),
+              reason: `no vest schedule yet, so I assumed ${Math.round(T.stockVestShare * 100)}% of your ${formatCents(stock)} plan vests this year`,
+            }
+          : { percent: 90, reason: "your vests this year and your tax bracket" },
       ]),
       urgency: month(profile.today) >= 10 ? "soon" : "later",
       why: `Your company stock is withheld at ${Math.round(T.rsuFlatWithholding * 100)} cents on the dollar when it vests, but with your pay plus the vesting you're in the ${Math.round(rate * 100)}% bracket. On about ${formatCents(vested)} vesting, that leaves roughly ${formatCents(short)} to pay when you file. Setting it aside through the year, or paying an estimate, avoids a penalty of about ${formatCents(Math.round(short * DETECTOR_RATES.underpaymentPenaltyRate))} on top.`,
@@ -187,6 +200,8 @@ const rothConversion: Detector = {
       capability: "taxes",
       topic: "roth_conversion",
       title: "Look at converting some of your pre-tax retirement money to a Roth",
+      headline: headlineOf("Convert some pre-tax money to a Roth", saves, "saves"),
+      short: `Done well, it could save about ${formatCents(saves)} a year in tax.`,
       worthCents: saves,
       worthKind: "saves",
       confidence: weakest([
@@ -234,6 +249,8 @@ const childcareTaxBreak: Detector = {
       capability: "taxes",
       topic: "childcare_tax_break",
       title: "Pay for childcare from a dependent care FSA",
+      headline: headlineOf("Use a dependent care FSA for childcare", saves, "saves"),
+      short: `You paid ${formatCents(spent)} for childcare in ${profile.months} months.`,
       worthCents: saves,
       worthKind: "saves",
       confidence: weakest([
@@ -272,6 +289,12 @@ const identityPin: Detector = {
       capability: "taxes",
       topic: "identity_ip_pin",
       title: "Get an IRS Identity Protection PIN before you file",
+      headline: headlineOf(
+        "Get an IRS Identity Protection PIN",
+        Math.round(T.typicalRefundCents * T.ipPinTheftChance),
+        "risk",
+      ),
+      short: `A stolen refund averages ${formatCents(T.typicalRefundCents)}; a free IP PIN stops it.`,
       // The average refund times the small chance of being targeted: not the whole refund.
       worthCents: Math.round(T.typicalRefundCents * T.ipPinTheftChance),
       worthKind: "risk",
@@ -312,6 +335,8 @@ const yearEndMoves: Detector = {
       capability: "taxes",
       topic: "year_end_moves",
       title: "Use your 401(k) room before your last paycheck of the year",
+      headline: headlineOf("Add to your 401(k) before year end", saves, "saves"),
+      short: `About ${formatCents(room)} more at your ${Math.round(rate * 100)}% bracket would save ${formatCents(saves)}.`,
       worthCents: saves,
       worthKind: "saves",
       confidence: weakest([
@@ -350,6 +375,8 @@ const charityReceipts: Detector = {
       capability: "taxes",
       topic: "charity_receipts",
       title: "Get the written receipt for your larger gifts",
+      headline: headlineOf("Get receipts for your larger gifts", Math.round(total * rate), "risk"),
+      short: `You gave ${formatCents(total)} in gifts of ${formatCents(GIVING.receiptFromCents)} or more.`,
       worthCents: Math.round(total * rate),
       worthKind: "risk",
       confidence: weakest([
@@ -397,6 +424,8 @@ const propertyTaxCheck: Detector = {
       capability: "taxes",
       topic: "property_tax_check",
       title: "Check whether your home is assessed for more than it's worth",
+      headline: headlineOf("Check your home's tax assessment", worth, "saves"),
+      short: `You paid ${formatCents(paid)} in property tax.`,
       worthCents: worth,
       worthKind: "saves",
       confidence: weakest([
@@ -443,6 +472,8 @@ const lossHarvest: Detector = {
       capability: "taxes",
       topic: "tax_loss_harvest",
       title: "Sell a holding at a loss to lower this year's tax",
+      headline: headlineOf("Sell a holding at a loss", saves, "saves"),
+      short: `A taxable account holds ${formatCents(loss)} less than you paid for it.`,
       worthCents: saves,
       worthKind: "saves",
       confidence: weakest([
@@ -489,6 +520,12 @@ const fileReturn: Detector = {
       capability: "taxes",
       topic: "file_return",
       title: "Get your tax forms in and your return ready",
+      headline: headlineOf(
+        "Get your tax forms in",
+        Math.round(T.lateFilingPenaltyCents * T.lateFilingOweShare),
+        "risk",
+      ),
+      short: `Your return is due April 15, ${days} ${days === 1 ? "day" : "days"} from now.`,
       // The penalty only applies if tax is owed, which about a fifth of filers do.
       worthCents: Math.round(T.lateFilingPenaltyCents * T.lateFilingOweShare),
       worthKind: "risk",
@@ -569,6 +606,8 @@ const sCorpElection: Detector = {
       capability: "taxes",
       topic: "s_corp_election",
       title: "Ask a tax professional whether an S corporation would save you tax",
+      headline: headlineOf("Ask about an S corporation", result.sCorp.savesCents, "saves"),
+      short: `At about ${formatCents(profit)} profit, a salary plus distributions could cut your tax.`,
       worthCents: result.sCorp.savesCents,
       worthKind: "saves",
       confidence: weakest([
@@ -615,6 +654,8 @@ const homeOffice: Detector = {
       capability: "taxes",
       topic: "home_office_deduction",
       title: "Claim a home office if you work from home",
+      headline: headlineOf("Claim a home office", saves, "saves"),
+      short: `${HOME_OFFICE_ASSUMED_SQFT} square feet used only for work is a ${formatCents(deduction)} deduction.`,
       worthCents: saves,
       worthKind: "saves",
       confidence: weakest([
@@ -653,6 +694,8 @@ const vehicleDeduction: Detector = {
       capability: "taxes",
       topic: "vehicle_deduction",
       title: "Keep a mileage log for the driving you do for your business",
+      headline: headlineOf("Keep a mileage log", saves, "saves"),
+      short: `You bought gas ${gas.length} times; ${VEHICLE_ASSUMED_MILES.toLocaleString("en-US")} business miles is a ${formatCents(deduction)} deduction.`,
       worthCents: saves,
       worthKind: "saves",
       confidence: weakest([
@@ -714,6 +757,8 @@ const inheritedIra: Detector = {
         capability: "taxes",
         topic: "inherited_ira",
         title: "Take the rest of your inherited IRA out by December 31",
+        headline: headlineOf("Empty your inherited IRA by December 31", penalty, "risk"),
+        short: `Your inherited IRA holds ${formatCents(balance)}; what's left after ${emptyBy} costs 25%.`,
         worthCents: penalty,
         worthKind: "risk",
         confidence: weakest([
@@ -735,6 +780,8 @@ const inheritedIra: Detector = {
       capability: "taxes",
       topic: "inherited_ira",
       title: "Plan how you take money out of your inherited IRA",
+      headline: headlineOf("Spread your inherited IRA withdrawals", spread.savesCents, "saves"),
+      short: `About ${formatCents(spread.perYearCents)} a year from your ${formatCents(balance)} inherited IRA keeps brackets low.`,
       worthCents: spread.savesCents,
       worthKind: "saves",
       confidence: weakest([

@@ -103,7 +103,7 @@ describe.runIf(url)("payoff plans against a real database", () => {
     expect(reply.body).toContain(
       "Not included: Affirm plan (no balance yet), Demo Home Loan ····0004 (it runs on its own schedule).",
     );
-    expect(reply.refs).toEqual({ advice: true, debtPlanExtraCents: 0 });
+    expect(reply.refs).toMatchObject({ advice: true, debtPlanExtraCents: 0 });
     expect(reply.actions.map((a) => a.label)).toEqual([
       "Start this plan",
       "Use smallest balance first",

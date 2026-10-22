@@ -33,6 +33,8 @@ export type MessageView = {
   block: DrawnBlock | null;
   // Spec step 96: pinned to the top of the chat.
   pinned: boolean;
+  // One of the day's suggestions (it can sit in the card stack).
+  suggestion: boolean;
 };
 
 const TAGS: Record<MessageKind, string> = {
@@ -80,5 +82,6 @@ export function toView(message: ChatMessage, now: Date, timezone: string | null)
     undoUntil: buttons.some((b) => b.id.startsWith("undo.")) ? undoUntil : null,
     block: drawn(message.refs.block),
     pinned: message.refs.pinned === true,
+    suggestion: Boolean(message.refs.suggestion),
   };
 }

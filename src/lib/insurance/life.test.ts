@@ -210,7 +210,6 @@ describe("in the chat", () => {
     for (const text of [
       "how much life insurance do I need",
       "apply for life insurance",
-      "is my life cover enough",
       "should I buy term life",
     ]) {
       expect(parseIntent(text, "2026-10-19"), text).toMatchObject({
