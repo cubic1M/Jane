@@ -100,7 +100,7 @@ describe.runIf(url)(
         /^This month's credit check-up: \d+ things? needs? you, and I handled 1\./,
       );
       expect(msg.body).toContain("Rates and what you could borrow (Done)");
-      const hrefs = parseActions(msg.actions).map((a) => a.href);
+      const hrefs = parseActions(msg.actions).map((a) => ("href" in a ? a.href : null));
       expect(hrefs).toContain("/loans/costly");
       expect(hrefs).toContain("/loans/review");
       expect(new Set(hrefs).size).toBe(hrefs.length);
