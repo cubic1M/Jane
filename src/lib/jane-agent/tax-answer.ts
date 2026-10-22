@@ -26,6 +26,11 @@ import { loadBusinessStructure } from "@/lib/business-structure";
 import { businessReply } from "./business-message";
 import { loadInheritance } from "@/lib/inheritance";
 import { inheritanceReply } from "./inheritance-message";
+import { loadHealthTaxes } from "@/lib/health-taxes";
+import { healthReply } from "./health-tax-message";
+import { loadDisasterRelief } from "@/lib/disasters";
+import { disasterReply } from "./disaster-message";
+import { correctFact } from "@/lib/profile";
 import { decideTax } from "@/lib/tax-decisions";
 import { equityReply } from "./equity-tax-message";
 import { loadIdentity } from "@/lib/tax-identity";
@@ -145,6 +150,17 @@ export async function answerTaxIntent(
         ? moveReply(intent, view.state.value, now)
         : workStateReply(intent.state, view.state.value);
     }
+    case "disaster":
+      return disasterReply(await loadDisasterRelief(userId, { client, now }));
+    case "set_county": {
+      const name = intent.county.replace(/\b\w/g, (c) => c.toUpperCase());
+      await correctFact(userId, "county", name, { client, now });
+      const v = await loadDisasterRelief(userId, { client, now });
+      const reply = disasterReply(v);
+      return { ...reply, body: `Got it: ${name} County.\n${reply.body}` };
+    }
+    case "health":
+      return healthReply(await loadHealthTaxes(userId, { client, now }));
     case "inherited":
       return inheritanceReply(await loadInheritance(userId, { client, now }));
     case "business":

@@ -180,6 +180,8 @@ export const TEAM_ACCESS_RULES: Record<AuditEvent, EventRule> = {
   tax_notice_response_sent: own,
   property_appeal_handled: own,
   tax_payment_made: own,
+  tax_deadlines_postponed: own,
+  disaster_loss_recorded: own,
   accountant_link_created: own,
   accountant_link_viewed: own,
   accountant_link_answered: own,

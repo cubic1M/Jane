@@ -1,6 +1,7 @@
 import { DETECTOR_RATES } from "@/config/detectors";
 import { HOME_OFFICE_ASSUMED_SQFT, VEHICLE_ASSUMED_MILES } from "@/config/business-structure";
 import { GIVING } from "@/config/giving";
+import { MEDICAL_MIN_SAVING_CENTS, PTC_MIN_REPAY_CENTS } from "@/config/health-taxes";
 import {
   INHERITED_IRA_YEARS,
   INHERITED_NAME,
@@ -20,8 +21,11 @@ import {
   SELF_EMPLOYMENT_TAX,
   STANDARD_DEDUCTION,
 } from "@/config/tax-rates";
+import { dayLabel } from "@/lib/day-label";
 import { formatCents } from "@/lib/money";
 import { structureFor } from "@/planning/business-structure";
+import { readHealthTaxes } from "@/planning/health-taxes-read";
+import { casualtyLoss, computedMoves, damageSince, reliefFor } from "@/planning/disasters";
 import { mustBeEmptyBy, spreadIra } from "@/planning/inheritance";
 import { NO_INCOME, marginalRateOf, type EstimateInput } from "@/planning/tax-estimate";
 import { careShare } from "@/planning/tax-savings";
@@ -802,7 +806,215 @@ const inheritedIra: Detector = {
   },
 };
 
+// The Marketplace credit (step 269): the advance credit is set from the income a person expected
+// when they enrolled; a rise later in the year means some or all of it comes back as a bill with
+// the return (from 2026 with no cap). The income is read month by month, so a mid-year rise shows.
+const ptcRepayment: Detector = {
+  capability: "taxes",
+  topic: "ptc_repayment",
+  covers: ["tax_health"],
+  needs: ["income_pattern", "monthly_income", "household", "marketplace_aptc_monthly"],
+  detect({ profile, data }) {
+    const h = readHealthTaxes(profile, data);
+    const c = h.marketplace.check;
+    if (!c || c.repayCents < PTC_MIN_REPAY_CENTS) return null;
+    const m = month(profile.today);
+    const pct = Math.round(c.fplShare * 100);
+    const size = h.householdSize;
+    return {
+      id: suggestionId("taxes", "ptc_repayment"),
+      capability: "taxes",
+      topic: "ptc_repayment",
+      title: "Tell the Marketplace your income has gone up, so the credit isn't a bill in April",
+      headline: headlineOf("Tell the Marketplace your new income", c.repayCents, "risk"),
+      short: `Your income is on pace for ${formatCents(h.pace.projectedCents)}, ${pct}% of the poverty line.`,
+      worthCents: c.repayCents,
+      worthKind: "risk",
+      confidence: weakest([
+        factEvidence(profile.facts.income_pattern),
+        factEvidence(profile.facts.monthly_income),
+        evidence("seen", profile.months, h.marketplace.payments, "Marketplace premium payments"),
+        h.marketplace.told
+          ? {
+              percent: 75,
+              reason:
+                "you told me your advance credit; the rest of the year's income is a projection",
+            }
+          : {
+              percent: 50,
+              reason:
+                "I can't see your advance credit, so I took it from your income in the year's first months",
+            },
+      ]),
+      urgency: m >= T.ptcNowFromMonth ? "now" : m >= T.ptcSoonFromMonth ? "soon" : "later",
+      why: `You pay a Marketplace premium, and your income has gone up: about ${formatCents(Math.round(h.pace.enrollmentCents / 12))} a month early in the year, about ${formatCents(h.pace.recentMonthlyCents)} a month lately. At about ${formatCents(h.pace.projectedCents)} for the year (${pct}% of the poverty line for ${size === 1 ? "one person" : `${size} people`})${c.overCliff ? ", over the 400% line where the credit stops," : ""} the credit you're allowed is ${formatCents(c.allowedCents)} against about ${formatCents(c.advanceCents)} paid in advance, so about ${formatCents(c.repayCents)} would come back with your return, with no cap from 2026. Updating your income on the Marketplace now lowers the advance for the rest of the year.`,
+      action: { label: "See the numbers", href: "/taxes/health" },
+    };
+  },
+};
+
+// HSA deposits over the year's limit aren't deductible and carry a 6% penalty each year they stay
+// in (steps 159 and 269); the pace to December shows it before it happens.
+const hsaOverLimit: Detector = {
+  capability: "taxes",
+  topic: "hsa_over_limit",
+  covers: ["tax_health"],
+  needs: ["has_hsa", "household", "age"],
+  detect({ profile, data }) {
+    const fact = profile.facts.has_hsa;
+    if (fact.value !== true) return null;
+    const h = readHealthTaxes(profile, data).hsa;
+    if (h.deposits === 0 || h.projectedExcessCents <= 0) return null;
+    const over = h.excessCents > 0;
+    const cover = h.family ? "family" : "self-only";
+    return {
+      id: suggestionId("taxes", "hsa_over_limit"),
+      capability: "taxes",
+      topic: "hsa_over_limit",
+      title: over
+        ? "Stop your HSA deposits and take the extra out before you file"
+        : "Lower your HSA deposits so they stay under the limit",
+      headline: headlineOf(
+        over ? "Stop your HSA deposits" : "Lower your HSA deposits",
+        h.exciseCents,
+        "risk",
+      ),
+      short: `${formatCents(h.contributedCents)} in so far this year; the ${cover} limit is ${formatCents(h.limitCents)}.`,
+      worthCents: h.exciseCents,
+      worthKind: "risk",
+      confidence: weakest([
+        factEvidence(fact),
+        evidence("seen", profile.months, h.deposits, "HSA deposits"),
+        {
+          percent: 70,
+          reason: `I took your cover as ${cover} from your household, and an employer's deposits I can't see add to the total`,
+        },
+      ]),
+      urgency: over ? "now" : "soon",
+      why: `You've put ${formatCents(h.contributedCents)} into your HSA this year, and at this pace about ${formatCents(h.projectedCents)} by December, against a ${formatCents(h.limitCents)} limit for ${cover} cover. ${over ? `${formatCents(h.excessCents)} is over already.` : `That would be ${formatCents(h.projectedExcessCents)} over.`} Money over the limit isn't deductible and costs a 6% penalty (about ${formatCents(h.exciseCents)}) every year it stays in. Taking it out, with what it earned, before you file avoids the penalty; your HSA provider has a form for it.`,
+      action: { label: "See the numbers", href: "/taxes/health" },
+    };
+  },
+};
+
+// Medical costs count only above 7.5% of income and only when itemizing beats the standard
+// deduction (step 269, from the medical spending step 200 reads); a big year of care can tip it.
+const medicalDeductionDetector: Detector = {
+  capability: "taxes",
+  topic: "medical_deduction",
+  covers: ["tax_health"],
+  needs: ["monthly_income", "household", "life_stage"],
+  detect({ profile, data }) {
+    const h = readHealthTaxes(profile, data).medical;
+    if (h.spentCents <= 0 || h.savesCents < MEDICAL_MIN_SAVING_CENTS) return null;
+    return {
+      id: suggestionId("taxes", "medical_deduction"),
+      capability: "taxes",
+      topic: "medical_deduction",
+      title: "Keep your medical receipts: this year they're worth itemizing",
+      headline: headlineOf("Keep your medical receipts", h.savesCents, "saves", true),
+      short: `You paid ${formatCents(h.spentCents)} for care this year; ${formatCents(h.floorCents)} is the 7.5% floor.`,
+      worthCents: h.savesCents,
+      worthKind: "saves",
+      confidence: weakest([
+        factEvidence(profile.facts.monthly_income),
+        evidence("seen", profile.months, h.payments, "medical payments"),
+        {
+          percent: 60,
+          reason:
+            "insurance may still pay some of these bills, and I estimated your income for the 7.5% floor",
+        },
+      ]),
+      urgency: month(profile.today) >= 11 ? "soon" : "later",
+      why: `You've paid ${formatCents(h.spentCents)} for care and health premiums this year. Only what's over 7.5% of your income (about ${formatCents(h.floorCents)}) counts, which is ${formatCents(h.deductibleCents)}; with your property tax and gifts that's more than your ${formatCents(h.standardCents)} standard deduction, so itemizing would save about ${formatCents(h.savesCents)}. Keep the bills and receipts, and ask whoever does your return to itemize.`,
+      action: { label: "See the numbers", href: "/taxes/health" },
+    };
+  },
+};
+
+// Disaster relief (step 270): a postponement declared for the person's county moves their
+// federal tax deadlines; repairs since, less what insurance paid back, may be a casualty loss.
+// Only from the person's disaster feed (the stand-in's samples for demo-bank people).
+const longDate = (day: string) => dayLabel(day, { year: true });
+const daysBetween = (a: string, b: string) =>
+  Math.round((Date.parse(b) - Date.parse(a)) / 86_400_000);
+const disasterRelief: Detector = {
+  capability: "taxes",
+  topic: "disaster_relief",
+  covers: ["tax_disaster"],
+  needs: ["county", "monthly_income", "household"],
+  detect({ profile, data }) {
+    const county = profile.facts.county;
+    if (typeof county.value !== "string") return null;
+    const r = reliefFor(
+      data.extras?.disasterRelief ?? [],
+      { county: county.value, state: null },
+      profile.today,
+    )[0];
+    if (!r) return null;
+    const damage = damageSince(data.transactions, r.incidentFrom);
+    const loss = casualtyLoss({
+      repairsCents: damage.repairsCents,
+      reimbursedCents: damage.reimbursedCents,
+      agiCents: grossIncome(profile, data),
+      relief: r,
+    });
+    const saves = Math.round(loss.deductibleCents * bracketOf(profile, data));
+    const year = Number(profile.today.slice(0, 4));
+    const moved = computedMoves(r, [year - 1, year, year + 1]).filter(
+      (m) => m.from >= profile.today,
+    );
+    const to = longDate(r.postponedTo);
+    return {
+      id: suggestionId("taxes", "disaster_relief"),
+      capability: "taxes",
+      topic: "disaster_relief",
+      title: `Use the IRS disaster postponement for ${county.value} County: your tax deadlines move to ${to}`,
+      headline: headlineOf(
+        `Check your ${county.value} County disaster relief`,
+        saves,
+        "saves",
+        true,
+      ),
+      short: `${moved.length} federal tax date${moved.length === 1 ? "" : "s"} move to ${to}; repairs seen: ${formatCents(damage.repairsCents)}.`,
+      worthCents: saves,
+      worthKind: "saves",
+      confidence: weakest([
+        factEvidence(county),
+        {
+          percent: 70,
+          reason:
+            "I matched your county by name from your property tax; tell me your state to be sure",
+        },
+        ...(saves > 0
+          ? [
+              {
+                percent: 55,
+                reason: "I can't see whether you itemize or what insurance may still pay",
+              },
+            ]
+          : []),
+      ]),
+      urgency: moved.some((m) => daysBetween(profile.today, m.from) <= 45) ? "now" : "soon",
+      why: `The IRS has postponed federal tax deadlines for ${county.value} County after ${r.title.replace(/ \(sample declaration\)$/, "").toLowerCase()} from ${longDate(r.incidentFrom)}: ${moved.map((m) => `${m.title} (${longDate(m.from)})`).join("; ")} move${moved.length === 1 ? "s" : ""} to ${to}. ${
+        damage.repairsCents > 0
+          ? `You've paid ${formatCents(damage.repairsCents)} for repairs since, and ${formatCents(damage.reimbursedCents)} came back from insurance or assistance, so the loss is ${formatCents(loss.lossCents)}. ${
+              loss.deductibleCents > 0
+                ? `After the $100 and 10%-of-income floors, ${formatCents(loss.deductibleCents)} is deductible if you itemize, worth up to about ${formatCents(saves)}; keep the bills with your insurance claim, since what insurance pays changes it.`
+                : "After the $100 and 10%-of-income floors none of it is deductible; keep the bills with your insurance claim, since what insurance pays changes the loss."
+            }`
+          : "If the disaster damaged your home or car, keep the repair bills and the insurance claim together."
+      }${r.sample ? " (This is a sample declaration from Jane's stand-in feed.)" : ""}`,
+      action: { label: "Move my tax deadlines", href: "/deadlines" },
+    };
+  },
+};
+
 export const TAX_DETECTORS: readonly Detector[] = [
+  disasterRelief,
+  ptcRepayment,
+  hsaOverLimit,
+  medicalDeductionDetector,
   inheritedIra,
   sCorpElection,
   homeOffice,

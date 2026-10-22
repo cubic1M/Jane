@@ -238,3 +238,33 @@ detector suggestion; the tool is covered by `inherited_ira`. An inherited IRA is
 money to convert to a Roth. Rules, limits and states with their own death taxes are in
 `src/config/inheritance.ts` with sources; the chat gives facts and points to a tax professional or
 estate lawyer.
+
+### Step 269: health cover and taxes
+
+| Topic | Trigger signals | Value | Confidence drivers | Urgency | Fires for | Should not |
+|---|---|---|---|---|---|---|
+| `ptc_repayment` (covers `tax_health`) | 3+ Marketplace premiums this year (payee names in `src/config/health-taxes.ts`); income read month by month (profit for the self-employed), projected at the pace of the last 3 months | the advance credit that would come back with the return: the advance (told, or what the income of the year's first 3 months allowed) less the credit at the projected income; all of it over 400% of the poverty line; no cap from 2026 | income pattern and income as seen; 50% when the advance is worked out, 75% when told | later; soon from July; now from October | Sam (a retainer client since July puts him over 400%) | anyone without a Marketplace plan; steady income |
+| `hsa_over_limit` (covers `tax_health`) | has an HSA; deposits into it this year (or out to one by name when none is linked), projected to December | the 6% excise a year on what's over (the tax on it isn't avoidable, so not counted) | the HSA fact; deposits seen; capped at 70% (cover taken from the household, an employer's deposits unseen) | now when already over, soon when the pace will be | Priya ($500 a month against the $4,400 self-only limit) | no HSA; under the limit; the catch-up from 55 counted |
+| `medical_deduction` (covers `tax_health`) | medical payments this year (not the vet) and health premiums (Medicare, supplement, drug plan, Marketplace) | what itemizing with the medical costs over 7.5% of income saves against the standard deduction (with the 65+ addition) at the person's bracket; property tax and gifts counted with it | income as seen; payments seen; capped at 60% (insurance may still pay some, income estimated) | later; soon from November | Ruth (dental implants and hearing aids this year) | anyone whose costs stay under the floor or whose standard deduction is still bigger |
+
+The three share one reading (`src/planning/health-taxes-read.ts`), used by the detectors, the chat's
+messages and answer, the `tax_health` tool and `/taxes/health`, so the figures match. The
+Marketplace figures (poverty line, the 2026 applicable percentage table, the 400% line, the end of
+the repayment cap) are in `src/config/health-taxes.ts` with sources; the HSA limits, the 7.5% floor
+and the 65+ standard deduction are in `src/config/tax-rates.ts`. Telling the Marketplace or an HSA
+provider is the person's: Jane contacts no one. What to do about the credit is demo advice.
+
+### Step 270: disasters and losses
+
+| Topic | Trigger signals | Value | Confidence drivers | Urgency | Fires for | Should not |
+|---|---|---|---|---|---|---|
+| `disaster_relief` (covers `tax_disaster`) | the county (told, or named by the property tax payee) covered by a declaration in the person's disaster feed (the stand-in's samples for demo-bank people, none for real accounts) whose postponed date is ahead | the casualty loss over the floors at the person's bracket: repairs since the incident less FEMA or insurance paid back, less $100 and 10% of income (a qualified disaster: $500, no 10%); 0 when the floors swallow it | the county fact; capped at 70% (county matched by name, state unknown) and 55% when there is a loss (itemizing and what insurance still pays unseen) | now when a moved federal date is within 45 days, else soon | the Reyes family (Harris County flood: $36,200 of repairs, $5,000 from FEMA) | anyone without a feed or a county; a county no declaration covers |
+
+A postponement moves every tax deadline on the person's list from the incident date up to the
+postponed date (titles about taxes, IRS forms, estimated payments, IRA or HSA contributions, the IP
+PIN), not done ones or other deadlines: by itself at the levels that let Jane act (the tax autopilot),
+on the "Move my tax deadlines" tap at "ask first", once per disaster. The dates Jane works out
+(estimated payments, filing day with the prior year's IRA and HSA contributions) are shown moved.
+The loss is recorded once per disaster and insurance claim (`DisasterLoss`, unique key), so it is
+never counted twice. Rules and the sample feed are in `src/config/disasters.ts` with sources; swap
+the stand-in (`src/lib/disaster-feed`) for the IRS disaster relief page and FEMA's OpenFEMA API.
