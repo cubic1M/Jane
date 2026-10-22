@@ -82,6 +82,9 @@ export const DETECTOR_RATES = {
   shortTermGapBps: 150,
   // Sudden money: until the person says what a big deposit was, hold back this share for tax.
   suddenHoldShare: 0.25,
+  // Beneficiaries: an account with nobody named can go through a court process, which often
+  // costs a few percent of what is in it.
+  beneficiaryRiskShare: 0.03,
   // Late fees: one is enough to mention.
   lateFeesMin: 1,
   // Payday and cash-advance loans: fees are about this share of what's repaid.

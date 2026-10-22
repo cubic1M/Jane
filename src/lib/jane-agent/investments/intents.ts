@@ -34,6 +34,8 @@ export type InvestmentTopic =
   | "plan_menu"
   | "honest_performance"
   | "short_term"
+  | "values"
+  | "family_file"
   | "sudden_money"
   // Spec step 297: the practice portfolio (Phase AW, Stage A).
   | "practice_log"
@@ -190,6 +192,14 @@ const SHORT_TERM =
 const SUDDEN =
   /\b(?:i )?(?:got|received|just got|came into|am getting|will get|inherited) (?:a |an |some )?(?:big |large )?(?:bonus|inheritance|windfall|lump sum|settlement)\b|\bwhat (?:should|do) i do with (?:a |my |the )?(?:bonus|inheritance|windfall|lump sum|settlement|money from (?:the sale|selling))\b|\bsudden money\b|\bwindfall\b|\bi (?:sold|am selling) (?:my |the )?(?:house|home|business|stock)\b/;
 
+// Spec step 236: leaving things out of funds, or leaning towards a theme.
+const VALUES =
+  /\b(?:esg|socially responsible|sustainable (?:investing|funds?)|fossil[- ]free|divest(?:ing)?|invest(?:ing)? (?:by|with|in line with|according to) my values)\b|\b(?:no|without|avoid|exclude|screen out)\s+(?:fossil fuels?|oil and gas|weapons|guns|tobacco)\b|\bclean energy (?:fund|investing)\b|\b(?:don'?t|do not) want to (?:invest|own|hold)[^.?!]{0,20}(?:fossil|oil|tobacco|weapons|guns)\b/;
+
+// Spec step 237: beneficiaries, transfer-on-death and the family file; also "do I need a will".
+const FAMILY_FILE =
+  /\bbeneficiar(?:y|ies)\b|\btransfer[- ]on[- ]death\b|\bwhat (?:would|will) my (?:family|spouse|kids|children) need\b|\bfamily file\b|\bif something (?:happens|happened) to me\b|\b(?:do i need|should i (?:have|make|get|write)) a (?:will|trust)\b|\bwills? and trusts?\b/;
+
 // Spec step 297: the practice portfolio. "Pause it" on its own is the practice portfolio's
 // switch; the autopilot has its own words ("pause the autopilot").
 const PRACTICE_LOG =
@@ -224,6 +234,8 @@ function practiceIntent(text: string): InvestmentIntent | null {
 export function parseInvestmentIntent(text: string): InvestmentIntent | null {
   const practice = practiceIntent(text);
   if (practice) return practice;
+  if (FAMILY_FILE.test(text)) return { kind: "investments", topic: "family_file", account: null };
+  if (VALUES.test(text)) return { kind: "investments", topic: "values", account: null };
   if (SUDDEN.test(text)) return { kind: "investments", topic: "sudden_money", account: null };
   if (SHORT_TERM.test(text)) return { kind: "investments", topic: "short_term", account: null };
   if (HONEST.test(text)) return { kind: "investments", topic: "honest_performance", account: null };

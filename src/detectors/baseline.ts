@@ -32,6 +32,7 @@ export const BASELINE: Readonly<Record<PersonId, readonly string[]>> = {
     "trial_conversion",
   ],
   family: [
+    "beneficiaries",
     "bill_negotiation",
     "budget_overrun",
     "car_addons",
@@ -97,10 +98,12 @@ export const BASELINE: Readonly<Record<PersonId, readonly string[]>> = {
     "sudden_money",
     "tax_loss_harvest",
     "umbrella",
+    "values_funds",
     "withholding_gap",
   ],
   preretire: [
     "auto_invest",
+    "beneficiaries",
     "bill_negotiation",
     "catch_up",
     "charity_receipts",
