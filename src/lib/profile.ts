@@ -174,6 +174,8 @@ async function sectorFigures(userId: string, client: PrismaClient, now: Date) {
   const hasStock =
     (await db.accounts.count({ where: { subtype: "stock plan" } })) > 0 ||
     (await db.equityEvents.count()) > 0;
+  // Spec step 296: whether the practice-portfolio suggestion still applies.
+  const practice = await db.practicePortfolios.count();
   const [matchPace, equity, subscriptions, cardInterest, shopSaving, policies] = await Promise.all([
     loadMatchPace(userId, { client, now }),
     hasStock
@@ -199,6 +201,7 @@ async function sectorFigures(userId: string, client: PrismaClient, now: Date) {
         deductibleCents: p.deductibleCents,
         coverage: p.coverage,
       })),
+    hasPracticePortfolio: practice > 0,
   };
 }
 
