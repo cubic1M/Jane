@@ -1,3 +1,4 @@
+import { cardHeadline } from "@/detectors/contract";
 import { MESSAGE_PRIORITY } from "@/config/agent-chat";
 import type { OfferedSuggestion } from "@/lib/suggestions";
 import { sentence, type MessageSource } from "./source";
@@ -10,7 +11,7 @@ import { sentence, type MessageSource } from "./source";
 // person's own number, and how sure Jane is. The whole explanation is behind "Why?".
 export function suggestionCard(s: OfferedSuggestion): string[] {
   return [
-    s.headline.replace(/[.!?]+$/, ""),
+    cardHeadline(s.headline),
     `Why you: ${sentence(s.short)}`,
     `${s.confidencePercent}% sure: ${s.confidenceReason}.`,
   ];
@@ -25,6 +26,7 @@ export const suggestionsSource: MessageSource = {
       refs: { suggestion: s.key, ...(s.advice ? { advice: true as const } : {}) },
       actions: [
         { id: "suggestion.yes" as const, label: s.actionLabel, kind: "primary" as const },
+        { id: "snooze" as const, label: "Not now", kind: "secondary" as const },
         { id: "suggestion.no" as const, label: "Not for me", kind: "secondary" as const },
         { id: "suggestion.why" as const, label: "Why?", kind: "quick" as const },
         { id: "open" as const, label: "Open", kind: "link" as const, href: s.actionHref },
