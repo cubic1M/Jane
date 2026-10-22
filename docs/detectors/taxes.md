@@ -253,3 +253,18 @@ Marketplace figures (poverty line, the 2026 applicable percentage table, the 400
 the repayment cap) are in `src/config/health-taxes.ts` with sources; the HSA limits, the 7.5% floor
 and the 65+ standard deduction are in `src/config/tax-rates.ts`. Telling the Marketplace or an HSA
 provider is the person's: Jane contacts no one. What to do about the credit is demo advice.
+
+### Step 270: disasters and losses
+
+| Topic | Trigger signals | Value | Confidence drivers | Urgency | Fires for | Should not |
+|---|---|---|---|---|---|---|
+| `disaster_relief` (covers `tax_disaster`) | the county (told, or named by the property tax payee) covered by a declaration in the person's disaster feed (the stand-in's samples for demo-bank people, none for real accounts) whose postponed date is ahead | the casualty loss over the floors at the person's bracket: repairs since the incident less FEMA or insurance paid back, less $100 and 10% of income (a qualified disaster: $500, no 10%); 0 when the floors swallow it | the county fact; capped at 70% (county matched by name, state unknown) and 55% when there is a loss (itemizing and what insurance still pays unseen) | now when a moved federal date is within 45 days, else soon | the Reyes family (Harris County flood: $36,200 of repairs, $5,000 from FEMA) | anyone without a feed or a county; a county no declaration covers |
+
+A postponement moves every tax deadline on the person's list from the incident date up to the
+postponed date (titles about taxes, IRS forms, estimated payments, IRA or HSA contributions, the IP
+PIN), not done ones or other deadlines: by itself at the levels that let Jane act (the tax autopilot),
+on the "Move my tax deadlines" tap at "ask first", once per disaster. The dates Jane works out
+(estimated payments, filing day with the prior year's IRA and HSA contributions) are shown moved.
+The loss is recorded once per disaster and insurance claim (`DisasterLoss`, unique key), so it is
+never counted twice. Rules and the sample feed are in `src/config/disasters.ts` with sources; swap
+the stand-in (`src/lib/disaster-feed`) for the IRS disaster relief page and FEMA's OpenFEMA API.

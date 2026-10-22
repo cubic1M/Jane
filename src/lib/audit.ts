@@ -106,6 +106,8 @@ export type AuditEvent =
   | "what_if_adopted"
   // The lean plan switched on or off (spec step 204).
   | "lean_plan_started"
+  // The same account linked twice, merged after both sides were proven to match (spec step 238).
+  | "books_merged"
   // A finished action whose saving never showed up (spec step 207).
   | "saving_marked_not_shown"
   // Unusual activity answered: this was me, or not me (spec step 208).
@@ -152,6 +154,10 @@ export type AuditEvent =
   // Spec step 222: a read-only link for an accountant made, viewed, answered on and revoked.
   // Spec step 223: an estimated tax payment made through the stand-in.
   | "tax_payment_made"
+  // Spec step 270: tax deadlines moved by a disaster postponement, and a disaster loss recorded
+  // with its insurance claim.
+  | "tax_deadlines_postponed"
+  | "disaster_loss_recorded"
   | "accountant_link_created"
   | "accountant_link_viewed"
   | "accountant_link_answered"
@@ -225,7 +231,10 @@ export type AuditEvent =
   | "family_file_exported"
   // Spec step 290 (Phase AW): the practice portfolio started, and each practice trade.
   | "practice_started"
-  | "practice_trade";
+  | "practice_trade"
+  // The person's practice-portfolio preferences changed, from the page or the chat (which fields,
+  // never the amounts).
+  | "practice_preferences_changed";
 
 export type AuditActor = { type: ActorType; id: string | null };
 

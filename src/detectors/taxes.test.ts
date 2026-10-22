@@ -434,3 +434,44 @@ describe("health cover and taxes (step 269)", () => {
     ).not.toContain("medical_deduction");
   });
 });
+
+describe("disaster relief (step 270)", () => {
+  it("reaches the Reyes family in Harris County, and no one else", () => {
+    expect(PERSON_IDS.filter((id) => topics(id).includes("disaster_relief"))).toEqual(["family"]);
+    const s = run("family").find((x) => x.topic === "disaster_relief")!;
+    expect(s.title).toContain("Harris County");
+    expect(s.why).toContain("move to May 3, 2027");
+    expect(s.why).toContain("the estimated tax payment for 2026 (Jan 15, 2027)");
+    expect(s.why).toMatch(/You've paid \$36,200\.00 for repairs since, and \$5,000\.00 came back/);
+    expect(s.why).toContain("sample declaration");
+    // The flood loss over the floors, at their bracket, if they itemize.
+    expect(s.worthCents).toBeGreaterThan(200_000);
+    expect(s.headline).toMatch(/^Check your Harris County disaster relief, save \$[\d,]+$/);
+    expect(s.confidence).toEqual({
+      percent: 55,
+      reason: "I can't see whether you itemize or what insurance may still pay",
+    });
+  });
+
+  it("raises nothing without a feed (a real account) or a county", () => {
+    expect(
+      topics("family", (d) => ({ ...d, extras: { ...d.extras!, disasterRelief: [] } })),
+    ).not.toContain("disaster_relief");
+    expect(
+      topics("family", (d) => ({
+        ...d,
+        transactions: d.transactions.filter((t) => !/HARRIS COUNTY/.test(t.description)),
+      })),
+    ).not.toContain("disaster_relief");
+  });
+
+  it("promises nothing when the floors swallow the loss", () => {
+    const smaller = (d: ProfileInput): ProfileInput => ({
+      ...d,
+      transactions: d.transactions.filter((t) => !/BAYOU FLOORING/.test(t.description)),
+    });
+    const s = run("family", smaller).find((x) => x.topic === "disaster_relief")!;
+    expect(s.worthCents).toBe(0);
+    expect(s.why).toContain("none of it is deductible");
+  });
+});

@@ -146,6 +146,7 @@ export const TEAM_ACCESS_RULES: Record<AuditEvent, EventRule> = {
   money_transfer_cancelled: own,
   what_if_adopted: own,
   lean_plan_started: own,
+  books_merged: own,
   saving_marked_not_shown: own,
   unusual_answered: own,
   lean_plan_ended: own,
@@ -182,6 +183,8 @@ export const TEAM_ACCESS_RULES: Record<AuditEvent, EventRule> = {
   tax_notice_response_sent: own,
   property_appeal_handled: own,
   tax_payment_made: own,
+  tax_deadlines_postponed: own,
+  disaster_loss_recorded: own,
   accountant_link_created: own,
   accountant_link_viewed: own,
   accountant_link_answered: own,
@@ -227,6 +230,7 @@ export const TEAM_ACCESS_RULES: Record<AuditEvent, EventRule> = {
   family_file_exported: own,
   practice_started: own,
   practice_trade: own,
+  practice_preferences_changed: own,
 };
 
 export const SHOWN_EVENTS = (Object.keys(TEAM_ACCESS_RULES) as AuditEvent[]).filter(

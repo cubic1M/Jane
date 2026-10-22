@@ -100,6 +100,8 @@ export const SUGGESTION_TOPICS = [
   "property_tax_check",
   "tax_loss_harvest",
   "file_return",
+  // Phase AP (spec steps 238–244): Jane runs the money.
+  "data_problems",
   // Spec step 296: practice money first.
   "practice_portfolio",
   "s_corp_election",
@@ -109,6 +111,7 @@ export const SUGGESTION_TOPICS = [
   "ptc_repayment",
   "hsa_over_limit",
   "medical_deduction",
+  "disaster_relief",
 ] as const;
 export type SuggestionTopic = (typeof SUGGESTION_TOPICS)[number];
 
@@ -259,6 +262,9 @@ export const PEOPLE: readonly Person[] = [
 
       "liability_levels",
       "disability_insurance",
+      // Spec step 238: their joint savings is linked twice.
+      "data_problems",
+      "disaster_relief",
       "practice_portfolio",
     ],
     mustNot: [
