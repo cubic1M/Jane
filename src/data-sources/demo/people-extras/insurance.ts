@@ -69,7 +69,36 @@ export const INSURANCE_EXTRAS: Partial<Record<PersonId, PersonExtra>> = {
   },
   // The Reyes: a collision repair paid out of pocket, with no claim payout in sight.
   family: {
+    monthly: [
+      R(
+        "insurance-rx",
+        "card",
+        "CVS PHARMACY",
+        "MEDICAL_PHARMACIES_AND_SUPPLEMENTS",
+        24,
+        [9],
+        "CVS",
+      ),
+    ],
     once: [
+      O(
+        "insurance-pediatrics",
+        "card",
+        "FAMILY PEDIATRICS",
+        "MEDICAL_PRIMARY_CARE",
+        180,
+        [-150],
+        "Family Pediatrics",
+      ),
+      O(
+        "insurance-imaging",
+        "card",
+        "BAYVIEW IMAGING CENTER",
+        "MEDICAL_PRIMARY_CARE",
+        2100,
+        [-60],
+        "Bayview Imaging Center",
+      ),
       O(
         "insurance-collision",
         "card",

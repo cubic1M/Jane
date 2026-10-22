@@ -1,4 +1,5 @@
 import type { PrismaClient } from "@/generated/prisma/client";
+import { PAY_PERIODS } from "@/config/benefits";
 import { PROFILE_MONTHS } from "@/config/profile";
 import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
@@ -43,6 +44,8 @@ export async function loadProfileInput(
     values,
     named,
     membership,
+    healthPolicy,
+    fsa,
   ] = await Promise.all([
     db.transactions.findMany({
       where: { date: { gt: since, lte: now } },
@@ -94,6 +97,14 @@ export async function loadProfileInput(
     db.valuesPreferences.findFirst({ select: { excludes: true } }),
     db.accountBeneficiaries.findMany({ select: { accountId: true } }),
     client.householdMember.findUnique({ where: { userId }, select: { householdId: true } }),
+    db.insurancePolicies.findFirst({
+      where: { kind: "health", status: "active", deductibleCents: { not: null } },
+      select: { carrier: true, deductibleCents: true, coverage: true },
+    }),
+    db.employerBenefits.findFirst({
+      where: { kind: "fsa", status: { not: "declined" } },
+      select: { perPayCents: true, payFrequency: true },
+    }),
   ]);
   // Other people in their household in Jane (spec step 264), not counting them.
   const householdMembers = membership
@@ -177,6 +188,10 @@ export async function loadProfileInput(
     unreadPolicyDocuments: unread,
     rentReportingOn: reporting !== null,
     extras: { householdMembers, ...(await sectorFigures(userId, client, now)) },
+    healthPlan: healthPlanOf(healthPolicy),
+    fsaElectionCents: fsa
+      ? fsa.perPayCents * (PAY_PERIODS[fsa.payFrequency as keyof typeof PAY_PERIODS] ?? 12)
+      : null,
   };
 }
 
@@ -227,6 +242,20 @@ async function sectorFigures(userId: string, client: PrismaClient, now: Date) {
     // Spec step 270: the disaster relief declared where they might live (none without a feed).
     disasterRelief: feed ? await feed.declarations() : [],
     hasPracticePortfolio: practice > 0,
+  };
+}
+
+// A health policy's terms when the plan is a coinsurance plan with a known deductible.
+function healthPlanOf(
+  policy: { carrier: string; deductibleCents: number | null; coverage: unknown } | null,
+): ProfileInput["healthPlan"] {
+  const c = (policy?.coverage ?? {}) as Record<string, unknown>;
+  if (!policy || policy.deductibleCents === null || typeof c.coinsurance !== "number") return null;
+  return {
+    label: `${policy.carrier} plan`,
+    deductibleCents: policy.deductibleCents,
+    outOfPocketMaxCents: typeof c.outOfPocketMax === "number" ? c.outOfPocketMax : null,
+    coinsurance: c.coinsurance,
   };
 }
 

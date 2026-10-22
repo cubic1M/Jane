@@ -64,6 +64,21 @@ const SAMPLE_BOOKS: Readonly<Record<string, NonNullable<ProfileInput["extras"]>[
   ],
 };
 
+// Sample people with a health plan whose terms Jane has, and an FSA election (spec step 259).
+const HEALTH_PLANS: Readonly<
+  Record<string, { plan: NonNullable<ProfileInput["healthPlan"]>; fsaElectionCents: number | null }>
+> = {
+  family: {
+    plan: {
+      label: "Acme PPO",
+      deductibleCents: 150_000,
+      outOfPocketMaxCents: 450_000,
+      coinsurance: 20,
+    },
+    fsaElectionCents: 240_000,
+  },
+};
+
 export function inputFor(person: string, told: ProfileInput["told"] = {}): ProfileInput {
   const demo = { seed: `seed${person}`, anchor: SAMPLE_ANCHOR, person };
   const holdings = demoHoldings(demo, SAMPLE_TODAY);
@@ -91,6 +106,8 @@ export function inputFor(person: string, told: ProfileInput["told"] = {}): Profi
           .filter((a) => BENEFICIARY_SUBTYPES.includes(a.subtype ?? ""))
           .map((a) => a.account_id),
     valuesExcludes: person === "equity" ? ["fossil_fuels"] : [],
+    healthPlan: HEALTH_PLANS[person]?.plan ?? null,
+    fsaElectionCents: HEALTH_PLANS[person]?.fsaElectionCents ?? null,
     holdings: holdings.map((h) => ({
       ticker:
         h.security_id.replace("demo-sec-", "").toUpperCase() === "CASH"
