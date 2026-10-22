@@ -33,6 +33,7 @@ import type { CostlyBorrowing } from "@/lib/costly-borrowing";
 import type { MortgageMoneyView } from "@/lib/mortgage-money";
 import type { CarLoan } from "@/lib/car-loan";
 import type { Renting } from "@/lib/renting";
+import type { BorrowingPower } from "@/lib/borrowing-power";
 import type { FamilyCredit } from "@/lib/family-credit";
 import type { DebtReview } from "@/lib/debt-review";
 import type { DebtTrouble } from "@/lib/debt-trouble";
@@ -215,6 +216,12 @@ export const DEBT_TOOLS: Anthropic.Tool[] = [
     name: "renting",
     description:
       "Renting, counted: the person's rent as found in their payments (monthly amount, any increase against what is usual, using a stand-in local trend), whether their rent is being reported to the credit bureaus (only ever after their own yes; the monthly fee and what reporting can and can't do are stated), and any security deposits they have told Jane about with the day each is due back after moving out (days from the state's law, with the citation, to be confirmed against the lease). Facts and the person's own choices; Jane reports nothing and sends nothing herself.",
+    input_schema: noInput,
+  },
+  {
+    name: "borrowing_power",
+    description:
+      "What the person could borrow, kept current: for a mortgage, a car loan, a personal loan and a credit card, the likely amount (the most whose payment stays inside the lender's debt-to-income limit and a comfortable share of take-home pay, from the same fit engine as the loan options) and the likely rate, lender, term, payment and fees from the lender stand-in's soft prequalification (soft checks never touch the score), the day it was checked, the score it was priced by and the day that score was pulled, what would improve each (the next score band's rate, debt payments that set the limit), and what moved since the check before. Estimates, not offers; a card's limit is a stated guess from income. Nothing is applied for: a hard pull only ever follows the person's own tap.",
     input_schema: noInput,
   },
   {
@@ -478,6 +485,7 @@ export const DEBT_TOOL_STATUS: Readonly<Record<string, string>> = {
   mortgage_money: "Comparing ways to use the money…",
   costly_borrowing: "Looking for costly borrowing…",
   renting: "Looking at your rent…",
+  borrowing_power: "Checking what you could borrow…",
   family_credit: "Looking at helping with credit…",
   debt_decision: "Working it out with your numbers…",
   loan_fit: "Finding the loan that fits you…",
@@ -1413,6 +1421,43 @@ export function rentingToolOutput(d: Renting, money: (cents: number) => string) 
       rule: x.view.rule.note,
       source: x.view.rule.source,
     })),
+  };
+}
+
+export function borrowingPowerToolOutput(d: BorrowingPower, money: (cents: number) => string) {
+  if (!d.available) return { note: "No lending partner for this person's accounts yet." };
+  return {
+    checkedOn: d.checkedOn,
+    softChecksOnly: true,
+    score: d.score === null ? "not pulled yet; a middling score is assumed" : d.score,
+    scorePulledOn: d.scoreOn,
+    figures: d.figures.map((f) =>
+      !f.available
+        ? { product: f.product, available: false, why: f.why, whatWouldHelp: f.improve }
+        : f.product === "card"
+          ? {
+              product: "card",
+              likelyRatePercent: (f.aprBps ?? 0) / 100,
+              likelyLimit: money(f.limitCents),
+              limitIsAGuess: true,
+              checkedOn: d.checkedOn,
+              whatWouldHelp: f.improve,
+            }
+          : {
+              product: f.product,
+              upTo: money(f.amountCents),
+              likelyRatePercent: (f.aprBps ?? 0) / 100,
+              lender: f.lender,
+              termMonths: f.termMonths,
+              monthlyPayment: money(f.paymentCents),
+              fees: money(f.feeCents),
+              limitSetBy: f.binding === "dti" ? "debt-to-income" : "a comfortable payment",
+              checkedOn: d.checkedOn,
+              whatWouldHelp: f.improve,
+            },
+    ),
+    changedSinceLastCheck: d.changes,
+    page: "/loans/borrow",
   };
 }
 

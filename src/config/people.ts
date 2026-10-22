@@ -80,6 +80,8 @@ export const SUGGESTION_TOPICS = [
   // Spec step 248: renting, counted.
   "rent_reporting",
   "rent_increase",
+  // Spec step 250: what you could borrow.
+  "borrowing_power",
   // Spec step 249: helping family with credit.
   "family_credit",
   "cosign_risk",
@@ -336,6 +338,7 @@ export const PEOPLE: readonly Person[] = [
       "disability_insurance",
       "ptc_repayment",
       "practice_portfolio",
+      "borrowing_power",
     ],
     mustNot: [
       "beneficiaries",
@@ -616,6 +619,8 @@ export const PEOPLE: readonly Person[] = [
       "social_security_tax",
       "irmaa_watch",
       "practice_portfolio",
+      // Spec step 250: a new loan is the wrong thing to bring someone in debt trouble.
+      "borrowing_power",
     ],
     firstQuestion: "hardship_reason",
   },
