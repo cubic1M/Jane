@@ -60,6 +60,7 @@ export const DEBT_SOURCE_LIMITS = {
   costly_borrowing: 1,
   renting: 1,
   family_credit: 1,
+  borrowing_power: 1,
 } as const;
 export const DEBT_MESSAGE_PRIORITY = {
   // A buy now, pay later plan Jane found, then a debt with no rate: news that can wait,
@@ -160,6 +161,8 @@ export const DEBT_MESSAGE_PRIORITY = {
   rent_deposit: 60,
   rent_rise: 40,
   rent_report: 37,
+  // Spec step 250: a better rate or a bigger amount than last month can wait for a quiet day.
+  borrowing_power: 36,
 } as const;
 
 // One short line for each step above, for the chat's answer to "what do you do about my
@@ -195,6 +198,7 @@ export const DEBT_AUTOPILOT_SHORT: Readonly<Record<number, string>> = {
   247: "Finds payday loans and overdrafts; shows the way out.",
   248: "Offers to report your rent; follows a deposit's return.",
   249: "Shows what helping family with credit does; counts co-signing.",
+  250: "Keeps what you could borrow, and at what rate, current with soft checks.",
 };
 
 // What Jane does about debts by herself at each autopilot level (src/config/autopilot.ts),
@@ -320,6 +324,10 @@ export const DEBT_AUTOPILOT: Readonly<
       step: 249,
       does: "Shows what adding someone to your card, a first card for a student or co-signing would do to your credit and theirs, with a co-signed loan counted in full in your own debt load and what lands on you if they miss. You decide; nothing is applied for or sent.",
     },
+    {
+      step: 250,
+      does: "Once a month, soft-checks what you could likely borrow for a mortgage, a car, a personal loan and a card, from your score, income and debts, with the day each was checked and what would improve it, and tells you when it gets better. Soft checks never touch your score; applying is always your tap.",
+    },
   ],
   safe: [
     {
@@ -438,6 +446,10 @@ export const DEBT_AUTOPILOT: Readonly<
       step: 249,
       does: "Shows what adding someone to your card, a first card for a student or co-signing would do to your credit and theirs, with a co-signed loan counted in full in your own debt load and what lands on you if they miss. You decide; nothing is applied for or sent.",
     },
+    {
+      step: 250,
+      does: "Once a month, soft-checks what you could likely borrow for a mortgage, a car, a personal loan and a card, from your score, income and debts, with the day each was checked and what would improve it, and tells you when it gets better. Soft checks never touch your score; applying is always your tap.",
+    },
   ],
   all: [
     {
@@ -555,6 +567,10 @@ export const DEBT_AUTOPILOT: Readonly<
     {
       step: 249,
       does: "Shows what adding someone to your card, a first card for a student or co-signing would do to your credit and theirs, with a co-signed loan counted in full in your own debt load and what lands on you if they miss. You decide; nothing is applied for or sent.",
+    },
+    {
+      step: 250,
+      does: "Once a month, soft-checks what you could likely borrow for a mortgage, a car, a personal loan and a card, from your score, income and debts, with the day each was checked and what would improve it, and tells you when it gets better. Soft checks never touch your score; applying is always your tap.",
     },
   ],
 };

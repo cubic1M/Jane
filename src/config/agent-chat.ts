@@ -254,6 +254,16 @@ export const CHAT_HISTORY_HOURS = 48;
 
 // Spec step 83: sources whose messages don't count toward the daily limit, like the brief:
 // the one-time autopilot question, so it never pushes a finding out on the first day.
+// Sources that speak at most this often a month (spec step 273: taxes on autopilot), counting
+// what was posted this calendar month; a message at or above `urgentFrom` priority always goes,
+// and so does a question the person answers to keep their figures right (one carrying any of
+// `questionRefs`, like the tax profile's field or a new kind of income).
+export const CHAT_SOURCE_MONTHLY_LIMITS: Readonly<
+  Record<string, { limit: number; urgentFrom: number; questionRefs: readonly string[] }>
+> = {
+  taxes: { limit: 1, urgentFrom: 80, questionRefs: ["taxField", "incomeKind", "taxState"] },
+};
+
 export const CHAT_UNCAPPED_SOURCES: readonly string[] = [
   "autopilot",
   "welcome",

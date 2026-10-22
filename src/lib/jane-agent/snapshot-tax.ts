@@ -1,3 +1,4 @@
+import { loadProfileInput } from "@/lib/profile";
 import {
   TAX_FORMS_ASK_FROM,
   TAX_FORMS_ASK_UNTIL,
@@ -155,11 +156,12 @@ export async function loadTaxSnapshot(
     loadSelfEmployed(userId, { client, now, loaded: { estimate, advice } }),
   ]);
   const noticeViews = await listTaxNotices(userId, { client });
-  const [equity, identity, sideIncome, home] = await Promise.all([
+  const [equity, identity, sideIncome, home, input] = await Promise.all([
     loadEquityTax(userId, { client, now, loaded: { estimate, advice } }),
     loadIdentity(userId, { client, now }),
     loadSideIncome(userId, { client, now, loaded: { estimate } }),
     loadHomeTaxes(userId, { client, now, loaded: { estimate } }),
+    loadProfileInput(userId, { client, now }),
   ]);
   const inLastMonth = (lastMonthTags ?? tags).tagged.filter((t) => t.date.startsWith(last));
   return {
@@ -224,11 +226,16 @@ export async function loadTaxSnapshot(
         loaded: { estimate, advice, equity, identity, notices: noticeViews, side: sideIncome },
         withQuestions: false,
       }),
-      health: await loadHealthTaxes(userId, { client, now, loaded: { advice } }),
-      disaster: await loadDisasterRelief(userId, { client, now, loaded: { estimate } }),
-      retirement: await loadRetirementTaxes(userId, { client, now, loaded: { advice } }),
+      // Spec step 273: the profile's rows loaded once for the four that read them.
+      health: await loadHealthTaxes(userId, { client, now, loaded: { advice, input } }),
+      disaster: await loadDisasterRelief(userId, { client, now, loaded: { estimate, input } }),
+      retirement: await loadRetirementTaxes(userId, { client, now, loaded: { advice, input } }),
       drafts: (await listDraftReturns(userId, { client })).filter((d) => d.status !== "dismissed"),
-      inheritance: await loadInheritance(userId, { client, now, loaded: { estimate, advice } }),
+      inheritance: await loadInheritance(userId, {
+        client,
+        now,
+        loaded: { estimate, advice, input },
+      }),
       business: await loadBusinessStructure(userId, { client, now, loaded: { estimate, advice } }),
       calendar: await loadTaxCalendar(userId, {
         client,
