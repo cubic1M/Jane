@@ -1,4 +1,5 @@
-import { liquidCents } from "@/detectors/helpers";
+import { FIT_CARD_PAYMENT_SHARE } from "@/config/fit";
+import { liquidCents, monthlySpendCents } from "@/detectors/helpers";
 import { buildProfile, type ProfileInput } from "@/profile/build";
 import type { FitPerson } from "./fit";
 
@@ -15,16 +16,28 @@ export function fitPersonFrom(input: ProfileInput, creditScore: number | null = 
   const since = new Date(Date.parse(`${input.today}T00:00:00Z`) - MONTHS * 31 * DAY_MS)
     .toISOString()
     .slice(0, 10);
+  // Debt service: loan payments seen, and a card's minimum, not the statement paid in full (a
+  // card cleared each month is spending, not a debt payment a lender counts).
   const paid = input.transactions
     .filter(
-      (t) => (t.pfc ?? "").startsWith("LOAN_PAYMENTS_") && t.amountCents > 0 && t.date > since,
+      (t) =>
+        (t.pfc ?? "").startsWith("LOAN_PAYMENTS_") &&
+        t.pfc !== "LOAN_PAYMENTS_CREDIT_CARD_PAYMENT" &&
+        t.amountCents > 0 &&
+        t.date > since,
     )
     .reduce((s, t) => s + t.amountCents, 0);
+  const cardMinimums = Math.round(
+    input.accounts
+      .filter((a) => a.type === "credit" && a.balanceCents > 0)
+      .reduce((s, a) => s + a.balanceCents, 0) * FIT_CARD_PAYMENT_SHARE,
+  );
   return {
     creditScore,
     incomeCents: typeof income === "number" && income > 0 ? income : null,
-    debtPaymentsCents: Math.round(paid / MONTHS),
+    debtPaymentsCents: Math.round(paid / MONTHS) + cardMinimums,
     cashCents: liquidCents(input),
+    spendCents: monthlySpendCents(input, profile.months),
     debtTrouble: profile.facts.debt_trouble.value === true,
   };
 }
