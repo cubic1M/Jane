@@ -22,6 +22,8 @@ import { equitySetAsideMessage } from "../equity-tax-message";
 import { yearsMoveMessage } from "../multi-year-message";
 import { answersMessage, complexMessage } from "../accountant-message";
 import { estimateDueMessage, yearEndMessage } from "../tax-calendar-message";
+import { sCorpMessage } from "../business-message";
+import { giftsMessage, inheritedIraMessage } from "../inheritance-message";
 import {
   appealDraftedMessage,
   appealSuggestedMessage,
@@ -482,6 +484,43 @@ export const taxesSource: MessageSource = {
           ...yearEndMessage(calendar.yearEnd, calendar.acts),
           dedupeKey: `yearend:${calendar.yearEnd.year}`,
           priority: TAX_MESSAGE_PRIORITY.year_end,
+        });
+      }
+    }
+
+    // Spec step 267: an S corporation that would save more than it costs (demo advice).
+    const business = tax.business ? sCorpMessage(tax.business) : null;
+    if (tax.business && business) {
+      out.push({
+        kind: "decision",
+        ...business,
+        dedupeKey: `business:${tax.business.year}`,
+        priority: TAX_MESSAGE_PRIORITY.business,
+      });
+    }
+
+    // Spec step 268: an inherited IRA's deadline and spread (demo advice), and gifts over the
+    // annual exclusion (facts, with a pointer to a tax professional).
+    const inheritance = tax.inheritance;
+    if (inheritance) {
+      for (const ira of inheritance.inherited) {
+        const m = inheritedIraMessage(inheritance, ira);
+        if (m) {
+          out.push({
+            kind: "decision",
+            ...m,
+            dedupeKey: `inherited:${ira.accountId}`,
+            priority: TAX_MESSAGE_PRIORITY.inherited,
+          });
+        }
+      }
+      const gifts = giftsMessage(inheritance);
+      if (gifts) {
+        out.push({
+          kind: "heads_up",
+          ...gifts,
+          dedupeKey: `gifts:${inheritance.year}:${inheritance.gifts[0].recipient}`,
+          priority: TAX_MESSAGE_PRIORITY.gifts,
         });
       }
     }
