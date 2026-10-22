@@ -4103,7 +4103,7 @@ demo advice; legal questions go to counsel.
 > Acceptance criteria:
 > - Every tax capability has a detector or a reasoned exemption; the nightly run is green
 
-## Phase AU: automated investing, Stage A: practice money only (steps 274–283)
+## Phase AW: automated investing, Stage A: practice money only (steps 288–297)
 
 Founder-approved 2026-10-21, ahead of the depth bar. **Everything in Stage A runs on sample data
 and a paper (practice) portfolio. No real money moves, no real account is traded, and
@@ -4127,7 +4127,7 @@ partner's own feed) replaces Sample. Stage A is written so Stage B changes confi
 adapter, not the product: the model portfolios, the risk questionnaire, the scan, the log and the
 cards stay as built.
 
-### Step 274: Five risk levels
+### Step 288: Five risk levels
 
 > Read CLAUDE.md. A short questionnaire and five levels.
 >
@@ -4144,7 +4144,7 @@ cards stay as built.
 > - The same answers always give the same level; the targets of every level sum to 100%; a
 >   higher level never has fewer stocks than a lower one (tests)
 
-### Step 275: The market data interface and the sample market
+### Step 289: The market data interface and the sample market
 
 > Read CLAUDE.md. Prices and headlines behind one interface.
 >
@@ -4160,7 +4160,7 @@ cards stay as built.
 > - The same date always returns the same sample prices; swapping the implementation changes no
 >   other file (tests)
 
-### Step 276: The practice portfolio and the paper ledger
+### Step 290: The practice portfolio and the paper ledger
 
 > Read CLAUDE.md. Practice money in the database.
 >
@@ -4175,7 +4175,7 @@ cards stay as built.
 > - The ledger balances to the cent after any run of trades; a practice trade can never touch a
 >   real account or the real brokerage stand-in (tests)
 
-### Step 277: Autopilot for the practice portfolio
+### Step 291: Autopilot for the practice portfolio
 
 > Read CLAUDE.md. Pick a style, then Jane runs it.
 >
@@ -4191,7 +4191,7 @@ cards stay as built.
 > - No order breaks a limit; paused means no trades; every trade has a reason and an audit row
 >   (tests)
 
-### Step 278: The daily scan
+### Step 292: The daily scan
 
 > Read CLAUDE.md. Four things worth a look.
 >
@@ -4208,7 +4208,7 @@ cards stay as built.
 > - Each flag fires on the sample market's planted event and not otherwise; opportunities never
 >   appear below High; caps hold (tests)
 
-### Step 279: News, summarised cheaply
+### Step 293: News, summarised cheaply
 
 > Read CLAUDE.md. A few batched calls a day.
 >
@@ -4223,7 +4223,7 @@ cards stay as built.
 > - No call is made without the key or past the cap; a test proves zero Anthropic calls in the
 >   suite
 
-### Step 280: The trade log and the pause switch
+### Step 294: The trade log and the pause switch
 
 > Read CLAUDE.md. See and stop everything.
 >
@@ -4235,7 +4235,7 @@ cards stay as built.
 > Acceptance criteria:
 > - Pausing takes effect before the next scan; the log matches the ledger (tests)
 
-### Step 281: Backtests by level
+### Step 295: Backtests by level
 
 > Read CLAUDE.md. How each level would have behaved.
 >
@@ -4250,7 +4250,7 @@ cards stay as built.
 > - Higher levels have larger worst drops than lower ones in the sample; the figures match a
 >   hand-worked case (tests)
 
-### Step 282: Cards in the chat
+### Step 296: Cards in the chat
 
 > Read CLAUDE.md. Short, with the reasoning one tap away.
 >
@@ -4266,7 +4266,7 @@ cards stay as built.
 > - Cards follow the chat lane's card shape; every card has a percentage and a reason; no card
 >   offers a real trade (tests)
 
-### Step 283: Proof
+### Step 297: Proof
 
 > Read CLAUDE.md. Stage A, checked end to end.
 >
