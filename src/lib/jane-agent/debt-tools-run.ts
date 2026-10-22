@@ -21,6 +21,7 @@ import { loadStudentLongGame } from "@/lib/student-long-game";
 import { loadFamilyLoans } from "@/lib/family-loans";
 import { loadCreditGoals } from "@/lib/credit-goals";
 import { loadCostlyBorrowing } from "@/lib/costly-borrowing";
+import { loadRenting } from "@/lib/renting";
 import { MortgageMoneyError, loadMortgageMoney } from "@/lib/mortgage-money";
 import { loadCarLoan } from "@/lib/car-loan";
 import { decide } from "@/lib/debt-decisions";
@@ -65,6 +66,7 @@ import {
   carLoanToolOutput,
   mortgageMoneyToolOutput,
   costlyBorrowingToolOutput,
+  rentingToolOutput,
   loanFitToolOutput,
 } from "./debt-tools";
 
@@ -94,6 +96,8 @@ export async function runDebtTool(
       return out(
         costlyBorrowingToolOutput(await loadCostlyBorrowing(userId, { client, now }), money),
       );
+    case "renting":
+      return out(rentingToolOutput(await loadRenting(userId, { client, now }), money));
     case "mortgage_money": {
       const args = (input ?? {}) as { lump_cents?: unknown; extra_monthly_cents?: unknown };
       try {

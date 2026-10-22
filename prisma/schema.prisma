@@ -311,6 +311,8 @@ model User {
   homeEquityFacts        HomeEquityFacts?
   carAddons              CarAddon[]
   carLoanWatch           CarLoanWatch?
+  rentReporting          RentReporting?
+  securityDeposits       SecurityDeposit[]
   balanceTransfers       BalanceTransfer[]
   findings               Finding[]
   decisions              Decision[]
@@ -395,6 +397,7 @@ model User {
   accountantNotes   AccountantNote[]
   taxPayments       TaxPayment[]
   leanPlans         LeanPlan[]
+  booksIssues       BooksIssue[]
   suggestions       Suggestion[]
   yearPlans         YearPlan[]
   unusualAnswers    UnusualAnswer[]
@@ -420,6 +423,7 @@ model User {
   accountBeneficiaries AccountBeneficiary[]
   familyFile           FamilyFile?
   practicePortfolio    PracticePortfolio?
+  practicePreferences  PracticePreferences?
 
   @@map("users")
 }
@@ -1162,6 +1166,39 @@ model CarLoanWatch {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("car_loan_watches")
+}
+
+// The person's opt-in to having their rent payments reported to the credit bureaus through a
+// reporting partner (spec step 248). No row, no reporting.
+model RentReporting {
+  id        String   @id @default(cuid())
+  userId    String   @unique @map("user_id")
+  partner   String
+  optedInAt DateTime @map("opted_in_at") @db.Timestamptz(3)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("rent_reporting")
+}
+
+// A security deposit the person gave a landlord (spec step 248), tracked to the day the state
+// says it is due back after they move out.
+model SecurityDeposit {
+  id            String    @id @default(cuid())
+  userId        String    @map("user_id")
+  amountCents   Int       @map("amount_cents")
+  state         String
+  movedOutOn    DateTime? @map("moved_out_on") @db.Date
+  returnedOn    DateTime? @map("returned_on") @db.Date
+  returnedCents Int?      @map("returned_cents")
+  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt     DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("security_deposits")
 }
 
 // A balance transfer the person made to a 0% card (spec step 113), so Jane can keep the
@@ -3884,6 +3921,31 @@ model CostlyProduct {
   @@map("costly_products")
 }
 
+// Something in the person's data that doesn't add up (spec step 238): a balance off from its
+// transactions, transactions that stopped, a stale or broken bank link, the same account
+// linked twice, a transfer with no other side. Open until it clears.
+model BooksIssue {
+  id        String    @id @default(cuid())
+  userId    String    @map("user_id")
+  // off, gap, stale, broken, duplicate or transfer.
+  kind      String
+  // Stable per problem: "balance:<account>", "stale:<item>", "dup:<account>"...
+  key       String
+  accountId String?   @map("account_id")
+  itemId    String?   @map("item_id")
+  detail    Json
+  // open or fixed.
+  status    String    @default("open")
+  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  fixedAt   DateTime? @map("fixed_at") @db.Timestamptz(3)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, key])
+  @@index([userId, status])
+  @@map("books_issues")
+}
+
 // What Jane suggests to a person (spec step 255), one row per detector (src/detectors) that
 // fires for them. The nightly scan refreshes it, ranks the open ones by dollars x confidence x
 // urgency and selects the top few for today; the chat offers those. status: waiting (fired,
@@ -4112,20 +4174,20 @@ model PracticePosition {
 // side: buy, sell or deposit. amountCents is what changed hands (a deposit has no ticker).
 // reason is a sentence for the person; rule names the rule that allowed it (step 291 on).
 model PracticeTrade {
-  id          String   @id @default(cuid())
-  portfolioId String   @map("portfolio_id")
-  userId      String   @map("user_id")
-  placedAt    DateTime @map("placed_at") @db.Timestamptz(3)
+  id          String    @id @default(cuid())
+  portfolioId String    @map("portfolio_id")
+  userId      String    @map("user_id")
+  placedAt    DateTime  @map("placed_at") @db.Timestamptz(3)
   side        String
   ticker      String?
   quantity    Float?
-  priceCents  Int?     @map("price_cents")
-  amountCents Int      @map("amount_cents")
+  priceCents  Int?      @map("price_cents")
+  amountCents Int       @map("amount_cents")
   // A sale's gain or loss against the cost of what was sold.
-  gainCents   Int?     @map("gain_cents")
+  gainCents   Int?      @map("gain_cents")
   reason      String
   rule        String
-  undone      Boolean  @default(false)
+  undone      Boolean   @default(false)
   // Its card in the chat put away ("Got it", step 296).
   dismissedAt DateTime? @map("dismissed_at") @db.Timestamptz(3)
 
@@ -4134,6 +4196,39 @@ model PracticeTrade {
   @@index([portfolioId, placedAt])
   @@index([userId])
   @@map("practice_trades")
+}
+
+// What the person wants from the practice portfolio (Phase AW, Stage A): their level, how big a
+// drop they can live with, a goal and its date, the monthly practice money, how many extra
+// moves they want, what to avoid, whether to harvest losses, cash to keep and whether Jane acts
+// or only suggests. One row per person, made on the first change; with none the defaults in
+// src/config/practice-preferences.ts apply. Practice money only. Rules: src/planning/practice-preferences.ts.
+model PracticePreferences {
+  id              String    @id @default(cuid())
+  userId          String    @unique @map("user_id")
+  // 1 to 5 (RISK_LEVELS); null follows the questionnaire (step 288).
+  riskLevel       Int?      @map("risk_level")
+  // The largest drop they can live with, in whole percent; null for no limit beyond the level.
+  maxDropPercent  Int?      @map("max_drop_percent")
+  // A key of GOALS (src/config/investing.ts), and when the money is needed.
+  goal            String?
+  goalDate        DateTime? @map("goal_date") @db.Date
+  monthlyAddCents Int       @map("monthly_add_cents")
+  addDay          Int       @map("add_day")
+  // off, cautious, normal or adventurous (APPETITES).
+  appetite        String
+  // Exclusion keys (EXCLUSIONS) and tickers never to buy.
+  avoid           String[]  @default([])
+  harvestLosses   Boolean   @map("harvest_losses")
+  cashBufferCents Int       @map("cash_buffer_cents")
+  // suggest (no practice trades) or act (within the caps, practice ledger only).
+  mode            String
+  createdAt       DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt       DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("practice_preferences")
 }
 
 // Spec step 289 (Phase AW): daily closes pulled once from the market data (Alpaca) for the model
@@ -4171,20 +4266,20 @@ model MarketHistoryLoad {
 // numbers, the caps and the confidence for the card (step 296). status: acted (placed in the
 // practice ledger) or autopilot (the autopilot's rebalance does it).
 model PracticeOpportunity {
-  id          String   @id @default(cuid())
-  portfolioId String   @map("portfolio_id")
-  userId      String   @map("user_id")
-  scannedAt   DateTime @map("scanned_at") @db.Timestamptz(3)
+  id          String    @id @default(cuid())
+  portfolioId String    @map("portfolio_id")
+  userId      String    @map("user_id")
+  scannedAt   DateTime  @map("scanned_at") @db.Timestamptz(3)
   kind        String
   ticker      String
   key         String
-  amountCents Int      @map("amount_cents")
+  amountCents Int       @map("amount_cents")
   headline    String
   reason      String
   confidence  Int
   details     Json
   status      String
-  tradeIds    String[] @map("trade_ids")
+  tradeIds    String[]  @map("trade_ids")
   // Its card in the chat put away ("Got it", step 296).
   dismissedAt DateTime? @map("dismissed_at") @db.Timestamptz(3)
 
