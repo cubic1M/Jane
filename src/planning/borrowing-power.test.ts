@@ -131,11 +131,12 @@ describe("a card", () => {
   it("takes the lowest go-to rate and guesses a limit from gross income by band", () => {
     const c = cardFigure(person(), [2_499, 2_199], [1_999]);
     expect(c).toMatchObject({ available: true, aprBps: 2_199 });
-    // 12% of $92,308 a year, to the dollar.
-    expect(c.limitCents).toBe(
-      Math.round((((600_000 * 12) / FIT_NET_TO_GROSS) * 0.12) / 10_000) * 100,
+    // 12% of $92,307.69 of gross income a year is $11,076.92: about $11,100.
+    expect(c.limitCents).toBe(1_110_000);
+    // The next band's 20% is $18,461.54: about $18,500.
+    expect(c.improve[0]).toBe(
+      "A score of 740 or more would likely mean about 19.99% and a limit nearer $18,500.00.",
     );
-    expect(c.improve[0]).toMatch(/score of 740 or more would likely mean about 19\.99%/);
   });
 
   it("isn't shown without an income or a quote", () => {
