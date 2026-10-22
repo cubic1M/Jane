@@ -82,6 +82,78 @@ const rows: Row[] = [
   ["costly", "/investments/costly-products", "costly_products", "what is a surrender charge"],
   ["invreview", "/investments", "yearly_review", "do my yearly investing review"],
   ["location", "/investments/location", "asset_location", "which accounts should hold my bonds"],
+  [
+    "values",
+    "/investments/values",
+    "values_investing",
+    "can i avoid fossil fuel companies in my funds",
+  ],
+  [
+    "values",
+    "/investments/values",
+    "values_investing",
+    "what would it cost to invest without tobacco and weapons",
+  ],
+  [
+    "familyfile",
+    "/investments/family-file",
+    "family_file",
+    "who are the beneficiaries on my accounts",
+  ],
+  [
+    "familyfile",
+    "/investments/family-file",
+    "family_file",
+    "do my beneficiaries need updating after my divorce",
+  ],
+  [
+    "familyfile",
+    "/investments/family-file",
+    "family_file",
+    "what would my family need if something happens to me",
+  ],
+  ["familyfile", "/investments/family-file", "family_file", "should i make a will or a trust"],
+  ["values", "/investments/values", "values_investing", "do you have esg funds"],
+  ["windfall", "/investments/sudden-money", "sudden_money", "i got a big bonus what should i do"],
+  [
+    "windfall",
+    "/investments/sudden-money",
+    "sudden_money",
+    "how much tax should i set aside from my inheritance",
+  ],
+  [
+    "windfall",
+    "/investments/sudden-money",
+    "sudden_money",
+    "what do i do with the money from my windfall",
+  ],
+  ["planmenu", "/investments/plan-menu", "plan_menu", "which funds should i pick in my 401k"],
+  [
+    "performance",
+    "/investments/performance",
+    "honest_performance",
+    "am i beating the market after fees and taxes",
+  ],
+  [
+    "performance",
+    "/investments/performance",
+    "honest_performance",
+    "what is my 3 year return against a benchmark",
+  ],
+  [
+    "shortterm",
+    "/investments/short-term",
+    "short_term_money",
+    "where should i put money i need in a year",
+  ],
+  [
+    "shortterm",
+    "/investments/short-term",
+    "short_term_money",
+    "are treasury bills better than a cd",
+  ],
+  ["shortterm", "/investments/short-term", "short_term_money", "what is a cd ladder"],
+  ["planmenu", "/investments/plan-menu", "plan_menu", "is my target date fund fee too high"],
   ["invreview", "/investments", "steady_hand", "should i sell everything the market is crashing"],
 
   // What if (spec step 203).
@@ -95,6 +167,14 @@ const rows: Row[] = [
   ["longview", "/long-view", "long_view", "what will my net worth be in 20 years"],
   ["longview", "/long-view", "long_view", "how much will i have when i retire"],
 
+  // Every figure explained (spec step 239).
+  ["figures", "/figures/safe_to_spend", "explain_figure", "how did you get my safe to spend"],
+  ["figures", "/figures/monthly_spending", "explain_figure", "how did you work out my spending"],
+  ["figures", "/figures/net_worth", "explain_figure", "show me the working for my net worth"],
+  // Books that balance (spec step 238).
+  ["books", "/net-worth", "books_check", "are my numbers right"],
+  ["books", "/net-worth", "books_check", "do my books balance"],
+  ["books", "/net-worth", "books_check", "any problems with my accounts"],
   // The picture of you (spec step 253).
   ["profile", "/profile", "my_profile", "what do you know about me"],
   ["profile", "/profile", "my_profile", "show me my profile"],
@@ -108,6 +188,10 @@ const rows: Row[] = [
   ],
   ["steady", "/transfers", "steady_pay", "my income is uneven"],
   ["steady", "/transfers", "steady_pay", "what is my steady pay"],
+  // Goals that trade off openly (spec step 241).
+  ["tradeoffs", "/goals", "goal_tradeoffs", "which goal should i save for first"],
+  ["tradeoffs", "/goals", "goal_tradeoffs", "can i afford both goals"],
+  ["tradeoffs", "/goals", "goal_tradeoffs", "my goals compete, what do i do"],
 
   // Safe to spend and the day.
   ["safe", "/home", "safe_to_spend", "how much do i have left to spend"],
@@ -481,6 +565,26 @@ const rows: Row[] = [
   ["debt", "/loans/equity", "home_equity", "when does my pmi end by itself"],
   ["debt", "/loans/equity", "home_equity", "is my escrow too high"],
   ["debt", "/loans/equity", "home_equity", "heloc or cash-out refinance for a $40,000 kitchen"],
+  [
+    "debt",
+    "/loans/costly",
+    "costly_borrowing",
+    "how much have payday loans and cash advances cost me",
+  ],
+  ["debt", "/loans/costly", "costly_borrowing", "i keep overdrafting every month"],
+  ["debt", "/loans/renting", "renting", "can my rent help my credit score"],
+  ["debt", "/loans/renting", "renting", "my rent went up again"],
+  [
+    "debt",
+    "/loans/helping",
+    "family_credit",
+    "what happens to my credit if my brother misses a cosigned payment",
+  ],
+  ["debt", "/loans/helping", "family_credit", "first credit card for my college student"],
+  ["debt", "/loans/borrow", "borrowing_power", "how much could i borrow for a car"],
+  ["debt", "/loans/borrow", "borrowing_power", "can i get prequalified for a loan"],
+  ["loans", "/loans/recast", "mortgage_money", "i have $20,000, should i recast my mortgage"],
+  ["loans", "/loans/recast", "mortgage_money", "pay down my mortgage or invest $500 a month"],
   ["loans", "/loans/auto", "car_loan", "can i cancel the extended warranty on my car loan"],
   ["loans", "/loans/auto", "car_loan", "do i have gap insurance on my car loan"],
   ["debt", "/loans/review", "debt_review", "do my yearly debt review"],

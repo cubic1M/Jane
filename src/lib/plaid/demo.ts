@@ -19,6 +19,7 @@ import {
   type DemoSwitch,
 } from "@/data-sources/demo/demo-bank";
 import { isPersonId, personById, type PersonId } from "@/config/people";
+import { demoGoalsFor } from "@/data-sources/demo/demo-goals";
 import type { PrismaClient } from "@/generated/prisma/client";
 import { track } from "@/lib/analytics";
 import { logAudit } from "@/lib/audit";
@@ -206,6 +207,19 @@ export async function linkDemoBank(
     },
     select: { id: true },
   });
+  // Spec step 241: a sample person comes with their goals (tracked by hand: no account yet).
+  const goals = demoGoalsFor(person, today(now));
+  if (goals.length > 0 && (await db.savingsGoals.count()) === 0) {
+    await db.savingsGoals.createMany({
+      data: goals.map((g) => ({
+        userId,
+        name: g.name,
+        targetCents: g.targetCents,
+        targetDate: new Date(`${g.targetDate}T00:00:00Z`),
+        manualSavedCents: g.savedCents,
+      })),
+    });
+  }
   await logAudit(
     { type: "user", id: userId },
     "item_linked",

@@ -19,7 +19,12 @@ import { ASK_TOOLS, runAskTool, type ToolOutput } from "@/lib/ask/tools";
 import { CARD_SELECT, buildCard } from "@/lib/cards";
 import { comparisonFor } from "@/lib/compare";
 import { frequencyWords } from "@/lib/explain-input";
+import { FIGURE_IDS, type FigureId } from "@/config/figures";
+import { explainFigure } from "@/lib/figures";
+import { openBooks } from "@/lib/books";
 import { loadSteady } from "@/lib/steady-pay";
+import { loadTradeoffs } from "@/lib/goal-tradeoffs";
+import type { TradeOrder } from "@/planning/goal-tradeoffs";
 import { FACT_KEYS } from "@/profile/facts";
 import { scopedFor } from "@/lib/db-scoped";
 import { loadChanges } from "@/lib/changes";
@@ -341,6 +346,29 @@ export const CHAT_TOOLS: Anthropic.Tool[] = [
     name: "whole_picture",
     description:
       'How the person is doing across every sector at once (spec step 183), for "am I OK?", "how am I doing" and "what should I do this month": a verdict (ok, watch or act) with its one-sentence headline, safe to spend until payday, bills and deadlines due this week and this month, budgets over, goals behind, urgent alerts, what Jane\'s agent is working on, the steps waiting on the person, and the one to three things that matter most (from the ranked list) with why. Lead with the headline, then the things that matter; use the same figures.',
+    input_schema: noInput,
+  },
+  {
+    name: "explain_figure",
+    description:
+      'How a headline figure was worked out (spec step 239): the rows it adds up, the biggest transactions behind it, the rules and rates from config and the date, for safe_to_spend, monthly_spending, monthly_income, net_worth, health_score or debt_free. Use it for "how did you get that?". If the person says a figure is wrong, point them to the page (/figures/<figure>) where a category or their income can be corrected; the correction sticks and updates everything that used it.',
+    input_schema: {
+      type: "object",
+      properties: { figure: { type: "string", enum: [...FIGURE_IDS] } },
+      required: ["figure"],
+      additionalProperties: false,
+    },
+  },
+  {
+    name: "books_check",
+    description:
+      "Whether the person's data adds up (spec step 238): what Jane checks every day (balances against transactions, the same account linked twice, a link that stopped updating or needs a sign-in, transfers between their own accounts) and the problems still open, in words. Figures that rely on a problem account are marked until it's fixed. Use it for \"are my numbers right?\" and before standing behind a figure from an account with a problem.",
+    input_schema: noInput,
+  },
+  {
+    name: "goal_tradeoffs",
+    description:
+      "Goals that trade off openly (spec step 241): whether the person's savings goals need more each month than the year plan has room for; if so each order's dates (when each goal is reached and how many months late), Jane's suggested order with the reason, and the order the person picked, if any. Use it for \"which goal first?\" and \"can I do both?\". The pick re-plans every sector only on the person's tap (the button under the answer).",
     input_schema: noInput,
   },
   {
@@ -753,6 +781,59 @@ export async function runChatTool(
             }
           : { score: null, why: "No accounts linked yet." },
       );
+    }
+    case "explain_figure": {
+      const figure = (input as { figure?: unknown }).figure;
+      if (typeof figure !== "string" || !(FIGURE_IDS as readonly string[]).includes(figure)) {
+        return out({ error: "Unknown figure." });
+      }
+      const working = await explainFigure(userId, figure as FigureId, { client, now });
+      if (!working) return out({ working: null, why: "No accounts linked yet." });
+      return out({
+        figure: working.title,
+        value: working.value,
+        asOf: working.asOf,
+        how: working.summary,
+        rows: working.rows,
+        transactions: working.transactions.map((t) => ({
+          date: t.date,
+          what: t.description,
+          amount: money(t.amountCents),
+          category: t.category_label,
+        })),
+        rulesUsed: working.rules,
+        canBeCorrected: working.corrections,
+        page: `/figures/${working.id}`,
+      });
+    }
+    case "books_check": {
+      const books = await openBooks(userId, { client });
+      return out({
+        allAddUp: books.open.filter((o) => o.kind !== "transfer").length === 0,
+        problems: books.open.map((o) => ({ what: o.label, detail: o.words })),
+        accountsWithMarkedFigures: books.markedAccountIds.length,
+      });
+    }
+    case "goal_tradeoffs": {
+      const view = await loadTradeoffs(userId, { client, now });
+      if (!view) return out({ view: null, why: "No accounts linked yet." });
+      const dates = (o: TradeOrder) =>
+        o.dates.map((d) => ({
+          goal: d.name,
+          reached: d.month,
+          wanted: d.wantedMonth,
+          monthsLate: d.lateMonths,
+        }));
+      return out({
+        competing: view.competing,
+        options: view.options
+          .slice(0, 4)
+          .map((o) => ({ first: o.dates[0]?.name, dates: dates(o) })),
+        suggested: view.suggested ? dates(view.suggested) : null,
+        why: view.reason || null,
+        picked: view.chosen !== null,
+        nowInForce: view.current ? dates(view.current) : null,
+      });
     }
     case "steady_pay": {
       const view = await loadSteady(userId, { client, now });

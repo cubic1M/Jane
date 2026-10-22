@@ -4,7 +4,14 @@ import { buildProfile } from "@/profile/build";
 import { inputFor } from "@/profile/sample";
 import { DETECTORS, runDetectors } from "./index";
 import { mergeOverlaps, pickForToday, rankSuggestions } from "@/planning/suggestion-rank";
-import { HEADLINE_MAX, SHORT_MAX, type Detector, type Suggestion } from "./contract";
+import {
+  HEADLINE_MAX,
+  HEADLINE_MAX_WORDS,
+  cardHeadline,
+  SHORT_MAX,
+  type Detector,
+  type Suggestion,
+} from "./contract";
 
 // The detector harness (spec step 254): runs every detector on the eight sample people and
 // compares what fired with each person's written list. Pure and database-free, so it runs
@@ -83,6 +90,13 @@ export function shortFormProblems(s: Suggestion): string[] {
   const first = s.headline.split(" ")[0];
   if (!HEADLINE_VERBS.includes(first))
     problems.push(`headline starts with "${first}", which is not a verb in HEADLINE_VERBS`);
+  // The floating card shows the headline alone: about eight words, and one number.
+  const words = cardHeadline(s.headline).trim().split(/\s+/).length;
+  if (words > HEADLINE_MAX_WORDS) {
+    problems.push(`headline is ${words} words, over ${HEADLINE_MAX_WORDS}`);
+  }
+  const numbers = s.headline.match(/\$[\d,.]+/g) ?? [];
+  if (numbers.length > 1) problems.push(`headline has ${numbers.length} dollar figures, not one`);
   if (s.worthCents >= 50) {
     const dollars = `$${Math.round(s.worthCents / 100).toLocaleString("en-US")}`;
     if (!s.headline.includes(dollars)) problems.push(`headline lacks the dollars (${dollars})`);
