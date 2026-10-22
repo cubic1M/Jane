@@ -39,7 +39,8 @@ export const APPETITES = {
 export type Appetite = keyof typeof APPETITES;
 export const APPETITE_ORDER: readonly Appetite[] = ["off", "cautious", "normal", "adventurous"];
 
-// Things a person can ask Jane never to buy. A key here matches the companies tagged with it in
+// Things a person can ask Jane never to buy. The keys include investing by your values' exclusions
+// (VALUES_EXCLUSIONS, step 236), which a new person starts with. A key here matches the companies tagged with it in
 // TICKER_TAGS; a ticker matches itself. Broad index funds hold a little of every industry, so a
 // key keeps Jane from buying those companies' own shares, not from holding a whole-market fund
 // (said so on the page and in the chat). A fund can be avoided by its ticker.

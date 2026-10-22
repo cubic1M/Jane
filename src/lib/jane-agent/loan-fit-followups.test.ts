@@ -14,6 +14,7 @@ vi.mock("./spend", async (original) => ({
 
 import { FIT_TERMS } from "@/config/fit";
 import type { PrismaClient } from "@/generated/prisma/client";
+import { adviceMode } from "@/lib/advice-mode";
 import { loadFit, type FitView } from "@/lib/fit";
 import { demoLender } from "@/lib/lenders/demo";
 import type { LoanOffer } from "@/lib/lenders/partner";
@@ -223,5 +224,37 @@ describe("following up on the best loan, with a faked Claude", () => {
     const result = await askClaudeInChat("u1", history, "what about a shorter term?", options);
 
     expect(result.reply.body).not.toContain("$1,234.57");
+  });
+
+  it("puts the options on the answer as the pick card, with its two buttons", async () => {
+    create
+      .mockResolvedValueOnce(toolUse("loan_fit", { need: "car", amount_dollars: 25_000 }))
+      .mockResolvedValueOnce(final("Here are your best car loans for $25,000."));
+
+    const result = await askClaudeInChat("u1", [], "best car loan for $25,000?", options);
+
+    expect(result.kind).toBe("answer");
+    const card = result.reply.refs.options!;
+    expect(card.kind).toBe("loan");
+    expect(card.topic).toBe("car:2500000");
+    expect(card.options[0].id).toBe(view.pick);
+    expect(result.reply.refs.advice).toBe(true);
+    expect(result.reply.actions.map((a) => a.id)).toEqual(["option.pick", "option.later"]);
+    // Claude is told the options are on a card, so it names the pick, not the whole list.
+    expect(toolResult(create.mock.calls[1][0])).toMatchObject({ shownAsACard: true });
+  });
+
+  it("shows no pick card without demo advice", async () => {
+    vi.mocked(adviceMode).mockResolvedValue(false);
+    try {
+      create
+        .mockResolvedValueOnce(toolUse("loan_fit", { need: "car", amount_dollars: 25_000 }))
+        .mockResolvedValueOnce(final("There are a few car loans you could look at."));
+      const result = await askClaudeInChat("u1", [], "car loans for $25,000?", options);
+      expect(result.reply.refs.options).toBeUndefined();
+      expect(result.reply.actions).toEqual([]);
+    } finally {
+      vi.mocked(adviceMode).mockResolvedValue(true);
+    }
   });
 });
