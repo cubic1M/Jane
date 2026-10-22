@@ -971,3 +971,44 @@ test("a deposit is followed to its due date and marked returned", async ({
   await expect(page.getByRole("status")).toHaveText("Noted that it came back.");
   await expect(deposits).toContainText("returned $1,400.00");
 });
+
+// Spec step 249: a co-signed loan is recorded, counted in full against the person's own debt
+// load, and a missed payment is shown as landing on them too.
+test("a co-signed loan is counted in full and a missed payment lands on the person", async ({
+  context,
+  page,
+  baseURL,
+}) => {
+  const user = await signedInUser("user");
+  userId = user.userId;
+  await context.addCookies([
+    { name: "authjs.session-token", value: user.sessionToken, url: baseURL ?? "" },
+  ]);
+  await page.goto("/connect");
+  await page.getByRole("button", { name: "Link a demo bank" }).click();
+  await expect(page).toHaveURL("/chat", { timeout: 60_000 });
+
+  await page.goto("/loans/helping");
+  await expect(
+    page.getByRole("heading", { level: 1, name: "Helping family with credit" }),
+  ).toBeVisible();
+  const cosign = page.getByRole("region", { name: "Co-signing" });
+  await expect(cosign).toContainText("The lender can ask you for the whole balance");
+
+  const told = page.getByRole("region", { name: "What you told me" });
+  await told.getByLabel("For").fill("Jess");
+  await told.getByLabel("Owed (co-signed)").fill("12000");
+  await told.getByLabel("Payment a month").fill("300");
+  const save = told.getByRole("button", { name: "Save" });
+  await save.focus();
+  await page.keyboard.press("Enter");
+  await expect(page.getByRole("status")).toHaveText("Saved.");
+  await expect(told).toContainText("Co-signed loan for Jess: $12,000.00 owed, $300.00 a month");
+  await expect(cosign).toContainText("You've co-signed $12,000.00 in all, $300.00 a month.");
+
+  const missed = told.getByRole("button", { name: "They missed a payment" });
+  await missed.focus();
+  await page.keyboard.press("Enter");
+  await expect(page.getByRole("status")).toHaveText("Updated.");
+  await expect(cosign).toContainText("Jess missed a payment: that's on your report too.");
+});

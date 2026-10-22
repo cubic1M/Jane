@@ -313,6 +313,7 @@ model User {
   carLoanWatch           CarLoanWatch?
   rentReporting          RentReporting?
   securityDeposits       SecurityDeposit[]
+  familyCredit           FamilyCreditHelp[]
   balanceTransfers       BalanceTransfer[]
   findings               Finding[]
   decisions              Decision[]
@@ -1199,6 +1200,30 @@ model SecurityDeposit {
 
   @@index([userId])
   @@map("security_deposits")
+}
+
+// Credit the person gives or gets through someone close (spec step 249): an authorized user on
+// a card, a first card for a student, or a loan co-signed for someone. The terms of a co-signed
+// loan are what the person types; nothing here is sent anywhere.
+model FamilyCreditHelp {
+  id                  String   @id @default(cuid())
+  userId              String   @map("user_id")
+  // authorized_user, first_card or cosigned.
+  kind                String
+  person              String
+  // The card the person is on or adds someone to (a debt key), when it is one of theirs.
+  debtKey             String?  @map("debt_key")
+  // A co-signed loan: what is owed, the payment, and the rate if known.
+  balanceCents        Int?     @map("balance_cents")
+  monthlyPaymentCents Int?     @map("monthly_payment_cents")
+  // The other person missed a payment, as the person said.
+  missed              Boolean  @default(false)
+  createdAt           DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("family_credit_help")
 }
 
 // A balance transfer the person made to a 0% card (spec step 113), so Jane can keep the
@@ -4145,6 +4170,9 @@ model PracticePortfolio {
   paused              Boolean  @default(false)
   // Opportunities (small capped positions, High and Very high only) paused on their own.
   opportunitiesPaused Boolean  @default(false) @map("opportunities_paused")
+  // The last cheap scan when the person opened the chat or the investing pages (no more than
+  // one an hour), claimed before it runs so two opens scan once.
+  lightScannedAt      DateTime? @map("light_scanned_at") @db.Timestamptz(3)
   startedAt           DateTime @map("started_at") @db.Timestamptz(3)
   updatedAt           DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
 

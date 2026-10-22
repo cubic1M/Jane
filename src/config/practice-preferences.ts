@@ -1,4 +1,10 @@
-import { PRACTICE_MONTHLY_ADD_CENTS } from "@/config/portfolios";
+import type { RiskLevel } from "@/config/investing";
+import {
+  AUTOPILOT_LIMITS,
+  PRACTICE_MONTHLY_ADD_CENTS,
+  type PracticeClass,
+} from "@/config/portfolios";
+import type { ScanKind } from "@/config/practice-scan";
 
 // What the person can choose about the practice portfolio (Phase AW, Stage A): the choices, the
 // defaults and the limits on each. Practice money only; every number is demo advice, FOR REVIEW
@@ -96,5 +102,48 @@ export const PREFERENCE_DEFAULTS = {
   mode: "act" as AutopilotMode,
 };
 
+// The level when nothing else says one (no choice, no portfolio, no questionnaire): Medium.
+export const DEFAULT_LEVEL: RiskLevel = 3;
+
 // At most this many things to avoid.
 export const AVOID_MAX = 40;
+
+// The largest drop each level's model had in the sample replay (step 295), rounded up, in whole
+// percent. A person's "largest drop I can live with" keeps the level at or below the highest one
+// whose drop fits. FOR REVIEW: the backtest session tunes these from the replays.
+export const LEVEL_WORST_DROP_PERCENT: Readonly<Record<RiskLevel, number>> = {
+  1: 10,
+  2: 15,
+  3: 22,
+  4: 30,
+  5: 38,
+};
+
+// Which scan kinds (step 292) are extra moves, and the least appetite that allows each. Plan
+// upkeep (rebalancing, loss harvesting) isn't an extra move. A new kind of opportunity is added
+// here and to OPPORTUNITY_HARD_CAPS, and the appetite scales it from then on.
+export const OPPORTUNITY_MIN_APPETITE: Readonly<Partial<Record<ScanKind, Appetite>>> = {
+  dip_buy: "cautious",
+  news_idea: "normal",
+};
+
+// The most any appetite can take each extra move to: the size of one action and the most of one
+// holding (shares of the portfolio), and how many a month. The autopilot's own hard limits
+// (AUTOPILOT_LIMITS) apply on top.
+export const OPPORTUNITY_HARD_CAPS: Readonly<
+  Partial<Record<ScanKind, { sizeShare: number; positionShare: number; perMonth: number }>>
+> = {
+  dip_buy: { sizeShare: 0.08, positionShare: AUTOPILOT_LIMITS.perEtfShare, perMonth: 3 },
+  news_idea: { sizeShare: 0.015, positionShare: AUTOPILOT_LIMITS.perStockShare, perMonth: 3 },
+};
+// All opportunity stocks together, at most, whatever the appetite.
+export const OPPORTUNITY_HARD_MAX_SHARE = 0.075;
+
+// When everything that holds one kind is on the never-buy list, its share goes to this kind
+// instead (and to bonds when both kinds of stocks are avoided).
+export const AVOIDED_CLASS_FALLBACK: Readonly<Record<PracticeClass, PracticeClass>> = {
+  us_stocks: "intl_stocks",
+  intl_stocks: "us_stocks",
+  bonds: "cash",
+  cash: "bonds",
+};
