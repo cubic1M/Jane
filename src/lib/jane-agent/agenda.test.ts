@@ -260,7 +260,7 @@ describe("the agenda leads with the scan's suggestions (step 265)", () => {
     const lines = out.agenda.body.split("\n");
     expect(lines).toContain("Here's what I'd do first, from looking at your money:");
     expect(lines.find((l) => l.startsWith("- Move idle cash"))).toBe(
-      "- Move idle cash to a higher rate, earn $360 a year. Why you: You keep $9,000 in cash; about $8,000 is more than you need. 85% sure: 12 months of balances.",
+      "- Move idle cash to a higher rate, earn $360/yr. Why you: You keep $9,000 in cash; about $8,000 is more than you need. 85% sure: 12 months of balances.",
     );
     expect(out.agenda.actions.map((a) => a.id)).toEqual(
       expect.arrayContaining(["bundle.1", "bundle.no.1"]),

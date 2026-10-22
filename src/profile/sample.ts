@@ -1,3 +1,4 @@
+import { BENEFICIARY_SUBTYPES } from "@/config/family-file";
 import { demoAccounts, demoLiabilities, demoTransactions } from "@/data-sources/demo/demo-bank";
 import { demoHoldings } from "@/data-sources/demo/demo-holdings";
 import type { NeedPolicy } from "@/lib/insurance/need/types";
@@ -52,6 +53,15 @@ export function inputFor(person: string, told: ProfileInput["told"] = {}): Profi
     told,
     extras: { householdMembers: 0, coverPolicies: SAMPLE_POLICIES[person] ?? [] },
     unreadPolicyDocuments: UNREAD_DOCUMENTS[person] ?? 0,
+    // Priya has asked Jane to keep fossil fuels out of her funds (spec step 236).
+    // Everyone has named beneficiaries except the family (a new child) and the couple near
+    // retirement (a form from years ago), spec step 237.
+    namedAccountIds: ["family", "preretire"].includes(person)
+      ? []
+      : demoAccounts(demo)
+          .filter((a) => BENEFICIARY_SUBTYPES.includes(a.subtype ?? ""))
+          .map((a) => a.account_id),
+    valuesExcludes: person === "equity" ? ["fossil_fuels"] : [],
     holdings: holdings.map((h) => ({
       ticker:
         h.security_id.replace("demo-sec-", "").toUpperCase() === "CASH"
@@ -71,6 +81,7 @@ export function inputFor(person: string, told: ProfileInput["told"] = {}): Profi
     })),
     accounts: demoAccounts(demo).map((a) => ({
       id: a.account_id,
+      name: a.name,
       type: a.type,
       subtype: a.subtype,
       balanceCents:
