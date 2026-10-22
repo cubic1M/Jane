@@ -410,7 +410,8 @@ model User {
 
   costlyProducts CostlyProduct[]
 
-  practicePortfolio PracticePortfolio?
+  practicePortfolio   PracticePortfolio?
+  practicePreferences PracticePreferences?
 
   @@map("users")
 }
@@ -3928,6 +3929,39 @@ model PracticeTrade {
   @@index([portfolioId, placedAt])
   @@index([userId])
   @@map("practice_trades")
+}
+
+// What the person wants from the practice portfolio (Phase AW, Stage A): their level, how big a
+// drop they can live with, a goal and its date, the monthly practice money, how many extra
+// moves they want, what to avoid, whether to harvest losses, cash to keep and whether Jane acts
+// or only suggests. One row per person, made on the first change; with none the defaults in
+// src/config/practice-preferences.ts apply. Practice money only. Rules: src/planning/practice-preferences.ts.
+model PracticePreferences {
+  id              String    @id @default(cuid())
+  userId          String    @unique @map("user_id")
+  // 1 to 5 (RISK_LEVELS); null follows the questionnaire (step 288).
+  riskLevel       Int?      @map("risk_level")
+  // The largest drop they can live with, in whole percent; null for no limit beyond the level.
+  maxDropPercent  Int?      @map("max_drop_percent")
+  // A key of GOALS (src/config/investing.ts), and when the money is needed.
+  goal            String?
+  goalDate        DateTime? @map("goal_date") @db.Date
+  monthlyAddCents Int       @map("monthly_add_cents")
+  addDay          Int       @map("add_day")
+  // off, cautious, normal or adventurous (APPETITES).
+  appetite        String
+  // Exclusion keys (EXCLUSIONS) and tickers never to buy.
+  avoid           String[]  @default([])
+  harvestLosses   Boolean   @map("harvest_losses")
+  cashBufferCents Int       @map("cash_buffer_cents")
+  // suggest (no practice trades) or act (within the caps, practice ledger only).
+  mode            String
+  createdAt       DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt       DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("practice_preferences")
 }
 
 // Spec step 289 (Phase AW): daily closes pulled once from the market data (Alpaca) for the model

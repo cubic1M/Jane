@@ -206,7 +206,10 @@ export type AuditEvent =
   | "costly_product_saved"
   // Spec step 290 (Phase AW): the practice portfolio started, and each practice trade.
   | "practice_started"
-  | "practice_trade";
+  | "practice_trade"
+  // The person's practice-portfolio preferences changed, from the page or the chat (which fields,
+  // never the amounts).
+  | "practice_preferences_changed";
 
 export type AuditActor = { type: ActorType; id: string | null };
 

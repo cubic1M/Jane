@@ -1,4 +1,4 @@
-import { PRACTICE_MONTHLY_ADD_CENTS, PRACTICE_START_CENTS } from "@/config/portfolios";
+import { PRACTICE_START_CENTS } from "@/config/portfolios";
 import type { RiskLevel } from "@/config/investing";
 import type { PrismaClient } from "@/generated/prisma/client";
 import { track } from "@/lib/analytics";
@@ -8,6 +8,7 @@ import { scopedFor } from "@/lib/db-scoped";
 import { marketData } from "@/lib/market";
 import { value, type LedgerState } from "@/planning/practice-ledger";
 import { loadLedger, NoPracticePortfolio } from "./broker";
+import { loadPreferences } from "./preferences";
 
 // The practice portfolio (spec step 290, Phase AW, Stage A): start one, read it, put practice
 // money in. Practice money only: it is not linked to any account.
@@ -28,13 +29,16 @@ export async function startPractice(
   }
   if (!Number.isInteger(startingCents) || startingCents <= 0)
     throw new PracticeError("Pick a starting amount.");
+  // The monthly practice money and its day are the person's (their preferences).
+  const prefs = await loadPreferences(userId, { client });
   const row = await client.practicePortfolio.create({
     data: {
       userId,
       level,
       startingCents,
       cashCents: startingCents,
-      monthlyAddCents: PRACTICE_MONTHLY_ADD_CENTS,
+      monthlyAddCents: prefs.monthlyAddCents,
+      addDay: prefs.addDay,
       startedAt: now,
       trades: {
         create: {
