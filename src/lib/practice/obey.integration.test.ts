@@ -5,6 +5,8 @@ import { PrismaClient } from "@/generated/prisma/client";
 vi.mock("@/lib/session", () => ({ requireUser: vi.fn() }));
 vi.mock("@/lib/analytics", () => ({ track: vi.fn() }));
 vi.mock("@/lib/audit", () => ({ logAudit: vi.fn(), SYSTEM_ACTOR: { type: "system", id: null } }));
+// Practice ideas are for demo advice mode only (a real account gets the rebalance alone).
+vi.mock("@/lib/advice-mode", () => ({ adviceMode: vi.fn(async () => true) }));
 
 import { classOf } from "@/config/portfolios";
 import { TICKER_TAGS } from "@/config/practice-preferences";
@@ -83,9 +85,25 @@ describe.runIf(url)("the practice autopilot obeys preferences", () => {
     expect(flags.some((f) => f.status === "suggested")).toBe(true);
     expect(flags.every((f) => f.status !== "acted" && f.trades === 0)).toBe(true);
 
-    // Switched to act, the same events are acted on.
+    // Switched to act, an idea already suggested isn't placed again by the scan (the person's
+    // Yes on its suggestion places it), and nothing is offered twice.
     await savePreferences(userId, { mode: "act" }, "chat", { client, now: at("2026-10-14") });
-    const acted = await scanPractice(userId, { client, now: at("2026-10-14") });
+    const again = await scanPractice(userId, { client, now: at("2026-10-14") });
+    const suggestedKinds = new Set(
+      flags.filter((f) => f.status === "suggested").map((f) => f.kind),
+    );
+    const repeated = again.scanned
+      ? again.flags.filter((f) => f.kind !== "drift_rebalance" && suggestedKinds.has(f.kind))
+      : [];
+    expect(
+      repeated.filter(
+        (f) => f.ticker && flags.some((g) => g.ticker === f.ticker && g.kind === f.kind),
+      ),
+    ).toEqual([]);
+
+    // A fresh portfolio in act mode acts on the same planted dip.
+    const actor = await person(4);
+    const acted = await scanPractice(actor, { client, now: at("2026-10-14") });
     expect(acted.scanned && acted.flags.some((f) => f.status === "acted")).toBe(true);
   });
 
