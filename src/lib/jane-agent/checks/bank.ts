@@ -2056,6 +2056,19 @@ const BASE_QUESTIONS: readonly CheckQuestion[] = [
       maxChars: 1_000,
     },
   },
+  // Spec step 246: recast, refinance or pay extra.
+  {
+    id: "debt-35",
+    text: "I have $20,000, should I pay down my mortgage or recast it",
+    needs: "rules",
+    expect: {
+      intent: "mortgage_money",
+      mentions: /recast/i,
+      link: "/loans/recast",
+      list: true,
+      maxChars: 2_200,
+    },
+  },
   // Spec step 245: the car loan you already have.
   {
     id: "debt-34",
