@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { normalize } from "../intents";
+import type { MessageAction } from "../types";
 import { parseInvestmentIntent } from "./intents";
 import {
   backtestReply,
@@ -12,6 +13,7 @@ import {
 // no answer says a real trade was made, and a replay is never a forecast.
 
 const read = (text: string) => parseInvestmentIntent(normalize(text));
+const hrefs = (actions: MessageAction[]) => actions.map((a) => (a.kind === "link" ? a.href : null));
 const at = (day: string) => new Date(`${day}T21:00:00Z`);
 const trade = (side: string, ticker: string, amountCents: number, rule: string, why = "") => ({
   placedAt: at("2026-10-14"),
@@ -67,7 +69,7 @@ describe("the practice portfolio in the chat", () => {
     expect(reply.body).toMatch(/practice money only/);
     expect(reply.body.length).toBeLessThanOrEqual(700);
     expect(reply.refs.advice).toBe(true);
-    expect(reply.actions.map((a) => a.href)).toEqual([
+    expect(hrefs(reply.actions)).toEqual([
       "/investments/practice",
       "/investments/practice#pause",
     ]);
@@ -97,9 +99,9 @@ describe("the practice portfolio in the chat", () => {
     expect(practicePauseReply("already_paused", "all", true).body).toMatch(/already paused/);
     expect(practicePauseReply("resumed", "all", true).body).toMatch(/^Resumed/);
     expect(practicePauseReply("none", "all", true).body).toMatch(/pause the autopilot/);
-    expect(practicePauseReply("paused", "all", true).actions[0].href).toBe(
+    expect(hrefs(practicePauseReply("paused", "all", true).actions)).toEqual([
       "/investments/practice#pause",
-    );
+    ]);
   });
 
   it("replays a level's year from step 295's numbers, never as a forecast", () => {
