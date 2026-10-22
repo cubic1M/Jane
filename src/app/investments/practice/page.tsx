@@ -106,6 +106,9 @@ async function Content({
           <button type="submit" className={`${BUTTON} self-start`}>
             Start with practice money
           </button>
+          <Link href="/investments/practice/settings" className={`text-sm ${LINK}`}>
+            Set your goal, extra moves and what to avoid first →
+          </Link>
           <DemoAdviceLabel />
         </form>
       )}
@@ -148,6 +151,9 @@ async function Content({
               </form>
             </div>
             {practice.paused && <p className="text-sm">Paused: no trades until you resume.</p>}
+            <Link href="/investments/practice/settings" className={`text-sm ${LINK}`}>
+              Settings: risk, goal, extra moves, what to avoid →
+            </Link>
             <DemoAdviceLabel />
           </section>
           <section className="flex flex-col gap-2">

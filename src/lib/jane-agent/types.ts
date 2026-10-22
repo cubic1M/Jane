@@ -92,6 +92,8 @@ export const ACTION_IDS = [
   // Typing to Jane (spec step 84).
   "goal.start",
   "autopilot.pause",
+  // Phase AW: a change to the practice portfolio's settings, prepared in the chat (refs.practicePrefs).
+  "practice.prefs_save",
   // Spec step 88: a clarifying question's answers, one per meaning (refs.choices).
   "clarify.1",
   "clarify.2",
@@ -418,6 +420,9 @@ export type MessageRefs = {
   proposalKey?: string;
   // Spec step 83: the step only the person can do on an action (./agent-steps.ts).
   step?: string;
+  // Phase AW: the practice settings a "Make the change" tap saves, by field, as the card showed
+  // them (src/planning/practice-preferences.ts checks them again on the tap).
+  practicePrefs?: Record<string, string | number | boolean | string[] | null>;
   // Spec step 83: a deadline the person typed in (src/lib/deadlines.ts), to mark done.
   deadlineEntryId?: string;
   // The goal "Start a goal for it" would add (spec step 84): money in cents, date

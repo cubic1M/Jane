@@ -12,6 +12,7 @@ import {
   DEFAULT_PREFERENCES,
   fromRow,
   type PracticePreferences,
+  type PreferenceField,
   type PreferencePatch,
   type Validated,
 } from "@/planning/practice-preferences";
@@ -74,7 +75,12 @@ export async function questionnaireLevel(
 
 export type SaveResult =
   | (Validated & { ok: false })
-  | { ok: true; before: PracticePreferences; preferences: PracticePreferences; changed: string[] };
+  | {
+      ok: true;
+      before: PracticePreferences;
+      preferences: PracticePreferences;
+      changed: PreferenceField[];
+    };
 
 export async function savePreferences(
   userId: string,
