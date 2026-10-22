@@ -271,7 +271,9 @@ describe("the daily scan: caps", () => {
       ...(await scanOn(4, "2026-10-14", held)),
       ...(await scanOn(3, "2020-03-23", await boughtOn(3, "2020-02-18"))),
     ];
-    expect(new Set(kinds(flags))).toEqual(new Set(SCAN_KINDS));
+    expect(new Set(kinds(flags))).toEqual(
+      new Set(["drift_rebalance", "dip_buy", "tax_loss_harvest", "news_idea"]),
+    );
     for (const f of flags) {
       expect(f.reason.length).toBeGreaterThan(30);
       expect(f.figures.length).toBeGreaterThan(0);

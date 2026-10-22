@@ -20,6 +20,7 @@ import { loadCardInterest } from "@/lib/card-interest";
 import { loadStudentLongGame } from "@/lib/student-long-game";
 import { loadFamilyLoans } from "@/lib/family-loans";
 import { loadCreditGoals } from "@/lib/credit-goals";
+import { loadCostlyBorrowing } from "@/lib/costly-borrowing";
 import { MortgageMoneyError, loadMortgageMoney } from "@/lib/mortgage-money";
 import { loadCarLoan } from "@/lib/car-loan";
 import { decide } from "@/lib/debt-decisions";
@@ -63,6 +64,7 @@ import {
   debtReviewToolOutput,
   carLoanToolOutput,
   mortgageMoneyToolOutput,
+  costlyBorrowingToolOutput,
   loanFitToolOutput,
 } from "./debt-tools";
 
@@ -88,6 +90,10 @@ export async function runDebtTool(
       return out(debtsToolOutput(await loadDebts(userId, { client, now }), money));
     case "debt_autopilot":
       return out(debtAutopilotToolOutput(await loadDebtAutopilot(userId, { client, now }), money));
+    case "costly_borrowing":
+      return out(
+        costlyBorrowingToolOutput(await loadCostlyBorrowing(userId, { client, now }), money),
+      );
     case "mortgage_money": {
       const args = (input ?? {}) as { lump_cents?: unknown; extra_monthly_cents?: unknown };
       try {
@@ -122,7 +128,13 @@ export async function runDebtTool(
         },
         { client, now },
       );
-      return out(loanFitToolOutput(view, money, await adviceMode(userId, { client })));
+      const advice = await adviceMode(userId, { client });
+      const output = loanFitToolOutput(view, money, advice);
+      // Demo advice only: the options ride along as the chat's pick-one card (refs.options).
+      const card = advice && "optionCard" in output ? output.optionCard : null;
+      if (!card) return out(output);
+      // Told so, it names its pick and why rather than listing every option again.
+      return { ...out({ ...output, shownAsACard: true }), options: card };
     }
     case "debt_decision": {
       const which = (input as { which?: unknown } | null)?.which;

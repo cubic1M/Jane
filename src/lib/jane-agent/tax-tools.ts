@@ -36,6 +36,8 @@ import { loadPropertyTax } from "@/lib/property-tax";
 import { loadAccountantPage } from "@/lib/accountant";
 import { loadBusinessStructure } from "@/lib/business-structure";
 import { loadInheritance } from "@/lib/inheritance";
+import { loadHealthTaxes } from "@/lib/health-taxes";
+import { loadDisasterRelief } from "@/lib/disasters";
 import { DECISION_TOPICS } from "@/config/tax-decisions";
 import { decideTax } from "@/lib/tax-decisions";
 import { loadTaxCalendar } from "@/lib/tax-calendar";
@@ -221,6 +223,18 @@ export const TAX_TOOLS: Anthropic.Tool[] = [
     name: "tax_inherited",
     description:
       "Inherited money and gifts: an inherited IRA the person has (found by the account's name) with the year it must be empty by under the 10-year rule (from the year they told Jane the owner died; spouses can treat it as their own), the exceptions, and in demo advice mode how much tax taking it out evenly saves against taking it all at the end; gifts to one person this year over the annual exclusion that need a gift tax return (Form 709); the step-up in basis on inherited assets; and the federal and state estate tax facts. Facts only, with a pointer to a tax professional or estate lawyer: Jane gives no legal advice.",
+    input_schema: noInput,
+  },
+  {
+    name: "tax_health",
+    description:
+      "The tax side of the person's health cover. A Marketplace plan's premium tax credit checked against their income this year, month by month so a mid-year rise shows (projected income, share of the poverty line, over the 400% line where the credit stops or not, the credit allowed, the advance credit (told, or worked out from their income early in the year) and what would be repaid with the return, with no cap from 2026); HSA deposits this year and at this pace by December against the limit for their cover, with what's over and the 6% penalty each year it stays in; and medical costs and health premiums against the 7.5% of income floor and the standard deduction, with what itemizing would save. Telling the Marketplace or an HSA provider is the person's: Jane contacts no one. What to do about the credit is demo advice.",
+    input_schema: noInput,
+  },
+  {
+    name: "tax_disaster",
+    description:
+      "Disaster relief and losses for the person: the county they live in (told, or named by their property tax payee), any IRS disaster postponement covering it from their disaster feed (only a stand-in with sample declarations for demo-bank people; none for real accounts yet), what it covers (from the incident date, deadlines move to the postponed date: estimated payments, filing and paying, prior-year IRA and HSA contributions) and whether Jane has moved the tax deadlines on their list; repairs since the disaster, what insurance or FEMA paid back, and the casualty loss after the $100 floor and 10% of income (Form 4684), kept once with the insurance claim. Facts only; Jane files nothing.",
     input_schema: noInput,
   },
   {
@@ -829,6 +843,70 @@ export async function runTaxTool(
             : null,
         homeOffice: { sqft: v.homeOffice.sqft, deduction: money(v.homeOffice.deductionCents) },
         businessMiles: { miles: v.mileage.miles, deduction: money(v.mileage.deductionCents) },
+      });
+    }
+    case "tax_disaster": {
+      const v = await loadDisasterRelief(userId, { client, now });
+      return out({
+        county: v.county,
+        countyFrom: v.countySource,
+        feed: v.feed,
+        relief: v.relief.map((r) => ({
+          disaster: r.relief.title,
+          sample: r.relief.sample,
+          state: r.relief.state,
+          from: r.relief.incidentFrom,
+          deadlinesMoveTo: r.relief.postponedTo,
+          stateFollows: r.relief.stateFollows,
+          datesCovered: r.computed.map((m) => ({ what: m.title, was: m.from })),
+          movedOnTheirList: r.applied,
+          onTheirListToMove: r.moves.map((m) => ({ title: m.title, was: m.from })),
+          repairsSince: money(r.loss.repairsCents),
+          paidBack: money(r.loss.reimbursedCents),
+          loss: money(r.loss.lossCents),
+          tenPercentOfIncome: money(r.loss.incomeFloorCents),
+          deductible: money(r.loss.deductibleCents),
+          insuranceClaim: r.claim ? { carrier: r.claim.carrier } : null,
+          recordedWithClaim: r.recorded !== null,
+        })),
+      });
+    }
+    case "tax_health": {
+      const v = await loadHealthTaxes(userId, { client, now });
+      const c = v.marketplace.check;
+      return out({
+        projectedIncome: money(v.pace.projectedCents),
+        incomeEarlyInTheYear: money(v.pace.enrollmentCents),
+        marketplace:
+          v.marketplace.payments === 0
+            ? null
+            : {
+                premiumsPaidThisYear: money(v.marketplace.paidCents),
+                householdSize: v.householdSize,
+                shareOfPovertyLine: c ? `${Math.round(c.fplShare * 100)}%` : null,
+                overThe400PercentLine: c?.overCliff ?? false,
+                creditAllowed: c ? money(c.allowedCents) : null,
+                advanceCredit: money(v.marketplace.advanceYearCents),
+                advanceCreditToldByPerson: v.marketplace.told,
+                wouldBeRepaid: c ? money(c.repayCents) : money(0),
+                repaymentCap: c?.capCents == null ? null : money(c.capCents),
+              },
+        hsa: {
+          deposited: money(v.hsa.contributedCents),
+          byDecemberAtThisPace: money(v.hsa.projectedCents),
+          cover: v.hsa.family ? "family" : "self-only",
+          limit: money(v.hsa.limitCents),
+          over: money(Math.max(v.hsa.excessCents, v.hsa.projectedExcessCents)),
+          penaltyEachYear: money(v.hsa.exciseCents),
+        },
+        medical: {
+          paidThisYear: money(v.medical.spentCents),
+          floor: money(v.medical.floorCents),
+          overTheFloor: money(v.medical.deductibleCents),
+          standardDeduction: money(v.medical.standardCents),
+          itemizingBeatsStandard: v.medical.itemizing,
+          itemizingSaves: money(v.medical.savesCents),
+        },
       });
     }
     case "tax_inherited": {
