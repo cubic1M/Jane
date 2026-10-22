@@ -61,6 +61,7 @@ import { ACTION_HANDLERS } from "./actions";
 import { DEBT_CHAT_PAGES, DEBT_TOOLS } from "./debt-tools";
 import { isDebtTool, runDebtTool } from "./debt-tools-run";
 import { INVESTMENT_TOOLS, isInvestmentTool, runInvestmentTool } from "./investments/tools";
+import { NEWS_TOOLS, isNewsTool, runNewsTool } from "./news-tools";
 import { rebalanceOffer } from "./investments/replies";
 import { loadRebalance } from "@/lib/investments/rebalance";
 import { monthLabel, type Reply } from "./replies";
@@ -416,6 +417,8 @@ export const CHAT_TOOLS: Anthropic.Tool[] = [
   ...TAX_TOOLS,
   // Spec step 128 on.
   ...INVESTMENT_TOOLS,
+  // Spec step 293: the practice portfolio's news.
+  ...NEWS_TOOLS,
 ];
 
 const str = (value: unknown) => (typeof value === "string" ? value.trim() : "");
@@ -432,6 +435,7 @@ export async function runChatTool(
   if (isDebtTool(name)) return runDebtTool(userId, name, input, { client, now });
   if (isTaxTool(name)) return runTaxTool(userId, name, input, { client, now });
   if (isInvestmentTool(name)) return runInvestmentTool(userId, name, input, { client, now });
+  if (isNewsTool(name)) return runNewsTool(userId, name, input, { client, now });
   if (isInsuranceTool(name)) return runInsuranceTool(userId, name, input, { client, now });
   const cents: number[] = [];
   const money = (value: number) => {
