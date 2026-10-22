@@ -182,7 +182,9 @@ export function findTaxSavings(s: SavingsInput): TaxSaving[] {
     });
   }
 
-  if (s.medicalCents >= FSA_SUGGEST_FROM_CENTS) {
+  // A health FSA is paid from wages through an employer: none without a job (taxes QA: Ruth,
+  // retired, was told to sign up at open enrollment).
+  if (s.medicalCents >= FSA_SUGGEST_FROM_CENTS && base.income.wagesCents > 0) {
     const amount = Math.min(s.medicalCents, CONTRIBUTION_LIMITS.healthFsa);
     out.push({
       key: "health_fsa",
@@ -198,7 +200,7 @@ export function findTaxSavings(s: SavingsInput): TaxSaving[] {
     });
   }
 
-  if (s.childcareCents > 0 && base.childrenUnder17 > 0) {
+  if (s.childcareCents > 0 && base.childrenUnder17 > 0 && base.income.wagesCents > 0) {
     const limit =
       base.filingStatus === "married_separate"
         ? CONTRIBUTION_LIMITS.dependentCareFsaMarriedSeparate
