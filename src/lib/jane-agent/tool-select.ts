@@ -85,6 +85,7 @@ const SECTORS = {
       "crypto",
       "market_news",
       "backtest_by_level",
+      "practice_portfolio",
       "practice_settings",
       "change_practice_settings",
     ]),

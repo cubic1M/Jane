@@ -249,6 +249,9 @@ export const ACTION_IDS = [
   "invest.auto_leftover",
   "invest.auto_pause",
   "invest.auto_resume",
+  // Spec step 297: the practice portfolio's switch, offered by Claude (practice money only).
+  "practice.pause",
+  "practice.resume",
   // Spec step 158: start saving for college.
   "college.start",
   // Spec step 159: the HSA.
@@ -563,6 +566,8 @@ export type MessageRefs = {
   iraCents?: number;
   // Spec step 211: the old plan a question or rollover button is about.
   oldPlanId?: string;
+  // Spec step 297: which practice switch a pause or resume button sets.
+  practiceWhich?: "all" | "opportunities";
   // Spec step 213: the child (and amount, cents) a button is about.
   familyChild?: string;
   familyPlan?: string;

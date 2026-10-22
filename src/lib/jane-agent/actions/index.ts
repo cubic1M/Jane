@@ -149,6 +149,8 @@ import {
   suddenKinds,
   suddenStage,
   valuesApply,
+  practicePause,
+  practiceResume,
 } from "./investments";
 import { changeBudget, changeExpected, changeLook } from "./changes";
 import { lifeNever, lifeNo, lifeYes } from "./life";
@@ -374,6 +376,8 @@ export const ACTION_HANDLERS: Readonly<Record<ActionId, ActionHandler>> = {
   "invest.auto_leftover": investAutoLeftover,
   "invest.auto_pause": investAutoPause,
   "invest.auto_resume": investAutoResume,
+  "practice.pause": practicePause,
+  "practice.resume": practiceResume,
   "college.start": collegeStart,
   "hsa.link": hsaLink,
   "hsa.invest": hsaInvest,

@@ -17,7 +17,8 @@ import { dollars, evidence, factEvidence, liquidCents, weakest } from "./helpers
 const practicePortfolio: Detector = {
   capability: "investing",
   topic: PRACTICE_TOPIC,
-  covers: [],
+  // Its tool: the practice portfolio Claude reads (step 297).
+  covers: ["practice_portfolio"],
   needs: ["life_stage"],
   detect({ profile, data }) {
     const stage = profile.facts.life_stage;

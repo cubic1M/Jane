@@ -1,4 +1,6 @@
 import { adviceMode } from "@/lib/advice-mode";
+import { loadPractice } from "@/lib/practice/portfolio";
+import { PRACTICE_ONLY_NOTE } from "./investments/practice-copy";
 import { dollarFigures } from "@/lib/guardrails";
 import { decisionReply, loadDecisionFacts } from "./decision";
 import { parseDecision } from "./decision-intents";
@@ -105,6 +107,9 @@ export const PROPOSABLE: readonly ActionId[] = [
   "goal.start",
   // Spec step 133.
   "invest.rebalance",
+  // Spec step 297: the practice portfolio's switch.
+  "practice.pause",
+  "practice.resume",
 ];
 
 // Shopping a policy for the person: Jane gets the quotes now and, in demo advice, offers the
@@ -394,7 +399,7 @@ export const CHAT_TOOLS: Anthropic.Tool[] = [
   {
     name: "propose_action",
     description:
-      "Offer the person a button under your answer. You can't do anything yourself; the person decides by tapping. Use it at most once: when your answer suggests something that can be done, or the person asked for it. Actions: finding.yes (Yes and No on one open finding; give finding_id from open_findings), plan.approve_safe (approve the plan's safe items together), goal.start (start a savings goal; give goal_name, goal_amount in dollars and goal_month as YYYY-MM within the next 12 months), invest.rebalance (demo advice mode: place the orders that move to the recommended mix, in the simulated brokerage), open (a link to a page; give page).",
+      "Offer the person a button under your answer. You can't do anything yourself; the person decides by tapping. Use it at most once: when your answer suggests something that can be done, or the person asked for it. Actions: finding.yes (Yes and No on one open finding; give finding_id from open_findings), plan.approve_safe (approve the plan's safe items together), goal.start (start a savings goal; give goal_name, goal_amount in dollars and goal_month as YYYY-MM within the next 12 months), invest.rebalance (demo advice mode: place the orders that move to the recommended mix, in the simulated brokerage), practice.pause / practice.resume (demo advice mode: pause or resume Jane in the practice portfolio; give which: all, or opportunities for the small extra positions only), open (a link to a page; give page).",
     input_schema: {
       type: "object",
       properties: {
@@ -406,6 +411,11 @@ export const CHAT_TOOLS: Anthropic.Tool[] = [
             "For insurance.reshop: which policy to shop (car, home, renters, life, pet).",
         },
         finding_id: { type: "string" },
+        which: {
+          type: "string",
+          enum: ["all", "opportunities"],
+          description: "For practice.pause / practice.resume: all trading, or opportunities only.",
+        },
         goal_name: { type: "string" },
         goal_amount: { type: "number" },
         goal_month: { type: "string" },
@@ -1378,6 +1388,33 @@ export async function proposeAction(
     }
     const reply = rebalanceOffer(plan);
     return { ok: true, actions: reply.actions, refs: reply.refs, line: reply.body };
+  }
+
+  if (id === "practice.pause" || id === "practice.resume") {
+    if (!(await adviceMode(userId, { client }))) return refuse(PRACTICE_ONLY_NOTE);
+    const view = await loadPractice(userId, { client, now });
+    if (!view) return refuse("There's no practice portfolio to pause or resume.");
+    const which = str(args.which) === "opportunities" ? "opportunities" : "all";
+    const pausing = id === "practice.pause";
+    const already = which === "all" ? view.paused : view.opportunitiesPaused;
+    const what = which === "all" ? "the practice portfolio" : "opportunities";
+    if (already === pausing) {
+      return refuse(
+        `${what[0].toUpperCase()}${what.slice(1)} is already ${pausing ? "paused" : "running"}.`,
+      );
+    }
+    return {
+      ok: true,
+      actions: [
+        {
+          id,
+          label: `${pausing ? "Pause" : "Resume"} ${which === "all" ? "Jane" : "opportunities"}`,
+          kind: "primary",
+        },
+      ],
+      refs: { advice: true, practiceWhich: which },
+      line: null,
+    };
   }
 
   // goal.start

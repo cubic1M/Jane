@@ -2,7 +2,7 @@ import type Anthropic from "@anthropic-ai/sdk";
 import type { PrismaClient } from "@/generated/prisma/client";
 import { formatBps } from "@/insights/investments";
 import type { ToolOutput } from "@/lib/ask/tools";
-import { GOALS, HORIZONS } from "@/config/investing";
+import { GOALS, HORIZONS, RISK_LEVELS } from "@/config/investing";
 import { adviceMode } from "@/lib/advice-mode";
 import { loadFees } from "@/lib/investments/fees";
 import { loadInvestments } from "@/lib/investments/holdings";
@@ -43,6 +43,10 @@ import { loadReview } from "@/lib/investments/review";
 import { profileOf } from "@/lib/investments/profile";
 import { profileSummary } from "@/planning/investor-profile";
 import { formatCents } from "@/lib/money";
+import { PRACTICE_LOG_DAYS } from "@/config/practice-cards";
+import { tradeLog } from "@/lib/practice/autopilot";
+import { loadPractice } from "@/lib/practice/portfolio";
+import { PRACTICE_ONLY_NOTE, RULE_LABELS } from "./practice-copy";
 
 // Claude's tools for investment questions in Jane's chat (spec step 128 on): read-only,
 // scoped to the person, and every dollar figure recorded for the guardrails. Each later
@@ -242,6 +246,13 @@ export const INVESTMENT_TOOLS: Anthropic.Tool[] = [
     name: "crypto",
     description:
       "The person's crypto, read-only from their exchanges and wallets: each connection with its source and when it was read, each asset's amount, price and value, the total and its share of everything invested. In demo advice mode, two flags: a share above about 5%, and exchange fees well above low-cost exchanges'. Jane never buys, sells or moves crypto, at any level: there's no way to, so never offer to.",
+    input_schema: noInput,
+  },
+  // Spec step 297: the practice portfolio, for "what did you buy this week and why".
+  {
+    name: "practice_portfolio",
+    description:
+      "The person's practice portfolio (demo advice mode only): a paper portfolio Jane runs on practice money, never real money, at a risk level (Very low to Very high). Gives the level, what it's worth and started with, cash, each position, whether Jane is paused (all trading, or opportunities only), and this week's trades with the rule and the reason for each. Say plainly that it's practice money and nothing real was bought or sold. To pause or resume it, offer practice.pause or practice.resume with propose_action; you can't change it yourself.",
     input_schema: noInput,
   },
   {
@@ -1022,6 +1033,39 @@ export async function runInvestmentTool(
                 moreAYear: money(m.gainCents),
               })),
             },
+      });
+    }
+    case "practice_portfolio": {
+      if (!(await adviceMode(userId, { client }))) return out({ note: PRACTICE_ONLY_NOTE });
+      const view = await loadPractice(userId, { client, now });
+      if (!view) {
+        return out({
+          note: "No practice portfolio yet. It can be started on the practice portfolio page, with practice money only.",
+        });
+      }
+      const since = now.getTime() - PRACTICE_LOG_DAYS * 86_400_000;
+      const week = (await tradeLog(userId, { client })).filter(
+        (t) =>
+          !t.undone && (t.side === "buy" || t.side === "sell") && t.placedAt.getTime() >= since,
+      );
+      return out({
+        practiceMoneyOnly: "A paper portfolio on practice money: nothing real was bought or sold.",
+        level: RISK_LEVELS[view.level].label,
+        worth: money(view.totalCents),
+        startedWith: money(view.startingCents),
+        startedOn: view.startedAt.toISOString().slice(0, 10),
+        cash: money(view.state.cashCents),
+        positions: view.holdings.map((h) => ({ ticker: h.ticker, value: money(h.valueCents) })),
+        paused: view.paused,
+        opportunitiesPaused: view.opportunitiesPaused,
+        thisWeek: week.map((t) => ({
+          on: t.placedAt.toISOString().slice(0, 10),
+          side: t.side,
+          ticker: t.ticker,
+          amount: money(t.amountCents),
+          rule: RULE_LABELS[t.rule] ?? t.rule,
+          reason: t.reason,
+        })),
       });
     }
     case "crypto": {
