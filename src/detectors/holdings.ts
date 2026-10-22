@@ -2,7 +2,16 @@ import { DETECTOR_RATES as R } from "@/config/detectors";
 import { FUND_FACTS, FUND_NAMES, LOWER_COST_EQUIVALENTS } from "@/config/funds";
 import { formatCents } from "@/lib/money";
 import { type Detector, suggestionId } from "./contract";
-import { evidence, factEvidence, liquidCents, monthlySpendCents, tx, weakest } from "./helpers";
+import {
+  evidence,
+  factEvidence,
+  liquidCents,
+  monthlySpendCents,
+  tx,
+  weakest,
+  headlineOf,
+  clip,
+} from "./helpers";
 import type { ProfileHolding } from "@/profile/build";
 
 // Detectors that read what the person holds (spec step 262): fees, drift from a sensible mix,
@@ -41,6 +50,10 @@ const feeDrag: Detector = {
       capability: "investing",
       topic: "investment_fees",
       title: "Switch to cheaper funds that do the same job",
+      headline: headlineOf("Switch to cheaper funds", total, "saves"),
+      short: clip(
+        `${FUND_NAMES[top.h.ticker!] ?? top.h.ticker} (${formatCents(top.h.valueCents)}) costs more than a similar fund.`,
+      ),
       worthCents: total,
       worthKind: "saves",
       confidence: weakest([
@@ -48,7 +61,7 @@ const feeDrag: Detector = {
         { percent: 85, reason: "fund costs from Jane's fund table" },
       ]),
       urgency: "later",
-      why: `${rows.length} of your funds cost more than a similar fund. The largest is ${FUND_NAMES[top.h.ticker!] ?? top.h.ticker} (${formatCents(top.h.valueCents)}); switching all of them would save about ${formatCents(total)} a year in fees.`,
+      why: `${rows.length === 1 ? "One of your funds costs" : `${rows.length} of your funds cost`} more than a similar fund. The largest is ${FUND_NAMES[top.h.ticker!] ?? top.h.ticker} (${formatCents(top.h.valueCents)}); switching all of them would save about ${formatCents(total)} a year in fees.`,
       action: { label: "See the fees", href: "/investments/fees" },
     };
   },
@@ -90,10 +103,19 @@ const drift: Detector = {
         share > target
           ? "Bring your stocks back toward your target"
           : "Put more of your money to work",
+      headline: headlineOf(
+        share > target ? "Rebalance toward your target" : "Put more money to work",
+        moved,
+        "risk",
+      ),
+      short: `${Math.round(share * 100)}% of what you invest is in stocks; people at your stage hold about ${Math.round(target * 100)}%.`,
       worthCents: moved,
       worthKind: "risk",
       confidence: weakest([
-        factEvidence(stage),
+        {
+          percent: stage.confidence,
+          reason: "your target mix is a guess from your life stage until you answer four questions",
+        },
         evidence("seen", profile.months, count, "funds with known holdings"),
       ]),
       urgency: "later",
@@ -112,8 +134,10 @@ const autoInvest: Detector = {
     const pattern = profile.facts.income_pattern;
     const income = profile.facts.monthly_income;
     if (pattern.value !== "salary" || typeof income.value !== "number") return null;
-    const accounts = data.accounts.filter(
-      (a) => a.type === "investment" && a.subtype !== "hsa" && a.subtype !== "stock plan",
+    // Payroll contributions to a workplace plan are already regular investing, so only
+    // accounts outside it count.
+    const accounts = data.accounts.filter((a) =>
+      ["brokerage", "ira", "roth"].includes(a.subtype ?? ""),
     );
     if (accounts.length === 0) return null;
     const spend = monthlySpendCents(data, profile.months);
@@ -126,6 +150,12 @@ const autoInvest: Detector = {
       capability: "investing",
       topic: "auto_invest",
       title: "Invest a little of every paycheck automatically",
+      headline: headlineOf(
+        "Invest a little from each paycheck",
+        Math.round((monthly * 12 * (R.highYieldBps - R.currentCashBps)) / 10_000),
+        "earns",
+      ),
+      short: `You're paid steadily and keep a cushion, but I see no regular investing: ${formatCents(monthly)} a month is the idea.`,
       worthCents: Math.round((monthly * 12 * (R.highYieldBps - R.currentCashBps)) / 10_000),
       worthKind: "earns",
       confidence: weakest([
@@ -134,7 +164,7 @@ const autoInvest: Detector = {
         evidence("seen", profile.months, 0, "automatic investments"),
       ]),
       urgency: "later",
-      why: `You are paid a steady salary, keep a cushion and have ${accounts.length === 1 ? "an investment account" : `${accounts.length} investment accounts`}, but I see no regular investing. ${Math.round(R.autoInvestShare * 100)}% of your pay is about ${formatCents(monthly)} a month, always moved after your bills are safe.`,
+      why: `You are paid a steady salary, keep a cushion and have ${accounts.length === 1 ? "an investment account" : `${accounts.length} investment accounts`}, but I see no regular investing outside your workplace plan. ${Math.round(R.autoInvestShare * 100)}% of your pay is about ${formatCents(monthly)} a month, always moved after your bills are safe.`,
       action: { label: "Set up automatic investing", href: "/investments/auto" },
     };
   },
@@ -156,6 +186,12 @@ const oldAccounts: Detector = {
       capability: "investing",
       topic: "old_accounts",
       title: "Roll an old employer plan into one account",
+      headline: headlineOf(
+        "Roll an old employer plan into one",
+        Math.round((old * R.oldPlanFeeGapBps) / 10_000),
+        "saves",
+      ),
+      short: `You have ${plans.length} 401(k) accounts; ${formatCents(old)} sits in the old ones.`,
       worthCents: Math.round((old * R.oldPlanFeeGapBps) / 10_000),
       worthKind: "saves",
       confidence: weakest([
@@ -195,6 +231,8 @@ const assetLocation: Detector = {
       capability: "investing",
       topic: "asset_location",
       title: "Hold your bonds in the account where their interest isn't taxed each year",
+      headline: headlineOf("Move bonds to a tax-sheltered account", saving, "saves"),
+      short: `${formatCents(inTaxable)} of bond funds sit in a taxable account.`,
       worthCents: saving,
       worthKind: "saves",
       confidence: weakest([
@@ -223,6 +261,8 @@ const costlyAnnuity: Detector = {
       capability: "investing",
       topic: "costly_products",
       title: "Check what your annuity really costs",
+      headline: headlineOf("Check what your annuity costs", saving, "saves"),
+      short: `You hold ${formatCents(balance)} in an annuity.`,
       worthCents: saving,
       worthKind: "saves",
       confidence: weakest([

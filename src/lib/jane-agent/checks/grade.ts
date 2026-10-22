@@ -6,6 +6,7 @@ import { CHAT_UNAVAILABLE_TEXT } from "../claude";
 import { parseIntent } from "../intents";
 import { unknownReply } from "../replies";
 import type { MessageAction } from "../types";
+import type { AnswerSource } from "../typing";
 import type { CheckQuestion } from "./bank";
 import type { Facts } from "./facts";
 
@@ -17,7 +18,7 @@ export type Answer = {
   body: string;
   actions: MessageAction[];
   // How it was answered (src/lib/jane-agent/typing.ts).
-  source: "rules" | "claude" | "claude_blocked" | "claude_unavailable" | "fallback";
+  source: AnswerSource;
 };
 
 export type Check = { name: string; ok: boolean; reason: string };
@@ -63,6 +64,18 @@ export function fixedChecks(
       : answer.source === "claude_blocked"
         ? fail("answered", "The guardrails blocked Jane's answer.")
         : pass("answered"),
+  );
+
+  // Chat architecture (docs/spec.md): every reply is written words, at least a real sentence;
+  // a button or a card is never the whole reply.
+  const words = body.split(/\s+/).filter(Boolean).length;
+  checks.push(
+    words >= 3 && !(BARE_BUTTON.test(body) && body.length < 80)
+      ? pass("written")
+      : fail(
+          "written",
+          "The reply isn't a written answer: a button or a few words is not an answer.",
+        ),
   );
 
   // What the rules read it as.
@@ -132,6 +145,14 @@ export function fixedChecks(
         : fail("button", `No "${expect.button}" button.`),
     );
   }
+  if (expect.noButtons) {
+    const buttons = answer.actions.filter((a) => a.kind !== "link");
+    checks.push(
+      buttons.length === 0
+        ? pass("no_buttons")
+        : fail("no_buttons", "A question that asks for information got an action button."),
+    );
+  }
   if (expect.link) {
     checks.push(
       answer.actions.some((a) => a.kind === "link" && a.href.startsWith(expect.link!))
@@ -152,6 +173,21 @@ export function fixedChecks(
       expect.avoid.test(body)
         ? fail("avoids", `Says what it shouldn't (${expect.avoid.source}).`)
         : pass("avoids"),
+    );
+  }
+
+  if (expect.maxSentences) {
+    // The "85% sure: ..." line under a decision is the evidence, not part of the answer.
+    const count = body
+      .split("\n")
+      .filter((l) => !/^\d+% sure:/.test(l))
+      .join(" ")
+      .split(/(?<=[.!?])\s+/)
+      .filter(Boolean).length;
+    checks.push(
+      count <= expect.maxSentences
+        ? pass("sentences")
+        : fail("sentences", `${count} sentences, over ${expect.maxSentences}.`),
     );
   }
 

@@ -10,6 +10,9 @@ export const ANSWER_FIRST_SENTENCE_MAX = 200;
 // What one run may spend on Claude (Jane's free answers and the grader together), in
 // cents. The run stops asking once it's reached, and says so.
 export const ANSWER_CHECK_CAP_CENTS = 300;
+// The judge that grades each answer: a small model, since it reads one answer against a rubric
+// (the chat itself stays on its own model). ANTHROPIC_GRADER_MODEL overrides it.
+export const GRADER_MODEL = "claude-haiku-5-5";
 
 // Claude's prices, in cents per million tokens (input, output), for the spending cap. A
 // model not listed counts at the most expensive price here, so the cap never undercounts.

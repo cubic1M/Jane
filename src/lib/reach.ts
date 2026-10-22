@@ -2,11 +2,12 @@ import { TOOL_EXEMPT } from "@/config/detector-exempt";
 import { UNREACHABLE } from "@/config/reach";
 import { TRIAL_ID_PREFIX } from "@/config/trial";
 import { DETECTORS } from "@/detectors";
-import { runHarness } from "@/detectors/harness";
+import { runHarness, topThreeFor } from "@/detectors/harness";
 import { MISSING_DETECTOR } from "@/detectors/missing";
 import type { PrismaClient } from "@/generated/prisma/client";
 import { db as defaultClient } from "@/lib/db";
 import { CHAT_TOOLS } from "@/lib/jane-agent/claude-tools";
+import { worthOnce } from "@/planning/suggestion-rank";
 import { type Answered, bandsOf, offDetectors } from "@/planning/calibration";
 
 // The reach scoreboard (spec step 258): which capabilities fired for whom, the dollars shown,
@@ -33,6 +34,18 @@ const empty = (): Totals => ({ offered: 0, yes: 0, no: 0, dollarsCents: 0, byCap
 
 export async function reachReport({ client = defaultClient }: { client?: PrismaClient } = {}) {
   const reports = runHarness();
+  // Depth-first bar #3: pass or fail per person, on their top three suggestions.
+  const topThree = reports.map((r) => {
+    const t = topThreeFor(r);
+    return {
+      id: r.person.id,
+      label: r.person.label,
+      topics: t.topics,
+      offList: t.offList,
+      wrong: t.wrong,
+      pass: t.pass,
+    };
+  });
   const people = reports.map((r) => ({
     id: r.person.id,
     label: r.person.label,
@@ -43,7 +56,8 @@ export async function reachReport({ client = defaultClient }: { client?: PrismaC
       reason: s.confidence.reason,
       worthCents: s.worthCents,
     })),
-    dollarsCents: r.fired.reduce((s, x) => s + x.worthCents, 0),
+    // Each piece of money counted once, even when two suggestions touch it.
+    dollarsCents: worthOnce(r.fired),
     missed: r.missed,
     wrong: r.wrong.map((s) => s.topic),
   }));
@@ -122,6 +136,7 @@ export async function reachReport({ client = defaultClient }: { client?: PrismaC
   };
 
   return {
+    topThree,
     coverage,
     people,
     capabilities: [...reached.entries()]

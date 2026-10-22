@@ -48,6 +48,7 @@ import {
   benefitsUnsure,
 } from "./insurance";
 import { ChatActionError, linksOf, type ActionHandler } from "./handler";
+import { markPrimerStale } from "../primer-store";
 import { forgetPrimer } from "../primer-cache";
 import { planApproveSafe } from "./plan";
 import { undoNo, undoRule } from "./undo";
@@ -155,10 +156,21 @@ import { attentionResume } from "./attention";
 import { whatIfAdopt } from "./whatif";
 import { leanNotNow, leanStart } from "./lean";
 import { askAnswer } from "./ask";
-import { suggestionNo, suggestionYes } from "./suggestion";
+import { suggestionNo, suggestionWhy, suggestionYes } from "./suggestion";
 import { steadyOn, steadyPay, steadySkip } from "./steady";
 import { unusualMe, unusualNotMe } from "./unusual";
-import { bundleYes1, bundleYes2, bundleYes3, bundleYes4, bundleYes5 } from "./bundle";
+import {
+  bundleNo1,
+  bundleNo2,
+  bundleNo3,
+  bundleNo4,
+  bundleNo5,
+  bundleYes1,
+  bundleYes2,
+  bundleYes3,
+  bundleYes4,
+  bundleYes5,
+} from "./bundle";
 import { multiCancel, multiConfirm, multiUndo } from "./multi";
 import { FLOW_PICKS, flowBack, flowCancel } from "./flows";
 
@@ -245,6 +257,11 @@ export const ACTION_HANDLERS: Readonly<Record<ActionId, ActionHandler>> = {
   "bundle.3": bundleYes3,
   "bundle.4": bundleYes4,
   "bundle.5": bundleYes5,
+  "bundle.no.1": bundleNo1,
+  "bundle.no.2": bundleNo2,
+  "bundle.no.3": bundleNo3,
+  "bundle.no.4": bundleNo4,
+  "bundle.no.5": bundleNo5,
   // Spec step 185.
   "multi.confirm": multiConfirm,
   "multi.cancel": multiCancel,
@@ -397,6 +414,7 @@ export const ACTION_HANDLERS: Readonly<Record<ActionId, ActionHandler>> = {
   "ask.answer.5": askAnswer(5),
   "suggestion.yes": suggestionYes,
   "suggestion.no": suggestionNo,
+  "suggestion.why": suggestionWhy,
   "steady.pay": steadyPay,
   "steady.skip": steadySkip,
   "steady.on": steadyOn,
@@ -406,7 +424,14 @@ export const ACTION_HANDLERS: Readonly<Record<ActionId, ActionHandler>> = {
 
 const MESSAGE_ID = /^[a-z0-9]{1,40}$/i;
 
-type Options = { client?: PrismaClient; now?: Date };
+// defer: where the work the answer doesn't need (closing messages this settled, the audit
+// row, the analytics event) goes, so a tap returns sooner (the chat passes next/server's
+// after). Without it that work finishes before the call returns.
+type Options = {
+  client?: PrismaClient;
+  now?: Date;
+  defer?: (work: () => Promise<unknown>) => void;
+};
 
 // A tap on a button. Checked here, whatever the page sent: the message is the person's
 // own, the button is one it offers, and the message is in the state the button works on
@@ -415,7 +440,7 @@ export async function takeChatAction(
   userId: string,
   messageId: string,
   actionId: string,
-  { client = defaultClient, now = new Date() }: Options = {},
+  { client = defaultClient, now = new Date(), defer }: Options = {},
 ): Promise<{
   message: ChatMessage;
   agentJobIds: (string | undefined)[];
@@ -446,6 +471,7 @@ export async function takeChatAction(
   const outcome = await handler.run({ userId, message, action, client, now });
   // Spec step 93: a tap can change what's open, so Claude's copy of the numbers goes.
   forgetPrimer(userId);
+  await markPrimerStale(userId, { client });
   // Spec step 230: each button of a debt review is its own item. The message stays open,
   // without the button just used, until every item has been dealt with.
   const review = message.refs.reviewButtons ?? [];
@@ -476,16 +502,28 @@ export async function takeChatAction(
       snoozedUntil: outcome.snoozedUntil ?? null,
     },
   });
-  // Other messages this settled (a finding approved with the whole plan) lose their buttons.
-  await closeSettled(userId, { client, now });
-
-  await logAudit(
-    { type: "user", id: userId },
-    "chat_action_taken",
-    { type: "jane_message", id: message.id },
-    { action: actionId, kind: message.kind },
-  );
-  await track(userId, "chat_action_taken", { action: actionId, kind: message.kind });
+  // Other messages this settled (a finding approved with the whole plan) lose their buttons,
+  // then the audit row and the funnel event. A tap that posted a message reloads the chat at
+  // once, so it closes them first; the rest can follow the response.
+  const settle = async () => {
+    await logAudit(
+      { type: "user", id: userId },
+      "chat_action_taken",
+      { type: "jane_message", id: message.id },
+      { action: actionId, kind: message.kind },
+    );
+    await track(userId, "chat_action_taken", { action: actionId, kind: message.kind });
+  };
+  if (defer && !outcome.posted) {
+    defer(async () => {
+      await closeSettled(userId, { client, now });
+      await settle();
+    });
+  } else {
+    await closeSettled(userId, { client, now });
+    if (defer) defer(settle);
+    else await settle();
+  }
 
   const updated = await db.janeMessages.findFirst({
     where: { id: message.id },

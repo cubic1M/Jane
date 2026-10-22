@@ -66,6 +66,7 @@ export function unusualAlerts(
   input: DetectionInput,
   streams: Stream[] = buildStreams(input),
   taught: Taught = new Map(),
+  expected: ReadonlySet<string> = new Set(),
 ): UnusualAlert[] {
   const out: UnusualAlert[] = [];
   const spending = input.transactions.filter(
@@ -93,6 +94,8 @@ export function unusualAlerts(
     );
     sorted.forEach((t, i) => {
       if (!recent(t.date, input.asOf) || quiet(merchantKey, t.amountCents)) return;
+      // Their profile says this kind of payment is normal (a business owner's payroll).
+      if (t.pfcDetailed && expected.has(t.pfcDetailed)) return;
       const earlier = sorted.slice(0, i);
       // 1. Far above usual for this merchant.
       if (earlier.length >= UNUSUAL_MERCHANT_MIN_HISTORY) {

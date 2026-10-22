@@ -1,7 +1,8 @@
 import { DETECTOR_RATES as R } from "@/config/detectors";
+import { RISK_ANNUAL_PROBABILITY as CHANCE } from "@/config/suggestions";
 import { formatCents } from "@/lib/money";
 import { type Detector, suggestionId } from "./contract";
-import { evidence, factEvidence, tx, weakest } from "./helpers";
+import { evidence, factEvidence, tx, weakest, headlineOf } from "./helpers";
 import { daysToEstimatedDate, urgencyForEstimated } from "./taxes";
 
 // Detectors for how a person earns (spec step 254): taxes with no employer, saving for
@@ -37,6 +38,12 @@ const estimatedTaxes: Detector = {
       capability: "taxes",
       topic: "estimated_taxes",
       title: "Pay estimated taxes each quarter",
+      headline: headlineOf(
+        "Pay estimated taxes each quarter",
+        Math.round(owed * R.underpaymentPenaltyRate),
+        "risk",
+      ),
+      short: `Nobody withholds tax from your pay; about ${formatCents(owed)} a year is due.`,
       worthCents: Math.round(owed * R.underpaymentPenaltyRate),
       worthKind: "risk",
       // The tax is owed whatever she does; planning for it avoids the penalty and the surprise,
@@ -73,17 +80,41 @@ const selfRetirement: Detector = {
     const has401k = profile.facts.has_401k;
     const income = profile.facts.monthly_income;
     if (!selfPaid(pattern.value) || has401k.value !== false) return null;
-    const put = Math.round(annualIncome(income.value) * R.selfRetireShare);
+    // A shop's deposits are sales, not profit (the same assumption as the estimated taxes): a
+    // tenth is of what's left after costs, so the confidence says it is an assumption.
+    const business = pattern.value === "business";
+    const profit = Math.round(
+      annualIncome(income.value) * (business ? R.tax.businessProfitShare : 1),
+    );
+    const put = Math.round(profit * R.selfRetireShare);
     return {
       id: suggestionId("investing", "retirement_self_employed"),
       capability: "investing",
       topic: "retirement_self_employed",
       title: "Open a retirement account for the self-employed",
+      headline: headlineOf(
+        "Open a self-employed retirement account",
+        Math.round(put * R.selfRetireTaxRate),
+        "saves",
+      ),
+      short: `Putting in ${formatCents(put)} a year would cut your tax by about ${formatCents(Math.round(put * R.selfRetireTaxRate))}.`,
       worthCents: Math.round(put * R.selfRetireTaxRate),
       worthKind: "saves",
-      confidence: weakest([factEvidence(pattern), factEvidence(has401k), factEvidence(income)]),
+      confidence: weakest([
+        factEvidence(pattern),
+        factEvidence(has401k),
+        factEvidence(income),
+        ...(business
+          ? [
+              {
+                percent: 60,
+                reason: `your deposits are sales, so I assumed ${Math.round(R.tax.businessProfitShare * 100)}% is profit`,
+              },
+            ]
+          : []),
+      ]),
       urgency: "later",
-      why: `You work for yourself and I see no retirement account. Putting in ${formatCents(put)} a year (a tenth of your income) would cut your tax by about ${formatCents(Math.round(put * R.selfRetireTaxRate))}.`,
+      why: `You work for yourself and I see no retirement account. Putting in ${formatCents(put)} a year (a tenth of ${business ? "what the business earns, about " + formatCents(profit) : "your income"}) would cut your tax by about ${formatCents(Math.round(put * R.selfRetireTaxRate))}.`,
       action: { label: "See account options", href: "/investments" },
     };
   },
@@ -112,6 +143,8 @@ const incomeSmoothing: Detector = {
       capability: "steady_pay",
       topic: "income_smoothing",
       title: "Pay yourself a steady amount from your uneven income",
+      headline: headlineOf("Pay yourself a steady amount", Math.round(average - lowest), "risk"),
+      short: `Your income averages ${formatCents(Math.round(average))} a month; your lowest was ${formatCents(Math.round(lowest))}.`,
       worthCents: Math.round(average - lowest),
       worthKind: "risk",
       confidence: weakest([
@@ -146,6 +179,12 @@ const businessSeparation: Detector = {
       capability: "taxes",
       topic: "business_separation",
       title: "Keep business and personal money in separate accounts",
+      headline: headlineOf(
+        "Separate business and personal money",
+        Math.round(total * R.selfEmployedTaxRate),
+        "risk",
+      ),
+      short: `${personal.length} personal payments (${formatCents(total)}) came out alongside your shop's money.`,
       worthCents: Math.round(total * R.selfEmployedTaxRate),
       worthKind: "risk",
       confidence: weakest([
@@ -185,14 +224,18 @@ const businessInsurance: Detector = {
       capability: "insurance",
       topic: "business_insurance",
       title: "Check your business has liability and property cover",
-      worthCents: Math.round(R.businessClaimCents * R.businessClaimChance),
+      headline: headlineOf("Check your business cover", R.businessClaimCents, "risk"),
+      short: `Your business takes in about ${formatCents(annualIncome(income.value))} a year and I see no insurance charge.`,
+      worthCents: R.businessClaimCents,
+      // A business with no liability cover at all can be ended by one claim.
+      required: true,
       worthKind: "risk",
       confidence: weakest([
         factEvidence(pattern),
         evidence("seen", profile.months, 0, "business-cover charges"),
       ]),
       urgency: "soon",
-      why: `Your business takes in about ${formatCents(annualIncome(income.value))} a year and I see no business insurance charge in ${profile.months} months. A liability claim in a given year is unlikely (about ${Math.round(R.businessClaimChance * 100)}%), but one can cost ${formatCents(R.businessClaimCents)} or more.`,
+      why: `Your business takes in about ${formatCents(annualIncome(income.value))} a year and I see no business insurance charge in ${profile.months} months. A liability claim in a given year is unlikely (about ${Math.round(CHANCE.business_insurance * 100)}%), but one can cost ${formatCents(R.businessClaimCents)} or more.`,
       action: { label: "Check your cover", href: "/insurance/checkup" },
     };
   },
@@ -218,6 +261,12 @@ const concentration: Detector = {
       capability: "investing",
       topic: "concentration",
       title: "Spread out your company stock",
+      headline: headlineOf(
+        "Spread out your company stock",
+        Math.round(stock * R.concentrationDropShare),
+        "risk",
+      ),
+      short: `Your company stock is ${formatCents(stock)}, ${Math.round((stock / invested) * 100)}% of what you invest.`,
       worthCents: Math.round(stock * R.concentrationDropShare),
       worthKind: "risk",
       confidence: factEvidence(plan),

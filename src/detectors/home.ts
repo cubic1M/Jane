@@ -1,7 +1,8 @@
 import { DETECTOR_RATES as R } from "@/config/detectors";
+import { RISK_ANNUAL_PROBABILITY as CHANCE } from "@/config/suggestions";
 import { formatCents } from "@/lib/money";
 import { type Detector, suggestionId } from "./contract";
-import { evidence, factEvidence, weakest } from "./helpers";
+import { evidence, factEvidence, weakest, headlineOf } from "./helpers";
 
 // Detectors for the home and the people in it (spec step 254): PMI, a costly mortgage and
 // life cover. Pure; see ./contract.ts.
@@ -23,6 +24,12 @@ const pmiRemoval: Detector = {
       capability: "debt",
       topic: "pmi_removal",
       title: "Ask your lender to drop mortgage insurance",
+      headline: headlineOf(
+        "Drop your mortgage insurance",
+        Math.round((balance * R.pmiBps) / 10_000),
+        "saves",
+      ),
+      short: `Your mortgage of ${formatCents(balance)} carries PMI.`,
       worthCents: Math.round((balance * R.pmiBps) / 10_000),
       worthKind: "saves",
       confidence: factEvidence(pmi),
@@ -49,6 +56,12 @@ const refinance: Detector = {
       capability: "debt",
       topic: "refinance",
       title: "See what a cheaper mortgage would save",
+      headline: headlineOf(
+        "Check for a cheaper mortgage",
+        Math.round((balance * gap) / 10_000),
+        "saves",
+      ),
+      short: `Your rate is ${(rate.value / 100).toFixed(2)}% on ${formatCents(balance)}.`,
       worthCents: Math.round((balance * gap) / 10_000),
       worthKind: "saves",
       confidence: factEvidence(rate),
@@ -75,7 +88,13 @@ const lifeInsurance: Detector = {
       capability: "insurance",
       topic: "life_insurance",
       title: "Look at life insurance for the people who depend on you",
-      worthCents: Math.round(income.value * 12 * R.lifeCoverYears * R.lifeDeathChancePerYear),
+      headline: headlineOf(
+        "Look at life cover for your family",
+        income.value * 12 * R.lifeCoverYears,
+        "risk",
+      ),
+      short: `You have children and I see no life-cover charge in ${profile.months} months.`,
+      worthCents: income.value * 12 * R.lifeCoverYears,
       worthKind: "risk",
       confidence: weakest([
         factEvidence(kids),
@@ -83,7 +102,7 @@ const lifeInsurance: Detector = {
         factEvidence(income),
       ]),
       urgency: "soon",
-      why: `You have children and I see no life-cover charge in ${profile.months} months. A common rule is ${R.lifeCoverYears} years of income, about ${formatCents(income.value * 12 * R.lifeCoverYears)} for you. The chance of needing it in a given year is small (about ${(R.lifeDeathChancePerYear * 100).toFixed(1)}%), but the loss would be total.`,
+      why: `You have children and I see no life-cover charge in ${profile.months} months. A common rule is ${R.lifeCoverYears} years of income, about ${formatCents(income.value * 12 * R.lifeCoverYears)} for you. The chance of needing it in a given year is small (about ${(CHANCE.life_insurance * 100).toFixed(1)}%), but the loss would be total.`,
       action: { label: "Check your cover", href: "/insurance/checkup" },
     };
   },

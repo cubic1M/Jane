@@ -1,7 +1,7 @@
 import { DETECTOR_RATES as R } from "@/config/detectors";
 import { formatCents } from "@/lib/money";
 import { type Detector, suggestionId } from "./contract";
-import { evidence, factEvidence, weakest } from "./helpers";
+import { evidence, factEvidence, weakest, headlineOf } from "./helpers";
 
 // Detectors for the investing capability (spec step 262; inventory in
 // docs/detectors/investing.md): the match left on the table, catch-up contributions, an HSA
@@ -26,6 +26,32 @@ const employerMatch: Detector = {
     if (stage.value === "approaching" || stage.value === "retired") return null;
     const pay = annual(income.value);
     const saved = sum(data.accounts.filter((a) => a.subtype === "401k"));
+    // The employer's plan is known (the payroll connection, or the demo bank's): the figure is
+    // the one the retirement accounts page and the chat give, from the person's own pay, the
+    // match rules and what they put in so far this year. Otherwise a typical match is assumed.
+    const known = data.extras?.matchPace;
+    if (known) {
+      if (known.missedCents <= 0) return null;
+      const rate = (n: number) => `${Math.round(n * 1000) / 10}%`;
+      return {
+        id: suggestionId("investing", "employer_match"),
+        capability: "investing",
+        topic: "employer_match",
+        title: "Make sure you get your employer's full 401(k) match",
+        headline: headlineOf("Get your employer's full 401(k) match", known.missedCents, "earns"),
+        short: `You put in ${rate(known.employeeRate)} of pay; ${rate(known.fullMatchRate)} gets all of it.`,
+        worthCents: known.missedCents,
+        worthKind: "earns",
+        confidence: weakest([
+          factEvidence(has),
+          evidence("seen", profile.months, 1, "401(k) account"),
+          { percent: 90, reason: "your employer's plan rules and what you've put in this year" },
+        ]),
+        urgency: "soon",
+        why: `Your employer matches ${Math.round(known.matchRate * 100)}% of what you put in, up to ${rate(known.fullMatchRate)} of your pay (about ${formatCents(known.payCents)} a year). You are putting in ${rate(known.employeeRate)} at this year's pace, so about ${formatCents(known.missedCents)} a year of match goes unclaimed.`,
+        action: { label: "Check your match", href: "/investments/retirement-accounts" },
+      };
+    }
     if (pay === 0 || saved >= pay * R.matchHealthyShare) return null;
     const match = Math.round(pay * R.matchTypicalShare);
     return {
@@ -33,12 +59,15 @@ const employerMatch: Detector = {
       capability: "investing",
       topic: "employer_match",
       title: "Make sure you get your employer's full 401(k) match",
+      headline: headlineOf("Get your employer's full 401(k) match", match, "earns"),
+      short: `Your 401(k) holds ${formatCents(saved)} against pay of about ${formatCents(pay)} a year.`,
       worthCents: match,
       worthKind: "earns",
       confidence: weakest([
         factEvidence(has),
         factEvidence(income),
         evidence("seen", profile.months, 1, "401(k) account"),
+        { percent: 75, reason: "whether and how much your employer matches is a guess" },
       ]),
       urgency: "soon",
       why: `Your 401(k) holds ${formatCents(saved)} against pay of about ${formatCents(pay)} a year. A typical match is ${Math.round(R.matchTypicalShare * 100)}% of pay, about ${formatCents(match)} a year, and it is lost if you don't contribute enough to get it.`,
@@ -61,11 +90,20 @@ const catchUp: Detector = {
       capability: "investing",
       topic: "catch_up",
       title: "Use the catch-up contribution for people over 50",
+      headline: headlineOf(
+        "Use the over-50 catch-up contribution",
+        Math.round(R.catchUpCents * R.selfRetireTaxRate),
+        "saves",
+      ),
+      short: `You can put in about ${formatCents(R.catchUpCents)} more a year.`,
       worthCents: Math.round(R.catchUpCents * R.selfRetireTaxRate),
       worthKind: "saves",
-      confidence: weakest([factEvidence(stage), factEvidence(has)]),
+      confidence: weakest([
+        { percent: stage.confidence, reason: "your age is a guess from your accounts and income" },
+        factEvidence(has),
+      ]),
       urgency: "soon",
-      why: `You are close to retirement and have a 401(k). People over 50 can put in about ${formatCents(R.catchUpCents)} more a year, which at a ${Math.round(R.selfRetireTaxRate * 100)}% tax rate cuts the tax bill by about ${formatCents(Math.round(R.catchUpCents * R.selfRetireTaxRate))}.`,
+      why: `You are close to retirement and have a 401(k). People over 50 can put in about ${formatCents(R.catchUpCents)} more a year, if you are not already using it, which at a ${Math.round(R.selfRetireTaxRate * 100)}% tax rate cuts the tax bill by about ${formatCents(Math.round(R.catchUpCents * R.selfRetireTaxRate))}.`,
       action: { label: "See your limits", href: "/investments/retirement-accounts" },
     };
   },
@@ -86,6 +124,12 @@ const hsaIdle: Detector = {
       capability: "investing",
       topic: "hsa",
       title: "Put your HSA money to work",
+      headline: headlineOf(
+        "Put your HSA money to work",
+        Math.round((balance * (R.highYieldBps - R.currentCashBps)) / 10_000),
+        "earns",
+      ),
+      short: `Your HSA holds ${formatCents(balance)}.`,
       worthCents: Math.round((balance * (R.highYieldBps - R.currentCashBps)) / 10_000),
       worthKind: "earns",
       confidence: weakest([factEvidence(has), evidence("seen", profile.months, 1, "HSA balance")]),
@@ -119,6 +163,12 @@ const backdoorRoth: Detector = {
       capability: "investing",
       topic: "backdoor_roth",
       title: "Ask whether a backdoor Roth IRA fits you",
+      headline: headlineOf(
+        "Ask if a backdoor Roth IRA fits",
+        Math.round(growth * R.growthTaxRate),
+        "saves",
+      ),
+      short: `Your pay of about ${formatCents(pay)} a year is above the direct Roth limit.`,
       worthCents: Math.round(growth * R.growthTaxRate),
       worthKind: "saves",
       confidence: weakest([
@@ -145,6 +195,12 @@ const education529: Detector = {
       capability: "investing",
       topic: "education_529",
       title: "Start a 529 college savings plan",
+      headline: headlineOf(
+        "Start a 529 college savings plan",
+        Math.round(R.college529Cents * R.college529StateRate),
+        "saves",
+      ),
+      short: `You have children at home; a 529 can cut state tax on ${formatCents(R.college529Cents)} a year.`,
       worthCents: Math.round(R.college529Cents * R.college529StateRate),
       worthKind: "saves",
       confidence: factEvidence(kids),
@@ -172,10 +228,16 @@ const requiredWithdrawals: Detector = {
       capability: "investing",
       topic: "rmd",
       title: "Plan your required withdrawals from your retirement accounts",
+      headline: headlineOf(
+        "Plan your required withdrawals",
+        Math.round(rmd * R.rmdPenaltyRate),
+        "risk",
+      ),
+      short: `You hold ${formatCents(balance)} in pre-tax retirement accounts.`,
       worthCents: Math.round(rmd * R.rmdPenaltyRate),
       worthKind: "risk",
       confidence: weakest([
-        factEvidence(stage),
+        { percent: stage.confidence, reason: "your age is a guess from your accounts and income" },
         evidence("seen", profile.months, pre.length, "pre-tax retirement accounts"),
       ]),
       urgency: "soon",

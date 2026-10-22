@@ -1,4 +1,5 @@
 import {
+  HOME_DEFAULT_APR_BPS,
   HOME_DEFAULT_DOWN_SHARE,
   HOME_DEFAULT_SAVE_MONTHS,
   HOME_GOAL_NAME,
@@ -51,6 +52,10 @@ export type HomeBuying = {
   costs: HomeCosts | null;
   downShare: number;
   aprBps: number | null;
+  // The rate is a lender's offer (demo advice), or the typical rate in config.
+  rateIsOffer: boolean;
+  // The answer may pick (demo advice); otherwise it is the math of the 28/36 rules.
+  advice: boolean;
   offers: ScoredCarOffer[];
   saving: SavingPlan | null;
   targetDate: string;
@@ -67,6 +72,8 @@ const none = (targetDate: string, downShare: number): HomeBuying => ({
   costs: null,
   downShare,
   aprBps: null,
+  rateIsOffer: false,
+  advice: false,
   offers: [],
   saving: null,
   targetDate,
@@ -90,7 +97,6 @@ export async function loadHomeBuying(
   const downShare = question.downShare ?? HOME_DEFAULT_DOWN_SHARE;
   const targetDate = question.targetDate ?? addMonths(asOf, HOME_DEFAULT_SAVE_MONTHS);
   const found = await lenderPartnerFor(userId, { client });
-  if (!found) return none(targetDate, downShare);
   const input = given ?? (await loadDetectionInput(userId, { client, now }));
   const db = scopedFor(userId, client);
   const [book, creditBand, goals] = await Promise.all([
@@ -125,20 +131,22 @@ export async function loadHomeBuying(
 
   // The rate: the cheapest mortgage offer for a reference loan.
   const offersFor = async (loanCents: number) =>
-    compareCarOffers(
-      await found.partner.prequalify({
-        product: "mortgage",
-        amountCents: loanCents,
-        termMonths: HOME_TERM_MONTHS,
-        creditBand,
-        month: asOf.slice(0, 7),
-      }),
-      loanCents,
-      HOME_TERM_MONTHS,
-    );
+    !found
+      ? []
+      : compareCarOffers(
+          await found.partner.prequalify({
+            product: "mortgage",
+            amountCents: loanCents,
+            termMonths: HOME_TERM_MONTHS,
+            creditBand,
+            month: asOf.slice(0, 7),
+          }),
+          loanCents,
+          HOME_TERM_MONTHS,
+        );
   const reference = await offersFor(30_000_000);
-  const aprBps = reference[0]?.offer.aprBps ?? null;
-  if (aprBps === null) return { ...none(targetDate, downShare), available: true };
+  const rateIsOffer = reference.length > 0;
+  const aprBps = reference[0]?.offer.aprBps ?? HOME_DEFAULT_APR_BPS;
   const afford = affordability({
     monthlyNetIncomeCents: monthlyIncomeCents,
     debtPaymentsCents,
@@ -163,6 +171,8 @@ export async function loadHomeBuying(
     costs,
     downShare,
     aprBps,
+    rateIsOffer,
+    advice: found !== null,
     offers,
     saving,
     targetDate,
@@ -172,7 +182,7 @@ export async function loadHomeBuying(
     assumptions: [
       `Income: ${formatCents(monthlyIncomeCents)} a month take-home, your average over the last ${months.length} full ${months.length === 1 ? "month" : "months"}, about ${formatCents(afford.grossMonthlyCents)} before tax (take-home divided by 0.78).`,
       `Lenders' usual rules: housing at most 28% of gross (${formatCents(afford.housingLimitCents)}) and all debt payments at most 36% (${formatCents(afford.debtLimitCents)}); your other debt payments are ${formatCents(debtPaymentsCents)} a month.`,
-      `A ${Math.round(downShare * 100)}% down payment, a 30-year fixed loan at ${(aprBps / 100).toFixed(2)}%, the cheapest mortgage offer for your credit.`,
+      `A ${Math.round(downShare * 100)}% down payment, a 30-year fixed loan at ${(aprBps / 100).toFixed(2)}%, ${rateIsOffer ? "the cheapest mortgage offer for your credit" : "a typical rate, not an offer"}.`,
       `Property tax 1.1% and insurance 0.35% of the price a year${downShare < 0.2 ? ", and mortgage insurance 0.7% of the loan while you put down under 20%" : ""}; closing costs 3% of the price.`,
       `Saving: you keep about ${formatCents(monthlySavingCents)} a month (income less spending, last ${months.length} full months) and have ${formatCents(savedCents)} in savings.`,
     ],

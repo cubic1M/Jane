@@ -36,6 +36,11 @@ test("the demo bank's holdings show with their sources, and Jane answers about t
   await expect(
     page.getByText(/Source: Demo Bank \(fake data\), Demo 401\(k\), price as of/).first(),
   ).toBeVisible();
+  // Step 295: each risk level replayed over sample history, as demo advice, never a forecast.
+  const backtests = page.getByRole("region", { name: "How each risk level would have done" });
+  await expect(backtests.getByText(/Replay of sample history since Jan 2, 2018/)).toBeVisible();
+  await expect(backtests.getByText(/not a forecast/)).toBeVisible();
+  await expect(backtests.getByText("Demo advice: sample data, not financial advice")).toBeVisible();
   // The filled-in page has no serious accessibility problems (e2e/accessibility.spec.ts
   // checks it empty).
   const axe = await new AxeBuilder({ page })
@@ -59,15 +64,15 @@ test("the demo bank's holdings show with their sources, and Jane answers about t
   await page.getByRole("button", { name: "In 20 years or more" }).click();
   await page.getByRole("button", { name: "I'd worry, but wait it out" }).click();
   await page.getByRole("button", { name: "Retirement" }).click();
-  await expect(page.getByText(/Thanks\. Your profile: Moderate/)).toBeVisible();
+  await expect(page.getByText(/Thanks\. Your profile: Medium/)).toBeVisible();
 
   // And changed on its page.
   await page.goto("/investments/profile");
-  await expect(page.getByText("Moderate", { exact: true })).toBeVisible();
+  await expect(page.getByText("Medium", { exact: true })).toBeVisible();
   await page.getByLabel("I'd put more in").check();
   await page.getByRole("button", { name: "Save" }).click();
   await expect(page.getByRole("status")).toHaveText("Saved.");
-  await expect(page.getByText("Aggressive", { exact: true })).toBeVisible();
+  await expect(page.getByText("Very high", { exact: true })).toBeVisible();
 
   // Step 130: what investing costs, with lower-cost equivalents labelled as demo advice.
   await page.goto("/investments/fees");
@@ -80,7 +85,7 @@ test("the demo bank's holdings show with their sources, and Jane answers about t
   // Step 131: the review against the (now aggressive) profile, labelled.
   await page.goto("/investments/review");
   await expect(page.getByRole("heading", { level: 1 })).toHaveText("Portfolio review");
-  await expect(page.getByText("Aggressive", { exact: true })).toBeVisible();
+  await expect(page.getByText("Very high", { exact: true })).toBeVisible();
   await expect(page.getByRole("heading", { name: "What to change" })).toBeVisible();
   await expect(page.getByText(/into international stocks/)).toBeVisible();
   await expect(page.getByText("Demo advice: sample data, not financial advice")).toBeVisible();

@@ -84,6 +84,14 @@ export const DETECTOR_RATES = {
   paydayFeeShare: 0.25,
   // Income that moves around by this much month to month is worth smoothing.
   smoothingMinMonthlySwingShare: 0.3,
+  // Life events (step 264): looked back this many days for a new job or a new child, and
+  // what going through the checklist is typically worth in the first year.
+  lifeLookbackDays: 90,
+  newJobTypicalCents: 50_000,
+  newChildTypicalCents: 200_000,
+  // Two people who share their money plan: what a shared household in Jane is typically worth
+  // a year in fewer double-paid bills and one view of shared goals.
+  householdTypicalCents: 30_000,
   // Insurance (spec step 259). The yearly cost avoided if the cover is missing when it is
   // needed, as typical figures from the insurance lane's gap advice: contents a renter loses,
   // a liability claim a car can face.
@@ -95,21 +103,9 @@ export const DETECTOR_RATES = {
   // is told to plan for.
   longTermCareYearCents: 10_800_000,
   longTermCareYears: 2,
-  // What a risk is worth a year is the expected loss: the chance it happens in a year times
-  // what it costs, never the whole loss. Typical figures from public insurance statistics, to be
-  // checked against a published source before real accounts see them (marked for review).
-  rentersClaimChance: 0.03,
-  autoAtFaultChance: 0.05,
-  hospitalStayChance: 0.08,
-  umbrellaLawsuitChance: 0.002,
-  longTermCareChanceOverWindow: 0.2,
-  longTermCareWindowYears: 10,
-  coverChangeClaimChance: 0.01,
-  // Life cover: the chance a working adult dies in a year (a typical figure for ages 35 to 55,
-  // marked for review), against the cover a household would need.
-  lifeDeathChancePerYear: 0.003,
-  // A small business facing a liability claim in a year, and what one costs.
-  businessClaimChance: 0.04,
+  // A risk is worth the whole loss here; the nightly ranking multiplies it by the yearly chance
+  // in RISK_ANNUAL_PROBABILITY (src/config/suggestions.ts). A small business facing a liability
+  // claim, and what one costs.
   businessClaimCents: 5_000_000,
   // Confidence ceilings for suggestions whose amount is typical, not quoted, or that depend on
   // something Jane can't see (the card's real benefits, the employer's real plan). Without a
@@ -123,6 +119,9 @@ export const DETECTOR_RATES = {
     cardCover: 55,
     employerBenefits: 60,
     documents: 75,
+    disabilityGap: 65,
+    liabilityLevels: 85,
+    deductibleFit: 60,
     fsaDeadline: 70,
     deductibleMet: 60,
     billDispute: 65,
@@ -228,3 +227,43 @@ export const DETECTOR_RATES = {
   // Urgency scores: now, soon, later.
   urgency: { now: 3, soon: 2, later: 1 },
 } as const;
+
+// The first word of a suggestion's headline must be one of these (docs/detectors.md, "Short
+// forms"): a headline starts with a verb. A new verb is added here, not worked around.
+export const HEADLINE_VERBS: readonly string[] = [
+  "Add",
+  "Ask",
+  "Build",
+  "Cancel",
+  "Check",
+  "Compare",
+  "Confirm",
+  "Convert",
+  "Drop",
+  "Get",
+  "Hold",
+  "Invest",
+  "Keep",
+  "Look",
+  "Move",
+  "Note",
+  "Open",
+  "Pay",
+  "Plan",
+  "Push",
+  "Put",
+  "Replace",
+  "Roll",
+  "Rebalance",
+  "Sell",
+  "Separate",
+  "Set",
+  "Spread",
+  "Start",
+  "Stop",
+  "Switch",
+  "Tell",
+  "Try",
+  "Use",
+  "Weigh",
+];
