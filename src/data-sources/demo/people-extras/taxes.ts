@@ -34,7 +34,20 @@ const gift = (key: string, name: string, dollars: number, offset: number): Perso
   ],
 });
 
+// Fuel bought through the year.
+const gas = (dollars: number): Recurring => ({
+  key: "taxes-gas",
+  account: "checking",
+  name: "SHELL OIL",
+  merchant: "Shell",
+  category: "TRANSPORTATION_GAS",
+  amount: dollars,
+  days: [6, 21],
+});
+
 export const TAXES_EXTRAS: Partial<Record<PersonId, PersonExtra>> = {
+  // Jo drives to suppliers and customers.
+  owner: { monthly: [gas(55)] },
   // The Reyes family: a mortgage, property tax and a year-end gift.
   family: {
     monthly: [propertyTax(2900)],
@@ -47,10 +60,41 @@ export const TAXES_EXTRAS: Partial<Record<PersonId, PersonExtra>> = {
     ...gift("taxes-gift", "AMERICAN RED CROSS", 1000, -60),
     positions: [{ account: "brokerage", key: "KTBIX", quantity: 1500, basis: 19000 }],
   },
-  // Dan and Lena: a nearly paid-off home, property tax, a gift.
+  // Dan and Lena: a nearly paid-off home, property tax, a gift, an IRA from Lena's mother and
+  // money for their daughter's down payment.
   preretire: {
     monthly: [propertyTax(3600)],
-    ...gift("taxes-gift", "HABITAT FOR HUMANITY", 500, -30),
+    accounts: [
+      {
+        key: "taxes-inherited-ira",
+        name: "Inherited IRA",
+        mask: "5099",
+        type: "investment",
+        subtype: "ira",
+        balance: 0,
+      },
+    ],
+    positions: [{ account: "taxes-inherited-ira", key: "NSTDX", quantity: 5565, basis: 100000 }],
+    once: [
+      {
+        key: "taxes-gift-emily",
+        account: "checking",
+        name: "WIRE TRANSFER TO EMILY",
+        merchant: null,
+        category: "TRANSFER_OUT_ACCOUNT_TRANSFER",
+        amount: 40000,
+        offsets: [-50],
+      },
+      {
+        key: "taxes-gift-white",
+        account: "checking",
+        name: "HABITAT FOR HUMANITY",
+        merchant: "Habitat for Humanity",
+        category: "GOVERNMENT_AND_NON_PROFIT_DONATIONS",
+        amount: 500,
+        offsets: [-30],
+      },
+    ],
   },
   // Ruth owns her home outright and gives to her church.
   retiree: {

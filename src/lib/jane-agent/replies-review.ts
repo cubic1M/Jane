@@ -4,9 +4,8 @@ import type { TuneUpChange } from "@/planning/tune-up";
 import type { Snapshot } from "./snapshot";
 import type { Reply } from "./replies";
 
-// The weekly review (spec step 101): what Jane did, what it saved, what's next and one
-// decision at most. Pure: the snapshot in, the words and buttons out. Also the words for
-// budget tune-ups and transfers counted toward goals.
+// The weekly review (spec step 101). Pure: the snapshot in, the words and buttons out. Also
+// the words for budget tune-ups and transfers counted toward goals.
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 const things = (n: number) => `${n} ${n === 1 ? "thing" : "things"}`;
@@ -17,7 +16,9 @@ export function tuneUpLines(changes: readonly TuneUpChange[]): string {
     .join("; ");
 }
 
-export function weeklyReview(snapshot: Snapshot, now: Date): Reply {
+// What Jane did in the last REVIEW_DAYS days, and what it confirmed saved: the weekly review
+// and the brief's "Last week" line say it the same way.
+export function weekDone(snapshot: Snapshot, now: Date): { did: string[]; savedCents: number } {
   const since = now.getTime() - REVIEW_DAYS * DAY_MS;
   const finished = snapshot.finished.filter(
     (a) => a.completedAt !== null && a.completedAt.getTime() >= since,
@@ -39,6 +40,14 @@ export function weeklyReview(snapshot: Snapshot, now: Date): Reply {
     const cents = counted.reduce((sum, c) => sum + c.amountCents, 0);
     did.push(`counted ${formatCents(cents)} of transfers toward your goal`);
   }
+  return { did, savedCents };
+}
+
+// "How was my week?" (spec step 101): what Jane did, what it saved, what's next and one
+// decision at most. Since the cluster 2 merge (docs/feature-audit.md) it's an answer, not a
+// message of its own: the Monday brief carries the week (./sources/last-week.ts).
+export function weeklyReview(snapshot: Snapshot, now: Date): Reply {
+  const { did, savedCents } = weekDone(snapshot, now);
 
   const bills = snapshot.comingUp.filter(
     (r) => r.href === "/bills" && r.daysLeft >= 0 && r.daysLeft <= REVIEW_DAYS,

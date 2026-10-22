@@ -182,6 +182,7 @@ export const DEBT_AUTOPILOT_SHORT: Readonly<Record<number, string>> = {
   229: "Lays out your options as facts when debt payments pass 40% of your income.",
   230: "Reviews all of this once a year, in one message.",
   245: "Finds dealer add-ons in your car loan and what cancelling each would refund.",
+  246: "Compares a recast, a refinance and extra principal, and investing it instead.",
 };
 
 // What Jane does about debts by herself at each autopilot level (src/config/autopilot.ts),
@@ -291,6 +292,10 @@ export const DEBT_AUTOPILOT: Readonly<
       step: 245,
       does: "Checks your car loan for a cheaper refinance on total cost, finds dealer add-ons (GAP, extended warranty, service contract) in your payments, asks you once, and drafts the cancellation with the refund it could give. You send it, or ask the team to.",
     },
+    {
+      step: 246,
+      does: "When you have a lump sum or extra monthly money for your mortgage, compares paying extra principal, a recast and a refinance (fees counted, with the date each pays back) against investing it instead. The choice is yours.",
+    },
   ],
   safe: [
     {
@@ -393,6 +398,10 @@ export const DEBT_AUTOPILOT: Readonly<
       step: 245,
       does: "Checks your car loan for a cheaper refinance on total cost, finds dealer add-ons (GAP, extended warranty, service contract) in your payments, asks you once, and drafts the cancellation with the refund it could give. You send it, or ask the team to.",
     },
+    {
+      step: 246,
+      does: "When you have a lump sum or extra monthly money for your mortgage, compares paying extra principal, a recast and a refinance (fees counted, with the date each pays back) against investing it instead. The choice is yours.",
+    },
   ],
   all: [
     {
@@ -494,6 +503,10 @@ export const DEBT_AUTOPILOT: Readonly<
     {
       step: 245,
       does: "Checks your car loan for a cheaper refinance on total cost, finds dealer add-ons (GAP, extended warranty, service contract) in your payments, asks you once, and drafts the cancellation with the refund it could give. You send it, or ask the team to.",
+    },
+    {
+      step: 246,
+      does: "When you have a lump sum or extra monthly money for your mortgage, compares paying extra principal, a recast and a refinance (fees counted, with the date each pays back) against investing it instead. The choice is yours.",
     },
   ],
 };

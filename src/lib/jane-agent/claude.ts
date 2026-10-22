@@ -37,6 +37,8 @@ import { blockCents, drawBlock, type AnswerBlock } from "./blocks";
 import { GuardedText } from "./guarded-text";
 import { INVESTMENT_TOOL_STATUS } from "./investments/tools";
 import type { Reply } from "./replies";
+import { OPTION_ACTIONS } from "./actions/options";
+import type { OfferedOptions } from "@/lib/option-card";
 
 // Free questions in Jane's chat, with an Anthropic key (spec step 84): Claude, the
 // person's recent typed messages and Jane's answers to them, and read-only tools over their
@@ -610,6 +612,8 @@ async function askClaude(
     ? { ok: true, actions: prepared.actions, refs: prepared.refs, line: prepared.body }
     : null;
   let shown: AnswerBlock | null = null;
+  // A pick-one card a tool found (insurance_needs, loan_fit): shown with the answer.
+  let offered: OfferedOptions | null = null;
   const draft = new GuardedText(
     () => allowedCents,
     (text) => {
@@ -865,6 +869,7 @@ async function askClaude(
         const output = await runChatTool(userId, block.name, block.input, { client, now });
         timing.tools.push({ name: block.name, ms: Date.now() - toolStarted });
         allowedCents.push(...output.cents, ...dollarFigures(output.content).map((f) => f.cents));
+        if (output.options) offered = output.options;
         results.push({ type: "tool_result", tool_use_id: block.id, content: output.content });
       }
       if (!decorationOnly) {
@@ -977,13 +982,17 @@ async function askClaude(
     if (shown && checkGuardrails(drawBlock(shown).alt, allowedCents, undefined, profile).ok) {
       refs.block = shown;
     }
+    // The options a tool found float over the chat as the pick-one card; its two buttons are
+    // the card's (src/lib/jane-agent/actions/options.ts).
+    if (offered) refs.options = offered;
     return {
       kind: "answer",
       reply: {
         body: proposal?.line ? `${plainText(spoken)}\n\n${proposal.line}` : plainText(spoken),
-        actions: proposal?.actions ?? [],
-        // Demo advice is always labelled (the chat shows DEMO_ADVICE_LABEL under it).
-        refs: advice ? { ...refs, advice: true } : refs,
+        actions: [...(proposal?.actions ?? []), ...(offered ? OPTION_ACTIONS : [])],
+        // Demo advice is always labelled (the chat shows DEMO_ADVICE_LABEL under it). A pick
+        // card is only ever offered in demo advice mode, so it is labelled too.
+        refs: advice || offered ? { ...refs, advice: true } : refs,
       },
     };
   }

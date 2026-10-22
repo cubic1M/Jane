@@ -1,5 +1,4 @@
 import { briefSource } from "./brief";
-import { weekSource } from "./week";
 import { DEBT_SOURCES } from "./debt-sources";
 import { didSource } from "./did";
 import { findingsSource } from "./findings";
@@ -15,7 +14,6 @@ import { thingsSource } from "./things";
 import { taxesSource } from "./taxes";
 import { changesSource } from "./changes";
 import { lifeSource } from "./life";
-import { reviewSource } from "./review";
 import { upkeepSource } from "./upkeep";
 import { foundPoliciesSource } from "./found-policies";
 import { savedSource } from "./saved";
@@ -39,8 +37,6 @@ import { investmentsSource } from "./investments";
 // src/config/agent-chat.ts (CHAT_SOURCE_LIMITS).
 export const MESSAGE_SOURCES: readonly MessageSource[] = [
   briefSource,
-  // Spec step 96.
-  weekSource,
   // Loans and debt (spec Phase Y, ./debt-sources.ts).
   ...DEBT_SOURCES,
   findingsSource,
@@ -63,7 +59,6 @@ export const MESSAGE_SOURCES: readonly MessageSource[] = [
   lifeSource,
   // Spec step 101.
   upkeepSource,
-  reviewSource,
   // Spec step 99.
   foundPoliciesSource,
   // Spec step 139.
