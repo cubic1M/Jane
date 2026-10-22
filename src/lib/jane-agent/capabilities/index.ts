@@ -314,6 +314,7 @@ export const CAPABILITIES: readonly Capability[] = [
       "car_loan",
       "mortgage_money",
       "costly_borrowing",
+      "renting",
       "debt_decision",
       "loan_fit",
     ],

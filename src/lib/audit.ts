@@ -25,6 +25,9 @@ export type AuditEvent =
   | "debt_review_done"
   | "car_addon_confirmed"
   | "car_addon_cancel_requested"
+  // Spec step 248: rent reporting turned on or off, a security deposit saved or returned.
+  | "rent_reporting_changed"
+  | "security_deposit_saved"
   | "home_request_sent"
   | "user_signed_up"
   // Insurance (spec Phase X): a policy saved or removed, the household facts saved.
