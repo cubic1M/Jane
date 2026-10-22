@@ -843,6 +843,7 @@ export async function runTaxTool(
           sure: `${f.percent}%`,
           urgency: f.urgency,
           rankOfEverything: f.rank,
+          demoAdvice: f.advice,
         })),
       });
     }

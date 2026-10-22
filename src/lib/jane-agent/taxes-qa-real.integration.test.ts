@@ -14,6 +14,9 @@ import { linkDemoBank } from "@/lib/plaid/demo";
 import { syncItem } from "@/lib/plaid/sync";
 import { detectFor } from "@/lib/suggestions";
 import { decideTax } from "@/lib/tax-decisions";
+import { loadTaxCalendar } from "@/lib/tax-calendar";
+import { loadTaxFound } from "@/lib/tax-scan";
+import { calendarReply } from "./tax-calendar-message";
 
 // Taxes QA (2026-10-22): with a real account next to the demo bank, the chat held back its tax
 // recommendations but the suggestion cards still said "Convert some pre-tax money to a Roth",
@@ -98,6 +101,20 @@ describe.runIf(url)("tax recommendations and real accounts", { timeout: 300_000 
     // The walk found these on the sample people; the rest are covered by the list above.
     for (const t of ["roth_conversion", "s_corp_election", "home_office_deduction"])
       expect(seen).toContain(t);
+  });
+
+  it("puts tax moves on the calendar as demo advice, and none on a real account's", async () => {
+    const demoId = await person("preretire", false);
+    const demo = await loadTaxFound(demoId, { client, now: NOW });
+    expect(demo.find((f) => f.topic === "roth_conversion")).toMatchObject({ advice: true });
+    const calendar = await loadTaxCalendar(demoId, { client, now: NOW });
+    const month = demo.filter((f) => f.month === calendar.month);
+    expect(calendarReply(calendar, demo).refs.advice).toBe(
+      month.some((f) => f.advice) ? true : undefined,
+    );
+    const real = await loadTaxFound(await person("preretire", true), { client, now: NOW });
+    expect(real.length).toBeGreaterThan(0);
+    expect(real.filter((f) => f.advice)).toEqual([]);
   });
 
   it("tells a self-employed real account the home office rule as a fact", async () => {
