@@ -19,6 +19,9 @@ import { partnerFor } from "@/lib/insurance/partner";
 import { STATUS_WORDS } from "@/lib/insurance/claim-rules";
 import { draftBody } from "@/lib/jane-agent/insurance/done-by-jane-words";
 import { formatCents } from "@/lib/money";
+import { adviceLines, payoutLine } from "@/lib/insurance/claim-worth";
+import { DemoAdviceLabel } from "@/components/demo-advice-label";
+import { claimWorthFor } from "@/lib/insurance/claim-worth-for";
 import { StartClaimForm } from "./start-form";
 
 // Claims (spec step 107): when something happens, what to do now, what to collect, who to
@@ -183,10 +186,72 @@ function ClaimCard({ claim, filable = false }: { claim: Claim; filable?: boolean
   );
 }
 
-async function ClaimsContent({ searchParams }: { searchParams: Promise<{ error?: string }> }) {
+// Spec step 199: "is it worth claiming?" for an amount, on one of the person's policies.
+async function WorthCalculator({
+  userId,
+  policies,
+  amount,
+  policyId,
+}: {
+  userId: string;
+  policies: { id: string; label: string }[];
+  amount?: string;
+  policyId?: string;
+}) {
+  const dollars = amount ? Number(amount.replace(/[$,\s]/g, "")) : NaN;
+  const result =
+    Number.isFinite(dollars) && dollars > 0 && dollars < 10_000_000
+      ? await claimWorthFor(userId, { amountCents: Math.round(dollars * 100), policyId })
+      : null;
+  return (
+    <section className="flex flex-col gap-3" aria-labelledby="worth">
+      <h2 id="worth" className="text-xl font-semibold">
+        Is it worth claiming?
+      </h2>
+      <form method="get" className="flex flex-wrap items-end gap-2 text-sm">
+        <label className="flex flex-col gap-1">
+          What it costs ($)
+          <input name="amount" inputMode="decimal" defaultValue={amount} className={INPUT} />
+        </label>
+        <label className="flex flex-col gap-1">
+          Policy
+          <select name="policy" defaultValue={policyId} className={INPUT}>
+            {policies.map((p) => (
+              <option key={p.id} value={p.id}>
+                {p.label}
+              </option>
+            ))}
+          </select>
+        </label>
+        <button type="submit" className={SMALL_BUTTON}>
+          Work it out
+        </button>
+      </form>
+      {result?.found && (
+        <div className="flex flex-col gap-1 text-sm" data-testid="claim-worth">
+          <p>{payoutLine(result.worth)}</p>
+          {result.advice && (
+            <>
+              {adviceLines(result.worth).map((l) => (
+                <p key={l}>{l}</p>
+              ))}
+              <DemoAdviceLabel />
+            </>
+          )}
+        </div>
+      )}
+    </section>
+  );
+}
+
+async function ClaimsContent({
+  searchParams,
+}: {
+  searchParams: Promise<{ error?: string; amount?: string; policy?: string }>;
+}) {
   const user = await requireUser();
   await connection();
-  const { error } = await searchParams;
+  const { error, amount, policy } = await searchParams;
   const [claims, policies, partner] = await Promise.all([
     listClaims(user.id),
     listPolicies(user.id),
@@ -224,6 +289,16 @@ async function ClaimsContent({ searchParams }: { searchParams: Promise<{ error?:
           ))}
         </ul>
       )}
+      {policies.some((p) => p.status === "active") && (
+        <WorthCalculator
+          userId={user.id}
+          amount={amount}
+          policyId={policy}
+          policies={policies
+            .filter((p) => p.status === "active")
+            .map((p) => ({ id: p.id, label: `${p.carrier} ${kindWords(p.kind)}` }))}
+        />
+      )}
       <section className="flex flex-col gap-3" aria-labelledby="start">
         <h2 id="start" className="text-xl font-semibold">
           Start a claim tracker
@@ -242,7 +317,7 @@ async function ClaimsContent({ searchParams }: { searchParams: Promise<{ error?:
 export default function ClaimsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ error?: string }>;
+  searchParams: Promise<{ error?: string; amount?: string; policy?: string }>;
 }) {
   return (
     <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-6 px-4 py-10 sm:px-6 sm:py-12">

@@ -18,3 +18,10 @@ regexes = [
   '''^0123456789abcdef0123456789abcdef$''',
   '''^0123456789abcdef$''',
 ]
+
+[[allowlists]]
+description = "Made-up account and position labels in the sample people's per-lane extras (src/data-sources/demo/people-extras/, step 252), such as key: \"investing-old401k\". Each is a lane prefix and a word, not a secret."
+# Both must match, so a real secret in these files is still caught.
+condition = "AND"
+paths = ['''src/data-sources/demo/people-extras/[a-z]+\.ts''']
+regexes = ['''^(loans|taxes|insurance|investing|thinking)-[a-z0-9-]+$''']

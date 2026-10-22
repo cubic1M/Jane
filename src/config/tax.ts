@@ -397,6 +397,24 @@ export const TAX_MESSAGE_PRIORITY = {
   years: 35,
   // Spec step 221: an assessment worth appealing, and exemptions not yet claimed.
   property: 38,
+  // Spec step 222: an accountant's answers, and a return people usually bring one to.
+  accountant_answer: 60,
+  accountant: 28,
+  // Spec step 223: an estimated payment due that needs a tap, and December's year-end moves.
+  estimate_due: 85,
+  // Spec step 267: an S corporation that would save more than it costs.
+  business: 33,
+  // Spec step 268: an inherited IRA, and a gift that needs a gift tax return.
+  inherited: 46,
+  gifts: 44,
+  // Spec step 269: a credit that would be repaid, an HSA over its limit, medical costs worth
+  // itemizing.
+  ptc: 72,
+  hsa_excess: 62,
+  medical: 40,
+  // Spec step 270: deadlines a disaster postponement moves.
+  disaster: 80,
+  year_end: 55,
   exemption: 30,
 } as const;
 
@@ -466,6 +484,36 @@ export const TAX_AUTOPILOT: readonly { feature: string; ask: string; auto: strin
     feature: "property",
     ask: "I compare your home's assessed value with its market value and, with demo advice, tell you when the gap is worth an appeal, draft it with comparable sales and name exemptions you may not have claimed. You decide who files it.",
     auto: "I compare your home's assessed value with its market value, put the appeal deadline on your plan when the gap is worth an appeal, and with demo advice draft it with comparable sales and name exemptions you may not have claimed. Filing is always on your tap: my team's or yours.",
+  },
+  {
+    feature: "accountant",
+    ask: "When your taxes include things people usually bring an accountant to, I say so. If you make a read-only link, I put your tax pack, the forms I collected and my questions on it, and bring their answers back here. The link ends when you say and every time it is opened is logged.",
+    auto: "When your taxes include things people usually bring an accountant to, I say so, and I keep my questions for them up to date. Making and sharing a link is always your tap. It ends when you say, you can revoke it any time, and every time it is opened is logged.",
+  },
+  {
+    feature: "calendar",
+    ask: "I keep your tax calendar and, each month, tell you what is due: the IP PIN in January, forms as they come in, estimated payments a few days before they are due, a withholding check in June, the year-end moves in December and your refund after you file. Anything that moves money, I ask first.",
+    auto: "I run your tax calendar: the IP PIN reminder in January, the form chase, each estimated payment paid a few days before it is due if it is within your cap for taxes (above it, I ask), a withholding check in June, the year-end moves on your deadlines in December, and your refund tracked after you file. Signing and filing your return are always yours.",
+  },
+  {
+    feature: "business",
+    ask: "For a business owner I work out your qualified business income deduction and, with demo advice, whether an S corporation would save more than its payroll and filing costs at your profit, with a salary range to start from. A tax professional sets up the election.",
+    auto: "For a business owner I keep your qualified business income deduction and the S corporation comparison current and, with demo advice, bring it up when it would save more than it costs. I never file the election.",
+  },
+  {
+    feature: "inheritance",
+    ask: "If you inherit an IRA I tell you the date it has to be empty by and, with demo advice, how taking it out evenly could keep your tax lower. I flag a gift to one person over the yearly exclusion, which needs a gift tax return. These are facts for a tax professional to confirm, not legal advice.",
+    auto: "I watch for an inherited IRA and gifts over the yearly exclusion and tell you what applies and by when, with demo advice on spreading withdrawals. These are facts for a tax professional to confirm, not legal advice. I never file a return.",
+  },
+  {
+    feature: "health",
+    ask: "If you buy a Marketplace plan I check its credit against your real income every month and warn you as soon as a rise would make you pay some back. I watch your HSA deposits against the limit before you file, and tell you when a year of medical bills is worth itemizing. Telling the Marketplace or your HSA provider is yours.",
+    auto: "I keep checking your income against the Marketplace credit, your HSA against its limit and your medical costs against the 7.5% floor, and bring each up with the numbers as soon as it matters. I contact no one: telling the Marketplace or your HSA provider is yours.",
+  },
+  {
+    feature: "disaster",
+    ask: "When the IRS postpones tax deadlines for a disaster in your county, I tell you the new date and move the tax deadlines on your list when you tap. Repairs since, less what insurance and FEMA paid back, I work out as a casualty loss and keep with your insurance claim, once.",
+    auto: "When the IRS postpones tax deadlines for a disaster in your county, I move the tax deadlines on your list to the new date by myself and tell you. I work out the casualty loss after insurance and keep it with your claim when you tap. I file nothing.",
   },
   {
     feature: "identity",

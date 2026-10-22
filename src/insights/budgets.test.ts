@@ -105,3 +105,24 @@ describe("overBudgetAlerts", () => {
     expect(overBudgetAlerts(november).map((a) => a.key)).toEqual(["Food and drink:2026-11"]);
   });
 });
+
+// Spec step 263 (QA sweep): Priya was offered a $5,990 budget for loan payments.
+describe("budget suggestions are for flexible spending only", () => {
+  const priya = [
+    ...["2026-07", "2026-08", "2026-09"].flatMap((m) => [
+      tx(`${m}-01`, 599_000, "LOAN_PAYMENTS", { pfcDetailed: "LOAN_PAYMENTS_MORTGAGE_PAYMENT" }),
+      tx(`${m}-01`, 164_000, "RENT_AND_UTILITIES"),
+      tx(`${m}-10`, 200_000, "GENERAL_SERVICES"),
+      tx(`${m}-12`, 41_000, "FOOD_AND_DRINK"),
+      tx(`${m}-15`, 18_000, "ENTERTAINMENT"),
+    ]),
+    tx("2026-10-03", 20_000, "FOOD_AND_DRINK"),
+  ];
+  it("never suggests rent, loan payments or services", () => {
+    const { suggestions, categories } = budgetSummary(priya, [], ASOF);
+    expect(Object.keys(suggestions).sort()).toEqual(["Entertainment", "Food and drink"]);
+    // They're still categories a person can budget by hand.
+    expect(categories).toContain("Loan payments");
+    expect(categories).toContain("Rent and utilities");
+  });
+});

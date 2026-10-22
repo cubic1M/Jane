@@ -1,4 +1,5 @@
 import type { Holding, InvestmentTransaction, PlaidApi, TransactionStream } from "plaid";
+import { scrub } from "@/lib/scrub";
 import { categorizeTransactions } from "@/categorize/categorize";
 import { normalizeLiabilities } from "@/data-sources/plaid/liabilities";
 import {
@@ -39,8 +40,11 @@ import { insuranceAfterSync } from "@/lib/insurance/daily";
 import { demoPayoffs } from "@/lib/loan-applications";
 import { confirmInsuranceSwitches } from "@/lib/insurance/switch";
 import { demoExtrasOf, demoPlaidApi, isDemoToken } from "./demo";
-import { runJaneAgentSafely } from "@/lib/jane-agent/run";
+import { postScanningHello } from "@/lib/jane-agent/open";
+import { keepFullSnapshot, runJaneAgentSafely } from "@/lib/jane-agent/run";
+import { scanSuggestions } from "@/lib/suggestions";
 import { markScanDone } from "@/lib/scan";
+import { phaseTimer } from "@/lib/trial-timing";
 
 // Brings one Plaid item up to date: accounts, transactions since the saved cursor
 // (added, modified and removed), recurring streams, loans and card rates (Liabilities,
@@ -76,36 +80,41 @@ type Options = {
   // findings are posted right after detection, before the slower sector work, and again
   // after it. Other syncs run Jane once, at the end.
   progressive?: boolean;
+  // Called once, on a first scan, as soon as accounts and transactions are saved: the chat can
+  // open (the sample person's click waits for exactly this, then goes straight to the chat).
+  onReady?: () => void;
 };
 
 async function saveAccounts(db: ScopedDb, itemId: string, sync: { accounts: NormalizedAccount[] }) {
-  const ids = new Map<string, string>();
-  for (const account of sync.accounts) {
-    const saved = await db.accounts.upsert({
-      where: { plaidAccountId: account.ref },
-      create: {
-        userId: db.userId,
-        source: "plaid",
-        itemId,
-        plaidAccountId: account.ref,
-        name: account.name,
-        mask: account.mask,
-        type: SYNCED_KINDS[account.kind].type,
-        subtype: account.plaidSubtype ?? SYNCED_KINDS[account.kind].subtype,
-        currentBalanceCents: account.currentBalanceCents,
-      },
-      update: {
-        name: account.name,
-        mask: account.mask,
-        currentBalanceCents: account.currentBalanceCents,
-        // Investment accounts keep Plaid's own subtype (spec step 128).
-        ...(account.plaidSubtype ? { subtype: account.plaidSubtype } : {}),
-      },
-      select: { id: true },
-    });
-    ids.set(account.ref, saved.id);
-  }
-  return ids;
+  // Together, not one after another: each is a round trip to the database and the person is
+  // waiting on the first scan (a person with many accounts waited the longest).
+  const saved = await Promise.all(
+    sync.accounts.map((account) =>
+      db.accounts.upsert({
+        where: { plaidAccountId: account.ref },
+        create: {
+          userId: db.userId,
+          source: "plaid",
+          itemId,
+          plaidAccountId: account.ref,
+          name: account.name,
+          mask: account.mask,
+          type: SYNCED_KINDS[account.kind].type,
+          subtype: account.plaidSubtype ?? SYNCED_KINDS[account.kind].subtype,
+          currentBalanceCents: account.currentBalanceCents,
+        },
+        update: {
+          name: account.name,
+          mask: account.mask,
+          currentBalanceCents: account.currentBalanceCents,
+          // Investment accounts keep Plaid's own subtype (spec step 128).
+          ...(account.plaidSubtype ? { subtype: account.plaidSubtype } : {}),
+        },
+        select: { id: true },
+      }),
+    ),
+  );
+  return new Map(sync.accounts.map((account, i) => [account.ref, saved[i].id]));
 }
 
 async function saveTransactions(db: ScopedDb, accountIds: Map<string, string>, sync: PlaidSync) {
@@ -203,17 +212,19 @@ async function saveRecurringStreams(
   }
 
   const kept: string[] = [];
-  for (const stream of streams) {
-    const accountId = accountIds.get(stream.account_id);
-    if (!accountId) continue;
-    const row = streamRow(stream, accountId);
-    await db.recurringStreams.upsert({
-      where: { plaidStreamId: stream.stream_id },
-      create: { ...row, userId: db.userId, plaidStreamId: stream.stream_id },
-      update: row,
-    });
-    kept.push(stream.stream_id);
-  }
+  await Promise.all(
+    streams.map(async (stream) => {
+      const accountId = accountIds.get(stream.account_id);
+      if (!accountId) return;
+      const row = streamRow(stream, accountId);
+      await db.recurringStreams.upsert({
+        where: { plaidStreamId: stream.stream_id },
+        create: { ...row, userId: db.userId, plaidStreamId: stream.stream_id },
+        update: row,
+      });
+      kept.push(stream.stream_id);
+    }),
+  );
   await db.recurringStreams.deleteMany({
     where: { accountId: { in: [...accountIds.values()] }, plaidStreamId: { notIn: kept } },
   });
@@ -245,37 +256,41 @@ async function saveLiabilities(
     accounts: data.accounts.map(normalizeAccount).filter((a): a is NormalizedAccount => a !== null),
   });
   const kept: string[] = [];
-  for (const l of normalizeLiabilities(data.liabilities)) {
-    const accountId = accountIds.get(l.accountRef);
-    if (!accountId) continue;
-    const row = {
-      kind: l.kind,
-      aprBps: l.aprBps,
-      rateType: l.rateType,
-      minimumPaymentCents: l.minimumPaymentCents,
-      nextPaymentDueDate: day(l.nextPaymentDueDate),
-      lastPaymentCents: l.lastPaymentCents,
-      lastPaymentDate: day(l.lastPaymentDate),
-      originationPrincipalCents: l.originationPrincipalCents,
-      originationDate: day(l.originationDate),
-      payoffDate: day(l.payoffDate),
-      isOverdue: l.isOverdue,
-      pastDueCents: l.pastDueCents,
-      ytdInterestPaidCents: l.ytdInterestPaidCents,
-      description: l.description,
-      hasPmi: l.hasPmi,
-      escrowBalanceCents: l.escrowBalanceCents,
-      hasPrepaymentPenalty: l.hasPrepaymentPenalty,
-      lastStatementIssueDate: day(l.lastStatementIssueDate),
-      lastStatementBalanceCents: l.lastStatementBalanceCents,
-    };
-    await db.liabilities.upsert({
-      where: { accountId },
-      create: { ...row, userId: db.userId, accountId },
-      update: row,
-    });
-    kept.push(accountId);
-  }
+  await Promise.all(
+    [...new Map(normalizeLiabilities(data.liabilities).map((l) => [l.accountRef, l])).values()].map(
+      async (l) => {
+        const accountId = accountIds.get(l.accountRef);
+        if (!accountId) return;
+        const row = {
+          kind: l.kind,
+          aprBps: l.aprBps,
+          rateType: l.rateType,
+          minimumPaymentCents: l.minimumPaymentCents,
+          nextPaymentDueDate: day(l.nextPaymentDueDate),
+          lastPaymentCents: l.lastPaymentCents,
+          lastPaymentDate: day(l.lastPaymentDate),
+          originationPrincipalCents: l.originationPrincipalCents,
+          originationDate: day(l.originationDate),
+          payoffDate: day(l.payoffDate),
+          isOverdue: l.isOverdue,
+          pastDueCents: l.pastDueCents,
+          ytdInterestPaidCents: l.ytdInterestPaidCents,
+          description: l.description,
+          hasPmi: l.hasPmi,
+          escrowBalanceCents: l.escrowBalanceCents,
+          hasPrepaymentPenalty: l.hasPrepaymentPenalty,
+          lastStatementIssueDate: day(l.lastStatementIssueDate),
+          lastStatementBalanceCents: l.lastStatementBalanceCents,
+        };
+        await db.liabilities.upsert({
+          where: { accountId },
+          create: { ...row, userId: db.userId, accountId },
+          update: row,
+        });
+        kept.push(accountId);
+      },
+    ),
+  );
   // A card or loan the bank no longer reports keeps its account, but not stale details.
   await db.liabilities.deleteMany({
     where: { account: { itemId }, accountId: { notIn: kept } },
@@ -344,27 +359,29 @@ async function saveInvestments(
 }
 
 async function saveSecurities(db: ScopedDb, securities: NormalizedSecurity[]) {
-  const ids = new Map<string, string>();
-  for (const s of securities) {
-    const data = {
-      name: s.name,
-      ticker: s.ticker,
-      type: s.type,
-      subtype: s.subtype,
-      isCashEquivalent: s.isCashEquivalent,
-      closePriceCents: s.closePriceCents,
-      closePriceAsOf: s.closePriceAsOf ? new Date(`${s.closePriceAsOf}T00:00:00Z`) : null,
-      sector: s.sector,
-    };
-    const saved = await db.securities.upsert({
-      where: { userId_plaidSecurityId: { userId: db.userId, plaidSecurityId: s.ref } },
-      create: { userId: db.userId, plaidSecurityId: s.ref, ...data },
-      update: data,
-      select: { id: true },
-    });
-    ids.set(s.ref, saved.id);
-  }
-  return ids;
+  // One row per security even if the bank lists it twice (the last wins, as one after another).
+  securities = [...new Map(securities.map((s) => [s.ref, s])).values()];
+  const saved = await Promise.all(
+    securities.map((s) => {
+      const data = {
+        name: s.name,
+        ticker: s.ticker,
+        type: s.type,
+        subtype: s.subtype,
+        isCashEquivalent: s.isCashEquivalent,
+        closePriceCents: s.closePriceCents,
+        closePriceAsOf: s.closePriceAsOf ? new Date(`${s.closePriceAsOf}T00:00:00Z`) : null,
+        sector: s.sector,
+      };
+      return db.securities.upsert({
+        where: { userId_plaidSecurityId: { userId: db.userId, plaidSecurityId: s.ref } },
+        create: { userId: db.userId, plaidSecurityId: s.ref, ...data },
+        update: data,
+        select: { id: true },
+      });
+    }),
+  );
+  return new Map(securities.map((s, i) => [s.ref, saved[i].id]));
 }
 
 async function saveHoldings(
@@ -374,28 +391,38 @@ async function saveHoldings(
   holdings: Holding[],
 ) {
   const kept = new Map<string, string[]>([...accountIds.values()].map((id) => [id, []]));
-  for (const h of holdings.map(normalizeHolding)) {
-    const accountId = h && accountIds.get(h.accountRef);
-    const securityId = h && securityIds.get(h.securityRef);
-    if (!h || !accountId || !securityId) continue;
-    const data = {
-      quantity: h.quantity,
-      priceCents: h.priceCents,
-      priceAsOf: h.priceAsOf ? new Date(`${h.priceAsOf}T00:00:00Z`) : null,
-      valueCents: h.valueCents,
-      costBasisCents: h.costBasisCents,
-    };
-    await db.holdings.upsert({
-      where: { accountId_securityId: { accountId, securityId } },
-      create: { userId: db.userId, accountId, securityId, ...data },
-      update: data,
-    });
-    kept.get(accountId)?.push(securityId);
-  }
+  await Promise.all(
+    [
+      ...new Map(
+        holdings
+          .map(normalizeHolding)
+          .flatMap((h) => (h ? [[`${h.accountRef}|${h.securityRef}`, h] as const] : [])),
+      ).values(),
+    ].map(async (h) => {
+      const accountId = accountIds.get(h.accountRef);
+      const securityId = securityIds.get(h.securityRef);
+      if (!accountId || !securityId) return;
+      const data = {
+        quantity: h.quantity,
+        priceCents: h.priceCents,
+        priceAsOf: h.priceAsOf ? new Date(`${h.priceAsOf}T00:00:00Z`) : null,
+        valueCents: h.valueCents,
+        costBasisCents: h.costBasisCents,
+      };
+      await db.holdings.upsert({
+        where: { accountId_securityId: { accountId, securityId } },
+        create: { userId: db.userId, accountId, securityId, ...data },
+        update: data,
+      });
+      kept.get(accountId)?.push(securityId);
+    }),
+  );
   // Whatever an account no longer holds.
-  for (const [accountId, securities] of kept) {
-    await db.holdings.deleteMany({ where: { accountId, securityId: { notIn: securities } } });
-  }
+  await Promise.all(
+    [...kept].map(([accountId, securities]) =>
+      db.holdings.deleteMany({ where: { accountId, securityId: { notIn: securities } } }),
+    ),
+  );
 }
 
 async function saveInvestmentTransactions(
@@ -476,13 +503,18 @@ async function saveInvestmentTransactions(
       .map((d) => ({ userId: db.userId, ...d })),
     skipDuplicates: true,
   });
-  for (const { plaidInvestmentTransactionId, ...rest } of data) {
-    if (!saved.has(plaidInvestmentTransactionId)) continue;
-    await db.investmentTransactions.updateMany({
-      where: { plaidInvestmentTransactionId },
-      data: rest,
-    });
-  }
+  await Promise.all(
+    data.flatMap(({ plaidInvestmentTransactionId, ...rest }) =>
+      saved.has(plaidInvestmentTransactionId)
+        ? [
+            db.investmentTransactions.updateMany({
+              where: { plaidInvestmentTransactionId },
+              data: rest,
+            }),
+          ]
+        : [],
+    ),
+  );
 }
 
 // Simulated orders the person placed through the stand-in brokerage (spec step 133), for
@@ -547,8 +579,16 @@ export async function syncDemoInvestments(
 
 export async function syncItem(
   itemId: string,
-  { client = defaultClient, api = plaid(), now = new Date(), progressive = false }: Options = {},
+  {
+    client = defaultClient,
+    api = plaid(),
+    now = new Date(),
+    progressive = false,
+    onReady,
+  }: Options = {},
 ): Promise<SyncResult> {
+  // The first scan's phases, logged once as trial_timing (where the first minute goes).
+  const timing = phaseTimer("first_sync");
   // The one unscoped read: finds the item's owner so everything after is scoped to them.
   const item = await client.plaidItem.findUnique({
     where: { id: itemId },
@@ -565,36 +605,64 @@ export async function syncItem(
   if (!item) throw new Error("Plaid item not found");
   const db = scopedFor(item.userId, client);
   const accessToken = decrypt(item.accessTokenEncrypted);
+  timing.mark("item");
   // The demo bank (spec step 75) answers in Plaid's place; everything after is the same.
-  if (isDemoToken(accessToken)) {
-    api = demoPlaidApi(
-      accessToken,
-      now,
-      await demoSwitches(db),
-      await demoOrders(db),
-      // Spec step 112: loans a refinance paid off.
-      await demoPayoffs(item.userId, { client }),
-      // Spec step 159: extra stand-in accounts the person linked.
-      demoExtrasOf(item.demoExtras),
-    );
-    // Its example options to compare against (spec step 76).
-    await ensureDemoOptions({ client, now });
-    // And its sample insurance policy (spec step 102).
-    await ensureDemoPolicies(item.userId, { client, now });
+  // Everything the demo bank needs before it can answer, together (each is a round trip):
+  // what it reads about the person, its example options and sample insurance policy, and, on
+  // the first scan, "still going through your accounts", which comes before anything Jane
+  // finds whenever the person gets to the chat.
+  const firstScan = progressive && item.transactionsCursor === null;
+  const [demo] = await Promise.all([
+    isDemoToken(accessToken)
+      ? Promise.all([
+          demoSwitches(db),
+          demoOrders(db),
+          // Spec step 112: loans a refinance paid off.
+          demoPayoffs(item.userId, { client }),
+          // Its example options to compare against (spec step 76), and its sample insurance
+          // policy (spec step 102).
+          ensureDemoOptions({ client, now }),
+          ensureDemoPolicies(item.userId, { client, now }),
+        ])
+      : null,
+    firstScan
+      ? // A millisecond before this sync's own time: everything Jane posts later in the sync is
+        // stamped from `now` onward, so the hello is strictly first, never tied with the brief.
+        postScanningHello(item.userId, { client, now: new Date(now.getTime() - 1) }).catch(
+          (error) => console.error("Posting the scanning hello failed", { error: String(error) }),
+        )
+      : null,
+  ]);
+  if (demo) {
+    // The demo bank (spec step 75) answers in Plaid's place; everything after is the same.
+    // Spec step 159: extra stand-in accounts the person linked.
+    api = demoPlaidApi(accessToken, now, demo[0], demo[1], demo[2], demoExtrasOf(item.demoExtras));
   }
-
+  timing.mark("demo_setup");
   const sync = await new PlaidDataSource(api, accessToken, item.transactionsCursor).load();
+  timing.mark("load");
   const accountIds = await saveAccounts(db, item.id, sync);
-  // The demo bank's home and car, once its loans are saved (spec step 67).
-  if (isDemoToken(accessToken)) await ensureDemoAssets(item.userId, item.id, { client, now });
-  const counts = await saveTransactions(db, accountIds, sync);
-  const recurring = await saveRecurringStreams(db, api, accessToken, accountIds);
-  const liabilities = item.liabilities
-    ? await saveLiabilities(db, api, accessToken, item.id)
-    : "off";
-  const investments = item.investments
-    ? await saveInvestments(db, api, accessToken, item.id, now)
-    : "off";
+  timing.mark("save_accounts");
+  // The demo bank's home and car, once its loans are saved (spec step 67), while the
+  // transactions are saved: neither waits on the other.
+  const [counts] = await Promise.all([
+    saveTransactions(db, accountIds, sync),
+    isDemoToken(accessToken) ? ensureDemoAssets(item.userId, item.id, { client, now }) : null,
+  ]);
+  // From here the chat can open (accounts and transactions are in).
+  timing.mark("save_transactions");
+  if (progressive && item.transactionsCursor === null) {
+    timing.log("chat_ready");
+    onReady?.();
+  }
+  // Independent of each other (their own tables), so together: the investments alone were
+  // five seconds on live for a person with holdings, with the brief waiting behind them.
+  const [recurring, liabilities, investments] = await Promise.all([
+    saveRecurringStreams(db, api, accessToken, accountIds),
+    item.liabilities ? saveLiabilities(db, api, accessToken, item.id) : ("off" as const),
+    item.investments ? saveInvestments(db, api, accessToken, item.id, now) : ("off" as const),
+  ]);
+  timing.mark("recurring_liabilities_investments");
 
   await db.plaidItems.updateMany({
     where: { id: item.id },
@@ -619,14 +687,41 @@ export async function syncItem(
     });
   }
 
+  timing.mark("cursor_and_track");
   await runDetection(item.userId, { client, now });
+  // Someone watching their first scan is looking at the chat: Jane's first words come at once,
+  // whatever the hour (quiet hours had left a person scanned at night with no brief at all).
+  const scanTrigger = progressive && result.firstSync ? "open" : "sync";
+  timing.mark("detection");
   // The first scan after linking: what people see first (the findings) is posted right after
   // detection, before the slower sector work below; the chat is already open and fills in.
-  if (progressive && result.firstSync)
-    await runJaneAgentSafely(item.userId, { client, now, trigger: "sync" });
+  if (progressive && result.firstSync) {
+    // Jane's first words lead with what the detectors found for this person (spec step 265), so
+    // those are worked out first, right after detection and before the slow sector work. Never
+    // the old, generic brief for someone whose first scan is running. A problem here falls
+    // back to the findings alone.
+    await scanSuggestions(item.userId, { client, now }).catch((error) =>
+      console.error("The first scan's suggestions failed", { error: String(error) }),
+    );
+    timing.mark("suggestions");
+    await runJaneAgentSafely(item.userId, { client, now, trigger: scanTrigger, early: true });
+    timing.mark("first_brief");
+    timing.log("first_brief");
+    // The brief is in the chat. The whole snapshot is kept now, for the chat's first question,
+    // before the slow sector work; then the scan is over for the person (the page stops
+    // reloading itself). Marking it done earlier let the open chat start its own run while
+    // the scan was still working, and the end-to-end flows that wait for its findings failed.
+    await keepFullSnapshot(item.userId, { client, now });
+    await markScanDone(item.userId, { client, now }).catch((error) =>
+      console.error("Marking the scan done failed", { error: String(error) }),
+    );
+  }
   // After detection these don't depend on each other, so they run together; the sample
   // person's first screen is waiting on this sync.
-  await Promise.all([
+  // None of it may stop the rest: a failure in one sector's work (a slow database, a partner
+  // that errors) used to end the sync here, so Jane's last words and the end of the scan never
+  // came and a new person's chat said "still going through your accounts" for good.
+  const sectors = await Promise.allSettled([
     // New charges may show that a switch went through (spec step 77).
     confirmSwitches({ client, now, userId: item.userId }),
     // Spec step 105: an insurance switch whose first payment went through.
@@ -641,8 +736,30 @@ export async function syncItem(
         client,
       }))(),
   ]);
+  for (const result of sectors) {
+    if (result.status === "rejected") {
+      console.error("A sector's work after the sync failed", {
+        error: scrub(String(result.reason)),
+      });
+    }
+  }
+  timing.mark("sectors");
   // Jane says what's new in the chat (spec step 82); a problem there never fails the sync.
-  await runJaneAgentSafely(item.userId, { client, now, trigger: "sync" });
+  await runJaneAgentSafely(item.userId, { client, now, trigger: scanTrigger });
   await markScanDone(item.userId, { client, now });
+  timing.mark("last_run");
+  // The person's numbers for Claude, saved now so the chat reads them in one query instead of
+  // looking every sector up while someone waits. Loaded here, not at the top: that file
+  // reaches this one again through the jobs.
+  await import("@/lib/jane-agent/claude-tools")
+    .then((m) => m.refreshPrimer(item.userId, { client, now }))
+    .catch((error) =>
+      console.error("Saving the numbers for Claude failed", { error: String(error) }),
+    );
+  timing.mark("primer");
+  // Only the first scan of a person is the one being timed.
+  if (progressive && result.firstSync) {
+    timing.done({ added: result.added, accounts: result.accounts });
+  }
   return result;
 }

@@ -22,6 +22,7 @@ vi.mock("@/lib/alerts", () => ({ raiseAlerts: vi.fn() }));
 // Spec step 208: what the person said is theirs, and refunds that never arrived (own tests).
 vi.mock("@/lib/unusual", () => ({
   loadTaught: vi.fn(async () => new Map()),
+  expectedFor: vi.fn(async () => new Set()),
   missingRefundAlerts: vi.fn(async () => []),
 }));
 

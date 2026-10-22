@@ -109,12 +109,13 @@ describe.runIf(url)("buying a home against a real database", { timeout: 30_000 }
       now: later(),
     });
     expect(reply.body).toMatch(
-      /^A \$400,000\.00 home would cost about \$[\d,.]+ a month, (within|over) the /,
+      /^A \$400,000\.00 home would cost about \$[\d,.]+ a month with taxes and insurance, (within|over) the /,
     );
-    expect(reply.body).toMatch(/PMI is insurance for the lender while you put down under 20%/);
+    expect(reply.body.split(/(?<=[.!?])\s+/).length).toBeLessThanOrEqual(3);
     expect(reply.body).toMatch(
-      /You'd need \$52,000\.00 up front \(\$40,000\.00 down and about \$12,000\.00 closing costs\)/,
+      /That assumes 10% down \(\$40,000\.00\) on a 30-year loan at \d+\.\d\d%/,
     );
+    expect(reply.body).toMatch(/so about \$52,000\.00 up front with closing costs\./);
     expect(parseRefs(reply.refs).advice).toBe(true);
     const goal = parseActions(reply.actions).find((a) => a.id === "home.goal");
     expect(goal?.label).toBe("Start a $52,000.00 down payment goal");
@@ -140,15 +141,17 @@ describe.runIf(url)("buying a home against a real database", { timeout: 30_000 }
     expect(tool.assumptions).toHaveLength(5);
   });
 
-  it("gives a real account nothing", async () => {
+  it("works the 28/36 math for a real account too, without offers, advice or a made-up rate", async () => {
     const realId = await person("home-real");
-    expect((await loadHomeBuying(realId, {}, opts())).available).toBe(false);
+    // No income to see yet: nothing to work out, and no goal to start.
+    const none = await loadHomeBuying(realId, {}, opts());
+    expect(none).toMatchObject({ available: true, missing: "income", advice: false });
     await expect(startHomeGoal(realId, {}, opts())).rejects.toThrow(HomeBuyingError);
     const { reply } = await sendToJane(realId, "how much house can I afford?", {
       client,
       now: later(),
     });
-    expect(reply.body).toMatch(/^Mortgage offers come from a lending partner/);
+    expect(reply.body).toMatch(/^I need a few months of income/);
     expect(await client.savingsGoal.count({ where: { userId: realId } })).toBe(0);
   });
 });

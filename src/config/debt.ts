@@ -56,6 +56,8 @@ export const DEBT_SOURCE_LIMITS = {
   home_equity: 2,
   debt_trouble: 1,
   debt_review: 1,
+  car_loan: 2,
+  costly_borrowing: 1,
 } as const;
 export const DEBT_MESSAGE_PRIORITY = {
   // A buy now, pay later plan Jane found, then a debt with no rate: news that can wait,
@@ -146,6 +148,12 @@ export const DEBT_MESSAGE_PRIORITY = {
   debt_trouble: 52,
   // Spec step 230: the yearly review, with a button for each thing that needs a tap.
   debt_review: 53,
+  // Spec step 245: a refund to claim comes just under the findings; a question about a payment
+  // can wait.
+  car_addon_refund: 55,
+  car_addon_found: 38,
+  // Spec step 247: said once a quarter, after the things with a date.
+  costly_borrowing: 51,
 } as const;
 
 // One short line for each step above, for the chat's answer to "what do you do about my
@@ -176,6 +184,9 @@ export const DEBT_AUTOPILOT_SHORT: Readonly<Record<number, string>> = {
   228: "Checks PMI and escrow against real figures and compares ways to fund a home project.",
   229: "Lays out your options as facts when debt payments pass 40% of your income.",
   230: "Reviews all of this once a year, in one message.",
+  245: "Finds dealer add-ons in your car loan and what cancelling each would refund.",
+  246: "Compares a recast, a refinance and extra principal, and investing it instead.",
+  247: "Finds payday loans, cash advances and overdrafts, with the yearly cost and a way out.",
 };
 
 // What Jane does about debts by herself at each autopilot level (src/config/autopilot.ts),
@@ -281,6 +292,18 @@ export const DEBT_AUTOPILOT: Readonly<
       step: 230,
       does: "Once a year, and after a raise, a new loan or a missed payment, goes over your debts and credit in one message: payments timed to statement dates, 0% promotions on pace, lower-rate requests, PMI and escrow, and score goals. Each item that needs you has its own button, and nothing happens until you tap.",
     },
+    {
+      step: 245,
+      does: "Checks your car loan for a cheaper refinance on total cost, finds dealer add-ons (GAP, extended warranty, service contract) in your payments, asks you once, and drafts the cancellation with the refund it could give. You send it, or ask the team to.",
+    },
+    {
+      step: 246,
+      does: "When you have a lump sum or extra monthly money for your mortgage, compares paying extra principal, a recast and a refinance (fees counted, with the date each pays back) against investing it instead. The choice is yours.",
+    },
+    {
+      step: 247,
+      does: "Finds payday loans, card cash advances, repeated overdrafts and pay advance apps in your payments, shows the yearly cost in dollars and as a rate, and lays out cheaper ways out and how to stop the cycle. Nothing is borrowed or sent for you.",
+    },
   ],
   safe: [
     {
@@ -379,6 +402,18 @@ export const DEBT_AUTOPILOT: Readonly<
       step: 230,
       does: "Once a year, and after a raise, a new loan or a missed payment, goes over your debts and credit in one message. Pays toward a card before its statement closes on my own, within your debt caps (a payment above a cap waits for your tap); every other item has its own button.",
     },
+    {
+      step: 245,
+      does: "Checks your car loan for a cheaper refinance on total cost, finds dealer add-ons (GAP, extended warranty, service contract) in your payments, asks you once, and drafts the cancellation with the refund it could give. You send it, or ask the team to.",
+    },
+    {
+      step: 246,
+      does: "When you have a lump sum or extra monthly money for your mortgage, compares paying extra principal, a recast and a refinance (fees counted, with the date each pays back) against investing it instead. The choice is yours.",
+    },
+    {
+      step: 247,
+      does: "Finds payday loans, card cash advances, repeated overdrafts and pay advance apps in your payments, shows the yearly cost in dollars and as a rate, and lays out cheaper ways out and how to stop the cycle. Nothing is borrowed or sent for you.",
+    },
   ],
   all: [
     {
@@ -476,6 +511,18 @@ export const DEBT_AUTOPILOT: Readonly<
     {
       step: 230,
       does: "Once a year, and after a raise, a new loan or a missed payment, goes over your debts and credit in one message. Pays toward a card before its statement closes and sends the next lower-rate request on my own, within your debt caps; anything above a cap, PMI and escrow requests and score goal checklists have their own buttons.",
+    },
+    {
+      step: 245,
+      does: "Checks your car loan for a cheaper refinance on total cost, finds dealer add-ons (GAP, extended warranty, service contract) in your payments, asks you once, and drafts the cancellation with the refund it could give. You send it, or ask the team to.",
+    },
+    {
+      step: 246,
+      does: "When you have a lump sum or extra monthly money for your mortgage, compares paying extra principal, a recast and a refinance (fees counted, with the date each pays back) against investing it instead. The choice is yours.",
+    },
+    {
+      step: 247,
+      does: "Finds payday loans, card cash advances, repeated overdrafts and pay advance apps in your payments, shows the yearly cost in dollars and as a rate, and lays out cheaper ways out and how to stop the cycle. Nothing is borrowed or sent for you.",
     },
   ],
 };

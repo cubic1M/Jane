@@ -36,8 +36,7 @@ async function HomeContent({ searchParams }: Pick<PageProps<"/loans/home">, "sea
     downShare: down > 0 && down < 100 ? down / 100 : undefined,
     targetDate: date && /^\d{4}-\d{2}-\d{2}$/.test(date) ? date : undefined,
   });
-  const ready =
-    home.available && home.offers.length > 0 && home.costs && home.affordability && home.saving;
+  const ready = home.available && home.costs && home.affordability && home.saving;
   return (
     <>
       <AppHeader user={user} />
@@ -52,14 +51,14 @@ async function HomeContent({ searchParams }: Pick<PageProps<"/loans/home">, "sea
         <p className="text-zinc-600 dark:text-zinc-400">
           {home.missing === "income"
             ? "I need a few months of income to see before I can say what home fits."
-            : "Mortgage offers come from a lending partner, and there isn't one for your accounts yet."}{" "}
+            : "I can't work out what home fits yet."}{" "}
           <Link href="/loans" className={LINK}>
             See every debt
           </Link>
         </p>
       ) : (
         <>
-          <DemoAdviceLabel />
+          {home.advice ? <DemoAdviceLabel /> : null}
           {p("started") && (
             <p role="status" className="text-sm text-emerald-800 dark:text-emerald-200">
               Started just now. It&apos;s on your goals page.
@@ -150,28 +149,30 @@ async function HomeContent({ searchParams }: Pick<PageProps<"/loans/home">, "sea
               </p>
             )}
           </section>
-          <section aria-labelledby="offers" className="flex flex-col gap-2">
-            <h2 id="offers" className="text-xl font-semibold">
-              Mortgage offers
-            </h2>
-            <ul aria-label="Offers" className="flex flex-col gap-2 text-sm">
-              {home.offers.map((o, i) => (
-                <li
-                  key={o.offer.id}
-                  className="rounded-xl border border-zinc-200 p-3 dark:border-zinc-800"
-                >
-                  <p className="font-medium">
-                    {o.offer.lender} at {formatRate(o.offer.aprBps)}
-                    {i === 0 ? " (cheapest)" : ""}
-                  </p>
-                  <p>
-                    {formatCents(o.monthlyCents)} a month for the loan, {formatCents(o.totalCents)}{" "}
-                    in all over 30 years. {o.offer.feeLabel}.
-                  </p>
-                </li>
-              ))}
-            </ul>
-          </section>
+          {home.offers.length > 0 ? (
+            <section aria-labelledby="offers" className="flex flex-col gap-2">
+              <h2 id="offers" className="text-xl font-semibold">
+                Mortgage offers
+              </h2>
+              <ul aria-label="Offers" className="flex flex-col gap-2 text-sm">
+                {home.offers.map((o, i) => (
+                  <li
+                    key={o.offer.id}
+                    className="rounded-xl border border-zinc-200 p-3 dark:border-zinc-800"
+                  >
+                    <p className="font-medium">
+                      {o.offer.lender} at {formatRate(o.offer.aprBps)}
+                      {i === 0 ? " (cheapest)" : ""}
+                    </p>
+                    <p>
+                      {formatCents(o.monthlyCents)} a month for the loan,{" "}
+                      {formatCents(o.totalCents)} in all over 30 years. {o.offer.feeLabel}.
+                    </p>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          ) : null}
           <form method="get" className="grid gap-3 sm:grid-cols-3" aria-label="Try a home">
             <label className="flex flex-col gap-1 text-sm">
               Price

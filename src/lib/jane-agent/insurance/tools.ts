@@ -1,3 +1,9 @@
+import { DEMO_ADVICE_LABEL } from "@/config/advice";
+import { insuranceCard } from "@/lib/insurance/need/card";
+import { loadNeeds, optionsForNeed, withNeeds } from "@/lib/insurance/need/load";
+import type { Need } from "@/lib/insurance/need/types";
+import type { OfferedOptions } from "@/lib/option-card";
+import { decide, decisionKindOf } from "./decisions";
 import type Anthropic from "@anthropic-ai/sdk";
 import { PREMIUM_FREQUENCIES } from "@/config/documents";
 import {
@@ -24,6 +30,11 @@ import { listCoverChanges } from "@/lib/insurance/cover-changes";
 import { listNegotiations } from "@/lib/insurance/negotiate";
 import { listSavings } from "@/lib/insurance/savings";
 import { listRisks } from "@/lib/insurance/risks";
+import { loadFamily } from "@/lib/insurance/family";
+import { loadHealthYear, openDisputeCards } from "@/lib/insurance/health-year";
+import { healthYearLines } from "./health-year";
+import { claimWorthFor } from "@/lib/insurance/claim-worth-for";
+import { isPolicyKind } from "@/config/insurance";
 import { noteLines, readingLines } from "./reading-words";
 import { listBenefits, openEnrollmentAtWork, yearlyCost } from "@/lib/insurance/benefits";
 import { autopilotOf } from "@/lib/autopilot";
@@ -36,6 +47,17 @@ import { loadInsuranceSnapshot } from "./snapshot";
 // the person's own profile, with every dollar figure recorded for the guardrails.
 
 const noInput = { type: "object" as const, properties: {}, additionalProperties: false };
+
+// The covers insurance_needs can price options for (src/lib/insurance/need/types.ts).
+const NEED_KINDS: readonly Need["kind"][] = [
+  "life",
+  "disability",
+  "umbrella",
+  "deductible",
+  "auto_liability",
+  "home_liability",
+  "renters_liability",
+];
 
 export const INSURANCE_TOOLS: Anthropic.Tool[] = [
   {
@@ -72,6 +94,62 @@ export const INSURANCE_TOOLS: Anthropic.Tool[] = [
     name: "insurance_life",
     description:
       "Life insurance sized for the person and applied for (spec step 153), demo advice only: the amount and term with the method (years of pay, debts, final expenses, schooling, less savings and cover they have), the term quotes, and where an application stands (health questions, the carrier's offer or review). Jane never applies or buys without the person's tap; to start, they tap Apply in the chat or on /insurance/life.",
+    input_schema: noInput,
+  },
+  {
+    name: "insurance_needs",
+    description:
+      "What cover the person needs, worked out from their own numbers, what they have and the gap (spec step 278): term life (income, debts, schooling, less savings and cover), disability (about 60% of pay a month), umbrella, deductibles by their cash, and car, home and renters liability levels. It is the same working the page and the nightly detectors use. Use it for 'how much life insurance do I need'. The need is demo advice: say so with the label in demo advice mode. In demo advice mode it also prices options for the cover asked about (or the first one that is short): they are shown to the person as a pick-one card under your answer, so name Jane's pick and why in a sentence, never the whole list.",
+    input_schema: {
+      type: "object",
+      properties: {
+        need: {
+          type: "string",
+          enum: [...NEED_KINDS],
+          description: "The cover asked about, if one was: its options come with the answer.",
+        },
+      },
+    },
+  },
+  {
+    name: "insurance_decision",
+    description:
+      "A direct answer, in three sentences or fewer, to an insurance decision the person asks about: whether to get umbrella or life cover, switch car insurance, pay yearly, raise a deductible, keep the work health plan, cancel phone cover, add a teen driver, and so on. Pass their question as they said it. The answer is built from their own policies and numbers; the verdict is demo advice and only given in demo advice mode (say so with the label). Use it instead of listing their policies when they ask what to do. Start with the verdict in words; offer no button unless they asked you to do something Jane can do; for any amount the answer doesn't give, use the calculate tool.",
+    input_schema: {
+      type: "object",
+      properties: {
+        question: { type: "string", description: "The question as the person asked it." },
+      },
+      required: ["question"],
+    },
+  },
+  {
+    name: "insurance_health_year",
+    description:
+      "Where the person is in their health plan's year (spec step 200): deductible met, out-of-pocket so far and the month the maximum is reached at this pace, FSA money left and its use-it-or-lose-it date, HSA balance, in-network checks for providers they paid, and big bills above the plan's share (a dispute card is opened for the team). Facts only. Say when the plan is the demo bank's sample plan.",
+    input_schema: { type: "object", properties: {} },
+  },
+  {
+    name: "insurance_claim_worth",
+    description:
+      "Whether a claim is worth making against paying it themselves (spec step 199), for an estimate in dollars: what the insurer would pay after the deductible (a fact), and, in demo advice mode only, the typical three-year premium rise and claims-free discount lost, with the net. Say it as an estimate, never a promise of what the carrier will do. Pass the policy kind (auto, home, renters...) and what happened (accident, theft, damage) when known.",
+    input_schema: {
+      type: "object",
+      properties: {
+        estimateDollars: {
+          type: "number",
+          description: "What the damage or loss costs, in dollars.",
+        },
+        policyKind: { type: "string", description: "auto, home, renters, ..." },
+        event: { type: "string", description: "accident, theft or damage, when known." },
+      },
+      required: ["estimateDollars"],
+    },
+  },
+  {
+    name: "insurance_household",
+    description:
+      "The whole household's cover (spec step 198): who is covered by what (the person, each household member's shared policies, and the people they listed), the gaps for each person (a teen driver not on a car policy, a spouse with no health plan), and the health plans compared for the whole household with both employers' plans counted. A partner's policy is only here if they chose to share it.",
     input_schema: noInput,
   },
   {
@@ -112,12 +190,35 @@ export const INSURANCE_TOOLS: Anthropic.Tool[] = [
   },
 ];
 
+// Short of what they need: a gap, or a deductible to move.
+const isShort = (n: Need) => n.applies && (n.direction ? n.direction !== "ok" : n.gapCents > 0);
+
+// The options for the cover asked about, or else the first that is short (demo advice only):
+// the shared pick-one card the chat shows with the answer, as the insurance page does.
+async function needOptions(
+  userId: string,
+  needs: Need[],
+  asked: string | null,
+  { client, now }: { client: PrismaClient; now: Date },
+): Promise<OfferedOptions | null> {
+  const need = asked ? needs.find((n) => n.kind === asked && isShort(n)) : needs.find(isShort);
+  if (!need) return null;
+  const found = await optionsForNeed(userId, need.kind, {
+    client,
+    now,
+    ...(need.policyId ? { policyId: need.policyId } : {}),
+  });
+  if (!found || found.set.options.length === 0) return null;
+  const card = insuranceCard(found.set, found.need, true);
+  return { ...card, ...(found.set.policyId ? { policyId: found.set.policyId } : {}) };
+}
+
 export const isInsuranceTool = (name: string) => INSURANCE_TOOLS.some((t) => t.name === name);
 
 export async function runInsuranceTool(
   userId: string,
   name: string,
-  _input: unknown,
+  input: unknown,
   { client, now }: { client: PrismaClient; now: Date },
 ): Promise<ToolOutput> {
   const cents: number[] = [];
@@ -169,6 +270,167 @@ export async function runInsuranceTool(
       cents,
     };
   }
+  if (name === "insurance_needs") {
+    const needs = await loadNeeds(userId, { client, now });
+    if (!needs) {
+      return {
+        content: JSON.stringify({
+          error: "I don't have the policies and income to size cover yet.",
+        }),
+        cents,
+      };
+    }
+    for (const n of needs)
+      cents.push(n.needCents, n.haveCents, n.gapCents, ...n.lines.map((l) => l.cents));
+    const asked = (input as { need?: unknown } | null)?.need;
+    const offered = (await adviceMode(userId, { client }))
+      ? await needOptions(userId, needs, typeof asked === "string" ? asked : null, { client, now })
+      : null;
+    return {
+      ...(offered ? { options: offered } : {}),
+      content: JSON.stringify({
+        ...(offered
+          ? {
+              options: {
+                for: offered.topic,
+                shownAsACard: true,
+                label: DEMO_ADVICE_LABEL,
+                options: offered.options.map((o) => ({
+                  carrier: o.label,
+                  aYear: money(o.priceCents),
+                  why: o.whyThisOne,
+                  janesPick: o.isPick,
+                  ...(o.confidence ? { sure: `${o.confidence.percent}%` } : {}),
+                })),
+              },
+            }
+          : {}),
+        needs: needs.map((n) => ({
+          kind: n.kind,
+          unit: n.unit,
+          need: money(n.needCents),
+          have: money(n.haveCents),
+          gap: money(n.gapCents),
+          direction: n.direction,
+          summary: n.summary,
+          working: n.lines.map((l) => `${l.adds ? "+" : "−"} ${money(l.cents)}: ${l.label}`),
+        })),
+      }),
+      cents,
+    };
+  }
+  if (name === "insurance_decision") {
+    const question = String((input as { question?: unknown })?.question ?? "").toLowerCase();
+    const kind = decisionKindOf(question);
+    if (!kind) {
+      return {
+        content: JSON.stringify({
+          error: "That isn't an insurance decision I can answer directly.",
+        }),
+        cents,
+      };
+    }
+    const snapshot = await withNeeds(userId, await loadInsuranceSnapshot(userId, { client, now }), {
+      client,
+      now,
+    });
+    const answer = decide(kind, snapshot, now.toISOString().slice(0, 10));
+    for (const m of answer.body.matchAll(/\$([\d,]+(?:\.\d\d)?)/g)) {
+      cents.push(Math.round(Number(m[1].replace(/,/g, "")) * 100));
+    }
+    return {
+      content: JSON.stringify({
+        decision: kind,
+        answer: answer.body,
+        demoAdvice: answer.refs.advice === true,
+      }),
+      cents,
+    };
+  }
+  if (name === "insurance_health_year") {
+    const year = await loadHealthYear(userId, { client, now });
+    if (!year) {
+      return {
+        content: JSON.stringify({ found: false, why: "no health plan terms on file" }),
+        cents,
+      };
+    }
+    await openDisputeCards(userId, { client, now });
+    return {
+      content: JSON.stringify({
+        plan: year.plan.label,
+        samplePlan: year.sample,
+        lines: healthYearLines(year),
+      }),
+      cents: [
+        year.progress.deductibleMetCents,
+        year.progress.oopSoFarCents,
+        year.fsa?.leftCents ?? 0,
+        ...year.disputes.flatMap((d) => [d.paidCents, d.shouldPayCents, d.overCents]),
+      ],
+    };
+  }
+  if (name === "insurance_claim_worth") {
+    const asked = input as { estimateDollars?: unknown; policyKind?: unknown; event?: unknown };
+    const dollars = Number(asked.estimateDollars);
+    if (!Number.isFinite(dollars) || dollars <= 0) {
+      return { content: JSON.stringify({ error: "Give the estimate in dollars." }), cents };
+    }
+    const result = await claimWorthFor(
+      userId,
+      {
+        amountCents: Math.round(dollars * 100),
+        kind: isPolicyKind(asked.policyKind) ? asked.policyKind : null,
+        event: typeof asked.event === "string" ? asked.event : null,
+      },
+      { client },
+    );
+    if (!result.found) {
+      return {
+        content: JSON.stringify({ found: false, why: "no policy for that on their profile" }),
+        cents,
+      };
+    }
+    const w = result.worth;
+    return {
+      content: JSON.stringify({
+        policy: `${result.policy.carrier} ${w.kind}`,
+        estimate: money(w.estimateCents),
+        deductible: money(w.deductibleCents),
+        insurerWouldPay: money(w.payoutCents),
+        underTheDeductible: w.underDeductible,
+        ...(result.advice
+          ? {
+              demoAdvice: true,
+              premiumRiseOverThreeYears: money(w.riseCents),
+              claimsFreeDiscountLost: money(w.discountAtRiskCents),
+              netIfTheyClaim: money(w.netCents),
+              looksCheaperTo: w.verdict,
+            }
+          : {}),
+      }),
+      cents,
+    };
+  }
+  if (name === "insurance_household") {
+    const family = await loadFamily(userId, { client, now });
+    return {
+      content: JSON.stringify({
+        covered: family.rows.map((r) => ({
+          who: r.name,
+          policies: r.policies.map(
+            (p) => `${p.carrier} ${p.kind}${p.owner === "You" ? "" : ` (${p.owner}'s, shared)`}`,
+          ),
+        })),
+        gaps: family.gaps.map((g) => ({ gap: g.title, why: g.why })),
+        healthPlansForTheWholeHousehold: family.healthPlans.map((r) => ({
+          plan: r.label,
+          aYearWithUsualCare: money(r.familyYearlyCents),
+        })),
+      }),
+      cents,
+    };
+  }
   if (name === "insurance_risks") {
     const risks = await listRisks(userId, { client });
     return {
@@ -186,9 +448,13 @@ export async function runInsuranceTool(
     const savings = await listSavings(userId, { client });
     return {
       content: JSON.stringify({
-        savings: savings
+        // Largest saving first, the three worth the most marked: so everyone gets the same top
+        // three of the same list, however many options there are.
+        savings: [...savings]
           .filter((s) => s.status !== "dismissed")
-          .map((s) => ({
+          .sort((a, b) => b.yearlySavingCents - a.yearlySavingCents)
+          .map((s, rank) => ({
+            mostValuable: rank < 3,
             what: s.kind,
             status: s.status === "offered" ? "waiting for their tap" : s.status,
             aYearLess: money(s.yearlySavingCents),

@@ -3,6 +3,7 @@ import { APPROVED_DEBT_SENTENCES, COUNSEL_POINTER, DEBT_FACTS } from "@/config/d
 import {
   checkGuardrails,
   dollarFigures,
+  guardrailMatches,
   isAdvice,
   recommendsAChoice,
   unsupportedFigures,
@@ -64,7 +65,7 @@ describe("checkGuardrails", () => {
       "Claim it as a deduction.",
       "Ask the IRS about it.",
       "You may have legal grounds to sue the bank.",
-      "Talk to a lawyer about the late fees.",
+      "You can take the lender to court over the late fees.",
     ])("rejects %j", (text) => {
       expect(issuesOf(text)).toContain("tax_or_legal_advice");
     });
@@ -201,6 +202,28 @@ describe("the demo advice profile", () => {
     expect(demoIssues("Talk to a lawyer and sue the lender.")).toEqual(["tax_or_legal_advice"]);
   });
 
+  // Spec step 268: inherited money and gifts are tax facts plus a pointer to counsel; what to do
+  // about the estate is legal advice, blocked even as demo advice.
+  it.each([
+    "You should set up a revocable trust for the house.",
+    "Put the house in a living trust to avoid probate.",
+    "Write a will that leaves the IRA to your daughter.",
+    "Disclaim the inheritance so it passes to your kids.",
+    "Update your power of attorney before the gift.",
+  ])("blocks estate advice: %j", (text) => {
+    expect(demoIssues(text)).toEqual(["tax_or_legal_advice"]);
+  });
+
+  it("lets the inheritance facts and the pointer to counsel through", () => {
+    for (const text of [
+      "Most heirs must empty an inherited IRA within 10 years of the owner's death.",
+      "Inherited stocks get a new cost basis: their value on the day the owner died.",
+      "A gift over the annual exclusion takes a gift tax return (Form 709).",
+      "An estate lawyer can say what applies to a particular family.",
+    ])
+      expect(demoIssues(text), text).toEqual([]);
+  });
+
   it("still requires a card's wording", () => {
     expect(checkGuardrails("Your bill is high.", [], "bill_negotiation", "demo_advice")).toEqual({
       ok: false,
@@ -297,4 +320,106 @@ describe("debt trouble facts", () => {
       "guaranteed_outcome",
     );
   });
+});
+
+describe("saying Jane can't do something legal", () => {
+  const demo = (text: string) => checkGuardrails(text, [], undefined, "demo_advice");
+
+  it("lets a refusal and a pointer to a lawyer through", () => {
+    expect(demo("I can't write a will for you. A lawyer can draw one up.").ok).toBe(true);
+    expect(demo("That's not something I can do, so talk to an estate attorney about it.").ok).toBe(
+      true,
+    );
+  });
+
+  it("lets a kind answer to a death through when it leaves the legal part to an attorney", () => {
+    expect(
+      demo(
+        "I'm so sorry about your mom. For her accounts, an estate attorney can tell you the steps, and each bank has a team for this.",
+      ).ok,
+    ).toBe(true);
+  });
+
+  it("still blocks legal advice of its own, even next to a refusal", () => {
+    expect(demo("You should sue the landlord.").ok).toBe(false);
+    expect(demo("I can't write that for you, but you should sue them and file in court.").ok).toBe(
+      false,
+    );
+    expect(demo("Legally you can stop paying your credit cards.").ok).toBe(false);
+  });
+
+  it("no longer reads 'stop paying overdraft fees' as legal trouble", () => {
+    expect(demo("You can stop paying overdraft fees by turning on a low-balance alert.").ok).toBe(
+      true,
+    );
+    expect(demo("You could stop paying your credit cards.").ok).toBe(false);
+  });
+});
+
+describe("refusing to help with something dishonest", () => {
+  const refusal = "I can't help hide income from the IRS; that's tax evasion.";
+  it("passes in both profiles", () => {
+    expect(checkGuardrails(refusal, [], undefined, "demo_advice").ok).toBe(true);
+    expect(checkGuardrails(refusal, [], undefined, "standard").ok).toBe(true);
+    expect(
+      checkGuardrails(
+        `${refusal} I can help you find legal deductions.`,
+        [],
+        undefined,
+        "demo_advice",
+      ).ok,
+    ).toBe(true);
+  });
+
+  it("still blocks tax talk that is not a refusal", () => {
+    expect(
+      checkGuardrails("You could hide income from the IRS.", [], undefined, "standard").ok,
+    ).toBe(false);
+  });
+});
+
+describe("naming a rule of thumb, and who handles the legal part", () => {
+  const demo = (t: string) => checkGuardrails(t, [], undefined, "demo_advice");
+
+  it("lets Jane say there is no guarantee, but not promise one", () => {
+    expect(demo("The 4% rule, often called a safe withdrawal rate, isn't a guarantee.").ok).toBe(
+      true,
+    );
+    expect(demo("I can't promise it will last, and there's no guarantee.").ok).toBe(true);
+    expect(demo("This is guaranteed to last 30 years.").ok).toBe(false);
+    expect(demo("You will definitely be fine.").ok).toBe(false);
+  });
+
+  it("lets a pointer to who handles it through, in both profiles", () => {
+    const pointer = "An estate attorney or the bank's bereavement team handles that part.";
+    expect(demo(pointer).ok).toBe(true);
+    expect(checkGuardrails(pointer, [], undefined, "standard").ok).toBe(true);
+    // Still blocked: telling the person what to do about the law.
+    expect(demo("You should file for probate in court yourself.").ok).toBe(false);
+  });
+
+  it("reports which rules matched, never the words", () => {
+    const rules = guardrailMatches("This is guaranteed and risk-free.", [], "demo_advice");
+    expect(rules.length).toBeGreaterThan(0);
+    expect(rules.every((r) => r.startsWith("guarantee:"))).toBe(true);
+  });
+});
+
+describe("a lawyer or the word legal is not legal advice", () => {
+  it.each([
+    "Talk to a lawyer about the late fees.",
+    "An estate attorney can handle probate.",
+    "The legal side is for an attorney; I can show you the accounts.",
+    "There are legal deductions you may qualify for.",
+  ])("passes %j in both profiles", (text) => {
+    expect(checkGuardrails(text, [], undefined, "demo_advice").ok).toBe(true);
+    expect(issuesOf(text, [])).not.toContain("tax_or_legal_advice");
+  });
+
+  it.each(["You should sue them.", "You could win the case.", "You are legally entitled to it."])(
+    "blocks %j",
+    (text) => {
+      expect(checkGuardrails(text, [], undefined, "demo_advice").ok).toBe(false);
+    },
+  );
 });

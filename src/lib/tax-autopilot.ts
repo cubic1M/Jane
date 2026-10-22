@@ -1,3 +1,4 @@
+import { applyReliefWhenDeclared } from "@/lib/disasters";
 import type { PrismaClient } from "@/generated/prisma/client";
 import { track } from "@/lib/analytics";
 import { db as defaultClient } from "@/lib/db";
@@ -12,6 +13,7 @@ import { collectTaxDocuments } from "@/lib/tax-documents";
 import { addOpenPlanMoves } from "@/lib/tax-plan";
 import { remindIpPinWhenDue } from "@/lib/tax-identity";
 import { remindAppealWhenSuggested } from "@/lib/property-tax";
+import { runTaxCalendar } from "@/lib/tax-calendar";
 import { remindDueRecords } from "@/lib/audit-records";
 import { remindReceipts } from "@/lib/giving";
 
@@ -38,6 +40,8 @@ export async function runTaxAutopilot(
   recordsReminded: number;
   ipPinReminded: boolean;
   propertyReminded: boolean;
+  estimatesPaid: number;
+  disasterMoved: number;
 }> {
   // Spec step 141: Taxes' autopilot. Starting a return or a goal moves no money: the level
   // is enough.
@@ -55,6 +59,8 @@ export async function runTaxAutopilot(
       recordsReminded: 0,
       ipPinReminded: false,
       propertyReminded: false,
+      estimatesPaid: 0,
+      disasterMoved: 0,
     };
   }
   return {
@@ -71,6 +77,11 @@ export async function runTaxAutopilot(
     ipPinReminded: await remindIpPinWhenDue(userId, { client, now }),
     // Spec step 221: the appeal deadline, when the assessment is worth appealing.
     propertyReminded: await remindAppealWhenSuggested(userId, { client, now }),
+    // Spec step 223: estimated payments in their window that fit the caps, paid through the
+    // stand-in.
+    estimatesPaid: (await runTaxCalendar(userId, { client, now })).paid.length,
+    // Spec step 270: a disaster postponement for their county moves their tax deadlines.
+    disasterMoved: await applyReliefWhenDeclared(userId, { client, now }),
   };
 }
 

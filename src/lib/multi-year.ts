@@ -12,7 +12,7 @@ import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
 import { addDeadline } from "@/lib/deadlines";
 import { loadInvestmentTaxes } from "@/lib/investment-taxes";
-import { loadTaxEstimate } from "@/lib/tax-estimate";
+import { loadTaxEstimate, type TaxEstimateView } from "@/lib/tax-estimate";
 import {
   findMoves,
   lifetimeTax,
@@ -69,13 +69,17 @@ export type MultiYearView = {
 
 export async function loadMultiYear(
   userId: string,
-  { client = defaultClient, now = new Date() }: Options = {},
+  {
+    client = defaultClient,
+    now = new Date(),
+    loaded,
+  }: Options & { loaded?: { estimate: TaxEstimateView; advice: boolean } } = {},
 ): Promise<MultiYearView> {
-  const estimate = await loadTaxEstimate(userId, { client, now });
+  const estimate = loaded?.estimate ?? (await loadTaxEstimate(userId, { client, now }));
   const year = estimate.year;
   const db = scopedFor(userId, client);
   const [advice, accounts, investments, profile, events] = await Promise.all([
-    adviceMode(userId, { client }),
+    loaded ? loaded.advice : adviceMode(userId, { client }),
     db.accounts.findMany({
       where: { type: "investment" },
       select: { subtype: true, currentBalanceCents: true },

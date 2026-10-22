@@ -16,6 +16,8 @@ import { healthFor } from "@/lib/health-score";
 import { monthlyReportFor } from "@/lib/monthly-report";
 import { runLeanCheck } from "@/lib/lean-plan";
 import { checkResults } from "@/lib/worked";
+import { runBooksCheck } from "@/lib/books";
+import { runSteadyPay } from "@/lib/steady-pay";
 import { loadYearPlan } from "@/lib/year-plan";
 import { runPlanUpkeep } from "@/lib/plan-upkeep";
 import { runTaxAutopilotSafely } from "@/lib/tax-autopilot";
@@ -24,7 +26,9 @@ import { BUNDLED_UNTIL, closeSettled, postMessages } from "./messages";
 import { queueChatNotificationsSafely } from "./notify";
 import { inQuietHours } from "./quiet-hours";
 import { listPreferences, postingOf } from "./preferences";
+import { scanSuggestions } from "@/lib/suggestions";
 import { loadSnapshot } from "./snapshot";
+import { saveSnapshot } from "./snapshot-store";
 import type { Trigger } from "./sources";
 
 // Runs Jane's brain for one person (spec step 82): loads what it looks at with the
@@ -32,13 +36,14 @@ import type { Trigger } from "./sources";
 // Called after a bank or demo-bank sync, after a CSV import, by the daily job, and when the
 // person opens the chat with nothing posted yet today.
 
-type Options = { client?: PrismaClient; now?: Date; trigger?: Trigger };
+// early: the first run of a first scan, before its suggestions are in.
+type Options = { client?: PrismaClient; now?: Date; trigger?: Trigger; early?: boolean };
 
 const HOUR_MS = 60 * 60 * 1000;
 
 export async function runJaneAgent(
   userId: string,
-  { client = defaultClient, now = new Date(), trigger = "sync" }: Options = {},
+  { client = defaultClient, now = new Date(), trigger = "sync", early = false }: Options = {},
 ): Promise<{ posted: number }> {
   // The person's timezone, for quiet hours: users have their own helpers, so read by id.
   const user = await client.user.findUnique({ where: { id: userId }, select: { timezone: true } });
@@ -48,48 +53,73 @@ export async function runJaneAgent(
   // Spec step 92: never interrupt. While they're chatting, Jane's own messages wait.
   if (await chatting(userId, { client, now })) return { posted: 0 };
 
+  // The first run of a first scan (`early`) is only for the first brief: it must reach the
+  // person inside the host's 60 seconds, so it skips everything Jane keeps current by herself.
+  // The scan's last run does all of it.
   // Spec step 101: what autopilot keeps up to date by itself, before Jane looks.
-  await runPlanUpkeep(userId, { client, now }).catch((error) =>
-    console.error("Plan upkeep failed", { userId, error: String(error) }),
-  );
-  // Loans and debt (spec Phase Y): what Jane keeps current by herself, before she looks.
-  await refreshDebts(userId, { client, now });
+  if (!early) {
+    await runPlanUpkeep(userId, { client, now }).catch((error) =>
+      console.error("Plan upkeep failed", { userId, error: String(error) }),
+    );
+    // Loans and debt (spec Phase Y): what Jane keeps current by herself, before she looks.
+    await refreshDebts(userId, { client, now });
+  }
   // The bank data, loaded once for what follows.
-  const input = await loadDetectionInput(userId, { client, now });
+  // (The early run's light snapshot reads none of it.)
+  const input = early ? undefined : await loadDetectionInput(userId, { client, now });
   // What Jane keeps current by herself, before she looks. These don't depend on each other
   // (except money moving, which runs in order), so they run together: a new person's first
   // run waits on all of it.
   const safely = (what: string, run: () => Promise<unknown>) =>
     run().catch((error) => console.error(`${what} failed`, { userId, error: String(error) }));
-  await Promise.all([
-    // Spec step 99: insurance found from payments joins the profile (as found) by itself.
-    safely("Finding policies from payments", () =>
-      policiesFromPayments(userId, { client, now, input }),
-    ),
-    // Spec steps 144–145: transfers whose day came have gone through, a new paycheck gets its
-    // plan (moved by itself where autopilot allows), then bills due soon are scheduled.
-    (async () => {
-      await safely("Settling transfers", () => settleTransfers(userId, { client, now }));
-      await safely("Paycheck plan", () => runPaycheckPlan(userId, { client, now, input }));
-      await safely("Bill pay", () => runBillPay(userId, { client, now, input }));
-    })(),
-    // Spec steps 146 and 148: this month's score, kept; then last month's report, once.
-    (async () => {
-      await safely("Health score", () => healthFor(userId, { client, now, input, keep: true }));
-      await safely("Monthly report", () => monthlyReportFor(userId, { client, now }));
-    })(),
-    // Spec step 205: the year's plan, re-planned from what happened and kept.
-    safely("Year plan", () => loadYearPlan(userId, { client, now, input, keep: true })),
-    // Spec step 207: finished actions checked against the transactions; a saving that never
-    // showed up is marked and stops counting.
-    safely("Checking results", () => checkResults(userId, { client, now, input })),
-    // Spec step 204: a paycheck that hasn't come in gets one question; pay back ends the plan.
-    safely("Lean check", () => runLeanCheck(userId, { client, now, input })),
-    // Taxes (spec steps 123–127): what Jane sets up by herself, at the person's level.
-    runTaxAutopilotSafely(userId, { client, now }),
-  ]);
-  const snapshot = await loadSnapshot(userId, { client, now, input });
+  if (!early)
+    await Promise.all([
+      // Spec step 99: insurance found from payments joins the profile (as found) by itself.
+      safely("Finding policies from payments", () =>
+        policiesFromPayments(userId, { client, now, input }),
+      ),
+      // Spec steps 144–145: transfers whose day came have gone through, a new paycheck gets its
+      // plan (moved by itself where autopilot allows), then bills due soon are scheduled.
+      (async () => {
+        await safely("Settling transfers", () => settleTransfers(userId, { client, now }));
+        await safely("Paycheck plan", () => runPaycheckPlan(userId, { client, now, input }));
+        await safely("Bill pay", () => runBillPay(userId, { client, now, input }));
+      })(),
+      // Spec steps 146 and 148: this month's score, kept; then last month's report, once.
+      (async () => {
+        await safely("Health score", () => healthFor(userId, { client, now, input, keep: true }));
+        await safely("Monthly report", () => monthlyReportFor(userId, { client, now }));
+      })(),
+      // Spec step 205: the year's plan, re-planned from what happened and kept.
+      safely("Year plan", () => loadYearPlan(userId, { client, now, input, keep: true })),
+      // Spec step 238: balances against transactions, duplicate links, stale or broken links.
+      safely("Books check", () => runBooksCheck(userId, { client, now })),
+      // Spec step 240: deposits from uneven income set aside and swept; the month's steady paycheck.
+      safely("Steady paycheck", () => runSteadyPay(userId, { client, now, input })),
+      // Spec step 207: finished actions checked against the transactions; a saving that never
+      // showed up is marked and stops counting.
+      safely("Checking results", () => checkResults(userId, { client, now, input })),
+      // Spec step 204: a paycheck that hasn't come in gets one question; pay back ends the plan.
+      safely("Lean check", () => runLeanCheck(userId, { client, now, input })),
+      // Taxes (spec steps 123–127): what Jane sets up by herself, at the person's level.
+      runTaxAutopilotSafely(userId, { client, now }),
+    ]);
+  // Spec step 265: a first chat leads with suggestions, so a person Jane has said nothing to
+  // yet is scanned now rather than at tonight's run.
+  if ((await scopedFor(userId, client).janeMessages.count()) === 0) {
+    await safely("The first scan for suggestions", () => scanSuggestions(userId, { client, now }));
+  }
+  const snapshot = await loadSnapshot(userId, { client, now, input, light: early });
+  // Kept for the chat: its first question reads this instead of building it. Never the early
+  // run's light one: the scan's last run keeps the whole thing.
+  if (!early)
+    await safely("Saving the snapshot", () => saveSnapshot(userId, snapshot, { client, now }));
   if (!snapshot) return { posted: 0 };
+  // Spec step 265: the day's brief leads with suggestions, so the first run of a first scan
+  // (`early`, before the suggestions are in) posts nothing until there are some: never the old
+  // brief first, with the "still going through your accounts" hello after it. The scan's last
+  // run posts whatever there is.
+  if (early && (snapshot.suggestions ?? []).length === 0) return { posted: 0 };
   await closeSettled(userId, { client, now });
 
   // Spec step 184: the day as one agenda message, plus whatever is urgent, unless the person
@@ -195,4 +225,22 @@ export async function runJaneAgentForAll({
     }
   }
   return run;
+}
+
+// The whole snapshot, built and kept for the chat: its first question reads this instead of
+// building it. The first scan does it right after the first brief is out (the person is already
+// reading), before the slow sector work.
+export async function keepFullSnapshot(
+  userId: string,
+  { client = defaultClient, now = new Date() }: { client?: PrismaClient; now?: Date } = {},
+): Promise<void> {
+  try {
+    const input = await loadDetectionInput(userId, { client, now });
+    await saveSnapshot(userId, await loadSnapshot(userId, { client, now, input }), {
+      client,
+      now,
+    });
+  } catch (error) {
+    console.error("Saving the snapshot failed", { userId, error: String(error) });
+  }
 }

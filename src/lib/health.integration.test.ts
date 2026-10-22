@@ -93,7 +93,7 @@ describe.runIf(url)("health checks against a real database", () => {
 
   it("audit-logs every view of the health page", async () => {
     const report = await healthReport({ id: "admin_1" }, { client, now: at(0) });
-    expect(report.jobs.map((j) => j.name)).toEqual(["plaid-sync", "digest"]);
+    expect(report.jobs.map((j) => j.name)).toEqual(["plaid-sync", "digest", "practice-scan"]);
     expect(logAudit).toHaveBeenCalledWith(
       { type: "admin", id: "admin_1" },
       "admin_viewed_health",

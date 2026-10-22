@@ -9,6 +9,8 @@ import type { ComingUpRow } from "@/insights/coming-up";
 import type { SafeToSpend } from "@/planning/safe-to-spend";
 import { formatCents } from "@/lib/money";
 import { requireUser } from "@/lib/session";
+import { BooksNotice } from "@/components/books-notice";
+import { openBooks } from "@/lib/books";
 import { FirstWeekChecklist } from "./checklist";
 import { AutopilotChooser } from "@/components/autopilot-chooser";
 import { autopilotOf } from "@/lib/autopilot";
@@ -289,6 +291,7 @@ async function HomeContent() {
   return (
     <>
       <AppHeader user={user} />
+      <BooksNotice books={await openBooks(user.id)} />
       <div className="flex flex-col gap-1">
         <h1 className="text-3xl font-semibold tracking-tight">Today</h1>
         <Totals home={home} />

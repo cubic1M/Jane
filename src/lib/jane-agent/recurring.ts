@@ -48,3 +48,14 @@ export async function loadRecurring(
     nextIncome,
   };
 }
+
+// A year of the person's subscriptions as the chat counts them (the same charges as
+// loadRecurring), for the brief's suggestion to share.
+export async function subscriptionYear(
+  userId: string,
+  { client, now }: { client: PrismaClient; now: Date },
+): Promise<{ yearlyCents: number; count: number }> {
+  const { charges } = await loadRecurring(userId, { client, now });
+  const subs = charges.filter((c) => c.subscription);
+  return { yearlyCents: subs.reduce((a, c) => a + c.annualCostCents, 0), count: subs.length };
+}

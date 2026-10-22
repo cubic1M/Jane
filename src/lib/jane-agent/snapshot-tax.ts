@@ -31,6 +31,12 @@ import type { Check } from "@/planning/tax-notice";
 import { loadEquityTax, type EquityTaxView } from "@/lib/equity-tax";
 import { loadMultiYear, type MultiYearView } from "@/lib/multi-year";
 import { loadPropertyTax, type PropertyTaxView } from "@/lib/property-tax";
+import { loadAccountantPage, type AccountantPageView } from "@/lib/accountant";
+import { loadTaxCalendar, type TaxCalendarView } from "@/lib/tax-calendar";
+import { loadBusinessStructure, type BusinessView } from "@/lib/business-structure";
+import { loadInheritance, type InheritanceView } from "@/lib/inheritance";
+import { loadHealthTaxes, type HealthTaxView } from "@/lib/health-taxes";
+import { loadDisasterRelief, type DisasterView } from "@/lib/disasters";
 import { loadIdentity, type IdentityView } from "@/lib/tax-identity";
 import { loadSideIncome, type SideIncomeView } from "@/lib/side-income";
 import { loadAuditRecords, type AuditRecordsView } from "@/lib/audit-records";
@@ -95,6 +101,18 @@ export type TaxSnapshot = {
     years?: MultiYearView;
     // Spec step 221: the assessment, the appeal and exemptions.
     property?: PropertyTaxView;
+    // Spec step 222: the accountant link, its answers and the questions.
+    accountant?: AccountantPageView;
+    // Spec step 223: the tax calendar for this month.
+    calendar?: TaxCalendarView;
+    // Spec step 267: the S corporation question and the business deductions.
+    business?: BusinessView;
+    // Spec step 268: an inherited IRA and gifts over the exclusion.
+    inheritance?: InheritanceView;
+    // Spec step 269: the Marketplace credit, the HSA limit and the medical floor.
+    health?: HealthTaxView;
+    // Spec step 270: disaster relief for their county, and the loss since.
+    disaster?: DisasterView;
     // Spec step 217: tax notices read from uploads, with what Jane found against them.
     notices?: { notice: NoticeView; check: (Check & { advice: boolean }) | null }[];
     // Spec step 172: returns read from uploads, and what their review found.
@@ -129,6 +147,13 @@ export async function loadTaxSnapshot(
   const [savings, selfEmployed] = await Promise.all([
     loadTaxSavings(userId, { client, now, loaded: { estimate, advice } }),
     loadSelfEmployed(userId, { client, now, loaded: { estimate, advice } }),
+  ]);
+  const noticeViews = await listTaxNotices(userId, { client });
+  const [equity, identity, sideIncome, home] = await Promise.all([
+    loadEquityTax(userId, { client, now, loaded: { estimate, advice } }),
+    loadIdentity(userId, { client, now }),
+    loadSideIncome(userId, { client, now, loaded: { estimate } }),
+    loadHomeTaxes(userId, { client, now, loaded: { estimate } }),
   ]);
   const inLastMonth = (lastMonthTags ?? tags).tagged.filter((t) => t.date.startsWith(last));
   return {
@@ -176,7 +201,7 @@ export async function loadTaxSnapshot(
       priorReturns: await listPriorReturns(userId, { client, status: "waiting" }),
       returnReviews: (await loadReturnReviews(userId, { client, now })).reviews,
       notices: await Promise.all(
-        (await listTaxNotices(userId, { client })).map(async (notice) => ({
+        noticeViews.map(async (notice) => ({
           notice,
           check:
             notice.status === "confirmed"
@@ -184,13 +209,28 @@ export async function loadTaxSnapshot(
               : null,
         })),
       ),
-      equity: await loadEquityTax(userId, { client, now, loaded: { estimate, advice } }),
-      years: await loadMultiYear(userId, { client, now }),
-      property: await loadPropertyTax(userId, { client, now }),
-      identity: await loadIdentity(userId, { client, now }),
-      sideIncome: await loadSideIncome(userId, { client, now, loaded: { estimate } }),
+      equity,
+      years: await loadMultiYear(userId, { client, now, loaded: { estimate, advice } }),
+      property: await loadPropertyTax(userId, { client, now, loaded: { estimate, advice, home } }),
+      accountant: await loadAccountantPage(userId, {
+        client,
+        now,
+        loaded: { estimate, advice, equity, identity, notices: noticeViews, side: sideIncome },
+        withQuestions: false,
+      }),
+      health: await loadHealthTaxes(userId, { client, now, loaded: { advice } }),
+      disaster: await loadDisasterRelief(userId, { client, now, loaded: { estimate } }),
+      inheritance: await loadInheritance(userId, { client, now, loaded: { estimate, advice } }),
+      business: await loadBusinessStructure(userId, { client, now, loaded: { estimate, advice } }),
+      calendar: await loadTaxCalendar(userId, {
+        client,
+        now,
+        loaded: { estimate, advice, selfEmployed, identity },
+      }),
+      identity,
+      sideIncome,
       records: await loadAuditRecords(userId, estimate.year, { client, now }),
-      home: await loadHomeTaxes(userId, { client, now, loaded: { estimate } }),
+      home,
       plan: await loadTaxPlan(userId, {
         client,
         now,

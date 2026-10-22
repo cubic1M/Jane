@@ -7,10 +7,11 @@ vi.mock("@/lib/session", () => ({ requireUser: vi.fn() }));
 vi.mock("@/lib/analytics", () => ({ track: vi.fn() }));
 vi.mock("@/lib/audit", () => ({ logAudit: vi.fn(), SYSTEM_ACTOR: { type: "system", id: null } }));
 
-import { RULES_SCORE_FLOOR } from "@/config/answer-checks";
-import { QUESTIONS, type CheckQuestion } from "./bank";
+import { RULES_SCORE_FLOOR, SECTOR_SCORE_FLOOR } from "@/config/answer-checks";
+import { QUESTIONS, sectorOfQuestion, type CheckQuestion } from "./bank";
+import { loadFacts, type Facts } from "./facts";
 import { createCheckPerson, deleteCheckPerson } from "./person";
-import { AT_CAP, NO_KEY, runAnswerChecks } from "./run";
+import { AT_CAP, runAnswerChecks, type QuestionResult } from "./run";
 import { compareRuns, formatRun, previousRun, saveRun } from "./store";
 
 // Spec step 87 against a real, migrated Postgres: the rules questions run over the demo bank
@@ -47,12 +48,14 @@ function fakeClaude(text: string, usage: { input_tokens: number; output_tokens: 
 describe.runIf(url)("Jane's answer checks against a real database", () => {
   let client: PrismaClient;
   let userId: string;
+  let facts: Facts;
 
   beforeAll(async () => {
     vi.stubEnv("TOKEN_ENCRYPTION_KEY", randomBytes(32).toString("base64"));
     vi.stubEnv("ANTHROPIC_API_KEY", "");
     client = new PrismaClient({ adapter: new PrismaPg({ connectionString: url }) });
     userId = await createCheckPerson({ client, now: NOW });
+    facts = await loadFacts(userId, { client, now: NOW });
   }, 120_000);
   afterAll(async () => {
     await deleteCheckPerson(userId, { client });
@@ -61,29 +64,63 @@ describe.runIf(url)("Jane's answer checks against a real database", () => {
     vi.unstubAllEnvs();
   });
 
-  it("runs the rules questions without a key, grading each and skipping the rest", async () => {
-    const run = await runAnswerChecks(userId, { client, now: NOW });
-    expect(run.mode).toBe("rules_only");
-    expect(run.claudeGrading).toMatch(/^Skipped/);
-    expect(run.results.map((r) => r.id).sort()).toEqual(QUESTIONS.map((q) => q.id).sort());
-    for (const r of run.results) {
-      expect(r.reason, r.id).not.toBe("");
-      if (r.needs === "rules") {
-        expect(r.status, r.id).toBe("graded");
-        expect(r.score, r.id).toBeGreaterThanOrEqual(0);
-        expect(r.score, r.id).toBeLessThanOrEqual(100);
-        expect(r.firstWordsMs, r.id).toBeGreaterThanOrEqual(0);
-      } else {
-        expect(r.status, r.id).toBe("skipped");
-      }
-    }
-    expect(run.results.filter((r) => r.needs === "claude" && !r.after)[0].reason).toBe(NO_KEY);
-    expect(run.costCents).toBe(0);
+  // One test per sector (spec step 189), so each stays well under a minute and a failure names
+  // its sector. A follow-up runs with the sector of the question it follows, and the one
+  // seeded person is reused: each conversation starts fresh anyway.
+  const bySector = new Map<string, CheckQuestion[]>();
+  const sectorOfLead = new Map(
+    QUESTIONS.filter((q) => !q.after).map((q) => [q.id, sectorOfQuestion(q)]),
+  );
+  for (const q of QUESTIONS) {
+    const sector = q.after
+      ? (sectorOfLead.get(q.after) ?? sectorOfQuestion(q))
+      : sectorOfQuestion(q);
+    bySector.set(sector, [...(bySector.get(sector) ?? []), q]);
+  }
+  const graded: QuestionResult[] = [];
+
+  describe.each([...bySector].sort(([a], [b]) => a.localeCompare(b)))(
+    "the %s questions",
+    (_sector, questions) => {
+      it("run without a key, grading each and skipping the rest", async () => {
+        const run = await runAnswerChecks(userId, { client, now: NOW, questions, facts });
+        expect(run.mode).toBe("rules_only");
+        expect(run.claudeGrading).toMatch(/^Skipped/);
+        expect(run.results.map((r) => r.id).sort()).toEqual(questions.map((q) => q.id).sort());
+        for (const r of run.results) {
+          expect(r.reason, r.id).not.toBe("");
+          if (r.needs === "rules") {
+            expect(r.status, r.id).toBe("graded");
+            expect(r.score, r.id).toBeGreaterThanOrEqual(0);
+            expect(r.score, r.id).toBeLessThanOrEqual(100);
+            expect(r.firstWordsMs, r.id).toBeGreaterThanOrEqual(0);
+          } else {
+            expect(r.status, r.id).toBe("skipped");
+          }
+        }
+        expect(run.costCents).toBe(0);
+        graded.push(...run.results.filter((r) => r.status === "graded"));
+        // This sector must hold its own floor.
+        if (run.score !== null) expect(run.score).toBeGreaterThanOrEqual(SECTOR_SCORE_FLOOR);
+      }, 120_000);
+    },
+  );
+
+  it("holds the overall floor over every sector, and saves and compares runs", async () => {
+    expect(graded.length).toBeGreaterThan(0);
+    const score = Math.round(graded.reduce((sum, r) => sum + r.score!, 0) / graded.length);
     // The chat must never get worse than its last agreed score.
-    expect(run.score).toBeGreaterThanOrEqual(RULES_SCORE_FLOOR);
-    console.log(formatRun(run));
+    expect(score).toBeGreaterThanOrEqual(RULES_SCORE_FLOOR);
+    expect(graded.find((r) => r.needs === "claude")).toBeUndefined();
 
     // Saved, and comparable with the next run.
+    const run = await runAnswerChecks(userId, {
+      client,
+      now: NOW,
+      facts,
+      questions: QUESTIONS.filter((q) => q.id.startsWith("safe-")).slice(0, 3),
+    });
+    console.log(formatRun(run));
     const saved = await saveRun({ ...run, promptVersion: "test-a" }, { client });
     const before = await previousRun(
       { client },

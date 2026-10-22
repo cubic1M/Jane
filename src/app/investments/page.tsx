@@ -2,6 +2,7 @@ import Link from "next/link";
 import { connection } from "next/server";
 import { Suspense } from "react";
 import { AppHeader } from "@/components/app-header";
+import { BacktestsSection } from "@/components/backtests";
 import { SimulatedBanner } from "@/components/simulated-banner";
 import { ViewTracker } from "@/components/view-tracker";
 import { SIMULATED_PARTNER } from "@/config/brokerage";
@@ -11,6 +12,7 @@ import { RETURNS_NOTE } from "@/config/returns";
 import { formatReturn } from "@/insights/returns";
 import { cryptoTotal } from "@/lib/crypto/crypto";
 import { loadReturns } from "@/lib/investments/returns";
+import { backtestsFor } from "@/lib/investments/backtest";
 import { autopilotOf } from "@/lib/autopilot";
 import { scopedFor } from "@/lib/db-scoped";
 import { formatBps, type HoldingView } from "@/insights/investments";
@@ -84,7 +86,7 @@ async function InvestmentsContent() {
   const user = await requireUser();
   await connection();
   const data = await loadInvestments(user.id);
-  const [answers, simulated, level, returns, crypto] = await Promise.all([
+  const [answers, simulated, level, returns, crypto, backtests] = await Promise.all([
     profileOf(user.id),
     // Spec step 133: holdings shaped by simulated orders say so.
     scopedFor(user.id).brokerageOrders.count({ where: { partner: SIMULATED_PARTNER } }),
@@ -94,6 +96,8 @@ async function InvestmentsContent() {
     loadReturns(user.id, { investments: data }),
     // Spec step 161: crypto, read-only, counted in the mix.
     cryptoTotal(user.id),
+    // Spec step 295: each risk level replayed over past prices (demo advice only).
+    backtestsFor(user.id),
   ]);
   const byHerself =
     INVESTMENT_AUTOPILOT[
@@ -269,6 +273,50 @@ async function InvestmentsContent() {
             : bonds where interest isn&apos;t taxed, without changing your mix.
           </p>
           <p className="text-sm text-zinc-600 dark:text-zinc-400">
+            <Link href="/investments/plan-menu" className={LINK}>
+              Your workplace plan&apos;s funds
+            </Link>
+            : the cheapest mix of the funds your 401(k) offers.
+          </p>
+          <p className="text-sm text-zinc-600 dark:text-zinc-400">
+            <Link href="/investments/performance" className={LINK}>
+              How your money really did
+            </Link>
+            : 1, 3 and 5 years, after fees and taxes, against a simple mix with your risk.
+          </p>
+          <p className="text-sm text-zinc-600 dark:text-zinc-400">
+            <Link href="/investments/short-term" className={LINK}>
+              Short-term money
+            </Link>
+            : bills, CDs, I bonds and savings compared after tax, with a ladder that matures on
+            time.
+          </p>
+          <p className="text-sm text-zinc-600 dark:text-zinc-400">
+            <Link href="/investments/sudden-money" className={LINK}>
+              Sudden money
+            </Link>
+            : a bonus, an inheritance or a sale, with tax first and a plan in order.
+          </p>
+          <p className="text-sm text-zinc-600 dark:text-zinc-400">
+            <Link href="/investments/values" className={LINK}>
+              Investing by your values
+            </Link>
+            : leave out fossil fuels, weapons or tobacco, with the cost and diversification shown.
+          </p>
+          <p className="text-sm text-zinc-600 dark:text-zinc-400">
+            <Link href="/investments/family-file" className={LINK}>
+              The family looked after
+            </Link>
+            : who is named on each account, what a life change makes out of date, and a file to
+            share.
+          </p>
+          <p className="text-sm text-zinc-600 dark:text-zinc-400">
+            <Link href="/investments/practice" className={LINK}>
+              Practice portfolio
+            </Link>
+            : Jane runs a paper portfolio on practice money, with every trade explained.
+          </p>
+          <p className="text-sm text-zinc-600 dark:text-zinc-400">
             Learn:{" "}
             {["index-funds", "fees", "the-match", "roth-vs-traditional", "rebalancing"].map(
               (slug, i) => (
@@ -439,6 +487,8 @@ async function InvestmentsContent() {
           </section>
         </>
       )}
+
+      {backtests.advice && <BacktestsSection backtests={backtests.backtests} />}
     </>
   );
 }

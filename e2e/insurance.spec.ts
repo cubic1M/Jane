@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { E2E_DATABASE_URL, deleteUser, signedInUser } from "./db";
+import { E2E_DATABASE_URL, deleteUser, signedInUser, waitForFullScan } from "./db";
 
 // Insurance (spec step 102): a person says they rent, sees the missing renters cover, adds
 // their policy and the gap goes.
@@ -58,6 +58,8 @@ test("a demo-bank person sees the sample policy, like-for-like quotes and Jane's
   await page.goto("/connect");
   await page.getByRole("button", { name: "Link a demo bank" }).click();
   await expect(page).toHaveURL("/chat", { timeout: 60_000 });
+  // The chat opens once the first brief is in; Jane shops the insurance in the work after it.
+  await waitForFullScan(userId!);
 
   await page.goto("/insurance");
   await expect(page.getByRole("heading", { name: "GEICO car insurance" })).toBeVisible();
@@ -120,8 +122,17 @@ test("a demo-bank person says yes to Jane's pick (step 104)", async ({
   await page.goto("/connect");
   await page.getByRole("button", { name: "Link a demo bank" }).click();
   await expect(page).toHaveURL("/chat", { timeout: 60_000 });
-  await page.goto("/insurance");
-  await page.getByRole("link", { name: "Compare quotes" }).click();
+  // The chat opens once the first brief is in; Jane shops the insurance in the work after it.
+  await waitForFullScan(userId!);
+  // Jane's pick is made by the first scan's work after the brief, which can finish a little
+  // after the chat opens on a busy machine: look again until the pick is there.
+  await expect(async () => {
+    await page.goto("/insurance");
+    await page.getByRole("link", { name: "Compare quotes" }).click({ timeout: 10_000 });
+    await expect(page.getByRole("button", { name: "Yes, switch" })).toBeVisible({
+      timeout: 10_000,
+    });
+  }).toPass({ timeout: 90_000 });
   await page.getByRole("button", { name: "Yes, switch" }).click();
   await expect(page).toHaveURL("/actions");
 });
@@ -357,4 +368,75 @@ test("a demo-bank person answers a question about how they live, and a yes opens
   await boat.getByRole("button", { name: "No" }).click();
   await page.goto("/insurance");
   await expect(page.getByText("Do you have a boat?")).toHaveCount(0);
+});
+
+test("a person lists their household and sees who is covered by what (step 198)", async ({
+  context,
+  page,
+  baseURL,
+}) => {
+  const user = await signedInUser("user");
+  userId = user.userId;
+  await context.addCookies([
+    { name: "authjs.session-token", value: user.sessionToken, url: baseURL ?? "" },
+  ]);
+  await page.goto("/insurance");
+  const household = page.getByRole("region", { name: "Your household's cover" });
+  await expect(household.getByText("You: no policy on file")).toBeVisible();
+  await household.getByText("Add someone, or choose what to share").click();
+  await household.getByLabel("Name").fill("Sam");
+  await household.getByLabel("Who they are to you").selectOption("child");
+  await household.getByLabel("Age").fill("16");
+  await household.getByLabel("Drives").check();
+  await household.getByRole("button", { name: "Add them" }).click();
+  await expect(household.getByText("Sam", { exact: false }).first()).toBeVisible();
+  await expect(household.getByText(/no policy on file/).nth(1)).toBeVisible();
+  // No car policy covers a 16-year-old driver: a gap, with the usual "I don't need it".
+  await expect(page.getByRole("heading", { name: "Sam isn't on a car policy" })).toBeVisible();
+});
+
+test("a demo-bank person sees their health plan's year and a dispute card (step 200)", async ({
+  context,
+  page,
+  baseURL,
+}) => {
+  const user = await signedInUser("user");
+  userId = user.userId;
+  await context.addCookies([
+    { name: "authjs.session-token", value: user.sessionToken, url: baseURL ?? "" },
+  ]);
+  await page.goto("/connect");
+  await page.getByRole("button", { name: "Link a demo bank" }).click();
+  await expect(page).toHaveURL("/chat", { timeout: 60_000 });
+
+  await page.goto("/insurance");
+  const year = page.getByRole("region", { name: "Your health plan this year" });
+  await expect(year.getByText(/of your \$500\.00 deductible/)).toBeVisible();
+  await expect(year.getByText(/left in your FSA.*Dec 31/)).toBeVisible();
+  await expect(year.getByText(/BAYVIEW IMAGING CENTER billed/)).toBeVisible();
+});
+
+test("a demo-bank person goes from a gap to a picked option, and it reaches the team (step 279)", async ({
+  context,
+  page,
+  baseURL,
+}) => {
+  const user = await signedInUser("user");
+  userId = user.userId;
+  await context.addCookies([
+    { name: "authjs.session-token", value: user.sessionToken, url: baseURL ?? "" },
+  ]);
+  await page.goto("/connect");
+  await page.getByRole("button", { name: "Link a demo bank" }).click();
+  await expect(page).toHaveURL("/chat", { timeout: 60_000 });
+  await waitForFullScan(userId!);
+  await page.goto("/insurance");
+  await expect(page.getByRole("heading", { name: "Your perfect coverage" })).toBeVisible();
+  await page.getByRole("link", { name: "See options" }).first().click();
+  const card = page.getByTestId("option-card");
+  await expect(card).toBeVisible();
+  await expect(card.getByText("Demo advice: sample data, not financial advice")).toBeVisible();
+  await expect(card.getByText("Jane's pick")).toBeVisible();
+  await card.getByRole("button", { name: "Choose this one" }).first().click();
+  await expect(page.getByRole("status")).toContainText("My team will");
 });

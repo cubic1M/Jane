@@ -477,6 +477,18 @@ export const UNUSUAL_DOUBLE_SUBSCRIPTION_DAYS = 25;
 // "This was me" on a charge teaches its merchant: later charges up to this multiple of the
 // amount told about stay quiet.
 export const UNUSUAL_TAUGHT_MULTIPLE = 2;
+// Spec steps 208 and 253: what a small-business owner's profile makes expected, so it isn't
+// called unusual: payroll and accounting, supplies, rent and tax payments (detailed categories).
+export const UNUSUAL_EXPECTED_FOR_BUSINESS: readonly string[] = [
+  "GENERAL_SERVICES_ACCOUNTING_AND_FINANCIAL_PLANNING",
+  "FOOD_AND_DRINK_OTHER_FOOD_AND_DRINK",
+  "GENERAL_MERCHANDISE_OFFICE_SUPPLIES",
+  "RENT_AND_UTILITIES_RENT",
+  "GOVERNMENT_AND_NON_PROFIT_TAX_PAYMENT",
+  "LOAN_PAYMENTS_OTHER_PAYMENT",
+];
+// Tax payments are due dates, not subscriptions that renew.
+export const NON_RENEWING_PRIMARIES: readonly string[] = ["GOVERNMENT_AND_NON_PROFIT"];
 // The steps shown when someone says a charge isn't theirs: lock the card first. A stand-in
 // until card issuers can be reached through a partner.
 export const CARD_LOCK_STEPS: readonly string[] = [
@@ -489,3 +501,26 @@ export const CARD_LOCK_STEPS: readonly string[] = [
 // charges, spaced a median of this many days apart (inclusive range).
 export const UNUSUAL_DOUBLE_MIN_CHARGES = 4;
 export const UNUSUAL_MONTHLY_GAP_DAYS = { min: 26, max: 35 } as const;
+
+// --- Not a subscription, not a bank fee (spec step 263, from the QA sweep) ---------------------
+
+// A yearly or quarterly payment that is not a subscription renewal: taxes and other government
+// payments, loan payments and transfers. They have their own deadlines (the taxes side, the loan
+// calendar), so they are never "renews".
+export const RENEWAL_EXCLUDED_PRIMARIES: readonly PfcPrimary[] = [
+  "GOVERNMENT_AND_NON_PROFIT",
+  "LOAN_PAYMENTS",
+  "LOAN_DISBURSEMENTS",
+  "TRANSFER_IN",
+  "TRANSFER_OUT",
+  "INCOME",
+  "BANK_FEES",
+];
+// The names those payments go under, for when the category isn't right.
+export const GOVERNMENT_PAYEE =
+  /\b(?:dept\.?|department) of revenue\b|\binternal revenue\b|\birs\b|\bus treasury\b|\btax (?:collector|commission|board|authority|payment)\b|\bcounty treasurer\b|\bfranchise tax\b/i;
+
+// A payment processor's or merchant account's fees are a cost of doing business, never a bank
+// fee to ask back.
+export const PROCESSOR_FEE_PAYEE =
+  /\b(?:square|stripe|paypal|shopify|clover|toast|adyen|braintree|authorize\.?net)\b.*\b(?:fees?|processing)\b|\bprocessing fees?\b|\bmerchant (?:services|fees?|account)\b|\bcard processing\b/i;

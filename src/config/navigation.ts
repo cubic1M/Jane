@@ -49,6 +49,8 @@ export const TABS: readonly Tab[] = [
       "/transactions",
       "/transfers",
       "/insights",
+      // Spec step 239: how a figure was worked out, opened from the figure itself.
+      "/figures",
     ],
   },
   {
@@ -101,7 +103,7 @@ export const TABS: readonly Tab[] = [
     key: "jane",
     label: "What Jane did",
     href: "/jane",
-    paths: ["/jane", "/plan", "/report", "/actions", "/alerts", "/saved", "/learn"],
+    paths: ["/jane", "/plan", "/report", "/actions", "/alerts", "/saved", "/learn", "/profile"],
   },
 ];
 

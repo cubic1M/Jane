@@ -1,5 +1,12 @@
 import { expect, test } from "@playwright/test";
-import { E2E_DATABASE_URL, addTransfer, deleteUser, setCheckingBalance, signedInUser } from "./db";
+import {
+  E2E_DATABASE_URL,
+  addPayment,
+  addTransfer,
+  deleteUser,
+  setCheckingBalance,
+  signedInUser,
+} from "./db";
 
 // Spec step 109: every debt in one place, from the demo bank: loans and cards with where
 // each rate came from, the buy now, pay later plans found from payments, terms typed for
@@ -105,7 +112,10 @@ test("refinance offers compare total cost and pick one, labelled", async ({
 
   await page.goto("/loans");
   await page.getByRole("link", { name: "See refinance offers" }).click();
-  await expect(page.getByRole("heading", { level: 1, name: "Refinance offers" })).toBeVisible();
+  // The first visit asks the stand-in lenders and compiles the page: give it time.
+  await expect(page.getByRole("heading", { level: 1, name: "Refinance offers" })).toBeVisible({
+    timeout: 60_000,
+  });
   await expect(page.getByText("sample offers from a stand-in lender catalog")).toBeVisible();
   const car = page
     .getByRole("list", { name: "Offers by debt" })
@@ -815,4 +825,112 @@ test("the debt review lists every item, and the chat message keeps each button u
   await box.press("Enter");
   await expect(page.getByText("Your debt review:").last()).toBeVisible({ timeout: 30_000 });
   await expect(page.getByText(/Payments timed to statement dates/).last()).toBeVisible();
+});
+
+// Spec step 245: a dealer add-on found in the payments, confirmed, with the refund and the
+// cancellation to send or hand to the team.
+test("a dealer add-on is confirmed, with its refund and a cancellation the team can send", async ({
+  context,
+  page,
+  baseURL,
+}) => {
+  const user = await signedInUser("user");
+  userId = user.userId;
+  await context.addCookies([
+    { name: "authjs.session-token", value: user.sessionToken, url: baseURL ?? "" },
+  ]);
+  await page.goto("/connect");
+  await page.getByRole("button", { name: "Link a demo bank" }).click();
+  await expect(page).toHaveURL("/chat", { timeout: 60_000 });
+  const yearAgo = new Date(Date.now() - 365 * 86_400_000).toISOString().slice(0, 10);
+  await addPayment(user.userId, {
+    date: yearAgo,
+    amountCents: 69_500,
+    description: "BIG DEALER GAP INSURANCE",
+  });
+
+  await page.goto("/loans/auto");
+  await expect(page.getByRole("heading", { level: 1, name: "Your car loan" })).toBeVisible();
+  const section = page.getByRole("region", { name: "Dealer add-ons" });
+  await expect(section).toContainText("$695.00 to BIG DEALER GAP INSURANCE");
+  const yes = section.getByRole("button", { name: "Yes, it was" });
+  await yes.scrollIntoViewIfNeeded();
+  await yes.focus();
+  await yes.press("Enter");
+  await expect(page.getByText("Done.")).toBeVisible();
+  const addons = page.getByRole("list", { name: "Your add-ons" });
+  await expect(addons).toContainText("Cancelling now could refund about");
+  await expect(addons.getByLabel(/Cancellation letter/)).toContainText("cancel my GAP cover");
+  const team = addons.getByRole("button", { name: "Have the team send it" });
+  await team.scrollIntoViewIfNeeded();
+  await team.focus();
+  await team.press("Enter");
+  await expect(page.getByText("The team has this request.")).toBeVisible();
+});
+
+// Spec step 246: a lump sum compared as extra principal, a recast and a refinance, against
+// investing it instead.
+test("a lump sum is compared on the mortgage: extra principal, recast, refinance, investing", async ({
+  context,
+  page,
+  baseURL,
+}) => {
+  const user = await signedInUser("user");
+  userId = user.userId;
+  await context.addCookies([
+    { name: "authjs.session-token", value: user.sessionToken, url: baseURL ?? "" },
+  ]);
+  await page.goto("/connect");
+  await page.getByRole("button", { name: "Link a demo bank" }).click();
+  await expect(page).toHaveURL("/chat", { timeout: 60_000 });
+
+  await page.goto("/loans/recast");
+  await expect(
+    page.getByRole("heading", { level: 1, name: "Recast, refinance or pay extra" }),
+  ).toBeVisible();
+  await page.getByLabel("A lump sum").fill("20000");
+  const compare = page.getByRole("button", { name: "Compare" });
+  await compare.focus();
+  await compare.press("Enter");
+  const table = page.getByRole("table", { name: "The ways" });
+  await expect(table.getByRole("row")).toHaveCount(4);
+  await expect(table).toContainText("Pay extra principal");
+  await expect(table).toContainText("Recast the mortgage");
+  await expect(table).toContainText("$250.00");
+  await expect(table).toContainText("Not an option");
+  await expect(page.getByText(/Investing the same money for \d+ years instead/)).toBeVisible();
+  await expect(page.getByText("Paying down earns your 4% rate")).toBeVisible();
+});
+
+// Spec step 247: costly short-term borrowing found in the demo bank, with the cost in dollars
+// and as a yearly rate, and the cheaper ways out.
+test("costly short-term borrowing is found, costed, and the way out is laid out", async ({
+  context,
+  page,
+  baseURL,
+}) => {
+  const user = await signedInUser("user");
+  userId = user.userId;
+  await context.addCookies([
+    { name: "authjs.session-token", value: user.sessionToken, url: baseURL ?? "" },
+  ]);
+  await page.goto("/connect");
+  await page.getByRole("button", { name: "Link a demo bank" }).click();
+  await expect(page).toHaveURL("/chat", { timeout: 60_000 });
+
+  await page.goto("/loans/costly");
+  await expect(
+    page.getByRole("heading", { level: 1, name: "Costly short-term borrowing" }),
+  ).toBeVisible();
+  await expect(page.getByRole("status")).toContainText("over the last year");
+  const found = page.getByRole("list", { name: "What you paid" });
+  await expect(found.getByRole("listitem")).toHaveCount(4);
+  await expect(found).toContainText("Payday loans");
+  await expect(found).toContainText("2 times, $30.00 in fees");
+  await expect(found).toContainText("Card cash advances");
+  await expect(found).toContainText("Overdraft fees");
+  await expect(found).toContainText("Pay advance apps");
+  const out = page.getByRole("region", { name: "Ways out" });
+  await expect(out).toContainText("Credit union payday alternative loan (PAL)");
+  await expect(out).toContainText("Build a small buffer");
 });

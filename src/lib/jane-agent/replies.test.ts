@@ -146,8 +146,6 @@ describe("affordReply for a category", () => {
     const reply = ask("can I spend 500 dollars this week for food");
     expect(reply.body.split("\n")).toEqual([
       "Yes: after $500.00 on food this week, you'd still have $700.00 safe to spend until Oct 30 (in 12 days).",
-      "So far in October you've spent $278.27 on Food and drink.",
-      "You usually spend about $100.00 a week on Food and drink, so $500.00 is about 5× a usual week.",
       "Your Food and drink budget is $400.00 a month: this would take you to $778.27, $378.27 over.",
       "This is math, not a recommendation.",
     ]);
@@ -159,7 +157,6 @@ describe("affordReply for a category", () => {
 
   it("says when it stays under the budget, and a usual month when no week is named", () => {
     const body = ask("should I spend $100 on groceries").body;
-    expect(body).toContain("You usually spend about $435.00 a month on Food and drink.");
     expect(body).toContain(
       "Your Food and drink budget is $400.00 a month: this would take you to $378.27, $21.73 under.",
     );

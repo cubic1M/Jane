@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { AGENDA_MAX_YES, MESSAGE_PRIORITY } from "@/config/agent-chat";
-import { lineOf } from "./agenda";
+import { agendaOf, lineOf } from "./agenda";
 import { plan, type BrainSettings, type History } from "./brain";
 import type { Snapshot, SnapshotFinding } from "./snapshot";
 import type { Candidate } from "./types";
@@ -200,5 +200,74 @@ describe("an agenda line", () => {
     expect(lineOf(candidate("Netflix went up from $15.49 to $17.99.\nMore."))).toBe(
       "Netflix went up from $15.49 to $17.99.",
     );
+  });
+});
+
+describe("the agenda leads with the scan's suggestions (step 265)", () => {
+  const suggestion = {
+    id: "s1",
+    key: "idle_cash:savings",
+    topic: "idle_cash",
+    title: "Move $9,000 of idle cash to a savings account that pays 4%",
+    headline: "Move idle cash to a higher rate, earn $360 a year",
+    short: "You keep $9,000 in cash; about $8,000 is more than you need.",
+    why: "You keep $9,000 in checking all year; people with that much usually earn about 4%.",
+    worthCents: 36_000,
+    worthKind: "earns",
+    confidencePercent: 85,
+    confidenceReason: "12 months of balances",
+    actionLabel: "Move the cash",
+    actionHref: "/investments/cash",
+    more: [],
+    advice: false,
+  };
+  const withSuggestion = snapshot({
+    ...busy,
+    suggestions: [suggestion],
+    findings: [],
+  });
+  // What the suggestions source posts for it.
+  const posted = (s: typeof suggestion): Candidate & { source: string } => ({
+    kind: "decision",
+    body: "x",
+    refs: { suggestion: s.key },
+    actions: [
+      { id: "suggestion.yes" as const, label: s.actionLabel, kind: "primary" as const },
+      { id: "suggestion.no" as const, label: "Not for me", kind: "secondary" as const },
+    ],
+    dedupeKey: `suggestions:${s.key}:2026-10-19`,
+    priority: 58,
+    source: "suggestions",
+  });
+
+  it("puts each suggestion first with its dollars, why you, and confidence with its reason", () => {
+    const local = { date: "2026-10-19", hour: 9, minute: 0 } as never;
+    const out = agendaOf<Candidate & { source: string }>(
+      {
+        kind: "brief",
+        body: "",
+        refs: {},
+        actions: [],
+        dedupeKey: "brief:x",
+        priority: 1_000,
+        source: "brief",
+      },
+      [posted(suggestion)],
+      withSuggestion,
+      local,
+      new Date("2026-10-19T16:00:00Z"),
+    );
+    const lines = out.agenda.body.split("\n");
+    expect(lines).toContain("Here's what I'd do first, from looking at your money:");
+    expect(lines.find((l) => l.startsWith("- Move idle cash"))).toBe(
+      "- Move idle cash to a higher rate, earn $360/yr. Why you: You keep $9,000 in cash; about $8,000 is more than you need. 85% sure: 12 months of balances.",
+    );
+    expect(out.agenda.actions.map((a) => a.id)).toEqual(
+      expect.arrayContaining(["bundle.1", "bundle.no.1"]),
+    );
+    expect(out.agenda.refs.items?.[0]).toMatchObject({
+      action: "suggestion.yes",
+      no: "suggestion.no",
+    });
   });
 });

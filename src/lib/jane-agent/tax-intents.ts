@@ -1,11 +1,14 @@
 import { US_STATES } from "@/config/referrals";
 import type { FilingStatus, TaxTagKind } from "@/config/tax";
+import type { DecisionTopic } from "@/config/tax-decisions";
 
 // What the person typed about taxes (spec steps 118–127), understood by rules. Pure: the
 // normalized text in (./intents.ts normalize), a tax intent out, or null when it isn't
 // about taxes. Typing never changes anything by itself: each answer offers a button.
 
 export type TaxIntent =
+  // Taxes in the chat: a direct answer to a decision or a fact.
+  | { kind: "tax"; ask: "decide"; topic: DecisionTopic }
   | { kind: "tax"; ask: "profile" }
   // status null: "I'm married", which could be either way.
   | { kind: "tax"; ask: "set_filing"; status: FilingStatus | null }
@@ -71,6 +74,19 @@ export type TaxIntent =
   | { kind: "tax"; ask: "years" }
   // Spec step 221: property tax too high, and exemptions.
   | { kind: "tax"; ask: "property" }
+  // Spec step 222: working with an accountant.
+  | { kind: "tax"; ask: "accountant" }
+  // Spec step 223: the tax calendar.
+  | { kind: "tax"; ask: "calendar" }
+  // Spec step 267: business owners' tax structure.
+  | { kind: "tax"; ask: "business" }
+  // Spec step 268: inherited money and gifts.
+  | { kind: "tax"; ask: "inherited" }
+  // Spec step 269: the tax side of health insurance.
+  | { kind: "tax"; ask: "health" }
+  // Spec step 270: disaster relief and losses, and the county the person lives in.
+  | { kind: "tax"; ask: "disaster" }
+  | { kind: "tax"; ask: "set_county"; county: string }
   | { kind: "tax"; ask: "retire_year"; year: number }
   // Spec step 218: a sign of identity theft, or the IP PIN.
   | { kind: "tax"; ask: "identity"; sign: "efile_rejected" | "unknown_form" | "irs_letter" | null };
@@ -221,6 +237,19 @@ const YEARS_ASK =
   /\b(?:taxes|tax bill)\b.*\b(?:over (?:the )?(?:next )?(?:several |many |few |\d+ )?years|in retirement|multi[- ]?year)\b|\bmulti[- ]?year (?:tax|plan)\b|\broth conversions?\b|\bconvert (?:my )?(?:401k|401\(k\)|ira|traditional \w+)\b.*\broth\b|\bbunch(?:ing)? (?:my )?deductions\b|\b0% (?:capital gains )?(?:tax )?bracket\b|\bwhen (?:should|do) i (?:take|time) (?:my |the |a )?(?:bonus|withdrawal)\b.*\btax/;
 const PROPERTY_ASK =
   /\bproperty tax(?:es)?\b.*\b(?:too high|appeal|assess\w*|lower|reduce|exempt\w*|protest)\b|\b(?:appeal|protest|contest|challenge)\b.*\b(?:property tax(?:es)?|assessment|assessed value)\b|\bover-?assessed\b|\bassessed (?:value|too high)\b|\bhomestead exemption\b|\b(?:senior|veteran|veterans)\b.*\bproperty tax\b/;
+const ACCOUNTANT_ASK =
+  /\baccountants?\b.*\b(?:link|share|send|give|hand|access|answer)\w*\b|\b(?:share|send|give|hand)\b.*\b(?:accountant|cpa|tax (?:preparer|pro|professional))\b|\b(?:do|should) i (?:need|use|hire|get) (?:an? )?(?:accountant|cpa|tax (?:preparer|pro|professional))\b|\bwork(?:ing)? with (?:an? |my )?(?:accountant|cpa)\b|\bmy (?:accountant|cpa) (?:wrote|answered|replied|said)\b/;
+const CALENDAR_ASK =
+  /\btax year (?:calendar|runs)\b|\b(?:taxes|tax stuff)\b.*\bthis month\b|\bwhat(?:'s| is)? (?:due|coming up) (?:for|with) (?:my )?taxes\b|\btax(?:es)? on autopilot\b|\bhow does jane (?:handle|run|do) my taxes\b/;
+const BUSINESS_ASK =
+  /\bs[- ]?corp(?:oration)?\b|\bqbi\b|\bqualified business income\b|\bpass[- ]?through\b|\bshould i (?:incorporate|form an llc|become an llc|elect)\b|\bllc\b.*\btax/;
+const INHERITED_ASK =
+  /\binherit(?:ed|ing)?\b[^.?!]{0,30}\b(?:ira|401\(?k\)?|403\(?b\)?|retirement account|roth)\b|\binherit\w*\b[^.?!]{0,40}\b(?:tax(?:es|ed)?|irs|deadline|10 years?)\b|\bbeneficiary ira\b|\bstep(?:ped)?[- ]?up\b.*\bbasis\b|\bgift tax\b|\bform 709\b|\bannual (?:gift )?exclusion\b|\bestate tax\b|\b10[- ]year rule\b/;
+const HEALTH_ASK =
+  /\bpremium tax credit\b|\b(?:marketplace|obamacare|aca|healthcare\.gov)\b.*\b(?:subsid(?:y|ies)|credit|repay|pay (?:it )?back|tax)|\b(?:subsid(?:y|ies)|advance credit|aptc)\b.*\b(?:repay|pay (?:it )?back|owe|tax)|\bhsa\b.*\b(?:too much|over the limit|excess|limit|max(?:imum)?)\b|\b(?:put|contribut\w*) too much\b.*\bhsa\b|\bmedical (?:expenses|costs|bills)\b.*\b(?:deduct(?:ion|ions|ed|ing)?|tax\w*|write off)\b|\bdeduct(?:ion|ions|ed|ing)?\b.*\b(?:medical|dental|doctor|hospital)\b|\bmedical (?:expense )?deduction\b|\bform 8962\b/;
+const DISASTER_ASK =
+  /\bcasualty loss\b|\bdisaster (?:relief|loss|postpone\w*|extension|area)\b|\bfema\b|\b(?:hurricane|wildfire|fire|flood|tornado|storm|earthquake|disaster)\b.*\b(?:tax(?:es)?|irs|deadline|deduct(?:ion|ions|ed|ing)?|write off|more time|extension)\b|\b(?:tax(?:es)?|irs|deadline|deduct(?:ion|ions|ed|ing)?)\b.*\b(?:hurricane|wildfire|flood|tornado|storm|earthquake|disaster)\b/;
+const SET_COUNTY = /\bi live in ([a-z][a-z .'-]{1,30}?) county\b/;
 const RETIRE_YEAR = /\b(?:plan|expect|want|hope|aim) to retire (?:in|by) (\d{4})\b/;
 const PACK = /\btax(?:-| )?time pack\b|\btax pack\b|\byear-end pack\b/;
 
@@ -230,11 +259,101 @@ function stateCode(words: string): string | null {
   return match?.code ?? null;
 }
 
+// The tax questions people really ask, in the words they use, each with the topic whose
+// numbers answer it (src/lib/tax-decisions.ts). Checked first, so a direct question gets a
+// direct answer and not a page's worth of figures.
+const DECISIONS: readonly (readonly [DecisionTopic, RegExp])[] = [
+  [
+    "itemize",
+    /\bshould i (?:itemi[sz]e|take the standard)|\bitemi[sz]e\b.*\b(?:or|vs\.?|versus)\b.*\bstandard\b|\bstandard\b.*\b(?:or|vs\.?|versus)\b.*\bitemi[sz]/,
+  ],
+  [
+    "roth_conversion",
+    /\bshould i\b.*\broth conversion|\b(?:is|would) a roth conversion\b|\bshould i convert\b.*\broth\b/,
+  ],
+  [
+    "withholding",
+    /\bshould i (?:adjust|change|raise|lower|increase|decrease|fix|update)\b.*\bwithholding\b|\bis my withholding (?:right|enough|too (?:high|low))\b|\bshould i (?:file|submit|change|fill out) (?:a )?(?:new )?w-?4\b/,
+  ],
+  [
+    "estimated",
+    /\b(?:do|should) i (?:need|have) to (?:pay|make) (?:quarterly|estimated)\b|\bdo i need (?:to pay )?estimated\b|\bshould i pay (?:quarterly|estimated)\b|\bdo i owe quarterly\b/,
+  ],
+  [
+    "k401",
+    /\bshould i (?:max(?:imi[sz]e)?(?: out)?|put more|contribute more|put more money)\b.*\b401/,
+  ],
+  [
+    "ira",
+    /\b(?:traditional|regular) ira (?:or|vs\.?|versus) (?:a )?roth\b|\b(?:traditional|regular) (?:or|vs\.?|versus) (?:a )?roth ira\b|\broth ira (?:or|vs\.?|versus) (?:a )?traditional\b|\broth (?:or|vs\.?|versus) (?:a )?traditional ira\b/,
+  ],
+  ["hsa", /\bshould i (?:open|get|start|use|have) (?:an? )?hsa\b/],
+  [
+    "property",
+    /\b(?:is it worth|should i)\b.*\b(?:appeal|protest|contest)\w*\b.*\bproperty tax|\bshould i (?:appeal|protest)\b.*\b(?:assessment|property)/,
+  ],
+  [
+    "harvest",
+    /\bshould i sell\b.*\b(?:loss|losing|loser|losers)\b|\b(?:harvest|harvesting)\b.*\bloss/,
+  ],
+  [
+    "donate_stock",
+    /\b(?:donat\w*|give|giving)\b.*\b(?:stock|shares)\b.*\b(?:instead|rather|better)\b|\b(?:stock|shares)\b.*\binstead of (?:cash|money)\b/,
+  ],
+  [
+    "home_office",
+    /\bhome office\b.*\b(?:deduction|deduct|write[- ]?off|worth|claim)\b|\b(?:should i|can i) (?:take|claim|deduct)\b.*\bhome office\b/,
+  ],
+  [
+    "owe",
+    /\bhow much (?:will|would|do) i owe\b|\bhow much\b.*\b(?:tax(?:es)?|federal)\b.*\b(?:will|do|would|am) i\b.*\bowe\b|\bhow much (?:tax|taxes) (?:will|do|would) i owe\b|\bwill i owe (?:any )?(?:tax|taxes)\b(?!\s+(?:on|in|to|for|from)\b)|\bdo i owe (?:any )?(?:federal )?(?:tax|taxes)\b(?!\s+(?:on|in|to|for|from)\b)/,
+  ],
+  ["refund", /\bhow (?:big|much)\b.*\brefund\b|\b(?:will|am) i (?:get|getting) a refund\b/],
+  [
+    "refund_why",
+    /\bwhy\b.*\b(?:refund|tax bill)\b.*\b(?:small|big|large|low|high|so)\b|\bwhy (?:is|am) my refund\b/,
+  ],
+  ["effective_rate", /\beffective (?:tax )?rate\b/],
+  [
+    "paid",
+    /\bhow much\b.*\b(?:have i paid|did i pay|i(?:'ve| have) paid)\b.*\btax|\bhow much\b.*\b(?:federal )?tax(?:es)?\b.*\b(?:have i paid|did i pay|paid so far|been withheld)\b|\bhow much (?:federal )?tax (?:have|has)\b.*\b(?:i|been)\b.*\b(?:paid|withheld)\b/,
+  ],
+  [
+    "deductions",
+    /\bwhat (?:can|could|do) i (?:deduct|write off)\b|\bwhat (?:deductions|write[- ]?offs) (?:do|can) i\b/,
+  ],
+  [
+    "setaside",
+    /\bhow much\b.*\b(?:set aside|put aside|save)\b.*\b(?:for )?taxes?\b|\bhow much (?:tax|taxes)\b.*\b(?:set aside|put aside|save)\b/,
+  ],
+  [
+    "est_due",
+    /\bnext estimated\b|\bestimated (?:tax )?payments?\b.*\bdue\b|\bwhen (?:is|are|do)\b.*\bestimated\b/,
+  ],
+  ["must_file", /\bdo i (?:need|have) to file\b|\bam i required to file\b|\bmust i file\b/],
+  [
+    "k401_limit",
+    /\bhow much can i (?:put|contribute|put in|save)\b.*\b401|\b401\s?\(?k\)? (?:limit|contribution limit)\b/,
+  ],
+  ["mortgage_interest", /\bmortgage interest\b.*\bdeduct|\bdeduct\w*\b.*\bmortgage interest\b/],
+];
+
 export function parseTaxIntent(text: string): TaxIntent | null {
+  for (const [topic, pattern] of DECISIONS) {
+    if (pattern.test(text)) return { kind: "tax", ask: "decide", topic };
+  }
   if (FAMILY_ASK.test(text)) return { kind: "tax", ask: "family" };
   if (EQUITY_ASK.test(text)) return { kind: "tax", ask: "equity" };
   const retire = text.match(RETIRE_YEAR);
   if (retire) return { kind: "tax", ask: "retire_year", year: Number(retire[1]) };
+  const county = SET_COUNTY.exec(text);
+  if (county) return { kind: "tax", ask: "set_county", county: county[1].trim() };
+  if (DISASTER_ASK.test(text)) return { kind: "tax", ask: "disaster" };
+  if (HEALTH_ASK.test(text)) return { kind: "tax", ask: "health" };
+  if (INHERITED_ASK.test(text)) return { kind: "tax", ask: "inherited" };
+  if (BUSINESS_ASK.test(text)) return { kind: "tax", ask: "business" };
+  if (CALENDAR_ASK.test(text)) return { kind: "tax", ask: "calendar" };
+  if (ACCOUNTANT_ASK.test(text)) return { kind: "tax", ask: "accountant" };
   if (PROPERTY_ASK.test(text)) return { kind: "tax", ask: "property" };
   if (YEARS_ASK.test(text)) return { kind: "tax", ask: "years" };
   if (IDENTITY_REJECTED.test(text)) return { kind: "tax", ask: "identity", sign: "efile_rejected" };

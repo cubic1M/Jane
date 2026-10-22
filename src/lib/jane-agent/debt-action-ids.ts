@@ -40,4 +40,9 @@ export const DEBT_ACTION_IDS = [
   "creditgoal.done",
   // Spec step 228: the person sent a drafted PMI or escrow request.
   "homeeq.sent",
+  // Spec step 245: whether a payment was a dealer add-on; who sends the cancellation.
+  "caraddon.yes",
+  "caraddon.no",
+  "caraddon.mine",
+  "caraddon.team",
 ] as const;
