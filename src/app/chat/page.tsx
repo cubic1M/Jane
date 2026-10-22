@@ -8,6 +8,7 @@ import { scopedFor } from "@/lib/db-scoped";
 import { markChatRead, pinnedMessages, stackedSuggestions } from "@/lib/jane-agent/messages";
 import { toView, withoutCards, type MessageView } from "@/lib/jane-agent/view";
 import { openChat, timezoneOf } from "@/lib/jane-agent/open";
+import { practiceCards } from "@/lib/practice/cards";
 import { requireUser } from "@/lib/session";
 import { ChatComposer } from "./composer";
 import { ChatMessageItem } from "./message";
@@ -39,13 +40,15 @@ async function Chat({ searchParams }: { searchParams: PageProps<"/chat">["search
   const user = await requireUser();
   const pages = pagesFrom((await searchParams).pages);
   // Nothing here waits on anything else, so a first visit waits for the slowest, not the sum.
-  const [chat, askHistory, pinned, stackedRows, zone] = await Promise.all([
+  const [chat, askHistory, pinned, stackedRows, zone, practice] = await Promise.all([
     openChat(user.id, { pages }),
     scopedFor(user.id).askConversations.count(),
     pinnedMessages(user.id),
     // The day's suggestions still waiting, one card at a time by the message box.
     stackedSuggestions(user.id),
     timezoneOf(user.id),
+    // Spec step 296: the practice portfolio's cards (demo advice mode only).
+    practiceCards(user.id),
   ]);
   const stacked = stackedRows.map((m) => toView(m, new Date(), zone));
   if (!chat) redirect("/connect");
@@ -144,9 +147,10 @@ async function Chat({ searchParams }: { searchParams: PageProps<"/chat">["search
         </Link>
       )}
       {pages === 1 && <ScrollToEnd targetId="chat-end" />}
-      {/* Last, so its room under the message box is the end of the page: the options Jane
-          just gave, then the day's suggestions, one card at a time. */}
-      <ChatCards options={latestOptions(chat.messages)} suggestions={stacked} />
+      {/* Last, so its room under the message box is the end of the page: one set of cards at
+          a time, the options Jane just gave, then the day's suggestions, then the practice
+          portfolio's. */}
+      <ChatCards options={latestOptions(chat.messages)} suggestions={stacked} practice={practice} />
     </>
   );
 }

@@ -3,15 +3,18 @@
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { FloatingCards, type CardAnswer } from "@/components/floating-cards";
+import type { FloatingCardData } from "@/lib/floating-cards";
 import type { MessageView } from "@/lib/jane-agent/view";
 import { tapButton } from "./actions";
+import { PracticeCards } from "./practice-cards";
 import { SuggestionCards } from "./suggestion-cards";
 
-// The one place cards float over the chat. Options of one choice that Jane just gave (a reply
-// with refs.options: insurance cover, loan offers) come first, as the pick card; the day's
-// suggestions follow. A pick or Later takes the set away in the same frame, so the next card is
-// on screen at once; the pick itself is sent behind it (option.pick with the option's id), and
-// that lane's picker queues it for the team.
+// The one place cards float over the chat, one set at a time. Options of one choice that Jane
+// just gave (a reply with refs.options: insurance cover, loan offers) come first, as the pick
+// card; then the day's suggestions; then the practice portfolio's cards (step 296). A pick or
+// Later takes the set away in the same frame, so the next card is on screen at once; the pick
+// itself is sent behind it (option.pick with the option's id), and that lane's picker queues it
+// for the team.
 
 export function optionAction(how: CardAnswer): "option.pick" | "option.later" {
   return how === "yes" ? "option.pick" : "option.later";
@@ -20,10 +23,12 @@ export function optionAction(how: CardAnswer): "option.pick" | "option.later" {
 export function ChatCards({
   options,
   suggestions,
+  practice = [],
 }: {
   // The newest open reply that carries options, if any.
   options: MessageView | null;
   suggestions: MessageView[];
+  practice?: FloatingCardData[];
 }) {
   const router = useRouter();
   const [, startTransition] = useTransition();
@@ -67,8 +72,10 @@ export function ChatCards({
           />
           <div aria-hidden="true" className="h-64 sm:h-56" />
         </>
-      ) : (
+      ) : suggestions.length > 0 ? (
         <SuggestionCards messages={suggestions} />
+      ) : (
+        <PracticeCards cards={practice} />
       )}
     </>
   );

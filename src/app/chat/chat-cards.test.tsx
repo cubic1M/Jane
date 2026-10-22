@@ -2,13 +2,15 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 
 vi.mock("./actions", () => ({ tapButton: vi.fn() }));
+vi.mock("./practice-actions", () => ({ putAwayPracticeCard: vi.fn() }));
 vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh: vi.fn() }) }));
 
+import type { FloatingCardData } from "@/lib/floating-cards";
 import type { MessageView } from "@/lib/jane-agent/view";
 import { ChatCards, optionAction } from "./chat-cards";
 
-// The one place cards float over the chat: the options Jane just gave first, as the pick card,
-// then the day's suggestions.
+// The one place cards float over the chat, one set at a time: the options Jane just gave first,
+// as the pick card, then the day's suggestions, then the practice portfolio's cards.
 
 const base: MessageView = {
   id: "m1",
@@ -87,8 +89,29 @@ describe("ChatCards", () => {
     expect(html).toContain("Cancel Hulu, save $216/yr");
   });
 
-  it("is nothing at all with neither", () => {
+  it("is nothing at all with no cards of any kind", () => {
     expect(renderToStaticMarkup(<ChatCards options={null} suggestions={[]} />)).toBe("");
+  });
+
+  it("shows the practice portfolio's cards only once the options and suggestions are done", () => {
+    const practice: FloatingCardData[] = [
+      { id: "p1", headline: "Your practice portfolio is down 6%", details: {}, yesLabel: "Pause" },
+    ];
+    const last = renderToStaticMarkup(
+      <ChatCards options={null} suggestions={[]} practice={practice} />,
+    );
+    expect(last).toContain('aria-label="Your practice portfolio"');
+    expect(last).toContain("Your practice portfolio is down 6%");
+    for (const html of [
+      renderToStaticMarkup(
+        <ChatCards options={null} suggestions={[suggestion]} practice={practice} />,
+      ),
+      renderToStaticMarkup(
+        <ChatCards options={withOptions} suggestions={[]} practice={practice} />,
+      ),
+    ]) {
+      expect(html).not.toContain("Your practice portfolio is down 6%");
+    }
   });
 
   it("sends a pick as option.pick and anything else as option.later", () => {
