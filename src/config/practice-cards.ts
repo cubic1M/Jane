@@ -25,3 +25,7 @@ export const PRACTICE_SUGGEST_STAGES: readonly string[] = ["starting", "raising"
 export const PRACTICE_TOPIC: SuggestionTopic = "practice_portfolio";
 // Accounts that mean the person already invests on their own.
 export const OWN_INVESTING_SUBTYPES: readonly string[] = ["brokerage"];
+// What it's worth (a "risk" worth: a loss met on practice money instead of real money): a fall
+// of this share of the practice starting money, about the 2022 slide for a Medium model in the
+// sample market. FOR REVIEW.
+export const PRACTICE_SUGGEST_FALL_SHARE = 0.25;

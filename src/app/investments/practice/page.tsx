@@ -145,9 +145,7 @@ async function Content({
                   value={practice.opportunitiesPaused ? "0" : "1"}
                 />
                 <button type="submit" className={OUTLINE}>
-                  {practice.opportunitiesPaused
-                    ? "Resume opportunities"
-                    : "Pause opportunities"}
+                  {practice.opportunitiesPaused ? "Resume opportunities" : "Pause opportunities"}
                 </button>
               </form>
               <form action={runNow}>
@@ -163,9 +161,7 @@ async function Content({
             </div>
             {practice.paused && <p className="text-sm">Paused: no trades until you resume.</p>}
             {!practice.paused && practice.opportunitiesPaused && (
-              <p className="text-sm">
-                Opportunities paused: Jane only keeps the model on target.
-              </p>
+              <p className="text-sm">Opportunities paused: Jane only keeps the model on target.</p>
             )}
             <DemoAdviceLabel />
           </section>
