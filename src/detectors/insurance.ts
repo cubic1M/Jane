@@ -13,15 +13,15 @@ import { evidence, factEvidence, nice, outCents, tx, headlineOf } from "./helper
 // docs/detectors/insurance.md. Pure; see ./contract.ts.
 
 // The weakest piece of evidence sets the percentage, and every piece is named in the reason.
-function combine(parts: readonly Confidence[]): Confidence {
+export function combine(parts: readonly Confidence[]): Confidence {
   const percent = Math.min(...parts.map((p) => p.percent));
   return { percent, reason: parts.map((p) => p.reason).join("; ") };
 }
 // A ceiling for a suggestion whose amount is typical, not quoted (see DETECTOR_RATES.insuranceCaps).
-function capped(c: Confidence, max: number, note: string): Confidence {
+export function capped(c: Confidence, max: number, note: string): Confidence {
   return c.percent <= max ? c : { percent: max, reason: `${c.reason}; ${note}` };
 }
-const CAPS = R.insuranceCaps;
+export const CAPS = R.insuranceCaps;
 
 const OPEN_ENROLLMENT_FROM = "11-01";
 const OPEN_ENROLLMENT_TO = "01-15";
@@ -30,13 +30,14 @@ const OPEN_ENROLLMENT_TO = "01-15";
 const charges = (data: ProfileInput, pattern: RegExp) =>
   tx(data, (t) => t.amountCents > 0 && pattern.test(t.description));
 // Premiums only: charges in the insurance category, so "HOME DEPOT" is not home cover.
-const premiums = (data: ProfileInput, pattern: RegExp) =>
+export const premiums = (data: ProfileInput, pattern: RegExp) =>
   tx(
     data,
     (t) =>
       t.amountCents > 0 && t.pfc === "GENERAL_SERVICES_INSURANCE" && pattern.test(t.description),
   );
-const AUTO_HOME = /\bAUTO\b|\bHOME\b|HOMEOWNERS|GEICO|PROGRESSIVE|STATE FARM|AAA|ALLSTATE|CHUBB/i;
+export const AUTO_HOME =
+  /\bAUTO\b|\bHOME\b|HOMEOWNERS|GEICO|PROGRESSIVE|STATE FARM|AAA|ALLSTATE|CHUBB/i;
 const HEALTH = /HEALTHCARE|MARKETPLACE|BLUE CROSS|AETNA/i;
 const MEDIGAP = /MEDIGAP|SUPPLEMENT/i;
 

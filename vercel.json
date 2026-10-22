@@ -10,6 +10,10 @@
       "schedule": "0 15 * * *"
     },
     {
+      "path": "/api/cron/market-history",
+      "schedule": "0 9 * * *"
+    },
+    {
       "path": "/api/cron/practice-scan",
       "schedule": "30 21 * * *"
     }
