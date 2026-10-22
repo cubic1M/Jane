@@ -18,8 +18,10 @@ export const PAGE_TOOLS: Readonly<Record<string, readonly string[]>> = {
   deadlines: ["coming_up"],
   debt: ["debts", "payoff_plan", "balance_transfers"],
   documents: ["tax_forms", "insurance_documents"],
+  // Spec step 239: how a figure was worked out.
+  figures: ["explain_figure"],
   gift: ["family_investing"],
-  goals: ["goals", "goal_buckets", "college_plan"],
+  goals: ["goals", "goal_buckets", "college_plan", "goal_tradeoffs"],
   home: ["safe_to_spend", "whole_picture", "priorities", "health_score"],
   household: ["household"],
   import: ["explainer"],

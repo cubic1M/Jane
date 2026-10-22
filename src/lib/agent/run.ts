@@ -12,7 +12,6 @@ import {
 } from "@/config/agent";
 import { CHARGES_PER_YEAR } from "@/config/detection";
 import { normalizeMerchant } from "@/data-sources/merchant";
-import { normalizeAlias } from "@/data-sources/merchant-directory";
 import type {
   ActionStatus,
   ActionType,
@@ -30,7 +29,7 @@ import { CARD_SELECT, buildCard, cardHash } from "@/lib/cards";
 import { DecisionError, recordDecision } from "@/lib/decisions";
 import { checkGuardrails } from "@/lib/guardrails";
 import { enqueueJob, runJob } from "@/lib/jobs";
-import { merchantFor } from "@/lib/merchants";
+import { companyFacts } from "@/lib/merchants";
 import { agentFromAddress, mailMode, replyAddress, sendAgentMail, tokenFromAddress } from "./mail";
 import { readReply, type ReplyReading } from "./read-reply";
 import { findSupportContact } from "./find-contact";
@@ -173,7 +172,7 @@ async function recipientFor(
 ): Promise<string | null> {
   if (!action.company) return null;
   if (mailMode(userId) === "simulated") return simulatedAddress(action.company);
-  const row = await merchantFor(normalizeAlias(action.company), { client });
+  const { merchant: row } = await companyFacts(action.company, { client });
   return row?.supportEmail ?? null;
 }
 
@@ -370,7 +369,7 @@ export async function agentStep(
   // Some companies only cancel from the account holder's own page: the person gets the
   // link, and Jane confirms by watching for the next charge.
   if (action.type === "cancel_subscription" && action.agentMessages.length === 0) {
-    const row = await merchantFor(normalizeAlias(action.company), { client });
+    const { merchant: row } = await companyFacts(action.company, { client });
     if (row?.cancelUrl && !row.supportEmail) {
       await setStatus(
         userId,
@@ -1001,7 +1000,7 @@ export async function lookUpSupportFor(
 ): Promise<void> {
   const action = await loadAction(userId, actionId, client);
   if (!action?.company) return;
-  const row = await merchantFor(normalizeAlias(action.company), { client });
+  const { merchant: row } = await companyFacts(action.company, { client });
   if (row) await findSupportContact(row.id, { client });
 }
 
