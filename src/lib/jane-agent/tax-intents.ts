@@ -78,6 +78,8 @@ export type TaxIntent =
   | { kind: "tax"; ask: "accountant" }
   // Spec step 223: the tax calendar.
   | { kind: "tax"; ask: "calendar" }
+  // Spec step 267: business owners' tax structure.
+  | { kind: "tax"; ask: "business" }
   | { kind: "tax"; ask: "retire_year"; year: number }
   // Spec step 218: a sign of identity theft, or the IP PIN.
   | { kind: "tax"; ask: "identity"; sign: "efile_rejected" | "unknown_form" | "irs_letter" | null };
@@ -232,6 +234,8 @@ const ACCOUNTANT_ASK =
   /\baccountants?\b.*\b(?:link|share|send|give|hand|access|answer)\w*\b|\b(?:share|send|give|hand)\b.*\b(?:accountant|cpa|tax (?:preparer|pro|professional))\b|\b(?:do|should) i (?:need|use|hire|get) (?:an? )?(?:accountant|cpa|tax (?:preparer|pro|professional))\b|\bwork(?:ing)? with (?:an? |my )?(?:accountant|cpa)\b|\bmy (?:accountant|cpa) (?:wrote|answered|replied|said)\b/;
 const CALENDAR_ASK =
   /\btax year (?:calendar|runs)\b|\b(?:taxes|tax stuff)\b.*\bthis month\b|\bwhat(?:'s| is)? (?:due|coming up) (?:for|with) (?:my )?taxes\b|\btax(?:es)? on autopilot\b|\bhow does jane (?:handle|run|do) my taxes\b/;
+const BUSINESS_ASK =
+  /\bs[- ]?corp(?:oration)?\b|\bqbi\b|\bqualified business income\b|\bpass[- ]?through\b|\bshould i (?:incorporate|form an llc|become an llc|elect)\b|\bllc\b.*\btax/;
 const RETIRE_YEAR = /\b(?:plan|expect|want|hope|aim) to retire (?:in|by) (\d{4})\b/;
 const PACK = /\btax(?:-| )?time pack\b|\btax pack\b|\byear-end pack\b/;
 
@@ -328,6 +332,7 @@ export function parseTaxIntent(text: string): TaxIntent | null {
   if (EQUITY_ASK.test(text)) return { kind: "tax", ask: "equity" };
   const retire = text.match(RETIRE_YEAR);
   if (retire) return { kind: "tax", ask: "retire_year", year: Number(retire[1]) };
+  if (BUSINESS_ASK.test(text)) return { kind: "tax", ask: "business" };
   if (CALENDAR_ASK.test(text)) return { kind: "tax", ask: "calendar" };
   if (ACCOUNTANT_ASK.test(text)) return { kind: "tax", ask: "accountant" };
   if (PROPERTY_ASK.test(text)) return { kind: "tax", ask: "property" };

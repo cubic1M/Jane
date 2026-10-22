@@ -22,6 +22,7 @@ import { equitySetAsideMessage } from "../equity-tax-message";
 import { yearsMoveMessage } from "../multi-year-message";
 import { answersMessage, complexMessage } from "../accountant-message";
 import { estimateDueMessage, yearEndMessage } from "../tax-calendar-message";
+import { sCorpMessage } from "../business-message";
 import {
   appealDraftedMessage,
   appealSuggestedMessage,
@@ -484,6 +485,17 @@ export const taxesSource: MessageSource = {
           priority: TAX_MESSAGE_PRIORITY.year_end,
         });
       }
+    }
+
+    // Spec step 267: an S corporation that would save more than it costs (demo advice).
+    const business = tax.business ? sCorpMessage(tax.business) : null;
+    if (tax.business && business) {
+      out.push({
+        kind: "decision",
+        ...business,
+        dedupeKey: `business:${tax.business.year}`,
+        priority: TAX_MESSAGE_PRIORITY.business,
+      });
     }
 
     // Spec step 218: the IP PIN in January (already on the deadlines at the levels that let
