@@ -38,10 +38,12 @@ import type { LedgerState } from "./practice-ledger";
 // - dip_buy: a model holding has dropped, bought only with cash waiting to be invested and never
 //   past its target plus a margin;
 // - tax_loss_harvest: a model holding below what it cost, swapped into a similar fund of the
-//   same kind (step 124's lots), never into a wash sale;
+//   same kind (step 124's lots), never into a wash sale; watched every day, so a loss that
+//   deepens after a swap can be harvested again (the wash-sale checks and the monthly cap hold);
 // - news_idea: good news about a watched company, a small capped position, at High and Very
 //   high only and not while opportunities are paused.
 // Every number comes from src/config. Practice money only: nothing here is a real order.
+// The kinds added after step 292 are in ./practice-opportunities.ts, which runs this first.
 
 export type ScanTrade = {
   ticker: string;
@@ -80,6 +82,10 @@ export type PastTrade = {
   rule: string;
 };
 
+// A headline with step 293's one-sentence summary (Claude's when a key is set, else the rules
+// summary), when there is one.
+export type ScanHeadline = Headline & { summary?: string; summaryBy?: "claude" | "rules" };
+
 export type ScanInput = {
   level: RiskLevel;
   state: LedgerState;
@@ -90,7 +96,7 @@ export type ScanInput = {
   // The standing trades, any order.
   trades: readonly PastTrade[];
   // Headlines about the watched companies from the last few days.
-  headlines: readonly Headline[];
+  headlines: readonly ScanHeadline[];
   today: string;
   opportunitiesPaused: boolean;
   // How many of each kind already acted this calendar month.
@@ -104,6 +110,8 @@ export type ScanInput = {
   opportunityMaxShare?: number;
   // Tickers never bought.
   avoid?: readonly string[];
+  // Cash always kept: dips and ideas only spend the cash above it.
+  cashBufferCents?: number;
 };
 
 const weightsOf = (input: Pick<ScanInput, "level" | "weights">) =>
@@ -241,7 +249,7 @@ function dipFlags(input: ScanInput, total: number, blocked: ReadonlySet<string>)
   const caps = capsOf(input, "dip_buy");
   const weights = weightsOf(input);
   const month = input.today.slice(0, 7);
-  let cash = input.state.cashCents;
+  let cash = Math.max(0, input.state.cashCents - (input.cashBufferCents ?? 0));
   const found: Dip[] = [];
   for (const c of CLASSES) {
     if (c === "cash" || weights[c] === 0) continue;
@@ -348,7 +356,7 @@ function harvestFlags(input: ScanInput, total: number, blocked: ReadonlySet<stri
     flags.push({
       kind: "tax_loss_harvest",
       ticker,
-      key: `tax_loss_harvest:${ticker}:${input.today.slice(0, 7)}`,
+      key: `tax_loss_harvest:${ticker}:${input.today}`,
       headline: `Harvested a ${dollars(harvested)} loss in ${ticker}`,
       reason,
       amountCents: amount,
@@ -382,7 +390,7 @@ function newsFlags(input: ScanInput, total: number, blocked: ReadonlySet<string>
   const from = daysBefore(input.today, NEWS_LOOKBACK_DAYS);
   const stocks = PRACTICE_STOCKS as readonly string[];
   let held = stocks.reduce((s, t) => s + positionValue(input.state, input.prices, t), 0);
-  let cash = input.state.cashCents;
+  let cash = Math.max(0, input.state.cashCents - (input.cashBufferCents ?? 0));
   // When cash waiting runs out, a fund pays for an idea: the short-term bills first, then the
   // US stocks fund (an idea is a US company). Never one at a loss: that sale would need its own
   // wash-sale check.
@@ -437,6 +445,9 @@ function newsFlags(input: ScanInput, total: number, blocked: ReadonlySet<string>
       trades,
       figures: [
         { label: "Headline", value: h.title },
+        ...(h.summary
+          ? [{ label: h.summaryBy === "claude" ? "Summary" : "Summary (rules)", value: h.summary }]
+          : []),
         { label: "Source", value: `${h.source}, ${h.date}` },
         { label: "Position", value: dollars(own + amount) },
         { label: "All opportunity stocks", value: dollars(held) },

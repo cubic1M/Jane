@@ -1,4 +1,5 @@
 import { randomBytes } from "node:crypto";
+import { cardHeadline } from "@/detectors/contract";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { PEOPLE } from "@/config/people";
@@ -59,7 +60,7 @@ describe.runIf(url)("Jane leads with suggestions", { timeout: 120_000 }, () => {
     const leading = agenda.body.split("\n").filter((l) => l.startsWith("- "));
     // Each suggestion leads, with why this person and how sure Jane is, in their own figures.
     for (const o of offered.slice(0, leading.length)) {
-      const line = leading.find((l) => l.includes(o.headline.replace(/[.!?]+$/, "")))!;
+      const line = leading.find((l) => l.includes(cardHeadline(o.headline)))!;
       expect(line, o.headline).toBeDefined();
       expect(line).toContain("Why you:");
       expect(line).toContain(`${o.confidencePercent}% sure: ${o.confidenceReason}.`);

@@ -5,17 +5,25 @@ import {
   PRACTICE_UNIVERSE,
   type PracticeClass,
 } from "@/config/portfolios";
+import { MAX_DROP_LOOKBACK_DAYS } from "@/config/practice-opportunities";
 import { DIP_LOOKBACK_DAYS, NEWS_LOOKBACK_DAYS, type ScanKind } from "@/config/practice-scan";
+import { loadDetectionInput } from "@/detection/engine";
+import { paySchedules } from "@/detection/paydays";
 import type { Prisma, PrismaClient } from "@/generated/prisma/client";
+import { adviceMode } from "@/lib/advice-mode";
 import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
-import { marketData, type Bar } from "@/lib/market";
+import { marketData, type Bar, type Headline } from "@/lib/market";
+import { newsKey } from "@/lib/news/store";
+import { rulesSummary } from "@/lib/news/summarize";
 import { violates } from "@/planning/practice-autopilot";
 import { apply, type LedgerState } from "@/planning/practice-ledger";
+import { mainPaydayDay, scanOpportunities } from "@/planning/practice-opportunities";
 import { refusedByPreferences } from "@/planning/practice-profile";
-import { scanPortfolio, type ScanFlag } from "@/planning/practice-scan";
+import type { ScanFlag, ScanHeadline } from "@/planning/practice-scan";
 import { addMonthlyIfDue, runAutopilot } from "./autopilot";
 import { loadLedger, NoPracticePortfolio, practiceBroker } from "./broker";
+import { scanPreferences } from "./opportunity-prefs";
 import { practiceProfileOf } from "./preferences";
 
 // The daily scan of each practice portfolio (spec step 292, Phase AW, Stage A), run by Vercel
@@ -24,13 +32,22 @@ import { practiceProfileOf } from "./preferences";
 // opportunities on) news ideas, Jane acts on each in the practice ledger within its caps and the
 // autopilot's hard limits, then the autopilot rebalances. Every flag is kept with its numbers,
 // caps and confidence for the cards (step 296). Practice money only: nothing is a real order.
+//
+// After step 292 the scan also looks for the kinds in src/planning/practice-opportunities.ts
+// (new money, idle cash, cheaper twins, payday timing, drift and risk warnings, the glide path)
+// and obeys the person's preferences: in suggest-only mode nothing is traded and every flag is
+// kept as "suggested" for the suggestions pipeline. Ideas are for demo advice mode only: a
+// person with a real account gets the autopilot's own rebalance and nothing else
+// (REAL_ACCOUNT_ADVICE is false).
 
 type Options = { client?: PrismaClient; now?: Date };
 
 export type ScanOutcome = {
   kind: ScanKind;
   ticker: string;
-  // suggested: suggest-only mode, kept for the cards with nothing placed.
+  // acted: traded in the practice ledger; autopilot: the autopilot's own rebalance; held: a
+  // cap stopped it; suggested: waiting for the person (suggest-only mode, or a kind that only
+  // ever suggests).
   status: "acted" | "autopilot" | "held" | "suggested";
   trades: number;
 };
@@ -41,6 +58,40 @@ export type ScanResult =
 const DAY_MS = 86_400_000;
 const daysBefore = (iso: string, days: number) =>
   new Date(Date.parse(`${iso}T00:00:00Z`) - days * DAY_MS).toISOString().slice(0, 10);
+
+// Step 293's summary for each headline: the stored one (Claude's, checked, or the rules one),
+// else the rules summary made here. No call out.
+async function withSummaries(
+  headlines: readonly Headline[],
+  feed: string,
+  client: PrismaClient,
+): Promise<ScanHeadline[]> {
+  const keyed = headlines.map((h) => ({ h, key: newsKey(feed, "headline", h) }));
+  const rows =
+    keyed.length > 0
+      ? await client.marketNews.findMany({
+          where: { key: { in: keyed.map((k) => k.key) } },
+          select: { key: true, summary: true, summaryBy: true },
+        })
+      : [];
+  const stored = new Map(rows.map((r) => [r.key, r]));
+  return keyed.map(({ h, key }) => {
+    const row = stored.get(key);
+    return row?.summary
+      ? { ...h, summary: row.summary, summaryBy: row.summaryBy === "claude" ? "claude" : "rules" }
+      : { ...h, summary: rulesSummary(h), summaryBy: "rules" };
+  });
+}
+
+// The day of the month the person is usually paid, from their deposits; null when unknown.
+async function paydayDayOf(userId: string, client: PrismaClient, now: Date) {
+  try {
+    return mainPaydayDay(paySchedules(await loadDetectionInput(userId, { client, now })));
+  } catch (error) {
+    console.error("Practice scan: paydays unavailable", { error: String(error) });
+    return null;
+  }
+}
 
 // Whether a flag's trades, one after another, all keep the hard limits; the first broken one.
 function heldBy(
@@ -85,13 +136,29 @@ export async function scanPractice(
     const bar = await feed.latest(ticker, today);
     if (bar) prices[ticker] = bar.closeCents;
   }
-  // Enough calendar days to hold the dip's look-back in trading days.
-  const from = daysBefore(today, DIP_LOOKBACK_DAYS * 2 + 10);
+  // Enough calendar days to hold the dip's and the max drop's look-backs in trading days.
+  const from = daysBefore(today, Math.max(DIP_LOOKBACK_DAYS, MAX_DROP_LOOKBACK_DAYS) * 2 + 10);
   const history: Record<string, Bar[]> = {};
   for (const c of Object.keys(PRACTICE_ETFS) as PracticeClass[]) {
     for (const ticker of classTickers(c)) history[ticker] = await feed.prices(ticker, from, today);
   }
-  const headlines = await feed.news(PRACTICE_STOCKS, daysBefore(today, NEWS_LOOKBACK_DAYS), today);
+  const heldHistory: Record<string, Bar[]> = {};
+  for (const ticker of Object.keys(state.positions)) {
+    if (!history[ticker]) heldHistory[ticker] = await feed.prices(ticker, from, today);
+  }
+  const headlines = await withSummaries(
+    await feed.news(PRACTICE_STOCKS, daysBefore(today, NEWS_LOOKBACK_DAYS), today),
+    feed.name,
+    client,
+  );
+  // The person's preferences (src/planning/practice-profile.ts): the mix, the caps their
+  // appetite allows, what is never bought, the cash kept and whether Jane acts.
+  const profile = await practiceProfileOf(userId, { client, now });
+  const [prefs, advice, paydayDay] = await Promise.all([
+    scanPreferences(userId, { client, now }),
+    adviceMode(userId, { client }),
+    portfolio.monthlyAddCents > 0 ? paydayDayOf(userId, client, now) : Promise.resolve(null),
+  ]);
 
   const db = scopedFor(userId, client);
   const trades = await db.practiceTrades.findMany({
@@ -110,26 +177,22 @@ export async function scanPractice(
     where: { portfolioId: portfolio.id },
     select: { key: true, kind: true, scannedAt: true, status: true },
   });
-  // Held and suggested flags placed nothing: they don't count and can come up again.
-  const stood = (status: string) => status !== "held" && status !== "suggested";
   const monthStart = new Date(`${today.slice(0, 7)}-01T00:00:00Z`);
   const usedThisMonth: Partial<Record<ScanKind, number>> = {};
   for (const p of past) {
-    if (p.scannedAt < monthStart || !stood(p.status)) continue;
+    if (p.scannedAt < monthStart || p.status === "held") continue;
     const kind = p.kind as ScanKind;
     usedThisMonth[kind] = (usedThisMonth[kind] ?? 0) + 1;
   }
 
-  // The person's preferences: the mix, the caps their appetite allows, what is never bought and
-  // the cash kept (outside the model, so no flag spends it).
-  const profile = await practiceProfileOf(userId, { client, now });
-  const flags = scanPortfolio({
+  const found = scanOpportunities({
     level: profile.level,
-    state: { ...state, cashCents: Math.max(0, state.cashCents - profile.cashBufferCents) },
+    state,
     weights: profile.weights,
     caps: profile.caps,
     opportunityMaxShare: profile.opportunityMaxShare,
     avoid: profile.avoid,
+    cashBufferCents: profile.cashBufferCents,
     prices,
     history,
     trades: trades.map((t) => ({ ...t, placedAt: t.placedAt.toISOString() })),
@@ -137,8 +200,15 @@ export async function scanPractice(
     today,
     opportunitiesPaused: portfolio.opportunitiesPaused,
     usedThisMonth,
-    seen: new Set(past.filter((p) => stood(p.status)).map((p) => p.key)),
+    seen: new Set(past.filter((p) => p.status !== "held").map((p) => p.key)),
+    prefs,
+    monthlyAddCents: portfolio.monthlyAddCents,
+    addDay: portfolio.addDay,
+    paydayDay,
+    heldHistory,
   });
+  // A real account gets no ideas: only the autopilot's own rebalance.
+  const flags = advice ? found : found.filter((f) => f.kind === "drift_rebalance");
 
   const dayStart = new Date(`${today}T00:00:00Z`);
   const broker = practiceBroker();
@@ -153,23 +223,26 @@ export async function scanPractice(
         placedAt: { gte: dayStart },
       },
     });
-    const refused = flag.trades
-      .map((t) => refusedByPreferences({ ...profile, trades: true }, t))
-      .find((r) => r !== null);
+    // The preferences' last check (never-buy list), then the hard limits.
+    const refused =
+      flag.trades
+        .map((t) => refusedByPreferences({ ...profile, trades: true }, t))
+        .find((r) => r !== null) ?? null;
     const held =
       flag.trades.length > 0 ? (refused ?? heldBy(flag, current.state, prices, tradesToday)) : null;
     const status: ScanOutcome["status"] = held
       ? "held"
-      : flag.trades.length === 0
+      : flag.kind === "drift_rebalance"
         ? "autopilot"
-        : profile.trades
-          ? "acted"
-          : "suggested";
+        : flag.trades.length === 0 || prefs.mode === "suggest"
+          ? "suggested"
+          : "acted";
     const details = {
       figures: flag.figures,
       caps: flag.caps,
       confidence: flag.confidence,
       heldBy: held,
+      mode: prefs.mode,
       trades: flag.trades.map((t) => ({
         ticker: t.ticker,
         side: t.side,
@@ -185,10 +258,7 @@ export async function scanPractice(
           scannedAt: now,
           kind: flag.kind,
           ticker: flag.ticker,
-          key:
-            status === "held" || status === "suggested"
-              ? `${flag.key}:${status}:${today}`
-              : flag.key,
+          key: held ? `${flag.key}:held:${today}` : flag.key,
           amountCents: flag.amountCents,
           headline: flag.headline,
           reason: flag.reason,

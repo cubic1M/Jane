@@ -61,10 +61,6 @@ export class ChatInputError extends Error {
   }
 }
 
-// Shown when free questions are over Ask's own limit for the hour.
-export const CHAT_ASK_LIMITED_TEXT =
-  'You\'ve asked me a lot of free questions this hour, so give me a little while. The questions in "help" still work now.';
-
 // Spec step 88: what Jane's last answer was about, if it was in the last
 // CHAT_CONTEXT_MINUTES and on the same day in the person's timezone: "it" never points at
 // something from another day.

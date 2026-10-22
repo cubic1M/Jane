@@ -6,6 +6,7 @@ import { logAudit } from "@/lib/audit";
 import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
 import { profileOf } from "@/lib/investments/profile";
+import { loadPrefs as loadValuesPrefs } from "@/lib/investments/values";
 import { loadProfile } from "@/lib/profile";
 import {
   applyPatch,
@@ -46,7 +47,10 @@ export async function loadPreferences(
   { client = defaultClient }: Options = {},
 ): Promise<PracticePreferences> {
   const row = await scopedFor(userId, client).practicePreferences.findFirst({ select: SELECT });
-  return row ? fromRow(row) : { ...DEFAULT_PREFERENCES, avoid: [] };
+  if (row) return fromRow(row);
+  // Until they choose here, what they leave out of their funds (step 236's values) is avoided.
+  const values = await loadValuesPrefs(userId, { client });
+  return { ...DEFAULT_PREFERENCES, avoid: [...values.excludes] };
 }
 
 // The questionnaire's level (step 288) from the investor profile's answers and how the person

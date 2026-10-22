@@ -73,10 +73,8 @@ async function scanWith(
   }
   return scanPortfolio({
     level: profile.level,
-    state: {
-      ...held.state,
-      cashCents: Math.max(0, held.state.cashCents - profile.cashBufferCents),
-    },
+    state: held.state,
+    cashBufferCents: profile.cashBufferCents,
     prices: await pricesOn(day),
     history,
     trades: held.trades,

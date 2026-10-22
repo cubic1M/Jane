@@ -10,6 +10,8 @@ import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
 import { syncDemoInvestments } from "@/lib/plaid/sync";
 import { profileOf } from "./profile";
+import { loadPrefs } from "./values";
+import { coreFundsFor } from "@/planning/values";
 import { loadInvestments, type Investments } from "./holdings";
 import { profileSummary } from "@/planning/investor-profile";
 
@@ -29,10 +31,11 @@ export async function loadRebalance(
     investments: loaded,
   }: Options & { investments?: Investments } = {},
 ): Promise<{ advice: boolean; plan: RebalancePlan | null; investments: Investments }> {
-  const [investments, answers, advice] = await Promise.all([
+  const [investments, answers, advice, prefs] = await Promise.all([
     loaded ?? loadInvestments(userId, { client, now }),
     profileOf(userId, { client }),
     adviceMode(userId, { client }),
+    loadPrefs(userId, { client }),
   ]);
   const profile = profileSummary(answers, now.toISOString().slice(0, 10));
   return {
@@ -40,7 +43,7 @@ export async function loadRebalance(
     investments,
     plan:
       advice && profile.complete
-        ? rebalancePlan(investments.accounts, profile.riskLevel, mixOfTicker)
+        ? rebalancePlan(investments.accounts, profile.riskLevel, mixOfTicker, coreFundsFor(prefs))
         : null,
   };
 }

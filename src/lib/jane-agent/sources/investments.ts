@@ -64,6 +64,25 @@ import {
 import { REVIEW_LINK, reviewFor } from "../investments/review-copy";
 import { MIN_SAVING_CENTS } from "@/config/location";
 import { freeButton, LOCATION_LINK, locationLine } from "../investments/location-copy";
+import { MENU_MIN_SAVING_CENTS } from "@/config/plan-menu";
+import {
+  changeButton,
+  confirmButtons,
+  MENU_LINK,
+  proposedLine,
+  savingLine,
+} from "../investments/menu-copy";
+import { MIN_GAIN_CENTS } from "@/config/short-term";
+import { candidateLine, ladderButton, SHORT_LINK } from "../investments/short-term-copy";
+import {
+  planBody,
+  suddenQuestionButtons,
+  suddenQuestionLine,
+  stageButton,
+  SUDDEN_LINK,
+} from "../investments/sudden-copy";
+import { valuesPlanLine, valuesButton, VALUES_LINK } from "../investments/values-copy";
+import { attentionLine, FILE_LINK } from "../investments/family-file-copy";
 import { AUTO_LOG_LINK, summaryBody } from "../investments/automatic-copy";
 import { CASH_MIN_GAIN_CENTS } from "@/config/cash";
 import { CASH_LINK, cashLine, moveButtons } from "../investments/cash-copy";
@@ -336,6 +355,96 @@ export const investmentsSource: MessageSource = {
         actions: [{ id: "hsa.link", label: "Link a demo HSA", kind: "primary" }, snoozeButton()],
         dedupeKey: "hsa:link",
         priority: MESSAGE_PRIORITY.hsa,
+      });
+    }
+    // Step 235: a large deposit that isn't pay is asked about once; the plan then walks
+    // through its stages in the same message, a tap each.
+    for (const item of inv.sudden.items) {
+      if (item.status === "asked") {
+        out.push({
+          kind: "decision",
+          body: suddenQuestionLine(item),
+          refs: { suddenId: item.id },
+          actions: [...suddenQuestionButtons(), SUDDEN_LINK, snoozeButton()],
+          dedupeKey: `sudden:${item.id}`,
+          priority: MESSAGE_PRIORITY.sudden_money,
+        });
+      } else if (inv.advice && item.status === "planned" && stageButton(item)) {
+        const next = item.stages.find((s) => !s.done)!;
+        out.push({
+          kind: "decision",
+          body: planBody(item),
+          refs: { advice: true, suddenId: item.id, suddenStage: next.key },
+          actions: [stageButton(item)!, SUDDEN_LINK, snoozeButton()],
+          dedupeKey: `sudden:${item.id}`,
+          priority: MESSAGE_PRIORITY.sudden_money,
+        });
+      }
+    }
+    // Step 237: an account whose beneficiary is missing or out of date. Facts and a link, for
+    // everyone (no advice, nothing moves).
+    if (inv.familyFile.attention.length > 0) {
+      out.push({
+        kind: "heads_up",
+        body: attentionLine(inv.familyFile.attention),
+        refs: {},
+        actions: [FILE_LINK, snoozeButton()],
+        dedupeKey: `family:${inv.familyFile.attention.map((c) => `${c.accountId}${c.problems.join("")}`).join(",")}`,
+        priority: MESSAGE_PRIORITY.family_file,
+      });
+    }
+    // Step 236: a values list that the funds held don't match yet, one tap to switch.
+    if (inv.advice && inv.values.plan && inv.values.plan.switches.length > 0) {
+      out.push({
+        kind: "decision",
+        body: valuesPlanLine({ ...inv.values, advice: true, source: "" }),
+        refs: { advice: true, valuesKey: inv.values.plan.key },
+        actions: [valuesButton(), VALUES_LINK, snoozeButton()],
+        dedupeKey: `values:${inv.values.plan.key}`,
+        priority: MESSAGE_PRIORITY.values,
+      });
+    }
+    // Step 234: money needed within three years, compared after tax; a ladder when bills win
+    // by enough, one tap, every bill maturing by the date.
+    if (inv.advice) {
+      for (const c of inv.shortTerm.candidates) {
+        if (c.hasLadder || c.gainCents < MIN_GAIN_CENTS) continue;
+        out.push({
+          kind: c.ladder ? "decision" : "heads_up",
+          body: candidateLine(c),
+          refs: { advice: true, ...(c.ladder ? { ladderKey: c.key } : {}) },
+          actions: [...(c.ladder ? [ladderButton(c)] : []), SHORT_LINK, snoozeButton()],
+          dedupeKey: `short:${c.key}:${Math.round(c.amountCents / 100_000)}`,
+          priority: MESSAGE_PRIORITY.short_term,
+        });
+      }
+    }
+    // Step 232: a plan fund list Jane read is confirmed before it is used; once it is, the
+    // cheapest mix of the plan's own funds is one tap to send.
+    const menu = inv.planMenu;
+    if (menu.proposed) {
+      out.push({
+        kind: "decision",
+        body: proposedLine(menu.proposed),
+        refs: { menuId: menu.proposed.id },
+        actions: [...confirmButtons(), MENU_LINK, snoozeButton()],
+        dedupeKey: `menu:confirm:${menu.proposed.id}`,
+        priority: MESSAGE_PRIORITY.plan_menu,
+      });
+    }
+    if (
+      inv.advice &&
+      menu.plan &&
+      menu.plan.savingCents >= MENU_MIN_SAVING_CENTS &&
+      !menu.pending
+    ) {
+      out.push({
+        kind: "decision",
+        body: `${savingLine(menu.plan)} Nothing changes until you tap.`,
+        refs: { advice: true },
+        actions: [changeButton(menu.plan), MENU_LINK, snoozeButton()],
+        dedupeKey: `menu:change:${menu.plan.savingCents}`,
+        priority: MESSAGE_PRIORITY.plan_menu,
       });
     }
     // Step 231: the right investment in the right account, when the tax saved is worth it:
