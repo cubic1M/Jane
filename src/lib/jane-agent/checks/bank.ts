@@ -1675,6 +1675,42 @@ const BASE_QUESTIONS: readonly CheckQuestion[] = [
     expect: { intent: "tax", mentions: /step-up|new cost basis|10 years/, list: true },
   },
   {
+    id: "tax-34",
+    text: "do I have to pay back my marketplace subsidy",
+    needs: "rules",
+    expect: { intent: "tax", mentions: /Marketplace credit/, list: true },
+  },
+  {
+    id: "tax-35",
+    text: "did I put too much in my HSA",
+    needs: "rules",
+    expect: { intent: "tax", mentions: /HSA|7\.5%/, list: true },
+  },
+  {
+    id: "tax-36",
+    text: "do I get more time on my taxes after the storm",
+    needs: "rules",
+    expect: { intent: "tax", mentions: /disaster|county/ },
+  },
+  {
+    id: "tax-37",
+    text: "is my social security taxed",
+    needs: "rules",
+    expect: { intent: "tax", mentions: /Social Security/, list: true },
+  },
+  {
+    id: "tax-38",
+    text: "what is irmaa",
+    needs: "rules",
+    expect: { intent: "tax", mentions: /Medicare/, list: true },
+  },
+  {
+    id: "tax-39",
+    text: "can you check my draft return before I file",
+    needs: "rules",
+    expect: { intent: "tax", mentions: /draft/ },
+  },
+  {
     id: "ins-1",
     text: "what insurance do I have",
     needs: "rules",
@@ -2042,6 +2078,115 @@ const BASE_QUESTIONS: readonly CheckQuestion[] = [
       link: "/loans/goal",
       list: true,
       maxChars: 1_000,
+    },
+  },
+  // Spec step 249: helping family with credit.
+  {
+    id: "debt-39",
+    text: "should I cosign a loan for my son",
+    needs: "rules",
+    expect: {
+      intent: "family_credit",
+      mentions: /co-signing/i,
+      link: "/loans/helping",
+      list: true,
+      maxChars: 2_600,
+    },
+  },
+  {
+    id: "debt-40",
+    text: "how do I add my daughter to my credit card as an authorized user",
+    needs: "rules",
+    expect: {
+      intent: "family_credit",
+      mentions: /co-signing/i,
+      link: "/loans/helping",
+      list: true,
+      maxChars: 2_600,
+    },
+  },
+  // Spec step 251: credit on autopilot, round three.
+  {
+    id: "debt-72",
+    text: "show me this month's credit check-up",
+    needs: "rules",
+    expect: {
+      intent: "credit_monthly",
+      mentions: /check-up/i,
+      link: "/loans/review",
+      maxChars: 2_600,
+    },
+  },
+  // Spec step 250: what you could borrow.
+  {
+    id: "debt-70",
+    text: "what could I borrow, and at what rate?",
+    needs: "rules",
+    expect: {
+      intent: "borrowing_power",
+      mentions: /soft check|borrow/i,
+      link: "/loans/borrow",
+      maxChars: 2_000,
+    },
+  },
+  {
+    id: "debt-71",
+    text: "how big a mortgage could I get",
+    needs: "rules",
+    expect: {
+      intent: "borrowing_power",
+      mentions: /mortgage/i,
+      link: "/loans/borrow",
+      maxChars: 2_000,
+    },
+  },
+  // Spec step 248: renting, counted.
+  {
+    id: "debt-37",
+    text: "can you report my rent to the credit bureaus",
+    needs: "rules",
+    expect: {
+      intent: "renting",
+      mentions: /rent/i,
+      link: "/loans/renting",
+      maxChars: 2_000,
+    },
+  },
+  {
+    id: "debt-38",
+    text: "when do I get my security deposit back",
+    needs: "rules",
+    expect: {
+      intent: "renting",
+      mentions: /deposit|rent/i,
+      link: "/loans/renting",
+      maxChars: 2_000,
+    },
+  },
+  // Spec step 247: out of costly short-term borrowing.
+  {
+    id: "debt-36",
+    text: "how much have payday loans and cash advances cost me",
+    needs: "rules",
+    expect: {
+      intent: "costly_borrowing",
+      mentions: /payday/i,
+      link: "/loans/costly",
+      list: true,
+      maxChars: 2_600,
+    },
+  },
+  // Spec step 246: recast, refinance or pay extra.
+  {
+    id: "debt-35",
+    text: "I have $20,000, should I pay down my mortgage or recast it",
+    needs: "rules",
+    expect: {
+      intent: "mortgage_money",
+      mentions: /recast/i,
+      link: "/loans/recast",
+      list: true,
+      maxChars: 2_200,
     },
   },
   // Spec step 245: the car loan you already have.
@@ -2775,6 +2920,8 @@ const DECISIONS: readonly (readonly [string, string, RegExp, string?])[] = [
   ["insd-33", "how much disability insurance do I need", /\$[\d,.]+ a month/],
   ["insd-34", "how much umbrella insurance do I need", /umbrella|net worth/i],
   ["insd-35", "how much liability insurance do I need on my car", /liability/i],
+  ["insd-36", "what cover do I need", /gaps?\.|need|short|enough/i],
+  ["insd-37", "is my deductible right", /deductible/i],
 ];
 
 // "Should I ...?" with insurance words goes through the decision router (src/config/decisions.ts).

@@ -86,16 +86,17 @@ describe.runIf(url)("history and search against a real database", () => {
     expect(await pinnedMessages(userId, { client })).toEqual([]);
   });
 
-  it("posts what last week covered at the top of the week, before the brief", async () => {
-    // Monday 9am in Los Angeles; the messages above were the week before.
+  it("says what last week covered in Monday's brief, not a message of its own", async () => {
+    // Monday 9am in Los Angeles; the messages above were the week before. The week's summary
+    // is a line of the brief (docs/feature-audit.md, cluster 2).
     const monday = new Date("2026-10-19T16:00:00Z");
     await runJaneAgent(userId, { client, now: monday, trigger: "cron" });
     const posted = await client.janeMessage.findMany({
       where: { userId, createdAt: { gte: monday } },
       orderBy: { createdAt: "asc" },
     });
-    expect(posted[0].dedupeKey).toBe("week:2026-10-19");
-    expect(posted[0].body).toMatch(/^The week of Oct 12, we covered \d+ questions? you asked/);
-    expect(posted[1].dedupeKey).toBe("brief:2026-10-19");
+    expect(posted.map((m) => m.dedupeKey)).not.toContain("week:2026-10-19");
+    const brief = posted.find((m) => m.dedupeKey === "brief:2026-10-19");
+    expect(brief?.body).toMatch(/^The week of Oct 12: .*we covered \d+ questions? you asked/m);
   });
 });

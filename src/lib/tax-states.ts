@@ -4,7 +4,7 @@ import { LOCAL_TAXES } from "@/config/tax-states";
 import type { PrismaClient } from "@/generated/prisma/client";
 import { track } from "@/lib/analytics";
 import { logAudit } from "@/lib/audit";
-import { autopilotOf } from "@/lib/autopilot";
+import { autopilotFor } from "@/lib/sector-autopilot";
 import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
 import { saveTaxAnswers } from "@/lib/tax-profile";
@@ -55,7 +55,7 @@ export async function loadResidency(
   { client = defaultClient }: Options = {},
 ): Promise<ResidencyView> {
   const db = scopedFor(userId, client);
-  const [stored, payments, moving, autopilot] = await Promise.all([
+  const [stored, payments, moving, taxes] = await Promise.all([
     db.taxProfiles.findFirst({
       select: { moves: true, workState: true, locality: true, residencyYear: true },
     }),
@@ -76,7 +76,7 @@ export async function loadResidency(
       select: { startedOn: true },
       orderBy: { startedOn: "desc" },
     }),
-    autopilotOf(userId, { client }),
+    autopilotFor(userId, "taxes", { client }),
   ]);
   const told = stored?.residencyYear === year ? parseMoves(stored.moves) : null;
   const spotted = told
@@ -86,7 +86,7 @@ export async function loadResidency(
         payments.map((p) => ({ date: iso(p.date), description: p.description })),
         isStateCode,
       );
-  const usingSpotted = !told && spotted !== null && usesFoundAnswers(autopilot);
+  const usingSpotted = !told && spotted !== null && usesFoundAnswers(taxes.level);
   return {
     year,
     told,

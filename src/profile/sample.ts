@@ -1,6 +1,10 @@
 import { BENEFICIARY_SUBTYPES } from "@/config/family-file";
 import { demoAccounts, demoLiabilities, demoTransactions } from "@/data-sources/demo/demo-bank";
+import { demoGoalsFor } from "@/data-sources/demo/demo-goals";
 import { demoHoldings } from "@/data-sources/demo/demo-holdings";
+import { SAMPLE_RELIEF } from "@/config/disasters";
+import { goalProgress } from "@/planning/goals";
+import { tradeGoalOf } from "@/planning/goal-tradeoffs";
 import type { NeedPolicy } from "@/lib/insurance/need/types";
 import type { ProfileInput } from "./build";
 
@@ -24,12 +28,17 @@ const car = (id: string, person: number, accident: number, deductible: number): 
   deductibleCents: deductible,
   coverage: { bodilyInjuryPerPerson: person, bodilyInjuryPerAccident: accident, collision: true },
 });
-const house = (id: string, liability: number, deductible: number): NeedPolicy => ({
+const house = (
+  id: string,
+  liability: number,
+  deductible: number,
+  dwelling = 40_000_000,
+): NeedPolicy => ({
   id,
   kind: "home",
   status: "active",
   deductibleCents: deductible,
-  coverage: { dwelling: 40_000_000, liability },
+  coverage: { dwelling, liability },
 });
 const SAMPLE_POLICIES: Readonly<Record<string, readonly NeedPolicy[]>> = {
   renter: [car("renter-auto", 5_000_000, 10_000_000, 100_000)],
@@ -37,12 +46,40 @@ const SAMPLE_POLICIES: Readonly<Record<string, readonly NeedPolicy[]>> = {
     car("family-auto", 5_000_000, 10_000_000, 50_000),
     house("family-home", 10_000_000, 100_000),
   ],
-  equity: [house("equity-home", 30_000_000, 100_000)],
+  // Their mortgage is about $910,000, so the home is worth well over that.
+  equity: [house("equity-home", 30_000_000, 100_000, 150_000_000)],
   preretire: [
     car("pre-auto", 25_000_000, 50_000_000, 100_000),
     house("pre-home", 30_000_000, 100_000),
   ],
   retiree: [house("retiree-home", 30_000_000, 100_000)],
+};
+
+// What the daily books check (spec step 238) left open for the sample people: the Reyes family's
+// joint savings is linked twice, once through each parent's bank login.
+const SAMPLE_BOOKS: Readonly<Record<string, NonNullable<ProfileInput["extras"]>["books"]>> = {
+  family: [
+    {
+      kind: "duplicate",
+      words: "Your joint savings is linked twice, once through each of your bank logins.",
+      accountId: "demo-seedfamily-savings",
+    },
+  ],
+};
+
+// Sample people with a health plan whose terms Jane has, and an FSA election (spec step 259).
+const HEALTH_PLANS: Readonly<
+  Record<string, { plan: NonNullable<ProfileInput["healthPlan"]>; fsaElectionCents: number | null }>
+> = {
+  family: {
+    plan: {
+      label: "Acme PPO",
+      deductibleCents: 150_000,
+      outOfPocketMaxCents: 450_000,
+      coinsurance: 20,
+    },
+    fsaElectionCents: 240_000,
+  },
 };
 
 export function inputFor(person: string, told: ProfileInput["told"] = {}): ProfileInput {
@@ -51,7 +88,30 @@ export function inputFor(person: string, told: ProfileInput["told"] = {}): Profi
   return {
     today: SAMPLE_TODAY,
     told,
-    extras: { householdMembers: 0, coverPolicies: SAMPLE_POLICIES[person] ?? [] },
+    extras: {
+      householdMembers: 0,
+      coverPolicies: SAMPLE_POLICIES[person] ?? [],
+      books: SAMPLE_BOOKS[person] ?? [],
+      // The sample people are all the demo bank's, so they read the stand-in disaster feed.
+      disasterRelief: SAMPLE_RELIEF,
+      // A home is worth about what its policy insures the dwelling for (the demo bank's owned things).
+      ownedValueCents: (SAMPLE_POLICIES[person] ?? [])
+        .filter((p) => p.kind === "home")
+        .reduce((sum, p) => sum + Number(p.coverage.dwelling ?? 0), 0),
+      // Spec step 241: their goals as the demo bank adds them on the day it's linked.
+      goals: demoGoalsFor(person, SAMPLE_TODAY).flatMap(
+        (g, i) =>
+          tradeGoalOf({
+            id: `${person}-goal-${i}`,
+            name: g.name,
+            targetDate: g.targetDate,
+            progress: goalProgress(
+              { targetCents: g.targetCents, savedCents: g.savedCents, targetDate: g.targetDate },
+              SAMPLE_TODAY,
+            ),
+          }) ?? [],
+      ),
+    },
     unreadPolicyDocuments: UNREAD_DOCUMENTS[person] ?? 0,
     // Priya has asked Jane to keep fossil fuels out of her funds (spec step 236).
     // Everyone has named beneficiaries except the family (a new child) and the couple near
@@ -62,6 +122,8 @@ export function inputFor(person: string, told: ProfileInput["told"] = {}): Profi
           .filter((a) => BENEFICIARY_SUBTYPES.includes(a.subtype ?? ""))
           .map((a) => a.account_id),
     valuesExcludes: person === "equity" ? ["fossil_fuels"] : [],
+    healthPlan: HEALTH_PLANS[person]?.plan ?? null,
+    fsaElectionCents: HEALTH_PLANS[person]?.fsaElectionCents ?? null,
     holdings: holdings.map((h) => ({
       ticker:
         h.security_id.replace("demo-sec-", "").toUpperCase() === "CASH"

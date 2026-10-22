@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { GoalError, addGoal, deleteGoal, updateGoal, type GoalForm } from "@/lib/goals";
+import { TradeoffError, chooseGoalOrder } from "@/lib/goal-tradeoffs";
 import { requireUser } from "@/lib/session";
 
 export type GoalState = { ok: boolean; message: string } | null;
@@ -33,5 +34,23 @@ export async function removeGoal(formData: FormData): Promise<void> {
   const user = await requireUser();
   await deleteGoal(user.id, String(formData.get("goalId") ?? ""));
   revalidatePath("/goals");
+  revalidatePath("/home");
+}
+
+// Spec step 241: the person's tap on an order when goals compete. It re-plans every sector
+// (the paycheck plan and the year plan fund goals in this order).
+export async function pickGoalOrder(formData: FormData): Promise<void> {
+  const user = await requireUser();
+  const order = String(formData.get("order") ?? "")
+    .split(",")
+    .filter(Boolean);
+  try {
+    await chooseGoalOrder(user.id, order);
+  } catch (error) {
+    if (error instanceof TradeoffError) return;
+    throw error;
+  }
+  revalidatePath("/goals");
+  revalidatePath("/plan");
   revalidatePath("/home");
 }

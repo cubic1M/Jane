@@ -1,0 +1,41 @@
+// Books that balance (spec step 238): what Jane checks every day about the data she stands
+// behind, and when she counts something as off.
+
+// A balance that moves by more or less than the transactions between two snapshots, by more
+// than this, is off.
+export const BOOKS_TOLERANCE_CENTS = 100;
+// Snapshots looked at, the last this many days.
+export const BOOKS_LOOKBACK_DAYS = 45;
+// A bank link that hasn't synced for this many days is stale (or broken).
+export const BOOKS_STALE_DAYS = 4;
+// A transfer out and a transfer in of the same amount in two of the person's accounts, this
+// many days apart or less, are one move between their own accounts.
+export const TRANSFER_MATCH_DAYS = 4;
+// Transfers out with no match are worth saying (money going somewhere Jane can't see) from
+// this amount.
+export const UNMATCHED_TRANSFER_MIN_CENTS = 50_000;
+// Two accounts are the same when they share an account number's last digits, type and
+// subtype. Plaid types of accounts whose balance owed is positive.
+export const BOOKS_DEBT_TYPES: readonly string[] = ["credit", "loan"];
+// Plaid primary categories of transfers between accounts.
+export const TRANSFER_OUT = "TRANSFER_OUT";
+export const TRANSFER_IN = "TRANSFER_IN";
+// Issue kinds that put a figure in doubt (an unmatched transfer is only said, not doubted), and
+// those asked about at once (a link that needs a sign-in stops every figure on it).
+export const BOOKS_WORRYING_KINDS: readonly string[] = [
+  "off",
+  "gap",
+  "stale",
+  "broken",
+  "duplicate",
+];
+export const BOOKS_URGENT_KINDS: readonly string[] = ["broken"];
+// Issue kinds, and how each is said.
+export const BOOKS_KIND_LABELS: Readonly<Record<string, string>> = {
+  off: "A balance that doesn't match its transactions",
+  gap: "Transactions that stopped coming",
+  stale: "A bank link that hasn't updated",
+  broken: "A bank link that needs you to sign in again",
+  duplicate: "The same account linked twice",
+  transfer: "A transfer with no other side",
+};
