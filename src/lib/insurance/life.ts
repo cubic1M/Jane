@@ -80,6 +80,13 @@ function toApplication(
   };
 }
 
+// Whether the profile (spec step 253) sees children: the same fact the need calculators and the
+// nightly detectors read, so the chat does not ask who depends on them when the page knows.
+async function profileHasChildren(userId: string, options: Options): Promise<boolean> {
+  const { loadProfile } = await import("@/lib/profile");
+  return (await loadProfile(userId, options)).facts.has_children.value === true;
+}
+
 const DAY = 86_400_000;
 const day = (date: Date) => date.toISOString().slice(0, 10);
 
@@ -90,7 +97,7 @@ export async function lifeInput(
 ): Promise<Omit<LifeNeedInput, "dependants"> & { dependants: number | null }> {
   const db = scopedFor(userId, client);
   const since = new Date(now.getTime() - LIFE_PAY_LOOKBACK_DAYS * DAY);
-  const [household, income, accounts, mortgages, policies] = await Promise.all([
+  const [household, income, accounts, mortgages, policies, hasChildren] = await Promise.all([
     loadHousehold(userId, { client, now }),
     db.transactions.aggregate({
       where: { pfcDetailed: "INCOME_SALARY", pending: false, date: { gte: since, lte: now } },
@@ -101,6 +108,7 @@ export async function lifeInput(
     }),
     db.liabilities.findMany({ where: { kind: "mortgage" }, select: { payoffDate: true } }),
     listPolicies(userId, { client }),
+    profileHasChildren(userId, { client, now }),
   ]);
   // Plaid's sign: money in is negative.
   const paid = -(income._sum.amountCents ?? 0);
@@ -112,7 +120,9 @@ export async function lifeInput(
     .sort((a, b) => b.getTime() - a.getTime())[0];
   return {
     yearlyPayCents: paid > 0 ? Math.round((paid * 365) / LIFE_PAY_LOOKBACK_DAYS) : null,
-    dependants: household.dependants.value,
+    // What they told wins; otherwise the profile's own picture (children seen in their
+    // spending), so the chat does not ask what the page already knows.
+    dependants: household.dependants.value ?? (hasChildren ? 1 : null),
     mortgageCents: balance((a) => a.type === "loan" && a.subtype === "mortgage"),
     otherDebtCents: balance(
       (a) => (a.type === "loan" && a.subtype !== "mortgage") || a.type === "credit",
