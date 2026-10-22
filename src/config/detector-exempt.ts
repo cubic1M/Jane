@@ -101,4 +101,6 @@ export const TOOL_EXEMPT: Readonly<Record<string, string>> = {
     "works out a home the person asks about; nothing in their data says they're buying",
   loan_applications:
     "tracks an application the person started; the refinance and transfer detectors suggest them",
+  market_news:
+    "reads the practice portfolio's stored news summaries and filings when asked; the daily scan (spec step 292) brings news-driven ideas up by itself",
 };

@@ -82,9 +82,10 @@ const SECTORS = {
       "steady_hand",
       "cash_plan",
       "crypto",
+      "market_news",
     ]),
     words:
-      /\b(?:invest\w*|stocks?|etfs?|funds?|401\s?k|ira|retire\w*|portfolio|crypto\w*|bitcoin|ether\w*|bonds?|dividends?|brokerage|529|college|annuit\w*|rebalanc\w*|pension|rmd|savings account|high.?yield|money market|index|shares?|equity|risk|what is a|profile|about me|goals?|buckets?|split)\b/,
+      /\b(?:invest\w*|stocks?|etfs?|funds?|401\s?k|ira|retire\w*|portfolio|crypto\w*|bitcoin|ether\w*|bonds?|dividends?|brokerage|news|headlines?|filings?|8-?k|10-?q|529|college|annuit\w*|rebalanc\w*|pension|rmd|savings account|high.?yield|money market|index|shares?|equity|risk|what is a|profile|about me|goals?|buckets?|split)\b/,
   },
 } as const;
 
