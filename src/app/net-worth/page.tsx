@@ -70,7 +70,10 @@ async function NetWorthContent() {
         <h1 className="text-3xl font-semibold tracking-tight">Net worth</h1>
         <p className="text-zinc-600 dark:text-zinc-400">
           What your accounts hold minus what you owe on cards and loans, from the balances your bank
-          reports.
+          reports.{" "}
+          <Link href="/figures/net_worth" className="font-medium text-emerald-700 hover:underline">
+            How did I get this?
+          </Link>
         </p>
       </div>
 

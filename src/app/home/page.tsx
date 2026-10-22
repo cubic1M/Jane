@@ -95,6 +95,12 @@ function SafeToSpendCard({ safe }: { safe: SafeToSpend }) {
           bills.
         </p>
       )}
+      <Link
+        href="/figures/safe_to_spend"
+        className="text-sm font-medium text-emerald-700 hover:underline"
+      >
+        How did I get this?
+      </Link>
       <details>
         <summary className="cursor-pointer text-sm font-medium text-emerald-700">
           How we worked it out
