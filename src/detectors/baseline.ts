@@ -109,6 +109,7 @@ export const BASELINE: Readonly<Record<PersonId, readonly string[]>> = {
     "inherited_ira",
     "insurance_shopping",
     "investment_fees",
+    "irmaa_watch",
     "long_term_care",
     "old_accounts",
     "property_tax_check",
@@ -131,7 +132,7 @@ export const BASELINE: Readonly<Record<PersonId, readonly string[]>> = {
     "property_tax_check",
     "rebalance",
     "rmd",
-    "roth_conversion",
+    "social_security_tax",
     "subscriptions",
   ],
   debt: [

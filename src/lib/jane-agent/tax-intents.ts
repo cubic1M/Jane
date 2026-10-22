@@ -86,6 +86,8 @@ export type TaxIntent =
   | { kind: "tax"; ask: "health" }
   // Spec step 270: disaster relief and losses, and the county the person lives in.
   | { kind: "tax"; ask: "disaster" }
+  // Spec step 271: taxes on retirement income.
+  | { kind: "tax"; ask: "retirement" }
   | { kind: "tax"; ask: "set_county"; county: string }
   | { kind: "tax"; ask: "retire_year"; year: number }
   // Spec step 218: a sign of identity theft, or the IP PIN.
@@ -249,6 +251,8 @@ const HEALTH_ASK =
   /\bpremium tax credit\b|\b(?:marketplace|obamacare|aca|healthcare\.gov)\b.*\b(?:subsid(?:y|ies)|credit|repay|pay (?:it )?back|tax)|\b(?:subsid(?:y|ies)|advance credit|aptc)\b.*\b(?:repay|pay (?:it )?back|owe|tax)|\bhsa\b.*\b(?:too much|over the limit|excess|limit|max(?:imum)?)\b|\b(?:put|contribut\w*) too much\b.*\bhsa\b|\bmedical (?:expenses|costs|bills)\b.*\b(?:deduct(?:ion|ions|ed|ing)?|tax\w*|write off)\b|\bdeduct(?:ion|ions|ed|ing)?\b.*\b(?:medical|dental|doctor|hospital)\b|\bmedical (?:expense )?deduction\b|\bform 8962\b/;
 const DISASTER_ASK =
   /\bcasualty loss\b|\bdisaster (?:relief|loss|postpone\w*|extension|area)\b|\bfema\b|\b(?:hurricane|wildfire|fire|flood|tornado|storm|earthquake|disaster)\b.*\b(?:tax(?:es)?|irs|deadline|deduct(?:ion|ions|ed|ing)?|write off|more time|extension)\b|\b(?:tax(?:es)?|irs|deadline|deduct(?:ion|ions|ed|ing)?)\b.*\b(?:hurricane|wildfire|flood|tornado|storm|earthquake|disaster)\b/;
+const RETIREMENT_ASK =
+  /\birmaa\b|\bmedicare\b.*\b(?:surcharge|premiums? (?:go up|higher|more)|income)\b|\b(?:social security|ss benefits?)\b.*\b(?:tax(?:ed|es|able)?|withhold\w*|w-?4v)\b|\b(?:tax(?:ed|es|able)?)\b.*\bsocial security\b|\bwhich account\b.*\b(?:withdraw|draw|take)\b|\bwithdrawal order\b|\btax torpedo\b/;
 const SET_COUNTY = /\bi live in ([a-z][a-z .'-]{1,30}?) county\b/;
 const RETIRE_YEAR = /\b(?:plan|expect|want|hope|aim) to retire (?:in|by) (\d{4})\b/;
 const PACK = /\btax(?:-| )?time pack\b|\btax pack\b|\byear-end pack\b/;
@@ -349,6 +353,7 @@ export function parseTaxIntent(text: string): TaxIntent | null {
   const county = SET_COUNTY.exec(text);
   if (county) return { kind: "tax", ask: "set_county", county: county[1].trim() };
   if (DISASTER_ASK.test(text)) return { kind: "tax", ask: "disaster" };
+  if (RETIREMENT_ASK.test(text)) return { kind: "tax", ask: "retirement" };
   if (HEALTH_ASK.test(text)) return { kind: "tax", ask: "health" };
   if (INHERITED_ASK.test(text)) return { kind: "tax", ask: "inherited" };
   if (BUSINESS_ASK.test(text)) return { kind: "tax", ask: "business" };

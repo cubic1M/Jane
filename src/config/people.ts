@@ -100,6 +100,8 @@ export const SUGGESTION_TOPICS = [
   "hsa_over_limit",
   "medical_deduction",
   "disaster_relief",
+  "social_security_tax",
+  "irmaa_watch",
 ] as const;
 export type SuggestionTopic = (typeof SUGGESTION_TOPICS)[number];
 
@@ -202,6 +204,8 @@ export const PEOPLE: readonly Person[] = [
       "ptc_repayment",
       "hsa_over_limit",
       "medical_deduction",
+      "social_security_tax",
+      "irmaa_watch",
     ],
     firstQuestion: "employer_match",
   },
@@ -261,6 +265,8 @@ export const PEOPLE: readonly Person[] = [
       "vehicle_deduction",
       "inherited_ira",
       "ptc_repayment",
+      "social_security_tax",
+      "irmaa_watch",
     ],
     firstQuestion: "employer_match",
   },
@@ -310,6 +316,8 @@ export const PEOPLE: readonly Person[] = [
       "inherited_ira",
       "household_setup",
       "life_checklist",
+      "social_security_tax",
+      "irmaa_watch",
     ],
     firstQuestion: "filing_status",
   },
@@ -396,6 +404,7 @@ export const PEOPLE: readonly Person[] = [
       "charity_receipts",
       "inherited_ira",
       "household_setup",
+      "irmaa_watch",
     ],
     mustNot: [
       "education_529",
@@ -442,6 +451,7 @@ export const PEOPLE: readonly Person[] = [
       "charity_receipts",
       "medical_bills",
       "medical_deduction",
+      "social_security_tax",
     ],
     mustNot: [
       "renters_insurance",
@@ -476,6 +486,7 @@ export const PEOPLE: readonly Person[] = [
       "disability_insurance",
       "ptc_repayment",
       "hsa_over_limit",
+      "roth_conversion",
     ],
     firstQuestion: "age_band",
   },
@@ -537,6 +548,8 @@ export const PEOPLE: readonly Person[] = [
       "ptc_repayment",
       "hsa_over_limit",
       "medical_deduction",
+      "social_security_tax",
+      "irmaa_watch",
     ],
     firstQuestion: "hardship_reason",
   },

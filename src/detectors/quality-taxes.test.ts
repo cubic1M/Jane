@@ -22,6 +22,10 @@ const tax = (id: PersonId, change?: (d: ProfileInput) => ProfileInput) =>
 const topic = (id: PersonId, t: string, change?: (d: ProfileInput) => ProfileInput) =>
   tax(id, change).find((s) => s.topic === t)!;
 const inFebruary = (d: ProfileInput): ProfileInput => ({ ...d, today: "2027-02-10" });
+const noSocialSecurity = (d: ProfileInput): ProfileInput => ({
+  ...d,
+  transactions: d.transactions.filter((t) => !/SOC SEC/.test(t.description)),
+});
 const inDecember = (d: ProfileInput): ProfileInput => ({ ...d, today: "2026-12-05" });
 
 describe("dollars", () => {
@@ -69,7 +73,10 @@ describe("dollars", () => {
   });
 
   it("sizes a Roth conversion to a retiree's real bracket room, and doesn't tell her to convert what she must withdraw", () => {
-    const ruth = topic("retiree", "roth_conversion");
+    // Ruth's Social Security makes 85 cents of it taxable for each converted dollar (step 271),
+    // so at her income a conversion costs about what it saves: not raised. Without it, sized.
+    expect(tax("retiree").map((s) => s.topic)).not.toContain("roth_conversion");
+    const ruth = topic("retiree", "roth_conversion", noSocialSecurity);
     const dan = topic("preretire", "roth_conversion");
     expect(ruth.worthCents).toBeLessThan(dan.worthCents);
     expect(ruth.why).toMatch(/bracket now, with about \$[\d,.]+ of room before the next one/);
@@ -94,7 +101,8 @@ describe("confidence", () => {
       ["family", "property_tax_check", 45, /haven't seen your assessment/],
       ["equity", "withholding_gap", 70, /no vest schedule/],
       ["preretire", "roth_conversion", 55, /assumptions/],
-      ["retiree", "roth_conversion", 65, /I don't know your age/],
+      ["retiree", "social_security_tax", 55, /whether tax is already withheld/],
+      ["preretire", "irmaa_watch", 50, /I don't know your age/],
       ["renter", "year_end_moves", 50, /can't see what you've put in/],
     ];
     for (const [id, t, max, reason] of cases) {
