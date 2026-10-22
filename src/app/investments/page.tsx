@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { connection } from "next/server";
+import { after, connection } from "next/server";
 import { Suspense } from "react";
 import { AppHeader } from "@/components/app-header";
 import { BacktestsSection } from "@/components/backtests";
@@ -21,6 +21,7 @@ import { loadInvestments } from "@/lib/investments/holdings";
 import { profileOf } from "@/lib/investments/profile";
 import { profileSummary } from "@/planning/investor-profile";
 import { formatCents } from "@/lib/money";
+import { scanOnOpenQuietly } from "@/lib/practice/scan";
 import { requireUser } from "@/lib/session";
 
 // What the person owns (spec step 128): every investment and retirement account, what's in
@@ -86,6 +87,8 @@ function HoldingRow({ h }: { h: HoldingView }) {
 async function InvestmentsContent() {
   const user = await requireUser();
   await connection();
+  // Constant search (Phase AW): a cheap practice scan, after the page is sent.
+  after(() => scanOnOpenQuietly(user.id));
   const data = await loadInvestments(user.id);
   const [answers, simulated, level, investing, returns, crypto, backtests] = await Promise.all([
     profileOf(user.id),
@@ -269,6 +272,44 @@ async function InvestmentsContent() {
               The right account for each investment
             </Link>
             : bonds where interest isn&apos;t taxed, without changing your mix.
+          </p>
+          <p className="text-sm text-zinc-600 dark:text-zinc-400">
+            <Link href="/investments/plan-menu" className={LINK}>
+              Your workplace plan&apos;s funds
+            </Link>
+            : the cheapest mix of the funds your 401(k) offers.
+          </p>
+          <p className="text-sm text-zinc-600 dark:text-zinc-400">
+            <Link href="/investments/performance" className={LINK}>
+              How your money really did
+            </Link>
+            : 1, 3 and 5 years, after fees and taxes, against a simple mix with your risk.
+          </p>
+          <p className="text-sm text-zinc-600 dark:text-zinc-400">
+            <Link href="/investments/short-term" className={LINK}>
+              Short-term money
+            </Link>
+            : bills, CDs, I bonds and savings compared after tax, with a ladder that matures on
+            time.
+          </p>
+          <p className="text-sm text-zinc-600 dark:text-zinc-400">
+            <Link href="/investments/sudden-money" className={LINK}>
+              Sudden money
+            </Link>
+            : a bonus, an inheritance or a sale, with tax first and a plan in order.
+          </p>
+          <p className="text-sm text-zinc-600 dark:text-zinc-400">
+            <Link href="/investments/values" className={LINK}>
+              Investing by your values
+            </Link>
+            : leave out fossil fuels, weapons or tobacco, with the cost and diversification shown.
+          </p>
+          <p className="text-sm text-zinc-600 dark:text-zinc-400">
+            <Link href="/investments/family-file" className={LINK}>
+              The family looked after
+            </Link>
+            : who is named on each account, what a life change makes out of date, and a file to
+            share.
           </p>
           <p className="text-sm text-zinc-600 dark:text-zinc-400">
             <Link href="/investments/practice" className={LINK}>

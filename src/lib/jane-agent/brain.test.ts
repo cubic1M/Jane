@@ -546,3 +546,60 @@ describe("bundles", () => {
     expect(keys(again).filter((k) => k.startsWith("findings:"))).toEqual(["findings:s2"]);
   });
 });
+
+describe("taxes speak once a month unless it's urgent (spec step 273)", () => {
+  const taxes = {
+    key: "taxes",
+    gather: () =>
+      [40, 55, 85].map((priority) => ({
+        kind: "heads_up" as const,
+        body: `p${priority}`,
+        refs: {},
+        actions: [],
+        dedupeKey: `p${priority}`,
+        priority,
+      })),
+  };
+  const run = (thisMonth?: Record<string, number>) =>
+    keys(
+      plan(snapshot(), { ...NONE, thisMonth }, MORNING, {
+        ...SYNC,
+        sources: [taxes],
+        sourceLimits: { taxes: 5 },
+      }),
+    );
+
+  it("posts the most important one that isn't urgent, and whatever is urgent", () => {
+    expect(run({ taxes: 0 })).toEqual(["taxes:p85", "taxes:p55"]);
+  });
+
+  it("posts only what's urgent once this month's one is out", () => {
+    expect(run({ taxes: 1 })).toEqual(["taxes:p85"]);
+  });
+
+  it("still asks a question the person answers to keep their figures right", () => {
+    const asking = {
+      key: "taxes",
+      gather: () => [
+        {
+          kind: "decision" as const,
+          body: "Add it?",
+          refs: { incomeKind: "self_employed" },
+          actions: [],
+          dedupeKey: "income",
+          priority: 36,
+        },
+      ],
+    };
+    const out = plan(snapshot(), { ...NONE, thisMonth: { taxes: 1 } }, MORNING, {
+      ...SYNC,
+      sources: [asking],
+      sourceLimits: { taxes: 5 },
+    });
+    expect(keys(out)).toEqual(["taxes:income"]);
+  });
+
+  it("doesn't limit when the month isn't counted", () => {
+    expect(run()).toEqual(["taxes:p85", "taxes:p55", "taxes:p40"]);
+  });
+});

@@ -175,6 +175,32 @@ async function TaxesContent() {
         </Link>
       </section>
 
+      <section aria-labelledby="draft-heading" id="draft" className={CARD}>
+        <h2 id="draft-heading" className="text-xl font-semibold">
+          Your draft return, checked before you file
+        </h2>
+        <p className="text-sm text-zinc-600 dark:text-zinc-400">
+          Upload the draft from your software or accountant and Jane checks every line against your
+          forms and accounts. She never files it.
+        </p>
+        <Link href="/taxes/draft" className={LINK}>
+          Check my draft return
+        </Link>
+      </section>
+
+      <section aria-labelledby="health-heading" id="health" className={CARD}>
+        <h2 id="health-heading" className="text-xl font-semibold">
+          Health insurance and taxes
+        </h2>
+        <p className="text-sm text-zinc-600 dark:text-zinc-400">
+          A Marketplace credit checked against your income, HSA deposits against the limit, and
+          medical costs against the 7.5% floor.
+        </p>
+        <Link href="/taxes/health" className={LINK}>
+          See the tax side of my health cover
+        </Link>
+      </section>
+
       <section aria-labelledby="identity-heading" id="identity" className={CARD}>
         <h2 id="identity-heading" className="text-xl font-semibold">
           Your tax identity

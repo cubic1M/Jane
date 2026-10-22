@@ -321,6 +321,7 @@ export const DEMO_PRICING = {
     perVehicle: 110_000,
     // By injury liability per person: at least this much → this factor.
     liabilityLevels: [
+      { atLeastCents: 25_000_000, factor: 1.3 },
       { atLeastCents: 10_000_000, factor: 1.15 },
       { atLeastCents: 5_000_000, factor: 1 },
       { atLeastCents: 0, factor: 0.9 },

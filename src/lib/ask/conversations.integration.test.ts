@@ -5,18 +5,14 @@ import { PrismaClient } from "@/generated/prisma/client";
 vi.mock("@/lib/session", () => ({ requireUser: vi.fn() }));
 
 import { deleteAllData } from "@/lib/account-deletion";
-import {
-  ConversationMissingError,
-  deleteConversation,
-  historyFor,
-  saveExchange,
-} from "./conversations";
+import { deleteConversation } from "./conversations";
 
 vi.mock("@/lib/audit", () => ({ logAudit: vi.fn() }));
 
 // Runs against a real, migrated Postgres (see src/detection/engine.integration.test.ts).
 const url = process.env.TEST_DATABASE_URL;
 
+// Earlier Ask Jane conversations, kept to read and delete (docs/feature-audit.md, cluster 5).
 describe.runIf(url)("Ask Jane conversations against a real database", () => {
   let client: PrismaClient;
   const users: string[] = [];
@@ -28,6 +24,18 @@ describe.runIf(url)("Ask Jane conversations against a real database", () => {
     return user.id;
   };
 
+  // A conversation from before the chat answered everything.
+  const conversation = async (userId: string) => {
+    const { id } = await client.askConversation.create({ data: { userId, title: "Food?" } });
+    await client.askMessage.createMany({
+      data: [
+        { userId, conversationId: id, role: "user", content: "Food?" },
+        { userId, conversationId: id, role: "assistant", content: "$12.00" },
+      ],
+    });
+    return id;
+  };
+
   beforeAll(() => {
     client = new PrismaClient({ adapter: new PrismaPg({ connectionString: url }) });
   });
@@ -36,45 +44,19 @@ describe.runIf(url)("Ask Jane conversations against a real database", () => {
     await client.$disconnect();
   });
 
-  it("keeps each person's conversations to themselves", async () => {
+  it("lets only the person delete their own", async () => {
     const me = await person();
     const other = await person();
-    const id = await saveExchange(
-      me,
-      null,
-      "Food?",
-      { kind: "answer", text: "$12.00" },
-      { client },
-    );
-
-    expect(await historyFor(me, id, { client })).toEqual([
-      { role: "user", content: "Food?" },
-      { role: "assistant", content: "$12.00" },
-    ]);
-    await expect(historyFor(other, id, { client })).rejects.toBeInstanceOf(
-      ConversationMissingError,
-    );
+    const id = await conversation(me);
     expect(await deleteConversation(other, id, { client })).toBe(false);
+    expect(await client.askMessage.count({ where: { conversationId: id } })).toBe(2);
     expect(await deleteConversation(me, id, { client })).toBe(true);
     expect(await client.askMessage.count({ where: { conversationId: id } })).toBe(0);
   });
 
-  it("marks a blocked answer as blocked", async () => {
-    const me = await person();
-    const id = await saveExchange(
-      me,
-      null,
-      "Food?",
-      { kind: "blocked", text: "Sorry", issues: ["unsupported_dollar_figure"] },
-      { client },
-    );
-    const messages = await client.askMessage.findMany({ where: { conversationId: id } });
-    expect(messages.find((m) => m.role === "assistant")?.blocked).toBe(true);
-  });
-
   it("removes every conversation on Delete all my data", async () => {
     const me = await person();
-    await saveExchange(me, null, "Food?", { kind: "answer", text: "Hi" }, { client });
+    await conversation(me);
 
     await deleteAllData(me, { client, api: {} as never });
 
