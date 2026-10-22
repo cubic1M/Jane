@@ -62,6 +62,8 @@ export function suggestedAmount(paycheckCents: number): number {
 export function contributionBuys(
   amountCents: number,
   riskLevel: RiskLevel,
+  // Spec step 236: the funds bought for each kind (screened when the person listed values).
+  funds: Readonly<Record<"us_stocks" | "intl_stocks" | "bonds" | "cash", string>> = CORE_FUNDS,
 ): { ticker: string; amountCents: number }[] {
   const mix = TARGET_MIXES[riskLevel];
   const parts = (["us_stocks", "intl_stocks", "bonds"] as const).filter((c) => mix[c] > 0);
@@ -70,6 +72,6 @@ export function contributionBuys(
   return parts.map((c, i) => {
     const amount = i === parts.length - 1 ? left : Math.round((amountCents * mix[c]) / invested);
     left -= amount;
-    return { ticker: CORE_FUNDS[c], amountCents: amount };
+    return { ticker: funds[c], amountCents: amount };
   });
 }
