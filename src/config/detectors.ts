@@ -131,6 +131,9 @@ export const DETECTOR_RATES = {
     cardCover: 55,
     employerBenefits: 60,
     documents: 75,
+    disabilityGap: 65,
+    liabilityLevels: 85,
+    deductibleFit: 60,
   },
   // Umbrella cover matters when assets pass this (src/config/insurance.ts UMBRELLA_ASSETS_CENTS).
   umbrellaAssetsCents: 50_000_000,

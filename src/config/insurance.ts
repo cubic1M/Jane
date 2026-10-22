@@ -829,3 +829,19 @@ export const LIABILITY_LEVELS = {
   },
 } as const;
 export const HIGHER_LIABILITY_NET_WORTH_CENTS = 25_000_000;
+
+// --- Perfect coverage: options to pick from (spec step 275) ---------------------------------
+// Disability options are a share of monthly pay: a cheaper one, the need, a better one.
+export const DISABILITY_OPTION_SHARES = [0.5, 0.6, 0.7] as const;
+// Life options: the cheaper one covers this share of the need; the longer one adds this many
+// years of term.
+export const LIFE_OPTION_CHEAPER_SHARE = 0.75;
+export const LIFE_OPTION_LONGER_YEARS = 10;
+// Most options shown for one need.
+export const MAX_OPTIONS = 4;
+// Jane's pick can't be surer than a sample price from the stand-in allows.
+export const OPTION_PICK_CAP = 80;
+
+// The most a liability-limits gap counts for when suggestions are ranked: the chance is small
+// and the gap can be huge for a rich person, so the size alone must not put it first.
+export const LIABILITY_WORTH_CAP_CENTS = 5_000_000;

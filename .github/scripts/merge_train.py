@@ -1,10 +1,11 @@
 """A small merge queue for this repo, run by .github/workflows/merge-train.yml.
 
 Main requires branches to be up to date, and user-owned repos can't use GitHub's merge
-queue. So every run: if an auto-merge PR is already up to date (testing, or passed and
-about to merge), leave it be; otherwise bring the next auto-merge PR that is BEHIND up to
-date and start CI on it. Pushes made with the workflow token start no workflows, which is
-why CI is dispatched by hand. GitHub's auto-merge does the merging itself.
+queue. So every run: land an auto-merge PR that passed but whose auto-merge never fired; if
+one is up to date and still testing, leave it be; otherwise bring the next auto-merge PR that
+is BEHIND up to date and start CI on it. Pushes and merges made with the workflow token start
+no workflows, which is why CI is dispatched by hand. Usually GitHub's auto-merge does the
+merging itself.
 
 Order: the PR numbers in the MERGE_PRIORITY repo variable (comma separated) first, then
 the oldest. Drafts, PRs without auto-merge, PRs with conflicts and PRs whose required
@@ -64,6 +65,19 @@ def main():
         p for p in queued
         if p["mergeStateStatus"] in UP_TO_DATE and required_state(p) != "failure"
     ]
+    # Passed and mergeable, but GitHub's auto-merge sometimes never fires: land it here. A merge
+    # made with the workflow token starts no workflows, so main's CI is started by hand.
+    for p in in_flight:
+        if p["mergeStateStatus"] in {"CLEAN", "HAS_HOOKS"} and required_state(p) == "success":
+            try:
+                gh("pr", "merge", str(p["number"]), "--squash")
+            except subprocess.CalledProcessError as e:
+                print(f"could not merge #{p['number']}: {e.stderr.strip()}")
+                continue
+            print(f"merged #{p['number']} (passed; auto-merge had not fired)")
+            gh("workflow", "run", "ci.yml", "--ref", "main")
+            return
+
     if in_flight:
         for p in in_flight:
             # Brought up to date by an earlier run whose CI never started: start it now.
