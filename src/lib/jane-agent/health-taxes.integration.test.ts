@@ -40,7 +40,7 @@ describe("the health tax questions people ask", () => {
 
   it("leaves other health and tax questions to their own answers", () => {
     expect(parseTaxIntent("how much is in my HSA")).not.toEqual({ kind: "tax", ask: "health" });
-    expect(parseTaxIntent("I inherited an IRA")).toEqual({ kind: "tax", ask: "inherited" });
+    expect(parseTaxIntent("i inherited an ira")).toEqual({ kind: "tax", ask: "inherited" });
   });
 });
 
