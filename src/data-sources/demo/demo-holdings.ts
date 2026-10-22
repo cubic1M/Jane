@@ -1,6 +1,7 @@
 import type { Holding, InvestmentTransaction, Security } from "plaid";
 import { accountId, addDays, demoAccounts, type DemoExtra, type DemoSeed } from "./demo-bank";
 import { isPersonSeed, personPositions } from "./demo-people";
+import { SAMPLE_EMPLOYER_PLANS, paydayContribution } from "./demo-employer-plans";
 import { demoPrice } from "./demo-prices";
 
 // What the demo bank's investment accounts hold (spec step 128), shaped like Plaid
@@ -555,7 +556,7 @@ export function demoInvestmentTransactions(
   end: string,
   extras: readonly DemoExtra[] = [],
 ): InvestmentTransaction[] {
-  if (isPersonSeed(demo)) return [];
+  if (isPersonSeed(demo)) return personContributions(demo, start, end);
   return days(start, end).flatMap((day) =>
     eventsOn(day, demo.anchor, extras).map(
       (e): InvestmentTransaction =>
@@ -576,6 +577,44 @@ export function demoInvestmentTransactions(
         }) as InvestmentTransaction,
     ),
   );
+}
+
+// A sample person's 401(k) contributions each payday (the 1st and 15th), from their plan
+// (./demo-employer-plans.ts): theirs and the employer's match. Cash in only: their holdings are
+// what their definition says.
+function personContributions(demo: DemoSeed, start: string, end: string): InvestmentTransaction[] {
+  const plan = SAMPLE_EMPLOYER_PLANS[demo.person as keyof typeof SAMPLE_EMPLOYER_PLANS];
+  if (!plan) return [];
+  const { employee, match } = paydayContribution(plan);
+  return days(start, end)
+    .filter((day) => day.endsWith("-01") || day.endsWith("-15"))
+    .flatMap((day) =>
+      (
+        [
+          ["contribution", "EMPLOYEE CONTRIBUTION", employee],
+          ["match", "EMPLOYER MATCH", match],
+        ] as const
+      )
+        .filter(([, , amount]) => amount > 0)
+        .map(
+          ([key, name, amount]): InvestmentTransaction =>
+            ({
+              investment_transaction_id: `demo-${demo.seed}-inv-${key}-${day}`,
+              account_id: accountId(demo.seed, "retirement"),
+              security_id: null,
+              date: day,
+              name,
+              quantity: 0,
+              amount: -amount,
+              price: 0,
+              fees: null,
+              type: "cash",
+              subtype: "contribution",
+              iso_currency_code: "USD",
+              unofficial_currency_code: null,
+            }) as InvestmentTransaction,
+        ),
+    );
 }
 
 // A simulated order the person placed through the stand-in brokerage (spec step 133),

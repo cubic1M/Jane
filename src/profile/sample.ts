@@ -1,5 +1,7 @@
 import { demoAccounts, demoLiabilities, demoTransactions } from "@/data-sources/demo/demo-bank";
+import { SAMPLE_EMPLOYER_PLANS, paydayContribution } from "@/data-sources/demo/demo-employer-plans";
 import { demoHoldings } from "@/data-sources/demo/demo-holdings";
+import { matchPaceGap } from "@/planning/retirement-accounts";
 import type { NeedPolicy } from "@/lib/insurance/need/types";
 import type { ProfileInput } from "./build";
 
@@ -43,6 +45,21 @@ const SAMPLE_POLICIES: Readonly<Record<string, readonly NeedPolicy[]>> = {
   ],
   retiree: [house("retiree-home", 30_000_000, 100_000)],
 };
+
+// The match left on the table at this year's pace (spec step 266), from the person's plan and
+// what they put in so far this year, as the live loader works it out (loadMatchPace). Absent
+// for people without an employer 401(k).
+function matchPaceOf(person: string) {
+  const plan = SAMPLE_EMPLOYER_PLANS[person as keyof typeof SAMPLE_EMPLOYER_PLANS];
+  if (!plan) return undefined;
+  const [, m, d] = SAMPLE_TODAY.split("-").map(Number);
+  const paydays = (m - 1) * 2 + (d >= 15 ? 2 : 1);
+  const ytd = Math.round(paydayContribution(plan).employee * 100) * paydays;
+  return {
+    ...matchPaceGap(plan, ytd, new Date(`${SAMPLE_TODAY}T00:00:00Z`)),
+    payCents: plan.payCents,
+  };
+}
 
 export function inputFor(person: string, told: ProfileInput["told"] = {}): ProfileInput {
   const demo = { seed: `seed${person}`, anchor: SAMPLE_ANCHOR, person };

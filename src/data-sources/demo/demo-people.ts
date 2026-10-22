@@ -1235,8 +1235,10 @@ const DEFS: Record<PersonId, Def> = {
 // editing this file together: one file per lane in ./people-extras, each a map from person id
 // to extra recurring charges, one-offs, accounts, cards and holdings, merged here. Keys
 // (transaction keys, account keys) must be unique across all files.
+// A lane's additions to a sample person. `student` gives a student loan the lane added its
+// terms (spec step 266: without them the debt tools can't see a loan the detectors count).
 export type PersonExtra = Partial<
-  Pick<Def, "accounts" | "monthly" | "once" | "cards" | "positions">
+  Pick<Def, "accounts" | "monthly" | "once" | "cards" | "positions" | "student">
 >;
 
 const merged = (id: PersonId): Def => {
@@ -1249,6 +1251,7 @@ const merged = (id: PersonId): Def => {
     once: [...base.once, ...extras.flatMap((e) => e.once ?? [])],
     cards: [...base.cards, ...extras.flatMap((e) => e.cards ?? [])],
     positions: [...base.positions, ...extras.flatMap((e) => e.positions ?? [])],
+    student: base.student ?? extras.find((e) => e.student)?.student,
   };
 };
 
