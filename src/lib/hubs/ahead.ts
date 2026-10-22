@@ -1,14 +1,13 @@
 import { HUB_DEADLINE_DAYS } from "@/config/hubs";
 import { LIFE_EVENTS } from "@/config/life-events";
 import { PLANNER_LEFT_OUT_SUBTYPES } from "@/config/planning";
-import { loadDetectionInput } from "@/detection/engine";
 import type { PrismaClient } from "@/generated/prisma/client";
 import { previousMonth } from "@/insights/check-in";
 import { dueIn, type Deadline } from "@/insights/deadlines";
 import { irregularCosts } from "@/insights/irregular";
 import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
-import { listDeadlines } from "@/lib/deadlines";
+import { loadComingUp } from "@/lib/coming-up";
 import { listLifeEvents } from "@/lib/life-events";
 import { formatCents } from "@/lib/money";
 import { taxYearFrom } from "@/planning/tax-pack";
@@ -160,9 +159,9 @@ export async function loadAheadHub(
 ): Promise<AheadData> {
   const db = scopedFor(userId, client);
   const asOf = now.toISOString().slice(0, 10);
-  const [input, deadlines, debts, events] = await Promise.all([
-    loadDetectionInput(userId, { client, now }),
-    listDeadlines(userId, { client, now }),
+  const [{ input, deadlines }, debts, events] = await Promise.all([
+    // Bills and deadlines from the one coming-up source (src/lib/coming-up.ts).
+    loadComingUp(userId, { client, now, days: HUB_DEADLINE_DAYS }),
     // The same cards and loans as the debt planner.
     db.accounts.findMany({
       where: {
