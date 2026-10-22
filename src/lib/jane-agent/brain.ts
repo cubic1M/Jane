@@ -1,6 +1,7 @@
 import {
   CHAT_DAILY_LIMIT,
   CHAT_SOURCE_LIMITS,
+  CHAT_SOURCE_MONTHLY_LIMITS,
   CHAT_UNCAPPED_SOURCES,
   QUIET_END_HOUR,
   QUIET_START_HOUR,
@@ -42,6 +43,9 @@ export type History = {
   // Spec step 83: messages the person said "Not now" to, and until when. Never posted again
   // before then; after, Jane may bring them up again (if they still apply).
   snoozed?: readonly { dedupeKey: string; until: Date }[];
+  // Spec step 273: how many messages each monthly-limited source (CHAT_SOURCE_MONTHLY_LIMITS)
+  // posted this calendar month. Absent: not counted, so not limited.
+  thisMonth?: Readonly<Record<string, number>>;
 };
 
 // hidden (spec step 92): stands behind a bundle; posted so it's never posted again on its
@@ -117,12 +121,31 @@ export function plan(
   // the hour they usually answer (never more than a day).
   const stopped = new Set((snapshot.attention?.stopped ?? []).map((s) => s.source));
   const clock = { now, timezone, trigger: settings.trigger };
+  // Spec step 273: a monthly-limited source (taxes) says at most its limit a month, the most
+  // important first, unless a message is urgent.
+  const monthLeft = new Map(
+    Object.entries(CHAT_SOURCE_MONTHLY_LIMITS).map(([source, l]) => [
+      source,
+      history.thisMonth ? l.limit - (history.thisMonth[source] ?? 0) : Number.POSITIVE_INFINITY,
+    ]),
+  );
+  const withinMonth = (c: PlannedMessage) => {
+    const l = CHAT_SOURCE_MONTHLY_LIMITS[c.source];
+    if (!l || c.priority >= l.urgentFrom) return true;
+    const refs = c.refs as Record<string, unknown>;
+    if (l.questionRefs.some((key) => refs[key] !== undefined)) return true;
+    const left = monthLeft.get(c.source) ?? 0;
+    if (left <= 0) return false;
+    monthLeft.set(c.source, left - 1);
+    return true;
+  };
   const fresh = candidates.filter(
     (c) =>
       !seen.has(c.dedupeKey) &&
       !never.has(`message:${c.dedupeKey}`) &&
       !stopped.has(c.source) &&
-      !holds(snapshot.attention, c.source, clock),
+      !holds(snapshot.attention, c.source, clock) &&
+      withinMonth(c),
   );
   // Spec step 184: the brief is the day's agenda. Everything less urgent waits for it and
   // goes in as a line, posted hidden behind it; until the next agenda, only urgent things
@@ -134,7 +157,13 @@ export function plan(
     const out: PlannedMessage[] = [];
     for (const [index, candidate] of now_.entries()) {
       if (index === at) {
-        const { agenda, folded } = agendaOf(candidate, held, snapshot, localTime(now, timezone));
+        const { agenda, folded } = agendaOf(
+          candidate,
+          held,
+          snapshot,
+          localTime(now, timezone),
+          now,
+        );
         out.push(agenda, ...folded.map((f) => ({ ...f, hidden: true })));
       } else {
         out.push(candidate);

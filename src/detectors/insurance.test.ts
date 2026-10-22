@@ -42,6 +42,9 @@ describe("the insurance detectors", () => {
     ["preretire", "employer_benefits"],
     ["retiree", "policy_documents"],
     ["freelancer", "auto_insurance"],
+    ["family", "fsa_deadline"],
+    ["family", "deductible_met"],
+    ["family", "medical_bill_dispute"],
   ] as const)("reaches %s with %s", (person, topic) => {
     const [s] = firedFor(person, topic);
     expect(s, `${person} ${topic}`).toBeDefined();
@@ -71,6 +74,9 @@ describe("the insurance detectors", () => {
     ["retiree", "employer_benefits"],
     ["freelancer", "employer_benefits"],
     ["family", "policy_documents"],
+    ["renter", "fsa_deadline"],
+    ["retiree", "deductible_met"],
+    ["freelancer", "medical_bill_dispute"],
   ] as const)("does not reach %s with %s", (person, topic) => {
     expect(firedFor(person, topic)).toEqual([]);
   });
@@ -229,5 +235,58 @@ describe("how sure Jane is", () => {
     expect(owner.required).toBe(true);
     expect(firedFor("freelancer", "auto_insurance")[0].required).toBe(true);
     expect(firedFor("renter", "renters_insurance")[0].required).toBeUndefined();
+  });
+});
+
+describe("the umbrella suggestion follows the need calculator (insurance QA pass)", () => {
+  it("is not offered on gross balances when the net worth after debts is under the line", () => {
+    // The sample family has $108k in the bank and investments, a home and a $338k mortgage.
+    const data = inputFor("family");
+    const profile = buildProfile(data);
+    const umbrella = INSURANCE_DETECTORS.find((d) => d.topic === "umbrella")!;
+    expect(umbrella.detect({ profile, data })).toBeNull();
+  });
+  it("counts the home: the retiree's net worth is over the line, and the figure is the need's", () => {
+    const data = inputFor("retiree");
+    const profile = buildProfile(data);
+    const umbrella = INSURANCE_DETECTORS.find((d) => d.topic === "umbrella")!;
+    const s = umbrella.detect({ profile, data });
+    expect(s?.short).toContain("$856,994.00");
+    expect(s?.why).toContain("what you own less what you owe");
+  });
+});
+
+describe("the health year, unasked", () => {
+  it("says the FSA money left and its date, with urgency rising toward it", () => {
+    const [s] = firedFor("family", "fsa_deadline");
+    expect(s.why).toMatch(/\$2,400\.00 for your FSA/);
+    expect(s.why).toMatch(/lost after Dec 31 \(75 days\)/);
+    // 75 days away: later; inside 60 it is soon, inside 30 now.
+    expect(s.urgency).toBe("later");
+    expect(s.confidence.percent).toBeLessThanOrEqual(70);
+    expect(s.confidence.reason).toMatch(/can't see your FSA claims/);
+  });
+
+  it("raises a bill above the plan's share for the team, not for an in-network provider's due", () => {
+    const [s] = firedFor("family", "medical_bill_dispute");
+    expect(s.why).toMatch(/Bayview Imaging Center billed \$2,100\.00/);
+    expect(s.worthCents).toBeGreaterThan(10_000);
+  });
+
+  it("says planned care is cheaper once the deductible is met, in the last months only", () => {
+    const [s] = firedFor("family", "deductible_met");
+    expect(s.why).toMatch(/paid your whole \$1,500\.00 deductible/);
+    const data = { ...inputFor("family"), today: "2026-08-17" };
+    const d = INSURANCE_DETECTORS.find((x) => x.topic === "deductible_met")!;
+    expect(d.detect({ profile: buildProfile(data), data })).toBeNull();
+  });
+
+  it("says nothing without the plan's terms", () => {
+    const data = { ...inputFor("family"), healthPlan: null, fsaElectionCents: null };
+    const profile = buildProfile(data);
+    for (const topic of ["fsa_deadline", "deductible_met", "medical_bill_dispute"]) {
+      const d = INSURANCE_DETECTORS.find((x) => x.topic === topic)!;
+      expect(d.detect({ profile, data }), topic).toBeNull();
+    }
   });
 });

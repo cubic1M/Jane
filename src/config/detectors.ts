@@ -87,8 +87,6 @@ export const DETECTOR_RATES = {
   beneficiaryRiskShare: 0.03,
   // Late fees: one is enough to mention.
   lateFeesMin: 1,
-  // Payday and cash-advance loans: fees are about this share of what's repaid.
-  paydayFeeShare: 0.25,
   // Income that moves around by this much month to month is worth smoothing.
   smoothingMinMonthlySwingShare: 0.3,
   // Life events (step 264): looked back this many days for a new job or a new child, and
@@ -129,6 +127,9 @@ export const DETECTOR_RATES = {
     disabilityGap: 65,
     liabilityLevels: 85,
     deductibleFit: 60,
+    fsaDeadline: 70,
+    deductibleMet: 60,
+    billDispute: 65,
   },
   // Umbrella cover matters when assets pass this (src/config/insurance.ts UMBRELLA_ASSETS_CENTS).
   umbrellaAssetsCents: 50_000_000,
@@ -209,6 +210,13 @@ export const DETECTOR_RATES = {
     // weeks before it, otherwise it takes effect next year.
     sCorpElectionBy: "03-15",
     sCorpElectionFrom: "01-01",
+    // Marketplace plans (step 269): premiums seen at least this many times this year; from which
+    // month a rise in income is worth acting on soon, and now; a family counted as two adults
+    // and this many children when the household is all Jane knows.
+    marketplacePaymentsMin: 3,
+    ptcSoonFromMonth: 7,
+    ptcNowFromMonth: 10,
+    familyChildren: 2,
     // Estimated payments: urgency by days to the next due date.
     estimatedNowDays: 14,
     estimatedSoonDays: 45,
@@ -226,6 +234,14 @@ export const DETECTOR_RATES = {
   // An employer usually pays this share of a plan's premium, so a private one costs that
   // much more than the work plan (stated as "up to").
   employerPlanShare: 0.5,
+  // Health year (spec step 259): planned care that waits for the deductible to reset costs
+  // the whole deductible again in January; a typical planned visit or procedure, and the
+  // months at the end of the year when it is worth saying so.
+  plannedCareCents: 50_000,
+  deductibleMetFromMonth: 10,
+  // Urgency of the FSA deadline: now inside this many days, soon inside the next.
+  fsaNowDays: 30,
+  fsaSoonDays: 60,
   // Urgency scores: now, soon, later.
   urgency: { now: 3, soon: 2, later: 1 },
 } as const;

@@ -123,6 +123,16 @@ export function paydayDays(prefs: readonly Preference[]): number[] | null {
   return valid.length > 0 ? [...valid].sort((a, b) => a - b) : null;
 }
 
+// Spec step 239: what they said they earn a month ("that's wrong" on an income figure), in
+// cents, or null. Every sector that works from income reads this instead of the average.
+export function incomeOverride(prefs: readonly Preference[]): number | null {
+  const fact = prefs.find((p) => p.kind === "fact" && p.key === "income");
+  const cents = fact?.value.monthlyCents;
+  return typeof cents === "number" && Number.isFinite(cents) && cents > 0
+    ? Math.round(cents)
+    : null;
+}
+
 // What they said they need or want to keep ("car", "netflix"): never suggested cutting.
 export const keeps = (prefs: readonly Preference[]) =>
   prefs.flatMap((p) =>

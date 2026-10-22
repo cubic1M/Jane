@@ -61,6 +61,30 @@ describe.runIf(url)("the money calendar against a real database", () => {
     await client.savingsGoal.create({
       data: { userId, name: "Trip", targetCents: 200_000, targetDate: day("2026-12-01") },
     });
+    // Deadlines (spec step 71) come from the same coming-up source as Today: one the person
+    // typed in, and a card payment the bank reports, on a card named after them.
+    await client.deadline.create({
+      data: { userId, title: "Return the jacket", dueOn: day("2026-10-28"), kind: "other" },
+    });
+    const card = await client.account.create({
+      data: {
+        userId,
+        source: "csv",
+        name: "Jordan's Secret Card",
+        mask: "4321",
+        type: "credit",
+        currentBalanceCents: 80_000,
+      },
+    });
+    await client.liability.create({
+      data: {
+        userId,
+        accountId: card.id,
+        kind: "credit",
+        minimumPaymentCents: 3_500,
+        nextPaymentDueDate: day("2026-10-26"),
+      },
+    });
   });
   afterAll(async () => {
     await client.user.deleteMany({ where: { id: userId } });
@@ -81,9 +105,20 @@ describe.runIf(url)("the money calendar against a real database", () => {
     );
   });
 
+  it("lists the deadlines Today shows, a card payment without its card's name", async () => {
+    const events = await calendarEvents(userId, { client, now: NOW });
+    expect(events.map((e) => [e.date, e.summary])).toEqual(
+      expect.arrayContaining([
+        ["2026-10-26", "Card or loan payment due, about $35.00"],
+        ["2026-10-28", "Return the jacket"],
+      ]),
+    );
+    expect(events.filter((e) => e.uid.startsWith("deadline-"))).toHaveLength(2);
+  });
+
   it("never puts account names or numbers in the feed", async () => {
     const feed = await calendarFeed(userId, { client, now: NOW });
-    expect(feed).not.toMatch(/Jordan|Secret Checking|9876/);
+    expect(feed).not.toMatch(/Jordan|Secret Checking|Secret Card|9876|4321/);
   });
 
   it("opens with the link, and an old link stops working once reset or turned off", async () => {
