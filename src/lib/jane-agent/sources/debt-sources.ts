@@ -7,6 +7,7 @@ import { bnplSource } from "./bnpl";
 import { cardInterestSource } from "./card-interest";
 import { creditGoalSource } from "./credit-goal";
 import { carLoanSource } from "./car-loan";
+import { costlyBorrowingSource } from "./costly-borrowing";
 import { debtReviewSource } from "./debt-review";
 import { debtTroubleSource } from "./debt-trouble";
 import { homeEquitySource } from "./home-equity";
@@ -49,4 +50,5 @@ export const DEBT_SOURCES: readonly MessageSource[] = [
   debtTroubleSource,
   debtReviewSource,
   carLoanSource,
+  costlyBorrowingSource,
 ];

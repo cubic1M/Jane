@@ -87,8 +87,6 @@ export const DETECTOR_RATES = {
   beneficiaryRiskShare: 0.03,
   // Late fees: one is enough to mention.
   lateFeesMin: 1,
-  // Payday and cash-advance loans: fees are about this share of what's repaid.
-  paydayFeeShare: 0.25,
   // Income that moves around by this much month to month is worth smoothing.
   smoothingMinMonthlySwingShare: 0.3,
   // Life events (step 264): looked back this many days for a new job or a new child, and

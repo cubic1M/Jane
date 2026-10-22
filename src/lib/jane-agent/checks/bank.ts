@@ -2074,6 +2074,19 @@ const BASE_QUESTIONS: readonly CheckQuestion[] = [
       maxChars: 1_000,
     },
   },
+  // Spec step 247: out of costly short-term borrowing.
+  {
+    id: "debt-36",
+    text: "how much have payday loans and cash advances cost me",
+    needs: "rules",
+    expect: {
+      intent: "costly_borrowing",
+      mentions: /payday/i,
+      link: "/loans/costly",
+      list: true,
+      maxChars: 2_600,
+    },
+  },
   // Spec step 246: recast, refinance or pay extra.
   {
     id: "debt-35",
