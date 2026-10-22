@@ -95,6 +95,7 @@ const SIGNED_IN = [
   "/taxes/tags",
   "/taxes/self-employed",
   "/taxes/file",
+  "/taxes/draft",
   "/settings/team-access",
   "/jane",
   "/money",
