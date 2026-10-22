@@ -224,6 +224,12 @@ export const MESSAGE_PRIORITY = {
   yearly_review: 43,
   // Spec step 231: the right investment in the right account (demo advice).
   location: 34,
+  // Spec step 232: the plan's fund list to confirm, and its cheapest mix (demo advice).
+  plan_menu: 35,
+  // Spec step 234: short-term money placed safely (demo advice).
+  short_term: 36,
+  // Spec step 235: a large deposit that isn't pay comes up high, with its question.
+  sudden_money: 52,
   // Spec step 164: the month's summary of what Jane did by herself in investing.
   investing_summary: 40,
   auto_invest_run: 31,
