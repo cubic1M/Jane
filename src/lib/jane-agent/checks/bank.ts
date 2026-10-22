@@ -1693,6 +1693,18 @@ const BASE_QUESTIONS: readonly CheckQuestion[] = [
     expect: { intent: "tax", mentions: /disaster|county/ },
   },
   {
+    id: "tax-37",
+    text: "is my social security taxed",
+    needs: "rules",
+    expect: { intent: "tax", mentions: /Social Security/, list: true },
+  },
+  {
+    id: "tax-38",
+    text: "what is irmaa",
+    needs: "rules",
+    expect: { intent: "tax", mentions: /Medicare/, list: true },
+  },
+  {
     id: "ins-1",
     text: "what insurance do I have",
     needs: "rules",
