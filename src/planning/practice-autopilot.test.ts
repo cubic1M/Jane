@@ -1,0 +1,113 @@
+import { describe, expect, it } from "vitest";
+import { AUTOPILOT_LIMITS, MODEL_PORTFOLIOS, PRACTICE_ETFS } from "@/config/portfolios";
+import { apply, type LedgerState } from "./practice-ledger";
+import { planTrades, portfolioValue, violates } from "./practice-autopilot";
+
+const PRICES = { VTI: 30_000, VXUS: 6_000, BND: 8_000, BIL: 9_150, TSLA: 20_000 };
+const UNIVERSE = new Set(["VTI", "VXUS", "BND", "BIL", "TSLA"]);
+const empty = (cash: number): LedgerState => ({ cashCents: cash, positions: {} });
+
+function run(level: 1 | 2 | 3 | 4 | 5, state: LedgerState, paused = false) {
+  const trades = planTrades({ level, state, prices: PRICES, paused, tradesToday: 0 });
+  let s = state;
+  for (const t of trades) {
+    s = apply(
+      s,
+      {
+        side: t.side,
+        ticker: t.ticker,
+        amountCents: t.amountCents,
+        priceCents: PRICES[t.ticker as keyof typeof PRICES],
+      },
+      UNIVERSE,
+    ).state;
+  }
+  return { trades, state: s };
+}
+
+describe("autopilot for the practice portfolio", () => {
+  it("buys the model for each level out of cash, with a reason and a rule on every trade", () => {
+    for (const level of [1, 2, 3, 4, 5] as const) {
+      const { trades, state } = run(level, empty(1_000_000));
+      expect(trades.length).toBeGreaterThan(0);
+      expect(trades.every((t) => t.reason.length > 20 && t.rule === "model_buy")).toBe(true);
+      const total = portfolioValue(state, PRICES);
+      for (const c of Object.keys(PRACTICE_ETFS) as (keyof typeof PRACTICE_ETFS)[]) {
+        const share =
+          ((state.positions[PRACTICE_ETFS[c].ticker]?.quantity ?? 0) *
+            PRICES[PRACTICE_ETFS[c].ticker as keyof typeof PRICES]) /
+          total;
+        expect(Math.abs(share - MODEL_PORTFOLIOS[level].weights[c])).toBeLessThan(0.02);
+      }
+    }
+  });
+
+  it("does nothing when paused", () => {
+    expect(run(3, empty(1_000_000), true).trades).toEqual([]);
+  });
+
+  it("does nothing once on target, and rebalances only past the band", () => {
+    const { state } = run(3, empty(1_000_000));
+    expect(planTrades({ level: 3, state, prices: PRICES, paused: false, tradesToday: 0 })).toEqual(
+      [],
+    );
+    // US stocks rise 30%: well past the band.
+    const up = { ...PRICES, VTI: 39_000 };
+    const trades = planTrades({ level: 3, state, prices: up, paused: false, tradesToday: 0 });
+    expect(
+      trades.some((t) => t.side === "sell" && t.ticker === "VTI" && t.rule === "rebalance"),
+    ).toBe(true);
+    // A 2% wiggle does nothing.
+    expect(
+      planTrades({
+        level: 3,
+        state,
+        prices: { ...PRICES, VTI: 30_600 },
+        paused: false,
+        tradesToday: 0,
+      }),
+    ).toEqual([]);
+  });
+
+  it("adds new cash to what is under target, never borrowing", () => {
+    const { state } = run(2, empty(1_000_000));
+    const more = { ...state, cashCents: state.cashCents + 100_000 };
+    const trades = planTrades({
+      level: 2,
+      state: more,
+      prices: PRICES,
+      paused: false,
+      tradesToday: 0,
+    });
+    expect(trades.every((t) => t.side === "buy")).toBe(true);
+    expect(trades.reduce((s, t) => s + t.amountCents, 0)).toBeLessThanOrEqual(more.cashCents);
+  });
+
+  it("holds every order to the hard limits", () => {
+    const rich = empty(10_000_000);
+    expect(
+      violates({ ticker: "VTI", side: "buy", amountCents: 8_000_000 }, rich, PRICES, 0),
+    ).toMatch(/per-trade/);
+    expect(
+      violates({ ticker: "VTI", side: "buy", amountCents: 10_000_001 }, rich, PRICES, 0),
+    ).not.toBeNull();
+    expect(
+      violates(
+        { ticker: "VTI", side: "buy", amountCents: 100_000 },
+        rich,
+        PRICES,
+        AUTOPILOT_LIMITS.tradesPerDay,
+      ),
+    ).toMatch(/trades today/);
+    // A single company's stock may be at most 3% of the portfolio.
+    expect(
+      violates({ ticker: "TSLA", side: "buy", amountCents: 400_000 }, rich, PRICES, 0),
+    ).toMatch(/per-position/);
+    expect(
+      violates({ ticker: "TSLA", side: "buy", amountCents: 200_000 }, rich, PRICES, 0),
+    ).toBeNull();
+    expect(
+      violates({ ticker: "VTI", side: "buy", amountCents: 100_000 }, empty(50_000), PRICES, 0),
+    ).toMatch(/borrow/);
+  });
+});
