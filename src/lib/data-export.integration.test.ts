@@ -156,6 +156,23 @@ describe.runIf(url)("data export against a real database", () => {
     await client.booksIssue.create({
       data: { userId, kind: "off", key: "balance:a1", detail: {} },
     });
+    await client.suggestion.create({
+      data: {
+        userId,
+        key: "cost:bank_fees",
+        capability: "cost",
+        topic: "bank_fees",
+        title: "Stop paying overdraft and bank fees",
+        worthCents: 10_500,
+        worthKind: "saves",
+        confidencePercent: 82,
+        confidenceReason: "3 bank fees in 12 months of data",
+        urgency: "soon",
+        why: "You paid $105.00.",
+        actionLabel: "See the fees",
+        actionHref: "/insights",
+      },
+    });
     await client.leanPlan.create({
       data: { userId, changeKey: "late:acme:2026-10-15", employer: "Acme", dueOn: "2026-10-15" },
     });
@@ -285,6 +302,7 @@ describe.runIf(url)("data export against a real database", () => {
       "healthScores",
       "monthlyReports",
       "whatIfPlans",
+      "suggestions",
       "leanPlans",
       "booksIssues",
       "yearPlans",

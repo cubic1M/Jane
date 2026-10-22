@@ -67,6 +67,8 @@ export const TEAM_ACCESS_RULES: Record<AuditEvent, EventRule> = {
   credit_goal_started: own,
   home_equity_updated: own,
   debt_review_done: own,
+  car_addon_confirmed: own,
+  car_addon_cancel_requested: own,
   home_request_sent: own,
   // Insurance (spec Phase X): the person's own edits to their profile.
   insurance_policy_saved: own,
@@ -178,6 +180,11 @@ export const TEAM_ACCESS_RULES: Record<AuditEvent, EventRule> = {
   tax_identity_case_opened: own,
   tax_notice_response_sent: own,
   property_appeal_handled: own,
+  tax_payment_made: own,
+  accountant_link_created: own,
+  accountant_link_viewed: own,
+  accountant_link_answered: own,
+  accountant_link_revoked: own,
   tax_profile_changed: own,
   tax_tag_changed: own,
   tax_return_started: own,
@@ -206,6 +213,8 @@ export const TEAM_ACCESS_RULES: Record<AuditEvent, EventRule> = {
   gift_received: own,
   rental_added: own,
   costly_product_saved: own,
+  practice_started: own,
+  practice_trade: own,
 };
 
 export const SHOWN_EVENTS = (Object.keys(TEAM_ACCESS_RULES) as AuditEvent[]).filter(

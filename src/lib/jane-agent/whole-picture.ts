@@ -3,6 +3,7 @@ import { formatCents } from "@/lib/money";
 import type { Ranked } from "@/planning/priorities";
 import type { MessageAction, MessageRefs } from "./types";
 import type { Reply } from "./replies";
+import { mostRoom } from "./replies-health";
 import type { Snapshot } from "./snapshot";
 import { dateAndDays, inDays, things } from "./sources/source";
 import { shortName } from "./sources/findings";
@@ -31,6 +32,8 @@ export type WholePicture = {
   // Ticked, no-risk plan items "Approve all safe ones" would approve.
   safeItems: number;
   top: Ranked[];
+  // Spec step 192: the money health score and the part with the most room, once there is one.
+  health: { score: number; band: string; next: string | null } | null;
 };
 
 const DAY_MS = 86_400_000;
@@ -95,8 +98,22 @@ export function wholePicture(snapshot: Snapshot, ranked: Ranked[], focus: Focus)
     waitingOnYou: snapshot.waitingOnYou.length,
     safeItems: snapshot.plan.safeItems,
     top,
+    health: snapshot.health
+      ? {
+          score: snapshot.health.score,
+          band: snapshot.health.band,
+          next: mostRoom(snapshot.health.parts)?.next ?? null,
+        }
+      : null,
   };
 }
+
+const healthLine = (picture: WholePicture) =>
+  picture.health
+    ? `Your money health score is ${picture.health.score} out of 100 (${picture.health.band}).${
+        picture.health.next ? ` What would help most: ${picture.health.next}` : ""
+      }`
+    : null;
 
 function dueLine(picture: WholePicture, asOf: string, focus: Focus): string {
   const when = focus === "month" ? "before the month ends" : `in the next ${CHAT_WEEK_DAYS} days`;
@@ -153,11 +170,13 @@ export function wholePictureReply(
           picture.headline,
           dueLine(picture, snapshot.asOf, focus),
           janeLine(picture),
+          healthLine(picture),
         ]
       : [
           picture.headline,
           dueLine(picture, snapshot.asOf, focus),
           janeLine(picture),
+          healthLine(picture),
           thingsHeader,
           ...numbered,
         ];

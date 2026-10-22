@@ -97,8 +97,14 @@ test("do it myself: no action for the team, and marking it done counts it", asyn
     /^mailto:\?subject=/,
   );
   await expectNoSidewaysScroll(page);
-  await page.getByRole("button", { name: "I did it" }).click();
-  await expect(page.getByRole("status").filter({ hasText: "You marked this done" })).toBeVisible();
+  // A click before the page has hydrated can be lost: click until it takes.
+  await expect(async () => {
+    const didIt = page.getByRole("button", { name: "I did it" });
+    if (await didIt.isVisible()) await didIt.click({ timeout: 5_000 });
+    await expect(page.getByRole("status").filter({ hasText: "You marked this done" })).toBeVisible({
+      timeout: 5_000,
+    });
+  }).toPass({ timeout: 45_000 });
 
   await page.goto("/actions");
   await expect(page.getByRole("link", { name: /Netflix went up/ })).toContainText("Done");

@@ -1,4 +1,4 @@
-import { BOOKS_KIND_LABELS, BOOKS_LOOKBACK_DAYS } from "@/config/books";
+import { BOOKS_KIND_LABELS, BOOKS_LOOKBACK_DAYS, BOOKS_WORRYING_KINDS } from "@/config/books";
 import type { Prisma, PrismaClient } from "@/generated/prisma/client";
 import { logAudit } from "@/lib/audit";
 import { db as defaultClient } from "@/lib/db";
@@ -277,7 +277,7 @@ export async function runBooksCheck(
   return { ...(await openBooks(userId, { client })), merged };
 }
 
-const WORRYING = new Set(["off", "gap", "stale", "broken", "duplicate"]);
+const WORRYING = new Set(BOOKS_WORRYING_KINDS);
 
 export async function openBooks(
   userId: string,

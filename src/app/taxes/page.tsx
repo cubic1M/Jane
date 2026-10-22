@@ -149,6 +149,31 @@ async function TaxesContent() {
         </Link>
       </section>
 
+      <section aria-labelledby="accountant-heading" id="accountant" className={CARD}>
+        <h2 id="accountant-heading" className="text-xl font-semibold">
+          Working with an accountant
+        </h2>
+        <p className="text-sm text-zinc-600 dark:text-zinc-400">
+          One read-only link with your tax pack, the forms Jane collected and her questions. It ends
+          when you say, and their answers come back here.
+        </p>
+        <Link href="/taxes/accountant" className={LINK}>
+          Make a link for my accountant
+        </Link>
+      </section>
+
+      <section aria-labelledby="calendar-heading" id="calendar" className={CARD}>
+        <h2 id="calendar-heading" className="text-xl font-semibold">
+          Your tax calendar
+        </h2>
+        <p className="text-sm text-zinc-600 dark:text-zinc-400">
+          What Jane does each month of the tax year, by herself within your caps or with your tap.
+        </p>
+        <Link href="/taxes/calendar" className={LINK}>
+          See my tax calendar
+        </Link>
+      </section>
+
       <section aria-labelledby="identity-heading" id="identity" className={CARD}>
         <h2 id="identity-heading" className="text-xl font-semibold">
           Your tax identity

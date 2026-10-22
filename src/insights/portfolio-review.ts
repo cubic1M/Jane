@@ -12,7 +12,7 @@ import type { HoldingView, InvestmentAccountView } from "./investments";
 
 // Does it fit? (spec step 131, demo advice). The person's mix of investments against the
 // target for their risk level (src/config/investing.ts), any one company's shares that are
-// too big a part of it (more so their employer's), and cash sitting idle; then what to
+// too big a part of it (more so their employer's), and cash above the target mix; then what to
 // change and why, in plain words. Pure. Never says what returns will be: only how the mix
 // compares with the target their own answers chose.
 
@@ -52,7 +52,7 @@ export type PortfolioReview = {
   mix: MixRow[];
   offTarget: boolean;
   concentrated: Concentration[];
-  idleCashCents: number;
+  cashAboveTargetCents: number;
   recommendations: Recommendation[];
   // Accounts whose balance is known but not what's in it: left out of the mix.
   leftOut: string[];
@@ -125,7 +125,7 @@ export function reviewPortfolio(
   }
 
   const cash = mix.find((m) => m.assetClass === "cash");
-  const idleCashCents =
+  const cashAboveTargetCents =
     cash && (cash.share - cash.targetShare) * 100 >= CASH_DRAG_POINTS ? -cash.changeCents : 0;
 
   const label = RISK_LEVELS[riskLevel].label;
@@ -164,11 +164,11 @@ export function reviewPortfolio(
         : `It's ${pct(c.share)} of everything you've invested: one company's bad year would hit your savings hard.`,
     });
   }
-  if (idleCashCents >= MIN_MOVE_CENTS) {
+  if (cashAboveTargetCents >= MIN_MOVE_CENTS) {
     recommendations.push({
       kind: "cash",
-      amountCents: idleCashCents,
-      what: `Invest about ${dollars(idleCashCents)} of the cash in your investment accounts.`,
+      amountCents: cashAboveTargetCents,
+      what: `Invest about ${dollars(cashAboveTargetCents)} of the cash in your investment accounts.`,
       why: `Cash is ${pct(cash!.share)} of your investments against a target of ${pct(cash!.targetShare)}; over long periods cash has usually grown less than a mix of stocks and bonds.`,
     });
   }
@@ -179,7 +179,7 @@ export function reviewPortfolio(
     mix,
     offTarget,
     concentrated,
-    idleCashCents,
+    cashAboveTargetCents,
     recommendations,
     leftOut: accounts.filter((a) => a.holdings.length === 0).map((a) => a.name),
   };

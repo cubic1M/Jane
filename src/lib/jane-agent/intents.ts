@@ -4,6 +4,8 @@ import type { LifeEventKind } from "@/config/life-events";
 import { CATEGORY_LABELS, UNCATEGORIZED } from "@/insights/labels";
 import { parseMoneyToCents } from "@/lib/money";
 import { parseDebtIntent, type DebtIntent } from "./debt-intents";
+import { CUSHION_ASK, EXPLAIN, parseAck, type AckIntent } from "./ack-intents";
+import { parseDecision, type DecisionIntent } from "./decision-intents";
 import { parseTaxIntent, type TaxIntent } from "./tax-intents";
 import type { FlowId } from "./flows/engine";
 import type { PreferenceDraft } from "./preferences";
@@ -11,6 +13,7 @@ import { parseFact } from "./remember";
 import { parseInvestmentIntent, type InvestmentIntent } from "./investments/intents";
 import { parseSectorIntent, type SectorIntent } from "./autopilot-intents";
 import { parseLongView, type LongViewIntent } from "./long-view-intents";
+import { parseProfile, type ProfileIntent } from "./profile-intents";
 import { parseWhatIf, type WhatIfIntent } from "./what-if-intents";
 import { parseLearnIntent, type LearnIntent } from "./learn";
 
@@ -83,15 +86,26 @@ export type Intent =
   // what the conversation was about (./context.ts).
   | { kind: "follow_up"; target: string | null; month: string | null }
   // Taxes (spec steps 118–127): ./tax-intents.ts.
+  | DecisionIntent
+  // "Why?" / "tell me more": about the last answer, read against it (./context.ts).
+  | { kind: "explain" }
+  | { kind: "why_finding"; findingId: string }
+  | AckIntent
   | TaxIntent
   // Spec step 128 on: what they own, and each later investment question.
   | InvestmentIntent
   // Spec step 142: "what did you check last night?"
   | { kind: "checked" }
   // Spec step 143: "what should I do first?"
-  | { kind: "priorities" }
+  | { kind: "priorities"; explain?: boolean; one?: boolean }
   // Spec step 183: "am I OK?" and "what should I do this month?", across every sector.
   | { kind: "whole_picture"; focus: "now" | "month" }
+  // What they own and owe, from the net worth page.
+  | { kind: "net_worth" }
+  // "Why is my checking going negative": where the balance is heading.
+  | { kind: "balance_forecast" }
+  // "What if I save $200 more a month".
+  | { kind: "save_more"; monthlyCents: number }
   // Spec step 187: everything Jane did, or why she did the last thing.
   | { kind: "timeline"; why: boolean }
   // Spec step 185: money into a goal ("put the savings in my emergency fund"); "savings" is
@@ -109,9 +123,13 @@ export type Intent =
   | { kind: "monthly_report" }
   // Spec step 238: "are my numbers right?"
   | { kind: "books" }
+  // Spec step 240: "my steady paycheck", "my income is uneven".
+  | { kind: "steady_pay" }
   // Spec step 203: "what if I lose my job?"; step 209: "where will I be in 30 years?"
   | WhatIfIntent
   | LongViewIntent
+  // Spec step 253: "what do you know about me?"
+  | ProfileIntent
   // Spec step 141: one autopilot, every sector.
   | SectorIntent
   // Spec step 136: what a word means.
@@ -350,16 +368,29 @@ const BILLS_PAID =
 const HEALTH =
   /\b(?:health score|money health|financial health|financial wellness)\b|\bhow healthy (?:are|is) my (?:money|finances)\b/;
 const MONTHLY_REPORT =
-  /\b(?:monthly|money|month'?s) report\b|\bmonth in review\b|\breport (?:for|on) (?:last|this) month\b/;
+  /\b(?:monthly|money|month'?s) report\b|\bmonth in review\b|\breport (?:for|on) (?:last|this) month\b|\bhow did (?:i|we) do (?:this|last) month\b|\bhow (?:was|did) (?:my|our|last) month\b|\bhow did last month go\b/;
 const BOOKS =
   /\b(?:is|are) my (?:data|numbers|figures|balances|books|accounts) (?:all )?(?:right|correct|accurate|up to date|ok|okay)\b|\bdo my (?:books|numbers|balances) (?:balance|add up)\b|\bany (?:problems|issues) with my (?:data|accounts|numbers)\b|\bhow (?:accurate|reliable) (?:is|are) (?:my|the) (?:data|numbers|figures)\b/;
+const STEADY =
+  /\bsteady (?:paycheck|pay|income)\b|\b(?:my|the) (?:income|pay|paychecks?) (?:is|are) (?:uneven|irregular|unpredictable|all over the place)\b|\b(?:uneven|irregular|freelance|variable) income\b|\bpay myself (?:a )?(?:steady|regular)\b/;
+const ONE_THING =
+  /\b(?:one|1) thing\b.*\b(?:wrong|fix|change|improve|start)|\bbiggest (?:\w+ )?(?:mistake|leak|problem)\b|\bwhat am i (?:doing )?wrong\b/;
 const PRIORITIES =
-  /\bwhat should i do (?:first|next|now)\b|\bwhat matters (?:most|now)\b|\bwhat'?s (?:most )?important\b|\bwhere (?:do|should) i start\b|\bmy (?:top )?priorities\b|\bnext best thing\b/;
+  /\bwhat should i do (?:first|next|now)\b|\bwhat matters (?:most|now)\b|\bwhat'?s (?:most )?important\b|\bwhere (?:do|should) i start\b|\bmy (?:top )?priorities\b|\bnext best thing\b|\b(?:one thing|what(?:'?s| am)?) i'?m doing wrong\b|\bwhat am i (?:doing )?wrong\b|\bbiggest (?:\w+ )?(?:mistake|leak|problem)\b/;
 // Spec step 183. "Am I OK to buy …" is a purchase question, and goals have their own answer.
 const WHOLE_NOW =
   /\bam i (?:ok|okay|alright|all right|fine|good)\b(?! (?:to|if|for|with|on)\b)|\bhow am i doing\b(?! (?:on|with)\b)|\bhow (?:are|is) (?:my|our) (?:money|finances?)(?: doing| looking)?\b|\bhow'?s (?:my|our) (?:money|finances?)\b|\b(?:the )?(?:big|whole|full) picture\b|\bis (?:my|our) money (?:ok|okay|alright|fine)\b|\bam i on track\b(?! (?:for|with)\b)|\b(?:overall|in general),? how am i\b/;
 const WHOLE_MONTH =
   /\bwhat (?:should|do|can) (?:i|we) (?:need to )?(?:do|focus on|work on) this month\b|\bthis month'?s (?:plan|priorities|to ?do)\b|\bwhat matters this month\b|\bplan for this month\b/;
+const BALANCE_FORECAST =
+  /\b(?:why|will|would|am i going to|is) (?:is |will )?(?:my )?(?:checking|account|balance)\b.{0,30}\b(?:negative|overdr\w+|below zero|under zero|zero|low|short)\b|\b(?:run|running) (?:out of money|short)\b|\b(?:dip|go|fall|drop) (?:below|under) zero\b|\bwhere is my (?:checking|balance) (?:heading|going)\b/;
+// "set a budget for restaurants": what they spend there, with the button that sets it.
+const BUDGET_FOR =
+  /^(?:set|make|create|add|start)(?: me)?(?: a| my)? budget (?:for|on) (.+)$|^budget (?:for|on) (.+)$/;
+const SAVE_MORE =
+  /^(?:what if|what happens if|suppose|say) .*\b(?:save|saving|put away|set aside|stash)\b[^\d]{0,12}(\d[\d,]*(?:\.\d{1,2})?)\b.{0,12}\b(?:more|extra)\b.{0,16}\b(?:a|each|per|every) month\b/;
+const NET_WORTH =
+  /\bnet ?worth\b|\bhow much (?:am i|are we) worth\b|\bwhat do (?:i|we) own and owe\b|\bassets? (?:and|vs\.?|minus) (?:debts?|liabilities)\b/;
 // Spec step 187.
 const WHY_DID =
   /\bwhy did you (?:do|did) that\b|\bwhy did you (?:do|move|pay|switch|cancel|change|pick|choose)\b|\bwhy (?:did|was) (?:that|it) done\b/;
@@ -511,17 +542,53 @@ export function parseIntent(
   if (!text || HELP.test(text)) return { kind: "help" };
   if (GREETING.test(text)) return { kind: "greeting", thanks: false };
   if (THANKS.test(text)) return { kind: "greeting", thanks: true };
+  const ack = parseAck(text);
+  if (ack) return ack;
+  // "Why?" and "tell me more" are about the last answer: read against the conversation.
+  if (EXPLAIN.test(text)) return { kind: "explain" };
+  if (CUSHION_ASK.test(text)) {
+    return { kind: "decision", item: "cushion", label: "an emergency fund" };
+  }
+  // "What happened to my money this month" is the month's spending, not Jane's own log.
+  const happened = /^what happened to my (?:money|spending|cash)(?: (this|last) month)?\W*$/.exec(
+    text,
+  );
+  if (happened) {
+    const d = new Date(`${asOf}T00:00:00Z`);
+    if (happened[1] === "last") d.setUTCMonth(d.getUTCMonth() - 1);
+    return { kind: "spending", category: null, month: d.toISOString().slice(0, 7) };
+  }
   if (PAUSE.test(text)) return { kind: "pause_autopilot" };
   if (CHECKED.test(text)) return { kind: "checked" };
   if (BOOKS.test(text)) return { kind: "books" };
+  const saveMore = SAVE_MORE.exec(text);
+  if (saveMore) {
+    const cents = Math.round(Number(saveMore[1].replace(/,/g, "")) * 100);
+    if (cents > 0) return { kind: "save_more", monthlyCents: cents };
+  }
+  // "Should I buy bitcoin?" is about their debts, cushion and goals, not about bitcoin.
+  const decision = parseDecision(text);
+  if (decision) return decision;
   const whatIf = parseWhatIf(text);
   if (whatIf) return whatIf;
   const longView = parseLongView(text);
   if (longView) return longView;
+  const profile = parseProfile(text);
+  if (profile) return profile;
+  if (STEADY.test(text)) return { kind: "steady_pay" };
+  if (NET_WORTH.test(text)) return { kind: "net_worth" };
+  if (BALANCE_FORECAST.test(text)) return { kind: "balance_forecast" };
+  const budgetFor = BUDGET_FOR.exec(text);
+  if (budgetFor) {
+    const category = matchCategory(cleanTarget(budgetFor[1] ?? budgetFor[2]), CATEGORY_LIST);
+    if (category) return { kind: "spending", category, month: asOf.slice(0, 7) };
+  }
   if (WHY_DID.test(text)) return { kind: "timeline", why: true };
   if (TIMELINE.test(text)) return { kind: "timeline", why: false };
   if (WHOLE_MONTH.test(text)) return { kind: "whole_picture", focus: "month" };
   if (WHOLE_NOW.test(text)) return { kind: "whole_picture", focus: "now" };
+  // "What's one thing I'm doing wrong": the top item alone, in a sentence.
+  if (ONE_THING.test(text)) return { kind: "priorities", one: true };
   if (PRIORITIES.test(text)) return { kind: "priorities" };
   if (PAYCHECK.test(text)) return { kind: "paycheck" };
   if (HEALTH.test(text)) return { kind: "health" };
@@ -574,6 +641,13 @@ export function parseIntent(
       );
       if (month) return { kind: "follow_up", target: null, month };
     }
+    // "What about my student loans?" is a question of its own, not a name to look up.
+    for (const asked of [`how are ${words}`, words]) {
+      const own = parseIntent(asked, asOf, { single: true });
+      if (!["unknown", "follow_up", "about", "help", "greeting", "remember"].includes(own.kind)) {
+        return own;
+      }
+    }
     return { kind: "follow_up", target: cleanTarget(words), month: null };
   }
 
@@ -590,7 +664,10 @@ export function parseIntent(
       recurring,
     };
   }
-  if (SAFE.test(text)) return { kind: "safe_to_spend" };
+  // "how much is left in my FSA" is the insurance lane's (spec step 200), not spending money.
+  if (SAFE.test(text) && !/\b(?:fsa|deductible|out[- ]of[- ]pocket)\b/.test(text)) {
+    return { kind: "safe_to_spend" };
+  }
   // Spec step 128 on: after affording, so "can I afford … my 401(k)" stays a money question.
   const investments = parseInvestmentIntent(text);
   if (investments) return investments;
@@ -636,7 +713,7 @@ export function parseIntent(
   if (refund) return { kind: "act", verb: "refund", target: cleanTarget(refund[1] ?? refund[2]) };
   const cancel = CANCEL.exec(text);
   if (cancel) return { kind: "act", verb: "cancel", target: cleanTarget(cancel[1]) };
-  const lower = LOWER.exec(text);
+  const lower = LOWER.exec(text.replace(/^(?:how (?:do|can|could) i|how to|can i|help me) /, ""));
   if (lower) return { kind: "act", verb: "lower", target: cleanTarget(lower[1]) };
 
   const insurance = parseInsurance(text);

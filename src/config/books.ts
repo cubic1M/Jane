@@ -20,6 +20,16 @@ export const BOOKS_DEBT_TYPES: readonly string[] = ["credit", "loan"];
 // Plaid primary categories of transfers between accounts.
 export const TRANSFER_OUT = "TRANSFER_OUT";
 export const TRANSFER_IN = "TRANSFER_IN";
+// Issue kinds that put a figure in doubt (an unmatched transfer is only said, not doubted), and
+// those asked about at once (a link that needs a sign-in stops every figure on it).
+export const BOOKS_WORRYING_KINDS: readonly string[] = [
+  "off",
+  "gap",
+  "stale",
+  "broken",
+  "duplicate",
+];
+export const BOOKS_URGENT_KINDS: readonly string[] = ["broken"];
 // Issue kinds, and how each is said.
 export const BOOKS_KIND_LABELS: Readonly<Record<string, string>> = {
   off: "A balance that doesn't match its transactions",

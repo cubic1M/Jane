@@ -19,7 +19,7 @@ import {
 } from "@/config/detection";
 import type { AlertCandidate } from "@/detection/alerts";
 import { expectedDates } from "@/detection/forecast";
-import { byDate, inList, inLookback, merchantMatches } from "@/detection/helpers";
+import { byDate, inList, inLookback, isRenewable, merchantMatches } from "@/detection/helpers";
 import { merchantOf, type Stream } from "@/detection/streams";
 import type { DetectionInput, DetectionTransaction } from "@/detection/types";
 import { addDays, daysBetween } from "@/detection/units";
@@ -83,7 +83,13 @@ const purchaseLink = (merchant: string) => `/transactions?${new URLSearchParams(
 export function renewalDeadlines(input: DetectionInput, streams: Stream[]): Deadline[] {
   const until = addDays(input.asOf, DEADLINE_HORIZON_DAYS);
   return streams
-    .filter((s) => s.active && s.frequency !== null && RENEWAL_FREQUENCIES.includes(s.frequency))
+    .filter(
+      (s) =>
+        s.active &&
+        s.frequency !== null &&
+        RENEWAL_FREQUENCIES.includes(s.frequency) &&
+        isRenewable(s),
+    )
     .flatMap((s) =>
       expectedDates(s, input.asOf, until)
         .slice(0, 1)

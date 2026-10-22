@@ -1,4 +1,5 @@
 import type { AccountBase, LiabilitiesObject, Transaction } from "plaid";
+import { isPersonSeed, personAccounts, personLiabilities, personTransactions } from "./demo-people";
 import { PFC_TAXONOMY, type PfcDetailed, type PfcPrimary } from "@/categorize/taxonomy";
 
 // A fake bank (spec step 75) that stands in for Plaid until there are keys. It produces
@@ -14,14 +15,20 @@ export const DEMO_INSTITUTION = "Demo Bank (fake data)";
 
 // The anchor is the day the demo bank was linked; one-off events are placed around it so
 // they always look recent on the first scan.
-export type DemoSeed = { seed: string; anchor: string };
+export type DemoSeed = {
+  seed: string;
+  anchor: string;
+  // Spec step 252: which sample person this bank is (src/config/people.ts); the original
+  // demo bank when left out.
+  person?: string;
+};
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 export const addDays = (day: string, days: number) =>
   new Date(Date.parse(`${day}T00:00:00Z`) + days * DAY_MS).toISOString().slice(0, 10);
 
 // A small seeded random number in [0, 1), so amounts vary but never change between syncs.
-function random(key: string): number {
+export function random(key: string): number {
   let h = 2166136261;
   for (let i = 0; i < key.length; i += 1) {
     h ^= key.charCodeAt(i);
@@ -34,7 +41,7 @@ function random(key: string): number {
   return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
 }
 
-const primaryOf = (detailed: PfcDetailed): PfcPrimary =>
+export const primaryOf = (detailed: PfcDetailed): PfcPrimary =>
   (Object.keys(PFC_TAXONOMY) as PfcPrimary[]).find((p) =>
     (PFC_TAXONOMY[p] as readonly string[]).includes(detailed),
   )!;
@@ -60,7 +67,7 @@ type AccountKey =
   | "custodial"
   | "child_roth";
 
-export const accountId = (seed: string, key: AccountKey) => `demo-${seed}-${key}`;
+export const accountId = (seed: string, key: AccountKey | (string & {})) => `demo-${seed}-${key}`;
 
 type Template = {
   key: string;
@@ -89,9 +96,9 @@ const MONTHLY: (Template & { days: number[] })[] = [
     name: "ROCKET MORTGAGE PAYMENT",
     merchant: "Rocket Mortgage",
     category: "LOAN_PAYMENTS_MORTGAGE_PAYMENT",
-    // Spec step 115: the escrow went up (taxes or insurance) 20 days before the demo bank was
-    // linked.
-    amount: (day, anchor) => (day >= addDays(anchor, -20) ? 2198.31 : 2141.54),
+    // Spec step 115: the escrow went up (taxes or insurance) at the last payment before the
+    // demo bank was linked.
+    amount: (day, anchor) => (day >= lastDayOfMonthOn(addDays(anchor, -1), 1) ? 2198.31 : 2141.54),
     days: [1],
   },
   {
@@ -248,14 +255,14 @@ const MONTHLY: (Template & { days: number[] })[] = [
     amount: [5, 8],
     days: [6, 13, 19, 27],
   },
-  // The price went up 20 days before the demo bank was linked.
+  // The price went up at the last charge before the demo bank was linked.
   {
     key: "netflix",
     account: "card",
     name: "NETFLIX.COM",
     merchant: "Netflix",
     category: "ENTERTAINMENT_TV_AND_MOVIES",
-    amount: (day, anchor) => (day >= addDays(anchor, -20) ? 17.99 : 15.49),
+    amount: (day, anchor) => (day >= lastDayOfMonthOn(addDays(anchor, -1), 14) ? 17.99 : 15.49),
     days: [14],
   },
   {
@@ -520,6 +527,17 @@ const ONE_OFF: (Template & { offsets: number[] })[] = [
     amount: 23.4,
     offsets: [-75, -18],
   },
+  // Spec step 200: a scan billed above the demo plan's share, for the dispute card. Last
+  // year, so this year's tax figures stay as they were.
+  {
+    key: "imaging",
+    account: "checking",
+    name: "BAYVIEW IMAGING CENTER",
+    merchant: null,
+    category: "MEDICAL_PRIMARY_CARE",
+    amount: 700,
+    offsets: [-310],
+  },
   {
     key: "dentist",
     account: "checking",
@@ -612,7 +630,7 @@ function transaction(t: Template, day: string, demo: DemoSeed): Transaction {
   } as unknown as Transaction;
 }
 
-const lastDayOfMonth = (year: number, month: number) =>
+export const lastDayOfMonth = (year: number, month: number) =>
   new Date(Date.UTC(year, month + 1, 0)).getUTCDate();
 
 // Transactions dated after `after` (exclusive; null for the first sync) through `through`.
@@ -621,6 +639,7 @@ export function demoTransactions(
   after: string | null,
   through: string,
 ): Transaction[] {
+  if (isPersonSeed(demo)) return personTransactions(demo, after, through);
   const start = after ?? addDays(through, -DEMO_HISTORY_DAYS);
   const inRange = (day: string) => day > start && day <= through;
   const out: Transaction[] = [];
@@ -677,7 +696,9 @@ const account = (
     balances: { current, available: null, limit: null, iso_currency_code: "USD" },
   }) as unknown as AccountBase;
 
-export function demoAccounts({ seed }: DemoSeed, extras: readonly DemoExtra[] = []): AccountBase[] {
+export function demoAccounts(demo: DemoSeed, extras: readonly DemoExtra[] = []): AccountBase[] {
+  if (isPersonSeed(demo)) return personAccounts(demo);
+  const { seed } = demo;
   return [
     account(seed, "checking", "Demo Checking", "0001", "depository", "checking", 3840.12),
     account(seed, "savings", "Demo Savings", "0002", "depository", "savings", 24310),
@@ -732,7 +753,7 @@ export const DEMO_EXTRAS = [
 export type DemoExtra = (typeof DEMO_EXTRAS)[number];
 
 // The next time a day of the month comes round, after `today`.
-function nextDayOfMonth(today: string, dayOfMonth: number): string {
+export function nextDayOfMonth(today: string, dayOfMonth: number): string {
   for (let i = 1; i <= 31; i += 1) {
     const day = addDays(today, i);
     if (Number(day.slice(8)) === dayOfMonth) return day;
@@ -741,7 +762,7 @@ function nextDayOfMonth(today: string, dayOfMonth: number): string {
 }
 
 // The last time a day of the month came round, on or before `today`.
-function lastDayOfMonthOn(today: string, dayOfMonth: number): string {
+export function lastDayOfMonthOn(today: string, dayOfMonth: number): string {
   for (let i = 0; i <= 31; i += 1) {
     const day = addDays(today, -i);
     if (Number(day.slice(8)) === dayOfMonth) return day;
@@ -749,10 +770,12 @@ function lastDayOfMonthOn(today: string, dayOfMonth: number): string {
   return addDays(today, -30);
 }
 
-const yearsAfter = (day: string, years: number) =>
+export const yearsAfter = (day: string, years: number) =>
   `${Number(day.slice(0, 4)) + years}${day.slice(4, 7)}-01`;
 
-export function demoLiabilities({ seed, anchor }: DemoSeed, today: string): LiabilitiesObject {
+export function demoLiabilities(demo: DemoSeed, today: string): LiabilitiesObject {
+  if (isPersonSeed(demo)) return personLiabilities(demo, today);
+  const { seed, anchor } = demo;
   return {
     credit: [
       {

@@ -384,3 +384,27 @@ export async function declineShop(
   if (count > 0) await track(userId, "insurance_shop_declined");
   return count > 0;
 }
+
+// What Jane's open reshops of the person's car and home cover would save in a year: the same
+// saving the switch card and the chat's quotes show. Zero when there are none (the brief then
+// says its estimate is only an estimate).
+export async function openShopSavingCents(
+  userId: string,
+  { client = defaultClient, now = new Date() }: Options = {},
+): Promise<number> {
+  const shops = (await openShops(userId, { client, now })).filter(
+    (s) => s.pick && (s.savingCents ?? 0) > 0,
+  );
+  if (shops.length === 0) return 0;
+  const kinds = new Map(
+    (
+      await scopedFor(userId, client).insurancePolicies.findMany({
+        where: { id: { in: shops.map((s) => s.policyId) } },
+        select: { id: true, kind: true },
+      })
+    ).map((p) => [p.id, p.kind]),
+  );
+  return shops
+    .filter((s) => ["auto", "home", "renters"].includes(kinds.get(s.policyId) ?? ""))
+    .reduce((sum, s) => sum + (s.savingCents ?? 0), 0);
+}

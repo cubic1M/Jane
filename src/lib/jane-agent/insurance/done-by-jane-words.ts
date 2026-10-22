@@ -2,6 +2,8 @@ import { POLICY_KINDS } from "@/config/insurance";
 import { STATUS_WORDS, type Claim } from "@/lib/insurance/claim-rules";
 import type { Negotiation } from "@/lib/insurance/negotiate";
 import type { Policy } from "@/lib/insurance/policies";
+import { adviceLines, claimWorth, payoutLine } from "@/lib/insurance/claim-worth";
+import { PREMIUM_FREQUENCIES } from "@/config/documents";
 import { formatCents } from "@/lib/money";
 import type { MessageAction } from "../types";
 
@@ -46,12 +48,32 @@ export function callResultBody(n: Negotiation, policy: PolicyLike | undefined): 
 }
 
 // Pure: the claim as it would go, for the person's review before it's filed.
-export function draftBody(claim: Claim): string {
+// Spec step 199: with the policy, the payout after its deductible (a fact) and, in demo advice
+// mode, the three-year cost of claiming against paying it themselves.
+export function draftBody(
+  claim: Claim,
+  policy?: Pick<Policy, "deductibleCents" | "premiumCents" | "premiumFrequency">,
+  advice = false,
+): string {
+  const worth =
+    policy && claim.amountCents
+      ? claimWorth({
+          kind: claim.kind,
+          event: claim.event,
+          estimateCents: claim.amountCents,
+          deductibleCents: policy.deductibleCents,
+          yearlyPremiumCents:
+            policy.premiumCents !== null && policy.premiumFrequency
+              ? policy.premiumCents * PREMIUM_FREQUENCIES[policy.premiumFrequency].perYear
+              : null,
+        })
+      : null;
   return [
     `Here's the claim I'd file with ${claim.carrier ?? "your insurer"}. Nothing goes until you tap File it.`,
     `- What happened: ${claim.description ?? ""}`,
     `- On: ${claim.happenedOn}`,
     `- Claiming: ${claim.amountCents ? formatCents(claim.amountCents) : "?"}`,
+    ...(worth ? [payoutLine(worth), ...(advice ? adviceLines(worth) : [])] : []),
   ].join("\n");
 }
 

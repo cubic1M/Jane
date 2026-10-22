@@ -18,6 +18,11 @@ import { MultiYearError, loadMultiYear, setRetireYear } from "@/lib/multi-year";
 import { yearsReply } from "./multi-year-message";
 import { loadPropertyTax } from "@/lib/property-tax";
 import { propertyReply } from "./property-tax-message";
+import { loadAccountantPage } from "@/lib/accountant";
+import { accountantReply } from "./accountant-message";
+import { loadTaxCalendar } from "@/lib/tax-calendar";
+import { calendarReply } from "./tax-calendar-message";
+import { decideTax } from "@/lib/tax-decisions";
 import { equityReply } from "./equity-tax-message";
 import { loadIdentity } from "@/lib/tax-identity";
 import { identityReply } from "./tax-identity-message";
@@ -111,6 +116,14 @@ export async function answerTaxIntent(
   const { client, now } = options;
   const year = defaultTaxYear(now.toISOString().slice(0, 10));
   switch (intent.ask) {
+    case "decide": {
+      const d = await decideTax(userId, intent.topic, { client, now });
+      return {
+        body: d.text,
+        refs: d.advice ? { advice: true } : {},
+        actions: [{ id: "open", label: "See the numbers", kind: "link", href: d.href }],
+      };
+    }
     case "profile": {
       const { view, autopilot } = await loadWorkingProfile(userId, { client, now });
       return taxProfileReply(view, autopilot);
@@ -128,6 +141,10 @@ export async function answerTaxIntent(
         ? moveReply(intent, view.state.value, now)
         : workStateReply(intent.state, view.state.value);
     }
+    case "calendar":
+      return calendarReply(await loadTaxCalendar(userId, { client, now }));
+    case "accountant":
+      return accountantReply(await loadAccountantPage(userId, { client, now }));
     case "property":
       return propertyReply(await loadPropertyTax(userId, { client, now }));
     case "years":

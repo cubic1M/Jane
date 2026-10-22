@@ -221,8 +221,8 @@ describe.runIf(url)("the tax estimate against a real database", () => {
 
   it("answers how much will I owe and what's my bracket, always as an estimate", async () => {
     const owe = await sendToJane(demoId, "how much will I owe in taxes", { client, now: later() });
-    expect(owe.reply.body).toMatch(/^My estimate for your 2026 taxes: /);
-    expect(parseActions(owe.reply.actions).map((a) => a.label)).toEqual(["See the estimate"]);
+    expect(owe.reply.body).toMatch(/^Federal: you're on course for (?:a refund of|to owe) \$/);
+    expect(parseActions(owe.reply.actions).map((a) => a.label)).toEqual(["See the numbers"]);
     const bracket = await sendToJane(demoId, "what's my tax bracket", { client, now: later() });
     expect(bracket.reply.body).toMatch(/^Your top federal rate is about \d+%/);
   });

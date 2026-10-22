@@ -124,6 +124,8 @@ export function scopedFor(userId: string, client: PrismaClient = db) {
     personalLoans: scoped.personalLoan,
     creditGoals: scoped.creditGoal,
     homeEquityFacts: scoped.homeEquityFacts,
+    carAddons: scoped.carAddon,
+    carLoanWatches: scoped.carLoanWatch,
     balanceTransfers: scoped.balanceTransfer,
     findings: scoped.finding,
     decisions: scoped.decision,
@@ -164,6 +166,9 @@ export function scopedFor(userId: string, client: PrismaClient = db) {
     equityEvents: scoped.equityEvent,
     taxPlanEvents: scoped.taxPlanEvent,
     propertyAppeals: scoped.propertyAppeal,
+    taxPayments: scoped.taxPayment,
+    accountantLinks: scoped.accountantLink,
+    accountantNotes: scoped.accountantNote,
     taxReturns: scoped.taxReturn,
     // One-tap answers from Jane's emails (spec step 85).
     chatReplyLinks: scoped.chatReplyLink,
@@ -193,6 +198,8 @@ export function scopedFor(userId: string, client: PrismaClient = db) {
     leanPlans: scoped.leanPlan,
     // Data that doesn't add up (spec step 238).
     booksIssues: scoped.booksIssue,
+    // What Jane suggests (spec step 255).
+    suggestions: scoped.suggestion,
     // The year's money plan (spec step 205).
     yearPlans: scoped.yearPlan,
     // "This was me" / "not me" on unusual activity (spec step 208).
@@ -222,6 +229,11 @@ export function scopedFor(userId: string, client: PrismaClient = db) {
     familyChildren: scoped.familyChild,
     rentalProperties: scoped.rentalProperty,
     costlyProducts: scoped.costlyProduct,
+    practicePortfolios: scoped.practicePortfolio,
+    practicePositions: scoped.practicePosition,
+    practiceTrades: scoped.practiceTrade,
+    // What the daily scan flagged in a practice portfolio (spec step 292).
+    practiceOpportunities: scoped.practiceOpportunity,
     giftLinks: scoped.giftLink,
     cryptoConnections: scoped.cryptoConnection,
     cryptoHoldings: scoped.cryptoHolding,
@@ -322,6 +334,31 @@ export async function sharedReadFor(viewerId: string, client: PrismaClient = db)
           annualSavingsCents: f.annualSavingsCents,
         }));
     },
+    // Spec step 198: the policies a household partner switched on for sharing, with the terms
+    // a family comparison needs. Never an unshared policy, never a removed one.
+    policies: () =>
+      partnerIds.length === 0
+        ? Promise.resolve([])
+        : client.insurancePolicy.findMany({
+            where: {
+              userId: { in: partnerIds },
+              sharedWithHousehold: true,
+              status: { in: ["active", "pending"] },
+            },
+            select: {
+              id: true,
+              userId: true,
+              kind: true,
+              carrier: true,
+              source: true,
+              premiumCents: true,
+              premiumFrequency: true,
+              deductibleCents: true,
+              coverage: true,
+              covered: true,
+            },
+            orderBy: [{ userId: "asc" }, { createdAt: "asc" }],
+          }),
   });
 }
 

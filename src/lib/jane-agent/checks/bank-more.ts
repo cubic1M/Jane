@@ -10,7 +10,7 @@ export type Row = readonly [sector: string, page: string, tool: string, text: st
 const rows: Row[] = [
   // The QA report's unanswered questions.
   ["networth", "/net-worth", "net_worth", "what's my net worth"],
-  ["bills", "/bills", "safe_to_spend", "why is my checking going negative"],
+  ["bills", "/bills", "balance_forecast", "why is my checking going negative"],
   ["hsa", "/investments/hsa", "hsa", "what about my HSA"],
   ["moving", "/transfers", "money_moves", "move $200 to savings"],
   ["moving", "/transfers", "money_moves", "transfer $50 to my emergency fund"],
@@ -18,6 +18,11 @@ const rows: Row[] = [
   ["giving", "/taxes/giving", "tax_giving", "how much have I given to charity"],
   ["credit", "/loans/credit", "credit_score", "what's my credit score"],
   ["debt", "/debt", "debts", "how much card interest am I paying"],
+  ["debt", "/loans", "debt_decision", "should I pay off my debt before I invest"],
+  ["debt", "/loans/refinance", "loan_fit", "what loan fits me best"],
+  ["debt", "/loans/refinance", "loan_fit", "find me a loan to pay off my cards"],
+  ["debt", "/loans", "debt_decision", "is a debt consolidation loan a good idea"],
+  ["debt", "/loans", "debt_decision", "can I use my emergency fund to pay off my credit card"],
   ["budgets", "/budgets", "budgets", "how's my budget"],
 
   // Investing, round three (steps 160–216).
@@ -94,13 +99,28 @@ const rows: Row[] = [
   ["books", "/net-worth", "books_check", "are my numbers right"],
   ["books", "/net-worth", "books_check", "do my books balance"],
   ["books", "/net-worth", "books_check", "any problems with my accounts"],
+  // The picture of you (spec step 253).
+  ["profile", "/profile", "my_profile", "what do you know about me"],
+  ["profile", "/profile", "my_profile", "show me my profile"],
+  ["profile", "/profile", "my_profile", "what have you learned about me"],
+  // A steady paycheck from uneven income (spec step 240).
+  [
+    "steady",
+    "/transfers",
+    "steady_pay",
+    "can you give me a steady paycheck from my freelance income",
+  ],
+  ["steady", "/transfers", "steady_pay", "my income is uneven"],
+  ["steady", "/transfers", "steady_pay", "what is my steady pay"],
 
   // Safe to spend and the day.
   ["safe", "/home", "safe_to_spend", "how much do i have left to spend"],
   ["safe", "/home", "safe_to_spend", "can i afford to eat out tonight"],
   ["safe", "/home", "safe_to_spend", "whats my spending money til payday"],
   ["safe", "/home", "safe_to_spend", "how much cash can i use this week"],
-  ["safe", "/home", "safe_to_spend", "am i going to run out of money before payday"],
+  ["safe", "/home", "balance_forecast", "am i going to run out of money before payday"],
+  ["bills", "/bills", "balance_forecast", "will my checking dip below zero this month"],
+  ["bills", "/bills", "balance_forecast", "what happens to my balance next week"],
   ["safe", "/afford", "safe_to_spend", "can i afford a $1,200 laptop"],
   ["safe", "/afford", "safe_to_spend", "is it ok if i buy a $300 jacket"],
   ["safe", "/afford", "safe_to_spend", "could i afford a vacation in march"],
@@ -132,9 +152,9 @@ const rows: Row[] = [
   ["bills", "/deadlines", "coming_up", "any deadlines coming up"],
   ["bills", "/deadlines", "coming_up", "what's due before the end of the month"],
   ["bills", "/deadlines", "coming_up", "do i have a trial ending soon"],
-  ["bills", "/alerts", "recent_changes", "any alerts for me"],
-  ["bills", "/alerts", "recent_changes", "did anything weird happen on my card"],
-  ["bills", "/alerts", "recent_changes", "was i charged twice anywhere"],
+  ["bills", "/alerts", "alerts", "any alerts for me"],
+  ["bills", "/alerts", "alerts", "did anything weird happen on my card"],
+  ["bills", "/alerts", "alerts", "was i charged twice anywhere"],
   ["bills", "/alerts", "open_findings", "did i get double charged"],
   ["bills", "/alerts", "open_findings", "any fees i can get back"],
   ["bills", "/alerts", "open_findings", "i got an overdraft fee, can i get it refunded"],
@@ -247,9 +267,9 @@ const rows: Row[] = [
   ["income", "/home", "safe_to_spend", "did my paycheck come in"],
   ["income", "/home", "safe_to_spend", "is my paycheck late"],
   ["income", "/home", "recent_changes", "did my pay change"],
-  ["household", "/household", "net_worth", "can my wife see my accounts"],
-  ["household", "/household", "net_worth", "what's shared with my partner"],
-  ["household", "/household", "net_worth", "add my husband"],
+  ["household", "/household", "household", "can my wife see my accounts"],
+  ["household", "/household", "household", "what's shared with my partner"],
+  ["household", "/household", "household", "add my husband"],
 
   // Debt and loans.
   ["debt", "/debt", "debts", "how much debt do i have"],
@@ -310,6 +330,17 @@ const rows: Row[] = [
   ["insurance", "/insurance", "insurance_risks", "what is not covered by my car insurance"],
   ["insurance", "/insurance", "insurance_risks", "any risks my insurance doesnt cover"],
   ["insurance", "/insurance", "insurance_risks", "am i exposed with my insurance"],
+  // The whole household's cover (spec step 198).
+  ["insurance", "/insurance", "insurance_household", "who is covered on my car insurance"],
+  ["insurance", "/insurance", "insurance_household", "who's on my health plan"],
+  ["insurance", "/insurance", "insurance_household", "is my family covered"],
+  ["insurance", "/insurance", "insurance_household", "are my kids covered by my insurance"],
+  [
+    "insurance",
+    "/insurance",
+    "insurance_household",
+    "is my wife's work health plan cheaper for the family",
+  ],
   ["insurance", "/insurance", "insurance_checkup", "am i covered enough"],
   ["insurance", "/insurance", "insurance_checkup", "am i missing any insurance"],
   ["insurance", "/insurance", "insurance_checkup", "is my deductible too high"],
@@ -454,6 +485,8 @@ const rows: Row[] = [
   ["debt", "/loans/equity", "home_equity", "when does my pmi end by itself"],
   ["debt", "/loans/equity", "home_equity", "is my escrow too high"],
   ["debt", "/loans/equity", "home_equity", "heloc or cash-out refinance for a $40,000 kitchen"],
+  ["loans", "/loans/auto", "car_loan", "can i cancel the extended warranty on my car loan"],
+  ["loans", "/loans/auto", "car_loan", "do i have gap insurance on my car loan"],
   ["debt", "/loans/review", "debt_review", "do my yearly debt review"],
   ["debt", "/loans/review", "debt_review", "how are my debts doing"],
   ["debt", "/loans/help", "debt_trouble", "i have too much debt, what are my options"],
@@ -476,6 +509,26 @@ const rows: Row[] = [
   ["loans", "/loans/home", "home_purchase", "how much house can i afford"],
   ["loans", "/loans/home", "home_purchase", "can i afford a $400,000 home"],
   ["loans", "/loans/home", "home_purchase", "how much should i save for a down payment"],
+
+  // What if (spec step 203).
+  ["whatif", "/what-if", "what_if", "what if i lose my job"],
+
+  // Gifts to family, and the long view.
+  [
+    "investing",
+    "/gift",
+    "family_investing",
+    "can i gift my daughter some money for her investments",
+  ],
+  ["investing", "/gift", "family_investing", "how do i put money in an account for my kid"],
+  ["investing", "/long-view", "long_view", "where will i be in 20 years"],
+  ["investing", "/long-view", "long_view", "show me the long view"],
+
+  // The accountant's view and the profile.
+  ["taxes", "/accountant", "tax_return", "what should my accountant see"],
+  ["taxes", "/accountant", "tax_forms", "can i share my tax documents with my accountant"],
+  ["settings", "/profile", "investor_profile", "what do you know about me"],
+  ["settings", "/profile", "tax_profile", "what's in my profile"],
 
   // Two questions in one message.
   ["two", "/home", "safe_to_spend", "how much can i spend and when is payday"],

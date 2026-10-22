@@ -16,7 +16,7 @@ vi.mock("@/lib/plaid/link", async (importOriginal) => ({
 
 import { RATE_LIMITS } from "@/config/rate-limits";
 import { getCurrentUser } from "@/lib/session";
-import { hit, ipKey } from "./rate-limit";
+import { giveBack, hit, ipKey } from "./rate-limit";
 
 // Runs against a real, migrated Postgres (see src/detection/engine.integration.test.ts).
 const url = process.env.TEST_DATABASE_URL;
@@ -31,6 +31,16 @@ describe.runIf(url)("rate limiting against a real database", () => {
   afterAll(async () => {
     await client.rateLimit.deleteMany({ where: { key: { contains: "rl-test-" } } });
     await client.$disconnect();
+  });
+
+  it("gives a use back, never below zero", async () => {
+    const subject = `rl-test-${crypto.randomUUID()}`;
+    const now = new Date("2026-10-19T12:00:30Z");
+    await hit("ask", subject, { client, now });
+    await hit("ask", subject, { client, now });
+    await giveBack("ask", subject, { client, now });
+    expect((await hit("ask", subject, { client, now })).remaining).toBe(RATE_LIMITS.ask.limit - 2);
+    await giveBack("ask", `rl-test-${crypto.randomUUID()}`, { client, now });
   });
 
   it("allows the limit within a window, then refuses until the next window", async () => {

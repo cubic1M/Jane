@@ -5,6 +5,8 @@ import { logAudit } from "@/lib/audit";
 import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
 import { formatCents } from "@/lib/money";
+import { UNUSUAL_EXPECTED_FOR_BUSINESS } from "@/config/detection";
+import { loadProfile } from "@/lib/profile";
 import { keyOf, parseKey, type UnusualAlert } from "@/detection/unusual";
 import { addDays } from "@/detection/units";
 
@@ -27,6 +29,18 @@ export async function loadTaught(
   for (const r of rows)
     taught.set(r.merchantKey, Math.max(taught.get(r.merchantKey) ?? 0, r.amountCents));
   return taught;
+}
+
+// Detailed categories the person's profile (spec step 253) makes expected, so they're never
+// unusual: a small-business owner's payroll, suppliers, rent and tax payments.
+export async function expectedFor(
+  userId: string,
+  { client = defaultClient, now = new Date() }: Options = {},
+): Promise<ReadonlySet<string>> {
+  const profile = await loadProfile(userId, { client, now });
+  return profile.facts.income_pattern.value === "business"
+    ? new Set(UNUSUAL_EXPECTED_FOR_BUSINESS)
+    : new Set();
 }
 
 const isoDate = (d: Date) => d.toISOString().slice(0, 10);

@@ -493,7 +493,10 @@ describe("the coverage checkup in the chat (spec step 106)", () => {
     }
     expect(parseIntent("what's my deductible", ASOF)).toMatchObject({ ask: "deductible" });
     // Raising it is a saving (spec step 196), shown both ways with a tap, not just a checkup line.
-    expect(parseIntent("should I raise my deductible", ASOF)).toMatchObject({ ask: "savings" });
+    expect(parseIntent("should I raise my deductible", ASOF)).toMatchObject({
+      kind: "decision",
+      item: "insurance",
+    });
   });
 });
 
@@ -538,53 +541,30 @@ describe("insurance on autopilot (spec step 108)", () => {
 });
 
 describe("do I need it? (spec step 149)", () => {
-  it.each([
-    ["do I need umbrella insurance", "umbrella"],
-    ["should I get disability insurance", "disability"],
-    ["is travel insurance worth it", "travel"],
-    ["do I need pet insurance", "pet"],
-    ["should I buy phone insurance", "device"],
-    ["do we need life insurance", "life"],
-  ])("reads %j", (text, policyKind) => {
+  it.each([["do we need life insurance", "life"]])("reads %j", (text, policyKind) => {
     expect(parseIntent(text, ASOF)).toEqual({ kind: "insurance", ask: "need", policyKind });
   });
 
-  it("answers from the gap rule, with demo advice only in that mode", () => {
-    const facts = resolveHousehold(
-      { housing: null, vehicles: null, dependants: null, pets: null, dismissedGaps: [] },
-      { mortgage: false, homeOwned: false, rentPaid: false, cars: 0, assetsCents: 70_000_000 },
-    );
-    const ask = parseIntent("do I need umbrella insurance", ASOF) as Parameters<
-      typeof insuranceReply
-    >[0];
-    const plain = insuranceReply(ask, insurance([], facts), ASOF);
-    expect(plain.body).toMatch(
-      /^No umbrella insurance on file\. What you have is worth about \$700,000\.00/,
-    );
-    expect(plain.refs).toEqual({ insuranceGap: "umbrella" });
-    const advised = insuranceReply(ask, insurance([], facts, true), ASOF);
-    expect(advised.body).toContain(GAP_ADVICE.umbrella.text);
-    expect(advised.refs.advice).toBe(true);
+  it("reads 'is travel insurance worth it' as a decision", () => {
+    expect(parseIntent("is travel insurance worth it", ASOF).kind).toBe("decision");
   });
 
-  it("explains why not, from the numbers, when the rule doesn't fire", () => {
-    const facts = resolveHousehold(null, {
-      mortgage: false,
-      homeOwned: false,
-      rentPaid: false,
-      cars: 0,
-      assetsCents: 4_000_000,
-    });
-    const ask = parseIntent("do I need umbrella insurance", ASOF) as Parameters<
-      typeof insuranceReply
-    >[0];
-    expect(insuranceReply(ask, insurance([], facts), ASOF).body).toBe(
-      "An umbrella policy pays above your car and home liability limits. It usually matters once what someone has is worth more than $500,000.00; by your balances and values, yours is about $40,000.00.",
-    );
-    expect(insuranceReply(ask, insurance([], facts, true), ASOF).body).toMatch(
-      /it can wait for now\.$/,
-    );
+  // These get a short, direct answer (./decisions.ts).
+  it.each([
+    ["do I need umbrella insurance", "umbrella"],
+    ["do I need disability insurance", "disability"],
+    ["do I need pet insurance", "pet"],
+  ])("answers %j directly", (text, decision) => {
+    expect(parseIntent(text, ASOF)).toMatchObject({ kind: "insurance", ask: "decide", decision });
   });
+
+  // "Should I ...?" goes through the decision router, which hands insurance its own.
+  it.each(["should I get disability insurance", "should I cancel my phone insurance"])(
+    "hands %j to the decision router",
+    (text) => {
+      expect(parseIntent(text, ASOF)).toMatchObject({ kind: "decision", item: "insurance" });
+    },
+  );
 
   it("says when they already have it", () => {
     const ask = parseIntent("do I need car insurance", ASOF) as Parameters<
