@@ -96,13 +96,13 @@ describe.runIf(url)("investments in Jane's chat, against a real database", () =>
     },
   ) as PlaidApi;
 
-  async function demoPerson() {
+  async function demoPerson(now = LINKED) {
     const user = await client.user.create({
       data: { email: `inv-${crypto.randomUUID()}@example.com` },
     });
     created.push(user.id);
-    const { itemId } = await linkDemoBank(user.id, { client, now: LINKED });
-    await syncItem(itemId, { client, api: plaid, now: LINKED });
+    const { itemId } = await linkDemoBank(user.id, { client, now });
+    await syncItem(itemId, { client, api: plaid, now });
     return user.id;
   }
 
@@ -147,7 +147,7 @@ describe.runIf(url)("investments in Jane's chat, against a real database", () =>
     message = await tap("invest.answer.1"); // retirement
     expect(message).toMatchObject({ status: "answered", answeredWith: "Retirement" });
     expect(message.refs.note).toBe(
-      "Thanks. Your profile: Moderate: you'd worry, but wait it out after a drop, so less risk than your timeline allows. You can change it any time.",
+      "Thanks. Your profile: Medium: you'd worry, but wait it out after a drop, so less risk than your timeline allows. You can change it any time.",
     );
     const profile = await profileOf(userId, { client });
     expect(profile).toMatchObject({
@@ -224,7 +224,7 @@ describe.runIf(url)("investments in Jane's chat, against a real database", () =>
     expect(review?.recommendations[0].kind).toBe("rebalance");
     const { reply } = await sendToJane(userId, "review my portfolio", { client, now: LINKED });
     expect(reply.refs.advice).toBe(true);
-    expect(reply.body).toMatch(/^Against your moderate profile/);
+    expect(reply.body).toMatch(/^Against your medium profile/);
   });
 
   it("step 132: plans retirement from the contributions and the plan's match", SLOW, async () => {
@@ -337,6 +337,15 @@ describe.runIf(url)("investments in Jane's chat, against a real database", () =>
       "Trading is only in demo advice mode for now.",
     );
     expect(await client.brokerageOrder.count({ where: { userId } })).toBe(0);
+  });
+
+  it("step 134: suggests from the paycheck, not a payout that landed after it", SLOW, async () => {
+    // Linked on the 25th, the demo's $1,150 Airbnb payout (a week before linking) comes after
+    // the $2,450 payroll on the 15th.
+    const late = new Date("2026-10-25T15:00:00Z");
+    const userId = await demoPerson(late);
+    const offer = await loadAutoInvest(userId, { client, now: late });
+    expect(offer.suggestion?.amountCents).toBe(10_000);
   });
 
   it(
@@ -583,9 +592,9 @@ describe.runIf(url)("investments in Jane's chat, against a real database", () =>
     SLOW,
     async () => {
       const userId = await demoPerson();
-      // The demo bank's pharmacy and dentist charges, saved by Jane's brain on the first
-      // sync by herself, once each.
-      expect(await client.hsaReceipt.count({ where: { userId } })).toBe(3);
+      // The demo bank's pharmacy, dentist and imaging charges (the imaging bill is from last
+      // year, spec step 200), saved by Jane's brain on the first sync by herself, once each.
+      expect(await client.hsaReceipt.count({ where: { userId } })).toBe(4);
       expect(await collectReceipts(userId, { client, now: LINKED })).toBe(0);
       // Two collections at once (a page and the brain) save each charge once, without error.
       await client.hsaReceipt.deleteMany({ where: { userId } });
@@ -593,14 +602,14 @@ describe.runIf(url)("investments in Jane's chat, against a real database", () =>
         collectReceipts(userId, { client, now: LINKED }),
         collectReceipts(userId, { client, now: LINKED }),
       ]);
-      expect(both[0] + both[1]).toBe(3);
-      expect(await client.hsaReceipt.count({ where: { userId } })).toBe(3);
+      expect(both[0] + both[1]).toBe(4);
+      expect(await client.hsaReceipt.count({ where: { userId } })).toBe(4);
       const receipts = await client.hsaReceipt.findMany({
         where: { userId },
         include: { transaction: true },
       });
       expect(receipts.every((r) => r.transaction.amountCents === r.amountCents)).toBe(true);
-      expect(receipts.reduce((s, r) => s + r.amountCents, 0)).toBe(22_680);
+      expect(receipts.reduce((s, r) => s + r.amountCents, 0)).toBe(92_680);
 
       const snapshot = await loadSnapshot(userId, { client, now: LINKED });
       const offer = investmentsSource

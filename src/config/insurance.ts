@@ -179,6 +179,10 @@ export const GAP_KEYS = [
   "valuables",
   "boat",
   "short_term_rental",
+  // Spec step 198: per person in the household.
+  "teen_driver",
+  "spouse_health",
+  "family_health_plan",
 ] as const;
 export type GapKey = (typeof GAP_KEYS)[number];
 
@@ -243,6 +247,18 @@ export const GAP_ADVICE: Record<GapKey, { text: string; cents: number[] }> = {
   },
   boat: {
     text: "Add boat insurance that pays for the boat itself and for damage you cause to others on the water. Your home policy usually caps or excludes boats.",
+    cents: [],
+  },
+  teen_driver: {
+    text: "Add the new driver to your car policy before they drive. Carriers price a teen driver in, and an unlisted one can leave a claim disputed. Good-student and driver-training discounts are common.",
+    cents: [],
+  },
+  spouse_health: {
+    text: "Add your spouse to a health plan: yours, or their employer's if it has one. Open enrollment and a recent life event are the usual times to switch.",
+    cents: [],
+  },
+  family_health_plan: {
+    text: "Compare the two plans for the whole family, with the care you usually need, and move to the cheaper one at the next open enrollment or after a life event.",
     cents: [],
   },
   short_term_rental: {
@@ -687,3 +703,165 @@ export const RISK_SIGNALS: Record<
 // many days ago, so a long-time pet owner isn't asked.
 export const RISK_LOOKBACK_DAYS = 60;
 export const RISK_NEW_PET_QUIET_DAYS = 120;
+
+// --- The whole household's cover (spec step 198) ---------------------------------------------
+export const HOUSEHOLD_RELATIONS = {
+  spouse: "Spouse or partner",
+  child: "Child",
+  other: "Someone else",
+} as const;
+export type HouseholdRelation = keyof typeof HOUSEHOLD_RELATIONS;
+export const isHouseholdRelation = (value: unknown): value is HouseholdRelation =>
+  typeof value === "string" && Object.hasOwn(HOUSEHOLD_RELATIONS, value);
+// A driver this age or younger is a teen driver, who needs to be on a car policy.
+export const TEEN_DRIVER_MAX_AGE = 19;
+export const MAX_HOUSEHOLD_PEOPLE = 10;
+export const MAX_PERSON_NAME_LENGTH = 40;
+// A family health plan has to cost this much less a year, with the care the household
+// usually needs, before Jane says to look at the other employer's plan.
+export const FAMILY_HEALTH_MIN_SAVING_CENTS = 60_000;
+
+// --- Claim or pay yourself? (spec step 199) ---------------------------------------------------
+// What a claim typically costs in higher premiums: a share of the yearly premium added for
+// CLAIM_SURCHARGE_YEARS years, by kind of policy and what happened (the claim guide's event
+// key), and the claims-free discount lost for the same years. Estimates from typical carrier
+// practice, said as "about"; never a promise of what a carrier will do.
+export const CLAIM_SURCHARGE_YEARS = 3;
+export const CLAIM_SURCHARGE: Record<
+  PolicyKind,
+  { default: number; events?: Record<string, number> }
+> = {
+  auto: { default: 0.1, events: { accident: 0.3, theft: 0.08, damage: 0.05 } },
+  home: { default: 0.12, events: { break_in: 0.1, damage: 0.18, theft: 0.1 } },
+  renters: { default: 0.06 },
+  life: { default: 0 },
+  pet: { default: 0.05 },
+  health: { default: 0 },
+  disability: { default: 0 },
+  umbrella: { default: 0.1 },
+  travel: { default: 0 },
+  device: { default: 0 },
+  rideshare: { default: 0.15, events: { accident: 0.3 } },
+  business: { default: 0.12 },
+  valuables: { default: 0.05 },
+  boat: { default: 0.12, events: { theft: 0.1 } },
+  rental_property: { default: 0.15 },
+  other: { default: 0 },
+};
+// The claims-free discount a claim puts at risk, as a share of the yearly premium.
+export const CLAIMS_FREE_DISCOUNT: Partial<Record<PolicyKind, number>> = {
+  auto: 0.1,
+  home: 0.05,
+  renters: 0.03,
+  rideshare: 0.05,
+  boat: 0.05,
+};
+// A difference this small either way is a close call, not a clear answer.
+export const CLAIM_CLOSE_CALL_CENTS = 5_000;
+
+// --- Health cover all year (spec step 200) --------------------------------------------------
+// Medical spending counted toward the plan: Plaid's MEDICAL_ detailed categories, less the
+// ones a separate dental or vision plan pays (they still count toward an FSA).
+export const HEALTH_PLAN_EXCLUDED_CATEGORIES: readonly string[] = [
+  "MEDICAL_DENTAL_CARE",
+  "MEDICAL_EYE_CARE",
+];
+// The day an FSA's unused money is lost: December 31, unless the employer allows a carryover.
+export const FSA_DEADLINE = { month: 12, day: 31 } as const;
+// Say the FSA is running out from this many days before the deadline, with this much left.
+export const FSA_WARN_DAYS = 90;
+export const FSA_WARN_MIN_CENTS = 5_000;
+// A bill is checked against what the plan should have paid from this size.
+export const BIG_BILL_MIN_CENTS = 50_000;
+// And opens a dispute card when it was this much more than the person's share.
+export const DISPUTE_TOLERANCE_CENTS = 10_000;
+// The sample plan the demo bank's health year uses (nothing stored): an employer PPO.
+export const DEMO_HEALTH_PLAN = {
+  name: "Acme PPO",
+  deductibleCents: 50_000,
+  outOfPocketMaxCents: 300_000,
+  coinsurance: 20,
+} as const;
+// The demo FSA election when no pay stub benefit is on file (the demo payroll's $100 a pay).
+export const DEMO_FSA_ELECTION_CENTS = 240_000;
+// The stand-in plan directory (spec step 200): who is in the plan's network. Matched on the
+// name as it appears on a statement; anything not listed is "can't tell", never "out".
+export const DEMO_NETWORK_DIRECTORY: readonly {
+  match: RegExp;
+  name: string;
+  inNetwork: boolean;
+}[] = [
+  { match: /cvs/i, name: "CVS Pharmacy", inNetwork: true },
+  { match: /bayview imaging/i, name: "Bayview Imaging Center", inNetwork: true },
+  { match: /lakeside urgent/i, name: "Lakeside Urgent Care", inNetwork: false },
+];
+
+// --- Perfect coverage: what cover you need (spec step 274) ----------------------------------
+// Every threshold the need calculators use. Demo advice only. Term life is LIFE_NEED above
+// (income years, final expenses, schooling per dependant, less savings and cover in place).
+// Disability: a policy should replace about this share of pay (the share most policies pay, and
+// the one that leaves it untaxed), which is DISABILITY_PAY_SHARE in src/config/benefits.ts.
+export const DISABILITY_NEED = { waitingDays: 90, benefitUntilAge: 65 } as const;
+// Umbrella: net worth above the liability limits on car and home, rounded up to a step, between a
+// first million and a most. It only applies at UMBRELLA_ASSETS_CENTS of net worth or more.
+export const UMBRELLA_NEED = {
+  stepCents: 100_000_000,
+  minCents: 100_000_000,
+  maxCents: 500_000_000,
+} as const;
+// A deductible the cash cushion can carry: the largest step on the ladder that is at most this
+// share of liquid cash (so a claim never empties it), and never below the smallest step.
+export const DEDUCTIBLE_CASH_SHARE = 0.5;
+// Liability levels by net worth tier: car injury per person and per accident, home and renters
+// liability. The higher tier applies from HIGHER_LIABILITY_NET_WORTH_CENTS of net worth.
+export const LIABILITY_LEVELS = {
+  base: {
+    autoPerPersonCents: LIABILITY_TARGET_CENTS,
+    autoPerAccidentCents: LIABILITY_TARGET_ACCIDENT_CENTS,
+    homeCents: 30_000_000,
+    rentersCents: 10_000_000,
+  },
+  higher: {
+    autoPerPersonCents: 25_000_000,
+    autoPerAccidentCents: 50_000_000,
+    homeCents: 50_000_000,
+    rentersCents: 30_000_000,
+  },
+} as const;
+export const HIGHER_LIABILITY_NET_WORTH_CENTS = 25_000_000;
+
+// --- Perfect coverage: options to pick from (spec step 275) ---------------------------------
+// Disability options are a share of monthly pay: a cheaper one, the need, a better one.
+export const DISABILITY_OPTION_SHARES = [0.5, 0.6, 0.7] as const;
+// Life options: the cheaper one covers this share of the need; the longer one adds this many
+// years of term.
+export const LIFE_OPTION_CHEAPER_SHARE = 0.75;
+export const LIFE_OPTION_LONGER_YEARS = 10;
+// Most options shown for one need.
+export const MAX_OPTIONS = 4;
+// Jane's pick can't be surer than a sample price from the stand-in allows.
+export const OPTION_PICK_CAP = 80;
+
+// The most a liability-limits gap counts for when suggestions are ranked: the chance is small
+// and the gap can be huge for a rich person, so the size alone must not put it first.
+export const LIABILITY_WORTH_CAP_CENTS = 5_000_000;
+
+// Kept perfect (spec step 280): which needs a life event can change, so the gaps it opens are
+// shown with their reason. A new baby adds a dependant; a new job changes the pay and the cover
+// through work; a move changes the home and its liability; a car bought adds a car to cover.
+export const EVENT_NEEDS: Readonly<Record<string, readonly string[]>> = {
+  new_baby: ["life", "disability", "umbrella"],
+  new_job: ["life", "disability"],
+  moving: ["home_liability", "renters_liability", "umbrella", "deductible"],
+  car_bought: ["auto_liability", "umbrella", "deductible"],
+  raise: ["life", "disability", "umbrella"],
+  home_bought: ["home_liability", "umbrella", "deductible", "life"],
+};
+export const EVENT_REASONS: Readonly<Record<string, string>> = {
+  new_baby: "the new baby",
+  new_job: "the new job",
+  moving: "the move",
+  car_bought: "the new car",
+  raise: "your raise",
+  home_bought: "the home you bought",
+};

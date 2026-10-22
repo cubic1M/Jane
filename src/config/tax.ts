@@ -397,6 +397,12 @@ export const TAX_MESSAGE_PRIORITY = {
   years: 35,
   // Spec step 221: an assessment worth appealing, and exemptions not yet claimed.
   property: 38,
+  // Spec step 222: an accountant's answers, and a return people usually bring one to.
+  accountant_answer: 60,
+  accountant: 28,
+  // Spec step 223: an estimated payment due that needs a tap, and December's year-end moves.
+  estimate_due: 85,
+  year_end: 55,
   exemption: 30,
 } as const;
 
@@ -466,6 +472,16 @@ export const TAX_AUTOPILOT: readonly { feature: string; ask: string; auto: strin
     feature: "property",
     ask: "I compare your home's assessed value with its market value and, with demo advice, tell you when the gap is worth an appeal, draft it with comparable sales and name exemptions you may not have claimed. You decide who files it.",
     auto: "I compare your home's assessed value with its market value, put the appeal deadline on your plan when the gap is worth an appeal, and with demo advice draft it with comparable sales and name exemptions you may not have claimed. Filing is always on your tap: my team's or yours.",
+  },
+  {
+    feature: "accountant",
+    ask: "When your taxes include things people usually bring an accountant to, I say so. If you make a read-only link, I put your tax pack, the forms I collected and my questions on it, and bring their answers back here. The link ends when you say and every time it is opened is logged.",
+    auto: "When your taxes include things people usually bring an accountant to, I say so, and I keep my questions for them up to date. Making and sharing a link is always your tap. It ends when you say, you can revoke it any time, and every time it is opened is logged.",
+  },
+  {
+    feature: "calendar",
+    ask: "I keep your tax calendar and, each month, tell you what is due: the IP PIN in January, forms as they come in, estimated payments a few days before they are due, a withholding check in June, the year-end moves in December and your refund after you file. Anything that moves money, I ask first.",
+    auto: "I run your tax calendar: the IP PIN reminder in January, the form chase, each estimated payment paid a few days before it is due if it is within your cap for taxes (above it, I ask), a withholding check in June, the year-end moves on your deadlines in December, and your refund tracked after you file. Signing and filing your return are always yours.",
   },
   {
     feature: "identity",

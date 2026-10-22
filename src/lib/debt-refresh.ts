@@ -6,6 +6,7 @@ import { refreshTightMoney } from "@/lib/tight-money";
 import { refreshMedicalBills } from "@/lib/medical-bills";
 import { refreshReportFixes } from "@/lib/credit-report-fixes";
 import { refreshCardInterest } from "@/lib/card-interest";
+import { refreshCarLoan } from "@/lib/car-loan";
 import { runDebtReview } from "@/lib/debt-review";
 import { syncStudentDeadlines } from "@/lib/student-long-game";
 import { refreshFamilyLoans } from "@/lib/family-loans";
@@ -45,6 +46,8 @@ export async function refreshDebts(
     // Spec step 230: the yearly review, after everything it looks at has been refreshed.
     ["debt review", () => runDebtReview(userId, { client, now })],
     ["refinance rates", () => refreshRefinance(userId, { client, now })],
+    // Spec step 245: rates that fell or a score that rose, noticed once.
+    ["car loan", () => refreshCarLoan(userId, { client, now })],
     // Spec step 112: loans funding, and old loans reaching zero.
     ["loan applications", () => refreshLoanApplications(userId, { client, now })],
   ];

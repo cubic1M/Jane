@@ -12,6 +12,30 @@ import { toView, type MessageView } from "./view";
 // posted yet today, Jane's brain runs first (quiet hours don't apply, the person is
 // looking). Null when the person has no accounts yet, like Today.
 
+// "I'm still going through your accounts": the first thing in the chat during the first scan.
+// The scan posts it itself as soon as it starts (src/lib/plaid/sync.ts), so it always comes
+// before the brief; opening the chat posts it too if it isn't there, and it is said once.
+export async function postScanningHello(
+  userId: string,
+  { client = defaultClient, now = new Date() }: { client?: PrismaClient; now?: Date } = {},
+): Promise<void> {
+  await postMessages(
+    userId,
+    [
+      {
+        kind: "brief",
+        body: SCANNING_HELLO,
+        refs: {},
+        actions: [],
+        dedupeKey: `scanning:${SCANNING_HELLO_KEY}`,
+        priority: 0,
+        source: "scanning",
+      },
+    ],
+    { client, now },
+  );
+}
+
 // The person's timezone, for "today" and the times shown. Users have their own helpers,
 // so a read of this one column by id.
 export async function timezoneOf(
@@ -55,21 +79,7 @@ export async function openChat(
   // run; the scan's own run posts her findings as it finishes.
   const scanning = await scanInProgress(userId, { client, now });
   if (scanning) {
-    await postMessages(
-      userId,
-      [
-        {
-          kind: "brief",
-          body: SCANNING_HELLO,
-          refs: {},
-          actions: [],
-          dedupeKey: `scanning:${SCANNING_HELLO_KEY}`,
-          priority: 0,
-          source: "scanning",
-        },
-      ],
-      { client, now },
-    );
+    await postScanningHello(userId, { client, now });
     const feed = await chatFeed(userId, { client, pages, now });
     return {
       messages: feed.messages.map((m) => toView(m, now, timezone)),

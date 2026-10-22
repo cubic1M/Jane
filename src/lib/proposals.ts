@@ -13,6 +13,7 @@ import { CategoryError, merchantRuleKey, setMerchantCategory } from "@/lib/categ
 import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
 import { GoalError, addGoal } from "@/lib/goals";
+import { loadProfile } from "@/lib/profile";
 import { proposals, type Proposal } from "@/planning/proposals";
 
 // Set-up Jane proposes on the plan (spec step 55): budgets from the person's own averages,
@@ -43,6 +44,17 @@ export async function currentProposals(
     irregularCosts(userId, { client, now }),
   ]);
   const summary = budgetSummary(transactions, budgets, asOf);
+  // What the profile says about how they're paid and whether debt is a struggle; without it the
+  // fund is three months of spending.
+  const profile = await loadProfile(userId, { client, now })
+    .then((p) => ({
+      pattern:
+        typeof p.facts.income_pattern.value === "string" ? p.facts.income_pattern.value : null,
+      debtTrouble: p.facts.debt_trouble.value === true,
+      incomeCents:
+        typeof p.facts.monthly_income.value === "number" ? p.facts.monthly_income.value : null,
+    }))
+    .catch(() => undefined);
   // Average spending over the complete months before this one.
   const months = spendingInsights(transactions, {
     asOf,
@@ -68,6 +80,7 @@ export async function currentProposals(
     budgetedCategories: budgets.map((b) => b.category),
     goalNames: goals.map((g) => g.name),
     monthlySpendingCents,
+    profile,
     yearlyBillsMonthlyCents: irregular.monthlyCents,
     uncategorized: [...byMerchant].map(([merchantKey, { name, count }]) => {
       // The directory's own name and category ("The New York Times", not "Nytimes").

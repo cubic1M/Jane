@@ -20,6 +20,8 @@ import { familyChoiceMessage, statusOf } from "../family-taxes-message";
 import { worthSaying } from "@/planning/family-taxes";
 import { equitySetAsideMessage } from "../equity-tax-message";
 import { yearsMoveMessage } from "../multi-year-message";
+import { answersMessage, complexMessage } from "../accountant-message";
+import { estimateDueMessage, yearEndMessage } from "../tax-calendar-message";
 import {
   appealDraftedMessage,
   appealSuggestedMessage,
@@ -434,6 +436,52 @@ export const taxesSource: MessageSource = {
           ...exemption,
           dedupeKey: `exemption:${exemption.refs.propertyExemption}`,
           priority: TAX_MESSAGE_PRIORITY.exemption,
+        });
+      }
+    }
+
+    // Spec step 222: what the accountant wrote back, and a return people usually bring an
+    // accountant to (once a year, only while there is no live link).
+    const accountant = tax.accountant;
+    if (accountant) {
+      const answers = answersMessage(accountant);
+      if (answers) {
+        out.push({
+          kind: "decision",
+          ...answers,
+          dedupeKey: `accountant_answer:${accountant.notes.filter((n) => !n.seen).length}:${accountant.notes[0]?.id}`,
+          priority: TAX_MESSAGE_PRIORITY.accountant_answer,
+        });
+      }
+      const complex = accountant.activeCount === 0 ? complexMessage(accountant) : null;
+      if (complex) {
+        out.push({
+          kind: "decision",
+          ...complex,
+          dedupeKey: `accountant:${accountant.year}`,
+          priority: TAX_MESSAGE_PRIORITY.accountant,
+        });
+      }
+    }
+
+    // Spec step 223: an estimated payment that needs the person's tap, and December's
+    // year-end moves in one message.
+    const calendar = tax.calendar;
+    if (calendar) {
+      for (const d of calendar.due.filter((x) => x.needsTap && x.needsTap !== "no_partner")) {
+        out.push({
+          kind: "decision",
+          ...estimateDueMessage(d, calendar.year),
+          dedupeKey: `estimate_due:${d.dueOn}`,
+          priority: TAX_MESSAGE_PRIORITY.estimate_due,
+        });
+      }
+      if (calendar.yearEnd && calendar.advice) {
+        out.push({
+          kind: "decision",
+          ...yearEndMessage(calendar.yearEnd, calendar.acts),
+          dedupeKey: `yearend:${calendar.yearEnd.year}`,
+          priority: TAX_MESSAGE_PRIORITY.year_end,
         });
       }
     }

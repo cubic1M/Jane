@@ -26,6 +26,15 @@ import { parseCoverEventRef } from "@/lib/jane-agent/insurance/cover-words";
 import { NegotiationError, callCarrier, declineNegotiation } from "@/lib/insurance/negotiate";
 import { SavingError, applySaving, dismissSaving } from "@/lib/insurance/savings";
 import { RiskError, answerRisk } from "@/lib/insurance/risks";
+import {
+  FamilyError,
+  addPerson,
+  removePerson,
+  setCovered,
+  setShared,
+} from "@/lib/insurance/family";
+import { PickError, pickOption } from "@/lib/insurance/need/pick";
+import type { NeedKind } from "@/lib/insurance/need/types";
 import { requireUser } from "@/lib/session";
 
 // Insurance (spec step 102). A save goes back to /insurance with ?saved=, so the
@@ -182,6 +191,78 @@ export async function answerRiskForm(formData: FormData): Promise<void> {
   }
   refreshOthers();
   redirect("/insurance?saved=risk");
+}
+
+// Spec step 198: the whole household's cover.
+async function household(run: () => Promise<unknown>): Promise<never> {
+  let error: string | null = null;
+  try {
+    await run();
+  } catch (e) {
+    if (!(e instanceof FamilyError)) throw e;
+    error = e.message;
+  }
+  refreshOthers();
+  redirect(
+    error ? `/insurance?family=${encodeURIComponent(error)}#household` : "/insurance#household",
+  );
+}
+
+export async function addPersonForm(formData: FormData): Promise<void> {
+  const user = await requireUser();
+  await household(() =>
+    addPerson(user.id, {
+      name: text(formData, "name"),
+      relation: text(formData, "relation"),
+      driver: text(formData, "driver") === "on",
+      age: text(formData, "age"),
+    }),
+  );
+}
+
+export async function removePersonForm(formData: FormData): Promise<void> {
+  const user = await requireUser();
+  await household(() => removePerson(user.id, text(formData, "name")));
+}
+
+export async function setSharedForm(formData: FormData): Promise<void> {
+  const user = await requireUser();
+  await household(() =>
+    setShared(user.id, text(formData, "policyId"), text(formData, "shared") === "yes"),
+  );
+}
+
+export async function setCoveredForm(formData: FormData): Promise<void> {
+  const user = await requireUser();
+  await household(() =>
+    setCovered(
+      user.id,
+      text(formData, "policyId"),
+      text(formData, "name"),
+      text(formData, "covered") === "yes",
+    ),
+  );
+}
+
+// Spec step 276: choosing an option queues it for the team (one tap, never twice).
+export async function pickCoverForm(formData: FormData): Promise<void> {
+  const user = await requireUser();
+  const need = text(formData, "need") as NeedKind;
+  const policy = text(formData, "policy");
+  let message: string;
+  try {
+    const picked = await pickOption(user.id, need, text(formData, "option"), {
+      policyId: policy || undefined,
+    });
+    message = picked.newCover
+      ? "Got it. My team will add that cover for you and tell you when it's done."
+      : "Got it. My team will change that on your policy and tell you when it's done.";
+  } catch (e) {
+    if (!(e instanceof PickError)) throw e;
+    message = e.message;
+  }
+  refreshOthers();
+  redirect(`/insurance?picked=${encodeURIComponent(message)}#options`);
 }
 
 export async function deletePolicy(formData: FormData): Promise<void> {

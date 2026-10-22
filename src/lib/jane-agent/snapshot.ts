@@ -14,6 +14,9 @@ import { healthFor, type HealthView } from "@/lib/health-score";
 import type { Attention } from "./attention";
 import { loadAttention } from "./attention-load";
 import { resultsByKind, type KindResult } from "@/lib/worked";
+import { offeredToday, type OfferedSuggestion } from "@/lib/suggestions";
+import { loadSteady, type SteadyView } from "@/lib/steady-pay";
+import { nextQuestion, type OpenQuestion } from "@/lib/questions";
 import { adoptedPlans, type AdoptedPlan } from "@/lib/what-if";
 import { openLean, recentlyEnded, type LeanState } from "@/lib/lean-plan";
 import { recentReport, type StoredReport } from "@/lib/monthly-report-store";
@@ -122,6 +125,12 @@ export type Snapshot = {
   attention?: Attention;
   // Spec step 203: what-if plans the person adopted. Optional, like changes.
   whatIf?: AdoptedPlan[];
+  // Spec step 255: the suggestions chosen for today. Optional, like changes.
+  suggestions?: OfferedSuggestion[];
+  // Spec step 240: the steady paycheck from uneven income. Optional, like changes.
+  steady?: SteadyView | null;
+  // Spec step 257: the one question worth asking now. Optional, like changes.
+  question?: OpenQuestion | null;
   // Spec step 208: unusual-activity alerts waiting for "this was me" or "not me".
   unusual?: { id: string; key: string; title: string; body: string }[];
   // Spec step 207: what the person says yes to and what worked, by kind of finding.
@@ -227,17 +236,29 @@ async function thinking(
   };
 }
 
+const NO_MORE: MoreSnapshot = {
+  autopilot: null,
+  setupProposals: [],
+  agentSteps: [],
+  assetPrompts: [],
+};
+
 export async function loadSnapshot(
   userId: string,
   {
     client = defaultClient,
     now = new Date(),
     input,
+    light = false,
   }: {
     client?: PrismaClient;
     now?: Date;
     // The bank data, when the caller already loaded it (Jane's run does).
     input?: DetectionInput;
+    // Only what the first brief says (the suggestions, the question, the plan and the alerts):
+    // none of the sectors' parts. Nearly a thousand queries on a first scan otherwise, which a
+    // far-away database turned into most of the half minute before the brief. Never stored.
+    light?: boolean;
   } = {},
 ): Promise<Snapshot | null> {
   const home = await homeSummary(userId, { client, now });
@@ -296,19 +317,25 @@ export async function loadSnapshot(
     attention,
     monthlyReport,
     whatIf,
+    suggestions,
+    steady,
+    question,
   ] = await Promise.all([
-    loadMore(userId, { client, now, input }),
-    loadTaxSnapshot(userId, { client, now }),
+    light ? NO_MORE : loadMore(userId, { client, now, input }),
+    light ? {} : loadTaxSnapshot(userId, { client, now }),
     // Spec steps 97, 100, 139, 145 and 146 read the same bank data, so it's loaded once.
-    thinking(userId, client, now, input),
-    lastControllerRun(userId, { client, now }),
-    latestPaycheckPlan(userId, { client, now }),
-    loadUpkeep(userId, { client, now }),
-    loadInvestmentSnapshot(userId, { client, now }),
+    light ? {} : thinking(userId, client, now, input),
+    light ? null : lastControllerRun(userId, { client, now }),
+    light ? null : latestPaycheckPlan(userId, { client, now }),
+    light ? undefined : loadUpkeep(userId, { client, now }),
+    light ? undefined : loadInvestmentSnapshot(userId, { client, now }),
     chatWeek(userId, client, weekStart(now, user?.timezone)),
     loadAttention(userId, { client, now, timezone: user?.timezone ?? null }),
     recentReport(userId, { client, now }),
     adoptedPlans(userId, { client }),
+    offeredToday(userId, { client, now }),
+    light ? null : loadSteady(userId, { client, now, input }),
+    nextQuestion(userId, { client, now }),
   ]);
 
   return {
@@ -372,9 +399,14 @@ export async function loadSnapshot(
     attention,
     monthlyReport,
     whatIf,
-    lean: {
-      open: await openLean(userId, { client }),
-      ended: await recentlyEnded(userId, { client, now }),
-    },
+    suggestions,
+    steady,
+    question,
+    lean: light
+      ? { open: [], ended: [] }
+      : {
+          open: await openLean(userId, { client }),
+          ended: await recentlyEnded(userId, { client, now }),
+        },
   };
 }

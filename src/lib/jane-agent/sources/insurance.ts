@@ -84,6 +84,8 @@ export function shopBody(
   shop: Shop,
   policies: Policies,
   autopilot: string | null = null,
+  // The chat's card under a short answer: the pick and the saving, one line of why, what Yes does.
+  short = false,
 ): string | null {
   const policy = policies.find((p) => p.id === shop.policyId);
   if (!policy || !shop.pick || shop.savingCents === null) return null;
@@ -94,8 +96,8 @@ export function shopBody(
     policy.kind === "health"
       ? `I found a health plan that would cost ${formatCents(shop.savingCents)} less a year with your usual care: ${pick.plan ?? pick.carrier.name}, at ${price}.`
       : `I found ${kindWords(policy.kind)} ${formatCents(shop.savingCents)} a year cheaper for the same cover: ${pick.carrier.name}, at ${price}.`,
-    ...shop.why.map((line) => `- ${line}`),
-    ...(shop.demo
+    ...shop.why.slice(0, short ? 1 : undefined).map((line) => `- ${line}`),
+    ...(shop.demo && !short
       ? ["These are sample quotes from my demo carrier catalog, not real offers."]
       : []),
     // Spec step 108: at "handle everything" the switch is ready to go.
@@ -361,7 +363,11 @@ function doneByJaneMessages(insurance: InsuranceSnapshot): Candidate[] {
   );
   const drafts = (insurance.draftClaims ?? []).map((c): Candidate => ({
     kind: "decision",
-    body: draftBody(c),
+    body: draftBody(
+      c,
+      insurance.policies.find((p) => p.id === c.policyId),
+      insurance.advice,
+    ),
     refs: { claimId: c.id },
     actions: draftActions(c),
     dedupeKey: `claim-draft:${c.id}:${c.amountCents}`,
@@ -414,6 +420,24 @@ function savingMessages(insurance: InsuranceSnapshot): Candidate[] {
 }
 
 // Spec step 197: one question about how they live, asked once; yes or no ends it.
+// Spec step 200: FSA money that will be lost, said once a year when the deadline is close.
+function fsaMessages(insurance: InsuranceSnapshot): Candidate[] {
+  const fsa = insurance.healthYear?.fsa;
+  if (!fsa || !fsa.warn) return [];
+  return [
+    {
+      kind: "heads_up",
+      body: `You have ${formatCents(fsa.leftCents)} left in your FSA, and it's lost after ${shortDate(fsa.deadline)} (${fsa.daysLeft} days), unless your employer allows a carryover. Eligible care and medicine count, like prescriptions, glasses and dental work.`,
+      refs: {},
+      actions: [
+        { id: "open", label: "Your health year", kind: "link", href: "/insurance#health-year" },
+      ],
+      dedupeKey: `fsa-deadline:${fsa.deadline}`,
+      priority: MESSAGE_PRIORITY.fsa_deadline,
+    },
+  ];
+}
+
 function riskMessages(insurance: InsuranceSnapshot): Candidate[] {
   return (insurance.risks ?? []).map((risk) => ({
     kind: "decision",
@@ -444,6 +468,7 @@ export const insuranceSource: MessageSource = {
       ...doneByJaneMessages(insurance),
       ...savingMessages(insurance),
       ...riskMessages(insurance),
+      ...fsaMessages(insurance),
     ];
   },
 };

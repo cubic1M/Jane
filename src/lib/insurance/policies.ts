@@ -21,6 +21,7 @@ import { logAudit } from "@/lib/audit";
 import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
 import { formatCents, parseMoneyToCents } from "@/lib/money";
+import { readPeople, type Person } from "./family-rules";
 import { CoverageError, fieldText, parseCoverage, readCoverage, type Coverage } from "./coverage";
 
 // The policies on the person's insurance profile (spec step 102): typed on /insurance,
@@ -47,6 +48,9 @@ export type Policy = {
   termMonths: number;
   documentId: string | null;
   merchantKey: string | null;
+  // Spec step 198: shown read-only to the household when on, and who else it covers.
+  sharedWithHousehold?: boolean;
+  covered?: Person[];
 };
 
 export const POLICY_SELECT = {
@@ -64,6 +68,8 @@ export const POLICY_SELECT = {
   termMonths: true,
   documentId: true,
   merchantKey: true,
+  sharedWithHousehold: true,
+  covered: true,
 } as const;
 
 const day = (date: Date) => date.toISOString().slice(0, 10);
@@ -90,6 +96,8 @@ export function toPolicy(row: Prisma.InsurancePolicyGetPayload<{ select: typeof 
     termMonths: row.termMonths,
     documentId: row.documentId,
     merchantKey: row.merchantKey,
+    sharedWithHousehold: row.sharedWithHousehold,
+    covered: readPeople(row.covered),
   } satisfies Policy;
 }
 

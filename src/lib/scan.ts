@@ -46,3 +46,53 @@ export async function scanReady(
   ]);
   return accounts > 0 && transactions > 0;
 }
+
+// How far the first scan has got, from what is really there (the status route and /scanning
+// read it): each stage is a fact, so the bar only moves when something finished.
+export type ScanProgress = {
+  accounts: boolean;
+  // Whole months between the first and last transaction read so far.
+  months: number;
+  transactions: boolean;
+  detection: boolean;
+  // The sectors (insurance, taxes, investing, loans) have been scanned for suggestions.
+  suggestions: boolean;
+  done: boolean;
+};
+
+export async function scanProgress(
+  userId: string,
+  { client = defaultClient }: Options = {},
+): Promise<ScanProgress> {
+  const db = scopedFor(userId, client);
+  const [user, accounts, span, suggestions] = await Promise.all([
+    client.user.findUnique({
+      where: { id: userId },
+      select: { firstDetectionAt: true, firstScanDoneAt: true },
+    }),
+    db.accounts.count(),
+    db.transactions.aggregate({ _count: true, _min: { date: true }, _max: { date: true } }),
+    db.suggestions.count(),
+  ]);
+  const first = span._min.date;
+  const last = span._max.date;
+  const months =
+    first && last
+      ? Math.max(
+          1,
+          (last.getUTCFullYear() - first.getUTCFullYear()) * 12 +
+            last.getUTCMonth() -
+            first.getUTCMonth() +
+            1,
+        )
+      : 0;
+  const done = Boolean(user?.firstScanDoneAt);
+  return {
+    accounts: accounts > 0,
+    months,
+    transactions: span._count > 0 && accounts > 0,
+    detection: Boolean(user?.firstDetectionAt),
+    suggestions: suggestions > 0 || done,
+    done,
+  };
+}

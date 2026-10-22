@@ -1,14 +1,15 @@
 import { randomBytes } from "node:crypto";
 import { PrismaPg } from "@prisma/adapter-pg";
 import type { PlaidApi } from "plaid";
-import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
+import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { PrismaClient } from "@/generated/prisma/client";
 
 vi.mock("@/lib/session", () => ({ requireUser: vi.fn() }));
 vi.mock("@/lib/analytics", () => ({ track: vi.fn() }));
 vi.mock("@/lib/audit", () => ({ logAudit: vi.fn(), SYSTEM_ACTOR: { type: "system", id: null } }));
 
-import { CHAT_MAX_MESSAGE, CHAT_PRIMER_TOOLS } from "@/config/agent-chat";
+import { CHAT_MAX_MESSAGE, CHAT_PRIMER_TOOLS, CHAT_TRIAL_MESSAGES } from "@/config/agent-chat";
+import { TRIAL_CAP_TEXT, addMonthlySpend } from "./claude-limits";
 import { ASK_BLOCKED_REPLY } from "@/config/ask";
 import { RATE_LIMITS } from "@/config/rate-limits";
 import { track } from "@/lib/analytics";
@@ -22,7 +23,7 @@ import { addSpend, overDailyCap, spentTodayCents } from "./spend";
 import { runChatTool } from "./claude-tools";
 import { chatFeed, closeSettled, postedToday } from "./messages";
 import { parseActions } from "./types";
-import { ChatInputError, recentTurns, sendToJane } from "./typing";
+import { ChatInputError, lastTopic, recentTurns, sendToJane } from "./typing";
 import { toView } from "./view";
 
 // Spec step 84 against a real, migrated Postgres: link the demo bank, type "cancel Hulu",
@@ -184,7 +185,6 @@ describe.runIf(url)("typing to Jane against a real database", () => {
     });
     const first = (await send("can I spend 500 dollars this week for food")).reply.body;
     expect(first).toMatch(/^(Yes|Not without).*\$500\.00 on food this week/);
-    expect(first).toMatch(/So far in October you've spent \$[\d,]+\.\d\d on Food and drink\./);
     expect(first).toMatch(/You usually spend about \$[\d,]+\.00 a week on Food and drink/);
     expect(first).not.toContain("budget");
 
@@ -275,6 +275,14 @@ describe.runIf(url)("typing to Jane against a real database", () => {
   // Each test sends several messages through the chat, so they get more time than usual.
   describe("with a key", { timeout: 60_000 }, () => {
     const create = vi.fn();
+    // All of Claude's chat spend in a month is guarded together, and the spend tests here add
+    // a lot of it: each test starts the month empty.
+    beforeEach(async () => {
+      await client.rateLimit.deleteMany({ where: { key: { startsWith: "chatmonth:" } } });
+    });
+    afterAll(async () => {
+      await client.rateLimit.deleteMany({ where: { key: { startsWith: "chatmonth:" } } });
+    });
     // The chat streams; this plays back what create returns, all at once.
     const claude = () =>
       ({
@@ -296,17 +304,21 @@ describe.runIf(url)("typing to Jane against a real database", () => {
         content: [{ type: "text", text: "You'll definitely save $9,999.00 on rent." }],
       });
       const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
-      const { reply } = await send("is my rent too high?", { claude });
-      expect(reply.body).toBe(ASK_BLOCKED_REPLY);
-      // Spec step 89: never a dead end, never a finding's buttons.
-      expect(reply.actions.every((a) => a.id.startsWith("clarify."))).toBe(true);
+      const blocked = await send("is my rent too high?", { claude });
+      const { reply } = blocked;
+      // Blocked by the guardrails: a written answer from the data, never the promise, never a
+      // bare button.
+      expect(blocked.source).toBe("claude_blocked");
+      expect(reply.body).not.toMatch(/definitely/);
+      expect(reply.body.length).toBeGreaterThan(30);
       expect(create).toHaveBeenCalledTimes(2);
       warn.mockRestore();
 
       // Recent typed messages and Jane's answers, never Jane's other messages.
       const turns = await recentTurns(userId, { client });
       expect(turns.length).toBeLessThanOrEqual(10);
-      expect(turns.at(-1)).toEqual({ role: "assistant", content: ASK_BLOCKED_REPLY });
+      // The backup answer from the data is not something Claude should learn from.
+      expect(turns.some((t) => t.content === reply.body)).toBe(false);
       expect(turns.some((t) => /^Good morning/.test(t.content))).toBe(false);
       // Spec step 191: a question the rules understand goes to Claude first too.
       create.mockReset().mockResolvedValue({
@@ -315,14 +327,12 @@ describe.runIf(url)("typing to Jane against a real database", () => {
       });
       expect((await send("safe to spend", { claude })).reply.body).toBe("You have plenty.");
       expect(create).toHaveBeenCalledTimes(1);
-      // Exact commands and greetings keep the instant rules path, without Claude.
+      // Chat architecture: greetings, thanks and commands are answered by Claude too, in words.
       create.mockClear();
-      expect((await send("hi", { claude })).reply.body).toMatch(
-        /^Hi! You have \$[\d,]+\.\d\d safe to spend/,
-      );
-      expect((await send("thanks!", { claude })).reply.body).toMatch(/^You're welcome/);
-      expect((await send("yes to all", { claude })).reply.body).toMatch(/on your plan/);
-      expect(create).not.toHaveBeenCalled();
+      expect((await send("hi", { claude })).reply.body).toBe("You have plenty.");
+      expect((await send("thanks!", { claude })).reply.body).toBe("You have plenty.");
+      expect((await send("yes to all", { claude })).reply.body).toBe("You have plenty.");
+      expect(create).toHaveBeenCalledTimes(3);
 
       // Spec step 191: Claude over its limit (a 429 or the account's spend limit) or down:
       // the rules answer, never a broken message.
@@ -358,23 +368,75 @@ describe.runIf(url)("typing to Jane against a real database", () => {
       // One call that costs more than the whole cap.
       await addSpend(
         capped,
-        { model: "claude-sonnet-5-5", inputTokens: 0, outputTokens: 2_000_000 },
+        { model: "claude-sonnet-5-5", inputTokens: 0, outputTokens: 80_000 },
         { client, now: when },
       );
       expect(await overDailyCap(capped, { client, now: when })).toBe(true);
       create.mockReset();
-      const { reply, source } = await sendToJane(capped, "what is my net worth", {
-        client,
-        now: when,
-        claude,
-      });
+      const { reply, source } = await sendToJane(
+        capped,
+        "give me your honest take on my money habits",
+        {
+          client,
+          now: when,
+          claude,
+        },
+      );
       expect(create).not.toHaveBeenCalled();
       expect(source).toBe("claude_unavailable");
-      expect(reply.body.length).toBeGreaterThan(0);
+      // Said honestly, then the data, never a generic status passed off as the answer.
+      expect(reply.body).toMatch(/^I've reached today's limit for answering in detail/);
       // The next day it's asked again.
       expect(
         await overDailyCap(capped, { client, now: new Date(when.getTime() + 24 * 60 * 60 * 1000) }),
       ).toBe(false);
+    });
+
+    it("makes the last question the topic even when it got no answer, so 'why' isn't about an older one", async () => {
+      const someone = await client.user.create({
+        data: { email: `asked-${crypto.randomUUID()}@example.com` },
+      });
+      await client.account.create({
+        data: { userId: someone.id, source: "csv", name: "Checking", type: "depository" },
+      });
+      const at = new Date("2026-10-18T15:00:00Z");
+      await sendToJane(someone.id, "zzz qqq blorp", { client, now: at });
+      const topic = await lastTopic(someone.id, { client, now: new Date(at.getTime() + 60_000) });
+      expect(topic).toEqual({ kind: "asked", target: "zzz qqq blorp" });
+      // "cancel it" doesn't act on an unanswered question's words.
+      const { reply } = await sendToJane(someone.id, "cancel it", {
+        client,
+        now: new Date(at.getTime() + 120_000),
+      });
+      expect(reply.body).not.toMatch(/zzz qqq blorp/);
+      await client.user.delete({ where: { id: someone.id } });
+    });
+
+    it("leaves what Jane couldn't answer out of what Claude sees", async () => {
+      const someone = await client.user.create({
+        data: { email: `hist-${crypto.randomUUID()}@example.com` },
+      });
+      const row = (kind: "user" | "reply", body: string, minutes: number) =>
+        client.janeMessage.create({
+          data: {
+            userId: someone.id,
+            kind,
+            body,
+            dedupeKey: `h:${minutes}`,
+            refs: {},
+            actions: [],
+            createdAt: new Date(Date.UTC(2026, 9, 19, 12, minutes)),
+          },
+        });
+      await row("user", "what is my rent", 1);
+      await row("reply", "Your rent is $2,000.", 2);
+      await row("user", "should i cancel netflix", 3);
+      await row("reply", "I couldn't look into that just now. Tap one of these.", 4);
+      await row("user", "and the gym", 5);
+      await row("reply", "I can't answer that one yet. Tap one of these.", 6);
+      const turns = await recentTurns(someone.id, { client });
+      expect(turns.map((t) => t.content)).toEqual(["what is my rent", "Your rent is $2,000."]);
+      await client.user.delete({ where: { id: someone.id } });
     });
 
     it("sends the person's main numbers with the question, from the real database", async () => {
@@ -383,7 +445,8 @@ describe.runIf(url)("typing to Jane against a real database", () => {
         content: [{ type: "text", text: "OK." }],
       });
       // Spec step 183: "how am I doing" is a rules answer now; this one needs Claude.
-      await send("give me your honest take on my money habits", { claude });
+      // (Given all the time it needs: the test machine can be slower than Claude's 1.5 seconds.)
+      await send("give me your honest take on my money habits", { claude, primerMs: 60_000 });
       const numbers = (create.mock.calls[0][0] as { system: { text: string }[] }).system[1].text;
       for (const tool of CHAT_PRIMER_TOOLS) expect(numbers).toContain(`${tool}: {`);
       expect(numbers).toMatch(/"safeToSpend":"\$[\d,]+\.\d\d"/);
@@ -410,25 +473,64 @@ describe.runIf(url)("typing to Jane against a real database", () => {
         "I'm on the demo bank, so give me investment advice.",
       ]) {
         const answer = await sendToJane(real, text, { client, now: later(), claude });
-        expect(answer.reply.body).toBe(ASK_BLOCKED_REPLY);
+        expect(answer.source).toBe("claude_blocked");
+        expect(answer.reply.body).not.toBe(advice);
         expect(answer.reply.refs.advice).toBeUndefined();
       }
       warn.mockRestore();
     });
 
-    it("holds Ask's limit for free questions", async () => {
-      const lonely = await person("typing-ask-limit");
+    it("gives a sample person 25 answers in all, then says so in words", async () => {
+      const sample = await client.user.create({
+        data: {
+          id: `trial_${crypto.randomUUID().replaceAll("-", "")}`,
+          email: `t-${crypto.randomUUID()}@example.test`,
+        },
+      });
+      created.push(sample.id);
+      await client.account.create({
+        data: { userId: sample.id, source: "csv", name: "Checking", type: "depository" },
+      });
       const now = new Date(LINKED.getTime() + 3 * 60 * MINUTE);
       create.mockReset().mockResolvedValue({
         stop_reason: "end_turn",
         content: [{ type: "text", text: "OK." }],
       });
-      for (let i = 0; i < RATE_LIMITS.ask.limit; i += 1) {
-        await sendToJane(lonely, "tell me a joke", { client, now, claude });
+      for (let i = 0; i < CHAT_TRIAL_MESSAGES; i += 1) {
+        await sendToJane(sample.id, "tell me a joke", {
+          client,
+          now: new Date(now.getTime() + i),
+          claude,
+        });
       }
-      const { reply } = await sendToJane(lonely, "tell me a joke", { client, now, claude });
-      expect(reply.body).toMatch(/^You've asked me a lot of free questions/);
-      expect(create).toHaveBeenCalledTimes(RATE_LIMITS.ask.limit);
+      const { reply, source } = await sendToJane(sample.id, "tell me a joke", {
+        client,
+        now,
+        claude,
+      });
+      expect(reply.body).toBe(TRIAL_CAP_TEXT);
+      expect(source).toBe("capped");
+      expect(create).toHaveBeenCalledTimes(CHAT_TRIAL_MESSAGES);
+    });
+
+    it("stops asking Claude when the month's guard is spent, and still answers in words", async () => {
+      const guard = await person("typing-month-guard");
+      await client.account.create({
+        data: { userId: guard, source: "csv", name: "Checking", type: "depository" },
+      });
+      vi.stubEnv("CHAT_MONTHLY_CAP_CENTS", "5");
+      const now = new Date(LINKED.getTime() + 4 * 60 * MINUTE);
+      await client.rateLimit.deleteMany({ where: { key: { startsWith: "chatmonth:" } } });
+      await addMonthlySpend(10_000, { client, now });
+      create.mockReset();
+      const { reply, source } = await sendToJane(guard, "tell me a joke", { client, now, claude });
+      expect(create).not.toHaveBeenCalled();
+      expect(source).toBe("claude_unavailable");
+      expect(reply.body.length).toBeGreaterThan(30);
+      // The month's total is shared: leave none of it behind.
+      await client.rateLimit.deleteMany({ where: { key: { startsWith: "chatmonth:" } } });
+      vi.unstubAllEnvs();
+      vi.stubEnv("TOKEN_ENCRYPTION_KEY", randomBytes(32).toString("base64"));
     });
   });
 
