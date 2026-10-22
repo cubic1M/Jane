@@ -121,6 +121,8 @@ export const ADVICE_TOPICS: readonly SuggestionTopic[] = [
   "long_term_care",
   "medigap",
   "rmd",
+  // Spreading an inherited IRA's withdrawals; its deadline (inherited_ira) is a fact.
+  "inherited_ira_spread",
   "health_insurance",
   "education_529",
   "employer_match",
