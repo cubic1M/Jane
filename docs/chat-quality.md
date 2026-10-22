@@ -26,6 +26,27 @@ the chat is measured against the numbers here. Scores are only meant to go up.
 Without a key the Claude questions are skipped and the run says so. Time to first words is
 recorded for every answered question.
 
+## The depth bar
+
+The nightly run (`.github/workflows/chat-quality.yml`, the only place the key is used) records
+three measures and two timings, in the Nightly table below:
+
+- **Understood**: the share of questions Jane answered (an answer of her own, not the "I couldn't
+  look into that" or "I can't answer that one yet" fallback, and not blocked). Bar: 95%.
+- **Figures right**: of the questions that must show the person's figures, the share that show
+  every one. Bar: 100%.
+- **Follow-ups**: of the follow-ups (a question that needs the one before) and two-questions-in-one,
+  the share scoring at least 80. Bar: 90%.
+- **First words** and **Full answer**: the median seconds until the first words and until the
+  whole answer (the same for a rules answer, which arrives at once).
+
+The bar is met on a night when all three hold; the doc says when it was met three nights in a row.
+Claude's grade is by Claude Haiku (`GRADER_MODEL` in `src/config/answer-checks.ts`) against a rubric
+(`grader-v2`), so grading fits the budget: about $5 a month of the $10 account
+(`CHAT_NIGHTLY_CAP_CENTS`, 15 cents a night); the chat itself stays on its own model. The nightly
+rotates through the Claude questions, so the whole bank is covered over a few weeks, and the rules
+questions run every night.
+
 ## Baseline (rules only, no key)
 
 Recorded with `npm run checks:baseline` on the demo bank, before any of Phase AI's changes. "Understood" means the
@@ -127,3 +148,26 @@ Claude). This is the floor CI holds (`RULES_SCORE_FLOOR`).
 The Claude part has not been measured yet: there was no `ANTHROPIC_API_KEY` where this was
 recorded. The first run with a key replaces this paragraph with its scores (understood rate,
 right figures, guardrails, time to first words, and the cost of the run).
+
+## What grading costs
+
+The founder pays for every graded question, from one shared monthly Anthropic limit (the live
+chat and this grading together), so the nightly run is small by design:
+
+- The rules questions run every night: free.
+- The Claude questions rotate: each night asks `CHAT_NIGHTLY_COUNT` (20) conversations from the
+  bank, moving along it, so the whole bank is covered over a few weeks.
+- A night stops asking at `CHAT_NIGHTLY_CAP_CENTS` (15 cents), priced at the model's listed
+  price (`MODEL_PRICES_CENTS`), so a month costs at most 30 x 15 cents = $4.50.
+- The first night with the key records what it really spent in the table below; this paragraph
+  is updated with the measured cost per question and how many nights a full pass takes.
+
+## Nightly
+
+Written by the nightly run (.github/workflows/chat-quality.yml).
+
+<!-- nightly:start -->
+| Night | Mode | Score | Graded | Skipped | Failing | First words (median) | Cost |
+| --- | --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| 2026-10-20 | rules only | 100 | 158 | 22 | 0 | 15 ms | $0.00 |
+<!-- nightly:end -->

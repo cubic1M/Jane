@@ -112,7 +112,10 @@ test("refinance offers compare total cost and pick one, labelled", async ({
 
   await page.goto("/loans");
   await page.getByRole("link", { name: "See refinance offers" }).click();
-  await expect(page.getByRole("heading", { level: 1, name: "Refinance offers" })).toBeVisible();
+  // The first visit asks the stand-in lenders and compiles the page: give it time.
+  await expect(page.getByRole("heading", { level: 1, name: "Refinance offers" })).toBeVisible({
+    timeout: 60_000,
+  });
   await expect(page.getByText("sample offers from a stand-in lender catalog")).toBeVisible();
   const car = page
     .getByRole("list", { name: "Offers by debt" })

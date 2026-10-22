@@ -34,6 +34,10 @@ export type QuestionResult = {
   buttons?: string[];
   source?: AnswerSource;
   firstWordsMs?: number;
+  // Until the whole answer was there (for a rules answer, the same as the first words).
+  totalMs?: number;
+  // A follow-up to an earlier question, or two questions in one message.
+  followUp?: boolean;
   checks?: Check[];
   claude?: ClaudeGrade;
   // Spec step 93: the guardrail rules that blocked Claude's answer, if any.
@@ -65,9 +69,16 @@ type Options = {
   questions?: readonly CheckQuestion[];
   claude?: () => Pick<Anthropic, "messages">;
   capCents?: number;
+  // Spec step 195: a rotating share of the Claude questions each night, so the whole bank is
+  // covered over a few weeks within a small budget: this many conversations starting at
+  // `day` times `count` around the bank. The rules questions always run (they're free).
+  rotate?: { day: number; count: number };
   // The person's numbers, when the caller already loaded them (a test running the bank in
   // chunks loads them once).
   facts?: Facts;
+  // Scenario runs ask as several sample people: who a conversation is asked as, from its
+  // first question. Without it everything is asked as `userId`.
+  personFor?: (lead: CheckQuestion) => { userId: string; facts: Facts };
 };
 
 export const NO_KEY = "Needs Claude, and there's no ANTHROPIC_API_KEY: skipped.";
@@ -92,6 +103,21 @@ export function conversations(questions: readonly CheckQuestion[]): CheckQuestio
     .map((lead) => [lead, ...questions.filter((q) => q.after === lead.id)]);
 }
 
+// The conversations to run: every one that needs only the rules, and a window of those that
+// need Claude, moving along the bank each night (spec step 195). Without `rotate`, all.
+export function rotated(all: CheckQuestion[][], rotate: Options["rotate"]): CheckQuestion[][] {
+  if (!rotate) return all;
+  const claude = all.filter((c) => c[0].needs === "claude");
+  const start = claude.length === 0 ? 0 : (rotate.day * rotate.count) % claude.length;
+  const window = new Set(
+    Array.from(
+      { length: Math.min(rotate.count, claude.length) },
+      (_, i) => claude[(start + i) % claude.length],
+    ),
+  );
+  return all.filter((c) => c[0].needs !== "claude" || window.has(c));
+}
+
 const median = (values: number[]) => {
   const sorted = [...values].sort((a, b) => a - b);
   return sorted[Math.floor((sorted.length - 1) / 2)];
@@ -105,11 +131,43 @@ export async function runAnswerChecks(
     questions = QUESTIONS,
     claude = anthropic,
     capCents = ANSWER_CHECK_CAP_CENTS,
+    rotate,
     facts: given,
+    personFor,
   }: Options,
 ): Promise<CheckRun> {
   const full = llmEnabled();
-  const facts = given ?? (await loadFacts(userId, { client, now }));
+  // The check run has its own spending cap (below); the live chat's monthly guard is not its
+  // business, and its spend isn't the live chat's.
+  const monthlyBefore = process.env.CHAT_MONTHLY_CAP_CENTS;
+  process.env.CHAT_MONTHLY_CAP_CENTS = "1000000000";
+  try {
+    return await runChecks(
+      userId,
+      { client, now, questions, claude, capCents, rotate, facts: given, personFor },
+      full,
+    );
+  } finally {
+    if (monthlyBefore === undefined) delete process.env.CHAT_MONTHLY_CAP_CENTS;
+    else process.env.CHAT_MONTHLY_CAP_CENTS = monthlyBefore;
+  }
+}
+
+async function runChecks(
+  userId: string,
+  {
+    client,
+    now,
+    questions = QUESTIONS,
+    claude = anthropic,
+    capCents = ANSWER_CHECK_CAP_CENTS,
+    rotate,
+    facts: given,
+    personFor,
+  }: Options,
+  full: boolean,
+): Promise<CheckRun> {
+  const baseFacts = given ?? (personFor ? null : await loadFacts(userId, { client, now }));
   let spent = 0;
   // Jane's own calls to Claude count toward the cap too.
   const metered = () => {
@@ -138,12 +196,16 @@ export async function runAnswerChecks(
   const results: QuestionResult[] = [];
   let stoppedAtCap = false;
   let tick = 0;
-  for (const conversation of conversations(questions)) {
+  for (const conversation of rotated(conversations(questions), rotate)) {
     // A fresh conversation: no earlier questions, and the chat's hourly limits reset.
-    const db = scopedFor(userId, client);
+    const who = personFor?.(conversation[0]) ?? { userId, facts: baseFacts! };
+    const facts = who.facts;
+    const db = scopedFor(who.userId, client);
     await db.janeMessages.deleteMany({ where: { kind: { in: ["user", "reply"] } } });
     await client.rateLimit.deleteMany({
-      where: { key: { in: [`chat:${userId}`, `ask:${userId}`, `chatspend:${userId}`] } },
+      where: {
+        key: { in: [`chat:${who.userId}`, `ask:${who.userId}`, `chatspend:${who.userId}`] },
+      },
     });
     const earlier: { role: "user" | "assistant"; content: string }[] = [];
     let leadSkipped = false;
@@ -175,14 +237,17 @@ export async function runAnswerChecks(
 
       const started = performance.now();
       let firstWords: number | null = null;
-      const { reply, source, issues } = await sendToJane(userId, question.text, {
+      const { reply, source, issues } = await sendToJane(who.userId, question.text, {
         client,
         now: new Date(now.getTime() + (tick += 1000)),
         claude: metered,
+        // Grading isn't a person waiting: Claude gets all the numbers.
+        primerMs: 60_000,
         onEvent: (event) => {
           if (event.type === "text" && firstWords === null) firstWords = performance.now();
         },
       });
+      const totalMs = Math.round(performance.now() - started);
       const firstWordsMs = Math.round((firstWords ?? performance.now()) - started);
       const checks = fixedChecks(
         question,
@@ -201,6 +266,7 @@ export async function runAnswerChecks(
             answer: reply.body,
             buttons: reply.actions.map((a) => a.label),
             facts,
+            ...(question.judge ? { rules: question.judge } : {}),
           },
           claude,
         );
@@ -221,6 +287,8 @@ export async function runAnswerChecks(
         buttons: reply.actions.map((a) => (a.kind === "link" ? `open ${a.href}` : a.id)),
         source,
         firstWordsMs,
+        totalMs,
+        followUp: Boolean(question.after) || question.sector === "two",
         checks,
         claude: grade,
         ...(issues ? { blockedBy: issues } : {}),

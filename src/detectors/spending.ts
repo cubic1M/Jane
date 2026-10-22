@@ -3,7 +3,17 @@ import { categoryOf } from "@/categorize/taxonomy";
 import { formatCents } from "@/lib/money";
 import type { ProfileInput, ProfileTx } from "@/profile/build";
 import { type Detector, suggestionId } from "./contract";
-import { evidence, liquidCents, listOf, nice, outCents, tx, weakest } from "./helpers";
+import {
+  evidence,
+  liquidCents,
+  listOf,
+  nice,
+  outCents,
+  tx,
+  weakest,
+  headlineOf,
+  clip,
+} from "./helpers";
 
 // Detectors for spending, bills and cash (spec step 263): duplicate subscriptions, price
 // rises, bills worth negotiating, the same charge twice, a trial that turned into a
@@ -57,6 +67,10 @@ const duplicateSubscription: Detector = {
       capability: "subscriptions",
       topic: "duplicate_subscription",
       title: "You pay for more than one of the same kind of service: keep the one you use",
+      headline: headlineOf("Drop an overlapping subscription", worth, "saves"),
+      short: clip(
+        `You pay for ${listOf(names)}: dropping the cheapest of each kind saves ${formatCents(worth)} a year.`,
+      ),
       worthCents: worth,
       worthKind: "saves",
       confidence: evidence(
@@ -103,6 +117,10 @@ const priceIncrease: Detector = {
       capability: "subscriptions",
       topic: "price_increase",
       title: "A charge went up: check it, and ask for the old price or switch",
+      headline: headlineOf("Push back on a price rise", worth, "saves"),
+      short: clip(
+        `${nice(top.s.description)} went from ${formatCents(top.before)} to ${formatCents(top.now)} a month.`,
+      ),
       worthCents: worth,
       worthKind: "saves",
       confidence: evidence(
@@ -141,6 +159,14 @@ const billNegotiation: Detector = {
       capability: "cost",
       topic: "bill_negotiation",
       title: "Ask for a lower rate on your internet or phone bill",
+      headline: headlineOf(
+        "Ask for a lower bill rate",
+        Math.round(yearly * S.negotiationShare),
+        "saves",
+      ),
+      short: clip(
+        `You pay ${formatCents(yearly)} a year on ${bills.map((b) => nice(b.s.description)).join(" and ")}.`,
+      ),
       worthCents: Math.round(yearly * S.negotiationShare),
       worthKind: "saves",
       confidence: evidence(
@@ -186,6 +212,10 @@ const duplicateCharge: Detector = {
       capability: "cost",
       topic: "duplicate_charge",
       title: "You may have been charged twice: ask for one back",
+      headline: headlineOf("Ask for a double charge back", total, "earns", true),
+      short: clip(
+        `${doubles.map((d) => `${nice(d.description)} ${formatCents(d.amountCents)}`).join(", ")} was charged twice.`,
+      ),
       worthCents: total,
       worthKind: "earns",
       confidence: evidence("seen", profile.months, doubles.length, "identical charges within days"),
@@ -223,6 +253,10 @@ const trialConversion: Detector = {
       capability: "subscriptions",
       topic: "trial_conversion",
       title: "A free trial turned into a paid subscription: keep it or cancel it",
+      headline: headlineOf("Cancel a trial that now bills you", worth, "saves"),
+      short: clip(
+        `${converted.map((c) => nice(c.description)).join(", ")} now costs you ${formatCents(worth)} a year.`,
+      ),
       worthCents: worth,
       worthKind: "saves",
       confidence: evidence(
@@ -264,6 +298,12 @@ const lowBalance: Detector = {
       capability: "safe_to_spend",
       topic: "low_balance",
       title: "Your cash is below a month of bills: keep more in checking until payday",
+      headline: headlineOf(
+        "Keep more cash in checking",
+        Math.max(fees, monthly - checking),
+        "risk",
+      ),
+      short: `You hold ${formatCents(checking)} against about ${formatCents(monthly)} a month in bills.`,
       worthCents: Math.max(fees, monthly - checking),
       worthKind: "risk",
       confidence: evidence("seen", profile.months, bills.length, "regular bills"),
@@ -326,6 +366,8 @@ const budgetOverrun: Detector = {
       capability: "spending",
       topic: "budget_overrun",
       title: `Set a budget for ${label}: last month ran well over your usual`,
+      headline: headlineOf(`Set a budget for ${label}`, Math.round(top.extra), "saves"),
+      short: `You spent ${formatCents(top.now)} on ${label} last month, usually about ${formatCents(Math.round(top.avg))}.`,
       worthCents: Math.round(top.extra),
       worthKind: "saves",
       confidence: weakest([

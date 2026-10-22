@@ -267,9 +267,14 @@ export const BUDGET_NEARLY_OVER_SHARE = 0.9;
 // Typing to Jane (spec step 84). The longest message the box takes, in characters.
 export const CHAT_MAX_MESSAGE = 500;
 // Claude sees only this many recent typed messages and answers, never the whole chat.
-export const CHAT_CLAUDE_HISTORY = 10;
+export const CHAT_CLAUDE_HISTORY = 6;
+// ...and each of those is cut to this many characters: a long earlier answer slows the next
+// one without helping it (what the last answer was about travels as its topic).
+export const CHAT_CLAUDE_TURN_CHARS = 700;
 // Most rounds of tool calls Claude may make for one answer, like Ask (ASK_MAX_TOOL_ROUNDS).
-export const CHAT_CLAUDE_MAX_TURNS = 6;
+export const CHAT_CLAUDE_MAX_TURNS = 3;
+// The most words Claude may write in one turn of an answer: a chat answer is a few sentences.
+export const CHAT_CLAUDE_MAX_TOKENS = 3_000;
 // How hard Claude thinks before answering in the chat: low keeps answers quick, and the
 // person's main numbers come with the question (CHAT_PRIMER_TOOLS) so most need no lookup.
 export const CHAT_CLAUDE_EFFORT = "low";
@@ -326,13 +331,28 @@ export const CHAT_BUNDLE_MAX = 5;
 // Spec step 93: fast and reliable. The person's main numbers, sent with each free
 // question, are reused for this many seconds (a tap in the chat clears them).
 export const CHAT_PRIMER_CACHE_SECONDS = 60;
+// The numbers are also saved in the database (src/lib/jane-agent/primer-store.ts) after each
+// sync, scan and correction; the chat reads that row, and refreshes it in the background once
+// it is this old.
+// The same for the whole snapshot (src/lib/jane-agent/snapshot-store.ts).
+export const CHAT_SNAPSHOT_STORED_MINUTES = 30;
+export const CHAT_PRIMER_STORED_MINUTES = 30;
 // If Claude hasn't started (a word, a lookup or its thinking) within this many
 // milliseconds, or isn't done within the deadline, Jane answers from the rules instead.
 export const CHAT_CLAUDE_FIRST_WORDS_MS = 6_000;
-export const CHAT_CLAUDE_DEADLINE_MS = 20_000;
+export const CHAT_CLAUDE_DEADLINE_MS = 10_000;
+// ...that is each round's own time (a lookup between rounds isn't Claude's); the whole question,
+// lookups included, gets this long before the rules answer instead.
+export const CHAT_CLAUDE_TOTAL_MS = 40_000;
 // After Claude fails, free questions get the rules' answer at once for this long, instead
 // of waiting on Claude again.
-export const CHAT_CLAUDE_COOLDOWN_SECONDS = 60;
+export const CHAT_CLAUDE_COOLDOWN_SECONDS = 30;
+// ...and a rate limit or server error is tried once more after this pause before that.
+export const CHAT_CLAUDE_RETRY_MS = 400;
+// The person's main numbers are looked up before Claude is asked; if they take longer than
+// this, Claude starts without them (it has the tools) and the lookup finishes for next time.
+// The clock for Claude starts after this, so a slow lookup never uses up its time.
+export const CHAT_PRIMER_BUDGET_MS = 1_500;
 
 // Spec step 191: Claude reads every free-text message. These kinds of message keep the
 // instant rules path, because they are exact commands, tapped-for answers or fixed content:
@@ -354,10 +374,25 @@ export const CHAT_RULES_ONLY_KINDS: readonly string[] = [
   "remember",
   "search",
   "learn",
+  // A decision is answered from their numbers, the same every time; Claude never looks up the thing.
+  "decision",
+  // The ranked list of what matters most, and why: the same every time, so instant.
+  "priorities",
+  // Exact figures the rules give in a second, whatever was talked about before.
+  "net_worth",
+  "balance_forecast",
+  "credit_score",
+  // A typed yes or no, and "remind me": answered at once, pointing at the button.
+  "ack",
+  "remind",
 ];
 // The most Claude may spend answering one person's messages in a day, in cents, at the model's
-// listed price (MODEL_PRICES_CENTS in src/config/answer-checks.ts). Past it, the rules answer.
-export const CHAT_CLAUDE_DAILY_CAP_CENTS = 25;
+// listed price (MODEL_PRICES_CENTS in src/config/answer-checks.ts). Past it, an honest "today's
+// limit" note and the answer from the data. Sized so a sample person's whole allowance of
+// CHAT_TRIAL_MESSAGES typical answers (CHAT_TYPICAL_ANSWER_CENTS, from the nightly checks) fits
+// with room for the strategist, so the trial cap is the limit people meet.
+export const CHAT_CLAUDE_DAILY_CAP_CENTS = 60;
+export const CHAT_TYPICAL_ANSWER_CENTS = 2;
 // /admin/chat looks back this many days for what Jane couldn't answer.
 export const CHAT_UNANSWERED_DAYS = 30;
 
@@ -372,3 +407,16 @@ export const CHAT_FLOW_OPTIONS = 5;
 
 // Spec step 96: chat search shows at most this many messages, newest first.
 export const CHAT_SEARCH_RESULTS = 30;
+
+// "Should I buy X?" (decision questions): a debt at or above this rate (basis points a year)
+// comes before buying anything, and a cushion under this many months of spending comes before
+// investing. Rates and thresholds live here, never in the answer.
+export const DECISION_HIGH_RATE_BPS = 800;
+export const DECISION_MIN_CUSHION_MONTHS = 3;
+
+// Claude answers every typed message (docs/spec.md, "Chat architecture"), so it is capped: a
+// sample (Try Jane) person gets this many answers in all, and all of Claude's chat answers
+// together may cost this much a month (cents; CHAT_MONTHLY_CAP_CENTS overrides it), under the
+// account's $10 limit. Past either, the person gets a written answer from the same data.
+export const CHAT_TRIAL_MESSAGES = 25;
+export const CHAT_MONTHLY_CAP_CENTS_DEFAULT = 800;

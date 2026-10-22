@@ -30,6 +30,9 @@ export type Recurring = {
   days: number[];
   // Only these months (1–12); every month when left out.
   months?: number[];
+  // Only days from this many days from the anchor (from, inclusive) up to (until, exclusive):
+  // a job that ended or began.
+  span?: { from?: number; until?: number };
 };
 
 export type Once = Omit<Recurring, "days" | "months"> & { offsets: number[] };
@@ -348,7 +351,24 @@ const DEFS: Record<PersonId, Def> = {
       },
     ],
     monthly: [
-      R("pay1", "checking", "NORTHWIND HEALTH PAYROLL", "INCOME_SALARY", -2850, [1, 15], null),
+      // The first earner changed jobs 60 days before the sample was linked (a life event); the
+      // second earner stays at the school.
+      {
+        ...R("pay1", "checking", "NORTHWIND HEALTH PAYROLL", "INCOME_SALARY", -2850, [1, 15], null),
+        span: { until: -60 },
+      },
+      {
+        ...R(
+          "pay1b",
+          "checking",
+          "MERIDIAN MEDICAL PAYROLL",
+          "INCOME_SALARY",
+          -3050,
+          [1, 15],
+          null,
+        ),
+        span: { from: -60 },
+      },
       R("pay2", "checking", "SPRINGFIELD SCHOOLS PAYROLL", "INCOME_SALARY", -2480, [5, 20], null),
       R(
         "mortgage",
@@ -1277,6 +1297,8 @@ export function personTransactions(
       for (const dayOfMonth of t.days) {
         const d = Math.min(dayOfMonth, lastDayOfMonth(y, m));
         const day = `${y}-${String(m + 1).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
+        if (t.span?.from !== undefined && day < addDays(demo.anchor, t.span.from)) continue;
+        if (t.span?.until !== undefined && day >= addDays(demo.anchor, t.span.until)) continue;
         if (inRange(day)) out.push(make(t, day));
       }
     }
@@ -1426,3 +1448,38 @@ export function personLiabilities(demo: DemoSeed, today: string): LiabilitiesObj
       : [],
   } as unknown as LiabilitiesObject;
 }
+
+// What each sample person owns (spec step 67 for the demo bank, 252 for the eight people): a
+// home only where they own one (the written description in src/config/people.ts), a car where
+// they drive one. The loan subtype says which of their loans each is against.
+export type PersonAsset = {
+  kind: "home" | "vehicle";
+  name: string;
+  valueCents: number;
+  loanSubtype?: "mortgage" | "auto";
+};
+
+export const PERSON_ASSETS: Readonly<Record<PersonId, readonly PersonAsset[]>> = {
+  renter: [],
+  family: [
+    { kind: "home", name: "The family home", valueCents: 45_000_000, loanSubtype: "mortgage" },
+    { kind: "vehicle", name: "The family car", valueCents: 2_300_000, loanSubtype: "auto" },
+  ],
+  freelancer: [],
+  equity: [
+    { kind: "home", name: "Priya's home", valueCents: 135_000_000, loanSubtype: "mortgage" },
+    { kind: "vehicle", name: "Priya's car", valueCents: 4_500_000 },
+  ],
+  preretire: [
+    { kind: "home", name: "Dan and Lena's home", valueCents: 42_000_000, loanSubtype: "mortgage" },
+    { kind: "vehicle", name: "The car", valueCents: 1_800_000 },
+  ],
+  retiree: [
+    { kind: "home", name: "Ruth's home", valueCents: 38_000_000 },
+    { kind: "vehicle", name: "Ruth's car", valueCents: 1_200_000 },
+  ],
+  debt: [{ kind: "vehicle", name: "Chris's car", valueCents: 1_400_000, loanSubtype: "auto" }],
+  owner: [
+    { kind: "vehicle", name: "The delivery truck", valueCents: 2_800_000, loanSubtype: "auto" },
+  ],
+};

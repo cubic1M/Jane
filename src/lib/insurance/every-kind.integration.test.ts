@@ -149,8 +149,7 @@ describe.runIf(url)("every kind of cover against a real database", () => {
   it("answers do I need umbrella insurance from their numbers", async () => {
     const me = await person({ demo: false });
     const { reply } = await sendToJane(me, "do I need umbrella insurance", { client, now: NOW });
-    expect(reply.body).toBe(
-      "An umbrella policy pays above your car and home liability limits. It usually matters once what someone has is worth more than $500,000.00; by your balances and values, yours is about $20,000.00.",
-    );
+    expect(reply.body).toMatch(/\$20,000\.00 by your balances and values, under the \$500,000\.00/);
+    expect(reply.body.split(/(?<=\.)\s/).length).toBeLessThanOrEqual(3);
   });
 });

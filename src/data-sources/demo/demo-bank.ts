@@ -96,9 +96,9 @@ const MONTHLY: (Template & { days: number[] })[] = [
     name: "ROCKET MORTGAGE PAYMENT",
     merchant: "Rocket Mortgage",
     category: "LOAN_PAYMENTS_MORTGAGE_PAYMENT",
-    // Spec step 115: the escrow went up (taxes or insurance) 20 days before the demo bank was
-    // linked.
-    amount: (day, anchor) => (day >= addDays(anchor, -20) ? 2198.31 : 2141.54),
+    // Spec step 115: the escrow went up (taxes or insurance) at the last payment before the
+    // demo bank was linked.
+    amount: (day, anchor) => (day >= lastDayOfMonthOn(addDays(anchor, -1), 1) ? 2198.31 : 2141.54),
     days: [1],
   },
   {
@@ -255,14 +255,14 @@ const MONTHLY: (Template & { days: number[] })[] = [
     amount: [5, 8],
     days: [6, 13, 19, 27],
   },
-  // The price went up 20 days before the demo bank was linked.
+  // The price went up at the last charge before the demo bank was linked.
   {
     key: "netflix",
     account: "card",
     name: "NETFLIX.COM",
     merchant: "Netflix",
     category: "ENTERTAINMENT_TV_AND_MOVIES",
-    amount: (day, anchor) => (day >= addDays(anchor, -20) ? 17.99 : 15.49),
+    amount: (day, anchor) => (day >= lastDayOfMonthOn(addDays(anchor, -1), 14) ? 17.99 : 15.49),
     days: [14],
   },
   {

@@ -53,6 +53,7 @@ export type RateRequestView = {
 };
 
 export type CardView = {
+  accountId: string;
   debtKey: string;
   name: string;
   balanceCents: number;
@@ -156,6 +157,7 @@ export async function loadCardInterest(
     const sent = requestRows.find((r) => r.key === key);
     const askable = aprBps >= RATE_ASK_MIN_APR_BPS && balanceCents >= RATE_ASK_MIN_BALANCE_CENTS;
     cards.push({
+      accountId: d.accountId,
       debtKey: d.key,
       name: d.name,
       balanceCents,
