@@ -841,3 +841,7 @@ export const LIFE_OPTION_LONGER_YEARS = 10;
 export const MAX_OPTIONS = 4;
 // Jane's pick can't be surer than a sample price from the stand-in allows.
 export const OPTION_PICK_CAP = 80;
+
+// The most a liability-limits gap counts for when suggestions are ranked: the chance is small
+// and the gap can be huge for a rich person, so the size alone must not put it first.
+export const LIABILITY_WORTH_CAP_CENTS = 5_000_000;

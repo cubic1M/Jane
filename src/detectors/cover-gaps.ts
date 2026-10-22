@@ -1,3 +1,4 @@
+import { LIABILITY_WORTH_CAP_CENTS } from "@/config/insurance";
 import { DETECTOR_RATES as R } from "@/config/detectors";
 import { SAVING_RATES } from "@/config/insurance";
 import { computeNeeds, needInputFromProfile } from "@/lib/insurance/need";
@@ -66,14 +67,16 @@ const liabilityLevels: Detector = {
     if (!found) return null;
     const need = found.needs.find((n) => n.kind === "auto_liability" && n.gapCents > 0);
     if (!need) return null;
+    // A big gap (a rich person's umbrella-sized limit) must not outrank their core money moves.
+    const worth = Math.min(need.gapCents, LIABILITY_WORTH_CAP_CENTS);
     return {
       id: suggestionId("insurance", "liability_levels"),
       capability: "insurance",
       topic: "liability_levels",
       title: "Raise your car's injury liability",
-      headline: headlineOf("Check your car's injury liability", need.gapCents, "risk"),
+      headline: headlineOf("Check your car's injury liability", worth, "risk"),
       short: `Your injury limits are ${formatCents(need.haveCents)} per accident, under the ${formatCents(need.needCents)} I'd size.`,
-      worthCents: need.gapCents,
+      worthCents: worth,
       worthKind: "risk",
       confidence: capped(
         evidence("seen", profile.months, 1, "policy limits on file"),

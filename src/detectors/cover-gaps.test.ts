@@ -1,3 +1,4 @@
+import { LIABILITY_WORTH_CAP_CENTS } from "@/config/insurance";
 import { describe, expect, it, vi } from "vitest";
 
 vi.mock("@/lib/session", () => ({ requireUser: vi.fn() }));
@@ -48,7 +49,7 @@ describe("cover gap detectors", () => {
 
   it("takes its figures from the need calculators", () => {
     const [s] = firedFor("family", "liability_levels");
-    expect(s.worthCents).toBe(20_000_000);
+    expect(s.worthCents).toBe(LIABILITY_WORTH_CAP_CENTS);
     expect(s.why).toContain("$100,000.00 per person and $300,000.00 per accident");
     const [d] = firedFor("freelancer", "disability_insurance");
     expect(d.why).toMatch(/\$2,722\.69 a month/);
