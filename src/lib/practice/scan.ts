@@ -160,6 +160,7 @@ export async function scanPractice(
       data: [
         {
           portfolioId: portfolio.id,
+          userId,
           scannedAt: now,
           kind: flag.kind,
           ticker: flag.ticker,
