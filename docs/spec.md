@@ -4213,6 +4213,183 @@ ships with its detector, its chat answers and its bank questions.
 > Acceptance criteria:
 > - A new child opens the life-cover gap the same day; nothing is bought without a tap
 
+## Phase AW: automated investing, Stage A: practice money only (steps 288–297)
+
+Founder-approved 2026-10-21, ahead of the depth bar. **Everything in Stage A runs on sample data
+and a paper (practice) portfolio. No real money moves, no real account is traded, and
+`REAL_ACCOUNT_ADVICE` stays false:** all of it is demo advice, labelled "Demo advice: sample data,
+not financial advice", and any text Claude writes about it passes the `demo_advice` guardrail
+(unsupported figures, promised outcomes and legal advice stay blocked). Real accounts get facts
+only. No new Anthropic spend in tests.
+
+Data sources, in one place (`src/lib/market/`): a `MarketData` interface (prices, a news feed,
+filings) with three implementations behind it. **Sample** (now): synthetic and recorded daily
+prices and headlines for the model portfolios' ETFs, deterministic by date, so every test and the
+Try Jane people have the same market. **Alpaca** (stub only; needs an account the founder creates,
+Jane never creates one): market data and news endpoints, behind env keys that are unset. **SEC
+EDGAR** (stub, no key needed, descriptive User-Agent): filings for news-driven ideas. Nothing calls
+a live service until a key is set; the stubs have contract tests against recorded responses.
+
+**Stage B (not built here): the partner swap.** The paper ledger's `Broker` interface
+(`placeOrder`, `positions`, `cancel`) gets a licensed broker-dealer or RIA partner behind it, the
+real-account advice rule (`REAL_ACCOUNT_ADVICE`) is revisited with counsel, and Alpaca (or the
+partner's own feed) replaces Sample. Stage A is written so Stage B changes configuration and one
+adapter, not the product: the model portfolios, the risk questionnaire, the scan, the log and the
+cards stay as built.
+
+### Step 288: Five risk levels
+
+> Read CLAUDE.md. A short questionnaire and five levels.
+>
+> Build:
+> 1. Four questions (time horizon, reaction to a 20% drop, income stability, goals) map to one of
+>    five levels: Very low, Low, Medium, High, Very high. The lower of capacity (horizon,
+>    stability) and willingness (reaction) wins, with the reason in a sentence. Replaces the
+>    older five-level labels where they differ; the existing investor profile answers carry over.
+> 2. Each level has a model portfolio of diversified index ETFs (US stocks, international stocks,
+>    bonds, cash and short-term bills) with stock/bond/cash targets in `src/config/portfolios.ts`
+>    (sources shown; FOR REVIEW).
+>
+> Acceptance criteria:
+> - The same answers always give the same level; the targets of every level sum to 100%; a
+>   higher level never has fewer stocks than a lower one (tests)
+
+### Step 289: The market data interface and the sample market
+
+> Read CLAUDE.md. Prices and headlines behind one interface.
+>
+> Build:
+> 1. `MarketData` (prices, history, news, filings) with the Sample implementation: deterministic
+>    synthetic daily prices and recorded headlines for the model portfolios' ETFs and a short list
+>    of large companies, plus planted dips, rallies and news events so every scan has something to
+>    find.
+> 2. Stubs for Alpaca market data and news and SEC EDGAR, unused without keys, with contract tests
+>    on recorded responses. No account is created; no key is stored in code.
+>
+> Acceptance criteria:
+> - The same date always returns the same sample prices; swapping the implementation changes no
+>   other file (tests)
+
+### Step 290: The practice portfolio and the paper ledger
+
+> Read CLAUDE.md. Practice money in the database.
+>
+> Build:
+> 1. A paper ledger (`PracticePortfolio`, `PracticeTrade`, `PracticePosition`): cash, positions
+>    by lot, each trade with its time, side, size, price from the market data, the reason in a
+>    sentence and the rule that allowed it. Starting practice cash is a stated sample amount;
+>    never linked to a real account.
+> 2. A `Broker` interface with the paper implementation only.
+>
+> Acceptance criteria:
+> - The ledger balances to the cent after any run of trades; a practice trade can never touch a
+>   real account or the real brokerage stand-in (tests)
+
+### Step 291: Autopilot for the practice portfolio
+
+> Read CLAUDE.md. Pick a style, then Jane runs it.
+>
+> Build:
+> 1. Once the person picks a level (or accepts the questionnaire's), Jane buys the model
+>    portfolio, rebalances when a class drifts past the band, and adds a monthly amount on the
+>    day they choose, in the practice ledger.
+> 2. Hard limits in config: no leverage, no options, no shorting, a per-position cap, a
+>    per-trade cap, a daily trade count. A **pause switch**. Every action writes to the audit log
+>    and the trade log with its reason.
+>
+> Acceptance criteria:
+> - No order breaks a limit; paused means no trades; every trade has a reason and an audit row
+>   (tests)
+
+### Step 292: The daily scan
+
+> Read CLAUDE.md. Four things worth a look.
+>
+> Build:
+> 1. A daily Vercel Cron scan of each practice portfolio over the market data, flagging
+>    **drift-rebalance**, **dip-buy-within-plan** (a drop in a holding already in the plan, bought
+>    only with cash the plan allows), **tax-loss-harvest** (step 124's lots; a swap that keeps the
+>    mix and avoids a wash sale) and, **for High and Very high levels only**, **news-driven
+>    ideas**. Each has a size cap, a per-position cap and a monthly count cap.
+> 2. Opportunities are small and capped positions only (a share of the portfolio set in config),
+>    never at Very low, Low or Medium.
+>
+> Acceptance criteria:
+> - Each flag fires on the sample market's planted event and not otherwise; opportunities never
+>   appear below High; caps hold (tests)
+
+### Step 293: News, summarised cheaply
+
+> Read CLAUDE.md. A few batched calls a day.
+>
+> Build:
+> 1. Headlines for the watchlist summarised by Claude Haiku in a few batched calls a day
+>    (`ANTHROPIC_MODEL_NEWS`), behind a monthly cents cap in config (default 100). **Off unless the
+>    env key is set**; with no key (and in every test) a rules summary from the headline text is
+>    used. Summaries pass the `demo_advice` guardrail and never predict a price.
+> 2. EDGAR filings (8-K, 10-Q) shown as facts with a link.
+>
+> Acceptance criteria:
+> - No call is made without the key or past the cap; a test proves zero Anthropic calls in the
+>   suite
+
+### Step 294: The trade log and the pause switch
+
+> Read CLAUDE.md. See and stop everything.
+>
+> Build:
+> 1. A page and a chat answer: every practice trade with its reason, the rule that allowed it and
+>    the running result; a pause switch for the whole portfolio and for opportunities alone;
+>    "undo the last trade" in the ledger (practice only).
+>
+> Acceptance criteria:
+> - Pausing takes effect before the next scan; the log matches the ledger (tests)
+
+### Step 295: Backtests by level
+
+> Read CLAUDE.md. How each level would have behaved.
+>
+> Build:
+> 1. For each of the five levels, a backtest over the sample historical prices (several years,
+>    including a planted crash and recovery): the value path, the worst drop, the best and worst
+>    year, shown as a simple chart and a few figures with the assumptions beside them (fees,
+>    rebalancing, no taxes in the base case). Always labelled as a replay of sample history, not a
+>    forecast.
+>
+> Acceptance criteria:
+> - Higher levels have larger worst drops than lower ones in the sample; the figures match a
+>   hand-worked case (tests)
+
+### Step 296: Cards in the chat
+
+> Read CLAUDE.md. Short, with the reasoning one tap away.
+>
+> Build:
+> 1. Opportunities and trades appear as the chat lane's floating cards, each short (what, how
+>    much, why in a sentence), with **More details** (the rule, the numbers, the caps) and the
+>    confidence percentage with its reason. A card's button only ever opens the details or the
+>    pause switch; nothing real is bought.
+> 2. A detector (step 254's contract) for "set up your practice portfolio" so it reaches the
+>    right sample people.
+>
+> Acceptance criteria:
+> - Cards follow the chat lane's card shape; every card has a percentage and a reason; no card
+>   offers a real trade (tests)
+
+### Step 297: Proof
+
+> Read CLAUDE.md. Stage A, checked end to end.
+>
+> Build:
+> 1. A graded set of chat questions about the practice portfolio ("what did you buy this week and
+>    why", "pause it", "what's my risk level", "how would a High portfolio have done in 2022"), a
+>    walk through the sample people, and a note for Stage B listing exactly what the partner swap
+>    needs.
+>
+> Acceptance criteria:
+> - The questions pass in the bank; no step touches real money or a real account; the Stage B
+>   note is in the PR
+
 ## Depth first: the bar before new features (founder, 2026-10-21)
 
 Jane already has the breadth. Until the chat and suggestions are right, every lane works on
