@@ -1,5 +1,6 @@
 import type { SuggestionTopic } from "@/config/people";
 import type { FindingType } from "@/generated/prisma/client";
+import { SAFETY_KINDS } from "./practice-opportunities";
 import { PRACTICE_TOPIC } from "./practice-suggestions";
 
 // Ranking and reaching (spec step 255): how the nightly scan orders what the detectors found
@@ -74,6 +75,15 @@ export const YES_BOOST = 0.25;
 export const NO_PENALTY = 0.5;
 export const HISTORY_MIN_FACTOR = 0.1;
 export const HISTORY_MAX_FACTOR = 2;
+
+// Safety suggestions keep the person inside what they said they could take (the practice
+// portfolio's drift warning, glide path, more risk than said, close to the max drop). However
+// often they're declined, their rank never falls below this share, so they never vanish; a
+// no still puts away that one idea for good.
+export const SAFETY_HISTORY_FLOOR = 0.6;
+export const HISTORY_FLOOR_BY_TOPIC: Readonly<Record<string, number>> = Object.fromEntries(
+  SAFETY_KINDS.map((k) => [PRACTICE_TOPIC[k], SAFETY_HISTORY_FLOOR]),
+);
 
 // And what happened after they said yes: a kind whose finished actions never showed a saving
 // ranks lower, one that did ranks higher (src/lib/worked.ts).
