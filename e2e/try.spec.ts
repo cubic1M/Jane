@@ -22,3 +22,27 @@ test("'Try it with sample data' opens Jane's chat with a sample person", async (
     timeout: Math.max(1000, 25_000 - (Date.now() - clicked)),
   });
 });
+
+// Five fresh visitors in a row (each their own browser and address): every click reaches the
+// chat within 8 seconds and shows Jane's first brief, by itself, within 25 seconds of the
+// click. One in three clicks once never left the landing page.
+test("five tries in a row each reach the chat in 8 seconds and the brief in 25", async ({
+  browser,
+}) => {
+  test.setTimeout(300_000);
+  for (let i = 1; i <= 5; i++) {
+    const context = await browser.newContext({
+      extraHTTPHeaders: { "x-forwarded-for": `10.20.${i}.${Math.floor(Math.random() * 200) + 1}` },
+    });
+    const page = await context.newPage();
+    await page.goto("/");
+    await page.getByRole("checkbox").check();
+    const clicked = Date.now();
+    await page.getByRole("button", { name: "Try it with sample data" }).click();
+    await expect(page, `try ${i} reaches the chat`).toHaveURL(/\/chat$/, { timeout: 8000 });
+    await expect(page.getByText(/^Good (morning|afternoon|evening)!/).first()).toBeVisible({
+      timeout: Math.max(1000, 25_000 - (Date.now() - clicked)),
+    });
+    await context.close();
+  }
+});
