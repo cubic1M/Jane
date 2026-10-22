@@ -46,6 +46,8 @@ export const CHAT_SOURCE_LIMITS: Readonly<Record<string, number>> = {
   attention: 1,
   // Spec step 204.
   lean: 1,
+  // Spec step 238.
+  books: 1,
   // Spec step 255: the top few suggestions of the day (src/config/suggestions.ts).
   suggestions: 3,
   // Spec step 240.
@@ -165,6 +167,8 @@ export const MESSAGE_PRIORITY = {
   attention: 30,
   // Spec step 204: income stopped; right after urgent things.
   lean: 92,
+  // Spec step 238: data that does not add up; a broken link is asked for at once.
+  books: 90,
   // Spec step 255: what Jane worked out for this person, just below a finding to decide.
   suggestions: 58,
   // Spec step 240: a steady paycheck, once a month.

@@ -74,6 +74,9 @@ export const SUGGESTION_TOPICS = [
   "low_balance",
   "budget_overrun",
   "education_529",
+  // Spec step 248: renting, counted.
+  "rent_reporting",
+  "rent_increase",
   "social_security_timing",
   "medicare",
   "rmd",
@@ -97,6 +100,8 @@ export const SUGGESTION_TOPICS = [
   "property_tax_check",
   "tax_loss_harvest",
   "file_return",
+  // Phase AP (spec steps 238–244): Jane runs the money.
+  "data_problems",
   // Spec step 296: practice money first.
   "practice_portfolio",
   "s_corp_election",
@@ -178,6 +183,7 @@ export const PEOPLE: readonly Person[] = [
       "cover_change",
       "credit_building",
       "bnpl",
+      "rent_reporting",
       "liability_levels",
       "consolidation",
       "practice_portfolio",
@@ -261,6 +267,8 @@ export const PEOPLE: readonly Person[] = [
 
       "liability_levels",
       "disability_insurance",
+      // Spec step 238: their joint savings is linked twice.
+      "data_problems",
       "disaster_relief",
       "practice_portfolio",
     ],
@@ -308,8 +316,8 @@ export const PEOPLE: readonly Person[] = [
       "emergency_fund",
       "student_repayment",
       "renters_insurance",
-
       "auto_insurance",
+      "rent_reporting",
       "home_office_deduction",
       "vehicle_deduction",
 
@@ -553,6 +561,7 @@ export const PEOPLE: readonly Person[] = [
       "cash_advance",
       "credit_building",
       "credit_report_errors",
+      "rent_reporting",
     ],
     mustNot: [
       "beneficiaries",
@@ -616,6 +625,7 @@ export const PEOPLE: readonly Person[] = [
       "business_insurance",
       "retirement_self_employed",
       "cash_flow",
+      "rent_reporting",
       "s_corp_election",
       "vehicle_deduction",
       "emergency_fund",
