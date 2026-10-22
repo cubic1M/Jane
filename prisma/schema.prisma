@@ -313,6 +313,8 @@ model User {
   carLoanWatch           CarLoanWatch?
   rentReporting          RentReporting?
   securityDeposits       SecurityDeposit[]
+  familyCredit           FamilyCreditHelp[]
+  borrowingCheck         BorrowingCheck?
   balanceTransfers       BalanceTransfer[]
   findings               Finding[]
   decisions              Decision[]
@@ -342,6 +344,7 @@ model User {
   insuranceCheckups      InsuranceCheckup[]
   insuranceClaims        InsuranceClaim[]
   disasterLosses         DisasterLoss[]
+  draftReturns           DraftReturn[]
   employerBenefits       EmployerBenefit[]
   policyReadings         PolicyReading[]
   lifeApplications       LifeApplication[]
@@ -872,6 +875,10 @@ model DebtWatch {
   reviewReason   String?   @map("review_reason")
   reviewKeys     Json      @default("[]") @map("review_keys")
   reviewPayCents Int?      @map("review_pay_cents")
+  // Spec step 251, the monthly credit check-up: the day Jane last did it, and what she found
+  // and did ({ month, items, did }), so the chat reads it without pricing every loan again.
+  monthlyOn      DateTime? @map("monthly_on") @db.Date
+  monthly        Json?
   updatedAt      DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -1181,6 +1188,29 @@ model RentReporting {
   @@map("rent_reporting")
 }
 
+// What the person could borrow (spec step 250): the last soft check of each kind of loan and a
+// card, kept so every figure says when it was checked, and the one before it, so a change is
+// noticed. Only soft quotes are stored here; nothing is applied for.
+model BorrowingCheck {
+  id        String    @id @default(cuid())
+  userId    String    @unique @map("user_id")
+  checkedOn DateTime  @map("checked_on") @db.Date
+  partner   String
+  // The score the check was priced by and the day it was pulled; null before any pull.
+  score     Int?
+  scoreOn   DateTime? @map("score_on") @db.Date
+  // [LoanFigure | CardFigure], see src/planning/borrowing-power.ts.
+  figures   Json      @default("[]")
+  // The check before, for what changed.
+  previous  Json      @default("[]")
+  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("borrowing_checks")
+}
+
 // A security deposit the person gave a landlord (spec step 248), tracked to the day the state
 // says it is due back after they move out.
 model SecurityDeposit {
@@ -1198,6 +1228,30 @@ model SecurityDeposit {
 
   @@index([userId])
   @@map("security_deposits")
+}
+
+// Credit the person gives or gets through someone close (spec step 249): an authorized user on
+// a card, a first card for a student, or a loan co-signed for someone. The terms of a co-signed
+// loan are what the person types; nothing here is sent anywhere.
+model FamilyCreditHelp {
+  id                  String   @id @default(cuid())
+  userId              String   @map("user_id")
+  // authorized_user, first_card or cosigned.
+  kind                String
+  person              String
+  // The card the person is on or adds someone to (a debt key), when it is one of theirs.
+  debtKey             String?  @map("debt_key")
+  // A co-signed loan: what is owed, the payment, and the rate if known.
+  balanceCents        Int?     @map("balance_cents")
+  monthlyPaymentCents Int?     @map("monthly_payment_cents")
+  // The other person missed a payment, as the person said.
+  missed              Boolean  @default(false)
+  createdAt           DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("family_credit_help")
 }
 
 // A balance transfer the person made to a 0% card (spec step 113), so Jane can keep the
@@ -1545,8 +1599,14 @@ model AskMessage {
 // accounts to share; a partner can read those (and undecided findings on them), never
 // change them, and never sees the other person's decisions.
 model Household {
-  id        String   @id @default(cuid())
-  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  id           String    @id @default(cuid())
+  createdAt    DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  // Money for two (spec step 242): how shared bills split ("even" or "income", the partner's
+  // share by what each earns), when one of them chose it (null: never chosen), and the amount
+  // from which a move out of a shared account needs both partners' taps (null: the default).
+  splitRule    String    @default("even") @map("split_rule")
+  splitSetAt   DateTime? @map("split_set_at") @db.Timestamptz(3)
+  bigMoveCents Int?      @map("big_move_cents")
 
   members       HouseholdMember[]
   invites       HouseholdInvite[]
@@ -1668,16 +1728,18 @@ model Budget {
 // A savings goal the person set. Progress comes from a linked account's balance, or an
 // amount they update by hand.
 model SavingsGoal {
-  id               String   @id @default(cuid())
-  userId           String   @map("user_id")
-  name             String
-  targetCents      Int      @map("target_cents")
-  targetDate       DateTime @map("target_date") @db.Date
+  id                  String   @id @default(cuid())
+  userId              String   @map("user_id")
+  name                String
+  targetCents         Int      @map("target_cents")
+  targetDate          DateTime @map("target_date") @db.Date
   // A savings account whose balance is the progress; null to track by hand.
-  accountId        String?  @map("account_id")
-  manualSavedCents Int?     @map("manual_saved_cents")
-  createdAt        DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
-  updatedAt        DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+  accountId           String?  @map("account_id")
+  manualSavedCents    Int?     @map("manual_saved_cents")
+  // A joint goal (spec step 242): the household partner sees it too. Off by default.
+  sharedWithHousehold Boolean  @default(false) @map("shared_with_household")
+  createdAt           DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt           DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
@@ -2031,6 +2093,7 @@ model PlanLink {
 model Document {
   taxNotice           TaxNotice?
   priorReturn         PriorReturn?
+  draftReturn         DraftReturn?
   id                  String       @id @default(cuid())
   userId              String       @map("user_id")
   // insurance_policy, warranty, receipt or other (src/config/documents.ts).
@@ -3137,6 +3200,28 @@ model PriorReturn {
   @@map("prior_returns")
 }
 
+// Spec step 272: a draft return (before filing) read from an uploaded document, for the person
+// to confirm, and what Jane's check of it found: [{ key, kind, title, line, draftCents,
+// knownCents, effect, dollarsCents, why }]. Jane never files it.
+model DraftReturn {
+  id          String    @id @default(cuid())
+  userId      String    @map("user_id")
+  documentId  String    @unique @map("document_id")
+  fields      Json
+  sources     Json
+  notes       Json
+  status      String    @default("waiting")
+  findings    Json      @default("[]")
+  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  confirmedAt DateTime? @map("confirmed_at") @db.Timestamptz(3)
+
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  document Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("draft_returns")
+}
+
 // Spec step 172: an amended return (1040-X) prepared through the filing stand-in for what a
 // prior-year review found. Never submitted without the person's review and signature.
 model TaxAmendment {
@@ -3556,8 +3641,11 @@ model MoneyTransfer {
   purpose       String
   sector        String
   goalId        String?   @map("goal_id")
-  // pending, completed, cancelled or failed.
+  // pending, completed, cancelled or failed; awaiting_partner while a big move out of a shared
+  // account waits for the other partner's tap (spec step 242), not yet sent to the partner.
   status        String    @default("pending")
+  // The household partner whose tap let a big move go (spec step 242).
+  approvedById  String?   @map("approved_by_id")
   runOn         DateTime  @map("run_on") @db.Date
   partner       String
   partnerRef    String?   @map("partner_ref")
@@ -4121,6 +4209,9 @@ model PracticePortfolio {
   paused              Boolean  @default(false)
   // Opportunities (small capped positions, High and Very high only) paused on their own.
   opportunitiesPaused Boolean  @default(false) @map("opportunities_paused")
+  // The last cheap scan when the person opened the chat or the investing pages (no more than
+  // one an hour), claimed before it runs so two opens scan once.
+  lightScannedAt      DateTime? @map("light_scanned_at") @db.Timestamptz(3)
   startedAt           DateTime @map("started_at") @db.Timestamptz(3)
   updatedAt           DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
 

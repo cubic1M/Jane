@@ -52,6 +52,10 @@ export const CHAT_SOURCE_LIMITS: Readonly<Record<string, number>> = {
   suggestions: 3,
   // Spec step 240.
   steady: 1,
+  // Spec step 242: the big moves waiting for a tap, and the money date.
+  two: 3,
+  // Spec step 241.
+  tradeoffs: 1,
   // Spec step 257: one question about the person at a time.
   questions: 1,
   // Spec step 208.
@@ -173,6 +177,11 @@ export const MESSAGE_PRIORITY = {
   suggestions: 58,
   // Spec step 240: a steady paycheck, once a month.
   steady: 86,
+  // Spec step 242: a partner's big move waiting for this person's tap; the monthly money date.
+  two: 88,
+  two_date: 40,
+  // Spec step 241: goals that can't all be on time, until the person picks an order.
+  tradeoffs: 52,
   // Spec step 257: a question that unlocks suggestions, after those it would unlock.
   questions: 36,
   // Spec step 208: a charge that may not be theirs; as urgent as an alert.
@@ -250,6 +259,16 @@ export const CHAT_HISTORY_HOURS = 48;
 
 // Spec step 83: sources whose messages don't count toward the daily limit, like the brief:
 // the one-time autopilot question, so it never pushes a finding out on the first day.
+// Sources that speak at most this often a month (spec step 273: taxes on autopilot), counting
+// what was posted this calendar month; a message at or above `urgentFrom` priority always goes,
+// and so does a question the person answers to keep their figures right (one carrying any of
+// `questionRefs`, like the tax profile's field or a new kind of income).
+export const CHAT_SOURCE_MONTHLY_LIMITS: Readonly<
+  Record<string, { limit: number; urgentFrom: number; questionRefs: readonly string[] }>
+> = {
+  taxes: { limit: 1, urgentFrom: 80, questionRefs: ["taxField", "incomeKind", "taxState"] },
+};
+
 export const CHAT_UNCAPPED_SOURCES: readonly string[] = [
   "autopilot",
   "welcome",

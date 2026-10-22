@@ -22,6 +22,7 @@ import { loadAccountantPage } from "@/lib/accountant";
 import { accountantReply } from "./accountant-message";
 import { loadTaxCalendar } from "@/lib/tax-calendar";
 import { calendarReply } from "./tax-calendar-message";
+import { loadTaxFound } from "@/lib/tax-scan";
 import { loadBusinessStructure } from "@/lib/business-structure";
 import { businessReply } from "./business-message";
 import { loadInheritance } from "@/lib/inheritance";
@@ -32,6 +33,8 @@ import { loadDisasterRelief } from "@/lib/disasters";
 import { disasterReply } from "./disaster-message";
 import { loadRetirementTaxes } from "@/lib/retirement-taxes";
 import { retirementReply } from "./retirement-tax-message";
+import { listDraftReturns } from "@/lib/draft-return";
+import { draftReply } from "./draft-return-message";
 import { correctFact } from "@/lib/profile";
 import { decideTax } from "@/lib/tax-decisions";
 import { equityReply } from "./equity-tax-message";
@@ -136,8 +139,8 @@ export async function answerTaxIntent(
       };
     }
     case "profile": {
-      const { view, autopilot } = await loadWorkingProfile(userId, { client, now });
-      return taxProfileReply(view, autopilot);
+      const { view, taxes } = await loadWorkingProfile(userId, { client, now });
+      return taxProfileReply(view, taxes.level);
     }
     case "set_filing":
       return setFilingReply(intent.status);
@@ -152,6 +155,10 @@ export async function answerTaxIntent(
         ? moveReply(intent, view.state.value, now)
         : workStateReply(intent.state, view.state.value);
     }
+    case "draft":
+      return draftReply(
+        (await listDraftReturns(userId, { client })).filter((d) => d.status !== "dismissed"),
+      );
     case "retirement":
       return retirementReply(await loadRetirementTaxes(userId, { client, now }));
     case "disaster":
@@ -169,8 +176,13 @@ export async function answerTaxIntent(
       return inheritanceReply(await loadInheritance(userId, { client, now }));
     case "business":
       return businessReply(await loadBusinessStructure(userId, { client, now }));
-    case "calendar":
-      return calendarReply(await loadTaxCalendar(userId, { client, now }));
+    case "calendar": {
+      const [calendar, found] = await Promise.all([
+        loadTaxCalendar(userId, { client, now }),
+        loadTaxFound(userId, { client, now }),
+      ]);
+      return calendarReply(calendar, found);
+    }
     case "accountant":
       return accountantReply(await loadAccountantPage(userId, { client, now }));
     case "property":

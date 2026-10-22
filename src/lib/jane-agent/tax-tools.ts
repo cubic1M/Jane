@@ -21,6 +21,7 @@ import { filingYear, inFilingSeason, loadReturn } from "@/lib/tax-filing";
 import { filingPartnerFor } from "@/lib/filing";
 import { loadTaxTags } from "@/lib/tax-organizer";
 import { loadWorkingProfile } from "@/lib/tax-profile";
+import { byHerself } from "./replies-autopilot";
 import { defaultTaxYear } from "@/planning/tax-pack";
 import { stateName } from "@/planning/tax-profile";
 import { STATE_SOURCES } from "@/config/tax-states";
@@ -38,7 +39,10 @@ import { loadBusinessStructure } from "@/lib/business-structure";
 import { loadInheritance } from "@/lib/inheritance";
 import { loadHealthTaxes } from "@/lib/health-taxes";
 import { loadDisasterRelief } from "@/lib/disasters";
+import { loadTaxFound } from "@/lib/tax-scan";
+import { MONTH_NAMES } from "@/planning/tax-calendar";
 import { loadRetirementTaxes } from "@/lib/retirement-taxes";
+import { listDraftReturns } from "@/lib/draft-return";
 import { DECISION_TOPICS } from "@/config/tax-decisions";
 import { decideTax } from "@/lib/tax-decisions";
 import { loadTaxCalendar } from "@/lib/tax-calendar";
@@ -245,6 +249,12 @@ export const TAX_TOOLS: Anthropic.Tool[] = [
     input_schema: noInput,
   },
   {
+    name: "tax_draft_check",
+    description:
+      "The person's draft tax returns (uploaded to Documents as a draft before filing): what Jane read off each (line by line, waiting for the person to confirm, or confirmed), and for a confirmed draft what her check against their collected forms, accounts and estimate found: income missing (interest, dividends, capital gains, business income, wages lower than the W-2), deductions or credits left out (student loan interest, itemizing, education and care credits, estimated payments), figures that don't match the forms (withholding), each with its line and the federal tax it changes (more tax owed, or money back). Jane never files or changes the draft.",
+    input_schema: noInput,
+  },
+  {
     name: "tax_decide",
     description:
       "A direct answer, in three sentences or fewer from the person's own numbers, to one of the tax questions people ask: whether to itemize, do a Roth conversion, change their withholding, pay estimated taxes, put more in their 401(k), pick a traditional or Roth IRA, open an HSA, appeal their property tax, sell a loser for the loss, give stock instead of cash, or claim a home office; and the facts: what they will owe or get back, why their refund is what it is, their effective rate, tax paid so far, what they can deduct, how much to set aside, when the next estimated payment is due, whether they must file, and their mortgage interest deduction. Decisions are demo advice and carry the label; for a real account the answer says what the numbers are, not what to do. Start with the verdict in words; offer no button unless they asked you to do something; for any amount these sentences don't give, use the calculate tool. Pass the topic.",
@@ -281,7 +291,7 @@ export async function runTaxTool(
   const out = (value: unknown): ToolOutput => ({ content: JSON.stringify(value), cents });
   switch (name) {
     case "tax_profile": {
-      const { view, autopilot } = await loadWorkingProfile(userId, { client, now });
+      const { view, taxes } = await loadWorkingProfile(userId, { client, now });
       return out({
         filingStatus: view.filingStatus.value ? FILING_STATUSES[view.filingStatus.value] : null,
         dependants:
@@ -305,7 +315,7 @@ export async function runTaxTool(
           })),
         },
         complete: view.complete,
-        janeDoesByHerself: whatJaneDoes(autopilot),
+        janeDoesByHerself: [...whatJaneDoes(taxes.level), byHerself(taxes)],
       });
     }
     case "tax_tags": {
@@ -824,6 +834,17 @@ export async function runTaxTool(
           .map((d) => ({ dueOn: d.dueOn, amount: money(d.cents), why: d.needsTap })),
         yearEndMoves: v.yearEnd?.lines ?? [],
         wholeYear: v.months.map((m) => ({ month: m.label, items: m.items.map((i) => i.title) })),
+        // Spec step 273: every tax suggestion from the whole scan, by the month it belongs in,
+        // with its place among everything Jane found for the person.
+        foundForThem: (await loadTaxFound(userId, { client, now })).map((f) => ({
+          month: MONTH_NAMES[f.month - 1],
+          what: f.headline,
+          why: f.short,
+          worth: money(f.worthCents),
+          sure: `${f.percent}%`,
+          urgency: f.urgency,
+          rankOfEverything: f.rank,
+        })),
       });
     }
     case "tax_business": {
@@ -850,6 +871,30 @@ export async function runTaxTool(
             : null,
         homeOffice: { sqft: v.homeOffice.sqft, deduction: money(v.homeOffice.deductionCents) },
         businessMiles: { miles: v.mileage.miles, deduction: money(v.mileage.deductionCents) },
+      });
+    }
+    case "tax_draft_check": {
+      const drafts = (await listDraftReturns(userId, { client })).filter(
+        (d) => d.status !== "dismissed",
+      );
+      return out({
+        drafts: drafts.map((d) => ({
+          file: d.fileName,
+          year: d.year,
+          status:
+            d.status === "waiting" ? "read, waiting for you to confirm" : "confirmed and checked",
+          read: d.fields,
+          findings: d.findings.map((f) => ({
+            what: f.title,
+            line: f.line,
+            onTheDraft: money(f.draftCents),
+            whatJaneKnows: money(f.knownCents),
+            effect: f.effect === "saves" ? "money back" : "more tax owed",
+            dollars: money(f.dollarsCents),
+            why: f.why,
+          })),
+        })),
+        janeFiles: false,
       });
     }
     case "tax_retirement": {

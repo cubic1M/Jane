@@ -1,4 +1,3 @@
-import type { RiskLevel } from "@/config/investing";
 import {
   classTickers,
   PRACTICE_ETFS,
@@ -6,7 +5,7 @@ import {
   PRACTICE_UNIVERSE,
   type PracticeClass,
 } from "@/config/portfolios";
-import { MAX_DROP_LOOKBACK_DAYS } from "@/config/practice-opportunities";
+import { MAX_DROP_LOOKBACK_DAYS, ON_OPEN_SCAN_MINUTES } from "@/config/practice-opportunities";
 import { DIP_LOOKBACK_DAYS, NEWS_LOOKBACK_DAYS, type ScanKind } from "@/config/practice-scan";
 import { loadDetectionInput } from "@/detection/engine";
 import { paySchedules } from "@/detection/paydays";
@@ -20,10 +19,12 @@ import { rulesSummary } from "@/lib/news/summarize";
 import { violates } from "@/planning/practice-autopilot";
 import { apply, type LedgerState } from "@/planning/practice-ledger";
 import { mainPaydayDay, scanOpportunities } from "@/planning/practice-opportunities";
+import { refusedByPreferences } from "@/planning/practice-profile";
 import type { ScanFlag, ScanHeadline } from "@/planning/practice-scan";
 import { addMonthlyIfDue, runAutopilot } from "./autopilot";
 import { loadLedger, NoPracticePortfolio, practiceBroker } from "./broker";
 import { scanPreferences } from "./opportunity-prefs";
+import { practiceProfileOf } from "./preferences";
 
 // The daily scan of each practice portfolio (spec step 292, Phase AW, Stage A), run by Vercel
 // Cron (/api/cron/practice-scan). For each portfolio that isn't paused: the monthly practice
@@ -40,6 +41,10 @@ import { scanPreferences } from "./opportunity-prefs";
 // (REAL_ACCOUNT_ADVICE is false).
 
 type Options = { client?: PrismaClient; now?: Date };
+// `act: false` is the cheap scan on opening a page: nothing is traded or held, and a flag
+// with trades is only recorded when the person is in suggest-only mode (otherwise the daily
+// run acts on it).
+type ScanOptions = Options & { act?: boolean };
 
 export type ScanOutcome = {
   kind: ScanKind;
@@ -115,7 +120,7 @@ function heldBy(
 
 export async function scanPractice(
   userId: string,
-  { client = defaultClient, now = new Date() }: Options = {},
+  { client = defaultClient, now = new Date(), act = true }: ScanOptions = {},
 ): Promise<ScanResult> {
   let ledger;
   try {
@@ -150,10 +155,13 @@ export async function scanPractice(
     feed.name,
     client,
   );
+  // The person's preferences (src/planning/practice-profile.ts): the mix, the caps their
+  // appetite allows, what is never bought, the cash kept and whether Jane acts.
+  const profile = await practiceProfileOf(userId, { client, now });
   const [prefs, advice, paydayDay] = await Promise.all([
-    scanPreferences(userId, { client }),
+    scanPreferences(userId, { client, now }),
     adviceMode(userId, { client }),
-    portfolio.monthlyAddCents > 0 ? paydayDayOf(userId, client, now) : Promise.resolve(null),
+    act && portfolio.monthlyAddCents > 0 ? paydayDayOf(userId, client, now) : Promise.resolve(null),
   ]);
 
   const db = scopedFor(userId, client);
@@ -182,8 +190,13 @@ export async function scanPractice(
   }
 
   const found = scanOpportunities({
-    level: portfolio.level as RiskLevel,
+    level: profile.level,
     state,
+    weights: profile.weights,
+    caps: profile.caps,
+    opportunityMaxShare: profile.opportunityMaxShare,
+    avoid: profile.avoid,
+    cashBufferCents: profile.cashBufferCents,
     prices,
     history,
     trades: trades.map((t) => ({ ...t, placedAt: t.placedAt.toISOString() })),
@@ -205,6 +218,7 @@ export async function scanPractice(
   const broker = practiceBroker();
   const outcomes: ScanOutcome[] = [];
   for (const flag of flags) {
+    if (!act && flag.trades.length > 0 && prefs.mode === "act") continue;
     const current = await loadLedger(userId, client);
     const tradesToday = await db.practiceTrades.count({
       where: {
@@ -214,7 +228,14 @@ export async function scanPractice(
         placedAt: { gte: dayStart },
       },
     });
-    const held = flag.trades.length > 0 ? heldBy(flag, current.state, prices, tradesToday) : null;
+    // The preferences' last check (never-buy list), then the hard limits.
+    const refused =
+      flag.trades
+        .map((t) => refusedByPreferences({ ...profile, trades: true }, t))
+        .find((r) => r !== null) ?? null;
+    const held =
+      flag.trades.length > 0 ? (refused ?? heldBy(flag, current.state, prices, tradesToday)) : null;
+    if (!act && held) continue;
     const status: ScanOutcome["status"] = held
       ? "held"
       : flag.kind === "drift_rebalance"
@@ -261,6 +282,7 @@ export async function scanPractice(
     }
     const tradeIds: string[] = [];
     for (const t of flag.trades) {
+      if (refusedByPreferences(profile, t)) continue;
       const fill = await broker.placeOrder(
         userId,
         {
@@ -281,6 +303,38 @@ export async function scanPractice(
     outcomes.push({ kind: flag.kind, ticker: flag.ticker, status, trades: tradeIds.length });
   }
   return { scanned: true, flags: outcomes };
+}
+
+// Constant search: the cheap scan when the person opens the chat or the investing pages, at
+// most once every ON_OPEN_SCAN_MINUTES. Null when there's nothing to scan or it ran lately.
+export async function scanOnOpen(
+  userId: string,
+  { client = defaultClient, now = new Date() }: Options = {},
+): Promise<ScanResult | null> {
+  const portfolio = await scopedFor(userId, client).practicePortfolios.findFirst({
+    select: { id: true, paused: true },
+  });
+  if (!portfolio || portfolio.paused) return null;
+  const since = new Date(now.getTime() - ON_OPEN_SCAN_MINUTES * 60_000);
+  const { count } = await client.practicePortfolio.updateMany({
+    where: {
+      id: portfolio.id,
+      userId,
+      OR: [{ lightScannedAt: null }, { lightScannedAt: { lt: since } }],
+    },
+    data: { lightScannedAt: now },
+  });
+  if (count === 0) return null;
+  return scanPractice(userId, { client, now, act: false });
+}
+
+// Opening a page never waits on, or fails with, the scan.
+export async function scanOnOpenQuietly(userId: string) {
+  try {
+    await scanOnOpen(userId);
+  } catch (error) {
+    console.error("Practice scan on open failed", { error: String(error) });
+  }
 }
 
 // One portfolio's day: the monthly money in, the scan, then the autopilot.

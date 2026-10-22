@@ -1,5 +1,5 @@
 import type { PfcDetailed } from "@/categorize/taxonomy";
-import type { AutopilotChoice } from "@/config/autopilot";
+import type { SectorLevel } from "@/config/autopilot-sectors";
 import { CHARITY_CATEGORIES, PREPARER_GROUPS } from "@/config/tax-pack";
 
 // Taxes (spec steps 118–127): what Jane needs to know, how she works it out from the
@@ -417,16 +417,17 @@ export const TAX_MESSAGE_PRIORITY = {
   // Spec step 271: Social Security tax nothing withholds; Medicare's surcharge line.
   ss_tax: 50,
   irmaa: 42,
+  // Spec step 272: a draft return to confirm, and what its check found, before filing.
+  draft: 86,
   year_end: 55,
   exemption: 30,
 } as const;
 
-// What Jane does about taxes by herself at each autopilot level (spec step 57), shown on
-// /taxes and said in the chat, one entry per feature: what she does when the person asks
-// her to check first ("Ask me first", or no level picked yet) and at the levels that let
-// her act (safe, everything allowed, custom). Nothing is ever filed, signed or paid
-// without a tap.
-export type TaxAutopilotLevel = AutopilotChoice | "custom" | "none";
+// What Jane does about taxes by herself, shown on /taxes and said in the chat, one entry per
+// feature: what she does when the Taxes area always asks, and at its levels that let her act
+// (the safe stuff, everything allowed). The Taxes area's own level (spec step 141) decides it,
+// the same setting its payments go by (docs/feature-audit.md, cluster 1); by default it follows
+// the step 57 level. Nothing is ever filed or signed without a tap.
 export const TAX_AUTOPILOT: readonly { feature: string; ask: string; auto: string }[] = [
   {
     feature: "profile",
@@ -524,6 +525,16 @@ export const TAX_AUTOPILOT: readonly { feature: string; ask: string; auto: strin
     auto: "I keep Social Security's taxable part and Medicare's surcharge line current, tell you when either matters, and keep the order to draw from your accounts tuned to stay under the line. I never move money or change your withholding: Form W-4V is yours.",
   },
   {
+    feature: "draft",
+    ask: "Upload the draft from your tax software or accountant and I read it, you confirm what I read, and I check every line against your forms and accounts before you file: income missing, deductions or credits left out, figures that don't match, each with its dollars. Filing is yours.",
+    auto: "When you upload a draft return I read it and, once you confirm, check every line and bring each thing to fix with its dollars. I never change or file it.",
+  },
+  {
+    feature: "scan",
+    ask: "Every tax check I run is on your tax calendar in the month it matters most, ranked with everything else I found for you. In the chat I bring up taxes once a month, unless something is urgent (a payment due, a letter, a draft to fix, a disaster).",
+    auto: "Every tax check I run is on your tax calendar in the month it matters most, ranked with everything else I found for you, and I do the safe parts myself. In the chat I bring up taxes once a month, unless something is urgent.",
+  },
+  {
     feature: "identity",
     ask: "Every January I remind you to get an IRS Identity Protection PIN. If your return is rejected because one was already filed, or a letter reads like an identity problem, I ask, and if it is I give you the steps in order and keep track of each.",
     auto: "Every January I put getting your IRS Identity Protection PIN on your deadlines. If your return is rejected because one was already filed, or a letter reads like an identity problem, I ask, and if it is I give you the steps in order and keep track of each. The steps are yours: I never contact the IRS or a bureau.",
@@ -585,11 +596,10 @@ export const TAX_AUTOPILOT: readonly { feature: string; ask: string; auto: strin
   },
 ];
 
-export function whatJaneDoes(level: string | null): string[] {
-  const auto = level === "safe" || level === "all" || level === "custom";
-  return TAX_AUTOPILOT.map((line) => (auto ? line.auto : line.ask));
+export function whatJaneDoes(level: SectorLevel): string[] {
+  return TAX_AUTOPILOT.map((line) => (usesFoundAnswers(level) ? line.auto : line.ask));
 }
 
-// Whether Jane may use what she found before the person has said yes to it.
-export const usesFoundAnswers = (level: string | null): boolean =>
-  level === "safe" || level === "all" || level === "custom";
+// Whether Jane may use what she found before the person has said yes to it: the Taxes area
+// doesn't always ask.
+export const usesFoundAnswers = (level: SectorLevel): boolean => level !== "ask";

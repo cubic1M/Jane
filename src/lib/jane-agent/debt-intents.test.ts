@@ -468,6 +468,19 @@ describe("debt questions", () => {
     }
   });
 
+  it("reads helping family with credit (spec step 249), and leaves a co-signed loan listing to family loans", () => {
+    for (const text of [
+      "should I cosign a loan for my son",
+      "how do I add my daughter to my credit card as an authorized user",
+      "first credit card for my college student",
+      "what happens to my credit if my brother misses a cosigned payment",
+      "is co-signing a bad idea",
+    ]) {
+      expect(intent(text), text).toEqual({ kind: "family_credit" });
+    }
+    expect(intent("I co-signed a loan")).toEqual({ kind: "family_loans" });
+  });
+
   it("reads rent reporting, a rent increase and a deposit (spec step 248)", () => {
     for (const text of [
       "can you report my rent to the credit bureaus",
@@ -518,6 +531,33 @@ describe("debt questions", () => {
     }
     // An overdraft fee on a statement is a fee question, not this one.
     expect(intent("what is an overdraft fee")).not.toEqual({ kind: "costly_borrowing" });
+  });
+
+  it("reads the monthly credit check-up (spec step 251), and leaves the yearly review alone", () => {
+    for (const text of [
+      "what's in my credit check-up this month?",
+      "show me the monthly credit check",
+      "how's my credit on autopilot this month",
+      "credit checkup",
+    ]) {
+      expect(intent(text), text).toEqual({ kind: "credit_monthly" });
+    }
+    expect(intent("do my yearly debt review")).toEqual({ kind: "debt_review" });
+  });
+
+  it("reads what could I borrow (spec step 250)", () => {
+    for (const text of [
+      "what could I borrow?",
+      "how much could I borrow for a car",
+      "what rate could I get on a loan",
+      "how big a mortgage could I get",
+      "can I get prequalified",
+      "what's my borrowing power",
+    ]) {
+      expect(intent(text), text).toEqual({ kind: "borrowing_power" });
+    }
+    // A loan for a need with an amount is the options card's.
+    expect(intent("best car loan for $20,000")).not.toEqual({ kind: "borrowing_power" });
   });
 
   it("leaves requests and other questions alone", () => {

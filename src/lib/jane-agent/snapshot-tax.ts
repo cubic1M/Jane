@@ -1,3 +1,4 @@
+import { loadProfileInput } from "@/lib/profile";
 import {
   TAX_FORMS_ASK_FROM,
   TAX_FORMS_ASK_UNTIL,
@@ -38,6 +39,7 @@ import { loadInheritance, type InheritanceView } from "@/lib/inheritance";
 import { loadHealthTaxes, type HealthTaxView } from "@/lib/health-taxes";
 import { loadDisasterRelief, type DisasterView } from "@/lib/disasters";
 import { loadRetirementTaxes, type RetirementTaxView } from "@/lib/retirement-taxes";
+import { listDraftReturns, type DraftReturnView } from "@/lib/draft-return";
 import { loadIdentity, type IdentityView } from "@/lib/tax-identity";
 import { loadSideIncome, type SideIncomeView } from "@/lib/side-income";
 import { loadAuditRecords, type AuditRecordsView } from "@/lib/audit-records";
@@ -116,6 +118,8 @@ export type TaxSnapshot = {
     disaster?: DisasterView;
     // Spec step 271: Social Security's taxable part, Medicare's surcharge line, the tuned order.
     retirement?: RetirementTaxView;
+    // Spec step 272: draft returns read or checked before filing.
+    drafts?: DraftReturnView[];
     // Spec step 217: tax notices read from uploads, with what Jane found against them.
     notices?: { notice: NoticeView; check: (Check & { advice: boolean }) | null }[];
     // Spec step 172: returns read from uploads, and what their review found.
@@ -152,11 +156,12 @@ export async function loadTaxSnapshot(
     loadSelfEmployed(userId, { client, now, loaded: { estimate, advice } }),
   ]);
   const noticeViews = await listTaxNotices(userId, { client });
-  const [equity, identity, sideIncome, home] = await Promise.all([
+  const [equity, identity, sideIncome, home, input] = await Promise.all([
     loadEquityTax(userId, { client, now, loaded: { estimate, advice } }),
     loadIdentity(userId, { client, now }),
     loadSideIncome(userId, { client, now, loaded: { estimate } }),
     loadHomeTaxes(userId, { client, now, loaded: { estimate } }),
+    loadProfileInput(userId, { client, now }),
   ]);
   const inLastMonth = (lastMonthTags ?? tags).tagged.filter((t) => t.date.startsWith(last));
   return {
@@ -221,10 +226,16 @@ export async function loadTaxSnapshot(
         loaded: { estimate, advice, equity, identity, notices: noticeViews, side: sideIncome },
         withQuestions: false,
       }),
-      health: await loadHealthTaxes(userId, { client, now, loaded: { advice } }),
-      disaster: await loadDisasterRelief(userId, { client, now, loaded: { estimate } }),
-      retirement: await loadRetirementTaxes(userId, { client, now, loaded: { advice } }),
-      inheritance: await loadInheritance(userId, { client, now, loaded: { estimate, advice } }),
+      // Spec step 273: the profile's rows loaded once for the four that read them.
+      health: await loadHealthTaxes(userId, { client, now, loaded: { advice, input } }),
+      disaster: await loadDisasterRelief(userId, { client, now, loaded: { estimate, input } }),
+      retirement: await loadRetirementTaxes(userId, { client, now, loaded: { advice, input } }),
+      drafts: (await listDraftReturns(userId, { client })).filter((d) => d.status !== "dismissed"),
+      inheritance: await loadInheritance(userId, {
+        client,
+        now,
+        loaded: { estimate, advice, input },
+      }),
       business: await loadBusinessStructure(userId, { client, now, loaded: { estimate, advice } }),
       calendar: await loadTaxCalendar(userId, {
         client,

@@ -146,6 +146,22 @@ export const CAPABILITIES: readonly Capability[] = [
     tools: ["steady_pay"],
     answer: janeAnswer,
   },
+  // Spec step 242: money for two.
+  {
+    id: "two",
+    bank: ["two"],
+    kinds: ["money_for_two"],
+    tools: ["money_for_two"],
+    answer: janeAnswer,
+  },
+  // Spec step 241: goals that trade off openly.
+  {
+    id: "tradeoffs",
+    bank: ["tradeoffs"],
+    kinds: ["goal_tradeoffs"],
+    tools: ["goal_tradeoffs"],
+    answer: janeAnswer,
+  },
   {
     id: "did",
     bank: ["timeline", "settings"],
@@ -241,6 +257,7 @@ export const CAPABILITIES: readonly Capability[] = [
       "tax_health",
       "tax_disaster",
       "tax_retirement",
+      "tax_draft_check",
       "tax_decide",
     ],
     answer: taxAnswer,
@@ -324,6 +341,9 @@ export const CAPABILITIES: readonly Capability[] = [
       "mortgage_money",
       "costly_borrowing",
       "renting",
+      "family_credit",
+      "borrowing_power",
+      "credit_monthly",
       "debt_decision",
       "loan_fit",
     ],

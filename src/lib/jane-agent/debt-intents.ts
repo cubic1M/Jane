@@ -63,6 +63,12 @@ export type DebtIntent =
   | { kind: "costly_borrowing" }
   // Spec step 248: "report my rent", "my rent went up", "when do I get my deposit back?".
   | { kind: "renting" }
+  // Spec step 249: "add my son to my card", "should I co-sign", "first card for my daughter".
+  | { kind: "family_credit" }
+  // Spec step 250: "what could I borrow?", "what rate could I get?".
+  | { kind: "borrowing_power" }
+  // Spec step 251: "what did you check on my credit this month?".
+  | { kind: "credit_monthly" }
   // Spec step 246: "I have $20,000, pay down my mortgage or recast?", "$500 a month extra on my
   // mortgage". lumpCents or extraMonthlyCents is the amount named, or both null.
   | { kind: "mortgage_money"; lumpCents: number | null; extraMonthlyCents: number | null }
@@ -127,6 +133,9 @@ export const DEBT_KINDS = new Set<string>([
   "mortgage_money",
   "costly_borrowing",
   "renting",
+  "family_credit",
+  "borrowing_power",
+  "credit_monthly",
   "debt_decision",
   "loan_fit",
 ]);
@@ -304,6 +313,15 @@ const STUDENT_LONG =
   /\b(?:pslf|public service loan\w*)\b.*\b(?:payments?|counted?|count|how many|how long|when|date|done|left|remaining|progress|certif\w+|recertif\w+)\b|\b(?:payments?|counted?|how many|when|date|progress)\b.*\bpslf\b|\brecertif\w+\b.*\b(?:income|plan|idr|loans?)\b|\b(?:income|idr|income-driven)\b.*\brecertif\w+\b|\bemployer certif\w+\b|\bcertify my employer\b|\b(?:taxed|taxable)\b.*\bforgiven (?:student|loans?|debt)\b|\bforgiven (?:student )?(?:loans?|debt)\b.*\b(?:taxed|taxable)\b|\b(?:refinanc\w*|consolidat\w*)\b.*\bstudent\b|\bstudent\b.*\b(?:refinanc\w*)\b/;
 
 // Spec step 226: money lent to or borrowed from family and friends.
+// Spec step 249. Helping someone with credit; a past co-signed loan is still family loans.
+// Spec step 251: the monthly credit check-up.
+const CREDIT_MONTHLY =
+  /\b(?:monthly |this month'?s )?credit check-?up\b|\b(?:credit|loans?|debts?) on autopilot\b.*\bmonth|\bmonthly (?:credit|loan|debt) check\b/;
+// Spec step 250: what could I borrow, and at what rate?
+const BORROWING_POWER =
+  /\bwhat (?:could|can|would) i (?:borrow|get approved for|qualify for)\b|\bhow much (?:could|can|would) i (?:borrow|get approved for|qualify for)\b|\bwhat rates? (?:could|would|can|might) i get\b|\bhow (?:big|large|much) (?:of )?an? (?:loan|mortgage|car loan|personal loan) (?:could|can|would) i (?:get|qualify for)\b|\bprequalif\w*\b|\bpre-qualif\w*\b|\bborrowing power\b/;
+const FAMILY_CREDIT =
+  /\bauthori[sz]ed users?\b|\badd (?:my )?(?:son|daughter|kid|teen|teenager|child|partner|spouse|wife|husband) (?:to|as)\b.*\b(?:card|account)\b|\bfirst (?:credit )?card for (?:my |a )?(?:son|daughter|kid|teen|teenager|child|student)\b|\bcard for (?:my )?(?:college )?student\b|\bshould i co-?sign\b|\bco-?sign(?:ing)? (?:a |an |for |my )|\bco-?signer\b.*\b(?:risk|miss|hurt|credit|happens)\b|\bwhat (?:happens|if) .*\bco-?sign/;
 const FAMILY_LOANS =
   /\bwho owes me\b|\bwho do i owe\b|\bowes? me (?:money|\$|back)\b|\b(?:did|has|have) \w+(?: \w+)? (?:pay|paid|paying) me back\b|\bmoney (?:i |i've |ive )?(?:lent|loaned|borrowed)\b|\b(?:i|we) (?:lent|loaned)\b|\blent (?:out|money)\b|\bloans? to (?:family|friends?)\b|\b(?:family|friends?) (?:loans?|owe)\b|\bi owe (?:my )?(?:mom|dad|mother|father|sister|brother|friend|friends|aunt|uncle|cousin|parents|family)\b|\bco-?sign(?:ed|er)?\b|\bshared (?:debt|debts|loan|loans)\b/;
 
@@ -430,6 +448,8 @@ export function parseDebtIntent(
   const equity = equityIntent(text, amountCents);
   if (equity) return equity;
   if (DEBT_TROUBLE.test(text)) return { kind: "debt_trouble" };
+  // Before the yearly review: "this month's check-up" is the monthly one.
+  if (CREDIT_MONTHLY.test(text)) return { kind: "credit_monthly" };
   if (DEBT_REVIEW.test(text)) return { kind: "debt_review" };
   if (CAR_LOAN.test(text)) return { kind: "car_loan" };
   if (COSTLY.test(text)) return { kind: "costly_borrowing" };
@@ -463,6 +483,8 @@ export function parseDebtIntent(
   ) {
     return { kind: "card_interest" };
   }
+  if (BORROWING_POWER.test(text)) return { kind: "borrowing_power" };
+  if (FAMILY_CREDIT.test(text)) return { kind: "family_credit" };
   if (FAMILY_LOANS.test(text)) return { kind: "family_loans" };
   if (CREDIT_GOAL.test(text) && /\bscore\b|\bcredit (?:goal|plan)\b/.test(text)) {
     const g = goalFrom(text, asOf);
