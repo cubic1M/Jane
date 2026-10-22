@@ -39,6 +39,8 @@ export async function loadProfileInput(
     insurance,
     investor,
     unread,
+    values,
+    named,
     membership,
   ] = await Promise.all([
     db.transactions.findMany({
@@ -87,6 +89,8 @@ export async function loadProfileInput(
     db.insuranceProfiles.findFirst({ select: { housing: true } }),
     db.investorProfiles.findFirst({ select: { age: true, ageOn: true, dropReaction: true } }),
     db.policyReadings.count({ where: { status: "waiting" } }),
+    db.valuesPreferences.findFirst({ select: { excludes: true } }),
+    db.accountBeneficiaries.findMany({ select: { accountId: true } }),
     client.householdMember.findUnique({ where: { userId }, select: { householdId: true } }),
   ]);
   // Other people in their household in Jane (spec step 264), not counting them.
@@ -159,6 +163,8 @@ export async function loadProfileInput(
       hasPmi: l.hasPmi,
       payoffDate: l.payoffDate ? dayOf(l.payoffDate) : null,
     })),
+    valuesExcludes: values?.excludes ?? [],
+    namedAccountIds: [...new Set(named.map((n) => n.accountId))],
     told,
     unreadPolicyDocuments: unread,
     extras: { householdMembers, ...(await sectorFigures(userId, client, now)) },
@@ -174,6 +180,8 @@ async function sectorFigures(userId: string, client: PrismaClient, now: Date) {
   const hasStock =
     (await db.accounts.count({ where: { subtype: "stock plan" } })) > 0 ||
     (await db.equityEvents.count()) > 0;
+  // Spec step 296: whether the practice-portfolio suggestion still applies.
+  const practice = await db.practicePortfolios.count();
   const [matchPace, equity, subscriptions, cardInterest, shopSaving, policies] = await Promise.all([
     loadMatchPace(userId, { client, now }),
     hasStock
@@ -199,6 +207,7 @@ async function sectorFigures(userId: string, client: PrismaClient, now: Date) {
         deductibleCents: p.deductibleCents,
         coverage: p.coverage,
       })),
+    hasPracticePortfolio: practice > 0,
   };
 }
 
