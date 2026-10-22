@@ -1108,6 +1108,20 @@ describe.runIf(url)("investments in Jane's chat, against a real database", () =>
   );
 
   it(
+    "step 211: the stand-in past employer is the original demo bank's, not a sample person's",
+    SLOW,
+    async () => {
+      const user = await client.user.create({
+        data: { email: `inv-${crypto.randomUUID()}@example.com` },
+      });
+      created.push(user.id);
+      const { itemId } = await linkDemoBank(user.id, { client, now: LINKED, person: "retiree" });
+      await syncItem(itemId, { client, api: plaid, now: LINKED });
+      expect((await loadOldAccounts(user.id, { client, now: LINKED })).plans).toEqual([]);
+    },
+  );
+
+  it(
     "step 212: Social Security from pay then from the statement, minimums, the order to draw, how long it lasts",
     SLOW,
     async () => {
