@@ -1,0 +1,85 @@
+// The daily scan of each practice portfolio (spec step 292, Phase AW, Stage A). Practice money
+// and the sample market only: every number here is demo advice, FOR REVIEW before Stage B.
+// The scan's rules are in src/planning/practice-scan.ts; nothing there has a number of its own.
+
+export type ScanKind = "drift_rebalance" | "dip_buy" | "tax_loss_harvest" | "news_idea";
+
+export const SCAN_KINDS: readonly ScanKind[] = [
+  "drift_rebalance",
+  "dip_buy",
+  "tax_loss_harvest",
+  "news_idea",
+];
+
+// What each flag is called on a card and in the log.
+export const SCAN_LABELS: Readonly<Record<ScanKind, string>> = {
+  drift_rebalance: "Rebalance after drift",
+  dip_buy: "Buy a dip, within the plan",
+  tax_loss_harvest: "Harvest a loss",
+  news_idea: "An idea from the news",
+};
+
+// Per flag: the most one action may be, as a share of the portfolio's value (the size cap);
+// the most of one holding it may leave (the per-position cap, as a share of the portfolio;
+// the autopilot's own per-position caps apply too); and how many a calendar month may act.
+export const SCAN_CAPS: Readonly<
+  Record<ScanKind, { sizeShare: number; positionShare: number; perMonth: number }>
+> = {
+  // The rebalance itself is the autopilot's (AUTOPILOT_LIMITS); the scan only flags it.
+  drift_rebalance: { sizeShare: 0.7, positionShare: 0.8, perMonth: 4 },
+  dip_buy: { sizeShare: 0.05, positionShare: 0.8, perMonth: 2 },
+  tax_loss_harvest: { sizeShare: 0.7, positionShare: 0.8, perMonth: 2 },
+  news_idea: { sizeShare: 0.01, positionShare: 0.03, perMonth: 2 },
+};
+
+// Drift: the share in stocks (US and international together) this many points off its target
+// counts as drift, as well as any one kind past the autopilot's band (AUTOPILOT_LIMITS).
+export const DRIFT_STOCKS_BAND = 0.05;
+
+// A dip: a model holding's close at least this far below its highest close of the last
+// DIP_LOOKBACK_DAYS trading days. The sample market's ordinary swings stay under it through
+// 2026; the planted dips go past it.
+export const DIP_MIN_DROP = 0.1;
+export const DIP_LOOKBACK_DAYS = 20;
+// The plan's cash for a dip is cash waiting to be invested (the monthly practice money before
+// the autopilot spends it). A dip buy never takes its kind past target plus this many points.
+export const DIP_MAX_OVER_TARGET = 0.05;
+
+// A loss worth harvesting: at least this share of what the holding cost, and at least step
+// 124's HARVEST_MIN_LOSS_CENTS. The swap is into a similar fund of the same kind (so the mix
+// stays as it is), and never one bought or sold at a loss within WASH_SALE_DAYS (a wash sale).
+export const HARVEST_MIN_LOSS_SHARE = 0.08;
+
+// News-driven ideas look at the watched companies' headlines from the last few days, at High
+// and Very high only (OPPORTUNITY_LEVELS), and only when opportunities aren't paused. A
+// headline counts as good news when it matches this; a headline that also matches the bad-news
+// pattern doesn't count. Rules on the headline's own words: no forecast, no price target.
+export const NEWS_LOOKBACK_DAYS = 2;
+export const NEWS_GOOD =
+  /\b(?:ahead of supply|better-than-expected|beats?|record (?:sales|demand)|jumps?|new .*investment)\b/i;
+export const NEWS_BAD =
+  /\b(?:recalls?|cuts? (?:its )?outlook|fewer|miss(?:es)?|slip|falls?|lawsuit|probe)\b/i;
+// All opportunity stocks together are never more than this share of the portfolio.
+export const OPPORTUNITY_MAX_SHARE = 0.05;
+
+// How sure Jane is about each kind, and why: a fixed rule reads higher than one headline.
+export const SCAN_CONFIDENCE: Readonly<Record<ScanKind, { percent: number; reason: string }>> = {
+  drift_rebalance: {
+    percent: 90,
+    reason: "A fixed rule: it puts the mix back where your level says, whatever prices do next.",
+  },
+  dip_buy: {
+    percent: 60,
+    reason:
+      "It buys more of what the plan already holds, with cash waiting anyway; a dip can deepen before it recovers.",
+  },
+  tax_loss_harvest: {
+    percent: 75,
+    reason:
+      "The loss is there today and the swap keeps the mix; what it's worth depends on your taxes, and this is practice money.",
+  },
+  news_idea: {
+    percent: 35,
+    reason: "One headline is thin evidence, so the position is kept small.",
+  },
+};

@@ -36,6 +36,11 @@ import type { HomeEquity, ProjectComparison } from "@/lib/home-equity";
 import { REWARD_CATEGORY_LABELS } from "@/config/credit-cards";
 import type { DebtAutopilot } from "@/lib/debt-autopilot";
 import { PMI_SOURCE } from "@/config/debt";
+import type { FitView } from "@/lib/fit";
+import { fitCard } from "@/lib/fit-card";
+import type { OptionCard } from "@/lib/option-card";
+import { DEMO_ADVICE_LABEL } from "@/config/advice";
+import { FIT_LABEL_TEXT, type FitTerms } from "@/planning/fit";
 import { PMI_STEPS } from "@/planning/mortgage";
 import { STUDENT_SOURCES, STUDENT_STEPS } from "@/config/student-loans";
 import { PLAN_NAMES } from "@/planning/student-loans";
@@ -195,6 +200,23 @@ export const DEBT_TOOLS: Anthropic.Tool[] = [
     description:
       "The credit score plans the person has for a goal (demo-bank people only, a stand-in score; every figure is an estimate from the score simulator, never a promise): for each, the target score and date, what the goal is for (a mortgage, a car), the score now, whether the plan reaches the target and the best it shows if not, the month-by-month plan (what to pay toward cards and the estimated score after each month), this month's checklist with what's done (pay before the statement closes, keep card accounts open, no new applications, on-time payments, and a rapid rescore before a mortgage application), and the total to pay down. Starting a plan and ticking off a month are the person's taps (the creditgoal.start and creditgoal.done buttons).",
     input_schema: noInput,
+  },
+  {
+    name: "loan_fit",
+    description:
+      "The best loan for what the person needs, picked from their credit, debt-to-income, cash and the lender stand-in's offers (demo-bank people only): for need car, home, refinance, consolidation or personal, two to four options, each with its rate, term, monthly payment, total cost over the term with fees (not just the rate), the payment as a share of take-home, when the fee pays back, and what it saves against what they have now; which options are comfortable; Jane's pick with a confidence percentage and its reason; the offers that don't fit and why; for why that one, the reason for the pick and the pick against each other option (the differences already worked out); for a shorter or longer term, the best loan's lender at each term it offers, with the payment, total interest and the differences against the best loan already worked out; and the options card the chat shows. Give amount_dollars for a car, home or personal loan; a refinance takes the debt with the highest rate (or debt_key) and a consolidation takes the person's cards. The pick is demo advice; nothing is applied for here.",
+    input_schema: {
+      type: "object" as const,
+      properties: {
+        need: {
+          type: "string" as const,
+          enum: ["car", "home", "refinance", "consolidation", "personal"],
+        },
+        amount_dollars: { type: "number" as const },
+        debt_key: { type: "string" as const },
+      },
+      required: ["need"],
+    },
   },
   {
     name: "debt_decision",
@@ -417,6 +439,7 @@ export const DEBT_TOOL_STATUS: Readonly<Record<string, string>> = {
   debt_review: "Going over your debts…",
   car_loan: "Looking at your car loan…",
   debt_decision: "Working it out with your numbers…",
+  loan_fit: "Finding the loan that fits you…",
 };
 
 export function refinanceToolOutput(refi: Refinance, money: (cents: number) => string) {
@@ -1236,5 +1259,112 @@ export function debtAutopilotToolOutput(data: DebtAutopilot, money: (cents: numb
       on: c.on,
     })),
     payoffPlanStartedByJaneOn: data.planStartedOn,
+  };
+}
+
+// The options card (spec step 282) rides along: the chat shows it as the pick-one card. Jane's
+// pick and how sure she is are only given in demo advice mode, with its label.
+export function loanFitToolOutput(
+  view: FitView,
+  money: (cents: number) => string,
+  advice: boolean = view.advice,
+) {
+  if (!view.available)
+    return { note: "No lending partner for this person's accounts yet, so there are no offers." };
+  if (view.options.length === 0) {
+    return {
+      note: "Nothing fits right now.",
+      why: view.ineligible.slice(0, 3).map((i) => i.reason),
+      whatWouldHelp: view.whatWouldHelp,
+    };
+  }
+  const card = fitCard(view, advice);
+  return {
+    demoAdvice: advice,
+    ...(advice ? { label: DEMO_ADVICE_LABEL } : {}),
+    need: view.need,
+    checkedOn: view.checkedOn,
+    pick: advice ? view.pick : null,
+    confidence:
+      advice && view.confidence
+        ? `${view.confidence.percent}% sure: ${view.confidence.reason}`
+        : null,
+    options: view.options.map((o) => ({
+      id: o.id,
+      label: FIT_LABEL_TEXT[o.label],
+      headline: o.headline,
+      rate: `${(o.aprBps / 100).toFixed(2)}%`,
+      months: o.termMonths,
+      monthlyPayment: money(o.paymentCents),
+      totalCost: money(o.totalCostCents),
+      fees: money(o.feeCents),
+      savesVersusWhatYouHave: o.savesCents === null ? null : money(o.savesCents),
+      comfortable: o.comfortable,
+      details: o.details,
+    })),
+    // "Why that one?": the reason, and the pick against each other option, worked out here so
+    // the answer can say the difference without doing sums.
+    whyThePick: advice ? whyThePick(view, money, card) : null,
+    // "What about a shorter (or longer) term?": the best loan's lender at each term it offers.
+    otherTerms: view.terms ? otherTerms(view.terms, money) : null,
+    assumptions: view.assumptions,
+    optionCard: card,
+  };
+}
+
+// "$45.00 more a month", "$120.00 less", "the same".
+const differs = (cents: number, money: (cents: number) => string, more: string, less: string) =>
+  cents === 0 ? "the same" : cents > 0 ? `${money(cents)} ${more}` : `${money(-cents)} ${less}`;
+
+function whyThePick(view: FitView, money: (cents: number) => string, card: OptionCard | null) {
+  const pick = view.options.find((o) => o.id === view.pick);
+  if (!pick) return null;
+  return {
+    pick: pick.lender,
+    reason: card?.options.find((o) => o.id === pick.id)?.whyThisOne ?? null,
+    confidence: view.confidence
+      ? `${view.confidence.percent}% sure: ${view.confidence.reason}`
+      : null,
+    comfortable: pick.comfortable,
+    paymentShareOfTakeHome:
+      pick.paymentShare === null ? null : `${Math.round(pick.paymentShare * 100)}%`,
+    versusTheOthers: view.options
+      .filter((o) => o.id !== pick.id)
+      .map((o) => ({
+        option: o.lender,
+        months: o.termMonths,
+        // The pick against this one.
+        pickMonthlyPayment: differs(
+          pick.paymentCents - o.paymentCents,
+          money,
+          "more a month",
+          "less a month",
+        ),
+        pickPaidInAll: differs(pick.totalCostCents - o.totalCostCents, money, "more", "less"),
+        thisOneIsComfortable: o.comfortable,
+      })),
+  };
+}
+
+function otherTerms(terms: FitTerms, money: (cents: number) => string) {
+  const best = terms.options.find((t) => t.id === terms.bestId)!;
+  return {
+    lender: terms.lender,
+    comparedWith: `${terms.lender} at ${best.termMonths} months, the best loan`,
+    shorterMonths:
+      terms.options.filter((t) => t.termMonths < best.termMonths).at(-1)?.termMonths ?? null,
+    longerMonths: terms.options.find((t) => t.termMonths > best.termMonths)?.termMonths ?? null,
+    terms: terms.options.map((t) => ({
+      months: t.termMonths,
+      rate: `${(t.aprBps / 100).toFixed(2)}%`,
+      monthlyPayment: money(t.paymentCents),
+      totalInterest: money(t.interestCents),
+      fees: money(t.feeCents),
+      totalCost: money(t.totalCostCents),
+      comfortable: t.comfortable,
+      isTheBestLoan: t.id === terms.bestId,
+      monthlyPaymentVersusBest: differs(t.paymentDiffCents, money, "more a month", "less a month"),
+      interestVersusBest: differs(t.interestDiffCents, money, "more interest", "less interest"),
+    })),
   };
 }

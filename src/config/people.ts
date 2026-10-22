@@ -12,6 +12,8 @@ export const SUGGESTION_TOPICS = [
   "card_interest",
   "high_cost_loans",
   "debt_plan",
+  // Spec step 283: cards that could be one cheaper loan.
+  "consolidation",
   "hardship_plan",
   "credit_building",
   "emergency_fund",
@@ -41,6 +43,9 @@ export const SUGGESTION_TOPICS = [
   "card_cover",
   "employer_benefits",
   "policy_documents",
+  "disability_insurance",
+  "liability_levels",
+  "deductible_fit",
   "business_separation",
   "cash_flow",
   "pmi_removal",
@@ -155,6 +160,8 @@ export const PEOPLE: readonly Person[] = [
       "cover_change",
       "credit_building",
       "bnpl",
+      "liability_levels",
+      "consolidation",
     ],
     mustNot: [
       "umbrella",
@@ -216,6 +223,9 @@ export const PEOPLE: readonly Person[] = [
       "property_tax_check",
       "life_checklist",
       "household_setup",
+
+      "liability_levels",
+      "disability_insurance",
     ],
     mustNot: [
       "renters_insurance",
@@ -255,6 +265,8 @@ export const PEOPLE: readonly Person[] = [
       "renters_insurance",
 
       "auto_insurance",
+
+      "disability_insurance",
     ],
     mustNot: [
       "employer_match",
@@ -303,6 +315,8 @@ export const PEOPLE: readonly Person[] = [
       "tax_loss_harvest",
       "charity_receipts",
       "property_tax_check",
+
+      "deductible_fit",
     ],
     mustNot: [
       "bank_fees",
@@ -416,6 +430,8 @@ export const PEOPLE: readonly Person[] = [
       "credit_report_errors",
       "household_setup",
       "life_checklist",
+
+      "disability_insurance",
     ],
     firstQuestion: "age_band",
   },
@@ -492,6 +508,8 @@ export const PEOPLE: readonly Person[] = [
       "retirement_self_employed",
       "cash_flow",
       "emergency_fund",
+
+      "disability_insurance",
     ],
     mustNot: [
       "employer_match",

@@ -73,21 +73,21 @@ describe("profileSummary", () => {
     expect(profileSummary(FULL, "2026-10-19")).toMatchObject({
       complete: true,
       riskLevel: 3,
-      label: "Moderate",
+      label: "Medium",
       age: 45,
       goals: ["retirement"],
-      why: "Moderate: you'd worry, but wait it out after a drop, so less risk than your timeline allows.",
+      why: "Medium: you'd worry, but wait it out after a drop, so less risk than your timeline allows.",
       stale: false,
     });
     expect(
       profileSummary({ ...FULL, horizon: "under_3", dropReaction: "buy" }, "2026-10-19"),
     ).toMatchObject({
-      why: "Conservative: you need the money within 3 years, so less risk than you'd be comfortable with.",
+      why: "Very low: you need the money within 3 years, so less risk than you'd be comfortable with.",
     });
     expect(
       profileSummary({ ...FULL, horizon: "10_to_20", dropReaction: "fine" }, "2026-10-19"),
     ).toMatchObject({
-      why: "Moderately aggressive: you need the money in 10 to 20 years, and you'd be fine; it comes back after a drop.",
+      why: "High: you need the money in 10 to 20 years, and you'd be fine; it comes back after a drop.",
     });
   });
 

@@ -1,3 +1,4 @@
+import { loadNeeds, withNeeds } from "@/lib/insurance/need/load";
 import { decide, decisionKindOf } from "./decisions";
 import type Anthropic from "@anthropic-ai/sdk";
 import { PREMIUM_FREQUENCIES } from "@/config/documents";
@@ -79,6 +80,12 @@ export const INSURANCE_TOOLS: Anthropic.Tool[] = [
     description:
       "Life insurance sized for the person and applied for (spec step 153), demo advice only: the amount and term with the method (years of pay, debts, final expenses, schooling, less savings and cover they have), the term quotes, and where an application stands (health questions, the carrier's offer or review). Jane never applies or buys without the person's tap; to start, they tap Apply in the chat or on /insurance/life.",
     input_schema: noInput,
+  },
+  {
+    name: "insurance_needs",
+    description:
+      "What cover the person needs, worked out from their own numbers, what they have and the gap (spec step 278): term life (income, debts, schooling, less savings and cover), disability (about 60% of pay a month), umbrella, deductibles by their cash, and car, home and renters liability levels. It is the same working the page and the nightly detectors use. Use it for 'how much life insurance do I need'. The need is demo advice: say so with the label in demo advice mode.",
+    input_schema: { type: "object", properties: {} },
   },
   {
     name: "insurance_decision",
@@ -216,6 +223,34 @@ export async function runInsuranceTool(
       cents,
     };
   }
+  if (name === "insurance_needs") {
+    const needs = await loadNeeds(userId, { client, now });
+    if (!needs) {
+      return {
+        content: JSON.stringify({
+          error: "I don't have the policies and income to size cover yet.",
+        }),
+        cents,
+      };
+    }
+    for (const n of needs)
+      cents.push(n.needCents, n.haveCents, n.gapCents, ...n.lines.map((l) => l.cents));
+    return {
+      content: JSON.stringify({
+        needs: needs.map((n) => ({
+          kind: n.kind,
+          unit: n.unit,
+          need: money(n.needCents),
+          have: money(n.haveCents),
+          gap: money(n.gapCents),
+          direction: n.direction,
+          summary: n.summary,
+          working: n.lines.map((l) => `${l.adds ? "+" : "−"} ${money(l.cents)}: ${l.label}`),
+        })),
+      }),
+      cents,
+    };
+  }
   if (name === "insurance_decision") {
     const question = String((input as { question?: unknown })?.question ?? "").toLowerCase();
     const kind = decisionKindOf(question);
@@ -227,7 +262,10 @@ export async function runInsuranceTool(
         cents,
       };
     }
-    const snapshot = await loadInsuranceSnapshot(userId, { client, now });
+    const snapshot = await withNeeds(userId, await loadInsuranceSnapshot(userId, { client, now }), {
+      client,
+      now,
+    });
     const answer = decide(kind, snapshot, now.toISOString().slice(0, 10));
     for (const m of answer.body.matchAll(/\$([\d,]+(?:\.\d\d)?)/g)) {
       cents.push(Math.round(Number(m[1].replace(/,/g, "")) * 100));

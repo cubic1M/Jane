@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 
 vi.mock("@/lib/session", () => ({ requireUser: vi.fn() }));
 
+import { computeNeeds } from "@/lib/insurance/need";
 import { normalize } from "../intents";
 import {
   DECISION_PATTERNS,
@@ -176,5 +177,45 @@ describe("insurance decisions", () => {
     expect(decide("fsa_left", rich(true), "x").body).toContain("$2,173.20");
     expect(decide("deductible", rich(true), "x").body).toContain("$170.40");
     expect(decide("umbrella", rich(true), "x").body).toContain("$529,380.67");
+  });
+});
+
+describe("how much cover do I need, from the same numbers as the detectors (spec step 278)", () => {
+  const needs = computeNeeds({
+    yearlyPayCents: 9_600_000,
+    dependants: 2,
+    mortgageCents: 30_000_000,
+    otherDebtCents: 1_500_000,
+    mortgageYearsLeft: 5,
+    savingsCents: 3_000_000,
+    cashCents: 1_000_000,
+    netWorthCents: 180_000_000,
+    workLifeCoverCents: 0,
+    policies: [],
+  });
+  const withNeeds = (advice: boolean) => ({ ...rich(advice), needs }) as never;
+
+  it("says the life cover needed, with the working in a sentence", () => {
+    const r = decide("life_how_much", withNeeds(true), "x");
+    expect(r.body).toMatch(/^About \$1,400,000\.00\./);
+    expect(r.body).toContain("less your savings");
+    expect(sentenceCount(r.body)).toBeLessThanOrEqual(3);
+  });
+
+  it("says the disability benefit and the umbrella size from the calculators", () => {
+    expect(decide("disability_how_much", withNeeds(true), "x").body).toContain("$4,800.00 a month");
+    expect(decide("umbrella_how_much", withNeeds(true), "x").body).toMatch(
+      /umbrella of \$2,000,000\.00/,
+    );
+  });
+
+  it("gives the facts, not the verdict, when advice is off", () => {
+    const r = decide("life_how_much", withNeeds(false), "x");
+    expect(r.refs).not.toHaveProperty("advice");
+    expect(r.body).not.toMatch(/^About/);
+  });
+
+  it("asks for what it needs when the numbers aren't there", () => {
+    expect(decide("life_how_much", rich(true), "x").body).toMatch(/who depends on your income/);
   });
 });

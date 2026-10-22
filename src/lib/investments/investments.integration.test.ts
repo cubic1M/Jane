@@ -96,13 +96,13 @@ describe.runIf(url)("investments in Jane's chat, against a real database", () =>
     },
   ) as PlaidApi;
 
-  async function demoPerson() {
+  async function demoPerson(now = LINKED) {
     const user = await client.user.create({
       data: { email: `inv-${crypto.randomUUID()}@example.com` },
     });
     created.push(user.id);
-    const { itemId } = await linkDemoBank(user.id, { client, now: LINKED });
-    await syncItem(itemId, { client, api: plaid, now: LINKED });
+    const { itemId } = await linkDemoBank(user.id, { client, now });
+    await syncItem(itemId, { client, api: plaid, now });
     return user.id;
   }
 
@@ -147,7 +147,7 @@ describe.runIf(url)("investments in Jane's chat, against a real database", () =>
     message = await tap("invest.answer.1"); // retirement
     expect(message).toMatchObject({ status: "answered", answeredWith: "Retirement" });
     expect(message.refs.note).toBe(
-      "Thanks. Your profile: Moderate: you'd worry, but wait it out after a drop, so less risk than your timeline allows. You can change it any time.",
+      "Thanks. Your profile: Medium: you'd worry, but wait it out after a drop, so less risk than your timeline allows. You can change it any time.",
     );
     const profile = await profileOf(userId, { client });
     expect(profile).toMatchObject({
@@ -224,7 +224,7 @@ describe.runIf(url)("investments in Jane's chat, against a real database", () =>
     expect(review?.recommendations[0].kind).toBe("rebalance");
     const { reply } = await sendToJane(userId, "review my portfolio", { client, now: LINKED });
     expect(reply.refs.advice).toBe(true);
-    expect(reply.body).toMatch(/^Against your moderate profile/);
+    expect(reply.body).toMatch(/^Against your medium profile/);
   });
 
   it("step 132: plans retirement from the contributions and the plan's match", SLOW, async () => {
@@ -337,6 +337,15 @@ describe.runIf(url)("investments in Jane's chat, against a real database", () =>
       "Trading is only in demo advice mode for now.",
     );
     expect(await client.brokerageOrder.count({ where: { userId } })).toBe(0);
+  });
+
+  it("step 134: suggests from the paycheck, not a payout that landed after it", SLOW, async () => {
+    // Linked on the 25th, the demo's $1,150 Airbnb payout (a week before linking) comes after
+    // the $2,450 payroll on the 15th.
+    const late = new Date("2026-10-25T15:00:00Z");
+    const userId = await demoPerson(late);
+    const offer = await loadAutoInvest(userId, { client, now: late });
+    expect(offer.suggestion?.amountCents).toBe(10_000);
   });
 
   it(
