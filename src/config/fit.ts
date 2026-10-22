@@ -1,6 +1,6 @@
 import type { LoanProduct } from "@/config/debt";
 
-// The perfect fit for borrowing (spec step 274): every threshold the fit engine
+// The perfect fit for borrowing (spec step 281): every threshold the fit engine
 // (src/planning/fit.ts) uses, with where it comes from. Nothing is inline in the planner.
 
 export const FIT_NEEDS = ["car", "home", "refinance", "consolidation", "personal"] as const;

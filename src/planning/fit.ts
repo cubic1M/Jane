@@ -20,7 +20,7 @@ import { formatCents } from "@/lib/money";
 import { payoffPlan } from "./debt";
 import { levelPaymentCents, totalPaidCents } from "./refinance";
 
-// The fit engine (spec step 274), pure: for one need, the person's credit, income, debts and
+// The fit engine (spec step 281), pure: for one need, the person's credit, income, debts and
 // cash, and the lender's offers, it works out each option's eligibility, its total cost over
 // the whole term with fees (not just the rate), the payment as a share of take-home and
 // against a comfortable share, and when the fees pay back; then picks two to four options and
