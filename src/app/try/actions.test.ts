@@ -21,13 +21,7 @@ vi.mock("@/lib/trial", () => ({
 }));
 const { afterJobs } = vi.hoisted(() => ({ afterJobs: [] as (() => Promise<void>)[] }));
 vi.mock("next/server", () => ({ after: (job: () => Promise<void>) => afterJobs.push(job) }));
-// The scan reports the chat can open (accounts and transactions saved) by calling onReady.
-vi.mock("@/lib/plaid/sync", () => ({
-  syncItem: vi.fn(async (_id: string, options?: { onReady?: () => void }) => {
-    options?.onReady?.();
-    return {};
-  }),
-}));
+vi.mock("@/lib/plaid/sync", () => ({ syncItem: vi.fn(async () => ({})) }));
 
 import { redirect } from "next/navigation";
 import { hit } from "@/lib/rate-limit";
@@ -71,29 +65,19 @@ describe("tryJane", () => {
       path: "/",
       expires: EXPIRES,
     });
-    // Straight to the chat once it can open: no /scanning page in between.
-    expect(redirect).toHaveBeenCalledWith("/chat");
+    expect(redirect).toHaveBeenCalledWith("/scanning?then=chat");
   });
 
-  // The scan starts at once and the click waits only until the chat can open; the rest of the
-  // scan and the cleanup carry on after the response.
-  it("starts the scan now, opens the chat when it is ready, and cleans up after", async () => {
+  // The first scan is the slow part: the response must not wait for it.
+  it("returns before the heavy work runs, which happens after the response", async () => {
     await expect(tryJane(null, agreed())).rejects.toThrow("NEXT_REDIRECT");
-    expect(redirect).toHaveBeenCalledWith("/chat");
-    expect(syncItem).toHaveBeenCalledWith("item_1", {
-      progressive: true,
-      onReady: expect.any(Function),
-    });
+    expect(redirect).toHaveBeenCalledWith("/scanning?then=chat");
+    expect(syncItem).not.toHaveBeenCalled();
     expect(cleanUpTrials).not.toHaveBeenCalled();
     expect(afterJobs).toHaveLength(1);
     await afterJobs[0]();
+    expect(syncItem).toHaveBeenCalledWith("item_1", { progressive: true });
     expect(cleanUpTrials).toHaveBeenCalled();
-  });
-
-  it("shows /scanning when the scan fails before the chat can open", async () => {
-    vi.mocked(syncItem).mockRejectedValueOnce(new Error("boom"));
-    await expect(tryJane(null, agreed())).rejects.toThrow("NEXT_REDIRECT");
-    expect(redirect).toHaveBeenCalledWith("/scanning?then=chat");
   });
 
   it("still cleans up when the first sync fails", async () => {
