@@ -20,6 +20,7 @@ import { loadCardInterest } from "@/lib/card-interest";
 import { loadStudentLongGame } from "@/lib/student-long-game";
 import { loadFamilyLoans } from "@/lib/family-loans";
 import { loadCreditGoals } from "@/lib/credit-goals";
+import { MortgageMoneyError, loadMortgageMoney } from "@/lib/mortgage-money";
 import { loadCarLoan } from "@/lib/car-loan";
 import { decide } from "@/lib/debt-decisions";
 import { loadFit } from "@/lib/fit";
@@ -61,6 +62,7 @@ import {
   debtTroubleToolOutput,
   debtReviewToolOutput,
   carLoanToolOutput,
+  mortgageMoneyToolOutput,
   loanFitToolOutput,
 } from "./debt-tools";
 
@@ -86,6 +88,24 @@ export async function runDebtTool(
       return out(debtsToolOutput(await loadDebts(userId, { client, now }), money));
     case "debt_autopilot":
       return out(debtAutopilotToolOutput(await loadDebtAutopilot(userId, { client, now }), money));
+    case "mortgage_money": {
+      const args = (input ?? {}) as { lump_cents?: unknown; extra_monthly_cents?: unknown };
+      try {
+        const view = await loadMortgageMoney(
+          userId,
+          {
+            lumpCents: typeof args.lump_cents === "number" ? args.lump_cents : undefined,
+            extraMonthlyCents:
+              typeof args.extra_monthly_cents === "number" ? args.extra_monthly_cents : undefined,
+          },
+          { client, now },
+        );
+        return out(mortgageMoneyToolOutput(view, money));
+      } catch (error) {
+        if (!(error instanceof MortgageMoneyError)) throw error;
+        return out({ note: error.message });
+      }
+    }
     case "loan_fit": {
       const a = (input ?? {}) as { need?: unknown; amount_dollars?: unknown; debt_key?: unknown };
       if (typeof a.need !== "string" || !(FIT_NEEDS as readonly string[]).includes(a.need)) {
