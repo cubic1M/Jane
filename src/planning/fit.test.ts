@@ -19,7 +19,7 @@ import { inputFor } from "@/profile/sample";
 import { fit, type FitInput, type FitPerson } from "./fit";
 import { fitPersonFrom } from "./fit-person";
 
-// Spec step 274: the fit engine, on the lender stand-in's offers and on made-up offers where
+// Spec step 281: the fit engine, on the lender stand-in's offers and on made-up offers where
 // the stand-in doesn't have the case.
 
 const person = (over: Partial<FitPerson> = {}): FitPerson => ({
