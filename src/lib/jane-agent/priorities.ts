@@ -1,6 +1,7 @@
 import {
   FINDING_MINUTES,
   MINUTES,
+  SUGGESTION_CONFIDENCE_FROM,
   TASK_URGENCY,
   URGENCY_HORIZON_DAYS,
   URGENT_FINDING_URGENCY,
@@ -13,6 +14,12 @@ import type { Snapshot } from "./snapshot";
 // The next best thing to do (spec step 143), from what Jane's brain already looks at: the
 // plan's findings, Jane's insurance picks and refinance offers, the steps only the person
 // can do, and dated deadlines. Pure: the snapshot in, one ranked list out.
+//
+// It is the one ranked list (docs/feature-audit.md, cluster 8): the nightly scan's suggestions
+// (spec steps 255 and 265) lead it, in the scan's order, then everything else as step 143 ranks
+// it, without repeating a finding a suggestion already points to. The brief's "Start with",
+// /jane, the monthly report, the chat and Claude's numbers all read it, so the person is told
+// the same first thing everywhere.
 
 const DAY_MS = 86_400_000;
 const within = (date: string, asOf: string) =>
@@ -124,6 +131,43 @@ export function priorityItems(snapshot: Snapshot): PriorityItem[] {
   return items;
 }
 
+const sentence = (text: string) => (/[.!?]$/.test(text.trim()) ? text.trim() : `${text.trim()}.`);
+
+// The scan's suggestions as the head of the ranked list, in its order.
+function suggestionItems(snapshot: Snapshot): Ranked[] {
+  return (snapshot.suggestions ?? []).map((s) => ({
+    key: `suggestion:${s.key}`,
+    kind: "suggestion",
+    title: s.title,
+    valueCents: s.worthCents,
+    risk: s.worthKind === "risk",
+    minutes: MINUTES.tap,
+    confidence:
+      s.confidencePercent >= SUGGESTION_CONFIDENCE_FROM.high
+        ? "high"
+        : s.confidencePercent >= SUGGESTION_CONFIDENCE_FROM.medium
+          ? "medium"
+          : "low",
+    sure: { percent: s.confidencePercent, reason: s.confidenceReason },
+    href: s.actionHref,
+    ref: s.key,
+    score: 0,
+    urgencyScore: 0,
+    // Why this person, and how sure Jane is with the reason, as the suggestion's card says it.
+    why: `${sentence(s.short)} ${s.confidencePercent}% sure: ${s.confidenceReason}.`,
+  }));
+}
+
 export function rankedFor(snapshot: Snapshot): Ranked[] {
-  return rankPriorities(priorityItems(snapshot), snapshot.asOf);
+  const scan = suggestionItems(snapshot);
+  // A finding a suggestion already opens isn't listed twice.
+  const opened = new Set(scan.map((s) => s.href).filter((href) => href.startsWith("/report/")));
+  const rest = rankPriorities(
+    priorityItems(snapshot).filter((item) => !opened.has(item.href)),
+    snapshot.asOf,
+  );
+  if (scan.length > 0 && rest.length > 0) {
+    rest[0] = { ...rest[0], why: rest[0].why.replace(/^First because/, "Because") };
+  }
+  return [...scan, ...rest];
 }
