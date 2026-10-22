@@ -18,6 +18,7 @@ import {
   TROUBLE_DEBT_MONTHS,
 } from "@/config/profile";
 import type { Relief } from "@/config/disasters";
+import type { DraftFinding } from "@/planning/draft-return";
 import type { NeedPolicy } from "@/lib/insurance/need/types";
 import { countyFromPayments, countyOf } from "@/planning/disasters";
 import { confidenceOf, evidenceText, type Source } from "./confidence";
@@ -111,6 +112,9 @@ export type ProfileInput = {
     // Disaster relief declarations from the person's feed (spec step 270): the stand-in's
     // samples for demo-bank people, none for anyone else. Absent: not loaded.
     disasterRelief?: readonly Relief[];
+    // The latest confirmed draft return's check (spec step 272): what it found, by line, with the
+    // tax each changes. Null: no checked draft. Absent: not loaded.
+    draftReturn?: { year: number; findings: readonly DraftFinding[] } | null;
     // The value of what they own (a home, cars), added to their net worth for the umbrella.
     ownedValueCents?: number;
     // The person already has a practice portfolio (step 296). Absent: not loaded.

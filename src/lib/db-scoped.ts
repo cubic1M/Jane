@@ -175,6 +175,8 @@ export function scopedFor(userId: string, client: PrismaClient = db) {
     taxReturns: scoped.taxReturn,
     // Spec step 270: disaster losses kept with their insurance claims.
     disasterLosses: scoped.disasterLoss,
+    // Spec step 272: draft returns checked before filing.
+    draftReturns: scoped.draftReturn,
     // One-tap answers from Jane's emails (spec step 85).
     chatReplyLinks: scoped.chatReplyLink,
     // "That's expected" on a change (spec step 97).

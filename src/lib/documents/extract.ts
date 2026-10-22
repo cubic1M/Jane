@@ -53,6 +53,8 @@ const PROMPT_FOR: Record<DocumentKind, string> = {
     "provider: the agency that sent it. coverageSummary: which notice it is, in one line.",
   tax_return:
     "provider: the tax preparer or software, if shown. coverageSummary: which tax year it is for.",
+  draft_return:
+    "provider: the tax preparer or software, if shown. coverageSummary: which tax year the draft is for.",
   other: "provider: who it's from. coverageSummary: what it is.",
 };
 
