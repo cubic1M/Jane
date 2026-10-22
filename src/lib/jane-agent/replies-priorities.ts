@@ -1,6 +1,7 @@
 import { TOP_THINGS } from "@/config/priorities";
 import { formatCents } from "@/lib/money";
 import type { Ranked } from "@/planning/priorities";
+import { listWhy } from "./priorities";
 import type { Reply } from "./replies";
 
 // "What should I do first?" (spec step 143): the one to three things that matter most, each
@@ -66,7 +67,7 @@ export function prioritiesReply(ranked: Ranked[], explain = false, one = false):
       top.length === 1
         ? "One thing matters most right now."
         : `These ${top.length} matter most right now.`,
-      ...top.map((r, i) => `${i + 1}. ${r.title}. ${r.why}`),
+      ...top.map((r, i) => `${i + 1}. ${r.title}. ${listWhy(r)}`),
     ].join("\n"),
     actions: top.map((r) => ({
       id: "open" as const,

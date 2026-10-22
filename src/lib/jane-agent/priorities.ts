@@ -158,6 +158,11 @@ function suggestionItems(snapshot: Snapshot): Ranked[] {
   }));
 }
 
+// The reason in a list of several (the whole picture, the top three): for a suggestion, how sure
+// Jane is and why, so a short answer stays short; its card and "Why?" have the rest.
+export const listWhy = (r: Ranked) =>
+  r.kind === "suggestion" && r.sure ? `${r.sure.percent}% sure: ${r.sure.reason}.` : r.why;
+
 export function rankedFor(snapshot: Snapshot): Ranked[] {
   const scan = suggestionItems(snapshot);
   // A finding a suggestion already opens isn't listed twice.
