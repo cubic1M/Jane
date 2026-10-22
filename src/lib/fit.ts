@@ -1,5 +1,5 @@
-import { REFI_CARD_TERM_MONTHS, type LoanProduct } from "@/config/debt";
-import { FIT_PRODUCT, FIT_TERMS, type FitNeed } from "@/config/fit";
+import type { LoanProduct } from "@/config/debt";
+import { FIT_CARD_PAYMENT_SHARE, FIT_PRODUCT, FIT_TERMS, type FitNeed } from "@/config/fit";
 import type { PrismaClient } from "@/generated/prisma/client";
 import type { Debt } from "@/insights/debts";
 import { creditBandFor } from "@/lib/credit";
@@ -11,7 +11,6 @@ import { loadProfileInput } from "@/lib/profile";
 import { lenderPartnerFor } from "@/lib/refinance";
 import { fit, type FitBaseline, type FitResult } from "@/planning/fit";
 import { fitPersonFrom } from "@/planning/fit-person";
-import { remainingMonths } from "@/planning/refinance";
 
 // The perfect fit for borrowing (spec step 274), for one person: the need, what they have now,
 // the lender's offers at each usual term, and the fit engine's options (src/planning/fit.ts).
@@ -40,14 +39,12 @@ export type FitView = FitResult & {
 };
 
 const baselineOf = (debt: Debt, asOf: string): FitBaseline | null => {
-  const months = remainingMonths(debt, asOf);
-  if (!debt.balanceCents || debt.aprBps === null || !debt.paymentCents || !months) return null;
+  if (!debt.balanceCents || debt.aprBps === null || !debt.paymentCents) return null;
   return {
     label: `your ${debt.name}`,
     balanceCents: debt.balanceCents,
     aprBps: debt.aprBps,
     monthlyCents: debt.paymentCents * (debt.paymentEvery === "two_weeks" ? 2 : 1),
-    remainingMonths: months,
   };
 };
 
@@ -103,8 +100,9 @@ export async function loadFit(
             aprBps: Math.round(
               cards.reduce((s, d) => s + (d.aprBps ?? 0) * (d.balanceCents ?? 0), 0) / owed,
             ),
-            monthlyCents: cards.reduce((s, d) => s + (d.paymentCents ?? 0), 0),
-            remainingMonths: REFI_CARD_TERM_MONTHS,
+            monthlyCents:
+              cards.reduce((s, d) => s + (d.paymentCents ?? 0), 0) ||
+              Math.round(owed * FIT_CARD_PAYMENT_SHARE),
           }
         : null;
   } else {

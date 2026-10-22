@@ -82,7 +82,8 @@ export async function loadDecisionInput(
     .sort((a, b) => (b.pick!.savingCents ?? 0) - (a.pick!.savingCents ?? 0))[0];
   // The fit engine's pick for the cards as one personal loan (src/planning/fit.ts): the same
   // option the chat card, the tool and the suggestion show.
-  const fitted = fitView.options.find((o) => o.id === fitView.pick && o.id !== "keep");
+  // (Paying off from cash, or keeping the cards, isn't a loan.)
+  const fitted = fitView.options.find((o) => o.id !== "keep" && o.id !== "payoff");
   const personalLoan =
     fitted && (fitted.savesCents ?? 0) > 0
       ? {
@@ -142,6 +143,10 @@ export async function loadDecisionInput(
     monthlySpendCents: Math.round(spent / 3),
     consolidation,
     personalLoan,
+    cashPayoffSavesCents:
+      fitView.pick === "payoff"
+        ? (fitView.options.find((o) => o.id === "payoff")?.savesCents ?? null)
+        : null,
     incomeCents,
     savingCents:
       incomeCents !== null && spendingCents !== null ? incomeCents - spendingCents : null,

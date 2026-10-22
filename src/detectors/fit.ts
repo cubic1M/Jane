@@ -1,4 +1,3 @@
-import { REFI_CARD_TERM_MONTHS } from "@/config/debt";
 import { DEBT_DETECTOR_RATES as D } from "@/config/detectors-debt";
 import {
   FIT_CARD_PAYMENT_SHARE,
@@ -42,9 +41,9 @@ const consolidation: Detector = {
       : Math.round((yearlyInterest / owed) * 10_000);
     if (apr < FIT_CONSOLIDATION_MIN_APR_BPS) return null;
     const rated = cards;
-    const paid = tx(data, (t) => t.pfc === "LOAN_PAYMENTS_CREDIT_CARD_PAYMENT");
-    const seen = Math.round(outCents(paid) / Math.max(1, profile.months));
-    const monthlyCents = seen > 0 ? seen : Math.round(owed * FIT_CARD_PAYMENT_SHARE);
+    // The card payments seen are whole statements, new spending included, so they say nothing
+    // about what goes to the debt: the baseline is the minimum, the usual way to compare.
+    const monthlyCents = Math.round(owed * FIT_CARD_PAYMENT_SHARE);
     const month = data.today.slice(0, 7);
     const offers: LoanOffer[] = DEMO_LENDERS.flatMap((l) =>
       FIT_TERMS.personal.flatMap(
@@ -65,15 +64,23 @@ const consolidation: Detector = {
       person: fitPersonFrom(data),
       offers,
       baseline: {
-        label: rated.length === 1 ? "your card" : `your ${rated.length} cards`,
+        label:
+          rated.length === 1
+            ? "your card at its minimum"
+            : `your ${rated.length} cards at their minimums`,
         balanceCents: owed,
         aprBps: apr,
         monthlyCents,
-        remainingMonths: REFI_CARD_TERM_MONTHS,
       },
     });
     const pick = result.options.find((o) => o.id === result.pick);
-    if (!pick || pick.id === "keep" || (pick.savesCents ?? 0) < FIT_MIN_SAVING_CENTS) return null;
+    if (
+      !pick ||
+      pick.id === "keep" ||
+      pick.id === "payoff" ||
+      (pick.savesCents ?? 0) < FIT_MIN_SAVING_CENTS
+    )
+      return null;
     const saves = pick.savesCents ?? 0;
     // A 0% transfer (the balance_transfer suggestion) is the same card interest saved another
     // way: ranking counts only what this saves beyond it, so the dollars aren't counted twice.

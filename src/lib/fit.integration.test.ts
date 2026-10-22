@@ -122,7 +122,7 @@ describe.runIf(url)("the fit engine against a real database", { timeout: 60_000 
     });
     expect(reply.body).toContain(v.options.find((o) => o.id === v.pick)!.headline);
     const input = await loadDecisionInput(reyes, { client, now: NOW });
-    const fitted = v.options.find((o) => o.id === v.pick && o.id !== "keep");
+    const fitted = v.options.find((o) => o.id !== "keep" && o.id !== "payoff");
     if (fitted && (fitted.savesCents ?? 0) > 0) {
       expect(input.personalLoan).toMatchObject({
         name: fitted.lender,

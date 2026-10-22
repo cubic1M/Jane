@@ -157,6 +157,7 @@ export const PEOPLE: readonly Person[] = [
       "cover_change",
       "credit_building",
       "bnpl",
+      "consolidation",
     ],
     mustNot: [
       "umbrella",
@@ -494,9 +495,6 @@ export const PEOPLE: readonly Person[] = [
       "retirement_self_employed",
       "cash_flow",
       "emergency_fund",
-      "card_interest",
-      "balance_transfer",
-      "consolidation",
     ],
     mustNot: [
       "employer_match",

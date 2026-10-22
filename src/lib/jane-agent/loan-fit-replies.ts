@@ -24,6 +24,19 @@ export function loanFitReply(view: FitView, assumedAmount: boolean): Reply {
       refs: {},
     };
   }
+  // Something to borrow, but no lender prices an amount this small: pay it down directly.
+  if (
+    view.amountCents > 0 &&
+    view.options.length === 0 &&
+    view.ineligible.length === 0 &&
+    view.baseline
+  ) {
+    return {
+      body: `No lender prices a loan as small as ${formatCents(view.amountCents)}, so ${view.baseline.label} is simplest to pay down directly.`,
+      actions: [LOAN_FIT_PAGE],
+      refs: { advice: true },
+    };
+  }
   if (view.amountCents <= 0 || (view.options.length === 0 && view.ineligible.length === 0)) {
     return {
       body: `I don't see ${view.need === "consolidation" ? "card debt to consolidate" : view.need === "refinance" ? "a loan or card to refinance" : "an amount to price"} yet. Tell me how much you'd borrow, like "the best personal loan for $8,000".`,
@@ -39,10 +52,16 @@ export function loanFitReply(view: FitView, assumedAmount: boolean): Reply {
     return { body: lines.join(" "), actions: [LOAN_FIT_PAGE], refs: { advice: true } };
   }
   const pick = view.options.find((o) => o.id === view.pick)!;
+  const caution = pick.comfortable
+    ? []
+    : [
+        `None of these fits comfortably on your income, so I'd borrow less or wait; the lowest payment is ${formatCents(Math.min(...view.options.map((o) => o.paymentCents)))} a month.`,
+      ];
   const lines = [
     `For ${what}${assumedAmount ? ` (I assumed ${formatCents(view.amountCents)}; tell me the real amount)` : ` of ${formatCents(view.amountCents)}`}, the one that fits you best: ${pick.headline}.${
       view.confidence ? ` ${view.confidence.percent}% sure: ${view.confidence.reason}.` : ""
     }`,
+    ...caution,
     "Your options:",
     ...view.options.map((o) => `- ${o.headline}${o.id === view.pick ? " (my pick)" : ""}`),
   ];

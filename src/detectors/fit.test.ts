@@ -16,8 +16,8 @@ const fire = (id: string, change: (d: ProfileInput) => ProfileInput = (d) => d) 
 };
 
 describe("consolidating cards", () => {
-  it("is offered to Jo, whose card carries a balance at about 24%, with the maths and an honest confidence", () => {
-    const [s] = fire("owner");
+  it("is offered to Maya, whose card carries a balance at about 29% and who has no spare cash to clear it, with the maths and an honest confidence", () => {
+    const [s] = fire("renter");
     expect(s).toMatchObject({
       topic: "consolidation",
       worthKind: "saves",
@@ -26,7 +26,7 @@ describe("consolidating cards", () => {
     });
     expect(s.worthCents).toBeGreaterThan(100_000);
     expect(s.why).toMatch(
-      /^You owe \$6,900\.00 on a card at 24\.0%\. .+ at \d+\.\d\d% over \d(?:\.\d)? years would cost about \$[\d,.]+ less in all, fees counted, at \$[\d,.]+ a month\.$/,
+      /^You owe \$1,940\.20 on a card at \d+\.\d%\. .+ at \d+\.\d\d% over \d(?:\.\d)? years would cost about \$[\d,.]+ less in all, fees counted, at \$[\d,.]+ a month\.$/,
     );
     expect(s.headline).toMatch(/^Move your cards to one cheaper loan, save \$[\d,]+$/);
     // The rate is worked out from interest charges, not given by the bank, and the offers are typical.
@@ -34,7 +34,7 @@ describe("consolidating cards", () => {
   });
 
   it("counts only what it saves beyond a 0% transfer, so the dollars aren't counted twice", () => {
-    const [s] = fire("owner");
+    const [s] = fire("renter");
     expect(s.rankCents).toBeDefined();
     expect(s.rankCents!).toBeLessThan(s.worthCents);
     expect(s.rankCents!).toBeGreaterThanOrEqual(0);
@@ -42,9 +42,9 @@ describe("consolidating cards", () => {
 
   it("is for no one else among the eight, and never for someone in debt trouble", () => {
     for (const p of PEOPLE) {
-      expect(fire(p.id).length > 0, p.name).toBe(p.id === "owner");
+      expect(fire(p.id).length > 0, p.name).toBe(p.id === "renter");
     }
-    const data = inputFor("owner");
+    const data = inputFor("renter");
     const trouble = { ...data, told: { ...data.told, debt_trouble: true } };
     expect(runDetectors({ profile: buildProfile(trouble), data: trouble }, FIT_DETECTORS)).toEqual(
       [],
@@ -53,17 +53,28 @@ describe("consolidating cards", () => {
 
   it("needs a balance worth moving and a rate worth beating", () => {
     expect(
-      fire("owner", (d) => ({
+      fire("renter", (d) => ({
         ...d,
         accounts: d.accounts.map((a) =>
-          a.type === "credit" ? { ...a, balanceCents: 150_000 } : a,
+          a.type === "credit" ? { ...a, balanceCents: 100_000 } : a,
         ),
       })),
     ).toEqual([]);
     expect(
-      fire("owner", (d) => ({
+      fire("renter", (d) => ({
         ...d,
         transactions: d.transactions.filter((t) => t.pfc !== "BANK_FEES_INTEREST_CHARGE"),
+      })),
+    ).toEqual([]);
+  });
+
+  it("stays quiet when cash they don't need would clear the card for less (that is the better pick)", () => {
+    expect(
+      fire("renter", (d) => ({
+        ...d,
+        accounts: d.accounts.map((a) =>
+          a.type === "depository" ? { ...a, balanceCents: a.balanceCents + 5_000_000 } : a,
+        ),
       })),
     ).toEqual([]);
   });

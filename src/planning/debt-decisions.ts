@@ -39,6 +39,8 @@ export type DecisionInput = {
   monthlySpendCents: number;
   // The best way found to move card debt for less, with what it would save in all.
   // The fit engine's pick for the cards as one personal loan, when it saves.
+  // The fit engine found that cash alone clears the cards for less than any loan: what that saves.
+  cashPayoffSavesCents?: number | null;
   personalLoan?: { name: string; kind: "personal"; aprBps: number; savesCents: number } | null;
   consolidation: {
     name: string;
@@ -161,6 +163,18 @@ export function consolidate(i: DecisionInput): Decision {
   if (cards.length === 0) return noDebt("consolidate");
   const avg = weightedApr(cards)!;
   const first = `You owe ${formatCents(total(cards))} across ${cards.length} ${cards.length === 1 ? "card" : "cards"} at ${pct(avg)} on average.`;
+  if (i.cashPayoffSavesCents && i.cashPayoffSavesCents > 0) {
+    return {
+      id: "consolidate",
+      sentences: [
+        first,
+        `Your cash covers it: paying the cards off from savings would save about ${formatCents(i.cashPayoffSavesCents)} and still leave a month of spending.`,
+        ...(i.advice ? ["I'd do that instead of taking a loan."] : []),
+      ],
+      href: "/loans/refinance",
+      advice: i.advice,
+    };
+  }
   const c = i.consolidation;
   if (!c || c.savesCents <= 0) {
     return {
@@ -299,6 +313,18 @@ export function personalLoan(i: DecisionInput): Decision {
   const avg = weightedApr(cards)!;
   const c = i.personalLoan ?? null;
   const first = `Your cards average ${pct(avg)} on ${formatCents(total(cards))}.`;
+  if (i.cashPayoffSavesCents && i.cashPayoffSavesCents > 0) {
+    return {
+      id: "personal_loan",
+      sentences: [
+        first,
+        `Your cash covers it: paying the cards off from savings would save about ${formatCents(i.cashPayoffSavesCents)} and still leave a month of spending.`,
+        ...(i.advice ? ["I'd do that instead of taking a loan."] : []),
+      ],
+      href: "/loans/refinance",
+      advice: i.advice,
+    };
+  }
   if (!c || c.savesCents <= 0) {
     return {
       id: "personal_loan",

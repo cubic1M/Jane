@@ -302,3 +302,17 @@ describe("rent or buy", () => {
     );
   });
 });
+
+describe("when cash alone clears the cards for less than any loan", () => {
+  const cash = { ...base, cashPayoffSavesCents: 240_000 };
+  it("says so first in consolidate and personal loan, and picks it only in demo advice", () => {
+    for (const decide of [consolidate, personalLoan]) {
+      const d = decide(cash);
+      expect(d.sentences[1]).toBe(
+        "Your cash covers it: paying the cards off from savings would save about $2,400.00 and still leave a month of spending.",
+      );
+      expect(d.sentences[2]).toBe("I'd do that instead of taking a loan.");
+      expect(decide({ ...cash, advice: false }).sentences).toHaveLength(2);
+    }
+  });
+});
