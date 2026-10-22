@@ -80,6 +80,9 @@ export const SUGGESTION_TOPICS = [
   // Spec step 248: renting, counted.
   "rent_reporting",
   "rent_increase",
+  // Spec step 249: helping family with credit.
+  "family_credit",
+  "cosign_risk",
   "social_security_timing",
   "medicare",
   "rmd",
@@ -266,6 +269,7 @@ export const PEOPLE: readonly Person[] = [
       "student_forgiveness",
       "charity_receipts",
       "property_tax_check",
+      "family_credit",
       "plan_menu",
       "life_checklist",
       "household_setup",

@@ -419,6 +419,13 @@ async function LoansContent({
             .
           </p>
           <p className="text-sm text-zinc-600 dark:text-zinc-400">
+            Helping someone with credit, or asked to co-sign?{" "}
+            <Link href="/loans/helping" className={LINK}>
+              See what it does to both of you
+            </Link>
+            .
+          </p>
+          <p className="text-sm text-zinc-600 dark:text-zinc-400">
             Paying rent?{" "}
             <Link href="/loans/renting" className={LINK}>
               Build credit with it and track your deposit
