@@ -36,7 +36,7 @@ const promoEnding: Detector = {
         rises.length === 1
           ? `Call ${first.name} before ${first.date}, when the price goes up`
           : `${rises.length} prices go up in the next ten weeks: call or switch before they do`,
-      headline: `Ask to keep your prices: ${dollars(worth)} a year at stake`,
+      headline: `Ask to keep your prices: ${dollars(worth)}/yr at stake`,
       short: rises
         .map((r) =>
           r.kind === "promo_end"
