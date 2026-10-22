@@ -239,7 +239,7 @@ const CALENDAR_ASK =
 const BUSINESS_ASK =
   /\bs[- ]?corp(?:oration)?\b|\bqbi\b|\bqualified business income\b|\bpass[- ]?through\b|\bshould i (?:incorporate|form an llc|become an llc|elect)\b|\bllc\b.*\btax/;
 const INHERITED_ASK =
-  /\binherit(?:ed|ance)?\b|\bbeneficiary ira\b|\bstep(?:ped)?[- ]?up\b.*\bbasis\b|\bgift tax\b|\bform 709\b|\bannual (?:gift )?exclusion\b|\bestate tax\b|\b10[- ]year rule\b/;
+  /\binherit(?:ed|ing)?\b[^.?!]{0,30}\b(?:ira|401\(?k\)?|403\(?b\)?|retirement account|roth)\b|\binherit\w*\b[^.?!]{0,40}\b(?:tax(?:es|ed)?|irs|deadline|10 years?)\b|\bbeneficiary ira\b|\bstep(?:ped)?[- ]?up\b.*\bbasis\b|\bgift tax\b|\bform 709\b|\bannual (?:gift )?exclusion\b|\bestate tax\b|\b10[- ]year rule\b/;
 const RETIRE_YEAR = /\b(?:plan|expect|want|hope|aim) to retire (?:in|by) (\d{4})\b/;
 const PACK = /\btax(?:-| )?time pack\b|\btax pack\b|\byear-end pack\b/;
 
