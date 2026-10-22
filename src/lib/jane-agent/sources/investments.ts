@@ -81,6 +81,8 @@ import {
   stageButton,
   SUDDEN_LINK,
 } from "../investments/sudden-copy";
+import { valuesPlanLine, valuesButton, VALUES_LINK } from "../investments/values-copy";
+import { attentionLine, FILE_LINK } from "../investments/family-file-copy";
 import { AUTO_LOG_LINK, summaryBody } from "../investments/automatic-copy";
 import { CASH_MIN_GAIN_CENTS } from "@/config/cash";
 import { CASH_LINK, cashLine, moveButtons } from "../investments/cash-copy";
@@ -378,6 +380,29 @@ export const investmentsSource: MessageSource = {
           priority: MESSAGE_PRIORITY.sudden_money,
         });
       }
+    }
+    // Step 237: an account whose beneficiary is missing or out of date. Facts and a link, for
+    // everyone (no advice, nothing moves).
+    if (inv.familyFile.attention.length > 0) {
+      out.push({
+        kind: "heads_up",
+        body: attentionLine(inv.familyFile.attention),
+        refs: {},
+        actions: [FILE_LINK, snoozeButton()],
+        dedupeKey: `family:${inv.familyFile.attention.map((c) => `${c.accountId}${c.problems.join("")}`).join(",")}`,
+        priority: MESSAGE_PRIORITY.family_file,
+      });
+    }
+    // Step 236: a values list that the funds held don't match yet, one tap to switch.
+    if (inv.advice && inv.values.plan && inv.values.plan.switches.length > 0) {
+      out.push({
+        kind: "decision",
+        body: valuesPlanLine({ ...inv.values, advice: true, source: "" }),
+        refs: { advice: true, valuesKey: inv.values.plan.key },
+        actions: [valuesButton(), VALUES_LINK, snoozeButton()],
+        dedupeKey: `values:${inv.values.plan.key}`,
+        priority: MESSAGE_PRIORITY.values,
+      });
     }
     // Step 234: money needed within three years, compared after tax; a ladder when bills win
     // by enough, one tap, every bill maturing by the date.

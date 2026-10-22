@@ -1,4 +1,5 @@
 import { APPROVED_DEBT_SENTENCES } from "@/config/debt-trouble";
+import { APPROVED_FAMILY_SENTENCES } from "@/config/family-file";
 import type { FindingType } from "@/generated/prisma/client";
 
 // Every piece of Claude-written text passes through checkGuardrails before anyone sees it.
@@ -81,6 +82,19 @@ const LEGAL = [
   /\bdisclaim(?:ing|er of)? (?:the |your |an |this |that )?(?:inheritance|bequest|inherited \w+|ira)\b/i,
   // Only a debt: "stop paying overdraft fees" is the opposite of legal trouble.
   /\b(?:stop|quit) paying (?:on |off )?(?:my |your |the |their )?(?:cards?|credit cards?|loans?|debts?|creditors?|collectors?|minimums?|mortgage|bills)\b/i,
+  // Spec step 237: wills, trusts and what to do with an estate are legal advice. The facts
+  // Jane gives are fixed sentences (src/config/family-file.ts) that pass below.
+  /\b(?:last )?will and testament\b/i,
+  /\b(?:revocable|irrevocable|living|testamentary|special[- ]needs|family)\s+trusts?\b/i,
+  /\b(?:write|draft|make|update|change|sign|create|set up|file)\s+(?:a|an|your|my|the)\s+(?:new\s+)?(?:will|trust)\b/i,
+  /\b(?:put|place|move|transfer)\b[^.!?]{0,60}\b(?:in|into)\s+(?:a|your|the)\s+trust\b/i,
+  /\b(?:a|your|the)\s+(?:will|trust)\b[^.!?]{0,40}\b(?:better|best|instead|rather)\b/i,
+  /\bprobate\b/i,
+  /\bpower of attorney\b/i,
+  /\bestate (?:plan|planning|tax)\b/i,
+  /\bexecutor\b/i,
+  // Claims about what a court does with what someone leaves (the reviewed fact says "usually").
+  /\bcourts? (?:always|never|must|will|won(?:'|’)t|has to|have to|doesn(?:'|’)t have to)\b[^.!?]{0,40}\b(?:approve|decide|take|split|divide|get)\b/i,
 ];
 
 // Saying Jane can't help with something legal, or pointing to a lawyer for it, is not legal
@@ -127,7 +141,10 @@ function withoutReferrals(text: string, refusalsOnly = false): string {
 // where to take legal questions are taken out before checking. Only these exact sentences:
 // any other line about them, or a changed word, is still checked in full.
 function withoutApprovedSentences(text: string): string {
-  return APPROVED_DEBT_SENTENCES.reduce((t, sentence) => t.split(sentence).join(" "), text);
+  return [...APPROVED_DEBT_SENTENCES, ...APPROVED_FAMILY_SENTENCES].reduce(
+    (t, sentence) => t.split(sentence).join(" "),
+    text,
+  );
 }
 
 // "No guarantee", "can't promise", "isn't guaranteed": saying there is no promise isn't one.

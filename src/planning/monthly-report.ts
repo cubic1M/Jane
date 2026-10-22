@@ -29,6 +29,27 @@ export type MonthlyReport = {
     nextTargets: { saving: number; debt: number; investing: number };
   } | null;
   receipts: ReportReceipt[];
+  // Folded in from the monthly check-in (spec step 45; docs/feature-audit.md, cluster 2), so
+  // one report and one email cover the month. Optional: reports kept before then lack them.
+  // Claude's short summary of the month (fixed wording without a key), as on the page.
+  summary?: string;
+  // Spending this month and the month before, as on /insights.
+  spent?: { cents: number; previousCents: number };
+  // Budgets kept, and the categories that went over, as on /budgets.
+  budgets?: { kept: number; over: string[] };
+  // Net worth at the start and end of the month, as on /net-worth.
+  netWorth?: { startCents: number; endCents: number } | null;
+  // December's report only: the year in review (spec step 35), as on /year.
+  year?: YearInReport | null;
+};
+
+export type YearInReport = {
+  year: number;
+  spendingCents: number;
+  incomeCents: number;
+  found: number;
+  foundAnnualCents: number;
+  savedCents: number;
 };
 
 export type ReportLine = { label: string; text: string; href: string };
@@ -43,10 +64,20 @@ export const monthName = (month: string) =>
 export const receiptWords = (r: ReportReceipt) =>
   `${r.title}: ${formatCents(r.cents)}${r.yearly ? " a year" : " back"}`;
 
+const signed = (cents: number) => `${cents >= 0 ? "up" : "down"} ${formatCents(Math.abs(cents))}`;
+
 // One line per figure, each with the page it comes from.
 export function reportLines(report: MonthlyReport): ReportLine[] {
-  const checkIn = `/check-in?m=${report.month}`;
-  const lines: ReportLine[] = [
+  const page = `/monthly?m=${report.month}`;
+  const lines: ReportLine[] = [];
+  if (report.spent) {
+    lines.push({
+      label: "Spent",
+      text: `${formatCents(report.spent.cents)}, ${signed(report.spent.cents - report.spent.previousCents)} from the month before.`,
+      href: "/insights",
+    });
+  }
+  lines.push(
     {
       label: "Saved",
       text:
@@ -55,11 +86,11 @@ export function reportLines(report: MonthlyReport): ReportLine[] {
           : `${formatCents(report.saved.totalCents)} confirmed in all; nothing new confirmed this month.`,
       href: "/saved",
     },
-    { label: "Earned", text: `${formatCents(report.earnedCents)} came in.`, href: checkIn },
+    { label: "Earned", text: `${formatCents(report.earnedCents)} came in.`, href: "/insights" },
     {
       label: "Paid down",
       text: `${formatCents(report.paidDownCents)} toward cards and loans.`,
-      href: checkIn,
+      href: page,
     },
     {
       label: "Moved",
@@ -69,7 +100,26 @@ export function reportLines(report: MonthlyReport): ReportLine[] {
           : `${formatCents(report.moved.cents)} in ${report.moved.count} ${report.moved.count === 1 ? "transfer" : "transfers"} (sample transfers: no real money moves).`,
       href: "/transfers",
     },
-  ];
+  );
+  if (report.budgets && report.budgets.kept + report.budgets.over.length > 0) {
+    const { kept, over } = report.budgets;
+    lines.push({
+      label: "Budgets",
+      text:
+        over.length === 0
+          ? `You kept every budget (${kept}).`
+          : `You kept ${kept} and went over in ${over.join(" and ")}.`,
+      href: "/budgets",
+    });
+  }
+  if (report.netWorth) {
+    const { startCents, endCents } = report.netWorth;
+    lines.push({
+      label: "Net worth",
+      text: `${formatCents(endCents)}, ${signed(endCents - startCents)} over the month.`,
+      href: "/net-worth",
+    });
+  }
   if (report.health) {
     const change = report.health.change;
     lines.push({
@@ -105,6 +155,14 @@ export function reportLines(report: MonthlyReport): ReportLine[] {
       label: "Your plan",
       text: `${did === null ? "" : `You did ${formatCents(did)} of ${formatCents(planned)} planned. `}This month: saving ${formatCents(t.saving)}, extra debt ${formatCents(t.debt)}, investing ${formatCents(t.investing)}.`,
       href: "/plan",
+    });
+  }
+  if (report.year) {
+    const y = report.year;
+    lines.push({
+      label: `Your ${y.year}`,
+      text: `You spent ${formatCents(y.spendingCents)} and ${formatCents(y.incomeCents)} came in. I found ${y.found} ${y.found === 1 ? "way" : "ways"} to save (${formatCents(y.foundAnnualCents)} a year), and changes you finished save about ${formatCents(y.savedCents)} a year.`,
+      href: `/year?y=${y.year}`,
     });
   }
   lines.push({
