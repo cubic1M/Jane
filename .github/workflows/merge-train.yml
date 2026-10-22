@@ -1,0 +1,38 @@
+name: Merge train
+
+# Lands an auto-merge PR that passed and is up to date when GitHub's auto-merge never fires.
+# It doesn't update branches: main's ruleset holds commits made with the workflow token. See
+# .github/scripts/merge_train.py.
+on:
+  schedule:
+    - cron: "*/10 * * * *"
+  # GitHub delays or drops scheduled runs (none fired for hours after this landed), so the
+  # train also runs whenever a CI run finishes, which is when a PR's state changes anyway.
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+  actions: write
+
+concurrency:
+  group: merge-train
+  cancel-in-progress: false
+
+jobs:
+  train:
+    name: Move the next PR along
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          sparse-checkout: .github/scripts
+      - run: python3 .github/scripts/merge_train.py
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+          PRIORITY: ${{ vars.MERGE_PRIORITY }}

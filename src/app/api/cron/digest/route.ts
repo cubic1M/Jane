@@ -1,10 +1,10 @@
 import { NextResponse } from "next/server";
-import { runMonthlyCheckIns } from "@/lib/check-in-email";
 import { runDigests } from "@/lib/digest/send";
 import { recordRun, reportMissedJobs } from "@/lib/health";
 import { runDueJobs } from "@/lib/jobs";
 import { runJaneAgentForAll } from "@/lib/jane-agent/run";
 import { runMonthlyReports } from "@/lib/monthly-report";
+import { runNews } from "@/lib/news/store";
 
 // Vercel Cron, daily: sends this week's digest to anyone whose Monday has arrived. With
 // ?dry_run=1 it renders every digest and returns them without sending or storing.
@@ -26,8 +26,8 @@ export async function GET(request: Request) {
       return {
         ...run,
         previews: undefined,
-        checkIns: await runMonthlyCheckIns(),
-        // Spec step 148: last month's money report, once, in the first days of the month.
+        // Spec step 148: last month's money report, once, in the first days of the month. It is
+        // the one monthly email: the check-in (spec step 45) is part of it.
         monthlyReports: await runMonthlyReports().catch((error) => {
           console.error("Monthly reports failed", { error: String(error) });
           return null;
@@ -36,6 +36,11 @@ export async function GET(request: Request) {
         // there never stops the rest of the run.
         chat: await runJaneAgentForAll().catch((error) => {
           console.error("Jane's daily chat run failed", { error: String(error) });
+          return null;
+        }),
+        // Spec step 293: the watchlist's news, summarised in a few batched calls at most.
+        news: await runNews().catch((error) => {
+          console.error("News summaries failed", { error: String(error) });
           return null;
         }),
         // A second daily chance for jobs waiting to be retried.

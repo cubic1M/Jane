@@ -1,3 +1,9 @@
+import { DEMO_ADVICE_LABEL } from "@/config/advice";
+import { insuranceCard } from "@/lib/insurance/need/card";
+import { loadNeeds, optionsForNeed, withNeeds } from "@/lib/insurance/need/load";
+import type { Need } from "@/lib/insurance/need/types";
+import type { OfferedOptions } from "@/lib/option-card";
+import { decide, decisionKindOf } from "./decisions";
 import type Anthropic from "@anthropic-ai/sdk";
 import { PREMIUM_FREQUENCIES } from "@/config/documents";
 import {
@@ -42,6 +48,17 @@ import { loadInsuranceSnapshot } from "./snapshot";
 
 const noInput = { type: "object" as const, properties: {}, additionalProperties: false };
 
+// The covers insurance_needs can price options for (src/lib/insurance/need/types.ts).
+const NEED_KINDS: readonly Need["kind"][] = [
+  "life",
+  "disability",
+  "umbrella",
+  "deductible",
+  "auto_liability",
+  "home_liability",
+  "renters_liability",
+];
+
 export const INSURANCE_TOOLS: Anthropic.Tool[] = [
   {
     name: "insurance_policies",
@@ -78,6 +95,33 @@ export const INSURANCE_TOOLS: Anthropic.Tool[] = [
     description:
       "Life insurance sized for the person and applied for (spec step 153), demo advice only: the amount and term with the method (years of pay, debts, final expenses, schooling, less savings and cover they have), the term quotes, and where an application stands (health questions, the carrier's offer or review). Jane never applies or buys without the person's tap; to start, they tap Apply in the chat or on /insurance/life.",
     input_schema: noInput,
+  },
+  {
+    name: "insurance_needs",
+    description:
+      "What cover the person needs, worked out from their own numbers, what they have and the gap (spec step 278): term life (income, debts, schooling, less savings and cover), disability (about 60% of pay a month), umbrella, deductibles by their cash, and car, home and renters liability levels. It is the same working the page and the nightly detectors use. Use it for 'how much life insurance do I need'. The need is demo advice: say so with the label in demo advice mode. In demo advice mode it also prices options for the cover asked about (or the first one that is short): they are shown to the person as a pick-one card under your answer, so name Jane's pick and why in a sentence, never the whole list.",
+    input_schema: {
+      type: "object",
+      properties: {
+        need: {
+          type: "string",
+          enum: [...NEED_KINDS],
+          description: "The cover asked about, if one was: its options come with the answer.",
+        },
+      },
+    },
+  },
+  {
+    name: "insurance_decision",
+    description:
+      "A direct answer, in three sentences or fewer, to an insurance decision the person asks about: whether to get umbrella or life cover, switch car insurance, pay yearly, raise a deductible, keep the work health plan, cancel phone cover, add a teen driver, and so on. Pass their question as they said it. The answer is built from their own policies and numbers; the verdict is demo advice and only given in demo advice mode (say so with the label). Use it instead of listing their policies when they ask what to do. Start with the verdict in words; offer no button unless they asked you to do something Jane can do; for any amount the answer doesn't give, use the calculate tool.",
+    input_schema: {
+      type: "object",
+      properties: {
+        question: { type: "string", description: "The question as the person asked it." },
+      },
+      required: ["question"],
+    },
   },
   {
     name: "insurance_health_year",
@@ -146,6 +190,29 @@ export const INSURANCE_TOOLS: Anthropic.Tool[] = [
   },
 ];
 
+// Short of what they need: a gap, or a deductible to move.
+const isShort = (n: Need) => n.applies && (n.direction ? n.direction !== "ok" : n.gapCents > 0);
+
+// The options for the cover asked about, or else the first that is short (demo advice only):
+// the shared pick-one card the chat shows with the answer, as the insurance page does.
+async function needOptions(
+  userId: string,
+  needs: Need[],
+  asked: string | null,
+  { client, now }: { client: PrismaClient; now: Date },
+): Promise<OfferedOptions | null> {
+  const need = asked ? needs.find((n) => n.kind === asked && isShort(n)) : needs.find(isShort);
+  if (!need) return null;
+  const found = await optionsForNeed(userId, need.kind, {
+    client,
+    now,
+    ...(need.policyId ? { policyId: need.policyId } : {}),
+  });
+  if (!found || found.set.options.length === 0) return null;
+  const card = insuranceCard(found.set, found.need, true);
+  return { ...card, ...(found.set.policyId ? { policyId: found.set.policyId } : {}) };
+}
+
 export const isInsuranceTool = (name: string) => INSURANCE_TOOLS.some((t) => t.name === name);
 
 export async function runInsuranceTool(
@@ -199,6 +266,83 @@ export async function runInsuranceTool(
                 }
               : application.decision,
         },
+      }),
+      cents,
+    };
+  }
+  if (name === "insurance_needs") {
+    const needs = await loadNeeds(userId, { client, now });
+    if (!needs) {
+      return {
+        content: JSON.stringify({
+          error: "I don't have the policies and income to size cover yet.",
+        }),
+        cents,
+      };
+    }
+    for (const n of needs)
+      cents.push(n.needCents, n.haveCents, n.gapCents, ...n.lines.map((l) => l.cents));
+    const asked = (input as { need?: unknown } | null)?.need;
+    const offered = (await adviceMode(userId, { client }))
+      ? await needOptions(userId, needs, typeof asked === "string" ? asked : null, { client, now })
+      : null;
+    return {
+      ...(offered ? { options: offered } : {}),
+      content: JSON.stringify({
+        ...(offered
+          ? {
+              options: {
+                for: offered.topic,
+                shownAsACard: true,
+                label: DEMO_ADVICE_LABEL,
+                options: offered.options.map((o) => ({
+                  carrier: o.label,
+                  aYear: money(o.priceCents),
+                  why: o.whyThisOne,
+                  janesPick: o.isPick,
+                  ...(o.confidence ? { sure: `${o.confidence.percent}%` } : {}),
+                })),
+              },
+            }
+          : {}),
+        needs: needs.map((n) => ({
+          kind: n.kind,
+          unit: n.unit,
+          need: money(n.needCents),
+          have: money(n.haveCents),
+          gap: money(n.gapCents),
+          direction: n.direction,
+          summary: n.summary,
+          working: n.lines.map((l) => `${l.adds ? "+" : "−"} ${money(l.cents)}: ${l.label}`),
+        })),
+      }),
+      cents,
+    };
+  }
+  if (name === "insurance_decision") {
+    const question = String((input as { question?: unknown })?.question ?? "").toLowerCase();
+    const kind = decisionKindOf(question);
+    if (!kind) {
+      return {
+        content: JSON.stringify({
+          error: "That isn't an insurance decision I can answer directly.",
+        }),
+        cents,
+      };
+    }
+    const snapshot = await withNeeds(userId, await loadInsuranceSnapshot(userId, { client, now }), {
+      client,
+      now,
+    });
+    const answer = decide(kind, snapshot, now.toISOString().slice(0, 10));
+    for (const m of answer.body.matchAll(/\$([\d,]+(?:\.\d\d)?)/g)) {
+      cents.push(Math.round(Number(m[1].replace(/,/g, "")) * 100));
+    }
+    return {
+      content: JSON.stringify({
+        decision: kind,
+        answer: answer.body,
+        demoAdvice: answer.refs.advice === true,
       }),
       cents,
     };
@@ -304,9 +448,13 @@ export async function runInsuranceTool(
     const savings = await listSavings(userId, { client });
     return {
       content: JSON.stringify({
-        savings: savings
+        // Largest saving first, the three worth the most marked: so everyone gets the same top
+        // three of the same list, however many options there are.
+        savings: [...savings]
           .filter((s) => s.status !== "dismissed")
-          .map((s) => ({
+          .sort((a, b) => b.yearlySavingCents - a.yearlySavingCents)
+          .map((s, rank) => ({
+            mostValuable: rank < 3,
             what: s.kind,
             status: s.status === "offered" ? "waiting for their tap" : s.status,
             aYearLess: money(s.yearlySavingCents),

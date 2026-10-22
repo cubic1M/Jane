@@ -1,10 +1,13 @@
 import { DETECTOR_RATES as R } from "@/config/detectors";
+import { RISK_ANNUAL_PROBABILITY as CHANCE } from "@/config/suggestions";
 import { formatCents } from "@/lib/money";
 import type { ProfileInput } from "@/profile/build";
+import { computeNeeds } from "@/lib/insurance/need/calculators";
+import { needInputFromProfile } from "@/lib/insurance/need/from-profile";
 import { HEALTH_YEAR_DETECTORS } from "./health-year";
 import { type Detector, suggestionId } from "./contract";
 import type { Confidence } from "./contract";
-import { evidence, factEvidence, nice, outCents, tx } from "./helpers";
+import { evidence, factEvidence, nice, outCents, tx, headlineOf } from "./helpers";
 
 // Detectors for insurance (spec step 259), from what the profile knows: the covers whose
 // charges are seen, the home, the car, the people and the assets. Each says what it is worth
@@ -14,15 +17,15 @@ import { evidence, factEvidence, nice, outCents, tx } from "./helpers";
 // docs/detectors/insurance.md. Pure; see ./contract.ts.
 
 // The weakest piece of evidence sets the percentage, and every piece is named in the reason.
-function combine(parts: readonly Confidence[]): Confidence {
+export function combine(parts: readonly Confidence[]): Confidence {
   const percent = Math.min(...parts.map((p) => p.percent));
   return { percent, reason: parts.map((p) => p.reason).join("; ") };
 }
 // A ceiling for a suggestion whose amount is typical, not quoted (see DETECTOR_RATES.insuranceCaps).
-function capped(c: Confidence, max: number, note: string): Confidence {
+export function capped(c: Confidence, max: number, note: string): Confidence {
   return c.percent <= max ? c : { percent: max, reason: `${c.reason}; ${note}` };
 }
-const CAPS = R.insuranceCaps;
+export const CAPS = R.insuranceCaps;
 
 const OPEN_ENROLLMENT_FROM = "11-01";
 const OPEN_ENROLLMENT_TO = "01-15";
@@ -31,13 +34,14 @@ const OPEN_ENROLLMENT_TO = "01-15";
 const charges = (data: ProfileInput, pattern: RegExp) =>
   tx(data, (t) => t.amountCents > 0 && pattern.test(t.description));
 // Premiums only: charges in the insurance category, so "HOME DEPOT" is not home cover.
-const premiums = (data: ProfileInput, pattern: RegExp) =>
+export const premiums = (data: ProfileInput, pattern: RegExp) =>
   tx(
     data,
     (t) =>
       t.amountCents > 0 && t.pfc === "GENERAL_SERVICES_INSURANCE" && pattern.test(t.description),
   );
-const AUTO_HOME = /\bAUTO\b|\bHOME\b|HOMEOWNERS|GEICO|PROGRESSIVE|STATE FARM|AAA|ALLSTATE|CHUBB/i;
+export const AUTO_HOME =
+  /\bAUTO\b|\bHOME\b|HOMEOWNERS|GEICO|PROGRESSIVE|STATE FARM|AAA|ALLSTATE|CHUBB/i;
 const HEALTH = /HEALTHCARE|MARKETPLACE|BLUE CROSS|AETNA/i;
 const MEDIGAP = /MEDIGAP|SUPPLEMENT/i;
 
@@ -68,14 +72,16 @@ const rentersInsurance: Detector = {
       capability: "insurance",
       topic: "renters_insurance",
       title: "Cover your belongings with renters insurance",
-      worthCents: Math.round(R.rentersContentsCents * R.rentersClaimChance),
+      headline: headlineOf("Get renters insurance", R.rentersContentsCents, "risk"),
+      short: `You rent and I see no renters cover in ${profile.months} months.`,
+      worthCents: R.rentersContentsCents,
       worthKind: "risk",
       confidence: combine([
         factEvidence(housing),
         evidence("seen", profile.months, 0, "renters-cover charges"),
       ]),
       urgency: "later",
-      why: `You rent and I see no renters-cover charge in ${profile.months} months. Your landlord's policy covers the building, not the ${formatCents(R.rentersContentsCents)} or so of belongings inside it. A fire or a break-in in a given year is unlikely (about ${Math.round(R.rentersClaimChance * 100)}%), and renters cover usually costs under $20 a month.`,
+      why: `You rent and I see no renters-cover charge in ${profile.months} months. Your landlord's policy covers the building, not the ${formatCents(R.rentersContentsCents)} or so of belongings inside it. A fire or a break-in in a given year is unlikely (about ${Math.round(CHANCE.renters_insurance * 100)}%), and renters cover usually costs under $20 a month.`,
       action: { label: "Get quotes", href: "/insurance" },
     };
   },
@@ -97,14 +103,18 @@ const autoInsurance: Detector = {
       capability: "insurance",
       topic: "auto_insurance",
       title: "Check your car is insured",
-      worthCents: Math.round(R.autoLiabilityCents * R.autoAtFaultChance),
+      headline: headlineOf("Check your car is insured", R.autoLiabilityCents, "risk"),
+      short: `I see car costs but no car-insurance charge in ${profile.months} months.`,
+      worthCents: R.autoLiabilityCents,
+      // Driving without liability cover is against the law almost everywhere.
+      required: true,
       worthKind: "risk",
       confidence: combine([
         factEvidence(car),
         evidence("seen", profile.months, 0, "car-cover charges"),
       ]),
       urgency: "now",
-      why: `I see car costs but no car-insurance charge in ${profile.months} months. If it's paid some other way, tell me and I'll stop asking. Without it, an accident you cause (about ${Math.round(R.autoAtFaultChance * 100)}% of drivers have one in a year) could cost you ${formatCents(R.autoLiabilityCents)} or more.`,
+      why: `I see car costs but no car-insurance charge in ${profile.months} months. If it's paid some other way, tell me and I'll stop asking. Without it, an accident you cause (about ${Math.round(CHANCE.auto_insurance * 100)}% of drivers have one in a year) could cost you ${formatCents(R.autoLiabilityCents)} or more.`,
       action: { label: "Add or compare car cover", href: "/insurance" },
     };
   },
@@ -116,21 +126,28 @@ const umbrella: Detector = {
   topic: "umbrella",
   needs: ["housing"],
   detect({ profile, data }) {
-    const total = assets(data);
+    // The need calculator's net worth (what you own less what you owe), the number the page and
+    // the chat use; the account total only when the policies weren't loaded.
+    const input = needInputFromProfile(profile, data);
+    const need = input ? computeNeeds(input).find((n) => n.kind === "umbrella") : null;
+    if (input && (!need || need.gapCents <= 0)) return null;
+    const total = input ? (input.netWorthCents ?? 0) : assets(data);
     if (total < R.umbrellaAssetsCents) return null;
     return {
       id: suggestionId("insurance", "umbrella"),
       capability: "insurance",
       topic: "umbrella",
       title: "Look at an umbrella policy",
-      worthCents: Math.round(total * R.umbrellaLawsuitChance),
+      headline: headlineOf("Look at an umbrella policy", total, "risk"),
+      short: `You have about ${formatCents(total)} that a big liability claim could reach.`,
+      worthCents: total,
       worthKind: "risk",
       confidence: combine([
         evidence("seen", profile.months, data.accounts.length, "account balances"),
         factEvidence(profile.facts.housing),
       ]),
       urgency: "later",
-      why: `You have about ${formatCents(total)} in your accounts. A big liability claim above your car and home limits could reach it. An umbrella policy pays above those limits and usually costs a few hundred dollars a year.`,
+      why: `You have about ${formatCents(total)} counting what you own less what you owe. A big liability claim above your car and home limits could reach it. An umbrella policy pays above those limits and usually costs a few hundred dollars a year.`,
       action: { label: "See umbrella cover", href: "/insurance" },
     };
   },
@@ -143,23 +160,40 @@ const insuranceShopping: Detector = {
   needs: ["insurance_auto", "insurance_home"],
   detect({ profile, data }) {
     const paid = premiums(data, AUTO_HOME);
-    const yearly = outCents(paid);
+    // A year of what they pay, from the months of data when there are fewer than twelve.
+    const yearly = Math.round(outCents(paid) * (12 / Math.min(12, Math.max(1, profile.months))));
     if (paid.length < R.insuranceShopMinCharges || yearly < R.insuranceShopMinCents) return null;
-    const saves = Math.round(yearly * R.insuranceShopShare);
+    // Real quotes, when Jane has reshopped: the saving the switch card and the chat show.
+    const quoted = data.extras?.insuranceShopSavingCents ?? 0;
+    const estimate = Math.round(yearly * R.insuranceShopShare);
+    const saves = quoted > 0 ? quoted : estimate;
     return {
       id: suggestionId("insurance", "insurance_shopping"),
       capability: "insurance",
       topic: "insurance_shopping",
       title: "Compare your car and home cover before it renews",
+      headline: headlineOf("Compare car and home cover", saves, "saves"),
+      short:
+        quoted > 0
+          ? `Jane has a cheaper quote for your cover: ${formatCents(quoted)} a year less.`
+          : `You pay about ${formatCents(yearly)} a year for car and home cover.`,
       worthCents: saves,
       worthKind: "saves",
-      confidence: capped(
-        combine([evidence("seen", profile.months, paid.length, "car and home cover charges")]),
-        CAPS.shopping,
-        "the saving is typical, not quoted",
-      ),
+      confidence:
+        quoted > 0
+          ? combine([evidence("seen", profile.months, paid.length, "car and home cover charges")])
+          : capped(
+              combine([
+                evidence("seen", profile.months, paid.length, "car and home cover charges"),
+              ]),
+              CAPS.shopping,
+              "the saving is an estimate, not a quote",
+            ),
       urgency: "later",
-      why: `You paid ${formatCents(yearly)} for car and home cover over ${profile.months} months. Comparing the same cover usually finds up to ${formatCents(saves)} a year, and I do it for free before each renewal.`,
+      why:
+        quoted > 0
+          ? `You pay about ${formatCents(yearly)} a year for car and home cover, and a quote Jane already got would save you ${formatCents(quoted)} a year for the same cover.`
+          : `You pay about ${formatCents(yearly)} a year for car and home cover. Comparing the same cover could save about ${formatCents(estimate)} a year (an estimate, not a quote), and I do it for free before each renewal.`,
       action: { label: "Compare my cover", href: "/insurance" },
     };
   },
@@ -184,6 +218,8 @@ const healthInsurance: Detector = {
         capability: "insurance",
         topic: "health_insurance",
         title: "Compare health plans at open enrollment",
+        headline: headlineOf("Compare health plans", saves, "saves"),
+        short: `You paid ${formatCents(yearly)} for your own health plan in ${profile.months} months.`,
         worthCents: saves,
         worthKind: "saves",
         confidence: capped(
@@ -205,7 +241,9 @@ const healthInsurance: Detector = {
         capability: "insurance",
         topic: "health_insurance",
         title: "Get a health plan",
-        worthCents: Math.round(R.uninsuredStayCents * R.hospitalStayChance),
+        headline: headlineOf("Get a health plan", R.uninsuredStayCents, "risk"),
+        short: `A hospital stay without cover can cost about ${formatCents(R.uninsuredStayCents)}.`,
+        worthCents: R.uninsuredStayCents,
         worthKind: "risk",
         confidence: capped(
           combine([
@@ -242,6 +280,8 @@ const medigap: Detector = {
       capability: "insurance",
       topic: "medigap",
       title: "Compare your Medicare supplement",
+      headline: headlineOf("Compare your Medicare supplement", saves, "saves"),
+      short: `You paid ${formatCents(yearly)} for a Medicare supplement in ${profile.months} months.`,
       worthCents: saves,
       worthKind: "saves",
       confidence: capped(
@@ -275,7 +315,9 @@ const longTermCare: Detector = {
       capability: "insurance",
       topic: "long_term_care",
       title: "Think about long-term care before you retire",
-      worthCents: Math.round((cost * R.longTermCareChanceOverWindow) / R.longTermCareWindowYears),
+      headline: headlineOf("Plan for long-term care", cost, "risk"),
+      short: `You're close to retiring with about ${formatCents(total)} saved.`,
+      worthCents: cost,
       worthKind: "risk",
       confidence: combine([
         factEvidence(stage),
@@ -322,6 +364,8 @@ const insuranceNegotiation: Detector = {
         capability: "insurance",
         topic: "insurance_negotiation",
         title: "Ask your insurer for a better rate",
+        headline: headlineOf("Ask your insurer for a better rate", yearly, "saves"),
+        short: `Your premium went from ${formatCents(before)} to ${formatCents(last.cents)} a month.`,
         worthCents: yearly,
         worthKind: "saves",
         confidence: capped(
@@ -364,6 +408,8 @@ const insuranceClaim: Detector = {
       capability: "insurance",
       topic: "insurance_claim",
       title: "Check whether this repair was a claim",
+      headline: headlineOf("Check if this repair was a claim", recover, "saves", true),
+      short: `You paid ${formatCents(top.amountCents)} for a repair and I see no payout.`,
       worthCents: recover,
       worthKind: "saves",
       confidence: capped(
@@ -402,7 +448,9 @@ const coverChange: Detector = {
       capability: "insurance",
       topic: "cover_change",
       title: "Tell your insurer about your move",
-      worthCents: Math.round(R.rentersContentsCents * R.coverChangeClaimChance),
+      headline: headlineOf("Tell your insurer about your move", R.rentersContentsCents, "risk"),
+      short: `You paid ${formatCents(event.amountCents)} on ${event.date}; your policy may not know.`,
+      worthCents: R.rentersContentsCents,
       worthKind: "risk",
       confidence: combine([
         evidence("seen", profile.months, insured.length, "cover charges"),
@@ -434,6 +482,8 @@ const cardCover: Detector = {
       capability: "insurance",
       topic: "card_cover",
       title: "Check your card already covers this",
+      headline: headlineOf("Cancel a plan your card covers", yearly, "saves"),
+      short: `You paid ${formatCents(yearly)} for a protection plan over ${profile.months} months.`,
       worthCents: yearly,
       worthKind: "saves",
       confidence: capped(
@@ -473,6 +523,8 @@ const employerBenefits: Detector = {
       capability: "insurance",
       topic: "employer_benefits",
       title: "Compare your private cover with your employer's",
+      headline: headlineOf("Compare your cover with work's", saves, "saves"),
+      short: `You pay ${formatCents(yearly)} a year for private cover.`,
       worthCents: saves,
       worthKind: "saves",
       confidence: capped(
@@ -508,6 +560,12 @@ const policyDocuments: Detector = {
       capability: "insurance",
       topic: "policy_documents",
       title: "Confirm the policy I read from your document",
+      headline: headlineOf(
+        "Confirm the policy I read",
+        Math.round(yearly * R.insuranceShopShare),
+        "saves",
+      ),
+      short: `You uploaded ${waiting} policy document${waiting === 1 ? "" : "s"} I haven't added yet.`,
       worthCents: Math.round(yearly * R.insuranceShopShare),
       worthKind: "saves",
       confidence: capped(

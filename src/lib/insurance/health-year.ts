@@ -7,6 +7,7 @@ import type { Prisma, PrismaClient } from "@/generated/prisma/client";
 import { track } from "@/lib/analytics";
 import { db as defaultClient } from "@/lib/db";
 import { scopedFor } from "@/lib/db-scoped";
+import { demoHasEmployer } from "@/lib/plaid/demo";
 import { formatCents } from "@/lib/money";
 import { listBenefits, yearlyCost } from "./benefits";
 import {
@@ -126,7 +127,14 @@ export async function loadHealthYear(
   });
 
   const fsaBenefit = benefits.find((b) => b.kind === "fsa" && b.status !== "declined");
-  const election = fsaBenefit ? yearlyCost(fsaBenefit) : sample ? DEMO_FSA_ELECTION_CENTS : null;
+  // The sample FSA is a workplace benefit: only the sample people who work for an employer
+  // have one (not the freelancer, the retiree or the business owner).
+  const employed = sample && !fsaBenefit ? await demoHasEmployer(userId, { client }) : false;
+  const election = fsaBenefit
+    ? yearlyCost(fsaBenefit)
+    : sample && employed
+      ? DEMO_FSA_ELECTION_CENTS
+      : null;
   // What the FSA has likely paid for: the person's own share of the plan's bills, and dental
   // and vision in full (a plan doesn't pay those). An estimate: Jane can't see FSA claims.
   const planIds = new Set(bills.map((b) => b.id));

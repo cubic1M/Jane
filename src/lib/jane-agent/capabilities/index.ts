@@ -1,3 +1,6 @@
+import { insuranceDecider } from "../insurance/decide-router";
+import { debtDecide } from "../debt-decide";
+import { answerDecision } from "../decision";
 import { answerDebt } from "../debt-answer";
 import { DEBT_KINDS, type DebtIntent } from "../debt-intents";
 import type { Intent } from "../intents";
@@ -6,7 +9,7 @@ import { investingAnswer } from "./investing";
 import { janeAnswer } from "./jane";
 import { moneyAnswer } from "./money";
 import type { Capability } from "./shared";
-import { taxAnswer } from "./tax";
+import { taxAnswer, taxDecide } from "./tax";
 
 // Every capability of Jane's chat in one place (spec step 190): what she answers, the tools
 // Claude has for it and the bank questions that test it. Each sector's intents, replies and
@@ -44,8 +47,8 @@ export const CAPABILITIES: readonly Capability[] = [
   {
     id: "safe_to_spend",
     bank: ["safe"],
-    kinds: ["safe_to_spend", "afford"],
-    tools: ["safe_to_spend"],
+    kinds: ["safe_to_spend", "afford", "balance_forecast", "save_more"],
+    tools: ["safe_to_spend", "balance_forecast"],
     answer: moneyAnswer,
   },
   {
@@ -62,6 +65,23 @@ export const CAPABILITIES: readonly Capability[] = [
     tools: ["coming_up", "money_moves"],
     answer: moneyAnswer,
   },
+  {
+    id: "net_worth",
+    bank: ["networth"],
+    kinds: ["net_worth"],
+    tools: ["net_worth"],
+    answer: moneyAnswer,
+  },
+  {
+    id: "decision",
+    bank: ["decision"],
+    kinds: ["decision"],
+    tools: ["decision"],
+    answer: async ({ userId, intent, client, now }) =>
+      intent.kind === "decision"
+        ? answerDecision(userId, intent, null, { client, now, sectors: CAPABILITIES })
+        : null,
+  },
   { id: "goals", bank: ["goals"], kinds: ["goals"], tools: ["goals"], answer: moneyAnswer },
   {
     id: "saved",
@@ -77,6 +97,14 @@ export const CAPABILITIES: readonly Capability[] = [
     bank: ["whole", "life"],
     kinds: ["whole_picture", "priorities", "health"],
     tools: ["whole_picture", "priorities", "health_score"],
+    answer: janeAnswer,
+  },
+  // Spec step 238: are the numbers right.
+  {
+    id: "books",
+    bank: ["books"],
+    kinds: ["books"],
+    tools: ["books_check"],
     answer: janeAnswer,
   },
   // Spec step 203: what-if scenarios; step 209: the long view.
@@ -134,7 +162,20 @@ export const CAPABILITIES: readonly Capability[] = [
   {
     id: "memory",
     bank: ["follow", "help"],
-    kinds: ["remember", "search", "flow", "help", "greeting", "learn", "follow_up", "unknown"],
+    kinds: [
+      "remember",
+      "search",
+      "flow",
+      "help",
+      "greeting",
+      "ack",
+      "remind",
+      "learn",
+      "follow_up",
+      "explain",
+      "why_finding",
+      "unknown",
+    ],
     tools: ["explainer"],
     answer: janeAnswer,
   },
@@ -153,6 +194,8 @@ export const CAPABILITIES: readonly Capability[] = [
     kinds: ["insurance"],
     tools: ["insurance_policies"],
     answer: insuranceAnswer,
+    // "Should I get umbrella insurance?" (docs/decisions.md).
+    ...insuranceDecider,
   },
   {
     id: "taxes",
@@ -185,8 +228,15 @@ export const CAPABILITIES: readonly Capability[] = [
       "tax_tags",
       "tax_withholding",
       "tax_years",
+      "tax_business",
+      "tax_inherited",
+      "tax_health",
+      "tax_disaster",
+      "tax_decide",
     ],
     answer: taxAnswer,
+    decides: ["tax"],
+    decide: taxDecide,
   },
   {
     id: "investing",
@@ -202,6 +252,12 @@ export const CAPABILITIES: readonly Capability[] = [
       "costly",
       "invreview",
       "location",
+      "planmenu",
+      "performance",
+      "shortterm",
+      "windfall",
+      "values",
+      "familyfile",
     ],
     kinds: ["investments"],
     // Every investing tool Claude has: the overview first, then one per topic.
@@ -219,12 +275,20 @@ export const CAPABILITIES: readonly Capability[] = [
       "costly_products",
       "yearly_review",
       "asset_location",
+      "plan_menu",
+      "honest_performance",
+      "short_term_money",
+      "sudden_money",
+      "values_investing",
+      "family_file",
     ],
     answer: investingAnswer,
   },
   {
     id: "debt",
     bank: ["debt", "loans", "student", "credit"],
+    decides: ["loan", "payoff_or_invest"],
+    decide: debtDecide,
     kinds: [...DEBT_KINDS] as Capability["kinds"],
     tools: [
       "debts",
@@ -248,6 +312,10 @@ export const CAPABILITIES: readonly Capability[] = [
       "debt_trouble",
       "debt_review",
       "car_loan",
+      "mortgage_money",
+      "costly_borrowing",
+      "debt_decision",
+      "loan_fit",
     ],
     answer: debtAnswer,
   },

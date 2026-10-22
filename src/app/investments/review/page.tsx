@@ -9,7 +9,7 @@ import { formatCents } from "@/lib/money";
 import { requireUser } from "@/lib/session";
 
 // Does it fit? (spec step 131). The mix of investments against the target for the
-// person's risk level, single companies that are too big a part of it, idle cash, and what
+// person's risk level, single companies that are too big a part of it, cash above the target mix, and what
 // to change and why. Recommendations only in demo advice mode; real accounts see their mix.
 
 const LINK = "font-medium text-emerald-700 hover:underline";

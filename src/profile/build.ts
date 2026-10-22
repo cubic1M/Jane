@@ -3,6 +3,7 @@ import {
   APPROACHING_ASSETS_CENTS,
   APPROACHING_PAYOFF_YEARS,
   BUSINESS_DEPOSITS_MIN,
+  EARNER_ACTIVE_DAYS,
   PENSION_PATTERN,
   PET_PURCHASES_MIN,
   PROFILE_MONTHS,
@@ -16,6 +17,9 @@ import {
   UNEVEN_DEPOSITS_MIN,
   TROUBLE_DEBT_MONTHS,
 } from "@/config/profile";
+import type { Relief } from "@/config/disasters";
+import type { NeedPolicy } from "@/lib/insurance/need/types";
+import { countyFromPayments, countyOf } from "@/planning/disasters";
 import { confidenceOf, evidenceText, type Source } from "./confidence";
 import { FACT_SPECS, type FactKey, factSpec } from "./facts";
 
@@ -33,6 +37,8 @@ export type ProfileTx = {
 };
 export type ProfileAccount = {
   id: string;
+  // What the bank calls it ("Inherited IRA"); read for a few tax signals (step 268).
+  name?: string;
   type: string;
   subtype: string | null;
   balanceCents: number;
@@ -65,7 +71,58 @@ export type ProfileInput = {
   liabilities: readonly ProfileLiability[];
   // Optional: what each account holds. Absent when the loader did not read holdings.
   holdings?: readonly ProfileHolding[];
+  // Spec step 236: what the person asked Jane to leave out of their funds (keys in
+  // src/config/values.ts), when they have said.
+  valuesExcludes?: readonly string[];
+  // Spec step 237: ids of the accounts that have a beneficiary named. Absent when the loader
+  // did not read them.
+  namedAccountIds?: readonly string[];
   told: Told;
+  // What else is known about the person's setup in Jane (step 264); a sample person's is
+  // given by ./sample.ts.
+  extras?: {
+    householdMembers: number;
+    // The employer match left on the table at this year's pace, from the person's employer plan
+    // and contributions (the same calculation as the chat's answer). Null: no plan known;
+    // absent: not loaded (the sample people), so the detector assumes.
+    matchPace?: {
+      missedCents: number;
+      payCents: number;
+      matchRate: number;
+      fullMatchRate: number;
+      employeeRate: number;
+    } | null;
+    // RSU withholding that falls short, from the person's vests this year or, with none known,
+    // an assumed share of their stock plan (the same figure as the chat's answer). Null: none.
+    // What the person's subscriptions cost in a year, as the subscriptions page and the chat
+    // count them (recurring charges that are subscriptions). Absent: not loaded.
+    subscriptions?: { yearlyCents: number; count: number } | null;
+    // A year of interest on the person's cards from their balances and rates (the chat's
+    // figure). Null: not available, so the interest charges seen are used. Absent: not loaded.
+    cardInterestYearCents?: number | null;
+    // What Jane's open reshops of car and home cover would save a year (the switch card's and
+    // the chat's figure); 0 when there are none. Absent: not loaded.
+    insuranceShopSavingCents?: number;
+    // The policies they have, for the cover-need gaps (spec step 277). Absent: not loaded.
+    coverPolicies?: readonly NeedPolicy[];
+    // What doesn't add up in the person's data (spec step 238), from the daily books check.
+    // Absent: not loaded.
+    books?: readonly { kind: string; words: string; accountId: string | null }[];
+    // Disaster relief declarations from the person's feed (spec step 270): the stand-in's
+    // samples for demo-bank people, none for anyone else. Absent: not loaded.
+    disasterRelief?: readonly Relief[];
+    // The value of what they own (a home, cars), added to their net worth for the umbrella.
+    ownedValueCents?: number;
+    // The person already has a practice portfolio (step 296). Absent: not loaded.
+    hasPracticePortfolio?: boolean;
+    rsuGap?: {
+      vestedCents: number;
+      shortfallCents: number;
+      marginalRate: number;
+      assumed: boolean;
+      stockCents: number;
+    } | null;
+  };
   // Policies read from uploaded documents that wait for the person's confirm (spec step 259).
   unreadPolicyDocuments?: number;
   // The person's health plan terms and FSA election, where Jane has them (spec step 259):
@@ -97,14 +154,27 @@ export type Profile = {
 };
 
 const monthOf = (day: string) => day.slice(0, 7);
+const addDaysTo = (day: string, days: number) =>
+  new Date(Date.parse(`${day}T00:00:00Z`) + days * 86_400_000).toISOString().slice(0, 10);
 
 // How many calendar months the data covers, up to a year.
-function monthsOfData(txs: readonly ProfileTx[], today: string): number {
+export function monthsOfData(txs: readonly ProfileTx[], today: string): number {
   if (txs.length === 0) return 0;
   const first = txs.reduce((a, t) => (t.date < a ? t.date : a), today);
   const [fy, fm] = monthOf(first).split("-").map(Number);
   const [ty, tm] = monthOf(today).split("-").map(Number);
   return Math.min(PROFILE_MONTHS, Math.max(1, (ty - fy) * 12 + (tm - fm)));
+}
+
+// The months a monthly rate is spread over. A full year is the calendar count; a shorter history
+// uses the real span in days, because the calendar count rounds a 90-day history to two or three
+// "months" and a rate taken over two would read a third too high.
+export function monthsForRate(txs: readonly ProfileTx[], today: string): number {
+  const whole = monthsOfData(txs, today);
+  if (whole === 0 || whole >= PROFILE_MONTHS) return whole;
+  const first = txs.reduce((a, t) => (t.date < a ? t.date : a), today);
+  const days = (Date.parse(`${today}T00:00:00Z`) - Date.parse(`${first}T00:00:00Z`)) / 86_400_000;
+  return Math.max(1, (days + 1) / (365.25 / 12));
 }
 
 const inYear = (txs: readonly ProfileTx[], today: string) => {
@@ -186,10 +256,17 @@ export function buildProfile(input: ProfileInput): Profile {
   if (pattern === "unknown") unknown("income_pattern");
   else set("income_pattern", pattern, "seen", "deposits", patternMatches);
 
+  // Employers still paying: an old one that stopped is a job change, not another earner.
   const employers = new Map<string, number>();
+  const activeSince = addDaysTo(today, -EARNER_ACTIVE_DAYS);
+  const lastPaid = new Map<string, string>();
   for (const t of salary) {
     const name = t.description.replace(/\s+PAYROLL.*$/i, "").trim();
-    employers.set(name, (employers.get(name) ?? 0) + 1);
+    if (!lastPaid.has(name) || t.date > lastPaid.get(name)!) lastPaid.set(name, t.date);
+  }
+  for (const t of salary) {
+    const name = t.description.replace(/\s+PAYROLL.*$/i, "").trim();
+    if (lastPaid.get(name)! >= activeSince) employers.set(name, (employers.get(name) ?? 0) + 1);
   }
   const topEmployer = [...employers.entries()].sort((a, b) => b[1] - a[1])[0];
   if (topEmployer) set("employer", topEmployer[0], "seen", "paychecks", topEmployer[1]);
@@ -201,13 +278,13 @@ export function buildProfile(input: ProfileInput): Profile {
   const incomeTotal = income
     .filter((t) => !(t.pfc === "INCOME_TAX_REFUND" || t.pfc === "INCOME_INTEREST_EARNED"))
     .reduce((s, t) => s - t.amountCents, 0);
-  const monthlyIncome = months > 0 ? Math.round(incomeTotal / months) : 0;
+  const monthlyIncome = months > 0 ? Math.round(incomeTotal / monthsForRate(txs, today)) : 0;
   if (income.length > 0) set("monthly_income", monthlyIncome, "seen", "deposits", income.length);
   else unknown("monthly_income");
 
   // --- Household and home -----------------------------------------------------------
   const childcare = count((t) => t.pfc === "GENERAL_SERVICES_CHILDCARE");
-  if (childcare > 0) set("has_children", true, "guessed", "childcare payments", childcare);
+  if (childcare > 0) set("has_children", true, "seen", "childcare payments", childcare);
   else set("has_children", false, "guessed", "childcare payments", 0);
   const hasChildren = facts.has_children.value === true;
   const household = hasChildren ? "family" : earners >= 2 ? "couple" : "single";
@@ -280,12 +357,20 @@ export function buildProfile(input: ProfileInput): Profile {
   );
   set("has_payday_loan", payday > 0, "seen", "cash-advance repayments", payday);
   const overweight = monthlyIncome > 0 && cardDebt >= monthlyIncome * TROUBLE_DEBT_MONTHS;
+  // The evidence is the signal that decided it, counted once (overdraft and late fees, else
+  // cash-advance repayments, else the card debt), not all of them added together.
+  const troubleSignal =
+    fees >= TROUBLE_FEES_MIN
+      ? { what: "overdraft, insufficient-funds or late fees", n: fees }
+      : payday > 0
+        ? { what: "cash-advance repayments", n: payday }
+        : { what: "months of income owed on cards", n: overweight ? TROUBLE_DEBT_MONTHS : 0 };
   set(
     "debt_trouble",
     fees >= TROUBLE_FEES_MIN || payday > 0 || overweight,
-    "guessed",
-    "overdraft or late fees",
-    fees + payday + (overweight ? 1 : 0),
+    "seen",
+    troubleSignal.what,
+    troubleSignal.n,
   );
 
   // --- Accounts and cover -----------------------------------------------------------
@@ -298,6 +383,17 @@ export function buildProfile(input: ProfileInput): Profile {
     accounts.filter((a) => a.subtype === "401k").length,
   );
   set("has_hsa", has("hsa"), "seen", "HSAs", accounts.filter((a) => a.subtype === "hsa").length);
+  // Spec step 270: the county, as the property tax payee names it ("HARRIS COUNTY TAX ...").
+  const county = countyFromPayments(txs);
+  if (county)
+    set(
+      "county",
+      county,
+      "seen",
+      "property tax payments naming it",
+      count((t) => t.amountCents > 0 && countyOf(t.description) === county),
+    );
+  else unknown("county");
   set(
     "has_stock_plan",
     has("stock plan"),
@@ -332,6 +428,10 @@ export function buildProfile(input: ProfileInput): Profile {
     "filing_status",
     "business_structure",
     "hardship_reason",
+    "inherited_ira_death_year",
+    "inherited_from_spouse",
+    "marketplace_aptc_monthly",
+    "marketplace_benchmark_monthly",
   ] as const) {
     if (told[key] === undefined) unknown(key);
     else set(key, told[key], "told", "answers", 0);

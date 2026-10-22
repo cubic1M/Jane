@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { PFC_TAXONOMY } from "@/categorize/taxonomy";
 import { normalizeLiabilities } from "@/data-sources/plaid/liabilities";
 import { normalizeAccount } from "@/data-sources/plaid/plaid-source";
+import { escrowChange } from "@/planning/mortgage";
 import {
   addDays,
   demoAccounts,
@@ -14,6 +15,26 @@ const DEMO = { seed: "abc123", anchor: "2026-10-18" };
 const THROUGH = "2026-10-17";
 
 describe("the demo bank", () => {
+  // The escrow rise and the Netflix price rise sit at the last payment before linking, so they
+  // are in the first sync (through yesterday) whatever day of the month the bank is linked.
+  it.each(Array.from({ length: 31 }, (_, i) => `2026-10-${String(i + 1).padStart(2, "0")}`))(
+    "shows the escrow and price rises when linked on %s",
+    (anchor) => {
+      const all = demoTransactions({ ...DEMO, anchor }, null, addDays(anchor, -1));
+      const of = (name: string) =>
+        all
+          .filter((t) => t.name === name)
+          .sort((a, b) => a.date.localeCompare(b.date))
+          .map((t) => ({ date: t.date, cents: Math.round(t.amount * 100) }));
+      const mortgage = of("ROCKET MORTGAGE PAYMENT");
+      expect(escrowChange(mortgage)).toMatchObject({ fromCents: 214154, toCents: 219831 });
+      expect(
+        of("NETFLIX.COM")
+          .slice(-2)
+          .map((t) => t.cents),
+      ).toEqual([1549, 1799]);
+    },
+  );
   it("makes a year of transactions, the same every time", () => {
     const first = demoTransactions(DEMO, null, THROUGH);
     expect(first.length).toBeGreaterThan(400);

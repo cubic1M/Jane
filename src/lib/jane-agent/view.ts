@@ -1,4 +1,6 @@
 import { validTimezone } from "@/lib/digest/week";
+import type { OptionSet } from "@/lib/floating-cards";
+import { toOptionSet } from "@/lib/option-set";
 import { withFrom } from "./back-link";
 import { drawBlock, parseBlock, type DrawnBlock } from "./blocks";
 
@@ -33,6 +35,11 @@ export type MessageView = {
   block: DrawnBlock | null;
   // Spec step 96: pinned to the top of the chat.
   pinned: boolean;
+  // One of the day's suggestions (it can sit in the card stack).
+  suggestion: boolean;
+  // Options of one choice (refs.options), while the message is open: the floating pick card.
+  // Its buttons (option.pick, option.later) are the card's, not the message's.
+  options: OptionSet | null;
 };
 
 const TAGS: Record<MessageKind, string> = {
@@ -49,6 +56,7 @@ export function toView(message: ChatMessage, now: Date, timezone: string | null)
   const undoOpen = undoUntil === null || new Date(undoUntil) > now;
   const buttons = message.actions.flatMap((a) => {
     if (a.kind === "link") return [];
+    if (a.id.startsWith("option.")) return [];
     const isUndo = a.id.startsWith("undo.");
     if (message.status === "dismissed") return [];
     if (isUndo && !undoOpen) return [];
@@ -80,5 +88,10 @@ export function toView(message: ChatMessage, now: Date, timezone: string | null)
     undoUntil: buttons.some((b) => b.id.startsWith("undo.")) ? undoUntil : null,
     block: drawn(message.refs.block),
     pinned: message.refs.pinned === true,
+    suggestion: Boolean(message.refs.suggestion),
+    options:
+      message.status === "open" && message.refs.options?.options?.length
+        ? toOptionSet(message.refs.options)
+        : null,
   };
 }

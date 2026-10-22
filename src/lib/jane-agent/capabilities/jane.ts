@@ -1,4 +1,5 @@
 import type { Reply } from "../replies";
+import { loadSnapshotFast } from "../snapshot-store";
 import { autopilotOf } from "@/lib/autopilot";
 import { lastControllerRun } from "@/lib/controller-log";
 import { autopilotFor, sectorAutopilots } from "@/lib/sector-autopilot";
@@ -29,6 +30,8 @@ import { loadTimeline } from "@/lib/timeline";
 import { timelineReply } from "../replies-timeline";
 import { healthFor } from "@/lib/health-score";
 import { healthReply } from "../replies-health";
+import { openBooks } from "@/lib/books";
+import { booksReply } from "../replies-books";
 import { loadSteady } from "@/lib/steady-pay";
 import { steadyReply } from "../replies-steady";
 import { whatIf } from "@/lib/what-if";
@@ -41,6 +44,8 @@ import { groupedHelpReply } from "../replies-help";
 import { lifeEventReply } from "../replies-life";
 import { loadSnapshot } from "../snapshot";
 import { type CapabilityContext } from "./shared";
+import { ackReply } from "../ack-reply";
+import { whyFindingReply } from "../explain-finding";
 
 // Jane herself: the whole picture, what she did, autopilot, memory, help and plans (spec step 190): the rules' answers for these kinds of question, one registered
 // capability each in ./index.ts. Moved out of ../answer.ts unchanged.
@@ -50,8 +55,20 @@ async function answer(ctx: CapabilityContext): Promise<Reply | null> {
   const { userId, client, now, asOf, ask } = ctx;
 
   switch (intent.kind) {
+    // A typed "yes" or "no": Jane only acts on a tap, so it points at the button.
+    case "ack":
+    case "remind":
+      return ackReply(userId, intent, { client });
     case "follow_up":
       return null;
+    case "explain":
+      return {
+        body: 'Why what? Ask me about something I just told you, like "why is the card first" or "why bitcoin", and I\'ll give you the reason.',
+        actions: [],
+        refs: {},
+      };
+    case "why_finding":
+      return whyFindingReply(userId, intent.findingId, { client });
     case "unknown":
       return null;
     case "help":
@@ -77,13 +94,16 @@ async function answer(ctx: CapabilityContext): Promise<Reply | null> {
       return flowReply(intent.flow, { userId, client, now });
     // Spec step 183.
     case "whole_picture": {
-      const snapshot = await loadSnapshot(userId, { client, now });
+      const snapshot = await loadSnapshotFast(userId, { client, now });
       return wholePictureReply(snapshot, snapshot ? rankedFor(snapshot) : [], intent.focus);
     }
     case "priorities": {
-      const snapshot = await loadSnapshot(userId, { client, now });
-      return prioritiesReply(snapshot ? rankedFor(snapshot) : []);
+      const snapshot = await loadSnapshotFast(userId, { client, now });
+      return prioritiesReply(snapshot ? rankedFor(snapshot) : [], intent.explain, intent.one);
     }
+    // Spec step 238.
+    case "books":
+      return booksReply(await openBooks(userId, { client }));
     // Spec step 203.
     case "what_if":
       return whatIfReply(

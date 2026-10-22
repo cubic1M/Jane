@@ -10,7 +10,7 @@ export type Row = readonly [sector: string, page: string, tool: string, text: st
 const rows: Row[] = [
   // The QA report's unanswered questions.
   ["networth", "/net-worth", "net_worth", "what's my net worth"],
-  ["bills", "/bills", "safe_to_spend", "why is my checking going negative"],
+  ["bills", "/bills", "balance_forecast", "why is my checking going negative"],
   ["hsa", "/investments/hsa", "hsa", "what about my HSA"],
   ["moving", "/transfers", "money_moves", "move $200 to savings"],
   ["moving", "/transfers", "money_moves", "transfer $50 to my emergency fund"],
@@ -18,6 +18,11 @@ const rows: Row[] = [
   ["giving", "/taxes/giving", "tax_giving", "how much have I given to charity"],
   ["credit", "/loans/credit", "credit_score", "what's my credit score"],
   ["debt", "/debt", "debts", "how much card interest am I paying"],
+  ["debt", "/loans", "debt_decision", "should I pay off my debt before I invest"],
+  ["debt", "/loans/refinance", "loan_fit", "what loan fits me best"],
+  ["debt", "/loans/refinance", "loan_fit", "find me a loan to pay off my cards"],
+  ["debt", "/loans", "debt_decision", "is a debt consolidation loan a good idea"],
+  ["debt", "/loans", "debt_decision", "can I use my emergency fund to pay off my credit card"],
   ["budgets", "/budgets", "budgets", "how's my budget"],
 
   // Investing, round three (steps 160–216).
@@ -77,6 +82,78 @@ const rows: Row[] = [
   ["costly", "/investments/costly-products", "costly_products", "what is a surrender charge"],
   ["invreview", "/investments", "yearly_review", "do my yearly investing review"],
   ["location", "/investments/location", "asset_location", "which accounts should hold my bonds"],
+  [
+    "values",
+    "/investments/values",
+    "values_investing",
+    "can i avoid fossil fuel companies in my funds",
+  ],
+  [
+    "values",
+    "/investments/values",
+    "values_investing",
+    "what would it cost to invest without tobacco and weapons",
+  ],
+  [
+    "familyfile",
+    "/investments/family-file",
+    "family_file",
+    "who are the beneficiaries on my accounts",
+  ],
+  [
+    "familyfile",
+    "/investments/family-file",
+    "family_file",
+    "do my beneficiaries need updating after my divorce",
+  ],
+  [
+    "familyfile",
+    "/investments/family-file",
+    "family_file",
+    "what would my family need if something happens to me",
+  ],
+  ["familyfile", "/investments/family-file", "family_file", "should i make a will or a trust"],
+  ["values", "/investments/values", "values_investing", "do you have esg funds"],
+  ["windfall", "/investments/sudden-money", "sudden_money", "i got a big bonus what should i do"],
+  [
+    "windfall",
+    "/investments/sudden-money",
+    "sudden_money",
+    "how much tax should i set aside from my inheritance",
+  ],
+  [
+    "windfall",
+    "/investments/sudden-money",
+    "sudden_money",
+    "what do i do with the money from my windfall",
+  ],
+  ["planmenu", "/investments/plan-menu", "plan_menu", "which funds should i pick in my 401k"],
+  [
+    "performance",
+    "/investments/performance",
+    "honest_performance",
+    "am i beating the market after fees and taxes",
+  ],
+  [
+    "performance",
+    "/investments/performance",
+    "honest_performance",
+    "what is my 3 year return against a benchmark",
+  ],
+  [
+    "shortterm",
+    "/investments/short-term",
+    "short_term_money",
+    "where should i put money i need in a year",
+  ],
+  [
+    "shortterm",
+    "/investments/short-term",
+    "short_term_money",
+    "are treasury bills better than a cd",
+  ],
+  ["shortterm", "/investments/short-term", "short_term_money", "what is a cd ladder"],
+  ["planmenu", "/investments/plan-menu", "plan_menu", "is my target date fund fee too high"],
   ["invreview", "/investments", "steady_hand", "should i sell everything the market is crashing"],
 
   // What if (spec step 203).
@@ -90,6 +167,10 @@ const rows: Row[] = [
   ["longview", "/long-view", "long_view", "what will my net worth be in 20 years"],
   ["longview", "/long-view", "long_view", "how much will i have when i retire"],
 
+  // Books that balance (spec step 238).
+  ["books", "/net-worth", "books_check", "are my numbers right"],
+  ["books", "/net-worth", "books_check", "do my books balance"],
+  ["books", "/net-worth", "books_check", "any problems with my accounts"],
   // The picture of you (spec step 253).
   ["profile", "/profile", "my_profile", "what do you know about me"],
   ["profile", "/profile", "my_profile", "show me my profile"],
@@ -109,7 +190,9 @@ const rows: Row[] = [
   ["safe", "/home", "safe_to_spend", "can i afford to eat out tonight"],
   ["safe", "/home", "safe_to_spend", "whats my spending money til payday"],
   ["safe", "/home", "safe_to_spend", "how much cash can i use this week"],
-  ["safe", "/home", "safe_to_spend", "am i going to run out of money before payday"],
+  ["safe", "/home", "balance_forecast", "am i going to run out of money before payday"],
+  ["bills", "/bills", "balance_forecast", "will my checking dip below zero this month"],
+  ["bills", "/bills", "balance_forecast", "what happens to my balance next week"],
   ["safe", "/afford", "safe_to_spend", "can i afford a $1,200 laptop"],
   ["safe", "/afford", "safe_to_spend", "is it ok if i buy a $300 jacket"],
   ["safe", "/afford", "safe_to_spend", "could i afford a vacation in march"],
@@ -141,9 +224,9 @@ const rows: Row[] = [
   ["bills", "/deadlines", "coming_up", "any deadlines coming up"],
   ["bills", "/deadlines", "coming_up", "what's due before the end of the month"],
   ["bills", "/deadlines", "coming_up", "do i have a trial ending soon"],
-  ["bills", "/alerts", "recent_changes", "any alerts for me"],
-  ["bills", "/alerts", "recent_changes", "did anything weird happen on my card"],
-  ["bills", "/alerts", "recent_changes", "was i charged twice anywhere"],
+  ["bills", "/alerts", "alerts", "any alerts for me"],
+  ["bills", "/alerts", "alerts", "did anything weird happen on my card"],
+  ["bills", "/alerts", "alerts", "was i charged twice anywhere"],
   ["bills", "/alerts", "open_findings", "did i get double charged"],
   ["bills", "/alerts", "open_findings", "any fees i can get back"],
   ["bills", "/alerts", "open_findings", "i got an overdraft fee, can i get it refunded"],
@@ -256,9 +339,9 @@ const rows: Row[] = [
   ["income", "/home", "safe_to_spend", "did my paycheck come in"],
   ["income", "/home", "safe_to_spend", "is my paycheck late"],
   ["income", "/home", "recent_changes", "did my pay change"],
-  ["household", "/household", "net_worth", "can my wife see my accounts"],
-  ["household", "/household", "net_worth", "what's shared with my partner"],
-  ["household", "/household", "net_worth", "add my husband"],
+  ["household", "/household", "household", "can my wife see my accounts"],
+  ["household", "/household", "household", "what's shared with my partner"],
+  ["household", "/household", "household", "add my husband"],
 
   // Debt and loans.
   ["debt", "/debt", "debts", "how much debt do i have"],
@@ -474,6 +557,15 @@ const rows: Row[] = [
   ["debt", "/loans/equity", "home_equity", "when does my pmi end by itself"],
   ["debt", "/loans/equity", "home_equity", "is my escrow too high"],
   ["debt", "/loans/equity", "home_equity", "heloc or cash-out refinance for a $40,000 kitchen"],
+  [
+    "debt",
+    "/loans/costly",
+    "costly_borrowing",
+    "how much have payday loans and cash advances cost me",
+  ],
+  ["debt", "/loans/costly", "costly_borrowing", "i keep overdrafting every month"],
+  ["loans", "/loans/recast", "mortgage_money", "i have $20,000, should i recast my mortgage"],
+  ["loans", "/loans/recast", "mortgage_money", "pay down my mortgage or invest $500 a month"],
   ["loans", "/loans/auto", "car_loan", "can i cancel the extended warranty on my car loan"],
   ["loans", "/loans/auto", "car_loan", "do i have gap insurance on my car loan"],
   ["debt", "/loans/review", "debt_review", "do my yearly debt review"],
@@ -498,6 +590,26 @@ const rows: Row[] = [
   ["loans", "/loans/home", "home_purchase", "how much house can i afford"],
   ["loans", "/loans/home", "home_purchase", "can i afford a $400,000 home"],
   ["loans", "/loans/home", "home_purchase", "how much should i save for a down payment"],
+
+  // What if (spec step 203).
+  ["whatif", "/what-if", "what_if", "what if i lose my job"],
+
+  // Gifts to family, and the long view.
+  [
+    "investing",
+    "/gift",
+    "family_investing",
+    "can i gift my daughter some money for her investments",
+  ],
+  ["investing", "/gift", "family_investing", "how do i put money in an account for my kid"],
+  ["investing", "/long-view", "long_view", "where will i be in 20 years"],
+  ["investing", "/long-view", "long_view", "show me the long view"],
+
+  // The accountant's view and the profile.
+  ["taxes", "/accountant", "tax_return", "what should my accountant see"],
+  ["taxes", "/accountant", "tax_forms", "can i share my tax documents with my accountant"],
+  ["settings", "/profile", "investor_profile", "what do you know about me"],
+  ["settings", "/profile", "tax_profile", "what's in my profile"],
 
   // Two questions in one message.
   ["two", "/home", "safe_to_spend", "how much can i spend and when is payday"],

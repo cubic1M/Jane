@@ -156,6 +156,34 @@ export async function addAlert(
   }
 }
 
+// Posts one of Jane's chat messages as the app stores them (a reply with refs.options, say),
+// for a test that needs one Claude would write: there's no Anthropic key in tests.
+export async function addJaneMessage(
+  userId: string,
+  message: { kind: string; body: string; refs: object; actions: object[] },
+): Promise<string> {
+  const id = `e2em${crypto.randomUUID().replaceAll("-", "").slice(0, 20)}`;
+  const client = new Client({ connectionString: E2E_DATABASE_URL });
+  await client.connect();
+  try {
+    await client.query(
+      `INSERT INTO jane_messages (id, user_id, kind, body, refs, actions, dedupe_key)
+       VALUES ($1, $2, $3, $4, $5, $6, $1)`,
+      [
+        id,
+        userId,
+        message.kind,
+        message.body,
+        JSON.stringify(message.refs),
+        JSON.stringify(message.actions),
+      ],
+    );
+  } finally {
+    await client.end();
+  }
+  return id;
+}
+
 // Turns two-factor on for a user (a placeholder secret: tests only check that a code is
 // asked for, never enter a right one).
 export async function enableTwoFactor(userId: string): Promise<void> {
@@ -198,6 +226,29 @@ export async function sessionExists(id: string): Promise<boolean> {
   try {
     const { rows } = await client.query(`SELECT 1 FROM sessions WHERE id = $1`, [id]);
     return rows.length > 0;
+  } finally {
+    await client.end();
+  }
+}
+
+// The first scan of a demo-bank person has two parts: the chat opens once the brief is in, and
+// the sectors' work (insurance shopping, the agenda, the numbers saved for Claude) finishes
+// after. The last thing it does is save the numbers for Claude (a "primer" row), so a test that
+// needs all of it waits for that, not for the chat to open.
+export async function waitForFullScan(userId: string, timeoutMs = 150_000): Promise<void> {
+  const client = new Client({ connectionString: E2E_DATABASE_URL });
+  await client.connect();
+  try {
+    const until = Date.now() + timeoutMs;
+    while (Date.now() < until) {
+      const { rowCount } = await client.query(
+        `SELECT 1 FROM jane_preferences WHERE user_id = $1 AND kind = 'system' AND key = 'primer'`,
+        [userId],
+      );
+      if (rowCount) return;
+      await new Promise((resolve) => setTimeout(resolve, 500));
+    }
+    throw new Error("The first scan did not finish (no saved numbers for Claude).");
   } finally {
     await client.end();
   }

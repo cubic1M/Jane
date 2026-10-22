@@ -34,6 +34,12 @@ import { loadEquityTax } from "@/lib/equity-tax";
 import { loadMultiYear } from "@/lib/multi-year";
 import { loadPropertyTax } from "@/lib/property-tax";
 import { loadAccountantPage } from "@/lib/accountant";
+import { loadBusinessStructure } from "@/lib/business-structure";
+import { loadInheritance } from "@/lib/inheritance";
+import { loadHealthTaxes } from "@/lib/health-taxes";
+import { loadDisasterRelief } from "@/lib/disasters";
+import { DECISION_TOPICS } from "@/config/tax-decisions";
+import { decideTax } from "@/lib/tax-decisions";
 import { loadTaxCalendar } from "@/lib/tax-calendar";
 import { loadIdentity } from "@/lib/tax-identity";
 import { loadSideIncome } from "@/lib/side-income";
@@ -180,7 +186,7 @@ export const TAX_TOOLS: Anthropic.Tool[] = [
   {
     name: "tax_equity",
     description:
-      "The tax on the person's crypto and equity pay for the tax year: crypto sold (proceeds, cost by lot, short- and long-term gain), what they hold and its unrealised gain, the 1099-DA from an exchange that sold; ESPP sales and whether each was qualifying or a disqualifying disposition that lost its special treatment; ISOs exercised and the alternative minimum tax; RSU vests with the tax withheld against their real rate and the shortfall; and in demo advice mode how much to set aside and whether a goal exists. Holding-period and AMT rules are in config with sources.",
+      "The tax on the person's crypto and equity pay for the tax year: crypto sold (proceeds, cost by lot, short- and long-term gain), what they hold and its unrealised gain, the 1099-DA from an exchange that sold; ESPP sales and whether each was qualifying or a disqualifying disposition that lost its special treatment; ISOs exercised and the alternative minimum tax; RSU vests with the tax withheld against their real rate and the shortfall; and in demo advice mode how much to set aside and whether a goal exists. Holding-period and AMT rules are in config with sources. For RSUs, rsuAnswer is the finished statement of the withholding gap: say it in 2–3 sentences, don't work it out and don't list every detail.",
     input_schema: noInput,
   },
   {
@@ -206,6 +212,41 @@ export const TAX_TOOLS: Anthropic.Tool[] = [
     description:
       "The person's tax calendar for this month and the year: what Jane does each month (the January IRS Identity Protection PIN reminder and form chase, estimated payments paid through the payment stand-in a few days before they are due when they fit the person's cap for taxes, the June withholding check, December's year-end moves in one message, filing day and the refund tracked), where each item stands now (done, needs the person's tap, coming, nothing to do), any estimated payment that needs a tap and why (over the cap, over the monthly cap, or the person asked Jane to ask first), and the year-end moves. Nothing is paid above the cap without a tap; signing and filing a return are always the person's.",
     input_schema: noInput,
+  },
+  {
+    name: "tax_business",
+    description:
+      "A business owner's tax structure: profit from self-employment so far this year (projected), the qualified business income deduction they get as a sole proprietor and what it saves, their federal tax as they are, and in demo advice mode whether an S corporation would save more than its payroll tax and filing costs at their profit (with a salary range to start from), plus the home office deduction and business miles on file. A tax professional confirms and files any election; Jane files nothing.",
+    input_schema: noInput,
+  },
+  {
+    name: "tax_inherited",
+    description:
+      "Inherited money and gifts: an inherited IRA the person has (found by the account's name) with the year it must be empty by under the 10-year rule (from the year they told Jane the owner died; spouses can treat it as their own), the exceptions, and in demo advice mode how much tax taking it out evenly saves against taking it all at the end; gifts to one person this year over the annual exclusion that need a gift tax return (Form 709); the step-up in basis on inherited assets; and the federal and state estate tax facts. Facts only, with a pointer to a tax professional or estate lawyer: Jane gives no legal advice.",
+    input_schema: noInput,
+  },
+  {
+    name: "tax_health",
+    description:
+      "The tax side of the person's health cover. A Marketplace plan's premium tax credit checked against their income this year, month by month so a mid-year rise shows (projected income, share of the poverty line, over the 400% line where the credit stops or not, the credit allowed, the advance credit (told, or worked out from their income early in the year) and what would be repaid with the return, with no cap from 2026); HSA deposits this year and at this pace by December against the limit for their cover, with what's over and the 6% penalty each year it stays in; and medical costs and health premiums against the 7.5% of income floor and the standard deduction, with what itemizing would save. Telling the Marketplace or an HSA provider is the person's: Jane contacts no one. What to do about the credit is demo advice.",
+    input_schema: noInput,
+  },
+  {
+    name: "tax_disaster",
+    description:
+      "Disaster relief and losses for the person: the county they live in (told, or named by their property tax payee), any IRS disaster postponement covering it from their disaster feed (only a stand-in with sample declarations for demo-bank people; none for real accounts yet), what it covers (from the incident date, deadlines move to the postponed date: estimated payments, filing and paying, prior-year IRA and HSA contributions) and whether Jane has moved the tax deadlines on their list; repairs since the disaster, what insurance or FEMA paid back, and the casualty loss after the $100 floor and 10% of income (Form 4684), kept once with the insurance claim. Facts only; Jane files nothing.",
+    input_schema: noInput,
+  },
+  {
+    name: "tax_decide",
+    description:
+      "A direct answer, in three sentences or fewer from the person's own numbers, to one of the tax questions people ask: whether to itemize, do a Roth conversion, change their withholding, pay estimated taxes, put more in their 401(k), pick a traditional or Roth IRA, open an HSA, appeal their property tax, sell a loser for the loss, give stock instead of cash, or claim a home office; and the facts: what they will owe or get back, why their refund is what it is, their effective rate, tax paid so far, what they can deduct, how much to set aside, when the next estimated payment is due, whether they must file, and their mortgage interest deduction. Decisions are demo advice and carry the label; for a real account the answer says what the numbers are, not what to do. Start with the verdict in words; offer no button unless they asked you to do something; for any amount these sentences don't give, use the calculate tool. Pass the topic.",
+    input_schema: {
+      type: "object" as const,
+      properties: { topic: { type: "string" as const, enum: [...DECISION_TOPICS] } },
+      required: ["topic"],
+      additionalProperties: false,
+    },
   },
   {
     name: "tax_forms",
@@ -778,6 +819,132 @@ export async function runTaxTool(
         wholeYear: v.months.map((m) => ({ month: m.label, items: m.items.map((i) => i.title) })),
       });
     }
+    case "tax_business": {
+      const v = await loadBusinessStructure(userId, { client, now });
+      const s = v.structure;
+      return out({
+        profit: s ? money(s.profitCents) : null,
+        soleProprietor: s && {
+          federalTax: money(s.sole.taxCents),
+          qbiDeduction: money(s.sole.qbiCents),
+          qbiSavesTax: money(s.sole.qbiSavesCents),
+          aboveTheQbiLine: s.sole.qbiLimited,
+        },
+        sCorporation:
+          s && v.advice
+            ? {
+                worthIt: s.sCorp.worthIt,
+                salaryRange: [money(s.sCorp.salaryLowCents), money(s.sCorp.salaryHighCents)],
+                totalTaxIncludingCosts: money(s.sCorp.totalCents),
+                costs: money(s.sCorp.costsCents),
+                saves: money(Math.max(0, s.sCorp.savesCents)),
+                costsMoreInstead: s.sCorp.savesCents < 0,
+              }
+            : null,
+        homeOffice: { sqft: v.homeOffice.sqft, deduction: money(v.homeOffice.deductionCents) },
+        businessMiles: { miles: v.mileage.miles, deduction: money(v.mileage.deductionCents) },
+      });
+    }
+    case "tax_disaster": {
+      const v = await loadDisasterRelief(userId, { client, now });
+      return out({
+        county: v.county,
+        countyFrom: v.countySource,
+        feed: v.feed,
+        relief: v.relief.map((r) => ({
+          disaster: r.relief.title,
+          sample: r.relief.sample,
+          state: r.relief.state,
+          from: r.relief.incidentFrom,
+          deadlinesMoveTo: r.relief.postponedTo,
+          stateFollows: r.relief.stateFollows,
+          datesCovered: r.computed.map((m) => ({ what: m.title, was: m.from })),
+          movedOnTheirList: r.applied,
+          onTheirListToMove: r.moves.map((m) => ({ title: m.title, was: m.from })),
+          repairsSince: money(r.loss.repairsCents),
+          paidBack: money(r.loss.reimbursedCents),
+          loss: money(r.loss.lossCents),
+          tenPercentOfIncome: money(r.loss.incomeFloorCents),
+          deductible: money(r.loss.deductibleCents),
+          insuranceClaim: r.claim ? { carrier: r.claim.carrier } : null,
+          recordedWithClaim: r.recorded !== null,
+        })),
+      });
+    }
+    case "tax_health": {
+      const v = await loadHealthTaxes(userId, { client, now });
+      const c = v.marketplace.check;
+      return out({
+        projectedIncome: money(v.pace.projectedCents),
+        incomeEarlyInTheYear: money(v.pace.enrollmentCents),
+        marketplace:
+          v.marketplace.payments === 0
+            ? null
+            : {
+                premiumsPaidThisYear: money(v.marketplace.paidCents),
+                householdSize: v.householdSize,
+                shareOfPovertyLine: c ? `${Math.round(c.fplShare * 100)}%` : null,
+                overThe400PercentLine: c?.overCliff ?? false,
+                creditAllowed: c ? money(c.allowedCents) : null,
+                advanceCredit: money(v.marketplace.advanceYearCents),
+                advanceCreditToldByPerson: v.marketplace.told,
+                wouldBeRepaid: c ? money(c.repayCents) : money(0),
+                repaymentCap: c?.capCents == null ? null : money(c.capCents),
+              },
+        hsa: {
+          deposited: money(v.hsa.contributedCents),
+          byDecemberAtThisPace: money(v.hsa.projectedCents),
+          cover: v.hsa.family ? "family" : "self-only",
+          limit: money(v.hsa.limitCents),
+          over: money(Math.max(v.hsa.excessCents, v.hsa.projectedExcessCents)),
+          penaltyEachYear: money(v.hsa.exciseCents),
+        },
+        medical: {
+          paidThisYear: money(v.medical.spentCents),
+          floor: money(v.medical.floorCents),
+          overTheFloor: money(v.medical.deductibleCents),
+          standardDeduction: money(v.medical.standardCents),
+          itemizingBeatsStandard: v.medical.itemizing,
+          itemizingSaves: money(v.medical.savesCents),
+        },
+      });
+    }
+    case "tax_inherited": {
+      const v = await loadInheritance(userId, { client, now });
+      return out({
+        inheritedIras: v.inherited.map((i) => ({
+          account: i.name,
+          balance: money(i.balanceCents),
+          fromSpouse: i.fromSpouse,
+          mustBeEmptyByEndOf: i.emptyBy,
+          diedYearKnown: i.diedYear !== null,
+          evenlyPerYear: i.spread && v.advice ? money(i.spread.perYearCents) : null,
+          evenlySavesTax: i.spread && v.advice ? money(Math.max(0, i.spread.savesCents)) : null,
+        })),
+        giftsOverTheExclusion: v.gifts.map((g) => ({
+          to: g.recipient,
+          total: money(g.cents),
+          over: money(g.overCents),
+          splittingCoversIt: g.splitCovers,
+        })),
+        annualExclusionPerPerson: money(v.exclusionCents),
+        stepUpInBasis:
+          "Inherited property's cost basis becomes its value on the day the owner died, so selling soon after has little or no gain to tax.",
+        estateFacts: v.estate,
+      });
+    }
+    case "tax_decide": {
+      const topic = DECISION_TOPICS.find((t) => t === args.topic);
+      if (!topic) return out({ error: `topic must be one of ${DECISION_TOPICS.join(", ")}` });
+      const d = await decideTax(userId, topic, { client, now });
+      for (const c of d.figures) cents.push(Math.abs(c));
+      return out({
+        topic: d.topic,
+        answer: d.text,
+        isRecommendation: d.advice,
+        figuresInCents: d.figures,
+      });
+    }
     case "tax_years": {
       const v = await loadMultiYear(userId, { client, now });
       return out({
@@ -802,45 +969,76 @@ export async function runTaxTool(
     }
     case "tax_equity": {
       const v = await loadEquityTax(userId, { client, now });
+      const cryptoUsed = v.cryptoYear.proceedsCents !== 0 || v.income.crypto.holdings.length > 0;
+      // Leave out what is empty (no crypto, no events), so the answer is about what they have,
+      // and give the RSU gap as a finished statement so no sum is left for Claude to do.
+      const gap = v.rsuGap;
       return out({
         year: v.year,
-        crypto: {
-          sold: {
-            proceeds: money(v.cryptoYear.proceedsCents),
-            cost: money(v.cryptoYear.costCents),
-            shortTermGain: money(Math.abs(v.cryptoYear.shortTermCents)),
-            shortTermIsLoss: v.cryptoYear.shortTermCents < 0,
-            longTermGain: money(Math.abs(v.cryptoYear.longTermCents)),
-            longTermIsLoss: v.cryptoYear.longTermCents < 0,
-          },
-          held: v.income.crypto.holdings.map((h) => ({
-            asset: h.asset,
-            where: h.connection,
-            value: money(h.valueCents),
-            basis: money(h.basisCents),
-            unrealisedGain: money(Math.abs(h.gainCents)),
-            isLoss: h.gainCents < 0,
-          })),
-          form1099DA: v.forms1099DA,
+        ...(gap
+          ? {
+              rsuAnswer: `${
+                gap.assumed
+                  ? `No vests are on file for ${v.year}, so this assumes a share of your ${money(gap.stockCents)} stock plan vests. `
+                  : ""
+              }Employers usually withhold a flat rate at vest; at your ${Math.round(gap.marginalRate * 100)}% bracket the withholding falls ${money(gap.shortfallCents)} short on ${money(gap.vestedCents)} of vests.`,
+            }
+          : {}),
+        ...(cryptoUsed
+          ? {
+              crypto: {
+                sold: {
+                  proceeds: money(v.cryptoYear.proceedsCents),
+                  cost: money(v.cryptoYear.costCents),
+                  shortTermGain: money(Math.abs(v.cryptoYear.shortTermCents)),
+                  shortTermIsLoss: v.cryptoYear.shortTermCents < 0,
+                  longTermGain: money(Math.abs(v.cryptoYear.longTermCents)),
+                  longTermIsLoss: v.cryptoYear.longTermCents < 0,
+                },
+                held: v.income.crypto.holdings.map((h) => ({
+                  asset: h.asset,
+                  where: h.connection,
+                  value: money(h.valueCents),
+                  basis: money(h.basisCents),
+                  unrealisedGain: money(Math.abs(h.gainCents)),
+                  isLoss: h.gainCents < 0,
+                })),
+                form1099DA: v.forms1099DA,
+              },
+            }
+          : {}),
+        ...(v.income.events.length > 0
+          ? {
+              equityEvents: v.income.events.map((e) => ({
+                kind: e.event.kind,
+                company: e.event.company,
+                shares: e.event.shares,
+                on: e.event.occurredOn,
+                espp: e.espp && {
+                  qualifying: e.espp.qualifying,
+                  ordinaryIncome: money(e.espp.ordinaryCents),
+                },
+                isoAmtPreference: e.iso ? money(e.iso.preferenceCents) : null,
+              })),
+            }
+          : {}),
+        ...(v.rsu.length > 0
+          ? {
+              rsu: v.rsu.map((r) => ({
+                company: r.company,
+                income: money(r.incomeCents),
+                withheld: money(r.withheldCents),
+                shortfall: money(r.shortfallCents),
+              })),
+            }
+          : {}),
+        rsuWithholdingGap: gap && {
+          vested: money(gap.vestedCents),
+          shortfall: money(gap.shortfallCents),
+          bracket: `${Math.round(gap.marginalRate * 100)}%`,
+          assumed: gap.assumed,
         },
-        equityEvents: v.income.events.map((e) => ({
-          kind: e.event.kind,
-          company: e.event.company,
-          shares: e.event.shares,
-          on: e.event.occurredOn,
-          espp: e.espp && {
-            qualifying: e.espp.qualifying,
-            ordinaryIncome: money(e.espp.ordinaryCents),
-          },
-          isoAmtPreference: e.iso ? money(e.iso.preferenceCents) : null,
-        })),
-        rsu: v.rsu.map((r) => ({
-          company: r.company,
-          income: money(r.incomeCents),
-          withheld: money(r.withheldCents),
-          shortfall: money(r.shortfallCents),
-        })),
-        alternativeMinimumTax: money(v.amtCents),
+        ...(v.amtCents > 0 ? { alternativeMinimumTax: money(v.amtCents) } : {}),
         setAside: v.advice
           ? {
               amount: money(v.setAside.cents),

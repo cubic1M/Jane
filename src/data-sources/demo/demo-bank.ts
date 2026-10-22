@@ -96,9 +96,9 @@ const MONTHLY: (Template & { days: number[] })[] = [
     name: "ROCKET MORTGAGE PAYMENT",
     merchant: "Rocket Mortgage",
     category: "LOAN_PAYMENTS_MORTGAGE_PAYMENT",
-    // Spec step 115: the escrow went up (taxes or insurance) 20 days before the demo bank was
-    // linked.
-    amount: (day, anchor) => (day >= addDays(anchor, -20) ? 2198.31 : 2141.54),
+    // Spec step 115: the escrow went up (taxes or insurance) at the last payment before the
+    // demo bank was linked.
+    amount: (day, anchor) => (day >= lastDayOfMonthOn(addDays(anchor, -1), 1) ? 2198.31 : 2141.54),
     days: [1],
   },
   {
@@ -255,14 +255,14 @@ const MONTHLY: (Template & { days: number[] })[] = [
     amount: [5, 8],
     days: [6, 13, 19, 27],
   },
-  // The price went up 20 days before the demo bank was linked.
+  // The price went up at the last charge before the demo bank was linked.
   {
     key: "netflix",
     account: "card",
     name: "NETFLIX.COM",
     merchant: "Netflix",
     category: "ENTERTAINMENT_TV_AND_MOVIES",
-    amount: (day, anchor) => (day >= addDays(anchor, -20) ? 17.99 : 15.49),
+    amount: (day, anchor) => (day >= lastDayOfMonthOn(addDays(anchor, -1), 14) ? 17.99 : 15.49),
     days: [14],
   },
   {
@@ -358,6 +358,73 @@ const ONE_OFF: (Template & { offsets: number[] })[] = [
     category: "BANK_FEES_OVERDRAFT_FEES",
     amount: 34,
     offsets: [-230, -110, -5],
+  },
+  // Spec step 247: costly short-term borrowing, so each kind can be found: two small payday
+  // loans ($100 in, $115 back two weeks later), a card cash advance and its fee, and a pay
+  // advance app's advances with a tip each. Kept small: the demo person's year plan (step 203)
+  // still has a margin to save from.
+  {
+    key: "payday-proceeds",
+    account: "checking",
+    name: "ADVANCE AMERICA LOAN PROCEEDS",
+    merchant: null,
+    category: "LOAN_DISBURSEMENTS_CASH_ADVANCES",
+    amount: -100,
+    offsets: [-92, -41],
+  },
+  {
+    key: "payday-payment",
+    account: "checking",
+    name: "ADVANCE AMERICA LOAN PAYMENT",
+    merchant: null,
+    category: "LOAN_PAYMENTS_CASH_ADVANCES",
+    amount: 115,
+    offsets: [-78, -27],
+  },
+  {
+    key: "cash-advance",
+    account: "card",
+    name: "CASH ADVANCE",
+    merchant: null,
+    category: "TRANSFER_OUT_WITHDRAWAL",
+    amount: 200,
+    offsets: [-33],
+  },
+  {
+    key: "cash-advance-fee",
+    account: "card",
+    name: "CASH ADVANCE FEE",
+    merchant: null,
+    category: "BANK_FEES_CASH_ADVANCE",
+    amount: 10,
+    offsets: [-33],
+  },
+  {
+    key: "ewa-advance",
+    account: "checking",
+    name: "EARNIN ADVANCE",
+    merchant: null,
+    category: "LOAN_DISBURSEMENTS_EWA",
+    amount: -50,
+    offsets: [-50, -9],
+  },
+  {
+    key: "ewa-repayment",
+    account: "checking",
+    name: "EARNIN REPAYMENT",
+    merchant: null,
+    category: "LOAN_PAYMENTS_EWA",
+    amount: 50,
+    offsets: [-43, -2],
+  },
+  {
+    key: "ewa-tip",
+    account: "checking",
+    name: "EARNIN TIP",
+    merchant: null,
+    category: "BANK_FEES_OTHER_BANK_FEES",
+    amount: 3,
+    offsets: [-43, -2],
   },
   {
     key: "late-fee",

@@ -67,9 +67,16 @@ describe("debt questions", () => {
       kind: "refinance",
       target: "student loan",
     });
-    expect(intent("should I consolidate my credit card")).toEqual({
-      kind: "refinance",
-      target: "credit card",
+    // A "should I consolidate" is a loans decision, answered straight (src/lib/jane-agent/
+    // debt-decide.ts); said another way it is the same decision.
+    expect(intent("should I consolidate my credit card debt")).toMatchObject({
+      kind: "decision",
+      item: "loan",
+    });
+    // "Is X a good idea" is a decision question; the loans decision answers it the same way.
+    expect(intent("is a debt consolidation loan a good idea")).toMatchObject({
+      kind: "decision",
+      item: "loan",
     });
     for (const text of ["refinance offers", "any better rates", "refinance"]) {
       expect(intent(text), text).toEqual({ kind: "refinance", target: null });
@@ -160,7 +167,10 @@ describe("debt questions", () => {
       kind: "bnpl_new",
       totalCents: 30_000,
     });
-    expect(intent("should I start an affirm plan")).toEqual({ kind: "bnpl_new", totalCents: null });
+    expect(intent("should I start an affirm plan")).toMatchObject({
+      kind: "decision",
+      item: "loan",
+    });
   });
 
   it("reads buying a car: what's affordable, preapprovals, and a dealer's offer", () => {
@@ -430,6 +440,23 @@ describe("debt questions", () => {
     expect(intent("what do you do about my debts")).toEqual({ kind: "debt_autopilot" });
   });
 
+  it("reads the overdraft and buy now, pay later decisions, and leaves fee questions alone", () => {
+    for (const text of [
+      "will I overdraft this month?",
+      "am I going to go negative before payday",
+    ]) {
+      expect(intent(text), text).toEqual({ kind: "debt_decision", which: "overdraft" });
+    }
+    expect(intent("is klarna a good idea")).toMatchObject({ kind: "decision", item: "loan" });
+    for (const text of ["should I use buy now pay later?", "should I get Afterpay"]) {
+      expect(intent(text), text).toMatchObject({ kind: "decision", item: "loan" });
+    }
+    expect(intent("why are there overdraft fees on my account")).not.toEqual({
+      kind: "debt_decision",
+      which: "overdraft",
+    });
+  });
+
   it("reads add-ons on a car loan (spec step 245)", () => {
     for (const text of [
       "can I cancel the extended warranty on my car loan",
@@ -439,6 +466,45 @@ describe("debt questions", () => {
     ]) {
       expect(intent(text), text).toEqual({ kind: "car_loan" });
     }
+  });
+
+  it("reads recasting and extra money for the mortgage (spec step 246)", () => {
+    expect(intent("I have $20,000, should I recast my mortgage")).toEqual({
+      kind: "mortgage_money",
+      lumpCents: 2_000_000,
+      extraMonthlyCents: null,
+    });
+    expect(intent("should I put $500 a month toward my mortgage or invest it instead")).toEqual({
+      kind: "mortgage_money",
+      lumpCents: null,
+      extraMonthlyCents: 50_000,
+    });
+    expect(intent("recast vs refinance")).toEqual({
+      kind: "mortgage_money",
+      lumpCents: null,
+      extraMonthlyCents: null,
+    });
+    // The plain mortgage questions stay with step 115.
+    expect(intent("can I get rid of PMI")).toEqual({ kind: "mortgage" });
+    expect(intent("when will my mortgage be paid off")).toEqual({
+      kind: "debt_detail",
+      target: "mortgage",
+    });
+  });
+
+  it("reads costly short-term borrowing (spec step 247)", () => {
+    for (const text of [
+      "how much have payday loans cost me",
+      "what is a payday alternative loan",
+      "what do my cash advances cost me",
+      "I keep overdrafting every month",
+      "are pay advance apps like EarnIn worth it",
+      "what's a small-dollar loan",
+    ]) {
+      expect(intent(text), text).toEqual({ kind: "costly_borrowing" });
+    }
+    // An overdraft fee on a statement is a fee question, not this one.
+    expect(intent("what is an overdraft fee")).not.toEqual({ kind: "costly_borrowing" });
   });
 
   it("leaves requests and other questions alone", () => {

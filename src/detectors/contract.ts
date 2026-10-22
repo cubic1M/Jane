@@ -10,6 +10,20 @@ import type { FactKey } from "@/profile/facts";
 // the harness (./harness.ts) runs them on the eight sample people against their written lists.
 // docs/detectors.md has the contract and two worked examples.
 
+export const HEADLINE_MAX = 60;
+// About eight words: the card is read in a glance.
+export const HEADLINE_MAX_WORDS = 9;
+
+// The headline as the floating card shows it ("Cancel Planet Fitness, save $588/yr"): the
+// yearly figure shortened so the number reads in a glance.
+export function cardHeadline(headline: string): string {
+  return headline
+    .replace(/[.!?]+$/, "")
+    .replace(/\s+a year\b/g, "/yr")
+    .replace(/\bavoid up to\b/, "avoid");
+}
+export const SHORT_MAX = 120;
+
 export type Urgency = "now" | "soon" | "later";
 
 // What a suggestion is worth, in cents a year: "saves" (spend less), "earns" (money
@@ -32,6 +46,12 @@ export type Suggestion = {
   topic: SuggestionTopic | "strategist";
   // One sentence: what Jane suggests.
   title: string;
+  // The suggestion at a glance (docs/detectors.md, "Short forms"): a headline of at most
+  // HEADLINE_MAX characters that starts with a verb and carries the dollars ("Cancel Hulu,
+  // save $216 a year"), and one "why you" line of at most SHORT_MAX characters with the
+  // person's own number. The full title and why stay behind a "Why?" tap.
+  headline: string;
+  short: string;
   worthCents: number;
   worthKind: WorthKind;
   confidence: Confidence;
@@ -45,6 +65,12 @@ export type Suggestion = {
   parts?: string[];
   // What ranking counts it for, in cents: its parts' worth, risk at its reduced weight.
   rankCents?: number;
+  // The worth is already an expected yearly value (loss x chance, as the insurance detectors
+  // report it), so ranking counts it in full rather than discounting it again.
+  worthIsExpected?: boolean;
+  // Cover or action the law or a lender requires (car liability), or no cover at all for a
+  // business: ranked above its dollars alone (REQUIRED_BOOST).
+  required?: boolean;
   more?: { label: string; href: string }[];
 };
 

@@ -12,7 +12,7 @@ import {
 import { DEMO_NETWORK_DIRECTORY } from "@/config/insurance";
 import type { ProfileInput } from "@/profile/build";
 import { type Confidence, type Detector, suggestionId } from "./contract";
-import { evidence } from "./helpers";
+import { evidence, headlineOf } from "./helpers";
 
 // Detectors for the health plan's year (spec step 259): the FSA money that will be lost, a
 // deductible already met before the year resets, and a medical bill above what the plan should
@@ -73,6 +73,8 @@ const fsaDeadline: Detector = {
       capability: "insurance",
       topic: "fsa_deadline",
       title: "Use your FSA money before it expires",
+      headline: headlineOf("Use your FSA money", status.leftCents, "saves", true),
+      short: `About ${formatCents(status.leftCents)} of your FSA is left, lost in ${status.daysLeft} days.`,
       worthCents: status.leftCents,
       worthKind: "saves",
       confidence: capped(
@@ -106,6 +108,8 @@ const deductibleMet: Detector = {
       capability: "insurance",
       topic: "deductible_met",
       title: "Book planned care before the year resets",
+      headline: headlineOf("Get planned care before January", saves, "saves", true),
+      short: `You've met your ${formatCents(plan.deductibleCents)} deductible; your plan pays ${100 - plan.coinsurance}% until Dec 31.`,
       worthCents: saves,
       worthKind: "saves",
       confidence: capped(
@@ -141,6 +145,8 @@ const medicalBillDispute: Detector = {
       capability: "insurance",
       topic: "medical_bill_dispute",
       title: "Ask the team to check this medical bill",
+      headline: headlineOf("Ask us to check a medical bill", top.overCents, "saves", true),
+      short: `${plain(top.bill.provider)} billed ${formatCents(top.paidCents)}; your share looks like ${formatCents(top.shouldPayCents)}.`,
       worthCents: top.overCents,
       worthKind: "saves",
       confidence: capped(

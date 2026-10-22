@@ -1,7 +1,10 @@
 import { DEBT_DETECTOR_RATES as D } from "@/config/detectors-debt";
-import { PROCESSOR_FEE_PAYEE } from "@/config/detection";
+import { IDLE_CASH_MONTHS_OF_SPENDING, PROCESSOR_FEE_PAYEE } from "@/config/detection";
+import { bankFeesYear } from "@/planning/bank-fees";
+import { idleCashOf } from "@/planning/idle-cash";
 import { DETECTOR_RATES as R } from "@/config/detectors";
 import { emergencyTarget } from "@/planning/emergency-fund";
+import { summarize } from "@/planning/costly-borrowing";
 import { formatCents } from "@/lib/money";
 import { type Detector, suggestionId } from "./contract";
 import {
@@ -12,6 +15,7 @@ import {
   outCents,
   tx,
   weakest,
+  headlineOf,
 } from "./helpers";
 
 // Detectors for everyday money (spec step 254): subscriptions, fees, card interest, idle
@@ -32,34 +36,56 @@ const subscriptions: Detector = {
   topic: "subscriptions",
   needs: [],
   detect({ profile, data }) {
-    const charges = tx(
-      data,
-      (t) =>
-        t.amountCents > 0 &&
-        t.amountCents < R.subscriptionMaxCents &&
-        SUBSCRIPTION_CATEGORIES.has(t.pfc ?? ""),
-    );
-    const byName = new Map<string, number[]>();
-    for (const t of charges)
-      byName.set(t.description, [...(byName.get(t.description) ?? []), t.amountCents]);
-    // A subscription is the same charge in at least three different months.
-    const regular = [...byName.values()].filter((list) => list.length >= R.subscriptionMinCharges);
-    if (regular.length < R.subscriptionsMin) return null;
-    const yearly = regular.reduce(
-      (s, list) => s + (list.reduce((a, b) => a + b, 0) / list.length) * 12,
-      0,
-    );
-    const count = regular.reduce((s, list) => s + list.length, 0);
+    // The person's subscriptions as the subscriptions page and the chat count them, when the
+    // loader gave them; the sample people's are found from the charges here.
+    const given = data.extras?.subscriptions;
+    let yearly: number;
+    let count: number;
+    let n: number;
+    if (given !== undefined) {
+      if (given === null || given.count < R.subscriptionsMin) return null;
+      yearly = given.yearlyCents;
+      count = given.count;
+      n = given.count;
+    } else {
+      const charges = tx(
+        data,
+        (t) =>
+          t.amountCents > 0 &&
+          t.amountCents < R.subscriptionMaxCents &&
+          SUBSCRIPTION_CATEGORIES.has(t.pfc ?? ""),
+      );
+      const byName = new Map<string, number[]>();
+      for (const t of charges)
+        byName.set(t.description, [...(byName.get(t.description) ?? []), t.amountCents]);
+      // A subscription is the same charge in at least three different months.
+      const regular = [...byName.values()].filter(
+        (list) => list.length >= R.subscriptionMinCharges,
+      );
+      if (regular.length < R.subscriptionsMin) return null;
+      yearly = regular.reduce(
+        (s, list) => s + (list.reduce((a, b) => a + b, 0) / list.length) * 12,
+        0,
+      );
+      count = regular.length;
+      n = regular.reduce((s, list) => s + list.length, 0);
+    }
     return {
       id: suggestionId("subscriptions", "subscriptions"),
       capability: "subscriptions",
       topic: "subscriptions",
       title: "Go through your subscriptions and cancel the ones you don't use",
+      headline: headlineOf(
+        "Cancel subscriptions you don't use",
+        Math.round(yearly * R.subscriptionTrimShare),
+        "saves",
+      ),
+      short: `You pay about ${formatCents(Math.round(yearly))} a year across ${count} subscriptions.`,
       worthCents: Math.round(yearly * R.subscriptionTrimShare),
       worthKind: "saves",
-      confidence: evidence("seen", profile.months, count, "subscription charges"),
+      confidence: evidence("seen", profile.months, n, "subscription charges"),
       urgency: "later",
-      why: `You pay about ${formatCents(Math.round(yearly))} a year across ${regular.length} subscriptions; people who look at the list usually drop about a quarter.`,
+      why: `You pay about ${formatCents(Math.round(yearly))} a year across ${count} subscriptions; people who look at the list usually drop about a quarter.`,
       action: { label: "Review subscriptions", href: "/subscriptions" },
     };
   },
@@ -71,26 +97,27 @@ const bankFees: Detector = {
   topic: "bank_fees",
   needs: [],
   detect({ profile, data }) {
-    const fees = tx(
-      data,
-      (t) =>
-        (t.pfc === "BANK_FEES_OVERDRAFT_FEES" ||
-          t.pfc === "BANK_FEES_INSUFFICIENT_FUNDS" ||
-          t.pfc === "BANK_FEES_ATM_FEES") &&
-        !PROCESSOR_FEE_PAYEE.test(t.description),
-    );
-    if (fees.length < R.feesMin) return null;
-    const total = outCents(fees);
+    // A year of fees, the one definition (src/planning/bank-fees.ts) the chat's answer uses too.
+    const fees = bankFeesYear(data.transactions, profile.months);
+    if (!fees || fees.count < R.feesMin) return null;
+    const total = fees.yearCents;
+    const span = fees.estimated
+      ? `${fees.count} bank fees in ${fees.monthsOfData} months, about ${formatCents(total)} over a year (an estimate)`
+      : `${formatCents(total)} in ${fees.count} bank fees in the last 12 months`;
     return {
       id: suggestionId("cost", "bank_fees"),
       capability: "cost",
       topic: "bank_fees",
       title: "Stop paying overdraft and bank fees",
+      headline: headlineOf("Stop paying overdraft and bank fees", total, "saves"),
+      short: fees.estimated
+        ? `You paid ${formatCents(fees.seenCents)} in ${fees.count} bank fees in ${fees.monthsOfData} months.`
+        : `You paid ${formatCents(total)} in ${fees.count} bank fees in a year.`,
       worthCents: total,
       worthKind: "saves",
-      confidence: evidence("seen", profile.months, fees.length, "bank fees"),
+      confidence: evidence("seen", profile.months, fees.count, "bank fees"),
       urgency: "soon",
-      why: `You paid ${formatCents(total)} in ${fees.length} bank fees in ${profile.months} months. A buffer in checking or a no-fee account avoids them.`,
+      why: `You paid ${span}. A buffer in checking or a no-fee account avoids them.`,
       action: { label: "See the fees", href: "/insights" },
     };
   },
@@ -110,6 +137,8 @@ const lateFees: Detector = {
       capability: "cost",
       topic: "late_fees",
       title: "Set up automatic minimum payments so nothing is late",
+      headline: headlineOf("Pay at least the minimum automatically", total, "saves"),
+      short: `You paid ${formatCents(total)} in ${fees.length} late fees.`,
       worthCents: total,
       worthKind: "saves",
       confidence: evidence("seen", profile.months, fees.length, "late fees"),
@@ -127,13 +156,21 @@ const cardInterest: Detector = {
   needs: [],
   detect({ profile, data }) {
     const charges = tx(data, (t) => t.pfc === "BANK_FEES_INTEREST_CHARGE");
-    const total = outCents(charges);
+    // A year of interest from the cards' balances and rates when known (the loans page and the
+    // chat's figure); otherwise the interest charges seen, over the months of data.
+    const yearly = data.extras?.cardInterestYearCents;
+    const total = typeof yearly === "number" ? yearly : outCents(charges);
     if (total < R.interestMinCents) return null;
     return {
       id: suggestionId("debt", "card_interest"),
       capability: "debt",
       topic: "card_interest",
       title: "Pay down the card that is charging you interest",
+      headline: headlineOf("Pay down the card charging interest", total, "saves"),
+      short:
+        typeof yearly === "number"
+          ? `Your cards cost you about ${formatCents(total)} a year in interest.`
+          : `You paid ${formatCents(total)} in card interest over ${profile.months} months.`,
       worthCents: total,
       worthKind: "saves",
       confidence: evidence("seen", profile.months, charges.length, "interest charges"),
@@ -141,7 +178,11 @@ const cardInterest: Detector = {
       ...(profile.facts.debt_trouble.value === true
         ? { rankCents: Math.round(total * D.troubleDiscount) }
         : {}),
-      why: `You paid ${formatCents(total)} in card interest over ${profile.months} months; ${
+      why: `${
+        typeof yearly === "number"
+          ? `At your balances and rates your cards cost about ${formatCents(total)} a year in interest`
+          : `You paid ${formatCents(total)} in card interest over ${profile.months} months`
+      }; ${
         profile.facts.debt_trouble.value === true
           ? "a payoff plan that starts with the highest rate stops it, a card at a time"
           : "paying the balance off ends it"
@@ -157,20 +198,25 @@ const idleCash: Detector = {
   topic: "idle_cash",
   needs: [],
   detect({ profile, data }) {
-    const spend = monthlySpendCents(data, profile.months);
-    const excess = liquidCents(data) - spend * R.idleMonthsKept;
-    if (spend === 0 || excess < R.idleMinExcessCents) return null;
-    const accounts = data.accounts.filter((a) => a.type === "depository").length;
+    // The one definition (src/planning/idle-cash.ts), the same as the Today card and the chat.
+    const idle = idleCashOf({
+      asOf: data.today,
+      accounts: data.accounts,
+      transactions: data.transactions,
+    });
+    if (!idle) return null;
     return {
       id: suggestionId("investing", "idle_cash"),
       capability: "investing",
       topic: "idle_cash",
       title: "Put the cash you don't need to work",
-      worthCents: Math.round((excess * (R.highYieldBps - R.currentCashBps)) / 10_000),
+      headline: headlineOf("Move idle cash to a higher rate", idle.earnsCents, "earns"),
+      short: `You keep ${formatCents(idle.balanceCents)} in cash; about ${formatCents(idle.excessCents)} is more than you need.`,
+      worthCents: idle.earnsCents,
       worthKind: "earns",
-      confidence: evidence("seen", profile.months, accounts, "cash accounts"),
+      confidence: evidence("seen", profile.months, idle.accountIds.length, "cash accounts"),
       urgency: "later",
-      why: `You keep ${formatCents(liquidCents(data))} in cash and spend about ${formatCents(spend)} a month, so about ${formatCents(excess)} is more than ${R.idleMonthsKept} months of spending.`,
+      why: `You keep ${formatCents(idle.balanceCents)} in cash and spend about ${formatCents(idle.monthlyCents)} a month, so about ${formatCents(idle.excessCents)} is more than ${IDLE_CASH_MONTHS_OF_SPENDING} months of spending.`,
       action: { label: "See where it could work", href: "/investments" },
     };
   },
@@ -208,6 +254,16 @@ const emergencyFund: Detector = {
         : gap
           ? "Keep cash for the gap between your income and your spending"
           : "Build a cushion for emergencies",
+      headline: headlineOf(
+        starter
+          ? "Set a small buffer aside first"
+          : gap
+            ? "Keep cash for your income gap"
+            : "Build an emergency cushion",
+        short,
+        "risk",
+      ),
+      short: `You keep ${formatCents(liquidCents(data))} in cash; a cushion for you is ${formatCents(target.targetCents)}.`,
       worthCents: short,
       worthKind: "risk",
       confidence: weakest([
@@ -228,27 +284,49 @@ const emergencyFund: Detector = {
 };
 
 const highCostLoans: Detector = {
-  covers: ["debt_trouble"],
+  covers: ["debt_trouble", "costly_borrowing"],
   capability: "debt",
   topic: "high_cost_loans",
   needs: [],
   detect({ profile, data }) {
-    const payments = tx(
-      data,
-      (t) => t.pfc === "LOAN_PAYMENTS_CASH_ADVANCES" || t.pfc === "LOAN_PAYMENTS_EWA",
+    // The same planner as the costly borrowing page (spec step 247), so the figures agree:
+    // payday loans and pay advance apps only (cash advances and overdrafts have their own).
+    const cards = new Set(data.accounts.filter((a) => a.type === "credit").map((a) => a.id));
+    const costly = summarize(
+      data.transactions.map((t, i) => ({
+        id: String(i),
+        date: t.date,
+        amountCents: t.amountCents,
+        description: t.description,
+        pfcDetailed: t.pfc,
+        card: cards.has(t.accountId),
+      })),
+      data.today,
     );
-    if (payments.length === 0) return null;
-    const repaid = outCents(payments);
+    const kinds = costly.kinds.filter((k) => k.kind === "payday" || k.kind === "pay_app");
+    const cost = kinds.reduce((s, k) => s + k.costCents, 0);
+    const count = kinds.reduce((s, k) => s + k.count, 0);
+    if (count === 0 || cost <= 0) return null;
+    const payday = kinds.some((k) => k.kind === "payday");
+    const what = payday ? "payday loans" : "pay advances";
     return {
       id: suggestionId("debt", "high_cost_loans"),
       capability: "debt",
       topic: "high_cost_loans",
-      title: "Replace the payday loan with something cheaper",
-      worthCents: Math.round(repaid * R.paydayFeeShare),
+      title: payday
+        ? "Replace the payday loan with something cheaper"
+        : "Replace the pay advance app with something cheaper",
+      headline: headlineOf(
+        payday ? "Replace your payday loan" : "Replace your pay advances",
+        cost,
+        "saves",
+      ),
+      short: `Your ${what} cost about ${formatCents(cost)} in fees in ${profile.months} months.`,
+      worthCents: cost,
       worthKind: "saves",
-      confidence: evidence("seen", profile.months, payments.length, "cash-advance repayments"),
+      confidence: evidence("seen", profile.months, count, what),
       urgency: "now",
-      why: `You repaid ${formatCents(repaid)} in cash-advance loans in ${profile.months} months; their fees are typically about a quarter of that.`,
+      why: `Your ${what} cost about ${formatCents(cost)} in fees in ${profile.months} months${costly.cycle ? ", taken again and again" : ""}. A credit union small loan or a pay advance from work costs far less.`,
       action: { label: "See cheaper options", href: "/loans/costly" },
     };
   },
@@ -268,6 +346,8 @@ const debtPlan: Detector = {
       capability: "debt",
       topic: "debt_plan",
       title: "Make a plan to pay your debts off, biggest interest first",
+      headline: headlineOf("Pay off debt, highest interest first", interest, "saves"),
+      short: `Your cards hold ${formatCents(profile.facts.card_debt_cents.value as number)} and cost you ${formatCents(interest)} a year.`,
       worthCents: interest,
       worthKind: "saves",
       confidence: factEvidence(trouble),
@@ -293,6 +373,8 @@ const hardshipPlan: Detector = {
       capability: "debt",
       topic: "hardship_plan",
       title: "Ask your lenders for a hardship plan",
+      headline: headlineOf("Ask lenders for a hardship plan", costs, "risk"),
+      short: `Fees and interest cost you ${formatCents(costs)} in ${profile.months} months.`,
       worthCents: costs,
       worthKind: "risk",
       confidence: factEvidence(trouble),

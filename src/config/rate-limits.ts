@@ -26,8 +26,6 @@ export const RATE_LIMITS = {
   push: { limit: 20, windowSeconds: 10 * 60 },
   // Calendar apps fetching the money calendar feed, per IP.
   calendar: { limit: 120, windowSeconds: 60 * 60 },
-  // Ask Jane questions, per user.
-  ask: { limit: 30, windowSeconds: 60 * 60 },
   // Two-factor codes (authenticator or backup), per user.
   mfa: { limit: 5, windowSeconds: 10 * 60 },
   // Uploading documents (each may be read by Claude), per user.
@@ -35,11 +33,14 @@ export const RATE_LIMITS = {
   // Tax-time pack CSV downloads, per user (spec step 72).
   taxPack: { limit: 30, windowSeconds: 60 * 60 },
   auditPack: { limit: 30, windowSeconds: 60 * 60 },
-  // Messages typed to Jane in the chat, per user (spec step 84). Free questions that go
-  // to Claude also count against "ask".
+  // Messages typed to Jane in the chat, per user (spec step 84).
   chat: { limit: 60, windowSeconds: 60 * 60 },
   // Trying Jane with sample data, per IP (spec step 138): each makes a sample person.
-  trial: { limit: 5, windowSeconds: 60 * 60 },
+  // 20, not 5: offices, schools and households share one IP, and people try several of the
+  // eight sample lives (step 252).
+  trial: { limit: 20, windowSeconds: 60 * 60 },
+  // Questions Claude answers for one sample (Try Jane) person, in all: one very long window.
+  claudeTrial: { limit: 25, windowSeconds: 60 * 60 * 24 * 365 * 10 },
 } satisfies Record<string, Limit>;
 
 export type LimitName = keyof typeof RATE_LIMITS;
@@ -47,3 +48,7 @@ export type LimitName = keyof typeof RATE_LIMITS;
 // Old counter rows are deleted once they're this old (the retention list's period, so the
 // privacy policy and both cleanups agree).
 export const RATE_LIMIT_RETENTION_HOURS = RETENTION_PERIODS.rateLimits.days * 24;
+
+// Counters that outlive the day the cleanup keeps ("claudeTrial:" is a sample person's whole
+// allowance, "chatmonth:" is the month's Claude spend): never deleted as old windows.
+export const KEEP_RATE_LIMIT_PREFIXES = ["claudeTrial:", "chatmonth:"] as const;

@@ -22,6 +22,16 @@ import { loadAccountantPage } from "@/lib/accountant";
 import { accountantReply } from "./accountant-message";
 import { loadTaxCalendar } from "@/lib/tax-calendar";
 import { calendarReply } from "./tax-calendar-message";
+import { loadBusinessStructure } from "@/lib/business-structure";
+import { businessReply } from "./business-message";
+import { loadInheritance } from "@/lib/inheritance";
+import { inheritanceReply } from "./inheritance-message";
+import { loadHealthTaxes } from "@/lib/health-taxes";
+import { healthReply } from "./health-tax-message";
+import { loadDisasterRelief } from "@/lib/disasters";
+import { disasterReply } from "./disaster-message";
+import { correctFact } from "@/lib/profile";
+import { decideTax } from "@/lib/tax-decisions";
 import { equityReply } from "./equity-tax-message";
 import { loadIdentity } from "@/lib/tax-identity";
 import { identityReply } from "./tax-identity-message";
@@ -115,6 +125,14 @@ export async function answerTaxIntent(
   const { client, now } = options;
   const year = defaultTaxYear(now.toISOString().slice(0, 10));
   switch (intent.ask) {
+    case "decide": {
+      const d = await decideTax(userId, intent.topic, { client, now });
+      return {
+        body: d.text,
+        refs: d.advice ? { advice: true } : {},
+        actions: [{ id: "open", label: "See the numbers", kind: "link", href: d.href }],
+      };
+    }
     case "profile": {
       const { view, autopilot } = await loadWorkingProfile(userId, { client, now });
       return taxProfileReply(view, autopilot);
@@ -132,6 +150,21 @@ export async function answerTaxIntent(
         ? moveReply(intent, view.state.value, now)
         : workStateReply(intent.state, view.state.value);
     }
+    case "disaster":
+      return disasterReply(await loadDisasterRelief(userId, { client, now }));
+    case "set_county": {
+      const name = intent.county.replace(/\b\w/g, (c) => c.toUpperCase());
+      await correctFact(userId, "county", name, { client, now });
+      const v = await loadDisasterRelief(userId, { client, now });
+      const reply = disasterReply(v);
+      return { ...reply, body: `Got it: ${name} County.\n${reply.body}` };
+    }
+    case "health":
+      return healthReply(await loadHealthTaxes(userId, { client, now }));
+    case "inherited":
+      return inheritanceReply(await loadInheritance(userId, { client, now }));
+    case "business":
+      return businessReply(await loadBusinessStructure(userId, { client, now }));
     case "calendar":
       return calendarReply(await loadTaxCalendar(userId, { client, now }));
     case "accountant":

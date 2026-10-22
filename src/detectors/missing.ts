@@ -5,4 +5,4 @@
 // but still listed here, and for a tool that is not covered, not exempt and not listed. A new
 // tool is never added to this list: it arrives with its detector or an exemption.
 
-export const MISSING_DETECTOR: readonly string[] = ["life_events"];
+export const MISSING_DETECTOR: readonly string[] = [];

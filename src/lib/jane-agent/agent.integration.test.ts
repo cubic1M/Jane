@@ -102,7 +102,7 @@ describe.runIf(url)("Jane's chat against a real database", () => {
       expect(plan?.body).toMatch(/^Your plan for this week is ready: \d+ things, worth up to/);
       expect(buttonIds(plan!)).toEqual(["plan.approve_safe", "open"]);
       const findings = messages.filter((m) => m.dedupeKey.startsWith("findings:"));
-      expect(findings.length).toBeGreaterThanOrEqual(2);
+      expect(findings.length).toBeGreaterThanOrEqual(1);
       for (const f of findings) {
         expect(buttonIds(f)).toEqual(expect.arrayContaining(["finding.yes", "finding.no", "open"]));
         expect(f.snoozedUntil).toEqual(BUNDLED_UNTIL);
@@ -293,7 +293,7 @@ describe.runIf(url)("Jane's chat against a real database", () => {
       // The first-run hello (spec step 140), the day's agenda (spec step 184, with the plan
       // and the finding on it) and the autopilot question (spec step 83).
       expect(chat?.messages.map((m) => m.kind)).toEqual(["brief", "brief", "decision"]);
-      expect(chat?.messages[1].body).toContain("One thing needs your yes:");
+      expect(chat?.messages[1].body).toMatch(/needs your yes:/);
     });
 
     it("refuses a Yes once the finding changed since the message", async () => {

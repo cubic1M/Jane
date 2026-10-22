@@ -170,6 +170,8 @@ export function scopedFor(userId: string, client: PrismaClient = db) {
     accountantLinks: scoped.accountantLink,
     accountantNotes: scoped.accountantNote,
     taxReturns: scoped.taxReturn,
+    // Spec step 270: disaster losses kept with their insurance claims.
+    disasterLosses: scoped.disasterLoss,
     // One-tap answers from Jane's emails (spec step 85).
     chatReplyLinks: scoped.chatReplyLink,
     // "That's expected" on a change (spec step 97).
@@ -196,6 +198,8 @@ export function scopedFor(userId: string, client: PrismaClient = db) {
     whatIfPlans: scoped.whatIfPlan,
     // The lean plan when income stops (spec step 204).
     leanPlans: scoped.leanPlan,
+    // Data that doesn't add up (spec step 238).
+    booksIssues: scoped.booksIssue,
     // What Jane suggests (spec step 255).
     suggestions: scoped.suggestion,
     // The year's money plan (spec step 205).
@@ -227,6 +231,20 @@ export function scopedFor(userId: string, client: PrismaClient = db) {
     familyChildren: scoped.familyChild,
     rentalProperties: scoped.rentalProperty,
     costlyProducts: scoped.costlyProduct,
+    planMenus: scoped.planMenu,
+    billLadders: scoped.billLadder,
+    suddenMoneys: scoped.suddenMoney,
+    valuesPreferences: scoped.valuesPreference,
+    accountBeneficiaries: scoped.accountBeneficiary,
+    familyFiles: scoped.familyFile,
+    planChanges: scoped.planChange,
+    practicePortfolios: scoped.practicePortfolio,
+    practicePositions: scoped.practicePosition,
+    practiceTrades: scoped.practiceTrade,
+    // What the daily scan flagged in a practice portfolio (spec step 292).
+    practiceOpportunities: scoped.practiceOpportunity,
+    // What the person wants from the practice portfolio (Phase AW).
+    practicePreferences: scoped.practicePreferences,
     giftLinks: scoped.giftLink,
     cryptoConnections: scoped.cryptoConnection,
     cryptoHoldings: scoped.cryptoHolding,

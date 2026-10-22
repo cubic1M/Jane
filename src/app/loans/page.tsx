@@ -419,6 +419,20 @@ async function LoansContent({
             .
           </p>
           <p className="text-sm text-zinc-600 dark:text-zinc-400">
+            Payday loans, cash advances or overdrafts?{" "}
+            <Link href="/loans/costly" className={LINK}>
+              See what they cost and the way out
+            </Link>
+            .
+          </p>
+          <p className="text-sm text-zinc-600 dark:text-zinc-400">
+            Extra money for the mortgage?{" "}
+            <Link href="/loans/recast" className={LINK}>
+              Recast, refinance or pay extra
+            </Link>
+            .
+          </p>
+          <p className="text-sm text-zinc-600 dark:text-zinc-400">
             Already have a car loan?{" "}
             <Link href="/loans/auto" className={LINK}>
               Check for a cheaper loan and dealer add-ons to cancel

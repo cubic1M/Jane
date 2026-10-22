@@ -56,7 +56,9 @@ describe("tapButton", () => {
       posted: false,
     });
     const state = await tapButton(previous, form({ messageId: "m1", actionId: "finding.yes" }));
-    expect(takeChatAction).toHaveBeenCalledWith("u1", "m1", "finding.yes");
+    expect(takeChatAction).toHaveBeenCalledWith("u1", "m1", "finding.yes", {
+      defer: expect.any(Function),
+    });
     expect(state.error).toBeNull();
     expect(state.message).toMatchObject({
       id: "m1",
@@ -70,6 +72,38 @@ describe("tapButton", () => {
     for (const callback of afterCallbacks) await callback();
     expect(runAgentNow).toHaveBeenCalledWith(["job1"]);
     expect(runQueuedFor).not.toHaveBeenCalled();
+  });
+
+  it("passes the option picked on a floating pick card with the tap", async () => {
+    vi.mocked(takeChatAction).mockResolvedValue({
+      message: stored,
+      agentJobIds: [],
+      agentActionIds: [],
+      posted: false,
+    });
+    await tapButton(previous, form({ messageId: "m1", actionId: "option.pick", choice: "o2" }));
+    expect(takeChatAction).toHaveBeenLastCalledWith("u1", "m1", "option.pick", {
+      choice: "o2",
+      defer: expect.any(Function),
+    });
+  });
+
+  // The tap returns before the audit row, the funnel event and closing settled messages.
+  it("hands the work the answer doesn't need to after()", async () => {
+    vi.mocked(takeChatAction).mockResolvedValue({
+      message: stored,
+      agentJobIds: [],
+      agentActionIds: [],
+      posted: false,
+    });
+    await tapButton(previous, form({ messageId: "m1", actionId: "finding.yes" }));
+    const { defer } = vi.mocked(takeChatAction).mock.calls[0][3]!;
+    const work = vi.fn(async () => {});
+    afterCallbacks.length = 0;
+    defer!(work);
+    expect(work).not.toHaveBeenCalled();
+    for (const callback of afterCallbacks) await callback();
+    expect(work).toHaveBeenCalledOnce();
   });
 
   // Spec step 83: an autopilot level's first approvals start at once, as in Settings.

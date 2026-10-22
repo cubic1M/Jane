@@ -17,13 +17,22 @@ export const DETECTOR_EXEMPT: Readonly<Record<string, string>> = {
   act: "carries out a button the person tapped",
   autopilot: "settings for what Jane may do alone",
   memory: "what Jane remembers",
-  life_event: "checklists the person opens; suggestions arrive through the detectors",
+  decision: "answers a should-I question the person asks, from their debts, cushion and goals",
+  net_worth: "reports what the person is worth; nothing to suggest",
 };
 
 // Registry tools (src/lib/jane-agent/claude-tools.ts) that look things up or act when asked and
 // never suggest by themselves, and why (spec step 254). Every other tool is covered by a
 // detector (`covers` on src/detectors) or is on the shrinking list in src/detectors/missing.ts.
 export const TOOL_EXEMPT: Readonly<Record<string, string>> = {
+  insurance_decision:
+    "answers an insurance decision the person asks about, from their own numbers; the suggestions come from the insurance detectors",
+  tax_decide:
+    "answers a tax question the person asks, from the same numbers the detectors use; it suggests nothing by itself",
+  debt_decision:
+    "answers a question the person asks (pay a card or invest, consolidate, close a card), built from the same numbers the debt detectors already read; each answer's own detector (card_interest, balance_transfer, student_repayment) brings the idea up unasked",
+  calculate:
+    "a general calculator for the numbers an answer needs (a percent of a balance, months to pay off); not a feature, so there is nothing to suggest",
   insurance_claim_worth:
     "answers a question that comes with an amount the person gives, and adds its line to a claim draft; the claim detector (insurance_claim) covers a repair Jane sees",
   insurance_household:
@@ -49,6 +58,11 @@ export const TOOL_EXEMPT: Readonly<Record<string, string>> = {
   open_findings: "lists findings, which already reach the person as decisions",
   finding_details: "explains a finding the person asks about",
   net_worth: "reports net worth",
+  decision: "answers a should-I question the person asks",
+  balance_forecast:
+    "answers where the balance is heading; the low-balance detector covers a shortfall",
+  alerts: "lists the alerts, which already reach the person as heads-ups",
+  household: "shows the people on the account and what they share; nothing to suggest",
   recent_changes: "reports changes, which already reach the person as heads-ups",
   proven_savings: "reports what Jane saved",
   autopilot_settings: "settings for what Jane may do alone",
@@ -73,6 +87,8 @@ export const TOOL_EXEMPT: Readonly<Record<string, string>> = {
   goal_buckets: "shows which investments belong to which goal the person set",
   family_investing: "shows custodial and family accounts the person set up",
   property: "reports a rental property's numbers the person entered",
+  honest_performance:
+    "reports 1, 3 and 5 year returns after fees and taxes (step 233); a report, never a promise",
   yearly_review: "rolls up what the other investing detectors found, once a year",
   steady_hand: "a calm message after a market drop; it follows an event, not a profile",
   crypto: "reports linked crypto read-only; nothing to suggest",
@@ -85,4 +101,8 @@ export const TOOL_EXEMPT: Readonly<Record<string, string>> = {
     "works out a home the person asks about; nothing in their data says they're buying",
   loan_applications:
     "tracks an application the person started; the refinance and transfer detectors suggest them",
+  market_news:
+    "reads the practice portfolio's stored news summaries and filings when asked; the daily scan (spec step 292) brings news-driven ideas up by itself",
+  backtest_by_level:
+    "replays a risk level over past prices when the person asks how it would have done; the practice-portfolio detector (step 296) brings investing up unasked",
 };

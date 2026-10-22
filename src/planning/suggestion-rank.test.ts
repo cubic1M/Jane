@@ -8,16 +8,20 @@ import type { Suggestion } from "@/detectors/contract";
 import { reportFor } from "@/detectors/harness";
 import {
   historyFactor,
+  mergeOverlaps,
   pickForToday,
   rankSuggestions,
   scoreOf,
   workedFactor,
+  worthOnce,
 } from "./suggestion-rank";
 
 const make = (over: Partial<Suggestion> & { topic: Suggestion["topic"] }): Suggestion => ({
   id: `x:${over.topic}`,
   capability: "x",
   title: "t",
+  headline: "t",
+  short: "t",
   worthCents: 100_000,
   worthKind: "saves",
   confidence: { percent: 80, reason: "r" },
@@ -111,5 +115,54 @@ describe("ranking suggestions", () => {
     expect(onList, top.map((t) => t.suggestion.topic).join(",")).toBeGreaterThanOrEqual(
       Math.min(2, top.length),
     );
+  });
+});
+
+describe("money that two suggestions touch is counted once", () => {
+  const debt = reportFor(PEOPLE.find((p) => p.id === "debt")!).fired;
+
+  it("keeps the best of the suggestions that share interest or fees", () => {
+    const merged = mergeOverlaps(rankSuggestions(debt)).map((r) => r.suggestion.topic);
+    // Card interest, the payoff plan and the hardship plan all touch the interest: one stays.
+    const interest = ["card_interest", "debt_plan", "hardship_plan"].filter((t) =>
+      merged.includes(t as never),
+    );
+    expect(interest).toHaveLength(1);
+    // Bank fees, late fees and the hardship plan share the fees: one stays.
+    expect(
+      ["bank_fees", "late_fees", "hardship_plan"].filter((t) => merged.includes(t as never)).length,
+    ).toBeLessThanOrEqual(1);
+    // Things that touch other money are untouched.
+    expect(merged).toContain("high_cost_loans");
+  });
+
+  it("adds the dollars up once", () => {
+    const all = debt.reduce((s, x) => s + x.worthCents, 0);
+    expect(worthOnce(debt)).toBeLessThan(all);
+    const a = make({ topic: "card_interest", worthCents: 50_000 });
+    const b = make({ topic: "debt_plan", worthCents: 50_000 });
+    expect(worthOnce([a, b])).toBe(50_000);
+    expect(worthOnce([a, make({ topic: "idle_cash", worthCents: 7_000 })])).toBe(57_000);
+  });
+});
+
+describe("a loss avoided is worth its expected value in a year", () => {
+  it("ranks a $30,000 loss that is unlikely below a real $2,000 saving", () => {
+    const renters = make({ topic: "life_insurance", worthKind: "risk", worthCents: 3_000_000 });
+    const saving = make({ topic: "bank_fees", worthCents: 200_000 });
+    expect(scoreOf(renters)).toBeLessThan(scoreOf(saving));
+    // A likelier loss counts for more: the same amount at a higher annual chance.
+    const likely = make({ topic: "estimated_taxes", worthKind: "risk", worthCents: 3_000_000 });
+    expect(scoreOf(likely)).toBeGreaterThan(scoreOf(renters));
+  });
+});
+
+describe("expected values and requirements in ranking", () => {
+  it("counts a worth that is already an expected yearly value in full, and boosts what is required", () => {
+    const loss = make({ topic: "life_insurance", worthKind: "risk", worthCents: 500_000 });
+    const expected = { ...loss, worthIsExpected: true };
+    expect(scoreOf(expected)).toBeGreaterThan(scoreOf(loss));
+    expect(scoreOf(expected)).toBe(Math.round(500_000 * 0.8 * 2));
+    expect(scoreOf({ ...expected, required: true })).toBe(scoreOf(expected) * 3);
   });
 });
