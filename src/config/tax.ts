@@ -531,6 +531,11 @@ export const TAX_AUTOPILOT: readonly { feature: string; ask: string; auto: strin
     auto: "When you upload a draft return I read it and, once you confirm, check every line and bring each thing to fix with its dollars. I never change or file it.",
   },
   {
+    feature: "scan",
+    ask: "Every tax check I run is on your tax calendar in the month it matters most, ranked with everything else I found for you. In the chat I bring up taxes once a month, unless something is urgent (a payment due, a letter, a draft to fix, a disaster).",
+    auto: "Every tax check I run is on your tax calendar in the month it matters most, ranked with everything else I found for you, and I do the safe parts myself. In the chat I bring up taxes once a month, unless something is urgent.",
+  },
+  {
     feature: "identity",
     ask: "Every January I remind you to get an IRS Identity Protection PIN. If your return is rejected because one was already filed, or a letter reads like an identity problem, I ask, and if it is I give you the steps in order and keep track of each.",
     auto: "Every January I put getting your IRS Identity Protection PIN on your deadlines. If your return is rejected because one was already filed, or a letter reads like an identity problem, I ask, and if it is I give you the steps in order and keep track of each. The steps are yours: I never contact the IRS or a bureau.",

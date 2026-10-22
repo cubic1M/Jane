@@ -817,6 +817,15 @@ test("the debt review lists every item, and the chat message keeps each button u
   await expect(items.getByRole("heading", { name: "Lower-rate requests" })).toBeVisible();
   await expect(items.getByRole("heading", { name: "PMI and escrow" })).toBeVisible();
   await expect(page.getByRole("note").filter({ hasText: "At your level" })).toBeVisible();
+  // Spec step 251: this month's credit check-up, done after Jane's soft checks.
+  const month = page.getByRole("region", { name: "This month's check-up" });
+  await expect(month.getByRole("heading", { name: "Rates and what you could borrow" })).toBeVisible(
+    {
+      timeout: 30_000,
+    },
+  );
+  await expect(month.getByRole("heading", { name: "Costly borrowing" })).toBeVisible();
+  await expect(month).toContainText("Every month, at your level:");
 
   // Asking in the chat shows the same items.
   await page.goto("/chat");
@@ -1011,4 +1020,36 @@ test("a co-signed loan is counted in full and a missed payment lands on the pers
   await page.keyboard.press("Enter");
   await expect(page.getByRole("status")).toHaveText("Updated.");
   await expect(cosign).toContainText("Jess missed a payment: that's on your report too.");
+});
+
+// Spec step 250: what you could borrow, from soft checks, each figure dated, and checked again
+// on a tap without applying for anything.
+test("what you could borrow is shown with the day it was checked", async ({
+  context,
+  page,
+  baseURL,
+}) => {
+  const user = await signedInUser("user");
+  userId = user.userId;
+  await context.addCookies([
+    { name: "authjs.session-token", value: user.sessionToken, url: baseURL ?? "" },
+  ]);
+  await page.goto("/connect");
+  await page.getByRole("button", { name: "Link a demo bank" }).click();
+  await expect(page).toHaveURL("/chat", { timeout: 60_000 });
+
+  await page.goto("/loans");
+  await page.getByRole("link", { name: "See what you could get, and at what rate" }).click();
+  await expect(
+    page.getByRole("heading", { level: 1, name: "What you could borrow" }),
+  ).toBeVisible();
+  const list = page.getByRole("list", { name: "What you could borrow" });
+  await expect(list.getByRole("listitem").filter({ has: page.getByRole("heading") })).toHaveCount(
+    4,
+  );
+  await expect(list).toContainText("A mortgage");
+  await expect(list).toContainText("A credit card");
+  await expect(list.getByText(/^Checked \w+ \d+, \d{4}$/).first()).toBeVisible();
+  await page.getByRole("button", { name: "Check again" }).click();
+  await expect(page.getByRole("status")).toHaveText("Checked again just now.");
 });

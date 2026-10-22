@@ -23,6 +23,9 @@ import { FIGURE_IDS, type FigureId } from "@/config/figures";
 import { explainFigure } from "@/lib/figures";
 import { openBooks } from "@/lib/books";
 import { loadSteady } from "@/lib/steady-pay";
+import { loadMoneyForTwo } from "@/lib/money-for-two";
+import { loadTradeoffs } from "@/lib/goal-tradeoffs";
+import type { TradeOrder } from "@/planning/goal-tradeoffs";
 import { FACT_KEYS } from "@/profile/facts";
 import { scopedFor } from "@/lib/db-scoped";
 import { loadChanges } from "@/lib/changes";
@@ -361,6 +364,18 @@ export const CHAT_TOOLS: Anthropic.Tool[] = [
     name: "books_check",
     description:
       "Whether the person's data adds up (spec step 238): what Jane checks every day (balances against transactions, the same account linked twice, a link that stopped updating or needs a sign-in, transfers between their own accounts) and the problems still open, in words. Figures that rely on a problem account are marked until it's fixed. Use it for \"are my numbers right?\" and before standing behind a figure from an account with a problem.",
+    input_schema: noInput,
+  },
+  {
+    name: "money_for_two",
+    description:
+      "Money for two (spec step 242), for a person in a household with a partner: how shared bills split (half each or by income, with the shares; never the partner's income), who owes whom, joint goals and their progress, the amount from which a move out of a shared account needs both partners' taps, and big moves waiting for a tap. Only what either of them shared; never the partner's own accounts. Null when they have no partner in Jane.",
+    input_schema: noInput,
+  },
+  {
+    name: "goal_tradeoffs",
+    description:
+      "Goals that trade off openly (spec step 241): whether the person's savings goals need more each month than the year plan has room for; if so each order's dates (when each goal is reached and how many months late), Jane's suggested order with the reason, and the order the person picked, if any. Use it for \"which goal first?\" and \"can I do both?\". The pick re-plans every sector only on the person's tap (the button under the answer).",
     input_schema: noInput,
   },
   {
@@ -804,6 +819,53 @@ export async function runChatTool(
         allAddUp: books.open.filter((o) => o.kind !== "transfer").length === 0,
         problems: books.open.map((o) => ({ what: o.label, detail: o.words })),
         accountsWithMarkedFigures: books.markedAccountIds.length,
+      });
+    }
+    case "money_for_two": {
+      const view = await loadMoneyForTwo(userId, { client, now });
+      if (!view) return out({ view: null, why: "No partner in their household yet." });
+      return out({
+        partner: view.partnerName,
+        split: view.rule,
+        chosen: view.chosen,
+        yourShare: `${Math.round(view.myShareBps / 100)}%`,
+        yourShareByIncome: `${Math.round(view.incomeMyShareBps / 100)}%`,
+        owedToYou: money(view.owedToMeCents),
+        spentTogetherThisMonth: money(view.sharedSpentCents),
+        bothTapsFrom: money(view.bigMoveCents),
+        jointGoals: view.jointGoals.map((g) => ({
+          name: g.name,
+          saved: money(g.savedCents),
+          target: money(g.targetCents),
+          by: g.targetDate,
+        })),
+        bigMovesWaiting: view.bigMoves.map((m) => ({
+          amount: money(m.amountCents),
+          to: m.toName,
+          on: m.runOn,
+          waitingFor: m.mine ? "your partner" : "you",
+        })),
+      });
+    }
+    case "goal_tradeoffs": {
+      const view = await loadTradeoffs(userId, { client, now });
+      if (!view) return out({ view: null, why: "No accounts linked yet." });
+      const dates = (o: TradeOrder) =>
+        o.dates.map((d) => ({
+          goal: d.name,
+          reached: d.month,
+          wanted: d.wantedMonth,
+          monthsLate: d.lateMonths,
+        }));
+      return out({
+        competing: view.competing,
+        options: view.options
+          .slice(0, 4)
+          .map((o) => ({ first: o.dates[0]?.name, dates: dates(o) })),
+        suggested: view.suggested ? dates(view.suggested) : null,
+        why: view.reason || null,
+        picked: view.chosen !== null,
+        nowInForce: view.current ? dates(view.current) : null,
       });
     }
     case "steady_pay": {

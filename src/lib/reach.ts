@@ -1,3 +1,5 @@
+import { CAPABILITIES } from "@/lib/jane-agent/capabilities";
+import { taxReach } from "@/detectors/tax-reach";
 import { TOOL_EXEMPT } from "@/config/detector-exempt";
 import { UNREACHABLE } from "@/config/reach";
 import { TRIAL_ID_PREFIX } from "@/config/trial";
@@ -135,7 +137,10 @@ export async function reachReport({ client = defaultClient }: { client?: PrismaC
     missing: tools.filter((t) => MISSING_DETECTOR.includes(t)),
   };
 
+  // Spec step 273: every tax tool, who it reaches and when, or why it can't.
+  const taxes = taxReach(CAPABILITIES.find((c) => c.id === "taxes")?.tools ?? []);
   return {
+    taxes,
     topThree,
     coverage,
     people,

@@ -1,10 +1,9 @@
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
 import { PLAYBOOKS } from "@/config/playbooks";
-import { normalizeAlias } from "@/data-sources/merchant-directory";
 import { DRAFTABLE } from "@/lib/drafts";
-import { describeOutcome, outcomeFor } from "@/lib/merchant-outcomes";
-import { merchantFor } from "@/lib/merchants";
+import { describeOutcome } from "@/lib/merchant-outcomes";
+import { companyFacts } from "@/lib/merchants";
 import { ACTION_STATUS_LABELS } from "@/lib/action-status";
 import type { DecisionCard } from "@/lib/cards";
 import { getActionForAdmin, teamMembers } from "@/lib/concierge";
@@ -51,12 +50,9 @@ async function ActionDetail({
     : null;
   const merchantName = (action.decision.finding.evidence as { merchant?: unknown } | null)
     ?.merchant;
-  const merchant = await merchantFor(
-    typeof merchantName === "string" ? normalizeAlias(merchantName) : null,
-  );
-  const outcome = await outcomeFor(
+  const { merchant, outcome } = await companyFacts(
     typeof merchantName === "string" ? merchantName : null,
-    action.type,
+    { actionType: action.type },
   );
 
   return (
