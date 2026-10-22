@@ -55,8 +55,18 @@ export function describePlanOptions(actionType: ActionType, options: unknown): s
           `Switch to: ${values.switchName}${typeof values.switchProvider === "string" && values.switchProvider !== values.switchName ? ` (${values.switchProvider})` : ""}`,
         ]
       : [];
+  // A loan option picked from the options card (spec step 282): what to send, never apply.
+  const pick = values.loanPick as Record<string, unknown> | undefined;
+  const loanPick =
+    pick && typeof pick === "object" && typeof pick.lender === "string"
+      ? [
+          `Loan picked: ${pick.lender}${typeof pick.aprBps === "number" && typeof pick.termMonths === "number" && pick.termMonths > 0 ? ` at ${(pick.aprBps / 100).toFixed(2)}% for ${pick.termMonths} months` : ""}${typeof pick.paymentCents === "number" && pick.paymentCents > 0 ? `, $${(pick.paymentCents / 100).toLocaleString("en-US", { minimumFractionDigits: 2 })} a month` : ""}${pick.wasPick === true ? " (Jane's pick)" : ""}`,
+          "Send the person the steps to do it themselves; never apply or move money for them.",
+        ]
+      : [];
   return [
     ...switchTo,
+    ...loanPick,
     ...PLAN_OPTIONS[actionType].flatMap((option) => {
       const value = values[option.key];
       if (value === undefined) return [];

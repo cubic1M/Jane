@@ -23,6 +23,7 @@ import { loadCreditGoals } from "@/lib/credit-goals";
 import { loadCarLoan } from "@/lib/car-loan";
 import { decide } from "@/lib/debt-decisions";
 import { loadFit } from "@/lib/fit";
+import { adviceMode } from "@/lib/advice-mode";
 import { FIT_NEEDS, type FitNeed } from "@/config/fit";
 import { DECISIONS, type DecisionId } from "@/planning/debt-decisions";
 import { centsIn } from "./debt-decision-replies";
@@ -101,7 +102,7 @@ export async function runDebtTool(
         },
         { client, now },
       );
-      return out(loanFitToolOutput(view, money));
+      return out(loanFitToolOutput(view, money, await adviceMode(userId, { client })));
     }
     case "debt_decision": {
       const which = (input as { which?: unknown } | null)?.which;

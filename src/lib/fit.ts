@@ -36,6 +36,8 @@ export type FitView = FitResult & {
   checkedOn: string;
   // What they pay now on what this replaces.
   baseline: FitBaseline | null;
+  // The debt a refinance replaces (its key), so a pick can be priced again; null otherwise.
+  debtKey: string | null;
 };
 
 const baselineOf = (debt: Debt, asOf: string): FitBaseline | null => {
@@ -69,6 +71,7 @@ export async function loadFit(
 
   let product: LoanProduct;
   let baseline: FitBaseline | null = null;
+  let debtKey: string | null = null;
   let amountCents = want.amountCents ?? 0;
   if (want.need === "refinance") {
     const debts = book.debts
@@ -76,6 +79,7 @@ export async function loadFit(
       .sort((a, b) => (b.aprBps ?? 0) - (a.aprBps ?? 0));
     const debt = want.debtKey ? debts.find((d) => d.key === want.debtKey) : debts[0];
     baseline = debt ? baselineOf(debt, asOf) : null;
+    debtKey = baseline && debt ? debt.key : null;
     product =
       debt?.kind === "mortgage"
         ? "mortgage"
@@ -122,6 +126,7 @@ export async function loadFit(
     advice: Boolean(found),
     checkedOn: asOf,
     baseline,
+    debtKey,
   };
   if (!found || amountCents <= 0) return empty;
   if ((want.need === "refinance" || want.need === "consolidation") && !baseline) return empty;
@@ -139,5 +144,5 @@ export async function loadFit(
     );
   }
   const result = fit({ need: want.need, product, amountCents, person, offers, baseline });
-  return { ...result, available: true, advice: true, checkedOn: asOf, baseline };
+  return { ...result, available: true, advice: true, checkedOn: asOf, baseline, debtKey };
 }

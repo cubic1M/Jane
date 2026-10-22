@@ -40,6 +40,31 @@ describe("plan options", () => {
     expect(describePlanOptions("cancel_subscription", null)).toEqual([]);
   });
 
+  it("tells the team which loan option was picked, and never to apply for it (spec step 282)", () => {
+    const loanPick = {
+      lender: "Lakeside Credit Union",
+      aprBps: 690,
+      termMonths: 60,
+      paymentCents: 49_387,
+      wasPick: true,
+    };
+    expect(describePlanOptions("card_interest", { loanPick })).toEqual([
+      "Loan picked: Lakeside Credit Union at 6.90% for 60 months, $493.87 a month (Jane's pick)",
+      "Send the person the steps to do it themselves; never apply or move money for them.",
+    ]);
+    expect(
+      describePlanOptions("card_interest", {
+        loanPick: {
+          ...loanPick,
+          lender: "Pay it off with your cash",
+          termMonths: 0,
+          paymentCents: 0,
+          wasPick: false,
+        },
+      })[0],
+    ).toBe("Loan picked: Pay it off with your cash");
+  });
+
   it("gives every choice option a default first choice", () => {
     for (const options of Object.values(PLAN_OPTIONS)) {
       for (const option of options) {

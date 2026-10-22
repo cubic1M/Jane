@@ -37,6 +37,8 @@ import { REWARD_CATEGORY_LABELS } from "@/config/credit-cards";
 import type { DebtAutopilot } from "@/lib/debt-autopilot";
 import { PMI_SOURCE } from "@/config/debt";
 import type { FitView } from "@/lib/fit";
+import { fitCard } from "@/lib/fit-card";
+import { DEMO_ADVICE_LABEL } from "@/config/advice";
 import { FIT_LABEL_TEXT } from "@/planning/fit";
 import { PMI_STEPS } from "@/planning/mortgage";
 import { STUDENT_SOURCES, STUDENT_STEPS } from "@/config/student-loans";
@@ -1259,7 +1261,13 @@ export function debtAutopilotToolOutput(data: DebtAutopilot, money: (cents: numb
   };
 }
 
-export function loanFitToolOutput(view: FitView, money: (cents: number) => string) {
+// The options card (spec step 282) rides along: the chat shows it as the pick-one card. Jane's
+// pick and how sure she is are only given in demo advice mode, with its label.
+export function loanFitToolOutput(
+  view: FitView,
+  money: (cents: number) => string,
+  advice: boolean = view.advice,
+) {
   if (!view.available)
     return { note: "No lending partner for this person's accounts yet, so there are no offers." };
   if (view.options.length === 0) {
@@ -1270,13 +1278,15 @@ export function loanFitToolOutput(view: FitView, money: (cents: number) => strin
     };
   }
   return {
-    demoAdvice: view.advice,
+    demoAdvice: advice,
+    ...(advice ? { label: DEMO_ADVICE_LABEL } : {}),
     need: view.need,
     checkedOn: view.checkedOn,
-    pick: view.pick,
-    confidence: view.confidence
-      ? `${view.confidence.percent}% sure: ${view.confidence.reason}`
-      : null,
+    pick: advice ? view.pick : null,
+    confidence:
+      advice && view.confidence
+        ? `${view.confidence.percent}% sure: ${view.confidence.reason}`
+        : null,
     options: view.options.map((o) => ({
       id: o.id,
       label: FIT_LABEL_TEXT[o.label],
@@ -1291,5 +1301,6 @@ export function loanFitToolOutput(view: FitView, money: (cents: number) => strin
       details: o.details,
     })),
     assumptions: view.assumptions,
+    optionCard: fitCard(view, advice),
   };
 }
