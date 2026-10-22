@@ -107,6 +107,9 @@ function experiments(scan: typeof PracticeScan): Experiment[] {
       o: { scan: { HARVEST_MIN_LOSS_SHARE: v }, rules: harvestEverywhere },
     });
   list.push({ name: "harvest off everywhere", o: { rules: without("tax_loss_harvest") } });
+  // The kinds added after step 292 that trade: does each earn its place?
+  for (const kind of ["new_money_rebalance", "cash_drag", "cheaper_fund"] as const)
+    list.push({ name: `${kind} off`, o: { rules: without(kind) } });
   for (const v of [0.03, 0.08, 0.1])
     list.push({ name: `DRIFT_STOCKS_BAND ${v}`, o: { scan: { DRIFT_STOCKS_BAND: v } } });
   for (const v of [0.03, 0.075, 0.1])

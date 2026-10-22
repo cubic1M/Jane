@@ -30,53 +30,62 @@ REAL_ACCOUNT_ADVICE stays false.
 
 ## Round 0, 2026-10-22: tax-loss swaps turned off at Medium, High and Very high (PR #488)
 
-The first rule replay, over the whole of 2016 to 2026 in one run: the replay with tax-loss swaps
-returned 0.54, 0.50 and 0.60 points less (worst drop 0.07 to 0.10 points deeper) than without
-them at Medium, High and Very high, so they were turned off there (`OPPORTUNITY_RULES_OFF`, with
-the evidence). The figures are before tax: the $2,383 to $3,017 of losses harvested would lower a
-real tax bill, which no replay here counts. `src/planning/rule-tuning.test.ts` checks on the
-fixture that each switched-off rule still makes its level worse.
+The first rule replay, over the whole of 2016 to 2026 in one run, found the replay with tax-loss
+swaps returning 0.54, 0.50 and 0.60 points less (worst drop 0.07 to 0.10 points deeper) than
+without them at Medium, High and Very high, so they were turned off there
+(`OPPORTUNITY_RULES_OFF`, with the evidence). Re-run after #483 made swaps a daily check: still
+worse, by 0.46, 0.40 and 0.44 points (worst drop 0.07 to 0.11 deeper), so they stay off, with the
+evidence updated. At Very low (−0.01) and Low (−0.23) they're inside the 0.25-point margin and
+stay on. New money, idle cash and cheaper twins (#483) made no difference at any level (0.00 to
++0.01 points) and stay on. The figures are before tax: the losses harvested would lower a real
+tax bill, which no replay here counts. `src/planning/rule-tuning.test.ts` checks on the fixture
+that each switched-off rule still makes its level worse.
 
 ## Round 1, 2026-10-22: each rule's numbers, one at a time
+
+Re-run after #483 (eight new opportunity kinds, preferences, tax-loss swaps watched daily), so
+these numbers are the live scan's as it is now, with the default preferences; the first run,
+before #483, came to the same verdicts.
 
 The baseline (current settings: dip buys on, swaps on at Very low and Low only, both bands 5%):
 
 | Level | Current: train | Current: held-out | Plain rebalancing: held-out | Buy and hold: held-out |
 | --- | --- | --- | --- | --- |
-| Very low | 7.0% a year, worst -12.7%, **0.551** | 3.5% a year, worst -17.1%, **0.206** | 3.5% a year, worst -17.1%, **0.206** | 3.8% a year, worst -17.0%, **0.223** |
-| Low | 8.8% a year, worst -17.0%, **0.517** | 4.9% a year, worst -19.5%, **0.252** | 4.9% a year, worst -19.4%, **0.254** | 5.3% a year, worst -19.3%, **0.272** |
+| Very low | 7.0% a year, worst -12.7%, **0.551** | 3.5% a year, worst -17.1%, **0.205** | 3.5% a year, worst -17.1%, **0.206** | 3.8% a year, worst -17.0%, **0.223** |
+| Low | 8.8% a year, worst -17.0%, **0.517** | 4.9% a year, worst -19.5%, **0.253** | 4.9% a year, worst -19.4%, **0.254** | 5.3% a year, worst -19.3%, **0.272** |
 | Medium | 10.5% a year, worst -22.1%, **0.472** | 6.6% a year, worst -21.0%, **0.312** | 6.6% a year, worst -21.0%, **0.312** | 6.9% a year, worst -21.0%, **0.327** |
 | High | 12.2% a year, worst -26.6%, **0.457** | 8.2% a year, worst -22.7%, **0.360** | 8.2% a year, worst -22.7%, **0.360** | 8.4% a year, worst -22.6%, **0.370** |
 | Very high | 13.6% a year, worst -31.2%, **0.434** | 9.6% a year, worst -24.7%, **0.390** | 9.6% a year, worst -24.7%, **0.390** | 9.7% a year, worst -24.7%, **0.392** |
 
 | Experiment | Very low | Low | Medium | High | Very high | Kept |
 | --- | --- | --- | --- | --- | --- | --- |
-| DIP_MIN_DROP 0.05 | 0.536 / 0.207 | 0.516 / 0.253 | 0.470 / 0.307 | 0.459 / 0.355 | 0.434 / 0.385 | none |
-| DIP_MIN_DROP 0.075 | 0.549 / 0.202 | 0.517 / 0.248 | 0.472 / 0.306 | 0.457 / 0.355 | 0.434 / 0.386 | none |
-| DIP_MIN_DROP 0.125 | 0.551 / 0.205 | 0.517 / 0.252 | 0.472 / 0.312 | 0.457 / 0.360 | 0.434 / 0.390 | none |
-| DIP_MIN_DROP 0.15 | 0.551 / 0.205 | 0.517 / 0.252 | 0.472 / 0.312 | 0.457 / 0.360 | 0.434 / 0.390 | none |
-| DIP_LOOKBACK_DAYS 10 | 0.551 / 0.205 | 0.519 / 0.252 | 0.473 / 0.312 | 0.455 / 0.360 | 0.434 / 0.390 | none |
-| DIP_LOOKBACK_DAYS 40 | 0.549 / 0.202 | 0.517 / 0.251 | 0.472 / 0.311 | 0.457 / 0.359 | 0.434 / 0.389 | none |
-| DIP_LOOKBACK_DAYS 60 | 0.549 / 0.202 | 0.517 / 0.251 | 0.472 / 0.311 | 0.457 / 0.359 | 0.434 / 0.389 | none |
-| dip sizeShare 0.02 | 0.551 / 0.208 | 0.517 / 0.253 | 0.472 / 0.312 | 0.457 / 0.360 | 0.434 / 0.390 | none |
-| dip sizeShare 0.1 | 0.551 / 0.206 | 0.517 / 0.252 | 0.472 / 0.312 | 0.457 / 0.360 | 0.434 / 0.390 | none |
-| dip sizeShare 0.2 | 0.551 / 0.206 | 0.517 / 0.252 | 0.472 / 0.312 | 0.457 / 0.360 | 0.434 / 0.390 | none |
-| DIP_MAX_OVER_TARGET 0.02 | 0.551 / 0.206 | 0.517 / 0.252 | 0.472 / 0.312 | 0.457 / 0.360 | 0.434 / 0.390 | none |
-| DIP_MAX_OVER_TARGET 0.1 | 0.551 / 0.206 | 0.517 / 0.252 | 0.472 / 0.312 | 0.457 / 0.360 | 0.434 / 0.390 | none |
-| dip buys off | 0.551 / 0.205 | 0.519 / 0.252 | 0.473 / 0.312 | 0.455 / 0.360 | 0.434 / 0.390 | none |
-| harvest on everywhere | 0.551 / 0.206 | 0.517 / 0.252 | 0.469 / 0.311 | 0.454 / 0.359 | 0.431 / 0.390 | none |
-| harvest on everywhere, HARVEST_MIN_LOSS_SHARE 0.05 | 0.551 / 0.208 | 0.517 / 0.253 | 0.469 / 0.311 | 0.455 / 0.359 | 0.432 / 0.387 | none |
-| harvest on everywhere, HARVEST_MIN_LOSS_SHARE 0.12 | 0.549 / 0.206 | 0.521 / 0.252 | 0.472 / 0.309 | 0.457 / 0.356 | 0.434 / 0.386 | none |
+| DIP_MIN_DROP 0.05 | 0.536 / 0.208 | 0.516 / 0.255 | 0.470 / 0.307 | 0.459 / 0.355 | 0.434 / 0.385 | none |
+| DIP_MIN_DROP 0.075 | 0.549 / 0.201 | 0.517 / 0.247 | 0.472 / 0.306 | 0.457 / 0.355 | 0.434 / 0.386 | none |
+| DIP_MIN_DROP 0.125 | 0.551 / 0.204 | 0.517 / 0.252 | 0.472 / 0.312 | 0.457 / 0.360 | 0.434 / 0.390 | none |
+| DIP_MIN_DROP 0.15 | 0.551 / 0.204 | 0.517 / 0.252 | 0.472 / 0.312 | 0.457 / 0.360 | 0.434 / 0.390 | none |
+| DIP_LOOKBACK_DAYS 10 | 0.551 / 0.204 | 0.519 / 0.252 | 0.473 / 0.312 | 0.455 / 0.360 | 0.434 / 0.390 | none |
+| DIP_LOOKBACK_DAYS 40 | 0.546 / 0.204 | 0.517 / 0.261 | 0.472 / 0.314 | 0.459 / 0.360 | 0.434 / 0.394 | none |
+| DIP_LOOKBACK_DAYS 60 | 0.545 / 0.210 | 0.518 / 0.259 | 0.471 / 0.314 | 0.457 / 0.363 | 0.434 / 0.395 | none |
+| dip sizeShare 0.02 | 0.551 / 0.204 | 0.517 / 0.252 | 0.472 / 0.312 | 0.457 / 0.360 | 0.434 / 0.390 | none |
+| dip sizeShare 0.1 | 0.551 / 0.205 | 0.517 / 0.253 | 0.472 / 0.312 | 0.457 / 0.360 | 0.434 / 0.390 | none |
+| dip sizeShare 0.2 | 0.551 / 0.205 | 0.517 / 0.253 | 0.472 / 0.312 | 0.457 / 0.360 | 0.434 / 0.390 | none |
+| DIP_MAX_OVER_TARGET 0.02 | 0.551 / 0.205 | 0.517 / 0.253 | 0.472 / 0.312 | 0.457 / 0.360 | 0.434 / 0.390 | none |
+| DIP_MAX_OVER_TARGET 0.1 | 0.551 / 0.205 | 0.517 / 0.253 | 0.472 / 0.312 | 0.457 / 0.360 | 0.434 / 0.390 | none |
+| dip buys off | 0.551 / 0.204 | 0.519 / 0.252 | 0.473 / 0.312 | 0.455 / 0.360 | 0.434 / 0.390 | none |
+| harvest on everywhere | 0.551 / 0.205 | 0.517 / 0.253 | 0.469 / 0.310 | 0.454 / 0.361 | 0.432 / 0.391 | none |
+| harvest on everywhere, HARVEST_MIN_LOSS_SHARE 0.05 | 0.551 / 0.207 | 0.517 / 0.253 | 0.469 / 0.310 | 0.455 / 0.359 | 0.432 / 0.390 | none |
+| harvest on everywhere, HARVEST_MIN_LOSS_SHARE 0.12 | 0.549 / 0.204 | 0.521 / 0.251 | 0.472 / 0.312 | 0.457 / 0.360 | 0.434 / 0.390 | none |
 | harvest on everywhere, HARVEST_MIN_LOSS_SHARE 0.2 | 0.549 / 0.208 | 0.521 / 0.256 | 0.472 / 0.314 | 0.457 / 0.362 | 0.434 / 0.392 | none |
 | harvest off everywhere | 0.549 / 0.207 | 0.521 / 0.255 | 0.472 / 0.312 | 0.457 / 0.360 | 0.434 / 0.390 | none |
-| DRIFT_STOCKS_BAND 0.03 | 0.529 / 0.207 | 0.499 / 0.252 | 0.469 / 0.312 | 0.451 / 0.360 | 0.436 / 0.390 | none |
-| DRIFT_STOCKS_BAND 0.08 | 0.554 / 0.206 | 0.524 / 0.252 | 0.489 / 0.312 | 0.454 / 0.360 | 0.434 / 0.390 | none |
-| DRIFT_STOCKS_BAND 0.1 | 0.554 / 0.206 | 0.524 / 0.252 | 0.489 / 0.312 | 0.454 / 0.360 | 0.434 / 0.390 | none |
-| rebalanceBand 0.03 | 0.549 / 0.206 | 0.507 / 0.253 | 0.475 / 0.313 | 0.445 / 0.360 | 0.439 / 0.390 | none |
-| rebalanceBand 0.075 | 0.551 / 0.206 | 0.517 / 0.252 | 0.472 / 0.312 | 0.457 / 0.360 | 0.434 / 0.390 | none |
-| rebalanceBand 0.1 | 0.551 / 0.206 | 0.517 / 0.252 | 0.472 / 0.312 | 0.457 / 0.360 | 0.434 / 0.390 | none |
-| rebalanceBand 0.075 + DRIFT_STOCKS_BAND 0.075 | 0.534 / 0.206 | 0.532 / 0.252 | 0.495 / 0.312 | 0.449 / 0.360 | 0.434 / 0.390 | none |
-| rebalanceBand 0.1 + DRIFT_STOCKS_BAND 0.1 | 0.534 / 0.206 | 0.506 / 0.252 | 0.475 / 0.312 | 0.449 / 0.360 | 0.434 / 0.390 | none |
+| new_money_rebalance off | 0.551 / 0.205 | 0.517 / 0.253 | 0.472 / 0.312 | 0.457 / 0.360 | 0.434 / 0.390 | none |
+| cash_drag off | 0.551 / 0.205 | 0.517 / 0.253 | 0.472 / 0.312 | 0.457 / 0.360 | 0.434 / 0.390 | none |
+| cheaper_fund off | 0.551 / 0.206 | 0.517 / 0.252 | 0.472 / 0.312 | 0.457 / 0.360 | 0.434 / 0.390 | none |
+| DRIFT_STOCKS_BAND 0.03 | 0.529 / 0.206 | 0.499 / 0.253 | 0.469 / 0.312 | 0.451 / 0.360 | 0.436 / 0.390 | none |
+| DRIFT_STOCKS_BAND 0.08 | 0.554 / 0.205 | 0.524 / 0.253 | 0.489 / 0.312 | 0.454 / 0.360 | 0.434 / 0.390 | none |
+| DRIFT_STOCKS_BAND 0.1 | 0.554 / 0.205 | 0.524 / 0.253 | 0.489 / 0.312 | 0.454 / 0.360 | 0.434 / 0.390 | none |
+| rebalanceBand 0.03 | 0.549 / 0.205 | 0.507 / 0.253 | 0.475 / 0.313 | 0.445 / 0.360 | 0.439 / 0.390 | none |
+| rebalanceBand 0.075 | 0.551 / 0.205 | 0.517 / 0.253 | 0.472 / 0.312 | 0.457 / 0.360 | 0.434 / 0.390 | none |
+| rebalanceBand 0.1 | 0.551 / 0.205 | 0.517 / 0.253 | 0.472 / 0.312 | 0.457 / 0.360 | 0.434 / 0.390 | none |
 
 **Result: nothing kept.** Every change moved the objective by under 1%, in one window or both.
 - **Dip buys** use only cash waiting to be invested, and the autopilot invests the monthly money
@@ -93,14 +102,14 @@ The baseline (current settings: dip buys on, swaps on at Very low and Low only, 
 
 | Experiment | Very low | Low | Medium | High | Very high | Kept |
 | --- | --- | --- | --- | --- | --- | --- |
-| rebalanceBand 0.03 + DRIFT_STOCKS_BAND 0.03 | 0.529 / 0.206 | 0.499 / 0.253 | 0.469 / 0.312 | 0.451 / 0.360 | 0.436 / 0.390 | none |
-| rebalanceBand 0.05 + DRIFT_STOCKS_BAND 0.075 | 0.554 / 0.206 | 0.524 / 0.252 | 0.489 / 0.312 | 0.454 / 0.360 | 0.434 / 0.390 | none |
-| rebalanceBand 0.05 + DRIFT_STOCKS_BAND 0.1 | 0.554 / 0.206 | 0.524 / 0.252 | 0.489 / 0.312 | 0.454 / 0.360 | 0.434 / 0.390 | none |
-| rebalanceBand 0.075 + DRIFT_STOCKS_BAND 0.075 | 0.534 / 0.206 | 0.532 / 0.252 | 0.495 / 0.312 | 0.449 / 0.360 | 0.434 / 0.390 | none |
-| rebalanceBand 0.1 + DRIFT_STOCKS_BAND 0.1 | 0.534 / 0.206 | 0.506 / 0.252 | 0.475 / 0.312 | 0.449 / 0.360 | 0.434 / 0.390 | none |
-| rebalanceBand 0.1 + DRIFT_STOCKS_BAND 0.15 | 0.534 / 0.206 | 0.506 / 0.252 | 0.475 / 0.312 | 0.449 / 0.360 | 0.434 / 0.390 | none |
-| rebalanceBand 0.15 + DRIFT_STOCKS_BAND 0.15 | 0.534 / 0.206 | 0.506 / 0.252 | 0.475 / 0.312 | 0.449 / 0.360 | 0.434 / 0.390 | none |
-| rebalanceBand 0.25 + DRIFT_STOCKS_BAND 0.25 | 0.534 / 0.206 | 0.506 / 0.252 | 0.475 / 0.312 | 0.449 / 0.360 | 0.434 / 0.390 | none |
+| rebalanceBand 0.03 + DRIFT_STOCKS_BAND 0.03 | 0.529 / 0.205 | 0.499 / 0.253 | 0.469 / 0.313 | 0.451 / 0.360 | 0.436 / 0.390 | none |
+| rebalanceBand 0.05 + DRIFT_STOCKS_BAND 0.075 | 0.554 / 0.205 | 0.524 / 0.253 | 0.489 / 0.312 | 0.454 / 0.360 | 0.434 / 0.390 | none |
+| rebalanceBand 0.05 + DRIFT_STOCKS_BAND 0.1 | 0.554 / 0.205 | 0.524 / 0.253 | 0.489 / 0.312 | 0.454 / 0.360 | 0.434 / 0.390 | none |
+| rebalanceBand 0.075 + DRIFT_STOCKS_BAND 0.075 | 0.533 / 0.205 | 0.532 / 0.253 | 0.495 / 0.312 | 0.449 / 0.360 | 0.434 / 0.390 | none |
+| rebalanceBand 0.1 + DRIFT_STOCKS_BAND 0.1 | 0.533 / 0.205 | 0.505 / 0.253 | 0.476 / 0.312 | 0.449 / 0.360 | 0.434 / 0.390 | none |
+| rebalanceBand 0.1 + DRIFT_STOCKS_BAND 0.15 | 0.533 / 0.205 | 0.505 / 0.253 | 0.476 / 0.312 | 0.449 / 0.360 | 0.434 / 0.390 | none |
+| rebalanceBand 0.15 + DRIFT_STOCKS_BAND 0.15 | 0.533 / 0.205 | 0.505 / 0.253 | 0.476 / 0.312 | 0.449 / 0.360 | 0.434 / 0.390 | none |
+| rebalanceBand 0.25 + DRIFT_STOCKS_BAND 0.25 | 0.533 / 0.205 | 0.505 / 0.253 | 0.476 / 0.312 | 0.449 / 0.360 | 0.434 / 0.390 | none |
 
 **Result: nothing kept.** Wider bands (7.5% each) won training at Low and Medium (0.532 and
 0.495), again level on the held-out years. At 10% or more every row is the same: the bands stop
@@ -108,7 +117,7 @@ triggering, and the autopilot rebalances only by putting each month's money into
 target. That alone keeps every level within a few points of its mix.
 
 Buy and hold, for comparison: better than the autopilot on the held-out years at every level
-(0.223 against 0.206 at Very low, 0.392 against 0.390 at Very high). Worse in training at Very low
+(0.223 against 0.205 at Very low, 0.392 against 0.390 at Very high). Worse in training at Very low
 to High (0.516 against 0.551 at Very low), with deeper worst drops in training (by 0.6 to 1.2
 points). Neither wins in both windows, so the autopilot keeps rebalancing.
 
@@ -120,52 +129,64 @@ The same swap and dip experiments with no monthly money, and with $2,000 a month
 
 | Level | Current: train | Current: held-out | Plain rebalancing: held-out | Buy and hold: held-out |
 | --- | --- | --- | --- | --- |
-| Very low | 7.0% a year, worst -13.2%, **0.534** | 3.6% a year, worst -17.1%, **0.211** | 3.6% a year, worst -17.0%, **0.213** | 3.8% a year, worst -17.0%, **0.226** |
-| Low | 8.8% a year, worst -17.2%, **0.511** | 4.9% a year, worst -19.4%, **0.254** | 4.9% a year, worst -19.3%, **0.256** | 5.3% a year, worst -19.3%, **0.275** |
+| Very low | 7.0% a year, worst -13.2%, **0.534** | 3.6% a year, worst -17.1%, **0.210** | 3.6% a year, worst -17.0%, **0.213** | 3.8% a year, worst -17.0%, **0.226** |
+| Low | 8.8% a year, worst -17.2%, **0.511** | 5.0% a year, worst -19.3%, **0.256** | 4.9% a year, worst -19.3%, **0.256** | 5.3% a year, worst -19.3%, **0.275** |
 | Medium | 10.5% a year, worst -21.9%, **0.477** | 6.6% a year, worst -20.9%, **0.315** | 6.6% a year, worst -20.9%, **0.315** | 6.9% a year, worst -20.9%, **0.328** |
 | High | 12.3% a year, worst -26.8%, **0.460** | 8.2% a year, worst -22.6%, **0.365** | 8.2% a year, worst -22.6%, **0.365** | 8.4% a year, worst -22.6%, **0.371** |
 | Very high | 13.7% a year, worst -31.3%, **0.438** | 9.8% a year, worst -24.7%, **0.397** | 9.8% a year, worst -24.7%, **0.397** | 9.7% a year, worst -24.7%, **0.392** |
 
 | Experiment | Very low | Low | Medium | High | Very high | Kept |
 | --- | --- | --- | --- | --- | --- | --- |
-| harvest on everywhere | 0.534 / 0.211 | 0.511 / 0.254 | 0.474 / 0.313 | 0.458 / 0.365 | 0.436 / 0.394 | none |
-| harvest on everywhere, HARVEST_MIN_LOSS_SHARE 0.05 | 0.534 / 0.211 | 0.511 / 0.253 | 0.475 / 0.314 | 0.458 / 0.365 | 0.436 / 0.392 | none |
-| harvest on everywhere, HARVEST_MIN_LOSS_SHARE 0.12 | 0.534 / 0.211 | 0.513 / 0.253 | 0.477 / 0.312 | 0.460 / 0.363 | 0.438 / 0.391 | none |
-| harvest on everywhere, HARVEST_MIN_LOSS_SHARE 0.2 | 0.534 / 0.213 | 0.513 / 0.256 | 0.477 / 0.314 | 0.460 / 0.363 | 0.438 / 0.395 | none |
+| harvest on everywhere | 0.534 / 0.210 | 0.511 / 0.256 | 0.474 / 0.313 | 0.458 / 0.364 | 0.435 / 0.393 | none |
+| harvest on everywhere, HARVEST_MIN_LOSS_SHARE 0.05 | 0.534 / 0.210 | 0.511 / 0.255 | 0.475 / 0.314 | 0.458 / 0.361 | 0.435 / 0.391 | none |
+| harvest on everywhere, HARVEST_MIN_LOSS_SHARE 0.12 | 0.534 / 0.210 | 0.513 / 0.255 | 0.477 / 0.314 | 0.460 / 0.365 | 0.438 / 0.397 | none |
+| harvest on everywhere, HARVEST_MIN_LOSS_SHARE 0.2 | 0.534 / 0.212 | 0.513 / 0.254 | 0.477 / 0.312 | 0.460 / 0.361 | 0.438 / 0.388 | none |
 | harvest off everywhere | 0.534 / 0.213 | 0.513 / 0.256 | 0.477 / 0.315 | 0.460 / 0.365 | 0.438 / 0.397 | none |
-| dip sizeShare 0.02 | 0.534 / 0.211 | 0.511 / 0.254 | 0.477 / 0.315 | 0.460 / 0.365 | 0.438 / 0.397 | none |
-| dip sizeShare 0.1 | 0.534 / 0.211 | 0.511 / 0.254 | 0.477 / 0.315 | 0.460 / 0.365 | 0.438 / 0.397 | none |
-| dip sizeShare 0.2 | 0.534 / 0.211 | 0.511 / 0.254 | 0.477 / 0.315 | 0.460 / 0.365 | 0.438 / 0.397 | none |
-| dip buys off | 0.534 / 0.211 | 0.511 / 0.254 | 0.477 / 0.315 | 0.460 / 0.365 | 0.438 / 0.397 | none |
+| dip sizeShare 0.02 | 0.534 / 0.210 | 0.511 / 0.256 | 0.477 / 0.315 | 0.460 / 0.365 | 0.438 / 0.397 | none |
+| dip sizeShare 0.1 | 0.534 / 0.210 | 0.511 / 0.256 | 0.477 / 0.315 | 0.460 / 0.365 | 0.438 / 0.397 | none |
+| dip sizeShare 0.2 | 0.534 / 0.210 | 0.511 / 0.256 | 0.477 / 0.315 | 0.460 / 0.365 | 0.438 / 0.397 | none |
+| dip buys off | 0.534 / 0.210 | 0.511 / 0.256 | 0.477 / 0.315 | 0.460 / 0.365 | 0.438 / 0.397 | none |
+| dip buys off | 0.534 / 0.210 | 0.511 / 0.256 | 0.477 / 0.315 | 0.460 / 0.365 | 0.438 / 0.397 | none |
+| harvest off everywhere | 0.534 / 0.213 | 0.513 / 0.256 | 0.477 / 0.315 | 0.460 / 0.365 | 0.438 / 0.397 | none |
+| new_money_rebalance off | 0.534 / 0.210 | 0.511 / 0.256 | 0.477 / 0.315 | 0.460 / 0.365 | 0.438 / 0.397 | none |
+| cash_drag off | 0.534 / 0.210 | 0.511 / 0.256 | 0.477 / 0.315 | 0.460 / 0.365 | 0.438 / 0.397 | none |
+| cheaper_fund off | 0.534 / 0.211 | 0.511 / 0.254 | 0.477 / 0.315 | 0.460 / 0.365 | 0.438 / 0.397 | none |
 
 **$2,000 a month:**
 
 | Level | Current: train | Current: held-out | Plain rebalancing: held-out | Buy and hold: held-out |
 | --- | --- | --- | --- | --- |
-| Very low | 7.0% a year, worst -12.7%, **0.552** | 3.5% a year, worst -17.1%, **0.205** | 3.5% a year, worst -17.1%, **0.205** | 3.8% a year, worst -17.1%, **0.223** |
-| Low | 8.9% a year, worst -17.1%, **0.519** | 5.0% a year, worst -19.5%, **0.254** | 4.9% a year, worst -19.4%, **0.253** | 5.3% a year, worst -19.4%, **0.272** |
-| Medium | 10.4% a year, worst -22.2%, **0.471** | 6.5% a year, worst -21.0%, **0.311** | 6.5% a year, worst -21.0%, **0.311** | 6.9% a year, worst -21.0%, **0.326** |
+| Very low | 7.0% a year, worst -12.7%, **0.552** | 3.5% a year, worst -17.1%, **0.207** | 3.5% a year, worst -17.1%, **0.205** | 3.8% a year, worst -17.1%, **0.223** |
+| Low | 8.9% a year, worst -17.1%, **0.519** | 5.0% a year, worst -19.4%, **0.255** | 4.9% a year, worst -19.4%, **0.253** | 5.3% a year, worst -19.4%, **0.272** |
+| Medium | 10.4% a year, worst -22.2%, **0.471** | 6.6% a year, worst -21.0%, **0.312** | 6.5% a year, worst -21.0%, **0.311** | 6.9% a year, worst -21.0%, **0.326** |
 | High | 12.1% a year, worst -26.6%, **0.454** | 8.2% a year, worst -22.7%, **0.360** | 8.2% a year, worst -22.7%, **0.359** | 8.4% a year, worst -22.7%, **0.370** |
-| Very high | 13.6% a year, worst -31.3%, **0.434** | 9.6% a year, worst -24.7%, **0.389** | 9.6% a year, worst -24.7%, **0.389** | 9.7% a year, worst -24.7%, **0.392** |
+| Very high | 13.6% a year, worst -31.2%, **0.434** | 9.6% a year, worst -24.7%, **0.390** | 9.6% a year, worst -24.7%, **0.389** | 9.7% a year, worst -24.7%, **0.392** |
 
 | Experiment | Very low | Low | Medium | High | Very high | Kept |
 | --- | --- | --- | --- | --- | --- | --- |
-| harvest on everywhere | 0.552 / 0.205 | 0.519 / 0.254 | 0.468 / 0.310 | 0.451 / 0.358 | 0.432 / 0.390 | none |
-| harvest on everywhere, HARVEST_MIN_LOSS_SHARE 0.05 | 0.552 / 0.205 | 0.519 / 0.255 | 0.468 / 0.311 | 0.451 / 0.356 | 0.432 / 0.385 | none |
-| harvest on everywhere, HARVEST_MIN_LOSS_SHARE 0.12 | 0.548 / 0.207 | 0.522 / 0.256 | 0.471 / 0.312 | 0.454 / 0.360 | 0.435 / 0.389 | none |
-| harvest on everywhere, HARVEST_MIN_LOSS_SHARE 0.2 | 0.548 / 0.207 | 0.521 / 0.254 | 0.471 / 0.311 | 0.454 / 0.360 | 0.434 / 0.389 | none |
-| harvest off everywhere | 0.548 / 0.207 | 0.521 / 0.254 | 0.471 / 0.311 | 0.454 / 0.360 | 0.434 / 0.389 | none |
-| dip sizeShare 0.02 | 0.549 / 0.204 | 0.518 / 0.252 | 0.471 / 0.311 | 0.454 / 0.359 | 0.434 / 0.389 | none |
-| dip sizeShare 0.1 | 0.552 / 0.206 | 0.519 / 0.253 | 0.471 / 0.312 | 0.454 / 0.360 | 0.434 / 0.390 | none |
-| dip sizeShare 0.2 | 0.552 / 0.206 | 0.519 / 0.253 | 0.471 / 0.312 | 0.454 / 0.360 | 0.434 / 0.390 | none |
-| dip buys off | 0.551 / 0.204 | 0.517 / 0.252 | 0.469 / 0.311 | 0.452 / 0.359 | 0.434 / 0.389 | none |
+| harvest on everywhere | 0.552 / 0.207 | 0.519 / 0.255 | 0.468 / 0.313 | 0.451 / 0.361 | 0.432 / 0.392 | none |
+| harvest on everywhere, HARVEST_MIN_LOSS_SHARE 0.05 | 0.552 / 0.206 | 0.519 / 0.254 | 0.468 / 0.311 | 0.451 / 0.359 | 0.432 / 0.389 | none |
+| harvest on everywhere, HARVEST_MIN_LOSS_SHARE 0.12 | 0.548 / 0.207 | 0.522 / 0.255 | 0.471 / 0.311 | 0.454 / 0.359 | 0.434 / 0.388 | none |
+| harvest on everywhere, HARVEST_MIN_LOSS_SHARE 0.2 | 0.548 / 0.208 | 0.521 / 0.256 | 0.471 / 0.313 | 0.454 / 0.361 | 0.434 / 0.391 | none |
+| harvest off everywhere | 0.548 / 0.207 | 0.521 / 0.255 | 0.471 / 0.312 | 0.454 / 0.360 | 0.434 / 0.390 | none |
+| dip sizeShare 0.02 | 0.548 / 0.206 | 0.518 / 0.254 | 0.471 / 0.311 | 0.454 / 0.360 | 0.434 / 0.390 | none |
+| dip sizeShare 0.1 | 0.552 / 0.207 | 0.519 / 0.255 | 0.471 / 0.313 | 0.454 / 0.361 | 0.434 / 0.390 | none |
+| dip sizeShare 0.2 | 0.552 / 0.207 | 0.519 / 0.255 | 0.471 / 0.313 | 0.454 / 0.361 | 0.434 / 0.390 | none |
+| dip buys off | 0.550 / 0.205 | 0.517 / 0.253 | 0.469 / 0.311 | 0.452 / 0.360 | 0.434 / 0.389 | none |
+| dip buys off | 0.550 / 0.205 | 0.517 / 0.253 | 0.469 / 0.311 | 0.452 / 0.360 | 0.434 / 0.389 | none |
+| harvest off everywhere | 0.548 / 0.207 | 0.521 / 0.255 | 0.471 / 0.312 | 0.454 / 0.360 | 0.434 / 0.390 | none |
+| new_money_rebalance off | 0.552 / 0.207 | 0.519 / 0.255 | 0.471 / 0.312 | 0.454 / 0.360 | 0.434 / 0.390 | none |
+| cash_drag off | 0.552 / 0.207 | 0.519 / 0.255 | 0.471 / 0.312 | 0.454 / 0.360 | 0.434 / 0.390 | none |
+| cheaper_fund off | 0.552 / 0.206 | 0.519 / 0.254 | 0.471 / 0.312 | 0.454 / 0.360 | 0.434 / 0.390 | none |
 
 **Result: nothing kept.**
 - With no monthly money, dip buys never act: there is never cash waiting.
 - With $2,000 a month they act more often, but still move the objective by under 1%.
-- Swaps at Very low and Low score 0.211 against 0.213 (no money in) and 0.205 against 0.207
-  ($2,000 a month) on the held-out years: inside the 1% margin. They stay on, because their
-  value is the tax loss, which a before-tax replay can't see.
+- Swaps at Very low score 0.210 against 0.213 with them off (no money in), and the same as off
+  at $2,000 a month (0.207); at Low they're level. Inside the 1% margin either way. They stay
+  on, because their value is the tax loss, which a before-tax replay can't see.
+- New money, idle cash and cheaper twins off: within 0.002 of the current settings at every
+  deposit size.
 
 ## Where this leaves the rules (2026-10-22)
 
@@ -174,6 +195,7 @@ The same swap and dip experiments with no monthly money, and with $2,000 a month
 | Dip buys | on | on | on | on | on |
 | Tax-loss swaps | on | on | off (round 0) | off (round 0) | off (round 0) |
 | News ideas | n/a | n/a | n/a | on, untested | on, untested |
+| New money, idle cash, cheaper twins (#483) | on | on | on | on | on |
 | Bands | 5% / 5% | 5% / 5% | 5% / 5% | 5% / 5% | 5% / 5% |
 
 What the overnight runs say:
