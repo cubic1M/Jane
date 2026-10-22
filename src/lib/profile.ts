@@ -39,6 +39,8 @@ export async function loadProfileInput(
     insurance,
     investor,
     unread,
+    values,
+    named,
     membership,
   ] = await Promise.all([
     db.transactions.findMany({
@@ -87,6 +89,8 @@ export async function loadProfileInput(
     db.insuranceProfiles.findFirst({ select: { housing: true } }),
     db.investorProfiles.findFirst({ select: { age: true, ageOn: true, dropReaction: true } }),
     db.policyReadings.count({ where: { status: "waiting" } }),
+    db.valuesPreferences.findFirst({ select: { excludes: true } }),
+    db.accountBeneficiaries.findMany({ select: { accountId: true } }),
     client.householdMember.findUnique({ where: { userId }, select: { householdId: true } }),
   ]);
   // Other people in their household in Jane (spec step 264), not counting them.
@@ -159,6 +163,8 @@ export async function loadProfileInput(
       hasPmi: l.hasPmi,
       payoffDate: l.payoffDate ? dayOf(l.payoffDate) : null,
     })),
+    valuesExcludes: values?.excludes ?? [],
+    namedAccountIds: [...new Set(named.map((n) => n.accountId))],
     told,
     unreadPolicyDocuments: unread,
     extras: { householdMembers, ...(await sectorFigures(userId, client, now)) },
@@ -174,7 +180,13 @@ async function sectorFigures(userId: string, client: PrismaClient, now: Date) {
   const hasStock =
     (await db.accounts.count({ where: { subtype: "stock plan" } })) > 0 ||
     (await db.equityEvents.count()) > 0;
+<<<<<<< HEAD
   const [matchPace, equity, subscriptions, cardInterest, shopSaving, policies, feed, draft] =
+=======
+  // Spec step 296: whether the practice-portfolio suggestion still applies.
+  const practice = await db.practicePortfolios.count();
+  const [matchPace, equity, subscriptions, cardInterest, shopSaving, policies, owned, feed] =
+>>>>>>> claude/step-271-retirement-taxes
     await Promise.all([
       loadMatchPace(userId, { client, now }),
       hasStock
@@ -184,6 +196,7 @@ async function sectorFigures(userId: string, client: PrismaClient, now: Date) {
       import("@/lib/card-interest").then((m) => m.loadCardInterest(userId, { client, now })),
       import("@/lib/insurance/shop").then((m) => m.openShopSavingCents(userId, { client, now })),
       import("@/lib/insurance/policies").then((m) => m.listPolicies(userId, { client })),
+      db.ownedAssets.findMany({ select: { valueCents: true } }),
       import("@/lib/disaster-feed").then((m) => m.disasterFeedFor(userId, { client })),
       import("@/lib/draft-return").then((m) => m.latestDraftCheck(userId, { client })),
     ]);
@@ -193,6 +206,8 @@ async function sectorFigures(userId: string, client: PrismaClient, now: Date) {
     subscriptions,
     cardInterestYearCents: cardInterest.available ? cardInterest.interestYearCents : null,
     insuranceShopSavingCents: shopSaving,
+    // What they own by its value (a home, a car), for the net worth an umbrella protects.
+    ownedValueCents: owned.reduce((sum, o) => sum + o.valueCents, 0),
     coverPolicies: policies
       .filter((p) => p.status === "active" || p.status === "pending")
       .map((p) => ({
@@ -204,8 +219,12 @@ async function sectorFigures(userId: string, client: PrismaClient, now: Date) {
       })),
     // Spec step 270: the disaster relief declared where they might live (none without a feed).
     disasterRelief: feed ? await feed.declarations() : [],
+<<<<<<< HEAD
     // Spec step 272: the latest checked draft return.
     draftReturn: draft,
+=======
+    hasPracticePortfolio: practice > 0,
+>>>>>>> claude/step-271-retirement-taxes
   };
 }
 

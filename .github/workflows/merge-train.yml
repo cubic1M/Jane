@@ -1,7 +1,7 @@
 name: Merge train
 
-# Keeps auto-merge PRs moving into main without anyone's laptop open: one PR at a time is
-# brought up to date and tested, then GitHub's auto-merge lands it. See
+# Lands an auto-merge PR that passed and is up to date when GitHub's auto-merge never fires.
+# It doesn't update branches: main's ruleset holds commits made with the workflow token. See
 # .github/scripts/merge_train.py.
 on:
   schedule:

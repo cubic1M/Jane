@@ -9,7 +9,7 @@ vi.mock("@/lib/analytics", () => ({ track: vi.fn() }));
 vi.mock("@/lib/audit", () => ({ logAudit: vi.fn(), SYSTEM_ACTOR: { type: "system", id: null } }));
 
 import type { sendEmail } from "@/lib/email";
-import { loadCheckIn } from "@/lib/check-in";
+import { loadCheckIn, summaryFor } from "@/lib/check-in";
 import { healthFor } from "@/lib/health-score";
 import { answerByRules } from "@/lib/jane-agent/answer";
 import { gather } from "@/lib/jane-agent/brain";
@@ -21,7 +21,8 @@ import { listTransfers } from "@/lib/money-movement/transfers";
 import { linkDemoBank } from "@/lib/plaid/demo";
 import { syncItem } from "@/lib/plaid/sync";
 import { provenSavings } from "@/lib/savings-proof";
-import { monthlyReportFor, runMonthlyReports } from "./monthly-report";
+import { buildMonthlyReport, monthlyReportFor, runMonthlyReports } from "./monthly-report";
+import { yearInReview } from "./year";
 
 // Spec step 148 against a real, migrated Postgres, with the demo bank: in the first days
 // of October, September's report is made once, every figure the same as on the page it
@@ -115,6 +116,21 @@ describe.runIf(url)("the monthly money report", { timeout: 120_000 }, () => {
     expect(report.health).toMatchObject({ score: health.score, band: health.band });
     const snapshot = await loadSnapshot(userId, { client, now: NOW });
     expect(report.next?.title ?? null).toBe(rankedFor(snapshot!)[0]?.title ?? null);
+    // The monthly check-in's figures and summary (spec step 45), as on its page.
+    expect(report.spent).toEqual({
+      cents: checkIn.spendingCents,
+      previousCents: checkIn.previousSpendingCents,
+    });
+    expect(report.spent!.cents).toBeGreaterThan(0);
+    expect(report.netWorth).toEqual(checkIn.netWorth);
+    expect(report.budgets).toEqual({
+      kept: checkIn.budgets.filter((b) => b.kept).length,
+      over: checkIn.budgets.filter((b) => !b.kept).map((b) => b.category),
+    });
+    expect(report.summary).toBe(await summaryFor(userId, checkIn, { client }));
+    expect(report.summary).toMatch(/^In September you spent \$/);
+    // Not December: no year.
+    expect(report.year).toBeNull();
 
     // Once.
     expect((await monthlyReportFor(userId, { client, now: NOW }))!.id).toBe(stored.id);
@@ -145,10 +161,63 @@ describe.runIf(url)("the monthly money report", { timeout: 120_000 }, () => {
     expect(mine).toHaveLength(1);
     const [sent] = mine[0];
     expect(sent.subject).toBe("Your money report for September 2026");
-    expect(sent.text).toMatch(/^Earned: \$[\d,]+\.\d\d came in\. \S+\/check-in\?m=2026-09$/m);
+    expect(sent.text).toMatch(/^Earned: \$[\d,]+\.\d\d came in\. \S+\/insights$/m);
+    // The one monthly email: the check-in's summary and spending are in it.
+    expect(sent.text.split("\n")[2]).toMatch(/^In September you spent \$/);
+    expect(sent.text).toMatch(/^Spent: \$[\d,]+\.\d\d, (up|down) .+ \S+\/insights$/m);
+    expect(sent.html).toContain("In September you spent");
+    expect(sent.headers?.["List-Unsubscribe"]).toContain("/api/unsubscribe?token=");
     expect(sent.text).toMatch(/^Moved: .+ \S+\/transfers$/m);
     await runMonthlyReports({ client, now: NOW, send });
     expect(send.mock.calls.filter(([e]) => e.to === email)).toHaveLength(1);
+  });
+
+  it("carries the year in review in December's report, as on /year", async () => {
+    const december = await buildMonthlyReport(userId, "2025-12", { client, now: NOW });
+    const year = await yearInReview(userId, 2025, { client, now: NOW });
+    expect(december.year).toEqual({
+      year: 2025,
+      spendingCents: year.spendingCents,
+      incomeCents: year.incomeCents,
+      found: year.found.findings,
+      foundAnnualCents: year.found.annualSavingsCents,
+      savedCents: year.savedCents,
+    });
+  });
+
+  it("emails a month that only had spending, but never someone who turned emails off", async () => {
+    // From the check-in email it replaces: a card with a grocery bill is a month to report.
+    const send = vi.fn<(e: Email) => Promise<void>>(async () => {});
+    const people = await Promise.all(
+      [true, false].map(async (digestEnabled) => {
+        const person = await client.user.create({
+          data: { email: `report-card-${crypto.randomUUID()}@example.com`, digestEnabled },
+        });
+        created.push(person.id);
+        const account = await client.account.create({
+          data: { userId: person.id, source: "csv", name: "Card", type: "credit" },
+        });
+        await client.transaction.create({
+          data: {
+            userId: person.id,
+            accountId: account.id,
+            source: "csv",
+            dedupeKey: "x",
+            date: new Date("2026-09-10"),
+            amountCents: 4_500,
+            description: "GROCER",
+            pfcPrimary: "FOOD_AND_DRINK",
+          },
+        });
+        return person;
+      }),
+    );
+    await runMonthlyReports({ client, now: NOW, send });
+    const to = send.mock.calls.map(([e]) => e.to);
+    expect(to).toContain(people[0].email);
+    expect(to).not.toContain(people[1].email);
+    const mail = send.mock.calls.find(([e]) => e.to === people[0].email)![0];
+    expect(mail.text).toContain("In September you spent $45.00");
   });
 
   it("isn't made after the first days of the month, or for an empty month", async () => {

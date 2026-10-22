@@ -29,6 +29,7 @@ import type { CardInterest } from "@/lib/card-interest";
 import type { LongGame } from "@/lib/student-long-game";
 import type { FamilyLoans } from "@/lib/family-loans";
 import type { CreditGoals } from "@/lib/credit-goals";
+import type { MortgageMoneyView } from "@/lib/mortgage-money";
 import type { CarLoan } from "@/lib/car-loan";
 import type { DebtReview } from "@/lib/debt-review";
 import type { DebtTrouble } from "@/lib/debt-trouble";
@@ -200,6 +201,21 @@ export const DEBT_TOOLS: Anthropic.Tool[] = [
     description:
       "The credit score plans the person has for a goal (demo-bank people only, a stand-in score; every figure is an estimate from the score simulator, never a promise): for each, the target score and date, what the goal is for (a mortgage, a car), the score now, whether the plan reaches the target and the best it shows if not, the month-by-month plan (what to pay toward cards and the estimated score after each month), this month's checklist with what's done (pay before the statement closes, keep card accounts open, no new applications, on-time payments, and a rapid rescore before a mortgage application), and the total to pay down. Starting a plan and ticking off a month are the person's taps (the creditgoal.start and creditgoal.done buttons).",
     input_schema: noInput,
+  },
+  {
+    name: "mortgage_money",
+    description:
+      "Recast, refinance or pay extra on the person's mortgage (demo advice mode only): for a lump sum (lump_cents) and/or extra money each month (extra_monthly_cents), the mortgage as it is (payment, end date, total interest) and each way to use the money: extra principal (same payment, paid off sooner), a recast (lower payment, same rate and end date, with the servicer's fee), and a refinance of what's left at the best stand-in mortgage offer (with its closing fees), each with total interest, the interest saved against doing nothing with fees counted, and the month and date its fee pays back; and the same money invested instead as a low to high range of gain, not guaranteed, against the certain return of paying down. Fees and rules come from config with sources. Show both sides and leave the choice to the person.",
+    input_schema: {
+      type: "object" as const,
+      properties: {
+        lump_cents: { type: "integer" as const, description: "A lump sum in cents (optional)." },
+        extra_monthly_cents: {
+          type: "integer" as const,
+          description: "Extra each month in cents (optional).",
+        },
+      },
+    },
   },
   {
     name: "loan_fit",
@@ -438,6 +454,7 @@ export const DEBT_TOOL_STATUS: Readonly<Record<string, string>> = {
   debt_trouble: "Looking at your options…",
   debt_review: "Going over your debts…",
   car_loan: "Looking at your car loan…",
+  mortgage_money: "Comparing ways to use the money…",
   debt_decision: "Working it out with your numbers…",
   loan_fit: "Finding the loan that fits you…",
 };
@@ -1055,6 +1072,45 @@ export function familyLoansToolOutput(data: FamilyLoans, money: (cents: number) 
       monthly: s.paymentCents === null ? null : money(s.paymentCents),
       yourHalf: s.yourShareCents === null ? null : money(s.yourShareCents),
     })),
+  };
+}
+
+export function mortgageMoneyToolOutput(v: MortgageMoneyView, money: (cents: number) => string) {
+  if (!v.available) return { note: "No mortgage with a balance, a rate and an end date." };
+  if (!v.advice) return { note: "Only for the demo bank." };
+  if (!v.result) return { note: "Give lump_cents and/or extra_monthly_cents to compare." };
+  const r = v.result;
+  return {
+    mortgage: v.loanName,
+    ratePercent: (v.aprBps ?? 0) / 100,
+    lump: money(v.lumpCents),
+    extraAMonth: money(v.extraMonthlyCents),
+    doingNothing: {
+      payment: money(r.baseline.paymentCents),
+      paidOff: r.baseline.endsOn,
+      totalInterest: money(r.baseline.totalInterestCents),
+    },
+    options: r.options.map((o) => ({
+      way: o.label,
+      available: o.available,
+      why: o.why,
+      fee: money(o.feeCents),
+      payment: money(o.paymentCents),
+      paidOff: o.endsOn,
+      totalInterest: money(o.totalInterestCents),
+      interestSavedWithFeesCounted: money(o.interestSavedCents),
+      feePaysBackInMonths: o.breakEvenMonths,
+      feePaysBackOn: o.breakEvenOn,
+    })),
+    investingInstead: {
+      put: money(r.invest.putCents),
+      years: r.invest.years,
+      lowGain: money(r.invest.lowGainCents),
+      highGain: money(r.invest.highGainCents),
+      notGuaranteed: true,
+    },
+    certainReturnOfPayingDownPercent: r.guaranteedReturnPercent,
+    verdict: r.verdict,
   };
 }
 

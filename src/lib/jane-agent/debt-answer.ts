@@ -19,6 +19,7 @@ import { loadStudentLongGame } from "@/lib/student-long-game";
 import { loadFamilyLoans } from "@/lib/family-loans";
 import { PROJECT_YEARS_DEFAULT } from "@/config/home-equity";
 import { checkGoalDraft, loadCreditGoals, planFor } from "@/lib/credit-goals";
+import { MortgageMoneyError, loadMortgageMoney } from "@/lib/mortgage-money";
 import { loadCarLoan } from "@/lib/car-loan";
 import { decide } from "@/lib/debt-decisions";
 import { loadFit } from "@/lib/fit";
@@ -47,6 +48,7 @@ import { cardInterestReply } from "./card-interest-replies";
 import { longGameReply } from "./student-long-game-replies";
 import { familyLoansReply } from "./family-loans-replies";
 import { creditGoalReply } from "./credit-goal-replies";
+import { mortgageMoneyReply } from "./mortgage-money-replies";
 import { carLoanReply } from "./car-loan-replies";
 import { decisionReply } from "./debt-decision-replies";
 import { defaultAmount, loanFitReply } from "./loan-fit-replies";
@@ -120,6 +122,23 @@ export async function answerDebt(
         }
       }
       return creditGoalReply(goals, null, { score: intent.targetScore });
+    }
+    case "mortgage_money": {
+      try {
+        return mortgageMoneyReply(
+          await loadMortgageMoney(
+            userId,
+            {
+              lumpCents: intent.lumpCents ?? undefined,
+              extraMonthlyCents: intent.extraMonthlyCents ?? undefined,
+            },
+            { client, now },
+          ),
+        );
+      } catch (error) {
+        if (!(error instanceof MortgageMoneyError)) throw error;
+        return { body: error.message, actions: [], refs: {} };
+      }
     }
     case "loan_fit": {
       const assumed = intent.amountCents === null && defaultAmount(intent.need) > 0;

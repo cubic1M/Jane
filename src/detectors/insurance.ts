@@ -2,6 +2,8 @@ import { DETECTOR_RATES as R } from "@/config/detectors";
 import { RISK_ANNUAL_PROBABILITY as CHANCE } from "@/config/suggestions";
 import { formatCents } from "@/lib/money";
 import type { ProfileInput } from "@/profile/build";
+import { computeNeeds } from "@/lib/insurance/need/calculators";
+import { needInputFromProfile } from "@/lib/insurance/need/from-profile";
 import { type Detector, suggestionId } from "./contract";
 import type { Confidence } from "./contract";
 import { evidence, factEvidence, nice, outCents, tx, headlineOf } from "./helpers";
@@ -123,7 +125,12 @@ const umbrella: Detector = {
   topic: "umbrella",
   needs: ["housing"],
   detect({ profile, data }) {
-    const total = assets(data);
+    // The need calculator's net worth (what you own less what you owe), the number the page and
+    // the chat use; the account total only when the policies weren't loaded.
+    const input = needInputFromProfile(profile, data);
+    const need = input ? computeNeeds(input).find((n) => n.kind === "umbrella") : null;
+    if (input && (!need || need.gapCents <= 0)) return null;
+    const total = input ? (input.netWorthCents ?? 0) : assets(data);
     if (total < R.umbrellaAssetsCents) return null;
     return {
       id: suggestionId("insurance", "umbrella"),
@@ -139,7 +146,7 @@ const umbrella: Detector = {
         factEvidence(profile.facts.housing),
       ]),
       urgency: "later",
-      why: `You have about ${formatCents(total)} in your accounts. A big liability claim above your car and home limits could reach it. An umbrella policy pays above those limits and usually costs a few hundred dollars a year.`,
+      why: `You have about ${formatCents(total)} counting what you own less what you owe. A big liability claim above your car and home limits could reach it. An umbrella policy pays above those limits and usually costs a few hundred dollars a year.`,
       action: { label: "See umbrella cover", href: "/insurance" },
     };
   },
