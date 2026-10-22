@@ -1,3 +1,5 @@
+import { RISK_LEVELS, type RiskLevel } from "@/config/investing";
+
 // Questions about investments, understood by rules (spec step 128 on). Pure: the
 // normalized text in (./../intents.ts normalize), the topic out, or null when it isn't
 // about investments. Each investment step adds its topics here.
@@ -34,7 +36,12 @@ export type InvestmentTopic =
   | "short_term"
   | "values"
   | "family_file"
-  | "sudden_money";
+  | "sudden_money"
+  // Spec step 297: the practice portfolio (Phase AW, Stage A).
+  | "practice_log"
+  | "practice_pause"
+  | "practice_resume"
+  | "backtest";
 
 export type InvestmentIntent = {
   kind: "investments";
@@ -44,6 +51,11 @@ export type InvestmentIntent = {
   // Spec step 158: a child's age and the kind of college, when the person said them.
   childAge?: number;
   collegeType?: "public" | "private";
+  // Spec step 297: which switch (the whole practice portfolio, or opportunities alone), and the
+  // risk level and year a replay was asked about.
+  which?: "all" | "opportunities";
+  level?: RiskLevel;
+  year?: number;
 };
 
 const ACCOUNT_WORDS =
@@ -188,7 +200,40 @@ const VALUES =
 const FAMILY_FILE =
   /\bbeneficiar(?:y|ies)\b|\btransfer[- ]on[- ]death\b|\bwhat (?:would|will) my (?:family|spouse|kids|children) need\b|\bfamily file\b|\bif something (?:happens|happened) to me\b|\b(?:do i need|should i (?:have|make|get|write)) a (?:will|trust)\b|\bwills? and trusts?\b/;
 
+// Spec step 297: the practice portfolio. "Pause it" on its own is the practice portfolio's
+// switch; the autopilot has its own words ("pause the autopilot").
+const PRACTICE_LOG =
+  /\bwhat (?:did|have) (?:you|jane) (?:buy|bought|sell|sold|trade|traded)\b|\b(?:practice|paper) (?:portfolio )?(?:trades|log)\b|\bwhy did (?:you|jane) (?:buy|sell)\b/;
+const PRACTICE_PAUSE =
+  /^(?:please )?(?:pause|stop) (?:it|that|trading)$|\b(?:pause|stop) (?:the |my )?(?:practice|paper) (?:portfolio|trading|money)\b|\bpause (?:the |my )?opportunities\b/;
+const PRACTICE_RESUME =
+  /^(?:please )?(?:resume|unpause|restart) (?:it|that|trading)$|\b(?:resume|unpause|restart) (?:the |my )?(?:practice|paper) (?:portfolio|trading|money)\b|\bresume (?:the |my )?opportunities\b/;
+const BACKTEST =
+  /\bbacktests?\b|\bhow would (?:a |an |my |the )?(?:very low|very high|low|medium|high)(?: risk)?(?: level)?(?: portfolio)? have (?:done|gone|performed)\b/;
+const LEVEL_NAME = /\b(very low|very high|low|medium|high)\b/;
+const YEAR = /\b((?:19|20)\d\d)\b/;
+
+function practiceIntent(text: string): InvestmentIntent | null {
+  const base = { kind: "investments" as const, account: null };
+  const which = /\bopportunities\b/.test(text) ? ("opportunities" as const) : ("all" as const);
+  if (PRACTICE_PAUSE.test(text)) return { ...base, topic: "practice_pause", which };
+  if (PRACTICE_RESUME.test(text)) return { ...base, topic: "practice_resume", which };
+  if (PRACTICE_LOG.test(text)) return { ...base, topic: "practice_log" };
+  if (!BACKTEST.test(text)) return null;
+  const name = LEVEL_NAME.exec(text)?.[1];
+  const level = ([1, 2, 3, 4, 5] as const).find((l) => RISK_LEVELS[l].label.toLowerCase() === name);
+  const year = YEAR.exec(text)?.[1];
+  return {
+    ...base,
+    topic: "backtest",
+    ...(level ? { level } : {}),
+    ...(year ? { year: Number(year) } : {}),
+  };
+}
+
 export function parseInvestmentIntent(text: string): InvestmentIntent | null {
+  const practice = practiceIntent(text);
+  if (practice) return practice;
   if (FAMILY_FILE.test(text)) return { kind: "investments", topic: "family_file", account: null };
   if (VALUES.test(text)) return { kind: "investments", topic: "values", account: null };
   if (SUDDEN.test(text)) return { kind: "investments", topic: "sudden_money", account: null };

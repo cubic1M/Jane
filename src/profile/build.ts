@@ -35,6 +35,8 @@ export type ProfileTx = {
 };
 export type ProfileAccount = {
   id: string;
+  // What the bank calls it ("Inherited IRA"); read for a few tax signals (step 268).
+  name?: string;
   type: string;
   subtype: string | null;
   balanceCents: number;
@@ -101,6 +103,8 @@ export type ProfileInput = {
     insuranceShopSavingCents?: number;
     // The policies they have, for the cover-need gaps (spec step 277). Absent: not loaded.
     coverPolicies?: readonly NeedPolicy[];
+    // The person already has a practice portfolio (step 296). Absent: not loaded.
+    hasPracticePortfolio?: boolean;
     rsuGap?: {
       vestedCents: number;
       shortfallCents: number;
@@ -383,6 +387,8 @@ export function buildProfile(input: ProfileInput): Profile {
     "filing_status",
     "business_structure",
     "hardship_reason",
+    "inherited_ira_death_year",
+    "inherited_from_spouse",
   ] as const) {
     if (told[key] === undefined) unknown(key);
     else set(key, told[key], "told", "answers", 0);

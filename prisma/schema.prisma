@@ -4074,6 +4074,8 @@ model PracticeTrade {
   reason      String
   rule        String
   undone      Boolean  @default(false)
+  // Its card in the chat put away ("Got it", step 296).
+  dismissedAt DateTime? @map("dismissed_at") @db.Timestamptz(3)
 
   portfolio PracticePortfolio @relation(fields: [portfolioId], references: [id], onDelete: Cascade)
 
@@ -4131,6 +4133,8 @@ model PracticeOpportunity {
   details     Json
   status      String
   tradeIds    String[] @map("trade_ids")
+  // Its card in the chat put away ("Got it", step 296).
+  dismissedAt DateTime? @map("dismissed_at") @db.Timestamptz(3)
 
   portfolio PracticePortfolio @relation(fields: [portfolioId], references: [id], onDelete: Cascade)
 
