@@ -1,4 +1,5 @@
 import { DETECTOR_RATES as R } from "@/config/detectors";
+import { RISK_ANNUAL_PROBABILITY as CHANCE } from "@/config/suggestions";
 import { formatCents } from "@/lib/money";
 import { type Detector, suggestionId } from "./contract";
 import { evidence, factEvidence, tx, weakest, headlineOf } from "./helpers";
@@ -223,20 +224,18 @@ const businessInsurance: Detector = {
       capability: "insurance",
       topic: "business_insurance",
       title: "Check your business has liability and property cover",
-      headline: headlineOf(
-        "Check your business cover",
-        Math.round(R.businessClaimCents * R.businessClaimChance),
-        "risk",
-      ),
+      headline: headlineOf("Check your business cover", R.businessClaimCents, "risk"),
       short: `Your business takes in about ${formatCents(annualIncome(income.value))} a year and I see no insurance charge.`,
-      worthCents: Math.round(R.businessClaimCents * R.businessClaimChance),
+      worthCents: R.businessClaimCents,
+      // A business with no liability cover at all can be ended by one claim.
+      required: true,
       worthKind: "risk",
       confidence: weakest([
         factEvidence(pattern),
         evidence("seen", profile.months, 0, "business-cover charges"),
       ]),
       urgency: "soon",
-      why: `Your business takes in about ${formatCents(annualIncome(income.value))} a year and I see no business insurance charge in ${profile.months} months. A liability claim in a given year is unlikely (about ${Math.round(R.businessClaimChance * 100)}%), but one can cost ${formatCents(R.businessClaimCents)} or more.`,
+      why: `Your business takes in about ${formatCents(annualIncome(income.value))} a year and I see no business insurance charge in ${profile.months} months. A liability claim in a given year is unlikely (about ${Math.round(CHANCE.business_insurance * 100)}%), but one can cost ${formatCents(R.businessClaimCents)} or more.`,
       action: { label: "Check your cover", href: "/insurance/checkup" },
     };
   },

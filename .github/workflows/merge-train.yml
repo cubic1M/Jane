@@ -6,6 +6,11 @@ name: Merge train
 on:
   schedule:
     - cron: "*/10 * * * *"
+  # GitHub delays or drops scheduled runs (none fired for hours after this landed), so the
+  # train also runs whenever a CI run finishes, which is when a PR's state changes anyway.
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
   workflow_dispatch:
 
 permissions:

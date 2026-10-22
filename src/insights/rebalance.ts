@@ -134,7 +134,11 @@ export function accountTargets(
   return out;
 }
 
-function planAccount(account: InvestmentAccountView, target: Targets): PlannedOrder[] {
+function planAccount(
+  account: InvestmentAccountView,
+  target: Targets,
+  funds: Readonly<Record<Exclude<AssetClass, "other">, string>>,
+): PlannedOrder[] {
   const total = account.holdings.reduce((s, h) => s + h.valueCents, 0);
   if (total === 0) return [];
   const values = classValues(account.holdings);
@@ -181,9 +185,9 @@ function planAccount(account: InvestmentAccountView, target: Targets): PlannedOr
 
   // Buys: the kinds there's too little of, paid for from the cash, leaving the cash target.
   const spendable = Math.max(0, (values.get("cash") ?? 0) - target.cash);
-  const needs = (Object.keys(CORE_FUNDS) as (keyof typeof CORE_FUNDS)[])
+  const needs = (Object.keys(funds) as (keyof typeof funds)[])
     .filter((c) => c !== "cash")
-    .map((c) => ({ c, need: Math.max(0, gap(c)), ticker: CORE_FUNDS[c] }))
+    .map((c) => ({ c, need: Math.max(0, gap(c)), ticker: funds[c] }))
     .filter((n) => n.need > 0 && (!menu || menu.includes(n.ticker)));
   const needed = needs.reduce((s, n) => s + n.need, 0);
   const budget = Math.min(spendable, needed);
@@ -239,10 +243,13 @@ export function rebalancePlan(
   accounts: InvestmentAccountView[],
   riskLevel: RiskLevel,
   mixOf: (ticker: string) => HoldingView["mix"],
+  // Spec step 236: the funds bought for each kind (the plain index funds unless the person
+  // listed what to leave out).
+  funds: Readonly<Record<Exclude<AssetClass, "other">, string>> = CORE_FUNDS,
 ): RebalancePlan {
   const withHoldings = accounts.filter((a) => a.holdings.length > 0);
   const targets = accountTargets(withHoldings, riskLevel);
-  const orders = withHoldings.flatMap((a) => planAccount(a, targets.get(a.id)!));
+  const orders = withHoldings.flatMap((a) => planAccount(a, targets.get(a.id)!, funds));
   const before = withHoldings.flatMap((a) =>
     a.holdings.map((h) => ({
       name: h.name,
